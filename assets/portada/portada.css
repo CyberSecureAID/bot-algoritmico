@@ -110,17 +110,17 @@ body{overflow-x:hidden}
    cualquier zona clara de la foto. Una sombra de una sola pieza, corta,
    no oscurece nada alrededor. */
 #pt .pt-nav__b,
-#pt .pt-logo{text-shadow:0 1px 4px rgba(0,0,0,.9)}
+#pt .pt-logo{flex:0 0 auto;display:flex;align-items:center;text-shadow:0 1px 4px rgba(0,0,0,.9)}
 
 #pt .pt-hdr.pt-stuck{border-bottom-color:#232b36}
 /* Solo se ve en lo alto de la página o cuando el cursor sube a buscarla.
    En cuanto se hace scroll, se retira. Se mueve con transform, que el
    navegador anima sin recalcular la página. */
 #pt .pt-hdr.pt-oculta{transform:translateY(-100%)}
-#pt .pt-hdr__in{display:flex;align-items:center;gap:22px;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+#pt .pt-hdr__in{display:flex;align-items:center;gap:20px;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
 /* El logo REAL del repo, el mismo que usa la app. */
 #pt .pt-logo img{height:30px;width:auto}
-#pt .pt-nav{display:flex;align-items:center;gap:2px}
+#pt .pt-nav{display:flex;align-items:center;gap:2px;flex:1 1 auto;margin-left:6px}
 #pt .pt-nav__i{position:relative}
 #pt .pt-nav__b{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:500;color:var(--ink2);padding:8px 11px;border-radius:8px;transition:color .15s,background .15s}
 #pt .pt-nav__b:hover{color:var(--ink);background:rgba(255,255,255,.045)}
@@ -138,14 +138,14 @@ body{overflow-x:hidden}
 #pt .pt-menu a:hover{background:rgba(232,184,75,.07)}
 #pt .pt-menu b{display:block;font-size:13.5px;font-weight:600}
 #pt .pt-menu span{display:block;font-size:12px;line-height:1.42;color:var(--ink3);margin-top:1px}
-#pt .pt-hdr__a{display:flex;align-items:center;gap:9px;flex:0 0 auto}
+#pt .pt-hdr__a{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto}
 /* Ficha de wallet: mientras no hay cuenta es un botón normal; en cuanto
    hay una, muestra el nombre de la wallet y la dirección abreviada. */
 /* Hueco donde se coloca la ficha de wallet de la app tal cual.
    No se le da forma aquí: la estiliza gridbot/estilos.js, igual que
    dentro. Así el logo de MetaMask y las cuatro últimas cifras salen
    exactamente como siempre. */
-#pt .pt-wbox{display:flex;align-items:center;gap:6px}
+#pt .pt-wbox{display:flex;align-items:center;gap:8px}
 #pt .pt-wbox .c-hdr-r{display:flex;align-items:center;gap:6px;flex:0 0 auto}
 /* Mismos valores que #colmena-app .dir en gridbot/estilos.js. Se repiten
    aquí porque esa hoja se inyecta por JavaScript y, según cuándo llegue,
