@@ -167,6 +167,10 @@
 </section>
 
 <!-- ══ HERRAMIENTAS ══
+     Vuelve a la estructura de siempre: texto a la izquierda, capturas a la
+     derecha. Las cuatro caben ahí en una rejilla de 2x2 a escala pequeña.
+     Sacarlas a todo el ancho descolocaba el texto y estiraba el fondo.
+
      Fondo: assets/portada/img/analisis.webp
      Capturas (assets/portada/img/):
        interfaz.webp     Liquidity Pools
@@ -176,31 +180,35 @@
 <section class="pt-sec pt-bg" id="herramientas">
   <div class="pt-art" style="background-image:url('assets/portada/img/analisis.webp')" aria-hidden="true"></div>
   <div class="pt-wrap">
+    <div class="pt-split">
 
-    <div class="pt-rise pt-tools-head">
-      <p class="pt-eye">Trading profesional</p>
-      <h2>Herramientas de alta frecuencia<br>que enseñan el mercado real.</h2>
-      <p class="pt-body">El precio no se mueve solo: lo mueve la liquidez. Nuestras herramientas leen el volumen dentro de cada bloque de órdenes y el libro en vivo para mostrar dónde hay dinero atrapado, qué órdenes grandes son reales y cuáles son humo.</p>
-      <a class="pt-lnk" href="app.html?abrir=liq" data-abrir="liq">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#arr"/></svg></a>
-    </div>
+      <div class="pt-rise">
+        <p class="pt-eye">Trading profesional</p>
+        <h2>Herramientas de alta frecuencia<br>que enseñan el mercado real.</h2>
+        <p class="pt-body">El precio no se mueve solo: lo mueve la liquidez. Nuestras herramientas leen el volumen dentro de cada bloque de órdenes y el libro en vivo para mostrar dónde hay dinero atrapado, qué órdenes grandes son reales y cuáles son humo.</p>
+        <p class="pt-body">Todo se calcula en tu navegador sobre velas y profundidad reales, sin intermediarios y sin retrasos añadidos.</p>
+        <a class="pt-lnk" href="app.html?abrir=liq" data-abrir="liq">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#arr"/></svg></a>
+      </div>
 
-    <div class="pt-shots pt-rise">
-      <figure>
-        <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/interfaz.webp" alt="Liquidity Pools" loading="lazy"></div></div>
-        <figcaption>Liquidity Pools</figcaption>
-      </figure>
-      <figure>
-        <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/heatpools.webp" alt="Heat Pools" loading="lazy"></div></div>
-        <figcaption>Heat Pools</figcaption>
-      </figure>
-      <figure>
-        <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/smartlevels.webp" alt="Smart Levels" loading="lazy"></div></div>
-        <figcaption>Smart Levels</figcaption>
-      </figure>
-      <figure>
-        <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/estructural.webp" alt="Lógica Estructural Avanzada" loading="lazy"></div></div>
-        <figcaption>Lógica Estructural</figcaption>
-      </figure>
+      <div class="pt-shots pt-rise">
+        <figure>
+          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/interfaz.webp" alt="Liquidity Pools" loading="lazy"></div></div>
+          <figcaption>Liquidity Pools</figcaption>
+        </figure>
+        <figure>
+          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/heatpools.webp" alt="Heat Pools" loading="lazy"></div></div>
+          <figcaption>Heat Pools</figcaption>
+        </figure>
+        <figure>
+          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/smartlevels.webp" alt="Smart Levels" loading="lazy"></div></div>
+          <figcaption>Smart Levels</figcaption>
+        </figure>
+        <figure>
+          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/estructural.webp" alt="Lógica Estructural Avanzada" loading="lazy"></div></div>
+          <figcaption>Lógica Estructural</figcaption>
+        </figure>
+      </div>
+
     </div>
 
     <div class="pt-tools pt-rise">
