@@ -2,7 +2,7 @@
   "name": "Cripto Cuba Oficial",
   "short_name": "Cripto Cuba",
   "description": "Bots de trading en tu propia wallet.",
-  "start_url": "./",
+  "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

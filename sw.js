@@ -8,10 +8,13 @@
  *   · Si hay versión nueva, se descarga sola y se aplica al recargar.
  */
 
-const VERSION = 'aurex-v128';
+const VERSION = 'aurex-v129';
 const APP = [
   './',
-  './index.html',
+  './index.html',              // la portada
+  './app.html',                // la app (antes era index.html)
+  './assets/portada/portada.css?v=1',
+  './assets/portada/portada.js?v=1',
   './manifest-aurex.webmanifest',
   './assets/js/gridbot-ui.js?v=125',
   './assets/js/gridbot.js?v=125',
@@ -72,16 +75,23 @@ self.addEventListener('fetch', (e) => {
   if (NUNCA_GUARDAR.some((d) => url.hostname.includes(d))) return;   // va directo a la red
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-  // La página: primero la red (para traer novedades), y si falla, la copia guardada.
+  /* La página: primero la red (para traer novedades), y si falla, la copia
+     guardada. Ahora hay DOS páginas —la portada en './' y la app en
+     './app.html'— así que cada una guarda la suya. Antes todo se guardaba
+     bajo './index.html' y con dos páginas eso haría que una pisara a la
+     otra: sin conexión se abriría la equivocada. */
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
       try {
         const r = await fetch(req);
         const c = await caches.open(VERSION);
-        c.put('./index.html', r.clone()).catch(() => {});
+        c.put(req, r.clone()).catch(() => {});
         return r;
       } catch (_) {
-        return (await caches.match('./index.html')) || Response.error();
+        return (await caches.match(req))
+            || (await caches.match('./app.html'))
+            || (await caches.match('./index.html'))
+            || Response.error();
       }
     })());
     return;
