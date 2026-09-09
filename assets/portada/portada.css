@@ -226,18 +226,18 @@ body{overflow-x:hidden}
 
 /* Marco para las capturas de la interfaz. Sin adornos: la imagen manda. */
 #pt .pt-shot{
-  position:relative;padding:2px;border-radius:11px;
+  position:relative;padding:1.5px;border-radius:9px;
   background:linear-gradient(155deg,
     rgba(232,184,75,.62) 0%, rgba(232,184,75,.14) 26%,
     rgba(0,0,0,.55) 58%, rgba(232,184,75,.34) 100%);
   box-shadow:
-    0 26px 58px rgba(0,0,0,.62),
+    0 16px 34px rgba(0,0,0,.6),
     0 2px 0 rgba(255,255,255,.05) inset,
     0 -14px 30px rgba(232,184,75,.05) inset;
 }
 #pt .pt-shot{transition:transform .3s cubic-bezier(.22,.85,.3,1),box-shadow .3s}
-#pt .pt-shot:hover{transform:translateY(-5px) scale(1.012);box-shadow:0 34px 70px rgba(0,0,0,.68)}
-#pt .pt-shot__in{position:relative;border-radius:9px;overflow:hidden;background:#0a0e13;border:1px solid rgba(0,0,0,.6)}
+#pt .pt-shot:hover{transform:translateY(-4px) scale(1.015);box-shadow:0 22px 46px rgba(0,0,0,.7)}
+#pt .pt-shot__in{position:relative;border-radius:7.5px;overflow:hidden;background:#0a0e13;border:1px solid rgba(0,0,0,.6)}
 #pt .pt-shot img{transition:transform .5s cubic-bezier(.22,.85,.3,1)}
 #pt .pt-shot:hover img{transform:scale(1.045)}
 #pt .pt-shot img{width:100%;height:auto;display:block;aspect-ratio:16/10;object-fit:cover}
@@ -253,16 +253,12 @@ body{overflow-x:hidden}
 }
 
 /* Dos capturas juntas: Liquidity Pools y Heat Pools. */
-#pt .pt-tools-head{max-width:min(620px,100%);margin-bottom:clamp(26px,3vw,40px)}
-#pt .pt-shots{
-  display:grid;grid-template-columns:1fr 1fr;
-  gap:clamp(14px,1.6vw,22px);
-}
+#pt .pt-shots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #pt .pt-shots figure{margin:0}
 #pt .pt-shots figure{margin:0}
 #pt .pt-shots figcaption{
-  font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.06em;
-  color:var(--gold);margin-top:11px;text-align:center;
+  font-family:var(--disp);font-weight:700;font-size:11.5px;letter-spacing:.05em;
+  color:var(--gold);margin-top:7px;text-align:center;
   text-shadow:0 1px 10px rgba(232,184,75,.35),0 2px 3px rgba(0,0,0,.85);
 }
 
