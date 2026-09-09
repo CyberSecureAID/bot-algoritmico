@@ -87,21 +87,23 @@
 </defs></svg>
 
 
+<canvas id="pt-chispas" aria-hidden="true"></canvas>
+
 <div id="pt">
 
-<header class="hdr" id="hdr">
+<header class="pt-hdr" id="hdr">
   <div class="hdr__in">
-    <a class="logo" href="#top" aria-label="Cripto Cuba Oficial">
+    <a class="pt-logo" href="#top" aria-label="Cripto Cuba Oficial">
       <img src="assets/img/cco-full.webp" alt="Cripto Cuba Oficial" width="150" height="30">
     </a>
 
-    <nav class="nav" aria-label="Principal">
+    <nav class="pt-nav" aria-label="Principal">
 
-      <div class="nav__i"><a class="nav__b" href="app.html?abrir=swap" data-abrir="swap">Swap</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=swap" data-abrir="swap">Swap</a></div>
 
-      <div class="nav__i">
-        <button class="nav__b" type="button">Bots <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
-        <div class="menu">
+      <div class="pt-nav__i">
+        <button class="pt-nav__b" type="button">Bots <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
+        <div class="pt-menu">
           <a href="app.html?bot=grid"><b>Smart Grid</b><span>Compra y vende en niveles</span></a>
           <a href="app.html?bot=acum"><b>Accumulator</b><span>Compra en la caída y vende junto</span></a>
           <a href="app.html?bot=cash"><b>Cash Out</b><span>Vende al precio que elijas</span></a>
@@ -109,26 +111,26 @@
         </div>
       </div>
 
-      <div class="nav__i">
-        <button class="nav__b" type="button">Análisis profesional <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
-        <div class="menu">
+      <div class="pt-nav__i">
+        <button class="pt-nav__b" type="button">Análisis profesional <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
+        <div class="pt-menu">
           <a href="app.html?abrir=liq" data-abrir="liq"><b>Liquidity Pools</b><span>Dónde está el dinero atrapado</span></a>
           <a href="app.html?abrir=liq" data-abrir="liq"><b>Heat Pools</b><span>Vea lo que hacen los grandes</span></a>
           <a href="app.html?abrir=liq" data-abrir="liq"><b>Smart Levels</b><span>Dónde comprar y dónde vender</span></a>
         </div>
       </div>
 
-      <div class="nav__i"><a class="nav__b" href="app.html?abrir=tools" data-abrir="tools">Herramientas</a></div>
-      <div class="nav__i"><a class="nav__b" href="app.html?abrir=market" data-abrir="market">Market P2P</a></div>
-      <div class="nav__i"><a class="nav__b" href="app.html?abrir=academy" data-abrir="academy">Academia</a></div>
-      <div class="nav__i"><a class="nav__b" href="app.html?abrir=prize" data-abrir="prize">Eventos</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=tools" data-abrir="tools">Herramientas</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=market" data-abrir="market">Market P2P</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=academy" data-abrir="academy">Academia</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=prize" data-abrir="prize">Eventos</a></div>
 
     </nav>
 
-    <div class="hdr__a">
-      <span class="wbox" id="wbox"></span>
-      <a class="btn ghost" href="app.html?abrir=instalar" data-inst>Instalar app</a>
-      <button class="burger" type="button" aria-label="Menú"><svg width="18" height="20" viewBox="0 0 20 22"><use href="#bur"/></svg></button>
+    <div class="pt-hdr__a">
+      <span class="pt-wbox" id="wbox"></span>
+      <a class="pt-btn pt-ghost" href="app.html?abrir=instalar" data-inst>Instalar app</a>
+      <button class="pt-burger" type="button" aria-label="Menú"><svg width="18" height="20" viewBox="0 0 20 22"><use href="#bur"/></svg></button>
     </div>
   </div>
 </header>
@@ -137,84 +139,83 @@
 <main id="top">
 
 <!-- ══ HERO ══ -->
-<section class="hero">
-  <div class="art" style="background-image:url('assets/portada/img/hero.webp')" aria-hidden="true"></div>
-  <canvas class="brasas" data-n="80" aria-hidden="true"></canvas>
-  <div class="wrap">
-    <div class="hero__in">
-      <p class="eye">Tu puerta al mercado global</p>
+<section class="pt-hero">
+  <div class="pt-art" style="background-image:url('assets/portada/img/hero.webp')" aria-hidden="true"></div>
+  <div class="pt-wrap">
+    <div class="pt-hero__in">
+      <p class="pt-eye">Tu puerta al mercado global</p>
       <h1>Trading sin límites,<br>desde <em>tu propia wallet.</em></h1>
-      <p class="lede">
+      <p class="pt-lede">
         Opera, invierte y haz crecer tus activos digitales en una plataforma no
         custodial sobre BNB Smart Chain. Tu dinero nunca cambia de dueño: los
         bots trabajan con un permiso de monto exacto que puedes revocar cuando
         quieras.
       </p>
-      <div class="acts">
-        <button class="btn big" data-conectar type="button"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</button>
-        <a class="btn big ghost" href="app.html?abrir=instalar" data-inst><svg width="16" height="16" viewBox="0 0 20 20"><use href="#dl"/></svg>Instalar app</a>
+      <div class="pt-acts">
+        <button class="pt-btn pt-big" data-conectar type="button"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</button>
+        <a class="pt-btn pt-big pt-ghost" href="app.html?abrir=instalar" data-inst><svg width="16" height="16" viewBox="0 0 20 20"><use href="#dl"/></svg>Instalar app</a>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ══ CONFIANZA ══ -->
-<section class="trust">
-  <div class="wrap"><div class="trust__g">
-    <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#lck"/></svg><div><b>No custodial</b><span>Tus fondos no salen de tu wallet</span></div></div>
-    <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#shd"/></svg><div><b>Permiso por monto exacto</b><span>Nunca ilimitado, y lo revocas tú</span></div></div>
-    <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#cns"/></svg><div><b>Sin porcentaje nuestro</b><span>Solo el gas y la comisión del DEX</span></div></div>
-    <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#dev"/></svg><div><b>Sin cuenta ni KYC</b><span>Tu wallet es tu único registro</span></div></div>
+<section class="pt-trust">
+  <div class="pt-wrap"><div class="pt-trust__g">
+    <div class="pt-trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#lck"/></svg><div><b>No custodial</b><span>Tus fondos no salen de tu wallet</span></div></div>
+    <div class="pt-trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#shd"/></svg><div><b>Permiso por monto exacto</b><span>Nunca ilimitado, y lo revocas tú</span></div></div>
+    <div class="pt-trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#cns"/></svg><div><b>Sin porcentaje nuestro</b><span>Solo el gas y la comisión del DEX</span></div></div>
+    <div class="pt-trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#dev"/></svg><div><b>Sin cuenta ni KYC</b><span>Tu wallet es tu único registro</span></div></div>
   </div></div>
 </section>
 
 <!-- ══ HERRAMIENTAS ══
      Fondo: assets/portada/img/analisis.webp
      Capturas: interfaz.webp (Liquidity Pools) y heatpools.webp (Heat Pools) -->
-<section class="sec bg" id="herramientas">
-  <div class="art" style="background-image:url('assets/portada/img/analisis.webp')" aria-hidden="true"></div>
-  <div class="wrap">
-    <div class="split">
-      <div class="rise">
-        <p class="eye">Trading profesional</p>
+<section class="pt-sec pt-bg" id="herramientas">
+  <div class="pt-art" style="background-image:url('assets/portada/img/analisis.webp')" aria-hidden="true"></div>
+  <div class="pt-wrap">
+    <div class="pt-split">
+      <div class="pt-rise">
+        <p class="pt-eye">Trading profesional</p>
         <h2>Herramientas de alta frecuencia<br>que enseñan el mercado real.</h2>
-        <p class="body">
+        <p class="pt-body">
           El precio no se mueve solo: lo mueve la liquidez. Nuestras
           herramientas leen el volumen dentro de cada bloque de órdenes y el
           libro en vivo para mostrar dónde hay dinero atrapado, qué órdenes
           grandes son reales y cuáles son humo.
         </p>
-        <p class="body">
+        <p class="pt-body">
           Todo se calcula en tu navegador sobre velas y profundidad reales, sin
           intermediarios y sin retrasos añadidos.
         </p>
-        <a class="lnk" href="app.html?abrir=liq" data-abrir="liq">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+        <a class="pt-lnk" href="app.html?abrir=liq" data-abrir="liq">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
       </div>
 
-      <div class="shots rise">
+      <div class="pt-shots pt-rise">
         <figure>
-          <div class="shot"><div class="shot__in"><img src="assets/portada/img/interfaz.webp" alt="Liquidity Pools: mapa de liquidaciones"></div></div>
+          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/interfaz.webp" alt="Liquidity Pools: mapa de liquidaciones"></div></div>
           <figcaption>Liquidity Pools</figcaption>
         </figure>
         <figure>
-          <div class="shot"><div class="shot__in"><img src="assets/portada/img/heatpools.webp" alt="Heat Pools: libro de órdenes vigilado"></div></div>
+          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/heatpools.webp" alt="Heat Pools: libro de órdenes vigilado"></div></div>
           <figcaption>Heat Pools</figcaption>
         </figure>
       </div>
     </div>
 
-    <div class="tools rise">
-      <div class="tool">
+    <div class="pt-tools pt-rise">
+      <div class="pt-tool">
         <h3>Liquidity Pools</h3>
         <em>dónde está el dinero atrapado</em>
         <p>El mapa de liquidaciones: los precios donde hay posiciones esperando a ser barridas. El precio va a buscarlas.</p>
       </div>
-      <div class="tool">
+      <div class="pt-tool">
         <h3>Heat Pools</h3>
         <em>vea lo que hacen los grandes</em>
         <p>El libro de órdenes miente: la mayoría de las órdenes grandes son falsas. Vigilamos cada una y le decimos cuáles tienen dinero real detrás.</p>
       </div>
-      <div class="tool">
+      <div class="pt-tool">
         <h3>Smart Levels</h3>
         <em>dónde comprar y dónde vender</em>
         <p>Analiza la estructura del mercado y dibuja los niveles exactos de entrada y salida sobre la gráfica, explicándole por qué en cada momento.</p>
@@ -224,37 +225,36 @@
 </section>
 
 <!-- ══ PILARES ══ -->
-<section class="sec alt">
-  <div class="wrap"><div class="pil rise">
-    <div class="pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#blt"/></svg><h3>Ejecución automática</h3><p>Un servicio vigila el precio y dispara tus órdenes aunque tengas el teléfono apagado.</p></div>
-    <div class="pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#shd"/></svg><h3>Sin custodia, de verdad</h3><p>No hay depósito ni saldo en cuenta. El contrato solo mueve lo que autorizaste.</p></div>
-    <div class="pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#glb"/></svg><h3>Acceso sin fronteras</h3><p>Sin registro, sin documentos y sin aprobación. Conectas tu wallet y estás dentro.</p></div>
-    <div class="pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#dev"/></svg><h3>Web y móvil</h3><p>La misma plataforma en el ordenador y en el teléfono, instalable como aplicación.</p></div>
+<section class="pt-sec pt-alt">
+  <div class="pt-wrap"><div class="pt-pil pt-rise">
+    <div class="pt-pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#blt"/></svg><h3>Ejecución automática</h3><p>Un servicio vigila el precio y dispara tus órdenes aunque tengas el teléfono apagado.</p></div>
+    <div class="pt-pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#shd"/></svg><h3>Sin custodia, de verdad</h3><p>No hay depósito ni saldo en cuenta. El contrato solo mueve lo que autorizaste.</p></div>
+    <div class="pt-pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#glb"/></svg><h3>Acceso sin fronteras</h3><p>Sin registro, sin documentos y sin aprobación. Conectas tu wallet y estás dentro.</p></div>
+    <div class="pt-pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#dev"/></svg><h3>Web y móvil</h3><p>La misma plataforma en el ordenador y en el teléfono, instalable como aplicación.</p></div>
   </div></div>
 </section>
 
 <!-- ══ ACTIVOS ══ -->
-<section class="sec bg" id="activos">
-  <div class="art" style="background-image:url('assets/portada/img/activos.webp')" aria-hidden="true"></div>
-  <canvas class="brasas" data-n="55" aria-hidden="true"></canvas>
-  <div class="wrap">
-    <div class="rise" style="max-width:min(520px,100%)">
-      <p class="eye">Activos</p>
+<section class="pt-sec pt-bg" id="activos">
+  <div class="pt-art" style="background-image:url('assets/portada/img/activos.webp')" aria-hidden="true"></div>
+  <div class="pt-wrap">
+    <div class="pt-rise" style="max-width:min(520px,100%)">
+      <p class="pt-eye">Activos</p>
       <h2>Activos digitales<br>para un mundo sin fronteras.</h2>
-      <p class="body">
+      <p class="pt-body">
         Desde las principales criptomonedas hasta los tokens del ecosistema BNB
         Chain: 26 activos operables contra USDT y USDC, con liquidez de
         PancakeSwap V3.
       </p>
-      <a class="lnk" href="app.html">Ver todos los mercados <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+      <a class="pt-lnk" href="app.html">Ver todos los mercados <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
     </div>
 
-    <div class="coins rise" id="px">
-      <div class="coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#btc"/></svg><div><b>BTCB</b><u data-px="bitcoin">—</u><s data-ch="bitcoin">—</s></div></div>
-      <div class="coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#eth"/></svg><div><b>ETH</b><u data-px="ethereum">—</u><s data-ch="ethereum">—</s></div></div>
-      <div class="coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#bnb"/></svg><div><b>BNB</b><u data-px="binancecoin">—</u><s data-ch="binancecoin">—</s></div></div>
-      <div class="coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#sol"/></svg><div><b>SOL</b><u data-px="solana">—</u><s data-ch="solana">—</s></div></div>
-      <div class="coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#xrp"/></svg><div><b>XRP</b><u data-px="ripple">—</u><s data-ch="ripple">—</s></div></div>
+    <div class="pt-coins pt-rise" id="px">
+      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#btc"/></svg><div><b>BTCB</b><u data-px="bitcoin">—</u><s data-ch="bitcoin">—</s></div></div>
+      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#eth"/></svg><div><b>ETH</b><u data-px="ethereum">—</u><s data-ch="ethereum">—</s></div></div>
+      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#bnb"/></svg><div><b>BNB</b><u data-px="binancecoin">—</u><s data-ch="binancecoin">—</s></div></div>
+      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#sol"/></svg><div><b>SOL</b><u data-px="solana">—</u><s data-ch="solana">—</s></div></div>
+      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#xrp"/></svg><div><b>XRP</b><u data-px="ripple">—</u><s data-ch="ripple">—</s></div></div>
     </div>
   </div>
 </section>
@@ -263,91 +263,89 @@
      Fondo: assets/portada/img/ecosistema.webp
      El teléfono va a la izquierda y el texto a la derecha, con las cinco
      funciones en dos columnas. Las dos capturas se turnan encima. -->
-<section class="sec bg" id="ecosistema">
-  <div class="art soft" style="background-image:url('assets/portada/img/ecosistema.webp')" aria-hidden="true"></div>
-  <canvas class="brasas" data-n="45" aria-hidden="true"></canvas>
-  <div class="wrap"><div class="split">
+<section class="pt-sec pt-bg" id="ecosistema">
+  <div class="pt-art pt-soft" style="background-image:url('assets/portada/img/ecosistema.webp')" aria-hidden="true"></div>
+  <div class="pt-wrap"><div class="pt-split">
 
-    <div class="duo rise" aria-hidden="true">
+    <div class="pt-duo pt-rise" aria-hidden="true">
       <img src="assets/portada/img/app-cta.webp" alt="">
     </div>
 
-    <div class="rise">
+    <div class="pt-rise">
       <h2>Más que bots,<br><em>es tu ecosistema cripto.</em></h2>
-      <p class="lede">Opera, analiza, intercambia y aprende.<br>Todo en una sola plataforma, sin salir de tu wallet.</p>
+      <p class="pt-lede">Opera, analiza, intercambia y aprende.<br>Todo en una sola plataforma, sin salir de tu wallet.</p>
 
-      <div class="rule"></div>
+      <div class="pt-rule"></div>
 
-      <div class="feats">
-        <a class="feat" href="app.html">
-          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bar"/></svg></div>
+      <div class="pt-feats">
+        <a class="pt-feat" href="app.html">
+          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bar"/></svg></div>
           <div><b>Bots automáticos</b><span>Smart Grid, Accumulator,<br>Cash Out y DCA</span></div>
         </a>
-        <a class="feat" href="app.html?abrir=swap" data-abrir="swap">
-          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#swp"/></svg></div>
+        <a class="pt-feat" href="app.html?abrir=swap" data-abrir="swap">
+          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#swp"/></svg></div>
           <div><b>Swap integrado</b><span>Intercambia entre activos<br>sin salir de la plataforma</span></div>
         </a>
-        <a class="feat" href="app.html?abrir=market" data-abrir="market">
-          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#usr"/></svg></div>
+        <a class="pt-feat" href="app.html?abrir=market" data-abrir="market">
+          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#usr"/></svg></div>
           <div><b>Marketplace P2P</b><span>Compra y vende con confianza,<br>tramos y disputas</span></div>
         </a>
-        <a class="feat" href="app.html?abrir=liq" data-abrir="liq">
-          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#rdr"/></svg></div>
+        <a class="pt-feat" href="app.html?abrir=liq" data-abrir="liq">
+          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#rdr"/></svg></div>
           <div><b>Herramientas de análisis</b><span>Smart Levels, Lógica Estructural<br>y Liquidity Pools</span></div>
         </a>
-        <a class="feat" href="app.html?abrir=academy" data-abrir="academy">
-          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bok"/></svg></div>
+        <a class="pt-feat" href="app.html?abrir=academy" data-abrir="academy">
+          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bok"/></svg></div>
           <div><b>Academia</b><span>Formación con acceso<br>gestionado por contrato</span></div>
         </a>
       </div>
 
-      <a class="btn line" href="app.html">Comenzar ahora <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+      <a class="pt-btn pt-line" href="app.html">Comenzar ahora <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
     </div>
 
   </div></div>
 </section>
 
 <!-- ══ VERIFICABLE ══ -->
-<section class="sec bg" id="verificable">
-  <div class="art right" style="background-image:url('assets/portada/img/mapa.webp')" aria-hidden="true"></div>
-  <div class="wrap">
-    <div class="rise" style="max-width:min(520px,100%)">
-      <p class="eye">Transparencia</p>
+<section class="pt-sec pt-bg" id="verificable">
+  <div class="pt-art pt-right" style="background-image:url('assets/portada/img/mapa.webp')" aria-hidden="true"></div>
+  <div class="pt-wrap">
+    <div class="pt-rise" style="max-width:min(520px,100%)">
+      <p class="pt-eye">Transparencia</p>
       <h2>Confianza que<br>se puede verificar.</h2>
-      <p class="body">
+      <p class="pt-body">
         Todo lo que hace la plataforma está escrito en contratos públicos sobre
         BNB Smart Chain. Puedes leerlos y comprobar tú mismo qué pueden y qué no
         pueden hacer.
       </p>
-      <p class="body">
+      <p class="pt-body">
         Las direcciones oficiales se muestran <b>dentro de la aplicación</b>, con
         tu wallet ya conectada. Nunca las publicamos sueltas ni te las
         enviaremos por mensaje: si alguien te pasa una dirección diciendo que es
         nuestra, desconfía.
       </p>
-      <a class="lnk" href="app.html?abrir=perfil" data-abrir="perfil">Ver los contratos en la app <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+      <a class="pt-lnk" href="app.html?abrir=perfil" data-abrir="perfil">Ver los contratos en la app <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
     </div>
 
-    <div class="stats rise">
-      <div class="stat"><b>4</b><span>Contratos públicos verificables</span></div>
-      <div class="stat"><b>26</b><span>Activos operables</span></div>
-      <div class="stat"><b>≈1 $</b><span>Al mes, sin porcentaje nuestro sobre tus operaciones</span></div>
-      <div class="stat"><b>0</b><span>Fondos bajo nuestra custodia</span></div>
+    <div class="pt-stats pt-rise">
+      <div class="pt-stat"><b>4</b><span>Contratos públicos verificables</span></div>
+      <div class="pt-stat"><b>26</b><span>Activos operables</span></div>
+      <div class="pt-stat"><b>≈1 $</b><span>Al mes, sin porcentaje nuestro sobre tus operaciones</span></div>
+      <div class="pt-stat"><b>0</b><span>Fondos bajo nuestra custodia</span></div>
     </div>
   </div>
 </section>
 
 <!-- ══ CIERRE ══ -->
-<section class="end">
-  <div class="art" style="background-image:url('assets/portada/img/cta.webp')" aria-hidden="true"></div>
-  <canvas class="brasas" data-n="60" aria-hidden="true"></canvas>
-  <div class="wrap">
-    <div class="end__in rise">
-      <p class="eye">Empieza en minutos</p>
+<section class="pt-end">
+  <div class="pt-art" style="background-image:url('assets/portada/img/cta.webp')" aria-hidden="true"></div>
+  <div class="pt-wrap">
+    <div class="pt-end__in pt-rise">
+      <p class="pt-eye">Empieza en minutos</p>
       <h2>Conecta tu wallet y<br>mira la plataforma por dentro.</h2>
-      <p class="body">No hay registro ni formulario. Conectas, lo ves todo, y decides después. Puedes desconectarte en cualquier momento.</p>
-      <div class="acts">
-        <button class="btn big" data-conectar type="button"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</button>
+      <p class="pt-body">No hay registro ni formulario. Conectas, lo ves todo, y decides después. Puedes desconectarte en cualquier momento.</p>
+      <div class="pt-acts">
+        <button class="pt-btn pt-big" data-conectar type="button"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</button>
       </div>
     </div>
   </div>
@@ -356,14 +354,14 @@
 </main>
 
 
-<footer class="foot">
-  <div class="art" style="background-image:url('assets/portada/img/footer.webp')" aria-hidden="true"></div>
-  <div class="wrap">
-    <div class="foot__g">
-      <div class="foot__b">
-        <div class="logo"><img src="assets/img/cco-full.webp" alt="Cripto Cuba Oficial" width="150" height="30"></div>
+<footer class="pt-foot">
+  <div class="pt-art" style="background-image:url('assets/portada/img/footer.webp')" aria-hidden="true"></div>
+  <div class="pt-wrap">
+    <div class="pt-foot__g">
+      <div class="pt-foot__b">
+        <div class="pt-logo"><img src="assets/img/cco-full.webp" alt="Cripto Cuba Oficial" width="150" height="30"></div>
         <p>Trading automático en tu propia wallet. Tú controlas tus activos.</p>
-        <div class="soc">
+        <div class="pt-soc">
           <a href="#" aria-label="Telegram"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#tg"/></svg></a>
           <a href="#" aria-label="X"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#xx"/></svg></a>
           <a href="#" aria-label="YouTube"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#yt"/></svg></a>
@@ -384,14 +382,14 @@
         <li><a href="app.html?abrir=instalar" data-inst>Instalar app</a></li>
       </ul></div>
 
-      <div class="foot__j">
+      <div class="pt-foot__j">
         <h4>Soporte</h4>
         <p>Dudas, incidencias y novedades en el canal de Telegram.</p>
-        <a class="btn ghost" href="#"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#tg"/></svg>Abrir Telegram</a>
+        <a class="pt-btn pt-ghost" href="#"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#tg"/></svg>Abrir Telegram</a>
       </div>
     </div>
 
-    <p class="risk">
+    <p class="pt-risk">
       Operar con criptomonedas conlleva riesgo. Un bot ordena y ejecuta tus
       operaciones, pero no predice el mercado y no garantiza ganancias. Puedes
       perder parte o la totalidad de lo que inviertas. Opera solo con dinero que
@@ -399,7 +397,7 @@
       responsable de la custodia de tu wallet y de tus claves.
     </p>
 
-    <div class="foot__bar">
+    <div class="pt-foot__bar">
       <span>© 2026 Cripto Cuba Oficial</span>
       <span>Plataforma no custodial · BNB Smart Chain</span>
     </div>
