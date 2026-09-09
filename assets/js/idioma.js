@@ -113,6 +113,7 @@ const DIC = {
     'dentro de la aplicación': 'inside the app',
     ', con tu wallet ya conectada. Nunca las publicamos sueltas ni te las enviaremos por mensaje: si alguien te pasa una dirección diciendo que es nuestra, desconfía.': ', with your wallet already connected. We never post them loose and we will never send them by message: if someone hands you an address claiming it is ours, do not trust it.',
     'Ver los contratos en la app': 'View the contracts in the app',
+    'Lógica Estructural': 'Structural Logic',
     'Contratos públicos verificables': 'Public verifiable contracts',
     'Activos operables': 'Tradable assets',
     'Swap para intercambiar monedas': 'Built-in swap to exchange coins',
