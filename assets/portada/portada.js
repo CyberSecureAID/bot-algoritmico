@@ -77,7 +77,7 @@ const PUERTAS = {
   },
   market:  async () => (await import(J + 'market.js?v=125')).abrirMarket(),
   liq:     async () => (await import(J + 'liquidity.js?v=125')).abrirLiquidity(),
-  tools:   async () => (await import(J + 'tools.js?v=125')).abrirTools(),
+  tools:   async (tid) => (await import(J + 'tools.js?v=126')).abrirTools(tid),
   academy: async () => (await import(J + 'academy.js?v=125')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=125')).abrirPrizePool(),
   perfil:  async () => (await import(J + 'perfil.js?v=125')).abrirPerfil()
@@ -106,6 +106,9 @@ async function abrir(destino, enlace) {
   if (abriendo) return true;
   abriendo = true;
 
+  // Si el enlace apunta a una herramienta concreta de Tools, se pasa su id.
+  const extra = enlace && enlace.getAttribute ? enlace.getAttribute('data-tool') : null;
+
   const antes = enlace ? enlace.style.opacity : '';
   if (enlace) enlace.style.opacity = '.55';
 
@@ -115,7 +118,7 @@ async function abrir(destino, enlace) {
   catch (e) { console.warn('[portada] hoja base:', e); }
 
   try {
-    await puerta();
+    await puerta(extra || undefined);
     return true;
   } catch (e) {
     console.error('[portada] no se pudo abrir "' + destino + '":', e);
@@ -561,19 +564,33 @@ try {
 /* ══════════════════════════════════════════════════════════════════════
    7 · INSTALAR
    ══════════════════════════════════════════════════════════════════════ */
-/* Instalar: se abre el panel de extras.js, el mismo de dentro, con sus
-   instrucciones y su código QR. Nada de recrearlo. */
+/* Instalar: dispara la instalación de la PWA directamente, sin ventana
+   intermedia. Se usa extras.iniciarInstalacion(), que captura el evento
+   beforeinstallprompt del navegador, y luego extras.instalarAhora(), que
+   llama a prompt(). Si el navegador todavía no ofrece instalar (o ya está
+   instalada), comparte el enlace, igual que hace la app en el móvil. */
 try {
+  let ex = null;
+  const cargarExtras = async () => {
+    if (ex) return ex;
+    await estiloBase();
+    ex = await import(J + 'extras.js?v=126');
+    if (ex.iniciarInstalacion) ex.iniciarInstalacion();
+    return ex;
+  };
+  // Se arranca la captura cuanto antes: el evento del navegador llega solo
+  // una vez y hay que estar escuchando desde el principio.
+  cargarExtras().catch(() => {});
+
   document.querySelectorAll('[data-inst]').forEach((b) => {
     b.addEventListener('click', async (ev) => {
       ev.preventDefault();
       try {
-        await estiloBase();
-        const ex = await import(J + 'extras.js?v=125');
-        ex.panelInstalar(b);
-      } catch (e) {
-        console.warn('[portada] instalar:', e);
-        aviso('No se pudo abrir el panel de instalación: ' + ((e && e.message) || e));
+        const e = await cargarExtras();
+        if (e.instalarAhora) await e.instalarAhora();
+        else if (e.compartirEnlace) await e.compartirEnlace();
+      } catch (err) {
+        console.warn('[portada] instalar:', err);
       }
     });
   });
@@ -582,8 +599,12 @@ try {
 
 /* Si se llega con ?abrir=… se abre esa ventana al entrar. */
 try {
-  const pedido = new URLSearchParams(location.search).get('abrir');
-  if (pedido && PUERTAS[pedido]) abrir(pedido, null);
+  const q = new URLSearchParams(location.search);
+  const pedido = q.get('abrir');
+  if (pedido && PUERTAS[pedido]) {
+    const tid = q.get('tool');
+    abrir(pedido, tid ? { getAttribute: () => tid } : null);
+  }
 } catch (_) {}
 
 
