@@ -346,45 +346,47 @@ try {
    siquiera si el sistema pide menos movimiento.
    ══════════════════════════════════════════════════════════════════════ */
 function brasas(lienzo) {
-  const g = lienzo.getContext('2d');
+  const g = lienzo.getContext('2d', { alpha: true });
   if (!g) return;
 
-  /* ── La idea ──────────────────────────────────────────────────────
-     Un campo de puntos no da atmósfera. Lo que la da es LUZ CON POLVO
-     DENTRO: en el mundo real un haz se ve porque las partículas en
-     suspensión lo dispersan hacia tus ojos. Sin polvo no hay haz, y sin
-     haz el polvo son puntitos.
+  /* ── Por qué esta versión va fluida y la anterior no ────────────────
+     La anterior pintaba bonito y se arrastraba. Dos culpables, los dos
+     dentro del bucle de cada fotograma:
 
-     Así que aquí hay tres cosas trabajando juntas:
+       · ctx.filter = 'blur(26px)' para los haces. Un desenfoque de canvas
+         es de lo más caro que existe, y se hacía tres veces por cuadro.
+       · shadowBlur en cada mota para el halo. Otro desenfoque, esta vez
+         cien veces por cuadro.
 
-       1. HACES. Dos o tres columnas de luz inclinadas, larguísimas y muy
-          tenues, que se abren de arriba abajo y respiran despacio.
-       2. POLVO EN TRES PROFUNDIDADES. Lo lejano es diminuto, lento y
-          apagado; lo cercano es mayor, más rápido y con halo. Esa
-          diferencia es la perspectiva del aire.
-       3. DISPERSIÓN. Cada mota mira si está dentro de un haz y, si lo
-          está, se enciende. Eso es lo que hace que la luz "tenga cuerpo"
-          en vez de ser un degradado pegado encima.
+     Con eso el navegador no llegaba a los 60 fotogramas ni de lejos, y
+     como el scroll comparte hilo con el dibujo, la página se sentía
+     atascada. La luz parecía ir a dos imágenes por segundo porque
+     literalmente iba a eso.
 
-     Encima, un puñado de brasas se aviva y se apaga con su propio pulso,
-     y el conjunto se desplaza un poco al hacer scroll, más lo cercano que
-     lo lejano, para que el fondo tenga volumen.
-     ───────────────────────────────────────────────────────────────── */
+     La solución es la de siempre en gráficos: NO desenfocar en vivo.
+       · La mota se dibuja UNA vez en una miniatura aparte, con su halo ya
+         hecho, y luego solo se copia y se escala. Copiar es baratísimo.
+       · Los haces se dibujan UNA vez en un lienzo aparte, ya desenfocados,
+         y en cada cuadro solo se copian con más o menos opacidad.
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+     Resultado: el bucle solo hace copias. Ni un desenfoque, ni una sombra.
+     ─────────────────────────────────────────────────────────────────── */
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   const densidad = Number(lienzo.dataset.n || 60);
   const tono = lienzo.dataset.tono || '244,208,137';
 
-  let an = 0, al = 0, motas = [], haces = [], vivo = false, lazo = 0, antes = 0;
-  let desliz = 0;
+  let an = 0, al = 0, motas = [], vivo = false, lazo = 0, antes = 0;
+  let capaLuz = null;                 // haces ya desenfocados
+  let sprite = null, spR = 0;         // mota ya dibujada con su halo
 
   const entre = (a, b) => a + Math.random() * (b - a);
 
-  // Tres planos: [radio, velocidad, alfa, halo, parallax]
+  // Tres profundidades: [radio, velocidad, alfa]
   const PLANOS = [
-    { r: [0.5, 1.1], v: [3, 7],   a: [0.06, 0.16], halo: 0,  px: 0.02 },
-    { r: [0.9, 1.8], v: [7, 14],  a: [0.14, 0.34], halo: 3,  px: 0.06 },
-    { r: [1.5, 3.0], v: [12, 24], a: [0.28, 0.62], halo: 8,  px: 0.12 }
+    { r: [0.5, 1.1], v: [3, 7],   a: [0.10, 0.22] },
+    { r: [0.9, 1.8], v: [7, 14],  a: [0.18, 0.40] },
+    { r: [1.5, 3.0], v: [12, 24], a: [0.32, 0.66] }
   ];
 
   function nacer(abajo) {
@@ -396,76 +398,81 @@ function brasas(lienzo) {
       r: entre(p.r[0], p.r[1]),
       v: entre(p.v[0], p.v[1]),
       a: entre(p.a[0], p.a[1]),
-      halo: p.halo,
-      px: p.px,
-      f: 0.25 + Math.random() * 0.7,      // ritmo del balanceo
-      amp: 5 + Math.random() * 22,        // amplitud del balanceo
-      pf: 0.5 + Math.random() * 1.6,      // ritmo del parpadeo
+      f: 0.25 + Math.random() * 0.7,
+      amp: 5 + Math.random() * 22,
+      pf: 0.5 + Math.random() * 1.6,
       t: Math.random() * 100,
-      brasa: Math.random() < 0.14         // unas pocas laten de verdad
+      brasa: Math.random() < 0.16
     };
+  }
+
+  /* La mota, dibujada una sola vez. Un degradado radial hace de halo, así
+     que no hace falta sombra en cada cuadro. */
+  function hacerSprite() {
+    spR = 26;
+    const c = document.createElement('canvas');
+    c.width = c.height = spR * 2;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(spR, spR, 0, spR, spR, spR);
+    gr.addColorStop(0.00, 'rgba(' + tono + ',1)');
+    gr.addColorStop(0.16, 'rgba(' + tono + ',.9)');
+    gr.addColorStop(0.42, 'rgba(' + tono + ',.28)');
+    gr.addColorStop(1.00, 'rgba(' + tono + ',0)');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, spR * 2, spR * 2);
+    sprite = c;
+  }
+
+  /* Los haces, dibujados una sola vez y ya desenfocados. Después solo se
+     copian con distinta opacidad para que "respiren". */
+  function hacerLuz() {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(an));
+    c.height = Math.max(1, Math.round(al));
+    const x = c.getContext('2d');
+
+    const cuantos = an < 760 ? 2 : 3;
+    for (let i = 0; i < cuantos; i++) {
+      const cx = an * (0.18 + 0.3 * i + Math.random() * 0.08);
+      const ancho = an * entre(0.16, 0.28);
+      const incl = entre(-0.30, -0.10);
+      const arriba = cx - al * 0.5 * Math.tan(incl);
+      const abajo  = cx + al * 0.5 * Math.tan(incl);
+
+      const gr = x.createLinearGradient(arriba, 0, abajo, al);
+      gr.addColorStop(0, 'rgba(' + tono + ',.20)');
+      gr.addColorStop(0.55, 'rgba(' + tono + ',.085)');
+      gr.addColorStop(1, 'rgba(' + tono + ',0)');
+
+      x.save();
+      x.filter = 'blur(30px)';        // UNA vez en toda la vida del lienzo
+      x.beginPath();
+      x.moveTo(arriba - ancho * 0.30, 0);
+      x.lineTo(arriba + ancho * 0.30, 0);
+      x.lineTo(abajo  + ancho * 0.75, al);
+      x.lineTo(abajo  - ancho * 0.75, al);
+      x.closePath();
+      x.fillStyle = gr;
+      x.fill();
+      x.restore();
+    }
+    capaLuz = c;
   }
 
   function medir() {
     const c = lienzo.getBoundingClientRect();
-    an = Math.max(1, c.width);
-    al = Math.max(1, c.height);
+    an = Math.max(1, Math.round(c.width));
+    al = Math.max(1, Math.round(c.height));
     lienzo.width = Math.round(an * dpr);
     lienzo.height = Math.round(al * dpr);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const n = Math.round(densidad * Math.min(1.7, an / 900));
+    // Menos motas en pantallas pequeñas: ahí el rendimiento importa más.
+    const n = Math.round(densidad * Math.min(1.3, an / 1000));
     motas = Array.from({ length: n }, () => nacer(false));
 
-    // Los haces: pocos, muy anchos y muy tenues. Si se notan, están mal.
-    const cuantos = an < 760 ? 2 : 3;
-    haces = Array.from({ length: cuantos }, (_, i) => ({
-      x: an * (0.18 + 0.3 * i + Math.random() * 0.1),
-      ancho: an * entre(0.14, 0.26),
-      incl: entre(-0.30, -0.10),          // inclinación en radianes
-      base: entre(0.020, 0.042),          // opacidad máxima
-      f: entre(0.05, 0.12),               // respiración
-      t: Math.random() * 100
-    }));
-  }
-
-  // ¿Cuánta luz del haz le llega a este punto? 0 fuera, 1 en el centro.
-  function luzEn(x, y) {
-    let suma = 0;
-    for (let i = 0; i < haces.length; i++) {
-      const h = haces[i];
-      const cx = h.x + (y - al * 0.5) * Math.tan(h.incl);
-      const d = Math.abs(x - cx) / (h.ancho * 0.5);
-      if (d < 1) suma += (1 - d) * (1 - d);      // caída suave hacia el borde
-    }
-    return Math.min(1, suma);
-  }
-
-  function pintarHaces(ahora) {
-    for (let i = 0; i < haces.length; i++) {
-      const h = haces[i];
-      // Respiran: la intensidad sube y baja muy lentamente.
-      const vida = h.base * (0.72 + 0.28 * Math.sin(ahora * h.f + h.t));
-      const arribaX = h.x - al * 0.5 * Math.tan(h.incl);
-      const abajoX  = h.x + al * 0.5 * Math.tan(h.incl);
-
-      const grad = g.createLinearGradient(arribaX, 0, abajoX, al);
-      grad.addColorStop(0,    'rgba(' + tono + ',' + (vida * 1.0).toFixed(4) + ')');
-      grad.addColorStop(0.55, 'rgba(' + tono + ',' + (vida * 0.45).toFixed(4) + ')');
-      grad.addColorStop(1,    'rgba(' + tono + ',0)');
-
-      g.save();
-      g.beginPath();
-      g.moveTo(arribaX - h.ancho * 0.30, 0);
-      g.lineTo(arribaX + h.ancho * 0.30, 0);
-      g.lineTo(abajoX  + h.ancho * 0.72, al);
-      g.lineTo(abajoX  - h.ancho * 0.72, al);
-      g.closePath();
-      g.filter = 'blur(26px)';             // el haz nunca tiene borde
-      g.fillStyle = grad;
-      g.fill();
-      g.restore();
-    }
+    if (!sprite) hacerSprite();
+    hacerLuz();
   }
 
   function paso(ms) {
@@ -477,7 +484,11 @@ function brasas(lienzo) {
     g.clearRect(0, 0, an, al);
     g.globalCompositeOperation = 'lighter';
 
-    pintarHaces(ahora);
+    // Los haces: una sola copia, con la opacidad respirando muy despacio.
+    if (capaLuz) {
+      g.globalAlpha = 0.72 + 0.28 * Math.sin(ahora * 0.09);
+      g.drawImage(capaLuz, 0, 0, an, al);
+    }
 
     for (let i = 0; i < motas.length; i++) {
       const m = motas[i];
@@ -486,30 +497,23 @@ function brasas(lienzo) {
       if (m.y < -16) { motas[i] = nacer(true); continue; }
 
       const x = m.x + Math.sin(m.t * m.f) * m.amp;
-      const y = m.y + desliz * m.px;       // profundidad al hacer scroll
-      if (y < -20 || y > al + 20) continue;
+      const y = m.y;
 
       // Nada aparece ni desaparece de golpe.
       const borde = Math.min(1, y / (al * 0.2), (al - y) / (al * 0.12));
       if (borde <= 0) continue;
 
-      // Dispersión: dentro del haz, la mota se enciende.
-      const enLuz = luzEn(x, y);
-      const pulso = m.brasa ? 0.68 + 0.32 * Math.sin(m.t * m.pf * 3) : 1;
-      const alfa = m.a * borde * pulso * (1 + enLuz * 1.9);
-      if (alfa <= 0.004) continue;
+      const pulso = m.brasa ? 0.66 + 0.34 * Math.sin(m.t * m.pf * 3) : 1;
+      const alfa = m.a * borde * pulso;
+      if (alfa <= 0.006) continue;
 
-      const halo = m.halo + enLuz * 7;
-      if (halo > 0.5) { g.shadowBlur = halo; g.shadowColor = 'rgba(' + tono + ',.9)'; }
-      else g.shadowBlur = 0;
-
-      g.beginPath();
-      g.fillStyle = 'rgba(' + tono + ',' + Math.min(0.95, alfa).toFixed(3) + ')';
-      g.arc(x, y, m.r * (1 + enLuz * 0.35), 0, 6.2832);
-      g.fill();
+      // Solo copiar y escalar. Nada de sombras.
+      const d = m.r * 7;
+      g.globalAlpha = Math.min(0.9, alfa);
+      g.drawImage(sprite, x - d, y - d, d * 2, d * 2);
     }
 
-    g.shadowBlur = 0;
+    g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
     lazo = requestAnimationFrame(paso);
   }
@@ -519,16 +523,14 @@ function brasas(lienzo) {
 
   medir();
 
+  /* Al cambiar el tamaño se rehace, pero con calma: rehacer los haces
+     lleva un desenfoque y no se puede hacer en cada píxel de arrastre. */
   let espera;
-  window.addEventListener('resize', () => { clearTimeout(espera); espera = setTimeout(medir, 220); }, { passive: true });
+  window.addEventListener('resize', () => { clearTimeout(espera); espera = setTimeout(medir, 260); }, { passive: true });
 
-  // Profundidad al hacer scroll: lo cercano se mueve más que lo lejano.
-  window.addEventListener('scroll', () => {
-    const c = lienzo.getBoundingClientRect();
-    desliz = (window.innerHeight * 0.5 - (c.top + c.height * 0.5)) * 0.12;
-  }, { passive: true });
-
-  // Solo se anima lo que está a la vista, y nada con la pestaña de fondo.
+  /* Nada de leer posiciones al hacer scroll: pedir getBoundingClientRect
+     en cada evento obliga al navegador a recalcular la página entera y es
+     otra de las cosas que hacían el scroll a tirones. */
   if ('IntersectionObserver' in window) {
     new IntersectionObserver((es) => (es[0].isIntersecting ? arrancar() : parar()), { threshold: 0 }).observe(lienzo);
   } else arrancar();
