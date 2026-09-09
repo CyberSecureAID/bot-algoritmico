@@ -299,7 +299,7 @@ try {
   let pegada = false;
   const mirar = () => {
     const debe = window.scrollY > 10;
-    if (debe !== pegada) { pegada = debe; h.classList.toggle('stuck', debe); }
+    if (debe !== pegada) { pegada = debe; h.classList.toggle('pt-stuck', debe); }
   };
   window.addEventListener('scroll', mirar, { passive: true });
   mirar();
@@ -367,16 +367,18 @@ function brasas(lienzo) {
   const tono = lienzo.dataset.tono || '246,214,150';
 
   let an = 0, al = 0, chispas = [], vivo = false, lazo = 0, antes = 0;
+  let scrAntes = window.scrollY || 0;
   let sprite = null;
   const SP = 24;
 
   const entre = (a, b) => a + Math.random() * (b - a);
 
   // Tres profundidades: [radio, velocidad, alfa]
+  // [radio, velocidad, alfa, profundidad]
   const PLANOS = [
-    { r: [0.45, 0.85], v: [3, 7],   a: [0.16, 0.34] },
-    { r: [0.70, 1.20], v: [7, 14],  a: [0.28, 0.55] },
-    { r: [1.10, 1.80], v: [12, 24], a: [0.45, 0.85] }
+    { r: [0.45, 0.85], v: [3, 7],   a: [0.16, 0.34], p: 0.12 },
+    { r: [0.70, 1.20], v: [7, 14],  a: [0.28, 0.55], p: 0.38 },
+    { r: [1.10, 1.80], v: [12, 24], a: [0.45, 0.85], p: 0.85 }
   ];
 
   function nacer(abajo) {
@@ -388,6 +390,7 @@ function brasas(lienzo) {
       r: entre(p.r[0], p.r[1]),
       v: entre(p.v[0], p.v[1]),
       a: entre(p.a[0], p.a[1]),
+      prof: p.p,
       f: 0.25 + Math.random() * 0.7,
       amp: 5 + Math.random() * 20,
       pf: 0.6 + Math.random() * 1.8,
@@ -431,6 +434,11 @@ function brasas(lienzo) {
     const dt = Math.min(0.05, ahora - antes || 0.016);
     antes = ahora;
 
+    // Cuánto se ha movido la página desde el fotograma anterior.
+    const scrAhora = window.scrollY || 0;
+    const desliz = scrAhora - scrAntes;
+    scrAntes = scrAhora;
+
     g.clearRect(0, 0, an, al);
     g.globalCompositeOperation = 'lighter';
 
@@ -438,7 +446,12 @@ function brasas(lienzo) {
       const m = chispas[i];
       m.t += dt;
       m.y -= m.v * dt;
+      m.y += desliz * m.prof;            // acompaña al scroll según su plano
+
+      // Al salir por arriba o por abajo, vuelve a entrar por el lado
+      // contrario: así el campo nunca se vacía por mucho que subas o bajes.
       if (m.y < -14) { chispas[i] = nacer(true); continue; }
+      if (m.y > al + 24) { chispas[i] = nacer(false); chispas[i].y = -12; continue; }
 
       const x = m.x + Math.sin(m.t * m.f) * m.amp;
       const y = m.y;
