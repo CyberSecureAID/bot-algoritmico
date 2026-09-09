@@ -296,13 +296,49 @@ document.querySelectorAll('[data-conectar]').forEach((b) => b.addEventListener('
    ══════════════════════════════════════════════════════════════════════ */
 try {
   const h = $('hdr');
-  let pegada = false;
-  const mirar = () => {
-    const debe = window.scrollY > 10;
-    if (debe !== pegada) { pegada = debe; h.classList.toggle('pt-stuck', debe); }
+  let pegada = false, oculta = false;
+  let anterior = window.scrollY;
+  let pendiente = false;
+
+  /* Se esconde al bajar y vuelve al subir. Dos cautelas:
+       · un margen de 6 px para que un temblor del ratón no la dispare;
+       · nunca se esconde en los primeros 120 px, o desaparecería nada más
+         entrar en la página.
+     El trabajo se hace en requestAnimationFrame y no en el propio evento
+     de scroll: así no se calcula nada de más mientras se desplaza. */
+  const revisar = () => {
+    pendiente = false;
+    const y = Math.max(0, window.scrollY);
+    const paso = y - anterior;
+
+    const debePegada = y > 10;
+    if (debePegada !== pegada) { pegada = debePegada; h.classList.toggle('pt-stuck', debePegada); }
+
+    let debeOculta = oculta;
+    if (y < 120) debeOculta = false;
+    else if (paso > 6) debeOculta = true;
+    else if (paso < -6) debeOculta = false;
+
+    if (debeOculta !== oculta) { oculta = debeOculta; h.classList.toggle('pt-oculta', oculta); }
+    anterior = y;
   };
-  window.addEventListener('scroll', mirar, { passive: true });
-  mirar();
+
+  window.addEventListener('scroll', () => {
+    if (pendiente) return;
+    pendiente = true;
+    requestAnimationFrame(revisar);
+  }, { passive: true });
+
+  /* Con el cursor arriba del todo vuelve aunque no se haya subido: es lo
+     que se espera cuando uno va a buscar el menú. */
+  window.addEventListener('mousemove', (e) => {
+    if (e.clientY < 70 && oculta) { oculta = false; h.classList.remove('pt-oculta'); }
+  }, { passive: true });
+
+  /* Si se abre un desplegable con el teclado, la barra no puede irse. */
+  h.addEventListener('focusin', () => { oculta = false; h.classList.remove('pt-oculta'); });
+
+  revisar();
 } catch (e) { console.warn('[portada] cabecera:', e); }
 
 

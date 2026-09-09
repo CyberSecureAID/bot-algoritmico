@@ -88,6 +88,7 @@ body{overflow-x:hidden}
 /* ── Cabecera ──────────────────────────────────────────────────── */
 #pt .pt-hdr{
   position:sticky;top:0;z-index:100;
+  transition:transform .3s cubic-bezier(.22,.85,.3,1);
   display:flex;align-items:center;height:58px;
   background:#07090c;border-bottom:1px solid #1a2029;
 }
@@ -98,26 +99,23 @@ body{overflow-x:hidden}
   content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background-image:url('img/header.webp');
   background-size:cover;background-position:center;
-  opacity:.55;
+  opacity:1;
 }
 
-/* Velo de lectura: sin él el menú se pierde sobre la foto.
-   pointer-events:none es OBLIGATORIO. Sin eso, esta capa se come todos
-   los clics de la barra aunque quede por debajo en el orden de pintado.
-   Fue exactamente lo que pasó: la barra se veía apagada y ningún botón
-   respondía. */
-#pt .pt-hdr::after{
-  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
-  background:linear-gradient(90deg,rgba(0,0,0,.88),rgba(0,0,0,.55) 55%,rgba(0,0,0,.82));
-}
 
-/* El contenido, POR ENCIMA de las dos capas. Esta regla existía y la
-   borró un reemplazo anterior de la cabecera; sin ella el velo tapaba
-   el menú entero. */
+/* El contenido, por encima de la foto. */
 #pt .pt-hdr__in{position:relative;z-index:2}
 
-#pt .pt-hdr.pt-stuck{background:#05070a;border-bottom-color:#232b36}
-#pt .hdr__in{position:relative;z-index:1}
+/* Sin velo, el texto del menú necesita un borde propio para leerse sobre
+   cualquier zona clara de la foto. Una sombra de una sola pieza, corta,
+   no oscurece nada alrededor. */
+#pt .pt-nav__b,
+#pt .pt-logo{text-shadow:0 1px 4px rgba(0,0,0,.9)}
+
+#pt .pt-hdr.pt-stuck{border-bottom-color:#232b36}
+/* Al bajar se retira; al subir vuelve. Se mueve con transform, que el
+   navegador anima sin recalcular la página. */
+#pt .pt-hdr.pt-oculta{transform:translateY(-100%)}
 #pt .hdr__in{display:flex;align-items:center;gap:22px;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
 /* El logo REAL del repo, el mismo que usa la app. */
 #pt .pt-logo img{height:30px;width:auto}
@@ -128,7 +126,7 @@ body{overflow-x:hidden}
 #pt .pt-nav__b svg{width:10px;height:10px;opacity:.55;transition:transform .2s}
 #pt .pt-nav__i:hover .pt-nav__b svg{transform:rotate(180deg)}
 #pt .pt-menu{
-  position:absolute;top:calc(100% + 8px);left:0;min-width:236px;padding:7px;
+  position:absolute;top:calc(100% + 8px);left:0;z-index:300;min-width:236px;padding:7px;
   background:var(--surf);border:1px solid var(--line2);border-radius:12px;
   box-shadow:0 20px 44px rgba(0,0,0,.6);
   opacity:0;visibility:hidden;transform:translateY(-5px);
