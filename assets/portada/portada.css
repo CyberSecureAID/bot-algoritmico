@@ -90,13 +90,6 @@ body{overflow-x:hidden}
   background:transparent;border-bottom:1px solid transparent;
   transition:background .3s,border-color .3s,backdrop-filter .3s;
 }
-/* Velo degradado sobre la foto: se lee sin que aparezca ninguna banda. */
-#pt .hdr::before{
-  content:"";position:absolute;left:0;right:0;top:0;height:120px;pointer-events:none;
-  background:linear-gradient(180deg,rgba(8,11,15,.82),transparent);
-  transition:opacity .3s;
-}
-#pt .hdr.stuck::before{opacity:0}
 #pt .hdr.stuck{
   background:rgba(9,12,16,.9);
   backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);
@@ -136,6 +129,13 @@ body{overflow-x:hidden}
    No se le da forma aquí: la estiliza gridbot/estilos.js, igual que
    dentro. Así el logo de MetaMask y las cuatro últimas cifras salen
    exactamente como siempre. */
+/* Botón de perfil, arriba a la derecha, junto a la wallet. */
+#pt .pf{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:40px;height:40px;border:1px solid var(--line2);border-radius:9px;
+  color:var(--ink2);transition:color .16s,border-color .16s,background .16s;
+}
+#pt .pf:hover{color:var(--gold);border-color:var(--gold-lo);background:rgba(232,184,75,.07)}
 #pt .wbox{display:flex;align-items:center;gap:6px}
 #pt .wbox .dir{margin:0}
 /* Aviso de red equivocada, en el mismo sitio. */
@@ -155,19 +155,13 @@ body{overflow-x:hidden}
 #pt .art{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}
 #pt .art::after{
   content:"";position:absolute;inset:0;
-  background:
-    linear-gradient(90deg,rgba(11,14,17,.9) 0%,rgba(11,14,17,.62) 38%,rgba(11,14,17,.12) 72%,transparent 100%),
-    linear-gradient(180deg,var(--bg) 0%,transparent 15%,transparent 85%,var(--bg) 100%);
+  background:linear-gradient(90deg,rgba(11,14,17,.92) 0%,rgba(11,14,17,.66) 38%,rgba(11,14,17,.14) 74%,transparent 100%);
 }
 #pt .art.soft::after{
-  background:
-    linear-gradient(90deg,rgba(11,14,17,.5) 0%,rgba(11,14,17,.2) 40%,rgba(11,14,17,.42) 100%),
-    linear-gradient(180deg,var(--bg) 0%,transparent 14%,transparent 86%,var(--bg) 100%);
+  background:linear-gradient(90deg,rgba(11,14,17,.46) 0%,rgba(11,14,17,.16) 42%,rgba(11,14,17,.4) 100%);
 }
 #pt .art.right::after{
-  background:
-    linear-gradient(270deg,rgba(11,14,17,.9) 0%,rgba(11,14,17,.62) 38%,rgba(11,14,17,.12) 72%,transparent 100%),
-    linear-gradient(180deg,var(--bg) 0%,transparent 15%,transparent 85%,var(--bg) 100%);
+  background:linear-gradient(270deg,rgba(11,14,17,.92) 0%,rgba(11,14,17,.66) 38%,rgba(11,14,17,.14) 74%,transparent 100%);
 }
 
 /* ── Hero ──────────────────────────────────────────────────────── */
@@ -180,7 +174,7 @@ body{overflow-x:hidden}
 #pt .acts{display:flex;flex-wrap:wrap;gap:11px}
 
 /* ── Tira de confianza ─────────────────────────────────────────── */
-#pt .trust{position:relative;z-index:3;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(11,14,17,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#pt .trust{position:relative;z-index:3;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);background:rgba(11,14,17,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 #pt .trust__g{display:grid;grid-template-columns:repeat(4,1fr)}
 #pt .trust__i{display:flex;align-items:flex-start;gap:11px;padding:20px 24px 20px 0}
 #pt .trust__i + .trust__i{padding-left:24px;border-left:1px solid var(--line)}
@@ -276,20 +270,9 @@ body{overflow-x:hidden}
 #pt .up{color:var(--up)}
 #pt .down{color:var(--down)}
 
-/* Motas: aire, no confeti. */
-#pt .motes{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1}
-#pt .motes i{
-  position:absolute;bottom:-14px;width:3px;height:3px;border-radius:50%;
-  background:var(--gold);opacity:0;
-  box-shadow:0 0 12px 3px rgba(232,184,75,.7);
-}
-@media (prefers-reduced-motion:no-preference){#pt .motes i{animation:mote linear infinite}
-}
-@keyframes mote{0%{transform:translateY(0) translateX(0);opacity:0}
-12%{opacity:.9}
-80%{opacity:.6}
-100%{transform:translateY(-108%) translateX(26px);opacity:0}
-}
+/* Lienzo de brasas: ocupa la sección entera y no estorba al ratón.
+   Va DEBAJO del texto y ENCIMA de la foto. */
+#pt .brasas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;display:block}
 
 /* ── Ecosistema ────────────────────────────────────────────────────
    Tus imágenes YA traen el teléfono dibujado. No se les añade ningún
@@ -333,11 +316,11 @@ body{overflow-x:hidden}
 #pt .stat span{display:block;font-size:12px;color:var(--ink3);margin-top:4px}
 
 /* ── Cierre ────────────────────────────────────────────────────── */
-#pt .end{position:relative;overflow:hidden;border-top:1px solid var(--line)}
+#pt .end{position:relative;overflow:hidden}
 #pt .end__in{position:relative;z-index:2;max-width:min(560px,100%);padding:clamp(58px,6.5vw,100px) 0}
 
 /* ── Pie ───────────────────────────────────────────────────────── */
-#pt .foot{position:relative;overflow:hidden;background:var(--bg2);border-top:1px solid var(--line);padding:clamp(28px,3vw,40px) 0 0}
+#pt .foot{position:relative;overflow:hidden;background:var(--bg2);padding:clamp(28px,3vw,40px) 0 0}
 #pt .foot > .wrap{position:relative;z-index:2}
 #pt .foot__g{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,.8fr)) minmax(0,1.2fr);gap:clamp(20px,2.6vw,38px);padding-bottom:24px}
 #pt .foot__b .logo{margin-bottom:12px}
@@ -380,3 +363,17 @@ body{overflow-x:hidden}
 #pt .shots{grid-template-columns:1fr}
 #pt .foot__g{grid-template-columns:repeat(2,1fr)}
 }
+
+
+/* Aviso de error. Antes un fallo saltaba a app.html en silencio y desde
+   fuera parecía que la página no hacía nada. Ahora se ve y se puede leer. */
+#pt-aviso{
+  position:fixed;left:50%;bottom:22px;transform:translate(-50%,14px);
+  z-index:9999;max-width:min(560px,92vw);
+  padding:12px 16px;border-radius:10px;
+  background:rgba(20,10,10,.96);border:1px solid rgba(246,70,93,.5);
+  color:#ffd7dc;font:13px/1.5 "IBM Plex Mono",ui-monospace,monospace;
+  box-shadow:0 14px 40px rgba(0,0,0,.6);
+  opacity:0;visibility:hidden;transition:opacity .2s,transform .2s,visibility .2s;
+}
+#pt-aviso.on{opacity:1;visibility:visible;transform:translate(-50%,0)}

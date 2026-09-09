@@ -18,7 +18,15 @@
    lo que venía detrás (por eso no aparecían las motas).
    ══════════════════════════════════════════════════════════════════════════ */
 
-const J = './assets/js/';
+/* ══════════════════════════════════════════════════════════════════════
+   LA RUTA, BIEN CALCULADA
+   Este archivo vive en /assets/portada/. Un import relativo como
+   './assets/js/wallet.js' se resuelve respecto AL ARCHIVO, no a la
+   página: buscaba /assets/portada/assets/js/wallet.js, que no existe.
+   Por eso fallaban TODOS los imports y cada clic acababa saltando a
+   app.html. Se calcula desde la raíz del sitio y se acabó el problema.
+   ══════════════════════════════════════════════════════════════════════ */
+const J = new URL('assets/js/', document.baseURI).href;
 const $ = (id) => document.getElementById(id);
 const quieto = window.matchMedia
   ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -72,6 +80,21 @@ const PUERTAS = {
   perfil:  async () => (await import(J + 'perfil.js?v=125')).abrirPerfil()
 };
 
+/* Aviso visible. Sin esto un fallo se traga en la consola y desde fuera
+   parece que la página simplemente no hace nada. */
+function aviso(txt) {
+  let c = document.getElementById('pt-aviso');
+  if (!c) {
+    c = document.createElement('div');
+    c.id = 'pt-aviso';
+    document.body.appendChild(c);
+  }
+  c.textContent = txt;
+  c.classList.add('on');
+  clearTimeout(aviso._t);
+  aviso._t = setTimeout(() => c.classList.remove('on'), 7000);
+}
+
 let abriendo = false;
 
 async function abrir(destino, enlace) {
@@ -93,7 +116,8 @@ async function abrir(destino, enlace) {
     return true;
   } catch (e) {
     console.error('[portada] no se pudo abrir "' + destino + '":', e);
-    return false;                          // el enlace normal toma el relevo
+    aviso('No se pudo abrir ' + destino + ': ' + (e && e.message ? e.message : e));
+    return false;
   } finally {
     abriendo = false;
     if (enlace) enlace.style.opacity = antes;
@@ -105,8 +129,7 @@ document.addEventListener('click', async (e) => {
   if (!a) return;
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;   // pestaña nueva
   e.preventDefault();
-  const ok = await abrir(a.getAttribute('data-abrir'), a);
-  if (!ok) location.href = a.getAttribute('href');
+  await abrir(a.getAttribute('data-abrir'), a);
 });
 
 
@@ -253,29 +276,122 @@ try {
 
 
 /* ══════════════════════════════════════════════════════════════════════
-   5 · MOTAS
-   Puntos dorados subiendo despacio. Van en las secciones marcadas con
-   .motes. Se crean desde aquí para no ensuciar el HTML, y este bloque es
-   independiente: aunque otro falle, las motas salen.
+   5 · BRASAS
+   ══════════════════════════════════════════════════════════════════════
+
+   Ambiente, no confeti. Ceniza encendida que sube muy despacio y se
+   balancea, como en una caverna: es lo que hace que la foto de fondo deje
+   de ser un cartel y se convierta en un sitio.
+
+   Tres planos de profundidad. Las del fondo son diminutas, lentas y
+   apagadas; las de delante, más grandes, más rápidas y con halo. Esa
+   diferencia es la que da sensación de espacio: sin ella parecen pegatinas
+   sobre un cristal.
+
+   Va en <canvas> y no con divs: con puntos de HTML el navegador tiene que
+   recalcular la página en cada fotograma y solo aguanta unos pocos. Aquí
+   caben ciento y pico sin despeinarse.
+
+   Se detiene cuando la sección no está en pantalla, y no se enciende
+   siquiera si el sistema pide menos movimiento.
    ══════════════════════════════════════════════════════════════════════ */
-try {
-  if (!quieto) {
-    document.querySelectorAll('#pt .motes').forEach((caja) => {
-      const cuantas = Number(caja.dataset.n || 14);
-      let html = '';
-      for (let i = 0; i < cuantas; i++) {
-        const x   = 4 + Math.random() * 92;
-        const dur = 15 + Math.random() * 14;
-        const esp = Math.random() * 16;
-        const tam = 3 + Math.random() * 2.5;
-        html += '<i style="left:' + x.toFixed(1) + '%;width:' + tam.toFixed(1)
-             + 'px;height:' + tam.toFixed(1) + 'px;animation-duration:' + dur.toFixed(1)
-             + 's;animation-delay:-' + esp.toFixed(1) + 's"></i>';
-      }
-      caja.innerHTML = html;
-    });
+function brasas(lienzo) {
+  const g = lienzo.getContext('2d');
+  if (!g) return;
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const densidad = Number(lienzo.dataset.n || 60);
+  let an = 0, al = 0, chispas = [], corriendo = false, lazo = 0;
+
+  // Cada plano: tamaño, velocidad, opacidad y halo propios.
+  const PLANOS = [
+    { r: [0.6, 1.2], v: [4, 9],   a: [0.10, 0.26], halo: 0 },
+    { r: [1.0, 2.0], v: [8, 16],  a: [0.20, 0.45], halo: 4 },
+    { r: [1.6, 3.2], v: [14, 26], a: [0.35, 0.72], halo: 9 }
+  ];
+
+  const entre = ([a, b]) => a + Math.random() * (b - a);
+
+  function nacer(y) {
+    const p = PLANOS[Math.random() < 0.5 ? 0 : (Math.random() < 0.62 ? 1 : 2)];
+    return {
+      x: Math.random() * an,
+      y: y === undefined ? Math.random() * al : al + 12,
+      r: entre(p.r),
+      v: entre(p.v),
+      a: entre(p.a),
+      halo: p.halo,
+      // Balanceo: cada chispa con su ritmo y su amplitud.
+      f: 0.3 + Math.random() * 0.8,
+      amp: 6 + Math.random() * 20,
+      t: Math.random() * 100
+    };
   }
-} catch (e) { console.warn('[portada] motas:', e); }
+
+  function medir() {
+    const c = lienzo.getBoundingClientRect();
+    an = Math.max(1, c.width); al = Math.max(1, c.height);
+    lienzo.width = Math.round(an * dpr);
+    lienzo.height = Math.round(al * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const n = Math.round(densidad * Math.min(1.6, an / 900));
+    chispas = Array.from({ length: n }, () => nacer());
+  }
+
+  let antes = 0;
+  function paso(ahora) {
+    if (!corriendo) return;
+    const dt = Math.min(0.05, (ahora - antes) / 1000 || 0.016);
+    antes = ahora;
+
+    g.clearRect(0, 0, an, al);
+    g.globalCompositeOperation = 'lighter';
+
+    for (let i = 0; i < chispas.length; i++) {
+      const c = chispas[i];
+      c.t += dt;
+      c.y -= c.v * dt;
+      const x = c.x + Math.sin(c.t * c.f) * c.amp;
+
+      // Se apagan al llegar arriba y vuelven a nacer abajo.
+      if (c.y < -14) { chispas[i] = nacer(0); continue; }
+
+      // Desvanecido en los dos extremos: nada aparece ni desaparece de golpe.
+      const borde = Math.min(1, c.y / (al * 0.22), (al - c.y) / (al * 0.14));
+      const alfa = c.a * Math.max(0, borde);
+      if (alfa <= 0.004) continue;
+
+      if (c.halo) { g.shadowBlur = c.halo; g.shadowColor = 'rgba(232,184,75,.85)'; }
+      else g.shadowBlur = 0;
+
+      g.beginPath();
+      g.fillStyle = 'rgba(244,208,137,' + alfa.toFixed(3) + ')';
+      g.arc(x, c.y, c.r, 0, 6.2832);
+      g.fill();
+    }
+    g.shadowBlur = 0;
+    g.globalCompositeOperation = 'source-over';
+    lazo = requestAnimationFrame(paso);
+  }
+
+  function arrancar() { if (corriendo) return; corriendo = true; antes = performance.now(); lazo = requestAnimationFrame(paso); }
+  function parar()    { corriendo = false; cancelAnimationFrame(lazo); }
+
+  medir();
+  let espera;
+  window.addEventListener('resize', () => { clearTimeout(espera); espera = setTimeout(medir, 220); }, { passive: true });
+
+  // Solo se anima lo que está a la vista.
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((es) => (es[0].isIntersecting ? arrancar() : parar()), { threshold: 0 }).observe(lienzo);
+  } else arrancar();
+
+  document.addEventListener('visibilitychange', () => (document.hidden ? parar() : arrancar()));
+}
+
+try {
+  if (!quieto) document.querySelectorAll('#pt .brasas').forEach(brasas);
+} catch (e) { console.warn('[portada] brasas:', e); }
 
 
 /* ══════════════════════════════════════════════════════════════════════
