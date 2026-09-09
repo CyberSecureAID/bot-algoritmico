@@ -241,7 +241,7 @@ async function pintarWallet() {
   const cta = w.cuentaActual();
 
   if (!cta) {
-    caja.innerHTML = '<button class="btn ghost" type="button">Conectar wallet</button>';
+    caja.innerHTML = '<button class="pt-btn pt-ghost" type="button">Conectar wallet</button>';
     caja.firstChild.onclick = conectar;
     return;
   }
@@ -250,7 +250,7 @@ async function pintarWallet() {
   try { await estiloBase(); } catch (_) {}
 
   if (!w.esRedCorrecta()) {
-    caja.innerHTML = '<button class="wbad" type="button">Red incorrecta</button>';
+    caja.innerHTML = '<button class="pt-wbad" type="button">Red incorrecta</button>';
     caja.firstChild.onclick = () => w.cambiarARedCorrecta().catch(() => {});
     return;
   }
@@ -312,7 +312,7 @@ try {
    todo de golpe. Nunca se queda contenido invisible por culpa del efecto.
    ══════════════════════════════════════════════════════════════════════ */
 try {
-  const rs = document.querySelectorAll('#pt .rise');
+  const rs = document.querySelectorAll('#pt .pt-rise');
   if (quieto || !('IntersectionObserver' in window)) {
     rs.forEach((r) => r.classList.add('in'));
   } else {
@@ -363,7 +363,7 @@ function brasas(lienzo) {
      ─────────────────────────────────────────────────────────────────── */
 
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-  const densidad = Number(lienzo.dataset.n || 60);
+  const densidad = Number(lienzo.dataset.n || 90);
   const tono = lienzo.dataset.tono || '246,214,150';
 
   let an = 0, al = 0, chispas = [], vivo = false, lazo = 0, antes = 0;
@@ -469,15 +469,14 @@ function brasas(lienzo) {
   let espera;
   window.addEventListener('resize', () => { clearTimeout(espera); espera = setTimeout(medir, 260); }, { passive: true });
 
-  if ('IntersectionObserver' in window) {
-    new IntersectionObserver((es) => (es[0].isIntersecting ? arrancar() : parar()), { threshold: 0 }).observe(lienzo);
-  } else arrancar();
+  arrancar();
   document.addEventListener('visibilitychange', () => (document.hidden ? parar() : arrancar()));
 }
 
 try {
-  if (!quieto) document.querySelectorAll('#pt .brasas').forEach(brasas);
-} catch (e) { console.warn('[portada] brasas:', e); }
+  const lienzo = $('pt-chispas');
+  if (!quieto && lienzo) brasas(lienzo);
+} catch (e) { console.warn('[portada] chispas:', e); }
 
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -490,7 +489,7 @@ try {
 try {
   const rejilla = $('px');
   if (rejilla && window.matchMedia && window.matchMedia('(pointer: fine)').matches) {
-    const fichas = rejilla.querySelectorAll('.coin');
+    const fichas = rejilla.querySelectorAll('.pt-coin');
     let pedido = false, ex = 0, ey = 0;
     const pintar = () => {
       pedido = false;
