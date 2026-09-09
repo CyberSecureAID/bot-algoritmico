@@ -175,6 +175,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     linear-gradient(90deg,rgba(11,14,17,.9) 0%,rgba(11,14,17,.62) 38%,rgba(11,14,17,.12) 72%,transparent 100%),
     linear-gradient(180deg,rgba(11,14,17,.8) 0%,transparent 22%,transparent 78%,var(--bg) 100%);
 }
+.art.soft::after{
+  background:
+    linear-gradient(90deg,rgba(11,14,17,.5) 0%,rgba(11,14,17,.2) 40%,rgba(11,14,17,.42) 100%),
+    linear-gradient(180deg,rgba(11,14,17,.7) 0%,transparent 20%,transparent 80%,var(--bg) 100%);
+}
 .art.right::after{
   background:
     linear-gradient(270deg,rgba(11,14,17,.9) 0%,rgba(11,14,17,.62) 38%,rgba(11,14,17,.12) 72%,transparent 100%),
@@ -187,7 +192,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 .eye{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink4);margin:0 0 16px}
 h1{font-family:var(--disp);font-weight:700;font-size:clamp(30px,3.4vw,47px);line-height:1.08;letter-spacing:-.018em;margin:0 0 18px}
-h1 em{font-style:normal;color:var(--gold)}
+h1 em,h2 em{font-style:normal;color:var(--gold)}
 .lede{font-size:15.5px;line-height:1.66;color:var(--ink2);margin:0 0 26px;max-width:44ch}
 .acts{display:flex;flex-wrap:wrap;gap:11px}
 
@@ -209,8 +214,23 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 .split{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(24px,3.2vw,48px);align-items:center}
 
 /* Marco para las capturas de la interfaz. Sin adornos: la imagen manda. */
-.shot{border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--surf);box-shadow:0 24px 60px rgba(0,0,0,.5)}
-.shot img{width:100%;height:auto}
+.shot{
+  position:relative;padding:2px;border-radius:11px;
+  background:linear-gradient(155deg,
+    rgba(232,184,75,.62) 0%, rgba(232,184,75,.14) 26%,
+    rgba(0,0,0,.55) 58%, rgba(232,184,75,.34) 100%);
+  box-shadow:
+    0 26px 58px rgba(0,0,0,.62),
+    0 2px 0 rgba(255,255,255,.05) inset,
+    0 -14px 30px rgba(232,184,75,.05) inset;
+}
+.shot__in{position:relative;border-radius:9px;overflow:hidden;background:#0a0e13;border:1px solid rgba(0,0,0,.6)}
+.shot img{width:100%;height:auto;display:block;aspect-ratio:16/10;object-fit:cover}
+/* Reflejo diagonal muy tenue: da volumen sin ensuciar la captura. */
+.shot__in::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(148deg,rgba(255,255,255,.07),transparent 34%,transparent 76%,rgba(0,0,0,.24));
+}
 .shot--empty{
   aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;
   font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center;padding:20px;
@@ -252,23 +272,38 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 /* ── Ecosistema ────────────────────────────────────────────────────
    Tus imágenes YA traen el teléfono dibujado. No se les añade ningún
    marco: se muestran tal cual, y las dos se van turnando. */
-.duo{position:relative;width:100%;max-width:196px;margin:0 auto}
-.duo img{width:100%;height:auto;border-radius:8px}
+.duo{position:relative;width:100%;max-width:268px;margin:0 auto}
+.duo img{width:100%;height:auto}
 .duo img + img{position:absolute;inset:0;height:100%;object-fit:contain;opacity:0}
 @media (prefers-reduced-motion:no-preference){
-  .duo img:first-child{animation:duoA 12s ease-in-out infinite}
-  .duo img + img{animation:duoB 12s ease-in-out infinite}
+  .duo img + img{animation:duoB 13s ease-in-out infinite}
 }
-@keyframes duoA{0%,40%{opacity:1}50%,90%{opacity:0}100%{opacity:1}}
-@keyframes duoB{0%,40%{opacity:0}50%,90%{opacity:1}100%{opacity:0}}
+@keyframes duoB{0%,42%{opacity:0}52%,92%{opacity:1}100%{opacity:0}}
 
-.feats{display:grid;gap:2px;margin:0 0 24px}
-.feat{display:flex;align-items:flex-start;gap:13px;padding:11px;border-radius:10px;transition:background .16s}
-.feat:hover{background:rgba(255,255,255,.028)}
-.feat__i{flex:0 0 auto;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(232,184,75,.28);border-radius:10px;background:rgba(232,184,75,.05);color:var(--gold)}
-.feat__i svg{width:17px;height:17px}
-.feat b{display:block;font-size:14px;font-weight:600;line-height:1.32}
-.feat span{display:block;font-size:12.5px;line-height:1.5;color:var(--ink3);margin-top:1px}
+.rule{width:88px;height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:22px 0}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 26px}
+.feat{display:flex;align-items:flex-start;gap:14px;padding:16px 20px 16px 0;transition:opacity .16s}
+.feat:hover{opacity:.82}
+.feat:hover .feat__i{border-color:var(--gold);background:rgba(232,184,75,.1)}
+.feat__i{transition:border-color .16s,background .16s}
+.feat:nth-child(even){padding-left:20px;border-left:1px solid rgba(255,255,255,.07)}
+.feat:nth-child(n+3){border-top:1px solid rgba(255,255,255,.07)}
+.feat__i{
+  flex:0 0 auto;width:52px;height:52px;display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(232,184,75,.4);border-radius:11px;
+  background:rgba(232,184,75,.04);color:var(--gold);
+}
+.feat__i svg{width:24px;height:24px}
+.feat b{display:block;font-size:15px;font-weight:600;line-height:1.3;color:var(--ink)}
+.feat span{display:block;font-size:13px;line-height:1.5;color:var(--ink3);margin-top:3px}
+
+/* Botón del cierre de sección: contorno dorado, como en la referencia. */
+.btn.line{
+  background:none;border:1px solid var(--gold);color:var(--gold);box-shadow:none;
+  padding:12px 26px;
+}
+.btn.line:hover{background:rgba(232,184,75,.08);filter:none}
+.btn.line:active{transform:translateY(1px);box-shadow:none}
 
 /* ── Comprobable ───────────────────────────────────────────────── */
 .addr{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-top:22px}
@@ -328,6 +363,9 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
   .trust__i:nth-child(n+3){border-top:1px solid var(--line)}
   .pil{row-gap:28px}
   .coins,.stats,.tools{grid-template-columns:repeat(2,1fr)}
+  .feats{grid-template-columns:1fr}
+  .feat:nth-child(even){padding-left:0;border-left:0}
+  .feat:nth-child(2){border-top:1px solid rgba(255,255,255,.07)}
   .shots{grid-template-columns:1fr}
   .foot__g{grid-template-columns:repeat(2,1fr)}
 }
@@ -379,28 +417,32 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
       <div class="nav__i">
         <button class="nav__b" type="button">Bots <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
         <div class="menu">
-          <a href="#ecosistema"><b>Smart Grid</b><span>Compra abajo y vende arriba en un rango</span></a>
-          <a href="#ecosistema"><b>Accumulator</b><span>Baja tu precio medio en las caídas</span></a>
-          <a href="#ecosistema"><b>Cash Out</b><span>Vende al llegar a tu objetivo</span></a>
-          <a href="#ecosistema"><b>DCA</b><span>Compra una cantidad fija cada cierto tiempo</span></a>
+          <a href="app.html"><b>Smart Grid</b><span>Compra abajo y vende arriba en un rango</span></a>
+          <a href="app.html"><b>Accumulator</b><span>Baja tu precio medio en las caídas</span></a>
+          <a href="app.html"><b>Cash Out</b><span>Vende al llegar a tu objetivo</span></a>
+          <a href="app.html"><b>DCA</b><span>Compra una cantidad fija cada cierto tiempo</span></a>
         </div>
       </div>
 
       <div class="nav__i">
         <button class="nav__b" type="button">Herramientas <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
         <div class="menu">
-          <a href="#herramientas"><b>Smart Levels</b><span>Niveles, entrada, stop y objetivos</span></a>
-          <a href="#herramientas"><b>Lógica Estructural Avanzada</b><span>Estructura y zonas de reacción</span></a>
-          <a href="#herramientas"><b>Liquidity Pools</b><span>Mapa de calor de liquidez</span></a>
+          <a href="app.html?abrir=liq"><b>Liquidity Pools</b><span>Dónde está el dinero atrapado</span></a>
+          <a href="app.html?abrir=liq"><b>Heat Pools</b><span>Vea lo que hacen los grandes</span></a>
+          <a href="app.html?abrir=liq"><b>Smart Levels</b><span>Dónde comprar y dónde vender</span></a>
+          <a href="app.html?abrir=tools"><b>Tools</b><span>Alertas, colector de polvo y gráfica limpia</span></a>
         </div>
       </div>
+
+      <div class="nav__i"><a class="nav__b" href="app.html?abrir=market">Market P2P</a></div>
 
       <div class="nav__i">
         <button class="nav__b" type="button">Más <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
         <div class="menu">
-          <a href="#ecosistema"><b>Marketplace P2P</b><span>Con fianza, tramos y disputas</span></a>
-          <a href="#ecosistema"><b>Academia</b><span>Acceso gestionado por contrato</span></a>
-          <a href="#verificable"><b>Contratos</b><span>Verifícalos en BscScan</span></a>
+          <a href="app.html?abrir=swap"><b>Swap</b><span>Intercambia entre activos al momento</span></a>
+          <a href="app.html?abrir=academy"><b>Academia</b><span>Formación con acceso por contrato</span></a>
+          <a href="app.html?abrir=prize"><b>Prize Pool</b><span>Sorteo con aleatoriedad verificable</span></a>
+          <a href="app.html?abrir=perfil"><b>Mi perfil</b><span>Permisos, gas y suscripción</span></a>
         </div>
       </div>
     </nav>
@@ -412,8 +454,8 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
     </div>
 
     <div class="hdr__a">
-      <a class="btn ghost" href="app.html">Conectar wallet</a>
-      <a class="btn" href="app.html" data-inst>Instalar app</a>
+      <a class="btn ghost" href="app.html?abrir=conectar">Conectar wallet</a>
+      <a class="btn" href="app.html?abrir=instalar" data-inst>Instalar app</a>
       <button class="burger" type="button" aria-label="Menú"><svg width="18" height="20" viewBox="0 0 20 22"><use href="#bur"/></svg></button>
     </div>
   </div>
@@ -436,8 +478,8 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
         quieras.
       </p>
       <div class="acts">
-        <a class="btn big" href="app.html"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Entrar a la plataforma</a>
-        <a class="lnk" href="#herramientas" style="padding:12px 4px">Ver las herramientas <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+        <a class="btn big" href="app.html?abrir=conectar"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</a>
+        <a class="btn big ghost" href="app.html?abrir=instalar" data-inst><svg width="16" height="16" viewBox="0 0 20 20"><use href="#dl"/></svg>Instalar app</a>
       </div>
     </div>
   </div>
@@ -473,16 +515,16 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
           Todo se calcula en tu navegador sobre velas y profundidad reales, sin
           intermediarios y sin retrasos añadidos.
         </p>
-        <a class="lnk" href="app.html">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+        <a class="lnk" href="app.html?abrir=liq">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
       </div>
 
       <div class="shots rise">
         <figure>
-          <div class="shot"><img src="assets/portada/img/interfaz.webp" alt="Liquidity Pools: mapa de liquidaciones"></div>
+          <div class="shot"><div class="shot__in"><img src="assets/portada/img/interfaz.webp" alt="Liquidity Pools: mapa de liquidaciones"></div></div>
           <figcaption>Liquidity Pools</figcaption>
         </figure>
         <figure>
-          <div class="shot"><img src="assets/portada/img/heatpools.webp" alt="Heat Pools: libro de órdenes vigilado"></div>
+          <div class="shot"><div class="shot__in"><img src="assets/portada/img/heatpools.webp" alt="Heat Pools: libro de órdenes vigilado"></div></div>
           <figcaption>Heat Pools</figcaption>
         </figure>
       </div>
@@ -544,30 +586,50 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 </section>
 
 <!-- ══ ECOSISTEMA ══
-     Tus dos imágenes ya traen el teléfono dibujado: van tal cual, sin
-     ningún marco añadido, turnándose. -->
+     Fondo: assets/portada/img/ecosistema.webp
+     El teléfono va a la izquierda y el texto a la derecha, con las cinco
+     funciones en dos columnas. Las dos capturas se turnan encima. -->
 <section class="sec bg" id="ecosistema">
-  <div class="art right" style="background-image:url('assets/portada/img/ecosistema.webp')" aria-hidden="true"></div>
+  <div class="art soft" style="background-image:url('assets/portada/img/ecosistema.webp')" aria-hidden="true"></div>
   <div class="wrap"><div class="split">
+
     <div class="duo rise" aria-hidden="true">
       <img src="assets/portada/img/app-inicio.webp" alt="">
       <img src="assets/portada/img/app-cta.webp" alt="">
     </div>
 
     <div class="rise">
-      <h2>Más que bots,<br>es tu ecosistema cripto.</h2>
-      <p class="body">Opera, analiza, intercambia y aprende. Todo en una sola plataforma, sin salir de tu wallet.</p>
+      <h2>Más que bots,<br><em>es tu ecosistema cripto.</em></h2>
+      <p class="lede">Opera, analiza, intercambia y aprende.<br>Todo en una sola plataforma, sin salir de tu wallet.</p>
+
+      <div class="rule"></div>
 
       <div class="feats">
-        <div class="feat"><div class="feat__i"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#bar"/></svg></div><div><b>Bots automáticos</b><span>Smart Grid, Accumulator, Cash Out y DCA</span></div></div>
-        <div class="feat"><div class="feat__i"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#swp"/></svg></div><div><b>Swap integrado</b><span>Intercambia entre activos sin salir de la plataforma</span></div></div>
-        <div class="feat"><div class="feat__i"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#usr"/></svg></div><div><b>Marketplace P2P</b><span>Compra y vende con fianza, tramos y disputas</span></div></div>
-        <div class="feat"><div class="feat__i"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#rdr"/></svg></div><div><b>Herramientas de análisis</b><span>Smart Levels, Lógica Estructural y Liquidity Pools</span></div></div>
-        <div class="feat"><div class="feat__i"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#bok"/></svg></div><div><b>Academia</b><span>Formación con acceso gestionado por contrato</span></div></div>
+        <a class="feat" href="app.html">
+          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bar"/></svg></div>
+          <div><b>Bots automáticos</b><span>Smart Grid, Accumulator,<br>Cash Out y DCA</span></div>
+        </a>
+        <a class="feat" href="app.html?abrir=swap">
+          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#swp"/></svg></div>
+          <div><b>Swap integrado</b><span>Intercambia entre activos<br>sin salir de la plataforma</span></div>
+        </a>
+        <a class="feat" href="app.html?abrir=market">
+          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#usr"/></svg></div>
+          <div><b>Marketplace P2P</b><span>Compra y vende con confianza,<br>tramos y disputas</span></div>
+        </a>
+        <a class="feat" href="app.html?abrir=liq">
+          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#rdr"/></svg></div>
+          <div><b>Herramientas de análisis</b><span>Smart Levels, Lógica Estructural<br>y Liquidity Pools</span></div>
+        </a>
+        <a class="feat" href="app.html?abrir=academy">
+          <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bok"/></svg></div>
+          <div><b>Academia</b><span>Formación con acceso<br>gestionado por contrato</span></div>
+        </a>
       </div>
 
-      <a class="btn big" href="app.html">Comenzar ahora</a>
+      <a class="btn line" href="app.html">Comenzar ahora <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
     </div>
+
   </div></div>
 </section>
 
@@ -589,7 +651,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
         enviaremos por mensaje: si alguien te pasa una dirección diciendo que es
         nuestra, desconfía.
       </p>
-      <a class="lnk" href="app.html">Ver los contratos en la app <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+      <a class="lnk" href="app.html?abrir=perfil">Ver los contratos en la app <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
     </div>
 
     <div class="stats rise">
@@ -610,7 +672,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
       <h2>Conecta tu wallet y<br>mira la plataforma por dentro.</h2>
       <p class="body">No hay registro ni formulario. Conectas, lo ves todo, y decides después. Puedes desconectarte en cualquier momento.</p>
       <div class="acts">
-        <a class="btn big" href="app.html"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Entrar a la plataforma</a>
+        <a class="btn big" href="app.html?abrir=conectar"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</a>
       </div>
     </div>
   </div>
@@ -635,17 +697,17 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 
       <div><h4>Producto</h4><ul>
         <li><a href="#activos">Mercados</a></li>
-        <li><a href="#ecosistema">Bots</a></li>
-        <li><a href="#ecosistema">Swap</a></li>
-        <li><a href="#ecosistema">Marketplace P2P</a></li>
-        <li><a href="#herramientas">Herramientas</a></li>
+        <li><a href="app.html">Bots</a></li>
+        <li><a href="app.html?abrir=swap">Swap</a></li>
+        <li><a href="app.html?abrir=market">Market P2P</a></li>
+        <li><a href="app.html?abrir=liq">Liquidity Pools</a></li>
       </ul></div>
 
       <div><h4>Plataforma</h4><ul>
-        <li><a href="#verificable">Contratos</a></li>
-        <li><a href="#ecosistema">Academia</a></li>
-        <li><a href="app.html">Entrar a la app</a></li>
-        <li><a href="app.html" data-inst>Instalar app</a></li>
+        <li><a href="app.html?abrir=academy">Academia</a></li>
+        <li><a href="app.html?abrir=prize">Prize Pool</a></li>
+        <li><a href="app.html?abrir=perfil">Mi perfil</a></li>
+        <li><a href="app.html?abrir=instalar" data-inst>Instalar app</a></li>
       </ul></div>
 
       <div class="foot__j">

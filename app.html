@@ -244,6 +244,58 @@
     window.addEventListener('load', function () { setTimeout(cargarAsistente, 2000); });
   })();
   </script>
+  <!-- ══════════════════════════════════════════════════════════════════
+       PUENTE DESDE LA PORTADA
+       Añadido para que los enlaces de la portada abran directamente la
+       sección que pide el usuario, en vez de dejarlo en la pantalla de
+       inicio para que la busque él.
+
+       CÓMO FUNCIONA
+       La portada enlaza a app.html?abrir=market (o liq, swap, tools…).
+       Aquí solo se espera a que exista el botón del menú de siempre y se
+       pulsa por él. Nada más.
+
+       POR QUÉ ASÍ Y NO TOCANDO gridbot-ui.js
+       Porque hace exactamente lo mismo que haría el usuario con el ratón:
+       si mañana cambia la forma de abrir una sección, esto sigue
+       funcionando porque usa el mismo botón. Y si un botón no existe, no
+       pasa absolutamente nada: la app arranca normal. Cero riesgo para lo
+       que ya funciona.
+       ══════════════════════════════════════════════════════════════════ -->
+  <script>
+  (function () {
+    try {
+      var que = new URLSearchParams(location.search).get('abrir');
+      if (!que) return;
+
+      // Cada destino de la portada, con el id del botón que ya existe.
+      var BOTONES = {
+        swap:     'c-swap',
+        academy:  'c-academy',
+        tools:    'c-tools',
+        liq:      'c-liq',
+        prize:    'c-prize',
+        market:   'c-market',
+        perfil:   'c-perfil',
+        instalar: 'c-instalar',
+        conectar: 'c-conectar'
+      };
+
+      var id = BOTONES[que];
+      if (!id) return;
+
+      // El menú se dibuja cuando la app termina de arrancar, así que se
+      // espera a que aparezca. 12 segundos como mucho; después se deja
+      // estar y el usuario ve la pantalla de inicio, que es lo normal.
+      var fin = Date.now() + 12000;
+      var t = setInterval(function () {
+        var b = document.getElementById(id);
+        if (b) { clearInterval(t); setTimeout(function () { b.click(); }, 120); return; }
+        if (Date.now() > fin) clearInterval(t);
+      }, 150);
+    } catch (_) { /* si algo falla, la app abre con normalidad */ }
+  })();
+  </script>
 </body>
 </html>
  
