@@ -92,20 +92,23 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   font-family:var(--disp);font-weight:700;font-size:13.5px;letter-spacing:.2px;
-  white-space:nowrap;padding:10px 19px;border-radius:9px;
-  border:1px solid var(--gold-md);
-  background:linear-gradient(180deg,var(--gold-hi),var(--gold) 48%,var(--gold-md));
+  white-space:nowrap;height:40px;padding:0 20px;border-radius:9px;
+  border:1px solid var(--gold);
+  background:var(--gold);
   color:var(--on-gold);
-  box-shadow:0 3px 0 var(--gold-lo);
-  transition:transform .1s,box-shadow .1s,filter .15s;
+  transition:background .16s,border-color .16s,color .16s,transform .1s;
 }
-.btn:hover{filter:brightness(1.05)}
-.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--gold-lo)}
+.btn:hover{background:var(--gold-hi);border-color:var(--gold-hi)}
+.btn:active{transform:translateY(1px)}
 .btn svg{width:15px;height:15px;flex:0 0 auto}
-.btn.ghost{background:none;border-color:var(--line2);color:var(--ink);box-shadow:none}
-.btn.ghost:hover{border-color:var(--gold-lo);background:rgba(232,184,75,.06);filter:none}
-.btn.ghost:active{transform:translateY(1px);box-shadow:none}
-.btn.big{padding:12px 24px;font-size:14.5px}
+/* Contorno neutro: acciones secundarias. */
+.btn.ghost{background:none;border-color:var(--line2);color:var(--ink)}
+.btn.ghost:hover{background:rgba(232,184,75,.07);border-color:var(--gold-lo);color:var(--ink)}
+/* Contorno dorado: la acción principal de una sección. */
+.btn.line{background:none;border-color:var(--gold);color:var(--gold)}
+.btn.line:hover{background:rgba(232,184,75,.1);border-color:var(--gold-hi);color:var(--gold-hi)}
+/* Único cambio de tamaño en toda la página, y es leve. */
+.btn.big{height:46px;padding:0 24px;font-size:14px}
 
 .lnk{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--gold)}
 .lnk svg{width:14px;height:14px;transition:transform .2s}
@@ -173,17 +176,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   content:"";position:absolute;inset:0;
   background:
     linear-gradient(90deg,rgba(11,14,17,.9) 0%,rgba(11,14,17,.62) 38%,rgba(11,14,17,.12) 72%,transparent 100%),
-    linear-gradient(180deg,rgba(11,14,17,.8) 0%,transparent 22%,transparent 78%,var(--bg) 100%);
+    linear-gradient(180deg,var(--bg) 0%,transparent 15%,transparent 85%,var(--bg) 100%);
 }
 .art.soft::after{
   background:
     linear-gradient(90deg,rgba(11,14,17,.5) 0%,rgba(11,14,17,.2) 40%,rgba(11,14,17,.42) 100%),
-    linear-gradient(180deg,rgba(11,14,17,.7) 0%,transparent 20%,transparent 80%,var(--bg) 100%);
+    linear-gradient(180deg,var(--bg) 0%,transparent 14%,transparent 86%,var(--bg) 100%);
 }
 .art.right::after{
   background:
     linear-gradient(270deg,rgba(11,14,17,.9) 0%,rgba(11,14,17,.62) 38%,rgba(11,14,17,.12) 72%,transparent 100%),
-    linear-gradient(180deg,rgba(11,14,17,.8) 0%,transparent 22%,transparent 78%,var(--bg) 100%);
+    linear-gradient(180deg,var(--bg) 0%,transparent 15%,transparent 85%,var(--bg) 100%);
 }
 
 /* ── Hero ──────────────────────────────────────────────────────── */
@@ -197,7 +200,7 @@ h1 em,h2 em{font-style:normal;color:var(--gold)}
 .acts{display:flex;flex-wrap:wrap;gap:11px}
 
 /* ── Tira de confianza ─────────────────────────────────────────── */
-.trust{position:relative;z-index:3;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(9,12,16,.6)}
+.trust{position:relative;z-index:3;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(11,14,17,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .trust__g{display:grid;grid-template-columns:repeat(4,1fr)}
 .trust__i{display:flex;align-items:flex-start;gap:11px;padding:20px 24px 20px 0}
 .trust__i + .trust__i{padding-left:24px;border-left:1px solid var(--line)}
@@ -207,7 +210,7 @@ h1 em,h2 em{font-style:normal;color:var(--gold)}
 
 /* ── Secciones ─────────────────────────────────────────────────── */
 .sec{padding:clamp(44px,4.6vw,72px) 0}
-.sec.alt{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sec.alt{background:transparent}
 h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line-height:1.18;letter-spacing:-.012em;margin:0 0 14px}
 .body{font-size:15px;line-height:1.68;color:var(--ink2);margin:0 0 22px;max-width:44ch}
 
@@ -241,8 +244,9 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 .shots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .shots figure{margin:0}
 .shots figcaption{
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;
-  color:var(--ink4);margin-top:7px;text-align:center;
+  font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.06em;
+  color:var(--gold);margin-top:11px;text-align:center;
+  text-shadow:0 1px 10px rgba(232,184,75,.35),0 2px 3px rgba(0,0,0,.85);
 }
 
 /* Las tres herramientas Pro, con su texto real del sistema. */
@@ -262,17 +266,57 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 
 /* ── Activos ───────────────────────────────────────────────────── */
 .coins{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;margin-top:clamp(28px,3.4vw,44px);background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.coin{display:flex;align-items:center;gap:10px;padding:14px 15px;background:rgba(11,14,17,.84);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.coin{
+  position:relative;isolation:isolate;
+  display:flex;align-items:center;gap:10px;padding:15px 15px;
+  background:rgba(11,14,17,.84);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  --mx:50%; --my:50%;
+}
+/* Luz sobre la superficie. */
+.coin::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(190px circle at var(--mx) var(--my),rgba(232,184,75,.14),transparent 62%);
+  opacity:0;transition:opacity .35s ease;
+}
+/* Filo encendido: el degradado se recorta a 1px de borde. */
+.coin::after{
+  content:"";position:absolute;inset:0;pointer-events:none;padding:1px;
+  background:radial-gradient(170px circle at var(--mx) var(--my),rgba(232,184,75,.85),transparent 58%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  mask-composite:exclude;
+  opacity:0;transition:opacity .35s ease;
+}
+.coins.lit .coin::before,.coins.lit .coin::after{opacity:1}
 .coin svg{width:26px;height:26px;flex:0 0 auto}
 .coin b{display:block;font-size:12.5px;font-weight:700}
 .coin u{display:block;text-decoration:none;font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:1px}
 .coin s{display:block;text-decoration:none;font-family:var(--mono);font-size:11px;color:var(--ink4);margin-top:1px}
 .up{color:var(--up)} .down{color:var(--down)}
 
+/* Motas: aire, no confeti. */
+.motes{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1}
+.motes i{
+  position:absolute;bottom:-12px;width:3px;height:3px;border-radius:50%;
+  background:var(--gold);opacity:0;
+  box-shadow:0 0 7px 1px rgba(232,184,75,.55);
+}
+@media (prefers-reduced-motion:no-preference){
+  .motes i{animation:mote linear infinite}
+}
+@keyframes mote{
+  0%  {transform:translateY(0) translateX(0);opacity:0}
+  12% {opacity:.5}
+  80% {opacity:.32}
+  100%{transform:translateY(-108%) translateX(26px);opacity:0}
+}
+
 /* ── Ecosistema ────────────────────────────────────────────────────
    Tus imágenes YA traen el teléfono dibujado. No se les añade ningún
    marco: se muestran tal cual, y las dos se van turnando. */
-.duo{position:relative;width:100%;max-width:268px;margin:0 auto}
+.duo{position:relative;width:100%;max-width:224px;margin:0 auto}
 .duo img{width:100%;height:auto}
 .duo img + img{position:absolute;inset:0;height:100%;object-fit:contain;opacity:0}
 @media (prefers-reduced-motion:no-preference){
@@ -280,30 +324,24 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 }
 @keyframes duoB{0%,42%{opacity:0}52%,92%{opacity:1}100%{opacity:0}}
 
-.rule{width:88px;height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:22px 0}
-.feats{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 26px}
-.feat{display:flex;align-items:flex-start;gap:14px;padding:16px 20px 16px 0;transition:opacity .16s}
+.rule{width:74px;height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:16px 0}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 20px}
+.feat{display:flex;align-items:flex-start;gap:12px;padding:12px 16px 12px 0;transition:opacity .16s}
 .feat:hover{opacity:.82}
 .feat:hover .feat__i{border-color:var(--gold);background:rgba(232,184,75,.1)}
 .feat__i{transition:border-color .16s,background .16s}
-.feat:nth-child(even){padding-left:20px;border-left:1px solid rgba(255,255,255,.07)}
+.feat:nth-child(even){padding-left:16px;border-left:1px solid rgba(255,255,255,.07)}
 .feat:nth-child(n+3){border-top:1px solid rgba(255,255,255,.07)}
 .feat__i{
-  flex:0 0 auto;width:52px;height:52px;display:flex;align-items:center;justify-content:center;
-  border:1px solid rgba(232,184,75,.4);border-radius:11px;
+  flex:0 0 auto;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(232,184,75,.4);border-radius:9px;
   background:rgba(232,184,75,.04);color:var(--gold);
 }
-.feat__i svg{width:24px;height:24px}
-.feat b{display:block;font-size:15px;font-weight:600;line-height:1.3;color:var(--ink)}
-.feat span{display:block;font-size:13px;line-height:1.5;color:var(--ink3);margin-top:3px}
+.feat__i svg{width:18px;height:18px}
+.feat b{display:block;font-size:13.5px;font-weight:600;line-height:1.3;color:var(--ink)}
+.feat span{display:block;font-size:12px;line-height:1.45;color:var(--ink3);margin-top:2px}
 
-/* Botón del cierre de sección: contorno dorado, como en la referencia. */
-.btn.line{
-  background:none;border:1px solid var(--gold);color:var(--gold);box-shadow:none;
-  padding:12px 26px;
-}
-.btn.line:hover{background:rgba(232,184,75,.08);filter:none}
-.btn.line:active{transform:translateY(1px);box-shadow:none}
+
 
 /* ── Comprobable ───────────────────────────────────────────────── */
 .addr{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-top:22px}
@@ -322,9 +360,9 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 .end__in{position:relative;z-index:2;max-width:min(560px,100%);padding:clamp(58px,6.5vw,100px) 0}
 
 /* ── Pie ───────────────────────────────────────────────────────── */
-.foot{position:relative;overflow:hidden;background:var(--bg2);border-top:1px solid var(--line);padding:clamp(40px,4.4vw,58px) 0 0}
+.foot{position:relative;overflow:hidden;background:var(--bg2);border-top:1px solid var(--line);padding:clamp(28px,3vw,40px) 0 0}
 .foot > .wrap{position:relative;z-index:2}
-.foot__g{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,.8fr)) minmax(0,1.2fr);gap:clamp(24px,3.4vw,48px);padding-bottom:36px}
+.foot__g{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,.8fr)) minmax(0,1.2fr);gap:clamp(20px,2.6vw,38px);padding-bottom:24px}
 .foot__b .logo{margin-bottom:12px}
 .foot__b p{margin:0 0 16px;font-size:12.5px;line-height:1.58;color:var(--ink3);max-width:30ch}
 .soc{display:flex;gap:7px}
@@ -332,12 +370,12 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 .soc a:hover{color:var(--gold);border-color:var(--gold-lo);background:rgba(232,184,75,.06)}
 .soc svg{width:15px;height:15px}
 .foot h4{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink4);margin:0 0 13px}
-.foot ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.foot ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .foot li a{font-size:12.5px;color:var(--ink2);transition:color .15s}
 .foot li a:hover{color:var(--gold)}
 .foot__j p{margin:0 0 13px;font-size:12.5px;line-height:1.58;color:var(--ink3)}
-.risk{padding:14px 0 0;font-size:11.5px;line-height:1.6;color:var(--ink4);max-width:96ch}
-.foot__bar{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:15px 0 26px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink4)}
+.risk{padding:10px 0 0;font-size:11px;line-height:1.55;color:var(--ink4);max-width:96ch}
+.foot__bar{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px 0 18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink4)}
 
 /* ── Aparición al bajar ────────────────────────────────────────── */
 @media (prefers-reduced-motion:no-preference){
@@ -450,7 +488,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
     <div class="find">
       <svg width="16" height="16" viewBox="0 0 16 16"><use href="#mag"/></svg>
       <label class="sr" for="q">Buscar activo o par</label>
-      <input id="q" type="search" placeholder="Buscar activo, par…" autocomplete="off">
+      <input id="q" type="search" placeholder="Buscar activo, par…" autocomplete="off" enterkeyhint="go">
     </div>
 
     <div class="hdr__a">
@@ -563,6 +601,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 <!-- ══ ACTIVOS ══ -->
 <section class="sec bg" id="activos">
   <div class="art" style="background-image:url('assets/portada/img/activos.webp')" aria-hidden="true"></div>
+  <div class="motes" id="motes" aria-hidden="true"></div>
   <div class="wrap">
     <div class="rise" style="max-width:min(520px,100%)">
       <p class="eye">Activos</p>
@@ -781,6 +820,56 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
       ip.observe(caja);
     }else precios();
   }
+
+  /* Luz que sigue al cursor sobre las monedas.
+     Un solo oyente para toda la rejilla, y dentro solo se escriben dos
+     variables CSS por tarjeta. Nada de recalcular estilos: el degradado
+     lo pinta el compositor. */
+  (function(){
+    var rejilla=document.getElementById('px');
+    if(!rejilla||!window.matchMedia||!window.matchMedia('(pointer: fine)').matches)return;
+    var fichas=rejilla.querySelectorAll('.coin'), pedido=false, ex=0, ey=0;
+
+    function pintar(){
+      pedido=false;
+      for(var i=0;i<fichas.length;i++){
+        var r=fichas[i].getBoundingClientRect();
+        fichas[i].style.setProperty('--mx',(ex-r.left)+'px');
+        fichas[i].style.setProperty('--my',(ey-r.top)+'px');
+      }
+    }
+    rejilla.addEventListener('pointermove',function(e){
+      ex=e.clientX;ey=e.clientY;
+      if(!pedido){pedido=true;requestAnimationFrame(pintar);}
+    },{passive:true});
+    rejilla.addEventListener('pointerenter',function(){rejilla.classList.add('lit');});
+    rejilla.addEventListener('pointerleave',function(){rejilla.classList.remove('lit');});
+  })();
+
+  /* Motas. Se crean desde aquí para no ensuciar el HTML con ocho div
+     vacíos, y no se crean siquiera si el sistema pide menos movimiento. */
+  (function(){
+    var caja=document.getElementById('motes');
+    if(!caja||quieto)return;
+    var html='';
+    for(var i=0;i<8;i++){
+      var x=6+Math.random()*88, dur=20+Math.random()*16, esp=Math.random()*18, tam=2+Math.random()*2;
+      html+='<i style="left:'+x.toFixed(1)+'%;width:'+tam.toFixed(1)+'px;height:'+tam.toFixed(1)
+          +'px;animation-duration:'+dur.toFixed(1)+'s;animation-delay:-'+esp.toFixed(1)+'s"></i>';
+    }
+    caja.innerHTML=html;
+  })();
+
+  /* El buscador dejaba de hacer nada: ahora lleva a la app. */
+  (function(){
+    var q=document.getElementById('q');
+    if(!q)return;
+    q.addEventListener('keydown',function(e){
+      if(e.key!=='Enter')return;
+      var t=q.value.trim();
+      location.href='app.html'+(t?'?buscar='+encodeURIComponent(t):'');
+    });
+  })();
 
   /* Desplazamiento con inercia. El navegador sigue llevando la cuenta
      real de la posicion (para que la barra, los anclajes y el teclado
