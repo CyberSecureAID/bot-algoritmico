@@ -104,7 +104,7 @@ const DIC = {
     'y Liquidity Pools': 'and Liquidity Pools',
     'Formación con acceso': 'Training with access',
     'gestionado por contrato': 'managed by contract',
-    'Comenzar ahora': 'Get started',
+    'Acceder a los bots': 'Go to the bots',
     'Transparencia': 'Transparency',
     'Confianza que': 'Trust you',
     'se puede verificar.': 'can verify yourself.',
