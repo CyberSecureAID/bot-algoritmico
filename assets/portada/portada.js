@@ -29,6 +29,34 @@
     : false;
 
 
+  /* ── 0 · Apagar los fondos provisionales ───────────────────────────
+     Cada hueco de imagen trae un degradado de reserva para que la portada
+     se vea terminada aunque falten las fotos. En cuanto una imagen real
+     esta puesta, ese degradado sobra: si se quedara, taparia la foto.
+     Aqui se comprueba si la variable CSS resolvio a una imagen y se marca
+     el elemento. Es la unica forma fiable de saberlo desde JS. */
+
+  var conFondo = [
+    ['.pt-hero__art', 'backgroundImage'],
+    ['.pt-sec__art',  'backgroundImage']
+  ];
+
+  conFondo.forEach(function (par) {
+    Array.prototype.forEach.call(raiz.querySelectorAll(par[0]), function (el) {
+      var v = getComputedStyle(el)[par[1]];
+      if (v && v !== 'none') el.classList.add('has-img');
+    });
+  });
+
+  // El telefono lleva las capturas en capas hijas, no en el propio marco.
+  Array.prototype.forEach.call(raiz.querySelectorAll('.pt-phone__scr'), function (el) {
+    var capa = el.querySelector('.pt-phone__img--a');
+    if (!capa) return;
+    var v = getComputedStyle(capa).backgroundImage;
+    if (v && v !== 'none') el.classList.add('has-img');
+  });
+
+
   /* ── 1 · Cabecera ──────────────────────────────────────────────────
      Al pasar de 12px de scroll la cabecera se asienta: fondo más opaco y
      línea inferior. Se usa un flag para no tocar el DOM en cada evento. */
