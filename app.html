@@ -296,6 +296,56 @@
     } catch (_) { /* si algo falla, la app abre con normalidad */ }
   })();
   </script>
+  <!-- ══════════════════════════════════════════════════════════════════
+       LA BANDA SUPERIOR VIVE AHORA EN LA PORTADA
+       Swap, Academy, Tools, Liquidity, Prize Pool, Market P2P, Install,
+       perfil y wallet se manejan desde la página de fuera. Aquí solo van
+       los bots.
+
+       Se oculta con CSS y NO se borra del HTML a propósito: gridbot-ui.js
+       engancha esos botones por id al arrancar. Si desaparecieran del DOM
+       no fallaría (todo va con `if ($('...'))`), pero dejarlos evita
+       cualquier sorpresa y hace el cambio reversible borrando este bloque.
+
+       Se deja un enlace de vuelta para no dejar al usuario encerrado.
+       ══════════════════════════════════════════════════════════════════ -->
+  <style>
+    #colmena-app .c-hdr{display:none !important}
+    #cco-volver{
+      position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:10px;
+      padding:12px 22px;background:rgba(9,12,16,.92);
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      border-bottom:1px solid #2b3139;
+    }
+    #cco-volver a{
+      display:inline-flex;align-items:center;gap:8px;text-decoration:none;
+      font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13.5px;
+      color:#b7bdc6;padding:7px 12px;border:1px solid #2b3139;border-radius:9px;
+    }
+    #cco-volver a:hover{color:#E8B84B;border-color:#8f6a1a}
+    #cco-volver b{font-family:"Chakra Petch",system-ui,sans-serif;font-size:13.5px;color:#7d8794;font-weight:600}
+    @media(max-width:760px){#cco-volver{display:none}}
+  </style>
+  <script>
+  (function () {
+    // Solo en escritorio: en el móvil manda la cáscara de siempre.
+    if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) return;
+    var poner = function () {
+      if (document.getElementById('cco-volver')) return;
+      var app = document.getElementById('colmena-app');
+      if (!app) return;
+      var b = document.createElement('div');
+      b.id = 'cco-volver';
+      b.innerHTML = '<a href="./"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"'
+        + ' stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M13 8H3"/><path d="M7 4L3 8l4 4"/></svg>Volver</a><b>Bots</b>';
+      app.insertBefore(b, app.firstChild);
+    };
+    var t = setInterval(function () { poner(); }, 200);
+    setTimeout(function () { clearInterval(t); }, 15000);
+    document.addEventListener('DOMContentLoaded', poner);
+  })();
+  </script>
 </body>
 </html>
  
