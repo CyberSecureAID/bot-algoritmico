@@ -56,27 +56,35 @@
   html, body { margin: 0; background: #0b0e11; }
 
   /* ══════════════════════════════════════════════════════════════════
-     TUS IMÁGENES VAN AQUÍ
-     Crea los archivos con estos nombres exactos dentro de
-     assets/portada/img/ y descomenta la línea correspondiente.
-     Mientras estén comentadas, se ve el fondo provisional en CSS.
+     TUS IMÁGENES
+     Van en assets/portada/img/ con estos nombres exactos. Descomenta la
+     línea de cada una cuando la subas.
 
-       hero.webp      1600 × 1100   la de la cueva y el planeta
-       activos.webp   1000 ×  820   el orbe dorado
-       mapa.webp      1400 ×  880   el mapa del mundo con los puntos
-       cta.webp       2400 × 1000   el fondo del cierre
-       app-inicio.png  540 × 1170   captura REAL de tu app móvil
-       app-cta.png     540 × 1170   otra captura real, para el cierre
+     Las cuatro primeras son FONDOS DE SECCIÓN COMPLETA, no recuadros:
+     la imagen ocupa todo el bloque y encima lleva un velo oscuro para que
+     el texto siga leyéndose. Por eso no importa la proporción exacta,
+     mientras sean apaisadas y anchas.
 
-     Guárdalas en WEBP con calidad 82. Las capturas del móvil en PNG.
+       hero.webp       fondo de la sección de portada
+       activos.webp    fondo de la sección de activos
+       mapa.webp       fondo de la sección de transparencia
+       cta.webp        fondo del cierre (esta ya trae el móvil dentro)
+
+     Y las dos capturas reales de tu app móvil, que se van turnando dentro
+     del teléfono de la sección "ecosistema":
+
+       app-inicio.webp  primera pantalla
+       app-cta.webp     segunda pantalla
      ══════════════════════════════════════════════════════════════════ */
   #pt{
-    /* --pt-hero-img:  url('assets/portada/img/hero.webp'); */
-    /* --pt-orb-img:   url('assets/portada/img/activos.webp'); */
-    /* --pt-map-img:   url('assets/portada/img/mapa.webp'); */
-    /* --pt-cta-img:   url('assets/portada/img/cta.webp'); */
+    /* --pt-hero-img: url('assets/portada/img/hero.webp'); */
+    /* --pt-orb-img:  url('assets/portada/img/activos.webp'); */
+    /* --pt-map-img:  url('assets/portada/img/mapa.webp'); */
+    /* --pt-cta-img:  url('assets/portada/img/cta.webp'); */
+
+    /* --pt-app-a: url('assets/portada/img/app-inicio.webp'); */
+    /* --pt-app-b: url('assets/portada/img/app-cta.webp'); */
   }
-  /* --pt-phone-img se pone por separado en cada teléfono, más abajo. */
 </style>
 
 <script>
@@ -512,26 +520,22 @@
      Los precios se piden a CoinGecko al entrar la sección en pantalla.
      Si la API falla, se queda el guion. Nunca se inventa un número.
      ═══════════════════════════════════════════════════════════════════ -->
-<section class="pt-sec" id="activos">
+<section class="pt-sec pt-sec--bg" id="activos">
+  <div class="pt-sec__art pt-sec__art--activos" aria-hidden="true"></div>
+
   <div class="pt-wrap">
-    <div class="pt-split pt-split--flip">
-
-      <div class="pt-orb pt-rise" aria-hidden="true"></div>
-
-      <div class="pt-rise">
-        <p class="pt-eyebrow">Activos</p>
-        <h2 class="pt-h2">Activos digitales<br>para un mundo sin fronteras.</h2>
-        <p class="pt-body">
-          Desde las principales criptomonedas hasta los tokens del ecosistema
-          BNB Chain: 26 activos operables contra USDT y USDC, con liquidez de
-          PancakeSwap V3.
-        </p>
-        <a class="pt-link" href="index.html">
-          Ver todos los mercados
-          <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-arrow"/></svg>
-        </a>
-      </div>
-
+    <div class="pt-rise" style="max-width:min(560px,100%)">
+      <p class="pt-eyebrow">Activos</p>
+      <h2 class="pt-h2">Activos digitales<br>para un mundo sin fronteras.</h2>
+      <p class="pt-body">
+        Desde las principales criptomonedas hasta los tokens del ecosistema
+        BNB Chain: 26 activos operables contra USDT y USDC, con liquidez de
+        PancakeSwap V3.
+      </p>
+      <a class="pt-link" href="index.html">
+        Ver todos los mercados
+        <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-arrow"/></svg>
+      </a>
     </div>
 
     <div class="pt-assets pt-rise" id="pt-precios">
@@ -556,7 +560,6 @@
         <div class="pt-asset__t"><b>XRP</b><u data-px="ripple">—</u><s data-ch="ripple">—</s></div>
       </div>
     </div>
-
   </div>
 </section>
 
@@ -569,11 +572,13 @@
   <div class="pt-wrap">
     <div class="pt-split">
 
-      <!-- Aquí va tu captura real: app-inicio.png -->
+      <!-- Las dos capturas de tu app se van turnando aquí dentro. -->
       <div class="pt-phone pt-rise" aria-hidden="true">
         <div class="pt-phone__notch"></div>
-        <div class="pt-phone__scr"
-             style="/* --pt-phone-img: url('assets/portada/img/app-inicio.png'); */"></div>
+        <div class="pt-phone__scr">
+          <div class="pt-phone__img pt-phone__img--a"></div>
+          <div class="pt-phone__img pt-phone__img--b"></div>
+        </div>
       </div>
 
       <div class="pt-rise">
@@ -625,11 +630,12 @@
      Aquí la referencia ponía "5M+ usuarios · 150+ países · 99.99% uptime".
      Esos números no los tenemos y no se inventan. Van datos verificables.
      ═══════════════════════════════════════════════════════════════════ -->
-<section class="pt-sec" id="comprobable">
-  <div class="pt-wrap">
-    <div class="pt-split">
+<section class="pt-sec pt-sec--bg" id="comprobable">
+  <div class="pt-sec__art pt-sec__art--mapa pt-sec__art--right" aria-hidden="true"></div>
 
-      <div class="pt-rise">
+  <div class="pt-wrap">
+    <div class="pt-rise" style="max-width:min(560px,100%)">
+      <div>
         <p class="pt-eyebrow">Transparencia</p>
         <h2 class="pt-h2">Confianza que<br>se puede verificar.</h2>
         <p class="pt-body">
@@ -653,8 +659,6 @@
           </a>
         </div>
       </div>
-
-      <div class="pt-map pt-rise" aria-hidden="true"></div>
 
     </div>
 
@@ -693,13 +697,6 @@
             Instalar app
           </a>
         </div>
-      </div>
-
-      <!-- Aquí va tu captura real: app-cta.png -->
-      <div class="pt-phone pt-rise" aria-hidden="true">
-        <div class="pt-phone__notch"></div>
-        <div class="pt-phone__scr"
-             style="/* --pt-phone-img: url('assets/portada/img/app-cta.png'); */"></div>
       </div>
 
     </div>
