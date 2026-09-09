@@ -117,10 +117,10 @@ body{overflow-x:hidden}
    En cuanto se hace scroll, se retira. Se mueve con transform, que el
    navegador anima sin recalcular la página. */
 #pt .pt-hdr.pt-oculta{transform:translateY(-100%)}
-#pt .pt-hdr__in{display:flex;align-items:center;gap:20px;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+#pt .pt-hdr__in{display:flex;align-items:center;gap:0;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
 /* El logo REAL del repo, el mismo que usa la app. */
 #pt .pt-logo img{height:30px;width:auto}
-#pt .pt-nav{display:flex;align-items:center;gap:2px;flex:1 1 auto;margin-left:6px}
+#pt .pt-nav{display:flex;align-items:center;gap:2px;flex:0 1 auto;margin-left:14px}
 #pt .pt-nav__i{position:relative}
 #pt .pt-nav__b{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:500;color:var(--ink2);padding:8px 11px;border-radius:8px;transition:color .15s,background .15s}
 #pt .pt-nav__b:hover{color:var(--ink);background:rgba(255,255,255,.045)}
