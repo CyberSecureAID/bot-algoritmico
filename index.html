@@ -96,46 +96,34 @@
     </a>
 
     <nav class="nav" aria-label="Principal">
-      <div class="nav__i"><a class="nav__b" href="#activos">Activos</a></div>
+
+      <div class="nav__i"><a class="nav__b" href="app.html?abrir=swap" data-abrir="swap">Swap</a></div>
 
       <div class="nav__i">
         <button class="nav__b" type="button">Bots <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
         <div class="menu">
-          <a href="app.html?bot=grid"><b>Smart Grid</b><span>Compra abajo y vende arriba en un rango</span></a>
-          <a href="app.html?bot=acum"><b>Accumulator</b><span>Baja tu precio medio en las caídas</span></a>
-          <a href="app.html?bot=cash"><b>Cash Out</b><span>Vende al llegar a tu objetivo</span></a>
-          <a href="app.html?bot=dca"><b>DCA</b><span>Compra una cantidad fija cada cierto tiempo</span></a>
+          <a href="app.html?bot=grid"><b>Smart Grid</b><span>Compra y vende en niveles</span></a>
+          <a href="app.html?bot=acum"><b>Accumulator</b><span>Compra en la caída y vende junto</span></a>
+          <a href="app.html?bot=cash"><b>Cash Out</b><span>Vende al precio que elijas</span></a>
+          <a href="app.html?bot=dca"><b>DCA</b><span>Compra un poco cada cierto tiempo</span></a>
         </div>
       </div>
 
       <div class="nav__i">
-        <button class="nav__b" type="button">Herramientas <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
+        <button class="nav__b" type="button">Análisis profesional <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
         <div class="menu">
           <a href="app.html?abrir=liq" data-abrir="liq"><b>Liquidity Pools</b><span>Dónde está el dinero atrapado</span></a>
           <a href="app.html?abrir=liq" data-abrir="liq"><b>Heat Pools</b><span>Vea lo que hacen los grandes</span></a>
           <a href="app.html?abrir=liq" data-abrir="liq"><b>Smart Levels</b><span>Dónde comprar y dónde vender</span></a>
-          <a href="app.html?abrir=tools" data-abrir="tools"><b>Tools</b><span>Alertas, colector de polvo y gráfica limpia</span></a>
         </div>
       </div>
 
+      <div class="nav__i"><a class="nav__b" href="app.html?abrir=tools" data-abrir="tools">Herramientas</a></div>
       <div class="nav__i"><a class="nav__b" href="app.html?abrir=market" data-abrir="market">Market P2P</a></div>
+      <div class="nav__i"><a class="nav__b" href="app.html?abrir=academy" data-abrir="academy">Academia</a></div>
+      <div class="nav__i"><a class="nav__b" href="app.html?abrir=prize" data-abrir="prize">Eventos</a></div>
 
-      <div class="nav__i">
-        <button class="nav__b" type="button">Más <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
-        <div class="menu">
-          <a href="app.html?abrir=swap" data-abrir="swap"><b>Swap</b><span>Intercambia entre activos al momento</span></a>
-          <a href="app.html?abrir=academy" data-abrir="academy"><b>Academia</b><span>Formación con acceso por contrato</span></a>
-          <a href="app.html?abrir=prize" data-abrir="prize"><b>Prize Pool</b><span>Sorteo con aleatoriedad verificable</span></a>
-          <a href="app.html?abrir=perfil" data-abrir="perfil"><b>Mi perfil</b><span>Permisos, gas y suscripción</span></a>
-        </div>
-      </div>
     </nav>
-
-    <div class="find">
-      <svg width="16" height="16" viewBox="0 0 16 16"><use href="#mag"/></svg>
-      <label class="sr" for="q">Buscar activo o par</label>
-      <input id="q" type="search" placeholder="Buscar activo, par…" autocomplete="off" enterkeyhint="go">
-    </div>
 
     <div class="hdr__a">
       <span class="wbox" id="wbox"></span>
@@ -175,7 +163,7 @@
   <div class="wrap"><div class="trust__g">
     <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#lck"/></svg><div><b>No custodial</b><span>Tus fondos no salen de tu wallet</span></div></div>
     <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#shd"/></svg><div><b>Permiso por monto exacto</b><span>Nunca ilimitado, y lo revocas tú</span></div></div>
-    <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#cns"/></svg><div><b>Sin comisión por operación</b><span>Solo el gas que cobra la red</span></div></div>
+    <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#cns"/></svg><div><b>Sin porcentaje nuestro</b><span>Solo el gas y la comisión del DEX</span></div></div>
     <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#dev"/></svg><div><b>Sin cuenta ni KYC</b><span>Tu wallet es tu único registro</span></div></div>
   </div></div>
 </section>
@@ -343,7 +331,7 @@
     <div class="stats rise">
       <div class="stat"><b>4</b><span>Contratos públicos verificables</span></div>
       <div class="stat"><b>26</b><span>Activos operables</span></div>
-      <div class="stat"><b>0 %</b><span>Comisión por operación</span></div>
+      <div class="stat"><b>≈1 $</b><span>Al mes, sin porcentaje nuestro sobre tus operaciones</span></div>
       <div class="stat"><b>0</b><span>Fondos bajo nuestra custodia</span></div>
     </div>
   </div>
@@ -393,7 +381,6 @@
       <div><h4>Plataforma</h4><ul>
         <li><a href="app.html?abrir=academy" data-abrir="academy">Academia</a></li>
         <li><a href="app.html?abrir=prize" data-abrir="prize">Prize Pool</a></li>
-        <li><a href="app.html?abrir=perfil" data-abrir="perfil">Mi perfil</a></li>
         <li><a href="app.html?abrir=instalar" data-inst>Instalar app</a></li>
       </ul></div>
 
