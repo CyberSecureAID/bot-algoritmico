@@ -87,23 +87,35 @@ body{overflow-x:hidden}
 
 /* ── Cabecera ──────────────────────────────────────────────────── */
 #pt .pt-hdr{
-  position:relative;z-index:100;top:0;display:flex;align-items:center;
-  height:58px;background:#07090c;border-bottom:1px solid #1a2029;
-  position:sticky;
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;height:58px;
+  background:#07090c;border-bottom:1px solid #1a2029;
 }
+
 /* Foto de fondo de la barra: assets/portada/img/header.webp
    Va en ::before para poder oscurecerla sin tocar el contenido. */
 #pt .pt-hdr::before{
-  content:"";position:absolute;inset:0;z-index:0;
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background-image:url('img/header.webp');
   background-size:cover;background-position:center;
   opacity:.55;
 }
-/* Velo de lectura. Sin esto el menú se pierde sobre la imagen. */
+
+/* Velo de lectura: sin él el menú se pierde sobre la foto.
+   pointer-events:none es OBLIGATORIO. Sin eso, esta capa se come todos
+   los clics de la barra aunque quede por debajo en el orden de pintado.
+   Fue exactamente lo que pasó: la barra se veía apagada y ningún botón
+   respondía. */
 #pt .pt-hdr::after{
-  content:"";position:absolute;inset:0;z-index:1;
-  background:linear-gradient(90deg,rgba(0,0,0,.9),rgba(0,0,0,.6) 55%,rgba(0,0,0,.85));
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.88),rgba(0,0,0,.55) 55%,rgba(0,0,0,.82));
 }
+
+/* El contenido, POR ENCIMA de las dos capas. Esta regla existía y la
+   borró un reemplazo anterior de la cabecera; sin ella el velo tapaba
+   el menú entero. */
+#pt .pt-hdr__in{position:relative;z-index:2}
+
 #pt .pt-hdr.pt-stuck{background:#05070a;border-bottom-color:#232b36}
 #pt .hdr__in{position:relative;z-index:1}
 #pt .hdr__in{display:flex;align-items:center;gap:22px;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
