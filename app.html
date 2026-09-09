@@ -265,7 +265,31 @@
   <script>
   (function () {
     try {
-      var que = new URLSearchParams(location.search).get('abrir');
+      var par = new URLSearchParams(location.search);
+
+      /* ?bot=grid  ->  entra directo a ESE bot.
+         No se construye nada: se pulsa el mismo botón del selector de tipo
+         que pulsaría el usuario (#f-tipo [data-tipo=...]), y el creador de
+         siempre se encarga del resto. */
+      var bot = par.get('bot');
+      if (bot && ['grid', 'acum', 'cash', 'dca'].indexOf(bot) !== -1) {
+        var finB = Date.now() + 12000;
+        var tb = setInterval(function () {
+          var b = document.querySelector('#f-tipo [data-tipo="' + bot + '"]');
+          if (b) {
+            clearInterval(tb);
+            setTimeout(function () {
+              b.click();
+              var caja = document.getElementById('f-tipo');
+              if (caja && caja.scrollIntoView) caja.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 150);
+            return;
+          }
+          if (Date.now() > finB) clearInterval(tb);
+        }, 150);
+      }
+
+      var que = par.get('abrir');
       if (!que) return;
 
       // Cada destino de la portada, con el id del botón que ya existe.

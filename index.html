@@ -96,15 +96,15 @@
     </a>
 
     <nav class="nav" aria-label="Principal">
-      <div class="nav__i"><a class="nav__b" href="#activos">Mercados</a></div>
+      <div class="nav__i"><a class="nav__b" href="#activos">Activos</a></div>
 
       <div class="nav__i">
         <button class="nav__b" type="button">Bots <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
         <div class="menu">
-          <a href="#bot-grid"><b>Smart Grid</b><span>Compra abajo y vende arriba en un rango</span></a>
-          <a href="#bot-acum"><b>Accumulator</b><span>Baja tu precio medio en las caídas</span></a>
-          <a href="#bot-cash"><b>Cash Out</b><span>Vende al llegar a tu objetivo</span></a>
-          <a href="#bot-dca"><b>DCA</b><span>Compra una cantidad fija cada cierto tiempo</span></a>
+          <a href="app.html?bot=grid"><b>Smart Grid</b><span>Compra abajo y vende arriba en un rango</span></a>
+          <a href="app.html?bot=acum"><b>Accumulator</b><span>Baja tu precio medio en las caídas</span></a>
+          <a href="app.html?bot=cash"><b>Cash Out</b><span>Vende al llegar a tu objetivo</span></a>
+          <a href="app.html?bot=dca"><b>DCA</b><span>Compra una cantidad fija cada cierto tiempo</span></a>
         </div>
       </div>
 
@@ -138,13 +138,6 @@
     </div>
 
     <div class="hdr__a">
-      <button class="pf" id="pf" type="button" aria-label="Mi perfil" title="Mi perfil"
-              data-abrir="perfil">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c.6-3.4 3.2-5 6.5-5s5.9 1.6 6.5 5"/>
-        </svg>
-      </button>
       <span class="wbox" id="wbox"></span>
       <a class="btn ghost" href="app.html?abrir=instalar" data-inst>Instalar app</a>
       <button class="burger" type="button" aria-label="Menú"><svg width="18" height="20" viewBox="0 0 20 22"><use href="#bur"/></svg></button>
@@ -185,89 +178,6 @@
     <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#cns"/></svg><div><b>Sin comisión por operación</b><span>Solo el gas que cobra la red</span></div></div>
     <div class="trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#dev"/></svg><div><b>Sin cuenta ni KYC</b><span>Tu wallet es tu único registro</span></div></div>
   </div></div>
-</section>
-
-<!-- ══ LOS CUATRO BOTS ══
-     Textos e imágenes tomados de gridbot/config.js (BOTMETA, PRESETS,
-     CONF_BOTS) y de assets/img. Ni una palabra inventada: es exactamente
-     lo que el usuario lee dentro al crear el bot. -->
-<section class="sec" id="bots">
-  <div class="wrap">
-
-    <div class="rise" style="max-width:min(560px,100%);margin-bottom:clamp(30px,3.6vw,52px)">
-      <p class="eye">Estrategias</p>
-      <h2>Cuatro bots,<br><em>cuatro formas de operar.</em></h2>
-      <p class="body">
-        Cada uno sirve para un escenario distinto. Los creas desde tu wallet,
-        eligen ellos el momento y tú puedes cancelarlos cuando quieras. Puedes
-        tener hasta ocho a la vez, dos de cada tipo.
-      </p>
-    </div>
-
-    <div class="bots">
-
-      <article class="bot rise" id="bot-grid">
-        <div class="bot__art"><div><img src="assets/img/bot-grid.webp" alt="Smart Grid" loading="lazy"></div></div>
-        <div>
-          <p class="bot__n">BOT 01</p>
-          <h3>Smart Grid</h3>
-          <p>Compra y vende en niveles; solo cierra cada cuadrícula en ganancia.</p>
-          <div class="psets">
-            <div class="pset"><b>Tranquilo</b><span>Rango muy amplio. Opera menos veces, pero cada vuelta deja bastante y aguanta meses sin salirse del rango.</span></div>
-            <div class="pset"><b>Equilibrado</b><span>El término medio. Buen número de operaciones y cada una con ganancia holgada. Si no sabes cuál elegir, esta.</span></div>
-            <div class="pset"><b>Activo</b><span>Rango ceñido al precio de hoy. Opera más seguido, pero si el mercado se va lejos puede salirse del rango.</span></div>
-          </div>
-          <a class="btn line" href="app.html">Crear un Smart Grid <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#arr"/></svg></a>
-        </div>
-      </article>
-
-      <article class="bot rise" id="bot-acum">
-        <div class="bot__art"><div><img src="assets/img/bot-acumulador.webp" alt="Accumulator" loading="lazy"></div></div>
-        <div>
-          <p class="bot__n">BOT 02</p>
-          <h3>Accumulator</h3>
-          <p>Compra en la caída y vende todo junto al llegar a tu ganancia.</p>
-          <div class="psets">
-            <div class="pset"><b>Prudente</b><span>Objetivo cercano, sale rápido y repite. Ideal para empezar.</span></div>
-            <div class="pset"><b>Equilibrado</b><span>El punto dulce entre frecuencia y ganancia. Recomendado.</span></div>
-            <div class="pset"><b>Paciente</b><span>Objetivo alto y mucho margen para comprar en caídas grandes.</span></div>
-          </div>
-          <a class="btn line" href="app.html">Crear un Accumulator <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#arr"/></svg></a>
-        </div>
-      </article>
-
-      <article class="bot rise" id="bot-cash">
-        <div class="bot__art"><div><img src="assets/img/bot-cashout.webp" alt="Cash Out" loading="lazy"></div></div>
-        <div>
-          <p class="bot__n">BOT 03</p>
-          <h3>Cash Out</h3>
-          <p>Vende la cripto que ya tienes, al precio o porcentaje que elijas.</p>
-          <div class="psets">
-            <div class="pset"><b>Rápido</b><span>Un objetivo cercano que el mercado suele tocar en pocos días.</span></div>
-            <div class="pset"><b>Equilibrado</b><span>El más usado: buena ganancia sin esperar demasiado.</span></div>
-            <div class="pset"><b>Ambicioso</b><span>Para quien no tiene prisa y busca una subida fuerte.</span></div>
-          </div>
-          <a class="btn line" href="app.html">Crear un Cash Out <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#arr"/></svg></a>
-        </div>
-      </article>
-
-      <article class="bot rise" id="bot-dca">
-        <div class="bot__art"><div><img src="assets/img/bot-dca.webp" alt="DCA" loading="lazy"></div></div>
-        <div>
-          <p class="bot__n">BOT 04</p>
-          <h3>DCA</h3>
-          <p>Compra un poco cada cierto tiempo, sin estar pendiente del precio.</p>
-          <div class="psets">
-            <div class="pset"><b>Semanal</b><span>Una compra por semana. El mejor equilibrio entre coste y suavizado.</span></div>
-            <div class="pset"><b>Quincenal</b><span>Cada dos semanas. Menos comisiones, buen promedio.</span></div>
-            <div class="pset"><b>Mensual</b><span>Una vez al mes. El más barato en comisiones.</span></div>
-          </div>
-          <a class="btn line" href="app.html">Crear un DCA <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#arr"/></svg></a>
-        </div>
-      </article>
-
-    </div>
-  </div>
 </section>
 
 <!-- ══ HERRAMIENTAS ══
@@ -473,8 +383,8 @@
       </div>
 
       <div><h4>Producto</h4><ul>
-        <li><a href="#activos">Mercados</a></li>
-        <li><a href="#bots">Bots</a></li>
+        <li><a href="#activos">Activos</a></li>
+        <li><a href="app.html">Bots</a></li>
         <li><a href="app.html?abrir=swap" data-abrir="swap">Swap</a></li>
         <li><a href="app.html?abrir=market" data-abrir="market">Market P2P</a></li>
         <li><a href="app.html?abrir=liq" data-abrir="liq">Liquidity Pools</a></li>
