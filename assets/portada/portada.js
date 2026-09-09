@@ -296,49 +296,46 @@ document.querySelectorAll('[data-conectar]').forEach((b) => b.addEventListener('
    ══════════════════════════════════════════════════════════════════════ */
 try {
   const h = $('hdr');
-  let pegada = false, oculta = false;
-  let anterior = window.scrollY;
-  let pendiente = false;
+  let pegada = false, oculta = false, pendiente = false;
 
-  /* Se esconde al bajar y vuelve al subir. Dos cautelas:
-       · un margen de 6 px para que un temblor del ratón no la dispare;
-       · nunca se esconde en los primeros 120 px, o desaparecería nada más
-         entrar en la página.
-     El trabajo se hace en requestAnimationFrame y no en el propio evento
-     de scroll: así no se calcula nada de más mientras se desplaza. */
-  const revisar = () => {
+  /* Cuándo se ve la barra:
+       · en lo alto de la página (los primeros 120 px), y
+       · cuando el cursor sube a la franja de arriba a buscarla.
+     En cualquier otro momento se retira, tanto bajando como subiendo.
+     Antes volvía al subir y molestaba a media página. */
+  const ARRIBA = 120;
+  let cursorArriba = false;
+
+  const aplicar = () => {
     pendiente = false;
     const y = Math.max(0, window.scrollY);
-    const paso = y - anterior;
 
     const debePegada = y > 10;
     if (debePegada !== pegada) { pegada = debePegada; h.classList.toggle('pt-stuck', debePegada); }
 
-    let debeOculta = oculta;
-    if (y < 120) debeOculta = false;
-    else if (paso > 6) debeOculta = true;
-    else if (paso < -6) debeOculta = false;
-
-    if (debeOculta !== oculta) { oculta = debeOculta; h.classList.toggle('pt-oculta', oculta); }
-    anterior = y;
+    const debeOculta = y > ARRIBA && !cursorArriba;
+    if (debeOculta !== oculta) { oculta = debeOculta; h.classList.toggle('pt-oculta', debeOculta); }
   };
 
-  window.addEventListener('scroll', () => {
-    if (pendiente) return;
-    pendiente = true;
-    requestAnimationFrame(revisar);
-  }, { passive: true });
+  const pedir = () => { if (pendiente) return; pendiente = true; requestAnimationFrame(aplicar); };
 
-  /* Con el cursor arriba del todo vuelve aunque no se haya subido: es lo
-     que se espera cuando uno va a buscar el menú. */
+  window.addEventListener('scroll', pedir, { passive: true });
+
+  /* Franja sensible de 80 px arriba. Una vez visible, se mantiene mientras
+     el cursor siga dentro de la propia barra: si no, desaparecería justo
+     al ir a pulsar un botón. */
   window.addEventListener('mousemove', (e) => {
-    if (e.clientY < 70 && oculta) { oculta = false; h.classList.remove('pt-oculta'); }
+    const dentro = e.clientY < 80 || (h.contains(e.target));
+    if (dentro !== cursorArriba) { cursorArriba = dentro; pedir(); }
   }, { passive: true });
 
-  /* Si se abre un desplegable con el teclado, la barra no puede irse. */
-  h.addEventListener('focusin', () => { oculta = false; h.classList.remove('pt-oculta'); });
+  /* Con el teclado tampoco puede irse mientras se navega el menú. */
+  h.addEventListener('focusin', () => { cursorArriba = true; pedir(); });
+  h.addEventListener('focusout', () => {
+    setTimeout(() => { if (!h.contains(document.activeElement)) { cursorArriba = false; pedir(); } }, 60);
+  });
 
-  revisar();
+  aplicar();
 } catch (e) { console.warn('[portada] cabecera:', e); }
 
 

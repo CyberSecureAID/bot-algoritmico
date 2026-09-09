@@ -113,10 +113,11 @@ body{overflow-x:hidden}
 #pt .pt-logo{text-shadow:0 1px 4px rgba(0,0,0,.9)}
 
 #pt .pt-hdr.pt-stuck{border-bottom-color:#232b36}
-/* Al bajar se retira; al subir vuelve. Se mueve con transform, que el
+/* Solo se ve en lo alto de la página o cuando el cursor sube a buscarla.
+   En cuanto se hace scroll, se retira. Se mueve con transform, que el
    navegador anima sin recalcular la página. */
 #pt .pt-hdr.pt-oculta{transform:translateY(-100%)}
-#pt .hdr__in{display:flex;align-items:center;gap:22px;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+#pt .pt-hdr__in{display:flex;align-items:center;gap:22px;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
 /* El logo REAL del repo, el mismo que usa la app. */
 #pt .pt-logo img{height:30px;width:auto}
 #pt .pt-nav{display:flex;align-items:center;gap:2px}
@@ -255,11 +256,6 @@ body{overflow-x:hidden}
 #pt .pt-shot__in::after{
   content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(148deg,rgba(255,255,255,.07),transparent 34%,transparent 76%,rgba(0,0,0,.24));
-}
-#pt .shot--empty{
-  aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;
-  font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center;padding:20px;
-  background:linear-gradient(150deg,#101922,#0b1016);
 }
 
 /* Dos capturas juntas: Liquidity Pools y Heat Pools. */
