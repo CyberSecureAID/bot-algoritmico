@@ -36,6 +36,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+<link rel="stylesheet" href="assets/css/asistente.css?v=125">
 <link rel="icon" type="image/png" href="assets/img/cco-32.png">
 <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
 
@@ -56,11 +57,19 @@
    #0b0e11 fondo · #E8B84B oro · #2ebd85 alza · #f6465d baja · #eaecef texto
    ══════════════════════════════════════════════════════════════════════ */
 
-*,*::before,*::after{box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box}   /* global: las ventanas de la app lo dan por hecho */
 html,body{margin:0;padding:0;background:#0b0e11}
-img,svg{display:block;max-width:100%}
 
+/* Lo mínimo que los módulos de la app necesitan del CSS antiguo.
+   No se carga styles.css entera: trae el fondo verde de la lotería. */
 :root{
+  --gold:#E8B84B; --gold-soft:#C9A84B;
+  --display:"Chakra Petch",system-ui,sans-serif;
+  --sans:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+
+#pt{
   --bg:#0b0e11; --bg2:#090c10; --lift:#0e1319; --surf:#12161c;
   --line:#1c232b; --line2:#29313b;
   --gold:#E8B84B; --gold-hi:#f4d089; --gold-md:#cf9f2e; --gold-lo:#8f6a1a; --on-gold:#241900;
@@ -71,18 +80,20 @@ img,svg{display:block;max-width:100%}
   --mono:"IBM Plex Mono",ui-monospace,monospace;
   --max:1200px;
   --gut:clamp(18px,3.4vw,44px);
-}
 
-body{
   font-family:var(--sans);
   font-size:15px;
   line-height:1.62;
   color:var(--ink);
-  overflow-x:hidden;
 }
-a{color:inherit;text-decoration:none}
-button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:5px}
+body{overflow-x:hidden}
+
+/* Reglas de elemento SIEMPRE dentro de #pt: si fueran globales tocarían
+   también las ventanas de la app, que ahora se abren en esta página. */
+#pt a{color:inherit;text-decoration:none}
+#pt button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+#pt img,#pt svg{display:block;max-width:100%}
+#pt :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:5px}
 
 .wrap{width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -159,10 +170,22 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .find{display:flex;align-items:center;gap:8px;flex:1 1 auto;max-width:250px;margin-left:auto;padding:7px 12px;background:var(--lift);border:1px solid var(--line);border-radius:9px;transition:border-color .18s}
 .find:focus-within{border-color:var(--gold-lo)}
 .find svg{width:14px;height:14px;color:var(--ink4);flex:0 0 auto}
-.find input{width:100%;font:inherit;font-size:13px;color:var(--ink);background:none;border:0;outline:none}
+.find input,#colmena-app .find input{width:100%;border-radius:0;height:auto;font:inherit;font-size:13px;color:var(--ink);background:none;border:0;outline:none}
 .find input::placeholder{color:var(--ink4)}
 
 .hdr__a{display:flex;align-items:center;gap:9px;flex:0 0 auto}
+/* Ficha de wallet: mientras no hay cuenta es un botón normal; en cuanto
+   hay una, muestra el nombre de la wallet y la dirección abreviada. */
+#wchip.on{
+  border-color:rgba(232,184,75,.45);background:rgba(232,184,75,.07);
+  color:var(--ink);font-family:var(--mono);font-size:12px;font-weight:500;
+  letter-spacing:.02em;gap:9px;padding:0 14px;
+}
+#wchip.on i{width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 8px var(--up);flex:0 0 auto}
+#wchip.on b{font-family:var(--disp);font-size:12px;color:var(--gold);font-weight:700}
+/* Aviso de red equivocada: mismo sitio, imposible no verlo. */
+#wchip.bad{border-color:rgba(246,70,93,.5);background:rgba(246,70,93,.1)}
+#wchip.bad i{background:var(--down);box-shadow:0 0 8px var(--down)}
 .burger{display:none;width:38px;height:38px;align-items:center;justify-content:center;border:1px solid var(--line2);border-radius:9px;color:var(--ink2)}
 .burger svg{width:17px;height:17px}
 
@@ -194,8 +217,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .hero__in{position:relative;z-index:2;max-width:min(560px,100%)}
 
 .eye{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink4);margin:0 0 16px}
-h1{font-family:var(--disp);font-weight:700;font-size:clamp(30px,3.4vw,47px);line-height:1.08;letter-spacing:-.018em;margin:0 0 18px}
-h1 em,h2 em{font-style:normal;color:var(--gold)}
+#pt h1{font-family:var(--disp);font-weight:700;font-size:clamp(30px,3.4vw,47px);line-height:1.08;letter-spacing:-.018em;margin:0 0 18px}
+#pt h1 em,h2 em{font-style:normal;color:var(--gold)}
 .lede{font-size:15.5px;line-height:1.66;color:var(--ink2);margin:0 0 26px;max-width:44ch}
 .acts{display:flex;flex-wrap:wrap;gap:11px}
 
@@ -211,7 +234,7 @@ h1 em,h2 em{font-style:normal;color:var(--gold)}
 /* ── Secciones ─────────────────────────────────────────────────── */
 .sec{padding:clamp(44px,4.6vw,72px) 0}
 .sec.alt{background:transparent}
-h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line-height:1.18;letter-spacing:-.012em;margin:0 0 14px}
+#pt h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line-height:1.18;letter-spacing:-.012em;margin:0 0 14px}
 .body{font-size:15px;line-height:1.68;color:var(--ink2);margin:0 0 22px;max-width:44ch}
 
 .split{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(24px,3.2vw,48px);align-items:center}
@@ -301,45 +324,47 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 .motes i{
   position:absolute;bottom:-12px;width:3px;height:3px;border-radius:50%;
   background:var(--gold);opacity:0;
-  box-shadow:0 0 7px 1px rgba(232,184,75,.55);
+  box-shadow:0 0 12px 3px rgba(232,184,75,.7);
 }
 @media (prefers-reduced-motion:no-preference){
   .motes i{animation:mote linear infinite}
 }
 @keyframes mote{
   0%  {transform:translateY(0) translateX(0);opacity:0}
-  12% {opacity:.5}
-  80% {opacity:.32}
+  12% {opacity:.9}
+  80% {opacity:.6}
   100%{transform:translateY(-108%) translateX(26px);opacity:0}
 }
 
 /* ── Ecosistema ────────────────────────────────────────────────────
    Tus imágenes YA traen el teléfono dibujado. No se les añade ningún
    marco: se muestran tal cual, y las dos se van turnando. */
-.duo{position:relative;width:100%;max-width:224px;margin:0 auto}
+.duo{position:relative;width:100%;max-width:196px;margin:0 auto}
 .duo img{width:100%;height:auto}
 .duo img + img{position:absolute;inset:0;height:100%;object-fit:contain;opacity:0}
+/* Flotación en el sitio: sube y baja tres píxeles y medio en seis
+   segundos. Solo transform, que el navegador anima sin repintar nada. */
 @media (prefers-reduced-motion:no-preference){
-  .duo img + img{animation:duoB 13s ease-in-out infinite}
+  .duo img{animation:flota 6.5s ease-in-out infinite;will-change:transform}
 }
-@keyframes duoB{0%,42%{opacity:0}52%,92%{opacity:1}100%{opacity:0}}
+@keyframes flota{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 
 .rule{width:74px;height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:16px 0}
 .feats{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 20px}
-.feat{display:flex;align-items:flex-start;gap:12px;padding:12px 16px 12px 0;transition:opacity .16s}
+.feat{display:flex;align-items:flex-start;gap:11px;padding:10px 14px 10px 0;transition:opacity .16s}
 .feat:hover{opacity:.82}
 .feat:hover .feat__i{border-color:var(--gold);background:rgba(232,184,75,.1)}
 .feat__i{transition:border-color .16s,background .16s}
 .feat:nth-child(even){padding-left:16px;border-left:1px solid rgba(255,255,255,.07)}
 .feat:nth-child(n+3){border-top:1px solid rgba(255,255,255,.07)}
 .feat__i{
-  flex:0 0 auto;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
-  border:1px solid rgba(232,184,75,.4);border-radius:9px;
+  flex:0 0 auto;width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(232,184,75,.4);border-radius:8px;
   background:rgba(232,184,75,.04);color:var(--gold);
 }
-.feat__i svg{width:18px;height:18px}
-.feat b{display:block;font-size:13.5px;font-weight:600;line-height:1.3;color:var(--ink)}
-.feat span{display:block;font-size:12px;line-height:1.45;color:var(--ink3);margin-top:2px}
+.feat__i svg{width:16px;height:16px}
+.feat b{display:block;font-size:12.5px;font-weight:600;line-height:1.3;color:var(--ink)}
+.feat span{display:block;font-size:11.5px;line-height:1.42;color:var(--ink3);margin-top:2px}
 
 
 
@@ -443,6 +468,8 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
 </defs></svg>
 
 
+<div id="pt">
+
 <header class="hdr" id="hdr">
   <div class="hdr__in">
     <a class="logo" href="#top" aria-label="Cripto Cuba Oficial">
@@ -465,22 +492,22 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
       <div class="nav__i">
         <button class="nav__b" type="button">Herramientas <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
         <div class="menu">
-          <a href="app.html?abrir=liq"><b>Liquidity Pools</b><span>Dónde está el dinero atrapado</span></a>
-          <a href="app.html?abrir=liq"><b>Heat Pools</b><span>Vea lo que hacen los grandes</span></a>
-          <a href="app.html?abrir=liq"><b>Smart Levels</b><span>Dónde comprar y dónde vender</span></a>
-          <a href="app.html?abrir=tools"><b>Tools</b><span>Alertas, colector de polvo y gráfica limpia</span></a>
+          <a href="app.html?abrir=liq" data-abrir="liq"><b>Liquidity Pools</b><span>Dónde está el dinero atrapado</span></a>
+          <a href="app.html?abrir=liq" data-abrir="liq"><b>Heat Pools</b><span>Vea lo que hacen los grandes</span></a>
+          <a href="app.html?abrir=liq" data-abrir="liq"><b>Smart Levels</b><span>Dónde comprar y dónde vender</span></a>
+          <a href="app.html?abrir=tools" data-abrir="tools"><b>Tools</b><span>Alertas, colector de polvo y gráfica limpia</span></a>
         </div>
       </div>
 
-      <div class="nav__i"><a class="nav__b" href="app.html?abrir=market">Market P2P</a></div>
+      <div class="nav__i"><a class="nav__b" href="app.html?abrir=market" data-abrir="market">Market P2P</a></div>
 
       <div class="nav__i">
         <button class="nav__b" type="button">Más <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
         <div class="menu">
-          <a href="app.html?abrir=swap"><b>Swap</b><span>Intercambia entre activos al momento</span></a>
-          <a href="app.html?abrir=academy"><b>Academia</b><span>Formación con acceso por contrato</span></a>
-          <a href="app.html?abrir=prize"><b>Prize Pool</b><span>Sorteo con aleatoriedad verificable</span></a>
-          <a href="app.html?abrir=perfil"><b>Mi perfil</b><span>Permisos, gas y suscripción</span></a>
+          <a href="app.html?abrir=swap" data-abrir="swap"><b>Swap</b><span>Intercambia entre activos al momento</span></a>
+          <a href="app.html?abrir=academy" data-abrir="academy"><b>Academia</b><span>Formación con acceso por contrato</span></a>
+          <a href="app.html?abrir=prize" data-abrir="prize"><b>Prize Pool</b><span>Sorteo con aleatoriedad verificable</span></a>
+          <a href="app.html?abrir=perfil" data-abrir="perfil"><b>Mi perfil</b><span>Permisos, gas y suscripción</span></a>
         </div>
       </div>
     </nav>
@@ -492,7 +519,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
     </div>
 
     <div class="hdr__a">
-      <a class="btn ghost" href="app.html?abrir=conectar">Conectar wallet</a>
+      <button class="btn ghost" id="wchip" type="button">Conectar wallet</button>
       <a class="btn" href="app.html?abrir=instalar" data-inst>Instalar app</a>
       <button class="burger" type="button" aria-label="Menú"><svg width="18" height="20" viewBox="0 0 20 22"><use href="#bur"/></svg></button>
     </div>
@@ -516,7 +543,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
         quieras.
       </p>
       <div class="acts">
-        <a class="btn big" href="app.html?abrir=conectar"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</a>
+        <button class="btn big" data-conectar type="button"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</button>
         <a class="btn big ghost" href="app.html?abrir=instalar" data-inst><svg width="16" height="16" viewBox="0 0 20 20"><use href="#dl"/></svg>Instalar app</a>
       </div>
     </div>
@@ -553,7 +580,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
           Todo se calcula en tu navegador sobre velas y profundidad reales, sin
           intermediarios y sin retrasos añadidos.
         </p>
-        <a class="lnk" href="app.html?abrir=liq">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+        <a class="lnk" href="app.html?abrir=liq" data-abrir="liq">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
       </div>
 
       <div class="shots rise">
@@ -633,7 +660,6 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
   <div class="wrap"><div class="split">
 
     <div class="duo rise" aria-hidden="true">
-      <img src="assets/portada/img/app-inicio.webp" alt="">
       <img src="assets/portada/img/app-cta.webp" alt="">
     </div>
 
@@ -648,19 +674,19 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
           <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bar"/></svg></div>
           <div><b>Bots automáticos</b><span>Smart Grid, Accumulator,<br>Cash Out y DCA</span></div>
         </a>
-        <a class="feat" href="app.html?abrir=swap">
+        <a class="feat" href="app.html?abrir=swap" data-abrir="swap">
           <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#swp"/></svg></div>
           <div><b>Swap integrado</b><span>Intercambia entre activos<br>sin salir de la plataforma</span></div>
         </a>
-        <a class="feat" href="app.html?abrir=market">
+        <a class="feat" href="app.html?abrir=market" data-abrir="market">
           <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#usr"/></svg></div>
           <div><b>Marketplace P2P</b><span>Compra y vende con confianza,<br>tramos y disputas</span></div>
         </a>
-        <a class="feat" href="app.html?abrir=liq">
+        <a class="feat" href="app.html?abrir=liq" data-abrir="liq">
           <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#rdr"/></svg></div>
           <div><b>Herramientas de análisis</b><span>Smart Levels, Lógica Estructural<br>y Liquidity Pools</span></div>
         </a>
-        <a class="feat" href="app.html?abrir=academy">
+        <a class="feat" href="app.html?abrir=academy" data-abrir="academy">
           <div class="feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bok"/></svg></div>
           <div><b>Academia</b><span>Formación con acceso<br>gestionado por contrato</span></div>
         </a>
@@ -690,7 +716,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
         enviaremos por mensaje: si alguien te pasa una dirección diciendo que es
         nuestra, desconfía.
       </p>
-      <a class="lnk" href="app.html?abrir=perfil">Ver los contratos en la app <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+      <a class="lnk" href="app.html?abrir=perfil" data-abrir="perfil">Ver los contratos en la app <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
     </div>
 
     <div class="stats rise">
@@ -711,7 +737,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
       <h2>Conecta tu wallet y<br>mira la plataforma por dentro.</h2>
       <p class="body">No hay registro ni formulario. Conectas, lo ves todo, y decides después. Puedes desconectarte en cualquier momento.</p>
       <div class="acts">
-        <a class="btn big" href="app.html?abrir=conectar"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</a>
+        <button class="btn big" data-conectar type="button"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</button>
       </div>
     </div>
   </div>
@@ -737,15 +763,15 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
       <div><h4>Producto</h4><ul>
         <li><a href="#activos">Mercados</a></li>
         <li><a href="app.html">Bots</a></li>
-        <li><a href="app.html?abrir=swap">Swap</a></li>
-        <li><a href="app.html?abrir=market">Market P2P</a></li>
-        <li><a href="app.html?abrir=liq">Liquidity Pools</a></li>
+        <li><a href="app.html?abrir=swap" data-abrir="swap">Swap</a></li>
+        <li><a href="app.html?abrir=market" data-abrir="market">Market P2P</a></li>
+        <li><a href="app.html?abrir=liq" data-abrir="liq">Liquidity Pools</a></li>
       </ul></div>
 
       <div><h4>Plataforma</h4><ul>
-        <li><a href="app.html?abrir=academy">Academia</a></li>
-        <li><a href="app.html?abrir=prize">Prize Pool</a></li>
-        <li><a href="app.html?abrir=perfil">Mi perfil</a></li>
+        <li><a href="app.html?abrir=academy" data-abrir="academy">Academia</a></li>
+        <li><a href="app.html?abrir=prize" data-abrir="prize">Prize Pool</a></li>
+        <li><a href="app.html?abrir=perfil" data-abrir="perfil">Mi perfil</a></li>
         <li><a href="app.html?abrir=instalar" data-inst>Instalar app</a></li>
       </ul></div>
 
@@ -770,6 +796,69 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
     </div>
   </div>
 </footer>
+
+</div><!-- /#pt -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     ASISTENTE
+     El mismo de la app, con el mismo botón y la misma carga diferida:
+     pesa unos 210 KB y nadie lo necesita en el primer segundo. Se dibuja
+     el botón desde ya para que se vea que existe, y al tocarlo (o a los
+     dos segundos de estar la página lista) se carga el asistente real.
+     ══════════════════════════════════════════════════════════════════ -->
+<style>
+  #np-fab-previo{position:fixed;right:20px;bottom:20px;z-index:200;display:grid;place-items:center;
+    width:54px;height:54px;padding:0;border-radius:50%;cursor:pointer;border:1px solid #c79426;
+    background:linear-gradient(180deg,rgba(255,255,255,.3),transparent 55%),linear-gradient(180deg,#f7db8d,#E8B84B 45%,#c79426);
+    box-shadow:0 6px 20px rgba(0,0,0,.5);color:#3a2800}
+  #np-fab-previo svg{width:23px;height:23px}
+  #np-fab-previo:active{transform:translateY(2px)}
+  @media (prefers-reduced-motion:no-preference){
+    #np-fab-previo{animation:npLat 3.4s ease-in-out 1.5s infinite}
+  }
+  @keyframes npLat{0%,100%{box-shadow:0 6px 20px rgba(0,0,0,.5),0 0 0 0 rgba(232,184,75,.45)}
+    50%{box-shadow:0 6px 20px rgba(0,0,0,.5),0 0 0 12px rgba(232,184,75,0)}}
+</style>
+<button id="np-fab-previo" aria-label="Abrir el asistente" type="button">
+  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+    <path d="M20 2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4v3.2a.8.8 0 0 0 1.3.62L13.5 18H20a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+    <circle cx="8" cy="10" r="1.15" fill="currentColor"/><circle cx="12" cy="10" r="1.15" fill="currentColor"/><circle cx="16" cy="10" r="1.15" fill="currentColor"/>
+  </svg>
+</button>
+<script>
+(function () {
+  var puesto = false;
+  function cargar() {
+    if (puesto) return; puesto = true;
+    ['assets/js/asistente/conocimiento.js?v=125',
+     'assets/js/asistente/motor.js?v=125'].forEach(function (src, i) {
+      if (i) return;
+      var c = document.createElement('script'); c.src = src;
+      c.onload = function () {
+        var m = document.createElement('script');
+        m.src = 'assets/js/asistente/motor.js?v=125';
+        document.body.appendChild(m);
+      };
+      document.body.appendChild(c);
+    });
+  }
+  var previo = document.getElementById('np-fab-previo');
+  previo.addEventListener('click', function () {
+    previo.style.opacity = '.5';
+    cargar();
+    var t = setInterval(function () {
+      var real = document.getElementById('npFab');
+      if (!real) return;
+      clearInterval(t); previo.remove(); real.click();
+    }, 120);
+    setTimeout(function () { clearInterval(t); previo.style.opacity = ''; }, 12000);
+  });
+  ['pointerdown','keydown','touchstart'].forEach(function (ev) {
+    window.addEventListener(ev, cargar, { once: true, passive: true });
+  });
+  window.addEventListener('load', function () { setTimeout(cargar, 2000); });
+})();
+</script>
 
 
 <script>
@@ -852,8 +941,8 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
     var caja=document.getElementById('motes');
     if(!caja||quieto)return;
     var html='';
-    for(var i=0;i<8;i++){
-      var x=6+Math.random()*88, dur=20+Math.random()*16, esp=Math.random()*18, tam=2+Math.random()*2;
+    for(var i=0;i<14;i++){
+      var x=6+Math.random()*88, dur=16+Math.random()*14, esp=Math.random()*16, tam=3+Math.random()*2.5;
       html+='<i style="left:'+x.toFixed(1)+'%;width:'+tam.toFixed(1)+'px;height:'+tam.toFixed(1)
           +'px;animation-duration:'+dur.toFixed(1)+'s;animation-delay:-'+esp.toFixed(1)+'s"></i>';
     }
@@ -917,6 +1006,141 @@ h2{font-family:var(--disp);font-weight:700;font-size:clamp(23px,2.4vw,32px);line
     });
   });
 })();
+</script>
+<!-- ══════════════════════════════════════════════════════════════════════
+     LA APP, AQUÍ FUERA
+     Swap, Market P2P, Liquidity, Tools, Academia, Prize Pool y Perfil se
+     abren EN ESTA PÁGINA, con los mismos módulos que ya funcionan dentro.
+     No se ha copiado ni reescrito nada: se importan tal cual.
+
+     POR QUÉ FUNCIONA
+     Ninguno de esos módulos necesita el contenedor de los bots: cada uno
+     inyecta sus propios estilos y cuelga su ventana de <body>. Lo único
+     que les faltaba aquí era la hoja base (gridbot/estilos.js), que va
+     colgada de #colmena-app; por eso a <body> se le pone ese id. Esa hoja
+     solo define variables de color y toca <input> y <select>, así que no
+     puede desordenar la portada, que además vive aislada dentro de #pt.
+
+     SI ALGO FALLA
+     Cada enlace conserva su href real a app.html?abrir=…, así que si un
+     módulo no carga el visitante acaba en la misma sección de siempre.
+     La sección de los bots no se toca: sigue viviendo en app.html.
+     ══════════════════════════════════════════════════════════════════════ -->
+<script type="module">
+const V = '?v=125';
+const J = './assets/js/';
+
+let base = null;           // hoja de estilos común, una sola vez
+let W = null;              // módulo de wallet
+
+async function estiloBase() {
+  if (base) return base;
+  const m = await import(J + 'gridbot/estilos.js?v=1');
+  document.body.id = 'colmena-app';   // el ámbito que espera esa hoja
+  m.inyectarEstilo();
+  base = m;
+  return m;
+}
+
+async function wallet() {
+  if (!W) W = await import(J + 'wallet.js' + V);
+  return W;
+}
+
+/* Cada destino con su módulo y su función de apertura. */
+const PUERTAS = {
+  swap:    async () => { const m = await import(J + 'gridbot/swap.js?v=125');
+                         m.initSwap(conectar, () => {}); m.abrirSwap(); },
+  market:  async () => (await import(J + 'market.js' + V)).abrirMarket(),
+  liq:     async () => (await import(J + 'liquidity.js?v=126')).abrirLiquidity(),
+  tools:   async () => (await import(J + 'tools.js' + V)).abrirTools(),
+  academy: async () => (await import(J + 'academy.js' + V)).abrirAcademy(),
+  prize:   async () => (await import(J + 'prizepool.js' + V)).abrirPrizePool(),
+  perfil:  async () => (await import(J + 'perfil.js' + V)).abrirPerfil()
+};
+
+let cargando = false;
+async function abrir(destino, enlace) {
+  const puerta = PUERTAS[destino];
+  if (!puerta) return false;
+  if (cargando) return true;
+  cargando = true;
+  const antes = enlace ? enlace.style.opacity : '';
+  if (enlace) enlace.style.opacity = '.55';
+  try {
+    await estiloBase();
+    await puerta();
+    return true;
+  } catch (e) {
+    console.warn('[portada] no se pudo abrir', destino, e);
+    return false;                       // el enlace normal toma el relevo
+  } finally {
+    cargando = false;
+    if (enlace) enlace.style.opacity = antes;
+  }
+}
+
+/* Un solo oyente para toda la página. */
+document.addEventListener('click', async (e) => {
+  const a = e.target.closest('[data-abrir]');
+  if (!a) return;
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;  // abrir en pestaña nueva
+  e.preventDefault();
+  const ok = await abrir(a.getAttribute('data-abrir'), a);
+  if (!ok) location.href = a.getAttribute('href');
+});
+
+/* ── Wallet ─────────────────────────────────────────────────────────
+   La ficha de la cabecera refleja el estado real. Si ya conectaste en
+   otra visita, aquí aparece conectada sola: reconectarSiProcede() no
+   abre ninguna ventana, solo pregunta si ya hay permiso. */
+const chip = document.getElementById('wchip');
+
+async function conectar() {
+  const w = await wallet();
+  try { await w.conectar(); } catch (_) {}
+  pintar();
+}
+
+async function pintar() {
+  const w = await wallet();
+  const cta = w.cuentaActual();
+  if (!chip) return;
+
+  if (!cta) {
+    chip.className = 'btn ghost';
+    chip.textContent = 'Conectar wallet';
+    chip.onclick = conectar;
+    return;
+  }
+
+  const info = w.walletInfo();
+  const mala = !w.esRedCorrecta();
+  chip.className = 'btn ghost on' + (mala ? ' bad' : '');
+  chip.innerHTML = '<i></i>' + (info && info.name ? '<b>' + info.name + '</b>' : '')
+                 + (mala ? 'Red incorrecta' : w.abreviar(cta));
+  chip.onclick = mala
+    ? () => w.cambiarARedCorrecta().catch(() => {})
+    : async () => { await estiloBase(); (await import(J + 'perfil.js' + V)).abrirPerfil(); };
+}
+
+(async () => {
+  try {
+    const w = await wallet();
+    w.alCambiar(pintar);
+    await w.reconectarSiProcede();
+    pintar();
+  } catch (e) { console.warn('[portada] wallet:', e); }
+})();
+
+/* Los botones grandes de "Conectar wallet" del cuerpo. */
+document.querySelectorAll('[data-conectar]').forEach((b) => {
+  b.addEventListener('click', conectar);
+});
+
+/* Si se llega con ?abrir=… desde fuera, se abre esa sección al entrar. */
+const pedido = new URLSearchParams(location.search).get('abrir');
+if (pedido && PUERTAS[pedido]) abrir(pedido, null);
 </script>
 </body>
 </html>
