@@ -522,52 +522,11 @@ try {
 } catch (e) { console.warn('[portada] luz de monedas:', e); }
 
 
-/* ══════════════════════════════════════════════════════════════════════
-   7 · PRECIOS REALES
-   Se piden una sola vez, y solo al llegar a esa sección. Si la petición
-   falla se quedan los guiones: nunca se inventa un número.
-   ══════════════════════════════════════════════════════════════════════ */
-try {
-  const caja = $('px');
-  const traer = () => {
-    fetch('https://api.coingecko.com/api/v3/simple/price'
-        + '?ids=bitcoin,ethereum,binancecoin,solana,ripple'
-        + '&vs_currencies=usd&include_24hr_change=true', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d) return;
-        caja.querySelectorAll('[data-px]').forEach((el) => {
-          const m = d[el.dataset.px];
-          if (!m || typeof m.usd !== 'number') return;
-          const dec = m.usd < 10 ? 4 : 2;
-          el.textContent = '$' + m.usd.toLocaleString('en-US',
-            { minimumFractionDigits: dec, maximumFractionDigits: dec });
-        });
-        caja.querySelectorAll('[data-ch]').forEach((el) => {
-          const m = d[el.dataset.ch];
-          const c = m && m.usd_24h_change;
-          if (typeof c !== 'number') return;
-          el.textContent = (c >= 0 ? '+' : '−') + Math.abs(c).toFixed(2) + '%';
-          el.className = c >= 0 ? 'up' : 'down';
-        });
-      })
-      .catch(() => {});
-  };
-  if (caja) {
-    if ('IntersectionObserver' in window) {
-      const ip = new IntersectionObserver((e) => {
-        if (!e[0].isIntersecting) return;
-        ip.disconnect(); traer();
-      }, { rootMargin: '250px' });
-      ip.observe(caja);
-    } else traer();
-  }
-} catch (e) { console.warn('[portada] precios:', e); }
 
 
 
 /* ══════════════════════════════════════════════════════════════════════
-   8 · BUSCADOR E INSTALAR
+   7 · INSTALAR
    ══════════════════════════════════════════════════════════════════════ */
 /* Instalar: se abre el panel de extras.js, el mismo de dentro, con sus
    instrucciones y su código QR. Nada de recrearlo. */
@@ -596,7 +555,7 @@ try {
 
 
 /* ══════════════════════════════════════════════════════════════════════
-   9 · IDIOMA
+   8 · IDIOMA
    ══════════════════════════════════════════════════════════════════════
 
    Lo gestiona idioma.js, el módulo que ya existía. Aquí NO hay ningún
