@@ -593,3 +593,210 @@ try {
   const pedido = new URLSearchParams(location.search).get('abrir');
   if (pedido && PUERTAS[pedido]) abrir(pedido, null);
 } catch (_) {}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   9 · IDIOMA
+   ══════════════════════════════════════════════════════════════════════
+
+   La portada está escrita en INGLÉS de origen. Es lo más seguro: no
+   depende de que ningún diccionario acierte, y si este bloque fallara la
+   página seguiría en inglés, que es lo que hace falta por defecto.
+
+   El español se aplica solo si el visitante lo pide con el botón del pie.
+   La preferencia se guarda y se respeta en las siguientes visitas.
+
+   Las ventanas de la app (swap, market, liquidity…) se traducen con
+   idioma.js, el módulo que ya existe. Ese módulo arranca en inglés por su
+   cuenta, así que aquí solo se le dice que cambie cuando el visitante
+   elige español.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const LLAVE_IDIOMA = 'cco-portada-idioma';
+
+/* Inglés → Español. Solo lo que se ve en la portada. */
+const ES = {
+  'Pro Analysis': 'Análisis profesional',
+  'Buys and sells in levels': 'Compra y vende en niveles',
+  'Buys the dip, sells all at once': 'Compra en la caída y vende junto',
+  'Sells at the price you choose': 'Vende al precio que elijas',
+  'Buys a little every so often': 'Compra un poco cada cierto tiempo',
+  'Where the trapped money is': 'Dónde está el dinero atrapado',
+  'See what the big players do': 'Vea lo que hacen los grandes',
+  'Where to buy and where to sell': 'Dónde comprar y dónde vender',
+  'Tools': 'Herramientas',
+  'Academy': 'Academia',
+  'Events': 'Eventos',
+  'Install app': 'Instalar app',
+  'Connect wallet': 'Conectar wallet',
+  'Your gateway to the global market': 'Tu puerta al mercado global',
+  'Trading without limits,': 'Trading sin límites,',
+  'from': 'desde',
+  'your own wallet.': 'tu propia wallet.',
+  'Non-custodial': 'No custodial',
+  'Your funds never leave your wallet': 'Tus fondos no salen de tu wallet',
+  'Exact-amount allowance': 'Permiso por monto exacto',
+  'Never unlimited, and you revoke it': 'Nunca ilimitado, y lo revocas tú',
+  'No cut of your trades': 'Sin porcentaje nuestro',
+  'Only network gas and the DEX fee': 'Solo el gas y la comisión del DEX',
+  'No account, no KYC': 'Sin cuenta ni KYC',
+  'Your wallet is your only sign-up': 'Tu wallet es tu único registro',
+  'Professional trading': 'Trading profesional',
+  'High-frequency tools': 'Herramientas de alta frecuencia',
+  'that show the real market.': 'que enseñan el mercado real.',
+  'Open Liquidity': 'Abrir Liquidity',
+  'where the trapped money is': 'dónde está el dinero atrapado',
+  'see what the big players do': 'vea lo que hacen los grandes',
+  'where to buy and where to sell': 'dónde comprar y dónde vender',
+  'Automatic execution': 'Ejecución automática',
+  'Truly non-custodial': 'Sin custodia, de verdad',
+  'Borderless access': 'Acceso sin fronteras',
+  'Web and mobile': 'Web y móvil',
+  'Assets': 'Activos',
+  'Digital assets': 'Activos digitales',
+  'for a world without borders.': 'para un mundo sin fronteras.',
+  'View all markets': 'Ver todos los mercados',
+  'More than bots,': 'Más que bots,',
+  'your whole crypto ecosystem.': 'es tu ecosistema cripto.',
+  'Trade, analyse, swap and learn.': 'Opera, analiza, intercambia y aprende.',
+  'All in one platform, without leaving your wallet.': 'Todo en una sola plataforma, sin salir de tu wallet.',
+  'Automated bots': 'Bots automáticos',
+  'Cash Out and DCA': 'Cash Out y DCA',
+  'Built-in swap': 'Swap integrado',
+  'Exchange between assets': 'Intercambia entre activos',
+  'without leaving the platform': 'sin salir de la plataforma',
+  'P2P marketplace': 'Marketplace P2P',
+  'Buy and sell with escrow,': 'Compra y vende con confianza,',
+  'tranches and dispute handling': 'tramos y disputas',
+  'Analysis tools': 'Herramientas de análisis',
+  'Smart Levels, Structural Logic': 'Smart Levels, Lógica Estructural',
+  'and Liquidity Pools': 'y Liquidity Pools',
+  'Training with access': 'Formación con acceso',
+  'managed by contract': 'gestionado por contrato',
+  'Get started': 'Comenzar ahora',
+  'Transparency': 'Transparencia',
+  'Trust you': 'Confianza que',
+  'can verify yourself.': 'se puede verificar.',
+  'View the contracts in the app': 'Ver los contratos en la app',
+  'Public verifiable contracts': 'Contratos públicos verificables',
+  'Tradable assets': 'Activos operables',
+  'Built-in swap to exchange coins': 'Swap para intercambiar monedas',
+  'Funds held in our custody': 'Fondos bajo nuestra custodia',
+  'Start in minutes': 'Empieza en minutos',
+  'Connect your wallet and': 'Conecta tu wallet y',
+  'look inside the platform.': 'mira la plataforma por dentro.',
+  'Product': 'Producto',
+  'Platform': 'Plataforma',
+  'Support': 'Soporte',
+  'Questions, issues and news on our Telegram channel.': 'Dudas, incidencias y novedades en el canal de Telegram.',
+  'Open Telegram': 'Abrir Telegram',
+  'Non-custodial platform · BNB Smart Chain': 'Plataforma no custodial · BNB Smart Chain'
+};
+
+/* Los textos largos van aparte: se comparan ya normalizados porque en el
+   HTML están partidos en varias líneas con sangría. */
+const ES_LARGOS = [
+  ['Trade, invest and grow your digital assets on a non-custodial platform built on BNB Smart Chain. Your money never changes hands: the bots work with an exact-amount allowance that you can revoke whenever you want.',
+   'Opera, invierte y haz crecer tus activos digitales en una plataforma no custodial sobre BNB Smart Chain. Tu dinero nunca cambia de dueño: los bots trabajan con un permiso de monto exacto que puedes revocar cuando quieras.'],
+  ['Price does not move on its own: liquidity moves it. Our tools read the volume inside every order block and the live book to show where money is trapped, which large orders are real and which are smoke.',
+   'El precio no se mueve solo: lo mueve la liquidez. Nuestras herramientas leen el volumen dentro de cada bloque de órdenes y el libro en vivo para mostrar dónde hay dinero atrapado, qué órdenes grandes son reales y cuáles son humo.'],
+  ['Everything is computed in your browser from real candles and real depth, with no middlemen and no added delay.',
+   'Todo se calcula en tu navegador sobre velas y profundidad reales, sin intermediarios y sin retrasos añadidos.'],
+  ['The liquidation map: the prices where positions sit waiting to be swept. Price goes looking for them.',
+   'El mapa de liquidaciones: los precios donde hay posiciones esperando a ser barridas. El precio va a buscarlas.'],
+  ['The order book lies: most large orders are fake. We watch every one and tell you which have real money behind them.',
+   'El libro de órdenes miente: la mayoría de las órdenes grandes son falsas. Vigilamos cada una y le decimos cuáles tienen dinero real detrás.'],
+  ['Reads market structure and draws the exact entry and exit levels on the chart, explaining why at every step.',
+   'Analiza la estructura del mercado y dibuja los niveles exactos de entrada y salida sobre la gráfica, explicándole por qué en cada momento.'],
+  ['A service watches the price and fires your orders even with your phone switched off.',
+   'Un servicio vigila el precio y dispara tus órdenes aunque tengas el teléfono apagado.'],
+  ['No deposits, no account balance. The contract can only move what you authorised.',
+   'No hay depósito ni saldo en cuenta. El contrato solo mueve lo que autorizaste.'],
+  ['No sign-up, no documents, no approval. Connect your wallet and you are in.',
+   'Sin registro, sin documentos y sin aprobación. Conectas tu wallet y estás dentro.'],
+  ['The same platform on desktop and phone, installable as an app.',
+   'La misma plataforma en el ordenador y en el teléfono, instalable como aplicación.'],
+  ['From the major cryptocurrencies to the BNB Chain ecosystem tokens: 26 tradable assets against USDT and USDC, with PancakeSwap V3 liquidity.',
+   'Desde las principales criptomonedas hasta los tokens del ecosistema BNB Chain: 26 activos operables contra USDT y USDC, con liquidez de PancakeSwap V3.'],
+  ['Everything the platform does is written in public contracts on BNB Smart Chain. You can read them and check for yourself what they can and cannot do.',
+   'Todo lo que hace la plataforma está escrito en contratos públicos sobre BNB Smart Chain. Puedes leerlos y comprobar tú mismo qué pueden y qué no pueden hacer.'],
+  ['The official addresses are shown', 'Las direcciones oficiales se muestran'],
+  ['inside the app', 'dentro de la aplicación'],
+  [', with your wallet already connected. We never post them loose and we will never send them by message: if someone hands you an address claiming it is ours, do not trust it.',
+   ', con tu wallet ya conectada. Nunca las publicamos sueltas ni te las enviaremos por mensaje: si alguien te pasa una dirección diciendo que es nuestra, desconfía.'],
+  ['No sign-up, no forms. Connect, see everything, decide afterwards. You can disconnect at any time.',
+   'No hay registro ni formulario. Conectas, lo ves todo, y decides después. Puedes desconectarte en cualquier momento.'],
+  ['Automated trading in your own wallet. You stay in control of your assets.',
+   'Trading automático en tu propia wallet. Tú controlas tus activos.'],
+  ['Trading crypto carries risk. A bot organises and executes your trades, but it does not predict the market and guarantees no profit. You can lose part or all of what you invest. Only trade with money you can afford to lose. This platform is non-custodial: you are solely responsible for the custody of your wallet and your keys.',
+   'Operar con criptomonedas conlleva riesgo. Un bot ordena y ejecuta tus operaciones, pero no predice el mercado y no garantiza ganancias. Puedes perder parte o la totalidad de lo que inviertas. Opera solo con dinero que puedas permitirte perder. Esta plataforma es no custodial: tú eres el único responsable de la custodia de tu wallet y de tus claves.']
+];
+
+const aplanar = (t) => t.replace(/\s+/g, ' ').trim();
+
+/* Cada nodo de texto guarda su original la primera vez que se toca, así
+   volver al inglés es exacto y no depende de traducir en sentido inverso. */
+function traducirPortada(aEspanol) {
+  const raiz = document.getElementById('pt');
+  if (!raiz) return;
+
+  const largos = new Map(ES_LARGOS.map(([en, es]) => [aplanar(en), es]));
+  const paseo = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      const p = n.parentNode;
+      if (!p || /SCRIPT|STYLE|CANVAS/.test(p.nodeName)) return NodeFilter.FILTER_REJECT;
+      return n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    }
+  });
+
+  const nodos = [];
+  let n;
+  while ((n = paseo.nextNode())) nodos.push(n);
+
+  nodos.forEach((nodo) => {
+    if (nodo.__en === undefined) nodo.__en = nodo.nodeValue;
+    if (!aEspanol) { nodo.nodeValue = nodo.__en; return; }
+
+    const crudo = nodo.__en;
+    const limpio = crudo.trim();
+    const es = ES[limpio] || largos.get(aplanar(crudo));
+    if (!es) return;
+
+    // Se conserva la sangría original para no descuadrar el HTML.
+    const antes = crudo.match(/^\s*/)[0];
+    const despues = crudo.match(/\s*$/)[0];
+    nodo.nodeValue = antes + es + despues;
+  });
+
+  document.documentElement.lang = aEspanol ? 'es' : 'en';
+  const tx = $('pt-lang-tx');
+  if (tx) tx.textContent = aEspanol ? 'English' : 'Español';
+}
+
+/* Las ventanas de la app, con el módulo que ya existe. */
+async function idiomaApp(id) {
+  try {
+    const idi = await import(J + 'idioma.js?v=126');
+    idi.cambiarIdioma(id);
+  } catch (e) { console.warn('[portada] idioma app:', e); }
+}
+
+try {
+  let esp = false;
+  try { esp = localStorage.getItem(LLAVE_IDIOMA) === 'es'; } catch (_) {}
+
+  if (esp) traducirPortada(true);
+  else {
+    const tx = $('pt-lang-tx');
+    if (tx) tx.textContent = 'Español';
+  }
+  idiomaApp(esp ? 'es' : 'en');
+
+  const bot = $('pt-lang');
+  if (bot) bot.addEventListener('click', () => {
+    esp = !esp;
+    try { localStorage.setItem(LLAVE_IDIOMA, esp ? 'es' : 'en'); } catch (_) {}
+    traducirPortada(esp);
+    idiomaApp(esp ? 'es' : 'en');
+  });
+} catch (e) { console.warn('[portada] idioma:', e); }
