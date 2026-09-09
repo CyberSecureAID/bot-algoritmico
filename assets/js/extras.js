@@ -50,6 +50,31 @@ function avisoCopiado() {
   setTimeout(() => d.remove(), 2600);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   INSTALACIÓN DIRECTA (añadida para la portada)
+   Dispara la instalación de la PWA sin ninguna ventana intermedia.
+   - Si el navegador ya ofreció instalar (tenemos _instalador), llama a
+     prompt() directamente: aparece el diálogo nativo del sistema.
+   - Si aún no lo ofrece o ya está instalada, comparte el enlace, que es
+     lo útil en ese caso (y lo que hace la app en el móvil).
+   No modifica nada del flujo anterior: panelInstalar y las ventanas
+   siguen intactas por si se usan en otro sitio.
+   ══════════════════════════════════════════════════════════════ */
+export async function instalarAhora() {
+  // En el teléfono la instalación no pasa por prompt(): se comparte.
+  if (/android|iphone|ipad|ipod/i.test(navigator.userAgent)) { return compartirEnlace(); }
+  if (yaInstalada()) { return compartirEnlace(); }
+  if (_instalador) {
+    _instalador.prompt();
+    try { await _instalador.userChoice; } catch (_) {}
+    _instalador = null;
+    return true;
+  }
+  // El navegador todavía no lo permite (hace falta interacción previa o no
+  // cumple criterios): se comparte el enlace para no dejar el botón muerto.
+  return compartirEnlace();
+}
+
 export function panelInstalar(ancla) {
   // En el teléfono no ofrecemos instalar: compartimos el enlace, que es lo útil.
   if (/android|iphone|ipad|ipod/i.test(navigator.userAgent)) { compartirEnlace(); return; }

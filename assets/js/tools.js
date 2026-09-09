@@ -114,9 +114,17 @@ export function abrirGraficaLimpia(coinId) {
   abrirWidget('grafica');
 }
 
-export function abrirTools() {
+export function abrirTools(tid) {
   estilos();
   const prev = $('tl-overlay'); if (prev) prev.remove();
+
+  // Acceso directo a una herramienta (desde el submenú de la portada).
+  // Se abre esa herramienta y NO se muestra la lista de Tools.
+  if (tid) {
+    if (tid === 'polvo') return abrirPolvo();
+    if (tid === 'alertas') return abrirAlertas();
+    return abrirWidget(tid);
+  }
 
   const d = document.createElement('div');
   d.id = 'tl-overlay';
