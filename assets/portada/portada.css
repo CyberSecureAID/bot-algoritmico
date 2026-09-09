@@ -117,11 +117,6 @@ body{overflow-x:hidden}
 #pt .menu a:hover{background:rgba(232,184,75,.07)}
 #pt .menu b{display:block;font-size:13.5px;font-weight:600}
 #pt .menu span{display:block;font-size:12px;line-height:1.42;color:var(--ink3);margin-top:1px}
-#pt .find{display:flex;align-items:center;gap:8px;flex:1 1 auto;max-width:250px;margin-left:auto;padding:7px 12px;background:var(--lift);border:1px solid var(--line);border-radius:9px;transition:border-color .18s}
-#pt .find:focus-within{border-color:var(--gold-lo)}
-#pt .find svg{width:14px;height:14px;color:var(--ink4);flex:0 0 auto}
-#pt .find input, #colmena-app .find input{width:100%;border-radius:0;height:auto;font:inherit;font-size:13px;color:var(--ink);background:none;border:0;outline:none}
-#pt .find input::placeholder{color:var(--ink4)}
 #pt .hdr__a{display:flex;align-items:center;gap:9px;flex:0 0 auto}
 /* Ficha de wallet: mientras no hay cuenta es un botón normal; en cuanto
    hay una, muestra el nombre de la wallet y la dirección abreviada. */
@@ -176,13 +171,19 @@ body{overflow-x:hidden}
 #pt .art{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}
 #pt .art::after{
   content:"";position:absolute;inset:0;
-  background:linear-gradient(90deg,rgba(11,14,17,.92) 0%,rgba(11,14,17,.66) 38%,rgba(11,14,17,.14) 74%,transparent 100%);
+  background:
+    linear-gradient(90deg,rgba(11,14,17,.92) 0%,rgba(11,14,17,.66) 38%,rgba(11,14,17,.14) 74%,transparent 100%),
+    linear-gradient(180deg,var(--bg) 0%,transparent 16%,transparent 84%,var(--bg) 100%);
 }
 #pt .art.soft::after{
-  background:linear-gradient(90deg,rgba(11,14,17,.46) 0%,rgba(11,14,17,.16) 42%,rgba(11,14,17,.4) 100%);
+  background:
+    linear-gradient(90deg,rgba(11,14,17,.46) 0%,rgba(11,14,17,.16) 42%,rgba(11,14,17,.4) 100%),
+    linear-gradient(180deg,var(--bg) 0%,transparent 15%,transparent 85%,var(--bg) 100%);
 }
 #pt .art.right::after{
-  background:linear-gradient(270deg,rgba(11,14,17,.92) 0%,rgba(11,14,17,.66) 38%,rgba(11,14,17,.14) 74%,transparent 100%);
+  background:
+    linear-gradient(270deg,rgba(11,14,17,.92) 0%,rgba(11,14,17,.66) 38%,rgba(11,14,17,.14) 74%,transparent 100%),
+    linear-gradient(180deg,var(--bg) 0%,transparent 16%,transparent 84%,var(--bg) 100%);
 }
 
 /* ── Hero ──────────────────────────────────────────────────────── */
@@ -338,6 +339,16 @@ body{overflow-x:hidden}
 
 /* ── Cierre ────────────────────────────────────────────────────── */
 #pt .end{position:relative;overflow:hidden}
+/* El cierre y el pie se tocan: sin este fundido la foto del cierre
+   terminaba en línea recta justo encima del pie. */
+#pt .end .art::after{
+  background:
+    linear-gradient(90deg,rgba(11,14,17,.92) 0%,rgba(11,14,17,.66) 38%,rgba(11,14,17,.14) 74%,transparent 100%),
+    linear-gradient(180deg,transparent 0%,transparent 82%,var(--bg2) 100%);
+}
+#pt .foot .art::after{
+  background:linear-gradient(180deg,var(--bg2) 0%,rgba(9,12,16,.72) 26%,rgba(9,12,16,.8) 100%);
+}
 #pt .end__in{position:relative;z-index:2;max-width:min(560px,100%);padding:clamp(58px,6.5vw,100px) 0}
 
 /* ── Pie ───────────────────────────────────────────────────────── */
@@ -364,10 +375,10 @@ body{overflow-x:hidden}
 }
 
 /* ── Adaptación ────────────────────────────────────────────────── */
-@media(max-width:1100px){#pt .find{max-width:180px}
+@media(max-width:1100px){
 #pt .nav__b{padding:8px 9px;font-size:13px}
 }
-@media(max-width:1000px){#pt .nav, #pt .find{display:none}
+@media(max-width:1000px){#pt .nav{display:none}
 #pt .burger{display:flex}
 #pt .hdr__a{margin-left:auto}
 }

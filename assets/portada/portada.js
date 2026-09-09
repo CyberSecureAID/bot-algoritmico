@@ -55,9 +55,12 @@ let W = null;
 
 async function estiloBase() {
   if (baseLista) return;
-  const m = await import(J + 'gridbot/estilos.js?v=1');
+  const [est, util] = await Promise.all([
+    import(J + 'gridbot/estilos.js?v=1'),
+    import(J + 'gridbot/util.js?v=1')
+  ]);
   document.body.id = 'colmena-app';        // el ámbito que espera esa hoja
-  m.inyectarEstilo();
+  est.inyectarEstilo(util.tipoNum);        // ← lleva argumento, igual que en la app
   baseLista = true;
 }
 
@@ -349,114 +352,65 @@ function brasas(lienzo) {
   const g = lienzo.getContext('2d', { alpha: true });
   if (!g) return;
 
-  /* ── Por qué esta versión va fluida y la anterior no ────────────────
-     La anterior pintaba bonito y se arrastraba. Dos culpables, los dos
-     dentro del bucle de cada fotograma:
+  /* ── Chispas ────────────────────────────────────────────────────────
+     Puntos nítidos con un halo corto, subiendo despacio y balanceándose.
+     Sin haces de luz: los quité porque ensuciaban las fotos.
 
-       · ctx.filter = 'blur(26px)' para los haces. Un desenfoque de canvas
-         es de lo más caro que existe, y se hacía tres veces por cuadro.
-       · shadowBlur en cada mota para el halo. Otro desenfoque, esta vez
-         cien veces por cuadro.
-
-     Con eso el navegador no llegaba a los 60 fotogramas ni de lejos, y
-     como el scroll comparte hilo con el dibujo, la página se sentía
-     atascada. La luz parecía ir a dos imágenes por segundo porque
-     literalmente iba a eso.
-
-     La solución es la de siempre en gráficos: NO desenfocar en vivo.
-       · La mota se dibuja UNA vez en una miniatura aparte, con su halo ya
-         hecho, y luego solo se copia y se escala. Copiar es baratísimo.
-       · Los haces se dibujan UNA vez en un lienzo aparte, ya desenfocados,
-         y en cada cuadro solo se copian con más o menos opacidad.
-
-     Resultado: el bucle solo hace copias. Ni un desenfoque, ni una sombra.
+     Rápido porque no se desenfoca nada en vivo: la chispa se dibuja UNA
+     vez en una miniatura con su halo ya hecho, y en cada fotograma solo
+     se copia y se escala. Copiar es baratísimo; desenfocar en cada cuadro
+     era lo que hacía el scroll a tirones.
      ─────────────────────────────────────────────────────────────────── */
 
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   const densidad = Number(lienzo.dataset.n || 60);
-  const tono = lienzo.dataset.tono || '244,208,137';
+  const tono = lienzo.dataset.tono || '246,214,150';
 
-  let an = 0, al = 0, motas = [], vivo = false, lazo = 0, antes = 0;
-  let capaLuz = null;                 // haces ya desenfocados
-  let sprite = null, spR = 0;         // mota ya dibujada con su halo
+  let an = 0, al = 0, chispas = [], vivo = false, lazo = 0, antes = 0;
+  let sprite = null;
+  const SP = 24;
 
   const entre = (a, b) => a + Math.random() * (b - a);
 
   // Tres profundidades: [radio, velocidad, alfa]
   const PLANOS = [
-    { r: [0.5, 1.1], v: [3, 7],   a: [0.10, 0.22] },
-    { r: [0.9, 1.8], v: [7, 14],  a: [0.18, 0.40] },
-    { r: [1.5, 3.0], v: [12, 24], a: [0.32, 0.66] }
+    { r: [0.45, 0.85], v: [3, 7],   a: [0.16, 0.34] },
+    { r: [0.70, 1.20], v: [7, 14],  a: [0.28, 0.55] },
+    { r: [1.10, 1.80], v: [12, 24], a: [0.45, 0.85] }
   ];
 
   function nacer(abajo) {
     const d = Math.random();
-    const p = PLANOS[d < 0.5 ? 0 : d < 0.84 ? 1 : 2];
+    const p = PLANOS[d < 0.48 ? 0 : d < 0.83 ? 1 : 2];
     return {
       x: Math.random() * an,
-      y: abajo ? al + 14 : Math.random() * al,
+      y: abajo ? al + 12 : Math.random() * al,
       r: entre(p.r[0], p.r[1]),
       v: entre(p.v[0], p.v[1]),
       a: entre(p.a[0], p.a[1]),
       f: 0.25 + Math.random() * 0.7,
-      amp: 5 + Math.random() * 22,
-      pf: 0.5 + Math.random() * 1.6,
+      amp: 5 + Math.random() * 20,
+      pf: 0.6 + Math.random() * 1.8,
       t: Math.random() * 100,
-      brasa: Math.random() < 0.16
+      brasa: Math.random() < 0.2
     };
   }
 
-  /* La mota, dibujada una sola vez. Un degradado radial hace de halo, así
-     que no hace falta sombra en cada cuadro. */
+  /* El núcleo ocupa la cuarta parte del sprite: por eso se ve como una
+     chispa con brillo y no como una mancha de polvo. */
   function hacerSprite() {
-    spR = 26;
     const c = document.createElement('canvas');
-    c.width = c.height = spR * 2;
+    c.width = c.height = SP * 2;
     const x = c.getContext('2d');
-    const gr = x.createRadialGradient(spR, spR, 0, spR, spR, spR);
-    gr.addColorStop(0.00, 'rgba(' + tono + ',1)');
-    gr.addColorStop(0.16, 'rgba(' + tono + ',.9)');
-    gr.addColorStop(0.42, 'rgba(' + tono + ',.28)');
+    const gr = x.createRadialGradient(SP, SP, 0, SP, SP, SP);
+    gr.addColorStop(0.00, 'rgba(255,246,225,1)');
+    gr.addColorStop(0.22, 'rgba(' + tono + ',.95)');
+    gr.addColorStop(0.34, 'rgba(' + tono + ',.34)');
+    gr.addColorStop(0.62, 'rgba(' + tono + ',.07)');
     gr.addColorStop(1.00, 'rgba(' + tono + ',0)');
     x.fillStyle = gr;
-    x.fillRect(0, 0, spR * 2, spR * 2);
+    x.fillRect(0, 0, SP * 2, SP * 2);
     sprite = c;
-  }
-
-  /* Los haces, dibujados una sola vez y ya desenfocados. Después solo se
-     copian con distinta opacidad para que "respiren". */
-  function hacerLuz() {
-    const c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round(an));
-    c.height = Math.max(1, Math.round(al));
-    const x = c.getContext('2d');
-
-    const cuantos = an < 760 ? 2 : 3;
-    for (let i = 0; i < cuantos; i++) {
-      const cx = an * (0.18 + 0.3 * i + Math.random() * 0.08);
-      const ancho = an * entre(0.16, 0.28);
-      const incl = entre(-0.30, -0.10);
-      const arriba = cx - al * 0.5 * Math.tan(incl);
-      const abajo  = cx + al * 0.5 * Math.tan(incl);
-
-      const gr = x.createLinearGradient(arriba, 0, abajo, al);
-      gr.addColorStop(0, 'rgba(' + tono + ',.20)');
-      gr.addColorStop(0.55, 'rgba(' + tono + ',.085)');
-      gr.addColorStop(1, 'rgba(' + tono + ',0)');
-
-      x.save();
-      x.filter = 'blur(30px)';        // UNA vez en toda la vida del lienzo
-      x.beginPath();
-      x.moveTo(arriba - ancho * 0.30, 0);
-      x.lineTo(arriba + ancho * 0.30, 0);
-      x.lineTo(abajo  + ancho * 0.75, al);
-      x.lineTo(abajo  - ancho * 0.75, al);
-      x.closePath();
-      x.fillStyle = gr;
-      x.fill();
-      x.restore();
-    }
-    capaLuz = c;
   }
 
   function medir() {
@@ -466,13 +420,9 @@ function brasas(lienzo) {
     lienzo.width = Math.round(an * dpr);
     lienzo.height = Math.round(al * dpr);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    // Menos motas en pantallas pequeñas: ahí el rendimiento importa más.
     const n = Math.round(densidad * Math.min(1.3, an / 1000));
-    motas = Array.from({ length: n }, () => nacer(false));
-
+    chispas = Array.from({ length: n }, () => nacer(false));
     if (!sprite) hacerSprite();
-    hacerLuz();
   }
 
   function paso(ms) {
@@ -484,32 +434,25 @@ function brasas(lienzo) {
     g.clearRect(0, 0, an, al);
     g.globalCompositeOperation = 'lighter';
 
-    // Los haces: una sola copia, con la opacidad respirando muy despacio.
-    if (capaLuz) {
-      g.globalAlpha = 0.72 + 0.28 * Math.sin(ahora * 0.09);
-      g.drawImage(capaLuz, 0, 0, an, al);
-    }
-
-    for (let i = 0; i < motas.length; i++) {
-      const m = motas[i];
+    for (let i = 0; i < chispas.length; i++) {
+      const m = chispas[i];
       m.t += dt;
       m.y -= m.v * dt;
-      if (m.y < -16) { motas[i] = nacer(true); continue; }
+      if (m.y < -14) { chispas[i] = nacer(true); continue; }
 
       const x = m.x + Math.sin(m.t * m.f) * m.amp;
       const y = m.y;
 
-      // Nada aparece ni desaparece de golpe.
-      const borde = Math.min(1, y / (al * 0.2), (al - y) / (al * 0.12));
+      const borde = Math.min(1, y / (al * 0.18), (al - y) / (al * 0.1));
       if (borde <= 0) continue;
 
-      const pulso = m.brasa ? 0.66 + 0.34 * Math.sin(m.t * m.pf * 3) : 1;
+      const pulso = m.brasa ? 0.6 + 0.4 * Math.sin(m.t * m.pf * 3) : 1;
       const alfa = m.a * borde * pulso;
       if (alfa <= 0.006) continue;
 
-      // Solo copiar y escalar. Nada de sombras.
-      const d = m.r * 7;
-      g.globalAlpha = Math.min(0.9, alfa);
+      // Escala 3.2: halo corto y núcleo bien definido.
+      const d = m.r * 3.2;
+      g.globalAlpha = Math.min(1, alfa);
       g.drawImage(sprite, x - d, y - d, d * 2, d * 2);
     }
 
@@ -523,14 +466,9 @@ function brasas(lienzo) {
 
   medir();
 
-  /* Al cambiar el tamaño se rehace, pero con calma: rehacer los haces
-     lleva un desenfoque y no se puede hacer en cada píxel de arrastre. */
   let espera;
   window.addEventListener('resize', () => { clearTimeout(espera); espera = setTimeout(medir, 260); }, { passive: true });
 
-  /* Nada de leer posiciones al hacer scroll: pedir getBoundingClientRect
-     en cada evento obliga al navegador a recalcular la página entera y es
-     otra de las cosas que hacían el scroll a tirones. */
   if ('IntersectionObserver' in window) {
     new IntersectionObserver((es) => (es[0].isIntersecting ? arrancar() : parar()), { threshold: 0 }).observe(lienzo);
   } else arrancar();
@@ -619,15 +557,6 @@ try {
 /* ══════════════════════════════════════════════════════════════════════
    8 · BUSCADOR E INSTALAR
    ══════════════════════════════════════════════════════════════════════ */
-try {
-  const q = $('q');
-  if (q) q.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    const t = q.value.trim();
-    location.href = 'app.html' + (t ? '?buscar=' + encodeURIComponent(t) : '');
-  });
-} catch (_) {}
-
 /* Instalar: se abre el panel de extras.js, el mismo de dentro, con sus
    instrucciones y su código QR. Nada de recrearlo. */
 try {
