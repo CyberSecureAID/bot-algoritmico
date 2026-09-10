@@ -16,8 +16,8 @@
 const CLAVE = 'cco-idioma';
 
 export const IDIOMAS = [
+  { id: 'en', nombre: 'English',   bandera: '🇺🇸' },
   { id: 'es', nombre: 'Español',   bandera: '🇲🇽' },
-  { id: 'en', nombre: 'English',  bandera: '🇺🇸' },
   { id: 'pt', nombre: 'Português', bandera: '🇵🇹' }
 ];
 
@@ -29,6 +29,36 @@ export const IDIOMAS = [
    ══════════════════════════════════════════════════════════════ */
 const DIC = {
   en: {
+
+    /* ══════════════════════════════════════════════════════════════
+       BOTS — configuraciones y explicaciones (gridbot/config.js)
+       Añadido en la Fase 1/2 de la traducción a inglés.
+       ══════════════════════════════════════════════════════════════ */
+    'Configuraciones del Accumulator': 'Accumulator settings',
+    'Configuraciones del Cash Out': 'Cash Out settings',
+    'Configuraciones del DCA': 'DCA settings',
+    'Lo que ganas cada vez que el bot completa una vuelta (compra abajo y vende arriba), ya con la comisión descontada.': 'What you earn each time the bot completes a cycle (buy low, sell high), with the fee already deducted.',
+    'Rango muy amplio. Opera menos veces, pero cada vuelta deja bastante y aguanta meses sin salirse del rango.': 'Very wide range. Trades less often, but each cycle earns well and holds for months without leaving the range.',
+    'El término medio. Buen número de operaciones y cada una con ganancia holgada. Si no sabes cuál elegir, esta.': 'The middle ground. A good number of trades, each with comfortable profit. If unsure, pick this one.',
+    'Rango ceñido al precio de hoy. Opera más seguido, pero si el mercado se va lejos puede salirse del rango.': 'Range tight to today\'s price. Trades more often, but if the market moves far it may leave the range.',
+    'Para monedas que se mueven mucho. Rango enorme para que no se le escape el precio.': 'For coins that move a lot. Huge range so the price never escapes it.',
+    'Objetivo cercano, sale rápido y repite. Ideal para empezar.': 'Close target, exits fast and repeats. Ideal to start.',
+    'El punto dulce entre frecuencia y ganancia. Recomendado.': 'The sweet spot between frequency and profit. Recommended.',
+    'Objetivo alto y mucho margen para comprar en caídas grandes.': 'High target and plenty of room to buy on big dips.',
+    'Un objetivo cercano que el mercado suele tocar en pocos días.': 'A close target the market usually reaches within days.',
+    'El más usado: buena ganancia sin esperar demasiado.': 'The most used: good profit without waiting too long.',
+    'Para quien no tiene prisa y busca una subida fuerte.': 'For those in no hurry, looking for a strong rise.',
+    'Una compra por semana. El mejor equilibrio entre coste y suavizado.': 'One buy per week. The best balance between cost and smoothing.',
+    'Cada dos semanas. Menos comisiones, buen promedio.': 'Every two weeks. Fewer fees, good average.',
+    'Una vez al mes. El más barato en comisiones.': 'Once a month. The cheapest in fees.',
+    'Compra y vende en niveles; solo cierra cada cuadrícula en ganancia.': 'Buys and sells in levels; only closes each grid in profit.',
+    'Compra en la caída y vende todo junto al llegar a tu ganancia.': 'Buys the dip and sells all at once when it hits your target.',
+    'Vende la cripto que ya tienes, al precio o % que elijas.': 'Sells the crypto you already hold, at the price or % you choose.',
+    'Compra un poco cada cierto tiempo, sin estar pendiente del precio.': 'Buys a little every so often, without watching the price.',
+    'prudente': 'cautious',
+    'paciente': 'patient',
+    'ambicioso': 'ambitious',
+    'quincenal': 'biweekly',
 
     /* ══════════════════════════════════════════════════════════════
        PORTADA (index.html)
