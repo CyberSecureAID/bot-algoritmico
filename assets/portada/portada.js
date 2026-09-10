@@ -112,7 +112,7 @@ async function wallet() {
 
 const PUERTAS = {
   swap: async () => {
-    const m = await import(J + 'gridbot/swap.js?v=3');
+    const m = await import(J + 'gridbot/swap.js?v=4');
     m.initSwap(conectar, cargarLogosPrecios);
     await cargarLogosPrecios();          // rellena los logos antes de abrir
     m.abrirSwap();
