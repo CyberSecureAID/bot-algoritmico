@@ -12,6 +12,8 @@ export function estilos() {
   #mk-overlay.show{display:flex}
   #mk-overlay *{box-sizing:border-box}
   #mk-overlay .mk-card{width:100%;max-width:780px;max-height:92vh;overflow:auto;background:linear-gradient(180deg,#12161c,#0b0e12);border:1px solid #2b3139;border-radius:20px;box-shadow:0 40px 120px rgba(0,0,0,.72);padding:24px;position:relative;animation:mkIn .18s ease both}
+  #mk-overlay .mk-card::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.10;filter:saturate(1.05);pointer-events:none;border-radius:20px}
+  #mk-overlay .mk-card > *{position:relative;z-index:1}
   @keyframes mkIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
   #mk-overlay .mk-x{position:absolute;top:15px;right:15px;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid #3a424c;color:#b7bdc6;display:grid;place-items:center;cursor:pointer;font-size:16px;z-index:3}
   #mk-overlay .mk-head{text-align:center;margin-bottom:16px;padding-right:40px}
