@@ -3185,16 +3185,19 @@
     try {
       sessionStorage.removeItem(STORE);
       sessionStorage.removeItem('np-chat-last');
+      // Dejar marcado que estaba abierto: init() lo reabre solo por wasOpen,
+      // de forma fiable, sin depender de un click con timing frágil.
+      sessionStorage.setItem(OPEN, '1');
+      sessionStorage.setItem(SEEN, '1');
     } catch (e) {}
-    var viejo = document.getElementById('npChat');
+    var viejoChat = document.getElementById('npChat');
     var fab = document.getElementById('npFab');
-    if (viejo) viejo.remove();
+    if (viejoChat) viejoChat.remove();
     if (fab) fab.remove();
-    DATA = elegirKB();
+    DATA = elegirKB();   // KB del idioma nuevo
     BOT  = DATA.bot;
-    init();
-    var f2 = document.getElementById('npFab');
-    if (f2) setTimeout(function () { f2.click(); }, 60);
+    init();              // recrea el chat (calcularUI ya corre dentro) y,
+                         // por wasOpen=1, lo reabre en el idioma nuevo.
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
