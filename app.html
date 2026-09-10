@@ -504,16 +504,12 @@
     var css = ''
       + 'html body #colmena-app{background:transparent !important;'
       +   '--panel:#10141a !important;--panel-2:#0a0e13 !important;--line:#232b36 !important;}'
-      + 'html body #colmena-app .wrap{background:transparent !important;}'
-      // Efecto cristal en las tarjetas: fondo translúcido + desenfoque.
-      + 'html body #colmena-app .card,html body #colmena-app .bot-card,'
-      +   'html body #colmena-app .panel,html body #colmena-app [class*="card"],'
-      +   'html body #colmena-app .creador,html body #colmena-app .bot-crear,'
-      +   'html body #colmena-app .box,html body #colmena-app [class*="panel"],'
-      +   'html body #colmena-app [class*="box"]{'
-      +   'background:rgba(16,20,26,.62) !important;'
-      +   'backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'
-      +   'border-color:rgba(232,184,75,.14) !important;}';
+      + 'html body #colmena-app .wrap{background:transparent !important;}';
+      // NO se toca el fondo de ninguna tarjeta: varias (.gasbox, .cash-price,
+      // #c-chart, .asesor) tienen su propia IMAGEN de fondo y un glass con
+      // selectores amplios se las borraba. El efecto cristal, si se quiere,
+      // se hará más adelante clase por clase, solo en las que NO tengan
+      // imagen. Por ahora se preserva todo tal como estaba.
     function aplicar() {
       var id = 'cco-tema-bots';
       var el = document.getElementById(id);
