@@ -27,7 +27,7 @@
    app.html. Se calcula desde la raíz del sitio y se acabó el problema.
    ══════════════════════════════════════════════════════════════════════ */
 const J = new URL('assets/js/', document.baseURI).href;
-import { brasas } from './chispas.js?v=1';
+import { brasas } from './chispas.js?v=200';
 const $ = (id) => document.getElementById(id);
 const quieto = window.matchMedia
   ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -87,7 +87,7 @@ async function cargarLogosPrecios() {
 async function estiloBase() {
   if (baseLista) return;
   const [est, util] = await Promise.all([
-    import(J + 'gridbot/estilos.js?v=2'),
+    import(J + 'gridbot/estilos.js?v=200'),
     import(J + 'gridbot/util.js?v=1')
   ]);
   document.body.id = 'colmena-app';        // el ámbito que espera esa hoja
@@ -516,7 +516,7 @@ try {
   (async () => {
     try {
       await estiloBase();                    // el panel usa los estilos base
-      ex = await import(J + 'extras.js?v=126');
+      ex = await import(J + 'extras.js?v=200');
       if (ex.iniciarInstalacion) ex.iniciarInstalacion();
       if (guardado && ex.registrarInstalador) ex.registrarInstalador(guardado);
     } catch (e) { console.warn('[portada] init instalar:', e); }
@@ -531,7 +531,7 @@ try {
     b.addEventListener('click', async (evt) => {
       evt.preventDefault();
       try {
-        if (!ex) ex = await import(J + 'extras.js?v=126');
+        if (!ex) ex = await import(J + 'extras.js?v=200');
         if (guardado && ex.registrarInstalador) ex.registrarInstalador(guardado);
         if (ex.instalarAhora) await ex.instalarAhora();
       } catch (err) { console.warn('[portada] instalar:', err); }
