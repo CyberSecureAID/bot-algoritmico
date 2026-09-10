@@ -107,7 +107,11 @@
        que pasa a transparente. Mismos tonos oscuros que la portada. Sube
        tu imagen a assets/portada/img/bots.webp. Sin ella se ve un degradado
        oscuro de reserva, nunca un hueco. */
-    #colmena-app { background: transparent; min-height: 100vh; position: relative; z-index: 1; }
+    /* Especificidad reforzada + !important para ganar al fondo que la app
+       inyecta por JS después de este <style>. Solo el fondo se fuerza; el
+       resto de la app queda intacto. */
+    html body #colmena-app { background: transparent !important; }
+    #colmena-app { min-height: 100vh; position: relative; z-index: 1; }
 
     #cco-bots-bg {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -409,7 +413,8 @@
       const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const lienzo = document.getElementById('cco-bots-chispas');
       if (!quieto && lienzo) {
-        const { brasas } = await import('./assets/portada/chispas.js?v=1');
+        const chispasUrl = new URL('assets/portada/chispas.js?v=1', document.baseURI).href;
+        const { brasas } = await import(chispasUrl);
         brasas(lienzo);
       }
       // Comprobar si la imagen de fondo general existe; si no, se deja el degradado.
