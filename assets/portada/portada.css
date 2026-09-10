@@ -547,12 +547,12 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 }
 /* DCA: derecha-arriba, DESPEGADA del teléfono (z-index 3). */
 #pt .pt-card--dca{
-  top:44px;right:-24px;z-index:3;
+  top:44px;right:-8px;z-index:3;
   transform:rotate(7deg);
 }
 /* Cash Out: izquierda-abajo, DESPEGADA del teléfono (z-index 3). */
 #pt .pt-card--cashout{
-  bottom:52px;left:-24px;z-index:3;
+  bottom:52px;left:-8px;z-index:3;
   transform:rotate(6deg);
 }
 
@@ -572,6 +572,6 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 @media(max-width:520px){
   #pt .pt-hero-escena{padding:26px 46px}
   #pt .pt-card{width:72px}
-  #pt .pt-card--dca{right:-18px}
-  #pt .pt-card--cashout{left:-18px}
+  #pt .pt-card--dca{right:-6px}
+  #pt .pt-card--cashout{left:-6px}
 }
