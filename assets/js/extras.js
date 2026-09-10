@@ -60,6 +60,10 @@ function avisoCopiado() {
    No modifica nada del flujo anterior: panelInstalar y las ventanas
    siguen intactas por si se usan en otro sitio.
    ══════════════════════════════════════════════════════════════ */
+/* Permite entregar el evento beforeinstallprompt capturado por la portada,
+   por si llegó antes de que este módulo se cargara. */
+export function registrarInstalador(e) { if (e) _instalador = e; }
+
 export async function instalarAhora() {
   // Escritorio: instala directamente con el diálogo nativo del navegador.
   if (_instalador) {
