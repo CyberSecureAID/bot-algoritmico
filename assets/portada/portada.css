@@ -496,3 +496,16 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
    rejilla ni el bisel. Se comporta como el <figure> que envuelve. */
 #pt .pt-shot-link{display:block;text-decoration:none;color:inherit}
 #pt .pt-shot-link figure{margin:0}
+
+
+/* ── HERO: teléfono flotando encima de los botones ─────────────────── */
+#pt .pt-hero__centro{display:flex;flex-direction:column;align-items:center;text-align:center}
+#pt .pt-hero-fono{
+  width:100%;max-width:230px;margin:0 auto 26px;
+  filter:drop-shadow(0 30px 50px rgba(0,0,0,.55));
+}
+#pt .pt-hero-fono img{width:100%;height:auto;display:block}
+@media (prefers-reduced-motion:no-preference){
+  #pt .pt-hero-fono{animation:flota 6.5s ease-in-out infinite;will-change:transform}
+}
+#pt .pt-acts--centro{justify-content:center}
