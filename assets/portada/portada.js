@@ -87,7 +87,7 @@ async function cargarLogosPrecios() {
 async function estiloBase() {
   if (baseLista) return;
   const [est, util] = await Promise.all([
-    import(J + 'gridbot/estilos.js?v=200'),
+    import(J + 'gridbot/estilos.js?v=201'),
     import(J + 'gridbot/util.js?v=1')
   ]);
   document.body.id = 'colmena-app';        // el ámbito que espera esa hoja
