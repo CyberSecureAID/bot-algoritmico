@@ -47,10 +47,14 @@
   }
 
   function idiomaUI() { try { return localStorage.getItem('cco-idioma') || 'en'; } catch (e) { return 'en'; } }
-  var _EN = idiomaUI() !== 'es';   // true = interfaz del chat en inglés
-  var UI = _EN
-    ? { temas:'Topics', idioma:'ES', cerrar:'Close chat', ph:'Type me anything…', enviar:'Send' }
-    : { temas:'Temas', idioma:'EN', cerrar:'Cerrar el chat', ph:'Escríbeme lo que quieras…', enviar:'Enviar' };
+  var _EN, UI;
+  function calcularUI() {
+    _EN = idiomaUI() !== 'es';
+    UI = _EN
+      ? { temas:'Topics', idioma:'ES', cerrar:'Close chat', ph:'Type me anything…', enviar:'Send' }
+      : { temas:'Temas', idioma:'EN', cerrar:'Cerrar el chat', ph:'Escríbeme lo que quieras…', enviar:'Enviar' };
+  }
+  calcularUI();   // valor inicial
 
   var DATA = elegirKB();
   if (!DATA || !DATA.kb) return;
@@ -3148,6 +3152,7 @@
   /* ── Arranque ─────────────────────────────────────────── */
 
   function init() {
+    calcularUI();      // recalcula la UI del chat con el idioma ACTUAL
     injectStyles();
     cargarGuia();
     build();
