@@ -215,12 +215,22 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js').then((reg) => {
-        // Solo se comprueba si hay versión nueva. NO se recarga a la fuerza:
-        // el sw.js ya hace skipWaiting + clients.claim, y añadir un
-        // location.reload() aquí creaba un bucle de recargas que impedía que
-        // la pantalla de bots llegara a montar (ese era el pestañazo).
         reg.update().catch(() => {});
       }).catch(() => {});
+
+      /* El SW avisa cuando una versión NUEVA ya está activa. Entonces se
+         recarga UNA sola vez para que la página use lo nuevo sin tener que
+         recargar dos veces a mano. El flag en sessionStorage impide bucle:
+         si ya se recargó por esto en esta sesión, no se repite. */
+      navigator.serviceWorker.addEventListener('message', (ev) => {
+        if (!ev.data || ev.data.tipo !== 'sw-activado') return;
+        try {
+          var marca = 'sw-recarga-' + ev.data.version;
+          if (sessionStorage.getItem(marca)) return;   // ya recargado por esta versión
+          sessionStorage.setItem(marca, '1');
+          location.reload();
+        } catch (_) {}
+      });
     });
   }
   </script>

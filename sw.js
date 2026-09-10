@@ -8,7 +8,7 @@
  *   · Si hay versión nueva, se descarga sola y se aplica al recargar.
  */
 
-const VERSION = 'aurex-v142';
+const VERSION = 'aurex-v143';
 const APP = [
   './',
   './index.html',              // la portada
@@ -35,15 +35,12 @@ self.addEventListener('activate', (e) => {
     await Promise.all(claves.filter((k) => k !== VERSION).map((k) => caches.delete(k)));
     await self.clients.claim();
 
-    /* NO recargamos las pestañas. Aquí había un p.navigate() que lo hacía,
-       puesto para que un cambio nuevo se viera al instante. El efecto real
-       era peor que el problema: al entrar por PRIMERA vez, el service worker
-       se instala, se activa, y recargaba la página que acabas de abrir. Un
-       pestañazo justo cuando el visitante empezaba a leer o a hacer scroll.
-
-       La caché ya se limpia sola arriba (se borran las versiones viejas), y
-       el siguiente refresco del usuario trae todo nuevo. No hace falta
-       arrastrarle la página bajo los pies. */
+    /* Avisar a las pestañas de que hay versión nueva ACTIVA. La página
+       decide si recargar (app.html lo hace una sola vez). Así basta una
+       recarga en vez de dos, y sin el pestañazo del viejo p.navigate():
+       es la página quien controla el momento, no el SW a la fuerza. */
+    const clientes = await self.clients.matchAll({ type: 'window' });
+    clientes.forEach((c) => c.postMessage({ tipo: 'sw-activado', version: VERSION }));
   })());
 });
 
