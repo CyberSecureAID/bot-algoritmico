@@ -64,21 +64,26 @@ body{overflow-x:hidden}
 #pt .pt-btn{
   display:inline-flex;width:auto;align-self:flex-start;align-items:center;justify-content:center;gap:8px;
   font-family:var(--disp);font-weight:700;font-size:13.5px;letter-spacing:.2px;
-  white-space:nowrap;height:40px;padding:0 20px;border-radius:9px;
-  border:1px solid var(--gold);
-  background:var(--gold);
-  color:var(--on-gold);
-  transition:background .16s,border-color .16s,color .16s,transform .1s;
+  white-space:nowrap;height:40px;padding:0 20px;border-radius:10px;
+  border:1px solid #c79426;
+  /* Bisel 3D dorado: brillo arriba, base oscura, relieve inferior. El mismo
+     lenguaje que los botones de la app. */
+  background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);
+  color:#241900;
+  box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5);
+  text-shadow:0 1px 0 rgba(255,255,255,.28);
+  transition:filter .16s,transform .09s,box-shadow .09s;
 }
-#pt .pt-btn:hover{background:var(--gold-hi);border-color:var(--gold-hi);color:var(--on-gold)}
-#pt .pt-btn:active{transform:translateY(1px)}
+/* Hover: se ilumina SIN blanquearse (solo un brillo leve), no cambia el color. */
+#pt .pt-btn:hover{filter:brightness(1.06)}
+#pt .pt-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}
 #pt .pt-btn svg{width:15px;height:15px;flex:0 0 auto}
 /* Contorno neutro: acciones secundarias. */
 #pt .pt-btn.pt-ghost{background:none;border-color:var(--line2);color:var(--ink)}
 #pt .pt-btn.pt-ghost:hover{background:rgba(232,184,75,.07);border-color:var(--gold-lo);color:var(--ink)}
 /* Contorno dorado: la acción principal de una sección. */
 #pt .pt-btn.pt-line{background:none;border-color:var(--gold);color:var(--gold)}
-#pt .pt-btn.pt-line:hover{background:rgba(232,184,75,.1);border-color:var(--gold-hi);color:var(--gold-hi)}
+#pt .pt-btn.pt-line:hover{background:rgba(232,184,75,.14);border-color:var(--gold);color:var(--gold)}
 /* Único cambio de tamaño en toda la página, y es leve. */
 #pt .pt-btn.pt-big{height:46px;padding:0 24px;font-size:14px}
 #pt .pt-lnk{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--gold)}
@@ -485,3 +490,9 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 #pp-overlay .pp-card::-webkit-scrollbar, #mk-overlay [class$="-c"]::-webkit-scrollbar{
   width:0 !important;height:0 !important;display:none !important;
 }
+
+
+/* Las capturas de herramientas ahora son enlaces: el <a> no debe alterar la
+   rejilla ni el bisel. Se comporta como el <figure> que envuelve. */
+#pt .pt-shot-link{display:block;text-decoration:none;color:inherit}
+#pt .pt-shot-link figure{margin:0}
