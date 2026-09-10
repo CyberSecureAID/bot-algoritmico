@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="assets/portada/portada.css?v=200">
+<link rel="stylesheet" href="assets/portada/portada.css?v=202">
 <link rel="stylesheet" href="assets/css/asistente.css?v=125">
 <link rel="icon" type="image/png" href="assets/img/cco-32.png">
 <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
@@ -59,7 +59,20 @@
    sw.js que usa app.html. */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
+  });
+  // Cuando entra un service worker nuevo, recargar UNA vez para servir lo
+  // último. Flag anti-bucle: solo una recarga por versión y sesión.
+  navigator.serviceWorker.addEventListener('message', (ev) => {
+    if (!ev.data || ev.data.tipo !== 'sw-activado') return;
+    try {
+      var marca = 'sw-recarga-' + ev.data.version;
+      if (sessionStorage.getItem(marca)) return;
+      sessionStorage.setItem(marca, '1');
+      location.reload();
+    } catch (_) {}
   });
 }
 </script>
@@ -512,6 +525,6 @@ if ('serviceWorker' in navigator) {
      módulo no carga el visitante acaba en la misma sección de siempre.
      La sección de los bots no se toca: sigue viviendo en app.html.
      ══════════════════════════════════════════════════════════════════════ -->
-<script type="module" src="assets/portada/portada.js?v=200"></script>
+<script type="module" src="assets/portada/portada.js?v=202"></script>
 </body>
 </html>
