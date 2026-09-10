@@ -511,3 +511,67 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 }
 /* Párrafo informativo del pie (fortalezas). */
 #pt .pt-risk--info{color:var(--ink2);border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:16px;margin-bottom:14px}
+
+
+/* ── HERO: tarjetas orbitando el teléfono ──────────────────────────── */
+/* El escenario da el espacio alrededor del teléfono para las tarjetas.
+   El teléfono va centrado; las tarjetas, absolutas alrededor. */
+#pt .pt-hero-escena{
+  position:relative;
+  width:100%;max-width:230px;      /* ancho del teléfono */
+  margin:0 0 24px;
+  /* Espacio extra alrededor para que las tarjetas no se corten. */
+  padding:34px 62px;
+  box-sizing:content-box;
+}
+#pt .pt-hero-escena .pt-hero-fono{
+  position:relative;z-index:2;      /* teléfono en medio */
+  width:100%;max-width:230px;margin:0;
+}
+
+/* Las tarjetas: ~92px (40% del teléfono). Absolutas alrededor. */
+#pt .pt-card{
+  position:absolute;width:92px;height:auto;
+  filter:drop-shadow(0 14px 26px rgba(0,0,0,.5));
+  pointer-events:none;
+}
+/* Smart Grid: arriba-izquierda, ESQUINA DETRÁS del teléfono (z-index 1). */
+#pt .pt-card--grid{
+  top:2px;left:-8px;z-index:1;
+  transform:rotate(-8deg);
+}
+/* Acumulator: abajo-derecha, ESQUINA DETRÁS del teléfono (z-index 1). */
+#pt .pt-card--acum{
+  bottom:6px;right:-6px;z-index:1;
+  transform:rotate(-8deg);
+}
+/* DCA: derecha-arriba, DESPEGADA del teléfono (z-index 3). */
+#pt .pt-card--dca{
+  top:44px;right:-40px;z-index:3;
+  transform:rotate(7deg);
+}
+/* Cash Out: izquierda-abajo, DESPEGADA del teléfono (z-index 3). */
+#pt .pt-card--cashout{
+  bottom:52px;left:-40px;z-index:3;
+  transform:rotate(6deg);
+}
+
+/* Cuatro flotaciones distintas: entorno en gravitación, cada una a su ritmo. */
+@keyframes flotaA{0%,100%{transform:rotate(-8deg) translateY(0)}50%{transform:rotate(-8deg) translateY(-11px)}}
+@keyframes flotaB{0%,100%{transform:rotate(7deg) translateY(0)}50%{transform:rotate(7deg) translateY(-14px)}}
+@keyframes flotaC{0%,100%{transform:rotate(6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-9px)}}
+@keyframes flotaD{0%,100%{transform:rotate(-8deg) translateY(0)}50%{transform:rotate(-8deg) translateY(-13px)}}
+@media (prefers-reduced-motion:no-preference){
+  #pt .pt-card--grid{animation:flotaA 5.5s ease-in-out infinite}
+  #pt .pt-card--dca{animation:flotaB 7s ease-in-out infinite}
+  #pt .pt-card--cashout{animation:flotaC 6.2s ease-in-out infinite}
+  #pt .pt-card--acum{animation:flotaD 6.8s ease-in-out infinite}
+}
+
+/* En móvil las tarjetas se achican para no desbordar. */
+@media(max-width:520px){
+  #pt .pt-hero-escena{padding:26px 46px}
+  #pt .pt-card{width:72px}
+  #pt .pt-card--dca{right:-28px}
+  #pt .pt-card--cashout{left:-28px}
+}
