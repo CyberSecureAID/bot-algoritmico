@@ -475,17 +475,24 @@ if ('serviceWorker' in navigator) {
   var puesto = false;
   function cargar() {
     if (puesto) return; puesto = true;
-    ['assets/js/asistente/conocimiento.js?v=125',
-     'assets/js/asistente/motor.js?v=125'].forEach(function (src, i) {
-      if (i) return;
-      var c = document.createElement('script'); c.src = src;
-      c.onload = function () {
+    // Cargar las DOS bases (español e inglés) y luego el motor nuevo, igual
+    // que app.html. Antes la portada solo cargaba la española y el motor
+    // viejo, por eso el chatbot siempre hablaba español aquí.
+    var kbEs = document.createElement('script');
+    kbEs.src = 'assets/js/asistente/conocimiento.js?v=125';
+    kbEs.onload = function () {
+      var kbEn = document.createElement('script');
+      kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=1';
+      var arrancarMotor = function () {
         var m = document.createElement('script');
-        m.src = 'assets/js/asistente/motor.js?v=125';
+        m.src = 'assets/js/asistente/motor.js?v=129';
         document.body.appendChild(m);
       };
-      document.body.appendChild(c);
-    });
+      kbEn.onload = arrancarMotor;
+      kbEn.onerror = arrancarMotor;
+      document.body.appendChild(kbEn);
+    };
+    document.body.appendChild(kbEs);
   }
   var previo = document.getElementById('np-fab-previo');
   previo.addEventListener('click', function () {
