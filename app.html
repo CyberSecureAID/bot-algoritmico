@@ -30,6 +30,14 @@
   <link rel="icon" type="image/png" href="assets/img/cco-32.png">
   <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
   <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    /* NEUTRALIZAR SOLO EL FONDO de styles.css (hoja de la lotería) en la
+       pantalla de bots. styles.css se conserva entero: solo se le quita el
+       fondo verde que causaba el pestañazo gris al entrar. Las variables
+       (--gold, --display, tipografías) siguen heredándose intactas.
+       Fondo negro inmediato = sin flash, y deja ver la capa cco-bg. */
+    html, body { background: #05070a !important; }
+  </style>
   <link rel="stylesheet" href="assets/css/asistente.css?v=125">
   <style>
   /* ══════════════════════════════════════════════════════════════
