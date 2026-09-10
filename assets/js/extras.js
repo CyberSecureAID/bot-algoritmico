@@ -61,18 +61,22 @@ function avisoCopiado() {
    siguen intactas por si se usan en otro sitio.
    ══════════════════════════════════════════════════════════════ */
 export async function instalarAhora() {
-  // En el teléfono la instalación no pasa por prompt(): se comparte.
-  if (/android|iphone|ipad|ipod/i.test(navigator.userAgent)) { return compartirEnlace(); }
-  if (yaInstalada()) { return compartirEnlace(); }
+  // Escritorio: instala directamente con el diálogo nativo del navegador.
   if (_instalador) {
     _instalador.prompt();
     try { await _instalador.userChoice; } catch (_) {}
     _instalador = null;
     return true;
   }
-  // El navegador todavía no lo permite (hace falta interacción previa o no
-  // cumple criterios): se comparte el enlace para no dejar el botón muerto.
-  return compartirEnlace();
+  // Teléfono: la instalación no pasa por prompt(); se comparte el enlace,
+  // que es lo útil ahí (el usuario lo abre e instala desde su navegador).
+  if (/android|iphone|ipad|ipod/i.test(navigator.userAgent)) { return compartirEnlace(); }
+  // Ya instalada: no hay nada que hacer.
+  if (yaInstalada()) { return true; }
+  // Escritorio sin evento disponible (Firefox, o criterios no cumplidos):
+  // se abre el panel con instrucciones, en vez de compartir en silencio.
+  ventanaInstrucciones();
+  return false;
 }
 
 export function panelInstalar(ancla) {

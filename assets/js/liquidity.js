@@ -732,7 +732,7 @@ function avisoSinAcceso() {
 }
 
 /** El mapa de liquidaciones. */
-async function abrirPools() {
+export async function abrirPools() {
   estilos();
   const prev = $('lq-overlay'); if (prev) prev.remove();
 
