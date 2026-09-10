@@ -154,16 +154,37 @@ if ('serviceWorker' in navigator) {
 <section class="pt-hero">
   <div class="pt-art" style="background-image:url('assets/portada/img/hero.webp')" aria-hidden="true"></div>
   <div class="pt-wrap">
-    <div class="pt-hero__in pt-hero__centro">
-      <!-- Teléfono flotando: assets/portada/img/hero-phone.webp -->
-      <div class="pt-hero-fono" aria-hidden="true">
-        <img src="assets/portada/img/hero-phone.webp" alt="">
+    <div class="pt-hero__grid">
+      <div class="pt-hero__izq">
+        <!-- Teléfono flotando: assets/portada/img/hero-phone.webp -->
+        <div class="pt-hero-fono" aria-hidden="true">
+          <img src="assets/portada/img/hero-phone.webp" alt="">
+        </div>
+        <div class="pt-acts">
+          <a class="pt-btn pt-big" href="app.html">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#bar"/></svg>Bots</a>
+          <a class="pt-btn pt-big pt-ghost" href="app.html?abrir=liq" data-abrir="pools" data-cta="wallet">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#rdr"/></svg>Liquidity Pools</a>
+        </div>
       </div>
-      <div class="pt-acts pt-acts--centro">
-        <a class="pt-btn pt-big" href="app.html">
-          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#bar"/></svg>Bots</a>
-        <a class="pt-btn pt-big pt-ghost" href="app.html?abrir=liq" data-abrir="pools" data-cta="wallet">
-          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#rdr"/></svg>Liquidity Pools</a>
+
+      <div class="pt-hero__der">
+        <div class="pt-fort">
+          <div class="pt-fort__i"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><use href="#lck"/></svg></div>
+          <div><b>Non-custodial exchange</b><span>Your capital lives in your own wallet. You never deposit and never withdraw.</span></div>
+        </div>
+        <div class="pt-fort">
+          <div class="pt-fort__i"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><use href="#glb"/></svg></div>
+          <div><b>No KYC, no borders</b><span>No sign-up and no documents. No platform can deny you access over your region.</span></div>
+        </div>
+        <div class="pt-fort">
+          <div class="pt-fort__i"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><use href="#shd"/></svg></div>
+          <div><b>100% decentralized</b><span>Everything runs on the blockchain. There is no server holding your money or your data.</span></div>
+        </div>
+        <div class="pt-fort">
+          <div class="pt-fort__i"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><use href="#dev"/></svg></div>
+          <div><b>Freedom to trade</b><span>You are always in control. Connect your wallet and operate — no permission needed.</span></div>
+        </div>
       </div>
     </div>
   </div>
