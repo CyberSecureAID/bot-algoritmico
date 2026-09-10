@@ -100,14 +100,44 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Cripto Cuba Oficial">
   <style>
-    /* Negro del bot desde el primer instante. Antes heredaba el verde de la
-       Bolita (--bg: #030B08) y se veía un destello verde al entrar. */
-    html, body { background: #0b0e11; margin: 0; min-height: 100%; }
-    #colmena-app { background: #0b0e11; }
-    #colmena-app { min-height: 100vh; }
+    /* Negro desde el primer instante (evita el destello verde de la Bolita). */
+    html, body { background: #05070a; margin: 0; min-height: 100%; }
+
+    /* La pantalla de bots gana fondo. La imagen va DETRÁS de #colmena-app,
+       que pasa a transparente. Mismos tonos oscuros que la portada. Sube
+       tu imagen a assets/portada/img/bots.webp. Sin ella se ve un degradado
+       oscuro de reserva, nunca un hueco. */
+    #colmena-app { background: transparent; min-height: 100vh; position: relative; z-index: 1; }
+
+    #cco-bots-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-color: #05070a;
+      background-image:
+        radial-gradient(120% 80% at 50% 0%, rgba(232,184,75,.07), transparent 60%),
+        linear-gradient(180deg, #0a0e13, #05070a 60%);
+    }
+    /* Imagen general de fondo (opcional): assets/portada/img/bots.webp */
+    #cco-bots-bg.con-img {
+      background-image: url('assets/portada/img/bots.webp');
+      background-size: cover; background-position: center;
+    }
+    /* Franja superior, la misma imagen que la cabecera de la portada:
+       assets/portada/img/header.webp */
+    #cco-bots-top {
+      position: fixed; top: 0; left: 0; right: 0; height: 220px; z-index: 0; pointer-events: none;
+      background-image: url('assets/portada/img/header.webp');
+      background-size: cover; background-position: center top; opacity: .5;
+      -webkit-mask-image: linear-gradient(180deg, #000 0, #000 55%, transparent 100%);
+      mask-image: linear-gradient(180deg, #000 0, #000 55%, transparent 100%);
+    }
+    /* Partículas, encima del fondo y por debajo de la interfaz. */
+    #cco-bots-chispas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
   </style>
 </head>
 <body>
+  <div id="cco-bots-bg" aria-hidden="true"></div>
+  <div id="cco-bots-top" aria-hidden="true"></div>
+  <canvas id="cco-bots-chispas" data-n="80" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
   <script type="module" src="assets/js/gridbot-ui.js?v=125"></script>
@@ -368,6 +398,29 @@
     var t = setInterval(function () { poner(); }, 200);
     setTimeout(function () { clearInterval(t); }, 15000);
     document.addEventListener('DOMContentLoaded', poner);
+  })();
+  </script>
+
+  <script type="module">
+  /* Partículas en la pantalla de bots: el mismo módulo que la portada.
+     Y si existe la imagen de fondo, se activa; si no, queda el degradado. */
+  (async () => {
+    try {
+      const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const lienzo = document.getElementById('cco-bots-chispas');
+      if (!quieto && lienzo) {
+        const { brasas } = await import('./assets/portada/chispas.js?v=1');
+        brasas(lienzo);
+      }
+      // Comprobar si la imagen de fondo general existe; si no, se deja el degradado.
+      const img = new Image();
+      img.onload = () => { const b = document.getElementById('cco-bots-bg'); if (b) b.classList.add('con-img'); };
+      img.src = 'assets/portada/img/bots.webp';
+      // La franja superior usa header.webp; si no existe, se oculta sola.
+      const top = new Image();
+      top.onerror = () => { const t = document.getElementById('cco-bots-top'); if (t) t.style.display = 'none'; };
+      top.src = 'assets/portada/img/header.webp';
+    } catch (e) { console.warn('[bots] fondo/particulas:', e); }
   })();
   </script>
 </body>

@@ -52,6 +52,17 @@
 }catch(_){}})();
 </script>
 
+
+<script>
+/* Service worker: requisito para que la página sea instalable como app de
+   escritorio. Sin esto el navegador nunca ofrece instalar. Es el mismo
+   sw.js que usa app.html. */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
 </head>
 
 <body>
@@ -339,7 +350,7 @@
       <p class="pt-body">
         Las direcciones oficiales se muestran <b>dentro de la aplicación</b>, con tu wallet ya conectada. Nunca las publicamos sueltas ni te las enviaremos por mensaje: si alguien te pasa una dirección diciendo que es nuestra, desconfía.
       </p>
-      <a class="pt-lnk" href="https://bscscan.com/address/0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B" target="_blank" rel="noopener">Ver los contratos en BscScan <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
+      <a class="pt-lnk" href="app.html?abrir=perfil" data-abrir="perfil">Ver los contratos en la app <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
     </div>
 
     <div class="pt-stats pt-rise">
