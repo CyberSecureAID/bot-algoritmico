@@ -70,7 +70,7 @@ body{overflow-x:hidden}
   color:var(--on-gold);
   transition:background .16s,border-color .16s,color .16s,transform .1s;
 }
-#pt .pt-btn:hover{background:var(--gold-hi);border-color:var(--gold-hi)}
+#pt .pt-btn:hover{background:var(--gold-hi);border-color:var(--gold-hi);color:var(--on-gold)}
 #pt .pt-btn:active{transform:translateY(1px)}
 #pt .pt-btn svg{width:15px;height:15px;flex:0 0 auto}
 /* Contorno neutro: acciones secundarias. */
