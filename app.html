@@ -203,7 +203,19 @@
      los datos de la blockchain siempre se piden frescos. */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // Buscar actualización en cada carga.
+        reg.update().catch(() => {});
+        // Cuando un service worker NUEVO toma el control, recargar UNA vez
+        // para que se aplique sin que el usuario tenga que borrar caché.
+        // El flag evita bucles: solo recarga una vez por sesión.
+        let recargado = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (recargado) return;
+          recargado = true;
+          location.reload();
+        });
+      }).catch(() => {});
     });
   }
   </script>
