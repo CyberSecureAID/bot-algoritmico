@@ -1,61 +1,43 @@
 /* ================================================================
-   JESÚS — Cripto Cuba Oficial assistant · ENGLISH knowledge base
+   JESUS - Cripto Cuba Oficial assistant - ENGLISH knowledge base
    ================================================================
-   Parallel English knowledge base (window.NP_BOT_KB_EN). The engine
-   (motor.js) picks this one when the site language is English, and the
-   Spanish one (conocimiento.js) when it is Spanish. Same structure as the
-   Spanish file: bot + kb[]. This is the NATIVE English version, not a live
-   translation, so it reads naturally.
+   window.NP_BOT_KB_EN. El motor lo usa cuando el idioma es ingles.
 
-   To extend: copy an entry from conocimiento.js, translate topic/keys/
-   answer/options. Keys must be in English (and common misspellings) so the
-   bot recognises what the user types.
+   HEREDA todo el 'bot' de la base española (window.NP_BOT_KB) y solo
+   sobrescribe lo VISIBLE traducido (greeting, quick, sugerencias,
+   fallback). Asi el objeto bot tiene TODAS las propiedades que el motor
+   pueda pedir (after, clarify, triage, contact, etc.) y nunca falla por
+   una que falte. El kb (respuestas) sí es propio, en inglés.
 ================================================================ */
+(function () {
+  var esBase = (window.NP_BOT_KB && window.NP_BOT_KB.bot) ? window.NP_BOT_KB.bot : {};
 
-window.NP_BOT_KB_EN = {
-
-  bot: {
-    name:   'Jesús',
-    role:   'Cripto Cuba Oficial assistant',
-    avatar: 'assets/img/jesus-avatar.webp',
-
+  // Copia superficial del bot español + sobrescritura de lo traducido.
+  var botEN = Object.assign({}, esBase, {
+    name: 'Jesús',
+    role: 'Cripto Cuba Oficial assistant',
     greeting: [
       "Hi, I'm **Jesús**. I'm here to help.\n\nWhat do you need?",
       "Hello! My name is **Jesús**, from Cripto Cuba Oficial.\n\nTell me how I can help.",
       "Hey there. I'm **Jesús**.\n\nWhat can I help you with today?",
-      "Hi! I'm **Jesús**, from the Cripto Cuba Oficial team.\n\nWhat would you like to know?",
-      "Hello. **Jesús** speaking, from Cripto Cuba Oficial.\n\nHow can I help?",
-      "Hi, I'm **Jesús** and I handle support at Cripto Cuba Oficial.\n\nTell me what you need."
+      "Hi! I'm **Jesús**, from the Cripto Cuba Oficial team.\n\nWhat would you like to know?"
     ],
-
-    sugerencias: [
-      {
-        texto: "Sure. So I don't dump a wall of text on you, tell me what fits you best:",
-        opciones: [
-          { label: "I'm brand new",       q: 'how do i start' },
-          { label: 'See the 4 bots',      q: 'what bots are there' },
-          { label: 'How much do I need?', q: 'how much money do i need' },
-          { label: 'Is it safe?',         q: 'is my money safe' }
-        ]
-      },
-      {
-        texto: "Here's something a lot of people don't know:\n\nThe **Accumulator** can make money even when the price keeps falling. It sounds odd, but it makes sense: **the more it drops, the more it buys**, and each buy lowers your average price. So you don't need the market to return to its highs to recover — it just needs to rise a little above your average.\n\nWant me to explain it with numbers, or would you rather see another bot?",
-        opciones: [
-          { label: 'Explain with numbers', q: 'how does the accumulator work' },
-          { label: 'See another bot',      q: 'what bots are there' }
-        ]
-      }
+    quick: [
+      { label: 'What is this?',   q: 'what bots are there' },
+      { label: 'How do I start?', q: 'how do i start' },
+      { label: 'What bots?',      q: 'what bots are there' },
+      { label: 'Is it safe?',     q: 'is my money safe' },
+      { label: 'What fees?',      q: 'what does it cost' },
+      { label: 'Talk to someone', q: 'contact' }
     ],
-
-    /* Shown when the bot doesn't understand. Honest, and offers a way out. */
     fallback: [
-      "I'm not sure I got that. I can explain the bots (Smart Grid, Accumulator, Cash Out, DCA), the analysis tools, fees, or how to get started. Which one?",
-      "I didn't quite catch that. Try asking about a specific bot, the tools, or how to begin — or tell me in other words.",
-      "Hmm, I don't have a clear answer for that. I can help with the bots, the tools, security or fees. What would you like?"
+      "I'm not sure I got that. I can explain the bots (Smart Grid, Accumulator, Cash Out, DCA), the tools, fees, or how to start. Which one?",
+      "I didn't quite catch that. Try asking about a specific bot, the tools, or how to begin.",
+      "Hmm, I don't have a clear answer for that. I can help with the bots, tools, security or fees. What would you like?"
     ]
-  },
+  });
 
-  kb: [
+  window.NP_BOT_KB_EN = { bot: botEN, kb: [
     {
       topic: 'what bots are there',
       keys: ['what bots are there', 'what bots', 'the 4 bots', 'the four bots', 'bots', 'list of bots', 'which bots', 'kinds of bots', 'types of bots', 'bot types'],
@@ -198,5 +180,5 @@ window.NP_BOT_KB_EN = {
         { label: 'Is it safe?', q: 'is my money safe' }
       ]
     }
-  ]
-};
+  ] };
+})();
