@@ -686,6 +686,8 @@ function estilos() {
   #ac-overlay .ac-bg{position:absolute;inset:0;background:rgba(3,5,8,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
   #ac-overlay .ac-c{position:relative;width:100%;max-width:840px;max-height:calc(100vh - 36px);overflow-y:auto;
     background:linear-gradient(180deg,#141922,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);border-radius:22px;padding:32px 30px}
+  #ac-overlay .ac-c::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.10;filter:saturate(1.05);pointer-events:none;border-radius:22px}
+  #ac-overlay .ac-c > *{position:relative;z-index:1}
   /* La X va en su esquina, pero SIN empujar el texto a un lado: por eso
      va posicionada y el título queda centrado de verdad. */
   #ac-overlay .ac-top{position:relative;display:flex;align-items:center;justify-content:center;

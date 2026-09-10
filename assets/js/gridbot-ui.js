@@ -9,7 +9,7 @@ import * as gb from './gridbot.js?v=125';
 import * as wallet from './wallet.js?v=125';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
 import * as perfil from './perfil.js?v=125';
-import * as prizepool from './prizepool.js?v=125';
+import * as prizepool from './prizepool.js?v=126';
 import * as tutorial from './tutorial.js?v=125';
 import * as market from './market.js?v=125';
 import * as avisos from './avisos.js?v=125';
@@ -547,7 +547,7 @@ function wireHeader() {
 
   if ($('c-academy')) $('c-academy').onclick = async () => {
     try {
-      const ac = await import('./academy.js?v=125');
+      const ac = await import('./academy.js?v=126');
       ac.abrirAcademy();
     } catch (e) { console.warn('[Aurex] academy:', e); }
   };

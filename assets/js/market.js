@@ -7,7 +7,7 @@
 // sin nada externo que pueda quedarse colgado y dejar la app en 'Cargando…'.
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
 import * as wallet from './wallet.js?v=125';
-import { estilos } from './market/estilos.js?v=1';
+import { estilos } from './market/estilos.js?v=2';
 import { MARKET, USDT, USDC, TOKENS, RPCS, ABI, ERC20, ESTADOS, MONEDAS, METODOS, PAR, SUGERE, ICOCT, CF_PASOS, COBROS, NOMBRE_MONEDA } from './market/config.js?v=1';
 import { firmante, esc, f18, num, simbolo, corto, traducir, fechaExacta } from './market/util.js?v=1';
 import { overlay, cerrar, dialogo, marco, cerrarWiz, wmsg, msg } from './market/ui.js?v=1';
