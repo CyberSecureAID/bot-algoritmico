@@ -504,12 +504,20 @@
     var css = ''
       + 'html body #colmena-app{background:transparent !important;'
       +   '--panel:#10141a !important;--panel-2:#0a0e13 !important;--line:#232b36 !important;}'
-      + 'html body #colmena-app .wrap{background:transparent !important;}';
-      // NO se toca el fondo de ninguna tarjeta: varias (.gasbox, .cash-price,
-      // #c-chart, .asesor) tienen su propia IMAGEN de fondo y un glass con
-      // selectores amplios se las borraba. El efecto cristal, si se quiere,
-      // se hará más adelante clase por clase, solo en las que NO tengan
-      // imagen. Por ahora se preserva todo tal como estaba.
+      + 'html body #colmena-app .wrap{background:transparent !important;}'
+      // Efecto cristal SOLO en las tarjetas sin imagen (.card, .conectar-box,
+      // .stat). Las que tienen imagen (.gasbox, .cash-price, #c-chart,
+      // .asesor, .as-marco) NO se tocan: se comprobó en estilos.js que usan
+      // url('assets/img/marco-*.webp'). Selectores por nombre exacto, nunca
+      // [class*=...], que fue lo que borró la imagen del gas.
+      + 'html body #colmena-app .card,'
+      +   'html body #colmena-app .conectar-box{'
+      +   'background:linear-gradient(180deg,rgba(18,22,28,.66),rgba(10,14,19,.66)) !important;'
+      +   'backdrop-filter:blur(13px);-webkit-backdrop-filter:blur(13px);'
+      +   'border-color:rgba(232,184,75,.14) !important;}'
+      + 'html body #colmena-app .stat{'
+      +   'background:rgba(10,14,19,.5) !important;'
+      +   'backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}';
     function aplicar() {
       var id = 'cco-tema-bots';
       var el = document.getElementById(id);
