@@ -498,14 +498,35 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 #pt .pt-shot-link figure{margin:0}
 
 
-/* ── HERO: teléfono flotando encima de los botones ─────────────────── */
-#pt .pt-hero__centro{display:flex;flex-direction:column;align-items:center;text-align:center}
+/* ── HERO: teléfono + botones a la izquierda, fortalezas a la derecha ─ */
+#pt .pt-hero__grid{
+  display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr);
+  gap:clamp(24px,4vw,64px);align-items:center;
+}
+#pt .pt-hero__izq{display:flex;flex-direction:column;align-items:center;max-width:340px}
 #pt .pt-hero-fono{
-  width:100%;max-width:230px;margin:0 auto 26px;
+  width:100%;max-width:240px;margin:0 auto 24px;
   filter:drop-shadow(0 30px 50px rgba(0,0,0,.55));
 }
 #pt .pt-hero-fono img{width:100%;height:auto;display:block}
 @media (prefers-reduced-motion:no-preference){
   #pt .pt-hero-fono{animation:flota 6.5s ease-in-out infinite;will-change:transform}
 }
-#pt .pt-acts--centro{justify-content:center}
+
+/* Fortalezas: icono 3D + título + descripción, apiladas. */
+#pt .pt-hero__der{display:flex;flex-direction:column;gap:16px}
+#pt .pt-fort{display:flex;align-items:flex-start;gap:14px}
+#pt .pt-fort__i{
+  flex:0 0 auto;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;
+  color:#241900;
+  background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);
+  border:1px solid #c79426;
+  box-shadow:0 5px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5),0 10px 22px rgba(0,0,0,.4);
+}
+#pt .pt-fort b{display:block;font-family:var(--disp);font-weight:700;font-size:15px;color:var(--ink);margin-bottom:3px}
+#pt .pt-fort span{display:block;font-size:13px;line-height:1.55;color:var(--ink2)}
+
+@media(max-width:840px){
+  #pt .pt-hero__grid{grid-template-columns:1fr;gap:34px}
+  #pt .pt-hero__izq{max-width:none}
+}
