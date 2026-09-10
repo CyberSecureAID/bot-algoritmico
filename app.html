@@ -136,17 +136,25 @@
     #cco-bg {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background-color: #05070a;
+      /* La imagen va AQUÍ, directa, para que se pinte desde el primer frame
+         y no haya el salto negro -> imagen. El degradado queda encima como
+         velo suave, y el color de respaldo debajo por si la imagen falla. */
       background-image:
-        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.08), transparent 58%),
-        linear-gradient(180deg, #0a0e13, #05070a 55%);
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.06), transparent 58%),
+        linear-gradient(180deg, rgba(10,14,19,.35), rgba(5,7,10,.55) 55%),
+        url('assets/portada/img/bots.webp');
+      background-size: auto, auto, cover;
+      background-position: center, center, center center;
+      background-repeat: no-repeat, no-repeat, no-repeat;
     }
-    #cco-bg.con-img {
-      background-image: url('assets/portada/img/bots.webp');
-      /* 118% en vez de cover: aleja un poco la imagen (menos zoom) sin que
-         se salga de los bordes. Ajusta este valor si la quieres más lejos. */
-      background-size: 118% auto;
-      background-position: center;
-      background-repeat: no-repeat;
+    /* .con-img ya no hace falta (la imagen está en #cco-bg base). Si la
+       imagen NO existe, el JS quita esta clase; entonces se oculta la capa
+       de imagen dejando solo el degradado. */
+    #cco-bg:not(.con-img) {
+      background-image:
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.06), transparent 58%),
+        linear-gradient(180deg, #0a0e13, #05070a 55%);
+      background-size: auto; background-position: center;
     }
     /* Franja superior con la imagen de la cabecera de la portada. */
     #cco-top {
@@ -468,9 +476,14 @@
         window.addEventListener('resize', remedir, { passive: true });
         window.addEventListener('orientationchange', remedir);
       }
-      // Comprobar si la imagen de fondo general existe; si no, se deja el degradado.
+      // La imagen se aplica DE ENTRADA (no se espera al onload): así no hay
+      // el salto escalonado negro -> particulas -> imagen. El degradado de
+      // reserva queda debajo por si la imagen tardara. Si NO existiera, se
+      // quita la clase para no mostrar un hueco roto.
+      const b = document.getElementById('cco-bg');
+      if (b) b.classList.add('con-img');
       const img = new Image();
-      img.onload = () => { const b = document.getElementById('cco-bg'); if (b) b.classList.add('con-img'); };
+      img.onerror = () => { if (b) b.classList.remove('con-img'); };
       img.src = 'assets/portada/img/bots.webp';
       // La franja superior usa header.webp; si no existe, se oculta sola.
       const top = new Image();
@@ -494,7 +507,10 @@
       + 'html body #colmena-app .wrap{background:transparent !important;}'
       // Efecto cristal en las tarjetas: fondo translúcido + desenfoque.
       + 'html body #colmena-app .card,html body #colmena-app .bot-card,'
-      +   'html body #colmena-app .panel,html body #colmena-app [class*="card"]{'
+      +   'html body #colmena-app .panel,html body #colmena-app [class*="card"],'
+      +   'html body #colmena-app .creador,html body #colmena-app .bot-crear,'
+      +   'html body #colmena-app .box,html body #colmena-app [class*="panel"],'
+      +   'html body #colmena-app [class*="box"]{'
       +   'background:rgba(16,20,26,.62) !important;'
       +   'backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'
       +   'border-color:rgba(232,184,75,.14) !important;}';
