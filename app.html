@@ -102,54 +102,69 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Cripto Cuba Oficial">
   <style>
-    /* Negro desde el primer instante (evita el destello verde de la Bolita). */
-    html, body { background: #05070a; margin: 0; min-height: 100%; }
+    /* ════════════════════════════════════════════════════════════════
+       FONDO, PARTÍCULAS Y COLOR DE LA PANTALLA DE BOTS
+       ════════════════════════════════════════════════════════════════
+       Reglas clave y por qué son así:
 
-    /* La pantalla de bots gana fondo. La imagen va DETRÁS de #colmena-app,
-       que pasa a transparente. Mismos tonos oscuros que la portada. Sube
-       tu imagen a assets/portada/img/bots.webp. Sin ella se ve un degradado
-       oscuro de reserva, nunca un hueco. */
-    /* Especificidad reforzada para ganar a los estilos que la app inyecta
-       por JS después de este <style>. Solo se tocan el fondo (transparente,
-       para ver la imagen) y los tonos de panel, que eran gris claro y
-       chocaban con la nocturnidad de la portada. El resto queda intacto. */
-    html body #colmena-app {
-      background: transparent !important;
-      --panel: #12161c;      /* antes #1b2027, gris claro */
-      --panel-2: #0b0e13;    /* antes #12161c */
-      --line: #232b36;
+       · #colmena-app tiene isolation:isolate y z-index (lo pone la app por
+         JS). Eso crea un contexto de apilado propio. Por eso el fondo NO
+         puede ir en z-index negativo: quedaría detrás del negro de la app.
+         Solución: #colmena-app TRANSPARENTE, y las capas de fondo por
+         DEBAJO en el orden del documento pero con z-index positivo bajo.
+
+       · El color gris de las tarjetas se controla redefiniendo --panel y
+         --panel-2 aquí (en estilos.js ya se cambiaron los literales por
+         estas variables). Especificidad alta para ganar a la inyección JS.
+
+       · Fondo base oscuro puesto en html/body para que se vea DESDE EL
+         PRIMER FRAME, antes de que monte la app. Así no hay destello gris.
+    */
+    html, body {
+      margin: 0; min-height: 100%;
+      background: #05070a;            /* negro base inmediato, sin destello */
     }
-    #colmena-app { min-height: 100vh; position: relative; z-index: 2; }
 
-    #cco-bots-bg {
+    /* Capas de fondo, fijas, detrás de la interfaz. */
+    #cco-bg {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background-color: #05070a;
       background-image:
-        radial-gradient(120% 80% at 50% 0%, rgba(232,184,75,.07), transparent 60%),
-        linear-gradient(180deg, #0a0e13, #05070a 60%);
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.08), transparent 58%),
+        linear-gradient(180deg, #0a0e13, #05070a 55%);
     }
-    /* Imagen general de fondo (opcional): assets/portada/img/bots.webp */
-    #cco-bots-bg.con-img {
+    #cco-bg.con-img {
       background-image: url('assets/portada/img/bots.webp');
       background-size: cover; background-position: center;
     }
-    /* Franja superior, la misma imagen que la cabecera de la portada:
-       assets/portada/img/header.webp */
-    #cco-bots-top {
-      position: fixed; top: 0; left: 0; right: 0; height: 220px; z-index: 0; pointer-events: none;
+    /* Franja superior con la imagen de la cabecera de la portada. */
+    #cco-top {
+      position: fixed; top: 0; left: 0; right: 0; height: 230px; z-index: 0;
+      pointer-events: none; opacity: .55;
       background-image: url('assets/portada/img/header.webp');
-      background-size: cover; background-position: center top; opacity: .5;
-      -webkit-mask-image: linear-gradient(180deg, #000 0, #000 55%, transparent 100%);
-      mask-image: linear-gradient(180deg, #000 0, #000 55%, transparent 100%);
+      background-size: cover; background-position: center top;
+      -webkit-mask-image: linear-gradient(180deg, #000 0, #000 52%, transparent 100%);
+      mask-image: linear-gradient(180deg, #000 0, #000 52%, transparent 100%);
     }
-    /* Partículas, encima del fondo y por debajo de la interfaz. */
-    #cco-bots-chispas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+    /* Partículas, sobre el fondo, bajo la interfaz. */
+    #cco-fx { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+    /* La app: transparente para ver el fondo, y por encima de las capas.
+       Especificidad html body para ganar a la inyección JS de estilos.js.
+       Se oscurecen los paneles (antes gris #1b2027) para la nocturnidad. */
+    html body #colmena-app {
+      background: transparent !important;
+      --panel: #10141a;
+      --panel-2: #0a0e13;
+      --line: #232b36;
+      position: relative; z-index: 2; min-height: 100vh;
+    }
   </style>
 </head>
 <body>
-  <div id="cco-bots-bg" aria-hidden="true"></div>
-  <div id="cco-bots-top" aria-hidden="true"></div>
-  <canvas id="cco-bots-chispas" data-n="150" aria-hidden="true"></canvas>
+  <div id="cco-bg" aria-hidden="true"></div>
+  <div id="cco-top" aria-hidden="true"></div>
+  <canvas id="cco-fx" data-n="160" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
   <script type="module" src="assets/js/gridbot-ui.js?v=125"></script>
@@ -419,24 +434,28 @@
   (async () => {
     try {
       const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const lienzo = document.getElementById('cco-bots-chispas');
+      const lienzo = document.getElementById('cco-fx');
       if (!quieto && lienzo) {
         const chispasUrl = new URL('assets/portada/chispas.js?v=1', document.baseURI).href;
         const { brasas } = await import(chispasUrl);
         brasas(lienzo);
-        // El canvas puede medir 0 al montar (la app aún no pintó). Se fuerza
-        // un reajuste cuando ya hay tamaño real, para que las partículas
-        // cubran toda la pantalla y no solo la esquina superior izquierda.
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
-        window.addEventListener('load', () => window.dispatchEvent(new Event('resize')));
+        // El canvas mide el viewport (fixed inset:0), pero al montar la app
+        // aún no ha pintado y puede medir 0 -> partículas solo en la esquina.
+        // Se remide varias veces mientras el layout se asienta, y en cada
+        // resize/orientación. Es inmediato (no depende del debounce).
+        const remedir = () => { if (brasas._remedir) brasas._remedir(); };
+        [50, 200, 500, 1000].forEach((t) => setTimeout(remedir, t));
+        window.addEventListener('load', remedir);
+        window.addEventListener('resize', remedir, { passive: true });
+        window.addEventListener('orientationchange', remedir);
       }
       // Comprobar si la imagen de fondo general existe; si no, se deja el degradado.
       const img = new Image();
-      img.onload = () => { const b = document.getElementById('cco-bots-bg'); if (b) b.classList.add('con-img'); };
+      img.onload = () => { const b = document.getElementById('cco-bg'); if (b) b.classList.add('con-img'); };
       img.src = 'assets/portada/img/bots.webp';
       // La franja superior usa header.webp; si no existe, se oculta sola.
       const top = new Image();
-      top.onerror = () => { const t = document.getElementById('cco-bots-top'); if (t) t.style.display = 'none'; };
+      top.onerror = () => { const t = document.getElementById('cco-top'); if (t) t.style.display = 'none'; };
       top.src = 'assets/portada/img/header.webp';
     } catch (e) { console.warn('[bots] fondo/particulas:', e); }
   })();
