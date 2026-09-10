@@ -90,8 +90,18 @@ async function estiloBase() {
     import(J + 'gridbot/estilos.js?v=201'),
     import(J + 'gridbot/util.js?v=1')
   ]);
-  document.body.id = 'colmena-app';        // el ámbito que espera esa hoja
-  est.inyectarEstilo(util.tipoNum);        // ← lleva argumento, igual que en la app
+  // NO se toca el body. Antes se le ponía id='colmena-app' y eso aplicaba
+  // los estilos de la app a TODA la portada, colapsando el hero y montando
+  // la interfaz de bots encima. La hoja se inyecta igual; el ámbito
+  // colmena-app se añade a un contenedor oculto para que las ventanas
+  // modales (swap, wallet) tengan su contexto sin afectar a la portada.
+  est.inyectarEstilo(util.tipoNum);
+  if (!document.getElementById('cco-scope')) {
+    const sc = document.createElement('div');
+    sc.id = 'cco-scope';
+    sc.className = 'colmena-app-scope';
+    document.body.appendChild(sc);
+  }
   baseLista = true;
 }
 
@@ -293,14 +303,15 @@ async function pintarWallet() {
     return;
   }
 
-  /* .c-hdr-r es el contexto que esperan estos elementos: sin él la cápsula
-     se descuadraba y el logo salía encima de las cuatro cifras. */
-  caja.innerHTML = '<div class="c-hdr-r">'
+  /* La cápsula se envuelve en un ámbito colmena-app LOCAL (un div con ese
+     id) para heredar los estilos de la app SIN volver el body entero
+     colmena-app, que rompía la portada. */
+  caja.innerHTML = '<div id="colmena-app" style="display:contents"><div class="c-hdr-r">'
     + '<button class="c-perfil" id="c-perfil" type="button" aria-label="Mi perfil">'
     + '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c.6-3.4 3.2-5 6.5-5s5.9 1.6 6.5 5"/></svg></button>'
     + '<button class="dir" id="c-dir" type="button" title="Cambiar de wallet">'
     + iconoWallet(w) + '<span class="dir-tx">' + String(cta).slice(-4) + '</span>'
-    + '<span class="dir-ch"></span></button></div>';
+    + '<span class="dir-ch"></span></button></div></div>';
 
   $('c-perfil').onclick = () => abrir('perfil', null);
   $('c-dir').onclick = (e) => { e.stopPropagation(); selectorWallet($('c-dir')); };
