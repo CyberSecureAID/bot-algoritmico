@@ -53,6 +53,36 @@ const quieto = window.matchMedia
 let baseLista = false;
 let W = null;
 
+/* Carga de logos y precios desde CoinGecko, para que el swap y las listas
+   muestren los iconos reales en vez de la inicial de la moneda. Es la misma
+   lógica de gridbot-ui.js (cargarLogosPrecios), reescrita para la portada:
+   rellena el MISMO objeto LOGOS de gridbot/estado.js que consume el swap. */
+let _logosOK = false, _logosEnCurso = false;
+async function cargarLogosPrecios() {
+  if (_logosOK || _logosEnCurso) return;
+  _logosEnCurso = true;
+  try {
+    const [{ LOGOS }, { moneda }, { BASES, QUOTES }] = await Promise.all([
+      import(J + 'gridbot/estado.js?v=1'),
+      import(J + 'gridbot/util.js?v=1'),
+      import(J + 'gridbot/config.js?v=1')
+    ]);
+    const ids = [...new Set([...BASES, ...QUOTES].map((id) => moneda(id) && moneda(id).cg).filter(Boolean))];
+    const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='
+              + ids.join(',') + '&per_page=250&price_change_percentage=24h';
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('cg ' + r.status);
+    const arr = await r.json();
+    const byCg = {}; arr.forEach((c) => { byCg[c.id] = c; });
+    [...BASES, ...QUOTES].forEach((id) => {
+      const c = byCg[moneda(id) && moneda(id).cg];
+      if (c) LOGOS[id] = { img: c.image, price: c.current_price, chg: c.price_change_percentage_24h };
+    });
+    _logosOK = true;
+  } catch (e) { console.warn('[portada] logos:', e); }
+  finally { _logosEnCurso = false; }
+}
+
 async function estiloBase() {
   if (baseLista) return;
   const [est, util] = await Promise.all([
@@ -72,11 +102,15 @@ async function wallet() {
 const PUERTAS = {
   swap: async () => {
     const m = await import(J + 'gridbot/swap.js?v=1');
-    m.initSwap(conectar, () => {});
+    m.initSwap(conectar, cargarLogosPrecios);
+    await cargarLogosPrecios();          // rellena los logos antes de abrir
     m.abrirSwap();
   },
   market:  async () => (await import(J + 'market.js?v=125')).abrirMarket(),
-  liq:     async () => (await import(J + 'liquidity.js?v=125')).abrirLiquidity(),
+  liq:     async () => (await import(J + 'liquidity.js?v=126')).abrirLiquidity(),
+  pools:   async () => (await import(J + 'liquidity.js?v=126')).abrirPools(),
+  heat:    async () => (await import(J + 'muros.js?v=126')).abrirMuros(),
+  levels:  async () => (await import(J + 'niveles.js?v=126')).abrirNiveles(),
   tools:   async (tid) => (await import(J + 'tools.js?v=126')).abrirTools(tid),
   academy: async () => (await import(J + 'academy.js?v=125')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=125')).abrirPrizePool(),
@@ -569,33 +603,63 @@ try {
    beforeinstallprompt del navegador, y luego extras.instalarAhora(), que
    llama a prompt(). Si el navegador todavía no ofrece instalar (o ya está
    instalada), comparte el enlace, igual que hace la app en el móvil. */
-try {
+(async () => {
   let ex = null;
-  const cargarExtras = async () => {
-    if (ex) return ex;
-    await estiloBase();
+  try {
+    // iniciarInstalacion() DEBE correr ya, en la carga: el evento
+    // beforeinstallprompt del navegador llega una sola vez y temprano. Si
+    // se espera al clic, ya paso y no hay forma de instalar. Este era el
+    // bug: por eso salia compartir en lugar de instalar.
     ex = await import(J + 'extras.js?v=126');
     if (ex.iniciarInstalacion) ex.iniciarInstalacion();
-    return ex;
-  };
-  // Se arranca la captura cuanto antes: el evento del navegador llega solo
-  // una vez y hay que estar escuchando desde el principio.
-  cargarExtras().catch(() => {});
+  } catch (e) { console.warn('[portada] init instalar:', e); }
 
   document.querySelectorAll('[data-inst]').forEach((b) => {
-    b.addEventListener('click', async (ev) => {
-      ev.preventDefault();
+    b.addEventListener('click', async (evt) => {
+      evt.preventDefault();
       try {
-        const e = await cargarExtras();
-        if (e.instalarAhora) await e.instalarAhora();
-        else if (e.compartirEnlace) await e.compartirEnlace();
-      } catch (err) {
-        console.warn('[portada] instalar:', err);
-      }
+        if (!ex) ex = await import(J + 'extras.js?v=126');
+        if (ex.instalarAhora) await ex.instalarAhora();
+      } catch (err) { console.warn('[portada] instalar:', err); }
     });
   });
-} catch (_) {}
+})();
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   OVERLAYS DE LA APP: bloquear el fondo mientras están abiertos
+   ══════════════════════════════════════════════════════════════════════
+   Las ventanas de la app se montan en <body>. Mientras una está abierta,
+   la rueda del ratón seguía moviendo la página de fondo. Aquí se vigila la
+   aparición y desaparición de esos overlays y se congela el fondo.
+   La barra de scroll fea de dentro se oculta por CSS (portada.css). */
+(function () {
+  const IDS = /(-overlay$|^swap-modal$|^inst-|^wsel$|^pp-overlay$|^mk-overlay$|^pro-overlay$|^lqp-overlay$)/;
+  const esOverlay = (n) => n && n.nodeType === 1 && n.id && IDS.test(n.id);
+
+  let abiertos = 0;
+  const bloquear = () => {
+    if (abiertos === 0) {
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    }
+    abiertos++;
+  };
+  const liberar = () => {
+    abiertos = Math.max(0, abiertos - 1);
+    if (abiertos === 0) {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    }
+  };
+
+  new MutationObserver((muts) => {
+    muts.forEach((m) => {
+      m.addedNodes.forEach((n) => { if (esOverlay(n)) bloquear(); });
+      m.removedNodes.forEach((n) => { if (esOverlay(n)) liberar(); });
+    });
+  }).observe(document.body, { childList: true });
+})();
 
 /* Si se llega con ?abrir=… se abre esa ventana al entrar. */
 try {

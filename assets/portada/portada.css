@@ -455,3 +455,30 @@ body{overflow-x:hidden}
 ::-webkit-scrollbar-thumb{background:#2b3139;border-radius:6px}
 ::-webkit-scrollbar-thumb:hover{background:#3a434f}
 html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   BARRA DE SCROLL EN LAS VENTANAS DE LA APP
+   ══════════════════════════════════════════════════════════════════════
+   Los overlays de swap, análisis, tools, eventos y marketplace tienen su
+   contenido con overflow-y:auto, y la barra del navegador rompía el borde
+   redondeado del lado derecho. Se oculta la barra conservando el scroll.
+   Acotado a los contenedores .*-c / .*-card / .*-box de esos overlays,
+   para no tocar barras de scroll de otras partes. */
+#colmena-app [id$="-overlay"] [class$="-c"],
+#colmena-app #swap-modal .sw-box,
+#colmena-app #pp-overlay .pp-card,
+#tl-overlay .tl-c, #pv-overlay .pv-c, #al-overlay .pv-c,
+#w-overlay .w-c, #pro-overlay .pro-c, #lqp-overlay .lqp-c,
+#pp-overlay .pp-card, #mk-overlay [class$="-c"]{
+  scrollbar-width:none;               /* Firefox */
+  -ms-overflow-style:none;            /* Edge viejo */
+}
+#colmena-app [id$="-overlay"] [class$="-c"]::-webkit-scrollbar,
+#colmena-app #swap-modal .sw-box::-webkit-scrollbar,
+#tl-overlay .tl-c::-webkit-scrollbar, #pv-overlay .pv-c::-webkit-scrollbar,
+#al-overlay .pv-c::-webkit-scrollbar, #w-overlay .w-c::-webkit-scrollbar,
+#pro-overlay .pro-c::-webkit-scrollbar, #lqp-overlay .lqp-c::-webkit-scrollbar,
+#pp-overlay .pp-card::-webkit-scrollbar{
+  width:0 !important;height:0 !important;display:none !important;
+}
