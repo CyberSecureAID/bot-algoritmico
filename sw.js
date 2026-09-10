@@ -12,24 +12,11 @@ const VERSION = 'aurex-v130';
 const APP = [
   './',
   './index.html',              // la portada
-  './app.html',                // la app (antes era index.html)
-  './assets/portada/portada.css?v=1',
-  './assets/portada/portada.js?v=1',
-  './manifest-aurex.webmanifest',
-  './assets/js/gridbot-ui.js?v=125',
-  './assets/js/gridbot.js?v=125',
-  './assets/js/wallet.js?v=125',
-  './assets/js/tokens.js?v=125',
-  './assets/js/perfil.js?v=125',
-  './assets/js/prizepool.js?v=125',
-  './assets/js/tutorial.js?v=125',
-  './assets/js/market.js?v=125',
-  './assets/js/avisos.js?v=125',
-  './assets/js/grafica.js?v=125',
-  './assets/js/vendor/ethers-6.13.4.min.js?v=125',
-  './assets/js/vendor/lightweight-charts.mjs?v=125'
-  // walletconnect.umd.js NO se guarda: pesa 850 KB y solo hace falta si el
-  // usuario conecta desde la app instalada. Se descarga en ese momento.
+  './app.html',                // la app
+  './manifest-aurex.webmanifest'
+  // El resto (JS, CSS, vendor) se cachea al vuelo con su URL versionada
+  // real cuando la página los pide. Así nunca se guarda una versión que ya
+  // no existe, que era lo que dejaba servir archivos viejos.
 ];
 
 self.addEventListener('install', (e) => {
