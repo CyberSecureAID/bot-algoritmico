@@ -16,7 +16,7 @@ import * as avisos from './avisos.js?v=125';
 import * as grafica from './grafica.js?v=125';
 import * as extras from './extras.js?v=200';
 import * as gestos from './gestos.js?v=125';
-import { inyectarEstilo } from './gridbot/estilos.js?v=200';
+import { inyectarEstilo } from './gridbot/estilos.js?v=201';
 import { moneda, num, _movil, tipoNum, escT, enCristiano, fmtPrecioUSD, icoInner, limpiarBusy, modalBusy, modalBusyTexto, modalError, modalClose } from './gridbot/util.js?v=1';
 import { LOGOS, LOGO_ST } from './gridbot/estado.js?v=1';
 import { APP, BASES, QUOTES, INFO, FEE_CICLO, GAS_OP_USD, VOL_DIARIA, PRESETS, NOMBRE_PRESET, GAS_VUELTA_USD, COM_DEX, LOGOS_WALLET, KEEPER_URL, CONF_BOTS, CLAVE_AVISO, CUPO_TOTAL, CUPO_POR_TIPO, NOMBRE_TIPO, CAT_NOMBRES, BOTMETA, RESERVA_BNB } from './gridbot/config.js?v=1';
@@ -3159,7 +3159,7 @@ async function arrancar() {
   // Sin pantalla de carga: dejamos el fondo negro y ya. Si la wallet responde
   // rápido (lo normal), el usuario no ve ningún parpadeo. El círculo solo
   // aparece si de verdad tarda más de medio segundo.
-  host.innerHTML = `<div id="c-boot" style="min-height:64vh;background:#0b0e11"></div>`;
+  host.innerHTML = `<div id="c-boot" style="min-height:64vh"></div>`;
   const _tBoot = setTimeout(() => {
     const bx = $('c-boot');
     if (bx) bx.innerHTML = `<div style="min-height:64vh;display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:#E8B84B;display:inline-block;animation:spin .7s linear infinite"></span></div>`;
