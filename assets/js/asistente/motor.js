@@ -46,6 +46,12 @@
     return window.NP_BOT_KB;
   }
 
+  function idiomaUI() { try { return localStorage.getItem('cco-idioma') || 'en'; } catch (e) { return 'en'; } }
+  var _EN = idiomaUI() !== 'es';   // true = interfaz del chat en inglés
+  var UI = _EN
+    ? { temas:'Topics', idioma:'ES', cerrar:'Close chat', ph:'Type me anything…', enviar:'Send' }
+    : { temas:'Temas', idioma:'EN', cerrar:'Cerrar el chat', ph:'Escríbeme lo que quieras…', enviar:'Enviar' };
+
   var DATA = elegirKB();
   if (!DATA || !DATA.kb) return;
 
@@ -1122,14 +1128,15 @@
           '<button class="np-chat__topics" id="npTopics" aria-expanded="false" aria-label="Preguntas frecuentes">' +
             '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">' +
               '<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/>' +
-            '</svg><span>Temas</span>' +
+            '</svg><span>' + UI.temas + '</span>' +
           '</button>' +
-          '<button class="np-chat__x" id="npClose" aria-label="Cerrar el chat">&times;</button>' +
+          '<button class="np-chat__lang" id="npLang" aria-label="Language / Idioma" title="Language / Idioma">' + UI.idioma + '</button>' +
+          '<button class="np-chat__x" id="npClose" aria-label="' + UI.cerrar + '">&times;</button>' +
           '<div class="np-chat__menu" id="npMenu" role="menu" aria-hidden="true"></div>' +
         '</header>' +
         '<div class="np-chat__msgs" id="npMsgs" role="log" aria-live="polite"></div>' +
         '<div class="np-chat__bar">' +
-          '<textarea id="npInput" class="np-chat__input" rows="1" maxlength="800" placeholder="Escríbeme lo que quieras…" aria-label="Mensaje"></textarea>' +
+          '<textarea id="npInput" class="np-chat__input" rows="1" maxlength="800" placeholder="' + UI.ph + '" aria-label="Mensaje"></textarea>' +
           '<button class="np-chat__send" id="npSend" aria-label="Send">' +
             '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M2 21l21-9L2 3v7l15 2-15 2z" fill="currentColor"/></svg>' +
           '</button>' +
@@ -1143,6 +1150,20 @@
     elInput = document.getElementById('npInput');
     elFab   = document.getElementById('npFab');
     elMenu  = document.getElementById('npMenu');
+
+    var elLang = document.getElementById('npLang');
+    if (elLang) elLang.addEventListener('click', function () {
+      var actual = idiomaUI();
+      var nuevo = (actual === 'es') ? 'en' : 'es';
+      try { localStorage.setItem('cco-idioma', nuevo); } catch (e) {}
+      // Reiniciar el chat con el idioma nuevo (usa el mecanismo ya existente).
+      if (window.NP_CHAT_REINICIAR) window.NP_CHAT_REINICIAR();
+      // Y avisar a la página para que traduzca el resto (si el sistema existe).
+      try {
+        var ev = new CustomEvent('cco-idioma-cambiado', { detail: nuevo });
+        window.dispatchEvent(ev);
+      } catch (e) {}
+    });
 
     BOT.quick.forEach(function (q) {
       var b = document.createElement('button');
@@ -1215,6 +1236,11 @@
         'width:26px;height:26px;padding:0;border:1px solid var(--line,rgba(0,0,0,.14));',
         'border-radius:6px;background:transparent;color:var(--cyan,#c9a227);cursor:pointer;',
         'transition:background .2s ease,border-color .2s ease,opacity .2s ease}',
+      '.np-chat__lang{margin-left:6px;padding:0 9px;height:26px;border:1px solid rgba(232,184,75,.4);border-radius:7px;background:transparent;color:#E8B84B;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer;letter-spacing:.04em}',
+      '.np-chat__lang:hover{background:rgba(232,184,75,.12)}',
+      '.np-chat{background:#0a0e13 !important}',
+      '.np-chat__msgs{background:#0a0e13 !important}',
+      '.np-chat__bar{background:#07090c !important}',
       '.np-chat__copy:hover{background:color-mix(in srgb,var(--cyan,#c9a227) 12%,transparent)}',
       '.np-chat__copy.is-done{color:var(--cyan,#c9a227);border-color:var(--cyan,#c9a227)}',
       '.np-chat__copy--empty{border:0;background:none;pointer-events:none}',
