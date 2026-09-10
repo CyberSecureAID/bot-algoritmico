@@ -316,12 +316,49 @@ async function pintarWallet() {
   }, ms));
 }
 
+/* Los botones grandes marcados data-cta cambian segun haya sesion o no.
+   Sin wallet: Conectar wallet. Con wallet: pasan a promocionar una funcion
+   real (Swap), ya que conectar ya no hace falta. */
+async function pintarCtas() {
+  let hay = false;
+  try { const w = await wallet(); hay = !!(w.cuentaActual && w.cuentaActual()); } catch (_) {}
+  const es = document.documentElement.lang === 'es';
+  document.querySelectorAll('[data-cta="wallet"]').forEach((b) => {
+    const ico = b.querySelector('svg');
+    const icoHtml = ico ? ico.outerHTML : '';
+    if (hay) {
+      b.innerHTML = icoHtml + (es ? 'Ir al Swap' : 'Go to Swap');
+      b.removeAttribute('data-conectar');
+      b.dataset.abrir = 'swap';
+    } else {
+      b.innerHTML = icoHtml + (es ? 'Conectar wallet' : 'Connect wallet');
+      b.setAttribute('data-conectar', '');
+      delete b.dataset.abrir;
+    }
+  });
+}
+
+/* Panel de administracion: se activa el disparador oculto (5 clics en la
+   esquina inferior izquierda). El modulo comprueba on-chain si la wallet
+   conectada es owner; si no, no abre nada. Igual que en la app. */
+let _adminOK = false;
+async function activarAdmin() {
+  if (_adminOK) return;
+  try {
+    await estiloBase();
+    const ad = await import(J + 'admin.js?v=125');
+    if (ad.iniciarPanelOculto) { ad.iniciarPanelOculto(); _adminOK = true; }
+  } catch (e) { console.warn('[portada] admin:', e); }
+}
+
 (async () => {
   try {
     const w = await wallet();
-    w.alCambiar(pintarWallet);
-    await w.reconectarSiProcede();   // silencioso: no abre ninguna ventana
+    w.alCambiar(() => { pintarWallet(); pintarCtas(); });
+    await w.reconectarSiProcede();
     pintarWallet();
+    pintarCtas();
+    activarAdmin();
   } catch (e) { console.warn('[portada] wallet:', e); }
 })();
 
@@ -603,22 +640,31 @@ try {
    beforeinstallprompt del navegador, y luego extras.instalarAhora(), que
    llama a prompt(). Si el navegador todavía no ofrece instalar (o ya está
    instalada), comparte el enlace, igual que hace la app en el móvil. */
-(async () => {
-  let ex = null;
-  try {
-    // iniciarInstalacion() DEBE correr ya, en la carga: el evento
-    // beforeinstallprompt del navegador llega una sola vez y temprano. Si
-    // se espera al clic, ya paso y no hay forma de instalar. Este era el
-    // bug: por eso salia compartir en lugar de instalar.
-    ex = await import(J + 'extras.js?v=126');
-    if (ex.iniciarInstalacion) ex.iniciarInstalacion();
-  } catch (e) { console.warn('[portada] init instalar:', e); }
+(function () {
+  // El evento beforeinstallprompt llega UNA sola vez y temprano. Se captura
+  // aqui mismo, sincronamente, para no perderlo mientras carga extras.js.
+  // Cuando extras este listo, se le pasa el evento guardado.
+  let guardado = null, ex = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    guardado = e;
+    if (ex && ex.registrarInstalador) ex.registrarInstalador(e);
+  });
+
+  (async () => {
+    try {
+      ex = await import(J + 'extras.js?v=126');
+      if (ex.iniciarInstalacion) ex.iniciarInstalacion();
+      if (guardado && ex.registrarInstalador) ex.registrarInstalador(guardado);
+    } catch (e) { console.warn('[portada] init instalar:', e); }
+  })();
 
   document.querySelectorAll('[data-inst]').forEach((b) => {
     b.addEventListener('click', async (evt) => {
       evt.preventDefault();
       try {
         if (!ex) ex = await import(J + 'extras.js?v=126');
+        if (guardado && ex.registrarInstalador) ex.registrarInstalador(guardado);
         if (ex.instalarAhora) await ex.instalarAhora();
       } catch (err) { console.warn('[portada] instalar:', err); }
     });
@@ -627,38 +673,49 @@ try {
 
 
 /* ══════════════════════════════════════════════════════════════════════
-   OVERLAYS DE LA APP: bloquear el fondo mientras están abiertos
+   BLOQUEO DE SCROLL MIENTRAS HAY UNA VENTANA ABIERTA
    ══════════════════════════════════════════════════════════════════════
-   Las ventanas de la app se montan en <body>. Mientras una está abierta,
-   la rueda del ratón seguía moviendo la página de fondo. Aquí se vigila la
-   aparición y desaparición de esos overlays y se congela el fondo.
-   La barra de scroll fea de dentro se oculta por CSS (portada.css). */
+   Las ventanas de la app se montan en <body> y muchas NO se destruyen al
+   cerrar: se ocultan quitando la clase .show o con display:none. Por eso
+   contar nodos añadidos/quitados dejaba el scroll bloqueado para siempre.
+
+   Aquí no se cuenta nada: se comprueba en cada cambio del DOM si hay ALGÚN
+   overlay realmente visible. Si lo hay, se bloquea el fondo; si no queda
+   ninguno, se libera. Es imposible que quede bloqueado sin ventana abierta.
+*/
 (function () {
-  const IDS = /(-overlay$|^swap-modal$|^inst-|^wsel$|^pp-overlay$|^mk-overlay$|^pro-overlay$|^lqp-overlay$)/;
-  const esOverlay = (n) => n && n.nodeType === 1 && n.id && IDS.test(n.id);
+  const SEL = [
+    '[id$="-overlay"]', '#swap-modal', '#inst-panel', '#inst-pre', '#inst-guia',
+    '#wsel', '#pp-overlay', '#mk-overlay', '#pro-overlay', '#lqp-overlay',
+    '#ord-modal', '#w-overlay', '#tl-overlay', '#pv-overlay', '#al-overlay'
+  ].join(',');
 
-  let abiertos = 0;
-  const bloquear = () => {
-    if (abiertos === 0) {
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-    }
-    abiertos++;
-  };
-  const liberar = () => {
-    abiertos = Math.max(0, abiertos - 1);
-    if (abiertos === 0) {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-    }
+  const visible = (el) => {
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+    // Un overlay a pantalla completa siempre tiene tamaño; si es 0, está oculto.
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
   };
 
-  new MutationObserver((muts) => {
-    muts.forEach((m) => {
-      m.addedNodes.forEach((n) => { if (esOverlay(n)) bloquear(); });
-      m.removedNodes.forEach((n) => { if (esOverlay(n)) liberar(); });
-    });
-  }).observe(document.body, { childList: true });
+  let bloqueado = false;
+  const revisar = () => {
+    let hay = false;
+    document.querySelectorAll(SEL).forEach((el) => { if (visible(el)) hay = true; });
+    if (hay === bloqueado) return;
+    bloqueado = hay;
+    document.documentElement.style.overflow = hay ? 'hidden' : '';
+    document.body.style.overflow = hay ? 'hidden' : '';
+  };
+
+  const obs = new MutationObserver(() => { requestAnimationFrame(revisar); });
+  obs.observe(document.body, {
+    childList: true, subtree: true,
+    attributes: true, attributeFilter: ['class', 'style']
+  });
+  // Red de seguridad: si algo se escapa, cada segundo se recomprueba.
+  setInterval(revisar, 1000);
 })();
 
 /* Si se llega con ?abrir=… se abre esa ventana al entrar. */

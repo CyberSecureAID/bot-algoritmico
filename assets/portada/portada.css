@@ -466,19 +466,22 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
    Acotado a los contenedores .*-c / .*-card / .*-box de esos overlays,
    para no tocar barras de scroll de otras partes. */
 #colmena-app [id$="-overlay"] [class$="-c"],
+#colmena-app [id$="-overlay"] [class$="-card"],
 #colmena-app #swap-modal .sw-box,
-#colmena-app #pp-overlay .pp-card,
+#perfil-overlay .pf-card, #pp-overlay .pp-card,
 #tl-overlay .tl-c, #pv-overlay .pv-c, #al-overlay .pv-c,
 #w-overlay .w-c, #pro-overlay .pro-c, #lqp-overlay .lqp-c,
-#pp-overlay .pp-card, #mk-overlay [class$="-c"]{
+#mk-overlay [class$="-c"]{
   scrollbar-width:none;               /* Firefox */
   -ms-overflow-style:none;            /* Edge viejo */
 }
 #colmena-app [id$="-overlay"] [class$="-c"]::-webkit-scrollbar,
+#colmena-app [id$="-overlay"] [class$="-card"]::-webkit-scrollbar,
 #colmena-app #swap-modal .sw-box::-webkit-scrollbar,
+#perfil-overlay .pf-card::-webkit-scrollbar,
 #tl-overlay .tl-c::-webkit-scrollbar, #pv-overlay .pv-c::-webkit-scrollbar,
 #al-overlay .pv-c::-webkit-scrollbar, #w-overlay .w-c::-webkit-scrollbar,
 #pro-overlay .pro-c::-webkit-scrollbar, #lqp-overlay .lqp-c::-webkit-scrollbar,
-#pp-overlay .pp-card::-webkit-scrollbar{
+#pp-overlay .pp-card::-webkit-scrollbar, #mk-overlay [class$="-c"]::-webkit-scrollbar{
   width:0 !important;height:0 !important;display:none !important;
 }
