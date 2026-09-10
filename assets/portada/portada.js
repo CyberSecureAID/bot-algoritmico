@@ -522,17 +522,18 @@ try {
     } catch (e) { console.warn('[portada] init instalar:', e); }
   })();
 
-  // El boton abre el PANEL ORIGINAL de la app (panelInstalar), que ya tiene
-  // su boton "Instalar" -> prompt del navegador. Es el flujo que ya estaba
-  // implementado y probado; no se reinventa.
+  // El boton INSTALA directamente: dispara el prompt nativo del navegador.
+  // Nada de panel con QR (eso era lo viejo). instalarAhora() usa el evento
+  // beforeinstallprompt capturado; requiere que el service worker este
+  // registrado (ya lo esta en index.html), sin el cual el navegador nunca
+  // ofrece instalar.
   document.querySelectorAll('[data-inst]').forEach((b) => {
     b.addEventListener('click', async (evt) => {
       evt.preventDefault();
       try {
-        await estiloBase();
         if (!ex) ex = await import(J + 'extras.js?v=126');
         if (guardado && ex.registrarInstalador) ex.registrarInstalador(guardado);
-        if (ex.panelInstalar) ex.panelInstalar(b);
+        if (ex.instalarAhora) await ex.instalarAhora();
       } catch (err) { console.warn('[portada] instalar:', err); }
     });
   });

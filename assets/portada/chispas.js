@@ -133,6 +133,8 @@ export function brasas(lienzo) {
 
   let espera;
   window.addEventListener('resize', () => { clearTimeout(espera); espera = setTimeout(medir, 260); }, { passive: true });
+  // Remedida inmediata bajo demanda (cuando el layout ya tiene tamaño).
+  brasas._remedir = medir;
 
   arrancar();
   document.addEventListener('visibilitychange', () => (document.hidden ? parar() : arrancar()));
