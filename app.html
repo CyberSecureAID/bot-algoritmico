@@ -142,16 +142,20 @@
     }
     #cco-bg.con-img {
       background-image: url('assets/portada/img/bots.webp');
-      background-size: cover; background-position: center;
+      /* 118% en vez de cover: aleja un poco la imagen (menos zoom) sin que
+         se salga de los bordes. Ajusta este valor si la quieres más lejos. */
+      background-size: 118% auto;
+      background-position: center;
+      background-repeat: no-repeat;
     }
     /* Franja superior con la imagen de la cabecera de la portada. */
     #cco-top {
-      position: fixed; top: 0; left: 0; right: 0; height: 230px; z-index: 0;
-      pointer-events: none; opacity: .55;
+      position: fixed; top: 0; left: 0; right: 0; height: 300px; z-index: 0;
+      pointer-events: none; opacity: .8;
       background-image: url('assets/portada/img/header.webp');
       background-size: cover; background-position: center top;
-      -webkit-mask-image: linear-gradient(180deg, #000 0, #000 52%, transparent 100%);
-      mask-image: linear-gradient(180deg, #000 0, #000 52%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, #000 0, #000 45%, transparent 100%);
+      mask-image: linear-gradient(180deg, #000 0, #000 45%, transparent 100%);
     }
     /* Partículas, sobre el fondo, bajo la interfaz. */
     #cco-fx { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
@@ -171,7 +175,7 @@
 <body>
   <div id="cco-bg" aria-hidden="true"></div>
   <div id="cco-top" aria-hidden="true"></div>
-  <canvas id="cco-fx" data-n="160" aria-hidden="true"></canvas>
+  <canvas id="cco-fx" data-n="260" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
   <script type="module" src="assets/js/gridbot-ui.js?v=201"></script>
@@ -407,9 +411,11 @@
     #colmena-app .c-hdr{display:none !important}
     #cco-volver{
       position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:10px;
-      padding:12px 22px;background:rgba(9,12,16,.92);
-      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-      border-bottom:1px solid #2b3139;
+      padding:14px 22px;
+      /* Transparente con un velo mínimo: deja ver la imagen del header
+         (cco-top) detrás, en vez de taparla con negro opaco. */
+      background:linear-gradient(180deg,rgba(5,7,10,.35),transparent);
+      border-bottom:1px solid rgba(232,184,75,.12);
     }
     #cco-volver a{
       display:inline-flex;align-items:center;gap:8px;text-decoration:none;
@@ -485,7 +491,13 @@
     var css = ''
       + 'html body #colmena-app{background:transparent !important;'
       +   '--panel:#10141a !important;--panel-2:#0a0e13 !important;--line:#232b36 !important;}'
-      + 'html body #colmena-app .wrap{background:transparent !important;}';
+      + 'html body #colmena-app .wrap{background:transparent !important;}'
+      // Efecto cristal en las tarjetas: fondo translúcido + desenfoque.
+      + 'html body #colmena-app .card,html body #colmena-app .bot-card,'
+      +   'html body #colmena-app .panel,html body #colmena-app [class*="card"]{'
+      +   'background:rgba(16,20,26,.62) !important;'
+      +   'backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'
+      +   'border-color:rgba(232,184,75,.14) !important;}';
     function aplicar() {
       var id = 'cco-tema-bots';
       var el = document.getElementById(id);
