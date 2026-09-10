@@ -36,8 +36,9 @@ function swInjectCSS() {
   #swap-modal{position:fixed;inset:0;z-index:230;display:flex;align-items:center;justify-content:center;padding:16px}
   #swap-modal *{-webkit-tap-highlight-color:transparent}
   #swap-modal .sw-bg{position:absolute;inset:0;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
-  #swap-modal .sw-bg::before{content:"";position:absolute;inset:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.14;filter:saturate(1.05)}
   #swap-modal .sw-box{position:relative;width:100%;max-width:436px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:cmPop .22s cubic-bezier(.2,.9,.3,1.2)}
+  #swap-modal .sw-box::before{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;filter:saturate(1.05);pointer-events:none}
+  #swap-modal .sw-box > *{position:relative;z-index:1}
   #swap-modal .sw-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
   #swap-modal .sw-body{padding:2px 18px 20px}
   #swap-modal .sw-cards{position:relative}
