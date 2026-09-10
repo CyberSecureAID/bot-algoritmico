@@ -480,6 +480,34 @@
     } catch (e) { console.warn('[bots] fondo/particulas:', e); }
   })();
   </script>
+
+  <script>
+  /* FUERZA EL TEMA OSCURO DE BOTS POR JS (gana al CSS inyectado por la app).
+     La app pinta #colmena-app con fondo #0b0e11 y paneles gris #1b2027 al
+     montar, de forma asíncrona. Una regla CSS puede perder por orden de
+     inyección; una hoja añadida al final del <head> con !important y
+     revisada varias veces NO pierde. Esto no toca ningún archivo del
+     sistema: solo añade una capa de estilo por encima. */
+  (function () {
+    var css = ''
+      + 'html body #colmena-app{background:transparent !important;'
+      +   '--panel:#10141a !important;--panel-2:#0a0e13 !important;--line:#232b36 !important;}'
+      + 'html body #colmena-app .wrap{background:transparent !important;}';
+    function aplicar() {
+      var id = 'cco-tema-bots';
+      var el = document.getElementById(id);
+      if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el); }
+      // Siempre al final del head = última palabra en el desempate CSS.
+      if (el !== document.head.lastElementChild) document.head.appendChild(el);
+      if (el.textContent !== css) el.textContent = css;
+    }
+    aplicar();
+    // La app inyecta sus estilos tras montar; se re-asegura unas cuantas veces.
+    [100, 400, 800, 1500, 3000].forEach(function (t) { setTimeout(aplicar, t); });
+    document.addEventListener('DOMContentLoaded', aplicar);
+    window.addEventListener('load', aplicar);
+  })();
+  </script>
 </body>
 </html>
  
