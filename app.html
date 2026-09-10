@@ -91,6 +91,8 @@
   }
   </style>
   <!-- App instalable: icono propio, pantalla completa y arranque sin conexión -->
+  <link rel="preload" as="image" href="assets/portada/img/bots.webp">
+  <link rel="preload" as="image" href="assets/portada/img/header.webp">
   <link rel="manifest" href="manifest-aurex.webmanifest">
   <meta name="theme-color" content="#0b0e11">
   <!-- Seguridad: no filtramos a dónde va el usuario ni permitimos que otros
@@ -107,14 +109,20 @@
        que pasa a transparente. Mismos tonos oscuros que la portada. Sube
        tu imagen a assets/portada/img/bots.webp. Sin ella se ve un degradado
        oscuro de reserva, nunca un hueco. */
-    /* Especificidad reforzada + !important para ganar al fondo que la app
-       inyecta por JS después de este <style>. Solo el fondo se fuerza; el
-       resto de la app queda intacto. */
-    html body #colmena-app { background: transparent !important; }
+    /* Especificidad reforzada para ganar a los estilos que la app inyecta
+       por JS después de este <style>. Solo se tocan el fondo (transparente,
+       para ver la imagen) y los tonos de panel, que eran gris claro y
+       chocaban con la nocturnidad de la portada. El resto queda intacto. */
+    html body #colmena-app {
+      background: transparent !important;
+      --panel: #12161c;      /* antes #1b2027, gris claro */
+      --panel-2: #0b0e13;    /* antes #12161c */
+      --line: #232b36;
+    }
     #colmena-app { min-height: 100vh; position: relative; z-index: 1; }
 
     #cco-bots-bg {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      position: fixed; inset: 0; z-index: -2; pointer-events: none;
       background-color: #05070a;
       background-image:
         radial-gradient(120% 80% at 50% 0%, rgba(232,184,75,.07), transparent 60%),
@@ -128,7 +136,7 @@
     /* Franja superior, la misma imagen que la cabecera de la portada:
        assets/portada/img/header.webp */
     #cco-bots-top {
-      position: fixed; top: 0; left: 0; right: 0; height: 220px; z-index: 0; pointer-events: none;
+      position: fixed; top: 0; left: 0; right: 0; height: 220px; z-index: -1; pointer-events: none;
       background-image: url('assets/portada/img/header.webp');
       background-size: cover; background-position: center top; opacity: .5;
       -webkit-mask-image: linear-gradient(180deg, #000 0, #000 55%, transparent 100%);
@@ -141,7 +149,7 @@
 <body>
   <div id="cco-bots-bg" aria-hidden="true"></div>
   <div id="cco-bots-top" aria-hidden="true"></div>
-  <canvas id="cco-bots-chispas" data-n="80" aria-hidden="true"></canvas>
+  <canvas id="cco-bots-chispas" data-n="150" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
   <script type="module" src="assets/js/gridbot-ui.js?v=125"></script>
@@ -416,6 +424,11 @@
         const chispasUrl = new URL('assets/portada/chispas.js?v=1', document.baseURI).href;
         const { brasas } = await import(chispasUrl);
         brasas(lienzo);
+        // El canvas puede medir 0 al montar (la app aún no pintó). Se fuerza
+        // un reajuste cuando ya hay tamaño real, para que las partículas
+        // cubran toda la pantalla y no solo la esquina superior izquierda.
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+        window.addEventListener('load', () => window.dispatchEvent(new Event('resize')));
       }
       // Comprobar si la imagen de fondo general existe; si no, se deja el degradado.
       const img = new Image();
