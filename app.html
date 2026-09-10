@@ -132,6 +132,12 @@
       background: #05070a;            /* negro base inmediato, sin destello */
     }
 
+    /* Velo de entrada: cubre la carga escalonada y se funde una vez. */
+    #cco-velo{
+      position:fixed;inset:0;z-index:9998;background:#05070a;pointer-events:none;
+      opacity:1;transition:opacity .6s ease;
+    }
+    #cco-velo.fuera{opacity:0}
     /* Capas de fondo, fijas, detrás de la interfaz. */
     #cco-bg {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -181,6 +187,7 @@
   </style>
 </head>
 <body>
+  <div id="cco-velo" aria-hidden="true"></div>
   <div id="cco-bg" aria-hidden="true"></div>
   <div id="cco-top" aria-hidden="true"></div>
   <canvas id="cco-fx" data-n="260" aria-hidden="true"></canvas>
@@ -482,9 +489,11 @@
     try {
       const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const lienzo = document.getElementById('cco-fx');
+      let brasas = null;
       if (!quieto && lienzo) {
         const chispasUrl = new URL('assets/portada/chispas.js?v=200', document.baseURI).href;
-        const { brasas } = await import(chispasUrl);
+        const mod = await import(chispasUrl);
+        brasas = mod.brasas;
         brasas(lienzo);
         // El canvas mide el viewport (fixed inset:0), pero al montar la app
         // aún no ha pintado y puede medir 0 -> partículas solo en la esquina.
@@ -496,20 +505,38 @@
         window.addEventListener('resize', remedir, { passive: true });
         window.addEventListener('orientationchange', remedir);
       }
-      // La imagen se aplica DE ENTRADA (no se espera al onload): así no hay
-      // el salto escalonado negro -> particulas -> imagen. El degradado de
-      // reserva queda debajo por si la imagen tardara. Si NO existiera, se
-      // quita la clase para no mostrar un hueco roto.
       const b = document.getElementById('cco-bg');
       if (b) b.classList.add('con-img');
+
+      // Quitar el velo cuando TODO esté listo: imagen de fondo cargada y las
+      // partículas ya dibujando. Se funde una sola vez y en suave.
+      const velo = document.getElementById('cco-velo');
+      let veloFuera = false;
+      const quitarVelo = () => {
+        if (veloFuera || !velo) return;
+        veloFuera = true;
+        if (brasas && brasas._remedir) brasas._remedir();   // partículas a tamaño real
+        requestAnimationFrame(() => velo.classList.add('fuera'));
+        setTimeout(() => { if (velo && velo.parentNode) velo.remove(); }, 700);
+      };
+
       const img = new Image();
-      img.onerror = () => { if (b) b.classList.remove('con-img'); };
+      img.onload  = quitarVelo;                      // imagen lista -> fundir
+      img.onerror = () => { if (b) b.classList.remove('con-img'); quitarVelo(); };
       img.src = 'assets/portada/img/bots.webp';
+      // Si la imagen tarda demasiado (o está cacheada y onload no dispara),
+      // el velo se va igual a los 900 ms: nunca se queda la pantalla negra.
+      setTimeout(quitarVelo, 900);
+
       // La franja superior usa header.webp; si no existe, se oculta sola.
       const top = new Image();
       top.onerror = () => { const t = document.getElementById('cco-top'); if (t) t.style.display = 'none'; };
       top.src = 'assets/portada/img/header.webp';
-    } catch (e) { console.warn('[bots] fondo/particulas:', e); }
+    } catch (e) {
+      console.warn('[bots] fondo/particulas:', e);
+      // Ante cualquier fallo, fuera el velo: jamás dejar la pantalla negra.
+      const v = document.getElementById('cco-velo'); if (v) v.remove();
+    }
   })();
   </script>
 
