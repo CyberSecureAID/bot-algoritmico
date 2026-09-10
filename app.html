@@ -512,12 +512,15 @@
       // [class*=...], que fue lo que borró la imagen del gas.
       + 'html body #colmena-app .card,'
       +   'html body #colmena-app .conectar-box{'
-      +   'background:linear-gradient(180deg,rgba(18,22,28,.66),rgba(10,14,19,.66)) !important;'
-      +   'backdrop-filter:blur(13px);-webkit-backdrop-filter:blur(13px);'
-      +   'border-color:rgba(232,184,75,.14) !important;}'
+      +   'background:linear-gradient(180deg,rgba(18,22,28,.5),rgba(10,14,19,.55)) !important;'
+      +   'backdrop-filter:blur(20px) saturate(150%);'
+      +   '-webkit-backdrop-filter:blur(20px) saturate(150%);'
+      +   'border-color:rgba(232,184,75,.16) !important;'
+      +   'box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06) !important;}'
       + 'html body #colmena-app .stat{'
-      +   'background:rgba(10,14,19,.5) !important;'
-      +   'backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}';
+      +   'background:rgba(10,14,19,.42) !important;'
+      +   'backdrop-filter:blur(14px) saturate(140%);'
+      +   '-webkit-backdrop-filter:blur(14px) saturate(140%);}';
     function aplicar() {
       var id = 'cco-tema-bots';
       var el = document.getElementById(id);
