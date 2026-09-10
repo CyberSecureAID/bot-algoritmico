@@ -8,7 +8,7 @@
  *   · Si hay versión nueva, se descarga sola y se aplica al recargar.
  */
 
-const VERSION = 'aurex-v134';
+const VERSION = 'aurex-v135';
 const APP = [
   './',
   './index.html',              // la portada
@@ -84,15 +84,21 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // El resto (código, imágenes): primero la copia guardada, y de fondo se actualiza.
+  // El resto (código, imágenes de la app): PRIMERO la red, y si falla, la
+  // copia guardada. Antes era al revés (caché primero) y con archivos
+  // versionados eso servía piezas de versiones distintas mezcladas -> la
+  // app cargaba rota. Network-first garantiza que siempre se ve lo último;
+  // la caché queda solo como respaldo para cuando no hay conexión.
   e.respondWith((async () => {
-    const guardada = await caches.match(req);
-    const red = fetch(req).then((r) => {
+    try {
+      const r = await fetch(req);
       if (r && r.ok && r.type === 'basic') {
         caches.open(VERSION).then((c) => c.put(req, r.clone())).catch(() => {});
       }
       return r;
-    }).catch(() => null);
-    return guardada || (await red) || Response.error();
+    } catch (_) {
+      const guardada = await caches.match(req);
+      return guardada || Response.error();
+    }
   })());
 });
