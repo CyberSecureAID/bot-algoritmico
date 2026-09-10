@@ -35,7 +35,18 @@
 (function () {
   'use strict';
 
-  var DATA = window.NP_BOT_KB;
+  /* Elige la base de conocimiento segun el idioma. En ingles usa la KB
+     paralela (NP_BOT_KB_EN) si existe; si no, cae a la española. Asi el
+     chatbot responde en el idioma de la pagina sin traducir en vivo. */
+  function elegirKB() {
+    var idi = 'en';
+    try { idi = localStorage.getItem('cco-idioma') || 'en'; } catch (e) {}
+    if (idi === 'en' && window.NP_BOT_KB_EN && window.NP_BOT_KB_EN.kb) return window.NP_BOT_KB_EN;
+    if (idi !== 'es' && window.NP_BOT_KB_EN && window.NP_BOT_KB_EN.kb) return window.NP_BOT_KB_EN;
+    return window.NP_BOT_KB;
+  }
+
+  var DATA = elegirKB();
   if (!DATA || !DATA.kb) return;
 
   var BOT   = DATA.bot;
@@ -3148,7 +3159,7 @@
     var fab = document.getElementById('npFab');
     if (viejo) viejo.remove();
     if (fab) fab.remove();
-    DATA = window.NP_BOT_KB;
+    DATA = elegirKB();
     BOT  = DATA.bot;
     init();
     var f2 = document.getElementById('npFab');
