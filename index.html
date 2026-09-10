@@ -63,17 +63,9 @@ if ('serviceWorker' in navigator) {
       reg.update().catch(() => {});
     }).catch(() => {});
   });
-  // Cuando entra un service worker nuevo, recargar UNA vez para servir lo
-  // último. Flag anti-bucle: solo una recarga por versión y sesión.
-  navigator.serviceWorker.addEventListener('message', (ev) => {
-    if (!ev.data || ev.data.tipo !== 'sw-activado') return;
-    try {
-      var marca = 'sw-recarga-' + ev.data.version;
-      if (sessionStorage.getItem(marca)) return;
-      sessionStorage.setItem(marca, '1');
-      location.reload();
-    } catch (_) {}
-  });
+  // El service worker se actualiza solo en segundo plano. NO se recarga la
+  // página automáticamente: eso causaba un pestañeo a los segundos cuando
+  // entraba una versión nueva. Los cambios se ven en la siguiente visita.
 }
 </script>
 </head>
