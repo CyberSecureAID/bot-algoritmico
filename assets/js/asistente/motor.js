@@ -41,9 +41,12 @@
   function elegirKB() {
     var idi = 'en';
     try { idi = localStorage.getItem('cco-idioma') || 'en'; } catch (e) {}
-    if (idi === 'en' && window.NP_BOT_KB_EN && window.NP_BOT_KB_EN.kb) return window.NP_BOT_KB_EN;
-    if (idi !== 'es' && window.NP_BOT_KB_EN && window.NP_BOT_KB_EN.kb) return window.NP_BOT_KB_EN;
-    return window.NP_BOT_KB;
+    var en = window.NP_BOT_KB_EN, es = window.NP_BOT_KB;
+    // Idioma español elegido: usar la española si existe.
+    if (idi === 'es') { return (es && es.kb) ? es : ((en && en.kb) ? en : es || en); }
+    // Cualquier otro idioma (por defecto inglés): usar la inglesa si existe;
+    // si no está lista, caer a la española para que el chat SIEMPRE monte.
+    return (en && en.kb) ? en : ((es && es.kb) ? es : en || es);
   }
 
   function idiomaUI() { try { return localStorage.getItem('cco-idioma') || 'en'; } catch (e) { return 'en'; } }
@@ -57,7 +60,17 @@
   calcularUI();   // valor inicial
 
   var DATA = elegirKB();
-  if (!DATA || !DATA.kb) return;
+  if (!DATA || !DATA.kb) {
+    // Las bases aún no cargaron: reintentar en breve en vez de abortar.
+    var _intentos = 0;
+    var _esperaKB = setInterval(function () {
+      _intentos++;
+      DATA = elegirKB();
+      if (DATA && DATA.kb) { clearInterval(_esperaKB); BOT = DATA.bot; init(); }
+      else if (_intentos > 40) { clearInterval(_esperaKB); }   // ~8s máximo
+    }, 200);
+    return;
+  }
 
   var BOT   = DATA.bot;
   var STORE = 'np-chat-history';
