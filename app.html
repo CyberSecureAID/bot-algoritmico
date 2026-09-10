@@ -119,10 +119,10 @@
       --panel-2: #0b0e13;    /* antes #12161c */
       --line: #232b36;
     }
-    #colmena-app { min-height: 100vh; position: relative; z-index: 1; }
+    #colmena-app { min-height: 100vh; position: relative; z-index: 2; }
 
     #cco-bots-bg {
-      position: fixed; inset: 0; z-index: -2; pointer-events: none;
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background-color: #05070a;
       background-image:
         radial-gradient(120% 80% at 50% 0%, rgba(232,184,75,.07), transparent 60%),
@@ -136,14 +136,14 @@
     /* Franja superior, la misma imagen que la cabecera de la portada:
        assets/portada/img/header.webp */
     #cco-bots-top {
-      position: fixed; top: 0; left: 0; right: 0; height: 220px; z-index: -1; pointer-events: none;
+      position: fixed; top: 0; left: 0; right: 0; height: 220px; z-index: 0; pointer-events: none;
       background-image: url('assets/portada/img/header.webp');
       background-size: cover; background-position: center top; opacity: .5;
       -webkit-mask-image: linear-gradient(180deg, #000 0, #000 55%, transparent 100%);
       mask-image: linear-gradient(180deg, #000 0, #000 55%, transparent 100%);
     }
     /* Partículas, encima del fondo y por debajo de la interfaz. */
-    #cco-bots-chispas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    #cco-bots-chispas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
   </style>
 </head>
 <body>
