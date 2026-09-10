@@ -112,7 +112,7 @@ async function wallet() {
 
 const PUERTAS = {
   swap: async () => {
-    const m = await import(J + 'gridbot/swap.js?v=1');
+    const m = await import(J + 'gridbot/swap.js?v=2');
     m.initSwap(conectar, cargarLogosPrecios);
     await cargarLogosPrecios();          // rellena los logos antes de abrir
     m.abrirSwap();
@@ -631,7 +631,7 @@ try {
 (async () => {
   let idi;
   try {
-    idi = await import(J + 'idioma.js?v=130');
+    idi = await import(J + 'idioma.js?v=131');
     idi.arrancarIdioma();
   } catch (e) {
     console.warn('[portada] idioma:', e);
