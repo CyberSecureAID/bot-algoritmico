@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="assets/portada/portada.css?v=203">
+<link rel="stylesheet" href="assets/portada/portada.css?v=205">
 <link rel="stylesheet" href="assets/css/asistente.css?v=125">
 <link rel="icon" type="image/png" href="assets/img/cco-32.png">
 <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
@@ -168,9 +168,16 @@ if ('serviceWorker' in navigator) {
   <div class="pt-art" style="background-image:url('assets/portada/img/hero.webp')" aria-hidden="true"></div>
   <div class="pt-wrap">
     <div class="pt-hero__solo">
-      <!-- Teléfono flotando: assets/portada/img/hero-phone.webp -->
-      <div class="pt-hero-fono" aria-hidden="true">
-        <img src="assets/portada/img/hero-phone.webp" alt="">
+      <!-- Teléfono + tarjetas orbitando. Imágenes en assets/portada/img/:
+           card-grid.webp · card-dca.webp · card-cashout.webp · card-acum.webp -->
+      <div class="pt-hero-escena" aria-hidden="true">
+        <div class="pt-hero-fono">
+          <img src="assets/portada/img/hero-phone.webp" alt="">
+        </div>
+        <img class="pt-card pt-card--grid"    src="assets/portada/img/card-grid.webp"    alt="">
+        <img class="pt-card pt-card--dca"     src="assets/portada/img/card-dca.webp"     alt="">
+        <img class="pt-card pt-card--cashout" src="assets/portada/img/card-cashout.webp" alt="">
+        <img class="pt-card pt-card--acum"    src="assets/portada/img/card-acum.webp"    alt="">
       </div>
       <div class="pt-acts">
         <a class="pt-btn pt-big" href="app.html">
@@ -478,7 +485,7 @@ if ('serviceWorker' in navigator) {
     kbEs.src = 'assets/js/asistente/conocimiento.js?v=125';
     kbEs.onload = function () {
       var kbEn = document.createElement('script');
-      kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=2';
+      kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=1';
       var arrancarMotor = function () {
         var m = document.createElement('script');
         m.src = 'assets/js/asistente/motor.js?v=130';
