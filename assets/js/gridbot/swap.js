@@ -35,12 +35,13 @@ function swInjectCSS() {
   const css = `
   #swap-modal{position:fixed;inset:0;z-index:230;display:flex;align-items:center;justify-content:center;padding:16px}
   #swap-modal *{-webkit-tap-highlight-color:transparent}
-  #swap-modal .sw-bg{position:absolute;inset:0;background:rgba(3,5,7,.66);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  #swap-modal .sw-bg{position:absolute;inset:0;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+  #swap-modal .sw-bg::before{content:"";position:absolute;inset:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.14;filter:saturate(1.05)}
   #swap-modal .sw-box{position:relative;width:100%;max-width:436px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:cmPop .22s cubic-bezier(.2,.9,.3,1.2)}
   #swap-modal .sw-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
   #swap-modal .sw-body{padding:2px 18px 20px}
   #swap-modal .sw-cards{position:relative}
-  #swap-modal .sw-card{background:#0b0e11;border:1px solid var(--line);border-radius:16px;padding:13px 15px}
+  #swap-modal .sw-card{background:rgba(11,14,17,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
   #swap-modal .sw-card+.sw-card{margin-top:10px}
   #swap-modal .sw-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
   #swap-modal .sw-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px}
@@ -66,9 +67,14 @@ function swInjectCSS() {
   #swap-modal .sw-info:empty{display:none}
   #swap-modal .sw-info .r{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
   #swap-modal .sw-info .r span:first-child{color:var(--ink-3)}
-  #swap-modal .sw-go{margin-top:16px}
+  #swap-modal .sw-go{margin-top:16px;
+    background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a) !important;
+    border:1px solid #15803d !important;color:#052e13 !important;
+    box-shadow:0 4px 0 #15803d,inset 0 1px 0 rgba(255,255,255,.35) !important;
+    text-shadow:0 1px 0 rgba(255,255,255,.2) !important}
+  #swap-modal .sw-go:not(:disabled):hover{filter:brightness(1.05)}
   #swap-modal .sw-go:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
-  #swap-modal .sw-go:not(:disabled):active{transform:translateY(4px);box-shadow:0 1px 0 #8f6a1a,0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.5)}
+  #swap-modal .sw-go:not(:disabled):active{transform:translateY(4px);box-shadow:0 1px 0 #15803d,0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35) !important}
   #coin-modal .cm-import{padding:11px 14px;font-family:var(--mono);font-size:12px;color:var(--ink-3);display:flex;align-items:center;justify-content:center;gap:8px}
   #coin-modal .cm-import.err{color:#ff9090}
   #coin-modal .cm-import.ok{display:block;padding:0}
