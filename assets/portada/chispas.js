@@ -69,9 +69,12 @@ export function brasas(lienzo) {
   }
 
   function medir() {
-    const c = lienzo.getBoundingClientRect();
-    an = Math.max(1, Math.round(c.width));
-    al = Math.max(1, Math.round(c.height));
+    // El canvas es position:fixed inset:0 => ocupa la ventana entera.
+    // Se usa innerWidth/innerHeight y NO getBoundingClientRect, que al
+    // arrancar (layout sin terminar) devolvia 0x0 y dejaba las particulas
+    // apiñadas en la esquina superior izquierda.
+    an = Math.max(1, Math.round(window.innerWidth || document.documentElement.clientWidth || 1));
+    al = Math.max(1, Math.round(window.innerHeight || document.documentElement.clientHeight || 1));
     lienzo.width = Math.round(an * dpr);
     lienzo.height = Math.round(al * dpr);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
