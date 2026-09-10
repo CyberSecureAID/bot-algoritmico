@@ -167,7 +167,7 @@
   <canvas id="cco-fx" data-n="160" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
-  <script type="module" src="assets/js/gridbot-ui.js?v=125"></script>
+  <script type="module" src="assets/js/gridbot-ui.js?v=200"></script>
   <script>
   /* Protección contra "clickjacking": si alguien mete CriptoCuba dentro de un
      marco en su propia web, podría poner botones falsos encima para que
@@ -436,7 +436,7 @@
       const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const lienzo = document.getElementById('cco-fx');
       if (!quieto && lienzo) {
-        const chispasUrl = new URL('assets/portada/chispas.js?v=1', document.baseURI).href;
+        const chispasUrl = new URL('assets/portada/chispas.js?v=200', document.baseURI).href;
         const { brasas } = await import(chispasUrl);
         brasas(lienzo);
         // El canvas mide el viewport (fixed inset:0), pero al montar la app
