@@ -317,13 +317,13 @@
         kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=1';
         kbEn.onload = function () {
           var m = document.createElement('script');
-          m.src = 'assets/js/asistente/motor.js?v=126';
+          m.src = 'assets/js/asistente/motor.js?v=127';
           document.body.appendChild(m);
         };
         // Si la KB inglesa falla, se sigue igual: el motor usa la española.
         kbEn.onerror = function () {
           var m = document.createElement('script');
-          m.src = 'assets/js/asistente/motor.js?v=126';
+          m.src = 'assets/js/asistente/motor.js?v=127';
           document.body.appendChild(m);
         };
         document.body.appendChild(kbEn);
