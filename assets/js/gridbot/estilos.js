@@ -20,7 +20,7 @@ export function inyectarEstilo(tipoNum) {
     --acento:var(--gold);                          /* color del bot seleccionado (lo fija pintarTipo) */
     --ac-l:#f7db8d; --ac-m:#E8B84B; --ac-d:#c79426; --ac-s:#8f6a1a; --ac-t:#3a2800;  /* set 3D del acento (pintarTipo) */
     font-family:var(--sans);color:var(--ink);position:relative;isolation:isolate;
-    background:#0b0e11;min-height:100vh;overflow-x:hidden}
+    background:transparent;min-height:100vh;overflow-x:hidden}
   #colmena-app .c-hdr{max-width:100%;overflow:visible;position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;
     gap:12px;padding:14px 22px;background:rgba(11,14,17,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
   #colmena-app .c-brand{display:inline-flex;align-items:center;gap:9px;font-family:var(--display);font-weight:700;font-size:20px;color:var(--gold);text-decoration:none;letter-spacing:.3px;min-width:0}
