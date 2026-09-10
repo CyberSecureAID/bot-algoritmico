@@ -20,7 +20,7 @@ import { inyectarEstilo } from './gridbot/estilos.js?v=201';
 import { moneda, num, _movil, tipoNum, escT, enCristiano, fmtPrecioUSD, icoInner, limpiarBusy, modalBusy, modalBusyTexto, modalError, modalClose } from './gridbot/util.js?v=1';
 import { LOGOS, LOGO_ST } from './gridbot/estado.js?v=1';
 import { APP, BASES, QUOTES, INFO, FEE_CICLO, GAS_OP_USD, VOL_DIARIA, PRESETS, NOMBRE_PRESET, GAS_VUELTA_USD, COM_DEX, LOGOS_WALLET, KEEPER_URL, CONF_BOTS, CLAVE_AVISO, CUPO_TOTAL, CUPO_POR_TIPO, NOMBRE_TIPO, CAT_NOMBRES, BOTMETA, RESERVA_BNB } from './gridbot/config.js?v=1';
-import { abrirSwap, initSwap } from './gridbot/swap.js?v=3';
+import { abrirSwap, initSwap } from './gridbot/swap.js?v=4';
 
 const $ = (id) => document.getElementById(id);
 // Lo que se OPERA (base). Las estables no pueden ser base.
