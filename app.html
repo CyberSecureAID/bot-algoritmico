@@ -301,17 +301,27 @@
         if (pv) pv.remove();
       }, 150);
       setTimeout(function () { clearInterval(espera); }, 15000);
-      ['assets/js/asistente/conocimiento.js?v=125',
-       'assets/js/asistente/motor.js?v=125'].forEach(function (src, i) {
-        var t = document.createElement('script');
-        t.src = src;
-        if (i === 0) t.onload = function () {
+      // Se cargan las DOS bases de conocimiento (español e inglés) y luego
+      // el motor, que elige una u otra según el idioma de la página.
+      var kbEs = document.createElement('script');
+      kbEs.src = 'assets/js/asistente/conocimiento.js?v=125';
+      kbEs.onload = function () {
+        var kbEn = document.createElement('script');
+        kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=1';
+        kbEn.onload = function () {
           var m = document.createElement('script');
-          m.src = 'assets/js/asistente/motor.js?v=125';
+          m.src = 'assets/js/asistente/motor.js?v=126';
           document.body.appendChild(m);
         };
-        if (i === 0) document.body.appendChild(t);
-      });
+        // Si la KB inglesa falla, se sigue igual: el motor usa la española.
+        kbEn.onerror = function () {
+          var m = document.createElement('script');
+          m.src = 'assets/js/asistente/motor.js?v=126';
+          document.body.appendChild(m);
+        };
+        document.body.appendChild(kbEn);
+      };
+      document.body.appendChild(kbEs);
     }
     // El botón provisional: al tocarlo carga el asistente y lo abre.
     var previo = document.getElementById('np-fab-previo');
@@ -546,6 +556,18 @@
     window.addEventListener('load', aplicar);
   })();
   </script>
+
+  <style>
+    /* Chatbot en negro (antes gris, heredado de variables). No se toca
+       motor.js: se fuerza el fondo del panel y del área de mensajes. */
+    #pt .np-chat, .np-chat,
+    .np-chat__msgs{
+      background:#0a0e13 !important;
+    }
+    .np-chat{border:1px solid #232b36 !important}
+    .np-chat__bar{background:#07090c !important;border-bottom:1px solid #232b36 !important}
+    .np-chat__form{background:#07090c !important;border-top:1px solid #232b36 !important}
+  </style>
 </body>
 </html>
  
