@@ -631,7 +631,7 @@ try {
 (async () => {
   let idi;
   try {
-    idi = await import(J + 'idioma.js?v=136');
+    idi = await import(J + 'idioma.js?v=137');
     idi.arrancarIdioma();
   } catch (e) {
     console.warn('[portada] idioma:', e);
