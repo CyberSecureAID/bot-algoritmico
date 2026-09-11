@@ -8,11 +8,12 @@
  *   · Si hay versión nueva, se descarga sola y se aplica al recargar.
  */
 
-const VERSION = 'aurex-v181';
+const VERSION = 'aurex-v182';
 const APP = [
   './',
   './index.html',              // la portada
   './app.html',                // la app
+  './aportar.html',            // sección aportar liquidez
   './manifest-aurex.webmanifest'
   // El resto (JS, CSS, vendor) se cachea al vuelo con su URL versionada
   // real cuando la página los pide. Así nunca se guarda una versión que ya

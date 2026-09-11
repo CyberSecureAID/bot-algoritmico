@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Add liquidity · Cripto Cuba Oficial</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+  <link rel="icon" type="image/png" href="assets/img/cco-32.png">
+  <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    html, body { background: #05070a !important; margin:0; padding:0; }
+
+    /* ── Fondo VISIBLE (como el de bots), imagen directa desde el primer
+         frame. Sin velo que la tape: se ve la imagen, no una nube. ── */
+    #lq-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-color: #05070a;
+      background-image:
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.05), transparent 58%),
+        linear-gradient(180deg, rgba(10,14,19,.18), rgba(5,7,10,.30) 55%),
+        url('assets/portada/img/liquidez-bg.webp');
+      background-size: auto, auto, cover;
+      background-position: center, center, center center;
+      background-repeat: no-repeat, no-repeat, no-repeat;
+    }
+    #lq-bg:not(.con-img){
+      background-image:
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.06), transparent 58%),
+        linear-gradient(180deg, #0a0e13, #05070a 55%);
+    }
+
+    canvas#lq-fx{position:fixed;inset:0;z-index:1;pointer-events:none}
+
+    /* Barra de volver, como en bots. */
+    #cco-volver{
+      position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:10px;
+      padding:14px 22px;
+      background:linear-gradient(180deg,rgba(5,7,10,.55),transparent);
+      border-bottom:1px solid rgba(232,184,75,.12);
+    }
+    #cco-volver a{display:inline-flex;align-items:center;gap:8px;color:#e9edf5;text-decoration:none;
+      font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px}
+    #cco-volver a:hover{color:var(--gold,#E8B84B)}
+    #cco-volver .sep{color:#3a424e}
+    #cco-volver b{color:var(--gold,#E8B84B);font-family:'Plus Jakarta Sans',sans-serif;font-weight:800}
+
+    /* Contenedor de la sección, por encima del fondo. */
+    #lq-app{position:relative;z-index:2;min-height:100vh;
+      --panel:#10141a;--panel-2:#0a0e13;--line:#232b36;
+      --gold:#E8B84B;--gold-soft:#C9A84B;--display:'Plus Jakarta Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+      --ink3:#7d8794;--ink4:#4a5561;
+    }
+    #lq-wrap{max-width:640px;margin:0 auto;padding:30px 20px 70px}
+  </style>
+</head>
+<body>
+  <div id="lq-bg" aria-hidden="true"></div>
+  <canvas id="lq-fx" aria-hidden="true"></canvas>
+
+  <div id="lq-app">
+    <div id="cco-volver">
+      <a href="index.html">← <span>Volver</span></a>
+      <span class="sep">|</span>
+      <b>Aportar liquidez</b>
+    </div>
+    <div id="lq-wrap" data-i18n-root></div>
+  </div>
+
+  <script type="module">
+    import { montarAportar } from './assets/js/aportar.js?v=2';
+    import { arrancarIdioma } from './assets/js/idioma.js?v=144';
+
+    // Fondo: si la imagen no existe, se queda el degradado (no rompe).
+    (function () {
+      var b = document.getElementById('lq-bg');
+      if (b) b.classList.add('con-img');
+      var img = new Image();
+      img.onerror = function () { if (b) b.classList.remove('con-img'); };
+      img.src = 'assets/portada/img/liquidez-bg.webp';
+    })();
+
+    // Partículas cósmicas (mismo módulo que la portada/bots).
+    (async function () {
+      try {
+        var quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var lienzo = document.getElementById('lq-fx');
+        if (!quieto && lienzo) {
+          var mod = await import('./assets/portada/chispas.js?v=200');
+          var brasas = mod.brasas;
+          brasas(lienzo);
+          [50, 200, 500, 1000].forEach(function (t) { setTimeout(function () { if (brasas._remedir) brasas._remedir(); }, t); });
+        }
+      } catch (e) {}
+    })();
+
+    montarAportar(document.getElementById('lq-wrap'));
+    try { arrancarIdioma(); } catch (e) {}
+  </script>
+</body>
+</html>
