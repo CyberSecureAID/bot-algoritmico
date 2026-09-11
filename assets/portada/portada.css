@@ -579,5 +579,4 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 
 /* Botón de sección aún no desarrollada (placeholder). */
 #pt .pt-nav__b[data-soon]{position:relative;opacity:.72}
-#pt .pt-nav__b[data-soon]::after{content:"soon";position:absolute;top:2px;right:-4px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;color:var(--gold);opacity:.7}
 #pt .pt-nav__b[data-soon]:hover{opacity:1}
