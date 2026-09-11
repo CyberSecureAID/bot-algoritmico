@@ -507,7 +507,7 @@ function wireHeader() {
 
   if ($('c-tools')) $('c-tools').onclick = async () => {
     try {
-      const t = await import('./tools.js?v=127');
+      const t = await import('./tools.js?v=128');
       t.abrirTools();
       t.vigilar();                    // arranca la vigilancia de alertas
     } catch (e) { console.warn('[Aurex] tools:', e); }
@@ -564,7 +564,7 @@ function wireHeader() {
      try por si el módulo no carga: sin él, todo sigue en español. */
   (async () => {
     try {
-      const idi = await import('./idioma.js?v=132');
+      const idi = await import('./idioma.js?v=133');
       idi.arrancarIdioma();
       const tx = $('c-idioma-tx');
       if (tx) tx.textContent = idi.idiomaActual().toUpperCase();

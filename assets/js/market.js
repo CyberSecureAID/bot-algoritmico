@@ -22,7 +22,7 @@ import { panelMisOps, wireOps, initOperaciones } from './market/operaciones.js?v
 import { listarOfertas } from './market/ofertas.js?v=1';
 import { panelVender } from './market/vender.js?v=1';
 import { panelDisputas, contarDisputas } from './market/disputas.js?v=1';
-import { comoFunciona } from './market/guia.js?v=1';
+import { comoFunciona } from './market/guia.js?v=2';
 export { avisarDisputas } from './market/disputas.js?v=1';
 
 // Cablea el asistente de venta con los callbacks del panel (hoisted).
