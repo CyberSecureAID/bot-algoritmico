@@ -87,6 +87,26 @@ const DIC = {
     /* === MARKET: ofertas+operaciones+asistentes === */
 
     /* === MARKET: dialogos+config+ubicacion+disputas === */
+
+    /* === ADD LIQUIDITY (aportar) === */
+    'Aportar liquidez': 'Add liquidity',
+    'Gana comisiones cuando otros operan con futuros': 'Earn fees when others trade futures',
+    'Liquidez total': 'Total liquidity',
+    'Aportantes': 'Providers',
+    'Comisiones 24h': 'Fees 24h',
+    'Cantidad a aportar': 'Amount to provide',
+    'Plazo de bloqueo': 'Lock period',
+    '7 días': '7 days',
+    '1 mes': '1 month',
+    '3 meses': '3 months',
+    '6 meses': '6 months',
+    '1 año': '1 year',
+    'APR est.': 'Est. APR',
+    'Tu posición': 'Your position',
+    'Aún no has aportado liquidez.': 'You have not provided liquidity yet.',
+    'Muy pronto — en desarrollo': 'Coming soon — in development',
+    'Aviso:': 'Notice:',
+    'el APR mostrado es una estimación, no un rendimiento fijo. Tus ganancias dependen de cuánto operen otros usuarios: si hay mucha actividad, ganas más; si hay poca, ganas menos. Tu aporte queda bloqueado durante el plazo que elijas y no puede retirarse antes. Aportar liquidez conlleva riesgo: en periodos de fuerte movimiento del mercado, el capital de la pool puede reducirse. Aporta solo lo que puedas permitirte inmovilizar.': 'the APR shown is an estimate, not a fixed yield. Your earnings depend on how much others trade: if there is a lot of activity, you earn more; if little, you earn less. Your contribution is locked for the period you choose and cannot be withdrawn earlier. Providing liquidity carries risk: in periods of strong market movement, the pool capital can shrink. Only provide what you can afford to lock up.',
     ': qué acordaron, qué pagaste o qué esperabas.': ': what you agreed, what you paid or what you expected.',
     'hasta que el árbitro decida (máximo 48 h). Si es un malentendido, intenta hablarlo primero por el contacto.': 'until the arbiter decides (48h maximum). If it is a misunderstanding, try to talk it out first through contact.',
     'Banco, MLC, Clásica…': 'Bank, MLC, Clásica…',
