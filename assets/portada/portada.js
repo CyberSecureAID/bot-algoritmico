@@ -122,7 +122,7 @@ const PUERTAS = {
   pools:   async () => (await import(J + 'liquidity.js?v=126')).abrirPools(),
   heat:    async () => (await import(J + 'muros.js?v=126')).abrirMuros(),
   levels:  async () => (await import(J + 'niveles.js?v=126')).abrirNiveles(),
-  tools:   async (tid) => (await import(J + 'tools.js?v=126')).abrirTools(tid),
+  tools:   async (tid) => (await import(J + 'tools.js?v=127')).abrirTools(tid),
   academy: async () => (await import(J + 'academy.js?v=126')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=126')).abrirPrizePool(),
   perfil:  async () => (await import(J + 'perfil.js?v=125')).abrirPerfil()
@@ -631,7 +631,7 @@ try {
 (async () => {
   let idi;
   try {
-    idi = await import(J + 'idioma.js?v=131');
+    idi = await import(J + 'idioma.js?v=132');
     idi.arrancarIdioma();
   } catch (e) {
     console.warn('[portada] idioma:', e);
