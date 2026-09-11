@@ -281,3 +281,19 @@ export function conectarFuturos(cfg) {
 }
 
 export function posiciones() { return _posiciones.slice(); }
+
+/* Abrir posición desde el panel lateral (a precio actual = mercado). */
+export function abrirDesdePanel({ lado, margen, lev }) {
+  if (!_cfg) return false;
+  const precio = _cfg.precioActual();
+  if (!precio || !margen) return false;
+  _posiciones.push({ precio, lado, lev, margen, id: Date.now() });
+  if (_cfg.repintar) _cfg.repintar();
+  return true;
+}
+
+/* Cerrar una posición por id. */
+export function cerrarPosicion(id) {
+  _posiciones = _posiciones.filter((p) => p.id !== id);
+  if (_cfg && _cfg.repintar) _cfg.repintar();
+}
