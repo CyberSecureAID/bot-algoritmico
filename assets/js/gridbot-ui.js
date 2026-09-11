@@ -3153,6 +3153,19 @@ function enganchar(cuenta) {
 /* ================================================================== */
 async function arrancar() {
   if (!$(APP)) return;
+
+  // ── MÓVIL PRIMERO ── Si es móvil, se monta la versión móvil DE INMEDIATO,
+  // antes de pintar nada de escritorio. Antes el escritorio se renderizaba y
+  // LUEGO se cargaba móvil encima: eso causaba el pestañeo (se veía la web de
+  // computadora un instante y después la móvil). Ahora móvil arranca directo.
+  if (_movil()) {
+    try {
+      const m = await import('./movil/movil.js?v=1');
+      m.montarMovil({ conectarWallet });
+      return;   // no se monta nada de escritorio
+    } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }
+  }
+
   initSwap(conectarWallet, cargarLogosPrecios);
   const host = $(APP);
   // Splash neutro mientras se resuelve si hay wallet conectada (evita el pestañeo del hero).
@@ -3182,7 +3195,6 @@ async function arrancar() {
   clearTimeout(_tBoot);
   _arrancando = false;
   render(); iniciarReloj();
-  if (_movil()) { import('./movil/movil.js?v=1').then((m) => m.montarMovil({ conectarWallet })).catch(() => {}); }
   if (walletMuda && !wallet.cuentaActual()) {
     setTimeout(() => {
       const el = $('c-hero-msg') || $('c-msg');
