@@ -498,6 +498,7 @@ async function abrirWidget(id) {
 
   const d = document.createElement('div');
   d.id = 'w-overlay';
+  d.dataset.tool = id;
   if (w.plena) d.classList.add('plena');
   /* ══════════════════════════════════════════════════════════════
      UNA SOLA BARRA ARRIBA
@@ -533,6 +534,86 @@ async function abrirWidget(id) {
   const cerrar = () => { const e = $('w-overlay'); if (e) e.remove(); };
   d.querySelector('.pv-bg').onclick = cerrar;
   d.querySelector('.w-cerrar').onclick = cerrar;
+
+  /* ── SOLO Fear & Greed y Technical: superponer, mover, redimensionar ──
+     Estas dos herramientas se pueden desanclar para usarlas como
+     superposición sobre otra cosa. NO afecta a las demás. */
+  if (id === 'termometro' || id === 'tecnico') {
+    const wc = d.querySelector('.w-c');
+
+    // Botón de superponer en la barra (antes del cerrar).
+    const der = d.querySelector('.w-der');
+    if (der) {
+      const pin = document.createElement('button');
+      pin.className = 'w-ico w-pin';
+      pin.id = 'w-pin';
+      pin.title = 'Superponer (mover y redimensionar)';
+      pin.innerHTML = '\u25A2';   // cuadrado
+      der.insertBefore(pin, der.firstChild);
+      pin.onclick = (e) => {
+        e.stopPropagation();
+        const on = d.classList.toggle('flotante');
+        pin.classList.toggle('on', on);
+        if (on) {
+          // Al activar: fijar posición y tamaño actuales para poder moverla.
+          const r = wc.getBoundingClientRect();
+          wc.style.left = r.left + 'px';
+          wc.style.top = r.top + 'px';
+          wc.style.width = r.width + 'px';
+          wc.style.maxHeight = 'none';
+          wc.style.height = r.height + 'px';
+          if (!d.querySelector('.w-resize')) {
+            const rz = document.createElement('div');
+            rz.className = 'w-resize';
+            wc.appendChild(rz);
+            engancharResize(rz, wc);
+          }
+        }
+      };
+    }
+
+    // Arrastrar por la barra.
+    const barra = d.querySelector('.w-barra');
+    if (barra) {
+      let ax = 0, ay = 0, ox = 0, oy = 0, mov = false;
+      barra.addEventListener('pointerdown', (e) => {
+        if (!d.classList.contains('flotante')) return;
+        if (e.target.closest('button')) return;   // no arrastrar desde un botón
+        mov = true; ax = e.clientX; ay = e.clientY;
+        const r = wc.getBoundingClientRect(); ox = r.left; oy = r.top;
+        barra.setPointerCapture(e.pointerId);
+      });
+      barra.addEventListener('pointermove', (e) => {
+        if (!mov) return;
+        wc.style.left = (ox + e.clientX - ax) + 'px';
+        wc.style.top = (oy + e.clientY - ay) + 'px';
+      });
+      barra.addEventListener('pointerup', (e) => { mov = false; try { barra.releasePointerCapture(e.pointerId); } catch (_) {} });
+    }
+  }
+
+  /* Redimensionar desde la esquina, con límites: mínimo 300x260, máximo el
+     tamaño original de la ventana (para que no se deforme). */
+  function engancharResize(handle, wc) {
+    const MIN_W = 300, MIN_H = 260;
+    const MAX_W = Math.min(window.innerWidth - 20, 620);
+    const MAX_H = window.innerHeight - 20;
+    let rx = 0, ry = 0, w0 = 0, h0 = 0, res = false;
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      res = true; rx = e.clientX; ry = e.clientY;
+      const r = wc.getBoundingClientRect(); w0 = r.width; h0 = r.height;
+      handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!res) return;
+      const nw = Math.max(MIN_W, Math.min(MAX_W, w0 + e.clientX - rx));
+      const nh = Math.max(MIN_H, Math.min(MAX_H, h0 + e.clientY - ry));
+      wc.style.width = nw + 'px';
+      wc.style.height = nh + 'px';
+    });
+    handle.addEventListener('pointerup', (e) => { res = false; try { handle.releasePointerCapture(e.pointerId); } catch (_) {} });
+  }
 
   const bi = $('w-info');
   if (bi) bi.onclick = (e) => {
@@ -1193,11 +1274,47 @@ function estilos() {
      botón de información, y por eso se veía la "i" por detrás.
      Ahora tiene su propia clase y va en la fila, sin superponerse. */
   #w-overlay .w-cerrar{font-style:normal;font-weight:400;font-size:15px}
+  /* Fear & Greed: iconos más pequeños (topaban con los bordes). */
+  #w-overlay[data-tool="termometro"] .w-ico{width:30px;height:30px;min-height:30px}
+  #w-overlay[data-tool="termometro"] .w-barra{padding-top:6px;padding-bottom:6px}
   /* El subtítulo, dorado y centrado como el resto de la web. */
   #w-overlay .tl-s{color:var(--gold-soft,#C9A84B);font-size:12.5px;text-align:center;
     font-family:var(--mono,monospace);letter-spacing:.3px;line-height:1.5}
   #w-overlay .w-c{position:relative;width:100%;max-width:620px;max-height:calc(100vh - 32px);overflow-y:auto;
     background:linear-gradient(180deg,#141922,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);border-radius:20px;padding:22px 20px}
+
+  /* ── FEAR & GREED y TECHNICAL: fondo de imagen (como el swap) ── */
+  #w-overlay[data-tool="termometro"] .w-c::after,
+  #w-overlay[data-tool="tecnico"] .w-c::after{
+    content:"";position:absolute;inset:0;z-index:0;border-radius:20px;
+    background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;
+    background-position:center;opacity:.10;filter:saturate(1.05);pointer-events:none}
+  #w-overlay[data-tool="termometro"] .w-c > *,
+  #w-overlay[data-tool="tecnico"] .w-c > *{position:relative;z-index:1}
+
+  /* Ventana movible: cuando tiene la clase .flotante, se desancla del
+     centro y se posiciona con left/top. La barra es el asa de arrastre. */
+  #w-overlay[data-tool="termometro"].flotante,
+  #w-overlay[data-tool="tecnico"].flotante{display:block;pointer-events:none}
+  #w-overlay[data-tool="termometro"].flotante .pv-bg,
+  #w-overlay[data-tool="tecnico"].flotante .pv-bg{display:none}
+  #w-overlay[data-tool="termometro"].flotante .w-c,
+  #w-overlay[data-tool="tecnico"].flotante .w-c{
+    position:fixed;margin:0;pointer-events:auto;
+    box-shadow:0 30px 80px rgba(0,0,0,.7);resize:none}
+  #w-overlay[data-tool="termometro"].flotante .w-barra,
+  #w-overlay[data-tool="tecnico"].flotante .w-barra{cursor:move}
+
+  /* Asa de redimensión en la esquina inferior derecha. */
+  #w-overlay[data-tool="termometro"] .w-resize,
+  #w-overlay[data-tool="tecnico"] .w-resize{
+    position:absolute;right:3px;bottom:3px;width:20px;height:20px;z-index:5;
+    cursor:nwse-resize;border-radius:0 0 14px 0;
+    background:linear-gradient(135deg,transparent 45%,var(--gold-soft,#C9A84B) 45%,var(--gold-soft,#C9A84B) 60%,transparent 60%,transparent 72%,var(--gold-soft,#C9A84B) 72%,var(--gold-soft,#C9A84B) 86%,transparent 86%);opacity:.6}
+  #w-overlay[data-tool="termometro"] .w-resize:hover,
+  #w-overlay[data-tool="tecnico"] .w-resize:hover{opacity:1}
+  /* Botón de superponer, en la barra. */
+  #w-overlay .w-pin.on{color:var(--gold,#E8B84B);background:rgba(232,184,75,.14)}
   /* ── Barra superior compacta ── */
   #w-overlay .w-barra{display:flex;align-items:center;gap:10px;flex:0 0 auto;position:relative;
     padding:8px 92px 8px 12px;margin-bottom:10px;background:#0b0e12;

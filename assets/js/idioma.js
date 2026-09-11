@@ -63,6 +63,33 @@ const DIC = {
     /* === FASE 2: interfaz === */
 
     /* === SWAP === */
+
+    /* === EVENTOS (prize pool) === */
+    'Cómo funciona': 'How it works',
+    '¿Qué es esto?': 'What is this?',
+    'Funcionamiento económico': 'How the economics work',
+    'Distribución estimada de premios': 'Estimated prize distribution',
+    'Confirmar participación': 'Confirm entry',
+    'El sorteo está esperando': 'The draw is waiting',
+    'Gas del sorteo (solo lo ves tú)': 'Draw gas (only you see it)',
+    'Ya estás participando': 'You are already in',
+    'Saber más': 'Learn more',
+    '¿Y si me arrepiento?': 'What if I change my mind?',
+    'Podrás salirte durante': 'You can leave during',
+    'Revisa tu conexión y vuelve a intentar.': 'Check your connection and try again.',
+    'Se define al cerrar, según cuánta gente entre.': 'Set at closing, based on how many people join.',
+    'Si no ganas, lo único que arriesgaste fue': 'If you do not win, all you risked was',
+    'más ganadores hay': 'more winners there are',
+    'fondo común de premios': 'shared prize pool',
+    'siempre está en tu wallet': 'always stays in your wallet',
+    'más gente entra, más grande es el premio': 'more people join, the bigger the prize',
+    'recuperas eso y varias veces más': 'you get that back, and several times more',
+    'Así, <em>si ganas</em>, todos ven que fue una persona real y pueden felicitarte. Transparencia total: los ganadores quedan a la vista de todos.': 'That way, <em>if you win</em>, everyone sees a real person won and can congratulate you. Full transparency: winners are visible to all.',
+    'Menos que un café. Casi todo va al <em>fondo común de premios</em>; solo una pizca cubre el sistema. Puedes entrar una vez… o varias, tú decides.': 'Less than a coffee. Almost all of it goes to the <em>shared prize pool</em>; just a sliver covers the system. You can enter once… or several times, your call.',
+    'Mientras <em>más gente entra, más grande es el premio</em> — y también <em>más ganadores hay</em>. Todos suman para todos.': 'The <em>more people join, the bigger the prize</em> — and the <em>more winners there are</em>. Everyone adds up for everyone.',
+    'Al azar, pero de forma <em>verificable en la blockchain</em>. Nadie hace trampa, ni siquiera nosotros: el sorteo lo hace un sistema público y auditable.': 'At random, but <em>verifiable on the blockchain</em>. Nobody cheats, not even us: the draw is run by a public, auditable system.',
+    'Sin cuenta, sin banco, sin papeleo. Tu dinero <em>siempre está en tu wallet</em> — nosotros nunca lo tocamos. Solo lo conectas para poder entrar.': 'No account, no bank, no paperwork. Your money <em>always stays in your wallet</em> — we never touch it. You only connect it to join.',
+    'Estamos en las últimas 24 horas. Nadie puede retirar su aporte hasta que se sorteen los ganadores: así nadie infla el pozo y se va antes del sorteo.': 'We are in the final 24 hours. No one can withdraw their contribution until the winners are drawn: this way nobody inflates the pool and leaves before the draw.',
     'Busca por nombre o pega la dirección de la moneda': 'Search by name or paste the coin address',
     'Nombre, símbolo o dirección…': 'Name, symbol or address…',
     'Ingresa un monto': 'Enter an amount',
