@@ -89,6 +89,17 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === ADD LIQUIDITY (aportar) === */
+    'Volver': 'Back',
+    'Gana una parte de las comisiones cuando otros operan': 'Earn a share of the fees when others trade',
+    'Aportas USDT': 'You provide USDT',
+    'Depositas la cantidad que elijas. Tu aporte queda registrado a tu nombre: siempre se sabe qué parte es tuya.': 'You deposit the amount you choose. Your contribution is registered under your name: it is always clear which part is yours.',
+    'Otros operan con futuros': 'Others trade futures',
+    'Cada vez que alguien abre o mantiene una operación, paga una comisión. Una parte de esa comisión es para ti, repartida entre quienes aportan.': 'Every time someone opens or holds a position, they pay a fee. A share of that fee is for you, split among the providers.',
+    'Retiras al vencer el plazo': 'You withdraw when the term ends',
+    'Tu aporte se bloquea durante el plazo que elijas. Al terminar, retiras tu capital más las comisiones que hayas ganado.': 'Your contribution is locked for the term you choose. When it ends, you withdraw your capital plus the fees you have earned.',
+    'bloqueado': 'locked',
+    'Aviso importante:': 'Important notice:',
+    'aportar liquidez no garantiza ningún rendimiento fijo. Lo que ganas depende por completo de cuánta gente opere: si hay mucha actividad, ganas más; si hay poca, puedes ganar muy poco o nada durante ese periodo. Tu aporte queda bloqueado durante el plazo elegido y no se puede retirar antes de tiempo. Además, aportar liquidez conlleva riesgo de mercado: en momentos de fuerte movimiento, el capital de la reserva puede disminuir. Aporta solo lo que puedas permitirte inmovilizar y, llegado el caso, perder.': 'providing liquidity does not guarantee any fixed yield. What you earn depends entirely on how much people trade: if there is a lot of activity, you earn more; if there is little, you may earn very little or nothing during that period. Your contribution is locked for the chosen term and cannot be withdrawn early. Also, providing liquidity carries market risk: in moments of strong movement, the reserve capital can decrease. Only provide what you can afford to lock up and, if it comes to it, lose.',
     'Aportar liquidez': 'Add liquidity',
     'Gana comisiones cuando otros operan con futuros': 'Earn fees when others trade futures',
     'Liquidez total': 'Total liquidity',
