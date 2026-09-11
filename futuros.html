@@ -10,32 +10,84 @@
         rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="icon" type="image/png" href="assets/img/cco-32.png">
   <style>
-    :root{--gold:#E8B84B}
+    :root{
+      --gold:#E8B84B;--up:#22c55e;--down:#f6465d;--ink:#e9edf5;--ink2:#a9b2bd;
+      --ink3:#7d8794;--ink4:#4a5561;--line:#232b36;--panel:#10141a;--panel2:#0b0e12;
+      --mono:'IBM Plex Mono',monospace;--disp:'Plus Jakarta Sans',sans-serif;
+    }
     html,body{margin:0;padding:0;background:#05070a;height:100%;overflow:hidden;
-      font-family:'Plus Jakarta Sans',sans-serif;color:#e9edf5}
+      font-family:var(--disp);color:var(--ink)}
+    *{box-sizing:border-box}
 
-    /* GUARDIA MÓVIL — antes de pintar nada. */
-    /* (el script va al inicio del body) */
+    /* Fondo con imagen visible. */
+    #f-bg{position:fixed;inset:0;z-index:0;pointer-events:none;background-color:#05070a;
+      background-image:linear-gradient(180deg,rgba(10,14,19,.55),rgba(5,7,10,.72)),url('assets/portada/img/bots.webp');
+      background-size:cover;background-position:center}
 
-    /* Barra superior del contrato. */
-    #f-top{display:flex;align-items:center;gap:16px;padding:10px 16px;
-      background:rgba(16,20,26,.9);border-bottom:1px solid #232b36;position:relative;z-index:5}
-    #f-top .f-back{color:#e9edf5;text-decoration:none;font-weight:700;font-size:14px;
-      background:rgba(255,255,255,.05);border:1px solid #232b36;border-radius:9px;padding:7px 12px}
+    /* Rejilla del exchange: barra arriba, cuerpo (gráfica+panel), posiciones abajo. */
+    #f-app{position:relative;z-index:1;height:100vh;display:grid;
+      grid-template-rows:52px 1fr 190px;grid-template-columns:1fr 320px}
+
+    /* Barra de contrato (fila 1, ambas columnas). */
+    #f-top{grid-column:1/3;display:flex;align-items:center;gap:18px;padding:0 16px;
+      background:rgba(16,20,26,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
+    #f-top .f-back{color:var(--ink);text-decoration:none;font-weight:700;font-size:13px;
+      background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:9px;padding:7px 11px}
     #f-top .f-back:hover{color:var(--gold)}
-    #f-par{display:flex;align-items:center;gap:10px}
-    #f-par select{background:#10141a;color:#e9edf5;border:1px solid #2b3139;border-radius:9px;
-      padding:7px 10px;font-family:'Plus Jakarta Sans';font-weight:700;font-size:14px;cursor:pointer}
-    #f-tf{display:flex;gap:4px}
-    #f-tf button{background:rgba(10,14,19,.6);color:#7d8794;border:1px solid #232b36;border-radius:8px;
-      padding:6px 10px;font-family:'IBM Plex Mono';font-size:11px;font-weight:700;cursor:pointer}
+    #f-top select{background:var(--panel);color:var(--ink);border:1px solid #2b3139;border-radius:9px;
+      padding:7px 10px;font-family:var(--disp);font-weight:800;font-size:15px;cursor:pointer}
+    #f-mark{display:flex;flex-direction:column;line-height:1.2}
+    #f-mark b{font-family:var(--mono);font-size:15px;color:var(--ink)} #f-mark span{font-family:var(--mono);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em}
+    #f-chg{font-family:var(--mono);font-size:13px;font-weight:700}
+    #f-tf{display:flex;gap:4px;margin-left:auto}
+    #f-tf button{background:rgba(10,14,19,.6);color:var(--ink3);border:1px solid var(--line);border-radius:8px;
+      padding:6px 10px;font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer}
     #f-tf button.on{color:#241900;background:var(--gold);border-color:#c79426}
 
-    /* La gráfica ocupa el resto. */
-    #f-chart{position:absolute;top:52px;left:0;right:0;bottom:0}
+    /* Gráfica (fila 2, col 1). */
+    #f-chart{grid-row:2;grid-column:1;position:relative;border-right:1px solid var(--line)}
     #f-chart .fg-cv{display:block;width:100%;height:100%}
-    #f-chart .fg-load{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-      font-family:'IBM Plex Mono';font-size:12px;color:#7d8794}
+    #f-chart .fg-load{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:12px;color:var(--ink3)}
+
+    /* Panel de orden (fila 2, col 2). */
+    #f-panel{grid-row:2;grid-column:2;background:rgba(16,20,26,.92);backdrop-filter:blur(12px);
+      overflow-y:auto;padding:14px 13px;display:flex;flex-direction:column;gap:12px}
+    .p-ls{display:flex;gap:8px}
+    .p-ls button{flex:1;height:40px;border-radius:10px;border:1px solid var(--line);background:rgba(10,14,19,.6);
+      color:var(--ink2);font-weight:800;font-size:13px;cursor:pointer;transition:all .12s}
+    .p-ls button.on.long{background:linear-gradient(180deg,#2fd67d,#16a34a);border-color:#15803d;color:#052e13}
+    .p-ls button.on.short{background:linear-gradient(180deg,#fb5c6f,#e11d48);border-color:#be123c;color:#fff}
+    .p-lbl{font-family:var(--mono);font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+    .p-box{background:rgba(10,14,19,.6);border:1px solid var(--line);border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:8px}
+    .p-box input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:17px}
+    .p-box input::placeholder{color:var(--ink4)} .p-box .u{font-family:var(--disp);font-weight:700;font-size:12px;color:var(--ink2)}
+    .p-lev-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+    .p-lev-val{font-family:var(--disp);font-weight:800;font-size:16px;color:var(--gold)}
+    input[type=range]{width:100%;accent-color:var(--gold);cursor:pointer}
+    .p-lev-marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--ink4);margin-top:2px}
+    .p-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px}
+    .p-row span{color:var(--ink3)} .p-row b{color:var(--ink)}
+    .p-liq{background:rgba(246,70,93,.08);border:1px solid rgba(246,70,93,.22);border-radius:10px;padding:9px 11px}
+    .p-liq b{color:var(--down)}
+    .p-go{height:46px;border:none;border-radius:11px;font-weight:800;font-size:14px;cursor:pointer;color:#052e13;
+      background:linear-gradient(180deg,#2fd67d,#16a34a);box-shadow:0 3px 0 #0f5c30}
+    .p-go.short{color:#fff;background:linear-gradient(180deg,#fb5c6f,#e11d48);box-shadow:0 3px 0 #8f0f2e}
+    .p-go:active{transform:translateY(2px)}
+    .p-hint{font-family:var(--mono);font-size:9px;color:var(--ink4);text-align:center}
+
+    /* Posiciones (fila 3, ambas columnas). */
+    #f-pos{grid-column:1/3;grid-row:3;background:rgba(11,14,17,.92);border-top:1px solid var(--line);
+      overflow-y:auto;padding:12px 16px}
+    #f-pos .ph{font-family:var(--mono);font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+    .pos-empty{font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center;padding:24px}
+    .pos-row{display:grid;grid-template-columns:90px 1fr 1fr 1fr 70px;gap:10px;align-items:center;
+      padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);font-family:var(--mono);font-size:12px}
+    .pos-row .lado{font-weight:800} .pos-row .lado.long{color:var(--up)} .pos-row .lado.short{color:var(--down)}
+    .pos-row .cerrar{background:rgba(246,70,93,.12);border:1px solid rgba(246,70,93,.3);color:var(--down);
+      border-radius:7px;padding:5px 0;cursor:pointer;font-family:var(--disp);font-weight:700;font-size:11px}
+
+    /* En pantallas medianas el panel se estrecha; en móvil ni aparece (guardia). */
+    @media(max-width:1100px){#f-app{grid-template-columns:1fr 280px}}
   </style>
 </head>
 <body>
@@ -47,26 +99,55 @@
   }catch(_){}})();
   </script>
 
-  <div id="f-top">
-    <a class="f-back" href="index.html">← Volver</a>
-    <div id="f-par">
+  <div id="f-bg" aria-hidden="true"></div>
+  <div id="f-app">
+    <div id="f-top">
+      <a class="f-back" href="index.html">← Volver</a>
       <select id="f-sel"></select>
+      <div id="f-mark"><b id="f-price">—</b><span>Precio</span></div>
+      <div id="f-chg">—</div>
+      <div id="f-tf">
+        <button data-tf="5m">5m</button>
+        <button data-tf="15m" class="on">15m</button>
+        <button data-tf="1h">1h</button>
+        <button data-tf="4h">4h</button>
+        <button data-tf="1d">1D</button>
+      </div>
     </div>
-    <div id="f-tf">
-      <button data-tf="5m">5m</button>
-      <button data-tf="15m" class="on">15m</button>
-      <button data-tf="1h">1h</button>
-      <button data-tf="4h">4h</button>
-      <button data-tf="1d">1D</button>
+
+    <div id="f-chart"></div>
+
+    <div id="f-panel">
+      <div class="p-ls">
+        <button class="long on" data-lado="long">Long / Comprar</button>
+        <button class="short" data-lado="short">Short / Vender</button>
+      </div>
+      <div>
+        <div class="p-lbl">Margen (lo que arriesgas)</div>
+        <div class="p-box"><input id="p-margen" type="text" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div>
+      </div>
+      <div>
+        <div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">10×</span></div>
+        <input type="range" id="p-range" min="1" max="100" value="10" step="1">
+        <div class="p-lev-marks"><span>1×</span><span>25×</span><span>50×</span><span>75×</span><span>100×</span></div>
+      </div>
+      <div class="p-row"><span>Tamaño de posición</span><b id="p-size">—</b></div>
+      <div class="p-liq"><div class="p-row"><span>Precio de liquidación est.</span><b id="p-liq">—</b></div></div>
+      <button class="p-go" id="p-go">Abrir Long</button>
+      <div class="p-hint">También puedes hacer clic derecho en la gráfica para entrar en un precio concreto.</div>
+    </div>
+
+    <div id="f-pos">
+      <div class="ph">Tus posiciones</div>
+      <div id="f-pos-list"><div class="pos-empty">No tienes posiciones abiertas.</div></div>
     </div>
   </div>
-  <div id="f-chart"></div>
 
   <script type="module">
     import { crearGrafica } from './assets/js/futuros-grafica.js?v=1';
-    import { conectarFuturos, pintarPosiciones } from './assets/js/futuros-orden.js?v=1';
+    import { conectarFuturos, pintarPosiciones, posiciones, abrirDesdePanel, cerrarPosicion } from './assets/js/futuros-orden.js?v=2';
+    import { arrancarIdioma } from './assets/js/idioma.js?v=146';
 
-    // Monedas operables (las de Smart Levels).
     const PARES = [
       ['BTCUSDT','BTC'],['ETHUSDT','ETH'],['BNBUSDT','BNB'],['SOLUSDT','SOL'],
       ['XRPUSDT','XRP'],['DOGEUSDT','DOGE'],['ADAUSDT','ADA'],['AVAXUSDT','AVAX'],
@@ -74,27 +155,64 @@
       ['ATOMUSDT','ATOM'],['UNIUSDT','UNI'],['INJUSDT','INJ'],['APTUSDT','APT'],
       ['ARBUSDT','ARB'],['OPUSDT','OP'],['FILUSDT','FIL'],['SUIUSDT','SUI']
     ];
-    const sel = document.getElementById('f-sel');
-    sel.innerHTML = PARES.map(p => `<option value="${p[0]}">${p[1]}/USDT</option>`).join('');
+    const $ = (id) => document.getElementById(id);
+    $('f-sel').innerHTML = PARES.map(p => `<option value="${p[0]}">${p[1]}/USDT</option>`).join('');
 
-    const g = crearGrafica(document.getElementById('f-chart'));
-    let tf = '15m';
+    const g = crearGrafica($('f-chart'));
+    let tf = '15m', lado = 'long', lev = 10;
     g.cargar('BTCUSDT', tf);
-
-    // Pieza 2: clic derecho para operar (long/short + apalancamiento).
     conectarFuturos(g.cfg);
-    // Las posiciones abiertas se dibujan sobre la gráfica.
     g.alDibujar((api) => pintarPosiciones(api));
 
-    sel.onchange = () => g.cargar(sel.value, tf);
-    document.querySelectorAll('#f-tf button').forEach(b => {
-      b.onclick = () => {
-        document.querySelectorAll('#f-tf button').forEach(x => x.classList.remove('on'));
-        b.classList.add('on');
-        tf = b.dataset.tf;
-        g.setTemporalidad(tf);
-      };
+    const fmt = (p)=> !p?'—':(p>=1000?p.toLocaleString('en-US',{maximumFractionDigits:1}):p>=1?p.toFixed(2):p.toPrecision(4));
+    function liqDe(entrada,lev,esLong){const f=0.75;return esLong?entrada*(1-f/lev):entrada*(1+f/lev);}
+
+    // Barra: precio en vivo.
+    setInterval(()=>{ const p=g.cfg.precioActual(); if(p) $('f-price').textContent='$'+fmt(p); refrescarPanel(); pintarLista(); },1500);
+
+    // Panel de orden.
+    document.querySelectorAll('.p-ls button').forEach(b=>{
+      b.onclick=()=>{ lado=b.dataset.lado; document.querySelectorAll('.p-ls button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+        const go=$('p-go'); go.classList.toggle('short',lado==='short'); go.textContent=lado==='long'?'Abrir Long':'Abrir Short'; refrescarPanel(); };
     });
+    $('p-range').oninput=(e)=>{ lev=+e.target.value; $('p-lev').textContent=lev+'×'; refrescarPanel(); };
+    $('p-margen').oninput=refrescarPanel;
+    function refrescarPanel(){
+      const precio=g.cfg.precioActual();
+      const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
+      $('p-size').textContent=margen?fmt(margen*lev)+' USDT':'—';
+      $('p-liq').textContent=(precio&&margen)?'$'+fmt(liqDe(precio,lev,lado==='long')):'—';
+    }
+    $('p-go').onclick=()=>{
+      const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
+      if(!margen){ $('p-margen').focus(); return; }
+      abrirDesdePanel({lado,margen,lev});
+      const go=$('p-go'); const t=go.textContent; go.textContent='Muy pronto — en desarrollo';
+      setTimeout(()=>{go.textContent=t;},1600); pintarLista();
+    };
+
+    // Lista de posiciones.
+    function pintarLista(){
+      const ps=posiciones();
+      const cont=$('f-pos-list');
+      if(!ps.length){ cont.innerHTML='<div class="pos-empty">No tienes posiciones abiertas.</div>'; return; }
+      cont.innerHTML=ps.map(p=>`<div class="pos-row">
+        <span class="lado ${p.lado}">${p.lado==='long'?'LONG':'SHORT'} ${p.lev}×</span>
+        <span>Entrada: $${fmt(p.precio)}</span>
+        <span>Margen: ${fmt(p.margen)} USDT</span>
+        <span>Tamaño: ${fmt(p.margen*p.lev)} USDT</span>
+        <button class="cerrar" data-id="${p.id}">Cerrar</button>
+      </div>`).join('');
+      cont.querySelectorAll('.cerrar').forEach(b=>b.onclick=()=>{ cerrarPosicion(+b.dataset.id); pintarLista(); });
+    }
+
+    $('f-sel').onchange=()=>{ g.cargar($('f-sel').value,tf); };
+    document.querySelectorAll('#f-tf button').forEach(b=>{
+      b.onclick=()=>{ document.querySelectorAll('#f-tf button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); tf=b.dataset.tf; g.setTemporalidad(tf); };
+    });
+
+    refrescarPanel();
+    try{ arrancarIdioma(); }catch(e){}
   </script>
 </body>
 </html>
