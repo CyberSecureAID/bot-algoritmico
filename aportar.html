@@ -60,6 +60,15 @@
   </style>
 </head>
 <body>
+  <script>
+  /* GUARDIA MÓVIL — antes de pintar nada. En móvil, esta página de escritorio
+     no debe mostrarse: se redirige a la app (que monta la versión móvil). */
+  (function(){try{
+    var m=window.matchMedia?window.matchMedia('(max-width:900px)').matches
+         :(document.documentElement.clientWidth||0)<=900;
+    if(m)location.replace('app.html');
+  }catch(_){}})();
+  </script>
   <div id="lq-bg" aria-hidden="true"></div>
   <canvas id="lq-fx" aria-hidden="true"></canvas>
 
