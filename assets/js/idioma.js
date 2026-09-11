@@ -88,6 +88,20 @@ const DIC = {
 
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
+    /* === FUTURES === */
+    'Long / Comprar': 'Long / Buy',
+    'Short / Vender': 'Short / Sell',
+    'Margen (lo que arriesgas)': 'Margin (what you risk)',
+    'Apalancamiento': 'Leverage',
+    'Tamaño de la posición': 'Position size',
+    'Precio de liquidación estimado': 'Estimated liquidation price',
+    'Introduce un margen': 'Enter a margin',
+    'Abrir Long': 'Open Long',
+    'Abrir Short': 'Open Short',
+    'Tus posiciones': 'Your positions',
+    'No tienes posiciones abiertas.': 'You have no open positions.',
+    'Operar con apalancamiento es de altísimo riesgo. Una pequeña variación del precio en tu contra puede liquidar toda tu posición. El precio de liquidación mostrado es una estimación. Opera solo con dinero que puedas permitirte perder. Esto no es consejo financiero.': 'Trading with leverage is extremely high risk. A small price move against you can liquidate your entire position. The liquidation price shown is an estimate. Only trade with money you can afford to lose. This is not financial advice.',
+
     /* === ADD LIQUIDITY (aportar) === */
     'Volver': 'Back',
     'Gana una parte de las comisiones cuando otros operan': 'Earn a share of the fees when others trade',
