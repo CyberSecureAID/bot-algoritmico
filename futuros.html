@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Futures · Cripto Cuba Oficial</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="icon" type="image/png" href="assets/img/cco-32.png">
+  <style>
+    :root{--gold:#E8B84B}
+    html,body{margin:0;padding:0;background:#05070a;height:100%;overflow:hidden;
+      font-family:'Plus Jakarta Sans',sans-serif;color:#e9edf5}
+
+    /* GUARDIA MÓVIL — antes de pintar nada. */
+    /* (el script va al inicio del body) */
+
+    /* Barra superior del contrato. */
+    #f-top{display:flex;align-items:center;gap:16px;padding:10px 16px;
+      background:rgba(16,20,26,.9);border-bottom:1px solid #232b36;position:relative;z-index:5}
+    #f-top .f-back{color:#e9edf5;text-decoration:none;font-weight:700;font-size:14px;
+      background:rgba(255,255,255,.05);border:1px solid #232b36;border-radius:9px;padding:7px 12px}
+    #f-top .f-back:hover{color:var(--gold)}
+    #f-par{display:flex;align-items:center;gap:10px}
+    #f-par select{background:#10141a;color:#e9edf5;border:1px solid #2b3139;border-radius:9px;
+      padding:7px 10px;font-family:'Plus Jakarta Sans';font-weight:700;font-size:14px;cursor:pointer}
+    #f-tf{display:flex;gap:4px}
+    #f-tf button{background:rgba(10,14,19,.6);color:#7d8794;border:1px solid #232b36;border-radius:8px;
+      padding:6px 10px;font-family:'IBM Plex Mono';font-size:11px;font-weight:700;cursor:pointer}
+    #f-tf button.on{color:#241900;background:var(--gold);border-color:#c79426}
+
+    /* La gráfica ocupa el resto. */
+    #f-chart{position:absolute;top:52px;left:0;right:0;bottom:0}
+    #f-chart .fg-cv{display:block;width:100%;height:100%}
+    #f-chart .fg-load{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      font-family:'IBM Plex Mono';font-size:12px;color:#7d8794}
+  </style>
+</head>
+<body>
+  <script>
+  (function(){try{
+    var m=window.matchMedia?window.matchMedia('(max-width:900px)').matches
+         :(document.documentElement.clientWidth||0)<=900;
+    if(m)location.replace('app.html');
+  }catch(_){}})();
+  </script>
+
+  <div id="f-top">
+    <a class="f-back" href="index.html">← Volver</a>
+    <div id="f-par">
+      <select id="f-sel"></select>
+    </div>
+    <div id="f-tf">
+      <button data-tf="5m">5m</button>
+      <button data-tf="15m" class="on">15m</button>
+      <button data-tf="1h">1h</button>
+      <button data-tf="4h">4h</button>
+      <button data-tf="1d">1D</button>
+    </div>
+  </div>
+  <div id="f-chart"></div>
+
+  <script type="module">
+    import { crearGrafica } from './assets/js/futuros-grafica.js?v=1';
+
+    // Monedas operables (las de Smart Levels).
+    const PARES = [
+      ['BTCUSDT','BTC'],['ETHUSDT','ETH'],['BNBUSDT','BNB'],['SOLUSDT','SOL'],
+      ['XRPUSDT','XRP'],['DOGEUSDT','DOGE'],['ADAUSDT','ADA'],['AVAXUSDT','AVAX'],
+      ['LINKUSDT','LINK'],['DOTUSDT','DOT'],['NEARUSDT','NEAR'],['LTCUSDT','LTC'],
+      ['ATOMUSDT','ATOM'],['UNIUSDT','UNI'],['INJUSDT','INJ'],['APTUSDT','APT'],
+      ['ARBUSDT','ARB'],['OPUSDT','OP'],['FILUSDT','FIL'],['SUIUSDT','SUI']
+    ];
+    const sel = document.getElementById('f-sel');
+    sel.innerHTML = PARES.map(p => `<option value="${p[0]}">${p[1]}/USDT</option>`).join('');
+
+    const g = crearGrafica(document.getElementById('f-chart'));
+    let tf = '15m';
+    g.cargar('BTCUSDT', tf);
+
+    sel.onchange = () => g.cargar(sel.value, tf);
+    document.querySelectorAll('#f-tf button').forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll('#f-tf button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        tf = b.dataset.tf;
+        g.setTemporalidad(tf);
+      };
+    });
+  </script>
+</body>
+</html>
