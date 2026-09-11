@@ -81,6 +81,31 @@ const DIC = {
     /* === PRIZEPOOL resto + LIQUIDITY === */
 
     /* === TUTORIAL + TOOLS + EXTRAS + ORDEN === */
+
+    /* === NIVELES + GRAFICA + GRIDBOT + WALLET === */
+    'Analizando la estructura del mercado': 'Analyzing the market structure',
+    'Buscando los niveles donde el precio ha reaccionado de verdad.': 'Looking for the levels where the price has truly reacted.',
+    'Esta moneda no cotiza en Binance, así que no hay velas públicas. Abajo tienes tus cuadrículas con sus precios exactos.': 'This coin is not listed on Binance, so there are no public candles. Below you have your grids with their exact prices.',
+    'y se mueven con el gráfico': 'and they move with the chart',
+    '· las líneas son': '· the lines are',
+    'El mínimo debe ser menor que el precio actual': 'The minimum must be lower than the current price',
+    'El objetivo debe estar por encima del precio actual': 'The target must be above the current price',
+    'Esta moneda no tiene pool en PancakeSwap V3. Prueba con otra.': 'This coin has no pool on PancakeSwap V3. Try another.',
+    'Falta el tamaño de orden': 'Order size is missing',
+    'Indica cada cuánto comprar': 'Set how often to buy',
+    'Indica cuánto comprar en cada compra': 'Set how much to buy in each purchase',
+    'Indica cuánto quieres comprar': 'Set how much you want to buy',
+    'Indica cuánto quieres vender': 'Set how much you want to sell',
+    'Indica el precio de compra': 'Set the buy price',
+    'La transacción no se completó en la red.': 'The transaction did not complete on the network.',
+    'La transacción se envió pero no se completó en la red (revirtió). Revisa el saldo y el gas, e inténtalo de nuevo.': 'The transaction was sent but did not complete on the network (it reverted). Check your balance and gas, and try again.',
+    'No hay wallet': 'No wallet',
+    'No se pudo leer el precio del par': 'Could not read the pair price',
+    'Permiso sin cantidad: no se aprueban permisos ilimitados.': 'Permission without amount: unlimited permissions are not approved.',
+    'Revisa capital y número de compras': 'Check capital and number of purchases',
+    'Bots que compran barato y venden caro por ti, en tu propia wallet.': 'Bots that buy low and sell high for you, in your own wallet.',
+    'WC_CARGA: no se pudo descargar la pieza de conexión. Revisa tu conexión e inténtalo otra vez.': 'WC_LOAD: the connection component could not be downloaded. Check your connection and try again.',
+    'WC_LIB: la pieza de conexión no se cargó bien. Recarga la app.': 'WC_LIB: the connection component did not load properly. Reload the app.',
     '. Eso arrastra tu precio promedio hacia abajo. Y como tu promedio bajó, ya': '. That drags your average price down. And since your average dropped, now',
     'Cada vez que el precio baja un escalón, compra.': 'Each time the price drops a step, it buys.',
     'Cada vez que sube un escalón, vende con ganancia.': 'Each time it rises a step, it sells at a profit.',
