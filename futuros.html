@@ -64,6 +64,7 @@
 
   <script type="module">
     import { crearGrafica } from './assets/js/futuros-grafica.js?v=1';
+    import { conectarFuturos, pintarPosiciones } from './assets/js/futuros-orden.js?v=1';
 
     // Monedas operables (las de Smart Levels).
     const PARES = [
@@ -79,6 +80,11 @@
     const g = crearGrafica(document.getElementById('f-chart'));
     let tf = '15m';
     g.cargar('BTCUSDT', tf);
+
+    // Pieza 2: clic derecho para operar (long/short + apalancamiento).
+    conectarFuturos(g.cfg);
+    // Las posiciones abiertas se dibujan sobre la gráfica.
+    g.alDibujar((api) => pintarPosiciones(api));
 
     sel.onchange = () => g.cargar(sel.value, tf);
     document.querySelectorAll('#f-tf button').forEach(b => {
