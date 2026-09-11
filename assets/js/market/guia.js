@@ -5,9 +5,25 @@ import { num } from './util.js?v=1';
 import { CF_PASOS } from './config.js?v=1';
 
 const $ = (id) => document.getElementById(id);
+let _cfPaso = 0;   // paso actual del tutorial (faltaba declararlo)
 
 export function comoFunciona() {
+  // Se cablea el onclick en cuanto el HTML esté en el DOM. Antes solo se
+  // cableaba dentro de cfPintar, que no corría al abrir -> el botón
+  // "Saber más" no hacía nada la primera vez.
+  _cfPaso = 0;
+  setTimeout(cablear, 0);
   return `<div id="cf-zona">${cfTarjeta(0)}</div>`;
+}
+
+/* Engancha los botones de la tarjeta actual. */
+function cablear() {
+  const mas = document.getElementById('cf-mas');
+  if (mas) mas.onclick = () => cfPintar(_cfPaso + 1);
+  const atr = document.getElementById('cf-atras');
+  if (atr) atr.onclick = () => cfPintar(_cfPaso - 1);
+  const vnd = document.getElementById('mk-ir-vender');
+  if (vnd) vnd.onclick = () => { const t = document.getElementById('mk-t2'); if (t) t.click(); };
 }
 
 function cfTarjeta(i) {
@@ -34,10 +50,5 @@ function cfPintar(i) {
   const z = document.getElementById('cf-zona');
   if (!z) return;
   z.innerHTML = cfTarjeta(_cfPaso);
-  const mas = document.getElementById('cf-mas');
-  if (mas) mas.onclick = () => cfPintar(_cfPaso + 1);
-  const atr = document.getElementById('cf-atras');
-  if (atr) atr.onclick = () => cfPintar(_cfPaso - 1);
-  const vnd = document.getElementById('mk-ir-vender');
-  if (vnd) vnd.onclick = () => { const t = document.getElementById('mk-t2'); if (t) t.click(); };
+  cablear();
 }
