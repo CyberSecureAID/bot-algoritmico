@@ -85,6 +85,27 @@ const DIC = {
     /* === NIVELES + GRAFICA + GRIDBOT + WALLET === */
 
     /* === MARKET: ofertas+operaciones+asistentes === */
+
+    /* === MARKET: dialogos+config+ubicacion+disputas === */
+    ': qué acordaron, qué pagaste o qué esperabas.': ': what you agreed, what you paid or what you expected.',
+    'hasta que el árbitro decida (máximo 48 h). Si es un malentendido, intenta hablarlo primero por el contacto.': 'until the arbiter decides (48h maximum). If it is a misunderstanding, try to talk it out first through contact.',
+    'Banco, MLC, Clásica…': 'Bank, MLC, Clásica…',
+    '. Puedes quitarla cuando quieras.': '. You can remove it whenever you want.',
+    '. Luego recarga la página.': '. Then reload the page.',
+    ': sirve para mostrar tu zona y la distancia,': ': it serves to show your area and the distance,',
+    'Ajustes → Privacidad → Localización → activar.': 'Settings → Privacy → Location → enable.',
+    'Ajustes → Ubicación → activar.': 'Settings → Location → enable.',
+    'Compartir tu ubicación es': 'Sharing your location is',
+    'Configuración → Privacidad y seguridad → Ubicación → enciéndela y permite que las aplicaciones de escritorio la usen.': 'Settings → Privacy and security → Location → turn it on and allow desktop apps to use it.',
+    'Cuando salga el aviso del navegador, toca': 'When the browser prompt appears, tap',
+    'Esperando el permiso del navegador…': 'Waiting for the browser permission…',
+    'No se pudo obtener tu ubicación': 'Could not get your location',
+    'Para permitirlo: toca el': 'To allow it: tap the',
+    'Ubicación compartida. Ahora genera más confianza.': 'Location shared. It now builds more trust.',
+    'Ya no compartes tu ubicación.': 'You no longer share your location.',
+    'al lado de la dirección web, busca': 'next to the web address, look for',
+    'sin geo': 'no geo',
+    'Revisa el motivo y los comprobantes que te enviaron por el contacto antes de decidir. Si no resuelves en 48 horas, el sistema devuelve la cripto al vendedor solo.': 'Review the reason and the proof they sent you through contact before deciding. If you do not resolve within 48 hours, the system returns the crypto to the seller automatically.',
     '. Si no la arrancas, vuelve a estar disponible.': '. If you do not start it, it becomes available again.',
     '. no puede llevárselos.': '. cannot take them.',
     'no puede llevárselos.': 'cannot take them.',
