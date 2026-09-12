@@ -89,6 +89,23 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Cruzado': 'Cross',
+    'Mercado': 'Market',
+    'Límite': 'Limit',
+    'Cantidad': 'Amount',
+    'Disponible': 'Available',
+    'Abrir Largo': 'Open Long',
+    'Abrir Corto': 'Open Short',
+    'Órdenes abiertas': 'Open orders',
+    'Historial': 'History',
+    'Sin historial.': 'No history.',
+    'No tienes órdenes abiertas.': 'You have no open orders.',
+    'Precio': 'Price',
+    'Cant.': 'Amt.',
+    'Take-profit': 'Take-profit',
+    'Stop-loss': 'Stop-loss',
+    'Tamaño': 'Size',
+    'Liquidación': 'Liquidation',
     'Cursor': 'Cursor',
     'Línea horizontal': 'Horizontal line',
     'Línea de tendencia': 'Trend line',
