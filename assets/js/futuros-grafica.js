@@ -202,32 +202,70 @@ export function crearGrafica(cont) {
     }
   }
 
-  // Interacción con Pointer Events: arrastrar para desplazar el tiempo,
-  // funciona con ratón y táctil, con captura para no perder el arrastre.
-  let arr = false, ax = 0, ay = 0, finIni = 0, offYini = 0;
+  // Interacción estilo TradingView. Tres zonas:
+  //  · eje de PRECIO (derecha): arrastrar vertical estira/contrae el precio.
+  //  · eje de TIEMPO (abajo): arrastrar horizontal aleja/acerca (nº de velas).
+  //  · área central: arrastrar = desplazar (pan horizontal + vertical).
+  let arr = false, zona = 'area', ax = 0, ay = 0, finIni = 0, offYini = 0, zoomYini = 1, anchoIni = 0;
   cv.style.touchAction = 'none';
+
+  function zonaDe(x, y) {
+    const W = cv.width / dpr, H = cv.height / dpr;
+    if (x >= W - ejeW) return 'precio';   // banda derecha
+    if (y >= H - ejeH) return 'tiempo';   // banda inferior
+    return 'area';
+  }
+  // Cursor según la zona bajo el ratón.
+  function cursorZona(z) {
+    cv.style.cursor = z === 'precio' ? 'ns-resize' : z === 'tiempo' ? 'ew-resize' : 'crosshair';
+  }
+
   cv.addEventListener('pointerdown', (e) => {
-    arr = true; ax = e.clientX; ay = e.clientY;
-    finIni = vista.fin || velas.length; offYini = offY;
+    const r = cv.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    arr = true; zona = zonaDe(x, y);
+    ax = e.clientX; ay = e.clientY;
+    finIni = vista.fin || velas.length; offYini = offY; zoomYini = zoomY; anchoIni = vista.ancho;
     try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   });
   cv.addEventListener('pointerup', (e) => { arr = false; try { cv.releasePointerCapture(e.pointerId); } catch (_) {} });
   cv.addEventListener('pointercancel', () => { arr = false; });
+
   cv.addEventListener('pointermove', (e) => {
     const r = cv.getBoundingClientRect();
     cursor = { x: e.clientX - r.left, y: e.clientY - r.top };
-    if (arr) {
+    if (!arr) { cursorZona(zonaDe(cursor.x, cursor.y)); dibujar(); return; }
+
+    if (zona === 'precio') {
+      // Arrastrar el eje de precio: estira/contrae vertical (como TradingView).
+      const dy = e.clientY - ay;
+      const factor = 1 + dy / 200;
+      zoomY = Math.max(0.4, Math.min(8, zoomYini * factor));
+    } else if (zona === 'tiempo') {
+      // Arrastrar el eje de tiempo: aleja/acerca (nº de velas visibles).
+      const dx = e.clientX - ax;
+      const factor = 1 - dx / 300;
+      vista.ancho = Math.max(30, Math.min(300, Math.round(anchoIni * factor)));
+    } else {
+      // Área central: pan.
       const areaW = cv.width / dpr - ejeW;
       const paso = areaW / vista.ancho;
       const dv = Math.round((e.clientX - ax) / paso);
       vista.fin = Math.max(vista.ancho, Math.min(velas.length, finIni - dv));
-      // arrastre vertical: desplaza el rango de precio
       const rg = rango();
       offY = offYini + (e.clientY - ay) / (cv.height / dpr - ejeH) * (rg.max - rg.min);
     }
     dibujar();
   });
-  cv.addEventListener('pointerleave', () => { if (!arr) { cursor = null; dibujar(); } });
+  cv.addEventListener('pointerleave', () => { if (!arr) { cursor = null; cv.style.cursor = 'default'; dibujar(); } });
+
+  // Doble clic en el eje de precio = auto-fit (resetea zoom vertical).
+  cv.addEventListener('dblclick', (e) => {
+    const r = cv.getBoundingClientRect();
+    const z = zonaDe(e.clientX - r.left, e.clientY - r.top);
+    if (z === 'precio') { zoomY = 1; offY = 0; dibujar(); }
+    else if (z === 'tiempo') { vista.ancho = 90; dibujar(); }
+  });
   cv.addEventListener('wheel', (e) => {
     e.preventDefault();
     if (e.shiftKey) {                 // zoom vertical
