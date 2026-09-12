@@ -148,6 +148,17 @@
     .p-btn small{display:block;font-weight:600;font-size:10px;opacity:.85;margin-top:1px}
 
     .p-hint{font-family:var(--mono);font-size:9px;line-height:1.5;color:var(--ink4);text-align:center;padding:0 4px}
+    .p-tpsl-head{display:flex;align-items:center;gap:8px;cursor:pointer;padding:2px 0}
+    .p-chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--line2);display:grid;place-items:center;flex:0 0 auto}
+    .p-chk.on{border-color:var(--gold);background:var(--gold)}
+    .p-chk.on::after{content:"✓";font-size:11px;color:#241900;font-weight:800}
+    .p-tpsl-head span:last-child{font-size:12.5px;color:var(--ink);font-weight:600}
+    .p-tpsl-box{display:none;flex-direction:column;gap:7px}
+    .p-tpsl-box.on{display:flex}
+    .p-box .tl{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-right:7px}
+    .p-cost{display:flex;flex-direction:column;gap:4px;padding:9px 11px;background:rgba(10,14,19,.4);border:1px solid var(--line);border-radius:10px}
+    .p-cost .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
+    .p-cost .r span{color:var(--ink3)} .p-cost .r b{color:var(--ink)}
 
     /* ── Posiciones (abajo) ── */
     #f-pos{grid-column:1;grid-row:3;background:#0b0e12;border-top:1px solid var(--line);
@@ -271,14 +282,27 @@
         <div class="p-lev-marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div>
       </div>
 
+      <div class="p-tpsl-head" id="p-tpsl-tog">
+        <span class="p-chk" id="p-tpsl-chk"></span><span>TP/SL</span>
+      </div>
+      <div class="p-tpsl-box" id="p-tpsl-box">
+        <div class="p-box"><span class="tl">TP</span><input id="p-tp" type="text" inputmode="decimal" placeholder="Take-profit"><span class="u">USDT</span></div>
+        <div class="p-box"><span class="tl">SL</span><input id="p-sl" type="text" inputmode="decimal" placeholder="Stop-loss"><span class="u">USDT</span></div>
+      </div>
+
       <div class="p-info">
         <div class="r"><span>Tamaño de posición</span><b id="p-size">—</b></div>
         <div class="r"><span>Precio de liquidación</span><b class="liq" id="p-liq">—</b></div>
       </div>
 
       <div class="p-btns">
-        <button class="p-btn long" id="p-long">Long</button>
-        <button class="p-btn short" id="p-short">Short</button>
+        <button class="p-btn long" id="p-long">Abrir Largo</button>
+        <button class="p-btn short" id="p-short">Abrir Corto</button>
+      </div>
+
+      <div class="p-cost">
+        <div class="r"><span>Coste (Largo)</span><b id="p-cost-l">0.00 USDT</b></div>
+        <div class="r"><span>Coste (Corto)</span><b id="p-cost-s">0.00 USDT</b></div>
       </div>
 
       <div class="p-hint">También puedes hacer clic derecho en la gráfica para entrar en un precio exacto.</div>
@@ -422,6 +446,8 @@
 
     // Apalancamiento.
     $('p-range').oninput=(e)=>{ lev=+e.target.value; $('p-lev').textContent=lev+'×'; $('p-levchip-v').textContent=lev+'×'; refrescar(); };
+    // TP/SL con checkbox (como la foto): oculto hasta marcarlo.
+    $('p-tpsl-tog').onclick=()=>{ const on=$('p-tpsl-chk').classList.toggle('on'); $('p-tpsl-box').classList.toggle('on',on); };
 
     // % del margen (placeholder: sin saldo real todavía).
     document.querySelectorAll('.p-pcts button').forEach(b=>b.onclick=()=>{ /* con contrato: % del saldo */ });
@@ -432,6 +458,9 @@
       const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
       $('p-size').textContent=margen?fmt(margen*lev)+' USDT':'—';
       $('p-liq').textContent=(precio&&margen)?'$'+fmt(liqDe(precio,lev,lado==='long')):'—';
+      const cost=margen?fmt(margen)+' USDT':'0.00 USDT';
+      if($('p-cost-l'))$('p-cost-l').textContent=cost;
+      if($('p-cost-s'))$('p-cost-s').textContent=cost;
     }
 
     // Lista de posiciones.
