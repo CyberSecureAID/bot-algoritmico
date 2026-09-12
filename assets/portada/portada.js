@@ -632,7 +632,7 @@ try {
 (async () => {
   let idi;
   try {
-    idi = await import(J + 'idioma.js?v=151');
+    idi = await import(J + 'idioma.js?v=152');
     idi.arrancarIdioma();
   } catch (e) {
     console.warn('[portada] idioma:', e);
