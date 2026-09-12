@@ -89,6 +89,12 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Long': 'Long',
+    'Short': 'Short',
+    'Take-profit': 'Take-profit',
+    'Take-profit (opcional)': 'Take-profit (optional)',
+    'Tamaño de posición': 'Position size',
+    'Precio de liquidación': 'Liquidation price',
     'Elige la moneda': 'Choose the coin',
     'Tus posiciones': 'Your positions',
     'Spot': 'Spot',

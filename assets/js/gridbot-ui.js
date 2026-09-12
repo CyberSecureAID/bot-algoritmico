@@ -125,28 +125,6 @@ function modalDone(titulo, txt) {
 }
 
 /* ---- Logo de la moneda (Trust Wallet) con respaldo a monograma ---- */
-/* Manejador del fallo de logo de moneda. Antes NO existía y el onerror
-   llamaba a una función inexistente -> el logo desaparecía hasta refrescar.
-   Ahora reintenta una vez y, si falla de nuevo, pone las iniciales. */
-if (typeof window !== 'undefined' && !window.__botLogoFail) {
-  window.__botLogoFail = function (img, ini) {
-    if (!img) return;
-    if (!img.dataset.reintento) {
-      // Un reintento: el CDN de trustwallet a veces falla la primera vez.
-      img.dataset.reintento = '1';
-      var src = img.src;
-      img.src = '';
-      setTimeout(function () { img.src = src.indexOf('?') < 0 ? src + '?r=1' : src; }, 400);
-      return;
-    }
-    // Segundo fallo: iniciales.
-    var d = document.createElement('div');
-    d.className = 'pio-mono';
-    d.textContent = ini || '';
-    if (img.parentNode) img.parentNode.replaceChild(d, img);
-  };
-}
-
 function logoDe(addr, simbolo) {
   const ini = (simbolo || '?').slice(0, 3);
   let url = null; try { url = `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${gb.checksum(addr)}/logo.png`; } catch (_) {}
@@ -3182,7 +3160,7 @@ async function arrancar() {
   // computadora un instante y después la móvil). Ahora móvil arranca directo.
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=8');
+      const m = await import('./movil/movil.js?v=9');
       m.montarMovil({ conectarWallet });
       return;   // no se monta nada de escritorio
     } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }
