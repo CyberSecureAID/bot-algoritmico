@@ -20,10 +20,12 @@ export function inyectarMovil() {
     --mv-gold:#E8B84B; --mv-gold-d:#c99a2e; --mv-up:#2ebd85; --mv-down:#f6465d;
   }
   #mv-app{position:fixed;inset:0;z-index:100;background:var(--mv-bg);color:var(--mv-txt);
-    font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent}
+    font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent;
+    overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   #mv-app *{box-sizing:border-box}
+  #mv-app input,#mv-app textarea{-webkit-user-select:text;user-select:text}
   :where(#mv-app) button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
-  #mv-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  #mv-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:none;
     padding:0 16px calc(84px + env(safe-area-inset-bottom,0px));scrollbar-width:none}
   #mv-scroll::-webkit-scrollbar{display:none}
 
