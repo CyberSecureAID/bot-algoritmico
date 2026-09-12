@@ -192,7 +192,7 @@ export function crearGrafica(cont) {
     simbolo = sim; tf = temporalidad || tf;
     load.style.display = '';
     try {
-      velas = await traerVelas(simbolo, tf, 300);
+      velas = await traerVelas(simbolo, tf, 500);
       vista.fin = velas.length;
       zoomY = 1; offY = 0;
       load.style.display = 'none';
@@ -245,13 +245,13 @@ export function crearGrafica(cont) {
       // Arrastrar el eje de tiempo: aleja/acerca (nº de velas visibles).
       const dx = e.clientX - ax;
       const factor = 1 - dx / 300;
-      vista.ancho = Math.max(30, Math.min(300, Math.round(anchoIni * factor)));
+      vista.ancho = Math.max(20, Math.min(480, Math.round(anchoIni * factor)));
     } else {
       // Área central: pan.
       const areaW = cv.width / dpr - ejeW;
       const paso = areaW / vista.ancho;
       const dv = Math.round((e.clientX - ax) / paso);
-      vista.fin = Math.max(vista.ancho, Math.min(velas.length, finIni - dv));
+      vista.fin = Math.max(20, Math.min(velas.length + Math.floor(vista.ancho * 0.3), finIni - dv));
       const rg = rango();
       offY = offYini + (e.clientY - ay) / (cv.height / dpr - ejeH) * (rg.max - rg.min);
     }
@@ -271,7 +271,7 @@ export function crearGrafica(cont) {
     if (e.shiftKey) {                 // zoom vertical
       zoomY = Math.max(0.5, Math.min(6, zoomY * (e.deltaY < 0 ? 1.1 : 0.9)));
     } else {                          // zoom horizontal (nº de velas)
-      vista.ancho = Math.max(30, Math.min(200, Math.round(vista.ancho * (e.deltaY < 0 ? 0.9 : 1.1))));
+      vista.ancho = Math.max(20, Math.min(480, Math.round(vista.ancho * (e.deltaY < 0 ? 0.9 : 1.1))));
     }
     dibujar();
   }, { passive: false });
