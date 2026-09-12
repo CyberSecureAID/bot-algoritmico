@@ -74,7 +74,8 @@ async function abrir(clave, arg) {
   if (requiereActivacion(clave)) { avisoActivacion(clave); return; }
   try {
     switch (clave) {
-      case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=1'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb(); break; }
+      case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=1'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
+                          try { const idi = await import('../idioma.js?v=147'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
       case 'alertas':   abrirAlerta(); break;
@@ -193,6 +194,24 @@ function inyectarFixSwap() {
     #swap-modal .coin-sel-ico,#coin-modal .cm-coin-ico{width:24px!important;height:24px!important;flex:0 0 auto}
     #swap-modal .coin-sel-ico svg,#swap-modal .coin-sel-ico img,#coin-modal .cm-coin-ico svg,#coin-modal .cm-coin-ico img{width:24px!important;height:24px!important}
     #swap-modal .sw-box{max-width:400px}
+
+    /* La X del selector de moneda: en móvil salía sin estilo. */
+    #coin-modal .cm-x,#swap-modal .cm-x{width:34px!important;height:34px!important;border-radius:10px!important;
+      background:rgba(255,255,255,.05)!important;border:1px solid #2b3139!important;color:#7d8794!important;
+      display:grid!important;place-items:center!important;font-size:15px!important;cursor:pointer!important;flex:0 0 auto!important}
+    /* El botón dorado 3D grande: en móvil salía como rectángulo pegado sin
+       estilo. Se le devuelve el bisel dorado y el ancho completo. */
+    #swap-modal .btn-oro3d,#swap-modal .sw-go{width:100%!important;height:52px!important;border-radius:13px!important;
+      border:1px solid #c79426!important;
+      background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426)!important;color:#241900!important;
+      font-family:'Plus Jakarta Sans',sans-serif!important;font-weight:800!important;font-size:16px!important;
+      box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)!important;
+      display:flex!important;align-items:center!important;justify-content:center!important}
+    /* El título del selector, legible y centrado. */
+    #coin-modal .cm-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:12px!important}
+    #coin-modal .cm-title{font-family:'Plus Jakarta Sans',sans-serif!important;font-weight:800!important;font-size:18px!important;color:#e9edf5!important}
+    /* Logos de las monedas en la lista del selector. */
+    #coin-modal .cm-coin-ico img,#coin-modal .cm-coin-ico svg{width:26px!important;height:26px!important;border-radius:50%!important}
   }`;
   document.head.appendChild(s);
 }
