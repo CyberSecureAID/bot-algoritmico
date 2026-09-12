@@ -235,25 +235,71 @@ function abrirFicha(cx, cy, cfg, precio, esLong) {
 }
 
 /* Dibuja las posiciones sobre la gráfica (lo llama la gráfica en cada frame). */
-export function pintarPosiciones({ ctx, areaW, escY }) {
+/* Rectángulo redondeado (helper). */
+function _rr(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+
+/* Dibuja las posiciones sobre la gráfica, estilo Binance: línea de entrada
+   con etiqueta LONG/SHORT + apalancamiento, y línea de liquidación en rojo
+   punteado. Calidad equivalente a las órdenes de spot. */
+export function pintarPosiciones({ ctx: g, areaW, escY }) {
   _posiciones.forEach((p) => {
-    const y = escY(p.precio);
-    const col = p.lado === 'long' ? '#22c55e' : '#f6465d';
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 3]);
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(areaW, y); ctx.stroke();
-    ctx.setLineDash([]);
-    // etiqueta
-    const txt = (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×';
-    ctx.font = 'bold 10px "IBM Plex Mono", monospace';
-    const w = ctx.measureText(txt).width + 12;
-    ctx.fillStyle = col;
-    ctx.fillRect(2, y - 9, w, 18);
-    ctx.fillStyle = '#0b0e12';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(txt, 8, y);
+    const esLong = p.lado === 'long';
+    const col = esLong ? '#22c55e' : '#f6465d';
+    const yE = escY(p.precio);
+
+    // ── Línea de ENTRADA ──
+    // franja tenue de fondo
+    g.save();
+    g.beginPath(); g.rect(0, yE - 11, areaW, 22); g.clip();
+    g.fillStyle = col + '12';
+    g.fillRect(0, yE - 11, areaW, 22);
+    g.restore();
+    // línea sólida
+    g.strokeStyle = col; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(0, yE); g.lineTo(areaW, yE); g.stroke();
+
+    // etiqueta redondeada con sombra
+    const et = (esLong ? 'LONG' : 'SHORT') + ' ' + p.lev + '×  ' + _fmtP(p.precio);
+    g.font = 'bold 10.5px "IBM Plex Mono", monospace';
+    const w = g.measureText(et).width + 22;
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 7; g.shadowOffsetY = 2;
+    g.fillStyle = col;
+    _rr(g, 6, yE - 12, w, 24, 7); g.fill();
+    g.restore();
+    g.fillStyle = esLong ? '#04210f' : '#2a0509';
+    g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.fillText(et, 16, yE);
+
+    // ── Línea de LIQUIDACIÓN (rojo punteado) ──
+    const liq = liqDe(p.precio, p.lev, esLong);
+    const yL = escY(liq);
+    if (Number.isFinite(yL) && Math.abs(yL - yE) > 6) {
+      g.strokeStyle = '#f6465d'; g.lineWidth = 1; g.setLineDash([4, 4]);
+      g.beginPath(); g.moveTo(0, yL); g.lineTo(areaW, yL); g.stroke();
+      g.setLineDash([]);
+      const etL = 'LIQ ' + _fmtP(liq);
+      g.font = 'bold 9.5px "IBM Plex Mono", monospace';
+      const wL = g.measureText(etL).width + 16;
+      g.fillStyle = 'rgba(246,70,93,.9)';
+      _rr(g, 6, yL - 9, wL, 18, 6); g.fill();
+      g.fillStyle = '#fff';
+      g.fillText(etL, 14, yL);
+    }
   });
+}
+
+function _fmtP(p) {
+  if (!p) return '0';
+  if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 1 });
+  if (p >= 1) return p.toFixed(2);
+  if (p >= 0.01) return p.toFixed(4);
+  return p.toPrecision(4);
 }
 
 export function conectarFuturos(cfg) {
