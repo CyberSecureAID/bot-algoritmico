@@ -151,14 +151,14 @@
 
     /* ── Posiciones (abajo) ── */
     #f-pos{grid-column:1/3;grid-row:3;background:rgba(9,12,17,.9);border-top:1px solid var(--line);
-      backdrop-filter:blur(12px);overflow-y:auto}
+      backdrop-filter:blur(12px);overflow-y:auto;display:flex;flex-direction:column;min-height:0}
     .fp-tabs{display:flex;gap:20px;padding:11px 18px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(9,12,17,.96)}
     .fp-tabs button{background:none;border:none;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:12.5px;
       padding:0 0 10px;cursor:pointer;position:relative}
     .fp-tabs button.on{color:var(--ink)}
     .fp-tabs button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold);border-radius:2px}
     .fp-tabs button .badge{font-family:var(--mono);font-size:10px;color:var(--ink4);margin-left:5px}
-    #f-pos-list{padding:6px 18px 14px}
+    #f-pos-list{padding:6px 18px 14px;overflow-y:auto;flex:1;min-height:0}
     .pos-empty{font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center;padding:26px}
     .pos-head,.pos-row{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr 80px;gap:12px;align-items:center;
       font-family:var(--mono);font-size:11.5px;padding:9px 0}
@@ -279,7 +279,7 @@
   </div>
 
   <script type="module">
-    import { crearGrafica } from './assets/js/futuros-grafica.js?v=1';
+    import { crearGrafica } from './assets/js/futuros-grafica.js?v=2';
     import { conectarFuturos, pintarPosiciones, posiciones, abrirDesdePanel, cerrarPosicion } from './assets/js/futuros-orden.js?v=2';
     import { arrancarIdioma } from './assets/js/idioma.js?v=148';
 
