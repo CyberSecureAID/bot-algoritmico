@@ -564,7 +564,7 @@ function wireHeader() {
      try por si el módulo no carga: sin él, todo sigue en español. */
   (async () => {
     try {
-      const idi = await import('./idioma.js?v=150');
+      const idi = await import('./idioma.js?v=151');
       idi.arrancarIdioma();
       const tx = $('c-idioma-tx');
       if (tx) tx.textContent = idi.idiomaActual().toUpperCase();
@@ -3160,7 +3160,7 @@ async function arrancar() {
   // computadora un instante y después la móvil). Ahora móvil arranca directo.
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=3');
+      const m = await import('./movil/movil.js?v=4');
       m.montarMovil({ conectarWallet });
       return;   // no se monta nada de escritorio
     } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }
