@@ -208,8 +208,9 @@ function inyectarFixSwap() {
       box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)!important;
       display:flex!important;align-items:center!important;justify-content:center!important}
     /* El título del selector, legible y centrado. */
-    #coin-modal .cm-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:12px!important}
-    #coin-modal .cm-title{font-family:'Plus Jakarta Sans',sans-serif!important;font-weight:800!important;font-size:18px!important;color:#e9edf5!important}
+    #coin-modal .cm-head,#swap-modal .cm-head{display:flex!important;align-items:center!important;justify-content:space-between!important;
+      padding:16px 16px 4px!important;margin-bottom:8px!important}
+    #coin-modal .cm-title,#swap-modal .cm-title{font-family:'Plus Jakarta Sans',sans-serif!important;font-weight:800!important;font-size:19px!important;color:#e9edf5!important;padding:0!important}
     /* Logos de las monedas en la lista del selector. */
     #coin-modal .cm-coin-ico img,#coin-modal .cm-coin-ico svg{width:26px!important;height:26px!important;border-radius:50%!important}
   }`;
