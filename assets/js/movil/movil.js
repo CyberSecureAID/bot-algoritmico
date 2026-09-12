@@ -11,7 +11,7 @@ import { IC } from './iconos.js?v=1';
 import { pintarInicio } from './inicio.js?v=2';
 import { pintarMercados } from './markets.js?v=1';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=1';
-import { pintarActivos } from './activos.js?v=1';
+import { pintarActivos } from './activos.js?v=2';
 import { abrirMenu } from './menu.js?v=1';
 import { abrirBuscar } from './buscar.js?v=1';
 import { abrirAlerta } from './alerta.js?v=1';
@@ -75,7 +75,7 @@ async function abrir(clave, arg) {
   try {
     switch (clave) {
       case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=1'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
-                          try { const idi = await import('../idioma.js?v=147'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
+                          try { const idi = await import('../idioma.js?v=151'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
       case 'alertas':   abrirAlerta(); break;
@@ -515,8 +515,9 @@ function api() {
 
 const TABS = [
   { k: 'home',    ic: 'home',    t: 'Inicio' },
-  { k: 'markets', ic: 'candles', t: 'Mercados' },
-  { k: 'trade',   ic: 'chart',   t: 'Operar' },
+  { k: 'markets', ic: 'candles', t: 'P2P' },
+  { k: 'trade',   ic: 'chart',   t: 'Spot' },
+  { k: 'futuros', ic: 'chart',   t: 'Futures' },
   { k: 'assets',  ic: 'wallet',  t: 'Activos' },
 ];
 
@@ -555,6 +556,20 @@ async function irA(tab) {
   if (tab === 'markets') { pintarMercados(host, api()); return; }
   if (tab === 'trade')   { pintarOperar(host, api()); return; }
   if (tab === 'assets')  { pintarActivos(host, api()); refrescarBalance(); return; }
+  if (tab === 'futuros') { pintarFuturosPlaceholder(host); return; }
+}
+
+/* Futures móvil: placeholder hasta construir la interfaz completa. */
+function pintarFuturosPlaceholder(host) {
+  if (!host) return;
+  host.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+      min-height:60vh;text-align:center;padding:30px;gap:14px">
+      <div style="font-family:var(--display,sans-serif);font-weight:800;font-size:22px;color:var(--gold,#E8B84B)">Futures</div>
+      <div style="font-family:var(--mono,monospace);font-size:13px;color:#7d8794;line-height:1.6;max-width:280px">
+        Operar con apalancamiento desde el móvil. Esta sección está en desarrollo y llegará muy pronto.
+      </div>
+    </div>`;
 }
 
 async function refrescarBalance() {

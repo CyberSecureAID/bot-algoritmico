@@ -36,8 +36,9 @@ export function pintarActivos(host, api) {
       <div class="ac-sub" id="ac-sub"></div>
       <div class="ac-acts">
         <button class="ac-act" id="ac-recv"><span>${IC.arrowDown}</span>Recibir</button>
-        <button class="ac-act" id="ac-market"><span>${IC.market}</span>Market</button>
+        <button class="ac-act" id="ac-market"><span>${IC.market}</span>P2P</button>
         <button class="ac-act" id="ac-swap"><span>${IC.swap}</span>Swap</button>
+        <button class="ac-act" id="ac-liq"><span>${IC.market}</span>Add liquidity</button>
       </div>
     </div>
 
@@ -56,6 +57,7 @@ export function pintarActivos(host, api) {
   $('ac-recv').onclick = () => api.abrir('recibir');
   $('ac-market').onclick = () => api.abrir('sell');
   $('ac-swap').onclick = () => api.abrir('swap');
+  $('ac-liq').onclick = () => { location.href = 'aportar.html'; };
   $('ac-eye').onclick = () => { _ojo = !_ojo; try { localStorage.setItem('mv-ojo', _ojo ? '1' : '0'); } catch (_) {} pintar(); };
   host.querySelectorAll('#ac-tabs button').forEach((btn) => btn.onclick = () => {
     const t = btn.getAttribute('data-t');
