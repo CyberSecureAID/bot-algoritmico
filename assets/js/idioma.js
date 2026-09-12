@@ -89,6 +89,8 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Elige la moneda': 'Choose the coin',
+    'Tus posiciones': 'Your positions',
     'Spot': 'Spot',
     'Futures': 'Futures',
     'Add liquidity': 'Add liquidity',
