@@ -34,7 +34,7 @@
       grid-template-rows:54px 1fr 176px;grid-template-columns:1fr 300px}
 
     /* Barra de contrato. */
-    #f-top{grid-column:1/3;display:flex;align-items:center;gap:0;padding:0 8px 0 14px;
+    #f-top{grid-column:1/3;display:flex;align-items:center;gap:0;padding:0 8px 0 14px;position:relative;z-index:40;
       background:linear-gradient(180deg,rgba(14,18,24,.95),rgba(10,13,18,.92));
       border-bottom:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     .f-back{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;margin-right:12px;
@@ -42,7 +42,7 @@
     .f-back:hover{color:var(--gold);border-color:var(--gold-soft)}
 
     /* Selector de moneda con estilo. */
-    .f-coin{position:relative}
+    .f-coin{position:relative;z-index:50}
     .f-coin__btn{display:flex;align-items:center;gap:9px;background:transparent;border:none;cursor:pointer;padding:6px 8px;border-radius:10px}
     .f-coin__btn:hover{background:rgba(255,255,255,.04)}
     .f-coin__ico{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#1b2230,#0d1119);
@@ -51,10 +51,10 @@
     .f-coin__nm em{font-style:normal;color:var(--ink3);font-weight:600;font-size:13px}
     .f-coin__cv{color:var(--ink3);font-size:11px;transition:transform .15s}
     .f-coin.open .f-coin__cv{transform:rotate(180deg)}
-    .f-coin__menu{position:absolute;top:46px;left:0;width:260px;max-height:60vh;overflow-y:auto;z-index:30;
-      background:var(--panel-solid);border:1px solid var(--line2);border-radius:14px;padding:6px;
-      box-shadow:0 24px 60px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);display:none}
-    .f-coin.open .f-coin__menu{display:block}
+    .f-coin__menu{position:absolute;top:46px;left:0;width:270px;max-height:64vh;z-index:200;
+      background:#0b0e13;border:1px solid var(--line2);border-radius:14px;padding:6px;
+      box-shadow:0 24px 60px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.04);display:none;flex-direction:column}
+    .f-coin.open .f-coin__menu{display:flex}
     .f-coin__search{width:100%;background:rgba(10,14,19,.8);border:1px solid var(--line2);border-radius:9px;
       color:var(--ink);font-family:var(--mono);font-size:12px;padding:8px 10px;margin-bottom:5px;outline:none}
     .f-coin__opt{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;cursor:pointer}
@@ -63,7 +63,7 @@
     .f-coin__opt-ico img{width:24px;height:24px;border-radius:50%}
     .f-coin__opt b{font-family:var(--disp);font-weight:700;font-size:13.5px;color:var(--ink)}
     .f-coin__opt .nm{font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-left:auto}
-    #f-coin-opts{max-height:calc(60vh - 46px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+    #f-coin-opts{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
     .f-coin__ico img{width:26px;height:26px;border-radius:50%}
 
     /* Datos del contrato (precio, cambio). */
@@ -342,6 +342,7 @@
     $('f-coin-btn').onclick=(e)=>{ e.stopPropagation(); coin.classList.toggle('open'); if(coin.classList.contains('open')){ pintarOpts(''); $('f-coin-search').value=''; $('f-coin-search').focus(); } };
     $('f-coin-search').oninput=(e)=>pintarOpts(e.target.value);
     $('f-coin-search').onclick=(e)=>e.stopPropagation();
+    document.getElementById('f-coin-menu').addEventListener('click',(e)=>e.stopPropagation());
     document.addEventListener('click',()=>coin.classList.remove('open'));
 
     // Temporalidades.
