@@ -89,6 +89,10 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Modo de margen': 'Margin mode',
+    'El margen de esta posición está separado del resto. Si se liquida, solo pierdes lo que asignaste a ella — nada más de tu saldo. Recomendado para controlar el riesgo.': 'The margin for this position is separate from the rest. If it liquidates, you only lose what you assigned to it — nothing else from your balance. Recommended to control risk.',
+    'Todo tu saldo respalda la posición. Aguanta más antes de liquidarse, pero si se liquida puedes perder todo el saldo disponible, no solo el margen de esta operación.': 'Your whole balance backs the position. It holds longer before liquidating, but if it liquidates you can lose all your available balance, not just this trade margin.',
+    'Cerrar': 'Close',
     'Buscar moneda…': 'Search coin…',
     'Cambio 24h': '24h change',
     'Financiación': 'Funding',
