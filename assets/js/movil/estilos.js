@@ -388,9 +388,10 @@ export function inyectarMovil() {
   .op-tab{padding:10px 0;font-size:14px;font-weight:700;color:var(--mv-mut);position:relative}
   .op-tab.on{color:var(--mv-txt)}
   .op-tab.on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--mv-gold);border-radius:2px}
-  .op-histbtn{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;background:none;color:var(--mv-txt,#e9edf1);cursor:pointer;align-self:center}
+  .op-histbtn{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid var(--mv-line,#232b36);border-radius:10px;background:rgba(255,255,255,.04);color:var(--mv-txt,#e9edf1);cursor:pointer;align-self:center;transition:border-color .13s,background .13s}
   .op-histbtn svg{width:20px;height:20px}
-  .op-histbtn:active{opacity:.6}
+  .op-histbtn:hover{border-color:var(--gold,#E8B84B)}
+.op-histbtn:active{transform:scale(.94);background:rgba(232,184,75,.12)}
   .op-panel{padding:6px 0}
   .op-empty{text-align:center;color:var(--mv-mut);padding:28px 16px;font-size:13.5px}
   .op-loading{display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--mv-mut);padding:34px 16px;font-size:13.5px}
