@@ -146,6 +146,15 @@ const DIC = {
     'Operar con apalancamiento es de altísimo riesgo. Una pequeña variación del precio en tu contra puede liquidar toda tu posición. El precio de liquidación mostrado es una estimación. Opera solo con dinero que puedas permitirte perder. Esto no es consejo financiero.': 'Trading with leverage is extremely high risk. A small price move against you can liquidate your entire position. The liquidation price shown is an estimate. Only trade with money you can afford to lose. This is not financial advice.',
 
     /* === ADD LIQUIDITY (aportar) === */
+    'Gana una parte de las comisiones cuando otros operan con futuros': 'Earn a share of the fees when others trade futures',
+    'Tu aporte': 'Your contribution',
+    'Comisiones ganadas': 'Fees earned',
+    'Se desbloquea': 'Unlocks',
+    'Aportar': 'Provide',
+    'Retirar': 'Withdraw',
+    'Cantidad a aportar': 'Amount to provide',
+    'Cantidad a retirar': 'Amount to withdraw',
+    'Solo puedes retirar el aporte cuyo plazo de bloqueo ya haya vencido. Lo que sigue bloqueado aparece con su fecha de desbloqueo arriba.': 'You can only withdraw the contribution whose lock period has already ended. What is still locked shows its unlock date above.',
     'Volver': 'Back',
     'Gana una parte de las comisiones cuando otros operan': 'Earn a share of the fees when others trade',
     'Aportas USDT': 'You provide USDT',
