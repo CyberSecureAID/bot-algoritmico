@@ -54,7 +54,7 @@ function estilos() {
     background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border:1px solid #c79426;border-radius:8px;padding:4px 9px}
 
   .alm .alm-plazos{display:flex;gap:5px}
-  .alm .alm-plazo{flex:1;min-width:0;background:rgba(10,14,19,.5);border:1px solid var(--line);border-radius:10px;padding:8px 2px;text-align:center}
+  .alm .alm-plazo{flex:1;min-width:0;background:rgba(10,14,19,.5);border:1px solid var(--line);border-radius:11px;padding:9px 1px;text-align:center;line-height:1.1}
   .alm .alm-plazo.on{border-color:var(--gold);background:rgba(232,184,75,.1)}
   .alm .alm-plazo b{display:block;font-weight:700;font-size:12px}
   .alm .alm-plazo em{display:block;font-style:normal;font-family:'IBM Plex Mono';font-size:8px;color:var(--ink3);text-transform:uppercase;margin-top:3px}
@@ -131,7 +131,7 @@ export function abrirAportarMovil() {
           </div>
         </div>
         <div class="alm-lbl" style="margin:12px 2px 8px">Plazo de bloqueo</div>
-        <div class="alm-plazos">${PLAZOS.map((p, i) => `<div class="alm-plazo${i === 1 ? ' on' : ''}" data-plazo="${p.id}"><b>${p.etiqueta}</b><em>bloqueado</em></div>`).join('')}</div>
+        <div class="alm-plazos">${PLAZOS.map((p, i) => `<div class="alm-plazo${i === 1 ? ' on' : ''}" data-plazo="${p.id}"><b>${p.etiqueta.split(' ')[0]}</b><em>${p.etiqueta.split(' ')[1] || ''}</em></div>`).join('')}</div>
         <button class="alm-go" style="margin-top:14px;width:100%">Aportar liquidez</button>`;
       panel.querySelectorAll('.alm-plazo').forEach((el) => el.onclick = () => {
         panel.querySelectorAll('.alm-plazo').forEach((x) => x.classList.remove('on')); el.classList.add('on');
