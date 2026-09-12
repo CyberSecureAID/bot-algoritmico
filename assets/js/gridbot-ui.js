@@ -3160,7 +3160,7 @@ async function arrancar() {
   // computadora un instante y después la móvil). Ahora móvil arranca directo.
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=2');
+      const m = await import('./movil/movil.js?v=3');
       m.montarMovil({ conectarWallet });
       return;   // no se monta nada de escritorio
     } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }
