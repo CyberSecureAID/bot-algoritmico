@@ -6,7 +6,7 @@
 
 import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=3';
+import { inyectarMovil } from './estilos.js?v=4';
 import { IC } from './iconos.js?v=1';
 import { pintarInicio } from './inicio.js?v=2';
 import { pintarMercados } from './markets.js?v=1';
@@ -557,7 +557,7 @@ async function irA(tab) {
   if (tab === 'markets') { pintarMercados(host, api()); return; }
   if (tab === 'trade')   { pintarOperar(host, api()); return; }
   if (tab === 'assets')  { pintarActivos(host, api()); refrescarBalance(); return; }
-  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=1'); fm.pintarFuturos(host); return; }
+  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=2'); fm.pintarFuturos(host, api()); return; }
 }
 
 /* Futures móvil: placeholder hasta construir la interfaz completa. */

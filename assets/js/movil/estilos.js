@@ -441,10 +441,10 @@ export function inyectarMovil() {
   .ac-brand{font-size:13px;font-weight:800;color:var(--mv-gold);white-space:nowrap;letter-spacing:.2px}
   .ac-bal{font-size:36px;font-weight:800;letter-spacing:-.6px;margin:10px 0 2px}
   .ac-sub{color:var(--mv-mut);font-size:12.5px;min-height:16px}
-  .ac-acts{display:flex;gap:9px;margin-top:18px}
-  .ac-act{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:11px 4px;
-    display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--mv-txt);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
-  .ac-act span{display:grid;place-items:center} .ac-act svg{width:21px;height:21px;color:var(--mv-gold)}
+  .ac-acts{display:flex;gap:7px;margin-top:18px}
+  .ac-act{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:9px 2px;
+    display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--mv-txt);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);text-align:center;line-height:1.2}
+  .ac-act span{display:grid;place-items:center} .ac-act svg{width:19px;height:19px;color:var(--mv-gold)}
   .ac-act:active{background:rgba(255,255,255,.1)}
   .ac-tabs{display:flex;gap:18px;border-bottom:1px solid var(--mv-line);margin:20px 0 4px}
   .ac-tabs button{padding:10px 0;font-size:15px;font-weight:800;color:var(--mv-txt);position:relative}
