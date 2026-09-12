@@ -123,8 +123,8 @@ const PUERTAS = {
   heat:    async () => (await import(J + 'muros.js?v=126')).abrirMuros(),
   levels:  async () => (await import(J + 'niveles.js?v=126')).abrirNiveles(),
   tools:   async (tid) => (await import(J + 'tools.js?v=128')).abrirTools(tid),
-  academy: async () => (await import(J + 'academy.js?v=126')).abrirAcademy(),
-  prize:   async () => (await import(J + 'prizepool.js?v=126')).abrirPrizePool(),
+  academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
+  prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
   aportar: async () => (await import(J + 'aportar.js?v=1')).abrirAportar(),
   perfil:  async () => (await import(J + 'perfil.js?v=125')).abrirPerfil()
 };
