@@ -8,7 +8,7 @@ const $ = (id) => document.getElementById(id);
 const LS = { ojo: 'mv-ojo', denom: 'mv-denom' };
 
 const QUICK = [
-  { k: 'sell',      ic: 'market', t: 'Market' },
+  { k: 'sell',      ic: 'market', t: 'P2P' },
   { k: 'swap',      ic: 'swap',   t: 'Swap' },
   { k: 'bots',      ic: 'bot',    t: 'Bots', tag: 'HOT' },
   { k: 'liquidity', ic: 'pool',   t: 'Liquidity' },
@@ -257,7 +257,15 @@ function montarCarrusel(track, api) {
 
   svc.addEventListener('wheel', () => { pausar(); reanudarPronto(); }, { passive: true });
 
-  raf = requestAnimationFrame(paso);
+  // Arrancar cuando el layout tenga ancho real (si no, scrollWidth=clientWidth
+  // y el vaivén no se vería). Se reintenta unas veces al montar.
+  let intentos = 0;
+  const arrancar = () => {
+    const max = svc.scrollWidth - svc.clientWidth;
+    if (max > 2 || intentos > 20) { auto = true; raf = requestAnimationFrame(paso); }
+    else { intentos++; setTimeout(arrancar, 120); }
+  };
+  arrancar();
   return () => { vivo = false; if (raf) cancelAnimationFrame(raf); if (reanuda) clearTimeout(reanuda); if (hold) clearTimeout(hold); };
 }
 

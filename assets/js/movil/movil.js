@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=5';
 import { IC } from './iconos.js?v=1';
-import { pintarInicio } from './inicio.js?v=2';
+import { pintarInicio } from './inicio.js?v=3';
 import { pintarMercados } from './markets.js?v=1';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=1';
 import { pintarActivos } from './activos.js?v=3';
@@ -532,8 +532,11 @@ function pintarNav() {
    siempre lleve a una pantalla de la cáscara). */
 function cerrarSecciones() {
   ['nv-overlay', 'mu-overlay', 'lq-overlay', 'lqp-overlay', 'nv-picker', 'mu-picker', 'lq-mas-menu',
-   'mk-overlay', 'swap-modal', 'coin-modal', 'pf-overlay', 'tools-overlay', 'ac-overlay', 'pp-overlay'].forEach((id) => { const e = $(id); if (e) e.remove(); });
+   'mk-overlay', 'swap-modal', 'coin-modal', 'pf-overlay', 'tools-overlay', 'ac-overlay', 'pp-overlay',
+   'alm'].forEach((id) => { const e = $(id); if (e) e.remove(); });
   document.querySelectorAll('[id$="-overlay"]').forEach((e) => { if (e.id !== 'mv-app') e.remove(); });
+  // Ventanas flotantes de futuros (modo margen) y overlays sueltos.
+  document.querySelectorAll('.fxm-modal, .alm, .fm-sheet').forEach((e) => e.remove());
   salirBots();
 }
 
