@@ -297,6 +297,7 @@
   <script type="module">
     import { crearGrafica } from './assets/js/futuros-grafica.js?v=5';
     import { conectarFuturos, pintarPosiciones, posiciones, abrirDesdePanel, cerrarPosicion } from './assets/js/futuros-orden.js?v=3';
+    import { conectarTools } from './assets/js/futuros-tools.js?v=1';
     import { arrancarIdioma } from './assets/js/idioma.js?v=148';
 
     const PARES = [
@@ -363,7 +364,12 @@
     const g = crearGrafica($('f-chart'));
     g.cargar(sim, tf);
     conectarFuturos(g.cfg);
+    // Guardar el dibujo de posiciones para encadenarlo con las herramientas.
+    g._alDibujarExterno = (api) => pintarPosiciones(api);
     g.alDibujar((api) => pintarPosiciones(api));
+    // Herramientas de análisis (línea horizontal, tendencia). Encadena su
+    // dibujo con el de posiciones dentro de conectarTools.
+    conectarTools(g);
     // Remedir la gráfica al cambiar tamaño de ventana o zoom (evita que se
     // pierda el layout). Se usa ResizeObserver sobre el contenedor.
     try {
