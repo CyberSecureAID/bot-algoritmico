@@ -11,7 +11,7 @@ import { IC } from './iconos.js?v=1';
 import { pintarInicio } from './inicio.js?v=2';
 import { pintarMercados } from './markets.js?v=1';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=1';
-import { pintarActivos } from './activos.js?v=2';
+import { pintarActivos } from './activos.js?v=3';
 import { abrirMenu } from './menu.js?v=1';
 import { abrirBuscar } from './buscar.js?v=1';
 import { abrirAlerta } from './alerta.js?v=1';
@@ -81,6 +81,7 @@ async function abrir(clave, arg) {
       case 'alertas':   abrirAlerta(); break;
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
+      case 'aportar':   { const m = await import('./aportar-movil.js?v=1'); m.abrirAportarMovil(); break; }
       case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=125'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
