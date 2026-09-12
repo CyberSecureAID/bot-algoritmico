@@ -108,7 +108,12 @@ export function crearGrafica(cont) {
     const areaH = H - ejeH;
     const vis = tramoVisible();
     const n = vis.length;
-    const paso = areaW / n;
+    // paso basado en vista.ancho (no en n): así, al despegar del borde, las
+    // velas conservan su ancho y queda hueco a la derecha (como TradingView).
+    const paso = areaW / Math.max(vista.ancho, 1);
+    // Hueco a la derecha: cuántas posiciones vacías hay tras la última vela.
+    const finV = vista.fin || velas.length;
+    const huecoDer = Math.max(0, finV - velas.length);
     const velaW = Math.max(1, Math.min(paso * 0.7, 18));
     const r = rango();
     const escY = (p) => ((r.max - p) / (r.max - r.min)) * areaH;
@@ -129,7 +134,7 @@ export function crearGrafica(cont) {
 
     // Velas.
     vis.forEach((k, i) => {
-      const x = i * paso + paso / 2;
+      const x = (i + (vista.ancho - n - huecoDer)) * paso + paso / 2;
       const sube = k.c >= k.o;
       const col = sube ? COL.up : COL.down;
       const colW = sube ? COL.upW : COL.downW;
@@ -251,7 +256,7 @@ export function crearGrafica(cont) {
       const areaW = cv.width / dpr - ejeW;
       const paso = areaW / vista.ancho;
       const dv = Math.round((e.clientX - ax) / paso);
-      vista.fin = Math.max(20, Math.min(velas.length + Math.floor(vista.ancho * 0.3), finIni - dv));
+      vista.fin = Math.max(20, Math.min(velas.length + Math.floor(vista.ancho * 0.5), finIni - dv));
       const rg = rango();
       offY = offYini + (e.clientY - ay) / (cv.height / dpr - ejeH) * (rg.max - rg.min);
     }
@@ -268,10 +273,18 @@ export function crearGrafica(cont) {
   });
   cv.addEventListener('wheel', (e) => {
     e.preventDefault();
-    if (e.shiftKey) {                 // zoom vertical
-      zoomY = Math.max(0.5, Math.min(6, zoomY * (e.deltaY < 0 ? 1.1 : 0.9)));
-    } else {                          // zoom horizontal (nº de velas)
-      vista.ancho = Math.max(20, Math.min(480, Math.round(vista.ancho * (e.deltaY < 0 ? 0.9 : 1.1))));
+    const r = cv.getBoundingClientRect();
+    const z = zonaDe(e.clientX - r.left, e.clientY - r.top);
+    const acerca = e.deltaY < 0;
+    if (z === 'precio' || e.shiftKey) {
+      // Sobre el eje de precio: estira/contrae el precio (escala vertical).
+      zoomY = Math.max(0.4, Math.min(8, zoomY * (acerca ? 1.1 : 0.9)));
+    } else if (z === 'tiempo') {
+      // Sobre el eje de tiempo: acerca/aleja (nº de velas).
+      vista.ancho = Math.max(20, Math.min(480, Math.round(vista.ancho * (acerca ? 0.9 : 1.1))));
+    } else {
+      // Sobre la gráfica: zoom horizontal.
+      vista.ancho = Math.max(20, Math.min(480, Math.round(vista.ancho * (acerca ? 0.9 : 1.1))));
     }
     dibujar();
   }, { passive: false });
