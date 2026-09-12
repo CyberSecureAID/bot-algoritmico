@@ -89,6 +89,10 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Coste (Largo)': 'Cost (Long)',
+    'Coste (Corto)': 'Cost (Short)',
+    'Abrir Largo': 'Open Long',
+    'Abrir Corto': 'Open Short',
     'Cruzado': 'Cross',
     'Mercado': 'Market',
     'Límite': 'Limit',
