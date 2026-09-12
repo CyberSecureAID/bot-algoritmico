@@ -125,6 +125,29 @@ function modalDone(titulo, txt) {
 }
 
 /* ---- Logo de la moneda (Trust Wallet) con respaldo a monograma ---- */
+/* Manejador del fallo de logo de moneda (antes NO existía: el onerror
+   llamaba a una función inexistente y el logo desaparecía hasta refrescar).
+   Reintenta una vez y, si falla, muestra las iniciales. */
+if (typeof window !== 'undefined' && !window.__botLogoFail) {
+  window.__botLogoFail = function (img, ini) {
+    if (!img) return;
+    if (!img.dataset.reintento) {
+      img.dataset.reintento = '1';
+      var src = img.src; img.src = '';
+      setTimeout(function () { img.src = src.indexOf('?') < 0 ? src + '?r=1' : src; }, 400);
+      return;
+    }
+    var d = document.createElement('div'); d.className = 'pio-mono'; d.textContent = ini || '';
+    if (img.parentNode) img.parentNode.replaceChild(d, img);
+  };
+}
+/* Aparición suave de perfil/wallet al recargar (evita el salto vacío->iconos). */
+if (typeof document !== 'undefined' && !document.getElementById('cco-hdr-fade')) {
+  var _fadeSt = document.createElement('style'); _fadeSt.id = 'cco-hdr-fade';
+  _fadeSt.textContent = '#colmena-app .c-perfil,#colmena-app .dir{animation:ccoHdrIn .28s ease both}@keyframes ccoHdrIn{from{opacity:0}to{opacity:1}}';
+  document.head.appendChild(_fadeSt);
+}
+
 function logoDe(addr, simbolo) {
   const ini = (simbolo || '?').slice(0, 3);
   let url = null; try { url = `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${gb.checksum(addr)}/logo.png`; } catch (_) {}
