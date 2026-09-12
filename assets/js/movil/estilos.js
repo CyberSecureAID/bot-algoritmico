@@ -482,6 +482,25 @@ export function inyectarMovil() {
   #mv-red .mv-red-ayuda{margin-top:10px;color:var(--mv-mut);font-size:11.5px;line-height:1.5}
   #mv-red .mv-red-ayuda b{color:var(--mv-txt)}
   #mv-red .mv-red-w{display:block;margin-top:5px;padding-left:2px}
-  `;
+  
+/* ── Futuros móvil (extra sobre op-*) ── */
+  .op-fmode{display:flex;gap:7px;margin-bottom:8px}
+  .op-fmode button{flex:1;height:34px;border-radius:9px;border:1px solid var(--mv-line);background:var(--mv-card);color:var(--mv-mut);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700}
+  .op-fmode button b{color:var(--mv-gold);font-family:inherit}
+  .op-flev-top{display:flex;justify-content:space-between;align-items:center;margin:4px 0 2px}
+  .op-flev-top span{color:var(--mv-mut);font-size:12px}
+  .op-flev-val{color:var(--mv-gold);font-weight:800;font-size:16px}
+  .op-finfo{display:flex;flex-direction:column;gap:5px;padding:10px 12px;background:var(--mv-card);border:1px solid var(--mv-line);border-radius:10px}
+  .op-finfo .r{display:flex;justify-content:space-between;font-size:12px}
+  .op-finfo .r span{color:var(--mv-mut)} .op-finfo .r b{color:var(--mv-txt)} .op-finfo .r b.liq{color:var(--mv-down)}
+  .fxm-modal{position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end}
+  .fxm-modal .bg{position:absolute;inset:0;background:rgba(3,5,7,.65)}
+  .fxm-modal .card{position:relative;width:100%;background:#0e1218;border-top:1px solid #232b36;border-radius:20px 20px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+  .fxm-modal h4{margin:0 0 12px;text-align:center;font-family:'Plus Jakarta Sans';font-weight:800;font-size:17px;color:#eef1f6}
+  .fxm-modal .opt{display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:13px;margin-bottom:9px}
+  .fxm-modal .opt.on{border-color:var(--mv-gold);background:rgba(232,184,75,.08)}
+  .fxm-modal .opt b{display:block;font-family:'Plus Jakarta Sans';font-weight:800;font-size:15px;color:#eef1f6;margin-bottom:4px}
+  .fxm-modal .opt span{display:block;font-size:12px;line-height:1.5;color:#a9b2bd}
+`;
   document.head.appendChild(s);
 }

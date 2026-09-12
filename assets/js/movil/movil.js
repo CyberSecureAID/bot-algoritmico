@@ -6,7 +6,7 @@
 
 import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=4';
+import { inyectarMovil } from './estilos.js?v=5';
 import { IC } from './iconos.js?v=1';
 import { pintarInicio } from './inicio.js?v=2';
 import { pintarMercados } from './markets.js?v=1';
@@ -81,7 +81,7 @@ async function abrir(clave, arg) {
       case 'alertas':   abrirAlerta(); break;
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
-      case 'aportar':   { const m = await import('./aportar-movil.js?v=1'); m.abrirAportarMovil(); break; }
+      case 'aportar':   { const m = await import('./aportar-movil.js?v=2'); m.abrirAportarMovil(); break; }
       case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=125'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
@@ -516,7 +516,7 @@ function api() {
 
 const TABS = [
   { k: 'home',    ic: 'home',    t: 'Inicio' },
-  { k: 'markets', ic: 'candles', t: 'P2P' },
+  { k: 'markets', ic: 'candles', t: 'Market' },
   { k: 'trade',   ic: 'chart',   t: 'Spot' },
   { k: 'futuros', ic: 'chart',   t: 'Futures' },
   { k: 'assets',  ic: 'wallet',  t: 'Activos' },
@@ -557,7 +557,7 @@ async function irA(tab) {
   if (tab === 'markets') { pintarMercados(host, api()); return; }
   if (tab === 'trade')   { pintarOperar(host, api()); return; }
   if (tab === 'assets')  { pintarActivos(host, api()); refrescarBalance(); return; }
-  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=2'); fm.pintarFuturos(host, api()); return; }
+  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=3'); fm.pintarFuturos(host, api()); return; }
 }
 
 /* Futures móvil: placeholder hasta construir la interfaz completa. */

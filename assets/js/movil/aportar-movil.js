@@ -26,11 +26,10 @@ function estilos() {
   .alm{position:fixed;inset:0;z-index:500;background:#0a0d12;display:flex;flex-direction:column;
     font-family:'Plus Jakarta Sans',sans-serif;color:#eef1f6;
     --gold:#E8B84B;--ink3:#7d8794;--ink4:#4a5561;--line:#232b36}
-  .alm .alm-head{display:flex;align-items:center;gap:12px;padding:16px 14px;border-bottom:1px solid var(--line)}
-  .alm .alm-x{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);
-    color:#7d8794;display:grid;place-items:center;font-size:15px}
+  .alm .alm-head{display:flex;align-items:center;justify-content:center;position:relative;padding:16px 14px;border-bottom:1px solid var(--line)}
+  .alm .alm-x{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:#7d8794;display:grid;place-items:center;font-size:15px}
   .alm .alm-h{font-family:'Plus Jakarta Sans';font-weight:800;font-size:18px}
-  .alm .alm-body{flex:1;overflow-y:auto;padding:16px 14px 30px;display:flex;flex-direction:column;gap:13px}
+  .alm .alm-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px calc(90px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:13px}
 
   .alm .alm-sub{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--gold);text-align:center;margin-bottom:4px}
 
@@ -54,11 +53,10 @@ function estilos() {
   .alm .alm-max{font-family:'IBM Plex Mono';font-size:11px;font-weight:700;color:#3a2800;
     background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border:1px solid #c79426;border-radius:8px;padding:4px 9px}
 
-  .alm .alm-plazos{display:flex;gap:7px;flex-wrap:wrap}
-  .alm .alm-plazo{flex:1;min-width:60px;background:rgba(10,14,19,.5);border:1px solid var(--line);border-radius:11px;
-    padding:11px 4px;text-align:center}
+  .alm .alm-plazos{display:flex;gap:5px}
+  .alm .alm-plazo{flex:1;min-width:0;background:rgba(10,14,19,.5);border:1px solid var(--line);border-radius:10px;padding:8px 2px;text-align:center}
   .alm .alm-plazo.on{border-color:var(--gold);background:rgba(232,184,75,.1)}
-  .alm .alm-plazo b{display:block;font-weight:700;font-size:13px}
+  .alm .alm-plazo b{display:block;font-weight:700;font-size:12px}
   .alm .alm-plazo em{display:block;font-style:normal;font-family:'IBM Plex Mono';font-size:8px;color:var(--ink3);text-transform:uppercase;margin-top:3px}
 
   .alm .alm-go{height:52px;border:1px solid #c79426;border-radius:13px;
@@ -90,8 +88,8 @@ export function abrirAportarMovil() {
   d.className = 'alm'; d.id = 'alm';
   d.innerHTML = `
     <div class="alm-head">
-      <button class="alm-x" id="alm-x">✕</button>
       <div class="alm-h">Aportar liquidez</div>
+      <button class="alm-x" id="alm-x">✕</button>
     </div>
     <div class="alm-body">
       <div class="alm-sub">Gana una parte de las comisiones cuando otros operan</div>
