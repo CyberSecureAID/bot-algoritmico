@@ -45,10 +45,14 @@ export function crearGrafica(cont) {
 
   function medir() {
     const r = cont.getBoundingClientRect();
+    // Si el contenedor aún no tiene tamaño (layout sin asentar), reintenta.
+    if (r.width < 10 || r.height < 10) { requestAnimationFrame(medir); return; }
+    dpr = Math.max(1, window.devicePixelRatio || 1);
     cv.width = Math.round(r.width * dpr);
     cv.height = Math.round(r.height * dpr);
     cv.style.width = r.width + 'px';
     cv.style.height = r.height + 'px';
+    dibujar();
   }
 
   /* Rango de precio visible (con margen y zoom del usuario). */
@@ -198,21 +202,32 @@ export function crearGrafica(cont) {
     }
   }
 
-  // Interacción: paneo horizontal (arrastrar), zoom (rueda).
-  let arr = false, ax = 0, finIni = 0;
-  cv.addEventListener('mousedown', (e) => { arr = true; ax = e.clientX; finIni = vista.fin || velas.length; });
-  window.addEventListener('mouseup', () => { arr = false; });
-  cv.addEventListener('mousemove', (e) => {
+  // Interacción con Pointer Events: arrastrar para desplazar el tiempo,
+  // funciona con ratón y táctil, con captura para no perder el arrastre.
+  let arr = false, ax = 0, ay = 0, finIni = 0, offYini = 0;
+  cv.style.touchAction = 'none';
+  cv.addEventListener('pointerdown', (e) => {
+    arr = true; ax = e.clientX; ay = e.clientY;
+    finIni = vista.fin || velas.length; offYini = offY;
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  cv.addEventListener('pointerup', (e) => { arr = false; try { cv.releasePointerCapture(e.pointerId); } catch (_) {} });
+  cv.addEventListener('pointercancel', () => { arr = false; });
+  cv.addEventListener('pointermove', (e) => {
     const r = cv.getBoundingClientRect();
     cursor = { x: e.clientX - r.left, y: e.clientY - r.top };
     if (arr) {
-      const paso = (cv.width / dpr - ejeW) / vista.ancho;
+      const areaW = cv.width / dpr - ejeW;
+      const paso = areaW / vista.ancho;
       const dv = Math.round((e.clientX - ax) / paso);
       vista.fin = Math.max(vista.ancho, Math.min(velas.length, finIni - dv));
+      // arrastre vertical: desplaza el rango de precio
+      const rg = rango();
+      offY = offYini + (e.clientY - ay) / (cv.height / dpr - ejeH) * (rg.max - rg.min);
     }
     dibujar();
   });
-  cv.addEventListener('mouseleave', () => { cursor = null; dibujar(); });
+  cv.addEventListener('pointerleave', () => { if (!arr) { cursor = null; dibujar(); } });
   cv.addEventListener('wheel', (e) => {
     e.preventDefault();
     if (e.shiftKey) {                 // zoom vertical
