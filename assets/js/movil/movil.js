@@ -2,7 +2,7 @@
    · La barra inferior (Inicio/Mercados/Operar/Activos) es PERPETUA: vive fuera
      de la cáscara, con z-index por encima de todo, visible en toda sección.
    · No hay botón "volver" flotante: se navega con la barra inferior.
-   · Las secciones reales abren por ENCIMA del contenido de la cáscara. */
+   · Las secciones reales abren por ENCIMA del contenido de la cáscara */
 
 import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
