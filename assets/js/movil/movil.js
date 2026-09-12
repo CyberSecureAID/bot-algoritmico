@@ -6,7 +6,7 @@
 
 import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=5';
+import { inyectarMovil } from './estilos.js?v=6';
 import { IC } from './iconos.js?v=1';
 import { pintarInicio } from './inicio.js?v=3';
 import { pintarMercados } from './markets.js?v=1';
@@ -238,6 +238,13 @@ function inyectarFixMarket() {
       min-height:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:26px!important}
     #mk-overlay .mk-card::-webkit-scrollbar{display:none}
     #mk-overlay .mk-title .ln{display:none!important}
+    /* La ventana del asistente de vender/comprar (#mk-wiz) se monta en el
+       body y salía renderizada muy abajo, cortada. Se centra y hace scroll. */
+    #mk-wiz.mk-wiz-bg{display:flex!important;align-items:center!important;justify-content:center!important;
+      padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(90px + env(safe-area-inset-bottom,0px))!important}
+    #mk-wiz .mk-wiz-c{max-width:520px!important;width:100%!important;max-height:100%!important;
+      overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;margin:0!important}
+    #mk-wiz .mk-wiz-c::-webkit-scrollbar{display:none}
   }`;
   document.head.appendChild(s);
 }
