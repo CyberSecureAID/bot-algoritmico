@@ -89,6 +89,11 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Cursor': 'Cursor',
+    'Línea horizontal': 'Horizontal line',
+    'Línea de tendencia': 'Trend line',
+    'Borrar el último': 'Delete last',
+    'Limpiar todo': 'Clear all',
     'Long': 'Long',
     'Short': 'Short',
     'Take-profit': 'Take-profit',
