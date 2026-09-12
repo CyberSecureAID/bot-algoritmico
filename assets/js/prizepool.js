@@ -69,8 +69,8 @@ function estilos() {
   #pp-overlay{position:fixed;inset:0;z-index:9100;display:none;align-items:center;justify-content:center;background:rgba(3,5,8,.78);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);padding:18px}
   #pp-overlay.show{display:flex}
   #pp-overlay *{box-sizing:border-box}
-  #pp-overlay .pp-card{width:100%;max-width:760px;max-height:92vh;overflow:auto;background:linear-gradient(180deg,#12161c,#0b0e12);border:1px solid #2b3139;border-radius:20px;box-shadow:0 40px 120px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);padding:26px 26px 24px;position:relative;animation:ppIn .18s ease both}
-  #pp-overlay .pp-card::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.10;filter:saturate(1.05);pointer-events:none;border-radius:20px}
+  #pp-overlay .pp-card{width:100%;max-width:760px;max-height:92vh;overflow:auto;background:linear-gradient(180deg,rgba(18,22,28,.82),rgba(11,14,18,.88));border:1px solid #2b3139;border-radius:20px;box-shadow:0 40px 120px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);padding:26px 26px 24px;position:relative;animation:ppIn .18s ease both}
+  #pp-overlay .pp-card::after{content:"";position:fixed;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.10;filter:saturate(1.05);pointer-events:none;}
   #pp-overlay .pp-card > *{position:relative;z-index:1}
   @keyframes ppIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
   #pp-overlay .pp-x{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#7d8794;display:grid;place-items:center;cursor:pointer;font-size:15px;z-index:2}
