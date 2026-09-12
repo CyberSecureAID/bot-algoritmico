@@ -184,6 +184,33 @@
       --line: #232b36;
       position: relative; z-index: 2; min-height: 100vh;
     }
+
+    /* Las ventanitas de la app (info, firma de contratos) se montan en el
+       <body>, no dentro de #colmena-app, así que NO heredaban el tema oscuro
+       y caían al verde de la lotería (styles.css). Se redefinen las variables
+       verdes a oscuro en :root global para que esas ventanitas salgan oscuras
+       y no verde/amarillas. styles.css se conserva; solo se sobrescriben las
+       variables de color. */
+    :root{
+      --panel:#10141a !important;
+      --panel-2:#0a0e13 !important;
+      --bg:#05070a !important;
+      --bg-2:#0a0e13 !important;
+      --line:#232b36 !important;
+      --line-soft:#1a202a !important;
+      --neon:#E8B84B !important;      /* el 'verde rector' pasa a dorado */
+      --neon-lit:#f4d089 !important;
+      --neon-dim:#c79426 !important;
+    }
+    /* Autofill: Chrome pinta el input de blanco/amarillo al enfocar o
+       autocompletar. Se fuerza el fondo oscuro para que no se vea blanco. */
+    #colmena-app input:-webkit-autofill,
+    #colmena-app input:-webkit-autofill:focus,
+    #colmena-app input:-webkit-autofill:hover{
+      -webkit-text-fill-color:#e9edf5 !important;
+      -webkit-box-shadow:0 0 0 1000px #0d1117 inset !important;
+      caret-color:#e9edf5;
+    }
   </style>
 </head>
 <body>
