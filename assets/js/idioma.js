@@ -89,6 +89,9 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Abrir Long aquí': 'Open Long here',
+    'Abrir Short aquí': 'Open Short here',
+    'Abrir posición aquí': 'Open position here',
     'Abierto': 'Open',
     'Cerrado': 'Close',
     'Activador': 'Trigger',

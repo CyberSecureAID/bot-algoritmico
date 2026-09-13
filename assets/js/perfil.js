@@ -364,7 +364,7 @@ export async function abrirPerfil() {
     const bot = $('pf-globo');
     if (!bot) return;
     try {
-      const idi = await import('./idioma.js?v=157');
+      const idi = await import('./idioma.js?v=158');
       const tx = $('pf-globo-tx');
       if (tx) tx.textContent = idi.idiomaActual().toUpperCase();
 
