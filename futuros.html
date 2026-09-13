@@ -50,6 +50,18 @@
     #f-graf #nv-overlay .nv-c{max-width:none !important;width:100% !important;height:100% !important;border-radius:0 !important;border:none !important}
     #f-graf #nv-overlay .nv-caps{display:none !important}
     #f-graf #nv-overlay .nv-x{display:none !important}
+    /* Ocultar la cabecera de análisis duplicada (mi barra ya tiene moneda y
+       datos). Se conservan timeframes (nv-tfs) y herramientas (nv-tools). */
+    #f-graf #nv-overlay .nv-sel{display:none !important}
+    #f-graf #nv-overlay .nv-meta{display:none !important}
+    #f-graf #nv-overlay #nv-veredicto{display:none !important}
+    #f-graf #nv-overlay #nv-estado{display:none !important}
+    #f-graf #nv-overlay #nv-cal{display:none !important}
+    #f-graf #nv-overlay #nv-widget{display:none !important}
+    #f-graf #nv-overlay #nv-foto{display:none !important}
+    #f-graf #nv-overlay #nv-ayuda{display:none !important}
+    /* La cabecera queda fina, solo con timeframes. */
+    #f-graf #nv-overlay .nv-cab{min-height:0 !important;padding:6px 8px !important;border-bottom:1px solid var(--line) !important}
 
     /* Panel de orden (derecha, filas 2-3 para ocupar toda la altura). */
     #f-panel{grid-column:2;grid-row:2;background:#0e1218;border-left:1px solid var(--line);
@@ -58,6 +70,9 @@
     #f-panel .p-top .chip{flex:1;height:33px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);
       color:var(--ink2);font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
     #f-panel .p-top .chip b{color:var(--gold);font-family:var(--disp)}
+    #f-panel .p-oc{display:flex;gap:7px}
+    #f-panel .p-oc button{flex:1;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink2);font-weight:700;font-size:12px;cursor:pointer}
+    #f-panel .p-oc button.on{background:rgba(34,197,94,.14);color:var(--up);border-color:rgba(34,197,94,.4)}
     #f-panel .p-tabs{display:flex;border-bottom:1px solid var(--line)}
     #f-panel .p-tabs button{flex:1;background:none;border:none;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:13px;padding:8px 0;cursor:pointer;position:relative}
     #f-panel .p-tabs button.on{color:var(--ink)}
@@ -131,9 +146,14 @@
         <button class="chip" id="p-mode" data-mode="cruzado">Cruzado</button>
         <button class="chip" id="p-levbtn">Apalanc. <b id="p-levbtn-v">10×</b></button>
       </div>
+      <div class="p-oc">
+        <button class="on" data-oc="abierto">Abierto</button>
+        <button data-oc="cerrado">Cerrado</button>
+      </div>
       <div class="p-tabs">
         <button class="on" data-ord="market">Mercado</button>
         <button data-ord="limit">Límite</button>
+        <button data-ord="trigger">Activador</button>
       </div>
       <div class="p-avbl"><span>Disponible</span><b>— USDT</b></div>
       <div id="p-price-fld" style="display:none">
@@ -175,7 +195,7 @@
 
   <script type="module">
     import { abrirNiveles } from './assets/js/niveles.js?v=126';
-    import { arrancarIdioma, traducirTodo } from './assets/js/idioma.js?v=156';
+    import { arrancarIdioma, traducirTodo } from './assets/js/idioma.js?v=157';
 
     let lado='long', lev=10, modo='cruzado', precio=0, sim='BTCUSDT';
     const $ = (id)=>document.getElementById(id);
@@ -244,9 +264,12 @@
     }
     setInterval(refrescar,1500);
 
+    document.querySelectorAll('.p-oc button').forEach(b=>b.onclick=()=>{
+      document.querySelectorAll('.p-oc button').forEach(x=>x.classList.toggle('on',x===b));
+    });
     document.querySelectorAll('.p-tabs button').forEach(b=>b.onclick=()=>{
       document.querySelectorAll('.p-tabs button').forEach(x=>x.classList.toggle('on',x===b));
-      $('p-price-fld').style.display=b.dataset.ord==='limit'?'':'none';
+      $('p-price-fld').style.display=(b.dataset.ord==='limit'||b.dataset.ord==='trigger')?'':'none';
     });
     $('p-range').oninput=e=>{ lev=+e.target.value; $('p-lev').textContent=lev+'×'; $('p-levbtn-v').textContent=lev+'×'; refrescar(); };
     $('p-margen').oninput=refrescar;
