@@ -38,10 +38,25 @@
     #f-bar .coin .cnm b{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ink)}
     #f-bar .coin .cnm span{font-family:var(--mono);font-size:9px;color:var(--ink3)}
     #f-bar .bigpx{flex:0 0 auto;font-family:var(--disp);font-weight:800;font-size:20px;color:var(--up)}
-    #f-bar .tfs{flex:0 0 auto;display:flex;gap:2px}
-    #f-bar .tfs button{background:none;border:none;color:var(--ink3);font-family:var(--mono);font-size:11px;font-weight:700;padding:5px 8px;border-radius:6px;cursor:pointer}
-    #f-bar .tfs button:hover{color:var(--ink)} #f-bar .tfs button.on{color:var(--gold);background:rgba(232,184,75,.12)}
-    #f-bar .tf-exp{flex:0 0 auto;width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.03);color:var(--ink2);display:grid;place-items:center;cursor:pointer}
+    /* Timeframe: cuadradito desplegable con ventana glass. */
+    #f-bar .tf-dd{flex:0 0 auto;position:relative}
+    #f-bar .tf-cur{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:9px;color:var(--ink);
+      font-family:var(--mono);font-size:12px;font-weight:700;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:5px}
+    #f-bar .tf-cur:hover{border-color:var(--gold-soft)} #f-bar .tf-cur .cv{color:var(--ink3);font-size:9px}
+    #f-bar .tf-menu{position:absolute;top:38px;left:0;z-index:100;min-width:130px;
+      background:rgba(16,20,26,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      border:1px solid var(--line);border-radius:13px;padding:5px;
+      box-shadow:0 24px 60px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05);display:none}
+    #f-bar .tf-dd.open .tf-menu{display:block}
+    #f-bar .tf-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--ink2);
+      font-family:var(--disp);font-weight:600;font-size:13px;padding:9px 11px;border-radius:9px;cursor:pointer}
+    #f-bar .tf-menu button:hover{background:rgba(232,184,75,.1);color:var(--ink)}
+    #f-bar .tf-menu button.on{color:var(--gold);background:rgba(232,184,75,.08)}
+    /* Barra derecha: wallet + exportar. */
+    #f-bar .bar-right{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;gap:9px}
+    #f-bar .bar-wallet{font-family:var(--mono);font-size:11px;color:var(--ink2);background:rgba(255,255,255,.03);
+      border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+    #f-bar .tf-exp{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.03);color:var(--ink2);display:grid;place-items:center;cursor:pointer}
     #f-bar .tf-exp:hover{color:var(--gold);border-color:var(--gold-soft)}
     #f-bar .col{flex:0 0 auto;display:flex;flex-direction:column;line-height:1.25;white-space:nowrap}
     #f-bar .col .l{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-bottom:2px}
@@ -57,7 +72,9 @@
     #f-graf #nv-overlay .nv-x{display:none !important}
     /* Ocultar la cabecera de análisis duplicada (mi barra ya tiene moneda y
        datos). Se conservan timeframes (nv-tfs) y herramientas (nv-tools). */
-    #f-graf #nv-overlay .nv-sel{position:absolute !important;left:-9999px !important;width:1px;height:1px;overflow:hidden}
+    /* nv-sel: invisible pero EN SU SITIO (el menú se ancla a él). Se coloca
+       sobre mi barra, transparente, para que el clic y el menú funcionen. */
+    #f-graf #nv-overlay .nv-sel{opacity:0 !important;pointer-events:none !important}
     #f-graf #nv-overlay .nv-meta{display:none !important}
     #f-graf #nv-overlay #nv-veredicto{display:none !important}
     #f-graf #nv-overlay #nv-estado{display:none !important}
@@ -137,13 +154,15 @@
       <a class="bk" href="index.html" title="Volver"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
       <div class="coin" id="f-coin" style="cursor:pointer"><span class="ico" id="f-ico"></span><div class="cnm"><b id="f-sym">BTC/USDT</b><span id="f-cname">Bitcoin</span></div><span style="color:var(--ink3);font-size:10px;margin-left:2px">▼</span></div>
       <span class="bigpx" id="f-px">—</span>
-      <div class="tfs" id="f-tfs">
-        <button data-tf="1m">1m</button><button data-tf="5m">5m</button>
-        <button data-tf="15m" class="on">15m</button><button data-tf="30m">30m</button>
-        <button data-tf="1h">1h</button><button data-tf="4h">4h</button>
-        <button data-tf="1d">1D</button><button data-tf="1w">1W</button>
+      <div class="tf-dd" id="f-tfdd">
+        <button class="tf-cur" id="f-tfcur">15m <span class="cv">▾</span></button>
+        <div class="tf-menu" id="f-tfmenu">
+          <button data-tf="1m">1 min</button><button data-tf="5m">5 min</button>
+          <button data-tf="15m" class="on">15 min</button><button data-tf="30m">30 min</button>
+          <button data-tf="1h">1 hora</button><button data-tf="4h">4 horas</button>
+          <button data-tf="1d">1 día</button><button data-tf="1w">1 semana</button>
+        </div>
       </div>
-      <button class="tf-exp" id="f-export" title="Exportar gráfica como imagen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
       <div class="col"><span class="l">Cambio 24h</span><b class="v" id="f-chg">—</b></div>
       <div class="col"><span class="l">Precio marcado</span><b class="v" id="f-mark">—</b></div>
       <div class="col"><span class="l">Precio índice</span><b class="v" id="f-index">—</b></div>
@@ -152,6 +171,10 @@
       <div class="col"><span class="l" id="f-basel">Cantidad 24h</span><b class="v" id="f-base">—</b></div>
       <div class="col"><span class="l">Volumen 24h (USDT)</span><b class="v" id="f-vol">—</b></div>
       <div class="col"><span class="l">Financiación</span><b class="v gold" id="f-fund">0.0035%</b></div>
+      <div class="bar-right">
+        <span class="bar-wallet" id="f-barwallet">No conectada</span>
+        <button class="tf-exp" id="f-export" title="Exportar gráfica como imagen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
+      </div>
     </div>
 
     <div id="f-graf"></div>
@@ -193,8 +216,8 @@
         <div class="r"><span>Tamaño de posición</span><b id="p-size">—</b></div>
         <div class="r"><span>Precio de liquidación</span><b class="liq" id="p-liq">—</b></div>
       </div>
-      <button class="p-btn long" id="p-long">Abrir Largo</button>
-      <button class="p-btn short" id="p-short">Abrir Corto</button>
+      <button class="p-btn long" id="p-long">Long</button>
+      <button class="p-btn short" id="p-short">Short</button>
 
       <div class="p-user">
         <div class="r"><span>Tu wallet</span><b id="pu-wallet">No conectada</b></div>
@@ -263,10 +286,26 @@
         if($('f-cname')) $('f-cname').textContent=window.N.par.n||'';
         pintarLogo();
 
-    // El selector de moneda de mi barra dispara el de Smart Levels (nv-sel),
-    // reutilizando su menú sin tocar Smart Levels.
-    const fcoin=document.getElementById('f-coin');
-    if(fcoin) fcoin.onclick=()=>{ const ns=document.getElementById('nv-sel'); if(ns) ns.click(); };
+    // El selector de moneda: se mueve nv-sel (invisible) sobre mi coin, para
+    // que su menú (menuPares, que se ancla a nv-sel) aparezca en el sitio
+    // correcto. Al hacer clic en mi coin, se dispara nv-sel.
+    setTimeout(()=>{
+      const ns=document.getElementById('nv-sel');
+      const fcoin=document.getElementById('f-coin');
+      if(ns&&fcoin){
+        // colocar nv-sel encima de mi coin, invisible pero como ancla.
+        ns.style.position='absolute';
+        const r=fcoin.getBoundingClientRect();
+        ns.style.left=r.left+'px'; ns.style.top=r.bottom+'px';
+        ns.style.opacity='0'; ns.style.pointerEvents='none';
+        fcoin.onclick=()=>{
+          // reposicionar el ancla por si cambió el layout
+          const rr=fcoin.getBoundingClientRect();
+          ns.style.left=rr.left+'px'; ns.style.top=rr.top+'px';
+          ns.click();
+        };
+      }
+    }, 600);
       } }catch(_){}
       refrescar();
     }
@@ -345,28 +384,27 @@
       if($('pu-date')) $('pu-date').textContent=d.toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'});
       // wallet: si hay una cuenta conectada en el entorno.
       try{ const acc=(window.ethereum&&window.ethereum.selectedAddress)||null;
-        if(acc&&$('pu-wallet')) $('pu-wallet').textContent=acc.slice(0,6)+'...'+acc.slice(-4);
+        if(acc){ const short=acc.slice(0,6)+'...'+acc.slice(-4);
+          if($('pu-wallet')) $('pu-wallet').textContent=short;
+          if($('f-barwallet')) $('f-barwallet').textContent=short;
+        }
       }catch(_){}
     })();
 
     // Timeframes: cambian N.tf de Smart Levels y recargan (Binance acepta
     // cualquier intervalo). NO toca el config de Smart Levels.
-    document.querySelectorAll('#f-tfs button').forEach(b=>b.onclick=()=>{
-      document.querySelectorAll('#f-tfs button').forEach(x=>x.classList.toggle('on',x===b));
+    const tfdd=document.getElementById('f-tfdd');
+    document.getElementById('f-tfcur').onclick=(e)=>{ e.stopPropagation(); tfdd.classList.toggle('open'); };
+    document.addEventListener('click',()=>tfdd.classList.remove('open'));
+    const TFLABEL={'1m':'1m','5m':'5m','15m':'15m','30m':'30m','1h':'1h','4h':'4h','1d':'1D','1w':'1W'};
+    document.querySelectorAll('#f-tfmenu button').forEach(b=>b.onclick=()=>{
       const tf=b.dataset.tf;
+      document.querySelectorAll('#f-tfmenu button').forEach(x=>x.classList.toggle('on',x===b));
+      document.getElementById('f-tfcur').innerHTML=TFLABEL[tf]+' <span class="cv">▾</span>';
+      tfdd.classList.remove('open');
       const ntf=document.querySelector('.nv-tf[data-ntf="'+tf+'"]');
-      if(ntf){ ntf.click(); return; }   // nativo: recarga de verdad
-      // Extra (1m,5m,30m,1w): fijar N.tf y disparar recarga vía un nv-tf.
-      try{ if(window.N){ window.N.tf=tf;
-        const cualquiera=document.querySelector('.nv-tf');
-        if(cualquiera){
-          // Fijar N.tf ANTES de que su handler lo sobrescriba: lo forzamos tras el click.
-          cualquiera.click();
-          window.N.tf=tf;
-          // marcar el nativo como no-activo (el activo es el nuestro).
-          document.querySelectorAll('.nv-tf').forEach(x=>x.classList.remove('on'));
-        }
-      } }catch(_){}
+      if(ntf){ ntf.click(); return; }
+      try{ if(window.N){ window.N.tf=tf; const c=document.querySelector('.nv-tf'); if(c){ c.click(); window.N.tf=tf; document.querySelectorAll('.nv-tf').forEach(x=>x.classList.remove('on')); } } }catch(_){}
     });
     // Exportar gráfica como imagen: dispara el botón de foto de Smart Levels.
     const fexp=document.getElementById('f-export');
