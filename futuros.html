@@ -64,10 +64,11 @@
 
     /* ── Columna izquierda ── */
     #f-left{grid-column:1;grid-row:2;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line)}
-    #f-graf{position:relative;height:calc(100vh - 50px);height:calc(100dvh - 50px);min-height:420px;background:#0b0f16;overflow:hidden}
+    #f-graf{position:relative;height:calc(100vh - 50px);height:calc(100dvh - 50px);min-height:420px;background:#0b0f16;overflow:hidden;padding:10px 0 8px;box-sizing:border-box}
+    #f-graf.z-t #nv-cv{cursor:ew-resize !important} #f-graf.z-p #nv-cv{cursor:ns-resize !important}
     /* Smart Levels dentro de la celda: sin la banda superior. Se conservan
        gráfica (nv-graf) y barra de herramientas (nv-tools). */
-    #f-graf #nv-overlay{position:absolute !important;inset:0 !important;z-index:auto !important;padding:0 !important;display:block !important}
+    #f-graf #nv-overlay{position:absolute !important;inset:10px 0 8px !important;z-index:auto !important;padding:0 !important;display:block !important}
     #f-graf #nv-overlay .nv-bg{display:none !important}
     #f-graf #nv-overlay .nv-c{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;max-width:none !important;border-radius:0 !important;border:none !important;display:flex !important;flex-direction:column !important}
     #f-graf #nv-overlay .nv-cab,#f-graf #nv-overlay .nv-veredicto,#f-graf #nv-overlay .nv-caps,#f-graf #nv-overlay .nv-meta,#f-graf #nv-overlay .nv-herr-m{display:none !important}
@@ -75,13 +76,13 @@
     /* Overlay de posiciones (entrada / TP / SL arrastrables). */
     #f-ov{position:absolute;inset:0;z-index:5;pointer-events:none}
 
-    #f-pos{background:#0b0e12;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:300px}
+    #f-pos{background:#0b0e12;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:210px}
     #f-pos .ph{display:flex;align-items:center;gap:18px;padding:11px 16px 0;border-bottom:1px solid var(--line)}
     #f-pos .ph button{background:none;border:none;color:var(--ink3);font-weight:700;font-size:12.5px;padding:0 0 10px;cursor:pointer;position:relative}
     #f-pos .ph button.on{color:var(--ink)} #f-pos .ph button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
     #f-pos .ph .cerrar{margin-left:auto;padding:5px 11px;border:1px solid var(--line);border-radius:8px;color:var(--ink2);font-size:11px;font-family:var(--mono);margin-bottom:8px}
     #f-pos .body{padding:14px 16px}
-    .pos-empty{font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center;padding:36px 0}
+    .pos-empty{font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center;padding:26px 0}
     .pos-head,.pos-row{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr 1fr 84px;gap:12px;align-items:center;font-family:var(--mono);font-size:11.5px;padding:9px 0}
     .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
     .pos-row{border-bottom:1px solid rgba(255,255,255,.03);color:var(--ink)}
@@ -107,6 +108,7 @@
     .p-box input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:15px}
     .p-box input::placeholder{color:var(--ink4)} .p-box .u{font-family:var(--disp);font-weight:700;font-size:11px;color:var(--ink2)}
     .p-box .tl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-right:6px}
+    .p-box .mkt{flex:1;display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:13px;color:var(--ink2)} .p-box .mkt i{width:7px;height:7px;border-radius:50%;background:var(--up)} .p-box .mkt em{font-style:normal;font-size:10px;color:var(--ink3)}
     .p-pct{padding:2px 0}
     .p-pct input[type=range]{width:100%;accent-color:var(--gold);cursor:pointer}
     .p-pct .marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;color:var(--ink4);margin-top:1px}
@@ -126,7 +128,9 @@
     .p-btn{flex:1;height:46px;border-radius:12px;border:none;font-family:var(--disp);font-weight:800;font-size:14px;cursor:pointer;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.25)}
     .p-btn.long{background:linear-gradient(180deg,#34d98a,#12b06a)} .p-btn.short{background:linear-gradient(180deg,#ff5c6c,#e03246)}
     .p-btn:active{filter:brightness(1.08);transform:translateY(1px)}
-    .p-cost{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-family:var(--mono);font-size:10.5px}
+    .p-det{display:flex;justify-content:space-between;align-items:center;background:none;border:1px solid var(--line);border-radius:9px;color:var(--ink2);font-family:var(--mono);font-size:11px;padding:7px 11px;cursor:pointer}
+    .p-det i{font-style:normal;color:var(--ink3);transition:transform .15s} .p-det.on i{transform:rotate(180deg)}
+    .p-cost{display:none;grid-template-columns:1fr 1fr;gap:6px 12px;font-family:var(--mono);font-size:10.5px} .p-cost.on{display:grid}
     .p-cost div{display:flex;flex-direction:column;gap:2px} .p-cost span{color:var(--ink3);font-size:9.5px} .p-cost b{color:var(--ink)}
     .p-user{margin-top:6px;padding:11px;background:var(--card);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:6px}
     .p-user .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
@@ -171,14 +175,14 @@
           <button data-tf="1m">1m</button><button data-tf="5m">5m</button><button data-tf="15m" class="on">15m</button><button data-tf="30m">30m</button>
           <button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="1d">1D</button><button data-tf="1w">1W</button>
         </div></div>
-      <div class="col"><span class="l">Cambio 24h</span><b class="v" id="f-chg">—</b></div>
-      <div class="col"><span class="l">Precio marcado</span><b class="v" id="f-mark">—</b></div>
-      <div class="col"><span class="l">Precio índice</span><b class="v" id="f-index">—</b></div>
-      <div class="col"><span class="l">Máximo 24h</span><b class="v" id="f-hi">—</b></div>
-      <div class="col"><span class="l">Mínimo 24h</span><b class="v" id="f-lo">—</b></div>
-      <div class="col"><span class="l" id="f-basel">Cantidad 24h</span><b class="v" id="f-base">—</b></div>
-      <div class="col"><span class="l">Volumen 24h (USDT)</span><b class="v" id="f-vol">—</b></div>
-      <div class="col"><span class="l">Financiación</span><b class="v gold" id="f-fund">0.0035%</b></div>
+      <div class="col"><span class="l">Cambio 24H</span><b class="v" id="f-chg">—</b></div>
+      <div class="col"><span class="l">Marca</span><b class="v" id="f-mark">—</b></div>
+      <div class="col"><span class="l">Índice</span><b class="v" id="f-index">—</b></div>
+      <div class="col"><span class="l">Máx 24H</span><b class="v" id="f-hi">—</b></div>
+      <div class="col"><span class="l">Mín 24H</span><b class="v" id="f-lo">—</b></div>
+      <div class="col"><span class="l" id="f-basel">Vol 24H</span><b class="v" id="f-base">—</b></div>
+      <div class="col"><span class="l">Vol 24H (USDT)</span><b class="v" id="f-vol">—</b></div>
+      <div class="col"><span class="l">Financ.</span><b class="v gold" id="f-fund">0.0035%</b></div>
       <div id="f-right"><span id="f-wallet">No conectada</span>
         <button id="f-export" title="Exportar gráfica"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
       </div>
@@ -201,10 +205,9 @@
         <button class="chip" id="p-mode">Cruzada <span class="cv">▾</span></button>
         <button class="chip" id="p-levbtn"><b id="p-levbtn-v">20×</b> <span class="cv">▾</span></button>
       </div>
-      <div class="p-oc"><button class="on" data-oc="abierto">Abierto</button><button data-oc="cerrado">Cerrado</button></div>
-      <div class="p-tabs"><button class="on" data-ord="market">Mercado</button><button data-ord="limit">Límite</button><button data-ord="trigger">Activador</button></div>
+      <div class="p-tabs"><button class="on" data-ord="market">Mercado</button><button data-ord="limit">Límite</button></div>
       <div class="p-avbl"><span>Disponible</span><b id="p-avbl">0.0000 USDT</b></div>
-      <div id="p-price-w"><div class="p-lbl">Precio</div><div class="p-box"><input id="p-price" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div></div>
+      <div id="p-price-w"><div class="p-lbl">Precio</div><div class="p-box"><span class="mkt" id="p-mkt"><i></i><b id="p-mkt-v">—</b> <em>Mercado</em></span><input id="p-price" inputmode="decimal" placeholder="0.00" style="display:none"><span class="u">USDT</span></div></div>
       <div><div class="p-lbl">Cantidad</div><div class="p-box"><input id="p-margen" inputmode="decimal" placeholder="Orden mínima"><span class="u">USDT</span></div></div>
       <div class="p-pct"><input type="range" id="p-pctr" min="0" max="100" step="25" value="0"><div class="marks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
       <div class="p-lev"><div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">20×</span></div><input type="range" id="p-range" min="1" max="200" value="20"><div class="marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div></div>
@@ -214,8 +217,9 @@
         <div class="p-box"><span class="tl">SL</span><input id="p-sl" inputmode="decimal" placeholder="Stop-loss"><span class="u">USDT</span></div>
       </div>
       <div class="p-info"><div class="r"><span>Tamaño de posición</span><b id="p-size">—</b></div><div class="r"><span>Precio de liquidación</span><b class="liq" id="p-liq">—</b></div></div>
-      <div class="p-btns"><button class="p-btn long" id="p-long">Abrir Largo</button><button class="p-btn short" id="p-short">Abrir Corto</button></div>
-      <div class="p-cost"><div><span>Coste (USDT)</span><b id="p-cost-l">0.0</b></div><div><span>Coste (USDT)</span><b id="p-cost-s">0.0</b></div><div><span>Máximo (USDT)</span><b id="p-max-l">0.0</b></div><div><span>Máximo (USDT)</span><b id="p-max-s">0.0</b></div></div>
+      <div class="p-btns"><button class="p-btn long" id="p-long">Long</button><button class="p-btn short" id="p-short">Short</button></div>
+      <button class="p-det" id="p-det"><span>Detalles</span><i>▾</i></button>
+      <div class="p-cost" id="p-cost"><div><span>Coste (USDT)</span><b id="p-cost-l">0.0</b></div><div><span>Coste (USDT)</span><b id="p-cost-s">0.0</b></div><div><span>Máximo (USDT)</span><b id="p-max-l">0.0</b></div><div><span>Máximo (USDT)</span><b id="p-max-s">0.0</b></div></div>
       <div class="p-user"><div class="r"><span>Tu wallet</span><b id="pu-wallet">No conectada</b></div><div class="r"><span>Saldo USDT</span><b id="pu-bal">—</b></div><div class="r"><span>Fecha</span><b id="pu-date">—</b></div></div>
     </div>
   </div>
@@ -226,7 +230,7 @@
     import { abrirNiveles } from './assets/js/niveles.js?v=126';
     import { N } from './assets/js/niveles/estado.js?v=1';
     import { PARES } from './assets/js/niveles/config.js?v=1';
-    import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=159';
+    import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=160';
 
     const $ = (id) => document.getElementById(id);
     const fmt = (p) => { p = +p; if (!isFinite(p) || !p) return '—'; if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 1 }); if (p >= 1) return p.toFixed(2); if (p >= 0.01) return p.toFixed(5); return p.toPrecision(5); };
@@ -235,7 +239,7 @@
     const parDe = () => PARES.find((p) => p.id === N.par) || PARES[0];
     const simDe = () => parDe().s;
 
-    let lev = 20, modo = 'cruzada', tipo = 'market', oc = 'abierto', pctCap = 0;
+    let lev = 20, modo = 'cruzada', tipo = 'market', pctCap = 0;
     let precio = 0, saldo = 0, posiciones = [];
 
     /* ═══ 1. Smart Levels dentro de la celda, sin su banda ═══ */
@@ -262,7 +266,7 @@
     }
     async function tick() {
       const p = parDe();
-      if (p.s !== simActual) { simActual = p.s; $('f-sym').textContent = p.s; $('f-cname').textContent = p.n || ''; $('f-basel').textContent = t('Cantidad 24h') + ' (' + p.id + ')'; logoPar(); }
+      if (p.s !== simActual) { simActual = p.s; $('f-sym').textContent = p.s; $('f-cname').textContent = p.n || ''; $('f-basel').textContent = t('Vol 24H') + ' (' + p.id + ')'; logoPar(); }
       try {
         const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=' + p.s);
         if (r.ok) {
@@ -272,7 +276,7 @@
           $('f-mark').textContent = fmt(precio); $('f-index').textContent = fmt(+j.weightedAvgPrice);
           $('f-hi').textContent = fmt(+j.highPrice); $('f-lo').textContent = fmt(+j.lowPrice);
           $('f-base').textContent = fmtV(+j.volume); $('f-vol').textContent = fmtV(+j.quoteVolume);
-          if (tipo === 'market') $('p-price').placeholder = fmt(precio);
+          $('p-mkt-v').textContent = fmt(precio);
         }
       } catch (_) {}
       calc(); pintarPos();
@@ -320,24 +324,21 @@
     $('p-levbtn').onclick = () => modal('Apalancamiento', [5, 10, 20, 50, 100, 200].map((x) => ({ b: x + '×', s: x <= 10 ? 'Riesgo bajo.' : x <= 20 ? 'Riesgo medio. Recomendado.' : x <= 50 ? 'Riesgo alto.' : 'Riesgo extremo.', on: lev === x, v: '' + x })), (v) => { setLev(+v); });
     function setLev(v) { lev = v; $('p-lev').textContent = lev + '×'; $('p-levbtn-v').textContent = lev + '×'; $('p-range').value = lev; calc(); }
     $('p-range').oninput = (e) => setLev(+e.target.value);
-    document.querySelectorAll('.p-oc button').forEach((b) => b.onclick = () => {
-      oc = b.dataset.oc; document.querySelectorAll('.p-oc button').forEach((x) => x.classList.toggle('on', x === b));
-      modal('Abierto / Cerrado', [
-        { b: 'Abierto', s: 'Abre una posición nueva: entras al mercado en largo o corto con el capital y apalancamiento que definas.', on: oc === 'abierto' },
-        { b: 'Cerrado', s: 'Cierra una posición que ya tienes abierta, tomando la ganancia o pérdida acumulada hasta ese momento.', on: oc === 'cerrado' }
-      ]);
-    });
     document.querySelectorAll('.p-tabs button').forEach((b) => b.onclick = () => {
       tipo = b.dataset.ord; document.querySelectorAll('.p-tabs button').forEach((x) => x.classList.toggle('on', x === b));
-      $('p-price').disabled = tipo === 'market'; $('p-price').placeholder = tipo === 'market' ? fmt(precio) : '0.00';
-      if (tipo === 'trigger') modal('Orden Activador', [
-        { b: '¿Qué es?', s: 'Una orden que solo se activa cuando el precio alcanza el nivel que tú marcas. Hasta entonces, queda en espera.', on: true },
-        { b: 'Para qué sirve', s: 'Entrar automáticamente si el mercado llega a cierto precio, sin tener que estar pendiente de la pantalla.' }
-      ]);
+      modoPrecio();
     });
-    $('p-price').disabled = true;
+    // Mercado: el precio es el último (punto verde, no editable). Límite: editable.
+    function modoPrecio() {
+      const mk = tipo === 'market';
+      $('p-price').style.display = mk ? 'none' : ''; $('p-mkt').style.display = mk ? '' : 'none';
+      if (!mk && !$('p-price').value) $('p-price').placeholder = fmt(precio);
+      calc();
+    }
+    modoPrecio();
     $('p-pctr').oninput = (e) => { pctCap = +e.target.value; if (saldo > 0) { $('p-margen').value = (saldo * pctCap / 100).toFixed(2); calc(); } };
     $('p-margen').oninput = calc;
+    $('p-det').onclick = () => { $('p-det').classList.toggle('on'); $('p-cost').classList.toggle('on'); };
     $('p-tpsl-tog').onclick = () => { const on = $('p-tpsl-chk').classList.toggle('on'); $('p-tpsl-box').classList.toggle('on', on); };
     function calc() {
       const m = parseFloat(($('p-margen').value || '').replace(/,/g, '')) || 0;
@@ -425,6 +426,14 @@
       }, true);
       cv.addEventListener('pointermove', (e) => { if (!drag) return; const r = cv.getBoundingClientRect(); drag.p[drag.k] = pDe(e.clientY - r.top); e.stopImmediatePropagation(); }, true);
       cv.addEventListener('pointerup', (e) => { if (!drag) return; const p = drag.p; drag = null; e.stopImmediatePropagation(); if ($('p-tpsl-chk').classList.contains('on')) { $('p-tp').value = fmt(p.tp).replace(/,/g, ''); $('p-sl').value = fmt(p.sl).replace(/,/g, ''); } pintarPos(); }, true);
+      // Rueda sobre la gráfica: nunca desplaza la página (Smart Levels sigue recibiéndola).
+      cv.addEventListener('wheel', (e) => { e.preventDefault(); }, { capture: true, passive: false });
+      // Cursor por zona: eje de tiempo ↔, eje de precio ↕ (como TradingView).
+      cv.addEventListener('pointermove', (e) => {
+        const r = cv.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+        graf.classList.toggle('z-p', x > r.width - 90); graf.classList.toggle('z-t', x <= r.width - 90 && y > r.height - 30);
+      }, true);
+      cv.addEventListener('pointerleave', () => { graf.classList.remove('z-p', 'z-t'); }, true);
       // Clic derecho: menú de futuros (intercepta el de spot).
       cv.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopImmediatePropagation(); abrirMenu(e.clientX, e.clientY, pDe(e.clientY - cv.getBoundingClientRect().top)); }, true);
     }
