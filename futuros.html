@@ -26,17 +26,22 @@
       grid-template-columns:minmax(0,1fr) 316px;background:#04060a}
 
     /* Barra de contrato (arriba, ambas columnas). */
-    #f-bar{grid-column:1/3;grid-row:1;display:flex;align-items:center;gap:14px;padding:0 12px;
-      background:#0e1218;border-bottom:1px solid var(--line)}
-    #f-bar .bk{color:var(--ink2);text-decoration:none;font-size:16px;width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px}
+    #f-bar{grid-column:1/3;grid-row:1;display:flex;align-items:center;gap:16px;padding:0 12px;
+      background:#0e1218;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden}
+    #f-bar::-webkit-scrollbar{height:0}
+    #f-bar .bk{flex:0 0 auto;color:var(--ink2);text-decoration:none;font-size:16px;width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px}
     #f-bar .bk:hover{color:var(--gold)}
-    #f-bar .sym{font-family:var(--disp);font-weight:800;font-size:16px;color:var(--ink)}
-    #f-bar .px{font-family:var(--mono);font-size:15px;color:var(--ink)}
-    #f-bar .chg{font-family:var(--mono);font-size:13px;font-weight:700}
-    #f-bar .chg.up{color:var(--up)} #f-bar .chg.down{color:var(--down)}
-    #f-bar .st{display:flex;flex-direction:column;line-height:1.2}
-    #f-bar .st b{font-family:var(--mono);font-size:12px;color:var(--ink)}
-    #f-bar .st span{font-family:var(--mono);font-size:8.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em}
+    #f-bar .coin{flex:0 0 auto;display:flex;align-items:center;gap:8px}
+    #f-bar .coin .ico{width:26px;height:26px;border-radius:50%;overflow:hidden;display:grid;place-items:center}
+    #f-bar .coin .ico img{width:26px;height:26px}
+    #f-bar .coin .cnm{display:flex;flex-direction:column;line-height:1.15}
+    #f-bar .coin .cnm b{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ink)}
+    #f-bar .coin .cnm span{font-family:var(--mono);font-size:9px;color:var(--ink3)}
+    #f-bar .bigpx{flex:0 0 auto;font-family:var(--disp);font-weight:800;font-size:20px;color:var(--up)}
+    #f-bar .col{flex:0 0 auto;display:flex;flex-direction:column;line-height:1.25;white-space:nowrap}
+    #f-bar .col .l{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-bottom:2px}
+    #f-bar .col .v{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500}
+    #f-bar .col .v.up{color:var(--up)} #f-bar .col .v.down{color:var(--down)} #f-bar .col .v.gold{color:var(--gold)}
 
     /* Celda de la gráfica (Smart Levels se mueve aquí dentro). */
     #f-graf{grid-column:1;grid-row:2;position:relative;overflow:hidden;border-right:1px solid var(--line);background:#0a0d12}
@@ -107,12 +112,16 @@
   <div id="f-app">
     <div id="f-bar">
       <a class="bk" href="index.html" title="Volver">←</a>
-      <span class="sym" id="f-sym">BTC/USDT</span>
-      <span class="px" id="f-px">—</span>
-      <span class="chg" id="f-chg"></span>
-      <div class="st" style="margin-left:auto"><b id="f-hi">—</b><span>Máx 24h</span></div>
-      <div class="st"><b id="f-lo">—</b><span>Mín 24h</span></div>
-      <div class="st"><b id="f-vol">—</b><span>Vol 24h</span></div>
+      <div class="coin"><span class="ico" id="f-ico"></span><div class="cnm"><b id="f-sym">BTC/USDT</b><span id="f-cname">Bitcoin</span></div></div>
+      <span class="bigpx" id="f-px">—</span>
+      <div class="col"><span class="l">Cambio 24h</span><b class="v" id="f-chg">—</b></div>
+      <div class="col"><span class="l">Precio marcado</span><b class="v" id="f-mark">—</b></div>
+      <div class="col"><span class="l">Precio índice</span><b class="v" id="f-index">—</b></div>
+      <div class="col"><span class="l">Máximo 24h</span><b class="v" id="f-hi">—</b></div>
+      <div class="col"><span class="l">Mínimo 24h</span><b class="v" id="f-lo">—</b></div>
+      <div class="col"><span class="l" id="f-basel">Cantidad 24h</span><b class="v" id="f-base">—</b></div>
+      <div class="col"><span class="l">Volumen 24h (USDT)</span><b class="v" id="f-vol">—</b></div>
+      <div class="col"><span class="l">Financiación</span><b class="v gold" id="f-fund">0.0035%</b></div>
     </div>
 
     <div id="f-graf"></div>
@@ -166,7 +175,7 @@
 
   <script type="module">
     import { abrirNiveles } from './assets/js/niveles.js?v=126';
-    import { arrancarIdioma, traducirTodo } from './assets/js/idioma.js?v=155';
+    import { arrancarIdioma, traducirTodo } from './assets/js/idioma.js?v=156';
 
     let lado='long', lev=10, modo='cruzado', precio=0, sim='BTCUSDT';
     const $ = (id)=>document.getElementById(id);
@@ -186,18 +195,45 @@
     function precioActual(){ try{ if(window.N&&window.N.velas&&window.N.velas.length) return window.N.velas[window.N.velas.length-1].c; }catch(_){} return precio; }
 
     // Barra de contrato: precio, cambio, máx/mín/vol 24h.
+    // Datos de la barra: mismos endpoints de Binance que ya usa el repo
+    // (api/v3/ticker/24hr). Nada inventado: precio, cambio, máx, mín, cantidad
+    // (base) y volumen (quote) salen todos de aquí.
     async function tick(){
       try{ const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol='+sim);
-        if(r.ok){ const j=await r.json(); precio=+j.lastPrice;
-          $('f-px').textContent='$'+fmt(precio);
-          const ce=$('f-chg'); const chg=+j.priceChangePercent; ce.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%'; ce.className='chg '+(chg>=0?'up':'down');
-          $('f-hi').textContent=fmt(+j.highPrice); $('f-lo').textContent=fmt(+j.lowPrice); $('f-vol').textContent=fmtV(+j.quoteVolume);
+        if(r.ok){ const j=await r.json();
+          precio=+j.lastPrice;
+          const chg=+j.priceChangePercent;
+          $('f-px').textContent=fmt(precio); $('f-px').style.color=chg>=0?'var(--up)':'var(--down)';
+          const ce=$('f-chg'); ce.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%'; ce.className='v '+(chg>=0?'up':'down');
+          $('f-mark').textContent=fmt(precio);                       // precio marcado ≈ último
+          $('f-index').textContent=fmt(+j.weightedAvgPrice);         // índice ≈ precio medio ponderado
+          $('f-hi').textContent=fmt(+j.highPrice);
+          $('f-lo').textContent=fmt(+j.lowPrice);
+          $('f-base').textContent=fmtV(+j.volume);                   // cantidad 24h en la moneda base
+          $('f-vol').textContent=fmtV(+j.quoteVolume);               // volumen 24h en USDT
+          // etiqueta de cantidad con el símbolo base
+          const baseId=(window.N&&window.N.par&&window.N.par.id)||sim.replace('USDT','');
+          $('f-basel').textContent='Cantidad 24h ('+baseId+')';
         }
       }catch(_){}
-      // Sincronizar el símbolo con el de Smart Levels si el usuario lo cambia ahí.
-      try{ if(window.N&&window.N.par&&window.N.par.s&&window.N.par.s!==sim){ sim=window.N.par.s; $('f-sym').textContent=(window.N.par.id||sim)+'/USDT'; } }catch(_){}
+      // Sincronizar moneda + logo con Smart Levels si el usuario la cambia.
+      try{ if(window.N&&window.N.par&&window.N.par.s&&window.N.par.s!==sim){
+        sim=window.N.par.s; $('f-sym').textContent=(window.N.par.id||sim)+'/USDT';
+        if($('f-cname')) $('f-cname').textContent=window.N.par.n||'';
+        pintarLogo();
+      } }catch(_){}
       refrescar();
     }
+    const _logoCache={};
+    async function pintarLogo(){
+      try{
+        const cg=(window.N&&window.N.par&&window.N.par.cg)||'bitcoin';
+        if(_logoCache[cg]){ $('f-ico').innerHTML='<img src="'+_logoCache[cg]+'">'; return; }
+        const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+cg);
+        if(r.ok){ const a=await r.json(); if(a[0]&&a[0].image){ _logoCache[cg]=a[0].image; $('f-ico').innerHTML='<img src="'+a[0].image+'">'; } }
+      }catch(_){}
+    }
+    pintarLogo();
     tick(); setInterval(tick,3000);
 
     function refrescar(){
