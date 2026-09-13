@@ -6,166 +6,171 @@
   <title>Futures · Cripto Cuba Oficial</title>
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet" media="print" onload="this.media='all'">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/img/cco-32.png">
   <link rel="stylesheet" href="assets/css/styles.css">
   <style>
     :root{
-      --gold:#E8B84B;--gold-soft:#C9A84B;--up:#22c55e;--up-d:#16a34a;--down:#f6465d;--down-d:#e11d48;
-      --ink:#eef1f6;--ink2:#a9b2bd;--ink3:#7d8794;--ink4:#4a5561;--line:#232b36;
+      --gold:#E8B84B;--gold-soft:#C9A84B;--up:#2ebd85;--up-d:#12b06a;--down:#f6465d;--down-d:#e03246;
+      --ink:#eef1f6;--ink2:#a9b2bd;--ink3:#7d8794;--ink4:#4a5561;--line:#232b36;--line2:#2b3340;
+      --bg:#04060a;--panel:#0e1218;--card:rgba(255,255,255,.035);
       --mono:'IBM Plex Mono',monospace;--disp:'Plus Jakarta Sans',sans-serif;
     }
-    html,body{margin:0;padding:0;background:#04060a;font-family:var(--disp);color:var(--ink)}
+    html,body{margin:0;padding:0;background:var(--bg);font-family:var(--disp);color:var(--ink)}
     *{box-sizing:border-box}
-    ::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:#232b36;border-radius:4px}
+    ::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-thumb{background:#232b36;border-radius:4px}
+    button{font-family:inherit}
 
-    /* ── REJILLA SÓLIDA (sin capas): barra arriba, gráfica+panel, posiciones abajo ── */
-    #f-app{height:100vh;height:100dvh;display:grid;
-      grid-template-rows:48px minmax(0,1fr);
-      grid-template-columns:minmax(0,1fr) 316px;background:#04060a}
+    /* ═══ REJILLA. Un solo scroll: el de la página. ═══
+       Fila 1: barra de datos (sticky). Fila 2: [columna izq: gráfica a
+       altura completa + posiciones debajo] [columna der: panel a altura
+       natural, sin scroll interno, se estira hasta abajo]. */
+    #f-app{display:grid;grid-template-columns:minmax(0,1fr) 316px;grid-template-rows:auto 1fr;min-height:100vh;min-height:100dvh}
 
-    /* Barra de contrato (arriba, ambas columnas). */
-    #f-bar{grid-column:1/3;grid-row:1;display:flex;align-items:center;gap:16px;padding:0 12px;
-      background:#0e1218;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden}
-    #f-bar::-webkit-scrollbar{height:0}
-    #f-bar .bk{flex:0 0 auto;color:var(--ink2);text-decoration:none;font-size:16px;width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px}
+    /* ── Barra de datos ── */
+    #f-bar{grid-column:1/3;grid-row:1;position:sticky;top:0;z-index:30;height:50px;display:flex;align-items:center;gap:14px;padding:0 12px;
+      background:var(--panel);border-bottom:1px solid var(--line);overflow:visible}
+    #f-bar .bk{flex:0 0 auto;color:var(--ink2);text-decoration:none;width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px}
     #f-bar .bk:hover{color:var(--gold)}
-    #f-bar .coin{flex:0 0 auto;display:flex;align-items:center;gap:8px}
-    #f-bar .coin .ico{width:26px;height:26px;border-radius:50%;overflow:hidden;display:grid;place-items:center}
-    #f-bar .coin .ico img{width:26px;height:26px}
-    #f-bar .coin .cnm{display:flex;flex-direction:column;line-height:1.15}
-    #f-bar .coin .cnm b{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ink)}
-    #f-bar .coin .cnm span{font-family:var(--mono);font-size:9px;color:var(--ink3)}
-    #f-bar .bigpx{flex:0 0 auto;font-family:var(--disp);font-weight:800;font-size:20px;color:var(--up)}
-    /* Timeframe: cuadradito desplegable con ventana glass. */
-    #f-bar .tf-dd{flex:0 0 auto;position:relative}
-    #f-bar .tf-cur{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:9px;color:var(--ink);
-      font-family:var(--mono);font-size:12px;font-weight:700;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:5px}
-    #f-bar .tf-cur:hover{border-color:var(--gold-soft)} #f-bar .tf-cur .cv{color:var(--ink3);font-size:9px}
-    #f-bar .tf-menu{position:absolute;top:38px;left:0;z-index:100;min-width:130px;
-      background:rgba(16,20,26,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      border:1px solid var(--line);border-radius:13px;padding:5px;
-      box-shadow:0 24px 60px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05);display:none}
-    #f-bar .tf-dd.open .tf-menu{display:block}
-    #f-bar .tf-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--ink2);
-      font-family:var(--disp);font-weight:600;font-size:13px;padding:9px 11px;border-radius:9px;cursor:pointer}
-    #f-bar .tf-menu button:hover{background:rgba(232,184,75,.1);color:var(--ink)}
-    #f-bar .tf-menu button.on{color:var(--gold);background:rgba(232,184,75,.08)}
-    /* Barra derecha: wallet + exportar. */
-    #f-bar .bar-right{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;gap:9px}
-    #f-bar .bar-wallet{font-family:var(--mono);font-size:11px;color:var(--ink2);background:rgba(255,255,255,.03);
-      border:1px solid var(--line);border-radius:8px;padding:6px 10px}
-    #f-bar .tf-exp{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.03);color:var(--ink2);display:grid;place-items:center;cursor:pointer}
-    #f-bar .tf-exp:hover{color:var(--gold);border-color:var(--gold-soft)}
-    #f-bar .col{flex:0 0 auto;display:flex;flex-direction:column;line-height:1.25;white-space:nowrap}
-    #f-bar .col .l{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-bottom:2px}
-    #f-bar .col .v{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500}
-    #f-bar .col .v.up{color:var(--up)} #f-bar .col .v.down{color:var(--down)} #f-bar .col .v.gold{color:var(--gold)}
+    #f-coin{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:8px;cursor:pointer;padding:3px 6px;border-radius:9px}
+    #f-coin:hover{background:var(--card)}
+    #f-coin .ico{width:26px;height:26px;border-radius:50%;background:#1b2230 center/cover no-repeat;display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--gold)}
+    #f-coin .nm{display:flex;flex-direction:column;line-height:1.15}
+    #f-coin .nm b{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ink)}
+    #f-coin .nm span{font-family:var(--mono);font-size:9px;color:var(--ink3)}
+    #f-coin .cv{color:var(--ink3);font-size:9px}
+    /* nv-sel de Smart Levels se mueve aquí, invisible, como ancla del picker. */
+    #f-coin #nv-sel{position:absolute !important;inset:0 !important;opacity:0 !important;pointer-events:none !important;width:100% !important;height:100% !important;margin:0 !important;padding:0 !important}
+    #f-px{flex:0 0 auto;font-family:var(--disp);font-weight:800;font-size:20px;color:var(--up)}
+    #f-px.dn{color:var(--down)}
+    /* Temporalidad: cuadradito desplegable. */
+    #f-tf{position:relative;flex:0 0 auto}
+    #f-tf .cur{background:var(--card);border:1px solid var(--line);border-radius:9px;color:var(--ink);font-family:var(--mono);font-size:12px;font-weight:700;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:6px}
+    #f-tf .cur:hover{border-color:var(--gold-soft)} #f-tf .cur .cv{color:var(--ink3);font-size:9px}
+    #f-tf .menu{position:absolute;top:38px;left:0;z-index:60;min-width:140px;display:none;
+      background:rgba(16,20,26,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      border:1px solid var(--line2);border-radius:13px;padding:5px;box-shadow:0 24px 60px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05)}
+    #f-tf.open .menu{display:block}
+    #f-tf .menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--ink2);font-weight:600;font-size:13px;padding:9px 11px;border-radius:9px;cursor:pointer}
+    #f-tf .menu button:hover{background:rgba(232,184,75,.1);color:var(--ink)} #f-tf .menu button.on{color:var(--gold);background:rgba(232,184,75,.08)}
+    .col{flex:0 0 auto;display:flex;flex-direction:column;line-height:1.25;white-space:nowrap}
+    .col .l{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-bottom:2px}
+    .col .v{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500}
+    .col .v.up{color:var(--up)} .col .v.dn{color:var(--down)} .col .v.gold{color:var(--gold)}
+    #f-right{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;gap:8px}
+    #f-wallet{font-family:var(--mono);font-size:11px;color:var(--ink2);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+    #f-export{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink2);display:grid;place-items:center;cursor:pointer}
+    #f-export:hover{color:var(--gold);border-color:var(--gold-soft)}
 
-    /* Celda de la gráfica (Smart Levels se mueve aquí dentro). */
-    #f-graf{grid-column:1;grid-row:2;position:relative;overflow:hidden;border-right:1px solid var(--line);background:#0a0d12}
-    /* Smart Levels dentro de la celda: NO fixed, ocupa la celda. */
-    #f-graf #nv-overlay{position:absolute !important;inset:0 !important;z-index:auto !important;padding:0 !important}
-    #f-graf #nv-overlay .nv-c{max-width:none !important;width:100% !important;height:100% !important;border-radius:0 !important;border:none !important}
-    #f-graf #nv-overlay .nv-caps{display:none !important}
-    #f-graf #nv-overlay .nv-x{display:none !important}
-    /* Ocultar la cabecera de análisis duplicada (mi barra ya tiene moneda y
-       datos). Se conservan timeframes (nv-tfs) y herramientas (nv-tools). */
-    /* nv-sel: invisible pero EN SU SITIO (el menú se ancla a él). Se coloca
-       sobre mi barra, transparente, para que el clic y el menú funcionen. */
-    #f-graf #nv-overlay .nv-sel{opacity:0 !important;pointer-events:none !important}
-    #f-graf #nv-overlay .nv-meta{display:none !important}
-    #f-graf #nv-overlay #nv-veredicto{display:none !important}
-    #f-graf #nv-overlay #nv-estado{display:none !important}
-    #f-graf #nv-overlay #nv-cal{display:none !important}
-    #f-graf #nv-overlay #nv-widget{display:none !important}
-    #f-graf #nv-overlay #nv-foto{display:none !important}
-    #f-graf #nv-overlay #nv-ayuda{display:none !important}
-    /* La cabecera queda fina, solo con timeframes. */
-    #f-graf #nv-overlay .nv-cab{min-height:0 !important;padding:6px 8px !important;border-bottom:1px solid var(--line) !important}
+    /* ── Columna izquierda ── */
+    #f-left{grid-column:1;grid-row:2;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line)}
+    #f-graf{position:relative;height:calc(100vh - 50px);height:calc(100dvh - 50px);min-height:420px;background:#0b0f16;overflow:hidden}
+    /* Smart Levels dentro de la celda: sin la banda superior. Se conservan
+       gráfica (nv-graf) y barra de herramientas (nv-tools). */
+    #f-graf #nv-overlay{position:absolute !important;inset:0 !important;z-index:auto !important;padding:0 !important;display:block !important}
+    #f-graf #nv-overlay .nv-bg{display:none !important}
+    #f-graf #nv-overlay .nv-c{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;max-width:none !important;border-radius:0 !important;border:none !important;display:flex !important;flex-direction:column !important}
+    #f-graf #nv-overlay .nv-cab,#f-graf #nv-overlay .nv-veredicto,#f-graf #nv-overlay .nv-caps,#f-graf #nv-overlay .nv-meta,#f-graf #nv-overlay .nv-herr-m{display:none !important}
+    #f-graf #nv-overlay .nv-graf{flex:1 1 auto !important;min-height:0 !important}
+    /* Overlay de posiciones (entrada / TP / SL arrastrables). */
+    #f-ov{position:absolute;inset:0;z-index:5;pointer-events:none}
 
-    /* Panel de orden (derecha, filas 2-3 para ocupar toda la altura). */
-    #f-panel{grid-column:2;grid-row:2;min-height:0;background:#0e1218;border-left:1px solid var(--line);
-      overflow-y:auto;padding:12px 12px 20px;display:flex;flex-direction:column;gap:10px}
-    #f-panel .p-top{display:flex;gap:7px}
-    #f-panel .p-top .chip{flex:1;height:33px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);
-      color:var(--ink2);font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
-    #f-panel .p-top .chip b{color:var(--gold);font-family:var(--disp)}
-    #f-panel .p-oc{display:flex;gap:7px}
-    #f-panel .p-oc button{flex:1;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink2);font-weight:700;font-size:12px;cursor:pointer}
-    #f-panel .p-oc button.on{background:rgba(34,197,94,.14);color:var(--up);border-color:rgba(34,197,94,.4)}
-    #f-panel .p-tabs{display:flex;border-bottom:1px solid var(--line)}
-    #f-panel .p-tabs button{flex:1;background:none;border:none;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:13px;padding:8px 0;cursor:pointer;position:relative}
-    #f-panel .p-tabs button.on{color:var(--ink)}
-    #f-panel .p-tabs button.on::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:2px;background:var(--gold)}
-    #f-panel .p-avbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
-    #f-panel .p-avbl span{color:var(--ink3)} #f-panel .p-avbl b{color:var(--ink)}
-    #f-panel .p-lbl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
-    #f-panel .p-box{display:flex;align-items:center;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:0 11px;height:42px}
-    #f-panel .p-box input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:15px}
-    #f-panel .p-box input::placeholder{color:var(--ink4)} #f-panel .p-box .u{font-family:var(--disp);font-weight:700;font-size:11px;color:var(--ink2)}
-    #f-panel .p-box .tl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-right:6px}
-    #f-panel .p-pcts{display:flex;gap:5px;margin-top:7px}
-    #f-panel .p-pcts button{flex:1;height:25px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink3);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer}
-    #f-panel .p-lev-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
-    #f-panel .p-lev-val{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--gold)}
-    #f-panel input[type=range]{width:100%;accent-color:var(--gold);cursor:pointer}
-    #f-panel .p-lev-marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;color:var(--ink4);margin-top:2px}
-    #f-panel .p-tpsl-h{display:flex;align-items:center;gap:8px;cursor:pointer}
-    #f-panel .p-chk{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line);display:grid;place-items:center;flex:0 0 auto}
-    #f-panel .p-chk.on{border-color:var(--gold);background:var(--gold)} #f-panel .p-chk.on::after{content:"✓";font-size:10px;color:#241900;font-weight:800}
-    #f-panel .p-tpsl-h span:last-child{font-size:12px;color:var(--ink);font-weight:600}
-    #f-panel .p-tpsl-box{display:none;flex-direction:column;gap:6px} #f-panel .p-tpsl-box.on{display:flex}
-    #f-panel .p-info{display:flex;flex-direction:column;gap:4px;padding:9px 11px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px}
-    #f-panel .p-info .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px}
-    #f-panel .p-info .r span{color:var(--ink3)} #f-panel .p-info .r b{color:var(--ink)} #f-panel .p-info .r b.liq{color:var(--down)}
-    #f-panel .p-btn{height:48px;border-radius:12px;border:none;font-family:var(--disp);font-weight:800;font-size:15px;cursor:pointer;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.2)}
-    #f-panel .p-btn.long{background:linear-gradient(180deg,#34d98a,#12b06a)}
-    #f-panel .p-btn.short{background:linear-gradient(180deg,#ff5c6c,#e03246)}
-    #f-panel .p-btn:active{filter:brightness(1.08)}
-    #f-panel .p-cost{padding:9px 11px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:4px}
-    #f-panel .p-cost .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
-    #f-panel .p-cost .r span{color:var(--ink3)} #f-panel .p-cost .r b{color:var(--ink)}
-    #f-panel .p-user{margin-top:6px;padding:11px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:6px}
-    #f-panel .p-user .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
-    #f-panel .p-user .r span{color:var(--ink3)} #f-panel .p-user .r b{color:var(--ink)}
+    #f-pos{background:#0b0e12;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:300px}
+    #f-pos .ph{display:flex;align-items:center;gap:18px;padding:11px 16px 0;border-bottom:1px solid var(--line)}
+    #f-pos .ph button{background:none;border:none;color:var(--ink3);font-weight:700;font-size:12.5px;padding:0 0 10px;cursor:pointer;position:relative}
+    #f-pos .ph button.on{color:var(--ink)} #f-pos .ph button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
+    #f-pos .ph .cerrar{margin-left:auto;padding:5px 11px;border:1px solid var(--line);border-radius:8px;color:var(--ink2);font-size:11px;font-family:var(--mono);margin-bottom:8px}
+    #f-pos .body{padding:14px 16px}
+    .pos-empty{font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center;padding:36px 0}
+    .pos-head,.pos-row{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr 1fr 84px;gap:12px;align-items:center;font-family:var(--mono);font-size:11.5px;padding:9px 0}
+    .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
+    .pos-row{border-bottom:1px solid rgba(255,255,255,.03);color:var(--ink)}
+    .pos-row .side{font-weight:800} .pos-row .side.long{color:var(--up)} .pos-row .side.short{color:var(--down)}
+    .pos-row .close{background:rgba(246,70,93,.1);border:1px solid rgba(246,70,93,.3);color:var(--down);border-radius:8px;padding:6px 0;cursor:pointer;font-weight:700;font-size:11px}
 
-    /* Posiciones: DEBAJO de la pantalla completa (se ven con scroll de
-       página, no comprimen la gráfica — como en la foto). */
-    #f-pos{background:#0b0e12;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:340px}
-    #f-pos .ph{display:flex;gap:18px;padding:10px 16px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0b0e12}
-    #f-pos .ph button{background:none;border:none;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:12px;padding:0 0 9px;cursor:pointer;position:relative}
-    #f-pos .ph button.on{color:var(--ink)}
-    #f-pos .ph button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
-    #f-pos .body{flex:1;overflow-y:auto;padding:14px 16px;font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center}
+    /* ── Panel derecho: altura natural, sin scroll interno ── */
+    #f-panel{grid-column:2;grid-row:2;background:var(--panel);padding:12px 12px 24px;display:flex;flex-direction:column;gap:10px;min-width:0}
+    .p-top{display:flex;gap:7px}
+    .p-top .chip{flex:1;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+    .p-top .chip:hover{border-color:var(--gold-soft)} .p-top .chip b{color:var(--gold);font-family:var(--disp)} .p-top .chip .cv{font-size:8px;color:var(--ink3)}
+    .p-oc{display:flex;gap:7px}
+    .p-oc button{flex:1;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-weight:700;font-size:12px;cursor:pointer}
+    .p-oc button.on{background:rgba(46,189,133,.14);color:var(--up);border-color:rgba(46,189,133,.4)}
+    .p-tabs{display:flex;border-bottom:1px solid var(--line)}
+    .p-tabs button{flex:1;background:none;border:none;color:var(--ink3);font-weight:700;font-size:13px;padding:8px 0;cursor:pointer;position:relative}
+    .p-tabs button.on{color:var(--ink)} .p-tabs button.on::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:2px;background:var(--gold)}
+    .p-avbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
+    .p-avbl span{color:var(--ink3)} .p-avbl b{color:var(--ink)}
+    .p-lbl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+    .p-box{display:flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:0 11px;height:42px}
+    .p-box:focus-within{border-color:var(--gold-soft)}
+    .p-box input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:15px}
+    .p-box input::placeholder{color:var(--ink4)} .p-box .u{font-family:var(--disp);font-weight:700;font-size:11px;color:var(--ink2)}
+    .p-box .tl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-right:6px}
+    .p-pct{padding:2px 0}
+    .p-pct input[type=range]{width:100%;accent-color:var(--gold);cursor:pointer}
+    .p-pct .marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;color:var(--ink4);margin-top:1px}
+    .p-lev-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+    .p-lev-val{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--gold)}
+    .p-lev input[type=range]{width:100%;accent-color:var(--gold);cursor:pointer}
+    .p-lev .marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;color:var(--ink4);margin-top:2px}
+    .p-tpsl-h{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+    .p-chk{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line2);display:grid;place-items:center;flex:0 0 auto}
+    .p-chk.on{border-color:var(--gold);background:var(--gold)} .p-chk.on::after{content:"✓";font-size:10px;color:#241900;font-weight:800}
+    .p-tpsl-h span:last-child{font-size:12px;color:var(--ink);font-weight:600}
+    .p-tpsl-box{display:none;flex-direction:column;gap:6px} .p-tpsl-box.on{display:flex}
+    .p-info{display:flex;flex-direction:column;gap:4px;padding:9px 11px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+    .p-info .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px}
+    .p-info .r span{color:var(--ink3)} .p-info .r b{color:var(--ink)} .p-info .r b.liq{color:var(--down)}
+    .p-btns{display:flex;gap:8px;margin-top:2px}
+    .p-btn{flex:1;height:46px;border-radius:12px;border:none;font-family:var(--disp);font-weight:800;font-size:14px;cursor:pointer;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+    .p-btn.long{background:linear-gradient(180deg,#34d98a,#12b06a)} .p-btn.short{background:linear-gradient(180deg,#ff5c6c,#e03246)}
+    .p-btn:active{filter:brightness(1.08);transform:translateY(1px)}
+    .p-cost{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-family:var(--mono);font-size:10.5px}
+    .p-cost div{display:flex;flex-direction:column;gap:2px} .p-cost span{color:var(--ink3);font-size:9.5px} .p-cost b{color:var(--ink)}
+    .p-user{margin-top:6px;padding:11px;background:var(--card);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:6px}
+    .p-user .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
+    .p-user .r span{color:var(--ink3)} .p-user .r b{color:var(--ink)}
 
-    @media(max-width:920px){#f-app{grid-template-columns:1fr}#f-panel,#f-pos{grid-column:1}}
+    /* Ventanas emergentes (modo, open/close, trigger) — glass. */
+    .fx-modal{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:16px}
+    .fx-modal .bg{position:absolute;inset:0;background:rgba(3,5,7,.7);backdrop-filter:blur(6px)}
+    .fx-modal .card{position:relative;width:100%;max-width:400px;background:linear-gradient(180deg,#12161c,#0b0e12);border:1px solid #2b3139;border-radius:18px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+    .fx-modal h4{margin:0 0 14px;text-align:center;font-weight:800;font-size:18px;color:var(--ink)}
+    .fx-modal .opt{display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:13px;margin-bottom:9px;cursor:pointer}
+    .fx-modal .opt:hover{border-color:var(--gold-soft)} .fx-modal .opt.on{border-color:var(--gold);background:rgba(232,184,75,.08)}
+    .fx-modal .opt b{display:block;font-weight:800;font-size:15px;color:var(--ink);margin-bottom:4px}
+    .fx-modal .opt span{display:block;font-size:12.5px;line-height:1.5;color:var(--ink2)}
+
+    /* Menú de clic derecho (compacto). */
+    #f-cm{position:fixed;z-index:22000;width:236px;background:rgba(16,20,26,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line2);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.65);padding:8px;display:none}
+    #f-cm .hd{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--ink3);padding:2px 4px 8px}
+    #f-cm .hd b{color:var(--ink);font-size:12px}
+    #f-cm .chips{display:flex;gap:4px;margin-bottom:6px}
+    #f-cm .chips span{font-family:var(--mono);font-size:9px;color:var(--ink3);align-self:center;margin-right:2px;min-width:28px}
+    #f-cm .chips button{flex:1;height:22px;border-radius:6px;border:1px solid var(--line);background:none;color:var(--ink3);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer}
+    #f-cm .chips button.on{color:var(--gold);border-color:rgba(232,184,75,.5);background:rgba(232,184,75,.1)}
+    #f-cm .go{display:flex;gap:6px;margin-top:6px}
+    #f-cm .go button{flex:1;height:36px;border:none;border-radius:9px;font-weight:800;font-size:13px;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+    #f-cm .go button small{font-family:var(--mono);font-size:9px;font-weight:500;opacity:.85}
+    #f-cm .go .l{background:linear-gradient(180deg,#34d98a,#12b06a)} #f-cm .go .s{background:linear-gradient(180deg,#ff5c6c,#e03246)}
+
+    @media(max-width:920px){#f-app{grid-template-columns:1fr}#f-panel{grid-column:1;grid-row:3}#f-left{border-right:none}}
   </style>
 </head>
 <body>
-  <script>
-  (function(){try{
-    var m=window.matchMedia?window.matchMedia('(max-width:900px)').matches
-         :(document.documentElement.clientWidth||0)<=900;
-    if(m)location.replace('app.html');
-  }catch(_){}})();
-  </script>
+  <script>(function(){try{var m=window.matchMedia?window.matchMedia('(max-width:900px)').matches:(document.documentElement.clientWidth||0)<=900;if(m)location.replace('app.html');}catch(_){}})();</script>
 
   <div id="f-app">
     <div id="f-bar">
       <a class="bk" href="index.html" title="Volver"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
-      <div class="coin" id="f-coin" style="cursor:pointer"><span class="ico" id="f-ico"></span><div class="cnm"><b id="f-sym">BTC/USDT</b><span id="f-cname">Bitcoin</span></div><span style="color:var(--ink3);font-size:10px;margin-left:2px">▼</span></div>
-      <span class="bigpx" id="f-px">—</span>
-      <div class="tf-dd" id="f-tfdd">
-        <button class="tf-cur" id="f-tfcur">15m <span class="cv">▾</span></button>
-        <div class="tf-menu" id="f-tfmenu">
-          <button data-tf="1m">1 min</button><button data-tf="5m">5 min</button>
-          <button data-tf="15m" class="on">15 min</button><button data-tf="30m">30 min</button>
-          <button data-tf="1h">1 hora</button><button data-tf="4h">4 horas</button>
-          <button data-tf="1d">1 día</button><button data-tf="1w">1 semana</button>
-        </div>
-      </div>
+      <div id="f-coin"><span class="ico" id="f-ico">BTC</span><div class="nm"><b id="f-sym">BTCUSDT</b><span id="f-cname">Bitcoin</span></div><span class="cv">▼</span></div>
+      <span id="f-px">—</span>
+      <div id="f-tf"><button class="cur" id="f-tfcur">15m <span class="cv">▾</span></button>
+        <div class="menu" id="f-tfmenu">
+          <button data-tf="1m">1m</button><button data-tf="5m">5m</button><button data-tf="15m" class="on">15m</button><button data-tf="30m">30m</button>
+          <button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="1d">1D</button><button data-tf="1w">1W</button>
+        </div></div>
       <div class="col"><span class="l">Cambio 24h</span><b class="v" id="f-chg">—</b></div>
       <div class="col"><span class="l">Precio marcado</span><b class="v" id="f-mark">—</b></div>
       <div class="col"><span class="l">Precio índice</span><b class="v" id="f-index">—</b></div>
@@ -174,303 +179,295 @@
       <div class="col"><span class="l" id="f-basel">Cantidad 24h</span><b class="v" id="f-base">—</b></div>
       <div class="col"><span class="l">Volumen 24h (USDT)</span><b class="v" id="f-vol">—</b></div>
       <div class="col"><span class="l">Financiación</span><b class="v gold" id="f-fund">0.0035%</b></div>
-      <div class="bar-right">
-        <span class="bar-wallet" id="f-barwallet">No conectada</span>
-        <button class="tf-exp" id="f-export" title="Exportar gráfica como imagen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
+      <div id="f-right"><span id="f-wallet">No conectada</span>
+        <button id="f-export" title="Exportar gráfica"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
       </div>
     </div>
 
-    <div id="f-graf"></div>
+    <div id="f-left">
+      <div id="f-graf"><canvas id="f-ov"></canvas></div>
+      <div id="f-pos">
+        <div class="ph">
+          <button class="on" data-t="pos">Posiciones <span id="f-pos-n">(0)</span></button>
+          <button data-t="ord">Órdenes abiertas <span id="f-ord-n">(0)</span></button>
+          <button class="cerrar" id="f-closeall">Cerrar todo</button>
+        </div>
+        <div class="body" id="f-pos-body"></div>
+      </div>
+    </div>
 
     <div id="f-panel">
       <div class="p-top">
-        <button class="chip" id="p-mode" data-mode="cruzado">Cruzado</button>
-        <button class="chip" id="p-levbtn">Apalanc. <b id="p-levbtn-v">10×</b></button>
+        <button class="chip" id="p-mode">Cruzada <span class="cv">▾</span></button>
+        <button class="chip" id="p-levbtn"><b id="p-levbtn-v">20×</b> <span class="cv">▾</span></button>
       </div>
-      <div class="p-oc">
-        <button class="on" data-oc="abierto">Abierto</button>
-        <button data-oc="cerrado">Cerrado</button>
-      </div>
-      <div class="p-tabs">
-        <button class="on" data-ord="market">Mercado</button>
-        <button data-ord="limit">Límite</button>
-        <button data-ord="trigger">Activador</button>
-      </div>
-      <div class="p-avbl"><span>Disponible</span><b>— USDT</b></div>
-      <div id="p-price-fld" style="display:none">
-        <div class="p-box"><span class="tl">PRECIO</span><input id="p-price-in" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div>
-      </div>
-      <div>
-        <div class="p-lbl">Cantidad</div>
-        <div class="p-box"><input id="p-margen" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div>
-        <div class="p-pcts"><button data-pct="25">25%</button><button data-pct="50">50%</button><button data-pct="75">75%</button><button data-pct="100">100%</button></div>
-      </div>
-      <div>
-        <div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">10×</span></div>
-        <input type="range" id="p-range" min="1" max="200" value="10">
-        <div class="p-lev-marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div>
-      </div>
+      <div class="p-oc"><button class="on" data-oc="abierto">Abierto</button><button data-oc="cerrado">Cerrado</button></div>
+      <div class="p-tabs"><button class="on" data-ord="market">Mercado</button><button data-ord="limit">Límite</button><button data-ord="trigger">Activador</button></div>
+      <div class="p-avbl"><span>Disponible</span><b id="p-avbl">0.0000 USDT</b></div>
+      <div id="p-price-w"><div class="p-lbl">Precio</div><div class="p-box"><input id="p-price" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div></div>
+      <div><div class="p-lbl">Cantidad</div><div class="p-box"><input id="p-margen" inputmode="decimal" placeholder="Orden mínima"><span class="u">USDT</span></div></div>
+      <div class="p-pct"><input type="range" id="p-pctr" min="0" max="100" step="25" value="0"><div class="marks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
+      <div class="p-lev"><div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">20×</span></div><input type="range" id="p-range" min="1" max="200" value="20"><div class="marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div></div>
       <div class="p-tpsl-h" id="p-tpsl-tog"><span class="p-chk" id="p-tpsl-chk"></span><span>TP/SL</span></div>
       <div class="p-tpsl-box" id="p-tpsl-box">
         <div class="p-box"><span class="tl">TP</span><input id="p-tp" inputmode="decimal" placeholder="Take-profit"><span class="u">USDT</span></div>
         <div class="p-box"><span class="tl">SL</span><input id="p-sl" inputmode="decimal" placeholder="Stop-loss"><span class="u">USDT</span></div>
       </div>
-      <div class="p-info">
-        <div class="r"><span>Tamaño de posición</span><b id="p-size">—</b></div>
-        <div class="r"><span>Precio de liquidación</span><b class="liq" id="p-liq">—</b></div>
-      </div>
-      <button class="p-btn long" id="p-long">Long</button>
-      <button class="p-btn short" id="p-short">Short</button>
-
-      <div class="p-cost">
-        <div class="r"><span>Coste (Long)</span><b id="p-cost-l">0.00 USDT</b></div>
-        <div class="r"><span>Coste (Short)</span><b id="p-cost-s">0.00 USDT</b></div>
-      </div>
-      <div class="p-user">
-        <div class="r"><span>Tu wallet</span><b id="pu-wallet">No conectada</b></div>
-        <div class="r"><span>Saldo USDT</span><b id="pu-bal">—</b></div>
-        <div class="r"><span>Fecha</span><b id="pu-date">—</b></div>
-      </div>
+      <div class="p-info"><div class="r"><span>Tamaño de posición</span><b id="p-size">—</b></div><div class="r"><span>Precio de liquidación</span><b class="liq" id="p-liq">—</b></div></div>
+      <div class="p-btns"><button class="p-btn long" id="p-long">Abrir Largo</button><button class="p-btn short" id="p-short">Abrir Corto</button></div>
+      <div class="p-cost"><div><span>Coste (USDT)</span><b id="p-cost-l">0.0</b></div><div><span>Coste (USDT)</span><b id="p-cost-s">0.0</b></div><div><span>Máximo (USDT)</span><b id="p-max-l">0.0</b></div><div><span>Máximo (USDT)</span><b id="p-max-s">0.0</b></div></div>
+      <div class="p-user"><div class="r"><span>Tu wallet</span><b id="pu-wallet">No conectada</b></div><div class="r"><span>Saldo USDT</span><b id="pu-bal">—</b></div><div class="r"><span>Fecha</span><b id="pu-date">—</b></div></div>
     </div>
-
   </div>
 
-  <div id="f-pos">
-    <div class="ph">
-      <button class="on" data-t="pos">Posiciones</button>
-      <button data-t="ord">Órdenes abiertas</button>
-      <button data-t="hist">Historial</button>
-    </div>
-    <div class="body" id="f-pos-body">No tienes posiciones abiertas.</div>
-  </div>
+  <div id="f-cm"></div>
 
   <script type="module">
     import { abrirNiveles } from './assets/js/niveles.js?v=126';
-    import { arrancarIdioma, traducirTodo } from './assets/js/idioma.js?v=158';
+    import { N } from './assets/js/niveles/estado.js?v=1';
+    import { PARES } from './assets/js/niveles/config.js?v=1';
+    import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=159';
 
-    let lado='long', lev=10, modo='cruzado', precio=0, sim='BTCUSDT';
-    const $ = (id)=>document.getElementById(id);
-    const fmt = (p)=> !p?'—':(p>=1000?p.toLocaleString('en-US',{maximumFractionDigits:1}):p>=1?p.toFixed(2):p.toPrecision(5));
-    const fmtV = (v)=> v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':(''+Math.round(v));
-    function liqDe(e,l,esL){const f=0.75;return esL?e*(1-f/l):e*(1+f/l);}
+    const $ = (id) => document.getElementById(id);
+    const fmt = (p) => { p = +p; if (!isFinite(p) || !p) return '—'; if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 1 }); if (p >= 1) return p.toFixed(2); if (p >= 0.01) return p.toFixed(5); return p.toPrecision(5); };
+    const fmtV = (v) => v >= 1e9 ? (v / 1e9).toFixed(2) + 'B' : v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : ('' + Math.round(v));
+    const liqDe = (e, l, esL) => esL ? e * (1 - 0.75 / l) : e * (1 + 0.75 / l);
+    const parDe = () => PARES.find((p) => p.id === N.par) || PARES[0];
+    const simDe = () => parDe().s;
 
-    // 1. Montar Smart Levels (se auto-monta como #nv-overlay en el body).
+    let lev = 20, modo = 'cruzada', tipo = 'market', oc = 'abierto', pctCap = 0;
+    let precio = 0, saldo = 0, posiciones = [];
+
+    /* ═══ 1. Smart Levels dentro de la celda, sin su banda ═══ */
     await abrirNiveles();
-    // 2. MOVERLO dentro de la celda de la gráfica (deja de ser una capa fixed).
-    const ov = document.getElementById('nv-overlay');
-    if (ov) document.getElementById('f-graf').appendChild(ov);
-    // Remedir la gráfica de Smart Levels tras moverla.
-    setTimeout(()=>window.dispatchEvent(new Event('resize')), 60);
-    setTimeout(()=>window.dispatchEvent(new Event('resize')), 400);
+    const ov = $('nv-overlay');
+    const graf = $('f-graf');
+    if (ov) graf.insertBefore(ov, $('f-ov'));
+    // nv-sel (ancla del picker de monedas) se mueve a mi selector.
+    const nvSel = $('nv-sel');
+    if (nvSel) $('f-coin').appendChild(nvSel);
+    $('f-coin').onclick = () => { if (nvSel) nvSel.click(); };
+    // Remedir la gráfica ya dentro de la celda.
+    [60, 300, 900].forEach((ms) => setTimeout(() => window.dispatchEvent(new Event('resize')), ms));
 
-    function precioActual(){ try{ if(window.N&&window.N.velas&&window.N.velas.length) return window.N.velas[window.N.velas.length-1].c; }catch(_){} return precio; }
-
-    // Barra de contrato: precio, cambio, máx/mín/vol 24h.
-    // Datos de la barra: mismos endpoints de Binance que ya usa el repo
-    // (api/v3/ticker/24hr). Nada inventado: precio, cambio, máx, mín, cantidad
-    // (base) y volumen (quote) salen todos de aquí.
-    async function tick(){
-      try{ const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol='+sim);
-        if(r.ok){ const j=await r.json();
-          precio=+j.lastPrice;
-          const chg=+j.priceChangePercent;
-          $('f-px').textContent=fmt(precio); $('f-px').style.color=chg>=0?'var(--up)':'var(--down)';
-          const ce=$('f-chg'); ce.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%'; ce.className='v '+(chg>=0?'up':'down');
-          $('f-mark').textContent=fmt(precio);                       // precio marcado ≈ último
-          $('f-index').textContent=fmt(+j.weightedAvgPrice);         // índice ≈ precio medio ponderado
-          $('f-hi').textContent=fmt(+j.highPrice);
-          $('f-lo').textContent=fmt(+j.lowPrice);
-          $('f-base').textContent=fmtV(+j.volume);                   // cantidad 24h en la moneda base
-          $('f-vol').textContent=fmtV(+j.quoteVolume);               // volumen 24h en USDT
-          // etiqueta de cantidad con el símbolo base
-          const baseId=(window.N&&window.N.par&&window.N.par.id)||sim.replace('USDT','');
-          $('f-basel').textContent='Cantidad 24h ('+baseId+')';
+    /* ═══ 2. Barra de datos (Binance ticker/24hr) ═══ */
+    let simActual = '';
+    const cgCache = () => { try { const c = JSON.parse(localStorage.getItem('mv-cg') || 'null'); return (c && c.d) || {}; } catch (_) { return {}; } };
+    async function logoPar() {
+      const p = parDe(); const ico = $('f-ico'); ico.textContent = p.id; ico.style.backgroundImage = '';
+      if (!p.cg) return;
+      let d = cgCache();
+      if (!d[p.cg]) { try { const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=' + p.cg); if (r.ok) { const j = await r.json(); if (j[0]) { d[p.cg] = { img: j[0].image, price: j[0].current_price, chg: j[0].price_change_percentage_24h }; try { localStorage.setItem('mv-cg', JSON.stringify({ t: Date.now(), d })); } catch (_) {} } } } catch (_) {} }
+      if (d[p.cg] && d[p.cg].img) { ico.style.backgroundImage = `url(${d[p.cg].img})`; ico.textContent = ''; }
+    }
+    async function tick() {
+      const p = parDe();
+      if (p.s !== simActual) { simActual = p.s; $('f-sym').textContent = p.s; $('f-cname').textContent = p.n || ''; $('f-basel').textContent = t('Cantidad 24h') + ' (' + p.id + ')'; logoPar(); }
+      try {
+        const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=' + p.s);
+        if (r.ok) {
+          const j = await r.json(); precio = +j.lastPrice; const chg = +j.priceChangePercent;
+          $('f-px').textContent = fmt(precio); $('f-px').classList.toggle('dn', chg < 0);
+          const ce = $('f-chg'); ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%'; ce.className = 'v ' + (chg >= 0 ? 'up' : 'dn');
+          $('f-mark').textContent = fmt(precio); $('f-index').textContent = fmt(+j.weightedAvgPrice);
+          $('f-hi').textContent = fmt(+j.highPrice); $('f-lo').textContent = fmt(+j.lowPrice);
+          $('f-base').textContent = fmtV(+j.volume); $('f-vol').textContent = fmtV(+j.quoteVolume);
+          if (tipo === 'market') $('p-price').placeholder = fmt(precio);
         }
-      }catch(_){}
-      // Sincronizar moneda + logo con Smart Levels si el usuario la cambia.
-      try{ if(window.N&&window.N.par&&window.N.par.s&&window.N.par.s!==sim){
-        sim=window.N.par.s; $('f-sym').textContent=(window.N.par.id||sim)+'/USDT';
-        if($('f-cname')) $('f-cname').textContent=window.N.par.n||'';
-        pintarLogo();
-
-    // El selector de moneda: se mueve nv-sel (invisible) sobre mi coin, para
-    // que su menú (menuPares, que se ancla a nv-sel) aparezca en el sitio
-    // correcto. Al hacer clic en mi coin, se dispara nv-sel.
-    setTimeout(()=>{
-      const ns=document.getElementById('nv-sel');
-      const fcoin=document.getElementById('f-coin');
-      if(ns&&fcoin){
-        // colocar nv-sel encima de mi coin, invisible pero como ancla.
-        ns.style.position='absolute';
-        const r=fcoin.getBoundingClientRect();
-        ns.style.left=r.left+'px'; ns.style.top=r.bottom+'px';
-        ns.style.opacity='0'; ns.style.pointerEvents='none';
-        fcoin.onclick=()=>{
-          // reposicionar el ancla por si cambió el layout
-          const rr=fcoin.getBoundingClientRect();
-          ns.style.left=rr.left+'px'; ns.style.top=rr.top+'px';
-          ns.click();
-        };
-      }
-    }, 600);
-      } }catch(_){}
-      refrescar();
+      } catch (_) {}
+      calc(); pintarPos();
     }
-    const _logoCache={};
-    async function pintarLogo(){
-      try{
-        const cg=(window.N&&window.N.par&&window.N.par.cg)||'bitcoin';
-        if(_logoCache[cg]){ $('f-ico').innerHTML='<img src="'+_logoCache[cg]+'">'; return; }
-        const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+cg);
-        if(r.ok){ const a=await r.json(); if(a[0]&&a[0].image){ _logoCache[cg]=a[0].image; $('f-ico').innerHTML='<img src="'+a[0].image+'">'; } }
-      }catch(_){}
-    }
-    pintarLogo();
-    tick(); setInterval(tick,3000);
+    tick(); setInterval(tick, 3000);
 
-    function refrescar(){
-      precio=precioActual()||precio;
-      const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
-      $('p-size').textContent=margen?fmt(margen*lev)+' USDT':'—';
-      $('p-liq').textContent=(precio&&margen)?'$'+fmt(liqDe(precio,lev,lado==='long')):'—';
-      const c=margen?fmt(margen)+' USDT':'0.00 USDT';
-      if($('p-cost-l'))$('p-cost-l').textContent=c;
-      if($('p-cost-s'))$('p-cost-s').textContent=c;
+    /* ═══ 3. Temporalidad (desplegable) ═══ */
+    const tfdd = $('f-tf');
+    $('f-tfcur').onclick = (e) => { e.stopPropagation(); tfdd.classList.toggle('open'); };
+    document.addEventListener('click', () => tfdd.classList.remove('open'));
+    const TFL = { '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1h', '4h': '4h', '1d': '1D', '1w': '1W' };
+    function ponerTf(tf) {
+      document.querySelectorAll('#f-tfmenu button').forEach((x) => x.classList.toggle('on', x.dataset.tf === tf));
+      $('f-tfcur').innerHTML = TFL[tf] + ' <span class="cv">▾</span>';
+      // Nativo: su botón recarga. Extra: se presta un botón nativo con el tf
+      // deseado (el handler lee data-ntf al hacer clic) y se restaura.
+      let b = document.querySelector('.nv-tf[data-ntf="' + tf + '"]');
+      if (b) { b.click(); return; }
+      b = document.querySelector('.nv-tf'); if (!b) { N.tf = tf; return; }
+      const orig = b.dataset.ntf; b.dataset.ntf = tf; b.click(); b.dataset.ntf = orig;
     }
-    setInterval(refrescar,1500);
+    document.querySelectorAll('#f-tfmenu button').forEach((b) => b.onclick = () => { ponerTf(b.dataset.tf); tfdd.classList.remove('open'); });
 
-    // Ventana explicativa genérica (como la de modo de margen).
-    function explicar(titulo, items){
-      const ov=document.createElement('div');
-      ov.style.cssText='position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:16px';
-      let h='<div style="position:absolute;inset:0;background:rgba(3,5,7,.7)"></div><div style="position:relative;width:100%;max-width:400px;background:#12161c;border:1px solid #2b3139;border-radius:18px;padding:20px"><div style="font-family:var(--disp);font-weight:800;font-size:18px;color:#eef1f6;text-align:center;margin-bottom:14px">'+titulo+'</div>';
-      items.forEach(it=>{ h+='<div style="background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:13px;margin-bottom:9px"><b style="display:block;color:#eef1f6;font-weight:800;font-size:15px;margin-bottom:5px">'+it[0]+'</b><span style="font-size:12.5px;color:#a9b2bd;line-height:1.5">'+it[1]+'</span></div>'; });
-      h+='</div>'; ov.innerHTML=h; document.body.appendChild(ov); ov.firstChild.onclick=()=>ov.remove();
-    }
-
-    document.querySelectorAll('.p-oc button').forEach(b=>b.onclick=()=>{
-      document.querySelectorAll('.p-oc button').forEach(x=>x.classList.toggle('on',x===b));
-      if(b.dataset.oc==='abierto') explicar('Open / Close',[['Open (Abrir)','Abre una posición nueva: entras al mercado en largo o corto con el capital y apalancamiento que definas.'],['Close (Cerrar)','Cierra una posición que ya tienes abierta, tomando la ganancia o pérdida acumulada hasta ese momento.']]);
-    });
-    document.querySelectorAll('.p-tabs button').forEach(b=>b.onclick=()=>{
-      document.querySelectorAll('.p-tabs button').forEach(x=>x.classList.toggle('on',x===b));
-      $('p-price-fld').style.display=(b.dataset.ord==='limit'||b.dataset.ord==='trigger')?'':'none';
-      if(b.dataset.ord==='trigger') explicar('Orden Activador (Trigger)',[['¿Qué es?','Una orden que solo se activa cuando el precio alcanza un nivel que tú marcas. Hasta entonces, queda en espera.'],['Para qué sirve','Entrar automáticamente si el mercado llega a cierto precio, sin tener que estar pendiente de la pantalla.']]);
-    });
-    $('p-range').oninput=e=>{ lev=+e.target.value; $('p-lev').textContent=lev+'×'; $('p-levbtn-v').textContent=lev+'×'; refrescar(); };
-    $('p-margen').oninput=refrescar;
-    document.querySelectorAll('.p-pcts button').forEach(b=>b.onclick=()=>{});
-    $('p-tpsl-tog').onclick=()=>{ const on=$('p-tpsl-chk').classList.toggle('on'); $('p-tpsl-box').classList.toggle('on',on); };
-    $('p-mode').onclick=()=>{
-      const ov2=document.createElement('div');
-      ov2.style.cssText='position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:16px';
-      ov2.innerHTML='<div style="position:absolute;inset:0;background:rgba(3,5,7,.7)"></div>'+
-        '<div style="position:relative;width:100%;max-width:400px;background:#12161c;border:1px solid #2b3139;border-radius:18px;padding:20px">'+
-        '<div style="font-family:var(--disp);font-weight:800;font-size:18px;color:#eef1f6;text-align:center;margin-bottom:14px">Modo de margen</div>'+
-        '<button data-m="aislado" style="display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:14px;margin-bottom:10px;cursor:pointer"><b style="display:block;color:#eef1f6;font-weight:800;font-size:15px;margin-bottom:5px">Aislado</b><span style="font-size:12.5px;color:#a9b2bd;line-height:1.5">El margen de esta posición está separado. Si se liquida, solo pierdes lo asignado a ella.</span></button>'+
-        '<button data-m="cruzado" style="display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:14px;cursor:pointer"><b style="display:block;color:#eef1f6;font-weight:800;font-size:15px;margin-bottom:5px">Cruzado</b><span style="font-size:12.5px;color:#a9b2bd;line-height:1.5">Todo tu saldo respalda la posición. Aguanta más, pero puedes perder todo el saldo.</span></button></div>';
-      document.body.appendChild(ov2);
-      ov2.firstChild.onclick=()=>ov2.remove();
-      ov2.querySelectorAll('[data-m]').forEach(o=>o.onclick=()=>{ modo=o.dataset.m; $('p-mode').textContent=modo==='aislado'?'Aislado':'Cruzado'; ov2.remove(); });
+    /* ═══ 4. Exportar SOLO la gráfica ═══ */
+    $('f-export').onclick = () => {
+      const cv = $('nv-cv'); if (!cv) return;
+      const out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height;
+      const g = out.getContext('2d'); g.fillStyle = '#0b0f16'; g.fillRect(0, 0, out.width, out.height); g.drawImage(cv, 0, 0);
+      const ovc = $('f-ov'); if (ovc && ovc.width) g.drawImage(ovc, 0, 0, out.width, out.height);
+      out.toBlob((blob) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = simDe() + '-' + (N.tf || '15m') + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, 'image/png');
     };
-    $('p-levbtn').onclick=()=>$('p-range').focus();
-    function ejec(l){
-      lado=l; refrescar();
-      const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
-      if(!margen){ $('p-margen').focus(); return; }
-      const b=l==='long'?$('p-long'):$('p-short'); const t=b.textContent;
-      b.textContent='Muy pronto — en desarrollo'; setTimeout(()=>{b.textContent=t;},1500);
-    }
-    $('p-long').onclick=()=>ejec('long');
-    $('p-short').onclick=()=>ejec('short');
-    document.querySelectorAll('#f-pos .ph button').forEach(b=>b.onclick=()=>{
-      document.querySelectorAll('#f-pos .ph button').forEach(x=>x.classList.toggle('on',x===b));
-      $('f-pos-body').textContent = b.dataset.t==='pos'?'No tienes posiciones abiertas.':b.dataset.t==='ord'?'No tienes órdenes abiertas.':'Sin historial.';
-    });
 
-    // Datos del usuario en el panel.
-    (function(){
-      const d=new Date();
-      if($('pu-date')) $('pu-date').textContent=d.toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'});
-      // wallet: si hay una cuenta conectada en el entorno.
-      try{ const acc=(window.ethereum&&window.ethereum.selectedAddress)||null;
-        if(acc){ const short=acc.slice(0,6)+'...'+acc.slice(-4);
-          if($('pu-wallet')) $('pu-wallet').textContent=short;
-          if($('f-barwallet')) $('f-barwallet').textContent=short;
+    /* ═══ 5. Panel ═══ */
+    function modal(titulo, items, onPick) {
+      const m = document.createElement('div'); m.className = 'fx-modal';
+      m.innerHTML = '<div class="bg"></div><div class="card"><h4>' + t(titulo) + '</h4>' + items.map((it) => '<button class="opt' + (it.on ? ' on' : '') + '" data-v="' + (it.v || '') + '"><b>' + t(it.b) + '</b><span>' + t(it.s) + '</span></button>').join('') + '</div>';
+      document.body.appendChild(m);
+      m.querySelector('.bg').onclick = () => m.remove();
+      m.querySelectorAll('.opt').forEach((o) => o.onclick = () => { if (onPick) onPick(o.dataset.v); m.remove(); });
+    }
+    $('p-mode').onclick = () => modal('Modo de margen', [
+      { b: 'Aislada', s: 'El margen de esta posición está separado del resto. Si se liquida, solo pierdes lo asignado a ella.', on: modo === 'aislada', v: 'aislada' },
+      { b: 'Cruzada', s: 'Todo tu saldo respalda la posición. Aguanta más antes de liquidarse, pero puedes perder todo el saldo disponible.', on: modo === 'cruzada', v: 'cruzada' }
+    ], (v) => { modo = v; $('p-mode').innerHTML = t(v === 'aislada' ? 'Aislada' : 'Cruzada') + ' <span class="cv">▾</span>'; });
+    $('p-levbtn').onclick = () => modal('Apalancamiento', [5, 10, 20, 50, 100, 200].map((x) => ({ b: x + '×', s: x <= 10 ? 'Riesgo bajo.' : x <= 20 ? 'Riesgo medio. Recomendado.' : x <= 50 ? 'Riesgo alto.' : 'Riesgo extremo.', on: lev === x, v: '' + x })), (v) => { setLev(+v); });
+    function setLev(v) { lev = v; $('p-lev').textContent = lev + '×'; $('p-levbtn-v').textContent = lev + '×'; $('p-range').value = lev; calc(); }
+    $('p-range').oninput = (e) => setLev(+e.target.value);
+    document.querySelectorAll('.p-oc button').forEach((b) => b.onclick = () => {
+      oc = b.dataset.oc; document.querySelectorAll('.p-oc button').forEach((x) => x.classList.toggle('on', x === b));
+      modal('Abierto / Cerrado', [
+        { b: 'Abierto', s: 'Abre una posición nueva: entras al mercado en largo o corto con el capital y apalancamiento que definas.', on: oc === 'abierto' },
+        { b: 'Cerrado', s: 'Cierra una posición que ya tienes abierta, tomando la ganancia o pérdida acumulada hasta ese momento.', on: oc === 'cerrado' }
+      ]);
+    });
+    document.querySelectorAll('.p-tabs button').forEach((b) => b.onclick = () => {
+      tipo = b.dataset.ord; document.querySelectorAll('.p-tabs button').forEach((x) => x.classList.toggle('on', x === b));
+      $('p-price').disabled = tipo === 'market'; $('p-price').placeholder = tipo === 'market' ? fmt(precio) : '0.00';
+      if (tipo === 'trigger') modal('Orden Activador', [
+        { b: '¿Qué es?', s: 'Una orden que solo se activa cuando el precio alcanza el nivel que tú marcas. Hasta entonces, queda en espera.', on: true },
+        { b: 'Para qué sirve', s: 'Entrar automáticamente si el mercado llega a cierto precio, sin tener que estar pendiente de la pantalla.' }
+      ]);
+    });
+    $('p-price').disabled = true;
+    $('p-pctr').oninput = (e) => { pctCap = +e.target.value; if (saldo > 0) { $('p-margen').value = (saldo * pctCap / 100).toFixed(2); calc(); } };
+    $('p-margen').oninput = calc;
+    $('p-tpsl-tog').onclick = () => { const on = $('p-tpsl-chk').classList.toggle('on'); $('p-tpsl-box').classList.toggle('on', on); };
+    function calc() {
+      const m = parseFloat(($('p-margen').value || '').replace(/,/g, '')) || 0;
+      const px = (tipo !== 'market' && parseFloat($('p-price').value)) || precio || N.precio || 0;
+      $('p-size').textContent = m ? fmt(m * lev) + ' USDT' : '—';
+      $('p-liq').textContent = (px && m) ? fmt(liqDe(px, lev, true)) + ' / ' + fmt(liqDe(px, lev, false)) : '—';
+      $('p-cost-l').textContent = m ? m.toFixed(2) : '0.0'; $('p-cost-s').textContent = m ? m.toFixed(2) : '0.0';
+      $('p-max-l').textContent = saldo ? (saldo * lev).toFixed(2) : '0.0'; $('p-max-s').textContent = saldo ? (saldo * lev).toFixed(2) : '0.0';
+    }
+    $('p-long').onclick = () => abrirPosicion('long', null);
+    $('p-short').onclick = () => abrirPosicion('short', null);
+
+    /* ═══ 6. Posiciones (local hasta el contrato) + TP/SL arrastrables ═══ */
+    function abrirPosicion(lado, pxEntrada) {
+      const m = parseFloat(($('p-margen').value || '').replace(/,/g, '')) || 0;
+      if (!m) { $('p-margen').focus(); $('p-margen').closest('.p-box').style.borderColor = 'var(--down)'; setTimeout(() => { $('p-margen').closest('.p-box').style.borderColor = ''; }, 1200); return; }
+      const px = pxEntrada || ((tipo !== 'market' && parseFloat($('p-price').value)) || precio || N.precio);
+      if (!px) return;
+      const esL = lado === 'long';
+      const tp = parseFloat($('p-tp').value) || (esL ? px * 1.02 : px * 0.98);
+      const sl = parseFloat($('p-sl').value) || (esL ? px * 0.99 : px * 1.01);
+      posiciones.push({ id: Date.now(), lado, px, m, lev, tp, sl, liq: liqDe(px, lev, esL), sim: simDe() });
+      pintarPos();
+    }
+    function cerrar(id) { posiciones = posiciones.filter((p) => p.id !== id); pintarPos(); }
+    $('f-closeall').onclick = () => { posiciones = []; pintarPos(); };
+    let tabPos = 'pos';
+    document.querySelectorAll('#f-pos .ph button[data-t]').forEach((b) => b.onclick = () => { tabPos = b.dataset.t; document.querySelectorAll('#f-pos .ph button[data-t]').forEach((x) => x.classList.toggle('on', x === b)); pintarPos(); });
+    function pintarPos() {
+      const ps = posiciones.filter((p) => p.sim === simDe());
+      $('f-pos-n').textContent = '(' + posiciones.length + ')'; $('f-ord-n').textContent = '(0)';
+      const body = $('f-pos-body');
+      if (tabPos === 'ord') { body.innerHTML = '<div class="pos-empty">' + t('No tienes órdenes abiertas.') + '</div>'; return; }
+      if (!posiciones.length) { body.innerHTML = '<div class="pos-empty">' + t('No tienes posiciones abiertas.') + '</div>'; return; }
+      body.innerHTML = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>' + t('Marca') + '</span><span>TP / SL</span><span>' + t('Liquidación') + '</span><span></span></div>' +
+        posiciones.map((p) => '<div class="pos-row"><span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span></span><span>' + fmt(p.m * p.lev) + ' USDT</span><span>' + fmt(p.px) + '</span><span>' + fmt(p.sim === simDe() ? (precio || p.px) : p.px) + '</span><span style="font-size:10.5px">' + fmt(p.tp) + ' / ' + fmt(p.sl) + '</span><span>' + fmt(p.liq) + '</span><button class="close" data-id="' + p.id + '">' + t('Cerrar') + '</button></div>').join('');
+      body.querySelectorAll('.close').forEach((b) => b.onclick = () => cerrar(+b.dataset.id));
+    }
+    pintarPos();
+
+    // Overlay: líneas de entrada (dorado), TP (verde) y SL (rojo) arrastrables.
+    const ovc = $('f-ov'), og = ovc.getContext('2d');
+    const yDe = (p) => { const g = N._geo; if (!g) return -1; return g.y1 - (p - g.pMin) / (g.pMax - g.pMin) * g.y1; };
+    const pDe = (y) => { const g = N._geo; if (!g) return 0; return g.pMin + (g.pMax - g.pMin) * ((g.y1 - y) / g.y1); };
+    function cvRect() { const cv = $('nv-cv'); return cv ? cv.getBoundingClientRect() : null; }
+    function dibOv() {
+      const cv = $('nv-cv'); if (!cv) { requestAnimationFrame(dibOv); return; }
+      const r = cvRect(), gr = graf.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const W = graf.clientWidth, H = graf.clientHeight;
+      if (ovc.width !== Math.round(W * dpr) || ovc.height !== Math.round(H * dpr)) { ovc.width = Math.round(W * dpr); ovc.height = Math.round(H * dpr); ovc.style.width = W + 'px'; ovc.style.height = H + 'px'; }
+      og.setTransform(dpr, 0, 0, dpr, 0, 0); og.clearRect(0, 0, W, H);
+      const ps = posiciones.filter((p) => p.sim === simDe());
+      if (ps.length && N._geo && r) {
+        const ox = r.left - gr.left, oy = r.top - gr.top, cw = r.width;
+        const linea = (p, col, txt, dash) => {
+          const y = yDe(p); if (y < 0 || y > r.height) return;
+          og.strokeStyle = col; og.lineWidth = 1.3; og.setLineDash(dash || []);
+          og.beginPath(); og.moveTo(ox, oy + y); og.lineTo(ox + cw - 62, oy + y); og.stroke(); og.setLineDash([]);
+          og.font = 'bold 10px ' + 'IBM Plex Mono, monospace'; const w = og.measureText(txt).width + 12;
+          og.fillStyle = col; og.beginPath(); og.roundRect(ox + 48, oy + y - 9, w, 18, 5); og.fill();
+          og.fillStyle = '#0b0e12'; og.textBaseline = 'middle'; og.fillText(txt, ox + 54, oy + y);
+        };
+        ps.forEach((p) => {
+          linea(p.px, '#E8B84B', (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '× ' + fmt(p.px));
+          linea(p.tp, '#2ebd85', 'TP ' + fmt(p.tp), [5, 4]);
+          linea(p.sl, '#f6465d', 'SL ' + fmt(p.sl), [5, 4]);
+          linea(p.liq, '#f6465d', 'LIQ ' + fmt(p.liq), [2, 4]);
+        });
+      }
+      requestAnimationFrame(dibOv);
+    }
+    requestAnimationFrame(dibOv);
+    // Arrastre de TP/SL: si el mousedown cae cerca de una línea, se toma el
+    // control y NO llega a Smart Levels (captura + stopImmediatePropagation).
+    let drag = null;
+    function engancharCv() {
+      const cv = $('nv-cv'); if (!cv || cv.dataset.futLista) return; cv.dataset.futLista = '1';
+      cv.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        const r = cv.getBoundingClientRect(); const y = e.clientY - r.top;
+        for (const p of posiciones.filter((q) => q.sim === simDe())) {
+          for (const k of ['tp', 'sl']) { if (Math.abs(yDe(p[k]) - y) < 7) { drag = { p, k }; e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId); return; } }
         }
-      }catch(_){}
+      }, true);
+      cv.addEventListener('pointermove', (e) => { if (!drag) return; const r = cv.getBoundingClientRect(); drag.p[drag.k] = pDe(e.clientY - r.top); e.stopImmediatePropagation(); }, true);
+      cv.addEventListener('pointerup', (e) => { if (!drag) return; const p = drag.p; drag = null; e.stopImmediatePropagation(); if ($('p-tpsl-chk').classList.contains('on')) { $('p-tp').value = fmt(p.tp).replace(/,/g, ''); $('p-sl').value = fmt(p.sl).replace(/,/g, ''); } pintarPos(); }, true);
+      // Clic derecho: menú de futuros (intercepta el de spot).
+      cv.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopImmediatePropagation(); abrirMenu(e.clientX, e.clientY, pDe(e.clientY - cv.getBoundingClientRect().top)); }, true);
+    }
+    setTimeout(engancharCv, 400); setTimeout(engancharCv, 1500);
+
+    /* ═══ 7. Menú de clic derecho (compacto) ═══ */
+    const cm = $('f-cm');
+    function abrirMenu(cx, cy, px) {
+      if (!px) return;
+      let cmLev = lev, cmPct = pctCap || 25;
+      const pct = () => [25, 50, 75, 100].map((x) => '<button data-p="' + x + '"' + (x === cmPct ? ' class="on"' : '') + '>' + x + '%</button>').join('');
+      const lv = () => [5, 10, 20, 50, 100, 200].map((x) => '<button data-l="' + x + '"' + (x === cmLev ? ' class="on"' : '') + '>' + x + '×</button>').join('');
+      cm.innerHTML = '<div class="hd"><b>' + fmt(px) + '</b><span>' + simDe() + '</span></div>' +
+        '<div class="chips"><span>%</span>' + pct() + '</div><div class="chips"><span>×</span>' + lv() + '</div>' +
+        '<div class="go"><button class="l">Long<small>' + fmt(px) + '</small></button><button class="s">Short<small>' + fmt(px) + '</small></button></div>';
+      cm.style.display = 'block';
+      let x = cx + 8, y = cy + 8; const w = 236, h = cm.offsetHeight;
+      if (x + w > window.innerWidth - 8) x = cx - w - 8; if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+      cm.style.left = Math.max(8, x) + 'px'; cm.style.top = Math.max(8, y) + 'px';
+      cm.querySelectorAll('[data-p]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); cmPct = +b.dataset.p; cm.querySelectorAll('[data-p]').forEach((x) => x.classList.toggle('on', x === b)); });
+      cm.querySelectorAll('[data-l]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); cmLev = +b.dataset.l; cm.querySelectorAll('[data-l]').forEach((x) => x.classList.toggle('on', x === b)); });
+      const go = (lado) => {
+        setLev(cmLev); pctCap = cmPct; $('p-pctr').value = cmPct;
+        if (saldo > 0) $('p-margen').value = (saldo * cmPct / 100).toFixed(2);
+        else if (!parseFloat($('p-margen').value)) { cm.style.display = 'none'; $('p-margen').focus(); $('p-margen').scrollIntoView({ block: 'center' }); return; }
+        cm.style.display = 'none'; abrirPosicion(lado, px);
+      };
+      cm.querySelector('.l').onclick = (e) => { e.stopPropagation(); go('long'); };
+      cm.querySelector('.s').onclick = (e) => { e.stopPropagation(); go('short'); };
+      setTimeout(() => document.addEventListener('click', () => { cm.style.display = 'none'; }, { once: true }), 10);
+      traducirTodo && traducirTodo();
+    }
+    cm.addEventListener('click', (e) => e.stopPropagation());
+
+    /* ═══ 8. Usuario ═══ */
+    (function () {
+      $('pu-date').textContent = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' });
+      const acc = (window.ethereum && window.ethereum.selectedAddress) || '';
+      if (acc) { const s = acc.slice(0, 6) + '…' + acc.slice(-4); $('pu-wallet').textContent = s; $('f-wallet').textContent = s; }
     })();
 
-    // Timeframes: cambian N.tf de Smart Levels y recargan (Binance acepta
-    // cualquier intervalo). NO toca el config de Smart Levels.
-    const tfdd=document.getElementById('f-tfdd');
-    document.getElementById('f-tfcur').onclick=(e)=>{ e.stopPropagation(); tfdd.classList.toggle('open'); };
-    document.addEventListener('click',()=>tfdd.classList.remove('open'));
-    const TFLABEL={'1m':'1m','5m':'5m','15m':'15m','30m':'30m','1h':'1h','4h':'4h','1d':'1D','1w':'1W'};
-    document.querySelectorAll('#f-tfmenu button').forEach(b=>b.onclick=()=>{
-      const tf=b.dataset.tf;
-      document.querySelectorAll('#f-tfmenu button').forEach(x=>x.classList.toggle('on',x===b));
-      document.getElementById('f-tfcur').innerHTML=TFLABEL[tf]+' <span class="cv">▾</span>';
-      tfdd.classList.remove('open');
-      const ntf=document.querySelector('.nv-tf[data-ntf="'+tf+'"]');
-      if(ntf){ ntf.click(); return; }
-      try{ if(window.N){ window.N.tf=tf; const c=document.querySelector('.nv-tf'); if(c){ c.click(); window.N.tf=tf; document.querySelectorAll('.nv-tf').forEach(x=>x.classList.remove('on')); } } }catch(_){}
-    });
-    // Exportar gráfica como imagen: dispara el botón de foto de Smart Levels.
-    const fexp=document.getElementById('f-export');
-    if(fexp) fexp.onclick=()=>{ const nf=document.getElementById('nv-foto'); if(nf) nf.click(); };
-
-    // ── Clic derecho de FUTUROS sobre la gráfica ──
-    // Intercepta el contextmenu del canvas de Smart Levels ANTES que el menú
-    // de spot (captura=true + stopPropagation), y muestra el de futuros.
-    setTimeout(()=>{
-      const cv=document.getElementById('nv-cv');
-      if(!cv) return;
-      cv.addEventListener('contextmenu',(e)=>{
-        e.preventDefault(); e.stopImmediatePropagation();
-        abrirMenuFut(e.clientX, e.clientY);
-      }, true);
-    }, 500);
-
-    function abrirMenuFut(cx, cy){
-      document.querySelectorAll('.fut-cm').forEach(x=>x.remove());
-      const px=precioActual();
-      if(!px) return;
-      // ¿arriba o abajo del precio? (para sugerir short/long)
-      const esLong = true; // el usuario elige en el menú
-      const m=document.createElement('div');
-      m.className='fut-cm';
-      m.style.cssText='position:fixed;z-index:22000;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #2b3139;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.6);padding:6px;min-width:210px;font-family:var(--disp)';
-      m.innerHTML=
-        '<div style="padding:8px 10px 6px;font-family:var(--mono);font-size:10px;color:#7d8794;text-transform:uppercase;letter-spacing:.05em">Abrir posición aquí · '+lev+'×</div>'+
-        '<button data-l="long" style="display:flex;justify-content:space-between;width:100%;padding:11px 12px;border:none;background:none;color:#eef1f6;font-weight:800;font-size:13px;cursor:pointer;border-radius:9px"><span style="color:#22c55e">▲ Abrir Long aquí</span><span style="font-family:var(--mono);color:#7d8794">$'+fmt(px)+'</span></button>'+
-        '<button data-l="short" style="display:flex;justify-content:space-between;width:100%;padding:11px 12px;border:none;background:none;color:#eef1f6;font-weight:800;font-size:13px;cursor:pointer;border-radius:9px"><span style="color:#f6465d">▼ Abrir Short aquí</span><span style="font-family:var(--mono);color:#7d8794">$'+fmt(px)+'</span></button>';
-      document.body.appendChild(m);
-      // posicionar sin salir de pantalla
-      let x=cx+6, y=cy+6;
-      const r=m.getBoundingClientRect();
-      if(x+r.width>window.innerWidth-8) x=cx-r.width-6;
-      if(y+r.height>window.innerHeight-8) y=window.innerHeight-r.height-8;
-      m.style.left=Math.max(6,x)+'px'; m.style.top=Math.max(6,y)+'px';
-      m.querySelectorAll('button').forEach(b=>{
-        b.onmouseenter=()=>b.style.background='rgba(255,255,255,.05)';
-        b.onmouseleave=()=>b.style.background='none';
-        b.onclick=()=>{
-          const l=b.dataset.l; m.remove();
-          // Usa el margen del panel; si no hay, pide al usuario que lo ponga.
-          const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
-          if(!margen){ $('p-margen').focus(); return; }
-          lado=l; refrescar();
-          // aviso (sin contrato aún)
-          const bb=l==='long'?$('p-long'):$('p-short'); const t=bb.textContent;
-          bb.textContent='Muy pronto — en desarrollo'; setTimeout(()=>{bb.textContent=t;},1500);
-        };
-      });
-      setTimeout(()=>document.addEventListener('click',()=>m.remove(),{once:true}),10);
-    }
-
-    refrescar();
-    try{ arrancarIdioma(); traducirTodo&&traducirTodo(); }catch(e){}
+    calc();
+    try { arrancarIdioma(); traducirTodo(); } catch (_) {}
   </script>
 </body>
 </html>
