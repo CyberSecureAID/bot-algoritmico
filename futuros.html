@@ -16,13 +16,13 @@
       --ink:#eef1f6;--ink2:#a9b2bd;--ink3:#7d8794;--ink4:#4a5561;--line:#232b36;
       --mono:'IBM Plex Mono',monospace;--disp:'Plus Jakarta Sans',sans-serif;
     }
-    html,body{margin:0;padding:0;background:#04060a;height:100%;overflow:hidden;font-family:var(--disp);color:var(--ink)}
+    html,body{margin:0;padding:0;background:#04060a;font-family:var(--disp);color:var(--ink)}
     *{box-sizing:border-box}
     ::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:#232b36;border-radius:4px}
 
     /* ── REJILLA SÓLIDA (sin capas): barra arriba, gráfica+panel, posiciones abajo ── */
     #f-app{height:100vh;height:100dvh;display:grid;
-      grid-template-rows:48px minmax(0,1fr) 168px;
+      grid-template-rows:48px minmax(0,1fr);
       grid-template-columns:minmax(0,1fr) 316px;background:#04060a}
 
     /* Barra de contrato (arriba, ambas columnas). */
@@ -47,7 +47,7 @@
     #f-graf #nv-overlay .nv-x{display:none !important}
 
     /* Panel de orden (derecha, filas 2-3 para ocupar toda la altura). */
-    #f-panel{grid-column:2;grid-row:2/4;background:#0e1218;border-left:1px solid var(--line);
+    #f-panel{grid-column:2;grid-row:2;background:#0e1218;border-left:1px solid var(--line);
       overflow-y:auto;padding:12px 12px 20px;display:flex;flex-direction:column;gap:10px}
     #f-panel .p-top{display:flex;gap:7px}
     #f-panel .p-top .chip{flex:1;height:33px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);
@@ -83,8 +83,9 @@
     #f-panel .p-btn.short{background:linear-gradient(180deg,#ff5c6c,#e03246)}
     #f-panel .p-btn:active{filter:brightness(1.08)}
 
-    /* Posiciones (abajo, solo columna izquierda). */
-    #f-pos{grid-column:1;grid-row:3;background:#0b0e12;border-top:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
+    /* Posiciones: DEBAJO de la pantalla completa (se ven con scroll de
+       página, no comprimen la gráfica — como en la foto). */
+    #f-pos{background:#0b0e12;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:340px}
     #f-pos .ph{display:flex;gap:18px;padding:10px 16px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0b0e12}
     #f-pos .ph button{background:none;border:none;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:12px;padding:0 0 9px;cursor:pointer;position:relative}
     #f-pos .ph button.on{color:var(--ink)}
@@ -152,14 +153,15 @@
       <button class="p-btn short" id="p-short">Abrir Corto</button>
     </div>
 
-    <div id="f-pos">
-      <div class="ph">
-        <button class="on" data-t="pos">Posiciones</button>
-        <button data-t="ord">Órdenes abiertas</button>
-        <button data-t="hist">Historial</button>
-      </div>
-      <div class="body" id="f-pos-body">No tienes posiciones abiertas.</div>
+  </div>
+
+  <div id="f-pos">
+    <div class="ph">
+      <button class="on" data-t="pos">Posiciones</button>
+      <button data-t="ord">Órdenes abiertas</button>
+      <button data-t="hist">Historial</button>
     </div>
+    <div class="body" id="f-pos-body">No tienes posiciones abiertas.</div>
   </div>
 
   <script type="module">
