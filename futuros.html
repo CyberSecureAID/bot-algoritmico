@@ -20,70 +20,78 @@
     *{box-sizing:border-box}
     ::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:#232b36;border-radius:4px}
 
-    /* ── OPCIÓN A: la gráfica de Smart Levels (con su barra de herramientas
-       real) ocupa la izquierda; el panel de futuros va a la derecha. ── */
+    /* ── REJILLA SÓLIDA (sin capas): barra arriba, gráfica+panel, posiciones abajo ── */
+    #f-app{height:100vh;height:100dvh;display:grid;
+      grid-template-rows:48px minmax(0,1fr) 168px;
+      grid-template-columns:minmax(0,1fr) 316px;background:#04060a}
 
-    /* Encoger el overlay de Smart Levels al área izquierda (deja 320px). */
-    #nv-overlay{right:320px !important;left:0 !important;top:0 !important;bottom:0 !important;
-      z-index:1 !important;padding:0 !important}
-    #nv-overlay .nv-c{max-width:none !important;width:100% !important;height:100% !important;
-      border-radius:0 !important;border:none !important}
-    /* Ocultar lo que NO va en futuros: las cápsulas/tarjetas de análisis y la
-       X de cerrar (se navega con "Volver"). La barra de herramientas (nv-tools)
-       y el gráfico se quedan. */
-    #nv-overlay .nv-caps{display:none !important}
-    #nv-overlay .nv-x{display:none !important}
+    /* Barra de contrato (arriba, ambas columnas). */
+    #f-bar{grid-column:1/3;grid-row:1;display:flex;align-items:center;gap:14px;padding:0 12px;
+      background:#0e1218;border-bottom:1px solid var(--line)}
+    #f-bar .bk{color:var(--ink2);text-decoration:none;font-size:16px;width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px}
+    #f-bar .bk:hover{color:var(--gold)}
+    #f-bar .sym{font-family:var(--disp);font-weight:800;font-size:16px;color:var(--ink)}
+    #f-bar .px{font-family:var(--mono);font-size:15px;color:var(--ink)}
+    #f-bar .chg{font-family:var(--mono);font-size:13px;font-weight:700}
+    #f-bar .chg.up{color:var(--up)} #f-bar .chg.down{color:var(--down)}
+    #f-bar .st{display:flex;flex-direction:column;line-height:1.2}
+    #f-bar .st b{font-family:var(--mono);font-size:12px;color:var(--ink)}
+    #f-bar .st span{font-family:var(--mono);font-size:8.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em}
 
-    /* Barra de volver, encima de todo. */
-    #f-volver{position:fixed;top:8px;left:8px;z-index:60;display:inline-flex;align-items:center;
-      background:rgba(16,20,26,.85);border:1px solid var(--line);border-radius:10px;padding:7px 12px}
-    #f-volver a{color:var(--ink);text-decoration:none;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:7px}
-    #f-volver a:hover{color:var(--gold)}
+    /* Celda de la gráfica (Smart Levels se mueve aquí dentro). */
+    #f-graf{grid-column:1;grid-row:2;position:relative;overflow:hidden;border-right:1px solid var(--line);background:#0a0d12}
+    /* Smart Levels dentro de la celda: NO fixed, ocupa la celda. */
+    #f-graf #nv-overlay{position:absolute !important;inset:0 !important;z-index:auto !important;padding:0 !important}
+    #f-graf #nv-overlay .nv-c{max-width:none !important;width:100% !important;height:100% !important;border-radius:0 !important;border:none !important}
+    #f-graf #nv-overlay .nv-caps{display:none !important}
+    #f-graf #nv-overlay .nv-x{display:none !important}
 
-    /* Panel de futuros, columna derecha fija. */
-    #f-panel{position:fixed;top:0;right:0;bottom:0;width:320px;z-index:50;background:#0e1218;
-      border-left:1px solid var(--line);overflow-y:auto;padding:14px 13px 24px;display:flex;flex-direction:column;gap:11px}
+    /* Panel de orden (derecha, filas 2-3 para ocupar toda la altura). */
+    #f-panel{grid-column:2;grid-row:2/4;background:#0e1218;border-left:1px solid var(--line);
+      overflow-y:auto;padding:12px 12px 20px;display:flex;flex-direction:column;gap:10px}
     #f-panel .p-top{display:flex;gap:7px}
-    #f-panel .p-top .chip{flex:1;height:34px;border-radius:9px;border:1px solid var(--line);background:rgba(10,14,19,.55);
+    #f-panel .p-top .chip{flex:1;height:33px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);
       color:var(--ink2);font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
     #f-panel .p-top .chip b{color:var(--gold);font-family:var(--disp)}
-    #f-panel .p-buy2{display:flex;gap:7px}
-    #f-panel .p-buy2 button{flex:1;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(10,14,19,.55);color:var(--ink2);font-weight:700;font-size:12px;cursor:pointer}
-    #f-panel .p-buy2 button.on{background:rgba(34,197,94,.14);color:var(--up);border-color:rgba(34,197,94,.4)}
     #f-panel .p-tabs{display:flex;border-bottom:1px solid var(--line)}
-    #f-panel .p-tabs button{flex:1;background:none;border:none;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:13px;padding:9px 0;cursor:pointer;position:relative}
+    #f-panel .p-tabs button{flex:1;background:none;border:none;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:13px;padding:8px 0;cursor:pointer;position:relative}
     #f-panel .p-tabs button.on{color:var(--ink)}
-    #f-panel .p-tabs button.on::after{content:"";position:absolute;left:20%;right:20%;bottom:-1px;height:2px;background:var(--gold)}
+    #f-panel .p-tabs button.on::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:2px;background:var(--gold)}
     #f-panel .p-avbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
     #f-panel .p-avbl span{color:var(--ink3)} #f-panel .p-avbl b{color:var(--ink)}
-    #f-panel .p-lbl{font-family:var(--mono);font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-    #f-panel .p-box{display:flex;align-items:center;background:rgba(10,14,19,.55);border:1px solid var(--line);border-radius:10px;padding:0 12px;height:44px}
-    #f-panel .p-box input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:16px}
+    #f-panel .p-lbl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+    #f-panel .p-box{display:flex;align-items:center;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:0 11px;height:42px}
+    #f-panel .p-box input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:15px}
     #f-panel .p-box input::placeholder{color:var(--ink4)} #f-panel .p-box .u{font-family:var(--disp);font-weight:700;font-size:11px;color:var(--ink2)}
-    #f-panel .p-box .tl{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-right:7px}
-    #f-panel .p-pcts{display:flex;gap:6px;margin-top:8px}
-    #f-panel .p-pcts button{flex:1;height:26px;border-radius:7px;border:1px solid var(--line);background:rgba(10,14,19,.5);color:var(--ink3);font-family:var(--mono);font-size:10.5px;font-weight:700;cursor:pointer}
-    #f-panel .p-lev-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-    #f-panel .p-lev-val{font-family:var(--disp);font-weight:800;font-size:16px;color:var(--gold)}
+    #f-panel .p-box .tl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-right:6px}
+    #f-panel .p-pcts{display:flex;gap:5px;margin-top:7px}
+    #f-panel .p-pcts button{flex:1;height:25px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink3);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer}
+    #f-panel .p-lev-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+    #f-panel .p-lev-val{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--gold)}
     #f-panel input[type=range]{width:100%;accent-color:var(--gold);cursor:pointer}
-    #f-panel .p-lev-marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--ink4);margin-top:2px}
+    #f-panel .p-lev-marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;color:var(--ink4);margin-top:2px}
     #f-panel .p-tpsl-h{display:flex;align-items:center;gap:8px;cursor:pointer}
-    #f-panel .p-chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--line);display:grid;place-items:center;flex:0 0 auto}
-    #f-panel .p-chk.on{border-color:var(--gold);background:var(--gold)} #f-panel .p-chk.on::after{content:"✓";font-size:11px;color:#241900;font-weight:800}
-    #f-panel .p-tpsl-h span:last-child{font-size:12.5px;color:var(--ink);font-weight:600}
-    #f-panel .p-tpsl-box{display:none;flex-direction:column;gap:7px} #f-panel .p-tpsl-box.on{display:flex}
-    #f-panel .p-info{display:flex;flex-direction:column;gap:5px;padding:10px 12px;background:rgba(10,14,19,.4);border:1px solid var(--line);border-radius:11px}
-    #f-panel .p-info .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
+    #f-panel .p-chk{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line);display:grid;place-items:center;flex:0 0 auto}
+    #f-panel .p-chk.on{border-color:var(--gold);background:var(--gold)} #f-panel .p-chk.on::after{content:"✓";font-size:10px;color:#241900;font-weight:800}
+    #f-panel .p-tpsl-h span:last-child{font-size:12px;color:var(--ink);font-weight:600}
+    #f-panel .p-tpsl-box{display:none;flex-direction:column;gap:6px} #f-panel .p-tpsl-box.on{display:flex}
+    #f-panel .p-info{display:flex;flex-direction:column;gap:4px;padding:9px 11px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px}
+    #f-panel .p-info .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px}
     #f-panel .p-info .r span{color:var(--ink3)} #f-panel .p-info .r b{color:var(--ink)} #f-panel .p-info .r b.liq{color:var(--down)}
-    #f-panel .p-btn{height:46px;border-radius:12px;border:none;font-family:var(--disp);font-weight:800;font-size:15px;cursor:pointer;color:#fff}
+    #f-panel .p-btn{height:44px;border-radius:11px;border:none;font-family:var(--disp);font-weight:800;font-size:14px;cursor:pointer;color:#fff}
     #f-panel .p-btn.long{background:linear-gradient(180deg,#34d98a,#12b06a)}
     #f-panel .p-btn.short{background:linear-gradient(180deg,#ff5c6c,#e03246)}
     #f-panel .p-btn:active{filter:brightness(1.08)}
-    #f-panel .p-cost{display:flex;flex-direction:column;gap:4px;padding:9px 11px;background:rgba(10,14,19,.4);border:1px solid var(--line);border-radius:10px}
-    #f-panel .p-cost .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
-    #f-panel .p-cost .r span{color:var(--ink3)} #f-panel .p-cost .r b{color:var(--ink)}
 
-    @media(max-width:920px){#f-panel{position:static;width:100%;border-left:none}#nv-overlay{right:0 !important}}
+    /* Posiciones (abajo, solo columna izquierda). */
+    #f-pos{grid-column:1;grid-row:3;background:#0b0e12;border-top:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
+    #f-pos .ph{display:flex;gap:18px;padding:10px 16px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0b0e12}
+    #f-pos .ph button{background:none;border:none;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:12px;padding:0 0 9px;cursor:pointer;position:relative}
+    #f-pos .ph button.on{color:var(--ink)}
+    #f-pos .ph button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
+    #f-pos .body{flex:1;overflow-y:auto;padding:14px 16px;font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center}
+
+    @media(max-width:920px){#f-app{grid-template-columns:1fr}#f-panel,#f-pos{grid-column:1}}
   </style>
 </head>
 <body>
@@ -95,45 +103,62 @@
   }catch(_){}})();
   </script>
 
-  <div id="f-volver"><a href="index.html">← Volver</a></div>
+  <div id="f-app">
+    <div id="f-bar">
+      <a class="bk" href="index.html" title="Volver">←</a>
+      <span class="sym" id="f-sym">BTC/USDT</span>
+      <span class="px" id="f-px">—</span>
+      <span class="chg" id="f-chg"></span>
+      <div class="st" style="margin-left:auto"><b id="f-hi">—</b><span>Máx 24h</span></div>
+      <div class="st"><b id="f-lo">—</b><span>Mín 24h</span></div>
+      <div class="st"><b id="f-vol">—</b><span>Vol 24h</span></div>
+    </div>
 
-  <div id="f-panel">
-    <div class="p-top">
-      <button class="chip" id="p-mode" data-mode="cruzado">Cruzado</button>
-      <button class="chip" id="p-levbtn">Apalanc. <b id="p-levbtn-v">10×</b></button>
+    <div id="f-graf"></div>
+
+    <div id="f-panel">
+      <div class="p-top">
+        <button class="chip" id="p-mode" data-mode="cruzado">Cruzado</button>
+        <button class="chip" id="p-levbtn">Apalanc. <b id="p-levbtn-v">10×</b></button>
+      </div>
+      <div class="p-tabs">
+        <button class="on" data-ord="market">Mercado</button>
+        <button data-ord="limit">Límite</button>
+      </div>
+      <div class="p-avbl"><span>Disponible</span><b>— USDT</b></div>
+      <div id="p-price-fld" style="display:none">
+        <div class="p-box"><span class="tl">PRECIO</span><input id="p-price-in" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div>
+      </div>
+      <div>
+        <div class="p-lbl">Cantidad</div>
+        <div class="p-box"><input id="p-margen" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div>
+        <div class="p-pcts"><button data-pct="25">25%</button><button data-pct="50">50%</button><button data-pct="75">75%</button><button data-pct="100">100%</button></div>
+      </div>
+      <div>
+        <div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">10×</span></div>
+        <input type="range" id="p-range" min="1" max="200" value="10">
+        <div class="p-lev-marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div>
+      </div>
+      <div class="p-tpsl-h" id="p-tpsl-tog"><span class="p-chk" id="p-tpsl-chk"></span><span>TP/SL</span></div>
+      <div class="p-tpsl-box" id="p-tpsl-box">
+        <div class="p-box"><span class="tl">TP</span><input id="p-tp" inputmode="decimal" placeholder="Take-profit"><span class="u">USDT</span></div>
+        <div class="p-box"><span class="tl">SL</span><input id="p-sl" inputmode="decimal" placeholder="Stop-loss"><span class="u">USDT</span></div>
+      </div>
+      <div class="p-info">
+        <div class="r"><span>Tamaño de posición</span><b id="p-size">—</b></div>
+        <div class="r"><span>Precio de liquidación</span><b class="liq" id="p-liq">—</b></div>
+      </div>
+      <button class="p-btn long" id="p-long">Abrir Largo</button>
+      <button class="p-btn short" id="p-short">Abrir Corto</button>
     </div>
-    <div class="p-tabs">
-      <button class="on" data-ord="market">Mercado</button>
-      <button data-ord="limit">Límite</button>
-    </div>
-    <div class="p-avbl"><span>Disponible</span><b>— USDT</b></div>
-    <div class="p-field" id="p-price-fld" style="display:none">
-      <div class="p-box"><span class="tl">PRECIO</span><input id="p-price-in" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div>
-    </div>
-    <div>
-      <div class="p-lbl">Cantidad</div>
-      <div class="p-box"><input id="p-margen" inputmode="decimal" placeholder="0.00"><span class="u">USDT</span></div>
-      <div class="p-pcts"><button data-pct="25">25%</button><button data-pct="50">50%</button><button data-pct="75">75%</button><button data-pct="100">100%</button></div>
-    </div>
-    <div>
-      <div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">10×</span></div>
-      <input type="range" id="p-range" min="1" max="200" value="10">
-      <div class="p-lev-marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div>
-    </div>
-    <div class="p-tpsl-h" id="p-tpsl-tog"><span class="p-chk" id="p-tpsl-chk"></span><span>TP/SL</span></div>
-    <div class="p-tpsl-box" id="p-tpsl-box">
-      <div class="p-box"><span class="tl">TP</span><input id="p-tp" inputmode="decimal" placeholder="Take-profit"><span class="u">USDT</span></div>
-      <div class="p-box"><span class="tl">SL</span><input id="p-sl" inputmode="decimal" placeholder="Stop-loss"><span class="u">USDT</span></div>
-    </div>
-    <div class="p-info">
-      <div class="r"><span>Tamaño de posición</span><b id="p-size">—</b></div>
-      <div class="r"><span>Precio de liquidación</span><b class="liq" id="p-liq">—</b></div>
-    </div>
-    <button class="p-btn long" id="p-long">Abrir Largo</button>
-    <button class="p-btn short" id="p-short">Abrir Corto</button>
-    <div class="p-cost">
-      <div class="r"><span>Coste (Largo)</span><b id="p-cost-l">0.00 USDT</b></div>
-      <div class="r"><span>Coste (Corto)</span><b id="p-cost-s">0.00 USDT</b></div>
+
+    <div id="f-pos">
+      <div class="ph">
+        <button class="on" data-t="pos">Posiciones</button>
+        <button data-t="ord">Órdenes abiertas</button>
+        <button data-t="hist">Historial</button>
+      </div>
+      <div class="body" id="f-pos-body">No tienes posiciones abiertas.</div>
     </div>
   </div>
 
@@ -141,24 +166,43 @@
     import { abrirNiveles } from './assets/js/niveles.js?v=126';
     import { arrancarIdioma, traducirTodo } from './assets/js/idioma.js?v=155';
 
-    let lado='long', lev=10, modo='cruzado', precio=0;
+    let lado='long', lev=10, modo='cruzado', precio=0, sim='BTCUSDT';
     const $ = (id)=>document.getElementById(id);
     const fmt = (p)=> !p?'—':(p>=1000?p.toLocaleString('en-US',{maximumFractionDigits:1}):p>=1?p.toFixed(2):p.toPrecision(5));
+    const fmtV = (v)=> v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':(''+Math.round(v));
     function liqDe(e,l,esL){const f=0.75;return esL?e*(1-f/l):e*(1+f/l);}
 
-    // Montar la gráfica de Smart Levels (con su barra de herramientas real).
+    // 1. Montar Smart Levels (se auto-monta como #nv-overlay en el body).
     await abrirNiveles();
+    // 2. MOVERLO dentro de la celda de la gráfica (deja de ser una capa fixed).
+    const ov = document.getElementById('nv-overlay');
+    if (ov) document.getElementById('f-graf').appendChild(ov);
+    // Remedir la gráfica de Smart Levels tras moverla.
+    setTimeout(()=>window.dispatchEvent(new Event('resize')), 60);
+    setTimeout(()=>window.dispatchEvent(new Event('resize')), 400);
 
-    // Leer el precio actual del estado de Smart Levels.
     function precioActual(){ try{ if(window.N&&window.N.velas&&window.N.velas.length) return window.N.velas[window.N.velas.length-1].c; }catch(_){} return precio; }
+
+    // Barra de contrato: precio, cambio, máx/mín/vol 24h.
+    async function tick(){
+      try{ const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol='+sim);
+        if(r.ok){ const j=await r.json(); precio=+j.lastPrice;
+          $('f-px').textContent='$'+fmt(precio);
+          const ce=$('f-chg'); const chg=+j.priceChangePercent; ce.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%'; ce.className='chg '+(chg>=0?'up':'down');
+          $('f-hi').textContent=fmt(+j.highPrice); $('f-lo').textContent=fmt(+j.lowPrice); $('f-vol').textContent=fmtV(+j.quoteVolume);
+        }
+      }catch(_){}
+      // Sincronizar el símbolo con el de Smart Levels si el usuario lo cambia ahí.
+      try{ if(window.N&&window.N.par&&window.N.par.s&&window.N.par.s!==sim){ sim=window.N.par.s; $('f-sym').textContent=(window.N.par.id||sim)+'/USDT'; } }catch(_){}
+      refrescar();
+    }
+    tick(); setInterval(tick,3000);
 
     function refrescar(){
       precio=precioActual()||precio;
       const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
       $('p-size').textContent=margen?fmt(margen*lev)+' USDT':'—';
       $('p-liq').textContent=(precio&&margen)?'$'+fmt(liqDe(precio,lev,lado==='long')):'—';
-      const c=margen?fmt(margen)+' USDT':'0.00 USDT';
-      $('p-cost-l').textContent=c; $('p-cost-s').textContent=c;
     }
     setInterval(refrescar,1500);
 
@@ -171,16 +215,16 @@
     document.querySelectorAll('.p-pcts button').forEach(b=>b.onclick=()=>{});
     $('p-tpsl-tog').onclick=()=>{ const on=$('p-tpsl-chk').classList.toggle('on'); $('p-tpsl-box').classList.toggle('on',on); };
     $('p-mode').onclick=()=>{
-      const ov=document.createElement('div');
-      ov.style.cssText='position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;padding:16px';
-      ov.innerHTML='<div style="position:absolute;inset:0;background:rgba(3,5,7,.7)"></div>'+
+      const ov2=document.createElement('div');
+      ov2.style.cssText='position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:16px';
+      ov2.innerHTML='<div style="position:absolute;inset:0;background:rgba(3,5,7,.7)"></div>'+
         '<div style="position:relative;width:100%;max-width:400px;background:#12161c;border:1px solid #2b3139;border-radius:18px;padding:20px">'+
         '<div style="font-family:var(--disp);font-weight:800;font-size:18px;color:#eef1f6;text-align:center;margin-bottom:14px">Modo de margen</div>'+
-        '<button data-m="aislado" style="display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:14px;margin-bottom:10px;cursor:pointer"><b style="display:block;color:#eef1f6;font-family:var(--disp);font-weight:800;font-size:15px;margin-bottom:5px">Aislado</b><span style="font-size:12.5px;color:#a9b2bd;line-height:1.5">El margen de esta posición está separado. Si se liquida, solo pierdes lo asignado a ella.</span></button>'+
-        '<button data-m="cruzado" style="display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:14px;cursor:pointer"><b style="display:block;color:#eef1f6;font-family:var(--disp);font-weight:800;font-size:15px;margin-bottom:5px">Cruzado</b><span style="font-size:12.5px;color:#a9b2bd;line-height:1.5">Todo tu saldo respalda la posición. Aguanta más, pero puedes perder todo el saldo.</span></button></div>';
-      document.body.appendChild(ov);
-      ov.firstChild.onclick=()=>ov.remove();
-      ov.querySelectorAll('[data-m]').forEach(o=>o.onclick=()=>{ modo=o.dataset.m; $('p-mode').textContent=modo==='aislado'?'Aislado':'Cruzado'; ov.remove(); });
+        '<button data-m="aislado" style="display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:14px;margin-bottom:10px;cursor:pointer"><b style="display:block;color:#eef1f6;font-weight:800;font-size:15px;margin-bottom:5px">Aislado</b><span style="font-size:12.5px;color:#a9b2bd;line-height:1.5">El margen de esta posición está separado. Si se liquida, solo pierdes lo asignado a ella.</span></button>'+
+        '<button data-m="cruzado" style="display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:14px;cursor:pointer"><b style="display:block;color:#eef1f6;font-weight:800;font-size:15px;margin-bottom:5px">Cruzado</b><span style="font-size:12.5px;color:#a9b2bd;line-height:1.5">Todo tu saldo respalda la posición. Aguanta más, pero puedes perder todo el saldo.</span></button></div>';
+      document.body.appendChild(ov2);
+      ov2.firstChild.onclick=()=>ov2.remove();
+      ov2.querySelectorAll('[data-m]').forEach(o=>o.onclick=()=>{ modo=o.dataset.m; $('p-mode').textContent=modo==='aislado'?'Aislado':'Cruzado'; ov2.remove(); });
     };
     $('p-levbtn').onclick=()=>$('p-range').focus();
     function ejec(l){
@@ -192,6 +236,10 @@
     }
     $('p-long').onclick=()=>ejec('long');
     $('p-short').onclick=()=>ejec('short');
+    document.querySelectorAll('#f-pos .ph button').forEach(b=>b.onclick=()=>{
+      document.querySelectorAll('#f-pos .ph button').forEach(x=>x.classList.toggle('on',x===b));
+      $('f-pos-body').textContent = b.dataset.t==='pos'?'No tienes posiciones abiertas.':b.dataset.t==='ord'?'No tienes órdenes abiertas.':'Sin historial.';
+    });
 
     refrescar();
     try{ arrancarIdioma(); traducirTodo&&traducirTodo(); }catch(e){}
