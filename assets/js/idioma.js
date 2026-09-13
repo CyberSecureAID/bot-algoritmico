@@ -89,6 +89,14 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Cambio 24h': '24h Change',
+    'Precio marcado': 'Mark Price',
+    'Precio índice': 'Index Price',
+    'Máximo 24h': '24h High',
+    'Mínimo 24h': '24h Low',
+    'Cantidad 24h': '24h Volume',
+    'Volumen 24h (USDT)': '24h Volume (USDT)',
+    'Financiación': 'Funding',
     'Coste (Largo)': 'Cost (Long)',
     'Coste (Corto)': 'Cost (Short)',
     'Abrir Largo': 'Open Long',
