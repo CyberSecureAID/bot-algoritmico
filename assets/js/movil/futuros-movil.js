@@ -13,11 +13,12 @@
 
 import { abrirPicker } from './picker.js?v=1';
 import { IC } from './iconos.js?v=1';
-import { abrirHistorialMovil } from './operar.js?v=2';
-import { t } from '../idioma.js?v=159';
+import { abrirHistorialMovil } from './operar.js?v=3';
+import { abrirAlerta } from './alerta.js?v=1';
+import { t } from '../idioma.js?v=160';
 
 let _pares = [], _par = null;
-let _tipo = 'market', _modo = 'cruzada', _lev = 20, _oc = 'abierto';
+let _tipo = 'market', _modo = 'cruzada', _lev = 20;
 let _libro = { asks: [], bids: [], precio: null, chg: null };
 let _ws = null, _wsPar = null, _css = false, _pos = [];
 const LOGO_ESP = { EUR: 'https://flagcdn.com/w80/eu.png', GBP: 'https://flagcdn.com/w80/gb.png', PAXG: 'https://assets.coingecko.com/coins/images/9519/small/paxgold.png' };
@@ -101,9 +102,28 @@ function estilos() {
   #fx .prow .side{font-weight:800} #fx .prow .side.long{color:var(--up)} #fx .prow .side.short{color:var(--down)}
   #fx .prow .x{padding:5px 9px;border:1px solid rgba(246,70,93,.3);border-radius:7px;color:var(--down);background:rgba(246,70,93,.1);font-weight:700}
 
+  #fx input,#fx button{touch-action:manipulation}
+  #fx .fld input{font-size:16px}
+  #fx .fld .mkt{flex:1;display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono';font-size:13px;color:var(--ink)} #fx .fld .mkt i{width:7px;height:7px;border-radius:50%;background:var(--up)} #fx .fld .mkt em{font-style:normal;font-size:10px;color:var(--mut)}
+  #fx .det{display:flex;justify-content:space-between;align-items:center;background:none;border:1px solid var(--line);border-radius:9px;color:var(--mut);font-family:'IBM Plex Mono';font-size:10.5px;padding:7px 10px}
+  #fx .det i{font-style:normal;transition:transform .15s} #fx .det.on i{transform:rotate(180deg)}
+  #fx .cm{display:none} #fx .cm.on{display:grid}
+  #fx .btabs .hist{margin-left:auto;width:30px;height:26px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);display:grid;place-items:center;padding:0;margin-bottom:6px}
+  #fx .btabs .hist svg{width:15px;height:15px}
   .fxpop{position:fixed;inset:0;z-index:10350;display:flex;align-items:flex-end}
+  .fxpop.fxc{align-items:center;justify-content:center;padding:18px}
+  .fxpop.fxc .c{border-radius:18px;border:1px solid #2b3340;max-width:380px;padding:18px 16px 16px}
+  .fxpop .c.lev .lv{text-align:center;font-weight:800;font-size:30px;color:var(--mv-gold,#E8B84B);margin:2px 0 8px}
+  .fxpop .c.lev input[type=range]{width:100%;accent-color:var(--mv-gold,#E8B84B)}
+  .fxpop .c.lev .mk{display:flex;justify-content:space-between;font-family:'IBM Plex Mono';font-size:9px;color:#8b96a3;margin-top:2px}
+  .fxpop .c.lev .rows{display:flex;flex-direction:column;gap:6px;margin-top:14px;padding:11px 12px;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:12px;font-family:'IBM Plex Mono';font-size:11.5px}
+  .fxpop .c.lev .rows div{display:flex;justify-content:space-between} .fxpop .c.lev .rows span{color:#8b96a3} .fxpop .c.lev .rows b{color:#eef1f6} .fxpop .c.lev .rows b.dn{color:#f6465d}
+  .fxpop .c.lev .note{margin:10px 2px 0;font-size:11.5px;line-height:1.45;color:#8b96a3}
+  .fxpop .c.lev .ok{width:100%;height:44px;margin-top:12px;border:none;border-radius:12px;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#241900;font-weight:800;font-size:15px}
   .fxpop .bg{position:absolute;inset:0;background:rgba(3,5,7,.65);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-  .fxpop .c{position:relative;width:100%;background:#0e1218;border-top:1px solid #232b36;border-radius:20px 20px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+  .fxpop .c{position:relative;width:100%;background:#0e1218;border-top:1px solid #232b36;border-radius:20px 20px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px));animation:fxin .18s ease both}
+  @keyframes fxin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #fx{animation:fxin .2s ease both}
   .fxpop h4{margin:0 0 12px;text-align:center;font-weight:800;font-size:17px;color:#eef1f6}
   .fxpop .opt{display:block;width:100%;text-align:left;background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:13px;margin-bottom:9px;color:#eef1f6}
   .fxpop .opt.on{border-color:var(--mv-gold,#E8B84B);background:rgba(232,184,75,.08)}
@@ -130,7 +150,7 @@ export async function pintarFuturos(host, api) {
   estilos();
   if (!_pares.length) { try { const c = await import('../niveles/config.js?v=1'); _pares = (c.PARES || []).slice(); } catch (_) {} }
   if (!_par) _par = _pares.find((p) => p.id === 'BTC') || _pares[0] || { id: 'BTC', s: 'BTCUSDT', n: 'Bitcoin' };
-  const TYP = { market: 'Mercado', limit: 'Límite', trigger: 'Activador' };
+  const TYP = { market: 'Mercado', limit: 'Límite' };
 
   host.innerHTML = `
   <div id="fx">
@@ -138,34 +158,36 @@ export async function pintarFuturos(host, api) {
       <div class="coin" id="fx-coin"><span class="lg" id="fx-lg">${esc(_par.id.slice(0, 3))}</span><b id="fx-sym">${esc(_par.s)}</b><span class="cv">▼</span></div>
       <span class="px" id="fx-hpx">—</span>
       <div class="ics">
-        <button id="fx-hist" title="${t('Historial')}">${IC.clock}</button>
-        <button id="fx-chart" title="${t('Gráfica')}">${IC.candles}</button>
+        <button class="mv-ico-btn" id="fx-alert" title="${t('Alertas de precio')}">${IC.bell}</button>
+        <button class="mv-ico-btn" id="fx-support" title="${t('Soporte')}">${IC.support}</button>
+        <button class="mv-ico-btn" id="fx-bots" title="Bots">${IC.bot}</button>
       </div>
     </div>
 
     <div class="main">
       <div class="form">
         <div class="r2"><button id="fx-mode">${t('Cruzada')} <span class="cv">▾</span></button><button id="fx-lev"><b id="fx-levv">${_lev}×</b> <span class="cv">▾</span></button></div>
-        <div class="oc"><button class="on" data-oc="abierto">${t('Abierto')}</button><button data-oc="cerrado">${t('Cerrado')}</button></div>
         <div class="typ" id="fx-typ"><button class="cur" id="fx-typcur">${t('Mercado')} <span class="cv">▾</span></button>
-          <div class="menu"><button class="on" data-t="market">${t('Mercado')}</button><button data-t="limit">${t('Límite')}</button><button data-t="trigger">${t('Activador')}</button></div></div>
+          <div class="menu"><button class="on" data-t="market">${t('Mercado')}</button><button data-t="limit">${t('Límite')}</button></div></div>
         <div class="avbl"><span>${t('Disponible')}</span><b id="fx-avbl">0.0000 USDT</b></div>
-        <div><div class="lbl">${t('Precio')}</div><div class="fld"><input id="fx-price" inputmode="decimal" placeholder="—" disabled><span class="u">USDT</span></div></div>
+        <div><div class="lbl">${t('Precio')}</div><div class="fld"><span class="mkt" id="fx-mkt"><i></i><b id="fx-mkt-v">—</b><em>${t('Mercado')}</em></span><input id="fx-price" inputmode="decimal" placeholder="0.00" style="display:none"><span class="u">USDT</span></div></div>
         <div><div class="lbl">${t('Cantidad')}</div><div class="fld"><input id="fx-amt" inputmode="decimal" placeholder="${t('Orden mínima')}"><span class="u">USDT</span></div></div>
-        <div class="pct"><input type="range" id="fx-pct" min="0" max="100" step="25" value="0"><div class="mk"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
+        <div class="pct"><input type="range" id="fx-pct" min="0" max="100" step="1" value="0"><div class="mk"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
         <div class="tpsl" id="fx-tpsl-t"><span class="chk" id="fx-chk"></span><span>TP/SL</span></div>
         <div class="tpsl-box" id="fx-tpsl-b">
           <div class="fld"><input id="fx-tp" inputmode="decimal" placeholder="Take-profit"><span class="u">USDT</span></div>
           <div class="fld"><input id="fx-sl" inputmode="decimal" placeholder="Stop-loss"><span class="u">USDT</span></div>
         </div>
-        <button class="go long" id="fx-long">${t('Abrir Largo')}</button>
-        <button class="go short" id="fx-short">${t('Abrir Corto')}</button>
-        <div class="cm"><span>${t('Coste')} (USDT)<b id="fx-cl">0.0</b></span><span>${t('Coste')} (USDT)<b id="fx-cs">0.0</b></span><span>${t('Máximo')} (USDT)<b id="fx-ml">0.0</b></span><span>${t('Máximo')} (USDT)<b id="fx-ms">0.0</b></span></div>
+        <button class="go long" id="fx-long">Long</button>
+        <button class="go short" id="fx-short">Short</button>
+        <button class="det" id="fx-det"><span>${t('Detalles')}</span><i>▾</i></button>
+        <div class="cm" id="fx-cm"><span>${t('Coste')} (USDT)<b id="fx-cl">0.0</b></span><span>${t('Coste')} (USDT)<b id="fx-cs">0.0</b></span><span>${t('Máximo')} (USDT)<b id="fx-ml">0.0</b></span><span>${t('Máximo')} (USDT)<b id="fx-ms">0.0</b></span></div>
       </div>
       <div class="book" id="fx-book"></div>
     </div>
 
-    <div class="btabs"><button class="on" data-b="pos">${t('Posiciones')} (<span id="fx-npos">0</span>)</button><button data-b="ord">${t('Órdenes abiertas')} (0)</button></div>
+    <div class="btabs"><button class="on" data-b="pos">${t('Posiciones')} (<span id="fx-npos">0</span>)</button><button data-b="ord">${t('Órdenes abiertas')} (0)</button>
+      <button class="hist" id="fx-hist" title="${t('Historial')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button></div>
     <div class="brow"><label class="solo"><span class="chk" id="fx-solo"></span>${t('Solo actual')}</label><button class="all" id="fx-all">${t('Cerrar todo')}</button></div>
     <div class="bbody" id="fx-bbody"></div>
   </div>`;
@@ -204,7 +226,7 @@ export async function pintarFuturos(host, api) {
     if (!_par) return;
     try { const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${_par.s}`); if (r.ok) { const j = await r.json(); _libro.precio = +j.lastPrice; _libro.chg = +j.priceChangePercent; } } catch (_) {}
     const hp = $('fx-hpx'); if (hp) { hp.textContent = fmtP(_libro.precio); hp.className = 'px ' + ((_libro.chg || 0) >= 0 ? 'up' : 'dn'); }
-    if (_tipo === 'market' && $('fx-price')) $('fx-price').placeholder = fmtP(_libro.precio);
+    if ($('fx-mkt-v')) $('fx-mkt-v').textContent = fmtP(_libro.precio);
     renderBook(); calc(); pintarPos();
   }
   tick(); const iv = setInterval(tick, 3000);
@@ -217,7 +239,7 @@ export async function pintarFuturos(host, api) {
   }
 
   function pop(titulo, items, onPick) {
-    const ov = document.createElement('div'); ov.className = 'fxpop';
+    const ov = document.createElement('div'); ov.className = 'fxpop fxc';
     ov.innerHTML = '<div class="bg"></div><div class="c"><h4>' + t(titulo) + '</h4>' + items.map((it) => '<button class="opt' + (it.on ? ' on' : '') + '" data-v="' + (it.v || '') + '"><b>' + t(it.b) + '</b><span>' + t(it.s) + '</span></button>').join('') + '</div>';
     document.body.appendChild(ov);
     ov.querySelector('.bg').onclick = () => ov.remove();
@@ -229,27 +251,43 @@ export async function pintarFuturos(host, api) {
     $('fx-sym').textContent = _par.s; ponerLogo();
     _libro = { asks: [], bids: [], precio: null, chg: null }; conectarLibro(); tick();
   });
+  $('fx-alert').onclick = () => abrirAlerta(_par);
+  $('fx-support').onclick = () => api && api.abrir && api.abrir('soporte');
+  $('fx-bots').onclick = () => api && api.abrir && api.abrir('bots');
   $('fx-hist').onclick = () => abrirHistorialMovil();
-  $('fx-chart').onclick = () => { try { api && api.abrirGrafica ? api.abrirGrafica(_par.id) : (api && api.abrir && api.abrir('levels')); } catch (_) {} };
 
   $('fx-mode').onclick = () => pop('Modo de margen', [
     { b: 'Aislada', s: 'El margen de esta posición está separado del resto. Si se liquida, solo pierdes lo asignado a ella.', on: _modo === 'aislada', v: 'aislada' },
     { b: 'Cruzada', s: 'Todo tu saldo respalda la posición. Aguanta más, pero puedes perder todo el saldo disponible.', on: _modo === 'cruzada', v: 'cruzada' }
   ], (v) => { _modo = v; $('fx-mode').innerHTML = t(v === 'aislada' ? 'Aislada' : 'Cruzada') + ' <span class="cv">▾</span>'; });
-  $('fx-lev').onclick = () => pop('Apalancamiento', [5, 10, 20, 50, 100, 200].map((x) => ({ b: x + '×', s: x <= 10 ? 'Riesgo bajo.' : x <= 20 ? 'Riesgo medio. Recomendado.' : x <= 50 ? 'Riesgo alto.' : 'Riesgo extremo.', on: _lev === x, v: '' + x })), (v) => { _lev = +v; $('fx-levv').textContent = _lev + '×'; calc(); });
-  host.querySelectorAll('.oc button').forEach((b) => b.onclick = () => {
-    _oc = b.dataset.oc; host.querySelectorAll('.oc button').forEach((x) => x.classList.toggle('on', x === b));
-    pop('Abierto / Cerrado', [{ b: 'Abierto', s: 'Abre una posición nueva en largo o corto con el capital y apalancamiento que definas.', on: _oc === 'abierto' }, { b: 'Cerrado', s: 'Cierra una posición que ya tienes abierta, tomando la ganancia o pérdida acumulada.', on: _oc === 'cerrado' }]);
-  });
+  $('fx-lev').onclick = () => {
+    const amt = parseFloat(($('fx-amt').value || '').replace(/,/g, '')) || 0;
+    const px = (_tipo !== 'market' && parseFloat($('fx-price').value)) || _libro.precio || 0;
+    if (!amt) { const f = $('fx-amt'); f.focus(); f.closest('.fld').style.borderColor = 'var(--gold)'; setTimeout(() => { f.closest('.fld').style.borderColor = ''; }, 1400); return; }
+    const ov = document.createElement('div'); ov.className = 'fxpop fxc';
+    let L = _lev;
+    ov.innerHTML = '<div class="bg"></div><div class="c lev"><h4>' + t('Apalancamiento') + '</h4>' +
+      '<div class="lv"><b id="lv-v">' + L + '×</b></div>' +
+      '<input type="range" id="lv-r" min="1" max="200" step="1" value="' + L + '"><div class="mk"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div>' +
+      '<div class="rows"><div><span>' + t('Tamaño de posición') + '</span><b id="lv-sz">—</b></div><div><span>' + t('Liq. Long') + '</span><b class="dn" id="lv-ll">—</b></div><div><span>' + t('Liq. Short') + '</span><b class="dn" id="lv-ls">—</b></div><div><span>' + t('Margen') + '</span><b id="lv-m">' + amt.toFixed(2) + ' USDT</b></div></div>' +
+      '<p class="note">' + t('A mayor apalancamiento, más cerca queda el precio de liquidación.') + '</p>' +
+      '<button class="ok" id="lv-ok">' + t('Confirmar') + '</button></div>';
+    document.body.appendChild(ov);
+    const upd = () => { ov.querySelector('#lv-v').textContent = L + '×'; ov.querySelector('#lv-sz').textContent = fmtP(amt * L) + ' USDT'; ov.querySelector('#lv-ll').textContent = px ? fmtP(liqDe(px, L, true)) : '—'; ov.querySelector('#lv-ls').textContent = px ? fmtP(liqDe(px, L, false)) : '—'; };
+    ov.querySelector('#lv-r').oninput = (e) => { L = +e.target.value; upd(); }; upd();
+    ov.querySelector('.bg').onclick = () => ov.remove();
+    ov.querySelector('#lv-ok').onclick = () => { _lev = L; $('fx-levv').textContent = _lev + '×'; calc(); ov.remove(); };
+  };
   const typ = $('fx-typ');
   $('fx-typcur').onclick = (e) => { e.stopPropagation(); typ.classList.toggle('open'); };
   document.addEventListener('click', () => typ.classList.remove('open'));
   host.querySelectorAll('.typ .menu button').forEach((b) => b.onclick = () => {
     _tipo = b.dataset.t; host.querySelectorAll('.typ .menu button').forEach((x) => x.classList.toggle('on', x === b));
     $('fx-typcur').innerHTML = t(TYP[_tipo]) + ' <span class="cv">▾</span>'; typ.classList.remove('open');
-    const pr = $('fx-price'); pr.disabled = _tipo === 'market'; pr.placeholder = _tipo === 'market' ? fmtP(_libro.precio) : '0.00';
-    if (_tipo === 'trigger') pop('Orden Activador', [{ b: '¿Qué es?', s: 'Una orden que solo se activa cuando el precio alcanza el nivel que marcas. Hasta entonces queda en espera.', on: true }, { b: 'Para qué sirve', s: 'Entrar automáticamente si el mercado llega a cierto precio, sin estar pendiente de la pantalla.' }]);
+    modoPrecio();
   });
+  function modoPrecio() { const mk = _tipo === 'market'; $('fx-price').style.display = mk ? 'none' : ''; $('fx-mkt').style.display = mk ? '' : 'none'; }
+  $('fx-det').onclick = () => { $('fx-det').classList.toggle('on'); $('fx-cm').classList.toggle('on'); };
   $('fx-amt').oninput = calc;
   $('fx-pct').oninput = (e) => { if (_saldo > 0) { $('fx-amt').value = (_saldo * (+e.target.value) / 100).toFixed(2); calc(); } };
   $('fx-tpsl-t').onclick = () => { const on = $('fx-chk').classList.toggle('on'); $('fx-tpsl-b').classList.toggle('on', on); };
@@ -278,5 +316,5 @@ export async function pintarFuturos(host, api) {
     body.innerHTML = ps.map((p) => '<div class="prow"><span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span><br><span style="color:var(--mut)">' + t('Entrada') + ' ' + fmtP(p.px) + ' · ' + t('Liq.') + ' ' + fmtP(p.liq) + '</span></span><span>' + fmtP(p.amt * p.lev) + ' USDT</span><button class="x" data-id="' + p.id + '">' + t('Cerrar') + '</button></div>').join('');
     body.querySelectorAll('.x').forEach((b) => b.onclick = () => { _pos = _pos.filter((p) => p.id !== +b.dataset.id); pintarPos(); });
   }
-  calc(); pintarPos();
+  modoPrecio(); calc(); pintarPos();
 }

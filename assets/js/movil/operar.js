@@ -82,7 +82,7 @@ export async function pintarOperar(host, api) {
       <button class="op-tab on" data-pt="pos">Posición</button>
       <button class="op-tab" data-pt="ord">Mis órdenes</button>
       <button class="op-tab" data-pt="bots">Bots</button>
-      <button class="op-histbtn" id="op-hist" title="Historial de operaciones" aria-label="Historial de operaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 5.5A1.5 1.5 0 0 1 6 4h7.5L18 8.5V11"/><path d="M7 9h7M7 12.5h4.5"/><circle cx="16.5" cy="16.5" r="4.4"/><path d="M16.5 14.4v2.1l1.5 1"/></svg></button>
+      <button class="op-histbtn" id="op-hist" title="Historial de operaciones" aria-label="Historial de operaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button>
     </div>
     <div class="op-panel" id="op-panel"></div>
   `;
