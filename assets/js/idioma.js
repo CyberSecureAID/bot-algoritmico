@@ -89,6 +89,9 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Abierto': 'Open',
+    'Cerrado': 'Close',
+    'Activador': 'Trigger',
     'Cambio 24h': '24h Change',
     'Precio marcado': 'Mark Price',
     'Precio índice': 'Index Price',
