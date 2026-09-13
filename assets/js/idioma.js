@@ -89,6 +89,16 @@ const DIC = {
     /* === MARKET: dialogos+config+ubicacion+disputas === */
 
     /* === FUTURES === */
+    'Cambio 24H': 'Chg 24H',
+    'Índice': 'Index',
+    'Máx 24H': 'High 24H',
+    'Mín 24H': 'Low 24H',
+    'Vol 24H': 'Vol 24H',
+    'Vol 24H (USDT)': 'Vol 24H (USDT)',
+    'Financ.': 'Funding',
+    'Liq. Long': 'Liq. Long',
+    'Liq. Short': 'Liq. Short',
+    'A mayor apalancamiento, más cerca queda el precio de liquidación.': 'The higher the leverage, the closer the liquidation price.',
     'Cruzada': 'Cross',
     'Aislada': 'Isolated',
     'Orden mínima': 'Min. order',
