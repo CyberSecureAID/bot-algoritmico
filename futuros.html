@@ -52,7 +52,7 @@
     #f-graf #nv-overlay .nv-x{display:none !important}
     /* Ocultar la cabecera de análisis duplicada (mi barra ya tiene moneda y
        datos). Se conservan timeframes (nv-tfs) y herramientas (nv-tools). */
-    #f-graf #nv-overlay .nv-sel{display:none !important}
+    #f-graf #nv-overlay .nv-sel{position:absolute !important;left:-9999px !important;width:1px;height:1px;overflow:hidden}
     #f-graf #nv-overlay .nv-meta{display:none !important}
     #f-graf #nv-overlay #nv-veredicto{display:none !important}
     #f-graf #nv-overlay #nv-estado{display:none !important}
@@ -64,7 +64,7 @@
     #f-graf #nv-overlay .nv-cab{min-height:0 !important;padding:6px 8px !important;border-bottom:1px solid var(--line) !important}
 
     /* Panel de orden (derecha, filas 2-3 para ocupar toda la altura). */
-    #f-panel{grid-column:2;grid-row:2;background:#0e1218;border-left:1px solid var(--line);
+    #f-panel{grid-column:2;grid-row:2;min-height:0;background:#0e1218;border-left:1px solid var(--line);
       overflow-y:auto;padding:12px 12px 20px;display:flex;flex-direction:column;gap:10px}
     #f-panel .p-top{display:flex;gap:7px}
     #f-panel .p-top .chip{flex:1;height:33px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);
@@ -102,6 +102,9 @@
     #f-panel .p-btn.long{background:linear-gradient(180deg,#34d98a,#12b06a)}
     #f-panel .p-btn.short{background:linear-gradient(180deg,#ff5c6c,#e03246)}
     #f-panel .p-btn:active{filter:brightness(1.08)}
+    #f-panel .p-user{margin-top:6px;padding:11px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:6px}
+    #f-panel .p-user .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
+    #f-panel .p-user .r span{color:var(--ink3)} #f-panel .p-user .r b{color:var(--ink)}
 
     /* Posiciones: DEBAJO de la pantalla completa (se ven con scroll de
        página, no comprimen la gráfica — como en la foto). */
@@ -126,8 +129,8 @@
 
   <div id="f-app">
     <div id="f-bar">
-      <a class="bk" href="index.html" title="Volver">←</a>
-      <div class="coin"><span class="ico" id="f-ico"></span><div class="cnm"><b id="f-sym">BTC/USDT</b><span id="f-cname">Bitcoin</span></div></div>
+      <a class="bk" href="index.html" title="Volver"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <div class="coin" id="f-coin" style="cursor:pointer"><span class="ico" id="f-ico"></span><div class="cnm"><b id="f-sym">BTC/USDT</b><span id="f-cname">Bitcoin</span></div><span style="color:var(--ink3);font-size:10px;margin-left:2px">▼</span></div>
       <span class="bigpx" id="f-px">—</span>
       <div class="col"><span class="l">Cambio 24h</span><b class="v" id="f-chg">—</b></div>
       <div class="col"><span class="l">Precio marcado</span><b class="v" id="f-mark">—</b></div>
@@ -180,6 +183,12 @@
       </div>
       <button class="p-btn long" id="p-long">Abrir Largo</button>
       <button class="p-btn short" id="p-short">Abrir Corto</button>
+
+      <div class="p-user">
+        <div class="r"><span>Tu wallet</span><b id="pu-wallet">No conectada</b></div>
+        <div class="r"><span>Saldo USDT</span><b id="pu-bal">—</b></div>
+        <div class="r"><span>Fecha</span><b id="pu-date">—</b></div>
+      </div>
     </div>
 
   </div>
@@ -241,6 +250,11 @@
         sim=window.N.par.s; $('f-sym').textContent=(window.N.par.id||sim)+'/USDT';
         if($('f-cname')) $('f-cname').textContent=window.N.par.n||'';
         pintarLogo();
+
+    // El selector de moneda de mi barra dispara el de Smart Levels (nv-sel),
+    // reutilizando su menú sin tocar Smart Levels.
+    const fcoin=document.getElementById('f-coin');
+    if(fcoin) fcoin.onclick=()=>{ const ns=document.getElementById('nv-sel'); if(ns) ns.click(); };
       } }catch(_){}
       refrescar();
     }
@@ -264,12 +278,23 @@
     }
     setInterval(refrescar,1500);
 
+    // Ventana explicativa genérica (como la de modo de margen).
+    function explicar(titulo, items){
+      const ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:16px';
+      let h='<div style="position:absolute;inset:0;background:rgba(3,5,7,.7)"></div><div style="position:relative;width:100%;max-width:400px;background:#12161c;border:1px solid #2b3139;border-radius:18px;padding:20px"><div style="font-family:var(--disp);font-weight:800;font-size:18px;color:#eef1f6;text-align:center;margin-bottom:14px">'+titulo+'</div>';
+      items.forEach(it=>{ h+='<div style="background:rgba(10,14,19,.6);border:1px solid #232b36;border-radius:13px;padding:13px;margin-bottom:9px"><b style="display:block;color:#eef1f6;font-weight:800;font-size:15px;margin-bottom:5px">'+it[0]+'</b><span style="font-size:12.5px;color:#a9b2bd;line-height:1.5">'+it[1]+'</span></div>'; });
+      h+='</div>'; ov.innerHTML=h; document.body.appendChild(ov); ov.firstChild.onclick=()=>ov.remove();
+    }
+
     document.querySelectorAll('.p-oc button').forEach(b=>b.onclick=()=>{
       document.querySelectorAll('.p-oc button').forEach(x=>x.classList.toggle('on',x===b));
+      if(b.dataset.oc==='abierto') explicar('Open / Close',[['Open (Abrir)','Abre una posición nueva: entras al mercado en largo o corto con el capital y apalancamiento que definas.'],['Close (Cerrar)','Cierra una posición que ya tienes abierta, tomando la ganancia o pérdida acumulada hasta ese momento.']]);
     });
     document.querySelectorAll('.p-tabs button').forEach(b=>b.onclick=()=>{
       document.querySelectorAll('.p-tabs button').forEach(x=>x.classList.toggle('on',x===b));
       $('p-price-fld').style.display=(b.dataset.ord==='limit'||b.dataset.ord==='trigger')?'':'none';
+      if(b.dataset.ord==='trigger') explicar('Orden Activador (Trigger)',[['¿Qué es?','Una orden que solo se activa cuando el precio alcanza un nivel que tú marcas. Hasta entonces, queda en espera.'],['Para qué sirve','Entrar automáticamente si el mercado llega a cierto precio, sin tener que estar pendiente de la pantalla.']]);
     });
     $('p-range').oninput=e=>{ lev=+e.target.value; $('p-lev').textContent=lev+'×'; $('p-levbtn-v').textContent=lev+'×'; refrescar(); };
     $('p-margen').oninput=refrescar;
@@ -301,6 +326,16 @@
       document.querySelectorAll('#f-pos .ph button').forEach(x=>x.classList.toggle('on',x===b));
       $('f-pos-body').textContent = b.dataset.t==='pos'?'No tienes posiciones abiertas.':b.dataset.t==='ord'?'No tienes órdenes abiertas.':'Sin historial.';
     });
+
+    // Datos del usuario en el panel.
+    (function(){
+      const d=new Date();
+      if($('pu-date')) $('pu-date').textContent=d.toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'});
+      // wallet: si hay una cuenta conectada en el entorno.
+      try{ const acc=(window.ethereum&&window.ethereum.selectedAddress)||null;
+        if(acc&&$('pu-wallet')) $('pu-wallet').textContent=acc.slice(0,6)+'...'+acc.slice(-4);
+      }catch(_){}
+    })();
 
     refrescar();
     try{ arrancarIdioma(); traducirTodo&&traducirTodo(); }catch(e){}
