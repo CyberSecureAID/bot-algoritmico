@@ -461,7 +461,7 @@ function fechaRel(ts) {
   return new Date(Number(ts) * 1000).toLocaleDateString('es');
 }
 
-async function abrirHistorialMovil() {
+export async function abrirHistorialMovil() {
   document.getElementById('mh-sheet')?.remove();
   if (!document.getElementById('mh-css')) {
     const st = document.createElement('style'); st.id = 'mh-css';
