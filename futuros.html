@@ -38,6 +38,11 @@
     #f-bar .coin .cnm b{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ink)}
     #f-bar .coin .cnm span{font-family:var(--mono);font-size:9px;color:var(--ink3)}
     #f-bar .bigpx{flex:0 0 auto;font-family:var(--disp);font-weight:800;font-size:20px;color:var(--up)}
+    #f-bar .tfs{flex:0 0 auto;display:flex;gap:2px}
+    #f-bar .tfs button{background:none;border:none;color:var(--ink3);font-family:var(--mono);font-size:11px;font-weight:700;padding:5px 8px;border-radius:6px;cursor:pointer}
+    #f-bar .tfs button:hover{color:var(--ink)} #f-bar .tfs button.on{color:var(--gold);background:rgba(232,184,75,.12)}
+    #f-bar .tf-exp{flex:0 0 auto;width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.03);color:var(--ink2);display:grid;place-items:center;cursor:pointer}
+    #f-bar .tf-exp:hover{color:var(--gold);border-color:var(--gold-soft)}
     #f-bar .col{flex:0 0 auto;display:flex;flex-direction:column;line-height:1.25;white-space:nowrap}
     #f-bar .col .l{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-bottom:2px}
     #f-bar .col .v{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500}
@@ -132,6 +137,13 @@
       <a class="bk" href="index.html" title="Volver"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
       <div class="coin" id="f-coin" style="cursor:pointer"><span class="ico" id="f-ico"></span><div class="cnm"><b id="f-sym">BTC/USDT</b><span id="f-cname">Bitcoin</span></div><span style="color:var(--ink3);font-size:10px;margin-left:2px">▼</span></div>
       <span class="bigpx" id="f-px">—</span>
+      <div class="tfs" id="f-tfs">
+        <button data-tf="1m">1m</button><button data-tf="5m">5m</button>
+        <button data-tf="15m" class="on">15m</button><button data-tf="30m">30m</button>
+        <button data-tf="1h">1h</button><button data-tf="4h">4h</button>
+        <button data-tf="1d">1D</button><button data-tf="1w">1W</button>
+      </div>
+      <button class="tf-exp" id="f-export" title="Exportar gráfica como imagen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
       <div class="col"><span class="l">Cambio 24h</span><b class="v" id="f-chg">—</b></div>
       <div class="col"><span class="l">Precio marcado</span><b class="v" id="f-mark">—</b></div>
       <div class="col"><span class="l">Precio índice</span><b class="v" id="f-index">—</b></div>
@@ -204,7 +216,7 @@
 
   <script type="module">
     import { abrirNiveles } from './assets/js/niveles.js?v=126';
-    import { arrancarIdioma, traducirTodo } from './assets/js/idioma.js?v=157';
+    import { arrancarIdioma, traducirTodo } from './assets/js/idioma.js?v=158';
 
     let lado='long', lev=10, modo='cruzado', precio=0, sim='BTCUSDT';
     const $ = (id)=>document.getElementById(id);
@@ -336,6 +348,78 @@
         if(acc&&$('pu-wallet')) $('pu-wallet').textContent=acc.slice(0,6)+'...'+acc.slice(-4);
       }catch(_){}
     })();
+
+    // Timeframes: cambian N.tf de Smart Levels y recargan (Binance acepta
+    // cualquier intervalo). NO toca el config de Smart Levels.
+    document.querySelectorAll('#f-tfs button').forEach(b=>b.onclick=()=>{
+      document.querySelectorAll('#f-tfs button').forEach(x=>x.classList.toggle('on',x===b));
+      const tf=b.dataset.tf;
+      const ntf=document.querySelector('.nv-tf[data-ntf="'+tf+'"]');
+      if(ntf){ ntf.click(); return; }   // nativo: recarga de verdad
+      // Extra (1m,5m,30m,1w): fijar N.tf y disparar recarga vía un nv-tf.
+      try{ if(window.N){ window.N.tf=tf;
+        const cualquiera=document.querySelector('.nv-tf');
+        if(cualquiera){
+          // Fijar N.tf ANTES de que su handler lo sobrescriba: lo forzamos tras el click.
+          cualquiera.click();
+          window.N.tf=tf;
+          // marcar el nativo como no-activo (el activo es el nuestro).
+          document.querySelectorAll('.nv-tf').forEach(x=>x.classList.remove('on'));
+        }
+      } }catch(_){}
+    });
+    // Exportar gráfica como imagen: dispara el botón de foto de Smart Levels.
+    const fexp=document.getElementById('f-export');
+    if(fexp) fexp.onclick=()=>{ const nf=document.getElementById('nv-foto'); if(nf) nf.click(); };
+
+    // ── Clic derecho de FUTUROS sobre la gráfica ──
+    // Intercepta el contextmenu del canvas de Smart Levels ANTES que el menú
+    // de spot (captura=true + stopPropagation), y muestra el de futuros.
+    setTimeout(()=>{
+      const cv=document.getElementById('nv-cv');
+      if(!cv) return;
+      cv.addEventListener('contextmenu',(e)=>{
+        e.preventDefault(); e.stopImmediatePropagation();
+        abrirMenuFut(e.clientX, e.clientY);
+      }, true);
+    }, 500);
+
+    function abrirMenuFut(cx, cy){
+      document.querySelectorAll('.fut-cm').forEach(x=>x.remove());
+      const px=precioActual();
+      if(!px) return;
+      // ¿arriba o abajo del precio? (para sugerir short/long)
+      const esLong = true; // el usuario elige en el menú
+      const m=document.createElement('div');
+      m.className='fut-cm';
+      m.style.cssText='position:fixed;z-index:22000;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #2b3139;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.6);padding:6px;min-width:210px;font-family:var(--disp)';
+      m.innerHTML=
+        '<div style="padding:8px 10px 6px;font-family:var(--mono);font-size:10px;color:#7d8794;text-transform:uppercase;letter-spacing:.05em">Abrir posición aquí · '+lev+'×</div>'+
+        '<button data-l="long" style="display:flex;justify-content:space-between;width:100%;padding:11px 12px;border:none;background:none;color:#eef1f6;font-weight:800;font-size:13px;cursor:pointer;border-radius:9px"><span style="color:#22c55e">▲ Abrir Long aquí</span><span style="font-family:var(--mono);color:#7d8794">$'+fmt(px)+'</span></button>'+
+        '<button data-l="short" style="display:flex;justify-content:space-between;width:100%;padding:11px 12px;border:none;background:none;color:#eef1f6;font-weight:800;font-size:13px;cursor:pointer;border-radius:9px"><span style="color:#f6465d">▼ Abrir Short aquí</span><span style="font-family:var(--mono);color:#7d8794">$'+fmt(px)+'</span></button>';
+      document.body.appendChild(m);
+      // posicionar sin salir de pantalla
+      let x=cx+6, y=cy+6;
+      const r=m.getBoundingClientRect();
+      if(x+r.width>window.innerWidth-8) x=cx-r.width-6;
+      if(y+r.height>window.innerHeight-8) y=window.innerHeight-r.height-8;
+      m.style.left=Math.max(6,x)+'px'; m.style.top=Math.max(6,y)+'px';
+      m.querySelectorAll('button').forEach(b=>{
+        b.onmouseenter=()=>b.style.background='rgba(255,255,255,.05)';
+        b.onmouseleave=()=>b.style.background='none';
+        b.onclick=()=>{
+          const l=b.dataset.l; m.remove();
+          // Usa el margen del panel; si no hay, pide al usuario que lo ponga.
+          const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
+          if(!margen){ $('p-margen').focus(); return; }
+          lado=l; refrescar();
+          // aviso (sin contrato aún)
+          const bb=l==='long'?$('p-long'):$('p-short'); const t=bb.textContent;
+          bb.textContent='Muy pronto — en desarrollo'; setTimeout(()=>{bb.textContent=t;},1500);
+        };
+      });
+      setTimeout(()=>document.addEventListener('click',()=>m.remove(),{once:true}),10);
+    }
 
     refrescar();
     try{ arrancarIdioma(); traducirTodo&&traducirTodo(); }catch(e){}
