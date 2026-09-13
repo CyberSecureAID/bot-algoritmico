@@ -120,10 +120,13 @@
     #f-panel .p-info{display:flex;flex-direction:column;gap:4px;padding:9px 11px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px}
     #f-panel .p-info .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px}
     #f-panel .p-info .r span{color:var(--ink3)} #f-panel .p-info .r b{color:var(--ink)} #f-panel .p-info .r b.liq{color:var(--down)}
-    #f-panel .p-btn{height:44px;border-radius:11px;border:none;font-family:var(--disp);font-weight:800;font-size:14px;cursor:pointer;color:#fff}
+    #f-panel .p-btn{height:48px;border-radius:12px;border:none;font-family:var(--disp);font-weight:800;font-size:15px;cursor:pointer;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.2)}
     #f-panel .p-btn.long{background:linear-gradient(180deg,#34d98a,#12b06a)}
     #f-panel .p-btn.short{background:linear-gradient(180deg,#ff5c6c,#e03246)}
     #f-panel .p-btn:active{filter:brightness(1.08)}
+    #f-panel .p-cost{padding:9px 11px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:4px}
+    #f-panel .p-cost .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
+    #f-panel .p-cost .r span{color:var(--ink3)} #f-panel .p-cost .r b{color:var(--ink)}
     #f-panel .p-user{margin-top:6px;padding:11px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:6px}
     #f-panel .p-user .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px}
     #f-panel .p-user .r span{color:var(--ink3)} #f-panel .p-user .r b{color:var(--ink)}
@@ -219,6 +222,10 @@
       <button class="p-btn long" id="p-long">Long</button>
       <button class="p-btn short" id="p-short">Short</button>
 
+      <div class="p-cost">
+        <div class="r"><span>Coste (Long)</span><b id="p-cost-l">0.00 USDT</b></div>
+        <div class="r"><span>Coste (Short)</span><b id="p-cost-s">0.00 USDT</b></div>
+      </div>
       <div class="p-user">
         <div class="r"><span>Tu wallet</span><b id="pu-wallet">No conectada</b></div>
         <div class="r"><span>Saldo USDT</span><b id="pu-bal">—</b></div>
@@ -326,6 +333,9 @@
       const margen=parseFloat(($('p-margen').value||'').replace(/,/g,''))||0;
       $('p-size').textContent=margen?fmt(margen*lev)+' USDT':'—';
       $('p-liq').textContent=(precio&&margen)?'$'+fmt(liqDe(precio,lev,lado==='long')):'—';
+      const c=margen?fmt(margen)+' USDT':'0.00 USDT';
+      if($('p-cost-l'))$('p-cost-l').textContent=c;
+      if($('p-cost-s'))$('p-cost-s').textContent=c;
     }
     setInterval(refrescar,1500);
 
