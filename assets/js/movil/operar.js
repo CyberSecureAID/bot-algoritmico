@@ -7,7 +7,7 @@
    Accesos arriba: mini-gráfica, bots, velas (Smart Levels) y ⋮ (Herramientas). */
 
 import { IC } from './iconos.js?v=1';
-import { t } from '../idioma.js?v=161';
+import { t } from '../idioma.js?v=162';
 import { abrirPicker } from './picker.js?v=1';
 import { abrirAlerta } from './alerta.js?v=1';
 import { precio as fmtPrecio, money, cantidad, logoDe } from './fmt.js?v=1';
@@ -197,7 +197,7 @@ async function pintarPanel(t) {
   // Posición: compras hechas desde aquí (entrada + P/L). Eliminar = vender.
   if (!con) { el.innerHTML = `<div class="op-empty">Conecta tu wallet para ver tu posición.</div>`; return; }
   const pos = posGuardadas();
-  if (!pos.length) { el.innerHTML = `<div class="op-empty">Sin posiciones. Cuando compres a mercado desde aquí, tu entrada aparece con su ganancia en vivo.</div>`; return; }
+  if (!pos.length) { el.innerHTML = `<div class="op-empty">No positions. When you buy at market from here, your entry shows up with its live profit.</div>`; return; }
   el.innerHTML = pos.map((p, i) => {
     const actual = (p.id === _par.id && _libro.precio) ? _libro.precio : p.entrada;
     const pl = p.entrada ? ((actual - p.entrada) / p.entrada) * 100 : 0;

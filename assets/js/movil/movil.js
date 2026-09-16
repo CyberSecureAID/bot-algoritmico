@@ -75,7 +75,7 @@ async function abrir(clave, arg) {
   try {
     switch (clave) {
       case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=5'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
-                          try { const idi = await import('../idioma.js?v=161'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
+                          try { const idi = await import('../idioma.js?v=162'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
       case 'alertas':   abrirAlerta(); break;
@@ -662,11 +662,11 @@ function revisarRed() {
   el.innerHTML = `
     <div class="mv-red-h">
       <span class="mv-red-ico">⚠️</span>
-      <div class="mv-red-tx"><b>Red incorrecta</b><span>Estás en otra red. Cámbiate a <b>BNB Smart Chain</b> para conectarte con CriptoCuba.</span></div>
+      <div class="mv-red-tx"><b>Wrong network</b><span>You are on another network. Switch to <b>BNB Smart Chain</b> to connect with CriptoCuba.</span></div>
       <button class="mv-red-x" aria-label="Cerrar">✕</button>
     </div>
     <button class="mv-red-btn" id="mv-red-btn">Cambiar a BNB Smart Chain</button>
-    <div class="mv-red-ayuda">¿No cambia solo? Ábrela desde el <b>selector de red arriba a la derecha</b> de tu wallet:<br>
+    <div class="mv-red-ayuda">Doesn't switch on its own? Open it from the <b>network selector at the top right</b> of your wallet:<br>
       · <b>MetaMask:</b> toca el nombre de la red (arriba a la izquierda/derecha) → elige <b>BNB Smart Chain</b>.<br>
       · <b>Trust Wallet:</b> icono de red arriba a la derecha → <b>Smart Chain</b>.</div>`;
   document.body.appendChild(el);
