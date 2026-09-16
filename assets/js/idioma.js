@@ -3558,6 +3558,21 @@ export function cambiarIdioma(id) {
 }
 
 /** Arranca al cargar la página, si había un idioma guardado. */
+/** Fuerza inglés de forma agresiva: ignora cualquier 'es' guardado por
+    pruebas antiguas y deja el móvil en inglés salvo que el usuario lo cambie
+    de nuevo desde el perfil. Se llama al arrancar el móvil. */
+export function forzarInglesPorDefecto() {
+  try {
+    const g = localStorage.getItem(CLAVE);
+    if (!g) { _idioma = 'en'; }          // nunca eligió: inglés
+  } catch (_) { _idioma = 'en'; }
+  if (_idioma !== 'es') {
+    document.documentElement.lang = _idioma;
+    traducirTodo();
+    vigilar();
+  }
+}
+
 export function arrancarIdioma() {
   if (_idioma === 'es') return;
   /* Si el idioma vino del navegador, se guarda para que la próxima

@@ -587,7 +587,8 @@ function wireHeader() {
      try por si el módulo no carga: sin él, todo sigue en español. */
   (async () => {
     try {
-      const idi = await import('./idioma.js?v=160');
+      const idi = await import('./idioma.js?v=161');
+      idi.forzarInglesPorDefecto();
       idi.arrancarIdioma();
       const tx = $('c-idioma-tx');
       if (tx) tx.textContent = idi.idiomaActual().toUpperCase();
