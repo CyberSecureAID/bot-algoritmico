@@ -15,7 +15,7 @@ import { abrirPicker } from './picker.js?v=1';
 import { IC } from './iconos.js?v=1';
 import { abrirHistorialMovil } from './operar.js?v=3';
 import { abrirAlerta } from './alerta.js?v=1';
-import { t } from '../idioma.js?v=162';
+import { t } from '../idioma.js?v=163';
 
 let _pares = [], _par = null;
 let _tipo = 'market', _modo = 'cruzada', _lev = 20;
