@@ -182,7 +182,7 @@ function estilos() {
 
   @media(max-width:560px){
     #perfil-overlay{padding:0}
-    #perfil-overlay .pf-card{max-width:100%;max-height:100vh;height:100vh;border-radius:0;border:none;padding:18px 14px}
+    #perfil-overlay .pf-card{max-width:100%;max-height:100dvh;height:100dvh;border-radius:0;border:none;padding:calc(18px + env(safe-area-inset-top,0px)) 14px calc(18px + env(safe-area-inset-bottom,0px)); overflow-y:auto; -webkit-overflow-scrolling:touch}
     #perfil-overlay .pf-h{gap:12px;padding-right:38px}
     #perfil-overlay .pf-ava{width:48px;height:48px;border-radius:14px}
     #perfil-overlay .pf-nombre{font-size:18px}
