@@ -111,10 +111,6 @@
   <!-- Seguridad: no filtramos a dónde va el usuario ni permitimos que otros
        sitios averigüen qué hace aquí. -->
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Cripto Cuba Oficial">
   <style>
     /* ════════════════════════════════════════════════════════════════
        FONDO, PARTÍCULAS Y COLOR DE LA PANTALLA DE BOTS
@@ -258,7 +254,7 @@
   <canvas id="cco-fx" data-n="260" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
-  <script type="module" src="assets/js/gridbot-ui.js?v=204"></script>
+  <script type="module" src="assets/js/gridbot-ui.js?v=205"></script>
   <script>
   /* Protección contra "clickjacking": si alguien mete CriptoCuba dentro de un
      marco en su propia web, podría poner botones falsos encima para que
@@ -395,6 +391,19 @@
       };
       document.body.appendChild(kbEs);
     }
+    // Vigilante permanente: si el asistente real (#npFab) aparece por
+    // CUALQUIER vía (clic o carga automática), el provisional se elimina de
+    // inmediato. Así nunca quedan los dos iconos superpuestos.
+    (function () {
+      var chk = setInterval(function () {
+        if (document.getElementById('npFab')) {
+          var pv = document.getElementById('np-fab-previo');
+          if (pv) pv.remove();
+          clearInterval(chk);
+        }
+      }, 200);
+      setTimeout(function () { clearInterval(chk); }, 30000);
+    })();
     // El botón provisional: al tocarlo carga el asistente y lo abre.
     var previo = document.getElementById('np-fab-previo');
     if (previo) previo.addEventListener('click', function () {
@@ -577,6 +586,8 @@
       // partículas ya dibujando. Se funde una sola vez y en suave.
       const velo = document.getElementById('cco-velo');
       let veloFuera = false;
+      // Cuando la app móvil termina de montar, avisa y quitamos el velo ya.
+      window.addEventListener('app-montada', () => { try { quitarVelo(); } catch(_){} }, { once: true });
       const quitarVelo = () => {
         if (veloFuera || !velo) return;
         veloFuera = true;
@@ -591,7 +602,7 @@
       img.src = 'assets/portada/img/bots.webp';
       // Si la imagen tarda demasiado (o está cacheada y onload no dispara),
       // el velo se va igual a los 900 ms: nunca se queda la pantalla negra.
-      setTimeout(quitarVelo, 900);
+      setTimeout(quitarVelo, 2500);  // tope de seguridad; normalmente lo quita 'app-montada'
 
       // La franja superior usa header.webp; si no existe, se oculta sola.
       const top = new Image();
