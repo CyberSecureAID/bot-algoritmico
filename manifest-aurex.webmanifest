@@ -6,9 +6,9 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0b0e11",
-  "theme_color": "#0b0e11",
-  "lang": "es",
+  "background_color": "#05070a",
+  "theme_color": "#05070a",
+  "lang": "en",
   "dir": "ltr",
   "categories": ["finance"],
   "icons": [

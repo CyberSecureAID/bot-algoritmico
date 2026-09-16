@@ -1,8 +1,15 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- App-like: modo standalone en iOS y Android, sin barras del navegador -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cripto Cuba">
+  <meta name="theme-color" content="#05070a">
+  <link rel="manifest" href="manifest-aurex.webmanifest">
   <title>Cripto Cuba Oficial</title>
   <meta name="description" content="Cripto Cuba Oficial: pon tu dinero a trabajar en automático. Compra barato y vende caro por ti, sin cuenta en ningún exchange, sin KYC, con tu propia wallet.">
   <meta name="robots" content="index, follow, max-image-preview:large">
@@ -210,6 +217,37 @@
       -webkit-text-fill-color:#e9edf5 !important;
       -webkit-box-shadow:0 0 0 1000px #0d1117 inset !important;
       caret-color:#e9edf5;
+    }
+  </style>
+
+  <style id="app-like-fix">
+    /* Experiencia app-like: la app ocupa exactamente la pantalla, respeta
+       las zonas seguras del teléfono (notch, barra inferior) y no rebota. */
+    :root{
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+    html, body{
+      height: 100%;
+      min-height: 100dvh;
+      margin: 0;
+      overscroll-behavior: none;            /* nada de rebote elástico de web */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+    }
+    body{
+      /* el contenido nunca queda bajo la barra de estado ni la barra inferior */
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
+      box-sizing: border-box;
+    }
+    /* Cuando corre como app instalada, se nota aún más el modo pantalla. */
+    @media (display-mode: standalone){
+      html, body{ height: 100dvh; overflow: hidden; }
     }
   </style>
 </head>
