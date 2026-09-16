@@ -7,6 +7,7 @@
    Accesos arriba: mini-gráfica, bots, velas (Smart Levels) y ⋮ (Herramientas). */
 
 import { IC } from './iconos.js?v=1';
+import { t } from '../idioma.js?v=161';
 import { abrirPicker } from './picker.js?v=1';
 import { abrirAlerta } from './alerta.js?v=1';
 import { precio as fmtPrecio, money, cantidad, logoDe } from './fmt.js?v=1';
@@ -72,7 +73,7 @@ export async function pintarOperar(host, api) {
         <div class="op-field op-slbox" id="op-slbox" style="display:none">
           <span>Stop</span><input id="op-in-sl" inputmode="decimal" placeholder="0.00"><b>${esc(_quote)}</b>
         </div>
-        <div class="op-avail" id="op-avail">Disponible: — ${esc(_quote)}</div>
+        <div class="op-avail" id="op-avail">${t('Disponible')}: — ${esc(_quote)}</div>
         <button class="op-buy" id="op-buy">Comprar ${esc(_par ? _par.id : '')}</button>
         <button class="op-sell" id="op-sell">Vender ${esc(_par ? _par.id : '')}</button>
       </div>
@@ -371,7 +372,7 @@ async function operar(lado) {
   if (lado === 'sell') {
     const b = _api.balance && _api.balance();
     const tiene = b && b.activos && b.activos.find((a) => a.id === _par.id && a.bal > 0);
-    if (b && b.conectado && !tiene) { mensaje('Sin saldo', `No tienes ${_par.id} en tu wallet para vender.`); return; }
+    if (b && b.conectado && !tiene) { mensaje(t('Sin saldo'), `${t('No tienes')} ${_par.id} ${t('en tu wallet para vender.')}`); return; }
   }
   if (_tipo === 'market') {
     if (lado === 'buy' && _api.estaConectado && _api.estaConectado()) {
@@ -411,9 +412,9 @@ function selectorMoneda() {
 function actualizarDisponible() {
   const el = $('op-avail'); if (!el) return;
   const b = _api && _api.balance && _api.balance();
-  if (!b || !b.conectado) { el.textContent = `Disponible: — ${esc(_quote)}`; return; }
+  if (!b || !b.conectado) { el.textContent = `${t('Disponible')}: — ${esc(_quote)}`; return; }
   const a = (b.activos || []).find((x) => x.id === _quote);
-  el.textContent = `Disponible: ${a ? cantidad(a.bal) : '0'} ${esc(_quote)}`;
+  el.textContent = `${t('Disponible')}: ${a ? cantidad(a.bal) : '0'} ${esc(_quote)}`;
 }
 
 function selectorQuote() {
