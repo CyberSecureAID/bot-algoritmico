@@ -74,7 +74,7 @@ export function pintarActivos(host, api) {
     if (_tab === 'nfts') { pintarNFTs(list); return; }
     if (_tab === 'activity') { pintarActividad(list); return; }
     const act = (b.activos || []).slice().sort((x, y) => y.usd - x.usd);
-    if (!act.length) { list.innerHTML = `<div class="mv-empty">Tu wallet no tiene saldo todavía.</div>`; return; }
+    if (!act.length) { list.innerHTML = `<div class="mv-empty">Your wallet has no balance yet.</div>`; return; }
     list.innerHTML = act.map((a) => {
       const logo = logoDe(a.id, a.cg || _cg[a.id], _img && Object.keys(_img).length ? Object.fromEntries(Object.entries(_img).map(([k, v]) => [k, { img: v }])) : {});
       return `<div class="ac-row">
