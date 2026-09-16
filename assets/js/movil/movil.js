@@ -632,6 +632,10 @@ export async function montarMovil(deps) {
 
   // ── Auto-conexión en móvil (navegador de MetaMask/Trust) ──
   autoConectarMovil();
+
+  // Avisar de que la app móvil ya está montada: el velo anti-flash se retira
+  // aquí, no antes, para que nunca se vea la versión de escritorio de fondo.
+  try { window.dispatchEvent(new Event('app-montada')); } catch (_) {}
 }
 
 /* En el navegador interno de la wallet, conecta sola: primero intenta la
