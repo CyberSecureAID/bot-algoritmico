@@ -6,7 +6,7 @@
  */
 
 import * as gb from './gridbot.js?v=125';
-import { t } from './idioma.js?v=162';
+import { t } from './idioma.js?v=163';
 import * as wallet from './wallet.js?v=125';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
 import * as perfil from './perfil.js?v=125';
@@ -588,7 +588,7 @@ function wireHeader() {
      try por si el módulo no carga: sin él, todo sigue en español. */
   (async () => {
     try {
-      const idi = await import('./idioma.js?v=162');
+      const idi = await import('./idioma.js?v=163');
       idi.forzarInglesPorDefecto();
       idi.arrancarIdioma();
       const tx = $('c-idioma-tx');
@@ -3187,6 +3187,13 @@ async function arrancar() {
     try {
       const m = await import('./movil/movil.js?v=16');
       await m.montarMovil({ conectarWallet });
+      // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
+      // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.
+      try {
+        const idi = await import('./idioma.js?v=163');
+        idi.forzarInglesPorDefecto();
+        idi.arrancarIdioma();
+      } catch (_) {}
       try { window.dispatchEvent(new Event('app-montada')); } catch (_) {}
       return;   // no se monta nada de escritorio
     } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }

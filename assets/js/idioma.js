@@ -3674,7 +3674,7 @@ export function cambiarIdioma(id) {
   if (id !== 'es' && !DIC[id]) return;
   _idioma = id;
   _autodetectado = false;
-  try { localStorage.setItem(CLAVE, id); } catch (_) {}
+  try { localStorage.setItem(CLAVE, id); localStorage.setItem(CLAVE + '-elegido', '1'); } catch (_) {}
 
   /* Volver al español obliga a recargar: el texto original ya se
      sustituyó y no hay forma limpia de deshacerlo. Es un instante y
@@ -3697,7 +3697,10 @@ export function cambiarIdioma(id) {
 export function forzarInglesPorDefecto() {
   try {
     const g = localStorage.getItem(CLAVE);
-    if (!g) { _idioma = 'en'; }          // nunca eligió: inglés
+    const elegido = localStorage.getItem(CLAVE + '-elegido') === '1';
+    // Español SOLO si el usuario lo eligió a propósito desde el perfil.
+    // Cualquier 'es' residual (autodetección, pruebas) se ignora: inglés.
+    if (!g || !elegido) { _idioma = 'en'; try { localStorage.setItem(CLAVE, 'en'); } catch (_) {} }
   } catch (_) { _idioma = 'en'; }
   if (_idioma !== 'es') {
     document.documentElement.lang = _idioma;
@@ -3710,7 +3713,6 @@ export function arrancarIdioma() {
   if (_idioma === 'es') return;
   /* Si el idioma vino del navegador, se guarda para que la próxima
      visita no tenga que volver a detectarlo. */
-  if (_autodetectado) { try { localStorage.setItem(CLAVE, _idioma); } catch (_) {} }
   document.documentElement.lang = _idioma;
   traducirTodo();
   vigilar();
