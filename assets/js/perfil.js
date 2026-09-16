@@ -364,7 +364,7 @@ export async function abrirPerfil() {
     const bot = $('pf-globo');
     if (!bot) return;
     try {
-      const idi = await import('./idioma.js?v=161');
+      const idi = await import('./idioma.js?v=162');
       const tx = $('pf-globo-tx');
       if (tx) tx.textContent = idi.idiomaActual().toUpperCase();
 
@@ -508,13 +508,13 @@ async function alternarHistorial(cuenta) {
   let res;
   try { res = await gb.historialDe(cuenta); } catch (_) { res = { error: 'sin-historial', ops: [] }; }
   if (res.error === 'sin-historial') {
-    cont.innerHTML = `<div class="pf-hvacio">Ahora mismo no se pudo leer el historial (la red pública va lenta). Inténtalo de nuevo en un momento.</div>`;
+    cont.innerHTML = `<div class="pf-hvacio">Couldn't read the history right now (the public network is slow). Try again in a moment.</div>`;
     return;
   }
   _histCargado = true;
   const ops = res.ops || [];
   if (!ops.length) {
-    cont.innerHTML = `<div class="pf-hvacio">Todavía no tienes operaciones registradas. Cuando un bot o una orden se ejecute, aparecerá aquí.</div>`;
+    cont.innerHTML = `<div class="pf-hvacio">You have no recorded trades yet. When a bot or an order executes, it will show up here.</div>`;
     return;
   }
 
