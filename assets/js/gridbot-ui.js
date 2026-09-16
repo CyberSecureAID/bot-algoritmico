@@ -6,7 +6,6 @@
  */
 
 import * as gb from './gridbot.js?v=125';
-import { t } from './idioma.js?v=162';
 import * as wallet from './wallet.js?v=125';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
 import * as perfil from './perfil.js?v=125';
@@ -1178,16 +1177,16 @@ function ventanaConfiguraciones() {
         <summary>¿Por qué este bot da ganancia?</summary>
         <div class="cf-txt">
           <p><b>Qué es una cuadrícula.</b> Imagina una escalera de precios. Pones el escalón más bajo (por ejemplo 500) y el más alto (700), y el bot reparte escalones entre medias. Cada escalón es una <b>cuadrícula</b>.</p>
-          <p><b>What the bot does.</b> Very simple: <b>when the price drops to a step, it buys. When it rises to the next one, it sells.</b> And starts over. That's it. Buy low, sell a little higher, again and again.</p>
+          <p><b>Qué hace el bot.</b> Muy sencillo: <b>cuando el precio baja a un escalón, compra. Cuando sube al siguiente, vende.</b> Y vuelta a empezar. Nada más. Compra barato, vende un poquito más caro, una y otra vez.</p>
           <p><b>De dónde sale la ganancia.</b> De la diferencia entre un escalón y el siguiente. Si compra a 600 y vende a 615, esos 15 son tuyos (menos comisiones). El precio de una moneda sube y baja muchas veces al día, así que puede repetirlo varias veces en la misma jornada. <b>No necesita que el precio suba en general</b>: le basta con que se mueva arriba y abajo.</p>
           <p><b>La clave: la separación entre escalones.</b> Cada compra-venta paga el gas de la red (unos 0,025 USDT) y la comisión del exchange. Si los escalones están demasiado juntos, esa ganancia no cubre las comisiones. Cuando eso pasa, <b>el bot no vende</b>: está programado para no vender con pérdida. Por eso las configuraciones de arriba ya vienen con la separación calculada.</p>
           <p><b>Qué puede salir mal, sin adornos:</b><br>
           · <b>Si el precio se sale del rango por abajo</b>, el bot habrá comprado en todos los escalones y se queda quieto con la moneda, que vale menos de lo que pagaste. Tu dinero sigue ahí, en forma de moneda, pero en pérdida hasta que vuelva.<br>
-          · <b>If it breaks out on top</b>, it will have sold everything and stop trading. You profited, but you miss the rest of the rally.<br>
-          · <b>If the market stays flat</b> and touches no step, the bot does nothing and earns nothing.<br>
+          · <b>Si se sale por arriba</b>, habrá vendido todo y dejará de operar. Ganaste, pero te quedas fuera de la subida.<br>
+          · <b>Si el mercado se queda plano</b> y no toca ningún escalón, el bot no hace nada y no gana nada.<br>
           · <b>Nada garantiza ganancias.</b> Esta estrategia funciona bien cuando el precio se mueve dentro de un rango, y funciona mal cuando se va en una sola dirección y no vuelve.</p>
           <p><b>Tres consejos concretos:</b><br>
-          · <b>The more money per grid, the better.</b> Gas costs the same whether you move 2 USDT or 20, so with tiny orders it eats everything.<br>
+          · <b>Cuanto más dinero por cuadrícula, mejor.</b> El gas cuesta lo mismo tanto si mueves 2 USDT como 20, así que con órdenes pequeñas se lo come todo.<br>
           · <b>El precio de ahora debe quedar dentro del rango</b>, y a poder ser por el medio. Si no, el bot no tiene dónde operar.<br>
           · <b>Rango amplio para dormir tranquilo</b>, rango estrecho para operar más. Lo primero es más seguro; lo segundo, más activo pero se sale antes.</p>
         </div>
@@ -1226,8 +1225,8 @@ function ventanaConfiguraciones() {
     const neto = orden * (p.sep / 100) - (GAS_VUELTA_USD + orden * COM_DEX);
     const dia = neto > 0 ? neto * 3 : 0;
     out.innerHTML = filas + (neto > 0
-      ? `<div class="cf-sim-res">With <b>${NOMBRE_PRESET[F.preset || 'equilibrado']}</b>, if the market makes <b>3 cycles in a day</b> that would be about <b>${dia.toFixed(2)} USDT</b>. If it's flat, zero.</div>`
-      : `<div class="cf-sim-res mal">With that amount the fees eat the profit. Raise the amount or choose a setup with fewer grids.</div>`);
+      ? `<div class="cf-sim-res">Con <b>${NOMBRE_PRESET[F.preset || 'equilibrado']}</b>, si el mercado da <b>3 vueltas en un día</b> serían unos <b>${dia.toFixed(2)} USDT</b>. Si está plano, cero.</div>`
+      : `<div class="cf-sim-res mal">Con esa cantidad las comisiones se comen la ganancia. Sube el importe o elige una configuración con menos cuadrículas.</div>`);
   };
   const inp = $('cf-monto');
   if (inp) { inp.oninput = pintarSim; pintarSim(); }
@@ -1275,7 +1274,7 @@ function rangoNecesario(n, margen) {
 async function ampliarRango(pMin, pMax, n, margen) {
   const ok = await modalConfirm({
     titulo: 'Ampliar el rango',
-    cuerpo: `For your <b>${n} grids</b> to earn <b>${num(margen, 1)}%</b> each (above the fee), the range must widen to:<br><br><b>${precioFmt(pMin)} – ${precioFmt(pMax)}</b><br><br>A wider range makes the bot <b>less sensitive</b>: it trades less often, but every trade leaves your profit clean, without the fee eating it. That way you can trade with any capital you want.<br><br>Apply this range?`,
+    cuerpo: `Para que tus <b>${n} cuadrículas</b> ganen <b>${num(margen, 1)}%</b> cada una (por encima de la comisión), el rango debe ampliarse a:<br><br><b>${precioFmt(pMin)} – ${precioFmt(pMax)}</b><br><br>Un rango más amplio hace el bot <b>menos sensible</b>: opera menos seguido, pero cada operación deja tu ganancia limpia, sin que la comisión se la coma. Así puedes operar con el capital que quieras.<br><br>¿Aplicar este rango?`,
     ok: 'Sí, ampliar'
   });
   if (!ok) return;
@@ -1437,9 +1436,9 @@ async function cerrarTodosLosBots(cuenta) {
     <div class="ct-c">
       <div class="ct-t">¿Cerrar tus ${vivos.length} bots?</div>
       <div class="ct-s">
-        They are all cancelled at once and <b>all your money returns to your wallet</b>: whatever is in coins is sold at the current price, and whatever is unused is returned as is.<br><br>
-        If any bot bought and the price dropped, that part will sell <b>at a loss</b>. This cannot be undone.<br><br>
-        You will need to sign <b>one transaction per bot</b> (${vivos.length} in total).
+        Se cancelan <b>todos</b> a la vez y <b>todo tu dinero vuelve a tu wallet</b>: lo que esté en monedas se vende al precio de ahora, y lo que esté sin usar se devuelve tal cual.<br><br>
+        Si algún bot compró y el precio bajó, esa parte se venderá <b>en pérdida</b>. Esto no se puede deshacer.<br><br>
+        Tendrás que firmar <b>una transacción por bot</b> (${vivos.length} en total).
       </div>
       <div class="ct-acts">
         <button class="ct-b gris" id="ct-no">Mejor no</button>
@@ -1529,15 +1528,15 @@ function avisoDeRiesgo() {
         <div class="rg-s">Es la única vez que te lo enseño, y prefiero decírtelo yo antes de que lo descubras tú.</div>
 
         <div class="rg-p"><span>1</span><div><b>Puedes perder dinero.</b> Estos bots funcionan bien cuando el precio sube y baja dentro de un rango, y funcionan mal cuando el mercado se va en una dirección y no vuelve.</div></div>
-        <div class="rg-p"><span>2</span><div><b>No one can promise you profits.</b> Not me, not any platform. If someone promises you a fixed monthly percentage, be suspicious.</div></div>
+        <div class="rg-p"><span>2</span><div><b>Nadie puede prometerte ganancias.</b> Ni yo, ni ninguna plataforma. Si alguien te promete un porcentaje fijo al mes, desconfía.</div></div>
         <div class="rg-p"><span>3</span><div><b>Usa solo dinero que puedas dejar quieto.</b> Meses, no días. Si lo vas a necesitar pronto, esto no es para ese dinero.</div></div>
-        <div class="rg-p"><span>4</span><div><b>Your money stays in your wallet.</b> We do not custody it. But that also means <b>you are responsible for your keys</b>.</div></div>
+        <div class="rg-p"><span>4</span><div><b>Tu dinero sigue en tu wallet.</b> No lo custodiamos. Pero eso también significa que <b>tú eres responsable de tus claves</b>.</div></div>
 
         <div class="rg-frase">
           <div class="rg-frase-t">Tu frase de recuperación</div>
           <p>Son las <b>12 palabras</b> que te dio tu wallet al crearla. Es la llave de todo tu dinero.</p>
-          <p><b>Write them on paper</b> and keep them somewhere safe. Not on your phone, not in a photo, not in your email.</p>
-          <p class="rg-frase-x">If you lose them, <b>no one can recover them</b>: not us, not your wallet, no one. And if anyone asks you for them —whoever it is, even claiming to be from CriptoCuba— <b>it's a scam</b>. We will never ask you for them.</p>
+          <p><b>Escríbelas en papel</b> y guárdalas en un sitio seguro. No en el móvil, no en una foto, no en el correo.</p>
+          <p class="rg-frase-x">Si las pierdes, <b>nadie puede recuperarlas</b>: ni nosotros, ni tu wallet, ni nadie. Y si alguien te las pide —quien sea, incluso diciendo que es de CriptoCuba— <b>es una estafa</b>. Nosotros no te las pediremos jamás.</p>
         </div>
 
         <label class="rg-ok"><input type="checkbox" id="rg-check"> <span>Lo he leído y lo entiendo</span></label>
@@ -2047,7 +2046,7 @@ async function onCrearCashOut() {
   const proceeds = cantidad * targetPrice, gan = cantidad * (targetPrice - F.precio);
   const ok = await modalConfirm({
     titulo: 'Encender Cash Out',
-    cuerpo: `When <b>${base.simbolo}</b> reaches <b>${precioFmt(targetPrice)} ${quote.simbolo}</b>, the bot will sell your <b>${num(cantidad, 6)} ${base.simbolo}</b> and you will receive <b>~${num(proceeds, 2)} ${quote.simbolo}</b> (profit ~${num(gan, 2)}).<br><br>Your crypto stays in your wallet; you only grant permission to sell it when the target is reached. Add <b>${quote.simbolo}</b> to your wallet to see it.`,
+    cuerpo: `Cuando <b>${base.simbolo}</b> llegue a <b>${precioFmt(targetPrice)} ${quote.simbolo}</b>, el bot venderá tus <b>${num(cantidad, 6)} ${base.simbolo}</b> y recibirás <b>~${num(proceeds, 2)} ${quote.simbolo}</b> (ganancia ~${num(gan, 2)}).<br><br>Tu cripto sigue en tu wallet; solo le das permiso para venderla al llegar el objetivo. Ten <b>${quote.simbolo}</b> agregada en tu wallet para verla.`,
     ok: 'Sí, encender'
   });
   if (!ok) return;
@@ -2088,7 +2087,7 @@ async function onCrearCashOut() {
     await gb.crearRejilla(config);
     avisarKeeper(wallet.cuentaActual());
     recordarPar(cuenta, config.base, config.quote, { decQuote: quote.decimals, decBase: base.decimals, simBase: base.simbolo, simQuote: quote.simbolo, total: config._valorActual, cantBase: cantidad, entry: config._Pnow, creadoLocal: Date.now(), tipo: 'cash', targetPrice, botId });
-    modalDone('¡Cash Out encendido!', `When ${base.simbolo} reaches <b>${precioFmt(targetPrice)}</b>, it will sell and you will receive ${quote.simbolo} in your wallet. Keep <b>gas</b> loaded so it can operate. You will see it in "My bots".`);
+    modalDone('¡Cash Out encendido!', `Cuando ${base.simbolo} llegue a <b>${precioFmt(targetPrice)}</b>, venderá y recibirás ${quote.simbolo} en tu wallet. Ten <b>gas</b> cargado para que pueda operar. Lo verás en "Mis bots".`);
     refrescarRejillas();
   } catch (e) {
     if (esRechazo(e)) { modalClose(); } else modalError(e?.shortMessage || e?.message || String(e));
@@ -2279,7 +2278,7 @@ async function abrirMisOrdenes(cuenta) {
   const vacio = `<div class="ord-vacio">
       <div class="ord-vacio-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
       <div class="ord-vacio-t">No tienes órdenes pendientes</div>
-      <div class="ord-vacio-d">Place an order with right-click on any chart and it will appear here, waiting for its price.</div>
+      <div class="ord-vacio-d">Pon una orden con clic derecho en cualquier gráfica y aparecerá aquí, esperando su precio.</div>
     </div>`;
   if (!lista.length) { body.innerHTML = vacio; return; }
 
@@ -2896,7 +2895,7 @@ async function tarjeta(cuenta, clave, par, R) {
         const fuera = ((pmin - precio) / pmin * 100).toFixed(1);
         return `<div class="rangowarn abajo">
           <b>El precio se salió de tu rango, por abajo</b>
-          It's ${fuera}% below your minimum, so the bot <b>no longer trades</b>: it bought on all its grids and now waits holding the coin.
+          Está un ${fuera}% por debajo de tu mínimo, así que el bot <b>ya no opera</b>: compró en todas sus cuadrículas y ahora espera con la moneda.
           <i>No has perdido el dinero: lo tienes en forma de moneda. Si el precio vuelve al rango, seguirá operando solo. Si crees que no volverá, puedes cancelar el bot y recuperar lo que haya.</i>
         </div>`;
       }
@@ -3125,7 +3124,7 @@ function enganchar(cuenta) {
         const soloCancelar = esCash || esDca;   // no vende: solo detiene
         const ok = await modalConfirm({
           titulo: esDca ? 'Suspender DCA' : (esCash ? 'Cerrar Cash Out' : 'Cerrar y vender'),
-          cuerpo: esDca ? `The DCA stops and the permission is removed. <b>The crypto you already bought stays in your wallet.</b>` : (esCash ? `This Cash Out will be cancelled and the permission removed. <b>Your crypto stays in your wallet</b>, nothing is sold.` : `Everything will be sold to <b>${sq}</b> and the bot will close. The money stays in your wallet.`),
+          cuerpo: esDca ? `Se detiene el DCA y se quita el permiso. <b>La cripto que ya compraste se queda en tu wallet.</b>` : (esCash ? `Se cancelará este Cash Out y se quita el permiso. <b>Tu cripto se queda en tu wallet</b>, no se vende nada.` : `Se venderá todo a <b>${sq}</b> y el bot se cerrará. El dinero queda en tu wallet.`),
           ok: soloCancelar ? 'Sí, suspender' : 'Sí, cerrar'
         });
         if (!ok) return;
@@ -3185,8 +3184,9 @@ async function arrancar() {
   // computadora un instante y después la móvil). Ahora móvil arranca directo.
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=15');
-      m.montarMovil({ conectarWallet });
+      const m = await import('./movil/movil.js?v=16');
+      await m.montarMovil({ conectarWallet });
+      try { window.dispatchEvent(new Event('app-montada')); } catch (_) {}
       return;   // no se monta nada de escritorio
     } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }
   }
