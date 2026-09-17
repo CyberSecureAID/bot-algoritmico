@@ -63,7 +63,7 @@ export async function pintarMercados(host, api) {
   const inp = $('mv-mk-q');
   inp.oninput = () => { _q = inp.value.trim().toLowerCase(); render(); };
   $('mv-mk-alert').onclick = () => api.abrir && api.abrir('alertasTool');
-  host.querySelectorAll('.mv-mk-tabs button').forEach((b) => b.onclick = () => { _tab = b.getAttribute('data-t'); host.querySelectorAll('.mv-mk-tabs button').forEach((x) => x.classList.toggle('on', x === b)); render(); });
+  host.querySelectorAll('.mv-mk-tabs button').forEach((b) => b.onclick = () => { const t = b.getAttribute('data-t'); if (t === 'fut') { try { api.irA && api.irA('futuros'); } catch (_) {} return; } _tab = t; host.querySelectorAll('.mv-mk-tabs button').forEach((x) => x.classList.toggle('on', x === b)); render(); });
   host.querySelectorAll('.mv-mk-cats button').forEach((b) => b.onclick = () => { _cat = b.getAttribute('data-c'); host.querySelectorAll('.mv-mk-cats button').forEach((x) => x.classList.toggle('on', x === b)); render(); });
 
   render();

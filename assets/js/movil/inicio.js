@@ -11,7 +11,7 @@ const QUICK = [
   { k: 'sell',      ic: 'market', t: 'P2P' },
   { k: 'swap',      ic: 'swap',   t: 'Swap' },
   { k: 'bots',      ic: 'bot',    t: 'Bots', tag: 'HOT' },
-  { k: 'liquidity', ic: 'pool',   t: 'Liquidity' },
+  { k: 'liquidity', ic: 'pool',   t: 'Charts' },
   { k: 'academy',   ic: 'book',   t: 'Academia', tag: 'TOP' },
 ];
 
@@ -29,7 +29,7 @@ const SERVICIOS = [
   { go: 'bots',      color: '#b47cff', ic: 'botAcum', kick: 'Acumulador',      h: 'Compra en caídas',   p: 'Compra por tramos cuando baja y arma posición sin que estés pendiente.' },
   { go: 'bots',      color: '#e8b84b', ic: 'botCash', kick: 'Cash Out',        h: 'Asegura ganancia',   p: 'Vende lo que ya tienes al precio o % que elijas.' },
   { go: 'bots',      color: '#34d97b', ic: 'botDca',  kick: 'DCA',             h: 'A intervalos',       p: 'Compra cantidades fijas cada cierto tiempo para promediar tu entrada.' },
-  { go: 'liquidity', color: '#2ebd85', ic: 'pool',    kick: 'Liquidity',       h: 'Profundidad',        p: 'Mira dónde está la liquidez y los muros del mercado.' },
+  { go: 'liquidity', color: '#2ebd85', ic: 'pool',    kick: 'Charts',          h: 'Depth',        p: 'Mira dónde está la liquidez y los muros del mercado.' },
   { go: 'muros',     color: '#f6465d', ic: 'candles', kick: 'INS Radar',       h: 'Flujo órdenes',      p: 'Detecta la mano fuerte: órdenes grandes y absorción.' },
   { go: 'niveles',   color: '#E8B84B', ic: 'chart',   kick: 'Smart Levels',    h: 'Analyze and trade',    p: 'Niveles, indicadores y compra/venta al toque en la gráfica.' },
   { go: 'academy',   color: '#4c8dff', ic: 'book',    kick: 'Academia',        h: 'Learn',            p: 'Formación paso a paso para sacarle ventaja al mercado.' },
