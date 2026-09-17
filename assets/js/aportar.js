@@ -115,7 +115,7 @@ export function montarAportar(cont) {
 
   cont.innerHTML = `
     <div class="lq-head">
-      <div class="lq-title"><span class="ln"></span>Aportar liquidez<span class="ln"></span></div>
+      <div class="lq-title"><span class="ln"></span>Staking<span class="ln"></span></div>
       <div class="lq-sub">Gana una parte de las comisiones cuando otros operan con futuros</div>
     </div>
 
@@ -126,8 +126,8 @@ export function montarAportar(cont) {
     </div>
 
     <div class="lq-tabs">
-      <button class="on" data-modo="aportar">Aportar</button>
-      <button data-modo="retirar">Retirar</button>
+      <button class="on" data-modo="aportar">Stake</button>
+      <button data-modo="retirar">Unstake</button>
     </div>
 
     <div id="lq-panel"></div>
@@ -158,7 +158,7 @@ export function montarAportar(cont) {
         <div class="lq-plazos" id="lq-plazos">
           ${PLAZOS.map((p, i) => `<div class="lq-plazo${i === 1 ? ' on' : ''}" data-plazo="${p.id}"><b>${p.etiqueta}</b><em>bloqueado</em></div>`).join('')}
         </div>
-        <button class="lq-go" id="lq-go" type="button">Aportar liquidez</button>`;
+        <button class="lq-go" id="lq-go" type="button">Stake</button>`;
       panel.querySelectorAll('.lq-plazo').forEach((el) => el.onclick = () => {
         panel.querySelectorAll('.lq-plazo').forEach((x) => x.classList.remove('on')); el.classList.add('on');
       });
