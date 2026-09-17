@@ -120,8 +120,8 @@ const PUERTAS = {
   market:  async () => (await import(J + 'market.js?v=125')).abrirMarket(),
   liq:     async () => (await import(J + 'liquidity.js?v=126')).abrirLiquidity(),
   pools:   async () => (await import(J + 'liquidity.js?v=126')).abrirPools(),
-  heat:    async () => (await import(J + 'muros.js?v=126')).abrirMuros(),
-  levels:  async () => (await import(J + 'niveles.js?v=126')).abrirNiveles(),
+  heat:    async () => (await import(J + 'muros.js?v=127')).abrirMuros(),
+  levels:  async () => (await import(J + 'niveles.js?v=127')).abrirNiveles(),
   tools:   async (tid) => (await import(J + 'tools.js?v=128')).abrirTools(tid),
   academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
@@ -168,7 +168,7 @@ async function abrir(destino, enlace) {
     return true;
   } catch (e) {
     console.error('[portada] no se pudo abrir "' + destino + '":', e);
-    aviso('No se pudo abrir ' + destino + ': ' + (e && e.message ? e.message : e));
+    aviso('Could not open ' + destino + ': ' + (e && e.message ? e.message : e));
     return false;
   } finally {
     abriendo = false;
@@ -299,7 +299,7 @@ async function pintarWallet() {
   try { await estiloBase(); } catch (_) {}
 
   if (!w.esRedCorrecta()) {
-    caja.innerHTML = '<button class="pt-wbad" type="button">Red incorrecta</button>';
+    caja.innerHTML = '<button class="pt-wbad" type="button">Wrong network</button>';
     caja.firstChild.onclick = () => w.cambiarARedCorrecta().catch(() => {});
     return;
   }
@@ -340,7 +340,7 @@ async function pintarCtas() {
     const ico = b.querySelector('svg');
     const icoHtml = ico ? ico.outerHTML : '';
     if (hay) {
-      b.innerHTML = icoHtml + (es ? 'Ir al Swap' : 'Go to Swap');
+      b.innerHTML = icoHtml + (es ? 'Go to Swap' : 'Go to Swap');
       b.removeAttribute('data-conectar');
       b.dataset.abrir = 'swap';
     } else {
