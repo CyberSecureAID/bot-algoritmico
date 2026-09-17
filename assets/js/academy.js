@@ -52,10 +52,10 @@ const OWNER = '0x97e01a1c430e0cc826aca6e9be643721e45bca7d';
 /* Lo que se enseña en la portada: poco, y lo que de verdad diferencia.
    Detallar el temario aquí sería regalar el motivo para pagar. */
 const CONTENIDO = [
-  'Plan de <b>gestión de riesgo</b>, con software para aplicarlo',
-  '<b>17 clases</b> de cero a cien, con examen cada una',
-  '<b>20 audiolibros</b> escogidos por un trader con <b>10 años</b> de oficio',
-  'Mi estrategia <b>Lógica Estructural Avanzada</b>, en tres fases',
+  '<b>Risk management</b> plan, with software to apply it',
+  '<b>17 clases</b> from zero to one hundred, with an exam each',
+  '<b>20 audiolibros</b> escogidos por un trader con <b>10 años</b> by trade',
+  'My <b>Advanced Structural Logic</b> strategy, in three phases',
   'Tutoriales de las herramientas de verdad',
   'Ejemplos sobre operaciones reales',
   'Acceso al grupo mientras dure tu plan'
@@ -69,51 +69,51 @@ const CONTENIDO = [
 const RUTA = [
   {
     n: '01',
-    t: 'Plan de gestión de riesgo',
+    t: 'Risk management plan',
     d: 'Antes de operar un solo dólar. Cómo repartir tu dinero, cuánto arriesgar por operación y cuándo parar.',
-    x: 'Incluye un <b>software</b> para aplicarlo sin cuentas a mano.',
-    nota: 'Este plan está hecho a medida de nuestra estrategia. No es un plan genérico de internet.',
-    items: ['Vídeo explicado paso a paso', 'Software de gestión incluido']
+    x: 'Includes <b>software</b> to apply it without manual calculations.',
+    nota: 'This plan is tailored to our strategy. It is not a generic plan from the internet.',
+    items: ['Video explained step by step', 'Software de gestión incluido']
   },
   {
     n: '02',
-    t: 'Formación de cero a cien',
-    d: '17 clases en vídeo que empiezan por qué es una criptomoneda y terminan en apalancamiento, spread y mercados de futuros.',
-    x: '<b>Cada clase tiene su examen</b> de 20 preguntas.',
-    nota: 'Regla de la casa: <b>80 puntos o no pasas.</b> Si fallas, el software te explica por qué era verdadero o falso, estudias y repites. Nadie avanza sin entender.',
-    items: ['17 clases en vídeo', '20 preguntas por clase', 'Repaso guiado de lo que fallaste']
+    t: 'Training from zero to one hundred',
+    d: '17 video classes that start with what a cryptocurrency is and end with leverage, spread and markets of futuros.',
+    x: '<b>Every class has its exam</b> of 20 questions.',
+    nota: 'House rule: <b>80 points or you do not pass.</b> If you fail, the software explains why it was true or false, you study and repeat. No one moves forward without understanding.',
+    items: ['17 video classes', '20 questions per class', 'Guided review of what you missed']
   },
   {
     n: '03',
-    t: 'La biblioteca',
+    t: 'The library',
     d: '20 audiolibros escogidos uno a uno por alguien con más de 10 años en trading y criptomonedas. No los escribí yo: los elegí por lo que me sirvieron a mí.',
-    x: 'Empieza con una <b>masterclass de economía</b> de 3 horas: 10 títulos sobre la verdad del dinero y el Bitcoin.',
-    nota: 'Muchos de estos títulos se venden. Aquí van dentro, y en el orden en que conviene escucharlos.',
+    x: 'Start with a 3-hour <b>economics masterclass</b>: 10 titles on the truth about money and Bitcoin.',
+    nota: 'Many of these titles are sold separately. Here they are included, in the order worth listening to them.',
     items: ['20 audiolibros seleccionados', 'Masterclass de economía, 3 h', 'Examen para pasar al siguiente']
   },
   {
     n: '04',
-    t: 'Las herramientas',
-    d: 'Tutoriales de las plataformas que se usan de verdad. Desde abrir la cuenta hasta leer un gráfico sin perderte.',
-    x: 'Incluye <b>cómo identificar la dirección del mercado</b> en menos de tres minutos.',
-    items: ['Tutoriales de TradingView', 'Leer la dirección del mercado']
+    t: 'The tools',
+    d: 'Tutorials of the platforms actually used. From opening the account to reading a chart without getting lost.',
+    x: 'Includes <b>how to identify the market direction</b> in under three minutes.',
+    items: ['TradingView tutorials', 'Leer la dirección del mercado']
   },
   {
     n: '05',
-    t: 'La estrategia, en imágenes',
-    d: 'Las tres fases aplicadas sobre operaciones reales, con capturas y una guía que explica qué mirar en cada una.',
-    items: ['Ejemplos de las tres fases', 'Guía de contexto']
+    t: 'The strategy, in pictures',
+    d: 'The three phases applied to real trades, with screenshots and a guide explaining what to look at in each one.',
+    items: ['Examples of the three phases', 'Guía de contexto']
   },
   {
     n: '06',
     t: 'Lógica Estructural Avanzada',
-    d: 'Mi estrategia completa. Aquí es donde todo lo anterior encaja.',
-    x: 'Tres fases y un <b>repaso especial</b> en medio.',
+    d: 'My complete strategy. This is where everything before fits together.',
+    x: 'Three phases and a <b>special review</b> in between.',
     fases: [
-      { f: 'Fase 1', t: 'Determina la tendencia', d: 'Saber hacia dónde va el mercado antes de tocar nada.' },
-      { f: 'Repaso', t: 'Los cimientos', d: 'Vela japonesa, gráfico contra línea, tipos de tendencia y cómo detectar que cambia. Con su software: 80 puntos para seguir.' },
-      { f: 'Fase 2', t: 'Zona Swing', d: 'Dónde entrar y por qué ahí y no en otro sitio.' },
-      { f: 'Fase 3', t: 'Movimiento en rango', d: 'Cómo se comporta el precio dentro de un rango y cuándo continúa.' }
+      { f: 'Fase 1', t: 'Determine the trend', d: 'Know where the market is going before touching anything.' },
+      { f: 'Repaso', t: 'The foundations', d: 'Japanese candlestick, chart vs line, trend types and how to detect a change. With its software: 80 points to contiir.' },
+      { f: 'Fase 2', t: 'Zona Swing', d: 'Where to enter and why there and not elsewhere.' },
+      { f: 'Fase 3', t: 'Range movement', d: 'How the price behaves within a range and when it continues.' }
     ]
   }
 ];
@@ -212,7 +212,7 @@ function rutaCerrada(box) {
         <div class="ac-candado-s">Elige un plan y tendrás la ruta completa.</div>
         <div class="ac-candado-ya">
           <span>¿Ya eres miembro?</span>
-          <div class="ac-ya-in"><span>@</span><input id="ac-ya-user" placeholder="tu usuario de Telegram" autocomplete="off" spellcheck="false"></div>
+          <div class="ac-ya-in"><span>@</span><input id="ac-ya-user" placeholder="your Telegram username" autocomplete="off" spellcheck="false"></div>
           <button class="ac-ya-b" id="ac-ya-b">Entrar</button>
           <div class="ac-ya-err" id="ac-ya-err"></div>
         </div>
@@ -222,7 +222,7 @@ function rutaCerrada(box) {
   const comprobar = async () => {
     const u = ($('ac-ya-user').value || '').trim().replace(/^@/, '').toLowerCase();
     const err = $('ac-ya-err');
-    if (u.length < 5) { err.textContent = 'Escribe tu usuario de Telegram.'; return; }
+    if (u.length < 5) { err.textContent = 'Type your Telegram username.'; return; }
     err.textContent = 'Comprobando…';
     if (await tieneAcceso(u)) {
       try { localStorage.setItem(CLAVE_USER, u); } catch (_) {}
@@ -255,7 +255,7 @@ async function rutaAbierta(box, owner, usuario) {
     <div class="ap-panel">
       <div class="ap-cab">
         <div>
-          <div class="ap-cab-t">Tu panel de aprendizaje</div>
+          <div class="ap-cab-t">Your learning panel</div>
           <div class="ap-cab-s">${owner ? 'Entras como dueño' : `Miembro · @${esc(usuario || '')}`}</div>
         </div>
         <a class="ap-grupo" href="${GRUPO}" target="_blank" rel="noopener">Abrir la Academia</a>
@@ -349,7 +349,7 @@ function seccionHTML(id, R) {
     return `
       <div class="ap-intro">Aquí encaja todo lo anterior. <b>Lógica Estructural Avanzada</b>: tres fases y un repaso en medio.</div>
       ${fila(R, { num: '1', tit: O.fase1.t, video: O.fase1.v, destacado: true })}
-      ${fila(R, { tit: O.repaso.t, sub: 'Vela japonesa, gráfico contra línea, tipos de tendencia y cómo detectar que cambia. Con examen: 80 puntos para seguir.', video: O.repaso.v, examen: O.repaso.e })}
+      ${fila(R, { tit: O.repaso.t, sub: 'Japanese candlestick, chart vs line, trend types and how to detect a change. With exam: 80 points to continue.', video: O.repaso.v, examen: O.repaso.e })}
       ${fila(R, { num: '2', tit: O.fase2.t, video: O.fase2.v, destacado: true })}
       ${fila(R, { num: '3', tit: O.fase3.t, video: O.fase3.v, destacado: true })}
 
@@ -427,7 +427,7 @@ async function pintarPlanes() {
         <div class="ac-plan-p"><b>${p.usd}</b><span>USD</span></div>
         <div class="ac-plan-d">${p.dias} días de acceso</div>
         ${ahorro > 0
-          ? `<div class="ac-plan-ah">Sale a ${porMes.toFixed(2)} al mes · ahorras un ${ahorro}%</div>`
+          ? `<div class="ac-plan-ah">Works out to ${porMes.toFixed(2)} per month · you save ${ahorro}%</div>`
           : `<div class="ac-plan-ah neutro">${p.etiqueta}</div>`}
         <span class="ac-plan-b">Elegir</span>
       </button>`;
@@ -464,9 +464,9 @@ function revisarUsuario(bruto) {
 
   u = u.replace(/^@+/, '');            // quita una o varias arrobas
 
-  if (!u) return { error: 'Escribe tu usuario de Telegram.' };
-  if (/@/.test(u)) return { error: 'Sobra una arroba. Escribe solo el usuario, sin @.' };
-  if (/^\+?\d[\d\s-]{6,}$/.test(u)) return { error: 'Eso parece un número de teléfono. Necesito tu <b>usuario</b>, el que empieza por @.' };
+  if (!u) return { error: 'Type your Telegram username.' };
+  if (/@/.test(u)) return { error: 'There is an extra @. Type only the username, without @.' };
+  if (/^\+?\d[\d\s-]{6,}$/.test(u)) return { error: 'That looks like a phone number. I need your <b>username</b>, the one that starts with @.' };
   if (/\s/.test(u)) return { error: 'Un usuario de Telegram no lleva espacios.' };
   if (/[\u00E1\u00E9\u00ED\u00F3\u00FA\u00FC\u00F1\u00C1\u00C9\u00CD\u00D3\u00DA\u00DC\u00D1]/.test(u)) return { error: 'No se admiten tildes ni la ñ. Solo letras sin acento, números y guion bajo.' };
   if (/-/.test(u)) return { error: 'El guion normal (-) no vale. Telegram solo admite el guion bajo (_).' };
@@ -476,7 +476,7 @@ function revisarUsuario(bruto) {
   if (/^[0-9]/.test(u)) return { error: 'Un usuario de Telegram empieza por letra, nunca por número.' };
   if (/^_/.test(u)) return { error: 'No puede empezar por guion bajo.' };
   if (/_$/.test(u)) return { error: 'No puede terminar en guion bajo.' };
-  if (/__/.test(u)) return { error: 'No puede llevar dos guiones bajos seguidos.' };
+  if (/__/.test(u)) return { error: 'It cannot have two underscores in a row.' };
 
   // 4 caracteres: solo los usuarios NFT. Se admite, pero se avisa.
   const aviso = u.length === 4
@@ -499,7 +499,7 @@ function pedirDatos(planId, datos) {
       <div class="ap-t">${p.nombre} · ${p.usd} USD</div>
       <div class="ap-s">Tendrás acceso al grupo durante <b>${p.dias} días</b>.</div>
 
-      <label class="ap-lab">Tu usuario de Telegram
+      <label class="ap-lab">Your Telegram username
         <div class="ap-in"><span>@</span><input id="ap-user" placeholder="tuusuario" autocomplete="off" spellcheck="false"></div>
         <span class="ap-pista">Sin la arroba. Lo encuentras en Telegram → Ajustes → Nombre de usuario.<br><b>Es el que usaremos para dejarte entrar</b>, así que revísalo bien.</span>
       </label>
@@ -534,7 +534,7 @@ function pedirDatos(planId, datos) {
       return null;
     }
     err.className = 'ap-err' + (r.aviso ? ' aviso' : ' ok');
-    err.innerHTML = r.aviso || `Se registrará como <b>@${esc(r.mostrar)}</b>`;
+    err.innerHTML = r.aviso || `It will be registered as <b>@${esc(r.mostrar)}</b>`;
     return r;
   };
   campo.oninput = () => revisar(campo.value.length < 3);
@@ -605,27 +605,27 @@ async function pagar(plan, usuario, moneda) {
 
       const saldo = await t.balanceOf(cuenta);
       if (saldo < coste) {
-        decir(`No te alcanza el USDT: hacen falta ${plan.usd}.00 y tienes ${Number(ethers.formatUnits(saldo, 18)).toFixed(2)}.`, 'mal');
+        decir(`Not enough USDT: you need ${plan.usd}.00 and you have ${Number(ethers.formatUnits(saldo, 18)).toFixed(2)}.`, 'mal');
         return;
       }
 
       const permiso = await t.allowance(cuenta, ACADEMY);
       if (permiso < coste) {
-        decir('<b>Paso 1 de 2 — Permiso.</b><br>Autorizas el cobro exacto de este plan. Confirma en tu wallet.', 'info');
+        decir('<b>Step 1 of 2 — Permission.</b><br>You authorize the exact charge for this plan. Confirm in your wallet.', 'info');
         const tx1 = await t.approve(ACADEMY, coste);
         await tx1.wait();
       }
-      decir('<b>Paso 2 de 2 — Pago.</b><br>Confirma en tu wallet.', 'info');
+      decir('<b>Step 2 of 2 — Payment.</b><br>Confirm in your wallet.', 'info');
       const tx = await c.comprarConUsdt(plan.id, usuario);
       await tx.wait();
     } else {
       const coste = await leer().costeEnBnb(plan.id);
       const saldo = await lector().getBalance(cuenta);
       if (saldo < coste) {
-        decir(`No te alcanza el BNB: hacen falta ${Number(ethers.formatEther(coste)).toFixed(5)} y tienes ${Number(ethers.formatEther(saldo)).toFixed(5)}.`, 'mal');
+        decir(`Not enough BNB: you need ${Number(ethers.formatEther(coste)).toFixed(5)} and you have ${Number(ethers.formatEther(saldo)).toFixed(5)}.`, 'mal');
         return;
       }
-      decir('Confirma el pago en tu wallet.', 'info');
+      decir('Confirm the payment in your wallet.', 'info');
       const tx = await c.comprarConBnb(plan.id, usuario, { value: coste });
       await tx.wait();
     }
@@ -651,7 +651,7 @@ async function exito(usuario, plan) {
     <div class="ao-c">
       <div class="ao-ico"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg></div>
       <div class="ao-t">Ya está</div>
-      <div class="ao-s"><b>@${esc(usuario)}</b> tiene acceso al grupo${hasta ? ` hasta el <b>${hasta}</b>` : ''}.</div>
+      <div class="ao-s"><b>@${esc(usuario)}</b> tiene acceso al grupo${hasta ? ` until <b>${hasta}</b>` : ''}.</div>
 
       <div class="ao-pasos">
         <div class="ao-p"><span>1</span>Entra al grupo con el botón de abajo</div>

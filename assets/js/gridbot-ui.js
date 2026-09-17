@@ -10,9 +10,9 @@ import { t } from './idioma.js?v=163';
 import * as wallet from './wallet.js?v=125';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
 import * as perfil from './perfil.js?v=125';
-import * as prizepool from './prizepool.js?v=127';
+import * as prizepool from './prizepool.js?v=128';
 import * as tutorial from './tutorial.js?v=125';
-import * as market from './market.js?v=125';
+import * as market from './market.js?v=126';
 import * as avisos from './avisos.js?v=125';
 import * as grafica from './grafica.js?v=125';
 import * as extras from './extras.js?v=200';
@@ -21,7 +21,7 @@ import { inyectarEstilo } from './gridbot/estilos.js?v=201';
 import { moneda, num, _movil, tipoNum, escT, enCristiano, fmtPrecioUSD, icoInner, limpiarBusy, modalBusy, modalBusyTexto, modalError, modalClose } from './gridbot/util.js?v=1';
 import { LOGOS, LOGO_ST } from './gridbot/estado.js?v=1';
 import { APP, BASES, QUOTES, INFO, FEE_CICLO, GAS_OP_USD, VOL_DIARIA, PRESETS, NOMBRE_PRESET, GAS_VUELTA_USD, COM_DEX, LOGOS_WALLET, KEEPER_URL, CONF_BOTS, CLAVE_AVISO, CUPO_TOTAL, CUPO_POR_TIPO, NOMBRE_TIPO, CAT_NOMBRES, BOTMETA, RESERVA_BNB } from './gridbot/config.js?v=1';
-import { abrirSwap, initSwap } from './gridbot/swap.js?v=5';
+import { abrirSwap, initSwap } from './gridbot/swap.js?v=6';
 
 const $ = (id) => document.getElementById(id);
 // Lo que se OPERA (base). Las estables no pueden ser base.
@@ -319,10 +319,10 @@ function headerHTML() {
   let right;
   if (!cuenta) right = `<button class="btn btn-oro hdr-btn" id="c-conectar">Conectar wallet</button>`;
   else if (!wallet.esRedCorrecta()) right = `<button class="btn btn-rojo hdr-btn" id="c-red">Cambiar a BNB Chain</button>`;
-  else right = `<span class="c-sep"></span><button class="c-perfil" id="c-perfil" type="button" aria-label="Mi perfil"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c.6-3.4 3.2-5 6.5-5s5.9 1.6 6.5 5"/></svg></button><button class="dir" id="c-dir" type="button" title="Cambiar de wallet">${iconoWallet()}<span class="dir-tx">${String(cuenta).slice(-4)}</span><span class="dir-ch"></span></button>`;
+  else right = `<span class="c-sep"></span><button class="c-perfil" id="c-perfil" type="button" aria-label="My profile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c.6-3.4 3.2-5 6.5-5s5.9 1.6 6.5 5"/></svg></button><button class="dir" id="c-dir" type="button" title="Cambiar de wallet">${iconoWallet()}<span class="dir-tx">${String(cuenta).slice(-4)}</span><span class="dir-ch"></span></button>`;
   return `<header class="c-hdr">
     <a class="c-brand" href="./"><img class="c-logo" src="assets/img/cco-logo.png" alt="" width="30" height="30"><img class="c-logo-full" src="assets/img/cco-full.webp" alt="Cripto Cuba Oficial" width="152" height="40" loading="eager"></a>
-    <span class="c-estado" id="c-estado" title="Estado de tu wallet"><i></i><b>Sin conectar</b></span>
+    <span class="c-estado" id="c-estado" title="Your wallet status"><i></i><b>Not connected</b></span>
     <img class="c-logo-mov" src="assets/img/cco-movil.webp" alt="CriptoCuba Oficial" width="140" height="91" loading="eager" decoding="async">
     <button class="c-ticker" id="c-ticker" type="button" aria-label="Prize Pool"><img class="c-ticker-img" src="assets/img/cinta-prize.webp" alt="Prize Pool" loading="lazy"></button>
     <div class="c-hdr-r">
@@ -333,10 +333,10 @@ function headerHTML() {
       <button class="c-swap c-liq" id="c-liq" type="button" aria-label="Liquidity Pools"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h4V10H3zM10 20h4V4h-4zM17 20h4v-7h-4z"/></svg><span class="c-swap-tx">Liquidity</span></button>
       <button class="c-prize" id="c-prize" type="button" aria-label="Prize Pool"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg><span class="c-prize-tx">Prize Pool</span></button>
       <button class="c-market" id="c-market" type="button" aria-label="Marketplace"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5 10.5a2 2 0 0 1-2 1.5H6.5a2 2 0 0 1-2-1.5L3 9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg><span class="c-market-tx">Market</span></button>
-      <button class="c-loteria" id="c-instalar" type="button" aria-label="Instalar la app"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span class="c-lot-tx"><span class="lbl-pc">Install</span><span class="lbl-mov">Compartir</span></span></button>
+      <button class="c-loteria" id="c-instalar" type="button" aria-label="Install the app"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span class="c-lot-tx"><span class="lbl-pc">Install</span><span class="lbl-mov">Compartir</span></span></button>
       ${right}
     </div>
-    <button class="c-menu-btn" id="c-menu-btn" type="button" aria-label="Menú"><span></span><span></span><span></span></button>
+    <button class="c-menu-btn" id="c-menu-btn" type="button" aria-label="Menu"><span></span><span></span><span></span></button>
   </header>`;
 }
 /* En el móvil, algunos navegadores pintan unas flechitas en los campos
@@ -524,14 +524,14 @@ function wireHeader() {
   // Liquidity Pools: se carga solo al pedirlo.
   if ($('c-liq')) $('c-liq').onclick = async () => {
     try {
-      const lq = await import('./liquidity.js?v=126');
+      const lq = await import('./liquidity.js?v=127');
       lq.abrirLiquidity();
     } catch (e) { console.warn('[Aurex] liquidity:', e); }
   };
 
   if ($('c-tools')) $('c-tools').onclick = async () => {
     try {
-      const t = await import('./tools.js?v=128');
+      const t = await import('./tools.js?v=129');
       t.abrirTools();
       t.vigilar();                    // arranca la vigilancia de alertas
     } catch (e) { console.warn('[Aurex] tools:', e); }
@@ -571,7 +571,7 @@ function wireHeader() {
 
   if ($('c-academy')) $('c-academy').onclick = async () => {
     try {
-      const ac = await import('./academy.js?v=127');
+      const ac = await import('./academy.js?v=128');
       ac.abrirAcademy();
     } catch (e) { console.warn('[Aurex] academy:', e); }
   };
@@ -628,40 +628,41 @@ function wireHeader() {
 }
 function footerHTML() {
   const faqs = [
-    ['¿Cómo retiro mis ganancias?', 'No hay nada que retirar. Tus ganancias caen solas en tu wallet cada vez que el bot vende. El dinero siempre está en tu poder, nunca en el nuestro.'],
-    ['¿Qué hace el bot exactamente?', 'Compra barato y vende caro por ti, solo, mientras el precio sube y baja dentro del rango que elijas. Repite ese ciclo una y otra vez.'],
-    ['¿Qué es un bot de cuadrícula?', 'Divide un rango de precios en niveles (cuadrículas). Cuando el precio baja a un nivel compra, cuando sube al siguiente vende. Gana con cada subida y bajada.'],
-    ['¿Qué es el Bot Acumulador?', 'Compra en la caída (más volumen mientras más baja) y vende TODO junto cuando el total gana el porcentaje que elijas. Hace menos operaciones, ideal para acumular.'],
-    ['¿Es seguro mi dinero?', 'Sí. Tus monedas nunca salen de tu wallet a manos de nadie. Le das un permiso limitado que puedes quitar cuando quieras.'],
-    ['¿Necesito cuenta o KYC?', 'No. Solo tu wallet. Sin registros, sin papeleo y sin exchange.'],
-    ['¿Cuánto cuesta usar la plataforma?', 'Una activación de aproximadamente 1 dólar al mes, que te deja crear todos los bots que quieras. Aparte pagas el gas de la red (unos centavos por operación).'],
-    ['¿Qué es el gas?', 'Es el costo que cobra la red BNB por cada operación (comprar o vender). Es de unos centavos y sale del tanque de gas que cargas en cada bot.'],
-    ['¿Por qué tengo que cargar gas?', 'Porque el bot paga a la red cada vez que compra o vende. Sin gas, el bot no puede operar. Cárgale un poco de BNB en la sección de gas del bot.'],
-    ['¿Puedo perder dinero?', 'Sí. El trading tiene riesgo. Si el precio se sale del rango, el bot espera. Invierte solo lo que puedas permitirte perder. Esto no es consejo financiero.'],
-    ['¿Qué pasa si el precio se sale del rango?', 'El bot deja de operar y espera a que el precio vuelva a entrar. Por eso conviene elegir un rango amplio.'],
-    ['¿Qué es la Ganancia por cuadrícula?', 'El beneficio mínimo que exiges por cada cuadrícula, por encima de la comisión. El sistema ajusta las cuadrículas para que cada venta deje ganancia limpia.'],
-    ['¿Qué es la separación entre cuadrículas?', 'La distancia de precio entre un nivel y el siguiente. Más separación significa menos operaciones pero cada una más rentable.'],
-    ['¿Por qué con poco capital gano poco?', 'Porque el gas por operación es fijo. Con poco dinero cada cuadrícula es pequeña y la ganancia por vuelta es de centavos. La ganancia escala con el capital.'],
-    ['¿Cuánto capital me conviene poner?', 'Cuanto más, mejor rinde en proporción. Con más capital cada cuadrícula es mayor y la ganancia por vuelta crece.'],
-    ['¿Qué es Grid profit?', 'La ganancia ya realizada: dinero que el bot ya ganó cerrando cuadrículas completas y que ya está en tu wallet.'],
-    ['¿Qué es el Flotante?', 'La ganancia o pérdida no realizada: cuánto vale ahora lo que el bot tiene comprado, comparado con lo que pagó. Sube y baja con el mercado.'],
-    ['¿Qué son las Vueltas?', 'Una vuelta entera es una operación completa: el bot compró y luego vendió. Ahí se concreta la ganancia de rejilla.'],
-    ['¿Qué es el precio medio?', 'El precio promedio al que compraste. Si el mercado sube por encima de ese precio, tu posición está en ganancia.'],
-    ['¿Cómo activo un bot?', 'Elige el tipo de bot, la moneda, el rango y cuánto inviertes. Firma la activación y la creación en tu wallet, y listo.'],
-    ['¿Puedo tener varios bots a la vez?', 'Sí. Con la activación mensual puedes crear todos los bots que quieras, en distintas monedas.'],
-    ['¿Cómo cierro un bot?', 'Con el botón Cerrar y vender. Vende todo a estable y el dinero queda en tu wallet.'],
-    ['¿Qué monedas puedo usar?', 'Pares con buena liquidez en PancakeSwap: BNB, BTCB, ETH y varias más, contra USDT o USDC.'],
-    ['¿En qué red funciona?', 'En BNB Smart Chain (BSC), donde hay liquidez profunda y el gas es barato.'],
-    ['¿Quién ejecuta las operaciones?', 'Un servicio automático vigila el precio y dispara las compras y ventas por ti, sin que tengas que hacer nada.'],
-    ['¿Por qué mi wallet muestra un aviso?', 'Porque el contrato es nuevo y aún no tiene reputación. El permiso que otorgas es limitado y revocable.'],
-    ['¿El bot trabaja si cierro la página?', 'Sí. El bot vive en la blockchain y se opera solo las 24 horas, aunque cierres el navegador.'],
-    ['¿Qué es el slippage?', 'La pequeña diferencia entre el precio esperado y el real al operar. En pares líquidos es mínimo.'],
-    ['¿Puedo confiar en los números que veo?', 'Sí. Todo lo que ves (ganancia, vueltas, precio medio) sale directo del contrato en la blockchain. No hay datos inventados.']
+    ['How do I withdraw my profits?', 'There is nothing to withdraw. Your profits land in your wallet on their own every time the bot sells. The money is always in your hands, never in ours.'],
+    ['What exactly does the bot do?', 'It buys low and sells high for you, on its own, while the price moves up and down within the range you choose. It repeats that cycle over and over.'],
+    ['What is a grid bot?', 'It splits a price range into levels (grids). When the price drops to a level it buys; when it rises to the next one it sells. It profits from every rise and fall.'],
+    ['What is the Accumulator bot?', 'It buys on the dip (more volume the lower it goes) and sells EVERYTHING at once when the total gains the percentage you choose. Fewer trades, ideal for accumulating.'],
+    ['Is my money safe?', 'Yes. Your coins never leave your wallet into anyone\'s hands. You grant a limited permission that you can remove whenever you want.'],
+    ['Do I need an account or KYC?', 'No. Just your wallet. No sign-ups, no paperwork and no exchange.'],
+    ['How much does it cost to use the platform?', 'An activation of about 1 dollar per month, which lets you create as many bots as you want. Separately you pay the network gas (a few cents per trade).'],
+    ['What is gas?', 'It is the cost the BNB network charges for each operation (buying or selling). It is a few cents and comes out of the gas tank you load into each bot.'],
+    ['Why do I have to load gas?', 'Because the bot pays the network every time it buys or sells. Without gas, the bot cannot trade. Load a little BNB in the bot\'s gas section.'],
+    ['Can I lose money?', 'Yes. Trading carries risk. If the price leaves the range, the bot waits. Invest only what you can afford to lose. This is not financial advice.'],
+    ['What happens if the price leaves the range?', 'The bot stops trading and waits for the price to come back in. That is why it pays to choose a wide range.'],
+    ['What is Profit per grid?', 'The minimum profit you demand for each grid, above the fee. The system adjusts the grids so every sale leaves clean profit.'],
+    ['What is the spacing between grids?', 'The price distance between one level and the next. More spacing means fewer trades, but each one more profitable.'],
+    ['Why do I earn little with little capital?', 'Because gas per trade is fixed. With little money each grid is small and the profit per cycle is cents. Profit scales with capital.'],
+    ['How much capital should I put in?', 'The more, the better it performs proportionally. With more capital each grid is larger and the profit per cycle grows.'],
+    ['What is Grid profit?', 'The profit already realized: money the bot already earned by closing complete grids, which is already in your wallet.'],
+    ['What is the Floating P&L?', 'The unrealized profit or loss: what the bot\'s holdings are worth now compared to what it paid. It rises and falls with the market.'],
+    ['What are Cycles?', 'A full cycle is a complete trade: the bot bought and then sold. That is where the grid profit is locked in.'],
+    ['What is the average price?', 'The average price at which you bought. If the market rises above that price, your position is in profit.'],
+    ['How do I activate a bot?', 'Choose the bot type, the coin, the range and how much you invest. Sign the activation and the creation in your wallet, and that is it.'],
+    ['Can I have several bots at once?', 'Yes. With the monthly activation you can create as many bots as you want, on different coins.'],
+    ['How do I close a bot?', 'With the Close and sell button. It sells everything to stablecoin and the money stays in your wallet.'],
+    ['Which coins can I use?', 'Pairs with good liquidity on PancakeSwap: BNB, BTCB, ETH and several more, against USDT or USDC.'],
+    ['Which network does it run on?', 'On BNB Smart Chain (BSC), where liquidity is deep and gas is cheap.'],
+    ['Who executes the trades?', 'An automated service watches the price and fires the buys and sells for you, without you having to do anything.'],
+    ['Why does my wallet show a warning?', 'Because the contract is new and has no reputation yet. The permission you grant is limited and revocable.'],
+    ['Does the bot work if I close the page?', 'Yes. The bot lives on the blockchain and trades on its own 24 hours a day, even if you close the browser.'],
+    ['What is slippage?', 'The small difference between the expected price and the actual one when trading. On liquid pairs it is minimal.'],
+    ['Can I trust the numbers I see?', 'Yes. Everything you see (profit, cycles, average price) comes straight from the contract on the blockchain. There is no made-up data.']
   ];
+
   const card = ([q, a], i) => `<div class="c-faq" data-faq="${(q + ' ' + a).toLowerCase().replace(/["<>]/g, '')}" data-q="${q.replace(/"/g, '&quot;')}" data-a="${a.replace(/"/g, '&quot;')}"${i >= 6 ? ' style="display:none"' : ''}><h5>${q}</h5><p>${a}</p></div>`;
   return `<footer class="c-foot">
     <details class="c-faq-wrap">
-      <summary><span class="faq-long">¿Tienes dudas sobre cómo funciona la plataforma?</span><span class="faq-short">¿Tienes dudas? Toca aquí</span></summary>
+      <summary><span class="faq-long">Questions about how the platform works?</span><span class="faq-short">Questions? Tap here</span></summary>
       <div style="padding:16px">
         ${tutorial.filaBots()}
         <input class="faq-search" id="faq-search" type="text" autocomplete="off" placeholder="Escribe aquí sobre lo que quieres saber…">
@@ -787,12 +788,12 @@ function render() {
               <div><span>Compra inicial (a mercado)</span><b id="fa-p-ini">—</b></div>
               <div><span>Precio promedio estimado</span><b id="fa-p-prom">—</b></div>
             </div>
-            <div class="as-nota"><span class="nota-larga">Compra más cuanto más baja el precio. Cuando el conjunto gana el % que elijas, <b>vende todo de golpe</b>.</span><span class="nota-corta">Compra en las caídas y <b>vende todo junto</b> al llegar a tu objetivo.</span></div>
+            <div class="as-nota"><span class="nota-larga">Buys more the lower the price goes. When the total gains the % you choose, it <b>sells everything at once</b>.</span><span class="nota-corta">Buys the dips and <b>sells everything together</b> when your target is reached.</span></div>
           </div>
         </div>
         <div id="f-cash" style="${F.tipo==='cash'?'':'display:none'}">
           <button type="button" class="btn-conf" data-conf-bot="cash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg><span class="v-l">Configuraciones rentables</span><span class="v-s">Configuración</span><span class="bc-sel" id="conf-sel-cash">elegir</span></button>
-          <div class="cash-note">Vendes <b id="cn-b">${moneda(F.baseId).simbolo}</b> y recibes <b id="cn-q">${moneda(F.quoteId).simbolo}</b> en tu wallet.</div>
+          <div class="cash-note">You sell <b id="cn-b">${moneda(F.baseId).simbolo}</b> and receive <b id="cn-q">${moneda(F.quoteId).simbolo}</b> in your wallet.</div>
           <div class="cash-cant-head">
             <div class="lab" style="margin:0"><span class="v-l">Cantidad a vender</span><span class="v-s">Cantidad</span> ${iBtn('cashcant')}</div>
             <div class="cash-bal"><span id="fc-saldo">—</span><button type="button" class="cash-max" id="fc-max">Máx</button></div>
@@ -825,7 +826,7 @@ function render() {
             </div>
             <div class="cr-note">
               <span class="nota-larga">Vende solo cuando el precio llegue a tu objetivo y recibe <b id="fc-p-est">${moneda(F.quoteId).simbolo}</b> en tu wallet.<br><span style="opacity:.75">Ten esa moneda agregada en tu wallet para verla: llega igual.</span></span>
-              <span class="nota-corta">Vende al llegar a tu objetivo y recibes <b>${moneda(F.quoteId).simbolo}</b> en tu wallet.</span>
+              <span class="nota-corta">Sells when your target is reached and you receive <b>${moneda(F.quoteId).simbolo}</b> in your wallet.</span>
             </div>
           </div>
         </div>
@@ -897,14 +898,14 @@ function render() {
             <img class="bot-panel" src="assets/img/panel-cash.webp" alt="Cash Out" loading="lazy">
           </div>
           <div id="c-dca-side" style="display:none">
-            <img class="bot-panel" src="assets/img/panel-dca.webp" alt="DCA Compra Automática" loading="lazy">
+            <img class="bot-panel" src="assets/img/panel-dca.webp" alt="DCA Auto Buy" loading="lazy">
           </div>
           <div id="c-hint"></div>
           <div class="prev vacio">
             <div class="p"><b>Precio</b><span id="pv-precio">—</span></div>
             <div class="p prep"><span id="pv-compras" class="rep-wrap">—</span></div>
             <div class="p"><b>Por compra</b><span id="pv-orden">—</span></div>
-            <div class="p"><b>Ganancia ${iBtn('porcuad')}</b><span id="pv-gan" class="pos">—</span></div>
+            <div class="p"><b>Profit ${iBtn('porcuad')}</b><span id="pv-gan" class="pos">—</span></div>
           </div>
           <div class="asesor" id="c-asesor" style="display:none">
             <div class="as-top"><b>Estimación</b> ${iBtn('asesor')}</div>
@@ -933,7 +934,7 @@ function render() {
         </div>
       </div>
     </div>
-    <div class="colmenas card"><div class="mb-cab"><h3>Mis bots</h3><div class="mb-der"><span class="c-cupo" id="c-cupo"><b>—</b><span class="cupo-tx">bots activos</span></span><button class="c-cupo" id="c-ver-ord" type="button" title="Ver tus órdenes limit pendientes"><span class="cupo-tx">Mis órdenes</span><b id="c-ord-n" style="display:none">0</b></button><button class="btn-cerrar-todos" id="c-cerrar-todos" type="button" title="Cerrar todos tus bots"><span class="cerrar-largo">Cerrar todos</span><span class="cerrar-corto">Cerrar</span></button></div></div><div id="c-rejillas"><div class="skel" style="height:120px;width:100%;border-radius:14px"></div></div></div>
+    <div class="colmenas card"><div class="mb-cab"><h3>My bots</h3><div class="mb-der"><span class="c-cupo" id="c-cupo"><b>—</b><span class="cupo-tx">bots activos</span></span><button class="c-cupo" id="c-ver-ord" type="button" title="See your pending limit orders"><span class="cupo-tx">Mis órdenes</span><b id="c-ord-n" style="display:none">0</b></button><button class="btn-cerrar-todos" id="c-cerrar-todos" type="button" title="Close all your bots"><span class="cerrar-largo">Cerrar todos</span><span class="cerrar-corto">Cerrar</span></button></div></div><div id="c-rejillas"><div class="skel" style="height:120px;width:100%;border-radius:14px"></div></div></div>
     ${footerHTML()}
   </div>`;
 
@@ -1035,7 +1036,7 @@ function actualizarVista() {
   let aviso1 = '';
   if (NOTA_GAS) aviso1 += `<div class="hint">${NOTA_GAS}</div>`;
   if (F.precio && pMin > 0 && pMax > pMin && (F.precio < pMin || F.precio > pMax))
-    aviso1 = `<div class="hint">El precio (${precioFmt(F.precio)}) está fuera de tu rango. El bot esperará. Ajusta el rango si quieres que opere ya.</div>`;
+    aviso1 = `<div class="hint">The price (${precioFmt(F.precio)}) is outside your range. The bot will wait. Adjust the range if you want que opere ya.</div>`;
   if (hint) hint.innerHTML = aviso1;
 
   if (valido) {
@@ -1066,9 +1067,9 @@ function asesorar(total, n, pasoPct, ordenQuote, netPorVuelta) {
   box.style.display = '';
   $('as-ops').textContent = (vueltasDia * 2).toFixed(vueltasDia * 2 < 1 ? 1 : 0);
   let nota = '';
-  if (netCiclo <= 0) nota = 'Con esta configuración cada vuelta apenas cubre el gas. Prueba la estrategia "Tranquilo" o sube el capital: cada cuadrícula rinde cuando mueve varios dólares.';
-  else if (vueltasDia < 0.3) nota = 'Rinde, pero opera poco (mercado tranquilo para este rango). Para más movimiento, prueba "Activo".';
-  else nota = 'Configuración equilibrada para este capital. La estimación depende de cuánto se mueva el mercado.';
+  if (netCiclo <= 0) nota = 'With this setup each cycle barely covers the gas. Try the "Calm" strategy or raise the capital: each grid pays off when it moves several dollars.';
+  else if (vueltasDia < 0.3) nota = 'It yields, but trades little (quiet market for this range). For more action, try "Active".';
+  else nota = 'Balanced setup for this capital. The estimate depends on how much the market moves.';
   $('as-nota').textContent = nota;
 }
 /* Configuraciones para los otros tres bots, con su porqué económico. */
@@ -1150,7 +1151,7 @@ function ventanaConfiguraciones() {
         <span><i>separación</i>${p.sep.toFixed(2)}%</span>
       </div>
       <div class="cf-gana ${c.ok ? '' : 'mal'}">
-        ${c.ok ? `Cada vuelta te deja ≈ <b>${c.neto.toFixed(3)} USDT</b> ya libres de comisiones` : `Con ${usada.toFixed(0)} USDT las comisiones se comen la ganancia. Sube la inversión.`}
+        ${c.ok ? `Each cycle leaves you ≈ <b>${c.neto.toFixed(3)} USDT</b> already net of fees` : `With ${usada.toFixed(0)} USDT the fees eat the profit. Raise the investment.`}
       </div>
     </button>`;
   };
@@ -1185,7 +1186,7 @@ function ventanaConfiguraciones() {
           · <b>Si el precio se sale del rango por abajo</b>, el bot habrá comprado en todos los escalones y se queda quieto con la moneda, que vale menos de lo que pagaste. Tu dinero sigue ahí, en forma de moneda, pero en pérdida hasta que vuelva.<br>
           · <b>If it breaks out on top</b>, it will have sold everything and stop trading. You profited, but you miss the rest of the rally.<br>
           · <b>If the market stays flat</b> and touches no step, the bot does nothing and earns nothing.<br>
-          · <b>Nada garantiza ganancias.</b> Esta estrategia funciona bien cuando el precio se mueve dentro de un rango, y funciona mal cuando se va en una sola dirección y no vuelve.</p>
+          · <b>Nothing guarantees profits.</b> This strategy works well when the price moves within a range, and works badly when it goes in one direction and does not come back.</p>
           <p><b>Tres consejos concretos:</b><br>
           · <b>The more money per grid, the better.</b> Gas costs the same whether you move 2 USDT or 20, so with tiny orders it eats everything.<br>
           · <b>El precio de ahora debe quedar dentro del rango</b>, y a poder ser por el medio. Si no, el bot no tiene dónde operar.<br>
@@ -1208,7 +1209,7 @@ function ventanaConfiguraciones() {
   const pintarSim = () => {
     const out = $('cf-sim-out'); if (!out) return;
     const m = Math.max(0, Number($('cf-monto')?.value) || 0);
-    if (m < 20) { out.innerHTML = `<div class="cf-sim-mal">Escribe al menos 20 USDT.</div>`; return; }
+    if (m < 20) { out.innerHTML = `<div class="cf-sim-mal">Enter at least 20 USDT.</div>`; return; }
     const filas = ['tranquilo', 'equilibrado', 'activo', 'volatil'].map((id) => {
       const p = PRESETS[id];
       const orden = m / p.grids;
@@ -1234,7 +1235,7 @@ function ventanaConfiguraciones() {
 }
 
 function aplicarPreset(id) {
-  if (!F.precio) { aviso($('c-msg'), 'err', 'Espera a que cargue el precio y vuelve a intentar.'); return; }
+  if (!F.precio) { aviso($('c-msg'), 'err', 'Wait for the price to load and try again.'); return; }
   const p = PRESETS[id]; if (!p) return;
   F.preset = id;
   const sel = $('f-conf-sel'); if (sel) sel.textContent = NOMBRE_PRESET[id] || 'elegir';
@@ -1264,7 +1265,7 @@ function asegurarRentable() {
   if (!(total > 0 && pMin > 0 && pMax > pMin && niv)) return;
   const maxN = maxGridsRentable(pMin, pMax, total);
   const cur = parseInt(niv.value, 10) || 0;
-  if (cur > maxN) { niv.value = maxN; NOTA_GAS = `Ajustado a ${maxN} cuadrículas: así cada vuelta te deja ganancia neta con tu capital.`; }
+  if (cur > maxN) { niv.value = maxN; NOTA_GAS = `Adjusted to ${maxN} grids: that way every cycle leaves you net profit with your capital.`; }
 }
 function rangoNecesario(n, margen) {
   const s = margen / 100 + FEE_CICLO;
@@ -1311,7 +1312,7 @@ function recomputarPorMargen() {
     const aMin = parseFloat($('f-min')?.value) || 0, aMax = parseFloat($('f-max')?.value) || 0;
     const yaOk = aMin > 0 && aMax > 0 && Math.abs(aMin - pMin) / pMin < 0.02 && Math.abs(aMax - pMax) / pMax < 0.02;
     if (!yaOk) {
-      nota.innerHTML = `<div class="hint">Para <b>${n} cuadrículas</b> al ${num(margen, 1)}% cada una (separación ≈ <b>${num(sepObj, 2)}%</b>), el rango debe ser <b>${precioFmt(pMin)} – ${precioFmt(pMax)}</b> (bot menos sensible). <button class="sug" id="f-ampliar" type="button">Aplicar rango</button></div>`;
+      nota.innerHTML = `<div class="hint">For <b>${n} grids</b> at ${num(margen, 1)}% each (spacing ≈ <b>${num(sepObj, 2)}%</b>), the range must be <b>${precioFmt(pMin)} – ${precioFmt(pMax)}</b> (less sensitive bot). <button class="sug" id="f-ampliar" type="button">Apply range</button></div>`;
       if ($('f-ampliar')) $('f-ampliar').onclick = () => ampliarRango(pMin, pMax, n, margen);
     } else {
       nota.innerHTML = `<div class="hint" style="color:var(--neon-lit)">✓ Rango ajustado: ${n} cuadrículas al ${num(margen, 1)}% cada una (separación ≈ ${num(sepObj, 2)}%).</div>`;
@@ -1327,7 +1328,7 @@ function recomputarPorMargen() {
   if (total > 0 && n > maxViable) n = maxViable;   // tope de gas
   if (niv) { niv.value = n; niv.readOnly = true; niv.style.opacity = '0.6'; niv.title = 'Calculado por tu % de ganancia y tu capital'; }
   if (nota && total > 0 && n <= maxViable && maxViable <= 3) {
-    nota.innerHTML = `<div class="hint">Con ${num(total, 0)} ${simQ} y ${num(margen, 1)}% por cuadrícula, tu capital solo da para pocas cuadrículas rentables (el gas manda). Sube el capital o el % para tener más.</div>`;
+    nota.innerHTML = `<div class="hint">With ${num(total, 0)} ${simQ} and ${num(margen, 1)}% per grid, your capital only allows a few profitable grids (gas rules). Raise the capital or the % to have more.</div>`;
   }
 }
 function sugerirRango() {
@@ -1354,7 +1355,7 @@ async function refrescarSaldoInversion() {
     const quote = moneda(F.quoteId);
     const bal = await gb.balanceToken(gb.dirDe(quote), cuenta);
     const balH = Number(gb.fmt(bal, quote.decimals)); F.saldoQuote = balH;
-    el.innerHTML = `${num(balH, 2)} · <b>Máx</b>`;
+    el.innerHTML = `${num(balH, 2)} · <b>Max</b>`;
     if (inp) inp.dataset.max = balH;                 // el stepper y el clamp respetan este tope
     if (inp && parseFloat(inp.value) > balH) { inp.value = Number(balH.toPrecision(8)); inp.dispatchEvent(new Event('input', { bubbles: true })); }
     el.onclick = () => { if (F.saldoQuote > 0 && inp) { inp.value = Number(F.saldoQuote.toPrecision(8)); inp.dispatchEvent(new Event('input', { bubbles: true })); } };
@@ -1375,8 +1376,8 @@ async function refrescarSaldoCash() {
 }
 async function onDepositarGas() {
   const v = parseFloat($('f-gas').value); const m = $('c-gasmsg');
-  if (!(v > 0)) { aviso(m, 'err', 'Escribe cuánto BNB quieres poner.'); return; }
-  aviso(m, 'info', 'Recargando… confirma en tu wallet.');
+  if (!(v > 0)) { aviso(m, 'err', 'Type how much BNB you want to put in.'); return; }
+  aviso(m, 'info', 'Topping up… confirm in your wallet.');
   try { await gb.depositarGas(v); aviso(m, 'info', 'Gas recargado.'); refrescarGas(); }
   catch (e) { aviso(m, 'err', 'No se pudo: ' + (e?.shortMessage || e?.message || e)); }
 }
@@ -1384,8 +1385,8 @@ async function onRetirarGas() {
   const cuenta = wallet.cuentaActual(); const m = $('c-gasmsg');
   try {
     const s = await gb.gasSaldo(cuenta);
-    if (s <= 0n) { aviso(m, 'err', 'No tienes gas para retirar.'); return; }
-    aviso(m, 'info', 'Retirando… confirma en tu wallet.');
+    if (s <= 0n) { aviso(m, 'err', 'You have no gas to withdraw.'); return; }
+    aviso(m, 'info', 'Withdrawing… confirm in your wallet.');
     await gb.retirarGas(gb.fmtBNB(s)); aviso(m, 'info', 'Gas retirado.'); refrescarGas();
   } catch (e) { aviso(m, 'err', 'No se pudo: ' + (e?.shortMessage || e?.message || e)); }
 }
@@ -1401,12 +1402,12 @@ async function asegurarSuscripcion(cuenta) {
   if (!(precio > 0n)) { modalError('La activación del bot aún no está configurada. Avísame para revisarlo.'); return false; }
   const precioBNB = Number(gb.fmtBNB(precio));
   const ok = await modalConfirm({
-    titulo: 'Activar tu bot (30 días)',
-    cuerpo: `Para encender tu bot hay que activarlo por 30 días. Es un pago único de <b>${num(precioBNB, 5)} BNB</b> (≈ $1) que firmas desde tu wallet. Con eso puedes tener <b>todos los bots que quieras</b> este mes.<br><br>¿Activar ahora?`,
+    titulo: 'Activate your bot (30 days)',
+    cuerpo: `To turn on your bot it has to be activated for 30 days. It is a one-time payment of <b>${num(precioBNB, 5)} BNB</b> (≈ $1) that you sign from your wallet. With that you can have <b>as many bots as you want</b> this month.<br><br>Activate now?`,
     ok: 'Sí, activar'
   });
   if (!ok) return false;
-  modalBusy('Activando tu bot (firma el pago en tu wallet)…');
+  modalBusy('Activating your bot (sign the payment in your wallet)…');
   await gb.suscribir();
   return true;
 }
@@ -1415,7 +1416,7 @@ async function cerrarTodosLosBots(cuenta) {
   // Aviso inmediato: leer los bots tarda unos segundos y el botón parecía roto.
   const btn = $('c-cerrar-todos');
   const txtOrig = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Buscando tus bots…'; btn.classList.add('cargando'); }
+  if (btn) { btn.disabled = true; btn.textContent = 'Looking for your bots…'; btn.classList.add('cargando'); }
   const soltar = () => { if (btn) { btn.disabled = false; btn.textContent = txtOrig; btn.classList.remove('cargando'); } };
 
   let claves = [];
@@ -1429,7 +1430,7 @@ async function cerrarTodosLosBots(cuenta) {
     try { if (x && x.R && x.R.activa) vivos.push(x); } catch (_) {}
   }
   soltar();
-  if (vivos.length === 0) { modalError('No tienes bots activos que cerrar.'); return; }
+  if (vivos.length === 0) { modalError('You have no active bots to close.'); return; }
 
   const d = document.createElement('div');
   d.id = 'ct-box';
@@ -1456,13 +1457,13 @@ async function cerrarTodosLosBots(cuenta) {
     si.disabled = true; no.disabled = true;
     let ok = 0, fallos = 0;
     for (let i = 0; i < vivos.length; i++) {
-      prog.textContent = `Cerrando ${i + 1} de ${vivos.length}… confirma en tu wallet`;
+      prog.textContent = `Closing ${i + 1} of ${vivos.length}… confirm in your wallet`;
       try { await gb.cancelarRejillaK(vivos[i].k); ok++; }
       catch (e) { fallos++; console.warn('[Aurex] cerrar bot:', e); }
     }
     prog.textContent = fallos === 0
-      ? `Listo: ${ok} bots cerrados y tu dinero de vuelta.`
-      : `${ok} cerrados · ${fallos} no se pudieron (quizá cancelaste la firma).`;
+      ? `Done: ${ok} bots closed and your money back.`
+      : `${ok} closed · ${fallos} could not (maybe you cancelled the signature).`;
     setTimeout(() => { cerrar(); refrescarRejillas(); refrescarGas(); }, 2200);
   };
 }
@@ -1535,7 +1536,7 @@ function avisoDeRiesgo() {
 
         <div class="rg-frase">
           <div class="rg-frase-t">Tu frase de recuperación</div>
-          <p>Son las <b>12 palabras</b> que te dio tu wallet al crearla. Es la llave de todo tu dinero.</p>
+          <p>They are the <b>12 words</b> your wallet gave you when you created it. They are the key to all your money.</p>
           <p><b>Write them on paper</b> and keep them somewhere safe. Not on your phone, not in a photo, not in your email.</p>
           <p class="rg-frase-x">If you lose them, <b>no one can recover them</b>: not us, not your wallet, no one. And if anyone asks you for them —whoever it is, even claiming to be from CriptoCuba— <b>it's a scam</b>. We will never ask you for them.</p>
         </div>
@@ -1647,10 +1648,10 @@ async function contarBots(cuenta) {
 async function cupoLibre(cuenta, tipo) {
   const c = await contarBots(cuenta);
   if (c.total >= CUPO_TOTAL) {
-    return { ok: false, motivo: `Has llegado al máximo de ${CUPO_TOTAL} bots a la vez. Cancela alguno para crear otro.`, c };
+    return { ok: false, motivo: `You have reached the maximum of ${CUPO_TOTAL} bots at once. Cancel one to create another.`, c };
   }
   if ((c[tipo] || 0) >= CUPO_POR_TIPO) {
-    return { ok: false, motivo: `Ya tienes ${CUPO_POR_TIPO} bots ${NOMBRE_TIPO[tipo]}. Cancela uno para crear otro de este tipo.`, c };
+    return { ok: false, motivo: `You already have ${CUPO_POR_TIPO} ${NOMBRE_TIPO[tipo]} bots. Cancel one to create another of this type.`, c };
   }
   return { ok: true, c };
 }
@@ -1668,7 +1669,7 @@ async function pintarCupo(cuenta) {
      oculto, y encima el /8 que añadía el CSS. Ahora la clase va puesta
      y el CSS ya no necesita añadir nada. */
   el.innerHTML = lleno
-    ? `<b>${c.total}/${CUPO_TOTAL}</b><span class="cupo-tx">máximo alcanzado</span>`
+    ? `<b>${c.total}/${CUPO_TOTAL}</b><span class="cupo-tx">maximum reached</span>`
     : `<b>${c.total}/${CUPO_TOTAL}</b><span class="cupo-tx">bots activos</span>`;
   el.title = `Smart Grid ${c.grid}/${CUPO_POR_TIPO} · Accumulator ${c.acum}/${CUPO_POR_TIPO} · Cash Out ${c.cash}/${CUPO_POR_TIPO} · DCA ${c.dca}/${CUPO_POR_TIPO}`;
 }
@@ -1692,15 +1693,15 @@ async function onCrear() {
     tpPrecio: parseFloat($('f-tp')?.value) || 0, slPrecio: parseFloat($('f-sl')?.value) || 0,
     margenPct: (parseFloat($('f-margen')?.value) || 0) / 100, margenModo: F.margenModo, rutas: F.rutas
   };
-  if (!(p.pMin > 0 && p.pMax > p.pMin)) { aviso(m, 'err', 'Revisa el rango: el precio alto debe ser mayor que el bajo. Prueba "Sugerir".'); return; }
+  if (!(p.pMin > 0 && p.pMax > p.pMin)) { aviso(m, 'err', 'Check the range: the high price must be higher than the low. Try "Suggest".'); return; }
   if (!(p.niveles >= 2)) { aviso(m, 'err', 'Pon al menos 2 cuadrículas.'); return; }
-  if (!(p.totalQuoteHumano > 0)) { aviso(m, 'err', '¿Cuánto quieres invertir?'); return; }
+  if (!(p.totalQuoteHumano > 0)) { aviso(m, 'err', 'How much do you want to invest?'); return; }
   const total = p.totalQuoteHumano;
 
   const n1 = F.precio && (F.precio < p.pMin || F.precio > p.pMax);
   const ok = await modalConfirm({
-    titulo: 'Encender el bot',
-    cuerpo: `Vas a poner a trabajar <b>${num(total, 2)} ${quote.simbolo}</b> en ${simboloDe(p.base)}/${quote.simbolo}.<br><br>Te pediré firmar <b>varias veces</b> en tu wallet y te explicaré cada paso. Tu dinero sigue en tu wallet; solo le das permiso al bot para intercambiar dentro de este par.${n1 ? '<br><br>⚠ El precio de ahora está fuera de tu rango: el bot esperará a que entre.' : ''}`,
+    titulo: 'Turn on the bot',
+    cuerpo: `Vas a poner a trabajar <b>${num(total, 2)} ${quote.simbolo}</b> en ${simboloDe(p.base)}/${quote.simbolo}.<br><br>Te pediré firmar <b>varias veces</b> en tu wallet y te explicaré cada paso. Tu dinero sigue en tu wallet; solo le das permiso al bot para intercambiar dentro de este par.${n1 ? '<br><br>⚠ The current price is outside your range: the bot will wait for it to enter.' : ''}`,
     ok: 'Sí, encender'
   });
   if (!ok) return;
@@ -1710,14 +1711,14 @@ async function onCrear() {
     modalBusy('Comprobando tu saldo…');
     const balBI = await gb.balanceToken(p.quote, cuenta);
     const balH = Number(gb.fmt(balBI, quote.decimals)); F.saldoQuote = balH;
-    if (total > balH + 1e-9) { modalError(`No tienes suficiente ${quote.simbolo}. En tu wallet hay ${num(balH, 4)} ${quote.simbolo} y quieres invertir ${num(total, 2)}. Baja la cantidad o usa "Máx".`); return; }
+    if (total > balH + 1e-9) { modalError(`You do not have enough ${quote.simbolo}. Your wallet has ${num(balH, 4)} ${quote.simbolo} and you want to invest ${num(total, 2)}. Baja la cantidad o usa "Máx".`); return; }
     if (!(await asegurarSuscripcion(cuenta))) { modalClose(); return; }
 
-    modalBusy('Calculando tu rejilla con el precio real…');
+    modalBusy('Calculating your grid with the live price…');
     const botId = Date.now();
     const config = await gb.construirConfig(p); config.botId = botId;
     const netV = (config._ordenQuoteHumano || 0) * ((config._pasoPct || 0) - FEE_CICLO) - 2 * GAS_OP_USD;
-    if (netV < 0) { modalError('Con esta configuración el gas se comería la ganancia de cada vuelta (daría pérdida). Sube el capital, sube la "ganancia por cuadrícula" o usa menos cuadrículas.'); return; }
+    if (netV < 0) { modalError('With this setup gas would eat the profit of every cycle (it would lose money). Raise the capital, raise the "profit per grid" or use fewer grids.'); return; }
     const price = config._Pnow || F.precio || 1;
     const topeQuote = total * 20, topeBase = (total / price) * 20;
     const quoteNeed = mBI(topeQuote, quote.decimals), baseNeed = mBI(topeBase, base.decimals);
@@ -1726,14 +1727,14 @@ async function onCrear() {
     const pasos = (aQ < quoteNeed ? 1 : 0) + (aB < baseNeed ? 1 : 0) + 1;
     let i = 0;
     if (aQ < quoteNeed) {
-      i++; modalBusy(`<b>Paso ${i} de ${pasos} — Permiso de ${quote.simbolo}.</b><br>Le das permiso al bot para usar tu ${quote.simbolo} y comprar cuando el precio baje (hasta ${num(topeQuote, 2)} ${quote.simbolo}, límite que puedes revocar cuando quieras).<br><br>Confirma en tu wallet.`);
+      i++; modalBusy(`<b>Step ${i} of ${pasos} — ${quote.simbolo} permission.</b><br>You grant the bot permission to use your ${quote.simbolo} and buy when the price drops (up to ${num(topeQuote, 2)} ${quote.simbolo}, a limit you can revoke whenever you want).<br><br>Confirm in your wallet.`);
       await gb.aprobarToken(p.quote, quoteNeed);
     }
     if (aB < baseNeed) {
-      i++; modalBusy(`<b>Paso ${i} de ${pasos} — Permiso de ${base.simbolo}.</b><br>Para que el bot pueda vender lo que vaya comprando y dejarte la ganancia.<br><br>Confirma en tu wallet.`);
+      i++; modalBusy(`<b>Step ${i} of ${pasos} — ${base.simbolo} permission.</b><br>So the bot can sell what it buys and leave you the profit.<br><br>Confirm in your wallet.`);
       await gb.aprobarToken(p.base, baseNeed);
     }
-    i++; modalBusy(`<b>Paso ${i} de ${pasos} — Encender.</b><br>Se crea tu bot con tu configuración y empieza a vigilar el mercado.<br><br>Confirma en tu wallet.`);
+    i++; modalBusy(`<b>Step ${i} of ${pasos} — Turn on.</b><br>Your bot is created with your settings and starts watching the market.<br><br>Confirm in your wallet.`);
     // Cupo: máximo {CUPO_TOTAL} bots y {CUPO_POR_TIPO} de cada tipo.
     const _cupo = await cupoLibre(cuenta, 'grid');
     if (!_cupo.ok) { modalError(_cupo.motivo); return; }
@@ -1741,7 +1742,7 @@ async function onCrear() {
     avisarKeeper(wallet.cuentaActual());
 
     recordarPar(cuenta, config.base, config.quote, { decQuote: quote.decimals, decBase: base.decimals, simBase: base.simbolo, simQuote: quote.simbolo, total, entry: config._Pnow, creadoLocal: Date.now(), botId });
-    modalDone('¡Bot encendido!', `Tu bot ya está trabajando en ${simboloDe(p.base)}/${quote.simbolo}. Recuerda tener <b>gas</b> cargado para que pueda operar. Lo verás abajo en "Mis bots".`);
+    modalDone('Bot on!', `Your bot is now working on ${simboloDe(p.base)}/${quote.simbolo}. Remember to keep <b>gas</b> loaded so it can trade. You will see it below in "My bots".`);
     refrescarRejillas(); refrescarSaldoInversion();
   } catch (e) {
     if (esRechazo(e)) { modalClose(); }   // canceló la firma: cerrar sin drama
@@ -1788,7 +1789,7 @@ function abrirCoinModal(sel) {
   el.innerHTML = `<div class="coin-modal" id="coin-modal">
     <div class="coin-modal-bg" id="cm-bg"></div>
     <div class="coin-modal-box">
-      <div class="cm-head"><span class="cm-title">${esBase ? 'Elige la moneda' : 'Elige tu estable'}</span><button class="cm-x" id="cm-x" aria-label="Cerrar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="cm-head"><span class="cm-title">${esBase ? 'Elige la moneda' : 'Choose your stablecoin'}</span><button class="cm-x" id="cm-x" aria-label="Cerrar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="cm-search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="cm-search" placeholder="Buscar por nombre o símbolo…" autocomplete="off"></div>
       ${esBase ? `<div class="cm-cats" id="cm-cats">${cats.map(([c, n], i) => `<button type="button" data-cat="${c}" class="${i === 0 ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       <div class="cm-list" id="cm-list"></div>
@@ -1806,7 +1807,7 @@ function abrirCoinModal(sel) {
       return true;
     });
     const list = $('cm-list');
-    if (!monedas.length) { list.innerHTML = `<div class="cm-empty">Sin resultados para "${ftxt}"</div>`; return; }
+    if (!monedas.length) { list.innerHTML = `<div class="cm-empty">No results for "${ftxt}"</div>`; return; }
     list.innerHTML = monedas.map((mo) => {
       const on = selId() === mo.id;
       const L = LOGOS[mo.id];
@@ -1873,7 +1874,7 @@ function pintarTipo() {
   if (t === 'acum') previewAcum(); else if (t === 'cash') previewCash(); else if (t === 'dca') previewDCA(); else actualizarVista();
 }
 function sugerirAcum() {
-  if (!F.precio) { aviso($('c-msg'), 'err', 'Espera a que cargue el precio y vuelve a intentar.'); return; }
+  if (!F.precio) { aviso($('c-msg'), 'err', 'Wait for the price to load and try again.'); return; }
   $('fa-min').value = Number((F.precio * 0.6).toPrecision(6));   // compra hasta ~-40%
   previewAcum();
 }
@@ -1919,10 +1920,10 @@ async function onCrearAcum() {
     slippageBps: Math.round((parseFloat($('f-slip')?.value) || 1) * 100),
     cooldownSeg: parseInt($('f-cd')?.value, 10) || 0, rutas: F.rutas
   };
-  if (!(p.totalQuoteHumano > 0)) { aviso(m, 'err', '¿Cuánto quieres invertir?'); return; }
-  if (!(p.pMin > 0 && F.precio && p.pMin < F.precio)) { aviso(m, 'err', 'El precio mínimo debe ser MENOR que el precio de ahora. Prueba "Sugerir".'); return; }
+  if (!(p.totalQuoteHumano > 0)) { aviso(m, 'err', 'How much do you want to invest?'); return; }
+  if (!(p.pMin > 0 && F.precio && p.pMin < F.precio)) { aviso(m, 'err', 'The minimum price must be LOWER than the current price. Try "Suggest".'); return; }
   if (!(p.niveles >= 2)) { aviso(m, 'err', 'Pon al menos 2 compras.'); return; }
-  if (!(p.objetivoPct >= 0.005)) { aviso(m, 'err', 'Elige a qué % de ganancia vender.'); return; }
+  if (!(p.objetivoPct >= 0.005)) { aviso(m, 'err', 'Choose at what profit % to sell.'); return; }
   const total = p.totalQuoteHumano;
   const ok = await modalConfirm({
     titulo: 'Encender el acumulador',
@@ -1934,9 +1935,9 @@ async function onCrearAcum() {
     modalBusy('Comprobando tu saldo…');
     const balBI = await gb.balanceToken(p.quote, cuenta);
     const balH = Number(gb.fmt(balBI, quote.decimals)); F.saldoQuote = balH;
-    if (total > balH + 1e-9) { modalError(`No tienes suficiente ${quote.simbolo}. Hay ${num(balH, 4)} y quieres invertir ${num(total, 2)}.`); return; }
+    if (total > balH + 1e-9) { modalError(`You do not have enough ${quote.simbolo}. There is ${num(balH, 4)} and you want to invest ${num(total, 2)}.`); return; }
     if (!(await asegurarSuscripcion(cuenta))) { modalClose(); return; }
-    modalBusy('Calculando tu acumulador con el precio real…');
+    modalBusy('Calculating your accumulator with the live price…');
     const botId = Date.now();
     const config = await gb.construirConfigAcumulador(p); config.botId = botId;
     const price = config._Pnow || F.precio || 1;
@@ -1944,9 +1945,9 @@ async function onCrearAcum() {
     const quoteNeed = mBI(topeQuote, quote.decimals), baseNeed = mBI(topeBase, base.decimals);
     const [aQ, aB] = await Promise.all([gb.allowance(p.quote, cuenta), gb.allowance(p.base, cuenta)]);
     const pasos = (aQ < quoteNeed ? 1 : 0) + (aB < baseNeed ? 1 : 0) + 1; let i = 0;
-    if (aQ < quoteNeed) { i++; modalBusy(`<b>Paso ${i} de ${pasos} — Permiso de ${quote.simbolo}.</b><br>Para que el bot compre cuando el precio baje.<br><br>Confirma en tu wallet.`); await gb.aprobarToken(p.quote, quoteNeed); }
-    if (aB < baseNeed) { i++; modalBusy(`<b>Paso ${i} de ${pasos} — Permiso de ${base.simbolo}.</b><br>Para que pueda vender todo lo acumulado.<br><br>Confirma en tu wallet.`); await gb.aprobarToken(p.base, baseNeed); }
-    i++; modalBusy(`<b>Paso ${i} de ${pasos} — Encender.</b><br>Se crea tu acumulador y hace la compra inicial.<br><br>Confirma en tu wallet.`);
+    if (aQ < quoteNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos} — ${quote.simbolo} permission.</b><br>So the bot can buy when the price drops.<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.quote, quoteNeed); }
+    if (aB < baseNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos} — ${base.simbolo} permission.</b><br>So it can sell everything accumulated.<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.base, baseNeed); }
+    i++; modalBusy(`<b>Step ${i} of ${pasos} — Turn on.</b><br>Your accumulator is created and makes the initial buy.<br><br>Confirm in your wallet.`);
     // Cupo: máximo {CUPO_TOTAL} bots y {CUPO_POR_TIPO} de cada tipo.
     const _cupo = await cupoLibre(cuenta, 'acum');
     if (!_cupo.ok) { modalError(_cupo.motivo); return; }
@@ -1954,7 +1955,7 @@ async function onCrearAcum() {
     avisarKeeper(wallet.cuentaActual());
     recordarPar(cuenta, config.base, config.quote, { decQuote: quote.decimals, decBase: base.decimals, simBase: base.simbolo, simQuote: quote.simbolo, total, entry: config._Pnow, creadoLocal: Date.now(), tipo: 'acum', objetivo: p.objetivoPct, botId,
       pMin: p.pMin, nivelesAcum: p.niveles, factorAcum: p.factorPct });
-    modalDone('¡Acumulador encendido!', `Ya está comprando en la caída en ${base.simbolo}. Venderá todo al llegar a <b>+${num(p.objetivoPct * 100, 1)}%</b>. Ten <b>gas</b> cargado para que opere. Lo verás en "Mis bots".`);
+    modalDone('Accumulator on!', `It is already buying the dip on ${base.simbolo}. It will sell everything at <b>+${num(p.objetivoPct * 100, 1)}%</b>. Keep <b>gas</b> loaded so it can trade. You will see it in "My bots".`);
     refrescarRejillas(); refrescarSaldoInversion();
   } catch (e) {
     if (esRechazo(e)) { modalClose(); } else modalError(e?.shortMessage || e?.message || String(e));
@@ -2027,16 +2028,16 @@ async function onCrearCashOut() {
   const m = $('c-msg'); const base = moneda(F.baseId), quote = moneda(F.quoteId);
   const cuenta = wallet.cuentaActual();
   const cantidad = parseFloat($('fc-cant')?.value) || 0;
-  if (!(cantidad > 0)) { aviso(m, 'err', '¿Cuánto quieres vender?'); return; }
-  if (!F.precio) { aviso(m, 'err', 'Espera a que cargue el precio y vuelve a intentar.'); return; }
+  if (!(cantidad > 0)) { aviso(m, 'err', 'How much do you want to sell?'); return; }
+  if (!F.precio) { aviso(m, 'err', 'Wait for the price to load and try again.'); return; }
   const modoObj = F.cashModo || 'pct';
   let targetPrice;
   if (modoObj === 'precio') {
     targetPrice = parseFloat($('fc-precio')?.value) || 0;
-    if (!(targetPrice > F.precio)) { aviso(m, 'err', `El precio objetivo debe estar por encima del precio actual (${precioFmt(F.precio)}).`); return; }
+    if (!(targetPrice > F.precio)) { aviso(m, 'err', `The target price must be above the current price (${precioFmt(F.precio)}).`); return; }
   } else {
     const pct = parseFloat($('fc-pct')?.value) || 0;
-    if (!(pct > 0)) { aviso(m, 'err', 'Elige a qué % quieres vender.'); return; }
+    if (!(pct > 0)) { aviso(m, 'err', 'Choose at what % you want to sell.'); return; }
     targetPrice = F.precio * (1 + pct / 100);
   }
   const p = {
@@ -2055,9 +2056,9 @@ async function onCrearCashOut() {
     modalBusy('Comprobando tu saldo…');
     const balBI = await gb.saldoCashDisponible(p.base, cuenta);
     const balH = Number(gb.fmt(balBI, base.decimals));
-    if (cantidad > balH + 1e-9) { modalError(`No tienes suficiente ${base.simbolo}. En tu wallet hay ${num(balH, 6)} ${base.simbolo} y quieres vender ${num(cantidad, 6)}.`); return; }
+    if (cantidad > balH + 1e-9) { modalError(`You do not have enough ${base.simbolo}. Your wallet has ${num(balH, 6)} ${base.simbolo} and you want to sell ${num(cantidad, 6)}.`); return; }
     if (!(await asegurarSuscripcion(cuenta))) { modalClose(); return; }
-    modalBusy('Preparando tu Cash Out con el precio real…');
+    modalBusy('Preparing your Cash Out with the live price…');
     const botId = Date.now();
     const config = await gb.construirConfigCashOut(p); config.botId = botId;
     const baseNeed = mBI(cantidad * 3, base.decimals);
@@ -2067,21 +2068,21 @@ async function onCrearCashOut() {
       const wbnbH = Number(gb.fmt(wbnbBal, base.decimals));
       if (cantidad > wbnbH + 1e-12) {
         const falta = cantidad - wbnbH;
-        await pasoWallet('Preparar tu BNB', `Se convierte <b>${num(falta, 6)} BNB</b> a WBNB para poder venderlo (sigue siendo tuyo).<br><br>Toca <b>Continuar</b> y firma en tu wallet.`);
-        modalBusy('Convirtiendo tu BNB… firma en tu wallet.');
+        await pasoWallet('Prepare your BNB', `<b>${num(falta, 6)} BNB</b> is converted to WBNB so it can be sold (it is still yours).<br><br>Tap <b>Continue</b> and sign in your wallet.`);
+        modalBusy('Converting your BNB… sign in your wallet.');
         await gb.envolverBNB(mBI(falta * 1.001, base.decimals));
       }
     }
     // Paso: permiso si hace falta (firma aparte)
     const aB = await gb.allowance(p.base, cuenta);
     if (aB < baseNeed) {
-      await pasoWallet('Dar permiso', `Le das permiso al bot para vender tus <b>${base.simbolo}</b> cuando llegue el objetivo (puedes revocarlo cuando quieras).<br><br>Toca <b>Continuar</b> y firma en tu wallet.`);
-      modalBusy('Registrando el permiso… firma en tu wallet.');
+      await pasoWallet('Grant permission', `You grant the bot permission to sell your <b>${base.simbolo}</b> when the target is reached (you can revoke it anytime).<br><br>Tap <b>Continue</b> and sign in your wallet.`);
+      modalBusy('Registering the permission… sign in your wallet.');
       await gb.aprobarToken(p.base, baseNeed);
     }
     // Paso final: encender (firma aparte)
-    await pasoWallet('Encender el bot', 'Última firma: se crea tu Cash Out y queda vigilando el precio.<br><br>Toca <b>Continuar</b> y confirma en tu wallet.');
-    modalBusy('Encendiendo tu bot… firma en tu wallet.');
+    await pasoWallet('Turn on the bot', 'Last signature: your Cash Out is created and starts watching the price.<br><br>Tap <b>Continue</b> and confirm in your wallet.');
+    modalBusy('Turning on your bot… sign in your wallet.');
     // Cupo: máximo {CUPO_TOTAL} bots y {CUPO_POR_TIPO} de cada tipo.
     const _cupo = await cupoLibre(cuenta, 'cash');
     if (!_cupo.ok) { modalError(_cupo.motivo); return; }
@@ -2095,7 +2096,7 @@ async function onCrearCashOut() {
   }
 }
 function frecNombre(s) {
-  return s <= 86400 ? 'cada día' : s <= 604800 ? 'cada semana' : s <= 1209600 ? 'cada 15 días' : 'cada mes';
+  return s <= 86400 ? 'every day' : s <= 604800 ? 'every week' : s <= 1209600 ? 'every 15 days' : 'every month';
 }
 async function refrescarSaldoDCA() {
   const el = $('fd-saldo'); if (!el) return;
@@ -2129,16 +2130,16 @@ async function onCrearDCA() {
   const m = $('c-msg'); const base = moneda(F.baseId), quote = moneda(F.quoteId);
   const cuenta = wallet.cuentaActual();
   const monto = parseFloat($('fd-monto')?.value) || 0;
-  if (!(monto > 0)) { aviso(m, 'err', '¿Cuánto quieres comprar en cada compra?'); return; }
-  if (!F.precio) { aviso(m, 'err', 'Espera a que cargue el precio y vuelve a intentar.'); return; }
+  if (!(monto > 0)) { aviso(m, 'err', 'How much do you want to buy each time?'); return; }
+  if (!F.precio) { aviso(m, 'err', 'Wait for the price to load and try again.'); return; }
   const intervalo = F.dcaFrec || 604800, comprasMax = F.dcaNum || 0;
   const p = {
     base: gb.dirDe(base), quote: gb.dirDe(quote), decBase: base.decimals, decQuote: quote.decimals,
     montoQuote: monto, intervalo, comprasMax, slippageBps: 0, rutas: F.rutas
   };
-  const totalTxt = comprasMax > 0 ? `${num(monto * comprasMax, 2)} ${quote.simbolo} en ${comprasMax} compras` : `sin límite (según el ${quote.simbolo} que tengas)`;
+  const totalTxt = comprasMax > 0 ? `${num(monto * comprasMax, 2)} ${quote.simbolo} en ${comprasMax} compras` : `no limit (depending on the ${quote.simbolo} you have)`;
   const ok = await modalConfirm({
-    titulo: 'Encender DCA',
+    titulo: 'Turn on DCA',
     cuerpo: `El bot comprará <b>${num(monto, 2)} ${quote.simbolo}</b> de <b>${base.simbolo}</b> <b>${frecNombre(intervalo)}</b>. La primera compra se hace ahora mismo.<br><br>Total: <b>${totalTxt}</b>. Ten <b>${quote.simbolo}</b> cargado en tu wallet para las siguientes.`,
     ok: 'Sí, encender'
   });
@@ -2146,24 +2147,24 @@ async function onCrearDCA() {
   try {
     modalBusy('Comprobando tu saldo…');
     const balH = Number(gb.fmt(await gb.balanceToken(p.quote, cuenta), quote.decimals));
-    if (monto > balH + 1e-9) { modalError(`No tienes suficiente ${quote.simbolo} para la primera compra. En tu wallet hay ${num(balH, 2)} ${quote.simbolo}.`); return; }
+    if (monto > balH + 1e-9) { modalError(`You do not have enough ${quote.simbolo} for the first buy. Your wallet has ${num(balH, 2)} ${quote.simbolo}.`); return; }
     if (!(await asegurarSuscripcion(cuenta))) { modalClose(); return; }
-    modalBusy('Preparando tu DCA con el precio real…');
+    modalBusy('Preparing your DCA with the live price…');
     const botId = Date.now();
     const config = await gb.construirConfigDCA(p); config.botId = botId;
     const nAprob = comprasMax > 0 ? comprasMax : 60;
     const quoteNeed = mBI(monto * nAprob, quote.decimals);
     const aQ = await gb.allowance(p.quote, cuenta);
     const pasos = (aQ < quoteNeed ? 1 : 0) + 1; let i = 0;
-    if (aQ < quoteNeed) { i++; modalBusy(`<b>Paso ${i} de ${pasos} — Permiso de ${quote.simbolo}.</b><br>Le das permiso al bot para comprar con tus ${quote.simbolo} en cada ciclo (puedes revocarlo cuando quieras).<br><br>Confirma en tu wallet.`); await gb.aprobarToken(p.quote, quoteNeed); }
-    i++; modalBusy(`<b>Paso ${i} de ${pasos} — Encender.</b><br>Se crea tu DCA y hace la primera compra ahora.<br><br>Confirma en tu wallet.`);
+    if (aQ < quoteNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos} — ${quote.simbolo} permission.</b><br>You grant the bot permission to buy with your ${quote.simbolo} each cycle (you can revoke it whenever you want).<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.quote, quoteNeed); }
+    i++; modalBusy(`<b>Step ${i} of ${pasos} — Turn on.</b><br>Your DCA is created and makes the first buy now.<br><br>Confirm in your wallet.`);
     // Cupo: máximo {CUPO_TOTAL} bots y {CUPO_POR_TIPO} de cada tipo.
     const _cupo = await cupoLibre(cuenta, 'dca');
     if (!_cupo.ok) { modalError(_cupo.motivo); return; }
     await gb.crearRejilla(config);
     avisarKeeper(wallet.cuentaActual());
     recordarPar(cuenta, config.base, config.quote, { decQuote: quote.decimals, decBase: base.decimals, simBase: base.simbolo, simQuote: quote.simbolo, total: monto, entry: config._Pnow, creadoLocal: Date.now(), tipo: 'dca', intervalo, comprasMax, botId });
-    modalDone('¡DCA encendido!', `Comprará ${num(monto, 2)} ${quote.simbolo} de ${base.simbolo} ${frecNombre(intervalo)}. La primera compra ya se hizo. Ten <b>gas</b> cargado y <b>${quote.simbolo}</b> en tu wallet. Lo verás en "Mis bots".`);
+    modalDone('DCA on!', `It will buy ${num(monto, 2)} ${quote.simbolo} of ${base.simbolo} ${frecNombre(intervalo)}. The first buy is already done. Keep <b>gas</b> loaded and <b>${quote.simbolo}</b> in your wallet. You will see it in "My bots".`);
     refrescarRejillas();
   } catch (e) {
     if (esRechazo(e)) { modalClose(); } else modalError(e?.shortMessage || e?.message || String(e));
@@ -2290,7 +2291,7 @@ async function abrirMisOrdenes(cuenta) {
       <span class="ord-tag ${vender ? 'v' : 'c'}">${vender ? 'VENTA' : 'COMPRA'}</span>
       <div class="ord-info">
         <div class="ord-par">${o.par || o.simbolo || ''}</div>
-        <div class="ord-meta">Precio <b>${precioFmt(Number(o.precio))}</b>${cant !== '' ? ` · Cantidad <b>${cant}</b>` : ''}</div>
+        <div class="ord-meta">Precio <b>${precioFmt(Number(o.precio))}</b>${cant !== '' ? ` · Amount <b>${cant}</b>` : ''}</div>
       </div>
       <button class="ord-cancel" data-cancel="${o.id}">Cancelar</button>
     </div>`;
@@ -2308,7 +2309,7 @@ async function abrirMisOrdenes(cuenta) {
 
 function tarjetaMinima(clave, par, err, R) {
   const pair = (R && R.base) ? `${simboloDe(R.base)}/${simboloDe(R.quote)}` : ((par && par.base) ? `${par.simBase}/${par.simQuote}` : '');
-  const estado = R ? (R.activa ? 'activo' : 'inactivo') : 'sin resumen';
+  const estado = R ? (R.activa ? 'active' : 'inactive') : 'no summary';
   const emsg = err ? (err.shortMessage || err.message || String(err)) : (R ? '' : 'resumenK falló');
   const diag = `estado: ${estado} · ${clave ? clave.slice(0, 10) + '…' : ''}${emsg ? ' · ' + emsg.slice(0, 100) : ''}`;
   return `<div class="rej" style="padding:16px">
@@ -2325,10 +2326,10 @@ function tarjetaMinima(clave, par, err, R) {
 function wireMinCancel(cont) {
   cont.querySelectorAll('[data-min-cancel]').forEach((btn) => btn.onclick = async () => {
     const clave = btn.dataset.minCancel;
-    const ok = await modalConfirm({ titulo: 'Cerrar bot', cuerpo: 'Se cerrará este bot y se quita el permiso. <b>Tu cripto se queda en tu wallet.</b>', ok: 'Sí, cerrar', peligro: true });
+    const ok = await modalConfirm({ titulo: 'Cerrar bot', cuerpo: 'This bot will close and the permission is removed. <b>Your crypto stays in your wallet.</b>', ok: 'Sí, cerrar', peligro: true });
     if (!ok) return;
-    try { modalBusy('Cerrando el bot… confirma en tu wallet.'); await gb.cancelarRejillaK(clave); modalClose(); refrescarRejillas(); }
-    catch (e) { modalError(esRechazo(e) ? 'Cancelaste la firma.' : (e?.shortMessage || e?.message || String(e))); }
+    try { modalBusy('Closing the bot… confirm in your wallet.'); await gb.cancelarRejillaK(clave); modalClose(); refrescarRejillas(); }
+    catch (e) { modalError(esRechazo(e) ? 'You cancelled the signature.' : (e?.shortMessage || e?.message || String(e))); }
   });
 }
 
@@ -2456,11 +2457,11 @@ async function refrescarRejillas() {
     // Si hubo bots que no se pudieron leer, UN solo aviso discreto.
     // Nunca treinta tarjetas rotas.
     if (_sinLeer > 0 && cards.length > 0) {
-      cards.push(`<div class="sinleer">No pudimos leer ${_sinLeer} bot${_sinLeer > 1 ? 's' : ''} ahora mismo. La red va lenta; se mostrarán al refrescar.</div>`);
+      cards.push(`<div class="sinleer">Could not read ${_sinLeer} bot${_sinLeer > 1 ? 's' : ''} right now. The network is slow; it will shown al refrescar.</div>`);
     }
     const _cabSec = (t, n, id) => `<div ${id ? `id="${id}"` : ''} style="display:flex;align-items:center;gap:8px;margin:18px 4px 10px;font:800 13px var(--display,system-ui);color:var(--gold,#E8B84B);letter-spacing:.4px;text-transform:uppercase;scroll-margin-top:80px">${t}<span style="font-weight:700;color:var(--ink-3,#8b95a1);background:rgba(255,255,255,.06);border-radius:20px;padding:1px 9px;font-size:11px">${n}</span></div>`;
     const _secOrd = _ordenes.length ? _cabSec('Tus órdenes', _ordenes.length, 'sec-ordenes') + _ordenes.join('') : '';
-    const _secBot = cards.length ? _cabSec('Tus bots', cards.length - (_sinLeer > 0 ? 1 : 0)) + cards.join('') : '';
+    const _secBot = cards.length ? _cabSec('Your bots', cards.length - (_sinLeer > 0 ? 1 : 0)) + cards.join('') : '';
     cont.innerHTML = (_ordenes.length || cards.length) ? (_secOrd + _secBot)
       : `<div class="vacio-ok">
           <div class="vacio-ico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
@@ -2496,7 +2497,7 @@ async function refrescarRejillas() {
     activarContadores();
   } catch (e) {
     console.warn('[Aurex] detalle técnico:', e);
-    cont.innerHTML = `<div class="vacio-ok"><div class="vacio-t">No pudimos leer tus bots ahora mismo</div><div class="vacio-d">La red está lenta o hubo un corte momentáneo. Tus bots y tu dinero siguen intactos en la blockchain.</div><button class="vacio-b" onclick="location.reload()">Reintentar</button></div>`;
+    cont.innerHTML = `<div class="vacio-ok"><div class="vacio-t">Could not read your bots right now</div><div class="vacio-d">The network is slow or there was a brief outage. Your bots and your money remain intact on the blockchain.</div><button class="vacio-b" onclick="location.reload()">Retry</button></div>`;
   }
   if (PNL_TIMER) clearInterval(PNL_TIMER);
   PNL_TIMER = setInterval(refrescarPnls, 10000);
@@ -2686,7 +2687,7 @@ async function tarjeta(cuenta, clave, par, R) {
      las flechitas de compra/venta sobre la gráfica. Así que la tarjeta
      sale YA, y las marcas se añaden después, sin bloquear a nadie. */
   let ops = [], sinHistorial = false;
-  const chart = ps.length ? dibujar(ps, precio, pmin, pmax, null, ops) : svgVacio(560, 300, 'este bot ya no tiene órdenes');
+  const chart = ps.length ? dibujar(ps, precio, pmin, pmax, null, ops) : svgVacio(560, 300, 'this bot has no orders left');
 
   // Números
   const invertido = (par.total != null) ? Number(par.total) : Number(gb.fmt(R.costeQuote, decQ));
@@ -2792,10 +2793,10 @@ async function tarjeta(cuenta, clave, par, R) {
   const _boxEntrada = _entValida
     ? `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Precio de entrada</span><span class="k-s">Entrada</span></div><div class="v" style="font-size:15px">${precioFmt(entrada)}</div><div class="v2 ${mkt == null ? '' : cls(mkt)}" style="${mkt == null ? 'color:var(--ink-3)' : ''}">${mkt == null ? 'al crear el bot' : 'ahora ' + precioFmt(precio)}</div></div>`
     : _esperaEn
-      ? `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Compra al llegar a</span><span class="k-s">Compra a</span></div><div class="v" style="font-size:15px">${precioFmt(_esperaEn)}</div><div class="v2" style="color:var(--ink-3)">ahora ${precioFmt(precio)}${precio > 0 ? ' · falta ' + num(Math.abs((precio - _esperaEn) / precio * 100), 2) + '%' : ''}</div></div>`
-      : `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Precio del mercado</span><span class="k-s">Mercado</span></div><div class="v" style="font-size:15px">${precioFmt(precio)}</div><div class="v2" style="color:var(--ink-3)">${sinPos ? 'aún no ha comprado' : 'ahora mismo'}</div></div>`;
-  const _boxFlotante = `<div class="pio-box" data-box="flotante"><div class="k">Flotante ${iBtn('ganancia')}</div><div class="v ${cls(noRealizado)} numgo" data-to="${Math.abs(noRealizado)}" data-dec="4" data-pre="${sg(noRealizado)}">${sg(noRealizado)}${num(Math.abs(noRealizado), 4)}</div><div class="v2 ${cls(noRealizado)}">${sg(pct(noRealizado))}${num(Math.abs(pct(noRealizado)), 2)}%</div></div>`;
-  const _boxGas = `<div class="pio-box" data-box="gas"><div class="k">Gas (BNB)</div><div class="v ${gasLow ? 'neg' : ''}">${gas}</div><div class="v2" style="color:var(--ink-3)">para operar</div></div>`;
+      ? `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Buys when it reaches</span><span class="k-s">Buys at</span></div><div class="v" style="font-size:15px">${precioFmt(_esperaEn)}</div><div class="v2" style="color:var(--ink-3)">ahora ${precioFmt(precio)}${precio > 0 ? ' · falta ' + num(Math.abs((precio - _esperaEn) / precio * 100), 2) + '%' : ''}</div></div>`
+      : `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Market price</span><span class="k-s">Market</span></div><div class="v" style="font-size:15px">${precioFmt(precio)}</div><div class="v2" style="color:var(--ink-3)">${sinPos ? 'has not bought yet' : 'ahora mismo'}</div></div>`;
+  const _boxFlotante = `<div class="pio-box" data-box="flotante"><div class="k">Floating ${iBtn('ganancia')}</div><div class="v ${cls(noRealizado)} numgo" data-to="${Math.abs(noRealizado)}" data-dec="4" data-pre="${sg(noRealizado)}">${sg(noRealizado)}${num(Math.abs(noRealizado), 4)}</div><div class="v2 ${cls(noRealizado)}">${sg(pct(noRealizado))}${num(Math.abs(pct(noRealizado)), 2)}%</div></div>`;
+  const _boxGas = `<div class="pio-box" data-box="gas"><div class="k">Gas (BNB)</div><div class="v ${gasLow ? 'neg' : ''}">${gas}</div><div class="v2" style="color:var(--ink-3)">to trade</div></div>`;
   const _boxGrid = `<div class="pio-box" data-box="realizado"><div class="k">Grid profit ${iBtn('porcuad')}</div><div class="v ${cls(realizado)} numgo" data-to="${Math.abs(realizado)}" data-dec="4" data-pre="${sg(realizado)}">${sg(realizado)}${num(Math.abs(realizado), 4)}</div><div class="v2 ${cls(realizado)}">${sg(pct(realizado))}${num(Math.abs(pct(realizado)), 2)}%</div></div>`;
   /* Un rango con el mismo número arriba y abajo no es un rango: es un
      dato que no tenemos. Mejor decirlo que enseñar "600 – 600". */
@@ -2825,20 +2826,20 @@ async function tarjeta(cuenta, clave, par, R) {
   const _restante = (Number(R.ultimaOpEn) || 0) + _interv - Math.floor(Date.now() / 1000);
   const _proxTxt = _interv <= 0 ? '—' : _restante <= 0 ? 'pronto' : _restante < 3600 ? 'en ' + Math.ceil(_restante / 60) + ' min' : _restante < 86400 ? 'en ' + Math.ceil(_restante / 3600) + ' h' : 'en ' + Math.ceil(_restante / 86400) + ' días';
   const _cmax = Number(par.comprasMax || R.comprasMax || 0);
-  const _boxProxima = `<div class="pio-box"><div class="k">Próxima compra</div><div class="v" style="font-size:15px">${_proxTxt}</div><div class="v2" style="color:var(--ink-3)">${frecNombre(_interv)}</div></div>`;
-  const _boxCompras = `<div class="pio-box"><div class="k">Compras hechas</div><div class="v">${Number(R.comprasHechas)}${_cmax > 0 ? ' / ' + _cmax : ''}</div><div class="v2" style="color:var(--ink-3)">${_cmax > 0 ? 'de tu plan' : 'sin límite'}</div></div>`;
-  const _boxPosicion = `<div class="pio-box"><div class="k">Posición (${simB})</div><div class="v" style="font-size:15px">${num(posBase, 6)}</div><div class="v2" style="color:var(--ink-3)">acumulado</div></div>`;
+  const _boxProxima = `<div class="pio-box"><div class="k">Next buy</div><div class="v" style="font-size:15px">${_proxTxt}</div><div class="v2" style="color:var(--ink-3)">${frecNombre(_interv)}</div></div>`;
+  const _boxCompras = `<div class="pio-box"><div class="k">Buys made</div><div class="v">${Number(R.comprasHechas)}${_cmax > 0 ? ' / ' + _cmax : ''}</div><div class="v2" style="color:var(--ink-3)">${_cmax > 0 ? 'of your plan' : 'sin límite'}</div></div>`;
+  const _boxPosicion = `<div class="pio-box"><div class="k">Position (${simB})</div><div class="v" style="font-size:15px">${num(posBase, 6)}</div><div class="v2" style="color:var(--ink-3)">accumulated</div></div>`;
   let _boxes;
   if (_esGrafico) _boxes = _boxEntrada + _boxObjetivo + _boxGas;   // orden limit: precio, objetivo y gas
   else if (tipo === 'cash') _boxes = _boxEntrada + _boxObjetivo;
   else if (tipo === 'dca') _boxes = _boxProxima + _boxCompras + _boxMedio + _boxPosicion + _boxFlotante + _boxGas;
   else if (tipo === 'acum') _boxes = _boxGrid + _boxFlotante + _boxEntrada + _boxMedio + _boxVueltas + _boxGas;
   else _boxes = _boxGrid + _boxFlotante + _boxEntrada + _boxRango + _boxVueltas + _boxGas;
-  const _compartir = `<button class="pio-img" data-acc="historial" title="Descargar todas las operaciones del bot">
+  const _compartir = `<button class="pio-img" data-acc="historial" title="Download all the bot trades">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg><span>Historial</span></button>`;
-  const _panel = `<div class="pio-acciones"><button class="pio-toggle" data-acc="toggle-panel">Ver el bot trabajando ▾</button>${_compartir}</div>
+  const _panel = `<div class="pio-acciones"><button class="pio-toggle" data-acc="toggle-panel">See the bot working ▾</button>${_compartir}</div>
     <div class="pio-panel" data-clave="${clave}" data-gan="${(realizado + noRealizado).toFixed(6)}" data-pct="${baseInv > 0 ? (((realizado + noRealizado) / baseInv) * 100).toFixed(2) : 0}" data-dias="${Math.max(1, Math.floor(creadoSeg / 86400))}" data-vueltas="${Number(R.ciclos)}" data-inv="${baseInv}" data-nombre="${nombreBot}" data-creado="${creadoSeg}" data-tipo="${tipo}" data-ciclos="${Number(R.ciclos)}">
-      <div class="pio-tabs"><button data-tab="grafica" class="on">Gráfica</button><button data-tab="ordenes">Órdenes (${ps.length})</button></div>
+      <div class="pio-tabs"><button data-tab="grafica" class="on">Chart</button><button data-tab="ordenes">Orders (${ps.length})</button></div>
       <div class="tab-grafica">
         ${grafica.bloqueGrafica({
           simB, simQ, pmin, pmax, precio, decQ, tipo,
@@ -2852,7 +2853,7 @@ async function tarjeta(cuenta, clave, par, R) {
           operaciones: ops.filter((o) => o.tiempo > 0),
           creado: creadoSeg
         })}
-        ${sinHistorial ? '<div class="graf-aviso">No pudimos leer el historial de operaciones ahora mismo. Las líneas y el rango sí son reales; las flechas de compra y venta aparecerán cuando la red responda.</div>' : ''}
+        ${sinHistorial ? '<div class="graf-aviso">Could not read the trade history right now. The lines and the range are real; the buy and sell arrows will appear when the network responds.</div>' : ''}
 
         <div class="leg">
           <span><svg class="lg-i" viewBox="0 0 12 12"><path d="M6 1.5 10.5 8H1.5z" fill="#2ee86a"/></svg>compró</span>
@@ -2886,7 +2887,7 @@ async function tarjeta(cuenta, clave, par, R) {
     </div>
 
     <div class="pio-grid"${tipo === 'cash' ? ' style="grid-template-columns:repeat(2,1fr)"' : ''}>${_boxes}</div>
-    ${gasLow ? `<div class="gaswarn">⚠ Gas insuficiente: el bot no puede operar. Recarga BNB en el gas (arriba) para que empiece a comprar y vender.</div>` : ''}
+    ${gasLow ? `<div class="gaswarn">⚠ Not enough gas: the bot cannot trade. Top up BNB in the gas (above) so it starts buying and selling.</div>` : ''}
     ${(() => {
       /* AVISO DE FUERA DE RANGO. Si el precio se va del rango, el bot deja de
          operar y se queda quieto. Antes nadie se enteraba: podías tener un bot
@@ -2895,31 +2896,31 @@ async function tarjeta(cuenta, clave, par, R) {
       if (precio < pmin) {
         const fuera = ((pmin - precio) / pmin * 100).toFixed(1);
         return `<div class="rangowarn abajo">
-          <b>El precio se salió de tu rango, por abajo</b>
+          <b>The price left your range, at the bottom</b>
           It's ${fuera}% below your minimum, so the bot <b>no longer trades</b>: it bought on all its grids and now waits holding the coin.
-          <i>No has perdido el dinero: lo tienes en forma de moneda. Si el precio vuelve al rango, seguirá operando solo. Si crees que no volverá, puedes cancelar el bot y recuperar lo que haya.</i>
+          <i>You have not lost the money: you hold it as coins. If the price returns to the range, it will keep trading on its own. If you think it won't, you can cancel the bot and recover what is there.</i>
         </div>`;
       }
       if (precio > pmax) {
         const fuera = ((precio - pmax) / pmax * 100).toFixed(1);
         return `<div class="rangowarn arriba">
-          <b>El precio se salió de tu rango, por arriba</b>
-          Está un ${fuera}% por encima de tu máximo. El bot <b>vendió todo</b> y ya no tiene nada que hacer.
-          <i>Buena noticia: vendiste en la parte alta. Si quieres seguir operando, cancela este bot y crea uno nuevo con el rango puesto en el precio de ahora.</i>
+          <b>The price left your range, on top</b>
+          It is ${fuera}% above your maximum. The bot <b>sold everything</b> and has nothing left to do.
+          <i>Good news: you sold at the top. If you want to keep trading, cancel this bot and create a new one with the range set at the current price.</i>
         </div>`;
       }
       // Cerca del borde: avisamos antes de que pase.
       const margen = (pmax - pmin) * 0.08;
       if (precio < pmin + margen || precio > pmax - margen) {
-        const lado = precio < pmin + margen ? 'mínimo' : 'máximo';
+        const lado = precio < pmin + margen ? 'minimum' : 'maximum';
         return `<div class="rangowarn cerca">
-          <b>El precio se acerca a tu ${lado}</b>
-          Si lo cruza, el bot dejará de operar hasta que vuelva al rango. Nada urgente, pero conviene que lo sepas.
+          <b>The price is approaching your ${lado}</b>
+          If it crosses it, the bot will stop trading until it returns to the range. Nothing urgent, but good to know.
         </div>`;
       }
       return '';
     })()}
-    ${sinPos && !gasLow ? `<div class="gaswarn" style="background:rgba(232,184,75,.08);border-color:var(--gold-soft);color:var(--gold)"><svg class="gw-i" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".35"/><path d="M7 2.6a4.4 4.4 0 0 1 4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 7 7" to="360 7 7" dur="1.1s" repeatCount="indefinite"/></path></svg>Tomando posición inicial… El bot está comprando su primera parte a mercado (el keeper la ejecuta en 1–2 min). En cuanto compre, verás aquí la ganancia moverse con el mercado.</div>` : ''}
+    ${sinPos && !gasLow ? `<div class="gaswarn" style="background:rgba(232,184,75,.08);border-color:var(--gold-soft);color:var(--gold)"><svg class="gw-i" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".35"/><path d="M7 2.6a4.4 4.4 0 0 1 4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 7 7" to="360 7 7" dur="1.1s" repeatCount="indefinite"/></path></svg>Taking the initial position… The bot is buying its first part at market (the keeper executes it in 1–2 min). As soon as it buys, you will see the profit move with the market here.</div>` : ''}
 
     ${_panel}
 
@@ -2941,7 +2942,7 @@ function editarBot(el) {
   if ($('f-niv')) $('f-niv').value = el.dataset.niv;
   if ($('f-total') && el.dataset.total && el.dataset.total !== 'undefined') $('f-total').value = el.dataset.total;
   cargarPrecio();
-  aviso($('c-msg'), 'info', `Editando ${el.dataset.sb}/${el.dataset.sq}: cambia lo que quieras (por ejemplo las cuadrículas) y pulsa "Encender el bot" para guardar los cambios.`);
+  aviso($('c-msg'), 'info', `Editing ${el.dataset.sb}/${el.dataset.sq}: change what you want (for example the grids) and press "Turn on the bot" to guardar los cambios.`);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 async function compartirBot(card) {
@@ -2950,7 +2951,7 @@ async function compartirBot(card) {
   const meta = BOTMETA[tipo] || BOTMETA.grid;
   const txt = (sel) => card.querySelector(sel)?.textContent?.trim() || '';
   const sb = card.dataset.sb || '', sq = card.dataset.sq || '';
-  const pair = (sb && sq) ? `${sb}/${sq}` : 'MI BOT';
+  const pair = (sb && sq) ? `${sb}/${sq}` : 'MY BOT';
   const nombre = txt('.pio-nombre') || meta.nom;
   const invLab = txt('.pio-band .l .k') || 'Inversión';
   const inv = txt('.pio-band .l .v') || '—';
@@ -3032,12 +3033,12 @@ async function compartirBot(card) {
   g.strokeStyle = '#e8b84b'; g.lineWidth = 2.5; rr(bX, bY, bW, bH, 28); g.stroke();                    // borde dorado
   g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1; rr(bX + 2.5, bY + 2.5, bW - 5, bH - 5, 26); g.stroke();
   // izquierda: Inversión (etiqueta dorada, valor blanco)
-  g.fillStyle = '#e8b84b'; g.font = `600 22px ${MONO}`; g.fillText(('Inversión (' + sq + ')').toUpperCase(), bX + 36, bY + 60);
+  g.fillStyle = '#e8b84b'; g.font = `600 22px ${MONO}`; g.fillText(('Investment (' + sq + ')').toUpperCase(), bX + 36, bY + 60);
   g.fillStyle = '#eaecef'; g.font = `700 50px ${DISPLAY}`; g.fillText(inv, bX + 34, bY + 120);
   // derecha: Ganancia total (texto OSCURO sobre verde, como la página)
   g.textAlign = 'right';
   const gtxt = neg ? '#2a0808' : '#03210f';
-  g.globalAlpha = .82; g.fillStyle = gtxt; g.font = `600 22px ${MONO}`; g.fillText('GANANCIA TOTAL', bX + bW - 36, bY + 56); g.globalAlpha = 1;
+  g.globalAlpha = .82; g.fillStyle = gtxt; g.font = `600 22px ${MONO}`; g.fillText('TOTAL PROFIT', bX + bW - 36, bY + 56); g.globalAlpha = 1;
   g.fillStyle = gtxt; g.font = `800 50px ${DISPLAY}`; g.fillText(gan, bX + bW - 36, bY + 112);
   if (pct) { g.font = `800 27px ${MONO}`; g.fillText(pct, bX + bW - 36, bY + 148); }
   g.textAlign = 'left';
@@ -3111,7 +3112,7 @@ function enganchar(cuenta) {
       }
       if (acc === 'toggle-panel') {
         const panel = el.querySelector('.pio-panel'); const abrir = !panel.classList.contains('open');
-        panel.classList.toggle('open', abrir); btn.textContent = abrir ? 'Ocultar ▴' : 'Ver el bot trabajando ▾';
+        panel.classList.toggle('open', abrir); btn.textContent = abrir ? 'Hide ▴' : 'See the bot working ▾';
         if (abrir) { try { grafica.pintar(panel); } catch (_) {} }
         if (abrir) arrancarTrail(panel.dataset.clave, { base: b, quote: q }, parseFloat(el.dataset.pmin), parseFloat(el.dataset.pmax), Number(el.dataset.decb), Number(el.dataset.decq), cuenta);
         else { const t = TRAILS.get(panel.dataset.clave); if (t?.timer) { clearInterval(t.timer); TRAILS.delete(panel.dataset.clave); } }
@@ -3131,35 +3132,35 @@ function enganchar(cuenta) {
         if (!ok) return;
         try {
           if (!soloCancelar) {
-            try { modalBusy('Vendiendo a estable… confirma en tu wallet.'); await gb.cerrarAhoraK(el.dataset.clave); }
-            catch (e) { if (esRechazo(e)) { modalError('Cancelaste la firma. No se hizo ningún cambio.'); return; } }
+            try { modalBusy('Selling to stablecoin… confirm in your wallet.'); await gb.cerrarAhoraK(el.dataset.clave); }
+            catch (e) { if (esRechazo(e)) { modalError('You cancelled the signature. No changes were made.'); return; } }
           }
-          modalBusy('Cerrando el bot… confirma en tu wallet.'); await gb.cancelarRejillaK(el.dataset.clave);
+          modalBusy('Closing the bot… confirm in your wallet.'); await gb.cancelarRejillaK(el.dataset.clave);
           if (esCash && gb.esBNB(b)) {
             try {
               const wbnbBal = await gb.balanceToken(b, cuenta);
               const cant = parseFloat(el.dataset.cant) || 0; const dcb = Number(el.dataset.decb) || 18;
               let unwrap = wbnbBal;
               if (cant > 0) { const cantWei = mBI(cant, dcb); if (unwrap > cantWei) unwrap = cantWei; }
-              if (unwrap > 0n) { modalBusy('Devolviendo tu BNB… confirma en tu wallet.'); await gb.desenvolverBNB(unwrap); }
+              if (unwrap > 0n) { modalBusy('Returning your BNB… confirm in your wallet.'); await gb.desenvolverBNB(unwrap); }
             } catch (_) {}
           }
           olvidarPar(cuenta, el.dataset.clave); modalClose(); refrescarRejillas();
         } catch (e) {
           if (!esRechazo(e)) { olvidarPar(cuenta, el.dataset.clave); refrescarRejillas(); }
-          modalError(esRechazo(e) ? 'Cancelaste la firma.' : (e?.shortMessage || e?.message || String(e)));
+          modalError(esRechazo(e) ? 'You cancelled the signature.' : (e?.shortMessage || e?.message || String(e)));
         }
       } else if (acc === 'desconectar') {
-        const ok = await modalConfirm({ titulo: 'Desconectar bot', cuerpo: `Se cerrará este bot y se <b>quitará el permiso</b> que le diste sobre tu ${sq} y ${sb}. No podrá operar hasta que lo actives de nuevo.`, ok: 'Desconectar', peligro: true });
+        const ok = await modalConfirm({ titulo: 'Desconectar bot', cuerpo: `This bot will close and the <b>permission</b> you granted over your ${sq} and ${sb} will be removed. It cannot trade until you actives de nuevo.`, ok: 'Desconectar', peligro: true });
         if (!ok) return;
         try {
-          modalBusy('Cerrando el bot… confirma en tu wallet.'); await gb.cancelarRejillaK(el.dataset.clave);
-          modalBusy(`Quitando el permiso de ${sq}… confirma.`); await gb.revocarToken(q);
-          modalBusy(`Quitando el permiso de ${sb}… confirma.`); await gb.revocarToken(b);
+          modalBusy('Closing the bot… confirm in your wallet.'); await gb.cancelarRejillaK(el.dataset.clave);
+          modalBusy(`Removing the ${sq} permission… confirm.`); await gb.revocarToken(q);
+          modalBusy(`Removing the ${sb} permission… confirm.`); await gb.revocarToken(b);
           olvidarPar(cuenta, el.dataset.clave); modalClose(); refrescarRejillas();
         } catch (e) {
           if (!esRechazo(e)) { olvidarPar(cuenta, el.dataset.clave); refrescarRejillas(); }
-          modalError(esRechazo(e) ? 'Cancelaste una firma.' : (e?.shortMessage || e?.message || String(e)));
+          modalError(esRechazo(e) ? 'You cancelled a signature.' : (e?.shortMessage || e?.message || String(e)));
         }
       }
     });
@@ -3231,7 +3232,7 @@ async function arrancar() {
   if (walletMuda && !wallet.cuentaActual()) {
     setTimeout(() => {
       const el = $('c-hero-msg') || $('c-msg');
-      if (el) aviso(el, 'err', 'Tu extensión de wallet no está respondiendo. Abre MetaMask desde la barra del navegador y desbloquéala, o reinicia el navegador. Puedes seguir usando la página mientras tanto.', 12000);
+      if (el) aviso(el, 'err', 'Your wallet extension is not responding. Open MetaMask from the browser bar and unlock it, or restart the browser. Puedes seguir usando la página mientras tanto.', 12000);
     }, 400);
   }
 }

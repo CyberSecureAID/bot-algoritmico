@@ -49,7 +49,7 @@ export async function abrirMarket() {
   estilos();
   const o = overlay(); const card = $('mk-card');
   o.classList.add('show');
-  card.innerHTML = `<button class="mk-x" id="mk-x">✕</button><div class="mk-vacio">Cargando marketplace…</div>`;
+  card.innerHTML = `<button class="mk-x" id="mk-x">✕</button><div class="mk-vacio">Loading marketplace…</div>`;
   $('mk-x').onclick = cerrar;
 
   card.innerHTML = `
@@ -168,7 +168,7 @@ function montarMenuMk() {
 
   const b = document.createElement('button');
   b.className = 'mk-menu-b'; b.id = 'mk-menu';
-  b.setAttribute('aria-label', 'Menú');
+  b.setAttribute('aria-label', 'Menu');
   b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mk-pt" id="mk-menu-pt"></span>`;
   cab.appendChild(b);
 

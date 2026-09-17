@@ -649,7 +649,7 @@ async function portada() {
             <div class="lqp-plan-n">${p.nombre}</div>
             <div class="lqp-precio"><b>${p.usd}</b><span>USD</span></div>
             ${ahorro > 4
-              ? `<div class="lqp-ahorro">ahorras un ${ahorro}%</div>`
+              ? `<div class="lqp-ahorro">you save ${ahorro}%</div>`
               : `<div class="lqp-ahorro-x">${p.etiqueta}</div>`}
             <button class="lqp-b" data-plan="${p.id}">Suscribirme</button>
             <div class="lqp-dias">${p.dias} días</div>
@@ -703,14 +703,14 @@ async function portada() {
     if (sv.id === 'pools') { abrirPools(); ocultarPortada(); return; }
     if (sv.id === 'libro') {
       try {
-        const mu = await import('./muros.js?v=126');
+        const mu = await import('./muros.js?v=127');
         mu.abrirMuros(); ocultarPortada();
       } catch (er) { console.warn('[CCO] radar:', er); }
       return;
     }
     if (sv.id === 'tercero') {
       try {
-        const sl = await import('./niveles.js?v=126');
+        const sl = await import('./niveles.js?v=127');
         sl.abrirNiveles(); ocultarPortada();
       } catch (er) { console.warn('[CCO] niveles:', er); }
     }
@@ -752,7 +752,7 @@ export async function abrirPools() {
           <b>${(TFS.find((t) => t.id === _tf) || TFS[3]).n}</b>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-        <div class="lq-grupo" title="Filtrar por apalancamiento">
+        <div class="lq-grupo" title="Filter by leverage">
           ${['todos', '10', '25', '50', '100'].map((a) =>
             `<button class="lq-b ${a === V.apal ? 'on' : ''}" data-apal="${a}">${a === 'todos' ? 'Todo' : 'x' + a}</button>`).join('')}
         </div>
@@ -769,13 +769,13 @@ export async function abrirPools() {
           <button class="lq-ayuda" id="lq-foto" title="Guardar imagen">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
-          <button class="lq-ayuda" id="lq-cal" title="Calendario económico">
+          <button class="lq-ayuda" id="lq-cal" title="Economic calendar">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4M7.5 13h2M11 13h2M14.5 13h2"/></svg>
           </button>
           <button class="lq-ayuda apagado" id="lq-perfil" title="Perfil de volumen">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M21 6H9M21 11H5M21 16H12M21 21H8"/></svg>
           </button>
-          <button class="lq-ayuda" id="lq-ver" title="Mostrar u ocultar el mapa">◉</button>
+          <button class="lq-ayuda" id="lq-ver" title="Show or hide the map">◉</button>
           <button class="lq-ayuda" id="lq-fit" title="Reencuadrar">⤢</button>
           <button class="lq-ayuda" id="lq-ayuda" title="Cómo funciona">?</button>
           <button class="lq-x" aria-label="Cerrar">✕</button>
@@ -840,7 +840,7 @@ export async function abrirPools() {
     m.id = 'lq-mas-menu';
     m.className = 'lq-menu lq-mas-menu';
     m.innerHTML = `
-      <div class="lqm-tit">Apalancamiento</div>
+      <div class="lqm-tit">Leverage</div>
       <div class="lqm-fila">
         ${['todos', '10', '25', '50', '100'].map((a) =>
           `<button class="lqm-chip ${a === V.apal ? 'on' : ''}" data-mapal="${a}">${a === 'todos' ? 'Todo' : 'x' + a}</button>`).join('')}
@@ -1590,7 +1590,7 @@ function dibujar() {
       g.fillStyle = '#8b95a1'; g.font = '9px ui-monospace,monospace'; g.textAlign = 'left';
       const rango = (z.pLow && z.pHigh && Math.abs(z.pHigh - z.pLow) > 1e-9)
         ? 'Zona ' + fmt(z.pLow) + '\u2013' + fmt(z.pHigh)
-        : 'Muro de liquidez';
+        : 'Liquidity wall';
       g.fillText(rango, tx, py + hb + 40);
       const nf = Math.max(1, Math.min(5, z.filas || 1));   // fuerza = nº de muros (1..5)
       const dgap = 7, dr = 2.3, dyC = py + hb + 37, dxEnd = px + pw - 14;
@@ -1603,10 +1603,10 @@ function dibujar() {
       g.fillStyle = '#c8d0d8'; g.font = '9.5px ui-monospace,monospace';
       if (alcista) {
         g.fillText('Compra acumulada DEBAJO del precio.', tx, py + hb + 58);
-        g.fillText('Piso que sostiene las ca\u00eddas.', tx, py + hb + 71);
+        g.fillText('Floor that holds up the drops.', tx, py + hb + 71);
       } else {
-        g.fillText('Venta acumulada ENCIMA del precio.', tx, py + hb + 58);
-        g.fillText('Techo que frena las subidas.', tx, py + hb + 71);
+        g.fillText('Accumulated selling ABOVE the price.', tx, py + hb + 58);
+        g.fillText('Ceiling that stops the rises.', tx, py + hb + 71);
       }
 
       // ── FLUJO en la zona, con % (velas verdes vs rojas que pasaron por ella).

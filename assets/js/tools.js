@@ -260,7 +260,7 @@ async function cargarSaldos(cuenta) {
     res.forEach((x) => { if (x) encontrados.push(x); });
     // Se va pintando lo que ya hay: el usuario ve avance, no una pantalla muerta.
     const av = $('pv-avance');
-    if (av) av.textContent = `Revisando… ${Math.min(i + 5, lista.length)} de ${lista.length} monedas`;
+    if (av) av.textContent = `Checking… ${Math.min(i + 5, lista.length)} of ${lista.length} coins`;
   }
 
   encontrados.sort((a, b) => b.usd - a.usd);
@@ -306,7 +306,7 @@ async function cargarSaldos(cuenta) {
     <button class="pv-b" id="pv-juntar">Juntar lo marcado</button>
 
     <div class="pv-nota">
-      Se hace <b>un intercambio por moneda</b>, así que firmarás varias veces. Cada uno cuesta su gas: por eso solo compensa con restos que valgan algo.
+      It makes <b>one swap per coin</b>, so you will sign several times. Each one costs its gas: that is why it only pays off with leftovers worth something.
     </div>`;
 
   const recalcular = () => {
@@ -318,7 +318,7 @@ async function cargarSaldos(cuenta) {
     const t = $('pv-total');
     if (t) t.innerHTML = n === 0
       ? `<span class="vacio">No has marcado nada</span>`
-      : `Vas a juntar <b>${n} moneda${n > 1 ? 's' : ''}</b> por un valor de <b>$${num(usd, 2)}</b>`;
+      : `You will gather <b>${n} coin${n > 1 ? 's' : ''}</b> worth <b>$${num(usd, 2)}</b>`;
     const b = $('pv-juntar');
     if (b) b.disabled = n === 0;
   };
@@ -383,7 +383,7 @@ async function juntar(elegidos, cuenta) {
 
   for (let i = 0; i < elegidos.length; i++) {
     const x = elegidos[i];
-    decirP(`Cambiando <b>${esc(x.m.simbolo)}</b> (${i + 1} de ${elegidos.length})… firma en tu wallet`, 'info');
+    decirP(`Swapping <b>${esc(x.m.simbolo)}</b> (${i + 1} of ${elegidos.length})… sign in your wallet`, 'info');
     try {
       const destino = MONEDAS[_destino];
       // Primero se pide precio, luego se ejecuta. Igual que el swap normal.
@@ -413,7 +413,7 @@ async function juntar(elegidos, cuenta) {
   decirP(
     fallos.length === 0
       ? `Listo: <b>${hechos}</b> moneda${hechos !== 1 ? 's' : ''} convertida${hechos !== 1 ? 's' : ''} a ${_destino}.`
-      : `Convertidas ${hechos}. No se pudo con: ${fallos.join(', ')}.<br>Puede que no tengan mercado suficiente.`,
+      : `Converted ${hechos}. Could not with: ${fallos.join(', ')}.<br>They may not have enough market.`,
     fallos.length ? 'mal' : 'ok'
   );
   if (b) b.disabled = false;
@@ -435,10 +435,10 @@ let _wMoneda = 'BTC';
 const WIDGETS = {
   termometro: {
     t: 'Miedo y codicia',
-    s: 'El humor del mercado, de 0 a 100',
+    s: 'The market mood, from 0 to 100',
     conMonedas: false,
     alto: 460,
-    nota: 'Este índice mide el ánimo del mercado de 0 (pánico) a 100 (euforia). No es una señal de compra: es contexto.',
+    nota: 'This index measures market sentiment from 0 (panic) to 100 (euphoria). It is not a buy signal: it is context.',
     render: () => `<iframe src="https://alternative.me/crypto/fear-and-greed-index.png"
       style="display:none"></iframe>
       <div class="w-fg" id="w-fg"><div class="tl-cargando">Consultando el índice…</div></div>`
@@ -458,7 +458,7 @@ const WIDGETS = {
   },
   mapa: {
     t: 'Mapa del mercado',
-    s: 'Cada cuadro es una moneda · el tamaño es su peso · verde sube, rojo baja',
+    s: 'Each box is a coin · size is its weight · green up, red down',
     conMonedas: false,
     plena: true,
     alto: 500,
@@ -631,7 +631,7 @@ function montarTV(def, alto) {
   sc.src = `https://s3.tradingview.com/external-embedding/${def.script}`;
   sc.innerHTML = JSON.stringify(def.cfg);
   sc.onerror = () => {
-    caja.innerHTML = `<div class="tl-vacio">No se pudo cargar el gráfico.<br>Revisa tu conexión y vuelve a abrirlo.</div>`;
+    caja.innerHTML = `<div class="tl-vacio">Could not load the chart.<br>Check your connection and open it again.</div>`;
   };
   cont.appendChild(sc);
 }
@@ -763,7 +763,7 @@ function pintarAlertas() {
     <button class="pv-b" id="al-add">Crear alerta</button>
 
     ${alertas.length ? `
-      <div class="al-titulo">Tus alertas</div>
+      <div class="al-titulo">Your alerts</div>
       <div class="al-lista">${alertas.map((a, i) => {
         const mm = MONEDAS[a.id] || {};
         return `<div class="al-fila ${a.saltada ? 'saltada' : ''}">
@@ -830,7 +830,7 @@ function pintarAlertas() {
       const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${m.cg}&vs_currencies=usd`);
       const j = await r.json();
       const p = j[m.cg] && j[m.cg].usd;
-      el.innerHTML = p ? `${esc(m.simbolo)} está ahora en <b>$${num(p, 6)}</b>` : '';
+      el.innerHTML = p ? `${esc(m.simbolo)} is now at <b>$${num(p, 6)}</b>` : '';
     } catch (_) { el.textContent = ''; }
   };
   verPrecio();
@@ -865,13 +865,13 @@ function pintarAlertas() {
 
   $('al-add').onclick = async () => {
     const precio = Number($('al-precio').value);
-    if (!isFinite(precio) || precio <= 0) { decirP('Escribe un precio válido.', 'mal'); return; }
+    if (!isFinite(precio) || precio <= 0) { decirP('Enter a valid price.', 'mal'); return; }
     const m = MONEDAS[_alMoneda];
     const a = leerAlertas();
     a.push({ id: _alMoneda, sim: m.simbolo, cg: m.cg, dir: _alDir, precio, saltada: false, creada: Date.now() });
     guardarAlertas(a);
     try { if (window.Notification && Notification.permission === 'default') await Notification.requestPermission(); } catch (_) {}
-    decirP(`Listo: te avisamos cuando ${esc(m.simbolo)} ${_alDir === 'sube' ? 'suba a' : 'baje a'} $${num(precio, 6)}.`, 'ok');
+    decirP(`Done: we will notify you when ${esc(m.simbolo)} ${_alDir === 'sube' ? 'rises to' : 'drops to'} $${num(precio, 6)}.`, 'ok');
     pintarAlertas();
     vigilar();
   };

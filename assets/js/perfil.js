@@ -347,7 +347,7 @@ export async function abrirPerfil() {
     <div class="t"><span>Renovación automática</span>
       <span style="display:inline-flex;align-items:center;gap:9px">
         <span class="pf-badge">Pronto</span>
-        <span class="pf-sw on" id="pf-sw" title="Disponible próximamente"><i></i></span>
+        <span class="pf-sw on" id="pf-sw" title="Coming soon"><i></i></span>
       </span>
     </div>
     <div class="d">Vendrá activada: tu suscripción se renovará sola y no tendrás que acordarte cada mes. Podrás desactivarla cuando quieras (se firmará en la blockchain).</div>
@@ -478,7 +478,7 @@ async function cargarPermisos(cuenta) {
 
   box.querySelectorAll('[data-rev]').forEach((b) => b.onclick = async () => {
     const x = filas[Number(b.dataset.rev)];
-    b.disabled = true; b.textContent = 'firma…';
+    b.disabled = true; b.textContent = 'sign…';
     try {
       await gb[x.fn](x.d);
       b.textContent = 'quitado';
@@ -503,7 +503,7 @@ async function alternarHistorial(cuenta) {
   if (abierto) { cont.hidden = true; tog.setAttribute('aria-expanded', 'false'); return; }
   cont.hidden = false; tog.setAttribute('aria-expanded', 'true');
   if (_histCargado) return;
-  cont.innerHTML = `<div class="pf-hcarga">Leyendo tus operaciones en la blockchain…</div>`;
+  cont.innerHTML = `<div class="pf-hcarga">Reading your trades on the blockchain…</div>`;
 
   let res;
   try { res = await gb.historialDe(cuenta); } catch (_) { res = { error: 'sin-historial', ops: [] }; }
@@ -546,13 +546,13 @@ async function alternarHistorial(cuenta) {
   const sector = async (titulo, lista) => {
     const filas = (await Promise.all(lista.slice(0, 25).map(fila))).join('');
     return `<div class="pf-hsect">${titulo} <i></i></div>` +
-      (lista.length ? filas : `<div class="pf-hvacio">Ninguna por ahora.</div>`);
+      (lista.length ? filas : `<div class="pf-hvacio">None for now.</div>`);
   };
 
   cont.innerHTML =
     (await sector('Tus órdenes limit', manuales)) +
     (await sector('Operaciones de bots', deBots)) +
-    `<a class="pf-hmas" href="https://bscscan.com/address/${cuenta}" target="_blank" rel="noopener">Ver el historial completo en BscScan ↗</a>`;
+    `<a class="pf-hmas" href="https://bscscan.com/address/${cuenta}" target="_blank" rel="noopener">See the full history on BscScan ↗</a>`;
 }
 
 async function cargarDatos(cuenta) {
@@ -586,12 +586,12 @@ async function cargarDatos(cuenta) {
       if (!$('pf-costeop') || !(bnbOp > 0)) return;
       const usd = precio > 0n ? bnbOp / Number(gb.fmtBNB(precio)) : 0;
       $('pf-costeop').innerHTML = `≈ <b>${num(bnbOp, 6)} BNB</b>` +
-        (usd > 0 ? ` · unos ${usd < 0.01 ? '$' + usd.toFixed(3) : num(usd, 2) + ' USD'}` : '') +
+        (usd > 0 ? ` · about ${usd < 0.01 ? '$' + usd.toFixed(3) : num(usd, 2) + ' USD'}` : '') +
         `<i class="pf-fuente">${fuente}</i>`;
       const quedan = Math.floor(Number(gb.fmtBNB(gasWei)) / bnbOp);
       if ($('pf-opsrest')) $('pf-opsrest').textContent = quedan > 0
-        ? `Con tu gas actual te alcanza para unas ${quedan.toLocaleString('es')} operaciones más`
-        : 'Recarga gas para que tus bots sigan operando';
+        ? `With your current gas you have about ${quedan.toLocaleString('en')} trades left`
+        : 'Top up gas so your bots keep trading';
     };
 
     /* Coste por operación ESTABLE y honesto: se calcula con el precio de gas
@@ -700,7 +700,7 @@ async function cargarDatos(cuenta) {
     const porOp = gasGas / ops;
     const el = $('pf-costeop');
     if (el) {
-      el.innerHTML = `≈ <b>${num(porOp, 6)} BNB</b><i class="pf-fuente">según tu consumo real</i>`;
+      el.innerHTML = `≈ <b>${num(porOp, 6)} BNB</b><i class="pf-fuente">based on your real usage</i>`;
     }
   }
   for (let i = 0; i < 4; i++) { const e = $('pf-t' + i); if (e) e.textContent = String(porTipo[i]); }

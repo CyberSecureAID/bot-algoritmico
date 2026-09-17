@@ -343,7 +343,7 @@ function ppTarjeta(i, pasos) {
       ${i > 0 ? `<button class="pp-cb gris" data-pp-atras>Atrás</button>` : ''}
       ${ultimo
         ? `<button class="pp-cb" id="pp-goto-ev">Quiero participar</button>`
-        : `<button class="pp-cb" data-pp-mas><span class="tx-l">Saber más</span><span class="tx-s">Más</span></button>`}
+        : `<button class="pp-cb" data-pp-mas><span class="tx-l">Learn more</span><span class="tx-s">More</span></button>`}
     </div>
   </div>`;
 }
@@ -370,13 +370,13 @@ export async function abrirPrizePool() {
   estilos();
   const o = overlay(); const card = $('pp-card');
   o.classList.add('show');
-  card.innerHTML = `<button class="pp-x" id="pp-x">✕</button><div class="pp-empty">Cargando Prize Pool…</div>`;
+  card.innerHTML = `<button class="pp-x" id="pp-x">✕</button><div class="pp-empty">Loading Prize Pool…</div>`;
   $('pp-x').onclick = cerrar;
 
   let st;
   try { st = await leePP('estadoActual'); }
   catch (e) {
-    card.innerHTML = `<button class="pp-x" id="pp-x">✕</button><div class="pp-empty">No se pudo cargar el Prize Pool ahora mismo.<br>Revisa tu conexión y vuelve a intentar.</div>`;
+    card.innerHTML = `<button class="pp-x" id="pp-x">✕</button><div class="pp-empty">Could not load the Prize Pool right now.<br>Check your conexión y vuelve a intentar.</div>`;
     $('pp-x').onclick = cerrar; return;
   }
 
@@ -389,7 +389,7 @@ export async function abrirPrizePool() {
     const d = await leePP('distribucionEstimada', [st.pool, st.players]);
     if (d && d.length) {
       const top = d.slice(0, 3).map((x, i) => `<b>${i + 1}º</b> ${num(fmt(x), 2)}`);
-      distTxt = top.join(' &nbsp;·&nbsp; ') + (d.length > 3 ? ` &nbsp;·&nbsp; +${d.length - 3} más` : '') + ' USDT';
+      distTxt = top.join(' &nbsp;·&nbsp; ') + (d.length > 3 ? ` &nbsp;·&nbsp; +${d.length - 3} more` : '') + ' USDT';
     }
   } catch (_) {}
 
@@ -427,8 +427,8 @@ function render(round, pool, players, minReq, pct, entrada, W, distTxt) {
 
     <button class="pp-btn" id="pp-go">Participar · ${e} USDT</button>
     <div class="pp-form" id="pp-form">
-      <input id="pp-name" maxlength="40" placeholder="Tu nombre">
-      <input id="pp-tg" maxlength="40" placeholder="Tu usuario de Telegram (opcional)">
+      <input id="pp-name" maxlength="40" placeholder="Your name">
+      <input id="pp-tg" maxlength="40" placeholder="Your Telegram username (optional)">
       <button class="pp-btn" id="pp-confirm" style="margin-top:4px">Confirmar participación</button>
     </div>
     <div class="pp-msg info" id="pp-msg"></div>
@@ -473,8 +473,8 @@ async function participar() {
   if (!cuenta) { msg('Conecta tu wallet primero.', 'err'); return; }
   const name = ($('pp-name').value || '').trim();
   const tg = ($('pp-tg').value || '').trim();
-  if (!name) { msg('Pon tu nombre.', 'err'); return; }
-  if (!limpio(name) || !limpio(tg)) { msg('Ese nombre/usuario no está permitido. Usa uno apropiado.', 'err'); return; }
+  if (!name) { msg('Enter your name.', 'err'); return; }
+  if (!limpio(name) || !limpio(tg)) { msg('That name/username is not allowed. Use an appropriate one.', 'err'); return; }
 
   const btn = $('pp-confirm'); btn.disabled = true;
   try {
@@ -502,10 +502,10 @@ async function participar() {
 }
 function traducir(e) {
   const s = (e && (e.reason || e.shortMessage || e.message) || '').toLowerCase();
-  if (s.includes('user rejected') || s.includes('denied')) return 'Cancelaste la operación.';
-  if (s.includes('insufficient')) return 'Saldo insuficiente (USDT o BNB para el gas).';
-  if (s.includes('rondanoabierta') || s.includes('rondaencurso')) return 'La ronda no está abierta ahora mismo.';
-  return 'No se pudo completar. Intenta de nuevo.';
+  if (s.includes('user rejected') || s.includes('denied')) return 'You cancelled the operation.';
+  if (s.includes('insufficient')) return 'Insufficient balance (USDT or BNB for gas).';
+  if (s.includes('rondanoabierta') || s.includes('rondaencurso')) return 'The round is not open right now.';
+  return 'Could not complete. Try again.';
 }
 
 /* ───────── Sorteo atascado por gas: cualquiera puede destrabarlo ───────── */
@@ -577,7 +577,7 @@ async function cargarMiAporte() {
     </div>`;
     if (!puedeSalir) return;
     $('pp-aband').onclick = async () => {
-      if (!confirm('¿Seguro que quieres abandonar?\n\nSe te devuelve tu aporte al fondo y quedas fuera del sorteo. La comisión de la plataforma no se devuelve.')) return;
+      if (!confirm('Are you sure you want to leave?\n\nYour contribution to the pool is returned and you are out of the draw. The platform fee is not refunded.')) return;
       try {
         msg('Confirma en tu wallet…', 'info');
         const c = new ethers.Contract(PRIZEPOOL, PP_ABI, await firmante());

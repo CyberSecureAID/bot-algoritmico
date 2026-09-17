@@ -138,7 +138,7 @@ const TFS = [
 
 async function traerVelas(simbolo, tf, n = 120) {
   const r = await muFetch(`/api/v3/klines?symbol=${simbolo}&interval=${tf}&limit=${n}`);
-  if (!r.ok) throw new Error('sin velas');
+  if (!r.ok) throw new Error('no candles');
   const j = await r.json();
   return j.map((x) => ({
     t: Math.floor(x[0] / 1000),
@@ -480,8 +480,8 @@ function juzgar() {
         tipo: 'ido',
         titulo: 'Ha desaparecido',
         nota: v.tipo === 'falso'
-          ? 'Confirmado: se retiró del libro sin llegar a ejecutarse. Era falso.'
-          : 'Este muro ya no está en el libro. O se consumió del todo, o quien lo puso lo retiró.',
+          ? 'Confirmed: it was pulled from the book without executing. It was fake.'
+          : 'This wall is no longer in the book. Either it was fully consumed, or whoever placed it pulled it.',
         prioridad: 30, vivo: false
       });
     }
@@ -1313,7 +1313,7 @@ export async function abrirMuros() {
             <button class="mu-pos-half" id="mu-pos-double">Double</button>
           </div>
           <button class="mu-share" id="mu-share" title="Share signal" disabled>Share signal</button>
-          <button class="mu-ico" id="mu-cal" title="Calendario económico">
+          <button class="mu-ico" id="mu-cal" title="Economic calendar">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2"/></svg>
           </button>
           <button class="mu-ico" id="mu-tema" title="Tema claro/oscuro">
@@ -2294,7 +2294,7 @@ function dibujar() {
       ['Liquidez del rango', dinero(liq)],
       ['Compradora', dinero(liqC) + '  (' + pComp + '%)'],
       ['Vendedora', dinero(liqV) + '  (' + (100 - pComp) + '%)'],
-      ['Velas en rango', String((Z.velas || []).length)]
+      ['Candles in range', String((Z.velas || []).length)]
     ];
     g.save();
     g.font = '10px ui-monospace,monospace';
@@ -2671,35 +2671,35 @@ function narrar(m, esVenta, dist) {
   const cerca = dist < 0.12, muyCerca = dist < 0.015;
 
   if (m.tipo === 'falso') {
-    return 'Se retira cada vez que el precio se acerca. <b>Es humo</b>: no cuente con este nivel.';
+    return 'It pulls back every time the price approaches. <b>It is smoke</b>: do not count on this level.';
   }
   if (m.tipo === 'ido') {
-    return 'La orden <b>ya no está</b>. Ese nivel quedó sin defensa: el precio puede pasar de largo.';
+    return 'The order <b>is gone</b>. That level was left undefended: the price may go straight through.';
   }
   if (m.consumidoPct > 0.75 && cerca) {
-    return `<b>Se está ejecutando ahora mismo.</b> Ya se ha comido el ${Math.round(m.consumidoPct * 100)}% de la orden. ` +
-           (esVenta ? 'Si termina, el techo cae.' : 'Si termina, el suelo cede.');
+    return `<b>It is executing right now.</b> ${Math.round(m.consumidoPct * 100)}% of the order has already been eaten. ` +
+           (esVenta ? 'If it finishes, the ceiling falls.' : 'Si termina, el suelo cede.');
   }
   if (muyCerca) {
-    return `<b>El precio está tocando este nivel.</b> ${dinero(m.v)} ${esVenta ? 'en venta' : 'en compra'} esperando. ` +
+    return `<b>The price is touching this level.</b> ${dinero(m.v)} ${esVenta ? 'selling' : 'buying'} waiting. ` +
            (esVenta ? 'Aquí se decide si rompe o rebota.' : 'Aquí se decide si aguanta o cede.');
   }
   if (cerca) {
-    return `El precio se está acercando: solo un <b>${dist.toFixed(2)}%</b> ${esVenta ? 'por debajo' : 'por encima'}. Atento a lo que pase al llegar.`;
+    return `The price is approaching: only <b>${dist.toFixed(2)}%</b> ${esVenta ? 'below' : 'above'}. Atento a lo que pase al llegar.`;
   }
   if (m.recargas >= 2) {
-    return `Ya se la han comido <b>${m.recargas} veces</b> y la han vuelto a poner. Alguien grande insiste en defender ${fmt(m.p)}.`;
+    return `It has been eaten <b>${m.recargas} times</b> and put back again. Someone big insists on defending ${fmt(m.p)}.`;
   }
   const fuerte = m.tipo === 'recargable' || m.tipo === 'probado' || (m.tipo === 'real' && m.segundos > 240);
   if (fuerte) {
     return esVenta
-      ? `Lleva ${tiempo(m.segundos)} defendiendo ${fmt(m.p)}. Alta probabilidad de <b>rechazo</b> si el precio sube ahí.`
-      : `Lleva ${tiempo(m.segundos)} sosteniendo ${fmt(m.p)}. Alta probabilidad de <b>rebote</b> si el precio cae ahí.`;
+      ? `Has been defending ${fmt(m.p)} for ${tiempo(m.segundos)}. High probability of <b>rejection</b> if the price rises there.`
+      : `Has been holding ${fmt(m.p)} for ${tiempo(m.segundos)}. High probability of a <b>bounce</b> if the price drops there.`;
   }
   if (m.tipo === 'real') {
-    return `${dinero(m.v)} ${esVenta ? 'en venta' : 'en compra'} esperando. Aún sin probar: veremos cuando el precio llegue.`;
+    return `${dinero(m.v)} ${esVenta ? 'selling' : 'buying'} waiting. Untested yet: we will see when the price gets there.`;
   }
-  return `Orden recién puesta hace ${tiempo(m.segundos)}. Todavía no sabemos si va en serio.`;
+  return `Order just placed ${tiempo(m.segundos)} ago. We do not know yet if it is serious.`;
 }
 
 /* Narrador de ZONAS de acumulación: dice qué es y qué esperar, con la verdad
@@ -2707,18 +2707,18 @@ function narrar(m, esVenta, dist) {
 function narrarZona(z, dem, dist) {
   if (z.dentro) {
     return dem
-      ? '<b>El precio está DENTRO de la zona de demanda.</b> Aquí se decide si rebota o la pierde.'
-      : '<b>El precio está DENTRO de la zona de oferta.</b> Aquí se decide si la rechaza o la rompe.';
+      ? '<b>The price is INSIDE the demand zone.</b> This is where it is decided whether it bounces or loses it.'
+      : '<b>The price is INSIDE the supply zone.</b> This is where it is decided whether it rejects or breaks it.';
   }
   if (z.retest) {
     return dem
-      ? `El precio está <b>a ${dist.toFixed(2)}%</b> de retestear esta demanda. Atento a un posible rebote.`
-      : `El precio está <b>a ${dist.toFixed(2)}%</b> de retestear esta oferta. Atento a un posible rechazo.`;
+      ? `The price is <b>${dist.toFixed(2)}%</b> away from retesting this demand. Watch for a possible bounce.`
+      : `The price is <b>${dist.toFixed(2)}%</b> away from retesting this supply. Watch for a possible rejection.`;
   }
   const f = z.fuerza >= 4 ? 'Zona <b>fuerte</b>' : 'Zona';
   return dem
-    ? `${f} de demanda: se acumularon ${dinero(z.v)} en ${z.toques} velas. Suele sostener las caídas.`
-    : `${f} de oferta: se acumularon ${dinero(z.v)} en ${z.toques} velas. Suele frenar las subidas.`;
+    ? `${f} of demand: ${dinero(z.v)} accumulated over ${z.toques} candles. Usually holds up the drops.`
+    : `${f} of supply: ${dinero(z.v)} accumulated over ${z.toques} candles. Usually stops the rises.`;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2745,7 +2745,7 @@ function pintarCockpit() {
   }).join(' ');
   const celda = (val, lbl, col) => `<div class="mu-ck"><b style="color:${col || 'var(--mu-tx)'}">${val}</b><span>${lbl}</span></div>`;
   c.innerHTML =
-    celda(`<span style="color:${sesgoCol};text-transform:capitalize">${sesgo}</span>`, 'sesgo mercado') +
+    celda(`<span style="color:${sesgoCol};text-transform:capitalize">${sesgo}</span>`, 'market bias') +
     celda(m && m.winRate != null ? m.winRate + '%' : '\u2014', m && m.muestra ? 'acierto \u00b7 ' + m.muestra : 'acierto', m && m.winRate >= 60 ? '#2ee86a' : (m && m.winRate != null ? '#E8B84B' : '#8b96a3')) +
     celda(deltaTxt, 'flujo agresor', deltaCol) +
     celda(cercana ? (cercana.dentro ? 'AQU\u00cd' : (Math.abs(cercana.dist) * 100).toFixed(2) + '%') : '\u2014', 'zona cercana', cercana && cercana.dentro ? '#E8B84B' : 'var(--mu-tx)') +
@@ -2808,10 +2808,10 @@ function pintarPanel() {
       ? `${compPct}% comprador`
       : `${100 - compPct}% vendedor`;
     const queHacer = z.rota
-      ? 'Zona <b>rota</b>: el precio la perforó. Podría actuar al revés (flip) si vuelve a ella.'
+      ? '<b>Broken</b> zone: the price pierced it. It could act in reverse (flip) if it comes back.'
       : dem
-        ? 'Zona de <b>demanda</b>: posible rebote / entrada en largo al retestear el nivel.'
-        : 'Zona de <b>oferta</b>: posible rechazo / entrada en corto al retestear el nivel.';
+        ? '<b>Demand</b> zone: possible bounce / long entry on a retest of the level.'
+        : '<b>Supply</b> zone: possible rejection / short entry on a retest of the level.';
 
     // Insignias
     const badges = [
@@ -3107,53 +3107,53 @@ async function ponerLogos() {
 const PASOS_MU = [
   {
     t: 'Qué es Heat Pools',
-    d: 'Heat Pools es una herramienta de <b>alto rendimiento</b> que revela <b>dónde se concentra el volumen de negociación</b> en los niveles más exactos del mercado. Analiza los datos en <b>tiempo real</b> (precio, niveles de negociación y liquidez) y los pinta como un <b>mapa de calor</b> sobre las zonas donde el dinero de verdad se ha estado acumulando.',
-    x: 'Es la primera herramienta de su tipo en la plataforma: te muestra de un vistazo dónde está el interés real del mercado.'
+    d: 'Heat Pools es una herramienta de <b>high performance</b> que revela <b>dónde se concentra el volumen de negociación</b> en los niveles más exactos del mercado. Analiza los datos en <b>tiempo real</b> (precio, niveles de negociación y liquidez) y los pinta como un <b>mapa de calor</b> sobre las zonas donde el dinero de verdad se ha estado acumulando.',
+    x: 'It is the first tool of its kind on the platform: it shows you at a glance where the real market interest is.'
   },
   {
-    t: 'Para qué te sirve',
+    t: 'What it is for',
     d: 'Sobre cada zona de interés, Heat Pools proyecta el mapa de calor y te ofrece <b>entradas listas para operar</b>, con su <b>stop</b> y su <b>objetivo</b> ya calculados. No tienes que ser un experto en análisis técnico: el sistema hace el trabajo y te señala los niveles.',
-    x: 'La idea es que veas con claridad dónde comprar y dónde vender, sin romperte la cabeza.'
+    x: 'The idea is for you to see clearly where to buy and where to sell, without racking your brain.'
   },
   {
-    t: 'Paso 1 · Entra a Heat Pools y elige moneda',
+    t: 'Step 1 · Open Heat Pools and choose a coin',
     d: 'Abre la sección <b>Heat Pools</b> y arriba selecciona la <b>criptomoneda</b> que quieras analizar. Tienes una amplia gama de monedas disponibles para hacer análisis técnico.',
-    x: 'Puedes cambiar de moneda cuando quieras para buscar oportunidades en varias a la vez.'
+    x: 'You can switch coins whenever you want to look for opportunities in several at once.'
   },
   {
-    t: 'Paso 2 · Elige la temporalidad',
+    t: 'Step 2 · Choose the timeframe',
     d: 'Selecciona la <b>temporalidad</b> en la que deseas operar. Se recomienda <b>de 5 minutos en adelante</b>: las temporalidades más pequeñas también funcionan, pero cuanto <b>más grande</b> es la temporalidad, <b>mejor</b> suele ser la lectura. No quedan invalidadas las demás; simplemente las mayores dan señales más sólidas.',
-    x: 'Regla práctica: si dudas, sube de temporalidad. Más grande, más fiable.'
+    x: 'Rule of thumb: if in doubt, go up a timeframe. Bigger, more reliable.'
   },
   {
-    t: 'Paso 3 · Activa las entradas (Single o Double)',
+    t: 'Step 3 · Enable entries (Single or Double)',
     d: 'Cuando tengas clara tu dinámica, toca <b>Single</b> o <b>Double</b> para habilitar las entradas disponibles. <b>Single</b> pone una posición por zona; <b>Double</b> pone dos: la segunda entra donde iría el stop de la primera, de modo que una operación doble puede <b>salvar el stop</b> de una simple y darte mayor probabilidad de éxito.',
-    x: 'Se recomienda Double cuando quieras repartir el riesgo y proteger mejor la operación.'
+    x: 'Double is recommended when you want to spread the risk and protect the trade better.'
   },
   {
-    t: 'Opera SIEMPRE a favor de la tendencia',
+    t: 'ALWAYS trade with the trend',
     d: 'Aunque el sistema marque buenas zonas, opera <b>a favor de la tendencia predominante</b>. No tiene sentido entrar en contra del rumbo grande del mercado: aunque la zona sea válida, la probabilidad de éxito baja y el resultado puede no ser el esperado.',
     x: 'Primero mira hacia dónde va el mercado en general; después usa las zonas para entrar en esa dirección.'
   },
   {
-    t: 'Gestiona el riesgo con cabeza',
+    t: 'Manage risk wisely',
     d: 'Las entradas vienen con una relación <b>riesgo/beneficio de 1:2</b>. Cuando lleves ganado el equivalente a lo que arriesgaste, un buen hábito es: en <b>futuros</b>, mover el stop al <b>precio de entrada</b> (así ya no puedes perder); en <b>spot</b>, no necesitas stop, porque <b>no hay precio de liquidación</b>: compras y vendes de forma orgánica con paciencia.',
-    x: 'En spot no hay liquidación, así que operando con calma y capital adecuado puedes gestionar sin agobios.'
+    x: 'In spot there is no liquidation, so trading calmly with adequate capital you can manage without stress.'
   },
   {
-    t: 'Comparte tus señales y análisis',
+    t: 'Share your signals and analysis',
     d: 'Con <b>Share signal</b> generas una imagen y un texto con las entradas, stops y objetivos, ideal si quieres crear tu propio <b>grupo de señales</b> y cobrar por ese servicio: la plataforma te lo permite. Con <b>compartir imagen</b> envías el escenario actual del mercado a amigos o clientes.',
-    x: 'Muchos usuarios convierten esto en un ingreso: montan grupos de señales o de análisis usando la plataforma.'
+    x: 'Many users turn this into income: they set up signal or analysis groups using the platform.'
   },
   {
-    t: 'Herramientas extra',
+    t: 'Extra tools',
     d: 'Puedes cambiar entre <b>tema claro y oscuro</b>, consultar el <b>calendario económico</b> actualizado de hoy en tiempo real, y analizar una <b>amplia variedad de criptomonedas</b> en múltiples temporalidades para encontrar más oportunidades.',
-    x: 'Todo está en la misma pantalla, a un toque, para que no pierdas de vista ninguna oportunidad.'
+    x: 'Everything is on the same screen, one tap away, so you never lose sight of an opportunity.'
   },
   {
-    t: 'Una recomendación honesta',
+    t: 'An honest recommendation',
     d: 'Esto es <b>trading en los mercados financieros</b>. Aunque operes en spot, <b>arriesga solo lo que estés dispuesto a perder</b>: nunca inviertas tus ahorros personales ni dinero que necesites. Con paciencia, disciplina y el capital adecuado, Heat Pools es una herramienta poderosa para operar de forma más inteligente.',
-    x: 'La constancia vale más que la prisa. Opera con responsabilidad y deja que la herramienta trabaje para ti.'
+    x: 'Consistency is worth more than haste. Trade responsibly and let the tool work for you.'
   }
 ];
 
@@ -3914,12 +3914,12 @@ function analizarRadar() {
   const px = M.precio || (M.velas.length ? M.velas[M.velas.length - 1].c : 0);
   const mk = M.mercado;
   const zonas = (M.zonas || []).filter((z) => !z.rota);
-  const vwapTxt = mk && mk.vwap ? (px >= mk.vwap ? 'El precio está **por encima del VWAP**, lo que favorece a los compradores.' : 'El precio está **por debajo del VWAP**, lo que favorece a los vendedores.') : '';
+  const vwapTxt = mk && mk.vwap ? (px >= mk.vwap ? 'The price is **above the VWAP**, which favors buyers.' : 'El precio está **por debajo del VWAP**, lo que favorece a los vendedores.') : '';
 
   // Variación estable por moneda (misma moneda → misma redacción; monedas distintas → distinta).
   const _h = base.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const V = (arr) => arr[_h % arr.length];
-  const intro = V([`Miremos **${base}** en **${M.tf}**.`, `Vamos con **${base} · ${M.tf}**.`,
+  const intro = V([`Miremos **${base}** en **${M.tf}**.`, `Let us go with **${base} · ${M.tf}**.`,
     `Esto es lo que leo en **${base} · ${M.tf}**.`, `Repasemos **${base}** en **${M.tf}**.`]);
   // Contexto REAL del mercado de esta moneda (cambia según datos, no es genérico).
   const cprB = mk && mk.compradorPct != null ? Math.round(mk.compradorPct) : null;
@@ -3929,13 +3929,13 @@ function analizarRadar() {
       : 'cotiza **dentro del área de valor**')
     : '';
   const ctxMercado = mk ? `En **${base}** el sesgo es **${mk.sesgo || 'neutral'}**`
-    + (cprB != null ? ` con **${cprB}%** de presión ${cprB >= 50 ? 'compradora' : 'vendedora'}` : '')
-    + (mk.winRate != null ? ` y un acierto histórico del **${Math.round(mk.winRate)}%**` : '')
+    + (cprB != null ? ` with **${cprB}%** ${cprB >= 50 ? 'buying' : 'selling'} pressure` : '')
+    + (mk.winRate != null ? ` and a historical hit rate of **${Math.round(mk.winRate)}%**` : '')
     + (posVA ? `; ${posVA}` : '') + '.' : '';
 
   if (!px || !zonas.length) {
-    return { titulo: 'Sin lectura clara', tono: 'espera', base,
-      parrafos: [`Ahora mismo no veo zonas de acumulación fiables y cercanas en **${base} · ${M.tf}**.`, `Sin un nivel con volumen de referencia, lo prudente es **esperar**. No hay una entrada con ventaja aquí.`],
+    return { titulo: 'No clear read', tono: 'espera', base,
+      parrafos: [`Right now I see no reliable nearby accumulation zones on **${base} · ${M.tf}**.`, `Without a reference volume level, the prudent thing is to **wait**. There is no edge entry here.`],
       op: null };
   }
 
@@ -3974,17 +3974,17 @@ function analizarRadar() {
   if (dentro && dentro.lado === 'demanda' && dentro.fuerza >= 3) {
     op = planLong(dentro); titulo = 'Zona de alta demanda'; tono = 'compra';
     parrafos = [
-      `${intro} ${ctxMercado} El precio está **dentro de una zona de demanda fuerte** en **${fmt(dentro.pPoc)}** (rango ${fmt(dentro.pLow)}–${fmt(dentro.pHigh)}), con **${dinero(dentro.v)}** acumulados.`,
-      `Es un nivel con mucho volumen comprador. Escenario de posible **compra (long)** apoyada en esta demanda.` + (vwapTxt ? ' ' + vwapTxt : ''),
-      `Plan: entrada cerca de **${fmt(op.entrada)}**, stop en **${fmt(op.sl)}** y objetivo en **${fmt(op.tp)}** (riesgo/beneficio 1:1).`,
+      `${intro} ${ctxMercado} The price is **inside a strong demand zone** at **${fmt(dentro.pPoc)}** (rango ${fmt(dentro.pLow)}–${fmt(dentro.pHigh)}), con **${dinero(dentro.v)}** acumulados.`,
+      `It is a level with a lot of buying volume. Scenario of a possible **buy (long)** supported by this demand.` + (vwapTxt ? ' ' + vwapTxt : ''),
+      `Plan: entry near **${fmt(op.entrada)}**, stop at **${fmt(op.sl)}** and target at **${fmt(op.tp)}** (risk/rewario 1:1).`,
       avisoAncho(op), notaSpot
     ];
   } else if (dentro && dentro.lado === 'oferta' && dentro.fuerza >= 3) {
     op = planShort(dentro); titulo = 'Zona de alta oferta'; tono = 'venta';
     parrafos = [
-      `${intro} ${ctxMercado} El precio está **dentro de una zona de oferta fuerte** en **${fmt(dentro.pPoc)}** (rango ${fmt(dentro.pLow)}–${fmt(dentro.pHigh)}), con **${dinero(dentro.v)}** acumulados.`,
-      `Hay mucho volumen vendedor aquí. Si estás comprado, **cuidado**: es zona de posible **toma de beneficios o venta (short)**.` + (vwapTxt ? ' ' + vwapTxt : ''),
-      `Plan: entrada corta cerca de **${fmt(op.entrada)}**, stop en **${fmt(op.sl)}** y objetivo en **${fmt(op.tp)}** (1:1).`,
+      `${intro} ${ctxMercado} The price is **inside a strong supply zone** at **${fmt(dentro.pPoc)}** (rango ${fmt(dentro.pLow)}–${fmt(dentro.pHigh)}), con **${dinero(dentro.v)}** acumulados.`,
+      `There is a lot of selling volume here. If you are long, **careful**: it is a zone of possible **profit taking or sell (short)**.` + (vwapTxt ? ' ' + vwapTxt : ''),
+      `Plan: short entry near **${fmt(op.entrada)}**, stop at **${fmt(op.sl)}** and target at **${fmt(op.tp)}** (1:1).`,
       avisoAncho(op), notaSpot
     ];
   } else if ((dem && dem.fuerza >= 3) || (ofe && ofe.fuerza >= 3)) {
@@ -4003,9 +4003,9 @@ function analizarRadar() {
     parrafos = [
       `${intro} ${ctxMercado} La zona más relevante ahora es una **${ladoTxt}** en **${fmt(prim.pPoc)}** (rango ${fmt(prim.pLow)}–${fmt(prim.pHigh)}) con **${dinero(prim.v)}**, a un **${(Math.abs(prim.dist) * 100).toFixed(2)}%** por ${posTxt}.`,
       (primLong
-        ? `El precio se impulsó por encima, así que queda como apoyo. Si **vuelve a probarla** y aguanta, es una posible **entrada en largo**.`
-        : `Actúa como resistencia. Si el precio sube y se frena ahí, es una posible **entrada en corto**.`) + (vwapTxt ? ' ' + vwapTxt : ''),
-      `Plan: entrada cerca de **${fmt(op.entrada)}**, stop en **${fmt(op.sl)}** y objetivo en **${fmt(op.tp)}** (riesgo/beneficio 1:1).`
+        ? `The price pushed above it, so it acts as support. If it **retests it** and holds, it is a possible **entrada en largo**.`
+        : `It acts as resistance. If the price rises and stalls there, it is a possible **short entry**.`) + (vwapTxt ? ' ' + vwapTxt : ''),
+      `Plan: entry near **${fmt(op.entrada)}**, stop at **${fmt(op.sl)}** and target at **${fmt(op.tp)}** (risk/rewario 1:1).`
     ];
     if (sec) {
       const secLong = sec.lado === 'demanda';
@@ -4686,7 +4686,7 @@ function validarVolumen() {
       <p class="mv-d">Estas son las cifras de <b>volumen real en d\u00f3lares</b> que sostienen las zonas detectadas. Cada zona muestra el capital acumulado que ha pasado por ese rango de precio.</p>
       <div class="mv-nums">
         <div><b>${dinero(zTot)}</b><span>volumen circundante</span></div>
-        <div><b>${zFuerte ? dinero(zFuerte.v) : '\u2014'}</b><span>volumen de la zona m\u00e1s fuerte</span></div>
+        <div><b>${zFuerte ? dinero(zFuerte.v) : '\u2014'}</b><span>volume of the strongest zone</span></div>
         <div><b>${mk && mk.vwap ? fmt(mk.vwap) : '\u2014'}</b><span>VWAP anclado</span></div>
       </div>
       <div class="mv-links">
@@ -4713,7 +4713,7 @@ function validarVolumen() {
     const niveles = (M.zonas || []).slice(0, 6).map((z) => `${icono(z)} ${tipo(z)} ${fmt(z.pLow)}\u2013${fmt(z.pHigh)}  ${dinero(z.v)}${aqui(z)}`).join('\n');
     const sesgo = mk ? (mk.sesgo === 'comprador' ? 'Comprador' : mk.sesgo === 'vendedor' ? 'Vendedor' : 'Neutral') : 'Neutral';
     const alerta =
-`\u{1F537} ${neg('LÓGICA ESTRUCTURAL AVANZADA')}
+`\u{1F537} ${neg('ADVANCED STRUCTURAL LOGIC')}
 
 ${esc(base)} \u00b7 ${esc(M.tf)} \u00b7 ${hora}
 
@@ -4723,14 +4723,14 @@ ${esc(base)} \u00b7 ${esc(M.tf)} \u00b7 ${hora}
 \u{1F4CA} Volumen circundante: ${dinero(zTot)}
 
 
-\u{1F3AF} ${neg('ZONAS CLAVE')}
+\u{1F3AF} ${neg('KEY ZONES')}
 
 ${niveles || 'Sin zonas cercanas'}
 
 
 \u{1F9ED} ${neg('Sesgo')}: ${sesgo}`;
     const btn = d.querySelector('#mv-copy');
-    const ok = () => { btn.textContent = '\u2713 Alerta copiada'; setTimeout(() => { btn.textContent = 'Copiar alerta'; }, 1800); };
+    const ok = () => { btn.textContent = '\u2713 Alert copied'; setTimeout(() => { btn.textContent = 'Copiar alerta'; }, 1800); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(alerta).then(ok).catch(ok);
     else { try { const ta = document.createElement('textarea'); ta.value = alerta; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); } catch (_) {} ok(); }
   };

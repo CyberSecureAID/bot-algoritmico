@@ -114,10 +114,10 @@ export async function abrirNiveles() {
 
 
         <div class="nv-der">
-          <button class="nv-ico" id="nv-cal" title="Calendario económico">
+          <button class="nv-ico" id="nv-cal" title="Economic calendar">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4M7.5 13h2M11 13h2M14.5 13h2"/></svg>
           </button>
-          <button class="nv-ico" id="nv-widget" title="Superponer (ventana flotante encima de todo)">
+          <button class="nv-ico" id="nv-widget" title="Overlay (floating window on top of everything)">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="15" rx="2"/><rect x="12" y="11" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
           </button>
           <button class="nv-ico" id="nv-foto" title="Compartir">
@@ -149,19 +149,19 @@ export async function abrirNiveles() {
         <div class="nv-tools" id="nv-tools">
           <button class="nv-tool on nv-tool-fly" data-h="cursor" data-fly="cursores" title="Cursor"><svg viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg><b class="nv-fly-mark"></b></button>
           <button class="nv-tool" data-h="marca" title="Marcador (deja puntos)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="7"/></svg></button>
-          <button class="nv-tool nv-tool-fly" data-h="linea" data-fly="lineas" title="Líneas"><svg viewBox="0 0 24 24"><path d="M4 19L20 5"/><circle cx="4" cy="19" r="1.8" fill="currentColor" stroke="none"/><circle cx="20" cy="5" r="1.8" fill="currentColor" stroke="none"/></svg><b class="nv-fly-mark"></b></button>
-          <button class="nv-tool" data-h="rect" title="Rectángulo / zona"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1.5"/></svg></button>
+          <button class="nv-tool nv-tool-fly" data-h="linea" data-fly="lineas" title="Lines"><svg viewBox="0 0 24 24"><path d="M4 19L20 5"/><circle cx="4" cy="19" r="1.8" fill="currentColor" stroke="none"/><circle cx="20" cy="5" r="1.8" fill="currentColor" stroke="none"/></svg><b class="nv-fly-mark"></b></button>
+          <button class="nv-tool" data-h="rect" title="Rectangle / zone"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1.5"/></svg></button>
           <button class="nv-tool" data-h="fib" title="Fibonacci"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 10h18M3 14h18M3 19h18" opacity=".9"/></svg></button>
           <button class="nv-tool" data-h="flecha" title="Flecha"><svg viewBox="0 0 24 24"><path d="M5 19L19 5M19 5h-7M19 5v7"/></svg></button>
           <button class="nv-tool" data-h="brush" title="Pincel (mano alzada)"><svg viewBox="0 0 24 24"><path d="M3 21c3 0 3-3 6-3s3 3 6 0 3-6 6-6"/><path d="M14 5l5 5-2 2-5-5z"/></svg></button>
           <button class="nv-tool" data-h="texto" title="Texto"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></svg></button>
           <button class="nv-tool" data-h="regla" title="Medir (regla)"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="1.2"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg></button>
-          <button class="nv-tool" data-h="poslarga" title="Posición larga"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="1.2"/><rect x="4" y="13" width="16" height="7" rx="1.2" opacity=".55"/><path d="M12 4V2"/></svg></button>
-          <button class="nv-tool" data-h="poscorta" title="Posición corta"><svg viewBox="0 0 24 24"><rect x="4" y="13" width="16" height="7" rx="1.2"/><rect x="4" y="4" width="16" height="7" rx="1.2" opacity=".55"/><path d="M12 20v2"/></svg></button>
+          <button class="nv-tool" data-h="poslarga" title="Long position"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="1.2"/><rect x="4" y="13" width="16" height="7" rx="1.2" opacity=".55"/><path d="M12 4V2"/></svg></button>
+          <button class="nv-tool" data-h="poscorta" title="Short position"><svg viewBox="0 0 24 24"><rect x="4" y="13" width="16" height="7" rx="1.2"/><rect x="4" y="4" width="16" height="7" rx="1.2" opacity=".55"/><path d="M12 20v2"/></svg></button>
           <span class="nv-tool-sep"></span>
-          <button class="nv-tool" data-h="borrar" title="Borrador (toca un dibujo)"><svg viewBox="0 0 24 24"><path d="M4 15l7-7 7 7-4 4H8z"/><path d="M9 20h11"/></svg></button>
-          <button class="nv-tool nv-tool-tg" id="nv-iman" title="Imán a las velas"><svg viewBox="0 0 24 24"><path d="M6 4v7a6 6 0 0 0 12 0V4"/><path d="M6 4h4M14 4h4"/></svg></button>
-          <button class="nv-tool" id="nv-limpiar" title="Borrar todo"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>
+          <button class="nv-tool" data-h="borrar" title="Eraser (tap a drawing)"><svg viewBox="0 0 24 24"><path d="M4 15l7-7 7 7-4 4H8z"/><path d="M9 20h11"/></svg></button>
+          <button class="nv-tool nv-tool-tg" id="nv-iman" title="Snap to candles"><svg viewBox="0 0 24 24"><path d="M6 4v7a6 6 0 0 0 12 0V4"/><path d="M6 4h4M14 4h4"/></svg></button>
+          <button class="nv-tool" id="nv-limpiar" title="Clear all"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>
         </div>
         <canvas class="nv-cv" id="nv-cv"></canvas>
         <div class="nv-burbujas" id="nv-burbujas"></div>
@@ -381,7 +381,7 @@ function pintarEstado() {
   const t = N.tendencia || { dir: 'indefinida' };
   if (e) {
     const cls = t.dir === 'alcista' ? 'sube' : t.dir === 'bajista' ? 'baja' : 'lat';
-    const txt = N.rango ? 'En rango' : nombreTend(t.dir);
+    const txt = N.rango ? 'In range' : nombreTend(t.dir);
     /* Cambio de las últimas 24 h, calculado con las velas reales (el número
        de velas equivale exactamente a 24 h según la temporalidad). Cápsula
        verde si sube, roja si baja, gris si está plano. */
@@ -527,8 +527,8 @@ function menuHerramientas(anchor) {
     alertas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>'
   };
   const HERRAS = [
-    { h: 'marea', on: !!N.verMarea, nombre: 'Marea', tag: 'cambio de ciclo', ico: IC.marea, accion: false,
-      desc: 'cambio de ciclo',
+    { h: 'marea', on: !!N.verMarea, nombre: 'Marea', tag: 'cycle change', ico: IC.marea, accion: false,
+      desc: 'cycle change',
       guia: 'Marea identifica los puntos en los que el mercado cambia de ciclo: el momento en que el control pasa de compradores a vendedores, o al revés. Su propósito es señalar el giro de tendencia con criterio, no en cada oscilación.\n\nCómo interpretarlo: una señal LONG (verde) indica que el ciclo ha girado al alza y que la presión compradora toma el control; una señal SHORT (roja) indica lo contrario. Sobre el gráfico verás además dos niveles de disparo: la línea que el precio debe superar para activar el próximo LONG y la que debe perder para activar el próximo SHORT, cada una con la distancia que le falta al precio para alcanzarla.\n\nAplicación operativa: use la distancia a esos niveles para anticipar cuándo se acerca una señal y planificar la entrada con antelación en lugar de reaccionar tarde. Confirme el giro con precio y volumen antes de comprometer capital, y combine la herramienta con las Alertas para no depender de la vigilancia manual. La ausencia de señal es información válida: indica que no hay un cambio de ciclo con respaldo suficiente.' },
     { h: 'estructura', on: N.verEstructura === true, nombre: 'Faro', tag: 'estructura', ico: IC.estructura, accion: false,
       desc: 'estructura',
@@ -691,13 +691,13 @@ function menuPares() {
     <!-- Filtro: solo las que se pueden comprar y vender desde aquí -->
     <button class="nv-filtro ${_soloOperables ? 'on' : ''}" id="nv-filtro" type="button">
       <span class="nv-fl-ic">${_soloOperables ? '✓' : '○'}</span>
-      ${esc(T('Solo las que puedo operar'))}
+      ${esc(T('Only the ones I can trade'))}
     </button>
     <div class="nv-lista-mon">
       ${['cripto', 'divisa', 'materia'].map((gr) => {
         const lista = PARES.filter((p) => (p.grupo || 'cripto') === gr);
         if (!lista.length) return '';
-        const tit = { cripto: 'Criptomonedas', divisa: 'Divisas', materia: 'Materias primas' }[gr];
+        const tit = { cripto: 'Criptomonedas', divisa: 'Forex', materia: 'Materias primas' }[gr];
         return `<div class="nv-grupo">${esc(T(tit))}</div>` + lista.map((p) => `
           <button class="nv-op ${p.id === N.par ? 'on' : ''}" data-np="${p.id}"
                   data-busca="${esc((p.id + ' ' + p.n).toLowerCase())}">
