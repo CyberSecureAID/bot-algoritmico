@@ -263,7 +263,7 @@ function swRenderBtn() {
   else if (amtBI > S.balFromWei) { label = 'Saldo insuficiente'; dis = true; }
   else if (wrap) { label = 'Convertir'; act = wrap; }
   else if (S.quoting) { label = 'Calculando…'; dis = true; }
-  else if (S.out === 0n) { label = 'Sin ruta para este par'; dis = true; }
+  else if (S.out === 0n) { label = 'No route for this pair'; dis = true; }
   else if (from.address != null && S.allow < amtBI) { label = 'Aprobar y cambiar'; act = 'approve'; }
   else { label = 'Intercambiar'; act = 'swap'; }
   b.textContent = label; b.disabled = dis; S.accion = act;
@@ -469,7 +469,7 @@ async function swEjecutar() {
     if (act === 'wrap' || act === 'unwrap') {
       modalBusy(act === 'wrap'
         ? 'Convertir BNB en WBNB.<br>Es una sola firma.<br><br>Confirma en tu wallet.'
-        : 'Convertir WBNB en BNB.<br>Es una sola firma.<br><br>Confirma en tu wallet.');
+        : 'Convert WBNB to BNB.<br>Es una sola firma.<br><br>Confirma en tu wallet.');
       if (act === 'wrap') await gb.envolverBNB(amtBI); else await gb.desenvolverBNB(amtBI);
       swExito(from, to, amtBI, amtBI);
       S.amount = ''; S.out = 0n; S.minOut = 0n; const a1 = $('sw-amt'); if (a1) a1.value = '';
@@ -484,14 +484,14 @@ async function swEjecutar() {
       let capBI = amtBI;
       const price = (LOGOS[from.id]?.price) || (from.id === 'WBNB' ? LOGOS['BNB']?.price : null);
       if (price && price > 0) { try { const cb = gb.parse((200 / price).toFixed(Math.min(from.decimals, 18)), from.decimals); if (cb > capBI) capBI = cb; } catch (_) {} }
-      modalBusy(`<b>Paso 1 de 2 — Permiso de ${from.simbolo}.</b><br>Autorizas un límite de gasto (puedes cambiarlo o revocarlo cuando quieras). Después confirmarás el intercambio.<br><br>Confirma en tu wallet.`);
+      modalBusy(`<b>Step 1 of 2 — ${from.simbolo} permission.</b><br>You authorize a spending limit (you can change or revoke it whenever yoieras). Después confirmarás el intercambio.<br><br>Confirma en tu wallet.`);
       await gb.aprobarSwap(from.address, capBI);
       // refrescar cotización/permiso antes del segundo paso
       const cuenta = wallet.cuentaActual();
       try { S.allow = await gb.allowanceSwap(from.address, cuenta); } catch (_) {}
       const r = await gb.cotizarSwap({ inAddr: from.address, outAddr: to.address, amountInBI: amtBI, slippageBps: 50 });
       if (r) { S.out = r.amountOut; S.minOut = r.minOut; S.fee = r.fee; }
-      modalBusy('<b>Paso 2 de 2 — Confirma el intercambio.</b><br>Última firma para completar.<br><br>Confirma en tu wallet.');
+      modalBusy('<b>Step 2 of 2 — Confirm the swap.</b><br>Last signature to complete.<br><br>Confirm in your wallet.');
     } else {
       modalBusy('Confirma el intercambio en tu wallet…');
     }
