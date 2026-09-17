@@ -8,13 +8,13 @@ import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=7';
 import { IC } from './iconos.js?v=1';
-import { pintarInicio } from './inicio.js?v=3';
-import { pintarMercados } from './markets.js?v=1';
-import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=3';
-import { pintarActivos } from './activos.js?v=4';
+import { pintarInicio } from './inicio.js?v=4';
+import { pintarMercados } from './markets.js?v=2';
+import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=4';
+import { pintarActivos } from './activos.js?v=5';
 import { abrirMenu } from './menu.js?v=1';
 import { abrirBuscar } from './buscar.js?v=1';
-import { abrirAlerta } from './alerta.js?v=1';
+import { abrirAlerta } from './alerta.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const _movil = () => window.matchMedia('(max-width: 760px)').matches;
@@ -56,7 +56,7 @@ function avisoActivacion(clave) {
     <button class="mv-sheet-x">✕</button>
     <div class="al-h"><b>${s.nombre || 'Servicio premium'}</b><span>${s.desc || 'Este servicio requiere activación para poder usarse.'}</span></div>
     ${s.precio ? `<div class="op-field al-field" style="justify-content:center"><b style="color:var(--mv-gold)">${s.precio}</b></div>` : ''}
-    <button class="al-ok" id="mv-activar">Activar</button>
+    <button class="al-ok" id="mv-activar">Activate</button>
     <button class="al-cancel">Ahora no</button></div>`;
   document.body.appendChild(sh);
   const cerrar = () => sh.remove();
@@ -81,7 +81,7 @@ async function abrir(clave, arg) {
       case 'alertas':   abrirAlerta(); break;
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
-      case 'aportar':   { const m = await import('./aportar-movil.js?v=3'); m.abrirAportarMovil(); break; }
+      case 'aportar':   { const m = await import('./aportar-movil.js?v=4'); m.abrirAportarMovil(); break; }
       case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=125'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
@@ -90,8 +90,8 @@ async function abrir(clave, arg) {
       case 'perfil':    { const m = await import('../perfil.js?v=125'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
       case 'tools':     { inyectarFixTools(); const m = await import('../tools.js?v=125'); m.abrirTools && m.abrirTools(); break; }
       case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=125'); m.abrirAcademy && m.abrirAcademy(); break; }
-      case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=126'); m.abrirNiveles && m.abrirNiveles(); break; }
-      case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=126'); m.abrirMuros && m.abrirMuros(); break; }
+      case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
+      case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=126'); m.abrirLiquidity && m.abrirLiquidity(); break; }
       case 'bots':      modoBots(true); break;
       case 'buscar':    abrirBuscar(api()); break;
@@ -110,8 +110,8 @@ async function abrirGrafica(g, par) {
   inyectarFixGrafica();
   try {
     if (g === 'grafica') { const m = await import('../tools.js?v=125'); m.abrirGraficaLimpia && m.abrirGraficaLimpia(id); inyectarFixTools(); }
-    else if (g === 'niveles') { const m = await import('../niveles.js?v=126'); m.abrirNiveles && m.abrirNiveles(id); montarTfMovil(); }
-    else if (g === 'muros') { const m = await import('../muros.js?v=126'); m.abrirMuros && m.abrirMuros(id); }
+    else if (g === 'niveles') { const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(id); montarTfMovil(); }
+    else if (g === 'muros') { const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(id); }
     else if (g === 'liquidity') { const m = await import('../liquidity.js?v=126'); m.abrirLiquidity && m.abrirLiquidity(id); }
     else { await abrir(g); }
   } catch (_) { await abrir(g === 'niveles' ? 'niveles' : g); }
@@ -561,7 +561,7 @@ async function irA(tab) {
     // al instante; y si por caché llegara una versión sin el export, m.precargar
     // sería undefined y NO rompe nada.
     setTimeout(() => {
-      import('./operar.js?v=3').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
+      import('./operar.js?v=4').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
     }, 1200);
     return; }
   if (tab === 'markets') { pintarMercados(host, api()); return; }
@@ -671,8 +671,8 @@ function revisarRed() {
     </div>
     <button class="mv-red-btn" id="mv-red-btn">Cambiar a BNB Smart Chain</button>
     <div class="mv-red-ayuda">Doesn't switch on its own? Open it from the <b>network selector at the top right</b> of your wallet:<br>
-      · <b>MetaMask:</b> toca el nombre de la red (arriba a la izquierda/derecha) → elige <b>BNB Smart Chain</b>.<br>
-      · <b>Trust Wallet:</b> icono de red arriba a la derecha → <b>Smart Chain</b>.</div>`;
+      · <b>MetaMask:</b> tap the network name (top left/right) → choose <b>BNB Smart Chain</b>.<br>
+      · <b>Trust Wallet:</b> network icon at the top right → <b>Smart Chain</b>.</div>`;
   document.body.appendChild(el);
   el.querySelector('.mv-red-x').onclick = () => el.remove();
   el.querySelector('#mv-red-btn').onclick = async () => {

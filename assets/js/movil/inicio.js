@@ -31,9 +31,9 @@ const SERVICIOS = [
   { go: 'bots',      color: '#34d97b', ic: 'botDca',  kick: 'DCA',             h: 'A intervalos',       p: 'Compra cantidades fijas cada cierto tiempo para promediar tu entrada.' },
   { go: 'liquidity', color: '#2ebd85', ic: 'pool',    kick: 'Liquidity',       h: 'Profundidad',        p: 'Mira dónde está la liquidez y los muros del mercado.' },
   { go: 'muros',     color: '#f6465d', ic: 'candles', kick: 'INS Radar',       h: 'Flujo órdenes',      p: 'Detecta la mano fuerte: órdenes grandes y absorción.' },
-  { go: 'niveles',   color: '#E8B84B', ic: 'chart',   kick: 'Smart Levels',    h: 'Analiza y opera',    p: 'Niveles, indicadores y compra/venta al toque en la gráfica.' },
-  { go: 'academy',   color: '#4c8dff', ic: 'book',    kick: 'Academia',        h: 'Aprende',            p: 'Formación paso a paso para sacarle ventaja al mercado.' },
-  { go: 'swap',      color: '#2ebd85', ic: 'swap',    kick: 'Swap',            h: 'Al momento',         p: 'Cambia cualquier cripto por otra, sin KYC y no custodial.' },
+  { go: 'niveles',   color: '#E8B84B', ic: 'chart',   kick: 'Smart Levels',    h: 'Analyze and trade',    p: 'Niveles, indicadores y compra/venta al toque en la gráfica.' },
+  { go: 'academy',   color: '#4c8dff', ic: 'book',    kick: 'Academia',        h: 'Learn',            p: 'Formación paso a paso para sacarle ventaja al mercado.' },
+  { go: 'swap',      color: '#2ebd85', ic: 'swap',    kick: 'Swap',            h: 'Instant',         p: 'Cambia cualquier cripto por otra, sin KYC y no custodial.' },
   { go: 'market',    color: '#E8B84B', ic: 'market',  kick: 'Marketplace',     h: 'Compra P2P',         p: 'Órdenes de compra y venta entre personas, con garantía.' },
   { go: 'prize',     color: '#f6465d', ic: 'trophy',  kick: 'Prize Pool',      h: 'Fondo común',        p: 'Participa y gana del pozo acumulado de la comunidad.' },
 ];
@@ -58,7 +58,7 @@ export function pintarInicio(host, api) {
       <button class="mv-ico-btn" id="mv-alerts" aria-label="Alertas">${IC.bell}</button>
     </div>
 
-    <div class="mv-bal-lbl" id="mv-bal-lbl">Balance total ${IC.eye}</div>
+    <div class="mv-bal-lbl" id="mv-bal-lbl">Total balance ${IC.eye}</div>
     <div class="mv-bal-row">
       <span class="mv-bal" id="mv-bal">—</span>
       <button class="mv-denom-in" id="mv-denom">${_denom} ${chev()}</button>

@@ -17,7 +17,7 @@ function dialogo(par) {
   sh = document.createElement('div'); sh.id = 'mv-sheet';
   sh.innerHTML = `<div class="mv-sheet-bg"></div><div class="mv-sheet-card al-card">
     <button class="mv-sheet-x">✕</button>
-    <div class="al-h"><b>Alerta · ${esc(par.id)}</b><span>Te avisamos cuando llegue al precio</span></div>
+    <div class="al-h"><b>Alerta · ${esc(par.id)}</b><span>We'll notify you when it reaches the price</span></div>
     <div class="op-field al-field"><span>Precio</span><input id="al-price" inputmode="decimal" placeholder="0.00"><b>USDT</b></div>
     <button class="al-ok" id="al-ok">Crear alerta</button>
     <button class="al-cancel">Cancelar</button></div>`;

@@ -64,18 +64,18 @@ export async function pintarOperar(host, api) {
           <span>Precio</span><input id="op-in-price" inputmode="decimal" placeholder="0.00"><b>${esc(_quote)}</b>
         </div>
         <div class="op-field">
-          <span>Importe</span><input id="op-in-amt" inputmode="decimal" placeholder="0.00">
+          <span>Amount</span><input id="op-in-amt" inputmode="decimal" placeholder="0.00">
           <button class="op-qsel" id="op-qsel">${esc(_quote)} ${chev(10)}</button>
         </div>
         <input class="op-range" id="op-range" type="range" min="0" max="100" value="0">
         <div class="op-pcts">${[25, 50, 75, 100].map((p) => `<button data-p="${p}">${p}%</button>`).join('')}</div>
-        <button class="op-sltoggle" id="op-sltoggle"><span>Stop-loss <em>(opcional)</em></span><i>▾</i></button>
+        <button class="op-sltoggle" id="op-sltoggle"><span>Stop-loss <em>(optional)</em></span><i>▾</i></button>
         <div class="op-field op-slbox" id="op-slbox" style="display:none">
           <span>Stop</span><input id="op-in-sl" inputmode="decimal" placeholder="0.00"><b>${esc(_quote)}</b>
         </div>
         <div class="op-avail" id="op-avail">${t('Disponible')}: — ${esc(_quote)}</div>
-        <button class="op-buy" id="op-buy">Comprar ${esc(_par ? _par.id : '')}</button>
-        <button class="op-sell" id="op-sell">Vender ${esc(_par ? _par.id : '')}</button>
+        <button class="op-buy" id="op-buy">Buy</button>
+        <button class="op-sell" id="op-sell">Sell</button>
       </div>
     </div>
 
@@ -149,8 +149,8 @@ async function pintarPanel(t) {
   const el = $('op-panel'); if (!el) return;
   const con = _api && _api.estaConectado && _api.estaConectado();
   if (t === 'bots') {
-    if (!con) { restaurarBotCard(); el.innerHTML = `<div class="op-empty">Conecta tu wallet para ver tus bots activos.</div>`; return; }
-    el.innerHTML = `<div class="op-loading"><span class="op-spin"></span>Cargando tus bots…</div>`;
+    if (!con) { restaurarBotCard(); el.innerHTML = `<div class="op-empty">Connect your wallet to see your active bots.</div>`; return; }
+    el.innerHTML = `<div class="op-loading"><span class="op-spin"></span>Loading your bots…</div>`;
     reflejarBotsReales(el);
     return;
   }
@@ -165,11 +165,11 @@ async function pintarPanel(t) {
       if (o.sincronizarOrdenes && cuenta) await o.sincronizarOrdenes(cuenta);   // limpia las ya llenadas
       if (o.ordenesPuestas) ordenes = (o.ordenesPuestas() || []).filter((x) => x.modo !== 'aviso' && x.botId != null);
     } catch (_) {}
-    if (!ordenes.length) { el.innerHTML = `<div class="op-empty">No tienes órdenes limit abiertas.<br><span style="font-size:12px">Pon una desde la pestaña Limit.</span></div>`; return; }
+    if (!ordenes.length) { el.innerHTML = `<div class="op-empty">You have no open limit orders.<br><span style="font-size:12px">Place one from the Limit tab.</span></div>`; return; }
     const cache = (() => { try { const c = JSON.parse(localStorage.getItem('mv-cg') || 'null'); return (c && c.d) || {}; } catch (_) { return {}; } })();
     el.innerHTML = ordenes.map((o, i) => {
       const logo = logoDe(o.par || '', null, cache);
-      const lado = o.vender ? 'Vender' : 'Comprar';
+      const lado = o.vender ? 'Sell' : 'Buy';
       return `<div class="op-ord">
         <span class="op-ord-ci" style="${logo ? `background-image:url(${logo});background-size:cover` : ''}">${logo ? '' : esc(String(o.par || '').slice(0, 3))}</span>
         <div class="op-ord-tx"><b>${esc(o.par || '')} <i class="op-ord-tag ${o.vender ? 'sell' : 'buy'}">${lado} · Limit</i></b>
@@ -219,7 +219,7 @@ async function pintarPanel(t) {
    queda colgada) y quita el registro local. */
 async function cancelarOrden(o, el) {
   if (!o) return;
-  if (el) el.innerHTML = `<div class="op-loading"><span class="op-spin"></span>Cancelando la orden…</div>`;
+  if (el) el.innerHTML = `<div class="op-loading"><span class="op-spin"></span>Cancelling the order…</div>`;
   try {
     const gb = await import('../gridbot.js?v=125');
     const w = await import('../wallet.js?v=125');
@@ -241,7 +241,7 @@ let _botCard = null;
 function reflejarBotsReales(el) {
   const web = document.getElementById('colmena-app');
   const card = web && web.querySelector('.colmenas.card');
-  if (!card) { el.innerHTML = `<div class="op-empty">Abre la secci\u00f3n de bots una vez para cargarlos.<br><button class="op-link" id="op-crear">Ir a bots</button></div>`; const c = el.querySelector('#op-crear'); if (c) c.onclick = () => _api.abrir('bots'); return; }
+  if (!card) { el.innerHTML = `<div class="op-empty">Open the bots section once to load them.<br><button class="op-link" id="op-crear">Go to bots</button></div>`; const c = el.querySelector('#op-crear'); if (c) c.onclick = () => _api.abrir('bots'); return; }
   clonarEstilosBots();
   if (!card._mvPh) { const ph = document.createComment('mv-bots'); card._mvPh = ph; card.parentNode.insertBefore(ph, card); }
   el.innerHTML = '';
@@ -288,7 +288,7 @@ function renderBook() {
   const bids = _libro.bids.slice(0, 6);
   const maxV = Math.max(1, ...asks.map((r) => r[1]), ...bids.map((r) => r[1]));
   if (!el._built) {
-    el.innerHTML = `<div class="op-bk-h"><span>Precio</span><span>Cantidad</span></div>`
+    el.innerHTML = `<div class="op-bk-h"><span>Price</span><span>Amount</span></div>`
       + Array.from({ length: 6 }, () => `<div class="op-row ask"><span class="op-bar"></span><em></em><i></i></div>`).join('')
       + `<div class="op-bk-mid">—</div>`
       + Array.from({ length: 6 }, () => `<div class="op-row bid"><span class="op-bar"></span><em></em><i></i></div>`).join('');
@@ -310,7 +310,7 @@ function renderBook() {
   const mid = el.querySelector('.op-bk-mid');
   const vacio = !asks.length && !bids.length;   // libro aún sin datos (ej. al cambiar de moneda)
   if (mid) {
-    if (vacio) { mid.textContent = 'Cargando libro\u2026'; mid.className = 'op-bk-mid load'; }
+    if (vacio) { mid.textContent = 'Loading order book\u2026'; mid.className = 'op-bk-mid load'; }
     else { mid.textContent = _libro.precio == null ? '\u2014' : fmtP(_libro.precio); mid.className = 'op-bk-mid ' + (_libro.chg >= 0 ? 'up' : 'dn'); }
   }
 }
@@ -367,7 +367,7 @@ async function operar(lado) {
   // ¿Se puede comerciar esta moneda en la plataforma?
   let ok = true;
   try { const o = await import('../orden.js?v=126'); if (o.sePuedeOperar) ok = await o.sePuedeOperar(_par.id); } catch (_) {}
-  if (!ok) { mensaje('Solo para análisis', `${_par.id} está disponible para analizar en las gráficas, pero no se puede comerciar en la plataforma.`); return; }
+  if (!ok) { mensaje('Solo para análisis', `${_par.id} is available to analyze on the charts, but cannot be traded on the platform.`); return; }
   // Al vender, ¿tiene saldo de esa moneda?
   if (lado === 'sell') {
     const b = _api.balance && _api.balance();
@@ -423,7 +423,7 @@ function selectorQuote() {
     { id: 'USDC', n: 'USD Coin', cg: 'usd-coin' },
     { id: 'BNB', n: 'BNB', cg: 'binancecoin' },
   ];
-  abrirPicker('Moneda de pago', quotes, (id) => {
+  abrirPicker('Payment coin', quotes, (id) => {
     _quote = id;
     const q = $('op-qsel'); if (q) q.innerHTML = `${esc(_quote)} ${chev(10)}`;
     actualizarDisponible();
@@ -496,7 +496,7 @@ export async function abrirHistorialMovil() {
     <div class="mh-c">
       <div class="mh-grip"></div>
       <div class="mh-head"><div class="mh-tit">Historial de operaciones</div><button class="mh-x" id="mh-x" aria-label="Cerrar">✕</button></div>
-      <div class="mh-body" id="mh-body"><div class="mh-carga">Leyendo tus operaciones en la blockchain…</div></div>
+      <div class="mh-body" id="mh-body"><div class="mh-carga">Reading your trades on the blockchain…</div></div>
     </div>`;
   document.body.appendChild(d);
   const cerrar = () => d.remove();
@@ -510,7 +510,7 @@ export async function abrirHistorialMovil() {
     const w = await import('../wallet.js?v=125');
     cuenta = w.cuentaActual && w.cuentaActual();
   } catch (_) {}
-  if (!cuenta) { body.innerHTML = `<div class="mh-vacio">Conecta tu wallet para ver tu historial.</div>`; return; }
+  if (!cuenta) { body.innerHTML = `<div class="mh-vacio">Connect your wallet to see your history.</div>`; return; }
 
   let res;
   try { res = await gb.historialDe(cuenta); } catch (_) { res = { error: 'sin-historial', ops: [] }; }
@@ -544,10 +544,10 @@ export async function abrirHistorialMovil() {
     </div>`;
   };
   const sector = async (titulo, lista) => `<div class="mh-sect">${titulo} <i></i></div>` +
-    (lista.length ? (await Promise.all(lista.slice(0, 25).map(fila))).join('') : `<div class="mh-vacio" style="padding:14px">Ninguna por ahora.</div>`);
+    (lista.length ? (await Promise.all(lista.slice(0, 25).map(fila))).join('') : `<div class="mh-vacio" style="padding:14px">None for now.</div>`);
 
   body.innerHTML =
     (await sector('Tus órdenes limit', manuales)) +
     (await sector('Operaciones de bots', deBots)) +
-    `<a class="mh-mas" href="https://bscscan.com/address/${cuenta}" target="_blank" rel="noopener">Ver el historial completo en BscScan ↗</a>`;
+    `<a class="mh-mas" href="https://bscscan.com/address/${cuenta}" target="_blank" rel="noopener">See the full history on BscScan ↗</a>`;
 }

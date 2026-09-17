@@ -96,7 +96,7 @@ export function abrirAportarMovil() {
 
       <div class="alm-mine">
         <div class="m"><b>0.00</b><span>Tu aporte</span></div>
-        <div class="m"><b class="gold">0.00</b><span>Comisiones</span></div>
+        <div class="m"><b class="gold">0.00</b><span>Fees</span></div>
       </div>
 
       <div class="alm-tabs">
@@ -107,9 +107,9 @@ export function abrirAportarMovil() {
       <div id="alm-panel"></div>
 
       <div class="alm-how">
-        <div class="alm-step"><span class="n">1</span><div><b>Aportas USDT</b><span>Tu aporte queda registrado a tu nombre.</span></div></div>
+        <div class="alm-step"><span class="n">1</span><div><b>Aportas USDT</b><span>Your contribution is recorded under your name.</span></div></div>
         <div class="alm-step"><span class="n">2</span><div><b>Otros operan</b><span>Cada operación paga una comisión; una parte es para ti.</span></div></div>
-        <div class="alm-step"><span class="n">3</span><div><b>Retiras al vencer</b><span>Al terminar el plazo, retiras tu capital más las comisiones.</span></div></div>
+        <div class="alm-step"><span class="n">3</span><div><b>Withdraw at maturity</b><span>When the term ends, you withdraw your capital plus the fees.</span></div></div>
       </div>
 
       <div class="alm-disc">
@@ -145,7 +145,7 @@ export function abrirAportarMovil() {
             <span class="alm-usdt">USDT <button class="alm-max" type="button">MÁX</button></span>
           </div>
         </div>
-        <div class="alm-disc" style="margin-top:12px">Solo puedes retirar el aporte cuyo plazo ya haya vencido.</div>
+        <div class="alm-disc" style="margin-top:12px">You can only withdraw a contribution whose term has already ended.</div>
         <button class="alm-go" style="margin-top:14px;width:100%">Retirar</button>`;
     }
     const go = panel.querySelector('.alm-go');
@@ -159,5 +159,5 @@ export function abrirAportarMovil() {
   pintar();
 
   // Traducir a inglés si corresponde.
-  try { import('../idioma.js?v=152').then((idi) => idi.traducirTodo && idi.traducirTodo()); } catch (_) {}
+  try { import('../idioma.js?v=163').then((idi) => idi.traducirTodo && idi.traducirTodo()); } catch (_) {}
 }

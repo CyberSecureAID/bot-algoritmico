@@ -20,11 +20,11 @@ const LOGO_ESPECIAL = {
   PAXG: 'https://assets.coingecko.com/coins/images/9519/small/paxgold.png',
 };
 const CATS = [
-  { k: 'todas',   t: 'Todas' },
-  { k: 'cripto',  t: 'Cripto' },
+  { k: 'todas',   t: 'All' },
+  { k: 'cripto',  t: 'Crypto' },
   { k: 'meme',    t: 'Memecoins' },
-  { k: 'divisa',  t: 'Divisas' },
-  { k: 'materia', t: 'Materias' },
+  { k: 'divisa',  t: 'Forex' },
+  { k: 'materia', t: 'Commodities' },
 ];
 
 let _pares = [];
@@ -45,17 +45,18 @@ export async function pintarMercados(host, api) {
   }
   host.innerHTML = `
     <div class="mv-top" style="padding-left:0;padding-right:0">
-      <div class="mv-search" style="flex:1;cursor:text">${IC.search}<input id="mv-mk-q" placeholder="Busca una moneda…" autocomplete="off" value="${esc(_q)}"></div>
+      <div class="mv-search" style="flex:1;cursor:text">${IC.search}<input id="mv-mk-q" placeholder="Search a coin…" autocomplete="off" value="${esc(_q)}"></div>
       <button class="mv-ico-btn" id="mv-mk-alert">${IC.bell}</button>
     </div>
     <div class="mv-mk-tabs">
-      <button data-t="fav" class="${_tab === 'fav' ? 'on' : ''}">Favoritos</button>
+      <button data-t="fav" class="${_tab === 'fav' ? 'on' : ''}">Favorites</button>
       <button data-t="spot" class="${_tab === 'spot' ? 'on' : ''}">Spot</button>
+      <button data-t="fut" class="${_tab === 'fut' ? 'on' : ''}">Futures</button>
     </div>
     <div class="mv-mk-cats" id="mv-mk-cats">
       ${CATS.map((c) => `<button data-c="${c.k}" class="${c.k === _cat ? 'on' : ''}">${c.t}</button>`).join('')}
     </div>
-    <div class="mv-mk-sort"><span>Moneda</span><span>Último precio / 24h</span></div>
+    <div class="mv-mk-sort"><span>Coin</span><span>Last price / 24h</span></div>
     <div id="mv-mk-list"></div>
   `;
 
@@ -84,7 +85,7 @@ function render() {
   const cont = $('mv-mk-list'); if (!cont) return;
   const l = filtrar();
   if (!l.length) {
-    cont.innerHTML = `<div class="mv-empty">${_tab === 'fav' ? 'Aún no tienes favoritos. Toca la estrella en una moneda.' : (_q ? 'Sin resultados para “' + esc(_q) + '”.' : 'Sin monedas en esta categoría.')}</div>`;
+    cont.innerHTML = `<div class="mv-empty">${_tab === 'fav' ? 'No favorites yet. Tap the star on a coin.' : (_q ? 'No results for “' + esc(_q) + '”.' : 'No coins in this category.')}</div>`;
     return;
   }
   cont.innerHTML = l.map((p) => {
@@ -109,6 +110,7 @@ function render() {
       if (e.target.closest('[data-fav]')) return;
       const id = row.getAttribute('data-id');
       const par = _pares.find((x) => x.id === id);
+      if (_tab === 'fut') { try { api.irA && api.irA('futuros'); } catch (_) {} return; }
       selectorGrafica(par);
     };
   });
@@ -130,17 +132,17 @@ function selectorGrafica(par) {
   sh = document.createElement('div');
   sh.id = 'mv-sheet';
   const OPCIONES = [
-    { g: 'grafica',   ic: IC.candles, t: 'Gráfica Limpia',       s: 'Vela en vivo (TradingView), gratis' },
-    { g: 'niveles',   ic: IC.chart,   t: 'Smart Levels',         s: 'Niveles y operaciones al toque' },
-    { g: 'muros',     ic: IC.book2 || IC.candles, t: 'Lógica Estructural Avanzada', s: 'Flujo de órdenes y muros' },
-    { g: 'liquidity', ic: IC.pool,    t: 'Liquidity Pools',      s: 'Profundidad y liquidez' },
+    { g: 'grafica',   ic: IC.candles, t: 'Clean Chart',          s: 'Live candles (TradingView), free' },
+    { g: 'niveles',   ic: IC.chart,   t: 'Smart Levels',         s: 'Levels and one-tap trading' },
+    { g: 'muros',     ic: IC.book2 || IC.candles, t: 'Lógica Estructural Avanzada', s: 'Order flow and walls' },
+    { g: 'liquidity', ic: IC.pool,    t: 'Liquidity Pools',      s: 'Depth and liquidity' },
   ];
   const fila = (o) => `<button class="mv-sheet-op" data-g="${o.g}">${o.ic}<div><b>${esc(o.t)}</b><small>${esc(o.s)}</small></div></button>`;
   sh.innerHTML = `
     <div class="mv-sheet-bg"></div>
     <div class="mv-sheet-card">
-      <div class="mv-sheet-h"><b>${esc(par.id)} · ${esc(par.n)}</b><span>Elige la gráfica o indicador</span></div>
-      <div class="mv-sheet-search">${IC.search}<input id="mv-ind-q" placeholder="Buscar indicador por nombre…" autocomplete="off"></div>
+      <div class="mv-sheet-h"><b>${esc(par.id)} · ${esc(par.n)}</b><span>Choose the chart or indicator</span></div>
+      <div class="mv-sheet-search">${IC.search}<input id="mv-ind-q" placeholder="Search indicator by name…" autocomplete="off"></div>
       <div class="mv-sheet-list" id="mv-ind-list">${OPCIONES.map(fila).join('')}</div>
       <button class="mv-sheet-cancel">Cancelar</button>
     </div>`;
@@ -157,7 +159,7 @@ function selectorGrafica(par) {
   if (q) q.oninput = () => {
     const t = q.value.trim().toLowerCase();
     const f = OPCIONES.filter((o) => o.t.toLowerCase().includes(t) || o.s.toLowerCase().includes(t));
-    lista.innerHTML = f.length ? f.map(fila).join('') : `<div class="mv-empty" style="padding:20px">Sin indicadores para “${esc(q.value)}”.</div>`;
+    lista.innerHTML = f.length ? f.map(fila).join('') : `<div class="mv-empty" style="padding:20px">No indicators for “${esc(q.value)}”.</div>`;
     wire();
   };
 }
