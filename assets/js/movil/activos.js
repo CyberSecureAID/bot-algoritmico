@@ -38,7 +38,7 @@ export function pintarActivos(host, api) {
         <button class="ac-act" id="ac-recv"><span>${IC.arrowDown}</span>Recibir</button>
         <button class="ac-act" id="ac-market"><span>${IC.market}</span>P2P</button>
         <button class="ac-act" id="ac-swap"><span>${IC.swap}</span>Swap</button>
-        <button class="ac-act" id="ac-liq"><span>${IC.market}</span>Add liquidity</button>
+        <button class="ac-act" id="ac-liq"><span>${IC.market}</span>Staking</button>
       </div>
     </div>
 

@@ -88,7 +88,7 @@ export function abrirAportarMovil() {
   d.className = 'alm'; d.id = 'alm';
   d.innerHTML = `
     <div class="alm-head">
-      <div class="alm-h">Aportar liquidez</div>
+      <div class="alm-h">Staking</div>
       <button class="alm-x" id="alm-x">✕</button>
     </div>
     <div class="alm-body">
@@ -100,8 +100,8 @@ export function abrirAportarMovil() {
       </div>
 
       <div class="alm-tabs">
-        <button class="on" data-modo="aportar">Aportar</button>
-        <button data-modo="retirar">Retirar</button>
+        <button class="on" data-modo="aportar">Stake</button>
+        <button data-modo="retirar">Unstake</button>
       </div>
 
       <div id="alm-panel"></div>
@@ -132,7 +132,7 @@ export function abrirAportarMovil() {
         </div>
         <div class="alm-lbl" style="margin:12px 2px 8px">Plazo de bloqueo</div>
         <div class="alm-plazos">${PLAZOS.map((p, i) => `<div class="alm-plazo${i === 1 ? ' on' : ''}" data-plazo="${p.id}"><b>${p.etiqueta.split(' ')[0]}</b><em>${p.etiqueta.split(' ')[1] || ''}</em></div>`).join('')}</div>
-        <button class="alm-go" style="margin-top:14px;width:100%">Aportar liquidez</button>`;
+        <button class="alm-go" style="margin-top:14px;width:100%">Stake</button>`;
       panel.querySelectorAll('.alm-plazo').forEach((el) => el.onclick = () => {
         panel.querySelectorAll('.alm-plazo').forEach((x) => x.classList.remove('on')); el.classList.add('on');
       });
@@ -146,7 +146,7 @@ export function abrirAportarMovil() {
           </div>
         </div>
         <div class="alm-disc" style="margin-top:12px">You can only withdraw a contribution whose term has already ended.</div>
-        <button class="alm-go" style="margin-top:14px;width:100%">Retirar</button>`;
+        <button class="alm-go" style="margin-top:14px;width:100%">Unstake</button>`;
     }
     const go = panel.querySelector('.alm-go');
     if (go) go.onclick = () => { const t = go.textContent; go.textContent = 'Muy pronto — en desarrollo'; setTimeout(() => { go.textContent = t; }, 1800); };
@@ -159,5 +159,5 @@ export function abrirAportarMovil() {
   pintar();
 
   // Traducir a inglés si corresponde.
-  try { import('../idioma.js?v=163').then((idi) => idi.traducirTodo && idi.traducirTodo()); } catch (_) {}
+  try { import('../idioma.js?v=164').then((idi) => idi.traducirTodo && idi.traducirTodo()); } catch (_) {}
 }
