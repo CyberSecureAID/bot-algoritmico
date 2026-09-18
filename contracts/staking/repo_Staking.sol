@@ -61,6 +61,7 @@ contract Staking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
 
     uint256 public totalPeso; uint256 public totalReal; uint256 public totalAsignado;
     mapping(address => uint256) public capitalPorToken;
+    mapping(address => uint256) public prestado;   // token => capital fuera, en manos del motor
 
     address[] public tokensRecompensa;
     mapping(address => bool) public esTokenRecompensa;
@@ -88,6 +89,8 @@ contract Staking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     event RecompensaRecibida(address indexed origen, address indexed token, uint256 total, uint256 aStakers, uint256 aPlataforma);
     event ParticipacionAsignada(address indexed cuenta, uint256 pesoUSD, string etiqueta);
     event ParticipacionRetirada(address indexed cuenta, uint256 pesoUSD);
+    event Prestamo(address indexed motor, address indexed token, uint256 monto);
+    event Devolucion(address indexed motor, address indexed token, uint256 monto);
     event TokenRecompensa(address indexed token, bool alta);
     event Config(bytes32 indexed clave, uint256 valor, address direccion);
     event Pausa(bool activa);
@@ -247,6 +250,29 @@ contract Staking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
         emit ParticipacionRetirada(cuenta, pesoUSD);
     }
 
+    /// El motor de Futuros pide prestado capital (queda registrado como prestado).
+    function prestar(address token, uint256 monto, address a) external nonReentrant {
+        if (!contratoAutorizado[msg.sender]) revert NoAutorizado();
+        uint256 disponible = capitalPorToken[token] - prestado[token];
+        if (monto > disponible) revert Limite();
+        prestado[token] += monto;
+        _enviar(token, a, monto);
+        emit Prestamo(msg.sender, token, monto);
+    }
+    /// El motor devuelve el capital prestado (con lo que corresponda).
+    function devolver(address token, uint256 monto) external nonReentrant {
+        if (!contratoAutorizado[msg.sender]) revert NoAutorizado();
+        uint256 antes = IERC20(token).balanceOf(address(this));
+        IERC20(token).safeTransferFrom(msg.sender, address(this), monto);
+        uint256 recibido = IERC20(token).balanceOf(address(this)) - antes;
+        prestado[token] = prestado[token] > recibido ? prestado[token] - recibido : 0;
+        emit Devolucion(msg.sender, token, recibido);
+    }
+    /// Capital libre de un token (no prestado).
+    function disponibleParaPrestar(address token) external view returns (uint256) {
+        return capitalPorToken[token] > prestado[token] ? capitalPorToken[token] - prestado[token] : 0;
+    }
+
     function retirarPlataforma(address token, address a, uint256 monto) external soloAdmin nonReentrant {
         if (monto > plataformaAcumulada[token]) revert Limite();
         plataformaAcumulada[token] -= monto; _enviar(token, a, monto);
@@ -254,6 +280,7 @@ contract Staking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     function rescatable(address token) public view returns (uint256) {
         uint256 bal = token == address(0) ? address(this).balance : IERC20(token).balanceOf(address(this));
         uint256 reservado = capitalPorToken[token] + plataformaAcumulada[token];
+        if (reservado >= prestado[token]) reservado -= prestado[token]; // lo prestado no está en balance
         return bal > reservado ? bal - reservado : 0;
     }
     function rescatar(address token, address a, uint256 monto) external soloAdmin nonReentrant {
