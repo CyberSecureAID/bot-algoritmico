@@ -58,6 +58,8 @@ contract Futuros is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
         uint256 tamano;         // margen × apalancamiento (USDT) = liquidez pedida
         uint256 precioEntrada;  // USD 18 dec
         uint256 liq;            // precio de liquidación
+        address respaldo;       // USDT (long) o el token (short)
+        uint256 montoRespaldo;  // cantidad prestada del respaldo (se devuelve igual)
         uint40  abierta;
         uint40  ultimoFunding;
         Estado  estado;
@@ -129,10 +131,15 @@ contract Futuros is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     /*──────────────── Apalancamiento proporcional ────────────────*/
     /// Apalancamiento máximo real: el menor entre el tope global y lo que
     /// permita la liquidez disponible frente al margen del trader.
-    function apalancamientoDisponible(address, uint256 margen) public view returns (uint16) {
+    /// Long se respalda con USDT; short se respalda con el propio token.
+    /// El apalancamiento máximo depende de la liquidez de ESA moneda en el stake.
+    function apalancamientoDisponible(address token, bool esLong, uint256 margen) public view returns (uint16) {
         if (margen == 0) return 0;
-        uint256 disp = staking.disponibleParaPrestar(USDT);   // liquidez en USDT
-        uint256 maxPorLiquidez = disp / margen;               // cuántas veces el margen cabe
+        address respaldo = esLong ? USDT : token;
+        // liquidez disponible del respaldo, valorada en USDT para comparar con el margen
+        uint256 dispToken = staking.disponibleParaPrestar(respaldo);
+        uint256 dispUSD = esLong ? dispToken : (dispToken * oraculo.precioUSD(token) / 1e18);
+        uint256 maxPorLiquidez = dispUSD / margen;
         uint256 tope = apalancamientoMax;
         return uint16(maxPorLiquidez < tope ? maxPorLiquidez : tope);
     }
@@ -141,31 +148,33 @@ contract Futuros is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     function abrir(address token, bool esLong, uint256 margen, uint16 apalancamiento) external activo nonReentrant returns (uint256 id) {
         if (!mercadoActivo[token]) revert MercadoInactivo();
         if (margen == 0) revert MontoInvalido();
-        if (apalancamiento == 0 || apalancamiento > apalancamientoDisponible(token, margen)) revert Apalancamiento();
+        if (apalancamiento == 0 || apalancamiento > apalancamientoDisponible(token, esLong, margen)) revert Apalancamiento();
 
         // cobra el margen del trader en USDT
         IERC20(USDT).safeTransferFrom(msg.sender, address(this), margen);
 
-        uint256 tamano = margen * apalancamiento;
-        // comisión de apertura (de Tarifas), 50/50
+        uint256 tamano = margen * apalancamiento;   // exposición en USDT
         uint16 bps = address(tarifas) != address(0) ? tarifas.comisionBps(SERVICIO) : 4;
         uint256 comision = tamano * bps / 10000;
         _repartir(comision);
-        uint256 margenNeto = margen - comision;
-
-        // pide la liquidez al Staking (queda registrada como prestada)
-        if (staking.disponibleParaPrestar(USDT) < tamano) revert SinLiquidez();
-        staking.prestar(USDT, tamano, address(this));
 
         uint256 precio = oraculo.precioUSD(token);
+        // Respaldo: LONG usa USDT (se comprará el token). SHORT usa el token
+        // (se venderá). La cantidad de respaldo equivale al tamaño en USDT.
+        address respaldo = esLong ? USDT : token;
+        uint256 montoRespaldo = esLong ? tamano : (tamano * 1e18 / precio);   // token: tamaño/precio
+        if (staking.disponibleParaPrestar(respaldo) < montoRespaldo) revert SinLiquidez();
+        staking.prestar(respaldo, montoRespaldo, address(this));
+
         id = ++numPosiciones;
         Posicion storage p = posiciones[id];
         p.trader = msg.sender; p.token = token; p.esLong = esLong;
-        p.margen = margenNeto; p.tamano = tamano; p.precioEntrada = precio;
+        p.margen = margen - comision; p.tamano = tamano; p.precioEntrada = precio;
+        p.respaldo = respaldo; p.montoRespaldo = montoRespaldo;
         p.abierta = uint40(block.timestamp); p.ultimoFunding = uint40(block.timestamp); p.estado = Estado.Abierta;
         p.liq = _precioLiq(esLong, precio, apalancamiento);
         posicionesDe[msg.sender].push(id);
-        emit Abrir(id, msg.sender, token, esLong, margenNeto, tamano, precio);
+        emit Abrir(id, msg.sender, token, esLong, margen - comision, tamano, precio);
     }
 
     /*──────────────── Cerrar ────────────────*/
@@ -181,9 +190,9 @@ contract Futuros is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
         uint16 bps = address(tarifas) != address(0) ? tarifas.comisionBps(SERVICIO) : 4;
         uint256 comision = p.tamano * bps / 10000;
 
-        // devuelve la liquidez al Staking (siempre completa)
-        IERC20(USDT).forceApprove(address(staking), p.tamano);
-        staking.devolver(USDT, p.tamano);
+        // devuelve el respaldo al Staking, en la MISMA moneda y cantidad que se prestó
+        IERC20(p.respaldo).forceApprove(address(staking), p.montoRespaldo);
+        staking.devolver(p.respaldo, p.montoRespaldo);
 
         _repartir(comision);
         // liquida el margen del trader con su PnL
@@ -203,9 +212,9 @@ contract Futuros is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
         bool liquidable = p.esLong ? precio <= p.liq : precio >= p.liq;
         if (!liquidable) revert NoLiquidable();
 
-        // devuelve la liquidez al Staking
-        IERC20(USDT).forceApprove(address(staking), p.tamano);
-        staking.devolver(USDT, p.tamano);
+        // devuelve el respaldo al Staking en su misma moneda
+        IERC20(p.respaldo).forceApprove(address(staking), p.montoRespaldo);
+        staking.devolver(p.respaldo, p.montoRespaldo);
 
         // el margen del trader se pierde: 75 % repone lo usado (ya cubierto al
         // devolver la liquidez), del 25 % restante 50/50 stakers/plataforma.
