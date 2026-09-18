@@ -44,7 +44,7 @@ contract OraculoPrecios is Initializable, UUPSUpgradeable {
     /*──────────────── Constantes de BSC ────────────────*/
     address public constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
     address public constant USDT = 0x55d398326f99059fF775485246999027B3197955;
-    IPancakeFactory public constant FACTORY = IPancakeFactory(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73);
+    IPancakeFactory public FACTORY;   // PancakeSwap V2 factory (editable por si cambia)
 
     enum Fuente { Ninguna, Chainlink, PancakeUSDT, PancakeWBNB }
 
@@ -87,12 +87,14 @@ contract OraculoPrecios is Initializable, UUPSUpgradeable {
         principal = _principal;
         maxAntiguedad = 1 hours;
         feedBNB = 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE; // Chainlink BNB/USD en BSC
+        FACTORY = IPancakeFactory(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73);
     }
 
     /*──────────────── Config (admin) ────────────────*/
     function setTarifas(address t) external soloAdmin { tarifas = ITarifasOrac(t); emit Config("tarifas", 0, t); }
     function setPrincipal(address p) external { if (msg.sender != principal) revert NoAutorizado(); principal = p; emit Config("principal", 0, p); }
     function setFeedBNB(address f) external soloAdmin { feedBNB = f; emit Config("feedBNB", 0, f); }
+    function setFactory(address f) external soloAdmin { FACTORY = IPancakeFactory(f); emit Config("factory", 0, f); }
     function setMaxAntiguedad(uint256 s) external soloAdmin { maxAntiguedad = s; emit Config("maxAntiguedad", s, address(0)); }
 
     /// Asigna a un token una fuente de precio.
@@ -165,6 +167,7 @@ contract OraculoPrecios is Initializable, UUPSUpgradeable {
     }
 
     function _decimals(address token) internal view returns (uint8) {
+        if (token.code.length == 0) return 18;
         try IERC20Dec(token).decimals() returns (uint8 d) { return d; } catch { return 18; }
     }
 
