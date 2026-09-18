@@ -46,7 +46,7 @@ contract Futuros is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
 
     bytes32 public constant SERVICIO = "futuros";
     uint16  public constant REPARTO_STAKERS = 5000;   // 50 % de lo de Futuros va a stakers
-    address public constant USDT = 0x55d398326f99059fF775485246999027B3197955;
+    address public USDT;   // editable (BSC: 0x55d3...955)
 
     enum Estado { Abierta, Cerrada, Liquidada }
 
@@ -109,6 +109,7 @@ contract Futuros is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
         margenLiquidacionBps = 75;      // se liquida al perder ~la totalidad del margen
         fundingPeriodo = 8 hours;
         fundingBps = 5;                 // 0,05 % por periodo
+        USDT = 0x55d398326f99059fF775485246999027B3197955;
     }
 
     /*──────────────── Config (admin) ────────────────*/
@@ -120,6 +121,7 @@ contract Futuros is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     function setMargenLiquidacion(uint16 v) external soloAdmin { margenLiquidacionBps = v; emit Config("margenLiq", v, address(0)); }
     function setFunding(uint256 periodo, uint16 bps) external soloAdmin { fundingPeriodo = periodo; fundingBps = bps; emit Config("funding", bps, address(0)); }
     function setMercado(address token, bool v) external soloAdmin { mercadoActivo[token] = v; emit Config("mercado", v ? 1 : 0, token); }
+    function setUSDT(address u) external soloAdmin { USDT = u; emit Config("usdt", 0, u); }
     function pausar(bool v) external soloAdmin { pausado = v; emit Config("pausa", v ? 1 : 0, address(0)); }
 
     /*──────────────── Upgrade 48 h ────────────────*/
