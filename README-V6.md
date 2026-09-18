@@ -216,3 +216,177 @@ conectado, y solo entonces se pasa al siguiente.
 - **MercadoP2P (proxy):** `0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025`
 - **Red:** BNB Smart Chain, chainId 56. **Compilador:** Solidity 0.8.24, optimizer
   runs 200, EVM shanghai, sin viaIR, MIT.
+
+---
+
+## 13. ACTUALIZACIÓN — Contratos escritos, testeados y estructura (sesión actual)
+
+Se escribieron, compilaron y testearon los contratos del motor Staking + Futuros.
+Todos UUPS, Solidity 0.8.24, optimizer runs 200, EVM shanghai, sin viaIR, MIT.
+
+### 13.1. Estructura de carpetas del repo (`contracts/`)
+
+```
+contracts/
+├── core/        → Tarifas.sol, Tarifas_V2.sol      (registro central, cerebro de TODA la plataforma)
+├── p2p/         → PerfilesP2P.sol, MercadoP2P.sol   (marketplace)
+├── staking/     → OraculoPrecios.sol, Staking.sol, PanelStaking.sol
+├── futures/     → Futuros.sol
+└── (raíz)       → GridBotV10.sol, IntercambioBot.sol
+```
+
+> **Tarifas NO es del P2P:** es el cerebro central de toda la plataforma. Vive en `core/`.
+
+### 13.2. Estado de cada contrato
+
+| Contrato | Carpeta | Estado | Test |
+|---|---|---|---|
+| OraculoPrecios | staking | escrito, compila (8260 b) | **4/4 ✓** |
+| Staking | staking | escrito, compila (20638 b) | **8/8 ✓** |
+| PanelStaking | staking | escrito, compila (6820 b) | **7/7 ✓** |
+| Tarifas_V2 | core | upgrade de Tarifas, compila (10196 b) | **6/6 ✓** (upgrade conserva storage) |
+| Futuros | futures | escrito, compila (13982 b) | contabilidad ✓, **ejecución PancakeSwap pendiente** |
+
+Cuatro contratos listos para desplegar. Futuros necesita completar su ejecución real
+en PancakeSwap (comprar al abrir long, vender al cerrar; vender al abrir short,
+recomprar al cerrar) — el test destapó que sin ese swap real el motor no tiene de dónde
+generar la ganancia. Se completa en sesión aparte.
+
+### 13.3. Qué validó cada test (números reales)
+
+- **Oráculo:** USDT=$1, BTC por Chainlink=$60.000 (normalizado), 2 BTC=$120.000, SHIB
+  por PancakeSwap=$0,06. Precio exacto en ambas rutas.
+- **Staking:** una ballena de $1.000.000 cobra **exactamente 1.000.000×** lo del pez de
+  $1 (reparto proporcional al céntimo). Nada se pierde. La participación asignada por el
+  admin **cobra recompensas pero NO puede retirar capital que no existe**. El capital se
+  guarda y devuelve en su misma moneda (2 BTC → 2 BTC).
+- **Tarifas V2:** el upgrade V1→V2 **conserva todo el storage** (comisiones, exentos).
+  Espera de 48 h respetada. Campos nuevos (staking 20 %, futuros 50 %, unstake 1 %)
+  editables.
+- **PanelStaking:** el capital del inversor **nunca desaparece** de sus estadísticas
+  aunque esté prestado a Futuros. Muestra total / en uso (trabajando) / disponible.
+
+### 13.4. Cambios técnicos hechos durante el testeo
+
+- **OraculoPrecios:** `FACTORY` de PancakeSwap pasó de constante a **editable** (por si
+  cambia el router). `_decimals` ahora tolera cuentas sin código (robusto).
+- **Futuros:** dirección de `USDT` pasó de constante a **editable** por el admin.
+- **Staking:** añadidas `prestar` / `devolver` / `disponibleParaPrestar` para que el
+  motor de Futuros pida y devuelva liquidez, con contabilidad de `prestado` por token.
+
+---
+
+## 14. Estructura completa del área de FUTUROS (para el frontend y para dejar clara la lógica)
+
+> Esta explicación va en el frontend, tanto en el **área de Futuros** como en el **área
+> de Staking** ("¿cómo generan ingresos mis fondos?"). Redactada de forma neutra.
+
+### 14.1. Cómo funciona (y de dónde salen las ganancias)
+
+Cuando operas en Futuros, usas liquidez que aportan otras personas en Staking. Tu dinero
+y el de ellos nunca se mezclan ni se regalan: cada ganancia sale del propio movimiento
+del mercado.
+
+**Si operas en LONG** (crees que el precio sube): con la liquidez (en USDT) se compra la
+moneda al precio de entrada. Si el precio sube, esa moneda se vende más cara y la
+diferencia es tu ganancia. Si baja, la pérdida sale de tu capital, y quien aportó la
+liquidez recupera su USDT completo.
+
+**Si operas en SHORT** (crees que el precio baja): la liquidez pone **la propia moneda**
+(por ejemplo Bitcoin, BNB o Ethereum — NO USDT) y se vende de inmediato al precio de
+entrada. Queda pendiente devolver esa misma moneda. Si el precio baja, se recompra más
+barata para devolverla, y lo que sobra es tu ganancia. Si sube, la diferencia sale de tu
+capital, y quien aportó la liquidez recupera su moneda completa.
+
+En los dos casos la idea es la misma: vender más caro de lo que se compró. Esa diferencia
+la genera el mercado, no otro usuario. Quien aporta liquidez siempre recupera exactamente
+lo que puso, en su misma moneda.
+
+### 14.2. La regla nueva del SHORT (importante)
+
+El short **no se respalda con USDT convertido**, sino con **la moneda que se shortea**.
+Para que haya shorts de Bitcoin, tiene que haber Bitcoin aportado en el Staking; para
+shorts de BNB, BNB; y así. **El Staking condiciona la disponibilidad de Futuros:** las
+monedas que la gente aporta en Staking son las que se pueden operar (y shortear) en
+Futuros. Si solo hay USDT, solo se pueden abrir longs.
+
+### 14.3. Ganancia, pérdida, stop-loss y liquidación (con números)
+
+Ejemplo: el usuario abre con **$10** de margen, **100×** de apalancamiento → posición de
+**$1.000**. La liquidez presta esos $1.000 (en USDT si es long, en la moneda si es short).
+
+- **Long que gana:** el precio sube 1 % → la posición vale $1.010 → se devuelven $1.000 a
+  la liquidez y **sobran $10** para el usuario. Ganancia de la subida.
+- **Long que pierde / se liquida:** el precio baja ~1 % → la pérdida (~$10) consume el
+  margen del usuario. Al llegar al **precio de liquidación** se cierra; el margen perdido
+  repone lo que se devaluó el préstamo. La liquidez vuelve completa.
+- **Short que gana:** el precio baja → se recompra la moneda más barata para devolverla y
+  **sobra** la diferencia para el usuario. Ganancia de la bajada.
+- **Short que pierde / se liquida:** el precio sube → la diferencia sale del margen del
+  usuario; al llegar a la liquidación se cierra y la moneda vuelve completa a la liquidez.
+- **Stop-loss:** no cambia la correlación, solo **limita la pérdida** antes de la
+  liquidación total. Si el usuario pone SL a −50 %, cuando el mercado va 0,5 % en su
+  contra pierde la mitad de su margen; esa parte repone el préstamo y no se le quita nada
+  extra salvo comisiones.
+
+**Clave que hace que todo cuadre:** el apalancamiento es **proporcional a la liquidez
+disponible** (tope 200×). La pérdida máxima del usuario (su margen) nunca supera lo que se
+devaluó el préstamo, así que su margen siempre alcanza para reponer. El principal de quien
+aporta liquidez queda **siempre íntegro**.
+
+### 14.4. Cómo se reparten las comisiones
+
+- Comisiones de **abrir** y **cerrar** posición: **50 % para quienes aportan liquidez**
+  (según su participación) y **50 % para la plataforma**.
+- **Funding** (comisión por mantener el préstamo activo, cada cierto tiempo): **50/50**.
+- **Liquidación:** se toma el **75 %** para reponer la liquidez usada, y del **25 %
+  restante**, **mitad para quienes aportan liquidez** y **mitad para la plataforma**.
+
+Para quien aporta en Staking, sus fondos generan ingresos de dos formas: el **20 %** de
+todas las comisiones de la plataforma, y el **50 %** de todo lo que genera Futuros
+(comisiones, funding y liquidaciones). Todo repartido según cuánto ha aportado.
+
+---
+
+## 15. El keeper (quién dispara órdenes limit y liquidaciones)
+
+Un smart contract no se dispara solo: alguien tiene que llamarlo cuando el precio llega.
+Estrategia acordada, de coste bajo:
+
+1. **"Cualquiera puede liquidar":** la función de liquidar es pública y paga una **propina
+   porcentual del margen** (editable desde el panel, empieza ~0,5 % del margen — céntimos)
+   a quien la ejecute. Bots externos que vigilan BSC lo hacen solos por esa propina; a la
+   plataforma **le cuesta $0** (sale del margen ya perdido en la liquidación). El evento
+   `Abrir` que emite el contrato es lo que esos bots leen para detectar posiciones.
+2. **Cloudflare Worker de pago (~$5/mes):** respaldo para las órdenes limit y para
+   liquidar mientras hay poco volumen y aún no aparecen bots externos.
+3. **Chainlink Automation / Gelato:** se añade como respaldo descentralizado más adelante,
+   cuando haya volumen y presupuesto (tiene coste por disparo).
+
+La propina de liquidación **no es un cargo extra al usuario**: solo existe cuando alguien
+se liquida, y sale de lo que ese usuario ya perdió.
+
+---
+
+## 16. Próximos pasos actualizados
+
+1. Desplegar los cuatro contratos listos (Oráculo, Staking, PanelStaking) + upgrade de
+   Tarifas a V2. **Interconectarlos** (setOraculo, setTarifas, setStaking, autorizar
+   contratos, permitir tokens).
+2. Completar la **ejecución real de Futuros** en PancakeSwap + la propina de liquidación,
+   y testearlo entero.
+3. **Frontend nuevo de Staking** (web y móvil): rediseño a nivel corporativo, con la lista
+   de monedas a elegir (USDT, Bitcoin, y demás en orden de importancia), la explicación de
+   la sección 14, el panel del usuario (capital total / en uso / disponible), ganancia por
+   valorización, y las dos opciones (holdear en su moneda / conservar en USDT).
+4. **Frontend nuevo de Futuros** (web y móvil) con órdenes limit y a mercado.
+5. Upgrades de Swap, Bots, Academy y Prize Pool para aportar su 20 % al Staking.
+6. Conectar el panel administrativo a Tarifas V2 y al Staking.
+
+### Direcciones nuevas de esta sesión (al desplegar, anotar aquí)
+
+- **Tarifas V2 (nueva implementación del proxy existente):** _por desplegar_
+- **OraculoPrecios (proxy):** _por desplegar_
+- **Staking (proxy):** _por desplegar_
+- **PanelStaking:** _por desplegar_
+- **Futuros (proxy):** _tras completar ejecución_
