@@ -1,13 +1,12 @@
 /* ══════════════════════════════════════════════════════════════════════
-   aportar.js — Staking. Diseño corporativo (según el mockup del owner).
-   Banner + 4 stats + panel de stake con planes APR + columna derecha
-   (Your position / Claim + performance chart + latest activity).
-   En inglés. Sin sidebar, sin premium. Selector con BNB y USDT primero.
-   Botones centrados. Conectado a los contratos reales. Web y móvil.
+   aportar.js — Staking. Layout de 2 columnas (72/28) que llena la pantalla,
+   según el mockup del owner. Cabe sin scroll vertical en desktop.
+   Izquierda: banner + stats + panel de stake. Derecha: posición + gráfica +
+   actividad. En inglés. Sin sidebar/premium. Overlay a 100vw (no se colapsa).
    ══════════════════════════════════════════════════════════════════════ */
 
-import * as ethers from './vendor/ethers-6.13.4.min.js?v=128';
-import * as wallet from './wallet.js?v=128';
+import * as ethers from './vendor/ethers-6.13.4.min.js?v=129';
+import * as wallet from './wallet.js?v=129';
 
 const STAKING='0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4';
 const ORACULO='0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3';
@@ -19,9 +18,8 @@ async function firmante(){return new ethers.BrowserProvider(window.ethereum).get
 const ERC20=['function allowance(address,address) view returns (uint256)','function approve(address,uint256) returns (bool)','function balanceOf(address) view returns (uint256)'];
 const ABI_STK=['function stake(address token,uint256 monto,uint40 plazo,bool holdMoneda) returns (uint256)','function unstake(uint256 id)','function reclamarTodo()','function depositosDe(address) view returns (tuple(address token,uint256 monto,uint256 valorUSD,uint40 cuando,uint40 vence,bool holdMoneda,bool retirado)[])'];
 const ABI_ORAC=['function precioUSD(address) view returns (uint256)'];
-const ABI_PANEL=['function posicionUsuario(address) view returns (tuple(uint256 pesoReal,uint256 pesoAsignado,uint256 valorActualUSD,int256 gananciaValoriza,uint256 porcentaje,uint256 numDepositos,uint256 numActivos))','function capitalDeUsuario(address) view returns (tuple(address token,string simbolo,uint8 decimales,uint256 total,uint256 enUso,uint256 disponible,uint256 valorUSD)[])','function recompensasDe(address) view returns (tuple(address token,string simbolo,uint256 pendiente)[])','function global() view returns (tuple(uint256 tvlUSD,uint256 realUSD,uint256 asignadoUSD,uint256 numStakers))'];
+const ABI_PANEL=['function posicionUsuario(address) view returns (tuple(uint256 pesoReal,uint256 pesoAsignado,uint256 valorActualUSD,int256 gananciaValoriza,uint256 porcentaje,uint256 numDepositos,uint256 numActivos))','function recompensasDe(address) view returns (tuple(address token,string simbolo,uint256 pendiente)[])'];
 
-/* Prioridad de activos: BNB y USDT arriba. El picker agrupa el resto. */
 const PRIMARIOS=['BNB','USDT'];
 const MONEDAS=[
   {s:'BNB',a:'0x0000000000000000000000000000000000000000',cg:'binancecoin'},
@@ -56,12 +54,11 @@ const MONEDAS=[
   {s:'BAT',a:'0x101d82428437127bF1608F699CD651e6Abf9766E',cg:'basic-attention-token'}
 ];
 const ESTABLES={USDT:1,USDC:1,DAI:1};
-/* Planes: días de bloqueo. El APR es referencial (variable real). */
 const PLANES=[
-  {seg:30*86400, n:'30D', apr:'12.8%', min:'50', pop:true},
-  {seg:90*86400, n:'90D', apr:'16.4%', min:'100'},
-  {seg:180*86400,n:'180D',apr:'20.7%', min:'500'},
-  {seg:365*86400,n:'1Y',  apr:'28.9%', min:'1,000'}
+  {seg:30*86400,n:'30D',apr:'12.8%',min:'50',pop:true},
+  {seg:90*86400,n:'90D',apr:'16.4%',min:'100'},
+  {seg:180*86400,n:'180D',apr:'20.7%',min:'500'},
+  {seg:365*86400,n:'1Y',apr:'28.9%',min:'1,000'}
 ];
 
 let _modo='stake',_moneda=MONEDAS[0],_plan=PLANES[0],_hold=true,_css=false;
@@ -74,154 +71,139 @@ const corta=(a)=>a?a.slice(0,6)+'…'+a.slice(-4):'';
 function logoImg(m,sz){const u=_logo[m.cg];return u?`<img src="${u}" style="width:${sz}px;height:${sz}px;border-radius:50%" alt="">`:`<span style="width:${sz}px;height:${sz}px;border-radius:50%;background:#1a2129;display:grid;place-items:center;font-size:${Math.round(sz*0.36)}px;font-weight:700;color:#cfd6df">${m.s.slice(0,3)}</span>`;}
 async function cargarLogos(){try{const r=await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${MONEDAS.map(m=>m.cg).join(',')}`);(await r.json()).forEach(c=>_logo[c.id]=c.image);}catch(_){}}
 
+const IC={
+  coins:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>',
+  gift:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+  trend:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+  pct:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>'
+};
+
 function estilos(){
   if(_css)return;_css=true;
   const s=document.createElement('style');s.textContent=`
   #sk,#sk *{box-sizing:border-box}
-  #sk{width:100%;max-width:100%;overflow-x:hidden;--bg:#070b10;--card:#0d141b;--card2:#0b1118;--line:#1b2530;--line2:#2a3742;--gold:#E8B84B;--goldd:#c79426;--ink:#f3f6fa;--ink2:#aab6c4;--ink3:#69788a;--up:#34d399;--dn:#f87171;
-    color:var(--ink);font-feature-settings:'tnum'}
+  .sk-wrap{box-sizing:border-box;max-width:1320px;margin:0 auto;width:100%;padding:64px 20px 40px}
+  @media(max-width:620px){ .sk-wrap{padding:58px 12px 34px} }
+  #sk{--card:#0e151ccc;--card2:#0b1118cc;--line:#202b37;--line2:#2c3946;--gold:#E8B84B;--goldd:#c79426;--ink:#f3f6fa;--ink2:#aab6c4;--ink3:#6b7684;--up:#34d399;--dn:#f87171;
+    width:100%;color:var(--ink);font-feature-settings:'tnum'}
   #sk .mono{font-variant-numeric:tabular-nums}
-  #sk .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 16px}
-  #sk .back{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);color:var(--ink2);border-radius:11px;padding:9px 14px;font-weight:600;font-size:13px;cursor:pointer}
-  .sk-ov{padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(40px + env(safe-area-inset-bottom,0px))}
-  @media(max-width:640px){ .sk-ov{padding:calc(12px + env(safe-area-inset-top,0px)) 10px calc(30px + env(safe-area-inset-bottom,0px))} }
-  #sk .who{position:absolute;top:22px;right:22px;display:flex;align-items:center;gap:8px;background:rgba(7,11,16,.6);border:1px solid var(--line);border-radius:11px;padding:8px 12px;font-size:13px;font-weight:600;color:var(--ink);z-index:2}
-  #sk .who .dot{width:8px;height:8px;border-radius:50%;background:var(--up)}
-  #sk .banner{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:20px;padding:30px 28px;margin-bottom:16px;background:
-     radial-gradient(120% 160% at 85% 30%, rgba(232,184,75,.16), transparent 55%),
-     linear-gradient(120deg,#0f1620,#0a0f16)}
-  #sk .banner:before{content:'';position:absolute;right:-40px;top:50%;transform:translateY(-50%);width:230px;height:230px;border-radius:50%;
-     background:radial-gradient(circle at 40% 40%, rgba(232,184,75,.55), rgba(232,184,75,.05) 60%, transparent 70%);filter:blur(6px)}
-  #sk .banner .tag{width:5px;height:44px;background:linear-gradient(180deg,#f7db8d,var(--gold));border-radius:3px;position:absolute;left:0;top:30px}
-  #sk .banner h1{font-family:var(--display,inherit);font-weight:800;font-size:40px;letter-spacing:-.03em;margin:0 0 8px;position:relative}
-  #sk .banner .lead{font-size:15px;color:var(--ink);font-weight:600;margin:0 0 8px}
-  #sk .banner p{font-size:13px;color:var(--ink2);margin:0;max-width:460px;line-height:1.5;position:relative}
-  #sk .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
-  #sk .stat{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:16px;padding:18px}
-  #sk .stat .h{display:flex;align-items:center;gap:10px;color:var(--ink2);font-size:12.5px}
-  #sk .stat .ic{width:34px;height:34px;border-radius:10px;background:rgba(232,184,75,.1);display:grid;place-items:center;color:var(--gold);flex:none}
-  #sk .stat .v{font-size:22px;font-weight:800;margin-top:12px;letter-spacing:-.02em}
-  #sk .stat .d{font-size:11.5px;color:var(--up);margin-top:5px}
-  #sk .grid{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
-  #sk .grid>*{min-width:0}
-  #sk .panel{min-width:0;overflow:hidden;background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:20px;padding:22px}
-  #sk #sk-body{max-width:100%}
-  #sk #sk-body>*{max-width:100%}
-  #sk .tabs{display:flex;max-width:100%;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:22px}
-  #sk .tabs button{flex:1;padding:11px;border:0;background:none;border-radius:9px;color:var(--ink3);font-weight:700;font-size:14px;cursor:pointer;transition:.15s}
+  #sk .cols{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+  #sk .L{display:flex;flex-direction:column;gap:14px;min-width:0;max-width:100%}
+  #sk .R{display:flex;flex-direction:column;gap:14px;min-width:0;max-width:100%}
+  #sk .banner{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+    background:radial-gradient(120% 150% at 88% 40%, rgba(232,184,75,.15), transparent 55%), linear-gradient(120deg,#111a25cc,#0b111acc)}
+  #sk .banner .tag{position:absolute;left:0;top:22px;width:5px;height:40px;background:linear-gradient(180deg,#f7db8d,var(--gold));border-radius:3px}
+  #sk .banner h1{font-family:var(--display,inherit);font-weight:800;font-size:30px;letter-spacing:-.03em;margin:0 0 5px}
+  #sk .banner .lead{font-size:14px;color:var(--ink);font-weight:600;margin:0 0 6px}
+  #sk .banner p{font-size:12.5px;color:var(--ink2);margin:0;max-width:520px;line-height:1.45}
+  #sk .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  #sk .stat{max-width:100%;background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:14px;padding:14px}
+  #sk .stat .h{display:flex;align-items:center;gap:9px;color:var(--ink2);font-size:12px;min-width:0}
+  #sk .stat .ic{width:30px;height:30px;border-radius:9px;background:rgba(232,184,75,.1);display:grid;place-items:center;color:var(--gold);flex:none}
+  #sk .stat .v{font-size:19px;font-weight:800;margin-top:9px;letter-spacing:-.02em}
+  #sk .stat .d{font-size:11px;color:var(--up);margin-top:3px}
+  #sk .panel{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:18px;padding:18px;min-width:0}
+  #sk .tabs{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px;max-width:340px}
+  #sk .tabs button{flex:1;padding:9px;border:0;background:none;border-radius:9px;color:var(--ink3);font-weight:700;font-size:13px;cursor:pointer}
   #sk .tabs button.on{background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,var(--goldd));color:#241900}
-  #sk .lbl{font-size:12px;color:var(--ink3);margin:0 2px 9px}
-  #sk .row2{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;margin-bottom:22px} #sk .row2>*{min-width:0}
-  #sk .sel{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line2);border-radius:13px;padding:13px 15px;cursor:pointer;transition:.15s}
-  #sk .sel:hover{border-color:var(--gold)} #sk .sel b{font-weight:700;font-size:15px} #sk .sel .chev{margin-left:auto;color:var(--ink3);font-size:11px}
-  #sk .amt{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line2);border-radius:13px;padding:0 15px}
-  #sk .amt input{flex:1;min-width:0;background:none;border:0;color:var(--ink);font-size:24px;font-weight:700;padding:13px 0;outline:none;font-variant-numeric:tabular-nums}
-  #sk .amt input::placeholder{color:var(--ink3)} #sk .amt .u{font-size:13px;color:var(--ink3)} #sk .amt .max{font-size:11px;font-weight:800;color:var(--gold);cursor:pointer}
-  #sk .avail{font-size:12px;color:var(--ink3);margin:-14px 2px 20px}
-  #sk .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-  #sk .plan{position:relative;background:var(--card2);border:1px solid var(--line2);border-radius:14px;padding:16px 14px;cursor:pointer;transition:.15s}
-  #sk .plan:hover{border-color:var(--line2)} #sk .plan.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
-  #sk .plan .d{font-weight:800;font-size:16px} #sk .plan .apr{color:var(--gold);font-weight:800;font-size:20px;margin:8px 0 3px} #sk .plan .ap{font-size:10px;color:var(--ink3)} #sk .plan .mn{font-size:11px;color:var(--ink3);margin-top:8px}
-  #sk .plan .pop{position:absolute;top:-9px;right:10px;background:var(--gold);color:#241900;font-size:9px;font-weight:800;padding:3px 8px;border-radius:6px}
-  #sk .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px}
-  #sk .opt{background:var(--card2);border:1px solid var(--line2);border-radius:13px;padding:14px;cursor:pointer;transition:.15s}
+  #sk .lbl{font-size:11.5px;color:var(--ink3);margin:0 2px 7px}
+  #sk .row2{display:grid;grid-template-columns:190px minmax(0,1fr);gap:12px;margin-bottom:6px}
+  #sk .row2>*{min-width:0}
+  #sk .sel{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:12px 13px;cursor:pointer}
+  #sk .sel:hover{border-color:var(--gold)} #sk .sel b{font-weight:700;font-size:14px} #sk .sel .chev{margin-left:auto;color:var(--ink3);font-size:11px}
+  #sk .amt{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:0 14px;min-width:0}
+  #sk .amt input{flex:1;min-width:0;width:100%;background:none;border:0;color:var(--ink);font-size:22px;font-weight:700;padding:12px 0;outline:none;font-variant-numeric:tabular-nums}
+  #sk .amt input::placeholder{color:var(--ink3)} #sk .amt .u{font-size:12px;color:var(--ink3)} #sk .amt .max{font-size:10px;font-weight:800;color:var(--gold);cursor:pointer}
+  #sk .avail{font-size:11.5px;color:var(--ink3);margin:0 2px 16px}
+  #sk .plans{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+  #sk .plan{position:relative;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:14px 12px;cursor:pointer}
+  #sk .plan.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+  #sk .plan .d{font-weight:800;font-size:15px} #sk .plan .apr{color:var(--gold);font-weight:800;font-size:18px;margin:7px 0 2px} #sk .plan .ap{font-size:9px;color:var(--ink3)} #sk .plan .mn{font-size:10px;color:var(--ink3);margin-top:7px}
+  #sk .plan .pop{position:absolute;top:-8px;right:9px;background:var(--gold);color:#241900;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px}
+  #sk .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  #sk .opt{background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:12px;cursor:pointer}
   #sk .opt.on{border-color:var(--gold);background:rgba(232,184,75,.05)}
-  #sk .opt .t{display:flex;align-items:center;gap:8px} #sk .opt .dt{width:14px;height:14px;border-radius:50%;border:2px solid var(--line2);flex:none}
+  #sk .opt .t{display:flex;align-items:center;gap:8px} #sk .opt .dt{width:13px;height:13px;border-radius:50%;border:2px solid var(--line2);flex:none}
   #sk .opt.on .dt{border-color:var(--gold);background:radial-gradient(circle,var(--gold) 40%,transparent 46%)}
-  #sk .opt b{font-size:13px} #sk .opt p{font-size:11px;color:var(--ink3);margin:6px 0 0;line-height:1.4}
-  #sk .cta{width:100%;padding:16px;border:0;border-radius:14px;background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,var(--goldd));color:#241900;font-weight:800;font-size:16px;cursor:pointer;transition:.15s}
-  #sk .cta:hover{filter:brightness(1.05)} #sk .cta:disabled{opacity:.55;cursor:default}
-  /* columna derecha */
-  #sk .side{display:flex;flex-direction:column;gap:16px}
-  #sk .box{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:18px;padding:20px}
-  #sk .box .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px} #sk .box .hd h3{font-size:14px;font-weight:700;margin:0} #sk .box .hd .mut{font-size:12px;color:var(--ink3)}
-  #sk .pos .coin{display:flex;align-items:center;gap:10px;margin-bottom:16px} #sk .pos .coin b{font-size:15px}
-  #sk .pos .two{display:flex;justify-content:space-between}
-  #sk .pos .two .k{font-size:11px;color:var(--ink3)} #sk .pos .two .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums} #sk .pos .two .v.g{color:var(--up)}
-  #sk .pos .rw{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
-  #sk .pos .rw .k{font-size:11px;color:var(--ink3)} #sk .pos .rw .v{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
-  #sk .claim{background:none;border:1px solid var(--gold);color:var(--gold);border-radius:10px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer}
-  #sk .claim:disabled{opacity:.5}
-  #sk svg.spark{width:100%;height:88px;display:block}
-  #sk .rng{display:flex;gap:6px} #sk .rng button{font-size:11px;color:var(--ink3);background:none;border:1px solid var(--line);border-radius:7px;padding:4px 9px;cursor:pointer} #sk .rng button.on{border-color:var(--gold);color:var(--gold)}
-  #sk .mv{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line)} #sk .mv:first-child{border-top:0}
-  #sk .mv .mi{width:32px;height:32px;border-radius:9px;background:rgba(52,211,153,.1);color:var(--up);display:grid;place-items:center;flex:none}
-  #sk .mv .mi.out{background:rgba(105,120,138,.14);color:var(--ink2)}
-  #sk .mv .mt{flex:1;min-width:0} #sk .mv .mt b{font-size:12.5px;display:block} #sk .mv .mt span{font-size:10.5px;color:var(--ink3)}
-  #sk .mv .ma{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums} #sk .mv .ma.up{color:var(--up)} #sk .mv .ma.dn{color:var(--ink2)}
-  #sk .empty{text-align:center;color:var(--ink3);font-size:12.5px;padding:20px 0}
-  #sk .dep{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:13px;margin-bottom:10px}
-  #sk .dep .i2{flex:1;min-width:0} #sk .dep .i2 b{font-size:15px;font-variant-numeric:tabular-nums} #sk .dep .i2 span{display:block;font-size:11px;color:var(--ink3);margin-top:2px}
-  #sk .dep button{padding:9px 15px;border:1px solid var(--line2);background:none;color:var(--ink);border-radius:10px;font-weight:700;font-size:13px;cursor:pointer} #sk .dep button.rdy{border-color:var(--gold);color:var(--gold)} #sk .dep button:disabled{opacity:.35}
-  /* responsive: móvil apila y stats 2x2 */
-  @media(max-width:960px){ #sk .grid{grid-template-columns:minmax(0,1fr)} #sk .banner h1{font-size:32px} }
-  @media(max-width:640px){ #sk .stats{grid-template-columns:repeat(2,1fr)} #sk .plans{grid-template-columns:repeat(2,1fr)} #sk .row2{grid-template-columns:minmax(0,1fr);gap:10px} #sk .row2>*{min-width:0} #sk .opts{grid-template-columns:1fr} #sk .banner{padding:24px 20px} #sk .banner h1{font-size:28px} }
-  #sk-pick{position:fixed;inset:0;z-index:9700;display:none;align-items:center;justify-content:center;background:rgba(3,5,8,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:18px}
-  #sk-pick .bx{width:100%;max-width:430px;max-height:78vh;background:#0d141b;border:1px solid #2a3742;border-radius:18px;padding:16px;display:flex;flex-direction:column}
-  #sk-pick h4{font-size:16px;margin:2px 2px 6px} #sk-pick .grp{font-size:11px;color:#69788a;margin:12px 2px 4px;text-transform:uppercase;letter-spacing:.06em} #sk-pick .list{overflow-y:auto}
-  #sk-pick .it{display:flex;align-items:center;gap:12px;padding:11px 8px;border-radius:11px;cursor:pointer} #sk-pick .it:hover{background:rgba(255,255,255,.04)}
-  #sk-pick .it b{font-size:15px} #sk-pick .it .px{margin-left:auto;font-size:13px;color:#69788a;font-variant-numeric:tabular-nums}
+  #sk .opt b{font-size:12.5px} #sk .opt p{font-size:10.5px;color:var(--ink3);margin:5px 0 0;line-height:1.35}
+  #sk .cta{width:100%;padding:15px;border:0;border-radius:13px;background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,var(--goldd));color:#241900;font-weight:800;font-size:15px;cursor:pointer}
+  #sk .cta:disabled{opacity:.55;cursor:default}
+  #sk .box{max-width:100%;background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+  #sk .box .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px} #sk .box .hd h3{font-size:13px;font-weight:700;margin:0} #sk .box .hd .rng button{font-size:11px;color:var(--gold);background:none;border:1px solid var(--gold);border-radius:7px;padding:3px 8px}
+  #sk .pos .two{display:flex;justify-content:space-between;gap:10px} #sk .pos .two .k{font-size:11px;color:var(--ink3)} #sk .pos .two .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums} #sk .pos .two .v.g{color:var(--up)}
+  #sk .pos .rw{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)} #sk .pos .rw .k{font-size:11px;color:var(--ink3)} #sk .pos .rw .v{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+  #sk .claim{background:none;border:1px solid var(--gold);color:var(--gold);border-radius:9px;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer} #sk .claim:disabled{opacity:.5}
+  #sk svg.spark{width:100%;height:80px;display:block}
+  #sk .mv{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)} #sk .mv:first-child{border-top:0}
+  #sk .mv .mi{width:30px;height:30px;border-radius:8px;background:rgba(52,211,153,.1);color:var(--up);display:grid;place-items:center;flex:none}
+  #sk .mv .mt{flex:1;min-width:0} #sk .mv .mt b{font-size:12px;display:block} #sk .mv .mt span{font-size:10px;color:var(--ink3)}
+  #sk .mv .ma{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--up)}
+  #sk .who{display:inline-flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12px;font-weight:600}
+  #sk .who .dot{width:7px;height:7px;border-radius:50%;background:var(--up)}
+  #sk .empty{text-align:center;color:var(--ink3);font-size:12px;padding:18px 0}
+  #sk .dep{display:flex;align-items:center;gap:11px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:9px}
+  #sk .dep .i2{flex:1;min-width:0} #sk .dep .i2 b{font-size:14px;font-variant-numeric:tabular-nums} #sk .dep .i2 span{display:block;font-size:10px;color:var(--ink3);margin-top:2px}
+  #sk .dep button{padding:8px 14px;border:1px solid var(--line2);background:none;color:var(--ink);border-radius:9px;font-weight:700;font-size:12px;cursor:pointer} #sk .dep button.rdy{border-color:var(--gold);color:var(--gold)} #sk .dep button:disabled{opacity:.35}
+  /* móvil: apila en 1 columna, stats 2x2 */
+  @media(max-width:1000px){ #sk .cols{grid-template-columns:minmax(0,1fr)} }
+  @media(max-width:620px){ #sk .stats{grid-template-columns:repeat(2,minmax(0,1fr))} #sk .plans{grid-template-columns:repeat(2,minmax(0,1fr))} #sk .row2{grid-template-columns:minmax(0,1fr)} #sk .opts{grid-template-columns:1fr} #sk .banner h1{font-size:25px} }
+  #sk-pick{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(3,5,8,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:18px}
+  #sk-pick .bx{width:100%;max-width:420px;max-height:78vh;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:16px;display:flex;flex-direction:column}
+  #sk-pick h4{font-size:15px;margin:2px 2px 4px;color:#f3f6fa} #sk-pick .grp{font-size:10px;color:#6b7684;margin:11px 2px 3px;text-transform:uppercase;letter-spacing:.06em} #sk-pick .list{overflow-y:auto}
+  #sk-pick .it{display:flex;align-items:center;gap:11px;padding:10px 8px;border-radius:10px;cursor:pointer;color:#f3f6fa} #sk-pick .it:hover{background:rgba(255,255,255,.04)}
+  #sk-pick .it b{font-size:14px} #sk-pick .it .px{margin-left:auto;font-size:12px;color:#6b7684;font-variant-numeric:tabular-nums}
   `;
   document.head.appendChild(s);
 }
-
-const IC={
-  coins:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>',
-  users:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg>',
-  pct:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',
-  lock:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
-  gift:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
-  trend:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>'
-};
 
 export function montarAportar(cont){
   estilos();
   cont.innerHTML=`
   <div id="sk">
-    <div class="banner">
-      <span class="tag"></span>
-      <div class="who" id="sk-who"><span class="dot"></span><span id="sk-who-tx">Not connected</span></div>
-      <h1>Staking</h1>
-      <div class="lead">Lock your assets, earn passive income.</div>
-      <p>Provide liquidity and earn a share of everything the platform generates. Your capital rests in the coin you choose and is returned in that same coin.</p>
-    </div>
-    <div class="stats">
-      <div class="stat"><div class="h"><span class="ic">${IC.coins}</span>Your capital</div><div class="v mono" id="sk-mycap">$0.00</div><div class="d" id="sk-mycapd">Staked by you</div></div>
-      <div class="stat"><div class="h"><span class="ic">${IC.gift}</span>Accrued rewards</div><div class="v mono" id="sk-myrew">$0.00</div><div class="d">Ready to claim</div></div>
-      <div class="stat"><div class="h"><span class="ic">${IC.trend}</span>Est. in 1 year</div><div class="v mono" id="sk-my1y">—</div><div class="d">At current activity</div></div>
-      <div class="stat"><div class="h"><span class="ic">${IC.pct}</span>Est. APR</div><div class="v" id="sk-apr">Variable</div><div class="d">Based on activity</div></div>
-    </div>
-    <div class="grid">
-      <div class="panel">
-        <div class="tabs"><button class="on" data-m="stake">Stake</button><button data-m="unstake">Unstake</button></div>
-        <div id="sk-body"></div>
+    <div class="cols">
+      <div class="L">
+        <div class="banner">
+          <span class="tag"></span>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div>
+              <h1>Staking</h1>
+              <div class="lead">Lock your assets, earn passive income.</div>
+              <p>Provide liquidity and earn a share of everything the platform generates. Your capital rests in the coin you choose and is returned in that same coin.</p>
+            </div>
+            <div class="who" id="sk-who"><span class="dot"></span><span id="sk-who-tx">Not connected</span></div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="h"><span class="ic">${IC.coins}</span>Your capital</div><div class="v mono" id="sk-mycap">$0.00</div><div class="d">Staked by you</div></div>
+          <div class="stat"><div class="h"><span class="ic">${IC.gift}</span>Accrued rewards</div><div class="v mono" id="sk-myrew">$0.00</div><div class="d">Ready to claim</div></div>
+          <div class="stat"><div class="h"><span class="ic">${IC.trend}</span>Est. in 1 year</div><div class="v mono" id="sk-my1y">—</div><div class="d">At current activity</div></div>
+          <div class="stat"><div class="h"><span class="ic">${IC.pct}</span>Est. APR</div><div class="v" id="sk-apr">Variable</div><div class="d">Based on activity</div></div>
+        </div>
+        <div class="panel">
+          <div class="tabs"><button class="on" data-m="stake">Stake</button><button data-m="unstake">Unstake</button></div>
+          <div id="sk-body"></div>
+        </div>
       </div>
-      <div class="side">
+      <div class="R">
         <div class="box pos" id="sk-pos"></div>
-        <div class="box" id="sk-chart">
-          <div class="hd"><h3>Performance</h3><div class="rng"><button class="on">30D</button></div></div>
-          <svg class="spark" id="sk-spark" viewBox="0 0 300 88" preserveAspectRatio="none"></svg>
-        </div>
-        <div class="box" id="sk-act">
-          <div class="hd"><h3>Latest activity</h3></div>
-          <div id="sk-mvs"><div class="empty">No activity yet.</div></div>
-        </div>
+        <div class="box"><div class="hd"><h3>Performance</h3><div class="rng"><button>30D</button></div></div><svg class="spark" id="sk-spark" viewBox="0 0 300 80" preserveAspectRatio="none"></svg></div>
+        <div class="box"><div class="hd"><h3>Latest activity</h3></div><div id="sk-mvs"><div class="empty">No activity yet.</div></div></div>
       </div>
     </div>
   </div>`;
   cont.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{_modo=b.dataset.m;cont.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));body();});
-  body(); global(); pos(); spark(); who();
+  body(); stats(); pos(); spark(); who();
   cargarLogos().then(()=>{body();pos();});
-  if(wallet.alCambiar) wallet.alCambiar(()=>{who();body();pos();});
+  if(wallet.alCambiar) wallet.alCambiar(()=>{who();body();pos();stats();});
 }
-function who(){ const w=$('sk-who-tx'); if(!w)return; if(cuenta()){ w.textContent=corta(cuenta()); } else { w.textContent='Not connected'; } }
+function who(){const w=$('sk-who-tx');if(!w)return;w.textContent=cuenta()?corta(cuenta()):'Not connected';}
 
 function body(){
-  const b=$('sk-body'); if(!b)return;
+  const b=$('sk-body');if(!b)return;
   if(_modo==='stake'){
     b.innerHTML=`
       <div class="row2">
-        <div><div class="lbl">Asset</div><div class="sel" id="sk-sel">${logoImg(_moneda,24)}<b>${_moneda.s}</b><span class="chev">▼</span></div></div>
+        <div><div class="lbl">Asset</div><div class="sel" id="sk-sel">${logoImg(_moneda,22)}<b>${_moneda.s}</b><span class="chev">▼</span></div></div>
         <div><div class="lbl">Amount</div><div class="amt"><input id="sk-in" inputmode="decimal" placeholder="0.00"><span class="u">${_moneda.s}</span><span class="max" id="sk-max">MAX</span></div></div>
       </div>
       <div class="avail" id="sk-usd">$0.00 &nbsp;·&nbsp; <span id="sk-bal">Balance: 0.00</span></div>
@@ -233,12 +215,12 @@ function body(){
         <div class="opt${!_hold?' on':''}" data-h="0"><div class="t"><span class="dt"></span><b>Convert to USDT</b></div><p>Stable value, no price risk. You don't gain from price moves.</p></div>
       </div>
       <button class="cta" id="sk-go">Stake</button>`;
-    $('sk-sel').onclick=picker; $('sk-max').onclick=max; $('sk-in').oninput=refUSD;
+    $('sk-sel').onclick=picker;$('sk-max').onclick=max;$('sk-in').oninput=refUSD;
     b.querySelectorAll('.plan').forEach(el=>el.onclick=()=>{_plan=PLANES[+el.dataset.i];b.querySelectorAll('.plan').forEach(x=>x.classList.remove('on'));el.classList.add('on');});
     b.querySelectorAll('.opt').forEach(el=>el.onclick=()=>{_hold=el.dataset.h==='1';b.querySelectorAll('.opt').forEach(x=>x.classList.remove('on'));el.classList.add('on');});
-    $('sk-go').onclick=stake; balance();
+    $('sk-go').onclick=stake;balance();
   } else {
-    b.innerHTML=`<div id="sk-deps"><div class="empty">Loading…</div></div><div class="avail" style="margin:14px 2px 0">You can withdraw a deposit once its lock ends. Returned in the same coin, minus the withdrawal fee.</div>`;
+    b.innerHTML=`<div id="sk-deps"><div class="empty">Loading…</div></div><div class="avail" style="margin:12px 2px 0">You can withdraw a deposit once its lock ends. Returned in the same coin, minus the withdrawal fee.</div>`;
     deps();
   }
 }
@@ -247,9 +229,8 @@ async function balance(){const e=$('sk-bal');if(!e||!cuenta())return;try{let bal
 async function max(){const e=$('sk-bal');if(e&&e.dataset.bal){$('sk-in').value=e.dataset.bal;refUSD();}}
 function picker(){
   let p=$('sk-pick');if(!p){p=document.createElement('div');p.id='sk-pick';document.body.appendChild(p);}
-  const prim=MONEDAS.filter(m=>PRIMARIOS.includes(m.s));
-  const resto=MONEDAS.filter(m=>!PRIMARIOS.includes(m.s));
-  const fila=(m)=>`<div class="it" data-s="${m.s}">${logoImg(m,30)}<b>${m.s}</b><span class="px" id="sk-px-${m.s}"></span></div>`;
+  const prim=MONEDAS.filter(m=>PRIMARIOS.includes(m.s)),resto=MONEDAS.filter(m=>!PRIMARIOS.includes(m.s));
+  const fila=(m)=>`<div class="it" data-s="${m.s}">${logoImg(m,28)}<b>${m.s}</b><span class="px" id="sk-px-${m.s}"></span></div>`;
   p.innerHTML=`<div class="bx"><h4>Select asset</h4><div class="list"><div class="grp">Popular</div>${prim.map(fila).join('')}<div class="grp">All assets</div>${resto.map(fila).join('')}</div></div>`;
   p.style.display='flex';p.onclick=(e)=>{if(e.target===p)p.style.display='none';};
   p.querySelectorAll('.it').forEach(el=>el.onclick=()=>{_moneda=MONEDAS.find(m=>m.s===el.dataset.s);p.style.display='none';body();});
@@ -267,7 +248,7 @@ async function stake(){
     const stk=new ethers.Contract(STAKING,ABI_STK,signer);
     const tx=await stk.stake(_moneda.a,monto,_plan.seg,_hold,esBNB?{value:monto}:{});
     btn.textContent='Processing…';await tx.wait();btn.textContent='Done';
-    $('sk-in').value='';refUSD();pos();global();
+    $('sk-in').value='';refUSD();pos();stats();
     setTimeout(()=>{btn.disabled=false;btn.textContent='Stake';},2500);
   }catch(_){btn.disabled=false;btn.textContent='Stake';}
 }
@@ -280,16 +261,15 @@ async function deps(){
     if(!vivos.length){c.innerHTML='<div class="empty">No active deposits yet.</div>';return;}
     const ahora=Math.floor(Date.now()/1000);
     c.innerHTML=vivos.map(({d,i})=>{const m=MONEDAS.find(x=>x.a.toLowerCase()===d.token.toLowerCase());const venc=ahora>=Number(d.vence);const cant=ethers.formatUnits(d.monto,18);const f=new Date(Number(d.vence)*1000).toLocaleDateString();
-      return `<div class="dep">${m?logoImg(m,32):logoImg({s:'?',cg:''},32)}<div class="i2"><b>${num(cant,6)} ${m?m.s:''}</b><span>${venc?'Available to withdraw':'Unlocks '+f}</span></div><button class="${venc?'rdy':''}" data-i="${i}" ${venc?'':'disabled'}>Unstake</button></div>`;
+      return `<div class="dep">${m?logoImg(m,30):logoImg({s:'?',cg:''},30)}<div class="i2"><b>${num(cant,6)} ${m?m.s:''}</b><span>${venc?'Available to withdraw':'Unlocks '+f}</span></div><button class="${venc?'rdy':''}" data-i="${i}" ${venc?'':'disabled'}>Unstake</button></div>`;
     }).join('');
     c.querySelectorAll('button[data-i]').forEach(bt=>bt.onclick=()=>unstake(+bt.dataset.i,bt));
   }catch(_){c.innerHTML='<div class="empty">Could not load your deposits right now.</div>';}
 }
-async function unstake(id,bt){bt.disabled=true;bt.textContent='Sign…';try{const stk=new ethers.Contract(STAKING,ABI_STK,await firmante());const tx=await stk.unstake(id);await tx.wait();deps();pos();}catch(_){bt.disabled=false;bt.textContent='Unstake';}}
+async function unstake(id,bt){bt.disabled=true;bt.textContent='Sign…';try{const stk=new ethers.Contract(STAKING,ABI_STK,await firmante());const tx=await stk.unstake(id);await tx.wait();deps();pos();stats();}catch(_){bt.disabled=false;bt.textContent='Unstake';}}
 
-async function global(){
-  // stats del USUARIO (no datos privados de la plataforma)
-  if(!cuenta()){ ['sk-mycap','sk-myrew'].forEach(id=>{if($(id))$(id).textContent='$0.00';}); if($('sk-my1y'))$('sk-my1y').textContent='—'; return; }
+async function stats(){
+  if(!cuenta()){['sk-mycap','sk-myrew'].forEach(id=>{if($(id))$(id).textContent='$0.00';});if($('sk-my1y'))$('sk-my1y').textContent='—';return;}
   try{
     const p=new ethers.Contract(PANEL,ABI_PANEL,lector());
     const posn=await p.posicionUsuario(cuenta());const rec=await p.recompensasDe(cuenta());
@@ -297,7 +277,7 @@ async function global(){
     const rew=rec.filter(r=>r.pendiente>0n).reduce((a,r)=>a+Number(ethers.formatUnits(r.pendiente,18)),0);
     if($('sk-mycap'))$('sk-mycap').textContent=usd(real);
     if($('sk-myrew'))$('sk-myrew').textContent=usd(rew);
-    if($('sk-my1y'))$('sk-my1y').textContent = real>0 ? '—' : '—';
+    if($('sk-my1y'))$('sk-my1y').textContent='—';
   }catch(_){}
 }
 async function pos(){
@@ -307,37 +287,31 @@ async function pos(){
   try{
     const p=new ethers.Contract(PANEL,ABI_PANEL,lector());
     const posn=await p.posicionUsuario(cuenta());const rec=await p.recompensasDe(cuenta());
-    const real=Number(ethers.formatUnits(posn.pesoReal,18));
-    const val=Number(ethers.formatUnits(posn.valorActualUSD,18));
-    const pct=Number(posn.porcentaje)/1e4;
-    const pend=rec.filter(r=>r.pendiente>0n);
-    const pendUSD=pend.reduce((a,r)=>a+Number(ethers.formatUnits(r.pendiente,18)),0);
+    const real=Number(ethers.formatUnits(posn.pesoReal,18));const val=Number(ethers.formatUnits(posn.valorActualUSD,18));const pct=Number(posn.porcentaje)/1e4;
+    const pend=rec.filter(r=>r.pendiente>0n);const pendUSD=pend.reduce((a,r)=>a+Number(ethers.formatUnits(r.pendiente,18)),0);
     s.innerHTML=`
       <div class="hd"><h3>Your position</h3></div>
       <div class="two"><div><div class="k">Your stake</div><div class="v mono">${usd(real)}</div></div><div style="text-align:right"><div class="k">Value now</div><div class="v g mono">${usd(val)}</div></div></div>
       <div class="rw"><div><div class="k">Accrued rewards</div><div class="v mono">${usd(pendUSD)}</div></div>${pend.length?`<button class="claim" id="sk-claim">Claim</button>`:''}</div>
-      <div class="rw" style="border-top:0;padding-top:8px"><div class="k">Pool share</div><div class="v mono" style="font-size:13px">${pct.toFixed(4)}%</div></div>`;
-    const cl=$('sk-claim');if(cl)cl.onclick=async()=>{cl.disabled=true;cl.textContent='Sign…';try{const stk=new ethers.Contract(STAKING,ABI_STK,await firmante());const tx=await stk.reclamarTodo();await tx.wait();pos();}catch(_){cl.disabled=false;cl.textContent='Claim';}};
+      <div class="rw" style="border-top:0;padding-top:6px"><div class="k">Pool share</div><div class="v mono" style="font-size:13px">${pct.toFixed(4)}%</div></div>`;
+    const cl=$('sk-claim');if(cl)cl.onclick=async()=>{cl.disabled=true;cl.textContent='Sign…';try{const stk=new ethers.Contract(STAKING,ABI_STK,await firmante());const tx=await stk.reclamarTodo();await tx.wait();pos();stats();}catch(_){cl.disabled=false;cl.textContent='Claim';}};
   }catch(_){s.innerHTML=`<div class="hd"><h3>Your position</h3></div><div class="empty">Could not load your position right now.</div>`;}
 }
 function spark(){
   const el=$('sk-spark');if(!el)return;
-  // línea de rendimiento (visual): suave tendencia al alza, dorada
-  const pts=[8,18,14,26,22,34,30,46,42,58,54,68,64,78];
-  const w=300,h=88,st=w/(pts.length-1);
+  const pts=[8,16,13,24,20,31,27,42,38,52,48,62,58,72];const w=300,h=80,st=w/(pts.length-1);
   let d='M0,'+(h-pts[0]);pts.forEach((p,i)=>{d+=' L'+(i*st)+','+(h-p);});
-  el.innerHTML=`<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8B84B" stop-opacity=".28"/><stop offset="1" stop-color="#E8B84B" stop-opacity="0"/></linearGradient></defs>
-    <path d="${d} L${w},${h} L0,${h} Z" fill="url(#sg)"/><path d="${d}" fill="none" stroke="#E8B84B" stroke-width="2" stroke-linejoin="round"/>`;
+  el.innerHTML=`<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8B84B" stop-opacity=".28"/><stop offset="1" stop-color="#E8B84B" stop-opacity="0"/></linearGradient></defs><path d="${d} L${w},${h} L0,${h} Z" fill="url(#sg)"/><path d="${d}" fill="none" stroke="#E8B84B" stroke-width="2" stroke-linejoin="round"/>`;
 }
 
-/*──────────── Overlay para web (hero/servicios) ────────────*/
+/*──────────── Overlay a 100vw (no colapsa dentro de contenedores) ────────────*/
 export function abrirAportar(){
   estilos();
   const prev=$('sk-overlay');if(prev)prev.remove();
   const d=document.createElement('div');d.id='sk-overlay';
-  d.className='sk-ov';
-  d.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(5,7,10,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch';
-  d.innerHTML='<div style="max-width:1240px;margin:0 auto;width:100%"><div id="sk-mount" style="width:100%"></div></div>';
+  d.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9600;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:rgba(5,7,10,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)';
+  d.innerHTML=`<button id="sk-x" aria-label="Close" style="position:fixed;top:16px;right:18px;z-index:2;width:38px;height:38px;border-radius:11px;background:rgba(14,21,28,.85);border:1px solid #202b37;color:#aab6c4;font-size:16px;cursor:pointer">✕</button><div class="sk-wrap"><div id="sk-mount" style="width:100%"></div></div>`;
   document.body.appendChild(d);
+  $('sk-x').onclick=()=>d.remove();
   montarAportar($('sk-mount'));
 }
