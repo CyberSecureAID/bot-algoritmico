@@ -90,7 +90,7 @@ const MONEDAS = [
   { s: 'YFI',   a: '0x88f1A5ae2A3BF98AEAF342D26B30a79438c9142e', cg: 'yearn-finance' },
   { s: 'ALPHA', a: '0xa1faa113cbE53436Df28FF0aEe54275c13B40975', cg: 'alpha-finance' },
   { s: 'FLOKI', a: '0xfb5B838b6cfEEdC2873aB27866079AC55363D37E', cg: 'floki' },
-  { s: 'BATDG', a: '0xc748673057861a797275CD8A068AbB95A902e8de', cg: 'baby-doge-coin' },
+  { s: 'BabyDoge', a: '0xc748673057861a797275CD8A068AbB95A902e8de', cg: 'baby-doge-coin' },
   { s: 'DAI',   a: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3', cg: 'dai' },
   { s: 'XTZ',   a: '0x16939ef78684453bfDFb47825F8a5F714f12623a', cg: 'tezos' },
   { s: 'BAT',   a: '0x101d82428437127bF1608F699CD651e6Abf9766E', cg: 'basic-attention-token' }
@@ -445,4 +445,18 @@ async function pintarResumen() {
   } catch (_) {
     side.innerHTML = `<h4>Tu resumen</h4><div class="stk-empty">No se pudo leer tu posición ahora.</div>`;
   }
+}
+
+
+/*──────────── Apertura como overlay (para el hero / servicios) ────────────*/
+export function abrirAportar() {
+  estilos();
+  const prev = document.getElementById('stk-overlay'); if (prev) prev.remove();
+  const d = document.createElement('div');
+  d.id = 'stk-overlay';
+  d.style.cssText = 'position:fixed;inset:0;z-index:9600;background:#05070a;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))';
+  d.innerHTML = '<button id="stk-ov-x" aria-label="Cerrar" style="position:fixed;right:16px;top:calc(14px + env(safe-area-inset-top,0px));z-index:2;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid var(--line,#232a33);color:#cfd6df;font-size:16px;cursor:pointer">✕</button><div id="stk-mount"></div>';
+  document.body.appendChild(d);
+  document.getElementById('stk-ov-x').onclick = () => d.remove();
+  montarAportar(document.getElementById('stk-mount'));
 }
