@@ -75,7 +75,7 @@ const MONEDAS = [
   { s: 'YFI',   a: '0x88f1A5ae2A3BF98AEAF342D26B30a79438c9142e', cg: 'yearn-finance' },
   { s: 'ALPHA', a: '0xa1faa113cbE53436Df28FF0aEe54275c13B40975', cg: 'alpha-finance' },
   { s: 'FLOKI', a: '0xfb5B838b6cfEEdC2873aB27866079AC55363D37E', cg: 'floki' },
-  { s: 'BATDG', a: '0xc748673057861a797275CD8A068AbB95A902e8de', cg: 'baby-doge-coin' },
+  { s: 'BabyDoge', a: '0xc748673057861a797275CD8A068AbB95A902e8de', cg: 'baby-doge-coin' },
   { s: 'DAI',   a: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3', cg: 'dai' },
   { s: 'XTZ',   a: '0x16939ef78684453bfDFb47825F8a5F714f12623a', cg: 'tezos' },
   { s: 'BAT',   a: '0x101d82428437127bF1608F699CD651e6Abf9766E', cg: 'basic-attention-token' }
@@ -111,7 +111,7 @@ function estilos(){
   .alm .alm-head{display:flex;align-items:center;justify-content:center;position:relative;padding:16px 14px;border-bottom:1px solid var(--line)}
   .alm .alm-x{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:#7d8794;display:grid;place-items:center;font-size:15px}
   .alm .alm-h{font-weight:800;font-size:18px}
-  .alm .alm-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:13px}
+  .alm .alm-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px calc(90px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:13px}
   .alm .alm-sub{font-size:12.5px;color:var(--ink3);text-align:center;line-height:1.4}
   .alm .alm-mine{display:flex;gap:9px}
   .alm .alm-mine .m{flex:1;background:rgba(16,20,26,.62);border:1px solid var(--line);border-radius:13px;padding:12px 11px}

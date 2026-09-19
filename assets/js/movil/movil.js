@@ -81,7 +81,7 @@ async function abrir(clave, arg) {
       case 'alertas':   abrirAlerta(); break;
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
-      case 'aportar':   { const m = await import('./aportar-movil.js?v=4'); m.abrirAportarMovil(); break; }
+      case 'aportar':   { const m = await import('./aportar-movil.js?v=5'); m.abrirAportarMovil(); break; }
       case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=125'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
@@ -491,21 +491,68 @@ async function leerBalance() {
   try {
     const cuenta = wallet.cuentaActual && wallet.cuentaActual();
     if (!cuenta) return { conectado: false };
-    const tk = await import('../tokens.js?v=125');
-    const saldos = await wallet.saldosTodas(cuenta);
-    const tienen = Object.entries(saldos || {}).filter(([, v]) => Number(v) > 0);
-    if (!tienen.length) return { conectado: true, totalUSD: 0, activos: [], precios: {} };
-    const cgById = {}; Object.values(tk.MONEDAS || {}).forEach((m) => { if (m.cg) cgById[m.id] = m.cg; });
-    const ids = [...new Set(tienen.map(([id]) => cgById[id]).filter(Boolean))].join(',');
-    let precioCg = {};
-    try { const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`); if (r.ok) precioCg = await r.json(); } catch (_) {}
-    const precios = {}; const activos = []; let total = 0;
-    tienen.forEach(([id, bal]) => {
-      const cg = cgById[id];
-      const px = (id === 'USDT' || id === 'USDC' || id === 'USDTZ') ? 1 : (cg && precioCg[cg] ? precioCg[cg].usd : 0);
-      precios[id] = px; const usd = Number(bal) * px; total += usd;
-      activos.push({ id, bal: Number(bal), usd, cg });
-    });
+    const ethers = await import('../vendor/ethers-6.13.4.min.js?v=126');
+    const RPCS = ['https://bsc-dataseed.binance.org','https://bsc-dataseed1.defibit.io','https://bsc-dataseed1.ninicoin.io','https://rpc.ankr.com/bsc'];
+    const prov = new ethers.JsonRpcProvider(RPCS[Math.floor(Math.random()*RPCS.length)], 56, { staticNetwork: true });
+    const ORACULO = '0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3';
+    const oracAbi = ['function precioUSD(address) view returns (uint256)'];
+    const orac = new ethers.Contract(ORACULO, oracAbi, prov);
+    // 30 monedas del staking + WBNB (para que cuente el Wrapped BNB)
+    const LISTA = [
+      { id:'BNB',   a:'0x0000000000000000000000000000000000000000', cg:'binancecoin', nativa:true },
+      { id:'WBNB',  a:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', cg:'wbnb' },
+      { id:'USDT',  a:'0x55d398326f99059fF775485246999027B3197955', cg:'tether' },
+      { id:'USDC',  a:'0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', cg:'usd-coin' },
+      { id:'BTCB',  a:'0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', cg:'bitcoin' },
+      { id:'ETH',   a:'0x2170Ed0880ac9A755fd29B2688956BD959F933F8', cg:'ethereum' },
+      { id:'XRP',   a:'0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE', cg:'ripple' },
+      { id:'DOGE',  a:'0xbA2aE424d960c26247Dd6c32edC70B295c744C43', cg:'dogecoin' },
+      { id:'CAKE',  a:'0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', cg:'pancakeswap-token' },
+      { id:'LINK',  a:'0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD', cg:'chainlink' },
+      { id:'DOT',   a:'0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402', cg:'polkadot' },
+      { id:'TRX',   a:'0xCE7de646e7208a4Ef112cb6ed5038FA6cC6b12e3', cg:'tron' },
+      { id:'ADA',   a:'0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47', cg:'cardano' },
+      { id:'AVAX',  a:'0x1CE0c2827e2eF14D5C4f29a091d735A204794041', cg:'avalanche-2' },
+      { id:'LTC',   a:'0x4338665CBB7B2485A8855A139b75D5e34AB0DB94', cg:'litecoin' },
+      { id:'BCH',   a:'0x8fF795a6F4D97E7887C79beA79aba5cc76444aDf', cg:'bitcoin-cash' },
+      { id:'ATOM',  a:'0x0Eb3a705fc54725037CC9e008bDede697f62F335', cg:'cosmos' },
+      { id:'FIL',   a:'0x0D8Ce2A99Bb6e3B7Db580eD848240e4a0F9aE153', cg:'filecoin' },
+      { id:'NEAR',  a:'0x1Fa4a73a3F0133f0025378af00236f3aBDEE5D63', cg:'near' },
+      { id:'UNI',   a:'0xBf5140A22578168FD562DCcF235E5D43A02ce9B1', cg:'uniswap' },
+      { id:'AAVE',  a:'0xfb6115445Bff7b52FeB98650C87f44907E58f802', cg:'aave' },
+      { id:'XVS',   a:'0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63', cg:'venus' },
+      { id:'INJ',   a:'0xa2B726B1145A4773F68593CF171187d8EBe4d495', cg:'injective-protocol' },
+      { id:'SXP',   a:'0x47BEAd2563dCBf3bF2c9407fEa4dC236fAbA485A', cg:'swipe' },
+      { id:'YFI',   a:'0x88f1A5ae2A3BF98AEAF342D26B30a79438c9142e', cg:'yearn-finance' },
+      { id:'ALPHA', a:'0xa1faa113cbE53436Df28FF0aEe54275c13B40975', cg:'alpha-finance' },
+      { id:'FLOKI', a:'0xfb5B838b6cfEEdC2873aB27866079AC55363D37E', cg:'floki' },
+      { id:'BabyDoge', a:'0xc748673057861a797275CD8A068AbB95A902e8de', cg:'baby-doge-coin' },
+      { id:'DAI',   a:'0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3', cg:'dai' },
+      { id:'XTZ',   a:'0x16939ef78684453bfDFb47825F8a5F714f12623a', cg:'tezos' },
+      { id:'BAT',   a:'0x101d82428437127bF1608F699CD651e6Abf9766E', cg:'basic-attention-token' }
+    ];
+    const erc = ['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)'];
+    const activos = []; let total = 0; const precios = {};
+    await Promise.all(LISTA.map(async (m) => {
+      try {
+        let bal, dec = 18;
+        if (m.nativa) { bal = await prov.getBalance(cuenta); }
+        else { const c = new ethers.Contract(m.a, erc, prov); bal = await c.balanceOf(cuenta); try { dec = Number(await c.decimals()); } catch (_) {} }
+        if (bal === 0n) return;
+        const cant = Number(ethers.formatUnits(bal, dec));
+        if (cant <= 0) return;
+        // precio: USDT/USDC = $1; WBNB = precio de BNB; resto del oráculo
+        let px = 1;
+        if (m.id === 'USDT' || m.id === 'USDC' || m.id === 'DAI') px = 1;
+        else {
+          const dirPrecio = m.id === 'WBNB' ? '0x0000000000000000000000000000000000000000' : m.a;
+          try { const p = await orac.precioUSD(dirPrecio); px = Number(ethers.formatUnits(p, 18)); } catch (_) { px = 0; }
+        }
+        precios[m.id] = px;
+        const usd = cant * px; total += usd;
+        activos.push({ id: m.id, bal: cant, usd, cg: m.cg });
+      } catch (_) {}
+    }));
     activos.sort((a, b) => b.usd - a.usd);
     return { conectado: true, totalUSD: total, activos, precios };
   } catch (_) { return { conectado: false }; }
