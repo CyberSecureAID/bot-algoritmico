@@ -125,7 +125,7 @@ const PUERTAS = {
   tools:   async (tid) => (await import(J + 'tools.js?v=128')).abrirTools(tid),
   academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
-  aportar: async () => (await import(J + 'aportar.js?v=3')).abrirAportar(),
+  aportar: async () => (await import(J + 'aportar.js?v=4')).abrirAportar(),
   perfil:  async () => (await import(J + 'perfil.js?v=125')).abrirPerfil()
 };
 
