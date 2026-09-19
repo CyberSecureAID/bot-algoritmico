@@ -82,6 +82,7 @@ function estilos(){
   if(_css)return;_css=true;
   const s=document.createElement('style');s.textContent=`
   #sk,#sk *{box-sizing:border-box}
+  #sk-overlay::backdrop{background:rgba(5,7,10,.4)}
   .sk-wrap{box-sizing:border-box;max-width:1320px;margin:0 auto;width:100%;padding:64px 20px 40px}
   @media(max-width:620px){ .sk-wrap{padding:58px 12px 34px} }
   #sk{--card:#0e151ccc;--card2:#0b1118cc;--line:#202b37;--line2:#2c3946;--gold:#E8B84B;--goldd:#c79426;--ink:#f3f6fa;--ink2:#aab6c4;--ink3:#6b7684;--up:#34d399;--dn:#f87171;
@@ -307,11 +308,16 @@ function spark(){
 /*──────────── Overlay a 100vw (no colapsa dentro de contenedores) ────────────*/
 export function abrirAportar(){
   estilos();
-  const prev=$('sk-overlay');if(prev)prev.remove();
-  const d=document.createElement('div');d.id='sk-overlay';
-  d.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9600;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:rgba(5,7,10,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)';
-  d.innerHTML=`<button id="sk-x" aria-label="Close" style="position:fixed;top:16px;right:18px;z-index:2;width:38px;height:38px;border-radius:11px;background:rgba(14,21,28,.85);border:1px solid #202b37;color:#aab6c4;font-size:16px;cursor:pointer">✕</button><div class="sk-wrap"><div id="sk-mount" style="width:100%"></div></div>`;
-  document.body.appendChild(d);
-  $('sk-x').onclick=()=>d.remove();
-  montarAportar($('sk-mount'));
+  const prev=document.getElementById('sk-overlay');if(prev)prev.remove();
+  // <dialog> con showModal() escapa a nivel de ventana SIEMPRE, aunque un
+  // ancestro tenga transform/filter (que atraparía a un position:fixed normal).
+  const dg=document.createElement('dialog');dg.id='sk-overlay';
+  dg.style.cssText='margin:0;padding:0;border:0;max-width:100vw;max-height:100vh;width:100vw;height:100vh;background:rgba(5,7,10,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;color:inherit';
+  dg.innerHTML=`<button id="sk-x" aria-label="Close" style="position:fixed;top:16px;right:18px;z-index:2;width:38px;height:38px;border-radius:11px;background:rgba(14,21,28,.9);border:1px solid #202b37;color:#aab6c4;font-size:16px;cursor:pointer">✕</button><div class="sk-wrap"><div id="sk-mount" style="width:100%"></div></div>`;
+  document.body.appendChild(dg);
+  if(dg.showModal) dg.showModal(); else dg.setAttribute('open','');
+  const cerrar=()=>{ try{dg.close();}catch(_){} dg.remove(); };
+  document.getElementById('sk-x').onclick=cerrar;
+  dg.addEventListener('cancel',(e)=>{e.preventDefault();cerrar();}); // ESC cierra
+  montarAportar(document.getElementById('sk-mount'));
 }
