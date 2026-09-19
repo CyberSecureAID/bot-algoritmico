@@ -77,12 +77,15 @@ async function cargarLogos(){try{const r=await fetch(`https://api.coingecko.com/
 function estilos(){
   if(_css)return;_css=true;
   const s=document.createElement('style');s.textContent=`
-  #sk{--bg:#070b10;--card:#0d141b;--card2:#0b1118;--line:#1b2530;--line2:#2a3742;--gold:#E8B84B;--goldd:#c79426;--ink:#f3f6fa;--ink2:#aab6c4;--ink3:#69788a;--up:#34d399;--dn:#f87171;
+  #sk,#sk *{box-sizing:border-box}
+  #sk{width:100%;max-width:100%;overflow-x:hidden;--bg:#070b10;--card:#0d141b;--card2:#0b1118;--line:#1b2530;--line2:#2a3742;--gold:#E8B84B;--goldd:#c79426;--ink:#f3f6fa;--ink2:#aab6c4;--ink3:#69788a;--up:#34d399;--dn:#f87171;
     color:var(--ink);font-feature-settings:'tnum'}
   #sk .mono{font-variant-numeric:tabular-nums}
   #sk .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 16px}
   #sk .back{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);color:var(--ink2);border-radius:11px;padding:9px 14px;font-weight:600;font-size:13px;cursor:pointer}
-  #sk .who{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:8px 12px;font-size:13px;font-weight:600;color:var(--ink)}
+  .sk-ov{padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(40px + env(safe-area-inset-bottom,0px))}
+  @media(max-width:640px){ .sk-ov{padding:calc(12px + env(safe-area-inset-top,0px)) 10px calc(30px + env(safe-area-inset-bottom,0px))} }
+  #sk .who{position:absolute;top:22px;right:22px;display:flex;align-items:center;gap:8px;background:rgba(7,11,16,.6);border:1px solid var(--line);border-radius:11px;padding:8px 12px;font-size:13px;font-weight:600;color:var(--ink);z-index:2}
   #sk .who .dot{width:8px;height:8px;border-radius:50%;background:var(--up)}
   #sk .banner{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:20px;padding:30px 28px;margin-bottom:16px;background:
      radial-gradient(120% 160% at 85% 30%, rgba(232,184,75,.16), transparent 55%),
@@ -99,13 +102,16 @@ function estilos(){
   #sk .stat .ic{width:34px;height:34px;border-radius:10px;background:rgba(232,184,75,.1);display:grid;place-items:center;color:var(--gold);flex:none}
   #sk .stat .v{font-size:22px;font-weight:800;margin-top:12px;letter-spacing:-.02em}
   #sk .stat .d{font-size:11.5px;color:var(--up);margin-top:5px}
-  #sk .grid{display:grid;grid-template-columns:1fr 372px;gap:16px;align-items:start}
-  #sk .panel{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:20px;padding:22px}
-  #sk .tabs{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:22px}
+  #sk .grid{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
+  #sk .grid>*{min-width:0}
+  #sk .panel{min-width:0;overflow:hidden;background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:20px;padding:22px}
+  #sk #sk-body{max-width:100%}
+  #sk #sk-body>*{max-width:100%}
+  #sk .tabs{display:flex;max-width:100%;background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:22px}
   #sk .tabs button{flex:1;padding:11px;border:0;background:none;border-radius:9px;color:var(--ink3);font-weight:700;font-size:14px;cursor:pointer;transition:.15s}
   #sk .tabs button.on{background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,var(--goldd));color:#241900}
   #sk .lbl{font-size:12px;color:var(--ink3);margin:0 2px 9px}
-  #sk .row2{display:grid;grid-template-columns:200px 1fr;gap:14px;margin-bottom:22px}
+  #sk .row2{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;margin-bottom:22px} #sk .row2>*{min-width:0}
   #sk .sel{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line2);border-radius:13px;padding:13px 15px;cursor:pointer;transition:.15s}
   #sk .sel:hover{border-color:var(--gold)} #sk .sel b{font-weight:700;font-size:15px} #sk .sel .chev{margin-left:auto;color:var(--ink3);font-size:11px}
   #sk .amt{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line2);border-radius:13px;padding:0 15px}
@@ -148,8 +154,8 @@ function estilos(){
   #sk .dep .i2{flex:1;min-width:0} #sk .dep .i2 b{font-size:15px;font-variant-numeric:tabular-nums} #sk .dep .i2 span{display:block;font-size:11px;color:var(--ink3);margin-top:2px}
   #sk .dep button{padding:9px 15px;border:1px solid var(--line2);background:none;color:var(--ink);border-radius:10px;font-weight:700;font-size:13px;cursor:pointer} #sk .dep button.rdy{border-color:var(--gold);color:var(--gold)} #sk .dep button:disabled{opacity:.35}
   /* responsive: móvil apila y stats 2x2 */
-  @media(max-width:960px){ #sk .grid{grid-template-columns:1fr} #sk .banner h1{font-size:32px} }
-  @media(max-width:640px){ #sk .stats{grid-template-columns:repeat(2,1fr)} #sk .plans{grid-template-columns:repeat(2,1fr)} #sk .row2{grid-template-columns:1fr;gap:10px} #sk .opts{grid-template-columns:1fr} #sk .banner{padding:24px 20px} #sk .banner h1{font-size:28px} }
+  @media(max-width:960px){ #sk .grid{grid-template-columns:minmax(0,1fr)} #sk .banner h1{font-size:32px} }
+  @media(max-width:640px){ #sk .stats{grid-template-columns:repeat(2,1fr)} #sk .plans{grid-template-columns:repeat(2,1fr)} #sk .row2{grid-template-columns:minmax(0,1fr);gap:10px} #sk .row2>*{min-width:0} #sk .opts{grid-template-columns:1fr} #sk .banner{padding:24px 20px} #sk .banner h1{font-size:28px} }
   #sk-pick{position:fixed;inset:0;z-index:9700;display:none;align-items:center;justify-content:center;background:rgba(3,5,8,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:18px}
   #sk-pick .bx{width:100%;max-width:430px;max-height:78vh;background:#0d141b;border:1px solid #2a3742;border-radius:18px;padding:16px;display:flex;flex-direction:column}
   #sk-pick h4{font-size:16px;margin:2px 2px 6px} #sk-pick .grp{font-size:11px;color:#69788a;margin:12px 2px 4px;text-transform:uppercase;letter-spacing:.06em} #sk-pick .list{overflow-y:auto}
@@ -163,28 +169,27 @@ const IC={
   coins:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>',
   users:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg>',
   pct:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',
-  lock:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+  lock:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  gift:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+  trend:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>'
 };
 
 export function montarAportar(cont){
   estilos();
   cont.innerHTML=`
   <div id="sk">
-    <div class="topbar">
-      <button class="back" id="sk-back">← Back</button>
-      <div class="who" id="sk-who"><span class="dot"></span><span id="sk-who-tx">Not connected</span></div>
-    </div>
     <div class="banner">
       <span class="tag"></span>
+      <div class="who" id="sk-who"><span class="dot"></span><span id="sk-who-tx">Not connected</span></div>
       <h1>Staking</h1>
       <div class="lead">Lock your assets, earn passive income.</div>
       <p>Provide liquidity and earn a share of everything the platform generates. Your capital rests in the coin you choose and is returned in that same coin.</p>
     </div>
     <div class="stats">
-      <div class="stat"><div class="h"><span class="ic">${IC.coins}</span>Total staked</div><div class="v mono" id="sk-tvl">—</div><div class="d" id="sk-tvld">Platform-wide</div></div>
-      <div class="stat"><div class="h"><span class="ic">${IC.users}</span>Active stakers</div><div class="v mono" id="sk-users">—</div><div class="d">Providers</div></div>
-      <div class="stat"><div class="h"><span class="ic">${IC.pct}</span>Avg. APR</div><div class="v" id="sk-apr">—</div><div class="d">Variable</div></div>
-      <div class="stat"><div class="h"><span class="ic">${IC.lock}</span>Value locked</div><div class="v mono" id="sk-locked">—</div><div class="d">In contracts</div></div>
+      <div class="stat"><div class="h"><span class="ic">${IC.coins}</span>Your capital</div><div class="v mono" id="sk-mycap">$0.00</div><div class="d" id="sk-mycapd">Staked by you</div></div>
+      <div class="stat"><div class="h"><span class="ic">${IC.gift}</span>Accrued rewards</div><div class="v mono" id="sk-myrew">$0.00</div><div class="d">Ready to claim</div></div>
+      <div class="stat"><div class="h"><span class="ic">${IC.trend}</span>Est. in 1 year</div><div class="v mono" id="sk-my1y">—</div><div class="d">At current activity</div></div>
+      <div class="stat"><div class="h"><span class="ic">${IC.pct}</span>Est. APR</div><div class="v" id="sk-apr">Variable</div><div class="d">Based on activity</div></div>
     </div>
     <div class="grid">
       <div class="panel">
@@ -204,7 +209,6 @@ export function montarAportar(cont){
       </div>
     </div>
   </div>`;
-  $('sk-back').onclick=()=>{ const ov=document.getElementById('sk-overlay'); if(ov) ov.remove(); const om=document.getElementById('alm-stk'); if(om) om.remove(); };
   cont.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{_modo=b.dataset.m;cont.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));body();});
   body(); global(); pos(); spark(); who();
   cargarLogos().then(()=>{body();pos();});
@@ -284,14 +288,17 @@ async function deps(){
 async function unstake(id,bt){bt.disabled=true;bt.textContent='Sign…';try{const stk=new ethers.Contract(STAKING,ABI_STK,await firmante());const tx=await stk.unstake(id);await tx.wait();deps();pos();}catch(_){bt.disabled=false;bt.textContent='Unstake';}}
 
 async function global(){
+  // stats del USUARIO (no datos privados de la plataforma)
+  if(!cuenta()){ ['sk-mycap','sk-myrew'].forEach(id=>{if($(id))$(id).textContent='$0.00';}); if($('sk-my1y'))$('sk-my1y').textContent='—'; return; }
   try{
-    const p=new ethers.Contract(PANEL,ABI_PANEL,lector());const g=await p.global();
-    const tvl=Number(ethers.formatUnits(g.tvlUSD,18));
-    if($('sk-tvl'))$('sk-tvl').textContent=usd(tvl);
-    if($('sk-users'))$('sk-users').textContent=Number(g.numStakers).toLocaleString('en-US');
-    if($('sk-locked'))$('sk-locked').textContent=usd(tvl);
-    if($('sk-apr'))$('sk-apr').textContent=tvl>0?'—':'New';
-  }catch(_){['sk-tvl','sk-locked'].forEach(id=>{if($(id))$(id).textContent='$0.00';});if($('sk-users'))$('sk-users').textContent='0';if($('sk-apr'))$('sk-apr').textContent='New';}
+    const p=new ethers.Contract(PANEL,ABI_PANEL,lector());
+    const posn=await p.posicionUsuario(cuenta());const rec=await p.recompensasDe(cuenta());
+    const real=Number(ethers.formatUnits(posn.pesoReal,18));
+    const rew=rec.filter(r=>r.pendiente>0n).reduce((a,r)=>a+Number(ethers.formatUnits(r.pendiente,18)),0);
+    if($('sk-mycap'))$('sk-mycap').textContent=usd(real);
+    if($('sk-myrew'))$('sk-myrew').textContent=usd(rew);
+    if($('sk-my1y'))$('sk-my1y').textContent = real>0 ? '—' : '—';
+  }catch(_){}
 }
 async function pos(){
   const s=$('sk-pos');if(!s)return;
@@ -307,7 +314,7 @@ async function pos(){
     const pendUSD=pend.reduce((a,r)=>a+Number(ethers.formatUnits(r.pendiente,18)),0);
     s.innerHTML=`
       <div class="hd"><h3>Your position</h3></div>
-      <div class="two"><div><div class="k">Total staked</div><div class="v mono">${usd(real)}</div></div><div style="text-align:right"><div class="k">Value now</div><div class="v g mono">${usd(val)}</div></div></div>
+      <div class="two"><div><div class="k">Your stake</div><div class="v mono">${usd(real)}</div></div><div style="text-align:right"><div class="k">Value now</div><div class="v g mono">${usd(val)}</div></div></div>
       <div class="rw"><div><div class="k">Accrued rewards</div><div class="v mono">${usd(pendUSD)}</div></div>${pend.length?`<button class="claim" id="sk-claim">Claim</button>`:''}</div>
       <div class="rw" style="border-top:0;padding-top:8px"><div class="k">Pool share</div><div class="v mono" style="font-size:13px">${pct.toFixed(4)}%</div></div>`;
     const cl=$('sk-claim');if(cl)cl.onclick=async()=>{cl.disabled=true;cl.textContent='Sign…';try{const stk=new ethers.Contract(STAKING,ABI_STK,await firmante());const tx=await stk.reclamarTodo();await tx.wait();pos();}catch(_){cl.disabled=false;cl.textContent='Claim';}};
@@ -328,8 +335,9 @@ export function abrirAportar(){
   estilos();
   const prev=$('sk-overlay');if(prev)prev.remove();
   const d=document.createElement('div');d.id='sk-overlay';
-  d.style.cssText='position:fixed;inset:0;z-index:9600;background:#070b10;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(40px + env(safe-area-inset-bottom,0px))';
-  d.innerHTML='<div style="max-width:1180px;margin:0 auto"><div id="sk-mount"></div></div>';
+  d.className='sk-ov';
+  d.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(5,7,10,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch';
+  d.innerHTML='<div style="max-width:1240px;margin:0 auto;width:100%"><div id="sk-mount" style="width:100%"></div></div>';
   document.body.appendChild(d);
   montarAportar($('sk-mount'));
 }
