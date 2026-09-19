@@ -390,3 +390,74 @@ se liquida, y sale de lo que ese usuario ya perdió.
 - **Staking (proxy):** _por desplegar_
 - **PanelStaking:** _por desplegar_
 - **Futuros (proxy):** _tras completar ejecución_
+
+---
+
+## 17. ACTUALIZACIÓN — Despliegue, interconexión y 30 monedas (sesión actual)
+
+### 17.1. Contratos desplegados en BSC mainnet
+
+| Contrato | Proxy (usar esta) | Implementación |
+|---|---|---|
+| **OraculoPrecios** | `0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3` | `0x0150b62a2355AFc036612B890cbE00F5EcdB8CC7` |
+| **Staking** | `0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4` | `0xB96675917b784987F06327a629398ff8637BFc64` |
+| **PanelStaking** (sin proxy) | `0xE620D5BD60F70CCdFa4493F3a5B794d1BBEbf8d2` | — |
+| **Tarifas V2** (implementación nueva del proxy existente) | proxy `0x068729…FD7C` | impl `0x04341ADf9C371b2cbB504F6722fF2e4Cce470824` |
+
+**Tarifas V2:** upgrade PROPUESTO (protección 48 h). Se activa con `upgradeToAndCall`
+a partir del **domingo 20 sep 2026, 1:47 a.m.** en el proxy de Tarifas.
+
+### 17.2. Interconexión hecha
+
+- Staking → `setOraculo(0xf51b…)`, `setTarifas(0x0687…FD7C)`
+- OraculoPrecios → `setTarifas(0x0687…FD7C)`
+- **Pendiente:** autorizar Futuros en Staking (`autorizarContrato`) cuando Futuros se
+  despliegue.
+
+### 17.3. Las 30 monedas configuradas (Oráculo + permitidas en Staking)
+
+Todas verificadas en BscScan. En el Oráculo con fuente PancakeSwap (`2`) salvo BNB
+(Chainlink, feed `0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE`) y USDT ($1 automático).
+
+USDT, BTCB, ETH, BNB, USDC, XRP, DOGE, CAKE, LINK, DOT, TRX, ADA
+(`0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47`), AVAX, LTC, BCH, ATOM, FIL, NEAR, UNI,
+AAVE, XVS, INJ, SXP, YFI, ALPHA, FLOKI, BabyDoge, DAI, XTZ, BAT.
+
+> Regla de seguridad aplicada: solo monedas con liquidez profunda y precio confiable.
+> Se descartaron ~15 shitcoins sin liquidez (precio manipulable = agujero de seguridad).
+> Para añadir tokens nuevos: verificar SIEMPRE token + liquidez antes; en un próximo
+> upgrade se añadirá una función batch para configurar muchos a la vez.
+
+### 17.4. Frontend de Staking (web + móvil) — conectado a los contratos
+
+Reescritos y conectados a los contratos reales:
+- `assets/js/aportar.js` (web)
+- `assets/js/movil/aportar-movil.js` (móvil)
+
+Incluyen: selector de las 30 monedas con logo y precio en vivo (oráculo), valor en USD al
+teclear, plazos (30d/3m/6m/1año), opción **holdear en tu moneda / conservar en USDT** con
+explicación, **stake** y **unstake** reales, panel del usuario (capital total / en uso
+trabajando / disponible / ganancia por valorización / participación % / recompensas por
+cobrar), y la sección "cómo generan ingresos tus fondos". Mantiene la estructura anterior
+(tabs, plazos, aviso honesto) enriquecida.
+
+**Nota:** aportar (stake) ya funciona. Las recompensas mostrarán 0 hasta que se active
+Tarifas V2 y se despliegue Futuros (esperado).
+
+### 17.5. Keeper de Futuros (decidido, para implementar con Futuros)
+
+- **"Cualquiera puede liquidar":** función pública con **propina porcentual del margen**
+  (editable, ~0,5 % = céntimos), que solo sale del margen ya perdido en una liquidación.
+  Bots externos que vigilan BSC lo ejecutan solos; coste $0 para la plataforma.
+- **Cloudflare Worker de pago (~$5/mes):** respaldo para órdenes limit y liquidaciones
+  mientras hay poco volumen.
+- **Chainlink Automation / Gelato:** respaldo descentralizado más adelante.
+
+### 17.6. Pendientes inmediatos
+
+1. Domingo 20 (1:47 a.m.): activar upgrade de Tarifas V2 (`upgradeToAndCall`).
+2. Completar ejecución de Futuros en PancakeSwap + propina de liquidación, y testear.
+3. Autorizar Futuros en Staking al desplegarlo.
+4. Subir el frontend nuevo de Staking (web + móvil).
+5. Configurar en Tarifas V2, desde el panel admin: stakingBps 20 %, stakingFuturosBps
+   50 %, unstakeBps 1 %, y `setTesoreriaStaking(0xdC48…)`.
