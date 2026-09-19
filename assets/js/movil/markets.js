@@ -7,7 +7,7 @@
    cacheado 5 min). Binance de respaldo para precio. Todo defensivo. */
 
 import { IC } from './iconos.js?v=1';
-import { logoDe } from './fmt.js?v=1';
+import { logoDe } from './fmt.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

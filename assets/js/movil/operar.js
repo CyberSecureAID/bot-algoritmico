@@ -10,7 +10,7 @@ import { IC } from './iconos.js?v=1';
 import { t } from '../idioma.js?v=163';
 import { abrirPicker } from './picker.js?v=1';
 import { abrirAlerta } from './alerta.js?v=1';
-import { precio as fmtPrecio, money, cantidad, logoDe } from './fmt.js?v=1';
+import { precio as fmtPrecio, money, cantidad, logoDe } from './fmt.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

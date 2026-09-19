@@ -12,7 +12,7 @@ const TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockcha
 export const LOGOS = {
   BTC:  `${TW}/bitcoin/info/logo.png`,
   ETH:  `${TW}/ethereum/info/logo.png`,
-  BNB:  `${TW}/smartchain/info/logo.png`,
+  BNB:  'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png',
   WBNB: `${TW}/smartchain/assets/0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c/logo.png`,
   USDT: `${TW}/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png`,
   USDC: `${TW}/smartchain/assets/0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d/logo.png`,
