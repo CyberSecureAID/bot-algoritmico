@@ -81,7 +81,7 @@ async function abrir(clave, arg) {
       case 'alertas':   abrirAlerta(); break;
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
-      case 'aportar':   { const m = await import('./aportar-movil.js?v=5'); m.abrirAportarMovil(); break; }
+      case 'aportar':   { const m = await import('./aportar-movil.js?v=6'); m.abrirAportarMovil(); break; }
       case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=125'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
@@ -491,18 +491,15 @@ async function leerBalance() {
   try {
     const cuenta = wallet.cuentaActual && wallet.cuentaActual();
     if (!cuenta) return { conectado: false };
-    const ethers = await import('../vendor/ethers-6.13.4.min.js?v=126');
+    const ethers = await import('../vendor/ethers-6.13.4.min.js?v=127');
     const RPCS = ['https://bsc-dataseed.binance.org','https://bsc-dataseed1.defibit.io','https://bsc-dataseed1.ninicoin.io','https://rpc.ankr.com/bsc'];
     const prov = new ethers.JsonRpcProvider(RPCS[Math.floor(Math.random()*RPCS.length)], 56, { staticNetwork: true });
-    const ORACULO = '0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3';
-    const oracAbi = ['function precioUSD(address) view returns (uint256)'];
-    const orac = new ethers.Contract(ORACULO, oracAbi, prov);
-    // 30 monedas del staking + WBNB (para que cuente el Wrapped BNB)
     const LISTA = [
-      { id:'BNB',   a:'0x0000000000000000000000000000000000000000', cg:'binancecoin', nativa:true },
-      { id:'WBNB',  a:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', cg:'wbnb' },
-      { id:'USDT',  a:'0x55d398326f99059fF775485246999027B3197955', cg:'tether' },
-      { id:'USDC',  a:'0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', cg:'usd-coin' },
+      { id:'BNB',   a:null, cg:'binancecoin', nativa:true },
+      { id:'WBNB',  a:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', cg:'binancecoin' },
+      { id:'USDT',  a:'0x55d398326f99059fF775485246999027B3197955', cg:'tether', px:1 },
+      { id:'USDC',  a:'0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', cg:'usd-coin', px:1 },
+      { id:'DAI',   a:'0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3', cg:'dai', px:1 },
       { id:'BTCB',  a:'0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', cg:'bitcoin' },
       { id:'ETH',   a:'0x2170Ed0880ac9A755fd29B2688956BD959F933F8', cg:'ethereum' },
       { id:'XRP',   a:'0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE', cg:'ripple' },
@@ -527,32 +524,41 @@ async function leerBalance() {
       { id:'ALPHA', a:'0xa1faa113cbE53436Df28FF0aEe54275c13B40975', cg:'alpha-finance' },
       { id:'FLOKI', a:'0xfb5B838b6cfEEdC2873aB27866079AC55363D37E', cg:'floki' },
       { id:'BabyDoge', a:'0xc748673057861a797275CD8A068AbB95A902e8de', cg:'baby-doge-coin' },
-      { id:'DAI',   a:'0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3', cg:'dai' },
       { id:'XTZ',   a:'0x16939ef78684453bfDFb47825F8a5F714f12623a', cg:'tezos' },
       { id:'BAT',   a:'0x101d82428437127bF1608F699CD651e6Abf9766E', cg:'basic-attention-token' }
     ];
     const erc = ['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)'];
-    const activos = []; let total = 0; const precios = {};
-    await Promise.all(LISTA.map(async (m) => {
-      try {
-        let bal, dec = 18;
-        if (m.nativa) { bal = await prov.getBalance(cuenta); }
-        else { const c = new ethers.Contract(m.a, erc, prov); bal = await c.balanceOf(cuenta); try { dec = Number(await c.decimals()); } catch (_) {} }
-        if (bal === 0n) return;
-        const cant = Number(ethers.formatUnits(bal, dec));
-        if (cant <= 0) return;
-        // precio: USDT/USDC = $1; WBNB = precio de BNB; resto del oráculo
-        let px = 1;
-        if (m.id === 'USDT' || m.id === 'USDC' || m.id === 'DAI') px = 1;
-        else {
-          const dirPrecio = m.id === 'WBNB' ? '0x0000000000000000000000000000000000000000' : m.a;
-          try { const p = await orac.precioUSD(dirPrecio); px = Number(ethers.formatUnits(p, 18)); } catch (_) { px = 0; }
-        }
-        precios[m.id] = px;
-        const usd = cant * px; total += usd;
-        activos.push({ id: m.id, bal: cant, usd, cg: m.cg });
-      } catch (_) {}
-    }));
+    // 1) SALDOS on-chain, en lotes de 5 para no saturar el RPC
+    const conSaldo = [];
+    for (let i = 0; i < LISTA.length; i += 5) {
+      const lote = LISTA.slice(i, i + 5);
+      const res = await Promise.all(lote.map(async (m) => {
+        try {
+          let bal, dec = 18;
+          if (m.nativa) bal = await prov.getBalance(cuenta);
+          else { const c = new ethers.Contract(m.a, erc, prov); bal = await c.balanceOf(cuenta); try { dec = Number(await c.decimals()); } catch (_) {} }
+          if (!bal || bal === 0n) return null;
+          const cant = Number(ethers.formatUnits(bal, dec));
+          return cant > 0 ? { ...m, cant } : null;
+        } catch (_) { return null; }
+      }));
+      res.forEach((x) => { if (x) conSaldo.push(x); });
+    }
+    if (!conSaldo.length) return { conectado: true, totalUSD: 0, activos: [], precios: {} };
+    // 2) PRECIOS: CoinGecko en 1 sola llamada (rápido y fiable para el valor en USD)
+    let cg = {};
+    try {
+      const ids = [...new Set(conSaldo.map((m) => m.cg))].join(',');
+      const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+      if (r.ok) cg = await r.json();
+    } catch (_) {}
+    const precios = {}; const activos = []; let total = 0;
+    conSaldo.forEach((m) => {
+      let px = m.px != null ? m.px : (cg[m.cg] && cg[m.cg].usd ? cg[m.cg].usd : 0);
+      precios[m.id] = px;
+      const usd = m.cant * px; total += usd;
+      activos.push({ id: m.id, bal: m.cant, usd, cg: m.cg });
+    });
     activos.sort((a, b) => b.usd - a.usd);
     return { conectado: true, totalUSD: total, activos, precios };
   } catch (_) { return { conectado: false }; }
