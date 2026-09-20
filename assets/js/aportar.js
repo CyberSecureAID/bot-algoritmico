@@ -98,7 +98,7 @@ function estilos(){
   @media(max-width:820px){ #sk .R{grid-template-columns:1fr} }
   #sk .banner{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;padding:22px 24px;
     background:radial-gradient(120% 150% at 88% 40%, rgba(232,184,75,.18), transparent 55%), linear-gradient(120deg,#111a25dd,#0b111add)}
-  #sk .banner .bgimg{position:absolute;right:0;top:0;bottom:0;width:60%;background-image:url('assets/portada/img/staking-coin.webp');background-size:cover;background-position:center right;opacity:.9;-webkit-mask-image:linear-gradient(90deg,transparent,#000 45%);mask-image:linear-gradient(90deg,transparent,#000 45%);pointer-events:none}
+  #sk .banner .bgimg{position:absolute;right:0;top:0;bottom:0;width:52%;background-image:url('assets/portada/img/staking-coin.webp');background-size:cover;background-position:center;opacity:1;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 35%);mask-image:linear-gradient(90deg,transparent 0,#000 35%);pointer-events:none}
   @media(max-width:620px){ #sk .banner .bgimg{width:60%;opacity:.35} }
   #sk .banner .tag{position:absolute;left:0;top:22px;width:5px;height:40px;background:linear-gradient(180deg,#f7db8d,var(--gold));border-radius:3px}
   #sk .banner h1{font-family:var(--display,inherit);font-weight:800;font-size:30px;letter-spacing:-.03em;margin:0 0 5px}
@@ -157,7 +157,7 @@ function estilos(){
   #sk .mv .ma{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--up)}
   #sk .bnrtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
   @media(max-width:620px){ #sk .bnrtop{flex-direction:column-reverse;align-items:flex-start;gap:10px} #sk .bnrtop .who{align-self:flex-start} }
-  #sk .howbtn{background:rgba(232,184,75,.1);border:1px solid var(--gold);color:var(--gold);border-radius:10px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer}
+  #sk .howbtn{background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,var(--goldd));border:0;color:#241900;border-radius:10px;padding:8px 15px;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(232,184,75,.25)}
   #sk .who{display:inline-flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12px;font-weight:600}
   #sk .who .dot{width:7px;height:7px;border-radius:50%;background:var(--up)}
   #sk .ibtn{width:15px;height:15px;border-radius:50%;border:1px solid rgba(150,165,180,.28);background:none;color:rgba(150,165,180,.45);font-size:9px;font-style:italic;font-weight:700;cursor:pointer;line-height:1;padding:0;margin-left:5px;vertical-align:middle;opacity:.7}
@@ -190,19 +190,27 @@ function estilos(){
 
 
 const COMO_TEXTO = [
-  '<b>Where do the returns come from, and is my money safe?</b>',
+  '<b>How our staking works, and why your capital is safe</b>',
   '',
-  'Your money is never idle and is never at risk of being lost. Here is exactly how it works, in plain words.',
+  'Most platforms pair two coins and pay you from trading fees on that pair. We work differently. Here your capital is the liquidity that powers our Futures market, and that is where the returns come from. Read this carefully, because it explains exactly where every dollar you earn comes from and why you can never lose your deposit.',
   '',
-  'Your capital is the liquidity that powers the platform\'s Futures. When a trader opens a leveraged position, the platform borrows liquidity from the pool to back it. If the trader goes long (betting the price rises), that liquidity buys the coin. If the trader goes short (betting the price falls), the pool lends the coin and it is sold right away. In both cases the trader\'s gain or loss comes purely from the market price moving.',
+  '<b>What happens when you stake</b>',
+  'You deposit any coin you want. It rests in a public, verified contract that only you control with your signature. No one on the platform can move it. When you withdraw at the end of your lock period, you receive the exact same coin and amount you put in, plus everything you earned.',
   '',
-  '<b>Why you never lose your capital.</b> If a trader wins, their profit comes from the market, not from you. If a trader loses, their own margin tops up exactly what the loan lost. So your capital always returns whole, in the very same coin you deposited. If you stake one Bitcoin, you get one Bitcoin back, plus what you earned.',
+  '<b>How a trader uses your liquidity (LONG)</b>',
+  'Imagine a trader opens a long position with 10 dollars at 100x leverage. That is 1,000 dollars of exposure. The platform borrows 1,000 dollars of liquidity from the pool and buys the coin at the entry price. That purchased coin is the backing of the position. If the price rises 1 percent, the position is worth 1,010 dollars: the 1,000 returns to the pool and the trader keeps 10 dollars of profit, which came from the market rising, not from anyone else. If the price falls, the trader loses their own 10 dollars first, and that loss tops up exactly what the loan lost, so the pool is made whole. When the loss reaches the trader margin, the position is liquidated and closed.',
   '',
-  '<b>How you earn.</b> On every position that opens and closes, and on the funding charged while a position stays open, the fee is split fifty fifty between the people who provide liquidity and the platform. When a position gets liquidated, seventy five percent tops up the liquidity that was used and the remaining twenty five percent is also split fifty fifty.',
+  '<b>How a SHORT works</b>',
+  'A short is the mirror image, and this is the key detail: a short is backed by the coin itself, not by USDT. The pool lends the coin and it is sold immediately at the entry price. If the price falls, the coin is bought back cheaper to return it to the pool, and the difference is the trader profit. If the price rises, the trader own margin covers the difference. Either way the pool gets its coin back in full. This is why the coins people stake decide what can be traded: to allow shorts of a coin, that coin must exist in the pool.',
   '',
-  '<b>How much.</b> Everyone who stakes receives twenty percent of everything the whole platform generates (swaps, P2P, bots, and more), plus fifty percent of everything Futures generates. It is all shared in proportion to how much each person provides. Someone who stakes one million dollars earns a million times more than someone who stakes one dollar, exactly in proportion.',
+  '<b>Why you never lose your capital</b>',
+  'In both directions, a trader profit comes from the market moving, and a trader loss tops up the loan. Leverage is always kept proportional to the available liquidity, so a trader maximum loss can never exceed what the loan lost. Your principal is always returned whole, in the same coin.',
   '',
-  'This is why an investor does not need a traditional trading pair to earn here: the yield comes from real platform activity, paid in the same coin you provided, with your principal always protected.'
+  '<b>How much you earn</b>',
+  'Every position that opens and closes pays a fee, and while a position stays open it pays a funding fee. All of these are split fifty fifty between the people who provide liquidity and the platform. When a position is liquidated, seventy five percent tops up the liquidity used and the remaining twenty five percent is also split fifty fifty. On top of that, everyone who stakes receives twenty percent of everything the whole platform generates across every service, plus fifty percent of everything Futures generates. It is all shared in proportion to how much each person provides: someone who stakes one million earns a million times more than someone who stakes one dollar, to the cent.',
+  '',
+  '<b>And if the price of your coin moves</b>',
+  'You choose how your capital rests. Keep it in your coin and you also gain if that coin rises in price (shown as price gain), or convert it to USDT to stay stable with no price risk. Your staking rewards are earned either way.'
 ].join('<br>');
 const TIPS={
   asset:'Choose which coin you want to stake. The left button holds the main coins (BNB, BTC, ETH and more). The right button holds stablecoins (USDT, USDC, DAI). You can stake any of them.',
