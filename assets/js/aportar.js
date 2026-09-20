@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════════════
-   aportar.js — Staking. Layout de 2 columnas (72/28) que llena la pantalla,
+   aportar.js. Staking. Layout de 2 columnas (72/28) que llena la pantalla,
    según el mockup del owner. Cabe sin scroll vertical en desktop.
    Izquierda: banner + stats + panel de stake. Derecha: posición + gráfica +
    actividad. En inglés. Sin sidebar/premium. Overlay a 100vw (no se colapsa).
@@ -120,11 +120,11 @@ function estilos(){
   #sk .row2{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:12px;margin-bottom:6px}
   #sk .row2>*{min-width:0}
   #sk .asset2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  #sk .a2{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:11px 12px;cursor:pointer;color:var(--ink)}
+  #sk .a2{display:flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:0 11px;min-height:46px;cursor:pointer;color:var(--ink)}
   #sk .a2.on{border-color:var(--gold)} #sk .a2 b{font-weight:700;font-size:14px} #sk .a2 .chev{margin-left:auto;color:var(--ink3);font-size:10px}
   #sk .sel{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:12px 13px;cursor:pointer}
   #sk .sel:hover{border-color:var(--gold)} #sk .sel b{font-weight:700;font-size:14px} #sk .sel .chev{margin-left:auto;color:var(--ink3);font-size:11px}
-  #sk .amt{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:0 14px;min-width:0}
+  #sk .amt{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:0 14px;min-width:0;min-height:46px}
   #sk .amt input{flex:1;min-width:0;width:100%;background:none;border:0;color:var(--ink);font-size:22px;font-weight:700;padding:12px 0;outline:none;font-variant-numeric:tabular-nums}
   #sk .amt input::placeholder{color:var(--ink3)} #sk .amt .u{font-size:12px;color:var(--ink3)} #sk .amt .max{font-size:10px;font-weight:800;color:var(--gold);cursor:pointer}
   #sk .avail{font-size:11.5px;color:var(--ink3);margin:0 2px 16px}
@@ -139,7 +139,6 @@ function estilos(){
   #sk .opt .t{display:flex;align-items:center;gap:8px} #sk .opt .dt{width:13px;height:13px;border-radius:50%;border:2px solid var(--line2);flex:none}
   #sk .opt.on .dt{border-color:var(--gold);background:radial-gradient(circle,var(--gold) 40%,transparent 46%)}
   #sk .opt b{font-size:12.5px} #sk .opt p{font-size:10.5px;color:var(--ink3);margin:5px 0 0;line-height:1.35}
-  #sk .reglas{display:none;font-size:12px;color:#f8b34b;background:rgba(248,179,75,.08);border:1px solid rgba(248,179,75,.25);border-radius:10px;padding:10px 12px;margin-bottom:10px;text-align:center}
   #sk .cta{width:100%;padding:15px;border:0;border-radius:13px;background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,var(--goldd));color:#241900;font-weight:800;font-size:15px;cursor:pointer}
   #sk .cta:disabled{opacity:.55;cursor:default}
   #sk .box{max-width:100%;background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
@@ -148,6 +147,7 @@ function estilos(){
   #sk .pos .rw{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)} #sk .pos .rw .k{font-size:11px;color:var(--ink3)} #sk .pos .rw .v{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
   #sk .claim{background:none;border:1px solid var(--gold);color:var(--gold);border-radius:9px;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer} #sk .claim:disabled{opacity:.5}
   #sk svg.spark{width:100%;height:80px;display:block}
+  #sk .waitp{text-align:center;color:var(--ink3);font-size:12px;padding:26px 0}
   #sk .mv{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)} #sk .mv:first-child{border-top:0}
   #sk .mv .mi{width:30px;height:30px;border-radius:8px;background:rgba(52,211,153,.1);color:var(--up);display:grid;place-items:center;flex:none}
   #sk .mv .mt{flex:1;min-width:0} #sk .mv .mt b{font-size:12px;display:block} #sk .mv .mt span{font-size:10px;color:var(--ink3)}
@@ -161,9 +161,9 @@ function estilos(){
   #sk .ibtn:hover{border-color:var(--gold);color:var(--gold)}
   #sk-tip{margin:auto;padding:0;border:0;max-width:420px;width:calc(100vw - 36px);background:transparent}
   #sk-tip::backdrop{background:rgba(3,5,8,.72);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
-  #sk-tip .tbx{position:relative;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:22px 20px;max-height:80vh;overflow-y:auto}
+  #sk-tip .tbx{position:relative;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:48px 22px 24px;max-height:80vh;overflow-y:auto}
   #sk-tip .tbx p{margin:0;font-size:13px;line-height:1.6;color:#d4dbe4}
-  #sk-tip .tx{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid #2c3946;color:#aab6c4;cursor:pointer}
+  #sk-tip .tx{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid #2c3946;color:#aab6c4;cursor:pointer;z-index:2}
   #sk .how{grid-column:1/-1}
   #sk .howgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
   @media(max-width:820px){ #sk .howgrid{grid-template-columns:1fr} }
@@ -187,19 +187,31 @@ function estilos(){
 
 
 const COMO_TEXTO = [
-  'Your money is never idle and is never at risk of being lost. Here is exactly how it works and where the returns come from.',
+  '<b>Where do the returns come from, and is my money safe?</b>',
   '',
-  'When a trader opens a leveraged position in Futures, the platform borrows liquidity from the staking pool to back it. If the trader goes LONG (betting the price goes up), that liquidity buys the coin; if the trader goes SHORT (betting it goes down), the pool lends the coin and it is sold. Either way, the trader\'s gain or loss comes from the market price moving — not from your pocket.',
+  'Your money is never idle and is never at risk of being lost. Here is exactly how it works, in plain words.',
   '',
-  'If the trader wins, their profit comes from the market. If the trader loses, their own margin tops up exactly what the loan lost. So the capital you provided always comes back whole, in the same coin you deposited.',
+  'Your capital is the liquidity that powers the platform\'s Futures. When a trader opens a leveraged position, the platform borrows liquidity from the pool to back it. If the trader goes long (betting the price rises), that liquidity buys the coin. If the trader goes short (betting the price falls), the pool lends the coin and it is sold right away. In both cases the trader\'s gain or loss comes purely from the market price moving.',
   '',
-  'You earn from fees. On every open, close and funding charge, the fee is split 50/50 between stakers and the platform. On a liquidation, 75% tops up the liquidity used and the remaining 25% is split 50/50.',
+  '<b>Why you never lose your capital.</b> If a trader wins, their profit comes from the market, not from you. If a trader loses, their own margin tops up exactly what the loan lost. So your capital always returns whole, in the very same coin you deposited. If you stake one Bitcoin, you get one Bitcoin back, plus what you earned.',
   '',
-  'In total, stakers receive 20% of everything the whole platform generates, plus 50% of everything Futures generates — shared in proportion to how much each person provides. Someone who provides $1,000,000 earns a million times more than someone who provides $1, exactly in proportion.'
+  '<b>How you earn.</b> On every position that opens and closes, and on the funding charged while a position stays open, the fee is split fifty fifty between the people who provide liquidity and the platform. When a position gets liquidated, seventy five percent tops up the liquidity that was used and the remaining twenty five percent is also split fifty fifty.',
+  '',
+  '<b>How much.</b> Everyone who stakes receives twenty percent of everything the whole platform generates (swaps, P2P, bots, and more), plus fifty percent of everything Futures generates. It is all shared in proportion to how much each person provides. Someone who stakes one million dollars earns a million times more than someone who stakes one dollar, exactly in proportion.',
+  '',
+  'This is why an investor does not need a traditional trading pair to earn here: the yield comes from real platform activity, paid in the same coin you provided, with your principal always protected.'
 ].join('<br>');
 const TIPS={
-  hold:'Choose how your capital rests. "Keep in your coin": if you deposit BNB it stays BNB — you also gain if its price rises (and bear the risk if it falls). "Convert to USDT": your value is fixed in USDT — stable, no price risk, but you do not gain from price moves. Either way, you can only withdraw at the end of the lock period.',
-  como:'Your liquidity backs the platform\'s trading. When someone trades futures with leverage, your funds are the counterpart that makes it possible — you never lose your capital, because a trader\'s profit comes from the market move, and a trader\'s loss tops up the loan. You earn from fees: on every open, close and funding the fee is split 50/50 with the platform; on a liquidation, 75% tops up the liquidity and the remaining 25% is split 50/50. In total, stakers receive 20% of everything the whole platform generates, plus 50% of everything futures generates — shared by how much you provide. Your coin is returned in the same coin you deposited.',
+  asset:'Choose which coin you want to stake. The left button holds the main coins (BNB, BTC, ETH and more). The right button holds stablecoins (USDT, USDC, DAI). You can stake any of them.',
+  amount:'Type how much you want to stake. Use MAX to stake your full wallet balance of the selected coin. Your balance is shown on the right.',
+  keep:'Your capital stays in the coin you deposited. If that coin rises in price, you also gain from that rise. If it falls, your value in dollars falls too. You still earn your staking rewards on top.',
+  convert:'Your value is fixed in USDT the moment you stake. It stays stable no matter what the market does, so you carry no price risk. You still earn your staking rewards, but you do not gain if the coin rises.',
+  cap:'This is the total value you have staked, measured in US dollars at the moment you deposited. It is your share of the pool.',
+  rew:'These are the rewards you have earned and can claim at any time. They grow as people use the platform. You can claim them without touching your staked capital.',
+  y1:'An estimate of what your current stake could earn in one year at the recent level of activity. It is only a reference, not a promise. Real rewards depend on how much people trade.',
+
+  hold:'Choose how your capital rests. "Keep in your coin": if you deposit BNB it stays BNB. you also gain if its price rises (and bear the risk if it falls). "Convert to USDT": your value is fixed in USDT. stable, no price risk, but you do not gain from price moves. Either way, you can only withdraw at the end of the lock period.',
+  como:'Your liquidity backs the platform\'s trading. When someone trades futures with leverage, your funds are the counterpart that makes it possible. you never lose your capital, because a trader\'s profit comes from the market move, and a trader\'s loss tops up the loan. You earn from fees: on every open, close and funding the fee is split 50/50 with the platform; on a liquidation, 75% tops up the liquidity and the remaining 25% is split 50/50. In total, stakers receive 20% of everything the whole platform generates, plus 50% of everything futures generates. shared by how much you provide. Your coin is returned in the same coin you deposited.',
   apr:'The APR is an estimate based on recent activity, not a fixed promise. Real rewards depend on how much people trade. More activity means more rewards; quiet periods mean less.',
   plan:'Longer lock periods earn a higher estimated APR. Your funds stay locked until the period ends; you cannot withdraw before maturity.'
 };
@@ -231,13 +243,13 @@ export function montarAportar(cont){
               <div class="lead">Lock your assets, earn passive income.</div>
               <p class="plong">Provide liquidity and earn a share of everything the platform generates. Your capital rests in the coin you choose and is returned in that same coin.</p><p class="pshort">Earn a share of all platform activity. Your capital stays in your coin.</p>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><button class="howbtn" id="sk-howbtn">How it works</button><div class="who" id="sk-who"><span class="dot"></span><span id="sk-who-tx">Not connected</span></div></div>
+            <button class="howbtn" id="sk-howbtn">How it works</button>
           </div>
         </div>
         <div class="stats">
-          <div class="stat"><div class="h"><span class="ic">${IC.coins}</span>Your capital</div><div class="v mono" id="sk-mycap">$0.00</div><div class="d">Staked by you</div></div>
-          <div class="stat"><div class="h"><span class="ic">${IC.gift}</span>Accrued rewards</div><div class="v mono" id="sk-myrew">$0.00</div><div class="d">Ready to claim</div></div>
-          <div class="stat"><div class="h"><span class="ic">${IC.trend}</span>Est. in 1 year</div><div class="v mono" id="sk-my1y">—</div><div class="d">At current activity</div></div>
+          <div class="stat"><div class="h"><span class="ic">${IC.coins}</span>Your capital ${iBtn('cap')}</div><div class="v mono" id="sk-mycap">$0.00</div><div class="d">Staked by you</div></div>
+          <div class="stat"><div class="h"><span class="ic">${IC.gift}</span>Accrued rewards ${iBtn('rew')}</div><div class="v mono" id="sk-myrew">$0.00</div><div class="d">Ready to claim</div></div>
+          <div class="stat"><div class="h"><span class="ic">${IC.trend}</span>Est. in 1 year ${iBtn('y1')}</div><div class="v mono" id="sk-my1y">, </div><div class="d">At current activity</div></div>
           <div class="stat"><div class="h"><span class="ic">${IC.pct}</span>Est. APR ${iBtn('apr')}</div><div class="v" id="sk-apr">Variable</div><div class="d">Based on activity</div></div>
         </div>
         <div class="panel">
@@ -255,34 +267,32 @@ export function montarAportar(cont){
   </div>`;
   cont.addEventListener('click',(e)=>{const ib=e.target.closest&&e.target.closest('.ibtn');if(ib){tip(ib.dataset.tip);}const hb=e.target.closest&&e.target.closest('#sk-howbtn');if(hb){tip('como');}});
   cont.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{_modo=b.dataset.m;cont.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));body();});
-  body(); stats(); pos(); spark(); who();
+  body(); stats(); pos(); spark();
   cargarLogos().then(()=>{body();pos();});
-  if(wallet.alCambiar) wallet.alCambiar(()=>{who();body();pos();stats();});
+  if(wallet.alCambiar) wallet.alCambiar(()=>{body();pos();stats();});
 }
-function who(){const w=$('sk-who-tx');if(!w)return;w.textContent=cuenta()?corta(cuenta()):'Not connected';}
 
 function body(){
   const b=$('sk-body');if(!b)return;
   if(_modo==='stake'){
     b.innerHTML=`
       <div class="row2">
-        <div><div class="lbl">Asset</div>
+        <div><div class="lbl">Asset ${iBtn('asset')}</div>
           <div class="asset2">
             <button class="a2 ${!ESTABLES[_moneda.s]?'on':''}" id="sk-a-cripto">${logoImg(_moneda_cripto(),20)}<b>${_moneda_cripto().s}</b><span class="chev">▼</span></button>
             <button class="a2 ${ESTABLES[_moneda.s]?'on':''}" id="sk-a-stable">${logoImg(_moneda_stable(),20)}<b>${_moneda_stable().s}</b><span class="chev">▼</span></button>
           </div>
         </div>
-        <div><div class="lbl">Amount</div><div class="amt"><input id="sk-in" inputmode="decimal" placeholder="0.00"><span class="u">${_moneda.s}</span><span class="max" id="sk-max">MAX</span></div></div>
+        <div><div class="lbl">Amount ${iBtn('amount')}</div><div class="amt"><input id="sk-in" inputmode="decimal" placeholder="0.00"><span class="u">${_moneda.s}</span><span class="max" id="sk-max">MAX</span></div></div>
       </div>
-      <div class="avail" id="sk-usd">$0.00 &nbsp;·&nbsp; <span id="sk-bal">Balance: 0.00</span></div>
+      <div class="avail" id="sk-usd">$0.00 &nbsp;·&nbsp; <span class="bal2" id="sk-bal">0.00</span></div>
       <div class="lbl">Lock plan ${iBtn('plan')}</div>
       <div class="plans">${PLANES.map((p,i)=>`<div class="plan${p===_plan?' on':''}" data-i="${i}">${p.pop?'<span class="pop">Popular</span>':''}<div class="d">${p.n}</div><div class="apr">${p.apr}</div><div class="ap">Est. APR</div><div class="mn">Min. ${p.min} ${_moneda.s}</div></div>`).join('')}</div>
       <div class="lbl">Hold your capital as ${iBtn('hold')}</div>
       <div class="opts">
-        <div class="opt${_hold?' on':''}" data-h="1"><div class="t"><span class="dt"></span><b>Keep in ${_moneda.s}</b></div><p>You also gain if the price rises. You bear price risk if it falls.</p></div>
-        <div class="opt${!_hold?' on':''}" data-h="0"><div class="t"><span class="dt"></span><b>Convert to USDT</b></div><p>Stable value, no price risk. You don't gain from price moves.</p></div>
+        <div class="opt${_hold?' on':''}" data-h="1"><div class="t"><span class="dt"></span><b>Keep in ${_moneda.s}</b> ${iBtn('keep')}</div><p>You also gain if the price rises. You bear price risk if it falls.</p></div>
+        <div class="opt${!_hold?' on':''}" data-h="0"><div class="t"><span class="dt"></span><b>Convert to USDT</b> ${iBtn('convert')}</div><p>Stable value, no price risk. You don't gain from price moves.</p></div>
       </div>
-      <div class="reglas" id="sk-reglas"></div>
       <button class="cta" id="sk-go" disabled>Stake</button>`;
     $('sk-a-cripto').onclick=()=>picker('cripto');$('sk-a-stable').onclick=()=>picker('stable');$('sk-max').onclick=max;$('sk-in').oninput=()=>{refUSD();validarStake();};
     b.querySelectorAll('.plan').forEach(el=>el.onclick=()=>{_plan=PLANES[+el.dataset.i];b.querySelectorAll('.plan').forEach(x=>x.classList.remove('on'));el.classList.add('on');});
@@ -293,8 +303,8 @@ function body(){
     deps();
   }
 }
-async function refUSD(){const i=$('sk-in'),o=$('sk-usd');if(!i||!o)return;const v=parseFloat(i.value||'0');const bal=$('sk-bal')?$('sk-bal').outerHTML:'';if(!v){o.innerHTML='$0.00 &nbsp;·&nbsp; '+bal;return;}try{let p=1;if(!ESTABLES[_moneda.s]){const oc=new ethers.Contract(ORACULO,ABI_ORAC,lector());p=Number(ethers.formatUnits(await oc.precioUSD(_moneda.a),18));}o.innerHTML=usd(v*p)+' &nbsp;·&nbsp; '+bal;}catch(_){}}
-async function balance(){const e=$('sk-bal');if(!e||!cuenta())return;try{let bal;if(_moneda.a==='0x0000000000000000000000000000000000000000')bal=await lector().getBalance(cuenta());else{const t=new ethers.Contract(_moneda.a,ERC20,lector());bal=await t.balanceOf(cuenta());}e.textContent='Balance: '+num(ethers.formatUnits(bal,18),6);e.dataset.bal=ethers.formatUnits(bal,18);}catch(_){}}
+async function refUSD(){const i=$('sk-in'),o=$('sk-usd');if(!i||!o)return;const v=parseFloat(i.value||'0');if(!v){o.textContent='$0.00';return;}try{let p=1;if(!ESTABLES[_moneda.s]){const oc=new ethers.Contract(ORACULO,ABI_ORAC,lector());p=Number(ethers.formatUnits(await oc.precioUSD(_moneda.a),18));}o.textContent=usd(v*p);}catch(_){}}
+async function balance(){const e=$('sk-bal');if(!e||!cuenta())return;try{let bal;if(_moneda.a==='0x0000000000000000000000000000000000000000')bal=await lector().getBalance(cuenta());else{const t=new ethers.Contract(_moneda.a,ERC20,lector());bal=await t.balanceOf(cuenta());}e.textContent=num(ethers.formatUnits(bal,18),4);e.dataset.bal=ethers.formatUnits(bal,18);}catch(_){}}
 async function max(){const e=$('sk-bal');if(e&&e.dataset.bal){$('sk-in').value=e.dataset.bal;refUSD();}}
 function picker(grupo){
   const prev=$('sk-pick');if(prev)prev.remove();
@@ -348,7 +358,7 @@ async function deps(){
 async function unstake(id,bt){bt.disabled=true;bt.textContent='Sign…';try{const stk=new ethers.Contract(STAKING,ABI_STK,await firmante());const tx=await stk.unstake(id);await tx.wait();deps();pos();stats();}catch(_){bt.disabled=false;bt.textContent='Unstake';}}
 
 async function stats(){
-  if(!cuenta()){['sk-mycap','sk-myrew'].forEach(id=>{if($(id))$(id).textContent='$0.00';});if($('sk-my1y'))$('sk-my1y').textContent='—';return;}
+  if(!cuenta()){['sk-mycap','sk-myrew'].forEach(id=>{if($(id))$(id).textContent='$0.00';});if($('sk-my1y'))$('sk-my1y').textContent=', ';return;}
   try{
     const p=new ethers.Contract(PANEL,ABI_PANEL,lector());
     const posn=await p.posicionUsuario(cuenta());const rec=await p.recompensasDe(cuenta());
@@ -356,7 +366,7 @@ async function stats(){
     const rew=rec.filter(r=>r.pendiente>0n).reduce((a,r)=>a+Number(ethers.formatUnits(r.pendiente,18)),0);
     if($('sk-mycap'))$('sk-mycap').textContent=usd(real);
     if($('sk-myrew'))$('sk-myrew').textContent=usd(rew);
-    if($('sk-my1y'))$('sk-my1y').textContent='—';
+    if($('sk-my1y'))$('sk-my1y').textContent=', ';
   }catch(_){}
 }
 async function pos(){
@@ -377,23 +387,21 @@ async function pos(){
   }catch(_){s.innerHTML=`<div class="hd"><h3>Your position</h3></div><div class="empty">Could not load your position right now.</div>`;}
 }
 function spark(){
+  // Sin datos reales todavía: mostrar estado de espera, no una gráfica inventada.
   const el=$('sk-spark');if(!el)return;
-  const pts=[8,16,13,24,20,31,27,42,38,52,48,62,58,72];const w=300,h=80,st=w/(pts.length-1);
-  let d='M0,'+(h-pts[0]);pts.forEach((p,i)=>{d+=' L'+(i*st)+','+(h-p);});
-  el.innerHTML=`<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8B84B" stop-opacity=".28"/><stop offset="1" stop-color="#E8B84B" stop-opacity="0"/></linearGradient></defs><path d="${d} L${w},${h} L0,${h} Z" fill="url(#sg)"/><path d="${d}" fill="none" stroke="#E8B84B" stroke-width="2" stroke-linejoin="round"/>`;
+  const cont=el.parentElement;
+  if(cont){ const svg=cont.querySelector('svg'); if(svg) svg.remove();
+    if(!cont.querySelector('.waitp')){ const d=document.createElement('div'); d.className='waitp'; d.textContent='Waiting for your account data'; cont.appendChild(d); } }
 }
 
 /*──────────── Overlay a 100vw (no colapsa dentro de contenedores) ────────────*/
 
 function validarStake(){
-  const btn=$('sk-go'),msg=$('sk-reglas');if(!btn||!msg)return;
+  const btn=$('sk-go');if(!btn)return;
   const v=parseFloat(($('sk-in')||{}).value||'0');
   const balEl=$('sk-bal');const bal=balEl&&balEl.dataset.bal?parseFloat(balEl.dataset.bal):0;
-  let err='';
-  if(!v||v<=0) err='Enter an amount to stake.';
-  else if(cuenta()&&v>bal) err='Not enough '+_moneda.s+' in your wallet.';
-  if(err){ btn.disabled=true; msg.textContent=err; msg.style.display='block'; }
-  else { btn.disabled=false; msg.style.display='none'; }
+  const ok = v>0 && (!cuenta()||v<=bal);
+  btn.disabled=!ok;
 }
 
 export function abrirAportar(){
