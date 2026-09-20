@@ -39,11 +39,15 @@
 
     /* Barra de volver, como en bots. */
     #cco-volver{
-      position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:10px;
+      position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:10px;
       padding:14px 22px;
-      background:linear-gradient(180deg,rgba(5,7,10,.55),transparent);
-      border-bottom:1px solid rgba(232,184,75,.12);
+      background:linear-gradient(180deg,rgba(5,7,10,.65),transparent);
     }
+    #cco-volver .back-btn{display:inline-flex;align-items:center;gap:8px;
+      background:rgba(14,21,28,.8);border:1px solid #202b37;border-radius:11px;padding:9px 15px;
+      color:#e9edf5;text-decoration:none;font-weight:700;font-size:14px;transition:.15s}
+    #cco-volver .back-btn:hover{border-color:var(--gold,#E8B84B);color:var(--gold,#E8B84B)}
+    #cco-wallet{display:flex;gap:8px;align-items:center}
     #cco-volver a{display:inline-flex;align-items:center;gap:8px;color:#e9edf5;text-decoration:none;
       font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px}
     #cco-volver a:hover{color:var(--gold,#E8B84B)}
@@ -74,15 +78,17 @@
 
   <div id="lq-app">
     <div id="cco-volver">
-      <a href="index.html">← <span>Volver</span></a>
-      <span class="sep">|</span>
-      <b>Staking</b>
+      <a href="index.html" class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        <span>Back</span>
+      </a>
+      <div id="cco-wallet"></div>
     </div>
     <div id="lq-wrap" data-i18n-root></div>
   </div>
 
   <script type="module">
-    import { montarAportar } from './assets/js/aportar.js?v=9';
+    import { montarAportar } from './assets/js/aportar.js?v=10';
     import { arrancarIdioma } from './assets/js/idioma.js?v=149';
 
     // Fondo: si la imagen no existe, se queda el degradado (no rompe).
