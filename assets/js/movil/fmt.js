@@ -64,7 +64,12 @@ export function money(v) {
   v = Number(v);
   if (!isFinite(v)) return '$0.00';
   if (v === 0) return '$0.00';
-  if (v > 0 && v < 0.01) return '<$0.01';
+  if (v > 0 && v < 0.01) {
+    const dec = Math.min(8, Math.max(2, Math.ceil(-Math.log10(v)) + 2));
+    let out = v.toFixed(dec);
+    if (out.indexOf('.') >= 0) out = out.replace(/0+$/, '').replace(/\.$/, '');
+    return '$' + out;
+  }
   if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
   if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
   return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

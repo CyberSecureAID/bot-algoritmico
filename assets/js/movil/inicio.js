@@ -2,7 +2,7 @@
 
 import { IC } from './iconos.js?v=1';
 import * as wallet from '../wallet.js?v=125';
-import { money, money0, cantidad, logoDe } from './fmt.js?v=2';
+import { money, money0, cantidad, logoDe } from './fmt.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 const LS = { ojo: 'mv-ojo', denom: 'mv-denom' };

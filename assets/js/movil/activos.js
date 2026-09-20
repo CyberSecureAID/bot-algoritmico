@@ -4,7 +4,7 @@
 
 import { IC } from './iconos.js?v=1';
 import * as wallet from '../wallet.js?v=125';
-import { money, cantidad, logoDe } from './fmt.js?v=2';
+import { money, cantidad, logoDe } from './fmt.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
