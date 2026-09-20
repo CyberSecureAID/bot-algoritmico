@@ -96,11 +96,12 @@ function estilos(){
   #sk .L{display:flex;flex-direction:column;gap:14px;min-width:0;max-width:100%}
   #sk .R{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;min-width:0;max-width:100%}
   @media(max-width:820px){ #sk .R{grid-template-columns:1fr} }
-  #sk .banner{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  #sk .banner{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;padding:22px 24px;isolation:isolate;
     background:radial-gradient(120% 150% at 88% 40%, rgba(232,184,75,.18), transparent 55%), linear-gradient(120deg,#111a25dd,#0b111add)}
-  #sk .banner .bgimg{position:absolute;right:0;top:0;bottom:0;width:52%;background-image:url('assets/portada/img/staking-coin.webp');background-size:cover;background-position:center;opacity:1;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 35%);mask-image:linear-gradient(90deg,transparent 0,#000 35%);pointer-events:none}
-  @media(max-width:620px){ #sk .banner .bgimg{width:60%;opacity:.35} }
-  #sk .banner .tag{position:absolute;left:0;top:22px;width:5px;height:40px;background:linear-gradient(180deg,#f7db8d,var(--gold));border-radius:3px}
+  #sk .banner .bgimg{position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/staking-coin.webp');background-size:cover;background-position:center;opacity:.85;pointer-events:none}
+  #sk .banner .bgimg:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(9,14,20,.96) 0%,rgba(9,14,20,.78) 42%,rgba(9,14,20,.25) 100%)}
+  @media(max-width:620px){ #sk .banner  }
+  #sk .banner .tag{position:absolute;z-index:1;left:0;top:22px;width:5px;height:40px;background:linear-gradient(180deg,#f7db8d,var(--gold));border-radius:3px}
   #sk .banner h1{font-family:var(--display,inherit);font-weight:800;font-size:30px;letter-spacing:-.03em;margin:0 0 5px}
   #sk .banner .lead{font-size:14px;color:var(--ink);font-weight:600;margin:0 0 6px}
   #sk .banner p{font-size:12.5px;color:var(--ink2);margin:0;max-width:520px;line-height:1.45}
@@ -155,7 +156,7 @@ function estilos(){
   #sk .mv .mi{width:30px;height:30px;border-radius:8px;background:rgba(52,211,153,.1);color:var(--up);display:grid;place-items:center;flex:none}
   #sk .mv .mt{flex:1;min-width:0} #sk .mv .mt b{font-size:12px;display:block} #sk .mv .mt span{font-size:10px;color:var(--ink3)}
   #sk .mv .ma{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--up)}
-  #sk .bnrtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  #sk .bnrtop{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
   @media(max-width:620px){ #sk .bnrtop{flex-direction:column-reverse;align-items:flex-start;gap:10px} #sk .bnrtop .who{align-self:flex-start} }
   #sk .howbtn{background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,var(--goldd));border:0;color:#241900;border-radius:10px;padding:8px 15px;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(232,184,75,.25)}
   #sk .who{display:inline-flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12px;font-weight:600}
@@ -198,7 +199,7 @@ const COMO_TEXTO = [
   'You deposit any coin you want. It rests in a public, verified contract that only you control with your signature. No one on the platform can move it. When you withdraw at the end of your lock period, you receive the exact same coin and amount you put in, plus everything you earned.',
   '',
   '<b>How a trader uses your liquidity (LONG)</b>',
-  'Imagine a trader opens a long position with 10 dollars at 100x leverage. That is 1,000 dollars of exposure. The platform borrows 1,000 dollars of liquidity from the pool and buys the coin at the entry price. That purchased coin is the backing of the position. If the price rises 1 percent, the position is worth 1,010 dollars: the 1,000 returns to the pool and the trader keeps 10 dollars of profit, which came from the market rising, not from anyone else. If the price falls, the trader loses their own 10 dollars first, and that loss tops up exactly what the loan lost, so the pool is made whole. When the loss reaches the trader margin, the position is liquidated and closed.',
+  'Imagine a trader opens a long position with 10 dollars at 100x leverage. That is 1,000 dollars of exposure. The platform borrows 1,000 dollars of liquidity from the pool, but the trader never touches or receives that money: the contract manages it internally. It buys the coin at the entry price. That purchased coin is the backing of the position. If the price rises 1 percent, the position is worth 1,010 dollars: the 1,000 returns to the pool and the trader keeps 10 dollars of profit, which came from the market rising, not from anyone else. If the price falls, the trader loses their own 10 dollars first, and that loss tops up exactly what the loan lost, so the pool is made whole. When the loss reaches the trader margin, the position is liquidated and closed.',
   '',
   '<b>How a SHORT works</b>',
   'A short is the mirror image, and this is the key detail: a short is backed by the coin itself, not by USDT. The pool lends the coin and it is sold immediately at the entry price. If the price falls, the coin is bought back cheaper to return it to the pool, and the difference is the trader profit. If the price rises, the trader own margin covers the difference. Either way the pool gets its coin back in full. This is why the coins people stake decide what can be traded: to allow shorts of a coin, that coin must exist in the pool.',
