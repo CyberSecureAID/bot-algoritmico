@@ -1,5 +1,5 @@
 /* aportar-movil.js — Staking móvil. <dialog> showModal (top layer). */
-import { montarAportar } from '../aportar.js?v=14';
+import { montarAportar } from '../aportar.js?v=15';
 export function abrirAportarMovil(){
   const prev=document.getElementById('alm-stk'); if(prev) prev.remove();
   const dg=document.createElement('dialog'); dg.id='alm-stk';
