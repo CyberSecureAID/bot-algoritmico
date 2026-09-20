@@ -168,6 +168,34 @@ function estilos(){
   #sk-tip .tbx{position:relative;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:48px 22px 24px;max-height:80vh;overflow-y:auto}
   #sk-tip .tbx p{margin:0;font-size:13px;line-height:1.6;color:#d4dbe4}
   #sk-tip .tx{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid #2c3946;color:#aab6c4;cursor:pointer;z-index:2}
+  #sk-como{margin:auto;padding:0;border:0;max-width:720px;width:calc(100vw - 40px);max-height:88vh;background:transparent}
+  #sk-como::backdrop{background:rgba(3,5,8,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  #sk-como .cbx{position:relative;background:linear-gradient(180deg,#0f1620,#0b1018);border:1px solid #26313d;border-radius:22px;max-height:88vh;overflow-y:auto;padding:0}
+  #sk-como .cx{position:sticky;float:right;top:16px;right:16px;margin:16px 16px -40px auto;width:34px;height:34px;border-radius:10px;background:rgba(14,21,28,.9);border:1px solid #2c3946;color:#aab6c4;cursor:pointer;z-index:5;font-size:15px}
+  #sk-como .chero{padding:40px 40px 26px;border-bottom:1px solid #1b232e;background:radial-gradient(120% 130% at 90% 0%, rgba(232,184,75,.12), transparent 55%)}
+  #sk-como .ceyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold,#E8B84B);font-weight:700;margin-bottom:12px}
+  #sk-como .chero h2{font-family:var(--display,inherit);font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0 0 12px;color:#f3f6fa;line-height:1.2}
+  #sk-como .chero p{margin:0;font-size:14px;line-height:1.6;color:#aeb8c4;max-width:560px}
+  #sk-como .cstats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#1b232e;border-bottom:1px solid #1b232e}
+  #sk-como .ct{background:#0d131b;padding:22px 24px}
+  #sk-como .ct b{display:block;font-size:24px;font-weight:800;color:var(--gold,#E8B84B);letter-spacing:-.02em}
+  #sk-como .ct span{display:block;font-size:11.5px;color:#8996a5;margin-top:6px;line-height:1.4}
+  #sk-como .csecs{padding:12px 40px 8px}
+  #sk-como .cs{display:flex;gap:20px;padding:24px 0;border-bottom:1px solid #161d27}
+  #sk-como .cs:last-child{border-bottom:0}
+  #sk-como .cn{flex:none;font-family:var(--display,inherit);font-size:15px;font-weight:800;color:var(--gold,#E8B84B);opacity:.65;width:34px;padding-top:2px;font-variant-numeric:tabular-nums}
+  #sk-como .cc h4{margin:0 0 8px;font-size:15px;font-weight:700;color:#f3f6fa}
+  #sk-como .cc p{margin:0;font-size:13.5px;line-height:1.65;color:#b4bfcc}
+  #sk-como .cfoot{margin:8px 40px 40px;padding:22px 24px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:14px;font-size:14px;line-height:1.6;color:#e4d9be;font-weight:500}
+  @media(max-width:620px){
+    #sk-como{width:100vw;max-width:100vw;max-height:100vh;height:100vh;margin:0}
+    #sk-como .cbx{border-radius:0;max-height:100vh;height:100vh}
+    #sk-como .chero{padding:calc(30px + env(safe-area-inset-top,0px)) 22px 22px}
+    #sk-como .chero h2{font-size:22px} #sk-como .csecs{padding:8px 22px}
+    #sk-como .cstats{grid-template-columns:1fr} #sk-como .cfoot{margin:8px 22px calc(30px + env(safe-area-inset-bottom,0px))}
+    #sk-como .cs{gap:14px} #sk-como .cx{margin:14px 14px -38px auto}
+  }
+
   #sk .how{grid-column:1/-1}
   #sk .howgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
   @media(max-width:820px){ #sk .howgrid{grid-template-columns:1fr} }
@@ -233,6 +261,45 @@ const TIPS={
   apr:'The APR is an estimate based on recent activity, not a fixed promise. Real rewards depend on how much people trade. More activity means more rewards; quiet periods mean less.',
   plan:'Longer lock periods earn a higher estimated APR. Your funds stay locked until the period ends; you cannot withdraw before maturity.'
 };
+
+function comoModal(){
+  const prev=document.getElementById('sk-como');if(prev)prev.remove();
+  const dg=document.createElement('dialog');dg.id='sk-como';
+  const SEC=[
+    {t:'Your capital never leaves your control',b:'When you provide liquidity, your funds rest inside a public, verified smart contract that only your own signature can move. The platform cannot spend it, cannot lend it away, and cannot withdraw it. It simply stays there as your capital, in the exact coin you deposited, until you choose to withdraw at the end of your period. Whatever you put in returns to you: one Bitcoin in, one Bitcoin out, plus everything it earned.'},
+    {t:'Where the returns come from',b:'Your capital is the liquidity that makes our Futures market work. A trader who opens a leveraged position needs size they do not personally hold, so the contract supplies that size from the pool. This is the part most people misread, so read it slowly: the trader never receives, holds, or can withdraw that borrowed capital. It is managed entirely inside the contract, at the same instant the position opens, only to back that one position. It is never handed over and it never leaves the system.'},
+    {t:'A long position that wins',b:'A trader opens a long on Bitcoin with 10 dollars of margin at 100x. That is 1,000 dollars of exposure. The contract takes 1,000 dollars of liquidity and buys Bitcoin at the entry price. That Bitcoin is the backing of the position; it is still capital, held as the asset. If Bitcoin rises one percent, the position is worth 1,010. The 1,000 returns to the pool untouched, and the 10 dollars of profit belong to the trader. That profit was produced by the market rising, not by another user and not by the pool.'},
+    {t:'A long position that is liquidated',b:'If Bitcoin falls instead, the trader loses their own 10 dollars of margin first. That loss is used to top up precisely what the borrowed liquidity lost, so the pool is restored to the cent. The moment the loss reaches the trader margin, the position is liquidated and closed automatically, and everything is converted back so no further value is lost. The person who provided the liquidity always recovers their full amount.'},
+    {t:'When a stop loss is used',b:'A stop loss does not change the mechanics, it only limits the loss earlier. If the trader sets a stop at half their margin, the position closes when the market moves against them by that amount. The trader loses only up to that point, that amount tops up the loan, and nothing more is taken beyond the closing fees. The liquidity is returned whole, exactly as in a full liquidation.'},
+    {t:'How a short works',b:'A short is the mirror image, and here is the key detail: a short is backed by the coin itself, not by dollars. The pool lends the coin and it is sold at once at the entry price. If the price falls, the coin is bought back cheaper to return it to the pool, and the difference is the trader profit. If the price rises, the trader own margin covers the difference. Either way the pool receives its coin back in full. This is why the coins people stake decide what can be traded: for shorts of a coin to exist, that coin must be present in the pool.'},
+    {t:'What happens to your funds',b:'In every case, in both directions, a winning trade is paid by the market move and a losing trade tops up the loan. Leverage is always held proportional to the liquidity available, so a trader maximum possible loss can never exceed what the loan lost. There is no path where the pool ends short. Your principal is protected by the math itself and is always returned in your own coin.'},
+    {t:'What you earn',b:'You earn from real activity, never from promises. Every position that opens and closes pays a fee, and while it stays open it pays a periodic funding fee. All of these are split fifty fifty between the people who provide liquidity and the platform. When a position is liquidated, seventy five percent restores the liquidity used and the remaining twenty five percent is split fifty fifty. Above all of that, everyone who stakes receives twenty percent of everything the entire platform generates across every service, and fifty percent of everything the Futures market generates. It is distributed strictly in proportion to how much each person provides, so someone who stakes one million earns one million times more than someone who stakes one dollar, precisely and automatically.'},
+    {t:'Your coin can also grow',b:'You decide how your capital rests. Keep it in your coin and, on top of your rewards, you also gain when that coin rises in price, shown to you separately as your price gain. Or convert it to USDT to stay perfectly stable with no price exposure. Your rewards keep flowing either way.'}
+  ];
+  const secHTML=SEC.map((x,i)=>`<div class="cs"><div class="cn">${String(i+1).padStart(2,'0')}</div><div class="cc"><h4>${x.t}</h4><p>${x.b}</p></div></div>`).join('');
+  dg.innerHTML=`<div class="cbx">
+    <button class="cx" aria-label="Close">✕</button>
+    <div class="chero">
+      <div class="ceyebrow">Staking, explained</div>
+      <h2>How your capital works, and why it is protected</h2>
+      <p>Before you commit a single dollar, you deserve to see exactly what happens to your money and where every dollar of return is generated. This is built for capital that expects clarity.</p>
+    </div>
+    <div class="cstats">
+      <div class="ct"><b>100%</b><span>of your principal returned, in your own coin</span></div>
+      <div class="ct"><b>20% + 50%</b><span>of platform and Futures revenue, shared with you</span></div>
+      <div class="ct"><b>0</b><span>access the platform has to spend your funds</span></div>
+    </div>
+    <div class="csecs">${secHTML}</div>
+    <div class="cfoot">Your money stays yours, in your coin, under your control. It quietly powers a real market, it is never given to anyone, and it earns you a share of everything the platform makes.</div>
+  </div>`;
+  document.body.appendChild(dg);
+  if(dg.showModal)dg.showModal();else dg.setAttribute('open','');
+  const cerrar=()=>{try{dg.close();}catch(_){}dg.remove();};
+  dg.querySelector('.cx').onclick=cerrar;
+  dg.addEventListener('click',(e)=>{if(e.target===dg)cerrar();});
+  dg.addEventListener('cancel',(e)=>{e.preventDefault();cerrar();});
+}
+
 function tip(clave){
   const prev=document.getElementById('sk-tip');if(prev)prev.remove();
   const dg=document.createElement('dialog');dg.id='sk-tip';
@@ -283,7 +350,7 @@ export function montarAportar(cont){
       
     </div>
   </div>`;
-  cont.addEventListener('click',(e)=>{const ib=e.target.closest&&e.target.closest('.ibtn');if(ib){tip(ib.dataset.tip);}const hb=e.target.closest&&e.target.closest('#sk-howbtn');if(hb){tip('como');}});
+  cont.addEventListener('click',(e)=>{const ib=e.target.closest&&e.target.closest('.ibtn');if(ib){tip(ib.dataset.tip);}const hb=e.target.closest&&e.target.closest('#sk-howbtn');if(hb){comoModal();}});
   cont.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{_modo=b.dataset.m;cont.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));body();});
   body(); stats(); pos(); spark();
   cargarLogos().then(()=>{body();pos();});
