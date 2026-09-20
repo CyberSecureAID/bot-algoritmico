@@ -98,7 +98,7 @@ function estilos(){
   @media(max-width:820px){ #sk .R{grid-template-columns:1fr} }
   #sk .banner{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;padding:22px 24px;
     background:radial-gradient(120% 150% at 88% 40%, rgba(232,184,75,.18), transparent 55%), linear-gradient(120deg,#111a25dd,#0b111add)}
-  #sk .banner .bgimg{position:absolute;right:0;top:0;height:100%;width:46%;background-image:url('assets/portada/img/staking-coin.webp');background-size:cover;background-position:center right;opacity:.5;-webkit-mask-image:linear-gradient(90deg,transparent,#000 60%);mask-image:linear-gradient(90deg,transparent,#000 60%);pointer-events:none}
+  #sk .banner .bgimg{position:absolute;right:0;top:0;bottom:0;width:60%;background-image:url('assets/portada/img/staking-coin.webp');background-size:cover;background-position:center right;opacity:.9;-webkit-mask-image:linear-gradient(90deg,transparent,#000 45%);mask-image:linear-gradient(90deg,transparent,#000 45%);pointer-events:none}
   @media(max-width:620px){ #sk .banner .bgimg{width:60%;opacity:.35} }
   #sk .banner .tag{position:absolute;left:0;top:22px;width:5px;height:40px;background:linear-gradient(180deg,#f7db8d,var(--gold));border-radius:3px}
   #sk .banner h1{font-family:var(--display,inherit);font-weight:800;font-size:30px;letter-spacing:-.03em;margin:0 0 5px}
@@ -109,6 +109,8 @@ function estilos(){
   #sk .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
   #sk .stat{max-width:100%;background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:14px;padding:14px}
   #sk .stat .h{display:flex;align-items:center;gap:9px;color:var(--ink2);font-size:12px;min-width:0}
+  #sk .stat .h .sm{display:none}
+  @media(max-width:620px){ #sk .stat .h .lg{display:none} #sk .stat .h .sm{display:inline} #sk .stat .h{font-size:11.5px;gap:7px} }
   #sk .stat .ic{width:30px;height:30px;border-radius:9px;background:rgba(232,184,75,.1);display:grid;place-items:center;color:var(--gold);flex:none}
   #sk .stat .v{font-size:19px;font-weight:800;margin-top:9px;letter-spacing:-.02em}
   #sk .stat .d{font-size:11px;color:var(--up);margin-top:3px}
@@ -125,8 +127,9 @@ function estilos(){
   #sk .sel{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:12px 13px;cursor:pointer}
   #sk .sel:hover{border-color:var(--gold)} #sk .sel b{font-weight:700;font-size:14px} #sk .sel .chev{margin-left:auto;color:var(--ink3);font-size:11px}
   #sk .amt{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:0 14px;min-width:0;min-height:46px}
-  #sk .amt input{flex:1;min-width:0;width:100%;background:none;border:0;color:var(--ink);font-size:22px;font-weight:700;padding:12px 0;outline:none;font-variant-numeric:tabular-nums}
+  #sk .amt input{flex:1;min-width:0;width:100%;background:none;border:0;color:var(--ink);font-size:17px;font-weight:700;padding:0;outline:none;font-variant-numeric:tabular-nums}
   #sk .amt input::placeholder{color:var(--ink3)} #sk .amt .u{font-size:12px;color:var(--ink3)} #sk .amt .max{font-size:10px;font-weight:800;color:var(--gold);cursor:pointer}
+  #sk .amtsub{display:flex;justify-content:space-between;align-items:center;margin:7px 2px 0;font-size:11px;color:var(--ink3)}
   #sk .avail{font-size:11.5px;color:var(--ink3);margin:0 2px 16px}
   #sk .plans{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
   #sk .plan{position:relative;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:14px 12px;cursor:pointer}
@@ -157,7 +160,7 @@ function estilos(){
   #sk .howbtn{background:rgba(232,184,75,.1);border:1px solid var(--gold);color:var(--gold);border-radius:10px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer}
   #sk .who{display:inline-flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12px;font-weight:600}
   #sk .who .dot{width:7px;height:7px;border-radius:50%;background:var(--up)}
-  #sk .ibtn{width:16px;height:16px;border-radius:50%;border:1px solid var(--ink3);background:none;color:var(--ink3);font-size:10px;font-style:italic;font-weight:700;cursor:pointer;line-height:1;padding:0;margin-left:6px;vertical-align:middle}
+  #sk .ibtn{width:15px;height:15px;border-radius:50%;border:1px solid rgba(150,165,180,.28);background:none;color:rgba(150,165,180,.45);font-size:9px;font-style:italic;font-weight:700;cursor:pointer;line-height:1;padding:0;margin-left:5px;vertical-align:middle;opacity:.7}
   #sk .ibtn:hover{border-color:var(--gold);color:var(--gold)}
   #sk-tip{margin:auto;padding:0;border:0;max-width:420px;width:calc(100vw - 36px);background:transparent}
   #sk-tip::backdrop{background:rgba(3,5,8,.72);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
@@ -237,19 +240,19 @@ export function montarAportar(cont){
         <div class="banner">
           <span class="tag"></span>
           <div class="bgimg"></div>
-          <div class="bnrtop">
+          <div class="bnrtop" style="justify-content:space-between;align-items:flex-start">
             <div>
               <h1>Staking</h1>
               <div class="lead">Lock your assets, earn passive income.</div>
               <p class="plong">Provide liquidity and earn a share of everything the platform generates. Your capital rests in the coin you choose and is returned in that same coin.</p><p class="pshort">Earn a share of all platform activity. Your capital stays in your coin.</p>
             </div>
-            <button class="howbtn" id="sk-howbtn">How it works</button>
+            <div style="margin-left:auto;flex:none"><button class="howbtn" id="sk-howbtn">How it works</button></div>
           </div>
         </div>
         <div class="stats">
           <div class="stat"><div class="h"><span class="ic">${IC.coins}</span>Your capital ${iBtn('cap')}</div><div class="v mono" id="sk-mycap">$0.00</div><div class="d">Staked by you</div></div>
-          <div class="stat"><div class="h"><span class="ic">${IC.gift}</span>Accrued rewards ${iBtn('rew')}</div><div class="v mono" id="sk-myrew">$0.00</div><div class="d">Ready to claim</div></div>
-          <div class="stat"><div class="h"><span class="ic">${IC.trend}</span>Est. in 1 year ${iBtn('y1')}</div><div class="v mono" id="sk-my1y">, </div><div class="d">At current activity</div></div>
+          <div class="stat"><div class="h"><span class="ic">${IC.gift}</span><span class="lg">Accrued rewards</span><span class="sm">Rewards</span> ${iBtn('rew')}</div><div class="v mono" id="sk-myrew">$0.00</div><div class="d">Ready to claim</div></div>
+          <div class="stat"><div class="h"><span class="ic">${IC.trend}</span><span class="lg">Est. in 1 year</span><span class="sm">Est. 1yr</span> ${iBtn('y1')}</div><div class="v mono" id="sk-my1y" style="font-size:13px;color:var(--ink3)">Waiting for data</div><div class="d">At current activity</div></div>
           <div class="stat"><div class="h"><span class="ic">${IC.pct}</span>Est. APR ${iBtn('apr')}</div><div class="v" id="sk-apr">Variable</div><div class="d">Based on activity</div></div>
         </div>
         <div class="panel">
@@ -283,9 +286,8 @@ function body(){
             <button class="a2 ${ESTABLES[_moneda.s]?'on':''}" id="sk-a-stable">${logoImg(_moneda_stable(),20)}<b>${_moneda_stable().s}</b><span class="chev">▼</span></button>
           </div>
         </div>
-        <div><div class="lbl">Amount ${iBtn('amount')}</div><div class="amt"><input id="sk-in" inputmode="decimal" placeholder="0.00"><span class="u">${_moneda.s}</span><span class="max" id="sk-max">MAX</span></div></div>
+        <div><div class="lbl">Amount ${iBtn('amount')}</div><div class="amt"><input id="sk-in" inputmode="decimal" placeholder="0.00"><span class="max" id="sk-max">MAX</span></div><div class="amtsub"><span id="sk-usd">$0.00</span><span class="bal2" id="sk-bal">Balance: 0.00</span></div></div>
       </div>
-      <div class="avail" id="sk-usd">$0.00 &nbsp;·&nbsp; <span class="bal2" id="sk-bal">0.00</span></div>
       <div class="lbl">Lock plan ${iBtn('plan')}</div>
       <div class="plans">${PLANES.map((p,i)=>`<div class="plan${p===_plan?' on':''}" data-i="${i}">${p.pop?'<span class="pop">Popular</span>':''}<div class="d">${p.n}</div><div class="apr">${p.apr}</div><div class="ap">Est. APR</div><div class="mn">Min. ${p.min} ${_moneda.s}</div></div>`).join('')}</div>
       <div class="lbl">Hold your capital as ${iBtn('hold')}</div>
@@ -304,7 +306,7 @@ function body(){
   }
 }
 async function refUSD(){const i=$('sk-in'),o=$('sk-usd');if(!i||!o)return;const v=parseFloat(i.value||'0');if(!v){o.textContent='$0.00';return;}try{let p=1;if(!ESTABLES[_moneda.s]){const oc=new ethers.Contract(ORACULO,ABI_ORAC,lector());p=Number(ethers.formatUnits(await oc.precioUSD(_moneda.a),18));}o.textContent=usd(v*p);}catch(_){}}
-async function balance(){const e=$('sk-bal');if(!e||!cuenta())return;try{let bal;if(_moneda.a==='0x0000000000000000000000000000000000000000')bal=await lector().getBalance(cuenta());else{const t=new ethers.Contract(_moneda.a,ERC20,lector());bal=await t.balanceOf(cuenta());}e.textContent=num(ethers.formatUnits(bal,18),4);e.dataset.bal=ethers.formatUnits(bal,18);}catch(_){}}
+async function balance(){const e=$('sk-bal');if(!e||!cuenta())return;try{let bal;if(_moneda.a==='0x0000000000000000000000000000000000000000')bal=await lector().getBalance(cuenta());else{const t=new ethers.Contract(_moneda.a,ERC20,lector());bal=await t.balanceOf(cuenta());}e.textContent='Balance: '+num(ethers.formatUnits(bal,18),4);e.dataset.bal=ethers.formatUnits(bal,18);}catch(_){}}
 async function max(){const e=$('sk-bal');if(e&&e.dataset.bal){$('sk-in').value=e.dataset.bal;refUSD();}}
 function picker(grupo){
   const prev=$('sk-pick');if(prev)prev.remove();
@@ -358,7 +360,7 @@ async function deps(){
 async function unstake(id,bt){bt.disabled=true;bt.textContent='Sign…';try{const stk=new ethers.Contract(STAKING,ABI_STK,await firmante());const tx=await stk.unstake(id);await tx.wait();deps();pos();stats();}catch(_){bt.disabled=false;bt.textContent='Unstake';}}
 
 async function stats(){
-  if(!cuenta()){['sk-mycap','sk-myrew'].forEach(id=>{if($(id))$(id).textContent='$0.00';});if($('sk-my1y'))$('sk-my1y').textContent=', ';return;}
+  if(!cuenta()){['sk-mycap','sk-myrew'].forEach(id=>{if($(id))$(id).textContent='$0.00';});if($('sk-my1y'))$('sk-my1y').textContent='Waiting for data';return;}
   try{
     const p=new ethers.Contract(PANEL,ABI_PANEL,lector());
     const posn=await p.posicionUsuario(cuenta());const rec=await p.recompensasDe(cuenta());
@@ -366,7 +368,7 @@ async function stats(){
     const rew=rec.filter(r=>r.pendiente>0n).reduce((a,r)=>a+Number(ethers.formatUnits(r.pendiente,18)),0);
     if($('sk-mycap'))$('sk-mycap').textContent=usd(real);
     if($('sk-myrew'))$('sk-myrew').textContent=usd(rew);
-    if($('sk-my1y'))$('sk-my1y').textContent=', ';
+    if($('sk-my1y'))$('sk-my1y').textContent='Waiting for data';
   }catch(_){}
 }
 async function pos(){
