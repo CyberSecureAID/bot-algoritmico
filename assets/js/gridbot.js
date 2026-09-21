@@ -840,7 +840,9 @@ export async function cotizarSwap({ inAddr, outAddr, amountInBI, slippageBps = 5
   const feeBps = 10n;
   const netFactor = 10000n - feeBps;
   const outNeto = bestOut * netFactor / 10000n;
-  const minOut = outNeto - (outNeto * BigInt(slippageBps) / 10000n);
+  // Colchón extra (0.3%) porque el swap puede ejecutarse en otro fee tier con precio algo distinto.
+  const colchon = 30n;
+  const minOut = outNeto - (outNeto * (BigInt(slippageBps) + colchon) / 10000n);
   return { amountOut: outNeto, minOut, fee: best };
 }
 
