@@ -857,10 +857,15 @@ export async function ejecutarSwap({ inAddr, outAddr, amountInBI, minOut, fee })
   const c = new ethers.Contract(SWAP, SWAP_ABI, await firmante());
   const tokenIn  = esNativoSwap(inAddr)  ? NATIVO : inAddr;
   const tokenOut = esNativoSwap(outAddr) ? NATIVO : outAddr;
-  // Si el token de entrada es BNB nativo, se envía como value; si no, value = 0.
   const value = esNativoSwap(inAddr) ? amountInBI : 0n;
-  // firma V11: swap(tokenIn, tokenOut, feeTier, amountIn, minOut)
-  const tx = await c.swap(tokenIn, tokenOut, fee, amountInBI, minOut, { value, gasLimit: 2500000n });
+  // Estimamos el gas real y añadimos 35% de margen (cubre el fallback multi-pool).
+  // Pasar un gasLimit realista evita el parpadeo de "probable que falle" de MetaMask.
+  let gasLimit;
+  try {
+    const est = await c.swap.estimateGas(tokenIn, tokenOut, fee, amountInBI, minOut, { value });
+    gasLimit = est + (est * 35n / 100n);
+  } catch (_) { gasLimit = 1200000n; }  // si la estimación falla, un valor seguro
+  const tx = await c.swap(tokenIn, tokenOut, fee, amountInBI, minOut, { value, gasLimit });
   return esperar(tx);
 }
 
