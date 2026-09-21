@@ -25,7 +25,7 @@ let _impToken = 0;   // guarda de carrera para la importación
 function swSyncWbnbLogo() { if (LOGOS['BNB'] && !LOGOS['WBNB']) LOGOS['WBNB'] = { img: LOGOS['BNB'].img, price: LOGOS['BNB'].price, chg: LOGOS['BNB'].chg }; }
 
 const SWAP_IDS = [...new Set(['BNB', 'WBNB', 'USDT', 'USDC', ...BASES])];
-const S = { fromId: 'BNB', toId: 'USDT', amount: '', out: 0n, minOut: 0n, fee: 0, feeWei: 0n, allow: 0n, balFromWei: 0n, quoting: false, accion: 'swap' };
+const S = { fromId: 'BNB', toId: 'USDT', amount: '', out: 0n, minOut: 0n, fee: 0, feeWei: 0n, allow: 0n, balFromWei: 0n, quoting: false, accion: 'swap', maxWei: null };
 let _swT = null, _swToken = 0;
 const SW_GAS_BUF = 3000000000000000n; // 0.003 BNB de colchón de gas al usar Máx con BNB
 
@@ -126,6 +126,8 @@ function swUsdVal(id, wei) {
 function swAmountBI() {
   const from = swMon(S.fromId); const s = String(S.amount || '').replace(',', '.');
   if (!s || !(Number(s) > 0)) return 0n;
+  // Si el usuario pulsó MAX y no cambió el número, usar el wei EXACTO (sin perder precisión).
+  if (S.maxWei != null) return S.maxWei;
   try { return gb.parse(Number(s).toFixed(Math.min(from.decimals, 18)), from.decimals); } catch (_) { return 0n; }
 }
 // 'wrap' (BNB->WBNB) o 'unwrap' (WBNB->BNB) o null (swap normal)
@@ -193,7 +195,7 @@ function cerrarSwap() { const p = $('coin-modal'); if (p && $('scm-list')) { win
 function swInput(e) {
   let val = e.target.value.replace(',', '.').replace(/[^0-9.]/g, '');
   const parts = val.split('.'); if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
-  e.target.value = val; S.amount = val;
+  e.target.value = val; S.amount = val; S.maxWei = null;
   swRenderInfo(); swRenderBtn(); swCotizarDebounced();
 }
 function swCotizarDebounced() { clearTimeout(_swT); _swT = setTimeout(swCotizar, 350); }
@@ -275,7 +277,9 @@ function swMax() {
   let maxWei = S.balFromWei;
   if (from.address == null) { const buf = (S.feeWei || 0n) + SW_GAS_BUF; maxWei = S.balFromWei > buf ? (S.balFromWei - buf) : 0n; }
   const v = Number(gb.fmt(maxWei, from.decimals));
-  S.amount = v > 0 ? String(v) : '';
+  // mostrar máximo 6 decimales (legible); el wei exacto se usa por dentro.
+  S.amount = v > 0 ? (Math.floor(v * 1e6) / 1e6).toString() : '';
+  S.maxWei = maxWei;   // wei EXACTO para no perder precisión al reconvertir
   const a = $('sw-amt'); if (a) a.value = S.amount;
   swRenderInfo(); swRenderBtn(); swCotizar();
 }
