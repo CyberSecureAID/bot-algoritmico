@@ -5,7 +5,7 @@
  * botones (i), gráfica viva con las cuadrículas, e inversión total en una cifra.
  */
 
-import * as gb from './gridbot.js?v=125';
+import * as gb from './gridbot.js?v=126';
 import { t } from './idioma.js?v=163';
 import * as wallet from './wallet.js?v=125';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
