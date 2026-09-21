@@ -3,7 +3,7 @@
    ejecución. Sub-app autónoma. Recibe conectarWallet y cargarLogosPrecios
    por initSwap para no crear dependencias circulares con gridbot-ui. */
 
-import * as gb from '../gridbot.js?v=126';
+import * as gb from '../gridbot.js?v=127';
 import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
