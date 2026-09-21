@@ -28,34 +28,32 @@ const RPCS = [
 ];
 
 const ABI = [
-  'function resumen(address,address,address) view returns (tuple(address base,address quote,bool activa,uint256 niveles,uint256 armados,uint256 creadaEn,uint256 ultimaOpEn,uint256 comprasHechas,uint256 ventasHechas,uint256 ciclos,uint256 totalOps,uint256 posicionBase,uint256 costeQuote,uint256 volumenQuote,int256 gananciaQuote,uint256 gasSaldoWei,uint256 gasGastadoWei,uint256 ordenQuote,uint256 ordenBase,uint128 tpUnitOut,uint128 slUnitOut,uint16 slippageBps,uint32 cooldownSeg,uint24 feeTier,uint256 intervalo,uint32 comprasMax))',
-  'function resumen(bytes32) view returns (tuple(address base,address quote,bool activa,uint256 niveles,uint256 armados,uint256 creadaEn,uint256 ultimaOpEn,uint256 comprasHechas,uint256 ventasHechas,uint256 ciclos,uint256 totalOps,uint256 posicionBase,uint256 costeQuote,uint256 volumenQuote,int256 gananciaQuote,uint256 gasSaldoWei,uint256 gasGastadoWei,uint256 ordenQuote,uint256 ordenBase,uint128 tpUnitOut,uint128 slUnitOut,uint16 slippageBps,uint32 cooldownSeg,uint24 feeTier,uint256 intervalo,uint32 comprasMax))',
-  'function modoDe(bytes32) view returns (uint8,uint16)',
+  // --- bots (V11) ---
+  'function crearRejilla((address base,address quote,uint256 ordenQuote,uint256 ordenBase,(uint128 minOutCompra,uint128 minOutVenta,uint8 estado)[] niveles,uint16 slippageBps,uint32 cooldownSeg,uint128 tpUnitOut,uint128 slUnitOut,uint24 feeTier,uint8 modo,uint16 objetivoBps,uint16 factorBps,uint256 compraInicialQuote,uint16 margenBps,uint256 botId,uint256 intervalo,uint32 comprasMax)) payable',
+  'function ejecutar(bytes32,uint256)',
   'function cerrarAhora(bytes32)',
-  'function cancelarRejilla(bytes32)',
   'function claveBot(address,address,address,uint256) pure returns (bytes32)',
-  'function nivelesDe(bytes32) view returns (tuple(uint128 minOutCompra,uint128 minOutVenta,uint8 estado)[])',
-  'function pathsDe(bytes32) view returns (address[] compra,address[] venta)',
-  'function cotizar(uint256,address[]) view returns (uint256)',
+  'function misRejillas(address) view returns (bytes32[])',
+  'function duenoDe(bytes32) view returns (address)',
+  // --- cobro de bots (V11) ---
+  'function pagarMes() payable',
+  'function costoBotBNB() view returns (uint256)',
+  'function costoBotUSD() view returns (uint256)',
+  'function alDia(address) view returns (bool)',
+  'function botsAbiertos(address) view returns (uint32)',
+  'function pagadoHasta(address) view returns (uint40)',
+  'function maxBots() view returns (uint256)',
+  // --- gas del usuario ---
   'function gasSaldo(address) view returns (uint256)',
   'function gasMinOp() view returns (uint256)',
-  'function misRejillas(address) view returns (bytes32[])',
-  'function activo(address usuario) view returns (bool)',
-  'function precioSuscripcion() view returns (uint256)',
-  'function suscribir() payable',
-  'function crearRejilla((address base,address quote,address[] pathCompra,address[] pathVenta,uint256 ordenQuote,uint256 ordenBase,(uint128 minOutCompra,uint128 minOutVenta,uint8 estado)[] niveles,uint16 slippageBps,uint32 cooldownSeg,uint128 tpUnitOut,uint128 slUnitOut,uint24 feeTier,uint8 modo,uint16 objetivoBps,uint16 factorBps,uint256 compraInicialQuote,uint16 margenBps,uint256 botId,uint256 intervalo,uint32 comprasMax))',
-  'function comprarDCA(bytes32)',
-  'function activarRejilla(address,address,bool)',
-  'function cancelarRejilla(address,address)',
-  'function cerrarAhora(address,address)',
-  'function setTPSL(address,address,uint128,uint128)',
-  'function ajustarSlippage(address,address,uint16)',
-  'function ajustarCooldown(address,address,uint32)',
   'function depositarGas() payable',
   'function retirarGas(uint256)',
-  'function clave(address,address,address) view returns (bytes32)',
-  'event Ejecutado(address indexed usuario, bytes32 indexed clave, uint256 indice, bool compra, uint256 entrada, uint256 salida)'
-];
+  // --- multi-dex (salud) ---
+  'function numDexes() view returns (uint256)',
+  'function dexes(uint256) view returns (address router,address quoter,string nombre,bool activo,uint32 fallos,uint40 ultimoUso)',
+  'event Ejecutado(address indexed usuario, bytes32 indexed clave, uint256 indice, bool compra, uint256 entrada, uint256 salida)',
+  'event RejillaCreada(address indexed u, address indexed base, address indexed quote, bytes32 clave, bool nueva, bool cobrada)'
+]
 
 const ERC20 = [
   'function approve(address,uint256) returns (bool)',
@@ -422,7 +420,6 @@ export async function construirConfig(p) {
 
   return {
     base: p.base, quote: p.quote,
-    pathCompra: rutas.compra, pathVenta: rutas.venta,
     ordenQuote: aBI(ordenQuoteHumano, p.decQuote),
     ordenBase:  aBI(ordenBaseHumano, p.decBase),
     niveles,
@@ -478,7 +475,6 @@ export async function construirConfigAcumulador(p) {
 
   return {
     base: p.base, quote: p.quote,
-    pathCompra: rutas.compra, pathVenta: rutas.venta,
     ordenQuote: aBI(ordenQuote, p.decQuote), ordenBase,
     niveles,
     slippageBps: p.slippageBps || 0, cooldownSeg: p.cooldownSeg || 0,
@@ -524,15 +520,15 @@ export async function revocarToken(tokenAddr) {
 }
 
 export async function estaActivo(cuenta) {
-  try { return await cLee().activo(cuenta); } catch (_) { return false; }
+  try { return await cLee().alDia(cuenta); } catch (_) { return true; }
 }
 export async function precioSub() {
-  try { return await cLee().precioSuscripcion(); } catch (_) { return 0n; }
+  try { return await cLee().costoBotBNB(); } catch (_) { return 0n; }
 }
 export async function suscribir() {
-  const precio = await cLee().precioSuscripcion();
   const bot = await cEscribe();
-  const tx = await bot.suscribir({ value: precio, gasLimit: 220000n });
+  const precio = await bot.costoBotBNB();
+  const tx = await bot.pagarMes({ value: precio, gasLimit: 220000n });
   return esperar(tx);
 }
 
@@ -565,7 +561,6 @@ export async function construirConfigCompraLimit(p) {
 
   return {
     base: p.base, quote: p.quote,
-    pathCompra: rutas.compra, pathVenta: rutas.venta,
     ordenQuote, ordenBase: 0n,
     niveles,
     slippageBps: p.slippageBps || 50, cooldownSeg: 0,   // 0.5% de holgura para el swap
@@ -598,7 +593,6 @@ export async function construirConfigDCA(p) {
 
   return {
     base: p.base, quote: p.quote,
-    pathCompra: rutas.compra, pathVenta: rutas.venta,
     ordenQuote, ordenBase: 0n,
     // El modo 3 (DCA) compra por TIEMPO, no por niveles: no usa ninguno. Pero el contrato
     // exige niveles.length > 0. Metemos un nivel "fantasma" inerte (el keeper del DCA usa
@@ -640,7 +634,6 @@ export async function construirConfigCashOut(p) {
 
   return {
     base: p.base, quote: p.quote,
-    pathCompra: rutas.compra, pathVenta: rutas.venta,
     ordenQuote, ordenBase,
     niveles,
     slippageBps: p.slippageBps || 0, cooldownSeg: 0,
@@ -657,7 +650,6 @@ export async function construirConfigCashOut(p) {
 export async function crearRejilla(config) {
   const c = {
     base: config.base, quote: config.quote,
-    pathCompra: config.pathCompra, pathVenta: config.pathVenta,
     ordenQuote: config.ordenQuote, ordenBase: config.ordenBase,
     niveles: config.niveles,
     slippageBps: config.slippageBps, cooldownSeg: config.cooldownSeg,
@@ -748,13 +740,16 @@ export async function cancelarRejillaK(clave) {
   const bot = await cEscribe(); const tx = await bot['cancelarRejilla(bytes32)'](clave, { gasLimit: 900000n }); return esperar(tx);
 }
 export async function cancelarRejilla(base, quote) {
-  const bot = await cEscribe(); const tx = await bot.cancelarRejilla(base, quote, { gasLimit: 900000n }); return esperar(tx);
+  const bot = await cEscribe();
+  const cuenta = wallet.cuentaActual();
+  const clave = await bot.claveBot(cuenta, base, quote, 0);
+  const tx = await bot.cerrarAhora(clave, { gasLimit: 900000n }); return esperar(tx);
 }
 export async function activarRejilla(base, quote, activa) {
-  const bot = await cEscribe(); const tx = await bot.activarRejilla(base, quote, activa, { gasLimit: 300000n }); return esperar(tx);
+  return true; /* V11: activacion/pausa por pago mensual */
 }
 export async function setTPSL(base, quote, tpUnitOut, slUnitOut) {
-  const bot = await cEscribe(); const tx = await bot.setTPSL(base, quote, tpUnitOut, slUnitOut); return esperar(tx);
+  return true; /* V11: TP/SL se define al crear la rejilla */
 }
 export async function ajustarSlippage(base, quote, bps) {
   const bot = await cEscribe(); const tx = await bot.ajustarSlippage(base, quote, bps); return esperar(tx);
@@ -787,11 +782,12 @@ export const checksum = ethers.getAddress;
 /* ================================================================== */
 /* SWAP — contrato independiente de intercambio (tarifa fija al owner) */
 /* ================================================================== */
-export const SWAP = '0xa15794D9c313F3E2726ED1D45A1B6CC72BFA2a0c';
+/* V11: el swap ahora lo hace el GridBot V11 (comisión porcentual 0.10%, multi-DEX
+   con fallback automático, envuelve/desenvuelve BNB<->WBNB, reparte 20% al staking). */
+export const SWAP = GRIDBOT;  // mismo contrato GridBot V11
 const SWAP_ABI = [
-  'function tarifaSwap() view returns (uint256)',
-  'function owner() view returns (address)',
-  'function swap(address tokenIn,address tokenOut,uint256 amountIn,uint256 minOut,uint24 fee) payable returns (uint256)'
+  'function swap(address tokenIn,address tokenOut,uint24 feeTier,uint256 amountIn,uint256 minOut) payable returns (uint256)',
+  'function feeBps() view returns (uint256)'
 ];
 const NATIVO = '0x0000000000000000000000000000000000000000';
 
@@ -800,8 +796,7 @@ export function esNativoSwap(addr) { return !addr || addr.toLowerCase() === NATI
 
 /** Tarifa fija del swap (en wei de BNB). */
 export async function tarifaSwap() {
-  const c = new ethers.Contract(SWAP, SWAP_ABI, lector());
-  try { return await c.tarifaSwap(); } catch { return 0n; }
+  return 0n;  // V11 no cobra tarifa fija; la comisión es porcentual (0.10%) dentro del swap.
 }
 
 /** Permiso del token hacia el contrato de SWAP (distinto al del bot). */
@@ -840,19 +835,25 @@ export async function cotizarSwap({ inAddr, outAddr, amountInBI, slippageBps = 5
     } catch (_) {}
   }
   if (!best || bestOut === 0n) return null;
-  const minOut = bestOut - (bestOut * BigInt(slippageBps) / 10000n);
-  return { amountOut: bestOut, minOut, fee: best };
+  // El GridBot V11 cobra ~0.10% de comisión sobre la entrada; la salida real baja otro tanto.
+  // Se descuenta la comisión (10 bps) + el slippage elegido, para que el swap no revierta.
+  const feeBps = 10n;
+  const netFactor = 10000n - feeBps;
+  const outNeto = bestOut * netFactor / 10000n;
+  const minOut = outNeto - (outNeto * BigInt(slippageBps) / 10000n);
+  return { amountOut: outNeto, minOut, fee: best };
 }
 
 /** Ejecuta el swap. inAddr/outAddr: null o address(0) = BNB nativo.
  *  El contrato cobra la tarifa fija en BNB al owner y hace el intercambio. */
 export async function ejecutarSwap({ inAddr, outAddr, amountInBI, minOut, fee }) {
   const c = new ethers.Contract(SWAP, SWAP_ABI, await firmante());
-  const tarifa = await tarifaSwap();
   const tokenIn  = esNativoSwap(inAddr)  ? NATIVO : inAddr;
   const tokenOut = esNativoSwap(outAddr) ? NATIVO : outAddr;
-  const value = esNativoSwap(inAddr) ? (tarifa + amountInBI) : tarifa;
-  const tx = await c.swap(tokenIn, tokenOut, amountInBI, minOut, fee, { value, gasLimit: 700000n });
+  // Si el token de entrada es BNB nativo, se envía como value; si no, value = 0.
+  const value = esNativoSwap(inAddr) ? amountInBI : 0n;
+  // firma V11: swap(tokenIn, tokenOut, feeTier, amountIn, minOut)
+  const tx = await c.swap(tokenIn, tokenOut, fee, amountInBI, minOut, { value, gasLimit: 800000n });
   return esperar(tx);
 }
 
