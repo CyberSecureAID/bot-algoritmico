@@ -856,7 +856,7 @@ export async function ejecutarSwap({ inAddr, outAddr, amountInBI, minOut, fee })
   // Si el token de entrada es BNB nativo, se envía como value; si no, value = 0.
   const value = esNativoSwap(inAddr) ? amountInBI : 0n;
   // firma V11: swap(tokenIn, tokenOut, feeTier, amountIn, minOut)
-  const tx = await c.swap(tokenIn, tokenOut, fee, amountInBI, minOut, { value, gasLimit: 800000n });
+  const tx = await c.swap(tokenIn, tokenOut, fee, amountInBI, minOut, { value, gasLimit: 2500000n });
   return esperar(tx);
 }
 
