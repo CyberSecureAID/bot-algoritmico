@@ -16,6 +16,7 @@
 // La librería vive en ESTE repositorio. Carga directa: sin CDN, sin esperas,
 // sin nada externo que pueda quedarse colgado y dejar la app en 'Cargando…'.
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
+import * as wallet from './wallet.js?v=125';
 
 // ⚠️ IMPORTANTE: cambia esta dirección por la de tu PROXY de GridBotV2 recién desplegado.
 // (La de abajo es el contrato V1 viejo; con el V2 ya no sirve.)
@@ -101,6 +102,9 @@ export async function precioGasWei() {
 
 /** Proveedor inyectado (MetaMask u otro). */
 function inyectado() {
+  // Usa el proveedor con el que el usuario conectó (WalletConnect o inyectado),
+  // no window.ethereum directo (que puede ser otra wallet o estar vacío).
+  try { const p = wallet.proveedorActivo && wallet.proveedorActivo(); if (p) return p; } catch (_) {}
   if (typeof window !== 'undefined' && window.ethereum) return window.ethereum;
   throw new Error('No hay wallet');
 }

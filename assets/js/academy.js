@@ -35,7 +35,7 @@ let _prov = null;
 const lector = () => (_prov ||= new ethers.JsonRpcProvider(RPC, 56, { staticNetwork: true }));
 const leer = () => new ethers.Contract(ACADEMY, ABI, lector());
 async function firmante() {
-  const p = new ethers.BrowserProvider(window.ethereum);
+  const p = new ethers.BrowserProvider(wallet.proveedorActivo?.() || window.ethereum);
   return p.getSigner();
 }
 

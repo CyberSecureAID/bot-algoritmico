@@ -47,7 +47,7 @@ async function leePP(fn, args = []) {
   }
   throw new Error('rpc');
 }
-async function firmante() { const bp = new ethers.BrowserProvider(window.ethereum); return bp.getSigner(); }
+async function firmante() { const bp = new ethers.BrowserProvider(wallet.proveedorActivo?.() || window.ethereum); return bp.getSigner(); }
 const fmt = (v) => Number(ethers.formatUnits(v, 18));
 const num = (n, d = 2) => Number(n).toLocaleString('es', { minimumFractionDigits: d, maximumFractionDigits: d });
 const $ = (id) => document.getElementById(id);

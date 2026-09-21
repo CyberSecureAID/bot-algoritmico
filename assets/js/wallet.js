@@ -238,6 +238,7 @@ if (typeof window !== 'undefined') {
   window.dispatchEvent(new Event('eip6963:requestProvider'));
 }
 
+export function proveedorActivo() { return detectar(); }
 function detectar() {
   if (est.proveedor) return est.proveedor;
 
