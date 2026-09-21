@@ -23,8 +23,9 @@ export const GRIDBOT = '0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B';
 export const WBNB    = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const RPCS = [
   'https://bsc-dataseed.binance.org',
-  'https://bsc-rpc.publicnode.com',
-  'https://bsc-dataseed1.defibit.io'
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-dataseed1.ninicoin.io',
+  'https://bsc-dataseed2.binance.org'
 ];
 
 const ABI = [
