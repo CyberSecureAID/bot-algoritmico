@@ -88,7 +88,7 @@ async function abrir(clave, arg) {
       case 'sell':      await abrirMarketTab('mk-t2'); break;
       case 'fondos':    abrirMetamaskBuy(); break;
       case 'prize':     { const m = await import('../prizepool.js?v=125'); m.abrirPrizePool && m.abrirPrizePool(); break; }
-      case 'perfil':    { const m = await import('../perfil.js?v=125'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
+      case 'perfil':    { const m = await import('../perfil.js?v=126'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
       case 'tools':     { inyectarFixTools(); const m = await import('../tools.js?v=125'); m.abrirTools && m.abrirTools(); break; }
       case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=125'); m.abrirAcademy && m.abrirAcademy(); break; }
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
