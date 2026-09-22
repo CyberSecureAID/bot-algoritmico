@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
-import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=3';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=4';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
@@ -26,6 +26,24 @@ let _impToken = 0;   // guarda de carrera para la importación
 function swSyncWbnbLogo() { if (LOGOS['BNB'] && !LOGOS['WBNB']) LOGOS['WBNB'] = { img: LOGOS['BNB'].img, price: LOGOS['BNB'].price, chg: LOGOS['BNB'].chg }; }
 
 const SWAP_IDS = [...new Set(['BNB', 'WBNB', 'USDT', 'USDC', ...BASES])];
+/* Carga propia de logos/precios (para que el swap funcione en móvil sin depender
+   de que gridbot-ui llame initSwap). Llena LOGOS con las imágenes de CoinGecko. */
+async function swCargarLogosPropio() {
+  if (LOGO_ST.cargando || LOGO_ST.ok) return;
+  LOGO_ST.cargando = true;
+  try {
+    const ids = [...new Set(SWAP_IDS.map((id) => swMon(id)?.cg).filter(Boolean))];
+    const r = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}&per_page=250&price_change_percentage=24h`);
+    if (!r.ok) throw new Error('cg');
+    const arr = await r.json(); const byCg = {}; arr.forEach((c) => byCg[c.id] = c);
+    SWAP_IDS.forEach((id) => { const c = byCg[swMon(id)?.cg]; if (c) LOGOS[id] = { img: c.image, price: c.current_price, chg: c.price_change_percentage_24h }; });
+    swSyncWbnbLogo();
+    LOGO_ST.ok = true;
+    // re-pintar iconos y modal de monedas si están abiertos
+    const tf=$('sw-tok-from'), tt=$('sw-tok-to'); if(tf) tf.innerHTML=swTokInner(swMon(S.fromId)); if(tt) tt.innerHTML=swTokInner(swMon(S.toId));
+    if (window._cmRepintar) window._cmRepintar();
+  } catch (_) {} finally { LOGO_ST.cargando = false; }
+}
 const S = { fromId: 'BNB', toId: 'USDT', amount: '', out: 0n, minOut: 0n, fee: 0, feeWei: 0n, allow: 0n, balFromWei: 0n, quoting: false, accion: 'swap', maxWei: null };
 let _swT = null, _swToken = 0;
 const SW_GAS_BUF = 3000000000000000n; // 0.003 BNB de colchón de gas al usar Máx con BNB
@@ -146,7 +164,7 @@ function swEsWrap() {
 }
 
 export function abrirSwap() {
-  swInjectCSS(); swSyncWbnbLogo();
+  swInjectCSS(); swSyncWbnbLogo(); swCargarLogosPropio();
   const host = $(APP) || document.body;
   const v = $('swap-modal'); if (v) v.remove();
   const from = swMon(S.fromId), to = swMon(S.toId);
@@ -213,7 +231,7 @@ export function abrirSwap() {
     if (listo) { const tf=$('sw-tok-from'), tt=$('sw-tok-to'); swSyncWbnbLogo(); if(tf) tf.innerHTML=swTokInner(swMon(S.fromId)); if(tt) tt.innerHTML=swTokInner(swMon(S.toId)); }
     else setTimeout(()=>reintentarIconos(n+1), 250);
   })(0);
-  if (!LOGO_ST.ok) _cargarLogosPrecios();
+  if (!LOGO_ST.ok) { _cargarLogosPrecios(); swCargarLogosPropio(); }
   swCargarTarifa(); swCargarBalances(); swRenderInfo(); swRenderBtn(); setOut();
   if (S.amount) swCotizar();
   setTimeout(() => { const a = $('sw-amt'); if (a) a.focus(); }, 60);
@@ -372,7 +390,7 @@ function abrirSwapCoinModal(lado) {
     list.querySelectorAll('.cm-coin').forEach((b) => b.onclick = () => swElegir(lado, b.dataset.id));
   };
   window._cmRepintar = pintar; pintar();
-  if (!LOGO_ST.ok) _cargarLogosPrecios();
+  if (!LOGO_ST.ok) { _cargarLogosPrecios(); swCargarLogosPropio(); }
   $('scm-search').addEventListener('input', (e) => { ftxt = e.target.value; pintar(); });
   setTimeout(() => { const s = $('scm-search'); if (s) s.focus(); }, 60);
   const cerrar = () => { window._cmRepintar = null; const m = $('coin-modal'); if (m) m.remove(); };

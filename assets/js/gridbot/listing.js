@@ -13,7 +13,7 @@ function inyectarCSS() {
   if (_css) return; _css = true;
   const s = document.createElement('style'); s.id = 'lt-css';
   s.textContent = `
-  #lt-panel{position:relative;width:100%;max-width:680px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  #lt-panel{position:relative;width:100%;max-width:720px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
   #lt-panel::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;filter:saturate(1.05);pointer-events:none}
   #lt-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
   #lt-panel > *{position:relative;z-index:1}
@@ -22,7 +22,7 @@ function inyectarCSS() {
   .lt-back{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-2);display:grid;place-items:center;cursor:pointer;flex:none}
   .lt-back:hover{border-color:var(--gold-soft);color:var(--gold)}
   .lt-title{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
-  .lt-how{display:inline-flex !important;align-items:center;gap:6px;background:rgba(232,184,75,.1) !important;border:1px solid var(--gold-soft) !important;color:var(--gold) !important;border-radius:100px !important;padding:7px 14px !important;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--display)}
+  .lt-how{display:inline-flex !important;align-items:center;gap:5px;background:rgba(232,184,75,.1) !important;border:1px solid var(--gold-soft) !important;color:var(--gold) !important;border-radius:10px !important;padding:6px 11px !important;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--display);white-space:nowrap}
   .lt-how svg{stroke:var(--gold)}
   .lt-body{padding:2px 18px 20px}
   .lt-grid{display:grid;grid-template-columns:130px 1fr;gap:16px;margin-bottom:16px}
@@ -31,7 +31,7 @@ function inyectarCSS() {
   .lt-drop{border:1.5px dashed var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px 10px;cursor:pointer;text-align:center;background:rgba(11,14,17,.5);transition:.15s;min-height:150px}
   .lt-drop:hover{border-color:var(--gold-soft)}
   .lt-drop .lt-av{width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#232b34,#151b22);display:grid;place-items:center;position:relative;color:var(--ink-3)}
-  .lt-drop .lt-plus{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,#c79426);color:#241900;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;line-height:1;border:2px solid #0d1117;padding-bottom:1px}
+  .lt-drop .lt-plus{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,#c79426);color:#241900;display:grid;place-content:center;font-weight:800;font-size:16px;line-height:0;border:2px solid #0d1117}
   .lt-drop img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid var(--gold-soft)}
   .lt-drop b{font-size:12.5px;color:var(--ink-2)}
   .lt-drop span{font-size:10.5px;color:var(--ink-3)}
@@ -60,9 +60,15 @@ function inyectarCSS() {
   .lt-opt.on .lt-dot{border-color:var(--gold);background:radial-gradient(circle,var(--gold) 40%,transparent 46%)}
   .lt-opt b{font-size:12.5px;color:var(--ink)} .lt-opt p{font-size:10.5px;color:var(--ink-3);margin:5px 0 0;line-height:1.35}
  .lt-imp-slider.show{display:block}
-  .lt-cta{width:100%;padding:15px;border:0 !important;border-radius:14px !important;background:linear-gradient(180deg,#4fe895,#2fce78 42%,#16a34a) !important;color:#043318 !important;font-family:var(--display);font-weight:800;font-size:15.5px;cursor:pointer;box-shadow:0 5px 0 #0f7a3a, 0 8px 18px rgba(22,163,74,.35), inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 4px rgba(0,0,0,.2) !important;text-shadow:0 1px 0 rgba(255,255,255,.35);transition:transform .08s, box-shadow .08s}
-  .lt-cta:active{transform:translateY(3px);box-shadow:0 2px 0 #0f7a3a, 0 4px 10px rgba(22,163,74,.3), inset 0 1px 0 rgba(255,255,255,.45) !important}
   .lt-cta:disabled{opacity:.5;cursor:default;box-shadow:none;filter:grayscale(.3)}
+  .lt-cta{width:100%;margin-top:2px;padding:15px;border-radius:14px;cursor:pointer;font-family:var(--display);font-weight:800;font-size:15px;
+    background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a) !important;
+    border:1px solid #15803d !important;color:#052e13 !important;
+    box-shadow:0 4px 0 #15803d,inset 0 1px 0 rgba(255,255,255,.35) !important;
+    text-shadow:0 1px 0 rgba(255,255,255,.2) !important}
+  .lt-cta:not(:disabled):hover{filter:brightness(1.05)}
+  .lt-cta:not(:disabled):active{transform:translateY(4px);box-shadow:0 1px 0 #15803d,0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35) !important}
+  .lt-cta:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
   .lt-msg{font-size:12px;color:#f8b34b;background:rgba(248,179,75,.08);border:1px solid rgba(248,179,75,.25);border-radius:10px;padding:10px 12px;margin-bottom:10px;text-align:center;display:none}
   /* lista de tokens listados */
   .lt-list{display:flex;flex-direction:column;gap:12px}
@@ -88,7 +94,8 @@ function inyectarCSS() {
   .lt-empty{text-align:center;color:var(--ink-3);font-size:12.5px;padding:30px 10px}
   /* tooltip info */
   #lt-tip{position:fixed;inset:0;z-index:320;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,5,8,.72);backdrop-filter:blur(6px)}
-  #lt-tip .lt-tbx{max-width:440px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:52px 22px 24px;position:relative;max-height:82vh;overflow-y:auto}
+  #lt-tip .lt-tbx{max-width:440px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:26px 24px 26px;position:relative;max-height:82vh;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
+  #lt-tip .lt-tbx::-webkit-scrollbar{display:none;width:0}
   #lt-tip .lt-tbx p{margin:0;font-size:13px;line-height:1.6;color:#d4dbe4}
   #lt-tip .lt-tx{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid #2c3946;color:#aab6c4;cursor:pointer;z-index:2}
   @media(max-width:560px){
@@ -97,6 +104,13 @@ function inyectarCSS() {
     .lt-drop img{width:44px !important;height:44px !important}
     .lt-drop b{font-size:12.5px}
     .lt-drop span{font-size:10px}
+  }
+  @media(max-width:560px){
+    .lt-head{padding:14px 14px 8px;flex-wrap:nowrap;gap:8px}
+    .lt-title{font-size:16px}
+    .lt-how{padding:5px 9px !important;font-size:11px;border-radius:9px !important}
+    .lt-head-l{min-width:0;flex:1}
+    .lt-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   }
   `;
   document.head.appendChild(s);
@@ -165,7 +179,7 @@ function htmlFormulario() {
   return `
   <div class="lt-grid">
     <div class="lt-drop" id="lt-drop">
-      <div class="lt-av" id="lt-av">${ICO.img}<span class="lt-plus">+</span></div>
+      <div class="lt-av" id="lt-av">${ICO.img}<span class="lt-plus"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></div>
       <b>Upload token image</b>
       <span>JPG, PNG, SVG (max 2MB)</span>
       <input type="file" id="lt-file" accept="image/*" style="display:none">
@@ -428,7 +442,7 @@ function traducirError(e) {
 function tipComo() {
   let t = $('lt-tip'); if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
   t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button><div style="font-size:13px;line-height:1.65;color:#d4dbe4">
-    <div style="font-family:var(--display);font-weight:800;font-size:17px;color:#f3f6fa;margin-bottom:12px">List your own token, sell it your way</div>
+    <div style="font-family:var(--display);font-weight:800;font-size:18px;color:#f3f6fa;margin:0 0 14px;text-align:center">List your token, your way</div>
     <p style="margin:0 0 14px">Created a token on BNB Smart Chain? You can put it up for sale here at the price you choose, even if it has no liquidity anywhere else. Buyers find it by name, symbol or contract, and pay you in BNB.</p>
     <div style="font-weight:700;color:var(--gold);margin-bottom:6px">How it works</div>
     <p style="margin:0 0 14px">Enter your token name, contract and the price you want per token. Send the amount you want to sell to the contract, and your listing goes live. When someone buys, they receive your real token and your earnings build up in BNB, ready to withdraw.</p>
