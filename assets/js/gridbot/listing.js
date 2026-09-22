@@ -14,7 +14,7 @@ function inyectarCSS() {
   if (_css) return; _css = true;
   const s = document.createElement('style'); s.id = 'lt-css';
   s.textContent = `
-  #lt-panel{position:relative;width:100%;max-width:720px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  #lt-panel{position:relative;width:100%;max-width:720px;min-height:472px;display:flex;flex-direction:column;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
   #lt-panel::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;filter:saturate(1.05);pointer-events:none}
   #lt-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
   #lt-panel > *{position:relative;z-index:1}
@@ -25,7 +25,7 @@ function inyectarCSS() {
   .lt-title{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
   .lt-how{display:inline-flex !important;align-items:center;gap:5px;background:rgba(232,184,75,.1) !important;border:1px solid var(--gold-soft) !important;color:var(--gold) !important;border-radius:10px !important;padding:6px 11px !important;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--display);white-space:nowrap}
   .lt-how svg{stroke:var(--gold)}
-  .lt-body{padding:0 18px 14px}
+  .lt-body{padding:0 18px 14px;flex:1;display:flex;flex-direction:column;justify-content:center}
   .lt-grid{display:grid;grid-template-columns:112px 1fr;gap:13px;margin-bottom:10px}
   @media(max-width:560px){ .lt-grid{grid-template-columns:1fr;gap:12px} }
   /* dropzone imagen */
@@ -100,7 +100,7 @@ function inyectarCSS() {
   .lt-del:hover{background:rgba(248,113,113,.12)}
   .lt-empty{text-align:center;color:var(--ink-3);font-size:12.5px;padding:30px 10px}
   /* tooltip info */
-  #lt-tip{position:fixed;inset:0;z-index:320;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,5,8,.72);backdrop-filter:blur(6px)}
+  #lt-tip::backdrop{background:rgba(3,5,8,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
   #lt-tip .lt-tbx{max-width:440px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:24px 22px;position:relative;max-height:82vh;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
   #lt-tip .lt-tbx::-webkit-scrollbar{display:none;width:0}
   #lt-tip .lt-tbx p{margin:0;font-size:13px;line-height:1.6;color:#d4dbe4}
@@ -177,12 +177,25 @@ const ICO = {
 };
 const BNB_LOGO = 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png';
 
+
+/* Contenedor de tooltip como <dialog> (top layer): sale por ENCIMA de todo,
+   incluso del listing en móvil (que también es un dialog). */
+function _tipDialog(htmlInterno) {
+  const prev = document.getElementById('lt-tip'); if (prev) { try { prev.close(); } catch (_) {} prev.remove(); }
+  const dg = document.createElement('dialog'); dg.id = 'lt-tip';
+  dg.style.cssText = 'margin:auto;padding:0;border:0;max-width:440px;width:calc(100vw - 36px);background:transparent;overflow:visible';
+  dg.innerHTML = htmlInterno;
+  document.body.appendChild(dg);
+  if (dg.showModal) dg.showModal(); else dg.setAttribute('open', '');
+  const cerrar = () => { try { dg.close(); } catch (_) {} dg.remove(); };
+  dg.addEventListener('cancel', (e) => { e.preventDefault(); cerrar(); });
+  dg.addEventListener('click', (e) => { if (e.target === dg) cerrar(); });
+  return { dg, cerrar };
+}
+
 function tip(clave) {
-  let t = $('lt-tip');
-  if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
-  t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button><p>${TIPS[clave] || ''}</p></div>`;
-  t.style.display = 'flex';
-  t.onclick = (e) => { if (e.target === t || e.target.id === 'lt-tx') t.style.display = 'none'; };
+  const { cerrar } = _tipDialog(`<div class="lt-tbx"><button class="lt-tx" aria-label="Close">✕</button><p>${TIPS[clave] || ''}</p></div>`);
+  const x = document.querySelector('#lt-tip .lt-tx'); if (x) x.onclick = cerrar;
 }
 
 /* ─────────── Render del formulario (aún no listó, o quiere listar otro) ─────────── */
@@ -499,8 +512,7 @@ function traducirError(e) {
   return 'Something went wrong. Please try again.';
 }
 function tipComo() {
-  let t = $('lt-tip'); if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
-  t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button><div style="font-size:13px;line-height:1.65;color:#d4dbe4">
+  const html = `<div class="lt-tbx"><button class="lt-tx" aria-label="Close">✕</button><div style="font-size:13px;line-height:1.65;color:#d4dbe4">
     <div style="font-family:var(--display);font-weight:800;font-size:18px;color:#f3f6fa;margin:0 0 14px;text-align:center">List your token, your way</div>
     <p style="margin:0 0 14px">Created a token on BNB Smart Chain? You can put it up for sale here at the price you choose, even if it has no liquidity anywhere else. Buyers find it by name, symbol or contract, and pay you in BNB.</p>
     <div style="font-weight:700;color:var(--gold);margin-bottom:6px">How it works</div>
@@ -510,31 +522,28 @@ function tipComo() {
     <div style="font-weight:700;color:var(--gold);margin-bottom:6px">Why buying here is safe</div>
     <p style="margin:0 0 14px">Two protections guard every buyer. First, anyone who buys can return their tokens and get their BNB back, and only the same wallet that bought can do it. Second, your earnings stay locked for 30 days after you list, shown by a visible countdown, so buyers always have time and a way out. This is what makes an open marketplace trustworthy.</p>
     <div style="font-weight:700;color:var(--gold);margin-bottom:6px">Good to know</div>
-    <p style="margin:0">These tokens are only swapped here, never traded in Futures or Spot. The platform does not endorse any listed token; each buyer decides for themselves. You set the price and the story, the market decides the rest.</p>
+    <p style="margin:0">These tokens are only swapped here, never traded in Futures or Spot. The platform does not endorse any listed token; each buyer decides for themselves.</p>
   </div></div>`;
-  t.style.display = 'flex';
-  t.onclick = (e) => { if (e.target === t || e.target.id === 'lt-tx') t.style.display = 'none'; };
+  const { cerrar } = _tipDialog(html);
+  const x = document.querySelector('#lt-tip .lt-tx'); if (x) x.onclick = cerrar;
 }
 
 function confirmar(titulo, texto, onSi) {
-  let t = $('lt-tip'); if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
-  t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button>
+  const html = `<div class="lt-tbx"><button class="lt-tx" aria-label="Close">✕</button>
     <div style="font-family:var(--display);font-weight:800;font-size:17px;color:#f3f6fa;margin:6px 0 10px;text-align:center">${titulo}</div>
     <p style="margin:0 0 18px;text-align:center">${texto}</p>
     <div style="display:flex;gap:10px">
       <button id="lt-cf-no" style="flex:1;padding:12px;border-radius:11px;border:1px solid #2c3946;background:rgba(255,255,255,.04);color:#aab6c4;font-weight:700;cursor:pointer;font-family:var(--display)">Cancel</button>
       <button id="lt-cf-si" style="flex:1;padding:12px;border-radius:11px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.12);color:#f87171;font-weight:800;cursor:pointer;font-family:var(--display)">Delete</button>
     </div></div>`;
-  t.style.display = 'flex';
-  const cerrar = () => { t.style.display = 'none'; };
-  t.onclick = (e) => { if (e.target === t || e.target.id === 'lt-tx' || e.target.id === 'lt-cf-no') cerrar(); };
-  const si = $('lt-cf-si'); if (si) si.onclick = () => { cerrar(); onSi(); };
+  const { cerrar } = _tipDialog(html);
+  document.querySelector('#lt-tip .lt-tx').onclick = cerrar;
+  document.getElementById('lt-cf-no').onclick = cerrar;
+  document.getElementById('lt-cf-si').onclick = () => { cerrar(); onSi(); };
 }
 function alertBonito(txt) {
-  let t = $('lt-tip'); if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
-  t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button><p>${txt}</p></div>`;
-  t.style.display = 'flex';
-  t.onclick = (e) => { if (e.target === t || e.target.id === 'lt-tx') t.style.display = 'none'; };
+  const { cerrar } = _tipDialog(`<div class="lt-tbx"><button class="lt-tx" aria-label="Close">✕</button><p>${txt}</p></div>`);
+  const x = document.querySelector('#lt-tip .lt-tx'); if (x) x.onclick = cerrar;
 }
 
 /* ═══════════ Abrir el listado a pantalla completa (móvil, acceso directo) ═══════════ */
