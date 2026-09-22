@@ -31,7 +31,7 @@ Para tocar cualquier contrato desplegado:
 | **Staking** | Bóveda no custodial + reparto | `0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4` | `0xB96675917b784987F06327a629398ff8637BFc64` |
 | **PanelStaking** | Vistas del staking (solo lectura) | `0xE620D5BD60F70CCdFa4493F3a5B794d1BBEbf8d2` | (sin proxy) |
 | **GridBot** | Bots + swap (multi-DEX) | `0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B` | V11 (final): `0x89bc0f298218118D9DF3Be49672961914fA3aF34` |
-| **MercadoTokens** | Listado libre de tokens (vender sin liquidez) | `0x39c48394068299Aa3e3ab114F16bfc3DE11F4112` | `0x19cec2944BA0701B592861c82e759b48202870fD` |
+| **MercadoTokens** | Listar/vender tokens sin liquidez (con seguridad) | `0x39c48394068299Aa3e3ab114F16bfc3DE11F4112` | `0x4782c5A49C7d1Bba1C0A785f90775b47B5315a27` |
 | **SwapLib** | Librería del fallback multi-DEX | (librería, se linkea) | `0x8713F1ABF29fBF912D032eA1c1c60380A8De901f` |
 | **PerfilesP2P** | Perfiles del marketplace P2P | `0xC01B61B702011747B4c0Ee6B5F2d0F2b4B66880c` | ver V5 |
 | **MercadoP2P** | Órdenes del marketplace P2P | `0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025` | ver V5 |
@@ -193,9 +193,52 @@ los tokens que cada vendedor pone a la venta y sus ganancias hasta que las retir
 3. En el PROXY `0x39c4…4112`, llamar `upgradeToAndCall(nuevaImpl, 0x)`.
 4. El storage debe respetarse (nuevas variables solo al final, antes del `__gap`).
 
+
+### 3.6-bis. MercadoTokens — SEGURIDAD (versión final desplegada)
+**Implementación final (con toda la seguridad):** `0x4782c5A49C7d1Bba1C0A785f90775b47B5315a27`
+Verificada en BscScan. Compilada con **0.8.22, optimizer runs 1, sin viaIR**.
+
+Medidas de seguridad implementadas y testeadas (todas acumuladas):
+- **No se puede listar "aire":** `listar` hace `transferFrom` de los tokens al contrato; si el
+  usuario no los tiene o no los aprobó, la transacción revierte. Solo se lista si los tokens llegan.
+- **Filtro de liquidez (anti-suplantación):** si un token tiene más de `maxLiquidezUSD` ($250.000)
+  de liquidez REAL en PancakeSwap (reservas contra WBNB/USDT, no market cap), NO se puede listar.
+  Esto bloquea automáticamente TODAS las monedas establecidas (BTC, ETH, etc.) sin lista manual.
+  Editable con `setMaxLiquidez(usd18)`. Consulta: `liquidezUSD(token)`.
+- **Excepciones con nombre anclado:** `permitirConLiquidez(token, true, nombre, simbolo)` permite un
+  token concreto aunque tenga liquidez, y ANCLA su nombre/símbolo (nadie puede falsearlo).
+  Configurados los 4 USDT.z (nombre y símbolo forzados a "USDT.z"):
+    `0x4BE35Ec329343d7d9F548d42B0F8c17FFfe07db4`
+    `0xd242797cBe7629C216f95f3deaFE79a9856Cb520`
+    `0xa80A8cba9b40AC5dA81E84578a75c6ddA94C4444`
+    `0xf15c7f1F86398520b70505e9cC285A8b18D9A21f`
+- **Devolución protegida (anti fee-on-transfer):** el comprador puede devolver sus tokens y recuperar
+  su BNB, pero el reembolso se basa en lo REALMENTE recibido (un token con comisión no puede drenar el pool).
+  Solo la wallet que compró puede devolver.
+- **Candado de 30 días:** el vendedor no retira ganancias hasta 30 días tras listar (`faltaCandado(id)`
+  da el tiempo restante). Protege a los compradores.
+- **Lista negra manual** (`setProhibidos`) por si se quiere bloquear algún contrato específico.
+- Owner lista GRATIS; usuarios pagan $25. Comisión de retiro 5% (1% staking, 2%+2% owners). Owner en 2 pasos. Rescate. Pausa.
+
+### 3.7. Firebase (logos de tokens listados)
+- **Proyecto Firestore:** `criptocuba-logos` (plan gratis Spark, sin tarjeta).
+- Los logos se guardan en la colección **`logos`** (id = dirección del token en minúsculas), como
+  string dataURL WebP comprimido (pocos KB). Capacidad: ~130.000 logos gratis.
+- **Reglas:** cualquiera puede LEER; crear solo strings <90KB; nadie puede editar/borrar (anti-sabotaje).
+- El frontend NO depende del dominio: usa la API REST de Firestore con projectId + apiKey (en `firebase-logos.js`).
+- El logo NO va on-chain (el contrato guarda logo vacío); se comprime en el navegador (`reducirImagen` en `listing.js`).
+
+### 3.8. Frontend del Swap (completo)
+- `assets/js/gridbot/swap.js`: swap normal + botón "List your token" + compra de tokens listados (con disclaimer).
+- `assets/js/gridbot/listing.js`: panel de listar (web al lado del swap, móvil pantalla completa), My tokens, delete.
+- `assets/js/gridbot/mercado.js`: capa de conexión al contrato MercadoTokens.
+- `assets/js/gridbot/firebase-logos.js`: guardar/leer logos en Firestore.
+- Móvil: acceso "Add Token" en All Services y en la sección bajo las tarjetas (movil.js, inicio.js).
+- Los tokens listados aparecen en el buscador del swap con logo + "Protected · Xd" (garantía positiva).
+
 ## 4. LO QUE FALTA POR HACER (nada se olvida)
 
-### 4.0. MercadoTokens (frontend pendiente)
+### 4.0. MercadoTokens — HECHO ✓ (frontend, Firebase, seguridad, compra desde swap)
 - [ ] **Frontend web**: ventana "gemela" al lado del swap (mismo fondo/estilo) para listar y comprar tokens.
 - [ ] **Frontend móvil**: sección NUEVA y separada (el swap móvil queda limpio), con explicación completa,
       botón "cómo funciona", y el flujo paso a paso estilo P2P.
