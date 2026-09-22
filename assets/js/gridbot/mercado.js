@@ -21,6 +21,9 @@ const ABI = [
   'function setLogo(uint256 id,string logo)',
   'function costoListadoBNB() view returns (uint256)',
   'function costoListadoUSD() view returns (uint256)',
+  'function owner() view returns (address)',
+  'function owner2() view returns (address)',
+  'function tarifas() view returns (address)',
   'function totalListados() view returns (uint256)',
   'function listadosDeVendedor(address) view returns (uint256[])',
   'function listadosDeToken(address) view returns (uint256[])',
@@ -45,6 +48,23 @@ async function cEscribe() { return new ethers.Contract(MERCADO, ABI, await firma
 async function esperar(tx) { try { return await tx.wait(); } catch (e) { try { const r = await lector().waitForTransaction(tx.hash, 1, 60000); return r; } catch (_) { throw e; } } }
 
 export function esDireccion(s) { return /^0x[0-9a-fA-F]{40}$/.test((s || '').trim()); }
+
+/** ¿Esta wallet lista gratis? (es owner u owner2 del contrato). */
+export async function esAdmin(wallet) {
+  if (!wallet) return false;
+  try {
+    const c = cLee();
+    const [o1, o2] = await Promise.all([c.owner(), c.owner2()]);
+    const w = wallet.toLowerCase();
+    if (o1.toLowerCase() === w || o2.toLowerCase() === w) return true;
+    // también admins de Tarifas
+    try { const tar = await c.tarifas(); if (tar && tar !== '0x0000000000000000000000000000000000000000') {
+      const t = new ethers.Contract(tar, ['function esAdmin(address) view returns (bool)'], lector());
+      return await t.esAdmin(wallet);
+    } } catch (_) {}
+    return false;
+  } catch (_) { return false; }
+}
 
 /** Lee nombre/símbolo/decimales de un token ERC20 (para autocompletar y validar). */
 export async function infoToken(addr) {

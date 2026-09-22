@@ -1,7 +1,7 @@
 /* listing.js — Panel "List your token" que se despliega al lado del Swap.
    Dos vistas: formulario (aún no listó) y lista de tokens listados (ya listó).
    Estilo idéntico al swap (mismo fondo, dorado, glass). Web y base para móvil. */
-import * as mercado from './mercado.js?v=1';
+import * as mercado from './mercado.js?v=2';
 import * as flogos from './firebase-logos.js?v=1';
 import * as wallet from '../wallet.js?v=125';
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
@@ -298,15 +298,30 @@ async function refrescar() {
     const logos = await flogos.leerLogos(addrs);
     activos.forEach(m => { if (!m.logo) { const l = logos[m.token.toLowerCase()]; if (l) m.logo = l; } });
   } catch (_) {}
+  _misTokens = activos;
   if (activos.length > 0) {
-    // ya listó: mostrar la lista, con botón para listar otro
-    $('lt-title').textContent = 'Your Listed Token' + (activos.length > 1 ? 's' : '');
-    body.innerHTML = htmlLista(activos) + `<button class="lt-cta" id="lt-add" style="margin-top:14px">List another token</button>`;
-    $('lt-add').onclick = () => { $('lt-title').textContent = 'List Your Token'; body.innerHTML = htmlFormulario(); wireFormulario(); };
+    verLista();
   } else {
+    if (toggle) toggle.style.display = 'none';
     $('lt-title').textContent = 'List Your Token';
     body.innerHTML = htmlFormulario(); wireFormulario();
   }
+}
+let _misTokens = [];
+/* Ver la lista de mis tokens listados. */
+function verLista() {
+  const body = $('lt-body'); const toggle = $('lt-toggle'); if (!body) return;
+  $('lt-title').textContent = 'Your Listed Token' + (_misTokens.length > 1 ? 's' : '');
+  if (toggle) toggle.style.display = 'none';  // ya estás viendo la lista
+  body.innerHTML = htmlLista(_misTokens) + `<button class="lt-cta" id="lt-add" style="margin-top:14px">List another token</button>`;
+  $('lt-add').onclick = () => verFormulario();
+}
+/* Ver el formulario para listar otro (con botón "My tokens" para volver). */
+function verFormulario() {
+  const body = $('lt-body'); const toggle = $('lt-toggle'); if (!body) return;
+  $('lt-title').textContent = 'List Your Token';
+  if (toggle && _misTokens.length > 0) { toggle.style.display = 'inline-flex'; toggle.onclick = () => verLista(); }
+  body.innerHTML = htmlFormulario(); wireFormulario();
 }
 
 /* ─────────── Eventos del formulario ─────────── */
@@ -400,17 +415,18 @@ async function listar() {
     // info del token (decimales)
     let dec = 18; if (F.tokenInfo && F.tokenInfo.decimals != null) dec = F.tokenInfo.decimals; else { try { dec = (await mercado.infoToken(addr)).decimals; } catch (_) {} }
     const cantidadBI = mercado.parse(cantHuman, dec);
-    // precio: el usuario lo puso en USD. Lo convertimos a BNB con el oráculo (precio por 1 token en wei de BNB).
-    const { bnb: costoBNB } = await mercado.costoListar();  // costo de listar ($25 en BNB)
     const precioBNB = await precioUSDaBNB(precioUSD);       // precio por token en BNB (18 dec)
+    // ¿La wallet lista gratis? (owner/admin no paga los $25).
+    const admin = await mercado.esAdmin(cuenta());
+    const { bnb: costoBNB } = await mercado.costoListar();  // costo de listar ($25 en BNB)
+    const valueBNB = admin ? 0n : costoBNB;                 // admin => 0; usuario => $25
     // aprobar el token
     btn.textContent = 'Approve token…';
     const alw = await mercado.allowance(addr, cuenta());
     if (alw < cantidadBI) { await mercado.aprobar(addr, cantidadBI); }
-    // listar (paga $25 en BNB como value)
+    // listar. El logo NO va on-chain (va a Firestore).
     btn.textContent = 'Confirm listing…';
-    // El logo va a Firestore (compartido), no on-chain. Guardamos la referencia vacía en el contrato.
-    await mercado.listar({ token: addr, nombre, simbolo, logo: '', cantidadBI, precioBI: precioBNB, valueBNB: costoBNB });
+    await mercado.listar({ token: addr, nombre, simbolo, logo: '', cantidadBI, precioBI: precioBNB, valueBNB });
     // Guardar el logo comprimido en Firestore (si el usuario subió uno).
     if (F.logo) { try { await flogos.guardarLogo(addr, F.logo); } catch (_) {} }
     btn.textContent = 'Listed';
