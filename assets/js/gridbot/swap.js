@@ -8,6 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
@@ -33,7 +34,12 @@ let _swCssOk = false;
 function swInjectCSS() {
   if (_swCssOk) return; _swCssOk = true;
   const css = `
-  #swap-modal{position:fixed;inset:0;z-index:230;display:flex;align-items:center;justify-content:center;padding:16px}
+  #swap-modal{position:fixed;inset:0;z-index:230;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+  #swap-modal .sw-wrap{display:flex;gap:16px;align-items:flex-start;justify-content:center;max-width:100%;flex-wrap:nowrap}
+  #swap-modal .lt-slot{display:none;animation:cmPop .24s cubic-bezier(.2,.9,.3,1.2)}
+  #swap-modal.lt-open .lt-slot{display:block}
+  @media(max-width:1000px){ #swap-modal.lt-open .sw-box{display:none} }
+  #swap-modal .sw-listbtn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(180deg,#3ddc84,#22c55e 55%,#16a34a);border:0;color:#052e13;border-radius:100px;padding:6px 13px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 2px 0 #12833f;margin-right:6px}
   #swap-modal *{-webkit-tap-highlight-color:transparent}
   #swap-modal .sw-bg{position:absolute;inset:0;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
   #swap-modal .sw-box{position:relative;width:100%;max-width:436px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:cmPop .22s cubic-bezier(.2,.9,.3,1.2)}
@@ -146,9 +152,11 @@ export function abrirSwap() {
   const flip = `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13"/><path d="m3 13 4 4 4-4"/><path d="M17 20V7"/><path d="m21 11-4-4-4 4"/></svg>`;
   const el = document.createElement('div');
   el.innerHTML = `<div id="swap-modal">
+    <div class="sw-bg" id="sw-bg2" style="position:absolute;inset:0"></div>
+    <div class="sw-wrap">
     <div class="sw-bg" id="sw-bg"></div>
     <div class="sw-box">
-      <div class="cm-head"><span class="cm-title">Intercambio</span><button class="cm-x" id="sw-x" aria-label="Cerrar">${x}</button></div>
+      <div class="cm-head"><span class="cm-title">Intercambio</span><div style="display:flex;align-items:center"><button class="sw-listbtn" id="sw-listbtn"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>List your token</button><button class="cm-x" id="sw-x" aria-label="Cerrar">${x}</button></div></div>
       <div class="sw-find">
         <div class="sw-find-bar">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -174,6 +182,8 @@ export function abrirSwap() {
         <button class="btn-oro3d sw-go" id="sw-go" type="button">Intercambiar</button>
       </div>
     </div>
+    <div class="lt-slot" id="lt-slot"></div>
+    </div>
   </div>`;
   host.appendChild(el.firstElementChild);
   $('sw-x').onclick = cerrarSwap; $('sw-bg').onclick = cerrarSwap;
@@ -184,6 +194,15 @@ export function abrirSwap() {
   $('sw-tok-from').onclick = () => abrirSwapCoinModal('from');
   $('sw-tok-to').onclick = () => abrirSwapCoinModal('to');
   $('sw-go').onclick = swEjecutar;
+  // botón "List your token": despliega el panel al lado
+  const lbtn = $('sw-listbtn');
+  if (lbtn) lbtn.onclick = async () => {
+    const modal = $('swap-modal');
+    const slot = $('lt-slot');
+    if (modal.classList.contains('lt-open')) { modal.classList.remove('lt-open'); return; }
+    modal.classList.add('lt-open');
+    try { inyectarListingCSS(); await montarListing(slot, { back: true, onBack: () => modal.classList.remove('lt-open') }); } catch (e) { console.warn('listing:', e); }
+  };
   $('sw-amt').value = S.amount || '';
   if (!LOGO_ST.ok) _cargarLogosPrecios();
   swCargarTarifa(); swCargarBalances(); swRenderInfo(); swRenderBtn(); setOut();
