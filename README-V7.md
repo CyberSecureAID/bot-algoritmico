@@ -236,6 +236,41 @@ Medidas de seguridad implementadas y testeadas (todas acumuladas):
 - Móvil: acceso "Add Token" en All Services y en la sección bajo las tarjetas (movil.js, inicio.js).
 - Los tokens listados aparecen en el buscador del swap con logo + "Protected · Xd" (garantía positiva).
 
+
+### 3.9. Contabilidad (el "contable" central) — NUEVO
+**Proxy (oficial):** `0x7FdE85E0bD53208F380980cfE317A9D4982434Ab`
+**Implementación:** `0x6F3e055b5C8004F76956F26c4a82662Bca812fF3`
+**Proxy tipo:** ProxyContabilidad (ERC1967Proxy). Verificado. Compilado 0.8.24, runs 200.
+
+Contrato central que lleva la contabilidad de TODA la plataforma. NO custodia dinero: solo cuenta.
+DATOS PRIVADOS (solo owners/admins pueden leer). Testeado 9/9.
+
+Qué registra (los servicios se lo REPORTAN):
+- Total generado (histórico + por mes), desglose por servicio, total al staking, total a owners.
+- **Wallets únicas**: cada wallet cuenta UNA vez aunque interactúe muchas veces. Total + nuevas por mes.
+- Nº de operaciones (total, por servicio, por mes).
+
+Control (solo owner):
+- **Lista negra de wallets** (`bloquear` / `bloquearVarias`): los demás contratos consultan `bloqueada(wallet)`.
+- Autorizar quién puede reportar (`setReportador` / `setReportadores`).
+
+Historial detallado: cada actividad/pago EMITE un evento (con wallet, token, monto). El panel admin los
+lee de la blockchain con el hash de cada tx (para demostrar "aquí están tus 23 pagos"). NO se guarda en storage.
+
+Funciones clave: `reportar(wallet, servicio, generadoUSD, aStakingUSD, aOwnersUSD)`, `reportarPagoStaking(...)`,
+`tocarWallet(wallet)`, `resumen()`, `verMes(aaaamm)`, `verServicio(hash)`, `bloquear(wallet, bool)`.
+
+**PENDIENTE:** interconectar cada servicio (GridBot, MercadoTokens, Futuros…) para que llame a `reportar()`.
+Requiere autorizar cada uno con `setReportador` y un pequeño upgrade de cada contrato para que reporte.
+
+### 3.10. Perfiles de usuario (Firebase) — NUEVO
+- Nombre + foto de perfil por wallet, guardados en Firestore (colección **`perfiles`**, id = wallet en minúsculas).
+- Misma dinámica que los logos: reductor de imagen (WebP pequeño) + API REST, sin depender del dominio.
+- **Cartel OBLIGATORIO**: al entrar a perfil, si la wallet no tiene nombre Y foto, debe completarlos para ver los datos.
+- Reconocimiento de wallet: cada wallet carga su nombre/foto al conectarse. Web y móvil (mismo `perfil.js`).
+- Archivos: `assets/js/perfil.js`, `assets/js/firebase-perfil.js`.
+- **Reglas de Firestore actualizadas** (logos + perfiles). Guardadas en el repo.
+
 ## 4. LO QUE FALTA POR HACER (nada se olvida)
 
 ### 4.0. MercadoTokens — HECHO ✓ (frontend, Firebase, seguridad, compra desde swap)
@@ -302,6 +337,25 @@ Medidas de seguridad implementadas y testeadas (todas acumuladas):
       (en gridbot.js) para que MetaMask no re-simule en conflicto.
 - [ ] **Saldo del MAX bloqueado**: el swap leía el saldo de un RPC con caché. Ahora lo lee del proveedor de
       MetaMask (saldo real). Ver `lectorFresco()` en gridbot.js.
+
+### 4.4-ter. Pendientes GRANDES del proyecto (mencionados por el owner)
+- [ ] **Interconectar TODO con Contabilidad**: cada servicio llama a `reportar()`. Autorizar cada uno.
+- [ ] **Panel administrativo** conectado a TODOS los contratos (no solo visor): cambiar %, owners, DEX,
+      bloquear wallets, ver ganancias por owner, ver pagos del staking a cada wallet con sus hashes, etc.
+      Idea: alojar la interfaz del panel en Firebase (privada); la seguridad real la da el `soloOwner` de cada contrato.
+- [ ] **Reparto directo (sin tesorería)**: confirmado que NO se crea contrato tesorería. Todo reparte
+      20% staking / 50-50 owners en el momento. Asegurar que Futuros y demás lo hagan.
+- [ ] **Bridge Pool**: contrato existe pero NO está interconectado. Probablemente recrearlo para que aporte
+      20% al staking e interconectarlo con Contabilidad. Subir el mínimo de apuesta (ahora $1.50 es muy poco).
+- [ ] **Área de Seguridad (revoke de permisos)**: NUEVO. Que el usuario conecte su wallet, vea todos los
+      permisos (approvals) que ha dado, y pueda revocarlos. Cobrar una pequeña comisión, 20% al staking.
+- [ ] **Academy**: contrato conectado a un keeper que no funciona. Revisar.
+- [ ] **Prize Pool**: NO es proxy; hay que rehacerlo. Interconectar con staking y Contabilidad.
+- [ ] **Completar Futuros**: la ejecución real en PancakeSwap (la contabilidad ya está).
+- [ ] **Mejorar el bot Cash Out** (hoy solo vende a +X%; mejorar para no quedar en pérdida).
+- [ ] **Pie de página**: rehacerlo como un "Cómo funciona" completo (seguridad, futuros, staking, swap,
+      listado), con tutoriales paso a paso. Penúltima tarea antes de Cloudflare.
+- [ ] Nota: el proyecto es MUCHO más grande que "lo básico". Meses de trabajo por delante.
 
 ### 4.5. Keeper (disparo de bots y órdenes)
 - [ ] **Cloudflare de pago** falló al acreditarse; reintentar con otra tarjeta. Mientras,
