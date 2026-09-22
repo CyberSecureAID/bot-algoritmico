@@ -74,7 +74,7 @@ async function abrir(clave, arg) {
   if (requiereActivacion(clave)) { avisoActivacion(clave); return; }
   try {
     switch (clave) {
-      case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=5'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
+      case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=7'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
                           try { const idi = await import('../idioma.js?v=163'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
