@@ -1,7 +1,7 @@
 /* listing.js — Panel "List your token" que se despliega al lado del Swap.
    Dos vistas: formulario (aún no listó) y lista de tokens listados (ya listó).
    Estilo idéntico al swap (mismo fondo, dorado, glass). Web y base para móvil. */
-import * as mercado from './mercado.js?v=1';
+import * as mercado from './mercado.js?v=2';
 import * as flogos from './firebase-logos.js?v=2';
 import * as wallet from '../wallet.js?v=125';
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
@@ -18,33 +18,37 @@ function inyectarCSS() {
   #lt-panel::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;filter:saturate(1.05);pointer-events:none}
   #lt-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
   #lt-panel > *{position:relative;z-index:1}
-  .lt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px 10px}
+  .lt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 18px 8px}
   .lt-head-l{display:flex;align-items:center;gap:10px}
   .lt-back{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-2);display:grid;place-items:center;cursor:pointer;flex:none}
   .lt-back:hover{border-color:var(--gold-soft);color:var(--gold)}
   .lt-title{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
   .lt-how{display:inline-flex !important;align-items:center;gap:5px;background:rgba(232,184,75,.1) !important;border:1px solid var(--gold-soft) !important;color:var(--gold) !important;border-radius:10px !important;padding:6px 11px !important;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--display);white-space:nowrap}
   .lt-how svg{stroke:var(--gold)}
-  .lt-body{padding:2px 18px 16px}
-  .lt-grid{display:grid;grid-template-columns:120px 1fr;gap:14px;margin-bottom:12px}
+  .lt-body{padding:0 18px 14px}
+  .lt-grid{display:grid;grid-template-columns:112px 1fr;gap:13px;margin-bottom:10px}
   @media(max-width:560px){ .lt-grid{grid-template-columns:1fr;gap:12px} }
   /* dropzone imagen */
-  .lt-drop{border:1.5px dashed var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px 10px;cursor:pointer;text-align:center;background:rgba(11,14,17,.5);transition:.15s;min-height:150px}
+  .lt-drop{border:1.5px dashed var(--line);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 10px;cursor:pointer;text-align:center;background:rgba(11,14,17,.5);transition:.15s;min-height:132px}
   .lt-drop:hover{border-color:var(--gold-soft)}
   .lt-drop .lt-av{width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#232b34,#151b22);display:grid;place-items:center;position:relative;color:var(--ink-3)}
   .lt-drop .lt-plus{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,#c79426);color:#241900;display:grid;place-content:center;font-weight:800;font-size:16px;line-height:0;border:2px solid #0d1117}
   .lt-drop img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid var(--gold-soft)}
   .lt-drop b{font-size:12.5px;color:var(--ink-2)}
   .lt-drop span{font-size:10.5px;color:var(--ink-3)}
-  .lt-fields{display:flex;flex-direction:column;gap:10px}
+  .lt-fields{display:flex;flex-direction:column;gap:9px}
   .lt-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:560px){ .lt-two{grid-template-columns:1fr} }
   .lt-f label{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-3);margin:0 2px 6px}
   .lt-req{color:var(--gold);font-weight:700}
   .lt-i{width:14px;height:14px;border-radius:50%;border:1px solid rgba(150,165,180,.28);background:none;color:rgba(150,165,180,.45);font-size:9px;font-style:italic;font-weight:700;cursor:pointer;display:inline-grid;place-items:center;padding:0;opacity:.7}
-  .lt-i:hover{border-color:var(--gold);color:var(--gold);opacity:1}
-  .lt-inp{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:11px;padding:10px 12px;color:var(--ink);font-family:var(--display);font-size:14px;outline:none}
-  .lt-inp:focus{border-color:var(--gold-soft)}
+  .lt-i:hover{border-color:var(--gold) !important;color:var(--gold) !important;opacity:1 !important}
+  .lt-inp{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:11px;padding:9px 12px;color:var(--ink);font-family:var(--display);font-size:14px;outline:none}
+  .lt-inp:focus{border-color:var(--gold-soft) !important;background:rgba(11,14,17,.72) !important;color:var(--ink) !important}
+  .lt-inp:-webkit-autofill,.lt-inp:-webkit-autofill:hover,.lt-inp:-webkit-autofill:focus{
+    -webkit-text-fill-color:var(--ink) !important;
+    -webkit-box-shadow:0 0 0 1000px rgba(11,14,17,.95) inset !important;
+    caret-color:var(--ink) !important;transition:background-color 9999s ease-in-out 0s}
   .lt-inp::placeholder{color:var(--ink-3);opacity:.6}
   .lt-price-wrap{display:flex;gap:8px;align-items:stretch}
   .lt-price-wrap .lt-inp{flex:1 1 auto;min-width:60px}
@@ -52,9 +56,9 @@ function inyectarCSS() {
   .lt-bnbtag img{width:15px;height:15px}
   .lt-bnbtag img{width:18px;height:18px}
   /* opción de impacto */
-  .lt-imp{margin-bottom:12px}
+  .lt-imp{margin-bottom:10px}
   .lt-imp-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .lt-opt{background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:11px;padding:10px 12px;cursor:pointer}
+  .lt-opt{background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:11px;padding:9px 12px;cursor:pointer}
   .lt-opt.on{border-color:var(--gold);background:rgba(232,184,75,.05)}
   .lt-opt .lt-opt-t{display:flex;align-items:center;gap:7px}
   .lt-opt .lt-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--line);flex:none}
@@ -62,7 +66,7 @@ function inyectarCSS() {
   .lt-opt b{font-size:12.5px;color:var(--ink)} .lt-opt p{font-size:10.5px;color:var(--ink-3);margin:5px 0 0;line-height:1.35}
  .lt-imp-slider.show{display:block}
   .lt-cta:disabled{opacity:.5;cursor:default;box-shadow:none;filter:grayscale(.3)}
-  .lt-cta{width:100%;margin-top:2px;padding:13px;border-radius:14px;cursor:pointer;font-family:var(--display);font-weight:800;font-size:15px;
+  .lt-cta{width:100%;margin-top:0;padding:12px;border-radius:14px;cursor:pointer;font-family:var(--display);font-weight:800;font-size:15px;
     background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a) !important;
     border:1px solid #15803d !important;color:#052e13 !important;
     box-shadow:0 4px 0 #15803d,inset 0 1px 0 rgba(255,255,255,.35) !important;
@@ -97,10 +101,11 @@ function inyectarCSS() {
   .lt-empty{text-align:center;color:var(--ink-3);font-size:12.5px;padding:30px 10px}
   /* tooltip info */
   #lt-tip{position:fixed;inset:0;z-index:320;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,5,8,.72);backdrop-filter:blur(6px)}
-  #lt-tip .lt-tbx{max-width:440px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:26px 24px 26px;position:relative;max-height:82vh;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
+  #lt-tip .lt-tbx{max-width:440px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:24px 22px;position:relative;max-height:82vh;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
   #lt-tip .lt-tbx::-webkit-scrollbar{display:none;width:0}
   #lt-tip .lt-tbx p{margin:0;font-size:13px;line-height:1.6;color:#d4dbe4}
-  #lt-tip .lt-tx{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid #2c3946;color:#aab6c4;cursor:pointer;z-index:2}
+  #lt-tip .lt-tbx > p:first-child{padding-right:34px}
+  #lt-tip .lt-tx{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid #2c3946;color:#aab6c4;cursor:pointer;z-index:2;font-size:13px}
   @media(max-width:560px){
     .lt-drop{flex-direction:row !important;justify-content:flex-start;gap:12px;min-height:0 !important;padding:12px 14px !important;text-align:left}
     .lt-drop .lt-av{width:44px !important;height:44px !important}
@@ -204,7 +209,7 @@ function htmlFormulario() {
       </div>
     </div>
   </div>
-  <div class="lt-f" style="margin-bottom:6px"><label>How many tokens do you list for sale? <span class="lt-req">*</span></label><input class="lt-inp" id="lt-amount" inputmode="decimal" placeholder="e.g. 1000000"></div>
+  <div class="lt-f" style="margin-bottom:4px"><label>How many tokens do you list for sale? <span class="lt-req">*</span></label><input class="lt-inp" id="lt-amount" inputmode="decimal" placeholder="e.g. 1000000"></div>
   <div class="lt-imp">
     <div class="lt-f"><label>Price behaviour ${iBtn('impact')}</label></div>
     <div class="lt-imp-row">
