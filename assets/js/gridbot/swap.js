@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
-import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=1';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
@@ -35,11 +35,13 @@ function swInjectCSS() {
   if (_swCssOk) return; _swCssOk = true;
   const css = `
   #swap-modal{position:fixed;inset:0;z-index:230;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+  @media(max-width:1000px){ #swap-modal{align-items:flex-start;padding-top:calc(16px + env(safe-area-inset-top,0px))} #swap-modal.lt-open{padding-top:calc(12px + env(safe-area-inset-top,0px))} }
   #swap-modal .sw-wrap{display:flex;gap:16px;align-items:flex-start;justify-content:center;max-width:100%;flex-wrap:nowrap}
   #swap-modal .lt-slot{display:none;animation:cmPop .24s cubic-bezier(.2,.9,.3,1.2)}
   #swap-modal.lt-open .lt-slot{display:block}
   @media(max-width:1000px){ #swap-modal.lt-open .sw-box{display:none} }
-  #swap-modal .sw-listbtn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(180deg,#3ddc84,#22c55e 55%,#16a34a);border:0;color:#052e13;border-radius:100px;padding:6px 13px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 2px 0 #12833f;margin-right:6px}
+  #swap-modal .sw-listbtn{display:inline-flex !important;align-items:center;gap:6px;background:linear-gradient(180deg,#3ddc84,#22c55e 55%,#16a34a) !important;border:0 !important;color:#052e13 !important;border-radius:100px !important;padding:7px 14px !important;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 2px 0 #12833f;margin-right:8px;white-space:nowrap;font-family:var(--display)}
+  #swap-modal .sw-listbtn svg{stroke:#052e13}
   #swap-modal *{-webkit-tap-highlight-color:transparent}
   #swap-modal .sw-bg{position:absolute;inset:0;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
   #swap-modal .sw-box{position:relative;width:100%;max-width:436px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:cmPop .22s cubic-bezier(.2,.9,.3,1.2)}

@@ -13,7 +13,7 @@ function inyectarCSS() {
   if (_css) return; _css = true;
   const s = document.createElement('style'); s.id = 'lt-css';
   s.textContent = `
-  #lt-panel{position:relative;width:100%;max-width:520px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  #lt-panel{position:relative;width:100%;max-width:620px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
   #lt-panel::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;filter:saturate(1.05);pointer-events:none}
   #lt-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
   #lt-panel > *{position:relative;z-index:1}
@@ -24,14 +24,14 @@ function inyectarCSS() {
   .lt-title{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
   .lt-how{display:inline-flex;align-items:center;gap:6px;background:rgba(232,184,75,.08);border:1px solid var(--gold-soft);color:var(--gold);border-radius:100px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer}
   .lt-body{padding:2px 18px 20px}
-  .lt-grid{display:grid;grid-template-columns:150px 1fr;gap:14px;margin-bottom:14px}
-  @media(max-width:560px){ .lt-grid{grid-template-columns:1fr} }
+  .lt-grid{display:grid;grid-template-columns:130px 1fr;gap:16px;margin-bottom:16px}
+  @media(max-width:560px){ .lt-grid{grid-template-columns:1fr;gap:12px} }
   /* dropzone imagen */
   .lt-drop{border:1.5px dashed var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px 10px;cursor:pointer;text-align:center;background:rgba(11,14,17,.5);transition:.15s;min-height:150px}
   .lt-drop:hover{border-color:var(--gold-soft)}
-  .lt-drop .lt-av{width:56px;height:56px;border-radius:50%;background:linear-gradient(180deg,#232b34,#151b22);display:grid;place-items:center;position:relative;color:var(--ink-3)}
-  .lt-drop .lt-plus{position:absolute;right:-2px;bottom:-2px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,#c79426);color:#241900;display:grid;place-items:center;font-weight:800;font-size:14px;border:2px solid #0d1117}
-  .lt-drop img{width:56px;height:56px;border-radius:50%;object-fit:cover}
+  .lt-drop .lt-av{width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#232b34,#151b22);display:grid;place-items:center;position:relative;color:var(--ink-3)}
+  .lt-drop .lt-plus{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,var(--gold) 60%,#c79426);color:#241900;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;line-height:1;border:2px solid #0d1117;padding-bottom:1px}
+  .lt-drop img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid var(--gold-soft)}
   .lt-drop b{font-size:12.5px;color:var(--ink-2)}
   .lt-drop span{font-size:10.5px;color:var(--ink-3)}
   .lt-fields{display:flex;flex-direction:column;gap:12px}
@@ -44,9 +44,10 @@ function inyectarCSS() {
   .lt-inp{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:12px 13px;color:var(--ink);font-family:var(--display);font-size:14px;outline:none}
   .lt-inp:focus{border-color:var(--gold-soft)}
   .lt-inp::placeholder{color:var(--ink-3);opacity:.6}
-  .lt-price-wrap{display:flex;gap:8px}
-  .lt-price-wrap .lt-inp{flex:1;min-width:0}
-  .lt-bnbtag{display:inline-flex;align-items:center;gap:5px;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:0 10px;font-size:11.5px;font-weight:600;color:var(--ink-2);white-space:nowrap;flex:none}
+  .lt-price-wrap{display:flex;gap:8px;align-items:stretch}
+  .lt-price-wrap .lt-inp{flex:1 1 auto;min-width:60px}
+  .lt-bnbtag{display:inline-flex;align-items:center;gap:4px;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:0 8px;font-size:10.5px;font-weight:600;color:var(--ink-3);white-space:nowrap;flex:0 0 auto}
+  .lt-bnbtag img{width:15px;height:15px}
   .lt-bnbtag img{width:18px;height:18px}
   /* opción de impacto */
   .lt-imp{margin-bottom:14px}
@@ -60,7 +61,7 @@ function inyectarCSS() {
   .lt-imp-slider{margin-top:10px;display:none} .lt-imp-slider.show{display:block}
   .lt-imp-slider label{font-size:11px;color:var(--ink-3);display:flex;justify-content:space-between;margin-bottom:4px}
   .lt-imp-slider input[type=range]{width:100%}
-  .lt-cta{width:100%;padding:15px;border:0;border-radius:14px;background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a);color:#052e13;font-family:var(--display);font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #12833f}
+  .lt-cta{width:100%;padding:15px;border:0 !important;border-radius:14px !important;background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a) !important;color:#052e13 !important;font-family:var(--display);font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #12833f}
   .lt-cta:disabled{opacity:.5;cursor:default;box-shadow:none;filter:grayscale(.3)}
   .lt-msg{font-size:12px;color:#f8b34b;background:rgba(248,179,75,.08);border:1px solid rgba(248,179,75,.25);border-radius:10px;padding:10px 12px;margin-bottom:10px;text-align:center;display:none}
   /* lista de tokens listados */
@@ -90,6 +91,13 @@ function inyectarCSS() {
   #lt-tip .lt-tbx{max-width:420px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:22px 20px;position:relative;max-height:80vh;overflow-y:auto}
   #lt-tip .lt-tbx p{margin:0;font-size:13px;line-height:1.6;color:#d4dbe4}
   #lt-tip .lt-tx{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid #2c3946;color:#aab6c4;cursor:pointer}
+  @media(max-width:560px){
+    .lt-drop{flex-direction:row !important;justify-content:flex-start;gap:12px;min-height:0 !important;padding:12px 14px !important;text-align:left}
+    .lt-drop .lt-av{width:44px !important;height:44px !important}
+    .lt-drop img{width:44px !important;height:44px !important}
+    .lt-drop b{font-size:12.5px}
+    .lt-drop span{font-size:10px}
+  }
   `;
   document.head.appendChild(s);
 }
@@ -327,15 +335,13 @@ function validar() {
   const addr = ($('lt-contract') || {}).value || '';
   const precio = parseFloat(($('lt-price') || {}).value || '0');
   const cant = parseFloat(($('lt-amount') || {}).value || '0');
+  const completo = nombre.trim() && mercado.esDireccion(addr) && precio > 0 && cant > 0;
+  // Solo mostramos MENSAJE para errores reales, no por campos aún vacíos.
   let err = '';
-  if (!nombre.trim()) err = 'Enter the token name.';
-  else if (!mercado.esDireccion(addr)) err = 'Enter a valid contract address (0x...).';
-  else if (!(precio > 0)) err = 'Enter the token price in USD.';
-  else if (!(cant > 0)) err = 'Enter how many tokens to list.';
-  // filtro anti-estafa (frontend por ahora): bloquear contratos conocidos
+  if (addr && !mercado.esDireccion(addr)) err = 'That contract address is not valid.';
   else if (addr && CONOCIDOS.has(addr.toLowerCase())) err = 'This is an established token and cannot be listed here. Only new tokens are allowed.';
-  if (err) { btn.disabled = true; formMsg(err); }
-  else { btn.disabled = false; formMsg(''); }
+  formMsg(err);
+  btn.disabled = !completo || !!err;
 }
 function formMsg(t) { const m = $('lt-form-msg'); if (!m) return; if (t) { m.textContent = t; m.style.display = 'block'; } else m.style.display = 'none'; }
 
