@@ -9,6 +9,8 @@ import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, moda
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
 import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=11';
+import * as mercadoTK from './mercado.js?v=3';
+import * as flogosTK from './firebase-logos.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
@@ -22,6 +24,7 @@ function swMon(id) {
   return moneda(id);
 }
 const CUSTOM = {};   // tokens importados por dirección: addrLower -> token
+const LISTADOS = {};  // tokens listados en MercadoTokens: addrLower -> {id, precio, proteccionSeg, logo, ...}
 let _impToken = 0;   // guarda de carrera para la importación
 function swSyncWbnbLogo() { if (LOGOS['BNB'] && !LOGOS['WBNB']) LOGOS['WBNB'] = { img: LOGOS['BNB'].img, price: LOGOS['BNB'].price, chg: LOGOS['BNB'].chg }; }
 
@@ -147,6 +150,12 @@ function swInjectCSS() {
   #coin-modal .cm-coin-chg{font-family:var(--mono);font-size:11px;font-weight:700}
   #coin-modal .cm-coin-chg.pos{color:#34d399}
   #coin-modal .cm-coin-chg.neg{color:#f87171}
+  /* Token listado en el buscador: etiqueta de protección (garantía, en verde). */
+  #coin-modal .cm-coin-prot{font-family:var(--mono);font-size:10.5px;font-weight:700;color:#34d399}
+  #coin-modal .cm-coin-prot.off{color:var(--ink-3)}
+  #coin-modal .cm-coin.es-listado{border:1px solid rgba(52,211,153,.2)}
+  #coin-modal .cm-coin.es-listado .cm-coin-tx i{color:#39e07a;opacity:.8}
+  
   #coin-modal .cm-price-skel{display:inline-block;width:48px;height:11px;border-radius:4px;background:rgba(255,255,255,.08)}
   #coin-modal .cm-import,#coin-modal .cm-empty{padding:14px 12px;font-size:12px;color:var(--ink-3);text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
   #coin-modal .cm-imp-spin{width:14px;height:14px;border:2px solid var(--ink-3);border-top-color:transparent;border-radius:50%;animation:cmSpin .7s linear infinite}
@@ -297,6 +306,18 @@ async function swCotizar() {
   if (!(amtBI > 0n)) { S.out = 0n; S.minOut = 0n; S.fee = 0; setOut(); swRenderInfo(); swRenderBtn(); return; }
   // WBNB <-> BNB es conversión 1:1 (envolver/desenvolver), sin cotización ni permiso
   if (swEsWrap()) { S.out = amtBI; S.minOut = amtBI; S.fee = 0; S.allow = 0n; S.quoting = false; setOut(); swRenderInfo(); swRenderBtn(); return; }
+  // Destino LISTADO en MercadoTokens: el "recibes" se calcula con el precio del listado.
+  const to0 = swMon(S.toId);
+  const Ld = to0 && to0.id ? LISTADOS[String(to0.id).toLowerCase()] : null;
+  if (Ld && (S.fromId === 'BNB' || S.fromId === 'WBNB')) {
+    const dec = to0.decimals || 18;
+    if (Ld.precio > 0n) {
+      let tokens = (amtBI * (10n ** BigInt(dec))) / Ld.precio;
+      if (tokens > Ld.enVenta) tokens = Ld.enVenta;
+      S.out = tokens; S.minOut = tokens; S.fee = 0; S.allow = 0n; S.quoting = false;
+      setOut(); swRenderInfo(); swRenderBtn(); return;
+    }
+  }
   S.quoting = true; swRenderBtn();
   const token = ++_swToken;
   const cuenta = wallet.cuentaActual();
@@ -344,6 +365,11 @@ function swRenderBtn() {
   else if (wrap) { label = 'Convertir'; act = wrap; }
   else if (S.quoting) { label = 'Calculando…'; dis = true; }
   else if (S.out === 0n) { label = 'No route for this pair'; dis = true; }
+  else if ((() => { const t = swMon(S.toId); return t && t.id && LISTADOS[String(t.id).toLowerCase()]; })()) {
+    // destino listado en MercadoTokens: es una COMPRA (paga con BNB)
+    if (S.fromId !== 'BNB' && S.fromId !== 'WBNB') { label = 'Pay with BNB to buy'; dis = true; }
+    else { label = 'Buy token'; act = 'buy'; }
+  }
   else if (from.address != null && S.allow < amtBI) { label = 'Aprobar y cambiar'; act = 'approve'; }
   else { label = 'Intercambiar'; act = 'swap'; }
   b.textContent = label; b.disabled = dis; S.accion = act;
@@ -452,6 +478,19 @@ async function swImportarToken(addr, lado) {
     const t = { id: key, simbolo: sim, nombre: nom, address: info.address, decimals: info.decimals, icono: sim[0], color: '#E8B84B', custom: true };
     CUSTOM[key] = t;
     if (!LOGOS[key]) LOGOS[key] = { img: `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${info.address}/logo.png`, price: null, chg: null };
+    // ¿Este token está LISTADO en nuestro MercadoTokens? (para comprarlo aquí)
+    try {
+      const lst = await mercadoTK.listadosCompra(info.address);
+      if (tk === _impToken && lst && lst.length > 0) {
+        // tomar el listado con más stock (o el primero)
+        const L = lst.sort((a,b)=> (b.enVenta>a.enVenta?1:-1))[0];
+        LISTADOS[key] = L;
+        // logo desde Firestore (si tiene)
+        try { const logo = await flogosTK.leerLogo(info.address); if (logo) LOGOS[key] = { img: logo, price: null, chg: null }; } catch (_) {}
+        // el nombre/símbolo del listado (que puede estar anclado, ej. USDT.z)
+        t.simbolo = L.simbolo || t.simbolo; t.nombre = L.nombre || t.nombre;
+      }
+    } catch (_) {}
     swRenderImport(t, lado);
   } catch (_) {
     if (tk !== _impToken) return;
@@ -461,12 +500,31 @@ async function swImportarToken(addr, lado) {
 function swRenderImport(t, lado) {
   const el = $('cm-import'); if (!el) return;
   el.className = 'cm-import ok';
-  el.innerHTML = `<button type="button" class="cm-coin" data-id="${t.id}">
+  const L = LISTADOS[t.id];
+  let right;
+  if (L) {
+    // token listado en nuestra plataforma: precio + tiempo de protección (garantía)
+    const dias = Math.ceil((L.proteccionSeg || 0) / 86400);
+    const prot = dias > 0 ? `<span class="cm-coin-prot">Protected · ${dias}d</span>` : `<span class="cm-coin-prot off">Listed</span>`;
+    right = `<span class="cm-coin-price">$${fmtPrecioListado(L)}</span>${prot}`;
+  } else {
+    right = `<span class="cm-imp-badge">Usar</span>`;
+  }
+  el.innerHTML = `<button type="button" class="cm-coin${L?' es-listado':''}" data-id="${t.id}">
     <span class="cm-coin-ico" style="color:${t.color}">${icoInner(t)}</span>
-    <span class="cm-coin-tx"><b>${escT(t.simbolo)}</b><i>${escT(t.nombre)}</i></span>
-    <span class="cm-coin-right"><span class="cm-imp-badge">Usar</span></span>
+    <span class="cm-coin-tx"><b>${escT(t.simbolo)}</b><i>${escT(t.nombre)}${L?' · Community listing':''}</i></span>
+    <span class="cm-coin-right">${right}</span>
   </button>`;
   const b = el.querySelector('.cm-coin'); if (b) b.onclick = () => swElegir(lado, t.id);
+}
+/* Precio del token listado en USD (el vendedor lo puso en USD; el contrato guarda en BNB;
+   lo mostramos convertido a USD aproximado con el precio de BNB si lo tenemos). */
+function fmtPrecioListado(L) {
+  // el precio guardado está en BNB (18 dec) por 1 token. Lo pasamos a USD con el precio de BNB.
+  const pBNB = LOGOS['BNB'] && LOGOS['BNB'].price ? LOGOS['BNB'].price : 0;
+  const precioBNB = Number(gb.fmt(L.precio, 18));
+  const usd = pBNB ? precioBNB * pBNB : 0;
+  return usd > 0 ? usd.toLocaleString('en-US', {maximumFractionDigits: usd < 1 ? 6 : 2}) : precioBNB.toFixed(8) + ' BNB';
 }
 
 /* ---- Barra de búsqueda universal (bajo el título del panel) ---- */
@@ -546,6 +604,9 @@ async function swEjecutar() {
   const from = swMon(S.fromId), to = swMon(S.toId);
   const amtBI = swAmountBI();
   if (!(amtBI > 0n)) return;
+  // ¿El destino es un token LISTADO en nuestra plataforma? → es una COMPRA de MercadoTokens.
+  const listadoDestino = to && to.id ? LISTADOS[String(to.id).toLowerCase()] : null;
+  if (listadoDestino) { return swComprarListado(from, to, amtBI, listadoDestino); }
   try {
     // Conversión WBNB <-> BNB (una sola firma, sin permiso, 1:1)
     if (act === 'wrap' || act === 'unwrap') {

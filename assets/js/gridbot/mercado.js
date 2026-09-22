@@ -136,3 +136,37 @@ function normal(L) {
 
 export const fmt = (wei, dec = 18) => ethers.formatUnits(wei, dec);
 export const parse = (v, dec = 18) => ethers.parseUnits(String(v), dec);
+
+/* ─────────── Compra desde el swap ─────────── */
+/** Busca listados ACTIVOS de un token (por su contrato). Devuelve los que tienen stock,
+    con logo de Firestore, precio, y segundos de protección restantes. */
+export async function listadosCompra(tokenAddr) {
+  if (!esDireccion(tokenAddr)) return [];
+  let ids;
+  try { ids = await cLee().listadosDeToken(tokenAddr); } catch (_) { return []; }
+  const out = [];
+  for (const id of ids) {
+    try {
+      const L = await cLee().ver(id);
+      if (!L.activo || L.enVenta === 0n) continue;
+      let falta = 0n;
+      try { falta = await cLee().faltaCandado(id); } catch (_) {}
+      out.push({
+        id: Number(id), token: L.token, nombre: L.nombre, simbolo: L.simbolo,
+        precio: L.precio, enVenta: L.enVenta, proteccionSeg: Number(falta)
+      });
+    } catch (_) {}
+  }
+  return out;
+}
+
+/** Precio en BNB (wei) por comprar `cantidadTokenBI` tokens de un listado. */
+export async function costeCompra(id, cantidadTokenBI) {
+  const L = await cLee().ver(id);
+  const dec = await _decToken(L.token);
+  // coste = precio * cantidad / 10^dec
+  return (L.precio * cantidadTokenBI) / (10n ** BigInt(dec));
+}
+async function _decToken(addr) {
+  try { const t = new ethers.Contract(addr, ERC20, lector()); return Number(await t.decimals()); } catch (_) { return 18; }
+}
