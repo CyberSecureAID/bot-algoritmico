@@ -88,6 +88,10 @@ async function permisos(cuenta) {
 /* ══════════════════ APERTURA OCULTA ══════════════════ */
 let _clics = 0, _t = null, _abriendo = false;
 export function iniciarPanelOculto() {
+  // PANEL VIEJO DESACTIVADO por seguridad. Se rehará en una sección propia.
+  // No se crea la zona de clics ni se escucha nada: ninguna puerta abierta.
+  return;
+  /* eslint-disable no-unreachable */
   estilos();
   const z = document.createElement('div');
   z.id = 'adm-zona'; z.setAttribute('aria-hidden', 'true');

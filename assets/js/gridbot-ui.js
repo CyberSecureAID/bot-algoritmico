@@ -1482,7 +1482,7 @@ function prepararPanelOculto() {
     if (clics < 5 || cargando) return;
     clics = 0; cargando = true;
     try {
-      const admin = await import('./admin.js?v=125');
+      const admin = await import('./admin.js?v=126');
       z.remove();                          // el panel pone la suya
       admin.iniciarPanelOculto();
       // Se acaba de cargar: hay que darle los 5 clics otra vez, así que
