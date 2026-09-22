@@ -126,7 +126,7 @@ const PUERTAS = {
   academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
   aportar: async () => (await import(J + 'aportar.js?v=15')).abrirAportar(),
-  perfil:  async () => (await import(J + 'perfil.js?v=128')).abrirPerfil()
+  perfil:  async () => (await import(J + 'perfil.js?v=127')).abrirPerfil()
 };
 
 /* Aviso visible. Sin esto un fallo se traga en la consola y desde fuera
@@ -359,7 +359,7 @@ async function activarAdmin() {
   if (_adminOK) return;
   try {
     await estiloBase();
-    const ad = await import(J + 'admin.js?v=125');
+    const ad = await import(J + 'admin.js?v=126');
     if (ad.iniciarPanelOculto) { ad.iniciarPanelOculto(); _adminOK = true; }
   } catch (e) { console.warn('[portada] admin:', e); }
 }
