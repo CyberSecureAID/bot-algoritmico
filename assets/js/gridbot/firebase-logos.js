@@ -10,6 +10,8 @@ const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/
    Devuelve true si se guardó. Si falla (o ya existía), no rompe nada. */
 export async function guardarLogo(tokenAddr, dataUrlWebp) {
   if (!tokenAddr || !dataUrlWebp) return false;
+  // Las reglas de Firestore rechazan >90KB. Validamos antes para no perder el logo.
+  if (dataUrlWebp.length > 88000) return false;
   const id = tokenAddr.toLowerCase();
   try {
     const r = await fetch(`${BASE}?documentId=${id}&key=${API_KEY}`, {

@@ -1,8 +1,8 @@
 /* listing.js — Panel "List your token" que se despliega al lado del Swap.
    Dos vistas: formulario (aún no listó) y lista de tokens listados (ya listó).
    Estilo idéntico al swap (mismo fondo, dorado, glass). Web y base para móvil. */
-import * as mercado from './mercado.js?v=2';
-import * as flogos from './firebase-logos.js?v=1';
+import * as mercado from './mercado.js?v=1';
+import * as flogos from './firebase-logos.js?v=2';
 import * as wallet from '../wallet.js?v=125';
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 
@@ -146,8 +146,12 @@ function reducirImagen(file, maxPx = 128) {
       const cv = document.createElement('canvas'); cv.width = width; cv.height = height;
       const ctx = cv.getContext('2d'); ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
-      // WebP a color, calidad 0.82 → pocos KB
-      const dataUrl = cv.toDataURL('image/webp', 0.82);
+      // WebP a color; si el navegador no lo soporta, usa JPEG. Re-comprime si sale grande.
+      let q = 0.82;
+      let dataUrl = cv.toDataURL('image/webp', q);
+      if (dataUrl.indexOf('image/webp') < 0) dataUrl = cv.toDataURL('image/jpeg', q); // fallback
+      // si pesa demasiado (por detalle), bajar calidad hasta caber bajo ~80KB
+      while (dataUrl.length > 80000 && q > 0.4) { q -= 0.15; dataUrl = cv.toDataURL(dataUrl.indexOf('webp') >= 0 ? 'image/webp' : 'image/jpeg', q); }
       resolve(dataUrl);
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('no se pudo leer')); };
