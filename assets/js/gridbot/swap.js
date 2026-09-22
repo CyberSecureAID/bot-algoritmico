@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
-import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=4';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
@@ -126,6 +126,29 @@ function swInjectCSS() {
   #swap-modal .sw-find-go{margin-left:2px;font-family:var(--mono);font-size:11px;font-weight:700;color:#3a2800;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border:1px solid #c79426;border-radius:7px;padding:3px 10px;flex:0 0 auto}
   #swap-modal .sw-find-msg{padding:10px 12px;font-family:var(--mono);font-size:12px;color:var(--ink-3);display:flex;align-items:center;justify-content:center;gap:8px}
   #swap-modal .sw-find-msg.err{color:#ff9090}
+  /* Modal selector de monedas (faltaba su CSS de contenedor; por eso no se veía). */
+  #coin-modal{position:fixed;inset:0;z-index:260;display:flex;align-items:center;justify-content:center;padding:16px}
+  #coin-modal .coin-modal-bg{position:absolute;inset:0;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+  #coin-modal .coin-modal-box{position:relative;width:100%;max-width:420px;max-height:80vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:cmPop .22s cubic-bezier(.2,.9,.3,1.2)}
+  #coin-modal .cm-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px}
+  #coin-modal .cm-title{font-family:var(--display);font-weight:700;font-size:16px;color:var(--ink)}
+  #coin-modal .cm-x{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-2);display:grid;place-items:center;cursor:pointer;flex:0 0 auto}
+  #coin-modal .cm-search{display:flex;align-items:center;gap:9px;margin:0 16px 10px;padding:11px 13px;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;color:var(--ink-3)}
+  #coin-modal .cm-search input{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--ink);font-family:var(--display);font-size:14px}
+  #coin-modal .cm-search input::placeholder{color:var(--ink-3);opacity:.6}
+  #coin-modal .cm-list{overflow-y:auto;padding:4px 10px 12px;scrollbar-width:thin}
+  #coin-modal .cm-coin{display:flex;align-items:center;gap:11px;padding:11px 10px;border-radius:12px;cursor:pointer;color:var(--ink)}
+  #coin-modal .cm-coin:hover,#coin-modal .cm-coin.on{background:rgba(255,255,255,.05)}
+  #coin-modal .cm-coin b{font-family:var(--display);font-size:14px;font-weight:700}
+  #coin-modal .cm-coin .cm-coin-nom{font-size:11px;color:var(--ink-3)}
+  #coin-modal .cm-coin .cm-coin-r{margin-left:auto;text-align:right;font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+  
+  /* Icono de moneda: letra de fondo + logo encima cuando carga (mismo patrón que la web). */
+  #swap-modal .coin-sel-ico,#coin-modal .cm-coin-ico{position:relative;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:linear-gradient(180deg,#232b34,#151b22);flex:0 0 auto}
+  #swap-modal .coin-sel-ico .ico-fb,#coin-modal .cm-coin-ico .ico-fb{font-family:var(--display);font-weight:800;font-size:12px;color:currentColor;line-height:1}
+  #swap-modal .coin-sel-ico img,#coin-modal .cm-coin-ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;opacity:0;transition:opacity .15s}
+  #swap-modal .coin-sel-ico.conlogo img,#coin-modal .cm-coin-ico.conlogo img{opacity:1}
+  #swap-modal .coin-sel-ico.conlogo .ico-fb,#coin-modal .cm-coin-ico.conlogo .ico-fb{opacity:0}
   @media(max-width:560px){#swap-modal .sw-amt,#swap-modal .sw-out{font-size:22px}#swap-modal input.sw-find-inp{font-size:12px}}
   `;
   const st = document.createElement('style'); st.id = 'sw-css'; st.textContent = css; document.head.appendChild(st);
