@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
-import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=2';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
@@ -35,7 +35,7 @@ function swInjectCSS() {
   if (_swCssOk) return; _swCssOk = true;
   const css = `
   #swap-modal{position:fixed;inset:0;z-index:230;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
-  @media(max-width:1000px){ #swap-modal{align-items:flex-start;padding-top:calc(16px + env(safe-area-inset-top,0px))} #swap-modal.lt-open{padding-top:calc(12px + env(safe-area-inset-top,0px))} }
+  @media(max-width:1000px){ #swap-modal.lt-open{align-items:flex-start;padding-top:calc(12px + env(safe-area-inset-top,0px))} }
   #swap-modal .sw-wrap{display:flex;gap:16px;align-items:flex-start;justify-content:center;max-width:100%;flex-wrap:nowrap}
   #swap-modal .lt-slot{display:none;animation:cmPop .24s cubic-bezier(.2,.9,.3,1.2)}
   #swap-modal.lt-open .lt-slot{display:block}
@@ -206,6 +206,13 @@ export function abrirSwap() {
     try { inyectarListingCSS(); await montarListing(slot, { back: true, onBack: () => modal.classList.remove('lt-open') }); } catch (e) { console.warn('listing:', e); }
   };
   $('sw-amt').value = S.amount || '';
+  // Reintento de iconos: si los logos aún no cargaron, re-pintar los tokens al llegar.
+  (function reintentarIconos(n){
+    if (n > 20) return;
+    const listo = (LOGOS && (LOGOS[S.fromId] || LOGOS['BNB']));
+    if (listo) { const tf=$('sw-tok-from'), tt=$('sw-tok-to'); swSyncWbnbLogo(); if(tf) tf.innerHTML=swTokInner(swMon(S.fromId)); if(tt) tt.innerHTML=swTokInner(swMon(S.toId)); }
+    else setTimeout(()=>reintentarIconos(n+1), 250);
+  })(0);
   if (!LOGO_ST.ok) _cargarLogosPrecios();
   swCargarTarifa(); swCargarBalances(); swRenderInfo(); swRenderBtn(); setOut();
   if (S.amount) swCotizar();

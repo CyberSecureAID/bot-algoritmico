@@ -13,7 +13,7 @@ function inyectarCSS() {
   if (_css) return; _css = true;
   const s = document.createElement('style'); s.id = 'lt-css';
   s.textContent = `
-  #lt-panel{position:relative;width:100%;max-width:620px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  #lt-panel{position:relative;width:100%;max-width:680px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
   #lt-panel::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;filter:saturate(1.05);pointer-events:none}
   #lt-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
   #lt-panel > *{position:relative;z-index:1}
@@ -22,7 +22,8 @@ function inyectarCSS() {
   .lt-back{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-2);display:grid;place-items:center;cursor:pointer;flex:none}
   .lt-back:hover{border-color:var(--gold-soft);color:var(--gold)}
   .lt-title{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
-  .lt-how{display:inline-flex;align-items:center;gap:6px;background:rgba(232,184,75,.08);border:1px solid var(--gold-soft);color:var(--gold);border-radius:100px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer}
+  .lt-how{display:inline-flex !important;align-items:center;gap:6px;background:rgba(232,184,75,.1) !important;border:1px solid var(--gold-soft) !important;color:var(--gold) !important;border-radius:100px !important;padding:7px 14px !important;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--display)}
+  .lt-how svg{stroke:var(--gold)}
   .lt-body{padding:2px 18px 20px}
   .lt-grid{display:grid;grid-template-columns:130px 1fr;gap:16px;margin-bottom:16px}
   @media(max-width:560px){ .lt-grid{grid-template-columns:1fr;gap:12px} }
@@ -58,10 +59,9 @@ function inyectarCSS() {
   .lt-opt .lt-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--line);flex:none}
   .lt-opt.on .lt-dot{border-color:var(--gold);background:radial-gradient(circle,var(--gold) 40%,transparent 46%)}
   .lt-opt b{font-size:12.5px;color:var(--ink)} .lt-opt p{font-size:10.5px;color:var(--ink-3);margin:5px 0 0;line-height:1.35}
-  .lt-imp-slider{margin-top:10px;display:none} .lt-imp-slider.show{display:block}
-  .lt-imp-slider label{font-size:11px;color:var(--ink-3);display:flex;justify-content:space-between;margin-bottom:4px}
-  .lt-imp-slider input[type=range]{width:100%}
-  .lt-cta{width:100%;padding:15px;border:0 !important;border-radius:14px !important;background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a) !important;color:#052e13 !important;font-family:var(--display);font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #12833f}
+ .lt-imp-slider.show{display:block}
+  .lt-cta{width:100%;padding:15px;border:0 !important;border-radius:14px !important;background:linear-gradient(180deg,#4fe895,#2fce78 42%,#16a34a) !important;color:#043318 !important;font-family:var(--display);font-weight:800;font-size:15.5px;cursor:pointer;box-shadow:0 5px 0 #0f7a3a, 0 8px 18px rgba(22,163,74,.35), inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 4px rgba(0,0,0,.2) !important;text-shadow:0 1px 0 rgba(255,255,255,.35);transition:transform .08s, box-shadow .08s}
+  .lt-cta:active{transform:translateY(3px);box-shadow:0 2px 0 #0f7a3a, 0 4px 10px rgba(22,163,74,.3), inset 0 1px 0 rgba(255,255,255,.45) !important}
   .lt-cta:disabled{opacity:.5;cursor:default;box-shadow:none;filter:grayscale(.3)}
   .lt-msg{font-size:12px;color:#f8b34b;background:rgba(248,179,75,.08);border:1px solid rgba(248,179,75,.25);border-radius:10px;padding:10px 12px;margin-bottom:10px;text-align:center;display:none}
   /* lista de tokens listados */
@@ -88,9 +88,9 @@ function inyectarCSS() {
   .lt-empty{text-align:center;color:var(--ink-3);font-size:12.5px;padding:30px 10px}
   /* tooltip info */
   #lt-tip{position:fixed;inset:0;z-index:320;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,5,8,.72);backdrop-filter:blur(6px)}
-  #lt-tip .lt-tbx{max-width:420px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:22px 20px;position:relative;max-height:80vh;overflow-y:auto}
+  #lt-tip .lt-tbx{max-width:440px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:52px 22px 24px;position:relative;max-height:82vh;overflow-y:auto}
   #lt-tip .lt-tbx p{margin:0;font-size:13px;line-height:1.6;color:#d4dbe4}
-  #lt-tip .lt-tx{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid #2c3946;color:#aab6c4;cursor:pointer}
+  #lt-tip .lt-tx{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid #2c3946;color:#aab6c4;cursor:pointer;z-index:2}
   @media(max-width:560px){
     .lt-drop{flex-direction:row !important;justify-content:flex-start;gap:12px;min-height:0 !important;padding:12px 14px !important;text-align:left}
     .lt-drop .lt-av{width:44px !important;height:44px !important}
@@ -190,10 +190,7 @@ function htmlFormulario() {
       <div class="lt-opt on" id="lt-fixed" data-imp="0"><div class="lt-opt-t"><span class="lt-dot"></span><b>Fixed price</b></div><p>Every purchase pays the same price you set.</p></div>
       <div class="lt-opt" id="lt-impact" data-imp="1"><div class="lt-opt-t"><span class="lt-dot"></span><b>Price impact</b></div><p>Price rises as more of your supply is sold.</p></div>
     </div>
-    <div class="lt-imp-slider" id="lt-slider">
-      <label><span>Impact strength</span><span id="lt-imp-val">Recommended (5%)</span></label>
-      <input type="range" id="lt-imp-range" min="1" max="30" value="5">
-    </div>
+
   </div>
   <div class="lt-msg" id="lt-form-msg"></div>
   <button class="lt-cta" id="lt-list-btn" disabled>List Token</button>`;
@@ -316,13 +313,12 @@ function wireFormulario() {
     } catch (_) { formMsg('Could not read that contract. Check the address.'); F.tokenInfo = null; }
   };
   // opciones de impacto
-  const fixed = $('lt-fixed'), impact = $('lt-impact'), slider = $('lt-slider');
+  const fixed = $('lt-fixed'), impact = $('lt-impact');
   if (fixed && impact) {
-    fixed.onclick = () => { F.impacto = false; fixed.classList.add('on'); impact.classList.remove('on'); slider.classList.remove('show'); };
-    impact.onclick = () => { F.impacto = true; impact.classList.add('on'); fixed.classList.remove('on'); slider.classList.add('show'); };
+    fixed.onclick = () => { F.impacto = false; fixed.classList.add('on'); impact.classList.remove('on'); };
+    impact.onclick = () => { F.impacto = true; impact.classList.add('on'); fixed.classList.remove('on'); };
   }
-  const range = $('lt-imp-range');
-  if (range) range.oninput = () => { F.impactoBps = parseInt(range.value) * 100; $('lt-imp-val').textContent = (parseInt(range.value) === 5 ? 'Recommended (5%)' : parseInt(range.value) + '%'); };
+
   // validación en vivo
   ['lt-name','lt-contract','lt-price','lt-amount'].forEach(id => { const e = $(id); if (e) e.oninput = validar; });
   $('lt-list-btn').onclick = listar;
@@ -431,16 +427,22 @@ function traducirError(e) {
 }
 function tipComo() {
   let t = $('lt-tip'); if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
-  t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button><p>
-  <b>List your own token, sell it without liquidity.</b><br><br>
-  Do you have a token you created on BNB Smart Chain? List it here and sell it at the price you choose, even if it has no liquidity pool anywhere. Buyers find it by name, symbol or contract in the swap, and pay in BNB.<br><br>
-  <b>What it costs.</b> Listing costs $25 (paid in BNB). When you withdraw your earnings, a 5% fee applies.<br><br>
-  <b>Buyer safety.</b> Anyone who buys can return their tokens and get their BNB back, as long as it is the same wallet that bought. And your earnings are locked for 30 days after listing, so buyers are protected. A visible timer shows how long is left.<br><br>
-  <b>Important.</b> These tokens are not traded in Futures or Spot, only swapped here. The platform does not endorse them; buyers are responsible for their own decisions.
-  </p></div>`;
+  t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button><div style="font-size:13px;line-height:1.65;color:#d4dbe4">
+    <div style="font-family:var(--display);font-weight:800;font-size:17px;color:#f3f6fa;margin-bottom:12px">List your own token, sell it your way</div>
+    <p style="margin:0 0 14px">Created a token on BNB Smart Chain? You can put it up for sale here at the price you choose, even if it has no liquidity anywhere else. Buyers find it by name, symbol or contract, and pay you in BNB.</p>
+    <div style="font-weight:700;color:var(--gold);margin-bottom:6px">How it works</div>
+    <p style="margin:0 0 14px">Enter your token name, contract and the price you want per token. Send the amount you want to sell to the contract, and your listing goes live. When someone buys, they receive your real token and your earnings build up in BNB, ready to withdraw.</p>
+    <div style="font-weight:700;color:var(--gold);margin-bottom:6px">What it costs</div>
+    <p style="margin:0 0 14px">Listing costs $25, paid once in BNB. When you withdraw your earnings, a 5% fee applies. Nothing else.</p>
+    <div style="font-weight:700;color:var(--gold);margin-bottom:6px">Why buying here is safe</div>
+    <p style="margin:0 0 14px">Two protections guard every buyer. First, anyone who buys can return their tokens and get their BNB back, and only the same wallet that bought can do it. Second, your earnings stay locked for 30 days after you list, shown by a visible countdown, so buyers always have time and a way out. This is what makes an open marketplace trustworthy.</p>
+    <div style="font-weight:700;color:var(--gold);margin-bottom:6px">Good to know</div>
+    <p style="margin:0">These tokens are only swapped here, never traded in Futures or Spot. The platform does not endorse any listed token; each buyer decides for themselves. You set the price and the story, the market decides the rest.</p>
+  </div></div>`;
   t.style.display = 'flex';
   t.onclick = (e) => { if (e.target === t || e.target.id === 'lt-tx') t.style.display = 'none'; };
 }
+
 function alertBonito(txt) {
   let t = $('lt-tip'); if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
   t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button><p>${txt}</p></div>`;
