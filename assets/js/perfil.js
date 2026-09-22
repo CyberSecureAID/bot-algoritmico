@@ -59,9 +59,9 @@ function estilos() {
   #perfil-overlay .pf-idcol{min-width:0;flex:1}
   #perfil-overlay .pf-name{display:flex;align-items:center;gap:8px;min-width:0}
   #perfil-overlay .pf-nombre{font-family:var(--display,sans-serif);font-weight:800;font-size:21px;color:#eaecef;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #perfil-overlay .pf-ava-edit{position:relative;cursor:pointer;overflow:visible}
-  #perfil-overlay .pf-ava-img{width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0}
-  #perfil-overlay .pf-ava-cam{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,#E8B84B 60%,#c79426);color:#241900;display:grid;place-items:center;border:2px solid #0d1117;z-index:2}
+  #perfil-overlay .pf-ava-edit{position:relative;cursor:pointer;overflow:visible;border:2px solid #E8B84B !important;box-shadow:0 0 0 1px rgba(232,184,75,.3),0 2px 8px rgba(232,184,75,.2)}
+  #perfil-overlay .pf-ava-img{width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;z-index:1}
+  #perfil-overlay .pf-ava-cam{position:absolute;right:-1px;bottom:-1px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,#E8B84B 60%,#c79426);color:#241900;display:flex;align-items:center;justify-content:center;border:2px solid #0d1117;z-index:3;line-height:0}
   #perfil-overlay .pf-gate{display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 20px 20px}
   #perfil-overlay .pf-gate-t{font-family:var(--display,sans-serif);font-weight:800;font-size:20px;color:#eaecef;margin-bottom:6px}
   #perfil-overlay .pf-gate-s{font-size:13px;color:#8a95a3;margin-bottom:20px;line-height:1.5;max-width:280px}
@@ -320,7 +320,7 @@ function avatarHTML(cuenta) {
   return foto ? `<img class="pf-ava-img" src="${foto}" alt="">` : iconoUser();
 }
 function iconoCam() {
-  return '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+  return '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 }
 /* Engancha el clic del avatar para subir foto (con el reductor de imagen). */
 function wireAvatar(cuenta) {
