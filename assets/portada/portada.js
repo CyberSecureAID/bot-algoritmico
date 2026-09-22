@@ -358,9 +358,9 @@ let _adminOK = false;
 async function activarAdmin() {
   if (_adminOK) return;
   try {
-    await estiloBase();
-    const ad = await import(J + 'admin.js?v=126');
-    if (ad.iniciarPanelOculto) { ad.iniciarPanelOculto(); _adminOK = true; }
+    // Panel administrativo NUEVO (verifica owner on-chain). Gesto: 5 toques esquina inf. izq.
+    const tg = await import(J + 'gridbot/panel-trigger.js?v=1');
+    if (tg.iniciarTriggerPanel) { tg.iniciarTriggerPanel(); _adminOK = true; }
   } catch (e) { console.warn('[portada] admin:', e); }
 }
 
