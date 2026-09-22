@@ -1,14 +1,35 @@
 // perfil.js — Panel de cuenta por wallet. Módulo independiente (no toca la lógica existente).
 import * as gb from './gridbot.js?v=125';
 import * as wallet from './wallet.js?v=125';
+import * as fperfil from './firebase-perfil.js?v=1';
+import { reducirImagen } from './gridbot/listing.js?v=11';
 import * as avisos from './avisos.js?v=125';
 
 const $ = (id) => document.getElementById(id);
 const num = (n, d = 2) => { const x = Number(n); if (!isFinite(x)) return '—'; return x.toLocaleString('es', { minimumFractionDigits: d, maximumFractionDigits: d }); };
 const esc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 const claveNombre = (c) => 'aurex-nombre:' + (c || '').toLowerCase();
+const claveFoto = (c) => 'aurex-foto:' + (c || '').toLowerCase();
+// Caché local (para pintar al instante); la fuente real es Firestore.
 const leerNombre = (c) => { try { return localStorage.getItem(claveNombre(c)) || ''; } catch (_) { return ''; } };
-const guardarNombre = (c, v) => { try { v ? localStorage.setItem(claveNombre(c), v) : localStorage.removeItem(claveNombre(c)); } catch (_) {} };
+const leerFotoCache = (c) => { try { return localStorage.getItem(claveFoto(c)) || ''; } catch (_) { return ''; } };
+const guardarNombre = (c, v) => {
+  try { v ? localStorage.setItem(claveNombre(c), v) : localStorage.removeItem(claveNombre(c)); } catch (_) {}
+  try { fperfil.guardarPerfil(c, { nombre: v || '' }); } catch (_) {}  // a Firestore
+};
+const guardarFoto = (c, dataUrl) => {
+  try { dataUrl ? localStorage.setItem(claveFoto(c), dataUrl) : localStorage.removeItem(claveFoto(c)); } catch (_) {}
+  try { fperfil.guardarPerfil(c, { foto: dataUrl || '' }); } catch (_) {}  // a Firestore
+};
+// Al abrir el perfil, sincroniza desde Firestore (por si cambió en otro dispositivo).
+async function sincronizarPerfil(c) {
+  try {
+    const p = await fperfil.leerPerfil(c);
+    if (p.nombre) { try { localStorage.setItem(claveNombre(c), p.nombre); } catch (_) {} }
+    if (p.foto)   { try { localStorage.setItem(claveFoto(c), p.foto); } catch (_) {} }
+    return p;
+  } catch (_) { return { nombre: '', foto: '' }; }
+}
 
 function desde(ts) {
   if (!ts) return '—';
@@ -38,6 +59,9 @@ function estilos() {
   #perfil-overlay .pf-idcol{min-width:0;flex:1}
   #perfil-overlay .pf-name{display:flex;align-items:center;gap:8px;min-width:0}
   #perfil-overlay .pf-nombre{font-family:var(--display,sans-serif);font-weight:800;font-size:21px;color:#eaecef;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #perfil-overlay .pf-ava-edit{position:relative;cursor:pointer;overflow:visible}
+  #perfil-overlay .pf-ava-img{width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0}
+  #perfil-overlay .pf-ava-cam{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,#E8B84B 60%,#c79426);color:#241900;display:grid;place-items:center;border:2px solid #0d1117;z-index:2}
   #perfil-overlay .pf-setname{font-family:var(--display,sans-serif);font-weight:700;font-size:16px;color:var(--gold,#E8B84B);background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:6px}
   #perfil-overlay .pf-pen{width:26px;height:26px;flex:0 0 auto;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#7d8794;display:grid;place-items:center;cursor:pointer}
   #perfil-overlay .pf-pen:hover{color:var(--gold,#E8B84B);border-color:rgba(232,184,75,.4)}
@@ -222,6 +246,28 @@ const icoCash = () => `<svg width="17" height="17" viewBox="0 0 24 24" fill="non
 const icoDca = () => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
 const iconoCopy = () => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`;
 
+function avatarHTML(cuenta) {
+  const foto = leerFotoCache(cuenta);
+  return foto ? `<img class="pf-ava-img" src="${foto}" alt="">` : iconoUser();
+}
+function iconoCam() {
+  return '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+}
+/* Engancha el clic del avatar para subir foto (con el reductor de imagen). */
+function wireAvatar(cuenta) {
+  const av = document.getElementById('pf-ava'); const inp = document.getElementById('pf-foto-inp');
+  if (!av || !inp) return;
+  av.onclick = (e) => { e.stopPropagation(); inp.click(); };
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    try {
+      const dataUrl = await reducirImagen(f);   // WebP pequeño, a color
+      guardarFoto(cuenta, dataUrl);
+      av.innerHTML = `<img class="pf-ava-img" src="${dataUrl}" alt="">` + `<span class="pf-ava-cam">${iconoCam()}</span>`;
+      av.appendChild(inp);
+    } catch (_) {}
+  };
+}
 function pintarNombre(cuenta) {
   const cont = $('pf-name'); if (!cont) return;
   const nom = leerNombre(cuenta);
@@ -255,7 +301,7 @@ export async function abrirPerfil() {
   card.innerHTML = `
   <button class="pf-x" id="pf-x" aria-label="Cerrar">✕</button>
   <div class="pf-h">
-    <div class="pf-ava">${iconoUser()}</div>
+    <div class="pf-ava pf-ava-edit" id="pf-ava" title="Cambiar foto">${avatarHTML(cuenta)}<span class="pf-ava-cam">${iconoCam()}</span><input type="file" id="pf-foto-inp" accept="image/*" style="display:none"></div>
     <div class="pf-idcol">
       <div class="pf-name" id="pf-name"></div>
       <div class="pf-addr" id="pf-addr" title="Copiar dirección">${wallet.abreviar(cuenta)} ${iconoCopy()}</div>
@@ -407,6 +453,8 @@ export async function abrirPerfil() {
 
 
   $('pf-x').onclick = cerrar;
+  wireAvatar(cuenta);
+  sincronizarPerfil(cuenta).then((pp) => { if (pp && pp.foto) { const av=$('pf-ava'); if(av){ av.innerHTML=`<img class="pf-ava-img" src="${pp.foto}" alt="">`+`<span class="pf-ava-cam">${iconoCam()}</span>`; } } if (pp && pp.nombre) pintarNombre(cuenta); wireAvatar(cuenta); });
   pintarNombre(cuenta);
   const addr = $('pf-addr');
   if (addr) addr.onclick = async () => {
