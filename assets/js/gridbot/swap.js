@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
-import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=11';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=12';
 import * as mercadoTK from './mercado.js?v=3';
 import * as flogosTK from './firebase-logos.js?v=2';
 
