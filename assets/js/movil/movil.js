@@ -74,7 +74,7 @@ async function abrir(clave, arg) {
   if (requiereActivacion(clave)) { avisoActivacion(clave); return; }
   try {
     switch (clave) {
-      case 'addtoken':  { const m = await import('../gridbot/listing.js?v=8'); m.abrirListingMovil && m.abrirListingMovil(); break; }
+      case 'addtoken':  { const m = await import('../gridbot/listing.js?v=9'); m.abrirListingMovil && m.abrirListingMovil(); break; }
       case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=7'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
                           try { const idi = await import('../idioma.js?v=163'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
