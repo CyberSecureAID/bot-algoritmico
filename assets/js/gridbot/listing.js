@@ -91,6 +91,8 @@ function inyectarCSS() {
   .lt-card-foot{margin-top:12px;display:flex;gap:8px}
   .lt-card-foot .lt-mini{flex:1;padding:10px;border-radius:11px;border:1px solid var(--gold-soft);background:rgba(232,184,75,.06);color:var(--gold);font-weight:700;font-size:12.5px;cursor:pointer}
   .lt-card-foot .lt-mini.green{border-color:rgba(46,232,106,.4);background:rgba(46,232,106,.1);color:#39e07a}
+  .lt-del{width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.06);color:#f87171;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--display)}
+  .lt-del:hover{background:rgba(248,113,113,.12)}
   .lt-empty{text-align:center;color:var(--ink-3);font-size:12.5px;padding:30px 10px}
   /* tooltip info */
   #lt-tip{position:fixed;inset:0;z-index:320;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,5,8,.72);backdrop-filter:blur(6px)}
@@ -239,6 +241,7 @@ function cardListado(L) {
       <button class="lt-mini green" data-claim="${L.id}">Withdraw earnings</button>
       <button class="lt-mini" data-withdraw="${L.id}">Withdraw tokens</button>
     </div>
+    <button class="lt-del" data-del="${L.id}">Delete listing</button>
   </div>`;
 }
 function esc(s) { return String(s || '').replace(/[<>&"]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;' }[c])); }
@@ -274,6 +277,7 @@ export async function montarListing(cont, opts = {}) {
     const cp = e.target.closest && e.target.closest('.lt-copy'); if (cp) { copiar(cp.dataset.copy); return; }
     const cl = e.target.closest && e.target.closest('[data-claim]'); if (cl) { accionClaim(+cl.dataset.claim); return; }
     const wd = e.target.closest && e.target.closest('[data-withdraw]'); if (wd) { accionWithdraw(+wd.dataset.withdraw); return; }
+    const dl = e.target.closest && e.target.closest('[data-del]'); if (dl) { accionDelete(+dl.dataset.del); return; }
   });
   await refrescar();
 }
@@ -422,6 +426,26 @@ async function accionClaim(id) {
     await mercado.retirarGanancia(id); await refrescar();
   } catch (e) { alertBonito(traducirError(e)); }
 }
+async function accionDelete(id) {
+  confirmar(
+    'Delete this listing?',
+    'Your remaining tokens will be sent back to your wallet and the listing will be removed. If you still have earnings, withdraw them first.',
+    async () => {
+      try {
+        const L = await mercado.misListados(cuenta());
+        const item = L.find(x => x.id === id); if (!item) return;
+        // si hay ganancia disponible y el candado ya pasó, avisamos que primero retire
+        if (item.ganancia > 0n) {
+          const falta = await mercado.faltaCandado(id);
+          if (falta > 0n) { const dias = Math.ceil(Number(falta)/86400); alertBonito(`You still have earnings, but they are locked for ${dias} more day(s). You can delete the listing after withdrawing them.`); return; }
+          alertBonito('You still have earnings on this listing. Please withdraw your earnings first, then delete.'); return;
+        }
+        if (item.enVenta > 0n) { await mercado.retirarTokens(id, item.enVenta); }
+        await refrescar();
+      } catch (e) { alertBonito(traducirError(e)); }
+    }
+  );
+}
 async function accionWithdraw(id) {
   try {
     const L = await mercado.misListados(cuenta());
@@ -457,9 +481,38 @@ function tipComo() {
   t.onclick = (e) => { if (e.target === t || e.target.id === 'lt-tx') t.style.display = 'none'; };
 }
 
+function confirmar(titulo, texto, onSi) {
+  let t = $('lt-tip'); if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
+  t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button>
+    <div style="font-family:var(--display);font-weight:800;font-size:17px;color:#f3f6fa;margin:6px 0 10px;text-align:center">${titulo}</div>
+    <p style="margin:0 0 18px;text-align:center">${texto}</p>
+    <div style="display:flex;gap:10px">
+      <button id="lt-cf-no" style="flex:1;padding:12px;border-radius:11px;border:1px solid #2c3946;background:rgba(255,255,255,.04);color:#aab6c4;font-weight:700;cursor:pointer;font-family:var(--display)">Cancel</button>
+      <button id="lt-cf-si" style="flex:1;padding:12px;border-radius:11px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.12);color:#f87171;font-weight:800;cursor:pointer;font-family:var(--display)">Delete</button>
+    </div></div>`;
+  t.style.display = 'flex';
+  const cerrar = () => { t.style.display = 'none'; };
+  t.onclick = (e) => { if (e.target === t || e.target.id === 'lt-tx' || e.target.id === 'lt-cf-no') cerrar(); };
+  const si = $('lt-cf-si'); if (si) si.onclick = () => { cerrar(); onSi(); };
+}
 function alertBonito(txt) {
   let t = $('lt-tip'); if (!t) { t = document.createElement('div'); t.id = 'lt-tip'; document.body.appendChild(t); }
   t.innerHTML = `<div class="lt-tbx"><button class="lt-tx" id="lt-tx">✕</button><p>${txt}</p></div>`;
   t.style.display = 'flex';
   t.onclick = (e) => { if (e.target === t || e.target.id === 'lt-tx') t.style.display = 'none'; };
+}
+
+/* ═══════════ Abrir el listado a pantalla completa (móvil, acceso directo) ═══════════ */
+export function abrirListingMovil() {
+  inyectarCSS();
+  const prev = document.getElementById('lt-movil'); if (prev) prev.remove();
+  const dg = document.createElement('dialog'); dg.id = 'lt-movil';
+  dg.style.cssText = 'margin:0;padding:0;border:0;max-width:100vw;max-height:100vh;width:100vw;height:100vh;background:rgba(5,7,10,.96);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;color:inherit';
+  dg.innerHTML = '<button id="lt-movil-x" aria-label="Close" style="position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:16px;z-index:5;width:36px;height:36px;border-radius:10px;background:rgba(14,21,28,.9);border:1px solid #202b37;color:#aab6c4;font-size:15px">✕</button><div style="box-sizing:border-box;width:100%;max-width:640px;margin:0 auto;padding:calc(58px + env(safe-area-inset-top,0px)) 12px calc(70px + env(safe-area-inset-bottom,0px))"><div id="lt-movil-mount" style="width:100%"></div></div>';
+  document.body.appendChild(dg);
+  if (dg.showModal) dg.showModal(); else dg.setAttribute('open', '');
+  const cerrar = () => { try { dg.close(); } catch (_) {} dg.remove(); };
+  document.getElementById('lt-movil-x').onclick = cerrar;
+  dg.addEventListener('cancel', (e) => { e.preventDefault(); cerrar(); });
+  montarListing(document.getElementById('lt-movil-mount'), {});
 }
