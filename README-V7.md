@@ -30,7 +30,8 @@ Para tocar cualquier contrato desplegado:
 | **OraculoPrecios** | Precio USD de cualquier token | `0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3` | `0x0150b62a2355AFc036612B890cbE00F5EcdB8CC7` |
 | **Staking** | Bóveda no custodial + reparto | `0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4` | `0xB96675917b784987F06327a629398ff8637BFc64` |
 | **PanelStaking** | Vistas del staking (solo lectura) | `0xE620D5BD60F70CCdFa4493F3a5B794d1BBEbf8d2` | (sin proxy) |
-| **GridBot** | Bots + swap (multi-DEX) | `0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B` | V11: `0xb2792C4D8Cf552cC0Da0938fD7F73DC82B5A3052` |
+| **GridBot** | Bots + swap (multi-DEX) | `0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B` | V11 (final): `0x89bc0f298218118D9DF3Be49672961914fA3aF34` |
+| **MercadoTokens** | Listado libre de tokens (vender sin liquidez) | `0x39c48394068299Aa3e3ab114F16bfc3DE11F4112` | `0x19cec2944BA0701B592861c82e759b48202870fD` |
 | **SwapLib** | Librería del fallback multi-DEX | (librería, se linkea) | `0x8713F1ABF29fBF912D032eA1c1c60380A8De901f` |
 | **PerfilesP2P** | Perfiles del marketplace P2P | `0xC01B61B702011747B4c0Ee6B5F2d0F2b4B66880c` | ver V5 |
 | **MercadoP2P** | Órdenes del marketplace P2P | `0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025` | ver V5 |
@@ -140,9 +141,77 @@ Reparto del cobro de bots: 20 % staking, 80 % a los dos owners (50/50).
 
 ---
 
+
+### 3.6. MercadoTokens (swap) — listado libre de tokens  ★ NUEVO
+**Proxy (dirección oficial):** `0x39c48394068299Aa3e3ab114F16bfc3DE11F4112`
+**Implementación:** `0x19cec2944BA0701B592861c82e759b48202870fD`
+**Verificado en BscScan:** sí (Exact Match). Compilado con **v0.8.22, optimizer runs 1, sin viaIR**.
+**Proxy tipo:** el proxy se desplegó con el contrato `ProxyMercado` (ERC1967Proxy de OpenZeppelin).
+
+**Qué hace.** Deja que cualquiera liste SU token para venderlo en el área de swap,
+aunque no tenga liquidez. No custodia el capital de trading de nadie: solo retiene
+los tokens que cada vendedor pone a la venta y sus ganancias hasta que las retira.
+
+**Reglas de negocio (todas editables desde el panel):**
+- Listar cuesta **$25 en BNB** (equivalente calculado por el oráculo). Reparto del $25:
+  $5 al staking, $10 al owner1, $10 al owner2.
+- Se compra **solo con BNB**.
+- El vendedor elige el precio libremente (nombre, símbolo y contrato son obligatorios; el logo es opcional).
+- Al **retirar ganancias**: comisión del **5%** (1% staking, 2% owner1, 2% owner2).
+- Retirar **tokens sobrantes**: sin comisión. Reponer tokens: sin pagar de nuevo.
+- **Regla de 2 años**: si el vendedor no retira su ganancia en 2 años, esa ganancia
+  pasa al staking como recompensa (los tokens NO se tocan, siempre son suyos).
+- Estos tokens **NO se operan en futuros ni spot**, solo se intercambian en el swap.
+  El usuario es responsable; la plataforma no los respalda.
+
+**Desde "At Address" con el PROXY puedes:**
+- `listar((token,nombre,simbolo,logo,cantidad,precio))` (con $25 en BNB como value) → publica.
+- `comprar(id, cantidadToken)` (con BNB como value) → compra tokens de un listado.
+- `retirarGanancia(id)` → el vendedor retira su ganancia (menos 5%).
+- `retirarTokens(id, cantidad)` → retira tokens no vendidos (sin comisión).
+- `reponer(id, cantidad)` → añade más tokens a un listado sin pagar otra vez.
+- `setPrecio(id, precio)` / `setLogo(id, logo)` → cambia precio o logo de su listado.
+- `barrerGananciaVieja(id)` → cualquiera puede mandar al staking una ganancia sin retirar >2 años.
+- Lecturas para el frontend: `ver(id)`, `pagina(desde,hasta)`, `listadosDeVendedor(addr)`,
+  `listadosDeToken(addr)`, `totalListados`, `costoListadoBNB`.
+
+**Panel admin (solo owner/owner2/admin de Tarifas):**
+- `setCostoListado(usd2dec)` → cambia el precio de listar (2500 = $25).
+- `setComisionRetiro(bps)` → cambia la comisión de retiro (500 = 5%, máximo 1000 = 10%).
+- `setOwner2(addr)`, `setStaking(addr)`, `setOraculo(addr)`, `setPausado(bool)`.
+- `transferirOwner(addr)` + `aceptarOwner()` → cambio de owner en dos pasos.
+- `rescatarBNB(para,monto)` / `rescatarToken(token,para,monto)` → recupera polvo o envíos por error.
+
+**Estado (configurado y cableado):**
+- costoListado = $25, comisión = 5%.
+- tarifas = `0x0687…FD7C`, staking = `0xdC48…84C4`, oraculo = `0xf51b…77f3`, owner2 = wallet del owner (temporal).
+- **Autorizado en el Staking** (`autorizarContrato`) → ya puede depositar recompensas.
+
+**Cómo modificarlo en el futuro (upgrade UUPS):**
+1. Editar `MercadoTokens.sol`, compilar (0.8.22, optimizer, sin viaIR).
+2. Deploy de la nueva implementación (sin proxy).
+3. En el PROXY `0x39c4…4112`, llamar `upgradeToAndCall(nuevaImpl, 0x)`.
+4. El storage debe respetarse (nuevas variables solo al final, antes del `__gap`).
+
 ## 4. LO QUE FALTA POR HACER (nada se olvida)
 
+### 4.0. MercadoTokens (frontend pendiente)
+- [ ] **Frontend web**: ventana "gemela" al lado del swap (mismo fondo/estilo) para listar y comprar tokens.
+- [ ] **Frontend móvil**: sección NUEVA y separada (el swap móvil queda limpio), con explicación completa,
+      botón "cómo funciona", y el flujo paso a paso estilo P2P.
+- [ ] **Reductor de imagen del logo**: al subir el logo, redimensionar en el navegador (canvas) a ~64x64 WebP
+      a color (sin deformar, sin blanco y negro) antes de subir a Firebase, para que quepan millones de logos.
+- [ ] **Firebase**: crear cuenta nueva SOLO para los logos de los tokens listados.
+- [ ] Buscador: por nombre, por símbolo o por contrato (los tres son campos obligatorios del listado).
+
 ### 4.1. Pendientes del GridBot / swap
+- [ ] **GridBot V11 se redesplegó varias veces**; la implementación FINAL y en uso es
+      `0x89bc0f298218118D9DF3Be49672961914fA3aF34` (arregla el bug del `receive()` que hacía
+      revertir los swaps hacia BNB por el gas stipend del WBNB). El proxy sigue siendo `0x4e86…F93B`.
+- [ ] **La librería SwapLib se metió INLINE** dentro del GridBotV11 (ya NO se linkea aparte). Un despliegue anterior
+      falló porque Remix no linkeó la librería externa. Mantener SwapLib inline en futuros upgrades.
+- [ ] **El swap prueba los 4 fee tiers de Pancake** (0.01/0.05/0.25/1%) automáticamente: si un pool no tiene
+      liquidez, usa el siguiente. Esto arregló el swap que revertía con fee 100.
 - [ ] **Añadir Uniswap V3 como segundo DEX** (respaldo si Pancake falla). ANTES hay que
       **verificar que la interfaz `exactInputSingle` de Uniswap SwapRouter02 es compatible**
       con el contrato (Uniswap la tiene distinta a Pancake; si no, adaptar). Direcciones
@@ -181,6 +250,15 @@ Reparto del cobro de bots: 20 % staking, 80 % a los dos owners (50/50).
 - [ ] **Panel administrativo** (existe pero está oculto): conectarlo a Tarifas V2, GridBot,
       Staking y Tesorería. Debe permitir: cambiar %, precio de bots, owners, tesorería,
       corregir DEX, ver salud de proveedores. Todo con firma (queda en la blockchain).
+
+### 4.4-bis. MetaMask: dominio marcado y parpadeo (de esta sesión)
+- [ ] **Dominio "criptocubaoficial.com" marcado como malicioso** en MetaMask (falso positivo). Se reportó en
+      https://github.com/MetaMask/eth-phishing-detect/issues pidiendo su retiro. Revisar respuesta en el issue.
+      El dominio es temporal (falta nombre/marca definitiva de la plataforma).
+- [ ] **Parpadeo "probable que falle"**: era el gasLimit fijo. Ahora el swap usa `estimateGas` + 35% de margen
+      (en gridbot.js) para que MetaMask no re-simule en conflicto.
+- [ ] **Saldo del MAX bloqueado**: el swap leía el saldo de un RPC con caché. Ahora lo lee del proveedor de
+      MetaMask (saldo real). Ver `lectorFresco()` en gridbot.js.
 
 ### 4.5. Keeper (disparo de bots y órdenes)
 - [ ] **Cloudflare de pago** falló al acreditarse; reintentar con otra tarjeta. Mientras,
