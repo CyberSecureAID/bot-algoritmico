@@ -24,8 +24,8 @@ function inyectarCSS() {
   .lt-title{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
   .lt-how{display:inline-flex !important;align-items:center;gap:5px;background:rgba(232,184,75,.1) !important;border:1px solid var(--gold-soft) !important;color:var(--gold) !important;border-radius:10px !important;padding:6px 11px !important;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--display);white-space:nowrap}
   .lt-how svg{stroke:var(--gold)}
-  .lt-body{padding:2px 18px 20px}
-  .lt-grid{display:grid;grid-template-columns:130px 1fr;gap:16px;margin-bottom:16px}
+  .lt-body{padding:2px 18px 16px}
+  .lt-grid{display:grid;grid-template-columns:120px 1fr;gap:14px;margin-bottom:12px}
   @media(max-width:560px){ .lt-grid{grid-template-columns:1fr;gap:12px} }
   /* dropzone imagen */
   .lt-drop{border:1.5px dashed var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px 10px;cursor:pointer;text-align:center;background:rgba(11,14,17,.5);transition:.15s;min-height:150px}
@@ -35,14 +35,14 @@ function inyectarCSS() {
   .lt-drop img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid var(--gold-soft)}
   .lt-drop b{font-size:12.5px;color:var(--ink-2)}
   .lt-drop span{font-size:10.5px;color:var(--ink-3)}
-  .lt-fields{display:flex;flex-direction:column;gap:12px}
+  .lt-fields{display:flex;flex-direction:column;gap:10px}
   .lt-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:560px){ .lt-two{grid-template-columns:1fr} }
   .lt-f label{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-3);margin:0 2px 6px}
   .lt-req{color:var(--gold);font-weight:700}
   .lt-i{width:14px;height:14px;border-radius:50%;border:1px solid rgba(150,165,180,.28);background:none;color:rgba(150,165,180,.45);font-size:9px;font-style:italic;font-weight:700;cursor:pointer;display:inline-grid;place-items:center;padding:0;opacity:.7}
   .lt-i:hover{border-color:var(--gold);color:var(--gold);opacity:1}
-  .lt-inp{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:12px 13px;color:var(--ink);font-family:var(--display);font-size:14px;outline:none}
+  .lt-inp{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:11px;padding:10px 12px;color:var(--ink);font-family:var(--display);font-size:14px;outline:none}
   .lt-inp:focus{border-color:var(--gold-soft)}
   .lt-inp::placeholder{color:var(--ink-3);opacity:.6}
   .lt-price-wrap{display:flex;gap:8px;align-items:stretch}
@@ -51,9 +51,9 @@ function inyectarCSS() {
   .lt-bnbtag img{width:15px;height:15px}
   .lt-bnbtag img{width:18px;height:18px}
   /* opción de impacto */
-  .lt-imp{margin-bottom:14px}
+  .lt-imp{margin-bottom:12px}
   .lt-imp-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .lt-opt{background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
+  .lt-opt{background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:11px;padding:10px 12px;cursor:pointer}
   .lt-opt.on{border-color:var(--gold);background:rgba(232,184,75,.05)}
   .lt-opt .lt-opt-t{display:flex;align-items:center;gap:7px}
   .lt-opt .lt-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--line);flex:none}
@@ -61,7 +61,7 @@ function inyectarCSS() {
   .lt-opt b{font-size:12.5px;color:var(--ink)} .lt-opt p{font-size:10.5px;color:var(--ink-3);margin:5px 0 0;line-height:1.35}
  .lt-imp-slider.show{display:block}
   .lt-cta:disabled{opacity:.5;cursor:default;box-shadow:none;filter:grayscale(.3)}
-  .lt-cta{width:100%;margin-top:2px;padding:15px;border-radius:14px;cursor:pointer;font-family:var(--display);font-weight:800;font-size:15px;
+  .lt-cta{width:100%;margin-top:2px;padding:13px;border-radius:14px;cursor:pointer;font-family:var(--display);font-weight:800;font-size:15px;
     background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a) !important;
     border:1px solid #15803d !important;color:#052e13 !important;
     box-shadow:0 4px 0 #15803d,inset 0 1px 0 rgba(255,255,255,.35) !important;
@@ -197,7 +197,7 @@ function htmlFormulario() {
       </div>
     </div>
   </div>
-  <div class="lt-f" style="margin-bottom:8px"><label>How many tokens do you list for sale? <span class="lt-req">*</span></label><input class="lt-inp" id="lt-amount" inputmode="decimal" placeholder="e.g. 1000000"></div>
+  <div class="lt-f" style="margin-bottom:6px"><label>How many tokens do you list for sale? <span class="lt-req">*</span></label><input class="lt-inp" id="lt-amount" inputmode="decimal" placeholder="e.g. 1000000"></div>
   <div class="lt-imp">
     <div class="lt-f"><label>Price behaviour ${iBtn('impact')}</label></div>
     <div class="lt-imp-row">

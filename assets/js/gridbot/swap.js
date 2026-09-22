@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
-import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=2';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=5';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
@@ -137,11 +137,20 @@ function swInjectCSS() {
   #coin-modal .cm-search input{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--ink);font-family:var(--display);font-size:14px}
   #coin-modal .cm-search input::placeholder{color:var(--ink-3);opacity:.6}
   #coin-modal .cm-list{overflow-y:auto;padding:4px 10px 12px;scrollbar-width:thin}
-  #coin-modal .cm-coin{display:flex;align-items:center;gap:11px;padding:11px 10px;border-radius:12px;cursor:pointer;color:var(--ink)}
+  #coin-modal .cm-coin{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:12px;cursor:pointer;color:var(--ink);width:100%;background:none;border:0;text-align:left}
   #coin-modal .cm-coin:hover,#coin-modal .cm-coin.on{background:rgba(255,255,255,.05)}
-  #coin-modal .cm-coin b{font-family:var(--display);font-size:14px;font-weight:700}
-  #coin-modal .cm-coin .cm-coin-nom{font-size:11px;color:var(--ink-3)}
-  #coin-modal .cm-coin .cm-coin-r{margin-left:auto;text-align:right;font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+  #coin-modal .cm-coin-tx{display:flex;flex-direction:column;gap:1px;min-width:0}
+  #coin-modal .cm-coin-tx b{font-family:var(--display);font-size:14px;font-weight:700;color:var(--ink);line-height:1.2}
+  #coin-modal .cm-coin-tx i{font-style:normal;font-size:11px;color:var(--ink-3);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+  #coin-modal .cm-coin-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:0 0 auto}
+  #coin-modal .cm-coin-price{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink)}
+  #coin-modal .cm-coin-chg{font-family:var(--mono);font-size:11px;font-weight:700}
+  #coin-modal .cm-coin-chg.pos{color:#34d399}
+  #coin-modal .cm-coin-chg.neg{color:#f87171}
+  #coin-modal .cm-price-skel{display:inline-block;width:48px;height:11px;border-radius:4px;background:rgba(255,255,255,.08)}
+  #coin-modal .cm-import,#coin-modal .cm-empty{padding:14px 12px;font-size:12px;color:var(--ink-3);text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
+  #coin-modal .cm-imp-spin{width:14px;height:14px;border:2px solid var(--ink-3);border-top-color:transparent;border-radius:50%;animation:cmSpin .7s linear infinite}
+  @keyframes cmSpin{to{transform:rotate(360deg)}}
   
   /* Icono de moneda: letra de fondo + logo encima cuando carga (mismo patrón que la web). */
   #swap-modal .coin-sel-ico,#coin-modal .cm-coin-ico{position:relative;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:linear-gradient(180deg,#232b34,#151b22);flex:0 0 auto}
