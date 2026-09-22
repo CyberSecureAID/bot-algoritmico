@@ -3,6 +3,7 @@
 import { IC } from './iconos.js?v=1';
 import * as wallet from '../wallet.js?v=125';
 import { money, money0, cantidad, logoDe } from './fmt.js?v=3';
+import * as fperfil from '../firebase-perfil.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 const LS = { ojo: 'mv-ojo', denom: 'mv-denom' };
@@ -46,12 +47,20 @@ function leer(k) { try { return localStorage.getItem(k); } catch (_) { return nu
 function guardar(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
 
 export function pintarInicio(host, api) {
+  // CSS de la foto de perfil en el avatar del lobby (una sola vez).
+  if (!document.getElementById('mv-ava-css')) {
+    const st = document.createElement('style'); st.id = 'mv-ava-css';
+    st.textContent = '.mv-ava{position:relative;overflow:hidden}.mv-ava .mv-ava-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:0}.mv-ava .mv-ava-dot{z-index:1}';
+    document.head.appendChild(st);
+  }
   const con = api.estaConectado();
+  const _fotoLobby = () => { try { const c = wallet.cuentaActual && wallet.cuentaActual(); return c ? (localStorage.getItem('aurex-foto:' + c.toLowerCase()) || '') : ''; } catch (_) { return ''; } };
+  const avatarLobby = () => { const f = _fotoLobby(); return f ? `<img class="mv-ava-img" src="${f}" alt="">` : IC.user; };
 
   host.innerHTML = `
     <div class="mv-top">
       <button class="mv-ava" id="mv-ava" aria-label="Perfil">
-        ${IC.user}
+        ${avatarLobby()}
         <i class="mv-ava-dot ${con ? 'on' : ''}"></i>
       </button>
       <div class="mv-search" id="mv-search"><span class="mv-search-ic">${IC.search}</span><span class="mv-search-ph">Busca servicios, ofertas, monedas…</span></div>
@@ -104,6 +113,17 @@ export function pintarInicio(host, api) {
   `;
 
   $('mv-ava').onclick = () => api.abrir('perfil');
+  // Cargar la foto de perfil desde Firestore y ponerla en el avatar del lobby.
+  (async () => {
+    try {
+      const c = wallet.cuentaActual && wallet.cuentaActual(); if (!c) return;
+      const p = await fperfil.leerPerfil(c);
+      if (p.foto) {
+        try { localStorage.setItem('aurex-foto:' + c.toLowerCase(), p.foto); } catch (_) {}
+        const av = $('mv-ava'); if (av) { const dot = av.querySelector('.mv-ava-dot'); av.innerHTML = `<img class="mv-ava-img" src="${p.foto}" alt="">`; if (dot) av.appendChild(dot); }
+      }
+    } catch (_) {}
+  })();
   $('mv-search').onclick = () => api.abrir('buscar');
   $('mv-support').onclick = () => api.abrir('soporte');
   $('mv-alerts').onclick = () => api.abrir('alertas');

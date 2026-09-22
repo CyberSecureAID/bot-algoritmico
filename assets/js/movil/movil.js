@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=7';
 import { IC } from './iconos.js?v=1';
-import { pintarInicio } from './inicio.js?v=7';
+import { pintarInicio } from './inicio.js?v=8';
 import { pintarMercados } from './markets.js?v=3';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=4';
 import { pintarActivos } from './activos.js?v=5';
@@ -88,7 +88,7 @@ async function abrir(clave, arg) {
       case 'sell':      await abrirMarketTab('mk-t2'); break;
       case 'fondos':    abrirMetamaskBuy(); break;
       case 'prize':     { const m = await import('../prizepool.js?v=125'); m.abrirPrizePool && m.abrirPrizePool(); break; }
-      case 'perfil':    { const m = await import('../perfil.js?v=127'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
+      case 'perfil':    { const m = await import('../perfil.js?v=128'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
       case 'tools':     { inyectarFixTools(); const m = await import('../tools.js?v=125'); m.abrirTools && m.abrirTools(); break; }
       case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=125'); m.abrirAcademy && m.abrirAcademy(); break; }
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
