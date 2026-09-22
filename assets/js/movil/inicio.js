@@ -11,7 +11,7 @@ const QUICK = [
   { k: 'sell',      ic: 'market', t: 'P2P' },
   { k: 'swap',      ic: 'swap',   t: 'Swap' },
   { k: 'bots',      ic: 'bot',    t: 'Bots', tag: 'HOT' },
-  { k: 'addtoken',  ic: 'coins',    t: 'Add Token', tag: 'NEW' },
+  { k: 'liquidity', ic: 'pool',   t: 'Charts' },
   { k: 'academy',   ic: 'book',   t: 'Academia', tag: 'TOP' },
 ];
 

@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=7';
 import { IC } from './iconos.js?v=1';
-import { pintarInicio } from './inicio.js?v=5';
+import { pintarInicio } from './inicio.js?v=7';
 import { pintarMercados } from './markets.js?v=3';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=4';
 import { pintarActivos } from './activos.js?v=5';
@@ -74,7 +74,7 @@ async function abrir(clave, arg) {
   if (requiereActivacion(clave)) { avisoActivacion(clave); return; }
   try {
     switch (clave) {
-      case 'addtoken':  { const m = await import('../gridbot/listing.js?v=10'); m.abrirListingMovil && m.abrirListingMovil(); break; }
+      case 'addtoken':  { const m = await import('../gridbot/listing.js?v=11'); m.abrirListingMovil && m.abrirListingMovil(); break; }
       case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=7'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
                           try { const idi = await import('../idioma.js?v=163'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
