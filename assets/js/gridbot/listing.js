@@ -2,6 +2,7 @@
    Dos vistas: formulario (aún no listó) y lista de tokens listados (ya listó).
    Estilo idéntico al swap (mismo fondo, dorado, glass). Web y base para móvil. */
 import * as mercado from './mercado.js?v=1';
+import * as flogos from './firebase-logos.js?v=1';
 import * as wallet from '../wallet.js?v=125';
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 
@@ -291,6 +292,12 @@ async function refrescar() {
   let mis = [];
   try { mis = await mercado.misListados(c); } catch (_) {}
   const activos = mis.filter(m => m.activo);
+  // Cargar los logos desde Firestore para los tokens que no traen logo on-chain.
+  try {
+    const addrs = activos.map(m => m.token);
+    const logos = await flogos.leerLogos(addrs);
+    activos.forEach(m => { if (!m.logo) { const l = logos[m.token.toLowerCase()]; if (l) m.logo = l; } });
+  } catch (_) {}
   if (activos.length > 0) {
     // ya listó: mostrar la lista, con botón para listar otro
     $('lt-title').textContent = 'Your Listed Token' + (activos.length > 1 ? 's' : '');
@@ -402,7 +409,10 @@ async function listar() {
     if (alw < cantidadBI) { await mercado.aprobar(addr, cantidadBI); }
     // listar (paga $25 en BNB como value)
     btn.textContent = 'Confirm listing…';
-    await mercado.listar({ token: addr, nombre, simbolo, logo: F.logo, cantidadBI, precioBI: precioBNB, valueBNB: costoBNB });
+    // El logo va a Firestore (compartido), no on-chain. Guardamos la referencia vacía en el contrato.
+    await mercado.listar({ token: addr, nombre, simbolo, logo: '', cantidadBI, precioBI: precioBNB, valueBNB: costoBNB });
+    // Guardar el logo comprimido en Firestore (si el usuario subió uno).
+    if (F.logo) { try { await flogos.guardarLogo(addr, F.logo); } catch (_) {} }
     btn.textContent = 'Listed';
     await refrescar();
   } catch (e) { btn.disabled = false; btn.textContent = 'List Token'; formMsg(traducirError(e)); }

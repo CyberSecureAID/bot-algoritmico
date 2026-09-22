@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
-import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=6';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=7';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
