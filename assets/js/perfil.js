@@ -2,7 +2,7 @@
 import * as gb from './gridbot.js?v=125';
 import * as wallet from './wallet.js?v=125';
 import * as fperfil from './firebase-perfil.js?v=1';
-import { reducirImagen } from './gridbot/listing.js?v=11';
+import { reducirImagen } from './gridbot/listing.js?v=12';
 import * as avisos from './avisos.js?v=125';
 
 const $ = (id) => document.getElementById(id);
@@ -62,6 +62,19 @@ function estilos() {
   #perfil-overlay .pf-ava-edit{position:relative;cursor:pointer;overflow:visible}
   #perfil-overlay .pf-ava-img{width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0}
   #perfil-overlay .pf-ava-cam{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,#E8B84B 60%,#c79426);color:#241900;display:grid;place-items:center;border:2px solid #0d1117;z-index:2}
+  #perfil-overlay .pf-gate{display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 20px 20px}
+  #perfil-overlay .pf-gate-t{font-family:var(--display,sans-serif);font-weight:800;font-size:20px;color:#eaecef;margin-bottom:6px}
+  #perfil-overlay .pf-gate-s{font-size:13px;color:#8a95a3;margin-bottom:20px;line-height:1.5;max-width:280px}
+  #perfil-overlay .pf-gate-ava{position:relative;width:88px;height:88px;border-radius:50%;background:linear-gradient(180deg,#232b34,#151b22);display:grid;place-items:center;cursor:pointer;margin-bottom:8px;overflow:visible;color:#6b7684}
+  #perfil-overlay .pf-gate-ava img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+  #perfil-overlay .pf-gate-ava .pf-ava-cam{position:absolute;right:0;bottom:0;width:26px;height:26px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,#E8B84B 60%,#c79426);color:#241900;display:grid;place-items:center;border:2px solid #0d1117;z-index:2}
+  #perfil-overlay .pf-gate-lbl{font-size:11px;color:#6b7684;margin-bottom:16px}
+  #perfil-overlay .pf-gate-inp{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid #202b37;border-radius:12px;padding:12px 14px;color:#eaecef;font-family:var(--display,sans-serif);font-size:15px;outline:none;margin-bottom:14px;text-align:center}
+  #perfil-overlay .pf-gate-inp:focus{border-color:rgba(232,184,75,.4)}
+  #perfil-overlay .pf-gate-btn{width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;font-family:var(--display,sans-serif);font-weight:800;font-size:14px;cursor:pointer}
+  #perfil-overlay .pf-gate-btn:disabled{opacity:.5;cursor:default}
+  #perfil-overlay .pf-gate-msg{font-size:12px;color:#f8b34b;margin-top:10px;min-height:14px}
+
   #perfil-overlay .pf-setname{font-family:var(--display,sans-serif);font-weight:700;font-size:16px;color:var(--gold,#E8B84B);background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:6px}
   #perfil-overlay .pf-pen{width:26px;height:26px;flex:0 0 auto;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#7d8794;display:grid;place-items:center;cursor:pointer}
   #perfil-overlay .pf-pen:hover{color:var(--gold,#E8B84B);border-color:rgba(232,184,75,.4)}
@@ -245,6 +258,62 @@ const icoAcum = () => `<svg width="17" height="17" viewBox="0 0 24 24" fill="non
 const icoCash = () => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
 const icoDca = () => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
 const iconoCopy = () => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`;
+
+
+/* Cartel obligatorio: si la wallet no tiene nombre Y foto, pide completarlos
+   antes de mostrar los datos del perfil. Bloquea la vista hasta cumplir. */
+async function exigirPerfilCompleto(cuenta) {
+  const p = await fperfil.leerPerfil(cuenta);
+  const faltaNombre = !p.nombre;
+  const faltaFoto = !p.foto;
+  if (!faltaNombre && !faltaFoto) return true;  // ya está completo
+  // sincronizar caché con lo que haya
+  if (p.nombre) { try { localStorage.setItem(claveNombre(cuenta), p.nombre); } catch(_){} }
+  if (p.foto) { try { localStorage.setItem(claveFoto(cuenta), p.foto); } catch(_){} }
+  mostrarCartelPerfil(cuenta, p);
+  return false;
+}
+
+function mostrarCartelPerfil(cuenta, p) {
+  const card = document.querySelector('#perfil-overlay .pf-card'); if (!card) return;
+  const fotoActual = p.foto || leerFotoCache(cuenta) || '';
+  card.innerHTML = `
+  <button class="pf-x" id="pf-x" aria-label="Cerrar">✕</button>
+  <div class="pf-gate">
+    <div class="pf-gate-t">Complete your profile</div>
+    <div class="pf-gate-s">Add a name and a photo to your account to continue.</div>
+    <div class="pf-gate-ava" id="pf-gate-ava">${fotoActual ? `<img src="${fotoActual}" alt="">` : iconoUser()}<span class="pf-ava-cam">${iconoCam()}</span><input type="file" id="pf-gate-foto" accept="image/*" style="display:none"></div>
+    <div class="pf-gate-lbl">Profile photo</div>
+    <input class="pf-gate-inp" id="pf-gate-name" maxlength="24" placeholder="Your name or alias" value="${esc(p.nombre || '')}">
+    <button class="pf-gate-btn" id="pf-gate-save" disabled>Save and continue</button>
+    <div class="pf-gate-msg" id="pf-gate-msg"></div>
+  </div>`;
+  document.getElementById('pf-x').onclick = cerrar;
+  let fotoNueva = fotoActual;
+  const ava = document.getElementById('pf-gate-ava');
+  const inpFoto = document.getElementById('pf-gate-foto');
+  const inpName = document.getElementById('pf-gate-name');
+  const btn = document.getElementById('pf-gate-save');
+  const msg = document.getElementById('pf-gate-msg');
+  const validar = () => { btn.disabled = !(inpName.value.trim() && fotoNueva); };
+  ava.onclick = () => inpFoto.click();
+  inpFoto.onchange = async () => {
+    const f = inpFoto.files[0]; if (!f) return;
+    try { fotoNueva = await reducirImagen(f); ava.innerHTML = `<img src="${fotoNueva}" alt="">` + `<span class="pf-ava-cam">${iconoCam()}</span>`; ava.appendChild(inpFoto); validar(); }
+    catch (_) { msg.textContent = 'Could not read that image.'; }
+  };
+  inpName.oninput = validar;
+  btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      await fperfil.guardarPerfil(cuenta, { nombre: inpName.value.trim(), foto: fotoNueva });
+      try { localStorage.setItem(claveNombre(cuenta), inpName.value.trim()); localStorage.setItem(claveFoto(cuenta), fotoNueva); } catch(_){}
+      // completado → re-abrir el perfil normal
+      abrirPerfil();
+    } catch (_) { btn.disabled = false; btn.textContent = 'Save and continue'; msg.textContent = 'Something went wrong, try again.'; }
+  };
+  validar();
+}
 
 function avatarHTML(cuenta) {
   const foto = leerFotoCache(cuenta);
@@ -453,8 +522,14 @@ export async function abrirPerfil() {
 
 
   $('pf-x').onclick = cerrar;
-  wireAvatar(cuenta);
-  sincronizarPerfil(cuenta).then((pp) => { if (pp && pp.foto) { const av=$('pf-ava'); if(av){ av.innerHTML=`<img class="pf-ava-img" src="${pp.foto}" alt="">`+`<span class="pf-ava-cam">${iconoCam()}</span>`; } } if (pp && pp.nombre) pintarNombre(cuenta); wireAvatar(cuenta); });
+  // Perfil obligatorio: si falta nombre o foto, muestra el cartel y no sigue.
+  exigirPerfilCompleto(cuenta).then((completo) => {
+    if (!completo) return;
+    wireAvatar(cuenta);
+    const av=$('pf-ava'); const fc=leerFotoCache(cuenta);
+    if (av && fc) { av.innerHTML=`<img class="pf-ava-img" src="${fc}" alt="">`+`<span class="pf-ava-cam">${iconoCam()}</span>`; }
+    pintarNombre(cuenta); wireAvatar(cuenta);
+  });
   pintarNombre(cuenta);
   const addr = $('pf-addr');
   if (addr) addr.onclick = async () => {
