@@ -11,7 +11,7 @@ const QUICK = [
   { k: 'sell',      ic: 'market', t: 'P2P' },
   { k: 'swap',      ic: 'swap',   t: 'Swap' },
   { k: 'bots',      ic: 'bot',    t: 'Bots', tag: 'HOT' },
-  { k: 'liquidity', ic: 'pool',   t: 'Charts' },
+  { k: 'addtoken',  ic: 'coins',    t: 'Add Token', tag: 'NEW' },
   { k: 'academy',   ic: 'book',   t: 'Academia', tag: 'TOP' },
 ];
 
@@ -36,6 +36,7 @@ const SERVICIOS = [
   { go: 'swap',      color: '#2ebd85', ic: 'swap',    kick: 'Swap',            h: 'Instant',         p: 'Cambia cualquier cripto por otra, sin KYC y no custodial.' },
   { go: 'market',    color: '#E8B84B', ic: 'market',  kick: 'Marketplace',     h: 'Compra P2P',         p: 'Órdenes de compra y venta entre personas, con garantía.' },
   { go: 'prize',     color: '#f6465d', ic: 'trophy',  kick: 'Prize Pool',      h: 'Fondo común',        p: 'Participa y gana del pozo acumulado de la comunidad.' },
+  { go: 'addtoken',  color: '#2ebd85', ic: 'coins',     kick: 'Add Token',       h: 'Lista tu cripto',    p: 'Pon a la venta tu propio token en el swap, al precio que elijas.' },
 ];
 
 let _ojo = leer(LS.ojo) === '1';
@@ -94,11 +95,11 @@ export function pintarInicio(host, api) {
     <div class="mv-sec-h"><b>Todos los servicios</b><span id="mv-viewall">Ver todo →</span></div>
     <div class="mv-svc"><div class="mv-svc-track" id="mv-svc-track"></div></div>
 
-    <div class="mv-sec-h"><b>Prize Pool</b><span id="mv-prize-more">Ver →</span></div>
+    <div class="mv-sec-h"><b>Add Token</b><span id="mv-prize-more">Ver →</span></div>
     <div class="mv-strip" id="mv-prize-strip">
-      <div class="mv-strip-ic">${IC.trophy}</div>
-      <div class="mv-strip-tx"><b>Fondo comunitario</b><small>Participa y gana del pozo acumulado</small></div>
-      <button class="mv-strip-go" id="mv-prize-go">Entrar</button>
+      <div class="mv-strip-ic">${IC.coins || IC.market}</div>
+      <div class="mv-strip-tx"><b>List your token</b><small>Sell your own crypto in the swap</small></div>
+      <button class="mv-strip-go" id="mv-prize-go">Enter</button>
     </div>
   `;
 
@@ -110,7 +111,7 @@ export function pintarInicio(host, api) {
   $('mv-trade').onclick = () => api.irA('trade');
   const cb = $('mv-connect-btn'); if (cb) cb.onclick = () => api.conectar();
   host.querySelectorAll('.mv-qi').forEach((el) => { el.onclick = () => api.abrir(el.getAttribute('data-k')); });
-  $('mv-prize-go').onclick = $('mv-prize-more').onclick = () => api.abrir('prize');
+  $('mv-prize-go').onclick = $('mv-prize-more').onclick = () => api.abrir('addtoken');
   $('mv-viewall').onclick = () => api.abrir('menu');
 
   // Balance: ojito + moneda seleccionada (Total o una moneda concreta)
