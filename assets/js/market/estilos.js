@@ -451,17 +451,21 @@ export function estilos() {
     #mk-overlay .mk-chip{font-size:10px;padding:4px 8px}
   }
 
-  /* ── Disclaimer P2P ── */
-  #mk-card .mk-disc{display:flex;flex-direction:column;height:100%;max-height:100%;padding:6px 2px}
-  #mk-card .mk-disc-t{font-family:var(--display,'Segoe UI',sans-serif);font-weight:800;font-size:21px;color:#f3f6fa;text-align:center;margin:4px 0 16px;flex:none;text-transform:none;letter-spacing:normal}
-  #mk-card .mk-disc-body{overflow-y:auto;flex:1 1 auto;min-height:0;padding-right:8px}
-  #mk-card .mk-disc-body p{font-size:13.5px;line-height:1.65;color:#c9d2dc;margin:0 0 13px;text-align:left;text-transform:none;letter-spacing:normal}
-  #mk-card .mk-disc-body b{color:#f3f6fa;font-weight:700}
-  #mk-card .mk-disc-chk{display:flex;align-items:flex-start;gap:9px;margin:14px 0 12px;font-size:13px;color:#d4dbe4;cursor:pointer;line-height:1.45;flex:none;text-transform:none;letter-spacing:normal;font-family:var(--display,sans-serif)}
-  #mk-card .mk-disc-chk input{margin-top:2px;width:17px;height:17px;flex:none;accent-color:#E8B84B;cursor:pointer}
-  #mk-card .mk-disc-btn{width:100%;padding:14px;border:0;border-radius:13px;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;font-family:var(--display,sans-serif);font-weight:800;font-size:15px;cursor:pointer;flex:none;text-transform:none;letter-spacing:normal}
-  #mk-card .mk-disc-btn:disabled{opacity:.4;cursor:not-allowed}
-  @media(max-width:560px){ #mk-card .mk-disc-t{font-size:19px} #mk-card .mk-disc-body p{font-size:13px} }
+    /* ── Disclaimer P2P por pasos ── */
+  #mk-card .mk-disc2{display:flex;flex-direction:column;height:100%;min-height:420px;padding:8px 4px}
+  #mk-card .mk-disc2-top{flex:none;padding:8px 0 4px}
+  #mk-card .mk-disc2-dots{display:flex;gap:7px;justify-content:center}
+  #mk-card .mk-disc2-dot{width:9px;height:9px;border-radius:50%;background:#2a3644;transition:.25s}
+  #mk-card .mk-disc2-dot.on{background:#E8B84B;transform:scale(1.25)}
+  #mk-card .mk-disc2-dot.done{background:#c79426}
+  #mk-card .mk-disc2-mid{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:20px 12px}
+  #mk-card .mk-disc2-t{font-family:var(--display,'Segoe UI',sans-serif);font-weight:800;font-size:23px;color:#f3f6fa;margin:0 0 16px;text-transform:none;letter-spacing:normal}
+  #mk-card .mk-disc2-p{font-size:14.5px;line-height:1.7;color:#c4cdd8;margin:0;text-transform:none;letter-spacing:normal;max-width:440px;margin-left:auto;margin-right:auto}
+  #mk-card .mk-disc2-foot{flex:none;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 4px 6px;border-top:1px solid #202b37}
+  #mk-card .mk-disc2-count{font-size:12.5px;color:#5f6b7a;font-variant-numeric:tabular-nums;flex:none}
+  #mk-card .mk-disc2-btn{flex:1;max-width:260px;padding:14px;border:0;border-radius:13px;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;font-family:var(--display,sans-serif);font-weight:800;font-size:15px;cursor:pointer;text-transform:none;letter-spacing:normal;box-shadow:0 3px 0 #a9781c}
+  #mk-card .mk-disc2-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #a9781c}
+  @media(max-width:560px){ #mk-card .mk-disc2-t{font-size:20px} #mk-card .mk-disc2-p{font-size:13.5px} #mk-card .mk-disc2-btn{max-width:none} }
 
   `;
   document.head.appendChild(s);
