@@ -582,3 +582,17 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 /* Botón de sección aún no desarrollada (placeholder). */
 #pt .pt-nav__b[data-soon]{position:relative;opacity:.72}
 #pt .pt-nav__b[data-soon]:hover{opacity:1}
+
+/* ── Botones del hero como imágenes (Swap, Staking, Bots) ── */
+#pt .pt-acts-img{display:flex;flex-wrap:nowrap;gap:12px;margin-top:-8px;margin-left:1px;align-items:center}
+#pt .pt-btn-img{display:block;flex:0 0 auto;line-height:0;border-radius:14px;transition:transform .12s cubic-bezier(.2,.9,.3,1.2),filter .12s;-webkit-tap-highlight-color:transparent}
+#pt .pt-btn-img img{height:52px;width:auto;display:block;border-radius:14px;pointer-events:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4))}
+#pt .pt-btn-img:hover{transform:translateY(-2px);filter:brightness(1.08)}
+#pt .pt-btn-img:active{transform:translateY(1px) scale(.96);filter:brightness(.95)}
+@media(max-width:560px){
+  #pt .pt-acts-img{flex-wrap:wrap;gap:9px}
+  #pt .pt-btn-img img{height:44px}
+}
+@media(max-width:380px){
+  #pt .pt-btn-img img{height:40px}
+}
