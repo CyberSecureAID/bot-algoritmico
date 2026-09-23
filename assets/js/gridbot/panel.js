@@ -1,7 +1,7 @@
 /* panel.js — Panel administrativo (página propia). Solo owners (verificación on-chain).
    Web: sidebar 256px + KPIs + grid. Móvil: menú hamburguesa + tarjetas apiladas.
    Dark-first, números tabulares, color solo para estado financiero. */
-import * as datos from './panel-datos.js?v=3';
+import * as datos from './panel-datos.js?v=4';
 import * as wallet from '../wallet.js?v=125';
 
 const $ = (id) => document.getElementById(id);
@@ -101,6 +101,21 @@ function inyectarCSS() {
   #adm2 .adm-pag-b:disabled{opacity:.35;cursor:default}
   #adm2 .adm-pag-n.on{background:rgba(232,184,75,.14);border-color:rgba(232,184,75,.5);color:#E8B84B}
   #adm2 .adm-pag-e{color:#5f6b7a;padding:0 4px}
+  
+  #adm2 .adm-field{margin-bottom:14px}
+  #adm2 .adm-field label{display:block;font-size:12px;color:#8a95a3;margin-bottom:6px}
+  #adm2 .adm-field-in{display:flex;align-items:center;background:rgba(11,14,17,.72);border:1px solid #1b2531;border-radius:10px;overflow:hidden}
+  #adm2 .adm-field-in input{flex:1;background:none;border:0;outline:none;color:#e7ecf2;font-family:inherit;font-size:14px;padding:10px 13px}
+  #adm2 .adm-field-in span{padding:0 13px;color:#5f6b7a;font-weight:700;border-left:1px solid #1b2531;align-self:stretch;display:flex;align-items:center}
+  #adm2 .adm-field-in:focus-within{border-color:rgba(232,184,75,.4)}
+  #adm2 .adm-save{width:100%;margin-top:6px;padding:11px;border:0;border-radius:10px;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer}
+  #adm2 .adm-save:disabled{opacity:.5;cursor:default}
+  #adm2 .adm-msg{font-size:12px;color:#f8b34b;margin-top:9px;min-height:14px;text-align:center}
+  #adm2 .adm-msg.ok{color:#34d399}
+  #adm2 .adm-prow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 4px;border-bottom:1px solid #161f2b}
+  #adm2 .adm-prow:last-child{border-bottom:0}
+  #adm2 .adm-prow b{font-size:14px;font-weight:600;display:block}
+  #adm2 .adm-prow small{font-size:11.5px;color:#5f6b7a;display:block;margin-top:2px}
     @media(max-width:860px){ #adm2 .adm-search-inp{min-width:0;width:100%} #adm2 .adm-uright{flex-direction:column;align-items:flex-end;gap:6px} }
     `;
   document.head.appendChild(s);
@@ -207,6 +222,9 @@ function render() {
   const body = $('adm-body'); if (!body) return;
   if (_sec === 'resumen') return renderResumen(body);
   if (_sec === 'usuarios') return renderUsuarios(body);
+  if (_sec === 'finanzas') return renderFinanzas(body);
+  if (_sec === 'servicios') return renderServicios(body);
+  if (_sec === 'seguridad') return renderSeguridad(body);
   body.innerHTML = `<div class="adm-empty">Section "${_sec}" — coming next.</div>`;
 }
 
@@ -335,6 +353,124 @@ function filaUsuario(u) {
   </div>`;
 }
 function escH(s){return String(s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
+
+
+/* ── FINANCE ── */
+async function renderFinanzas(body) {
+  body.innerHTML = `
+    <div class="adm-kpis" id="adm-fkpis">${kpiSkel('Total generated')}${kpiSkel('To staking')}${kpiSkel('To owners')}</div>
+    <div class="adm-grid">
+      <div class="adm-card col-6"><h3>Earnings by owner</h3><div id="adm-owners"><div class="adm-empty adm-skel">Loading…</div></div></div>
+      <div class="adm-card col-6"><h3>Distribution</h3><div id="adm-dist"><div class="adm-empty adm-skel">Loading…</div></div></div>
+    </div>`;
+  try {
+    const f = await datos.finanzas();
+    $('adm-fkpis').innerHTML =
+      kpi('Total generated', '$'+fmt(f.generado), IC.money, 'all time', 'mut') +
+      kpi('To staking', '$'+fmt(f.aStaking), IC.stk, 'rewarded to stakers', 'mut') +
+      kpi('To owners', '$'+fmt(f.aOwners), IC.wallet, 'split between owners', 'mut');
+    $('adm-owners').innerHTML =
+      (f.owner1 ? rowAddr('Owner 1', f.owner1.addr, '$'+fmt(f.owner1.monto)) : row('Owner 1', '—')) +
+      (f.owner2 ? rowAddr('Owner 2', f.owner2.addr, '$'+fmt(f.owner2.monto)) : row('Owner 2', 'not set'));
+    const total = f.aStaking + f.aOwners || 1;
+    $('adm-dist').innerHTML =
+      barra('To staking', f.aStaking, total, '#34d399') +
+      barra('To owners', f.aOwners, total, '#E8B84B');
+  } catch (e) { $('adm-fkpis').innerHTML = `<div class="adm-empty col-12">Could not load. ${(e&&e.message)||''}</div>`; }
+}
+function rowAddr(l, addr, v) { const c = addr.slice(0,6)+'…'+addr.slice(-4); return `<div class="adm-row"><span>${l} <span style="color:#5f6b7a;font-family:var(--mono,monospace);font-size:11px">${c}</span></span><span class="r-v">${v}</span></div>`; }
+function barra(l, val, total, color) {
+  const pct = total > 0 ? Math.round(val/total*100) : 0;
+  return `<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span style="color:#8a95a3">${l}</span><span style="font-weight:700">$${fmt(val)} · ${pct}%</span></div><div style="height:8px;background:#161f2b;border-radius:100px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:100px"></div></div></div>`;
+}
+
+/* ── SERVICES ── */
+async function renderServicios(body) {
+  body.innerHTML = `<div id="adm-servs"><div class="adm-empty adm-skel">Loading services…</div></div>`;
+  try {
+    const p = await datos.paramsServicios();
+    let html = '<div class="adm-grid">';
+    // MercadoTokens
+    if (p.mercado) {
+      html += `<div class="adm-card col-6"><h3>Token Listing (MercadoTokens)</h3>
+        ${campo('Listing cost (USD)', 'm-costo', p.mercado.costoListado, '$')}
+        ${campo('Withdraw fee (%)', 'm-com', p.mercado.comisionRetiro, '%')}
+        ${row('Max liquidity to list', '$'+fmt(p.mercado.maxLiquidez))}
+        ${row('Status', p.mercado.pausado ? '<span class="adm-tag bad">Paused</span>' : '<span class="adm-tag ok">Active</span>')}
+        <button class="adm-save" id="m-save">Save changes</button><div class="adm-msg" id="m-msg"></div></div>`;
+    }
+    // GridBot
+    if (p.gridbot) {
+      html += `<div class="adm-card col-6"><h3>Bots & Swap (GridBot)</h3>
+        ${campo('Bot cost (USD)', 'g-costo', p.gridbot.costoBot, '$')}
+        ${campo('Swap fee (%)', 'g-fee', p.gridbot.feeSwap, '%')}
+        ${campo('To staking (%)', 'g-stk', p.gridbot.stakingBps, '%')}
+        ${row('Max bots per wallet', String(p.gridbot.maxBots))}
+        ${row('Status', p.gridbot.pausado ? '<span class="adm-tag bad">Paused</span>' : '<span class="adm-tag ok">Active</span>')}
+        <button class="adm-save" id="g-save">Save changes</button><div class="adm-msg" id="g-msg"></div></div>`;
+    }
+    html += '</div>';
+    if (!p.mercado && !p.gridbot) html = `<div class="adm-empty">Could not read services.</div>`;
+    $('adm-servs').innerHTML = html;
+    // guardar MercadoTokens
+    const ms = $('m-save'); if (ms) ms.onclick = async () => {
+      ms.disabled = true; msgSet('m-msg', 'Saving…');
+      try {
+        const costo = parseFloat($('m-costo').value); const com = parseFloat($('m-com').value);
+        if (costo !== p.mercado.costoListado) await datos.setMercadoCosto(costo);
+        if (com !== p.mercado.comisionRetiro) await datos.setMercadoComision(com);
+        msgSet('m-msg', 'Saved ✓', true); setTimeout(() => render(), 1200);
+      } catch (e) { ms.disabled = false; msgSet('m-msg', errTxt(e)); }
+    };
+    // guardar GridBot
+    const gs = $('g-save'); if (gs) gs.onclick = async () => {
+      gs.disabled = true; msgSet('g-msg', 'Saving…');
+      try {
+        const costo = parseFloat($('g-costo').value); const fee = parseFloat($('g-fee').value); const stk = parseFloat($('g-stk').value);
+        if (costo !== p.gridbot.costoBot) await datos.setGridbotCostoBot(costo);
+        if (fee !== p.gridbot.feeSwap || stk !== p.gridbot.stakingBps) await datos.setGridbotComision(fee, stk);
+        msgSet('g-msg', 'Saved ✓', true); setTimeout(() => render(), 1200);
+      } catch (e) { gs.disabled = false; msgSet('g-msg', errTxt(e)); }
+    };
+  } catch (e) { $('adm-servs').innerHTML = `<div class="adm-empty">Could not load services. ${(e&&e.message)||''}</div>`; }
+}
+function campo(label, id, valor, unidad) {
+  return `<div class="adm-field"><label>${label}</label><div class="adm-field-in"><input id="${id}" type="number" step="any" value="${valor}"><span>${unidad}</span></div></div>`;
+}
+function msgSet(id, t, ok) { const e = $(id); if (e) { e.textContent = t; e.className = 'adm-msg' + (ok ? ' ok' : ''); } }
+function errTxt(e) { const m = ((e&&(e.reason||e.message))||'').toLowerCase(); if (m.includes('user rejected')||m.includes('denied')) return 'Cancelled.'; if (m.includes('no owner')) return 'Not authorized.'; return 'Failed, try again.'; }
+
+/* ── SECURITY ── */
+async function renderSeguridad(body) {
+  body.innerHTML = `
+    <div class="adm-card col-12"><h3>Emergency controls</h3>
+      <p style="color:#8a95a3;font-size:13px;margin:0 0 18px">Pause a service to stop all its operations immediately. Users keep their funds; only new operations are blocked. Resume when ready.</p>
+      <div id="adm-pausas"><div class="adm-empty adm-skel">Loading…</div></div>
+    </div>`;
+  try {
+    const st = await datos.estadoPausa();
+    let html = '';
+    html += filaPausa('Token Listing', 'mercado', st.mercado);
+    html += filaPausa('Bots & Swap', 'gridbot', st.gridbot);
+    $('adm-pausas').innerHTML = html;
+    body.querySelectorAll('[data-pausa]').forEach(b => {
+      b.onclick = async () => {
+        const cual = b.dataset.pausa; const pausar = b.dataset.val === '1';
+        b.disabled = true; b.textContent = pausar ? 'Pausing…' : 'Resuming…';
+        try { await datos.pausarServicio(cual, pausar); render(); }
+        catch (e) { b.disabled = false; b.textContent = pausar ? 'Pause' : 'Resume'; }
+      };
+    });
+  } catch (e) { $('adm-pausas').innerHTML = `<div class="adm-empty">Could not load. ${(e&&e.message)||''}</div>`; }
+}
+function filaPausa(nombre, cual, pausado) {
+  if (pausado === null) return `<div class="adm-prow"><div><b>${nombre}</b><small>could not read status</small></div><span class="adm-tag">—</span></div>`;
+  const estado = pausado ? '<span class="adm-tag bad">Paused</span>' : '<span class="adm-tag ok">Active</span>';
+  const btn = pausado
+    ? `<button class="adm-ubtn un" data-pausa="${cual}" data-val="0">Resume</button>`
+    : `<button class="adm-ubtn" data-pausa="${cual}" data-val="1">Pause</button>`;
+  return `<div class="adm-prow"><div><b>${nombre}</b><small>${pausado?'operations stopped':'running normally'}</small></div><div class="adm-uright">${estado}${btn}</div></div>`;
+}
 
 function kpi(label, valor, ic, sub, cls) {
   return `<div class="adm-kpi"><div class="k-ic">${ic}</div><div class="k-l">${label}</div><div class="k-v">${valor}</div><div class="k-s ${cls||'mut'}">${sub}</div></div>`;

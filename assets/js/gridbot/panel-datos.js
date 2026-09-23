@@ -133,3 +133,87 @@ export async function walletsConPerfil(lista) {
   }
   return out;
 }
+
+/* ═══════════ Control de servicios (Services + Security) ═══════════ */
+const ABI_MERCADO = [
+  'function costoListadoUSD() view returns (uint256)',
+  'function comisionRetiroBps() view returns (uint256)',
+  'function maxLiquidezUSD() view returns (uint256)',
+  'function pausado() view returns (bool)',
+  'function owner() view returns (address)',
+  'function setCostoListado(uint256)',
+  'function setComisionRetiro(uint256)',
+  'function setMaxLiquidez(uint256)',
+  'function setPausado(bool)'
+];
+const ABI_GRIDBOT = [
+  'function feeBps() view returns (uint256)',
+  'function stakingBps() view returns (uint256)',
+  'function costoBotUSD() view returns (uint256)',
+  'function maxBots() view returns (uint256)',
+  'function pausado() view returns (bool)',
+  'function owner() view returns (address)',
+  'function setComision(uint256,uint256)',
+  'function setCostoBot(uint256)',
+  'function setPausado(bool)'
+];
+const ABI_TARIFAS_FULL = [
+  'function esAdmin(address) view returns (bool)',
+  'function stakingBps() view returns (uint256)',
+  'function unstakeBps() view returns (uint256)'
+];
+
+async function ctrW(dir, abi) { return new ethers.Contract(dir, abi, await firmante()); }
+function ctrR(dir, abi) { return new ethers.Contract(dir, abi, lector()); }
+
+/* ── FINANCE: ganancia por owner + totales ── */
+export async function finanzas() {
+  const c = await contaLeeOwner();
+  const [r, o1, o2] = await Promise.all([
+    c.resumen(),
+    (async () => { try { const oo = await c.owner(); return { addr: oo, monto: fmtUSD(await c.gananciaDeOwner(oo)) }; } catch (_) { return null; } })(),
+    (async () => { try { const oo2 = await new ethers.Contract(DIR.mercado, ['function owner2() view returns (address)'], lector()).owner2(); if (oo2 && oo2 !== '0x0000000000000000000000000000000000000000') return { addr: oo2, monto: fmtUSD(await c.gananciaDeOwner(oo2)) }; } catch (_) {} return null; })()
+  ]);
+  return {
+    generado: fmtUSD(r[0]), aStaking: fmtUSD(r[1]), aOwners: fmtUSD(r[2]),
+    owner1: o1, owner2: o2
+  };
+}
+
+/* ── SERVICES: leer parámetros de cada servicio ── */
+export async function paramsServicios() {
+  const out = {};
+  // MercadoTokens
+  try {
+    const m = ctrR(DIR.mercado, ABI_MERCADO);
+    const [costo, com, maxLiq, pau] = await Promise.all([m.costoListadoUSD(), m.comisionRetiroBps(), m.maxLiquidezUSD(), m.pausado()]);
+    out.mercado = { costoListado: Number(costo)/100, comisionRetiro: Number(com)/100, maxLiquidez: fmtUSD(maxLiq), pausado: pau };
+  } catch (_) { out.mercado = null; }
+  // GridBot
+  try {
+    const g = ctrR(DIR.gridbot, ABI_GRIDBOT);
+    const [fee, stk, costoBot, maxB, pau] = await Promise.all([g.feeBps(), g.stakingBps(), g.costoBotUSD(), g.maxBots(), g.pausado()]);
+    out.gridbot = { feeSwap: Number(fee)/100, stakingBps: Number(stk)/100, costoBot: Number(costoBot)/100, maxBots: Number(maxB), pausado: pau };
+  } catch (_) { out.gridbot = null; }
+  return out;
+}
+
+/* ── SERVICES: cambiar parámetros (cada uno firma en su contrato) ── */
+export async function setMercadoCosto(usd) { const c = await ctrW(DIR.mercado, ABI_MERCADO); return (await c.setCostoListado(Math.round(usd*100))).wait(); }
+export async function setMercadoComision(pct) { const c = await ctrW(DIR.mercado, ABI_MERCADO); return (await c.setComisionRetiro(Math.round(pct*100))).wait(); }
+export async function setGridbotCostoBot(usd) { const c = await ctrW(DIR.gridbot, ABI_GRIDBOT); return (await c.setCostoBot(Math.round(usd*100))).wait(); }
+export async function setGridbotComision(feePct, stakingPct) { const c = await ctrW(DIR.gridbot, ABI_GRIDBOT); return (await c.setComision(Math.round(feePct*100), Math.round(stakingPct*100))).wait(); }
+
+/* ── SECURITY: pausar / reanudar cada servicio ── */
+export async function pausarServicio(cual, v) {
+  const dir = cual === 'mercado' ? DIR.mercado : DIR.gridbot;
+  const abi = cual === 'mercado' ? ABI_MERCADO : ABI_GRIDBOT;
+  const c = await ctrW(dir, abi);
+  return (await c.setPausado(v)).wait();
+}
+export async function estadoPausa() {
+  const out = {};
+  try { out.mercado = await ctrR(DIR.mercado, ABI_MERCADO).pausado(); } catch (_) { out.mercado = null; }
+  try { out.gridbot = await ctrR(DIR.gridbot, ABI_GRIDBOT).pausado(); } catch (_) { out.gridbot = null; }
+  return out;
+}
