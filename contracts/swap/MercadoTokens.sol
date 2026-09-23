@@ -32,6 +32,7 @@ interface IWBNBM { function deposit() external payable; }
 interface IStakingM { function depositarRecompensa(address,uint256,uint16) external; }
 interface ITarifasM { function esAdmin(address) external view returns (bool); }
 interface IOraculoM { function precioUSD(address) external view returns (uint256); }
+interface IContabilidad { function reportar(address wallet, bytes32 servicio, uint256 generadoUSD, uint256 aStakingUSD, uint256 aOwnersUSD) external; function tocarWallet(address wallet) external; }
 interface IFactoryM { function getPair(address,address) external view returns (address); }
 interface IPairM { function getReserves() external view returns (uint112,uint112,uint32); function token0() external view returns (address); }
 interface IERC20Dec { function decimals() external view returns (uint8); }
@@ -180,6 +181,9 @@ contract MercadoTokens is Initializable, UUPSUpgradeable {
         listadosDe[msg.sender].push(id);
         listadosPorToken[p.token].push(id);
         emit Listado_(id, msg.sender, p.token, nom, sim, p.precio);
+        // Reportar a Contabilidad: el listado generó costoListadoUSD (si no es admin, que paga).
+        { uint256 gen = _esAdmin(msg.sender) ? 0 : costoListadoUSD * 1e16; // USD 2dec → 18dec
+          _reportar(msg.sender, gen, gen/5, gen - gen/5); }
     }
     /** Cobra el listado en BNB, trae los tokens del vendedor, devuelve lo recibido. */
     function _cobrarYTraer(address token, uint256 cantidad) internal returns (uint256 recibido) {
@@ -218,6 +222,8 @@ contract MercadoTokens is Initializable, UUPSUpgradeable {
         compradoPor[id][msg.sender] += cantidadToken;
         L.token.sTransfer(msg.sender, cantidadToken);
         emit Comprado(id, msg.sender, cantidadToken, coste);
+        // Reportar la compra: marca la wallet del comprador como usuario activo (volumen movido).
+        { if (contabilidad != address(0)) { try IContabilidad(contabilidad).tocarWallet(msg.sender) {} catch {} } }
     }
 
     /* ─────────── Seguridad 1: el comprador puede DEVOLVER lo que compró ───────────
@@ -323,6 +329,12 @@ contract MercadoTokens is Initializable, UUPSUpgradeable {
         return block.timestamp >= fin ? 0 : fin - block.timestamp;
     }
 
+    /* ── Reporta actividad a la Contabilidad (nunca rompe el flujo principal) ── */
+    function _reportar(address wallet, uint256 generadoUSD, uint256 aStakingUSD, uint256 aOwnersUSD) internal {
+        if (contabilidad == address(0)) return;
+        try IContabilidad(contabilidad).reportar(wallet, keccak256("mercadotokens"), generadoUSD, aStakingUSD, aOwnersUSD) {} catch {}
+    }
+
     /* ─────────── Internas de pago/comisión ─────────── */
     function _dec(address token) internal view returns (uint8) { try IERC20M(token).decimals() returns (uint8 d) { return d; } catch { return 18; } }
     function _pagar(address a, uint256 monto) internal {
@@ -371,6 +383,7 @@ contract MercadoTokens is Initializable, UUPSUpgradeable {
     function setCostoListado(uint256 usd2dec) external soloOwner { costoListadoUSD = usd2dec; }
     function setComisionRetiro(uint256 bps) external soloOwner { require(bps <= 1000, "max 10%"); comisionRetiroBps = bps; }
     function setPausado(bool p) external soloOwner { pausado = p; }
+    function setContabilidad(address a) external soloOwner { contabilidad = a; }
     /* Marca/desmarca un token como prohibido de listar (monedas conocidas). */
     function setProhibido(address token, bool v) external soloOwner { prohibido[token] = v; }
     function setProhibidos(address[] calldata toks, bool v) external soloOwner { for (uint256 i=0;i<toks.length;i++) prohibido[toks[i]] = v; }
@@ -404,5 +417,6 @@ contract MercadoTokens is Initializable, UUPSUpgradeable {
     mapping(address => bool)   public permitidoConLiquidez;
     mapping(address => string) public nombreAnclado;   // nombre forzado (ej. "USDT.z")
     mapping(address => string) public simboloAnclado;  // símbolo forzado (ej. "USDT.z")
-    uint256[33] private __gap;
+    address public contabilidad;   // el "contable" central (reporta actividad). 0 = desactivado. (AL FINAL: no rompe storage)
+    uint256[31] private __gap;
 }
