@@ -88,7 +88,7 @@ async function abrir(clave, arg) {
       case 'sell':      await abrirMarketTab('mk-t2'); break;
       case 'fondos':    abrirMetamaskBuy(); break;
       case 'prize':     { const m = await import('../prizepool.js?v=125'); m.abrirPrizePool && m.abrirPrizePool(); break; }
-      case 'perfil':    { const m = await import('../perfil.js?v=129'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
+      case 'perfil':    { const m = await import('../perfil.js?v=130'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
       case 'tools':     { inyectarFixTools(); const m = await import('../tools.js?v=125'); m.abrirTools && m.abrirTools(); break; }
       case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=125'); m.abrirAcademy && m.abrirAcademy(); break; }
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
@@ -722,7 +722,7 @@ export async function montarMovil(deps) {
   if ($('mv-app')) return;
   inyectarMovil();
   // Panel admin (5 toques esquina inf. izq.; verifica owner on-chain).
-  try { const tg = await import('../gridbot/panel-trigger.js?v=1'); tg.iniciarTriggerPanel && tg.iniciarTriggerPanel(); } catch (_) {}
+  try { const tg = await import('../gridbot/panel-trigger.js?v=2'); tg.iniciarTriggerPanel && tg.iniciarTriggerPanel(); } catch (_) {}
   // Oculta el FAB del asistente en móvil (el soporte se abre desde la cáscara).
   const st = document.createElement('style'); st.id = 'mv-fab-fix';
   st.textContent = '@media(max-width:760px){#np-fab-previo,#npFab{display:none!important}#np-chat,#npChat{z-index:11500!important}}';
