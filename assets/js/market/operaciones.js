@@ -110,7 +110,7 @@ export async function panelMisOps() {
     box.innerHTML = cajaRet +
       sec('Te toca a ti', urg, 'Estas operaciones están esperando algo tuyo. Atiéndelas primero.') +
       sec('En curso', curso, 'Estás esperando a la otra persona.') +
-      sec('Publicadas', abiertas, 'Todavía nadie las ha tomado.') +
+      sec('Published', abiertas, 'Nobody has taken them yet.') +
       sec('Terminadas', fin_, 'Historial de lo que ya se cerró.', true) +
       (fin_.length ? `<button class="op-limpiar" id="op-limpiar">Ocultar las ${fin_.length} terminadas</button>` : '')
     wireOps();
@@ -206,7 +206,7 @@ function opCard({ o, perfOtro }, cuenta, esOwner) {
   // Qué está pasando y qué toca hacer, en cristiano
   let titulo = '', explica = '', acciones = '', color = '';
   if (est === 0) {
-    titulo = compraAnuncio ? 'Tu anuncio de compra' : 'Tu oferta está publicada';
+    titulo = compraAnuncio ? 'Your buy listing' : 'Your offer is published';
     explica = 'Todavía nadie la ha tomado. Puedes cancelarla y recuperar tu cripto cuando quieras.';
     acciones = `<button class="op-b gris" data-cancel2="${o.id}"><span class="tx-l">Cancelar y recuperar</span><span class="tx-s">Cancelar</span></button>`;
   } else if (est === 1) {

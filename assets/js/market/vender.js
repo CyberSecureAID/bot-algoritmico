@@ -108,10 +108,10 @@ async function depositarFianza() {
       msg('Aprueba el USDT en tu wallet…', 'info');
       await (await t.approve(MARKET, monto)).wait();
     }
-    msg('Confirma el depósito…', 'info');
+    msg('Confirm the deposit…', 'info');
     const c = new ethers.Contract(MARKET, ABI, signer);
     await (await c.depositarFianza(monto)).wait();
-    msg('Fianza depositada. Ya puedes vender.', 'ok'); panelVender();
+    msg('Deposit made. You can now sell.', 'ok'); panelVender();
   } catch (e) { msg(traducir(e), 'err'); }
 }
 
@@ -122,7 +122,7 @@ async function publicar() {
   const monedas = [...document.querySelectorAll('#mk-monedas .mk-cs.on')].map(b => b.getAttribute('data-mon'));
   const metodos = [...document.querySelectorAll('#mk-metodos .mk-cs.on')].map(b => b.getAttribute('data-met'));
 
-  if (!(cant > 0)) { msg('Escribe la cantidad que vas a vender.', 'err'); return; }
+  if (!(cant > 0)) { msg('Enter the amount you will sell.', 'err'); return; }
   if (monedas.length === 0) { msg('Marca al menos una moneda que aceptas.', 'err'); return; }
   if (metodos.length === 0) { msg('Marca al menos una forma de pago.', 'err'); return; }
 
@@ -154,7 +154,7 @@ async function publicar() {
     msg('Confirma la publicación…', 'info');
     const c = new ethers.Contract(MARKET, ABI, signer);
     await (await c.crearOrden(tok, monto, tramos, moneda, metodo, Math.round(primero * 100), { value: fee })).wait();
-    msg('¡Oferta publicada! Ya la puede ver todo el mundo.', 'ok');
+    msg('Offer published! Everyone can see it now.', 'ok');
     setTimeout(() => { $('mk-t1').click(); listarOfertas(); }, 900);
   } catch (e) { msg(traducir(e), 'err'); }
 }

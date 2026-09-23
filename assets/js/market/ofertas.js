@@ -20,37 +20,85 @@ const LOGO = {
 };
 const logoMoneda = (t) => LOGO[simbolo(t)] || '';
 
+const OF_POR_PAG = 12;   // ofertas por página
+let _ofDatos = [];       // todas las ofertas abiertas cargadas
+let _ofPag = 1;
+
 export async function listarOfertas() {
   const box = $('mk-p1'); if (!box) return;
   box.innerHTML = `<div class="tj-grid">${'<div class="tj-sk"></div>'.repeat(4)}</div>`;
   try {
     const total = Number(await lee('totalOrdenes'));
-    if (total === 0) { box.innerHTML = `<div class="mk-vacio">Todavía no hay ofertas publicadas.<br>Sé el primero: pasa a "Vender".</div>`; return; }
-    const desde = total > 40 ? total - 40 : 0;
+    if (total === 0) { box.innerHTML = `<div class="mk-vacio">No offers published yet.<br>Be the first: go to "Sell".</div>`; return; }
+    // Escanear las últimas 300 órdenes (para plataformas con mucho volumen).
+    const escanear = total > 300 ? 300 : total;
+    const desde = total - escanear;
     const todos = [];
     for (let i = total; i > desde; i--) todos.push(i);
-    const crudas = await Promise.all(todos.map(i => lee('ordenes', [i]).catch(() => null)));
-    const ids = crudas.filter(o => o && Number(o.estado) === 0).map(o => o.id);
-    if (ids.length === 0) { box.innerHTML = `<div class="mk-vacio">No hay publicaciones abiertas ahora mismo.</div>`; return; }
-    const datos = await Promise.all(ids.map(async (id) => {
-      const [o, p, r] = await Promise.all([
-        lee('ordenes', [id]).catch(() => null),
-        null, null
-      ]);
-      if (!o) return null;
-      const [perf, rep] = await Promise.all([
-        lee('perfiles', [o.vendedor]).catch(() => null),
-        lee('reputacionDe', [o.vendedor]).catch(() => null)
-      ]);
-      return { o, perf, rep };
-    }));
-    const cuenta = wallet.cuentaActual && wallet.cuentaActual();
-    const html = datos.filter(Boolean).map(d => tarjeta(d, cuenta)).join('');
-    box.innerHTML = html ? `<div class="tj-grid">${html}</div>` : `<div class="mk-vacio">No hay publicaciones abiertas ahora mismo.</div>`;
-    wireTarjetas();
+    // Traer en lotes para no saturar el RPC con miles de llamadas a la vez.
+    const crudas = [];
+    for (let k = 0; k < todos.length; k += 30) {
+      const lote = todos.slice(k, k + 30);
+      const res = await Promise.all(lote.map(i => lee('ordenes', [i]).catch(() => null)));
+      crudas.push(...res);
+    }
+    const abiertas = crudas.filter(o => o && Number(o.estado) === 0);
+    if (abiertas.length === 0) { box.innerHTML = `<div class="mk-vacio">No open offers right now.</div>`; return; }
+    // Cargar perfil/reputación solo de las abiertas.
+    _ofDatos = [];
+    for (let k = 0; k < abiertas.length; k += 30) {
+      const lote = abiertas.slice(k, k + 30);
+      const res = await Promise.all(lote.map(async (o) => {
+        const [perf, rep] = await Promise.all([
+          lee('perfiles', [o.vendedor]).catch(() => null),
+          lee('reputacionDe', [o.vendedor]).catch(() => null)
+        ]);
+        return { o, perf, rep };
+      }));
+      _ofDatos.push(...res);
+    }
+    _ofPag = 1;
+    pintarOfertas();
   } catch (e) {
-    box.innerHTML = `<div class="mk-vacio">No se pudieron cargar las ofertas.<br>Revisa tu conexión.</div>`;
+    box.innerHTML = `<div class="mk-vacio">Could not load offers.<br>Check your connection.</div>`;
   }
+}
+
+function pintarOfertas() {
+  const box = $('mk-p1'); if (!box) return;
+  const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+  const arr = _ofDatos.filter(Boolean);
+  if (!arr.length) { box.innerHTML = `<div class="mk-vacio">No open offers right now.</div>`; return; }
+  const totalPag = Math.ceil(arr.length / OF_POR_PAG);
+  if (_ofPag > totalPag) _ofPag = totalPag;
+  const ini = (_ofPag - 1) * OF_POR_PAG;
+  const pagina = arr.slice(ini, ini + OF_POR_PAG);
+  const html = pagina.map(d => tarjeta(d, cuenta)).join('');
+  box.innerHTML = `<div class="tj-grid">${html}</div>` + paginadorOf(arr.length, totalPag);
+  wireTarjetas();
+  // controles de paginación
+  const prev = $('of-prev'), next = $('of-next');
+  if (prev) prev.onclick = () => { if (_ofPag > 1) { _ofPag--; pintarOfertas(); box.scrollTop = 0; } };
+  if (next) next.onclick = () => { if (_ofPag < totalPag) { _ofPag++; pintarOfertas(); box.scrollTop = 0; } };
+  box.querySelectorAll('[data-ofp]').forEach(b => { b.onclick = () => { _ofPag = +b.dataset.ofp; pintarOfertas(); box.scrollTop = 0; }; });
+}
+
+function paginadorOf(total, totalPag) {
+  if (totalPag <= 1) return `<div class="of-pag-info">${total} offer${total!==1?'s':''}</div>`;
+  let nums = [];
+  for (let i = 1; i <= totalPag; i++) {
+    if (i === 1 || i === totalPag || (i >= _ofPag - 2 && i <= _ofPag + 2)) nums.push(i);
+    else if (nums[nums.length-1] !== '…') nums.push('…');
+  }
+  const btns = nums.map(n => n === '…' ? `<span class="of-pag-e">…</span>` : `<button class="of-pag-n ${n===_ofPag?'on':''}" data-ofp="${n}">${n}</button>`).join('');
+  return `<div class="of-pag">
+    <div class="of-pag-info">${total} offers · page ${_ofPag} of ${totalPag}</div>
+    <div class="of-pag-ctrl">
+      <button class="of-pag-b" id="of-prev" ${_ofPag<=1?'disabled':''}>‹</button>
+      ${btns}
+      <button class="of-pag-b" id="of-next" ${_ofPag>=totalPag?'disabled':''}>›</button>
+    </div>
+  </div>`;
 }
 
 function estrellasTxt(rep) {

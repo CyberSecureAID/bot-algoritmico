@@ -467,6 +467,16 @@ export function estilos() {
   #mk-card .mk-disc2-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #a9781c}
   @media(max-width:560px){ #mk-card .mk-disc2-t{font-size:20px} #mk-card .mk-disc2-p{font-size:13.5px} #mk-card .mk-disc2-btn{max-width:none} }
 
+    /* ── Paginador de ofertas P2P ── */
+  #mk-overlay .of-pag{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #202b37;flex-wrap:wrap}
+  #mk-overlay .of-pag-info{font-size:12px;color:#5f6b7a}
+  #mk-overlay .of-pag-ctrl{display:flex;align-items:center;gap:5px}
+  #mk-overlay .of-pag-b,#mk-overlay .of-pag-n{min-width:32px;height:32px;border-radius:8px;border:1px solid #2a3644;background:rgba(255,255,255,.03);color:#aab6c4;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;padding:0 8px}
+  #mk-overlay .of-pag-b:hover:not(:disabled),#mk-overlay .of-pag-n:hover{border-color:rgba(232,184,75,.4);color:#E8B84B}
+  #mk-overlay .of-pag-b:disabled{opacity:.35;cursor:default}
+  #mk-overlay .of-pag-n.on{background:rgba(232,184,75,.14);border-color:rgba(232,184,75,.5);color:#E8B84B}
+  #mk-overlay .of-pag-e{color:#5f6b7a;padding:0 4px}
+
   `;
   document.head.appendChild(s);
 }
