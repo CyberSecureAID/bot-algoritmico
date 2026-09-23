@@ -7,7 +7,7 @@
 // sin nada externo que pueda quedarse colgado y dejar la app en 'Cargando…'.
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
 import * as wallet from './wallet.js?v=125';
-import { estilos } from './market/estilos.js?v=6';
+import { estilos } from './market/estilos.js?v=7';
 import { MARKET, USDT, USDC, TOKENS, RPCS, ABI, ERC20, ESTADOS, MONEDAS, METODOS, PAR, SUGERE, ICOCT, CF_PASOS, COBROS, NOMBRE_MONEDA } from './market/config.js?v=1';
 import { firmante, esc, f18, num, simbolo, corto, traducir, fechaExacta } from './market/util.js?v=1';
 import { overlay, cerrar, dialogo, marco, cerrarWiz, wmsg, msg } from './market/ui.js?v=1';
@@ -217,29 +217,39 @@ function pintarAvisoGuia() {
 
 /* ═══════════ Disclaimer obligatorio del Mercado P2P ═══════════ */
 function mostrarDisclaimerP2P(card) {
-  card.innerHTML = `
-  <button class="mk-x" id="mk-dx">✕</button>
-  <div class="mk-disc">
-    <div class="mk-disc-t">Before using the P2P Market</div>
-    <div class="mk-disc-body">
-      <p>This is a peer to peer market. We only provide the tools for two people to trade directly and safely. We are not part of any trade, we hold no VIP roles, and we never take sides. Everyone here is equal: whoever sells is a seller, whoever buys is a buyer, nothing more.</p>
-      <p><b>There are no VIP users.</b> VIP status is one of the most common ways people get scammed, because it creates false trust and pressures others to pay first. Here nobody is special and nobody deserves special treatment. Treat every trade with the same caution.</p>
-      <p><b>Verifying who you trade with is your responsibility.</b> If you sell, a buyer will contact you: check who they are before releasing anything. If you buy, you choose who to contact: check them before paying. Look at how many trades they have completed. If someone has no history, be extra careful.</p>
-      <p><b>How it works.</b> You can split the amount you sell into parts (up to ten). The buyer pays the first part, you release the first part, and you continue in small steps until the trade is complete. This keeps the risk low at every step, but it does not replace verifying the person.</p>
-      <p>The buyer always pays first, then the seller releases. If you pay or release without checking who is on the other side, that is your decision and your risk. If the person is in another country you may have no way to recover anything. We are not responsible for that.</p>
-      <p>If you already know someone you want to trade with, you can use our platform to carry out that exchange safely if you wish.</p>
-      <p>By continuing, you accept full responsibility for your own trades and confirm you understand how this works.</p>
-    </div>
-    <label class="mk-disc-chk"><input type="checkbox" id="mk-disc-agree"> I understand and accept full responsibility for my trades.</label>
-    <button class="mk-disc-btn" id="mk-disc-go" disabled>Enter the P2P Market</button>
-  </div>`;
-  const cerrarD = () => { const o = document.getElementById('mk-overlay'); if (o) o.classList.remove('show'); };
-  const dx = document.getElementById('mk-dx'); if (dx) dx.onclick = cerrarD;
-  const chk = document.getElementById('mk-disc-agree');
-  const btn = document.getElementById('mk-disc-go');
-  if (chk) chk.onchange = () => { btn.disabled = !chk.checked; };
-  if (btn) btn.onclick = () => {
-    try { localStorage.setItem('aurex-p2p-ok', '1'); } catch (_) {}
-    abrirMarket();
+  // Disclaimer por PASOS: el usuario lee cada pantalla y pulsa OK para avanzar.
+  const pasos = [
+    { t: 'Welcome to the P2P Market', p: 'This is a peer to peer market. We only give you the tools so two people can trade directly. We are never part of a trade, we hold no funds, and we never take sides. Everyone here is equal: a seller or a buyer, nothing more.' },
+    { t: 'There are no VIP users', p: 'VIP status is one of the most common ways people get scammed. It creates false trust and pushes others to pay first. Here nobody is special and nobody gets special treatment. Treat every trade with the same caution, no exceptions.' },
+    { t: 'Verifying is your job', p: 'If you sell, a buyer will contact you: check who they are before releasing anything. If you buy, you choose who to contact: check them before paying. Look at how many trades they have completed. If someone has no history, be extra careful.' },
+    { t: 'How a trade works', p: 'You can split the amount you sell into parts, up to ten. The buyer pays the first part, you release the first part, and you continue in small steps until the trade is done. This keeps the risk low at every step, but it never replaces checking the person.' },
+    { t: 'Who pays first', p: 'The buyer always pays first, then the seller releases. If you pay or release without checking who is on the other side, that is your decision and your risk. If the person is in another country you may have no way to recover anything. We are not responsible for that.' },
+    { t: 'You are in control', p: 'If you already know someone you want to trade with, you can use our platform to carry out that exchange safely. By continuing you accept full responsibility for your own trades and confirm you understand how this works.' }
+  ];
+  let i = 0;
+  const pintar = () => {
+    const paso = pasos[i];
+    const ultimo = i === pasos.length - 1;
+    card.innerHTML = `
+      <div class="mk-disc2">
+        <div class="mk-disc2-top">
+          <div class="mk-disc2-dots">${pasos.map((_, k) => `<span class="mk-disc2-dot ${k===i?'on':''} ${k<i?'done':''}"></span>`).join('')}</div>
+        </div>
+        <div class="mk-disc2-mid">
+          <div class="mk-disc2-t">${paso.t}</div>
+          <div class="mk-disc2-p">${paso.p}</div>
+        </div>
+        <div class="mk-disc2-foot">
+          <div class="mk-disc2-count">${i+1} of ${pasos.length}</div>
+          <button class="mk-disc2-btn" id="mk-disc2-ok">${ultimo ? 'I understand, enter' : 'OK'}</button>
+        </div>
+      </div>`;
+    document.getElementById('mk-disc2-ok').onclick = () => {
+      if (ultimo) {
+        try { localStorage.setItem('aurex-p2p-ok', '1'); } catch (_) {}
+        abrirMarket();
+      } else { i++; pintar(); }
+    };
   };
+  pintar();
 }
