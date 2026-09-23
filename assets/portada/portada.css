@@ -223,7 +223,9 @@ body{overflow-x:hidden}
 #pt h1{font-family:var(--disp);font-weight:700;font-size:clamp(30px,3.4vw,47px);line-height:1.08;letter-spacing:-.018em;margin:0 0 18px}
 #pt h1 em, #pt h2 em{font-style:normal;color:var(--gold)}
 #pt .pt-lede{font-size:15.5px;line-height:1.66;color:var(--ink2);margin:0 0 26px;max-width:44ch}
-#pt .pt-acts{display:flex;flex-wrap:wrap;gap:11px;margin-top:-14px;margin-left:1px}
+#pt .pt-acts{display:flex;flex-wrap:nowrap;gap:9px;margin-top:-14px;margin-left:1px}
+#pt .pt-acts .pt-btn.pt-big{padding:0 16px}
+@media(max-width:560px){#pt .pt-acts{flex-wrap:wrap}#pt .pt-acts .pt-btn.pt-big{padding:0 20px}}
 
 /* ── Tira de confianza ─────────────────────────────────────────── */
 #pt .pt-trust{position:relative;z-index:3;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
