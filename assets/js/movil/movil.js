@@ -83,7 +83,7 @@ async function abrir(clave, arg) {
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
       case 'aportar':   { const m = await import('./aportar-movil.js?v=18'); m.abrirAportarMovil(); break; }
-      case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=129'); m.abrirMarket && m.abrirMarket(); break; }
+      case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=130'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
       case 'fondos':    abrirMetamaskBuy(); break;
@@ -310,7 +310,7 @@ function abrirRecibir() {
 
 async function abrirMarketTab(tabId) {
   inyectarFixMarket();
-  const m = await import('../market.js?v=129');
+  const m = await import('../market.js?v=130');
   if (m.abrirMarket) m.abrirMarket();
   setTimeout(() => { const t = $(tabId); if (t) t.click(); }, 120);
 }
