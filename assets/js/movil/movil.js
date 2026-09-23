@@ -722,7 +722,7 @@ export async function montarMovil(deps) {
   if ($('mv-app')) return;
   inyectarMovil();
   // Panel admin (5 toques esquina inf. izq.; verifica owner on-chain).
-  try { const tg = await import('../gridbot/panel-trigger.js?v=5'); tg.iniciarTriggerPanel && tg.iniciarTriggerPanel(); } catch (_) {}
+  try { const tg = await import('../gridbot/panel-trigger.js?v=6'); tg.iniciarTriggerPanel && tg.iniciarTriggerPanel(); } catch (_) {}
   // Oculta el FAB del asistente en móvil (el soporte se abre desde la cáscara).
   const st = document.createElement('style'); st.id = 'mv-fab-fix';
   st.textContent = '@media(max-width:760px){#np-fab-previo,#npFab{display:none!important}#np-chat,#npChat{z-index:11500!important}}';
