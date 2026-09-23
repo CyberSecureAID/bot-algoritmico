@@ -31,7 +31,10 @@ export async function leerPerfil(wallet) {
   if (!wallet) return { nombre: '', foto: '' };
   const id = wallet.toLowerCase();
   try {
-    const r = await fetch(`${BASE}/${id}?key=${API_KEY}`);
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 8000);  // no colgarse: máx 8s
+    const r = await fetch(`${BASE}/${id}?key=${API_KEY}`, { signal: ctrl.signal });
+    clearTimeout(to);
     if (!r.ok) return { nombre: '', foto: '' };
     const d = await r.json();
     const f = d.fields || {};

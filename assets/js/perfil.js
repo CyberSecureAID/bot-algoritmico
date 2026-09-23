@@ -1,8 +1,8 @@
 // perfil.js — Panel de cuenta por wallet. Módulo independiente (no toca la lógica existente).
 import * as gb from './gridbot.js?v=125';
 import * as wallet from './wallet.js?v=125';
-import * as fperfil from './firebase-perfil.js?v=1';
-import { reducirImagen } from './gridbot/listing.js?v=12';
+import * as fperfil from './firebase-perfil.js?v=2';
+import { reducirImagen } from './gridbot/listing.js?v=13';
 import * as avisos from './avisos.js?v=125';
 
 const $ = (id) => document.getElementById(id);
@@ -367,6 +367,21 @@ export async function abrirPerfil() {
     $('pf-x').onclick = cerrar; return;
   }
 
+  // Perfil OBLIGATORIO: verificar ANTES de mostrar los datos. Mientras, un aviso corto.
+  card.innerHTML = `<button class="pf-x" id="pf-x" aria-label="Cerrar">✕</button><div class="pf-empty" style="padding:50px 20px">Cargando tu perfil…</div>`;
+  $('pf-x').onclick = cerrar;
+  let _perfilP = { nombre: '', foto: '' };
+  try { _perfilP = await fperfil.leerPerfil(cuenta); } catch (_) {}
+  if (!_perfilP.nombre || !_perfilP.foto) {
+    // falta nombre o foto → cartel obligatorio y NO seguir
+    if (_perfilP.nombre) { try { localStorage.setItem(claveNombre(cuenta), _perfilP.nombre); } catch(_){} }
+    if (_perfilP.foto)   { try { localStorage.setItem(claveFoto(cuenta), _perfilP.foto); } catch(_){} }
+    mostrarCartelPerfil(cuenta, _perfilP);
+    return;
+  }
+  // perfil completo → guardar en caché para pintar
+  try { localStorage.setItem(claveNombre(cuenta), _perfilP.nombre); localStorage.setItem(claveFoto(cuenta), _perfilP.foto); } catch(_){}
+
   card.innerHTML = `
   <button class="pf-x" id="pf-x" aria-label="Cerrar">✕</button>
   <div class="pf-h">
@@ -522,14 +537,8 @@ export async function abrirPerfil() {
 
 
   $('pf-x').onclick = cerrar;
-  // Perfil obligatorio: si falta nombre o foto, muestra el cartel y no sigue.
-  exigirPerfilCompleto(cuenta).then((completo) => {
-    if (!completo) return;
-    wireAvatar(cuenta);
-    const av=$('pf-ava'); const fc=leerFotoCache(cuenta);
-    if (av && fc) { av.innerHTML=`<img class="pf-ava-img" src="${fc}" alt="">`+`<span class="pf-ava-cam">${iconoCam()}</span>`; }
-    pintarNombre(cuenta); wireAvatar(cuenta);
-  });
+  wireAvatar(cuenta);
+  { const av=$('pf-ava'); const fc=leerFotoCache(cuenta); if (av && fc) { av.innerHTML=`<img class="pf-ava-img" src="${fc}" alt="">`+`<span class="pf-ava-cam">${iconoCam()}</span>`; } }
   pintarNombre(cuenta);
   const addr = $('pf-addr');
   if (addr) addr.onclick = async () => {
