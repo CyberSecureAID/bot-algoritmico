@@ -654,3 +654,24 @@ try {
     pintar();                     // al pasar a español recarga él solo
   });
 })();
+
+/* ══════════ Menú hamburguesa (tablet y móvil) ══════════
+   El botón .pt-burger no tenía lógica: al tocarlo no pasaba nada. Aquí se
+   conecta para que abra/cierre el nav como panel desplegable. No afecta al
+   nav de escritorio (donde el burger está oculto por CSS). */
+(function () {
+  const burger = document.querySelector('.pt-burger');
+  const nav = document.querySelector('.pt-nav');
+  if (!burger || !nav) return;
+  const abrir = () => { nav.classList.toggle('pt-nav--open'); burger.classList.toggle('on'); };
+  burger.addEventListener('click', (e) => { e.stopPropagation(); abrir(); });
+  // cerrar al tocar fuera o al elegir un enlace
+  document.addEventListener('click', (e) => {
+    if (nav.classList.contains('pt-nav--open') && !nav.contains(e.target) && e.target !== burger) {
+      nav.classList.remove('pt-nav--open'); burger.classList.remove('on');
+    }
+  });
+  nav.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
+    nav.classList.remove('pt-nav--open'); burger.classList.remove('on');
+  }));
+})();

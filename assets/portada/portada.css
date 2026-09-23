@@ -411,7 +411,20 @@ body{overflow-x:hidden}
 @media(max-width:1100px){
 #pt .pt-nav__b{padding:8px 9px;font-size:13px}
 }
-@media(max-width:1000px){#pt .pt-nav{display:none}
+@media(max-width:1000px){
+  #pt .pt-nav{display:none}
+  /* Menú desplegable al tocar el hamburguesa (tablet y móvil). */
+  #pt .pt-nav.pt-nav--open{
+    display:flex;flex-direction:column;align-items:stretch;gap:2px;
+    position:absolute;top:calc(100% + 8px);right:12px;left:12px;z-index:200;
+    background:linear-gradient(180deg,#11161d,#0b0e13);border:1px solid var(--line2,#232b37);
+    border-radius:14px;padding:10px;box-shadow:0 24px 60px rgba(0,0,0,.6);
+    max-height:70vh;overflow-y:auto;margin-left:0
+  }
+  #pt .pt-nav.pt-nav--open .pt-nav__i{width:100%}
+  #pt .pt-nav.pt-nav--open .pt-nav__b{width:100%;justify-content:space-between;padding:12px 14px;font-size:15px}
+  #pt .pt-nav.pt-nav--open .pt-menu{position:static;opacity:1;visibility:visible;transform:none;background:rgba(255,255,255,.03);box-shadow:none;border:0;margin-top:4px;padding:4px}
+  #pt .pt-burger.on{background:rgba(232,184,75,.12);border-color:rgba(232,184,75,.4);color:#E8B84B}
 #pt .pt-burger{display:flex}
 #pt .pt-hdr__a{margin-left:auto}
 }
