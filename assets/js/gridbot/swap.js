@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
-import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=12';
+import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=13';
 import * as mercadoTK from './mercado.js?v=3';
 import * as flogosTK from './firebase-logos.js?v=2';
 
@@ -263,6 +263,14 @@ export function abrirSwap() {
     if (modal.classList.contains('lt-open')) { modal.classList.remove('lt-open'); return; }
     modal.classList.add('lt-open');
     try { inyectarListingCSS(); await montarListing(slot, { back: true, onBack: () => modal.classList.remove('lt-open') }); } catch (e) { console.warn('listing:', e); }
+    // Igualar la altura del panel de listar a la del swap (medida real, solo en escritorio).
+    try {
+      if (window.innerWidth > 1000) {
+        const box = document.querySelector('#swap-modal .sw-box');
+        const panel = document.getElementById('lt-panel');
+        if (box && panel) { const h = box.getBoundingClientRect().height; if (h > 0) panel.style.height = h + 'px'; }
+      }
+    } catch (_) {}
   };
   $('sw-amt').value = S.amount || '';
   // Reintento de iconos: si los logos aún no cargaron, re-pintar los tokens al llegar.

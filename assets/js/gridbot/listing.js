@@ -14,7 +14,7 @@ function inyectarCSS() {
   if (_css) return; _css = true;
   const s = document.createElement('style'); s.id = 'lt-css';
   s.textContent = `
-  #lt-panel{position:relative;width:100%;max-width:720px;min-height:508px;display:flex;flex-direction:column;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  #lt-panel{position:relative;width:100%;max-width:720px;display:flex;flex-direction:column;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
   #lt-panel::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;filter:saturate(1.05);pointer-events:none}
   #lt-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
   #lt-panel > *{position:relative;z-index:1}
@@ -25,7 +25,7 @@ function inyectarCSS() {
   .lt-title{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
   .lt-how{display:inline-flex !important;align-items:center;gap:5px;background:rgba(232,184,75,.1) !important;border:1px solid var(--gold-soft) !important;color:var(--gold) !important;border-radius:10px !important;padding:6px 11px !important;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--display);white-space:nowrap}
   .lt-how svg{stroke:var(--gold)}
-  .lt-body{padding:0 18px 14px;flex:1;display:flex;flex-direction:column;justify-content:center}
+  .lt-body{padding:0 18px 14px;flex:1;display:flex;flex-direction:column;justify-content:center;overflow-y:auto}
   .lt-grid{display:grid;grid-template-columns:112px 1fr;gap:13px;margin-bottom:10px}
   @media(max-width:560px){ .lt-grid{grid-template-columns:1fr;gap:12px} }
   /* dropzone imagen */
