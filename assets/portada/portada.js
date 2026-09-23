@@ -126,7 +126,7 @@ const PUERTAS = {
   academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
   aportar: async () => (await import(J + 'aportar.js?v=15')).abrirAportar(),
-  perfil:  async () => (await import(J + 'perfil.js?v=129')).abrirPerfil()
+  perfil:  async () => (await import(J + 'perfil.js?v=130')).abrirPerfil()
 };
 
 /* Aviso visible. Sin esto un fallo se traga en la consola y desde fuera
@@ -359,7 +359,7 @@ async function activarAdmin() {
   if (_adminOK) return;
   try {
     // Panel administrativo NUEVO (verifica owner on-chain). Gesto: 5 toques esquina inf. izq.
-    const tg = await import(J + 'gridbot/panel-trigger.js?v=1');
+    const tg = await import(J + 'gridbot/panel-trigger.js?v=2');
     if (tg.iniciarTriggerPanel) { tg.iniciarTriggerPanel(); _adminOK = true; }
   } catch (e) { console.warn('[portada] admin:', e); }
 }
