@@ -271,6 +271,34 @@ Requiere autorizar cada uno con `setReportador` y un pequeño upgrade de cada co
 - Archivos: `assets/js/perfil.js`, `assets/js/firebase-perfil.js`.
 - **Reglas de Firestore actualizadas** (logos + perfiles). Guardadas en el repo.
 
+
+### 3.11. Panel administrativo (NUEVO) — assets/js/gridbot/panel*.js
+Panel de control profesional (estilo Stripe/Mercury). Archivos:
+- `panel.js` (interfaz), `panel-datos.js` (lee de los contratos), `panel-trigger.js` (lo abre).
+- El panel VIEJO (admin.js, 5 clics) quedó DESACTIVADO por seguridad. Este es el nuevo.
+
+**Acceso:** 5 toques en la esquina INFERIOR IZQUIERDA (zona invisible). SOLO ESCRITORIO
+(bloqueado en móvil). Verificación de owner ON-CHAIN: llama `owner()` de Contabilidad; si la
+wallet no es owner (ni admin de Tarifas), muestra "Access restricted" y no carga nada.
+
+**Estructura:** sidebar 256px + cabecera con foto/nombre/…wallet del owner + secciones.
+Todo en INGLÉS por defecto. Dark-first. Responsive (móvil: hamburguesa, pero acceso bloqueado).
+
+**Secciones:**
+- **Summary** ✓ HECHO: KPIs (total generado, este mes, wallets únicas, al staking) + ingresos por servicio + resumen del mes. Lee de Contabilidad (con firmante, porque las lecturas son soloOwner).
+- **Users** ✓ HECHO: lista de wallets leída de los EVENTOS `WalletNueva` (sin coste, sin límite),
+  cada una con foto+nombre de Firestore, fecha, estado, y botón Block/Unblock (lista negra on-chain).
+  PAGINADA (10 por página) para miles de usuarios. Buscador por nombre/dirección.
+- **Finance, Services, Marketplace, Security**: pendientes (dicen "coming next").
+
+**Datos privados:** solo owners pueden leer (las funciones de Contabilidad son soloOwner).
+
+### 3.12. Perfiles — cartel obligatorio y avatar
+- Al entrar a perfil, si falta nombre O foto → cartel OBLIGATORIO para completarlos (web y móvil).
+- Avatar circular con borde dorado + botón "+" para subir foto (se comprime con reducirImagen).
+- La foto del perfil aparece también en el avatar del lobby móvil (esquina sup. izq.).
+- `firebase-perfil.js` con timeout de 8s en los fetch (no se cuelga si Firestore no responde).
+
 ## 4. LO QUE FALTA POR HACER (nada se olvida)
 
 ### 4.0. MercadoTokens — HECHO ✓ (frontend, Firebase, seguridad, compra desde swap)
@@ -339,7 +367,12 @@ Requiere autorizar cada uno con `setReportador` y un pequeño upgrade de cada co
       MetaMask (saldo real). Ver `lectorFresco()` en gridbot.js.
 
 ### 4.4-ter. Pendientes GRANDES del proyecto (mencionados por el owner)
-- [ ] **Interconectar TODO con Contabilidad**: cada servicio llama a `reportar()`. Autorizar cada uno.
+- [ ] **Interconectar TODO con Contabilidad** (PRÓXIMO): cada servicio (GridBot, MercadoTokens, Futuros…)
+      llama a `reportar()` cuando genera actividad. Requiere: (1) autorizar cada servicio con `setReportador`
+      en Contabilidad `0x7FdE85E0…`, (2) un upgrade de cada contrato para que reporte. IMPORTANTE: subir los
+      .sol de MercadoTokens y GridBot al repo antes (ahora solo están desplegados, no como archivo).
+- [ ] **Panel admin — secciones restantes**: Finance (ingresos/owner, pagos staking con hashes),
+      Services (control de %, DEX, precios), Marketplace (disputas del panel viejo), Security (pausar, emergencias).
 - [ ] **Panel administrativo** conectado a TODOS los contratos (no solo visor): cambiar %, owners, DEX,
       bloquear wallets, ver ganancias por owner, ver pagos del staking a cada wallet con sus hashes, etc.
       Idea: alojar la interfaz del panel en Firebase (privada); la seguridad real la da el `soloOwner` de cada contrato.
