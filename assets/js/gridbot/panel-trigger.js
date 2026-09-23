@@ -7,7 +7,7 @@ export function iniciarTriggerPanel() {
   const z = document.createElement('div');
   z.id = 'adm2-zona';
   z.setAttribute('aria-hidden', 'true');
-  z.style.cssText = 'position:fixed;left:0;bottom:0;width:64px;height:64px;z-index:399;background:transparent';
+  z.style.cssText = 'position:fixed;left:0;bottom:0;width:72px;height:72px;z-index:2147483000;background:transparent;pointer-events:auto';
   document.body.appendChild(z);
   let clics = 0, t = null, abriendo = false;
   const golpe = async () => {
