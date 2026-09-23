@@ -8,7 +8,7 @@
  *   · Si hay versión nueva, se descarga sola y se aplica al recargar.
  */
 
-const VERSION = 'aurex-v279';
+const VERSION = 'aurex-v280';
 const APP = [
   './',
   './index.html',              // la portada
