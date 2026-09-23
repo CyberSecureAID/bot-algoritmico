@@ -250,3 +250,32 @@ function pintarAvisoGuia() {
 /* Disputa: pedimos que expliquen qué pasó */
 
 /* Compartir mi ubicación (para que otros vean la distancia) */
+
+/* ═══════════ Disclaimer obligatorio del Mercado P2P ═══════════ */
+function mostrarDisclaimerP2P(card) {
+  card.innerHTML = `
+  <button class="mk-x" id="mk-dx">✕</button>
+  <div class="mk-disc">
+    <div class="mk-disc-t">Before using the P2P Market</div>
+    <div class="mk-disc-body">
+      <p>This is a peer to peer market. We only provide the tools for two people to trade directly and safely. We are not part of any trade, we hold no VIP roles, and we never take sides. Everyone here is equal: whoever sells is a seller, whoever buys is a buyer, nothing more.</p>
+      <p><b>There are no VIP users.</b> VIP status is one of the most common ways people get scammed, because it creates false trust and pressures others to pay first. Here nobody is special and nobody deserves special treatment. Treat every trade with the same caution.</p>
+      <p><b>Verifying who you trade with is your responsibility.</b> If you sell, a buyer will contact you: check who they are before releasing anything. If you buy, you choose who to contact: check them before paying. Look at how many trades they have completed. If someone has no history, be extra careful.</p>
+      <p><b>How it works.</b> You can split the amount you sell into parts (up to ten). The buyer pays the first part, you release the first part, and you continue in small steps until the trade is complete. This keeps the risk low at every step, but it does not replace verifying the person.</p>
+      <p>The buyer always pays first, then the seller releases. If you pay or release without checking who is on the other side, that is your decision and your risk. If the person is in another country you may have no way to recover anything. We are not responsible for that.</p>
+      <p>If you already know someone you want to trade with, you can use our platform to carry out that exchange safely if you wish.</p>
+      <p>By continuing, you accept full responsibility for your own trades and confirm you understand how this works.</p>
+    </div>
+    <label class="mk-disc-chk"><input type="checkbox" id="mk-disc-agree"> I understand and accept full responsibility for my trades.</label>
+    <button class="mk-disc-btn" id="mk-disc-go" disabled>Enter the P2P Market</button>
+  </div>`;
+  const cerrarD = () => { const o = document.getElementById('mk-overlay'); if (o) o.classList.remove('show'); };
+  const dx = document.getElementById('mk-dx'); if (dx) dx.onclick = cerrarD;
+  const chk = document.getElementById('mk-disc-agree');
+  const btn = document.getElementById('mk-disc-go');
+  if (chk) chk.onchange = () => { btn.disabled = !chk.checked; };
+  if (btn) btn.onclick = () => {
+    try { localStorage.setItem('aurex-p2p-ok', '1'); } catch (_) {}
+    abrirMarket();
+  };
+}
