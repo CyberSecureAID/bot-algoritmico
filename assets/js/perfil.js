@@ -59,8 +59,8 @@ function estilos() {
   #perfil-overlay .pf-idcol{min-width:0;flex:1}
   #perfil-overlay .pf-name{display:flex;align-items:center;gap:8px;min-width:0}
   #perfil-overlay .pf-nombre{font-family:var(--display,sans-serif);font-weight:800;font-size:21px;color:#eaecef;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #perfil-overlay .pf-ava-edit{position:relative;cursor:pointer;overflow:visible;border:2px solid #E8B84B !important;box-shadow:0 0 0 1px rgba(232,184,75,.3),0 2px 8px rgba(232,184,75,.2)}
-  #perfil-overlay .pf-ava-img{width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;z-index:1}
+  #perfil-overlay .pf-ava-edit{position:relative;cursor:pointer;overflow:visible;border-radius:50% !important;background:#0d131c !important;border:2px solid #E8B84B !important;box-shadow:0 0 0 1px rgba(232,184,75,.25),0 2px 10px rgba(232,184,75,.25) !important}
+  #perfil-overlay .pf-ava-img{width:100%;height:100%;object-fit:cover;border-radius:50% !important;position:absolute;inset:0;z-index:1}
   #perfil-overlay .pf-ava-cam{position:absolute;right:-1px;bottom:-1px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f7db8d,#E8B84B 60%,#c79426);color:#241900;display:flex;align-items:center;justify-content:center;border:2px solid #0d1117;z-index:3;line-height:0}
   #perfil-overlay .pf-gate{display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 20px 20px}
   #perfil-overlay .pf-gate-t{font-family:var(--display,sans-serif);font-weight:800;font-size:20px;color:#eaecef;margin-bottom:6px}
@@ -549,11 +549,15 @@ export async function abrirPerfil() {
   cargarPermisos(cuenta);
   // Los datos se cargan LO PRIMERO: si algo del interruptor fallara, antes
   // se quedaba todo en blanco porque nunca se llegaba a pedirlos.
-  cargarDatos(cuenta).catch((e) => {
-    console.warn('[Aurex] perfil:', e);
+  const _ponerGuiones = () => {
     ['pf-pnl','pf-vol','pf-ops','pf-bots','pf-ciclos','pf-tot','pf-cv','pf-desde','pf-gasg','pf-precio','pf-gas','pf-t0','pf-t1','pf-t2','pf-t3']
-      .forEach((id) => { const el = $(id); if (el && el.querySelector('.pf-sk')) el.textContent = '—'; });
-  });
+      .forEach((id) => { const el = $(id); if (el && el.querySelector && el.querySelector('.pf-sk')) el.textContent = '—'; });
+  };
+  // Timeout global: si los datos tardan más de 12s, no dejamos los skeletons girando.
+  let _datosListos = false;
+  const _tGuard = setTimeout(() => { if (!_datosListos) _ponerGuiones(); }, 12000);
+  cargarDatos(cuenta).catch((e) => { console.warn('[Aurex] perfil:', e); _ponerGuiones(); })
+    .finally(() => { _datosListos = true; clearTimeout(_tGuard); _ponerGuiones(); });
 
   try {
   const sw = $('pf-push');
