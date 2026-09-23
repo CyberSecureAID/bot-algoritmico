@@ -83,7 +83,7 @@ async function abrir(clave, arg) {
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
       case 'aportar':   { const m = await import('./aportar-movil.js?v=18'); m.abrirAportarMovil(); break; }
-      case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=128'); m.abrirMarket && m.abrirMarket(); break; }
+      case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=129'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
       case 'fondos':    abrirMetamaskBuy(); break;
@@ -310,7 +310,7 @@ function abrirRecibir() {
 
 async function abrirMarketTab(tabId) {
   inyectarFixMarket();
-  const m = await import('../market.js?v=128');
+  const m = await import('../market.js?v=129');
   if (m.abrirMarket) m.abrirMarket();
   setTimeout(() => { const t = $(tabId); if (t) t.click(); }, 120);
 }
@@ -725,7 +725,7 @@ export async function montarMovil(deps) {
   try { const tg = await import('../gridbot/panel-trigger.js?v=7'); tg.iniciarTriggerPanel && tg.iniciarTriggerPanel(); } catch (_) {}
   // Oculta el FAB del asistente en móvil (el soporte se abre desde la cáscara).
   const st = document.createElement('style'); st.id = 'mv-fab-fix';
-  st.textContent = '@media(max-width:760px){#np-fab-previo,#npFab{display:none!important}#np-chat,#npChat{z-index:11500!important}}';
+  st.textContent = '@media(max-width:760px){#np-fab-previo,#npFab,.np-chat-fab,button.np-chat-fab{display:none!important;visibility:hidden!important}#np-chat,#npChat{z-index:11500!important}}';
   document.head.appendChild(st);
 
   const app = document.createElement('div');
