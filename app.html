@@ -261,20 +261,16 @@
      firmes algo sin darte cuenta. Si detectamos que no somos la ventana
      principal, salimos del marco. No afecta al uso normal. */
   (function () {
+    // Anti-clickjacking suave: si estamos dentro de un marco Y podemos salir,
+    // salimos. Pero NUNCA bloqueamos la página: el navegador de una wallet
+    // (MetaMask, Trust, etc.) carga la web en un webview donde window.top no es
+    // accesible, y eso es LEGÍTIMO. Bloquear ahí impedía entrar desde el móvil.
     try {
       if (window.top !== window.self) {
-        document.documentElement.style.display = 'none';
-        window.top.location = window.self.location.href;
+        // intentamos subir al top; si no se puede (cross-origin), seguimos normal.
+        try { window.top.location = window.self.location.href; } catch (_) {}
       }
-    } catch (_) {
-      // Si ni siquiera podemos mirar la ventana de arriba, es que nos tienen
-      // encerrados en un marco de otro dominio: tapamos la página.
-      document.documentElement.style.display = 'none';
-      document.addEventListener('DOMContentLoaded', () => {
-        document.body.innerHTML = '<div style="font-family:system-ui;color:#eaecef;background:#0b0e11;padding:40px;text-align:center;min-height:100vh"><h2 style="color:#E8B84B">Abre CriptoCuba directamente</h2><p style="color:#8b96a3">Esta página no debe usarse dentro de otro sitio, por tu seguridad.<br><a style="color:#E8B84B" href="https://cybersecureaid.github.io/bot-algoritmico/" target="_top">Ir a CriptoCuba</a></p></div>';
-        document.documentElement.style.display = '';
-      });
-    }
+    } catch (_) { /* webview de wallet: acceso normal, no bloquear */ }
   })();
   </script>
   <script>
