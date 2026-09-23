@@ -92,22 +92,31 @@ function inyectarCSS() {
   #adm2 .adm-ubtn:hover{background:rgba(248,113,113,.18)}
   #adm2 .adm-ubtn.un{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.1);color:#34d399}
   #adm2 .adm-ubtn:disabled{opacity:.5;cursor:default}
-  @media(max-width:860px){ #adm2 .adm-search-inp{min-width:0;width:100%} #adm2 .adm-uright{flex-direction:column;align-items:flex-end;gap:6px} }
+
+  #adm2 .adm-pag{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #161f2b;flex-wrap:wrap}
+  #adm2 .adm-pag-info{font-size:12px;color:#5f6b7a}
+  #adm2 .adm-pag-ctrl{display:flex;align-items:center;gap:5px}
+  #adm2 .adm-pag-b,#adm2 .adm-pag-n{min-width:32px;height:32px;border-radius:8px;border:1px solid #1b2531;background:rgba(255,255,255,.03);color:#aab6c4;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;padding:0 8px}
+  #adm2 .adm-pag-b:hover:not(:disabled),#adm2 .adm-pag-n:hover{border-color:rgba(232,184,75,.4);color:#E8B84B}
+  #adm2 .adm-pag-b:disabled{opacity:.35;cursor:default}
+  #adm2 .adm-pag-n.on{background:rgba(232,184,75,.14);border-color:rgba(232,184,75,.5);color:#E8B84B}
+  #adm2 .adm-pag-e{color:#5f6b7a;padding:0 4px}
+    @media(max-width:860px){ #adm2 .adm-search-inp{min-width:0;width:100%} #adm2 .adm-uright{flex-direction:column;align-items:flex-end;gap:6px} }
     `;
   document.head.appendChild(s);
 }
 
 const IC = {
-  resumen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
-  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2 21c0-4 3.5-6 7-6s7 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></svg>',
-  fin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
-  serv: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg>',
-  disp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5M12 17h.01"/></svg>',
-  seg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg>',
-  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>',
-  wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12h2"/></svg>',
-  op: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>',
-  stk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>'
+  resumen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  fin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  serv: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+  disp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v13H8l-5 4V3z"/></svg>',
+  seg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>',
+  op: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
+  stk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>'
 };
 
 const SECCIONES = [
@@ -126,6 +135,9 @@ export async function abrirPanel() {
   const prev = $('adm2'); if (prev) prev.remove();
   const cont = document.createElement('div'); cont.id = 'adm2';
   document.body.appendChild(cont);
+  // Bloquear el scroll de la página de fondo mientras el panel está abierto.
+  const _bodyOv = document.body.style.overflow; document.body.style.overflow = 'hidden';
+  cont._restaurar = () => { document.body.style.overflow = _bodyOv; };
   // pantalla de carga breve mientras verifica
   cont.innerHTML = `<div class="adm-deny"><div class="adm-skel">Checking access…</div></div>`;
   const cuenta = wallet.cuentaActual && wallet.cuentaActual();
@@ -141,7 +153,7 @@ function pintarDenegado(cont) {
     <p>This area is only available to platform owners. Your connected wallet does not have owner permissions.</p>
     <button class="adm-close" id="adm-x" style="margin-top:20px;max-width:160px">Close</button>
   </div>`;
-  $('adm-x').onclick = () => cont.remove();
+  $('adm-x').onclick = () => { try{cont._restaurar&&cont._restaurar();}catch(_){}; cont.remove(); };
 }
 
 function pintarPanel(cont, cuenta) {
@@ -165,7 +177,7 @@ function pintarPanel(cont, cuenta) {
     </div>
     <div class="adm-body" id="adm-body"></div>
   </div>`;
-  $('adm-x').onclick = () => cont.remove();
+  $('adm-x').onclick = () => { try{cont._restaurar&&cont._restaurar();}catch(_){}; cont.remove(); };
   $('adm-burger').onclick = () => cont.classList.toggle('side-open');
   // Cabecera: foto (Firestore/caché) + nombre + últimas 4 de la wallet.
   (async () => {
@@ -218,7 +230,7 @@ async function renderResumen(body) {
     // resumen del mes
     $('adm-mes').innerHTML =
       row('Generated', '$'+fmt(r.mesGenerado)) + row('Operations', String(r.mesOperaciones)) +
-      row('New users', String(r.mesWalletsNuevas)) + row('Period', String(r.mes));
+      row('New users', String(r.mesWalletsNuevas)) + row('Period', mesLegible(r.mes));
     // por servicio
     const serv = await datos.porServicio();
     $('adm-serv').innerHTML = serv.length
@@ -255,18 +267,52 @@ async function renderUsuarios(body) {
     };
   } catch (e) { $('adm-ulist').innerHTML = `<div class="adm-empty">Could not load users. ${(e&&e.message)||''}</div>`; }
 }
-function pintarUsuarios(arr) {
+let _uPag = 1; let _uArr = []; const U_POR_PAG = 10;
+function pintarUsuarios(arr, resetPag = true) {
   const box = $('adm-ulist'); if (!box) return;
+  _uArr = arr; if (resetPag) _uPag = 1;
   if (!arr.length) { box.innerHTML = `<div class="adm-empty">No matches.</div>`; return; }
-  box.innerHTML = `<div class="adm-utable">${arr.map(filaUsuario).join('')}</div>`;
+  const totalPag = Math.ceil(arr.length / U_POR_PAG);
+  if (_uPag > totalPag) _uPag = totalPag;
+  const ini = (_uPag - 1) * U_POR_PAG;
+  const pagina = arr.slice(ini, ini + U_POR_PAG);
+  box.innerHTML = `<div class="adm-utable">${pagina.map(filaUsuario).join('')}</div>` + paginador(arr.length, totalPag);
+  // botones bloquear
   box.querySelectorAll('[data-block]').forEach(b => {
     b.onclick = async () => {
       const addr = b.dataset.block; const bloquear = b.dataset.val === '1';
       b.disabled = true; b.textContent = bloquear ? 'Blocking…' : 'Unblocking…';
-      try { await datos.bloquearWallet(addr, bloquear); render(); }
-      catch (e) { b.disabled = false; b.textContent = bloquear ? 'Block' : 'Unblock'; }
+      try { await datos.bloquearWallet(addr, bloquear);
+        // actualizar solo esa wallet en memoria (sin recargar todo)
+        const u = _uArr.find(x => x.wallet === addr); if (u) u.bloqueada = bloquear;
+        pintarUsuarios(_uArr, false);
+      } catch (e) { b.disabled = false; b.textContent = bloquear ? 'Block' : 'Unblock'; }
     };
   });
+  // controles de paginación
+  const prev = $('adm-uprev'), next = $('adm-unext');
+  if (prev) prev.onclick = () => { if (_uPag > 1) { _uPag--; pintarUsuarios(_uArr, false); } };
+  if (next) next.onclick = () => { if (_uPag < totalPag) { _uPag++; pintarUsuarios(_uArr, false); } };
+  box.querySelectorAll('[data-pag]').forEach(b => { b.onclick = () => { _uPag = +b.dataset.pag; pintarUsuarios(_uArr, false); }; });
+}
+function paginador(total, totalPag) {
+  if (totalPag <= 1) return `<div class="adm-pag-info">${total} user${total!==1?'s':''}</div>`;
+  // números de página (con elipsis si son muchas)
+  let nums = [];
+  const alrededor = 2;
+  for (let i = 1; i <= totalPag; i++) {
+    if (i === 1 || i === totalPag || (i >= _uPag - alrededor && i <= _uPag + alrededor)) nums.push(i);
+    else if (nums[nums.length-1] !== '…') nums.push('…');
+  }
+  const btns = nums.map(n => n === '…' ? `<span class="adm-pag-e">…</span>` : `<button class="adm-pag-n ${n===_uPag?'on':''}" data-pag="${n}">${n}</button>`).join('');
+  return `<div class="adm-pag">
+    <div class="adm-pag-info">${total} users · page ${_uPag} of ${totalPag}</div>
+    <div class="adm-pag-ctrl">
+      <button class="adm-pag-b" id="adm-uprev" ${_uPag<=1?'disabled':''}>‹</button>
+      ${btns}
+      <button class="adm-pag-b" id="adm-unext" ${_uPag>=totalPag?'disabled':''}>›</button>
+    </div>
+  </div>`;
 }
 function filaUsuario(u) {
   const foto = u.foto ? `<img src="${u.foto}" alt="">` : `<span>${(u.nombre||'?').slice(0,1).toUpperCase()}</span>`;
@@ -295,5 +341,10 @@ function kpi(label, valor, ic, sub, cls) {
 }
 function kpiSkel(label) { return `<div class="adm-kpi"><div class="k-l">${label}</div><div class="k-v adm-skel">—</div><div class="k-s mut adm-skel">loading</div></div>`; }
 function row(l, v) { return `<div class="adm-row"><span>${l}</span><span class="r-v">${v}</span></div>`; }
+function mesLegible(aaaamm) {
+  const a = Math.floor(aaaamm / 100); const m = aaaamm % 100;
+  const meses = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return (meses[m] || '?') + ' ' + a;
+}
 function fmt(n) { return Number(n||0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
 function nombreServicio(n) { const m = { gridbot:'Bots', swap:'Swap', mercadotokens:'Token listing', futuros:'Futures', academy:'Academy', prizepool:'Prize Pool', bridge:'Bridge' }; return m[n] || n; }
