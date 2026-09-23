@@ -449,6 +449,31 @@ export function estilos() {
     #mk-overlay .mk-mm{width:42px;font-size:18px}
     #mk-overlay .mk-hint{font-size:11px}
     #mk-overlay .mk-chip{font-size:10px;padding:4px 8px}
-  }`;
+
+  /* ── Disclaimer P2P ── */
+  #mk-overlay .mk-disc{max-width:560px;margin:0 auto;padding:8px 4px 4px;display:flex;flex-direction:column;max-height:100%}
+  #mk-overlay .mk-disc-t{font-family:var(--display,'Segoe UI',sans-serif);font-weight:800;font-size:21px;color:#f3f6fa;text-align:center;margin:6px 0 16px}
+  #mk-overlay .mk-disc-body{overflow-y:auto;flex:1;padding-right:6px;scrollbar-width:thin}
+  #mk-overlay .mk-disc-body p{font-size:13.5px;line-height:1.6;color:#c9d2dc;margin:0 0 13px}
+  #mk-overlay .mk-disc-body b{color:#f3f6fa;font-weight:700}
+  #mk-overlay .mk-disc-chk{display:flex;align-items:flex-start;gap:9px;margin:14px 0 12px;font-size:13px;color:#d4dbe4;cursor:pointer;line-height:1.45}
+  #mk-overlay .mk-disc-chk input{margin-top:2px;width:17px;height:17px;flex:none;accent-color:#E8B84B;cursor:pointer}
+  #mk-overlay .mk-disc-btn{width:100%;padding:14px;border:0;border-radius:13px;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;font-family:var(--display,sans-serif);font-weight:800;font-size:15px;cursor:pointer}
+  #mk-overlay .mk-disc-btn:disabled{opacity:.4;cursor:not-allowed}
+  @media(max-width:560px){ #mk-overlay .mk-disc-t{font-size:19px} #mk-overlay .mk-disc-body p{font-size:13px} }
+  
+  /* ── Disclaimer P2P ── */
+  #mk-overlay .mk-disc{max-width:560px;margin:0 auto;padding:8px 4px 4px;display:flex;flex-direction:column;max-height:100%}
+  #mk-overlay .mk-disc-t{font-family:var(--display,'Segoe UI',sans-serif);font-weight:800;font-size:21px;color:#f3f6fa;text-align:center;margin:6px 0 16px}
+  #mk-overlay .mk-disc-body{overflow-y:auto;flex:1;padding-right:6px;scrollbar-width:thin}
+  #mk-overlay .mk-disc-body p{font-size:13.5px;line-height:1.6;color:#c9d2dc;margin:0 0 13px}
+  #mk-overlay .mk-disc-body b{color:#f3f6fa;font-weight:700}
+  #mk-overlay .mk-disc-chk{display:flex;align-items:flex-start;gap:9px;margin:14px 0 12px;font-size:13px;color:#d4dbe4;cursor:pointer;line-height:1.45}
+  #mk-overlay .mk-disc-chk input{margin-top:2px;width:17px;height:17px;flex:none;accent-color:#E8B84B;cursor:pointer}
+  #mk-overlay .mk-disc-btn{width:100%;padding:14px;border:0;border-radius:13px;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;font-family:var(--display,sans-serif);font-weight:800;font-size:15px;cursor:pointer}
+  #mk-overlay .mk-disc-btn:disabled{opacity:.4;cursor:not-allowed}
+  @media(max-width:560px){ #mk-overlay .mk-disc-t{font-size:19px} #mk-overlay .mk-disc-body p{font-size:13px} }
+
+  `;
   document.head.appendChild(s);
 }

@@ -217,7 +217,7 @@ function opCard({ o, perfOtro }, cuenta, esOwner) {
         explica = `<b>Comprueba en tu banco/Zelle que el dinero llegó de verdad.</b> Si llegó, libera esa parte y se le envían ${num(porTramo, 2)} ${sim}. Si no llegó, no liberes nada y abre una disputa.`;
         acciones = `<button class="op-b" data-lib="${o.id}"><span class="tx-l">Sí, ya me llegó · liberar ${num(porTramo, 2)} ${sim}</span><span class="tx-s">Ya me llegó · liberar</span></button>
                     <button class="op-b gris" data-canmut="${o.id}">Cancelar pedido</button>
-                    <button class="op-b gris" data-disp="${o.id}"><span class="tx-l">No me llegó · abrir disputa</span><span class="tx-s">No llegó · disputa</span></button>`;
+                    `;
       } else {
         titulo = `${esc(otroNom)} reservó tu oferta`;
         const venceEn = (Number(o.tomadaEn) + 24 * 3600) * 1000;
@@ -228,20 +228,20 @@ function opCard({ o, perfOtro }, cuenta, esOwner) {
         acciones = otroCt ? `<div class="op-ct">${esc(otroCt)}</div>` : '';
         acciones += vencida ? `<button class="op-b" data-liber="${o.id}"><span class="tx-l">Devolver mi oferta al listado</span><span class="tx-s">Devolver al listado</span></button>` : '';
         acciones += `<button class="op-b gris" data-aband="${o.id}"><span class="tx-l">Me arrepentí · cancelar pedido</span><span class="tx-s">Cancelar pedido</span></button>
-                     <button class="op-b gris" data-disp="${o.id}"><span class="tx-l">Tengo un problema</span><span class="tx-s">Problema</span></button>`;
+                     `;
       }
     } else {
       if (o.tramoPagado) {
         titulo = 'Esperando a que confirme tu pago';
         explica = `Ya marcaste el pago de la parte ${hechos + 1}. Cuando ${esc(otroNom)} lo verifique, recibirás ${num(porTramo, 2)} ${sim} en tu wallet.`;
-        acciones = `<button class="op-b gris" data-disp="${o.id}">Tengo un problema</button>`;
+        acciones = ``;
       } else {
         titulo = `Te toca pagar la parte ${hechos + 1}`;
         explica = `Contacta a ${esc(otroNom)}, págale lo acordado por esta parte y <b>solo entonces</b> marca abajo que ya pagaste. Recibirás ${num(porTramo, 2)} ${sim}.`;
         acciones = otroCt ? `<div class="op-ct">${esc(otroCt)}</div>` : '';
         acciones += `<button class="op-b" data-pag="${o.id}"><span class="tx-l">Ya le pagué la parte ${hechos + 1}</span><span class="tx-s">Ya pagué</span></button>
                      <button class="op-b gris" data-canmut="${o.id}">Cancelar pedido</button>
-                     <button class="op-b gris" data-disp="${o.id}"><span class="tx-l">Tengo un problema</span><span class="tx-s">Problema</span></button>`;
+                     `;
       }
     }
   } else if (est === 2) {
@@ -345,7 +345,6 @@ export function wireOps() {
     ok: 'Sí, me llegó · liberar'
   }, () => tx('liberarTramo', b.getAttribute('data-lib'), 'Parte liberada.')));
 
-  document.querySelectorAll('[data-disp]').forEach(b => b.onclick = () => pedirMotivo(b.getAttribute('data-disp')));
 
   document.querySelectorAll('[data-aband]').forEach(b => b.onclick = () => confirmar({
     titulo: '¿Abandonar esta venta?',
