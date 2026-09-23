@@ -1,9 +1,12 @@
 /* panel-trigger.js — Abre el panel admin nuevo con 5 toques en la esquina inferior izquierda.
    El panel verifica owner on-chain, así que el gesto es solo un atajo (no da acceso por sí mismo). */
-import { abrirPanel } from './panel.js?v=2';
+import { abrirPanel } from './panel.js?v=3';
 
 export function iniciarTriggerPanel() {
   if (document.getElementById('adm2-zona')) return;
+  // Solo escritorio: el panel admin NO se abre desde móvil.
+  const esMovil = (window.innerWidth <= 1000) || ('ontouchstart' in window && window.matchMedia('(pointer:coarse)').matches);
+  if (esMovil) return;
   const z = document.createElement('div');
   z.id = 'adm2-zona';
   z.setAttribute('aria-hidden', 'true');

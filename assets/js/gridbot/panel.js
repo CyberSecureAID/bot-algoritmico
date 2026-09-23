@@ -19,7 +19,9 @@ function inyectarCSS() {
   #adm2 .adm-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 16px;border-bottom:1px solid #1b2531}
   #adm2 .adm-brand b{font-size:16px;font-weight:800}
   #adm2 .adm-brand small{color:#5f6b7a;font-size:10.5px;display:block;margin-top:1px}
-  #adm2 .adm-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(180deg,#f7db8d,#E8B84B 60%,#c79426);display:grid;place-items:center;color:#241900;font-weight:900;flex:none}
+  #adm2 .adm-logo{width:38px;height:38px;border-radius:50%;background:linear-gradient(180deg,#232b34,#151b22);display:grid;place-items:center;color:#5f6b7a;font-weight:900;flex:none;overflow:hidden;position:relative;border:2px solid #E8B84B}
+  #adm2 .adm-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #adm2 .adm-brand b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
   #adm2 .adm-nav{flex:1;overflow-y:auto;padding:10px 10px 20px}
   #adm2 .adm-nav button{width:100%;display:flex;align-items:center;gap:11px;padding:10px 12px;margin-bottom:3px;border:0;background:none;color:#8a95a3;border-radius:9px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:600;text-align:left}
   #adm2 .adm-nav button:hover{background:rgba(255,255,255,.04);color:#e7ecf2}
@@ -89,12 +91,12 @@ const IC = {
 };
 
 const SECCIONES = [
-  { id: 'resumen', t: 'Resumen', ic: IC.resumen },
-  { id: 'usuarios', t: 'Usuarios', ic: IC.users },
-  { id: 'finanzas', t: 'Finanzas', ic: IC.fin },
-  { id: 'servicios', t: 'Servicios', ic: IC.serv },
+  { id: 'resumen', t: 'Summary', ic: IC.resumen },
+  { id: 'usuarios', t: 'Users', ic: IC.users },
+  { id: 'finanzas', t: 'Finance', ic: IC.fin },
+  { id: 'servicios', t: 'Services', ic: IC.serv },
   { id: 'disputas', t: 'Marketplace', ic: IC.disp },
-  { id: 'seguridad', t: 'Seguridad', ic: IC.seg }
+  { id: 'seguridad', t: 'Security', ic: IC.seg }
 ];
 let _sec = 'resumen';
 
@@ -105,7 +107,7 @@ export async function abrirPanel() {
   const cont = document.createElement('div'); cont.id = 'adm2';
   document.body.appendChild(cont);
   // pantalla de carga breve mientras verifica
-  cont.innerHTML = `<div class="adm-deny"><div class="adm-skel">Verificando acceso…</div></div>`;
+  cont.innerHTML = `<div class="adm-deny"><div class="adm-skel">Checking access…</div></div>`;
   const cuenta = wallet.cuentaActual && wallet.cuentaActual();
   const ok = await datos.esOwner(cuenta);
   if (!ok) { pintarDenegado(cont); return; }
@@ -126,12 +128,11 @@ function pintarPanel(cont, cuenta) {
   cont.innerHTML = `
   <div class="adm-scrim" id="adm-scrim"></div>
   <aside class="adm-side">
-    <div class="adm-brand"><div class="adm-logo">A</div><div><b>Admin</b><small>Control panel</small></div></div>
+    <div class="adm-brand" id="adm-brand"><div class="adm-logo" id="adm-logo">A</div><div style="min-width:0"><b id="adm-name">Owner</b><small id="adm-wa">…</small></div></div>
     <nav class="adm-nav" id="adm-nav">
       ${SECCIONES.map(s => `<button data-sec="${s.id}" class="${s.id===_sec?'on':''}">${s.ic}<span>${s.t}</span></button>`).join('')}
     </nav>
     <div class="adm-side-foot">
-      <div class="adm-wallet">${cuenta}</div>
       <button class="adm-close" id="adm-x">Close panel</button>
     </div>
   </aside>
@@ -139,13 +140,24 @@ function pintarPanel(cont, cuenta) {
     <div class="adm-top">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="adm-burger" id="adm-burger"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
-        <h1 id="adm-title">Resumen</h1>
+        <h1 id="adm-title">Summary</h1>
       </div>
     </div>
     <div class="adm-body" id="adm-body"></div>
   </div>`;
   $('adm-x').onclick = () => cont.remove();
   $('adm-burger').onclick = () => cont.classList.toggle('side-open');
+  // Cabecera: foto (Firestore/caché) + nombre + últimas 4 de la wallet.
+  (async () => {
+    try {
+      const wa = $('adm-wa'); if (wa) wa.textContent = '…' + cuenta.slice(-5);
+      let foto = ''; let nombre = '';
+      try { foto = localStorage.getItem('aurex-foto:' + cuenta.toLowerCase()) || ''; nombre = localStorage.getItem('aurex-nombre:' + cuenta.toLowerCase()) || ''; } catch (_) {}
+      if (!foto || !nombre) { try { const pr = await datos.perfilDe(cuenta); if (pr.foto) foto = pr.foto; if (pr.nombre) nombre = pr.nombre; } catch (_) {} }
+      const lg = $('adm-logo'); if (lg && foto) lg.innerHTML = `<img src="${foto}" alt="">`;
+      const nm = $('adm-name'); if (nm && nombre) nm.textContent = nombre;
+    } catch (_) {}
+  })();
   $('adm-scrim').onclick = () => cont.classList.remove('side-open');
   $('adm-nav').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-sec]'); if (!b) return;
@@ -169,37 +181,37 @@ function render() {
 async function renderResumen(body) {
   body.innerHTML = `
     <div class="adm-kpis" id="adm-kpis">
-      ${kpiSkel('Generado total')}${kpiSkel('Este mes')}${kpiSkel('Usuarios (wallets)')}${kpiSkel('Al staking')}
+      ${kpiSkel('Total generated')}${kpiSkel('This month')}${kpiSkel('Users (wallets)')}${kpiSkel('To staking')}
     </div>
     <div class="adm-grid">
-      <div class="adm-card col-8"><h3>Ingresos por servicio</h3><div id="adm-serv"><div class="adm-empty adm-skel">Cargando…</div></div></div>
-      <div class="adm-card col-4"><h3>Resumen del mes</h3><div id="adm-mes"><div class="adm-empty adm-skel">Cargando…</div></div></div>
+      <div class="adm-card col-8"><h3>Revenue by service</h3><div id="adm-serv"><div class="adm-empty adm-skel">Loading…</div></div></div>
+      <div class="adm-card col-4"><h3>This month</h3><div id="adm-mes"><div class="adm-empty adm-skel">Loading…</div></div></div>
     </div>`;
   try {
     const r = await datos.resumenGeneral();
     $('adm-kpis').innerHTML =
-      kpi('Generado total', '$'+fmt(r.generadoTotal), IC.money, `${r.operaciones} operaciones`, 'mut') +
-      kpi('Este mes', '$'+fmt(r.mesGenerado), IC.op, `${r.mesWalletsNuevas} nuevos este mes`, r.mesWalletsNuevas>0?'up':'mut') +
-      kpi('Usuarios (wallets)', String(r.wallets), IC.wallet, 'wallets únicas', 'mut') +
-      kpi('Al staking', '$'+fmt(r.aStaking), IC.stk, 'repartido a stakers', 'mut');
+      kpi('Total generated', '$'+fmt(r.generadoTotal), IC.money, `${r.operaciones} operations`, 'mut') +
+      kpi('This month', '$'+fmt(r.mesGenerado), IC.op, `${r.mesWalletsNuevas} new this month`, r.mesWalletsNuevas>0?'up':'mut') +
+      kpi('Users (wallets)', String(r.wallets), IC.wallet, 'unique wallets', 'mut') +
+      kpi('To staking', '$'+fmt(r.aStaking), IC.stk, 'shared to stakers', 'mut');
     // resumen del mes
     $('adm-mes').innerHTML =
-      row('Generado', '$'+fmt(r.mesGenerado)) + row('Operaciones', String(r.mesOperaciones)) +
-      row('Nuevos usuarios', String(r.mesWalletsNuevas)) + row('Periodo', String(r.mes));
+      row('Generated', '$'+fmt(r.mesGenerado)) + row('Operations', String(r.mesOperaciones)) +
+      row('New users', String(r.mesWalletsNuevas)) + row('Period', String(r.mes));
     // por servicio
     const serv = await datos.porServicio();
     $('adm-serv').innerHTML = serv.length
       ? serv.map(s => row(nombreServicio(s.nombre)+` · ${s.operaciones} ops`, '$'+fmt(s.generado))).join('')
-      : `<div class="adm-empty">Aún no hay actividad registrada.<br><small>Los servicios empezarán a reportar cuando se interconecten.</small></div>`;
+      : `<div class="adm-empty">No activity recorded yet.<br><small>Services will report once interconnected.</small></div>`;
   } catch (e) {
-    $('adm-kpis').innerHTML = `<div class="adm-empty col-12">No se pudieron cargar los datos. ${(e&&e.message)||''}</div>`;
+    $('adm-kpis').innerHTML = `<div class="adm-empty col-12">Could not load data. ${(e&&e.message)||''}</div>`;
   }
 }
 
 function kpi(label, valor, ic, sub, cls) {
   return `<div class="adm-kpi"><div class="k-ic">${ic}</div><div class="k-l">${label}</div><div class="k-v">${valor}</div><div class="k-s ${cls||'mut'}">${sub}</div></div>`;
 }
-function kpiSkel(label) { return `<div class="adm-kpi"><div class="k-l">${label}</div><div class="k-v adm-skel">—</div><div class="k-s mut adm-skel">cargando</div></div>`; }
+function kpiSkel(label) { return `<div class="adm-kpi"><div class="k-l">${label}</div><div class="k-v adm-skel">—</div><div class="k-s mut adm-skel">loading</div></div>`; }
 function row(l, v) { return `<div class="adm-row"><span>${l}</span><span class="r-v">${v}</span></div>`; }
 function fmt(n) { return Number(n||0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
 function nombreServicio(n) { const m = { gridbot:'Bots', swap:'Swap', mercadotokens:'Token listing', futuros:'Futures', academy:'Academy', prizepool:'Prize Pool', bridge:'Bridge' }; return m[n] || n; }
