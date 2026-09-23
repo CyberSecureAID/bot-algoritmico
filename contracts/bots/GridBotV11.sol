@@ -177,7 +177,6 @@ contract GridBotV11 is Initializable, UUPSUpgradeable {
         dexes.push(SwapLib.Dex({router:router,quoter:quoter,nombre:nombre,activo:true,fallos:0,ultimoUso:0}));
     }
     function setDexDireccion(uint256 i, address router, address quoter) external soloOwner { require(i<dexes.length); dexes[i].router=router; dexes[i].quoter=quoter; }
-    function setDexActivo(uint256 i, bool v) external soloOwner { require(i<dexes.length); dexes[i].activo=v; }
     function setDexPref(uint256 i) external soloOwner { require(i<dexes.length && dexes[i].activo); dexPref=i; }
 
     /* ═══════════ Cobro de bots (lazy, sin keeper) ═══════════ */
@@ -211,7 +210,7 @@ contract GridBotV11 is Initializable, UUPSUpgradeable {
         if (enviado > costo) { (bool ok,)=payable(u).call{value: enviado-costo}(""); require(ok); }
         emit CobroBot(u, costo, hasta);
         // Reportar a Contabilidad: el bot generó costoBotUSD (20% staking, 80% owners).
-        { uint256 g=costoBotUSD*1e16; _reportarCont(u,g,g/5,g-g/5); }
+        _reportarCont(u,costoBotUSD*1e16,0,0);
     }
 
     /** Reparte un cobro en BNB: 20% staking, 80% a los dos owners (50/50). */
@@ -251,7 +250,6 @@ contract GridBotV11 is Initializable, UUPSUpgradeable {
         tokenIn/out = WBNB para envolver/desenvolver; address(0) = BNB nativo. */
     function swap(address tokenIn, address tokenOut, uint24 feeTier, uint256 amountIn, uint256 minOut) external payable noReentrada returns (uint256 salida) {
         require(!pausado);
-        _reportarCont(msg.sender,0,0,0);
         // Caso envolver: BNB -> WBNB
         if (tokenIn == address(0) && tokenOut == WBNB) {
             require(msg.value == amountIn && amountIn > 0);
@@ -457,8 +455,8 @@ contract GridBotV11 is Initializable, UUPSUpgradeable {
     function setKeeper(address k) external soloOwner { keeper=k; }
     function setOwner2(address a) external soloOwner { owner2=a; emit ParamCambiado("owner2",a); }
     function setStaking(address a) external soloOwner { staking=a; }
-    function setTesoreria(address a) external soloOwner { tesoreria=a; }
     function setOraculo(address a) external soloOwner { oraculo=a; }
+    function setContabilidad(address a) external soloOwner { contabilidad=a; }
     function setComision(uint256 _feeBps, uint256 _stakingBps) external soloOwner { require(_feeBps<=FEE_MAX && _stakingBps<=BPS); feeBps=_feeBps; stakingBps=_stakingBps; }
     function setCostoBot(uint256 usd2dec) external soloOwner { costoBotUSD=usd2dec; }
     function setPausado(bool p) external soloOwner { pausado=p; }
