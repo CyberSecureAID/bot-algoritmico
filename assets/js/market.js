@@ -7,7 +7,7 @@
 // sin nada externo que pueda quedarse colgado y dejar la app en 'Cargando…'.
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
 import * as wallet from './wallet.js?v=125';
-import { estilos } from './market/estilos.js?v=5';
+import { estilos } from './market/estilos.js?v=6';
 import { MARKET, USDT, USDC, TOKENS, RPCS, ABI, ERC20, ESTADOS, MONEDAS, METODOS, PAR, SUGERE, ICOCT, CF_PASOS, COBROS, NOMBRE_MONEDA } from './market/config.js?v=1';
 import { firmante, esc, f18, num, simbolo, corto, traducir, fechaExacta } from './market/util.js?v=1';
 import { overlay, cerrar, dialogo, marco, cerrarWiz, wmsg, msg } from './market/ui.js?v=1';
@@ -21,9 +21,7 @@ import { pedirPerfilRapido, pedirMotivo, confirmar, pedirEstrellas, initDialogos
 import { panelMisOps, wireOps, initOperaciones } from './market/operaciones.js?v=2';
 import { listarOfertas } from './market/ofertas.js?v=1';
 import { panelVender } from './market/vender.js?v=1';
-import { panelDisputas, contarDisputas } from './market/disputas.js?v=1';
 import { comoFunciona } from './market/guia.js?v=2';
-export { avisarDisputas } from './market/disputas.js?v=1';
 
 // Cablea el asistente de venta con los callbacks del panel (hoisted).
 initAsistenteVenta({ listarOfertas, lee });
@@ -87,7 +85,7 @@ export async function abrirMarket() {
      ══════════════════════════════════════════════════════════════ */
   montarMenuMk();
 
-  const tabs = [['mk-t1', 'mk-p1'], ['mk-t2', 'mk-p2'], ['mk-t5', 'mk-p5'], ['mk-t3', 'mk-p3'], ['mk-t4', 'mk-p4'], ['mk-t6', 'mk-p6']];
+  const tabs = [['mk-t1', 'mk-p1'], ['mk-t2', 'mk-p2'], ['mk-t5', 'mk-p5'], ['mk-t3', 'mk-p3'], ['mk-t4', 'mk-p4']];
   // La guía arranca en su primera tarjeta cada vez que se entra.
   const _t4 = $('mk-t4');
   if (_t4) _t4.addEventListener('click', () => setTimeout(() => cfPintar(0), 30));
@@ -106,36 +104,10 @@ export async function abrirMarket() {
       if (i === 2) panelComprar();
       if (i === 3) panelMisOps();
       if (i === 4) { const b = $('mk-ir-vender'); if (b) b.onclick = () => $('mk-t2').click(); }
-      if (i === 5) panelDisputas();
     };
   });
   listarOfertas();
-  // Pestaña de Disputas: solo para el owner
-  (async () => {
-    try {
-      const cuenta = wallet.cuentaActual && wallet.cuentaActual();
-      if (!cuenta) return;
-      const dueno = await lee('owner');
-      if (String(dueno).toLowerCase() !== String(cuenta).toLowerCase()) return;
-      const cont = document.querySelector('#mk-overlay .mk-tabs');
-      if (!cont || $('mk-t6')) return;
-      const b = document.createElement('button');
-      b.className = 'mk-tab'; b.id = 'mk-t6';
-      b.innerHTML = `Disputas <span class="mk-badge" id="mk-nd" style="display:none">0</span>`;
-      b.style.display = 'none';   // vive en el menú, no en la fila de pestañas
-      /* Disputas va ANTES de "Cómo funciona", que siempre cierra la fila:
-         es la guía, no una sección de trabajo. */
-      const _guia = $('mk-t4');
-      if (_guia) cont.insertBefore(b, _guia); else cont.appendChild(b);
-      b.onclick = () => {
-        document.querySelectorAll('#mk-overlay .mk-tab').forEach(x => x.classList.remove('on'));
-        document.querySelectorAll('#mk-overlay .mk-pane').forEach(x => x.classList.remove('on'));
-        b.classList.add('on'); $('mk-p6').classList.add('on'); $('mk-card').scrollTop = 0; msg('');
-        panelDisputas();
-      };
-      contarDisputas();
-    } catch (_) {}
-  })();
+  // (Disputas eliminadas: no se muestran a nadie)
 }
 
 /* ── Disputas (solo owner) ── */
@@ -180,10 +152,6 @@ function montarMenuMk() {
   const d = document.createElement('div');
   d.className = 'mk-menu-d'; d.id = 'mk-menu-d';
   d.innerHTML = `
-    <button class="mk-mi" data-mk-go="disputas">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      <span>Disputas</span><em class="mk-pt2" id="mk-menu-pt2"></em>
-    </button>
     <button class="mk-mi" data-mk-go="guia">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>
       <span>Cómo funciona</span><em class="mk-nuevo" id="mk-menu-nuevo">nuevo</em>
@@ -206,10 +174,6 @@ function montarMenuMk() {
       abrirPanel('mk-p4');
       setTimeout(() => cfPintar(0), 30);
       marcarGuiaVista(true);
-    } else {
-      const t6 = $('mk-t6');
-      if (t6) t6.click();
-      else { abrirPanel('mk-p6'); panelDisputas(); }
     }
   });
 
