@@ -1,7 +1,7 @@
 /* panel.js — Panel administrativo (página propia). Solo owners (verificación on-chain).
    Web: sidebar 256px + KPIs + grid. Móvil: menú hamburguesa + tarjetas apiladas.
    Dark-first, números tabulares, color solo para estado financiero. */
-import * as datos from './panel-datos.js?v=1';
+import * as datos from './panel-datos.js?v=2';
 import * as wallet from '../wallet.js?v=125';
 
 const $ = (id) => document.getElementById(id);

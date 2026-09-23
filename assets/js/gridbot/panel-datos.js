@@ -37,6 +37,11 @@ function inyectado() { try { const p = wallet.proveedorActivo && wallet.proveedo
 async function firmante() { return new ethers.BrowserProvider(inyectado()).getSigner(); }
 const conta = () => new ethers.Contract(DIR.contabilidad, ABI_CONTA, lector());
 async function contaW() { return new ethers.Contract(DIR.contabilidad, ABI_CONTA, await firmante()); }
+// Lector con la wallet del owner (para funciones soloOwner: resumen, verMes, etc.).
+async function contaLeeOwner() {
+  try { const p = new ethers.BrowserProvider(inyectado()); return new ethers.Contract(DIR.contabilidad, ABI_CONTA, await p.getSigner()); }
+  catch (_) { return conta(); }
+}
 
 /* ── Verificación de owner ON-CHAIN. Devuelve true solo si la wallet es owner/admin. ── */
 export async function esOwner(cuenta) {
@@ -59,7 +64,7 @@ export const hashServicio = (nombre) => ethers.id(nombre);
 
 /* ── Resumen general (KPIs) ── */
 export async function resumenGeneral() {
-  const c = conta();
+  const c = await contaLeeOwner();
   const [r, mesN] = await Promise.all([c.resumen(), c.mesActual()]);
   let mesData = { generado: 0n, operaciones: 0n, walletsNuevas: 0n };
   try { const m = await c.verMes(mesN); mesData = { generado: m[0], operaciones: m[1], walletsNuevas: m[2] }; } catch (_) {}
@@ -73,7 +78,7 @@ export async function resumenGeneral() {
 
 /* ── Datos por servicio ── */
 export async function porServicio() {
-  const c = conta();
+  const c = await contaLeeOwner();
   const nombres = ['gridbot', 'swap', 'mercadotokens', 'futuros', 'academy', 'prizepool', 'bridge'];
   const out = [];
   for (const n of nombres) {
