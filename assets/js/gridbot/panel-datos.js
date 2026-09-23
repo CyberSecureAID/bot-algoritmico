@@ -11,6 +11,7 @@ export const DIR = {
   staking:      '0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4',
   gridbot:      '0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B',
   mercado:      '0x39c48394068299Aa3e3ab114F16bfc3DE11F4112',
+  p2p:          '0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025',
   oraculo:      '0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3'
 };
 const RPCS = ['https://bsc-dataseed.binance.org','https://bsc-dataseed1.defibit.io','https://bsc-dataseed1.ninicoin.io'];
@@ -216,4 +217,43 @@ export async function estadoPausa() {
   try { out.mercado = await ctrR(DIR.mercado, ABI_MERCADO).pausado(); } catch (_) { out.mercado = null; }
   try { out.gridbot = await ctrR(DIR.gridbot, ABI_GRIDBOT).pausado(); } catch (_) { out.gridbot = null; }
   return out;
+}
+
+/* ═══════════ Marketplace P2P (panel admin) ═══════════ */
+const ABI_P2P = [
+  'function numAnuncios() view returns (uint256)',
+  'function ordenesCompletadasTotal() view returns (uint256)',
+  'function comisionBpsLocal() view returns (uint16)',
+  'function pausado() view returns (bool)',
+  'function owner() view returns (address)',
+  'function setComisionLocal(uint16)',
+  'function pausar(bool)',
+  'function bloqueado(address) view returns (bool)',
+  'function banear(address,bool)'
+];
+
+export async function marketplaceP2P() {
+  const c = new ethers.Contract(DIR.p2p, ABI_P2P, lector());
+  const out = {};
+  try {
+    const [anuncios, completadas, com, pau] = await Promise.all([
+      c.numAnuncios().catch(() => 0n),
+      c.ordenesCompletadasTotal().catch(() => 0n),
+      c.comisionBpsLocal().catch(() => 0n),
+      c.pausado().catch(() => false)
+    ]);
+    out.anuncios = Number(anuncios);
+    out.completadas = Number(completadas);
+    out.comision = Number(com) / 100;
+    out.pausado = pau;
+  } catch (_) {}
+  return out;
+}
+export async function setP2PComision(pct) {
+  const c = new ethers.Contract(DIR.p2p, ABI_P2P, await firmante());
+  return (await c.setComisionLocal(Math.round(pct * 100))).wait();
+}
+export async function pausarP2P(v) {
+  const c = new ethers.Contract(DIR.p2p, ABI_P2P, await firmante());
+  return (await c.pausar(v)).wait();
 }

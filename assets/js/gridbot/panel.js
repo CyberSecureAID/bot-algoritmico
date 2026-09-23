@@ -1,7 +1,7 @@
 /* panel.js — Panel administrativo (página propia). Solo owners (verificación on-chain).
    Web: sidebar 256px + KPIs + grid. Móvil: menú hamburguesa + tarjetas apiladas.
    Dark-first, números tabulares, color solo para estado financiero. */
-import * as datos from './panel-datos.js?v=4';
+import * as datos from './panel-datos.js?v=5';
 import * as wallet from '../wallet.js?v=125';
 
 const $ = (id) => document.getElementById(id);
@@ -225,6 +225,7 @@ function render() {
   if (_sec === 'finanzas') return renderFinanzas(body);
   if (_sec === 'servicios') return renderServicios(body);
   if (_sec === 'seguridad') return renderSeguridad(body);
+  if (_sec === 'disputas') return renderMarketplace(body);
   body.innerHTML = `<div class="adm-empty">Section "${_sec}" — coming next.</div>`;
 }
 
@@ -470,6 +471,43 @@ function filaPausa(nombre, cual, pausado) {
     ? `<button class="adm-ubtn un" data-pausa="${cual}" data-val="0">Resume</button>`
     : `<button class="adm-ubtn" data-pausa="${cual}" data-val="1">Pause</button>`;
   return `<div class="adm-prow"><div><b>${nombre}</b><small>${pausado?'operations stopped':'running normally'}</small></div><div class="adm-uright">${estado}${btn}</div></div>`;
+}
+
+
+/* ── MARKETPLACE P2P ── */
+async function renderMarketplace(body) {
+  body.innerHTML = `
+    <div class="adm-kpis" id="adm-mkkpis">${kpiSkel('Listings')}${kpiSkel('Completed trades')}${kpiSkel('Status')}</div>
+    <div class="adm-grid">
+      <div class="adm-card col-6"><h3>P2P settings</h3><div id="adm-mkset"><div class="adm-empty adm-skel">Loading…</div></div></div>
+      <div class="adm-card col-6"><h3>About the P2P market</h3>
+        <p style="color:#8a95a3;font-size:13px;line-height:1.6;margin:0">This is a fully peer to peer market with no disputes. Users are responsible for verifying who they trade with, and they release funds in parts to stay safe. You can adjust the fee or pause the whole market in an emergency.</p>
+      </div>
+    </div>`;
+  try {
+    const m = await datos.marketplaceP2P();
+    $('adm-mkkpis').innerHTML =
+      kpi('Listings', String(m.anuncios ?? '—'), IC.disp, 'total published', 'mut') +
+      kpi('Completed trades', String(m.completadas ?? '—'), IC.op, 'all time', 'mut') +
+      kpi('Status', m.pausado ? 'Paused' : 'Active', IC.seg, m.pausado ? 'trading stopped' : 'running', m.pausado ? 'dn' : 'up');
+    $('adm-mkset').innerHTML = `
+      ${campo('Trade fee (%)', 'mk-com', m.comision ?? 0, '%')}
+      ${row('Status', m.pausado ? '<span class="adm-tag bad">Paused</span>' : '<span class="adm-tag ok">Active</span>')}
+      <button class="adm-save" id="mk-save">Save fee</button>
+      <button class="adm-ubtn ${m.pausado?'un':''}" id="mk-pause" style="width:100%;margin-top:10px" data-p="${m.pausado?'0':'1'}">${m.pausado ? 'Resume market' : 'Pause market'}</button>
+      <div class="adm-msg" id="mk-msg"></div>`;
+    const sv = $('mk-save'); if (sv) sv.onclick = async () => {
+      sv.disabled = true; msgSet('mk-msg', 'Saving…');
+      try { await datos.setP2PComision(parseFloat($('mk-com').value)); msgSet('mk-msg', 'Saved ✓', true); setTimeout(() => render(), 1200); }
+      catch (e) { sv.disabled = false; msgSet('mk-msg', errTxt(e)); }
+    };
+    const pb = $('mk-pause'); if (pb) pb.onclick = async () => {
+      const pausar = pb.dataset.p === '1';
+      pb.disabled = true; pb.textContent = pausar ? 'Pausing…' : 'Resuming…';
+      try { await datos.pausarP2P(pausar); render(); }
+      catch (e) { pb.disabled = false; pb.textContent = pausar ? 'Pause market' : 'Resume market'; }
+    };
+  } catch (e) { $('adm-mkkpis').innerHTML = `<div class="adm-empty col-12">Could not load. ${(e&&e.message)||''}</div>`; }
 }
 
 function kpi(label, valor, ic, sub, cls) {
