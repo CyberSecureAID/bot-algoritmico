@@ -1,7 +1,7 @@
 /* panel.js — Panel administrativo (página propia). Solo owners (verificación on-chain).
    Web: sidebar 256px + KPIs + grid. Móvil: menú hamburguesa + tarjetas apiladas.
    Dark-first, números tabulares, color solo para estado financiero. */
-import * as datos from './panel-datos.js?v=2';
+import * as datos from './panel-datos.js?v=3';
 import * as wallet from '../wallet.js?v=125';
 
 const $ = (id) => document.getElementById(id);
@@ -73,7 +73,27 @@ function inyectarCSS() {
     #adm2 .col-8,#adm2 .col-4,#adm2 .col-6{grid-column:span 12}
   }
   @media(max-width:480px){ #adm2 .adm-kpis{grid-template-columns:1fr} }
-  `;
+
+  #adm2 .adm-search-inp{background:rgba(11,14,17,.72);border:1px solid #1b2531;border-radius:10px;padding:9px 13px;color:#e7ecf2;font-family:inherit;font-size:13px;outline:none;min-width:220px}
+  #adm2 .adm-search-inp:focus{border-color:rgba(232,184,75,.4)}
+  #adm2 .adm-utable{display:flex;flex-direction:column}
+  #adm2 .adm-urow{display:flex;align-items:center;gap:13px;padding:12px 4px;border-bottom:1px solid #161f2b}
+  #adm2 .adm-urow:last-child{border-bottom:0}
+  #adm2 .adm-uava{width:40px;height:40px;border-radius:50%;background:linear-gradient(180deg,#232b34,#151b22);display:grid;place-items:center;color:#8a95a3;font-weight:800;flex:none;overflow:hidden;position:relative;border:1px solid #2a3644}
+  #adm2 .adm-uava img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #adm2 .adm-uinfo{flex:1;min-width:0}
+  #adm2 .adm-uname{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #adm2 .adm-uaddr{font-size:11.5px;color:#5f6b7a;font-family:var(--mono,monospace);margin-top:2px}
+  #adm2 .adm-uright{display:flex;align-items:center;gap:10px;flex:none}
+  #adm2 .adm-tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:100px}
+  #adm2 .adm-tag.ok{background:rgba(52,211,153,.14);color:#34d399}
+  #adm2 .adm-tag.bad{background:rgba(248,113,113,.14);color:#f87171}
+  #adm2 .adm-ubtn{font-size:12px;font-weight:700;padding:7px 14px;border-radius:9px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;cursor:pointer;font-family:inherit}
+  #adm2 .adm-ubtn:hover{background:rgba(248,113,113,.18)}
+  #adm2 .adm-ubtn.un{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.1);color:#34d399}
+  #adm2 .adm-ubtn:disabled{opacity:.5;cursor:default}
+  @media(max-width:860px){ #adm2 .adm-search-inp{min-width:0;width:100%} #adm2 .adm-uright{flex-direction:column;align-items:flex-end;gap:6px} }
+    `;
   document.head.appendChild(s);
 }
 
@@ -174,6 +194,7 @@ function pintarPanel(cont, cuenta) {
 function render() {
   const body = $('adm-body'); if (!body) return;
   if (_sec === 'resumen') return renderResumen(body);
+  if (_sec === 'usuarios') return renderUsuarios(body);
   body.innerHTML = `<div class="adm-empty">Section "${_sec}" — coming next.</div>`;
 }
 
@@ -207,6 +228,67 @@ async function renderResumen(body) {
     $('adm-kpis').innerHTML = `<div class="adm-empty col-12">Could not load data. ${(e&&e.message)||''}</div>`;
   }
 }
+
+
+/* ── Sección Users: lista de wallets con foto/nombre, fecha, y bloquear ── */
+async function renderUsuarios(body) {
+  body.innerHTML = `
+    <div class="adm-card col-12">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+        <h3 style="margin:0">Users</h3>
+        <input id="adm-usearch" class="adm-search-inp" placeholder="Search by name or address…">
+      </div>
+      <div id="adm-ulist"><div class="adm-empty adm-skel">Loading users…</div></div>
+    </div>`;
+  let todos = [];
+  try {
+    const lista = await datos.listaWallets();
+    if (!lista.length) { $('adm-ulist').innerHTML = `<div class="adm-empty">No users recorded yet.<br><small>Wallets appear here once they interact and services report to Accounting.</small></div>`; return; }
+    // enriquecer con perfil (en tandas para no saturar)
+    $('adm-ulist').innerHTML = `<div class="adm-empty adm-skel">Loading ${lista.length} wallets…</div>`;
+    todos = await datos.walletsConPerfil(lista);
+    pintarUsuarios(todos);
+    const inp = $('adm-usearch');
+    if (inp) inp.oninput = () => {
+      const q = inp.value.trim().toLowerCase();
+      pintarUsuarios(!q ? todos : todos.filter(u => (u.nombre||'').toLowerCase().includes(q) || u.wallet.toLowerCase().includes(q)));
+    };
+  } catch (e) { $('adm-ulist').innerHTML = `<div class="adm-empty">Could not load users. ${(e&&e.message)||''}</div>`; }
+}
+function pintarUsuarios(arr) {
+  const box = $('adm-ulist'); if (!box) return;
+  if (!arr.length) { box.innerHTML = `<div class="adm-empty">No matches.</div>`; return; }
+  box.innerHTML = `<div class="adm-utable">${arr.map(filaUsuario).join('')}</div>`;
+  box.querySelectorAll('[data-block]').forEach(b => {
+    b.onclick = async () => {
+      const addr = b.dataset.block; const bloquear = b.dataset.val === '1';
+      b.disabled = true; b.textContent = bloquear ? 'Blocking…' : 'Unblocking…';
+      try { await datos.bloquearWallet(addr, bloquear); render(); }
+      catch (e) { b.disabled = false; b.textContent = bloquear ? 'Block' : 'Unblock'; }
+    };
+  });
+}
+function filaUsuario(u) {
+  const foto = u.foto ? `<img src="${u.foto}" alt="">` : `<span>${(u.nombre||'?').slice(0,1).toUpperCase()}</span>`;
+  const nombre = u.nombre ? escH(u.nombre) : '<i style="color:#5f6b7a">No name</i>';
+  const corta = u.wallet.slice(0,6) + '…' + u.wallet.slice(-4);
+  const fecha = u.cuando ? new Date(u.cuando*1000).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '';
+  const estado = u.bloqueada
+    ? `<span class="adm-tag bad">Blocked</span>`
+    : `<span class="adm-tag ok">Active</span>`;
+  const btn = u.bloqueada
+    ? `<button class="adm-ubtn un" data-block="${u.wallet}" data-val="0">Unblock</button>`
+    : `<button class="adm-ubtn" data-block="${u.wallet}" data-val="1">Block</button>`;
+  return `<div class="adm-urow">
+    <div class="adm-uava">${foto}</div>
+    <div class="adm-uinfo">
+      <div class="adm-uname">${nombre}</div>
+      <div class="adm-uaddr">${corta}${fecha?` · joined ${fecha}`:''}</div>
+    </div>
+    <div class="adm-uright">${estado}${btn}</div>
+  </div>`;
+}
+function escH(s){return String(s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
 
 function kpi(label, valor, ic, sub, cls) {
   return `<div class="adm-kpi"><div class="k-ic">${ic}</div><div class="k-l">${label}</div><div class="k-v">${valor}</div><div class="k-s ${cls||'mut'}">${sub}</div></div>`;

@@ -27,7 +27,9 @@ const ABI_CONTA = [
   'function bloquear(address,bool)',
   'function bloquearVarias(address[],bool)',
   'function setReportador(address,bool)',
-  'function walletsUnicas() view returns (uint256)'
+  'function walletsUnicas() view returns (uint256)',
+  'event WalletNueva(address indexed wallet, uint40 cuando)',
+  'event Actividad(address indexed wallet, bytes32 indexed servicio, uint256 generadoUSD, uint256 aStakingUSD, uint256 aOwnersUSD, uint256 mes)'
 ];
 const ABI_TARIFAS = ['function esAdmin(address) view returns (bool)'];
 
@@ -98,3 +100,36 @@ export async function estaBloqueada(addr) { try { return await conta().bloqueada
 
 /* ── Perfil (nombre + foto) de una wallet, para identificarla ── */
 export async function perfilDe(addr) { return fperfil.leerPerfil(addr); }
+
+/* ── Lista de wallets (leída de los eventos WalletNueva). Sin coste, sin límite. ── */
+export async function listaWallets(maxBloques = 0) {
+  const c = conta();
+  try {
+    // queryFilter del evento WalletNueva (todas). Si la red limita el rango, se puede paginar.
+    const filtro = c.filters.WalletNueva();
+    const eventos = await c.queryFilter(filtro, 0, 'latest');
+    // más nuevas primero
+    const arr = eventos.map(ev => ({
+      wallet: ev.args.wallet,
+      cuando: Number(ev.args.cuando),
+      bloque: ev.blockNumber
+    })).reverse();
+    return arr;
+  } catch (e) {
+    // algunos RPC públicos limitan queryFilter a rangos cortos; devolvemos vacío si falla.
+    return [];
+  }
+}
+
+/* ── Enriquecer wallets con su perfil (foto/nombre) y estado de bloqueo ── */
+export async function walletsConPerfil(lista) {
+  const out = [];
+  for (const w of lista) {
+    let perfil = { nombre: '', foto: '' };
+    try { perfil = await fperfil.leerPerfil(w.wallet); } catch (_) {}
+    let bloqueada = false;
+    try { bloqueada = await conta().bloqueada(w.wallet); } catch (_) {}
+    out.push({ ...w, nombre: perfil.nombre, foto: perfil.foto, bloqueada });
+  }
+  return out;
+}
