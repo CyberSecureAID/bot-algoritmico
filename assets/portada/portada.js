@@ -674,4 +674,17 @@ try {
   nav.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
     nav.classList.remove('pt-nav--open'); burger.classList.remove('on');
   }));
+  // En el menú móvil, los BOTONES (submenús: Análisis profesional, Herramientas)
+  // expanden/cierran su submenú al tocarlos, en vez de navegar.
+  nav.querySelectorAll('.pt-nav__i > button').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      // solo cuando el menú está en modo desplegable (móvil/tablet)
+      if (!nav.classList.contains('pt-nav--open')) return;
+      e.preventDefault(); e.stopPropagation();
+      const item = btn.closest('.pt-nav__i');
+      // cerrar los otros submenús abiertos
+      nav.querySelectorAll('.pt-nav__i.abierto').forEach((x) => { if (x !== item) x.classList.remove('abierto'); });
+      item.classList.toggle('abierto');
+    });
+  });
 })();

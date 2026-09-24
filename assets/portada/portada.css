@@ -423,7 +423,9 @@ body{overflow-x:hidden}
   }
   #pt .pt-nav.pt-nav--open .pt-nav__i{width:100%}
   #pt .pt-nav.pt-nav--open .pt-nav__b{width:100%;justify-content:space-between;padding:12px 14px;font-size:15px}
-  #pt .pt-nav.pt-nav--open .pt-menu{position:static;opacity:1;visibility:visible;transform:none;background:rgba(255,255,255,.03);box-shadow:none;border:0;margin-top:4px;padding:4px}
+  /* Submenús en el menú móvil: CERRADOS por defecto, se abren al tocar su botón (.abierto). */
+  #pt .pt-nav.pt-nav--open .pt-menu{position:static;opacity:0;visibility:hidden;height:0;overflow:hidden;transform:none;background:rgba(255,255,255,.03);box-shadow:none;border:0;margin:0;padding:0;transition:none}
+  #pt .pt-nav.pt-nav--open .pt-nav__i.abierto .pt-menu{opacity:1;visibility:visible;height:auto;margin-top:4px;padding:4px}
   #pt .pt-burger.on{background:rgba(232,184,75,.12);border-color:rgba(232,184,75,.4);color:#E8B84B}
 #pt .pt-burger{display:flex}
 #pt .pt-hdr__a{margin-left:auto}
