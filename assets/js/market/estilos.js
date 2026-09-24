@@ -438,7 +438,7 @@ export function estilos() {
   #mk-overlay .mk-paso .t span em{color:var(--gold,#E8B84B);font-style:normal;font-weight:600}
   @media(max-width:560px){
     #mk-overlay{padding:0}
-    #mk-overlay .mk-card{max-width:100%;max-height:100vh;height:100vh;border-radius:0;border:none;padding:18px 14px}
+    #mk-overlay .mk-card{max-width:100%;max-height:100dvh;height:100dvh;border-radius:0;border:none;padding:calc(16px + env(safe-area-inset-top,0px)) 14px calc(16px + env(safe-area-inset-bottom,0px))}
     #mk-overlay .mk-title{font-size:20px}
     #mk-overlay .mk-2{grid-template-columns:1fr}
     #mk-overlay .mk-b{min-width:100%}
