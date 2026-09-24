@@ -609,3 +609,7 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 @media(max-width:380px){
   #pt .pt-btn-img img{height:40px}
 }
+
+/* Botón-imagen en secciones (Bots en "Más que bots"): mismo estilo que el hero */
+#pt .pt-btn-img-sec img{height:50px}
+@media(max-width:560px){#pt .pt-btn-img-sec img{height:44px}}
