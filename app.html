@@ -598,7 +598,7 @@
       img.src = 'assets/portada/img/bots.webp';
       // Si la imagen tarda demasiado (o está cacheada y onload no dispara),
       // el velo se va igual a los 900 ms: nunca se queda la pantalla negra.
-      setTimeout(quitarVelo, 2500);  // tope de seguridad; normalmente lo quita 'app-montada'
+      setTimeout(quitarVelo, 900);  // tope de seguridad: la pantalla negra nunca dura más de esto
 
       // La franja superior usa header.webp; si no existe, se oculta sola.
       const top = new Image();
