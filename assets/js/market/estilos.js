@@ -477,6 +477,12 @@ export function estilos() {
   #mk-overlay .of-pag-n.on{background:rgba(232,184,75,.14);border-color:rgba(232,184,75,.5);color:#E8B84B}
   #mk-overlay .of-pag-e{color:#5f6b7a;padding:0 4px}
 
+  
+  @media(max-width:560px){
+    #mk-card .mk-disc2{min-height:0;height:100%}
+    #mk-card .mk-disc2-mid{overflow-y:auto;padding:16px 8px}
+    #mk-card .mk-disc2-t{font-size:19px}
+  }
   `;
   document.head.appendChild(s);
 }
