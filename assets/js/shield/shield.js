@@ -157,7 +157,25 @@ function inyectarCSS() {
   #shd .shd-btn-danger:active{box-shadow:0 2px 0 #8f1f2e!important}
   #shd .shd-resc-note{font-size:12px;color:#79838f;text-align:center;margin-top:12px;line-height:1.5}
   
-    /* Escaneo con pasos (dramatismo) */
+      /* Resultados premium: hero del score */
+  #shd .shd-hero-score{display:flex;align-items:center;gap:26px;background:linear-gradient(135deg,rgba(20,26,33,.9),rgba(10,14,18,.9));border:1px solid #1c232b;border-radius:18px;padding:24px 26px;margin-bottom:16px}
+  #shd .shd-score-ring{position:relative;flex:none;width:150px;height:150px}
+  #shd .shd-score-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  #shd .shd-score-n{font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  #shd .shd-score-max{font-size:12px;color:#79838f;margin-top:2px}
+  #shd .shd-score-side{flex:1;min-width:0}
+  #shd .shd-score-lvl{font-size:24px;font-weight:800;margin-bottom:2px}
+  #shd .shd-score-sub{font-size:13px;color:#79838f;margin-bottom:18px}
+  #shd .shd-score-stats{display:flex;gap:22px}
+  #shd .shd-sstat b{font-size:22px;font-weight:800;display:block;line-height:1}
+  #shd .shd-sstat span{font-size:11px;color:#79838f;text-transform:uppercase;letter-spacing:.4px}
+  #shd .shd-factors{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  #shd .shd-factor{font-size:12px;padding:7px 13px;border-radius:100px;display:flex;align-items:center;gap:6px;border:1px solid}
+  #shd .shd-factor.ok{background:rgba(46,189,133,.08);border-color:rgba(46,189,133,.25);color:#2ebd85}
+  #shd .shd-factor.warn{background:rgba(232,184,75,.08);border-color:rgba(232,184,75,.25);color:#e8b84b}
+  #shd .shd-factor.bad{background:rgba(246,70,93,.08);border-color:rgba(246,70,93,.3);color:#f6465d}
+  
+  /* Escaneo con pasos (dramatismo) */
   #shd .shd-scan-title{text-align:center;font-size:18px;font-weight:800;margin:4px 0 18px;color:#eaecef}
   #shd .shd-steps{max-width:400px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
   #shd .shd-step{display:flex;align-items:center;gap:11px;font-size:13px;opacity:0;animation:shdStepIn .3s forwards}
@@ -207,7 +225,7 @@ function inyectarCSS() {
     #shd .shd-hero h1{font-size:21px} #shd .shd-perm{flex-wrap:wrap}
     #shd .shd-perm-info{flex:1 1 60%} #shd .shd-revoke{margin-left:auto}
     #shd .shd-health{flex-direction:column} #shd .shd-gauge{margin:0 auto}
-    #shd .shd-wallet{flex-direction:column} #shd .shd-wsep{width:auto;height:1px;align-self:stretch;background:linear-gradient(90deg,transparent,#29313b 30%,#29313b 70%,transparent)}
+    #shd .shd-hero-score{flex-direction:column;text-align:center} #shd .shd-score-stats{justify-content:center} #shd .shd-wallet{flex-direction:column} #shd .shd-wsep{width:auto;height:1px;align-self:stretch;background:linear-gradient(90deg,transparent,#29313b 30%,#29313b 70%,transparent)}
     #shd .shd-wright{align-items:flex-start} #shd .shd-cards{grid-template-columns:1fr}
     #shd .shd-btns .shd-btn{flex:1 1 100%}
   }
@@ -242,7 +260,7 @@ async function montarParticulas() {
     const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (quieto) return;
     const lienzo = document.getElementById('shd-fx'); if (!lienzo) return;
-    const mod = await import('../portada/chispas.js?v=200');
+    const mod = await import('../../portada/chispas.js?v=200');
     if (mod.brasas) {
       mod.brasas(lienzo);
       const remedir = () => { if (mod.brasas._remedir) mod.brasas._remedir(); };
@@ -502,29 +520,57 @@ function pintarResultados(cuenta, permisos) {
   const peligrosos = externos.filter(p => p.ilimitado).length;
   const sc = calcularScore(permisos);
   $('shd-barslot').innerHTML = cabecera();
-  let html = healthCard(sc) + `
-    <div class="shd-res-head">
-      <h2>${externos.length + nuestros.length} permission${(externos.length+nuestros.length)!==1?'s':''} found${peligrosos ? ` · <span style="color:#f6465d">${peligrosos} risky</span>` : ''}</h2>
+
+  // arco del score
+  const pct = sc.score / 100; const circ = 283; const off = circ * (1 - pct);
+
+  let html = `
+    <div class="shd-hero-score">
+      <div class="shd-score-ring">
+        <svg viewBox="0 0 110 110" width="150" height="150">
+          <circle cx="55" cy="55" r="45" fill="none" stroke="#12161c" stroke-width="9"/>
+          <circle cx="55" cy="55" r="45" fill="none" stroke="${sc.color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/>
+        </svg>
+        <div class="shd-score-mid"><div class="shd-score-n" style="color:${sc.color}">${sc.score}</div><div class="shd-score-max">/ 100</div></div>
+      </div>
+      <div class="shd-score-side">
+        <div class="shd-score-lvl" style="color:${sc.color}">${sc.nivel}</div>
+        <div class="shd-score-sub">Wallet security score</div>
+        <div class="shd-score-stats">
+          <div class="shd-sstat"><b>${externos.length + nuestros.length}</b><span>permissions</span></div>
+          <div class="shd-sstat"><b style="color:${peligrosos?'#f6465d':'#2ebd85'}">${peligrosos}</b><span>risky</span></div>
+          <div class="shd-sstat"><b style="color:#2ebd85">${nuestros.length}</b><span>trusted</span></div>
+        </div>
+      </div>
+    </div>`;
+
+  // factores del score como fila de chips
+  if (sc.factores.length) {
+    html += `<div class="shd-factors">` + sc.factores.map(f => {
+      const cls = f.tipo === 'ok' ? 'ok' : (f.tipo === 'warn' ? 'warn' : 'bad');
+      const ic = f.tipo === 'ok' ? '✓' : (f.tipo === 'warn' ? '!' : '✕');
+      return `<div class="shd-factor ${cls}" title="${escH(f.detalle)}"><span>${ic}</span> ${escH(f.texto)}</div>`;
+    }).join('') + `</div>`;
+  }
+  if (sc.consejos.length) html += `<div class="shd-consejo" style="margin:0 0 18px">💡 ${escH(sc.consejos[0])}</div>`;
+
+  html += `<div class="shd-res-head">
+      <h2>Permissions</h2>
       <div class="shd-res-btns"><button class="shd-rescan" id="shd-back2">Back</button><button class="shd-rescan" id="shd-rescan">Scan again</button></div>
     </div>`;
+
   if (permisos.length === 0) {
-    html += `<div class="shd-safe"><div class="ic">${IC.check}</div><h2 style="margin:0 0 6px;color:#e7ecf2">Your wallet is clean</h2><p style="margin:0">No active permissions found. Nothing to revoke.</p></div>`;
+    html += `<div class="shd-safe"><div class="ic">${IC.check}</div><h2 style="margin:0 0 6px;color:#eaecef">Your wallet is clean</h2><p style="margin:0">No active permissions found. Nothing to revoke.</p></div>`;
   } else {
-    if (externos.length) {
-      html += `<div class="shd-group-t risk">⚠ External permissions</div>`;
-      html += externos.map(filaPerm).join('');
-    }
-    if (nuestros.length) {
-      html += `<div class="shd-group-t trust">✓ Trusted · Cripto Cuba</div>`;
-      html += nuestros.map(filaPerm).join('');
-    }
+    if (externos.length) { html += `<div class="shd-group-t risk">${escH('⚠')} External permissions</div>` + externos.map(filaPerm).join(''); }
+    if (nuestros.length) { html += `<div class="shd-group-t trust">✓ Trusted · Cripto Cuba</div>` + nuestros.map(filaPerm).join(''); }
   }
-  html += `<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you don't recognize or no longer use. Each revoke is a transaction you sign in your wallet (costs a little gas).</div>`;
+  html += `<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you don't recognize or no longer use. Each revoke is a transaction you sign in your wallet.</div>`;
+
   $('shd-in').innerHTML = html;
   wireBack();
   const bb = $('shd-back2'); if (bb) bb.onclick = () => pintarInicio(cuenta);
   $('shd-rescan').onclick = () => escanear(cuenta);
-  // wire revokes
   document.querySelectorAll('[data-revoke]').forEach(b => {
     b.onclick = async () => {
       const [token, spender] = b.dataset.revoke.split('|');
@@ -534,7 +580,6 @@ function pintarResultados(cuenta, permisos) {
     };
   });
 }
-
 function healthCard(sc) {
   // arco semicircular del score (SVG)
   const pct = sc.score / 100;
