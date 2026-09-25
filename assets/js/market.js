@@ -7,10 +7,10 @@
 // sin nada externo que pueda quedarse colgado y dejar la app en 'Cargando…'.
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
 import * as wallet from './wallet.js?v=125';
-import { estilos } from './market/estilos.js?v=11';
+import { estilos } from './market/estilos.js?v=12';
 import { MARKET, USDT, USDC, TOKENS, RPCS, ABI, ERC20, ESTADOS, MONEDAS, METODOS, PAR, SUGERE, ICOCT, CF_PASOS, COBROS, NOMBRE_MONEDA } from './market/config.js?v=1';
 import { firmante, esc, f18, num, simbolo, corto, traducir, fechaExacta } from './market/util.js?v=1';
-import { overlay, cerrar, dialogo, marco, cerrarWiz, wmsg, msg } from './market/ui.js?v=1';
+import { overlay, cerrar, dialogo, marco, cerrarWiz, wmsg, msg } from './market/ui.js?v=2';
 import { guardarUbic, leerUbic, pedirUbicacion, kmEntre, distanciaEn, activarUbicacion, quitarUbicacion, initUbicacion } from './market/ubicacion.js?v=1';
 export { compartirUbicacion } from './market/ubicacion.js?v=1';
 import { abrirAsistente, initAsistenteVenta } from './market/asistente-venta.js?v=2';
@@ -19,7 +19,7 @@ export { abrirAsistenteCompra } from './market/asistente-compra.js?v=2';
 import { lee } from './market/contrato.js?v=1';
 import { pedirPerfilRapido, pedirMotivo, confirmar, pedirEstrellas, initDialogos } from './market/dialogos.js?v=1';
 import { panelMisOps, wireOps, initOperaciones } from './market/operaciones.js?v=3';
-import { listarOfertas } from './market/ofertas.js?v=2';
+import { listarOfertas } from './market/ofertas.js?v=3';
 import { panelVender } from './market/vender.js?v=2';
 import { comoFunciona } from './market/guia.js?v=2';
 
