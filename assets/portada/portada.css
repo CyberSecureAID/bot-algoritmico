@@ -615,3 +615,17 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
 /* Botón-imagen en secciones (Bots en "Más que bots"): mismo estilo que el hero */
 #pt .pt-btn-img-sec img{height:50px}
 @media(max-width:560px){#pt .pt-btn-img-sec img{height:44px}}
+
+/* ═══════════════════════════════════════════════════════════════
+   AJUSTE SOLO PARA TABLET (769px–1024px): rellenar el hueco que deja
+   el número impar de elementos cuando la rejilla se compacta a 2 columnas.
+   NO afecta a escritorio (>1024px) ni a móvil (<769px), que quedan igual.
+   ═══════════════════════════════════════════════════════════════ */
+@media(min-width:769px) and (max-width:1024px){
+  /* Assets: 5 criptomonedas en 2 columnas → la 5ª (última) ocupa las 2 columnas */
+  #pt .pt-coins{grid-template-columns:repeat(2,1fr)}
+  #pt .pt-coin:last-child{grid-column:1 / -1}
+  /* Professional Trading: 3 tarjetas en 2 columnas → la 3ª ocupa las 2 columnas */
+  #pt .pt-shots{grid-template-columns:repeat(2,1fr)}
+  #pt .pt-shot-link:last-child{grid-column:1 / -1}
+}
