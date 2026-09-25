@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 
 const BSCSCAN = 'https://api.bscscan.com/api';
 // API key pública de BscScan (solo lectura). Se puede rotar desde aquí.
-const BSCSCAN_KEY = 'YourApiKeyToken';  // BscScan permite lecturas básicas sin key con límite
+const BSCSCAN_KEY = 'BUS6DPJ84DWQ1N9XCN8PIUHTNFM5TXE2HU';  // BscScan permite lecturas básicas sin key con límite
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed1.ninicoin.io'];
 
 // NUESTROS contratos: los permisos hacia ellos se marcan como CONFIABLES.

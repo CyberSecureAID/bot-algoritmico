@@ -8,7 +8,7 @@ import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 import * as wallet from '../wallet.js?v=125';
 
 const BSCSCAN = 'https://api.bscscan.com/api';
-const BSCSCAN_KEY = 'YourApiKeyToken';
+const BSCSCAN_KEY = 'BUS6DPJ84DWQ1N9XCN8PIUHTNFM5TXE2HU';
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed1.ninicoin.io'];
 const ABI = [
   'function balanceOf(address) view returns (uint256)',

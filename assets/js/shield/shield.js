@@ -2,12 +2,12 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=4';
+import * as datos from './shield-datos.js?v=5';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
-import * as sim from './shield-sim.js?v=1';
-import * as rescue from './shield-rescue.js?v=1';
-import * as watch from './shield-watch.js?v=1';
+import * as sim from './shield-sim.js?v=2';
+import * as rescue from './shield-rescue.js?v=2';
+import * as watch from './shield-watch.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -159,6 +159,8 @@ function inyectarCSS() {
   #shd .shd-wtab.on{background:rgba(232,184,75,.1);border-color:rgba(232,184,75,.35);color:var(--gold,#E8B84B)}
   #shd .shd-wtoks,#shd .shd-wops{display:flex;flex-direction:column;gap:8px}
   #shd .shd-wtok{display:flex;align-items:center;gap:12px;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:11px;padding:11px 14px}
+  #shd .shd-wtok .shd-perm-ic img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+  #shd .shd-wtok .shd-perm-ic{overflow:hidden}
   #shd .shd-watch-dust{font-size:11.5px;color:#79838f;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 4px;padding-left:2px}
   #shd .shd-wop{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:11px;padding:12px 14px;font-size:13px}
   #shd .shd-wop-l b{font-weight:700} #shd .shd-wop-r{display:flex;align-items:center;gap:10px;flex:none}
@@ -460,7 +462,8 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const usdTxt = t.usd > 0.01 ? (' · $' + t.usd.toLocaleString(undefined,{maximumFractionDigits:2})) : '';
     const bal = t.balance.toLocaleString(undefined,{maximumFractionDigits:4});
     const ini = (t.symbol||'?').slice(0,3).toUpperCase();
-    return '<div class="shd-wtok"><div class="shd-perm-ic">' + ini + '</div><div class="shd-perm-info"><b>' + escH(t.symbol) + '</b><div class="sp">' + bal + usdTxt + '</div></div></div>';
+    const ic = t.logo ? ('<div class="shd-perm-ic"><img src="' + t.logo + '" alt="" onerror="this.parentElement.textContent=\''+ini+'\'"></div>') : ('<div class="shd-perm-ic">' + ini + '</div>');
+    return '<div class="shd-wtok">' + ic + '<div class="shd-perm-info"><b>' + escH(t.symbol) + '</b><div class="sp">' + bal + usdTxt + '</div></div></div>';
   };
   const filaOp = (o) => {
     const fecha = new Date(o.ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -477,7 +480,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     <div id="watch-pane"></div>`;
   const paneTokens = () => {
     let h = '<div class="shd-wtoks">';
-    if (d.nativoUSD > 0) h += filaTok({ symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD });
+    if (d.nativo > 0) h += filaTok({ symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD, logo: watch.logoBNB() });
     h += conValor.map(filaTok).join('');
     if (polvo.length) { h += `<div class="shd-watch-dust">${polvo.length} dust / spam token${polvo.length>1?'s':''} (zero or near-zero value)</div>`; h += polvo.map(filaTok).join(''); }
     return h + '</div>';
