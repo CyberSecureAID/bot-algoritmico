@@ -2,12 +2,12 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=5';
+import * as datos from './shield-datos.js?v=6';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
-import * as sim from './shield-sim.js?v=2';
-import * as rescue from './shield-rescue.js?v=2';
-import * as watch from './shield-watch.js?v=4';
+import * as sim from './shield-sim.js?v=3';
+import * as rescue from './shield-rescue.js?v=3';
+import * as watch from './shield-watch.js?v=5';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -336,11 +336,9 @@ function pintarConectar() {
         <span class="shd-feat">One-tap revoke</span>
       </div>
       <button class="shd-btn" id="shd-conn">Connect wallet</button>
-      <div style="margin-top:12px"><button class="shd-btn2" id="shd-conn-watch">${IC.eye} Explore any wallet (no connect needed)</button></div>
     </div>`;
   wireBack();
   $('shd-conn').onclick = async () => { try { await wallet.conectar(); abrirShield(); } catch (_) {} };
-  const cw = $('shd-conn-watch'); if (cw) cw.onclick = () => pintarWatcher(null);
 }
 function wireBack() { const b = $('shd-back'); if (b) b.onclick = cerrar; }
 

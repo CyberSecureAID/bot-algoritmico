@@ -6,7 +6,7 @@
    claro qué significa y el nivel de riesgo. Todo con lecturas on-chain reales. */
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 import * as wallet from '../wallet.js?v=125';
-import { NUESTROS } from './shield-datos.js?v=5';
+import { NUESTROS } from './shield-datos.js?v=6';
 
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed1.ninicoin.io'];
 const ABI = [

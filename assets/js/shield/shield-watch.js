@@ -5,7 +5,8 @@
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 
 const ALCHEMY = 'https://bnb-mainnet.g.alchemy.com/v2/docs-demo';   // demo público, sin key
-const BSCSCAN = 'https://api.bscscan.com/api';
+const BSCSCAN = 'https://api.etherscan.io/v2/api';
+const CHAIN = 56;   // BSC
 const BSCSCAN_KEY = 'BUS6DPJ84DWQ1N9XCN8PIUHTNFM5TXE2HU';   // key real (gratuita)
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io'];
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
@@ -48,7 +49,7 @@ export async function tokensDe(addr, onProgreso) {
 
   // Fuente 1: BscScan tokentx (con tu key) — la más completa
   try {
-    const url = `${BSCSCAN}?module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=1&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
+    const url = `${BSCSCAN}?chainid=${CHAIN}&module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=1&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 18000);
     const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json();
@@ -111,7 +112,7 @@ export async function historialDe(addr) {
   if (!esDireccion(addr)) return [];
   // 1. BscScan tokentx (transferencias de tokens) — la key real lo hace fiable
   try {
-    const url = `${BSCSCAN}?module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=1&offset=30&sort=desc&apikey=${BSCSCAN_KEY}`;
+    const url = `${BSCSCAN}?chainid=${CHAIN}&module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=1&offset=30&sort=desc&apikey=${BSCSCAN_KEY}`;
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 18000);
     const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(to);
     const d = await r.json();
