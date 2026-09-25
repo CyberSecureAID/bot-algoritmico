@@ -28,7 +28,8 @@ function inyectarCSS() {
   #shd .shd-in{position:relative;z-index:1;width:100%;max-width:820px;margin:0 auto;padding:22px 16px calc(40px + env(safe-area-inset-bottom,0px))}
   /* Wallet conectada */
   #shd .shd-wallet{display:flex;align-items:center;gap:12px;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:14px;padding:14px 16px;margin-bottom:18px}
-  #shd .shd-wava{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;overflow:hidden;flex:none;color:var(--gold,#E8B84B)}
+  #shd .shd-wava{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;flex:none;color:var(--gold,#E8B84B)}
+  #shd .shd-wava svg{width:24px;height:24px} #shd .shd-wava img{width:26px;height:26px;border-radius:6px;object-fit:cover}
   #shd .shd-wava img{width:100%;height:100%;object-fit:cover}
   #shd .shd-winfo{flex:1;min-width:0}
   #shd .shd-winfo b{font-size:14px;display:block}
@@ -44,6 +45,8 @@ function inyectarCSS() {
   #shd .shd-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:15px 34px;border:1px solid var(--gold-md,#cf9f2e);border-radius:13px;background:linear-gradient(180deg,#f4d089,#E8B84B 55%,#cf9f2e);color:#241900;font-family:var(--display,sans-serif);font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 5px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4)}
   #shd .shd-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4)}
   #shd .shd-btn:disabled{opacity:.6;cursor:default}
+  #shd .shd-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  #shd .shd-btns .shd-btn,#shd .shd-btns .shd-btn2{margin-top:0;padding:14px 22px;flex:0 1 auto}
   #shd .shd-btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:12px 24px;border:1px solid #29313b;border-radius:12px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
   #shd .shd-btn2:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-btn2 svg{stroke:currentColor}
@@ -55,6 +58,15 @@ function inyectarCSS() {
   #shd .shd-radar-sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,rgba(232,184,75,.32) 40deg,transparent 80deg);animation:shdSweep 1.4s linear infinite}
   #shd .shd-radar-core{position:absolute;inset:46px;border-radius:50%;background:radial-gradient(circle,#f4d089,#cf9f2e);box-shadow:0 0 20px rgba(232,184,75,.55)}
   @keyframes shdSweep{to{transform:rotate(360deg)}}
+  #shd .shd-radar-grid{position:absolute;inset:0;border-radius:50%;background:
+    linear-gradient(0deg,transparent 49%,rgba(232,184,75,.1) 50%,transparent 51%),
+    linear-gradient(90deg,transparent 49%,rgba(232,184,75,.1) 50%,transparent 51%)}
+  #shd .shd-blip{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--gold,#E8B84B);box-shadow:0 0 8px var(--gold,#E8B84B);opacity:0}
+  #shd .shd-blip.b1{top:24%;left:30%;animation:shdBlip 1.4s ease-in-out .3s infinite}
+  #shd .shd-blip.b2{top:60%;left:66%;animation:shdBlip 1.4s ease-in-out .7s infinite}
+  #shd .shd-blip.b3{top:70%;left:28%;animation:shdBlip 1.4s ease-in-out 1s infinite}
+  #shd .shd-blip.b4{top:34%;left:68%;animation:shdBlip 1.4s ease-in-out 1.2s infinite}
+  @keyframes shdBlip{0%,100%{opacity:0;transform:scale(.5)}40%{opacity:1;transform:scale(1)}}
   #shd .shd-term{background:rgba(3,5,8,.72);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;font-family:var(--mono,monospace);font-size:12.5px;text-align:left;min-height:120px}
   #shd .shd-term .ln{color:#79838f;margin-bottom:5px;opacity:0;animation:shdIn .3s forwards}
   #shd .shd-term .ln b{color:var(--gold,#E8B84B)} #shd .shd-term .ln .ok{color:#2ebd85}
@@ -146,7 +158,11 @@ export function abrirShield() {
   if (!cuenta) { pintarConectar(); return; }
   pintarInicio(cuenta);
 }
-function cerrar() { const c = $('shd'); if (c) c.remove(); try { location.href = 'index.html'; } catch (_) {} }
+function cerrar() {
+  // Navegar al lobby SIN quitar el overlay antes (si se quita, se ven los bots
+  // de app.html un instante). El overlay tapa la pantalla hasta que carga index.
+  try { location.replace('index.html'); } catch (_) { location.href = 'index.html'; }
+}
 
 function cabecera() {
   return `<div class="shd-bar">
@@ -160,7 +176,7 @@ function pintarConectar() {
   $('shd-in').innerHTML = `
     <div class="shd-hero" style="padding-top:50px">
       <h1>Protect your wallet</h1>
-      <p>Wallet Shield scans your wallet for risky permissions, gives you a security score, checks contracts before you sign, and lets you revoke threats — all in one place. Connect your wallet to begin.</p>
+      <p>Wallet Shield scans your wallet for risky permissions, gives you a security score, checks contracts before you sign, and lets you revoke threats, all in one place. Connect your wallet to begin.</p>
       <div class="shd-feats">
         <span class="shd-feat">Permission scanner</span>
         <span class="shd-feat">Health score</span>
@@ -187,11 +203,10 @@ function pintarInicio(cuenta) {
     <div class="shd-hero">
       <h1>Scan your wallet</h1>
       <p>Check every permission your wallet has granted, get a security score, and revoke anything risky in one tap.</p>
-      <div style="margin-top:8px"><button class="shd-btn" id="shd-scan">${IC.shield} Scan now</button></div>
-      <div><button class="shd-btn2" id="shd-sim">${IC.search} Check a contract before signing</button></div>
+      <div class="shd-btns"><button class="shd-btn" id="shd-scan">${IC.shield} Scan</button><button class="shd-btn2" id="shd-sim">${IC.search} Check contract</button></div>
     </div>
     <div class="shd-how">
-      <b>How it works.</b> Every time you use a dApp, you grant it permission to move certain tokens. Old or unlimited permissions are the #1 way wallets get drained. This scan shows them all — permissions to our own contracts are marked as trusted; anything you don't recognize, revoke it.
+      <b>How it works.</b> Every time you use a dApp, you grant it permission to move certain tokens. Old or unlimited permissions are the top way wallets get drained. This scan shows them all. Permissions to our own contracts are marked as trusted. Anything you don't recognize, revoke it.
     </div>`;
   wireBack();
   $('shd-scan').onclick = () => escanear(cuenta);
@@ -203,10 +218,10 @@ function pintarSimulador(cuenta) {
   $('shd-in').innerHTML = `
     <div class="shd-sim-wrap">
       <h1 class="shd-sim-h">What happens if I sign this?</h1>
-      <p class="shd-sim-p">Paste the contract a site is asking you to approve. If you have the spender address too, add it for a full risk check. We read the blockchain live — no guessing.</p>
+      <p class="shd-sim-p">Paste the contract a site is asking you to approve. If you have the spender address too, add it for a full risk check. We read the blockchain live, no guessing.</p>
       <label class="shd-sim-lbl">Token / contract address</label>
       <input class="shd-sim-in" id="sim-c" placeholder="0x… contract address" autocomplete="off" spellcheck="false">
-      <label class="shd-sim-lbl">Spender address <span style="color:#5f6b7a">(optional — who is asking for permission)</span></label>
+      <label class="shd-sim-lbl">Spender address <span style="color:#5f6b7a">(optional, who is asking for permission)</span></label>
       <input class="shd-sim-in" id="sim-s" placeholder="0x… spender address" autocomplete="off" spellcheck="false">
       <button class="shd-btn" id="sim-go" style="margin-top:16px;width:100%">Analyze</button>
       <div id="sim-res"></div>
@@ -251,7 +266,9 @@ async function escanear(cuenta) {
     <div class="shd-scanning">
       <div class="shd-radar">
         <div class="shd-radar-ring"></div><div class="shd-radar-ring r2"></div><div class="shd-radar-ring r3"></div>
+        <div class="shd-radar-grid"></div>
         <div class="shd-radar-sweep"></div><div class="shd-radar-core"></div>
+        <span class="shd-blip b1"></span><span class="shd-blip b2"></span><span class="shd-blip b3"></span><span class="shd-blip b4"></span>
       </div>
       <div class="shd-term" id="shd-term"></div>
       <div class="shd-bar-pr"><div class="shd-bar-fill" id="shd-bar"></div></div>
@@ -303,7 +320,7 @@ function pintarResultados(cuenta, permisos) {
       html += nuestros.map(filaPerm).join('');
     }
   }
-  html += `<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending — it never moves or risks your funds. Revoke anything you don't recognize or no longer use. Each revoke is a transaction you sign in your wallet (costs a little gas).</div>`;
+  html += `<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you don't recognize or no longer use. Each revoke is a transaction you sign in your wallet (costs a little gas).</div>`;
   $('shd-in').innerHTML = html;
   wireBack();
   $('shd-rescan').onclick = () => escanear(cuenta);
@@ -355,7 +372,7 @@ function filaPerm(p) {
     </div>`;
   }
   const riesgo = p.ilimitado
-    ? `<div class="exp bad">Unlimited access — high risk if unknown</div>`
+    ? `<div class="exp bad">Unlimited access, high risk if unknown</div>`
     : `<div class="exp warn">Limited approval</div>`;
   return `<div class="shd-perm ${p.ilimitado ? 'danger' : ''}">
     <div class="shd-perm-ic">${ini}</div>
