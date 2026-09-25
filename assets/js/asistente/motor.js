@@ -1161,6 +1161,8 @@
 
       '</section>';
     document.body.appendChild(wrap);
+    // Eliminar el botón provisional de app.html: ya existe el real, no deben quedar dos.
+    try { var _prev = document.getElementById('np-fab-previo'); if (_prev) _prev.remove(); } catch (e) {}
 
     elChat  = document.getElementById('npChat');
     elMsgs  = document.getElementById('npMsgs');
