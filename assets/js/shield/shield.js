@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=3';
 import * as rescue from './shield-rescue.js?v=3';
-import * as watch from './shield-watch.js?v=6';
+import * as watch from './shield-watch.js?v=7';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -76,7 +76,7 @@ function inyectarCSS() {
   #shd .shd-btn-ghost:active{transform:translateY(2px)!important}
   #shd .shd-btn-ghost svg{stroke:var(--gold,#E8B84B)}
   /* Cards explicativas */
-  #shd .shd-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:24px}
+  #shd .shd-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
   #shd .shd-card{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:14px;padding:16px}
   #shd .shd-card-ic{width:38px;height:38px;border-radius:10px;background:rgba(232,184,75,.1);color:var(--gold,#E8B84B);display:grid;place-items:center;margin-bottom:11px}
   #shd .shd-card-ic svg{width:20px;height:20px;stroke:currentColor}
@@ -86,6 +86,8 @@ function inyectarCSS() {
   #shd .shd-card-red .shd-card-ic{background:rgba(246,70,93,.12);color:#f6465d}
   #shd .shd-card-btn{margin-top:12px;width:100%;padding:9px;border:1px solid rgba(246,70,93,.4);border-radius:9px;background:rgba(246,70,93,.08);color:#f6465d;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer}
   #shd .shd-card-btn:hover{background:rgba(246,70,93,.16)}
+  #shd .shd-card-btn.gold{border-color:var(--gold-md,#cf9f2e);background:linear-gradient(180deg,#f4d089,#E8B84B 55%,#cf9f2e);color:#241900}
+  #shd .shd-card-btn.gold:hover{filter:brightness(1.06)}
   
   /* Escaneo (radar dorado) */
   #shd .shd-scanning{max-width:520px;margin:0 auto;padding:22px}
@@ -361,17 +363,13 @@ function pintarInicio(cuenta) {
         <small>Total balance</small><b id="shd-bal">…</b>
       </div>
     </div>
-    <div class="shd-hero">
-      <h1>Scan your wallet</h1>
-      <p>Check every permission your wallet has granted, get a security score, and revoke anything risky in one tap.</p>
-      <div class="shd-btns">
-        <button class="shd-btn" id="shd-scan">${IC.shield} Scan</button>
-        <button class="shd-btn shd-btn-ghost" id="shd-sim">${IC.search} Check contract</button>
-      </div>
+    <div class="shd-hero" style="padding-bottom:14px">
+      <h1>Wallet Shield</h1>
+      <p>Everything you need to keep your wallet safe, in one place. Pick a tool below.</p>
     </div>
     <div class="shd-cards">
-      <div class="shd-card"><div class="shd-card-ic">${IC.shield}</div><b>Permission scan</b><span>See every approval your wallet gave and revoke the risky ones.</span></div>
-      <div class="shd-card"><div class="shd-card-ic">${IC.search}</div><b>Contract check</b><span>Paste any contract before you sign and we tell you if it's safe.</span></div>
+      <div class="shd-card"><div class="shd-card-ic">${IC.shield}</div><b>Permission scan</b><span>See every approval your wallet gave and revoke the risky ones.</span><button class="shd-card-btn gold" id="shd-scan">Scan now</button></div>
+      <div class="shd-card"><div class="shd-card-ic">${IC.search}</div><b>Contract check</b><span>Paste any contract before you sign and we tell you if it's safe.</span><button class="shd-card-btn gold" id="shd-sim">Check contract</button></div>
       <div class="shd-card shd-card-red"><div class="shd-card-ic">${IC.alert}</div><b>Emergency evacuation</b><span>If your wallet is at risk, move all your tokens to a safe wallet fast.</span><button class="shd-card-btn" id="shd-emerg">Open emergency tool</button></div>
       <div class="shd-card shd-card-watch"><div class="shd-card-ic">${IC.eye}</div><b>Wallet Watcher</b><span>Track any wallet on the chain: see all its tokens, balance and live moves.</span><button class="shd-card-btn watch" id="shd-watch">Open watcher</button></div>
     </div>`;
