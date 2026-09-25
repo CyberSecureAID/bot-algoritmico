@@ -7,6 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=1';
 import * as rescue from './shield-rescue.js?v=1';
+import * as watch from './shield-watch.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -136,7 +137,36 @@ function inyectarCSS() {
   #shd .shd-safe .ic{width:60px;height:60px;border-radius:50%;background:rgba(46,189,133,.12);color:#2ebd85;display:grid;place-items:center;margin-bottom:16px}
   #shd .shd-how{background:rgba(14,19,25,.6);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#a7b0bb;line-height:1.6}
   #shd .shd-how b{color:#eaecef}
-    /* Emergency Kill Switch */
+      /* Wallet Watcher */
+  #shd .shd-card-watch{border-color:rgba(90,160,232,.22)}
+  #shd .shd-card-watch .shd-card-ic{background:rgba(90,160,232,.12);color:#6aa8f0}
+  #shd .shd-card-btn.watch{border-color:rgba(90,160,232,.4);background:rgba(90,160,232,.08);color:#6aa8f0}
+  #shd .shd-card-btn.watch:hover{background:rgba(90,160,232,.16)}
+  #shd .shd-watch-wrap{max-width:600px;margin:0 auto;padding:10px 0}
+  #shd .shd-watch-hero{text-align:center;margin-bottom:8px}
+  #shd .shd-watch-icon{width:56px;height:56px;border-radius:50%;background:rgba(232,184,75,.1);color:var(--gold,#E8B84B);display:grid;place-items:center;margin:0 auto 14px}
+  #shd .shd-watch-hero h1{font-size:22px;font-weight:800;margin:0 0 10px}
+  #shd .shd-watch-hero p{font-size:13px;color:#a7b0bb;line-height:1.6;margin:0 0 6px}
+  #shd .shd-watch-saved{margin-top:14px;font-size:12px;color:#79838f;display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #shd .shd-watch-chip{background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.22);color:var(--gold,#E8B84B);border-radius:100px;padding:5px 12px;font-family:var(--mono,monospace);font-size:11.5px;cursor:pointer}
+  #shd .shd-watch-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;padding:16px 18px;background:linear-gradient(135deg,rgba(20,26,33,.9),rgba(10,14,18,.9));border:1px solid #1c232b;border-radius:14px}
+  #shd .shd-watch-addr{font-family:var(--mono,monospace);font-size:14px;color:#a7b0bb}
+  #shd .shd-watch-total{font-size:26px;font-weight:800;margin-top:4px} #shd .shd-watch-total small{font-size:12px;color:#79838f;font-weight:600}
+  #shd .shd-watch-follow{padding:11px 18px;border-radius:11px;border:1px solid var(--gold-md,#cf9f2e);background:rgba(232,184,75,.1);color:var(--gold,#E8B84B);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;flex:none}
+  #shd .shd-watch-follow.on{background:rgba(46,189,133,.12);border-color:rgba(46,189,133,.4);color:#2ebd85}
+  #shd .shd-watch-tabs{display:flex;gap:8px;margin:16px 0 12px}
+  #shd .shd-wtab{flex:1;padding:11px;border-radius:10px;border:1px solid #1c232b;background:rgba(255,255,255,.02);color:#a7b0bb;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+  #shd .shd-wtab.on{background:rgba(232,184,75,.1);border-color:rgba(232,184,75,.35);color:var(--gold,#E8B84B)}
+  #shd .shd-wtoks,#shd .shd-wops{display:flex;flex-direction:column;gap:8px}
+  #shd .shd-wtok{display:flex;align-items:center;gap:12px;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:11px;padding:11px 14px}
+  #shd .shd-watch-dust{font-size:11.5px;color:#79838f;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 4px;padding-left:2px}
+  #shd .shd-wop{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:11px;padding:12px 14px;font-size:13px}
+  #shd .shd-wop-l b{font-weight:700} #shd .shd-wop-r{display:flex;align-items:center;gap:10px;flex:none}
+  #shd .shd-wop-r span{font-size:11.5px;color:#79838f} #shd .shd-wop-hash{font-size:11.5px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.3);border-radius:7px;padding:3px 8px}
+  #shd .shd-empty{text-align:center;color:#79838f;font-size:13px;padding:26px}
+  @media(max-width:560px){ #shd .shd-watch-head{flex-direction:column;align-items:stretch} #shd .shd-watch-follow{width:100%} #shd .shd-wop{flex-wrap:wrap} }
+  
+  /* Emergency Kill Switch */
   #shd .shd-emerg{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border:1px solid rgba(246,70,93,.4);border-radius:12px;background:rgba(246,70,93,.08);color:#f6465d;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
   #shd .shd-emerg:hover{background:rgba(246,70,93,.15)}
   #shd .shd-emerg svg{stroke:currentColor}
@@ -240,6 +270,7 @@ const IC = {
   search: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
   alert: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
   copy: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
   check2: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#2ebd85" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 };
 
@@ -331,11 +362,13 @@ function pintarInicio(cuenta) {
       <div class="shd-card"><div class="shd-card-ic">${IC.shield}</div><b>Permission scan</b><span>See every approval your wallet gave and revoke the risky ones.</span></div>
       <div class="shd-card"><div class="shd-card-ic">${IC.search}</div><b>Contract check</b><span>Paste any contract before you sign and we tell you if it's safe.</span></div>
       <div class="shd-card shd-card-red"><div class="shd-card-ic">${IC.alert}</div><b>Emergency evacuation</b><span>If your wallet is at risk, move all your tokens to a safe wallet fast.</span><button class="shd-card-btn" id="shd-emerg">Open emergency tool</button></div>
+      <div class="shd-card shd-card-watch"><div class="shd-card-ic">${IC.eye}</div><b>Wallet Watcher</b><span>Track any wallet on the chain: see all its tokens, balance and live moves.</span><button class="shd-card-btn watch" id="shd-watch">Open watcher</button></div>
     </div>`;
   wireBack();
   $('shd-scan').onclick = () => escanear(cuenta);
   $('shd-sim').onclick = () => pintarSimulador(cuenta);
   $('shd-emerg').onclick = () => pintarRescate(cuenta);
+  const wb = $('shd-watch'); if (wb) wb.onclick = () => pintarWatcher(cuenta);
   const cp = $('shd-copy'); if (cp) cp.onclick = async () => { const ok = await datos.copiar(cuenta); cp.innerHTML = ok ? IC.check2 : IC.copy; setTimeout(() => { cp.innerHTML = IC.copy; }, 1400); };
   // saldo (async)
   datos.saldoTotalUSD(cuenta).then(b => { const e = $('shd-bal'); if (e) e.textContent = b; });
@@ -380,6 +413,92 @@ function tarjetaSim(info) {
     <div class="shd-sim-res">${escH(info.resumen)}</div>
     <div class="shd-sim-halls">${hall}</div>
   </div>`;
+}
+function pintarWatcher(cuenta) {
+  $('shd-barslot').innerHTML = cabecera();
+  const seguidas = watch.listaSeguidas();
+  let chips = '';
+  if (seguidas.length) {
+    const btns = seguidas.map(w => '<button class="shd-watch-chip" data-w="' + w.addr + '">' + w.addr.slice(0,6) + '…' + w.addr.slice(-4) + '</button>').join('');
+    chips = '<div class="shd-watch-saved"><small>You are watching:</small> ' + btns + '</div>';
+  }
+  $('shd-in').innerHTML = `
+    <div class="shd-watch-wrap">
+      <div class="shd-watch-hero">
+        <div class="shd-watch-icon">${IC.eye}</div>
+        <h1>Wallet Watcher</h1>
+        <p>Track any wallet on the blockchain. See every token it holds (even dust and spam), its total balance, and a live history of its moves with a link to verify each one on BscScan. Everything on the chain is public, so this breaks no rules. Follow whale wallets, watch your cold wallet, or keep an eye on a wallet you trade with.</p>
+      </div>
+      <label class="shd-sim-lbl">Wallet address to watch</label>
+      <input class="shd-sim-in" id="watch-addr" placeholder="0x… any wallet address" autocomplete="off" spellcheck="false">
+      <button class="shd-btn" id="watch-go" style="width:100%;margin-top:14px">${IC.eye} Look inside</button>
+      ${chips}
+      <div id="watch-res"></div>
+      <button class="shd-rescan" id="watch-back" style="margin-top:18px">Back</button>
+    </div>`;
+  wireBack();
+  $('watch-back').onclick = () => pintarInicio(cuenta);
+  const ir = async (addr) => {
+    const cont = $('watch-res');
+    if (!watch.esDireccion(addr)) { cont.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address (0x…)</div>`; return; }
+    cont.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Reading wallet…</div></div>`;
+    try {
+      const [datos_, hist] = await Promise.all([ watch.tokensDe(addr), watch.historialDe(addr) ]);
+      pintarWatchRes(cuenta, addr, datos_, hist);
+    } catch (e) { cont.innerHTML = `<div class="shd-sim-msg bad">Could not read that wallet. Try again.</div>`; }
+  };
+  $('watch-go').onclick = () => ir($('watch-addr').value.trim());
+  document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { $('watch-addr').value = b.dataset.w; ir(b.dataset.w); });
+}
+function pintarWatchRes(cuenta, addr, d, hist) {
+  const cont = $('watch-res');
+  const corta = addr.slice(0,6)+'…'+addr.slice(-4);
+  const siguiendo = watch.estaSiguiendo(addr);
+  const conValor = d.tokens.filter(t => t.usd > 0.01);
+  const polvo = d.tokens.filter(t => t.usd <= 0.01);
+  const filaTok = (t) => {
+    const usdTxt = t.usd > 0.01 ? (' · $' + t.usd.toLocaleString(undefined,{maximumFractionDigits:2})) : '';
+    const bal = t.balance.toLocaleString(undefined,{maximumFractionDigits:4});
+    const ini = (t.symbol||'?').slice(0,3).toUpperCase();
+    return '<div class="shd-wtok"><div class="shd-perm-ic">' + ini + '</div><div class="shd-perm-info"><b>' + escH(t.symbol) + '</b><div class="sp">' + bal + usdTxt + '</div></div></div>';
+  };
+  const filaOp = (o) => {
+    const fecha = new Date(o.ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const flecha = o.tipo === 'in' ? '<span style="color:#2ebd85">received</span>' : '<span style="color:#f6465d">sent</span>';
+    const cant = o.cantidad.toLocaleString(undefined,{maximumFractionDigits:4});
+    return '<div class="shd-wop"><div class="shd-wop-l">' + flecha + ' <b>' + cant + ' ' + escH(o.symbol) + '</b></div><div class="shd-wop-r"><span>' + fecha + '</span><a href="https://bscscan.com/tx/' + o.hash + '" target="_blank" rel="noopener" class="shd-wop-hash">hash</a></div></div>';
+  };
+  cont.innerHTML = `
+    <div class="shd-watch-head">
+      <div><div class="shd-watch-addr">${corta}</div><div class="shd-watch-total">$${d.totalUSD.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} <small>total</small></div></div>
+      <button class="shd-watch-follow ${siguiendo?'on':''}" id="watch-follow">${siguiendo ? '✓ Watching' : '+ Watch this wallet'}</button>
+    </div>
+    <div class="shd-watch-tabs"><button class="shd-wtab on" data-wt="tokens">Tokens (${d.tokens.length})</button><button class="shd-wtab" data-wt="hist">Activity (${hist.length})</button></div>
+    <div id="watch-pane"></div>`;
+  const paneTokens = () => {
+    let h = '<div class="shd-wtoks">';
+    if (d.nativoUSD > 0) h += filaTok({ symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD });
+    h += conValor.map(filaTok).join('');
+    if (polvo.length) { h += `<div class="shd-watch-dust">${polvo.length} dust / spam token${polvo.length>1?'s':''} (zero or near-zero value)</div>`; h += polvo.map(filaTok).join(''); }
+    return h + '</div>';
+  };
+  $('watch-pane').innerHTML = paneTokens();
+  // seguir/dejar
+  const fb = $('watch-follow');
+  fb.onclick = () => {
+    if (watch.estaSiguiendo(addr)) { watch.dejarSeguir(addr); fb.className='shd-watch-follow'; fb.textContent='+ Watch this wallet'; }
+    else { watch.seguir(addr); fb.className='shd-watch-follow on'; fb.textContent='✓ Watching'; }
+  };
+  // tabs
+  document.querySelectorAll('[data-wt]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-wt]').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    const pane = $('watch-pane');
+    if (b.dataset.wt === 'hist') {
+      pane.innerHTML = hist.length ? '<div class="shd-wops">' + hist.map(filaOp).join('') + '</div>' : '<div class="shd-empty">No recent activity found.</div>';
+    } else {
+      pane.innerHTML = paneTokens();
+    }
+  });
 }
 function pintarRescate(cuenta) {
   $('shd-barslot').innerHTML = cabecera();
