@@ -479,6 +479,14 @@
       var que = par.get('abrir');
       if (!que) return;
 
+      // Wallet Shield: sección propia, se abre importando su módulo.
+      if (que === 'shield') {
+        import('./assets/js/shield/shield.js?v=1').then(function (m) {
+          if (m.abrirShield) m.abrirShield();
+        }).catch(function (e) { console.warn('shield:', e); });
+        return;
+      }
+
       // Cada destino de la portada, con el id del botón que ya existe.
       var BOTONES = {
         swap:     'c-swap',
