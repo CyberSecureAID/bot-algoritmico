@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=2';
 import * as rescue from './shield-rescue.js?v=2';
-import * as watch from './shield-watch.js?v=3';
+import * as watch from './shield-watch.js?v=4';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -168,6 +168,15 @@ function inyectarCSS() {
   #shd .shd-empty{text-align:center;color:#79838f;font-size:13px;padding:26px}
   @media(max-width:560px){ #shd .shd-watch-head{flex-direction:column;align-items:stretch} #shd .shd-watch-follow{width:100%} #shd .shd-wop{flex-wrap:wrap} }
   
+  #shd .shd-watch-reco{margin-top:22px;padding-top:18px;border-top:1px solid #1c232b}
+  #shd .shd-watch-reco-t{font-size:12px;font-weight:700;color:#79838f;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+  #shd .shd-watch-reco-list{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  #shd .shd-reco{text-align:left;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:11px;padding:12px 14px;cursor:pointer;transition:.15s}
+  #shd .shd-reco:hover{border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.05)}
+  #shd .shd-reco b{display:block;font-size:13px;color:#eaecef;margin-bottom:2px}
+  #shd .shd-reco span{font-size:11px;color:#79838f}
+  #shd .shd-watch-reco-note{font-size:11.5px;color:#79838f;line-height:1.5;margin-top:12px}
+  @media(max-width:560px){ #shd .shd-watch-reco-list{grid-template-columns:1fr} }
   /* Emergency Kill Switch */
   #shd .shd-emerg{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border:1px solid rgba(246,70,93,.4);border-radius:12px;background:rgba(246,70,93,.08);color:#f6465d;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
   #shd .shd-emerg:hover{background:rgba(246,70,93,.15)}
@@ -327,9 +336,11 @@ function pintarConectar() {
         <span class="shd-feat">One-tap revoke</span>
       </div>
       <button class="shd-btn" id="shd-conn">Connect wallet</button>
+      <div style="margin-top:12px"><button class="shd-btn2" id="shd-conn-watch">${IC.eye} Explore any wallet (no connect needed)</button></div>
     </div>`;
   wireBack();
   $('shd-conn').onclick = async () => { try { await wallet.conectar(); abrirShield(); } catch (_) {} };
+  const cw = $('shd-conn-watch'); if (cw) cw.onclick = () => pintarWatcher(null);
 }
 function wireBack() { const b = $('shd-back'); if (b) b.onclick = cerrar; }
 
@@ -435,6 +446,16 @@ function pintarWatcher(cuenta) {
       <input class="shd-sim-in" id="watch-addr" placeholder="0x… any wallet address" autocomplete="off" spellcheck="false">
       <button class="shd-btn" id="watch-go" style="width:100%;margin-top:14px">${IC.eye} Look inside</button>
       ${chips}
+      <div class="shd-watch-reco">
+        <div class="shd-watch-reco-t">Smart money — top wallets to watch</div>
+        <div class="shd-watch-reco-list">
+          <button class="shd-reco" data-w="0x8894e0a0c962cb723c1976a4421c95949be2d4e3"><b>Binance Hot Wallet</b><span>One of the largest active wallets</span></button>
+          <button class="shd-reco" data-w="0x28c6c06298d514db089934071355e5743bf21d60"><b>Binance 14</b><span>High-volume exchange wallet</span></button>
+          <button class="shd-reco" data-w="0xf977814e90da44bfa03b6295a0616a897441acec"><b>Binance 8</b><span>Massive holdings, constant moves</span></button>
+          <button class="shd-reco" data-w="0x5a52e96bacdabb82fd05763e25335261b270efcb"><b>Binance 16</b><span>Whale wallet worth tracking</span></button>
+        </div>
+        <div class="shd-watch-reco-note">These are public exchange and whale wallets. Watching how big money moves is one of the best free signals in crypto.</div>
+      </div>
       <div id="watch-res"></div>
       <button class="shd-rescan" id="watch-back" style="margin-top:18px">Back</button>
     </div>`;
@@ -450,7 +471,7 @@ function pintarWatcher(cuenta) {
     } catch (e) { cont.innerHTML = `<div class="shd-sim-msg bad">Could not read that wallet. Try again.</div>`; }
   };
   $('watch-go').onclick = () => ir($('watch-addr').value.trim());
-  document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { $('watch-addr').value = b.dataset.w; ir(b.dataset.w); });
+  document.querySelectorAll('[data-w], .shd-reco').forEach(b => b.onclick = () => { $('watch-addr').value = b.dataset.w; ir(b.dataset.w); });
 }
 function pintarWatchRes(cuenta, addr, d, hist) {
   const cont = $('watch-res');

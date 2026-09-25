@@ -32,43 +32,72 @@ async function metadata(addr) {
   } catch (_) { return { symbol: '?', name: '', decimals: 18, logo: null }; }
 }
 
-/* ── Todos los tokens de una wallet (con saldo, logo y valor USD) ── */
+/* ── Todos los tokens de una wallet (MÚLTIPLES fuentes) ──
+   Fuente 1: BscScan tokentx (con key) → lista de todos los tokens que tocó.
+   Fuente 2: Alchemy getTokenBalances → refuerzo.
+   Balance real on-chain de cada uno. Precios/logos de DeFiLlama + metadata. */
+const ABI_ERC = ['function balanceOf(address) view returns (uint256)','function symbol() view returns (string)','function decimals() view returns (uint8)','function name() view returns (string)'];
 export async function tokensDe(addr, onProgreso) {
   if (!esDireccion(addr)) return { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
   const prov = lector();
   let nativo = 0; try { nativo = Number(ethers.formatEther(await prov.getBalance(addr))); } catch (_) {}
   if (onProgreso) onProgreso(0.15);
 
-  // 1. balances de TODOS los ERC20 (Alchemy)
-  let balances = [];
+  // ── reunir direcciones de tokens de VARIAS fuentes ──
+  const dirs = new Map();  // addr -> {symbol,decimals,name} (lo que sepamos)
+
+  // Fuente 1: BscScan tokentx (con tu key) — la más completa
+  try {
+    const url = `${BSCSCAN}?module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=1&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 18000);
+    const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json();
+    if (d.status === '1' && Array.isArray(d.result)) for (const t of d.result) {
+      const a = (t.contractAddress || '').toLowerCase();
+      if (a && !dirs.has(a)) dirs.set(a, { symbol: t.tokenSymbol || '?', decimals: Number(t.tokenDecimal) || 18, name: t.tokenName || '' });
+    }
+  } catch (_) {}
+  if (onProgreso) onProgreso(0.35);
+
+  // Fuente 2: Alchemy getTokenBalances (refuerzo, por si BscScan se saltó alguno)
   try {
     const res = await alchemy('alchemy_getTokenBalances', [addr, 'erc20']);
-    balances = (res && res.tokenBalances) ? res.tokenBalances : [];
+    const bals = (res && res.tokenBalances) ? res.tokenBalances : [];
+    for (const b of bals) { const a = (b.contractAddress || '').toLowerCase(); if (a && b.tokenBalance && !/^0x0*$/.test(b.tokenBalance) && !dirs.has(a)) dirs.set(a, null); }
   } catch (_) {}
-  // filtrar los que tienen balance != 0 en hex, pero guardamos también algunos con 0 (spam)
-  const noVacios = balances.filter(b => b.tokenBalance && b.tokenBalance !== '0x' && !/^0x0+$/.test(b.tokenBalance));
-  if (onProgreso) onProgreso(0.4);
+  if (onProgreso) onProgreso(0.5);
 
-  // 2. metadata (logo, símbolo, decimales) de cada uno (en tandas)
+  // ── balance real on-chain de cada token (tandas) ──
+  const lista = [...dirs.entries()];
   const tokens = [];
-  for (let i = 0; i < noVacios.length; i += 8) {
-    const tanda = noVacios.slice(i, i + 8);
-    const res = await Promise.all(tanda.map(async (b) => {
-      const meta = await metadata(b.contractAddress);
-      let bal = 0;
-      try { bal = Number(ethers.formatUnits(BigInt(b.tokenBalance), meta.decimals)); } catch (_) {}
-      return { address: b.contractAddress.toLowerCase(), symbol: meta.symbol, name: meta.name, decimals: meta.decimals, logo: meta.logo, balance: bal };
+  for (let i = 0; i < lista.length; i += 10) {
+    const tanda = lista.slice(i, i + 10);
+    const res = await Promise.all(tanda.map(async ([a, info]) => {
+      try {
+        const c = new ethers.Contract(a, ABI_ERC, prov);
+        const bal = await c.balanceOf(addr);
+        if (bal === 0n) return null;  // sin saldo actual: no mostrar
+        let dec = info && info.decimals != null ? info.decimals : 18;
+        let sym = info && info.symbol && info.symbol !== '?' ? info.symbol : null;
+        let nom = info && info.name ? info.name : '';
+        if (!sym) { try { sym = await c.symbol(); } catch (_) { sym = '?'; } try { dec = Number(await c.decimals()); } catch (_) {} }
+        return { address: a, symbol: sym, name: nom, decimals: dec, balance: Number(ethers.formatUnits(bal, dec)), logo: null };
+      } catch (_) { return null; }
     }));
-    tokens.push(...res);
-    if (onProgreso) onProgreso(0.4 + 0.4 * ((i + 8) / Math.max(noVacios.length, 1)));
+    tokens.push(...res.filter(Boolean));
+    if (onProgreso) onProgreso(0.5 + 0.35 * ((i + 10) / Math.max(lista.length, 1)));
   }
 
-  // 3. precios (DeFiLlama) para el total + logo de refuerzo
+  // ── precios + logos (DeFiLlama) ──
   const ids = tokens.map(t => 'bsc:' + t.address); ids.push('bsc:' + WBNB);
   let precios = {};
   try { const pr = await fetch('https://coins.llama.fi/prices/current/' + ids.join(',')); const pd = await pr.json(); precios = pd.coins || {}; } catch (_) {}
   let totalUSD = 0; const pBNB = precios['bsc:' + WBNB]; const nativoUSD = pBNB && pBNB.price ? nativo * pBNB.price : 0; totalUSD += nativoUSD;
-  for (const t of tokens) { const pk = precios['bsc:' + t.address]; t.precio = pk && pk.price ? pk.price : 0; t.usd = t.balance * t.precio; totalUSD += t.usd; }
+  for (const t of tokens) { const pk = precios['bsc:' + t.address]; t.precio = pk && pk.price ? pk.price : 0; t.usd = t.balance * t.precio; totalUSD += t.usd;
+    // logo: DeFiLlama no da logo directo; usar el de metadata de Alchemy como refuerzo async abajo
+  }
+  // logos via Alchemy metadata (en paralelo, no bloquea si falla)
+  await Promise.all(tokens.slice(0, 30).map(async (t) => { try { const m = await metadata(t.address); if (m.logo) t.logo = m.logo; if ((!t.symbol || t.symbol === '?') && m.symbol) t.symbol = m.symbol; } catch (_) {} }));
   tokens.sort((a, b) => (b.usd - a.usd) || (b.balance - a.balance));
   if (onProgreso) onProgreso(1);
   return { nativo, nativoUSD, tokens, totalUSD };
