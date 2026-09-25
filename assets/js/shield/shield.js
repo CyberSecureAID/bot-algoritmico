@@ -4,6 +4,7 @@
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
 import * as datos from './shield-datos.js?v=1';
 import * as wallet from '../wallet.js?v=125';
+import { calcularScore } from './shield-score.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -87,6 +88,22 @@ function inyectarCSS() {
   #shd .shd-connect h1{font-size:22px;margin:0 0 10px}
   #shd .shd-connect p{color:#8a95a3;font-size:13.5px;margin:0 0 22px;max-width:360px}
   #shd .shd-connect button{padding:14px 30px;border:0;border-radius:12px;background:linear-gradient(180deg,#2b6cff,#1642b0);color:#fff;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
+  /* Health Score */
+  #shd .shd-health{display:flex;gap:20px;align-items:center;background:rgba(13,19,26,.72);border:1px solid #26313f;border-radius:16px;padding:20px;margin-bottom:20px}
+  #shd .shd-gauge{position:relative;flex:none;width:180px;text-align:center}
+  #shd .shd-gauge-n{position:absolute;top:52px;left:0;right:0;font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  #shd .shd-gauge-l{position:absolute;top:90px;left:0;right:0;font-size:13px;font-weight:700}
+  #shd .shd-health-side{flex:1;min-width:0}
+  #shd .shd-health-t{font-size:15px;font-weight:800;margin-bottom:12px}
+  #shd .shd-facs{display:flex;flex-direction:column;gap:8px}
+  #shd .shd-fac{display:flex;gap:10px;align-items:flex-start;font-size:12.5px}
+  #shd .shd-fac-ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:11px;flex:none}
+  #shd .shd-fac.ok .shd-fac-ic{background:rgba(52,211,153,.15);color:#34d399}
+  #shd .shd-fac.warn .shd-fac-ic{background:rgba(248,179,75,.15);color:#f8b34b}
+  #shd .shd-fac.bad .shd-fac-ic{background:rgba(248,113,113,.15);color:#f87171}
+  #shd .shd-fac b{display:block;color:#e7ecf2;font-weight:600} #shd .shd-fac small{color:#6b7684;font-size:11.5px}
+  #shd .shd-consejo{margin-top:12px;font-size:12.5px;color:#8a95a3;background:rgba(90,200,250,.06);border:1px solid rgba(90,200,250,.15);border-radius:9px;padding:9px 12px}
+  @media(max-width:560px){ #shd .shd-health{flex-direction:column} #shd .shd-gauge{margin:0 auto} }
   @media(max-width:560px){
     #shd .shd-hero h1{font-size:21px} #shd .shd-perm{flex-wrap:wrap}
     #shd .shd-perm-info{flex:1 1 60%} #shd .shd-revoke{margin-left:auto}
@@ -199,7 +216,8 @@ function pintarResultados(cuenta, permisos) {
   const externos = permisos.filter(p => !p.nuestro);
   const nuestros = permisos.filter(p => p.nuestro);
   const peligrosos = externos.filter(p => p.ilimitado).length;
-  let html = cabecera() + `
+  const sc = calcularScore(permisos);
+  let html = cabecera() + healthCard(sc) + `
     <div class="shd-res-head">
       <h2>${externos.length + nuestros.length} permission${(externos.length+nuestros.length)!==1?'s':''} found${peligrosos ? ` · <span style="color:#f87171">${peligrosos} risky</span>` : ''}</h2>
       <button class="shd-rescan" id="shd-rescan">Scan again</button>
@@ -231,6 +249,32 @@ function pintarResultados(cuenta, permisos) {
   });
 }
 
+function healthCard(sc) {
+  // arco semicircular del score (SVG)
+  const pct = sc.score / 100;
+  const circ = 251;  // circunferencia de media rueda (r=80)
+  const offset = circ * (1 - pct);
+  const factores = sc.factores.map(f => {
+    const ic = f.tipo === 'ok' ? '✓' : (f.tipo === 'warn' ? '!' : '✕');
+    const cls = f.tipo === 'ok' ? 'ok' : (f.tipo === 'warn' ? 'warn' : 'bad');
+    return `<div class="shd-fac ${cls}"><span class="shd-fac-ic">${ic}</span><div><b>${f.texto}</b><small>${f.detalle}</small></div></div>`;
+  }).join('');
+  return `<div class="shd-health">
+    <div class="shd-gauge">
+      <svg viewBox="0 0 180 110" width="180" height="110">
+        <path d="M10 100 A80 80 0 0 1 170 100" fill="none" stroke="#1a2230" stroke-width="14" stroke-linecap="round"/>
+        <path d="M10 100 A80 80 0 0 1 170 100" fill="none" stroke="${sc.color}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset}" style="transition:stroke-dashoffset 1s ease"/>
+      </svg>
+      <div class="shd-gauge-n" style="color:${sc.color}">${sc.score}</div>
+      <div class="shd-gauge-l" style="color:${sc.color}">${sc.nivel}</div>
+    </div>
+    <div class="shd-health-side">
+      <div class="shd-health-t">Wallet Health Score</div>
+      <div class="shd-facs">${factores}</div>
+      ${sc.consejos.length ? `<div class="shd-consejo">💡 ${sc.consejos[0]}</div>` : ''}
+    </div>
+  </div>`;
+}
 function filaPerm(p) {
   const corta = p.spender.slice(0, 8) + '…' + p.spender.slice(-6);
   const ini = (p.symbol || '?').slice(0, 3).toUpperCase();
