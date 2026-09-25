@@ -134,13 +134,45 @@ export function infoWallet() {
   return { nombre: (info && info.name) || 'Wallet', iconoHTML: '', cuenta };
 }
 
-/* ── Saldo BNB de la wallet (para la cinta) ── */
-export async function saldoBNB(cuenta) {
-  if (!cuenta) return '0';
+/* ── Saldo TOTAL de la wallet en USD (BNB + todos los tokens) ──
+   Usa los balances on-chain y los precios de DeFiLlama (gratis, sin API key). */
+const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+export async function saldoTotalUSD(cuenta) {
+  if (!cuenta) return '—';
+  const prov = lector();
   try {
-    const bal = await lector().getBalance(cuenta);
-    const n = Number(ethers.formatEther(bal));
-    return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    // 1. detectar tokens con saldo (BscScan tokentx + balance real)
+    const url = `${BSCSCAN}?module=account&action=tokentx&address=${cuenta}&startblock=0&endblock=latest&sort=desc&apikey=${BSCSCAN_KEY}`;
+    let toks = new Map();
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
+      const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(to);
+      const d = await r.json();
+      if (d.status === '1' && Array.isArray(d.result)) for (const t of d.result) { const a = (t.contractAddress||'').toLowerCase(); if (a && !toks.has(a)) toks.set(a, { address: a, decimals: Number(t.tokenDecimal)||18 }); }
+    } catch (_) {}
+    // 2. balances reales (tandas)
+    const lista = [...toks.values()]; const conSaldo = [];
+    const ABIb = ['function balanceOf(address) view returns (uint256)'];
+    for (let i = 0; i < lista.length; i += 10) {
+      const res = await Promise.all(lista.slice(i, i+10).map(async (t) => {
+        try { const c = new ethers.Contract(t.address, ABIb, prov); const b = await c.balanceOf(cuenta); if (b === 0n) return null; return { ...t, balance: Number(ethers.formatUnits(b, t.decimals)) }; } catch (_) { return null; }
+      }));
+      conSaldo.push(...res.filter(Boolean));
+    }
+    // 3. BNB nativo
+    let bnb = 0; try { bnb = Number(ethers.formatEther(await prov.getBalance(cuenta))); } catch (_) {}
+    // 4. precios de DeFiLlama (una llamada con todas las direcciones)
+    const ids = conSaldo.map(t => 'bsc:' + t.address); ids.push('bsc:' + WBNB);
+    let precios = {};
+    try {
+      const pr = await fetch('https://coins.llama.fi/prices/current/' + ids.join(','));
+      const pd = await pr.json(); precios = pd.coins || {};
+    } catch (_) {}
+    // 5. sumar
+    let totalUSD = 0;
+    const pBNB = precios['bsc:' + WBNB]; if (pBNB && pBNB.price) totalUSD += bnb * pBNB.price;
+    for (const t of conSaldo) { const pk = precios['bsc:' + t.address]; if (pk && pk.price) totalUSD += t.balance * pk.price; }
+    return '$' + totalUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   } catch (_) { return '—'; }
 }
 /* ── Copiar al portapapeles ── */

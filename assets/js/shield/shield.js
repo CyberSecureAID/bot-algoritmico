@@ -2,7 +2,7 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=3';
+import * as datos from './shield-datos.js?v=4';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=1';
@@ -157,6 +157,21 @@ function inyectarCSS() {
   #shd .shd-btn-danger:active{box-shadow:0 2px 0 #8f1f2e!important}
   #shd .shd-resc-note{font-size:12px;color:#79838f;text-align:center;margin-top:12px;line-height:1.5}
   
+    /* Escaneo con pasos (dramatismo) */
+  #shd .shd-scan-title{text-align:center;font-size:18px;font-weight:800;margin:4px 0 18px;color:#eaecef}
+  #shd .shd-steps{max-width:400px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  #shd .shd-step{display:flex;align-items:center;gap:11px;font-size:13px;opacity:0;animation:shdStepIn .3s forwards}
+  @keyframes shdStepIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+  #shd .shd-step-ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+  #shd .shd-step-ic.checking{background:rgba(232,184,75,.12)}
+  #shd .shd-step-ic.done{background:rgba(46,189,133,.15);color:#2ebd85}
+  #shd .shd-step-tx{color:#a7b0bb}
+  #shd .shd-spin{width:11px;height:11px;border:2px solid rgba(232,184,75,.3);border-top-color:var(--gold,#E8B84B);border-radius:50%;animation:shdSpin .6s linear infinite}
+  @keyframes shdSpin{to{transform:rotate(360deg)}}
+  #shd .shd-blip.b5{top:18%;left:52%;animation:shdBlip 1.4s ease-in-out .5s infinite}
+  #shd .shd-blip.b6{top:52%;left:16%;animation:shdBlip 1.4s ease-in-out .9s infinite}
+  #shd .shd-res-btns{display:flex;gap:8px}
+  
   /* Health Score */
   #shd .shd-health{display:flex;gap:20px;align-items:center;background:rgba(14,19,25,.8);border:1px solid #1c232b;border-radius:16px;padding:20px;margin-bottom:20px}
   #shd .shd-gauge{position:relative;flex:none;width:180px;text-align:center}
@@ -283,7 +298,7 @@ function pintarInicio(cuenta) {
       </div>
       <div class="shd-wsep"></div>
       <div class="shd-wcell shd-wright">
-        <small>Balance</small><b id="shd-bal">…</b>
+        <small>Total balance</small><b id="shd-bal">…</b>
       </div>
     </div>
     <div class="shd-hero">
@@ -305,7 +320,7 @@ function pintarInicio(cuenta) {
   $('shd-emerg').onclick = () => pintarRescate(cuenta);
   const cp = $('shd-copy'); if (cp) cp.onclick = async () => { const ok = await datos.copiar(cuenta); cp.innerHTML = ok ? IC.check2 : IC.copy; setTimeout(() => { cp.innerHTML = IC.copy; }, 1400); };
   // saldo (async)
-  datos.saldoBNB(cuenta).then(b => { const e = $('shd-bal'); if (e) e.textContent = b + ' BNB'; });
+  datos.saldoTotalUSD(cuenta).then(b => { const e = $('shd-bal'); if (e) e.textContent = b; });
 }
 
 function pintarSimulador(cuenta) {
@@ -424,12 +439,16 @@ function pintarActivos(cuenta, dest, act) {
 }
 function require0(wei) { try { return (Number(wei) / 1e18).toString(); } catch(_) { return '0'; } }
 async function escanear(cuenta) {
-  const lineas = [
-    'Initializing secure scan…',
-    'Reading approval history from chain…',
-    'Cross-checking active allowances…',
-    'Flagging unlimited & risky spenders…',
-    'Identifying trusted contracts…'
+  // Pasos del escaneo: cada uno aparece, muestra "checking…" y luego se marca ✓.
+  const pasos = [
+    'Connecting to BNB Smart Chain',
+    'Reading your approval history',
+    'Checking active token allowances',
+    'Detecting unlimited permissions',
+    'Scanning for known drainer addresses',
+    'Verifying spender contracts',
+    'Matching trusted Cripto Cuba contracts',
+    'Calculating your security score'
   ];
   $('shd-barslot').innerHTML = cabecera();
   $('shd-in').innerHTML = `
@@ -438,33 +457,43 @@ async function escanear(cuenta) {
         <div class="shd-radar-ring"></div><div class="shd-radar-ring r2"></div><div class="shd-radar-ring r3"></div>
         <div class="shd-radar-grid"></div>
         <div class="shd-radar-sweep"></div><div class="shd-radar-core"></div>
-        <span class="shd-blip b1"></span><span class="shd-blip b2"></span><span class="shd-blip b3"></span><span class="shd-blip b4"></span>
+        <span class="shd-blip b1"></span><span class="shd-blip b2"></span><span class="shd-blip b3"></span><span class="shd-blip b4"></span><span class="shd-blip b5"></span><span class="shd-blip b6"></span>
       </div>
-      <div class="shd-term" id="shd-term"></div>
+      <div class="shd-scan-title">Scanning your wallet…</div>
+      <div class="shd-steps" id="shd-steps"></div>
       <div class="shd-bar-pr"><div class="shd-bar-fill" id="shd-bar"></div></div>
     </div>`;
   wireBack();
-  const term = $('shd-term');
-  let li = 0;
-  const meter = setInterval(() => {
-    if (li < lineas.length) {
-      const d = document.createElement('div'); d.className = 'ln';
-      d.innerHTML = `<b>›</b> ${lineas[li]}`;
-      term.appendChild(d); li++;
-    }
-  }, 500);
-  try {
-    const permisos = await datos.escanearApprovals(cuenta, (p) => {
-      const bar = $('shd-bar'); if (bar) bar.style.width = Math.round(p * 100) + '%';
-    });
-    clearInterval(meter);
-    // última línea OK
-    const d = document.createElement('div'); d.className = 'ln'; d.innerHTML = `<span class="ok">✓ Scan complete</span>`; if (term) term.appendChild(d);
-    setTimeout(() => pintarResultados(cuenta, permisos), 700);
-  } catch (e) {
-    clearInterval(meter);
-    setTimeout(() => pintarResultados(cuenta, []), 500);
+  const cont = $('shd-steps');
+  // lanzar el escaneo real en paralelo
+  let permisos = null, error = false;
+  const tarea = datos.escanearApprovals(cuenta, () => {}).then(r => { permisos = r; }).catch(() => { error = true; });
+  // animar los pasos: cada uno aparece como "checking" y tras un momento se marca ✓
+  let i = 0;
+  function siguientePaso() {
+    if (i >= pasos.length) return;
+    const idx = i;
+    const row = document.createElement('div'); row.className = 'shd-step'; row.id = 'step-' + idx;
+    row.innerHTML = `<span class="shd-step-ic checking" id="stic-${idx}"><span class="shd-spin"></span></span><span class="shd-step-tx">${pasos[idx]}</span>`;
+    cont.appendChild(row);
+    const bar = $('shd-bar'); if (bar) bar.style.width = Math.round(((idx + 1) / pasos.length) * 100) + '%';
+    i++;
+    // marcar ✓ tras un momento y pasar al siguiente
+    setTimeout(() => {
+      const ic = $('stic-' + idx);
+      if (ic) { ic.className = 'shd-step-ic done'; ic.innerHTML = '✓'; }
+      siguientePaso();
+    }, 480 + Math.random() * 320);
   }
+  siguientePaso();
+  // esperar a que TERMINEN los pasos Y el escaneo real, luego mostrar resultados
+  const minTiempo = new Promise(r => setTimeout(r, pasos.length * 700));
+  await Promise.all([tarea, minTiempo]);
+  // un último check
+  const fin = document.createElement('div'); fin.className = 'shd-step'; fin.innerHTML = `<span class="shd-step-ic done">✓</span><span class="shd-step-tx" style="color:#2ebd85">Scan complete</span>`;
+  if (cont) cont.appendChild(fin);
+  await new Promise(r => setTimeout(r, 600));
+  pintarResultados(cuenta, permisos || []);
 }
 
 function pintarResultados(cuenta, permisos) {
@@ -476,7 +505,7 @@ function pintarResultados(cuenta, permisos) {
   let html = healthCard(sc) + `
     <div class="shd-res-head">
       <h2>${externos.length + nuestros.length} permission${(externos.length+nuestros.length)!==1?'s':''} found${peligrosos ? ` · <span style="color:#f6465d">${peligrosos} risky</span>` : ''}</h2>
-      <button class="shd-rescan" id="shd-rescan">Scan again</button>
+      <div class="shd-res-btns"><button class="shd-rescan" id="shd-back2">Back</button><button class="shd-rescan" id="shd-rescan">Scan again</button></div>
     </div>`;
   if (permisos.length === 0) {
     html += `<div class="shd-safe"><div class="ic">${IC.check}</div><h2 style="margin:0 0 6px;color:#e7ecf2">Your wallet is clean</h2><p style="margin:0">No active permissions found. Nothing to revoke.</p></div>`;
@@ -493,6 +522,7 @@ function pintarResultados(cuenta, permisos) {
   html += `<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you don't recognize or no longer use. Each revoke is a transaction you sign in your wallet (costs a little gas).</div>`;
   $('shd-in').innerHTML = html;
   wireBack();
+  const bb = $('shd-back2'); if (bb) bb.onclick = () => pintarInicio(cuenta);
   $('shd-rescan').onclick = () => escanear(cuenta);
   // wire revokes
   document.querySelectorAll('[data-revoke]').forEach(b => {
