@@ -2,7 +2,7 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=2';
+import * as datos from './shield-datos.js?v=3';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=1';
@@ -19,6 +19,7 @@ function inyectarCSS() {
   #shd{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;color:#eaecef;font-family:var(--display,'Segoe UI',sans-serif);
     background:#000 url('assets/portada/img/fondo-shield.webp') center/cover no-repeat;overflow-y:auto;-webkit-overflow-scrolling:touch}
   #shd::before{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(3,5,8,.93));z-index:0;pointer-events:none}
+  #shd #shd-fx{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
   #shd *{box-sizing:border-box}
   /* Barra superior tipo sección interna (back a la izquierda) */
   #shd .shd-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:calc(12px + env(safe-area-inset-top,0px)) 18px 12px;background:rgba(5,7,9,.82);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #1c232b}
@@ -51,6 +52,40 @@ function inyectarCSS() {
   #shd .shd-btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:12px 24px;border:1px solid #29313b;border-radius:12px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
   #shd .shd-btn2:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-btn2 svg{stroke:currentColor}
+    /* Cinta de wallet mejorada */
+  #shd .shd-wallet{display:flex;align-items:stretch;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:14px;padding:0;margin-bottom:18px;overflow:hidden}
+  #shd .shd-wcell{flex:1;display:flex;align-items:center;gap:11px;padding:15px 18px;min-width:0}
+  #shd .shd-wcenter,#shd .shd-wright{flex-direction:column;align-items:flex-start;gap:3px;justify-content:center}
+  #shd .shd-wright{align-items:flex-end}
+  #shd .shd-wcell small{font-size:11px;color:#79838f}
+  #shd .shd-wcell b{font-size:13.5px;font-weight:700}
+  #shd .shd-wcenter b,#shd .shd-wright b{font-size:13px}
+  #shd .shd-wava{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;flex:none;color:var(--gold,#E8B84B)}
+  #shd .shd-wava svg{width:24px;height:24px} #shd .shd-wava img{width:26px;height:26px;border-radius:6px;object-fit:cover}
+  #shd .shd-winfo{min-width:0}
+  #shd .shd-winfo b{font-size:14px;display:block}
+  #shd .shd-winfo small{font-size:12px;color:#79838f;font-family:var(--mono,monospace);display:flex;align-items:center;gap:6px}
+  #shd .shd-copy{background:none;border:0;color:#79838f;cursor:pointer;padding:2px;display:inline-flex}
+  #shd .shd-copy:hover{color:var(--gold,#E8B84B)}
+  #shd .shd-wsep{width:1px;align-self:center;height:44px;background:linear-gradient(180deg,transparent,#29313b 30%,#29313b 70%,transparent);flex:none}
+  /* Botones uniformes */
+  #shd .shd-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  #shd .shd-btns .shd-btn{margin-top:0;padding:14px 26px;flex:0 1 auto;min-width:150px}
+  #shd .shd-btn-ghost{background:rgba(255,255,255,.03)!important;border:1px solid #29313b!important;color:#eaecef!important;box-shadow:none!important}
+  #shd .shd-btn-ghost:active{transform:translateY(2px)!important}
+  #shd .shd-btn-ghost svg{stroke:var(--gold,#E8B84B)}
+  /* Cards explicativas */
+  #shd .shd-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:24px}
+  #shd .shd-card{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:14px;padding:16px}
+  #shd .shd-card-ic{width:38px;height:38px;border-radius:10px;background:rgba(232,184,75,.1);color:var(--gold,#E8B84B);display:grid;place-items:center;margin-bottom:11px}
+  #shd .shd-card-ic svg{width:20px;height:20px;stroke:currentColor}
+  #shd .shd-card b{font-size:14px;display:block;margin-bottom:5px}
+  #shd .shd-card span{font-size:12px;color:#a7b0bb;line-height:1.5;display:block}
+  #shd .shd-card-red{border-color:rgba(246,70,93,.25)}
+  #shd .shd-card-red .shd-card-ic{background:rgba(246,70,93,.12);color:#f6465d}
+  #shd .shd-card-btn{margin-top:12px;width:100%;padding:9px;border:1px solid rgba(246,70,93,.4);border-radius:9px;background:rgba(246,70,93,.08);color:#f6465d;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer}
+  #shd .shd-card-btn:hover{background:rgba(246,70,93,.16)}
+  
   /* Escaneo (radar dorado) */
   #shd .shd-scanning{max-width:520px;margin:0 auto;padding:22px}
   #shd .shd-radar{width:120px;height:120px;margin:0 auto 20px;position:relative}
@@ -157,6 +192,9 @@ function inyectarCSS() {
     #shd .shd-hero h1{font-size:21px} #shd .shd-perm{flex-wrap:wrap}
     #shd .shd-perm-info{flex:1 1 60%} #shd .shd-revoke{margin-left:auto}
     #shd .shd-health{flex-direction:column} #shd .shd-gauge{margin:0 auto}
+    #shd .shd-wallet{flex-direction:column} #shd .shd-wsep{width:auto;height:1px;align-self:stretch;background:linear-gradient(90deg,transparent,#29313b 30%,#29313b 70%,transparent)}
+    #shd .shd-wright{align-items:flex-start} #shd .shd-cards{grid-template-columns:1fr}
+    #shd .shd-btns .shd-btn{flex:1 1 100%}
   }
   `;
   document.head.appendChild(s);
@@ -167,7 +205,9 @@ const IC = {
   check: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   user: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   search: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
-  alert: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>'
+  alert: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+  check2: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#2ebd85" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 };
 
 /* ═══════════ Abrir Wallet Shield ═══════════ */
@@ -177,9 +217,23 @@ export function abrirShield() {
   const cont = document.createElement('div'); cont.id = 'shd';
   document.body.appendChild(cont);
   const cuenta = wallet.cuentaActual && wallet.cuentaActual();
-  cont.innerHTML = `<div id="shd-barslot"></div><div class="shd-in" id="shd-in"></div>`;
+  cont.innerHTML = `<canvas id="shd-fx" aria-hidden="true"></canvas><div id="shd-barslot"></div><div class="shd-in" id="shd-in"></div>`;
+  montarParticulas();
   if (!cuenta) { pintarConectar(); return; }
   pintarInicio(cuenta);
+}
+async function montarParticulas() {
+  try {
+    const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (quieto) return;
+    const lienzo = document.getElementById('shd-fx'); if (!lienzo) return;
+    const mod = await import('../portada/chispas.js?v=200');
+    if (mod.brasas) {
+      mod.brasas(lienzo);
+      const remedir = () => { if (mod.brasas._remedir) mod.brasas._remedir(); };
+      [50, 200, 500, 1000].forEach((t) => setTimeout(remedir, t));
+    }
+  } catch (_) {}
 }
 function cerrar() {
   // Navegar al lobby SIN quitar el overlay antes (si se quita, se ven los bots
@@ -219,23 +273,39 @@ function pintarInicio(cuenta) {
   $('shd-barslot').innerHTML = cabecera();
   $('shd-in').innerHTML = `
     <div class="shd-wallet">
-      <div class="shd-wava">${info.iconoHTML || IC.user}</div>
-      <div class="shd-winfo"><b>${info.nombre || 'Wallet'}</b><small>${corta}</small></div>
-      <span class="shd-wdot"></span>
+      <div class="shd-wcell">
+        <div class="shd-wava">${info.iconoHTML || IC.user}</div>
+        <div class="shd-winfo"><b>${info.nombre || 'Wallet'}</b><small>${corta} <button class="shd-copy" id="shd-copy" title="Copy address">${IC.copy}</button></small></div>
+      </div>
+      <div class="shd-wsep"></div>
+      <div class="shd-wcell shd-wcenter">
+        <small>Network</small><b>BNB Smart Chain</b>
+      </div>
+      <div class="shd-wsep"></div>
+      <div class="shd-wcell shd-wright">
+        <small>Balance</small><b id="shd-bal">…</b>
+      </div>
     </div>
     <div class="shd-hero">
       <h1>Scan your wallet</h1>
       <p>Check every permission your wallet has granted, get a security score, and revoke anything risky in one tap.</p>
-      <div class="shd-btns"><button class="shd-btn" id="shd-scan">${IC.shield} Scan</button><button class="shd-btn2" id="shd-sim">${IC.search} Check contract</button></div>
-      <div style="margin-top:14px"><button class="shd-emerg" id="shd-emerg">${IC.alert} Emergency: move funds to safety</button></div>
+      <div class="shd-btns">
+        <button class="shd-btn" id="shd-scan">${IC.shield} Scan</button>
+        <button class="shd-btn shd-btn-ghost" id="shd-sim">${IC.search} Check contract</button>
+      </div>
     </div>
-    <div class="shd-how">
-      <b>How it works.</b> Every time you use a dApp, you grant it permission to move certain tokens. Old or unlimited permissions are the top way wallets get drained. This scan shows them all. Permissions to our own contracts are marked as trusted. Anything you don't recognize, revoke it.
+    <div class="shd-cards">
+      <div class="shd-card"><div class="shd-card-ic">${IC.shield}</div><b>Permission scan</b><span>See every approval your wallet gave and revoke the risky ones.</span></div>
+      <div class="shd-card"><div class="shd-card-ic">${IC.search}</div><b>Contract check</b><span>Paste any contract before you sign and we tell you if it's safe.</span></div>
+      <div class="shd-card shd-card-red"><div class="shd-card-ic">${IC.alert}</div><b>Emergency evacuation</b><span>If your wallet is at risk, move all your tokens to a safe wallet fast.</span><button class="shd-card-btn" id="shd-emerg">Open emergency tool</button></div>
     </div>`;
   wireBack();
   $('shd-scan').onclick = () => escanear(cuenta);
   $('shd-sim').onclick = () => pintarSimulador(cuenta);
   $('shd-emerg').onclick = () => pintarRescate(cuenta);
+  const cp = $('shd-copy'); if (cp) cp.onclick = async () => { const ok = await datos.copiar(cuenta); cp.innerHTML = ok ? IC.check2 : IC.copy; setTimeout(() => { cp.innerHTML = IC.copy; }, 1400); };
+  // saldo (async)
+  datos.saldoBNB(cuenta).then(b => { const e = $('shd-bal'); if (e) e.textContent = b + ' BNB'; });
 }
 
 function pintarSimulador(cuenta) {

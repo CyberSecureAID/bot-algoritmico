@@ -133,3 +133,17 @@ export function infoWallet() {
   } catch (_) {}
   return { nombre: (info && info.name) || 'Wallet', iconoHTML: '', cuenta };
 }
+
+/* ── Saldo BNB de la wallet (para la cinta) ── */
+export async function saldoBNB(cuenta) {
+  if (!cuenta) return '0';
+  try {
+    const bal = await lector().getBalance(cuenta);
+    const n = Number(ethers.formatEther(bal));
+    return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  } catch (_) { return '—'; }
+}
+/* ── Copiar al portapapeles ── */
+export async function copiar(txt) {
+  try { await navigator.clipboard.writeText(txt); return true; } catch (_) { return false; }
+}
