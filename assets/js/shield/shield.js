@@ -6,6 +6,7 @@ import * as datos from './shield-datos.js?v=2';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=1';
+import * as rescue from './shield-rescue.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -100,6 +101,27 @@ function inyectarCSS() {
   #shd .shd-safe .ic{width:60px;height:60px;border-radius:50%;background:rgba(46,189,133,.12);color:#2ebd85;display:grid;place-items:center;margin-bottom:16px}
   #shd .shd-how{background:rgba(14,19,25,.6);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#a7b0bb;line-height:1.6}
   #shd .shd-how b{color:#eaecef}
+    /* Emergency Kill Switch */
+  #shd .shd-emerg{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border:1px solid rgba(246,70,93,.4);border-radius:12px;background:rgba(246,70,93,.08);color:#f6465d;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+  #shd .shd-emerg:hover{background:rgba(246,70,93,.15)}
+  #shd .shd-emerg svg{stroke:currentColor}
+  #shd .shd-resc{max-width:560px;margin:0 auto;padding:10px 0}
+  #shd .shd-resc-icon{width:56px;height:56px;border-radius:50%;background:rgba(246,70,93,.12);color:#f6465d;display:grid;place-items:center;margin:0 auto 16px}
+  #shd .shd-resc-icon svg{width:26px;height:26px}
+  #shd .shd-resc-h{font-size:22px;font-weight:800;text-align:center;margin:0 0 10px}
+  #shd .shd-resc-p{font-size:13px;color:#a7b0bb;text-align:center;line-height:1.6;margin:0 0 18px}
+  #shd .shd-resc-warn{background:rgba(246,70,93,.07);border:1px solid rgba(246,70,93,.22);border-radius:11px;padding:13px 15px;font-size:12.5px;color:#e0b3b8;line-height:1.55;margin-bottom:18px}
+  #shd .shd-resc-warn b{color:#f6465d}
+  #shd .shd-resc-dest{font-size:13px;color:#a7b0bb;text-align:center;margin:16px 0 12px}
+  #shd .shd-resc-dest b{color:var(--gold,#E8B84B);font-family:var(--mono,monospace)}
+  #shd .shd-resc-items{display:flex;flex-direction:column;gap:8px}
+  #shd .shd-resc-item{display:flex;align-items:center;gap:12px;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:12px;padding:11px 14px}
+  #shd .shd-resc-st{font-size:12px;font-weight:700;color:#79838f;flex:none}
+  #shd .shd-resc-st.going{color:#e8b84b} #shd .shd-resc-st.done{color:#2ebd85} #shd .shd-resc-st.skip{color:#f6465d}
+  #shd .shd-btn-danger{background:linear-gradient(180deg,#ff6b7d,#f6465d 55%,#d12d43)!important;border-color:#d12d43!important;color:#fff!important;box-shadow:0 5px 0 #8f1f2e!important}
+  #shd .shd-btn-danger:active{box-shadow:0 2px 0 #8f1f2e!important}
+  #shd .shd-resc-note{font-size:12px;color:#79838f;text-align:center;margin-top:12px;line-height:1.5}
+  
   /* Health Score */
   #shd .shd-health{display:flex;gap:20px;align-items:center;background:rgba(14,19,25,.8);border:1px solid #1c232b;border-radius:16px;padding:20px;margin-bottom:20px}
   #shd .shd-gauge{position:relative;flex:none;width:180px;text-align:center}
@@ -144,7 +166,8 @@ const IC = {
   shield: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   user: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
-  search: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>'
+  search: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>'
 };
 
 /* ═══════════ Abrir Wallet Shield ═══════════ */
@@ -204,6 +227,7 @@ function pintarInicio(cuenta) {
       <h1>Scan your wallet</h1>
       <p>Check every permission your wallet has granted, get a security score, and revoke anything risky in one tap.</p>
       <div class="shd-btns"><button class="shd-btn" id="shd-scan">${IC.shield} Scan</button><button class="shd-btn2" id="shd-sim">${IC.search} Check contract</button></div>
+      <div style="margin-top:14px"><button class="shd-emerg" id="shd-emerg">${IC.alert} Emergency: move funds to safety</button></div>
     </div>
     <div class="shd-how">
       <b>How it works.</b> Every time you use a dApp, you grant it permission to move certain tokens. Old or unlimited permissions are the top way wallets get drained. This scan shows them all. Permissions to our own contracts are marked as trusted. Anything you don't recognize, revoke it.
@@ -211,6 +235,7 @@ function pintarInicio(cuenta) {
   wireBack();
   $('shd-scan').onclick = () => escanear(cuenta);
   $('shd-sim').onclick = () => pintarSimulador(cuenta);
+  $('shd-emerg').onclick = () => pintarRescate(cuenta);
 }
 
 function pintarSimulador(cuenta) {
@@ -253,6 +278,81 @@ function tarjetaSim(info) {
     <div class="shd-sim-halls">${hall}</div>
   </div>`;
 }
+function pintarRescate(cuenta) {
+  $('shd-barslot').innerHTML = cabecera();
+  $('shd-in').innerHTML = `
+    <div class="shd-resc">
+      <div class="shd-resc-icon">${IC.alert}</div>
+      <h1 class="shd-resc-h">Emergency evacuation</h1>
+      <p class="shd-resc-p">This moves your tokens to a safe wallet you choose. Use it if your wallet may be compromised, or to migrate to a new one. You sign every transfer yourself. We never touch your keys or your funds.</p>
+      <div class="shd-resc-warn">
+        <b>Before you start:</b> make sure the destination wallet is one you fully control and its seed phrase is safe. Transfers on the blockchain cannot be undone. A little BNB (~${rescue.reservaGasFmt}) stays behind to pay for gas.
+      </div>
+      <label class="shd-sim-lbl">Safe destination wallet</label>
+      <input class="shd-sim-in" id="resc-dest" placeholder="0x… your safe wallet address" autocomplete="off" spellcheck="false">
+      <button class="shd-btn" id="resc-scan" style="width:100%;margin-top:16px">${IC.search} Find my assets</button>
+      <div id="resc-list"></div>
+      <button class="shd-rescan" id="resc-back" style="margin-top:18px">Back</button>
+    </div>`;
+  wireBack();
+  $('resc-back').onclick = () => pintarInicio(cuenta);
+  $('resc-scan').onclick = async () => {
+    const dest = $('resc-dest').value.trim();
+    const cont = $('resc-list');
+    if (!rescue.esDireccion(dest)) { cont.innerHTML = `<div class="shd-sim-msg bad">Enter a valid destination address (0x…)</div>`; return; }
+    if (dest.toLowerCase() === cuenta.toLowerCase()) { cont.innerHTML = `<div class="shd-sim-msg bad">The destination must be a DIFFERENT wallet.</div>`; return; }
+    cont.innerHTML = `<div class="shd-sim-loading"><div style="color:#a7b0bb;font-size:13px">Finding your assets…</div></div>`;
+    try {
+      const act = await rescue.detectarActivos(cuenta);
+      pintarActivos(cuenta, dest, act);
+    } catch (e) { cont.innerHTML = `<div class="shd-sim-msg bad">Could not read your assets. Try again.</div>`; }
+  };
+}
+function pintarActivos(cuenta, dest, act) {
+  const cont = $('resc-list');
+  const tieneNativo = act.nativo > 0n;
+  const items = act.tokens.map((t, i) => `
+    <div class="shd-resc-item" id="rescit-${i}">
+      <div class="shd-perm-ic">${(t.symbol||'?').slice(0,3).toUpperCase()}</div>
+      <div class="shd-perm-info"><b>${escH(t.symbol)}</b><div class="sp">${(+t.balanceFmt).toLocaleString(undefined,{maximumFractionDigits:6})}</div></div>
+      <span class="shd-resc-st" id="rescst-${i}">Ready</span>
+    </div>`).join('');
+  const nativoItem = tieneNativo ? `
+    <div class="shd-resc-item" id="rescit-bnb">
+      <div class="shd-perm-ic">BNB</div>
+      <div class="shd-perm-info"><b>BNB</b><div class="sp">${(+require0(act.nativo)).toLocaleString(undefined,{maximumFractionDigits:6})} (minus gas)</div></div>
+      <span class="shd-resc-st" id="rescst-bnb">Ready</span>
+    </div>` : '';
+  if (!act.tokens.length && !tieneNativo) {
+    cont.innerHTML = `<div class="shd-safe" style="padding:30px"><div class="ic">${IC.check}</div><p style="margin:0">No assets with balance found in this wallet.</p></div>`;
+    return;
+  }
+  const corta = dest.slice(0,6)+'…'+dest.slice(-4);
+  cont.innerHTML = `
+    <div class="shd-resc-dest">Moving everything to <b>${corta}</b></div>
+    <div class="shd-resc-items">${items}${nativoItem}</div>
+    <button class="shd-btn shd-btn-danger" id="resc-go" style="width:100%;margin-top:16px">Move all to safety (${act.tokens.length + (tieneNativo?1:0)} transfers)</button>
+    <div class="shd-resc-note">You will sign each transfer in your wallet, one by one. Keep confirming until all are done.</div>`;
+  $('resc-go').onclick = async () => {
+    const btn = $('resc-go'); btn.disabled = true; btn.textContent = 'Moving… confirm in your wallet';
+    // mover tokens uno por uno
+    for (let i = 0; i < act.tokens.length; i++) {
+      const st = $('rescst-'+i);
+      if (st) { st.textContent = 'Signing…'; st.className = 'shd-resc-st going'; }
+      try { await rescue.moverToken(act.tokens[i].address, dest, act.tokens[i].balance); if (st){st.textContent='Moved ✓';st.className='shd-resc-st done';} }
+      catch (e) { if (st){st.textContent='Skipped';st.className='shd-resc-st skip';} }
+    }
+    // mover el nativo al final (necesita gas para lo anterior)
+    if (act.nativo > 0n) {
+      const st = $('rescst-bnb');
+      if (st) { st.textContent = 'Signing…'; st.className = 'shd-resc-st going'; }
+      try { await rescue.moverNativo(dest, act.nativo); if (st){st.textContent='Moved ✓';st.className='shd-resc-st done';} }
+      catch (e) { if (st){st.textContent='Skipped';st.className='shd-resc-st skip';} }
+    }
+    btn.textContent = 'Done'; btn.disabled = true;
+  };
+}
+function require0(wei) { try { return (Number(wei) / 1e18).toString(); } catch(_) { return '0'; } }
 async function escanear(cuenta) {
   const lineas = [
     'Initializing secure scan…',
