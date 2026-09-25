@@ -104,7 +104,32 @@ export async function revocar(token, spender) {
   return tx.wait();
 }
 
-/* ── Info de la wallet conectada (nombre + icono real) ── */
+/* ── Logos de wallets (SVG, sin servidores externos) ── */
+const LOGOS = {
+  metamask: '<svg viewBox="0 0 32 32" width="24" height="24"><path fill="#E17726" d="M28.6 3.4 17.8 11.4l2-4.7z"/><path fill="#E27625" d="m3.4 3.4 10.7 8.1-1.9-4.8zM24.4 21.7l-2.9 4.4 6.2 1.7 1.8-6zM2.6 21.8l1.7 6 6.2-1.7-2.9-4.4z"/><path fill="#E27625" d="m10.1 14.5-1.7 2.6 6.1.3-.2-6.6zM21.9 14.5l-4.3-3.8-.1 6.7 6.1-.3zM10.5 26.1l3.7-1.8-3.2-2.5zM17.8 24.3l3.7 1.8-.5-4.3z"/></svg>',
+  trust: '<svg viewBox="0 0 32 32" width="24" height="24"><path fill="#3375BB" d="M16 2 5 6.3v8.4c0 6.9 4.6 13.3 11 15.3 6.4-2 11-8.4 11-15.3V6.3z"/><path fill="#fff" d="M16 6.6v18.9c4.6-1.6 8-6.5 8-11.6V8.6z"/></svg>',
+  binance: '<svg viewBox="0 0 32 32" width="24" height="24"><path fill="#F0B90B" d="m16 4 3 3-6 6-3-3zM22 10l3 3-9 9-3-3zM10 10l3 3-3 3-3-3zM16 19l3 3-3 3-3-3z"/></svg>',
+  coinbase: '<svg viewBox="0 0 32 32" width="24" height="24"><circle cx="16" cy="16" r="14" fill="#0052FF"/><rect x="11" y="11" width="10" height="10" rx="2" fill="#fff"/></svg>',
+  phantom: '<svg viewBox="0 0 32 32" width="24" height="24"><circle cx="16" cy="16" r="14" fill="#AB9FF2"/><ellipse cx="12" cy="15" rx="2" ry="3" fill="#fff"/><ellipse cx="20" cy="15" rx="2" ry="3" fill="#fff"/></svg>',
+  rabby: '<svg viewBox="0 0 32 32" width="24" height="24"><circle cx="16" cy="16" r="14" fill="#7084F5"/><path fill="#fff" d="M9 18c3-5 11-7 14-4-2 4-9 7-14 4z"/></svg>'
+};
+
+/* ── Info de la wallet conectada (nombre + icono/logo real) ──
+   Detecta el logo igual que la app: primero el icono que envía la wallet,
+   si no, mira window.ethereum (MetaMask en escritorio no siempre lo envía). */
 export function infoWallet() {
-  try { return wallet.walletInfo(); } catch (_) { return { nombre: 'Wallet', icono: '', cuenta: null }; }
+  let info = null;
+  try { info = wallet.walletInfo ? wallet.walletInfo() : null; } catch (_) {}
+  const cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || (info && info.cuenta) || null;
+  // icono que trae la wallet
+  if (info && info.icon) return { nombre: info.name || 'Wallet', iconoHTML: `<img src="${info.icon}" alt="" style="width:100%;height:100%;object-fit:cover">`, cuenta };
+  // detectar por el proveedor
+  try {
+    const p = window.ethereum;
+    if (p) {
+      const cual = p.isTrust || p.isTrustWallet ? 'trust' : p.isPhantom ? 'phantom' : p.isCoinbaseWallet ? 'coinbase' : p.isBinance ? 'binance' : p.isRabby ? 'rabby' : p.isMetaMask ? 'metamask' : null;
+      if (cual && LOGOS[cual]) return { nombre: cual.charAt(0).toUpperCase() + cual.slice(1), iconoHTML: LOGOS[cual], cuenta };
+    }
+  } catch (_) {}
+  return { nombre: (info && info.name) || 'Wallet', iconoHTML: '', cuenta };
 }

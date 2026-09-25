@@ -2,7 +2,7 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=1';
+import * as datos from './shield-datos.js?v=2';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=1';
@@ -15,101 +15,81 @@ function inyectarCSS() {
   if (_css) return; _css = true;
   const s = document.createElement('style'); s.id = 'shd-css';
   s.textContent = `
-  #shd{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;color:#e7ecf2;font-family:var(--display,'Segoe UI',sans-serif);
-    background:#080b10 url('assets/portada/img/fondo-shield.webp') center/cover no-repeat;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  #shd::before{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(6,9,13,.82),rgba(6,9,13,.94));z-index:0;pointer-events:none}
+  #shd{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;color:#eaecef;font-family:var(--display,'Segoe UI',sans-serif);
+    background:#000 url('assets/portada/img/fondo-shield.webp') center/cover no-repeat;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #shd::before{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(3,5,8,.93));z-index:0;pointer-events:none}
   #shd *{box-sizing:border-box}
-  #shd .shd-in{position:relative;z-index:1;width:100%;max-width:820px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(30px + env(safe-area-inset-bottom,0px))}
-  /* Header */
-  #shd .shd-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
-  #shd .shd-brand{display:flex;align-items:center;gap:11px}
-  #shd .shd-logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(145deg,#1b2430,#0d131b);border:1px solid #2b3a4d;display:grid;place-items:center;color:#5ac8fa}
-  #shd .shd-brand b{font-size:18px;font-weight:800;letter-spacing:.3px;display:block}
-  #shd .shd-brand small{font-size:11px;color:#6b7684}
-  #shd .shd-x{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid #26313f;color:#aab6c4;cursor:pointer;flex:none}
+  /* Barra superior tipo sección interna (back a la izquierda) */
+  #shd .shd-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:calc(12px + env(safe-area-inset-top,0px)) 18px 12px;background:rgba(5,7,9,.82);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #1c232b}
+  #shd .shd-back{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);border:1px solid #29313b;color:#a7b0bb;border-radius:10px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:600}
+  #shd .shd-back:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #shd .shd-bar-t{font-size:15px;font-weight:800;letter-spacing:.2px}
+  #shd .shd-bar-t span{color:var(--gold,#E8B84B)}
+  #shd .shd-in{position:relative;z-index:1;width:100%;max-width:820px;margin:0 auto;padding:22px 16px calc(40px + env(safe-area-inset-bottom,0px))}
   /* Wallet conectada */
-  #shd .shd-wallet{display:flex;align-items:center;gap:12px;background:rgba(13,19,26,.7);border:1px solid #26313f;border-radius:14px;padding:14px 16px;margin-bottom:18px}
-  #shd .shd-wava{width:38px;height:38px;border-radius:50%;background:#1a2230;display:grid;place-items:center;overflow:hidden;flex:none}
+  #shd .shd-wallet{display:flex;align-items:center;gap:12px;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:14px;padding:14px 16px;margin-bottom:18px}
+  #shd .shd-wava{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;overflow:hidden;flex:none;color:var(--gold,#E8B84B)}
   #shd .shd-wava img{width:100%;height:100%;object-fit:cover}
   #shd .shd-winfo{flex:1;min-width:0}
   #shd .shd-winfo b{font-size:14px;display:block}
-  #shd .shd-winfo small{font-size:12px;color:#6b7684;font-family:var(--mono,monospace)}
-  #shd .shd-wdot{width:9px;height:9px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;flex:none}
-  /* Hero de escaneo */
-  #shd .shd-hero{text-align:center;padding:26px 16px 30px}
-  #shd .shd-hero h1{font-size:24px;font-weight:800;margin:0 0 8px}
-  #shd .shd-hero p{font-size:13.5px;color:#8a95a3;line-height:1.6;max-width:440px;margin:0 auto 22px}
-  #shd .shd-scan{display:inline-flex;align-items:center;gap:9px;padding:15px 34px;border:0;border-radius:13px;background:linear-gradient(180deg,#2b6cff,#1e52d6 60%,#1642b0);color:#fff;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 6px 0 #123a94,0 10px 26px rgba(43,108,255,.35)}
-  #shd .shd-scan:active{transform:translateY(3px);box-shadow:0 3px 0 #123a94,0 6px 14px rgba(43,108,255,.3)}
-  #shd .shd-scan:disabled{opacity:.6;cursor:default}
-  /* Animación de escaneo (terminal hacker sobria) */
+  #shd .shd-winfo small{font-size:12px;color:#79838f;font-family:var(--mono,monospace)}
+  #shd .shd-wdot{width:9px;height:9px;border-radius:50%;background:#2ebd85;box-shadow:0 0 8px #2ebd85;flex:none}
+  /* Hero */
+  #shd .shd-hero{text-align:center;padding:24px 16px 28px}
+  #shd .shd-hero h1{font-size:25px;font-weight:800;margin:0 0 10px}
+  #shd .shd-hero p{font-size:13.5px;color:#a7b0bb;line-height:1.65;max-width:480px;margin:0 auto 8px}
+  #shd .shd-feats{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px auto 24px;max-width:520px}
+  #shd .shd-feat{font-size:11.5px;color:#a7b0bb;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.18);border-radius:100px;padding:6px 13px}
+  /* Botón dorado (como la página) */
+  #shd .shd-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:15px 34px;border:1px solid var(--gold-md,#cf9f2e);border-radius:13px;background:linear-gradient(180deg,#f4d089,#E8B84B 55%,#cf9f2e);color:#241900;font-family:var(--display,sans-serif);font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 5px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4)}
+  #shd .shd-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4)}
+  #shd .shd-btn:disabled{opacity:.6;cursor:default}
+  #shd .shd-btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:12px 24px;border:1px solid #29313b;border-radius:12px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
+  #shd .shd-btn2:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #shd .shd-btn2 svg{stroke:currentColor}
+  /* Escaneo (radar dorado) */
   #shd .shd-scanning{max-width:520px;margin:0 auto;padding:22px}
   #shd .shd-radar{width:120px;height:120px;margin:0 auto 20px;position:relative}
-  #shd .shd-radar-ring{position:absolute;inset:0;border-radius:50%;border:1px solid #26313f}
+  #shd .shd-radar-ring{position:absolute;inset:0;border-radius:50%;border:1px solid #29313b}
   #shd .shd-radar-ring.r2{inset:18px} #shd .shd-radar-ring.r3{inset:36px}
-  #shd .shd-radar-sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,rgba(90,200,250,.35) 40deg,transparent 80deg);animation:shdSweep 1.4s linear infinite}
-  #shd .shd-radar-core{position:absolute;inset:46px;border-radius:50%;background:radial-gradient(circle,#5ac8fa,#1e52d6);box-shadow:0 0 20px rgba(90,200,250,.6)}
+  #shd .shd-radar-sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,rgba(232,184,75,.32) 40deg,transparent 80deg);animation:shdSweep 1.4s linear infinite}
+  #shd .shd-radar-core{position:absolute;inset:46px;border-radius:50%;background:radial-gradient(circle,#f4d089,#cf9f2e);box-shadow:0 0 20px rgba(232,184,75,.55)}
   @keyframes shdSweep{to{transform:rotate(360deg)}}
-  #shd .shd-term{background:rgba(4,7,11,.7);border:1px solid #1b2430;border-radius:12px;padding:14px 16px;font-family:var(--mono,monospace);font-size:12.5px;text-align:left;min-height:120px}
-  #shd .shd-term .ln{color:#7d8895;margin-bottom:5px;opacity:0;animation:shdIn .3s forwards}
-  #shd .shd-term .ln b{color:#5ac8fa} #shd .shd-term .ln .ok{color:#34d399}
+  #shd .shd-term{background:rgba(3,5,8,.72);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;font-family:var(--mono,monospace);font-size:12.5px;text-align:left;min-height:120px}
+  #shd .shd-term .ln{color:#79838f;margin-bottom:5px;opacity:0;animation:shdIn .3s forwards}
+  #shd .shd-term .ln b{color:var(--gold,#E8B84B)} #shd .shd-term .ln .ok{color:#2ebd85}
   @keyframes shdIn{to{opacity:1}}
-  #shd .shd-bar{height:6px;background:#141c26;border-radius:100px;overflow:hidden;margin-top:16px}
-  #shd .shd-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#2b6cff,#5ac8fa);border-radius:100px;transition:width .3s}
+  #shd .shd-bar-pr{height:6px;background:#12161c;border-radius:100px;overflow:hidden;margin-top:16px}
+  #shd .shd-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#cf9f2e,#f4d089);border-radius:100px;transition:width .3s}
   /* Resultados */
   #shd .shd-res-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 14px}
   #shd .shd-res-head h2{font-size:17px;font-weight:800;margin:0}
-  #shd .shd-rescan{font-size:12.5px;padding:8px 14px;border-radius:9px;border:1px solid #26313f;background:rgba(255,255,255,.03);color:#aab6c4;cursor:pointer;font-family:inherit}
-  #shd .shd-group-t{font-size:12px;font-weight:700;color:#6b7684;text-transform:uppercase;letter-spacing:.6px;margin:20px 0 10px;display:flex;align-items:center;gap:8px}
-  #shd .shd-group-t.trust{color:#34d399} #shd .shd-group-t.risk{color:#f87171}
-  #shd .shd-perm{display:flex;align-items:center;gap:13px;background:rgba(13,19,26,.7);border:1px solid #202b37;border-radius:13px;padding:13px 15px;margin-bottom:9px}
-  #shd .shd-perm.trust{border-color:rgba(52,211,153,.25)}
-  #shd .shd-perm.danger{border-color:rgba(248,113,113,.3)}
-  #shd .shd-perm-ic{width:38px;height:38px;border-radius:10px;background:#1a2230;display:grid;place-items:center;font-weight:800;font-size:13px;color:#8a95a3;flex:none}
-  #shd .shd-perm.trust .shd-perm-ic{background:rgba(52,211,153,.12);color:#34d399}
+  #shd .shd-rescan{font-size:12.5px;padding:8px 14px;border-radius:9px;border:1px solid #29313b;background:rgba(255,255,255,.03);color:#a7b0bb;cursor:pointer;font-family:inherit}
+  #shd .shd-rescan:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #shd .shd-group-t{font-size:12px;font-weight:700;color:#79838f;text-transform:uppercase;letter-spacing:.6px;margin:20px 0 10px}
+  #shd .shd-group-t.trust{color:#2ebd85} #shd .shd-group-t.risk{color:#f6465d}
+  #shd .shd-perm{display:flex;align-items:center;gap:13px;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:13px;padding:13px 15px;margin-bottom:9px}
+  #shd .shd-perm.trust{border-color:rgba(46,189,133,.25)}
+  #shd .shd-perm.danger{border-color:rgba(246,70,93,.3)}
+  #shd .shd-perm-ic{width:38px;height:38px;border-radius:10px;background:#12161c;display:grid;place-items:center;font-weight:800;font-size:13px;color:#a7b0bb;flex:none}
+  #shd .shd-perm.trust .shd-perm-ic{background:rgba(46,189,133,.12);color:#2ebd85}
   #shd .shd-perm-info{flex:1;min-width:0}
   #shd .shd-perm-info b{font-size:14px;display:block}
-  #shd .shd-perm-info .sp{font-size:11.5px;color:#6b7684;font-family:var(--mono,monospace);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #shd .shd-perm-info .sp{font-size:11.5px;color:#79838f;font-family:var(--mono,monospace);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #shd .shd-perm-info .exp{font-size:11.5px;margin-top:3px}
-  #shd .shd-perm-info .exp.ok{color:#34d399} #shd .shd-perm-info .exp.warn{color:#f8b34b} #shd .shd-perm-info .exp.bad{color:#f87171}
+  #shd .shd-perm-info .exp.ok{color:#2ebd85} #shd .shd-perm-info .exp.warn{color:#e8b84b} #shd .shd-perm-info .exp.bad{color:#f6465d}
   #shd .shd-tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:100px;flex:none}
-  #shd .shd-tag.unl{background:rgba(248,113,113,.14);color:#f87171}
-  #shd .shd-tag.ok{background:rgba(52,211,153,.14);color:#34d399}
-  #shd .shd-revoke{font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;cursor:pointer;font-family:inherit;flex:none}
-  #shd .shd-revoke:hover{background:rgba(248,113,113,.18)}
+  #shd .shd-tag.unl{background:rgba(246,70,93,.14);color:#f6465d}
+  #shd .shd-tag.ok{background:rgba(46,189,133,.14);color:#2ebd85}
+  #shd .shd-revoke{font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;border:1px solid rgba(246,70,93,.4);background:rgba(246,70,93,.1);color:#f6465d;cursor:pointer;font-family:inherit;flex:none}
+  #shd .shd-revoke:hover{background:rgba(246,70,93,.18)}
   #shd .shd-revoke:disabled{opacity:.5;cursor:default}
-  #shd .shd-safe{display:grid;place-items:center;padding:40px 20px;text-align:center;color:#8a95a3}
-  #shd .shd-safe .ic{width:60px;height:60px;border-radius:50%;background:rgba(52,211,153,.12);color:#34d399;display:grid;place-items:center;margin-bottom:16px}
-  #shd .shd-empty{color:#6b7684;font-size:12.5px;text-align:center;padding:20px}
-  /* explicación "cómo funciona" */
-  #shd .shd-how{background:rgba(13,19,26,.6);border:1px solid #202b37;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#8a95a3;line-height:1.6}
-  #shd .shd-how b{color:#c9d2dc}
-  /* conectar wallet */
-  #shd .shd-connect{display:grid;place-items:center;padding:50px 20px;text-align:center}
-  #shd .shd-connect h1{font-size:22px;margin:0 0 10px}
-  #shd .shd-connect p{color:#8a95a3;font-size:13.5px;margin:0 0 22px;max-width:360px}
-  #shd .shd-connect button{padding:14px 30px;border:0;border-radius:12px;background:linear-gradient(180deg,#2b6cff,#1642b0);color:#fff;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
-    /* Simulador */
-  #shd .shd-scan2{display:block;margin:12px auto 0;padding:12px 24px;border:1px solid #26313f;border-radius:12px;background:rgba(255,255,255,.03);color:#aab6c4;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
-  #shd .shd-scan2:hover{border-color:#3a4a5d;color:#e7ecf2}
-  #shd .shd-sim-wrap{max-width:560px;margin:0 auto;padding:10px 0}
-  #shd .shd-sim-h{font-size:22px;font-weight:800;text-align:center;margin:8px 0 10px}
-  #shd .shd-sim-p{font-size:13px;color:#8a95a3;text-align:center;line-height:1.6;margin:0 0 22px}
-  #shd .shd-sim-lbl{display:block;font-size:12px;color:#8a95a3;margin:14px 0 6px}
-  #shd .shd-sim-in{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid #26313f;border-radius:11px;padding:12px 14px;color:#e7ecf2;font-family:var(--mono,monospace);font-size:13px;outline:none}
-  #shd .shd-sim-in:focus{border-color:rgba(90,200,250,.45)}
-  #shd .shd-sim-msg{font-size:13px;margin-top:14px;padding:12px;border-radius:10px;text-align:center}
-  #shd .shd-sim-msg.bad{background:rgba(248,113,113,.1);color:#f87171}
-  #shd .shd-sim-loading{text-align:center;padding:26px}
-  #shd .shd-sim-card{margin-top:18px;border:1px solid;border-radius:14px;padding:18px;background:rgba(13,19,26,.7)}
-  #shd .shd-sim-verd{font-size:18px;font-weight:800;margin-bottom:10px}
-  #shd .shd-sim-res{font-size:13.5px;color:#c9d2dc;line-height:1.65;margin-bottom:14px}
-  #shd .shd-sim-halls{display:flex;flex-direction:column;gap:7px}
-  #shd .shd-sim-h-row{font-size:12.5px;display:flex;gap:8px;align-items:flex-start}
-  #shd .shd-sim-h-row.ok{color:#34d399} #shd .shd-sim-h-row.warn{color:#f8b34b} #shd .shd-sim-h-row.bad{color:#f87171} #shd .shd-sim-h-row.info{color:#8a95a3}
-  
+  #shd .shd-safe{display:grid;place-items:center;padding:40px 20px;text-align:center;color:#a7b0bb}
+  #shd .shd-safe .ic{width:60px;height:60px;border-radius:50%;background:rgba(46,189,133,.12);color:#2ebd85;display:grid;place-items:center;margin-bottom:16px}
+  #shd .shd-how{background:rgba(14,19,25,.6);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#a7b0bb;line-height:1.6}
+  #shd .shd-how b{color:#eaecef}
   /* Health Score */
-  #shd .shd-health{display:flex;gap:20px;align-items:center;background:rgba(13,19,26,.72);border:1px solid #26313f;border-radius:16px;padding:20px;margin-bottom:20px}
+  #shd .shd-health{display:flex;gap:20px;align-items:center;background:rgba(14,19,25,.8);border:1px solid #1c232b;border-radius:16px;padding:20px;margin-bottom:20px}
   #shd .shd-gauge{position:relative;flex:none;width:180px;text-align:center}
   #shd .shd-gauge-n{position:absolute;top:52px;left:0;right:0;font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
   #shd .shd-gauge-l{position:absolute;top:90px;left:0;right:0;font-size:13px;font-weight:700}
@@ -118,15 +98,31 @@ function inyectarCSS() {
   #shd .shd-facs{display:flex;flex-direction:column;gap:8px}
   #shd .shd-fac{display:flex;gap:10px;align-items:flex-start;font-size:12.5px}
   #shd .shd-fac-ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:11px;flex:none}
-  #shd .shd-fac.ok .shd-fac-ic{background:rgba(52,211,153,.15);color:#34d399}
-  #shd .shd-fac.warn .shd-fac-ic{background:rgba(248,179,75,.15);color:#f8b34b}
-  #shd .shd-fac.bad .shd-fac-ic{background:rgba(248,113,113,.15);color:#f87171}
-  #shd .shd-fac b{display:block;color:#e7ecf2;font-weight:600} #shd .shd-fac small{color:#6b7684;font-size:11.5px}
-  #shd .shd-consejo{margin-top:12px;font-size:12.5px;color:#8a95a3;background:rgba(90,200,250,.06);border:1px solid rgba(90,200,250,.15);border-radius:9px;padding:9px 12px}
-  @media(max-width:560px){ #shd .shd-health{flex-direction:column} #shd .shd-gauge{margin:0 auto} }
+  #shd .shd-fac.ok .shd-fac-ic{background:rgba(46,189,133,.15);color:#2ebd85}
+  #shd .shd-fac.warn .shd-fac-ic{background:rgba(232,184,75,.15);color:#e8b84b}
+  #shd .shd-fac.bad .shd-fac-ic{background:rgba(246,70,93,.15);color:#f6465d}
+  #shd .shd-fac b{display:block;color:#eaecef;font-weight:600} #shd .shd-fac small{color:#79838f;font-size:11.5px}
+  #shd .shd-consejo{margin-top:12px;font-size:12.5px;color:#a7b0bb;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.18);border-radius:9px;padding:9px 12px}
+  /* Simulador */
+  #shd .shd-sim-wrap{max-width:560px;margin:0 auto;padding:10px 0}
+  #shd .shd-sim-h{font-size:23px;font-weight:800;text-align:center;margin:8px 0 10px}
+  #shd .shd-sim-p{font-size:13px;color:#a7b0bb;text-align:center;line-height:1.6;margin:0 0 22px}
+  #shd .shd-sim-lbl{display:block;font-size:12px;color:#a7b0bb;margin:14px 0 6px}
+  #shd .shd-sim-in{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:12px 14px;color:#eaecef;font-family:var(--mono,monospace);font-size:13px;outline:none}
+  #shd .shd-sim-in:focus{border-color:var(--gold-soft,#C9A84B)}
+  #shd .shd-sim-msg{font-size:13px;margin-top:14px;padding:12px;border-radius:10px;text-align:center}
+  #shd .shd-sim-msg.bad{background:rgba(246,70,93,.1);color:#f6465d}
+  #shd .shd-sim-loading{text-align:center;padding:26px}
+  #shd .shd-sim-card{margin-top:18px;border:1px solid;border-radius:14px;padding:18px;background:rgba(14,19,25,.8)}
+  #shd .shd-sim-verd{font-size:18px;font-weight:800;margin-bottom:10px}
+  #shd .shd-sim-res{font-size:13.5px;color:#c9d2dc;line-height:1.65;margin-bottom:14px}
+  #shd .shd-sim-halls{display:flex;flex-direction:column;gap:7px}
+  #shd .shd-sim-h-row{font-size:12.5px;display:flex;gap:8px;align-items:flex-start}
+  #shd .shd-sim-h-row.ok{color:#2ebd85} #shd .shd-sim-h-row.warn{color:#e8b84b} #shd .shd-sim-h-row.bad{color:#f6465d} #shd .shd-sim-h-row.info{color:#a7b0bb}
   @media(max-width:560px){
     #shd .shd-hero h1{font-size:21px} #shd .shd-perm{flex-wrap:wrap}
     #shd .shd-perm-info{flex:1 1 60%} #shd .shd-revoke{margin-left:auto}
+    #shd .shd-health{flex-direction:column} #shd .shd-gauge{margin:0 auto}
   }
   `;
   document.head.appendChild(s);
@@ -135,7 +131,8 @@ function inyectarCSS() {
 const IC = {
   shield: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
-  user: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>'
+  user: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  search: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>'
 };
 
 /* ═══════════ Abrir Wallet Shield ═══════════ */
@@ -145,56 +142,65 @@ export function abrirShield() {
   const cont = document.createElement('div'); cont.id = 'shd';
   document.body.appendChild(cont);
   const cuenta = wallet.cuentaActual && wallet.cuentaActual();
-  cont.innerHTML = `<div class="shd-in" id="shd-in"></div>`;
+  cont.innerHTML = `<div id="shd-barslot"></div><div class="shd-in" id="shd-in"></div>`;
   if (!cuenta) { pintarConectar(); return; }
   pintarInicio(cuenta);
 }
-function cerrar() { const c = $('shd'); if (c) c.remove(); }
+function cerrar() { const c = $('shd'); if (c) c.remove(); try { location.href = 'index.html'; } catch (_) {} }
 
 function cabecera() {
-  return `<div class="shd-top">
-    <div class="shd-brand"><div class="shd-logo">${IC.shield}</div><div><b>Wallet Shield</b><small>Protect what's yours</small></div></div>
-    <button class="shd-x" id="shd-x">✕</button>
+  return `<div class="shd-bar">
+    <button class="shd-back" id="shd-back">← Back</button>
+    <div class="shd-bar-t">Wallet <span>Shield</span></div>
   </div>`;
 }
 
 function pintarConectar() {
-  $('shd-in').innerHTML = cabecera() + `
-    <div class="shd-connect">
-      <div class="shd-logo" style="width:64px;height:64px;margin-bottom:20px">${IC.shield}</div>
-      <h1>Connect your wallet</h1>
-      <p>Wallet Shield scans your wallet for risky permissions and lets you revoke them. Connect to begin.</p>
-      <button id="shd-conn">Connect wallet</button>
+  $('shd-barslot').innerHTML = cabecera();
+  $('shd-in').innerHTML = `
+    <div class="shd-hero" style="padding-top:50px">
+      <h1>Protect your wallet</h1>
+      <p>Wallet Shield scans your wallet for risky permissions, gives you a security score, checks contracts before you sign, and lets you revoke threats — all in one place. Connect your wallet to begin.</p>
+      <div class="shd-feats">
+        <span class="shd-feat">Permission scanner</span>
+        <span class="shd-feat">Health score</span>
+        <span class="shd-feat">Contract checker</span>
+        <span class="shd-feat">One-tap revoke</span>
+      </div>
+      <button class="shd-btn" id="shd-conn">Connect wallet</button>
     </div>`;
-  $('shd-x').onclick = cerrar;
+  wireBack();
   $('shd-conn').onclick = async () => { try { await wallet.conectar(); abrirShield(); } catch (_) {} };
 }
+function wireBack() { const b = $('shd-back'); if (b) b.onclick = cerrar; }
 
 function pintarInicio(cuenta) {
   const info = datos.infoWallet();
   const corta = cuenta.slice(0, 6) + '…' + cuenta.slice(-4);
-  $('shd-in').innerHTML = cabecera() + `
+  $('shd-barslot').innerHTML = cabecera();
+  $('shd-in').innerHTML = `
     <div class="shd-wallet">
-      <div class="shd-wava">${info.icono ? `<img src="${info.icono}" alt="">` : IC.user}</div>
+      <div class="shd-wava">${info.iconoHTML || IC.user}</div>
       <div class="shd-winfo"><b>${info.nombre || 'Wallet'}</b><small>${corta}</small></div>
       <span class="shd-wdot"></span>
     </div>
     <div class="shd-hero">
       <h1>Scan your wallet</h1>
-      <p>We'll check every permission (token approval) your wallet has granted, flag the risky ones, and let you revoke them in one tap.</p>
-      <button class="shd-scan" id="shd-scan">${IC.shield} Scan now</button>
-      <button class="shd-scan2" id="shd-sim">🔍 Check a contract before signing</button>
+      <p>Check every permission your wallet has granted, get a security score, and revoke anything risky in one tap.</p>
+      <div style="margin-top:8px"><button class="shd-btn" id="shd-scan">${IC.shield} Scan now</button></div>
+      <div><button class="shd-btn2" id="shd-sim">${IC.search} Check a contract before signing</button></div>
     </div>
     <div class="shd-how">
-      <b>How it works.</b> Every time you use a dApp, you grant it permission to move certain tokens. Old or unlimited permissions are the #1 way wallets get drained. This scan shows them all — permissions to our own contracts are marked as trusted; anything else you don't recognize, revoke it.
+      <b>How it works.</b> Every time you use a dApp, you grant it permission to move certain tokens. Old or unlimited permissions are the #1 way wallets get drained. This scan shows them all — permissions to our own contracts are marked as trusted; anything you don't recognize, revoke it.
     </div>`;
-  $('shd-x').onclick = cerrar;
+  wireBack();
   $('shd-scan').onclick = () => escanear(cuenta);
   $('shd-sim').onclick = () => pintarSimulador(cuenta);
 }
 
 function pintarSimulador(cuenta) {
-  $('shd-in').innerHTML = cabecera() + `
+  $('shd-barslot').innerHTML = cabecera();
+  $('shd-in').innerHTML = `
     <div class="shd-sim-wrap">
       <h1 class="shd-sim-h">What happens if I sign this?</h1>
       <p class="shd-sim-p">Paste the contract a site is asking you to approve. If you have the spender address too, add it for a full risk check. We read the blockchain live — no guessing.</p>
@@ -202,17 +208,17 @@ function pintarSimulador(cuenta) {
       <input class="shd-sim-in" id="sim-c" placeholder="0x… contract address" autocomplete="off" spellcheck="false">
       <label class="shd-sim-lbl">Spender address <span style="color:#5f6b7a">(optional — who is asking for permission)</span></label>
       <input class="shd-sim-in" id="sim-s" placeholder="0x… spender address" autocomplete="off" spellcheck="false">
-      <button class="shd-scan" id="sim-go" style="margin-top:16px;width:100%">Analyze</button>
+      <button class="shd-btn" id="sim-go" style="margin-top:16px;width:100%">Analyze</button>
       <div id="sim-res"></div>
       <button class="shd-rescan" id="sim-back" style="margin-top:18px">← Back</button>
     </div>`;
-  $('shd-x').onclick = cerrar;
+  wireBack();
   $('sim-back').onclick = () => pintarInicio(cuenta);
   $('sim-go').onclick = async () => {
     const cAddr = $('sim-c').value.trim(); const sAddr = $('sim-s').value.trim();
     const res = $('sim-res');
     if (!sim.esDireccion(cAddr)) { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid contract address (0x…)</div>`; return; }
-    res.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#8a95a3;font-size:13px;margin-top:10px">Reading the blockchain…</div></div>`;
+    res.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Reading the blockchain…</div></div>`;
     try {
       const info = await sim.analizar(cAddr, sAddr || null);
       res.innerHTML = tarjetaSim(info);
@@ -220,7 +226,7 @@ function pintarSimulador(cuenta) {
   };
 }
 function tarjetaSim(info) {
-  const col = { safe: '#34d399', info: '#5ac8fa', warn: '#f8b34b', danger: '#f87171', unknown: '#8a95a3' }[info.veredicto] || '#8a95a3';
+  const col = { safe: '#2ebd85', info: '#E8B84B', warn: '#e8b84b', danger: '#f6465d', unknown: '#a7b0bb' }[info.veredicto] || '#a7b0bb';
   const hall = info.hallazgos.map(h => {
     const ic = h.tipo === 'ok' ? '✓' : (h.tipo === 'warn' ? '!' : (h.tipo === 'bad' ? '✕' : 'ℹ'));
     const cls = h.tipo === 'ok' ? 'ok' : (h.tipo === 'warn' ? 'warn' : (h.tipo === 'bad' ? 'bad' : 'info'));
@@ -240,16 +246,17 @@ async function escanear(cuenta) {
     'Flagging unlimited & risky spenders…',
     'Identifying trusted contracts…'
   ];
-  $('shd-in').innerHTML = cabecera() + `
+  $('shd-barslot').innerHTML = cabecera();
+  $('shd-in').innerHTML = `
     <div class="shd-scanning">
       <div class="shd-radar">
         <div class="shd-radar-ring"></div><div class="shd-radar-ring r2"></div><div class="shd-radar-ring r3"></div>
         <div class="shd-radar-sweep"></div><div class="shd-radar-core"></div>
       </div>
       <div class="shd-term" id="shd-term"></div>
-      <div class="shd-bar"><div class="shd-bar-fill" id="shd-bar"></div></div>
+      <div class="shd-bar-pr"><div class="shd-bar-fill" id="shd-bar"></div></div>
     </div>`;
-  $('shd-x').onclick = cerrar;
+  wireBack();
   const term = $('shd-term');
   let li = 0;
   const meter = setInterval(() => {
@@ -278,9 +285,10 @@ function pintarResultados(cuenta, permisos) {
   const nuestros = permisos.filter(p => p.nuestro);
   const peligrosos = externos.filter(p => p.ilimitado).length;
   const sc = calcularScore(permisos);
-  let html = cabecera() + healthCard(sc) + `
+  $('shd-barslot').innerHTML = cabecera();
+  let html = healthCard(sc) + `
     <div class="shd-res-head">
-      <h2>${externos.length + nuestros.length} permission${(externos.length+nuestros.length)!==1?'s':''} found${peligrosos ? ` · <span style="color:#f87171">${peligrosos} risky</span>` : ''}</h2>
+      <h2>${externos.length + nuestros.length} permission${(externos.length+nuestros.length)!==1?'s':''} found${peligrosos ? ` · <span style="color:#f6465d">${peligrosos} risky</span>` : ''}</h2>
       <button class="shd-rescan" id="shd-rescan">Scan again</button>
     </div>`;
   if (permisos.length === 0) {
@@ -297,7 +305,7 @@ function pintarResultados(cuenta, permisos) {
   }
   html += `<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending — it never moves or risks your funds. Revoke anything you don't recognize or no longer use. Each revoke is a transaction you sign in your wallet (costs a little gas).</div>`;
   $('shd-in').innerHTML = html;
-  $('shd-x').onclick = cerrar;
+  wireBack();
   $('shd-rescan').onclick = () => escanear(cuenta);
   // wire revokes
   document.querySelectorAll('[data-revoke]').forEach(b => {
