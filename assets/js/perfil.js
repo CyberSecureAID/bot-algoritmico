@@ -555,7 +555,7 @@ export async function abrirPerfil() {
   };
   // Timeout global: si los datos tardan más de 12s, no dejamos los skeletons girando.
   let _datosListos = false;
-  const _tGuard = setTimeout(() => { if (!_datosListos) _ponerGuiones(); }, 12000);
+  const _tGuard = setTimeout(() => { if (!_datosListos) _ponerGuiones(); }, 7000);
   cargarDatos(cuenta).catch((e) => { console.warn('[Aurex] perfil:', e); _ponerGuiones(); })
     .finally(() => { _datosListos = true; clearTimeout(_tGuard); _ponerGuiones(); });
 
