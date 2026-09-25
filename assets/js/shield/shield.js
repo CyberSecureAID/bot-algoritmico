@@ -5,6 +5,7 @@
 import * as datos from './shield-datos.js?v=1';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
+import * as sim from './shield-sim.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -88,6 +89,25 @@ function inyectarCSS() {
   #shd .shd-connect h1{font-size:22px;margin:0 0 10px}
   #shd .shd-connect p{color:#8a95a3;font-size:13.5px;margin:0 0 22px;max-width:360px}
   #shd .shd-connect button{padding:14px 30px;border:0;border-radius:12px;background:linear-gradient(180deg,#2b6cff,#1642b0);color:#fff;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
+    /* Simulador */
+  #shd .shd-scan2{display:block;margin:12px auto 0;padding:12px 24px;border:1px solid #26313f;border-radius:12px;background:rgba(255,255,255,.03);color:#aab6c4;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
+  #shd .shd-scan2:hover{border-color:#3a4a5d;color:#e7ecf2}
+  #shd .shd-sim-wrap{max-width:560px;margin:0 auto;padding:10px 0}
+  #shd .shd-sim-h{font-size:22px;font-weight:800;text-align:center;margin:8px 0 10px}
+  #shd .shd-sim-p{font-size:13px;color:#8a95a3;text-align:center;line-height:1.6;margin:0 0 22px}
+  #shd .shd-sim-lbl{display:block;font-size:12px;color:#8a95a3;margin:14px 0 6px}
+  #shd .shd-sim-in{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid #26313f;border-radius:11px;padding:12px 14px;color:#e7ecf2;font-family:var(--mono,monospace);font-size:13px;outline:none}
+  #shd .shd-sim-in:focus{border-color:rgba(90,200,250,.45)}
+  #shd .shd-sim-msg{font-size:13px;margin-top:14px;padding:12px;border-radius:10px;text-align:center}
+  #shd .shd-sim-msg.bad{background:rgba(248,113,113,.1);color:#f87171}
+  #shd .shd-sim-loading{text-align:center;padding:26px}
+  #shd .shd-sim-card{margin-top:18px;border:1px solid;border-radius:14px;padding:18px;background:rgba(13,19,26,.7)}
+  #shd .shd-sim-verd{font-size:18px;font-weight:800;margin-bottom:10px}
+  #shd .shd-sim-res{font-size:13.5px;color:#c9d2dc;line-height:1.65;margin-bottom:14px}
+  #shd .shd-sim-halls{display:flex;flex-direction:column;gap:7px}
+  #shd .shd-sim-h-row{font-size:12.5px;display:flex;gap:8px;align-items:flex-start}
+  #shd .shd-sim-h-row.ok{color:#34d399} #shd .shd-sim-h-row.warn{color:#f8b34b} #shd .shd-sim-h-row.bad{color:#f87171} #shd .shd-sim-h-row.info{color:#8a95a3}
+  
   /* Health Score */
   #shd .shd-health{display:flex;gap:20px;align-items:center;background:rgba(13,19,26,.72);border:1px solid #26313f;border-radius:16px;padding:20px;margin-bottom:20px}
   #shd .shd-gauge{position:relative;flex:none;width:180px;text-align:center}
@@ -163,14 +183,55 @@ function pintarInicio(cuenta) {
       <h1>Scan your wallet</h1>
       <p>We'll check every permission (token approval) your wallet has granted, flag the risky ones, and let you revoke them in one tap.</p>
       <button class="shd-scan" id="shd-scan">${IC.shield} Scan now</button>
+      <button class="shd-scan2" id="shd-sim">🔍 Check a contract before signing</button>
     </div>
     <div class="shd-how">
       <b>How it works.</b> Every time you use a dApp, you grant it permission to move certain tokens. Old or unlimited permissions are the #1 way wallets get drained. This scan shows them all — permissions to our own contracts are marked as trusted; anything else you don't recognize, revoke it.
     </div>`;
   $('shd-x').onclick = cerrar;
   $('shd-scan').onclick = () => escanear(cuenta);
+  $('shd-sim').onclick = () => pintarSimulador(cuenta);
 }
 
+function pintarSimulador(cuenta) {
+  $('shd-in').innerHTML = cabecera() + `
+    <div class="shd-sim-wrap">
+      <h1 class="shd-sim-h">What happens if I sign this?</h1>
+      <p class="shd-sim-p">Paste the contract a site is asking you to approve. If you have the spender address too, add it for a full risk check. We read the blockchain live — no guessing.</p>
+      <label class="shd-sim-lbl">Token / contract address</label>
+      <input class="shd-sim-in" id="sim-c" placeholder="0x… contract address" autocomplete="off" spellcheck="false">
+      <label class="shd-sim-lbl">Spender address <span style="color:#5f6b7a">(optional — who is asking for permission)</span></label>
+      <input class="shd-sim-in" id="sim-s" placeholder="0x… spender address" autocomplete="off" spellcheck="false">
+      <button class="shd-scan" id="sim-go" style="margin-top:16px;width:100%">Analyze</button>
+      <div id="sim-res"></div>
+      <button class="shd-rescan" id="sim-back" style="margin-top:18px">← Back</button>
+    </div>`;
+  $('shd-x').onclick = cerrar;
+  $('sim-back').onclick = () => pintarInicio(cuenta);
+  $('sim-go').onclick = async () => {
+    const cAddr = $('sim-c').value.trim(); const sAddr = $('sim-s').value.trim();
+    const res = $('sim-res');
+    if (!sim.esDireccion(cAddr)) { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid contract address (0x…)</div>`; return; }
+    res.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#8a95a3;font-size:13px;margin-top:10px">Reading the blockchain…</div></div>`;
+    try {
+      const info = await sim.analizar(cAddr, sAddr || null);
+      res.innerHTML = tarjetaSim(info);
+    } catch (e) { res.innerHTML = `<div class="shd-sim-msg bad">Could not analyze. Check the address and try again.</div>`; }
+  };
+}
+function tarjetaSim(info) {
+  const col = { safe: '#34d399', info: '#5ac8fa', warn: '#f8b34b', danger: '#f87171', unknown: '#8a95a3' }[info.veredicto] || '#8a95a3';
+  const hall = info.hallazgos.map(h => {
+    const ic = h.tipo === 'ok' ? '✓' : (h.tipo === 'warn' ? '!' : (h.tipo === 'bad' ? '✕' : 'ℹ'));
+    const cls = h.tipo === 'ok' ? 'ok' : (h.tipo === 'warn' ? 'warn' : (h.tipo === 'bad' ? 'bad' : 'info'));
+    return `<div class="shd-sim-h-row ${cls}"><span>${ic}</span> ${escH(h.t)}</div>`;
+  }).join('');
+  return `<div class="shd-sim-card" style="border-color:${col}44">
+    <div class="shd-sim-verd" style="color:${col}">${escH(info.titulo)}</div>
+    <div class="shd-sim-res">${escH(info.resumen)}</div>
+    <div class="shd-sim-halls">${hall}</div>
+  </div>`;
+}
 async function escanear(cuenta) {
   const lineas = [
     'Initializing secure scan…',
