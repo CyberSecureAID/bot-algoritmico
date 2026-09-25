@@ -5,8 +5,7 @@
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 
 const ALCHEMY = 'https://bnb-mainnet.g.alchemy.com/v2/docs-demo';   // demo público, sin key
-const BSCSCAN = 'https://api.etherscan.io/v2/api';
-const CHAIN = 56;   // BSC
+const BSCSCAN = 'https://api.bscscan.com/api';
 const BSCSCAN_KEY = 'BUS6DPJ84DWQ1N9XCN8PIUHTNFM5TXE2HU';   // key real (gratuita)
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io'];
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
@@ -52,7 +51,7 @@ export async function tokensDe(addr, onProgreso) {
   const diag = { apiMsg: '', apiStatus: '', movimientos: 0, tokensUnicos: 0, conSaldo: 0, error: '' };
   try {
     for (let page = 1; page <= 3; page++) {
-      const url = `${BSCSCAN}?chainid=${CHAIN}&module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=${page}&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
+      const url = `${BSCSCAN}?module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=${page}&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
       const r = await fetch(url, { cache: 'no-store' });
       const d = await r.json();
       diag.apiStatus = String(d.status); diag.apiMsg = String(d.message || '');
@@ -98,7 +97,7 @@ export async function tokensDe(addr, onProgreso) {
   tokens.sort((a, b) => (b.usd - a.usd) || (b.balance - a.balance));
   diag.conSaldo = tokens.length;
   if (onProgreso) onProgreso(1);
-  return { nativo, nativoUSD, tokens, totalUSD, _diag: diag };
+  return { nativo, nativoUSD, tokens, totalUSD };
 }
 
 /* ── Logo de BNB y de tokens (DeFiLlama / Alchemy) ── */
@@ -110,7 +109,7 @@ export async function historialDe(addr) {
   const ops = [];
   // transferencias de tokens
   try {
-    const url = `${BSCSCAN}?chainid=${CHAIN}&module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=1&offset=25&sort=desc&apikey=${BSCSCAN_KEY}`;
+    const url = `${BSCSCAN}?module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=1&offset=25&sort=desc&apikey=${BSCSCAN_KEY}`;
     const r = await fetch(url, { cache: 'no-store' });
     const d = await r.json();
     if (Array.isArray(d.result)) for (const t of d.result) {
@@ -120,7 +119,7 @@ export async function historialDe(addr) {
   } catch (_) {}
   // transacciones normales (BNB)
   try {
-    const url = `${BSCSCAN}?chainid=${CHAIN}&module=account&action=txlist&address=${addr}&startblock=0&endblock=latest&page=1&offset=15&sort=desc&apikey=${BSCSCAN_KEY}`;
+    const url = `${BSCSCAN}?module=account&action=txlist&address=${addr}&startblock=0&endblock=latest&page=1&offset=15&sort=desc&apikey=${BSCSCAN_KEY}`;
     const r = await fetch(url, { cache: 'no-store' });
     const d = await r.json();
     if (Array.isArray(d.result)) for (const t of d.result) {
