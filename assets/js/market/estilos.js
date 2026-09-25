@@ -492,6 +492,16 @@ export function estilos() {
   #mk-overlay .wz-tok-quick{display:flex;gap:9px}
   #mk-overlay .wz-tok-quick .wz-op{flex:1}
 
+  
+  /* X del asistente P2P: que no se monte con el contador de pasos */
+  #mk-overlay .mk-wiz-top{padding-right:40px}
+  #mk-overlay .mk-wiz-x{z-index:3}
+  @media(max-width:560px){
+    #mk-overlay .mk-wiz-x{top:12px;right:12px;width:30px;height:30px}
+    #mk-overlay .mk-wiz-top{padding-right:38px}
+    #mk-overlay .mk-wiz-c{padding-top:calc(20px + env(safe-area-inset-top,0px))}
+  }
+
   `;
   document.head.appendChild(s);
 }

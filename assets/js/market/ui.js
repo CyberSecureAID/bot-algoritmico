@@ -38,7 +38,7 @@ export function dialogo({ titulo, texto, ok = 'Continuar', cancelar = 'Ahora no'
 /* ── Marco del asistente (wizard): cabecera con paso, cuerpo y cierre ── */
 export function cerrarWiz() { const e = $('mk-wiz'); if (e) e.remove(); }
 
-export function marco(paso, total, titulo, sub, cuerpo, { atras = true, seguir = 'Continuar', puedeSeguir = true } = {}) {
+export function marco(paso, total, titulo, sub, cuerpo, { atras = true, seguir = 'Continue', puedeSeguir = true } = {}) {
   cerrarWiz();
   const d = document.createElement('div');
   d.id = 'mk-wiz'; d.className = 'mk-wiz-bg';
@@ -47,13 +47,13 @@ export function marco(paso, total, titulo, sub, cuerpo, { atras = true, seguir =
     <div class="mk-wiz-top">
       <div class="mk-wiz-pasos">${Array.from({ length: total }, (_, i) =>
         `<span class="mk-wiz-d ${i + 1 < paso ? 'ok' : (i + 1 === paso ? 'now' : '')}"></span>`).join('')}</div>
-      <div class="mk-wiz-n">Paso ${paso} de ${total}</div>
+      <div class="mk-wiz-n">Step ${paso} of ${total}</div>
     </div>
     <div class="mk-wiz-t">${titulo}</div>
     ${sub ? `<div class="mk-wiz-s">${sub}</div>` : ''}
     <div class="mk-wiz-b">${cuerpo}</div>
     <div class="mk-wiz-acts">
-      ${atras ? `<button class="mk-b gris" id="wz-atras">Atrás</button>` : ''}
+      ${atras ? `<button class="mk-b gris" id="wz-atras">Back</button>` : ''}
       <button class="mk-b" id="wz-ok" ${puedeSeguir ? '' : 'disabled'}>${seguir}</button>
     </div>
     <div class="mk-msg info" id="wz-msg"></div>

@@ -144,10 +144,10 @@ function tarjeta({ o, perf, rep }, cuenta) {
     <div class="tj-pie">
       ${(conRep || ventas > 0)
         ? `<div class="tj-estrellas">${conRep ? `<span class="st">${'★'.repeat(Math.round(Number(rep.estrellasX100) / 100))}${'☆'.repeat(5 - Math.round(Number(rep.estrellasX100) / 100))}</span><b>${(Number(rep.estrellasX100) / 100).toFixed(1)}</b>` : ''}${ventas > 0 ? `<span class="ops">${ventas} ${ventas === 1 ? 'venta' : 'ventas'}</span>` : ''}</div>`
-        : '<span class="nuevo">Nuevo · sin historial</span>'}
+        : '<span class="nuevo">New · no history</span>'}
     </div>
 
-    <button class="tj-btn${mio ? ' gris' : ''}" data-ver="${o.id}">${mio ? 'Mi publicación' : (compra ? 'Quiero venderle' : 'Comprar')}</button>
+    <button class="tj-btn${mio ? ' gris' : ''}" data-ver="${o.id}">${mio ? 'My listing' : (compra ? 'I want to sell' : 'Buy')}</button>
   </div>`;
 }
 
@@ -191,7 +191,7 @@ async function verFicha(id) {
     const l = t.toLowerCase();
     if (l.startsWith('telegram')) return ICOCT.Telegram;
     if (l.startsWith('whatsapp')) return ICOCT.WhatsApp;
-    if (l.startsWith('tel')) return ICOCT['Teléfono'];
+    if (l.startsWith('tel')) return ICOCT['Phone'];
     return '•';
   };
 
@@ -201,11 +201,11 @@ async function verFicha(id) {
       <div class="tj-moneda grande">${logoMoneda(o.token)}</div>
       <div>
         <div class="fc-nom">${esc(nombre)}</div>
-        ${(conRep || (rep && Number(rep.ventasOk) > 0) || (perf && perf.pais)) ? `<div class="fc-sub">${conRep ? `★ ${(Number(rep.estrellasX100) / 100).toFixed(1)} · ` : ''}${(rep && Number(rep.ventasOk) > 0) ? `${Number(rep.ventasOk)} ventas · ` : ''}${(perf && perf.pais) ? esc(perf.pais) : ''}</div>` : ''}
+        ${(conRep || (rep && Number(rep.ventasOk) > 0) || (perf && perf.pais)) ? `<div class="fc-sub">${conRep ? `★ ${(Number(rep.estrellasX100) / 100).toFixed(1)} · ` : ''}${(rep && Number(rep.ventasOk) > 0) ? `${Number(rep.ventasOk)} sales · ` : ''}${(perf && perf.pais) ? esc(perf.pais) : ''}</div>` : ''}
       </div>
     </div>
 
-    <div class="fc-hero"><span>${compra ? 'Quiere comprar' : 'Está vendiendo'}</span><b>${num(monto, 2)} ${sim}</b><i>${sim} BEP-20 · Binance Smart Chain</i></div>
+    <div class="fc-hero"><span>${compra ? 'Wants to buy' : 'Selling'}</span><b>${num(monto, 2)} ${sim}</b><i>${sim} BEP-20 · Binance Smart Chain</i></div>
 
     <div class="fc-sec"><div class="fc-t">Acepta que le paguen</div>
       <div class="fc-chips">${String(o.moneda || '').split('·').filter(Boolean).map(p => {
@@ -216,11 +216,11 @@ async function verFicha(id) {
     </div>
 
     ${compra ? '' : `<div class="fc-sec">
-      <button class="fc-desp" id="fc-como">Cómo funciona esta compra <span class="ar">▼</span></button>
+      <button class="fc-desp" id="fc-como">How this purchase works <span class="ar">▼</span></button>
       <div class="fc-pasos" id="fc-pasos" style="display:none">
         <div class="fc-p"><span>1</span>Te pones en contacto con ${esc(nombre)} por donde prefiera.</div>
-        <div class="fc-p"><span>2</span>Sus ${num(monto, 2)} ${sim} ya están <b>trabados aquí</b>: no puede llevárselos.</div>
-        <div class="fc-p"><span>3</span>Le pagas la primera parte (${num(monto / tramos, 2)} ${sim} equivalente). Él confirma y se te libera.</div>
+        <div class="fc-p"><span>2</span>Their ${num(monto, 2)} ${sim} are already <b>locked here</b>: they can't take them.</div>
+        <div class="fc-p"><span>3</span>You pay the first part (${num(monto / tramos, 2)} ${sim} equivalent). They confirm and it releases to you.</div>
         <div class="fc-p"><span>4</span>Se repite hasta completar las ${tramos} partes. Si algo falla, solo arriesgas una parte.</div>
       </div></div>`}
 
