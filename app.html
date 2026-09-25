@@ -391,14 +391,22 @@
     // CUALQUIER vía (clic o carga automática), el provisional se elimina de
     // inmediato. Así nunca quedan los dos iconos superpuestos.
     (function () {
-      var chk = setInterval(function () {
+      // Vigilante PERMANENTE: mientras exista el asistente real (#npFab),
+      // el provisional (#np-fab-previo) se elimina SIEMPRE. Usamos observer +
+      // intervalo de respaldo para que NUNCA queden los dos iconos, pase lo que pase.
+      function limpiar() {
         if (document.getElementById('npFab')) {
           var pv = document.getElementById('np-fab-previo');
           if (pv) pv.remove();
-          clearInterval(chk);
         }
-      }, 200);
-      setTimeout(function () { clearInterval(chk); }, 30000);
+      }
+      try {
+        var obs = new MutationObserver(limpiar);
+        obs.observe(document.body, { childList: true, subtree: true });
+      } catch (_) {}
+      // respaldo por si el observer no dispara
+      var chk = setInterval(limpiar, 400);
+      // no lo paramos nunca: es barato y garantiza que no reaparezca el duplicado.
     })();
     // El botón provisional: al tocarlo carga el asistente y lo abre.
     var previo = document.getElementById('np-fab-previo');
