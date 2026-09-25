@@ -8,6 +8,7 @@ import * as wallet from '../wallet.js?v=125';
 import { firmante, esc, num, traducir } from './util.js?v=1';
 import { marco, cerrarWiz, wmsg, msg } from './ui.js?v=1';
 import { MARKET, USDT, USDC, ABI, COBROS, NOMBRE_MONEDA } from './config.js?v=1';
+import { infoToken as _infoTok, esDireccion as _esDir } from '../gridbot/mercado.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 let _listarOfertas = () => {}, _lee = async () => null;
@@ -33,11 +34,27 @@ export function abrirAsistenteCompra() {
 }
 function pasoC(p) {
   if (p === 1) {
-    marco(1, 5, '¿Qué quieres comprar?', 'Elige la moneda digital que buscas.',
-      `<div class="wz-ops">
-        <button class="wz-op ${C.tokSel === USDT ? 'on' : ''}" data-ctok="${USDT}" data-csim="USDT"><b>USDT</b><span>Tether · la más usada</span></button>
+    marco(1, 5, 'What do you want to buy?', 'Paste the token contract, or pick a common one. Any BNB Smart Chain token works.',
+      `<div class="wz-tok-find">
+        <input id="cz-tok-addr" placeholder="0x… token contract address" autocomplete="off" spellcheck="false">
+        <div class="wz-tok-msg" id="cz-tok-msg"></div>
+      </div>
+      <div class="wz-tok-quick">
+        <button class="wz-op ${C.tokSel === USDT ? 'on' : ''}" data-ctok="${USDT}" data-csim="USDT"><b>USDT</b><span>Tether</span></button>
         <button class="wz-op ${C.tokSel === USDC ? 'on' : ''}" data-ctok="${USDC}" data-csim="USDC"><b>USDC</b><span>USD Coin</span></button>
       </div>`, { atras: false });
+    const caddr = $('cz-tok-addr');
+    if (caddr) caddr.oninput = async () => {
+      const v = caddr.value.trim(); const msg = $('cz-tok-msg');
+      document.querySelectorAll('[data-ctok]').forEach(x => x.classList.remove('on'));
+      if (!_esDir(v)) { msg.textContent = v ? 'Enter a valid 0x… address' : ''; C.tokSel = null; return; }
+      msg.textContent = 'Reading token…';
+      try {
+        const info = await _infoTok(v);
+        if (info && info.simbolo) { C.tokSel = info.address; C.token = info.address; C.sim = info.simbolo; msg.innerHTML = `<span style="color:#34d399">Found: <b>${info.simbolo}</b> · ${info.nombre||''}</span>`; }
+        else { msg.textContent = 'Token not found'; C.tokSel = null; }
+      } catch (_) { msg.textContent = 'Could not read that token'; C.tokSel = null; }
+    };
     document.querySelectorAll('[data-ctok]').forEach(b => b.onclick = () => {
       document.querySelectorAll('[data-ctok]').forEach(x => x.classList.remove('on'));
       b.classList.add('on'); C.tokSel = b.getAttribute('data-ctok'); C.token = C.tokSel; C.sim = b.getAttribute('data-csim');
@@ -46,7 +63,7 @@ function pasoC(p) {
     return;
   }
   if (p === 2) {
-    marco(2, 5, `¿Cuánto ${C.sim} quieres comprar?`, 'La cantidad que buscas.',
+    marco(2, 5, `How much ${C.sim} do you want to buy?`, 'The amount you are looking for.',
       `<div class="mk-step-in">
         <button type="button" class="mk-mm" data-cmm="-">−</button>
         <input id="cz-cant" type="text" inputmode="decimal" placeholder="0.00" value="${C.cant || ''}">
@@ -67,7 +84,7 @@ function pasoC(p) {
     return;
   }
   if (p === 3) {
-    marco(3, 5, '¿Cómo vas a pagar?', 'Marca todas las formas con las que puedes pagar.',
+    marco(3, 5, 'How will you pay?', 'Check all the ways you can pay.',
       `<div class="wz-ops" id="cz-cobros">${COBROS.map(c =>
         `<button class="wz-op ${C.cobros.includes(c.id) ? 'on' : ''}" data-cco="${c.id}"><b>${c.nom}</b><span>${c.desc}</span></button>`).join('')}</div>`);
     document.querySelectorAll('[data-cco]').forEach(b => b.onclick = () => {
@@ -84,7 +101,7 @@ function pasoC(p) {
     return;
   }
   if (p === 4) {
-    marco(4, 5, '¿En qué moneda pagas y a cómo?', 'Marca la moneda y pon lo que estás dispuesto a pagar.',
+    marco(4, 5, 'Which currency and at what rate?', 'Pick the currency and set what you are willing to pay.',
       `<div class="wz-ops chicas" id="cz-monedas">${(C.posibles || []).map(m =>
         `<button class="wz-op ${C.monedas.includes(m) ? 'on' : ''}" data-cmo="${m}"><b>${m}</b><span>${NOMBRE_MONEDA[m] || ''}</span></button>`).join('')}
         <button class="wz-op ${C.otraMon ? 'on' : ''}" id="cz-otra"><b>Otra</b><span>Escríbela tú</span></button></div>
@@ -129,7 +146,7 @@ function pasoC(p) {
   }
   if (p === 5) {
     const VIAS = [{ id: 'Telegram', lab: 'Usuario de Telegram', ph: '@tuusuario' }, { id: 'WhatsApp', lab: 'WhatsApp (opcional)', ph: '+53 5xxxxxxx' }];
-    marco(5, 5, '¿Cómo te contactan?', 'Para que los vendedores puedan escribirte.',
+    marco(5, 5, 'How do they contact you?', 'So sellers can reach you.',
       VIAS.map(v => `<label>${v.lab}</label><input class="cz-ct" data-cct="${v.id}" maxlength="40" placeholder="${v.ph}" value="${esc(C.contactos[v.id] || '')}">`).join(''),
       { seguir: 'Publicar anuncio' });
     document.querySelectorAll('.cz-ct').forEach(i => i.oninput = () => { C.contactos[i.getAttribute('data-cct')] = i.value; });

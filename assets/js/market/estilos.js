@@ -483,6 +483,15 @@ export function estilos() {
     #mk-card .mk-disc2-mid{overflow-y:auto;padding:16px 8px}
     #mk-card .mk-disc2-t{font-size:19px}
   }
+  
+  /* Campo de contrato en el asistente P2P (vender/comprar cualquier token) */
+  #mk-overlay .wz-tok-find{margin-bottom:12px}
+  #mk-overlay .wz-tok-find input{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid #2b3139;border-radius:12px;padding:13px 14px;color:#eaecef;font-family:var(--mono,monospace);font-size:13px;outline:none}
+  #mk-overlay .wz-tok-find input:focus{border-color:rgba(232,184,75,.45)}
+  #mk-overlay .wz-tok-msg{font-size:12px;color:#8a95a3;margin-top:7px;min-height:15px}
+  #mk-overlay .wz-tok-quick{display:flex;gap:9px}
+  #mk-overlay .wz-tok-quick .wz-op{flex:1}
+
   `;
   document.head.appendChild(s);
 }

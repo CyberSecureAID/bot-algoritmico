@@ -9,6 +9,7 @@ import { firmante, esc, f18, num, traducir } from './util.js?v=1';
 import { marco, cerrarWiz, wmsg, msg } from './ui.js?v=1';
 import { guardarUbic, pedirUbicacion, compartirUbicacion } from './ubicacion.js?v=1';
 import { MARKET, USDT, USDC, ABI, ERC20, RPCS, COBROS, NOMBRE_MONEDA } from './config.js?v=1';
+import { infoToken as _infoTok, esDireccion as _esDir } from '../gridbot/mercado.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 let _listarOfertas = () => {}, _lee = async () => null;
@@ -24,22 +25,43 @@ export function abrirAsistente() {
 /* Paso 1 · Qué vendes */
 function pintarPaso(p) {
   if (p === 1) {
-    marco(1, 8, '¿Qué vas a vender?', 'Elige la moneda digital que tienes en tu wallet.',
-      `<div class="wz-ops">
-        <button class="wz-op ${W.tokSel === USDT ? 'on' : ''}" data-tok="${USDT}" data-sim="USDT"><b>USDT</b><span>Tether · la más usada</span></button>
+    marco(1, 8, 'What are you selling?', 'Paste the token contract, or pick a common one. Any BNB Smart Chain token works.',
+      `<div class="wz-tok-find">
+        <input id="wz-tok-addr" placeholder="0x… token contract address" autocomplete="off" spellcheck="false" value="${W.tokSel && _esDir(W.tokSel) && W.sim!=='USDT' && W.sim!=='USDC' ? W.tokSel : ''}">
+        <div class="wz-tok-msg" id="wz-tok-msg"></div>
+      </div>
+      <div class="wz-tok-quick">
+        <button class="wz-op ${W.tokSel === USDT ? 'on' : ''}" data-tok="${USDT}" data-sim="USDT"><b>USDT</b><span>Tether</span></button>
         <button class="wz-op ${W.tokSel === USDC ? 'on' : ''}" data-tok="${USDC}" data-sim="USDC"><b>USDC</b><span>USD Coin</span></button>
       </div>`, { atras: false });
+    // atajos rápidos (USDT/USDC)
     document.querySelectorAll('[data-tok]').forEach(b => b.onclick = () => {
       document.querySelectorAll('[data-tok]').forEach(x => x.classList.remove('on'));
       b.classList.add('on'); W.tokSel = b.getAttribute('data-tok'); W.token = W.tokSel; W.sim = b.getAttribute('data-sim');
+      const a = $('wz-tok-addr'); if (a) a.value = ''; const m = $('wz-tok-msg'); if (m) m.textContent = '';
     });
-    $('wz-ok').onclick = () => { if (!W.tokSel) { wmsg('Elige qué vas a vender.', 'err'); return; } pintarPaso(2); };
+    // pegar cualquier contrato → leer el token de la cadena
+    const addr = $('wz-tok-addr');
+    if (addr) addr.oninput = async () => {
+      const v = addr.value.trim(); const msg = $('wz-tok-msg');
+      document.querySelectorAll('[data-tok]').forEach(x => x.classList.remove('on'));
+      if (!_esDir(v)) { msg.textContent = v ? 'Enter a valid 0x… address' : ''; W.tokSel = null; return; }
+      msg.textContent = 'Reading token…';
+      try {
+        const info = await _infoTok(v);
+        if (info && info.simbolo) {
+          W.tokSel = info.address; W.token = info.address; W.sim = info.simbolo;
+          msg.innerHTML = `<span style="color:#34d399">Found: <b>${info.simbolo}</b> · ${info.nombre||''}</span>`;
+        } else { msg.textContent = 'Token not found on BNB Smart Chain'; W.tokSel = null; }
+      } catch (_) { msg.textContent = 'Could not read that token'; W.tokSel = null; }
+    };
+    $('wz-ok').onclick = () => { if (!W.tokSel) { wmsg('Choose or paste what you want to sell.', 'err'); return; } pintarPaso(2); };
     return;
   }
 
   /* Paso 2 · Cuánto */
   if (p === 2) {
-    marco(2, 8, `¿Cuánto ${W.sim} vas a vender?`, 'Escribe la cantidad total. Después la dividiremos en partes.',
+    marco(2, 8, `¿Cuánto ${W.sim} vas a vender?`, 'Enter the total amount. We will split it into parts.',
       `<div class="mk-step-in">
         <button type="button" class="mk-mm" data-mm="-">−</button>
         <input id="wz-cant" type="text" inputmode="decimal" placeholder="0.00" value="${W.cant || ''}">
@@ -66,7 +88,7 @@ function pintarPaso(p) {
     })();
     $('wz-ok').onclick = () => {
       const v = Number(String(inp.value || '').replace(',', '.')) || 0;
-      if (!(v > 0)) { wmsg('Escribe cuánto vas a vender.', 'err'); return; }
+      if (!(v > 0)) { wmsg('Enter how much you will sell.', 'err'); return; }
       if (W.saldo !== undefined && v > W.saldo) { wmsg(`Solo tienes ${num(W.saldo, 2)} ${W.sim} en tu wallet.`, 'err'); return; }
       W.cant = v; pintarPaso(3);
     };
@@ -77,10 +99,10 @@ function pintarPaso(p) {
   /* Paso 3 · Partes */
   if (p === 3) {
     const ops = [10, 5, 4, 3, 2];
-    marco(3, 8, 'Divide tu venta en partes',
-      'Tu dinero <b>no se entrega de golpe</b>. Sale por partes: cobras una, confirmas, y se libera. Así, si alguien te intenta estafar, <b>solo alcanza una parte</b>.',
+    marco(3, 8, 'Split your sale into parts',
+      'Your funds are <b>not released all at once</b>. They go out in parts: you get paid for one, confirm, and it releases. So if someone tries to scam you, <b>they can only reach one part</b>.',
       `<div class="wz-ops chicas" id="wz-tramos">${ops.map(t =>
-        `<button class="wz-op ${W.tramos === t ? 'on' : ''}" data-tr="${t}"><b>${t} partes</b><span>${t === 5 ? 'Recomendado' : (t === 10 ? 'Máxima seguridad' : (t === 2 ? 'Mínimo' : '&nbsp;'))}</span></button>`).join('')}</div>
+        `<button class="wz-op ${W.tramos === t ? 'on' : ''}" data-tr="${t}"><b>${t} partes</b><span>${t === 5 ? 'Recomendado' : (t === 10 ? 'Maximum safety' : (t === 2 ? 'Minimum' : '&nbsp;'))}</span></button>`).join('')}</div>
       <div class="wz-resumen" id="wz-escala"></div>`);
     const pintar = () => {
       const por = W.cant / W.tramos;
@@ -98,7 +120,7 @@ function pintarPaso(p) {
 
   /* Paso 4 · Cómo te pagan (el método manda) */
   if (p === 4) {
-    marco(4, 8, '¿Cómo quieres que te paguen?', 'Marca todas las formas que aceptes. Puedes elegir varias.',
+    marco(4, 8, 'How do you want to get paid?', 'Marca todas las formas que aceptes. Puedes elegir varias.',
       `<div class="wz-ops" id="wz-cobros">${COBROS.map(c =>
         `<button class="wz-op ${W.cobros.includes(c.id) ? 'on' : ''}" data-co="${c.id}"><b>${c.nom}</b><span>${c.desc}</span></button>`).join('')}</div>
       <div id="wz-datos"></div>`);
@@ -106,7 +128,7 @@ function pintarPaso(p) {
       const box = $('wz-datos');
       const conDato = COBROS.filter(c => W.cobros.includes(c.id) && c.pideDato);
       box.innerHTML = conDato.map(c => `<label>${c.nom}: ${c.pideDato}</label>
-        <input class="wz-dato" data-co="${c.id}" maxlength="24" value="${esc(W.datos[c.id] || '')}" placeholder="${c.id === 'Transferencia' ? 'Ej: MLC, Clásica' : 'Ej: Binance Pay'}">`).join('');
+        <input class="wz-dato" data-co="${c.id}" maxlength="24" value="${esc(W.datos[c.id] || '')}" placeholder="${c.id === 'Transferencia' ? 'e.g. bank transfer, cash' : 'Ej: Binance Pay'}">`).join('');
       document.querySelectorAll('.wz-dato').forEach(i => i.oninput = () => { W.datos[i.getAttribute('data-co')] = i.value; });
     };
     document.querySelectorAll('[data-co]').forEach(b => b.onclick = () => {
@@ -130,7 +152,7 @@ function pintarPaso(p) {
 
   /* Paso 5 · En qué moneda */
   if (p === 5) {
-    marco(5, 8, '¿En qué moneda te pagan?', 'Según lo que elegiste, estas son las que tienen sentido. Marca las que aceptes.',
+    marco(5, 8, 'Which currency do they pay you in?', 'Based on your choice, these make sense. Check the ones you accept.',
       `<div class="wz-ops chicas" id="wz-monedas">${(W.posibles || []).map(m =>
         `<button class="wz-op ${W.monedas.includes(m) ? 'on' : ''}" data-mo="${m}"><b>${m}</b><span>${NOMBRE_MONEDA[m] || ''}</span></button>`).join('')}
         <button class="wz-op ${W.otraMon ? 'on' : ''}" id="wz-otra"><b>Otra</b><span>Escríbela tú</span></button></div>
@@ -159,10 +181,10 @@ function pintarPaso(p) {
 
   /* Paso 6 · Precio de cada moneda */
   if (p === 6) {
-    marco(6, 8, '¿A cómo lo vendes?', 'Pon tu precio para cada moneda que aceptas.',
+    marco(6, 8, 'At what price do you sell?', 'Pon tu precio para cada moneda que aceptas.',
       W.monedas.map(m => `<label>¿Cuántos <b>${m}</b> por cada <b>1 ${W.sim}</b>?</label>
         <input class="wz-precio" data-mo="${m}" type="text" inputmode="decimal" placeholder="${['USD','MLC','EUR'].includes(m) ? 'Ej: 1.10' : 'Ej: 390'}" value="${W.precios[m] || ''}">
-        <div class="mk-hint">${['USD','MLC','EUR'].includes(m) ? `Si lo vendes a la par pon <b>1.00</b>; si más caro, <b>1.10</b>, <b>1.20</b>…` : `Es la tasa de hoy.`}</div>`).join(''),
+        <div class="mk-hint">${['USD','MLC','EUR'].includes(m) ? `At par put <b>1.00</b>; higher, <b>1.10</b>, <b>1.20</b>…` : `Today's rate.`}</div>`).join(''),
       );
     document.querySelectorAll('.wz-precio').forEach(i => i.oninput = () => { W.precios[i.getAttribute('data-mo')] = i.value; });
     $('wz-ok').onclick = () => {
@@ -180,15 +202,15 @@ function pintarPaso(p) {
   if (p === 7) {
     const VIAS = [
       { id: 'Telegram', lab: 'Usuario de Telegram', ph: '@tuusuario' },
-      { id: 'WhatsApp', lab: 'Número de WhatsApp (opcional)', ph: '+53 5xxxxxxx' },
-      { id: 'Teléfono', lab: 'Teléfono para llamadas (opcional)', ph: 'Suele ser el mismo de WhatsApp' }
+      { id: 'WhatsApp', lab: 'WhatsApp number (optional)', ph: '+53 5xxxxxxx' },
+      { id: 'Teléfono', lab: 'Phone for calls (optional)', ph: 'Suele ser el mismo de WhatsApp' }
     ];
-    marco(7, 8, '¿Cómo quieren que te contacten?', 'Pon al menos una vía. Sin esto nadie puede cerrar el trato contigo.',
+    marco(7, 8, 'How should buyers contact you?', 'Add at least one. Without it, nobody can close a deal with you.',
       VIAS.map(v => `<label>${v.lab}</label><input class="wz-ct" data-ct="${v.id}" maxlength="40" placeholder="${v.ph}" value="${esc(W.contactos[v.id] || '')}">`).join('') +
       `<label>¿En qué horario prefieres que te escriban? <span class="op">(opcional)</span></label>
        <div class="mk-sel wz-sel"><select id="wz-hora-sel">
          <option value="">Elige uno…</option>
-         ${['A cualquier hora', 'Mañanas (9am a 1pm)', 'Tardes (1pm a 7pm)', 'Noches (7pm a 11pm)', '9am a 9pm'].map(h => `<option${W.horario === h ? ' selected' : ''}>${h}</option>`).join('')}
+         ${['A cualquier hora', 'Mornings (9am to 1pm)', 'Tardes (1pm a 7pm)', 'Noches (7pm a 11pm)', '9am a 9pm'].map(h => `<option${W.horario === h ? ' selected' : ''}>${h}</option>`).join('')}
        </select></div>
        <input id="wz-hora" maxlength="40" placeholder="O escríbelo con tus palabras" value="${esc(W.horario || '')}" style="margin-top:8px">
        <label>Nota para quien te compre <span class="op">(opcional)</span></label>
@@ -209,7 +231,7 @@ function pintarPaso(p) {
 
   /* Paso 8 · Ubicación (opcional) y publicar */
   if (p === 8) {
-    marco(8, 8, 'Tu ubicación (opcional)', 'Compartirla genera confianza: quien vea tu oferta sabrá tu zona y a cuántos kilómetros está.',
+    marco(8, 8, 'Your location (optional)', 'Sharing it builds trust: buyers will see your area and how far away it is.',
       `<button class="fc-desp" id="wz-mas">¿Cómo funciona esto? <span class="ar">▼</span></button>
        <div id="wz-mas-box"></div>
        <div class="wz-ops" style="margin-top:12px">
@@ -268,7 +290,7 @@ async function publicarWiz() {
       await (await t.approve(MARKET, monto)).wait();
     }
     const fee = await _lee('comisionBnb');
-    wmsg('Confirma la publicación (1 USD en BNB)…', 'info');
+    wmsg('Confirm the listing (1 USD in BNB)…', 'info');
     const c = new ethers.Contract(MARKET, ABI, signer);
     await (await c.crearOrden(W.token, monto, W.tramos, moneda, metodo, Math.round(primero * 100), { value: fee })).wait();
     // Ubicación, si la aceptó
@@ -287,7 +309,7 @@ async function publicarWiz() {
       } catch (_) {}
     }
     cerrarWiz();
-    msg('¡Oferta publicada! Ya la puede ver todo el mundo.', 'ok');
+    msg('Offer published! Everyone can see it now.', 'ok');
     $('mk-t1').click(); _listarOfertas();
   } catch (e) { wmsg(traducir(e), 'err'); if (btn) btn.disabled = false; }
 }
