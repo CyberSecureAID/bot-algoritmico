@@ -83,12 +83,12 @@ async function abrir(clave, arg) {
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
       case 'aportar':   { const m = await import('./aportar-movil.js?v=18'); m.abrirAportarMovil(); break; }
-      case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=129'); m.abrirMarket && m.abrirMarket(); break; }
+      case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=130'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
       case 'fondos':    abrirMetamaskBuy(); break;
       case 'prize':     { const m = await import('../prizepool.js?v=125'); m.abrirPrizePool && m.abrirPrizePool(); break; }
-      case 'perfil':    { const m = await import('../perfil.js?v=130'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
+      case 'perfil':    { const m = await import('../perfil.js?v=131'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
       case 'tools':     { inyectarFixTools(); const m = await import('../tools.js?v=125'); m.abrirTools && m.abrirTools(); break; }
       case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=125'); m.abrirAcademy && m.abrirAcademy(); break; }
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
@@ -310,7 +310,7 @@ function abrirRecibir() {
 
 async function abrirMarketTab(tabId) {
   inyectarFixMarket();
-  const m = await import('../market.js?v=129');
+  const m = await import('../market.js?v=130');
   if (m.abrirMarket) m.abrirMarket();
   setTimeout(() => { const t = $(tabId); if (t) t.click(); }, 120);
 }
