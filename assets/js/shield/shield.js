@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=3';
 import * as rescue from './shield-rescue.js?v=3';
-import * as watch from './shield-watch.js?v=5';
+import * as watch from './shield-watch.js?v=6';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -445,7 +445,7 @@ function pintarWatcher(cuenta) {
       <button class="shd-btn" id="watch-go" style="width:100%;margin-top:14px">${IC.eye} Look inside</button>
       ${chips}
       <div class="shd-watch-reco">
-        <div class="shd-watch-reco-t">Smart money — top wallets to watch</div>
+        <div class="shd-watch-reco-t">Smart money · top wallets to watch</div>
         <div class="shd-watch-reco-list">
           <button class="shd-reco" data-w="0x8894e0a0c962cb723c1976a4421c95949be2d4e3"><b>Binance Hot Wallet</b><span>One of the largest active wallets</span></button>
           <button class="shd-reco" data-w="0x28c6c06298d514db089934071355e5743bf21d60"><b>Binance 14</b><span>High-volume exchange wallet</span></button>
