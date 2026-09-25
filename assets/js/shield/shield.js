@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=1';
 import * as sim from './shield-sim.js?v=3';
 import * as rescue from './shield-rescue.js?v=3';
-import * as watch from './shield-watch.js?v=7';
+import * as watch from './shield-watch.js?v=8';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -503,6 +503,14 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     return h + '</div>';
   };
   $('watch-pane').innerHTML = paneTokens();
+  // diagnóstico temporal (para depurar por qué no salen tokens)
+  if (d._diag) {
+    const dg = d._diag;
+    const box = document.createElement('div');
+    box.style.cssText = 'margin-top:14px;padding:12px 14px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.25);border-radius:10px;font-size:11.5px;color:#a7b0bb;font-family:var(--mono,monospace);line-height:1.7';
+    box.innerHTML = 'DIAGNOSTIC (temporary):<br>API status: ' + dg.apiStatus + ' · msg: ' + (dg.apiMsg||'-') + '<br>movements read: ' + dg.movimientos + '<br>unique tokens: ' + dg.tokensUnicos + '<br>tokens with balance: ' + dg.conSaldo + (dg.error ? '<br>ERROR: ' + dg.error : '');
+    const pane = $('watch-pane'); if (pane) pane.appendChild(box);
+  }
   // seguir/dejar
   const fb = $('watch-follow');
   fb.onclick = () => {

@@ -47,21 +47,26 @@ export async function tokensDe(addr, onProgreso) {
   let nativo = 0; try { nativo = Number(ethers.formatEther(await prov.getBalance(addr))); } catch (_) {}
   if (onProgreso) onProgreso(0.15);
 
-  // 1. lista de tokens que la wallet ha tocado (tokentx, gratis) — hasta 10000 movimientos
+  // 1. lista de tokens que la wallet ha tocado (tokentx, gratis)
   const vistos = new Map();
+  const diag = { apiMsg: '', apiStatus: '', movimientos: 0, tokensUnicos: 0, conSaldo: 0, error: '' };
   try {
     for (let page = 1; page <= 3; page++) {
       const url = `${BSCSCAN}?chainid=${CHAIN}&module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=${page}&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
       const r = await fetch(url, { cache: 'no-store' });
       const d = await r.json();
+      diag.apiStatus = String(d.status); diag.apiMsg = String(d.message || '');
+      if (typeof d.result === 'string') { diag.error = d.result; break; }
       if (!Array.isArray(d.result) || d.result.length === 0) break;
+      diag.movimientos += d.result.length;
       for (const t of d.result) {
         const a = (t.contractAddress || '').toLowerCase();
         if (a && !vistos.has(a)) vistos.set(a, { address: a, symbol: t.tokenSymbol || '?', name: t.tokenName || '', decimals: Number(t.tokenDecimal) || 18 });
       }
       if (d.result.length < 1000) break;
     }
-  } catch (_) {}
+  } catch (e) { diag.error = (e && e.message) || 'fetch failed'; }
+  diag.tokensUnicos = vistos.size;
   if (onProgreso) onProgreso(0.4);
 
   // 2. balance on-chain de CADA token (RPC, sin CORS ni límite de plan) — en tandas con RPC rotando
@@ -91,8 +96,9 @@ export async function tokensDe(addr, onProgreso) {
   // logos (Alchemy metadata, refuerzo)
   await Promise.all(tokens.slice(0, 40).map(async (t) => { try { const m = await metadata(t.address); if (m.logo) t.logo = m.logo; } catch (_) {} }));
   tokens.sort((a, b) => (b.usd - a.usd) || (b.balance - a.balance));
+  diag.conSaldo = tokens.length;
   if (onProgreso) onProgreso(1);
-  return { nativo, nativoUSD, tokens, totalUSD };
+  return { nativo, nativoUSD, tokens, totalUSD, _diag: diag };
 }
 
 /* ── Logo de BNB y de tokens (DeFiLlama / Alchemy) ── */
