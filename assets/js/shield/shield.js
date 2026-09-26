@@ -250,7 +250,22 @@ function inyectarCSS() {
   #shd .shd-poison-tip{font-size:12.5px;color:#a7b0bb;line-height:1.55;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:10px;padding:13px;margin-top:6px}
   #shd .shd-poison-tip b{color:#eaecef}
   
-    /* Lista de direcciones analizadas (poison) */
+      /* Actividad enriquecida (Watcher) */
+  #shd .shd-wop2{display:flex;align-items:flex-start;gap:12px;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:11px;padding:12px 14px}
+  #shd .shd-wop-ic{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:800;flex:none}
+  #shd .shd-wop-ic.in{background:rgba(46,189,133,.14);color:#2ebd85} #shd .shd-wop-ic.out{background:rgba(246,70,93,.14);color:#f6465d}
+  #shd .shd-wop2-info{flex:1;min-width:0}
+  #shd .shd-wop2-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  #shd .shd-wop2-top b{font-size:14px;font-weight:700} #shd .shd-wop2-top b.pos{color:#2ebd85} #shd .shd-wop2-top b.neg{color:#f6465d}
+  #shd .shd-wop2-date{font-size:11px;color:#79838f}
+  #shd .shd-wop2-flow{font-size:12px;color:#a7b0bb;font-family:var(--mono,monospace);margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  #shd .shd-wop-scan{font-size:11px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.3);border-radius:6px;padding:2px 7px}
+  /* desplegable poison enriquecido */
+  #shd .shd-poison-drow-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #shd .shd-poison-drow-meta{font-size:11px;color:#79838f;font-family:var(--mono,monospace);margin-top:5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  #shd .shd-poison-dscan{font-size:10.5px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.3);border-radius:6px;padding:2px 6px}
+  
+  /* Lista de direcciones analizadas (poison) */
   #shd .shd-poison-list-wrap{margin-top:14px}
   #shd .shd-poison-list-tog{width:100%;padding:11px;background:rgba(255,255,255,.02);border:1px solid #1c232b;border-radius:10px;color:#a7b0bb;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
   #shd .shd-poison-list-tog:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
@@ -529,7 +544,7 @@ function pintarConectar() {
   wireBack();
   $('shd-conn').onclick = async () => { try { await wallet.conectar(); abrirShield(); } catch (_) {} };
 }
-function wireBack() { const b = $('shd-back'); if (b) b.onclick = cerrar; }
+function wireBack(alSalir) { const b = $('shd-back'); if (b) b.onclick = alSalir || cerrar; }
 
 function pintarInicio(cuenta) {
   const info = datos.infoWallet();
@@ -588,7 +603,7 @@ function pintarSimulador(cuenta) {
       <div id="sim-res"></div>
       <button class="shd-rescan" id="sim-back" style="margin-top:18px">← Back</button>
     </div>`;
-  wireBack();
+  wireBack(function () { pintarInicio(cuenta); });
   $('sim-back').onclick = () => pintarInicio(cuenta);
   $('sim-go').onclick = async () => {
     const cAddr = $('sim-c').value.trim(); const sAddr = $('sim-s').value.trim();
@@ -630,7 +645,7 @@ function pintarPoison(cuenta) {
       <div id="poison-res"></div>
       <button class="shd-rescan" id="poison-back" style="margin-top:18px">Back</button>
     </div>`;
-  wireBack();
+  wireBack(function () { pintarInicio(cuenta); });
   $('poison-back').onclick = () => pintarInicio(cuenta);
   $('poison-go').onclick = async () => {
     const addr = $('poison-in').value.trim(); const res = $('poison-res');
@@ -659,14 +674,17 @@ function resaltar(addr, pref, suf) {
 function listaDirecciones(info) {
   if (!info.todasContrapartes || !info.todasContrapartes.length) return '';
   const filas = info.todasContrapartes.map(function (c) {
-    const corta = c.addr.slice(0,12) + '…' + c.addr.slice(-10);
-    const fecha = c.ts > 0 ? new Date(c.ts).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '';
-    const tag = c.esDust ? '<span class="shd-poison-dtag">dust / zero value</span>' : (c.montoMax > 0 ? '<span class="shd-poison-rtag">real transfer</span>' : '');
-    const flujo = c.tipo === 'in' ? 'received from' : 'sent to';
-    const info2 = c.veces + ' tx' + (fecha ? (' · last ' + fecha) : '');
-    return '<div class="shd-poison-drow ' + (c.esDust?'dust':'') + '"><div class="shd-poison-daddr">' + corta + ' <button class="shd-wtok-copy" data-pcopy="' + c.addr + '">⧉</button></div><div class="shd-poison-dmeta">' + tag + '<span>' + info2 + '</span></div></div>';
+    const corta = c.addr.slice(0,10) + '\u2026' + c.addr.slice(-8);
+    const fecha = c.ts > 0 ? new Date(c.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    const tag = c.esDust ? '<span class="shd-poison-dtag">dust</span>' : '<span class="shd-poison-rtag">real</span>';
+    const flujo = c.tipo === 'in' ? 'in' : 'out';
+    const fl = c.tipo === 'in' ? '<span style="color:#2ebd85">received</span>' : '<span style="color:#f6465d">sent</span>';
+    return '<div class="shd-poison-drow ' + (c.esDust?'dust':'') + '">' +
+      '<div class="shd-poison-drow-top"><div class="shd-poison-daddr">' + corta + ' <button class="shd-wtok-copy" data-pcopy="' + c.addr + '">\u29c9</button></div>' + tag + '</div>' +
+      '<div class="shd-poison-drow-meta">' + fl + ' \u00b7 ' + c.veces + ' tx' + (fecha ? (' \u00b7 ' + fecha) : '') + ' <a href="https://bscscan.com/address/' + c.addr + '" target="_blank" rel="noopener" class="shd-poison-dscan">BscScan \u2197</a></div>' +
+    '</div>';
   }).join('');
-  return '<div class="shd-poison-list-wrap"><button class="shd-poison-list-tog" id="poison-list-tog">Show all ' + info.todasContrapartes.length + ' addresses this wallet interacted with ▾</button><div class="shd-poison-list" id="poison-list" style="display:none">' + filas + '</div></div>';
+  return '<div class="shd-poison-list-wrap"><button class="shd-poison-list-tog" id="poison-list-tog">All ' + info.todasContrapartes.length + ' addresses \u25be</button><div class="shd-poison-list" id="poison-list" style="display:none">' + filas + '</div></div>';
 }
 function tarjetaPoison(info, numOps) {
   const iconoOk = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -708,7 +726,7 @@ function pintarHash(cuenta) {
       <div id="hash-res"></div>
       <button class="shd-rescan" id="hash-back" style="margin-top:18px">Back</button>
     </div>`;
-  wireBack();
+  wireBack(function () { pintarInicio(cuenta); });
   $('hash-back').onclick = () => pintarInicio(cuenta);
   $('hash-go').onclick = async () => {
     const h = $('hash-in').value.trim(); const res = $('hash-res');
@@ -789,7 +807,7 @@ function pintarWatcher(cuenta) {
       <div id="watch-res">      <div id="watch-res">      <div id="watch-res"></div>
       <button class="shd-rescan" id="watch-back" style="margin-top:18px">Back</button>
     </div>`;
-  wireBack();
+  wireBack(function () { pintarInicio(cuenta); });
   $('watch-back').onclick = () => pintarInicio(cuenta);
 
   const ir = async (addr) => {
@@ -800,7 +818,7 @@ function pintarWatcher(cuenta) {
       const datos_ = await watch.tokensDe(addr);
       pintarWatchRes(cuenta, addr, datos_, []);
       // cargar en segundo plano: historial, stats y pnl (no bloquean la vista)
-      watch.historialDe(addr).then(function (h) {
+      watch.historialAmplio(addr).then(function (h) {
         window._shdHist = h;
         const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (' + h.length + ')';
         // marcar tokens recientes con el historial y repintar la lista de tokens si está visible
@@ -848,11 +866,20 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     '</div>';
   };
   const filaOp = (o) => {
-    const fecha = o.ts > 0 ? new Date(o.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ('block ' + (o.bloque||'?'));
-    const flecha = o.tipo === 'in' ? '<span style="color:#2ebd85">received</span>' : '<span style="color:#f6465d">sent</span>';
-    const cant = o.cantidad.toLocaleString(undefined,{maximumFractionDigits:4});
-    return '<div class="shd-wop"><div class="shd-wop-l">' + flecha + ' <b>' + cant + ' ' + escH(o.symbol) + '</b></div><div class="shd-wop-r"><span>' + fecha + '</span><a href="https://bscscan.com/tx/' + o.hash + '" target="_blank" rel="noopener" class="shd-wop-hash">hash</a></div></div>';
-  };
+    const fecha = o.ts > 0 ? new Date(o.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    const cant = o.cantidad.toLocaleString(undefined,{maximumFractionDigits:6});
+    const corta = o.contraparte ? (o.contraparte.slice(0,8) + '\u2026' + o.contraparte.slice(-6)) : '';
+    const entra = o.tipo === 'in';
+    const dir = entra ? ('Received from ' + corta) : ('Sent to ' + corta);
+    const icono = entra
+      ? '<div class="shd-wop-ic in">\u2193</div>'
+      : '<div class="shd-wop-ic out">\u2191</div>';
+    const scan = o.hash ? ('<a href="https://bscscan.com/tx/' + o.hash + '" target="_blank" rel="noopener" class="shd-wop-scan">BscScan \u2197</a>') : '';
+    return '<div class="shd-wop2">' + icono +
+      '<div class="shd-wop2-info"><div class="shd-wop2-top"><b class="' + (entra?'pos':'neg') + '">' + (entra?'+':'\u2212') + cant + ' ' + escH(o.symbol||'') + '</b>' + (fecha ? '<span class="shd-wop2-date">' + fecha + '</span>' : '') + '</div>' +
+      '<div class="shd-wop2-flow">' + dir + ' ' + scan + '</div></div>' +
+    '</div>';
+  };;
   cont.innerHTML = `
     <div class="shd-watch-head">
       <div><div class="shd-watch-addr">${corta} <button class="shd-wtok-copy" data-copy="${addr}" title="Copy">⧉</button> <a href="https://bscscan.com/address/${addr}" target="_blank" rel="noopener" class="shd-wtok-scan">BscScan ↗</a></div>
@@ -1021,7 +1048,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const pane = $('watch-pane');
     if (b.dataset.wt === 'hist') {
       const H = (window._shdHist && window._shdHist.length) ? window._shdHist : hist;
-      pane.innerHTML = H.length ? '<div class="shd-wops">' + H.map(filaOp).join('') + '</div>' : '<div class="shd-empty">Loading activity… tap again in a moment, or no recent moves found.</div>';
+      pane.innerHTML = H.length ? '<div class="shd-wops">' + H.map(filaOp).join('') + '</div>' : '<div class="shd-empty">Reading activity from the chain… open this tab again in a moment.</div>';
     } else {
       pane.innerHTML = paneTokens();
       wireTokTools();
@@ -1046,7 +1073,7 @@ function pintarRescate(cuenta) {
       <div id="resc-list"></div>
       <button class="shd-rescan" id="resc-back" style="margin-top:18px">Back</button>
     </div>`;
-  wireBack();
+  wireBack(function () { pintarInicio(cuenta); });
   $('resc-back').onclick = () => pintarInicio(cuenta);
   $('resc-scan').onclick = async () => {
     const dest = $('resc-dest').value.trim();
