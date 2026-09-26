@@ -140,9 +140,9 @@ function inyectarCSS() {
   #shd .shd-how{background:rgba(14,19,25,.6);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#a7b0bb;line-height:1.6}
   #shd .shd-how b{color:#eaecef}
             /* Barra de búsqueda con filtro integrado */
-  #shd .shd-tok-bar{position:relative;display:flex;align-items:center;gap:9px;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:10px 12px}
+  #shd .shd-tok-bar{position:relative;display:flex;align-items:center;gap:9px;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:11px 12px;min-height:44px;box-sizing:border-box}
   #shd .shd-tok-bar:focus-within{border-color:var(--gold-soft,#C9A84B)}
-  #shd .shd-tok-search{flex:1;min-width:0;background:transparent;border:0;outline:none;color:#eaecef;font-family:inherit;font-size:13px}
+  #shd .shd-tok-search{flex:1;min-width:0;background:transparent;border:0;outline:none;color:#eaecef;font-family:inherit;font-size:13px;line-height:1.4;padding:2px 0;margin:0;height:auto;display:block}
   #shd .shd-tok-fbtn{position:relative;flex:none;background:rgba(255,255,255,.04);border:1px solid #29313b;border-radius:8px;padding:6px 9px;color:#a7b0bb;cursor:pointer;display:grid;place-items:center}
   #shd .shd-tok-fbtn.active{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-tok-fbtn #tok-fbadge.dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--gold,#E8B84B)}
@@ -496,7 +496,7 @@ function pintarWatcher(cuenta) {
       ${chips}
       <div class="shd-watch-reco">
         <div class="shd-watch-reco-t">Famous wallets you can follow</div>
-        <div class="shd-watch-reco-sub">Public, verified wallets of well known people and funds in crypto. Watch what they hold and how they move. Everything here is public on the blockchain. Past results never guarantee future ones.</div>
+        <div class="shd-watch-reco-sub">Public, verified wallets of well known people in crypto. Note we read the BNB Smart Chain here, so the balance shown is only their BSC activity. Most of these hold the bulk of their funds on Ethereum, so their BSC balance looks small. Everything here is public. Past results never guarantee future ones.</div>
         <div class="shd-watch-reco-list" id="reco-list">
           <button class="shd-reco" data-w="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"><b>Vitalik Buterin</b><span>Co-founder of Ethereum</span></button>
           <button class="shd-reco" data-w="0x5b76f5b8fc9d700624f78208132f91ad4e61a1f0"><b>Brian Armstrong</b><span>CEO of Coinbase</span></button>
@@ -532,7 +532,12 @@ function pintarWatcher(cuenta) {
         window._shdHist = h;
         const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (' + h.length + ')';
         // marcar tokens recientes con el historial y repintar la lista de tokens si está visible
-        try { watch.marcarRecientes(addr, datos_.tokens, h); const tl = document.getElementById('tok-list'); const activeTab = document.querySelector('[data-wt="tokens"].on'); if (tl && activeTab) { location.hash = location.hash; const b = document.querySelector('[data-wt="tokens"]'); if (b) b.click(); } } catch (_) {}
+        try {
+          watch.marcarRecientes(addr, datos_.tokens, h);
+          // repintar la lista de tokens SOLO si el tab de tokens está activo (sin alternar)
+          const tabTokens = document.querySelector('[data-wt="tokens"]');
+          if (tabTokens && tabTokens.classList.contains('on')) { const pane = $('watch-pane'); if (pane) { pane.innerHTML = paneTokens(); wireTokTools(); wireTokBtns(); } }
+        } catch (_) {}
       });
       Promise.all([ watch.estadisticas(addr), watch.pnlAprox(addr, datos_.tokens) ]).then(function (r) { pintarStats(addr, datos_, r[0], r[1]); });
     } catch (e) { cont.innerHTML = `<div class="shd-sim-msg bad">Could not read that wallet. Try again.</div>`; }
@@ -646,9 +651,12 @@ function pintarWatchRes(cuenta, addr, d, hist) {
   }
   function wireTokBtns() {
     document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
-    document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); location.href = 'app.html?abrir=swap&token=' + b.dataset.swap; }; });
+    document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); location.href = 'index.html?abrir=swap&token=' + b.dataset.swap; }; });
   }
   // seguir/dejar
+  // Pintar los tokens de inmediato (sin tener que tocar el tab)
+  const _pane0 = $('watch-pane');
+  if (_pane0) { _pane0.innerHTML = paneTokens(); wireTokTools(); wireTokBtns(); }
   const fb = $('watch-follow');
   fb.onclick = () => {
     if (watch.estaSiguiendo(addr)) { watch.dejarSeguir(addr); fb.className='shd-watch-follow'; fb.textContent='+ Watch this wallet'; }
