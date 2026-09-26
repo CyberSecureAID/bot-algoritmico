@@ -120,6 +120,37 @@ export async function historialDe(addr) {
   return uni.slice(0, 30);
 }
 
+
+/* ── Historial AMPLIO (para el detector de poisoning) ──
+   Trae muchas transferencias de tokens, incluidas las de valor cero (el vector
+   del envenenamiento), usando nr_getTokenTransfers de NodeReal (paginado). */
+export async function historialAmplio(addr) {
+  if (!esDireccion(addr)) return [];
+  const ops = [];
+  // nr_getTokenTransfers: transferencias ERC20 de/hacia una address, con paginación
+  for (const campo of ['fromAddress', 'toAddress']) {
+    let pageKey = null; let vueltas = 0;
+    do {
+      try {
+        const params = { category: ['20'], order: 'desc', maxCount: '0x64', excludeZeroValue: false };
+        params[campo] = addr;
+        if (pageKey) params.pageKey = pageKey;
+        const res = await nrCall('nr_getAssetTransfers', [params]);
+        const trs = res && res.transfers ? res.transfers : [];
+        for (const t of trs) {
+          const entra = campo === 'toAddress';
+          let cant = 0;
+          if (t.value != null) cant = Number(t.value);
+          else if (t.rawValue) { try { cant = Number(ethers.formatUnits(BigInt(t.rawValue), Number(t.decimal) || 18)); } catch (_) {} }
+          ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: t.asset || '?', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), ts: 0 });
+        }
+        pageKey = res && res.pageKey ? res.pageKey : null;
+      } catch (_) { pageKey = null; }
+      vueltas++;
+    } while (pageKey && vueltas < 5);   // hasta 5 páginas por dirección (500 transfers)
+  }
+  return ops;
+}
 export function logoBNB() { return 'https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png'; }
 
 

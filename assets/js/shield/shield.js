@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
-import * as watch from './shield-watch.js?v=111';
+import * as watch from './shield-watch.js?v=112';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=1';
 
@@ -623,7 +623,7 @@ function pintarPoison(cuenta) {
     if (!poison.esDireccion(addr)) { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address (0x…)</div>`; return; }
     res.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Scanning history for lookalikes…</div></div>`;
     try {
-      const hist = await watch.historialDe(addr);
+      const hist = await watch.historialAmplio(addr);
       const info = poison.analizar(addr, hist);
       res.innerHTML = tarjetaPoison(info, hist.length);
       wirePoisonCopy();
