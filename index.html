@@ -72,6 +72,11 @@ if ('serviceWorker' in navigator) {
 </head>
 
 <body>
+<!-- Velo negro instantáneo: si se llega para abrir el swap directo (p.ej. desde Wallet
+     Shield), tapa la portada desde el primer frame para que no se vea cargar por detrás.
+     La portada lo desvanece cuando el swap ya está montado. -->
+<div id="velo-arranque" style="display:none;position:fixed;inset:0;z-index:2147483647;background:#000"></div>
+<script>try{if(new URLSearchParams(location.search).get('abrir')==='swap'){var _v=document.getElementById('velo-arranque');if(_v)_v.style.display='block';}}catch(e){}</script>
 
 <!-- Iconos, definidos una vez. Todos llevan width y height en el propio
      SVG: así no pueden salir a tamaño gigante bajo ninguna circunstancia. -->
