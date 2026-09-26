@@ -603,8 +603,29 @@ try {
   const q = new URLSearchParams(location.search);
   const pedido = q.get('abrir');
   if (pedido && PUERTAS[pedido]) {
+    // Si venimos a abrir el swap directamente (p.ej. desde Wallet Watcher), tapamos
+    // la portada con un velo negro para que no se vea cargar por detrás. Se quita
+    // cuando el swap ya está montado.
+    let _velo = null;
+    if (pedido === 'swap') {
+      _velo = document.createElement('div');
+      _velo.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000';
+      document.body.appendChild(_velo);
+    }
     const tid = q.get('tool');
-    abrir(pedido, tid ? { getAttribute: () => tid } : null);
+    Promise.resolve(abrir(pedido, tid ? { getAttribute: () => tid } : null)).finally(function () {
+      if (_velo) {
+        // esperar a que el modal del swap exista, luego desvanecer el velo
+        const t0 = Date.now();
+        const iv = setInterval(function () {
+          if (document.getElementById('swap-modal') || Date.now() - t0 > 6000) {
+            clearInterval(iv);
+            _velo.style.transition = 'opacity .25s'; _velo.style.opacity = '0';
+            setTimeout(function () { if (_velo && _velo.parentNode) _velo.remove(); }, 300);
+          }
+        }, 60);
+      }
+    });
   }
 } catch (_) {}
 
