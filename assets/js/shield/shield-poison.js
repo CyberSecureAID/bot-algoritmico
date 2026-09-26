@@ -29,19 +29,25 @@ export function analizar(cuenta, historial) {
   if (!Array.isArray(historial) || !historial.length) return out;
   const mia = (cuenta || '').toLowerCase();
 
-  // recopilar todas las contrapartes, marcando cuáles vienen de dust/valor cero
-  const contrapartes = new Map();  // addr -> { addr, vecesReal, vecesDust, montoMax }
+  // recopilar todas las contrapartes con su evidencia (veces, monto, fecha, símbolo)
+  const contrapartes = new Map();
   for (const op of historial) {
     const cp = (op.contraparte || '').toLowerCase();
     if (!cp || cp === mia || !esDireccion(cp)) continue;
-    if (!contrapartes.has(cp)) contrapartes.set(cp, { addr: cp, vecesReal: 0, vecesDust: 0, montoMax: 0 });
+    if (!contrapartes.has(cp)) contrapartes.set(cp, { addr: cp, vecesReal: 0, vecesDust: 0, montoMax: 0, veces: 0, ultTs: 0, ultSym: '', ultTipo: '', ultMonto: 0 });
     const c = contrapartes.get(cp);
     const monto = Number(op.cantidad) || 0;
-    // dust/valor cero = candidato a envenenamiento (entrante, monto ~0)
+    c.veces++;
+    if (op.ts && op.ts > c.ultTs) { c.ultTs = op.ts; c.ultSym = op.symbol || ''; c.ultTipo = op.tipo || ''; c.ultMonto = monto; }
+    if (!c.ultSym) { c.ultSym = op.symbol || ''; c.ultTipo = op.tipo || ''; c.ultMonto = monto; }
     if (op.tipo === 'in' && monto <= 0.0001) c.vecesDust++;
     else { c.vecesReal++; if (monto > c.montoMax) c.montoMax = monto; }
   }
   out.contrapartesTotales = contrapartes.size;
+  // lista completa para mostrar al usuario (ordenada: sospechosas primero, luego por veces)
+  out.todasContrapartes = [...contrapartes.values()].map(function (c) {
+    return { addr: c.addr, veces: c.veces, esDust: c.vecesReal === 0 && c.vecesDust > 0, symbol: c.ultSym, tipo: c.ultTipo, monto: c.ultMonto, ts: c.ultTs, montoMax: c.montoMax };
+  }).sort(function (a, b) { return (b.esDust - a.esDust) || (b.veces - a.veces); });
 
   const todas = [...contrapartes.values()];
   // las "legítimas" = con las que hubo movimiento real de valor

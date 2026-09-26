@@ -132,7 +132,7 @@ export async function historialAmplio(addr) {
     let pageKey = null; let vueltas = 0;
     do {
       try {
-        const params = { category: ['20'], order: 'desc', maxCount: '0x64', excludeZeroValue: false };
+        const params = { category: ['20'], order: 'desc', maxCount: '0x64', excludeZeroValue: false, withMetadata: true };
         params[campo] = addr;
         if (pageKey) params.pageKey = pageKey;
         const res = await nrCall('nr_getAssetTransfers', [params]);
@@ -142,7 +142,7 @@ export async function historialAmplio(addr) {
           let cant = 0;
           if (t.value != null) cant = Number(t.value);
           else if (t.rawValue) { try { cant = Number(ethers.formatUnits(BigInt(t.rawValue), Number(t.decimal) || 18)); } catch (_) {} }
-          ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: t.asset || '?', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), ts: 0 });
+          ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: t.asset || '?', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), ts: (t.metadata && t.metadata.blockTimestamp) ? new Date(t.metadata.blockTimestamp).getTime() : 0 });
         }
         pageKey = res && res.pageKey ? res.pageKey : null;
       } catch (_) { pageKey = null; }
