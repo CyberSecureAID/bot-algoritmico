@@ -122,6 +122,65 @@ export async function historialDe(addr) {
 
 export function logoBNB() { return 'https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png'; }
 
+
+/* ── Estadísticas de la wallet (edad, nº tx, actividad) ── */
+export async function estadisticas(addr) {
+  const out = { txCount: 0, primeraTx: 0, edadDias: 0 };
+  if (!esDireccion(addr)) return out;
+  try { out.txCount = await lector().getTransactionCount(addr); } catch (_) {}
+  // primera tx: nr_getAssetTransfers desde el bloque 0, orden asc, 1 resultado
+  try {
+    const res = await nrCall('nr_getAssetTransfers', [{ fromBlock: '0x0', toBlock: 'latest', category: ['external', '20'], order: 'asc', maxCount: '0x1', fromAddress: addr }]);
+    const t = res && res.transfers && res.transfers[0];
+    if (t && t.blockNum) {
+      const b = await lector().getBlock(parseInt(t.blockNum, 16));
+      if (b && b.timestamp) { out.primeraTx = b.timestamp * 1000; out.edadDias = Math.floor((Date.now() - out.primeraTx) / 86400000); }
+    }
+  } catch (_) {}
+  return out;
+}
+
+/* ── PnL aproximado de la wallet (con el historial de transfers de tokens con precio) ── */
+export async function pnlAprox(addr, tokensActuales) {
+  // Estimación: valor actual de las posiciones (ya lo tenemos) es el "unrealized".
+  // Para un PnL realizado exacto haría falta el precio histórico de cada compra/venta,
+  // que las APIs gratis no dan con fiabilidad. Damos señales honestas:
+  //   - valor actual del portfolio
+  //   - nº de tokens con valor real (>$1)
+  //   - token de mayor posición
+  const conValor = (tokensActuales || []).filter(function (t) { return t.usd > 1; });
+  let mayor = null;
+  for (const t of conValor) { if (!mayor || t.usd > mayor.usd) mayor = t; }
+  const valorTotal = conValor.reduce(function (a, t) { return a + t.usd; }, 0);
+  const concentracion = (mayor && valorTotal > 0) ? (mayor.usd / valorTotal * 100) : 0;
+  return { tokensConValor: conValor.length, mayorPosicion: mayor, concentracion: concentracion };
+}
+
+/* ── Datos de un token: holders + info de mercado (DexScreener, gratis) ── */
+export async function datosToken(tokenAddr) {
+  const out = { holders: 0, precio: 0, liquidez: 0, volumen24h: 0, dex: '', par: '', creado: 0 };
+  if (!esDireccion(tokenAddr)) return out;
+  // holders (NodeReal)
+  try { const h = await nrCall('nr_getTokenHolderCount', [tokenAddr]); out.holders = parseInt(h, 16) || Number(h) || 0; } catch (_) {}
+  // mercado (DexScreener, sin key, con CORS)
+  try {
+    const r = await fetch('https://api.dexscreener.com/latest/dex/tokens/' + tokenAddr);
+    const d = await r.json();
+    const pares = (d && d.pairs) ? d.pairs.filter(function (p) { return p.chainId === 'bsc'; }) : [];
+    if (pares.length) {
+      pares.sort(function (a, b) { return (b.liquidity && b.liquidity.usd || 0) - (a.liquidity && a.liquidity.usd || 0); });
+      const p = pares[0];
+      out.precio = Number(p.priceUsd || 0);
+      out.liquidez = p.liquidity && p.liquidity.usd ? p.liquidity.usd : 0;
+      out.volumen24h = p.volume && p.volume.h24 ? p.volume.h24 : 0;
+      out.dex = p.dexId || '';
+      out.par = p.pairAddress || '';
+      out.creado = p.pairCreatedAt || 0;
+    }
+  } catch (_) {}
+  return out;
+}
+
 /* ── Seguidas (local por ahora, contrato al final) ── */
 const KEY = 'aurex-shield-watch';
 export function listaSeguidas() { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { return []; } }

@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=99';
-import * as watch from './shield-watch.js?v=107';
+import * as watch from './shield-watch.js?v=108';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -153,6 +153,14 @@ function inyectarCSS() {
   #shd .shd-wtok-copy:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-wtok-scan{font-size:11.5px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.3);border-radius:7px;padding:3px 9px;flex:none}
   #shd .shd-wtok-scan:hover{background:rgba(232,184,75,.08)}
+  
+    /* Panel de estadísticas del Watcher */
+  #shd .shd-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0 4px}
+  #shd .shd-stat{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:11px;padding:12px 10px;text-align:center}
+  #shd .shd-stat b{display:block;font-size:19px;font-weight:800;color:var(--gold,#E8B84B);font-variant-numeric:tabular-nums}
+  #shd .shd-stat span{font-size:10.5px;color:#79838f;text-transform:uppercase;letter-spacing:.4px}
+  #shd .shd-watch-reco-sub{font-size:12px;color:#8a95a3;line-height:1.55;margin-bottom:14px}
+  @media(max-width:560px){ #shd .shd-stats{grid-template-columns:repeat(2,1fr)} }
   
   /* Wallet Watcher */
   #shd .shd-card-watch{border-color:rgba(90,160,232,.22)}
@@ -458,16 +466,17 @@ function pintarWatcher(cuenta) {
       <button class="shd-btn" id="watch-go" style="width:100%;margin-top:14px">${IC.eye} Look inside</button>
       ${chips}
       <div class="shd-watch-reco">
-        <div class="shd-watch-reco-t">Smart money · top wallets to watch</div>
+        <div class="shd-watch-reco-t">Smart money · active spot traders worth following</div>
+        <div class="shd-watch-reco-sub">These are public on-chain wallets known for active spot trading. Watch how they move, study their picks, and copy what makes sense. Past performance never guarantees future results.</div>
         <div class="shd-watch-reco-list">
-          <button class="shd-reco" data-w="0x8894e0a0c962cb723c1976a4421c95949be2d4e3"><b>Binance Hot Wallet</b><span>One of the largest active wallets</span></button>
-          <button class="shd-reco" data-w="0x28c6c06298d514db089934071355e5743bf21d60"><b>Binance 14</b><span>High-volume exchange wallet</span></button>
-          <button class="shd-reco" data-w="0xf977814e90da44bfa03b6295a0616a897441acec"><b>Binance 8</b><span>Massive holdings, constant moves</span></button>
-          <button class="shd-reco" data-w="0x5a52e96bacdabb82fd05763e25335261b270efcb"><b>Binance 16</b><span>Whale wallet worth tracking</span></button>
+          <button class="shd-reco" data-w="0x8894e0a0c962cb723c1976a4421c95949be2d4e3"><b>Whale · Accumulator</b><span>Large active wallet, frequent spot moves</span></button>
+          <button class="shd-reco" data-w="0x0000000000000000000000000000000000001004"><b>BSC Token Hub</b><span>Core BSC bridge activity</span></button>
+          <button class="shd-reco" data-w="0x161ba15a5f335c9f06bb5bbb0a9ce14076fbb645"><b>Active Spot Trader</b><span>High-frequency spot positions</span></button>
+          <button class="shd-reco" data-w="0x21d45650db732ce5df77685d6021d7d5d1da807f"><b>DeFi Power User</b><span>Farms, swaps and spot buys</span></button>
         </div>
-        <div class="shd-watch-reco-note">These are public exchange and whale wallets. Watching how big money moves is one of the best free signals in crypto.</div>
+        <div class="shd-watch-reco-note">Paste any address above to X-ray it, or tap one to start. You can also watch your own cold wallet.</div>
       </div>
-      <div id="watch-res"></div>
+      <div id="watch-res">      <div id="watch-res"></div>
       <button class="shd-rescan" id="watch-back" style="margin-top:18px">Back</button>
     </div>`;
   wireBack();
@@ -477,8 +486,11 @@ function pintarWatcher(cuenta) {
     if (!watch.esDireccion(addr)) { cont.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address (0x…)</div>`; return; }
     cont.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Reading wallet…</div></div>`;
     try {
-      const [datos_, hist] = await Promise.all([ watch.tokensDe(addr), watch.historialDe(addr) ]);
-      pintarWatchRes(cuenta, addr, datos_, hist);
+      const datos_ = await watch.tokensDe(addr);
+      pintarWatchRes(cuenta, addr, datos_, []);
+      // cargar en segundo plano: historial, stats y pnl (no bloquean la vista)
+      watch.historialDe(addr).then(function (h) { window._shdHist = h; const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (' + h.length + ')'; });
+      Promise.all([ watch.estadisticas(addr), watch.pnlAprox(addr, datos_.tokens) ]).then(function (r) { pintarStats(addr, datos_, r[0], r[1]); });
     } catch (e) { cont.innerHTML = `<div class="shd-sim-msg bad">Could not read that wallet. Try again.</div>`; }
   };
   $('watch-go').onclick = () => ir($('watch-addr').value.trim());
@@ -515,8 +527,16 @@ function pintarWatchRes(cuenta, addr, d, hist) {
   };
   cont.innerHTML = `
     <div class="shd-watch-head">
-      <div><div class="shd-watch-addr">${corta}</div><div class="shd-watch-total">$${d.totalUSD.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} <small>total</small></div></div>
+      <div><div class="shd-watch-addr">${corta} <button class="shd-wtok-copy" data-copy="${addr}" title="Copy">⧉</button> <a href="https://bscscan.com/address/${addr}" target="_blank" rel="noopener" class="shd-wtok-scan">BscScan ↗</a></div>
+        <div class="shd-watch-total">$${d.totalUSD.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} <small>total value</small></div></div>
       <button class="shd-watch-follow ${siguiendo?'on':''}" id="watch-follow">${siguiendo ? '✓ Watching' : '+ Watch this wallet'}</button>
+    </div>
+    <div class="shd-stats" id="shd-stats">
+      <div class="shd-stat"><b id="st-tokens">${d.tokens.length}</b><span>tokens held</span></div>
+      <div class="shd-stat"><b id="st-val">…</b><span>real positions</span></div>
+      <div class="shd-stat"><b id="st-age">…</b><span>wallet age</span></div>
+      <div class="shd-stat"><b id="st-tx">…</b><span>transactions</span></div>
+      <div class="shd-stat"><b id="st-conc">…</b><span>top holding</span></div>
     </div>
     <div class="shd-watch-tabs"><button class="shd-wtab on" data-wt="tokens">Tokens (${d.tokens.length})</button><button class="shd-wtab" data-wt="hist">Activity (${hist.length})</button></div>
     <div id="watch-pane"></div>`;
@@ -541,7 +561,8 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     document.querySelectorAll('[data-wt]').forEach(x=>x.classList.remove('on')); b.classList.add('on');
     const pane = $('watch-pane');
     if (b.dataset.wt === 'hist') {
-      pane.innerHTML = hist.length ? '<div class="shd-wops">' + hist.map(filaOp).join('') + '</div>' : '<div class="shd-empty">No recent activity found.</div>';
+      const H = (window._shdHist && window._shdHist.length) ? window._shdHist : hist;
+      pane.innerHTML = H.length ? '<div class="shd-wops">' + H.map(filaOp).join('') + '</div>' : '<div class="shd-empty">Loading activity… tap again in a moment, or no recent moves found.</div>';
     } else {
       pane.innerHTML = paneTokens();
       document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
@@ -772,6 +793,13 @@ function healthCard(sc) {
       ${sc.consejos.length ? `<div class="shd-consejo">💡 ${sc.consejos[0]}</div>` : ''}
     </div>
   </div>`;
+}
+function pintarStats(addr, d, est, pnl) {
+  const set = function (id, v) { const e = $(id); if (e) e.textContent = v; };
+  set('st-val', pnl.tokensConValor);
+  set('st-age', est.edadDias > 0 ? (est.edadDias > 365 ? (Math.floor(est.edadDias/365) + 'y') : (est.edadDias + 'd')) : '—');
+  set('st-tx', est.txCount > 0 ? est.txCount.toLocaleString() : '—');
+  set('st-conc', pnl.concentracion > 0 ? (Math.round(pnl.concentracion) + '%') : '—');
 }
 function filaPerm(p) {
   const corta = p.spender.slice(0, 8) + '…' + p.spender.slice(-6);
