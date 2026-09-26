@@ -10,8 +10,9 @@ const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 
 // NodeReal API key (GRATIS en nodereal.io, sin tarjeta). Pégala entre las comillas.
-const NR_KEY = 'NODEREAL_KEY';
-const NR_BASE = 'https://open-platform.nodereal.io/' + NR_KEY + '/covalenthq/v1/bsc-mainnet';
+const NR_KEY = '0b80831c8c694568a11b6d72a580b81b';
+const NR_HOST = 'https://open-platform.nodereal.io/' + NR_KEY + '/covalenthq/v1';
+const NR_CHAINS = ['56', 'bsc-mainnet'];   // NodeReal/Covalent: BSC como chain id 56 (con fallback al nombre)
 
 let _rpc;
 function lector() { if (!_rpc) _rpc = new ethers.JsonRpcProvider(RPCS[0], 56, { staticNetwork: true }); return _rpc; }
@@ -22,13 +23,18 @@ export async function tokensDe(addr, onProgreso) {
   if (!esDireccion(addr)) return { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
   if (onProgreso) onProgreso(0.2);
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
-  try {
-    const url = NR_BASE + '/address/' + addr + '/balances_v2/?quote-currency=USD&nft=false';
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
-    const r = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(to);
-    const d = await r.json();
-    const items = d && d.data && Array.isArray(d.data.items) ? d.data.items : [];
+  let items = [];
+  for (const chain of NR_CHAINS) {
+    try {
+      const url = NR_HOST + '/' + chain + '/address/' + addr + '/balances_v2/?quote-currency=USD&nft=false';
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
+      const r = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(to);
+      const d = await r.json();
+      if (d && d.data && Array.isArray(d.data.items) && d.data.items.length) { items = d.data.items; break; }
+    } catch (e) { out._error = (e && e.message) || 'error'; }
+  }
+  {
     if (onProgreso) onProgreso(0.7);
     for (const it of items) {
       const dec = Number(it.contract_decimals) || 18;
@@ -47,7 +53,7 @@ export async function tokensDe(addr, onProgreso) {
       });
       out.totalUSD += usd;
     }
-  } catch (e) { out._error = (e && e.message) || 'error'; }
+  }
   // si no vino el nativo, leerlo del RPC + precio DeFiLlama
   if (out.nativo === 0) {
     try { out.nativo = Number(ethers.formatEther(await lector().getBalance(addr))); } catch (_) {}
@@ -64,13 +70,18 @@ export async function tokensDe(addr, onProgreso) {
 export async function historialDe(addr) {
   if (!esDireccion(addr)) return [];
   const ops = [];
-  try {
-    const url = NR_BASE + '/address/' + addr + '/transfers_v2/?quote-currency=USD&page-size=30';
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
-    const r = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(to);
-    const d = await r.json();
-    const items = d && d.data && Array.isArray(d.data.items) ? d.data.items : [];
+  let items = [];
+  for (const chain of NR_CHAINS) {
+    try {
+      const url = NR_HOST + '/' + chain + '/address/' + addr + '/transfers_v2/?quote-currency=USD&page-size=30';
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
+      const r = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(to);
+      const d = await r.json();
+      if (d && d.data && Array.isArray(d.data.items) && d.data.items.length) { items = d.data.items; break; }
+    } catch (_) {}
+  }
+  {
     for (const it of items) {
       const transfers = Array.isArray(it.transfers) ? it.transfers : [];
       for (const t of transfers) {
@@ -86,7 +97,7 @@ export async function historialDe(addr) {
         });
       }
     }
-  } catch (_) {}
+  }
   ops.sort(function (a, b) { return b.ts - a.ts; });
   return ops.slice(0, 30);
 }
