@@ -296,11 +296,15 @@ export function abrirSwap() {
 function cerrarSwap() {
   const p = $('coin-modal'); if (p && $('scm-list')) { window._cmRepintar = null; p.remove(); }
   const m = $('swap-modal'); if (m) m.remove();
-  // Si el swap se abrió llegando por URL (?abrir=swap, p.ej. desde Wallet Watcher o
-  // la portada) NO debemos dejar los bots detrás: volvemos a la portada.
+  // Si se llegó a la APP (app.html) con ?abrir=swap, detrás quedan los bots: hay que
+  // salir al lobby. En la PORTADA (index.html) detrás está la propia portada, así que
+  // solo se quita el modal y no se navega (nada de pestañazo a los bots).
   try {
     const par = new URLSearchParams(location.search);
-    if (par.get('abrir') === 'swap') { location.replace('index.html'); }
+    const enApp = /app\.html/.test(location.pathname);
+    if (par.get('abrir') === 'swap' && enApp) { location.replace('index.html'); }
+    // limpiar el ?token/?abrir de la URL sin recargar, para que al cerrar quede limpia la portada
+    else if (par.get('abrir') === 'swap') { try { history.replaceState(null, '', location.pathname); } catch (_) {} }
   } catch (_) {}
 }
 
