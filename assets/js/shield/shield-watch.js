@@ -24,15 +24,19 @@ export async function tokensDe(addr, onProgreso) {
   if (onProgreso) onProgreso(0.2);
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
   let items = [];
+  out._dg = { chain56: '', chainName: '', http: '' };
   for (const chain of NR_CHAINS) {
     try {
       const url = NR_HOST + '/' + chain + '/address/' + addr + '/balances_v2/?quote-currency=USD&nft=false';
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
       const r = await fetch(url, { signal: ctrl.signal });
       clearTimeout(to);
+      out._dg.http = 'HTTP ' + r.status;
       const d = await r.json();
+      const info = d && d.data && Array.isArray(d.data.items) ? (d.data.items.length + ' items') : (d && d.error ? ('err:' + JSON.stringify(d.error_message||d.error).slice(0,60)) : ('raw:' + JSON.stringify(d).slice(0,80)));
+      if (chain === '56') out._dg.chain56 = info; else out._dg.chainName = info;
       if (d && d.data && Array.isArray(d.data.items) && d.data.items.length) { items = d.data.items; break; }
-    } catch (e) { out._error = (e && e.message) || 'error'; }
+    } catch (e) { out._dg.http = 'FETCH FAIL: ' + ((e && e.message)||'').slice(0,50); }
   }
   {
     if (onProgreso) onProgreso(0.7);
