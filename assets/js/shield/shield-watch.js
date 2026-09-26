@@ -36,12 +36,13 @@ export async function tokensDe(addr, onProgreso) {
   // 1. nr_getTokenHoldings → todos los tokens ERC20 que tiene la wallet (con balance)
   let holdings = [];
   try {
-    // params: address, pageNumber(hex), pageSize(hex, <=100)
     const res = await nrCall('nr_getTokenHoldings', [addr, '0x1', '0x64']);
-    const det = res && res.details ? res.details : (Array.isArray(res) ? res : []);
+    // el formato puede variar: probar varios campos
+    const det = (res && res.details) ? res.details : ((res && res.tokens) ? res.tokens : (Array.isArray(res) ? res : []));
     holdings = det || [];
     DG.holdings = holdings.length + ' tokens';
-  } catch (e) { DG.holdings = 'ERR: ' + ((e && e.message)||'').slice(0,50); }
+    DG.raw = JSON.stringify(res).slice(0, 200);   // ver la respuesta cruda
+  } catch (e) { DG.holdings = 'ERR: ' + ((e && e.message)||'').slice(0,60); }
   if (onProgreso) onProgreso(0.55);
 
   // 2. armar tokens con símbolo/decimales/balance (nr_getTokenHoldings ya trae metadata)
@@ -61,7 +62,13 @@ export async function tokensDe(addr, onProgreso) {
   const ids = tokens.map(function (t) { return 'bsc:' + t.address; }); ids.push('bsc:' + WBNB);
   let precios = {};
   try { for (let i = 0; i < ids.length; i += 100) { const pr = await fetch('https://coins.llama.fi/prices/current/' + ids.slice(i, i+100).join(',')); const pd = await pr.json(); Object.assign(precios, pd.coins || {}); } } catch (_) {}
-  for (const t of tokens) { const pk = precios['bsc:' + t.address]; if (pk) { t.precio = pk.price || 0; t.usd = t.balance * t.precio; t.logo = null; } out.totalUSD += t.usd; }
+  for (const t of tokens) {
+    const pk = precios['bsc:' + t.address];
+    if (pk) { t.precio = pk.price || 0; t.usd = t.balance * t.precio; }
+    // logo de Trust Wallet por checksum (si no existe, la UI muestra iniciales con onerror)
+    try { const cs = ethers.getAddress(t.address); t.logo = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/' + cs + '/logo.png'; } catch (_) { t.logo = null; }
+    out.totalUSD += t.usd;
+  }
   out.tokens = tokens;
   out._dg = DG;
 
@@ -81,24 +88,35 @@ export async function tokensDe(addr, onProgreso) {
 export async function historialDe(addr) {
   if (!esDireccion(addr)) return [];
   const ops = [];
-  try {
-    // nr_getAssetTransfers: transferencias de/hacia la wallet
-    const base = { category: ['20', 'external'], addressFilter: { from: null, to: null }, order: 'desc', maxCount: '0x1e' };
-    for (const dir of ['from', 'to']) {
-      const filt = dir === 'from' ? { fromAddress: addr } : { toAddress: addr };
+  // nr_getAssetTransfers requiere rango <=1000 bloques si se especifica; mejor recorrer
+  // los últimos N bloques en tandas. Traemos el bloque actual y miramos hacia atrás.
+  let actual = 0;
+  try { const bn = await lector().getBlockNumber(); actual = bn; } catch (_) {}
+  if (!actual) return [];
+  const VENTANA = 1000; const TANDAS = 12;   // ~12000 bloques (unas 10h en BSC)
+  for (const dir of ['fromAddress', 'toAddress']) {
+    for (let i = 0; i < TANDAS && ops.length < 60; i++) {
+      const hasta = actual - i * VENTANA;
+      const desde = hasta - VENTANA;
+      if (desde < 0) break;
       try {
-        const res = await nrCall('nr_getAssetTransfers', [Object.assign({ fromBlock: '0x0', toBlock: 'latest', maxCount: '0x1e', order: 'desc', category: ['20', 'external'] }, filt)]);
+        const params = { fromBlock: '0x' + desde.toString(16), toBlock: '0x' + hasta.toString(16), category: ['external', '20'], order: 'desc', excludeZeroValue: false, maxCount: '0x32' };
+        params[dir] = addr;
+        const res = await nrCall('nr_getAssetTransfers', [params]);
         const trs = res && res.transfers ? res.transfers : [];
         for (const t of trs) {
-          const entra = dir === 'to';
-          ops.push({ hash: t.hash || t.transactionHash, tipo: entra ? 'in' : 'out', symbol: t.asset || t.tokenSymbol || 'BNB', cantidad: t.value != null ? Number(t.value) : (t.amount ? Number(t.amount) : 0), contraparte: entra ? (t.from || t.fromAddress || '') : (t.to || t.toAddress || ''), ts: t.timestamp ? (Number(t.timestamp) * 1000) : (t.metadata && t.metadata.blockTimestamp ? new Date(t.metadata.blockTimestamp).getTime() : 0) });
+          const entra = dir === 'toAddress';
+          let cant = 0;
+          if (t.value != null) cant = Number(t.value);
+          else if (t.rawValue) { try { cant = Number(ethers.formatUnits(BigInt(t.rawValue), Number(t.decimal) || 18)); } catch (_) {} }
+          ops.push({ hash: t.hash || t.transactionHash, tipo: entra ? 'in' : 'out', symbol: t.asset || t.symbol || 'BNB', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), ts: 0, bloque: t.blockNum ? parseInt(t.blockNum, 16) : 0 });
         }
       } catch (_) {}
     }
-  } catch (_) {}
+  }
   const vistos = new Set(); const uni = [];
   for (const o of ops) { if (o.hash && !vistos.has(o.hash)) { vistos.add(o.hash); uni.push(o); } }
-  uni.sort(function (a, b) { return b.ts - a.ts; });
+  uni.sort(function (a, b) { return (b.bloque || 0) - (a.bloque || 0); });
   return uni.slice(0, 30);
 }
 

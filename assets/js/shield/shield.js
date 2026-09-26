@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=99';
-import * as watch from './shield-watch.js?v=106';
+import * as watch from './shield-watch.js?v=107';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -139,7 +139,22 @@ function inyectarCSS() {
   #shd .shd-safe .ic{width:60px;height:60px;border-radius:50%;background:rgba(46,189,133,.12);color:#2ebd85;display:grid;place-items:center;margin-bottom:16px}
   #shd .shd-how{background:rgba(14,19,25,.6);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#a7b0bb;line-height:1.6}
   #shd .shd-how b{color:#eaecef}
-      /* Wallet Watcher */
+        /* Tarjeta de token enriquecida (Watcher) */
+  #shd .shd-wtok2{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:12px;padding:12px 14px;margin-bottom:8px}
+  #shd .shd-wtok-top{display:flex;align-items:center;gap:12px}
+  #shd .shd-wtok-ic{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;font-weight:800;font-size:12px;color:#a7b0bb;flex:none;overflow:hidden}
+  #shd .shd-wtok-ic img{width:100%;height:100%;object-fit:cover}
+  #shd .shd-wtok-info{flex:1;min-width:0}
+  #shd .shd-wtok-info b{font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #shd .shd-wtok-bal{font-size:12.5px;color:#a7b0bb;margin-top:2px}
+  #shd .shd-wtok-contract{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #161f2b}
+  #shd .shd-wtok-addr{font-size:11.5px;color:#79838f;font-family:var(--mono,monospace);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #shd .shd-wtok-copy{background:none;border:1px solid #29313b;color:#a7b0bb;border-radius:7px;padding:3px 8px;cursor:pointer;font-size:12px;flex:none}
+  #shd .shd-wtok-copy:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #shd .shd-wtok-scan{font-size:11.5px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.3);border-radius:7px;padding:3px 9px;flex:none}
+  #shd .shd-wtok-scan:hover{background:rgba(232,184,75,.08)}
+  
+  /* Wallet Watcher */
   #shd .shd-card-watch{border-color:rgba(90,160,232,.22)}
   #shd .shd-card-watch .shd-card-ic{background:rgba(90,160,232,.12);color:#6aa8f0}
   #shd .shd-card-btn.watch{border-color:rgba(90,160,232,.4);background:rgba(90,160,232,.08);color:#6aa8f0}
@@ -479,8 +494,18 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const usdTxt = t.usd > 0.01 ? (' · $' + t.usd.toLocaleString(undefined,{maximumFractionDigits:2})) : '';
     const bal = t.balance.toLocaleString(undefined,{maximumFractionDigits:4});
     const ini = (t.symbol||'?').slice(0,3).toUpperCase();
-    const ic = t.logo ? ('<div class="shd-perm-ic"><img src="' + t.logo + '" alt="" onerror="this.parentElement.textContent=\''+ini+'\'"></div>') : ('<div class="shd-perm-ic">' + ini + '</div>');
-    return '<div class="shd-wtok">' + ic + '<div class="shd-perm-info"><b>' + escH(t.symbol) + '</b><div class="sp">' + bal + usdTxt + '</div></div></div>';
+    const ic = t.logo
+      ? ('<div class="shd-wtok-ic"><img src="' + t.logo + '" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+ini+'\'"></div>')
+      : ('<div class="shd-wtok-ic">' + ini + '</div>');
+    const corta = t.address ? (t.address.slice(0,8) + '…' + t.address.slice(-6)) : '';
+    const link = t.address ? ('<a href="https://bscscan.com/token/' + t.address + '?a=' + '" target="_blank" rel="noopener" class="shd-wtok-scan" onclick="event.stopPropagation()">BscScan ↗</a>') : '';
+    const copiar = t.address ? ('<button class="shd-wtok-copy" data-copy="' + t.address + '" onclick="event.stopPropagation()" title="Copy contract">⧉</button>') : '';
+    return '<div class="shd-wtok2">' +
+      '<div class="shd-wtok-top">' + ic +
+        '<div class="shd-wtok-info"><b>' + escH(t.name || t.symbol) + '</b><div class="shd-wtok-bal">' + bal + ' ' + escH(t.symbol) + usdTxt + '</div></div>' +
+      '</div>' +
+      (corta ? ('<div class="shd-wtok-contract"><span class="shd-wtok-addr">' + corta + '</span>' + copiar + link + '</div>') : '') +
+    '</div>';
   };
   const filaOp = (o) => {
     const fecha = new Date(o.ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -503,13 +528,8 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     return h + '</div>';
   };
   $('watch-pane').innerHTML = paneTokens();
-  if (d._dg) {
-    const g = d._dg;
-    const box = document.createElement('div');
-    box.style.cssText = 'margin-top:14px;padding:12px 14px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.25);border-radius:10px;font-size:11.5px;color:#a7b0bb;font-family:var(--mono,monospace);line-height:1.7;word-break:break-all';
-    box.innerHTML = 'DIAGNOSTIC NodeReal:<br>nr_getTokenHoldings: ' + (g.holdings||'-');
-    const pane = $('watch-pane'); if (pane) pane.appendChild(box);
-  }
+  // copiar contrato de cada token
+  document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
   // seguir/dejar
   const fb = $('watch-follow');
   fb.onclick = () => {
@@ -524,6 +544,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       pane.innerHTML = hist.length ? '<div class="shd-wops">' + hist.map(filaOp).join('') + '</div>' : '<div class="shd-empty">No recent activity found.</div>';
     } else {
       pane.innerHTML = paneTokens();
+      document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
     }
   });
 }
