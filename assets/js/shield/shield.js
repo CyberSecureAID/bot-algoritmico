@@ -9,6 +9,7 @@ import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=111';
 import * as hashmod from './shield-hash.js?v=2';
+import * as poison from './shield-poison.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -223,7 +224,33 @@ function inyectarCSS() {
   #shd .shd-clean-btns{display:flex;gap:10px}
   #shd .shd-clean-btns .shd-rescan{flex:1} #shd .shd-clean-btns .shd-btn{flex:1}
   @media(max-width:560px){ #shd .shd-clean-bar{flex-direction:column;align-items:stretch} #shd .shd-clean-go{width:100%} #shd .shd-clean-actions{justify-content:center} }
-    /* Verificación de hash premium */
+      /* Address poisoning checker */
+  #shd .shd-card-poison{border-color:rgba(180,120,255,.22)}
+  #shd .shd-card-poison .shd-card-ic{background:rgba(180,120,255,.1);color:#b478ff}
+  #shd .shd-card-btn.poison{border-color:rgba(180,120,255,.4);background:rgba(180,120,255,.08);color:#b478ff}
+  #shd .shd-card-btn.poison:hover{background:rgba(180,120,255,.16)}
+  #shd .shd-poison-wrap{max-width:600px;margin:0 auto;padding:10px 0}
+  #shd .shd-poison-hero{text-align:center;margin-bottom:8px}
+  #shd .shd-poison-icon{width:56px;height:56px;border-radius:50%;background:rgba(232,184,75,.1);color:var(--gold,#E8B84B);display:grid;place-items:center;margin:0 auto 14px}
+  #shd .shd-poison-hero h1{font-size:22px;font-weight:800;margin:0 0 10px}
+  #shd .shd-poison-hero p{font-size:13px;color:#a7b0bb;line-height:1.6;margin:0}
+  #shd .shd-poison-card{margin-top:18px}
+  #shd .shd-poison-threat{background:rgba(246,70,93,.05);border:1px solid rgba(246,70,93,.25);border-radius:13px;padding:16px;margin-bottom:12px}
+  #shd .shd-poison-threat-h{font-size:13px;font-weight:800;color:#f6465d;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+  #shd .shd-poison-pair{margin-bottom:11px}
+  #shd .shd-poison-lbl{font-size:11px;color:#79838f;display:block;margin-bottom:5px}
+  #shd .shd-poison-addr{font-family:var(--mono,monospace);font-size:12.5px;word-break:break-all;padding:9px 11px;border-radius:8px;display:flex;align-items:center;gap:8px;line-height:1.4}
+  #shd .shd-poison-addr.bad{background:rgba(246,70,93,.08);border:1px solid rgba(246,70,93,.2)}
+  #shd .shd-poison-addr.good{background:rgba(46,189,133,.08);border:1px solid rgba(46,189,133,.2)}
+  #shd .shd-poison-match{color:#e8b84b;font-weight:700}
+  #shd .shd-poison-mid{color:#79838f}
+  #shd .shd-poison-addr.bad .shd-poison-mid{color:#f6465d}
+  #shd .shd-poison-addr.good .shd-poison-mid{color:#2ebd85}
+  #shd .shd-poison-note{font-size:11.5px;color:#a7b0bb;line-height:1.5;margin-top:4px}
+  #shd .shd-poison-tip{font-size:12.5px;color:#a7b0bb;line-height:1.55;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:10px;padding:13px;margin-top:6px}
+  #shd .shd-poison-tip b{color:#eaecef}
+  
+  /* Verificación de hash premium */
   #shd .shd-hash-big{display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;margin-bottom:18px}
   #shd .shd-hash-big.ok{background:linear-gradient(135deg,rgba(46,189,133,.14),rgba(46,189,133,.04));border:1px solid rgba(46,189,133,.3)}
   #shd .shd-hash-big.bad{background:linear-gradient(135deg,rgba(246,70,93,.14),rgba(246,70,93,.04));border:1px solid rgba(246,70,93,.3)}
@@ -429,6 +456,7 @@ const IC = {
   copy: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
   eye: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
   hash: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
+  poison: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s6 5 6 11a6 6 0 0 1-12 0c0-6 6-11 6-11z"/><path d="M9 13h6M12 10v6"/></svg>',
   check2: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#2ebd85" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 };
 
@@ -518,6 +546,7 @@ function pintarInicio(cuenta) {
       <div class="shd-card shd-card-red"><div class="shd-card-ic">${IC.alert}</div><b>Emergency evacuation</b><span>If your wallet is at risk, move all your tokens to a safe wallet fast.</span><button class="shd-card-btn" id="shd-emerg">Open emergency tool</button></div>
       <div class="shd-card shd-card-watch"><div class="shd-card-ic">${IC.eye}</div><b>Wallet Watcher</b><span>Track any wallet on the chain: see all its tokens, balance and live moves.</span><button class="shd-card-btn watch" id="shd-watch">Open watcher</button></div>
       <div class="shd-card shd-card-hash"><div class="shd-card-ic">${IC.hash}</div><b>Verify a transaction</b><span>Paste a transaction hash and confirm it really went through, who sent what to whom, and how much.</span><button class="shd-card-btn hash" id="shd-hash">Verify hash</button></div>
+      <div class="shd-card shd-card-poison"><div class="shd-card-ic">${IC.poison}</div><b>Address poison check</b><span>Scan a wallet for fake lookalike addresses planted by scammers to trick you into sending funds to them.</span><button class="shd-card-btn poison" id="shd-poison">Check for poisoning</button></div>
     </div>`;
   wireBack();
   $('shd-scan').onclick = () => escanear(cuenta);
@@ -525,6 +554,7 @@ function pintarInicio(cuenta) {
   $('shd-emerg').onclick = () => pintarRescate(cuenta);
   const wb = $('shd-watch'); if (wb) wb.onclick = () => pintarWatcher(cuenta);
   const hb = $('shd-hash'); if (hb) hb.onclick = () => pintarHash(cuenta);
+  const pb = $('shd-poison'); if (pb) pb.onclick = () => pintarPoison(cuenta);
   const cp = $('shd-copy'); if (cp) cp.onclick = async () => { const ok = await datos.copiar(cuenta); cp.innerHTML = ok ? IC.check2 : IC.copy; setTimeout(() => { cp.innerHTML = IC.copy; }, 1400); };
   // saldo (async)
   datos.saldoTotalUSD(cuenta).then(b => { const e = $('shd-bal'); if (e) e.textContent = b; });
@@ -569,6 +599,71 @@ function tarjetaSim(info) {
     <div class="shd-sim-res">${escH(info.resumen)}</div>
     <div class="shd-sim-halls">${hall}</div>
   </div>`;
+}
+function pintarPoison(cuenta) {
+  $('shd-barslot').innerHTML = cabecera();
+  const miWallet = cuenta || '';
+  $('shd-in').innerHTML = `
+    <div class="shd-poison-wrap">
+      <div class="shd-poison-hero">
+        <div class="shd-poison-icon">${IC.poison}</div>
+        <h1>Address poisoning checker</h1>
+        <p>Address poisoning is one of the fastest growing crypto scams. Attackers create a fake wallet that looks almost identical to one you already use, matching the first and last characters, then send you a tiny or zero value transfer so it lands in your history. The next time you copy an address from your history you may grab theirs by mistake and send your funds straight to the scammer. Paste any wallet below to scan its history for these fake lookalike addresses before it costs you.</p>
+      </div>
+      <label class="shd-sim-lbl">Wallet to scan for poisoning</label>
+      <input class="shd-sim-in" id="poison-in" placeholder="0x… wallet address" autocomplete="off" spellcheck="false" value="${miWallet}">
+      <button class="shd-btn" id="poison-go" style="width:100%;margin-top:14px">${IC.poison} Scan for poisoning</button>
+      <div id="poison-res"></div>
+      <button class="shd-rescan" id="poison-back" style="margin-top:18px">Back</button>
+    </div>`;
+  wireBack();
+  $('poison-back').onclick = () => pintarInicio(cuenta);
+  $('poison-go').onclick = async () => {
+    const addr = $('poison-in').value.trim(); const res = $('poison-res');
+    if (!poison.esDireccion(addr)) { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address (0x…)</div>`; return; }
+    res.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Scanning history for lookalikes…</div></div>`;
+    try {
+      const hist = await watch.historialDe(addr);
+      const info = poison.analizar(addr, hist);
+      res.innerHTML = tarjetaPoison(info, hist.length);
+      wirePoisonCopy();
+    } catch (e) { res.innerHTML = `<div class="shd-sim-msg bad">Could not scan that wallet. Try again.</div>`; }
+  };
+  function wirePoisonCopy() {
+    document.querySelectorAll('[data-pcopy]').forEach(function (b) { b.onclick = function () { try { navigator.clipboard.writeText(b.dataset.pcopy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
+  }
+}
+function resaltar(addr, pref, suf) {
+  // resalta el prefijo y sufijo que coinciden (la parte que engaña), medio en rojo
+  const p = addr.slice(0, pref);
+  const m = addr.slice(pref, addr.length - suf);
+  const s2 = addr.slice(addr.length - suf);
+  return '<span class="shd-poison-match">' + escH(p) + '</span><span class="shd-poison-mid">' + escH(m) + '</span><span class="shd-poison-match">' + escH(s2) + '</span>';
+}
+function tarjetaPoison(info, numOps) {
+  const iconoOk = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  const iconoX = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  if (numOps === 0) {
+    return '<div class="shd-poison-card"><div class="shd-hash-big warn"><div class="shd-hash-bigic warn">' + iconoX + '</div><div><div class="shd-hash-bigt">No history</div><div class="shd-hash-bigs">This wallet has no recent activity to scan. Poisoning needs a transaction history to work against.</div></div></div></div>';
+  }
+  if (!info.amenazas.length) {
+    return '<div class="shd-poison-card"><div class="shd-hash-big ok"><div class="shd-hash-bigic ok">' + iconoOk + '</div><div><div class="shd-hash-bigt">Clean</div><div class="shd-hash-bigs">No poisoning lookalike addresses found in this wallet\'s recent history. We checked ' + info.contrapartesTotales + ' addresses it interacted with.</div></div></div>' +
+      '<div class="shd-poison-tip"><b>Stay safe.</b> Even so, never copy an address from your history. Use an address book or paste from the original source, and send a tiny test amount first for large transfers.</div></div>';
+  }
+  // hay amenazas
+  let items = info.amenazas.map(function (a) {
+    return '<div class="shd-poison-threat">' +
+      '<div class="shd-poison-threat-h">Fake lookalike found</div>' +
+      '<div class="shd-poison-pair"><span class="shd-poison-lbl">Scammer address (avoid)</span><div class="shd-poison-addr bad">' + resaltar(a.falsa, a.prefijoIguales, a.sufijoIguales) + ' <button class="shd-wtok-copy" data-pcopy="' + a.falsa + '">⧉</button></div></div>' +
+      '<div class="shd-poison-pair"><span class="shd-poison-lbl">Your real address</span><div class="shd-poison-addr good">' + resaltar(a.real, a.prefijoIguales, a.sufijoIguales) + ' <button class="shd-wtok-copy" data-pcopy="' + a.real + '">⧉</button></div></div>' +
+      '<div class="shd-poison-note">They match the first ' + a.prefijoIguales + ' and last ' + a.sufijoIguales + ' characters. Only the middle differs. This is a trap.</div>' +
+    '</div>';
+  }).join('');
+  return '<div class="shd-poison-card">' +
+    '<div class="shd-hash-big bad"><div class="shd-hash-bigic bad">' + iconoX + '</div><div><div class="shd-hash-bigt">' + info.amenazas.length + ' poisoning threat' + (info.amenazas.length>1?'s':'') + ' found</div><div class="shd-hash-bigs">This wallet was targeted by address poisoning. The addresses below were planted to trick you. Never send funds to them.</div></div></div>' +
+    items +
+    '<div class="shd-poison-tip"><b>What to do.</b> Delete these from memory. Always get the real address from your address book or the original source, never from transaction history. For big transfers, send a small test amount first.</div>' +
+  '</div>';
 }
 function pintarHash(cuenta) {
   $('shd-barslot').innerHTML = cabecera();
@@ -714,7 +809,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const copiar = t.address ? ('<button class="shd-wtok-copy" data-copy="' + t.address + '" onclick="event.stopPropagation()" title="Copy contract">⧉</button>') : '';
     const swap = t.address ? ('<button class="shd-wtok-swap" data-swap="' + t.address + '" onclick="event.stopPropagation()">Swap</button>') : '';
     // papelera (eliminar) solo en la wallet propia, separada del swap por una rayita difuminada
-    const del = (esPropia && t.address) ? ('<span class="shd-wtok-div"></span><button class="shd-wtok-del" data-del="' + t.address + '" data-draw="' + (t.balanceRaw||'0x0') + '" data-dsym="' + escH(t.symbol||'?') + '" data-dusd="' + (t.usd||0) + '" onclick="event.stopPropagation()" title="Send this token out of your wallet"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>') : '';
+    const del = (esPropia && t.address) ? ('<span class="shd-wtok-div"></span><button class="shd-wtok-del" data-del="' + t.address + '" data-draw="' + (t.balanceRaw||'0x0') + '" data-dsym="' + escH(t.symbol||'?') + '" data-dusd="' + (t.usd||0) + '" title="Send this token out of your wallet"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>') : '';
     const selBox = '<label class="shd-tok-check" style="display:none"><input type="checkbox" class="shd-tok-cb" data-caddr="' + (t.address||'') + '" data-craw="' + (t.balanceRaw||'0x0') + '" data-csym="' + escH(t.symbol||'?') + '" data-cusd="' + (t.usd||0) + '"></label>';
     return '<div class="shd-wtok2" data-tokrow="' + escH((t.name||'') + ' ' + (t.symbol||'') + ' ' + (t.address||'')).toLowerCase() + '" data-new="' + (t.reciente?'1':'0') + '" data-today="' + (t.hoy?'1':'0') + '" data-usdval="' + (t.usd||0) + '">' +
       '<div class="shd-wtok-top">' + selBox + ic +
