@@ -5,8 +5,6 @@
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 
 const ALCHEMY = 'https://bnb-mainnet.g.alchemy.com/v2/docs-demo';   // demo público, sin key
-const BSCSCAN = 'https://api.bscscan.com/api';
-const BSCSCAN_KEY = 'BUS6DPJ84DWQ1N9XCN8PIUHTNFM5TXE2HU';   // key real (gratuita)
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io'];
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 let _rpc;
@@ -37,8 +35,22 @@ async function metadata(addr) {
    Fuente 2: Alchemy getTokenBalances → refuerzo.
    Balance real on-chain de cada uno. Precios/logos de DeFiLlama + metadata. */
 const ABI_ERC = ['function balanceOf(address) view returns (uint256)','function symbol() view returns (string)','function decimals() view returns (uint8)'];
-const RPCS_ALL = ['https://bsc-dataseed.binance.org','https://bsc-dataseed1.defibit.io','https://bsc-dataseed1.ninicoin.io','https://bsc.publicnode.com'];
-function lectorN(i) { return new ethers.JsonRpcProvider(RPCS_ALL[i % RPCS_ALL.length], 56, { staticNetwork: true }); }
+const RPCS_ALL = ['https://bsc-dataseed.binance.org','https://bsc-dataseed1.defibit.io','https://bsc.publicnode.com','https://binance.llamarpc.com'];
+const ALCHEMY_BNB = 'https://bnb-mainnet.g.alchemy.com/v2/docs-demo';
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+async function rpcCall(method, params) {
+  for (const url of RPCS_ALL) {
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: ctrl.signal });
+      clearTimeout(to);
+      const d = await r.json();
+      if (d.result !== undefined) return d.result;
+    } catch (_) {}
+  }
+  return null;
+}
 
 export async function tokensDe(addr, onProgreso) {
   if (!esDireccion(addr)) return { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
@@ -46,56 +58,58 @@ export async function tokensDe(addr, onProgreso) {
   let nativo = 0; try { nativo = Number(ethers.formatEther(await prov.getBalance(addr))); } catch (_) {}
   if (onProgreso) onProgreso(0.15);
 
-  // 1. lista de tokens que la wallet ha tocado (tokentx, gratis)
-  const vistos = new Map();
-  const diag = { apiMsg: '', apiStatus: '', movimientos: 0, tokensUnicos: 0, conSaldo: 0, error: '' };
-  try {
-    for (let page = 1; page <= 3; page++) {
-      const url = `${BSCSCAN}?module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=${page}&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
-      const r = await fetch(url, { cache: 'no-store' });
-      const d = await r.json();
-      diag.apiStatus = String(d.status); diag.apiMsg = String(d.message || '');
-      if (typeof d.result === 'string') { diag.error = d.result; break; }
-      if (!Array.isArray(d.result) || d.result.length === 0) break;
-      diag.movimientos += d.result.length;
-      for (const t of d.result) {
-        const a = (t.contractAddress || '').toLowerCase();
-        if (a && !vistos.has(a)) vistos.set(a, { address: a, symbol: t.tokenSymbol || '?', name: t.tokenName || '', decimals: Number(t.tokenDecimal) || 18 });
-      }
-      if (d.result.length < 1000) break;
-    }
-  } catch (e) { diag.error = (e && e.message) || 'fetch failed'; }
-  diag.tokensUnicos = vistos.size;
-  if (onProgreso) onProgreso(0.4);
+  const encontrados = new Set();
 
-  // 2. balance on-chain de CADA token (RPC, sin CORS ni límite de plan) — en tandas con RPC rotando
-  const lista = [...vistos.values()];
+  // FUENTE 1: Alchemy getTokenBalances (sin key, demo) — todos los tokens de golpe
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
+    const r = await fetch(ALCHEMY_BNB, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'alchemy_getTokenBalances', params: [addr, 'erc20'] }), signal: ctrl.signal });
+    clearTimeout(to);
+    const d = await r.json();
+    if (d.result && d.result.tokenBalances) for (const b of d.result.tokenBalances) {
+      if (b.tokenBalance && !/^0x0*$/.test(b.tokenBalance)) encontrados.add((b.contractAddress || '').toLowerCase());
+    }
+  } catch (_) {}
+  if (onProgreso) onProgreso(0.35);
+
+  // FUENTE 2: eth_getLogs — eventos Transfer HACIA la wallet (descubre tokens recibidos)
+  try {
+    const bloqueActual = await rpcCall('eth_blockNumber', []);
+    const topicTo = '0x000000000000000000000000' + addr.slice(2).toLowerCase();
+    // buscar en un rango amplio; algunos RPC limitan, por eso el fallback de fuente 1
+    const logs = await rpcCall('eth_getLogs', [{ fromBlock: '0x0', toBlock: bloqueActual || 'latest', topics: [TRANSFER_TOPIC, null, topicTo] }]);
+    if (Array.isArray(logs)) for (const lg of logs) { if (lg.address) encontrados.add(lg.address.toLowerCase()); }
+  } catch (_) {}
+  if (onProgreso) onProgreso(0.55);
+
+  // balance on-chain + metadata de cada token descubierto
+  const lista = [...encontrados];
   const tokens = [];
-  for (let i = 0; i < lista.length; i += 15) {
-    const tanda = lista.slice(i, i + 15);
-    const pv = lectorN(Math.floor(i / 15));
-    const res = await Promise.all(tanda.map(async (t) => {
+  for (let i = 0; i < lista.length; i += 12) {
+    const tanda = lista.slice(i, i + 12);
+    const res = await Promise.all(tanda.map(async (a) => {
       try {
-        const c = new ethers.Contract(t.address, ABI_ERC, pv);
+        const c = new ethers.Contract(a, ABI_ERC, prov);
         const b = await c.balanceOf(addr);
         if (b === 0n) return null;
-        return { ...t, balance: Number(ethers.formatUnits(b, t.decimals)), logo: null };
+        let dec = 18, sym = '?';
+        try { dec = Number(await c.decimals()); } catch (_) {}
+        try { sym = await c.symbol(); } catch (_) {}
+        return { address: a, symbol: sym, name: '', decimals: dec, balance: Number(ethers.formatUnits(b, dec)), logo: null };
       } catch (_) { return null; }
     }));
     tokens.push(...res.filter(Boolean));
-    if (onProgreso) onProgreso(0.4 + 0.4 * ((i + 15) / Math.max(lista.length, 1)));
+    if (onProgreso) onProgreso(0.55 + 0.3 * ((i + 12) / Math.max(lista.length, 1)));
   }
 
-  // 3. precios + logos (DeFiLlama)
+  // precios + logos
   const ids = tokens.map(t => 'bsc:' + t.address); ids.push('bsc:' + WBNB);
   let precios = {};
   try { for (let i = 0; i < ids.length; i += 100) { const pr = await fetch('https://coins.llama.fi/prices/current/' + ids.slice(i, i+100).join(',')); const pd = await pr.json(); Object.assign(precios, pd.coins || {}); } } catch (_) {}
   let totalUSD = 0; const pBNB = precios['bsc:' + WBNB]; const nativoUSD = pBNB && pBNB.price ? nativo * pBNB.price : 0; totalUSD += nativoUSD;
   for (const t of tokens) { const pk = precios['bsc:' + t.address]; t.precio = pk && pk.price ? pk.price : 0; t.usd = t.balance * t.precio; totalUSD += t.usd; }
-  // logos (Alchemy metadata, refuerzo)
-  await Promise.all(tokens.slice(0, 40).map(async (t) => { try { const m = await metadata(t.address); if (m.logo) t.logo = m.logo; } catch (_) {} }));
+  await Promise.all(tokens.slice(0, 40).map(async (t) => { try { const m = await metadata(t.address); if (m.logo) t.logo = m.logo; if ((!t.symbol||t.symbol==='?')&&m.symbol) t.symbol=m.symbol; } catch (_) {} }));
   tokens.sort((a, b) => (b.usd - a.usd) || (b.balance - a.balance));
-  diag.conSaldo = tokens.length;
   if (onProgreso) onProgreso(1);
   return { nativo, nativoUSD, tokens, totalUSD };
 }
@@ -103,33 +117,31 @@ export async function tokensDe(addr, onProgreso) {
 /* ── Logo de BNB y de tokens (DeFiLlama / Alchemy) ── */
 export function logoBNB() { return 'https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png'; }
 
-/* ── Historial de operaciones (Etherscan V2: tokentx + txlist) con hash ── */
+/* ── Historial (Alchemy getAssetTransfers sin key + eth_getLogs) con hash ── */
 export async function historialDe(addr) {
   if (!esDireccion(addr)) return [];
   const ops = [];
-  // transferencias de tokens
+  // Alchemy getAssetTransfers (sin key)
   try {
-    const url = `${BSCSCAN}?module=account&action=tokentx&address=${addr}&startblock=0&endblock=latest&page=1&offset=25&sort=desc&apikey=${BSCSCAN_KEY}`;
-    const r = await fetch(url, { cache: 'no-store' });
-    const d = await r.json();
-    if (Array.isArray(d.result)) for (const t of d.result) {
-      const entra = (t.to || '').toLowerCase() === addr.toLowerCase();
-      ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: t.tokenSymbol || '?', cantidad: Number(ethers.formatUnits(t.value || '0', Number(t.tokenDecimal) || 18)), contraparte: entra ? (t.from || '') : (t.to || ''), ts: Number(t.timeStamp) * 1000 });
+    const base = { fromBlock: '0x0', toBlock: 'latest', category: ['erc20', 'external'], withMetadata: true, maxCount: '0x19', order: 'desc' };
+    for (const dir of ['from', 'to']) {
+      const params = dir === 'from' ? { ...base, fromAddress: addr } : { ...base, toAddress: addr };
+      try {
+        const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
+        const r = await fetch(ALCHEMY_BNB, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'alchemy_getAssetTransfers', params: [params] }), signal: ctrl.signal });
+        clearTimeout(to);
+        const d = await r.json();
+        if (d.result && d.result.transfers) for (const t of d.result.transfers) {
+          ops.push({ hash: t.hash, tipo: dir === 'to' ? 'in' : 'out', symbol: t.asset || 'BNB', cantidad: t.value != null ? Number(t.value) : 0, contraparte: dir === 'to' ? (t.from || '') : (t.to || ''), ts: t.metadata && t.metadata.blockTimestamp ? new Date(t.metadata.blockTimestamp).getTime() : 0 });
+        }
+      } catch (_) {}
     }
   } catch (_) {}
-  // transacciones normales (BNB)
-  try {
-    const url = `${BSCSCAN}?module=account&action=txlist&address=${addr}&startblock=0&endblock=latest&page=1&offset=15&sort=desc&apikey=${BSCSCAN_KEY}`;
-    const r = await fetch(url, { cache: 'no-store' });
-    const d = await r.json();
-    if (Array.isArray(d.result)) for (const t of d.result) {
-      if (t.value === '0') continue;
-      const entra = (t.to || '').toLowerCase() === addr.toLowerCase();
-      ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: 'BNB', cantidad: Number(ethers.formatEther(t.value || '0')), contraparte: entra ? (t.from || '') : (t.to || ''), ts: Number(t.timeStamp) * 1000 });
-    }
-  } catch (_) {}
-  ops.sort((a, b) => b.ts - a.ts);
-  return ops.slice(0, 30);
+  // dedup por hash
+  const vistos = new Set(); const unicas = [];
+  for (const o of ops) { if (!vistos.has(o.hash)) { vistos.add(o.hash); unicas.push(o); } }
+  unicas.sort((a, b) => b.ts - a.ts);
+  return unicas.slice(0, 30);
 }
 
 /* ── Seguidas (local por ahora, contrato al final) ── */
