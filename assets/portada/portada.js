@@ -606,12 +606,8 @@ try {
     // Si venimos a abrir el swap directamente (p.ej. desde Wallet Watcher), tapamos
     // la portada con un velo negro para que no se vea cargar por detrás. Se quita
     // cuando el swap ya está montado.
-    let _velo = null;
-    if (pedido === 'swap') {
-      _velo = document.createElement('div');
-      _velo.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000';
-      document.body.appendChild(_velo);
-    }
+    // El velo ya existe inline (#velo-arranque) desde el primer frame si abrir=swap.
+    let _velo = (pedido === 'swap') ? document.getElementById('velo-arranque') : null;
     const tid = q.get('tool');
     Promise.resolve(abrir(pedido, tid ? { getAttribute: () => tid } : null)).finally(function () {
       if (_velo) {
