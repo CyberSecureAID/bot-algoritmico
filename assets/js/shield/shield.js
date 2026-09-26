@@ -193,18 +193,22 @@ function inyectarCSS() {
   @media(max-width:560px){ #shd .shd-stats{grid-template-columns:repeat(2,1fr)} }
   
         /* Limpieza de tokens basura */
-  #shd .shd-clean-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-  #shd .shd-clean-btn{padding:9px 16px;border:1px solid rgba(246,70,93,.35);border-radius:10px;background:rgba(246,70,93,.07);color:#f6465d;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;flex:none}
-  #shd .shd-clean-btn.active{background:rgba(246,70,93,.16)}
-  #shd .shd-clean-btn:hover{background:rgba(246,70,93,.14)}
-  #shd .shd-clean-hint{font-size:11.5px;color:#79838f}
-  #shd .shd-tok-check{align-items:center;flex:none;cursor:pointer}
-  #shd .shd-tok-cb{width:18px;height:18px;accent-color:var(--gold,#E8B84B);cursor:pointer}
-  #shd .shd-clean-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;background:rgba(246,70,93,.06);border:1px solid rgba(246,70,93,.22);border-radius:11px}
+  #shd .shd-tok-fbtn#clean-toggle.active{border-color:rgba(246,70,93,.5);color:#f6465d;background:rgba(246,70,93,.12)}
+  #shd .shd-wtok-btns{margin-left:auto;display:flex;align-items:center;gap:0;flex:none}
+  #shd .shd-wtok-div{width:1px;height:26px;margin:0 4px;background:linear-gradient(180deg,transparent,#3a424c 30%,#3a424c 70%,transparent);flex:none}
+  #shd .shd-wtok-del{background:none;border:0;color:#79838f;cursor:pointer;padding:8px;display:grid;place-items:center;border-radius:8px;flex:none}
+  #shd .shd-wtok-del:hover{color:#f6465d;background:rgba(246,70,93,.1)}
+  /* checkbox con estilo */
+  #shd .shd-tok-check{align-items:center;flex:none;cursor:pointer;margin-right:2px}
+  #shd .shd-tok-cb{appearance:none;-webkit-appearance:none;width:20px;height:20px;border:2px solid #3a424c;border-radius:6px;background:rgba(11,14,17,.6);cursor:pointer;position:relative;flex:none;transition:.15s}
+  #shd .shd-tok-cb:checked{background:var(--gold,#E8B84B);border-color:var(--gold,#E8B84B)}
+  #shd .shd-tok-cb:checked::after{content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #241900;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+  /* barra de acciones con MARGEN */
+  #shd .shd-clean-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding:11px 13px;background:rgba(246,70,93,.06);border:1px solid rgba(246,70,93,.22);border-radius:11px}
   #shd .shd-clean-actions{display:flex;gap:7px;flex-wrap:wrap}
-  #shd .shd-clean-sel{padding:7px 12px;border:1px solid #29313b;border-radius:8px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+  #shd .shd-clean-sel{padding:8px 13px;border:1px solid #29313b;border-radius:8px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
   #shd .shd-clean-sel:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
-  #shd .shd-clean-go{padding:9px 18px;border:0;border-radius:9px;background:linear-gradient(180deg,#ff6b7d,#f6465d 60%,#d12d43);color:#fff;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;flex:none}
+  #shd .shd-clean-go{padding:9px 20px;border:0;border-radius:9px;background:linear-gradient(180deg,#ff6b7d,#f6465d 60%,#d12d43);color:#fff;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;flex:none}
   /* modal de confirmación */
   #shd .shd-clean-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
   #shd .shd-clean-box{width:100%;max-width:460px;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #29313b;border-radius:18px;padding:22px}
@@ -218,8 +222,8 @@ function inyectarCSS() {
   #shd .shd-clean-remove:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-clean-btns{display:flex;gap:10px}
   #shd .shd-clean-btns .shd-rescan{flex:1} #shd .shd-clean-btns .shd-btn{flex:1}
-  
-  /* Verificación de hash premium */
+  @media(max-width:560px){ #shd .shd-clean-bar{flex-direction:column;align-items:stretch} #shd .shd-clean-go{width:100%} #shd .shd-clean-actions{justify-content:center} }
+    /* Verificación de hash premium */
   #shd .shd-hash-big{display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;margin-bottom:18px}
   #shd .shd-hash-big.ok{background:linear-gradient(135deg,rgba(46,189,133,.14),rgba(46,189,133,.04));border:1px solid rgba(46,189,133,.3)}
   #shd .shd-hash-big.bad{background:linear-gradient(135deg,rgba(246,70,93,.14),rgba(246,70,93,.04));border:1px solid rgba(246,70,93,.3)}
@@ -691,6 +695,7 @@ function pintarWatcher(cuenta) {
   document.querySelectorAll('[data-w], .shd-reco').forEach(b => b.onclick = () => { $('watch-addr').value = b.dataset.w; ir(b.dataset.w); });
 }
 function pintarWatchRes(cuenta, addr, d, hist) {
+  const esPropia = cuenta && addr && cuenta.toLowerCase() === addr.toLowerCase();
   const cont = $('watch-res');
   const corta = addr.slice(0,6)+'…'+addr.slice(-4);
   const siguiendo = watch.estaSiguiendo(addr);
@@ -708,11 +713,13 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const scan = t.address ? ('<a href="https://bscscan.com/token/' + t.address + '" target="_blank" rel="noopener" class="shd-wtok-scan" onclick="event.stopPropagation()">BscScan ↗</a>') : '';
     const copiar = t.address ? ('<button class="shd-wtok-copy" data-copy="' + t.address + '" onclick="event.stopPropagation()" title="Copy contract">⧉</button>') : '';
     const swap = t.address ? ('<button class="shd-wtok-swap" data-swap="' + t.address + '" onclick="event.stopPropagation()">Swap</button>') : '';
+    // papelera (eliminar) solo en la wallet propia, separada del swap por una rayita difuminada
+    const del = (esPropia && t.address) ? ('<span class="shd-wtok-div"></span><button class="shd-wtok-del" data-del="' + t.address + '" data-draw="' + (t.balanceRaw||'0x0') + '" data-dsym="' + escH(t.symbol||'?') + '" data-dusd="' + (t.usd||0) + '" onclick="event.stopPropagation()" title="Send this token out of your wallet"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>') : '';
     const selBox = '<label class="shd-tok-check" style="display:none"><input type="checkbox" class="shd-tok-cb" data-caddr="' + (t.address||'') + '" data-craw="' + (t.balanceRaw||'0x0') + '" data-csym="' + escH(t.symbol||'?') + '" data-cusd="' + (t.usd||0) + '"></label>';
     return '<div class="shd-wtok2" data-tokrow="' + escH((t.name||'') + ' ' + (t.symbol||'') + ' ' + (t.address||'')).toLowerCase() + '" data-new="' + (t.reciente?'1':'0') + '" data-today="' + (t.hoy?'1':'0') + '" data-usdval="' + (t.usd||0) + '">' +
       '<div class="shd-wtok-top">' + selBox + ic +
         '<div class="shd-wtok-info"><b>' + escH(t.name || t.symbol) + ' ' + nuevo + '</b><div class="shd-wtok-bal">' + bal + ' ' + escH(t.symbol) + usdTxt + '</div></div>' +
-        swap +
+        '<div class="shd-wtok-btns">' + swap + del + '</div>' +
       '</div>' +
       (corta ? ('<div class="shd-wtok-contract"><span class="shd-wtok-addr">' + corta + '</span>' + copiar + scan + '</div>') : '') +
     '</div>';
@@ -739,12 +746,12 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     <div class="shd-watch-tabs"><button class="shd-wtab on" data-wt="tokens">Tokens (${d.tokens.length})</button><button class="shd-wtab" data-wt="hist">Activity (${hist.length})</button></div>
     <div id="watch-pane"></div>`;
   const paneTokens = () => {
-    const esPropia = cuenta && addr && cuenta.toLowerCase() === addr.toLowerCase();
     let h = '<div class="shd-tok-tools">' +
-      (esPropia ? '<div class="shd-clean-row"><button class="shd-clean-btn" id="clean-toggle">Clean up junk tokens</button><span class="shd-clean-hint">Select tokens you don\'t want and send them out of your wallet</span></div><div class="shd-clean-bar" id="clean-bar" style="display:none"><div class="shd-clean-actions"><button class="shd-clean-sel" id="clean-zero">Select all zero value</button><button class="shd-clean-sel" id="clean-all">Select all</button><button class="shd-clean-sel" id="clean-none">Clear</button></div><button class="shd-clean-go" id="clean-go">Review selection</button></div>' : '') +
+
       '<div class="shd-tok-bar">' +
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.5;flex:none"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>' +
         '<input class="shd-tok-search" id="tok-search" placeholder="Search tokens by name, symbol or contract" autocomplete="off">' +
+        (esPropia ? '<button class="shd-tok-fbtn" id="clean-toggle" title="Select tokens to clean"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></button>' : '') +
         '<button class="shd-tok-fbtn" id="tok-fbtn" title="Filter"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg><span id="tok-fbadge"></span></button>' +
         '<div class="shd-tok-pop" id="tok-pop">' +
           '<button class="shd-tok-popf on" data-f="all">All tokens</button>' +
@@ -752,7 +759,9 @@ function pintarWatchRes(cuenta, addr, d, hist) {
           '<button class="shd-tok-popf" data-f="week">Bought this week</button>' +
           '<button class="shd-tok-popf" data-f="value">Only with USD value</button>' +
         '</div>' +
-      '</div></div>';
+      '</div>' +
+      '<div class="shd-clean-bar" id="clean-bar" style="display:none"><div class="shd-clean-actions"><button class="shd-clean-sel" id="clean-zero">Zero value</button><button class="shd-clean-sel" id="clean-all">All</button><button class="shd-clean-sel" id="clean-none">Clear</button></div><button class="shd-clean-go" id="clean-go">Review</button></div>' +
+      '</div>';
     h += '<div class="shd-wtoks" id="tok-list">';
     if (d.nativo > 0) h += filaTok({ symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD, logo: watch.logoBNB() });
     h += conValor.map(filaTok).join('');
@@ -805,8 +814,8 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     tog.onclick = function () {
       _modoLimpieza = !_modoLimpieza;
       document.querySelectorAll('.shd-tok-check').forEach(function (c) { c.style.display = _modoLimpieza ? 'flex' : 'none'; });
-      tog.textContent = _modoLimpieza ? 'Cancel selection' : 'Clean up junk tokens';
       tog.classList.toggle('active', _modoLimpieza);
+      tog.title = _modoLimpieza ? 'Cancel selection' : 'Select tokens to clean';
       if (bar) bar.style.display = _modoLimpieza ? 'flex' : 'none';
       if (!_modoLimpieza) document.querySelectorAll('.shd-tok-cb').forEach(function (cb) { cb.checked = false; });
     };
@@ -821,6 +830,9 @@ function pintarWatchRes(cuenta, addr, d, hist) {
   function revisarLimpieza(cuenta, addr) {
     const sel = [];
     document.querySelectorAll('.shd-tok-cb').forEach(function (cb) { if (cb.checked && cb.dataset.caddr) sel.push({ addr: cb.dataset.caddr, raw: cb.dataset.craw, sym: cb.dataset.csym, usd: Number(cb.dataset.cusd) }); });
+    revisarLimpiezaLista(sel);
+  }
+  function revisarLimpiezaLista(sel) {
     if (!sel.length) { return; }
     const valorTotal = sel.reduce(function (a, t) { return a + t.usd; }, 0);
     const conValor = sel.filter(function (t) { return t.usd > 0.01; });
@@ -857,6 +869,11 @@ function pintarWatchRes(cuenta, addr, d, hist) {
   }
   function wireTokBtns() {
     document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
+    document.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function (e) {
+      e.stopPropagation();
+      // eliminar UN token: reusar el modal de confirmación con un solo item
+      revisarLimpiezaLista([{ addr: b.dataset.del, raw: b.dataset.draw, sym: b.dataset.dsym, usd: Number(b.dataset.dusd) }]);
+    }; });
     document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) {
       e.stopPropagation();
       // velo negro instantáneo para tapar la transición (nada de pestañazo al lobby)
