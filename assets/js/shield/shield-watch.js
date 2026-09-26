@@ -59,27 +59,29 @@ export async function tokensDe(addr, onProgreso) {
   if (onProgreso) onProgreso(0.15);
 
   const encontrados = new Set();
+  const DG = { alchemy: 'no probado', getlogs: 'no probado', rpcBalance: 'no probado', descubiertos: 0, conSaldo: 0, err: '' };
 
-  // FUENTE 1: Alchemy getTokenBalances (sin key, demo) — todos los tokens de golpe
+  // FUENTE 1: Alchemy getTokenBalances (sin key, demo)
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
     const r = await fetch(ALCHEMY_BNB, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'alchemy_getTokenBalances', params: [addr, 'erc20'] }), signal: ctrl.signal });
     clearTimeout(to);
     const d = await r.json();
-    if (d.result && d.result.tokenBalances) for (const b of d.result.tokenBalances) {
-      if (b.tokenBalance && !/^0x0*$/.test(b.tokenBalance)) encontrados.add((b.contractAddress || '').toLowerCase());
-    }
-  } catch (_) {}
+    if (d.error) { DG.alchemy = 'ERROR: ' + (d.error.message||'').slice(0,50); }
+    else if (d.result && d.result.tokenBalances) { let n=0; for (const b of d.result.tokenBalances) { if (b.tokenBalance && !/^0x0*$/.test(b.tokenBalance)) { encontrados.add((b.contractAddress || '').toLowerCase()); n++; } } DG.alchemy = n + ' tokens'; }
+    else DG.alchemy = 'sin tokenBalances';
+  } catch (e) { DG.alchemy = 'FALLO: ' + ((e&&e.message)||'').slice(0,40); }
   if (onProgreso) onProgreso(0.35);
 
-  // FUENTE 2: eth_getLogs — eventos Transfer HACIA la wallet (descubre tokens recibidos)
+  // FUENTE 2: eth_getLogs — eventos Transfer HACIA la wallet
   try {
     const bloqueActual = await rpcCall('eth_blockNumber', []);
     const topicTo = '0x000000000000000000000000' + addr.slice(2).toLowerCase();
-    // buscar en un rango amplio; algunos RPC limitan, por eso el fallback de fuente 1
     const logs = await rpcCall('eth_getLogs', [{ fromBlock: '0x0', toBlock: bloqueActual || 'latest', topics: [TRANSFER_TOPIC, null, topicTo] }]);
-    if (Array.isArray(logs)) for (const lg of logs) { if (lg.address) encontrados.add(lg.address.toLowerCase()); }
-  } catch (_) {}
+    if (Array.isArray(logs)) { const antes = encontrados.size; for (const lg of logs) { if (lg.address) encontrados.add(lg.address.toLowerCase()); } DG.getlogs = logs.length + ' logs'; }
+    else DG.getlogs = 'null (RPC no soporta o limitó)';
+  } catch (e) { DG.getlogs = 'FALLO: ' + ((e&&e.message)||'').slice(0,40); }
+  DG.descubiertos = encontrados.size;
   if (onProgreso) onProgreso(0.55);
 
   // balance on-chain + metadata de cada token descubierto
@@ -110,8 +112,9 @@ export async function tokensDe(addr, onProgreso) {
   for (const t of tokens) { const pk = precios['bsc:' + t.address]; t.precio = pk && pk.price ? pk.price : 0; t.usd = t.balance * t.precio; totalUSD += t.usd; }
   await Promise.all(tokens.slice(0, 40).map(async (t) => { try { const m = await metadata(t.address); if (m.logo) t.logo = m.logo; if ((!t.symbol||t.symbol==='?')&&m.symbol) t.symbol=m.symbol; } catch (_) {} }));
   tokens.sort((a, b) => (b.usd - a.usd) || (b.balance - a.balance));
+  DG.conSaldo = tokens.length;
   if (onProgreso) onProgreso(1);
-  return { nativo, nativoUSD, tokens, totalUSD };
+  return { nativo, nativoUSD, tokens, totalUSD, _dg: DG };
 }
 
 /* ── Logo de BNB y de tokens (DeFiLlama / Alchemy) ── */
