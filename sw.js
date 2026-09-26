@@ -8,7 +8,7 @@
  *   · Si hay versión nueva, se descarga sola y se aplica al recargar.
  */
 
-const VERSION = 'aurex-v326';
+const VERSION = 'aurex-v327';
 const APP = [
   './',
   './index.html',              // la portada
@@ -59,6 +59,12 @@ self.addEventListener('fetch', (e) => {
 
   const url = new URL(req.url);
   if (NUNCA_GUARDAR.some((d) => url.hostname.includes(d))) return;   // va directo a la red
+  // Wallet Shield en desarrollo: SIEMPRE fresco de la red, sin caché (evita que
+  // el service worker sirva versiones viejas mientras lo construimos).
+  if (url.pathname.includes('/shield/')) {
+    e.respondWith(fetch(req, { cache: 'no-store' }).catch(() => caches.match(req)));
+    return;
+  }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
   /* La página: primero la red (para traer novedades), y si falla, la copia
