@@ -249,6 +249,14 @@ export function abrirSwap() {
   host.appendChild(el.firstElementChild);
   $('sw-x').onclick = cerrarSwap; $('sw-bg').onclick = cerrarSwap;
   if ($('sw-find-inp')) $('sw-find-inp').addEventListener('input', swFindInput);
+  // Precargar un token si se llegó con ?token=CONTRATO (p.ej. desde Wallet Watcher).
+  try {
+    var _tokParam = new URLSearchParams(location.search).get('token');
+    if (_tokParam && /^0x[0-9a-fA-F]{40}$/.test(_tokParam)) {
+      var _inp = $('sw-find-inp');
+      if (_inp) { _inp.value = _tokParam; setTimeout(function () { swFindInput(); }, 250); }
+    }
+  } catch (_) {}
   $('sw-amt').addEventListener('input', swInput);
   $('sw-max').onclick = swMax;
   $('sw-flip').onclick = swFlip;
