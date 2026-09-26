@@ -140,9 +140,9 @@ function inyectarCSS() {
   #shd .shd-how{background:rgba(14,19,25,.6);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#a7b0bb;line-height:1.6}
   #shd .shd-how b{color:#eaecef}
             /* Barra de búsqueda con filtro integrado */
-  #shd .shd-tok-bar{position:relative;display:flex;align-items:center;gap:9px;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:11px 12px;min-height:44px;box-sizing:border-box}
+  #shd .shd-tok-bar{position:relative;display:flex;align-items:center;gap:10px;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:12px;padding:0 12px;height:46px;box-sizing:border-box}
   #shd .shd-tok-bar:focus-within{border-color:var(--gold-soft,#C9A84B)}
-  #shd .shd-tok-search{flex:1;min-width:0;background:transparent;border:0;outline:none;color:#eaecef;font-family:inherit;font-size:13px;line-height:1.4;padding:2px 0;margin:0;height:auto;display:block}
+  #shd .shd-tok-search{flex:1;min-width:0;height:100%;background:transparent;border:0;outline:none;color:#eaecef;font-family:inherit;font-size:13px;padding:0;margin:0}
   #shd .shd-tok-fbtn{position:relative;flex:none;background:rgba(255,255,255,.04);border:1px solid #29313b;border-radius:8px;padding:6px 9px;color:#a7b0bb;cursor:pointer;display:grid;place-items:center}
   #shd .shd-tok-fbtn.active{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-tok-fbtn #tok-fbadge.dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--gold,#E8B84B)}
@@ -158,7 +158,7 @@ function inyectarCSS() {
   
   /* Búsqueda y filtros de tokens */
   #shd .shd-tok-tools{margin-bottom:12px}
-  #shd .shd-tok-search{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:11px 14px;color:#eaecef;font-family:inherit;font-size:13px;outline:none;margin-bottom:10px}
+  #shd .shd-tok-search{flex:1;min-width:0;height:100%;background:transparent;border:0;outline:none;color:#eaecef;font-family:inherit;font-size:13px;padding:0;margin:0}
   #shd .shd-tok-search:focus{border-color:var(--gold-soft,#C9A84B)}
   #shd .shd-tok-filters{display:flex;gap:7px;flex-wrap:wrap}
   #shd .shd-tok-f{padding:7px 13px;border-radius:100px;border:1px solid #1c232b;background:rgba(255,255,255,.02);color:#a7b0bb;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
@@ -494,32 +494,12 @@ function pintarWatcher(cuenta) {
       <input class="shd-sim-in" id="watch-addr" placeholder="0x… any wallet address" autocomplete="off" spellcheck="false">
       <button class="shd-btn" id="watch-go" style="width:100%;margin-top:14px">${IC.eye} Look inside</button>
       ${chips}
-      <div class="shd-watch-reco">
-        <div class="shd-watch-reco-t">Famous wallets you can follow</div>
-        <div class="shd-watch-reco-sub">Public, verified wallets of well known people in crypto. Note we read the BNB Smart Chain here, so the balance shown is only their BSC activity. Most of these hold the bulk of their funds on Ethereum, so their BSC balance looks small. Everything here is public. Past results never guarantee future ones.</div>
-        <div class="shd-watch-reco-list" id="reco-list">
-          <button class="shd-reco" data-w="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"><b>Vitalik Buterin</b><span>Co-founder of Ethereum</span></button>
-          <button class="shd-reco" data-w="0x5b76f5b8fc9d700624f78208132f91ad4e61a1f0"><b>Brian Armstrong</b><span>CEO of Coinbase</span></button>
-          <button class="shd-reco" data-w="0x11e4857bb9993a50c685a79afad4e6f65d518dda"><b>Hayden Adams</b><span>Creator of Uniswap</span></button>
-          <button class="shd-reco" data-w="0x220866b1a2219f40e72f5c628b65d54268ca3a9d"><b>Vitalik · Wallet 2</b><span>Second public address</span></button>
-        </div>
-        <div class="shd-reco-more" id="reco-more" style="display:none">
-          <div class="shd-watch-reco-list">
-            <button class="shd-reco" data-w="0x3ddfa8ec3052539b6c9549f12cea2c295cff5296"><b>Justin Sun</b><span>Founder of TRON</span></button>
-            <button class="shd-reco" data-w="0x8894e0a0c962cb723c1976a4421c95949be2d4e3"><b>Binance Whale</b><span>Very large active wallet</span></button>
-            <button class="shd-reco" data-w="0xab5801a7d398351b8be11c439e05c5b3259aec9b"><b>Early BTC Whale</b><span>Holds SHIB, DOGE, BTCB</span></button>
-            <button class="shd-reco" data-w="0x28c6c06298d514db089934071355e5743bf21d60"><b>Binance 14</b><span>High volume exchange wallet</span></button>
-          </div>
-        </div>
-        <button class="shd-reco-toggle" id="reco-toggle">Show more wallets ▾</button>
-      </div>
       <div id="watch-res">      <div id="watch-res">      <div id="watch-res"></div>
       <button class="shd-rescan" id="watch-back" style="margin-top:18px">Back</button>
     </div>`;
   wireBack();
   $('watch-back').onclick = () => pintarInicio(cuenta);
-  const rt = $('reco-toggle'); const rm = $('reco-more');
-  if (rt && rm) rt.onclick = function () { const ab = rm.style.display === 'none'; rm.style.display = ab ? 'block' : 'none'; rt.textContent = ab ? 'Show fewer wallets ▴' : 'Show more wallets ▾'; };
+
   const ir = async (addr) => {
     const cont = $('watch-res');
     if (!watch.esDireccion(addr)) { cont.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address (0x…)</div>`; return; }
@@ -651,7 +631,14 @@ function pintarWatchRes(cuenta, addr, d, hist) {
   }
   function wireTokBtns() {
     document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
-    document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); location.href = 'index.html?abrir=swap&token=' + b.dataset.swap; }; });
+    document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) {
+      e.stopPropagation();
+      // velo negro instantáneo para tapar la transición (nada de pestañazo al lobby)
+      var velo = document.createElement('div');
+      velo.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000;opacity:1';
+      document.body.appendChild(velo);
+      setTimeout(function () { location.href = 'index.html?abrir=swap&token=' + b.dataset.swap; }, 30);
+    }; });
   }
   // seguir/dejar
   // Pintar los tokens de inmediato (sin tener que tocar el tab)
