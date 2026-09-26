@@ -8,7 +8,7 @@ import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=99';
 import * as watch from './shield-watch.js?v=110';
-import * as hashmod from './shield-hash.js?v=1';
+import * as hashmod from './shield-hash.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -192,7 +192,38 @@ function inyectarCSS() {
   #shd .shd-watch-reco-sub{font-size:12px;color:#8a95a3;line-height:1.55;margin-bottom:14px}
   @media(max-width:560px){ #shd .shd-stats{grid-template-columns:repeat(2,1fr)} }
   
-    /* Verificación de hash */
+      /* Verificación de hash premium */
+  #shd .shd-hash-big{display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;margin-bottom:18px}
+  #shd .shd-hash-big.ok{background:linear-gradient(135deg,rgba(46,189,133,.14),rgba(46,189,133,.04));border:1px solid rgba(46,189,133,.3)}
+  #shd .shd-hash-big.bad{background:linear-gradient(135deg,rgba(246,70,93,.14),rgba(246,70,93,.04));border:1px solid rgba(246,70,93,.3)}
+  #shd .shd-hash-big.warn{background:linear-gradient(135deg,rgba(232,184,75,.14),rgba(232,184,75,.04));border:1px solid rgba(232,184,75,.3)}
+  #shd .shd-hash-bigic{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;flex:none}
+  #shd .shd-hash-bigic.ok{background:rgba(46,189,133,.18);color:#2ebd85} #shd .shd-hash-bigic.bad{background:rgba(246,70,93,.18);color:#f6465d} #shd .shd-hash-bigic.warn{background:rgba(232,184,75,.18);color:#e8b84b}
+  #shd .shd-hash-bigt{font-size:22px;font-weight:800;line-height:1.1}
+  #shd .shd-hash-big.ok .shd-hash-bigt{color:#2ebd85} #shd .shd-hash-big.bad .shd-hash-bigt{color:#f6465d} #shd .shd-hash-big.warn .shd-hash-bigt{color:#e8b84b}
+  #shd .shd-hash-bigs{font-size:12.5px;color:#a7b0bb;margin-top:4px;line-height:1.5}
+  #shd .shd-hash-sec-t{font-size:11px;font-weight:700;color:#79838f;text-transform:uppercase;letter-spacing:.6px;margin:18px 0 10px}
+  #shd .shd-hash-transfers{display:flex;flex-direction:column;gap:9px}
+  #shd .shd-hash-transfer{display:flex;align-items:center;gap:12px;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:11px;padding:12px 14px}
+  #shd .shd-hash-tic{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;font-weight:800;font-size:12px;color:#a7b0bb;flex:none;overflow:hidden}
+  #shd .shd-hash-tic img{width:100%;height:100%;object-fit:cover}
+  #shd .shd-hash-tamt{font-size:15px;font-weight:700;color:#eaecef}
+  #shd .shd-hash-usd{font-size:12px;color:#79838f;font-weight:600}
+  #shd .shd-hash-tflow{font-size:11.5px;color:#79838f;font-family:var(--mono,monospace);margin-top:4px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  #shd .shd-hash-arrow,#shd .shd-hash-ftarrow{color:var(--gold,#E8B84B);font-weight:800}
+  #shd .shd-hash-fromto{display:flex;align-items:center;gap:12px}
+  #shd .shd-hash-ft{flex:1;min-width:0;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:11px;padding:12px 14px}
+  #shd .shd-hash-ft span{font-size:11px;color:#79838f;display:block;margin-bottom:4px}
+  #shd .shd-hash-ft b{font-size:12.5px;color:#eaecef;font-family:var(--mono,monospace);font-weight:600;display:flex;align-items:center;gap:6px}
+  #shd .shd-hash-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#161f2b;border-radius:11px;overflow:hidden}
+  #shd .shd-hash-d{display:flex;flex-direction:column;gap:4px;background:rgba(14,19,25,.85);padding:12px 14px}
+  #shd .shd-hash-d span{font-size:11px;color:#79838f} #shd .shd-hash-d b{font-size:12.5px;color:#eaecef;font-weight:600;word-break:break-word}
+  #shd .shd-hash-scan{display:block;text-align:center;margin-top:16px;padding:13px;border:1px solid rgba(232,184,75,.3);border-radius:11px;color:var(--gold,#E8B84B);text-decoration:none;font-size:13px;font-weight:700}
+  #shd .shd-hash-scan:hover{background:rgba(232,184,75,.08)}
+  #shd .shd-hash-msg{font-size:13px;color:#a7b0bb;line-height:1.55}
+  @media(max-width:560px){ #shd .shd-hash-grid{grid-template-columns:1fr} #shd .shd-hash-fromto{flex-direction:column;align-items:stretch} #shd .shd-hash-ftarrow{transform:rotate(90deg);text-align:center} }
+  
+  /* Verificación de hash */
   #shd .shd-card-hash{border-color:rgba(52,211,153,.2)}
   #shd .shd-card-hash .shd-card-ic{background:rgba(52,211,153,.1);color:#2ebd85}
   #shd .shd-card-btn.hash{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);color:#2ebd85}
@@ -537,44 +568,50 @@ function pintarHash(cuenta) {
   }
 }
 function tarjetaHash(info, h) {
+  const corta = function (a) { return a ? (a.slice(0,10) + '\u2026' + a.slice(-8)) : '\u2014'; };
+  const iconoX = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  const iconoOk = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  const iconoWait = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
   if (!info.existe) {
-    return `<div class="shd-hash-card"><div class="shd-hash-status bad"><span class="shd-hash-dot bad"></span>Not found</div><div class="shd-hash-msg">No transaction exists with this hash on BNB Smart Chain. Check that you copied the full hash and that it is a BSC transaction.</div></div>`;
+    return '<div class="shd-hash-card"><div class="shd-hash-big bad"><div class="shd-hash-bigic bad">' + iconoX + '</div><div><div class="shd-hash-bigt">Not found</div><div class="shd-hash-bigs">No transaction with this hash exists on BNB Smart Chain</div></div></div><div class="shd-hash-msg">Double check that you copied the full 66 character hash and that it belongs to the BNB Smart Chain, not another network.</div></div>';
   }
-  const estado = info.pendiente
-    ? '<div class="shd-hash-status warn"><span class="shd-hash-dot warn"></span>Pending · not confirmed yet</div>'
-    : (info.exitosa
-      ? '<div class="shd-hash-status ok"><span class="shd-hash-dot ok"></span>Success · transaction confirmed</div>'
-      : '<div class="shd-hash-status bad"><span class="shd-hash-dot bad"></span>Failed · this transaction did not go through</div>');
-  const fecha = info.ts > 0 ? new Date(info.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-  const corta = function (a) { return a ? (a.slice(0,10) + '…' + a.slice(-8)) : '—'; };
-
-  // transferencias
+  let bigClass, bigIc, bigT, bigS;
+  if (info.pendiente) { bigClass = 'warn'; bigIc = iconoWait; bigT = 'Pending'; bigS = 'This transaction is not confirmed yet. Check again in a few seconds.'; }
+  else if (info.exitosa) { bigClass = 'ok'; bigIc = iconoOk; bigT = 'Success'; bigS = 'This transaction was confirmed on the blockchain and cannot be reversed.'; }
+  else { bigClass = 'bad'; bigIc = iconoX; bigT = 'Failed'; bigS = 'This transaction was mined but reverted. No funds were transferred. The sender still paid the gas fee.'; }
+  const fecha = info.ts > 0 ? new Date(info.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '\u2014';
+  const hace = info.ts > 0 ? tiempoRel(info.ts) : '';
   let trans = '';
   if (info.transferencias.length) {
-    trans = '<div class="shd-hash-transfers">' + info.transferencias.map(function (t) {
+    trans = '<div class="shd-hash-sec-t">What moved</div><div class="shd-hash-transfers">' + info.transferencias.map(function (t) {
       const ini = (t.symbol||'?').slice(0,3).toUpperCase();
-      const ic = t.logo ? ('<div class="shd-hash-tic"><img src="' + t.logo + '" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+ini+'\'"></div>') : ('<div class="shd-hash-tic">' + ini + '</div>');
-      const usd = t.usd ? (' <span class="shd-hash-usd">≈ $' + t.usd.toLocaleString(undefined,{maximumFractionDigits:2}) + '</span>') : '';
-      return '<div class="shd-hash-transfer">' + ic +
-        '<div class="shd-hash-tinfo"><div class="shd-hash-tamt">' + t.cantidad.toLocaleString(undefined,{maximumFractionDigits:6}) + ' ' + escH(t.symbol) + usd + '</div>' +
-        '<div class="shd-hash-tflow">' + corta(t.de) + ' → ' + corta(t.para) + '</div></div></div>';
+      const ic = t.logo ? ('<div class="shd-hash-tic"><img src="' + t.logo + '" onerror="this.style.display=\'none\';this.parentElement.textContent=\'' + ini + '\'"></div>') : ('<div class="shd-hash-tic">' + ini + '</div>');
+      const usd = t.usd ? ('<span class="shd-hash-usd">\u2248 $' + t.usd.toLocaleString(undefined,{maximumFractionDigits:2}) + '</span>') : '';
+      return '<div class="shd-hash-transfer">' + ic + '<div class="shd-hash-tinfo"><div class="shd-hash-tamt">' + t.cantidad.toLocaleString(undefined,{maximumFractionDigits:6}) + ' ' + escH(t.symbol) + ' ' + usd + '</div><div class="shd-hash-tflow"><span class="shd-hash-fw">' + corta(t.de) + '</span><span class="shd-hash-arrow">\u2192</span><span class="shd-hash-fw">' + corta(t.para) + '</span></div></div></div>';
     }).join('') + '</div>';
-  } else {
-    trans = '<div class="shd-hash-notrans">This transaction did not move BNB or tokens directly (it may be a contract interaction).</div>';
   }
-
-  return `<div class="shd-hash-card">
-    ${estado}
-    ${trans}
-    <div class="shd-hash-rows">
-      <div class="shd-hash-row"><span>From</span><b>${corta(info.de)} <button class="shd-wtok-copy" data-hcopy="${info.de}" title="Copy">⧉</button></b></div>
-      <div class="shd-hash-row"><span>To</span><b>${corta(info.para)} <button class="shd-wtok-copy" data-hcopy="${info.para||''}" title="Copy">⧉</button></b></div>
-      <div class="shd-hash-row"><span>Confirmations</span><b>${info.confirmaciones.toLocaleString()}</b></div>
-      <div class="shd-hash-row"><span>Block</span><b>${info.bloque ? info.bloque.toLocaleString() : '—'}</b></div>
-      <div class="shd-hash-row"><span>Date</span><b>${fecha}</b></div>
-    </div>
-    <a href="https://bscscan.com/tx/${h}" target="_blank" rel="noopener" class="shd-hash-scan">View full details on BscScan ↗</a>
-  </div>`;
+  const filaDet = function (label, val) { return '<div class="shd-hash-d"><span>' + label + '</span><b>' + val + '</b></div>'; };
+  let detalles = '<div class="shd-hash-sec-t">Details</div><div class="shd-hash-grid">';
+  detalles += filaDet('Type', escH(info.tipoTx));
+  detalles += filaDet('Confirmations', info.confirmaciones.toLocaleString());
+  detalles += filaDet('Block', info.bloque ? info.bloque.toLocaleString() : '\u2014');
+  detalles += filaDet('Position in block', info.posicion != null ? ('#' + info.posicion) : '\u2014');
+  detalles += filaDet('Network fee', info.comisionBNB.toLocaleString(undefined,{maximumFractionDigits:8}) + ' BNB' + (info.comisionUSD ? ' \u00b7 $' + info.comisionUSD.toLocaleString(undefined,{maximumFractionDigits:4}) : ''));
+  detalles += filaDet('Gas price', info.gweiPrecio.toLocaleString(undefined,{maximumFractionDigits:3}) + ' Gwei');
+  detalles += filaDet('Gas used', Number(info.gasUsado).toLocaleString());
+  detalles += filaDet('Nonce', info.nonce != null ? info.nonce.toLocaleString() : '\u2014');
+  detalles += filaDet('Events emitted', info.numEventos.toLocaleString());
+  detalles += filaDet('Date', fecha + (hace ? (' \u00b7 ' + hace) : ''));
+  detalles += '</div>';
+  const flujo = '<div class="shd-hash-sec-t">From and to</div><div class="shd-hash-fromto"><div class="shd-hash-ft"><span>From</span><b>' + corta(info.de) + ' <button class="shd-wtok-copy" data-hcopy="' + info.de + '">\u29c9</button></b></div><div class="shd-hash-ftarrow">\u2192</div><div class="shd-hash-ft"><span>To</span><b>' + corta(info.para) + ' <button class="shd-wtok-copy" data-hcopy="' + (info.para||'') + '">\u29c9</button></b></div></div>';
+  return '<div class="shd-hash-card"><div class="shd-hash-big ' + bigClass + '"><div class="shd-hash-bigic ' + bigClass + '">' + bigIc + '</div><div><div class="shd-hash-bigt">' + bigT + '</div><div class="shd-hash-bigs">' + bigS + '</div></div></div>' + trans + flujo + detalles + '<a href="https://bscscan.com/tx/' + h + '" target="_blank" rel="noopener" class="shd-hash-scan">Open on BscScan \u2197</a></div>';
+}
+function tiempoRel(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + ' seconds ago';
+  if (s < 3600) return Math.floor(s/60) + ' minutes ago';
+  if (s < 86400) return Math.floor(s/3600) + ' hours ago';
+  return Math.floor(s/86400) + ' days ago';
 }
 function pintarWatcher(cuenta) {
   $('shd-barslot').innerHTML = cabecera();
