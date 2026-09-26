@@ -181,6 +181,36 @@ export async function datosToken(tokenAddr) {
   return out;
 }
 
+
+/* ── Marca qué tokens son "nuevos" (adquiridos recientemente) ──
+   Cruza los tokens con el historial de entradas para ver la última vez que entró
+   cada uno. Devuelve un mapa address -> timestamp de la entrada más reciente. */
+export async function marcarRecientes(addr, tokens, historial) {
+  const mapa = {};
+  // usar el historial ya cargado: para cada transfer entrante, guardar el ts más reciente por símbolo
+  if (Array.isArray(historial)) {
+    for (const op of historial) {
+      if (op.tipo === 'in' && op.symbol) {
+        const k = op.symbol.toUpperCase();
+        if (!mapa[k] || op.ts > mapa[k]) mapa[k] = op.ts;
+      }
+    }
+  }
+  // asignar a cada token si tiene entrada reciente
+  const ahora = Date.now();
+  for (const t of (tokens || [])) {
+    const ts = mapa[(t.symbol || '').toUpperCase()] || 0;
+    t.adquiridoTs = ts;
+    if (ts > 0) {
+      const dias = (ahora - ts) / 86400000;
+      t.reciente = dias <= 7;        // adquirido en la última semana
+      t.hoy = dias <= 1;             // en 24h
+      t.diasDesde = Math.floor(dias);
+    }
+  }
+  return tokens;
+}
+
 /* ── Seguidas (local por ahora, contrato al final) ── */
 const KEY = 'aurex-shield-watch';
 export function listaSeguidas() { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { return []; } }

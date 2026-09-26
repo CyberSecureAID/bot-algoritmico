@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=99';
-import * as watch from './shield-watch.js?v=108';
+import * as watch from './shield-watch.js?v=109';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -139,7 +139,19 @@ function inyectarCSS() {
   #shd .shd-safe .ic{width:60px;height:60px;border-radius:50%;background:rgba(46,189,133,.12);color:#2ebd85;display:grid;place-items:center;margin-bottom:16px}
   #shd .shd-how{background:rgba(14,19,25,.6);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#a7b0bb;line-height:1.6}
   #shd .shd-how b{color:#eaecef}
-        /* Tarjeta de token enriquecida (Watcher) */
+          /* Búsqueda y filtros de tokens */
+  #shd .shd-tok-tools{margin-bottom:12px}
+  #shd .shd-tok-search{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:11px 14px;color:#eaecef;font-family:inherit;font-size:13px;outline:none;margin-bottom:10px}
+  #shd .shd-tok-search:focus{border-color:var(--gold-soft,#C9A84B)}
+  #shd .shd-tok-filters{display:flex;gap:7px;flex-wrap:wrap}
+  #shd .shd-tok-f{padding:7px 13px;border-radius:100px;border:1px solid #1c232b;background:rgba(255,255,255,.02);color:#a7b0bb;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  #shd .shd-tok-f.on{background:rgba(232,184,75,.1);border-color:rgba(232,184,75,.35);color:var(--gold,#E8B84B)}
+  #shd .shd-tok-new{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:100px;background:rgba(90,160,232,.15);color:#6aa8f0;vertical-align:middle;margin-left:4px}
+  #shd .shd-tok-new.hot{background:rgba(46,189,133,.15);color:#2ebd85}
+  #shd .shd-wtok-swap{margin-left:auto;flex:none;padding:8px 16px;border:1px solid var(--gold-md,#cf9f2e);border-radius:9px;background:linear-gradient(180deg,#f4d089,#E8B84B 60%,#cf9f2e);color:#241900;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer}
+  #shd .shd-wtok-swap:hover{filter:brightness(1.06)}
+  
+  /* Tarjeta de token enriquecida (Watcher) */
   #shd .shd-wtok2{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:12px;padding:12px 14px;margin-bottom:8px}
   #shd .shd-wtok-top{display:flex;align-items:center;gap:12px}
   #shd .shd-wtok-ic{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;font-weight:800;font-size:12px;color:#a7b0bb;flex:none;overflow:hidden}
@@ -489,7 +501,12 @@ function pintarWatcher(cuenta) {
       const datos_ = await watch.tokensDe(addr);
       pintarWatchRes(cuenta, addr, datos_, []);
       // cargar en segundo plano: historial, stats y pnl (no bloquean la vista)
-      watch.historialDe(addr).then(function (h) { window._shdHist = h; const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (' + h.length + ')'; });
+      watch.historialDe(addr).then(function (h) {
+        window._shdHist = h;
+        const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (' + h.length + ')';
+        // marcar tokens recientes con el historial y repintar la lista de tokens si está visible
+        try { watch.marcarRecientes(addr, datos_.tokens, h); const tl = document.getElementById('tok-list'); const activeTab = document.querySelector('[data-wt="tokens"].on'); if (tl && activeTab) { location.hash = location.hash; const b = document.querySelector('[data-wt="tokens"]'); if (b) b.click(); } } catch (_) {}
+      });
       Promise.all([ watch.estadisticas(addr), watch.pnlAprox(addr, datos_.tokens) ]).then(function (r) { pintarStats(addr, datos_, r[0], r[1]); });
     } catch (e) { cont.innerHTML = `<div class="shd-sim-msg bad">Could not read that wallet. Try again.</div>`; }
   };
@@ -510,17 +527,20 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       ? ('<div class="shd-wtok-ic"><img src="' + t.logo + '" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+ini+'\'"></div>')
       : ('<div class="shd-wtok-ic">' + ini + '</div>');
     const corta = t.address ? (t.address.slice(0,8) + '…' + t.address.slice(-6)) : '';
-    const link = t.address ? ('<a href="https://bscscan.com/token/' + t.address + '?a=' + '" target="_blank" rel="noopener" class="shd-wtok-scan" onclick="event.stopPropagation()">BscScan ↗</a>') : '';
+    const nuevo = t.hoy ? '<span class="shd-tok-new hot">NEW · 24h</span>' : (t.reciente ? '<span class="shd-tok-new">NEW · ' + t.diasDesde + 'd</span>' : '');
+    const scan = t.address ? ('<a href="https://bscscan.com/token/' + t.address + '" target="_blank" rel="noopener" class="shd-wtok-scan" onclick="event.stopPropagation()">BscScan ↗</a>') : '';
     const copiar = t.address ? ('<button class="shd-wtok-copy" data-copy="' + t.address + '" onclick="event.stopPropagation()" title="Copy contract">⧉</button>') : '';
-    return '<div class="shd-wtok2">' +
+    const swap = t.address ? ('<button class="shd-wtok-swap" data-swap="' + t.address + '" onclick="event.stopPropagation()">Swap</button>') : '';
+    return '<div class="shd-wtok2" data-tokrow="' + escH((t.name||'') + ' ' + (t.symbol||'') + ' ' + (t.address||'')).toLowerCase() + '" data-new="' + (t.reciente?'1':'0') + '" data-today="' + (t.hoy?'1':'0') + '">' +
       '<div class="shd-wtok-top">' + ic +
-        '<div class="shd-wtok-info"><b>' + escH(t.name || t.symbol) + '</b><div class="shd-wtok-bal">' + bal + ' ' + escH(t.symbol) + usdTxt + '</div></div>' +
+        '<div class="shd-wtok-info"><b>' + escH(t.name || t.symbol) + ' ' + nuevo + '</b><div class="shd-wtok-bal">' + bal + ' ' + escH(t.symbol) + usdTxt + '</div></div>' +
+        swap +
       '</div>' +
-      (corta ? ('<div class="shd-wtok-contract"><span class="shd-wtok-addr">' + corta + '</span>' + copiar + link + '</div>') : '') +
+      (corta ? ('<div class="shd-wtok-contract"><span class="shd-wtok-addr">' + corta + '</span>' + copiar + scan + '</div>') : '') +
     '</div>';
   };
   const filaOp = (o) => {
-    const fecha = new Date(o.ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const fecha = o.ts > 0 ? new Date(o.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ('block ' + (o.bloque||'?'));
     const flecha = o.tipo === 'in' ? '<span style="color:#2ebd85">received</span>' : '<span style="color:#f6465d">sent</span>';
     const cant = o.cantidad.toLocaleString(undefined,{maximumFractionDigits:4});
     return '<div class="shd-wop"><div class="shd-wop-l">' + flecha + ' <b>' + cant + ' ' + escH(o.symbol) + '</b></div><div class="shd-wop-r"><span>' + fecha + '</span><a href="https://bscscan.com/tx/' + o.hash + '" target="_blank" rel="noopener" class="shd-wop-hash">hash</a></div></div>';
@@ -541,15 +561,47 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     <div class="shd-watch-tabs"><button class="shd-wtab on" data-wt="tokens">Tokens (${d.tokens.length})</button><button class="shd-wtab" data-wt="hist">Activity (${hist.length})</button></div>
     <div id="watch-pane"></div>`;
   const paneTokens = () => {
-    let h = '<div class="shd-wtoks">';
+    let h = '<div class="shd-tok-tools">' +
+      '<input class="shd-tok-search" id="tok-search" placeholder="Search this wallet\'s tokens by name, symbol or contract" autocomplete="off">' +
+      '<div class="shd-tok-filters">' +
+        '<button class="shd-tok-f on" data-f="all">All</button>' +
+        '<button class="shd-tok-f" data-f="today">New 24h</button>' +
+        '<button class="shd-tok-f" data-f="week">This week</button>' +
+        '<button class="shd-tok-f" data-f="value">Has value</button>' +
+      '</div></div>';
+    h += '<div class="shd-wtoks" id="tok-list">';
     if (d.nativo > 0) h += filaTok({ symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD, logo: watch.logoBNB() });
     h += conValor.map(filaTok).join('');
     if (polvo.length) { h += `<div class="shd-watch-dust">${polvo.length} dust / spam token${polvo.length>1?'s':''} (zero or near-zero value)</div>`; h += polvo.map(filaTok).join(''); }
     return h + '</div>';
   };
+  function wireTokTools() {
+    const inp = $('tok-search'); const filtros = document.querySelectorAll('[data-f]');
+    let fActivo = 'all';
+    function aplicar() {
+      const q = (inp && inp.value || '').trim().toLowerCase();
+      document.querySelectorAll('[data-tokrow]').forEach(function (row) {
+        const txt = row.getAttribute('data-tokrow') || '';
+        const esNew = row.getAttribute('data-new') === '1';
+        const esToday = row.getAttribute('data-today') === '1';
+        const tieneVal = row.querySelector('.shd-wtok-bal') && /\$/.test(row.querySelector('.shd-wtok-bal').textContent);
+        let ok = txt.indexOf(q) !== -1;
+        if (ok && fActivo === 'today') ok = esToday;
+        if (ok && fActivo === 'week') ok = esNew;
+        if (ok && fActivo === 'value') ok = tieneVal;
+        row.style.display = ok ? '' : 'none';
+      });
+    }
+    if (inp) inp.oninput = aplicar;
+    filtros.forEach(function (b) { b.onclick = function () { filtros.forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); fActivo = b.dataset.f; aplicar(); }; });
+  }
   $('watch-pane').innerHTML = paneTokens();
-  // copiar contrato de cada token
-  document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
+  wireTokTools();
+  wireTokBtns();
+  function wireTokBtns() {
+    document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
+    document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); location.href = 'app.html?abrir=swap&token=' + b.dataset.swap; }; });
+  }
   // seguir/dejar
   const fb = $('watch-follow');
   fb.onclick = () => {
@@ -565,7 +617,8 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       pane.innerHTML = H.length ? '<div class="shd-wops">' + H.map(filaOp).join('') + '</div>' : '<div class="shd-empty">Loading activity… tap again in a moment, or no recent moves found.</div>';
     } else {
       pane.innerHTML = paneTokens();
-      document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
+      wireTokTools();
+      wireTokBtns();
     }
   });
 }
