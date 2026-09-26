@@ -8,6 +8,7 @@ import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=99';
 import * as watch from './shield-watch.js?v=110';
+import * as hashmod from './shield-hash.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -191,6 +192,35 @@ function inyectarCSS() {
   #shd .shd-watch-reco-sub{font-size:12px;color:#8a95a3;line-height:1.55;margin-bottom:14px}
   @media(max-width:560px){ #shd .shd-stats{grid-template-columns:repeat(2,1fr)} }
   
+    /* Verificación de hash */
+  #shd .shd-card-hash{border-color:rgba(52,211,153,.2)}
+  #shd .shd-card-hash .shd-card-ic{background:rgba(52,211,153,.1);color:#2ebd85}
+  #shd .shd-card-btn.hash{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);color:#2ebd85}
+  #shd .shd-card-btn.hash:hover{background:rgba(52,211,153,.16)}
+  #shd .shd-hash-wrap{max-width:600px;margin:0 auto;padding:10px 0}
+  #shd .shd-hash-hero{text-align:center;margin-bottom:8px}
+  #shd .shd-hash-icon{width:56px;height:56px;border-radius:50%;background:rgba(232,184,75,.1);color:var(--gold,#E8B84B);display:grid;place-items:center;margin:0 auto 14px}
+  #shd .shd-hash-hero h1{font-size:22px;font-weight:800;margin:0 0 10px}
+  #shd .shd-hash-hero p{font-size:13px;color:#a7b0bb;line-height:1.6;margin:0}
+  #shd .shd-hash-card{margin-top:18px;border:1px solid #1c232b;border-radius:14px;padding:18px;background:rgba(14,19,25,.8)}
+  #shd .shd-hash-status{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800;margin-bottom:16px}
+  #shd .shd-hash-status.ok{color:#2ebd85} #shd .shd-hash-status.bad{color:#f6465d} #shd .shd-hash-status.warn{color:#e8b84b}
+  #shd .shd-hash-dot{width:11px;height:11px;border-radius:50%;flex:none}
+  #shd .shd-hash-dot.ok{background:#2ebd85;box-shadow:0 0 10px #2ebd85} #shd .shd-hash-dot.bad{background:#f6465d;box-shadow:0 0 10px #f6465d} #shd .shd-hash-dot.warn{background:#e8b84b;box-shadow:0 0 10px #e8b84b}
+  #shd .shd-hash-msg,#shd .shd-hash-notrans{font-size:13px;color:#a7b0bb;line-height:1.55}
+  #shd .shd-hash-transfers{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+  #shd .shd-hash-transfer{display:flex;align-items:center;gap:12px;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:11px;padding:12px 14px}
+  #shd .shd-hash-tic{width:36px;height:36px;border-radius:50%;background:#12161c;display:grid;place-items:center;font-weight:800;font-size:12px;color:#a7b0bb;flex:none;overflow:hidden}
+  #shd .shd-hash-tic img{width:100%;height:100%;object-fit:cover}
+  #shd .shd-hash-tamt{font-size:15px;font-weight:700;color:#eaecef}
+  #shd .shd-hash-usd{font-size:12px;color:#79838f;font-weight:600}
+  #shd .shd-hash-tflow{font-size:11.5px;color:#79838f;font-family:var(--mono,monospace);margin-top:3px}
+  #shd .shd-hash-rows{display:flex;flex-direction:column;gap:1px;background:#161f2b;border-radius:10px;overflow:hidden;margin-bottom:14px}
+  #shd .shd-hash-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(14,19,25,.8);padding:11px 14px;font-size:12.5px}
+  #shd .shd-hash-row span{color:#79838f} #shd .shd-hash-row b{color:#eaecef;font-family:var(--mono,monospace);font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px}
+  #shd .shd-hash-scan{display:block;text-align:center;padding:12px;border:1px solid rgba(232,184,75,.3);border-radius:10px;color:var(--gold,#E8B84B);text-decoration:none;font-size:13px;font-weight:700}
+  #shd .shd-hash-scan:hover{background:rgba(232,184,75,.08)}
+  
   /* Wallet Watcher */
   #shd .shd-card-watch{border-color:rgba(90,160,232,.22)}
   #shd .shd-card-watch .shd-card-ic{background:rgba(90,160,232,.12);color:#6aa8f0}
@@ -336,6 +366,7 @@ const IC = {
   alert: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
   copy: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
   eye: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
+  hash: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
   check2: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#2ebd85" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 };
 
@@ -424,12 +455,14 @@ function pintarInicio(cuenta) {
       <div class="shd-card"><div class="shd-card-ic">${IC.search}</div><b>Contract check</b><span>Paste any contract before you sign and we tell you if it's safe.</span><button class="shd-card-btn gold" id="shd-sim">Check contract</button></div>
       <div class="shd-card shd-card-red"><div class="shd-card-ic">${IC.alert}</div><b>Emergency evacuation</b><span>If your wallet is at risk, move all your tokens to a safe wallet fast.</span><button class="shd-card-btn" id="shd-emerg">Open emergency tool</button></div>
       <div class="shd-card shd-card-watch"><div class="shd-card-ic">${IC.eye}</div><b>Wallet Watcher</b><span>Track any wallet on the chain: see all its tokens, balance and live moves.</span><button class="shd-card-btn watch" id="shd-watch">Open watcher</button></div>
+      <div class="shd-card shd-card-hash"><div class="shd-card-ic">${IC.hash}</div><b>Verify a transaction</b><span>Paste a transaction hash and confirm it really went through, who sent what to whom, and how much.</span><button class="shd-card-btn hash" id="shd-hash">Verify hash</button></div>
     </div>`;
   wireBack();
   $('shd-scan').onclick = () => escanear(cuenta);
   $('shd-sim').onclick = () => pintarSimulador(cuenta);
   $('shd-emerg').onclick = () => pintarRescate(cuenta);
   const wb = $('shd-watch'); if (wb) wb.onclick = () => pintarWatcher(cuenta);
+  const hb = $('shd-hash'); if (hb) hb.onclick = () => pintarHash(cuenta);
   const cp = $('shd-copy'); if (cp) cp.onclick = async () => { const ok = await datos.copiar(cuenta); cp.innerHTML = ok ? IC.check2 : IC.copy; setTimeout(() => { cp.innerHTML = IC.copy; }, 1400); };
   // saldo (async)
   datos.saldoTotalUSD(cuenta).then(b => { const e = $('shd-bal'); if (e) e.textContent = b; });
@@ -473,6 +506,74 @@ function tarjetaSim(info) {
     <div class="shd-sim-verd" style="color:${col}">${escH(info.titulo)}</div>
     <div class="shd-sim-res">${escH(info.resumen)}</div>
     <div class="shd-sim-halls">${hall}</div>
+  </div>`;
+}
+function pintarHash(cuenta) {
+  $('shd-barslot').innerHTML = cabecera();
+  $('shd-in').innerHTML = `
+    <div class="shd-hash-wrap">
+      <div class="shd-hash-hero">
+        <div class="shd-hash-icon">${IC.hash}</div>
+        <h1>Transaction hash checker</h1>
+        <p>Paste a BNB Smart Chain transaction hash to check if the transfer really happened. See in seconds whether it succeeded or failed, which wallet sent it, which wallet received it, exactly how much was moved and in which token, how many confirmations it has and when it was mined. Verify any payment before you trust it.</p>
+      </div>
+      <label class="shd-sim-lbl">Transaction hash</label>
+      <input class="shd-sim-in" id="hash-in" placeholder="0x… 64 character transaction hash" autocomplete="off" spellcheck="false">
+      <button class="shd-btn" id="hash-go" style="width:100%;margin-top:14px">${IC.hash} Verify transaction</button>
+      <div id="hash-res"></div>
+      <button class="shd-rescan" id="hash-back" style="margin-top:18px">Back</button>
+    </div>`;
+  wireBack();
+  $('hash-back').onclick = () => pintarInicio(cuenta);
+  $('hash-go').onclick = async () => {
+    const h = $('hash-in').value.trim(); const res = $('hash-res');
+    if (!hashmod.esHash(h)) { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid transaction hash (0x + 64 characters)</div>`; return; }
+    res.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Reading the transaction…</div></div>`;
+    try { const info = await hashmod.verificar(h); res.innerHTML = tarjetaHash(info, h); wireHashCopy(); }
+    catch (e) { res.innerHTML = `<div class="shd-sim-msg bad">Could not read that transaction. Check the hash and try again.</div>`; }
+  };
+  function wireHashCopy() {
+    document.querySelectorAll('[data-hcopy]').forEach(function (b) { b.onclick = function () { try { navigator.clipboard.writeText(b.dataset.hcopy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
+  }
+}
+function tarjetaHash(info, h) {
+  if (!info.existe) {
+    return `<div class="shd-hash-card"><div class="shd-hash-status bad"><span class="shd-hash-dot bad"></span>Not found</div><div class="shd-hash-msg">No transaction exists with this hash on BNB Smart Chain. Check that you copied the full hash and that it is a BSC transaction.</div></div>`;
+  }
+  const estado = info.pendiente
+    ? '<div class="shd-hash-status warn"><span class="shd-hash-dot warn"></span>Pending · not confirmed yet</div>'
+    : (info.exitosa
+      ? '<div class="shd-hash-status ok"><span class="shd-hash-dot ok"></span>Success · transaction confirmed</div>'
+      : '<div class="shd-hash-status bad"><span class="shd-hash-dot bad"></span>Failed · this transaction did not go through</div>');
+  const fecha = info.ts > 0 ? new Date(info.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  const corta = function (a) { return a ? (a.slice(0,10) + '…' + a.slice(-8)) : '—'; };
+
+  // transferencias
+  let trans = '';
+  if (info.transferencias.length) {
+    trans = '<div class="shd-hash-transfers">' + info.transferencias.map(function (t) {
+      const ini = (t.symbol||'?').slice(0,3).toUpperCase();
+      const ic = t.logo ? ('<div class="shd-hash-tic"><img src="' + t.logo + '" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+ini+'\'"></div>') : ('<div class="shd-hash-tic">' + ini + '</div>');
+      const usd = t.usd ? (' <span class="shd-hash-usd">≈ $' + t.usd.toLocaleString(undefined,{maximumFractionDigits:2}) + '</span>') : '';
+      return '<div class="shd-hash-transfer">' + ic +
+        '<div class="shd-hash-tinfo"><div class="shd-hash-tamt">' + t.cantidad.toLocaleString(undefined,{maximumFractionDigits:6}) + ' ' + escH(t.symbol) + usd + '</div>' +
+        '<div class="shd-hash-tflow">' + corta(t.de) + ' → ' + corta(t.para) + '</div></div></div>';
+    }).join('') + '</div>';
+  } else {
+    trans = '<div class="shd-hash-notrans">This transaction did not move BNB or tokens directly (it may be a contract interaction).</div>';
+  }
+
+  return `<div class="shd-hash-card">
+    ${estado}
+    ${trans}
+    <div class="shd-hash-rows">
+      <div class="shd-hash-row"><span>From</span><b>${corta(info.de)} <button class="shd-wtok-copy" data-hcopy="${info.de}" title="Copy">⧉</button></b></div>
+      <div class="shd-hash-row"><span>To</span><b>${corta(info.para)} <button class="shd-wtok-copy" data-hcopy="${info.para||''}" title="Copy">⧉</button></b></div>
+      <div class="shd-hash-row"><span>Confirmations</span><b>${info.confirmaciones.toLocaleString()}</b></div>
+      <div class="shd-hash-row"><span>Block</span><b>${info.bloque ? info.bloque.toLocaleString() : '—'}</b></div>
+      <div class="shd-hash-row"><span>Date</span><b>${fecha}</b></div>
+    </div>
+    <a href="https://bscscan.com/tx/${h}" target="_blank" rel="noopener" class="shd-hash-scan">View full details on BscScan ↗</a>
   </div>`;
 }
 function pintarWatcher(cuenta) {
