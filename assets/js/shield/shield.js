@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=99';
-import * as watch from './shield-watch.js?v=102';
+import * as watch from './shield-watch.js?v=103';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
