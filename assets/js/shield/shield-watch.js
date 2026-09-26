@@ -9,55 +9,62 @@ import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io'];
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 
-// NodeReal API key (GRATIS en nodereal.io, sin tarjeta). Pégala entre las comillas.
+// NodeReal API key (GRATIS en nodereal.io). Enhanced API nativo (nr_getTokenHoldings).
 const NR_KEY = '0b80831c8c694568a11b6d72a580b81b';
-const NR_HOST = 'https://open-platform.nodereal.io/' + NR_KEY + '/covalenthq/v1';
-const NR_CHAINS = ['56', 'bsc-mainnet'];   // NodeReal/Covalent: BSC como chain id 56 (con fallback al nombre)
+const NR_RPC = 'https://bsc-mainnet.nodereal.io/v1/' + NR_KEY;
 
 let _rpc;
 function lector() { if (!_rpc) _rpc = new ethers.JsonRpcProvider(RPCS[0], 56, { staticNetwork: true }); return _rpc; }
 export function esDireccion(s) { return /^0x[0-9a-fA-F]{40}$/.test((s || '').trim()); }
+
+async function nrCall(method, params) {
+  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
+  const r = await fetch(NR_RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: ctrl.signal });
+  clearTimeout(to);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message || 'nr error');
+  return d.result;
+}
 
 /* ── Todos los tokens de una wallet (NodeReal/Covalent, con precio y logo) ── */
 export async function tokensDe(addr, onProgreso) {
   if (!esDireccion(addr)) return { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
   if (onProgreso) onProgreso(0.2);
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
-  let items = [];
-  out._dg = { chain56: '', chainName: '', http: '' };
-  for (const chain of NR_CHAINS) {
+  const DG = { holdings: '', meta: '' };
+  const prov = lector();
+  // 1. nr_getTokenHoldings → todos los tokens ERC20 que tiene la wallet (con balance)
+  let holdings = [];
+  try {
+    // params: address, pageNumber(hex), pageSize(hex, <=100)
+    const res = await nrCall('nr_getTokenHoldings', [addr, '0x1', '0x64']);
+    const det = res && res.details ? res.details : (Array.isArray(res) ? res : []);
+    holdings = det || [];
+    DG.holdings = holdings.length + ' tokens';
+  } catch (e) { DG.holdings = 'ERR: ' + ((e && e.message)||'').slice(0,50); }
+  if (onProgreso) onProgreso(0.55);
+
+  // 2. armar tokens con símbolo/decimales/balance (nr_getTokenHoldings ya trae metadata)
+  const tokens = [];
+  for (const h of holdings) {
     try {
-      const url = NR_HOST + '/' + chain + '/address/' + addr + '/balances_v2/?quote-currency=USD&nft=false';
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
-      const r = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(to);
-      out._dg.http = 'HTTP ' + r.status;
-      const d = await r.json();
-      const info = d && d.data && Array.isArray(d.data.items) ? (d.data.items.length + ' items') : (d && d.error ? ('err:' + JSON.stringify(d.error_message||d.error).slice(0,60)) : ('raw:' + JSON.stringify(d).slice(0,80)));
-      if (chain === '56') out._dg.chain56 = info; else out._dg.chainName = info;
-      if (d && d.data && Array.isArray(d.data.items) && d.data.items.length) { items = d.data.items; break; }
-    } catch (e) { out._dg.http = 'FETCH FAIL: ' + ((e && e.message)||'').slice(0,50); }
-  }
-  {
-    if (onProgreso) onProgreso(0.7);
-    for (const it of items) {
-      const dec = Number(it.contract_decimals) || 18;
-      const bal = Number(it.balance || '0') / Math.pow(10, dec);
+      const dec = parseInt(h.tokenDecimals || '0x12', 16) || 18;
+      const raw = h.tokenBalance ? BigInt(h.tokenBalance) : 0n;
+      const bal = Number(ethers.formatUnits(raw, dec));
       if (bal <= 0) continue;
-      const usd = Number(it.quote || 0);
-      const esNativo = it.native_token === true || (it.contract_ticker_symbol === 'BNB' && !it.contract_address);
-      if (esNativo) { out.nativo = bal; out.nativoUSD = usd; out.totalUSD += usd; continue; }
-      out.tokens.push({
-        address: (it.contract_address || '').toLowerCase(),
-        symbol: it.contract_ticker_symbol || '?',
-        name: it.contract_name || '',
-        decimals: dec, balance: bal, usd,
-        precio: Number(it.quote_rate || 0),
-        logo: it.logo_url || null
-      });
-      out.totalUSD += usd;
-    }
+      tokens.push({ address: (h.tokenAddress || '').toLowerCase(), symbol: h.tokenSymbol || '?', name: h.tokenName || '', decimals: dec, balance: bal, usd: 0, precio: 0, logo: null });
+    } catch (_) {}
   }
+  if (onProgreso) onProgreso(0.75);
+
+  // 3. precios + logos (DeFiLlama)
+  const ids = tokens.map(function (t) { return 'bsc:' + t.address; }); ids.push('bsc:' + WBNB);
+  let precios = {};
+  try { for (let i = 0; i < ids.length; i += 100) { const pr = await fetch('https://coins.llama.fi/prices/current/' + ids.slice(i, i+100).join(',')); const pd = await pr.json(); Object.assign(precios, pd.coins || {}); } } catch (_) {}
+  for (const t of tokens) { const pk = precios['bsc:' + t.address]; if (pk) { t.precio = pk.price || 0; t.usd = t.balance * t.precio; t.logo = null; } out.totalUSD += t.usd; }
+  out.tokens = tokens;
+  out._dg = DG;
+
   // si no vino el nativo, leerlo del RPC + precio DeFiLlama
   if (out.nativo === 0) {
     try { out.nativo = Number(ethers.formatEther(await lector().getBalance(addr))); } catch (_) {}
@@ -74,36 +81,25 @@ export async function tokensDe(addr, onProgreso) {
 export async function historialDe(addr) {
   if (!esDireccion(addr)) return [];
   const ops = [];
-  let items = [];
-  for (const chain of NR_CHAINS) {
-    try {
-      const url = NR_HOST + '/' + chain + '/address/' + addr + '/transfers_v2/?quote-currency=USD&page-size=30';
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
-      const r = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(to);
-      const d = await r.json();
-      if (d && d.data && Array.isArray(d.data.items) && d.data.items.length) { items = d.data.items; break; }
-    } catch (_) {}
-  }
-  {
-    for (const it of items) {
-      const transfers = Array.isArray(it.transfers) ? it.transfers : [];
-      for (const t of transfers) {
-        const entra = String(t.transfer_type).toLowerCase() === 'in';
-        const dec = Number(t.contract_decimals) || 18;
-        ops.push({
-          hash: t.tx_hash || it.tx_hash,
-          tipo: entra ? 'in' : 'out',
-          symbol: t.contract_ticker_symbol || '?',
-          cantidad: Number(t.delta || '0') / Math.pow(10, dec),
-          contraparte: entra ? (t.from_address || '') : (t.to_address || ''),
-          ts: t.block_signed_at ? new Date(t.block_signed_at).getTime() : (it.block_signed_at ? new Date(it.block_signed_at).getTime() : 0)
-        });
-      }
+  try {
+    // nr_getAssetTransfers: transferencias de/hacia la wallet
+    const base = { category: ['20', 'external'], addressFilter: { from: null, to: null }, order: 'desc', maxCount: '0x1e' };
+    for (const dir of ['from', 'to']) {
+      const filt = dir === 'from' ? { fromAddress: addr } : { toAddress: addr };
+      try {
+        const res = await nrCall('nr_getAssetTransfers', [Object.assign({ fromBlock: '0x0', toBlock: 'latest', maxCount: '0x1e', order: 'desc', category: ['20', 'external'] }, filt)]);
+        const trs = res && res.transfers ? res.transfers : [];
+        for (const t of trs) {
+          const entra = dir === 'to';
+          ops.push({ hash: t.hash || t.transactionHash, tipo: entra ? 'in' : 'out', symbol: t.asset || t.tokenSymbol || 'BNB', cantidad: t.value != null ? Number(t.value) : (t.amount ? Number(t.amount) : 0), contraparte: entra ? (t.from || t.fromAddress || '') : (t.to || t.toAddress || ''), ts: t.timestamp ? (Number(t.timestamp) * 1000) : (t.metadata && t.metadata.blockTimestamp ? new Date(t.metadata.blockTimestamp).getTime() : 0) });
+        }
+      } catch (_) {}
     }
-  }
-  ops.sort(function (a, b) { return b.ts - a.ts; });
-  return ops.slice(0, 30);
+  } catch (_) {}
+  const vistos = new Set(); const uni = [];
+  for (const o of ops) { if (o.hash && !vistos.has(o.hash)) { vistos.add(o.hash); uni.push(o); } }
+  uni.sort(function (a, b) { return b.ts - a.ts; });
+  return uni.slice(0, 30);
 }
 
 export function logoBNB() { return 'https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png'; }

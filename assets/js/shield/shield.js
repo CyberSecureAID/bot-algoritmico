@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=99';
-import * as watch from './shield-watch.js?v=105';
+import * as watch from './shield-watch.js?v=106';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -507,7 +507,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const g = d._dg;
     const box = document.createElement('div');
     box.style.cssText = 'margin-top:14px;padding:12px 14px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.25);border-radius:10px;font-size:11.5px;color:#a7b0bb;font-family:var(--mono,monospace);line-height:1.7;word-break:break-all';
-    box.innerHTML = 'DIAGNOSTIC NodeReal:<br>last HTTP: ' + (g.http||'-') + '<br>chain 56: ' + (g.chain56||'-') + '<br>chain bsc-mainnet: ' + (g.chainName||'-');
+    box.innerHTML = 'DIAGNOSTIC NodeReal:<br>nr_getTokenHoldings: ' + (g.holdings||'-');
     const pane = $('watch-pane'); if (pane) pane.appendChild(box);
   }
   // seguir/dejar
