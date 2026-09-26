@@ -18,6 +18,7 @@ const ABI = [
 ];
 // reservar ~0.001 BNB para gas (no vaciar el nativo del todo)
 const RESERVA_GAS = ethers.parseEther('0.0015');
+export const DEAD_WALLET = '0x000000000000000000000000000000000000dEaD';
 
 let _rpc;
 function lector() { if (!_rpc) _rpc = new ethers.JsonRpcProvider(RPCS[0], 56, { staticNetwork: true }); return _rpc; }
@@ -89,3 +90,13 @@ export async function moverNativo(destino, saldoNativo) {
 }
 
 export const reservaGasFmt = ethers.formatEther(RESERVA_GAS);
+
+/* ── Evacuar (quemar) un token: enviarlo a la dead wallet. Lo firma el usuario. ──
+   Sirve para sacar de la vista tokens basura que la wallet no quiere. Es
+   irreversible: el token deja la wallet para siempre. Solo la propia wallet
+   puede hacerlo (necesita su firma). */
+export async function evacuarADead(tokenAddr, monto) {
+  const c = new ethers.Contract(tokenAddr, ABI, await firmante());
+  const tx = await c.transfer(DEAD_WALLET, monto);
+  return tx.wait();
+}

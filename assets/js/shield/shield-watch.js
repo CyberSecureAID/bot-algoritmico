@@ -53,7 +53,7 @@ export async function tokensDe(addr, onProgreso) {
       const raw = h.tokenBalance ? BigInt(h.tokenBalance) : 0n;
       const bal = Number(ethers.formatUnits(raw, dec));
       if (bal <= 0) continue;
-      tokens.push({ address: (h.tokenAddress || '').toLowerCase(), symbol: h.tokenSymbol || '?', name: h.tokenName || '', decimals: dec, balance: bal, usd: 0, precio: 0, logo: null });
+      tokens.push({ address: (h.tokenAddress || '').toLowerCase(), symbol: h.tokenSymbol || '?', name: h.tokenName || '', decimals: dec, balance: bal, balanceRaw: (h.tokenBalance || '0x0'), usd: 0, precio: 0, logo: null });
     } catch (_) {}
   }
   if (onProgreso) onProgreso(0.75);

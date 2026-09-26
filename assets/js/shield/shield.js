@@ -6,8 +6,8 @@ import * as datos from './shield-datos.js?v=99';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
-import * as rescue from './shield-rescue.js?v=99';
-import * as watch from './shield-watch.js?v=110';
+import * as rescue from './shield-rescue.js?v=100';
+import * as watch from './shield-watch.js?v=111';
 import * as hashmod from './shield-hash.js?v=2';
 
 const $ = (id) => document.getElementById(id);
@@ -192,7 +192,34 @@ function inyectarCSS() {
   #shd .shd-watch-reco-sub{font-size:12px;color:#8a95a3;line-height:1.55;margin-bottom:14px}
   @media(max-width:560px){ #shd .shd-stats{grid-template-columns:repeat(2,1fr)} }
   
-      /* Verificación de hash premium */
+        /* Limpieza de tokens basura */
+  #shd .shd-clean-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  #shd .shd-clean-btn{padding:9px 16px;border:1px solid rgba(246,70,93,.35);border-radius:10px;background:rgba(246,70,93,.07);color:#f6465d;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;flex:none}
+  #shd .shd-clean-btn.active{background:rgba(246,70,93,.16)}
+  #shd .shd-clean-btn:hover{background:rgba(246,70,93,.14)}
+  #shd .shd-clean-hint{font-size:11.5px;color:#79838f}
+  #shd .shd-tok-check{align-items:center;flex:none;cursor:pointer}
+  #shd .shd-tok-cb{width:18px;height:18px;accent-color:var(--gold,#E8B84B);cursor:pointer}
+  #shd .shd-clean-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;background:rgba(246,70,93,.06);border:1px solid rgba(246,70,93,.22);border-radius:11px}
+  #shd .shd-clean-actions{display:flex;gap:7px;flex-wrap:wrap}
+  #shd .shd-clean-sel{padding:7px 12px;border:1px solid #29313b;border-radius:8px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+  #shd .shd-clean-sel:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #shd .shd-clean-go{padding:9px 18px;border:0;border-radius:9px;background:linear-gradient(180deg,#ff6b7d,#f6465d 60%,#d12d43);color:#fff;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;flex:none}
+  /* modal de confirmación */
+  #shd .shd-clean-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  #shd .shd-clean-box{width:100%;max-width:460px;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #29313b;border-radius:18px;padding:22px}
+  #shd .shd-clean-title{font-size:19px;font-weight:800;margin-bottom:12px}
+  #shd .shd-clean-warn{font-size:12.5px;color:#f6465d;background:rgba(246,70,93,.08);border:1px solid rgba(246,70,93,.25);border-radius:10px;padding:12px;line-height:1.5;margin-bottom:14px}
+  #shd .shd-clean-note{font-size:12.5px;color:#a7b0bb;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:10px;padding:12px;line-height:1.5;margin-bottom:14px}
+  #shd .shd-clean-list{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:220px;overflow-y:auto}
+  #shd .shd-clean-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:9px;padding:10px 12px;font-size:13px}
+  #shd .shd-clean-item small{color:#79838f;font-size:11px}
+  #shd .shd-clean-remove{padding:5px 11px;border:1px solid #29313b;border-radius:7px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-size:11px;cursor:pointer}
+  #shd .shd-clean-remove:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #shd .shd-clean-btns{display:flex;gap:10px}
+  #shd .shd-clean-btns .shd-rescan{flex:1} #shd .shd-clean-btns .shd-btn{flex:1}
+  
+  /* Verificación de hash premium */
   #shd .shd-hash-big{display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;margin-bottom:18px}
   #shd .shd-hash-big.ok{background:linear-gradient(135deg,rgba(46,189,133,.14),rgba(46,189,133,.04));border:1px solid rgba(46,189,133,.3)}
   #shd .shd-hash-big.bad{background:linear-gradient(135deg,rgba(246,70,93,.14),rgba(246,70,93,.04));border:1px solid rgba(246,70,93,.3)}
@@ -681,8 +708,9 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const scan = t.address ? ('<a href="https://bscscan.com/token/' + t.address + '" target="_blank" rel="noopener" class="shd-wtok-scan" onclick="event.stopPropagation()">BscScan ↗</a>') : '';
     const copiar = t.address ? ('<button class="shd-wtok-copy" data-copy="' + t.address + '" onclick="event.stopPropagation()" title="Copy contract">⧉</button>') : '';
     const swap = t.address ? ('<button class="shd-wtok-swap" data-swap="' + t.address + '" onclick="event.stopPropagation()">Swap</button>') : '';
-    return '<div class="shd-wtok2" data-tokrow="' + escH((t.name||'') + ' ' + (t.symbol||'') + ' ' + (t.address||'')).toLowerCase() + '" data-new="' + (t.reciente?'1':'0') + '" data-today="' + (t.hoy?'1':'0') + '">' +
-      '<div class="shd-wtok-top">' + ic +
+    const selBox = '<label class="shd-tok-check" style="display:none"><input type="checkbox" class="shd-tok-cb" data-caddr="' + (t.address||'') + '" data-craw="' + (t.balanceRaw||'0x0') + '" data-csym="' + escH(t.symbol||'?') + '" data-cusd="' + (t.usd||0) + '"></label>';
+    return '<div class="shd-wtok2" data-tokrow="' + escH((t.name||'') + ' ' + (t.symbol||'') + ' ' + (t.address||'')).toLowerCase() + '" data-new="' + (t.reciente?'1':'0') + '" data-today="' + (t.hoy?'1':'0') + '" data-usdval="' + (t.usd||0) + '">' +
+      '<div class="shd-wtok-top">' + selBox + ic +
         '<div class="shd-wtok-info"><b>' + escH(t.name || t.symbol) + ' ' + nuevo + '</b><div class="shd-wtok-bal">' + bal + ' ' + escH(t.symbol) + usdTxt + '</div></div>' +
         swap +
       '</div>' +
@@ -711,7 +739,9 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     <div class="shd-watch-tabs"><button class="shd-wtab on" data-wt="tokens">Tokens (${d.tokens.length})</button><button class="shd-wtab" data-wt="hist">Activity (${hist.length})</button></div>
     <div id="watch-pane"></div>`;
   const paneTokens = () => {
+    const esPropia = cuenta && addr && cuenta.toLowerCase() === addr.toLowerCase();
     let h = '<div class="shd-tok-tools">' +
+      (esPropia ? '<div class="shd-clean-row"><button class="shd-clean-btn" id="clean-toggle">Clean up junk tokens</button><span class="shd-clean-hint">Select tokens you don\'t want and send them out of your wallet</span></div><div class="shd-clean-bar" id="clean-bar" style="display:none"><div class="shd-clean-actions"><button class="shd-clean-sel" id="clean-zero">Select all zero value</button><button class="shd-clean-sel" id="clean-all">Select all</button><button class="shd-clean-sel" id="clean-none">Clear</button></div><button class="shd-clean-go" id="clean-go">Review selection</button></div>' : '') +
       '<div class="shd-tok-bar">' +
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.5;flex:none"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>' +
         '<input class="shd-tok-search" id="tok-search" placeholder="Search tokens by name, symbol or contract" autocomplete="off">' +
@@ -767,6 +797,64 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       });
     }
   }
+  let _modoLimpieza = false;
+  function wireLimpieza(cuenta, addr) {
+    const tog = $('clean-toggle');
+    if (!tog) return;
+    const bar = $('clean-bar');
+    tog.onclick = function () {
+      _modoLimpieza = !_modoLimpieza;
+      document.querySelectorAll('.shd-tok-check').forEach(function (c) { c.style.display = _modoLimpieza ? 'flex' : 'none'; });
+      tog.textContent = _modoLimpieza ? 'Cancel selection' : 'Clean up junk tokens';
+      tog.classList.toggle('active', _modoLimpieza);
+      if (bar) bar.style.display = _modoLimpieza ? 'flex' : 'none';
+      if (!_modoLimpieza) document.querySelectorAll('.shd-tok-cb').forEach(function (cb) { cb.checked = false; });
+    };
+    if (bar) {
+      const z = $('clean-zero'), a = $('clean-all'), n = $('clean-none'), g = $('clean-go');
+      if (z) z.onclick = function () { document.querySelectorAll('.shd-tok-cb').forEach(function (cb) { cb.checked = Number(cb.dataset.cusd) <= 0.01; }); };
+      if (a) a.onclick = function () { document.querySelectorAll('.shd-tok-cb').forEach(function (cb) { cb.checked = true; }); };
+      if (n) n.onclick = function () { document.querySelectorAll('.shd-tok-cb').forEach(function (cb) { cb.checked = false; }); };
+      if (g) g.onclick = function () { revisarLimpieza(cuenta, addr); };
+    }
+  }
+  function revisarLimpieza(cuenta, addr) {
+    const sel = [];
+    document.querySelectorAll('.shd-tok-cb').forEach(function (cb) { if (cb.checked && cb.dataset.caddr) sel.push({ addr: cb.dataset.caddr, raw: cb.dataset.craw, sym: cb.dataset.csym, usd: Number(cb.dataset.cusd) }); });
+    if (!sel.length) { return; }
+    const valorTotal = sel.reduce(function (a, t) { return a + t.usd; }, 0);
+    const conValor = sel.filter(function (t) { return t.usd > 0.01; });
+    // modal de confirmación
+    const modal = document.createElement('div'); modal.className = 'shd-clean-modal'; modal.id = 'clean-modal';
+    let lista = sel.map(function (t, i) {
+      const v = t.usd > 0.01 ? ('$' + t.usd.toLocaleString(undefined,{maximumFractionDigits:2})) : 'no value';
+      return '<div class="shd-clean-item"><span>' + escH(t.sym) + ' <small>' + v + '</small></span><button class="shd-clean-remove" data-ri="' + i + '">Keep this</button></div>';
+    }).join('');
+    modal.innerHTML = '<div class="shd-clean-box">' +
+      '<div class="shd-clean-title">Send ' + sel.length + ' token' + (sel.length>1?'s':'') + ' out of your wallet?</div>' +
+      (conValor.length ? '<div class="shd-clean-warn">Careful: ' + conValor.length + ' of these still hold value (about $' + valorTotal.toLocaleString(undefined,{maximumFractionDigits:2}) + ' in total). Once sent they are gone for good. Keep anything you might want.</div>' : '<div class="shd-clean-note">These tokens have no value. Sending them just clears the clutter. This cannot be undone.</div>') +
+      '<div class="shd-clean-list" id="clean-list">' + lista + '</div>' +
+      '<div class="shd-clean-btns"><button class="shd-rescan" id="clean-cancel">Cancel</button><button class="shd-btn shd-btn-danger" id="clean-confirm">Send ' + sel.length + ' out</button></div>' +
+    '</div>';
+    document.body.appendChild(modal);
+    // quitar items de la lista
+    modal.querySelectorAll('[data-ri]').forEach(function (b) { b.onclick = function () { const i = Number(b.dataset.ri); sel[i]._quitar = true; b.closest('.shd-clean-item').style.opacity = '.35'; b.textContent = 'Kept'; b.disabled = true; }; });
+    $('clean-cancel').onclick = function () { modal.remove(); };
+    $('clean-confirm').onclick = async function () {
+      const finales = sel.filter(function (t) { return !t._quitar; });
+      if (!finales.length) { modal.remove(); return; }
+      const btn = $('clean-confirm'); btn.disabled = true;
+      const cont = $('clean-list');
+      for (let i = 0; i < finales.length; i++) {
+        const t = finales[i];
+        btn.textContent = 'Confirm in wallet… (' + (i+1) + '/' + finales.length + ')';
+        try { await rescue.evacuarADead(t.addr, BigInt(t.raw)); }
+        catch (e) { /* si rechaza uno, seguimos con los demás */ }
+      }
+      btn.textContent = 'Done'; 
+      setTimeout(function () { modal.remove(); const g = $('watch-go'); if (g) g.click(); }, 800);
+    };
+  }
   function wireTokBtns() {
     document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
     document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) {
@@ -781,7 +869,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
   // seguir/dejar
   // Pintar los tokens de inmediato (sin tener que tocar el tab)
   const _pane0 = $('watch-pane');
-  if (_pane0) { _pane0.innerHTML = paneTokens(); wireTokTools(); wireTokBtns(); }
+  if (_pane0) { _pane0.innerHTML = paneTokens(); wireTokTools(); wireTokBtns(); wireLimpieza(cuenta, addr); }
   const fb = $('watch-follow');
   fb.onclick = () => {
     if (watch.estaSiguiendo(addr)) { watch.dejarSeguir(addr); fb.className='shd-watch-follow'; fb.textContent='+ Watch this wallet'; }
@@ -798,6 +886,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       pane.innerHTML = paneTokens();
       wireTokTools();
       wireTokBtns();
+      wireLimpieza(cuenta, addr);
     }
   });
 }
