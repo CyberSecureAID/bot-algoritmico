@@ -187,10 +187,10 @@ export async function datosToken(tokenAddr) {
    cada uno. Devuelve un mapa address -> timestamp de la entrada más reciente. */
 export async function marcarRecientes(addr, tokens, historial) {
   const mapa = {};
-  // usar el historial ya cargado: para cada transfer entrante, guardar el ts más reciente por símbolo
+  // cruzar el historial de ENTRADAS con los tokens, por símbolo (lo que trae el historial)
   if (Array.isArray(historial)) {
     for (const op of historial) {
-      if (op.tipo === 'in' && op.symbol) {
+      if (op.tipo === 'in' && op.symbol && op.ts > 0) {
         const k = op.symbol.toUpperCase();
         if (!mapa[k] || op.ts > mapa[k]) mapa[k] = op.ts;
       }

@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=99';
-import * as watch from './shield-watch.js?v=109';
+import * as watch from './shield-watch.js?v=110';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -139,7 +139,24 @@ function inyectarCSS() {
   #shd .shd-safe .ic{width:60px;height:60px;border-radius:50%;background:rgba(46,189,133,.12);color:#2ebd85;display:grid;place-items:center;margin-bottom:16px}
   #shd .shd-how{background:rgba(14,19,25,.6);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:12.5px;color:#a7b0bb;line-height:1.6}
   #shd .shd-how b{color:#eaecef}
-          /* Búsqueda y filtros de tokens */
+            /* Barra de búsqueda con filtro integrado */
+  #shd .shd-tok-bar{position:relative;display:flex;align-items:center;gap:9px;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:10px 12px}
+  #shd .shd-tok-bar:focus-within{border-color:var(--gold-soft,#C9A84B)}
+  #shd .shd-tok-search{flex:1;min-width:0;background:transparent;border:0;outline:none;color:#eaecef;font-family:inherit;font-size:13px}
+  #shd .shd-tok-fbtn{position:relative;flex:none;background:rgba(255,255,255,.04);border:1px solid #29313b;border-radius:8px;padding:6px 9px;color:#a7b0bb;cursor:pointer;display:grid;place-items:center}
+  #shd .shd-tok-fbtn.active{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #shd .shd-tok-fbtn #tok-fbadge.dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--gold,#E8B84B)}
+  #shd .shd-tok-pop{position:absolute;top:calc(100% + 6px);right:0;z-index:20;background:#12161c;border:1px solid #29313b;border-radius:12px;padding:6px;min-width:210px;max-width:calc(100vw - 40px);box-shadow:0 18px 50px rgba(0,0,0,.6);display:none;flex-direction:column;gap:2px}
+  #shd .shd-tok-pop.open{display:flex}
+  #shd .shd-tok-popf{text-align:left;background:none;border:0;border-radius:8px;padding:10px 12px;color:#c9d2dc;font-family:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap}
+  #shd .shd-tok-popf:hover{background:rgba(255,255,255,.04)}
+  #shd .shd-tok-popf.on{background:rgba(232,184,75,.12);color:var(--gold,#E8B84B);font-weight:700}
+  /* Desplegable de traders */
+  #shd .shd-reco-toggle{width:100%;margin-top:10px;padding:10px;background:rgba(255,255,255,.02);border:1px solid #1c232b;border-radius:10px;color:#a7b0bb;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+  #shd .shd-reco-toggle:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #shd .shd-reco-more{max-height:280px;overflow-y:auto;margin-top:9px}
+  
+  /* Búsqueda y filtros de tokens */
   #shd .shd-tok-tools{margin-bottom:12px}
   #shd .shd-tok-search{width:100%;box-sizing:border-box;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:11px 14px;color:#eaecef;font-family:inherit;font-size:13px;outline:none;margin-bottom:10px}
   #shd .shd-tok-search:focus{border-color:var(--gold-soft,#C9A84B)}
@@ -478,21 +495,31 @@ function pintarWatcher(cuenta) {
       <button class="shd-btn" id="watch-go" style="width:100%;margin-top:14px">${IC.eye} Look inside</button>
       ${chips}
       <div class="shd-watch-reco">
-        <div class="shd-watch-reco-t">Smart money · active spot traders worth following</div>
-        <div class="shd-watch-reco-sub">These are public on-chain wallets known for active spot trading. Watch how they move, study their picks, and copy what makes sense. Past performance never guarantees future results.</div>
-        <div class="shd-watch-reco-list">
-          <button class="shd-reco" data-w="0x8894e0a0c962cb723c1976a4421c95949be2d4e3"><b>Whale · Accumulator</b><span>Large active wallet, frequent spot moves</span></button>
-          <button class="shd-reco" data-w="0x0000000000000000000000000000000000001004"><b>BSC Token Hub</b><span>Core BSC bridge activity</span></button>
-          <button class="shd-reco" data-w="0x161ba15a5f335c9f06bb5bbb0a9ce14076fbb645"><b>Active Spot Trader</b><span>High-frequency spot positions</span></button>
-          <button class="shd-reco" data-w="0x21d45650db732ce5df77685d6021d7d5d1da807f"><b>DeFi Power User</b><span>Farms, swaps and spot buys</span></button>
+        <div class="shd-watch-reco-t">Famous wallets you can follow</div>
+        <div class="shd-watch-reco-sub">Public, verified wallets of well known people and funds in crypto. Watch what they hold and how they move. Everything here is public on the blockchain. Past results never guarantee future ones.</div>
+        <div class="shd-watch-reco-list" id="reco-list">
+          <button class="shd-reco" data-w="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"><b>Vitalik Buterin</b><span>Co-founder of Ethereum</span></button>
+          <button class="shd-reco" data-w="0x5b76f5b8fc9d700624f78208132f91ad4e61a1f0"><b>Brian Armstrong</b><span>CEO of Coinbase</span></button>
+          <button class="shd-reco" data-w="0x11e4857bb9993a50c685a79afad4e6f65d518dda"><b>Hayden Adams</b><span>Creator of Uniswap</span></button>
+          <button class="shd-reco" data-w="0x220866b1a2219f40e72f5c628b65d54268ca3a9d"><b>Vitalik · Wallet 2</b><span>Second public address</span></button>
         </div>
-        <div class="shd-watch-reco-note">Paste any address above to X-ray it, or tap one to start. You can also watch your own cold wallet.</div>
+        <div class="shd-reco-more" id="reco-more" style="display:none">
+          <div class="shd-watch-reco-list">
+            <button class="shd-reco" data-w="0x3ddfa8ec3052539b6c9549f12cea2c295cff5296"><b>Justin Sun</b><span>Founder of TRON</span></button>
+            <button class="shd-reco" data-w="0x8894e0a0c962cb723c1976a4421c95949be2d4e3"><b>Binance Whale</b><span>Very large active wallet</span></button>
+            <button class="shd-reco" data-w="0xab5801a7d398351b8be11c439e05c5b3259aec9b"><b>Early BTC Whale</b><span>Holds SHIB, DOGE, BTCB</span></button>
+            <button class="shd-reco" data-w="0x28c6c06298d514db089934071355e5743bf21d60"><b>Binance 14</b><span>High volume exchange wallet</span></button>
+          </div>
+        </div>
+        <button class="shd-reco-toggle" id="reco-toggle">Show more wallets ▾</button>
       </div>
-      <div id="watch-res">      <div id="watch-res"></div>
+      <div id="watch-res">      <div id="watch-res">      <div id="watch-res"></div>
       <button class="shd-rescan" id="watch-back" style="margin-top:18px">Back</button>
     </div>`;
   wireBack();
   $('watch-back').onclick = () => pintarInicio(cuenta);
+  const rt = $('reco-toggle'); const rm = $('reco-more');
+  if (rt && rm) rt.onclick = function () { const ab = rm.style.display === 'none'; rm.style.display = ab ? 'block' : 'none'; rt.textContent = ab ? 'Show fewer wallets ▴' : 'Show more wallets ▾'; };
   const ir = async (addr) => {
     const cont = $('watch-res');
     if (!watch.esDireccion(addr)) { cont.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address (0x…)</div>`; return; }
@@ -562,12 +589,16 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     <div id="watch-pane"></div>`;
   const paneTokens = () => {
     let h = '<div class="shd-tok-tools">' +
-      '<input class="shd-tok-search" id="tok-search" placeholder="Search this wallet\'s tokens by name, symbol or contract" autocomplete="off">' +
-      '<div class="shd-tok-filters">' +
-        '<button class="shd-tok-f on" data-f="all">All</button>' +
-        '<button class="shd-tok-f" data-f="today">New 24h</button>' +
-        '<button class="shd-tok-f" data-f="week">This week</button>' +
-        '<button class="shd-tok-f" data-f="value">Has value</button>' +
+      '<div class="shd-tok-bar">' +
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.5;flex:none"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>' +
+        '<input class="shd-tok-search" id="tok-search" placeholder="Search tokens by name, symbol or contract" autocomplete="off">' +
+        '<button class="shd-tok-fbtn" id="tok-fbtn" title="Filter"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg><span id="tok-fbadge"></span></button>' +
+        '<div class="shd-tok-pop" id="tok-pop">' +
+          '<button class="shd-tok-popf on" data-f="all">All tokens</button>' +
+          '<button class="shd-tok-popf" data-f="today">Bought in last 24h</button>' +
+          '<button class="shd-tok-popf" data-f="week">Bought this week</button>' +
+          '<button class="shd-tok-popf" data-f="value">Only with USD value</button>' +
+        '</div>' +
       '</div></div>';
     h += '<div class="shd-wtoks" id="tok-list">';
     if (d.nativo > 0) h += filaTok({ symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD, logo: watch.logoBNB() });
@@ -576,7 +607,8 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     return h + '</div>';
   };
   function wireTokTools() {
-    const inp = $('tok-search'); const filtros = document.querySelectorAll('[data-f]');
+    const inp = $('tok-search');
+    const fbtn = $('tok-fbtn'); const pop = $('tok-pop'); const badge = $('tok-fbadge');
     let fActivo = 'all';
     function aplicar() {
       const q = (inp && inp.value || '').trim().toLowerCase();
@@ -584,20 +616,34 @@ function pintarWatchRes(cuenta, addr, d, hist) {
         const txt = row.getAttribute('data-tokrow') || '';
         const esNew = row.getAttribute('data-new') === '1';
         const esToday = row.getAttribute('data-today') === '1';
-        const tieneVal = row.querySelector('.shd-wtok-bal') && /\$/.test(row.querySelector('.shd-wtok-bal').textContent);
-        let ok = txt.indexOf(q) !== -1;
+        const bal = row.querySelector('.shd-wtok-bal');
+        const tieneVal = bal && /\$/.test(bal.textContent);
+        let ok = q === '' || txt.indexOf(q) !== -1;
         if (ok && fActivo === 'today') ok = esToday;
         if (ok && fActivo === 'week') ok = esNew;
         if (ok && fActivo === 'value') ok = tieneVal;
         row.style.display = ok ? '' : 'none';
       });
+      // ocultar los separadores de dust si el filtro está activo
+      document.querySelectorAll('.shd-watch-dust').forEach(function (d) { d.style.display = fActivo === 'all' && q === '' ? '' : 'none'; });
     }
     if (inp) inp.oninput = aplicar;
-    filtros.forEach(function (b) { b.onclick = function () { filtros.forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); fActivo = b.dataset.f; aplicar(); }; });
+    if (fbtn && pop) {
+      fbtn.onclick = function (e) { e.stopPropagation(); pop.classList.toggle('open'); };
+      document.addEventListener('click', function (e) { if (pop.classList.contains('open') && !pop.contains(e.target) && e.target !== fbtn && !fbtn.contains(e.target)) pop.classList.remove('open'); });
+      pop.querySelectorAll('[data-f]').forEach(function (b) {
+        b.onclick = function () {
+          pop.querySelectorAll('[data-f]').forEach(function (x) { x.classList.remove('on'); });
+          b.classList.add('on'); fActivo = b.dataset.f;
+          // badge: punto dorado si no es "all"
+          if (badge) badge.className = fActivo === 'all' ? '' : 'dot';
+          if (fbtn) fbtn.classList.toggle('active', fActivo !== 'all');
+          pop.classList.remove('open');
+          aplicar();
+        };
+      });
+    }
   }
-  $('watch-pane').innerHTML = paneTokens();
-  wireTokTools();
-  wireTokBtns();
   function wireTokBtns() {
     document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
     document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); location.href = 'app.html?abrir=swap&token=' + b.dataset.swap; }; });
