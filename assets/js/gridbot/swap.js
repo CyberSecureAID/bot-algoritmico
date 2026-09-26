@@ -293,7 +293,16 @@ export function abrirSwap() {
   if (S.amount) swCotizar();
   setTimeout(() => { const a = $('sw-amt'); if (a) a.focus(); }, 60);
 }
-function cerrarSwap() { const p = $('coin-modal'); if (p && $('scm-list')) { window._cmRepintar = null; p.remove(); } const m = $('swap-modal'); if (m) m.remove(); }
+function cerrarSwap() {
+  const p = $('coin-modal'); if (p && $('scm-list')) { window._cmRepintar = null; p.remove(); }
+  const m = $('swap-modal'); if (m) m.remove();
+  // Si el swap se abrió llegando por URL (?abrir=swap, p.ej. desde Wallet Watcher o
+  // la portada) NO debemos dejar los bots detrás: volvemos a la portada.
+  try {
+    const par = new URLSearchParams(location.search);
+    if (par.get('abrir') === 'swap') { location.replace('index.html'); }
+  } catch (_) {}
+}
 
 function swInput(e) {
   let val = e.target.value.replace(',', '.').replace(/[^0-9.]/g, '');
