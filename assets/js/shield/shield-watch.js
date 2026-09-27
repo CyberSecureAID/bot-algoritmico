@@ -162,13 +162,28 @@ export async function historialAmplio(addr) {
           let logo = null;
           const rawCA = t.rawContract && t.rawContract.address ? t.rawContract.address : (t.contractAddress || null);
           if (rawCA) { try { logo = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/' + ethers.getAddress(rawCA) + '/logo.png'; } catch (_) {} }
-          ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: t.asset || '?', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), tokenLogo: logo, ts: (t.metadata && t.metadata.blockTimestamp) ? new Date(t.metadata.blockTimestamp).getTime() : 0 });
+          ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: t.asset || '?', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), tokenLogo: logo, _tokenAddr: rawCA ? rawCA.toLowerCase() : null, ts: (t.metadata && t.metadata.blockTimestamp) ? new Date(t.metadata.blockTimestamp).getTime() : 0 });
         }
         pageKey = res && res.pageKey ? res.pageKey : null;
       } catch (_) { pageKey = null; }
       vueltas++;
     } while (pageKey && vueltas < 5);   // hasta 5 páginas por dirección (500 transfers)
   }
+  // precios USD de los tokens que aparecen (DeFiLlama, para mostrar el valor)
+  try {
+    const dirsTok = {};
+    for (const op of ops) { if (op._tokenAddr) dirsTok['bsc:' + op._tokenAddr] = true; }
+    dirsTok['bsc:' + WBNB] = true;
+    const ids = Object.keys(dirsTok);
+    if (ids.length) {
+      const precios = {};
+      for (let i = 0; i < ids.length; i += 100) { try { const r = await fetch('https://coins.llama.fi/prices/current/' + ids.slice(i, i+100).join(',')); const d = await r.json(); Object.assign(precios, d.coins || {}); } catch (_) {} }
+      for (const op of ops) {
+        const key = op._tokenAddr ? ('bsc:' + op._tokenAddr) : (op.symbol === 'BNB' ? ('bsc:' + WBNB) : null);
+        if (key && precios[key] && precios[key].price) op.usd = op.cantidad * precios[key].price;
+      }
+    }
+  } catch (_) {}
   return ops;
 }
 export function logoBNB() { return 'https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png'; }

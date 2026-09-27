@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
-import * as watch from './shield-watch.js?v=117';
+import * as watch from './shield-watch.js?v=118';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 
@@ -257,7 +257,41 @@ function inyectarCSS() {
   #shd .shd-act-spin{width:34px;height:34px;border:3px solid rgba(232,184,75,.2);border-top-color:var(--gold,#E8B84B);border-radius:50%;animation:shdSpin .7s linear infinite;margin:0 auto 14px}
   #shd .shd-act-loadtx{font-size:13px;color:#a7b0bb}
   
-    /* Tarjeta de actividad v3 (bien distribuida) */
+      /* Tarjeta de transacción (según plantilla del usuario) */
+  #shd .shd-tx{position:relative;background:rgba(14,19,25,.85);border:1px solid #232d38;border-radius:18px;padding:20px 22px;margin-bottom:12px}
+  #shd .shd-tx-net{position:absolute;top:16px;right:18px;display:flex;align-items:center;gap:7px;background:rgba(11,14,17,.7);border:1px solid #2b3844;border-radius:100px;padding:6px 13px;font-size:12px;font-weight:600;color:#c9d2dc}
+  #shd .shd-tx-net-dot{width:8px;height:8px;border-radius:50%;background:#2ebd85;box-shadow:0 0 7px #2ebd85}
+  #shd .shd-tx-top{display:flex;align-items:center;gap:16px;padding-right:90px}
+  #shd .shd-tx-logo{position:relative;width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;background:#12161c}
+  #shd .shd-tx-logo img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+  #shd .shd-tx-logo-txt{font-weight:800;font-size:15px;color:#a7b0bb}
+  #shd .shd-tx-badge{position:absolute;bottom:-1px;right:-1px;width:21px;height:21px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;border:3px solid #12161c}
+  #shd .shd-tx-badge.in{background:#2ebd85;color:#04140c} #shd .shd-tx-badge.out{background:#f6465d;color:#fff}
+  #shd .shd-tx-amt b{font-size:26px;font-weight:800;line-height:1.1;display:block} #shd .shd-tx-amt b.pos{color:#2ebd85} #shd .shd-tx-amt b.neg{color:#f6465d}
+  #shd .shd-tx-amt small{font-size:13px;color:#79838f;display:block;margin-top:3px}
+  #shd .shd-tx-divider{height:1px;background:linear-gradient(90deg,transparent,#2b3844 15%,#2b3844 85%,transparent);margin:16px 0}
+  #shd .shd-tx-route{display:flex;align-items:center;gap:14px}
+  #shd .shd-tx-node{flex:1;min-width:0;display:flex;align-items:center;gap:12px;background:rgba(11,14,17,.5);border:1px solid #232d38;border-radius:13px;padding:13px 15px}
+  #shd .shd-tx-node-ic{width:38px;height:38px;border-radius:11px;background:rgba(232,184,75,.1);color:var(--gold,#E8B84B);display:grid;place-items:center;flex:none}
+  #shd .shd-tx-node-txt{flex:1;min-width:0}
+  #shd .shd-tx-node-txt small{font-size:12px;color:#79838f;display:block}
+  #shd .shd-tx-node-txt b{font-size:15px;font-family:var(--mono,monospace);color:#eaecef;font-weight:700}
+  #shd .shd-tx-node .shd-wop2-copy{color:#79838f;background:none;border:0;cursor:pointer;padding:2px;flex:none}
+  #shd .shd-tx-node .shd-wop2-copy:hover{color:var(--gold,#E8B84B)}
+  #shd .shd-tx-arrow{color:var(--gold,#E8B84B);font-weight:800;font-size:22px;flex:none}
+  #shd .shd-tx-links{display:flex;gap:12px;margin-top:14px}
+  #shd .shd-tx-links a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.5);border-radius:12px;padding:14px 12px}
+  #shd .shd-tx-links a:hover{background:rgba(232,184,75,.08)}
+  #shd .shd-tx-links a svg{stroke:currentColor}
+  @media(max-width:640px){
+    #shd .shd-tx-route{flex-direction:column;align-items:stretch;gap:10px}
+    #shd .shd-tx-arrow{transform:rotate(90deg);text-align:center}
+    #shd .shd-tx-links{flex-direction:column}
+    #shd .shd-tx-amt b{font-size:22px} #shd .shd-tx-top{padding-right:0;margin-top:8px}
+    #shd .shd-tx-net{position:static;display:inline-flex;margin-bottom:12px}
+  }
+  
+  /* Tarjeta de actividad v3 (bien distribuida) */
   #shd .shd-wop3{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-bottom:9px}
   #shd .shd-wop3-head{display:flex;align-items:center;gap:13px;margin-bottom:12px}
   #shd .shd-wop3-amt{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -682,7 +716,7 @@ function pintarPoison(cuenta) {
       <div class="shd-poison-hero">
         <div class="shd-poison-icon">${IC.poison}</div>
         <h1>Address poisoning checker</h1>
-        <p>Address poisoning is one of the fastest growing crypto scams. Attackers create a fake wallet that looks almost identical to one you already use, matching the first and last characters, then send you a tiny or zero value transfer so it lands in your history. The next time you copy an address from your history you may grab theirs by mistake and send your funds straight to the scammer. Paste any wallet below to scan its history for these fake lookalike addresses before it costs you.</p>
+        <p>Address poisoning is one of the fastest growing scams in crypto, and it works even against careful people. Here is exactly how it happens, step by step. A scammer watches the blockchain and sees a wallet you send money to often. They then generate a brand new wallet whose address starts and ends with the very same characters as that real one, because most people only check the first four and last four characters. They send you a transaction of zero or almost zero value from that fake address, purely so it appears in your transaction history next to the real one. Days later, when you go to pay that contact again, you scroll your history, copy what looks like the right address, and send. But you copied the scammer's twin, and your money is gone with no way to reverse it. Their whole goal is to steal a full payment by making you trust your own history. Paste any wallet below and we will scan its history for these planted twin addresses before they cost you anything.</p>
       </div>
       <label class="shd-sim-lbl">Wallet to scan for poisoning</label>
       <input class="shd-sim-in" id="poison-in" placeholder="0x… wallet address" autocomplete="off" spellcheck="false" value="${miWallet}">
@@ -759,9 +793,9 @@ function tarjetaPoison(info, numOps) {
     '</div>';
   }).join('');
   return '<div class="shd-poison-card">' +
-    '<div class="shd-hash-big bad"><div class="shd-hash-bigic bad">' + iconoX + '</div><div><div class="shd-hash-bigt">' + info.amenazas.length + ' poisoning threat' + (info.amenazas.length>1?'s':'') + ' found</div><div class="shd-hash-bigs">This wallet was targeted by address poisoning. The addresses below were planted to trick you. Never send funds to them.</div></div></div>' +
+    '<div class="shd-hash-big bad"><div class="shd-hash-bigic bad">' + iconoX + '</div><div><div class="shd-hash-bigt">' + info.amenazas.length + ' poisoning threat' + (info.amenazas.length>1?'s':'') + ' found</div><div class="shd-hash-bigs">Someone planted fake lookalike addresses in this wallet\'s history to trick you into paying them by mistake. Nothing has been stolen and your funds are safe. The addresses below are the traps. Read what to do so this never costs you anything.</div></div></div>' +
     items +
-    '<div class="shd-poison-tip"><b>What to do.</b> Delete these from memory. Always get the real address from your address book or the original source, never from transaction history. For big transfers, send a small test amount first.</div>' + listaDirecciones(info) +
+    '<div class="shd-poison-tip"><b>Your funds are safe right now.</b> Finding these does not mean anything was stolen. It means someone planted a trap for the future. You do NOT need to move or abandon this wallet. The danger only appears the moment you copy an address from your history to send money. Follow these steps: first, never copy a payment address from your transaction history, not even once. Second, save the addresses you really use in an address book or the contacts of your wallet, and always paste from there. Third, before sending a large amount, send a tiny test first and confirm the receiver got it. Fourth, always check the full address, the middle characters too, not just the start and end. Fifth, if a wallet or site autofills an address, compare it letter by letter before you approve. Do this and address poisoning cannot touch you.</div>' + listaDirecciones(info) +
   '</div>';
 }
 function pintarHash(cuenta) {
@@ -940,33 +974,36 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const entra = o.tipo === 'in';
     const sym = escH(o.symbol || '');
     const ini3 = (o.symbol || '?').slice(0,3).toUpperCase();
+    const usd = o.usd ? ('\u2248 $' + o.usd.toLocaleString(undefined,{maximumFractionDigits:2}) + ' USD') : (fecha || '');
     const logoUrl = o.tokenLogo || null;
     const ic = logoUrl
-      ? ('<div class="shd-wop-logo"><img src="' + logoUrl + '" onerror="this.style.display=\'none\';this.parentElement.childNodes[0].textContent=\''+ini3+'\'"><span class="shd-wop-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>')
-      : ('<div class="shd-wop-logo"><span class="shd-wop-logo-txt">' + ini3 + '</span><span class="shd-wop-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>');
+      ? ('<div class="shd-tx-logo"><img src="' + logoUrl + '" onerror="this.style.display=\'none\';this.parentElement.childNodes[0].textContent=\''+ini3+'\'"><span class="shd-tx-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>')
+      : ('<div class="shd-tx-logo"><span class="shd-tx-logo-txt">' + ini3 + '</span><span class="shd-tx-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>');
     const wObs = window._watchAddr || '';
     const from = entra ? (o.contraparte || '') : wObs;
     const to = entra ? wObs : (o.contraparte || '');
     const cortaF = from ? (from.slice(0,6) + '\u2026' + from.slice(-4)) : '\u2014';
     const cortaT = to ? (to.slice(0,6) + '\u2026' + to.slice(-4)) : '\u2014';
-    return '<div class="shd-wop3">' +
-      '<div class="shd-wop3-head">' + ic +
-        '<div class="shd-wop3-amt"><b class="' + (entra?'pos':'neg') + '">' + (entra?'+':'\u2212') + cant + ' ' + sym + '</b>' + (fecha ? '<span class="shd-wop3-date">' + fecha + '</span>' : '') + '</div>' +
+    const walletIc = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h.01M3 9h18"/></svg>';
+    const copyIc = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+    return '<div class="shd-tx">' +
+      '<div class="shd-tx-net"><span class="shd-tx-net-dot"></span>BEP20</div>' +
+      '<div class="shd-tx-top">' + ic +
+        '<div class="shd-tx-amt"><b class="' + (entra?'pos':'neg') + '">' + (entra?'+':'\u2212') + cant + ' ' + sym + '</b><small>' + usd + '</small></div>' +
       '</div>' +
-      '<div class="shd-wop3-body">' +
-        '<div class="shd-wop3-route">' +
-          '<div class="shd-wop3-node"><span>FROM</span><b>' + cortaF + '</b><button class="shd-wop2-copy" data-wcopy="' + from + '">\u29c9</button></div>' +
-          '<div class="shd-wop3-sep">\u2192</div>' +
-          '<div class="shd-wop3-node"><span>TO</span><b>' + cortaT + '</b><button class="shd-wop2-copy" data-wcopy="' + to + '">\u29c9</button></div>' +
-        '</div>' +
-        '<div class="shd-wop3-links">' +
-          '<a href="https://bscscan.com/tx/' + (o.hash||'') + '" target="_blank" rel="noopener">Tx \u2197</a>' +
-          '<a href="https://bscscan.com/address/' + from + '" target="_blank" rel="noopener">Sender \u2197</a>' +
-          '<a href="https://bscscan.com/address/' + to + '" target="_blank" rel="noopener">Receiver \u2197</a>' +
-        '</div>' +
+      '<div class="shd-tx-divider"></div>' +
+      '<div class="shd-tx-route">' +
+        '<div class="shd-tx-node"><span class="shd-tx-node-ic">' + walletIc + '</span><div class="shd-tx-node-txt"><small>From</small><b>' + cortaF + '</b></div><button class="shd-wop2-copy" data-wcopy="' + from + '">' + copyIc + '</button></div>' +
+        '<div class="shd-tx-arrow">\u2192</div>' +
+        '<div class="shd-tx-node"><span class="shd-tx-node-ic">' + walletIc + '</span><div class="shd-tx-node-txt"><small>To</small><b>' + cortaT + '</b></div><button class="shd-wop2-copy" data-wcopy="' + to + '">' + copyIc + '</button></div>' +
+      '</div>' +
+      '<div class="shd-tx-links">' +
+        '<a href="https://bscscan.com/tx/' + (o.hash||'') + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-4 4 4 4M3 14h13M17 14l4-4-4-4M21 10H8"/></svg> Tx \u203a</a>' +
+        '<a href="https://bscscan.com/address/' + from + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg> Sender \u203a</a>' +
+        '<a href="https://bscscan.com/address/' + to + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h.01"/></svg> Receiver \u203a</a>' +
       '</div>' +
     '</div>';
-  };;;;
+  };;;;;
   cont.innerHTML = `
     <div class="shd-watch-head">
       <div><div class="shd-watch-addr">${corta} <button class="shd-wtok-copy" data-copy="${addr}" title="Copy">⧉</button> <a href="https://bscscan.com/address/${addr}" target="_blank" rel="noopener" class="shd-wtok-scan">BscScan ↗</a></div>
