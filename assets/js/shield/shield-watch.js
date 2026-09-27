@@ -139,9 +139,16 @@ export async function historialAmplio(addr) {
         const trs = res && res.transfers ? res.transfers : [];
         for (const t of trs) {
           const entra = campo === 'toAddress';
+          // decimales del token: de rawContract.decimal (hex) o t.decimal
+          let dec = 18;
+          if (t.rawContract && t.rawContract.decimal != null) { try { dec = parseInt(t.rawContract.decimal, 16); } catch (_) {} }
+          else if (t.decimal != null) { dec = Number(t.decimal); }
+          if (!dec && dec !== 0) dec = 18;
+          // cantidad SIEMPRE desde el raw dividido por los decimales (evita números gigantes)
           let cant = 0;
-          if (t.value != null) cant = Number(t.value);
-          else if (t.rawValue) { try { cant = Number(ethers.formatUnits(BigInt(t.rawValue), Number(t.decimal) || 18)); } catch (_) {} }
+          const raw = (t.rawContract && t.rawContract.rawValue) ? t.rawContract.rawValue : (t.rawValue || null);
+          if (raw) { try { cant = Number(ethers.formatUnits(BigInt(raw), dec)); } catch (_) { cant = 0; } }
+          else if (t.value != null) { cant = Number(t.value); }   // value ya formateado (fallback)
           let logo = null;
           const rawCA = t.rawContract && t.rawContract.address ? t.rawContract.address : (t.contractAddress || null);
           if (rawCA) { try { logo = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/' + ethers.getAddress(rawCA) + '/logo.png'; } catch (_) {} }
