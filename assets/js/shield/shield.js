@@ -59,7 +59,27 @@ function inyectarCSS() {
   #shd .shd-btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:12px 24px;border:1px solid #29313b;border-radius:12px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
   #shd .shd-btn2:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-btn2 svg{stroke:currentColor}
-        /* Pantalla de pago (solo BNB) */
+          /* Faucet de gas */
+  #shd .shd-card-gas{border-color:rgba(90,200,180,.22)}
+  #shd .shd-card-gas .shd-card-ic{background:rgba(90,200,180,.1);color:#4ec8b4}
+  #shd .shd-card-btn.gas{border-color:rgba(90,200,180,.4);background:rgba(90,200,180,.08);color:#4ec8b4}
+  #shd .shd-card-btn.gas:hover{background:rgba(90,200,180,.16)}
+  #shd .shd-faucet-wrap{max-width:520px;margin:0 auto;padding:10px 0;text-align:center}
+  #shd .shd-faucet-icon{width:56px;height:56px;border-radius:50%;background:rgba(232,184,75,.1);color:var(--gold,#E8B84B);display:grid;place-items:center;margin:0 auto 14px}
+  #shd .shd-faucet-hero h1{font-size:22px;font-weight:800;margin:0 0 10px}
+  #shd .shd-faucet-hero p{font-size:13px;color:#a7b0bb;line-height:1.6;margin:0 0 20px}
+  #shd .shd-faucet-box{background:linear-gradient(135deg,rgba(20,26,33,.9),rgba(10,14,18,.9));border:1px solid #1c232b;border-radius:16px;padding:24px 22px}
+  #shd .shd-faucet-loading{color:#a7b0bb;font-size:13px;padding:20px}
+  #shd .shd-faucet-amount{font-size:32px;font-weight:900;color:var(--gold,#E8B84B);line-height:1;text-shadow:0 2px 8px rgba(232,184,75,.25)}
+  #shd .shd-faucet-sub{font-size:12.5px;color:#79838f;margin-top:8px}
+  #shd .shd-faucet-msg{font-size:13px;margin-top:14px;min-height:18px}
+  #shd .shd-faucet-pool{font-size:11.5px;color:#5f6b7a;margin-top:16px;padding-top:14px;border-top:1px solid #161f2b}
+  #shd .shd-faucet-wait-ic{font-size:32px;margin-bottom:10px}
+  #shd .shd-faucet-wait-t{font-size:18px;font-weight:800;color:#e8b84b;margin-bottom:6px}
+  #shd .shd-faucet-wait-s{font-size:13px;color:#a7b0bb;line-height:1.55}
+  #shd .shd-faucet-wait-s b{color:#eaecef}
+  
+  /* Pantalla de pago (solo BNB) */
   #shd .shd-pay-box{max-width:360px;margin:8px auto 24px;background:linear-gradient(135deg,rgba(232,184,75,.1),rgba(232,184,75,.03));border:1px solid rgba(232,184,75,.3);border-radius:16px;padding:22px 20px}
   #shd .shd-pay-label{font-size:12px;color:#a7b0bb;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
   #shd .shd-pay-amount{font-size:34px;font-weight:900;color:var(--gold,#E8B84B);line-height:1;text-shadow:0 2px 8px rgba(232,184,75,.25)}
@@ -650,6 +670,7 @@ const IC = {
   eye: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
   hash: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
   poison: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s6 5 6 11a6 6 0 0 1-12 0c0-6 6-11 6-11z"/><path d="M9 13h6M12 10v6"/></svg>',
+  gas: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22h12V4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="M15 8h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V9l-3-3M6 6h6"/></svg>',
   check2: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#2ebd85" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 };
 
@@ -714,6 +735,61 @@ function pintarConectar() {
       if (acceso) { abrirShield(); } else { pintarPago(cuenta); }
     } catch (_) {}
   };
+}
+function pintarFaucet(cuenta) {
+  $('shd-barslot').innerHTML = cabecera();
+  $('shd-in').innerHTML = `
+    <div class="shd-faucet-wrap">
+      <div class="shd-faucet-hero">
+        <div class="shd-faucet-icon">${IC.gas}</div>
+        <h1>Free gas faucet</h1>
+        <p>Ran out of BNB and can't even move your own tokens? Claim a small amount of gas to unstick your wallet. It's free, once every 30 days, as long as the pool has funds.</p>
+      </div>
+      <div class="shd-faucet-box" id="faucet-box">
+        <div class="shd-faucet-loading">Checking the faucet…</div>
+      </div>
+      <button class="shd-rescan" id="faucet-back" style="margin-top:18px">Back</button>
+    </div>`;
+  wireBack(function () { pintarInicio(cuenta); });
+  $('faucet-back').onclick = () => pintarInicio(cuenta);
+  cargarFaucet(cuenta);
+}
+function cargarFaucet(cuenta) {
+  pago.infoFaucet(cuenta).then(function (info) {
+    const box = $('faucet-box'); if (!box) return;
+    if (info.puede) {
+      box.innerHTML = '<div class="shd-faucet-amount">' + info.monto + ' BNB</div>' +
+        '<div class="shd-faucet-sub">Available to claim now</div>' +
+        '<button class="shd-btn" id="faucet-claim" style="width:100%;margin-top:16px">' + IC.gas + ' Claim free gas</button>' +
+        '<div class="shd-faucet-msg" id="faucet-msg"></div>' +
+        '<div class="shd-faucet-pool">Faucet pool: ' + info.pozo + ' BNB</div>';
+      const cb = $('faucet-claim');
+      cb.onclick = async function () {
+        const msg = $('faucet-msg');
+        cb.style.pointerEvents = 'none'; cb.style.opacity = '.6';
+        if (msg) msg.innerHTML = '<span style="color:#a7b0bb">Confirm in your wallet…</span>';
+        try {
+          await pago.reclamarFaucet();
+          if (msg) msg.innerHTML = '<span style="color:#2ebd85">Gas sent to your wallet. You can move your funds now.</span>';
+          setTimeout(function () { cargarFaucet(cuenta); }, 2000);
+        } catch (e) {
+          cb.style.pointerEvents = ''; cb.style.opacity = '';
+          const err = (e && e.message) || '';
+          if (/EnfriamientoActivo|cooldown/i.test(err)) { if (msg) msg.innerHTML = '<span style="color:#e8b84b">You already claimed recently. Come back later.</span>'; }
+          else if (/PozoVacio|empty/i.test(err)) { if (msg) msg.innerHTML = '<span style="color:#f6465d">The faucet pool is empty right now. Try again later.</span>'; }
+          else if (/rejected|denied|user/i.test(err)) { if (msg) msg.innerHTML = '<span style="color:#a7b0bb">Cancelled.</span>'; }
+          else { if (msg) msg.innerHTML = '<span style="color:#f6465d">Could not claim right now. Try again.</span>'; }
+        }
+      };
+    } else {
+      const cuando = info.proximo > 0 ? new Date(info.proximo).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      box.innerHTML = '<div class="shd-faucet-wait"><div class="shd-faucet-wait-ic">\u23f3</div><div class="shd-faucet-wait-t">Already claimed</div>' +
+        '<div class="shd-faucet-wait-s">You can claim free gas again' + (cuando ? ' on <b>' + cuando + '</b>' : ' in about 30 days') + '.</div></div>' +
+        '<div class="shd-faucet-pool">Faucet pool: ' + info.pozo + ' BNB</div>';
+    }
+  }).catch(function () {
+    const box = $('faucet-box'); if (box) box.innerHTML = '<div class="shd-sim-msg bad">Could not reach the faucet. Try again.</div>';
+  });
 }
 function pintarPago(cuenta) {
   $('shd-barslot').innerHTML = cabecera();
@@ -802,6 +878,7 @@ function pintarInicio(cuenta) {
       <div class="shd-card shd-card-watch"><div class="shd-card-ic">${IC.eye}</div><b>Wallet Watcher</b><span>Track any wallet on the chain: see all its tokens, balance and live moves.</span><button class="shd-card-btn watch" id="shd-watch">Open</button></div>
       <div class="shd-card shd-card-hash"><div class="shd-card-ic">${IC.hash}</div><b>Verify a transaction</b><span>Paste a transaction hash and confirm it really went through, who sent what to whom, and how much.</span><button class="shd-card-btn hash" id="shd-hash">Verify</button></div>
       <div class="shd-card shd-card-poison"><div class="shd-card-ic">${IC.poison}</div><b>Address poison check</b><span>Scan a wallet for fake lookalike addresses planted by scammers to trick you into sending funds to them.</span><button class="shd-card-btn poison" id="shd-poison">Scan</button></div>
+      <div class="shd-card shd-card-gas"><div class="shd-card-ic">${IC.gas}</div><b>Free gas</b><span>Out of BNB and stuck? Claim a small amount of gas to move your funds. Free, once a month.</span><button class="shd-card-btn gas" id="shd-gas">Get gas</button></div>
     </div>`;
   wireBack();
   $('shd-scan').onclick = () => escanear(cuenta);
@@ -810,6 +887,7 @@ function pintarInicio(cuenta) {
   const wb = $('shd-watch'); if (wb) wb.onclick = () => pintarWatcher(cuenta);
   const hb = $('shd-hash'); if (hb) hb.onclick = () => pintarHash(cuenta);
   const pb = $('shd-poison'); if (pb) pb.onclick = () => pintarPoison(cuenta);
+  const gb = $('shd-gas'); if (gb) gb.onclick = () => pintarFaucet(cuenta);
   const cp = $('shd-copy'); if (cp) cp.onclick = async () => { const ok = await datos.copiar(cuenta); cp.innerHTML = ok ? IC.check2 : IC.copy; setTimeout(() => { cp.innerHTML = IC.copy; }, 1400); };
   // saldo (async)
   datos.saldoTotalUSD(cuenta).then(b => { const e = $('shd-bal'); if (e) e.textContent = b; });
