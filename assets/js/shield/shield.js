@@ -11,6 +11,7 @@ import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=118';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
+import * as pago from './shield-pago.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -58,7 +59,14 @@ function inyectarCSS() {
   #shd .shd-btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:12px 24px;border:1px solid #29313b;border-radius:12px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
   #shd .shd-btn2:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-btn2 svg{stroke:currentColor}
-      /* Banner superior con mármol dorado (header.webp), como los bots */
+        /* Pantalla de pago (solo BNB) */
+  #shd .shd-pay-box{max-width:360px;margin:8px auto 24px;background:linear-gradient(135deg,rgba(232,184,75,.1),rgba(232,184,75,.03));border:1px solid rgba(232,184,75,.3);border-radius:16px;padding:22px 20px}
+  #shd .shd-pay-label{font-size:12px;color:#a7b0bb;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  #shd .shd-pay-amount{font-size:34px;font-weight:900;color:var(--gold,#E8B84B);line-height:1;text-shadow:0 2px 8px rgba(232,184,75,.25)}
+  #shd .shd-pay-sub{font-size:12.5px;color:#79838f;margin-top:8px}
+  #shd .shd-pay-msg{font-size:13px;margin-top:16px;min-height:20px}
+  
+  /* Banner superior con mármol dorado (header.webp), como los bots */
   #shd #shd-header-banner{position:fixed;top:0;left:0;right:0;height:300px;z-index:0;pointer-events:none;opacity:.8;background-image:url('assets/portada/img/header.webp');background-size:cover;background-position:center top;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%)}
   /* Portada de Wallet Shield (según plantilla) */
   #shd .shd-portada{max-width:860px;margin:0 auto;padding:8px 16px 30px;text-align:center}
@@ -691,12 +699,65 @@ function pintarConectar() {
       <img class="shd-portada-hero" src="${IMG}shield-hero.webp" alt="">
       <h1 class="shd-portada-title"><span class="g">Protect</span> your wallet</h1>
       <p class="shd-portada-p">Most wallets are not hacked. They are quietly given away, through an old permission you forgot, a fake address, or a contract you signed without reading. Wallet Shield is your personal security team: it scans your wallet, exposes every hidden threat, and lets you shut it down in one tap. See exactly what is putting your funds at risk, in seconds, even if you have never done this before.</p>
-      <p class="shd-portada-cost"><b>Full access for 30 days for $5 in BNB.</b> Auditors charge hundreds for this. Here it is one small payment, taken only when you connect.</p>
+      <p class="shd-portada-cost"><b>Full access to every tool for 30 days.</b> One small payment in BNB, taken only when you connect. Connect to see the exact amount.</p>
       <button class="shd-connect-btn" id="shd-conn"><img src="${IMG}shield-connect.webp" alt="Connect your wallet"></button>
     </div>`;
   wireBack();
   wireTilt();
-  $('shd-conn').onclick = async () => { try { await wallet.conectar(); abrirShield(); } catch (_) {} };
+  $('shd-conn').onclick = async () => {
+    try {
+      await wallet.conectar();
+      const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+      if (!cuenta) return;
+      // ¿ya tiene acceso pagado (u owner)? → entra. Si no → pantalla de pago.
+      const acceso = await pago.tieneAcceso(cuenta);
+      if (acceso) { abrirShield(); } else { pintarPago(cuenta); }
+    } catch (_) {}
+  };
+}
+function pintarPago(cuenta) {
+  $('shd-barslot').innerHTML = cabecera();
+  const IMG = 'assets/portada/img/';
+  $('shd-in').innerHTML = `
+    <div class="shd-portada">
+      <img class="shd-portada-hero" src="${IMG}shield-hero.webp" alt="">
+      <h1 class="shd-portada-title"><span class="g">Unlock</span> Wallet Shield</h1>
+      <p class="shd-portada-p">Your wallet is connected. Activate 30 days of full access to every security tool: permission scanner, contract checker, wallet watcher, transaction verifier and address poisoning detector.</p>
+      <div class="shd-pay-box">
+        <div class="shd-pay-label">One payment · 30 days access</div>
+        <div class="shd-pay-amount" id="pay-amount">…</div>
+        <div class="shd-pay-sub">Paid in BNB from your wallet</div>
+      </div>
+      <button class="shd-connect-btn" id="shd-pay"><img src="${IMG}shield-connect.webp" alt="Pay and unlock"></button>
+      <div class="shd-pay-msg" id="pay-msg"></div>
+    </div>`;
+  wireBack();
+  // cargar el monto en BNB (del contrato, vía oráculo) — sin mencionar dólares
+  pago.infoAcceso(cuenta).then(function (info) {
+    const el = $('pay-amount');
+    if (info.esOwner) { if (el) el.textContent = 'Free for owners'; const b = $('shd-pay'); if (b) b.onclick = function () { abrirShield(); }; return; }
+    if (el) el.textContent = (info.precioBNBtxt !== '—' ? info.precioBNBtxt + ' BNB' : 'Price unavailable');
+  });
+  $('shd-pay').onclick = async function () {
+    const msg = $('pay-msg'); const btn = $('shd-pay');
+    // si ya es owner, el handler de arriba entra directo; aquí es el pago normal
+    try {
+      const info = await pago.infoAcceso(cuenta);
+      if (info.esOwner) { abrirShield(); return; }
+      if (info.tiene) { abrirShield(); return; }
+      btn.style.pointerEvents = 'none'; btn.style.opacity = '.6';
+      if (msg) msg.innerHTML = '<span style="color:#a7b0bb">Confirm the payment in your wallet…</span>';
+      await pago.comprarAcceso();
+      if (msg) msg.innerHTML = '<span style="color:#2ebd85">Access unlocked. Welcome to Wallet Shield.</span>';
+      setTimeout(function () { abrirShield(); }, 1200);
+    } catch (e) {
+      btn.style.pointerEvents = ''; btn.style.opacity = '';
+      const err = (e && e.message) || '';
+      if (/insufficient|exceeds/i.test(err)) { if (msg) msg.innerHTML = '<span style="color:#f6465d">Not enough BNB in your wallet for the payment plus gas.</span>'; }
+      else if (/rejected|denied|user/i.test(err)) { if (msg) msg.innerHTML = '<span style="color:#a7b0bb">Payment cancelled.</span>'; }
+      else { if (msg) msg.innerHTML = '<span style="color:#f6465d">Could not complete the payment. Try again.</span>'; }
+    }
+  };
 }
 function wireBack(alSalir) { const b = $('shd-back'); if (b) b.onclick = alSalir || cerrar; }
 function wireTilt() {
