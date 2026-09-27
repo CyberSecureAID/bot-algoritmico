@@ -509,7 +509,18 @@ function inyectarCSS() {
   #shd .shd-btn-danger:active{box-shadow:0 2px 0 #8f1f2e!important}
   #shd .shd-resc-note{font-size:12px;color:#79838f;text-align:center;margin-top:12px;line-height:1.5}
   
-        /* Diagnóstico premium (auditoría) */
+          /* Escanear otra wallet + info real */
+  #shd .shd-viewing{font-size:12px;color:#a7b0bb;text-align:center;background:rgba(90,160,232,.08);border:1px solid rgba(90,160,232,.2);border-radius:9px;padding:8px 12px;margin-bottom:12px}
+  #shd .shd-viewing b{color:#6aa8f0;font-family:var(--mono,monospace)}
+  #shd .shd-scan-other{display:flex;gap:9px;margin:16px 0;align-items:center}
+  #shd .shd-scan-other input{flex:1;min-width:0;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:11px;padding:12px 14px;color:#eaecef;font-family:var(--mono,monospace);font-size:12.5px;outline:none}
+  #shd .shd-scan-other input:focus{border-color:var(--gold-soft,#C9A84B)}
+  #shd .shd-scan-other-go{flex:none;padding:12px 24px;border:1px solid var(--gold-md,#cf9f2e);border-radius:11px;background:linear-gradient(180deg,#f4d089,#E8B84B 60%,#cf9f2e);color:#241900;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer}
+  #shd .shd-scan-other-go:hover{filter:brightness(1.06)}
+  #shd .shd-comp-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:100px;text-transform:uppercase;letter-spacing:.4px}
+  @media(max-width:560px){ #shd .shd-scan-other{flex-direction:column;align-items:stretch} #shd .shd-scan-other-go{width:100%} }
+  
+  /* Diagnóstico premium (auditoría) */
   #shd .shd-audit-hero{display:flex;align-items:center;gap:26px;background:linear-gradient(135deg,rgba(20,26,33,.9),rgba(10,14,18,.9));border:1px solid #1c232b;border-radius:18px;padding:24px 26px;margin-bottom:16px}
   #shd .shd-audit-side{flex:1;min-width:0}
   #shd .shd-audit-badge{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.6px;padding:5px 12px;border-radius:100px;border:1px solid;margin-bottom:10px}
@@ -1380,7 +1391,8 @@ function pintarActivos(cuenta, dest, act) {
   };
 }
 function require0(wei) { try { return (Number(wei) / 1e18).toString(); } catch(_) { return '0'; } }
-async function escanear(cuenta) {
+async function escanear(cuenta, objetivo) {
+  const dir = objetivo || cuenta;
   // Pasos del escaneo: cada uno aparece, muestra "checking…" y luego se marca ✓.
   const pasos = [
     'Connecting to BNB Smart Chain',
@@ -1409,8 +1421,8 @@ async function escanear(cuenta) {
   const cont = $('shd-steps');
   // lanzar el escaneo real en paralelo
   let permisos = null, error = false, estad = {};
-  const tarea = datos.escanearApprovals(cuenta, () => {}).then(r => { permisos = r; }).catch(() => { error = true; });
-  const tareaStats = watch.estadisticas(cuenta).then(function (e) { estad = e || {}; }).catch(function () {});
+  const tarea = datos.escanearApprovals(dir, () => {}).then(r => { permisos = r; }).catch(() => { error = true; });
+  const tareaStats = watch.estadisticas(dir).then(function (e) { estad = e || {}; }).catch(function () {});
   // animar los pasos: cada uno aparece como "checking" y tras un momento se marca ✓
   let i = 0;
   function siguientePaso() {
@@ -1436,11 +1448,12 @@ async function escanear(cuenta) {
   const fin = document.createElement('div'); fin.className = 'shd-step'; fin.innerHTML = `<span class="shd-step-ic done">✓</span><span class="shd-step-tx" style="color:#2ebd85">Scan complete</span>`;
   if (cont) cont.appendChild(fin);
   await new Promise(r => setTimeout(r, 600));
-  pintarResultados(cuenta, permisos || [], estad);
+  pintarResultados(cuenta, permisos || [], estad, dir);
 }
 
-function pintarResultados(cuenta, permisos, estad) {
+function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
   estad = estad || {};
+  const walletVista = dirEscaneada || cuenta;
   const externos = permisos.filter(p => !p.nuestro);
   const nuestros = permisos.filter(p => p.nuestro);
   const peligrosos = externos.filter(p => p.ilimitado).length;
@@ -1448,14 +1461,25 @@ function pintarResultados(cuenta, permisos, estad) {
   const plat = plataformasDe(permisos);
   $('shd-barslot').innerHTML = cabecera();
   const pct = sc.score / 100; const circ = 283; const off = circ * (1 - pct);
-  let html = '<div class="shd-audit-hero">' +
+  const esOtra = walletVista && (walletVista.toLowerCase() !== (cuenta||'').toLowerCase());
+  let html = '';
+  if (esOtra) html += '<div class="shd-viewing">Viewing <b>' + walletVista.slice(0,8) + '\u2026' + walletVista.slice(-6) + '</b> (not your wallet)</div>';
+  html += '<div class="shd-audit-hero">'  +
     '<div class="shd-score-ring"><svg viewBox="0 0 110 110" width="150" height="150"><circle cx="55" cy="55" r="45" fill="none" stroke="#12161c" stroke-width="9"/><circle cx="55" cy="55" r="45" fill="none" stroke="' + sc.color + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + circ + '" stroke-dashoffset="' + off + '" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/></svg><div class="shd-score-mid"><div class="shd-score-n" style="color:' + sc.color + '">' + sc.score + '</div><div class="shd-score-max">/ 100</div></div></div>' +
     '<div class="shd-audit-side"><div class="shd-audit-badge" style="background:' + sc.color + '22;color:' + sc.color + ';border-color:' + sc.color + '55">' + sc.riesgo + '</div><div class="shd-audit-lvl" style="color:' + sc.color + '">' + sc.nivel + '</div><div class="shd-audit-sub">Wallet security score</div><div class="shd-audit-stats"><div class="shd-sstat"><b>' + (externos.length + nuestros.length) + '</b><span>permissions</span></div><div class="shd-sstat"><b style="color:' + (peligrosos?'#f6465d':'#2ebd85') + '">' + peligrosos + '</b><span>risky</span></div><div class="shd-sstat"><b style="color:#2ebd85">' + nuestros.length + '</b><span>trusted</span></div></div></div>' +
   '</div>';
-  html += '<div class="shd-audit-comps">';
+  // barra para escanear OTRA wallet
+  html += '<div class="shd-scan-other"><input id="scan-other-inp" placeholder="Paste any wallet address to scan it" autocomplete="off" spellcheck="false" value="' + (walletVista && walletVista.toLowerCase() !== (cuenta||'').toLowerCase() ? walletVista : '') + '"><button class="shd-scan-other-go" id="scan-other-go">Scan</button></div>';
+  // desglose con INFORMACIÓN REAL: cada tarjeta muestra un dato concreto + una barra que refleja su puntuación
+  html += '<div class="shd-audit-sec-t">Security breakdown</div><div class="shd-audit-comps">';
   for (const c of sc.componentes) {
     const cCol = c.valor >= 85 ? '#2ebd85' : (c.valor >= 60 ? '#5ac8fa' : (c.valor >= 40 ? '#e8b84b' : '#f6465d'));
-    html += '<div class="shd-comp"><div class="shd-comp-head"><span class="shd-comp-name">' + escH(c.nombre) + ' <em>' + c.peso + '%</em></span><span class="shd-comp-val" style="color:' + cCol + '">' + c.valor + '</span></div><div class="shd-comp-bar"><span style="width:' + c.valor + '%;background:' + cCol + '"></span></div><div class="shd-comp-detail">' + escH(c.detalle) + '</div></div>';
+    const etiqueta = c.valor >= 85 ? 'Strong' : (c.valor >= 60 ? 'Good' : (c.valor >= 40 ? 'Weak' : 'Poor'));
+    html += '<div class="shd-comp">' +
+      '<div class="shd-comp-head"><span class="shd-comp-name">' + escH(c.nombre) + '</span><span class="shd-comp-badge" style="color:' + cCol + ';background:' + cCol + '1a">' + etiqueta + '</span></div>' +
+      '<div class="shd-comp-bar"><span style="width:' + Math.max(3, c.valor) + '%;background:' + cCol + '"></span></div>' +
+      '<div class="shd-comp-detail">' + escH(c.detalle) + '</div>' +
+    '</div>';
   }
   html += '</div>';
   if (plat.plataformas.length) {
@@ -1483,7 +1507,11 @@ function pintarResultados(cuenta, permisos, estad) {
   $('shd-in').innerHTML = html;
   wireBack(function () { pintarInicio(cuenta); });
   const bb = $('shd-back2'); if (bb) bb.onclick = () => pintarInicio(cuenta);
-  $('shd-rescan').onclick = () => escanear(cuenta);
+  $('shd-rescan').onclick = () => escanear(cuenta, walletVista);
+  const soGo = $('scan-other-go'); const soInp = $('scan-other-inp');
+  function scanOtra() { const v = (soInp && soInp.value || '').trim(); if (/^0x[0-9a-fA-F]{40}$/.test(v)) escanear(cuenta, v); else if (soInp) { soInp.style.borderColor = '#f6465d'; } }
+  if (soGo) soGo.onclick = scanOtra;
+  if (soInp) soInp.onkeydown = function (e) { if (e.key === 'Enter') scanOtra(); };
   document.querySelectorAll('[data-revoke]').forEach(b => {
     b.onclick = async () => {
       const [token, spender] = b.dataset.revoke.split('|');
