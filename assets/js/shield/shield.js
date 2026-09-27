@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
-import * as watch from './shield-watch.js?v=113';
+import * as watch from './shield-watch.js?v=114';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 
@@ -251,16 +251,34 @@ function inyectarCSS() {
   #shd .shd-poison-tip b{color:#eaecef}
   
       /* Actividad enriquecida (Watcher) */
-  #shd .shd-wop2{display:flex;align-items:flex-start;gap:12px;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:11px;padding:12px 14px}
-  #shd .shd-wop-ic{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:800;flex:none}
-  #shd .shd-wop-ic.in{background:rgba(46,189,133,.14);color:#2ebd85} #shd .shd-wop-ic.out{background:rgba(246,70,93,.14);color:#f6465d}
+  #shd .shd-wtab-load{display:inline-block;width:11px;height:11px;border:2px solid rgba(232,184,75,.3);border-top-color:var(--gold,#E8B84B);border-radius:50%;animation:shdSpin .6s linear infinite;vertical-align:middle;margin-left:4px}
+  #shd .shd-act-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  #shd .shd-act-tabs{display:flex;gap:6px}
+  #shd .shd-act-f{padding:7px 13px;border-radius:100px;border:1px solid #1c232b;background:rgba(255,255,255,.02);color:#a7b0bb;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  #shd .shd-act-f.on{background:rgba(232,184,75,.1);border-color:rgba(232,184,75,.35);color:var(--gold,#E8B84B)}
+  #shd .shd-act-search{display:flex;align-items:center;gap:0;background:rgba(11,14,17,.72);border:1px solid #1c232b;border-radius:10px;overflow:hidden;height:38px}
+  #shd .shd-act-search input{background:transparent;border:0;outline:none;color:#eaecef;font-family:inherit;font-size:12.5px;padding:0 12px;width:130px;height:100%}
+  #shd .shd-act-go{background:rgba(232,184,75,.12);border:0;border-left:1px solid #1c232b;color:var(--gold,#E8B84B);cursor:pointer;padding:0 12px;height:100%;display:grid;place-items:center}
+  #shd .shd-wop2{display:flex;align-items:flex-start;gap:13px;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:12px;padding:13px 15px}
+  #shd .shd-wop-logo{position:relative;width:40px;height:40px;border-radius:50%;background:#12161c;display:grid;place-items:center;flex:none;overflow:visible}
+  #shd .shd-wop-logo img{width:40px;height:40px;border-radius:50%;object-fit:cover}
+  #shd .shd-wop-logo-txt{font-weight:800;font-size:12px;color:#a7b0bb}
+  #shd .shd-wop-badge{position:absolute;bottom:-2px;right:-2px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:800;border:2px solid #0b0e12}
+  #shd .shd-wop-badge.in{background:#2ebd85;color:#04140c} #shd .shd-wop-badge.out{background:#f6465d;color:#fff}
   #shd .shd-wop2-info{flex:1;min-width:0}
   #shd .shd-wop2-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  #shd .shd-wop2-top b{font-size:14px;font-weight:700} #shd .shd-wop2-top b.pos{color:#2ebd85} #shd .shd-wop2-top b.neg{color:#f6465d}
+  #shd .shd-wop2-top b{font-size:15px;font-weight:700} #shd .shd-wop2-top b.pos{color:#2ebd85} #shd .shd-wop2-top b.neg{color:#f6465d}
   #shd .shd-wop2-date{font-size:11px;color:#79838f}
-  #shd .shd-wop2-flow{font-size:12px;color:#a7b0bb;font-family:var(--mono,monospace);margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  #shd .shd-wop-scan{font-size:11px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.3);border-radius:6px;padding:2px 7px}
-  /* desplegable poison enriquecido */
+  #shd .shd-wop2-addrs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px;font-family:var(--mono,monospace);font-size:11.5px;color:#a7b0bb}
+  #shd .shd-wop2-addr{display:flex;align-items:center;gap:5px} #shd .shd-wop2-addr small{color:#5f6b7a;font-family:var(--display,sans-serif);font-size:10px;text-transform:uppercase}
+  #shd .shd-wop2-arrow{color:var(--gold,#E8B84B);font-weight:800}
+  #shd .shd-wop2-copy{background:none;border:0;color:#79838f;cursor:pointer;padding:1px;font-size:12px}
+  #shd .shd-wop2-copy:hover{color:var(--gold,#E8B84B)}
+  #shd .shd-wop2-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+  #shd .shd-wop2-scan{font-size:10.5px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.28);border-radius:7px;padding:3px 8px}
+  #shd .shd-wop2-scan:hover{background:rgba(232,184,75,.08)}
+  @media(max-width:560px){ #shd .shd-act-bar{flex-direction:column;align-items:stretch} #shd .shd-act-search{width:100%} #shd .shd-act-search input{flex:1;width:auto} #shd .shd-wop2-addrs{flex-direction:column;align-items:flex-start;gap:4px} #shd .shd-wop2-arrow{display:none} }
+    /* desplegable poison enriquecido */
   #shd .shd-poison-drow-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
   #shd .shd-poison-drow-meta{font-size:11px;color:#79838f;font-family:var(--mono,monospace);margin-top:5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
   #shd .shd-poison-dscan{font-size:10.5px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.3);border-radius:6px;padding:2px 6px}
@@ -818,9 +836,14 @@ function pintarWatcher(cuenta) {
       const datos_ = await watch.tokensDe(addr);
       pintarWatchRes(cuenta, addr, datos_, []);
       // cargar en segundo plano: historial, stats y pnl (no bloquean la vista)
+      // marcar el tab Activity como cargando mientras llega el historial amplio
+      (function () { const c = document.querySelector('[data-wt="hist"]'); if (c) c.innerHTML = 'Activity <span class="shd-wtab-load"></span>'; })();
       watch.historialAmplio(addr).then(function (h) {
         window._shdHist = h;
         const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (' + h.length + ')';
+        // si el tab de activity está abierto, repintarlo ahora que hay datos
+        const tabH = document.querySelector('[data-wt="hist"]');
+        if (tabH && tabH.classList.contains('on')) { const pane = $('watch-pane'); if (pane) pane.innerHTML = h.length ? '<div class="shd-wops">' + h.map(filaOp).join('') + '</div>' : '<div class="shd-empty">No activity found.</div>'; wireOpBtns(); }
         // marcar tokens recientes con el historial y repintar la lista de tokens si está visible
         try {
           watch.marcarRecientes(addr, datos_.tokens, h);
@@ -837,6 +860,7 @@ function pintarWatcher(cuenta) {
 }
 function pintarWatchRes(cuenta, addr, d, hist) {
   const esPropia = cuenta && addr && cuenta.toLowerCase() === addr.toLowerCase();
+  window._watchAddr = addr;
   const cont = $('watch-res');
   const corta = addr.slice(0,6)+'…'+addr.slice(-4);
   const siguiendo = watch.estaSiguiendo(addr);
@@ -865,21 +889,48 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       (corta ? ('<div class="shd-wtok-contract"><span class="shd-wtok-addr">' + corta + '</span>' + copiar + scan + '</div>') : '') +
     '</div>';
   };
+  function fmtNum(n) {
+    n = Number(n) || 0;
+    if (n === 0) return '0';
+    const abs = Math.abs(n);
+    if (abs >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    if (abs >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    if (abs >= 0.0001) return n.toLocaleString(undefined, { maximumFractionDigits: 6 });
+    return n.toExponential(2);
+  }
   const filaOp = (o) => {
     const fecha = o.ts > 0 ? new Date(o.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-    const cant = o.cantidad.toLocaleString(undefined,{maximumFractionDigits:6});
-    const corta = o.contraparte ? (o.contraparte.slice(0,8) + '\u2026' + o.contraparte.slice(-6)) : '';
+    const cant = fmtNum(o.cantidad);
     const entra = o.tipo === 'in';
-    const dir = entra ? ('Received from ' + corta) : ('Sent to ' + corta);
-    const icono = entra
-      ? '<div class="shd-wop-ic in">\u2193</div>'
-      : '<div class="shd-wop-ic out">\u2191</div>';
-    const scan = o.hash ? ('<a href="https://bscscan.com/tx/' + o.hash + '" target="_blank" rel="noopener" class="shd-wop-scan">BscScan \u2197</a>') : '';
-    return '<div class="shd-wop2">' + icono +
-      '<div class="shd-wop2-info"><div class="shd-wop2-top"><b class="' + (entra?'pos':'neg') + '">' + (entra?'+':'\u2212') + cant + ' ' + escH(o.symbol||'') + '</b>' + (fecha ? '<span class="shd-wop2-date">' + fecha + '</span>' : '') + '</div>' +
-      '<div class="shd-wop2-flow">' + dir + ' ' + scan + '</div></div>' +
+    const sym = escH(o.symbol || '');
+    const ini3 = (o.symbol || '?').slice(0,3).toUpperCase();
+    // logo del token (si el historial trae la dirección del token)
+    const logoUrl = o.tokenLogo || null;
+    const ic = logoUrl
+      ? ('<div class="shd-wop-logo"><img src="' + logoUrl + '" onerror="this.style.display=\'none\';this.parentElement.childNodes[0].textContent=\''+ini3+'\'">' + '<span class="shd-wop-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>')
+      : ('<div class="shd-wop-logo"><span class="shd-wop-logo-txt">' + ini3 + '</span><span class="shd-wop-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>');
+    // las dos direcciones: from y to (una es la wallet observada, la otra la contraparte)
+    const wObs = window._watchAddr || '';
+    const from = entra ? (o.contraparte || '') : wObs;
+    const to = entra ? wObs : (o.contraparte || '');
+    const cortaF = from ? (from.slice(0,8) + '\u2026' + from.slice(-6)) : '\u2014';
+    const cortaT = to ? (to.slice(0,8) + '\u2026' + to.slice(-6)) : '\u2014';
+    return '<div class="shd-wop2">' + ic +
+      '<div class="shd-wop2-info">' +
+        '<div class="shd-wop2-top"><b class="' + (entra?'pos':'neg') + '">' + (entra?'+':'\u2212') + cant + ' ' + sym + '</b>' + (fecha ? '<span class="shd-wop2-date">' + fecha + '</span>' : '') + '</div>' +
+        '<div class="shd-wop2-addrs">' +
+          '<span class="shd-wop2-addr"><small>from</small> ' + cortaF + ' <button class="shd-wop2-copy" data-wcopy="' + from + '">\u29c9</button></span>' +
+          '<span class="shd-wop2-arrow">\u2192</span>' +
+          '<span class="shd-wop2-addr"><small>to</small> ' + cortaT + ' <button class="shd-wop2-copy" data-wcopy="' + to + '">\u29c9</button></span>' +
+        '</div>' +
+        '<div class="shd-wop2-actions">' +
+          '<a href="https://bscscan.com/tx/' + (o.hash||'') + '" target="_blank" rel="noopener" class="shd-wop2-scan">Transaction \u2197</a>' +
+          '<a href="https://bscscan.com/address/' + from + '" target="_blank" rel="noopener" class="shd-wop2-scan">Sender \u2197</a>' +
+          '<a href="https://bscscan.com/address/' + to + '" target="_blank" rel="noopener" class="shd-wop2-scan">Receiver \u2197</a>' +
+        '</div>' +
+      '</div>' +
     '</div>';
-  };;
+  };;;
   cont.innerHTML = `
     <div class="shd-watch-head">
       <div><div class="shd-watch-addr">${corta} <button class="shd-wtok-copy" data-copy="${addr}" title="Copy">⧉</button> <a href="https://bscscan.com/address/${addr}" target="_blank" rel="noopener" class="shd-wtok-scan">BscScan ↗</a></div>
@@ -1017,6 +1068,27 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       setTimeout(function () { modal.remove(); const g = $('watch-go'); if (g) g.click(); }, 800);
     };
   }
+  function wireActFilter(H) {
+    let fTipo = 'all';
+    const inp = document.getElementById('act-search');
+    function aplicar() {
+      const q = (inp && inp.value || '').trim().toLowerCase();
+      const filtradas = H.filter(function (o) {
+        if (fTipo === 'in' && o.tipo !== 'in') return false;
+        if (fTipo === 'out' && o.tipo !== 'out') return false;
+        if (q && (o.symbol || '').toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+      const lst = document.getElementById('act-list');
+      if (lst) { lst.innerHTML = filtradas.length ? filtradas.map(filaOp).join('') : '<div class="shd-empty">No transactions match.</div>'; wireOpBtns(); }
+    }
+    document.querySelectorAll('[data-af]').forEach(function (b) { b.onclick = function () { document.querySelectorAll('[data-af]').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); fTipo = b.dataset.af; aplicar(); }; });
+    const go = document.getElementById('act-go'); if (go) go.onclick = aplicar;
+    if (inp) inp.onkeydown = function (e) { if (e.key === 'Enter') aplicar(); };
+  }
+  function wireOpBtns() {
+    document.querySelectorAll('[data-wcopy]').forEach(function (b) { b.onclick = function () { const v = b.dataset.wcopy; if (!v) return; try { navigator.clipboard.writeText(v); const o = b.textContent; b.textContent = '\u2713'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
+  }
   function wireTokBtns() {
     document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
     document.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function (e) {
@@ -1048,7 +1120,14 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const pane = $('watch-pane');
     if (b.dataset.wt === 'hist') {
       const H = (window._shdHist && window._shdHist.length) ? window._shdHist : hist;
-      pane.innerHTML = H.length ? '<div class="shd-wops">' + H.map(filaOp).join('') + '</div>' : '<div class="shd-empty">Reading activity from the chain… open this tab again in a moment.</div>';
+      if (H.length) {
+        const barra = '<div class="shd-act-bar"><div class="shd-act-tabs"><button class="shd-act-f on" data-af="all">All</button><button class="shd-act-f" data-af="in">Received</button><button class="shd-act-f" data-af="out">Sent</button></div><div class="shd-act-search"><input id="act-search" placeholder="Token symbol"><button class="shd-act-go" id="act-go"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button></div></div>';
+        pane.innerHTML = barra + '<div class="shd-wops" id="act-list">' + H.map(filaOp).join('') + '</div>';
+        wireOpBtns();
+        wireActFilter(H);
+      } else {
+        pane.innerHTML = '<div class="shd-empty">Reading activity from the chain… open this tab again in a moment.</div>';
+      }
     } else {
       pane.innerHTML = paneTokens();
       wireTokTools();

@@ -142,7 +142,10 @@ export async function historialAmplio(addr) {
           let cant = 0;
           if (t.value != null) cant = Number(t.value);
           else if (t.rawValue) { try { cant = Number(ethers.formatUnits(BigInt(t.rawValue), Number(t.decimal) || 18)); } catch (_) {} }
-          ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: t.asset || '?', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), ts: (t.metadata && t.metadata.blockTimestamp) ? new Date(t.metadata.blockTimestamp).getTime() : 0 });
+          let logo = null;
+          const rawCA = t.rawContract && t.rawContract.address ? t.rawContract.address : (t.contractAddress || null);
+          if (rawCA) { try { logo = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/' + ethers.getAddress(rawCA) + '/logo.png'; } catch (_) {} }
+          ops.push({ hash: t.hash, tipo: entra ? 'in' : 'out', symbol: t.asset || '?', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), tokenLogo: logo, ts: (t.metadata && t.metadata.blockTimestamp) ? new Date(t.metadata.blockTimestamp).getTime() : 0 });
         }
         pageKey = res && res.pageKey ? res.pageKey : null;
       } catch (_) { pageKey = null; }
