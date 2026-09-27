@@ -427,3 +427,54 @@ Todo en INGLÉS por defecto. Dark-first. Responsive (móvil: hamburguesa, pero a
   `0x8713F1ABF29fBF912D032eA1c1c60380A8De901f`. La implementación desplegada ya está linkeada.
 - Añadir un DEX o token **sin verificar** su dirección/interfaz es justo lo que causó la
   caída del swap. Verificar siempre antes.
+
+---
+
+## 7. Wallet Shield — Sección de seguridad de wallets (nueva)
+
+Sección "Wallet Shield" (accesible desde el nav → `app.html?abrir=shield`). Ofrece 6 servicios
+de seguridad: Permission Scan, Contract Check, Emergency Evacuation, Wallet Watcher,
+Verify Transaction (hash) y Address Poisoning Checker. El acceso es de pago: $5 en BNB por 30 días.
+
+### Contratos desplegados (BNB Smart Chain Mainnet) — proxy UUPS
+
+| Contrato | Dirección (proxy — usar esta) | Función |
+|---|---|---|
+| **GasFaucet** | `0x71763E9Ad60d3D2Baa833496F8b4f8eeD497B65F` | Pozo de gas: faucet mensual + "pagamos tu gas" en la evacuación de emergencia |
+| **WalletShield** | `0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05` | Cobro del acceso ($5/30 días), reparto de fondos, multi-owner, reportes a Contabilidad |
+
+**Owner inicial:** `0x97e01a1C430E0cC826AcA6e9BE643721e45BCA7d`
+
+Implementaciones (lógica detrás de cada proxy, no se llaman directamente):
+- WalletShield impl: `0x6B6Ab76621bF796eC2EE783019cBe482958Af45E`
+
+### Interconexión (ya ejecutada al desplegar)
+
+1. `WalletShield.setGasFaucet(0x71763E9Ad60d3D2Baa833496F8b4f8eeD497B65F)` ✅
+2. `GasFaucet.setAutorizado(0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05, true)` ✅ (permite al WalletShield pedir cobertura de gas)
+3. `Contabilidad.setReportador(0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05, true)` ✅ (Contabilidad acepta los reportes de cobro)
+
+### Parámetros del cobro (configurables desde el panel admin)
+
+- **Precio:** $5.00 — cambiable con `setPrecioUSD(nuevoUSD)` (2 decimales: $5 = 500, $100 = 10000).
+- **Duración:** 30 días — cambiable con `setDuracion(segundos)`.
+- **Reparto** (bps, suman 10000, cambiable con `setReparto`): owner1 30% ($1.50) · owner2 30% ($1.50) · staking 10% ($0.50) · gas faucet 30% ($1.50).
+- **Owners no pagan**: acceso permanente. Se añaden/quitan con `agregarOwner` / `quitarOwner`; las wallets que reciben el pago se cambian con `setOwnersPago(owner1, owner2)` (siempre owner1 y owner2).
+- El cobro **reporta a Contabilidad** (para el panel admin y el staking) en cada compra.
+
+### GasFaucet — parámetros
+
+- **Faucet general:** ~0.0004 BNB (~$0.25) cada 30 días por wallet (`reclamarFaucet`). Configurable: `setMontoFaucet`, `setCooldownFaucet`.
+- **"Pagamos tu gas"** en la evacuación de emergencia (`cubrirGas`, solo lo llama un contrato autorizado): hasta 0.0015 BNB, **1 vez/semana** por wallet, **gas dinámico** (lo que pida la red, con tope). **Fallback**: si el pozo está vacío devuelve 0 y el usuario paga su propio gas. Configurable: `setMaxGasCover`, `setCooldownGasCover`.
+- Se **nutre** desde el WalletShield (parte del cobro) y desde cualquier otra fuente futura (`nutrir` / receive).
+
+### Direcciones del ecosistema usadas en el constructor
+- Oráculo (precio BNB/USD): `0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3`
+- Contabilidad: `0x7FdE85E0bD53208F380980cfE317A9D4982434Ab`
+- Staking: `0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4`
+
+### Pendiente de Wallet Shield
+- Conectar el **frontend** al contrato: cobrar los $5 (llamar `comprarAcceso`) al tocar "Connect your wallet".
+- Gas faucet y "pagamos tu gas" desde la interfaz.
+- Añadir al **panel admin** el control de este contrato (cambiar precio, owners, ver ingresos).
+- El scanner de permisos usa **NodeReal** (`eth_getLogs`, ventanas de 10.000 bloques) porque BscScan API está descontinuada. Key de NodeReal en `shield-watch.js` / `shield-datos.js`.
