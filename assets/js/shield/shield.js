@@ -2,7 +2,7 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=100';
+import * as datos from './shield-datos.js?v=101';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=100';
 import { plataformasDe } from './shield-platforms.js?v=1';
@@ -521,6 +521,13 @@ function inyectarCSS() {
   #shd .shd-scan-other-go:hover{filter:brightness(1.06)}
   #shd .shd-comp-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:100px;text-transform:uppercase;letter-spacing:.4px}
   @media(max-width:560px){ #shd .shd-scan-other{flex-direction:column;align-items:stretch} #shd .shd-scan-other-go{width:100%} }
+  
+    /* Datos duros del diagnóstico */
+  #shd .shd-found{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:6px}
+  #shd .shd-found-cell{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:12px;padding:16px 12px;text-align:center}
+  #shd .shd-found-cell b{display:block;font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  #shd .shd-found-cell span{font-size:11px;color:#79838f;margin-top:5px;display:block}
+  @media(max-width:560px){ #shd .shd-found{grid-template-columns:1fr 1fr} }
   
   /* Diagnóstico premium (auditoría) */
   #shd .shd-audit-hero{display:flex;align-items:center;gap:30px;background:linear-gradient(135deg,rgba(20,26,33,.92),rgba(10,14,18,.92));border:1px solid #232d38;border-radius:18px;padding:26px 30px;margin-bottom:16px}
@@ -1465,7 +1472,7 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
   const pct = sc.score / 100; const circ = 283; const off = circ * (1 - pct);
   const esOtra = walletVista && (walletVista.toLowerCase() !== (cuenta||'').toLowerCase());
   let html = '';
-  if (esOtra) html += '<div class="shd-viewing"><span class="shd-viewing-ic">\ud83d\udd0d</span><div><small>You are scanning another wallet</small><b>' + walletVista.slice(0,10) + '\u2026' + walletVista.slice(-8) + '</b></div></div>';
+  if (esOtra) html += '<div class="shd-viewing"><span class="shd-viewing-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6aa8f0" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><div><small>You are scanning another wallet</small><b>' + walletVista.slice(0,10) + '\u2026' + walletVista.slice(-8) + '</b></div></div>';
   html += '<div class="shd-audit-hero">'  +
     '<div class="shd-score-ring"><svg viewBox="0 0 110 110" width="150" height="150"><circle cx="55" cy="55" r="45" fill="none" stroke="#12161c" stroke-width="9"/><circle cx="55" cy="55" r="45" fill="none" stroke="' + sc.color + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + circ + '" stroke-dashoffset="' + off + '" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/></svg><div class="shd-score-mid"><div class="shd-score-n" style="color:' + sc.color + '">' + sc.score + '</div><div class="shd-score-max">/ 100</div></div></div>' +
     '<div class="shd-audit-side"><div class="shd-audit-badge" style="background:' + sc.color + '22;color:' + sc.color + ';border-color:' + sc.color + '55">' + sc.riesgo + '</div><div class="shd-audit-lvl" style="color:' + sc.color + '">' + sc.nivel + '</div><div class="shd-audit-sub">Wallet security score</div><div class="shd-audit-stats"><div class="shd-sstat"><b>' + (externos.length + nuestros.length) + '</b><span>permissions</span></div><div class="shd-sstat"><b style="color:' + (peligrosos?'#f6465d':'#2ebd85') + '">' + peligrosos + '</b><span>risky</span></div><div class="shd-sstat"><b style="color:#2ebd85">' + nuestros.length + '</b><span>trusted</span></div></div></div>' +
@@ -1484,6 +1491,23 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
     '</div>';
   }
   html += '</div>';
+  // ── DATOS DUROS: qué encontramos exactamente ──
+  {
+    const totalPerm = externos.length + nuestros.length;
+    const unl = externos.filter(function(x){return x.ilimitado;}).length;
+    const lim = externos.filter(function(x){return !x.ilimitado;}).length;
+    const items = [
+      { n: totalPerm, l: 'active permission' + (totalPerm!==1?'s':''), c: '#eaecef' },
+      { n: unl, l: 'unlimited approval' + (unl!==1?'s':''), c: unl>0?'#f6465d':'#2ebd85' },
+      { n: lim, l: 'limited approval' + (lim!==1?'s':''), c: lim>0?'#e8b84b':'#2ebd85' },
+      { n: plat.conocidas, l: 'known platform' + (plat.conocidas!==1?'s':''), c: '#2ebd85' },
+      { n: plat.desconocidas, l: 'unknown contract' + (plat.desconocidas!==1?'s':''), c: plat.desconocidas>0?'#f6465d':'#2ebd85' },
+      { n: nuestros.length, l: 'trusted (our platform)', c: '#E8B84B' }
+    ];
+    html += '<div class="shd-audit-sec-t">What we found</div><div class="shd-found">';
+    for (const it of items) { html += '<div class="shd-found-cell"><b style="color:' + it.c + '">' + it.n + '</b><span>' + it.l + '</span></div>'; }
+    html += '</div>';
+  }
   if (plat.plataformas.length) {
     html += '<div class="shd-audit-sec-t">Platforms this wallet has connected to</div><div class="shd-plats">';
     for (const pl of plat.plataformas) {

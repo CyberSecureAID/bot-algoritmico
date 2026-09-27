@@ -62,15 +62,22 @@ export async function escanearApprovals(cuenta, onProgreso) {
     let actual = 0;
     for (const u of RPCS_LOG) { try { const r = await fetch(u, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_blockNumber',params:[]}) }); const d = await r.json(); if (d.result) { actual = parseInt(d.result, 16); break; } } catch(_){} }
     if (actual) {
-      // BSC hace ~28800 bloques/día. Miramos ~90 días hacia atrás en ventanas grandes.
-      const VENT = 45000; const TANDAS = 60;   // ~2.7M bloques (aprox 90+ días)
-      for (let k = 0; k < TANDAS; k++) {
-        const hasta = actual - k * VENT;
-        const desde = hasta - VENT;
-        if (desde < 0) break;
-        const parte = await rpcLogs({ fromBlock: '0x' + desde.toString(16), toBlock: '0x' + hasta.toString(16), topics: [topicApproval, ownerTopic] });
-        if (parte.length) logs = logs.concat(parte);
-        if (logs.length > 400) break;   // suficiente para el análisis
+      // Buscar approvals con un rango amplio pero en POCAS llamadas (rápido).
+      // Al filtrar por topic1 (owner), el resultado es pequeño y el RPC lo maneja
+      // aunque el rango de bloques sea grande. Probamos todo el historial de una;
+      // si el RPC rechaza el rango, caemos a 2 ventanas.
+      let hecho = false;
+      const full = await rpcLogs({ fromBlock: '0x0', toBlock: 'latest', topics: [topicApproval, ownerTopic] });
+      if (Array.isArray(full) && full.length >= 0) { logs = full; hecho = full.length > 0; }
+      // si no vino nada, intentar los últimos ~4M bloques en 2 ventanas
+      if (!hecho) {
+        const VENT = 2000000;
+        for (let k = 0; k < 2; k++) {
+          const hasta = actual - k * VENT; const desde = Math.max(0, hasta - VENT);
+          const parte = await rpcLogs({ fromBlock: '0x' + desde.toString(16), toBlock: '0x' + hasta.toString(16), topics: [topicApproval, ownerTopic] });
+          if (parte.length) logs = logs.concat(parte);
+          if (desde === 0) break;
+        }
       }
     }
   } catch (_) {}
