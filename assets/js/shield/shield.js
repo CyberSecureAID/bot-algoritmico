@@ -59,7 +59,16 @@ function inyectarCSS() {
   #shd .shd-btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:12px 24px;border:1px solid #29313b;border-radius:12px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
   #shd .shd-btn2:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-btn2 svg{stroke:currentColor}
-          /* Faucet de gas */
+            /* Banner de gas de emergencia en la evacuación */
+  #shd .shd-resc-gas{background:linear-gradient(135deg,rgba(90,200,180,.1),rgba(90,200,180,.03));border:1px solid rgba(90,200,180,.3);border-radius:13px;padding:15px 16px;margin-bottom:14px}
+  #shd .shd-resc-gas-t{font-size:14px;font-weight:700;color:#4ec8b4;display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  #shd .shd-resc-gas-t svg{stroke:#4ec8b4}
+  #shd .shd-resc-gas-s{font-size:12.5px;color:#a7b0bb;line-height:1.5;margin-bottom:12px}
+  #shd .shd-resc-gas-btn{padding:10px 18px;border:1px solid rgba(90,200,180,.5);border-radius:10px;background:rgba(90,200,180,.12);color:#4ec8b4;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+  #shd .shd-resc-gas-btn:hover{background:rgba(90,200,180,.2)}
+  #shd .shd-resc-gas-msg{font-size:12.5px;margin-top:10px;min-height:16px}
+  
+  /* Faucet de gas */
   #shd .shd-card-gas{border-color:rgba(90,200,180,.22)}
   #shd .shd-card-gas .shd-card-ic{background:rgba(90,200,180,.1);color:#4ec8b4}
   #shd .shd-card-btn.gas{border-color:rgba(90,200,180,.4);background:rgba(90,200,180,.08);color:#4ec8b4}
@@ -1514,11 +1523,40 @@ function pintarActivos(cuenta, dest, act) {
     return;
   }
   const corta = dest.slice(0,6)+'…'+dest.slice(-4);
+  // ¿el usuario tiene suficiente BNB para el gas de las transferencias?
+  const gasMinimo = 1000000000000000n; // ~0.001 BNB
+  const sinGas = act.nativo < gasMinimo;
+  const bannerGas = sinGas ? `
+    <div class="shd-resc-gas">
+      <div class="shd-resc-gas-t">${IC.gas} You are low on BNB for gas</div>
+      <div class="shd-resc-gas-s">Each transfer needs a little BNB for gas. Claim free gas first so you can move your tokens out.</div>
+      <button class="shd-resc-gas-btn" id="resc-getgas">Get free gas first</button>
+      <div class="shd-resc-gas-msg" id="resc-gas-msg"></div>
+    </div>` : '';
   cont.innerHTML = `
     <div class="shd-resc-dest">Moving everything to <b>${corta}</b></div>
+    ${bannerGas}
     <div class="shd-resc-items">${items}${nativoItem}</div>
     <button class="shd-btn shd-btn-danger" id="resc-go" style="width:100%;margin-top:16px">Move all to safety (${act.tokens.length + (tieneNativo?1:0)} transfers)</button>
     <div class="shd-resc-note">You will sign each transfer in your wallet, one by one. Keep confirming until all are done.</div>`;
+  // wire del botón de gas de emergencia
+  const gg = $('resc-getgas');
+  if (gg) gg.onclick = async () => {
+    const msg = $('resc-gas-msg');
+    gg.style.pointerEvents = 'none'; gg.style.opacity = '.6';
+    if (msg) msg.innerHTML = '<span style="color:#a7b0bb">Confirm in your wallet…</span>';
+    try {
+      await pago.reclamarFaucet();
+      if (msg) msg.innerHTML = '<span style="color:#2ebd85">Gas received. You can move your tokens now.</span>';
+    } catch (e) {
+      gg.style.pointerEvents = ''; gg.style.opacity = '';
+      const err = (e && e.message) || '';
+      if (/EnfriamientoActivo|cooldown/i.test(err)) { if (msg) msg.innerHTML = '<span style="color:#e8b84b">You already claimed gas recently. Use another wallet with a little BNB to send gas here, or wait.</span>'; }
+      else if (/PozoVacio|empty/i.test(err)) { if (msg) msg.innerHTML = '<span style="color:#f6465d">The gas pool is empty right now. You will need a little BNB from another source.</span>'; }
+      else if (/rejected|denied|user/i.test(err)) { if (msg) msg.innerHTML = '<span style="color:#a7b0bb">Cancelled.</span>'; }
+      else { if (msg) msg.innerHTML = '<span style="color:#f6465d">Could not get gas right now. Try again.</span>'; }
+    }
+  };
   $('resc-go').onclick = async () => {
     const btn = $('resc-go'); btn.disabled = true; btn.textContent = 'Moving… confirm in your wallet';
     // mover tokens uno por uno
