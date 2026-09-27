@@ -60,32 +60,47 @@ async function firmante() { return new ethers.BrowserProvider(inyectado()).getSi
    y verifica el allowance ACTUAL on-chain (solo muestra los activos). */
 export async function escanearApprovals(cuenta, onProgreso) {
   if (!cuenta) return [];
-  if (onProgreso) onProgreso(0.2);
-  // Fuente principal: NodeReal nr_getTokenApprovals → todos los approvals de la wallet,
-  // directo, sin escanear bloques ni límites de rango (BscScan API está muerta).
-  let aprobaciones = [];
+  const topicApproval = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925';
+  const ownerTopic = '0x000000000000000000000000' + cuenta.slice(2).toLowerCase();
+  if (onProgreso) onProgreso(0.15);
   let diag = { fuente: '', crudos: 0 };
+
+  // eth_getLogs al RPC de NodeReal (con key): los nodos premium SÍ permiten rangos
+  // amplios para logs filtrados por topic. Es la vía fiable tras la muerte de BscScan.
+  let logs = [];
   try {
-    const res = await nrCall('nr_getTokenApprovals', [{ address: cuenta }]);
-    const arr = Array.isArray(res) ? res : (res && res.approvals ? res.approvals : (res && res.details ? res.details : []));
-    aprobaciones = arr || [];
-    diag.fuente = 'nodereal'; diag.crudos = aprobaciones.length;
-  } catch (e) { diag.fuente = 'nr-fail:' + ((e&&e.message)||'').slice(0,40); }
+    // bloque actual
+    let actual = 0;
+    try { const bn = await nrCall('eth_blockNumber', []); actual = parseInt(bn, 16); } catch (_) {}
+    if (actual) {
+      // NodeReal permite rangos grandes; recorremos en ventanas de 500k (pocas llamadas)
+      const VENT = 500000; const MAXV = 12;
+      for (let k = 0; k < MAXV; k++) {
+        const hasta = actual - k * VENT; const desde = Math.max(0, hasta - VENT);
+        try {
+          const parte = await nrCall('eth_getLogs', [{ fromBlock: '0x' + desde.toString(16), toBlock: '0x' + hasta.toString(16), topics: [topicApproval, ownerTopic] }]);
+          if (Array.isArray(parte) && parte.length) logs = logs.concat(parte);
+        } catch (e) { diag.err = ((e&&e.message)||'').slice(0,50); }
+        if (desde === 0) break;
+        if (logs.length > 300) break;
+      }
+      diag.fuente = 'nodereal-logs';
+    } else { diag.fuente = 'no-block'; }
+  } catch (e) { diag.fuente = 'fail:' + ((e&&e.message)||'').slice(0,40); }
+  diag.crudos = logs.length;
   if (onProgreso) onProgreso(0.5);
 
-  // deduplicar por (token, spender) y quedarnos con la info
+  // deduplicar por (token, spender)
   const pares = new Map();
-  for (const a of aprobaciones) {
-    const token = (a.tokenAddress || a.contractAddress || a.token || '').toLowerCase();
-    const spender = (a.spender || a.spenderAddress || a.approvedSpender || '').toLowerCase();
+  for (const log of logs) {
+    const token = (log.address || '').toLowerCase();
+    const spender = log.topics && log.topics[2] ? ('0x' + log.topics[2].slice(26)).toLowerCase() : null;
     if (!token || !spender) continue;
-    // NodeReal suele dar el allowance actual; guardamos lo que venga
-    let allowRaw = a.allowance || a.approvedAmount || a.value || a.amount || null;
-    pares.set(token + ':' + spender, { token, spender, allowRaw, symbol: a.tokenSymbol || a.symbol || null, decimals: (a.tokenDecimals != null ? Number(a.tokenDecimals) : null) });
+    pares.set(token + ':' + spender, { token, spender });
   }
   if (onProgreso) onProgreso(0.6);
 
-  // verificar el allowance ACTUAL on-chain (fiable) + símbolo/decimales
+  // verificar el allowance ACTUAL on-chain
   const lista = [...pares.values()];
   const activos = [];
   const prov = lector();
@@ -96,8 +111,8 @@ export async function escanearApprovals(cuenta, onProgreso) {
         const c = new ethers.Contract(p.token, ABI_ERC20, prov);
         const [allow, sym, dec] = await Promise.all([
           c.allowance(cuenta, p.spender),
-          p.symbol ? Promise.resolve(p.symbol) : c.symbol().catch(() => '?'),
-          p.decimals != null ? Promise.resolve(p.decimals) : c.decimals().catch(() => 18)
+          c.symbol().catch(() => '?'),
+          c.decimals().catch(() => 18)
         ]);
         if (allow === 0n) return null;
         return {
@@ -121,7 +136,6 @@ export async function escanearApprovals(cuenta, onProgreso) {
   return activos;
 }
 
-/* ── Revocar un permiso: approve(spender, 0). Lo firma el usuario. ── */
 export async function revocar(token, spender) {
   const c = new ethers.Contract(token, ABI_ERC20, await firmante());
   const tx = await c.approve(spender, 0);
