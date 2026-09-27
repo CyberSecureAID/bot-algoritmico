@@ -26,6 +26,19 @@ const ABI_ERC20 = [
   'function balanceOf(address) view returns (uint256)'
 ];
 const MAX_UINT = (2n ** 256n) - 1n;
+const RPCS_LOG = ['https://bsc-dataseed.binance.org','https://bsc-dataseed1.defibit.io','https://bsc.publicnode.com','https://binance.llamarpc.com'];
+async function rpcLogs(params) {
+  for (const url of RPCS_LOG) {
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [params] }), signal: ctrl.signal });
+      clearTimeout(to);
+      const d = await r.json();
+      if (Array.isArray(d.result)) return d.result;
+    } catch (_) {}
+  }
+  return [];
+}
 
 let _rpc;
 function lector() { if (!_rpc) _rpc = new ethers.JsonRpcProvider(RPCS[0], 56, { staticNetwork: true }); return _rpc; }
@@ -41,13 +54,25 @@ export async function escanearApprovals(cuenta, onProgreso) {
   //    topic0 = keccak(Approval(address,address,uint256)), topic1 = owner
   const topicApproval = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925';
   const ownerTopic = '0x000000000000000000000000' + cuenta.slice(2).toLowerCase();
-  const url = `${BSCSCAN}?module=logs&action=getLogs&fromBlock=0&toBlock=latest&topic0=${topicApproval}&topic1=${ownerTopic}&apikey=${BSCSCAN_KEY}`;
+  // eth_getLogs al RPC público (BscScan API está descontinuada). Recorremos en
+  // ventanas de bloques porque los RPC limitan el rango por llamada.
   let logs = [];
   try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
-    const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(to);
-    const d = await r.json();
-    if (d.status === '1' && Array.isArray(d.result)) logs = d.result;
+    // bloque actual
+    let actual = 0;
+    for (const u of RPCS_LOG) { try { const r = await fetch(u, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_blockNumber',params:[]}) }); const d = await r.json(); if (d.result) { actual = parseInt(d.result, 16); break; } } catch(_){} }
+    if (actual) {
+      // BSC hace ~28800 bloques/día. Miramos ~90 días hacia atrás en ventanas grandes.
+      const VENT = 45000; const TANDAS = 60;   // ~2.7M bloques (aprox 90+ días)
+      for (let k = 0; k < TANDAS; k++) {
+        const hasta = actual - k * VENT;
+        const desde = hasta - VENT;
+        if (desde < 0) break;
+        const parte = await rpcLogs({ fromBlock: '0x' + desde.toString(16), toBlock: '0x' + hasta.toString(16), topics: [topicApproval, ownerTopic] });
+        if (parte.length) logs = logs.concat(parte);
+        if (logs.length > 400) break;   // suficiente para el análisis
+      }
+    }
   } catch (_) {}
   if (onProgreso) onProgreso(0.35);
 
