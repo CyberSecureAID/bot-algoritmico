@@ -642,14 +642,8 @@ function pintarConectar() {
     <div class="shd-portada">
       <img class="shd-portada-hero" src="${IMG}shield-hero.webp" alt="">
       <h1 class="shd-portada-title"><span class="g">Protect</span> your wallet</h1>
-      <p class="shd-portada-p">One drained wallet costs everything. Wallet Shield finds the hidden permissions, fake addresses and risky contracts that thieves use, and shuts them down before they reach your funds. The same protection the pros pay hundreds for, in one place.</p>
-      <p class="shd-portada-cost"><b>Unlock every tool for 30 days for just $5 in BNB.</b> Less than a coffee to keep your whole wallet safe. Payment is taken when you connect.</p>
-      <div class="shd-portada-cards">
-        <div class="shd-pcard" data-tilt><img src="${IMG}shield-scan.webp" alt=""><b>Permission scanner</b><span>Detect risky approvals and permissions.</span></div>
-        <div class="shd-pcard" data-tilt><img src="${IMG}shield-health.webp" alt=""><b>Health score</b><span>See your wallet's security level.</span></div>
-        <div class="shd-pcard" data-tilt><img src="${IMG}shield-contract.webp" alt=""><b>Contract checker</b><span>Verify contracts before you sign.</span></div>
-        <div class="shd-pcard" data-tilt><img src="${IMG}shield-revoke.webp" alt=""><b>One-tap revoke</b><span>Remove threats instantly.</span></div>
-      </div>
+      <p class="shd-portada-p">Most wallets are not hacked. They are quietly given away, through an old permission you forgot, a fake address, or a contract you signed without reading. Wallet Shield is your personal security team: it scans your wallet, exposes every hidden threat, and lets you shut it down in one tap. See exactly what is putting your funds at risk, in seconds, even if you have never done this before.</p>
+      <p class="shd-portada-cost"><b>Full access for 30 days for $5 in BNB.</b> Auditors charge hundreds for this. Here it is one small payment, taken only when you connect.</p>
       <button class="shd-connect-btn" id="shd-conn"><img src="${IMG}shield-connect.webp" alt="Connect your wallet"></button>
     </div>`;
   wireBack();
