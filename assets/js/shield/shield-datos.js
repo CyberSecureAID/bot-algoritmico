@@ -73,32 +73,25 @@ export async function escanearApprovals(cuenta, onProgreso) {
     let actual = 0;
     try { const bn = await nrCall('eth_blockNumber', []); actual = parseInt(bn, 16); } catch (_) {}
     if (actual) {
-      diag.fuente = 'nodereal-logs'; diag.bloqueActual = actual;
-      // Detectar el tamaño de ventana que NodeReal acepta: probar de mayor a menor.
-      // Muchos planes limitan a 50000, 10000 o 5000 bloques por eth_getLogs.
-      const TAMANOS = [50000, 10000, 5000];
-      let VENT = 0;
-      for (const t of TAMANOS) {
-        try {
-          const prueba = await nrCall('eth_getLogs', [{ fromBlock: '0x' + (actual - t).toString(16), toBlock: '0x' + actual.toString(16), topics: [topicApproval, ownerTopic] }]);
-          VENT = t; diag.ventana = t;
-          if (Array.isArray(prueba) && prueba.length) logs = logs.concat(prueba);
-          break;
-        } catch (e) { diag.errPrueba = ((e&&e.message)||'').slice(0,60); }
+      // NodeReal acepta 10000 bloques por eth_getLogs. Recorremos hacia atrás en
+      // ventanas de 10k en paralelo (por lotes) para que sea rápido. Cubrimos ~4M
+      // bloques (unos 5 meses), suficiente para los approvals vigentes.
+      const VENT = 10000; const TOTAL_VENTANAS = 400;   // 4M bloques
+      const rangos = [];
+      for (let k = 0; k < TOTAL_VENTANAS; k++) {
+        const hasta = actual - k * VENT; const desde = hasta - VENT;
+        if (desde < 0) break;
+        rangos.push({ desde, hasta });
       }
-      if (!VENT) { diag.fuente = 'all-windows-failed'; }
-      else {
-        // recorrer hacia atrás con la ventana que funcionó (limitado para no tardar)
-        const MAXV = Math.min(200, Math.ceil(4000000 / VENT));
-        for (let k = 1; k < MAXV; k++) {
-          const hasta = actual - k * VENT; const desde = Math.max(0, hasta - VENT);
-          try {
-            const parte = await nrCall('eth_getLogs', [{ fromBlock: '0x' + desde.toString(16), toBlock: '0x' + hasta.toString(16), topics: [topicApproval, ownerTopic] }]);
-            if (Array.isArray(parte) && parte.length) logs = logs.concat(parte);
-          } catch (_) {}
-          if (desde === 0) break;
-          if (logs.length > 300) break;
-        }
+      // ejecutar en lotes de 8 llamadas paralelas
+      for (let i = 0; i < rangos.length; i += 8) {
+        const lote = rangos.slice(i, i + 8);
+        const resultados = await Promise.all(lote.map(function (r) {
+          return nrCall('eth_getLogs', [{ fromBlock: '0x' + r.desde.toString(16), toBlock: '0x' + r.hasta.toString(16), topics: [topicApproval, ownerTopic] }]).catch(function () { return []; });
+        }));
+        for (const parte of resultados) { if (Array.isArray(parte) && parte.length) logs = logs.concat(parte); }
+        if (onProgreso) onProgreso(0.15 + 0.3 * (i / rangos.length));
+        if (logs.length > 400) break;
       }
     } else { diag.fuente = 'no-block'; }
   } catch (e) { diag.fuente = 'fail:' + ((e&&e.message)||'').slice(0,40); }

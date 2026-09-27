@@ -2,7 +2,7 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=105';
+import * as datos from './shield-datos.js?v=106';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=100';
 import { plataformasDe } from './shield-platforms.js?v=1';
@@ -1535,8 +1535,6 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
     if (nuestros.length) { html += '<div class="shd-group-t trust">\u2713 Trusted \u00b7 Cripto Cuba</div>' + nuestros.map(filaPerm).join(''); }
   }
   html += '<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you do not recognise or no longer use.</div>';
-  // DIAGNÓSTICO temporal: qué encontró el escaneo real
-  try { const dg = window._scanDiag || {}; html += '<div style="margin-top:14px;padding:12px 14px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.25);border-radius:10px;font-size:11.5px;color:#a7b0bb;font-family:var(--mono,monospace);line-height:1.7;word-break:break-all">DIAGNOSTIC:<br>Source: ' + (dg.fuente||'-') + '<br>Current block: ' + (dg.bloqueActual||'-') + '<br>Window that worked: ' + (dg.ventana||'none') + '<br>Test error: ' + (dg.errPrueba||'none') + '<br>Raw logs: ' + (dg.crudos!=null?dg.crudos:'-') + '<br>Active permissions: ' + (dg.permisosActivos!=null?dg.permisosActivos:'-') + '</div>'; } catch(_){}
   $('shd-in').innerHTML = html;
   wireBack(function () { pintarInicio(cuenta); });
   const bb = $('shd-back2'); if (bb) bb.onclick = () => pintarInicio(cuenta);
