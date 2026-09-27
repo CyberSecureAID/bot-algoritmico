@@ -139,16 +139,26 @@ export async function historialAmplio(addr) {
         const trs = res && res.transfers ? res.transfers : [];
         for (const t of trs) {
           const entra = campo === 'toAddress';
-          // decimales del token: de rawContract.decimal (hex) o t.decimal
+          // decimales del token
           let dec = 18;
           if (t.rawContract && t.rawContract.decimal != null) { try { dec = parseInt(t.rawContract.decimal, 16); } catch (_) {} }
           else if (t.decimal != null) { dec = Number(t.decimal); }
-          if (!dec && dec !== 0) dec = 18;
-          // cantidad SIEMPRE desde el raw dividido por los decimales (evita números gigantes)
+          if (dec == null || isNaN(dec)) dec = 18;
+          // NodeReal nr_getAssetTransfers devuelve 'value' YA en decimal (p.ej. 3.53).
+          // Preferimos value; solo si no viene, dividimos el raw por los decimales.
           let cant = 0;
-          const raw = (t.rawContract && t.rawContract.rawValue) ? t.rawContract.rawValue : (t.rawValue || null);
-          if (raw) { try { cant = Number(ethers.formatUnits(BigInt(raw), dec)); } catch (_) { cant = 0; } }
-          else if (t.value != null) { cant = Number(t.value); }   // value ya formateado (fallback)
+          if (t.value != null && t.value !== '') {
+            cant = Number(t.value);
+          } else {
+            const raw = (t.rawContract && t.rawContract.rawValue) ? t.rawContract.rawValue : (t.rawValue || null);
+            if (raw) { try { cant = Number(ethers.formatUnits(BigInt(raw), dec)); } catch (_) { cant = 0; } }
+          }
+          // salvavidas: si el número es absurdamente grande (no se dividió), corregir con decimales
+          if (cant > 1e12) {
+            const raw2 = (t.rawContract && t.rawContract.rawValue) ? t.rawContract.rawValue : (t.rawValue || null);
+            if (raw2) { try { cant = Number(ethers.formatUnits(BigInt(raw2), dec)); } catch (_) {} }
+            else { cant = cant / Math.pow(10, dec); }
+          }
           let logo = null;
           const rawCA = t.rawContract && t.rawContract.address ? t.rawContract.address : (t.contractAddress || null);
           if (rawCA) { try { logo = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/' + ethers.getAddress(rawCA) + '/logo.png'; } catch (_) {} }

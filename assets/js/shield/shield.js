@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
-import * as watch from './shield-watch.js?v=116';
+import * as watch from './shield-watch.js?v=117';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 
@@ -256,6 +256,25 @@ function inyectarCSS() {
   #shd .shd-act-loading{text-align:center;padding:40px 20px}
   #shd .shd-act-spin{width:34px;height:34px;border:3px solid rgba(232,184,75,.2);border-top-color:var(--gold,#E8B84B);border-radius:50%;animation:shdSpin .7s linear infinite;margin:0 auto 14px}
   #shd .shd-act-loadtx{font-size:13px;color:#a7b0bb}
+  
+    /* Tarjeta de actividad v3 (bien distribuida) */
+  #shd .shd-wop3{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:12px;padding:14px 16px;margin-bottom:9px}
+  #shd .shd-wop3-head{display:flex;align-items:center;gap:13px;margin-bottom:12px}
+  #shd .shd-wop3-amt{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  #shd .shd-wop3-amt b{font-size:16px;font-weight:700} #shd .shd-wop3-amt b.pos{color:#2ebd85} #shd .shd-wop3-amt b.neg{color:#f6465d}
+  #shd .shd-wop3-date{font-size:11.5px;color:#79838f;white-space:nowrap}
+  #shd .shd-wop3-body{padding-left:53px}
+  #shd .shd-wop3-route{display:flex;align-items:center;gap:12px;margin-bottom:11px;flex-wrap:wrap}
+  #shd .shd-wop3-node{display:flex;align-items:center;gap:7px;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:9px;padding:8px 11px;flex:1;min-width:130px}
+  #shd .shd-wop3-node span{font-size:9.5px;color:#5f6b7a;font-weight:700}
+  #shd .shd-wop3-node b{font-size:12px;font-family:var(--mono,monospace);color:#c9d2dc;font-weight:600;flex:1}
+  #shd .shd-wop3-node .shd-wop2-copy{color:#79838f;background:none;border:0;cursor:pointer;padding:0}
+  #shd .shd-wop3-node .shd-wop2-copy:hover{color:var(--gold,#E8B84B)}
+  #shd .shd-wop3-sep{color:var(--gold,#E8B84B);font-weight:800;font-size:15px;flex:none}
+  #shd .shd-wop3-links{display:flex;gap:8px;flex-wrap:wrap}
+  #shd .shd-wop3-links a{flex:1;text-align:center;font-size:11px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.28);border-radius:8px;padding:7px 10px;white-space:nowrap}
+  #shd .shd-wop3-links a:hover{background:rgba(232,184,75,.08)}
+  @media(max-width:560px){ #shd .shd-wop3-body{padding-left:0} #shd .shd-wop3-route{flex-direction:column;align-items:stretch;gap:8px} #shd .shd-wop3-sep{transform:rotate(90deg);text-align:center} #shd .shd-wop3-links{flex-direction:column} }
   
   /* Actividad enriquecida (Watcher) */
   #shd .shd-wtab-load{display:inline-block;width:11px;height:11px;border:2px solid rgba(232,184,75,.3);border-top-color:var(--gold,#E8B84B);border-radius:50%;animation:shdSpin .6s linear infinite;vertical-align:middle;margin-left:4px}
@@ -687,7 +706,7 @@ function pintarPoison(cuenta) {
   function wirePoisonCopy() {
     document.querySelectorAll('[data-pcopy]').forEach(function (b) { b.onclick = function () { try { navigator.clipboard.writeText(b.dataset.pcopy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
     const tog = $('poison-list-tog'); const lst = $('poison-list');
-    if (tog && lst) tog.onclick = function () { const ab = lst.style.display === 'none'; lst.style.display = ab ? 'block' : 'none'; tog.textContent = tog.textContent.replace(ab ? '▾' : '▴', ab ? '▴' : '▾'); };
+    if (tog && lst) tog.onclick = function () { const abrir = lst.style.display === 'none'; lst.style.display = abrir ? 'block' : 'none'; tog.textContent = abrir ? 'Hide addresses \u25b4' : ('All ' + document.querySelectorAll('.shd-poison-drow').length + ' addresses \u25be'); };
   }
 }
 function resaltar(addr, pref, suf) {
@@ -701,18 +720,24 @@ function listaDirecciones(info) {
   if (!info.todasContrapartes || !info.todasContrapartes.length) return '';
   const filas = info.todasContrapartes.map(function (c) {
     const corta = c.addr.slice(0,12) + '\u2026' + c.addr.slice(-10);
-    const fecha = c.ts > 0 ? new Date(c.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'date not available';
+    // fecha condicional: 1 transfer => fecha + hora; muchas => solo día/mes/año
+    let fecha = '';
+    if (c.ts > 0) {
+      if (c.veces === 1) fecha = new Date(c.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      else fecha = 'last ' + new Date(c.ts).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
+    }
     const tag = c.esDust ? '<span class="shd-poison-dtag">suspicious dust</span>' : '<span class="shd-poison-rtag">real transfer</span>';
-    const fl = c.tipo === 'in' ? '<span style="color:#2ebd85">last received</span>' : '<span style="color:#f6465d">last sent</span>';
+    const fl = c.tipo === 'in' ? '<span style="color:#2ebd85">received</span>' : '<span style="color:#f6465d">sent</span>';
     return '<div class="shd-poison-drow ' + (c.esDust?'dust':'') + '">' +
       '<div class="shd-poison-drow-l">' +
         '<div class="shd-poison-daddr">' + corta + ' <button class="shd-wtok-copy" data-pcopy="' + c.addr + '">\u29c9</button></div>' +
-        '<div class="shd-poison-drow-meta">' + tag + '<span>' + c.veces + ' transfer' + (c.veces>1?'s':'') + '</span><span>' + fl + '</span><span>' + fecha + '</span></div>' +
+        '<div class="shd-poison-drow-meta">' + tag + '<span>' + c.veces + ' transfer' + (c.veces>1?'s':'') + '</span><span>' + fl + '</span>' + (fecha ? '<span>' + fecha + '</span>' : '') + '</div>' +
       '</div>' +
       '<a href="https://bscscan.com/address/' + c.addr + '" target="_blank" rel="noopener" class="shd-poison-dscan">BscScan \u2197</a>' +
     '</div>';
   }).join('');
-  return '<div class="shd-poison-list-wrap"><button class="shd-poison-list-tog" id="poison-list-tog">All ' + info.todasContrapartes.length + ' addresses \u25be</button><div class="shd-poison-list" id="poison-list" style="display:none">' + filas + '</div></div>';
+  // DESPLEGADO por defecto (display:block, botón dice ocultar)
+  return '<div class="shd-poison-list-wrap"><button class="shd-poison-list-tog" id="poison-list-tog">Hide addresses \u25b4</button><div class="shd-poison-list" id="poison-list" style="display:block">' + filas + '</div></div>';
 }
 function tarjetaPoison(info, numOps) {
   const iconoOk = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -915,33 +940,33 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const entra = o.tipo === 'in';
     const sym = escH(o.symbol || '');
     const ini3 = (o.symbol || '?').slice(0,3).toUpperCase();
-    // logo del token (si el historial trae la dirección del token)
     const logoUrl = o.tokenLogo || null;
     const ic = logoUrl
-      ? ('<div class="shd-wop-logo"><img src="' + logoUrl + '" onerror="this.style.display=\'none\';this.parentElement.childNodes[0].textContent=\''+ini3+'\'">' + '<span class="shd-wop-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>')
+      ? ('<div class="shd-wop-logo"><img src="' + logoUrl + '" onerror="this.style.display=\'none\';this.parentElement.childNodes[0].textContent=\''+ini3+'\'"><span class="shd-wop-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>')
       : ('<div class="shd-wop-logo"><span class="shd-wop-logo-txt">' + ini3 + '</span><span class="shd-wop-badge ' + (entra?'in':'out') + '">' + (entra?'\u2193':'\u2191') + '</span></div>');
-    // las dos direcciones: from y to (una es la wallet observada, la otra la contraparte)
     const wObs = window._watchAddr || '';
     const from = entra ? (o.contraparte || '') : wObs;
     const to = entra ? wObs : (o.contraparte || '');
-    const cortaF = from ? (from.slice(0,8) + '\u2026' + from.slice(-6)) : '\u2014';
-    const cortaT = to ? (to.slice(0,8) + '\u2026' + to.slice(-6)) : '\u2014';
-    return '<div class="shd-wop2">' + ic +
-      '<div class="shd-wop2-info">' +
-        '<div class="shd-wop2-top"><b class="' + (entra?'pos':'neg') + '">' + (entra?'+':'\u2212') + cant + ' ' + sym + '</b>' + (fecha ? '<span class="shd-wop2-date">' + fecha + '</span>' : '') + '</div>' +
-        '<div class="shd-wop2-addrs">' +
-          '<span class="shd-wop2-addr"><small>from</small> ' + cortaF + ' <button class="shd-wop2-copy" data-wcopy="' + from + '">\u29c9</button></span>' +
-          '<span class="shd-wop2-arrow">\u2192</span>' +
-          '<span class="shd-wop2-addr"><small>to</small> ' + cortaT + ' <button class="shd-wop2-copy" data-wcopy="' + to + '">\u29c9</button></span>' +
+    const cortaF = from ? (from.slice(0,6) + '\u2026' + from.slice(-4)) : '\u2014';
+    const cortaT = to ? (to.slice(0,6) + '\u2026' + to.slice(-4)) : '\u2014';
+    return '<div class="shd-wop3">' +
+      '<div class="shd-wop3-head">' + ic +
+        '<div class="shd-wop3-amt"><b class="' + (entra?'pos':'neg') + '">' + (entra?'+':'\u2212') + cant + ' ' + sym + '</b>' + (fecha ? '<span class="shd-wop3-date">' + fecha + '</span>' : '') + '</div>' +
+      '</div>' +
+      '<div class="shd-wop3-body">' +
+        '<div class="shd-wop3-route">' +
+          '<div class="shd-wop3-node"><span>FROM</span><b>' + cortaF + '</b><button class="shd-wop2-copy" data-wcopy="' + from + '">\u29c9</button></div>' +
+          '<div class="shd-wop3-sep">\u2192</div>' +
+          '<div class="shd-wop3-node"><span>TO</span><b>' + cortaT + '</b><button class="shd-wop2-copy" data-wcopy="' + to + '">\u29c9</button></div>' +
         '</div>' +
-        '<div class="shd-wop2-actions">' +
-          '<a href="https://bscscan.com/tx/' + (o.hash||'') + '" target="_blank" rel="noopener" class="shd-wop2-scan">Transaction \u2197</a>' +
-          '<a href="https://bscscan.com/address/' + from + '" target="_blank" rel="noopener" class="shd-wop2-scan">Sender \u2197</a>' +
-          '<a href="https://bscscan.com/address/' + to + '" target="_blank" rel="noopener" class="shd-wop2-scan">Receiver \u2197</a>' +
+        '<div class="shd-wop3-links">' +
+          '<a href="https://bscscan.com/tx/' + (o.hash||'') + '" target="_blank" rel="noopener">Tx \u2197</a>' +
+          '<a href="https://bscscan.com/address/' + from + '" target="_blank" rel="noopener">Sender \u2197</a>' +
+          '<a href="https://bscscan.com/address/' + to + '" target="_blank" rel="noopener">Receiver \u2197</a>' +
         '</div>' +
       '</div>' +
     '</div>';
-  };;;
+  };;;;
   cont.innerHTML = `
     <div class="shd-watch-head">
       <div><div class="shd-watch-addr">${corta} <button class="shd-wtok-copy" data-copy="${addr}" title="Copy">⧉</button> <a href="https://bscscan.com/address/${addr}" target="_blank" rel="noopener" class="shd-wtok-scan">BscScan ↗</a></div>
