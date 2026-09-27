@@ -82,6 +82,7 @@ export async function escanearApprovals(cuenta, onProgreso) {
     }
   } catch (_) {}
   if (onProgreso) onProgreso(0.35);
+  try { window._scanDiag = { logsEncontrados: logs.length }; } catch(_){}
 
   // 2. deduplicar por (token, spender) — el último approval manda
   const pares = new Map();
@@ -120,6 +121,7 @@ export async function escanearApprovals(cuenta, onProgreso) {
     if (onProgreso) onProgreso(0.55 + 0.4 * ((i + 8) / Math.max(lista.length, 1)));
   }
   if (onProgreso) onProgreso(1);
+  try { window._scanDiag = Object.assign(window._scanDiag||{}, { permisosActivos: activos.length }); } catch(_){}
   // ordenar: primero los peligrosos (ilimitados externos), luego el resto, los nuestros al final
   activos.sort((a, b) => {
     if (a.nuestro !== b.nuestro) return a.nuestro ? 1 : -1;

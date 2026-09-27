@@ -2,7 +2,7 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=101';
+import * as datos from './shield-datos.js?v=102';
 import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=100';
 import { plataformasDe } from './shield-platforms.js?v=1';
@@ -1516,7 +1516,12 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
       else if (pl.estado === 'conocido') { est = 'Known & safe'; estCls = 'known'; estIc = '\u2713'; }
       else { est = 'Unknown'; estCls = 'unknown'; estIc = '?'; }
       const nombre = pl.nombre || (pl.addr.slice(0,8) + '\u2026' + pl.addr.slice(-6));
-      html += '<div class="shd-plat ' + estCls + '"><div class="shd-plat-ic">' + (pl.nombre ? escH((pl.nombre[0]||'?').toUpperCase()) : '?') + '</div><div class="shd-plat-info"><b>' + escH(nombre) + '</b><span>' + escH(pl.tipo) + '</span></div><div class="shd-plat-tag ' + estCls + '">' + estIc + ' ' + est + '</div></div>';
+      const cAddr = pl.addr.slice(0,10) + '\u2026' + pl.addr.slice(-8);
+      html += '<div class="shd-plat ' + estCls + '">' +
+        '<div class="shd-plat-ic">' + (pl.nombre ? escH((pl.nombre[0]||'?').toUpperCase()) : '?') + '</div>' +
+        '<div class="shd-plat-info"><b>' + escH(nombre) + '</b><span>' + escH(pl.tipo) + '</span><a class="shd-plat-addr" href="https://bscscan.com/address/' + pl.addr + '" target="_blank" rel="noopener">' + cAddr + ' \u2197</a></div>' +
+        '<div class="shd-plat-tag ' + estCls + '">' + estIc + ' ' + est + '</div>' +
+      '</div>';
     }
     html += '</div>';
     if (plat.desconocidas > 0) html += '<div class="shd-plat-note">' + plat.desconocidas + ' unrecognised contract' + (plat.desconocidas>1?'s':'') + '. If you do not remember using ' + (plat.desconocidas>1?'them':'it') + ', revoke below.</div>';
@@ -1530,6 +1535,8 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
     if (nuestros.length) { html += '<div class="shd-group-t trust">\u2713 Trusted \u00b7 Cripto Cuba</div>' + nuestros.map(filaPerm).join(''); }
   }
   html += '<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you do not recognise or no longer use.</div>';
+  // DIAGNÓSTICO temporal: qué encontró el escaneo real
+  try { const dg = window._scanDiag || {}; html += '<div style="margin-top:14px;padding:12px 14px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.25);border-radius:10px;font-size:11.5px;color:#a7b0bb;font-family:var(--mono,monospace);line-height:1.7">DIAGNOSTIC:<br>Approval logs found on chain: ' + (dg.logsEncontrados!=null?dg.logsEncontrados:'-') + '<br>Active permissions after check: ' + (dg.permisosActivos!=null?dg.permisosActivos:'-') + '<br>Platforms identified: ' + plat.plataformas.length + ' (known ' + plat.conocidas + ', ours ' + plat.nuestras + ', unknown ' + plat.desconocidas + ')</div>'; } catch(_){}
   $('shd-in').innerHTML = html;
   wireBack(function () { pintarInicio(cuenta); });
   const bb = $('shd-back2'); if (bb) bb.onclick = () => pintarInicio(cuenta);
