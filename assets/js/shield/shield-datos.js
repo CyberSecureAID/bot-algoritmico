@@ -9,6 +9,16 @@ const BSCSCAN = 'https://api.bscscan.com/api';
 // API key pública de BscScan (solo lectura). Se puede rotar desde aquí.
 const BSCSCAN_KEY = 'BUS6DPJ84DWQ1N9XCN8PIUHTNFM5TXE2HU';  // BscScan permite lecturas básicas sin key con límite
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed1.ninicoin.io'];
+const NR_KEY = '0b80831c8c694568a11b6d72a580b81b';
+const NR_RPC = 'https://bsc-mainnet.nodereal.io/v1/' + NR_KEY;
+async function nrCall(method, params) {
+  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 20000);
+  const r = await fetch(NR_RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: ctrl.signal });
+  clearTimeout(to);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message || 'nr error');
+  return d.result;
+}
 
 // NUESTROS contratos: los permisos hacia ellos se marcan como CONFIABLES.
 export const NUESTROS = {
@@ -50,52 +60,32 @@ async function firmante() { return new ethers.BrowserProvider(inyectado()).getSi
    y verifica el allowance ACTUAL on-chain (solo muestra los activos). */
 export async function escanearApprovals(cuenta, onProgreso) {
   if (!cuenta) return [];
-  // 1. traer los logs de eventos Approval donde owner = cuenta
-  //    topic0 = keccak(Approval(address,address,uint256)), topic1 = owner
-  const topicApproval = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925';
-  const ownerTopic = '0x000000000000000000000000' + cuenta.slice(2).toLowerCase();
-  // eth_getLogs al RPC público (BscScan API está descontinuada). Recorremos en
-  // ventanas de bloques porque los RPC limitan el rango por llamada.
-  let logs = [];
+  if (onProgreso) onProgreso(0.2);
+  // Fuente principal: NodeReal nr_getTokenApprovals → todos los approvals de la wallet,
+  // directo, sin escanear bloques ni límites de rango (BscScan API está muerta).
+  let aprobaciones = [];
+  let diag = { fuente: '', crudos: 0 };
   try {
-    // bloque actual
-    let actual = 0;
-    for (const u of RPCS_LOG) { try { const r = await fetch(u, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_blockNumber',params:[]}) }); const d = await r.json(); if (d.result) { actual = parseInt(d.result, 16); break; } } catch(_){} }
-    if (actual) {
-      // Buscar approvals con un rango amplio pero en POCAS llamadas (rápido).
-      // Al filtrar por topic1 (owner), el resultado es pequeño y el RPC lo maneja
-      // aunque el rango de bloques sea grande. Probamos todo el historial de una;
-      // si el RPC rechaza el rango, caemos a 2 ventanas.
-      let hecho = false;
-      const full = await rpcLogs({ fromBlock: '0x0', toBlock: 'latest', topics: [topicApproval, ownerTopic] });
-      if (Array.isArray(full) && full.length >= 0) { logs = full; hecho = full.length > 0; }
-      // si no vino nada, intentar los últimos ~4M bloques en 2 ventanas
-      if (!hecho) {
-        const VENT = 2000000;
-        for (let k = 0; k < 2; k++) {
-          const hasta = actual - k * VENT; const desde = Math.max(0, hasta - VENT);
-          const parte = await rpcLogs({ fromBlock: '0x' + desde.toString(16), toBlock: '0x' + hasta.toString(16), topics: [topicApproval, ownerTopic] });
-          if (parte.length) logs = logs.concat(parte);
-          if (desde === 0) break;
-        }
-      }
-    }
-  } catch (_) {}
-  if (onProgreso) onProgreso(0.35);
-  try { window._scanDiag = { logsEncontrados: logs.length }; } catch(_){}
+    const res = await nrCall('nr_getTokenApprovals', [{ address: cuenta }]);
+    const arr = Array.isArray(res) ? res : (res && res.approvals ? res.approvals : (res && res.details ? res.details : []));
+    aprobaciones = arr || [];
+    diag.fuente = 'nodereal'; diag.crudos = aprobaciones.length;
+  } catch (e) { diag.fuente = 'nr-fail:' + ((e&&e.message)||'').slice(0,40); }
+  if (onProgreso) onProgreso(0.5);
 
-  // 2. deduplicar por (token, spender) — el último approval manda
+  // deduplicar por (token, spender) y quedarnos con la info
   const pares = new Map();
-  for (const log of logs) {
-    const token = (log.address || '').toLowerCase();
-    // spender está en topic2
-    const spender = log.topics && log.topics[2] ? ('0x' + log.topics[2].slice(26)).toLowerCase() : null;
+  for (const a of aprobaciones) {
+    const token = (a.tokenAddress || a.contractAddress || a.token || '').toLowerCase();
+    const spender = (a.spender || a.spenderAddress || a.approvedSpender || '').toLowerCase();
     if (!token || !spender) continue;
-    pares.set(token + ':' + spender, { token, spender });
+    // NodeReal suele dar el allowance actual; guardamos lo que venga
+    let allowRaw = a.allowance || a.approvedAmount || a.value || a.amount || null;
+    pares.set(token + ':' + spender, { token, spender, allowRaw, symbol: a.tokenSymbol || a.symbol || null, decimals: (a.tokenDecimals != null ? Number(a.tokenDecimals) : null) });
   }
-  if (onProgreso) onProgreso(0.55);
+  if (onProgreso) onProgreso(0.6);
 
-  // 3. verificar el allowance ACTUAL on-chain (en tandas) y leer símbolo/decimales
+  // verificar el allowance ACTUAL on-chain (fiable) + símbolo/decimales
   const lista = [...pares.values()];
   const activos = [];
   const prov = lector();
@@ -106,10 +96,10 @@ export async function escanearApprovals(cuenta, onProgreso) {
         const c = new ethers.Contract(p.token, ABI_ERC20, prov);
         const [allow, sym, dec] = await Promise.all([
           c.allowance(cuenta, p.spender),
-          c.symbol().catch(() => '?'),
-          c.decimals().catch(() => 18)
+          p.symbol ? Promise.resolve(p.symbol) : c.symbol().catch(() => '?'),
+          p.decimals != null ? Promise.resolve(p.decimals) : c.decimals().catch(() => 18)
         ]);
-        if (allow === 0n) return null; // revocado o sin permiso: no mostrar
+        if (allow === 0n) return null;
         return {
           token: p.token, spender: p.spender, symbol: String(sym), decimals: Number(dec),
           allowance: allow, ilimitado: allow > (MAX_UINT / 2n),
@@ -118,11 +108,11 @@ export async function escanearApprovals(cuenta, onProgreso) {
       } catch (_) { return null; }
     }));
     activos.push(...res.filter(Boolean));
-    if (onProgreso) onProgreso(0.55 + 0.4 * ((i + 8) / Math.max(lista.length, 1)));
+    if (onProgreso) onProgreso(0.6 + 0.35 * ((i + 8) / Math.max(lista.length, 1)));
   }
   if (onProgreso) onProgreso(1);
-  try { window._scanDiag = Object.assign(window._scanDiag||{}, { permisosActivos: activos.length }); } catch(_){}
-  // ordenar: primero los peligrosos (ilimitados externos), luego el resto, los nuestros al final
+  diag.permisosActivos = activos.length;
+  try { window._scanDiag = diag; } catch(_){}
   activos.sort((a, b) => {
     if (a.nuestro !== b.nuestro) return a.nuestro ? 1 : -1;
     if (a.ilimitado !== b.ilimitado) return a.ilimitado ? -1 : 1;
