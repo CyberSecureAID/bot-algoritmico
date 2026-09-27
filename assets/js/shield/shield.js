@@ -55,7 +55,34 @@ function inyectarCSS() {
   #shd .shd-btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:12px 24px;border:1px solid #29313b;border-radius:12px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
   #shd .shd-btn2:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-btn2 svg{stroke:currentColor}
-    /* Cinta de wallet mejorada */
+      /* Banner superior con mármol dorado (header.webp), como los bots */
+  #shd #shd-header-banner{position:fixed;top:0;left:0;right:0;height:300px;z-index:0;pointer-events:none;opacity:.8;background-image:url('assets/portada/img/header.webp');background-size:cover;background-position:center top;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%)}
+  /* Portada de Wallet Shield (según plantilla) */
+  #shd .shd-portada{max-width:900px;margin:0 auto;padding:16px 16px 40px;text-align:center}
+  #shd .shd-portada-hero{display:block;margin:0 auto 4px;max-width:420px;width:70%;height:auto}
+  #shd .shd-portada-title{font-size:clamp(30px,6vw,52px);font-weight:900;margin:0 0 16px;letter-spacing:-.5px;text-shadow:0 2px 0 rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.55)}
+  #shd .shd-portada-title .g{color:var(--gold,#E8B84B);text-shadow:0 2px 0 rgba(120,80,0,.5),0 6px 18px rgba(232,184,75,.25)}
+  #shd .shd-portada-p{font-size:14.5px;color:#c9d2dc;line-height:1.65;max-width:620px;margin:0 auto 14px}
+  #shd .shd-portada-cost{font-size:13.5px;color:#a7b0bb;line-height:1.6;max-width:560px;margin:0 auto 30px}
+  #shd .shd-portada-cost b{color:var(--gold,#E8B84B);font-weight:800}
+  #shd .shd-portada-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px}
+  #shd .shd-pcard{background:linear-gradient(160deg,rgba(20,26,33,.72),rgba(10,14,18,.72));border:1px solid rgba(232,184,75,.18);border-radius:16px;padding:20px 14px;transition:transform .15s ease,box-shadow .2s ease,border-color .2s ease;transform-style:preserve-3d;cursor:default}
+  #shd .shd-pcard:hover{border-color:rgba(232,184,75,.4);box-shadow:0 18px 40px rgba(0,0,0,.5),0 0 0 1px rgba(232,184,75,.15)}
+  #shd .shd-pcard img{width:52px;height:52px;object-fit:contain;margin-bottom:12px;filter:drop-shadow(0 4px 10px rgba(232,184,75,.2))}
+  #shd .shd-pcard b{display:block;font-size:14.5px;font-weight:700;margin-bottom:6px}
+  #shd .shd-pcard span{display:block;font-size:12px;color:#8a95a3;line-height:1.5}
+  /* Botón connect con imagen (zoom hover + clic) */
+  #shd .shd-connect-btn{background:none;border:0;cursor:pointer;padding:0;display:inline-block;transition:transform .18s ease}
+  #shd .shd-connect-btn img{max-width:340px;width:78vw;height:auto;display:block;filter:drop-shadow(0 8px 24px rgba(232,184,75,.28))}
+  #shd .shd-connect-btn:hover{transform:scale(1.045)}
+  #shd .shd-connect-btn:active{transform:scale(.97)}
+  @media(max-width:640px){
+    #shd .shd-portada-cards{grid-template-columns:1fr 1fr;gap:11px}
+    #shd .shd-pcard img{width:44px;height:44px}
+    #shd #shd-header-banner{height:220px}
+  }
+  
+  /* Cinta de wallet mejorada */
   #shd .shd-wallet{display:flex;align-items:stretch;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:14px;padding:0;margin-bottom:18px;overflow:hidden}
   #shd .shd-wcell{flex:1;display:flex;align-items:center;gap:11px;padding:15px 18px;min-width:0}
   #shd .shd-wcenter,#shd .shd-wright{flex-direction:column;align-items:flex-start;gap:3px;justify-content:center}
@@ -575,7 +602,7 @@ export function abrirShield() {
   const cont = document.createElement('div'); cont.id = 'shd';
   document.body.appendChild(cont);
   const cuenta = wallet.cuentaActual && wallet.cuentaActual();
-  cont.innerHTML = `<canvas id="shd-fx" aria-hidden="true"></canvas><div id="shd-barslot"></div><div class="shd-in" id="shd-in"></div>`;
+  cont.innerHTML = `<div id="shd-header-banner"></div><canvas id="shd-fx" aria-hidden="true"></canvas><div id="shd-barslot"></div><div class="shd-in" id="shd-in"></div>`;
   montarParticulas();
   if (!cuenta) { pintarConectar(); return; }
   pintarInicio(cuenta);
@@ -608,22 +635,37 @@ function cabecera() {
 
 function pintarConectar() {
   $('shd-barslot').innerHTML = cabecera();
+  const IMG = 'assets/portada/img/';
   $('shd-in').innerHTML = `
-    <div class="shd-hero" style="padding-top:50px">
-      <h1>Protect your wallet</h1>
-      <p>Wallet Shield scans your wallet for risky permissions, gives you a security score, checks contracts before you sign, and lets you revoke threats, all in one place. Connect your wallet to begin.</p>
-      <div class="shd-feats">
-        <span class="shd-feat">Permission scanner</span>
-        <span class="shd-feat">Health score</span>
-        <span class="shd-feat">Contract checker</span>
-        <span class="shd-feat">One-tap revoke</span>
+    <div class="shd-portada">
+      <img class="shd-portada-hero" src="${IMG}shield-hero.webp" alt="">
+      <h1 class="shd-portada-title"><span class="g">Protect</span> your wallet</h1>
+      <p class="shd-portada-p">Wallet Shield scans your wallet for risky permissions, gives you a security score, checks contracts before you sign, and lets you revoke threats, all in one place.</p>
+      <p class="shd-portada-cost"><b>One payment of $5 in BNB unlocks every tool for 30 full days.</b> Charges apply when you tap connect.</p>
+      <div class="shd-portada-cards">
+        <div class="shd-pcard" data-tilt><img src="${IMG}shield-scan.webp" alt=""><b>Permission scanner</b><span>Detect risky approvals and permissions.</span></div>
+        <div class="shd-pcard" data-tilt><img src="${IMG}shield-health.webp" alt=""><b>Health score</b><span>See your wallet's security level.</span></div>
+        <div class="shd-pcard" data-tilt><img src="${IMG}shield-contract.webp" alt=""><b>Contract checker</b><span>Verify contracts before you sign.</span></div>
+        <div class="shd-pcard" data-tilt><img src="${IMG}shield-revoke.webp" alt=""><b>One-tap revoke</b><span>Remove threats instantly.</span></div>
       </div>
-      <button class="shd-btn" id="shd-conn">Connect wallet</button>
+      <button class="shd-connect-btn" id="shd-conn"><img src="${IMG}shield-connect.webp" alt="Connect your wallet"></button>
     </div>`;
   wireBack();
+  wireTilt();
   $('shd-conn').onclick = async () => { try { await wallet.conectar(); abrirShield(); } catch (_) {} };
 }
 function wireBack(alSalir) { const b = $('shd-back'); if (b) b.onclick = alSalir || cerrar; }
+function wireTilt() {
+  document.querySelectorAll('[data-tilt]').forEach(function (el) {
+    el.onmousemove = function (e) {
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = 'perspective(700px) rotateY(' + (x * 10) + 'deg) rotateX(' + (-y * 10) + 'deg) translateY(-3px)';
+    };
+    el.onmouseleave = function () { el.style.transform = ''; };
+  });
+}
 
 function pintarInicio(cuenta) {
   const info = datos.infoWallet();
