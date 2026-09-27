@@ -4,7 +4,8 @@
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
 import * as datos from './shield-datos.js?v=99';
 import * as wallet from '../wallet.js?v=125';
-import { calcularScore } from './shield-score.js?v=99';
+import { calcularScore } from './shield-score.js?v=100';
+import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=118';
@@ -508,7 +509,34 @@ function inyectarCSS() {
   #shd .shd-btn-danger:active{box-shadow:0 2px 0 #8f1f2e!important}
   #shd .shd-resc-note{font-size:12px;color:#79838f;text-align:center;margin-top:12px;line-height:1.5}
   
-      /* Resultados premium: hero del score */
+        /* Diagnóstico premium (auditoría) */
+  #shd .shd-audit-hero{display:flex;align-items:center;gap:26px;background:linear-gradient(135deg,rgba(20,26,33,.9),rgba(10,14,18,.9));border:1px solid #1c232b;border-radius:18px;padding:24px 26px;margin-bottom:16px}
+  #shd .shd-audit-side{flex:1;min-width:0}
+  #shd .shd-audit-badge{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.6px;padding:5px 12px;border-radius:100px;border:1px solid;margin-bottom:10px}
+  #shd .shd-audit-lvl{font-size:26px;font-weight:800;line-height:1}
+  #shd .shd-audit-sub{font-size:13px;color:#79838f;margin:2px 0 16px}
+  #shd .shd-audit-stats{display:flex;gap:22px}
+  #shd .shd-audit-comps{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+  #shd .shd-comp{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:13px;padding:15px 16px}
+  #shd .shd-comp-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px}
+  #shd .shd-comp-name{font-size:13px;font-weight:700;color:#eaecef} #shd .shd-comp-name em{font-style:normal;font-size:10.5px;color:#79838f;font-weight:600}
+  #shd .shd-comp-val{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+  #shd .shd-comp-bar{height:7px;background:#12161c;border-radius:100px;overflow:hidden;margin-bottom:9px}
+  #shd .shd-comp-bar span{display:block;height:100%;border-radius:100px;transition:width 1s ease}
+  #shd .shd-comp-detail{font-size:11.5px;color:#8a95a3;line-height:1.5}
+  #shd .shd-audit-sec-t{font-size:12px;font-weight:700;color:#79838f;text-transform:uppercase;letter-spacing:.6px;margin:20px 0 12px}
+  #shd .shd-plats{display:flex;flex-direction:column;gap:9px}
+  #shd .shd-plat{display:flex;align-items:center;gap:13px;background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:12px;padding:13px 15px}
+  #shd .shd-plat.ours{border-color:rgba(232,184,75,.28)} #shd .shd-plat.known{border-color:rgba(46,189,133,.22)} #shd .shd-plat.unknown{border-color:rgba(246,70,93,.28)}
+  #shd .shd-plat-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:15px;flex:none;background:#12161c;color:#a7b0bb}
+  #shd .shd-plat.ours .shd-plat-ic{background:rgba(232,184,75,.14);color:var(--gold,#E8B84B)} #shd .shd-plat.known .shd-plat-ic{background:rgba(46,189,133,.12);color:#2ebd85} #shd .shd-plat.unknown .shd-plat-ic{background:rgba(246,70,93,.12);color:#f6465d}
+  #shd .shd-plat-info{flex:1;min-width:0} #shd .shd-plat-info b{font-size:14px;display:block} #shd .shd-plat-info span{font-size:11.5px;color:#79838f}
+  #shd .shd-plat-tag{font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:100px;flex:none}
+  #shd .shd-plat-tag.ours{background:rgba(232,184,75,.14);color:var(--gold,#E8B84B)} #shd .shd-plat-tag.known{background:rgba(46,189,133,.14);color:#2ebd85} #shd .shd-plat-tag.unknown{background:rgba(246,70,93,.14);color:#f6465d}
+  #shd .shd-plat-note{font-size:12px;color:#f8934b;margin-top:10px;line-height:1.5}
+  @media(max-width:560px){ #shd .shd-audit-hero{flex-direction:column;text-align:center} #shd .shd-audit-stats{justify-content:center} #shd .shd-audit-comps{grid-template-columns:1fr} #shd .shd-plat{flex-wrap:wrap} }
+  
+  /* Resultados premium: hero del score */
   #shd .shd-hero-score{display:flex;align-items:center;gap:26px;background:linear-gradient(135deg,rgba(20,26,33,.9),rgba(10,14,18,.9));border:1px solid #1c232b;border-radius:18px;padding:24px 26px;margin-bottom:16px}
   #shd .shd-score-ring{position:relative;flex:none;width:150px;height:150px}
   #shd .shd-score-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -1380,8 +1408,9 @@ async function escanear(cuenta) {
   wireBack();
   const cont = $('shd-steps');
   // lanzar el escaneo real en paralelo
-  let permisos = null, error = false;
+  let permisos = null, error = false, estad = {};
   const tarea = datos.escanearApprovals(cuenta, () => {}).then(r => { permisos = r; }).catch(() => { error = true; });
+  const tareaStats = watch.estadisticas(cuenta).then(function (e) { estad = e || {}; }).catch(function () {});
   // animar los pasos: cada uno aparece como "checking" y tras un momento se marca ✓
   let i = 0;
   function siguientePaso() {
@@ -1402,112 +1431,67 @@ async function escanear(cuenta) {
   siguientePaso();
   // esperar a que TERMINEN los pasos Y el escaneo real, luego mostrar resultados
   const minTiempo = new Promise(r => setTimeout(r, pasos.length * 700));
-  await Promise.all([tarea, minTiempo]);
+  await Promise.all([tarea, tareaStats, minTiempo]);
   // un último check
   const fin = document.createElement('div'); fin.className = 'shd-step'; fin.innerHTML = `<span class="shd-step-ic done">✓</span><span class="shd-step-tx" style="color:#2ebd85">Scan complete</span>`;
   if (cont) cont.appendChild(fin);
   await new Promise(r => setTimeout(r, 600));
-  pintarResultados(cuenta, permisos || []);
+  pintarResultados(cuenta, permisos || [], estad);
 }
 
-function pintarResultados(cuenta, permisos) {
+function pintarResultados(cuenta, permisos, estad) {
+  estad = estad || {};
   const externos = permisos.filter(p => !p.nuestro);
   const nuestros = permisos.filter(p => p.nuestro);
   const peligrosos = externos.filter(p => p.ilimitado).length;
-  const sc = calcularScore(permisos);
+  const sc = calcularScore(permisos, estad);
+  const plat = plataformasDe(permisos);
   $('shd-barslot').innerHTML = cabecera();
-
-  // arco del score
   const pct = sc.score / 100; const circ = 283; const off = circ * (1 - pct);
-
-  let html = `
-    <div class="shd-hero-score">
-      <div class="shd-score-ring">
-        <svg viewBox="0 0 110 110" width="150" height="150">
-          <circle cx="55" cy="55" r="45" fill="none" stroke="#12161c" stroke-width="9"/>
-          <circle cx="55" cy="55" r="45" fill="none" stroke="${sc.color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/>
-        </svg>
-        <div class="shd-score-mid"><div class="shd-score-n" style="color:${sc.color}">${sc.score}</div><div class="shd-score-max">/ 100</div></div>
-      </div>
-      <div class="shd-score-side">
-        <div class="shd-score-lvl" style="color:${sc.color}">${sc.nivel}</div>
-        <div class="shd-score-sub">Wallet security score</div>
-        <div class="shd-score-stats">
-          <div class="shd-sstat"><b>${externos.length + nuestros.length}</b><span>permissions</span></div>
-          <div class="shd-sstat"><b style="color:${peligrosos?'#f6465d':'#2ebd85'}">${peligrosos}</b><span>risky</span></div>
-          <div class="shd-sstat"><b style="color:#2ebd85">${nuestros.length}</b><span>trusted</span></div>
-        </div>
-      </div>
-    </div>`;
-
-  // factores del score como fila de chips
-  if (sc.factores.length) {
-    html += `<div class="shd-factors">` + sc.factores.map(f => {
-      const cls = f.tipo === 'ok' ? 'ok' : (f.tipo === 'warn' ? 'warn' : 'bad');
-      const ic = f.tipo === 'ok' ? '✓' : (f.tipo === 'warn' ? '!' : '✕');
-      return `<div class="shd-factor ${cls}" title="${escH(f.detalle)}"><span>${ic}</span> ${escH(f.texto)}</div>`;
-    }).join('') + `</div>`;
+  let html = '<div class="shd-audit-hero">' +
+    '<div class="shd-score-ring"><svg viewBox="0 0 110 110" width="150" height="150"><circle cx="55" cy="55" r="45" fill="none" stroke="#12161c" stroke-width="9"/><circle cx="55" cy="55" r="45" fill="none" stroke="' + sc.color + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + circ + '" stroke-dashoffset="' + off + '" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/></svg><div class="shd-score-mid"><div class="shd-score-n" style="color:' + sc.color + '">' + sc.score + '</div><div class="shd-score-max">/ 100</div></div></div>' +
+    '<div class="shd-audit-side"><div class="shd-audit-badge" style="background:' + sc.color + '22;color:' + sc.color + ';border-color:' + sc.color + '55">' + sc.riesgo + '</div><div class="shd-audit-lvl" style="color:' + sc.color + '">' + sc.nivel + '</div><div class="shd-audit-sub">Wallet security score</div><div class="shd-audit-stats"><div class="shd-sstat"><b>' + (externos.length + nuestros.length) + '</b><span>permissions</span></div><div class="shd-sstat"><b style="color:' + (peligrosos?'#f6465d':'#2ebd85') + '">' + peligrosos + '</b><span>risky</span></div><div class="shd-sstat"><b style="color:#2ebd85">' + nuestros.length + '</b><span>trusted</span></div></div></div>' +
+  '</div>';
+  html += '<div class="shd-audit-comps">';
+  for (const c of sc.componentes) {
+    const cCol = c.valor >= 85 ? '#2ebd85' : (c.valor >= 60 ? '#5ac8fa' : (c.valor >= 40 ? '#e8b84b' : '#f6465d'));
+    html += '<div class="shd-comp"><div class="shd-comp-head"><span class="shd-comp-name">' + escH(c.nombre) + ' <em>' + c.peso + '%</em></span><span class="shd-comp-val" style="color:' + cCol + '">' + c.valor + '</span></div><div class="shd-comp-bar"><span style="width:' + c.valor + '%;background:' + cCol + '"></span></div><div class="shd-comp-detail">' + escH(c.detalle) + '</div></div>';
   }
-  if (sc.consejos.length) html += `<div class="shd-consejo" style="margin:0 0 18px">💡 ${escH(sc.consejos[0])}</div>`;
-
-  html += `<div class="shd-res-head">
-      <h2>Permissions</h2>
-      <div class="shd-res-btns"><button class="shd-rescan" id="shd-back2">Back</button><button class="shd-rescan" id="shd-rescan">Scan again</button></div>
-    </div>`;
-
+  html += '</div>';
+  if (plat.plataformas.length) {
+    html += '<div class="shd-audit-sec-t">Platforms this wallet has connected to</div><div class="shd-plats">';
+    for (const pl of plat.plataformas) {
+      let est, estCls, estIc;
+      if (pl.estado === 'nuestro') { est = 'Our platform'; estCls = 'ours'; estIc = '\u2713'; }
+      else if (pl.estado === 'conocido') { est = 'Known & safe'; estCls = 'known'; estIc = '\u2713'; }
+      else { est = 'Unknown'; estCls = 'unknown'; estIc = '?'; }
+      const nombre = pl.nombre || (pl.addr.slice(0,8) + '\u2026' + pl.addr.slice(-6));
+      html += '<div class="shd-plat ' + estCls + '"><div class="shd-plat-ic">' + (pl.nombre ? escH((pl.nombre[0]||'?').toUpperCase()) : '?') + '</div><div class="shd-plat-info"><b>' + escH(nombre) + '</b><span>' + escH(pl.tipo) + '</span></div><div class="shd-plat-tag ' + estCls + '">' + estIc + ' ' + est + '</div></div>';
+    }
+    html += '</div>';
+    if (plat.desconocidas > 0) html += '<div class="shd-plat-note">' + plat.desconocidas + ' unrecognised contract' + (plat.desconocidas>1?'s':'') + '. If you do not remember using ' + (plat.desconocidas>1?'them':'it') + ', revoke below.</div>';
+  }
+  if (sc.consejos.length) html += '<div class="shd-consejo" style="margin:18px 0">\ud83d\udca1 ' + escH(sc.consejos[0]) + '</div>';
+  html += '<div class="shd-res-head"><h2>Permissions</h2><div class="shd-res-btns"><button class="shd-rescan" id="shd-back2">Back</button><button class="shd-rescan" id="shd-rescan">Scan again</button></div></div>';
   if (permisos.length === 0) {
-    html += `<div class="shd-safe"><div class="ic">${IC.check}</div><h2 style="margin:0 0 6px;color:#eaecef">Your wallet is clean</h2><p style="margin:0">No active permissions found. Nothing to revoke.</p></div>`;
+    html += '<div class="shd-safe"><div class="ic">' + IC.check + '</div><h2 style="margin:0 0 6px;color:#eaecef">Your wallet is clean</h2><p style="margin:0">No active permissions found. Nothing to revoke.</p></div>';
   } else {
-    if (externos.length) { html += `<div class="shd-group-t risk">${escH('⚠')} External permissions</div>` + externos.map(filaPerm).join(''); }
-    if (nuestros.length) { html += `<div class="shd-group-t trust">✓ Trusted · Cripto Cuba</div>` + nuestros.map(filaPerm).join(''); }
+    if (externos.length) { html += '<div class="shd-group-t risk">\u26a0 External permissions</div>' + externos.map(filaPerm).join(''); }
+    if (nuestros.length) { html += '<div class="shd-group-t trust">\u2713 Trusted \u00b7 Cripto Cuba</div>' + nuestros.map(filaPerm).join(''); }
   }
-  html += `<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you don't recognize or no longer use. Each revoke is a transaction you sign in your wallet.</div>`;
-
+  html += '<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you do not recognise or no longer use.</div>';
   $('shd-in').innerHTML = html;
-  wireBack();
+  wireBack(function () { pintarInicio(cuenta); });
   const bb = $('shd-back2'); if (bb) bb.onclick = () => pintarInicio(cuenta);
   $('shd-rescan').onclick = () => escanear(cuenta);
   document.querySelectorAll('[data-revoke]').forEach(b => {
     b.onclick = async () => {
       const [token, spender] = b.dataset.revoke.split('|');
-      b.disabled = true; b.textContent = 'Revoking…';
-      try { await datos.revocar(token, spender); b.closest('.shd-perm').style.opacity = '.4'; b.textContent = 'Revoked ✓'; }
+      b.disabled = true; b.textContent = 'Revoking...';
+      try { await datos.revocar(token, spender); b.closest('.shd-perm').style.opacity = '.4'; b.textContent = 'Revoked'; }
       catch (e) { b.disabled = false; b.textContent = 'Revoke'; }
     };
   });
-}
-function healthCard(sc) {
-  // arco semicircular del score (SVG)
-  const pct = sc.score / 100;
-  const circ = 251;  // circunferencia de media rueda (r=80)
-  const offset = circ * (1 - pct);
-  const factores = sc.factores.map(f => {
-    const ic = f.tipo === 'ok' ? '✓' : (f.tipo === 'warn' ? '!' : '✕');
-    const cls = f.tipo === 'ok' ? 'ok' : (f.tipo === 'warn' ? 'warn' : 'bad');
-    return `<div class="shd-fac ${cls}"><span class="shd-fac-ic">${ic}</span><div><b>${f.texto}</b><small>${f.detalle}</small></div></div>`;
-  }).join('');
-  return `<div class="shd-health">
-    <div class="shd-gauge">
-      <svg viewBox="0 0 180 110" width="180" height="110">
-        <path d="M10 100 A80 80 0 0 1 170 100" fill="none" stroke="#1a2230" stroke-width="14" stroke-linecap="round"/>
-        <path d="M10 100 A80 80 0 0 1 170 100" fill="none" stroke="${sc.color}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset}" style="transition:stroke-dashoffset 1s ease"/>
-      </svg>
-      <div class="shd-gauge-n" style="color:${sc.color}">${sc.score}</div>
-      <div class="shd-gauge-l" style="color:${sc.color}">${sc.nivel}</div>
-    </div>
-    <div class="shd-health-side">
-      <div class="shd-health-t">Wallet Health Score</div>
-      <div class="shd-facs">${factores}</div>
-      ${sc.consejos.length ? `<div class="shd-consejo">💡 ${sc.consejos[0]}</div>` : ''}
-    </div>
-  </div>`;
-}
-function pintarStats(addr, d, est, pnl) {
-  const set = function (id, v) { const e = $(id); if (e) e.textContent = v; };
-  set('st-val', pnl.tokensConValor);
-  set('st-age', est.edadDias > 0 ? (est.edadDias > 365 ? (Math.floor(est.edadDias/365) + 'y') : (est.edadDias + 'd')) : '—');
-  set('st-tx', est.txCount > 0 ? est.txCount.toLocaleString() : '—');
-  set('st-conc', pnl.concentracion > 0 ? (Math.round(pnl.concentracion) + '%') : '—');
 }
 function filaPerm(p) {
   const corta = p.spender.slice(0, 8) + '…' + p.spender.slice(-6);
