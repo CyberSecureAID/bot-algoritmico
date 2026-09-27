@@ -25,7 +25,9 @@ function inyectarCSS() {
   #shd #shd-fx{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
   #shd *{box-sizing:border-box}
   /* Barra superior tipo sección interna (back a la izquierda) */
-  #shd .shd-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:calc(12px + env(safe-area-inset-top,0px)) 18px 12px;background:rgba(5,7,9,.82);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #1c232b}
+  #shd .shd-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:calc(12px + env(safe-area-inset-top,0px)) 18px 12px;background:rgba(5,7,9,.4);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #1c232b}
+  #shd .shd-bar{position:relative;overflow:hidden}
+  #shd .shd-bar::before{content:'';position:absolute;inset:0;z-index:-1;background-image:url('assets/portada/img/header.webp');background-size:cover;background-position:center;opacity:.55;-webkit-mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.6));mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.6))}
   #shd .shd-back{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);border:1px solid #29313b;color:#a7b0bb;border-radius:10px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:600}
   #shd .shd-back:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-bar-t{font-size:15px;font-weight:800;letter-spacing:.2px}
@@ -58,27 +60,27 @@ function inyectarCSS() {
       /* Banner superior con mármol dorado (header.webp), como los bots */
   #shd #shd-header-banner{position:fixed;top:0;left:0;right:0;height:300px;z-index:0;pointer-events:none;opacity:.8;background-image:url('assets/portada/img/header.webp');background-size:cover;background-position:center top;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%)}
   /* Portada de Wallet Shield (según plantilla) */
-  #shd .shd-portada{max-width:900px;margin:0 auto;padding:16px 16px 40px;text-align:center}
-  #shd .shd-portada-hero{display:block;margin:0 auto 4px;max-width:420px;width:70%;height:auto}
-  #shd .shd-portada-title{font-size:clamp(30px,6vw,52px);font-weight:900;margin:0 0 16px;letter-spacing:-.5px;text-shadow:0 2px 0 rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.55)}
+  #shd .shd-portada{max-width:860px;margin:0 auto;padding:8px 16px 30px;text-align:center}
+  #shd .shd-portada-hero{display:block;margin:0 auto 2px;max-width:200px;width:48%;height:auto}
+  #shd .shd-portada-title{font-size:clamp(24px,4.2vw,38px);font-weight:900;margin:0 0 14px;letter-spacing:-.5px;text-shadow:0 2px 0 rgba(0,0,0,.4),0 5px 14px rgba(0,0,0,.55)}
   #shd .shd-portada-title .g{color:var(--gold,#E8B84B);text-shadow:0 2px 0 rgba(120,80,0,.5),0 6px 18px rgba(232,184,75,.25)}
   #shd .shd-portada-p{font-size:14.5px;color:#c9d2dc;line-height:1.65;max-width:620px;margin:0 auto 14px}
   #shd .shd-portada-cost{font-size:13.5px;color:#a7b0bb;line-height:1.6;max-width:560px;margin:0 auto 30px}
   #shd .shd-portada-cost b{color:var(--gold,#E8B84B);font-weight:800}
   #shd .shd-portada-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px}
-  #shd .shd-pcard{background:linear-gradient(160deg,rgba(20,26,33,.72),rgba(10,14,18,.72));border:1px solid rgba(232,184,75,.18);border-radius:16px;padding:20px 14px;transition:transform .15s ease,box-shadow .2s ease,border-color .2s ease;transform-style:preserve-3d;cursor:default}
+  #shd .shd-pcard{background:linear-gradient(160deg,rgba(20,26,33,.72),rgba(10,14,18,.72));border:1px solid rgba(232,184,75,.18);border-radius:14px;padding:16px 12px;transition:transform .15s ease,box-shadow .2s ease,border-color .2s ease;transform-style:preserve-3d;cursor:default}
   #shd .shd-pcard:hover{border-color:rgba(232,184,75,.4);box-shadow:0 18px 40px rgba(0,0,0,.5),0 0 0 1px rgba(232,184,75,.15)}
-  #shd .shd-pcard img{width:52px;height:52px;object-fit:contain;margin-bottom:12px;filter:drop-shadow(0 4px 10px rgba(232,184,75,.2))}
+  #shd .shd-pcard img{width:44px;height:44px;object-fit:contain;margin-bottom:10px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))}
   #shd .shd-pcard b{display:block;font-size:14.5px;font-weight:700;margin-bottom:6px}
   #shd .shd-pcard span{display:block;font-size:12px;color:#8a95a3;line-height:1.5}
   /* Botón connect con imagen (zoom hover + clic) */
   #shd .shd-connect-btn{background:none;border:0;cursor:pointer;padding:0;display:inline-block;transition:transform .18s ease}
-  #shd .shd-connect-btn img{max-width:340px;width:78vw;height:auto;display:block;filter:drop-shadow(0 8px 24px rgba(232,184,75,.28))}
+  #shd .shd-connect-btn img{max-width:240px;width:62vw;height:auto;display:block;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6))}
   #shd .shd-connect-btn:hover{transform:scale(1.045)}
   #shd .shd-connect-btn:active{transform:scale(.97)}
   @media(max-width:640px){
     #shd .shd-portada-cards{grid-template-columns:1fr 1fr;gap:11px}
-    #shd .shd-pcard img{width:44px;height:44px}
+    #shd .shd-pcard img{width:44px;height:44px;object-fit:contain;margin-bottom:10px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))}
     #shd #shd-header-banner{height:220px}
   }
   
@@ -640,8 +642,8 @@ function pintarConectar() {
     <div class="shd-portada">
       <img class="shd-portada-hero" src="${IMG}shield-hero.webp" alt="">
       <h1 class="shd-portada-title"><span class="g">Protect</span> your wallet</h1>
-      <p class="shd-portada-p">Wallet Shield scans your wallet for risky permissions, gives you a security score, checks contracts before you sign, and lets you revoke threats, all in one place.</p>
-      <p class="shd-portada-cost"><b>One payment of $5 in BNB unlocks every tool for 30 full days.</b> Charges apply when you tap connect.</p>
+      <p class="shd-portada-p">One drained wallet costs everything. Wallet Shield finds the hidden permissions, fake addresses and risky contracts that thieves use, and shuts them down before they reach your funds. The same protection the pros pay hundreds for, in one place.</p>
+      <p class="shd-portada-cost"><b>Unlock every tool for 30 days for just $5 in BNB.</b> Less than a coffee to keep your whole wallet safe. Payment is taken when you connect.</p>
       <div class="shd-portada-cards">
         <div class="shd-pcard" data-tilt><img src="${IMG}shield-scan.webp" alt=""><b>Permission scanner</b><span>Detect risky approvals and permissions.</span></div>
         <div class="shd-pcard" data-tilt><img src="${IMG}shield-health.webp" alt=""><b>Health score</b><span>See your wallet's security level.</span></div>
