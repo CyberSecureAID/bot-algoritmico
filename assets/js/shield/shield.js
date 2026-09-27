@@ -7,7 +7,7 @@ import * as wallet from '../wallet.js?v=125';
 import { calcularScore } from './shield-score.js?v=99';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
-import * as watch from './shield-watch.js?v=115';
+import * as watch from './shield-watch.js?v=116';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 
@@ -250,7 +250,10 @@ function inyectarCSS() {
   #shd .shd-poison-tip{font-size:12.5px;color:#a7b0bb;line-height:1.55;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:10px;padding:13px;margin-top:6px}
   #shd .shd-poison-tip b{color:#eaecef}
   
-        #shd .shd-act-loading{text-align:center;padding:40px 20px}
+          #shd .shd-act-more{width:100%;margin-top:10px;padding:12px;background:rgba(255,255,255,.02);border:1px solid #1c232b;border-radius:10px;color:#a7b0bb;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+  #shd .shd-act-more:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  
+  #shd .shd-act-loading{text-align:center;padding:40px 20px}
   #shd .shd-act-spin{width:34px;height:34px;border:3px solid rgba(232,184,75,.2);border-top-color:var(--gold,#E8B84B);border-radius:50%;animation:shdSpin .7s linear infinite;margin:0 auto 14px}
   #shd .shd-act-loadtx{font-size:13px;color:#a7b0bb}
   
@@ -283,8 +286,9 @@ function inyectarCSS() {
   #shd .shd-wop2-scan:hover{background:rgba(232,184,75,.08)}
   @media(max-width:560px){ #shd .shd-act-bar{flex-direction:column;align-items:stretch} #shd .shd-act-search{width:100%} #shd .shd-act-search input{flex:1;width:auto} #shd .shd-wop2-addrs{flex-direction:column;align-items:flex-start;gap:4px} #shd .shd-wop2-arrow{display:none} }
     /* desplegable poison enriquecido */
+  #shd .shd-poison-drow-l{flex:1;min-width:0}
   #shd .shd-poison-drow-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  #shd .shd-poison-drow-meta{font-size:11.5px;color:#79838f;font-family:var(--mono,monospace);margin-top:8px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  #shd .shd-poison-drow-meta{font-size:11px;color:#79838f;margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   #shd .shd-poison-dscan{font-size:10.5px;color:var(--gold,#E8B84B);text-decoration:none;border:1px solid rgba(232,184,75,.3);border-radius:6px;padding:2px 6px}
   
   /* Lista de direcciones analizadas (poison) */
@@ -292,14 +296,14 @@ function inyectarCSS() {
   #shd .shd-poison-list-tog{width:100%;padding:11px;background:rgba(255,255,255,.02);border:1px solid #1c232b;border-radius:10px;color:#a7b0bb;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
   #shd .shd-poison-list-tog:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-poison-list{margin-top:10px;max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 4px 4px 0}
-  #shd .shd-poison-drow{background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:11px;padding:13px 15px}
+  #shd .shd-poison-drow{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:11px;padding:13px 15px}
   #shd .shd-poison-drow.dust{border-color:rgba(232,184,75,.25);background:rgba(232,184,75,.04)}
   #shd .shd-poison-daddr{font-family:var(--mono,monospace);font-size:12px;color:#c9d2dc;display:flex;align-items:center;gap:6px}
   #shd .shd-poison-dmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   #shd .shd-poison-dmeta span{font-size:11px;color:#79838f}
   #shd .shd-poison-dtag{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:100px;background:rgba(232,184,75,.15);color:#e8b84b}
   #shd .shd-poison-rtag{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:100px;background:rgba(46,189,133,.14);color:#2ebd85}
-  @media(max-width:560px){ #shd .shd-poison-drow{background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:11px;padding:13px 15px} }
+  @media(max-width:560px){ #shd .shd-poison-drow{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:11px;padding:13px 15px} }
   
   /* Verificación de hash premium */
   #shd .shd-hash-big{display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;margin-bottom:18px}
@@ -696,14 +700,16 @@ function resaltar(addr, pref, suf) {
 function listaDirecciones(info) {
   if (!info.todasContrapartes || !info.todasContrapartes.length) return '';
   const filas = info.todasContrapartes.map(function (c) {
-    const corta = c.addr.slice(0,10) + '\u2026' + c.addr.slice(-8);
-    const fecha = c.ts > 0 ? new Date(c.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    const corta = c.addr.slice(0,12) + '\u2026' + c.addr.slice(-10);
+    const fecha = c.ts > 0 ? new Date(c.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'date not available';
     const tag = c.esDust ? '<span class="shd-poison-dtag">suspicious dust</span>' : '<span class="shd-poison-rtag">real transfer</span>';
-    const flujo = c.tipo === 'in' ? 'in' : 'out';
     const fl = c.tipo === 'in' ? '<span style="color:#2ebd85">last received</span>' : '<span style="color:#f6465d">last sent</span>';
     return '<div class="shd-poison-drow ' + (c.esDust?'dust':'') + '">' +
-      '<div class="shd-poison-drow-top"><div class="shd-poison-daddr">' + corta + ' <button class="shd-wtok-copy" data-pcopy="' + c.addr + '">\u29c9</button></div>' + tag + '</div>' +
-      '<div class="shd-poison-drow-meta">' + fl + ' \u00b7 ' + c.veces + ' transfer' + (c.veces>1?'s':'') + '' + (fecha ? (' \u00b7 ' + fecha) : '') + ' <a href="https://bscscan.com/address/' + c.addr + '" target="_blank" rel="noopener" class="shd-poison-dscan">BscScan \u2197</a></div>' +
+      '<div class="shd-poison-drow-l">' +
+        '<div class="shd-poison-daddr">' + corta + ' <button class="shd-wtok-copy" data-pcopy="' + c.addr + '">\u29c9</button></div>' +
+        '<div class="shd-poison-drow-meta">' + tag + '<span>' + c.veces + ' transfer' + (c.veces>1?'s':'') + '</span><span>' + fl + '</span><span>' + fecha + '</span></div>' +
+      '</div>' +
+      '<a href="https://bscscan.com/address/' + c.addr + '" target="_blank" rel="noopener" class="shd-poison-dscan">BscScan \u2197</a>' +
     '</div>';
   }).join('');
   return '<div class="shd-poison-list-wrap"><button class="shd-poison-list-tog" id="poison-list-tog">All ' + info.todasContrapartes.length + ' addresses \u25be</button><div class="shd-poison-list" id="poison-list" style="display:none">' + filas + '</div></div>';
@@ -1078,12 +1084,43 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const H = (window._shdHist && window._shdHist.length) ? window._shdHist : null;
     if (H && H.length) {
       const barra = '<div class="shd-act-bar"><div class="shd-act-tabs"><button class="shd-act-f on" data-af="all">All</button><button class="shd-act-f" data-af="in">Received</button><button class="shd-act-f" data-af="out">Sent</button></div><div class="shd-act-search"><input id="act-search" placeholder="Token symbol"><button class="shd-act-go" id="act-go"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button></div></div>';
-      pane.innerHTML = barra + '<div class="shd-wops" id="act-list">' + H.map(filaOp).join('') + '</div>';
-      wireOpBtns(); wireActFilter(H);
+      pane.innerHTML = barra + '<div class="shd-wops" id="act-list"></div><div id="act-more-wrap"></div>';
+      renderActividad(H, 'all', '');
+      wireActFilter(H);
     } else if (window._shdHistCargando) {
       pane.innerHTML = '<div class="shd-act-loading"><div class="shd-act-spin"></div><div class="shd-act-loadtx">Reading activity from the chain…</div></div>';
     } else {
       pane.innerHTML = '<div class="shd-empty">No activity found for this wallet.</div>';
+    }
+  }
+  // renderiza la actividad PAGINADA (25 por tanda) para no colapsar el navegador
+  let _actMostradas = 0; let _actFiltradas = [];
+  function renderActividad(H, fTipo, q) {
+    _actFiltradas = H.filter(function (o) {
+      if (fTipo === 'in' && o.tipo !== 'in') return false;
+      if (fTipo === 'out' && o.tipo !== 'out') return false;
+      if (q && (o.symbol || '').toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    _actMostradas = 0;
+    const lst = document.getElementById('act-list'); if (lst) lst.innerHTML = '';
+    masActividad();
+  }
+  function masActividad() {
+    const lst = document.getElementById('act-list'); if (!lst) return;
+    const TANDA = 25;
+    const trozo = _actFiltradas.slice(_actMostradas, _actMostradas + TANDA);
+    lst.insertAdjacentHTML('beforeend', trozo.map(filaOp).join(''));
+    _actMostradas += trozo.length;
+    wireOpBtns();
+    const wrap = document.getElementById('act-more-wrap');
+    if (wrap) {
+      if (_actMostradas < _actFiltradas.length) {
+        wrap.innerHTML = '<button class="shd-act-more" id="act-more">Show more (' + (_actFiltradas.length - _actMostradas) + ' left)</button>';
+        const mb = document.getElementById('act-more'); if (mb) mb.onclick = masActividad;
+      } else if (_actFiltradas.length === 0) {
+        wrap.innerHTML = '<div class="shd-empty">No transactions match.</div>';
+      } else { wrap.innerHTML = ''; }
     }
   }
   window._pintarActividad = pintarActividad;
@@ -1092,14 +1129,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const inp = document.getElementById('act-search');
     function aplicar() {
       const q = (inp && inp.value || '').trim().toLowerCase();
-      const filtradas = H.filter(function (o) {
-        if (fTipo === 'in' && o.tipo !== 'in') return false;
-        if (fTipo === 'out' && o.tipo !== 'out') return false;
-        if (q && (o.symbol || '').toLowerCase().indexOf(q) === -1) return false;
-        return true;
-      });
-      const lst = document.getElementById('act-list');
-      if (lst) { lst.innerHTML = filtradas.length ? filtradas.map(filaOp).join('') : '<div class="shd-empty">No transactions match.</div>'; wireOpBtns(); }
+      renderActividad(H, fTipo, q);
     }
     document.querySelectorAll('[data-af]').forEach(function (b) { b.onclick = function () { document.querySelectorAll('[data-af]').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); fTipo = b.dataset.af; aplicar(); }; });
     const go = document.getElementById('act-go'); if (go) go.onclick = aplicar;
