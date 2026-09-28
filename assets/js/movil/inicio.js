@@ -1,6 +1,6 @@
 /* movil/inicio.js — Pantalla 1 (Inicio). */
 
-import { IC } from './iconos.js?v=2';
+import { IC } from './iconos.js?v=1';
 import * as wallet from '../wallet.js?v=125';
 import { money, money0, cantidad, logoDe } from './fmt.js?v=3';
 import * as fperfil from '../firebase-perfil.js?v=1';
@@ -33,7 +33,7 @@ const SERVICIOS = [
   { go: 'bots',      color: '#e8b84b', ic: 'botCash', kick: 'Cash Out',        h: 'Asegura ganancia',   p: 'Vende lo que ya tienes al precio o % que elijas.' },
   { go: 'bots',      color: '#34d97b', ic: 'botDca',  kick: 'DCA',             h: 'A intervalos',       p: 'Compra cantidades fijas cada cierto tiempo para promediar tu entrada.' },
   { go: 'liquidity', color: '#2ebd85', ic: 'pool',    kick: 'Charts',          h: 'Depth',        p: 'Mira dónde está la liquidez y los muros del mercado.' },
-  { go: 'muros',     color: '#f6465d', ic: 'candles', kick: 'INS Radar',       h: 'Flujo órdenes',      p: 'Detecta la mano fuerte: órdenes grandes y absorción.' },
+  { go: 'muros',     color: '#f6465d', ic: 'candles', kick: 'Heat Pools',      h: 'Order flow',         p: 'Spot the big players: large orders and absorption zones.' },
   { go: 'niveles',   color: '#E8B84B', ic: 'chart',   kick: 'Smart Levels',    h: 'Analyze and trade',    p: 'Niveles, indicadores y compra/venta al toque en la gráfica.' },
   { go: 'academy',   color: '#4c8dff', ic: 'book',    kick: 'Academia',        h: 'Learn',            p: 'Formación paso a paso para sacarle ventaja al mercado.' },
   { go: 'swap',      color: '#2ebd85', ic: 'swap',    kick: 'Swap',            h: 'Instant',         p: 'Cambia cualquier cripto por otra, sin KYC y no custodial.' },

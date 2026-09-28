@@ -19,7 +19,7 @@ export function inyectarMovil() {
     --mv-line:#232b36; --mv-txt:#eaecef; --mv-mut:#8b96a3; --mv-mut2:#5b6472;
     --mv-gold:#E8B84B; --mv-gold-d:#c99a2e; --mv-up:#2ebd85; --mv-down:#f6465d;
   }
-  #mv-app{position:fixed;inset:0;z-index:100;background:var(--mv-bg);color:var(--mv-txt);
+  #mv-app{position:fixed;top:0;left:0;right:0;bottom:0;height:100dvh;max-height:100dvh;z-index:100;background:var(--mv-bg);color:var(--mv-txt);
     font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent;
     overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   #mv-app *{box-sizing:border-box}
@@ -148,7 +148,7 @@ export function inyectarMovil() {
     background:linear-gradient(180deg,#f2ca63,var(--mv-gold-d));color:#1a1200}
 
   /* ── Barra inferior PERPETUA (encima de todo) ── */
-  #mv-nav{position:fixed;left:0;right:0;bottom:0;z-index:10100;display:flex;background:var(--mv-bg2);
+  #mv-nav{position:absolute;left:0;right:0;bottom:0;z-index:10100;display:flex;background:var(--mv-bg2);
     border-top:1px solid var(--mv-line);padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));
     font-family:'Plus Jakarta Sans',system-ui,sans-serif}
   #mv-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 0;color:var(--mv-mut2);background:none;border:0;cursor:pointer}
@@ -504,6 +504,12 @@ export function inyectarMovil() {
   .fxm-modal .opt.on{border-color:var(--mv-gold);background:rgba(232,184,75,.08)}
   .fxm-modal .opt b{display:block;font-family:'Plus Jakarta Sans';font-weight:800;font-size:15px;color:#eef1f6;margin-bottom:4px}
   .fxm-modal .opt span{display:block;font-size:12px;line-height:1.5;color:#a9b2bd}
+
+  /* ── Comportamiento de aplicación: sin scroll de página ── */
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none;position:fixed;width:100%}
+  body.mv-on{margin:0;padding:0}
+  @supports (height:100dvh){ #mv-app{height:100dvh;max-height:100dvh} }
+  
 `;
   document.head.appendChild(s);
 }
