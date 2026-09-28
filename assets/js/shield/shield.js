@@ -1167,10 +1167,10 @@ function pintarWatcher(cuenta) {
 // sola vez y funciona aunque la lista se repinte, porque escucha en el documento.
 // Función global que abre el modal de eliminación. La llama el onclick inline
 // del cestico, de modo que no depende de ningún wire ni delegación posterior.
-window.__shdBorrar = function (addr, raw, sym, usd) {
-  if (window._shdRevisarLimpieza) {
-    window._shdRevisarLimpieza([{ addr: addr, raw: raw || '0x0', sym: sym || '?', usd: Number(usd) || 0 }]);
-  }
+window.__shdBorrar = function (i) {
+  const t = (window.__shdToks || [])[i];
+  if (!t) return;
+  if (window._shdRevisarLimpieza) window._shdRevisarLimpieza([t]);
 };
 function pintarStats(addr, d, est, pnl) {
   est = est || {}; pnl = pnl || {};
@@ -1202,7 +1202,15 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const copiar = t.address ? ('<button class="shd-wtok-copy" data-copy="' + t.address + '" onclick="event.stopPropagation()" title="Copy contract">⧉</button>') : '';
     const swap = t.address ? ('<button class="shd-wtok-swap" data-swap="' + t.address + '" onclick="event.stopPropagation()">Swap</button>') : '';
     // papelera (eliminar) solo en la wallet propia, separada del swap por una rayita difuminada
-    const del = (esPropia && t.address) ? ('<span class="shd-wtok-div"></span><button class="shd-wtok-del" onclick="window.__shdBorrar(\'' + t.address + '\',\'' + (t.balanceRaw||'0x0') + '\',\'' + escH(t.symbol||'?') + '\',' + (t.usd||0) + ');return false;" title="Send this token out of your wallet"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>') : '';
+    // Guardamos el token en un registro global; el botón solo pasa su índice
+    // (un número, sin comillas ni escapes que puedan romper el atributo).
+    let _idx = -1;
+    if (esPropia && t.address) {
+      if (!window.__shdToks) window.__shdToks = [];
+      _idx = window.__shdToks.length;
+      window.__shdToks.push({ addr: t.address, raw: t.balanceRaw || '0x0', sym: t.symbol || '?', usd: t.usd || 0 });
+    }
+    const del = (_idx >= 0) ? ('<span class="shd-wtok-div"></span><button class="shd-wtok-del" onclick=window.__shdBorrar(' + _idx + ') title="Send this token out of your wallet"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>') : '';
     const selBox = '<label class="shd-tok-check" style="display:none"><input type="checkbox" class="shd-tok-cb" data-caddr="' + (t.address||'') + '" data-craw="' + (t.balanceRaw||'0x0') + '" data-csym="' + escH(t.symbol||'?') + '" data-cusd="' + (t.usd||0) + '"></label>';
     return '<div class="shd-wtok2" data-tokrow="' + escH((t.name||'') + ' ' + (t.symbol||'') + ' ' + (t.address||'')).toLowerCase() + '" data-new="' + (t.reciente?'1':'0') + '" data-today="' + (t.hoy?'1':'0') + '" data-usdval="' + (t.usd||0) + '">' +
       '<div class="shd-wtok-top">' + selBox + ic +
@@ -1273,6 +1281,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     <div class="shd-watch-tabs"><button class="shd-wtab on" data-wt="tokens">Tokens (${d.tokens.length})</button><button class="shd-wtab" data-wt="hist">Activity (${hist.length})</button></div>
     <div id="watch-pane"></div>`;
   const paneTokens = () => {
+    window.__shdToks = [];
     let h = '<div class="shd-tok-tools">' +
 
       '<div class="shd-tok-bar">' +
