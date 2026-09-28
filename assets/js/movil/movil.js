@@ -6,15 +6,15 @@
 
 import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=9';
-import { IC } from './iconos.js?v=2';
-import { pintarInicio } from './inicio.js?v=12';
-import { pintarMercados } from './markets.js?v=3';
-import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=4';
-import { pintarActivos } from './activos.js?v=6';
-import { abrirMenu } from './menu.js?v=2';
-import { abrirBuscar } from './buscar.js?v=2';
-import { abrirAlerta } from './alerta.js?v=2';
+import { inyectarMovil } from './estilos.js?v=20';
+import { IC } from './iconos.js?v=20';
+import { pintarInicio } from './inicio.js?v=20';
+import { pintarMercados } from './markets.js?v=20';
+import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=20';
+import { pintarActivos } from './activos.js?v=20';
+import { abrirMenu } from './menu.js?v=20';
+import { abrirBuscar } from './buscar.js?v=20';
+import { abrirAlerta } from './alerta.js?v=20';
 
 const $ = (id) => document.getElementById(id);
 const _movil = () => window.matchMedia('(max-width: 760px)').matches;
@@ -689,7 +689,7 @@ async function irA(tab) {
     // al instante; y si por caché llegara una versión sin el export, m.precargar
     // sería undefined y NO rompe nada.
     setTimeout(() => {
-      import('./operar.js?v=4').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
+      import('./operar.js?v=20').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
     }, 1200);
     return; }
   if (tab === 'markets') { pintarMercados(host, api()); return; }

@@ -1,7 +1,7 @@
 /* movil/menu.js — Menú "Todos los servicios". Garantiza que NADA de la web
    quede oculto en el móvil: aquí está cada sección accesible. */
 
-import { IC } from './iconos.js?v=2';
+import { IC } from './iconos.js?v=20';
 
 const GRUPOS = [
   { sub: 'Trade', items: [

@@ -2,7 +2,7 @@
    TODAS las monedas de la plataforma; filtra por nombre al escribir y abre lo
    que elijas. No inventa: solo enruta a lo que ya existe. */
 
-import { IC } from './iconos.js?v=2';
+import { IC } from './iconos.js?v=20';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
