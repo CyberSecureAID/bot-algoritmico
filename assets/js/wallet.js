@@ -354,8 +354,23 @@ function engancharEventos(prov) {
   soltarEventos();
 
   const onCuentas = (nuevas) => {
+    const antes = est.cuenta;
     est.cuenta = nuevas?.[0] ?? null;
-    if (!est.cuenta) localStorage.setItem(CLAVE_SALIDA, '1');
+    // NO marcamos salida aquí. Los navegadores internos de las wallets emiten
+    // accountsChanged con lista vacía de forma espontánea (al cambiar de pestaña,
+    // bloquear la pantalla o por su propio ciclo de vida). Marcar salida en ese
+    // momento dejaba la sesión cerrada de forma permanente y bloqueaba la
+    // reconexión automática. La salida solo se marca cuando el usuario la pide.
+    if (!est.cuenta && antes) {
+      // intentar recuperar la cuenta poco después: si la wallet sigue autorizada,
+      // vuelve sola y el usuario ni se entera.
+      setTimeout(async function () {
+        try {
+          const c = await prov.request({ method: 'eth_accounts' });
+          if (c && c.length) { est.cuenta = c[0]; avisar(); }
+        } catch (_) {}
+      }, 600);
+    }
     avisar();
   };
   const onCadena = (id) => { est.chainId = id; avisar(); };
@@ -418,6 +433,17 @@ export async function conectar() {
 
   engancharEventos(prov);
   localStorage.removeItem(CLAVE_SALIDA);   // vuelve a reconectar sola
+
+  // Si la wallet está en otra red, la cambiamos a BNB Smart Chain sin que el
+  // usuario tenga que hacerlo a mano. Si la rechaza, seguimos igualmente: la
+  // interfaz ya avisa de la red incorrecta.
+  try {
+    if (String(est.chainId).toLowerCase() !== '0x38') {
+      await cambiarARedCorrecta();
+      try { est.chainId = await prov.request({ method: 'eth_chainId' }); } catch (_) {}
+    }
+  } catch (_) { /* el usuario puede rechazar el cambio */ }
+
   avisar();
 
   return est.cuenta;
