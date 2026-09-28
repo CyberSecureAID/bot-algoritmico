@@ -94,7 +94,7 @@ async function abrir(clave, arg) {
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=126'); m.abrirLiquidity && m.abrirLiquidity(); break; }
-      case 'shield':    { const v = document.createElement('div'); v.style.cssText='position:fixed;inset:0;z-index:99999;background:#000'; document.body.appendChild(v); setTimeout(function(){ location.href = 'app.html?abrir=shield'; }, 30); break; }
+      case 'shield':    { const m = await import('../shield/shield.js?v=149'); m.abrirShield && m.abrirShield(); break; }
       case 'bots':      modoBots(true); break;
       case 'buscar':    abrirBuscar(api()); break;
       case 'soporte':   abrirSoporte(); break;
