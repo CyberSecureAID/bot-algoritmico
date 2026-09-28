@@ -115,16 +115,43 @@ export function pintarInicio(host, api) {
   `;
 
   $('mv-ava').onclick = () => api.abrir('perfil');
-  // Cargar la foto de perfil desde Firestore y ponerla en el avatar del lobby.
-  (async () => {
+  // Foto de perfil en el avatar del lobby. Se intenta de inmediato y, si la
+  // wallet aún no ha conectado, se reintenta durante unos segundos: antes solo
+  // se probaba una vez al pintar, de modo que si la wallet conectaba después
+  // (lo habitual) la foto no aparecía nunca.
+  const ponerFoto = (url) => {
+    const av = $('mv-ava'); if (!av || !url) return false;
+    if (av.querySelector('.mv-ava-img')) return true;   // ya puesta
+    const dot = av.querySelector('.mv-ava-dot');
+    av.innerHTML = `<img class="mv-ava-img" src="${url}" alt="">`;
+    if (dot) av.appendChild(dot);
+    return true;
+  };
+  const cargarFoto = async () => {
     try {
-      const c = wallet.cuentaActual && wallet.cuentaActual(); if (!c) return;
+      const c = wallet.cuentaActual && wallet.cuentaActual();
+      if (!c) return false;
+      // primero la copia local (instantánea), luego la de Firestore
+      try { const guardada = localStorage.getItem('aurex-foto:' + c.toLowerCase()); if (guardada) ponerFoto(guardada); } catch (_) {}
       const p = await fperfil.leerPerfil(c);
-      if (p.foto) {
+      if (p && p.foto) {
         try { localStorage.setItem('aurex-foto:' + c.toLowerCase(), p.foto); } catch (_) {}
-        const av = $('mv-ava'); if (av) { const dot = av.querySelector('.mv-ava-dot'); av.innerHTML = `<img class="mv-ava-img" src="${p.foto}" alt="">`; if (dot) av.appendChild(dot); }
+        ponerFoto(p.foto);
+        return true;
       }
     } catch (_) {}
+    return false;
+  };
+  (async () => {
+    if (await cargarFoto()) return;
+    let intentos = 0;
+    const tFoto = setInterval(async () => {
+      intentos++;
+      if (await cargarFoto() || intentos > 20) clearInterval(tFoto);
+    }, 700);
+    // dejar de intentar si la vista se cierra
+    const limpiarAntes = host._limpiar;
+    host._limpiar = () => { clearInterval(tFoto); if (limpiarAntes) limpiarAntes(); };
   })();
   $('mv-search').onclick = () => api.abrir('buscar');
   $('mv-support').onclick = () => api.abrir('soporte');
@@ -265,18 +292,30 @@ function montarCarrusel(track, api) {
       if (mitad > 2) {
         let n = svc.scrollLeft + 0.5;
         if (n >= mitad) n -= mitad;
+        _ajustando = true;
         svc.scrollLeft = n;
+        _ajustando = false;
       }
     }
     raf = requestAnimationFrame(paso);
   };
   const pausar = () => { auto = false; if (reanuda) { clearTimeout(reanuda); reanuda = 0; } };
   // mantener el bucle también cuando el usuario arrastra
+  // Normalización del bucle al arrastrar. Usamos una bandera para no reaccionar
+  // a nuestros propios ajustes: sin ella, cada corrección disparaba otro evento
+  // scroll que volvía a corregir, y el carrusel temblaba.
+  let _ajustando = false;
   svc.addEventListener('scroll', function () {
+    if (_ajustando || auto) return;          // durante el giro automático no tocamos nada
     const mitad = svc.scrollWidth / 2;
-    if (mitad > 2) {
-      if (svc.scrollLeft >= mitad) svc.scrollLeft -= mitad;
-      else if (svc.scrollLeft <= 0) svc.scrollLeft += mitad - 1;
+    if (mitad <= 2) return;
+    let n = null;
+    if (svc.scrollLeft >= mitad) n = svc.scrollLeft - mitad;
+    else if (svc.scrollLeft < 1) n = svc.scrollLeft + mitad;
+    if (n !== null) {
+      _ajustando = true;
+      svc.scrollLeft = n;
+      requestAnimationFrame(function () { _ajustando = false; });
     }
   }, { passive: true });
   const reanudarPronto = () => { if (reanuda) clearTimeout(reanuda); reanuda = setTimeout(() => { auto = true; }, 2600); };
