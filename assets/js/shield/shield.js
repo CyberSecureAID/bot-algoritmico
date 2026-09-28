@@ -24,17 +24,17 @@ function inyectarCSS() {
   #shd{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;color:#eaecef;font-family:var(--display,'Segoe UI',sans-serif);
     background:#000 url('assets/portada/img/fondo-shield.webp') center/cover no-repeat;overflow-y:auto;-webkit-overflow-scrolling:touch}
   #shd::before{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(3,5,8,.93));z-index:0;pointer-events:none}
-  #shd #shd-fx{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
+  #shd #shd-fx{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%;will-change:transform}
   #shd *{box-sizing:border-box}
   /* Barra superior tipo sección interna (back a la izquierda) */
-  #shd .shd-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:calc(12px + env(safe-area-inset-top,0px)) 18px 12px;background:rgba(5,7,9,.4);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #1c232b}
+  #shd .shd-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:calc(12px + env(safe-area-inset-top,0px)) 18px 12px;background:rgba(5,7,9,.4);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #1c232b;position:relative;z-index:3}
   #shd .shd-bar{position:relative;overflow:hidden}
   #shd .shd-bar::before{content:'';position:absolute;inset:0;z-index:-1;background-image:url('assets/portada/img/header.webp');background-size:cover;background-position:center;opacity:.55;-webkit-mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.6));mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.6))}
   #shd .shd-back{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);border:1px solid #29313b;color:#a7b0bb;border-radius:10px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:600}
   #shd .shd-back:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-bar-t{font-size:15px;font-weight:800;letter-spacing:.2px}
   #shd .shd-bar-t span{color:var(--gold,#E8B84B)}
-  #shd .shd-in{position:relative;z-index:1;width:100%;max-width:820px;margin:0 auto;padding:22px 16px calc(40px + env(safe-area-inset-bottom,0px))}
+  #shd .shd-in{position:relative;z-index:1;width:100%;max-width:820px;margin:0 auto;padding:22px 16px calc(40px + env(safe-area-inset-bottom,0px));position:relative;z-index:2}
   /* Wallet conectada */
   #shd .shd-wallet{display:flex;align-items:center;gap:12px;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:14px;padding:14px 16px;margin-bottom:18px}
   #shd .shd-wava{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;flex:none;color:var(--gold,#E8B84B)}
@@ -95,8 +95,39 @@ function inyectarCSS() {
   #shd .shd-pay-sub{font-size:12.5px;color:#79838f;margin-top:8px}
   #shd .shd-pay-msg{font-size:13px;margin-top:16px;min-height:20px}
   
+  
+  /* ── Adaptación a móvil ── */
+  @media(max-width:640px){
+    #shd .shd-in{padding:12px 12px 90px}
+    #shd .shd-cards{grid-template-columns:1fr;gap:10px}
+    #shd .shd-audit-hero{flex-direction:column;text-align:center;gap:16px;padding:20px 16px}
+    #shd .shd-audit-side{align-items:center}
+    #shd .shd-audit-badge{align-self:center}
+    #shd .shd-audit-stats{justify-content:center;gap:18px;flex-wrap:wrap}
+    #shd .shd-audit-comps{grid-template-columns:1fr}
+    #shd .shd-found{grid-template-columns:1fr 1fr}
+    #shd .shd-plat{flex-wrap:wrap;gap:10px}
+    #shd .shd-plat-info{flex:1 1 100%;order:2}
+    #shd .shd-plat-tag{order:3}
+    #shd .shd-perm{flex-wrap:wrap}
+    #shd .shd-perm-info{flex:1 1 100%;min-width:0}
+    #shd .shd-perm-info .sp{word-break:break-all;font-size:11px}
+    #shd .shd-res-head{flex-direction:column;align-items:stretch;gap:10px}
+    #shd .shd-res-btns{display:flex;gap:8px}
+    #shd .shd-res-btns .shd-rescan{flex:1}
+    #shd .shd-how,#shd .shd-consejo{font-size:12px;line-height:1.55}
+    #shd .shd-scan-other{flex-direction:column}
+    #shd .shd-scan-other-go{width:100%}
+    #shd .shd-portada{padding:8px 12px 80px}
+    #shd .shd-hash-grid{grid-template-columns:1fr}
+    #shd .shd-hash-fromto{flex-direction:column}
+    #shd .shd-poison-drow{flex-direction:column;align-items:stretch;gap:10px}
+    #shd .shd-poison-daddr{word-break:break-all;font-size:11px}
+    #shd .shd-faucet-wrap{padding-bottom:80px}
+  }
+  
   /* Banner superior con mármol dorado (header.webp), como los bots */
-  #shd #shd-header-banner{position:fixed;top:0;left:0;right:0;height:300px;z-index:0;pointer-events:none;opacity:.8;background-image:url('assets/portada/img/header.webp');background-size:cover;background-position:center top;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%)}
+  #shd #shd-header-banner{position:fixed;top:0;left:0;right:0;height:300px;z-index:0;will-change:transform;pointer-events:none;opacity:.8;background-image:url('assets/portada/img/header.webp');background-size:cover;background-position:center top;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 45%,transparent 100%)}
   /* Portada de Wallet Shield (según plantilla) */
   #shd .shd-portada{max-width:860px;margin:0 auto;padding:8px 16px 30px;text-align:center}
   #shd .shd-portada-hero{display:block;margin:0 auto 2px;max-width:200px;width:48%;height:auto}
@@ -715,8 +746,19 @@ async function montarParticulas() {
   } catch (_) {}
 }
 function cerrar() {
-  // Navegar al lobby SIN quitar el overlay antes (si se quita, se ven los bots
-  // de app.html un instante). El overlay tapa la pantalla hasta que carga index.
+  // Si llegamos aquí navegando (hay historial), volvemos atrás sin recargar:
+  // recargar provoca un salto brusco y reinicia el estado de la wallet, lo que
+  // en móvil se ve como un pantallazo y el saldo desapareciendo unos segundos.
+  const cont = document.getElementById('shd');
+  try {
+    if (window.history.length > 1 && document.referrer) {
+      if (cont) cont.remove();
+      window.history.back();
+      // si en 400 ms seguimos aquí (el back no hizo nada), navegamos de verdad
+      setTimeout(function () { if (!document.getElementById('shd')) { try { location.replace('index.html'); } catch (_) { location.href = 'index.html'; } } }, 400);
+      return;
+    }
+  } catch (_) {}
   try { location.replace('index.html'); } catch (_) { location.href = 'index.html'; }
 }
 
