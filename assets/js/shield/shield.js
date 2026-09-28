@@ -271,7 +271,7 @@ function inyectarCSS() {
   #shd .shd-tok-check{align-items:center;flex:none;cursor:pointer;margin-right:2px}
   #shd .shd-tok-cb{appearance:none;-webkit-appearance:none;width:20px;height:20px;border:2px solid #3a424c;border-radius:6px;background:rgba(11,14,17,.6);cursor:pointer;position:relative;flex:none;transition:.15s}
   #shd .shd-tok-cb:checked{background:var(--gold,#E8B84B);border-color:var(--gold,#E8B84B)}
-  #shd .shd-tok-cb:checked::after{content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #241900;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+  #shd .shd-tok-cb:checked::after{content:'';position:absolute;left:50%;top:50%;width:5px;height:9px;border:solid #241900;border-width:0 2.5px 2.5px 0;transform:translate(-50%,-60%) rotate(45deg)}
   /* barra de acciones con MARGEN */
   #shd .shd-clean-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding:11px 13px;background:rgba(246,70,93,.06);border:1px solid rgba(246,70,93,.22);border-radius:11px}
   #shd .shd-clean-actions{display:flex;gap:7px;flex-wrap:wrap}
@@ -1165,35 +1165,13 @@ function pintarWatcher(cuenta) {
 }
 // Delegación global para el botón de eliminar token (cestico). Se instala una
 // sola vez y funciona aunque la lista se repinte, porque escucha en el documento.
-if (!window._shdDelWired) {
-  window._shdDelWired = true;
-  document.addEventListener('click', function (ev) {
-    let n = ev.target, b = null, saltos = 0;
-    while (n && saltos < 10) {
-      if (n.getAttribute && n.getAttribute('data-del')) { b = n; break; }
-      n = n.parentNode; saltos++;
-    }
-    if (!b) return;
-    ev.preventDefault(); ev.stopPropagation();
-    // DIAGNOSTICO VISIBLE: saber exactamente dónde se corta
-    const addr = b.getAttribute('data-del');
-    if (!window._shdRevisarLimpieza) {
-      alert('DIAG 1: el clic SI llega al boton (token ' + (b.getAttribute('data-dsym')||'?') + ') pero la funcion del modal NO esta disponible.');
-      return;
-    }
-    try {
-      window._shdRevisarLimpieza([{ addr: addr, raw: b.getAttribute('data-draw') || '0x0', sym: b.getAttribute('data-dsym') || '?', usd: Number(b.getAttribute('data-dusd')) || 0 }]);
-      // comprobar si el modal se creo
-      setTimeout(function () {
-        if (!document.getElementById('clean-modal')) {
-          alert('DIAG 2: la funcion se ejecuto pero el modal NO se creo en pantalla.');
-        }
-      }, 300);
-    } catch (e) {
-      alert('DIAG 3: error al abrir el modal: ' + ((e && e.message) || e));
-    }
-  }, true);
-}
+// Función global que abre el modal de eliminación. La llama el onclick inline
+// del cestico, de modo que no depende de ningún wire ni delegación posterior.
+window.__shdBorrar = function (addr, raw, sym, usd) {
+  if (window._shdRevisarLimpieza) {
+    window._shdRevisarLimpieza([{ addr: addr, raw: raw || '0x0', sym: sym || '?', usd: Number(usd) || 0 }]);
+  }
+};
 function pintarStats(addr, d, est, pnl) {
   est = est || {}; pnl = pnl || {};
   const set = function (id, v) { const e = $(id); if (e) e.textContent = v; };
@@ -1224,7 +1202,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const copiar = t.address ? ('<button class="shd-wtok-copy" data-copy="' + t.address + '" onclick="event.stopPropagation()" title="Copy contract">⧉</button>') : '';
     const swap = t.address ? ('<button class="shd-wtok-swap" data-swap="' + t.address + '" onclick="event.stopPropagation()">Swap</button>') : '';
     // papelera (eliminar) solo en la wallet propia, separada del swap por una rayita difuminada
-    const del = (esPropia && t.address) ? ('<span class="shd-wtok-div"></span><button class="shd-wtok-del" data-del="' + t.address + '" data-draw="' + (t.balanceRaw||'0x0') + '" data-dsym="' + escH(t.symbol||'?') + '" data-dusd="' + (t.usd||0) + '" title="Send this token out of your wallet"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>') : '';
+    const del = (esPropia && t.address) ? ('<span class="shd-wtok-div"></span><button class="shd-wtok-del" onclick="window.__shdBorrar(\'' + t.address + '\',\'' + (t.balanceRaw||'0x0') + '\',\'' + escH(t.symbol||'?') + '\',' + (t.usd||0) + ');return false;" title="Send this token out of your wallet"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>') : '';
     const selBox = '<label class="shd-tok-check" style="display:none"><input type="checkbox" class="shd-tok-cb" data-caddr="' + (t.address||'') + '" data-craw="' + (t.balanceRaw||'0x0') + '" data-csym="' + escH(t.symbol||'?') + '" data-cusd="' + (t.usd||0) + '"></label>';
     return '<div class="shd-wtok2" data-tokrow="' + escH((t.name||'') + ' ' + (t.symbol||'') + ' ' + (t.address||'')).toLowerCase() + '" data-new="' + (t.reciente?'1':'0') + '" data-today="' + (t.hoy?'1':'0') + '" data-usdval="' + (t.usd||0) + '">' +
       '<div class="shd-wtok-top">' + selBox + ic +
@@ -1309,7 +1287,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
           '<button class="shd-tok-popf" data-f="value">Only with USD value</button>' +
         '</div>' +
       '</div>' +
-      '<div class="shd-clean-bar" id="clean-bar" style="display:none"><div class="shd-clean-actions"><button class="shd-clean-sel" id="clean-zero">Zero value</button><button class="shd-clean-sel" id="clean-all">All</button><button class="shd-clean-sel" id="clean-none">Clear</button></div><button class="shd-clean-go" id="clean-go">Review</button></div>' +
+      '<div class="shd-clean-bar" id="clean-bar" style="display:none"><div class="shd-clean-actions"><button class="shd-clean-sel" id="clean-zero">Zero value</button><button class="shd-clean-sel" id="clean-all">All</button><button class="shd-clean-sel" id="clean-none">Clear</button></div><button class="shd-clean-go" id="clean-go">Delete selected</button></div>' +
       '</div>';
     h += '<div class="shd-wtoks" id="tok-list">';
     if (d.nativo > 0) h += filaTok({ symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD, logo: watch.logoBNB() });
