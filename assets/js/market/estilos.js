@@ -502,6 +502,24 @@ export function estilos() {
     #mk-overlay .mk-wiz-c{padding-top:calc(20px + env(safe-area-inset-top,0px))}
   }
 
-  `;
+  
+/* ── Asistente P2P: X separada del texto y chips de token más elegantes ── */
+.mk-wiz-top{padding-right:52px;align-items:flex-start;flex-wrap:wrap}
+.mk-wiz-x{top:12px;right:12px;width:34px;height:34px;z-index:5}
+.wz-tok-or{font-size:11.5px;color:#79838f;text-align:center;margin:16px 0 10px;position:relative}
+.wz-tok-or::before,.wz-tok-or::after{content:'';position:absolute;top:50%;width:28%;height:1px;background:linear-gradient(90deg,transparent,#2b3139)}
+.wz-tok-or::before{left:0}
+.wz-tok-or::after{right:0;background:linear-gradient(270deg,transparent,#2b3139)}
+.wz-tok-quick{display:flex;gap:10px;margin-top:0}
+.wz-op{flex:1;text-align:center;padding:14px 10px;border-radius:14px;border:1px solid #2b3139;background:linear-gradient(180deg,#1b2027,#0d1117);box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.wz-op b{display:block;font-size:15px;font-weight:700;margin-bottom:2px}
+.wz-op span{display:block;font-size:11px;color:#79838f}
+.wz-op.on{border-color:var(--gold-soft,#C9A84B);background:linear-gradient(180deg,rgba(232,184,75,.14),rgba(232,184,75,.04))}
+@media(max-width:560px){
+  .mk-wiz-top{padding-right:50px}
+  .mk-wiz-top b,.mk-wiz-top>div:first-child{max-width:calc(100% - 10px)}
+}
+
+`;
   document.head.appendChild(s);
 }

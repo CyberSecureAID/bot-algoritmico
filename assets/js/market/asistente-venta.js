@@ -27,9 +27,10 @@ function pintarPaso(p) {
   if (p === 1) {
     marco(1, 8, 'What are you selling?', 'Paste the token contract, or pick a common one. Any BNB Smart Chain token works.',
       `<div class="wz-tok-find">
-        <input id="wz-tok-addr" placeholder="0x… token contract address" autocomplete="off" spellcheck="false" value="${W.tokSel && _esDir(W.tokSel) && W.sim!=='USDT' && W.sim!=='USDC' ? W.tokSel : ''}">
+        <input id="wz-tok-addr" placeholder="Paste a token contract address (0x…)" autocomplete="off" spellcheck="false" value="${W.tokSel && _esDir(W.tokSel) && W.sim!=='USDT' && W.sim!=='USDC' ? W.tokSel : ''}">
         <div class="wz-tok-msg" id="wz-tok-msg"></div>
       </div>
+      <div class="wz-tok-or">or pick a common one</div>
       <div class="wz-tok-quick">
         <button class="wz-op ${W.tokSel === USDT ? 'on' : ''}" data-tok="${USDT}" data-sim="USDT"><b>USDT</b><span>Tether</span></button>
         <button class="wz-op ${W.tokSel === USDC ? 'on' : ''}" data-tok="${USDC}" data-sim="USDC"><b>USDC</b><span>USD Coin</span></button>
