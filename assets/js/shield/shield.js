@@ -260,7 +260,12 @@ function inyectarCSS() {
   #shd .shd-watch-reco-sub{font-size:12px;color:#8a95a3;line-height:1.55;margin-bottom:14px}
   @media(max-width:560px){ #shd .shd-stats{grid-template-columns:repeat(2,1fr)} }
   
-        /* Limpieza de tokens basura */
+          /* Botones dentro del modal (vive fuera de #shd, necesita estilo propio) */
+  .shd-clean-btns .shd-rescan{flex:1;padding:12px;border:1px solid #29313b;border-radius:10px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .shd-clean-btns .shd-btn{flex:1;padding:12px;border:0;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,#ff6b7d,#f6465d 60%,#d12d43);color:#fff}
+  .shd-clean-box{font-family:var(--display,'Segoe UI',sans-serif);color:#eaecef}
+  
+  /* Limpieza de tokens basura */
   #shd .shd-tok-fbtn#clean-toggle.active{border-color:rgba(246,70,93,.5);color:#f6465d;background:rgba(246,70,93,.12)}
   #shd .shd-wtok-btns{margin-left:auto;display:flex;align-items:center;gap:0;flex:none}
   #shd .shd-wtok-div{width:1px;height:26px;margin:0 4px;background:linear-gradient(180deg,transparent,#3a424c 30%,#3a424c 70%,transparent);flex:none}
@@ -279,18 +284,18 @@ function inyectarCSS() {
   #shd .shd-clean-sel:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-clean-go{padding:9px 20px;border:0;border-radius:9px;background:linear-gradient(180deg,#ff6b7d,#f6465d 60%,#d12d43);color:#fff;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;flex:none}
   /* modal de confirmación */
-  #shd .shd-clean-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
-  #shd .shd-clean-box{width:100%;max-width:460px;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #29313b;border-radius:18px;padding:22px}
-  #shd .shd-clean-title{font-size:19px;font-weight:800;margin-bottom:12px}
-  #shd .shd-clean-warn{font-size:12.5px;color:#f6465d;background:rgba(246,70,93,.08);border:1px solid rgba(246,70,93,.25);border-radius:10px;padding:12px;line-height:1.5;margin-bottom:14px}
-  #shd .shd-clean-note{font-size:12.5px;color:#a7b0bb;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:10px;padding:12px;line-height:1.5;margin-bottom:14px}
-  #shd .shd-clean-list{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:220px;overflow-y:auto}
-  #shd .shd-clean-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:9px;padding:10px 12px;font-size:13px}
-  #shd .shd-clean-item small{color:#79838f;font-size:11px}
-  #shd .shd-clean-remove{padding:5px 11px;border:1px solid #29313b;border-radius:7px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-size:11px;cursor:pointer}
-  #shd .shd-clean-remove:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
-  #shd .shd-clean-btns{display:flex;gap:10px}
-  #shd .shd-clean-btns .shd-rescan{flex:1} #shd .shd-clean-btns .shd-btn{flex:1}
+  .shd-clean-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .shd-clean-box{width:100%;max-width:460px;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #29313b;border-radius:18px;padding:22px}
+  .shd-clean-title{font-size:19px;font-weight:800;margin-bottom:12px}
+  .shd-clean-warn{font-size:12.5px;color:#f6465d;background:rgba(246,70,93,.08);border:1px solid rgba(246,70,93,.25);border-radius:10px;padding:12px;line-height:1.5;margin-bottom:14px}
+  .shd-clean-note{font-size:12.5px;color:#a7b0bb;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:10px;padding:12px;line-height:1.5;margin-bottom:14px}
+  .shd-clean-list{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:220px;overflow-y:auto}
+  .shd-clean-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(11,14,17,.5);border:1px solid #1c232b;border-radius:9px;padding:10px 12px;font-size:13px}
+  .shd-clean-item small{color:#79838f;font-size:11px}
+  .shd-clean-remove{padding:5px 11px;border:1px solid #29313b;border-radius:7px;background:rgba(255,255,255,.03);color:#a7b0bb;font-family:inherit;font-size:11px;cursor:pointer}
+  .shd-clean-remove:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  .shd-clean-btns{display:flex;gap:10px}
+  .shd-clean-btns .shd-rescan{flex:1} .shd-clean-btns .shd-btn{flex:1}
   @media(max-width:560px){ #shd .shd-clean-bar{flex-direction:column;align-items:stretch} #shd .shd-clean-go{width:100%} #shd .shd-clean-actions{justify-content:center} }
       /* Address poisoning checker */
   #shd .shd-card-poison{border-color:rgba(180,120,255,.22)}
