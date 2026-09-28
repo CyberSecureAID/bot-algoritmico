@@ -156,6 +156,16 @@
       background-position: center, center, center center;
       background-repeat: no-repeat, no-repeat, no-repeat;
     }
+
+    /* ── En móvil no se pintan las capas de fondo de escritorio ──
+       Este CSS se aplica antes de que el JS pueda actuar. Sin esta regla se
+       veía la imagen de fondo de los bots unos instantes, hasta que la
+       interfaz móvil se montaba encima. */
+    @media (max-width: 760px) {
+      #cco-bg { background-image: none !important; background-color: #0b0e12 !important; }
+      #cco-top { display: none !important; }
+    }
+
     /* .con-img ya no hace falta (la imagen está en #cco-bg base). Si la
        imagen NO existe, el JS quita esta clase; entonces se oculta la capa
        de imagen dejando solo el degradado. */
@@ -494,7 +504,7 @@
           try { lista = (window.__walletLista === true) || (Date.now() - _t0 > 2500); } catch (e) { lista = true; }
           if (!lista) return;
           clearInterval(_esperar);
-          import('./assets/js/shield/shield.js?v=149').then(function (m) {
+          import('./assets/js/shield/shield.js?v=150').then(function (m) {
             if (m.abrirShield) m.abrirShield();
             // quitar el velo cuando la sección ya está pintada
             setTimeout(function () {
