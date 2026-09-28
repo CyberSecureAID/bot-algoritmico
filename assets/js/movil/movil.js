@@ -6,7 +6,7 @@
 
 import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=20';
+import { inyectarMovil } from './estilos.js?v=21';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=20';
 import { pintarMercados } from './markets.js?v=20';
@@ -15,6 +15,33 @@ import { pintarActivos } from './activos.js?v=20';
 import { abrirMenu } from './menu.js?v=20';
 import { abrirBuscar } from './buscar.js?v=20';
 import { abrirAlerta } from './alerta.js?v=20';
+
+/* ── Altura real del área visible ──────────────────────────────────────────
+   Los navegadores internos de las wallets (Trust Wallet, MetaMask) no calculan
+   bien 100dvh: devuelven una altura mayor que el espacio realmente visible, de
+   modo que la barra inferior queda por debajo de sus propios controles y la
+   página parece cortada. Medimos la altura real y la publicamos como variable
+   CSS, actualizándola cuando el navegador cambia sus barras. */
+function medirAlto() {
+  try {
+    const vv = window.visualViewport;
+    const h = vv && vv.height ? vv.height : window.innerHeight;
+    document.documentElement.style.setProperty('--mv-h', Math.round(h) + 'px');
+  } catch (_) {}
+}
+medirAlto();
+try {
+  window.addEventListener('resize', medirAlto, { passive: true });
+  window.addEventListener('orientationchange', function () { setTimeout(medirAlto, 250); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', medirAlto, { passive: true });
+    window.visualViewport.addEventListener('scroll', medirAlto, { passive: true });
+  }
+  // algunos navegadores ajustan sus barras poco después de cargar
+  setTimeout(medirAlto, 300); setTimeout(medirAlto, 1000);
+} catch (_) {}
+
+
 
 const $ = (id) => document.getElementById(id);
 const _movil = () => window.matchMedia('(max-width: 760px)').matches;

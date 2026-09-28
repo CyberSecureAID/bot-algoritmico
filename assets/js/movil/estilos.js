@@ -510,6 +510,12 @@ export function inyectarMovil() {
   body.mv-on{margin:0;padding:0}
   @supports (height:100dvh){ #mv-app{height:100dvh;max-height:100dvh} }
   
+
+  /* ── Altura real medida por JS (los navegadores de wallets no calculan bien
+     100dvh, dejando la barra inferior fuera de la pantalla) ── */
+  #mv-app{height:var(--mv-h,100dvh)!important;max-height:var(--mv-h,100dvh)!important}
+  #mv-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  
 `;
   document.head.appendChild(s);
 }
