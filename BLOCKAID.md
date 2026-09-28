@@ -104,15 +104,21 @@ automático puede leerlas como riesgo.
 
 ### Paso 1 — Reunir las capturas
 
-Necesitamos **dos** capturas de pantalla:
+Se necesitan **cuatro** capturas del navegador de escritorio, con la barra de
+direcciones y MetaMask visibles en todas. Documentan el flujo completo:
 
-**Captura A.** El sitio recién abierto en el navegador de la wallet, **sin que haya
-salido ninguna ventana pidiendo nada**. Debe verse la página cargada y ninguna
-ventana de MetaMask encima. Esto prueba que al entrar no pedimos firmas.
+| # | Qué capturar | Qué prueba |
+|---|---|---|
+| 1 | La página recién cargada, sin tocar nada | Que al entrar **no se pide ninguna firma** |
+| 2 | La advertencia completa de MetaMask | La acusación exacta, para contrastarla |
+| 3 | El diálogo de conexión de cuenta | Que solo pedimos conexión estándar |
+| 4 | Wallet ya conectada, con su saldo visible | Que **no se pidió ni una transacción** y los fondos siguen intactos |
 
-**Captura B.** El momento en que se pulsa "Connect wallet" y aparece la ventana
-estándar de la wallet pidiendo conectar la cuenta. Esto prueba que lo único que
-pedimos es la conexión normal.
+La cuarta es la más importante: demuestra que tras conectar, el saldo permanece
+igual y no se solicitó ninguna aprobación.
+
+**Archivos actuales en el repo:** `criptocubaoficial uno.jpg`, `criptocubaoficial  dos.jpg`,
+`criptocubaoficial  tres.jpg`, `criptocubaoficial  cuatro.jpg`.
 
 ### Paso 2 — Enviar la respuesta
 

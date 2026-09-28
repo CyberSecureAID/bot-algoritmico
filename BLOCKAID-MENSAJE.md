@@ -1,7 +1,7 @@
 # Mensaje para enviar a Blockaid
 
 > Copiar todo lo que está debajo de la línea y pegarlo como respuesta al ticket.
-> Adjuntar las dos capturas de pantalla (ver BLOCKAID.md, paso 1).
+> Adjuntar las CUATRO capturas de pantalla, en orden (uno, dos, tres, cuatro).
 
 ---
 
@@ -54,15 +54,19 @@ The site never requests seed phrases, recovery phrases or private keys. No such 
 
 No third-party advertising, tracking or analytics scripts are loaded.
 
-**5. Reproducible test flow — load requests no transaction**
+**5. Reproducible test flow — documented step by step**
 
-1. Open criptocubaoficial.com in a wallet browser.
-2. The page loads and renders. **No wallet prompt appears.** No transaction, signature or approval is requested during load. (See attached screenshot A.)
-3. Tap "Connect wallet". The wallet shows its standard account-connection prompt. Nothing else. (See attached screenshot B.)
-4. Once connected, the site only reads on-chain data: native balance, token balances, contract state. No transaction is proposed.
-5. A transaction is only constructed after the user explicitly initiates an action, and is always presented in the wallet for approval or rejection.
+I have attached four screenshots documenting the complete connection flow from first load to connected state. Each step is labelled below.
 
-This is the behaviour your team asked to see demonstrated: the site connects wallets and reads balances without requesting transactions.
+**Screenshot 1 — page loads, no transaction requested.** The site renders fully. MetaMask shows only its standard connection panel. **No signature, transaction or approval request appears at any point during load.** The warning banner is also visible here.
+
+**Screenshot 2 — the warning your system produces.** MetaMask states the site "shows phishing signs or wallet-draining activity" and "may request transactions designed to steal your funds". As the remaining screenshots demonstrate, no transaction is requested at all.
+
+**Screenshot 3 — standard account connection.** After proceeding, the wallet displays its normal account-connection dialogue (`eth_requestAccounts`). Nothing else is requested.
+
+**Screenshot 4 — connected state, funds untouched.** The wallet is connected on BNB Chain with its balance intact (USD 8.82). No transaction was proposed, no approval requested, no permission granted beyond account visibility. The site reads balances and nothing more.
+
+This is precisely the behaviour your team asked to see demonstrated: the site connects wallets and reads balances without requesting transactions. The four screenshots show the entire flow end to end, with no step omitted.
 
 **6. Smart contracts**
 
