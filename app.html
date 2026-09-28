@@ -189,7 +189,11 @@
     }
 
     /* Las ventanitas de la app (info, firma de contratos) se montan en el
-       <body>, no dentro de #colmena-app, así que NO heredaban el tema oscuro
+       <body>
+<!-- Velo negro instantáneo: al llegar con ?abrir=shield tapa la app desde el
+     primer frame, para que no se vean los bots mientras carga la sección. -->
+<div id="velo-shield" style="display:none;position:fixed;inset:0;z-index:2147483647;background:#0b0e12"></div>
+<script>try{if(new URLSearchParams(location.search).get('abrir')==='shield'){var _vs=document.getElementById('velo-shield');if(_vs)_vs.style.display='block';}}catch(e){}</script>, no dentro de #colmena-app, así que NO heredaban el tema oscuro
        y caían al verde de la lotería (styles.css). Se redefinen las variables
        verdes a oscuro en :root global para que esas ventanitas salgan oscuras
        y no verde/amarillas. styles.css se conserva; solo se sobrescriben las
@@ -481,9 +485,27 @@
 
       // Wallet Shield: sección propia, se abre importando su módulo.
       if (que === 'shield') {
-        import('./assets/js/shield/shield.js?v=147').then(function (m) {
-          if (m.abrirShield) m.abrirShield();
-        }).catch(function (e) { console.warn('shield:', e); });
+        // Esperamos a que la wallet haya terminado de reconectar antes de abrir
+        // la sección: si se abre antes, el estado de la cuenta es inconsistente
+        // y se entra por la rama equivocada (saltándose la pantalla de acceso).
+        var _t0 = Date.now();
+        var _esperar = setInterval(function () {
+          var lista = false;
+          try { lista = (window.__walletLista === true) || (Date.now() - _t0 > 2500); } catch (e) { lista = true; }
+          if (!lista) return;
+          clearInterval(_esperar);
+          import('./assets/js/shield/shield.js?v=148').then(function (m) {
+            if (m.abrirShield) m.abrirShield();
+            // quitar el velo cuando la sección ya está pintada
+            setTimeout(function () {
+              var v = document.getElementById('velo-shield');
+              if (v) { v.style.transition = 'opacity .25s'; v.style.opacity = '0'; setTimeout(function () { v.remove(); }, 300); }
+            }, 120);
+          }).catch(function (e) {
+            console.warn('shield:', e);
+            var v = document.getElementById('velo-shield'); if (v) v.remove();
+          });
+        }, 60);
         return;
       }
 
