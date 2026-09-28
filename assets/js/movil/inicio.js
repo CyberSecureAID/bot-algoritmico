@@ -21,11 +21,13 @@ const PROMOS = [
   { ic: 'trophy', t: 'Prize Pool comunitario', s: 'Participa y gana del fondo común', go: 'prize' },
   { ic: 'bot',    t: 'Bots que operan por ti', s: 'Compran abajo y venden arriba, en tu wallet', go: 'bots' },
   { ic: 'tools',  t: 'Herramientas', s: 'Calculadoras y utilidades para operar mejor', go: 'tools' },
+  { ic: 'shield', t: 'Wallet Shield', s: 'Revisa permisos y protege tus fondos', go: 'shield' },
 ];
 
 /* TODOS los servicios pasan por las tarjetas. Iconos y colores REALES (los de
    la web para los bots). */
 const SERVICIOS = [
+  { go: 'shield',    color: '#E8B84B', ic: 'shield',  kick: 'Wallet Shield',   h: 'Protege tu wallet', p: 'Revisa permisos, detecta trampas y saca tus fondos a salvo.' },
   { go: 'bots',      color: '#4d9fff', ic: 'botGrid', kick: 'Smart Grid',      h: 'Gana en el rango',   p: 'Compra y vende en niveles; cierra cada cuadrícula solo en ganancia.' },
   { go: 'bots',      color: '#b47cff', ic: 'botAcum', kick: 'Acumulador',      h: 'Compra en caídas',   p: 'Compra por tramos cuando baja y arma posición sin que estés pendiente.' },
   { go: 'bots',      color: '#e8b84b', ic: 'botCash', kick: 'Cash Out',        h: 'Asegura ganancia',   p: 'Vende lo que ya tienes al precio o % que elijas.' },

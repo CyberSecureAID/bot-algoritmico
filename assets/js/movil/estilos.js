@@ -456,6 +456,7 @@ export function inyectarMovil() {
     padding:6px 10px;border-radius:9px;margin-bottom:6px}
   .ac-tabs .ac-dust::after{display:none}
   .ac-tabs .ac-dust svg{width:13px;height:13px}
+  .ac-tabs .ac-shield{background:color-mix(in srgb,#4ec8b4 12%,transparent);border-color:color-mix(in srgb,#4ec8b4 50%,transparent);color:#4ec8b4;margin-right:6px}
   .ac-row{display:flex;align-items:center;gap:12px;padding:14px 2px;border-bottom:1px solid var(--mv-line)}
   .ac-ci{width:36px;height:36px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:var(--mv-card2);
     border:1px solid var(--mv-line);font-size:12px;font-weight:800;color:var(--mv-gold)}

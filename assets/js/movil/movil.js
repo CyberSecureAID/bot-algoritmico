@@ -6,12 +6,12 @@
 
 import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=7';
-import { IC } from './iconos.js?v=1';
-import { pintarInicio } from './inicio.js?v=8';
+import { inyectarMovil } from './estilos.js?v=8';
+import { IC } from './iconos.js?v=2';
+import { pintarInicio } from './inicio.js?v=9';
 import { pintarMercados } from './markets.js?v=3';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=4';
-import { pintarActivos } from './activos.js?v=5';
+import { pintarActivos } from './activos.js?v=6';
 import { abrirMenu } from './menu.js?v=1';
 import { abrirBuscar } from './buscar.js?v=1';
 import { abrirAlerta } from './alerta.js?v=2';
@@ -94,6 +94,7 @@ async function abrir(clave, arg) {
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=126'); m.abrirLiquidity && m.abrirLiquidity(); break; }
+      case 'shield':    { const v = document.createElement('div'); v.style.cssText='position:fixed;inset:0;z-index:99999;background:#000'; document.body.appendChild(v); setTimeout(function(){ location.href = 'app.html?abrir=shield'; }, 30); break; }
       case 'bots':      modoBots(true); break;
       case 'buscar':    abrirBuscar(api()); break;
       case 'soporte':   abrirSoporte(); break;

@@ -47,6 +47,7 @@ export function pintarActivos(host, api) {
       <button data-t="nfts" class="${_tab === 'nfts' ? 'on' : ''}">NFTs</button>
       <button data-t="activity" class="${_tab === 'activity' ? 'on' : ''}">Actividad</button>
       <div style="flex:1"></div>
+      <button class="ac-dust ac-shield" data-t="shield">${IC.shield} Shield</button>
       <button class="ac-dust" data-t="polvo">${IC.bolt} Polvo</button>
     </div>
     <div id="ac-list"></div>
@@ -61,6 +62,7 @@ export function pintarActivos(host, api) {
   $('ac-eye').onclick = () => { _ojo = !_ojo; try { localStorage.setItem('mv-ojo', _ojo ? '1' : '0'); } catch (_) {} pintar(); };
   host.querySelectorAll('#ac-tabs button').forEach((btn) => btn.onclick = () => {
     const t = btn.getAttribute('data-t');
+    if (t === 'shield') { api.abrir('shield'); return; }               // Wallet Shield
     if (t === 'polvo') { api.abrir('polvo'); return; }               // colector de polvo (tools)
     _tab = t; host.querySelectorAll('#ac-tabs button[data-t="spot"],#ac-tabs button[data-t="nfts"],#ac-tabs button[data-t="activity"]').forEach((x) => x.classList.toggle('on', x === btn)); pintar();
   });
