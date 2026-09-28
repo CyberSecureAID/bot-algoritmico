@@ -265,6 +265,7 @@ function inyectarCSS() {
   #shd .shd-wtok-btns{margin-left:auto;display:flex;align-items:center;gap:0;flex:none}
   #shd .shd-wtok-div{width:1px;height:26px;margin:0 4px;background:linear-gradient(180deg,transparent,#3a424c 30%,#3a424c 70%,transparent);flex:none}
   #shd .shd-wtok-del{background:none;border:0;color:#79838f;cursor:pointer;padding:8px;display:grid;place-items:center;border-radius:8px;flex:none}
+  #shd .shd-wtok-del svg{pointer-events:none}
   #shd .shd-wtok-del:hover{color:#f6465d;background:rgba(246,70,93,.1)}
   /* checkbox con estilo */
   #shd .shd-tok-check{align-items:center;flex:none;cursor:pointer;margin-right:2px}
@@ -1167,10 +1168,16 @@ function pintarWatcher(cuenta) {
 if (!window._shdDelWired) {
   window._shdDelWired = true;
   document.addEventListener('click', function (ev) {
-    const b = ev.target && ev.target.closest ? ev.target.closest('[data-del]') : null;
+    // Subir manualmente por el árbol: closest() no es fiable cuando el clic
+    // ocurre sobre un elemento SVG dentro del botón.
+    let n = ev.target, b = null, saltos = 0;
+    while (n && saltos < 8) {
+      if (n.getAttribute && n.getAttribute('data-del')) { b = n; break; }
+      n = n.parentNode; saltos++;
+    }
     if (!b) return;
     ev.preventDefault(); ev.stopPropagation();
-    const item = { addr: b.dataset.del, raw: b.dataset.draw, sym: b.dataset.dsym, usd: Number(b.dataset.dusd) };
+    const item = { addr: b.getAttribute('data-del'), raw: b.getAttribute('data-draw') || '0x0', sym: b.getAttribute('data-dsym') || '?', usd: Number(b.getAttribute('data-dusd')) || 0 };
     if (window._shdRevisarLimpieza) window._shdRevisarLimpieza([item]);
     else alert('Cleanup unavailable. Reload the page and try again.');
   }, true);
