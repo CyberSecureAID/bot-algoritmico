@@ -746,15 +746,16 @@ async function montarParticulas() {
   } catch (_) {}
 }
 function cerrar() {
-  // Si llegamos aquí navegando (hay historial), volvemos atrás sin recargar:
-  // recargar provoca un salto brusco y reinicia el estado de la wallet, lo que
-  // en móvil se ve como un pantallazo y el saldo desapareciendo unos segundos.
   const cont = document.getElementById('shd');
+  // Si la sección se abrió DENTRO de la app móvil (su contenedor existe), basta
+  // con quitar el overlay: navegar recargaría la app y sacaría al usuario fuera.
+  const enMovil = !!document.getElementById('mv-app') || !!document.getElementById('mv-scroll');
+  if (enMovil) { if (cont) cont.remove(); return; }
+  // En la web, si hay historial, volvemos atrás sin recargar.
   try {
     if (window.history.length > 1 && document.referrer) {
       if (cont) cont.remove();
       window.history.back();
-      // si en 400 ms seguimos aquí (el back no hizo nada), navegamos de verdad
       setTimeout(function () { if (!document.getElementById('shd')) { try { location.replace('index.html'); } catch (_) { location.href = 'index.html'; } } }, 400);
       return;
     }
