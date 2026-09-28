@@ -1162,6 +1162,19 @@ function pintarWatcher(cuenta) {
   $('watch-go').onclick = () => ir($('watch-addr').value.trim());
   document.querySelectorAll('[data-w], .shd-reco').forEach(b => b.onclick = () => { $('watch-addr').value = b.dataset.w; ir(b.dataset.w); });
 }
+// Delegación global para el botón de eliminar token (cestico). Se instala una
+// sola vez y funciona aunque la lista se repinte, porque escucha en el documento.
+if (!window._shdDelWired) {
+  window._shdDelWired = true;
+  document.addEventListener('click', function (ev) {
+    const b = ev.target && ev.target.closest ? ev.target.closest('[data-del]') : null;
+    if (!b) return;
+    ev.preventDefault(); ev.stopPropagation();
+    const item = { addr: b.dataset.del, raw: b.dataset.draw, sym: b.dataset.dsym, usd: Number(b.dataset.dusd) };
+    if (window._shdRevisarLimpieza) window._shdRevisarLimpieza([item]);
+    else alert('Cleanup unavailable. Reload the page and try again.');
+  }, true);
+}
 function pintarStats(addr, d, est, pnl) {
   est = est || {}; pnl = pnl || {};
   const set = function (id, v) { const e = $(id); if (e) e.textContent = v; };
@@ -1349,6 +1362,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     document.querySelectorAll('.shd-tok-cb').forEach(function (cb) { if (cb.checked && cb.dataset.caddr) sel.push({ addr: cb.dataset.caddr, raw: cb.dataset.craw, sym: cb.dataset.csym, usd: Number(cb.dataset.cusd) }); });
     revisarLimpiezaLista(sel);
   }
+  window._shdRevisarLimpieza = revisarLimpiezaLista;
   function revisarLimpiezaLista(sel) {
     if (!sel.length) { return; }
     const valorTotal = sel.reduce(function (a, t) { return a + t.usd; }, 0);
@@ -1445,11 +1459,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
   }
   function wireTokBtns() {
     document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = o; }, 1200); } catch (_) {} }; });
-    document.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function (e) {
-      e.stopPropagation();
-      // eliminar UN token: reusar el modal de confirmación con un solo item
-      revisarLimpiezaLista([{ addr: b.dataset.del, raw: b.dataset.draw, sym: b.dataset.dsym, usd: Number(b.dataset.dusd) }]);
-    }; });
+    // (el clic del cestico se maneja por delegación global, más abajo)
     document.querySelectorAll('[data-swap]').forEach(function (b) { b.onclick = function (e) {
       e.stopPropagation();
       // velo negro instantáneo para tapar la transición (nada de pestañazo al lobby)
