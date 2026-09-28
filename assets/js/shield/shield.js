@@ -21,7 +21,7 @@ function inyectarCSS() {
   if (_css) return; _css = true;
   const s = document.createElement('style'); s.id = 'shd-css';
   s.textContent = `
-  #shd{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;color:#eaecef;font-family:var(--display,'Segoe UI',sans-serif);
+  #shd{position:fixed;top:0;left:0;right:0;bottom:0;height:100dvh;max-height:100dvh;z-index:400;display:flex;flex-direction:column;color:#eaecef;font-family:var(--display,'Segoe UI',sans-serif);
     background:#000 url('assets/portada/img/fondo-shield.webp') center/cover no-repeat;overflow-y:auto;-webkit-overflow-scrolling:touch}
   #shd::before{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(3,5,8,.93));z-index:0;pointer-events:none}
   #shd #shd-fx{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%;will-change:transform}
@@ -34,7 +34,7 @@ function inyectarCSS() {
   #shd .shd-back:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-bar-t{font-size:15px;font-weight:800;letter-spacing:.2px}
   #shd .shd-bar-t span{color:var(--gold,#E8B84B)}
-  #shd .shd-in{position:relative;z-index:1;width:100%;max-width:820px;margin:0 auto;padding:22px 16px calc(40px + env(safe-area-inset-bottom,0px));position:relative;z-index:2}
+  #shd .shd-in{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;z-index:1;width:100%;max-width:820px;margin:0 auto;padding:22px 16px calc(40px + env(safe-area-inset-bottom,0px));position:relative;z-index:2}
   /* Wallet conectada */
   #shd .shd-wallet{display:flex;align-items:center;gap:12px;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:14px;padding:14px 16px;margin-bottom:18px}
   #shd .shd-wava{width:38px;height:38px;border-radius:50%;background:#12161c;display:grid;place-items:center;flex:none;color:var(--gold,#E8B84B)}
@@ -98,7 +98,7 @@ function inyectarCSS() {
   
   /* ── Adaptación a móvil ── */
   @media(max-width:640px){
-    #shd .shd-in{padding:12px 12px 90px}
+    #shd .shd-in{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 90px}
     #shd .shd-cards{grid-template-columns:1fr;gap:10px}
     #shd .shd-audit-hero{flex-direction:column;text-align:center;gap:16px;padding:20px 16px}
     #shd .shd-audit-side{align-items:center}
