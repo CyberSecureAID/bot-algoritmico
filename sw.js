@@ -8,7 +8,7 @@
  *   · Si hay versión nueva, se descarga sola y se aplica al recargar.
  */
 
-const VERSION = 'aurex-v382';
+const VERSION = 'aurex-v383';
 const APP = [
   './',
   './index.html',              // la portada
@@ -64,7 +64,7 @@ self.addEventListener('fetch', (e) => {
   // Módulos en desarrollo activo: SIEMPRE frescos de la red, nunca del caché.
   // Sin esta regla, el service worker guarda su propia copia y el usuario sigue
   // viendo versiones antiguas aunque borre el caché del navegador.
-  if (url.pathname.includes('/shield/') || url.pathname.includes('/movil/') ||
+  if (url.pathname.includes('/shield/') || url.pathname.includes('/movil/') || url.pathname.includes('gridbot-ui') ||
       url.pathname.includes('/market/') || url.pathname.endsWith('/wallet.js')) {
     e.respondWith(fetch(req, { cache: 'no-store' }).catch(() => caches.match(req)));
     return;
