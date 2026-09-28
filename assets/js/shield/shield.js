@@ -1162,6 +1162,15 @@ function pintarWatcher(cuenta) {
   $('watch-go').onclick = () => ir($('watch-addr').value.trim());
   document.querySelectorAll('[data-w], .shd-reco').forEach(b => b.onclick = () => { $('watch-addr').value = b.dataset.w; ir(b.dataset.w); });
 }
+function pintarStats(addr, d, est, pnl) {
+  est = est || {}; pnl = pnl || {};
+  const set = function (id, v) { const e = $(id); if (e) e.textContent = v; };
+  set('st-val', pnl.tokensConValor != null ? pnl.tokensConValor : '—');
+  const dias = Number(est.edadDias) || 0;
+  set('st-age', dias > 0 ? (dias > 365 ? (Math.floor(dias/365) + 'y') : (dias + 'd')) : '—');
+  set('st-tx', est.txCount > 0 ? Number(est.txCount).toLocaleString() : '—');
+  set('st-conc', pnl.concentracion > 0 ? (Math.round(pnl.concentracion) + '%') : '—');
+}
 function pintarWatchRes(cuenta, addr, d, hist) {
   const esPropia = cuenta && addr && cuenta.toLowerCase() === addr.toLowerCase();
   window._watchAddr = addr;
