@@ -8,12 +8,12 @@ import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=8';
 import { IC } from './iconos.js?v=2';
-import { pintarInicio } from './inicio.js?v=9';
+import { pintarInicio } from './inicio.js?v=10';
 import { pintarMercados } from './markets.js?v=3';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=4';
 import { pintarActivos } from './activos.js?v=6';
-import { abrirMenu } from './menu.js?v=1';
-import { abrirBuscar } from './buscar.js?v=1';
+import { abrirMenu } from './menu.js?v=2';
+import { abrirBuscar } from './buscar.js?v=2';
 import { abrirAlerta } from './alerta.js?v=2';
 
 const $ = (id) => document.getElementById(id);

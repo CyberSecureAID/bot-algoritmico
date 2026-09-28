@@ -1,6 +1,6 @@
 /* movil/inicio.js — Pantalla 1 (Inicio). */
 
-import { IC } from './iconos.js?v=1';
+import { IC } from './iconos.js?v=2';
 import * as wallet from '../wallet.js?v=125';
 import { money, money0, cantidad, logoDe } from './fmt.js?v=3';
 import * as fperfil from '../firebase-perfil.js?v=1';
@@ -37,7 +37,7 @@ const SERVICIOS = [
   { go: 'niveles',   color: '#E8B84B', ic: 'chart',   kick: 'Smart Levels',    h: 'Analyze and trade',    p: 'Niveles, indicadores y compra/venta al toque en la gráfica.' },
   { go: 'academy',   color: '#4c8dff', ic: 'book',    kick: 'Academia',        h: 'Learn',            p: 'Formación paso a paso para sacarle ventaja al mercado.' },
   { go: 'swap',      color: '#2ebd85', ic: 'swap',    kick: 'Swap',            h: 'Instant',         p: 'Cambia cualquier cripto por otra, sin KYC y no custodial.' },
-  { go: 'market',    color: '#E8B84B', ic: 'market',  kick: 'Marketplace',     h: 'Compra P2P',         p: 'Órdenes de compra y venta entre personas, con garantía.' },
+  { go: 'market',    color: '#E8B84B', ic: 'market',  kick: 'P2P Market',      h: 'Buy & sell',         p: 'Orders between people, with on-chain escrow as guarantee.' },
   { go: 'prize',     color: '#f6465d', ic: 'trophy',  kick: 'Prize Pool',      h: 'Fondo común',        p: 'Participa y gana del pozo acumulado de la comunidad.' },
   { go: 'addtoken',  color: '#2ebd85', ic: 'coins',     kick: 'Add Token',       h: 'Lista tu cripto',    p: 'Pon a la venta tu propio token en el swap, al precio que elijas.' },
 ];
@@ -106,10 +106,10 @@ export function pintarInicio(host, api) {
     <div class="mv-sec-h"><b>Todos los servicios</b><span id="mv-viewall">Ver todo →</span></div>
     <div class="mv-svc"><div class="mv-svc-track" id="mv-svc-track"></div></div>
 
-    <div class="mv-sec-h"><b>Add Token</b><span id="mv-prize-more">Ver →</span></div>
+    <div class="mv-sec-h"><b id="mv-strip-title">Add Token</b><span id="mv-prize-more">See →</span></div>
     <div class="mv-strip" id="mv-prize-strip">
-      <div class="mv-strip-ic">${IC.coins || IC.market}</div>
-      <div class="mv-strip-tx"><b>List your token</b><small>Sell your own crypto in the swap</small></div>
+      <div class="mv-strip-ic" id="mv-strip-ic">${IC.coins || IC.market}</div>
+      <div class="mv-strip-tx" id="mv-strip-tx"><b>List your token</b><small>Sell your own crypto in the swap</small></div>
       <button class="mv-strip-go" id="mv-prize-go">Enter</button>
     </div>
   `;
@@ -133,7 +133,26 @@ export function pintarInicio(host, api) {
   $('mv-trade').onclick = () => api.irA('trade');
   const cb = $('mv-connect-btn'); if (cb) cb.onclick = () => api.conectar();
   host.querySelectorAll('.mv-qi').forEach((el) => { el.onclick = () => api.abrir(el.getAttribute('data-k')); });
-  $('mv-prize-go').onclick = $('mv-prize-more').onclick = () => api.abrir('addtoken');
+  // La tira inferior alterna entre Add Token y Wallet Shield. El destino de
+  // "Enter" y "See" cambia con ella, para que siempre lleve a lo que muestra.
+  const STRIP = [
+    { go: 'addtoken', title: 'Add Token',     ic: IC.coins || IC.market, b: 'List your token',  s: 'Sell your own crypto in the swap' },
+    { go: 'shield',   title: 'Wallet Shield', ic: IC.shield || IC.bot,   b: 'Protect your wallet', s: 'Check permissions and remove threats' }
+  ];
+  let _si = 0;
+  const pintarStrip = () => {
+    const c = STRIP[_si % STRIP.length];
+    const t = $('mv-strip-title'), ic = $('mv-strip-ic'), tx = $('mv-strip-tx');
+    if (t) t.textContent = c.title;
+    if (ic) ic.innerHTML = c.ic;
+    if (tx) tx.innerHTML = '<b>' + c.b + '</b><small>' + c.s + '</small>';
+    const ir = () => api.abrir(c.go);
+    const g = $('mv-prize-go'), m = $('mv-prize-more');
+    if (g) g.onclick = ir;
+    if (m) m.onclick = ir;
+  };
+  pintarStrip();
+  const tStrip = setInterval(() => { _si++; pintarStrip(); }, 5200);
   $('mv-viewall').onclick = () => api.abrir('menu');
 
   // Balance: ojito + moneda seleccionada (Total o una moneda concreta)
@@ -183,11 +202,13 @@ export function pintarInicio(host, api) {
     const card = (c) => `<button class="mv-svc-card" data-go="${c.go}" style="--bc:${c.color}">
       <span class="mv-svc-ic" style="color:${c.color}">${IC[c.ic] || IC.bot}</span>
       <b>${c.kick}</b></button>`;
-    track.innerHTML = SERVICIOS.map(card).join('');
+    // Duplicamos la tira: al llegar al final del primer juego saltamos al
+    // inicio del segundo, que es idéntico, así el bucle no se nota.
+    track.innerHTML = SERVICIOS.map(card).join('') + SERVICIOS.map(card).join('');
     pararCarrusel = montarCarrusel(track, api);
   }
 
-  host._limpiar = () => { clearInterval(tPromo); if (pararCarrusel) pararCarrusel(); };
+  host._limpiar = () => { clearInterval(tPromo); clearInterval(tStrip); if (pararCarrusel) pararCarrusel(); };
   host._pintarBal = pintarBal;
 }
 
@@ -237,17 +258,27 @@ function montarCarrusel(track, api) {
   const paso = () => {
     if (!vivo) return;
     if (auto) {
-      const max = svc.scrollWidth - svc.clientWidth;
-      if (max > 2) {
-        let n = svc.scrollLeft + dir * 0.5;
-        if (n >= max) { n = max; dir = -1; }
-        else if (n <= 0) { n = 0; dir = 1; }
+      // Bucle infinito: avanzamos siempre en la misma dirección y, al pasar la
+      // mitad (final del primer juego de tarjetas), restamos esa mitad. Como el
+      // segundo juego es idéntico, el salto es invisible.
+      const mitad = svc.scrollWidth / 2;
+      if (mitad > 2) {
+        let n = svc.scrollLeft + 0.5;
+        if (n >= mitad) n -= mitad;
         svc.scrollLeft = n;
       }
     }
     raf = requestAnimationFrame(paso);
   };
   const pausar = () => { auto = false; if (reanuda) { clearTimeout(reanuda); reanuda = 0; } };
+  // mantener el bucle también cuando el usuario arrastra
+  svc.addEventListener('scroll', function () {
+    const mitad = svc.scrollWidth / 2;
+    if (mitad > 2) {
+      if (svc.scrollLeft >= mitad) svc.scrollLeft -= mitad;
+      else if (svc.scrollLeft <= 0) svc.scrollLeft += mitad - 1;
+    }
+  }, { passive: true });
   const reanudarPronto = () => { if (reanuda) clearTimeout(reanuda); reanuda = setTimeout(() => { auto = true; }, 2600); };
 
   const limpiarPress = () => { if (hold) { clearTimeout(hold); hold = null; } if (card) card.classList.remove('press'); };

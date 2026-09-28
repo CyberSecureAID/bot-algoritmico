@@ -1,28 +1,34 @@
 /* movil/menu.js — Menú "Todos los servicios". Garantiza que NADA de la web
    quede oculto en el móvil: aquí está cada sección accesible. */
 
-import { IC } from './iconos.js?v=1';
+import { IC } from './iconos.js?v=2';
 
 const GRUPOS = [
-  { sub: 'Operar', items: [
+  { sub: 'Trade', items: [
     { k: 'bots', ic: 'bot', t: 'Bots' },
     { k: 'swap', ic: 'swap', t: 'Swap' },
-    { k: 'market', ic: 'market', t: 'Marketplace' },
+    { k: 'market', ic: 'market', t: 'P2P' },
+    { k: 'futuros', ic: 'candles', t: 'Futures' },
     { k: 'niveles', ic: 'chart', t: 'Smart Levels' },
   ]},
-  { sub: 'Gráficas de análisis', items: [
+  { sub: 'Security', items: [
+    { k: 'shield', ic: 'shield', t: 'Wallet Shield' },
+  ]},
+  { sub: 'Analysis charts', items: [
     { k: 'liquidity', ic: 'pool', t: 'Liquidity Pools' },
-    { k: 'muros', ic: 'candles', t: 'Lógica Estructural Avanzada' },
+    { k: 'muros', ic: 'candles', t: 'Heat Pools' },
     { k: 'niveles', ic: 'chart', t: 'Smart Levels' },
   ]},
-  { sub: 'Más', items: [
-    { k: 'tools', ic: 'tools', t: 'Herramientas' },
-    { k: 'academy', ic: 'book', t: 'Academia' },
+  { sub: 'More', items: [
+    { k: 'addtoken', ic: 'coins', t: 'Add Token' },
+    { k: 'aportar', ic: 'stack', t: 'Staking' },
+    { k: 'tools', ic: 'tools', t: 'Tools' },
+    { k: 'academy', ic: 'book', t: 'Academy' },
     { k: 'prize', ic: 'trophy', t: 'Prize Pool' },
-    { k: 'perfil', ic: 'user', t: 'Perfil' },
-    { k: 'idioma', ic: 'transfer', t: 'Idioma' },
-    { k: 'instalar', ic: 'arrowDown', t: 'Instalar app' },
-    { k: 'soporte', ic: 'support', t: 'Soporte' },
+    { k: 'perfil', ic: 'user', t: 'Profile' },
+    { k: 'idioma', ic: 'transfer', t: 'Language' },
+    { k: 'instalar', ic: 'arrowDown', t: 'Install app' },
+    { k: 'soporte', ic: 'support', t: 'Support' },
   ]},
 ];
 

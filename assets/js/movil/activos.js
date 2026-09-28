@@ -2,7 +2,7 @@
    monedas de la wallet (con logo), Recibir (QR), y herramientas repartidas:
    Colector de polvo y Alertas de precio. */
 
-import { IC } from './iconos.js?v=1';
+import { IC } from './iconos.js?v=2';
 import * as wallet from '../wallet.js?v=125';
 import { money, cantidad, logoDe } from './fmt.js?v=3';
 

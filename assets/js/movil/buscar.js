@@ -2,14 +2,15 @@
    TODAS las monedas de la plataforma; filtra por nombre al escribir y abre lo
    que elijas. No inventa: solo enruta a lo que ya existe. */
 
-import { IC } from './iconos.js?v=1';
+import { IC } from './iconos.js?v=2';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const SERVICIOS = [
   { t: 'Bots', k: 'bots', ic: 'bot', d: 'Crear bots de trading' },
   { t: 'Swap', k: 'swap', ic: 'swap', d: 'Intercambiar cripto' },
-  { t: 'Marketplace', k: 'market', ic: 'market', d: 'Comprar y vender P2P' },
+  { t: 'P2P Market', k: 'market', ic: 'market', d: 'Buy and sell peer to peer' },
+  { t: 'Wallet Shield', k: 'shield', ic: 'shield', d: 'Check permissions and protect your funds' },
   { t: 'Smart Levels', k: 'niveles', ic: 'chart', d: 'Análisis y operar en gráfica' },
   { t: 'Lógica Estructural Avanzada', k: 'muros', ic: 'candles', d: 'Flujo de órdenes' },
   { t: 'Liquidity Pools', k: 'liquidity', ic: 'pool', d: 'Profundidad y liquidez' },
