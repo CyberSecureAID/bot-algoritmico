@@ -458,7 +458,10 @@ export async function desconectar() {
  * antes sin romper el botón de desconectar.
  */
 export async function reconectarSiProcede() {
-  if (localStorage.getItem(CLAVE_SALIDA) === '1') return null;
+  // Señal para quien necesite saber que el intento de reconexión ya terminó
+  // (p.ej. abrir una sección que depende de la cuenta). Se marca siempre.
+  const _listo = function () { try { window.__walletLista = true; } catch (_) {} };
+  if (localStorage.getItem(CLAVE_SALIDA) === '1') { _listo(); return null; }
 
   const prov = detectar();
   if (!prov) return null;
@@ -471,10 +474,12 @@ export async function reconectarSiProcede() {
       est.chainId = await prov.request({ method: 'eth_chainId' });
       engancharEventos(prov);
       avisar();
+      _listo();
       return est.cuenta;
     }
   } catch { /* nada */ }
 
+  _listo();
   return null;
 }
 
