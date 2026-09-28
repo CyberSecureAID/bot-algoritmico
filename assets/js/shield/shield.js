@@ -1168,18 +1168,30 @@ function pintarWatcher(cuenta) {
 if (!window._shdDelWired) {
   window._shdDelWired = true;
   document.addEventListener('click', function (ev) {
-    // Subir manualmente por el árbol: closest() no es fiable cuando el clic
-    // ocurre sobre un elemento SVG dentro del botón.
     let n = ev.target, b = null, saltos = 0;
-    while (n && saltos < 8) {
+    while (n && saltos < 10) {
       if (n.getAttribute && n.getAttribute('data-del')) { b = n; break; }
       n = n.parentNode; saltos++;
     }
     if (!b) return;
     ev.preventDefault(); ev.stopPropagation();
-    const item = { addr: b.getAttribute('data-del'), raw: b.getAttribute('data-draw') || '0x0', sym: b.getAttribute('data-dsym') || '?', usd: Number(b.getAttribute('data-dusd')) || 0 };
-    if (window._shdRevisarLimpieza) window._shdRevisarLimpieza([item]);
-    else alert('Cleanup unavailable. Reload the page and try again.');
+    // DIAGNOSTICO VISIBLE: saber exactamente dónde se corta
+    const addr = b.getAttribute('data-del');
+    if (!window._shdRevisarLimpieza) {
+      alert('DIAG 1: el clic SI llega al boton (token ' + (b.getAttribute('data-dsym')||'?') + ') pero la funcion del modal NO esta disponible.');
+      return;
+    }
+    try {
+      window._shdRevisarLimpieza([{ addr: addr, raw: b.getAttribute('data-draw') || '0x0', sym: b.getAttribute('data-dsym') || '?', usd: Number(b.getAttribute('data-dusd')) || 0 }]);
+      // comprobar si el modal se creo
+      setTimeout(function () {
+        if (!document.getElementById('clean-modal')) {
+          alert('DIAG 2: la funcion se ejecuto pero el modal NO se creo en pantalla.');
+        }
+      }, 300);
+    } catch (e) {
+      alert('DIAG 3: error al abrir el modal: ' + ((e && e.message) || e));
+    }
   }, true);
 }
 function pintarStats(addr, d, est, pnl) {
