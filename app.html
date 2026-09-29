@@ -200,6 +200,34 @@
 
     /* Las ventanitas de la app (info, firma de contratos) se montan en el
        <body>
+<script>
+/* ── Limpieza forzada del service worker (una sola vez) ─────────────────────
+   Un service worker antiguo puede quedarse activo sirviendo archivos de su
+   propia memoria. Borrar el caché del navegador NO lo elimina, porque vive
+   aparte y sobrevive. Esto lo desregistra, vacía todos sus almacenes y recarga
+   la página una única vez, dejando marca para no repetirlo. */
+(function () {
+  try {
+    var MARCA = 'sw-limpieza-2026-09';
+    if (localStorage.getItem(MARCA) === '1') return;
+    if (!('serviceWorker' in navigator)) { localStorage.setItem(MARCA, '1'); return; }
+    localStorage.setItem(MARCA, '1');
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      var tareas = regs.map(function (r) { return r.unregister(); });
+      return Promise.all(tareas);
+    }).then(function () {
+      if (window.caches && caches.keys) {
+        return caches.keys().then(function (ns) {
+          return Promise.all(ns.map(function (n) { return caches.delete(n); }));
+        });
+      }
+    }).then(function () {
+      location.reload(true);
+    }).catch(function () {});
+  } catch (e) {}
+})();
+</script>
+
 <!-- Velo negro instantáneo: al llegar con ?abrir=shield tapa la app desde el
      primer frame, para que no se vean los bots mientras carga la sección. -->
 <div id="velo-shield" style="display:none;position:fixed;inset:0;z-index:2147483647;background:#0b0e12"></div>

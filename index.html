@@ -72,6 +72,25 @@ if ('serviceWorker' in navigator) {
 </head>
 
 <body>
+<script>
+/* Limpieza forzada del service worker antiguo (una sola vez). Ver app.html. */
+(function () {
+  try {
+    var MARCA = 'sw-limpieza-2026-09';
+    if (localStorage.getItem(MARCA) === '1') return;
+    if (!('serviceWorker' in navigator)) { localStorage.setItem(MARCA, '1'); return; }
+    localStorage.setItem(MARCA, '1');
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      return Promise.all(regs.map(function (r) { return r.unregister(); }));
+    }).then(function () {
+      if (window.caches && caches.keys) {
+        return caches.keys().then(function (ns) { return Promise.all(ns.map(function (n) { return caches.delete(n); })); });
+      }
+    }).then(function () { location.reload(true); }).catch(function () {});
+  } catch (e) {}
+})();
+</script>
+
 <!-- Velo negro instantáneo: si se llega para abrir el swap directo (p.ej. desde Wallet
      Shield), tapa la portada desde el primer frame para que no se vea cargar por detrás.
      La portada lo desvanece cuando el swap ya está montado. -->
