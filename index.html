@@ -47,9 +47,15 @@
    Para ver la portada en el teléfono: añade ?portada=1 a la dirección. */
 (function(){try{
   if(location.search.indexOf('portada=1')!==-1)return;
-  var m=window.matchMedia?window.matchMedia('(max-width:900px)').matches
-       :(document.documentElement.clientWidth||0)<=900;
-  if(m)location.replace('movil.html');
+  // Detección amplia: ancho de pantalla, tipo de puntero, soporte táctil y el
+  // identificador del navegador. Basta con que una dé positivo, porque en los
+  // navegadores internos de las wallets algunas medidas no son fiables.
+  var ancho = (window.matchMedia && window.matchMedia('(max-width:900px)').matches) ||
+              (document.documentElement.clientWidth||screen.width||0) <= 900;
+  var tactil = (navigator.maxTouchPoints||0) > 0 || 'ontouchstart' in window;
+  var grueso = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+  var agente = /Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
+  if (ancho || (tactil && grueso) || agente) location.replace('movil.html');
 }catch(_){}})();
 </script>
 

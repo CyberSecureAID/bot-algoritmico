@@ -93,7 +93,7 @@
   (async () => {
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/movil/movil.js?v=27');
+      const m = await import('./assets/js/movil/movil.js?v=28');
       await m.montarMovil({ conectarWallet });
       try {
         const idi = await import('./assets/js/idioma.js?v=163');
@@ -119,5 +119,50 @@
   }
 </script>
 
+<script>
+/* ── Ajuste al área visible real ────────────────────────────────────────────
+   Los navegadores de las wallets tienen una franja propia arriba (dirección y
+   menú) que NO descuentan del alto que informan. La página cree disponer de más
+   pantalla de la que hay, y por eso queda cortada por abajo y la barra de
+   navegación desaparece. Aquí medimos el área visible de verdad y la aplicamos.
+   Se vuelve a medir cuando el navegador muestra u oculta sus barras. */
+(function () {
+  function ajustar() {
+    try {
+      var vv = window.visualViewport;
+      var alto = vv && vv.height ? vv.height : window.innerHeight;
+      var arriba = vv && vv.offsetTop ? vv.offsetTop : 0;
+      var de = document.documentElement;
+      de.style.setProperty('--vh-real', Math.round(alto) + 'px');
+      de.style.setProperty('--top-real', Math.round(arriba) + 'px');
+      var app = document.getElementById('mv-app');
+      if (app) {
+        app.style.height = Math.round(alto) + 'px';
+        app.style.maxHeight = Math.round(alto) + 'px';
+        app.style.top = Math.round(arriba) + 'px';
+        app.style.bottom = 'auto';
+      }
+      var nav = document.getElementById('mv-nav');
+      if (nav) {
+        // la barra se coloca al final del área visible, no del viewport teórico
+        nav.style.position = 'fixed';
+        nav.style.top = Math.round(arriba + alto - nav.offsetHeight) + 'px';
+        nav.style.bottom = 'auto';
+      }
+    } catch (_) {}
+  }
+  window.__ajustarMovil = ajustar;
+  ajustar();
+  addEventListener('resize', ajustar, { passive: true });
+  addEventListener('orientationchange', function () { setTimeout(ajustar, 300); });
+  addEventListener('scroll', ajustar, { passive: true });
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', ajustar, { passive: true });
+    visualViewport.addEventListener('scroll', ajustar, { passive: true });
+  }
+  // el navegador ajusta sus barras con retraso; volvemos a medir
+  [200, 600, 1200, 2500].forEach(function (t) { setTimeout(ajustar, t); });
+})();
+</script>
 </body>
 </html>
