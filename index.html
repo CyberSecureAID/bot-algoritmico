@@ -59,10 +59,27 @@
     document.documentElement.classList.add('es-movil');
     // Ocultamos la portada con una hoja de estilo normal. Antes se usaba
     // document.write, que reescribe el documento y dejaba la página en negro.
+    // Ocultamos SOLO lo que ya existe en la portada, marcándolo. Antes se
+    // ocultaba todo hijo del documento, y eso dejaba invisibles las ventanas
+    // que se crean después (el swap, los selectores, los avisos).
     var st = document.createElement('style');
     st.textContent = 'html.es-movil,html.es-movil body{background:#0B0E11!important;margin:0;padding:0;height:100%;overflow:hidden}' +
-      'html.es-movil body>*:not(script):not(style):not(#mv-app):not(#mv-nav){display:none!important}';
+      'html.es-movil body>[data-portada]{display:none!important}';
     (document.head||document.documentElement).appendChild(st);
+    // marcamos los elementos de la portada en cuanto el documento esté listo
+    var marcar = function () {
+      try {
+        var hijos = document.body ? document.body.children : [];
+        for (var i = 0; i < hijos.length; i++) {
+          var e = hijos[i], t = e.tagName;
+          if (t === 'SCRIPT' || t === 'STYLE' || t === 'LINK') continue;
+          if (e.id === 'mv-app' || e.id === 'mv-nav') continue;
+          e.setAttribute('data-portada', '1');
+        }
+      } catch (_) {}
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', marcar);
+    else marcar();
   }
 }catch(_){}})();
 </script>
@@ -83,7 +100,6 @@ if ('serviceWorker' in navigator) {
   // entraba una versión nueva. Los cambios se ven en la siguiente visita.
 }
 </script>
-<script src="assets/js/logos.js?v=1"></script>
 </head>
 
 <body>
@@ -596,7 +612,7 @@ if (window.__esMovil) {
 
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/movil/movil.js?v=28');
+      const m = await import('./assets/js/movil/movil.js?v=29');
       await m.montarMovil({ conectarWallet });
       try {
         const idi = await import('./assets/js/idioma.js?v=163');
