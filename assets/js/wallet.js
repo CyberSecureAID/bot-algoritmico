@@ -434,17 +434,26 @@ export async function conectar() {
   engancharEventos(prov);
   localStorage.removeItem(CLAVE_SALIDA);   // vuelve a reconectar sola
 
-  // Si la wallet está en otra red, la cambiamos a BNB Smart Chain sin que el
-  // usuario tenga que hacerlo a mano. Si la rechaza, seguimos igualmente: la
-  // interfaz ya avisa de la red incorrecta.
-  try {
-    if (String(est.chainId).toLowerCase() !== '0x38') {
-      await cambiarARedCorrecta();
-      try { est.chainId = await prov.request({ method: 'eth_chainId' }); } catch (_) {}
-    }
-  } catch (_) { /* el usuario puede rechazar el cambio */ }
-
+  // Avisamos a la interfaz DE INMEDIATO: la conexión ya está hecha y el usuario
+  // debe verlo al instante. El cambio de red va después y por separado, porque
+  // si se espera a que la wallet responda y no lo hace, la pantalla se queda
+  // como si el botón no hubiera funcionado.
   avisar();
+
+  // Cambio de red en segundo plano, sin bloquear la interfaz.
+  if (String(est.chainId).toLowerCase() !== '0x38') {
+    (async () => {
+      try {
+        // margen de espera: si la wallet no contesta, seguimos con normalidad
+        await Promise.race([
+          cambiarARedCorrecta(),
+          new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 12000))
+        ]);
+        try { est.chainId = await prov.request({ method: 'eth_chainId' }); } catch (_) {}
+        avisar();
+      } catch (_) { /* el usuario puede rechazarlo o la wallet no responder */ }
+    })();
+  }
 
   return est.cuenta;
 }
