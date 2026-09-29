@@ -5,7 +5,7 @@
 
 import * as gb from '../gridbot.js?v=129';
 import * as wallet from '../wallet.js?v=125';
-import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=1';
+import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=2';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
 import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js?v=13';
