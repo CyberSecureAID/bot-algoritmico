@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0e12">
+<title>Wallet Shield</title>
+<link rel="manifest" href="manifest-aurex.webmanifest">
+
+<!-- Página propia de Wallet Shield.
+     Antes esta sección vivía dentro de app.html, que es la página de los bots.
+     Eso obligaba a cargar toda esa página primero, y por eso se veían los bots
+     un instante antes de aparecer la sección. Aquí no hay nada más que cargar. -->
+
+<style>
+  :root{
+    --gold:#E8B84B; --gold-soft:#C9A84B; --gold-md:#cf9f2e; --gold-hi:#f4d089; --gold-lo:#8f6a1a;
+    --display:'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  }
+  html,body{margin:0;padding:0;background:#0b0e12;color:#eaecef;
+    font-family:var(--display);min-height:100%;-webkit-text-size-adjust:100%}
+  body{overscroll-behavior:none}
+  *{box-sizing:border-box}
+  /* mientras carga el módulo, un fondo limpio: nada de otra sección asomando */
+  #cargando{position:fixed;inset:0;display:grid;place-items:center;background:#0b0e12;z-index:10}
+  #cargando .sp{width:34px;height:34px;border-radius:50%;
+    border:3px solid rgba(232,184,75,.2);border-top-color:#E8B84B;animation:g .7s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="cargando"><div class="sp"></div></div>
+
+<script type="module">
+  // Arranca la wallet y después la sección. Sin bots, sin otra interfaz de por
+  // medio: esta página solo contiene Wallet Shield.
+  import * as wallet from './assets/js/wallet.js?v=126';
+
+  (async () => {
+    try { await wallet.reconectarSiProcede(); } catch (_) {}
+    try {
+      const m = await import('./assets/js/shield/shield.js?v=150');
+      if (m.abrirShield) m.abrirShield();
+    } catch (e) {
+      console.warn('shield:', e);
+      document.body.insertAdjacentHTML('beforeend',
+        '<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#a7b0bb">' +
+        'No se pudo cargar la sección. Recarga la página.</div>');
+    }
+    const c = document.getElementById('cargando');
+    if (c) { c.style.transition = 'opacity .2s'; c.style.opacity = '0'; setTimeout(() => c.remove(), 220); }
+  })();
+</script>
+
+<script>
+  // Service worker, igual que el resto del sitio.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
+
+</body>
+</html>

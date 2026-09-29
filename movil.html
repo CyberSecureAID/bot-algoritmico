@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0e12">
+<title>Cripto Cuba</title>
+<link rel="manifest" href="manifest-aurex.webmanifest">
+
+<!-- Página propia de la experiencia móvil.
+     Antes el móvil se montaba encima de app.html, que es la página de los bots,
+     y por eso se veían los bots un instante al entrar. Aquí no hay nada más. -->
+
+<style>
+  :root{
+    --gold:#E8B84B; --gold-soft:#C9A84B; --gold-md:#cf9f2e;
+    --display:'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  }
+  html,body{margin:0;padding:0;background:#0B0E11;color:#eaecef;font-family:var(--display);
+    height:100%;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+  *{box-sizing:border-box}
+  #arranque{position:fixed;inset:0;display:grid;place-items:center;background:#0B0E11;z-index:50}
+  #arranque .sp{width:32px;height:32px;border-radius:50%;
+    border:3px solid rgba(232,184,75,.2);border-top-color:#E8B84B;animation:g .7s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="arranque"><div class="sp"></div></div>
+
+<script type="module">
+  import * as wallet from './assets/js/wallet.js?v=126';
+
+  /* Conexión de wallet con reintento. En los navegadores internos de las
+     wallets el proveedor a veces tarda en aparecer; si se comprueba justo en el
+     instante del toque, parece que el botón no hace nada. Aquí esperamos a que
+     aparezca antes de rendirnos. */
+  async function esperarProveedor(ms) {
+    const hasta = Date.now() + (ms || 2500);
+    while (Date.now() < hasta) {
+      if (window.ethereum) return true;
+      await new Promise(r => setTimeout(r, 120));
+    }
+    return !!window.ethereum;
+  }
+
+  async function conectarWallet() {
+    try {
+      await esperarProveedor(2500);
+      await wallet.conectar();
+    } catch (e) {
+      const msg = String((e && e.message) || e || '');
+      if (/rejected|denied|user/i.test(msg)) return;   // lo canceló el usuario
+      alert('No se pudo conectar la wallet. Ábrela, desbloquéala e inténtalo de nuevo.');
+    }
+  }
+
+  (async () => {
+    try { await wallet.reconectarSiProcede(); } catch (_) {}
+    try {
+      const m = await import('./assets/js/movil/movil.js?v=26');
+      await m.montarMovil({ conectarWallet });
+      try {
+        const idi = await import('./assets/js/idioma.js?v=163');
+        idi.forzarInglesPorDefecto && idi.forzarInglesPorDefecto();
+        idi.arrancarIdioma && idi.arrancarIdioma();
+      } catch (_) {}
+    } catch (e) {
+      console.warn('movil:', e);
+      document.body.insertAdjacentHTML('beforeend',
+        '<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#8b96a3">' +
+        'No se pudo cargar. Recarga la página.</div>');
+    }
+    const a = document.getElementById('arranque');
+    if (a) { a.style.transition = 'opacity .25s'; a.style.opacity = '0'; setTimeout(() => a.remove(), 280); }
+  })();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
+
+</body>
+</html>
