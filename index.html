@@ -64,14 +64,22 @@
     // así que las ventanas que se crean después (swap, selectores) no se ven
     // afectadas. Antes esto se hacía al terminar de cargar el documento, y para
     // entonces la portada ya se había mostrado.
+    // Ocultamos la portada apuntando SOLO a sus propios elementos, que llevan
+    // el prefijo pt-. Antes esta regla ocultaba cualquier nav, svg o canvas del
+    // documento, y eso se llevaba por delante la barra inferior del móvil (que
+    // es un nav) y los iconos de las ventanas (que son svg).
     var st = document.createElement('style');
     st.textContent =
       'html.es-movil,html.es-movil body{background:#0B0E11!important;margin:0;padding:0;height:100%;overflow:hidden}' +
-      'html.es-movil body>header,html.es-movil body>main,html.es-movil body>footer,' +
-      'html.es-movil body>nav,html.es-movil body>svg,' +
-      'html.es-movil [class^="pt-"],html.es-movil [class*=" pt-"],' +
-      'html.es-movil #velo-arranque,html.es-movil canvas,html.es-movil #np-fab-previo,' +
-      'html.es-movil [id^="np-"],html.es-movil [id^="pt-"]{display:none!important}';
+      'html.es-movil body>[class^="pt-"],html.es-movil body>[class*=" pt-"],' +
+      'html.es-movil body>#velo-arranque,html.es-movil body>#pt-chispas,' +
+      'html.es-movil body>#np-fab-previo,html.es-movil body>header.pt-hdr,' +
+      'html.es-movil body>main,html.es-movil body>footer,html.es-movil body>#pt{display:none!important}' +
+      // el contenedor del móvil queda clavado a la pantalla, sin ese leve
+      // balanceo que se sentía al arrastrar (medía algo más que la ventana).
+      'html.es-movil,html.es-movil body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none}' +
+      'html.es-movil #mv-app{position:fixed;overflow:hidden}' +
+      'html.es-movil #mv-scroll{overscroll-behavior:contain;touch-action:pan-y}';
     (document.head||document.documentElement).appendChild(st);
   }
 }catch(_){}})();
