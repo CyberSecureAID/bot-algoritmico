@@ -505,6 +505,28 @@ export function inyectarMovil() {
   .fxm-modal .opt b{display:block;font-family:'Plus Jakarta Sans';font-weight:800;font-size:15px;color:#eef1f6;margin-bottom:4px}
   .fxm-modal .opt span{display:block;font-size:12px;line-height:1.5;color:#a9b2bd}
 
+
+  /* ── Fila de pestañas de Activos ──────────────────────────────────────────
+     Con las pestañas más los botones de Shield y Polvo, la fila no cabe en
+     pantallas estrechas y los botones se salían por el lado. Ahora la fila se
+     desplaza en horizontal si hace falta, sin empujar nada fuera. */
+  .ac-tabs{gap:14px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;flex-wrap:nowrap;align-items:center}
+  .ac-tabs::-webkit-scrollbar{display:none}
+  .ac-tabs>button{flex:0 0 auto;white-space:nowrap}
+  .ac-tabs .ac-dust{flex:0 0 auto;white-space:nowrap}
+  @media(max-width:420px){
+    .ac-tabs{gap:9px}
+    .ac-tabs>button{font-size:13.5px}
+    .ac-tabs .ac-dust{font-size:10.5px;padding:5px 7px}
+    .ac-tabs .ac-dust svg{width:11px;height:11px}
+  }
+  @media(max-width:360px){
+    .ac-tabs{gap:7px}
+    .ac-tabs>button{font-size:12.5px}
+    .ac-tabs .ac-dust{font-size:10px;padding:4px 6px;gap:3px}
+  }
+  
 `;
   document.head.appendChild(s);
 }
