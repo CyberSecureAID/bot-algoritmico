@@ -119,46 +119,24 @@
       var sc = document.getElementById('mv-scroll');
       if (!sc) return;
       var esHome = !!sc.querySelector('.mv-bal, .mv-cta');
-      if (!esHome) {
-        // restaurar si veníamos de escalar
-        if (sc.__envoltura) { desenvolver(sc); }
-        sc.style.overflowY = '';
-        return;
-      }
-      // Envolvemos TODO el contenido del scroll en un solo contenedor, una vez,
-      // para poder escalarlo como bloque. Los hijos sueltos no se pueden escalar
-      // juntos de otra forma.
-      var env = sc.__envoltura;
-      if (!env) {
-        env = document.createElement('div');
-        env.className = 'mv-esc-env';
-        env.style.transformOrigin = 'top center';
-        while (sc.firstChild) env.appendChild(sc.firstChild);
-        sc.appendChild(env);
-        sc.__envoltura = env;
-      }
-      env.style.transform = 'none';
-      env.style.width = '100%';
+      if (!esHome) { sc.style.zoom = ''; sc.style.overflowY = ''; return; }
+
+      // medimos a tamaño natural
+      sc.style.zoom = '1';
       var hVis = sc.clientHeight;
-      var hCont = env.scrollHeight;
+      var hCont = sc.scrollHeight;
       if (!hVis || !hCont) return;
+
       if (hCont > hVis + 1) {
-        var esc = Math.max(0.70, hVis / hCont);
-        env.style.transform = 'scale(' + esc.toFixed(3) + ')';
-        env.style.width = (100 / esc).toFixed(2) + '%';
+        // 'zoom' reduce TODO el contenido proporcionalmente, sin moverlo de sitio
+        // ni descuadrar el ancho. Es lo que mejor conserva el diseño.
+        var z = Math.max(0.68, hVis / hCont);
+        sc.style.zoom = z.toFixed(3);
         sc.style.overflowY = 'hidden';
       } else {
-        env.style.transform = '';
-        env.style.width = '';
+        sc.style.zoom = '1';
         sc.style.overflowY = 'auto';
       }
-    } catch (_) {}
-  }
-  function desenvolver(sc) {
-    try {
-      var env = sc.__envoltura; if (!env) return;
-      while (env.firstChild) sc.insertBefore(env.firstChild, env);
-      sc.removeChild(env); sc.__envoltura = null;
     } catch (_) {}
   }
   // se recalcula junto con la medida del área
