@@ -8,7 +8,7 @@
  *   · Si hay versión nueva, se descarga sola y se aplica al recargar.
  */
 
-const VERSION = 'aurex-v388';
+const VERSION = 'aurex-v389';
 const APP = [
   './',
   './index.html',              // la portada
@@ -50,11 +50,7 @@ self.addEventListener('activate', (e) => {
 const NUNCA_GUARDAR = [
   'api.binance.com', 'bsc-dataseed', 'rpc.ankr', 'publicnode', '1rpc.io',
   'defibit.io', 'ninicoin.io', 'coingecko', 'nominatim', 'workers.dev',
-  'bscscan', 'pancakeswap',
-  // Logos de monedas: si el servidor falla una vez (por límite de peticiones o
-  // porque ese token no tiene logo), no queremos ese fallo guardado para siempre.
-  'raw.githubusercontent.com', 'assets-cdn.trustwallet.com', 'llamao.fi', 'coins.llama.fi',
-  'dexscreener', 'nodereal'
+  'bscscan', 'pancakeswap'
 ];
 
 self.addEventListener('fetch', (e) => {
