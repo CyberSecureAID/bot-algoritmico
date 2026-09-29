@@ -1766,7 +1766,29 @@ async function cargarLogosPrecios() {
     LOGO_ST.ok = true;
     actualizarBotonesCoin();
     if (window._cmRepintar) window._cmRepintar();
-  } catch (_) {} finally { LOGO_ST.cargando = false; }
+  } catch (_) {
+    // CoinGecko limita su plan gratuito y a veces devuelve 403. Cuando falla,
+    // usamos el logo de Trust Wallet por la dirección del token, que no depende
+    // de CoinGecko. Así los iconos aparecen aunque el precio no.
+    ponerLogosRespaldo();
+  } finally { LOGO_ST.cargando = false; }
+}
+/* Respaldo de iconos vía Trust Wallet, por la dirección del contrato de cada
+   moneda. No trae precio, solo la imagen, pero evita que falte el logo. */
+function ponerLogosRespaldo() {
+  try {
+    [...BASES, ...QUOTES].forEach((id) => {
+      if (LOGOS[id] && LOGOS[id].img) return;                 // ya tiene
+      const mo = moneda(id);
+      const addr = mo && (mo.address || mo.contrato || mo.token);
+      if (addr && /^0x[0-9a-fA-F]{40}$/.test(addr)) {
+        const cs = (typeof gb !== 'undefined' && gb.checksum) ? gb.checksum(addr) : addr;
+        LOGOS[id] = { img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/' + cs + '/logo.png', price: (LOGOS[id]||{}).price || null, chg: (LOGOS[id]||{}).chg || null };
+      }
+    });
+    actualizarBotonesCoin();
+    if (window._cmRepintar) window._cmRepintar();
+  } catch (_) {}
 }
 function actualizarBotonesCoin() {
   const b = moneda(F.baseId), q = moneda(F.quoteId);
