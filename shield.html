@@ -25,6 +25,17 @@
     font-family:var(--display);min-height:100%;-webkit-text-size-adjust:100%}
   body{overscroll-behavior:none}
   *{box-sizing:border-box}
+
+  /* ── Barra de desplazamiento oculta (igual que en el resto del sitio) ──
+     Sin esto el navegador dibuja su barra blanca con flechas, que no encaja
+     con el diseño oscuro. */
+  ::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;background:transparent!important}
+  ::-webkit-scrollbar-track{background:transparent!important}
+  ::-webkit-scrollbar-thumb{background:transparent!important}
+  ::-webkit-scrollbar-button{display:none!important;width:0!important;height:0!important}
+  ::-webkit-scrollbar-corner{background:transparent!important}
+  html,body{scrollbar-width:none!important;-ms-overflow-style:none!important}
+
   /* mientras carga el módulo, un fondo limpio: nada de otra sección asomando */
   #cargando{position:fixed;inset:0;display:grid;place-items:center;background:#0b0e12;z-index:10}
   #cargando .sp{width:34px;height:34px;border-radius:50%;
@@ -44,7 +55,7 @@
   (async () => {
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/shield/shield.js?v=150');
+      const m = await import('./assets/js/shield/shield.js?v=151');
       if (m.abrirShield) m.abrirShield();
     } catch (e) {
       console.warn('shield:', e);
