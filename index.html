@@ -57,9 +57,12 @@
   if (ancho || (tactil && grueso) || agente) {
     window.__esMovil = true;
     document.documentElement.classList.add('es-movil');
-    // tapamos la portada desde el primer instante para que no asome
-    document.write('<style>body>*:not(script):not(style){display:none!important}' +
-      'html,body{background:#0B0E11!important;margin:0;padding:0;height:100%;overflow:hidden}</style>');
+    // Ocultamos la portada con una hoja de estilo normal. Antes se usaba
+    // document.write, que reescribe el documento y dejaba la página en negro.
+    var st = document.createElement('style');
+    st.textContent = 'html.es-movil,html.es-movil body{background:#0B0E11!important;margin:0;padding:0;height:100%;overflow:hidden}' +
+      'html.es-movil body>*:not(script):not(style):not(#mv-app):not(#mv-nav){display:none!important}';
+    (document.head||document.documentElement).appendChild(st);
   }
 }catch(_){}})();
 </script>
