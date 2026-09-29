@@ -148,7 +148,7 @@ export function inyectarMovil() {
     background:linear-gradient(180deg,#f2ca63,var(--mv-gold-d));color:#1a1200}
 
   /* ── Barra inferior PERPETUA (encima de todo) ── */
-  #mv-nav{position:absolute;left:0;right:0;bottom:0;z-index:10100;display:flex;background:var(--mv-bg2);
+  #mv-nav{position:fixed;left:0;right:0;bottom:0;z-index:10100;display:flex;background:var(--mv-bg2);
     border-top:1px solid var(--mv-line);padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));
     font-family:'Plus Jakarta Sans',system-ui,sans-serif}
   #mv-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 0;color:var(--mv-mut2);background:none;border:0;cursor:pointer}
