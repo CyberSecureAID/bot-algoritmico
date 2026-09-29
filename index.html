@@ -613,7 +613,7 @@ if (window.__esMovil) {
 
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/movil/movil.js?v=30');
+      const m = await import('./assets/js/movil/movil.js?v=31');
       await m.montarMovil({ conectarWallet });
       try {
         const idi = await import('./assets/js/idioma.js?v=163');
@@ -631,33 +631,51 @@ if (window.__esMovil) {
   function ajustar() {
     try {
       var vv = window.visualViewport;
-      var alto = vv && vv.height ? vv.height : window.innerHeight;
-      var arriba = vv && vv.offsetTop ? vv.offsetTop : 0;
+      var alto = Math.round(vv && vv.height ? vv.height : window.innerHeight);
+      var arriba = Math.round(vv && vv.offsetTop ? vv.offsetTop : 0);
       var de = document.documentElement;
-      // Los navegadores de las wallets superponen sus propios controles abajo
-      // (recargar, pestañas). Dejamos un hueco para que no tapen la barra.
-      var esWallet = /Trust|MetaMask|imToken|TokenPocket|SafePal|Coinbase|WebView|wv\)/i.test(navigator.userAgent||'');
-      var hueco = esWallet ? 78 : 0;
-      de.style.setProperty('--hueco-wallet', hueco + 'px');
-      de.style.setProperty('--vh-real', Math.round(alto) + 'px');
-      var app = document.getElementById('mv-app');
-      if (app) { app.style.height = Math.round(alto - hueco) + 'px'; app.style.maxHeight = Math.round(alto - hueco) + 'px';
-                 app.style.top = Math.round(arriba) + 'px'; app.style.bottom = 'auto'; }
+      de.style.setProperty('--vh-real', alto + 'px');
+      de.style.setProperty('--top-real', arriba + 'px');
+
       var nav = document.getElementById('mv-nav');
-      if (nav) { nav.style.position = 'fixed';
-                 nav.style.top = Math.round(arriba + alto - nav.offsetHeight - hueco) + 'px'; nav.style.bottom = 'auto'; }
+      var altoNav = nav ? Math.round(nav.getBoundingClientRect().height) : 0;
+
+      var app = document.getElementById('mv-app');
+      if (app) {
+        app.style.position = 'fixed';
+        app.style.left = '0'; app.style.right = '0';
+        app.style.top = arriba + 'px';
+        app.style.bottom = 'auto';
+        app.style.height = alto + 'px';
+        app.style.maxHeight = alto + 'px';
+        app.style.overflow = 'hidden';
+      }
+      if (nav) {
+        // la barra se pega al fondo REAL del área visible, sea cual sea la wallet
+        nav.style.position = 'fixed';
+        nav.style.left = '0'; nav.style.right = '0';
+        nav.style.top = (arriba + alto - altoNav) + 'px';
+        nav.style.bottom = 'auto';
+      }
+      var sc = document.getElementById('mv-scroll');
+      if (sc && altoNav) {
+        // el contenido ocupa desde arriba hasta justo encima de la barra
+        sc.style.position = 'absolute';
+        sc.style.top = '0'; sc.style.left = '0'; sc.style.right = '0';
+        sc.style.bottom = altoNav + 'px';
+        sc.style.height = 'auto';
+      }
     } catch (_) {}
   }
   window.__ajustarMovil = ajustar;
   ajustar();
   addEventListener('resize', ajustar, { passive: true });
   addEventListener('orientationchange', function () { setTimeout(ajustar, 300); });
-  addEventListener('scroll', ajustar, { passive: true });
   if (window.visualViewport) {
     visualViewport.addEventListener('resize', ajustar, { passive: true });
     visualViewport.addEventListener('scroll', ajustar, { passive: true });
   }
-  [200, 600, 1200, 2500].forEach(function (t) { setTimeout(ajustar, t); });
+  [150, 400, 900, 1800, 3000].forEach(function (t) { setTimeout(ajustar, t); });
 })();
 </script>
 </body>
