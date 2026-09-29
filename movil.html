@@ -133,6 +133,11 @@
       var alto = vv && vv.height ? vv.height : window.innerHeight;
       var arriba = vv && vv.offsetTop ? vv.offsetTop : 0;
       var de = document.documentElement;
+      // Los navegadores de las wallets superponen sus propios controles abajo
+      // (recargar, pestañas). Dejamos un hueco para que no tapen la barra.
+      var esWallet = /Trust|MetaMask|imToken|TokenPocket|SafePal|Coinbase|WebView|wv\)/i.test(navigator.userAgent||'');
+      var hueco = esWallet ? 56 : 0;
+      de.style.setProperty('--hueco-wallet', hueco + 'px');
       de.style.setProperty('--vh-real', Math.round(alto) + 'px');
       de.style.setProperty('--top-real', Math.round(arriba) + 'px');
       var app = document.getElementById('mv-app');

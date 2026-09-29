@@ -43,19 +43,24 @@
 <link rel="manifest" href="manifest-aurex.webmanifest">
 
 <script>
-/* GUARDIA MÓVIL — va aquí para que salte antes de pintar nada.
-   Para ver la portada en el teléfono: añade ?portada=1 a la dirección. */
+/* GUARDIA MÓVIL — decide antes de pintar nada.
+   Ya NO se redirige a otra dirección: la redirección podía perderse por caché o
+   por el navegador de la wallet, y entonces se cargaba la portada de escritorio.
+   Ahora esta misma página monta la interfaz móvil. */
 (function(){try{
   if(location.search.indexOf('portada=1')!==-1)return;
-  // Detección amplia: ancho de pantalla, tipo de puntero, soporte táctil y el
-  // identificador del navegador. Basta con que una dé positivo, porque en los
-  // navegadores internos de las wallets algunas medidas no son fiables.
   var ancho = (window.matchMedia && window.matchMedia('(max-width:900px)').matches) ||
               (document.documentElement.clientWidth||screen.width||0) <= 900;
   var tactil = (navigator.maxTouchPoints||0) > 0 || 'ontouchstart' in window;
   var grueso = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
   var agente = /Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
-  if (ancho || (tactil && grueso) || agente) location.replace('movil.html');
+  if (ancho || (tactil && grueso) || agente) {
+    window.__esMovil = true;
+    document.documentElement.classList.add('es-movil');
+    // tapamos la portada desde el primer instante para que no asome
+    document.write('<style>body>*:not(script):not(style){display:none!important}' +
+      'html,body{background:#0B0E11!important;margin:0;padding:0;height:100%;overflow:hidden}</style>');
+  }
 }catch(_){}})();
 </script>
 
@@ -75,6 +80,7 @@ if ('serviceWorker' in navigator) {
   // entraba una versión nueva. Los cambios se ven en la siguiente visita.
 }
 </script>
+<script src="assets/js/logos.js?v=1"></script>
 </head>
 
 <body>
@@ -565,5 +571,74 @@ if ('serviceWorker' in navigator) {
      La sección de los bots no se toca: sigue viviendo en app.html.
      ══════════════════════════════════════════════════════════════════════ -->
 <script type="module" src="assets/portada/portada.js?v=217"></script>
+<script type="module">
+/* Arranque de la interfaz móvil dentro de esta misma página. */
+if (window.__esMovil) {
+  (async () => {
+    const wallet = await import('./assets/js/wallet.js?v=126');
+
+    async function esperarProveedor(ms) {
+      const hasta = Date.now() + (ms || 2500);
+      while (Date.now() < hasta) { if (window.ethereum) return true; await new Promise(r => setTimeout(r, 120)); }
+      return !!window.ethereum;
+    }
+    async function conectarWallet() {
+      try { await esperarProveedor(2500); await wallet.conectar(); }
+      catch (e) {
+        const m = String((e && e.message) || e || '');
+        if (/rejected|denied|user/i.test(m)) return;
+        alert('No se pudo conectar la wallet. Ábrela, desbloquéala e inténtalo de nuevo.');
+      }
+    }
+
+    try { await wallet.reconectarSiProcede(); } catch (_) {}
+    try {
+      const m = await import('./assets/js/movil/movil.js?v=28');
+      await m.montarMovil({ conectarWallet });
+      try {
+        const idi = await import('./assets/js/idioma.js?v=163');
+        idi.forzarInglesPorDefecto && idi.forzarInglesPorDefecto();
+        idi.arrancarIdioma && idi.arrancarIdioma();
+      } catch (_) {}
+    } catch (e) { console.warn('movil:', e); }
+  })();
+}
+</script>
+<script>
+/* Ajuste al área visible real: los navegadores de las wallets tienen barras
+   propias que no descuentan del alto que informan, y la página queda cortada. */
+(function () {
+  function ajustar() {
+    try {
+      var vv = window.visualViewport;
+      var alto = vv && vv.height ? vv.height : window.innerHeight;
+      var arriba = vv && vv.offsetTop ? vv.offsetTop : 0;
+      var de = document.documentElement;
+      // Los navegadores de las wallets superponen sus propios controles abajo
+      // (recargar, pestañas). Dejamos un hueco para que no tapen la barra.
+      var esWallet = /Trust|MetaMask|imToken|TokenPocket|SafePal|Coinbase|WebView|wv\)/i.test(navigator.userAgent||'');
+      var hueco = esWallet ? 56 : 0;
+      de.style.setProperty('--hueco-wallet', hueco + 'px');
+      de.style.setProperty('--vh-real', Math.round(alto) + 'px');
+      var app = document.getElementById('mv-app');
+      if (app) { app.style.height = Math.round(alto - hueco) + 'px'; app.style.maxHeight = Math.round(alto - hueco) + 'px';
+                 app.style.top = Math.round(arriba) + 'px'; app.style.bottom = 'auto'; }
+      var nav = document.getElementById('mv-nav');
+      if (nav) { nav.style.position = 'fixed';
+                 nav.style.top = Math.round(arriba + alto - nav.offsetHeight - hueco) + 'px'; nav.style.bottom = 'auto'; }
+    } catch (_) {}
+  }
+  window.__ajustarMovil = ajustar;
+  ajustar();
+  addEventListener('resize', ajustar, { passive: true });
+  addEventListener('orientationchange', function () { setTimeout(ajustar, 300); });
+  addEventListener('scroll', ajustar, { passive: true });
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', ajustar, { passive: true });
+    visualViewport.addEventListener('scroll', ajustar, { passive: true });
+  }
+  [200, 600, 1200, 2500].forEach(function (t) { setTimeout(ajustar, t); });
+})();
+</script>
 </body>
 </html>
