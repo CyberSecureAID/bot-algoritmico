@@ -101,6 +101,7 @@ if ('serviceWorker' in navigator) {
   // entraba una versión nueva. Los cambios se ven en la siguiente visita.
 }
 </script>
+<script src="assets/js/mv-adaptar.js?v=1"></script>
 </head>
 
 <body>
@@ -624,59 +625,6 @@ if (window.__esMovil) {
   })();
 }
 </script>
-<script>
-/* Ajuste al área visible real: los navegadores de las wallets tienen barras
-   propias que no descuentan del alto que informan, y la página queda cortada. */
-(function () {
-  function ajustar() {
-    try {
-      var vv = window.visualViewport;
-      var alto = Math.round(vv && vv.height ? vv.height : window.innerHeight);
-      var arriba = Math.round(vv && vv.offsetTop ? vv.offsetTop : 0);
-      var de = document.documentElement;
-      de.style.setProperty('--vh-real', alto + 'px');
-      de.style.setProperty('--top-real', arriba + 'px');
 
-      var nav = document.getElementById('mv-nav');
-      var altoNav = nav ? Math.round(nav.getBoundingClientRect().height) : 0;
-
-      var app = document.getElementById('mv-app');
-      if (app) {
-        app.style.position = 'fixed';
-        app.style.left = '0'; app.style.right = '0';
-        app.style.top = arriba + 'px';
-        app.style.bottom = 'auto';
-        app.style.height = alto + 'px';
-        app.style.maxHeight = alto + 'px';
-        app.style.overflow = 'hidden';
-      }
-      if (nav) {
-        // la barra se pega al fondo REAL del área visible, sea cual sea la wallet
-        nav.style.position = 'fixed';
-        nav.style.left = '0'; nav.style.right = '0';
-        nav.style.top = (arriba + alto - altoNav) + 'px';
-        nav.style.bottom = 'auto';
-      }
-      var sc = document.getElementById('mv-scroll');
-      if (sc && altoNav) {
-        // el contenido ocupa desde arriba hasta justo encima de la barra
-        sc.style.position = 'absolute';
-        sc.style.top = '0'; sc.style.left = '0'; sc.style.right = '0';
-        sc.style.bottom = altoNav + 'px';
-        sc.style.height = 'auto';
-      }
-    } catch (_) {}
-  }
-  window.__ajustarMovil = ajustar;
-  ajustar();
-  addEventListener('resize', ajustar, { passive: true });
-  addEventListener('orientationchange', function () { setTimeout(ajustar, 300); });
-  if (window.visualViewport) {
-    visualViewport.addEventListener('resize', ajustar, { passive: true });
-    visualViewport.addEventListener('scroll', ajustar, { passive: true });
-  }
-  [150, 400, 900, 1800, 3000].forEach(function (t) { setTimeout(ajustar, t); });
-})();
-</script>
 </body>
 </html>
