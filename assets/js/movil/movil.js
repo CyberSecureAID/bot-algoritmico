@@ -6,7 +6,7 @@
 
 import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=23';
+import { inyectarMovil } from './estilos.js?v=24';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=23';
 import { pintarMercados } from './markets.js?v=23';

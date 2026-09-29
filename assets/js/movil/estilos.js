@@ -511,19 +511,18 @@ export function inyectarMovil() {
   
   
 
-  /* ── Ajuste universal de altura ───────────────────────────────────────────
-     Funciona en cualquier dispositivo y en cualquier navegador, incluidos los
-     internos de las wallets. La altura la mide el JS (variable --mv-h) tomando
-     el valor más pequeño que informa el navegador, de modo que nunca se excede
-     del área visible. La estructura es una columna: el contenido ocupa lo que
-     sobra y se desplaza por dentro, y la barra inferior va siempre al final. */
-  #mv-app{height:var(--mv-h,100dvh)!important;max-height:var(--mv-h,100dvh)!important;
-    bottom:auto!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
-  #mv-scroll{position:relative!important;inset:auto!important;flex:1 1 auto!important;min-height:0!important;
-    overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;
-    padding-bottom:16px!important}
-  #mv-nav{position:relative!important;flex:0 0 auto!important;bottom:auto!important;
-    padding-bottom:calc(8px + var(--mv-safe, env(safe-area-inset-bottom, 0px)))!important}
+  /* ── Ajuste de altura ─────────────────────────────────────────────────────
+     La barra inferior NO vive dentro del contenedor: es hija del documento, y
+     por eso se posiciona respecto a la ventana, no respecto a la aplicación.
+     Se respeta esa estructura. Lo único que corregimos es la altura, que la
+     mide el JS (--mv-h) tomando el valor menor de los que informa el navegador,
+     y el hueco inferior (--mv-safe) que algunos navegadores no declaran. */
+  #mv-app{height:var(--mv-h,100dvh)!important;max-height:var(--mv-h,100dvh)!important}
+  /* el área de contenido deja sitio abajo para que la barra no tape nada */
+  #mv-scroll{padding-bottom:calc(84px + var(--mv-safe, env(safe-area-inset-bottom, 0px)))!important}
+  /* la barra, fija a la ventana, subida lo que el navegador nos oculte */
+  #mv-nav{position:fixed!important;left:0;right:0;bottom:var(--mv-safe, env(safe-area-inset-bottom, 0px))!important;
+    z-index:10100}
 `;
   document.head.appendChild(s);
 }
