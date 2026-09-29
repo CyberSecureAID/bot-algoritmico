@@ -19,7 +19,7 @@ export function inyectarMovil() {
     --mv-line:#232b36; --mv-txt:#eaecef; --mv-mut:#8b96a3; --mv-mut2:#5b6472;
     --mv-gold:#E8B84B; --mv-gold-d:#c99a2e; --mv-up:#2ebd85; --mv-down:#f6465d;
   }
-  #mv-app{position:fixed;top:0;left:0;right:0;bottom:0;height:100dvh;max-height:100dvh;z-index:100;background:var(--mv-bg);color:var(--mv-txt);
+  #mv-app{position:fixed;inset:0;z-index:100;background:var(--mv-bg);color:var(--mv-txt);
     font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent;
     overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   #mv-app *{box-sizing:border-box}
@@ -505,24 +505,6 @@ export function inyectarMovil() {
   .fxm-modal .opt b{display:block;font-family:'Plus Jakarta Sans';font-weight:800;font-size:15px;color:#eef1f6;margin-bottom:4px}
   .fxm-modal .opt span{display:block;font-size:12px;line-height:1.5;color:#a9b2bd}
 
-  /* ── Comportamiento de aplicación: sin scroll de página ── */
-  html,body{height:100%;overflow:hidden;overscroll-behavior:none;position:fixed;width:100%}
-  body.mv-on{margin:0;padding:0}
-  
-  
-
-  /* ── Ajuste de altura ─────────────────────────────────────────────────────
-     La barra inferior NO vive dentro del contenedor: es hija del documento, y
-     por eso se posiciona respecto a la ventana, no respecto a la aplicación.
-     Se respeta esa estructura. Lo único que corregimos es la altura, que la
-     mide el JS (--mv-h) tomando el valor menor de los que informa el navegador,
-     y el hueco inferior (--mv-safe) que algunos navegadores no declaran. */
-  #mv-app{height:var(--mv-h,100dvh)!important;max-height:var(--mv-h,100dvh)!important}
-  /* el área de contenido deja sitio abajo para que la barra no tape nada */
-  #mv-scroll{padding-bottom:calc(84px + var(--mv-safe, env(safe-area-inset-bottom, 0px)))!important}
-  /* la barra, fija a la ventana, subida lo que el navegador nos oculte */
-  #mv-nav{position:fixed!important;left:0;right:0;bottom:var(--mv-safe, env(safe-area-inset-bottom, 0px))!important;
-    z-index:10100}
 `;
   document.head.appendChild(s);
 }

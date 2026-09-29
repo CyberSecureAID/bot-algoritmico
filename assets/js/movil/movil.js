@@ -6,7 +6,7 @@
 
 import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=24';
+import { inyectarMovil } from './estilos.js?v=25';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=23';
 import { pintarMercados } from './markets.js?v=23';
@@ -15,55 +15,6 @@ import { pintarActivos } from './activos.js?v=23';
 import { abrirMenu } from './menu.js?v=20';
 import { abrirBuscar } from './buscar.js?v=20';
 import { abrirAlerta } from './alerta.js?v=20';
-
-/* ── Altura real del área visible ──────────────────────────────────────────
-   Los navegadores internos de las wallets (Trust Wallet, MetaMask) no calculan
-   bien 100dvh: devuelven una altura mayor que el espacio realmente visible, de
-   modo que la barra inferior queda por debajo de sus propios controles y la
-   página parece cortada. Medimos la altura real y la publicamos como variable
-   CSS, actualizándola cuando el navegador cambia sus barras. */
-function medirAlto() {
-  try {
-    const de = document.documentElement;
-    // Recogemos todas las medidas que informa el navegador y nos quedamos con
-    // la menor: cada navegador informa una cosa distinta y algunos incluyen el
-    // espacio que ocupan las barras del sistema. La menor nunca se excede.
-    const cand = [];
-    const vv = window.visualViewport;
-    if (vv && vv.height) cand.push(vv.height);
-    if (window.innerHeight) cand.push(window.innerHeight);
-    if (de && de.clientHeight) cand.push(de.clientHeight);
-    if (!cand.length) return;
-    let h = Math.min.apply(null, cand);
-
-    // Algunos navegadores (los internos de las wallets, sobre todo) no informan
-    // del espacio reservado abajo, así que lo deducimos: si la altura del
-    // documento supera a la que dice tener la ventana, esa diferencia es el
-    // espacio que nos están ocultando.
-    let reserva = 0;
-    try {
-      const vvh = vv && vv.height ? vv.height : 0;
-      if (vvh && window.innerHeight && window.innerHeight > vvh + 1) {
-        reserva = Math.min(48, Math.round(window.innerHeight - vvh));
-      }
-    } catch (_) {}
-    de.style.setProperty('--mv-safe', reserva + 'px');
-    de.style.setProperty('--mv-h', Math.round(h) + 'px');
-  } catch (_) {}
-}
-medirAlto();
-try {
-  window.addEventListener('resize', medirAlto, { passive: true });
-  window.addEventListener('orientationchange', function () { setTimeout(medirAlto, 250); });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', medirAlto, { passive: true });
-    window.visualViewport.addEventListener('scroll', medirAlto, { passive: true });
-  }
-  // algunos navegadores ajustan sus barras poco después de cargar
-  setTimeout(medirAlto, 300); setTimeout(medirAlto, 1000);
-} catch (_) {}
-
-
 
 const $ = (id) => document.getElementById(id);
 const _movil = () => window.matchMedia('(max-width: 760px)').matches;
