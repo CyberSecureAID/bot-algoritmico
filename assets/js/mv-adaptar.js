@@ -65,6 +65,29 @@
   window.__mvMedir = medir;
 
   function arrancar() {
+  // Inyectamos las reglas del compactado una sola vez. Usan la variable
+  // --mv-compact (entre 0.7 y 1) para encoger separaciones proporcionalmente.
+  (function () {
+    if (document.getElementById('mv-compact-css')) return;
+    var st = document.createElement('style');
+    st.id = 'mv-compact-css';
+    st.textContent = [
+      ':root{--mv-compact:1}',
+      '@media(max-width:900px){',
+      '  #mv-scroll .mv-top{padding-top:calc((8px + env(safe-area-inset-top,0px)) * var(--mv-compact));padding-bottom:calc(6px * var(--mv-compact))}',
+      '  #mv-scroll .mv-bal-lbl{margin:calc(8px * var(--mv-compact)) 0 calc(3px * var(--mv-compact))}',
+      '  #mv-scroll .mv-cta{margin:calc(16px * var(--mv-compact)) 0 calc(4px * var(--mv-compact))}',
+      '  #mv-scroll .mv-cta button{height:calc(52px * var(--mv-compact));min-height:42px}',
+      '  #mv-scroll .mv-quick{margin:calc(6px * var(--mv-compact)) 0 calc(2px * var(--mv-compact));padding:calc(12px * var(--mv-compact)) 0 2px}',
+      '  #mv-scroll .mv-strip{margin:calc(12px * var(--mv-compact)) 0 0;padding:calc(12px * var(--mv-compact)) 13px}',
+      '  #mv-scroll .mv-sec-h{margin:calc(12px * var(--mv-compact)) 0 calc(7px * var(--mv-compact))}',
+      '  #mv-scroll .mv-svc-card{height:calc(104px * var(--mv-compact));min-height:84px}',
+      '  #mv-scroll .mv-qi .mv-qbox{width:calc(56px * var(--mv-compact));height:calc(56px * var(--mv-compact));min-width:44px;min-height:44px}',
+      '}'
+    ].join('\n');
+    (document.head || document.documentElement).appendChild(st);
+  })();
+  
     medir();
     addEventListener('resize', medir, { passive: true });
     addEventListener('orientationchange', function () { setTimeout(medir, 300); });
@@ -74,6 +97,8 @@
     }
     // reintentos: los navegadores de wallet ajustan sus barras con retraso
     [100, 300, 700, 1400, 2500, 4000].forEach(function (t) { setTimeout(medir, t); });
+    // el contenido del home tarda en aparecer; reintentamos el compactado
+    [500, 1000, 1800, 3000].forEach(function (t) { setTimeout(compactarInicio, t); });
     // y cada vez que aparezca la barra por primera vez (la crea el módulo móvil)
     var intentos = 0;
     var iv = setInterval(function () {
@@ -83,6 +108,39 @@
     }, 250);
   }
 
+
+  /* ── Compactado del inicio para que quepa sin desplazarse ──────────────────
+     Si el contenido del home es más alto que el área visible, encogemos las
+     separaciones (no el tamaño de letra) por pasos, hasta que quepa o hasta un
+     mínimo razonable. Solo actúa en el home y solo si hace falta; si el usuario
+     está en otra pantalla, no toca nada. */
+  function compactarInicio() {
+    try {
+      var sc = document.getElementById('mv-scroll');
+      if (!sc) return;
+      // el home es la pantalla con el balance; si no está, no hacemos nada
+      var esHome = !!sc.querySelector('.mv-bal, .mv-cta');
+      var de = document.documentElement;
+      if (!esHome) { de.style.removeProperty('--mv-compact'); return; }
+      // ¿cabe ya? comparamos el alto del contenido con el visible
+      var visible = sc.clientHeight;
+      var contenido = sc.scrollHeight;
+      if (!visible || !contenido) return;
+      // factor: cuánto hay que encoger (1 = nada, hacia 0.7 como tope)
+      var factor = 1;
+      if (contenido > visible) {
+        factor = Math.max(0.62, visible / contenido);
+      }
+      de.style.setProperty('--mv-compact', factor.toFixed(3));
+    } catch (_) {}
+  }
+  // se recalcula junto con la medida del área
+  var _medirBase = window.__mvMedir;
+  window.__mvMedir = function () {
+    if (_medirBase) _medirBase();
+    compactarInicio();
+  };
+  
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
   else arrancar();
 })();
