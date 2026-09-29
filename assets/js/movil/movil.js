@@ -676,6 +676,8 @@ function cerrarSecciones() {
 }
 
 async function irA(tab) {
+  // reajustar al área visible al cambiar de pantalla
+  try { if (window.__ajustarMovil) setTimeout(window.__ajustarMovil, 80); } catch (_) {}
   cerrarSecciones();
   const host = $('mv-scroll'); if (!host) return;
   if (host._limpiar) { try { host._limpiar(); } catch (_) {} host._limpiar = null; }
@@ -740,6 +742,8 @@ export async function montarMovil(deps) {
 
   pintarNav();
   irA('home');
+  // La barra y el alto se ajustan al área visible real (lo calcula movil.html).
+  try { if (window.__ajustarMovil) { window.__ajustarMovil(); setTimeout(window.__ajustarMovil, 250); } } catch (_) {}
 
   /* Puente Smart Levels → Operar (solo móvil): al tocar "Establecer posición"
      en el menú de clic derecho, en vez de la ficha, va a Operar con esa moneda. */
