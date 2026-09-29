@@ -511,17 +511,19 @@ export function inyectarMovil() {
   
   
 
-  /* ── Altura real medida por JS (los navegadores de wallets no calculan bien
-     100dvh, dejando la barra inferior fuera de la pantalla) ── */
-  #mv-app{height:var(--mv-h,100dvh)!important;max-height:var(--mv-h,100dvh)!important;bottom:auto!important;
-    display:flex!important;flex-direction:column!important}
-  /* el área de contenido ocupa lo que sobra y hace scroll por dentro */
+  /* ── Ajuste universal de altura ───────────────────────────────────────────
+     Funciona en cualquier dispositivo y en cualquier navegador, incluidos los
+     internos de las wallets. La altura la mide el JS (variable --mv-h) tomando
+     el valor más pequeño que informa el navegador, de modo que nunca se excede
+     del área visible. La estructura es una columna: el contenido ocupa lo que
+     sobra y se desplaza por dentro, y la barra inferior va siempre al final. */
+  #mv-app{height:var(--mv-h,100dvh)!important;max-height:var(--mv-h,100dvh)!important;
+    bottom:auto!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
   #mv-scroll{position:relative!important;inset:auto!important;flex:1 1 auto!important;min-height:0!important;
-    overflow-y:auto!important;-webkit-overflow-scrolling:touch}
-  /* la barra inferior, dentro del flujo, siempre visible al final */
-  #mv-nav{position:relative!important;flex:0 0 auto!important;bottom:auto!important}
-  #mv-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  
+    overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;
+    padding-bottom:16px!important}
+  #mv-nav{position:relative!important;flex:0 0 auto!important;bottom:auto!important;
+    padding-bottom:calc(8px + var(--mv-safe, env(safe-area-inset-bottom, 0px)))!important}
 `;
   document.head.appendChild(s);
 }

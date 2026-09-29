@@ -1,7 +1,7 @@
 /* movil/inicio.js — Pantalla 1 (Inicio). */
 
 import { IC } from './iconos.js?v=20';
-import * as wallet from '../wallet.js?v=125';
+import * as wallet from '../wallet.js?v=126';
 import { money, money0, cantidad, logoDe } from './fmt.js?v=3';
 import * as fperfil from '../firebase-perfil.js?v=1';
 

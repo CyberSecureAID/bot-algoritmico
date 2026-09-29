@@ -4,14 +4,14 @@
    · No hay botón "volver" flotante: se navega con la barra inferior.
    · Las secciones reales abren por ENCIMA del contenido de la cáscara */
 
-import * as wallet from '../wallet.js?v=125';
+import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=22';
+import { inyectarMovil } from './estilos.js?v=23';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=20';
-import { pintarMercados } from './markets.js?v=20';
-import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=20';
-import { pintarActivos } from './activos.js?v=20';
+import { pintarInicio } from './inicio.js?v=23';
+import { pintarMercados } from './markets.js?v=23';
+import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=23';
+import { pintarActivos } from './activos.js?v=23';
 import { abrirMenu } from './menu.js?v=20';
 import { abrirBuscar } from './buscar.js?v=20';
 import { abrirAlerta } from './alerta.js?v=20';
@@ -24,18 +24,30 @@ import { abrirAlerta } from './alerta.js?v=20';
    CSS, actualizándola cuando el navegador cambia sus barras. */
 function medirAlto() {
   try {
-    // Tomamos la MENOR de todas las medidas disponibles. Los navegadores de las
-    // wallets informan alturas distintas según la fuente, y algunas incluyen el
-    // espacio que ocupan las barras del sistema. Quedarnos con la más pequeña
-    // garantiza que nunca sobrepasamos la pantalla real.
+    const de = document.documentElement;
+    // Recogemos todas las medidas que informa el navegador y nos quedamos con
+    // la menor: cada navegador informa una cosa distinta y algunos incluyen el
+    // espacio que ocupan las barras del sistema. La menor nunca se excede.
     const cand = [];
     const vv = window.visualViewport;
     if (vv && vv.height) cand.push(vv.height);
     if (window.innerHeight) cand.push(window.innerHeight);
-    const de = document.documentElement;
     if (de && de.clientHeight) cand.push(de.clientHeight);
     if (!cand.length) return;
-    const h = Math.min.apply(null, cand);
+    let h = Math.min.apply(null, cand);
+
+    // Algunos navegadores (los internos de las wallets, sobre todo) no informan
+    // del espacio reservado abajo, así que lo deducimos: si la altura del
+    // documento supera a la que dice tener la ventana, esa diferencia es el
+    // espacio que nos están ocultando.
+    let reserva = 0;
+    try {
+      const vvh = vv && vv.height ? vv.height : 0;
+      if (vvh && window.innerHeight && window.innerHeight > vvh + 1) {
+        reserva = Math.min(48, Math.round(window.innerHeight - vvh));
+      }
+    } catch (_) {}
+    de.style.setProperty('--mv-safe', reserva + 'px');
     de.style.setProperty('--mv-h', Math.round(h) + 'px');
   } catch (_) {}
 }
@@ -726,7 +738,7 @@ async function irA(tab) {
     // al instante; y si por caché llegara una versión sin el export, m.precargar
     // sería undefined y NO rompe nada.
     setTimeout(() => {
-      import('./operar.js?v=20').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
+      import('./operar.js?v=23').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
     }, 1200);
     return; }
   if (tab === 'markets') { pintarMercados(host, api()); return; }
