@@ -514,6 +514,7 @@ export function inyectarMovil() {
     -webkit-overflow-scrolling:touch;flex-wrap:nowrap;align-items:center}
   .ac-tabs::-webkit-scrollbar{display:none}
   .ac-tabs>button{flex:0 0 auto;white-space:nowrap}
+  .ac-tabs .ac-tabs-sep{flex:1 0 12px;min-width:12px}
   .ac-tabs .ac-dust{flex:0 0 auto;white-space:nowrap}
   @media(max-width:420px){
     .ac-tabs{gap:9px}

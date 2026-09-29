@@ -6,12 +6,12 @@
 
 import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=30';
+import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=26';
 import { pintarMercados } from './markets.js?v=23';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=23';
-import { pintarActivos } from './activos.js?v=23';
+import { pintarActivos } from './activos.js?v=31';
 import { abrirMenu } from './menu.js?v=20';
 import { abrirBuscar } from './buscar.js?v=20';
 import { abrirAlerta } from './alerta.js?v=20';

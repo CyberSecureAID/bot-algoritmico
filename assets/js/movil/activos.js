@@ -46,7 +46,7 @@ export function pintarActivos(host, api) {
       <button data-t="spot" class="${_tab === 'spot' ? 'on' : ''}">Spot</button>
       <button data-t="nfts" class="${_tab === 'nfts' ? 'on' : ''}">NFTs</button>
       <button data-t="activity" class="${_tab === 'activity' ? 'on' : ''}">Actividad</button>
-      <div style="flex:1"></div>
+      <span class="ac-tabs-sep"></span>
       <button class="ac-dust ac-shield" data-t="shield">${IC.shield} Shield</button>
       <button class="ac-dust" data-t="polvo">${IC.bolt} Polvo</button>
     </div>
