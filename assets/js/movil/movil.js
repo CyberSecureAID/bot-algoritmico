@@ -779,12 +779,23 @@ async function autoConectarMovil() {
   try {
     let cuenta = wallet.cuentaActual && wallet.cuentaActual();
     if (!cuenta && wallet.reconectarSiProcede) { try { cuenta = await wallet.reconectarSiProcede(); } catch (_) {} }
-    if (!cuenta && window.ethereum && wallet.conectar && !window._mvAutoInt) {
-      window._mvAutoInt = true;
-      try { cuenta = await wallet.conectar(); } catch (_) {}
+    // En el navegador de la wallet, el proveedor (window.ethereum) puede tardar
+    // en aparecer. Antes solo se intentaba una vez, así que si en ese instante
+    // aún no existía, se quedaba sin conectar y salía el botón bloqueado. Ahora
+    // esperamos a que aparezca antes de pedir la conexión silenciosa.
+    if (!cuenta) {
+      const hasta = Date.now() + 3000;
+      while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 150)); }
+      if (window.ethereum && wallet.reconectarSiProcede) {
+        try { cuenta = await wallet.reconectarSiProcede(); } catch (_) {}
+      }
     }
   } catch (_) {}
   revisarRed();
+  // volver a revisar la red un momento después: la wallet puede tardar en
+  // informar de la cadena en la que está.
+  setTimeout(revisarRed, 800);
+  setTimeout(revisarRed, 2000);
 }
 
 /* Aviso de red: si la wallet está conectada pero NO en BNB Smart Chain, muestra
