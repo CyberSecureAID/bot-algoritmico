@@ -527,6 +527,24 @@ export function inyectarMovil() {
     .ac-tabs .ac-dust{font-size:10px;padding:4px 6px;gap:3px}
   }
   
+
+  /* ── Compactado para que quepa más sin desplazarse ────────────────────────
+     Se recortan separaciones sobrantes, sin tocar tamaños de letra ni la
+     estructura, para que la pantalla de inicio muestre más de una vez. */
+  @media(max-width:900px){
+    .mv-top{padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:4px}
+    .mv-bal-lbl{margin:6px 0 2px}
+    .mv-bal{font-size:30px}
+    .mv-cta{margin:12px 0 2px}
+    .mv-cta button{height:46px}
+    .mv-quick{margin:2px 0 0;padding:8px 0 0}
+    .mv-qi .mv-qbox{width:50px;height:50px}
+    .mv-strip{margin:8px 0 0;padding:10px 12px}
+    .mv-sec-h{margin:10px 0 5px}
+    .mv-svc-card{height:96px;padding:12px 11px}
+    #mv-scroll{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+  }
+  
 `;
   document.head.appendChild(s);
 }
