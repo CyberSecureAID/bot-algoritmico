@@ -74,7 +74,7 @@
   (async () => {
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/movil/movil.js?v=26');
+      const m = await import('./assets/js/movil/movil.js?v=27');
       await m.montarMovil({ conectarWallet });
       try {
         const idi = await import('./assets/js/idioma.js?v=163');
