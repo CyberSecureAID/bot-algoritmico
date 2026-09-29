@@ -1668,7 +1668,7 @@ async function escanear(cuenta, objetivo) {
       <div class="shd-steps" id="shd-steps"></div>
       <div class="shd-bar-pr"><div class="shd-bar-fill" id="shd-bar"></div></div>
     </div>`;
-  wireBack();
+  wireBack(function () { pintarInicio(cuenta); });
   const cont = $('shd-steps');
   // lanzar el escaneo real en paralelo
   let permisos = null, error = false, estad = {};
