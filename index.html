@@ -59,27 +59,20 @@
     document.documentElement.classList.add('es-movil');
     // Ocultamos la portada con una hoja de estilo normal. Antes se usaba
     // document.write, que reescribe el documento y dejaba la página en negro.
-    // Ocultamos SOLO lo que ya existe en la portada, marcándolo. Antes se
-    // ocultaba todo hijo del documento, y eso dejaba invisibles las ventanas
-    // que se crean después (el swap, los selectores, los avisos).
+    // La portada se oculta con CSS puro desde este mismo instante, antes de que
+    // el navegador pinte nada. Se apunta a sus elementos por su prefijo propio,
+    // así que las ventanas que se crean después (swap, selectores) no se ven
+    // afectadas. Antes esto se hacía al terminar de cargar el documento, y para
+    // entonces la portada ya se había mostrado.
     var st = document.createElement('style');
-    st.textContent = 'html.es-movil,html.es-movil body{background:#0B0E11!important;margin:0;padding:0;height:100%;overflow:hidden}' +
-      'html.es-movil body>[data-portada]{display:none!important}';
+    st.textContent =
+      'html.es-movil,html.es-movil body{background:#0B0E11!important;margin:0;padding:0;height:100%;overflow:hidden}' +
+      'html.es-movil body>header,html.es-movil body>main,html.es-movil body>footer,' +
+      'html.es-movil body>nav,html.es-movil body>svg,' +
+      'html.es-movil [class^="pt-"],html.es-movil [class*=" pt-"],' +
+      'html.es-movil #velo-arranque,html.es-movil canvas,html.es-movil #np-fab-previo,' +
+      'html.es-movil [id^="np-"],html.es-movil [id^="pt-"]{display:none!important}';
     (document.head||document.documentElement).appendChild(st);
-    // marcamos los elementos de la portada en cuanto el documento esté listo
-    var marcar = function () {
-      try {
-        var hijos = document.body ? document.body.children : [];
-        for (var i = 0; i < hijos.length; i++) {
-          var e = hijos[i], t = e.tagName;
-          if (t === 'SCRIPT' || t === 'STYLE' || t === 'LINK') continue;
-          if (e.id === 'mv-app' || e.id === 'mv-nav') continue;
-          e.setAttribute('data-portada', '1');
-        }
-      } catch (_) {}
-    };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', marcar);
-    else marcar();
   }
 }catch(_){}})();
 </script>
@@ -612,7 +605,7 @@ if (window.__esMovil) {
 
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/movil/movil.js?v=29');
+      const m = await import('./assets/js/movil/movil.js?v=30');
       await m.montarMovil({ conectarWallet });
       try {
         const idi = await import('./assets/js/idioma.js?v=163');
@@ -636,7 +629,7 @@ if (window.__esMovil) {
       // Los navegadores de las wallets superponen sus propios controles abajo
       // (recargar, pestañas). Dejamos un hueco para que no tapen la barra.
       var esWallet = /Trust|MetaMask|imToken|TokenPocket|SafePal|Coinbase|WebView|wv\)/i.test(navigator.userAgent||'');
-      var hueco = esWallet ? 56 : 0;
+      var hueco = esWallet ? 78 : 0;
       de.style.setProperty('--hueco-wallet', hueco + 'px');
       de.style.setProperty('--vh-real', Math.round(alto) + 'px');
       var app = document.getElementById('mv-app');
