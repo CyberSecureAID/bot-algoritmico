@@ -18,7 +18,7 @@ import * as grafica from './grafica.js?v=125';
 import * as extras from './extras.js?v=200';
 import * as gestos from './gestos.js?v=125';
 import { inyectarEstilo } from './gridbot/estilos.js?v=201';
-import { moneda, num, _movil, tipoNum, escT, enCristiano, fmtPrecioUSD, icoInner, limpiarBusy, modalBusy, modalBusyTexto, modalError, modalClose } from './gridbot/util.js?v=2';
+import { moneda, num, _movil, tipoNum, escT, enCristiano, fmtPrecioUSD, icoInner, limpiarBusy, modalBusy, modalBusyTexto, modalError, modalClose } from './gridbot/util.js?v=3';
 import { LOGOS, LOGO_ST } from './gridbot/estado.js?v=1';
 import { APP, BASES, QUOTES, INFO, FEE_CICLO, GAS_OP_USD, VOL_DIARIA, PRESETS, NOMBRE_PRESET, GAS_VUELTA_USD, COM_DEX, LOGOS_WALLET, KEEPER_URL, CONF_BOTS, CLAVE_AVISO, CUPO_TOTAL, CUPO_POR_TIPO, NOMBRE_TIPO, CAT_NOMBRES, BOTMETA, RESERVA_BNB } from './gridbot/config.js?v=1';
 import { abrirSwap, initSwap } from './gridbot/swap.js?v=11';
@@ -1758,7 +1758,7 @@ async function onCrear() {
    direcciones conocidas y verificadas en BSC (el token envuelto de cada una).
    No trae precio, solo la imagen, pero garantiza que el logo aparezca. */
 const LOGO_DIR = {
-  BNB:  '0xB8c77482e45F1F44dE1745F52C74426C631bDD52',
+  BNB:  '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
   WBNB: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
   BTC:  '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c',
   BTCB: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c',
