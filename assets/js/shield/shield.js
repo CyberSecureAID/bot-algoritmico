@@ -746,20 +746,12 @@ async function montarParticulas() {
   } catch (_) {}
 }
 function cerrar() {
+  // Wallet Shield tiene su propia página, así que al salir se va directamente a
+  // la portada. No se pasa por la página de los bots, que es lo que antes se
+  // veía un instante al entrar y al salir.
   const cont = document.getElementById('shd');
-  // Si la sección se abrió DENTRO de la app móvil (su contenedor existe), basta
-  // con quitar el overlay: navegar recargaría la app y sacaría al usuario fuera.
-  const enMovil = !!document.getElementById('mv-app') || !!document.getElementById('mv-scroll');
-  if (enMovil) { if (cont) cont.remove(); return; }
-  // En la web, si hay historial, volvemos atrás sin recargar.
-  try {
-    if (window.history.length > 1 && document.referrer) {
-      if (cont) cont.remove();
-      window.history.back();
-      setTimeout(function () { if (!document.getElementById('shd')) { try { location.replace('index.html'); } catch (_) { location.href = 'index.html'; } } }, 400);
-      return;
-    }
-  } catch (_) {}
+  // Si la sección se montó dentro de la app móvil, basta con retirarla.
+  if (document.getElementById('mv-app')) { if (cont) cont.remove(); return; }
   try { location.replace('index.html'); } catch (_) { location.href = 'index.html'; }
 }
 
