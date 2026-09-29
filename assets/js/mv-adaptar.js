@@ -118,20 +118,47 @@
     try {
       var sc = document.getElementById('mv-scroll');
       if (!sc) return;
-      // el home es la pantalla con el balance; si no está, no hacemos nada
       var esHome = !!sc.querySelector('.mv-bal, .mv-cta');
-      var de = document.documentElement;
-      if (!esHome) { de.style.removeProperty('--mv-compact'); return; }
-      // ¿cabe ya? comparamos el alto del contenido con el visible
-      var visible = sc.clientHeight;
-      var contenido = sc.scrollHeight;
-      if (!visible || !contenido) return;
-      // factor: cuánto hay que encoger (1 = nada, hacia 0.7 como tope)
-      var factor = 1;
-      if (contenido > visible) {
-        factor = Math.max(0.62, visible / contenido);
+      if (!esHome) {
+        // restaurar si veníamos de escalar
+        if (sc.__envoltura) { desenvolver(sc); }
+        sc.style.overflowY = '';
+        return;
       }
-      de.style.setProperty('--mv-compact', factor.toFixed(3));
+      // Envolvemos TODO el contenido del scroll en un solo contenedor, una vez,
+      // para poder escalarlo como bloque. Los hijos sueltos no se pueden escalar
+      // juntos de otra forma.
+      var env = sc.__envoltura;
+      if (!env) {
+        env = document.createElement('div');
+        env.className = 'mv-esc-env';
+        env.style.transformOrigin = 'top center';
+        while (sc.firstChild) env.appendChild(sc.firstChild);
+        sc.appendChild(env);
+        sc.__envoltura = env;
+      }
+      env.style.transform = 'none';
+      env.style.width = '100%';
+      var hVis = sc.clientHeight;
+      var hCont = env.scrollHeight;
+      if (!hVis || !hCont) return;
+      if (hCont > hVis + 1) {
+        var esc = Math.max(0.70, hVis / hCont);
+        env.style.transform = 'scale(' + esc.toFixed(3) + ')';
+        env.style.width = (100 / esc).toFixed(2) + '%';
+        sc.style.overflowY = 'hidden';
+      } else {
+        env.style.transform = '';
+        env.style.width = '';
+        sc.style.overflowY = 'auto';
+      }
+    } catch (_) {}
+  }
+  function desenvolver(sc) {
+    try {
+      var env = sc.__envoltura; if (!env) return;
+      while (env.firstChild) sc.insertBefore(env.firstChild, env);
+      sc.removeChild(env); sc.__envoltura = null;
     } catch (_) {}
   }
   // se recalcula junto con la medida del área
