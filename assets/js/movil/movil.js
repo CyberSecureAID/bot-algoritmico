@@ -6,7 +6,7 @@
 
 import * as wallet from '../wallet.js?v=125';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=21';
+import { inyectarMovil } from './estilos.js?v=22';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=20';
 import { pintarMercados } from './markets.js?v=20';
@@ -24,9 +24,19 @@ import { abrirAlerta } from './alerta.js?v=20';
    CSS, actualizándola cuando el navegador cambia sus barras. */
 function medirAlto() {
   try {
+    // Tomamos la MENOR de todas las medidas disponibles. Los navegadores de las
+    // wallets informan alturas distintas según la fuente, y algunas incluyen el
+    // espacio que ocupan las barras del sistema. Quedarnos con la más pequeña
+    // garantiza que nunca sobrepasamos la pantalla real.
+    const cand = [];
     const vv = window.visualViewport;
-    const h = vv && vv.height ? vv.height : window.innerHeight;
-    document.documentElement.style.setProperty('--mv-h', Math.round(h) + 'px');
+    if (vv && vv.height) cand.push(vv.height);
+    if (window.innerHeight) cand.push(window.innerHeight);
+    const de = document.documentElement;
+    if (de && de.clientHeight) cand.push(de.clientHeight);
+    if (!cand.length) return;
+    const h = Math.min.apply(null, cand);
+    de.style.setProperty('--mv-h', Math.round(h) + 'px');
   } catch (_) {}
 }
 medirAlto();

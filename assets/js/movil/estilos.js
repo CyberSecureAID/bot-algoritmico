@@ -508,12 +508,18 @@ export function inyectarMovil() {
   /* ── Comportamiento de aplicación: sin scroll de página ── */
   html,body{height:100%;overflow:hidden;overscroll-behavior:none;position:fixed;width:100%}
   body.mv-on{margin:0;padding:0}
-  @supports (height:100dvh){ #mv-app{height:100dvh;max-height:100dvh} }
+  
   
 
   /* ── Altura real medida por JS (los navegadores de wallets no calculan bien
      100dvh, dejando la barra inferior fuera de la pantalla) ── */
-  #mv-app{height:var(--mv-h,100dvh)!important;max-height:var(--mv-h,100dvh)!important}
+  #mv-app{height:var(--mv-h,100dvh)!important;max-height:var(--mv-h,100dvh)!important;bottom:auto!important;
+    display:flex!important;flex-direction:column!important}
+  /* el área de contenido ocupa lo que sobra y hace scroll por dentro */
+  #mv-scroll{position:relative!important;inset:auto!important;flex:1 1 auto!important;min-height:0!important;
+    overflow-y:auto!important;-webkit-overflow-scrolling:touch}
+  /* la barra inferior, dentro del flujo, siempre visible al final */
+  #mv-nav{position:relative!important;flex:0 0 auto!important;bottom:auto!important}
   #mv-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
   
 `;
