@@ -73,7 +73,7 @@ export function modalClose() { limpiarBusy(); const m = $('colmena-modal'); if (
 // Direcciones conocidas para el logo de Trust Wallet (las monedas nativas o sin
 // contrato en su propia cadena no traen address, así que se listan aquí).
 const LOGO_DIR_UTIL = {
-  BNB:'0xB8c77482e45F1F44dE1745F52C74426C631bDD52', WBNB:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+  BNB:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', WBNB:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
   BTC:'0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', BTCB:'0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c',
   ETH:'0x2170Ed0880ac9A755fd29B2688956BD959F933F8', USDT:'0x55d398326f99059fF775485246999027B3197955',
   USDC:'0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', CAKE:'0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82',
