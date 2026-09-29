@@ -6,9 +6,9 @@
 
 import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
-import { inyectarMovil } from './estilos.js?v=25';
+import { inyectarMovil } from './estilos.js?v=26';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=23';
+import { pintarInicio } from './inicio.js?v=26';
 import { pintarMercados } from './markets.js?v=23';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=23';
 import { pintarActivos } from './activos.js?v=23';
@@ -94,7 +94,7 @@ async function abrir(clave, arg) {
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=126'); m.abrirLiquidity && m.abrirLiquidity(); break; }
-      case 'shield':    { const m = await import('../shield/shield.js?v=150'); m.abrirShield && m.abrirShield(); break; }
+      case 'shield':    { location.href = 'shield.html'; break; }
       case 'bots':      modoBots(true); break;
       case 'buscar':    abrirBuscar(api()); break;
       case 'soporte':   abrirSoporte(); break;
