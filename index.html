@@ -40,6 +40,22 @@
 <link rel="stylesheet" href="assets/css/asistente.css?v=125">
 <link rel="icon" type="image/png" href="assets/img/cco-32.png">
 <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/styles.css">
+<link rel="stylesheet" href="assets/css/asistente.css?v=125">
+<style>
+  /* La hoja base trae el tema claro; aquí se redefine a oscuro y dorado, para
+     que las ventanas emergentes (recibe, avisos de bots) no salgan en negro. */
+  :root{
+    --panel:#10141a !important; --panel-2:#0a0e13 !important;
+    --bg:#05070a !important;    --bg-2:#0a0e13 !important;
+    --line:#232b36 !important;  --line-soft:#1a202a !important;
+    --neon:#E8B84B !important;  --neon-lit:#f4d089 !important; --neon-dim:#c79426 !important;
+    --txt:#eaecef !important;   --txt-soft:#a7b0bb !important;
+  }
+</style>
 <link rel="manifest" href="manifest-aurex.webmanifest">
 
 <script>
@@ -101,7 +117,7 @@ if ('serviceWorker' in navigator) {
   // entraba una versión nueva. Los cambios se ven en la siguiente visita.
 }
 </script>
-<script src="assets/js/mv-adaptar.js?v=4"></script>
+<script src="assets/js/mv-adaptar.js?v=5"></script>
 </head>
 
 <body>
