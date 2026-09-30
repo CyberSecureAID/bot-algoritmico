@@ -71,46 +71,19 @@
 </style>
 
 <script type="module">
+  /* UNA SOLA VÍA DE CONEXIÓN.
+     Antes esta página montaba el móvil con su propia función de conexión, y
+     gridbot-ui tenía otra. Eso creaba dos vías en conflicto. Ahora esta página
+     solo carga gridbot-ui, que es quien monta la interfaz móvil con la ÚNICA
+     función de conexión del proyecto (la que detecta la red y conecta). */
   import * as wallet from './assets/js/wallet.js?v=126';
-
-  /* Conexión de wallet con reintento. En los navegadores internos de las
-     wallets el proveedor a veces tarda en aparecer; si se comprueba justo en el
-     instante del toque, parece que el botón no hace nada. Aquí esperamos a que
-     aparezca antes de rendirnos. */
-  async function esperarProveedor(ms) {
-    const hasta = Date.now() + (ms || 2500);
-    while (Date.now() < hasta) {
-      if (window.ethereum) return true;
-      await new Promise(r => setTimeout(r, 120));
-    }
-    return !!window.ethereum;
-  }
-
-  async function conectarWallet() {
-    try {
-      await esperarProveedor(2500);
-      await wallet.conectar();
-    } catch (e) {
-      const msg = String((e && e.message) || e || '');
-      if (/rejected|denied|user/i.test(msg)) return;   // lo canceló el usuario
-      alert('No se pudo conectar la wallet. Ábrela, desbloquéala e inténtalo de nuevo.');
-    }
-  }
-
   (async () => {
+    // reconexión silenciosa si la wallet ya nos autorizó
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/movil/movil.js?v=30');
-      await m.montarMovil({ conectarWallet });
-      // cargar el motor de bots y swap (sin él, esas secciones no abren)
-      try { await import('./assets/js/gridbot-ui.js?v=220'); } catch (_) {}
-      try {
-        const idi = await import('./assets/js/idioma.js?v=163');
-        idi.forzarInglesPorDefecto && idi.forzarInglesPorDefecto();
-        idi.arrancarIdioma && idi.arrancarIdioma();
-      } catch (_) {}
+      // gridbot-ui monta el móvil solo (detecta que es móvil) con su conexión
+      await import('./assets/js/gridbot-ui.js?v=221');
     } catch (e) {
-      console.warn('movil:', e);
       document.body.insertAdjacentHTML('beforeend',
         '<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#8b96a3">' +
         'No se pudo cargar. Recarga la página.</div>');
