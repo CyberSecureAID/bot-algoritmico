@@ -3240,11 +3240,8 @@ async function arrancar() {
   // LUEGO se cargaba móvil encima: eso causaba el pestañeo (se veía la web de
   // computadora un instante y después la móvil). Ahora móvil arranca directo.
   if (_movil()) {
-    // Si la interfaz móvil YA está montada (por movil.html), no la remontamos:
-    // hacerlo pisaría la conexión buena con una versión vieja. Solo salimos.
-    if (document.getElementById('mv-app')) { return; }
     try {
-      const m = await import('./movil/movil.js?v=25');
+      const m = await import('./movil/movil.js?v=30');
       await m.montarMovil({ conectarWallet });
       // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
       // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.
