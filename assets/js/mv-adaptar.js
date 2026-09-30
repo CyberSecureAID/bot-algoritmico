@@ -177,6 +177,17 @@
       sc.style.zoom = '';
       var esHome = !!sc.querySelector('.mv-bal, .mv-cta');
       sc.style.overflowY = esHome ? 'hidden' : 'auto';
+      // el "juego" residual viene del documento: en el home lo fijamos del todo
+      try {
+        if (esHome) {
+          document.documentElement.style.overflow = 'hidden';
+          document.body.style.overflow = 'hidden';
+          document.body.style.overscrollBehavior = 'none';
+        } else {
+          document.documentElement.style.overflow = '';
+          document.body.style.overflow = '';
+        }
+      } catch (_) {}
     } catch (_) {}
   }
   // se recalcula junto con la medida del área
