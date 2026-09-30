@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=32';
+import { pintarInicio } from './inicio.js?v=34';
 import { pintarMercados } from './markets.js?v=23';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=23';
 import { pintarActivos } from './activos.js?v=31';
@@ -817,25 +817,39 @@ async function autoConectarMovil() {
 function revisarRed() {
   const conectado = wallet.cuentaActual && wallet.cuentaActual();
   const malaRed = conectado && wallet.esRedCorrecta && !wallet.esRedCorrecta();
+  // El botón BUENO aparece en DOS casos: sin conexión (para conectar) y
+  // conectado en red equivocada (para cambiar). Es el ÚNICO botón de conexión.
+  const mostrar = !conectado || malaRed;
   const prev = document.getElementById('mv-red');
-  if (!malaRed) { if (prev) prev.remove(); return; }
+  if (!mostrar) { if (prev) prev.remove(); return; }
   if (prev) return;
   const el = document.createElement('div');
   el.id = 'mv-red';
+  const sinCuenta = !conectado;
+  const titulo = sinCuenta ? 'Connect your wallet' : 'Wrong network';
+  const texto = sinCuenta
+    ? 'Non-custodial exchange. You always control your funds. Connect to trade, create bots and swap.'
+    : 'You are on another network. Switch to <b>BNB Smart Chain</b> to connect.';
+  const textoBoton = sinCuenta ? 'Connect wallet' : 'Switch to BNB Smart Chain';
   el.innerHTML = `
     <div class="mv-red-h">
-      <span class="mv-red-ico">⚠️</span>
-      <div class="mv-red-tx"><b>Wrong network</b><span>You are on another network. Switch to <b>BNB Smart Chain</b> to connect with CriptoCuba.</span></div>
-      <button class="mv-red-x" aria-label="Cerrar">✕</button>
+      <span class="mv-red-ico">${sinCuenta ? '\u{1F517}' : '\u26A0\uFE0F'}</span>
+      <div class="mv-red-tx"><b>${titulo}</b><span>${texto}</span></div>
+      <button class="mv-red-x" aria-label="Cerrar">\u2715</button>
     </div>
-    <button class="mv-red-btn" id="mv-red-btn">Cambiar a BNB Smart Chain</button>
-    <div class="mv-red-ayuda">Doesn't switch on its own? Open it from the <b>network selector at the top right</b> of your wallet:<br>
-      · <b>MetaMask:</b> tap the network name (top left/right) → choose <b>BNB Smart Chain</b>.<br>
-      · <b>Trust Wallet:</b> network icon at the top right → <b>Smart Chain</b>.</div>`;
+    <button class="mv-red-btn" id="mv-red-btn">${textoBoton}</button>`;
   document.body.appendChild(el);
   el.querySelector('.mv-red-x').onclick = () => el.remove();
   el.querySelector('#mv-red-btn').onclick = async () => {
-    try { if (wallet.cambiarARedCorrecta) await wallet.cambiarARedCorrecta(); } catch (_) {}
+    const b = el.querySelector('#mv-red-btn');
+    b.style.pointerEvents = 'none'; b.style.opacity = '.7';
+    try {
+      // wallet.conectar() cambia la red Y conecta. Esperamos el proveedor.
+      const hasta = Date.now() + 2500;
+      while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 120)); }
+      await wallet.conectar();
+    } catch (_) {}
+    b.style.pointerEvents = ''; b.style.opacity = '';
     setTimeout(revisarRed, 600);
   };
 }

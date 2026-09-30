@@ -91,12 +91,6 @@ export function pintarInicio(host, api) {
         </div>`).join('')}
     </div>
 
-    ${con ? '' : `
-    <div class="mv-connect">
-      <p><b>Exchange no custodial.</b> Tú controlas tus fondos siempre. Conecta tu wallet para operar, crear bots e intercambiar.</p>
-      <button id="mv-connect-btn">Conectar wallet</button>
-    </div>`}
-
     <div class="mv-strip" id="mv-strip">
       <div class="mv-strip-ic" id="mv-strip-ic">${IC.book}</div>
       <div class="mv-strip-tx"><b id="mv-strip-t">—</b><small id="mv-strip-s">—</small></div>
@@ -153,7 +147,6 @@ export function pintarInicio(host, api) {
   $('mv-alerts').onclick = () => api.abrir('alertas');
   $('mv-add').onclick = () => api.abrir('recibir');
   $('mv-trade').onclick = () => api.irA('trade');
-  const cb = $('mv-connect-btn'); if (cb) cb.onclick = () => api.conectar();
   host.querySelectorAll('.mv-qi').forEach((el) => { el.onclick = () => api.abrir(el.getAttribute('data-k')); });
   // La tira inferior alterna entre Add Token y Wallet Shield. El destino de
   // "Enter" y "See" cambia con ella, para que siempre lleve a lo que muestra.
