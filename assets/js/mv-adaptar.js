@@ -128,17 +128,14 @@
     var st = document.createElement('style');
     st.id = 'mv-compact-css';
     st.textContent = [
-      ':root{--mv-compact:1}',
       '@media(max-width:900px){',
-      '  #mv-scroll .mv-top{padding-top:calc((8px + env(safe-area-inset-top,0px)) * var(--mv-compact));padding-bottom:calc(6px * var(--mv-compact))}',
-      '  #mv-scroll .mv-bal-lbl{margin:calc(8px * var(--mv-compact)) 0 calc(3px * var(--mv-compact))}',
-      '  #mv-scroll .mv-cta{margin:calc(16px * var(--mv-compact)) 0 calc(4px * var(--mv-compact))}',
-      '  #mv-scroll .mv-cta button{height:calc(52px * var(--mv-compact));min-height:42px}',
-      '  #mv-scroll .mv-quick{margin:calc(6px * var(--mv-compact)) 0 calc(2px * var(--mv-compact));padding:calc(12px * var(--mv-compact)) 0 2px}',
-      '  #mv-scroll .mv-strip{margin:calc(12px * var(--mv-compact)) 0 0;padding:calc(12px * var(--mv-compact)) 13px}',
-      '  #mv-scroll .mv-sec-h{margin:calc(12px * var(--mv-compact)) 0 calc(7px * var(--mv-compact))}',
-      '  #mv-scroll .mv-svc-card{height:calc(104px * var(--mv-compact));min-height:84px}',
-      '  #mv-scroll .mv-qi .mv-qbox{width:calc(56px * var(--mv-compact));height:calc(56px * var(--mv-compact));min-width:44px;min-height:44px}',
+      // recortes suaves de espacios muertos para que el inicio quepa sin encoger
+      '  #mv-scroll .mv-top{padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:4px}',
+      '  #mv-scroll .mv-bal-lbl{margin:6px 0 2px}',
+      '  #mv-scroll .mv-cta{margin:12px 0 2px}',
+      '  #mv-scroll .mv-quick{margin:4px 0 0;padding:8px 0 0}',
+      '  #mv-scroll .mv-strip{margin:10px 0 0}',
+      '  #mv-scroll .mv-sec-h{margin:10px 0 6px}',
       '}'
     ].join('\n');
     (document.head || document.documentElement).appendChild(st);
@@ -171,34 +168,12 @@
      mínimo razonable. Solo actúa en el home y solo si hace falta; si el usuario
      está en otra pantalla, no toca nada. */
   function compactarInicio() {
+    // Sin zoom: las proporciones se respetan tal cual (como el ejemplo modelo).
+    // Si en algún móvil el contenido no cupiera, se permite desplazamiento
+    // normal, que es preferible a encoger la interfaz.
     try {
       var sc = document.getElementById('mv-scroll');
-      if (!sc) return;
-      var esHome = !!sc.querySelector('.mv-bal, .mv-cta');
-      if (!esHome) { sc.style.zoom = ''; sc.style.overflowY = ''; return; }
-
-      // Medimos a tamaño natural. IMPORTANTE: solo reducimos si el contenido
-      // se pasa DE VERDAD y por un margen grande. En un teléfono real las
-      // imágenes y fuentes tardan en cargar, y si medimos antes de tiempo el
-      // contenido parece más alto de lo que será y se encogía en exceso. Por eso
-      // el límite inferior es alto (0.90): nunca se ve diminuto, y si aun así no
-      // cabe, se permite un poco de scroll, que es preferible a algo ilegible.
-      sc.style.zoom = '1';
-      var hVis = sc.clientHeight;
-      var hCont = sc.scrollHeight;
-      if (!hVis || !hCont) return;
-
-      // margen de tolerancia: solo actuamos si sobra bastante (más de 24px)
-      if (hCont > hVis + 24) {
-        var z = hVis / hCont;
-        // nunca por debajo de 0.90: preferimos un pelín de scroll a texto ilegible
-        if (z < 0.90) { z = 1; sc.style.overflowY = 'auto'; }
-        else { sc.style.overflowY = 'hidden'; }
-        sc.style.zoom = (z === 1) ? '1' : z.toFixed(3);
-      } else {
-        sc.style.zoom = '1';
-        sc.style.overflowY = 'auto';
-      }
+      if (sc) { sc.style.zoom = ''; sc.style.overflowY = 'auto'; }
     } catch (_) {}
   }
   // se recalcula junto con la medida del área
