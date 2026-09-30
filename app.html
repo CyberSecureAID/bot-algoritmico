@@ -201,29 +201,18 @@
     /* Las ventanitas de la app (info, firma de contratos) se montan en el
        <body>
 <script>
-/* Si entramos desde un móvil, ocultamos la interfaz de escritorio (los bots)
-   desde el primer frame. gridbot-ui detecta el móvil y monta su interfaz encima;
-   esta hoja evita que se vean los bots ese instante. */
+/* Si es un móvil y NO venimos ya redirigidos, vamos a la página del móvil.
+   El parámetro app=1 evita el bucle (movil.html abre bots dentro de app.html). */
 (function(){try{
-  var ancho = (window.matchMedia && window.matchMedia('(max-width:900px)').matches) ||
-              (document.documentElement.clientWidth||screen.width||0) <= 900;
-  var tactil = (navigator.maxTouchPoints||0) > 0 || 'ontouchstart' in window;
-  var grueso = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
-  var agente = /Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
-  if (ancho || (tactil && grueso) || agente) {
-    document.documentElement.classList.add('es-movil');
-    var st=document.createElement('style'); st.id='ocultar-bots-movil';
-    st.textContent=
-      // por defecto el contenedor de escritorio está oculto y sin ocupar sitio
-      'html.es-movil #colmena-app{opacity:0;pointer-events:none;position:fixed;inset:0;z-index:-1}'+
-      // pero cuando se abre bots (body.mv-bots) o el swap, se muestra por encima
-      'html.es-movil.ver-web #colmena-app,html.es-movil body.mv-bots #colmena-app{opacity:1!important;pointer-events:auto!important;z-index:9500!important}'+
-      'html.es-movil #cco-bg,html.es-movil #cco-top{display:none!important}'+
-      'html.es-movil,html.es-movil body{background:#0B0E11!important}';
-    (document.head||document.documentElement).appendChild(st);
-  }
+  if(location.search.indexOf('app=1')!==-1)return;
+  var ancho=(window.matchMedia&&window.matchMedia('(max-width:900px)').matches)||(document.documentElement.clientWidth||screen.width||0)<=900;
+  var tactil=(navigator.maxTouchPoints||0)>0||'ontouchstart' in window;
+  var grueso=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
+  var agente=/Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
+  if(ancho||(tactil&&grueso)||agente){location.replace('movil.html');}
 }catch(_){}})();
 </script>
+
 <script>
 /* ── Limpieza forzada del service worker (una sola vez) ─────────────────────
    Un service worker antiguo puede quedarse activo sirviendo archivos de su
