@@ -106,12 +106,7 @@ export function pintarInicio(host, api) {
     <div class="mv-sec-h"><b>Todos los servicios</b><span id="mv-viewall">Ver todo →</span></div>
     <div class="mv-svc"><div class="mv-svc-track" id="mv-svc-track"></div></div>
 
-    <div class="mv-sec-h"><b id="mv-strip-title">Add Token</b><span id="mv-prize-more">See →</span></div>
-    <div class="mv-strip" id="mv-prize-strip">
-      <div class="mv-strip-ic" id="mv-strip-ic">${IC.coins || IC.market}</div>
-      <div class="mv-strip-tx" id="mv-strip-tx"><b>List your token</b><small>Sell your own crypto in the swap</small></div>
-      <button class="mv-strip-go" id="mv-prize-go">Enter</button>
-    </div>
+    <div class="mv-sec-h mv-strip-solo"><b id="mv-strip-title">Add Token</b><span id="mv-prize-more">See →</span></div>
   `;
 
   $('mv-ava').onclick = () => api.abrir('perfil');
@@ -169,13 +164,11 @@ export function pintarInicio(host, api) {
   let _si = 0;
   const pintarStrip = () => {
     const c = STRIP[_si % STRIP.length];
-    const t = $('mv-strip-title'), ic = $('mv-strip-ic'), tx = $('mv-strip-tx');
+    const t = $('mv-strip-title'), m = $('mv-prize-more');
     if (t) t.textContent = c.title;
-    if (ic) ic.innerHTML = c.ic;
-    if (tx) tx.innerHTML = '<b>' + c.b + '</b><small>' + c.s + '</small>';
+    // el título (y el "See →") llevan a la sección que se está mostrando
     const ir = () => api.abrir(c.go);
-    const g = $('mv-prize-go'), m = $('mv-prize-more');
-    if (g) g.onclick = ir;
+    if (t) { t.style.cursor = 'pointer'; t.onclick = ir; }
     if (m) m.onclick = ir;
   };
   pintarStrip();
