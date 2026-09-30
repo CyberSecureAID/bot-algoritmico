@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=34';
+import { pintarInicio } from './inicio.js?v=36';
 import { pintarMercados } from './markets.js?v=23';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=23';
 import { pintarActivos } from './activos.js?v=31';
@@ -76,7 +76,7 @@ async function abrir(clave, arg) {
     switch (clave) {
       case 'addtoken':  { const m = await import('../gridbot/listing.js?v=12'); m.abrirListingMovil && m.abrirListingMovil(); break; }
       case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=9'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
-                          try { const idi = await import('../idioma.js?v=163'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
+                          try { const idi = await import('../idioma.js?v=164'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
       case 'alertas':   abrirAlerta(); break;
@@ -817,39 +817,34 @@ async function autoConectarMovil() {
 function revisarRed() {
   const conectado = wallet.cuentaActual && wallet.cuentaActual();
   const malaRed = conectado && wallet.esRedCorrecta && !wallet.esRedCorrecta();
-  // El botón BUENO aparece en DOS casos: sin conexión (para conectar) y
-  // conectado en red equivocada (para cambiar). Es el ÚNICO botón de conexión.
   const mostrar = !conectado || malaRed;
   const prev = document.getElementById('mv-red');
   if (!mostrar) { if (prev) prev.remove(); return; }
   if (prev) return;
+
+  const sinCuenta = !conectado;
   const el = document.createElement('div');
   el.id = 'mv-red';
-  const sinCuenta = !conectado;
-  const titulo = sinCuenta ? 'Connect your wallet' : 'Wrong network';
-  const texto = sinCuenta
-    ? 'Non-custodial exchange. You always control your funds. Connect to trade, create bots and swap.'
-    : 'You are on another network. Switch to <b>BNB Smart Chain</b> to connect.';
-  const textoBoton = sinCuenta ? 'Connect wallet' : 'Switch to BNB Smart Chain';
   el.innerHTML = `
     <div class="mv-red-h">
-      <span class="mv-red-ico">${sinCuenta ? '\u{1F517}' : '\u26A0\uFE0F'}</span>
-      <div class="mv-red-tx"><b>${titulo}</b><span>${texto}</span></div>
-      <button class="mv-red-x" aria-label="Cerrar">\u2715</button>
+      <div class="mv-red-tx"><b>${sinCuenta ? 'Conecta tu wallet' : 'Red incorrecta'}</b><span>${sinCuenta ? 'Conecta tu wallet para operar, crear bots e intercambiar.' : 'Estás en otra red. Toca para cambiar a BNB Smart Chain y conectar.'}</span></div>
+      <button class="mv-red-x" aria-label="Close">✕</button>
     </div>
-    <button class="mv-red-btn" id="mv-red-btn">${textoBoton}</button>`;
+    <button class="mv-red-btn" id="mv-red-btn">${sinCuenta ? 'Conectar wallet' : 'Cambiar de red y conectar'}</button>`;
   document.body.appendChild(el);
   el.querySelector('.mv-red-x').onclick = () => el.remove();
   el.querySelector('#mv-red-btn').onclick = async () => {
     const b = el.querySelector('#mv-red-btn');
     b.style.pointerEvents = 'none'; b.style.opacity = '.7';
     try {
-      // wallet.conectar() cambia la red Y conecta. Esperamos el proveedor.
+      // esperar a que el proveedor de la wallet aparezca (tarda en su navegador)
       const hasta = Date.now() + 2500;
       while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 120)); }
+      // wallet.conectar detecta el proveedor, conecta Y cambia a BNB Smart Chain.
+      // Funciona sin conexión previa y en red equivocada. Una sola vía.
       await wallet.conectar();
     } catch (_) {}
     b.style.pointerEvents = ''; b.style.opacity = '';
-    setTimeout(revisarRed, 600);
+    setTimeout(revisarRed, 800);
   };
 }
