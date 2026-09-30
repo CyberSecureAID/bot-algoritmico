@@ -70,23 +70,7 @@
   var tactil = (navigator.maxTouchPoints||0) > 0 || 'ontouchstart' in window;
   var grueso = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
   var agente = /Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
-  if (ancho || (tactil && grueso) || agente) {
-    window.__esMovil = true;
-    document.documentElement.classList.add('es-movil');
-    // Ocultamos la portada con una hoja de estilo normal. Antes se usaba
-    // document.write, que reescribe el documento y dejaba la página en negro.
-    // La portada se oculta con CSS puro desde este mismo instante, antes de que
-    // el navegador pinte nada. Se apunta a sus elementos por su prefijo propio,
-    // así que las ventanas que se crean después (swap, selectores) no se ven
-    // afectadas. Antes esto se hacía al terminar de cargar el documento, y para
-    // entonces la portada ya se había mostrado.
-    // Ocultamos la portada apuntando SOLO a sus propios elementos, que llevan
-    // el prefijo pt-. Antes esta regla ocultaba cualquier nav, svg o canvas del
-    // documento, y eso se llevaba por delante la barra inferior del móvil (que
-    // es un nav) y los iconos de las ventanas (que son svg).
-    var st = document.createElement('style');
-    st.textContent =
-      'html.es-movil,html.es-movil body{background:#0B0E11!important;margin:0;padding:0;height:100%;overflow:hidden}' +
+  if (ancho || (tactil && grueso) || agente) { location.replace('app.html'); return; }' +
       'html.es-movil body>[class^="pt-"],html.es-movil body>[class*=" pt-"],' +
       'html.es-movil body>#velo-arranque,html.es-movil body>#pt-chispas,' +
       'html.es-movil body>#np-fab-previo,html.es-movil body>header.pt-hdr,' +
@@ -608,39 +592,7 @@ if ('serviceWorker' in navigator) {
      La sección de los bots no se toca: sigue viviendo en app.html.
      ══════════════════════════════════════════════════════════════════════ -->
 <script type="module" src="assets/portada/portada.js?v=217"></script>
-<script type="module">
-/* Arranque de la interfaz móvil dentro de esta misma página. */
-if (window.__esMovil) {
-  (async () => {
-    const wallet = await import('./assets/js/wallet.js?v=126');
 
-    async function esperarProveedor(ms) {
-      const hasta = Date.now() + (ms || 2500);
-      while (Date.now() < hasta) { if (window.ethereum) return true; await new Promise(r => setTimeout(r, 120)); }
-      return !!window.ethereum;
-    }
-    async function conectarWallet() {
-      try { await esperarProveedor(2500); await wallet.conectar(); }
-      catch (e) {
-        const m = String((e && e.message) || e || '');
-        if (/rejected|denied|user/i.test(m)) return;
-        alert('No se pudo conectar la wallet. Ábrela, desbloquéala e inténtalo de nuevo.');
-      }
-    }
-
-    try { await wallet.reconectarSiProcede(); } catch (_) {}
-    try {
-      const m = await import('./assets/js/movil/movil.js?v=32');
-      await m.montarMovil({ conectarWallet });
-      try {
-        const idi = await import('./assets/js/idioma.js?v=163');
-        idi.forzarInglesPorDefecto && idi.forzarInglesPorDefecto();
-        idi.arrancarIdioma && idi.arrancarIdioma();
-      } catch (_) {}
-    } catch (e) { console.warn('movil:', e); }
-  })();
-}
-</script>
 
 </body>
 </html>
