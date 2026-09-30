@@ -168,12 +168,15 @@
      mínimo razonable. Solo actúa en el home y solo si hace falta; si el usuario
      está en otra pantalla, no toca nada. */
   function compactarInicio() {
-    // Sin zoom: las proporciones se respetan tal cual (como el ejemplo modelo).
-    // Si en algún móvil el contenido no cupiera, se permite desplazamiento
-    // normal, que es preferible a encoger la interfaz.
+    // En el HOME la pantalla queda rígida (sin scroll): todo cabe de una vez.
+    // En las demás secciones (Market, etc.) sí se permite scroll, porque tienen
+    // listas largas que lo necesitan.
     try {
       var sc = document.getElementById('mv-scroll');
-      if (sc) { sc.style.zoom = ''; sc.style.overflowY = 'auto'; }
+      if (!sc) return;
+      sc.style.zoom = '';
+      var esHome = !!sc.querySelector('.mv-bal, .mv-cta');
+      sc.style.overflowY = esHome ? 'hidden' : 'auto';
     } catch (_) {}
   }
   // se recalcula junto con la medida del área
