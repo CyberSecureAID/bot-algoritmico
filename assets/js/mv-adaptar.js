@@ -183,9 +183,17 @@
           document.documentElement.style.overflow = 'hidden';
           document.body.style.overflow = 'hidden';
           document.body.style.overscrollBehavior = 'none';
+          document.body.style.touchAction = 'none';
+          // quitar el rebote táctil del contenedor (el "baile" de la libreta)
+          sc.style.webkitOverflowScrolling = 'auto';
+          sc.style.overscrollBehavior = 'none';
+          sc.style.touchAction = 'none';
         } else {
           document.documentElement.style.overflow = '';
           document.body.style.overflow = '';
+          document.body.style.touchAction = '';
+          sc.style.webkitOverflowScrolling = '';
+          sc.style.touchAction = '';
         }
       } catch (_) {}
     } catch (_) {}
