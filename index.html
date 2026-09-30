@@ -70,7 +70,7 @@
   var tactil = (navigator.maxTouchPoints||0) > 0 || 'ontouchstart' in window;
   var grueso = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
   var agente = /Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
-  if (ancho || (tactil && grueso) || agente) { location.replace('app.html'); }
+  if (ancho || (tactil && grueso) || agente) { location.replace('movil.html'); }
 }catch(_){}})();
 </script>
 
