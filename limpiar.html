@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Actualizando…</title>
+<style>
+  html,body{margin:0;height:100%;background:#0B0E11;color:#eaecef;
+    font-family:system-ui,sans-serif;display:grid;place-items:center;text-align:center}
+  .sp{width:34px;height:34px;border-radius:50%;border:3px solid rgba(232,184,75,.2);
+    border-top-color:#E8B84B;animation:g .7s linear infinite;margin:0 auto 16px}
+  @keyframes g{to{transform:rotate(360deg)}}
+  p{font-size:14px;color:#8b96a3;max-width:280px;line-height:1.5}
+</style>
+</head>
+<body>
+<div>
+  <div class="sp"></div>
+  <p id="msg">Actualizando la aplicación…</p>
+</div>
+<script>
+/* Esta página tiene un nombre NUEVO que el service worker viejo nunca cacheó,
+   así que se sirve siempre fresca. Su trabajo: matar el service worker viejo,
+   borrar TODAS sus copias, y llevar al usuario al móvil ya limpio. */
+(function(){
+  function irAlMovil(){
+    // vamos al móvil con un parámetro único para saltar cualquier caché residual
+    location.replace('movil.html?fresco=' + Date.now());
+  }
+  try{
+    if(!('serviceWorker' in navigator)){ irAlMovil(); return; }
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      return Promise.all(rs.map(function(r){ return r.unregister(); }));
+    }).then(function(){
+      if(window.caches && caches.keys){
+        return caches.keys().then(function(ks){
+          return Promise.all(ks.map(function(k){ return caches.delete(k); }));
+        });
+      }
+    }).then(function(){
+      document.getElementById('msg').textContent = 'Listo. Abriendo…';
+      setTimeout(irAlMovil, 400);
+    }).catch(function(){ irAlMovil(); });
+  }catch(_){ irAlMovil(); }
+})();
+</script>
+</body>
+</html>
