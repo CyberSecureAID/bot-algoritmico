@@ -65,6 +65,40 @@
   window.__mvMedir = medir;
 
   function arrancar() {
+  // Cinta inferior (Add Token / Wallet Shield) un poco más alta y con su
+  // contenido centrado verticalmente, para que no quede tan fina.
+  (function () {
+    if (document.getElementById('mv-strip-css')) return;
+    var st = document.createElement('style');
+    st.id = 'mv-strip-css';
+    st.textContent = [
+      '@media(max-width:900px){',
+      '  #mv-scroll .mv-strip{padding:16px 14px!important;align-items:center!important;min-height:64px}',
+      '  #mv-scroll .mv-strip .mv-strip-ic{align-self:center!important}',
+      '  #mv-scroll .mv-strip .mv-strip-tx{align-self:center!important}',
+      '  #mv-scroll .mv-strip .mv-strip-go{align-self:center!important}',
+      '}'
+    ].join('\n');
+    (document.head || document.documentElement).appendChild(st);
+  })();
+  
+  // Las ventanas emergentes (swap, bots, selector de moneda, hojas inferiores)
+  // deben quedar por encima de todo y ser tocables. En la página nueva del móvil
+  // no existe el contenedor de escritorio que antes les daba z-index, así que se
+  // lo damos aquí, sin tocar ningún módulo.
+  (function () {
+    if (document.getElementById('mv-modales-css')) return;
+    var st = document.createElement('style');
+    st.id = 'mv-modales-css';
+    st.textContent = [
+      '#swap-modal,#coin-modal,#colmena-app,.gb-modal,.rej-modal,#mv-sheet,#mv-picker{',
+      '  z-index:12000!important;pointer-events:auto!important}',
+      // por si algún módulo hereda el zoom del scroll, lo neutralizamos en las ventanas
+      '#swap-modal,#coin-modal,.gb-modal,.rej-modal,#mv-sheet,#mv-picker{zoom:1!important}'
+    ].join('\n');
+    (document.head || document.documentElement).appendChild(st);
+  })();
+  
   // Inyectamos las reglas del compactado una sola vez. Usan la variable
   // --mv-compact (entre 0.7 y 1) para encoger separaciones proporcionalmente.
   (function () {
