@@ -223,17 +223,27 @@
     /* Las ventanitas de la app (info, firma de contratos) se montan en el
        <body>
 <script>
-/* Si es un móvil y NO venimos ya redirigidos, vamos a la página del móvil.
-   El parámetro app=1 evita el bucle (movil.html abre bots dentro de app.html). */
+/* Detecta móvil y marca es-movil (activa la ocultación de la interfaz de bots
+   mientras se monta el móvil). También mata cualquier service worker viejo una
+   sola vez, para que no sirva copias cacheadas. */
 (function(){try{
-  if(location.search.indexOf('app=1')!==-1)return;
   var ancho=(window.matchMedia&&window.matchMedia('(max-width:900px)').matches)||(document.documentElement.clientWidth||screen.width||0)<=900;
   var tactil=(navigator.maxTouchPoints||0)>0||'ontouchstart' in window;
   var grueso=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
   var agente=/Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
-  if(ancho||(tactil&&grueso)||agente){location.replace('movil.html');}
+  if(ancho||(tactil&&grueso)||agente){ document.documentElement.classList.add('es-movil'); }
+  // matar sw viejo una vez
+  if('serviceWorker' in navigator && !sessionStorage.getItem('sw-limpio')){
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      if(rs.length){Promise.all(rs.map(function(r){return r.unregister();})).then(function(){
+        if(window.caches&&caches.keys){caches.keys().then(function(ks){Promise.all(ks.map(function(k){return caches.delete(k);})).then(function(){sessionStorage.setItem('sw-limpio','1');location.reload();});});}
+        else{sessionStorage.setItem('sw-limpio','1');location.reload();}
+      });}else{sessionStorage.setItem('sw-limpio','1');}
+    }).catch(function(){});
+  }
 }catch(_){}})();
 </script>
+
 
 <script>
 /* ── Limpieza forzada del service worker (una sola vez) ─────────────────────
@@ -323,7 +333,7 @@
       html, body{ height: 100dvh; overflow: hidden; }
     }
   </style>
-<script src="assets/js/mv-adaptar.js?v=8"></script>
+<script src="assets/js/mv-adaptar.js?v=9"></script>
 </head>
 <body>
   <div id="cco-velo" aria-hidden="true"></div>

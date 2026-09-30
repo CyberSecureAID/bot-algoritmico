@@ -1,36 +1,16 @@
-/* sw.js — SERVICE WORKER DE AUTODESTRUCCIÓN
-   El service worker anterior cacheaba de forma agresiva y servía versiones
-   viejas del sitio aunque se borrara el caché del navegador, porque él vive
-   aparte. Este lo reemplaza: al instalarse, borra TODOS los cachés, se
-   desregistra a sí mismo y recarga las pestañas. Después, el navegador va
-   siempre directo a la red, sin intermediario que sirva copias viejas. */
-
-self.addEventListener('install', (e) => {
-  self.skipWaiting();
-});
-
+/* sw.js — Service worker mínimo SIN caché.
+   Tras los problemas de versiones viejas servidas desde caché, este sw no
+   guarda nada: todo va siempre directo a la red. Así los cambios que se suban
+   se ven siempre, sin trucos. Se puede añadir caché más adelante, con cuidado. */
+const VERSION = 'aurex-v422-nocache';
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    try {
-      // borrar TODOS los cachés que existan
-      const nombres = await caches.keys();
-      await Promise.all(nombres.map((n) => caches.delete(n)));
-    } catch (_) {}
-    try {
-      // tomar control de las pestañas abiertas
-      await self.clients.claim();
-      // recargar cada pestaña una vez, para que traigan todo fresco
-      const clientes = await self.clients.matchAll({ type: 'window' });
-      clientes.forEach((c) => { try { c.navigate(c.url); } catch (_) {} });
-    } catch (_) {}
-    try {
-      // desregistrarse a sí mismo: a partir de ahora no hay service worker
-      await self.registration.unregister();
-    } catch (_) {}
+    try { const ns = await caches.keys(); await Promise.all(ns.map(n => caches.delete(n))); } catch (_) {}
+    try { await self.clients.claim(); } catch (_) {}
   })());
 });
-
-// Mientras exista, NO cachea nada: todo va directo a la red.
 self.addEventListener('fetch', (e) => {
-  e.respondWith(fetch(e.request).catch(() => new Response('', { status: 504 })));
+  // todo directo a la red; si no hay red, intenta caché (vacío casi siempre)
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
