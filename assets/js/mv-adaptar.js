@@ -65,6 +65,23 @@
   window.__mvMedir = medir;
 
   function arrancar() {
+  // Cuando se abre el swap o los bots, marcamos el documento para que el
+  // contenedor de escritorio (colmena-app) se muestre. Al cerrarse, se oculta.
+  (function () {
+    function revisar() {
+      try {
+        var swap = document.getElementById('swap-modal');
+        var swapVisible = swap && getComputedStyle(swap).display !== 'none';
+        var bots = document.body && document.body.classList.contains('mv-bots');
+        if (swapVisible || bots) document.documentElement.classList.add('ver-web');
+        else document.documentElement.classList.remove('ver-web');
+      } catch (_) {}
+    }
+    var mo = new MutationObserver(revisar);
+    if (document.body) mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+    setInterval(revisar, 500);
+  })();
+  
   // Cinta inferior (Add Token / Wallet Shield) un poco más alta y con su
   // contenido centrado verticalmente, para que no quede tan fina.
   (function () {
@@ -94,7 +111,12 @@
       '#swap-modal,#coin-modal,#colmena-app,.gb-modal,.rej-modal,#mv-sheet,#mv-picker{',
       '  z-index:12000!important;pointer-events:auto!important}',
       // por si algún módulo hereda el zoom del scroll, lo neutralizamos en las ventanas
-      '#swap-modal,#coin-modal,.gb-modal,.rej-modal,#mv-sheet,#mv-picker{zoom:1!important}'
+      '#swap-modal,#coin-modal,.gb-modal,.rej-modal,#mv-sheet,#mv-picker{zoom:1!important}',
+      '#mv-sheet,#mv-sheet *{color:#eaecef}',
+      '#mv-sheet #mv-addr{color:#eaecef !important}',
+      '#mv-sheet .mv-sheet-h b{color:#eaecef !important}',
+      '#mv-sheet .mv-sheet-h span{color:#8b96a3 !important}',
+      '#mv-picker,#mv-picker *{color:#eaecef}'
     ].join('\n');
     (document.head || document.documentElement).appendChild(st);
   })();
@@ -155,18 +177,24 @@
       var esHome = !!sc.querySelector('.mv-bal, .mv-cta');
       if (!esHome) { sc.style.zoom = ''; sc.style.overflowY = ''; return; }
 
-      // medimos a tamaño natural
+      // Medimos a tamaño natural. IMPORTANTE: solo reducimos si el contenido
+      // se pasa DE VERDAD y por un margen grande. En un teléfono real las
+      // imágenes y fuentes tardan en cargar, y si medimos antes de tiempo el
+      // contenido parece más alto de lo que será y se encogía en exceso. Por eso
+      // el límite inferior es alto (0.90): nunca se ve diminuto, y si aun así no
+      // cabe, se permite un poco de scroll, que es preferible a algo ilegible.
       sc.style.zoom = '1';
       var hVis = sc.clientHeight;
       var hCont = sc.scrollHeight;
       if (!hVis || !hCont) return;
 
-      if (hCont > hVis + 1) {
-        // 'zoom' reduce TODO el contenido proporcionalmente, sin moverlo de sitio
-        // ni descuadrar el ancho. Es lo que mejor conserva el diseño.
-        var z = Math.max(0.68, hVis / hCont);
-        sc.style.zoom = z.toFixed(3);
-        sc.style.overflowY = 'hidden';
+      // margen de tolerancia: solo actuamos si sobra bastante (más de 24px)
+      if (hCont > hVis + 24) {
+        var z = hVis / hCont;
+        // nunca por debajo de 0.90: preferimos un pelín de scroll a texto ilegible
+        if (z < 0.90) { z = 1; sc.style.overflowY = 'auto'; }
+        else { sc.style.overflowY = 'hidden'; }
+        sc.style.zoom = (z === 1) ? '1' : z.toFixed(3);
       } else {
         sc.style.zoom = '1';
         sc.style.overflowY = 'auto';
