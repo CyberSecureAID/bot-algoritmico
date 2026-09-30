@@ -70,18 +70,7 @@
   var tactil = (navigator.maxTouchPoints||0) > 0 || 'ontouchstart' in window;
   var grueso = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
   var agente = /Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
-  if (ancho || (tactil && grueso) || agente) { location.replace('app.html'); return; }' +
-      'html.es-movil body>[class^="pt-"],html.es-movil body>[class*=" pt-"],' +
-      'html.es-movil body>#velo-arranque,html.es-movil body>#pt-chispas,' +
-      'html.es-movil body>#np-fab-previo,html.es-movil body>header.pt-hdr,' +
-      'html.es-movil body>main,html.es-movil body>footer,html.es-movil body>#pt{display:none!important}' +
-      // el contenedor del móvil queda clavado a la pantalla, sin ese leve
-      // balanceo que se sentía al arrastrar (medía algo más que la ventana).
-      'html.es-movil,html.es-movil body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none}' +
-      'html.es-movil #mv-app{position:fixed;overflow:hidden}' +
-      'html.es-movil #mv-scroll{overscroll-behavior:contain;touch-action:pan-y}';
-    (document.head||document.documentElement).appendChild(st);
-  }
+  if (ancho || (tactil && grueso) || agente) { location.replace('app.html'); }
 }catch(_){}})();
 </script>
 
