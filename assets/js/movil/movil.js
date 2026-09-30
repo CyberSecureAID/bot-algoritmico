@@ -642,7 +642,21 @@ async function leerBalance() {
 function api() {
   return {
     abrir, abrirGrafica,
-    conectar: () => { _deps.conectarWallet ? _deps.conectarWallet() : modoBots(true); },
+    conectar: async () => {
+      // UNA sola vía de conexión, siempre la buena: wallet.conectar() cambia a la
+      // red correcta y conecta. Esperamos a que el proveedor aparezca (en el
+      // navegador de la wallet tarda). NO usamos _deps: ahí estaba el conflicto
+      // de dos funciones distintas según quién montara el móvil.
+      try {
+        const hasta = Date.now() + 2500;
+        while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 120)); }
+        await wallet.conectar();
+        try { revisarRed(); } catch (_) {}
+      } catch (e) {
+        const m = String((e && e.message) || e || '');
+        if (/rejected|denied|user/i.test(m)) return;
+      }
+    },
     estaConectado: () => !!(wallet.cuentaActual && wallet.cuentaActual()),
     balance: () => _bal,
     irA,
