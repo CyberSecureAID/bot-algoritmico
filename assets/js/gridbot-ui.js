@@ -3251,7 +3251,9 @@ async function arrancar() {
         idi.arrancarIdioma();
       } catch (_) {}
       try { window.dispatchEvent(new Event('app-montada')); } catch (_) {}
-      return;   // no se monta nada de escritorio
+      // NO hacemos return: seguimos para inicializar los bots y el swap dentro de
+      // colmena-app (que está oculto). Sin esto, al abrir bots desde el móvil solo
+      // se veía una ventana negra vacía. El móvil ya está montado y visible encima.
     } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }
   }
 
