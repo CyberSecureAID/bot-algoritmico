@@ -103,7 +103,7 @@
       const m = await import('./assets/js/movil/movil.js?v=30');
       await m.montarMovil({ conectarWallet });
       // cargar el motor de bots y swap (sin él, esas secciones no abren)
-      try { await import('./assets/js/gridbot-ui.js?v=219'); } catch (_) {}
+      try { await import('./assets/js/gridbot-ui.js?v=220'); } catch (_) {}
       try {
         const idi = await import('./assets/js/idioma.js?v=163');
         idi.forzarInglesPorDefecto && idi.forzarInglesPorDefecto();
