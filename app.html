@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* Mata cualquier service worker viejo que esté sirviendo copias cacheadas.
+   Se ejecuta una sola vez (deja marca) y recarga saltándose el sw. */
+(function(){try{
+  if(sessionStorage.getItem('sw-muerto')==='1')return;
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      if(rs.length){
+        Promise.all(rs.map(function(r){return r.unregister();})).then(function(){
+          if(window.caches&&caches.keys){caches.keys().then(function(ks){
+            Promise.all(ks.map(function(k){return caches.delete(k);})).then(function(){
+              sessionStorage.setItem('sw-muerto','1');
+              location.reload();
+            });
+          });}
+          else{sessionStorage.setItem('sw-muerto','1');location.reload();}
+        });
+      } else { sessionStorage.setItem('sw-muerto','1'); }
+    }).catch(function(){});
+  }
+}catch(_){}})();
+</script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- App-like: modo standalone en iOS y Android, sin barras del navegador -->
@@ -334,7 +356,7 @@
      los datos de la blockchain siempre se piden frescos. */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').then((reg) => {
+      navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).finally(function(){navigator.serviceWorker.register('sw2.js').catch(function(){});}).then((reg) => {
         reg.update().catch(() => {});
       }).catch(() => {});
 
