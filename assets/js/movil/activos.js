@@ -3,7 +3,7 @@
    Colector de polvo y Alertas de precio. */
 
 import { IC } from './iconos.js?v=20';
-import * as wallet from '../wallet.js?v=126';
+import * as wallet from '../wallet.js?v=127';
 import { money, cantidad, logoDe } from './fmt.js?v=3';
 
 const $ = (id) => document.getElementById(id);
