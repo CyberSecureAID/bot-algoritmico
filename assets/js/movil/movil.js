@@ -4,14 +4,14 @@
    · No hay botón "volver" flotante: se navega con la barra inferior.
    · Las secciones reales abren por ENCIMA del contenido de la cáscara */
 
-import * as wallet from '../wallet.js?v=127';
+import * as wallet from '../wallet.js?v=128';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=47';
+import { pintarInicio } from './inicio.js?v=49';
 import { pintarMercados } from './markets.js?v=23';
-import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=47';
-import { pintarActivos } from './activos.js?v=47';
+import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=49';
+import { pintarActivos } from './activos.js?v=49';
 import { abrirMenu } from './menu.js?v=20';
 import { abrirBuscar } from './buscar.js?v=20';
 import { abrirAlerta } from './alerta.js?v=20';
@@ -705,7 +705,7 @@ async function irA(tab) {
     // al instante; y si por caché llegara una versión sin el export, m.precargar
     // sería undefined y NO rompe nada.
     setTimeout(() => {
-      import('./operar.js?v=47').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
+      import('./operar.js?v=49').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
     }, 1200);
     return; }
   if (tab === 'markets') { pintarMercados(host, api()); return; }
@@ -793,7 +793,7 @@ async function autoConectarMovil() {
   try {
     let cuenta = wallet.cuentaActual && wallet.cuentaActual();
     if (!cuenta && wallet.reconectarSiProcede) { try { cuenta = await wallet.reconectarSiProcede(); } catch (_) {} }
-    if (!cuenta && (window.ethereum || window.trustwallet) && wallet.conectar && !window._mvAutoInt) {
+    if (!cuenta && (window.ethereum || window.trust || window.trustwallet) && wallet.conectar && !window._mvAutoInt) {
       window._mvAutoInt = true;
       try { cuenta = await wallet.conectar(); } catch (_) {}
     }
@@ -831,18 +831,7 @@ function revisarRed() {
     } catch (e) {
       // Mostrar el error en pantalla en vez de tragarlo: así se ve la causa exacta.
       const msg = (e && (e.message || e.code || String(e))) || 'error desconocido';
-      // Diagnóstico: qué expone el navegador de la wallet a la página.
-      let env = '';
-      try {
-        const claves = Object.keys(window).filter(k => /eth|trust|wallet|web3|provider/i.test(k)).slice(0, 12).join(', ') || '(ninguna)';
-        env = ' | ethereum: ' + typeof window.ethereum
-            + ' | trustwallet: ' + typeof window.trustwallet
-            + ' | 6963: ' + ((wallet.walletsDisponibles && wallet.walletsDisponibles().length) || 0)
-            + ' | top: ' + (window.top === window)
-            + ' | claves: ' + claves
-            + ' | UA: ' + String(navigator.userAgent).slice(0, 90);
-      } catch (_) {}
-      if (ayuda) ayuda.innerHTML = '<b style="color:#f6465d;word-break:break-all">Error: ' + String(msg).slice(0, 160) + env + '</b>';
+      if (ayuda) ayuda.innerHTML = '<b style="color:#f6465d">Error: ' + String(msg).slice(0, 160) + '</b>';
     }
     setTimeout(revisarRed, 600);
   };
