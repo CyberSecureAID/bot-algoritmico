@@ -790,13 +790,12 @@ export async function montarMovil(deps) {
    reconexión silenciosa (si ya estaba autorizada) y, si hay wallet inyectada y
    sigue sin cuenta, pide conexión una sola vez. Al terminar revisa la red. */
 async function autoConectarMovil() {
+  // Solo reconexión SILENCIOSA (si la wallet ya nos autorizó antes). NO llamamos
+  // a wallet.conectar aquí: eso abría el popup de la wallet al entrar y la página
+  // se quedaba esperando colgada hasta que el usuario respondiera (la "demora").
+  // Si no hay sesión, el botón de red se encarga de conectar cuando el usuario lo toque.
   try {
-    let cuenta = wallet.cuentaActual && wallet.cuentaActual();
-    if (!cuenta && wallet.reconectarSiProcede) { try { cuenta = await wallet.reconectarSiProcede(); } catch (_) {} }
-    if (!cuenta && window.ethereum && wallet.conectar && !window._mvAutoInt) {
-      window._mvAutoInt = true;
-      try { cuenta = await wallet.conectar(); } catch (_) {}
-    }
+    if (wallet.reconectarSiProcede) { await wallet.reconectarSiProcede(); }
   } catch (_) {}
   revisarRed();
 }
