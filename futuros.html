@@ -183,7 +183,7 @@
       <div class="col"><span class="l" id="f-basel">Vol 24H</span><b class="v" id="f-base">—</b></div>
       <div class="col"><span class="l">Vol 24H (USDT)</span><b class="v" id="f-vol">—</b></div>
       <div class="col"><span class="l">Financ.</span><b class="v gold" id="f-fund">0.0035%</b></div>
-      <div id="f-right"><span id="f-wallet">No conectada</span>
+      <div id="f-right"><span id="f-saldo-fx" style="display:none;font-family:var(--mono);font-size:13px;font-weight:800;color:var(--ink);margin-right:4px"></span><span id="f-wallet">No conectada</span>
         <button id="f-export" title="Exportar gráfica"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
       </div>
     </div>
@@ -473,6 +473,30 @@
       $('pu-date').textContent = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' });
       const acc = (window.ethereum && window.ethereum.selectedAddress) || '';
       if (acc) { const s = acc.slice(0, 6) + '…' + acc.slice(-4); $('pu-wallet').textContent = s; $('f-wallet').textContent = s; }
+      // Saldo de stablecoins (USDT + USDC) en BNB Chain. Pieza aislada: si algo
+      // falla aquí, no afecta al resto. Se esconde si no hay cuenta.
+      (async function saldoFx() {
+        const el = document.getElementById('f-saldo-fx');
+        if (!el) return;
+        try {
+          const cuenta = (window.ethereum && window.ethereum.selectedAddress) || '';
+          if (!cuenta) { el.style.display = 'none'; return; }
+          const gb = await import('./assets/js/gridbot.js?v=129');
+          if (!gb.balanceToken || !gb.fmt) return;
+          const STABLES = ['0x55d398326f99059fF775485246999027B3197955','0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d'];
+          let total = 0;
+          await Promise.all(STABLES.map(async (tok) => {
+            try {
+              const crudo = await gb.balanceToken(tok, cuenta);
+              let dec = 18; try { dec = Number((await gb.infoToken(tok)).decimals) || 18; } catch (_) {}
+              const n = Number(gb.fmt(crudo, dec));
+              if (isFinite(n)) total += n;
+            } catch (_) {}
+          }));
+          el.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
+          el.style.display = '';
+        } catch (_) { el.style.display = 'none'; }
+      })();
     })();
 
     calc();
