@@ -3241,7 +3241,7 @@ async function arrancar() {
   // computadora un instante y después la móvil). Ahora móvil arranca directo.
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=40');
+      const m = await import('./movil/movil.js?v=41');
       await m.montarMovil({ conectarWallet });
       // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
       // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.
@@ -3277,12 +3277,17 @@ async function arrancar() {
   // (pasa cuando MetaMask u otra wallet queda en mal estado tras actualizarse),
   // seguimos adelante: nunca un "Cargando…" eterno.
   let walletMuda = false;
-  try {
-    await Promise.race([
-      wallet.reconectarSiProcede(),
-      new Promise((r) => setTimeout(() => { walletMuda = true; r(); }, 2500))
-    ]);
-  } catch (_) {}
+  // En móvil NO esperamos a la wallet aquí: el móvil ya hizo su reconexión. Esa
+  // espera (hasta 2.5s) era lo que hacía la página tardar. En escritorio se
+  // mantiene.
+  if (!_movil()) {
+    try {
+      await Promise.race([
+        wallet.reconectarSiProcede(),
+        new Promise((r) => setTimeout(() => { walletMuda = true; r(); }, 2500))
+      ]);
+    } catch (_) {}
+  }
   clearTimeout(_tBoot);
   _arrancando = false;
   render(); iniciarReloj();
