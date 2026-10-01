@@ -106,6 +106,8 @@ function estilos() {
   #fx .fld input{font-size:16px}
   #fx .fld .mkt{flex:1;display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono';font-size:13px;color:var(--ink)} #fx .fld .mkt i{width:7px;height:7px;border-radius:50%;background:var(--up)} #fx .fld .mkt em{font-style:normal;font-size:10px;color:var(--mut)}
   #fx .det{display:flex;justify-content:space-between;align-items:center;background:none;border:1px solid var(--line);border-radius:9px;color:var(--mut);font-family:'IBM Plex Mono';font-size:10.5px;padding:7px 10px}
+  #fx .fx-toswap{display:flex;justify-content:center;align-items:center;gap:5px;width:100%;margin-top:7px;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:1px solid #f4d06a;border-radius:9px;color:#1a1200;font-family:'IBM Plex Mono';font-size:10.5px;font-weight:800;padding:8px 10px;cursor:pointer}
+  #fx .fx-toswap:active{filter:brightness(1.05)}
   #fx .det i{font-style:normal;transition:transform .15s} #fx .det.on i{transform:rotate(180deg)}
   #fx .cm{display:none} #fx .cm.on{display:grid}
   #fx .btabs .hist{margin-left:auto;width:30px;height:26px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);display:grid;place-items:center;padding:0;margin-bottom:6px}
@@ -181,6 +183,7 @@ export async function pintarFuturos(host, api) {
         <button class="go long" id="fx-long">Long</button>
         <button class="go short" id="fx-short">Short</button>
         <button class="det" id="fx-det"><span>${t('Detalles')}</span><i>▾</i></button>
+        <button class="fx-toswap" id="fx-toswap"><span id="fx-toswap-tx">BNB → USDT</span></button>
         <div class="cm" id="fx-cm"><span>${t('Coste')} (USDT)<b id="fx-cl">0.0</b></span><span>${t('Coste')} (USDT)<b id="fx-cs">0.0</b></span><span>${t('Máximo')} (USDT)<b id="fx-ml">0.0</b></span><span>${t('Máximo')} (USDT)<b id="fx-ms">0.0</b></span></div>
       </div>
       <div class="book" id="fx-book"></div>
@@ -254,6 +257,28 @@ export async function pintarFuturos(host, api) {
   $('fx-alert').onclick = () => abrirAlerta(_par);
   $('fx-support').onclick = () => api && api.abrir && api.abrir('soporte');
   $('fx-bots').onclick = () => api && api.abrir && api.abrir('bots');
+  // Botón BNB -> USDT: aviso la primera vez (misma marca que la web), luego abre
+  // el swap (api.abrir('swap') ya hace todo y el swap va BNB->USDT por defecto).
+  const _toswap = $('fx-toswap');
+  if (_toswap) _toswap.onclick = () => {
+    const YA = 'fx-swap-aviso-visto';
+    let visto = false; try { visto = localStorage.getItem(YA) === '1'; } catch (_) {}
+    if (visto) { if (api && api.abrir) api.abrir('swap'); return; }
+    const ov = document.createElement('div');
+    ov.className = 'fxpop';
+    ov.innerHTML = '<div class="bg"></div><div class="card" style="position:relative;z-index:1;max-width:400px;width:calc(100% - 32px);margin:auto;background:#0e1218;border:1px solid #232b36;border-radius:16px;padding:20px">'
+      + '<div style="font-size:16px;font-weight:800;color:#eef1f6;margin-bottom:9px">Get USDT to trade</div>'
+      + '<p style="font-size:13px;line-height:1.55;color:#a9b2bd;margin:0 0 16px">To trade on Futures you need USDT on BNB Smart Chain. This opens a quick swap, already set to convert your BNB into USDT. It is fully reversible: you can swap your USDT back to BNB anytime from the Swap section.</p>'
+      + '<div style="display:flex;gap:9px;justify-content:flex-end">'
+      + '<button id="fxp-no" style="background:#1b222c;border:1px solid #232b36;border-radius:11px;padding:11px 16px;color:#eaecef;font-weight:700;font-size:13.5px">Cancel</button>'
+      + '<button id="fxp-ok" style="background:linear-gradient(180deg,#f4d06a,#e0a92f);border:1px solid #f4d06a;border-radius:11px;padding:11px 18px;color:#231800;font-weight:800;font-size:13.5px">Continue</button>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+    const cerrar = () => { try { ov.remove(); } catch (_) {} };
+    ov.querySelector('.bg').onclick = cerrar;
+    ov.querySelector('#fxp-no').onclick = cerrar;
+    ov.querySelector('#fxp-ok').onclick = () => { try { localStorage.setItem(YA, '1'); } catch (_) {} cerrar(); if (api && api.abrir) api.abrir('swap'); };
+  };
   $('fx-hist').onclick = () => abrirHistorialMovil();
 
   $('fx-mode').onclick = () => pop('Modo de margen', [
