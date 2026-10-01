@@ -793,23 +793,12 @@ async function autoConectarMovil() {
   try {
     let cuenta = wallet.cuentaActual && wallet.cuentaActual();
     if (!cuenta && wallet.reconectarSiProcede) { try { cuenta = await wallet.reconectarSiProcede(); } catch (_) {} }
-    // En el navegador de la wallet, el proveedor (window.ethereum) puede tardar
-    // en aparecer. Antes solo se intentaba una vez, así que si en ese instante
-    // aún no existía, se quedaba sin conectar y salía el botón bloqueado. Ahora
-    // esperamos a que aparezca antes de pedir la conexión silenciosa.
-    if (!cuenta) {
-      const hasta = Date.now() + 3000;
-      while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 150)); }
-      if (window.ethereum && wallet.reconectarSiProcede) {
-        try { cuenta = await wallet.reconectarSiProcede(); } catch (_) {}
-      }
+    if (!cuenta && window.ethereum && wallet.conectar && !window._mvAutoInt) {
+      window._mvAutoInt = true;
+      try { cuenta = await wallet.conectar(); } catch (_) {}
     }
   } catch (_) {}
   revisarRed();
-  // volver a revisar la red un momento después: la wallet puede tardar en
-  // informar de la cadena en la que está.
-  setTimeout(revisarRed, 800);
-  setTimeout(revisarRed, 2000);
 }
 
 /* Aviso de red: si la wallet está conectada pero NO en BNB Smart Chain, muestra
@@ -817,42 +806,25 @@ async function autoConectarMovil() {
 function revisarRed() {
   const conectado = wallet.cuentaActual && wallet.cuentaActual();
   const malaRed = conectado && wallet.esRedCorrecta && !wallet.esRedCorrecta();
-  // Sale cuando NO está conectado (para conectar) o conectado en red equivocada.
-  const mostrar = !conectado || malaRed;
   const prev = document.getElementById('mv-red');
-  if (!mostrar) { if (prev) prev.remove(); return; }
+  if (!malaRed) { if (prev) prev.remove(); return; }
   if (prev) return;
-  const sinCuenta = !conectado;
   const el = document.createElement('div');
   el.id = 'mv-red';
   el.innerHTML = `
     <div class="mv-red-h">
       <span class="mv-red-ico">⚠️</span>
-      <div class="mv-red-tx"><b>Red incorrecta</b><span>Tu wallet no está en la red de nuestro sistema. Toca para cambiar a BNB Smart Chain y conectar automáticamente.</span></div>
+      <div class="mv-red-tx"><b>Red incorrecta</b><span>Estás en otra red. Cámbiate a <b>BNB Smart Chain</b> para conectarte con CriptoCuba.</span></div>
+      <button class="mv-red-x" aria-label="Cerrar">✕</button>
     </div>
-    <button class="mv-red-btn" id="mv-red-btn">Cambiar de red y conectar</button>`;
+    <button class="mv-red-btn" id="mv-red-btn">Cambiar a BNB Smart Chain</button>
+    <div class="mv-red-ayuda">¿No cambia solo? Ábrela desde el <b>selector de red arriba a la derecha</b> de tu wallet:<br>
+      · <b>MetaMask:</b> toca el nombre de la red (arriba a la izquierda/derecha) → elige <b>BNB Smart Chain</b>.<br>
+      · <b>Trust Wallet:</b> icono de red arriba a la derecha → <b>Smart Chain</b>.</div>`;
   document.body.appendChild(el);
+  el.querySelector('.mv-red-x').onclick = () => el.remove();
   el.querySelector('#mv-red-btn').onclick = async () => {
-    const b = el.querySelector('#mv-red-btn');
-    b.style.pointerEvents = 'none'; b.style.opacity = '.7';
-    const original = b.textContent;
-    try {
-      // esperar a que el proveedor de la wallet aparezca
-      const hasta = Date.now() + 3000;
-      while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 100)); }
-      // Usar la MISMA función de conexión que el resto de la web (la que funciona
-      // y maneja errores). Si no está disponible, usar wallet.conectar directo.
-      if (_deps && _deps.conectarWallet) {
-        await _deps.conectarWallet();
-      } else {
-        await wallet.conectar();
-      }
-    } catch (e) {
-      // mostrar el error en el propio botón, para no quedar en silencio
-      b.textContent = 'Reintentar';
-      console.warn('conectar:', e);
-    }
-    b.style.pointerEvents = ''; b.style.opacity = '';
-    setTimeout(revisarRed, 800);
+    try { if (wallet.cambiarARedCorrecta) await wallet.cambiarARedCorrecta(); } catch (_) {}
+    setTimeout(revisarRed, 600);
   };
 }
