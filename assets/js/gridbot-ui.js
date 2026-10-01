@@ -7,7 +7,7 @@
 
 import * as gb from './gridbot.js?v=129';
 import { t } from './idioma.js?v=167';
-import * as wallet from './wallet.js?v=127';
+import * as wallet from './wallet.js?v=128';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
 import * as perfil from './perfil.js?v=131';
 import * as prizepool from './prizepool.js?v=128';
@@ -3282,7 +3282,7 @@ async function arrancar() {
   // funcionan (como el 11 de septiembre).
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=48');
+      const m = await import('./movil/movil.js?v=49');
       await m.montarMovil({ conectarWallet });
       // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
       // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.

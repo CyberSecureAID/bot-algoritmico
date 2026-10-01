@@ -89,7 +89,7 @@ export function esMovil() {
 
 /** ¿Merece la pena ofrecer WalletConnect? (no hay wallet dentro del navegador) */
 export function necesitaWalletConnect() {
-  return !window.ethereum && !window.trustwallet && proveedores6963.length === 0;
+  return !window.ethereum && !window.trust && !window.trustwallet && proveedores6963.length === 0;
 }
 
 /** Conecta por WalletConnect con NUESTRA propia ventana.
@@ -271,9 +271,14 @@ function detectar() {
   if (eth) return eth;
   // Trust Wallet (versiones recientes) inyecta su proveedor como window.trustwallet
   // en vez de (o además de) window.ethereum. Sin esto, en su navegador daba NO_WALLET.
-  const tw = window.trustwallet;
-  if (tw && typeof tw.request === 'function') return tw;
-  if (tw && tw.ethereum && typeof tw.ethereum.request === 'function') return tw.ethereum;
+  // Trust Wallet actual (WebView Android) expone la wallet como window.trust;
+  // versiones anteriores, como window.trustwallet. Se aceptan ambas.
+  for (const tw of [window.trust, window.trustwallet]) {
+    if (!tw) continue;
+    if (typeof tw.request === 'function') return tw;
+    if (tw.ethereum && typeof tw.ethereum.request === 'function') return tw.ethereum;
+    if (Array.isArray(tw.providers)) { const p = tw.providers.find((x) => x && typeof x.request === 'function'); if (p) return p; }
+  }
   return null;
 }
 
