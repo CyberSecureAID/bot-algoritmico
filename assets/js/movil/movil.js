@@ -831,7 +831,21 @@ function revisarRed() {
     } catch (e) {
       // Mostrar el error en pantalla en vez de tragarlo: así se ve la causa exacta.
       const msg = (e && (e.message || e.code || String(e))) || 'error desconocido';
-      if (ayuda) ayuda.innerHTML = '<b style="color:#f6465d">Error: ' + String(msg).slice(0, 160) + '</b>';
+      // Diagnóstico de la estructura de window.trust (qué claves tiene y cuál es el proveedor)
+      let env = '';
+      try {
+        const t = window.trust;
+        const desc = (o, prof) => {
+          if (!o || prof > 2) return typeof o;
+          let ks = [];
+          try { ks = Object.getOwnPropertyNames(o).slice(0, 15); } catch (_) {}
+          let protoKs = [];
+          try { protoKs = Object.getOwnPropertyNames(Object.getPrototypeOf(o) || {}).filter(k => k !== 'constructor').slice(0, 10); } catch (_) {}
+          return '{' + ks.map(k => { let v; try { v = o[k]; } catch (_) { return k + ':ERR'; } return k + ':' + (typeof v === 'object' && v ? desc(v, prof + 1) : typeof v); }).join(', ') + (protoKs.length ? ' | proto: ' + protoKs.join(',') : '') + '}';
+        };
+        env = ' | trust = ' + desc(t, 0);
+      } catch (e2) { env = ' | diag falló: ' + e2; }
+      if (ayuda) ayuda.innerHTML = '<b style="color:#f6465d;word-break:break-all;font-size:11px">Error: ' + String(msg).slice(0, 160) + env + '</b>';
     }
     setTimeout(revisarRed, 600);
   };
