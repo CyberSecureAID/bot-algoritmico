@@ -188,8 +188,4 @@ export function montarFuturos() {
   // Refrescar el precio periódicamente desde el gráfico.
   refrescar();
   setInterval(refrescar, 2000);
-
-  // Saldo de stablecoins (pieza nueva y aislada). try/catch: si fallara, no
-  // afecta a nada; es un módulo independiente.
-  try { import('./fx-saldo-futuros.js?v=1'); } catch (_) {}
 }
