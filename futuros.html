@@ -15,6 +15,9 @@
       --ink:#eef1f6;--ink2:#a9b2bd;--ink3:#7d8794;--ink4:#4a5561;--line:#232b36;--line2:#2b3340;
       --bg:#04060a;--panel:#0e1218;--card:rgba(255,255,255,.035);
       --mono:'IBM Plex Mono',monospace;--disp:'Plus Jakarta Sans',sans-serif;
+      /* Alias para componentes compartidos (el swap usa estos nombres): */
+      --display:'Plus Jakarta Sans',sans-serif;--sans:'Plus Jakarta Sans',sans-serif;
+      --ink-2:#a9b2bd;--ink-3:#7d8794;
     }
     html,body{margin:0;padding:0;background:var(--bg);font-family:var(--disp);color:var(--ink)}
     *{box-sizing:border-box}
@@ -183,7 +186,7 @@
       <div class="col"><span class="l" id="f-basel">Vol 24H</span><b class="v" id="f-base">—</b></div>
       <div class="col"><span class="l">Vol 24H (USDT)</span><b class="v" id="f-vol">—</b></div>
       <div class="col"><span class="l">Financ.</span><b class="v gold" id="f-fund">0.0035%</b></div>
-      <div id="f-right"><button id="f-toswap" title="Get USDT to trade" style="display:none;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;font-weight:800;color:#1a1200;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:1px solid #f4d06a;border-radius:9px;padding:7px 13px;cursor:pointer;white-space:nowrap;margin-right:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13"/><path d="m3 13 4 4 4-4"/><path d="M17 20V7"/><path d="m21 11-4-4-4 4"/></svg><span id="f-toswap-tx">BNB to USDT</span></button><span id="f-saldo-fx" style="display:none;font-family:var(--mono);font-size:13px;font-weight:800;color:var(--ink);margin-right:4px"></span><span id="f-wallet">No conectada</span>
+      <div id="f-right"><button id="f-toswap" title="Get USDT to trade" style="display:none;align-items:center;gap:5px;font-family:var(--mono);font-size:10.5px;font-weight:800;color:#1a1200;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:1px solid #f4d06a;border-radius:7px;padding:5px 9px;cursor:pointer;white-space:nowrap;margin-right:6px"><span id="f-toswap-tx">BNB to USDT</span></button><span id="f-saldo-fx" style="display:none;font-family:var(--mono);font-size:13px;font-weight:800;color:var(--ink);margin-right:4px"></span><span id="f-wallet">No conectada</span>
         <button id="f-export" title="Exportar gráfica"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
       </div>
     </div>
