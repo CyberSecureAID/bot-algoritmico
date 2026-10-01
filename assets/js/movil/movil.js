@@ -711,7 +711,7 @@ async function irA(tab) {
   if (tab === 'markets') { pintarMercados(host, api()); return; }
   if (tab === 'trade')   { pintarOperar(host, api()); return; }
   if (tab === 'assets')  { pintarActivos(host, api()); refrescarBalance(); return; }
-  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=8'); fm.pintarFuturos(host, api()); return; }
+  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=9'); fm.pintarFuturos(host, api()); return; }
 }
 
 /* Futures móvil: placeholder hasta construir la interfaz completa. */
