@@ -437,6 +437,9 @@ function inyectarFixBots() {
   s.textContent = `
     body.mv-bots #colmena-app{visibility:visible!important;padding-top:52px;padding-bottom:70px;
       position:fixed!important;inset:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;z-index:9000}
+    /* La X por encima de TODO y siempre clicable (ni el contenido de los bots ni
+       overlays la tapan). 12000 supera el z-index más alto del móvil. */
+    body.mv-bots #mv-bots-x{z-index:12000!important;pointer-events:auto!important}
     body.mv-bots #colmena-app .c-hdr,body.mv-bots #colmena-app #c-ticker,body.mv-bots #colmena-app .c-ticker,
     body.mv-bots #np-fab-previo,body.mv-bots #npFab{display:none!important}
     body.mv-bots #mv-app{background:transparent!important;pointer-events:none}
