@@ -76,7 +76,7 @@ async function abrir(clave, arg) {
     switch (clave) {
       case 'addtoken':  { const m = await import('../gridbot/listing.js?v=12'); m.abrirListingMovil && m.abrirListingMovil(); break; }
       case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=9'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
-                          try { const idi = await import('../idioma.js?v=166'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
+                          try { const idi = await import('../idioma.js?v=167'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
       case 'alertas':   abrirAlerta(); break;
@@ -790,12 +790,13 @@ export async function montarMovil(deps) {
    reconexión silenciosa (si ya estaba autorizada) y, si hay wallet inyectada y
    sigue sin cuenta, pide conexión una sola vez. Al terminar revisa la red. */
 async function autoConectarMovil() {
-  // Solo reconexión SILENCIOSA (si la wallet ya nos autorizó antes). NO llamamos
-  // a wallet.conectar aquí: eso abría el popup de la wallet al entrar y la página
-  // se quedaba esperando colgada hasta que el usuario respondiera (la "demora").
-  // Si no hay sesión, el botón de red se encarga de conectar cuando el usuario lo toque.
   try {
-    if (wallet.reconectarSiProcede) { await wallet.reconectarSiProcede(); }
+    let cuenta = wallet.cuentaActual && wallet.cuentaActual();
+    if (!cuenta && wallet.reconectarSiProcede) { try { cuenta = await wallet.reconectarSiProcede(); } catch (_) {} }
+    if (!cuenta && window.ethereum && wallet.conectar && !window._mvAutoInt) {
+      window._mvAutoInt = true;
+      try { cuenta = await wallet.conectar(); } catch (_) {}
+    }
   } catch (_) {}
   revisarRed();
 }
