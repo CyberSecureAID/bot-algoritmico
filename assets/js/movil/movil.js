@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=38';
+import { pintarInicio } from './inicio.js?v=40';
 import { pintarMercados } from './markets.js?v=23';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=23';
 import { pintarActivos } from './activos.js?v=31';
@@ -815,27 +815,33 @@ async function autoConectarMovil() {
 /* Aviso de red: si la wallet está conectada pero NO en BNB Smart Chain, muestra
    una barrita con instrucciones y un botón para cambiar. Se quita al corregirse. */
 function revisarRed() {
-  // Solo avisa de red incorrecta cuando el usuario YA está conectado. Sin
-  // conexión, el botón "Conectar wallet" del inicio se encarga (ese conecta y
-  // cambia la red de una vez).
   const conectado = wallet.cuentaActual && wallet.cuentaActual();
   const malaRed = conectado && wallet.esRedCorrecta && !wallet.esRedCorrecta();
+  // Sale cuando NO está conectado (para conectar) o conectado en red equivocada.
+  const mostrar = !conectado || malaRed;
   const prev = document.getElementById('mv-red');
-  if (!malaRed) { if (prev) prev.remove(); return; }
+  if (!mostrar) { if (prev) prev.remove(); return; }
   if (prev) return;
+  const sinCuenta = !conectado;
   const el = document.createElement('div');
   el.id = 'mv-red';
   el.innerHTML = `
     <div class="mv-red-h">
       <span class="mv-red-ico">⚠️</span>
-      <div class="mv-red-tx"><b>Red incorrecta</b><span>Estás en otra red. Toca para cambiar a BNB Smart Chain.</span></div>
-      <button class="mv-red-x" aria-label="Cerrar">✕</button>
+      <div class="mv-red-tx"><b>Red incorrecta</b><span>Tu wallet no está en la red de nuestro sistema. Toca para cambiar a BNB Smart Chain y conectar automáticamente.</span></div>
     </div>
-    <button class="mv-red-btn" id="mv-red-btn">Cambiar a BNB Smart Chain</button>`;
+    <button class="mv-red-btn" id="mv-red-btn">Cambiar de red y conectar</button>`;
   document.body.appendChild(el);
-  el.querySelector('.mv-red-x').onclick = () => el.remove();
   el.querySelector('#mv-red-btn').onclick = async () => {
-    try { if (wallet.cambiarARedCorrecta) await wallet.cambiarARedCorrecta(); } catch (_) {}
-    setTimeout(revisarRed, 600);
+    const b = el.querySelector('#mv-red-btn');
+    b.style.pointerEvents = 'none'; b.style.opacity = '.7';
+    try {
+      const hasta = Date.now() + 2500;
+      while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 100)); }
+      // conectar detecta la wallet, conecta Y cambia a BNB Smart Chain
+      await wallet.conectar();
+    } catch (_) {}
+    b.style.pointerEvents = ''; b.style.opacity = '';
+    setTimeout(revisarRed, 800);
   };
 }

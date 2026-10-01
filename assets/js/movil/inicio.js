@@ -83,12 +83,6 @@ export function pintarInicio(host, api) {
       <button class="mv-second" id="mv-trade">Operar</button>
     </div>
 
-    ${con ? '' : `
-    <div class="mv-connect" id="mv-connect">
-      <p><b>Intercambio no custodial.</b> Siempre controlas tus fondos. Conecta tu wallet para operar, crear bots e intercambiar.</p>
-      <button id="mv-connect-btn">Conectar wallet</button>
-    </div>`}
-
     <div class="mv-quick" id="mv-quick">
       ${QUICK.map((q) => `
         <div class="mv-qi" data-k="${q.k}">
@@ -153,17 +147,6 @@ export function pintarInicio(host, api) {
   $('mv-alerts').onclick = () => api.abrir('alertas');
   $('mv-add').onclick = () => api.abrir('recibir');
   $('mv-trade').onclick = () => api.irA('trade');
-  const _cb = $('mv-connect-btn');
-  if (_cb) _cb.onclick = async () => {
-    _cb.style.opacity = '.7'; _cb.style.pointerEvents = 'none';
-    try {
-      // esperar a que el proveedor aparezca (en el navegador de la wallet tarda)
-      const hasta = Date.now() + 2500;
-      while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 120)); }
-      await wallet.conectar();   // detecta la wallet, conecta y cambia a BNB Smart Chain
-    } catch (_) {}
-    _cb.style.opacity = ''; _cb.style.pointerEvents = '';
-  };
   host.querySelectorAll('.mv-qi').forEach((el) => { el.onclick = () => api.abrir(el.getAttribute('data-k')); });
   // La tira inferior alterna entre Add Token y Wallet Shield. El destino de
   // "Enter" y "See" cambia con ella, para que siempre lleve a lo que muestra.
