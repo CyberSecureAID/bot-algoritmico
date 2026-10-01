@@ -3239,23 +3239,8 @@ async function arrancar() {
   // antes de pintar nada de escritorio. Antes el escritorio se renderizaba y
   // LUEGO se cargaba móvil encima: eso causaba el pestañeo (se veía la web de
   // computadora un instante y después la móvil). Ahora móvil arranca directo.
-  if (_movil()) {
-    try {
-      const m = await import('./movil/movil.js?v=42');
-      await m.montarMovil({ conectarWallet });
-      // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
-      // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.
-      try {
-        const idi = await import('./idioma.js?v=164');
-        idi.forzarInglesPorDefecto();
-        idi.arrancarIdioma();
-      } catch (_) {}
-      try { window.dispatchEvent(new Event('app-montada')); } catch (_) {}
-      // NO hacemos return: seguimos para inicializar los bots y el swap dentro de
-      // colmena-app (que está oculto). Sin esto, al abrir bots desde el móvil solo
-      // se veía una ventana negra vacía. El móvil ya está montado y visible encima.
-    } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }
-  }
+  // (el montaje móvil se hace AL FINAL, tras el render, para no retrasar la carga)
+
 
   initSwap(conectarWallet, cargarLogosPrecios);
   const host = $(APP);
@@ -3291,6 +3276,27 @@ async function arrancar() {
   clearTimeout(_tBoot);
   _arrancando = false;
   render(); iniciarReloj();
+
+  // Montaje del móvil AL FINAL: el render de escritorio ya llenó los bots en
+  // colmena-app, así que montamos el móvil encima. Así carga rápido Y los bots
+  // funcionan (como el 11 de septiembre).
+  if (_movil()) {
+    try {
+      const m = await import('./movil/movil.js?v=43');
+      await m.montarMovil({ conectarWallet });
+      // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
+      // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.
+      try {
+        const idi = await import('./idioma.js?v=164');
+        idi.forzarInglesPorDefecto();
+        idi.arrancarIdioma();
+      } catch (_) {}
+      try { window.dispatchEvent(new Event('app-montada')); } catch (_) {}
+      // NO hacemos return: seguimos para inicializar los bots y el swap dentro de
+      // colmena-app (que está oculto). Sin esto, al abrir bots desde el móvil solo
+      // se veía una ventana negra vacía. El móvil ya está montado y visible encima.
+    } catch (_) { /* si móvil fallara, sigue el flujo normal como respaldo */ }
+  }
   if (walletMuda && !wallet.cuentaActual()) {
     setTimeout(() => {
       const el = $('c-hero-msg') || $('c-msg');
