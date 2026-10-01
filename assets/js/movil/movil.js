@@ -8,7 +8,7 @@ import * as wallet from '../wallet.js?v=126';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=40';
+import { pintarInicio } from './inicio.js?v=41';
 import { pintarMercados } from './markets.js?v=23';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=23';
 import { pintarActivos } from './activos.js?v=31';
@@ -835,12 +835,23 @@ function revisarRed() {
   el.querySelector('#mv-red-btn').onclick = async () => {
     const b = el.querySelector('#mv-red-btn');
     b.style.pointerEvents = 'none'; b.style.opacity = '.7';
+    const original = b.textContent;
     try {
-      const hasta = Date.now() + 2500;
+      // esperar a que el proveedor de la wallet aparezca
+      const hasta = Date.now() + 3000;
       while (!window.ethereum && Date.now() < hasta) { await new Promise(r => setTimeout(r, 100)); }
-      // conectar detecta la wallet, conecta Y cambia a BNB Smart Chain
-      await wallet.conectar();
-    } catch (_) {}
+      // Usar la MISMA función de conexión que el resto de la web (la que funciona
+      // y maneja errores). Si no está disponible, usar wallet.conectar directo.
+      if (_deps && _deps.conectarWallet) {
+        await _deps.conectarWallet();
+      } else {
+        await wallet.conectar();
+      }
+    } catch (e) {
+      // mostrar el error en el propio botón, para no quedar en silencio
+      b.textContent = 'Reintentar';
+      console.warn('conectar:', e);
+    }
     b.style.pointerEvents = ''; b.style.opacity = '';
     setTimeout(revisarRed, 800);
   };
