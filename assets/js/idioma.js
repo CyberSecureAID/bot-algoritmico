@@ -1253,6 +1253,8 @@ const DIC = {
     'Conectar wallet': 'Connect wallet',
     'Conecta tu wallet': 'Connect your wallet',
     'Red incorrecta': 'Wrong network',
+    'Cambiar a BNB Smart Chain': 'Switch to BNB Smart Chain',
+    'Estás en otra red. Cámbiate a BNB Smart Chain para conectarte con CriptoCuba.': 'You are on another network. Switch to BNB Smart Chain to connect with CriptoCuba.',
     'Conecta tu wallet para operar, crear bots e intercambiar.': 'Connect your wallet to trade, create bots and swap.',
     'Estás en otra red. Toca para cambiar a BNB Smart Chain y conectar.': 'You are on another network. Tap to switch to BNB Smart Chain and connect.',
     'Cambiar de red y conectar': 'Switch network and connect',
