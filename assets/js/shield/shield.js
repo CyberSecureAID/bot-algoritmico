@@ -746,12 +746,15 @@ async function montarParticulas() {
   } catch (_) {}
 }
 function cerrar() {
-  // Wallet Shield tiene su propia página, así que al salir se va directamente a
-  // la portada. No se pasa por la página de los bots, que es lo que antes se
-  // veía un instante al entrar y al salir.
+  // Wallet Shield es su propia página. Al salir se VUELVE a la página anterior
+  // (de donde se entró: Home o Actives del móvil) con history.back(). Así no se
+  // recarga ni se pasa por index.html, y la wallet NO se desconecta.
   const cont = document.getElementById('shd');
   // Si la sección se montó dentro de la app móvil, basta con retirarla.
   if (document.getElementById('mv-app')) { if (cont) cont.remove(); return; }
+  // Si hay historial (se entró con location.href desde el móvil), volver atrás.
+  if (history.length > 1) { history.back(); return; }
+  // Respaldo: si no hay historial (entrada directa), ir a la portada.
   try { location.replace('index.html'); } catch (_) { location.href = 'index.html'; }
 }
 
