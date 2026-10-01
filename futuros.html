@@ -183,7 +183,7 @@
       <div class="col"><span class="l" id="f-basel">Vol 24H</span><b class="v" id="f-base">—</b></div>
       <div class="col"><span class="l">Vol 24H (USDT)</span><b class="v" id="f-vol">—</b></div>
       <div class="col"><span class="l">Financ.</span><b class="v gold" id="f-fund">0.0035%</b></div>
-      <div id="f-right"><span id="f-saldo-fx" style="display:none;font-family:var(--mono);font-size:13px;font-weight:800;color:var(--ink);margin-right:4px"></span><span id="f-wallet">No conectada</span>
+      <div id="f-right"><button id="f-toswap" title="Get USDT to trade" style="display:none;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;font-weight:800;color:#1a1200;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:1px solid #f4d06a;border-radius:9px;padding:7px 13px;cursor:pointer;white-space:nowrap;margin-right:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13"/><path d="m3 13 4 4 4-4"/><path d="M17 20V7"/><path d="m21 11-4-4-4 4"/></svg><span id="f-toswap-tx">BNB to USDT</span></button><span id="f-saldo-fx" style="display:none;font-family:var(--mono);font-size:13px;font-weight:800;color:var(--ink);margin-right:4px"></span><span id="f-wallet">No conectada</span>
         <button id="f-export" title="Exportar gráfica"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg></button>
       </div>
     </div>
@@ -232,6 +232,7 @@
     import { PARES } from './assets/js/niveles/config.js?v=1';
     import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=160';
     import * as wallet from './assets/js/wallet.js?v=128';
+    import { abrirSwap, initSwap } from './assets/js/gridbot/swap.js?v=11';
 
     const $ = (id) => document.getElementById(id);
     const fmt = (p) => { p = +p; if (!isFinite(p) || !p) return '—'; if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 1 }); if (p >= 1) return p.toFixed(2); if (p >= 0.01) return p.toFixed(5); return p.toPrecision(5); };
@@ -514,7 +515,55 @@
         el.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
         el.style.display = '';
       } catch (_) { el.style.display = 'none'; }
+
+      // Botón BNB -> USDT: muestra el saldo de BNB y abre el swap (por defecto
+      // ya va BNB -> USDT). Pieza aislada, con try/catch.
+      try {
+        const btn = document.getElementById('f-toswap');
+        const tx = document.getElementById('f-toswap-tx');
+        if (btn && cuenta) {
+          const gb2 = await import('./assets/js/gridbot.js?v=129');
+          let bnb = 0;
+          try { bnb = Number(gb2.fmt(await gb2.saldoNativoBNB(cuenta), 18)); } catch (_) {}
+          if (tx) tx.textContent = (isFinite(bnb) && bnb > 0)
+            ? (bnb.toLocaleString('en-US', { maximumFractionDigits: 4 }) + ' BNB to USDT')
+            : 'Get USDT';
+          btn.style.display = 'inline-flex';
+        } else if (btn) { btn.style.display = 'none'; }
+      } catch (_) {}
     }
+    // Conexión del swap: usa la conexión buena del sitio para su botón interno.
+    try { initSwap(() => { try { wallet.conectar(); } catch (_) {} }, () => {}); } catch (_) {}
+
+    /* Botón BNB a USDT. La primera vez muestra un aviso que explica para qué
+       sirve (en inglés). Después abre el swap directamente (ya va BNB a USDT).
+       El aviso se recuerda en el navegador para no repetirse. */
+    function abrirIntercambio() {
+      const YA = 'fx-swap-aviso-visto';
+      let visto = false; try { visto = localStorage.getItem(YA) === '1'; } catch (_) {}
+      if (visto) { try { abrirSwap(); } catch (_) {} return; }
+      // aviso emergente, una sola vez
+      const ov = document.createElement('div');
+      ov.className = 'fx-modal';
+      ov.innerHTML = '<div style="max-width:420px;width:100%;background:#0e1218;border:1px solid #232b36;border-radius:16px;padding:22px 20px;box-shadow:0 24px 60px rgba(0,0,0,.6)">'
+        + '<div style="font-size:17px;font-weight:800;color:#eef1f6;margin-bottom:10px">Get USDT to trade</div>'
+        + '<p style="font-size:13.5px;line-height:1.55;color:#a9b2bd;margin:0 0 18px">To trade on Futures you need USDT on BNB Smart Chain. This opens a quick swap, already set to convert your BNB into USDT. It is fully reversible: you can swap your USDT back to BNB anytime from the Swap section.</p>'
+        + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+        + '<button id="fxm-no" style="background:#1b222c;border:1px solid #232b36;border-radius:11px;padding:11px 18px;color:#eaecef;font-weight:700;font-size:14px;cursor:pointer">Cancel</button>'
+        + '<button id="fxm-ok" style="background:linear-gradient(180deg,#f4d06a,#e0a92f);border:1px solid #f4d06a;border-radius:11px;padding:11px 20px;color:#231800;font-weight:800;font-size:14px;cursor:pointer">Continue</button>'
+        + '</div></div>';
+      document.body.appendChild(ov);
+      const cerrar = () => { try { ov.remove(); } catch (_) {} };
+      ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
+      ov.querySelector('#fxm-no').onclick = cerrar;
+      ov.querySelector('#fxm-ok').onclick = () => {
+        try { localStorage.setItem(YA, '1'); } catch (_) {}
+        cerrar();
+        try { abrirSwap(); } catch (_) {}
+      };
+    }
+    try { const b = document.getElementById('f-toswap'); if (b) b.onclick = abrirIntercambio; } catch (_) {}
+
     refrescarUsuario();
     // reintentos por si la wallet tarda en responder al entrar
     setTimeout(refrescarUsuario, 800);
