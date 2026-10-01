@@ -831,7 +831,18 @@ function revisarRed() {
     } catch (e) {
       // Mostrar el error en pantalla en vez de tragarlo: así se ve la causa exacta.
       const msg = (e && (e.message || e.code || String(e))) || 'error desconocido';
-      if (ayuda) ayuda.innerHTML = '<b style="color:#f6465d">Error: ' + String(msg).slice(0, 160) + '</b>';
+      // Diagnóstico: qué expone el navegador de la wallet a la página.
+      let env = '';
+      try {
+        const claves = Object.keys(window).filter(k => /eth|trust|wallet|web3|provider/i.test(k)).slice(0, 12).join(', ') || '(ninguna)';
+        env = ' | ethereum: ' + typeof window.ethereum
+            + ' | trustwallet: ' + typeof window.trustwallet
+            + ' | 6963: ' + ((wallet.walletsDisponibles && wallet.walletsDisponibles().length) || 0)
+            + ' | top: ' + (window.top === window)
+            + ' | claves: ' + claves
+            + ' | UA: ' + String(navigator.userAgent).slice(0, 90);
+      } catch (_) {}
+      if (ayuda) ayuda.innerHTML = '<b style="color:#f6465d;word-break:break-all">Error: ' + String(msg).slice(0, 160) + env + '</b>';
     }
     setTimeout(revisarRed, 600);
   };
