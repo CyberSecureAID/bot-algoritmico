@@ -76,7 +76,7 @@ async function abrir(clave, arg) {
     switch (clave) {
       case 'addtoken':  { const m = await import('../gridbot/listing.js?v=12'); m.abrirListingMovil && m.abrirListingMovil(); break; }
       case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=9'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
-                          try { const idi = await import('../idioma.js?v=164'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
+                          try { const idi = await import('../idioma.js?v=166'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
       case 'alertas':   abrirAlerta(); break;
@@ -806,7 +806,7 @@ function revisarRed() {
   const conectado = wallet.cuentaActual && wallet.cuentaActual();
   const malaRed = conectado && wallet.esRedCorrecta && !wallet.esRedCorrecta();
   const prev = document.getElementById('mv-red');
-  if (!malaRed) { if (prev) prev.remove(); return; }
+  if (conectado && !malaRed) { if (prev) prev.remove(); return; }
   if (prev) return;
   const el = document.createElement('div');
   el.id = 'mv-red';
@@ -823,7 +823,10 @@ function revisarRed() {
   document.body.appendChild(el);
   el.querySelector('.mv-red-x').onclick = () => el.remove();
   el.querySelector('#mv-red-btn').onclick = async () => {
-    try { if (wallet.cambiarARedCorrecta) await wallet.cambiarARedCorrecta(); } catch (_) {}
+    try {
+      if (!conectado) { await wallet.conectar(); }   // conecta y cambia a BNB Smart Chain
+      else if (wallet.cambiarARedCorrecta) { await wallet.cambiarARedCorrecta(); }
+    } catch (_) {}
     setTimeout(revisarRed, 600);
   };
 }
