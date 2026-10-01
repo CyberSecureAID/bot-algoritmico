@@ -3,7 +3,7 @@
    a la vez descarga la versión nueva en segundo plano para la próxima vez. Los
    HTML van primero por red (para que los cambios de estructura lleguen ya), con
    la caché como respaldo si no hay conexión. Así: carga rápido Y se actualiza. */
-const VERSION = 'aurex-v433';
+const VERSION = 'aurex-v434';
 const CACHE = 'cc-' + VERSION;
 
 self.addEventListener('install', () => self.skipWaiting());
