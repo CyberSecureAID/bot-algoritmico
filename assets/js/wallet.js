@@ -89,7 +89,7 @@ export function esMovil() {
 
 /** ¿Merece la pena ofrecer WalletConnect? (no hay wallet dentro del navegador) */
 export function necesitaWalletConnect() {
-  return !window.ethereum && proveedores6963.length === 0;
+  return !window.ethereum && !window.trustwallet && proveedores6963.length === 0;
 }
 
 /** Conecta por WalletConnect con NUESTRA propia ventana.
@@ -268,7 +268,13 @@ function detectar() {
   const otra = proveedores6963.find((d) => !esBrave(d.provider));
   if (otra?.provider) return otra.provider;
   if (proveedores6963.length > 0) return proveedores6963[0].provider;
-  return eth ?? null;
+  if (eth) return eth;
+  // Trust Wallet (versiones recientes) inyecta su proveedor como window.trustwallet
+  // en vez de (o además de) window.ethereum. Sin esto, en su navegador daba NO_WALLET.
+  const tw = window.trustwallet;
+  if (tw && typeof tw.request === 'function') return tw;
+  if (tw && tw.ethereum && typeof tw.ethereum.request === 'function') return tw.ethereum;
+  return null;
 }
 
 
