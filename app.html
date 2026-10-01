@@ -2,28 +2,7 @@
 <html lang="en">
 <head>
 <style id="ocultar-particulas-movil">@media(max-width:900px){#cco-fx,#cco-bg,#cco-top,#cco-velo{display:none!important}html,body{background:#0B0E11!important}}</style>
-<script>
-/* Mata cualquier service worker viejo que esté sirviendo copias cacheadas.
-   Se ejecuta una sola vez (deja marca) y recarga saltándose el sw. */
-(function(){try{
-  if(sessionStorage.getItem('sw-muerto')==='1')return;
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.getRegistrations().then(function(rs){
-      if(rs.length){
-        Promise.all(rs.map(function(r){return r.unregister();})).then(function(){
-          if(window.caches&&caches.keys){caches.keys().then(function(ks){
-            Promise.all(ks.map(function(k){return caches.delete(k);})).then(function(){
-              sessionStorage.setItem('sw-muerto','1');
-              location.reload();
-            });
-          });}
-          else{sessionStorage.setItem('sw-muerto','1');location.reload();}
-        });
-      } else { sessionStorage.setItem('sw-muerto','1'); }
-    }).catch(function(){});
-  }
-}catch(_){}})();
-</script>
+
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- App-like: modo standalone en iOS y Android, sin barras del navegador -->
@@ -224,55 +203,19 @@
     /* Las ventanitas de la app (info, firma de contratos) se montan en el
        <body>
 <script>
-/* Detecta móvil y marca es-movil (activa la ocultación de la interfaz de bots
-   mientras se monta el móvil). También mata cualquier service worker viejo una
-   sola vez, para que no sirva copias cacheadas. */
+/* Detecta móvil y marca es-movil (activa la ocultación de bots mientras se
+   monta el móvil). Sin recargas ni limpiezas de service worker. */
 (function(){try{
   var ancho=(window.matchMedia&&window.matchMedia('(max-width:900px)').matches)||(document.documentElement.clientWidth||screen.width||0)<=900;
   var tactil=(navigator.maxTouchPoints||0)>0||'ontouchstart' in window;
   var grueso=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
   var agente=/Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
   if(ancho||(tactil&&grueso)||agente){ document.documentElement.classList.add('es-movil'); }
-  // matar sw viejo una vez
-  if('serviceWorker' in navigator && !sessionStorage.getItem('sw-limpio')){
-    navigator.serviceWorker.getRegistrations().then(function(rs){
-      if(rs.length){Promise.all(rs.map(function(r){return r.unregister();})).then(function(){
-        if(window.caches&&caches.keys){caches.keys().then(function(ks){Promise.all(ks.map(function(k){return caches.delete(k);})).then(function(){sessionStorage.setItem('sw-limpio','1');location.reload();});});}
-        else{sessionStorage.setItem('sw-limpio','1');location.reload();}
-      });}else{sessionStorage.setItem('sw-limpio','1');}
-    }).catch(function(){});
-  }
 }catch(_){}})();
 </script>
 
 
-<script>
-/* ── Limpieza forzada del service worker (una sola vez) ─────────────────────
-   Un service worker antiguo puede quedarse activo sirviendo archivos de su
-   propia memoria. Borrar el caché del navegador NO lo elimina, porque vive
-   aparte y sobrevive. Esto lo desregistra, vacía todos sus almacenes y recarga
-   la página una única vez, dejando marca para no repetirlo. */
-(function () {
-  try {
-    var MARCA = 'sw-limpieza-2026-09';
-    if (localStorage.getItem(MARCA) === '1') return;
-    if (!('serviceWorker' in navigator)) { localStorage.setItem(MARCA, '1'); return; }
-    localStorage.setItem(MARCA, '1');
-    navigator.serviceWorker.getRegistrations().then(function (regs) {
-      var tareas = regs.map(function (r) { return r.unregister(); });
-      return Promise.all(tareas);
-    }).then(function () {
-      if (window.caches && caches.keys) {
-        return caches.keys().then(function (ns) {
-          return Promise.all(ns.map(function (n) { return caches.delete(n); }));
-        });
-      }
-    }).then(function () {
-      location.reload(true);
-    }).catch(function () {});
-  } catch (e) {}
-})();
-</script>
+
 
 <!-- Velo negro instantáneo: al llegar con ?abrir=shield tapa la app desde el
      primer frame, para que no se vean los bots mientras carga la sección. -->
@@ -367,23 +310,11 @@
      los datos de la blockchain siempre se piden frescos. */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).finally(function(){navigator.serviceWorker.register('sw2.js').catch(function(){});}).then((reg) => {
+      navigator.serviceWorker.register('sw2.js').then((reg) => {
         reg.update().catch(() => {});
       }).catch(() => {});
 
-      /* El SW avisa cuando una versión NUEVA ya está activa. Entonces se
-         recarga UNA sola vez para que la página use lo nuevo sin tener que
-         recargar dos veces a mano. El flag en sessionStorage impide bucle:
-         si ya se recargó por esto en esta sesión, no se repite. */
-      navigator.serviceWorker.addEventListener('message', (ev) => {
-        if (!ev.data || ev.data.tipo !== 'sw-activado') return;
-        try {
-          var marca = 'sw-recarga-' + ev.data.version;
-          if (sessionStorage.getItem(marca)) return;   // ya recargado por esta versión
-          sessionStorage.setItem(marca, '1');
-          location.reload();
-        } catch (_) {}
-      });
+      
     });
   }
   </script>

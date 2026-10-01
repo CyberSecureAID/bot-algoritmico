@@ -1,28 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script>
-/* Mata cualquier service worker viejo que esté sirviendo copias cacheadas.
-   Se ejecuta una sola vez (deja marca) y recarga saltándose el sw. */
-(function(){try{
-  if(sessionStorage.getItem('sw-muerto')==='1')return;
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.getRegistrations().then(function(rs){
-      if(rs.length){
-        Promise.all(rs.map(function(r){return r.unregister();})).then(function(){
-          if(window.caches&&caches.keys){caches.keys().then(function(ks){
-            Promise.all(ks.map(function(k){return caches.delete(k);})).then(function(){
-              sessionStorage.setItem('sw-muerto','1');
-              location.reload();
-            });
-          });}
-          else{sessionStorage.setItem('sw-muerto','1');location.reload();}
-        });
-      } else { sessionStorage.setItem('sw-muerto','1'); }
-    }).catch(function(){});
-  }
-}catch(_){}})();
-</script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cripto Cuba Oficial · Automated trading in your own wallet</title>
@@ -103,7 +82,7 @@
    sw.js que usa app.html. */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).finally(function(){navigator.serviceWorker.register('sw2.js').catch(function(){});}).then((reg) => {
+    navigator.serviceWorker.register('sw2.js').then((reg) => {
       reg.update().catch(() => {});
     }).catch(() => {});
   });
@@ -116,24 +95,7 @@ if ('serviceWorker' in navigator) {
 </head>
 
 <body>
-<script>
-/* Limpieza forzada del service worker antiguo (una sola vez). Ver app.html. */
-(function () {
-  try {
-    var MARCA = 'sw-limpieza-2026-09';
-    if (localStorage.getItem(MARCA) === '1') return;
-    if (!('serviceWorker' in navigator)) { localStorage.setItem(MARCA, '1'); return; }
-    localStorage.setItem(MARCA, '1');
-    navigator.serviceWorker.getRegistrations().then(function (regs) {
-      return Promise.all(regs.map(function (r) { return r.unregister(); }));
-    }).then(function () {
-      if (window.caches && caches.keys) {
-        return caches.keys().then(function (ns) { return Promise.all(ns.map(function (n) { return caches.delete(n); })); });
-      }
-    }).then(function () { location.reload(true); }).catch(function () {});
-  } catch (e) {}
-})();
-</script>
+
 
 <!-- Velo negro instantáneo: si se llega para abrir el swap directo (p.ej. desde Wallet
      Shield), tapa la portada desde el primer frame para que no se vea cargar por detrás.
