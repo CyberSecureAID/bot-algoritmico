@@ -231,6 +231,7 @@
     import { N } from './assets/js/niveles/estado.js?v=1';
     import { PARES } from './assets/js/niveles/config.js?v=1';
     import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=160';
+    import * as wallet from './assets/js/wallet.js?v=128';
 
     const $ = (id) => document.getElementById(id);
     const fmt = (p) => { p = +p; if (!isFinite(p) || !p) return '—'; if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 1 }); if (p >= 1) return p.toFixed(2); if (p >= 0.01) return p.toFixed(5); return p.toPrecision(5); };
@@ -471,33 +472,55 @@
     /* ═══ 8. Usuario ═══ */
     (function () {
       $('pu-date').textContent = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' });
-      const acc = (window.ethereum && window.ethereum.selectedAddress) || '';
-      if (acc) { const s = acc.slice(0, 6) + '…' + acc.slice(-4); $('pu-wallet').textContent = s; $('f-wallet').textContent = s; }
-      // Saldo de stablecoins (USDT + USDC) en BNB Chain. Pieza aislada: si algo
-      // falla aquí, no afecta al resto. Se esconde si no hay cuenta.
-      (async function saldoFx() {
-        const el = document.getElementById('f-saldo-fx');
-        if (!el) return;
-        try {
-          const cuenta = (window.ethereum && window.ethereum.selectedAddress) || '';
-          if (!cuenta) { el.style.display = 'none'; return; }
-          const gb = await import('./assets/js/gridbot.js?v=129');
-          if (!gb.balanceToken || !gb.fmt) return;
-          const STABLES = ['0x55d398326f99059fF775485246999027B3197955','0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d'];
-          let total = 0;
-          await Promise.all(STABLES.map(async (tok) => {
-            try {
-              const crudo = await gb.balanceToken(tok, cuenta);
-              let dec = 18; try { dec = Number((await gb.infoToken(tok)).decimals) || 18; } catch (_) {}
-              const n = Number(gb.fmt(crudo, dec));
-              if (isFinite(n)) total += n;
-            } catch (_) {}
-          }));
-          el.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
-          el.style.display = '';
-        } catch (_) { el.style.display = 'none'; }
-      })();
     })();
+
+    /* Wallet y saldo con la conexión BUENA del sitio. Antes se leía
+       window.ethereum.selectedAddress, que es null hasta que la wallet responde
+       (por eso 'no conectada' y había que recargar). Ahora se usa la reconexión
+       silenciosa y cuentaActual(), igual que el resto de la plataforma. */
+    async function refrescarUsuario() {
+      let cuenta = '';
+      try {
+        cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || '';
+        if (!cuenta && wallet.reconectarSiProcede) {
+          cuenta = (await wallet.reconectarSiProcede()) || (wallet.cuentaActual && wallet.cuentaActual()) || '';
+        }
+      } catch (_) {}
+
+      // Pintar la wallet corta (o 'No conectada')
+      try {
+        const corta = cuenta ? (cuenta.slice(0, 6) + '…' + cuenta.slice(-4)) : '';
+        if ($('f-wallet')) $('f-wallet').textContent = cuenta ? corta : 'No conectada';
+        if ($('pu-wallet')) $('pu-wallet').textContent = corta;
+      } catch (_) {}
+
+      // Saldo de stablecoins (USDT + USDC) en BNB Chain. Se esconde sin cuenta.
+      const el = document.getElementById('f-saldo-fx');
+      if (!el) return;
+      if (!cuenta) { el.style.display = 'none'; return; }
+      try {
+        const gb = await import('./assets/js/gridbot.js?v=129');
+        if (!gb.balanceToken || !gb.fmt) return;
+        const STABLES = ['0x55d398326f99059fF775485246999027B3197955','0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d'];
+        let total = 0;
+        await Promise.all(STABLES.map(async (tok) => {
+          try {
+            const crudo = await gb.balanceToken(tok, cuenta);
+            let dec = 18; try { dec = Number((await gb.infoToken(tok)).decimals) || 18; } catch (_) {}
+            const n = Number(gb.fmt(crudo, dec));
+            if (isFinite(n)) total += n;
+          } catch (_) {}
+        }));
+        el.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
+        el.style.display = '';
+      } catch (_) { el.style.display = 'none'; }
+    }
+    refrescarUsuario();
+    // reintentos por si la wallet tarda en responder al entrar
+    setTimeout(refrescarUsuario, 800);
+    setTimeout(refrescarUsuario, 2000);
+    // y cuando la wallet avise de cambios
+    try { if (wallet.alCambiar) wallet.alCambiar(() => refrescarUsuario()); } catch (_) {}
 
     calc();
     try { arrancarIdioma(); traducirTodo(); } catch (_) {}
