@@ -824,10 +824,15 @@ function revisarRed() {
   document.body.appendChild(el);
   el.querySelector('.mv-red-x').onclick = () => el.remove();
   el.querySelector('#mv-red-btn').onclick = async () => {
+    const ayuda = el.querySelector('.mv-red-ayuda');
     try {
       if (!conectado) { await wallet.conectar(); }   // conecta y cambia a BNB Smart Chain
       else if (wallet.cambiarARedCorrecta) { await wallet.cambiarARedCorrecta(); }
-    } catch (_) {}
+    } catch (e) {
+      // Mostrar el error en pantalla en vez de tragarlo: así se ve la causa exacta.
+      const msg = (e && (e.message || e.code || String(e))) || 'error desconocido';
+      if (ayuda) ayuda.innerHTML = '<b style="color:#f6465d">Error: ' + String(msg).slice(0, 160) + '</b>';
+    }
     setTimeout(revisarRed, 600);
   };
 }
