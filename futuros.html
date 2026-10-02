@@ -228,8 +228,8 @@
       <div id="f-graf"><canvas id="f-ov"></canvas></div>
       <div id="f-pos">
         <div class="ph">
-          <button class="on" data-t="pos">Posiciones <span id="f-pos-n">(0)</span></button>
-          <button data-t="ord">Órdenes abiertas <span id="f-ord-n">(0)</span></button>
+          <button class="on" data-t="pos">Positions <span id="f-pos-n">(0)</span></button>
+          <button data-t="ord">Open Orders <span id="f-ord-n">(0)</span></button>
           <button class="cerrar" id="f-closeall">Cerrar todo</button>
         </div>
         <div class="body" id="f-pos-body"></div>
@@ -279,6 +279,33 @@
 
     let lev = 20, modo = 'cruzada', tipo = 'market', pctCap = 0;
     let precio = 0, saldo = 0, posiciones = [];
+    /* ─── EJEMPLOS DE DEMOSTRACIÓN (quitar cuando haya contrato) ──────────────
+       4 órdenes LIMIT (pestaña Positions) + 4 operaciones ABIERTAS (Open Orders),
+       con precios alrededor de BTC, para ver cómo se ven en las pestañas y en la
+       gráfica. Marcadas con demo:true para poder filtrarlas luego. */
+    (function demoPosiciones() {
+      const base = 84000, S = 'BTCUSDT';
+      const liq = (e, l, esL) => esL ? e * (1 - 0.75 / l) : e * (1 + 0.75 / l);
+      const mk = (lado, px, m, lev, limit) => ({
+        id: 'demo-' + Math.random().toString(36).slice(2, 8), lado, px, m, lev,
+        tp: lado === 'long' ? px * 1.03 : px * 0.97,
+        sl: lado === 'long' ? px * 0.985 : px * 1.015,
+        liq: liq(px, lev, lado === 'long'), sim: S, limit, demo: true, t: Date.now()
+      });
+      posiciones = [
+        // 4 órdenes LIMIT (Positions): precios alejados del actual
+        mk('long',  82500, 200, 20, true),
+        mk('long',  81200, 150, 10, true),
+        mk('short', 85800, 300, 50, true),
+        mk('short', 86500, 120, 25, true),
+        // 4 operaciones ABIERTAS (Open Orders): precios de entrada cercanos
+        mk('long',  83900, 250, 20, false),
+        mk('short', 84200, 180, 10, false),
+        mk('long',  83600, 500, 50, false),
+        mk('long',  84050, 100, 5,  false)
+      ];
+    })();
+    // ─────────────────────────────────────────────────────────────────────────
 
     /* ═══ 1. Smart Levels dentro de la celda, sin su banda ═══ */
     await abrirNiveles();
@@ -410,12 +437,13 @@
     let posPag = 0, ordPag = 0;
     const POR_PAG = 4;
     function pintarPos() {
-      const abiertas = posiciones.filter((p) => !p.limit);
-      const limites = posiciones.filter((p) => p.limit);
-      $('f-pos-n').textContent = '(' + abiertas.length + ')';
-      $('f-ord-n').textContent = '(' + limites.length + ')';
+      const abiertas = posiciones.filter((p) => !p.limit);   // operaciones abiertas
+      const limites = posiciones.filter((p) => p.limit);     // órdenes limit
+      // Opción B: Positions (pestaña 'pos') = LIMIT; Open Orders (pestaña 'ord') = ABIERTAS
+      $('f-pos-n').textContent = '(' + limites.length + ')';
+      $('f-ord-n').textContent = '(' + abiertas.length + ')';
       const body = $('f-pos-body');
-      const lista = tabPos === 'ord' ? limites : abiertas;
+      const lista = tabPos === 'ord' ? abiertas : limites;
       let pag = tabPos === 'ord' ? ordPag : posPag;
       const totalPag = Math.max(1, Math.ceil(lista.length / POR_PAG));
       if (pag >= totalPag) pag = totalPag - 1;
@@ -455,10 +483,11 @@
           '<span>' + fmt(p.liq) + '</span>' +
           '<button class="close" data-id="' + p.id + '">' + t('Cancelar') + '</button></div>';
       };
-      const cab = tabPos === 'ord'
-        ? '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span></span></div>'
-        : '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>' + t('Marca') + '</span><span>PNL</span><span>' + t('Liquidación') + '</span><span></span></div>';
-      let html = cab + trozo.map(tabPos === 'ord' ? mkOrd : mkPos).join('');
+      const esAbiertas = tabPos === 'ord';
+      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>' + t('Marca') + '</span><span>PNL</span><span>' + t('Liquidación') + '</span><span></span></div>';
+      const cabLimit = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span></span></div>';
+      const cab = esAbiertas ? cabAbiertas : cabLimit;
+      let html = cab + trozo.map(esAbiertas ? mkPos : mkOrd).join('');
       // Paginación: botón Next si hay más de una página, con puntito si hay más.
       if (totalPag > 1) {
         const hayMas = pag < totalPag - 1;
