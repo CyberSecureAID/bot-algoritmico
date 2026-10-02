@@ -481,12 +481,22 @@
 
       // ── arriba: logo moneda + par ──
       const par = parDe();
-      let cg = {}; try { cg = cgCache(); } catch (_) {}
-      const logoUrl = (cg[par.cg] && cg[par.cg].img) || '';
       let topY = 92;
-      if (logoUrl) { const logo = await cargarImg(logoUrl); if (logo) { g.save(); g.beginPath(); g.arc(X + 30, topY, 30, 0, 6.28); g.closePath(); g.clip(); g.drawImage(logo, X, topY - 30, 60, 60); g.restore(); } }
+      // logo por símbolo desde GitHub (permite CORS, a diferencia de CoinGecko).
+      const sym = (par.id || '').toLowerCase();
+      let logo = sym ? await cargarImg('https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + sym + '.png') : null;
+      // círculo de fondo para el logo
+      g.save();
+      g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.closePath();
+      g.fillStyle = 'rgba(255,255,255,.08)'; g.fill();
+      g.clip();
+      if (logo) { g.drawImage(logo, X - 2, topY - 32, 64, 64); }
+      else { g.fillStyle = dorado; g.font = '800 34px "Plus Jakarta Sans", sans-serif'; g.textAlign = 'center'; g.fillText((par.id || '?')[0], X + 30, topY + 12); g.textAlign = 'left'; }
+      g.restore();
+      // borde dorado fino alrededor del logo
+      g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.stroke();
       g.fillStyle = blanco; g.font = '800 46px "Plus Jakarta Sans", sans-serif';
-      g.fillText(par.s || pos.sim, X + 76, topY + 16);
+      g.fillText(par.s || pos.sim, X + 80, topY + 16);
       // LONG/SHORT + apalancamiento
       topY += 62;
       g.fillStyle = esLong ? verde : rojo; g.font = '800 28px "IBM Plex Mono", monospace';
@@ -500,29 +510,32 @@
       g.fillStyle = blanco; g.font = '500 24px "IBM Plex Mono", monospace';
       g.fillText(fecha + '  ' + hora, X, topY);
 
-      // ── ROI grande + PNL (subidos un poco) ──
-      let cy = H * 0.50;
-      g.fillStyle = colPnl; g.font = '800 128px "IBM Plex Mono", monospace';
+      // ── ROI grande + PNL (subidos; PNL separado a la derecha, no escalonado) ──
+      let cy = H * 0.42;
+      g.fillStyle = colPnl; g.font = '800 120px "IBM Plex Mono", monospace';
       g.fillText((pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%', X, cy);
-      g.fillStyle = colPnl; g.font = '800 56px "IBM Plex Mono", monospace';
-      g.fillText((pnl >= 0 ? '+' : '') + fmt(pnl) + ' USDT', X, cy + 74);
+      // el PNL en USDT, debajo pero empezando más a la derecha para que no quede
+      // escalonado bajo el porcentaje.
+      g.fillStyle = colPnl; g.font = '800 52px "IBM Plex Mono", monospace';
+      g.fillText((pnl >= 0 ? '+' : '') + fmt(pnl) + ' USDT', X + 10, cy + 70);
 
-      // ── entrada / marca / wallet ──
-      let iy = H * 0.74;
+      // ── entrada / marca (subidos) ──
+      let iy = H * 0.62;
       g.fillStyle = dorado; g.font = '700 22px "IBM Plex Mono", monospace';
       g.fillText('ENTRY PRICE', X, iy); g.fillText('MARK PRICE', X + 300, iy);
       g.fillStyle = blanco; g.font = '800 34px "IBM Plex Mono", monospace';
       g.fillText(fmt(pos.px), X, iy + 42); g.fillText(fmt(mark), X + 300, iy + 42);
-      iy += 86;
+      // wallet: debajo de entrada, a la izquierda
+      iy += 92;
       let cuenta = ''; try { cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || ''; } catch (_) {}
-      if (cuenta) { g.fillStyle = dorado; g.font = '700 22px "IBM Plex Mono", monospace'; g.fillText('WALLET \u2022\u2022\u2022\u2022' + cuenta.slice(-4), X + 260, iy); }
+      if (cuenta) { g.fillStyle = dorado; g.font = '700 22px "IBM Plex Mono", monospace'; g.fillText('WALLET \u2022\u2022\u2022\u2022' + cuenta.slice(-4), X, iy); }
 
-      // ── abajo izquierda: logo cco-movil con sombra (SIN texto de dominio) ──
+      // ── abajo izquierda: logo cco-movil con sombra (con espacio suficiente) ──
       const cco = await cargarImg('assets/img/cco-movil.webp');
       if (cco) {
-        const lw = 210, lh = cco.height * (lw / cco.width);
+        const lw = 220, lh = cco.height * (lw / cco.width);
         g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7;
-        g.drawImage(cco, X, H - lh - 40, lw, lh); g.restore();
+        g.drawImage(cco, X, H - lh - 38, lw, lh); g.restore();
       }
       return new Promise((res) => cv.toBlob((b) => res(b), 'image/png', 0.95));
     }
@@ -541,6 +554,7 @@
         '<div style="display:flex;gap:10px;margin-top:14px">' +
         '<button id="fxsh-dl" style="flex:1;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:1px solid #f4d06a;border-radius:11px;padding:13px;color:#231800;font-weight:800;font-size:15px;cursor:pointer">Download</button>' +
         '<button id="fxsh-share" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:11px;padding:13px;color:#eaecef;font-weight:700;font-size:15px;cursor:pointer">Share</button>' +
+        '<button id="fxsh-copy" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:11px;padding:13px;color:#eaecef;font-weight:700;font-size:15px;cursor:pointer">Copy link</button>' +
         '</div></div>';
       document.body.appendChild(ov);
       const cerrar = () => { try { ov.remove(); URL.revokeObjectURL(url); } catch (_) {} };
@@ -548,6 +562,11 @@
       const archivo = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
       ov.querySelector('#fxsh-dl').onclick = () => {
         const a = document.createElement('a'); a.href = url; a.download = 'CriptoCubaOficial.png'; a.click();
+      };
+      ov.querySelector('#fxsh-copy').onclick = async () => {
+        const b = ov.querySelector('#fxsh-copy');
+        try { await navigator.clipboard.writeText(ENLACE); b.textContent = 'Copied!'; setTimeout(() => { b.textContent = 'Copy link'; }, 1500); }
+        catch (_) { b.textContent = ENLACE; }
       };
       ov.querySelector('#fxsh-share').onclick = async () => {
         // Compartir la imagen JUNTO CON el enlace (como extras.js). Si no se puede,
