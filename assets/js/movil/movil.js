@@ -498,8 +498,20 @@ async function leerBalance() {
     const cuenta = wallet.cuentaActual && wallet.cuentaActual();
     if (!cuenta) return { conectado: false };
     const ethers = await import('../vendor/ethers-6.13.4.min.js?v=129');
-    const RPCS = ['https://bsc-dataseed.binance.org','https://bsc-dataseed1.defibit.io','https://bsc-dataseed1.ninicoin.io','https://rpc.ankr.com/bsc'];
-    function prov(){ return new ethers.JsonRpcProvider(RPCS[Math.floor(Math.random()*RPCS.length)], 56, { staticNetwork: true }); }
+    // Varios proveedores (RPC) de respaldo: si uno falla, hay más. prov() rota en
+    // orden (empezando en un punto al azar), así cada reintento usa uno DISTINTO.
+    const RPCS = [
+      'https://bsc-dataseed.binance.org',
+      'https://bsc-dataseed1.defibit.io',
+      'https://bsc-dataseed1.ninicoin.io',
+      'https://rpc.ankr.com/bsc',
+      'https://bsc.publicnode.com',
+      'https://bsc-dataseed2.binance.org',
+      'https://bsc-dataseed3.binance.org',
+      'https://1rpc.io/bnb'
+    ];
+    let _rpcI = Math.floor(Math.random() * RPCS.length);
+    function prov(){ const url = RPCS[_rpcI % RPCS.length]; _rpcI++; return new ethers.JsonRpcProvider(url, 56, { staticNetwork: true }); }
     const ORACULO = '0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3';
     const oracAbi = ['function precioUSD(address) view returns (uint256)'];
     // Monedas conocidas (precio fiable). oa = dirección para el oráculo.
@@ -724,7 +736,7 @@ async function irA(tab) {
   if (tab === 'markets') { pintarMercados(host, api()); return; }
   if (tab === 'trade')   { pintarOperar(host, api()); return; }
   if (tab === 'assets')  { pintarActivos(host, api()); refrescarBalance(); return; }
-  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=17'); fm.pintarFuturos(host, api()); return; }
+  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=18'); fm.pintarFuturos(host, api()); return; }
 }
 
 /* Futures móvil: placeholder hasta construir la interfaz completa. */

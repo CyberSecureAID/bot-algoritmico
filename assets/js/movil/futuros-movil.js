@@ -105,8 +105,8 @@ function estilos() {
   #fx .fxcard{position:relative;background:#151b23;border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:9px;overflow:hidden}
   /* Imagen de fondo: va en la tarjeta; una capa oscura encima la atenúa para que
      la info se lea nítida, pero el fondo SÍ se ve. El contenido va por encima. */
-  #fx .fxcard.es-open{background-image:url('assets/portada/img/fondo-open.webp');background-size:cover;background-position:center}
-  #fx .fxcard.es-limit{background-image:url('assets/portada/img/fondo-limit.webp');background-size:cover;background-position:center}
+  #fx .fxcard.es-open{background-image:url('/assets/portada/img/fondo-open.webp');background-size:cover;background-position:center}
+  #fx .fxcard.es-limit{background-image:url('/assets/portada/img/fondo-limit.webp');background-size:cover;background-position:center}
   #fx .fxcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,18,24,.55),rgba(14,18,24,.68));backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)}
   #fx .fxcard>*{position:relative;z-index:1}
   #fx .fxc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
@@ -390,7 +390,20 @@ export async function pintarFuturos(host, api) {
   }
 
   // Tarjeta de compartir (misma dinámica que la web, con navigator.share).
-  function imgMv(src) { return new Promise((res) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
+  function imgMv(src) {
+    return new Promise((res) => {
+      let hecho = false;
+      const acabar = (v) => { if (!hecho) { hecho = true; res(v); } };
+      const i = new Image();
+      i.crossOrigin = 'anonymous';
+      i.onload = () => acabar(i);
+      i.onerror = () => acabar(null);
+      i.src = src;
+      // timeout: si en 4s no dispara load ni error (pasa en el WebView de la
+      // wallet), se da por no cargada y se sigue, para no colgar el Promise.all.
+      setTimeout(() => acabar(null), 4000);
+    });
+  }
   async function compartirMv(id) {
     const pos = _pos.find((p) => p.id === id || p.id === +id); if (!pos) return;
     // indicador inmediato para que el botón no parezca un placeholder
