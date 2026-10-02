@@ -116,7 +116,7 @@ function estilos() {
   #fx .fxc-pnlrow{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
   #fx .fxc-pnlrow label{display:block;font-size:8.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
   #fx .fxc-pnlrow b{font-family:'IBM Plex Mono';font-size:19px;font-weight:800}
-  #fx .fxc-pnlrow .pnl-r{text-align:right}
+  #fx .fxc-pnlrow .pnl-r{text-align:right;margin-right:22%}
   #fx .fxc-pnlrow .up b{color:#2ebd85} #fx .fxc-pnlrow .dn b{color:#f6465d}
   #fx .fxc-g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:9px}
   #fx .fxc-g>div{display:flex;flex-direction:column;gap:2px;position:relative}
@@ -381,6 +381,13 @@ export async function pintarFuturos(host, api) {
   function imgMv(src) { return new Promise((res) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
   async function compartirMv(id) {
     const pos = _pos.find((p) => p.id === id || p.id === +id); if (!pos) return;
+    // indicador inmediato para que el botón no parezca un placeholder
+    const cargando = document.createElement('div');
+    cargando.className = 'fxpop'; cargando.style.zIndex = '26000';
+    cargando.innerHTML = '<div style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div><div style="position:relative;z-index:1;margin:auto;color:#eaecef;font-family:sans-serif;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:34px;height:34px;border:3px solid rgba(232,184,75,.25);border-top-color:#E8B84B;border-radius:50%;animation:fxsp 0.7s linear infinite"></div>Generating…</div>';
+    document.body.appendChild(cargando);
+    if (!document.getElementById('fxsp-css')) { const st = document.createElement('style'); st.id = 'fxsp-css'; st.textContent = '@keyframes fxsp{to{transform:rotate(360deg)}}'; document.head.appendChild(st); }
+    const quitarCarga = () => { try { cargando.remove(); } catch (_) {} };
     const esLong = pos.lado === 'long';
     const mk = markDeMv(pos), dir = esLong ? 1 : -1;
     const pnl = ((mk - pos.px) / pos.px) * dir * pos.lev * pos.amt;
@@ -388,7 +395,13 @@ export async function pintarFuturos(host, api) {
     const gana = pnl >= 0;
     const verde = '#16c784', rojo = '#f6465d', dorado = '#E8B84B', blanco = '#fff';
     const col = gana ? verde : rojo;
-    const fondo = await imgMv('assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp');
+    // Las 3 imágenes EN PARALELO (antes iban una tras otra y tardaba).
+    const parId0 = pos.parId || (pos.sim || '').replace('USDT', '');
+    const [fondo, logoPre, ccoPre] = await Promise.all([
+      imgMv('assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp'),
+      imgMv('https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + parId0.toLowerCase() + '.png'),
+      imgMv('assets/img/cco-movil.webp')
+    ]);
     const W = 1670, H = 941, dpr = 2;
     const cv = document.createElement('canvas'); cv.width = W * dpr; cv.height = H * dpr;
     const g = cv.getContext('2d'); g.scale(dpr, dpr);
@@ -398,7 +411,7 @@ export async function pintarFuturos(host, api) {
     const X = 70; g.textAlign = 'left';
     const parId = pos.parId || (pos.sim || '').replace('USDT', '');
     let topY = 132;
-    const logo = await imgMv('https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + parId.toLowerCase() + '.png');
+    const logo = logoPre;
     g.save(); g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.closePath(); g.fillStyle = 'rgba(255,255,255,.08)'; g.fill(); g.clip();
     if (logo) g.drawImage(logo, X - 2, topY - 32, 64, 64);
     else { g.fillStyle = dorado; g.font = '800 34px sans-serif'; g.textAlign = 'center'; g.fillText((parId || '?')[0], X + 30, topY + 12); g.textAlign = 'left'; }
@@ -415,7 +428,7 @@ export async function pintarFuturos(host, api) {
     g.fillStyle = blanco; g.font = '800 34px monospace'; g.fillText(fmtP(pos.px), X, iy + 42); g.fillText(fmtP(mk), X + 300, iy + 42);
     iy += 120; let cuenta = ''; try { cuenta = (window.ethereum && window.ethereum.selectedAddress) || ''; } catch (_) {}
     if (cuenta) { g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('WALLET ••••' + cuenta.slice(-4), X, iy); }
-    const cco = await imgMv('assets/img/cco-movil.webp');
+    const cco = ccoPre;
     if (cco) { const lw = 220, lh = cco.height * (lw / cco.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7; g.drawImage(cco, X, H - lh - 38, lw, lh); g.restore(); }
     // Generar la imagen. Si el canvas está "contaminado" (CORS), toBlob falla:
     // lo capturamos y mostramos la ventana con lo que se pueda.
@@ -425,7 +438,8 @@ export async function pintarFuturos(host, api) {
     if (!blob) { try { dataUrl = cv.toDataURL('image/png'); } catch (_) {} }
     const ENLACE = 'https://criptocubaoficial.com';
 
-    // Ventana emergente con la imagen + botones (igual que la web).
+    quitarCarga();   // quitar el indicador "generando"
+    // Ventana emergente con la imagen + botones.
     const src = blob ? URL.createObjectURL(blob) : dataUrl;
     if (!src) { return; }   // no se pudo generar nada
     const ov = document.createElement('div');
@@ -440,7 +454,16 @@ export async function pintarFuturos(host, api) {
     document.body.appendChild(ov);
     const cerrarOv = () => { try { ov.remove(); if (blob) URL.revokeObjectURL(src); } catch (_) {} };
     ov.querySelector('.bg').onclick = cerrarOv;
-    ov.querySelector('#fxsh-dl').onclick = () => { const a = document.createElement('a'); a.href = src; a.download = 'CriptoCubaOficial.png'; a.click(); };
+    ov.querySelector('#fxsh-dl').onclick = () => {
+      // 1) intento normal de descarga
+      try { const a = document.createElement('a'); a.href = src; a.download = 'CriptoCubaOficial.png'; document.body.appendChild(a); a.click(); a.remove(); } catch (_) {}
+      // 2) respaldo para el navegador de la wallet (WebView): abrir la imagen en
+      //    una pestaña/visor nuevo, donde el usuario la guarda con mantener pulsado.
+      try {
+        const w = window.open(); 
+        if (w) { w.document.write('<img src="' + src + '" style="width:100%">'); w.document.title = 'CriptoCubaOficial'; }
+      } catch (_) {}
+    };
     ov.querySelector('#fxsh-sh').onclick = async () => {
       if (blob && navigator.canShare) {
         const archivo = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
