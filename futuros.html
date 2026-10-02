@@ -101,7 +101,7 @@
     .pos-row small{color:var(--ink4);font-size:9.5px}
     .pos-head,.pos-row{display:grid;gap:12px;align-items:center;font-family:var(--mono);font-size:11.5px;padding:9px 0}
     /* Positions (limit): Símbolo, Tipo, Precio, Tamaño, Distancia, Liq, acción */
-    #f-pos-body.limit .pos-head,#f-pos-body.limit .pos-row{grid-template-columns:1.4fr 0.8fr 1fr 1fr 1fr 1fr 84px}
+    #f-pos-body.limit .pos-head,#f-pos-body.limit .pos-row{grid-template-columns:1.1fr 0.95fr 0.75fr 0.9fr 0.9fr 0.85fr 0.85fr 90px}
     /* Open Orders (abiertas): Símbolo, Tamaño, Entrada, PNL, Liq, acción */
     #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.15fr 0.85fr 0.8fr 0.8fr 0.6fr 0.85fr 0.85fr 0.8fr 110px}
     .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);padding:10px 0 11px}
@@ -113,8 +113,8 @@
     .pos-row:hover{background:rgba(255,255,255,.02)}
     .pnl-v{font-weight:800;font-style:normal;font-family:var(--mono);font-size:11.5px}
     .pnl-v.pnl-up{color:#2ebd85} .pnl-v.pnl-dn{color:#f6465d}
-    .tpsl-c{display:inline-flex;align-items:center;gap:5px}
-    .tpsl-c em{font-style:normal;font-family:var(--mono);font-size:11px}
+    .tpsl-c{display:flex;align-items:center;gap:6px;justify-content:flex-start}
+    .tpsl-c em{font-style:normal;font-family:var(--mono);font-size:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .tpsl-c .edit-tpsl{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink3);border-radius:6px;width:22px;height:22px;display:grid;place-items:center;cursor:pointer;padding:0;flex:0 0 auto;transition:all .12s}
     .tpsl-c .edit-tpsl:hover{color:var(--gold);border-color:var(--gold-soft)}
     .pos-row .side{font-weight:800;display:inline-flex;align-items:center;gap:7px;position:relative;padding-left:11px}
@@ -459,16 +459,18 @@
     function editarTPSL(id, k) {
       const pos = posiciones.find((p) => p.id === id); if (!pos) return;
       const esTP = k === 'tp';
-      const actual = pos[k] || pos.px;
+      const titulos = { tp: 'Take Profit', sl: 'Stop Loss', px: 'Entry Price', lev: 'Leverage' };
+      const esLev = k === 'lev';
+      const actual = pos[k] || (k === 'lev' ? pos.lev : pos.px);
       const ov = document.createElement('div');
       ov.className = 'fx-modal'; ov.style.zIndex = '26000';
       ov.innerHTML = '<div class="bg" style="position:absolute;inset:0;background:rgba(0,0,0,.72)"></div>' +
         '<div style="position:relative;z-index:1;max-width:380px;width:calc(100% - 32px);background:#0e1218;border:1px solid #232b36;border-radius:16px;padding:20px">' +
-        '<div style="font-size:16px;font-weight:800;color:#eef1f6;margin-bottom:4px">' + (esTP ? 'Take Profit' : 'Stop Loss') + '</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#eef1f6;margin-bottom:4px">' + (titulos[k] || 'Edit') + '</div>' +
         '<div style="font-size:12px;color:#8b96a3;margin-bottom:14px">' + (pos.sim) + ' \u00B7 ' + (pos.lado === 'long' ? 'Long' : 'Short') + ' ' + pos.lev + '\u00D7</div>' +
         '<div style="display:flex;align-items:center;gap:8px;background:#0a0e13;border:1px solid #232b36;border-radius:11px;padding:11px 13px;margin-bottom:16px">' +
         '<input id="fx-tpsl-in" inputmode="decimal" value="' + (actual ? fmt(actual).replace(/,/g, "") : "") + '" style="flex:1;background:none;border:none;outline:none;color:#eef1f6;font-family:var(--mono);font-size:18px;font-weight:700">' +
-        '<span style="color:#8b96a3;font-family:var(--mono);font-size:13px">USDT</span></div>' +
+        '<span style="color:#8b96a3;font-family:var(--mono);font-size:13px">' + (esLev ? '\u00D7' : 'USDT') + '</span></div>' +
         '<div style="display:flex;gap:10px"><button id="fx-tpsl-x" style="flex:1;background:#1b222c;border:1px solid #232b36;border-radius:11px;padding:12px;color:#eaecef;font-weight:700;font-size:14px;cursor:pointer">Cancel</button>' +
         '<button id="fx-tpsl-ok" style="flex:1;background:linear-gradient(180deg,' + (esTP ? '#34d98a,#12b06a' : '#fb5c6f,#e03246') + ');border:none;border-radius:11px;padding:12px;color:#fff;font-weight:800;font-size:14px;cursor:pointer">Confirm</button></div></div>';
       document.body.appendChild(ov);
@@ -489,9 +491,11 @@
             return;
           }
         }
-        pos[k] = v;
+        if (esLev) { pos.lev = Math.max(1, Math.min(200, Math.round(v))); pos.liq = liqDe(pos.px, pos.lev, pos.lado === 'long'); }
+        else pos[k] = v;
+        if (k === 'px') { pos.liq = liqDe(pos.px, pos.lev, pos.lado === 'long'); }
         // AQUÍ, con el contrato desplegado: pedir FIRMA de la wallet para registrar
-        // el nuevo TP/SL (es un cambio de salida respaldado por el pool de staking).
+        // el cambio (entrada/TP/SL/apalancamiento es un cambio respaldado por el pool).
         cerrarM(); pintarPos();
       };
     }
@@ -552,12 +556,12 @@
       g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.stroke();
       g.fillStyle = blanco; g.font = '800 46px "Plus Jakarta Sans", sans-serif';
       g.fillText(pos.sim || (parId + 'USDT'), X + 80, topY + 16);
-      // LONG/SHORT + apalancamiento
-      topY += 62;
+      // LONG/SHORT + apalancamiento (más separado del logo)
+      topY += 86;
       g.fillStyle = esLong ? verde : rojo; g.font = '800 28px "IBM Plex Mono", monospace';
       g.fillText((esLong ? 'LONG' : 'SHORT') + '  ' + pos.lev + '\u00D7', X, topY);
-      // fecha y hora REAL de Cuba
-      topY += 44;
+      // fecha y hora REAL de Cuba (más separada)
+      topY += 50;
       const ahora = new Date();
       const opt = { timeZone: 'America/Havana' };
       const fecha = ahora.toLocaleDateString('en-US', Object.assign({ day: '2-digit', month: 'short', year: 'numeric' }, opt));
@@ -580,8 +584,8 @@
       g.fillText('ENTRY PRICE', X, iy); g.fillText('MARK PRICE', X + 300, iy);
       g.fillStyle = blanco; g.font = '800 34px "IBM Plex Mono", monospace';
       g.fillText(fmt(pos.px), X, iy + 42); g.fillText(fmt(mark), X + 300, iy + 42);
-      // wallet: debajo de entrada, a la izquierda
-      iy += 92;
+      // wallet: debajo de entrada, a la izquierda (más separada)
+      iy += 120;
       let cuenta = ''; try { cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || ''; } catch (_) {}
       if (cuenta) { g.fillStyle = dorado; g.font = '700 22px "IBM Plex Mono", monospace'; g.fillText('WALLET \u2022\u2022\u2022\u2022' + cuenta.slice(-4), X, iy); }
 
@@ -684,16 +688,19 @@
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg>' +
           '</button><button class="close" data-id="' + p.id + '">' + t('Cerrar') + '</button></span></div>';
       };
+      const lap = (id, k) => '<button class="edit-tpsl" data-id="' + id + '" data-k="' + k + '" title="Edit"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>';
       const mkOrd = (p) => {
-        const dist = N.precio ? ((p.px - N.precio) / N.precio * 100) : 0;
+        const dist = N.precio && p.sim === simDe() ? ((p.px - N.precio) / N.precio * 100) : 0;
+        // Orden LIMIT: se puede editar entrada, TP, SL y apalancamiento.
         return '<div class="pos-row">' +
-          '<span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '\u00D7</span></span>' +
-          '<span><b style="color:var(--gold)">LIMIT</b></span>' +
-          '<span>' + fmt(p.px) + '</span>' +
+          '<span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + '</span></span>' +
+          '<span class="tpsl-c"><em>' + fmt(p.px) + '</em>' + lap(p.id, 'px') + '</span>' +
+          '<span class="tpsl-c"><em>' + p.lev + '\u00D7</em>' + lap(p.id, 'lev') + '</span>' +
+          '<span class="tpsl-c"><em style="color:#2ebd85">' + (p.tp ? fmt(p.tp) : '\u2014') + '</em>' + lap(p.id, 'tp') + '</span>' +
+          '<span class="tpsl-c"><em style="color:#f6465d">' + (p.sl ? fmt(p.sl) : '\u2014') + '</em>' + lap(p.id, 'sl') + '</span>' +
           '<span>' + fmt(p.m * p.lev) + ' USDT</span>' +
-          '<span class="' + (dist >= 0 ? 'up' : 'dn') + '">' + (dist >= 0 ? '+' : '') + dist.toFixed(2) + '%</span>' +
           '<span>' + fmt(p.liq) + '</span>' +
-          '<button class="close" data-id="' + p.id + '">' + t('Cancelar') + '</button></div>';
+          '<span class="pos-acc"><button class="close" data-id="' + p.id + '">' + t('Cancelar') + '</button></span></div>';
       };
       const esAbiertas = tabPos === 'ord';
       // Botón de pestañas en la cabecera (última columna), si hay más de una
@@ -702,7 +709,7 @@
         ? '<button class="pg-cab' + (pag < totalPag - 1 ? ' hay-mas' : '') + '">' + (pag + 1) + '/' + totalPag + ' \u203A</button>'
         : '';
       const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>PNL</span><span>ROI</span><span>TP</span><span>SL</span><span>' + t('Liquidación') + '</span><span class="cab-pag">' + btnPag + '</span></div>';
-      const cabLimit = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span class="cab-pag">' + btnPag + '</span></div>';
+      const cabLimit = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>Entry Price</span><span>' + t('Apalancamiento') + '</span><span>TP</span><span>SL</span><span>' + t('Tamaño') + '</span><span>' + t('Liquidación') + '</span><span class="cab-pag">' + btnPag + '</span></div>';
       const cab = esAbiertas ? cabAbiertas : cabLimit;
       let html = cab + trozo.map(esAbiertas ? mkPos : mkOrd).join('');
       // Paginación: botón Next si hay más de una página, con puntito si hay más.
