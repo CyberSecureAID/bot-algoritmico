@@ -72,6 +72,7 @@
     #f-left{grid-column:1;grid-row:2;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line)}
     #f-graf{position:relative;height:calc(100vh - 50px);height:calc(100dvh - 50px);min-height:420px;background:#0b0f16;overflow:hidden;padding:10px 0 8px;box-sizing:border-box}
     #f-graf.z-t #nv-cv{cursor:ew-resize !important} #f-graf.z-p #nv-cv{cursor:ns-resize !important}
+    #f-graf.z-linea #nv-cv{cursor:ns-resize !important}
     /* Smart Levels dentro de la celda: sin la banda superior. Se conservan
        gráfica (nv-graf) y barra de herramientas (nv-tools). */
     #f-graf #nv-overlay{position:absolute !important;inset:10px 0 8px !important;z-index:auto !important;padding:0 !important;display:block !important}
@@ -102,10 +103,12 @@
     /* Positions (limit): Símbolo, Tipo, Precio, Tamaño, Distancia, Liq, acción */
     #f-pos-body.limit .pos-head,#f-pos-body.limit .pos-row{grid-template-columns:1.4fr 0.8fr 1fr 1fr 1fr 1fr 84px}
     /* Open Orders (abiertas): Símbolo, Tamaño, Entrada, PNL, Liq, acción */
-    #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.5fr 1.1fr 1fr 1.2fr 1fr 84px}
+    #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.4fr 1fr 0.95fr 0.95fr 0.75fr 0.95fr 80px}
     .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);padding:10px 0 11px}
     .pos-row{border-bottom:1px solid rgba(255,255,255,.04);color:var(--ink);padding:12px 0;border-radius:7px;transition:background .12s}
     .pos-row:hover{background:rgba(255,255,255,.02)}
+    .pnl-v{font-weight:800;font-style:normal;font-family:var(--mono);font-size:11.5px}
+    .pnl-v.pnl-up{color:#2ebd85} .pnl-v.pnl-dn{color:#f6465d}
     .pos-row .side{font-weight:800;display:inline-flex;align-items:center;gap:7px;position:relative;padding-left:11px}
     .pos-row .side::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:15px;border-radius:2px}
     .pos-row .side.long{color:var(--up)} .pos-row .side.long::before{background:var(--up)}
@@ -476,7 +479,8 @@
           '<span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '\u00D7</span></span>' +
           '<span>' + fmt(p.m * p.lev) + ' USDT</span>' +
           '<span>' + fmt(p.px) + '</span>' +
-          '<span class="pnl-cell ' + pnlCls + '"><b>' + (pnl >= 0 ? '+' : '') + fmt(pnl) + '</b><i>' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%</i></span>' +
+          '<span class="pnl-v ' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + fmt(pnl) + '</span>' +
+          '<span class="pnl-v ' + pnlCls + '">' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%</span>' +
           '<span>' + fmt(p.liq) + '</span>' +
           '<button class="close" data-id="' + p.id + '">' + t('Cerrar') + '</button></div>';
       };
@@ -492,7 +496,7 @@
           '<button class="close" data-id="' + p.id + '">' + t('Cancelar') + '</button></div>';
       };
       const esAbiertas = tabPos === 'ord';
-      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>PNL (ROI)</span><span>' + t('Liquidación') + '</span><span></span></div>';
+      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>PNL</span><span>ROI</span><span>' + t('Liquidación') + '</span><span></span></div>';
       const cabLimit = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span></span></div>';
       const cab = esAbiertas ? cabAbiertas : cabLimit;
       let html = cab + trozo.map(esAbiertas ? mkPos : mkOrd).join('');
@@ -571,7 +575,10 @@
         if (e.button !== 0) return;
         const r = cv.getBoundingClientRect(); const y = e.clientY - r.top;
         for (const p of posiciones.filter((q) => q.sim === simDe())) {
-          for (const k of ['tp', 'sl']) { if (Math.abs(yDe(p[k]) - y) < 7) { drag = { p, k }; e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId); return; } }
+          // TP y SL siempre movibles. La ENTRADA (px) solo si es orden LIMIT
+          // (una operación ABIERTA no puede mover su entrada).
+          const movibles = p.limit ? ['tp', 'sl', 'px'] : ['tp', 'sl'];
+          for (const k of movibles) { if (p[k] && Math.abs(yDe(p[k]) - y) < 7) { drag = { p, k }; e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId); return; } }
         }
       }, true);
       cv.addEventListener('pointermove', (e) => { if (!drag) return; const r = cv.getBoundingClientRect(); drag.p[drag.k] = pDe(e.clientY - r.top); e.stopImmediatePropagation(); }, true);
@@ -581,9 +588,18 @@
       // Cursor por zona: eje de tiempo ↔, eje de precio ↕ (como TradingView).
       cv.addEventListener('pointermove', (e) => {
         const r = cv.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
-        graf.classList.toggle('z-p', x > r.width - 90); graf.classList.toggle('z-t', x <= r.width - 90 && y > r.height - 30);
+        // ¿el cursor está sobre una línea movible (TP, SL, o entrada de limit)?
+        let sobreLinea = false;
+        for (const p of posiciones.filter((q) => q.sim === simDe())) {
+          const movibles = p.limit ? ['tp', 'sl', 'px'] : ['tp', 'sl'];
+          for (const k of movibles) { if (p[k] && Math.abs(yDe(p[k]) - y) < 7) { sobreLinea = true; break; } }
+          if (sobreLinea) break;
+        }
+        graf.classList.toggle('z-linea', sobreLinea);
+        graf.classList.toggle('z-p', !sobreLinea && x > r.width - 90);
+        graf.classList.toggle('z-t', !sobreLinea && x <= r.width - 90 && y > r.height - 30);
       }, true);
-      cv.addEventListener('pointerleave', () => { graf.classList.remove('z-p', 'z-t'); }, true);
+      cv.addEventListener('pointerleave', () => { graf.classList.remove('z-p', 'z-t', 'z-linea'); }, true);
       // Clic derecho: menú de futuros (intercepta el de spot).
       cv.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopImmediatePropagation(); abrirMenu(e.clientX, e.clientY, pDe(e.clientY - cv.getBoundingClientRect().top)); }, true);
     }
