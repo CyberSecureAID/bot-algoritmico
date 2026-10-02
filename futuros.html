@@ -105,6 +105,10 @@
     /* Open Orders (abiertas): Símbolo, Tamaño, Entrada, PNL, Liq, acción */
     #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.3fr 0.95fr 0.9fr 0.9fr 0.7fr 0.9fr 120px}
     .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);padding:10px 0 11px}
+    .cab-pag{display:flex;justify-content:flex-end}
+    .pg-cab{background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.35);color:var(--gold);font-family:var(--mono);font-size:10px;font-weight:800;padding:5px 8px;border-radius:7px;cursor:pointer;position:relative;white-space:nowrap}
+    .pg-cab:hover{background:rgba(232,184,75,.2);border-color:rgba(232,184,75,.6)}
+    .pg-cab.hay-mas::after{content:"";position:absolute;top:-3px;right:-3px;width:7px;height:7px;border-radius:50%;background:var(--gold);animation:pg-pulse 1.6s infinite}
     .pos-row{border-bottom:1px solid rgba(255,255,255,.04);color:var(--ink);padding:12px 0;border-radius:7px;transition:background .12s}
     .pos-row:hover{background:rgba(255,255,255,.02)}
     .pnl-v{font-weight:800;font-style:normal;font-family:var(--mono);font-size:11.5px}
@@ -295,33 +299,6 @@
 
     let lev = 20, modo = 'cruzada', tipo = 'market', pctCap = 0;
     let precio = 0, saldo = 0, posiciones = [];
-    /* ─── EJEMPLOS DE DEMOSTRACIÓN (quitar cuando haya contrato) ──────────────
-       4 órdenes LIMIT (pestaña Positions) + 4 operaciones ABIERTAS (Open Orders),
-       con precios alrededor de BTC, para ver cómo se ven en las pestañas y en la
-       gráfica. Marcadas con demo:true para poder filtrarlas luego. */
-    (function demoPosiciones() {
-      const base = 84000, S = 'BTCUSDT';
-      const liq = (e, l, esL) => esL ? e * (1 - 0.75 / l) : e * (1 + 0.75 / l);
-      const mk = (lado, px, m, lev, limit) => ({
-        id: 'demo-' + Math.random().toString(36).slice(2, 8), lado, px, m, lev,
-        tp: lado === 'long' ? px * 1.03 : px * 0.97,
-        sl: lado === 'long' ? px * 0.985 : px * 1.015,
-        liq: liq(px, lev, lado === 'long'), sim: S, parId: 'BTC', cg: 'bitcoin', limit, demo: true, t: Date.now()
-      });
-      posiciones = [
-        // 4 órdenes LIMIT (Positions): precios alejados del actual
-        mk('long',  82500, 200, 20, true),
-        mk('long',  81200, 150, 10, true),
-        mk('short', 85800, 300, 50, true),
-        mk('short', 86500, 120, 25, true),
-        // 4 operaciones ABIERTAS (Open Orders): precios de entrada cercanos
-        mk('long',  83900, 250, 20, false),
-        mk('short', 84200, 180, 10, false),
-        mk('long',  83600, 500, 50, false),
-        mk('long',  84050, 100, 5,  false)
-      ];
-    })();
-    // ─────────────────────────────────────────────────────────────────────────
 
     /* ═══ 1. Smart Levels dentro de la celda, sin su banda ═══ */
     await abrirNiveles();
@@ -586,7 +563,13 @@
         const a = document.createElement('a'); a.href = url; a.download = 'CriptoCubaOficial.png'; a.click();
       };
     }
-    $('f-closeall').onclick = () => { posiciones = []; pintarPos(); };
+    $('f-closeall').onclick = () => {
+      // Cierra SOLO la sección donde estás: Open Orders (abiertas) cierra las
+      // abiertas; Positions (limit) cancela las limit. Nunca toca la otra sección.
+      if (tabPos === 'ord') posiciones = posiciones.filter((p) => p.limit);   // deja las limit
+      else posiciones = posiciones.filter((p) => !p.limit);                   // deja las abiertas
+      pintarPos();
+    };
     let tabPos = 'pos';
     document.querySelectorAll('#f-pos .ph button[data-t]').forEach((b) => b.onclick = () => { tabPos = b.dataset.t; document.querySelectorAll('#f-pos .ph button[data-t]').forEach((x) => x.classList.toggle('on', x === b)); pintarPos(); });
     let posPag = 0, ordPag = 0;
@@ -641,8 +624,13 @@
           '<button class="close" data-id="' + p.id + '">' + t('Cancelar') + '</button></div>';
       };
       const esAbiertas = tabPos === 'ord';
-      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>PNL</span><span>ROI</span><span>' + t('Liquidación') + '</span><span></span></div>';
-      const cabLimit = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span></span></div>';
+      // Botón de pestañas en la cabecera (última columna), si hay más de una
+      // página. Muestra "n/total" y pasa a la siguiente. Avisa con punto si hay más.
+      const btnPag = totalPag > 1
+        ? '<button class="pg-cab' + (pag < totalPag - 1 ? ' hay-mas' : '') + '">' + (pag + 1) + '/' + totalPag + ' \u203A</button>'
+        : '';
+      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>PNL</span><span>ROI</span><span>' + t('Liquidación') + '</span><span class="cab-pag">' + btnPag + '</span></div>';
+      const cabLimit = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span class="cab-pag">' + btnPag + '</span></div>';
       const cab = esAbiertas ? cabAbiertas : cabLimit;
       let html = cab + trozo.map(esAbiertas ? mkPos : mkOrd).join('');
       // Paginación: botón Next si hay más de una página, con puntito si hay más.
@@ -661,6 +649,13 @@
       const bp = body.querySelector('.pg-prev'), bn = body.querySelector('.pg-next');
       if (bp) bp.onclick = () => { if (tabPos === 'ord') ordPag--; else posPag--; pintarPos(); };
       if (bn) bn.onclick = () => { if (tabPos === 'ord') ordPag++; else posPag++; pintarPos(); };
+      // botón de pestañas en la cabecera: avanza de página (circular)
+      const bc = body.querySelector('.pg-cab');
+      if (bc) bc.onclick = () => {
+        const sig = (pag + 1) % totalPag;
+        if (tabPos === 'ord') ordPag = sig; else posPag = sig;
+        pintarPos();
+      };
     }
     pintarPos();
 
