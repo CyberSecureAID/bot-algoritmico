@@ -116,7 +116,7 @@ function estilos() {
   #fx .fxc-pnlrow{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
   #fx .fxc-pnlrow label{display:block;font-size:8.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
   #fx .fxc-pnlrow b{font-family:'IBM Plex Mono';font-size:19px;font-weight:800}
-  #fx .fxc-pnlrow .pnl-r{text-align:right;margin-right:22%}
+  #fx .fxc-pnlrow .pnl-r{text-align:right;margin-right:10%}
   #fx .fxc-pnlrow .up b{color:#2ebd85} #fx .fxc-pnlrow .dn b{color:#f6465d}
   #fx .fxc-g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:9px}
   #fx .fxc-g>div{display:flex;flex-direction:column;gap:2px;position:relative}
@@ -397,10 +397,14 @@ export async function pintarFuturos(host, api) {
     const col = gana ? verde : rojo;
     // Las 3 imágenes EN PARALELO (antes iban una tras otra y tardaba).
     const parId0 = pos.parId || (pos.sim || '').replace('USDT', '');
+    // Las imágenes del repo se cargan desde raw.githubusercontent (que SÍ envía
+    // headers CORS), no desde la ruta del dominio. Si no, el canvas se "contamina"
+    // y toBlob se cuelga para siempre (el "generando" infinito). VERIFICADO.
+    const RAW = 'https://raw.githubusercontent.com/CyberSecureAID/bot-algoritmico/main';
     const [fondo, logoPre, ccoPre] = await Promise.all([
-      imgMv('assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp'),
+      imgMv(RAW + '/assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp'),
       imgMv('https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + parId0.toLowerCase() + '.png'),
-      imgMv('assets/img/cco-movil.webp')
+      imgMv(RAW + '/assets/img/cco-movil.webp')
     ]);
     const W = 1670, H = 941, dpr = 2;
     const cv = document.createElement('canvas'); cv.width = W * dpr; cv.height = H * dpr;
@@ -455,13 +459,19 @@ export async function pintarFuturos(host, api) {
     const cerrarOv = () => { try { ov.remove(); if (blob) URL.revokeObjectURL(src); } catch (_) {} };
     ov.querySelector('.bg').onclick = cerrarOv;
     ov.querySelector('#fxsh-dl').onclick = () => {
-      // 1) intento normal de descarga
-      try { const a = document.createElement('a'); a.href = src; a.download = 'CriptoCubaOficial.png'; document.body.appendChild(a); a.click(); a.remove(); } catch (_) {}
-      // 2) respaldo para el navegador de la wallet (WebView): abrir la imagen en
-      //    una pestaña/visor nuevo, donde el usuario la guarda con mantener pulsado.
+      // Descarga: intento normal. En el navegador de la wallet puede no bajar,
+      // así que como respaldo compartimos (navigator.share guarda/comparte la
+      // imagen). NO usamos window.open (dejaba la pantalla en blanco al volver).
       try {
-        const w = window.open(); 
-        if (w) { w.document.write('<img src="' + src + '" style="width:100%">'); w.document.title = 'CriptoCubaOficial'; }
+        const a = document.createElement('a'); a.href = src; a.download = 'CriptoCubaOficial.png';
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch (_) {}
+      // respaldo: si hay share con archivo, ofrecerlo (sin romper la vista)
+      try {
+        if (blob && navigator.canShare) {
+          const f = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
+          if (navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: 'CriptoCuba Oficial' }).catch(() => {}); }
+        }
       } catch (_) {}
     };
     ov.querySelector('#fxsh-sh').onclick = async () => {
