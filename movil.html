@@ -79,11 +79,12 @@
      función de conexión del proyecto (la que detecta la red y conecta). */
   import * as wallet from './assets/js/wallet.js?v=126';
   (async () => {
-    // reconexión silenciosa si la wallet ya nos autorizó
-    try { await wallet.reconectarSiProcede(); } catch (_) {}
+    // Cargar la interfaz PRIMERO, sin esperar a la reconexión: antes se hacía
+    // 'await reconectarSiProcede()' aquí, y si eso tardaba (red lenta en el
+    // navegador de la wallet) la página se quedaba EN BLANCO esperando. Ahora la
+    // interfaz carga enseguida y la reconexión va por su cuenta en paralelo.
     try {
-      // gridbot-ui monta el móvil solo (detecta que es móvil) con su conexión
-      await import('./assets/js/gridbot-ui.js?v=254');
+      await import('./assets/js/gridbot-ui.js?v=255');   // monta el móvil (detecta móvil)
     } catch (e) {
       document.body.insertAdjacentHTML('beforeend',
         '<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#8b96a3">' +
@@ -91,6 +92,8 @@
     }
     const a = document.getElementById('arranque');
     if (a) { a.style.transition = 'opacity .25s'; a.style.opacity = '0'; setTimeout(() => a.remove(), 280); }
+    // reconexión silenciosa en PARALELO (no bloquea la carga de la página)
+    try { wallet.reconectarSiProcede().catch(function () {}); } catch (_) {}
   })();
 </script>
 
