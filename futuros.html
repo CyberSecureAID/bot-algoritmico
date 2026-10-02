@@ -82,7 +82,7 @@
     /* Overlay de posiciones (entrada / TP / SL arrastrables). */
     #f-ov{position:absolute;inset:0;z-index:5;pointer-events:none}
 
-    #f-pos{background:#0b0e12;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:210px}
+    #f-pos{background:#0b0e12;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:320px}
     #f-pos .ph{display:flex;align-items:center;gap:18px;padding:11px 16px 0;border-bottom:1px solid var(--line)}
     #f-pos .ph button{background:none;border:none;color:var(--ink3);font-weight:700;font-size:12.5px;padding:0 0 10px;cursor:pointer;position:relative}
     #f-pos .ph button.on{color:var(--ink)} #f-pos .ph button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
@@ -98,7 +98,11 @@
     .pos-pag .pg-next.hay-mas::after{content:"";position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 0 rgba(232,184,75,.6);animation:pg-pulse 1.6s infinite}
     @keyframes pg-pulse{0%{box-shadow:0 0 0 0 rgba(232,184,75,.6)}70%{box-shadow:0 0 0 7px rgba(232,184,75,0)}100%{box-shadow:0 0 0 0 rgba(232,184,75,0)}}
     .pos-row small{color:var(--ink4);font-size:9.5px}
-    .pos-head,.pos-row{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr 1fr 84px;gap:12px;align-items:center;font-family:var(--mono);font-size:11.5px;padding:9px 0}
+    .pos-head,.pos-row{display:grid;gap:12px;align-items:center;font-family:var(--mono);font-size:11.5px;padding:9px 0}
+    /* Positions (limit): Símbolo, Tipo, Precio, Tamaño, Distancia, Liq, acción */
+    #f-pos-body.limit .pos-head,#f-pos-body.limit .pos-row{grid-template-columns:1.4fr 0.8fr 1fr 1fr 1fr 1fr 84px}
+    /* Open Orders (abiertas): Símbolo, Tamaño, Entrada, PNL, Liq, acción */
+    #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.5fr 1.1fr 1fr 1.2fr 1fr 84px}
     .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
     .pos-row{border-bottom:1px solid rgba(255,255,255,.03);color:var(--ink)}
     .pos-row .side{font-weight:800} .pos-row .side.long{color:var(--up)} .pos-row .side.short{color:var(--down)}
@@ -462,13 +466,12 @@
         const dir = p.lado === 'long' ? 1 : -1;
         const pnl = ((mark - p.px) / p.px) * dir * p.lev * p.m;
         const pnlPct = ((mark - p.px) / p.px) * dir * p.lev * 100;
-        const pnlCls = pnl >= 0 ? 'up' : 'dn';
+        const pnlCls = pnl >= 0 ? 'pnl-up' : 'pnl-dn';
         return '<div class="pos-row">' +
           '<span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '\u00D7</span></span>' +
           '<span>' + fmt(p.m * p.lev) + ' USDT</span>' +
           '<span>' + fmt(p.px) + '</span>' +
-          '<span>' + fmt(mark) + '</span>' +
-          '<span class="' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + fmt(pnl) + ' <small>(' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%)</small></span>' +
+          '<span class="pnl-cell ' + pnlCls + '"><b>' + (pnl >= 0 ? '+' : '') + fmt(pnl) + '</b><i>' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%</i></span>' +
           '<span>' + fmt(p.liq) + '</span>' +
           '<button class="close" data-id="' + p.id + '">' + t('Cerrar') + '</button></div>';
       };
@@ -484,7 +487,7 @@
           '<button class="close" data-id="' + p.id + '">' + t('Cancelar') + '</button></div>';
       };
       const esAbiertas = tabPos === 'ord';
-      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>' + t('Marca') + '</span><span>PNL</span><span>' + t('Liquidación') + '</span><span></span></div>';
+      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>PNL (ROI)</span><span>' + t('Liquidación') + '</span><span></span></div>';
       const cabLimit = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span></span></div>';
       const cab = esAbiertas ? cabAbiertas : cabLimit;
       let html = cab + trozo.map(esAbiertas ? mkPos : mkOrd).join('');
@@ -497,6 +500,7 @@
           '<button class="pg-next' + (hayMas ? ' hay-mas' : '') + '"' + (!hayMas ? ' disabled' : '') + '>' + t('Siguiente') + ' \u203A</button>' +
           '</div>';
       }
+      body.className = 'body ' + (esAbiertas ? 'abiertas' : 'limit');
       body.innerHTML = html;
       body.querySelectorAll('.close').forEach((b) => b.onclick = () => cerrar(+b.dataset.id));
       const bp = body.querySelector('.pg-prev'), bn = body.querySelector('.pg-next');
@@ -530,9 +534,10 @@
         };
         ps.forEach((p) => {
           linea(p.px, '#E8B84B', (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '× ' + fmt(p.px));
-          linea(p.tp, '#2ebd85', 'TP ' + fmt(p.tp), [5, 4]);
-          linea(p.sl, '#f6465d', 'SL ' + fmt(p.sl), [5, 4]);
-          linea(p.liq, '#f6465d', 'LIQ ' + fmt(p.liq), [2, 4]);
+          if (p.tp) linea(p.tp, '#2ebd85', 'TP ' + fmt(p.tp), [5, 4]);
+          // Si hay SL se muestra el SL (no la liquidación). Sin SL, la liquidación.
+          if (p.sl) linea(p.sl, '#f6465d', 'SL ' + fmt(p.sl), [5, 4]);
+          else linea(p.liq, '#f6465d', 'LIQ ' + fmt(p.liq), [2, 4]);
         });
       }
       requestAnimationFrame(dibOv);
