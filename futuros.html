@@ -452,8 +452,8 @@
     function cargarImg(src) {
       return new Promise((res) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
     }
-    async function compartirPos(id) {
-      const pos = posiciones.find((p) => p.id === id); if (!pos) return;
+    async function generarTarjeta(id) {
+      const pos = posiciones.find((p) => p.id === id); if (!pos) return null;
       const esLong = pos.lado === 'long';
       const mark = (pos.sim === simDe()) ? (precio || pos.px) : pos.px;
       const dir = esLong ? 1 : -1;
@@ -463,99 +463,101 @@
       const verde = '#16c784', rojo = '#f6465d', dorado = '#E8B84B', blanco = '#ffffff';
       const colPnl = gana ? verde : rojo;
 
-      // dimensiones de la tarjeta (vertical, para compartir)
-      const W = 1080, H = 1350, dpr = 2;
+      // La tarjeta mantiene la PROPORCIÓN REAL de la imagen (1670x941, horizontal).
+      const fondo = await cargarImg('assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp');
+      const W = 1670, H = 941, dpr = 2;
       const cv = document.createElement('canvas');
       cv.width = W * dpr; cv.height = H * dpr;
       const g = cv.getContext('2d'); g.scale(dpr, dpr);
 
-      // fondo: imagen long/short
-      const fondo = await cargarImg('assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp');
-      if (fondo) {
-        // cubrir todo manteniendo proporción
-        const rw = W / fondo.width, rh = H / fondo.height, rr = Math.max(rw, rh);
-        const fw = fondo.width * rr, fh = fondo.height * rr;
-        g.drawImage(fondo, (W - fw) / 2, (H - fh) / 2, fw, fh);
-      } else {
-        g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, H);
-      }
-      // velo oscuro a la izquierda para que el texto se lea
+      if (fondo) g.drawImage(fondo, 0, 0, W, H);
+      else { g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, H); }
+      // velo a la izquierda para leer el texto
       const grad = g.createLinearGradient(0, 0, W, 0);
-      grad.addColorStop(0, 'rgba(5,7,10,.82)'); grad.addColorStop(0.55, 'rgba(5,7,10,.45)'); grad.addColorStop(1, 'rgba(5,7,10,.15)');
+      grad.addColorStop(0, 'rgba(5,7,10,.80)'); grad.addColorStop(0.5, 'rgba(5,7,10,.40)'); grad.addColorStop(1, 'rgba(5,7,10,.05)');
       g.fillStyle = grad; g.fillRect(0, 0, W, H);
 
-      const X = 80;   // margen izquierdo (todo el texto a la izquierda)
-      g.textAlign = 'left';
+      const X = 70; g.textAlign = 'left';
 
-      // ── arriba: logo de la moneda + par ──
+      // ── arriba: logo moneda + par ──
       const par = parDe();
       let cg = {}; try { cg = cgCache(); } catch (_) {}
       const logoUrl = (cg[par.cg] && cg[par.cg].img) || '';
-      let topY = 110;
-      if (logoUrl) {
-        const logo = await cargarImg(logoUrl);
-        if (logo) { g.save(); g.beginPath(); g.arc(X + 34, topY, 34, 0, 6.28); g.closePath(); g.clip(); g.drawImage(logo, X, topY - 34, 68, 68); g.restore(); }
-      }
-      g.fillStyle = blanco; g.font = '800 52px "Plus Jakarta Sans", sans-serif';
-      g.fillText(par.s || (pos.sim), X + 84, topY + 18);
-
-      // posición: LONG/SHORT + apalancamiento
-      topY += 78;
-      g.fillStyle = colPnl === verde && !gana ? colPnl : (esLong ? verde : rojo);
-      g.font = '800 30px "IBM Plex Mono", monospace';
-      g.fillText((esLong ? 'LONG' : 'SHORT') + '  ' + pos.lev + '×', X, topY);
-
-      // fecha y hora
-      topY += 54;
+      let topY = 92;
+      if (logoUrl) { const logo = await cargarImg(logoUrl); if (logo) { g.save(); g.beginPath(); g.arc(X + 30, topY, 30, 0, 6.28); g.closePath(); g.clip(); g.drawImage(logo, X, topY - 30, 60, 60); g.restore(); } }
+      g.fillStyle = blanco; g.font = '800 46px "Plus Jakarta Sans", sans-serif';
+      g.fillText(par.s || pos.sim, X + 76, topY + 16);
+      // LONG/SHORT + apalancamiento
+      topY += 62;
+      g.fillStyle = esLong ? verde : rojo; g.font = '800 28px "IBM Plex Mono", monospace';
+      g.fillText((esLong ? 'LONG' : 'SHORT') + '  ' + pos.lev + '\u00D7', X, topY);
+      // fecha y hora REAL de Cuba
+      topY += 44;
       const ahora = new Date();
-      const fecha = ahora.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + '  ' + ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      g.fillStyle = blanco; g.font = '500 26px "IBM Plex Mono", monospace';
-      g.fillText(fecha, X, topY);
+      const opt = { timeZone: 'America/Havana' };
+      const fecha = ahora.toLocaleDateString('en-US', Object.assign({ day: '2-digit', month: 'short', year: 'numeric' }, opt));
+      const hora = ahora.toLocaleTimeString('en-US', Object.assign({ hour: '2-digit', minute: '2-digit' }, opt));
+      g.fillStyle = blanco; g.font = '500 24px "IBM Plex Mono", monospace';
+      g.fillText(fecha + '  ' + hora, X, topY);
 
-      // ── centro: ROI grande ──
-      g.fillStyle = colPnl; g.font = '800 150px "IBM Plex Mono", monospace';
-      g.fillText((pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%', X, H * 0.56);
-      // PNL en USDT, grande
-      g.fillStyle = colPnl; g.font = '800 64px "IBM Plex Mono", monospace';
-      g.fillText((pnl >= 0 ? '+' : '') + fmt(pnl) + ' USDT', X, H * 0.56 + 86);
+      // ── ROI grande + PNL (subidos un poco) ──
+      let cy = H * 0.50;
+      g.fillStyle = colPnl; g.font = '800 128px "IBM Plex Mono", monospace';
+      g.fillText((pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%', X, cy);
+      g.fillStyle = colPnl; g.font = '800 56px "IBM Plex Mono", monospace';
+      g.fillText((pnl >= 0 ? '+' : '') + fmt(pnl) + ' USDT', X, cy + 74);
 
-      // ── entrada y precio actual ──
-      let infY = H * 0.72;
-      g.fillStyle = dorado; g.font = '700 24px "IBM Plex Mono", monospace';
-      g.fillText('ENTRY PRICE', X, infY);
-      g.fillText('MARK PRICE', X + 320, infY);
-      g.fillStyle = blanco; g.font = '800 36px "IBM Plex Mono", monospace';
-      g.fillText(fmt(pos.px), X, infY + 44);
-      g.fillText(fmt(mark), X + 320, infY + 44);
-
-      // wallet (últimas 4)
-      infY += 110;
+      // ── entrada / marca / wallet ──
+      let iy = H * 0.74;
+      g.fillStyle = dorado; g.font = '700 22px "IBM Plex Mono", monospace';
+      g.fillText('ENTRY PRICE', X, iy); g.fillText('MARK PRICE', X + 300, iy);
+      g.fillStyle = blanco; g.font = '800 34px "IBM Plex Mono", monospace';
+      g.fillText(fmt(pos.px), X, iy + 42); g.fillText(fmt(mark), X + 300, iy + 42);
+      iy += 86;
       let cuenta = ''; try { cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || ''; } catch (_) {}
-      if (cuenta) {
-        g.fillStyle = dorado; g.font = '700 22px "IBM Plex Mono", monospace';
-        g.fillText('WALLET ••••' + cuenta.slice(-4), X, infY);
-      }
+      if (cuenta) { g.fillStyle = dorado; g.font = '700 22px "IBM Plex Mono", monospace'; g.fillText('WALLET \u2022\u2022\u2022\u2022' + cuenta.slice(-4), X + 260, iy); }
 
-      // ── abajo izquierda: logo cco-movil con sombra ──
+      // ── abajo izquierda: logo cco-movil con sombra (SIN texto de dominio) ──
       const cco = await cargarImg('assets/img/cco-movil.webp');
       if (cco) {
-        const lw = 300, lh = cco.height * (lw / cco.width);
-        g.save();
-        g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 24; g.shadowOffsetX = 0; g.shadowOffsetY = 8;
-        g.drawImage(cco, X, H - lh - 70, lw, lh);
-        g.restore();
+        const lw = 210, lh = cco.height * (lw / cco.width);
+        g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7;
+        g.drawImage(cco, X, H - lh - 40, lw, lh); g.restore();
       }
-      // dominio
-      g.fillStyle = blanco; g.font = '600 24px "Plus Jakarta Sans", sans-serif';
-      g.fillText('CriptoCubaOficial.com', X, H - 42);
+      return new Promise((res) => cv.toBlob((b) => res(b), 'image/png', 0.95));
+    }
 
-      // exportar
-      cv.toBlob((blob) => {
-        if (!blob) return;
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = (pos.sim || 'posicion') + '-pnl.png'; a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-      }, 'image/png');
+    // Ventana emergente con la tarjeta + botón de descarga + compartir con enlace.
+    async function compartirPos(id) {
+      const blob = await generarTarjeta(id);
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const ENLACE = 'https://criptocubaoficial.com';
+      const ov = document.createElement('div');
+      ov.className = 'fx-modal'; ov.style.zIndex = '26000';
+      ov.innerHTML = '<div class="bg" style="position:absolute;inset:0;background:rgba(0,0,0,.75)"></div>' +
+        '<div style="position:relative;z-index:1;max-width:560px;width:calc(100% - 32px);background:#0e1218;border:1px solid #232b36;border-radius:16px;padding:16px;text-align:center">' +
+        '<img src="' + url + '" style="width:100%;border-radius:11px;display:block">' +
+        '<div style="display:flex;gap:10px;margin-top:14px">' +
+        '<button id="fxsh-dl" style="flex:1;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:1px solid #f4d06a;border-radius:11px;padding:13px;color:#231800;font-weight:800;font-size:15px;cursor:pointer">Download</button>' +
+        '<button id="fxsh-share" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:11px;padding:13px;color:#eaecef;font-weight:700;font-size:15px;cursor:pointer">Share</button>' +
+        '</div></div>';
+      document.body.appendChild(ov);
+      const cerrar = () => { try { ov.remove(); URL.revokeObjectURL(url); } catch (_) {} };
+      ov.querySelector('.bg').onclick = cerrar;
+      const archivo = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
+      ov.querySelector('#fxsh-dl').onclick = () => {
+        const a = document.createElement('a'); a.href = url; a.download = 'CriptoCubaOficial.png'; a.click();
+      };
+      ov.querySelector('#fxsh-share').onclick = async () => {
+        // Compartir la imagen JUNTO CON el enlace (como extras.js). Si no se puede,
+        // se descarga la imagen normalmente.
+        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+          try { await navigator.share({ files: [archivo], title: 'CriptoCuba Oficial', text: ENLACE }); return; } catch (_) {}
+        }
+        if (navigator.share) { try { await navigator.share({ title: 'CriptoCuba Oficial', text: ENLACE, url: ENLACE }); return; } catch (_) {} }
+        const a = document.createElement('a'); a.href = url; a.download = 'CriptoCubaOficial.png'; a.click();
+      };
     }
     $('f-closeall').onclick = () => { posiciones = []; pintarPos(); };
     let tabPos = 'pos';
