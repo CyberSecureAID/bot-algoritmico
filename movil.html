@@ -83,7 +83,7 @@
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
       // gridbot-ui monta el móvil solo (detecta que es móvil) con su conexión
-      await import('./assets/js/gridbot-ui.js?v=253');
+      await import('./assets/js/gridbot-ui.js?v=254');
     } catch (e) {
       document.body.insertAdjacentHTML('beforeend',
         '<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#8b96a3">' +
@@ -95,25 +95,12 @@
 </script>
 
 <script>
-  /* Service worker: se registra sw3.js (nombre NUEVO). El navegador de la wallet
-     cacheaba el sw anterior y no lo soltaba; con un nombre nuevo lo instala fresco.
-     Primero se desregistra cualquier sw viejo (una sola vez), luego sw3. */
+  /* Registro limpio del service worker (sw3.js). Sin desregistros ni recargas:
+     se instala en silencio y toma control en la próxima carga, sin pantalla
+     blanca. Se actualiza solo cuando cambia su versión. */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      var yaLimpio = false;
-      try { yaLimpio = localStorage.getItem('sw3-ok') === '1'; } catch (_) {}
-      var paso = yaLimpio
-        ? Promise.resolve()
-        : navigator.serviceWorker.getRegistrations().then(function (rs) {
-            var viejos = rs.filter(function (r) {
-              var u = (r.active && r.active.scriptURL) || '';
-              return u.indexOf('sw3.js') === -1;   // todo lo que NO sea sw3
-            });
-            return Promise.all(viejos.map(function (r) { return r.unregister(); }));
-          }).then(function () { try { localStorage.setItem('sw3-ok', '1'); } catch (_) {} });
-      paso.catch(function () {}).finally(function () {
-        navigator.serviceWorker.register('sw3.js').catch(function () {});
-      });
+      navigator.serviceWorker.register('sw3.js').catch(function () {});
     });
   }
 </script>
