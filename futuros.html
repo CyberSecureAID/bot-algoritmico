@@ -491,7 +491,7 @@
           '<div class="v">' + fmt(px) + '</div>' +
           '<div class="pct ' + (dist >= 0 ? 'up' : 'dn') + '">' + (dist >= 0 ? '+' : '') + dist.toFixed(2) + '% <span>from market</span></div>' +
         '</div>' +
-        '<div class="fo-cm-row"><div class="fo-cm-top"><label>Capital</label><b id="fo-cm-capv">' + (tieneUSDT ? '0 USDT' : 'No USDT') + '</b></div>' +
+        '<div class="fo-cm-row"><div class="fo-cm-top"><label>Capital</label><b id="fo-cm-capv">' + (tieneUSDT ? ('0 / ' + fmt(saldo) + ' USDT') : 'No USDT') + '</b></div>' +
           '<input type="range" id="fo-cm-cap" min="0" max="' + (CAP_MAX || 1) + '" value="0" step="0.01"' + (tieneUSDT ? '' : ' disabled') + '></div>' +
         '<div class="fo-cm-row"><div class="fo-cm-top"><label>Leverage</label><b id="fo-cm-levv">' + cmLev + '\u00D7</b></div>' +
           '<input type="range" id="fo-cm-lev" min="1" max="200" value="' + cmLev + '" step="1"></div>' +
@@ -505,7 +505,7 @@
       const q = (id) => cm.querySelector('#' + id);
       function refr() {
         q('fo-cm-levv').textContent = cmLev + '\u00D7';
-        q('fo-cm-capv').textContent = tieneUSDT ? ((cmCap ? fmt(cmCap) : '0') + ' USDT') : 'No USDT';
+        q('fo-cm-capv').textContent = tieneUSDT ? ((cmCap ? fmt(cmCap) : '0') + ' / ' + fmt(saldo) + ' USDT') : 'No USDT';
         const size = cmCap * cmLev;
         q('fo-cm-size').textContent = size ? fmt(size) + ' USDT' : '\u2014';
       }
@@ -554,8 +554,13 @@
 
       // Saldo de stablecoins (USDT + USDC) en BNB Chain. Se esconde sin cuenta.
       const el = document.getElementById('f-saldo-fx');
+      if (!cuenta) {
+        if (el) el.style.display = 'none';
+        if ($('p-avbl')) $('p-avbl').textContent = '0.00 USDT';
+        if ($('pu-bal')) $('pu-bal').textContent = '—';
+        return;
+      }
       if (!el) return;
-      if (!cuenta) { el.style.display = 'none'; return; }
       try {
         const gb = await import('./assets/js/gridbot.js?v=129');
         if (!gb.balanceToken || !gb.fmt) return;
@@ -570,7 +575,12 @@
           } catch (_) {}
         }));
         saldo = total;   // el saldo real alimenta la barra de capital del recuadro
-        el.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
+        const txtSaldo = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
+        el.textContent = txtSaldo;
+        // LOS 3 SITIOS sincronizados con la MISMA fuente (total):
+        if ($('p-avbl')) $('p-avbl').textContent = txtSaldo;          // Available del panel
+        if ($('pu-bal')) $('pu-bal').textContent = txtSaldo;          // Saldo USDT del panel
+        try { calc(); } catch (_) {}                                  // recalcula el panel con el saldo nuevo
         el.style.display = '';
       } catch (_) { el.style.display = 'none'; }
 
@@ -628,6 +638,14 @@
     setTimeout(refrescarUsuario, 2000);
     // y cuando la wallet avise de cambios
     try { if (wallet.alCambiar) wallet.alCambiar(() => refrescarUsuario()); } catch (_) {}
+    // Refresco periódico del saldo (cada 10s): tras un swap u otra operación, los
+    // 3 sitios se actualizan solos sin recargar la página.
+    setInterval(refrescarUsuario, 10000);
+    // Al cerrar el swap, refrescar enseguida (el saldo pudo cambiar).
+    document.addEventListener('click', (e) => {
+      const m = document.getElementById('swap-modal');
+      if (m && !m.contains(e.target)) { setTimeout(refrescarUsuario, 500); setTimeout(refrescarUsuario, 2500); }
+    });
 
     calc();
     try { arrancarIdioma(); traducirTodo(); } catch (_) {}
