@@ -101,6 +101,27 @@ function estilos() {
   #fx .prow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);color:var(--ink);font-size:11px}
   #fx .prow .side{font-weight:800} #fx .prow .side.long{color:var(--up)} #fx .prow .side.short{color:var(--down)}
   #fx .prow .x{padding:5px 9px;border:1px solid rgba(246,70,93,.3);border-radius:7px;color:var(--down);background:rgba(246,70,93,.1);font-weight:700}
+  /* Tarjetas de posición (móvil): compactas, apiladas */
+  #fx .fxcard{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:9px}
+  #fx .fxc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  #fx .fxc-top .side{font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+  #fx .fxc-top .side.long{color:var(--up)} #fx .fxc-top .side.short{color:var(--down)}
+  #fx .fxc-lim{font-family:'IBM Plex Mono';font-size:9px;font-weight:800;color:var(--gold);background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.3);border-radius:5px;padding:2px 6px}
+  #fx .fxshare{background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);border-radius:7px;width:28px;height:28px;display:grid;place-items:center;padding:0}
+  #fx .fxc-pnl{font-family:'IBM Plex Mono';font-size:19px;font-weight:800;margin-bottom:9px}
+  #fx .fxc-pnl.up{color:#2ebd85} #fx .fxc-pnl.dn{color:#f6465d}
+  #fx .fxc-pnl em{font-style:normal;font-size:13px;opacity:.9}
+  #fx .fxc-g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:9px}
+  #fx .fxc-g>div{display:flex;flex-direction:column;gap:2px;position:relative}
+  #fx .fxc-g label{font-size:8.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+  #fx .fxc-g b{font-family:'IBM Plex Mono';font-size:12px;color:var(--ink);font-weight:700;display:inline-flex;align-items:center;gap:5px}
+  #fx .fxc-tpsl{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;border-top:1px solid rgba(255,255,255,.05);padding-top:9px}
+  #fx .fxc-tpsl>div{display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono';font-size:11px}
+  #fx .fxc-tpsl label{font-size:9px;color:var(--mut)}
+  #fx .fxc-tpsl .tp b{color:#2ebd85;font-weight:700} #fx .fxc-tpsl .sl b{color:#f6465d;font-weight:700}
+  #fx .fxc-tpsl .x{padding:6px 12px;border:1px solid rgba(246,70,93,.3);border-radius:8px;color:var(--down);background:rgba(246,70,93,.1);font-weight:700;font-size:11px}
+  #fx .fxedit{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--mut);border-radius:5px;width:19px;height:19px;display:grid;place-items:center;padding:0;flex:0 0 auto}
+  #fx .fxedit:active{color:var(--gold)}
 
   #fx input,#fx button{touch-action:manipulation}
   #fx .fld input{font-size:16px}
@@ -185,7 +206,7 @@ export async function pintarFuturos(host, api) {
       <div class="book" id="fx-book"></div>
     </div>
 
-    <div class="btabs"><button class="on" data-b="pos">${t('Posiciones')} (<span id="fx-npos">0</span>)</button><button data-b="ord">${t('Órdenes abiertas')} (0)</button>
+    <div class="btabs"><button class="on" data-b="pos">${t('Posiciones')} (<span id="fx-npos">0</span>)</button><button data-b="ord">${t('Órdenes abiertas')} (<span id="fx-nord">0</span>)</button>
       <button class="hist" id="fx-hist" title="${t('Historial')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button></div>
     <div class="brow"><label class="solo"><span class="chk" id="fx-solo"></span>${t('Solo actual')}</label><button class="all" id="fx-all">${t('Cerrar todo')}</button></div>
     <div class="bbody" id="fx-bbody"></div>
@@ -296,23 +317,188 @@ export async function pintarFuturos(host, api) {
     if (!amt) { const f = $('fx-amt'); f.focus(); f.closest('.fld').style.borderColor = 'var(--down)'; setTimeout(() => { f.closest('.fld').style.borderColor = ''; }, 1200); return; }
     const px = (_tipo !== 'market' && parseFloat($('fx-price').value)) || _libro.precio || 0; if (!px) return;
     const esL = lado === 'long';
-    _pos.push({ id: Date.now(), sim: _par.s, lado, px, amt, lev: _lev, tp: parseFloat($('fx-tp').value) || 0, sl: parseFloat($('fx-sl').value) || 0, liq: liqDe(px, _lev, esL) });
+    const _act = _libro.precio || px;
+    const _esLimit = (_tipo !== 'market') || (_act && Math.abs((px - _act) / _act) >= 0.0015);
+    _pos.push({ id: Date.now(), sim: _par.s, parId: _par.id, lado, px, amt, lev: _lev, tp: parseFloat($('fx-tp').value) || 0, sl: parseFloat($('fx-sl').value) || 0, liq: liqDe(px, _lev, esL), limit: !!_esLimit });
     pintarPos();
   }
   $('fx-long').onclick = () => abrir('long');
   $('fx-short').onclick = () => abrir('short');
-  $('fx-all').onclick = () => { _pos = []; pintarPos(); };
+  $('fx-all').onclick = () => {
+    // cierra SOLO la sección actual (Positions=limit / Open Orders=abiertas)
+    if (_tab === 'ord') _pos = _pos.filter((p) => p.limit);
+    else _pos = _pos.filter((p) => !p.limit);
+    pintarPos();
+  };
   $('fx-solo').parentElement.onclick = () => { _solo = !_solo; $('fx-solo').classList.toggle('on', _solo); pintarPos(); };
   host.querySelectorAll('.btabs button').forEach((b) => b.onclick = () => { _tab = b.dataset.b; host.querySelectorAll('.btabs button').forEach((x) => x.classList.toggle('on', x === b)); pintarPos(); });
 
-  function pintarPos() {
-    const np = $('fx-npos'); if (np) np.textContent = _pos.length;
-    const body = $('fx-bbody'); if (!body) return;
-    if (_tab === 'ord') { body.innerHTML = '<div class="bempty">' + t('No tienes órdenes abiertas.') + '</div>'; return; }
-    const ps = _solo ? _pos.filter((p) => p.sim === _par.s) : _pos;
-    if (!ps.length) { body.innerHTML = '<div class="bempty">' + t('No tienes posiciones abiertas.') + '</div>'; return; }
-    body.innerHTML = ps.map((p) => '<div class="prow"><span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span><br><span style="color:var(--mut)">' + t('Entrada') + ' ' + fmtP(p.px) + ' · ' + t('Liq.') + ' ' + fmtP(p.liq) + '</span></span><span>' + fmtP(p.amt * p.lev) + ' USDT</span><button class="x" data-id="' + p.id + '">' + t('Cerrar') + '</button></div>').join('');
-    body.querySelectorAll('.x').forEach((b) => b.onclick = () => { _pos = _pos.filter((p) => p.id !== +b.dataset.id); pintarPos(); });
+  // Editar TP/SL/entrada/apalancamiento (modal). Al confirmar: firma con el
+  // contrato cuando esté desplegado. SL no puede pasar la liquidación.
+  function editarMv(id, k) {
+    const pos = _pos.find((p) => p.id === id || p.id === +id); if (!pos) return;
+    const tit = { tp: 'Take Profit', sl: 'Stop Loss', px: 'Entry Price', lev: 'Leverage' };
+    const esLev = k === 'lev';
+    const actual = pos[k] || (esLev ? pos.lev : pos.px);
+    const ov = document.createElement('div');
+    ov.className = 'fxpop';
+    ov.innerHTML = '<div class="bg"></div><div class="card" style="position:relative;z-index:1;max-width:360px;width:calc(100% - 36px);margin:auto;background:#0e1218;border:1px solid #232b36;border-radius:16px;padding:18px">' +
+      '<div style="font-size:16px;font-weight:800;color:#eef1f6;margin-bottom:3px">' + (tit[k] || 'Edit') + '</div>' +
+      '<div style="font-size:12px;color:#8b96a3;margin-bottom:13px">' + pos.sim + ' · ' + (pos.lado === 'long' ? 'Long' : 'Short') + ' ' + pos.lev + '×</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;background:#0a0e13;border:1px solid #232b36;border-radius:11px;padding:11px 13px;margin-bottom:15px">' +
+      '<input id="fxe-in" inputmode="decimal" value="' + (actual ? fmtP(actual).replace(/,/g, "") : "") + '" style="flex:1;background:none;border:none;outline:none;color:#eef1f6;font-family:\'IBM Plex Mono\';font-size:17px;font-weight:700">' +
+      '<span style="color:#8b96a3;font-size:12px">' + (esLev ? '×' : 'USDT') + '</span></div>' +
+      '<div style="display:flex;gap:9px"><button id="fxe-x" style="flex:1;background:#1b222c;border:1px solid #232b36;border-radius:11px;padding:12px;color:#eaecef;font-weight:700;font-size:14px">Cancel</button>' +
+      '<button id="fxe-ok" style="flex:1;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:none;border-radius:11px;padding:12px;color:#231800;font-weight:800;font-size:14px">Confirm</button></div></div>';
+    document.body.appendChild(ov);
+    const cerrar = () => { try { ov.remove(); } catch (_) {} };
+    ov.querySelector('.bg').onclick = cerrar;
+    ov.querySelector('#fxe-x').onclick = cerrar;
+    setTimeout(() => { try { ov.querySelector('#fxe-in').focus(); } catch (_) {} }, 50);
+    ov.querySelector('#fxe-ok').onclick = () => {
+      const v = parseFloat((ov.querySelector('#fxe-in').value || '').replace(/,/g, '')) || 0;
+      if (!v) return;
+      if (k === 'sl') {
+        const peor = pos.lado === 'long' ? (v <= pos.liq) : (v >= pos.liq);
+        if (peor) { pos.sl = 0; cerrar(); pintarPos(); return; }
+      }
+      if (esLev) { pos.lev = Math.max(1, Math.min(200, Math.round(v))); pos.liq = liqDe(pos.px, pos.lev, pos.lado === 'long'); }
+      else pos[k] = v;
+      if (k === 'px') pos.liq = liqDe(pos.px, pos.lev, pos.lado === 'long');
+      // CONTRATO: aquí irá la FIRMA de la wallet para registrar el cambio.
+      cerrar(); pintarPos();
+    };
   }
+
+  // Tarjeta de compartir (misma dinámica que la web, con navigator.share).
+  function imgMv(src) { return new Promise((res) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
+  async function compartirMv(id) {
+    const pos = _pos.find((p) => p.id === id || p.id === +id); if (!pos) return;
+    const esLong = pos.lado === 'long';
+    const mk = markDeMv(pos), dir = esLong ? 1 : -1;
+    const pnl = ((mk - pos.px) / pos.px) * dir * pos.lev * pos.amt;
+    const pct = ((mk - pos.px) / pos.px) * dir * pos.lev * 100;
+    const gana = pnl >= 0;
+    const verde = '#16c784', rojo = '#f6465d', dorado = '#E8B84B', blanco = '#fff';
+    const col = gana ? verde : rojo;
+    const fondo = await imgMv('assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp');
+    const W = 1670, H = 941, dpr = 2;
+    const cv = document.createElement('canvas'); cv.width = W * dpr; cv.height = H * dpr;
+    const g = cv.getContext('2d'); g.scale(dpr, dpr);
+    if (fondo) g.drawImage(fondo, 0, 0, W, H); else { g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, H); }
+    const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, 'rgba(5,7,10,.80)'); gr.addColorStop(0.5, 'rgba(5,7,10,.40)'); gr.addColorStop(1, 'rgba(5,7,10,.05)');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    const X = 70; g.textAlign = 'left';
+    const parId = pos.parId || (pos.sim || '').replace('USDT', '');
+    let topY = 132;
+    const logo = await imgMv('https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + parId.toLowerCase() + '.png');
+    g.save(); g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.closePath(); g.fillStyle = 'rgba(255,255,255,.08)'; g.fill(); g.clip();
+    if (logo) g.drawImage(logo, X - 2, topY - 32, 64, 64);
+    else { g.fillStyle = dorado; g.font = '800 34px sans-serif'; g.textAlign = 'center'; g.fillText((parId || '?')[0], X + 30, topY + 12); g.textAlign = 'left'; }
+    g.restore();
+    g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.stroke();
+    g.fillStyle = blanco; g.font = '800 46px sans-serif'; g.fillText(pos.sim, X + 80, topY + 16);
+    topY += 86; g.fillStyle = esLong ? verde : rojo; g.font = '800 28px monospace'; g.fillText((esLong ? 'LONG' : 'SHORT') + '  ' + pos.lev + '×', X, topY);
+    topY += 50; const ah = new Date(); const o = { timeZone: 'America/Havana' };
+    g.fillStyle = blanco; g.font = '500 24px monospace';
+    g.fillText(ah.toLocaleDateString('en-US', Object.assign({ day: '2-digit', month: 'short', year: 'numeric' }, o)) + '  ' + ah.toLocaleTimeString('en-US', Object.assign({ hour: '2-digit', minute: '2-digit' }, o)), X, topY);
+    let cy = H * 0.42; g.fillStyle = col; g.font = '800 120px monospace'; g.fillText((pct >= 0 ? '+' : '') + pct.toFixed(2) + '%', X, cy);
+    g.fillStyle = col; g.font = '800 52px monospace'; g.fillText((pnl >= 0 ? '+' : '') + fmtP(pnl) + ' USDT', X + 10, cy + 70);
+    let iy = H * 0.62; g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('ENTRY PRICE', X, iy); g.fillText('MARK PRICE', X + 300, iy);
+    g.fillStyle = blanco; g.font = '800 34px monospace'; g.fillText(fmtP(pos.px), X, iy + 42); g.fillText(fmtP(mk), X + 300, iy + 42);
+    iy += 120; let cuenta = ''; try { cuenta = (window.ethereum && window.ethereum.selectedAddress) || ''; } catch (_) {}
+    if (cuenta) { g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('WALLET ••••' + cuenta.slice(-4), X, iy); }
+    const cco = await imgMv('assets/img/cco-movil.webp');
+    if (cco) { const lw = 220, lh = cco.height * (lw / cco.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7; g.drawImage(cco, X, H - lh - 38, lw, lh); g.restore(); }
+    cv.toBlob(async (blob) => {
+      if (!blob) return;
+      const archivo = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
+      const ENLACE = 'https://criptocubaoficial.com';
+      if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        try { await navigator.share({ files: [archivo], title: 'CriptoCuba Oficial', text: ENLACE }); return; } catch (_) {}
+      }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'CriptoCubaOficial.png'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, 'image/png', 0.95);
+  }
+
+  // precio de marca de una posición según SU moneda (no la gráfica).
+  function markDeMv(p) {
+    if (p.sim === _par.s && _libro.precio) return _libro.precio;
+    try { const c = cache(); if (p.parId) { const cg = Object.values(c).find((x) => x); } } catch (_) {}
+    return p.px;
+  }
+  function lapMv(id, k) {
+    return '<button class="fxedit" data-id="' + id + '" data-k="' + k + '"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>';
+  }
+  function pintarPos() {
+    const abiertas = _pos.filter((p) => !p.limit);
+    const limites = _pos.filter((p) => p.limit);
+    const npos = $('fx-npos'); if (npos) npos.textContent = limites.length;   // Positions = limit
+    const nord = $('fx-nord'); if (nord) nord.textContent = abiertas.length;  // Open Orders = abiertas
+    const body = $('fx-bbody'); if (!body) return;
+    const esAb = _tab === 'ord';
+    let lista = esAb ? abiertas : limites;
+    if (_solo) lista = lista.filter((p) => p.sim === _par.s);
+    if (!lista.length) { body.innerHTML = '<div class="bempty">' + t(esAb ? 'No tienes operaciones abiertas.' : 'No tienes órdenes limit.') + '</div>'; return; }
+
+    if (esAb) {
+      // OPERACIONES ABIERTAS: compacto, PNL/ROI color, TP/SL editables, compartir
+      body.innerHTML = lista.map((p) => {
+        const mk = markDeMv(p), dir = p.lado === 'long' ? 1 : -1;
+        const pnl = ((mk - p.px) / p.px) * dir * p.lev * p.amt;
+        const pct = ((mk - p.px) / p.px) * dir * p.lev * 100;
+        const cl = pnl >= 0 ? 'up' : 'dn';
+        return '<div class="fxcard">' +
+          '<div class="fxc-top"><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span>' +
+            '<button class="fxshare" data-id="' + p.id + '"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg></button></div>' +
+          '<div class="fxc-pnl ' + cl + '">' + (pnl >= 0 ? '+' : '') + fmtP(pnl) + ' USDT <em>(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)</em></div>' +
+          '<div class="fxc-g">' +
+            '<div><label>' + t('Tamaño') + '</label><b>' + fmtP(p.amt * p.lev) + '</b></div>' +
+            '<div><label>' + t('Entrada') + '</label><b>' + fmtP(p.px) + '</b></div>' +
+            '<div><label>' + t('Liq.') + '</label><b>' + fmtP(p.liq) + '</b></div>' +
+          '</div>' +
+          '<div class="fxc-tpsl">' +
+            '<div class="tp"><label>TP</label><b>' + (p.tp ? fmtP(p.tp) : '—') + '</b>' + lapMv(p.id, 'tp') + '</div>' +
+            '<div class="sl"><label>SL</label><b>' + (p.sl ? fmtP(p.sl) : '—') + '</b>' + lapMv(p.id, 'sl') + '</div>' +
+            '<button class="x" data-id="' + p.id + '">' + t('Cerrar') + '</button>' +
+          '</div></div>';
+      }).join('');
+    } else {
+      // ÓRDENES LIMIT: entrada/lev/TP/SL editables
+      body.innerHTML = lista.map((p) => {
+        const dist = _libro.precio && p.sim === _par.s ? ((p.px - _libro.precio) / _libro.precio * 100) : 0;
+        return '<div class="fxcard">' +
+          '<div class="fxc-top"><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + '</span><span class="fxc-lim">LIMIT</span></div>' +
+          '<div class="fxc-g">' +
+            '<div><label>Entry</label><b>' + fmtP(p.px) + '</b>' + lapMv(p.id, 'px') + '</div>' +
+            '<div><label>Lev</label><b>' + p.lev + '×</b>' + lapMv(p.id, 'lev') + '</div>' +
+            '<div><label>' + t('Tamaño') + '</label><b>' + fmtP(p.amt * p.lev) + '</b></div>' +
+          '</div>' +
+          '<div class="fxc-tpsl">' +
+            '<div class="tp"><label>TP</label><b>' + (p.tp ? fmtP(p.tp) : '—') + '</b>' + lapMv(p.id, 'tp') + '</div>' +
+            '<div class="sl"><label>SL</label><b>' + (p.sl ? fmtP(p.sl) : '—') + '</b>' + lapMv(p.id, 'sl') + '</div>' +
+            '<button class="x" data-id="' + p.id + '">' + t('Cancelar') + '</button>' +
+          '</div></div>';
+      }).join('');
+    }
+    body.querySelectorAll('.x').forEach((b) => b.onclick = () => { _pos = _pos.filter((p) => p.id !== b.dataset.id && p.id !== +b.dataset.id); pintarPos(); });
+    body.querySelectorAll('.fxedit').forEach((b) => b.onclick = () => editarMv(b.dataset.id, b.dataset.k));
+    body.querySelectorAll('.fxshare').forEach((b) => b.onclick = () => compartirMv(b.dataset.id));
+  }
+  // ─── OPERACIONES DE DEMOSTRACIÓN (quitar cuando haya contrato) ───
+  if (!_pos.length) {
+    const liq = (e, l, esL) => esL ? e * (1 - 0.75 / l) : e * (1 + 0.75 / l);
+    const mk = (lado, px, amt, lev, limit) => ({
+      id: 'demo-' + Math.random().toString(36).slice(2, 8), sim: 'BTCUSDT', parId: 'BTC', lado, px, amt, lev,
+      tp: lado === 'long' ? px * 1.03 : px * 0.97, sl: lado === 'long' ? px * 0.985 : px * 1.015,
+      liq: liq(px, lev, lado === 'long'), limit, demo: true
+    });
+    _pos = [
+      mk('long', 83600, 500, 50, false), mk('short', 84200, 180, 10, false), mk('long', 83900, 250, 20, false),
+      mk('long', 82500, 200, 20, true), mk('short', 85800, 300, 50, true), mk('long', 81200, 150, 10, true)
+    ];
+  }
+  // ────────────────────────────────────────────────────────────────
   modoPrecio(); calc(); pintarPos();
 }
