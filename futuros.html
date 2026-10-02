@@ -155,8 +155,6 @@
     /* Menú de clic derecho (compacto). */
     #f-cm{position:fixed;z-index:22000;width:248px;background:rgba(14,18,24,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line2);border-radius:15px;box-shadow:0 24px 60px rgba(0,0,0,.65);padding:14px;display:none}
     #f-cm.long{border-color:rgba(46,189,133,.4)} #f-cm.short{border-color:rgba(246,70,93,.4)}
-    #f-cm .fo-cmx{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink3);cursor:pointer;display:grid;place-items:center;font-size:12px;padding:0}
-    #f-cm .fo-cmx:hover{color:var(--down);border-color:var(--down)}
     #f-cm .fo-cm-price{text-align:center;margin:2px 0 14px;padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:11px}
     #f-cm .fo-cm-price .v{font-family:var(--mono);font-size:25px;font-weight:800;color:var(--ink);line-height:1.05}
     #f-cm .fo-cm-price .pct{font-family:var(--mono);font-size:12px;font-weight:700;margin-top:4px}
@@ -484,17 +482,17 @@
       const lejos = Math.abs(dist) >= 0.15;
       let cmLev = lev || 20;
       let cmCap = 0;
-      const CAP_MAX = (saldo > 0 ? saldo : 1000);  // tope de la barra = saldo si lo hay
+      const tieneUSDT = saldo > 0;
+      const CAP_MAX = tieneUSDT ? saldo : 0;   // tope = SALDO REAL. Sin USDT, no se puede asignar.
 
       cm.className = esLong ? 'long' : 'short';
       cm.innerHTML =
-        '<button class="fo-cmx" aria-label="Close">\u2715</button>' +
         '<div class="fo-cm-price">' +
           '<div class="v">' + fmt(px) + '</div>' +
           '<div class="pct ' + (dist >= 0 ? 'up' : 'dn') + '">' + (dist >= 0 ? '+' : '') + dist.toFixed(2) + '% <span>from market</span></div>' +
         '</div>' +
-        '<div class="fo-cm-row"><div class="fo-cm-top"><label>Capital</label><b id="fo-cm-capv">0 USDT</b></div>' +
-          '<input type="range" id="fo-cm-cap" min="0" max="' + CAP_MAX + '" value="0" step="1"></div>' +
+        '<div class="fo-cm-row"><div class="fo-cm-top"><label>Capital</label><b id="fo-cm-capv">' + (tieneUSDT ? '0 USDT' : 'No USDT') + '</b></div>' +
+          '<input type="range" id="fo-cm-cap" min="0" max="' + (CAP_MAX || 1) + '" value="0" step="0.01"' + (tieneUSDT ? '' : ' disabled') + '></div>' +
         '<div class="fo-cm-row"><div class="fo-cm-top"><label>Leverage</label><b id="fo-cm-levv">' + cmLev + '\u00D7</b></div>' +
           '<input type="range" id="fo-cm-lev" min="1" max="200" value="' + cmLev + '" step="1"></div>' +
         '<div class="fo-cm-info"><span>Size</span><b id="fo-cm-size">\u2014</b></div>' +
@@ -507,13 +505,12 @@
       const q = (id) => cm.querySelector('#' + id);
       function refr() {
         q('fo-cm-levv').textContent = cmLev + '\u00D7';
-        q('fo-cm-capv').textContent = (cmCap ? fmt(cmCap) : '0') + ' USDT';
+        q('fo-cm-capv').textContent = tieneUSDT ? ((cmCap ? fmt(cmCap) : '0') + ' USDT') : 'No USDT';
         const size = cmCap * cmLev;
         q('fo-cm-size').textContent = size ? fmt(size) + ' USDT' : '\u2014';
       }
       q('fo-cm-cap').oninput = (e) => { cmCap = +e.target.value || 0; refr(); };
       q('fo-cm-lev').oninput = (e) => { cmLev = +e.target.value || 1; refr(); };
-      cm.querySelector('.fo-cmx').onclick = (e) => { e.stopPropagation(); cm.style.display = 'none'; };
 
       cm.querySelector('.fo-cm-go').onclick = (e) => {
         e.stopPropagation();
@@ -572,6 +569,7 @@
             if (isFinite(n)) total += n;
           } catch (_) {}
         }));
+        saldo = total;   // el saldo real alimenta la barra de capital del recuadro
         el.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
         el.style.display = '';
       } catch (_) { el.style.display = 'none'; }
