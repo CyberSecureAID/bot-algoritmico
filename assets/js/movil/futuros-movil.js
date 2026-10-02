@@ -344,7 +344,13 @@ export async function pintarFuturos(host, api) {
     pintarPos();
   };
   $('fx-solo').parentElement.onclick = () => { _solo = !_solo; $('fx-solo').classList.toggle('on', _solo); pintarPos(); };
-  host.querySelectorAll('.btabs button').forEach((b) => b.onclick = () => { _tab = b.dataset.b; host.querySelectorAll('.btabs button').forEach((x) => x.classList.toggle('on', x === b)); pintarPos(); });
+  // Solo las pestañas reales (con data-b) cambian de sección y reciben la línea
+  // amarilla. El botón de historial NO es una pestaña, se excluye.
+  host.querySelectorAll('.btabs button[data-b]').forEach((b) => b.onclick = () => {
+    _tab = b.dataset.b;
+    host.querySelectorAll('.btabs button[data-b]').forEach((x) => x.classList.toggle('on', x === b));
+    pintarPos();
+  });
 
   // Editar TP/SL/entrada/apalancamiento (modal). Al confirmar: firma con el
   // contrato cuando esté desplegado. SL no puede pasar la liquidación.
