@@ -103,7 +103,7 @@
     /* Positions (limit): Símbolo, Tipo, Precio, Tamaño, Distancia, Liq, acción */
     #f-pos-body.limit .pos-head,#f-pos-body.limit .pos-row{grid-template-columns:1.4fr 0.8fr 1fr 1fr 1fr 1fr 84px}
     /* Open Orders (abiertas): Símbolo, Tamaño, Entrada, PNL, Liq, acción */
-    #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.3fr 0.95fr 0.9fr 0.9fr 0.7fr 0.9fr 120px}
+    #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.15fr 0.85fr 0.8fr 0.8fr 0.6fr 0.85fr 0.85fr 0.8fr 110px}
     .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);padding:10px 0 11px}
     .cab-pag{display:flex;justify-content:flex-end}
     .pg-cab{background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.35);color:var(--gold);font-family:var(--mono);font-size:10px;font-weight:800;padding:5px 8px;border-radius:7px;cursor:pointer;position:relative;white-space:nowrap}
@@ -113,6 +113,10 @@
     .pos-row:hover{background:rgba(255,255,255,.02)}
     .pnl-v{font-weight:800;font-style:normal;font-family:var(--mono);font-size:11.5px}
     .pnl-v.pnl-up{color:#2ebd85} .pnl-v.pnl-dn{color:#f6465d}
+    .tpsl-c{display:inline-flex;align-items:center;gap:5px}
+    .tpsl-c em{font-style:normal;font-family:var(--mono);font-size:11px}
+    .tpsl-c .edit-tpsl{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink3);border-radius:6px;width:22px;height:22px;display:grid;place-items:center;cursor:pointer;padding:0;flex:0 0 auto;transition:all .12s}
+    .tpsl-c .edit-tpsl:hover{color:var(--gold);border-color:var(--gold-soft)}
     .pos-row .side{font-weight:800;display:inline-flex;align-items:center;gap:7px;position:relative;padding-left:11px}
     .pos-row .side::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:15px;border-radius:2px}
     .pos-row .side.long{color:var(--up)} .pos-row .side.long::before{background:var(--up)}
@@ -299,6 +303,28 @@
 
     let lev = 20, modo = 'cruzada', tipo = 'market', pctCap = 0;
     let precio = 0, saldo = 0, posiciones = [];
+    /* ─── OPERACIONES DE DEMOSTRACIÓN (quitar cuando haya contrato) ──────────── */
+    (function demoPosiciones() {
+      const S = 'BTCUSDT';
+      const liq = (e, l, esL) => esL ? e * (1 - 0.75 / l) : e * (1 + 0.75 / l);
+      const mk = (lado, px, m, lev, limit) => ({
+        id: 'demo-' + Math.random().toString(36).slice(2, 8), lado, px, m, lev,
+        tp: lado === 'long' ? px * 1.03 : px * 0.97,
+        sl: lado === 'long' ? px * 0.985 : px * 1.015,
+        liq: liq(px, lev, lado === 'long'), sim: S, parId: 'BTC', cg: 'bitcoin', limit, demo: true, t: Date.now()
+      });
+      posiciones = [
+        // 3 operaciones ABIERTAS (Open Orders): con TP y SL
+        mk('long',  83600, 500, 50, false),
+        mk('short', 84200, 180, 10, false),
+        mk('long',  83900, 250, 20, false),
+        // 3 órdenes LIMIT (Positions)
+        mk('long',  82500, 200, 20, true),
+        mk('short', 85800, 300, 50, true),
+        mk('long',  81200, 150, 10, true)
+      ];
+    })();
+    /* ───────────────────────────────────────────────────────────────────────── */
 
     /* ═══ 1. Smart Levels dentro de la celda, sin su banda ═══ */
     await abrirNiveles();
@@ -425,6 +451,50 @@
       pintarPos();
     }
     function cerrar(id) { posiciones = posiciones.filter((p) => p.id !== id); pintarPos(); }
+
+    /* Editar TP o SL de una posición. Al dar OK, el cambio se FIRMARÁ con el
+       contrato de futuros cuando esté desplegado (define dónde se toma ganancia
+       o pérdida; el contrato respalda la posición con el capital de staking).
+       También: el SL no puede pasar el precio de liquidación (se validará). */
+    function editarTPSL(id, k) {
+      const pos = posiciones.find((p) => p.id === id); if (!pos) return;
+      const esTP = k === 'tp';
+      const actual = pos[k] || pos.px;
+      const ov = document.createElement('div');
+      ov.className = 'fx-modal'; ov.style.zIndex = '26000';
+      ov.innerHTML = '<div class="bg" style="position:absolute;inset:0;background:rgba(0,0,0,.72)"></div>' +
+        '<div style="position:relative;z-index:1;max-width:380px;width:calc(100% - 32px);background:#0e1218;border:1px solid #232b36;border-radius:16px;padding:20px">' +
+        '<div style="font-size:16px;font-weight:800;color:#eef1f6;margin-bottom:4px">' + (esTP ? 'Take Profit' : 'Stop Loss') + '</div>' +
+        '<div style="font-size:12px;color:#8b96a3;margin-bottom:14px">' + (pos.sim) + ' \u00B7 ' + (pos.lado === 'long' ? 'Long' : 'Short') + ' ' + pos.lev + '\u00D7</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;background:#0a0e13;border:1px solid #232b36;border-radius:11px;padding:11px 13px;margin-bottom:16px">' +
+        '<input id="fx-tpsl-in" inputmode="decimal" value="' + (actual ? fmt(actual).replace(/,/g, "") : "") + '" style="flex:1;background:none;border:none;outline:none;color:#eef1f6;font-family:var(--mono);font-size:18px;font-weight:700">' +
+        '<span style="color:#8b96a3;font-family:var(--mono);font-size:13px">USDT</span></div>' +
+        '<div style="display:flex;gap:10px"><button id="fx-tpsl-x" style="flex:1;background:#1b222c;border:1px solid #232b36;border-radius:11px;padding:12px;color:#eaecef;font-weight:700;font-size:14px;cursor:pointer">Cancel</button>' +
+        '<button id="fx-tpsl-ok" style="flex:1;background:linear-gradient(180deg,' + (esTP ? '#34d98a,#12b06a' : '#fb5c6f,#e03246') + ');border:none;border-radius:11px;padding:12px;color:#fff;font-weight:800;font-size:14px;cursor:pointer">Confirm</button></div></div>';
+      document.body.appendChild(ov);
+      const cerrarM = () => { try { ov.remove(); } catch (_) {} };
+      ov.querySelector('.bg').onclick = cerrarM;
+      ov.querySelector('#fx-tpsl-x').onclick = cerrarM;
+      setTimeout(() => { try { ov.querySelector('#fx-tpsl-in').focus(); } catch (_) {} }, 50);
+      ov.querySelector('#fx-tpsl-ok').onclick = () => {
+        const v = parseFloat((ov.querySelector('#fx-tpsl-in').value || '').replace(/,/g, '')) || 0;
+        if (!v) { return; }
+        // Validación: el SL no puede pasar el precio de liquidación.
+        if (!esTP) {
+          const peor = pos.lado === 'long' ? (v <= pos.liq) : (v >= pos.liq);
+          if (peor) {
+            // sobrepasa la liquidación: se quita el SL y queda la liquidación.
+            pos.sl = 0;
+            cerrarM(); pintarPos();
+            return;
+          }
+        }
+        pos[k] = v;
+        // AQUÍ, con el contrato desplegado: pedir FIRMA de la wallet para registrar
+        // el nuevo TP/SL (es un cambio de salida respaldado por el pool de staking).
+        cerrarM(); pintarPos();
+      };
+    }
 
     // Precio de marca de UNA posición, según SU moneda (no la gráfica). Si es la
     // moneda que está en la gráfica, usa el precio en vivo; si no, el último
@@ -607,6 +677,8 @@
           '<span>' + fmt(p.px) + '</span>' +
           '<span class="pnl-v ' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + fmt(pnl) + '</span>' +
           '<span class="pnl-v ' + pnlCls + '">' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%</span>' +
+          '<span class="tpsl-c"><em style="color:#2ebd85">' + (p.tp ? fmt(p.tp) : '\u2014') + '</em><button class="edit-tpsl" data-id="' + p.id + '" data-k="tp" title="Edit TP"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></span>' +
+          '<span class="tpsl-c"><em style="color:#f6465d">' + (p.sl ? fmt(p.sl) : '\u2014') + '</em><button class="edit-tpsl" data-id="' + p.id + '" data-k="sl" title="Edit SL"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></span>' +
           '<span>' + fmt(p.liq) + '</span>' +
           '<span class="pos-acc"><button class="share" data-id="' + p.id + '" title="Share">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg>' +
@@ -629,7 +701,7 @@
       const btnPag = totalPag > 1
         ? '<button class="pg-cab' + (pag < totalPag - 1 ? ' hay-mas' : '') + '">' + (pag + 1) + '/' + totalPag + ' \u203A</button>'
         : '';
-      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>PNL</span><span>ROI</span><span>' + t('Liquidación') + '</span><span class="cab-pag">' + btnPag + '</span></div>';
+      const cabAbiertas = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>PNL</span><span>ROI</span><span>TP</span><span>SL</span><span>' + t('Liquidación') + '</span><span class="cab-pag">' + btnPag + '</span></div>';
       const cabLimit = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span class="cab-pag">' + btnPag + '</span></div>';
       const cab = esAbiertas ? cabAbiertas : cabLimit;
       let html = cab + trozo.map(esAbiertas ? mkPos : mkOrd).join('');
@@ -646,6 +718,7 @@
       body.innerHTML = html;
       body.querySelectorAll('.close').forEach((b) => b.onclick = () => cerrar(isNaN(+b.dataset.id) ? b.dataset.id : +b.dataset.id));
       body.querySelectorAll('.share').forEach((b) => b.onclick = () => compartirPos(isNaN(+b.dataset.id) ? b.dataset.id : +b.dataset.id));
+      body.querySelectorAll('.edit-tpsl').forEach((b) => b.onclick = () => editarTPSL(isNaN(+b.dataset.id) ? b.dataset.id : +b.dataset.id, b.dataset.k));
       const bp = body.querySelector('.pg-prev'), bn = body.querySelector('.pg-next');
       if (bp) bp.onclick = () => { if (tabPos === 'ord') ordPag--; else posPag--; pintarPos(); };
       if (bn) bn.onclick = () => { if (tabPos === 'ord') ordPag++; else posPag++; pintarPos(); };
