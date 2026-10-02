@@ -1,9 +1,10 @@
-/* sw.js — caché rápida con actualización en segundo plano.
-   Estrategia stale-while-revalidate: sirve al instante desde caché (rápido) y
-   a la vez descarga la versión nueva en segundo plano para la próxima vez. Los
-   HTML van primero por red (para que los cambios de estructura lleguen ya), con
-   la caché como respaldo si no hay conexión. Así: carga rápido Y se actualiza. */
-const VERSION = 'aurex-v441';
+/* sw.js — caché rápida respetando las versiones (?v=).
+   · Archivos con ?v= (versión): PRIMERO la red, para que al subir una versión
+     nueva se vea al instante, no la copia vieja del caché.
+   · Archivos sin versión: stale-while-revalidate (caché rápido + actualiza).
+   · HTML (navegaciones): el service worker no los toca, para que los navegadores
+     de wallets inyecten window.ethereum al cargar la página. */
+const VERSION = 'aurex-v442';
 const CACHE = 'cc-' + VERSION;
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -31,8 +32,24 @@ self.addEventListener('fetch', (e) => {
   // worker responde él mismo, esa intercepción no ocurre y la wallet no aparece.
   if (req.mode === 'navigate' || req.destination === 'document') return;
 
-  // El resto (JS, CSS, imágenes): stale-while-revalidate.
-  // Sirve de caché al instante (rápido) y actualiza en segundo plano.
+  // Archivos CON ?v= (versión): PRIMERO la red. Así, cuando se sube una versión
+  // nueva (?v=13), el navegador trae la versión nueva al instante en vez de la
+  // copia vieja del caché. Si no hay red, usa el caché como respaldo.
+  const tieneVersion = url.search.includes('v=');
+  if (tieneVersion) {
+    e.respondWith((async () => {
+      try {
+        const r = await fetch(req);
+        if (r && r.ok) { const c = await caches.open(CACHE); c.put(req, r.clone()).catch(() => {}); }
+        return r;
+      } catch (_) {
+        return (await caches.match(req)) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // El resto (sin versión): stale-while-revalidate (caché rápido + actualiza).
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req);
