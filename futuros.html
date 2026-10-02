@@ -103,7 +103,7 @@
     /* Positions (limit): Símbolo, Tipo, Precio, Tamaño, Distancia, Liq, acción */
     #f-pos-body.limit .pos-head,#f-pos-body.limit .pos-row{grid-template-columns:1.4fr 0.8fr 1fr 1fr 1fr 1fr 84px}
     /* Open Orders (abiertas): Símbolo, Tamaño, Entrada, PNL, Liq, acción */
-    #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.4fr 1fr 0.95fr 0.95fr 0.75fr 0.95fr 80px}
+    #f-pos-body.abiertas .pos-head,#f-pos-body.abiertas .pos-row{grid-template-columns:1.3fr 0.95fr 0.9fr 0.9fr 0.7fr 0.9fr 120px}
     .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);padding:10px 0 11px}
     .pos-row{border-bottom:1px solid rgba(255,255,255,.04);color:var(--ink);padding:12px 0;border-radius:7px;transition:background .12s}
     .pos-row:hover{background:rgba(255,255,255,.02)}
@@ -115,6 +115,10 @@
     .pos-row .side.short{color:var(--down)} .pos-row .side.short::before{background:var(--down)}
     .pos-row .close{background:rgba(246,70,93,.08);border:1px solid rgba(246,70,93,.25);color:var(--down);border-radius:8px;padding:7px 0;cursor:pointer;font-weight:700;font-size:11px;transition:background .12s,border-color .12s}
     .pos-row .close:hover{background:rgba(246,70,93,.16);border-color:rgba(246,70,93,.5)}
+    .pos-acc{display:flex;gap:6px;align-items:center;justify-content:flex-end}
+    .pos-row .share{background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;padding:0;transition:background .12s,border-color .12s}
+    .pos-row .share:hover{background:rgba(232,184,75,.2);border-color:rgba(232,184,75,.6)}
+    .pos-acc .close{flex:1}
 
     /* ── Panel derecho: altura natural, sin scroll interno ── */
     #f-panel{grid-column:2;grid-row:2;background:var(--panel);padding:12px 12px 24px;display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -443,6 +447,116 @@
       pintarPos();
     }
     function cerrar(id) { posiciones = posiciones.filter((p) => p.id !== id); pintarPos(); }
+
+    /* ═══ Tarjeta de compartir operación (canvas → imagen) ═══ */
+    function cargarImg(src) {
+      return new Promise((res) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+    }
+    async function compartirPos(id) {
+      const pos = posiciones.find((p) => p.id === id); if (!pos) return;
+      const esLong = pos.lado === 'long';
+      const mark = (pos.sim === simDe()) ? (precio || pos.px) : pos.px;
+      const dir = esLong ? 1 : -1;
+      const pnl = ((mark - pos.px) / pos.px) * dir * pos.lev * pos.m;
+      const pnlPct = ((mark - pos.px) / pos.px) * dir * pos.lev * 100;
+      const gana = pnl >= 0;
+      const verde = '#16c784', rojo = '#f6465d', dorado = '#E8B84B', blanco = '#ffffff';
+      const colPnl = gana ? verde : rojo;
+
+      // dimensiones de la tarjeta (vertical, para compartir)
+      const W = 1080, H = 1350, dpr = 2;
+      const cv = document.createElement('canvas');
+      cv.width = W * dpr; cv.height = H * dpr;
+      const g = cv.getContext('2d'); g.scale(dpr, dpr);
+
+      // fondo: imagen long/short
+      const fondo = await cargarImg('assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp');
+      if (fondo) {
+        // cubrir todo manteniendo proporción
+        const rw = W / fondo.width, rh = H / fondo.height, rr = Math.max(rw, rh);
+        const fw = fondo.width * rr, fh = fondo.height * rr;
+        g.drawImage(fondo, (W - fw) / 2, (H - fh) / 2, fw, fh);
+      } else {
+        g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, H);
+      }
+      // velo oscuro a la izquierda para que el texto se lea
+      const grad = g.createLinearGradient(0, 0, W, 0);
+      grad.addColorStop(0, 'rgba(5,7,10,.82)'); grad.addColorStop(0.55, 'rgba(5,7,10,.45)'); grad.addColorStop(1, 'rgba(5,7,10,.15)');
+      g.fillStyle = grad; g.fillRect(0, 0, W, H);
+
+      const X = 80;   // margen izquierdo (todo el texto a la izquierda)
+      g.textAlign = 'left';
+
+      // ── arriba: logo de la moneda + par ──
+      const par = parDe();
+      let cg = {}; try { cg = cgCache(); } catch (_) {}
+      const logoUrl = (cg[par.cg] && cg[par.cg].img) || '';
+      let topY = 110;
+      if (logoUrl) {
+        const logo = await cargarImg(logoUrl);
+        if (logo) { g.save(); g.beginPath(); g.arc(X + 34, topY, 34, 0, 6.28); g.closePath(); g.clip(); g.drawImage(logo, X, topY - 34, 68, 68); g.restore(); }
+      }
+      g.fillStyle = blanco; g.font = '800 52px "Plus Jakarta Sans", sans-serif';
+      g.fillText(par.s || (pos.sim), X + 84, topY + 18);
+
+      // posición: LONG/SHORT + apalancamiento
+      topY += 78;
+      g.fillStyle = colPnl === verde && !gana ? colPnl : (esLong ? verde : rojo);
+      g.font = '800 30px "IBM Plex Mono", monospace';
+      g.fillText((esLong ? 'LONG' : 'SHORT') + '  ' + pos.lev + '×', X, topY);
+
+      // fecha y hora
+      topY += 54;
+      const ahora = new Date();
+      const fecha = ahora.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + '  ' + ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      g.fillStyle = blanco; g.font = '500 26px "IBM Plex Mono", monospace';
+      g.fillText(fecha, X, topY);
+
+      // ── centro: ROI grande ──
+      g.fillStyle = colPnl; g.font = '800 150px "IBM Plex Mono", monospace';
+      g.fillText((pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%', X, H * 0.56);
+      // PNL en USDT, grande
+      g.fillStyle = colPnl; g.font = '800 64px "IBM Plex Mono", monospace';
+      g.fillText((pnl >= 0 ? '+' : '') + fmt(pnl) + ' USDT', X, H * 0.56 + 86);
+
+      // ── entrada y precio actual ──
+      let infY = H * 0.72;
+      g.fillStyle = dorado; g.font = '700 24px "IBM Plex Mono", monospace';
+      g.fillText('ENTRY PRICE', X, infY);
+      g.fillText('MARK PRICE', X + 320, infY);
+      g.fillStyle = blanco; g.font = '800 36px "IBM Plex Mono", monospace';
+      g.fillText(fmt(pos.px), X, infY + 44);
+      g.fillText(fmt(mark), X + 320, infY + 44);
+
+      // wallet (últimas 4)
+      infY += 110;
+      let cuenta = ''; try { cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || ''; } catch (_) {}
+      if (cuenta) {
+        g.fillStyle = dorado; g.font = '700 22px "IBM Plex Mono", monospace';
+        g.fillText('WALLET ••••' + cuenta.slice(-4), X, infY);
+      }
+
+      // ── abajo izquierda: logo cco-movil con sombra ──
+      const cco = await cargarImg('assets/img/cco-movil.webp');
+      if (cco) {
+        const lw = 300, lh = cco.height * (lw / cco.width);
+        g.save();
+        g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 24; g.shadowOffsetX = 0; g.shadowOffsetY = 8;
+        g.drawImage(cco, X, H - lh - 70, lw, lh);
+        g.restore();
+      }
+      // dominio
+      g.fillStyle = blanco; g.font = '600 24px "Plus Jakarta Sans", sans-serif';
+      g.fillText('CriptoCubaOficial.com', X, H - 42);
+
+      // exportar
+      cv.toBlob((blob) => {
+        if (!blob) return;
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = (pos.sim || 'posicion') + '-pnl.png'; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }, 'image/png');
+    }
     $('f-closeall').onclick = () => { posiciones = []; pintarPos(); };
     let tabPos = 'pos';
     document.querySelectorAll('#f-pos .ph button[data-t]').forEach((b) => b.onclick = () => { tabPos = b.dataset.t; document.querySelectorAll('#f-pos .ph button[data-t]').forEach((x) => x.classList.toggle('on', x === b)); pintarPos(); });
@@ -482,7 +596,9 @@
           '<span class="pnl-v ' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + fmt(pnl) + '</span>' +
           '<span class="pnl-v ' + pnlCls + '">' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%</span>' +
           '<span>' + fmt(p.liq) + '</span>' +
-          '<button class="close" data-id="' + p.id + '">' + t('Cerrar') + '</button></div>';
+          '<span class="pos-acc"><button class="share" data-id="' + p.id + '" title="Share">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg>' +
+          '</button><button class="close" data-id="' + p.id + '">' + t('Cerrar') + '</button></span></div>';
       };
       const mkOrd = (p) => {
         const dist = N.precio ? ((p.px - N.precio) / N.precio * 100) : 0;
@@ -511,7 +627,8 @@
       }
       body.className = 'body ' + (esAbiertas ? 'abiertas' : 'limit');
       body.innerHTML = html;
-      body.querySelectorAll('.close').forEach((b) => b.onclick = () => cerrar(+b.dataset.id));
+      body.querySelectorAll('.close').forEach((b) => b.onclick = () => cerrar(isNaN(+b.dataset.id) ? b.dataset.id : +b.dataset.id));
+      body.querySelectorAll('.share').forEach((b) => b.onclick = () => compartirPos(isNaN(+b.dataset.id) ? b.dataset.id : +b.dataset.id));
       const bp = body.querySelector('.pg-prev'), bn = body.querySelector('.pg-next');
       if (bp) bp.onclick = () => { if (tabPos === 'ord') ordPag--; else posPag--; pintarPos(); };
       if (bn) bn.onclick = () => { if (tabPos === 'ord') ordPag++; else posPag++; pintarPos(); };
