@@ -623,7 +623,21 @@ async function leerBalance() {
       // token propio del usuario (no en el oráculo): precio real por PancakeSwap, NUNCA fijo
       if (m.propio) { const pp = await precioPancake(m.a, m.dec || 18); if (pp > 0) window._pxCache[m.id] = pp; }
     }));
-    const faltan = conSaldo.filter((m) => m.px == null && !(window._pxCache[m.id] > 0) && m.cg);
+    let faltan = conSaldo.filter((m) => m.px == null && !(window._pxCache[m.id] > 0) && m.cg);
+    // RESPALDO 1: Binance API (fiable, ya se usa en el proyecto). El símbolo es
+    // <ID>USDT (BNBUSDT, ETHUSDT, ...). Para WBNB se usa BNB. Esto cubre el caso
+    // en que el oráculo on-chain no devuelve el precio (p.ej. BNB quedaba en 0).
+    if (faltan.length) {
+      await Promise.all(faltan.map(async (m) => {
+        try {
+          const simb = (m.id === 'WBNB' ? 'BNB' : m.id).toUpperCase() + 'USDT';
+          const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=' + simb);
+          if (r.ok) { const j = await r.json(); const pr = +j.price; if (pr > 0) window._pxCache[m.id] = pr; }
+        } catch (_) {}
+      }));
+      faltan = conSaldo.filter((m) => m.px == null && !(window._pxCache[m.id] > 0) && m.cg);
+    }
+    // RESPALDO 2: CoinGecko (por si Binance tampoco tuviera el par).
     if (faltan.length) {
       try {
         const ids = [...new Set(faltan.map((m) => m.cg))].join(',');
