@@ -306,7 +306,7 @@
         id: 'demo-' + Math.random().toString(36).slice(2, 8), lado, px, m, lev,
         tp: lado === 'long' ? px * 1.03 : px * 0.97,
         sl: lado === 'long' ? px * 0.985 : px * 1.015,
-        liq: liq(px, lev, lado === 'long'), sim: S, limit, demo: true, t: Date.now()
+        liq: liq(px, lev, lado === 'long'), sim: S, parId: 'BTC', cg: 'bitcoin', limit, demo: true, t: Date.now()
       });
       posiciones = [
         // 4 órdenes LIMIT (Positions): precios alejados del actual
@@ -443,10 +443,20 @@
       const sl = parseFloat($('p-sl').value) || (esL ? px * 0.99 : px * 1.01);
       const act = N.precio || precio || px;
       const esLimit = (tipo !== 'market') || (act && Math.abs((px - act) / act) >= 0.0015);
-      posiciones.push({ id: Date.now(), lado, px, m, lev, tp, sl, liq: liqDe(px, lev, esL), sim: simDe(), limit: !!esLimit, t: Date.now() });
+      const _par = parDe();
+      posiciones.push({ id: Date.now(), lado, px, m, lev, tp, sl, liq: liqDe(px, lev, esL), sim: simDe(), parId: _par.id, cg: _par.cg, limit: !!esLimit, t: Date.now() });
       pintarPos();
     }
     function cerrar(id) { posiciones = posiciones.filter((p) => p.id !== id); pintarPos(); }
+
+    // Precio de marca de UNA posición, según SU moneda (no la gráfica). Si es la
+    // moneda que está en la gráfica, usa el precio en vivo; si no, el último
+    // precio conocido de esa moneda. Así el PNL no se congela al cambiar gráfica.
+    function markDe(pos) {
+      if (pos.sim === simDe() && precio) return precio;
+      try { const cg = cgCache(); if (pos.cg && cg[pos.cg] && cg[pos.cg].price) return cg[pos.cg].price; } catch (_) {}
+      return pos.px;   // último recurso: su precio de entrada
+    }
 
     /* ═══ Tarjeta de compartir operación (canvas → imagen) ═══ */
     function cargarImg(src) {
@@ -455,7 +465,7 @@
     async function generarTarjeta(id) {
       const pos = posiciones.find((p) => p.id === id); if (!pos) return null;
       const esLong = pos.lado === 'long';
-      const mark = (pos.sim === simDe()) ? (precio || pos.px) : pos.px;
+      const mark = markDe(pos);
       const dir = esLong ? 1 : -1;
       const pnl = ((mark - pos.px) / pos.px) * dir * pos.lev * pos.m;
       const pnlPct = ((mark - pos.px) / pos.px) * dir * pos.lev * 100;
@@ -479,24 +489,22 @@
 
       const X = 70; g.textAlign = 'left';
 
-      // ── arriba: logo moneda + par ──
-      const par = parDe();
-      let topY = 92;
+      // ── arriba: logo moneda + par (de la MONEDA DE LA OPERACIÓN, no la gráfica) ──
+      const parId = pos.parId || (pos.sim || '').replace('USDT', '');
+      let topY = 132;   // bajado para que no quede pegado al borde superior
       // logo por símbolo desde GitHub (permite CORS, a diferencia de CoinGecko).
-      const sym = (par.id || '').toLowerCase();
+      const sym = parId.toLowerCase();
       let logo = sym ? await cargarImg('https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + sym + '.png') : null;
-      // círculo de fondo para el logo
       g.save();
       g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.closePath();
       g.fillStyle = 'rgba(255,255,255,.08)'; g.fill();
       g.clip();
       if (logo) { g.drawImage(logo, X - 2, topY - 32, 64, 64); }
-      else { g.fillStyle = dorado; g.font = '800 34px "Plus Jakarta Sans", sans-serif'; g.textAlign = 'center'; g.fillText((par.id || '?')[0], X + 30, topY + 12); g.textAlign = 'left'; }
+      else { g.fillStyle = dorado; g.font = '800 34px "Plus Jakarta Sans", sans-serif'; g.textAlign = 'center'; g.fillText((parId || '?')[0], X + 30, topY + 12); g.textAlign = 'left'; }
       g.restore();
-      // borde dorado fino alrededor del logo
       g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.stroke();
       g.fillStyle = blanco; g.font = '800 46px "Plus Jakarta Sans", sans-serif';
-      g.fillText(par.s || pos.sim, X + 80, topY + 16);
+      g.fillText(pos.sim || (parId + 'USDT'), X + 80, topY + 16);
       // LONG/SHORT + apalancamiento
       topY += 62;
       g.fillStyle = esLong ? verde : rojo; g.font = '800 28px "IBM Plex Mono", monospace';
@@ -604,7 +612,7 @@
       const desde = pag * POR_PAG;
       const trozo = lista.slice(desde, desde + POR_PAG);
       const mkPos = (p) => {
-        const mark = (p.sim === simDe()) ? (precio || p.px) : p.px;
+        const mark = markDe(p);
         // PNL provisional contra el precio de marca (se conectará al contrato).
         const dir = p.lado === 'long' ? 1 : -1;
         const pnl = ((mark - p.px) / p.px) * dir * p.lev * p.m;
