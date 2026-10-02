@@ -68,6 +68,17 @@ export async function pintarMercados(host, api) {
 
   render();
   cargarDatos();          // logos + precios (en vivo, refresca al llegar)
+
+  // Scroll: esta sección NO es Home, así que debe poder desplazarse.
+  try {
+    var _sc = document.getElementById('mv-scroll');
+    if (_sc) { _sc.style.overflowY = 'auto'; _sc.style.touchAction = ''; _sc.style.webkitOverflowScrolling = 'touch'; }
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+    document.body.style.overscrollBehavior = '';
+    if (window.__mvMedir) window.__mvMedir();
+  } catch (_) {}
 }
 
 function filtrar() {

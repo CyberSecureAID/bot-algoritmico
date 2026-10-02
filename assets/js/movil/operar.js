@@ -140,6 +140,17 @@ export async function pintarOperar(host, api) {
   clearInterval(_timer);
   _timer = setInterval(cargarPrecio, 3000);
   host._limpiar = () => { clearInterval(_timer); cerrarLibro(); restaurarBotCard(); };
+
+  // Scroll: esta sección NO es Home, así que debe poder desplazarse.
+  try {
+    var _sc = document.getElementById('mv-scroll');
+    if (_sc) { _sc.style.overflowY = 'auto'; _sc.style.touchAction = ''; _sc.style.webkitOverflowScrolling = 'touch'; }
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+    document.body.style.overscrollBehavior = '';
+    if (window.__mvMedir) window.__mvMedir();
+  } catch (_) {}
 }
 
 function posGuardadas() { try { return JSON.parse(localStorage.getItem('mv-pos') || '[]'); } catch (_) { return []; } }

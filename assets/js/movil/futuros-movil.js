@@ -108,9 +108,16 @@ function estilos() {
   #fx .fxc-top .side.long{color:var(--up)} #fx .fxc-top .side.short{color:var(--down)}
   #fx .fxc-lim{font-family:'IBM Plex Mono';font-size:9px;font-weight:800;color:var(--gold);background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.3);border-radius:5px;padding:2px 6px}
   #fx .fxshare{background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);border-radius:7px;width:28px;height:28px;display:grid;place-items:center;padding:0}
-  #fx .fxc-pnl{font-family:'IBM Plex Mono';font-size:19px;font-weight:800;margin-bottom:9px}
-  #fx .fxc-pnl.up{color:#2ebd85} #fx .fxc-pnl.dn{color:#f6465d}
-  #fx .fxc-pnl em{font-style:normal;font-size:13px;opacity:.9}
+  #fx .fxc-coin{display:inline-flex;align-items:center;gap:7px}
+  #fx .fxc-coin img{width:22px;height:22px;border-radius:50%}
+  #fx .fxc-coin .side{font-weight:800;font-size:13px} #fx .fxc-coin .side.long{color:var(--ink)} #fx .fxc-coin .side.short{color:var(--ink)}
+  #fx .fxc-coin .lev{font-family:'IBM Plex Mono';font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px}
+  #fx .fxc-coin .lev.long{color:var(--up);background:rgba(46,189,133,.12)} #fx .fxc-coin .lev.short{color:var(--down);background:rgba(246,70,93,.12)}
+  #fx .fxc-pnlrow{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+  #fx .fxc-pnlrow label{display:block;font-size:8.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+  #fx .fxc-pnlrow b{font-family:'IBM Plex Mono';font-size:19px;font-weight:800}
+  #fx .fxc-pnlrow .pnl-r{text-align:right}
+  #fx .fxc-pnlrow .up b{color:#2ebd85} #fx .fxc-pnlrow .dn b{color:#f6465d}
   #fx .fxc-g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:9px}
   #fx .fxc-g>div{display:flex;flex-direction:column;gap:2px;position:relative}
   #fx .fxc-g label{font-size:8.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
@@ -410,16 +417,40 @@ export async function pintarFuturos(host, api) {
     if (cuenta) { g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('WALLET ••••' + cuenta.slice(-4), X, iy); }
     const cco = await imgMv('assets/img/cco-movil.webp');
     if (cco) { const lw = 220, lh = cco.height * (lw / cco.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7; g.drawImage(cco, X, H - lh - 38, lw, lh); g.restore(); }
-    cv.toBlob(async (blob) => {
-      if (!blob) return;
-      const archivo = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
-      const ENLACE = 'https://criptocubaoficial.com';
-      if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-        try { await navigator.share({ files: [archivo], title: 'CriptoCuba Oficial', text: ENLACE }); return; } catch (_) {}
+    // Generar la imagen. Si el canvas está "contaminado" (CORS), toBlob falla:
+    // lo capturamos y mostramos la ventana con lo que se pueda.
+    let blob = null;
+    try { blob = await new Promise((res) => { try { cv.toBlob((b) => res(b), 'image/png', 0.95); } catch (_) { res(null); } }); } catch (_) {}
+    let dataUrl = '';
+    if (!blob) { try { dataUrl = cv.toDataURL('image/png'); } catch (_) {} }
+    const ENLACE = 'https://criptocubaoficial.com';
+
+    // Ventana emergente con la imagen + botones (igual que la web).
+    const src = blob ? URL.createObjectURL(blob) : dataUrl;
+    if (!src) { return; }   // no se pudo generar nada
+    const ov = document.createElement('div');
+    ov.className = 'fxpop'; ov.style.zIndex = '26000';
+    ov.innerHTML = '<div class="bg" style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div>' +
+      '<div class="card" style="position:relative;z-index:1;max-width:520px;width:calc(100% - 28px);margin:auto;background:#0e1218;border:1px solid #232b36;border-radius:16px;padding:14px">' +
+      '<img src="' + src + '" style="width:100%;border-radius:11px;display:block">' +
+      '<div style="display:flex;gap:9px;margin-top:12px">' +
+      '<button id="fxsh-dl" style="flex:1;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:none;border-radius:11px;padding:13px;color:#231800;font-weight:800;font-size:15px">Download</button>' +
+      '<button id="fxsh-sh" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:11px;padding:13px;color:#eaecef;font-weight:700;font-size:15px">Share</button>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+    const cerrarOv = () => { try { ov.remove(); if (blob) URL.revokeObjectURL(src); } catch (_) {} };
+    ov.querySelector('.bg').onclick = cerrarOv;
+    ov.querySelector('#fxsh-dl').onclick = () => { const a = document.createElement('a'); a.href = src; a.download = 'CriptoCubaOficial.png'; a.click(); };
+    ov.querySelector('#fxsh-sh').onclick = async () => {
+      if (blob && navigator.canShare) {
+        const archivo = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
+        if (navigator.canShare({ files: [archivo] })) {
+          try { await navigator.share({ files: [archivo], title: 'CriptoCuba Oficial', text: ENLACE }); return; } catch (_) {}
+        }
       }
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'CriptoCubaOficial.png'; a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    }, 'image/png', 0.95);
+      if (navigator.share) { try { await navigator.share({ title: 'CriptoCuba Oficial', text: ENLACE, url: ENLACE }); return; } catch (_) {} }
+      const a = document.createElement('a'); a.href = src; a.download = 'CriptoCubaOficial.png'; a.click();
+    };
   }
 
   // precio de marca de una posición según SU moneda (no la gráfica).
@@ -449,10 +480,16 @@ export async function pintarFuturos(host, api) {
         const pnl = ((mk - p.px) / p.px) * dir * p.lev * p.amt;
         const pct = ((mk - p.px) / p.px) * dir * p.lev * 100;
         const cl = pnl >= 0 ? 'up' : 'dn';
+        const sym = (p.parId || '').toLowerCase();
+        const logoU = sym ? 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + sym + '.png' : '';
         return '<div class="fxcard">' +
-          '<div class="fxc-top"><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span>' +
+          '<div class="fxc-top">' +
+            '<span class="fxc-coin">' + (logoU ? '<img src="' + logoU + '" onerror="this.style.display=\'none\'">' : '') + '<b class="side ' + p.lado + '">' + p.sim + '</b><span class="lev ' + p.lado + '">' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span></span>' +
             '<button class="fxshare" data-id="' + p.id + '"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg></button></div>' +
-          '<div class="fxc-pnl ' + cl + '">' + (pnl >= 0 ? '+' : '') + fmtP(pnl) + ' USDT <em>(' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)</em></div>' +
+          '<div class="fxc-pnlrow">' +
+            '<div class="pnl-l ' + cl + '"><label>PNL (USDT)</label><b>' + (pnl >= 0 ? '+' : '') + fmtP(pnl) + '</b></div>' +
+            '<div class="pnl-r ' + cl + '"><label>ROI</label><b>' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%</b></div>' +
+          '</div>' +
           '<div class="fxc-g">' +
             '<div><label>' + t('Tamaño') + '</label><b>' + fmtP(p.amt * p.lev) + '</b></div>' +
             '<div><label>' + t('Entrada') + '</label><b>' + fmtP(p.px) + '</b></div>' +
@@ -468,8 +505,10 @@ export async function pintarFuturos(host, api) {
       // ÓRDENES LIMIT: entrada/lev/TP/SL editables
       body.innerHTML = lista.map((p) => {
         const dist = _libro.precio && p.sim === _par.s ? ((p.px - _libro.precio) / _libro.precio * 100) : 0;
+        const symL = (p.parId || '').toLowerCase();
+        const logoL = symL ? 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + symL + '.png' : '';
         return '<div class="fxcard">' +
-          '<div class="fxc-top"><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + '</span><span class="fxc-lim">LIMIT</span></div>' +
+          '<div class="fxc-top"><span class="fxc-coin">' + (logoL ? '<img src="' + logoL + '" onerror="this.style.display=\'none\'">' : '') + '<b class="side ' + p.lado + '">' + p.sim + '</b><span class="lev ' + p.lado + '">' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span></span><span class="fxc-lim">LIMIT</span></div>' +
           '<div class="fxc-g">' +
             '<div><label>Entry</label><b>' + fmtP(p.px) + '</b>' + lapMv(p.id, 'px') + '</div>' +
             '<div><label>Lev</label><b>' + p.lev + '×</b>' + lapMv(p.id, 'lev') + '</div>' +
