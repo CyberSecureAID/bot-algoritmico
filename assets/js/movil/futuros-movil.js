@@ -102,13 +102,13 @@ function estilos() {
   #fx .prow .side{font-weight:800} #fx .prow .side.long{color:var(--up)} #fx .prow .side.short{color:var(--down)}
   #fx .prow .x{padding:5px 9px;border:1px solid rgba(246,70,93,.3);border-radius:7px;color:var(--down);background:rgba(246,70,93,.1);font-weight:700}
   /* Tarjetas de posición (móvil): compactas, apiladas */
-  #fx .fxcard{position:relative;background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:9px;overflow:hidden;isolation:isolate}
-  /* Imagen de fondo difuminada, por detrás, que no se roba el show: muy tenue,
-     con blur y una capa oscura encima para que la info se lea nítida. */
-  #fx .fxcard::before{content:"";position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;opacity:.14;filter:blur(2px)}
-  #fx .fxcard::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(14,18,24,.72),rgba(14,18,24,.86))}
-  #fx .fxcard.es-open::before{background-image:url('assets/portada/img/fondo-open.webp')}
-  #fx .fxcard.es-limit::before{background-image:url('assets/portada/img/fondo-limit.webp')}
+  #fx .fxcard{position:relative;background:#151b23;border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:9px;overflow:hidden}
+  /* Imagen de fondo: va en la tarjeta; una capa oscura encima la atenúa para que
+     la info se lea nítida, pero el fondo SÍ se ve. El contenido va por encima. */
+  #fx .fxcard.es-open{background-image:url('assets/portada/img/fondo-open.webp');background-size:cover;background-position:center}
+  #fx .fxcard.es-limit{background-image:url('assets/portada/img/fondo-limit.webp');background-size:cover;background-position:center}
+  #fx .fxcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,18,24,.55),rgba(14,18,24,.68));backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)}
+  #fx .fxcard>*{position:relative;z-index:1}
   #fx .fxc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
   #fx .fxc-top .side{font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:6px}
   #fx .fxc-top .side.long{color:var(--up)} #fx .fxc-top .side.short{color:var(--down)}
