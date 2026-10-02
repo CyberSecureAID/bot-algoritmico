@@ -102,7 +102,13 @@ function estilos() {
   #fx .prow .side{font-weight:800} #fx .prow .side.long{color:var(--up)} #fx .prow .side.short{color:var(--down)}
   #fx .prow .x{padding:5px 9px;border:1px solid rgba(246,70,93,.3);border-radius:7px;color:var(--down);background:rgba(246,70,93,.1);font-weight:700}
   /* Tarjetas de posición (móvil): compactas, apiladas */
-  #fx .fxcard{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:9px}
+  #fx .fxcard{position:relative;background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:9px;overflow:hidden;isolation:isolate}
+  /* Imagen de fondo difuminada, por detrás, que no se roba el show: muy tenue,
+     con blur y una capa oscura encima para que la info se lea nítida. */
+  #fx .fxcard::before{content:"";position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;opacity:.14;filter:blur(2px)}
+  #fx .fxcard::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(14,18,24,.72),rgba(14,18,24,.86))}
+  #fx .fxcard.es-open::before{background-image:url('assets/portada/img/fondo-open.webp')}
+  #fx .fxcard.es-limit::before{background-image:url('assets/portada/img/fondo-limit.webp')}
   #fx .fxc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
   #fx .fxc-top .side{font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:6px}
   #fx .fxc-top .side.long{color:var(--up)} #fx .fxc-top .side.short{color:var(--down)}
@@ -434,10 +440,17 @@ export async function pintarFuturos(host, api) {
     if (cuenta) { g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('WALLET ••••' + cuenta.slice(-4), X, iy); }
     const cco = ccoPre;
     if (cco) { const lw = 220, lh = cco.height * (lw / cco.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7; g.drawImage(cco, X, H - lh - 38, lw, lh); g.restore(); }
-    // Generar la imagen. Si el canvas está "contaminado" (CORS), toBlob falla:
-    // lo capturamos y mostramos la ventana con lo que se pueda.
+    // Generar la imagen con TIMEOUT: en el navegador de la wallet, toBlob puede
+    // colgarse; si tarda más de 2.5s, pasamos a toDataURL (más fiable ahí).
     let blob = null;
-    try { blob = await new Promise((res) => { try { cv.toBlob((b) => res(b), 'image/png', 0.95); } catch (_) { res(null); } }); } catch (_) {}
+    try {
+      blob = await new Promise((res) => {
+        let hecho = false;
+        const acabar = (v) => { if (!hecho) { hecho = true; res(v); } };
+        try { cv.toBlob((b) => acabar(b), 'image/png', 0.92); } catch (_) { acabar(null); }
+        setTimeout(() => acabar(null), 2500);   // no esperar infinito
+      });
+    } catch (_) {}
     let dataUrl = '';
     if (!blob) { try { dataUrl = cv.toDataURL('image/png'); } catch (_) {} }
     const ENLACE = 'https://criptocubaoficial.com';
@@ -445,7 +458,15 @@ export async function pintarFuturos(host, api) {
     quitarCarga();   // quitar el indicador "generando"
     // Ventana emergente con la imagen + botones.
     const src = blob ? URL.createObjectURL(blob) : dataUrl;
-    if (!src) { return; }   // no se pudo generar nada
+    if (!src) {
+      // No se pudo generar la imagen (navegador restringido). Avisar, no quedar mudo.
+      const av = document.createElement('div');
+      av.className = 'fxpop'; av.style.zIndex = '26000';
+      av.innerHTML = '<div style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div><div style="position:relative;z-index:1;margin:auto;max-width:300px;background:#0e1218;border:1px solid #232b36;border-radius:14px;padding:18px;text-align:center;color:#eaecef;font-family:sans-serif"><p style="font-size:13px;line-height:1.5;margin:0 0 14px">Could not generate the image in this browser. Try opening the site in Chrome or Safari.</p><button id="av-ok" style="background:#1b222c;border:1px solid #2b3340;border-radius:10px;padding:10px 18px;color:#eaecef;font-weight:700">OK</button></div>';
+      document.body.appendChild(av);
+      av.querySelector('#av-ok').onclick = () => { try { av.remove(); } catch (_) {} };
+      return;
+    }
     const ov = document.createElement('div');
     ov.className = 'fxpop'; ov.style.zIndex = '26000';
     ov.innerHTML = '<div class="bg" style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div>' +
@@ -515,7 +536,7 @@ export async function pintarFuturos(host, api) {
         const cl = pnl >= 0 ? 'up' : 'dn';
         const sym = (p.parId || '').toLowerCase();
         const logoU = sym ? 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + sym + '.png' : '';
-        return '<div class="fxcard">' +
+        return '<div class="fxcard es-open">' +
           '<div class="fxc-top">' +
             '<span class="fxc-coin">' + (logoU ? '<img src="' + logoU + '" onerror="this.style.display=\'none\'">' : '') + '<b class="side ' + p.lado + '">' + p.sim + '</b><span class="lev ' + p.lado + '">' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span></span>' +
             '<button class="fxshare" data-id="' + p.id + '"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg></button></div>' +
@@ -540,7 +561,7 @@ export async function pintarFuturos(host, api) {
         const dist = _libro.precio && p.sim === _par.s ? ((p.px - _libro.precio) / _libro.precio * 100) : 0;
         const symL = (p.parId || '').toLowerCase();
         const logoL = symL ? 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + symL + '.png' : '';
-        return '<div class="fxcard">' +
+        return '<div class="fxcard es-limit">' +
           '<div class="fxc-top"><span class="fxc-coin">' + (logoL ? '<img src="' + logoL + '" onerror="this.style.display=\'none\'">' : '') + '<b class="side ' + p.lado + '">' + p.sim + '</b><span class="lev ' + p.lado + '">' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span></span><span class="fxc-lim">LIMIT</span></div>' +
           '<div class="fxc-g">' +
             '<div><label>Entry</label><b>' + fmtP(p.px) + '</b>' + lapMv(p.id, 'px') + '</div>' +
