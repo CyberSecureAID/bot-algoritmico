@@ -544,7 +544,12 @@ async function leerBalance() {
     const extra = [];
     try {
       const url = `https://api.bscscan.com/api?module=account&action=tokentx&address=${cuenta}&page=1&offset=1000&sort=desc`;
-      const r = await fetch(url);
+      // timeout: si BscScan tarda/falla (ahora pide API key), no bloquea; las
+      // monedas CONOCIDAS (USDT, USDC, etc.) se leen igual más abajo.
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 5000);
+      const r = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(to);
       if (r.ok) {
         const d = await r.json();
         if (d.status === '1' && Array.isArray(d.result)) {
@@ -561,20 +566,24 @@ async function leerBalance() {
 
     const TODAS = CONOCIDAS.concat(extra);
 
-    // 2) SALDOS on-chain en lotes de 4, con reintento
+    // 2) SALDOS on-chain en lotes de 4, con reintento Y TIMEOUT.
+    // Timeout: si un RPC tarda más de 6s, se corta y se reintenta con otro. Antes
+    // no había timeout: si un RPC colgaba, leerBalance se quedaba esperando
+    // (la demora larga). Cada intento usa un proveedor distinto, para rotar RPC.
+    const conTimeout = (prom, ms) => Promise.race([prom, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
     const conSaldo = [];
     for (let i = 0; i < TODAS.length; i += 4) {
       const lote = TODAS.slice(i, i + 4);
       const res = await Promise.all(lote.map(async (m) => {
-        for (let intento = 0; intento < 2; intento++) {
+        for (let intento = 0; intento < 3; intento++) {
           try {
-            let bal, dec = m.dec || 18; const pv = prov();
-            if (m.nativa) bal = await pv.getBalance(cuenta);
-            else { const c = new ethers.Contract(m.a, erc, pv); bal = await c.balanceOf(cuenta); if (m.dec == null) { try { dec = Number(await c.decimals()); } catch (_) {} } }
+            let bal, dec = m.dec || 18; const pv = prov();   // proveedor distinto por intento
+            if (m.nativa) bal = await conTimeout(pv.getBalance(cuenta), 6000);
+            else { const c = new ethers.Contract(m.a, erc, pv); bal = await conTimeout(c.balanceOf(cuenta), 6000); if (m.dec == null) { try { dec = Number(await conTimeout(c.decimals(), 4000)); } catch (_) {} } }
             if (!bal || bal === 0n) return null;
             const cant = Number(ethers.formatUnits(bal, dec));
             return cant > 0 ? { ...m, cant } : null;
-          } catch (_) { if (intento === 1) return null; }
+          } catch (_) { if (intento === 2) return null; }
         }
         return null;
       }));
