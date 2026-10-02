@@ -153,17 +153,28 @@
     .fx-modal .opt span{display:block;font-size:12.5px;line-height:1.5;color:var(--ink2)}
 
     /* Menú de clic derecho (compacto). */
-    #f-cm{position:fixed;z-index:22000;width:236px;background:rgba(16,20,26,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line2);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.65);padding:8px;display:none}
-    #f-cm .hd{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--ink3);padding:2px 4px 8px}
-    #f-cm .hd b{color:var(--ink);font-size:12px}
-    #f-cm .chips{display:flex;gap:4px;margin-bottom:6px}
-    #f-cm .chips span{font-family:var(--mono);font-size:9px;color:var(--ink3);align-self:center;margin-right:2px;min-width:28px}
-    #f-cm .chips button{flex:1;height:22px;border-radius:6px;border:1px solid var(--line);background:none;color:var(--ink3);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer}
-    #f-cm .chips button.on{color:var(--gold);border-color:rgba(232,184,75,.5);background:rgba(232,184,75,.1)}
-    #f-cm .go{display:flex;gap:6px;margin-top:6px}
-    #f-cm .go button{flex:1;height:36px;border:none;border-radius:9px;font-weight:800;font-size:13px;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
-    #f-cm .go button small{font-family:var(--mono);font-size:9px;font-weight:500;opacity:.85}
-    #f-cm .go .l{background:linear-gradient(180deg,#34d98a,#12b06a)} #f-cm .go .s{background:linear-gradient(180deg,#ff5c6c,#e03246)}
+    #f-cm{position:fixed;z-index:22000;width:248px;background:rgba(14,18,24,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line2);border-radius:15px;box-shadow:0 24px 60px rgba(0,0,0,.65);padding:14px;display:none}
+    #f-cm.long{border-color:rgba(46,189,133,.4)} #f-cm.short{border-color:rgba(246,70,93,.4)}
+    #f-cm .fo-cmx{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink3);cursor:pointer;display:grid;place-items:center;font-size:12px;padding:0}
+    #f-cm .fo-cmx:hover{color:var(--down);border-color:var(--down)}
+    #f-cm .fo-cm-price{text-align:center;margin:2px 0 14px;padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:11px}
+    #f-cm .fo-cm-price .v{font-family:var(--mono);font-size:25px;font-weight:800;color:var(--ink);line-height:1.05}
+    #f-cm .fo-cm-price .pct{font-family:var(--mono);font-size:12px;font-weight:700;margin-top:4px}
+    #f-cm .fo-cm-price .pct.up{color:#2ebd85} #f-cm .fo-cm-price .pct.dn{color:#f6465d}
+    #f-cm .fo-cm-price .pct span{color:var(--ink3);font-weight:600;font-size:10px}
+    #f-cm .fo-cm-row{margin-bottom:12px}
+    #f-cm .fo-cm-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+    #f-cm .fo-cm-top label{font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:600}
+    #f-cm .fo-cm-top b{font-family:var(--mono);font-size:13px;color:var(--gold);font-weight:800}
+    #f-cm input[type=range]{width:100%;height:5px;border-radius:3px;-webkit-appearance:none;appearance:none;background:var(--line2);outline:none;cursor:pointer;margin:0}
+    #f-cm input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+    #f-cm input[type=range]::-moz-range-thumb{width:16px;height:16px;border:none;border-radius:50%;background:var(--gold);cursor:pointer}
+    #f-cm .fo-cm-info{display:flex;justify-content:space-between;align-items:center;padding:9px 11px;background:rgba(255,255,255,.03);border-radius:9px;margin-bottom:12px}
+    #f-cm .fo-cm-info span{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+    #f-cm .fo-cm-info b{font-family:var(--mono);font-size:13px;color:var(--ink);font-weight:800}
+    #f-cm .fo-cm-go{width:100%;height:42px;border:none;border-radius:11px;font-weight:800;font-size:14px;color:#fff;cursor:pointer}
+    #f-cm .fo-cm-go.l{background:linear-gradient(180deg,#34d98a,#12b06a)} #f-cm .fo-cm-go.s{background:linear-gradient(180deg,#ff5c6c,#e03246)}
+    #f-cm .fo-cm-go:active{transform:translateY(1px)}
 
     @media(max-width:920px){#f-app{grid-template-columns:1fr}#f-panel{grid-column:1;grid-row:3}#f-left{border-right:none}}
   
@@ -462,28 +473,59 @@
     /* ═══ 7. Menú de clic derecho (compacto) ═══ */
     const cm = $('f-cm');
     function abrirMenu(cx, cy, px) {
+      // RECUADRO de operación rápida. Un SOLO botón según dónde se hace clic:
+      // ENCIMA del precio actual -> Short; DEBAJO -> Long. Dos barras
+      // INDEPENDIENTES: capital (margin) y apalancamiento (1x-200x). Si el
+      // precio está lejos del actual, es una orden Limit.
       if (!px) return;
-      let cmLev = lev, cmPct = pctCap || 25;
-      const pct = () => [25, 50, 75, 100].map((x) => '<button data-p="' + x + '"' + (x === cmPct ? ' class="on"' : '') + '>' + x + '%</button>').join('');
-      const lv = () => [5, 10, 20, 50, 100, 200].map((x) => '<button data-l="' + x + '"' + (x === cmLev ? ' class="on"' : '') + '>' + x + '×</button>').join('');
-      cm.innerHTML = '<div class="hd"><b>' + fmt(px) + '</b><span>' + simDe() + '</span></div>' +
-        '<div class="chips"><span>%</span>' + pct() + '</div><div class="chips"><span>×</span>' + lv() + '</div>' +
-        '<div class="go"><button class="l">Long<small>' + fmt(px) + '</small></button><button class="s">Short<small>' + fmt(px) + '</small></button></div>';
+      const actual = N.precio || px;
+      const esLong = px < actual;                 // debajo del precio = long
+      const dist = ((px - actual) / actual) * 100;
+      const lejos = Math.abs(dist) >= 0.15;
+      let cmLev = lev || 20;
+      let cmCap = 0;
+      const CAP_MAX = (saldo > 0 ? saldo : 1000);  // tope de la barra = saldo si lo hay
+
+      cm.className = esLong ? 'long' : 'short';
+      cm.innerHTML =
+        '<button class="fo-cmx" aria-label="Close">\u2715</button>' +
+        '<div class="fo-cm-price">' +
+          '<div class="v">' + fmt(px) + '</div>' +
+          '<div class="pct ' + (dist >= 0 ? 'up' : 'dn') + '">' + (dist >= 0 ? '+' : '') + dist.toFixed(2) + '% <span>from market</span></div>' +
+        '</div>' +
+        '<div class="fo-cm-row"><div class="fo-cm-top"><label>Capital</label><b id="fo-cm-capv">0 USDT</b></div>' +
+          '<input type="range" id="fo-cm-cap" min="0" max="' + CAP_MAX + '" value="0" step="1"></div>' +
+        '<div class="fo-cm-row"><div class="fo-cm-top"><label>Leverage</label><b id="fo-cm-levv">' + cmLev + '\u00D7</b></div>' +
+          '<input type="range" id="fo-cm-lev" min="1" max="200" value="' + cmLev + '" step="1"></div>' +
+        '<div class="fo-cm-info"><span>Size</span><b id="fo-cm-size">\u2014</b></div>' +
+        '<button class="fo-cm-go ' + (esLong ? 'l' : 's') + '">' + (esLong ? 'Open Long' : 'Open Short') + (lejos ? ' \u00B7 Limit' : '') + '</button>';
       cm.style.display = 'block';
-      let x = cx + 8, y = cy + 8; const w = 236, h = cm.offsetHeight;
+      let x = cx + 8, y = cy + 8; const w = 248, h = cm.offsetHeight;
       if (x + w > window.innerWidth - 8) x = cx - w - 8; if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
       cm.style.left = Math.max(8, x) + 'px'; cm.style.top = Math.max(8, y) + 'px';
-      cm.querySelectorAll('[data-p]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); cmPct = +b.dataset.p; cm.querySelectorAll('[data-p]').forEach((x) => x.classList.toggle('on', x === b)); });
-      cm.querySelectorAll('[data-l]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); cmLev = +b.dataset.l; cm.querySelectorAll('[data-l]').forEach((x) => x.classList.toggle('on', x === b)); });
-      const go = (lado) => {
-        setLev(cmLev); pctCap = cmPct; $('p-pctr').value = cmPct;
-        if (saldo > 0) $('p-margen').value = (saldo * cmPct / 100).toFixed(2);
-        else if (!parseFloat($('p-margen').value)) { cm.style.display = 'none'; $('p-margen').focus(); $('p-margen').scrollIntoView({ block: 'center' }); return; }
-        cm.style.display = 'none'; abrirPosicion(lado, px);
+
+      const q = (id) => cm.querySelector('#' + id);
+      function refr() {
+        q('fo-cm-levv').textContent = cmLev + '\u00D7';
+        q('fo-cm-capv').textContent = (cmCap ? fmt(cmCap) : '0') + ' USDT';
+        const size = cmCap * cmLev;
+        q('fo-cm-size').textContent = size ? fmt(size) + ' USDT' : '\u2014';
+      }
+      q('fo-cm-cap').oninput = (e) => { cmCap = +e.target.value || 0; refr(); };
+      q('fo-cm-lev').oninput = (e) => { cmLev = +e.target.value || 1; refr(); };
+      cm.querySelector('.fo-cmx').onclick = (e) => { e.stopPropagation(); cm.style.display = 'none'; };
+
+      cm.querySelector('.fo-cm-go').onclick = (e) => {
+        e.stopPropagation();
+        if (!cmCap) { q('fo-cm-cap').focus(); return; }
+        // Aplicar el capital y el apalancamiento elegidos, y abrir la posición.
+        setLev(cmLev);
+        $('p-margen').value = cmCap.toFixed(2);
+        cm.style.display = 'none';
+        abrirPosicion(esLong ? 'long' : 'short', px);
       };
-      cm.querySelector('.l').onclick = (e) => { e.stopPropagation(); go('long'); };
-      cm.querySelector('.s').onclick = (e) => { e.stopPropagation(); go('short'); };
       setTimeout(() => document.addEventListener('click', () => { cm.style.display = 'none'; }, { once: true }), 10);
+      refr();
       traducirTodo && traducirTodo();
     }
     cm.addEventListener('click', (e) => e.stopPropagation());
