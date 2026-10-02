@@ -89,6 +89,15 @@
     #f-pos .ph .cerrar{margin-left:auto;padding:5px 11px;border:1px solid var(--line);border-radius:8px;color:var(--ink2);font-size:11px;font-family:var(--mono);margin-bottom:8px}
     #f-pos .body{padding:14px 16px}
     .pos-empty{font-family:var(--mono);font-size:12px;color:var(--ink4);text-align:center;padding:26px 0}
+    .pos-pag{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+    .pos-pag button{background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--ink2);font-family:var(--mono);font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;position:relative}
+    .pos-pag button:disabled{opacity:.35;cursor:default}
+    .pos-pag button:not(:disabled):hover{border-color:var(--gold-soft);color:var(--ink)}
+    .pos-pag .pg-info{font-family:var(--mono);font-size:11px;color:var(--ink4)}
+    .pos-pag .pg-next.hay-mas{border-color:rgba(232,184,75,.4);color:var(--gold)}
+    .pos-pag .pg-next.hay-mas::after{content:"";position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 0 rgba(232,184,75,.6);animation:pg-pulse 1.6s infinite}
+    @keyframes pg-pulse{0%{box-shadow:0 0 0 0 rgba(232,184,75,.6)}70%{box-shadow:0 0 0 7px rgba(232,184,75,0)}100%{box-shadow:0 0 0 0 rgba(232,184,75,0)}}
+    .pos-row small{color:var(--ink4);font-size:9.5px}
     .pos-head,.pos-row{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr 1fr 84px;gap:12px;align-items:center;font-family:var(--mono);font-size:11.5px;padding:9px 0}
     .pos-head{color:var(--ink4);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
     .pos-row{border-bottom:1px solid rgba(255,255,255,.03);color:var(--ink)}
@@ -389,22 +398,81 @@
       const esL = lado === 'long';
       const tp = parseFloat($('p-tp').value) || (esL ? px * 1.02 : px * 0.98);
       const sl = parseFloat($('p-sl').value) || (esL ? px * 0.99 : px * 1.01);
-      posiciones.push({ id: Date.now(), lado, px, m, lev, tp, sl, liq: liqDe(px, lev, esL), sim: simDe() });
+      const act = N.precio || precio || px;
+      const esLimit = (tipo !== 'market') || (act && Math.abs((px - act) / act) >= 0.0015);
+      posiciones.push({ id: Date.now(), lado, px, m, lev, tp, sl, liq: liqDe(px, lev, esL), sim: simDe(), limit: !!esLimit, t: Date.now() });
       pintarPos();
     }
     function cerrar(id) { posiciones = posiciones.filter((p) => p.id !== id); pintarPos(); }
     $('f-closeall').onclick = () => { posiciones = []; pintarPos(); };
     let tabPos = 'pos';
     document.querySelectorAll('#f-pos .ph button[data-t]').forEach((b) => b.onclick = () => { tabPos = b.dataset.t; document.querySelectorAll('#f-pos .ph button[data-t]').forEach((x) => x.classList.toggle('on', x === b)); pintarPos(); });
+    let posPag = 0, ordPag = 0;
+    const POR_PAG = 4;
     function pintarPos() {
-      const ps = posiciones.filter((p) => p.sim === simDe());
-      $('f-pos-n').textContent = '(' + posiciones.length + ')'; $('f-ord-n').textContent = '(0)';
+      const abiertas = posiciones.filter((p) => !p.limit);
+      const limites = posiciones.filter((p) => p.limit);
+      $('f-pos-n').textContent = '(' + abiertas.length + ')';
+      $('f-ord-n').textContent = '(' + limites.length + ')';
       const body = $('f-pos-body');
-      if (tabPos === 'ord') { body.innerHTML = '<div class="pos-empty">' + t('No tienes órdenes abiertas.') + '</div>'; return; }
-      if (!posiciones.length) { body.innerHTML = '<div class="pos-empty">' + t('No tienes posiciones abiertas.') + '</div>'; return; }
-      body.innerHTML = '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>' + t('Marca') + '</span><span>TP / SL</span><span>' + t('Liquidación') + '</span><span></span></div>' +
-        posiciones.map((p) => '<div class="pos-row"><span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span></span><span>' + fmt(p.m * p.lev) + ' USDT</span><span>' + fmt(p.px) + '</span><span>' + fmt(p.sim === simDe() ? (precio || p.px) : p.px) + '</span><span style="font-size:10.5px">' + fmt(p.tp) + ' / ' + fmt(p.sl) + '</span><span>' + fmt(p.liq) + '</span><button class="close" data-id="' + p.id + '">' + t('Cerrar') + '</button></div>').join('');
+      const lista = tabPos === 'ord' ? limites : abiertas;
+      let pag = tabPos === 'ord' ? ordPag : posPag;
+      const totalPag = Math.max(1, Math.ceil(lista.length / POR_PAG));
+      if (pag >= totalPag) pag = totalPag - 1;
+      if (pag < 0) pag = 0;
+      if (tabPos === 'ord') ordPag = pag; else posPag = pag;
+
+      if (!lista.length) {
+        body.innerHTML = '<div class="pos-empty">' + t(tabPos === 'ord' ? 'No tienes órdenes abiertas.' : 'No tienes posiciones abiertas.') + '</div>';
+        return;
+      }
+      const desde = pag * POR_PAG;
+      const trozo = lista.slice(desde, desde + POR_PAG);
+      const mkPos = (p) => {
+        const mark = (p.sim === simDe()) ? (precio || p.px) : p.px;
+        // PNL provisional contra el precio de marca (se conectará al contrato).
+        const dir = p.lado === 'long' ? 1 : -1;
+        const pnl = ((mark - p.px) / p.px) * dir * p.lev * p.m;
+        const pnlPct = ((mark - p.px) / p.px) * dir * p.lev * 100;
+        const pnlCls = pnl >= 0 ? 'up' : 'dn';
+        return '<div class="pos-row">' +
+          '<span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '\u00D7</span></span>' +
+          '<span>' + fmt(p.m * p.lev) + ' USDT</span>' +
+          '<span>' + fmt(p.px) + '</span>' +
+          '<span>' + fmt(mark) + '</span>' +
+          '<span class="' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + fmt(pnl) + ' <small>(' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%)</small></span>' +
+          '<span>' + fmt(p.liq) + '</span>' +
+          '<button class="close" data-id="' + p.id + '">' + t('Cerrar') + '</button></div>';
+      };
+      const mkOrd = (p) => {
+        const dist = N.precio ? ((p.px - N.precio) / N.precio * 100) : 0;
+        return '<div class="pos-row">' +
+          '<span><span class="side ' + p.lado + '">' + p.sim + ' ' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '\u00D7</span></span>' +
+          '<span><b style="color:var(--gold)">LIMIT</b></span>' +
+          '<span>' + fmt(p.px) + '</span>' +
+          '<span>' + fmt(p.m * p.lev) + ' USDT</span>' +
+          '<span class="' + (dist >= 0 ? 'up' : 'dn') + '">' + (dist >= 0 ? '+' : '') + dist.toFixed(2) + '%</span>' +
+          '<span>' + fmt(p.liq) + '</span>' +
+          '<button class="close" data-id="' + p.id + '">' + t('Cancelar') + '</button></div>';
+      };
+      const cab = tabPos === 'ord'
+        ? '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tipo') + '</span><span>' + t('Precio') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Distancia') + '</span><span>' + t('Liquidación') + '</span><span></span></div>'
+        : '<div class="pos-head"><span>' + t('Símbolo') + '</span><span>' + t('Tamaño') + '</span><span>' + t('Entrada') + '</span><span>' + t('Marca') + '</span><span>PNL</span><span>' + t('Liquidación') + '</span><span></span></div>';
+      let html = cab + trozo.map(tabPos === 'ord' ? mkOrd : mkPos).join('');
+      // Paginación: botón Next si hay más de una página, con puntito si hay más.
+      if (totalPag > 1) {
+        const hayMas = pag < totalPag - 1;
+        html += '<div class="pos-pag">' +
+          '<button class="pg-prev"' + (pag <= 0 ? ' disabled' : '') + '>\u2039 ' + t('Anterior') + '</button>' +
+          '<span class="pg-info">' + (pag + 1) + ' / ' + totalPag + '</span>' +
+          '<button class="pg-next' + (hayMas ? ' hay-mas' : '') + '"' + (!hayMas ? ' disabled' : '') + '>' + t('Siguiente') + ' \u203A</button>' +
+          '</div>';
+      }
+      body.innerHTML = html;
       body.querySelectorAll('.close').forEach((b) => b.onclick = () => cerrar(+b.dataset.id));
+      const bp = body.querySelector('.pg-prev'), bn = body.querySelector('.pg-next');
+      if (bp) bp.onclick = () => { if (tabPos === 'ord') ordPag--; else posPag--; pintarPos(); };
+      if (bn) bn.onclick = () => { if (tabPos === 'ord') ordPag++; else posPag++; pintarPos(); };
     }
     pintarPos();
 
