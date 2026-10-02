@@ -501,4 +501,17 @@ export async function pintarFuturos(host, api) {
   }
   // ────────────────────────────────────────────────────────────────
   modoPrecio(); calc(); pintarPos();
+
+  // Scroll en futuros: futuros NO es Home, así que el área debe poder desplazarse.
+  // Home deja el documento bloqueado (overflow/touchAction); aquí lo liberamos y
+  // forzamos el recálculo de mv-adaptar, sin tocar Home (que sigue rígido).
+  try {
+    var _sc = document.getElementById('mv-scroll');
+    if (_sc) { _sc.style.overflowY = 'auto'; _sc.style.touchAction = ''; _sc.style.webkitOverflowScrolling = 'touch'; }
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+    document.body.style.overscrollBehavior = '';
+    if (window.__mvMedir) window.__mvMedir();
+  } catch (_) {}
 }
