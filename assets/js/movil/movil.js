@@ -10,7 +10,7 @@ import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=49';
 import { pintarMercados } from './markets.js?v=50';
-import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=50';
+import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=4';
 import { pintarActivos } from './activos.js?v=49';
 import { abrirMenu } from './menu.js?v=20';
 import { abrirBuscar } from './buscar.js?v=20';
@@ -730,13 +730,13 @@ async function irA(tab) {
     // al instante; y si por caché llegara una versión sin el export, m.precargar
     // sería undefined y NO rompe nada.
     setTimeout(() => {
-      import('./operar.js?v=50').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
+      import('./operar.js?v=4').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
     }, 1200);
     return; }
   if (tab === 'markets') { pintarMercados(host, api()); return; }
   if (tab === 'trade')   { pintarOperar(host, api()); return; }
   if (tab === 'assets')  { pintarActivos(host, api()); refrescarBalance(); return; }
-  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=18'); fm.pintarFuturos(host, api()); return; }
+  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=19'); fm.pintarFuturos(host, api()); return; }
 }
 
 /* Futures móvil: placeholder hasta construir la interfaz completa. */

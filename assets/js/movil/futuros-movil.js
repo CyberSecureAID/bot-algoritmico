@@ -13,7 +13,7 @@
 
 import { abrirPicker } from './picker.js?v=1';
 import { IC } from './iconos.js?v=1';
-import { abrirHistorialMovil } from './operar.js?v=3';
+import { abrirHistorialMovil } from './operar.js?v=4';
 import { abrirAlerta } from './alerta.js?v=1';
 import { t } from '../idioma.js?v=163';
 
@@ -105,8 +105,8 @@ function estilos() {
   #fx .fxcard{position:relative;background:#151b23;border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:9px;overflow:hidden}
   /* Imagen de fondo: va en la tarjeta; una capa oscura encima la atenúa para que
      la info se lea nítida, pero el fondo SÍ se ve. El contenido va por encima. */
-  #fx .fxcard.es-open{background-image:url('/assets/portada/img/fondo-open.webp');background-size:cover;background-position:center}
-  #fx .fxcard.es-limit{background-image:url('/assets/portada/img/fondo-limit.webp');background-size:cover;background-position:center}
+  #fx .fxcard.es-open{background-image:url('https://raw.githubusercontent.com/CyberSecureAID/bot-algoritmico/main/assets/portada/img/fondo-open.webp');background-size:cover;background-position:center}
+  #fx .fxcard.es-limit{background-image:url('https://raw.githubusercontent.com/CyberSecureAID/bot-algoritmico/main/assets/portada/img/fondo-limit.webp');background-size:cover;background-position:center}
   #fx .fxcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,18,24,.55),rgba(14,18,24,.68));backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)}
   #fx .fxcard>*{position:relative;z-index:1}
   #fx .fxc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
