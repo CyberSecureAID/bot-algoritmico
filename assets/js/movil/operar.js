@@ -200,15 +200,6 @@ async function pintarPanel(t) {
       if (o.sincronizarOrdenes && cuenta) await o.sincronizarOrdenes(cuenta);   // limpia las ya llenadas
       if (o.ordenesPuestas) ordenes = (o.ordenesPuestas() || []).filter((x) => x.modo !== 'aviso' && x.botId != null);
     } catch (_) {}
-    // ─── ÓRDENES DE DEMOSTRACIÓN (quitar cuando empiece el contrato) ───
-    if (!ordenes.length) {
-      ordenes = [
-        { par: 'BTCUSDT', precio: 82500, cant: 200, quote: 'USDT', vender: false, demo: true },
-        { par: 'ETHUSDT', precio: 3400, cant: 150, quote: 'USDT', vender: true, demo: true },
-        { par: 'BNBUSDT', precio: 600, cant: 100, quote: 'USDT', vender: false, demo: true }
-      ];
-    }
-    // ──────────────────────────────────────────────────────────────────
     if (!ordenes.length) { el.innerHTML = `<div class="op-empty">You have no open limit orders.<br><span style="font-size:12px">Place one from the Limit tab.</span></div>`; return; }
     const cache = (() => { try { const c = JSON.parse(localStorage.getItem('mv-cg') || 'null'); return (c && c.d) || {}; } catch (_) { return {}; } })();
     inyectarSpotOrdCss();

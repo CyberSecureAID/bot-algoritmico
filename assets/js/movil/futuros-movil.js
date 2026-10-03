@@ -461,20 +461,6 @@ export async function pintarFuturos(host, api) {
     body.querySelectorAll('.fxedit').forEach((b) => b.onclick = () => editarMv(b.dataset.id, b.dataset.k));
 
   }
-  // ─── OPERACIONES DE DEMOSTRACIÓN (quitar cuando haya contrato) ───
-  if (!_pos.length) {
-    const liq = (e, l, esL) => esL ? e * (1 - 0.75 / l) : e * (1 + 0.75 / l);
-    const mk = (lado, px, amt, lev, limit) => ({
-      id: 'demo-' + Math.random().toString(36).slice(2, 8), sim: 'BTCUSDT', parId: 'BTC', lado, px, amt, lev,
-      tp: lado === 'long' ? px * 1.03 : px * 0.97, sl: lado === 'long' ? px * 0.985 : px * 1.015,
-      liq: liq(px, lev, lado === 'long'), limit, demo: true
-    });
-    _pos = [
-      mk('long', 83600, 500, 50, false), mk('short', 84200, 180, 10, false), mk('long', 83900, 250, 20, false),
-      mk('long', 82500, 200, 20, true), mk('short', 85800, 300, 50, true), mk('long', 81200, 150, 10, true)
-    ];
-  }
-  // ────────────────────────────────────────────────────────────────
   modoPrecio(); calc(); pintarPos();
 
   // Scroll en futuros: futuros NO es Home, así que el área debe poder desplazarse.
