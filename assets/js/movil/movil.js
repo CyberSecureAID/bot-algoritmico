@@ -10,7 +10,7 @@ import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=51';
 import { pintarMercados } from './markets.js?v=50';
-import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=51';
+import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=52';
 import { pintarActivos } from './activos.js?v=54';
 import { abrirMenu } from './menu.js?v=20';
 import { abrirBuscar } from './buscar.js?v=20';
@@ -734,7 +734,7 @@ async function irA(tab) {
     // al instante; y si por caché llegara una versión sin el export, m.precargar
     // sería undefined y NO rompe nada.
     setTimeout(() => {
-      import('./operar.js?v=51').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
+      import('./operar.js?v=52').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
     }, 1200);
     return; }
   if (tab === 'markets') { pintarMercados(host, api()); return; }

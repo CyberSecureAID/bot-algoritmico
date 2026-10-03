@@ -156,6 +156,30 @@ export async function pintarOperar(host, api) {
 function posGuardadas() { try { return JSON.parse(localStorage.getItem('mv-pos') || '[]'); } catch (_) { return []; } }
 function posGuardar(l) { try { localStorage.setItem('mv-pos', JSON.stringify(l)); } catch (_) {} }
 
+// CSS de las órdenes limit de Spot (tarjetas tipo futuros, con etiqueta SPOT).
+// Se inyecta una sola vez. Clases propias (spot-ord-*) para NO chocar con nada.
+function inyectarSpotOrdCss() {
+  if (document.getElementById('spot-ord-css')) return;
+  const css = `
+    .spot-ord{background:rgba(255,255,255,.025);border:1px solid var(--mv-line);border-radius:11px;padding:11px;margin-bottom:9px}
+    .spot-ord-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+    .spot-ord-coin{display:inline-flex;align-items:center;gap:7px}
+    .spot-ord-ci{width:24px;height:24px;flex:0 0 auto;border-radius:50%;background:var(--mv-card2) center/cover no-repeat;border:1px solid var(--mv-line);display:grid;place-items:center;font-size:9px;font-weight:800;color:var(--mv-gold)}
+    .spot-ord-par{font-size:13px;font-weight:800;color:var(--mv-txt)}
+    .spot-ord-lado{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px}
+    .spot-ord-lado.c{color:var(--mv-up);background:color-mix(in srgb,var(--mv-up) 15%,transparent)}
+    .spot-ord-lado.v{color:var(--mv-down);background:color-mix(in srgb,var(--mv-down) 15%,transparent)}
+    .spot-ord-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:800;letter-spacing:.06em;color:var(--mv-gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);border-radius:6px;padding:3px 7px}
+    .spot-ord-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+    .spot-ord-grid>div{display:flex;flex-direction:column;gap:2px}
+    .spot-ord-grid label{font-size:8.5px;color:var(--mv-mut);text-transform:uppercase;letter-spacing:.04em}
+    .spot-ord-grid b{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--mv-txt);font-weight:700}
+    .spot-ord-pct.up{color:var(--mv-up)} .spot-ord-pct.dn{color:var(--mv-down)}
+    .spot-ord-x{width:100%;font-size:11.5px;font-weight:700;color:var(--mv-down);background:color-mix(in srgb,var(--mv-down) 10%,transparent);border:1px solid color-mix(in srgb,var(--mv-down) 30%,transparent);border-radius:8px;padding:9px 0;cursor:pointer}
+  `;
+  const st = document.createElement('style'); st.id = 'spot-ord-css'; st.textContent = css; document.head.appendChild(st);
+}
+
 async function pintarPanel(t) {
   const el = $('op-panel'); if (!el) return;
   const con = _api && _api.estaConectado && _api.estaConectado();
@@ -176,21 +200,41 @@ async function pintarPanel(t) {
       if (o.sincronizarOrdenes && cuenta) await o.sincronizarOrdenes(cuenta);   // limpia las ya llenadas
       if (o.ordenesPuestas) ordenes = (o.ordenesPuestas() || []).filter((x) => x.modo !== 'aviso' && x.botId != null);
     } catch (_) {}
+    // ─── ÓRDENES DE DEMOSTRACIÓN (quitar cuando empiece el contrato) ───
+    if (!ordenes.length) {
+      ordenes = [
+        { par: 'BTCUSDT', precio: 82500, cant: 200, quote: 'USDT', vender: false, demo: true },
+        { par: 'ETHUSDT', precio: 3400, cant: 150, quote: 'USDT', vender: true, demo: true },
+        { par: 'BNBUSDT', precio: 600, cant: 100, quote: 'USDT', vender: false, demo: true }
+      ];
+    }
+    // ──────────────────────────────────────────────────────────────────
     if (!ordenes.length) { el.innerHTML = `<div class="op-empty">You have no open limit orders.<br><span style="font-size:12px">Place one from the Limit tab.</span></div>`; return; }
     const cache = (() => { try { const c = JSON.parse(localStorage.getItem('mv-cg') || 'null'); return (c && c.d) || {}; } catch (_) { return {}; } })();
+    inyectarSpotOrdCss();
     el.innerHTML = ordenes.map((o, i) => {
       const logo = logoDe(o.par || '', null, cache);
-      const lado = o.vender ? 'Sell' : 'Buy';
-      return `<div class="op-ord">
-        <span class="op-ord-ci" style="${logo ? `background-image:url(${logo});background-size:cover` : ''}">${logo ? '' : esc(String(o.par || '').slice(0, 3))}</span>
-        <div class="op-ord-tx"><b>${esc(o.par || '')} <i class="op-ord-tag ${o.vender ? 'sell' : 'buy'}">${lado} · Limit</i></b>
-          <small>Precio ${fmtP(o.precio)}${o.cant ? ` · ${cantidad(o.cant)} ${esc(o.quote === o.base ? '' : 'USDT')}` : ''}</small></div>
-        <div class="op-ord-r"><small class="op-ord-pct" data-par="${esc(o.par || '')}" data-precio="${o.precio}" data-vender="${o.vender ? 1 : 0}">—</small>
-          <button class="op-ord-x" data-i="${i}">Cancelar</button></div>
+      const esVenta = !!o.vender;
+      const lado = esVenta ? 'SELL' : 'BUY';
+      return `<div class="spot-ord ${esVenta ? 'v' : 'c'}">
+        <div class="spot-ord-top">
+          <span class="spot-ord-coin">
+            <span class="spot-ord-ci" style="${logo ? `background-image:url(${logo});background-size:cover` : ''}">${logo ? '' : esc(String(o.par || '').slice(0, 3))}</span>
+            <b class="spot-ord-par">${esc(o.par || '')}</b>
+            <span class="spot-ord-lado ${esVenta ? 'v' : 'c'}">${lado}</span>
+          </span>
+          <span class="spot-ord-tag">SPOT · LIMIT</span>
+        </div>
+        <div class="spot-ord-grid">
+          <div><label>Precio</label><b>${fmtP(o.precio)}</b></div>
+          <div><label>Cantidad</label><b>${o.cant ? cantidad(o.cant) + ' ' + esc(o.quote === o.base ? '' : 'USDT') : '—'}</b></div>
+          <div><label>Distancia</label><b class="spot-ord-pct" data-par="${esc(o.par || '')}" data-precio="${o.precio}" data-vender="${esVenta ? 1 : 0}">—</b></div>
+        </div>
+        <button class="spot-ord-x" data-i="${i}">Cancelar</button>
       </div>`;
     }).join('');
     // % descuento/ganancia con el precio actual (una llamada por par)
-    el.querySelectorAll('.op-ord-pct').forEach(async (span) => {
+    el.querySelectorAll('.spot-ord-pct').forEach(async (span) => {
       const par = span.getAttribute('data-par'), precio = +span.getAttribute('data-precio'), vender = span.getAttribute('data-vender') === '1';
       try {
         const sym = (par || '').replace('/', '');
@@ -198,11 +242,11 @@ async function pintarPanel(t) {
         if (!r.ok) return; const actual = +(await r.json()).price;
         if (!(actual > 0)) return;
         const pct = vender ? ((precio - actual) / actual) * 100 : ((actual - precio) / actual) * 100;
-        span.textContent = (vender ? 'Ganancia ' : 'Descuento ') + Math.abs(pct).toFixed(2) + '%';
-        span.className = 'op-ord-pct ' + (vender ? 'up' : 'dn');
+        span.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+        span.className = 'spot-ord-pct ' + (vender ? 'up' : 'dn');
       } catch (_) {}
     });
-    el.querySelectorAll('.op-ord-x').forEach((b) => b.onclick = () => cancelarOrden(ordenes[+b.getAttribute('data-i')], el));
+    el.querySelectorAll('.spot-ord-x').forEach((b) => b.onclick = () => cancelarOrden(ordenes[+b.getAttribute('data-i')], el));
     return;
   }
   // Posición: compras hechas desde aquí (entrada + P/L). Eliminar = vender.
