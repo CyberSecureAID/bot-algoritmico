@@ -5,13 +5,13 @@
    · Las secciones reales abren por ENCIMA del contenido de la cáscara */
 
 import * as wallet from '../wallet.js?v=129';
-import * as gb from '../gridbot.js?v=125';
+import * as gb from '../gridbot.js?v=130';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=50';
+import { pintarInicio } from './inicio.js?v=51';
 import { pintarMercados } from './markets.js?v=50';
-import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=4';
-import { pintarActivos } from './activos.js?v=49';
+import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=51';
+import { pintarActivos } from './activos.js?v=54';
 import { abrirMenu } from './menu.js?v=20';
 import { abrirBuscar } from './buscar.js?v=20';
 import { abrirAlerta } from './alerta.js?v=20';
@@ -82,18 +82,18 @@ async function abrir(clave, arg) {
       case 'alertas':   abrirAlerta(); break;
       case 'alertasTool': abrirAlerta(); break;
       case 'recibir':   abrirRecibir(); break;
-      case 'aportar':   { const m = await import('./aportar-movil.js?v=18'); m.abrirAportarMovil(); break; }
-      case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=132'); m.abrirMarket && m.abrirMarket(); break; }
+      case 'aportar':   { const m = await import('./aportar-movil.js?v=19'); m.abrirAportarMovil(); break; }
+      case 'market':    { inyectarFixMarket(); const m = await import('../market.js?v=133'); m.abrirMarket && m.abrirMarket(); break; }
       case 'buy':       await abrirMarketTab('mk-t5'); break;
       case 'sell':      await abrirMarketTab('mk-t2'); break;
       case 'fondos':    abrirMetamaskBuy(); break;
-      case 'prize':     { const m = await import('../prizepool.js?v=125'); m.abrirPrizePool && m.abrirPrizePool(); break; }
-      case 'perfil':    { const m = await import('../perfil.js?v=131'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
-      case 'tools':     { inyectarFixTools(); const m = await import('../tools.js?v=125'); m.abrirTools && m.abrirTools(); break; }
-      case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=125'); m.abrirAcademy && m.abrirAcademy(); break; }
+      case 'prize':     { const m = await import('../prizepool.js?v=126'); m.abrirPrizePool && m.abrirPrizePool(); break; }
+      case 'perfil':    { const m = await import('../perfil.js?v=132'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
+      case 'tools':     { inyectarFixTools(); const m = await import('../tools.js?v=126'); m.abrirTools && m.abrirTools(); break; }
+      case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=126'); m.abrirAcademy && m.abrirAcademy(); break; }
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
-      case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=126'); m.abrirLiquidity && m.abrirLiquidity(); break; }
+      case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=127'); m.abrirLiquidity && m.abrirLiquidity(); break; }
       case 'shield':    { const m = await import('../shield/shield.js?v=154'); m.abrirShield && m.abrirShield(); break; }
       case 'bots':      modoBots(true); break;
       case 'buscar':    abrirBuscar(api()); break;
@@ -111,10 +111,10 @@ async function abrirGrafica(g, par) {
   const id = par && (par.id || par);
   inyectarFixGrafica();
   try {
-    if (g === 'grafica') { const m = await import('../tools.js?v=125'); m.abrirGraficaLimpia && m.abrirGraficaLimpia(id); inyectarFixTools(); }
+    if (g === 'grafica') { const m = await import('../tools.js?v=126'); m.abrirGraficaLimpia && m.abrirGraficaLimpia(id); inyectarFixTools(); }
     else if (g === 'niveles') { const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(id); montarTfMovil(); }
     else if (g === 'muros') { const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(id); }
-    else if (g === 'liquidity') { const m = await import('../liquidity.js?v=126'); m.abrirLiquidity && m.abrirLiquidity(id); }
+    else if (g === 'liquidity') { const m = await import('../liquidity.js?v=127'); m.abrirLiquidity && m.abrirLiquidity(id); }
     else { await abrir(g); }
   } catch (_) { await abrir(g === 'niveles' ? 'niveles' : g); }
 }
@@ -252,7 +252,7 @@ function inyectarFixMarket() {
 }
 async function abrirToolDirecto(id) {
   inyectarFixTools();
-  const m = await import('../tools.js?v=125');
+  const m = await import('../tools.js?v=126');
   if (m.abrirTools) m.abrirTools();
   const tl = $('tl-overlay'); if (tl) tl.style.visibility = 'hidden';   // sin flash de Tools
   setTimeout(() => {
@@ -311,7 +311,7 @@ function abrirRecibir() {
 
 async function abrirMarketTab(tabId) {
   inyectarFixMarket();
-  const m = await import('../market.js?v=132');
+  const m = await import('../market.js?v=133');
   if (m.abrirMarket) m.abrirMarket();
   setTimeout(() => { const t = $(tabId); if (t) t.click(); }, 120);
 }
@@ -730,13 +730,13 @@ async function irA(tab) {
     // al instante; y si por caché llegara una versión sin el export, m.precargar
     // sería undefined y NO rompe nada.
     setTimeout(() => {
-      import('./operar.js?v=4').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
+      import('./operar.js?v=51').then((m) => { try { m.precargarOperar && m.precargarOperar(); } catch (_) {} }).catch(() => {});
     }, 1200);
     return; }
   if (tab === 'markets') { pintarMercados(host, api()); return; }
   if (tab === 'trade')   { pintarOperar(host, api()); return; }
   if (tab === 'assets')  { pintarActivos(host, api()); refrescarBalance(); return; }
-  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=19'); fm.pintarFuturos(host, api()); return; }
+  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=20'); fm.pintarFuturos(host, api()); return; }
 }
 
 /* Futures móvil: placeholder hasta construir la interfaz completa. */

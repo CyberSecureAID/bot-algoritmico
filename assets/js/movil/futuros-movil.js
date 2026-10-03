@@ -12,6 +12,7 @@
    Las posiciones viven en memoria hasta que exista el contrato de futuros. */
 
 import { abrirPicker } from './picker.js?v=1';
+import * as wallet from '../wallet.js?v=129';
 import { IC } from './iconos.js?v=1';
 import { abrirHistorialMovil } from './operar.js?v=4';
 import { abrirAlerta } from './alerta.js?v=1';
@@ -455,7 +456,7 @@ export async function pintarFuturos(host, api) {
     g.fillStyle = col; g.font = '800 52px monospace'; g.fillText((pnl >= 0 ? '+' : '') + fmtP(pnl) + ' USDT', X + 10, cy + 70);
     let iy = H * 0.62; g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('ENTRY PRICE', X, iy); g.fillText('MARK PRICE', X + 300, iy);
     g.fillStyle = blanco; g.font = '800 34px monospace'; g.fillText(fmtP(pos.px), X, iy + 42); g.fillText(fmtP(mk), X + 300, iy + 42);
-    iy += 120; let cuenta = ''; try { cuenta = (window.ethereum && window.ethereum.selectedAddress) || ''; } catch (_) {}
+    iy += 120; let cuenta = ''; try { cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || (window.ethereum && window.ethereum.selectedAddress) || ''; } catch (_) {}
     if (cuenta) { g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('WALLET ••••' + cuenta.slice(-4), X, iy); }
     const cco = ccoPre;
     if (cco) { const lw = 220, lh = cco.height * (lw / cco.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7; g.drawImage(cco, X, H - lh - 38, lw, lh); g.restore(); }

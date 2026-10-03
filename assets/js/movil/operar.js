@@ -171,7 +171,7 @@ async function pintarPanel(t) {
     let ordenes = [];
     try {
       const o = await import('../orden.js?v=126');
-      const w = await import('../wallet.js?v=128');
+      const w = await import('../wallet.js?v=129');
       const cuenta = w.cuentaActual && w.cuentaActual();
       if (o.sincronizarOrdenes && cuenta) await o.sincronizarOrdenes(cuenta);   // limpia las ya llenadas
       if (o.ordenesPuestas) ordenes = (o.ordenesPuestas() || []).filter((x) => x.modo !== 'aviso' && x.botId != null);
@@ -233,7 +233,7 @@ async function cancelarOrden(o, el) {
   if (el) el.innerHTML = `<div class="op-loading"><span class="op-spin"></span>Cancelling the order…</div>`;
   try {
     const gb = await import('../gridbot.js?v=125');
-    const w = await import('../wallet.js?v=128');
+    const w = await import('../wallet.js?v=129');
     const cuenta = w.cuentaActual && w.cuentaActual();
     if (cuenta && o.base && o.quote && o.botId != null && gb.claveBot && gb.cancelarRejillaK) {
       const clave = gb.claveBot(cuenta, o.base, o.quote, o.botId);
@@ -518,7 +518,7 @@ export async function abrirHistorialMovil() {
   let gb, cuenta;
   try {
     gb = await import('../gridbot.js?v=125');
-    const w = await import('../wallet.js?v=128');
+    const w = await import('../wallet.js?v=129');
     cuenta = w.cuentaActual && w.cuentaActual();
   } catch (_) {}
   if (!cuenta) { body.innerHTML = `<div class="mh-vacio">Connect your wallet to see your history.</div>`; return; }
