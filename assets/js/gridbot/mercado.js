@@ -1,7 +1,7 @@
 /* mercado.js — capa de conexión al contrato MercadoTokens (listar/comprar/retirar).
    Habla con el proxy desplegado. Reusa ethers desde el vendor. */
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
-import * as wallet from '../wallet.js?v=125';
+import * as wallet from '../wallet.js?v=129';
 
 export const MERCADO = '0x39c48394068299Aa3e3ab114F16bfc3DE11F4112';
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';

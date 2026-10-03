@@ -3,7 +3,7 @@
    Estilo idéntico al swap (mismo fondo, dorado, glass). Web y base para móvil. */
 import * as mercado from './mercado.js?v=3';
 import * as flogos from './firebase-logos.js?v=2';
-import * as wallet from '../wallet.js?v=125';
+import * as wallet from '../wallet.js?v=129';
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 
 const $ = (id) => document.getElementById(id);

@@ -4,7 +4,7 @@
    por initSwap para no crear dependencias circulares con gridbot-ui. */
 
 import * as gb from '../gridbot.js?v=129';
-import * as wallet from '../wallet.js?v=125';
+import * as wallet from '../wallet.js?v=129';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=3';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
 import { APP, BASES } from './config.js?v=1';
