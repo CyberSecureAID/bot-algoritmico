@@ -1,6 +1,6 @@
 // perfil.js — Panel de cuenta por wallet. Módulo independiente (no toca la lógica existente).
 import * as gb from './gridbot.js?v=125';
-import * as wallet from './wallet.js?v=125';
+import * as wallet from './wallet.js?v=129';
 import * as fperfil from './firebase-perfil.js?v=2';
 import { reducirImagen } from './gridbot/listing.js?v=13';
 import * as avisos from './avisos.js?v=125';

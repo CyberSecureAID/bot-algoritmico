@@ -13,7 +13,7 @@ const _tipoNumCC = () => (window.matchMedia('(max-width: 760px)').matches ? 'tex
 //   · Alertas de precio — avisa cuando una moneda llega a un precio
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
-import * as wallet from './wallet.js?v=125';
+import * as wallet from './wallet.js?v=129';
 import * as gb from './gridbot.js?v=125';
 import { MONEDAS } from './tokens.js?v=125';
 

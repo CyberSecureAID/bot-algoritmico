@@ -2,7 +2,7 @@
 // Módulo independiente. Lo único que necesita de fuera es la wallet.
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
-import * as wallet from './wallet.js?v=125';
+import * as wallet from './wallet.js?v=129';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
