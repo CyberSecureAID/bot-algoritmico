@@ -366,23 +366,31 @@ function engancharEventos(prov) {
 
   const onCuentas = (nuevas) => {
     const antes = est.cuenta;
-    est.cuenta = nuevas?.[0] ?? null;
-    // NO marcamos salida aquí. Los navegadores internos de las wallets emiten
-    // accountsChanged con lista vacía de forma espontánea (al cambiar de pestaña,
-    // bloquear la pantalla o por su propio ciclo de vida). Marcar salida en ese
-    // momento dejaba la sesión cerrada de forma permanente y bloqueaba la
-    // reconexión automática. La salida solo se marca cuando el usuario la pide.
-    if (!est.cuenta && antes) {
-      // intentar recuperar la cuenta poco después: si la wallet sigue autorizada,
-      // vuelve sola y el usuario ni se entera.
-      setTimeout(async function () {
+    const nueva = nuevas?.[0] ?? null;
+    // Caso 1: llega VACÍO pero antes había cuenta. Los navegadores de las wallets
+    // emiten accountsChanged vacío de forma espontánea (al compartir, cambiar de
+    // pestaña, bloquear pantalla). NO propagamos el null a la interfaz (eso hacía
+    // que el saldo saltara a cero). Mantenemos la cuenta e intentamos recuperar
+    // en silencio; solo si tras reintentar sigue sin cuenta, avisamos.
+    if (!nueva && antes) {
+      let tries = 0;
+      const recuperar = async () => {
+        tries++;
         try {
           const c = await prov.request({ method: 'eth_accounts' });
-          if (c && c.length) { est.cuenta = c[0]; avisar(); }
+          if (c && c.length) { est.cuenta = c[0]; if (c[0] !== antes) avisar(); return; }
         } catch (_) {}
-      }, 600);
+        if (tries < 3) setTimeout(recuperar, 700);
+        // tras 3 intentos sin cuenta: la cuenta sigue siendo 'antes' (no avisamos
+        // del null, para no desconectar la interfaz; la sesión no se marca salida).
+      };
+      setTimeout(recuperar, 500);
+      return;   // NO avisar del null
     }
-    avisar();
+    // Caso 2: llega una cuenta (nueva o la misma). Actualizamos y avisamos solo
+    // si de verdad cambió, para no resetear la interfaz sin motivo.
+    est.cuenta = nueva;
+    if (nueva !== antes) avisar();
   };
   const onCadena = (id) => { est.chainId = id; avisar(); };
 
