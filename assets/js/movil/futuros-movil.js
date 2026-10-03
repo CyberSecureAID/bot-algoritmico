@@ -114,7 +114,7 @@ function estilos() {
   #fx .fxc-top .side{font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:6px}
   #fx .fxc-top .side.long{color:var(--up)} #fx .fxc-top .side.short{color:var(--down)}
   #fx .fxc-lim{font-family:'IBM Plex Mono';font-size:9px;font-weight:800;color:var(--gold);background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.3);border-radius:5px;padding:2px 6px}
-  #fx .fxshare{background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);border-radius:7px;width:28px;height:28px;display:grid;place-items:center;padding:0}
+  #fx .fxtag{font-family:'IBM Plex Mono';font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);border-radius:6px;padding:4px 8px}
   #fx .fxc-coin{display:inline-flex;align-items:center;gap:7px}
   #fx .fxc-coin img{width:22px;height:22px;border-radius:50%}
   #fx .fxc-coin .side{font-weight:800;font-size:13px} #fx .fxc-coin .side.long{color:var(--ink)} #fx .fxc-coin .side.short{color:var(--ink)}
@@ -390,144 +390,6 @@ export async function pintarFuturos(host, api) {
     };
   }
 
-  // Tarjeta de compartir (misma dinámica que la web, con navigator.share).
-  function imgMv(src) {
-    return new Promise((res) => {
-      let hecho = false;
-      const acabar = (v) => { if (!hecho) { hecho = true; res(v); } };
-      const i = new Image();
-      i.crossOrigin = 'anonymous';
-      i.onload = () => acabar(i);
-      i.onerror = () => acabar(null);
-      i.src = src;
-      // timeout: si en 4s no dispara load ni error (pasa en el WebView de la
-      // wallet), se da por no cargada y se sigue, para no colgar el Promise.all.
-      setTimeout(() => acabar(null), 4000);
-    });
-  }
-  async function compartirMv(id) {
-    const pos = _pos.find((p) => p.id === id || p.id === +id); if (!pos) return;
-    // indicador inmediato para que el botón no parezca un placeholder
-    const cargando = document.createElement('div');
-    cargando.className = 'fxpop'; cargando.style.zIndex = '26000';
-    cargando.innerHTML = '<div style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div><div style="position:relative;z-index:1;margin:auto;color:#eaecef;font-family:sans-serif;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:34px;height:34px;border:3px solid rgba(232,184,75,.25);border-top-color:#E8B84B;border-radius:50%;animation:fxsp 0.7s linear infinite"></div>Generating…</div>';
-    document.body.appendChild(cargando);
-    if (!document.getElementById('fxsp-css')) { const st = document.createElement('style'); st.id = 'fxsp-css'; st.textContent = '@keyframes fxsp{to{transform:rotate(360deg)}}'; document.head.appendChild(st); }
-    const quitarCarga = () => { try { cargando.remove(); } catch (_) {} };
-    const esLong = pos.lado === 'long';
-    const mk = markDeMv(pos), dir = esLong ? 1 : -1;
-    const pnl = ((mk - pos.px) / pos.px) * dir * pos.lev * pos.amt;
-    const pct = ((mk - pos.px) / pos.px) * dir * pos.lev * 100;
-    const gana = pnl >= 0;
-    const verde = '#16c784', rojo = '#f6465d', dorado = '#E8B84B', blanco = '#fff';
-    const col = gana ? verde : rojo;
-    // Las 3 imágenes EN PARALELO (antes iban una tras otra y tardaba).
-    const parId0 = pos.parId || (pos.sim || '').replace('USDT', '');
-    // Las imágenes del repo se cargan desde raw.githubusercontent (que SÍ envía
-    // headers CORS), no desde la ruta del dominio. Si no, el canvas se "contamina"
-    // y toBlob se cuelga para siempre (el "generando" infinito). VERIFICADO.
-    const RAW = 'https://raw.githubusercontent.com/CyberSecureAID/bot-algoritmico/main';
-    const [fondo, logoPre, ccoPre] = await Promise.all([
-      imgMv(RAW + '/assets/portada/img/' + (esLong ? 'long' : 'short') + '.webp'),
-      imgMv('https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + parId0.toLowerCase() + '.png'),
-      imgMv(RAW + '/assets/img/cco-movil.webp')
-    ]);
-    const W = 1670, H = 941, dpr = 2;
-    const cv = document.createElement('canvas'); cv.width = W * dpr; cv.height = H * dpr;
-    const g = cv.getContext('2d'); g.scale(dpr, dpr);
-    if (fondo) g.drawImage(fondo, 0, 0, W, H); else { g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, H); }
-    const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, 'rgba(5,7,10,.80)'); gr.addColorStop(0.5, 'rgba(5,7,10,.40)'); gr.addColorStop(1, 'rgba(5,7,10,.05)');
-    g.fillStyle = gr; g.fillRect(0, 0, W, H);
-    const X = 70; g.textAlign = 'left';
-    const parId = pos.parId || (pos.sim || '').replace('USDT', '');
-    let topY = 132;
-    const logo = logoPre;
-    g.save(); g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.closePath(); g.fillStyle = 'rgba(255,255,255,.08)'; g.fill(); g.clip();
-    if (logo) g.drawImage(logo, X - 2, topY - 32, 64, 64);
-    else { g.fillStyle = dorado; g.font = '800 34px sans-serif'; g.textAlign = 'center'; g.fillText((parId || '?')[0], X + 30, topY + 12); g.textAlign = 'left'; }
-    g.restore();
-    g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.stroke();
-    g.fillStyle = blanco; g.font = '800 46px sans-serif'; g.fillText(pos.sim, X + 80, topY + 16);
-    topY += 86; g.fillStyle = esLong ? verde : rojo; g.font = '800 28px monospace'; g.fillText((esLong ? 'LONG' : 'SHORT') + '  ' + pos.lev + '×', X, topY);
-    topY += 50; const ah = new Date(); const o = { timeZone: 'America/Havana' };
-    g.fillStyle = blanco; g.font = '500 24px monospace';
-    g.fillText(ah.toLocaleDateString('en-US', Object.assign({ day: '2-digit', month: 'short', year: 'numeric' }, o)) + '  ' + ah.toLocaleTimeString('en-US', Object.assign({ hour: '2-digit', minute: '2-digit' }, o)), X, topY);
-    let cy = H * 0.42; g.fillStyle = col; g.font = '800 120px monospace'; g.fillText((pct >= 0 ? '+' : '') + pct.toFixed(2) + '%', X, cy);
-    g.fillStyle = col; g.font = '800 52px monospace'; g.fillText((pnl >= 0 ? '+' : '') + fmtP(pnl) + ' USDT', X + 10, cy + 70);
-    let iy = H * 0.62; g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('ENTRY PRICE', X, iy); g.fillText('MARK PRICE', X + 300, iy);
-    g.fillStyle = blanco; g.font = '800 34px monospace'; g.fillText(fmtP(pos.px), X, iy + 42); g.fillText(fmtP(mk), X + 300, iy + 42);
-    iy += 120; let cuenta = ''; try { cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || (window.ethereum && window.ethereum.selectedAddress) || ''; } catch (_) {}
-    if (cuenta) { g.fillStyle = dorado; g.font = '700 22px monospace'; g.fillText('WALLET ••••' + cuenta.slice(-4), X, iy); }
-    const cco = ccoPre;
-    if (cco) { const lw = 220, lh = cco.height * (lw / cco.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7; g.drawImage(cco, X, H - lh - 38, lw, lh); g.restore(); }
-    // Generar la imagen con TIMEOUT: en el navegador de la wallet, toBlob puede
-    // colgarse; si tarda más de 2.5s, pasamos a toDataURL (más fiable ahí).
-    let blob = null;
-    try {
-      blob = await new Promise((res) => {
-        let hecho = false;
-        const acabar = (v) => { if (!hecho) { hecho = true; res(v); } };
-        try { cv.toBlob((b) => acabar(b), 'image/png', 0.92); } catch (_) { acabar(null); }
-        setTimeout(() => acabar(null), 2500);   // no esperar infinito
-      });
-    } catch (_) {}
-    let dataUrl = '';
-    if (!blob) { try { dataUrl = cv.toDataURL('image/png'); } catch (_) {} }
-    const ENLACE = 'https://criptocubaoficial.com';
-
-    quitarCarga();   // quitar el indicador "generando"
-    // Ventana emergente con la imagen + botones.
-    const src = blob ? URL.createObjectURL(blob) : dataUrl;
-    if (!src) {
-      // No se pudo generar la imagen (navegador restringido). Avisar, no quedar mudo.
-      const av = document.createElement('div');
-      av.className = 'fxpop'; av.style.zIndex = '26000';
-      av.innerHTML = '<div style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div><div style="position:relative;z-index:1;margin:auto;max-width:300px;background:#0e1218;border:1px solid #232b36;border-radius:14px;padding:18px;text-align:center;color:#eaecef;font-family:sans-serif"><p style="font-size:13px;line-height:1.5;margin:0 0 14px">Could not generate the image in this browser. Try opening the site in Chrome or Safari.</p><button id="av-ok" style="background:#1b222c;border:1px solid #2b3340;border-radius:10px;padding:10px 18px;color:#eaecef;font-weight:700">OK</button></div>';
-      document.body.appendChild(av);
-      av.querySelector('#av-ok').onclick = () => { try { av.remove(); } catch (_) {} };
-      return;
-    }
-    const ov = document.createElement('div');
-    ov.className = 'fxpop'; ov.style.zIndex = '26000';
-    ov.innerHTML = '<div class="bg" style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div>' +
-      '<div class="card" style="position:relative;z-index:1;max-width:520px;width:calc(100% - 28px);margin:auto;background:#0e1218;border:1px solid #232b36;border-radius:16px;padding:14px">' +
-      '<img src="' + src + '" style="width:100%;border-radius:11px;display:block">' +
-      '<div style="display:flex;gap:9px;margin-top:12px">' +
-      '<button id="fxsh-dl" style="flex:1;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:none;border-radius:11px;padding:13px;color:#231800;font-weight:800;font-size:15px">Download</button>' +
-      '<button id="fxsh-sh" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:11px;padding:13px;color:#eaecef;font-weight:700;font-size:15px">Share</button>' +
-      '</div></div>';
-    document.body.appendChild(ov);
-    const cerrarOv = () => { try { ov.remove(); if (blob) URL.revokeObjectURL(src); } catch (_) {} };
-    ov.querySelector('.bg').onclick = cerrarOv;
-    ov.querySelector('#fxsh-dl').onclick = () => {
-      // Descarga: intento normal. En el navegador de la wallet puede no bajar,
-      // así que como respaldo compartimos (navigator.share guarda/comparte la
-      // imagen). NO usamos window.open (dejaba la pantalla en blanco al volver).
-      try {
-        const a = document.createElement('a'); a.href = src; a.download = 'CriptoCubaOficial.png';
-        document.body.appendChild(a); a.click(); a.remove();
-      } catch (_) {}
-      // respaldo: si hay share con archivo, ofrecerlo (sin romper la vista)
-      try {
-        if (blob && navigator.canShare) {
-          const f = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
-          if (navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: 'CriptoCuba Oficial' }).catch(() => {}); }
-        }
-      } catch (_) {}
-    };
-    ov.querySelector('#fxsh-sh').onclick = async () => {
-      if (blob && navigator.canShare) {
-        const archivo = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
-        if (navigator.canShare({ files: [archivo] })) {
-          try { await navigator.share({ files: [archivo], title: 'CriptoCuba Oficial', text: ENLACE }); return; } catch (_) {}
-        }
-      }
-      if (navigator.share) { try { await navigator.share({ title: 'CriptoCuba Oficial', text: ENLACE, url: ENLACE }); return; } catch (_) {} }
-      const a = document.createElement('a'); a.href = src; a.download = 'CriptoCubaOficial.png'; a.click();
-    };
-  }
-
-  // precio de marca de una posición según SU moneda (no la gráfica).
   function markDeMv(p) {
     if (p.sim === _par.s && _libro.precio) return _libro.precio;
     try { const c = cache(); if (p.parId) { const cg = Object.values(c).find((x) => x); } } catch (_) {}
@@ -559,7 +421,7 @@ export async function pintarFuturos(host, api) {
         return '<div class="fxcard es-open">' +
           '<div class="fxc-top">' +
             '<span class="fxc-coin">' + (logoU ? '<img src="' + logoU + '" onerror="this.style.display=\'none\'">' : '') + '<b class="side ' + p.lado + '">' + p.sim + '</b><span class="lev ' + p.lado + '">' + (p.lado === 'long' ? 'LONG' : 'SHORT') + ' ' + p.lev + '×</span></span>' +
-            '<button class="fxshare" data-id="' + p.id + '"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg></button></div>' +
+            '<span class="fxtag">FUTURES</span></div>' +
           '<div class="fxc-pnlrow">' +
             '<div class="pnl-l ' + cl + '"><label>PNL (USDT)</label><b>' + (pnl >= 0 ? '+' : '') + fmtP(pnl) + '</b></div>' +
             '<div class="pnl-r ' + cl + '"><label>ROI</label><b>' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%</b></div>' +
@@ -597,7 +459,7 @@ export async function pintarFuturos(host, api) {
     }
     body.querySelectorAll('.x').forEach((b) => b.onclick = () => { _pos = _pos.filter((p) => p.id !== b.dataset.id && p.id !== +b.dataset.id); pintarPos(); });
     body.querySelectorAll('.fxedit').forEach((b) => b.onclick = () => editarMv(b.dataset.id, b.dataset.k));
-    body.querySelectorAll('.fxshare').forEach((b) => b.onclick = () => compartirMv(b.dataset.id));
+
   }
   // ─── OPERACIONES DE DEMOSTRACIÓN (quitar cuando haya contrato) ───
   if (!_pos.length) {
