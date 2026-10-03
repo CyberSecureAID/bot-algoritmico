@@ -3,7 +3,7 @@
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
 import * as datos from './shield-datos.js?v=106';
-import * as wallet from '../wallet.js?v=125';
+import * as wallet from '../wallet.js?v=129';
 import { calcularScore } from './shield-score.js?v=100';
 import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
