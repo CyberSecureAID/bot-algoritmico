@@ -552,12 +552,16 @@ async function leerBalance() {
     if (!window._pxCache) window._pxCache = {};
 
     // 1) DESCUBRIR todos los tokens de la wallet (para mostrar también monedas propias del usuario)
-    //    Se consulta la API pública de BscScan por los tokens que ha tocado la wallet.
+    //    Se usa la Etherscan API V2 (una sola key sirve para BSC y 60+ redes EVM).
+    //    chainid=56 = BNB Chain. Antes se usaba api.bscscan.com sin key y FALLABA
+    //    (BscScan ahora exige key vía Etherscan V2), por eso no se descubrían los
+    //    tokens del usuario (BabyDoge, etc.). Si esto falla, las monedas CONOCIDAS
+    //    (USDT, USDC...) se leen igual más abajo, así el saldo nunca queda vacío.
+    const BSCSCAN_KEY = 'TZQ4M8PRW6J794MWDB1D2WM3FPVVC6NKB6';
     const extra = [];
     try {
-      const url = `https://api.bscscan.com/api?module=account&action=tokentx&address=${cuenta}&page=1&offset=1000&sort=desc`;
-      // timeout: si BscScan tarda/falla (ahora pide API key), no bloquea; las
-      // monedas CONOCIDAS (USDT, USDC, etc.) se leen igual más abajo.
+      const url = `https://api.etherscan.io/v2/api?chainid=56&module=account&action=tokentx&address=${cuenta}&page=1&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
+      // timeout: si tarda/falla, no bloquea; las CONOCIDAS se leen igual.
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 5000);
       const r = await fetch(url, { signal: ctrl.signal });
