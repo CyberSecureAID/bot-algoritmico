@@ -167,9 +167,15 @@ export function infoWallet() {
   let info = null;
   try { info = wallet.walletInfo ? wallet.walletInfo() : null; } catch (_) {}
   const cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || (info && info.cuenta) || null;
-  // icono que trae la wallet
+  // 1) icono que trae la propia wallet (EIP-6963)
   if (info && info.icon) return { nombre: info.name || 'Wallet', iconoHTML: `<img src="${info.icon}" alt="" style="width:100%;height:100%;object-fit:cover">`, cuenta };
-  // detectar por el proveedor
+  // 2) usar la CLAVE que walletInfo() ya detectó (trust, metamask, etc.). Es más
+  //    fiable que leer window.ethereum.isTrust, que en el navegador de la wallet
+  //    a veces no está marcado (por eso antes salía el escudo en vez del logo).
+  if (info && info.clave && LOGOS[info.clave]) {
+    return { nombre: info.name || (info.clave.charAt(0).toUpperCase() + info.clave.slice(1)), iconoHTML: LOGOS[info.clave], cuenta };
+  }
+  // 3) respaldo: detectar por el proveedor (window.ethereum)
   try {
     const p = window.ethereum;
     if (p) {
@@ -177,6 +183,7 @@ export function infoWallet() {
       if (cual && LOGOS[cual]) return { nombre: cual.charAt(0).toUpperCase() + cual.slice(1), iconoHTML: LOGOS[cual], cuenta };
     }
   } catch (_) {}
+  // 4) último recurso: nombre sin icono (shield usará su icono por defecto)
   return { nombre: (info && info.name) || 'Wallet', iconoHTML: '', cuenta };
 }
 
