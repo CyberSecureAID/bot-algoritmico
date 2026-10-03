@@ -291,7 +291,7 @@
   <canvas id="cco-fx" data-n="260" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
-  <script type="module" src="assets/js/gridbot-ui.js?v=258"></script>
+  <script type="module" src="assets/js/gridbot-ui.js?v=259"></script>
   <script>
   /* Protección contra "clickjacking": si alguien mete CriptoCuba dentro de un
      marco en su propia web, podría poner botones falsos encima para que
@@ -315,11 +315,20 @@
      los datos de la blockchain siempre se piden frescos. */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw2.js').then((reg) => {
-        reg.update().catch(() => {});
-      }).catch(() => {});
-
-      
+      // Registrar sw3.js (el actual). Antes se registraba sw2.js (viejo), y como
+      // el usuario entra por app.html, seguía usando el service worker viejo que
+      // servía todo cacheado: por eso los cambios no se veían. Desregistramos
+      // cualquier sw que no sea sw3 (una sola vez) y registramos sw3.
+      var yaOK = false;
+      try { yaOK = localStorage.getItem('sw3app-ok') === '1'; } catch (_) {}
+      var paso = yaOK ? Promise.resolve() :
+        navigator.serviceWorker.getRegistrations().then(function (rs) {
+          var viejos = rs.filter(function (r) { var u = (r.active && r.active.scriptURL) || ''; return u.indexOf('sw3.js') === -1; });
+          return Promise.all(viejos.map(function (r) { return r.unregister(); }));
+        }).then(function () { try { localStorage.setItem('sw3app-ok', '1'); } catch (_) {} });
+      paso.catch(function () {}).finally(function () {
+        navigator.serviceWorker.register('sw3.js').then(function (reg) { reg.update().catch(function () {}); }).catch(function () {});
+      });
     });
   }
   </script>
