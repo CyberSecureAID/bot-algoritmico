@@ -4,7 +4,7 @@
    · No hay botón "volver" flotante: se navega con la barra inferior.
    · Las secciones reales abren por ENCIMA del contenido de la cáscara */
 
-import * as wallet from '../wallet.js?v=128';
+import * as wallet from '../wallet.js?v=129';
 import * as gb from '../gridbot.js?v=125';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
