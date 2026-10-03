@@ -213,7 +213,10 @@ async function pintarPanel(t) {
     const cache = (() => { try { const c = JSON.parse(localStorage.getItem('mv-cg') || 'null'); return (c && c.d) || {}; } catch (_) { return {}; } })();
     inyectarSpotOrdCss();
     el.innerHTML = ordenes.map((o, i) => {
-      const logo = logoDe(o.par || '', null, cache);
+      // la moneda base del par (BTCUSDT -> BTC) para buscar su logo. Antes se
+      // pasaba el par completo y logoDe no lo encontraba (por eso no salía logo).
+      const base = o.base || String(o.par || '').replace(/USDT$|USDC$|BUSD$|USD$|FDUSD$/i, '');
+      const logo = logoDe(base, o.cg || null, cache);
       const esVenta = !!o.vender;
       const lado = esVenta ? 'SELL' : 'BUY';
       return `<div class="spot-ord ${esVenta ? 'v' : 'c'}">
