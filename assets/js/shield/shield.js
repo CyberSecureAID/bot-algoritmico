@@ -729,9 +729,13 @@ export function abrirShield() {
   const cuenta = wallet.cuentaActual && wallet.cuentaActual();
   cont.innerHTML = `<div id="shd-header-banner"></div><canvas id="shd-fx" aria-hidden="true"></canvas><div id="shd-barslot"></div><div class="shd-in" id="shd-in"></div>`;
   montarParticulas();
-  if (!cuenta) { pintarConectar(); return; }
-  pintarInicio(cuenta);
+  // SIEMPRE se muestra primero la portada explicativa (pintarConectar), tenga o
+  // no cuenta conectada. Esa pantalla lleva la explicación importante y su botón
+  // verifica el pago/acceso antes de entrar. Así nunca se salta ni la explicación
+  // ni el cobro (antes, con la wallet ya conectada, se entraba directo sin pagar).
+  pintarConectar();
 }
+
 async function montarParticulas() {
   try {
     const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -780,12 +784,13 @@ function pintarConectar() {
   wireTilt();
   $('shd-conn').onclick = async () => {
     try {
-      await wallet.conectar();
-      const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+      // conectar solo si no lo está ya (en el móvil suele estar conectada)
+      let cuenta = wallet.cuentaActual && wallet.cuentaActual();
+      if (!cuenta) { await wallet.conectar(); cuenta = wallet.cuentaActual && wallet.cuentaActual(); }
       if (!cuenta) return;
       // ¿ya tiene acceso pagado (u owner)? → entra. Si no → pantalla de pago.
       const acceso = await pago.tieneAcceso(cuenta);
-      if (acceso) { abrirShield(); } else { pintarPago(cuenta); }
+      if (acceso) { pintarInicio(cuenta); } else { pintarPago(cuenta); }
     } catch (_) {}
   };
 }
