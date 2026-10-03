@@ -44,6 +44,16 @@ const SERVICIOS = [
 
 let _ojo = leer(LS.ojo) === '1';
 let _denom = 'Total';   // siempre inicia en Total
+// Logos de wallets por clave (para el icono junto al Total cuando la wallet no
+// envía su propio icono). Mismos que usa Wallet Shield.
+const _WLOGOS = {
+  metamask: '<svg viewBox="0 0 32 32" width="18" height="18"><path fill="#E17726" d="M28.6 3.4 17.8 11.4l2-4.7z"/><path fill="#E27625" d="m3.4 3.4 10.7 8.1-1.9-4.8zM24.4 21.7l-2.9 4.4 6.2 1.7 1.8-6zM2.6 21.8l1.7 6 6.2-1.7-2.9-4.4z"/><path fill="#E27625" d="m10.1 14.5-1.7 2.6 6.1.3-.2-6.6zM21.9 14.5l-4.3-3.8-.1 6.7 6.1-.3zM10.5 26.1l3.7-1.8-3.2-2.5zM17.8 24.3l3.7 1.8-.5-4.3z"/></svg>',
+  trust: '<svg viewBox="0 0 32 32" width="18" height="18"><path fill="#3375BB" d="M16 2 5 6.3v8.4c0 6.9 4.6 13.3 11 15.3 6.4-2 11-8.4 11-15.3V6.3z"/><path fill="#fff" d="M16 6.6v18.9c4.6-1.6 8-6.5 8-11.6V8.6z"/></svg>',
+  binance: '<svg viewBox="0 0 32 32" width="18" height="18"><path fill="#F0B90B" d="m16 4 3 3-6 6-3-3zM22 10l3 3-9 9-3-3zM10 10l3 3-3 3-3-3zM16 19l3 3-3 3-3-3z"/></svg>',
+  coinbase: '<svg viewBox="0 0 32 32" width="18" height="18"><circle cx="16" cy="16" r="14" fill="#0052FF"/><rect x="11" y="11" width="10" height="10" rx="2" fill="#fff"/></svg>',
+  phantom: '<svg viewBox="0 0 32 32" width="18" height="18"><circle cx="16" cy="16" r="14" fill="#AB9FF2"/><ellipse cx="12" cy="15" rx="2" ry="3" fill="#fff"/><ellipse cx="20" cy="15" rx="2" ry="3" fill="#fff"/></svg>',
+  rabby: '<svg viewBox="0 0 32 32" width="18" height="18"><circle cx="16" cy="16" r="14" fill="#7084F5"/><path fill="#fff" d="M9 18c3-5 11-7 14-4-2 4-9 7-14 4z"/></svg>'
+};
 
 function leer(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }
 function guardar(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
@@ -172,11 +182,16 @@ export function pintarInicio(host, api) {
   const pintarBal = () => {
     const b = api.balance();
     const bal = $('mv-bal'), sub = $('mv-bal-sub'), wl = $('mv-wlogo');
-    // logo de la wallet conectada, junto al selector
+    // logo de la wallet conectada, junto al selector. Antes solo miraba wi.icon,
+    // que en el navegador de la wallet suele venir vacío (por eso el icono no
+    // aparecía). Ahora, si no hay icon, se usa la CLAVE (trust, metamask...) con
+    // un logo propio, igual que en Wallet Shield.
     if (wl) {
       const wi = (con && wallet.walletInfo && wallet.walletInfo()) || null;
       const wlogo = wi && (wi.icon || wi.icono);
-      wl.innerHTML = wlogo ? `<img src="${wlogo}" alt="">` : '';
+      if (wlogo) { wl.innerHTML = `<img src="${wlogo}" alt="">`; }
+      else if (wi && wi.clave && _WLOGOS[wi.clave]) { wl.innerHTML = _WLOGOS[wi.clave]; }
+      else { wl.innerHTML = ''; }
     }
     if (!b || !b.conectado) { bal.textContent = '—'; sub.textContent = con ? '' : 'Conecta tu wallet para ver tu saldo'; return; }
     if (_ojo) { bal.textContent = '••••••'; sub.textContent = ''; return; }
