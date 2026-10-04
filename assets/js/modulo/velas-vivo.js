@@ -22,6 +22,15 @@ let _raf = null;
 let _N = null, _redibujar = null;
 let _objetivo = null;   // precio real más reciente (destino de la interpolación)
 let _tfMsActual = 60000;
+// hora de cierre de la vela actual según BINANCE (apertura k.t + intervalo).
+// El timer de Sprint la usa para sincronizar exacto (no el reloj local).
+export function velasVivoCierreActual() {
+  if (!_N || !_N.velas || !_N.velas.length) return null;
+  const ult = _N.velas[_N.velas.length - 1];
+  if (!ult) return null;
+  return ult.t + _tfMsActual;   // ms (epoch) del cierre de la vela actual
+}
+export function velasVivoIntervaloMs() { return _tfMsActual; }
 
 const LERP = 0.18;   // velocidad de interpolación por frame (0-1). Más alto = más rápido.
 
