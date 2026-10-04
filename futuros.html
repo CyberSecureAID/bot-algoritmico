@@ -136,9 +136,32 @@
     .p-oc{display:flex;gap:7px}
     .p-oc button{flex:1;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-weight:700;font-size:12px;cursor:pointer}
     .p-oc button.on{background:rgba(46,189,133,.14);color:var(--up);border-color:rgba(46,189,133,.4)}
-    #sp-timer{font-family:var(--mono);font-size:38px;font-weight:800;text-align:center;color:var(--gold);letter-spacing:.04em;padding:6px 0 2px;text-shadow:0 0 18px rgba(232,184,75,.35)}
-    .sp-tf{background:#1b222c;border:1px solid #2b3340;color:#8b96a3;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer}
-    .sp-tf.on{background:rgba(232,184,75,.12);border-color:rgba(232,184,75,.4);color:var(--gold)}
+    /* Temporizador Sprint: compacto (cabe en el alto del leverage, ~56px) y elegante. */
+    #p-timer-box{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    #sp-timer{font-family:var(--mono);font-size:30px;font-weight:800;line-height:1;color:var(--gold);letter-spacing:.02em;font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(232,184,75,.28)}
+    .sp-timer-l{font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;margin-bottom:3px}
+    .sp-tfcol{display:flex;flex-direction:column;gap:4px}
+    .sp-tf{background:#161c24;border:1px solid #2b3340;color:#8b96a3;border-radius:6px;padding:3px 0;width:38px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:var(--mono);transition:all .12s}
+    .sp-tf.on{background:linear-gradient(180deg,rgba(232,184,75,.18),rgba(232,184,75,.08));border-color:rgba(232,184,75,.5);color:var(--gold)}
+    /* Pestañas Futures/Sprint: el seleccionado se ve CLARO (fondo dorado). */
+    #p-fut.on,#p-sprint.on{background:linear-gradient(180deg,rgba(232,184,75,.16),rgba(232,184,75,.06));border-color:rgba(232,184,75,.5);color:var(--gold)}
+    #p-fut,#p-sprint{transition:all .12s}
+    /* Historial de operaciones cerradas */
+    .hist-wrap{display:flex;flex-direction:column;gap:7px;padding:4px 2px}
+    .hist-row{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+    .hist-r1{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+    .hist-par{font-size:12.5px;font-weight:800;color:var(--ink)}
+    .hist-par em{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;margin-left:5px;font-style:normal}
+    .hist-par em.up{color:var(--up);background:color-mix(in srgb,var(--up) 14%,transparent)}
+    .hist-par em.dn{color:var(--down);background:color-mix(in srgb,var(--down) 14%,transparent)}
+    .hist-pnl{font-family:var(--mono);font-size:13px;font-weight:800}
+    .hist-r2{display:flex;gap:12px;font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-bottom:5px}
+    .hist-r3{display:flex;justify-content:space-between;align-items:center}
+    .hist-tag{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.28);border-radius:5px;padding:2px 7px}
+    .hist-date{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+    .hist-pag{display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 0 4px;font-family:var(--mono);font-size:12px;color:var(--ink3)}
+    .hist-pag button{background:#1b222c;border:1px solid #2b3340;color:var(--ink);width:30px;height:28px;border-radius:7px;cursor:pointer;font-size:15px}
+    .hist-pag button:disabled{opacity:.35;cursor:default}
     .p-tabs{display:flex;border-bottom:1px solid var(--line)}
     .p-tabs button{flex:1;background:none;border:none;color:var(--ink3);font-weight:700;font-size:13px;padding:8px 0;cursor:pointer;position:relative}
     .p-tabs button.on{color:var(--ink)} .p-tabs button.on::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:2px;background:var(--gold)}
@@ -235,7 +258,7 @@
       <span id="f-px">—</span>
       <div id="f-tf"><button class="cur" id="f-tfcur">15m <span class="cv">▾</span></button>
         <div class="menu" id="f-tfmenu">
-          <button data-tf="1m">1m</button><button data-tf="5m">5m</button><button data-tf="15m" class="on">15m</button><button data-tf="30m">30m</button>
+          <button data-tf="1m">1m</button><button data-tf="3m">3m</button><button data-tf="5m">5m</button><button data-tf="15m" class="on">15m</button><button data-tf="30m">30m</button>
           <button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="1d">1D</button><button data-tf="1w">1W</button>
         </div></div>
       <div class="col"><span class="l">Cambio 24H</span><b class="v" id="f-chg">—</b></div>
@@ -257,6 +280,7 @@
         <div class="ph">
           <button class="on" data-t="pos">Positions <span id="f-pos-n">(0)</span></button>
           <button data-t="ord">Open Orders <span id="f-ord-n">(0)</span></button>
+          <button data-t="hist">History</button>
           <button class="cerrar" id="f-closeall">Cerrar todo</button>
         </div>
         <div class="body" id="f-pos-body"></div>
@@ -275,14 +299,15 @@
       <div class="p-pct"><input type="range" id="p-pctr" min="0" max="100" step="25" value="0"><div class="marks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
       <div class="p-lev"><div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">20×</span></div><input type="range" id="p-range" min="1" max="200" value="20"><div class="marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div></div>
       <div class="p-lev" id="p-timer-box" style="display:none">
-        <div class="p-lev-top"><span class="p-lbl" style="margin:0">Cierre en</span>
-          <span id="sp-tfsel" style="display:flex;gap:4px">
-            <button class="sp-tf on" data-s="60">1m</button>
-            <button class="sp-tf" data-s="180">3m</button>
-            <button class="sp-tf on" data-s="300">5m</button>
-          </span>
+        <div>
+          <div class="sp-timer-l" id="sp-timer-l">Auto-close</div>
+          <div id="sp-timer">5:00</div>
         </div>
-        <div id="sp-timer">5:00</div>
+        <div class="sp-tfcol">
+          <button class="sp-tf" data-s="60">1m</button>
+          <button class="sp-tf" data-s="180">3m</button>
+          <button class="sp-tf on" data-s="300">5m</button>
+        </div>
       </div>
       <div class="p-tpsl-h" id="p-tpsl-tog"><span class="p-chk" id="p-tpsl-chk"></span><span>TP/SL</span></div>
       <div class="p-tpsl-box" id="p-tpsl-box">
@@ -336,7 +361,9 @@
       'function posicion(uint256 id) external view returns (tuple(address trader,address origen,address token,address stable,uint8 lado,uint256 margen,uint16 lev,uint256 tamano,uint256 unidades,uint256 precioEntrada,uint256 tp,uint256 sl,uint256 precioLiq,uint40 abierta,uint40 ultimoFunding,uint40 vence,bool activa))',
       'function resumen(address trader) external view returns (tuple(uint256 abiertas,uint256 cerradas,int256 pnlRealizado,uint256 volumen))',
       'function abrirSprint(address token,address stable,uint8 lado,uint256 margen,uint256 sl,uint32 segundos) external returns (uint256)',
-      'function cerrarVencido(uint256 id) external'
+      'function cerrarVencido(uint256 id) external',
+      'event Abierta(uint256 indexed id, address indexed trader, address token, uint8 lado, uint256 margen, uint16 lev, uint256 precio)',
+      'event Cerrada(uint256 indexed id, address indexed trader, int256 pnl, uint256 precioSalida, address liquidador)'
     ];
     const ABI_USDT = ['function approve(address spender,uint256 amount) external returns (bool)','function allowance(address owner,address spender) external view returns (uint256)','function decimals() external view returns (uint8)'];
 
@@ -395,7 +422,7 @@
     const tfdd = $('f-tf');
     $('f-tfcur').onclick = (e) => { e.stopPropagation(); tfdd.classList.toggle('open'); };
     document.addEventListener('click', () => tfdd.classList.remove('open'));
-    const TFL = { '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1h', '4h': '4h', '1d': '1D', '1w': '1W' };
+    const TFL = { '1m': '1m', '3m': '3m', '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1h', '4h': '4h', '1d': '1D', '1w': '1W' };
     function ponerTf(tf) {
       document.querySelectorAll('#f-tfmenu button').forEach((x) => x.classList.toggle('on', x.dataset.tf === tf));
       $('f-tfcur').innerHTML = TFL[tf] + ' <span class="cv">▾</span>';
@@ -498,10 +525,14 @@
       $('p-sprint').classList.toggle('on', m === 'sprint');
       const levBox = document.querySelector('.p-lev');       // la barra de apalancamiento de abajo
       const timerBox = $('p-timer-box');                      // el temporizador (se crea una vez)
+      const soloScalp = ['1m','3m','5m'];
+      document.querySelectorAll('#f-tfmenu button').forEach((b) => {
+        b.style.display = (m === 'sprint' && !soloScalp.includes(b.dataset.tf)) ? 'none' : '';
+      });
       if (m === 'sprint') {
         lev = 100;                                            // 100x fijo, invisible
         if (levBox) levBox.style.display = 'none';
-        if (timerBox) timerBox.style.display = 'block';
+        if (timerBox) timerBox.style.display = 'flex';
         ponerTf('5m');                                        // gráfica a 5m por defecto
         arrancarTimer(300);
       } else {
@@ -517,16 +548,16 @@
       let ov = $('sprint-intro');
       if (ov) ov.remove();
       ov = document.createElement('div'); ov.id = 'sprint-intro';
-      ov.style.cssText = 'position:fixed;inset:0;z-index:30000;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.6)';
-      ov.innerHTML = `<div style="max-width:380px;background:linear-gradient(180deg,#141a22,#0d1117);border:1px solid #2b3340;border-radius:16px;padding:22px;color:#eaecef;font-family:sans-serif">
-        <div style="font-size:18px;font-weight:800;color:#E8B84B;margin-bottom:6px">⚡ Sprint Scalper</div>
-        <div style="font-size:12.5px;color:#8b96a3;margin-bottom:14px;font-weight:700;letter-spacing:.03em">PARA SCALPERS PROFESIONALES</div>
-        <p style="font-size:13.5px;line-height:1.6;margin:0 0 12px">Opera a contrarreloj en temporalidades de <b>1 a 5 minutos</b> con un multiplicador de <b>100×</b> ya listo, sin configurar apalancamiento y <b>sin comisión por apertura</b>.</p>
-        <p style="font-size:13.5px;line-height:1.6;margin:0 0 12px">Son <b>operaciones reales en el mercado</b>, respaldadas por liquidez real. El resultado lo decide el precio, no la casa. Cuando el cronómetro llega a cero, tu posición se cierra automáticamente en el punto exacto.</p>
-        <p style="font-size:12px;line-height:1.5;margin:0 0 16px;color:#8b96a3">Inspirado en la agilidad de las opciones rápidas, pero con la transparencia de los futuros: tú contra el mercado, nunca contra nosotros. Diseñado para quien sabe leer el movimiento en segundos.</p>
+      ov.style.cssText = 'position:fixed;inset:0;z-index:30000;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.66)';
+      ov.innerHTML = `<div style="max-width:410px;background:linear-gradient(180deg,#141a22,#0d1117);border:1px solid #2b3340;border-radius:16px;padding:26px 24px;color:#eaecef;font-family:sans-serif">
+        <div style="text-align:center;font-size:21px;font-weight:800;color:#E8B84B;letter-spacing:.02em;margin-bottom:5px">Sprint Scalper</div>
+        <div style="text-align:center;font-size:11px;color:#8b96a3;font-weight:800;letter-spacing:.16em;margin-bottom:18px">SCALPING · FIXED-DURATION POSITIONS</div>
+        <p style="font-size:13.5px;line-height:1.65;margin:0 0 13px">Sprint Scalper takes the mechanics of binary options — a position with a fixed expiry — and runs them on real markets. You open long or short, and instead of closing it yourself, the position settles on its own at the end of the interval you chose, from one to five minutes.</p>
+        <p style="font-size:13.5px;line-height:1.65;margin:0 0 13px">The difference from conventional binaries is structural: your trade is a genuine market position backed by real liquidity, not a bet placed against the platform. The settlement price is the market price. We are never your counterparty, so there is nothing for us to tilt in our favor.</p>
+        <p style="font-size:13.5px;line-height:1.65;margin:0 0 18px">The multiplier is fixed and there is no opening fee, which makes short, high-frequency entries viable — the kind of trading where conventional commissions quietly erode the edge. It is a focused tool for reading short-term movement and acting on it cleanly.</p>
         <div style="display:flex;gap:10px">
-          <button id="sprint-cancel" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:10px;padding:11px;color:#eaecef;font-weight:700;cursor:pointer">Ahora no</button>
-          <button id="sprint-go" style="flex:1;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:none;border-radius:10px;padding:11px;color:#1a1200;font-weight:800;cursor:pointer">Empezar</button>
+          <button id="sprint-cancel" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:10px;padding:12px;color:#eaecef;font-weight:700;cursor:pointer">Not now</button>
+          <button id="sprint-go" style="flex:1.3;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:none;border-radius:10px;padding:12px;color:#1a1200;font-weight:800;cursor:pointer">Continue</button>
         </div>
       </div>`;
       document.body.appendChild(ov);
@@ -907,8 +938,99 @@
     let tabPos = 'pos';
     document.querySelectorAll('#f-pos .ph button[data-t]').forEach((b) => b.onclick = () => { tabPos = b.dataset.t; document.querySelectorAll('#f-pos .ph button[data-t]').forEach((x) => x.classList.toggle('on', x === b)); pintarPos(); });
     let posPag = 0, ordPag = 0;
+
+    // Carga el HISTORIAL real: combina los eventos Abierta+Cerrada de la blockchain.
+    // Muestra solo los últimos 30 días (reseteo visual). Con paginación.
+    async function cargarHistorial() {
+      const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+      if (!cuenta) return [];
+      if (_histCache && _histCuenta === cuenta) return _histCache;
+      try {
+        const prov = (wallet.proveedorActivo && wallet.proveedorActivo()) || window.ethereum;
+        const bp = new ethers.BrowserProvider(prov);
+        const fut = new ethers.Contract(FUTUROS_ADDR, ABI_FUT, bp);
+        // eventos de apertura y cierre del usuario
+        const fAb = fut.filters.Abierta(null, cuenta);
+        const fCe = fut.filters.Cerrada(null, cuenta);
+        const [abs, ces] = await Promise.all([fut.queryFilter(fAb, -200000), fut.queryFilter(fCe, -200000)]);
+        // mapa de aperturas por id
+        const aperturas = {};
+        for (const e of abs) {
+          aperturas[String(e.args.id)] = {
+            token: e.args.token, lado: Number(e.args.lado) === 0 ? 'Long' : 'Short',
+            margen: Number(ethers.formatUnits(e.args.margen, 18)), lev: Number(e.args.lev),
+            entrada: Number(ethers.formatUnits(e.args.precio, 18))
+          };
+        }
+        const limite30d = Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
+        const hist = [];
+        for (const e of ces) {
+          const ap = aperturas[String(e.args.id)] || {};
+          const bloque = await e.getBlock();
+          if (bloque.timestamp < limite30d) continue;   // solo últimos 30 días
+          const pnl = Number(ethers.formatUnits(e.args.pnl, 18));
+          const liquidado = e.args.liquidador && e.args.liquidador !== '0x0000000000000000000000000000000000000000';
+          hist.push({
+            id: Number(e.args.id), fecha: bloque.timestamp * 1000,
+            parId: _parIdDeToken(ap.token), lado: ap.lado || '—',
+            margen: ap.margen || 0, lev: ap.lev || 0, entrada: ap.entrada || 0,
+            salida: Number(ethers.formatUnits(e.args.precioSalida, 18)), pnl: pnl,
+            cierre: liquidado ? 'Liquidation' : (pnl >= 0 ? 'Closed' : 'Stop/Close')
+          });
+        }
+        hist.sort((a, b) => b.fecha - a.fecha);   // más reciente primero
+        _histCache = hist; _histCuenta = cuenta;
+        return hist;
+      } catch (e) { return []; }
+    }
+
+    async function pintarHistorial() {
+      const body = $('f-pos-body');
+      body.className = 'body';
+      body.innerHTML = '<div class="pos-empty">Loading history…</div>';
+      const hist = await cargarHistorial();
+      if (!hist.length) { body.innerHTML = '<div class="pos-empty">No closed trades in the last 30 days.</div>'; return; }
+      const totalPag = Math.max(1, Math.ceil(hist.length / POR_PAG));
+      if (histPag >= totalPag) histPag = totalPag - 1;
+      if (histPag < 0) histPag = 0;
+      const trozo = hist.slice(histPag * POR_PAG, histPag * POR_PAG + POR_PAG);
+      const fFecha = (ms) => { const d = new Date(ms); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); };
+      let html = '<div class="hist-wrap">';
+      for (const h of trozo) {
+        const col = h.pnl >= 0 ? 'var(--up)' : 'var(--down)';
+        const signo = h.pnl >= 0 ? '+' : '';
+        html += `<div class="hist-row">
+          <div class="hist-r1">
+            <span class="hist-par">${h.parId}USDT <em class="${h.lado === 'Long' ? 'up' : 'dn'}">${h.lado} ${h.lev}×</em></span>
+            <span class="hist-pnl" style="color:${col}">${signo}${h.pnl.toFixed(2)} USDT</span>
+          </div>
+          <div class="hist-r2">
+            <span>Margin ${h.margen.toFixed(2)}</span>
+            <span>Entry ${fmt(h.entrada)}</span>
+            <span>Exit ${fmt(h.salida)}</span>
+          </div>
+          <div class="hist-r3">
+            <span class="hist-tag">${h.cierre}</span>
+            <span class="hist-date">${fFecha(h.fecha)}</span>
+          </div>
+        </div>`;
+      }
+      html += '</div>';
+      // paginación
+      if (totalPag > 1) {
+        html += `<div class="hist-pag"><button id="h-prev" ${histPag === 0 ? 'disabled' : ''}>‹</button><span>${histPag + 1} / ${totalPag}</span><button id="h-next" ${histPag >= totalPag - 1 ? 'disabled' : ''}>›</button></div>`;
+      }
+      body.innerHTML = html;
+      const pv = $('h-prev'), nx = $('h-next');
+      if (pv) pv.onclick = () => { histPag--; pintarHistorial(); };
+      if (nx) nx.onclick = () => { histPag++; pintarHistorial(); };
+    }
     const POR_PAG = 4;
+    let histPag = 0;
+    let _histCache = null, _histCuenta = '';
     function pintarPos() {
+      // ─── HISTORY: operaciones cerradas (de los eventos de la blockchain) ───
+      if (tabPos === 'hist') { pintarHistorial(); return; }
       const abiertas = posiciones.filter((p) => !p.limit);   // operaciones abiertas
       const limites = posiciones.filter((p) => p.limit);     // órdenes limit
       // Opción B: Positions (pestaña 'pos') = LIMIT; Open Orders (pestaña 'ord') = ABIERTAS
