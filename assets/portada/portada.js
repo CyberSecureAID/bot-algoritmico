@@ -126,7 +126,13 @@ const PUERTAS = {
   academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
   aportar: async () => (await import(J + 'aportar.js?v=15')).abrirAportar(),
-  perfil:  async () => (await import(J + 'perfil.js?v=130')).abrirPerfil()
+  perfil:  async () => (await import(J + 'perfil.js?v=130')).abrirPerfil(),
+  analisis: async () => {
+    const w = await wallet();
+    const ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
+    const m = await import(J + 'modulo/analisis-pro.js?v=1');
+    await m.abrirCobroAnalisis('hero', w, ethers, () => {});
+  }
 };
 
 /* Aviso visible. Sin esto un fallo se traga en la consola y desde fuera
