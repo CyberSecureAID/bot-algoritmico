@@ -330,7 +330,7 @@
     import { abrirNiveles } from './assets/js/niveles.js?v=126';
     import { N } from './assets/js/niveles/estado.js?v=1';
     import { dibujar as dibujarGrafica } from './assets/js/niveles/render.js?v=1';
-    import { velasVivoConectar, velasVivoCerrar } from './assets/js/modulo/velas-vivo.js?v=2';
+    import { velasVivoConectar, velasVivoCerrar, velasVivoCierreActual } from './assets/js/modulo/velas-vivo.js?v=3';
     import { PARES } from './assets/js/niveles/config.js?v=1';
     import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=160';
     import * as wallet from './assets/js/wallet.js?v=129';
@@ -489,17 +489,27 @@
       // coincide EXACTAMENTE con la formación de la nueva vela.
       const segMs = seg * 1000;
       _spTimer = setInterval(() => {
-        const ahora = Date.now();
-        // ms que faltan para el próximo límite de intervalo (cierre de la vela actual)
-        const restanteMs = segMs - (ahora % segMs);
+        // Preferir el cierre REAL de la vela de Binance (sincronización exacta).
+        // Si aún no hay vela (al arrancar), caer al reloj local como respaldo.
+        let restanteMs;
+        const cierre = velasVivoCierreActual();
+        if (cierre) {
+          restanteMs = cierre - Date.now();
+          // si la vela del gráfico es de otra temporalidad que el sprint, ajustar
+          // al ciclo del sprint dentro de esa referencia
+          if (restanteMs < 0) restanteMs = 0;
+          if (restanteMs > segMs) restanteMs = segMs - ((cierre - Date.now()) % segMs);
+        } else {
+          restanteMs = segMs - (Date.now() % segMs);
+        }
         const antes = _spRestante;
-        _spRestante = Math.ceil(restanteMs / 1000);
-        // cuando el contador cruza a un nuevo ciclo (la vela cerró), disparar cierres
-        if (antes != null && _spRestante > antes) {
+        _spRestante = Math.max(0, Math.round(restanteMs / 1000));
+        // cuando el contador reinicia (la vela cerró), disparar cierres
+        if (antes != null && _spRestante > antes + 1) {
           dispararCierresVencidos();
         }
         pintarTimer();
-      }, 200);   // refresco cada 200ms para que el 0 sea preciso
+      }, 200);
     }
     function pararTimer() { if (_spTimer) { clearInterval(_spTimer); _spTimer = null; } }
     function pintarTimer() {
