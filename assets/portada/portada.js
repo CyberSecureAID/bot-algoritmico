@@ -130,8 +130,8 @@ const PUERTAS = {
   analisis: async () => {
     const w = await wallet();
     const ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
-    const m = await import(J + 'modulo/analisis-pro.js?v=1');
-    await m.abrirCobroAnalisis('hero', w, ethers, () => {});
+    const m = await import(J + 'modulo/analisis.js?v=1');
+    await m.abrirAnalisis('hero', w, ethers);
   }
 };
 
