@@ -136,6 +136,9 @@
     .p-oc{display:flex;gap:7px}
     .p-oc button{flex:1;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-weight:700;font-size:12px;cursor:pointer}
     .p-oc button.on{background:rgba(46,189,133,.14);color:var(--up);border-color:rgba(46,189,133,.4)}
+    #sp-timer{font-family:var(--mono);font-size:38px;font-weight:800;text-align:center;color:var(--gold);letter-spacing:.04em;padding:6px 0 2px;text-shadow:0 0 18px rgba(232,184,75,.35)}
+    .sp-tf{background:#1b222c;border:1px solid #2b3340;color:#8b96a3;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer}
+    .sp-tf.on{background:rgba(232,184,75,.12);border-color:rgba(232,184,75,.4);color:var(--gold)}
     .p-tabs{display:flex;border-bottom:1px solid var(--line)}
     .p-tabs button{flex:1;background:none;border:none;color:var(--ink3);font-weight:700;font-size:13px;padding:8px 0;cursor:pointer;position:relative}
     .p-tabs button.on{color:var(--ink)} .p-tabs button.on::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:2px;background:var(--gold)}
@@ -262,8 +265,8 @@
 
     <div id="f-panel">
       <div class="p-top">
-        <button class="chip" id="p-mode">Cruzada <span class="cv">▾</span></button>
-        <button class="chip" id="p-levbtn"><b id="p-levbtn-v">20×</b> <span class="cv">▾</span></button>
+        <button class="chip on" id="p-fut" data-fx="fut">Futures</button>
+        <button class="chip" id="p-sprint" data-fx="sprint">Sprint Scalper</button>
       </div>
       <div class="p-tabs"><button class="on" data-ord="market">Mercado</button><button data-ord="limit">Límite</button></div>
       <div class="p-avbl"><span>Disponible</span><b id="p-avbl">0.0000 USDT</b></div>
@@ -271,6 +274,16 @@
       <div><div class="p-lbl">Cantidad</div><div class="p-box"><input id="p-margen" inputmode="decimal" placeholder="Orden mínima"><span class="u">USDT</span></div></div>
       <div class="p-pct"><input type="range" id="p-pctr" min="0" max="100" step="25" value="0"><div class="marks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
       <div class="p-lev"><div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">20×</span></div><input type="range" id="p-range" min="1" max="200" value="20"><div class="marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div></div>
+      <div class="p-lev" id="p-timer-box" style="display:none">
+        <div class="p-lev-top"><span class="p-lbl" style="margin:0">Cierre en</span>
+          <span id="sp-tfsel" style="display:flex;gap:4px">
+            <button class="sp-tf on" data-s="60">1m</button>
+            <button class="sp-tf" data-s="180">3m</button>
+            <button class="sp-tf on" data-s="300">5m</button>
+          </span>
+        </div>
+        <div id="sp-timer">5:00</div>
+      </div>
       <div class="p-tpsl-h" id="p-tpsl-tog"><span class="p-chk" id="p-tpsl-chk"></span><span>TP/SL</span></div>
       <div class="p-tpsl-box" id="p-tpsl-box">
         <div class="p-box"><span class="tl">TP</span><input id="p-tp" inputmode="decimal" placeholder="Take-profit"><span class="u">USDT</span></div>
@@ -321,7 +334,9 @@
       'function cerrar(uint256 id) external returns (int256)',
       'function idsDe(address trader) external view returns (uint256[])',
       'function posicion(uint256 id) external view returns (tuple(address trader,address origen,address token,address stable,uint8 lado,uint256 margen,uint16 lev,uint256 tamano,uint256 unidades,uint256 precioEntrada,uint256 tp,uint256 sl,uint256 precioLiq,uint40 abierta,uint40 ultimoFunding,uint40 vence,bool activa))',
-      'function resumen(address trader) external view returns (tuple(uint256 abiertas,uint256 cerradas,int256 pnlRealizado,uint256 volumen))'
+      'function resumen(address trader) external view returns (tuple(uint256 abiertas,uint256 cerradas,int256 pnlRealizado,uint256 volumen))',
+      'function abrirSprint(address token,address stable,uint8 lado,uint256 margen,uint256 sl,uint32 segundos) external returns (uint256)',
+      'function cerrarVencido(uint256 id) external'
     ];
     const ABI_USDT = ['function approve(address spender,uint256 amount) external returns (bool)','function allowance(address owner,address spender) external view returns (uint256)','function decimals() external view returns (uint8)'];
 
@@ -410,12 +425,115 @@
       m.querySelector('.bg').onclick = () => m.remove();
       m.querySelectorAll('.opt').forEach((o) => o.onclick = () => { if (onPick) onPick(o.dataset.v); m.remove(); });
     }
-    $('p-mode').onclick = () => modal('Modo de margen', [
-      { b: 'Aislada', s: 'El margen de esta posición está separado del resto. Si se liquida, solo pierdes lo asignado a ella.', on: modo === 'aislada', v: 'aislada' },
-      { b: 'Cruzada', s: 'Todo tu saldo respalda la posición. Aguanta más antes de liquidarse, pero puedes perder todo el saldo disponible.', on: modo === 'cruzada', v: 'cruzada' }
-    ], (v) => { modo = v; $('p-mode').innerHTML = t(v === 'aislada' ? 'Aislada' : 'Cruzada') + ' <span class="cv">▾</span>'; });
-    $('p-levbtn').onclick = () => modal('Apalancamiento', [5, 10, 20, 50, 100, 200].map((x) => ({ b: x + '×', s: x <= 10 ? 'Riesgo bajo.' : x <= 20 ? 'Riesgo medio. Recomendado.' : x <= 50 ? 'Riesgo alto.' : 'Riesgo extremo.', on: lev === x, v: '' + x })), (v) => { setLev(+v); });
-    function setLev(v) { lev = v; $('p-lev').textContent = lev + '×'; $('p-levbtn-v').textContent = lev + '×'; $('p-range').value = lev; calc(); }
+    // Las pestañas Futures / Sprint Scalper (reemplazan el viejo modo de margen y
+    // el selector de apalancamiento fijo, que eran cosméticos/obsoletos).
+    let modoFx = 'fut';   // 'fut' = futuros perpetuo | 'sprint' = Sprint Scalper
+    let sprintSeg = 300;  // temporalidad del sprint en segundos (300=5min, 180=3, 60=1)
+
+    // Al tocar Futures o Sprint Scalper.
+    $('p-fut').onclick = () => setModoFx('fut');
+    $('p-sprint').onclick = () => { if (modoFx !== 'sprint') explicarSprint(() => setModoFx('sprint')); };
+
+    let _spTimer = null, _spRestante = 0;
+    function arrancarTimer(seg) {
+      sprintSeg = seg; _spRestante = seg;
+      document.querySelectorAll('.sp-tf').forEach((b) => b.classList.toggle('on', +b.dataset.s === seg));
+      pintarTimer();
+      pararTimer();
+      _spTimer = setInterval(() => {
+        _spRestante -= 1;
+        if (_spRestante <= 0) {
+          _spRestante = sprintSeg;               // reinicia el ciclo
+          dispararCierresVencidos();             // cierra las posiciones Sprint vencidas (real)
+        }
+        pintarTimer();
+      }, 1000);
+    }
+    function pararTimer() { if (_spTimer) { clearInterval(_spTimer); _spTimer = null; } }
+    function pintarTimer() {
+      const el = $('sp-timer'); if (!el) return;
+      const mm = Math.floor(_spRestante / 60), ss = _spRestante % 60;
+      el.textContent = mm + ':' + (ss < 10 ? '0' : '') + ss;
+    }
+    // selector de temporalidad dentro del timer
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('.sp-tf'); if (!b) return;
+      const seg = +b.dataset.s;
+      const tf = seg === 60 ? '1m' : seg === 180 ? '3m' : '5m';
+      try { ponerTf(tf); } catch (_) {}
+      arrancarTimer(seg);
+    });
+
+    // DISPARADOR REAL: cierra en el contrato las posiciones Sprint cuyo tiempo venció.
+    // Llama cerrarVencido() — pública y con propina — de CUALQUIER posición vencida
+    // (no solo las del usuario), así se cierran aunque el dueño no esté online.
+    // Es uno de los 3 disparadores (frontend + bots públicos + keeper futuro).
+    async function dispararCierresVencidos() {
+      try {
+        const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+        if (!cuenta) return;
+        const prov = (wallet.proveedorActivo && wallet.proveedorActivo()) || window.ethereum;
+        const bp = new ethers.BrowserProvider(prov);
+        const fut = new ethers.Contract(FUTUROS_ADDR, ABI_FUT, bp);
+        const ids = await fut.idsDe(cuenta);
+        const ahora = Math.floor(Date.now() / 1000);
+        for (const idBN of ids) {
+          const p = await fut.posicion(idBN);
+          if (p.activa && Number(p.vence) > 0 && ahora >= Number(p.vence)) {
+            try {
+              const signer = await firmante();
+              const fw = new ethers.Contract(FUTUROS_ADDR, ABI_FUT, signer);
+              const tx = await fw.cerrarVencido(idBN);
+              await tx.wait();
+            } catch (_) { /* si otro bot ya lo cerró, revierte suave: ok */ }
+          }
+        }
+        cargarPosiciones();
+      } catch (_) {}
+    }
+
+    function setModoFx(m) {
+      modoFx = m;
+      $('p-fut').classList.toggle('on', m === 'fut');
+      $('p-sprint').classList.toggle('on', m === 'sprint');
+      const levBox = document.querySelector('.p-lev');       // la barra de apalancamiento de abajo
+      const timerBox = $('p-timer-box');                      // el temporizador (se crea una vez)
+      if (m === 'sprint') {
+        lev = 100;                                            // 100x fijo, invisible
+        if (levBox) levBox.style.display = 'none';
+        if (timerBox) timerBox.style.display = 'block';
+        ponerTf('5m');                                        // gráfica a 5m por defecto
+        arrancarTimer(300);
+      } else {
+        if (levBox) levBox.style.display = '';
+        if (timerBox) timerBox.style.display = 'none';
+        pararTimer();
+      }
+      calc();
+    }
+
+    // Ventana emergente que explica Sprint Scalper (mensaje atractivo para scalpers).
+    function explicarSprint(onOk) {
+      let ov = $('sprint-intro');
+      if (ov) ov.remove();
+      ov = document.createElement('div'); ov.id = 'sprint-intro';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:30000;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.6)';
+      ov.innerHTML = `<div style="max-width:380px;background:linear-gradient(180deg,#141a22,#0d1117);border:1px solid #2b3340;border-radius:16px;padding:22px;color:#eaecef;font-family:sans-serif">
+        <div style="font-size:18px;font-weight:800;color:#E8B84B;margin-bottom:6px">⚡ Sprint Scalper</div>
+        <div style="font-size:12.5px;color:#8b96a3;margin-bottom:14px;font-weight:700;letter-spacing:.03em">PARA SCALPERS PROFESIONALES</div>
+        <p style="font-size:13.5px;line-height:1.6;margin:0 0 12px">Opera a contrarreloj en temporalidades de <b>1 a 5 minutos</b> con un multiplicador de <b>100×</b> ya listo, sin configurar apalancamiento y <b>sin comisión por apertura</b>.</p>
+        <p style="font-size:13.5px;line-height:1.6;margin:0 0 12px">Son <b>operaciones reales en el mercado</b>, respaldadas por liquidez real. El resultado lo decide el precio, no la casa. Cuando el cronómetro llega a cero, tu posición se cierra automáticamente en el punto exacto.</p>
+        <p style="font-size:12px;line-height:1.5;margin:0 0 16px;color:#8b96a3">Inspirado en la agilidad de las opciones rápidas, pero con la transparencia de los futuros: tú contra el mercado, nunca contra nosotros. Diseñado para quien sabe leer el movimiento en segundos.</p>
+        <div style="display:flex;gap:10px">
+          <button id="sprint-cancel" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:10px;padding:11px;color:#eaecef;font-weight:700;cursor:pointer">Ahora no</button>
+          <button id="sprint-go" style="flex:1;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:none;border-radius:10px;padding:11px;color:#1a1200;font-weight:800;cursor:pointer">Empezar</button>
+        </div>
+      </div>`;
+      document.body.appendChild(ov);
+      $('sprint-cancel').onclick = () => ov.remove();
+      $('sprint-go').onclick = () => { ov.remove(); onOk && onOk(); };
+    }
+    function setLev(v) { lev = v; const pl = $('p-lev'); if (pl) pl.textContent = lev + '×'; const pb = $('p-levbtn-v'); if (pb) pb.textContent = lev + '×'; const pr = $('p-range'); if (pr) pr.value = lev; calc(); }
     $('p-range').oninput = (e) => setLev(+e.target.value);
     document.querySelectorAll('.p-tabs button').forEach((b) => b.onclick = () => {
       tipo = b.dataset.ord; document.querySelectorAll('.p-tabs button').forEach((x) => x.classList.toggle('on', x === b));
@@ -455,6 +573,34 @@
       const sl = parseFloat($('p-sl').value) || (esL ? px * 0.99 : px * 1.01);
       const _par = parDe();
       const tipoOrden = tipo;   // market o limit (a mercado = ejecución real ahora)
+
+      // ─── SPRINT SCALPER: operación por tiempo (100x fijo) ───
+      if (modoFx === 'sprint') {
+        const tokenAddr = TOKENS_FUT[_par.id];
+        if (!tokenAddr) { avisoFut('Esta moneda aún no está disponible para operar.'); return; }
+        const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+        if (!cuenta) { avisoFut('Conecta tu wallet primero.'); return; }
+        const btn = esL ? $('p-long') : $('p-short');
+        const txtPrev = btn ? btn.textContent : '';
+        try {
+          if (btn) { btn.disabled = true; btn.textContent = 'Confirma en tu wallet…'; }
+          const signer = await firmante();
+          const usdt = new ethers.Contract(USDT_ADDR, ABI_USDT, signer);
+          const dec = await usdt.decimals();
+          const margenWei = ethers.parseUnits(String(m), dec);
+          const permitido = await usdt.allowance(cuenta, FUTUROS_ADDR);
+          if (permitido < margenWei) { if (btn) btn.textContent = 'Aprobando USDT…'; const txA = await usdt.approve(FUTUROS_ADDR, margenWei); await txA.wait(); }
+          const fut = new ethers.Contract(FUTUROS_ADDR, ABI_FUT, signer);
+          if (btn) btn.textContent = 'Abriendo…';
+          const tx = await fut.abrirSprint(tokenAddr, USDT_ADDR, esL ? 0 : 1, margenWei, ethers.parseUnits(String(sl), 18), sprintSeg);
+          await tx.wait();
+          avisoFut('Sprint abierto ✓ · cierra en ' + (sprintSeg/60) + ' min');
+          cargarPosiciones();
+        } catch (e) {
+          avisoFut('No se pudo abrir: ' + (e && e.shortMessage ? e.shortMessage : 'cancelado o error'));
+        } finally { if (btn) { btn.disabled = false; btn.textContent = txtPrev; } }
+        return;
+      }
 
       // ─── MERCADO: ejecutar en el contrato real ───
       if (tipoOrden === 'market') {
