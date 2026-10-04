@@ -158,7 +158,7 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
       #ap-cobro .ap-badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#f4d089,#E8B84B 60%,#cf9f2e);color:#241900;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:4px 12px;border-radius:100px;white-space:nowrap;box-shadow:0 3px 10px rgba(232,184,75,.3)}
       #ap-cobro .ap-plan-n{font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#a7b0bb;margin-bottom:10px}
       #ap-cobro .ap-plan-price{display:flex;align-items:baseline;justify-content:center;gap:4px;margin-bottom:2px}
-      #ap-cobro .ap-plan-amt{font-size:36px;font-weight:900;color:var(--gold,#E8B84B);line-height:1;text-shadow:0 1px 0 #cf9f2e,0 2px 0 #b88a24,0 3px 0 #96681a,0 4px 5px rgba(0,0,0,.45),0 7px 16px rgba(232,184,75,.30)}
+      #ap-cobro .ap-plan-amt{font-size:36px;font-weight:900;line-height:1;color:#E8B84B;background:linear-gradient(180deg,#fdeeb0 0%,#e9c468 33%,#d8a736 58%,#ad7b20 82%,#edcd79 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))}
       #ap-cobro .ap-plan-u{font-size:11.5px;color:#8b96a3;margin-bottom:13px}
       #ap-cobro .ap-plan-d{font-size:12.5px;line-height:1.5;color:#c4ccd4;flex:1}
       #ap-cobro .ap-plan-pick{margin-top:15px;text-align:center;font-size:12px;font-weight:800;color:#8b96a3;border:1px solid #2b3340;border-radius:10px;padding:9px}
