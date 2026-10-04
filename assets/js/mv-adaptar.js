@@ -108,7 +108,7 @@
     var st = document.createElement('style');
     st.id = 'mv-modales-css';
     st.textContent = [
-      '#swap-modal,#coin-modal,#colmena-app,.gb-modal,.rej-modal,#mv-sheet,#mv-picker{',
+      '#swap-modal,#coin-modal,.gb-modal,.rej-modal,#mv-sheet,#mv-picker{',
       '  z-index:12000!important;pointer-events:auto!important}',
       // por si algún módulo hereda el zoom del scroll, lo neutralizamos en las ventanas
       '#swap-modal,#coin-modal,.gb-modal,.rej-modal,#mv-sheet,#mv-picker{zoom:1!important}',
