@@ -291,7 +291,8 @@
     import { N } from './assets/js/niveles/estado.js?v=1';
     import { PARES } from './assets/js/niveles/config.js?v=1';
     import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=160';
-    import * as wallet from './assets/js/wallet.js?v=125';
+    import * as wallet from './assets/js/wallet.js?v=129';
+    import * as ethers from './assets/js/vendor/ethers-6.13.4.min.js?v=129';
     import { abrirSwap, initSwap } from './assets/js/gridbot/swap.js?v=11';
 
     const $ = (id) => document.getElementById(id);
@@ -300,6 +301,30 @@
     const liqDe = (e, l, esL) => esL ? e * (1 - 0.75 / l) : e * (1 + 0.75 / l);
     const parDe = () => PARES.find((p) => p.id === N.par) || PARES[0];
     const simDe = () => parDe().s;
+
+    /*═══ CONEXIÓN AL CONTRATO DE FUTUROS (abrir a mercado) ═══*/
+    const FUTUROS_ADDR = '0x315C8Afc274f2BE822ffA1725b590D7fB7E2Af85';
+    const USDT_ADDR    = '0x55d398326f99059fF775485246999027B3197955';
+    // moneda del frontend (id de PARES) -> dirección del token en BNB Chain
+    const TOKENS_FUT = {
+      BTC:'0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', ETH:'0x2170Ed0880ac9A755fd29B2688956BD959F933F8',
+      BNB:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', CAKE:'0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82',
+      ADA:'0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47', DOGE:'0xbA2aE424d960c26247Dd6c32edC70B295c744C43',
+      XRP:'0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE', DOT:'0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402',
+      LINK:'0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD', LTC:'0x4338665CBB7B2485A8855A139b75D5e34AB0DB94',
+      AVAX:'0x1CE0c2827e2eF14D5C4f29a091d735A204794041', ATOM:'0x0Eb3a705fc54725037CC9e008bDede697f62F335',
+      UNI:'0xBf5140A22578168FD562DCcF235E5D43A02ce9B1', FIL:'0x0D8Ce2A99Bb6e3B7Db580eD848240e4a0F9aE153',
+      INJ:'0xa2B726B1145A4773F68593CF171187d8EBe4d495', PEPE:'0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00'
+    };
+    const ABI_FUT = ['function abrirPosicion(address token,address stable,uint8 lado,uint256 margen,uint16 lev,uint256 tp,uint256 sl) external returns (uint256)'];
+    const ABI_USDT = ['function approve(address spender,uint256 amount) external returns (bool)','function allowance(address owner,address spender) external view returns (uint256)','function decimals() external view returns (uint8)'];
+
+    // firmante (patrón del repo: BrowserProvider del proveedor inyectado)
+    async function firmante() {
+      const prov = (wallet.proveedorActivo && wallet.proveedorActivo()) || window.ethereum;
+      const bp = new ethers.BrowserProvider(prov);
+      return bp.getSigner();
+    }
 
     let lev = 20, modo = 'cruzada', tipo = 'market', pctCap = 0;
     let precio = 0, saldo = 0, posiciones = [];
@@ -414,7 +439,7 @@
     $('p-short').onclick = () => abrirPosicion('short', null);
 
     /* ═══ 6. Posiciones (local hasta el contrato) + TP/SL arrastrables ═══ */
-    function abrirPosicion(lado, pxEntrada) {
+    async function abrirPosicion(lado, pxEntrada) {
       const m = parseFloat(($('p-margen').value || '').replace(/,/g, '')) || 0;
       if (!m) { $('p-margen').focus(); $('p-margen').closest('.p-box').style.borderColor = 'var(--down)'; setTimeout(() => { $('p-margen').closest('.p-box').style.borderColor = ''; }, 1200); return; }
       const px = pxEntrada || ((tipo !== 'market' && parseFloat($('p-price').value)) || precio || N.precio);
@@ -422,11 +447,61 @@
       const esL = lado === 'long';
       const tp = parseFloat($('p-tp').value) || (esL ? px * 1.02 : px * 0.98);
       const sl = parseFloat($('p-sl').value) || (esL ? px * 0.99 : px * 1.01);
+      const _par = parDe();
+      const tipoOrden = tipo;   // market o limit (a mercado = ejecución real ahora)
+
+      // ─── MERCADO: ejecutar en el contrato real ───
+      if (tipoOrden === 'market') {
+        const tokenAddr = TOKENS_FUT[_par.id];
+        if (!tokenAddr) { avisoFut('Esta moneda aún no está disponible para operar.'); return; }
+        const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+        if (!cuenta) { avisoFut('Conecta tu wallet primero.'); return; }
+        const btn = esL ? $('p-long') : $('p-short');
+        const txtPrev = btn ? btn.textContent : '';
+        try {
+          if (btn) { btn.disabled = true; btn.textContent = 'Confirma en tu wallet…'; }
+          const signer = await firmante();
+          const usdt = new ethers.Contract(USDT_ADDR, ABI_USDT, signer);
+          const dec = await usdt.decimals();
+          const margenWei = ethers.parseUnits(String(m), dec);
+          // approve si hace falta
+          const permitido = await usdt.allowance(cuenta, FUTUROS_ADDR);
+          if (permitido < margenWei) {
+            const txA = await usdt.approve(FUTUROS_ADDR, margenWei);
+            if (btn) btn.textContent = 'Aprobando USDT…';
+            await txA.wait();
+          }
+          // abrir posición (lado: 0=long, 1=short). TP/SL con 18 dec (precio USD).
+          const fut = new ethers.Contract(FUTUROS_ADDR, ABI_FUT, signer);
+          if (btn) btn.textContent = 'Abriendo posición…';
+          const tx = await fut.abrirPosicion(
+            tokenAddr, USDT_ADDR, esL ? 0 : 1, margenWei, lev,
+            ethers.parseUnits(String(tp), 18), ethers.parseUnits(String(sl), 18)
+          );
+          await tx.wait();
+          avisoFut('Posición abierta ✓');
+          if (typeof refrescarUsuario === 'function') refrescarUsuario();
+        } catch (e) {
+          avisoFut('No se pudo abrir: ' + (e && e.shortMessage ? e.shortMessage : 'cancelado o error'));
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = txtPrev; }
+        }
+        return;
+      }
+
+      // ─── LÍMITE: (se conectará después) por ahora queda como estaba (visual) ───
       const act = N.precio || precio || px;
       const esLimit = (tipo !== 'market') || (act && Math.abs((px - act) / act) >= 0.0015);
-      const _par = parDe();
       posiciones.push({ id: Date.now(), lado, px, m, lev, tp, sl, liq: liqDe(px, lev, esL), sim: simDe(), parId: _par.id, cg: _par.cg, limit: !!esLimit, t: Date.now() });
       pintarPos();
+    }
+
+    // aviso simple reutilizable
+    function avisoFut(msg) {
+      let el = $('fut-aviso');
+      if (!el) { el = document.createElement('div'); el.id = 'fut-aviso'; el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0e1218;border:1px solid #2b3340;color:#eaecef;padding:12px 18px;border-radius:12px;z-index:30000;font-size:13px;max-width:320px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)'; document.body.appendChild(el); }
+      el.textContent = msg; el.style.opacity = '1';
+      clearTimeout(el._t); el._t = setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; }, 3500);
     }
     function cerrar(id) { posiciones = posiciones.filter((p) => p.id !== id); pintarPos(); }
 
