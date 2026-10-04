@@ -478,25 +478,34 @@
     $('p-fut').onclick = () => setModoFx('fut');
     $('p-sprint').onclick = () => { if (modoFx !== 'sprint') explicarSprint(() => setModoFx('sprint')); };
 
-    let _spTimer = null, _spRestante = 0;
+    let _spTimer = null, _spRestante = null;
     function arrancarTimer(seg) {
-      sprintSeg = seg; _spRestante = seg;
+      sprintSeg = seg;
       const ev = $('sp-exp-val'); if (ev) ev.textContent = (seg / 60) + ' min';
-      pintarTimer();
       pararTimer();
+      // SINCRONIZADO con las velas reales de Binance: las velas se alinean al reloj
+      // UTC (una vela de 5m cierra en :00, :05, :10...). El temporizador cuenta el
+      // tiempo que falta para ESE cierre real, no a su aire. Así, cuando llega a 0,
+      // coincide EXACTAMENTE con la formación de la nueva vela.
+      const segMs = seg * 1000;
       _spTimer = setInterval(() => {
-        _spRestante -= 1;
-        if (_spRestante <= 0) {
-          _spRestante = sprintSeg;               // reinicia el ciclo
-          dispararCierresVencidos();             // cierra las posiciones Sprint vencidas (real)
+        const ahora = Date.now();
+        // ms que faltan para el próximo límite de intervalo (cierre de la vela actual)
+        const restanteMs = segMs - (ahora % segMs);
+        const antes = _spRestante;
+        _spRestante = Math.ceil(restanteMs / 1000);
+        // cuando el contador cruza a un nuevo ciclo (la vela cerró), disparar cierres
+        if (antes != null && _spRestante > antes) {
+          dispararCierresVencidos();
         }
         pintarTimer();
-      }, 1000);
+      }, 200);   // refresco cada 200ms para que el 0 sea preciso
     }
     function pararTimer() { if (_spTimer) { clearInterval(_spTimer); _spTimer = null; } }
     function pintarTimer() {
       const el = $('sp-timer'); if (!el) return;
-      const mm = Math.floor(_spRestante / 60), ss = _spRestante % 60;
+      const r = (_spRestante == null || _spRestante < 0) ? sprintSeg : _spRestante;
+      const mm = Math.floor(r / 60), ss = r % 60;
       el.textContent = mm + ':' + (ss < 10 ? '0' : '') + ss;
     }
     // Expiry con − / + (estilo IQ Option): cicla entre 1, 3 y 5 min.
