@@ -136,13 +136,15 @@
     .p-oc{display:flex;gap:7px}
     .p-oc button{flex:1;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-weight:700;font-size:12px;cursor:pointer}
     .p-oc button.on{background:rgba(46,189,133,.14);color:var(--up);border-color:rgba(46,189,133,.4)}
-    /* Temporizador Sprint: compacto (cabe en el alto del leverage, ~56px) y elegante. */
-    #p-timer-box{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    #sp-timer{font-family:var(--mono);font-size:30px;font-weight:800;line-height:1;color:var(--gold);letter-spacing:.02em;font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(232,184,75,.28)}
-    .sp-timer-l{font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;margin-bottom:3px}
-    .sp-tfcol{display:flex;flex-direction:column;gap:4px}
-    .sp-tf{background:#161c24;border:1px solid #2b3340;color:#8b96a3;border-radius:6px;padding:3px 0;width:38px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:var(--mono);transition:all .12s}
-    .sp-tf.on{background:linear-gradient(180deg,rgba(232,184,75,.18),rgba(232,184,75,.08));border-color:rgba(232,184,75,.5);color:var(--gold)}
+    /* Temporizador Sprint estilo IQ Option: expiry centrado con controles, countdown. */
+    #p-timer-box{display:flex;flex-direction:column;gap:7px}
+    .sp-exp{display:flex;align-items:center;justify-content:center;gap:10px}
+    .sp-exp button{width:30px;height:30px;border-radius:8px;background:#161c24;border:1px solid #2b3340;color:var(--gold);font-size:18px;font-weight:800;cursor:pointer;line-height:1;display:grid;place-items:center;transition:all .12s}
+    .sp-exp button:hover{border-color:rgba(232,184,75,.5);background:rgba(232,184,75,.08)}
+    .sp-exp-mid{text-align:center;min-width:92px}
+    .sp-exp-lbl{font-size:8.5px;font-weight:800;letter-spacing:.14em;color:var(--ink3);text-transform:uppercase;margin-bottom:1px}
+    .sp-exp-val{font-family:var(--mono);font-size:19px;font-weight:800;color:var(--ink);line-height:1}
+    #sp-timer{font-family:var(--mono);font-size:15px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;letter-spacing:.03em;margin-top:2px}
     /* Pestañas Futures/Sprint: el seleccionado se ve CLARO (fondo dorado). */
     #p-fut.on,#p-sprint.on{background:linear-gradient(180deg,rgba(232,184,75,.16),rgba(232,184,75,.06));border-color:rgba(232,184,75,.5);color:var(--gold)}
     #p-fut,#p-sprint{transition:all .12s}
@@ -299,14 +301,14 @@
       <div class="p-pct"><input type="range" id="p-pctr" min="0" max="100" step="25" value="0"><div class="marks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
       <div class="p-lev"><div class="p-lev-top"><span class="p-lbl" style="margin:0">Apalancamiento</span><span class="p-lev-val" id="p-lev">20×</span></div><input type="range" id="p-range" min="1" max="200" value="20"><div class="marks"><span>1×</span><span>50×</span><span>100×</span><span>150×</span><span>200×</span></div></div>
       <div class="p-lev" id="p-timer-box" style="display:none">
-        <div>
-          <div class="sp-timer-l" id="sp-timer-l">Auto-close</div>
-          <div id="sp-timer">5:00</div>
-        </div>
-        <div class="sp-tfcol">
-          <button class="sp-tf" data-s="60">1m</button>
-          <button class="sp-tf" data-s="180">3m</button>
-          <button class="sp-tf on" data-s="300">5m</button>
+        <div class="sp-exp">
+          <button id="sp-minus" type="button">−</button>
+          <div class="sp-exp-mid">
+            <div class="sp-exp-lbl">Expiration</div>
+            <div class="sp-exp-val" id="sp-exp-val">5 min</div>
+            <div id="sp-timer">5:00</div>
+          </div>
+          <button id="sp-plus" type="button">+</button>
         </div>
       </div>
       <div class="p-tpsl-h" id="p-tpsl-tog"><span class="p-chk" id="p-tpsl-chk"></span><span>TP/SL</span></div>
@@ -464,7 +466,7 @@
     let _spTimer = null, _spRestante = 0;
     function arrancarTimer(seg) {
       sprintSeg = seg; _spRestante = seg;
-      document.querySelectorAll('.sp-tf').forEach((b) => b.classList.toggle('on', +b.dataset.s === seg));
+      const ev = $('sp-exp-val'); if (ev) ev.textContent = (seg / 60) + ' min';
       pintarTimer();
       pararTimer();
       _spTimer = setInterval(() => {
@@ -482,14 +484,22 @@
       const mm = Math.floor(_spRestante / 60), ss = _spRestante % 60;
       el.textContent = mm + ':' + (ss < 10 ? '0' : '') + ss;
     }
-    // selector de temporalidad dentro del timer
-    document.addEventListener('click', (e) => {
-      const b = e.target.closest('.sp-tf'); if (!b) return;
-      const seg = +b.dataset.s;
+    // Expiry con − / + (estilo IQ Option): cicla entre 1, 3 y 5 min.
+    const SP_OPCIONES = [60, 180, 300];   // segundos disponibles
+    function cambiarExpiry(dir) {
+      let i = SP_OPCIONES.indexOf(sprintSeg);
+      if (i < 0) i = 2;
+      i = Math.min(SP_OPCIONES.length - 1, Math.max(0, i + dir));
+      const seg = SP_OPCIONES[i];
       const tf = seg === 60 ? '1m' : seg === 180 ? '3m' : '5m';
       try { ponerTf(tf); } catch (_) {}
       arrancarTimer(seg);
-    });
+    }
+    (function wireExpiry() {
+      const mn = $('sp-minus'), pl = $('sp-plus');
+      if (mn) mn.onclick = () => cambiarExpiry(-1);
+      if (pl) pl.onclick = () => cambiarExpiry(1);
+    })();
 
     // DISPARADOR REAL: cierra en el contrato las posiciones Sprint cuyo tiempo venció.
     // Llama cerrarVencido() — pública y con propina — de CUALQUIER posición vencida
@@ -552,9 +562,9 @@
       ov.innerHTML = `<div style="max-width:410px;background:linear-gradient(180deg,#141a22,#0d1117);border:1px solid #2b3340;border-radius:16px;padding:26px 24px;color:#eaecef;font-family:sans-serif">
         <div style="text-align:center;font-size:21px;font-weight:800;color:#E8B84B;letter-spacing:.02em;margin-bottom:5px">Sprint Scalper</div>
         <div style="text-align:center;font-size:11px;color:#8b96a3;font-weight:800;letter-spacing:.16em;margin-bottom:18px">SCALPING · FIXED-DURATION POSITIONS</div>
-        <p style="font-size:13.5px;line-height:1.65;margin:0 0 13px">Sprint Scalper takes the mechanics of binary options — a position with a fixed expiry — and runs them on real markets. You open long or short, and instead of closing it yourself, the position settles on its own at the end of the interval you chose, from one to five minutes.</p>
-        <p style="font-size:13.5px;line-height:1.65;margin:0 0 13px">The difference from conventional binaries is structural: your trade is a genuine market position backed by real liquidity, not a bet placed against the platform. The settlement price is the market price. We are never your counterparty, so there is nothing for us to tilt in our favor.</p>
-        <p style="font-size:13.5px;line-height:1.65;margin:0 0 18px">The multiplier is fixed and there is no opening fee, which makes short, high-frequency entries viable — the kind of trading where conventional commissions quietly erode the edge. It is a focused tool for reading short-term movement and acting on it cleanly.</p>
+        <p style="font-size:13.5px;line-height:1.65;margin:0 0 13px">Sprint Scalper takes the mechanics of binary options, a position with a fixed expiry, and runs them on real markets. You open long or short, and instead of closing it yourself, the position settles on its own at the end of the interval you chose, between one and five minutes.</p>
+        <p style="font-size:13.5px;line-height:1.65;margin:0 0 13px">The difference from conventional binaries is structural. Your trade is a genuine market position backed by real liquidity, not a bet placed against the platform. The settlement price is the market price. We are never your counterparty, so there is nothing for us to tilt in our favor.</p>
+        <p style="font-size:13.5px;line-height:1.65;margin:0 0 18px">The multiplier is fixed and there is no opening fee, which makes short, high frequency entries viable, the kind of trading where conventional commissions quietly erode the edge. It is a focused tool for reading short term movement and acting on it cleanly.</p>
         <div style="display:flex;gap:10px">
           <button id="sprint-cancel" style="flex:1;background:#1b222c;border:1px solid #2b3340;border-radius:10px;padding:12px;color:#eaecef;font-weight:700;cursor:pointer">Not now</button>
           <button id="sprint-go" style="flex:1.3;background:linear-gradient(180deg,#f4d06a,#e0a92f);border:none;border-radius:10px;padding:12px;color:#1a1200;font-weight:800;cursor:pointer">Continue</button>
