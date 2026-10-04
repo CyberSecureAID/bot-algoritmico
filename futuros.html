@@ -316,7 +316,13 @@
       UNI:'0xBf5140A22578168FD562DCcF235E5D43A02ce9B1', FIL:'0x0D8Ce2A99Bb6e3B7Db580eD848240e4a0F9aE153',
       INJ:'0xa2B726B1145A4773F68593CF171187d8EBe4d495', PEPE:'0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00'
     };
-    const ABI_FUT = ['function abrirPosicion(address token,address stable,uint8 lado,uint256 margen,uint16 lev,uint256 tp,uint256 sl) external returns (uint256)'];
+    const ABI_FUT = [
+      'function abrirPosicion(address token,address stable,uint8 lado,uint256 margen,uint16 lev,uint256 tp,uint256 sl) external returns (uint256)',
+      'function cerrar(uint256 id) external returns (int256)',
+      'function idsDe(address trader) external view returns (uint256[])',
+      'function posicion(uint256 id) external view returns (tuple(address trader,address origen,address token,address stable,uint8 lado,uint256 margen,uint16 lev,uint256 tamano,uint256 unidades,uint256 precioEntrada,uint256 tp,uint256 sl,uint256 precioLiq,uint40 abierta,uint40 ultimoFunding,uint40 vence,bool activa))',
+      'function resumen(address trader) external view returns (tuple(uint256 abiertas,uint256 cerradas,int256 pnlRealizado,uint256 volumen))'
+    ];
     const ABI_USDT = ['function approve(address spender,uint256 amount) external returns (bool)','function allowance(address owner,address spender) external view returns (uint256)','function decimals() external view returns (uint8)'];
 
     // firmante (patrón del repo: BrowserProvider del proveedor inyectado)
@@ -503,7 +509,62 @@
       el.textContent = msg; el.style.opacity = '1';
       clearTimeout(el._t); el._t = setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; }, 3500);
     }
-    function cerrar(id) { posiciones = posiciones.filter((p) => p.id !== id); pintarPos(); }
+    async function cerrar(id) {
+      // 'id' puede ser el id del contrato (número on-chain). Cierra en el contrato real.
+      const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+      if (!cuenta) { avisoFut('Conecta tu wallet primero.'); return; }
+      // posiciones demo (array local, id grande tipo timestamp) se quitan sin contrato
+      if (typeof id === 'number' && id > 1e12) { posiciones = posiciones.filter((p) => p.id !== id); pintarPos(); return; }
+      try {
+        avisoFut('Confirma el cierre en tu wallet…');
+        const signer = await firmante();
+        const fut = new ethers.Contract(FUTUROS_ADDR, ABI_FUT, signer);
+        const tx = await fut.cerrar(id);
+        await tx.wait();
+        avisoFut('Posición cerrada ✓');
+        cargarPosiciones();
+      } catch (e) {
+        avisoFut('No se pudo cerrar: ' + (e && e.shortMessage ? e.shortMessage : 'cancelado o error'));
+      }
+    }
+
+    // Lee las posiciones ABIERTAS del contrato y las pinta.
+    async function cargarPosiciones() {
+      try {
+        const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+        if (!cuenta) return;
+        const prov = (wallet.proveedorActivo && wallet.proveedorActivo()) || window.ethereum;
+        const bp = new ethers.BrowserProvider(prov);
+        const fut = new ethers.Contract(FUTUROS_ADDR, ABI_FUT, bp);
+        const ids = await fut.idsDe(cuenta);
+        const reales = [];
+        for (const idBN of ids) {
+          const p = await fut.posicion(idBN);
+          if (!p.activa) continue;
+          const dec = 18;
+          const sim = _simDeToken(p.token);
+          reales.push({
+            id: Number(idBN), onchain: true,
+            lado: Number(p.lado) === 0 ? 'long' : 'short',
+            px: Number(ethers.formatUnits(p.precioEntrada, dec)),
+            m: Number(ethers.formatUnits(p.margen, 18)),
+            lev: Number(p.lev),
+            tp: Number(ethers.formatUnits(p.tp, dec)),
+            sl: Number(ethers.formatUnits(p.sl, dec)),
+            liq: Number(ethers.formatUnits(p.precioLiq, dec)),
+            sim: sim, parId: _parIdDeToken(p.token), cg: '',
+            limit: false, vence: Number(p.vence), t: Number(p.abierta) * 1000
+          });
+        }
+        // mantener las demo locales + las reales del contrato
+        const demo = posiciones.filter((p) => !p.onchain);
+        posiciones = reales.concat(demo);
+        pintarPos();
+      } catch (e) { /* silencioso: si no hay wallet o red, no rompe */ }
+    }
+    // token addr -> símbolo / parId (inverso del mapa)
+    function _parIdDeToken(addr) { const a = (addr || '').toLowerCase(); for (const k in TOKENS_FUT) if (TOKENS_FUT[k].toLowerCase() === a) return k; return 'BTC'; }
+    function _simDeToken(addr) { return _parIdDeToken(addr) + 'USDT'; }
 
     /* Editar TP o SL de una posición. Al dar OK, el cambio se FIRMARÁ con el
        contrato de futuros cuando esté desplegado (define dónde se toma ganancia
@@ -1052,6 +1113,9 @@
     // Refresco periódico del saldo (cada 10s): tras un swap u otra operación, los
     // 3 sitios se actualizan solos sin recargar la página.
     setInterval(refrescarUsuario, 10000);
+    // Cargar las posiciones REALES del contrato al entrar y cada 15s.
+    setTimeout(() => { try { cargarPosiciones(); } catch (_) {} }, 1500);
+    setInterval(() => { try { cargarPosiciones(); } catch (_) {} }, 15000);
     // Al cerrar el swap, refrescar enseguida (el saldo pudo cambiar).
     document.addEventListener('click', (e) => {
       const m = document.getElementById('swap-modal');
