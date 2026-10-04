@@ -73,18 +73,14 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
     ? 'Institutional grade order flow, read from the market itself. The engine reconstructs the real volume resting behind every block of orders and follows the live book in real time, mapping where capital is committed and where price is likely to turn. Liquidity Pools and Hair Pools are built from genuine flow, not lagging indicators, and every level is verifiable on the chart. Fast, precise, and made for traders who act on evidence.'
     : 'Bring institutional order flow onto the chart you already trade. Liquidity Pools and Hair Pools overlay the exact zones where capital is committed and where price tends to react, computed live from real volume and the order book, on your current chart and timeframe, with full leverage in play. The same read the desks use, now inside your futures workspace.';
 
-  const nota = esHero
-    ? 'These tools apply to spot trading. For leveraged futures, open the Futures area and load Professional Analysis there.'
-    : 'Activate to overlay the tools on your live futures chart. Turn them on or off at any time. Your leverage and open positions are never affected.';
-
   // Precios del contrato (nunca fijos); si falla la lectura, respaldo 20 / 100.
-  let pMes = '$20', pAnio = '$100', yaUso = false, esOwner = false;
+  let pMes = '$20', pAnio = '$100', yaUso = false;
   try {
     const cuenta = wallet.cuentaActual && wallet.cuentaActual();
     const c = new (ethers.Contract)(ANALISIS_ADDR, ABI, _prov(wallet, ethers));
     const [m, a] = await Promise.all([c.precioMesUSD(), c.precioAnioUSD()]);
     pMes = _fmtUSD(m); pAnio = _fmtUSD(a);
-    if (cuenta) { try { yaUso = await c.pruebaUsada(cuenta); } catch (_) {} try { esOwner = await c.esOwner(cuenta); } catch (_) {} }
+    if (cuenta) { try { yaUso = await c.pruebaUsada(cuenta); } catch (_) {} }
   } catch (_) {}
 
   const PLANES = [
@@ -130,9 +126,6 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
 
       <button class="ap-cta" id="ap-cta">Continue</button>
       <div class="ap-msg" id="ap-msg"></div>
-
-      <p class="ap-note">${nota}</p>
-      <p class="ap-fine">Paid from your wallet in BNB or USDT. Renew before expiry and your remaining days carry over.</p>
     </div>
     <style>
       #ap-cobro{position:fixed;inset:0;z-index:40000;height:100dvh;max-height:100dvh;display:flex;flex-direction:column;color:#eaecef;background:#05070a;font-family:var(--display,'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif)}
@@ -146,12 +139,12 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
       #ap-cobro .ap-bar-t span{color:var(--gold,#E8B84B)}
       #ap-cobro .ap-in{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:1;width:100%;max-width:880px;margin:0 auto;padding:16px 18px calc(44px + env(safe-area-inset-bottom,0px));text-align:center}
       #ap-cobro .ap-in::-webkit-scrollbar{width:0;height:0;display:none}
-      #ap-cobro .ap-hero{display:block;margin:10px auto 8px;max-width:290px;width:62%;height:auto;filter:drop-shadow(0 16px 28px rgba(0,0,0,.55))}
+      #ap-cobro .ap-hero{display:block;margin:4px auto 6px;max-width:235px;width:52%;height:auto;filter:drop-shadow(0 14px 26px rgba(0,0,0,.55))}
       #ap-cobro .ap-title{font-size:clamp(23px,4.2vw,36px);font-weight:900;letter-spacing:-.5px;margin:0 0 12px;text-shadow:0 2px 0 rgba(0,0,0,.4),0 5px 14px rgba(0,0,0,.55)}
       #ap-cobro .ap-title .g{color:var(--gold,#E8B84B);text-shadow:0 2px 0 rgba(120,80,0,.5),0 6px 18px rgba(232,184,75,.25)}
-      #ap-cobro .ap-intro{font-size:14px;color:#c9d2dc;line-height:1.65;max-width:630px;margin:0 auto 26px}
-      #ap-cobro .ap-planes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:760px;margin:0 auto 24px;text-align:center}
-      #ap-cobro .ap-plan{position:relative;display:flex;flex-direction:column;text-align:center;background:linear-gradient(135deg,rgba(20,26,33,.92),rgba(10,14,18,.94));border:1px solid #232b36;border-radius:16px;padding:22px 18px 18px;cursor:pointer;transition:border-color .14s,box-shadow .14s}
+      #ap-cobro .ap-intro{font-size:14px;color:#c9d2dc;line-height:1.6;max-width:630px;margin:0 auto 18px}
+      #ap-cobro .ap-planes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:760px;margin:0 auto 20px;text-align:center}
+      #ap-cobro .ap-plan{position:relative;display:flex;flex-direction:column;text-align:center;font-family:inherit;background:linear-gradient(135deg,rgba(20,26,33,.92),rgba(10,14,18,.94));border:1px solid #232b36;border-radius:16px;padding:22px 18px 18px;cursor:pointer;transition:border-color .14s,box-shadow .14s}
       #ap-cobro .ap-plan:hover{border-color:#3a4552}
       #ap-cobro .ap-plan.top{border-color:rgba(232,184,75,.42)}
       #ap-cobro .ap-plan.sel{border-color:var(--gold,#E8B84B);box-shadow:0 12px 36px rgba(232,184,75,.14)}
@@ -171,8 +164,6 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
       #ap-cobro .ap-cta{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:230px;padding:15px 40px;border:1px solid var(--gold-md,#cf9f2e);border-radius:13px;background:linear-gradient(180deg,#f4d089,#E8B84B 55%,#cf9f2e);color:#241900;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 5px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4)}
       #ap-cobro .ap-cta:active{transform:translateY(3px);box-shadow:0 2px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4)}
       #ap-cobro .ap-msg{font-size:13px;color:#9aa6b2;margin-top:14px;min-height:18px}
-      #ap-cobro .ap-note{font-size:12.5px;line-height:1.55;color:#9aa6b2;max-width:560px;margin:20px auto 6px}
-      #ap-cobro .ap-fine{font-size:11px;line-height:1.5;color:#6a737d;max-width:560px;margin:0 auto}
       @media(max-width:640px){
         #ap-cobro .ap-planes{grid-template-columns:1fr;max-width:400px;gap:11px}
         #ap-cobro .ap-plan{padding:18px 16px 16px}
@@ -212,8 +203,6 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
   const msg = (t) => { const e = $('#ap-msg'); if (e) e.textContent = t || ''; };
   const cerrar = () => { try { ov.remove(); } catch (_) {} };
   $('#ap-back').onclick = cerrar;
-
-  if (esOwner) msg('Owner access, no payment needed.');
 
   ov.querySelectorAll('.ap-plan').forEach((b) => b.onclick = () => { planSel = b.dataset.plan; refrescar(); });
   ov.querySelectorAll('.ap-cur').forEach((b) => b.onclick = () => { curSel = b.dataset.cur; refrescar(); });
