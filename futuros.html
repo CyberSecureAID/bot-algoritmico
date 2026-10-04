@@ -329,6 +329,8 @@
   <script type="module">
     import { abrirNiveles } from './assets/js/niveles.js?v=126';
     import { N } from './assets/js/niveles/estado.js?v=1';
+    import { dibujar as dibujarGrafica } from './assets/js/niveles/render.js?v=1';
+    import { velasVivoConectar, velasVivoCerrar } from './assets/js/modulo/velas-vivo.js?v=1';
     import { PARES } from './assets/js/niveles/config.js?v=1';
     import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=160';
     import * as wallet from './assets/js/wallet.js?v=129';
@@ -381,6 +383,16 @@
 
     /* ═══ 1. Smart Levels dentro de la celda, sin su banda ═══ */
     await abrirNiveles();
+    // VELAS EN VIVO: conectar el WebSocket de Binance para que la última vela se
+    // mueva tick a tick (orgánica, como IQ Option). Reemplaza la foto cada 30s.
+    function _redibujarVivo() { try { if (document.getElementById('nv-cv')) dibujarGrafica(); } catch (_) {} }
+    function conectarVelasVivo() {
+      try {
+        const p = parDe();
+        velasVivoConectar(p.s, N.tf || '15m', N, _redibujarVivo);
+      } catch (_) {}
+    }
+    conectarVelasVivo();
     const ov = $('nv-overlay');
     const graf = $('f-graf');
     if (ov) graf.insertBefore(ov, $('f-ov'));
@@ -403,7 +415,7 @@
     }
     async function tick() {
       const p = parDe();
-      if (p.s !== simActual) { simActual = p.s; $('f-sym').textContent = p.s; $('f-cname').textContent = p.n || ''; $('f-basel').textContent = t('Vol 24H') + ' (' + p.id + ')'; logoPar(); }
+      if (p.s !== simActual) { simActual = p.s; $('f-sym').textContent = p.s; $('f-cname').textContent = p.n || ''; $('f-basel').textContent = t('Vol 24H') + ' (' + p.id + ')'; logoPar(); try { if (typeof conectarVelasVivo === 'function') conectarVelasVivo(); } catch (_) {} }
       try {
         const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=' + p.s);
         if (r.ok) {
@@ -434,6 +446,9 @@
       if (b) { b.click(); return; }
       b = document.querySelector('.nv-tf'); if (!b) { N.tf = tf; return; }
       const orig = b.dataset.ntf; b.dataset.ntf = tf; b.click(); b.dataset.ntf = orig;
+
+      // reconectar las velas en vivo a la nueva temporalidad
+      try { setTimeout(() => { if (typeof conectarVelasVivo === 'function') conectarVelasVivo(); }, 400); } catch (_) {}
     }
     document.querySelectorAll('#f-tfmenu button').forEach((b) => b.onclick = () => { ponerTf(b.dataset.tf); tfdd.classList.remove('open'); });
 
