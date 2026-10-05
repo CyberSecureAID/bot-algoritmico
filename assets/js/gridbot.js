@@ -130,6 +130,15 @@ async function leeGB(fnFirma, args) {
   throw err;
 }
 async function cEscribe() { return new ethers.Contract(GRIDBOT, ABI, await firmante()); }
+/* Estima el gas real de una transaccion y le da 35% de margen, para que MetaMask
+   no re-simule en conflicto: eso evita el falso "es probable que esta transaccion
+   falle" y la demora en que salga MetaMask. Causa y arreglo documentados en README-V7.
+   Si la transaccion fuera a revertir, estimateGas lanza el motivo antes de firmar
+   y no se gasta gas en un intento fallido. */
+async function gasMargen(contrato, metodo, args = [], overrides = {}) {
+  const est = await contrato[metodo].estimateGas(...args, overrides);
+  return contrato[metodo](...args, { ...overrides, gasLimit: est * 135n / 100n });
+}
 /** Espera el recibo con nuestro RPC fiable; el de MetaMask a veces no lo devuelve. */
 async function esperar(tx) {
   try { if (typeof window !== 'undefined' && window._onTxProcesando) window._onTxProcesando(); } catch (_) {}
@@ -533,7 +542,7 @@ export async function precioSub() {
 export async function suscribir() {
   const bot = await cEscribe();
   const precio = await bot.costoBotBNB();
-  const tx = await bot.pagarMes({ value: precio, gasLimit: 220000n });
+  const tx = await gasMargen(bot, 'pagarMes', [], { value: precio });
   return esperar(tx);
 }
 
@@ -670,12 +679,12 @@ export async function crearRejilla(config) {
     comprasMax: config.comprasMax ?? 0
   };
   const bot = await cEscribe();
-  const tx = await bot.crearRejilla(c, { gasLimit: 3000000n });
+  const tx = await gasMargen(bot, 'crearRejilla', [c]);
   return esperar(tx);
 }
 
 export async function cerrarAhora(base, quote) {
-  const bot = await cEscribe(); const tx = await bot.cerrarAhora(base, quote, { gasLimit: 900000n }); return esperar(tx);
+  const bot = await cEscribe(); const tx = await gasMargen(bot, 'cerrarAhora', [base, quote]); return esperar(tx);
 }
 export async function resumenK(clave) { return leeGB('resumen(bytes32)', [clave]); }
 
@@ -739,16 +748,16 @@ export async function historialDe(usuario, desdeBloques = 60000, maxOps = 60) {
   return { error: null, ops: ops.slice(0, maxOps), total: ops.length };
 }
 export async function cerrarAhoraK(clave) {
-  const bot = await cEscribe(); const tx = await bot['cerrarAhora(bytes32)'](clave, { gasLimit: 900000n }); return esperar(tx);
+  const bot = await cEscribe(); const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]); return esperar(tx);
 }
 export async function cancelarRejillaK(clave) {
-  const bot = await cEscribe(); const tx = await bot['cancelarRejilla(bytes32)'](clave, { gasLimit: 900000n }); return esperar(tx);
+  const bot = await cEscribe(); const tx = await gasMargen(bot, 'cancelarRejilla(bytes32)', [clave]); return esperar(tx);
 }
 export async function cancelarRejilla(base, quote) {
   const bot = await cEscribe();
   const cuenta = wallet.cuentaActual();
   const clave = await bot.claveBot(cuenta, base, quote, 0);
-  const tx = await bot.cerrarAhora(clave, { gasLimit: 900000n }); return esperar(tx);
+  const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]); return esperar(tx);
 }
 export async function activarRejilla(base, quote, activa) {
   return true; /* V11: activacion/pausa por pago mensual */
@@ -766,12 +775,12 @@ export async function ajustarCooldown(base, quote, seg) {
 /** Recarga el tanque de gas (BNB) del usuario. */
 export async function depositarGas(bnbHumano) {
   const bot = await cEscribe();
-  const tx = await bot.depositarGas({ value: ethers.parseEther(String(bnbHumano)), gasLimit: 160000n });
+  const tx = await gasMargen(bot, 'depositarGas', [], { value: ethers.parseEther(String(bnbHumano)) });
   return esperar(tx);
 }
 export async function retirarGas(bnbHumano) {
   const bot = await cEscribe();
-  const tx = await bot.retirarGas(ethers.parseEther(String(bnbHumano)), { gasLimit: 200000n });
+  const tx = await gasMargen(bot, 'retirarGas', [ethers.parseEther(String(bnbHumano))]);
   return esperar(tx);
 }
 
