@@ -810,7 +810,7 @@ export async function cerrarAhoraK(clave) {
   const bot = await cEscribe(); const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]); return esperar(tx);
 }
 export async function cancelarRejillaK(clave) {
-  const bot = await cEscribe(); const tx = await gasMargen(bot, 'cancelarRejilla(bytes32)', [clave]); return esperar(tx);
+  const bot = await cEscribe(); const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]); return esperar(tx);
 }
 export async function cancelarRejilla(base, quote) {
   const bot = await cEscribe();
