@@ -295,13 +295,24 @@ export async function allowance(tokenAddr, duenio) {
   return t.allowance(duenio, GRIDBOT);
 }
 export async function balanceToken(tokenAddr, duenio) {
-  const t = new ethers.Contract(tokenAddr, ERC20, lector());
-  return t.balanceOf(duenio);
+  let err;
+  for (let i = 0; i < RPCS.length; i++) {
+    try { const t = new ethers.Contract(tokenAddr, ERC20, provRPC(_rpcIdx)); return await t.balanceOf(duenio); }
+    catch (e) { err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
+  }
+  throw err;
 }
 /** ¿Esta dirección es el WBNB (o sea, la moneda es BNB)? */
 export function esBNB(tokenAddr) { return (tokenAddr || '').toLowerCase() === WBNB.toLowerCase(); }
 /** Saldo NATIVO de BNB (no WBNB). */
-export async function saldoNativoBNB(duenio) { return lector().getBalance(duenio); }
+export async function saldoNativoBNB(duenio) {
+  let err;
+  for (let i = 0; i < RPCS.length; i++) {
+    try { return await provRPC(_rpcIdx).getBalance(duenio); }
+    catch (e) { err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
+  }
+  throw err;
+}
 /** Saldo "real" para mostrar: nativo si es BNB, ERC20 si no. */
 export async function saldoParaMostrar(tokenAddr, duenio) {
   return esBNB(tokenAddr) ? saldoNativoBNB(duenio) : balanceToken(tokenAddr, duenio);
