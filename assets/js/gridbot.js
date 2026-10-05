@@ -17,6 +17,7 @@
 // sin nada externo que pueda quedarse colgado y dejar la app en 'Cargando…'.
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
 import * as wallet from './wallet.js?v=129';
+console.log('%c[DIAG] gridbot.js CON LOGS cargado OK','color:#0f0;font-weight:bold');
 
 // ⚠️ IMPORTANTE: cambia esta dirección por la de tu PROXY de GridBotV2 recién desplegado.
 // (La de abajo es el contrato V1 viejo; con el V2 ya no sirve.)
