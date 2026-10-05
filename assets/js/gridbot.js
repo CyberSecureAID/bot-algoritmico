@@ -295,10 +295,11 @@ export async function allowance(tokenAddr, duenio) {
   return t.allowance(duenio, GRIDBOT);
 }
 export async function balanceToken(tokenAddr, duenio) {
+  console.log('[DIAG] balanceToken llamada, token =', tokenAddr, 'cuenta =', duenio);
   let err;
   for (let i = 0; i < RPCS.length; i++) {
-    try { const t = new ethers.Contract(tokenAddr, ERC20, provRPC(_rpcIdx)); return await t.balanceOf(duenio); }
-    catch (e) { err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
+    try { const t = new ethers.Contract(tokenAddr, ERC20, provRPC(_rpcIdx)); const r = await t.balanceOf(duenio); console.log('[DIAG] balanceToken OK =', r && r.toString()); return r; }
+    catch (e) { console.log('[DIAG] balanceToken fallo RPC', i, e && e.message); err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
   }
   throw err;
 }
@@ -306,10 +307,11 @@ export async function balanceToken(tokenAddr, duenio) {
 export function esBNB(tokenAddr) { return (tokenAddr || '').toLowerCase() === WBNB.toLowerCase(); }
 /** Saldo NATIVO de BNB (no WBNB). */
 export async function saldoNativoBNB(duenio) {
+  console.log('[DIAG] saldoNativoBNB llamada, cuenta =', duenio);
   let err;
   for (let i = 0; i < RPCS.length; i++) {
-    try { return await provRPC(_rpcIdx).getBalance(duenio); }
-    catch (e) { err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
+    try { const r = await provRPC(_rpcIdx).getBalance(duenio); console.log('[DIAG] saldoNativoBNB OK =', r && r.toString()); return r; }
+    catch (e) { console.log('[DIAG] saldoNativoBNB fallo RPC', i, e && e.message); err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
   }
   throw err;
 }
