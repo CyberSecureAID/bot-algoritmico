@@ -129,6 +129,31 @@ async function leeGB(fnFirma, args) {
   }
   throw err;
 }
+
+/* ═══════════════ V13: LECTURA DE BOTS DIRECTA DEL STORAGE ═══════════════
+   El contrato V13 no expone resumen()/modoDe()/nivelesDe(); el dato del bot
+   vive en el mapping privado `rejillas` (slot 14 del proxy). Se lee crudo con
+   getStorage y se arma aqui. Es SOLO LECTURA: no toca fondos ni el contrato.
+   El mapa de slots/offsets viene del storageLayout real del contrato. */
+const _REJ_SLOT = 14n;
+function _baseRej(clave) {
+  return BigInt(ethers.keccak256(ethers.concat([clave, ethers.zeroPadValue(ethers.toBeHex(_REJ_SLOT), 32)])));
+}
+async function _slot(base, n) {
+  const pos = ethers.toBeHex(base + BigInt(n), 32); let err;
+  for (let i = 0; i < RPCS.length; i++) {
+    try { return await provRPC(_rpcIdx).getStorage(GRIDBOT, pos); }
+    catch (e) { err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
+  }
+  throw err;
+}
+function _campo(word, off, size, signed) {
+  let v = (BigInt(word) >> BigInt(off * 8)) & ((1n << BigInt(size * 8)) - 1n);
+  if (signed && v >= (1n << BigInt(size * 8 - 1))) v -= (1n << BigInt(size * 8));
+  return v;
+}
+const _REJ_CEROS = { activa:false, base:'0x0000000000000000000000000000000000000000', quote:'0x0000000000000000000000000000000000000000', niveles:0, totalOps:0, posicionBase:0n, costeQuote:0n, ordenQuote:0n, ordenBase:0n, comprasHechas:0, ventasHechas:0, ciclos:0, gananciaQuote:0n, gasSaldoWei:0n, creadaEn:0, ultimaOpEn:0, intervalo:0n, comprasMax:0 };
+
 async function cEscribe() { return new ethers.Contract(GRIDBOT, ABI, await firmante()); }
 /* Estima el gas real de una transaccion y le da 35% de margen, para que MetaMask
    no re-simule en conflicto: eso evita el falso "es probable que esta transaccion
@@ -174,8 +199,21 @@ export function claveDe(usuario, base, quote) {
 /* Lecturas                                                            */
 /* ================================================================== */
 
-export async function resumen(usuario, base, quote) { return leeGB('resumen(address,address,address)', [usuario, base, quote]); }
-export async function nivelesDe(clave)              { return leeGB('nivelesDe', [clave]); }
+export async function resumen(usuario, base, quote) {
+  const k = await leeGB('claveBot', [usuario, base, quote, 0]);
+  return resumenK(k);
+}
+export async function nivelesDe(clave) {
+  const base = _baseRej(clave);
+  const len = Number(BigInt(await _slot(base, 14)));
+  if (!len || len > 200) return [];
+  const dataStart = BigInt(ethers.keccak256(ethers.toBeHex(base + _REJ_SLOT, 32)));
+  const idx = []; for (let i = 0; i < len; i++) idx.push(i);
+  return Promise.all(idx.map(async (i) => {
+    const s0 = await _slot(dataStart, i * 2), s1 = await _slot(dataStart, i * 2 + 1);
+    return { minOutCompra: _campo(s0,0,16), minOutVenta: _campo(s0,16,16), estado: Number(_campo(s1,0,1)) };
+  }));
+}
 export async function pathsDe(clave)                { return leeGB('pathsDe', [clave]); }
 export async function misRejillas(usuario)          { return leeGB('misRejillas', [usuario]); }
 export async function gasSaldo(usuario)             { return cLee().gasSaldo(usuario); }
@@ -686,7 +724,28 @@ export async function crearRejilla(config) {
 export async function cerrarAhora(base, quote) {
   const bot = await cEscribe(); const tx = await gasMargen(bot, 'cerrarAhora', [base, quote]); return esperar(tx);
 }
-export async function resumenK(clave) { return leeGB('resumen(bytes32)', [clave]); }
+export async function resumenK(clave) {
+  const base = _baseRej(clave);
+  const w13 = await _slot(base, 13);
+  if (_campo(w13, 2, 1) === 0n) return { ..._REJ_CEROS };           // bot cerrado: 1 sola lectura
+  const [w0,w1,w4,w5,w6,w7,w9,w12,w14,w16,w17] = await Promise.all([0,1,4,5,6,7,9,12,14,16,17].map(n => _slot(base, n)));
+  const cH = Number(_campo(w12,16,4)), vH = Number(_campo(w12,20,4));
+  let gasW = 0n;
+  try { const d = await leeGB('duenoDe', [clave]); gasW = await leeGB('gasSaldo', [d]); } catch (_) {}
+  return {
+    activa: true,
+    base: ethers.getAddress(ethers.toBeHex(_campo(w0,0,20), 20)),
+    quote: ethers.getAddress(ethers.toBeHex(_campo(w1,0,20), 20)),
+    ordenQuote: _campo(w4,0,32), ordenBase: _campo(w5,0,32),
+    posicionBase: _campo(w6,0,32), costeQuote: _campo(w7,0,32),
+    gananciaQuote: _campo(w9,0,32,true),
+    creadaEn: Number(_campo(w12,0,8)), ultimaOpEn: Number(_campo(w12,8,8)),
+    comprasHechas: cH, ventasHechas: vH, ciclos: Number(_campo(w12,24,4)), totalOps: cH + vH,
+    niveles: Number(_campo(w14,0,32)),
+    intervalo: _campo(w16,0,32), comprasMax: Number(_campo(w17,0,4)),
+    gasSaldoWei: gasW
+  };
+}
 
 /* Historial COMPLETO del usuario, leído de la cadena (eventos Ejecutado).
    Devuelve las operaciones de TODOS sus bots y órdenes en una sola consulta,
@@ -899,4 +958,8 @@ export async function infoToken(addr) {
 }
 
 /** Modo/tipo de un bot: 0=Grid, 1=Acumulador, 2=Cash Out, 3=DCA. */
-export async function modoDe(clave) { return leeGB('modoDe(bytes32)', [clave]); }
+export async function modoDe(clave) {
+  const base = _baseRej(clave);
+  const w15 = await _slot(base, 15);
+  return [Number(_campo(w15, 3, 1)), Number(_campo(w15, 4, 2))];   // [modo, objetivoBps]
+}
