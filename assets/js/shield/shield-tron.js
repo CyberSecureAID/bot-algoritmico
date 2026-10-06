@@ -135,48 +135,25 @@ export async function tronResumenActivos(wallet) {
    Devuelve el MISMO formato que tokensDe de BSC. SOLO LECTURA. */
 export async function tronWatcherTokens(addr) {
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
-  // 1) Metadata y precios de los tokens CON VALOR (TronScan, por proxy, best-effort).
-  const meta = {}; let trxUsd = 0;
-  try {
-    const d = await tronApi('account/token_asset_overview', { address: addr });
-    const data = (d && Array.isArray(d.data)) ? d.data : [];
-    for (const it of data) {
-      const id = String(pick(it, ['tokenId', 'tokenAddress']) || '').toLowerCase();
-      const dec = Number(pick(it, ['tokenDecimal']) != null ? pick(it, ['tokenDecimal']) : 6);
-      const info = { sym: String(pick(it, ['tokenAbbr']) || pick(it, ['tokenName']) || '?'), dec: dec, nombre: String(pick(it, ['tokenName']) || ''), usd: Number(pick(it, ['assetInUsd']) || 0), precio: Number(pick(it, ['tokenPriceInUsd']) || 0), logo: pick(it, ['tokenLogo']) || null, bal: Number(pick(it, ['balance']) || 0) / Math.pow(10, dec) };
-      if (id === '_' || info.sym.toLowerCase() === 'trx') { trxUsd = info.usd; }
-      else { meta[id] = info; }
-    }
-    out.totalUSD = Number(d && d.totalAssetInUsd) || 0;
-  } catch (_) {}
-  // 2) Lista COMPLETA de tokens con TronGrid (CORS nativo, fiable). {contrato: balance crudo}.
-  let tronGridOK = false;
-  try {
-    const r = await _fetchJson('https://api.trongrid.io/v1/accounts/' + addr);
-    const acc = (r && r.data && r.data[0]) ? r.data[0] : null;
-    if (acc) {
-      tronGridOK = true;
-      out.nativo = Number(acc.balance || 0) / 1e6;
-      out.nativoUSD = trxUsd;
-      const trc20 = Array.isArray(acc.trc20) ? acc.trc20 : [];
-      for (const obj of trc20) {
-        const c = Object.keys(obj)[0]; if (!c) continue;
-        const key = c.toLowerCase();
-        const mm = meta[key];
-        const dec = mm ? mm.dec : 6;
-        const bal = Number(obj[c] || 0) / Math.pow(10, dec);
-        out.tokens.push({ address: key, symbol: mm ? mm.sym : (c.slice(0, 5) + '\u2026' + c.slice(-4)), name: mm ? mm.nombre : '', decimals: dec, balance: bal, balanceRaw: '', usd: mm ? mm.usd : 0, precio: mm ? mm.precio : 0, logo: mm ? mm.logo : null, red: 'tron' });
-      }
-    }
-  } catch (_) {}
-  // 3) Si TronGrid falla, al menos los tokens con valor de TronScan (no quedarse en 0).
-  if (!tronGridOK) {
-    out.nativoUSD = trxUsd;
-    for (const key in meta) { const mm = meta[key]; out.tokens.push({ address: key, symbol: mm.sym, name: mm.nombre, decimals: mm.dec, balance: mm.bal, balanceRaw: '', usd: mm.usd, precio: mm.precio, logo: mm.logo, red: 'tron' }); }
+  let d;
+  try { d = await tronApi('account/token_asset_overview', { address: addr }); }
+  catch (e) { try { window._tronDiag = { via: _tronVia, error: String((e && e.message) || e) }; } catch (_) {} return out; }
+  const data = (d && Array.isArray(d.data)) ? d.data : [];
+  try { window._tronDiag = { via: _tronVia, total: (d && d.totalTokenCount), totalUsd: (d && d.totalAssetInUsd), ejemplo: data[0] || null }; } catch (_) {}
+  out.totalUSD = Number(d && d.totalAssetInUsd) || 0;
+  for (const it of data) {
+    const id = String(pick(it, ['tokenId', 'tokenAddress']) || '');
+    const sym = String(pick(it, ['tokenAbbr', 'symbol']) || pick(it, ['tokenName']) || '?');
+    const nombre = String(pick(it, ['tokenName']) || '');
+    const dec = Number(pick(it, ['tokenDecimal', 'decimals']) != null ? pick(it, ['tokenDecimal', 'decimals']) : 6);
+    const bal = Number(pick(it, ['balance']) || 0) / Math.pow(10, dec);
+    const usd = Number(pick(it, ['assetInUsd']) || 0);
+    const precio = Number(pick(it, ['tokenPriceInUsd']) || 0);
+    const logo = pick(it, ['tokenLogo']) || null;
+    if (id === '_' || sym.toLowerCase() === 'trx') { out.nativo = bal; out.nativoUSD = usd; }
+    else { out.tokens.push({ address: id.toLowerCase(), symbol: sym, name: nombre, decimals: dec, balance: bal, balanceRaw: '', usd: usd, precio: precio, logo: logo, red: 'tron' }); }
   }
-  if (!out.totalUSD) { out.totalUSD = out.nativoUSD; for (const tk of out.tokens) out.totalUSD += (tk.usd || 0); }
   out.tokens.sort(function (a, b) { return (b.usd - a.usd) || (b.balance - a.balance); });
-  try { window._tronDiag = { tronGrid: tronGridOK, nTokens: out.tokens.length, nativo: out.nativo }; } catch (_) {}
   return out;
 }
 

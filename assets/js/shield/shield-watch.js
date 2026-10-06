@@ -58,40 +58,60 @@ export async function tokensDe(addr, onProgreso) {
   //  Cada transferencia trae el contrato, el símbolo y los decimales, así que no hacen falta
   //  llamadas extra. Es la misma API que ya usa el historial.
   try {
-    const res = await nrCall('nr_getAssetTransfers', [{ fromBlock: '0x0', toBlock: 'latest', category: ['20'], toAddress: addr, maxCount: '0x3e8', order: 'desc' }]);
-    const trans = (res && res.transfers) ? res.transfers : [];
     const vistos = new Set(lista.map(function (m) { return m.a.toLowerCase(); }));
-    for (const t of trans) {
-      const rc = t.rawContract || {};
-      const c = rc.address;
-      if (!c) continue;
-      const a2 = c.toLowerCase();
-      if (vistos.has(a2)) continue;
-      vistos.add(a2);
-      let dec = null; const rd = rc.decimal;
-      if (rd != null) { dec = (typeof rd === 'string' && rd.indexOf('0x') === 0) ? parseInt(rd, 16) : Number(rd); }
-      lista.push({ a: c, sym: t.asset || '?', dec: dec });
+    for (const campo of ['toAddress', 'fromAddress']) {
+      let pageKey = null; let vueltas = 0;
+      do {
+        const params = { category: ['20'], order: 'desc', maxCount: '0x64', excludeZeroValue: false, withMetadata: true };
+        params[campo] = addr;
+        if (pageKey) params.pageKey = pageKey;
+        let res;
+        try { res = await nrCall('nr_getAssetTransfers', [params]); } catch (_) { break; }
+        const trans = (res && res.transfers) ? res.transfers : [];
+        for (const t of trans) {
+          const rc = t.rawContract || {};
+          const c = rc.address || t.contractAddress;
+          if (!c) continue;
+          const a2 = c.toLowerCase();
+          if (vistos.has(a2)) continue;
+          vistos.add(a2);
+          let dec = null;
+          if (rc.decimal != null) { try { dec = parseInt(rc.decimal, 16); } catch (_) {} }
+          else if (t.decimal != null) dec = Number(t.decimal);
+          lista.push({ a: c, sym: t.asset || '?', dec: dec });
+        }
+        pageKey = (res && res.pageKey) ? res.pageKey : null;
+        vueltas++;
+      } while (pageKey && vueltas < 12);
     }
     DG.holdings = lista.length + ' tokens (nodereal)';
   } catch (_) {}
   if (onProgreso) onProgreso(0.55);
 
   // 2. leer balanceOf de cada token on-chain, en lotes de 5.
-  // Balances de TODOS los tokens de una vez con Multicall3 (1-2 llamadas, no 100+). Rápido.
-  const MC3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
+  // Balances: Multicall3 (rápido). Si falla o no cuadra, balanceOf por lotes (seguro).
   const ercI = new ethers.Interface(['function balanceOf(address) view returns (uint256)']);
-  const mc = new ethers.Contract(MC3, ['function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[] ret)'], prov);
-  const tokens = [];
-  const calls = lista.map(function (m) { return { target: m.a, allowFailure: true, callData: ercI.encodeFunctionData('balanceOf', [addr]) }; });
-  let rr = [];
-  for (let i = 0; i < calls.length; i += 300) {
-    try { const part = await mc.aggregate3(calls.slice(i, i + 300)); for (let k = 0; k < part.length; k++) rr.push(part[k]); }
-    catch (_) { for (let k = 0; k < Math.min(300, calls.length - i); k++) rr.push(null); }
+  let balances = [];
+  try {
+    const mc = new ethers.Contract('0xcA11bde05977b3631167028862bE2a173976CA11', ['function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[] ret)'], prov);
+    const calls = lista.map(function (m) { return { target: m.a, allowFailure: true, callData: ercI.encodeFunctionData('balanceOf', [addr]) }; });
+    for (let i = 0; i < calls.length; i += 300) {
+      const part = await mc.aggregate3(calls.slice(i, i + 300));
+      for (let k = 0; k < part.length; k++) { let v = 0n; try { if (part[k].success) v = ercI.decodeFunctionResult('balanceOf', part[k].returnData)[0]; } catch (_) {} balances.push(v); }
+    }
+  } catch (_) { balances = []; }
+  if (balances.length !== lista.length) {
+    balances = [];
+    const ERC = ['function balanceOf(address) view returns (uint256)'];
+    for (let i = 0; i < lista.length; i += 8) {
+      const lote = lista.slice(i, i + 8);
+      const res = await Promise.all(lote.map(async function (m) { try { const c = new ethers.Contract(m.a, ERC, prov); return await c.balanceOf(addr); } catch (_) { return 0n; } }));
+      for (const bb of res) balances.push(bb);
+    }
   }
+  const tokens = [];
   for (let i = 0; i < lista.length; i++) {
-    const m = lista[i]; const r = rr[i];
-    if (!r || !r.success) continue;
-    let raw = 0n; try { raw = ercI.decodeFunctionResult('balanceOf', r.returnData)[0]; } catch (_) { continue; }
+    const m = lista[i]; const raw = balances[i];
     if (!raw || raw === 0n) continue;
     let dec = m.dec; if (dec == null || isNaN(dec)) dec = 18;
     const bal = Number(ethers.formatUnits(raw, dec));
