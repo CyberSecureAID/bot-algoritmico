@@ -169,6 +169,21 @@ export function infoWallet() {
   const cuenta = (wallet.cuentaActual && wallet.cuentaActual()) || (info && info.cuenta) || null;
   // 1) icono que trae la propia wallet (EIP-6963)
   if (info && info.icon) return { nombre: info.name || 'Wallet', iconoHTML: `<img src="${info.icon}" alt="" style="width:100%;height:100%;object-fit:cover">`, cuenta };
+  // 1.5) icono REAL de la wallet desde la lista EIP-6963 que ella misma anuncia,
+  //      aunque la auto-reconexion no haya guardado est.info (ese era el bug).
+  try {
+    const lista = (wallet.walletsDisponibles && wallet.walletsDisponibles()) || [];
+    const conIcono = lista.filter((w) => w && w.icono);
+    let d = conIcono.find((w) => w.activa);
+    if (!d && info && info.clave) d = conIcono.find((w) => String(w.id || '').includes(info.clave));
+    if (!d) {
+      const p = window.ethereum;
+      const cual = p && (p.isTrust || p.isTrustWallet ? 'trust' : p.isPhantom ? 'phantom' : p.isCoinbaseWallet ? 'coinbase' : p.isRabby ? 'rabby' : p.isMetaMask ? 'metamask' : '');
+      if (cual) d = conIcono.find((w) => String(w.id || '').includes(cual));
+    }
+    if (!d && conIcono.length === 1) d = conIcono[0];
+    if (d && d.icono) return { nombre: d.nombre || (info && info.name) || 'Wallet', iconoHTML: `<img src="${d.icono}" alt="" style="width:100%;height:100%;object-fit:cover">`, cuenta };
+  } catch (_) {}
   // 2) usar la CLAVE que walletInfo() ya detectó (trust, metamask, etc.). Es más
   //    fiable que leer window.ethereum.isTrust, que en el navegador de la wallet
   //    a veces no está marcado (por eso antes salía el escudo en vez del logo).
