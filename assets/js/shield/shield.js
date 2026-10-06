@@ -137,6 +137,20 @@ function inyectarCSS() {
   #shd .shd-portada-p{font-size:14.5px;color:#c9d2dc;line-height:1.65;max-width:620px;margin:0 auto 14px}
   #shd .shd-portada-cost{font-size:13.5px;color:#a7b0bb;line-height:1.6;max-width:560px;margin:0 auto 30px}
   #shd .shd-portada-cost b{color:var(--gold,#E8B84B);font-weight:800}
+  #shd .shd-pw-more{max-width:860px;margin:30px auto 0}
+  #shd .shd-pw-deep{font-size:13px;color:#aeb7c2;line-height:1.72;max-width:730px;margin:0 auto 22px;text-align:center}
+  #shd .shd-pw-head{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 auto 14px}
+  #shd .shd-pw-lbl{font-size:13px;color:#c9d2dc;font-weight:700}
+  #shd .shd-pw-plus{font-size:12px;font-weight:800;color:var(--gold,#E8B84B);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.32);border-radius:999px;padding:3px 10px;white-space:nowrap}
+  #shd .shd-pw-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:0 auto 14px}
+  #shd .shd-pw-card{background:rgba(14,19,25,.7);border:1px solid #1c232b;border-radius:14px;padding:14px;text-align:center}
+  #shd .shd-pw-vis{position:relative;width:100%;aspect-ratio:16/10;border-radius:10px;overflow:hidden;margin-bottom:11px;background:rgba(232,184,75,.06);display:grid;place-items:center}
+  #shd .shd-pw-ic{color:var(--gold,#E8B84B);display:grid;place-items:center}
+  #shd .shd-pw-ic svg{width:30px;height:30px;stroke:currentColor}
+  #shd .shd-pw-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #shd .shd-pw-card b{font-size:13.5px;display:block;margin-bottom:5px;color:#eef2f6}
+  #shd .shd-pw-card span{font-size:12px;color:#a7b0bb;line-height:1.52;display:block}
+  #shd .shd-pw-plusline{font-size:12.5px;color:#8b94a0;text-align:center;max-width:620px;margin:2px auto 0;line-height:1.6}
   #shd .shd-portada-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px}
   #shd .shd-pcard{background:linear-gradient(160deg,rgba(20,26,33,.72),rgba(10,14,18,.72));border:1px solid rgba(232,184,75,.18);border-radius:14px;padding:16px 12px;transition:transform .15s ease,box-shadow .2s ease,border-color .2s ease;transform-style:preserve-3d;cursor:default}
   #shd .shd-pcard:hover{border-color:rgba(232,184,75,.4);box-shadow:0 18px 40px rgba(0,0,0,.5),0 0 0 1px rgba(232,184,75,.15)}
@@ -792,11 +806,33 @@ function pintarConectar() {
   const IMG = 'assets/portada/img/';
   $('shd-in').innerHTML = `
     <div class="shd-portada">
-      <img class="shd-portada-hero" src="${IMG}shield-hero.webp" alt="">
+      <img class="shd-portada-hero" src="${IMG}shield-hero.webp" alt="Wallet Shield">
       <h1 class="shd-portada-title"><span class="g">Protect</span> your wallet</h1>
-      <p class="shd-portada-p">Most wallets are not hacked. They are quietly given away, through an old permission you forgot, a fake address, or a contract you signed without reading. Wallet Shield is your personal security team: it scans your wallet, exposes every hidden threat, and lets you shut it down in one tap. See exactly what is putting your funds at risk, in seconds, even if you have never done this before.</p>
-      <p class="shd-portada-cost"><b>Full access to every tool for 30 days.</b> One small payment in BNB, taken only when you connect. Connect to see the exact amount.</p>
+      <p class="shd-portada-p">Most wallets are never hacked. They are quietly drained. It happens through an approval you signed months ago and forgot, an address that looks almost identical to one you trust, or a contract that asked for more than it let on. None of it surfaces until the funds are already gone. Wallet Shield reads your wallet the way an attacker would size it up, shows you exactly what is already exposed, and lets you shut each door in a single tap, whether this is your first wallet or your fiftieth.</p>
+      <p class="shd-portada-cost"><b>Full access to all six tools for 30 days.</b> One small payment in BNB, taken only when you connect. Connect to see the exact amount.</p>
       <button class="shd-connect-btn" id="shd-conn"><img src="${IMG}shield-connect.webp" alt="Connect your wallet"></button>
+      <div class="shd-pw-more">
+        <p class="shd-pw-deep">Here is what is actually running underneath. Every answer comes from live blockchain data, read straight from the chain the second you ask, never a cached list that has already gone stale. Wallet Shield decodes the raw token approvals, transfer event logs and contract calls your wallet has accumulated, measures each counterparty against the exact patterns that address poisoning and dusting attacks leave behind, and rebuilds the whole picture across two independent networks, BNB Smart Chain and Tron, that run on entirely different virtual machines. Nothing is ever signed or moved without you approving it in your own wallet, and your keys never leave it. The intelligence sits between you and the chain, never between you and your money. It is the kind of read that normally takes an analyst with a block explorer and a spreadsheet, returned to you in seconds, in plain language anyone can act on.</p>
+        <div class="shd-pw-head"><span class="shd-pw-lbl">Six instruments, one wallet. Three of them:</span><span class="shd-pw-plus">+3</span></div>
+        <div class="shd-pw-cards">
+          <div class="shd-pw-card">
+            <div class="shd-pw-vis"><div class="shd-pw-ic">${IC.shield}</div><img class="shd-pw-img" src="${IMG}card-permissions.webp" alt="Permission scan" loading="lazy" onerror="this.remove()"></div>
+            <b>Permission scan</b>
+            <span>Surfaces every token approval your wallet has ever granted, including the unlimited, forgotten ones an attacker waits on, and revokes them on the chain in one tap.</span>
+          </div>
+          <div class="shd-pw-card">
+            <div class="shd-pw-vis"><div class="shd-pw-ic">${IC.poison}</div><img class="shd-pw-img" src="${IMG}card-poison.webp" alt="Address poison check" loading="lazy" onerror="this.remove()"></div>
+            <b>Address poison check</b>
+            <span>Hunts your history for the twin addresses scammers plant, the same first and last characters with a different middle, so you never copy the wrong one and pay a stranger.</span>
+          </div>
+          <div class="shd-pw-card">
+            <div class="shd-pw-vis"><div class="shd-pw-ic">${IC.alert}</div><img class="shd-pw-img" src="${IMG}card-rescue.webp" alt="Emergency evacuation" loading="lazy" onerror="this.remove()"></div>
+            <b>Emergency evacuation</b>
+            <span>If a wallet is already compromised, it sweeps every token to a safe address in the correct order, racing the attacker\'s own draining bots.</span>
+          </div>
+        </div>
+        <p class="shd-pw-plusline">Plus live wallet surveillance, transaction verification, and contract analysis before you sign.</p>
+      </div>
     </div>`;
   wireBack();
   wireTilt();
