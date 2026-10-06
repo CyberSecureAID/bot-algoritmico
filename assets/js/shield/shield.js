@@ -1784,6 +1784,16 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
   const esOtra = walletVista && (walletVista.toLowerCase() !== (cuenta||'').toLowerCase());
   let html = '';
   if (esOtra) html += '<div class="shd-viewing"><span class="shd-viewing-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6aa8f0" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><div><small>You are scanning another wallet</small><b>' + walletVista.slice(0,10) + '\u2026' + walletVista.slice(-8) + '</b></div></div>';
+  // Estado REAL de la API de Tron, visible sin F12 (solo si se escaneó una wallet Tron).
+  try {
+    if (tron.redDe(dirEscaneada) === 'tron') {
+      const dg = window._tronDiag || {};
+      let _t, _c;
+      if (dg.error) { _t = 'TronScan no respondió: ' + String(dg.error).slice(0, 80); _c = '#f6465d'; }
+      else { const _n = dg.total || 0; _t = 'TronScan respondió (vía ' + (dg.via || '?') + '): ' + _n + ' aprobaciones en la cuenta'; _c = _n > 0 ? '#2ebd85' : '#e8b84b'; }
+      html += '<div style="margin:0 0 12px;padding:11px 14px;border:1px solid ' + _c + '44;background:' + _c + '14;border-radius:11px;font-size:12.5px;color:' + _c + ';font-weight:600">' + escH(_t) + '</div>';
+    }
+  } catch (_) {}
   html += '<div class="shd-audit-hero">'  +
     '<div class="shd-score-ring"><svg viewBox="0 0 110 110" width="150" height="150"><circle cx="55" cy="55" r="45" fill="none" stroke="#12161c" stroke-width="9"/><circle cx="55" cy="55" r="45" fill="none" stroke="' + sc.color + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + circ + '" stroke-dashoffset="' + off + '" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/></svg><div class="shd-score-mid"><div class="shd-score-n" style="color:' + sc.color + '">' + sc.score + '</div><div class="shd-score-max">/ 100</div></div></div>' +
     '<div class="shd-audit-side"><div class="shd-audit-badge" style="background:' + sc.color + '22;color:' + sc.color + ';border-color:' + sc.color + '55">' + sc.riesgo + '</div><div class="shd-audit-lvl" style="color:' + sc.color + '">' + sc.nivel + '</div><div class="shd-audit-sub">Wallet security score</div><div class="shd-audit-stats"><div class="shd-sstat"><b>' + (externos.length + nuestros.length) + '</b><span>permissions</span></div><div class="shd-sstat"><b style="color:' + (peligrosos?'#f6465d':'#2ebd85') + '">' + peligrosos + '</b><span>risky</span></div><div class="shd-sstat"><b style="color:#2ebd85">' + nuestros.length + '</b><span>trusted</span></div></div></div>' +
