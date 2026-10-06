@@ -9,7 +9,7 @@ import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=122';
-import * as tron from './shield-tron.js?v=10';
+import * as tron from './shield-tron.js?v=11';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 import * as pago from './shield-pago.js?v=1';
@@ -1208,6 +1208,16 @@ function pintarWatcher(cuenta) {
         pintarWatchRes(cuenta, addr, datos_, []);
         ['st-val','st-age','st-tx','st-conc'].forEach(function (id) { const e = document.getElementById(id); if (e) e.textContent = '—'; });
         const _ch = document.querySelector('[data-wt="hist"]'); if (_ch) _ch.textContent = 'Activity (0)';
+        try {
+          const dg = window._tronDiag || {};
+          const _cc = $('watch-res');
+          if (_cc && !dg.grid) {
+            const _dd = document.createElement('div');
+            _dd.setAttribute('style', 'margin:12px 0;padding:11px 14px;border:1px solid #f6465d55;background:rgba(246,70,93,.12);border-radius:11px;font-size:12.5px;color:#f6465d;font-weight:600');
+            _dd.textContent = 'DIAGNÓSTICO: TronGrid no respondió → ' + (dg.err || 'motivo desconocido');
+            _cc.insertBefore(_dd, _cc.firstChild);
+          }
+        } catch (_) {}
         return;
       }
       const datos_ = await watch.tokensDe(addr);

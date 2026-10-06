@@ -143,7 +143,7 @@ export async function tronResumenActivos(wallet) {
 export async function tronWatcherTokens(addr) {
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
   // 1) Balances de TODOS los tokens + TRX, directo de TronGrid (CORS abierto, sin proxy).
-  const saldos = {}; let gridOK = false;
+  const saldos = {}; let gridOK = false; let gridErr = '';
   try {
     const acc = await tronGrid('/v1/accounts/' + addr);
     const a0 = (acc && acc.data && acc.data[0]) ? acc.data[0] : null;
@@ -152,8 +152,8 @@ export async function tronWatcherTokens(addr) {
       out.nativo = Number(a0.balance || 0) / 1e6;
       const trc20 = Array.isArray(a0.trc20) ? a0.trc20 : [];
       for (const obj of trc20) { const c = Object.keys(obj)[0]; if (c) saldos[c.toLowerCase()] = { addr: c, raw: obj[c] }; }
-    }
-  } catch (_) {}
+    } else { gridErr = 'TronGrid respondió pero sin datos de la cuenta'; }
+  } catch (e) { gridErr = String((e && e.message) || e).slice(0, 110); }
   // 2) Nombres y decimales por el historial de transferencias TRC20 de TronGrid (token_info).
   const meta = {};
   try {
@@ -210,7 +210,7 @@ export async function tronWatcherTokens(addr) {
   }
   if (!out.totalUSD) { out.totalUSD = out.nativoUSD; for (const t of out.tokens) out.totalUSD += (t.usd || 0); }
   out.tokens.sort(function (a, b) { return (b.usd - a.usd) || (b.balance - a.balance); });
-  try { window._tronDiag = { grid: gridOK, nTokens: out.tokens.length, nativo: out.nativo }; } catch (_) {}
+  try { window._tronDiag = { grid: gridOK, err: gridErr, nTokens: out.tokens.length, nativo: out.nativo }; } catch (_) {}
   return out;
 }
 
