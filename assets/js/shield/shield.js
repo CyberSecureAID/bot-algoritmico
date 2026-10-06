@@ -11,7 +11,7 @@ import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=122';
 import * as tron from './shield-tron.js?v=16';
 import * as hashmod from './shield-hash.js?v=2';
-import * as poison from './shield-poison.js?v=2';
+import * as poison from './shield-poison.js?v=3';
 import * as pago from './shield-pago.js?v=1';
 
 const $ = (id) => document.getElementById(id);
@@ -1020,7 +1020,7 @@ function pintarPoison(cuenta) {
         <p>Address poisoning is one of the fastest growing scams in crypto, and it works even against careful people. Here is exactly how it happens, step by step. A scammer watches the blockchain and sees a wallet you send money to often. They then generate a brand new wallet whose address starts and ends with the very same characters as that real one, because most people only check the first four and last four characters. They send you a transaction of zero or almost zero value from that fake address, purely so it appears in your transaction history next to the real one. Days later, when you go to pay that contact again, you scroll your history, copy what looks like the right address, and send. But you copied the scammer's twin, and your money is gone with no way to reverse it. Their whole goal is to steal a full payment by making you trust your own history. Paste any wallet below and we will scan its history for these planted twin addresses before they cost you anything.</p>
       </div>
       <label class="shd-sim-lbl">Wallet to scan for poisoning</label>
-      <input class="shd-sim-in" id="poison-in" placeholder="0x… wallet address" autocomplete="off" spellcheck="false" value="${miWallet}">
+      <input class="shd-sim-in" id="poison-in" placeholder="0x… (BSC) or T… (TRON) wallet" autocomplete="off" spellcheck="false" value="${miWallet}">
       <button class="shd-btn" id="poison-go" style="width:100%;margin-top:14px">${IC.poison} Scan for poisoning</button>
       <div id="poison-res"></div>
       <button class="shd-rescan" id="poison-back" style="margin-top:18px">Back</button>
@@ -1029,12 +1029,13 @@ function pintarPoison(cuenta) {
   $('poison-back').onclick = () => pintarInicio(cuenta);
   $('poison-go').onclick = async () => {
     const addr = $('poison-in').value.trim(); const res = $('poison-res');
-    if (!poison.esDireccion(addr)) { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address (0x…)</div>`; return; }
+    const red = tron.redDe(addr);
+    if (red !== 'bsc' && red !== 'tron') { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address — 0x… for BSC or T… for TRON</div>`; return; }
     res.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Scanning history for lookalikes…</div></div>`;
     try {
-      const hist = await watch.historialAmplio(addr);
+      const hist = red === 'tron' ? await tron.tronWatcherMoves(addr) : await watch.historialAmplio(addr);
       const info = poison.analizar(addr, hist);
-      res.innerHTML = tarjetaPoison(info, hist.length);
+      res.innerHTML = tarjetaPoison(info, hist.length, red);
       wirePoisonCopy();
     } catch (e) { res.innerHTML = `<div class="shd-sim-msg bad">Could not scan that wallet. Try again.</div>`; }
   };
@@ -1051,7 +1052,10 @@ function resaltar(addr, pref, suf) {
   const s2 = addr.slice(addr.length - suf);
   return '<span class="shd-poison-match">' + escH(p) + '</span><span class="shd-poison-mid">' + escH(m) + '</span><span class="shd-poison-match">' + escH(s2) + '</span>';
 }
-function listaDirecciones(info) {
+function listaDirecciones(info, red) {
+  const esTronP = red === 'tron';
+  const scanAddr = function (a) { return esTronP ? ('https://tronscan.org/#/address/' + a) : ('https://bscscan.com/address/' + a); };
+  const scanNombre = esTronP ? 'TronScan' : 'BscScan';
   if (!info.todasContrapartes || !info.todasContrapartes.length) return '';
   const filas = info.todasContrapartes.map(function (c) {
     const corta = c.addr.slice(0,12) + '\u2026' + c.addr.slice(-10);
@@ -1068,13 +1072,13 @@ function listaDirecciones(info) {
         '<div class="shd-poison-daddr">' + corta + ' <button class="shd-wtok-copy" data-pcopy="' + c.addr + '">\u29c9</button></div>' +
         '<div class="shd-poison-drow-meta">' + tag + '<span>' + c.veces + ' transfer' + (c.veces>1?'s':'') + '</span><span>' + fl + '</span>' + (fecha ? '<span>' + fecha + '</span>' : '') + '</div>' +
       '</div>' +
-      '<a href="https://bscscan.com/address/' + c.addr + '" target="_blank" rel="noopener" class="shd-poison-dscan">BscScan \u2197</a>' +
+      '<a href="' + scanAddr(c.addr) + '" target="_blank" rel="noopener" class="shd-poison-dscan">' + scanNombre + ' \u2197</a>' +
     '</div>';
   }).join('');
   // DESPLEGADO por defecto (display:block, botón dice ocultar)
   return '<div class="shd-poison-list-wrap"><button class="shd-poison-list-tog" id="poison-list-tog">Hide addresses \u25b4</button><div class="shd-poison-list" id="poison-list" style="display:block">' + filas + '</div></div>';
 }
-function tarjetaPoison(info, numOps) {
+function tarjetaPoison(info, numOps, red) {
   const iconoOk = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
   const iconoX = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   if (numOps === 0) {
@@ -1082,7 +1086,7 @@ function tarjetaPoison(info, numOps) {
   }
   if (!info.amenazas.length) {
     return '<div class="shd-poison-card"><div class="shd-hash-big ok"><div class="shd-hash-bigic ok">' + iconoOk + '</div><div><div class="shd-hash-bigt">Clean</div><div class="shd-hash-bigs">No poisoning lookalike addresses found in this wallet\'s recent history. We checked ' + info.contrapartesTotales + ' addresses it interacted with.</div></div></div>' +
-      '<div class="shd-poison-tip"><b>Stay safe.</b> Even so, never copy an address from your history. Use an address book or paste from the original source, and send a tiny test amount first for large transfers.</div>' + listaDirecciones(info) + '</div>';
+      '<div class="shd-poison-tip"><b>Stay safe.</b> Even so, never copy an address from your history. Use an address book or paste from the original source, and send a tiny test amount first for large transfers.</div>' + listaDirecciones(info, red) + '</div>';
   }
   // hay amenazas
   let items = info.amenazas.map(function (a) {
@@ -1096,7 +1100,7 @@ function tarjetaPoison(info, numOps) {
   return '<div class="shd-poison-card">' +
     '<div class="shd-hash-big bad"><div class="shd-hash-bigic bad">' + iconoX + '</div><div><div class="shd-hash-bigt">' + info.amenazas.length + ' poisoning threat' + (info.amenazas.length>1?'s':'') + ' found</div><div class="shd-hash-bigs">Someone planted fake lookalike addresses in this wallet\'s history to trick you into paying them by mistake. Nothing has been stolen and your funds are safe. The addresses below are the traps. Read what to do so this never costs you anything.</div></div></div>' +
     items +
-    '<div class="shd-poison-tip"><b>Your funds are safe right now.</b> Finding these does not mean anything was stolen. It means someone planted a trap for the future. You do NOT need to move or abandon this wallet. The danger only appears the moment you copy an address from your history to send money. Follow these steps: first, never copy a payment address from your transaction history, not even once. Second, save the addresses you really use in an address book or the contacts of your wallet, and always paste from there. Third, before sending a large amount, send a tiny test first and confirm the receiver got it. Fourth, always check the full address, the middle characters too, not just the start and end. Fifth, if a wallet or site autofills an address, compare it letter by letter before you approve. Do this and address poisoning cannot touch you.</div>' + listaDirecciones(info) +
+    '<div class="shd-poison-tip"><b>Your funds are safe right now.</b> Finding these does not mean anything was stolen. It means someone planted a trap for the future. You do NOT need to move or abandon this wallet. The danger only appears the moment you copy an address from your history to send money. Follow these steps: first, never copy a payment address from your transaction history, not even once. Second, save the addresses you really use in an address book or the contacts of your wallet, and always paste from there. Third, before sending a large amount, send a tiny test first and confirm the receiver got it. Fourth, always check the full address, the middle characters too, not just the start and end. Fifth, if a wallet or site autofills an address, compare it letter by letter before you approve. Do this and address poisoning cannot touch you.</div>' + listaDirecciones(info, red) +
   '</div>';
 }
 function pintarHash(cuenta) {

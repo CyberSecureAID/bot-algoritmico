@@ -10,7 +10,7 @@ import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io'];
 let _rpc;
 function lector() { if (!_rpc) _rpc = new ethers.JsonRpcProvider(RPCS[0], 56, { staticNetwork: true }); return _rpc; }
-export function esDireccion(s) { return /^0x[0-9a-fA-F]{40}$/.test((s || '').trim()); }
+export function esDireccion(s) { s = (s || '').trim(); return /^0x[0-9a-fA-F]{40}$/.test(s) || /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(s); }
 
 /* Cuántos caracteres coinciden al inicio y al final entre dos direcciones. */
 function coincidencia(a, b) {
