@@ -151,6 +151,10 @@ function inyectarCSS() {
   #shd .shd-pw-card b{font-size:13.5px;display:block;margin-bottom:5px;color:#eef2f6}
   #shd .shd-pw-card span{font-size:12px;color:#a7b0bb;line-height:1.52;display:block}
   #shd .shd-pw-plusline{font-size:12.5px;color:#8b94a0;text-align:center;max-width:620px;margin:2px auto 0;line-height:1.6}
+  #shd .shd-pw-toggle{display:flex;align-items:center;gap:8px;width:max-content;max-width:100%;margin:16px auto 0;padding:9px 18px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.28);border-radius:999px;color:var(--gold,#E8B84B);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;transition:background .15s}
+  #shd .shd-pw-toggle:hover{background:rgba(232,184,75,.12)}
+  #shd .shd-pw-chev{font-size:10px;line-height:1;transition:transform .2s}
+  #shd .shd-pw-toggle.open .shd-pw-chev{transform:rotate(180deg)}
   #shd .shd-portada-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px}
   #shd .shd-pcard{background:linear-gradient(160deg,rgba(20,26,33,.72),rgba(10,14,18,.72));border:1px solid rgba(232,184,75,.18);border-radius:14px;padding:16px 12px;transition:transform .15s ease,box-shadow .2s ease,border-color .2s ease;transform-style:preserve-3d;cursor:default}
   #shd .shd-pcard:hover{border-color:rgba(232,184,75,.4);box-shadow:0 18px 40px rgba(0,0,0,.5),0 0 0 1px rgba(232,184,75,.15)}
@@ -811,31 +815,43 @@ function pintarConectar() {
       <p class="shd-portada-p">Most wallets are never hacked. They are quietly drained. It happens through an approval you signed months ago and forgot, an address that looks almost identical to one you trust, or a contract that asked for more than it let on. None of it surfaces until the funds are already gone. Wallet Shield reads your wallet the way an attacker would size it up, shows you exactly what is already exposed, and lets you shut each door in a single tap, whether this is your first wallet or your fiftieth.</p>
       <p class="shd-portada-cost"><b>Full access to all six tools for 30 days.</b> One small payment in BNB, taken only when you connect. Connect to see the exact amount.</p>
       <button class="shd-connect-btn" id="shd-conn"><img src="${IMG}shield-connect.webp" alt="Connect your wallet"></button>
-      <div class="shd-pw-more">
-        <p class="shd-pw-deep">Here is what is actually running underneath. Every answer comes from live blockchain data, read straight from the chain the second you ask, never a cached list that has already gone stale. Wallet Shield decodes the raw token approvals, transfer event logs and contract calls your wallet has accumulated, measures each counterparty against the exact patterns that address poisoning and dusting attacks leave behind, and rebuilds the whole picture across two independent networks, BNB Smart Chain and Tron, that run on entirely different virtual machines. Nothing is ever signed or moved without you approving it in your own wallet, and your keys never leave it. The intelligence sits between you and the chain, never between you and your money. It is the kind of read that normally takes an analyst with a block explorer and a spreadsheet, returned to you in seconds, in plain language anyone can act on.</p>
+      <button class="shd-pw-toggle" id="shd-pw-tog" aria-expanded="false"><span class="shd-pw-toglbl">See everything inside</span> <span class="shd-pw-chev">▾</span></button>
+      <div class="shd-pw-more" id="shd-pw-more" style="display:none">
+        <p class="shd-pw-deep">Most crypto losses do not come from dramatic hacks. They come from the quiet things that stay invisible until it is too late. A permission left open. An address that is not what it seems. A wallet watched by the wrong eyes. Wallet Shield exists to make the invisible visible. It inspects your wallet the way a seasoned security analyst would, across more than one network, and turns what normally demands deep technical skill into something you can read and act on in seconds, without ever handing over custody of your funds. Nothing here is a generic checklist. Each tool is its own engine, built to answer one hard question with a precision that is very difficult to match.</p>
         <div class="shd-pw-head"><span class="shd-pw-lbl">Six instruments, one wallet. Three of them:</span><span class="shd-pw-plus">+3</span></div>
         <div class="shd-pw-cards">
           <div class="shd-pw-card">
             <div class="shd-pw-vis"><div class="shd-pw-ic">${IC.shield}</div><img class="shd-pw-img" src="${IMG}card-permissions.webp" alt="Permission scan" loading="lazy" onerror="this.remove()"></div>
             <b>Permission scan</b>
-            <span>Surfaces every token approval your wallet has ever granted, including the unlimited, forgotten ones an attacker waits on, and revokes them on the chain in one tap.</span>
+            <span>Every time you touch a dapp you quietly hand it a key to your tokens, and almost nobody ever takes those keys back. The forgotten ones are exactly how wallets get emptied months later, long after you felt safe. Permission Scan finds every key your wallet has ever given away, judges how much damage each one could do, and lets you take it back in a single tap.</span>
           </div>
           <div class="shd-pw-card">
             <div class="shd-pw-vis"><div class="shd-pw-ic">${IC.poison}</div><img class="shd-pw-img" src="${IMG}card-poison.webp" alt="Address poison check" loading="lazy" onerror="this.remove()"></div>
             <b>Address poison check</b>
-            <span>Hunts your history for the twin addresses scammers plant, the same first and last characters with a different middle, so you never copy the wrong one and pay a stranger.</span>
+            <span>Thieves no longer need to break into your wallet. They plant an address that looks almost identical to one you already trust and wait for you to copy the wrong one by accident. It is one of the fastest growing scams in crypto because it defeats careful, experienced people. Address Poison Check studies the company your wallet keeps and flags the impostors wearing a familiar face before a single coin leaves your hands.</span>
           </div>
           <div class="shd-pw-card">
-            <div class="shd-pw-vis"><div class="shd-pw-ic">${IC.alert}</div><img class="shd-pw-img" src="${IMG}card-rescue.webp" alt="Emergency evacuation" loading="lazy" onerror="this.remove()"></div>
-            <b>Emergency evacuation</b>
-            <span>If a wallet is already compromised, it sweeps every token to a safe address in the correct order, racing the attacker\'s own draining bots.</span>
+            <div class="shd-pw-vis"><div class="shd-pw-ic">${IC.eye}</div><img class="shd-pw-img" src="${IMG}card-watcher.webp" alt="Wallet Watcher" loading="lazy" onerror="this.remove()"></div>
+            <b>Wallet Watcher</b>
+            <span>A wallet is never still. Money moves, new tokens appear, balances shift, and most of it happens while you are looking elsewhere. Wallet Watcher lets you follow any wallet on the chain in full detail, every token it holds, what it is truly worth, and every move the instant it happens. Guard your own, study a stranger before you trust them, or see exactly what a partner is doing. It is the kind of visibility that used to belong only to professionals.</span>
           </div>
         </div>
-        <p class="shd-pw-plusline">Plus live wallet surveillance, transaction verification, and contract analysis before you sign.</p>
+        <p class="shd-pw-plusline">And three more, held to the same standard. Verify a Transaction proves a payment truly happened and who it really reached. Contract Check reads a contract before you ever sign it. Emergency Evacuation moves your funds to safety the moment a wallet is compromised.</p>
+        <p class="shd-pw-plusline">And if a wallet ever runs dry and cannot move its own funds, Free Gas steps in so you are never left stranded.</p>
       </div>
     </div>`;
   wireBack();
   wireTilt();
+  const _tog = $('shd-pw-tog');
+  if (_tog) _tog.onclick = function () {
+    const m = $('shd-pw-more'); if (!m) return;
+    const abrir = (m.style.display === 'none' || !m.style.display);
+    m.style.display = abrir ? 'block' : 'none';
+    _tog.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    _tog.classList.toggle('open', abrir);
+    const lbl = _tog.querySelector('.shd-pw-toglbl');
+    if (lbl) lbl.textContent = abrir ? 'Hide details' : 'See everything inside';
+  };
   $('shd-conn').onclick = async () => {
     try {
       // conectar solo si no lo está ya (en el móvil suele estar conectada)
