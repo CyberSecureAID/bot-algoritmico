@@ -9,7 +9,7 @@ import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=119';
-import * as tron from './shield-tron.js?v=4';
+import * as tron from './shield-tron.js?v=5';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 import * as pago from './shield-pago.js?v=1';
@@ -1375,7 +1375,9 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       '<div class="shd-clean-bar" id="clean-bar" style="display:none"><div class="shd-clean-actions"><button class="shd-clean-sel" id="clean-zero">Zero value</button><button class="shd-clean-sel" id="clean-all">All</button><button class="shd-clean-sel" id="clean-none">Clear</button></div><button class="shd-clean-go" id="clean-go">Delete selected</button></div>' +
       '</div>';
     h += '<div class="shd-wtoks" id="tok-list">';
-    if (d.nativo > 0) h += filaTok({ symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD, logo: watch.logoBNB() });
+    if (d.nativo > 0) h += filaTok(redW === 'tron'
+      ? { symbol: 'TRX', balance: d.nativo, usd: d.nativoUSD, logo: 'https://static.tronscan.org/production/logo/trx.png', red: 'tron' }
+      : { symbol: 'BNB', balance: d.nativo, usd: d.nativoUSD, logo: watch.logoBNB() });
     h += conValor.map(filaTok).join('');
     if (polvo.length) { h += `<div class="shd-watch-dust">${polvo.length} dust / spam token${polvo.length>1?'s':''} (zero or near-zero value)</div>`; h += polvo.map(filaTok).join(''); }
     return h + '</div>';

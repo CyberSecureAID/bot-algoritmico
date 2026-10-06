@@ -136,28 +136,32 @@ export async function tronResumenActivos(wallet) {
 export async function tronWatcherTokens(addr) {
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
   let d;
-  try { d = await tronApi('account/token_asset_overview', { address: addr }); }
+  // account/tokens con hidden=1 (incluye saldo pequeño = la basura) y show=1 (TRC20).
+  try { d = await tronApi('account/tokens', { address: addr, start: 0, limit: 200, hidden: 1, show: 1 }); }
   catch (e) { try { window._tronDiag = { via: _tronVia, error: String((e && e.message) || e) }; } catch (_) {} return out; }
   const data = (d && Array.isArray(d.data)) ? d.data : [];
-  try { window._tronDiag = { via: _tronVia, totalTokens: (d && d.totalTokenCount), totalUsd: (d && d.totalAssetInUsd), ejemplo: data[0] || null }; } catch (_) {}
-  out.totalUSD = Number(d && d.totalAssetInUsd) || 0;
+  try { window._tronDiag = { via: _tronVia, total: (d && (d.total != null ? d.total : data.length)), ejemplo: data[0] || null }; } catch (_) {}
   for (const it of data) {
     const id = String(pick(it, ['tokenId', 'tokenAddress', 'contractAddress']) || '');
     const sym = String(pick(it, ['tokenAbbr', 'symbol']) || pick(it, ['tokenName']) || '?');
-    const decRaw = pick(it, ['tokenDecimal', 'decimals']);
-    const dec = Number(decRaw != null ? decRaw : 6);
-    const rawStr = String(pick(it, ['balance', 'quantity', 'amount']) || '0');
-    let bal = 0; try { bal = Number(rawStr) / Math.pow(10, dec); } catch (_) { bal = 0; }
-    const usd = Number(pick(it, ['assetInUsd', 'amountInUsd']) || 0);
-    const precio = Number(pick(it, ['tokenPriceInUsd', 'priceInUsd']) || 0);
-    const logo = pick(it, ['tokenLogo', 'logo']) || null;
     const nombre = String(pick(it, ['tokenName']) || '');
+    const dec = Number(pick(it, ['tokenDecimal', 'decimals']) != null ? pick(it, ['tokenDecimal', 'decimals']) : 6);
+    // cantidad de tokens (humana): 'quantity' es la cantidad; si no, 'balance' crudo.
+    let bal = 0;
+    if (it.quantity != null && it.quantity !== '') bal = Number(it.quantity);
+    else if (it.balance != null) bal = Number(it.balance) / Math.pow(10, dec);
+    const precio = Number(pick(it, ['tokenPriceInUsd', 'priceInUsd']) || 0);
+    let usd = Number(pick(it, ['assetInUsd']) || 0);
+    if (!usd) usd = bal * precio;
+    const logo = pick(it, ['tokenLogo', 'logo']) || null;
     if (id === '_' || String(sym).toLowerCase() === 'trx') {
       out.nativo = bal; out.nativoUSD = usd;
     } else {
-      out.tokens.push({ address: id.toLowerCase(), symbol: sym, name: nombre, decimals: dec, balance: bal, balanceRaw: rawStr, usd: usd, precio: precio, logo: logo, red: 'tron' });
+      out.tokens.push({ address: id.toLowerCase(), symbol: sym, name: nombre, decimals: dec, balance: bal, balanceRaw: String(it.quantity || ''), usd: usd, precio: precio, logo: logo, red: 'tron' });
     }
   }
+  out.totalUSD = out.nativoUSD;
+  for (const t of out.tokens) out.totalUSD += (t.usd || 0);
   out.tokens.sort(function (a, b) { return (b.usd - a.usd) || (b.balance - a.balance); });
   return out;
 }
