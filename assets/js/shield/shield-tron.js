@@ -28,17 +28,32 @@ export function redDe(v) {
   return null;
 }
 
-/* Llamada base a la API de TronScan (GET con la cabecera de la key). */
-async function tronApi(endpoint, params) {
-  const qs = new URLSearchParams(params || {}).toString();
-  const url = TRON_API + '/' + endpoint + (qs ? ('?' + qs) : '');
+/* GET a una URL y parsea JSON, con timeout. */
+async function _fetchJson(url) {
   const ctrl = new AbortController();
   const to = setTimeout(function () { ctrl.abort(); }, 20000);
   try {
-    const r = await fetch(url, { headers: { 'TRON-PRO-API-KEY': TRON_KEY }, signal: ctrl.signal });
+    const r = await fetch(url, { signal: ctrl.signal });
     clearTimeout(to);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     return await r.json();
   } catch (e) { clearTimeout(to); throw e; }
+}
+
+/* Llamada base a la API de TronScan. Primero DIRECTO sin cabecera custom (para no
+   disparar el preflight de CORS). Si falla (el navegador puede bloquear el origen),
+   reintenta por un proxy CORS publico. Guarda la via usada en _tronVia.
+   Nota: sin la cabecera de la key se usa el acceso publico (limite mas bajo, pero
+   suficiente para un escaneo). Si hiciera falta la key, se mueve a un proxy propio. */
+let _tronVia = '';
+async function tronApi(endpoint, params) {
+  const qs = new URLSearchParams(params || {}).toString();
+  const directo = TRON_API + '/' + endpoint + (qs ? ('?' + qs) : '');
+  try { _tronVia = 'directo'; return await _fetchJson(directo); }
+  catch (e1) {
+    try { _tronVia = 'proxy'; return await _fetchJson('https://api.allorigins.win/raw?url=' + encodeURIComponent(directo)); }
+    catch (e2) { _tronVia = 'fallo'; throw new Error('No se pudo leer TronScan (CORS/red): ' + ((e1 && e1.message) || e1)); }
+  }
 }
 
 /* Primer valor no vacío de una lista de posibles nombres de campo (defensivo:
@@ -52,9 +67,16 @@ function pick(obj, nombres) {
    Devuelve el MISMO formato que escanearApprovals de BSC, más dos campos extra
    que da TronScan (tag y riesgo del contrato). SOLO LECTURA. */
 export async function tronApprovals(wallet) {
-  const d = await tronApi('account/approve/list', { address: wallet, type: 'token', start: 0, limit: 200 });
-  try { window._tronDiag = d; } catch (_) {}   // respuesta cruda, para afinar campos en vivo
+  let d;
+  try {
+    d = await tronApi('account/approve/list', { address: wallet, type: 'token', start: 0, limit: 200 });
+  } catch (e) {
+    try { window._tronDiag = { via: _tronVia, error: String((e && e.message) || e) }; } catch (_) {}
+    return [];   // no rompemos la pantalla; el motivo queda en window._tronDiag
+  }
   const data = (d && Array.isArray(d.data)) ? d.data : [];
+  // diagnóstico legible: vía usada, total, claves de la respuesta y el PRIMER item real
+  try { window._tronDiag = { via: _tronVia, total: (d && d.total), claves: d ? Object.keys(d) : [], ejemplo: data[0] || null, nContratos: (d && d.contractInfo) ? Object.keys(d.contractInfo).length : 0 }; } catch (_) {}
   const contractInfo = (d && d.contractInfo) || {};
   const riskInfo = (d && d.normalAddressInfo) || {};
   const salida = [];
