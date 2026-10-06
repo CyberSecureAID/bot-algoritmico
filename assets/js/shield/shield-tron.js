@@ -327,3 +327,89 @@ export async function tronWatcherMoves(addr) {
 export async function tronTx(hash) {
   try { return await tronApi('transaction-info', { hash: hash }); } catch (_) { return null; }
 }
+
+/* ¿Es un hash de transacción Tron? 64 hex, sin prefijo 0x (así los muestra TronScan). */
+export function esHashTron(s) { const h = String(s || '').trim(); return /^[0-9a-fA-F]{64}$/.test(h) && !/^0x/i.test(h); }
+
+function _tipoTronContrato(t) {
+  const M = { TransferContract: 'TRX transfer', TransferAssetContract: 'TRC10 transfer', TriggerSmartContract: 'Contract call', FreezeBalanceV2Contract: 'Freeze (stake)', UnfreezeBalanceV2Contract: 'Unfreeze', DelegateResourceContract: 'Delegate resource', VoteWitnessContract: 'Vote', AccountPermissionUpdateContract: 'Permission update', CreateSmartContract: 'Deploy contract' };
+  return M[t] || (t ? String(t).replace('Contract', '') : 'Transaction');
+}
+
+/* Verifica una transacción Tron por su hash y devuelve la MISMA forma que la de BSC
+   (existe, exitosa, de, para, transferencias con logo, bloque, confirmaciones, comisión,
+   fecha). TronScan da los detalles bonitos (tokens TRC20 con símbolo/logo); TronGrid
+   (directo, fiable) confirma éxito/fallo y rellena lo que falte. */
+export async function tronVerificarHash(hash) {
+  const h = String(hash || '').trim().replace(/^0x/i, '');
+  if (!/^[0-9a-fA-F]{64}$/.test(h)) throw new Error('invalid tron hash');
+  const TRX_LOGO = 'https://static.tronscan.org/production/logo/trx.png';
+  const out = { existe: false, hash: h, red: 'tron', exitosa: null, pendiente: false, de: '', para: '', bloque: null, confirmaciones: 0, valorBNB: 0, nativoSym: 'TRX', comisionBNB: 0, comisionUSD: 0, gweiPrecio: 0, gasUsado: '0', gasLimit: null, nonce: null, posicion: null, tipoTx: 'Transaction', selector: '', numEventos: 0, ts: 0, transferencias: [] };
+
+  // 1) TronScan (vía proxy): detalles ricos (TRC20 con símbolo/logo).
+  let d = null;
+  try { d = await tronApi('transaction-info', { hash: h }); } catch (_) {}
+  if (d && (pick(d, ['hash', 'txID']) || pick(d, ['ownerAddress', 'contractRet', 'block', 'timestamp']))) {
+    out.existe = true;
+    const ret = String(pick(d, ['contractRet']) || '').toUpperCase();
+    out.exitosa = ret ? (ret === 'SUCCESS') : (pick(d, ['confirmed']) === true ? true : null);
+    out.pendiente = (pick(d, ['confirmed']) === false);
+    out.de = pick(d, ['ownerAddress', 'owner_address']) || '';
+    out.para = pick(d, ['toAddress', 'to_address']) || '';
+    out.bloque = Number(pick(d, ['block', 'blockNumber']) || 0) || null;
+    out.ts = Number(pick(d, ['timestamp']) || 0);
+    const cost = pick(d, ['cost']) || {};
+    out.comisionBNB = Number(pick(cost, ['fee']) || 0) / 1e6;
+    const trig = pick(d, ['trigger_info']) || {};
+    const metodo = pick(trig, ['methodName', 'method']);
+    if (metodo) out.tipoTx = String(metodo);
+    const cd = pick(d, ['contractData']) || {};
+    const trx = Number(pick(cd, ['amount']) || 0) / 1e6;
+    if (trx > 0) out.transferencias.push({ tipo: 'TRX', de: out.de, para: out.para, cantidad: trx, symbol: 'TRX', decimals: 6, logo: TRX_LOGO });
+    let t20 = pick(d, ['trc20TransferInfo']);
+    if (!Array.isArray(t20) || !t20.length) { const single = pick(d, ['tokenTransferInfo']); t20 = single ? [single] : []; }
+    for (const tt of (t20 || [])) {
+      const dec = Number(pick(tt, ['decimals']) || 6);
+      const raw = String(pick(tt, ['amount_str', 'amount']) || '0');
+      let amt = 0; try { amt = Number(raw) / Math.pow(10, dec); } catch (_) {}
+      out.transferencias.push({ tipo: 'token', token: pick(tt, ['contract_address']) || '', de: pick(tt, ['from_address']) || out.de, para: pick(tt, ['to_address']) || out.para, cantidad: amt, symbol: pick(tt, ['symbol']) || '?', decimals: dec, logo: pick(tt, ['icon_url', 'tokenLogo']) || null });
+    }
+  }
+
+  // 2) Núcleo fiable por TronGrid (directo, sin proxy): confirma y rellena.
+  try {
+    const tx = await tronGridPost('/wallet/gettransactionbyid', { value: h, visible: true });
+    if (tx && (tx.txID || tx.txid)) {
+      out.existe = true;
+      const r = (tx.ret && tx.ret[0] && tx.ret[0].contractRet) ? String(tx.ret[0].contractRet).toUpperCase() : '';
+      if (r) out.exitosa = (r === 'SUCCESS');
+      const ct = (tx.raw_data && tx.raw_data.contract && tx.raw_data.contract[0]) ? tx.raw_data.contract[0] : {};
+      const val = (ct.parameter && ct.parameter.value) ? ct.parameter.value : {};
+      if (!out.de) out.de = val.owner_address || '';
+      if (!out.para) out.para = val.to_address || val.contract_address || '';
+      if (!out.transferencias.length && ct.type === 'TransferContract' && val.amount != null) {
+        out.transferencias.push({ tipo: 'TRX', de: out.de, para: out.para, cantidad: Number(val.amount) / 1e6, symbol: 'TRX', decimals: 6, logo: TRX_LOGO });
+      }
+      if ((out.tipoTx === 'Transaction' || !out.tipoTx) && ct.type) out.tipoTx = _tipoTronContrato(ct.type);
+    }
+  } catch (_) {}
+  try {
+    const info = await tronGridPost('/wallet/gettransactioninfobyid', { value: h });
+    if (info && Object.keys(info).length) {
+      out.existe = true;
+      if (!out.bloque && info.blockNumber) out.bloque = Number(info.blockNumber);
+      if (!out.ts && info.blockTimeStamp) out.ts = Number(info.blockTimeStamp);
+      if (!out.comisionBNB && info.receipt && info.receipt.fee != null) out.comisionBNB = Number(info.receipt.fee) / 1e6;
+      if (info.log && Array.isArray(info.log)) out.numEventos = info.log.length;
+      if (out.exitosa === null && info.receipt && info.receipt.result) out.exitosa = (String(info.receipt.result).toUpperCase() === 'SUCCESS');
+    }
+  } catch (_) {}
+  if (out.bloque) {
+    try { const nb = await tronGridPost('/wallet/getnowblock', {}); const cur = (nb && nb.block_header && nb.block_header.raw_data) ? Number(nb.block_header.raw_data.number) : 0; if (cur) out.confirmaciones = Math.max(0, cur - out.bloque + 1); } catch (_) {}
+  }
+
+  if (!out.existe) return { existe: false, red: 'tron' };
+  if (out.exitosa === null) out.exitosa = out.bloque ? true : null;
+  out.pendiente = !out.bloque && out.exitosa === null;
+  return out;
+}

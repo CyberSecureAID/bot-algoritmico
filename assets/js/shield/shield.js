@@ -9,7 +9,7 @@ import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=122';
-import * as tron from './shield-tron.js?v=15';
+import * as tron from './shield-tron.js?v=16';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 import * as pago from './shield-pago.js?v=1';
@@ -1106,10 +1106,10 @@ function pintarHash(cuenta) {
       <div class="shd-hash-hero">
         <div class="shd-hash-icon">${IC.hash}</div>
         <h1>Transaction hash checker</h1>
-        <p>Paste a BNB Smart Chain transaction hash to check if the transfer really happened. See in seconds whether it succeeded or failed, which wallet sent it, which wallet received it, exactly how much was moved and in which token, how many confirmations it has and when it was mined. Verify any payment before you trust it.</p>
+        <p>Paste a BNB Smart Chain or TRON transaction hash to check if the transfer really happened. See in seconds whether it succeeded or failed, which wallet sent it, which wallet received it, exactly how much was moved and in which token, how many confirmations it has and when it was mined. Verify any payment before you trust it.</p>
       </div>
       <label class="shd-sim-lbl">Transaction hash</label>
-      <input class="shd-sim-in" id="hash-in" placeholder="0x… 64 character transaction hash" autocomplete="off" spellcheck="false">
+      <input class="shd-sim-in" id="hash-in" placeholder="0x… (BSC) or 64-char hash (TRON)" autocomplete="off" spellcheck="false">
       <button class="shd-btn" id="hash-go" style="width:100%;margin-top:14px">${IC.hash} Verify transaction</button>
       <div id="hash-res"></div>
       <button class="shd-rescan" id="hash-back" style="margin-top:18px">Back</button>
@@ -1118,9 +1118,10 @@ function pintarHash(cuenta) {
   $('hash-back').onclick = () => pintarInicio(cuenta);
   $('hash-go').onclick = async () => {
     const h = $('hash-in').value.trim(); const res = $('hash-res');
-    if (!hashmod.esHash(h)) { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid transaction hash (0x + 64 characters)</div>`; return; }
+    const esBsc = hashmod.esHash(h); const esTron = !esBsc && tron.esHashTron(h);
+    if (!esBsc && !esTron) { res.innerHTML = `<div class="shd-sim-msg bad">Enter a valid transaction hash — 0x + 64 characters for BSC, or 64 characters for TRON.</div>`; return; }
     res.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Reading the transaction…</div></div>`;
-    try { const info = await hashmod.verificar(h); res.innerHTML = tarjetaHash(info, h); wireHashCopy(); }
+    try { const info = esTron ? await tron.tronVerificarHash(h) : await hashmod.verificar(h); res.innerHTML = tarjetaHash(info, h); wireHashCopy(); }
     catch (e) { res.innerHTML = `<div class="shd-sim-msg bad">Could not read that transaction. Check the hash and try again.</div>`; }
   };
   function wireHashCopy() {
@@ -1129,11 +1130,16 @@ function pintarHash(cuenta) {
 }
 function tarjetaHash(info, h) {
   const corta = function (a) { return a ? (a.slice(0,10) + '\u2026' + a.slice(-8)) : '\u2014'; };
+  const esTron = info && info.red === 'tron';
+  const netName = esTron ? 'TRON' : 'BNB Smart Chain';
+  const scanUrl = esTron ? ('https://tronscan.org/#/transaction/' + h) : ('https://bscscan.com/tx/' + h);
+  const scanName = esTron ? 'TronScan' : 'BscScan';
+  const nativoSym = esTron ? 'TRX' : 'BNB';
   const iconoX = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   const iconoOk = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
   const iconoWait = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
   if (!info.existe) {
-    return '<div class="shd-hash-card"><div class="shd-hash-big bad"><div class="shd-hash-bigic bad">' + iconoX + '</div><div><div class="shd-hash-bigt">Not found</div><div class="shd-hash-bigs">No transaction with this hash exists on BNB Smart Chain</div></div></div><div class="shd-hash-msg">Double check that you copied the full 66 character hash and that it belongs to the BNB Smart Chain, not another network.</div></div>';
+    return '<div class="shd-hash-card"><div class="shd-hash-big bad"><div class="shd-hash-bigic bad">' + iconoX + '</div><div><div class="shd-hash-bigt">Not found</div><div class="shd-hash-bigs">No transaction with this hash exists on ' + netName + '</div></div></div><div class="shd-hash-msg">Double check that you copied the full hash and that it belongs to ' + netName + ', not another network.</div></div>';
   }
   let bigClass, bigIc, bigT, bigS;
   if (info.pendiente) { bigClass = 'warn'; bigIc = iconoWait; bigT = 'Pending'; bigS = 'This transaction is not confirmed yet. Check again in a few seconds.'; }
@@ -1155,16 +1161,16 @@ function tarjetaHash(info, h) {
   detalles += filaDet('Type', escH(info.tipoTx));
   detalles += filaDet('Confirmations', info.confirmaciones.toLocaleString());
   detalles += filaDet('Block', info.bloque ? info.bloque.toLocaleString() : '\u2014');
-  detalles += filaDet('Position in block', info.posicion != null ? ('#' + info.posicion) : '\u2014');
-  detalles += filaDet('Network fee', info.comisionBNB.toLocaleString(undefined,{maximumFractionDigits:8}) + ' BNB' + (info.comisionUSD ? ' \u00b7 $' + info.comisionUSD.toLocaleString(undefined,{maximumFractionDigits:4}) : ''));
-  detalles += filaDet('Gas price', info.gweiPrecio.toLocaleString(undefined,{maximumFractionDigits:3}) + ' Gwei');
-  detalles += filaDet('Gas used', Number(info.gasUsado).toLocaleString());
-  detalles += filaDet('Nonce', info.nonce != null ? info.nonce.toLocaleString() : '\u2014');
+  if (!esTron)detalles += filaDet('Position in block', info.posicion != null ? ('#' + info.posicion) : '\u2014');
+  detalles += filaDet('Network fee', info.comisionBNB.toLocaleString(undefined,{maximumFractionDigits:8}) + ' ' + nativoSym + (info.comisionUSD ? ' \u00b7 $' + info.comisionUSD.toLocaleString(undefined,{maximumFractionDigits:4}) : ''));
+  if (!esTron)detalles += filaDet('Gas price', info.gweiPrecio.toLocaleString(undefined,{maximumFractionDigits:3}) + ' Gwei');
+  if (!esTron)detalles += filaDet('Gas used', Number(info.gasUsado).toLocaleString());
+  if (!esTron)detalles += filaDet('Nonce', info.nonce != null ? info.nonce.toLocaleString() : '\u2014');
   detalles += filaDet('Events emitted', info.numEventos.toLocaleString());
   detalles += filaDet('Date', fecha + (hace ? (' \u00b7 ' + hace) : ''));
   detalles += '</div>';
   const flujo = '<div class="shd-hash-sec-t">From and to</div><div class="shd-hash-fromto"><div class="shd-hash-ft"><span>From</span><b>' + corta(info.de) + ' <button class="shd-wtok-copy" data-hcopy="' + info.de + '">\u29c9</button></b></div><div class="shd-hash-ftarrow">\u2192</div><div class="shd-hash-ft"><span>To</span><b>' + corta(info.para) + ' <button class="shd-wtok-copy" data-hcopy="' + (info.para||'') + '">\u29c9</button></b></div></div>';
-  return '<div class="shd-hash-card"><div class="shd-hash-big ' + bigClass + '"><div class="shd-hash-bigic ' + bigClass + '">' + bigIc + '</div><div><div class="shd-hash-bigt">' + bigT + '</div><div class="shd-hash-bigs">' + bigS + '</div></div></div>' + trans + flujo + detalles + '<a href="https://bscscan.com/tx/' + h + '" target="_blank" rel="noopener" class="shd-hash-scan">Open on BscScan \u2197</a></div>';
+  return '<div class="shd-hash-card"><div class="shd-hash-big ' + bigClass + '"><div class="shd-hash-bigic ' + bigClass + '">' + bigIc + '</div><div><div class="shd-hash-bigt">' + bigT + '</div><div class="shd-hash-bigs">' + bigS + '</div></div></div>' + trans + flujo + detalles + '<a href="' + scanUrl + '" target="_blank" rel="noopener" class="shd-hash-scan">Open on ' + scanName + ' \u2197</a></div>';
 }
 function tiempoRel(ts) {
   const s = Math.floor((Date.now() - ts) / 1000);
