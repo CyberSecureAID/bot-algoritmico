@@ -9,7 +9,7 @@ import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=122';
-import * as tron from './shield-tron.js?v=12';
+import * as tron from './shield-tron.js?v=13';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 import * as pago from './shield-pago.js?v=1';
@@ -1207,17 +1207,14 @@ function pintarWatcher(cuenta) {
         const datos_ = await tron.tronWatcherTokens(addr);
         pintarWatchRes(cuenta, addr, datos_, []);
         ['st-val','st-age','st-tx','st-conc'].forEach(function (id) { const e = document.getElementById(id); if (e) e.textContent = '—'; });
-        const _ch = document.querySelector('[data-wt="hist"]'); if (_ch) _ch.textContent = 'Activity (0)';
-        try {
-          const dg = window._tronDiag || {};
-          const _cc = $('watch-res');
-          if (_cc && !dg.grid) {
-            const _dd = document.createElement('div');
-            _dd.setAttribute('style', 'margin:12px 0;padding:11px 14px;border:1px solid #f6465d55;background:rgba(246,70,93,.12);border-radius:11px;font-size:12.5px;color:#f6465d;font-weight:600');
-            _dd.textContent = 'DIAGNÓSTICO: TronGrid no respondió → ' + (dg.err || 'motivo desconocido');
-            _cc.insertBefore(_dd, _cc.firstChild);
-          }
-        } catch (_) {}
+        window._shdHistCargando = true; window._shdHist = null;
+        (function () { const c = document.querySelector('[data-wt="hist"]'); if (c) c.innerHTML = 'Activity <span class="shd-wtab-load"></span>'; })();
+        tron.tronWatcherMoves(addr).then(function (h) {
+          window._shdHist = h; window._shdHistCargando = false;
+          const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (' + h.length + ')';
+          const tabH = document.querySelector('[data-wt="hist"]');
+          if (tabH && tabH.classList.contains('on') && window._pintarActividad) window._pintarActividad();
+        }).catch(function () { const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (0)'; });
         return;
       }
       const datos_ = await watch.tokensDe(addr);
@@ -1319,6 +1316,10 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const fecha = o.ts > 0 ? new Date(o.ts).toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     const cant = fmtNum(o.cantidad);
     const entra = o.tipo === 'in';
+    const _esTronOp = o.red === 'tron';
+    const _netOp = _esTronOp ? 'TRC20' : 'BEP20';
+    const _txU = _esTronOp ? ('https://tronscan.org/#/transaction/' + (o.hash || '')) : ('https://bscscan.com/tx/' + (o.hash || ''));
+    const _adU = function (a2) { return _esTronOp ? ('https://tronscan.org/#/address/' + (a2 || '')) : ('https://bscscan.com/address/' + (a2 || '')); };
     const sym = escH(o.symbol || '');
     const ini3 = (o.symbol || '?').slice(0,3).toUpperCase();
     const usd = o.usd ? ('\u2248 $' + o.usd.toLocaleString(undefined,{maximumFractionDigits:2}) + ' USD') : (fecha || '');
@@ -1334,7 +1335,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
     const walletIc = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h.01M3 9h18"/></svg>';
     const copyIc = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
     return '<div class="shd-tx">' +
-      '<div class="shd-tx-net"><span class="shd-tx-net-dot"></span>BEP20</div>' +
+      '<div class="shd-tx-net"><span class="shd-tx-net-dot"></span>' + _netOp + '</div>' +
       '<div class="shd-tx-top">' + ic +
         '<div class="shd-tx-amt"><b class="' + (entra?'pos':'neg') + '">' + (entra?'+':'\u2212') + cant + ' ' + sym + '</b><small>' + usd + '</small></div>' +
       '</div>' +
@@ -1345,9 +1346,9 @@ function pintarWatchRes(cuenta, addr, d, hist) {
         '<div class="shd-tx-node"><span class="shd-tx-node-ic">' + walletIc + '</span><div class="shd-tx-node-txt"><small>To</small><b>' + cortaT + '</b></div><button class="shd-wop2-copy" data-wcopy="' + to + '">' + copyIc + '</button></div>' +
       '</div>' +
       '<div class="shd-tx-links">' +
-        '<a href="https://bscscan.com/tx/' + (o.hash||'') + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-4 4 4 4M3 14h13M17 14l4-4-4-4M21 10H8"/></svg> Tx \u203a</a>' +
-        '<a href="https://bscscan.com/address/' + from + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg> Sender \u203a</a>' +
-        '<a href="https://bscscan.com/address/' + to + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h.01"/></svg> Receiver \u203a</a>' +
+        '<a href="' + _txU + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-4 4 4 4M3 14h13M17 14l4-4-4-4M21 10H8"/></svg> Tx \u203a</a>' +
+        '<a href="' + _adU(from) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg> Sender \u203a</a>' +
+        '<a href="' + _adU(to) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h.01"/></svg> Receiver \u203a</a>' +
       '</div>' +
     '</div>';
   };;;;;

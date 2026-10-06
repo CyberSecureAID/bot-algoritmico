@@ -255,6 +255,32 @@ export async function tronWatcherTokens(addr) {
   return out;
 }
 
+/* Movimientos (transferencias TRC20) de una wallet Tron, para la Activity.
+   Mismo formato que el historial de BSC (hash, tipo, symbol, cantidad, contraparte, ts). SOLO LECTURA. */
+export async function tronWatcherMoves(addr) {
+  const ops = [];
+  const low = String(addr).toLowerCase();
+  try {
+    let fp = null; let v = 0;
+    do {
+      const params = { limit: 50 }; if (fp) params.fingerprint = fp;
+      const tr = await tronGrid('/v1/accounts/' + addr + '/transactions/trc20', params);
+      const arr = (tr && Array.isArray(tr.data)) ? tr.data : [];
+      for (const t of arr) {
+        const ti = t.token_info || {};
+        const dec = Number(ti.decimals != null ? ti.decimals : 6);
+        const entra = String(t.to || '').toLowerCase() === low;
+        let cant = 0; try { cant = Number(t.value || 0) / Math.pow(10, dec); } catch (_) { cant = 0; }
+        ops.push({ hash: t.transaction_id || '', tipo: entra ? 'in' : 'out', symbol: ti.symbol || '?', cantidad: cant, contraparte: entra ? (t.from || '') : (t.to || ''), ts: Number(t.block_timestamp || 0), tokenLogo: null, red: 'tron' });
+      }
+      fp = (tr && tr.meta && tr.meta.fingerprint) ? tr.meta.fingerprint : null;
+      v++;
+    } while (fp && v < 8 && ops.length < 300);
+  } catch (_) {}
+  ops.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+  return ops;
+}
+
 /* Detalle de una transacción Tron por hash. Para Hash lookup. */
 export async function tronTx(hash) {
   try { return await tronApi('transaction-info', { hash: hash }); } catch (_) { return null; }
