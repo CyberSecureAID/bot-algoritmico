@@ -4,7 +4,7 @@
    · Archivos sin versión: stale-while-revalidate (caché rápido + actualiza).
    · HTML (navegaciones): el service worker no los toca, para que los navegadores
      de wallets inyecten window.ethereum al cargar la página. */
-const VERSION = 'aurex-v458';
+const VERSION = 'aurex-v460';
 const CACHE = 'cc-' + VERSION;
 
 self.addEventListener('install', () => self.skipWaiting());
