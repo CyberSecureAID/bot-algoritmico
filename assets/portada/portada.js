@@ -106,7 +106,7 @@ async function estiloBase() {
 }
 
 async function wallet() {
-  if (!W) W = await import(J + 'wallet.js?v=125');
+  if (!W) W = await import(J + 'wallet.js?v=129');
   return W;
 }
 
