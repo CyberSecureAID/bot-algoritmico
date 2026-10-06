@@ -196,17 +196,28 @@ export async function tronWatcherTokens(addr) {
 
   // Metadata TRC20 por el historial de transferencias (token_info).
   const metaT20 = {};
+  const movesT = []; const lowA = String(addr).toLowerCase();
   try {
     let fp = null; let v = 0;
     do {
       const params = { limit: 200 }; if (fp) params.fingerprint = fp;
       const tr = await tronGrid('/v1/accounts/' + addr + '/transactions/trc20', params);
       const arr = (tr && Array.isArray(tr.data)) ? tr.data : [];
-      for (const t of arr) { const ti = t.token_info || {}; const c = String(ti.address || '').toLowerCase(); if (c && !metaT20[c]) metaT20[c] = { sym: ti.symbol || '', nombre: ti.name || '', dec: Number(ti.decimals != null ? ti.decimals : 6) }; }
+      for (const t of arr) {
+        const ti = t.token_info || {};
+        const c = String(ti.address || '').toLowerCase();
+        if (c && !metaT20[c]) metaT20[c] = { sym: ti.symbol || '', nombre: ti.name || '', dec: Number(ti.decimals != null ? ti.decimals : 6) };
+        const dcs = Number(ti.decimals != null ? ti.decimals : 6);
+        const ent = String(t.to || '').toLowerCase() === lowA;
+        let cc = 0; try { cc = Number(t.value || 0) / Math.pow(10, dcs); } catch (_) { cc = 0; }
+        movesT.push({ hash: t.transaction_id || '', tipo: ent ? 'in' : 'out', symbol: ti.symbol || '?', cantidad: cc, contraparte: ent ? (t.from || '') : (t.to || ''), ts: Number(t.block_timestamp || 0), tokenLogo: null, red: 'tron' });
+      }
       fp = (tr && tr.meta && tr.meta.fingerprint) ? tr.meta.fingerprint : null;
       v++;
-    } while (fp && v < 6);
+    } while (fp && v < 8 && movesT.length < 300);
   } catch (_) {}
+  movesT.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+  out.moves = movesT;
 
   // Metadata TRC10 por getassetissuebyid (nombre/abreviatura/decimales), en paralelo con tope.
   const metaT10 = {};

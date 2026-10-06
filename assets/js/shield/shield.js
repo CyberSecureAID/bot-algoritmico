@@ -9,7 +9,7 @@ import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=122';
-import * as tron from './shield-tron.js?v=13';
+import * as tron from './shield-tron.js?v=14';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 import * as pago from './shield-pago.js?v=1';
@@ -1205,16 +1205,10 @@ function pintarWatcher(cuenta) {
     try {
       if (tron.redDe(addr) === 'tron') {
         const datos_ = await tron.tronWatcherTokens(addr);
-        pintarWatchRes(cuenta, addr, datos_, []);
+        window._shdHist = (datos_.moves || []); window._shdHistCargando = false;
+        pintarWatchRes(cuenta, addr, datos_, (datos_.moves || []));
         ['st-val','st-age','st-tx','st-conc'].forEach(function (id) { const e = document.getElementById(id); if (e) e.textContent = '—'; });
-        window._shdHistCargando = true; window._shdHist = null;
-        (function () { const c = document.querySelector('[data-wt="hist"]'); if (c) c.innerHTML = 'Activity <span class="shd-wtab-load"></span>'; })();
-        tron.tronWatcherMoves(addr).then(function (h) {
-          window._shdHist = h; window._shdHistCargando = false;
-          const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (' + h.length + ')';
-          const tabH = document.querySelector('[data-wt="hist"]');
-          if (tabH && tabH.classList.contains('on') && window._pintarActividad) window._pintarActividad();
-        }).catch(function () { const c = document.querySelector('[data-wt="hist"]'); if (c) c.textContent = 'Activity (0)'; });
+        const _ch = document.querySelector('[data-wt="hist"]'); if (_ch) _ch.textContent = 'Activity (' + (datos_.moves ? datos_.moves.length : 0) + ')';
         return;
       }
       const datos_ = await watch.tokensDe(addr);
