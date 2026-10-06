@@ -5,9 +5,9 @@
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
 import * as wallet from '../wallet.js?v=129';
 
-const BSCSCAN = 'https://api.bscscan.com/api';
+const BSCSCAN = 'https://api.etherscan.io/v2/api';
 // API key pública de BscScan (solo lectura). Se puede rotar desde aquí.
-const BSCSCAN_KEY = 'BUS6DPJ84DWQ1N9XCN8PIUHTNFM5TXE2HU';  // BscScan permite lecturas básicas sin key con límite
+const BSCSCAN_KEY = 'TZQ4M8PRW6J794MWDB1D2WM3FPVVC6NKB6';  // Etherscan V2 (sirve BSC con chainid=56). El viejo api.bscscan.com bloqueaba CORS.
 const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed1.ninicoin.io'];
 const NR_KEY = '0b80831c8c694568a11b6d72a580b81b';
 const NR_RPC = 'https://bsc-mainnet.nodereal.io/v1/' + NR_KEY;
@@ -195,7 +195,7 @@ export async function saldoTotalUSD(cuenta) {
   const prov = lector();
   try {
     // 1. detectar tokens con saldo (BscScan tokentx + balance real)
-    const url = `${BSCSCAN}?module=account&action=tokentx&address=${cuenta}&startblock=0&endblock=latest&sort=desc&apikey=${BSCSCAN_KEY}`;
+    const url = `${BSCSCAN}?chainid=56&module=account&action=tokentx&address=${cuenta}&startblock=0&endblock=latest&sort=desc&apikey=${BSCSCAN_KEY}`;
     let toks = new Map();
     try {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
