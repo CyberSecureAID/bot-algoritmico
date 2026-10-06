@@ -195,7 +195,7 @@ export async function saldoTotalUSD(cuenta) {
   const prov = lector();
   try {
     // 1. detectar tokens con saldo (BscScan tokentx + balance real)
-    const url = `${BSCSCAN}?chainid=56&module=account&action=tokentx&address=${cuenta}&startblock=0&endblock=latest&sort=desc&apikey=${BSCSCAN_KEY}`;
+    const url = `${BSCSCAN}?chainid=56&module=account&action=tokentx&address=${cuenta}&page=1&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
     let toks = new Map();
     try {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
