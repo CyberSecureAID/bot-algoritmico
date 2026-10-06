@@ -46,14 +46,26 @@ async function _fetchJson(url) {
    Nota: sin la cabecera de la key se usa el acceso publico (limite mas bajo, pero
    suficiente para un escaneo). Si hiciera falta la key, se mueve a un proxy propio. */
 let _tronVia = '';
+/* TronScan bloquea CORS desde otros dominios, así que vamos por proxies CORS en
+   cascada: el primero que responda gana. Varios = mucho más difícil que fallen todos.
+   (Para producción, lo ideal es un proxy propio en el Cloudflare Worker.) */
+const _PROXIES = [
+  function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); },
+  function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+  function (u) { return 'https://corsproxy.io/?url=' + encodeURIComponent(u); },
+  function (u) { return 'https://thingproxy.freeboard.io/fetch/' + u; }
+];
 async function tronApi(endpoint, params) {
   const qs = new URLSearchParams(params || {}).toString();
   const directo = TRON_API + '/' + endpoint + (qs ? ('?' + qs) : '');
-  try { _tronVia = 'directo'; return await _fetchJson(directo); }
-  catch (e1) {
-    try { _tronVia = 'proxy'; return await _fetchJson('https://api.allorigins.win/raw?url=' + encodeURIComponent(directo)); }
-    catch (e2) { _tronVia = 'fallo'; throw new Error('No se pudo leer TronScan (CORS/red): ' + ((e1 && e1.message) || e1)); }
+  // 1) intento directo (normalmente falla por CORS, pero por si algún día lo permiten)
+  try { _tronVia = 'directo'; return await _fetchJson(directo); } catch (_) {}
+  // 2) proxies en cascada
+  for (let i = 0; i < _PROXIES.length; i++) {
+    try { _tronVia = 'proxy' + (i + 1); return await _fetchJson(_PROXIES[i](directo)); } catch (_) {}
   }
+  _tronVia = 'fallo';
+  throw new Error('No se pudo leer TronScan (CORS/red) por ninguna vía');
 }
 
 /* Primer valor no vacío de una lista de posibles nombres de campo (defensivo:
