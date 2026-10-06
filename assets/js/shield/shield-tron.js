@@ -131,6 +131,37 @@ export async function tronResumenActivos(wallet) {
   try { return await tronApi('account/token_asset_overview', { address: wallet }); } catch (_) { return null; }
 }
 
+/* Tokens de una wallet Tron para el Watcher (token_asset_overview de TronScan).
+   Devuelve el MISMO formato que tokensDe de BSC. SOLO LECTURA. */
+export async function tronWatcherTokens(addr) {
+  const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
+  let d;
+  try { d = await tronApi('account/token_asset_overview', { address: addr }); }
+  catch (e) { try { window._tronDiag = { via: _tronVia, error: String((e && e.message) || e) }; } catch (_) {} return out; }
+  const data = (d && Array.isArray(d.data)) ? d.data : [];
+  try { window._tronDiag = { via: _tronVia, totalTokens: (d && d.totalTokenCount), totalUsd: (d && d.totalAssetInUsd), ejemplo: data[0] || null }; } catch (_) {}
+  out.totalUSD = Number(d && d.totalAssetInUsd) || 0;
+  for (const it of data) {
+    const id = String(pick(it, ['tokenId', 'tokenAddress', 'contractAddress']) || '');
+    const sym = String(pick(it, ['tokenAbbr', 'symbol']) || pick(it, ['tokenName']) || '?');
+    const decRaw = pick(it, ['tokenDecimal', 'decimals']);
+    const dec = Number(decRaw != null ? decRaw : 6);
+    const rawStr = String(pick(it, ['balance', 'quantity', 'amount']) || '0');
+    let bal = 0; try { bal = Number(rawStr) / Math.pow(10, dec); } catch (_) { bal = 0; }
+    const usd = Number(pick(it, ['assetInUsd', 'amountInUsd']) || 0);
+    const precio = Number(pick(it, ['tokenPriceInUsd', 'priceInUsd']) || 0);
+    const logo = pick(it, ['tokenLogo', 'logo']) || null;
+    const nombre = String(pick(it, ['tokenName']) || '');
+    if (id === '_' || String(sym).toLowerCase() === 'trx') {
+      out.nativo = bal; out.nativoUSD = usd;
+    } else {
+      out.tokens.push({ address: id.toLowerCase(), symbol: sym, name: nombre, decimals: dec, balance: bal, balanceRaw: rawStr, usd: usd, precio: precio, logo: logo, red: 'tron' });
+    }
+  }
+  out.tokens.sort(function (a, b) { return (b.usd - a.usd) || (b.balance - a.balance); });
+  return out;
+}
+
 /* Detalle de una transacción Tron por hash. Para Hash lookup. */
 export async function tronTx(hash) {
   try { return await tronApi('transaction-info', { hash: hash }); } catch (_) { return null; }

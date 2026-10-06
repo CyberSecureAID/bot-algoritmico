@@ -9,7 +9,7 @@ import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=119';
-import * as tron from './shield-tron.js?v=3';
+import * as tron from './shield-tron.js?v=4';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 import * as pago from './shield-pago.js?v=1';
@@ -1189,7 +1189,7 @@ function pintarWatcher(cuenta) {
         <p>Track any wallet on the blockchain. See every token it holds (even dust and spam), its total balance, and a live history of its moves with a link to verify each one on BscScan. Everything on the chain is public, so this breaks no rules. Follow whale wallets, watch your cold wallet, or keep an eye on a wallet you trade with.</p>
       </div>
       <label class="shd-sim-lbl">Wallet address to watch</label>
-      <input class="shd-sim-in" id="watch-addr" placeholder="0x… any wallet address" autocomplete="off" spellcheck="false">
+      <input class="shd-sim-in" id="watch-addr" placeholder="0x… (BSC) or T… (TRON) wallet" autocomplete="off" spellcheck="false">
       <button class="shd-btn" id="watch-go" style="width:100%;margin-top:14px">${IC.eye} Look inside</button>
       ${chips}
       <div id="watch-res">      <div id="watch-res">      <div id="watch-res"></div>
@@ -1200,9 +1200,16 @@ function pintarWatcher(cuenta) {
 
   const ir = async (addr) => {
     const cont = $('watch-res');
-    if (!watch.esDireccion(addr)) { cont.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet address (0x…)</div>`; return; }
+    if (!tron.redDe(addr)) { cont.innerHTML = `<div class="shd-sim-msg bad">Enter a valid wallet (0x… BSC or T… TRON)</div>`; return; }
     cont.innerHTML = `<div class="shd-sim-loading"><div class="shd-radar" style="width:70px;height:70px"><div class="shd-radar-ring"></div><div class="shd-radar-sweep"></div><div class="shd-radar-core" style="inset:26px"></div></div><div style="color:#a7b0bb;font-size:13px;margin-top:10px">Reading wallet…</div></div>`;
     try {
+      if (tron.redDe(addr) === 'tron') {
+        const datos_ = await tron.tronWatcherTokens(addr);
+        pintarWatchRes(cuenta, addr, datos_, []);
+        ['st-val','st-age','st-tx','st-conc'].forEach(function (id) { const e = document.getElementById(id); if (e) e.textContent = '—'; });
+        const _ch = document.querySelector('[data-wt="hist"]'); if (_ch) _ch.textContent = 'Activity (0)';
+        return;
+      }
       const datos_ = await watch.tokensDe(addr);
       pintarWatchRes(cuenta, addr, datos_, []);
       // cargar en segundo plano: historial, stats y pnl (no bloquean la vista)
@@ -1249,6 +1256,7 @@ function pintarStats(addr, d, est, pnl) {
 }
 function pintarWatchRes(cuenta, addr, d, hist) {
   const esPropia = cuenta && addr && cuenta.toLowerCase() === addr.toLowerCase();
+  const redW = tron.redDe(addr) || 'bsc';
   window._watchAddr = addr;
   const cont = $('watch-res');
   const corta = addr.slice(0,6)+'…'+addr.slice(-4);
@@ -1264,14 +1272,16 @@ function pintarWatchRes(cuenta, addr, d, hist) {
       : ('<div class="shd-wtok-ic">' + ini + '</div>');
     const corta = t.address ? (t.address.slice(0,8) + '…' + t.address.slice(-6)) : '';
     const nuevo = t.hoy ? '<span class="shd-tok-new hot">NEW · 24h</span>' : (t.reciente ? '<span class="shd-tok-new">NEW · ' + t.diasDesde + 'd</span>' : '');
-    const scan = t.address ? ('<a href="https://bscscan.com/token/' + t.address + '" target="_blank" rel="noopener" class="shd-wtok-scan" onclick="event.stopPropagation()">BscScan ↗</a>') : '';
+    const _esTronT = t.red === 'tron';
+    const _scanUrl = _esTronT ? ('https://tronscan.org/#/token20/' + t.address) : ('https://bscscan.com/token/' + t.address);
+    const scan = t.address ? ('<a href="' + _scanUrl + '" target="_blank" rel="noopener" class="shd-wtok-scan" onclick="event.stopPropagation()">' + (_esTronT ? 'TronScan' : 'BscScan') + ' ↗</a>') : '';
     const copiar = t.address ? ('<button class="shd-wtok-copy" data-copy="' + t.address + '" onclick="event.stopPropagation()" title="Copy contract">⧉</button>') : '';
-    const swap = t.address ? ('<button class="shd-wtok-swap" data-swap="' + t.address + '" onclick="event.stopPropagation()">Swap</button>') : '';
+    const swap = (t.address && t.red !== 'tron') ? ('<button class="shd-wtok-swap" data-swap="' + t.address + '" onclick="event.stopPropagation()">Swap</button>') : '';
     // papelera (eliminar) solo en la wallet propia, separada del swap por una rayita difuminada
     // Guardamos el token en un registro global; el botón solo pasa su índice
     // (un número, sin comillas ni escapes que puedan romper el atributo).
     let _idx = -1;
-    if (esPropia && t.address) {
+    if (esPropia && t.address && t.red !== 'tron') {
       if (!window.__shdToks) window.__shdToks = [];
       _idx = window.__shdToks.length;
       window.__shdToks.push({ addr: t.address, raw: t.balanceRaw || '0x0', sym: t.symbol || '?', usd: t.usd || 0 });
@@ -1333,7 +1343,7 @@ function pintarWatchRes(cuenta, addr, d, hist) {
   };;;;;
   cont.innerHTML = `
     <div class="shd-watch-head">
-      <div><div class="shd-watch-addr">${corta} <button class="shd-wtok-copy" data-copy="${addr}" title="Copy">⧉</button> <a href="https://bscscan.com/address/${addr}" target="_blank" rel="noopener" class="shd-wtok-scan">BscScan ↗</a></div>
+      <div><div class="shd-watch-addr">${corta} <button class="shd-wtok-copy" data-copy="${addr}" title="Copy">⧉</button> <a href="${redW==='tron'?'https://tronscan.org/#/address/'+addr:'https://bscscan.com/address/'+addr}" target="_blank" rel="noopener" class="shd-wtok-scan">${redW==='tron'?'TronScan':'BscScan'} ↗</a></div>
         <div class="shd-watch-total">$${d.totalUSD.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} <small>total value</small></div></div>
       <button class="shd-watch-follow ${siguiendo?'on':''}" id="watch-follow">${siguiendo ? '✓ Watching' : '+ Watch this wallet'}</button>
     </div>
@@ -1784,16 +1794,6 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
   const esOtra = walletVista && (walletVista.toLowerCase() !== (cuenta||'').toLowerCase());
   let html = '';
   if (esOtra) html += '<div class="shd-viewing"><span class="shd-viewing-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6aa8f0" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><div><small>You are scanning another wallet</small><b>' + walletVista.slice(0,10) + '\u2026' + walletVista.slice(-8) + '</b></div></div>';
-  // Estado REAL de la API de Tron, visible sin F12 (solo si se escaneó una wallet Tron).
-  try {
-    if (tron.redDe(dirEscaneada) === 'tron') {
-      const dg = window._tronDiag || {};
-      let _t, _c;
-      if (dg.error) { _t = 'TronScan no respondió: ' + String(dg.error).slice(0, 80); _c = '#f6465d'; }
-      else { const _n = dg.total || 0; _t = 'TronScan respondió (vía ' + (dg.via || '?') + '): ' + _n + ' aprobaciones en la cuenta'; _c = _n > 0 ? '#2ebd85' : '#e8b84b'; }
-      html += '<div style="margin:0 0 12px;padding:11px 14px;border:1px solid ' + _c + '44;background:' + _c + '14;border-radius:11px;font-size:12.5px;color:' + _c + ';font-weight:600">' + escH(_t) + '</div>';
-    }
-  } catch (_) {}
   html += '<div class="shd-audit-hero">'  +
     '<div class="shd-score-ring"><svg viewBox="0 0 110 110" width="150" height="150"><circle cx="55" cy="55" r="45" fill="none" stroke="#12161c" stroke-width="9"/><circle cx="55" cy="55" r="45" fill="none" stroke="' + sc.color + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + circ + '" stroke-dashoffset="' + off + '" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/></svg><div class="shd-score-mid"><div class="shd-score-n" style="color:' + sc.color + '">' + sc.score + '</div><div class="shd-score-max">/ 100</div></div></div>' +
     '<div class="shd-audit-side"><div class="shd-audit-badge" style="background:' + sc.color + '22;color:' + sc.color + ';border-color:' + sc.color + '55">' + sc.riesgo + '</div><div class="shd-audit-lvl" style="color:' + sc.color + '">' + sc.nivel + '</div><div class="shd-audit-sub">Wallet security score</div><div class="shd-audit-stats"><div class="shd-sstat"><b>' + (externos.length + nuestros.length) + '</b><span>permissions</span></div><div class="shd-sstat"><b style="color:' + (peligrosos?'#f6465d':'#2ebd85') + '">' + peligrosos + '</b><span>risky</span></div><div class="shd-sstat"><b style="color:#2ebd85">' + nuestros.length + '</b><span>trusted</span></div></div></div>' +
