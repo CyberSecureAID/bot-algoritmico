@@ -71,12 +71,12 @@
 <script type="module">
   // Arranca la wallet y después la sección. Sin bots, sin otra interfaz de por
   // medio: esta página solo contiene Wallet Shield.
-  import * as wallet from './assets/js/wallet.js?v=126';
+  import * as wallet from './assets/js/wallet.js?v=129';
 
   (async () => {
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/shield/shield.js?v=154');
+      const m = await import('./assets/js/shield/shield.js?v=155');
       if (m.abrirShield) m.abrirShield();
     } catch (e) {
       console.warn('shield:', e);
