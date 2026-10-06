@@ -210,14 +210,39 @@ export async function tronWatcherTokens(addr) {
         const dcs = Number(ti.decimals != null ? ti.decimals : 6);
         const ent = String(t.to || '').toLowerCase() === lowA;
         let cc = 0; try { cc = Number(t.value || 0) / Math.pow(10, dcs); } catch (_) { cc = 0; }
-        movesT.push({ hash: t.transaction_id || '', tipo: ent ? 'in' : 'out', symbol: ti.symbol || '?', cantidad: cc, contraparte: ent ? (t.from || '') : (t.to || ''), ts: Number(t.block_timestamp || 0), tokenLogo: null, red: 'tron' });
+        movesT.push({ hash: t.transaction_id || '', tipo: ent ? 'in' : 'out', symbol: ti.symbol || '?', cantidad: cc, contraparte: ent ? (t.from || '') : (t.to || ''), ts: Number(t.block_timestamp || 0), tokenLogo: null, tokenAddr: c, red: 'tron' });
       }
       fp = (tr && tr.meta && tr.meta.fingerprint) ? tr.meta.fingerprint : null;
       v++;
     } while (fp && v < 8 && movesT.length < 300);
   } catch (_) {}
-  movesT.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
-  out.moves = movesT;
+  // TRX + TRC10 (lo que NO es TRC20) para completar la Activity, igual que el historial de BSC.
+  try {
+    let fp2 = null; let v2 = 0;
+    do {
+      const p2 = { limit: 200, only_confirmed: true, visible: true }; if (fp2) p2.fingerprint = fp2;
+      const tr2 = await tronGrid('/v1/accounts/' + addr + '/transactions', p2);
+      const arr2 = (tr2 && Array.isArray(tr2.data)) ? tr2.data : [];
+      for (const tx of arr2) {
+        const ct = (tx.raw_data && tx.raw_data.contract && tx.raw_data.contract[0]) ? tx.raw_data.contract[0] : null;
+        if (!ct) continue;
+        const val = (ct.parameter && ct.parameter.value) ? ct.parameter.value : {};
+        const ts2 = Number(tx.block_timestamp || 0);
+        const hash2 = tx.txID || tx.txid || '';
+        if (ct.type === 'TransferContract') {
+          const to = String(val.to_address || ''); const from = String(val.owner_address || '');
+          const ent = to.toLowerCase() === lowA;
+          movesT.push({ hash: hash2, tipo: ent ? 'in' : 'out', symbol: 'TRX', cantidad: Number(val.amount || 0) / 1e6, contraparte: ent ? from : to, ts: ts2, tokenLogo: 'https://static.tronscan.org/production/logo/trx.png', red: 'tron' });
+        } else if (ct.type === 'TransferAssetContract') {
+          const to = String(val.to_address || ''); const from = String(val.owner_address || '');
+          const ent = to.toLowerCase() === lowA;
+          movesT.push({ hash: hash2, tipo: ent ? 'in' : 'out', symbol: 'TRC10', cantidad: Number(val.amount || 0), contraparte: ent ? from : to, ts: ts2, tokenLogo: null, red: 'tron' });
+        }
+      }
+      fp2 = (tr2 && tr2.meta && tr2.meta.fingerprint) ? tr2.meta.fingerprint : null;
+      v2++;
+    } while (fp2 && v2 < 8 && movesT.length < 400);
+  } catch (_) {}
 
   // Metadata TRC10 por getassetissuebyid (nombre/abreviatura/decimales), en paralelo con tope.
   const metaT10 = {};
@@ -243,6 +268,12 @@ export async function tronWatcherTokens(addr) {
     }
   } catch (_) {}
   out.nativoUSD = trxUsd;
+  // Logos en los movimientos: usar el logo del token conocido (USDT, etc.) por su dirección.
+  for (const mv of movesT) {
+    if (!mv.tokenLogo && mv.tokenAddr && precios[mv.tokenAddr] && precios[mv.tokenAddr].logo) mv.tokenLogo = precios[mv.tokenAddr].logo;
+  }
+  movesT.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+  out.moves = movesT;
 
   // Armar TRC20
   for (const tk of listaTrc20) {
