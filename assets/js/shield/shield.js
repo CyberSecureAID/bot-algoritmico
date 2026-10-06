@@ -9,6 +9,7 @@ import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
 import * as watch from './shield-watch.js?v=119';
+import * as tron from './shield-tron.js?v=1';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 import * as pago from './shield-pago.js?v=1';
@@ -595,6 +596,23 @@ function inyectarCSS() {
   #shd .shd-scan-other-go:hover{filter:brightness(1.06)}
   #shd .shd-comp-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:100px;text-transform:uppercase;letter-spacing:.4px}
   @media(max-width:560px){ #shd .shd-scan-other{flex-direction:column;align-items:stretch} #shd .shd-scan-other-go{width:100%} }
+  /* Selector de wallet de Permission Scan (BSC/TRON) */
+  #shd .shd-scansel{display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto}
+  #shd .shd-scansel-mine{display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:rgba(14,19,25,.85);border:1px solid #232d38;border-radius:14px;padding:15px 16px;cursor:pointer;color:#eaecef;font-family:inherit}
+  #shd .shd-scansel-mine:hover{border-color:var(--gold-soft,#C9A84B)}
+  #shd .shd-scansel-ic{width:40px;height:40px;border-radius:11px;background:rgba(232,184,75,.12);color:var(--gold,#E8B84B);display:grid;place-items:center;flex:none}
+  #shd .shd-scansel-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  #shd .shd-scansel-tx small{font-size:12px;color:#79838f}
+  #shd .shd-scansel-tx b{font-size:14px;font-family:var(--mono,monospace);color:#eaecef;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #shd .shd-scansel-or{display:flex;align-items:center;gap:12px;color:#79838f;font-size:12px}
+  #shd .shd-scansel-or:before,#shd .shd-scansel-or:after{content:"";flex:1;height:1px;background:#232d38}
+  #shd .shd-scansel-row{display:flex;align-items:center;gap:10px}
+  #shd .shd-scansel-row .shd-sim-in{flex:1;min-width:0}
+  #shd .shd-net-badge{flex:none;font-size:11px;font-weight:800;padding:5px 10px;border-radius:100px;letter-spacing:.3px}
+  #shd .shd-net-badge.bsc{background:rgba(240,185,11,.14);color:#f0b90b}
+  #shd .shd-net-badge.tron{background:rgba(235,0,41,.16);color:#ff5c6e}
+  #shd .shd-net-badge.bad{background:rgba(246,70,93,.16);color:#f6465d}
+  #shd .shd-scansel #scansel-go{width:100%}
   
     /* Datos duros del diagnóstico */
   #shd .shd-found{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:6px}
@@ -939,7 +957,7 @@ function pintarInicio(cuenta) {
       <div class="shd-card shd-card-gas"><div class="shd-card-ic">${IC.gas}</div><b>Free gas</b><span>Out of BNB and stuck? Claim a small amount of gas to move your funds. Free, once a month.</span><button class="shd-card-btn gas" id="shd-gas">Get gas</button></div>
     </div>`;
   wireBack();
-  $('shd-scan').onclick = () => escanear(cuenta);
+  $('shd-scan').onclick = () => pintarSelectorScan(cuenta);
   $('shd-sim').onclick = () => pintarSimulador(cuenta);
   $('shd-emerg').onclick = () => pintarRescate(cuenta);
   const wb = $('shd-watch'); if (wb) wb.onclick = () => pintarWatcher(cuenta);
@@ -1650,11 +1668,48 @@ function pintarActivos(cuenta, dest, act) {
   };
 }
 function require0(wei) { try { return (Number(wei) / 1e18).toString(); } catch(_) { return '0'; } }
+function pintarSelectorScan(cuenta) {
+  const corta = cuenta.slice(0, 10) + '\u2026' + cuenta.slice(-8);
+  $('shd-barslot').innerHTML = cabecera();
+  $('shd-in').innerHTML = `
+    <div class="shd-hero" style="padding-bottom:10px"><h1>Permission scan</h1><p>Scan your connected wallet, or paste any other wallet. BSC and TRON are both supported.</p></div>
+    <div class="shd-scansel">
+      <button class="shd-scansel-mine" id="scansel-mine">
+        <span class="shd-scansel-ic">${IC.shield}</span>
+        <span class="shd-scansel-tx"><small>Your connected wallet</small><b>${corta}</b></span>
+        <span class="shd-net-badge bsc">BSC</span>
+      </button>
+      <div class="shd-scansel-or"><span>or scan another wallet</span></div>
+      <div class="shd-scansel-row">
+        <input class="shd-sim-in" id="scansel-inp" placeholder="Paste a 0x\u2026 (BSC) or T\u2026 (TRON) address" autocomplete="off" spellcheck="false">
+        <span class="shd-net-badge" id="scansel-badge"></span>
+      </div>
+      <button class="shd-card-btn gold" id="scansel-go">Scan this wallet</button>
+    </div>`;
+  wireBack(function () { pintarInicio(cuenta); });
+  $('scansel-mine').onclick = function () { escanear(cuenta, cuenta); };
+  const inp = $('scansel-inp'); const badge = $('scansel-badge'); const go = $('scansel-go');
+  function refrescar() {
+    const r = tron.redDe((inp.value || '').trim());
+    badge.textContent = r ? r.toUpperCase() : '';
+    badge.className = 'shd-net-badge' + (r ? ' ' + r : '');
+  }
+  inp.oninput = refrescar;
+  function lanzar() {
+    const v = (inp.value || '').trim();
+    const r = tron.redDe(v);
+    if (!r) { badge.textContent = 'Invalid'; badge.className = 'shd-net-badge bad'; inp.style.borderColor = '#f6465d'; return; }
+    escanear(cuenta, v);
+  }
+  go.onclick = lanzar;
+  inp.onkeydown = function (e) { if (e.key === 'Enter') lanzar(); };
+}
 async function escanear(cuenta, objetivo) {
   const dir = objetivo || cuenta;
+  const red = tron.redDe(dir) || 'bsc';
   // Pasos del escaneo: cada uno aparece, muestra "checking…" y luego se marca ✓.
   const pasos = [
-    'Connecting to BNB Smart Chain',
+    (red === 'tron' ? 'Connecting to the TRON network' : 'Connecting to BNB Smart Chain'),
     'Reading your approval history',
     'Checking active token allowances',
     'Detecting unlimited permissions',
@@ -1680,8 +1735,14 @@ async function escanear(cuenta, objetivo) {
   const cont = $('shd-steps');
   // lanzar el escaneo real en paralelo
   let permisos = null, error = false, estad = {};
-  const tarea = datos.escanearApprovals(dir, () => {}).then(r => { permisos = r; }).catch(() => { error = true; });
-  const tareaStats = watch.estadisticas(dir).then(function (e) { estad = e || {}; }).catch(function () {});
+  let tarea, tareaStats;
+  if (red === 'tron') {
+    tarea = tron.tronApprovals(dir).then(r => { permisos = r; }).catch(() => { error = true; });
+    tareaStats = Promise.resolve();
+  } else {
+    tarea = datos.escanearApprovals(dir, () => {}).then(r => { permisos = r; }).catch(() => { error = true; });
+    tareaStats = watch.estadisticas(dir).then(function (e) { estad = e || {}; }).catch(function () {});
+  }
   // animar los pasos: cada uno aparece como "checking" y tras un momento se marca ✓
   let i = 0;
   function siguientePaso() {
@@ -1790,7 +1851,7 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
   const bb = $('shd-back2'); if (bb) bb.onclick = () => pintarInicio(cuenta);
   $('shd-rescan').onclick = () => escanear(cuenta, walletVista);
   const soGo = $('scan-other-go'); const soInp = $('scan-other-inp');
-  function scanOtra() { const v = (soInp && soInp.value || '').trim(); if (/^0x[0-9a-fA-F]{40}$/.test(v)) escanear(cuenta, v); else if (soInp) { soInp.style.borderColor = '#f6465d'; } }
+  function scanOtra() { const v = (soInp && soInp.value || '').trim(); if (tron.redDe(v)) escanear(cuenta, v); else if (soInp) { soInp.style.borderColor = '#f6465d'; } }
   if (soGo) soGo.onclick = scanOtra;
   if (soInp) soInp.onkeydown = function (e) { if (e.key === 'Enter') scanOtra(); };
   document.querySelectorAll('[data-revoke]').forEach(b => {
@@ -1815,11 +1876,14 @@ function filaPerm(p) {
   const riesgo = p.ilimitado
     ? `<div class="exp bad">Unlimited access, high risk if unknown</div>`
     : `<div class="exp warn">Limited approval</div>`;
+  const btnRev = (p.red === 'tron')
+    ? '<button class="shd-revoke" disabled title="Revoking on TRON needs TronLink (coming soon)" style="opacity:.5;cursor:default">Revoke</button>'
+    : '<button class="shd-revoke" data-revoke="' + p.token + '|' + p.spender + '">Revoke</button>';
   return `<div class="shd-perm ${p.ilimitado ? 'danger' : ''}">
     <div class="shd-perm-ic">${ini}</div>
     <div class="shd-perm-info"><b>${escH(p.symbol)}</b><div class="sp">to ${corta}</div>${riesgo}</div>
     ${p.ilimitado ? '<span class="shd-tag unl">Unlimited</span>' : ''}
-    <button class="shd-revoke" data-revoke="${p.token}|${p.spender}">Revoke</button>
+    ${btnRev}
   </div>`;
 }
 function escH(s){return String(s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
