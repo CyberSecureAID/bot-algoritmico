@@ -49,7 +49,7 @@ async function swCargarLogosPropio() {
 }
 const S = { fromId: 'BNB', toId: 'USDT', amount: '', out: 0n, minOut: 0n, fee: 0, feeWei: 0n, allow: 0n, balFromWei: 0n, quoting: false, accion: 'swap', maxWei: null };
 let _swT = null, _swToken = 0;
-const SW_GAS_BUF = 3000000000000000n; // 0.003 BNB de colchón de gas al usar Máx con BNB
+const SW_GAS_BUF = 500000000000000n; // 0.0005 BNB de colchon de gas (antes 0.003, era 10x de mas)
 
 let _swCssOk = false;
 function swInjectCSS() {
