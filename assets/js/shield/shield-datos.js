@@ -210,8 +210,20 @@ export async function saldoTotalUSD(cuenta) {
   const prov = lector();
   try {
     // 1. detectar tokens con saldo (BscScan tokentx + balance real)
-    const url = `${BSCSCAN}?chainid=56&module=account&action=tokentx&address=${cuenta}&page=1&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
     let toks = new Map();
+    // Tokens principales de BSC: se revisan SIEMPRE on-chain, aunque Etherscan no responda.
+    const COMUNES = {
+      '0x55d398326f99059ff775485246999027b3197955': 18, // USDT
+      '0xe9e7cea3dedca5984780bafc599bd69add087d56': 18, // BUSD
+      '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d': 18, // USDC
+      '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82': 18, // CAKE
+      '0x2170ed0880ac9a755fd29b2688956bd959f933f8': 18, // ETH
+      '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c': 18, // BTCB
+      '0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3': 18  // DAI
+    };
+    for (const a in COMUNES) toks.set(a, { address: a, decimals: COMUNES[a] });
+    // Etherscan tokentx: AÑADE otros tokens que la wallet haya movido (si responde).
+    const url = `${BSCSCAN}?chainid=56&module=account&action=tokentx&address=${cuenta}&page=1&offset=1000&sort=desc&apikey=${BSCSCAN_KEY}`;
     try {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
       const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(to);
