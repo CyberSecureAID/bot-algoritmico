@@ -135,31 +135,38 @@ export async function tronResumenActivos(wallet) {
    Devuelve el MISMO formato que tokensDe de BSC. SOLO LECTURA. */
 export async function tronWatcherTokens(addr) {
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
-  let d;
-  // account/tokens con hidden=1 (incluye saldo pequeño = la basura) y show=1 (TRC20).
-  try { d = await tronApi('account/tokens', { address: addr, start: 0, limit: 200, hidden: 1, show: 1 }); }
-  catch (e) { try { window._tronDiag = { via: _tronVia, error: String((e && e.message) || e) }; } catch (_) {} return out; }
-  const data = (d && Array.isArray(d.data)) ? d.data : [];
-  try { window._tronDiag = { via: _tronVia, total: (d && (d.total != null ? d.total : data.length)), ejemplo: data[0] || null }; } catch (_) {}
-  for (const it of data) {
-    const id = String(pick(it, ['tokenId', 'tokenAddress', 'contractAddress']) || '');
-    const sym = String(pick(it, ['tokenAbbr', 'symbol']) || pick(it, ['tokenName']) || '?');
-    const nombre = String(pick(it, ['tokenName']) || '');
-    const dec = Number(pick(it, ['tokenDecimal', 'decimals']) != null ? pick(it, ['tokenDecimal', 'decimals']) : 6);
-    // cantidad de tokens (humana): 'quantity' es la cantidad; si no, 'balance' crudo.
-    let bal = 0;
-    if (it.quantity != null && it.quantity !== '') bal = Number(it.quantity);
-    else if (it.balance != null) bal = Number(it.balance) / Math.pow(10, dec);
-    const precio = Number(pick(it, ['tokenPriceInUsd', 'priceInUsd']) || 0);
-    let usd = Number(pick(it, ['assetInUsd']) || 0);
-    if (!usd) usd = bal * precio;
-    const logo = pick(it, ['tokenLogo', 'logo']) || null;
-    if (id === '_' || String(sym).toLowerCase() === 'trx') {
-      out.nativo = bal; out.nativoUSD = usd;
-    } else {
-      out.tokens.push({ address: id.toLowerCase(), symbol: sym, name: nombre, decimals: dec, balance: bal, balanceRaw: String(it.quantity || ''), usd: usd, precio: precio, logo: logo, red: 'tron' });
-    }
+  const vistos = {};
+  function addTok(id, sym, nombre, dec, bal, usd, precio, logo) {
+    if (id === '_' || String(sym).toLowerCase() === 'trx') { if (!out.nativo) { out.nativo = bal; out.nativoUSD = usd; } return; }
+    const key = String(id || '').toLowerCase();
+    if (!key || vistos[key]) return; vistos[key] = 1;
+    out.tokens.push({ address: key, symbol: sym, name: nombre, decimals: dec, balance: bal, balanceRaw: '', usd: usd, precio: precio, logo: logo, red: 'tron' });
   }
+  // BASE (fiable, ya funcionaba): token_asset_overview = tokens con valor + TRX nativo.
+  try {
+    const d = await tronApi('account/token_asset_overview', { address: addr });
+    const data = (d && Array.isArray(d.data)) ? d.data : [];
+    try { window._tronDiag = { via: _tronVia, base: data.length, totalUsd: (d && d.totalAssetInUsd), ejemplo: data[0] || null }; } catch (_) {}
+    for (const it of data) {
+      const dec = Number(pick(it, ['tokenDecimal', 'decimals']) != null ? pick(it, ['tokenDecimal', 'decimals']) : 6);
+      const bal = Number(pick(it, ['balance']) || 0) / Math.pow(10, dec);
+      addTok(pick(it, ['tokenId', 'tokenAddress']) || '', pick(it, ['tokenAbbr']) || pick(it, ['tokenName']) || '?', pick(it, ['tokenName']) || '', dec, bal, Number(pick(it, ['assetInUsd']) || 0), Number(pick(it, ['tokenPriceInUsd']) || 0), pick(it, ['tokenLogo']) || null);
+    }
+  } catch (e) { try { window._tronDiag = { via: _tronVia, error: String((e && e.message) || e) }; } catch (_) {} }
+  // SUPLEMENTO (todos, incl. basura): account/tokens. Defensivo: si falla, NO toca la base.
+  try {
+    const d2 = await tronApi('account/tokens', { address: addr, start: 0, limit: 200, hidden: 1 });
+    const arr = (d2 && Array.isArray(d2.data)) ? d2.data : [];
+    try { window._tronDiag2 = { n: arr.length, ejemplo: arr[0] || null }; } catch (_) {}
+    for (const it of arr) {
+      const dec = Number(pick(it, ['tokenDecimal', 'decimals']) != null ? pick(it, ['tokenDecimal', 'decimals']) : 6);
+      let bal = 0;
+      if (it.quantity != null && it.quantity !== '') bal = Number(it.quantity);
+      else if (it.balance != null) bal = Number(it.balance) / Math.pow(10, dec);
+      const precio = Number(pick(it, ['tokenPriceInUsd']) || 0);
+      addTok(pick(it, ['tokenId', 'tokenAddress']) || '', pick(it, ['tokenAbbr']) || pick(it, ['tokenName']) || '?', pick(it, ['tokenName']) || '', dec, bal, bal * precio, precio, pick(it, ['tokenLogo']) || null);
+    }
+  } catch (_) {}
   out.totalUSD = out.nativoUSD;
   for (const t of out.tokens) out.totalUSD += (t.usd || 0);
   out.tokens.sort(function (a, b) { return (b.usd - a.usd) || (b.balance - a.balance); });

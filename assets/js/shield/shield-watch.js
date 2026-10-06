@@ -54,15 +54,44 @@ export async function tokensDe(addr, onProgreso) {
       DG.holdings = lista.length + ' tokens (etherscan)';
     } else { DG.holdings = 'etherscan: ' + (d.message || d.status || '?'); }
   } catch (e) { DG.holdings = 'ERR etherscan: ' + ((e && e.message) || '').slice(0, 50); }
+  // Descubrir TODOS los tokens (incl. basura) por transferencias recibidas (NodeReal, fiable).
+  //  Cada transferencia trae el contrato, el símbolo y los decimales, así que no hacen falta
+  //  llamadas extra. Es la misma API que ya usa el historial.
+  try {
+    const res = await nrCall('nr_getAssetTransfers', [{ fromBlock: '0x0', toBlock: 'latest', category: ['20'], toAddress: addr, maxCount: '0x3e8', order: 'desc' }]);
+    const trans = (res && res.transfers) ? res.transfers : [];
+    const vistos = new Set(lista.map(function (m) { return m.a.toLowerCase(); }));
+    for (const t of trans) {
+      const rc = t.rawContract || {};
+      const c = rc.address;
+      if (!c) continue;
+      const a2 = c.toLowerCase();
+      if (vistos.has(a2)) continue;
+      vistos.add(a2);
+      let dec = null; const rd = rc.decimal;
+      if (rd != null) { dec = (typeof rd === 'string' && rd.indexOf('0x') === 0) ? parseInt(rd, 16) : Number(rd); }
+      lista.push({ a: c, sym: t.asset || '?', dec: dec });
+    }
+    DG.holdings = lista.length + ' tokens (nodereal)';
+  } catch (_) {}
   if (onProgreso) onProgreso(0.55);
 
   // 2. leer balanceOf de cada token on-chain, en lotes de 5.
-  const ERC = ['function balanceOf(address) view returns (uint256)'];
+  const ERC = ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)', 'function symbol() view returns (string)'];
   const tokens = [];
   for (let i = 0; i < lista.length; i += 5) {
     const lote = lista.slice(i, i + 5);
     const res = await Promise.all(lote.map(async function (m) {
-      try { const c = new ethers.Contract(m.a, ERC, prov); const raw = await c.balanceOf(addr); if (!raw || raw === 0n) return null; const bal = Number(ethers.formatUnits(raw, m.dec)); return bal > 0 ? { address: m.a.toLowerCase(), symbol: m.sym, name: '', decimals: m.dec, balance: bal, balanceRaw: '0x' + raw.toString(16), usd: 0, precio: 0, logo: null } : null; } catch (_) { return null; }
+      try {
+        const c = new ethers.Contract(m.a, ERC, prov);
+        const raw = await c.balanceOf(addr);
+        if (!raw || raw === 0n) return null;
+        let dec = m.dec, sym = m.sym;
+        if (dec == null || isNaN(dec)) { try { dec = Number(await c.decimals()); } catch (_) { dec = 18; } }
+        if (!sym || sym === '?') { try { sym = String(await c.symbol()); } catch (_) {} }
+        const bal = Number(ethers.formatUnits(raw, dec));
+        return bal > 0 ? { address: m.a.toLowerCase(), symbol: sym || '?', name: '', decimals: dec, balance: bal, balanceRaw: '0x' + raw.toString(16), usd: 0, precio: 0, logo: null } : null;
+      } catch (_) { return null; }
     }));
     res.forEach(function (x) { if (x) tokens.push(x); });
   }
