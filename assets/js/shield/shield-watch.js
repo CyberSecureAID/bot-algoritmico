@@ -33,28 +33,38 @@ export async function tokensDe(addr, onProgreso) {
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
   const DG = { holdings: '', meta: '' };
   const prov = lector();
-  // 1. nr_getTokenHoldings → todos los tokens ERC20 que tiene la wallet (con balance)
-  let holdings = [];
+  // 1. Descubrir tokens via Etherscan API V2 (BSC, chainid=56). NodeReal fallaba y
+  //    por eso el saldo solo mostraba BNB. Las conocidas se leen igual de respaldo.
+  const BSCSCAN_KEY = 'TZQ4M8PRW6J794MWDB1D2WM3FPVVC6NKB6';
+  const CONOCIDAS = [
+    { a: '0x55d398326f99059fF775485246999027B3197955', sym: 'USDT', dec: 18 },
+    { a: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', sym: 'USDC', dec: 18 },
+    { a: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', sym: 'BUSD', dec: 18 },
+    { a: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', sym: 'CAKE', dec: 18 }
+  ];
+  let lista = CONOCIDAS.slice();
   try {
-    const res = await nrCall('nr_getTokenHoldings', [addr, '0x1', '0x64']);
-    // el formato puede variar: probar varios campos
-    const det = (res && res.details) ? res.details : ((res && res.tokens) ? res.tokens : (Array.isArray(res) ? res : []));
-    holdings = det || [];
-    DG.holdings = holdings.length + ' tokens';
-    DG.raw = JSON.stringify(res).slice(0, 200);   // ver la respuesta cruda
-  } catch (e) { DG.holdings = 'ERR: ' + ((e && e.message)||'').slice(0,60); }
+    const url = 'https://api.etherscan.io/v2/api?chainid=56&module=account&action=tokentx&address=' + addr + '&page=1&offset=1000&sort=desc&apikey=' + BSCSCAN_KEY;
+    const ctrl = new AbortController(); const to = setTimeout(function () { ctrl.abort(); }, 8000);
+    const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(to);
+    const d = await r.json();
+    if (d.status === '1' && Array.isArray(d.result)) {
+      const vistos = new Set(lista.map(function (m) { return m.a.toLowerCase(); }));
+      d.result.forEach(function (t) { const a = (t.contractAddress || '').toLowerCase(); if (a && !vistos.has(a)) { vistos.add(a); lista.push({ a: t.contractAddress, sym: t.tokenSymbol || '?', dec: Number(t.tokenDecimal) || 18 }); } });
+      DG.holdings = lista.length + ' tokens (etherscan)';
+    } else { DG.holdings = 'etherscan: ' + (d.message || d.status || '?'); }
+  } catch (e) { DG.holdings = 'ERR etherscan: ' + ((e && e.message) || '').slice(0, 50); }
   if (onProgreso) onProgreso(0.55);
 
-  // 2. armar tokens con símbolo/decimales/balance (nr_getTokenHoldings ya trae metadata)
+  // 2. leer balanceOf de cada token on-chain, en lotes de 5.
+  const ERC = ['function balanceOf(address) view returns (uint256)'];
   const tokens = [];
-  for (const h of holdings) {
-    try {
-      const dec = parseInt(h.tokenDecimals || '0x12', 16) || 18;
-      const raw = h.tokenBalance ? BigInt(h.tokenBalance) : 0n;
-      const bal = Number(ethers.formatUnits(raw, dec));
-      if (bal <= 0) continue;
-      tokens.push({ address: (h.tokenAddress || '').toLowerCase(), symbol: h.tokenSymbol || '?', name: h.tokenName || '', decimals: dec, balance: bal, balanceRaw: (h.tokenBalance || '0x0'), usd: 0, precio: 0, logo: null });
-    } catch (_) {}
+  for (let i = 0; i < lista.length; i += 5) {
+    const lote = lista.slice(i, i + 5);
+    const res = await Promise.all(lote.map(async function (m) {
+      try { const c = new ethers.Contract(m.a, ERC, prov); const raw = await c.balanceOf(addr); if (!raw || raw === 0n) return null; const bal = Number(ethers.formatUnits(raw, m.dec)); return bal > 0 ? { address: m.a.toLowerCase(), symbol: m.sym, name: '', decimals: m.dec, balance: bal, balanceRaw: '0x' + raw.toString(16), usd: 0, precio: 0, logo: null } : null; } catch (_) { return null; }
+    }));
+    res.forEach(function (x) { if (x) tokens.push(x); });
   }
   if (onProgreso) onProgreso(0.75);
 

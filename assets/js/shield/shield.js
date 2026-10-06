@@ -2,13 +2,13 @@
    Fase 1: escáner de permisos (approvals). Detecta la wallet conectada,
    escanea, y muestra los permisos en 2 grupos (nuestros = confiables /
    externos = con riesgo y opción de revocar). Diseño dark profesional. */
-import * as datos from './shield-datos.js?v=107';
+import * as datos from './shield-datos.js?v=108';
 import * as wallet from '../wallet.js?v=129';
 import { calcularScore } from './shield-score.js?v=100';
 import { plataformasDe } from './shield-platforms.js?v=1';
 import * as sim from './shield-sim.js?v=99';
 import * as rescue from './shield-rescue.js?v=100';
-import * as watch from './shield-watch.js?v=118';
+import * as watch from './shield-watch.js?v=119';
 import * as hashmod from './shield-hash.js?v=2';
 import * as poison from './shield-poison.js?v=2';
 import * as pago from './shield-pago.js?v=1';

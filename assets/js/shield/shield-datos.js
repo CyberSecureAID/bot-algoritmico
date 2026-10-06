@@ -3,7 +3,7 @@
    el allowance actual on-chain, y prepara las transacciones de revoke.
    NO custodia claves: el revoke lo firma el usuario en su wallet. */
 import * as ethers from '../vendor/ethers-6.13.4.min.js?v=125';
-import * as wallet from '../wallet.js?v=125';
+import * as wallet from '../wallet.js?v=129';
 
 const BSCSCAN = 'https://api.bscscan.com/api';
 // API key pública de BscScan (solo lectura). Se puede rotar desde aquí.
