@@ -77,23 +77,25 @@ export async function tokensDe(addr, onProgreso) {
   if (onProgreso) onProgreso(0.55);
 
   // 2. leer balanceOf de cada token on-chain, en lotes de 5.
-  const ERC = ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)', 'function symbol() view returns (string)'];
+  // Balances de TODOS los tokens de una vez con Multicall3 (1-2 llamadas, no 100+). Rápido.
+  const MC3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
+  const ercI = new ethers.Interface(['function balanceOf(address) view returns (uint256)']);
+  const mc = new ethers.Contract(MC3, ['function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[] ret)'], prov);
   const tokens = [];
-  for (let i = 0; i < lista.length; i += 5) {
-    const lote = lista.slice(i, i + 5);
-    const res = await Promise.all(lote.map(async function (m) {
-      try {
-        const c = new ethers.Contract(m.a, ERC, prov);
-        const raw = await c.balanceOf(addr);
-        if (!raw || raw === 0n) return null;
-        let dec = m.dec, sym = m.sym;
-        if (dec == null || isNaN(dec)) { try { dec = Number(await c.decimals()); } catch (_) { dec = 18; } }
-        if (!sym || sym === '?') { try { sym = String(await c.symbol()); } catch (_) {} }
-        const bal = Number(ethers.formatUnits(raw, dec));
-        return bal > 0 ? { address: m.a.toLowerCase(), symbol: sym || '?', name: '', decimals: dec, balance: bal, balanceRaw: '0x' + raw.toString(16), usd: 0, precio: 0, logo: null } : null;
-      } catch (_) { return null; }
-    }));
-    res.forEach(function (x) { if (x) tokens.push(x); });
+  const calls = lista.map(function (m) { return { target: m.a, allowFailure: true, callData: ercI.encodeFunctionData('balanceOf', [addr]) }; });
+  let rr = [];
+  for (let i = 0; i < calls.length; i += 300) {
+    try { const part = await mc.aggregate3(calls.slice(i, i + 300)); for (let k = 0; k < part.length; k++) rr.push(part[k]); }
+    catch (_) { for (let k = 0; k < Math.min(300, calls.length - i); k++) rr.push(null); }
+  }
+  for (let i = 0; i < lista.length; i++) {
+    const m = lista[i]; const r = rr[i];
+    if (!r || !r.success) continue;
+    let raw = 0n; try { raw = ercI.decodeFunctionResult('balanceOf', r.returnData)[0]; } catch (_) { continue; }
+    if (!raw || raw === 0n) continue;
+    let dec = m.dec; if (dec == null || isNaN(dec)) dec = 18;
+    const bal = Number(ethers.formatUnits(raw, dec));
+    if (bal > 0) tokens.push({ address: m.a.toLowerCase(), symbol: m.sym || '?', name: '', decimals: dec, balance: bal, balanceRaw: '0x' + raw.toString(16), usd: 0, precio: 0, logo: null });
   }
   if (onProgreso) onProgreso(0.75);
 

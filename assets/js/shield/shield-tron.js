@@ -135,41 +135,48 @@ export async function tronResumenActivos(wallet) {
    Devuelve el MISMO formato que tokensDe de BSC. SOLO LECTURA. */
 export async function tronWatcherTokens(addr) {
   const out = { nativo: 0, nativoUSD: 0, tokens: [], totalUSD: 0 };
-  const vistos = {};
-  function addTok(id, sym, nombre, dec, bal, usd, precio, logo) {
-    if (id === '_' || String(sym).toLowerCase() === 'trx') { if (!out.nativo) { out.nativo = bal; out.nativoUSD = usd; } return; }
-    const key = String(id || '').toLowerCase();
-    if (!key || vistos[key]) return; vistos[key] = 1;
-    out.tokens.push({ address: key, symbol: sym, name: nombre, decimals: dec, balance: bal, balanceRaw: '', usd: usd, precio: precio, logo: logo, red: 'tron' });
-  }
-  // BASE (fiable, ya funcionaba): token_asset_overview = tokens con valor + TRX nativo.
+  // 1) Metadata y precios de los tokens CON VALOR (TronScan, por proxy, best-effort).
+  const meta = {}; let trxUsd = 0;
   try {
     const d = await tronApi('account/token_asset_overview', { address: addr });
     const data = (d && Array.isArray(d.data)) ? d.data : [];
-    try { window._tronDiag = { via: _tronVia, base: data.length, totalUsd: (d && d.totalAssetInUsd), ejemplo: data[0] || null }; } catch (_) {}
     for (const it of data) {
-      const dec = Number(pick(it, ['tokenDecimal', 'decimals']) != null ? pick(it, ['tokenDecimal', 'decimals']) : 6);
-      const bal = Number(pick(it, ['balance']) || 0) / Math.pow(10, dec);
-      addTok(pick(it, ['tokenId', 'tokenAddress']) || '', pick(it, ['tokenAbbr']) || pick(it, ['tokenName']) || '?', pick(it, ['tokenName']) || '', dec, bal, Number(pick(it, ['assetInUsd']) || 0), Number(pick(it, ['tokenPriceInUsd']) || 0), pick(it, ['tokenLogo']) || null);
+      const id = String(pick(it, ['tokenId', 'tokenAddress']) || '').toLowerCase();
+      const dec = Number(pick(it, ['tokenDecimal']) != null ? pick(it, ['tokenDecimal']) : 6);
+      const info = { sym: String(pick(it, ['tokenAbbr']) || pick(it, ['tokenName']) || '?'), dec: dec, nombre: String(pick(it, ['tokenName']) || ''), usd: Number(pick(it, ['assetInUsd']) || 0), precio: Number(pick(it, ['tokenPriceInUsd']) || 0), logo: pick(it, ['tokenLogo']) || null, bal: Number(pick(it, ['balance']) || 0) / Math.pow(10, dec) };
+      if (id === '_' || info.sym.toLowerCase() === 'trx') { trxUsd = info.usd; }
+      else { meta[id] = info; }
     }
-  } catch (e) { try { window._tronDiag = { via: _tronVia, error: String((e && e.message) || e) }; } catch (_) {} }
-  // SUPLEMENTO (todos, incl. basura): account/tokens. Defensivo: si falla, NO toca la base.
+    out.totalUSD = Number(d && d.totalAssetInUsd) || 0;
+  } catch (_) {}
+  // 2) Lista COMPLETA de tokens con TronGrid (CORS nativo, fiable). {contrato: balance crudo}.
+  let tronGridOK = false;
   try {
-    const d2 = await tronApi('account/tokens', { address: addr, start: 0, limit: 200, hidden: 1 });
-    const arr = (d2 && Array.isArray(d2.data)) ? d2.data : [];
-    try { window._tronDiag2 = { n: arr.length, ejemplo: arr[0] || null }; } catch (_) {}
-    for (const it of arr) {
-      const dec = Number(pick(it, ['tokenDecimal', 'decimals']) != null ? pick(it, ['tokenDecimal', 'decimals']) : 6);
-      let bal = 0;
-      if (it.quantity != null && it.quantity !== '') bal = Number(it.quantity);
-      else if (it.balance != null) bal = Number(it.balance) / Math.pow(10, dec);
-      const precio = Number(pick(it, ['tokenPriceInUsd']) || 0);
-      addTok(pick(it, ['tokenId', 'tokenAddress']) || '', pick(it, ['tokenAbbr']) || pick(it, ['tokenName']) || '?', pick(it, ['tokenName']) || '', dec, bal, bal * precio, precio, pick(it, ['tokenLogo']) || null);
+    const r = await _fetchJson('https://api.trongrid.io/v1/accounts/' + addr);
+    const acc = (r && r.data && r.data[0]) ? r.data[0] : null;
+    if (acc) {
+      tronGridOK = true;
+      out.nativo = Number(acc.balance || 0) / 1e6;
+      out.nativoUSD = trxUsd;
+      const trc20 = Array.isArray(acc.trc20) ? acc.trc20 : [];
+      for (const obj of trc20) {
+        const c = Object.keys(obj)[0]; if (!c) continue;
+        const key = c.toLowerCase();
+        const mm = meta[key];
+        const dec = mm ? mm.dec : 6;
+        const bal = Number(obj[c] || 0) / Math.pow(10, dec);
+        out.tokens.push({ address: key, symbol: mm ? mm.sym : (c.slice(0, 5) + '\u2026' + c.slice(-4)), name: mm ? mm.nombre : '', decimals: dec, balance: bal, balanceRaw: '', usd: mm ? mm.usd : 0, precio: mm ? mm.precio : 0, logo: mm ? mm.logo : null, red: 'tron' });
+      }
     }
   } catch (_) {}
-  out.totalUSD = out.nativoUSD;
-  for (const t of out.tokens) out.totalUSD += (t.usd || 0);
+  // 3) Si TronGrid falla, al menos los tokens con valor de TronScan (no quedarse en 0).
+  if (!tronGridOK) {
+    out.nativoUSD = trxUsd;
+    for (const key in meta) { const mm = meta[key]; out.tokens.push({ address: key, symbol: mm.sym, name: mm.nombre, decimals: mm.dec, balance: mm.bal, balanceRaw: '', usd: mm.usd, precio: mm.precio, logo: mm.logo, red: 'tron' }); }
+  }
+  if (!out.totalUSD) { out.totalUSD = out.nativoUSD; for (const tk of out.tokens) out.totalUSD += (tk.usd || 0); }
   out.tokens.sort(function (a, b) { return (b.usd - a.usd) || (b.balance - a.balance); });
+  try { window._tronDiag = { tronGrid: tronGridOK, nTokens: out.tokens.length, nativo: out.nativo }; } catch (_) {}
   return out;
 }
 
