@@ -163,7 +163,9 @@ async function cEscribe() { return new ethers.Contract(GRIDBOT, ABI, await firma
    y no se gasta gas en un intento fallido. */
 async function gasMargen(contrato, metodo, args = [], overrides = {}) {
   const est = await contrato[metodo].estimateGas(...args, overrides);
-  return contrato[metodo](...args, { ...overrides, gasLimit: est * 135n / 100n });
+  let gasLimit = est * 135n / 100n;
+  if (await _esSmartAccount(contrato.runner)) { const boost = est * 2n + 300000n; if (boost > gasLimit) gasLimit = boost; }
+  return contrato[metodo](...args, { ...overrides, gasLimit });
 }
 
 /* Gas seguro para un approve de token. Un approve normal gasta ~46k, pero si la wallet
@@ -176,12 +178,16 @@ async function gasAprobar(t, spender, monto) {
   let gasLimit;
   try { const est = await t.approve.estimateGas(spender, monto); gasLimit = est * 160n / 100n; }
   catch (_) { gasLimit = 120000n; }
-  try {
-    const addr = await t.runner.getAddress();
-    const code = await lector().getCode(addr);
-    if (code && code !== '0x' && gasLimit < 600000n) gasLimit = 600000n;
-  } catch (_) {}
+  if ((await _esSmartAccount(t.runner)) && gasLimit < 600000n) gasLimit = 600000n;
   return t.approve(spender, monto, { gasLimit });
+}
+
+/* ¿La wallet (EOA) tiene código desplegado? Señal de smart account (EIP-7702 / MetaMask
+   Smart Account): MetaMask enruta la transacción por el Delegation Manager, que gasta
+   bastante más que una tx normal, y por eso la estimación justa se quedaba sin gas. */
+async function _esSmartAccount(runner) {
+  try { const addr = await runner.getAddress(); const code = await lector().getCode(addr); return !!(code && code !== '0x'); }
+  catch (_) { return false; }
 }
 /** Espera el recibo con nuestro RPC fiable; el de MetaMask a veces no lo devuelve. */
 async function esperar(tx) {
@@ -357,7 +363,7 @@ export async function envolverBNB(montoWei) {
 export async function desenvolverBNB(montoWei) {
   const abi = ['function withdraw(uint256) external'];
   const c = new ethers.Contract(WBNB, abi, await firmante());
-  const tx = await c.withdraw(montoWei);
+  const tx = await gasMargen(c, 'withdraw', [montoWei]);
   return esperar(tx);
 }
 
