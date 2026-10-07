@@ -5,7 +5,7 @@
    · cache-first: sirve del caché al instante (rápido). Una versión nueva (?v=
      distinto) se descarga una vez. Al activarse, borra el caché viejo.
    · HTML (navegaciones): NO se tocan, para que la wallet inyecte window.ethereum. */
-const VERSION = 'aurex-v449';
+const VERSION = 'aurex-v450';
 const CACHE = 'cc-' + VERSION;
 
 self.addEventListener('install', () => self.skipWaiting());

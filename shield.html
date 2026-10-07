@@ -90,7 +90,7 @@
   (async () => {
     try { await wallet.reconectarSiProcede(); } catch (_) {}
     try {
-      const m = await import('./assets/js/shield/shield.js?v=180');
+      const m = await import('./assets/js/shield/shield.js?v=181');
       if (m.abrirShield) m.abrirShield();
     } catch (e) {
       console.warn('shield:', e);
