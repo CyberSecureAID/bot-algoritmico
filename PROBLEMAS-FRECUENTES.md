@@ -51,6 +51,13 @@ investigar de cero.
 - **Solución:** mostrar solo los bots con `activa == true` (se lee del storage).
 - **Archivos:** `assets/js/gridbot.js`.
 
+### No se puede cerrar un bot en wallet smart account: "out of gas" / "es probable que esta transacción falle"
+- **Características exactas (para reconocerlo):** al cerrar un Cash Out hay que firmar 2-3 transacciones; falla el paso "Closing the bot… confirm in your wallet" (la tx `cancelarRejillaK`). MetaMask avisa "Es probable que esta transacción falle". El trace de BSCScan muestra la tx yendo a `0xdb9B…7dB3` (MetaMask: Delegation Manager), estado **Fail**, error **"out of gas" / "sin gas"**. La wallet tiene BNB de sobra (gas depositado para ~190 operaciones): **NO es falta de saldo**.
+- **Causa raíz:** la wallet es una **smart account de MetaMask (EIP-7702)**. MetaMask no envía la tx directa al contrato: la **envuelve y la enruta por su Delegation Manager**, que gasta bastante más gas que una tx normal. `gasMargen` daba solo **35% de margen** sobre la estimación de la tx normal (sin envolver), y los 4 `approve` usaban un `gasLimit` **fijo de 120.000**. Eso alcanza para una EOA normal, pero se queda corto para la tx envuelta de una smart account → out of gas.
+- **La variable que despista:** "out of gas" hace pensar en falta de saldo o de gas depositado, pero eso está bien. El problema es el `gasLimit` de la propia tx, demasiado bajo para el envoltorio. **Síntoma que lo delata:** la tx va al Delegation Manager (`0xdb9B…`), no directa al contrato GridBot.
+- **Solución exacta:** helper `_esSmartAccount(runner)` que mira si la EOA tiene código desplegado (`getCode` ≠ `'0x'`). Si es smart account: (1) `gasMargen` sube el gasLimit a `estimación × 2 + 300000`; (2) los 4 `approve` pasan por `gasAprobar` (mínimo 600.000); (3) `desenvolverBNB`, que hacía `withdraw` sin margen, ahora pasa por `gasMargen`. Las EOA normales (sin código) no cambian: siguen con la estimación ajustada de siempre.
+- **Archivos:** `assets/js/gridbot.js` (v202), `assets/js/gridbot-ui.js` (v268), `app.html`, `sw3.js` (v449).
+
 ---
 
 ## MÓDULO: SWAP
@@ -193,17 +200,22 @@ investigar de cero.
 
 ## PENDIENTES (anotados, aún sin resolver)
 
-- **Wallet Shield: saldo total — resuelto pero INCOMPLETO.** Ya suma los tokens grandes
-  (USDT, BUSD, USDC, CAKE, ETH, BTCB, DAI), pero no los poco comunes ni el token propio de
-  CriptoCuba. Ver "Solución completa pendiente" en el módulo WALLET SHIELD.
-- **Wallet Shield: integración con TronScan** en los servicios que lo permitan (Permissions
-  Scan y los que investiguen hashes o wallets), para soportar redes BSC y Tron. Emergency
-  Evacuation NO aplica (mueve fondos reales en BSC a una dirección de respaldo).
-- **Wallet Shield: Permissions Scan no debe auto-escanear.** Al entrar debe salir ya la
-  wallet conectada por defecto MÁS la opción de escanear otra wallet; se escanea la que el
-  usuario elija al dar Scan. (La lógica del selector ya existe en la ventana de diagnóstico.)
-- **Dust Collector no abre** al pulsarlo (parpadea pero no sale). Archivo: `tools.js`.
-- **Futuros:** falta terminar (móvil, desconectar timer de cierre del Sprint, indicadores).
+### Bugs detectados en la presentación (octubre 2026)
+- **Bots: el botón de cerrar dice "Pause", debe decir "Close".** No está en `gridbot-ui.js`; localizar dónde se renderiza ese label (otro módulo o label dinámico).
+- **Wallet Shield: barra de scroll vertical amarilla no deseada** al entrar a la portada. Hay que quitarla; afea la experiencia.
+- **Analysis: como owner salta la ventana de cobro** en vez de ir a Choose Your Tools. Tocando cualquier plan, el owner debe pasar directo.
+- **Analysis (web, escritorio): al entrar a una herramienta (p.ej. Open Liquidity Pools) bota al lobby y luego carga**; y al cerrar con la X bota al lobby en vez de volver a Choose Your Tools (donde están Liquidity Pool, Gear Pool y Smart Levels).
+- **Analysis: dice "Hire Pool", debe decir "Gear Pool".**
+- **P2P / Marketplace: dice "wallet no conectada"** cuando la wallet sí está conectada.
+
+### De antes
+- **Wallet Shield: saldo total — resuelto pero INCOMPLETO.** Suma los tokens grandes (USDT, BUSD, USDC, CAKE, ETH, BTCB, DAI), pero no los poco comunes ni el token propio de CriptoCuba. Ver módulo WALLET SHIELD.
+- **Wallet Shield: crear las 3 imágenes** de la portada desplegable: `card-permissions.webp`, `card-poison.webp`, `card-watcher.webp` en `assets/portada/img/` (proporción 16:10). Mientras no existan, cada tarjeta muestra su icono dorado de respaldo.
+- **Wallet Shield: Contract Check en Tron — NO se hará** (decisión tomada): necesita `triggerconstantcontract` y no existe el concepto de "nuestros contratos" en Tron.
+- **Futuros:** falta terminar (móvil, desconectar el timer de cierre del Sprint, indicadores pro). Además, el upgrade de futuros cumple sus 48h.
+- **Idioma:** ~48 textos de `config.js` faltan en inglés.
 - **Mensajes verdes de los iconos de info de los bots:** pasar a la paleta del sitio.
-- **Segundo upgrade del contrato:** Cash Out trailing, Accumulator "vender todo y
-  re-montarse", conectar a Contabilidad, auto-cierre real.
+- **Segundo upgrade del contrato:** Cash Out trailing, Accumulator "vender todo y re-montarse", conectar a Contabilidad, auto-cierre real.
+
+### Trayectoria (cuando se termine lo pendiente)
+- **Sistema de creación de tokens/criptomonedas** (estilo AMW8): que la gente cree sus propias monedas, con una comisión por venta que va a la plataforma cada vez que se vendan.
