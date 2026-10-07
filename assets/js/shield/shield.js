@@ -28,8 +28,8 @@ function inyectarCSS() {
   #shd #shd-fx{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%;will-change:transform}
   #shd *{box-sizing:border-box}
   /* Ocultar la barra de scroll dorada SOLO en Wallet Shield (sigue el scroll, sin barra visible). Más específico que el *::-webkit-scrollbar global de styles.css. */
-  #shd, #shd .shd-in{scrollbar-width:none;-ms-overflow-style:none}
-  #shd::-webkit-scrollbar, #shd .shd-in::-webkit-scrollbar{display:none;width:0;height:0}
+  #shd, #shd *{scrollbar-width:none !important;-ms-overflow-style:none !important}
+  #shd::-webkit-scrollbar, #shd *::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important;background:transparent !important}
   /* Barra superior tipo sección interna (back a la izquierda) */
   #shd .shd-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:calc(12px + env(safe-area-inset-top,0px)) 18px 12px;background:rgba(5,7,9,.4);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #1c232b;position:relative;z-index:3}
   #shd .shd-bar{position:relative;overflow:hidden}
