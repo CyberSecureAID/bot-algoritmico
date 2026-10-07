@@ -524,7 +524,7 @@ function wireHeader() {
   // Liquidity Pools: se carga solo al pedirlo.
   if ($('c-liq')) $('c-liq').onclick = async () => {
     try {
-      const lq = await import('./liquidity.js?v=127');
+      const lq = await import('./liquidity.js?v=128');
       lq.abrirLiquidity();
     } catch (e) { console.warn('[Aurex] liquidity:', e); }
   };

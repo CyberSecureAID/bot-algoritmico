@@ -534,11 +534,14 @@ async function traerVelas(simbolo, tf, n = 300) {
 /* Wallet del OWNER (en minúsculas). Mientras esté vacío, seguimos en modo
    desarrollo (todos entran, como hasta ahora). Cuando pongas tu dirección aquí,
    solo TÚ entras directo a las herramientas; los demás verán los planes. */
-const OWNER = '';
+const OWNER = '0x97e01a1c430e0cc826aca6e9be643721e45bca7d';
 
 async function tieneAccesoPro() {
   const cuenta = ((wallet.cuentaActual && wallet.cuentaActual()) || '').toLowerCase();
-  if (OWNER && cuenta === OWNER.toLowerCase()) return { ok: true, owner: true };
+  // El owner ya pasó por la pantalla de planes en esta sesión: entra a las herramientas.
+  if (window.__proOk) return { ok: true, owner: true };
+  // El owner NO se salta el cobro: ve los planes como todos, pero no se le cobra.
+  if (OWNER && cuenta === OWNER.toLowerCase()) return { ok: false, owner: true };
   // Sin OWNER definido: modo desarrollo (comportamiento actual).
   if (!OWNER && !PRO) return { ok: true, prueba: true };
   // OWNER definido pero aún sin contrato: los que no son owner ven los planes.
@@ -574,7 +577,7 @@ const SERVICIOS = [
   },
   {
     id: 'libro',
-    nombre: 'Heat Pools',
+    nombre: 'Gear Pool',
     lema: 'Vea lo que hacen los grandes',
     desc: 'El libro de órdenes miente: la mayoría de las órdenes grandes son falsas. Vigilamos cada una y le decimos cuáles tienen dinero real detrás.',
     img: 'assets/img/serv-libro.webp',
@@ -2035,8 +2038,14 @@ async function pagar(plan, moneda) {
   const caja = $('lqp-pago'); if (!caja) return;
   const decir = (t) => { caja.innerHTML = `<b>Pago</b>${t}`; };
 
-  if (!PRO) {
-    decir('El cobro todavía no está activo. Estás en fase de pruebas: puedes usar las herramientas libremente.');
+  const cuentaP = ((wallet.cuentaActual && wallet.cuentaActual()) || '').toLowerCase();
+  const esOwnerP = OWNER && cuentaP === OWNER.toLowerCase();
+  // El owner no paga; y mientras el cobro no esté activo se entra libremente. En ambos
+  // casos ya se pasó por la pantalla de planes, así que se concede el acceso.
+  if (esOwnerP || !PRO) {
+    decir(esOwnerP ? '¡Listo! Acceso de owner, sin cobro.' : 'El cobro todavía no está activo. Estás en fase de pruebas: puedes usar las herramientas libremente.');
+    window.__proOk = true;
+    setTimeout(() => portada(), 1200);
     return;
   }
   try {
