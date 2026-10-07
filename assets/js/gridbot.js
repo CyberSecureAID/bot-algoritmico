@@ -165,6 +165,24 @@ async function gasMargen(contrato, metodo, args = [], overrides = {}) {
   const est = await contrato[metodo].estimateGas(...args, overrides);
   return contrato[metodo](...args, { ...overrides, gasLimit: est * 135n / 100n });
 }
+
+/* Gas seguro para un approve de token. Un approve normal gasta ~46k, pero si la wallet
+   es una smart account (EIP-7702) MetaMask enruta la transacción por el Delegation
+   Manager, que necesita mucho más gas; con el límite fijo bajo de antes se quedaba sin
+   gas y la revocación o aprobación fallaba. Estimamos con margen y, si la wallet tiene
+   código desplegado (smart account), garantizamos un mínimo holgado. Las wallets
+   normales (EOA sin código) no se ven afectadas. */
+async function gasAprobar(t, spender, monto) {
+  let gasLimit;
+  try { const est = await t.approve.estimateGas(spender, monto); gasLimit = est * 160n / 100n; }
+  catch (_) { gasLimit = 120000n; }
+  try {
+    const addr = await t.runner.getAddress();
+    const code = await lector().getCode(addr);
+    if (code && code !== '0x' && gasLimit < 600000n) gasLimit = 600000n;
+  } catch (_) {}
+  return t.approve(spender, monto, { gasLimit });
+}
 /** Espera el recibo con nuestro RPC fiable; el de MetaMask a veces no lo devuelve. */
 async function esperar(tx) {
   try { if (typeof window !== 'undefined' && window._onTxProcesando) window._onTxProcesando(); } catch (_) {}
@@ -573,7 +591,7 @@ export async function aprobarToken(tokenAddr, montoBI) {
   if (typeof montoBI !== 'bigint' || montoBI <= 0n) {
     throw new Error('Permiso sin cantidad: no se aprueban permisos ilimitados.');
   }
-  const tx = await t.approve(GRIDBOT, montoBI, { gasLimit: 120000n });
+  const tx = await gasAprobar(t, GRIDBOT, montoBI);
   return esperar(tx);
 }
 
@@ -581,7 +599,7 @@ export async function aprobarToken(tokenAddr, montoBI) {
 export async function revocarToken(tokenAddr) {
   const s = await firmante();
   const t = new ethers.Contract(tokenAddr, ERC20, s);
-  const tx = await t.approve(GRIDBOT, 0n, { gasLimit: 120000n });
+  const tx = await gasAprobar(t, GRIDBOT, 0n);
   return esperar(tx);
 }
 
@@ -896,13 +914,13 @@ export async function allowanceSwap(tokenAddr, duenio) {
 export async function aprobarSwap(tokenAddr, montoBI) {
   const t = new ethers.Contract(tokenAddr, ERC20, await firmante());
   const monto = (montoBI && montoBI > 0n) ? montoBI : ethers.parseUnits('200', 18);
-  const tx = await t.approve(SWAP, monto, { gasLimit: 120000n });
+  const tx = await gasAprobar(t, SWAP, monto);
   return esperar(tx);
 }
 /** Revoca el permiso del token para el SWAP (allowance a 0). */
 export async function revocarSwap(tokenAddr) {
   const t = new ethers.Contract(tokenAddr, ERC20, await firmante());
-  const tx = await t.approve(SWAP, 0n, { gasLimit: 120000n });
+  const tx = await gasAprobar(t, SWAP, 0n);
   return esperar(tx);
 }
 
