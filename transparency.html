@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transparency · Cripto Cuba Oficial</title>
+<meta name="description" content="Every contract behind Cripto Cuba Oficial, public and verified on BscScan, shown as one interconnected system. Proxy, implementation, governance and open source.">
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" type="image/png" href="assets/img/cco-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    box-sizing:border-box;
+    --gold:#E8B84B; --gold-hi:#f4d089; --gold-lo:#8f6a1a;
+    --ink:#eaecef; --ink2:#a7b0bb; --ink3:#79838f;
+    --bg:#000; --hdr:#07090c; --line:#1c232b; --line2:#29313b;
+    --disp:"Chakra Petch",system-ui,sans-serif;
+    --sans:"Plus Jakarta Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  /* Site background: mapa.webp (the same image the portada's transparency section uses),
+     heavily darkened so it feels part of the site without competing. */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(1200px 620px at 50% -8%, rgba(232,184,75,.06), transparent 60%),
+      linear-gradient(180deg, rgba(0,0,0,.86), rgba(0,0,0,.95)),
+      url('assets/portada/img/mapa.webp') center/cover no-repeat fixed;
+  }
+  a{color:var(--gold);text-decoration:none}
+  /* Particles: fixed, above content, non-blocking. Same z-index as the site. */
+  #pt-chispas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;display:block}
+
+  /* Top bar: Back (left), Full Transparency (center), network (right) */
+  .hdr{position:sticky;top:0;z-index:100;display:flex;align-items:center;height:58px;
+    background:var(--hdr);border-bottom:1px solid #1a2029;overflow:hidden}
+  .hdr::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:url('assets/portada/img/header.webp') center/cover no-repeat;opacity:.85}
+  .hdr-in{position:relative;z-index:2;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+    gap:12px;width:100%;max-width:1200px;margin:0 auto;padding:0 18px}
+  .back{justify-self:start;display:inline-flex;align-items:center;gap:7px;font-family:var(--disp);font-weight:600;
+    font-size:13px;color:var(--ink);border:1px solid var(--line2);border-radius:9px;padding:7px 14px;
+    background:rgba(0,0,0,.28);text-shadow:0 1px 4px rgba(0,0,0,.9);transition:border-color .15s,color .15s;white-space:nowrap}
+  .back:hover{border-color:var(--gold-lo);color:var(--gold)}
+  .title{justify-self:center;font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.4px;
+    color:var(--ink);text-shadow:0 1px 5px rgba(0,0,0,.9);white-space:nowrap}
+  .title b{color:var(--gold)}
+  .chain{justify-self:end;font-family:var(--mono);font-size:11.5px;letter-spacing:.03em;color:var(--ink2);
+    text-shadow:0 1px 4px rgba(0,0,0,.9);white-space:nowrap}
+
+  /* First screen: Our Contracts (left) + Contract Network (right) */
+  .hero{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:22px 18px 10px;
+    display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:start;min-height:calc(100dvh - 58px)}
+  .h2{font-family:var(--disp);font-size:13px;text-transform:uppercase;letter-spacing:.11em;
+    color:var(--gold);font-weight:700;margin:0 0 14px;text-align:center}
+
+  .lista{display:flex;flex-direction:column;gap:9px;max-height:calc(100dvh - 58px - 86px);overflow:auto;padding-right:7px}
+  .lista::-webkit-scrollbar{width:7px}
+  .lista::-webkit-scrollbar-track{background:transparent}
+  .lista::-webkit-scrollbar-thumb{background:rgba(232,184,75,.28);border-radius:9px}
+  .c{background:rgba(16,22,32,.74);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .c-h{display:flex;align-items:center;gap:9px}
+  .c-dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .c-n{font-family:var(--disp);font-weight:700;font-size:14.5px;color:var(--ink)}
+  .ab{margin-top:9px}
+  .ab-t{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:3px}
+  .tag{font-size:11px;color:var(--ink3);font-weight:600;letter-spacing:.02em}
+  .ab-b{display:flex;gap:6px;flex:none}
+  .addr{font-family:var(--mono);font-size:11px;color:var(--ink2);word-break:break-all;line-height:1.45}
+  .btn{font-family:var(--sans);font-size:10.5px;font-weight:600;border:1px solid var(--line2);
+    background:rgba(232,184,75,.06);color:var(--gold);border-radius:7px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+  .btn:hover{background:rgba(232,184,75,.15)}
+
+  .netcol{display:flex;flex-direction:column}
+  .cvwrap{display:flex;flex-direction:column;align-items:center}
+  #net{display:block;width:100%;max-width:620px;height:auto;touch-action:none;cursor:default}
+  .cap{font-size:12px;color:var(--ink3);text-align:center;margin-top:8px}
+  .leg{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:10px}
+  .leg span{font-size:11px;color:var(--ink2);display:inline-flex;align-items:center;gap:5px}
+  .leg i{width:9px;height:9px;border-radius:50%}
+
+  /* Below the first screen (on scroll) */
+  .below{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:10px 18px 72px}
+  .lead{text-align:center;max-width:760px;margin:0 auto 34px;font-size:15px;color:var(--ink2)}
+  .bloques{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .blq{background:rgba(16,22,32,.74);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .blq h3{font-family:var(--disp);font-size:14.5px;margin:0 0 9px;color:var(--gold)}
+  .blq p{font-size:12.5px;color:var(--ink2);margin:0}
+  .blq a{color:var(--gold);word-break:break-word}
+  .disc{margin-top:18px;border:1px solid rgba(232,184,75,.3);background:rgba(232,184,75,.05);
+    border-radius:12px;padding:14px 18px;font-size:12.5px;color:var(--ink2)}
+  .disc b{color:var(--gold)}
+
+  /* Responsive */
+  @media(max-width:900px){
+    .hero{grid-template-columns:1fr;gap:36px;min-height:0;padding-bottom:26px}
+    .lista{max-height:none}
+    .bloques{grid-template-columns:1fr}
+    .title{font-size:16px}
+  }
+  @media(max-width:560px){
+    .hdr-in{padding:0 12px;gap:8px}
+    .back{padding:6px 10px;font-size:12px}
+    .title{font-size:14px}
+    .chain{font-size:10px}
+    .hero{padding:18px 14px 20px}
+    .below{padding:10px 14px 56px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-in">
+    <a class="back" href="index.html">&larr; Back to site</a>
+    <div class="title">Full <b>Transparency</b></div>
+    <span class="chain">BNB Smart Chain · 56</span>
+  </div>
+</header>
+
+<canvas id="pt-chispas" data-n="130" aria-hidden="true"></canvas>
+
+<section class="hero">
+  <div>
+    <div class="h2">Our Contracts</div>
+    <div class="lista" id="lista"></div>
+  </div>
+  <div class="netcol">
+    <div class="h2">Contract Network</div>
+    <div class="cvwrap">
+      <canvas id="net"></canvas>
+      <div class="cap">Tap a node to open its verified contract on BscScan. Drag it to pull it out.</div>
+      <div class="leg">
+        <span><i style="background:#9B93F0"></i>Core</span><span><i style="background:#EF9F27"></i>Oracle</span><span><i style="background:#22B184"></i>Trading</span><span><i style="background:#4D97E8"></i>P2P</span><span><i style="background:#7FB52E"></i>Shield</span><span><i style="background:#E86A3C"></i>Futures</span><span><i style="background:#DE6A92"></i>Staking</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="below">
+  <p class="lead">Every contract behind this platform is public and verified on BNB Smart Chain. This is not a loose list; it is an interconnected system where each contract depends on the others. On the left you can verify every address. On the right, the live map of how they connect: hover a node to focus it, drag it to pull it out, or tap any node to open its verified contract on BscScan.</p>
+
+  <div class="bloques">
+    <div class="blq">
+      <h3>Governance &amp; upgrades</h3>
+      <p>Every contract is a UUPS proxy (ERC-1967). Ownership and permissions are centralized in the Tarifas contract, which holds the fee registry and the owner set: a principal owner plus a limited number of directors. Logic upgrades run through an on-chain timelock of 48 hours. A new implementation is published on chain and can only take effect after those 48 hours, so the exact code is public and auditable before it runs. On every upgrade the storage layout is checked slot by slot, so no upgrade can silently corrupt existing state. No contract can move assets out of your wallet without your signature, and the platform never takes custody of user funds.</p>
+    </div>
+    <div class="blq">
+      <h3>Open source &amp; verifiable</h3>
+      <p>The full source is public at <a href="https://github.com/CyberSecureAID/bot-algoritmico" target="_blank" rel="noopener">github.com/CyberSecureAID/bot-algoritmico</a>, and for every contract here both the proxy and the implementation are verified on BscScan. The web app ships as native ES modules served directly from the repository, with no build, bundling or minification step, so the JavaScript running in your browser is the public source itself. Any reviewer can fetch a file the site serves, diff it against the repository, and confirm they match. There is no compiled or obfuscated layer in between.</p>
+    </div>
+    <div class="blq">
+      <h3>What you actually sign</h3>
+      <p>Connecting a wallet is read only: it reveals your address and balances and grants no spending allowance. Every action is a standard, auditable transaction: an ERC-20 approval scoped to a single router or contract, a swap, or a service fee payment, sent only to the verified contracts on this page. You are never asked for a seed phrase or a private key; the site has no field to enter one and no contract can request it. The site loads no advertising or analytics scripts and makes no third-party calls beyond the public RPC and price oracles it needs to run.</p>
+    </div>
+  </div>
+
+  <div class="disc"><b>Risk notice.</b> Returns are not guaranteed. Trading crypto assets carries risk of loss, and you can lose part or all of what you put in. Only trade with funds you can afford to lose. This platform does not take custody of your funds: you alone hold your wallet and your keys.</div>
+</section>
+
+<script src="assets/js/contracts-data.js?v=2"></script>
+<script>
+(function(){
+  var D=window.CONTRATOS||[];
+  var COL={core:"#9B93F0",oracle:"#EF9F27",trade:"#22B184",p2p:"#4D97E8",shield:"#7FB52E",fut:"#E86A3C",stake:"#DE6A92"};
+  var bs=function(a){return "https://bscscan.com/address/"+a+"#code";};
+
+  /* ---- table (left): name + the two addresses, clean and compact (no paragraph) ---- */
+  function addrBlock(tag,addr){
+    return '<div class="ab"><div class="ab-t"><span class="tag">'+tag+'</span><span class="ab-b">'
+      +'<button class="btn" data-cp="'+addr+'">Copy</button>'
+      +'<a class="btn" href="'+bs(addr)+'" target="_blank" rel="noopener">BscScan</a></span></div>'
+      +'<div class="addr">'+addr+'</div></div>';
+  }
+  var L=document.getElementById("lista"),html="";
+  D.forEach(function(c){
+    html+='<div class="c"><div class="c-h"><span class="c-dot" style="background:'+COL[c.cat]+'"></span><span class="c-n">'+c.nombre+'</span></div>';
+    html+=addrBlock('Proxy',c.proxy);
+    if(c.impl)html+=addrBlock('Implementation',c.impl);
+    html+='</div>';
+  });
+  L.innerHTML=html;
+  L.addEventListener("click",function(e){var b=e.target.closest("[data-cp]");if(!b)return;try{navigator.clipboard.writeText(b.getAttribute("data-cp"));var t=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=t;},1200);}catch(_){}});
+
+  /* ---- network map (right) ----
+     Logical space 700x700. Displayed as a responsive SQUARE (width:100%; height:auto),
+     so it scales without distortion or clipping. Labels sized to fit inside. */
+  var cv=document.getElementById("net"),ctx=cv.getContext("2d");
+  var W=700,H=700,dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=W*dpr;cv.height=H*dpr;ctx.scale(dpr,dpr);
+  var cx=W/2,cy=H/2;
+  var RNODE=24,RHUB=44,M=30; /* M: margin so a dragged node never leaves the canvas */
+  var ring=D.filter(function(c){return !c.hub;}),RD=190;
+  var byId={},arr=[],imgs={};
+  /* Correct path: logos live in assets/portada/red/ (verified present in the repo). */
+  D.forEach(function(c){imgs[c.logo]=new Image();imgs[c.logo].src="assets/portada/red/"+c.logo+".webp";});
+  var brain=new Image();brain.src="assets/portada/red/cerebro.webp";
+  var k=0;
+  D.forEach(function(c){var n={id:c.id,cat:c.cat,hub:!!c.hub,logo:c.logo,url:bs(c.proxy),hs:1,free:false,x:cx,y:cy,holdUntil:0};
+    if(n.hub){n.tx=cx;n.ty=cy;n.ang=0;}else{var i=k++;var a=-Math.PI/2+i*(2*Math.PI/ring.length);n.ang=a;n.tx=cx+RD*Math.cos(a);n.ty=cy+RD*Math.sin(a);n.delay=i*0.03;}
+    byId[c.id]=n;arr.push(n);});
+  var E=[];D.forEach(function(c){(c.conecta||[]).forEach(function(t){if(byId[t])E.push([c.id,t]);});});
+  var mp={x:-999,y:-999},over=false,drag=null,offx=0,offy=0,moved=false,t0=performance.now();
+  function toC(ev){var r=cv.getBoundingClientRect();var e=ev.touches?ev.touches[0]:ev;return{x:(e.clientX-r.left)*(W/r.width),y:(e.clientY-r.top)*(H/r.height)};}
+  function clampX(v){return Math.max(M,Math.min(W-M,v));}
+  function clampY(v){return Math.max(M,Math.min(H-M,v));}
+  function pick(p){var best=1e9,hit=null;arr.forEach(function(n){var rr=(n.hub?RHUB:RNODE)*n.hs+6;var d=Math.hypot(n.x-p.x,n.y-p.y);if(d<rr&&d<best){best=d;hit=n;}});return hit;}
+  cv.addEventListener("mousemove",function(ev){mp=toC(ev);over=true;if(drag&&!drag.hub){drag.x=clampX(mp.x+offx);drag.y=clampY(mp.y+offy);moved=true;}});
+  cv.addEventListener("mouseleave",function(){over=false;});
+  function down(ev){var p=toC(ev);var n=pick(p);if(n){moved=false;if(!n.hub){drag=n;n.free=true;offx=n.x-p.x;offy=n.y-p.y;cv.style.cursor="grabbing";}else{drag=n;offx=0;offy=0;}}}
+  function up(){if(drag){if(!moved&&drag.url)window.open(drag.url,"_blank","noopener");if(!drag.hub)drag.holdUntil=performance.now()+2800;drag=null;cv.style.cursor="default";}}
+  cv.addEventListener("mousedown",down);window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",function(e){down(e);},{passive:true});
+  cv.addEventListener("touchmove",function(e){mp=toC(e);if(drag&&!drag.hub){drag.x=clampX(mp.x+offx);drag.y=clampY(mp.y+offy);moved=true;}},{passive:true});
+  cv.addEventListener("touchend",up);
+  function ease(x){return 1-Math.pow(1-Math.max(0,Math.min(1,x)),3);}
+  function logo(n,r){var im=imgs[n.logo];if(im&&im.complete&&im.naturalWidth){ctx.drawImage(im,n.x-r,n.y-r,r*2,r*2);}else{ctx.beginPath();ctx.arc(n.x,n.y,r,0,7);ctx.fillStyle="rgba(232,184,75,.15)";ctx.fill();}}
+  function draw(now){
+    var T=(now-t0)/1000;
+    arr.forEach(function(n){var bp=n.hub?1:ease((T-n.delay)/1.1);var hx=cx+(n.tx-cx)*bp,hy=cy+(n.ty-cy)*bp;
+      if(drag===n){}else if(n.free){if(now<n.holdUntil){}else{n.x+=(hx-n.x)*0.08;n.y+=(hy-n.y)*0.08;if(Math.hypot(hx-n.x,hy-n.y)<1.5)n.free=false;}}else{n.x=hx;n.y=hy;}
+      n.op=n.hub?Math.min(1,T/0.5):bp;});
+    var act=drag&&!drag.hub?drag:(over?pick(mp):null);if(!drag)cv.style.cursor=act?"pointer":"default";
+    arr.forEach(function(n){var isA=act&&act.id===n.id;n.hs+=((isA?1.4:1)-n.hs)*0.22;});
+    ctx.clearRect(0,0,W,H);var ga=Math.min(1,T/0.5);
+    /* 1) brain image at the BACK, with a gentle floating motion */
+    if(brain.complete&&brain.naturalWidth){
+      var fx=Math.sin(now/1700)*5, fy=Math.sin(now/1250+1.3)*8, fsc=1+Math.sin(now/2100)*0.02;
+      var bsz=RD*1.6*fsc;ctx.globalAlpha=0.92*ga;ctx.drawImage(brain,cx+fx-bsz/2,cy+fy-bsz/2,bsz,bsz);
+    }
+    /* 2) dotted connection lines in the MIDDLE (above the brain, below the logos) */
+    var ph=now/26;
+    E.forEach(function(e){var a=byId[e[0]],b=byId[e[1]];var op=Math.min(a.op,b.op);if(op<0.02)return;var hot=act&&(e[0]===act.id||e[1]===act.id);
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=COL[a.cat];ctx.globalAlpha=(act?(hot?0.98:0.1):0.52)*op;ctx.lineWidth=hot?2.8:1.4;ctx.setLineDash([3,8]);ctx.lineDashOffset=-ph;ctx.stroke();});
+    ctx.setLineDash([]);ctx.globalAlpha=1;
+    /* 3) ring logos + labels ON TOP of every line */
+    arr.forEach(function(n){if(n.hub)return;var isA=act&&act.id===n.id;var r=RNODE*n.hs;ctx.globalAlpha=n.op;logo(n,r);
+      if(isA){ctx.beginPath();ctx.arc(n.x,n.y,r+2,0,7);ctx.lineWidth=2;ctx.strokeStyle="#E8B84B";ctx.stroke();}
+      ctx.save();ctx.globalAlpha=n.op;ctx.fillStyle="#E8B84B";ctx.font="600 14px 'Plus Jakarta Sans',system-ui,sans-serif";ctx.shadowColor="rgba(0,0,0,.78)";ctx.shadowBlur=4;ctx.shadowOffsetY=1;var la=n.ang;ctx.textAlign=Math.cos(la)>0.35?"left":(Math.cos(la)<-0.35?"right":"center");ctx.textBaseline="middle";ctx.fillText(byIdName(n.id),n.x+Math.cos(la)*(r+10),n.y+Math.sin(la)*(r+16));ctx.restore();});
+    /* 4) the hub (Tarifas) logo + label, also on top */
+    var hub=byId.tarifas;if(hub){ctx.globalAlpha=hub.op;logo(hub,RHUB*hub.hs);
+      if(act&&act.id==="tarifas"){ctx.beginPath();ctx.arc(hub.x,hub.y,RHUB*hub.hs+2,0,7);ctx.lineWidth=2;ctx.strokeStyle="#E8B84B";ctx.stroke();}
+      ctx.save();ctx.globalAlpha=hub.op;ctx.fillStyle="#E8B84B";ctx.font="700 16px 'Plus Jakarta Sans',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,.82)";ctx.shadowBlur=5;ctx.shadowOffsetY=1;ctx.fillText("Tarifas",hub.x,hub.y+RHUB*hub.hs+5);ctx.restore();}
+    requestAnimationFrame(draw);
+  }
+  function byIdName(id){var c=D.find(function(x){return x.id===id;});return c?c.nombre:id;}
+  requestAnimationFrame(draw);
+})();
+</script>
+<script type="module">
+  /* Exactly the same particles the rest of the site uses. */
+  try{
+    const { brasas } = await import('./assets/portada/chispas.js?v=200');
+    const lienzo = document.getElementById('pt-chispas');
+    const quieto = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
+    if(!quieto && lienzo) brasas(lienzo);
+  }catch(e){ console.warn('chispas:', e); }
+</script>
+</body>
+</html>
