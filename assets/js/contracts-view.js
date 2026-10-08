@@ -41,7 +41,7 @@
    +'.cc-gold-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
    +'.cc-gold-btn svg{width:16px;height:16px;flex:none}'
    +'.cc-net{display:block;width:100%;height:auto;touch-action:none;cursor:default}'
-   +'.cc-dep-wrap{display:inline-block}'
+   +'.cc-dep-wrap{display:inline-block;justify-self:end}'
    +'.cc-dep{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 20px;cursor:pointer;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13.5px;letter-spacing:.2px;white-space:nowrap;border:1px solid #c79426;border-radius:10px;color:#241900;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(255,255,255,.28);transition:filter .16s,transform .09s,box-shadow .09s}'
    +'.cc-dep:hover{filter:brightness(1.06)}'
    +'.cc-dep:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
