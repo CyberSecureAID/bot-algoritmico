@@ -47,9 +47,9 @@
   .hero{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:20px 18px 10px;display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:start;min-height:calc(100dvh - 58px)}
   .h2{font-family:var(--disp);font-size:13px;text-transform:uppercase;letter-spacing:.11em;color:var(--gold);font-weight:700;margin:0 0 14px;text-align:center}
   .cc-scroll{max-height:calc(100dvh - 58px - 104px)}
-  .netcol{display:flex;flex-direction:column;align-items:center}
+  .netcol{display:flex;flex-direction:column;align-items:center;margin-top:40px}
   #cc-net{max-width:660px}
-  .cap{font-size:12px;color:var(--ink3);text-align:center;margin-top:4px}
+  .cap{font-size:12px;color:var(--ink3);text-align:center;margin-top:16px}
   .leg{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:9px}
   .leg span{font-size:11px;color:var(--ink2);display:inline-flex;align-items:center;gap:5px}
   .leg i{width:9px;height:9px;border-radius:50%}
@@ -67,7 +67,7 @@
 
   @media(max-width:900px){
     .hero{grid-template-columns:1fr;gap:30px;min-height:0;padding-bottom:22px}
-    .lista{max-height:none}
+    .cc-scroll{max-height:none}.netcol{margin-top:0}
     .bloques{grid-template-columns:1fr}
     .title{font-size:16px}
   }
