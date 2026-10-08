@@ -71,7 +71,8 @@
    +'.cc-dep-v{color:#d4dae1;text-align:right;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;word-break:break-all;min-width:0}'
    +'.cc-dep-v a{color:#E8B84B}'
    +'.cc-dep-view{display:block;margin-top:16px;text-align:center;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:12.5px;color:#241900;text-decoration:none;border:1px solid #c79426;border-radius:10px;padding:10px;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 3px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
-   +'.cc-dep-view:hover{filter:brightness(1.06)}';
+   +'.cc-dep-view:hover{filter:brightness(1.06)}'
+   +'.cc-risk-txt{margin-top:12px;font-size:13px;line-height:1.62;color:#c4ccd4}.cc-risk-txt p{margin:0 0 11px}.cc-risk-txt p:last-child{margin-bottom:0}';
   var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 
   /* ── List: name + the two addresses, each on ONE aligned line ── */
@@ -248,5 +249,29 @@
     ghFetch().then(function(d){shaB.textContent=d?d.short:'GitHub';});
   }
 
-  window.CCView={renderList:renderList,renderBrain:renderBrain,downloadCSV:downloadCSV,mountCommit:mountCommit};
+  /* ── Risk notice: a real risk disclosure (not a "we are good" line), shown in a
+       centered modal. Blockaid asks for a clear "returns not guaranteed" statement. ── */
+  var RISK='<p>The tools and bots on this platform do not guarantee any profit. Trading crypto assets carries risk, and you can lose part or all of the money you put in. Markets can move against a position, and automated strategies can lose money.</p><p>Nothing here is financial advice. Only trade with money you can afford to lose. The platform never takes custody of your funds: you alone hold your wallet and your keys, and no outcome is promised or guaranteed.</p>';
+  var _rmodal=null;
+  function openRisk(){
+    if(!_rmodal){
+      var ov=document.createElement('div');ov.className='cc-modal';ov.setAttribute('hidden','');
+      ov.innerHTML='<div class="cc-modal-box"><button class="cc-modal-x" type="button" aria-label="Close">×</button><div class="cc-modal-h"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Risk notice</div><div class="cc-risk-txt">'+RISK+'</div></div>';
+      document.body.appendChild(ov);
+      var close=function(){ov.setAttribute('hidden','');};
+      ov.querySelector('.cc-modal-x').addEventListener('click',close);
+      ov.addEventListener('click',function(e){if(e.target===ov)close();});
+      document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!ov.hasAttribute('hidden'))close();});
+      _rmodal=ov;
+    }
+    _rmodal.removeAttribute('hidden');
+  }
+  function mountRisk(el,variant){
+    if(!el) return;
+    var cls=(variant==='compact')?'cc-dep-sm':'cc-dep';
+    el.innerHTML='<button class="'+cls+'" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Risk notice</button>';
+    el.querySelector('button').addEventListener('click',function(e){e.stopPropagation();openRisk();});
+  }
+
+  window.CCView={renderList:renderList,renderBrain:renderBrain,downloadCSV:downloadCSV,mountCommit:mountCommit,mountRisk:mountRisk};
 })();
