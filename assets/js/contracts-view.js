@@ -41,25 +41,28 @@
    +'.cc-gold-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
    +'.cc-gold-btn svg{width:16px;height:16px;flex:none}'
    +'.cc-net{display:block;width:100%;height:auto;touch-action:none;cursor:default}'
-   +'.cc-dep-wrap{position:relative;display:inline-block;justify-self:end}'
-   +'.cc-dep{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;cursor:pointer;background:linear-gradient(180deg,rgba(20,24,30,.92),rgba(10,12,16,.94));border:1px solid #5c4a1e;border-radius:9px;color:#c7cdd4;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(247,219,141,.1);transition:border-color .15s}'
-   +'.cc-dep:hover{border-color:#8f6a1a}'
-   +'.cc-dep-dot{width:8px;height:8px;border-radius:50%;background:#2ebd85;flex:none;animation:ccPulse 1.8s infinite}'
-   +'@keyframes ccPulse{0%{box-shadow:0 0 0 0 rgba(46,189,133,.6)}70%{box-shadow:0 0 0 7px rgba(46,189,133,0)}100%{box-shadow:0 0 0 0 rgba(46,189,133,0)}}'
-   +'.cc-dep-lbl{color:#2ebd85;font-weight:700;font-size:9.5px;letter-spacing:.09em}'
-   +'.cc-dep-sha{color:#a7b0bb}.cc-dep-sha b{color:#E8B84B}'
-   +'.cc-dep-pop{position:absolute;z-index:200;top:calc(100% + 8px);left:0;min-width:264px;max-width:344px;background:rgba(9,10,13,.98);border:1px solid #5c4a1e;border-radius:12px;padding:12px 14px;box-shadow:0 20px 50px rgba(0,0,0,.6);text-align:left}'
-   +'.cc-dep-pop--right{left:auto;right:0}'
-   +'.cc-dep-pop[hidden]{display:none}'
-   +'.cc-dep-h{font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:12px;color:#E8B84B;margin-bottom:8px;display:flex;align-items:center;gap:7px}'
-   +'.cc-dep-r{display:flex;justify-content:space-between;gap:12px;font-size:11px;padding:4px 0;border-top:1px solid rgba(255,255,255,.05)}'
+   +'.cc-dep-wrap{display:inline-block}'
+   +'.cc-dep{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;cursor:pointer;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.3px;white-space:nowrap;border:1px solid #c79426;border-radius:10px;color:#241900;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(255,255,255,.28);transition:filter .16s,transform .09s,box-shadow .09s}'
+   +'.cc-dep:hover{filter:brightness(1.06)}'
+   +'.cc-dep:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
+   +'.cc-dep-dot{width:9px;height:9px;border-radius:50%;background:#15803d;flex:none;animation:ccPulse 1.7s infinite}'
+   +'@keyframes ccPulse{0%{box-shadow:0 0 0 0 rgba(21,128,61,.55)}70%{box-shadow:0 0 0 7px rgba(21,128,61,0)}100%{box-shadow:0 0 0 0 rgba(21,128,61,0)}}'
+   +'.cc-dep-lbl{font-weight:800;font-size:10px;letter-spacing:.1em}'
+   +'.cc-dep-sha{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px}'
+   +'.cc-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}'
+   +'.cc-modal[hidden]{display:none}'
+   +'.cc-modal-box{position:relative;width:100%;max-width:470px;max-height:86vh;overflow:auto;background:linear-gradient(180deg,#0c0e12,#070809);border:1px solid #5c4a1e;border-radius:16px;padding:20px 22px;box-shadow:0 30px 70px rgba(0,0,0,.7),inset 0 1px 0 rgba(247,219,141,.14),0 6px 0 #352810;font-family:"Plus Jakarta Sans",system-ui,sans-serif;text-align:left}'
+   +'.cc-modal-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:8px;border:1px solid #2a2f37;background:rgba(255,255,255,.04);color:#a7b0bb;font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}'
+   +'.cc-modal-x:hover{color:#E8B84B;border-color:#8f6a1a}'
+   +'.cc-modal-h{font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:15px;color:#E8B84B;display:flex;align-items:center;gap:8px;margin-bottom:3px}'
+   +'.cc-modal-sub{font-size:11px;color:#79838f;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;margin-bottom:14px}'
+   +'.cc-modal-sub b{color:#2ebd85;font-weight:600}'
+   +'.cc-dep-r{display:flex;justify-content:space-between;gap:14px;font-size:12px;padding:7px 0;border-top:1px solid rgba(255,255,255,.055)}'
    +'.cc-dep-k{color:#79838f;flex:none}'
-   +'.cc-dep-v{color:#cdd3da;text-align:right;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;word-break:break-all;min-width:0}'
+   +'.cc-dep-v{color:#d4dae1;text-align:right;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;word-break:break-all;min-width:0}'
    +'.cc-dep-v a{color:#E8B84B}'
-   +'.cc-dep-view{display:block;margin-top:10px;text-align:center;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:11.5px;color:#E8B84B;text-decoration:none;border:1px solid rgba(232,184,75,.4);border-radius:8px;padding:7px;background:rgba(232,184,75,.07)}'
-   +'.cc-dep-view:hover{background:rgba(232,184,75,.15)}'
-   +'@media(max-width:560px){.cc-dep-lbl{display:none}.cc-dep{padding:0 10px;font-size:10.5px}.cc-dep-pop{min-width:224px}}';
-
+   +'.cc-dep-view{display:block;margin-top:16px;text-align:center;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:12.5px;color:#241900;text-decoration:none;border:1px solid #c79426;border-radius:10px;padding:10px;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 3px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
+   +'.cc-dep-view:hover{filter:brightness(1.06)}';
   var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 
   /* ── List: name + the two addresses, each on ONE aligned line ── */
@@ -154,10 +157,10 @@
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='criptocuba-contracts.csv';document.body.appendChild(a);a.click();
     setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},120);
   }
-  /* ── Live deployment widget: reads everything useful from the public GitHub
-       API (commit + repo), caches briefly, and never hard-fails. ── */
+  /* ── Live deployment widget: reads the public GitHub API (commit + repo),
+       caches briefly, never hard-fails, and shows it in a centered modal. ── */
   var REPO='CyberSecureAID/bot-algoritmico';
-  var _gh=null,_ghP=null;
+  var _gh=null,_ghP=null,_modal=null,_clk=null;
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function ghFetch(){
     if(_gh) return Promise.resolve(_gh);
@@ -170,45 +173,69 @@
       var cm=res[0],rp=res[1];
       if(!cm||!cm.sha) return null;
       var msg=(cm.commit&&cm.commit.message)?cm.commit.message.split(String.fromCharCode(10))[0]:'';
-      var d={sha:cm.sha,short:cm.sha.slice(0,7),url:cm.html_url,msg:msg,
+      var ver=(cm.commit&&cm.commit.verification)?cm.commit.verification.verified:false;
+      var d={sha:cm.sha,short:cm.sha.slice(0,7),url:cm.html_url,msg:msg,verified:!!ver,
         author:(cm.commit&&cm.commit.author)?cm.commit.author.name:'',
         date:(cm.commit&&cm.commit.author)?cm.commit.author.date:'',
-        branch:rp?rp.default_branch:'main',
+        committed:(cm.commit&&cm.commit.committer)?cm.commit.committer.date:'',
+        branch:rp?rp.default_branch:'main',desc:rp?rp.description:'',
         repoCreated:rp?rp.created_at:'',repoPushed:rp?rp.pushed_at:'',
         visibility:rp?(rp.visibility||(rp.private?'private':'public')):'',
-        license:(rp&&rp.license)?(rp.license.spdx_id||rp.license.name):'',lang:rp?rp.language:''};
+        license:(rp&&rp.license)?(rp.license.spdx_id||rp.license.name):'',lang:rp?rp.language:'',
+        size:rp?rp.size:null,issues:rp?rp.open_issues_count:null};
       _gh=d;try{localStorage.setItem('cc_gh',JSON.stringify({t:Date.now(),d:d}));}catch(_){}
       return d;
     }).catch(function(){return null;});
     return _ghP;
   }
   function fmtDT(iso){if(!iso)return '—';var dt=new Date(iso);if(isNaN(dt.getTime()))return '—';return dt.toISOString().slice(0,10)+' '+dt.toISOString().slice(11,16)+' UTC';}
-  function mountCommit(el,align){
-    if(!el) return;
-    var popCls=(align==='right')?'cc-dep-pop cc-dep-pop--right':'cc-dep-pop';
-    el.innerHTML='<button class="cc-dep" type="button" aria-expanded="false"><span class="cc-dep-dot"></span><span class="cc-dep-lbl">LIVE</span><span class="cc-dep-sha">main @ <b>…</b></span></button><div class="'+popCls+'" hidden></div>';
-    var btn=el.querySelector('.cc-dep'),pop=el.querySelector('.cc-dep-pop'),shaB=el.querySelector('.cc-dep-sha b');
-    btn.addEventListener('click',function(e){e.stopPropagation();if(pop.hasAttribute('hidden')){pop.removeAttribute('hidden');btn.setAttribute('aria-expanded','true');}else{pop.setAttribute('hidden','');btn.setAttribute('aria-expanded','false');}});
-    document.addEventListener('click',function(ev){if(!el.contains(ev.target)){pop.setAttribute('hidden','');btn.setAttribute('aria-expanded','false');}});
-    var repoUrl='https://github.com/'+REPO;
+  function ensureModal(){
+    if(_modal) return _modal;
+    var ov=document.createElement('div');ov.className='cc-modal';ov.setAttribute('hidden','');
+    ov.innerHTML='<div class="cc-modal-box"><button class="cc-modal-x" type="button" aria-label="Close">×</button><div class="cc-modal-h"><span class="cc-dep-dot"></span>Live deployment</div><div class="cc-modal-sub">GitHub Pages · now <b id="cc-clock">—</b></div><div id="cc-modal-body"></div></div>';
+    document.body.appendChild(ov);
+    function close(){ov.setAttribute('hidden','');if(_clk){clearInterval(_clk);_clk=null;}}
+    ov.querySelector('.cc-modal-x').addEventListener('click',close);
+    ov.addEventListener('click',function(e){if(e.target===ov)close();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!ov.hasAttribute('hidden'))close();});
+    _modal={ov:ov,body:ov.querySelector('#cc-modal-body'),clock:ov.querySelector('#cc-clock'),close:close};
+    return _modal;
+  }
+  function tick(el){if(el)el.textContent=new Date().toISOString().slice(11,19)+' UTC';}
+  function openModal(){
+    var m=ensureModal(),repoUrl='https://github.com/'+REPO;
+    m.ov.removeAttribute('hidden');
+    tick(m.clock);if(_clk)clearInterval(_clk);_clk=setInterval(function(){tick(m.clock);},1000);
+    m.body.innerHTML='<div class="cc-dep-r"><span class="cc-dep-k">Loading from GitHub…</span><span class="cc-dep-v"></span></div>';
     ghFetch().then(function(d){
-      if(!d){shaB.textContent='GitHub';pop.innerHTML='<div class="cc-dep-h"><span class="cc-dep-dot"></span>Deployment</div><div class="cc-dep-r"><span class="cc-dep-k">Source</span><span class="cc-dep-v"><a href="'+repoUrl+'" target="_blank" rel="noopener">'+REPO+'</a></span></div><a class="cc-dep-view" href="'+repoUrl+'/commits/main" target="_blank" rel="noopener">View latest commit on GitHub →</a>';return;}
-      shaB.textContent=d.short;
+      if(!d){m.body.innerHTML='<div class="cc-dep-r"><span class="cc-dep-k">Source</span><span class="cc-dep-v"><a href="'+repoUrl+'" target="_blank" rel="noopener">'+REPO+'</a></span></div><a class="cc-dep-view" href="'+repoUrl+'/commits/main" target="_blank" rel="noopener">View latest commit on GitHub →</a>';return;}
       function row(k,v){return '<div class="cc-dep-r"><span class="cc-dep-k">'+k+'</span><span class="cc-dep-v">'+v+'</span></div>';}
-      var h='<div class="cc-dep-h"><span class="cc-dep-dot"></span>Live deployment · GitHub Pages</div>';
+      var h='';
+      h+=row('Repository','<a href="'+repoUrl+'" target="_blank" rel="noopener">'+esc(REPO)+'</a>');
+      if(d.desc)h+=row('Description',esc(d.desc));
       h+=row('Branch',esc(d.branch||'main'));
-      h+=row('Commit','<a href="'+esc(d.url||repoUrl)+'" target="_blank" rel="noopener">'+esc(d.short)+'</a>');
-      h+=row('Committed',fmtDT(d.date));
+      h+=row('Deployed commit','<a href="'+esc(d.url||repoUrl)+'" target="_blank" rel="noopener">'+esc(d.short)+'</a>');
       if(d.msg)h+=row('Message',esc(d.msg));
       if(d.author)h+=row('Author',esc(d.author));
+      h+=row('Committed',fmtDT(d.committed||d.date));
+      if(d.verified)h+=row('Signature','&#10003; Verified');
       if(d.repoPushed)h+=row('Last push',fmtDT(d.repoPushed));
       if(d.repoCreated)h+=row('Repo created',esc((d.repoCreated||'').slice(0,10)));
       if(d.visibility)h+=row('Visibility',esc(d.visibility));
       if(d.license)h+=row('License',esc(d.license));
       if(d.lang)h+=row('Language',esc(d.lang));
+      if(d.size!=null)h+=row('Repo size',(d.size>1024?(d.size/1024).toFixed(1)+' MB':d.size+' KB'));
+      if(d.issues!=null)h+=row('Open issues',String(d.issues));
       h+='<a class="cc-dep-view" href="'+esc(d.url||repoUrl)+'" target="_blank" rel="noopener">View this commit on GitHub →</a>';
-      pop.innerHTML=h;
+      m.body.innerHTML=h;
     });
+  }
+  function mountCommit(el){
+    if(!el) return;
+    el.innerHTML='<button class="cc-dep" type="button"><span class="cc-dep-dot"></span><span class="cc-dep-lbl">LIVE</span><span class="cc-dep-sha">main @ <b>…</b></span></button>';
+    var btn=el.querySelector('.cc-dep'),shaB=el.querySelector('.cc-dep-sha b');
+    btn.addEventListener('click',function(e){e.stopPropagation();openModal();});
+    ghFetch().then(function(d){shaB.textContent=d?d.short:'GitHub';});
   }
 
   window.CCView={renderList:renderList,renderBrain:renderBrain,downloadCSV:downloadCSV,mountCommit:mountCommit};
