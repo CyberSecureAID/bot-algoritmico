@@ -1,120 +1,236 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Transparencia y Contratos</title>
-<meta name="description" content="Todos los contratos de la plataforma, publicos y verificados en BscScan, mostrados como un sistema interconectado. Proxy, implementacion, gobernanza y codigo abierto.">
+<title>Smart contracts &amp; transparency · Cripto Cuba Oficial</title>
+<meta name="description" content="Every contract behind Cripto Cuba Oficial, public and source-verified on BscScan, shown as one interconnected system. Proxy, implementation, governance and open source.">
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" type="image/png" href="assets/img/cco-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{box-sizing:border-box;--bg:#0a0e13;--card:rgba(16,22,30,.72);--bd:#1b232e;--tx:#e7edf4;--tx2:#9aa7b4;--gold:#E8B84B;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--tx);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;padding:env(safe-area-inset-top,0) 0 0}
+  :root{
+    box-sizing:border-box;
+    --gold:#E8B84B; --gold-hi:#f4d089; --gold-lo:#8f6a1a;
+    --ink:#eaecef; --ink2:#a7b0bb; --ink3:#79838f;
+    --bg:#000; --hdr:#07090c; --surf:#101620; --line:#1c232b; --line2:#29313b;
+    --disp:"Chakra Petch",system-ui,sans-serif;
+    --sans:"Plus Jakarta Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:var(--sans);line-height:1.6;
+    padding:env(safe-area-inset-top,0) 0 0;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  /* Fondo del sitio: imagen tenue (la misma que usa la seccion de transparencia
+     de la portada) oscurecida, para que se sienta parte del sitio sin competir. */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(232,184,75,.06), transparent 60%),
+      linear-gradient(180deg, rgba(0,0,0,.86), rgba(0,0,0,.94)),
+      url('assets/portada/img/mapa.webp') center/cover no-repeat fixed;
+  }
   a{color:var(--gold);text-decoration:none}
-  .wrap{max-width:1180px;margin:0 auto;padding:26px 18px 70px}
-  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
-  .back{font-size:13px;color:var(--tx2)}
-  h1{font-size:26px;margin:0 0 6px}
+  /* Partículas: fijas, sobre el contenido, sin bloquear clics. Mismo z-index que en el sitio. */
+  #pt-chispas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;display:block}
+
+  /* ── Cabecera, igual que el sitio ─────────────────────────────── */
+  .hdr{
+    position:sticky;top:env(safe-area-inset-top,0);z-index:100;
+    display:flex;align-items:center;height:58px;
+    background:var(--hdr);border-bottom:1px solid #1a2029;
+    overflow:hidden;
+  }
+  .hdr::before{
+    content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:url('assets/portada/img/header.webp') center/cover no-repeat;opacity:.9;
+  }
+  .hdr-in{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;
+    width:100%;max-width:1180px;margin:0 auto;padding:0 18px;gap:12px}
+  .logo{display:flex;align-items:center;text-shadow:0 1px 4px rgba(0,0,0,.9)}
+  .logo img{height:30px;width:auto;display:block}
+  .back{display:inline-flex;align-items:center;gap:7px;font-family:var(--disp);font-weight:600;
+    font-size:13px;color:var(--ink);border:1px solid var(--line2);border-radius:9px;padding:7px 14px;
+    background:rgba(0,0,0,.25);text-shadow:0 1px 4px rgba(0,0,0,.9);transition:border-color .15s,color .15s}
+  .back:hover{border-color:var(--gold-lo);color:var(--gold)}
+
+  /* ── Contenido ────────────────────────────────────────────────── */
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:30px 18px 72px}
+  .intro{text-align:center;max-width:800px;margin:0 auto 30px}
+  .chain{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--ink3);border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin-bottom:16px}
+  h1{font-family:var(--disp);font-weight:700;font-size:30px;line-height:1.15;margin:0 0 12px;letter-spacing:.2px}
   h1 span{color:var(--gold)}
-  .lead{font-size:14.5px;color:var(--tx2);max-width:760px;margin:0 0 26px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
-  @media(max-width:860px){.grid{grid-template-columns:1fr}}
-  .h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:700;margin:0 0 12px}
-  .lista{display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto;padding-right:6px}
-  .lista::-webkit-scrollbar{width:6px}.lista::-webkit-scrollbar-thumb{background:rgba(232,184,75,.25);border-radius:9px}
-  .c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:13px 14px}
+  .lead{font-size:15px;color:var(--ink2);margin:0 auto;max-width:720px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+  .h2{font-family:var(--disp);font-size:13px;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--gold);font-weight:700;margin:0 0 14px;text-align:center}
+
+  .lista{display:flex;flex-direction:column;gap:10px;max-height:638px;overflow:auto;padding-right:7px}
+  .lista::-webkit-scrollbar{width:7px}
+  .lista::-webkit-scrollbar-track{background:transparent}
+  .lista::-webkit-scrollbar-thumb{background:rgba(232,184,75,.28);border-radius:9px}
+  .c{background:rgba(16,22,32,.72);border:1px solid var(--line);border-radius:12px;padding:13px 14px;
+    backdrop-filter:blur(3px)}
   .c-h{display:flex;align-items:center;gap:9px;margin-bottom:3px}
   .c-dot{width:9px;height:9px;border-radius:50%;flex:none}
-  .c-n{font-weight:700;font-size:14px}
-  .c-s{font-size:12px;color:var(--tx2);margin-bottom:9px}
-  .row{display:flex;align-items:center;gap:7px;font-size:11.5px;margin-top:5px;flex-wrap:wrap}
-  .row b{color:var(--tx2);font-weight:600;min-width:98px;flex:none}
-  .addr{font-family:var(--mono);font-size:11px;color:var(--tx);word-break:break-all;flex:1;min-width:0}
-  .btn{font-size:10.5px;border:1px solid var(--bd);background:rgba(232,184,75,.06);color:var(--gold);border-radius:7px;padding:2px 8px;cursor:pointer;white-space:nowrap}
-  .btn:hover{background:rgba(232,184,75,.14)}
-  .cvwrap{position:sticky;top:14px}
-  canvas{width:100%;display:block;touch-action:none}
-  .cap{font-size:12px;color:var(--tx2);text-align:center;margin-top:6px}
-  .leg{display:flex;flex-wrap:wrap;gap:5px 13px;justify-content:center;margin-top:8px}
-  .leg span{font-size:11px;color:var(--tx2);display:inline-flex;align-items:center;gap:5px}
+  .c-n{font-family:var(--disp);font-weight:700;font-size:14px}
+  .c-s{font-size:12.5px;color:var(--ink2);margin-bottom:10px}
+  .row{display:flex;align-items:center;gap:7px;font-size:11.5px;margin-top:6px;flex-wrap:wrap}
+  .row b{color:var(--ink3);font-weight:600;min-width:108px;flex:none;font-family:var(--sans)}
+  .addr{font-family:var(--mono);font-size:11px;color:var(--ink);word-break:break-all;flex:1;min-width:0}
+  .btn{font-family:var(--sans);font-size:10.5px;font-weight:600;border:1px solid var(--line2);
+    background:rgba(232,184,75,.06);color:var(--gold);border-radius:7px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+  .btn:hover{background:rgba(232,184,75,.15)}
+
+  .cvwrap{position:sticky;top:76px}
+  #net{display:block;width:100%;max-width:600px;height:auto;margin:0 auto;touch-action:none;cursor:default}
+  .cap{font-size:12px;color:var(--ink3);text-align:center;margin-top:8px}
+  .leg{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:10px}
+  .leg span{font-size:11px;color:var(--ink2);display:inline-flex;align-items:center;gap:5px}
   .leg i{width:9px;height:9px;border-radius:50%}
-  .bloques{margin-top:34px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-  @media(max-width:860px){.bloques{grid-template-columns:1fr}}
-  .blq{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
-  .blq h3{font-size:14px;margin:0 0 8px;color:var(--gold)}
-  .blq p{font-size:12.5px;color:var(--tx2);margin:0}
-  .disc{margin-top:16px;border:1px solid rgba(232,184,75,.3);background:rgba(232,184,75,.05);border-radius:12px;padding:13px 16px;font-size:12.5px;color:var(--tx2)}
+
+  .bloques{margin-top:40px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .blq{background:rgba(16,22,32,.72);border:1px solid var(--line);border-radius:12px;padding:18px;backdrop-filter:blur(3px)}
+  .blq h3{font-family:var(--disp);font-size:14.5px;margin:0 0 9px;color:var(--gold)}
+  .blq p{font-size:12.5px;color:var(--ink2);margin:0}
+  .blq a{color:var(--gold);word-break:break-word}
+  .disc{margin-top:18px;border:1px solid rgba(232,184,75,.3);background:rgba(232,184,75,.05);
+    border-radius:12px;padding:14px 18px;font-size:12.5px;color:var(--ink2)}
+  .disc b{color:var(--gold)}
+
+  /* ── Responsiva ───────────────────────────────────────────────── */
+  @media(max-width:900px){
+    .grid{grid-template-columns:1fr;gap:34px}
+    .cvwrap{position:static}
+    .bloques{grid-template-columns:1fr}
+    .lista{max-height:none}
+  }
+  @media(max-width:560px){
+    .wrap{padding:22px 14px 60px}
+    h1{font-size:25px}
+    .lead{font-size:14px}
+    .hdr-in{padding:0 14px}
+    .back{padding:6px 11px;font-size:12px}
+  }
 </style>
 </head>
 <body>
+
+<header class="hdr">
+  <div class="hdr-in">
+    <a class="logo" href="index.html" aria-label="Cripto Cuba Oficial">
+      <img src="assets/img/cco-full.webp" alt="Cripto Cuba Oficial" width="150" height="30">
+    </a>
+    <a class="back" href="index.html">&larr; Back to site</a>
+  </div>
+</header>
+
+<canvas id="pt-chispas" data-n="130" aria-hidden="true"></canvas>
+
 <div class="wrap">
-  <div class="top"><a class="back" href="index.html">&larr; Volver</a><span style="font-size:12px;color:var(--tx2)">BNB Smart Chain (56)</span></div>
-  <h1><span>Transparencia</span> total</h1>
-  <p class="lead">Cada contrato de la plataforma es publico y esta verificado en BscScan. Esto no es una lista suelta: es un sistema interconectado donde cada contrato depende de los demas y se retroalimenta. A la izquierda puedes verificar cada direccion; a la derecha, el esquema real de como se conectan. Pasa el cursor por un nodo para resaltarlo, arrastralo para aislarlo, o toca cualquiera para abrir su contrato verificado.</p>
+
+  <div class="intro">
+    <span class="chain">BNB Smart Chain · 56</span>
+    <h1>Full <span>transparency</span></h1>
+    <p class="lead">Every contract behind this platform is public and source-verified on BNB Smart Chain. This is not a loose list — it is an interconnected system where each contract depends on the others. On the left you can verify every address; on the right, the live map of how they connect. Hover a node to focus it, drag it to pull it out of the cluster, or tap any node to open its verified contract on BscScan.</p>
+  </div>
+
   <div class="grid">
     <div>
-      <div class="h2">Contratos verificados</div>
+      <div class="h2">Our contracts</div>
       <div class="lista" id="lista"></div>
     </div>
     <div>
-      <div class="h2">Esquema del sistema</div>
+      <div class="h2">Contract network</div>
       <div class="cvwrap">
         <canvas id="net"></canvas>
-        <div class="cap">Toca un nodo para ver su contrato en BscScan. Arrastralo para aislarlo.</div>
+        <div class="cap">Tap a node to open its verified contract on BscScan. Drag it to pull it out.</div>
         <div class="leg">
-          <span><i style="background:#9B93F0"></i>Nucleo</span><span><i style="background:#EF9F27"></i>Oraculo</span><span><i style="background:#22B184"></i>Bots y swap</span><span><i style="background:#4D97E8"></i>P2P</span><span><i style="background:#7FB52E"></i>Shield</span><span><i style="background:#E86A3C"></i>Futuros</span><span><i style="background:#DE6A92"></i>Staking</span>
+          <span><i style="background:#9B93F0"></i>Core</span><span><i style="background:#EF9F27"></i>Oracle</span><span><i style="background:#22B184"></i>Trading</span><span><i style="background:#4D97E8"></i>P2P</span><span><i style="background:#7FB52E"></i>Shield</span><span><i style="background:#E86A3C"></i>Futures</span><span><i style="background:#DE6A92"></i>Staking</span>
         </div>
       </div>
     </div>
   </div>
+
   <div class="bloques">
-    <div class="blq"><h3>Gobernanza y control</h3><p>Todos los contratos consultan a Tarifas para la autorizacion: es el registro central de duenos (owner principal y hasta un director adicional). Las actualizaciones de logica son UUPS con un bloqueo temporal de 48 horas: cualquier cambio se propone on-chain y solo puede ejecutarse pasadas 48 horas, dando tiempo a auditarlo. Ningun contrato puede retirar fondos de tu wallet sin tu firma; la plataforma no custodia fondos.</p></div>
-    <div class="blq"><h3>Codigo abierto y verificable</h3><p>Todo el codigo es publico en <a href="https://github.com/CyberSecureAID/bot-algoritmico" target="_blank" rel="noopener">github.com/CyberSecureAID/bot-algoritmico</a>. El sitio se sirve como modulos ES nativos directamente del repositorio, sin paso de compilacion ni empaquetado, por lo que el codigo desplegado es identico al codigo fuente publico: cualquiera puede comparar un archivo servido con el del repositorio y confirmar que coinciden.</p></div>
-    <div class="blq"><h3>Que firmas</h3><p>Conectar la wallet solo lee tu direccion y tus saldos, no mueve nada. Cuando usas una herramienta, firmas transacciones estandar (aprobaciones, intercambios, pagos de servicio) hacia los contratos verificados de esta pagina. Nunca se te pide tu frase semilla ni tus claves privadas, y no se cargan scripts de publicidad ni de rastreo.</p></div>
+    <div class="blq">
+      <h3>Governance &amp; upgrades</h3>
+      <p>Every contract is a UUPS proxy (ERC-1967). Authorization is centralized in the Tarifas contract, which holds the platform's fee registry and its owner set — a principal owner plus a limited number of directors. Logic upgrades are gated by an on-chain 48-hour timelock: a new implementation must be proposed on-chain and can only be activated after 48 hours have elapsed, leaving a public window to review it before it goes live. Storage layout is preserved and checked slot by slot across upgrades, so an upgrade cannot silently reshape existing state. No contract can move assets out of your wallet without your explicit transaction signature — the platform is non-custodial and never takes custody of user funds.</p>
+    </div>
+    <div class="blq">
+      <h3>Open source &amp; reproducible</h3>
+      <p>The full source lives at <a href="https://github.com/CyberSecureAID/bot-algoritmico" target="_blank" rel="noopener">github.com/CyberSecureAID/bot-algoritmico</a>, and both the proxy and the implementation of every contract shown here are source-verified on BscScan. The web app ships as native ES modules served straight from the repository — no build, bundling or minification step — so the JavaScript running in your browser is the public source itself. Any reviewer can fetch a file served by the site and diff it against the repository to confirm they are identical; there is no compiled or obfuscated layer in between.</p>
+    </div>
+    <div class="blq">
+      <h3>What you actually sign</h3>
+      <p>Connecting a wallet is read-only: it exposes your address and balances and grants no spending allowance. Each action you take is a standard, auditable transaction — an ERC-20 approval scoped to a specific router or contract, a swap, or a service-fee payment — sent only to the verified contracts on this page. You are never asked for a seed phrase or private key; the site has no field to enter one and no contract can request it. No advertising or analytics scripts are loaded, and the site makes no third-party network calls beyond the public RPC and price oracles it needs to operate.</p>
+    </div>
   </div>
-  <div class="disc"><b style="color:var(--gold)">Aviso de riesgo.</b> Las ganancias no estan garantizadas. Operar con criptoactivos conlleva riesgo de perdida. Opera unicamente con fondos que puedas permitirte perder.</div>
+
+  <div class="disc"><b>Risk notice.</b> Returns are not guaranteed. Trading crypto assets carries risk of loss, and you can lose part or all of what you put in. Only trade with funds you can afford to lose. This platform is non-custodial: you alone hold your wallet and your keys.</div>
+
 </div>
+
 <script src="assets/js/contratos-data.js"></script>
 <script>
 (function(){
   var D=window.CONTRATOS||[];
   var COL={core:"#9B93F0",oracle:"#EF9F27",trade:"#22B184",p2p:"#4D97E8",shield:"#7FB52E",fut:"#E86A3C",stake:"#DE6A92"};
   var bs=function(a){return "https://bscscan.com/address/"+a+"#code";};
-  var corta=function(a){return a?a:"";};
-  /* ---- tabla ---- */
+
+  /* ---- table (left) ---- */
   var L=document.getElementById("lista"),html="";
   D.forEach(function(c){
     html+='<div class="c"><div class="c-h"><span class="c-dot" style="background:'+COL[c.cat]+'"></span><span class="c-n">'+c.nombre+'</span></div>';
     html+='<div class="c-s">'+c.servicio+'</div>';
-    html+='<div class="row"><b>Proxy</b><span class="addr">'+c.proxy+'</span><button class="btn" data-cp="'+c.proxy+'">Copiar</button><a class="btn" href="'+bs(c.proxy)+'" target="_blank" rel="noopener">BscScan</a></div>';
-    if(c.impl)html+='<div class="row"><b>Implementacion</b><span class="addr">'+c.impl+'</span><button class="btn" data-cp="'+c.impl+'">Copiar</button><a class="btn" href="'+bs(c.impl)+'" target="_blank" rel="noopener">BscScan</a></div>';
+    html+='<div class="row"><b>Proxy</b><span class="addr">'+c.proxy+'</span><button class="btn" data-cp="'+c.proxy+'">Copy</button><a class="btn" href="'+bs(c.proxy)+'" target="_blank" rel="noopener">BscScan</a></div>';
+    if(c.impl)html+='<div class="row"><b>Implementation</b><span class="addr">'+c.impl+'</span><button class="btn" data-cp="'+c.impl+'">Copy</button><a class="btn" href="'+bs(c.impl)+'" target="_blank" rel="noopener">BscScan</a></div>';
     html+='</div>';
   });
   L.innerHTML=html;
-  L.addEventListener("click",function(e){var b=e.target.closest("[data-cp]");if(!b)return;try{navigator.clipboard.writeText(b.getAttribute("data-cp"));var t=b.textContent;b.textContent="Copiado";setTimeout(function(){b.textContent=t;},1200);}catch(_){}});
-  /* ---- cerebro ---- */
+  L.addEventListener("click",function(e){var b=e.target.closest("[data-cp]");if(!b)return;try{navigator.clipboard.writeText(b.getAttribute("data-cp"));var t=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=t;},1200);}catch(_){}});
+
+  /* ---- network map (right) ---- */
+  /* Logical space 600x600 (the approved layout). The canvas is displayed as a
+     responsive SQUARE via CSS (width:100%; height:auto), so it scales down on
+     narrow screens without distorting or clipping. */
   var cv=document.getElementById("net"),ctx=cv.getContext("2d");
   var W=600,H=600,dpr=Math.min(window.devicePixelRatio||1,2);
-  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";ctx.scale(dpr,dpr);
+  cv.width=W*dpr;cv.height=H*dpr;ctx.scale(dpr,dpr);
   var cx=W/2,cy=H/2;
+  var M=26; /* margin so a dragged node never leaves the canvas (never slides behind the UI) */
   var ring=D.filter(function(c){return !c.hub;}),RD=Math.min(188,132+ring.length*4);
   var byId={},arr=[],imgs={};
-  D.forEach(function(c){imgs[c.logo]=new Image();imgs[c.logo].src="assets/portada/img/red/"+c.logo+".webp";});
-  var brain=new Image();brain.src="assets/portada/img/red/cerebro.webp";
+  /* Correct path: the logos live in assets/portada/red/ (NOT .../img/red/). */
+  D.forEach(function(c){imgs[c.logo]=new Image();imgs[c.logo].src="assets/portada/red/"+c.logo+".webp";});
+  var brain=new Image();brain.src="assets/portada/red/cerebro.webp";
   var k=0;
   D.forEach(function(c){var n={id:c.id,cat:c.cat,hub:!!c.hub,logo:c.logo,url:bs(c.proxy),hs:1,free:false,x:cx,y:cy,holdUntil:0};
-    if(n.hub){n.tx=cx;n.ty=cy;}else{var i=k++;var a=-Math.PI/2+i*(2*Math.PI/ring.length);n.ang=a;n.tx=cx+RD*Math.cos(a);n.ty=cy+RD*Math.sin(a);n.delay=i*0.03;}
+    if(n.hub){n.tx=cx;n.ty=cy;n.ang=0;}else{var i=k++;var a=-Math.PI/2+i*(2*Math.PI/ring.length);n.ang=a;n.tx=cx+RD*Math.cos(a);n.ty=cy+RD*Math.sin(a);n.delay=i*0.03;}
     byId[c.id]=n;arr.push(n);});
   var E=[];D.forEach(function(c){(c.conecta||[]).forEach(function(t){if(byId[t])E.push([c.id,t]);});});
   var mp={x:-999,y:-999},over=false,drag=null,offx=0,offy=0,moved=false,t0=performance.now();
   function toC(ev){var r=cv.getBoundingClientRect();var e=ev.touches?ev.touches[0]:ev;return{x:(e.clientX-r.left)*(W/r.width),y:(e.clientY-r.top)*(H/r.height)};}
+  function clampX(v){return Math.max(M,Math.min(W-M,v));}
+  function clampY(v){return Math.max(M,Math.min(H-M,v));}
   function pick(p){var best=1e9,hit=null;arr.forEach(function(n){var rr=(n.hub?40:22)*n.hs+6;var d=Math.hypot(n.x-p.x,n.y-p.y);if(d<rr&&d<best){best=d;hit=n;}});return hit;}
-  cv.addEventListener("mousemove",function(ev){mp=toC(ev);over=true;if(drag){drag.x=mp.x+offx;drag.y=mp.y+offy;moved=true;}});
+  cv.addEventListener("mousemove",function(ev){mp=toC(ev);over=true;if(drag&&!drag.hub){drag.x=clampX(mp.x+offx);drag.y=clampY(mp.y+offy);moved=true;}});
   cv.addEventListener("mouseleave",function(){over=false;});
-  function down(ev){var p=toC(ev);var n=pick(p);if(n){moved=false;if(!n.hub){drag=n;n.free=true;offx=n.x-p.x;offy=n.y-p.y;cv.style.cursor="grabbing";}else{drag=n;}}}
+  function down(ev){var p=toC(ev);var n=pick(p);if(n){moved=false;if(!n.hub){drag=n;n.free=true;offx=n.x-p.x;offy=n.y-p.y;cv.style.cursor="grabbing";}else{drag=n;offx=0;offy=0;}}}
   function up(){if(drag){if(!moved&&drag.url)window.open(drag.url,"_blank","noopener");if(!drag.hub)drag.holdUntil=performance.now()+2800;drag=null;cv.style.cursor="default";}}
   cv.addEventListener("mousedown",down);window.addEventListener("mouseup",up);
   cv.addEventListener("touchstart",function(e){down(e);},{passive:true});
-  cv.addEventListener("touchmove",function(e){mp=toC(e);if(drag&&!drag.hub){drag.x=mp.x+offx;drag.y=mp.y+offy;moved=true;}},{passive:true});
+  cv.addEventListener("touchmove",function(e){mp=toC(e);if(drag&&!drag.hub){drag.x=clampX(mp.x+offx);drag.y=clampY(mp.y+offy);moved=true;}},{passive:true});
   cv.addEventListener("touchend",up);
   function ease(x){return 1-Math.pow(1-Math.max(0,Math.min(1,x)),3);}
   function logo(n,r){var im=imgs[n.logo];if(im&&im.complete&&im.naturalWidth){ctx.drawImage(im,n.x-r,n.y-r,r*2,r*2);}else{ctx.beginPath();ctx.arc(n.x,n.y,r,0,7);ctx.fillStyle="rgba(232,184,75,.15)";ctx.fill();}}
@@ -126,20 +242,35 @@
     var act=drag&&!drag.hub?drag:(over?pick(mp):null);if(!drag)cv.style.cursor=act?"pointer":"default";
     arr.forEach(function(n){var isA=act&&act.id===n.id;n.hs+=((isA?1.4:1)-n.hs)*0.22;});
     ctx.clearRect(0,0,W,H);var ga=Math.min(1,T/0.5);
-    if(brain.complete&&brain.naturalWidth){var bs=RD*1.6;ctx.globalAlpha=0.92*ga;ctx.drawImage(brain,cx-bs/2,cy-bs/2,bs,bs);}
+    /* 1) brain image at the BACK */
+    if(brain.complete&&brain.naturalWidth){var bsz=RD*1.6;ctx.globalAlpha=0.92*ga;ctx.drawImage(brain,cx-bsz/2,cy-bsz/2,bsz,bsz);}
+    /* 2) dotted connection lines in the MIDDLE (above the brain, below the logos) */
     var ph=now/26;
     E.forEach(function(e){var a=byId[e[0]],b=byId[e[1]];var op=Math.min(a.op,b.op);if(op<0.02)return;var hot=act&&(e[0]===act.id||e[1]===act.id);
       ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=COL[a.cat];ctx.globalAlpha=(act?(hot?0.98:0.1):0.52)*op;ctx.lineWidth=hot?2.8:1.4;ctx.setLineDash([3,8]);ctx.lineDashOffset=-ph;ctx.stroke();});
     ctx.setLineDash([]);ctx.globalAlpha=1;
+    /* 3) ring logos + labels ON TOP of every line */
     arr.forEach(function(n){if(n.hub)return;var isA=act&&act.id===n.id;var r=22*n.hs;ctx.globalAlpha=n.op;logo(n,r);
       if(isA){ctx.beginPath();ctx.arc(n.x,n.y,r+2,0,7);ctx.lineWidth=2;ctx.strokeStyle="#E8B84B";ctx.stroke();}
-      ctx.save();ctx.globalAlpha=n.op;ctx.fillStyle="#E8B84B";ctx.font="600 12px ui-sans-serif,system-ui,sans-serif";ctx.shadowColor="rgba(0,0,0,.7)";ctx.shadowBlur=4;ctx.shadowOffsetY=1;var la=n.ang;ctx.textAlign=Math.cos(la)>0.35?"left":(Math.cos(la)<-0.35?"right":"center");ctx.textBaseline="middle";ctx.fillText(byIdName(n.id),n.x+Math.cos(la)*(r+9),n.y+Math.sin(la)*(r+15));ctx.restore();});
-    var hub=byId.tarifas;if(hub){ctx.globalAlpha=hub.op;logo(hub,40*hub.hs);ctx.save();ctx.globalAlpha=hub.op;ctx.fillStyle="#E8B84B";ctx.font="700 14px ui-sans-serif,system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,.8)";ctx.shadowBlur=5;ctx.shadowOffsetY=1;ctx.fillText("Tarifas",hub.x,hub.y+40*hub.hs+4);ctx.restore();}
+      ctx.save();ctx.globalAlpha=n.op;ctx.fillStyle="#E8B84B";ctx.font="600 12px 'Plus Jakarta Sans',system-ui,sans-serif";ctx.shadowColor="rgba(0,0,0,.75)";ctx.shadowBlur=4;ctx.shadowOffsetY=1;var la=n.ang;ctx.textAlign=Math.cos(la)>0.35?"left":(Math.cos(la)<-0.35?"right":"center");ctx.textBaseline="middle";ctx.fillText(byIdName(n.id),n.x+Math.cos(la)*(r+9),n.y+Math.sin(la)*(r+15));ctx.restore();});
+    /* 4) the hub (Tarifas) logo + label, also on top */
+    var hub=byId.tarifas;if(hub){ctx.globalAlpha=hub.op;logo(hub,40*hub.hs);
+      if(act&&act.id==="tarifas"){ctx.beginPath();ctx.arc(hub.x,hub.y,40*hub.hs+2,0,7);ctx.lineWidth=2;ctx.strokeStyle="#E8B84B";ctx.stroke();}
+      ctx.save();ctx.globalAlpha=hub.op;ctx.fillStyle="#E8B84B";ctx.font="700 14px 'Plus Jakarta Sans',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,.8)";ctx.shadowBlur=5;ctx.shadowOffsetY=1;ctx.fillText("Tarifas",hub.x,hub.y+40*hub.hs+4);ctx.restore();}
     requestAnimationFrame(draw);
   }
   function byIdName(id){var c=D.find(function(x){return x.id===id;});return c?c.nombre:id;}
   requestAnimationFrame(draw);
 })();
+</script>
+<script type="module">
+  /* Exactly the same particles the rest of the site uses. */
+  try{
+    const { brasas } = await import('./assets/portada/chispas.js?v=200');
+    const lienzo = document.getElementById('pt-chispas');
+    const quieto = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
+    if(!quieto && lienzo) brasas(lienzo);
+  }catch(e){ console.warn('chispas:', e); }
 </script>
 </body>
 </html>

@@ -11,8 +11,8 @@ automáticamente con cada contrato nuevo.
    "Contract Source Code Verified". Solo se agregan contratos ya verificados.
 
 2. **Sube el logo.** Circular, fondo transparente, `.webp`, 128x128 px, a la carpeta
-   `assets/portada/img/red/`. El nombre del archivo = el `id` del contrato (minúsculas, sin
-   espacios). Ej: `assets/portada/img/red/miservicio.webp`.
+   `assets/portada/red/`. El nombre del archivo = el `id` del contrato (minúsculas, sin
+   espacios). Ej: `assets/portada/red/miservicio.webp`.
 
 3. **Añade la entrada** en `assets/js/contratos-data.js`, dentro de `window.CONTRATOS`:
 
