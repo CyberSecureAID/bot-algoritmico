@@ -42,16 +42,25 @@
    +'.cc-gold-btn svg{width:16px;height:16px;flex:none}'
    +'.cc-net{display:block;width:100%;height:auto;touch-action:none;cursor:default}'
    +'.cc-dep-wrap{display:inline-block}'
-   +'.cc-dep{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;cursor:pointer;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.3px;white-space:nowrap;border:1px solid #c79426;border-radius:10px;color:#241900;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(255,255,255,.28);transition:filter .16s,transform .09s,box-shadow .09s}'
+   +'.cc-dep{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 20px;cursor:pointer;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13.5px;letter-spacing:.2px;white-space:nowrap;border:1px solid #c79426;border-radius:10px;color:#241900;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(255,255,255,.28);transition:filter .16s,transform .09s,box-shadow .09s}'
    +'.cc-dep:hover{filter:brightness(1.06)}'
    +'.cc-dep:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
-   +'.cc-dep-dot{width:9px;height:9px;border-radius:50%;background:#15803d;flex:none;animation:ccPulse 1.7s infinite}'
-   +'@keyframes ccPulse{0%{box-shadow:0 0 0 0 rgba(21,128,61,.55)}70%{box-shadow:0 0 0 7px rgba(21,128,61,0)}100%{box-shadow:0 0 0 0 rgba(21,128,61,0)}}'
-   +'.cc-dep-lbl{font-weight:800;font-size:10px;letter-spacing:.1em}'
-   +'.cc-dep-sha{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px}'
+   +'.cc-dep .cc-dep-lbl{color:#14532d;font-weight:800;font-size:10px;letter-spacing:.1em}'
+   +'.cc-dep-sm{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;cursor:pointer;background:linear-gradient(180deg,rgba(20,24,30,.92),rgba(10,12,16,.94));border:1px solid #5c4a1e;border-radius:8px;color:#c7cdd4;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11px;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(247,219,141,.1);transition:border-color .15s}'
+   +'.cc-dep-sm:hover{border-color:#8f6a1a}'
+   +'.cc-dep-sm .cc-dep-lbl{color:#2ebd85;font-weight:700;font-size:9px;letter-spacing:.09em}'
+   +'.cc-dep-dot{width:9px;height:9px;border-radius:50%;background:#16a34a;flex:none;animation:ccPulse 1.7s infinite}'
+   +'.cc-dep-sm .cc-dep-dot{width:8px;height:8px}'
+   +'@keyframes ccPulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.55)}70%{box-shadow:0 0 0 7px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}'
+   +'.cc-dep-sha{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}.cc-dep-sha b{color:inherit}'
+   +'.cc-dep-sm .cc-dep-sha b{color:#E8B84B}'
    +'.cc-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}'
    +'.cc-modal[hidden]{display:none}'
-   +'.cc-modal-box{position:relative;width:100%;max-width:470px;max-height:86vh;overflow:auto;background:linear-gradient(180deg,#0c0e12,#070809);border:1px solid #5c4a1e;border-radius:16px;padding:20px 22px;box-shadow:0 30px 70px rgba(0,0,0,.7),inset 0 1px 0 rgba(247,219,141,.14),0 6px 0 #352810;font-family:"Plus Jakarta Sans",system-ui,sans-serif;text-align:left}'
+   +'.cc-modal-box{position:relative;width:100%;max-width:470px;max-height:86vh;overflow:auto;background:linear-gradient(180deg,#0c0e12,#070809);border:1px solid #5c4a1e;border-radius:16px;padding:20px 22px;box-shadow:0 30px 70px rgba(0,0,0,.7),inset 0 1px 0 rgba(247,219,141,.14),0 6px 0 #352810;font-family:"Plus Jakarta Sans",system-ui,sans-serif;text-align:left;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.5) transparent}'
+   +'.cc-modal-box::-webkit-scrollbar{width:8px}'
+   +'.cc-modal-box::-webkit-scrollbar-track{background:transparent;margin:10px 0}'
+   +'.cc-modal-box::-webkit-scrollbar-thumb{background:rgba(232,184,75,.34);border-radius:9px}'
+   +'.cc-modal-box::-webkit-scrollbar-thumb:hover{background:rgba(232,184,75,.5)}'
    +'.cc-modal-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:8px;border:1px solid #2a2f37;background:rgba(255,255,255,.04);color:#a7b0bb;font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}'
    +'.cc-modal-x:hover{color:#E8B84B;border-color:#8f6a1a}'
    +'.cc-modal-h{font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:15px;color:#E8B84B;display:flex;align-items:center;gap:8px;margin-bottom:3px}'
@@ -157,8 +166,8 @@
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='criptocuba-contracts.csv';document.body.appendChild(a);a.click();
     setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},120);
   }
-  /* ── Live deployment widget: reads the public GitHub API (commit + repo),
-       caches briefly, never hard-fails, and shows it in a centered modal. ── */
+  /* ── Live deployment widget: reads the public GitHub API (commit + repo +
+       languages), caches briefly, never hard-fails, shown in a centered modal. ── */
   var REPO='CyberSecureAID/bot-algoritmico';
   var _gh=null,_ghP=null,_modal=null,_clk=null;
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -166,14 +175,14 @@
     if(_gh) return Promise.resolve(_gh);
     if(_ghP) return _ghP;
     try{var raw=localStorage.getItem('cc_gh');if(raw){var c=JSON.parse(raw);if(c&&(Date.now()-c.t)<90000){_gh=c.d;return Promise.resolve(c.d);}}}catch(_){}
-    _ghP=Promise.all([
-      fetch('https://api.github.com/repos/'+REPO+'/commits/main').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}),
-      fetch('https://api.github.com/repos/'+REPO).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
-    ]).then(function(res){
-      var cm=res[0],rp=res[1];
+    var get=function(u){return fetch('https://api.github.com/repos/'+REPO+u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});};
+    _ghP=Promise.all([get('/commits/main'),get(''),get('/languages')]).then(function(res){
+      var cm=res[0],rp=res[1],lg=res[2];
       if(!cm||!cm.sha) return null;
       var msg=(cm.commit&&cm.commit.message)?cm.commit.message.split(String.fromCharCode(10))[0]:'';
       var ver=(cm.commit&&cm.commit.verification)?cm.commit.verification.verified:false;
+      var langs='';
+      if(lg&&typeof lg==='object'){langs=Object.keys(lg).sort(function(a,b){return lg[b]-lg[a];}).join(' · ');}
       var d={sha:cm.sha,short:cm.sha.slice(0,7),url:cm.html_url,msg:msg,verified:!!ver,
         author:(cm.commit&&cm.commit.author)?cm.commit.author.name:'',
         date:(cm.commit&&cm.commit.author)?cm.commit.author.date:'',
@@ -181,8 +190,8 @@
         branch:rp?rp.default_branch:'main',desc:rp?rp.description:'',
         repoCreated:rp?rp.created_at:'',repoPushed:rp?rp.pushed_at:'',
         visibility:rp?(rp.visibility||(rp.private?'private':'public')):'',
-        license:(rp&&rp.license)?(rp.license.spdx_id||rp.license.name):'',lang:rp?rp.language:'',
-        size:rp?rp.size:null,issues:rp?rp.open_issues_count:null};
+        license:(rp&&rp.license)?(rp.license.spdx_id||rp.license.name):'',
+        langs:langs||(rp?rp.language:''),size:rp?rp.size:null,issues:rp?rp.open_issues_count:null};
       _gh=d;try{localStorage.setItem('cc_gh',JSON.stringify({t:Date.now(),d:d}));}catch(_){}
       return d;
     }).catch(function(){return null;});
@@ -223,17 +232,18 @@
       if(d.repoCreated)h+=row('Repo created',esc((d.repoCreated||'').slice(0,10)));
       if(d.visibility)h+=row('Visibility',esc(d.visibility));
       if(d.license)h+=row('License',esc(d.license));
-      if(d.lang)h+=row('Language',esc(d.lang));
+      if(d.langs)h+=row('Languages',esc(d.langs));
       if(d.size!=null)h+=row('Repo size',(d.size>1024?(d.size/1024).toFixed(1)+' MB':d.size+' KB'));
       if(d.issues!=null)h+=row('Open issues',String(d.issues));
       h+='<a class="cc-dep-view" href="'+esc(d.url||repoUrl)+'" target="_blank" rel="noopener">View this commit on GitHub →</a>';
       m.body.innerHTML=h;
     });
   }
-  function mountCommit(el){
+  function mountCommit(el,variant){
     if(!el) return;
-    el.innerHTML='<button class="cc-dep" type="button"><span class="cc-dep-dot"></span><span class="cc-dep-lbl">LIVE</span><span class="cc-dep-sha">main @ <b>…</b></span></button>';
-    var btn=el.querySelector('.cc-dep'),shaB=el.querySelector('.cc-dep-sha b');
+    var cls=(variant==='compact')?'cc-dep-sm':'cc-dep';
+    el.innerHTML='<button class="'+cls+'" type="button"><span class="cc-dep-dot"></span><span class="cc-dep-lbl">LIVE</span><span class="cc-dep-sha">main @ <b>…</b></span></button>';
+    var btn=el.querySelector('button'),shaB=el.querySelector('.cc-dep-sha b');
     btn.addEventListener('click',function(e){e.stopPropagation();openModal();});
     ghFetch().then(function(d){shaB.textContent=d?d.short:'GitHub';});
   }
