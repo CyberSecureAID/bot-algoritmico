@@ -382,6 +382,7 @@ if ('serviceWorker' in navigator) {
   #ccx-net{max-width:600px}
   .ccx-left{display:flex;flex-direction:column}
   .ccx-actions{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+  .ccx-actions .pt-btn,.ccx-actions .cc-dep{min-width:210px}
   @media(max-width:820px){.ccx{grid-template-columns:1fr;gap:26px}.ccx .cc-scroll{max-height:320px}}
 </style>
 <section class="pt-sec pt-bg" id="verificable">
@@ -558,10 +559,10 @@ if ('serviceWorker' in navigator) {
      ══════════════════════════════════════════════════════════════════════ -->
 <script type="module" src="assets/portada/portada.js?v=221"></script>
 <script src="assets/js/contracts-data.js?v=2"></script>
-<script src="assets/js/contracts-view.js?v=4"></script>
+<script src="assets/js/contracts-view.js?v=5"></script>
 <script>try{if(window.CCView){
   var _l=document.getElementById("ccx-list"); if(_l) CCView.renderList(_l);
-  var _cb=document.getElementById("ccx-commit-badge"); if(_cb) CCView.mountCommit(_cb,"left");
+  var _cb=document.getElementById("ccx-commit-badge"); if(_cb) CCView.mountCommit(_cb,"gold");
   var _n=document.getElementById("ccx-net"), _sec=document.getElementById("verificable");
   if(_n){
     if(!("IntersectionObserver" in window)){ CCView.renderBrain(_n); }

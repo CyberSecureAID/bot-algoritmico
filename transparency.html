@@ -134,14 +134,14 @@
 </section>
 
 <script src="/assets/js/contracts-data.js?v=2"></script>
-<script src="/assets/js/contracts-view.js?v=4"></script>
+<script src="/assets/js/contracts-view.js?v=5"></script>
 <script>
   try{
     if(window.CCView){
       CCView.renderList(document.getElementById('cc-list'));
       CCView.renderBrain(document.getElementById('cc-net'));
       var _dl=document.getElementById('cc-dl'); if(_dl) _dl.addEventListener('click',function(ev){ev.preventDefault();CCView.downloadCSV();});
-      CCView.mountCommit(document.getElementById('cc-commit-badge'),'right');
+      CCView.mountCommit(document.getElementById('cc-commit-badge'),'compact');
     }
   }catch(e){console.warn('contracts view:',e);}
 </script>
