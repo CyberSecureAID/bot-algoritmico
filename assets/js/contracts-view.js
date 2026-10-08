@@ -12,26 +12,25 @@
 
   /* Shared styles (literal colors + !important so no host stylesheet overrides them). */
   var css=''
-   /* 3D gold-beveled window that holds the cards: warm-dark fill, gold rim,
-      real drop shadow (not glow) and a raised 3D base, like the site buttons. */
-   +'.cc-panel{position:relative;background:linear-gradient(180deg,#16130b,#0b0906);border-radius:16px;padding:12px;'
-   +'box-shadow:inset 0 1px 0 rgba(247,219,141,.2),inset 0 0 0 1px rgba(201,148,38,.3),0 24px 50px rgba(0,0,0,.6),0 6px 0 #352810}'
+   /* Dark glass window that holds the cards: neutral near-black fill with a soft
+      blur, a subtle gold hairline rim, a real drop shadow and a raised 3D base. */
+   +'.cc-panel{position:relative;background:linear-gradient(180deg,rgba(18,23,30,.92),rgba(9,12,16,.94));border-radius:16px;padding:12px;'
+   +'-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);'
+   +'box-shadow:inset 0 1px 0 rgba(255,255,255,.055),inset 0 0 0 1px rgba(232,184,75,.16),0 26px 54px rgba(0,0,0,.6),0 6px 0 #05080c}'
    +'.cc-scroll{overflow:auto;padding:16px 7px;'
    +'-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%);'
    +'mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%)}'
    +'.cc-scroll::-webkit-scrollbar{width:7px}'
    +'.cc-scroll::-webkit-scrollbar-track{background:transparent}'
    +'.cc-scroll::-webkit-scrollbar-thumb{background:rgba(232,184,75,.32);border-radius:9px}'
-   /* cards */
-   +'.cc-card{background:rgba(26,21,10,.55)!important;border:1px solid #2a2415!important;border-radius:12px;padding:12px 14px;margin-bottom:10px}'
+   +'.cc-card{background:rgba(26,32,40,.45)!important;border:1px solid rgba(255,255,255,.06)!important;border-radius:12px;padding:12px 14px;margin-bottom:10px}'
    +'.cc-card:last-child{margin-bottom:0}'
-   +'.cc-name{display:flex;align-items:center;gap:9px;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:14.5px;color:#f1e3c4;margin-bottom:3px}'
+   +'.cc-name{display:flex;align-items:center;gap:9px;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:14.5px;color:#eaecef;margin-bottom:3px}'
    +'.cc-dot{width:9px;height:9px;border-radius:50%;flex:none}'
    +'.cc-row{display:flex;align-items:center;gap:9px;margin-top:7px}'
-   +'.cc-tag{flex:none;width:42px;font-size:11px;color:#8a7b5c;font-weight:600;letter-spacing:.02em;font-family:"Plus Jakarta Sans",system-ui,sans-serif}'
-   +'.cc-addr{flex:1;min-width:0;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:10.5px;color:#b6ab93;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+   +'.cc-tag{flex:none;width:42px;font-size:11px;color:#79838f;font-weight:600;letter-spacing:.02em;font-family:"Plus Jakarta Sans",system-ui,sans-serif}'
+   +'.cc-addr{flex:1;min-width:0;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:10.5px;color:#a7b0bb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
    +'.cc-btns{flex:none;display:flex;gap:6px}'
-   /* buttons: forced gold-outline pills, consistent in every context */
    +'.cc-btn{font-family:"Plus Jakarta Sans",system-ui,sans-serif!important;font-size:10.5px!important;font-weight:600!important;'
    +'border:1px solid rgba(232,184,75,.42)!important;background:rgba(232,184,75,.08)!important;color:#E8B84B!important;'
    +'border-radius:7px!important;padding:4px 10px!important;cursor:pointer;white-space:nowrap;text-decoration:none!important;'
