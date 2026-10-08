@@ -46,12 +46,7 @@
   /* First screen: Our Contracts (left) + brain (right) */
   .hero{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:20px 18px 10px;display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:start;min-height:calc(100dvh - 58px)}
   .h2{font-family:var(--disp);font-size:13px;text-transform:uppercase;letter-spacing:.11em;color:var(--gold);font-weight:700;margin:0 0 14px;text-align:center}
-  .lista{display:flex;flex-direction:column;max-height:calc(100dvh - 58px - 84px);overflow:auto;padding-right:7px;
-    -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%);
-    mask-image:linear-gradient(to bottom,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%)}
-  .lista::-webkit-scrollbar{width:7px}
-  .lista::-webkit-scrollbar-track{background:transparent}
-  .lista::-webkit-scrollbar-thumb{background:rgba(232,184,75,.28);border-radius:9px}
+  .cc-scroll{max-height:calc(100dvh - 58px - 104px)}
   .netcol{display:flex;flex-direction:column;align-items:center}
   #cc-net{max-width:660px}
   .cap{font-size:12px;color:var(--ink3);text-align:center;margin-top:4px}
@@ -101,7 +96,7 @@
 <section class="hero">
   <div>
     <div class="h2">Our Contracts</div>
-    <div class="lista" id="cc-list"></div>
+    <div class="cc-panel"><div class="cc-scroll"><div id="cc-list"></div></div></div>
   </div>
   <div class="netcol">
     <canvas id="cc-net"></canvas>
