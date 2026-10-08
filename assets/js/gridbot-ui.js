@@ -10,7 +10,6 @@ import { t } from './idioma.js?v=167';
 import * as wallet from './wallet.js?v=129';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
 import * as perfil from './perfil.js?v=131';
-import * as prizepool from './prizepool.js?v=128';
 import * as tutorial from './tutorial.js?v=125';
 import * as market from './market.js?v=126';
 import * as avisos from './avisos.js?v=125';
@@ -324,14 +323,12 @@ function headerHTML() {
     <a class="c-brand" href="./"><img class="c-logo" src="assets/img/cco-logo.png" alt="" width="30" height="30"><img class="c-logo-full" src="assets/img/cco-full.webp" alt="Cripto Cuba Oficial" width="152" height="40" loading="eager"></a>
     <span class="c-estado" id="c-estado" title="Your wallet status"><i></i><b>Not connected</b></span>
     <img class="c-logo-mov" src="assets/img/cco-movil.webp" alt="CriptoCuba Oficial" width="140" height="91" loading="eager" decoding="async">
-    <button class="c-ticker" id="c-ticker" type="button" aria-label="Prize Pool"><img class="c-ticker-img" src="assets/img/cinta-prize.webp" alt="Prize Pool" loading="lazy"></button>
     <div class="c-hdr-r">
 
       <button class="c-swap" id="c-swap" type="button" aria-label="Intercambiar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10 3 6l4-4"/><path d="M3 6h14"/><path d="m17 14 4 4-4 4"/><path d="M21 18H7"/></svg><span class="c-swap-tx">Swap</span></button>
       <button class="c-swap c-academy" id="c-academy" type="button" aria-label="Academy"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 9 12 4 2 9l10 5 10-5z"/><path d="M6 11.5V16c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4.5"/><path d="M22 9v5"/></svg><span class="c-swap-tx">Academy</span></button>
       <button class="c-swap c-tools" id="c-tools" type="button" aria-label="Herramientas"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><span class="c-swap-tx">Tools</span></button>
       <button class="c-swap c-liq" id="c-liq" type="button" aria-label="Liquidity Pools"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h4V10H3zM10 20h4V4h-4zM17 20h4v-7h-4z"/></svg><span class="c-swap-tx">Liquidity</span></button>
-      <button class="c-prize" id="c-prize" type="button" aria-label="Prize Pool"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg><span class="c-prize-tx">Prize Pool</span></button>
       <button class="c-market" id="c-market" type="button" aria-label="Marketplace"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5 10.5a2 2 0 0 1-2 1.5H6.5a2 2 0 0 1-2-1.5L3 9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg><span class="c-market-tx">Market</span></button>
       <button class="c-loteria" id="c-instalar" type="button" aria-label="Install the app"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span class="c-lot-tx"><span class="lbl-pc">Install</span><span class="lbl-mov">Compartir</span></span></button>
       ${right}
@@ -504,7 +501,6 @@ function wireHeader() {
     academia: 'c-academy', academy: 'c-academy', planes: 'c-academy',
     liquidity: 'c-liq', liquidez: 'c-liq', pro: 'c-liq',
     market: 'c-market', mercado: 'c-market', p2p: 'c-market',
-    sorteo: 'c-prize', prize: 'c-prize',
     tools: 'c-tools', herramientas: 'c-tools'
   };
 
@@ -580,8 +576,6 @@ function wireHeader() {
   if ($('c-red')) $('c-red').onclick = () => wallet.cambiarARedCorrecta().catch(() => {});
   if ($('c-off')) $('c-off').onclick = () => wallet.desconectar().catch(() => {});
   if ($('c-perfil')) $('c-perfil').onclick = () => perfil.abrirPerfil();
-  if ($('c-prize')) $('c-prize').onclick = () => prizepool.abrirPrizePool();
-  if ($('c-ticker')) $('c-ticker').onclick = () => prizepool.abrirPrizePool();
   tutorial.wireFila(document);
   if ($('c-market')) $('c-market').onclick = () => { avisos.limpiarPunto(); market.abrirMarket(); };
   /* Si el usuario ya eligió idioma en otra visita, se aplica. Va en
