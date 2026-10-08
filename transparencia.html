@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transparencia y Contratos</title>
+<meta name="description" content="Todos los contratos de la plataforma, publicos y verificados en BscScan, mostrados como un sistema interconectado. Proxy, implementacion, gobernanza y codigo abierto.">
+<style>
+  :root{box-sizing:border-box;--bg:#0a0e13;--card:rgba(16,22,30,.72);--bd:#1b232e;--tx:#e7edf4;--tx2:#9aa7b4;--gold:#E8B84B;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;padding:env(safe-area-inset-top,0) 0 0}
+  a{color:var(--gold);text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 18px 70px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
+  .back{font-size:13px;color:var(--tx2)}
+  h1{font-size:26px;margin:0 0 6px}
+  h1 span{color:var(--gold)}
+  .lead{font-size:14.5px;color:var(--tx2);max-width:760px;margin:0 0 26px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:700;margin:0 0 12px}
+  .lista{display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto;padding-right:6px}
+  .lista::-webkit-scrollbar{width:6px}.lista::-webkit-scrollbar-thumb{background:rgba(232,184,75,.25);border-radius:9px}
+  .c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:13px 14px}
+  .c-h{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+  .c-dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .c-n{font-weight:700;font-size:14px}
+  .c-s{font-size:12px;color:var(--tx2);margin-bottom:9px}
+  .row{display:flex;align-items:center;gap:7px;font-size:11.5px;margin-top:5px;flex-wrap:wrap}
+  .row b{color:var(--tx2);font-weight:600;min-width:98px;flex:none}
+  .addr{font-family:var(--mono);font-size:11px;color:var(--tx);word-break:break-all;flex:1;min-width:0}
+  .btn{font-size:10.5px;border:1px solid var(--bd);background:rgba(232,184,75,.06);color:var(--gold);border-radius:7px;padding:2px 8px;cursor:pointer;white-space:nowrap}
+  .btn:hover{background:rgba(232,184,75,.14)}
+  .cvwrap{position:sticky;top:14px}
+  canvas{width:100%;display:block;touch-action:none}
+  .cap{font-size:12px;color:var(--tx2);text-align:center;margin-top:6px}
+  .leg{display:flex;flex-wrap:wrap;gap:5px 13px;justify-content:center;margin-top:8px}
+  .leg span{font-size:11px;color:var(--tx2);display:inline-flex;align-items:center;gap:5px}
+  .leg i{width:9px;height:9px;border-radius:50%}
+  .bloques{margin-top:34px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  @media(max-width:860px){.bloques{grid-template-columns:1fr}}
+  .blq{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+  .blq h3{font-size:14px;margin:0 0 8px;color:var(--gold)}
+  .blq p{font-size:12.5px;color:var(--tx2);margin:0}
+  .disc{margin-top:16px;border:1px solid rgba(232,184,75,.3);background:rgba(232,184,75,.05);border-radius:12px;padding:13px 16px;font-size:12.5px;color:var(--tx2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="back" href="index.html">&larr; Volver</a><span style="font-size:12px;color:var(--tx2)">BNB Smart Chain (56)</span></div>
+  <h1><span>Transparencia</span> total</h1>
+  <p class="lead">Cada contrato de la plataforma es publico y esta verificado en BscScan. Esto no es una lista suelta: es un sistema interconectado donde cada contrato depende de los demas y se retroalimenta. A la izquierda puedes verificar cada direccion; a la derecha, el esquema real de como se conectan. Pasa el cursor por un nodo para resaltarlo, arrastralo para aislarlo, o toca cualquiera para abrir su contrato verificado.</p>
+  <div class="grid">
+    <div>
+      <div class="h2">Contratos verificados</div>
+      <div class="lista" id="lista"></div>
+    </div>
+    <div>
+      <div class="h2">Esquema del sistema</div>
+      <div class="cvwrap">
+        <canvas id="net"></canvas>
+        <div class="cap">Toca un nodo para ver su contrato en BscScan. Arrastralo para aislarlo.</div>
+        <div class="leg">
+          <span><i style="background:#9B93F0"></i>Nucleo</span><span><i style="background:#EF9F27"></i>Oraculo</span><span><i style="background:#22B184"></i>Bots y swap</span><span><i style="background:#4D97E8"></i>P2P</span><span><i style="background:#7FB52E"></i>Shield</span><span><i style="background:#E86A3C"></i>Futuros</span><span><i style="background:#DE6A92"></i>Staking</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bloques">
+    <div class="blq"><h3>Gobernanza y control</h3><p>Todos los contratos consultan a Tarifas para la autorizacion: es el registro central de duenos (owner principal y hasta un director adicional). Las actualizaciones de logica son UUPS con un bloqueo temporal de 48 horas: cualquier cambio se propone on-chain y solo puede ejecutarse pasadas 48 horas, dando tiempo a auditarlo. Ningun contrato puede retirar fondos de tu wallet sin tu firma; la plataforma no custodia fondos.</p></div>
+    <div class="blq"><h3>Codigo abierto y verificable</h3><p>Todo el codigo es publico en <a href="https://github.com/CyberSecureAID/bot-algoritmico" target="_blank" rel="noopener">github.com/CyberSecureAID/bot-algoritmico</a>. El sitio se sirve como modulos ES nativos directamente del repositorio, sin paso de compilacion ni empaquetado, por lo que el codigo desplegado es identico al codigo fuente publico: cualquiera puede comparar un archivo servido con el del repositorio y confirmar que coinciden.</p></div>
+    <div class="blq"><h3>Que firmas</h3><p>Conectar la wallet solo lee tu direccion y tus saldos, no mueve nada. Cuando usas una herramienta, firmas transacciones estandar (aprobaciones, intercambios, pagos de servicio) hacia los contratos verificados de esta pagina. Nunca se te pide tu frase semilla ni tus claves privadas, y no se cargan scripts de publicidad ni de rastreo.</p></div>
+  </div>
+  <div class="disc"><b style="color:var(--gold)">Aviso de riesgo.</b> Las ganancias no estan garantizadas. Operar con criptoactivos conlleva riesgo de perdida. Opera unicamente con fondos que puedas permitirte perder.</div>
+</div>
+<script src="assets/js/contratos-data.js"></script>
+<script>
+(function(){
+  var D=window.CONTRATOS||[];
+  var COL={core:"#9B93F0",oracle:"#EF9F27",trade:"#22B184",p2p:"#4D97E8",shield:"#7FB52E",fut:"#E86A3C",stake:"#DE6A92"};
+  var bs=function(a){return "https://bscscan.com/address/"+a+"#code";};
+  var corta=function(a){return a?a:"";};
+  /* ---- tabla ---- */
+  var L=document.getElementById("lista"),html="";
+  D.forEach(function(c){
+    html+='<div class="c"><div class="c-h"><span class="c-dot" style="background:'+COL[c.cat]+'"></span><span class="c-n">'+c.nombre+'</span></div>';
+    html+='<div class="c-s">'+c.servicio+'</div>';
+    html+='<div class="row"><b>Proxy</b><span class="addr">'+c.proxy+'</span><button class="btn" data-cp="'+c.proxy+'">Copiar</button><a class="btn" href="'+bs(c.proxy)+'" target="_blank" rel="noopener">BscScan</a></div>';
+    if(c.impl)html+='<div class="row"><b>Implementacion</b><span class="addr">'+c.impl+'</span><button class="btn" data-cp="'+c.impl+'">Copiar</button><a class="btn" href="'+bs(c.impl)+'" target="_blank" rel="noopener">BscScan</a></div>';
+    html+='</div>';
+  });
+  L.innerHTML=html;
+  L.addEventListener("click",function(e){var b=e.target.closest("[data-cp]");if(!b)return;try{navigator.clipboard.writeText(b.getAttribute("data-cp"));var t=b.textContent;b.textContent="Copiado";setTimeout(function(){b.textContent=t;},1200);}catch(_){}});
+  /* ---- cerebro ---- */
+  var cv=document.getElementById("net"),ctx=cv.getContext("2d");
+  var W=600,H=600,dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";ctx.scale(dpr,dpr);
+  var cx=W/2,cy=H/2;
+  var ring=D.filter(function(c){return !c.hub;}),RD=Math.min(188,132+ring.length*4);
+  var byId={},arr=[],imgs={};
+  D.forEach(function(c){imgs[c.logo]=new Image();imgs[c.logo].src="assets/portada/img/red/"+c.logo+".webp";});
+  var brain=new Image();brain.src="assets/portada/img/red/cerebro.webp";
+  var k=0;
+  D.forEach(function(c){var n={id:c.id,cat:c.cat,hub:!!c.hub,logo:c.logo,url:bs(c.proxy),hs:1,free:false,x:cx,y:cy,holdUntil:0};
+    if(n.hub){n.tx=cx;n.ty=cy;}else{var i=k++;var a=-Math.PI/2+i*(2*Math.PI/ring.length);n.ang=a;n.tx=cx+RD*Math.cos(a);n.ty=cy+RD*Math.sin(a);n.delay=i*0.03;}
+    byId[c.id]=n;arr.push(n);});
+  var E=[];D.forEach(function(c){(c.conecta||[]).forEach(function(t){if(byId[t])E.push([c.id,t]);});});
+  var mp={x:-999,y:-999},over=false,drag=null,offx=0,offy=0,moved=false,t0=performance.now();
+  function toC(ev){var r=cv.getBoundingClientRect();var e=ev.touches?ev.touches[0]:ev;return{x:(e.clientX-r.left)*(W/r.width),y:(e.clientY-r.top)*(H/r.height)};}
+  function pick(p){var best=1e9,hit=null;arr.forEach(function(n){var rr=(n.hub?40:22)*n.hs+6;var d=Math.hypot(n.x-p.x,n.y-p.y);if(d<rr&&d<best){best=d;hit=n;}});return hit;}
+  cv.addEventListener("mousemove",function(ev){mp=toC(ev);over=true;if(drag){drag.x=mp.x+offx;drag.y=mp.y+offy;moved=true;}});
+  cv.addEventListener("mouseleave",function(){over=false;});
+  function down(ev){var p=toC(ev);var n=pick(p);if(n){moved=false;if(!n.hub){drag=n;n.free=true;offx=n.x-p.x;offy=n.y-p.y;cv.style.cursor="grabbing";}else{drag=n;}}}
+  function up(){if(drag){if(!moved&&drag.url)window.open(drag.url,"_blank","noopener");if(!drag.hub)drag.holdUntil=performance.now()+2800;drag=null;cv.style.cursor="default";}}
+  cv.addEventListener("mousedown",down);window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",function(e){down(e);},{passive:true});
+  cv.addEventListener("touchmove",function(e){mp=toC(e);if(drag&&!drag.hub){drag.x=mp.x+offx;drag.y=mp.y+offy;moved=true;}},{passive:true});
+  cv.addEventListener("touchend",up);
+  function ease(x){return 1-Math.pow(1-Math.max(0,Math.min(1,x)),3);}
+  function logo(n,r){var im=imgs[n.logo];if(im&&im.complete&&im.naturalWidth){ctx.drawImage(im,n.x-r,n.y-r,r*2,r*2);}else{ctx.beginPath();ctx.arc(n.x,n.y,r,0,7);ctx.fillStyle="rgba(232,184,75,.15)";ctx.fill();}}
+  function draw(now){
+    var T=(now-t0)/1000;
+    arr.forEach(function(n){var bp=n.hub?1:ease((T-n.delay)/1.1);var hx=cx+(n.tx-cx)*bp,hy=cy+(n.ty-cy)*bp;
+      if(drag===n){}else if(n.free){if(now<n.holdUntil){}else{n.x+=(hx-n.x)*0.08;n.y+=(hy-n.y)*0.08;if(Math.hypot(hx-n.x,hy-n.y)<1.5)n.free=false;}}else{n.x=hx;n.y=hy;}
+      n.op=n.hub?Math.min(1,T/0.5):bp;});
+    var act=drag&&!drag.hub?drag:(over?pick(mp):null);if(!drag)cv.style.cursor=act?"pointer":"default";
+    arr.forEach(function(n){var isA=act&&act.id===n.id;n.hs+=((isA?1.4:1)-n.hs)*0.22;});
+    ctx.clearRect(0,0,W,H);var ga=Math.min(1,T/0.5);
+    if(brain.complete&&brain.naturalWidth){var bs=RD*1.6;ctx.globalAlpha=0.92*ga;ctx.drawImage(brain,cx-bs/2,cy-bs/2,bs,bs);}
+    var ph=now/26;
+    E.forEach(function(e){var a=byId[e[0]],b=byId[e[1]];var op=Math.min(a.op,b.op);if(op<0.02)return;var hot=act&&(e[0]===act.id||e[1]===act.id);
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=COL[a.cat];ctx.globalAlpha=(act?(hot?0.98:0.1):0.52)*op;ctx.lineWidth=hot?2.8:1.4;ctx.setLineDash([3,8]);ctx.lineDashOffset=-ph;ctx.stroke();});
+    ctx.setLineDash([]);ctx.globalAlpha=1;
+    arr.forEach(function(n){if(n.hub)return;var isA=act&&act.id===n.id;var r=22*n.hs;ctx.globalAlpha=n.op;logo(n,r);
+      if(isA){ctx.beginPath();ctx.arc(n.x,n.y,r+2,0,7);ctx.lineWidth=2;ctx.strokeStyle="#E8B84B";ctx.stroke();}
+      ctx.save();ctx.globalAlpha=n.op;ctx.fillStyle="#E8B84B";ctx.font="600 12px ui-sans-serif,system-ui,sans-serif";ctx.shadowColor="rgba(0,0,0,.7)";ctx.shadowBlur=4;ctx.shadowOffsetY=1;var la=n.ang;ctx.textAlign=Math.cos(la)>0.35?"left":(Math.cos(la)<-0.35?"right":"center");ctx.textBaseline="middle";ctx.fillText(byIdName(n.id),n.x+Math.cos(la)*(r+9),n.y+Math.sin(la)*(r+15));ctx.restore();});
+    var hub=byId.tarifas;if(hub){ctx.globalAlpha=hub.op;logo(hub,40*hub.hs);ctx.save();ctx.globalAlpha=hub.op;ctx.fillStyle="#E8B84B";ctx.font="700 14px ui-sans-serif,system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,.8)";ctx.shadowBlur=5;ctx.shadowOffsetY=1;ctx.fillText("Tarifas",hub.x,hub.y+40*hub.hs+4);ctx.restore();}
+    requestAnimationFrame(draw);
+  }
+  function byIdName(id){var c=D.find(function(x){return x.id===id;});return c?c.nombre:id;}
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
