@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────────────────────────────────
    Shared contracts view: renders the verifiable address list AND the animated
-   contract-network brain. Used by /transparency/ (full page) and by the
+   contract-network brain. Used by transparency.html (full page) and by the
    Transparency section of the lobby (index.html). Reads window.CONTRATOS.
    All asset paths are ABSOLUTE so it works from any folder depth.
    ────────────────────────────────────────────────────────────────────────── */
@@ -10,17 +10,33 @@
   var COL={core:"#9B93F0",oracle:"#EF9F27",trade:"#22B184",p2p:"#4D97E8",shield:"#7FB52E",fut:"#E86A3C",stake:"#DE6A92"};
   var bs=function(a){return "https://bscscan.com/address/"+a+"#code";};
 
-  /* Inject shared styles once (literal colors so it works on any host page). */
+  /* Shared styles (literal colors + !important so no host stylesheet overrides them). */
   var css=''
-   +'.cc-card{background:rgba(16,22,32,.74);border:1px solid #1c232b;border-radius:12px;padding:12px 14px;margin-bottom:9px}'
-   +'.cc-name{display:flex;align-items:center;gap:9px;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:14.5px;color:#eaecef;margin-bottom:3px}'
+   /* 3D gold-beveled window that holds the cards: warm-dark fill, gold rim,
+      real drop shadow (not glow) and a raised 3D base, like the site buttons. */
+   +'.cc-panel{position:relative;background:linear-gradient(180deg,#16130b,#0b0906);border-radius:16px;padding:12px;'
+   +'box-shadow:inset 0 1px 0 rgba(247,219,141,.2),inset 0 0 0 1px rgba(201,148,38,.3),0 24px 50px rgba(0,0,0,.6),0 6px 0 #352810}'
+   +'.cc-scroll{overflow:auto;padding:16px 7px;'
+   +'-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%);'
+   +'mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%)}'
+   +'.cc-scroll::-webkit-scrollbar{width:7px}'
+   +'.cc-scroll::-webkit-scrollbar-track{background:transparent}'
+   +'.cc-scroll::-webkit-scrollbar-thumb{background:rgba(232,184,75,.32);border-radius:9px}'
+   /* cards */
+   +'.cc-card{background:rgba(26,21,10,.55)!important;border:1px solid #2a2415!important;border-radius:12px;padding:12px 14px;margin-bottom:10px}'
+   +'.cc-card:last-child{margin-bottom:0}'
+   +'.cc-name{display:flex;align-items:center;gap:9px;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:14.5px;color:#f1e3c4;margin-bottom:3px}'
    +'.cc-dot{width:9px;height:9px;border-radius:50%;flex:none}'
    +'.cc-row{display:flex;align-items:center;gap:9px;margin-top:7px}'
-   +'.cc-tag{flex:none;width:42px;font-size:11px;color:#79838f;font-weight:600;letter-spacing:.02em}'
-   +'.cc-addr{flex:1;min-width:0;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:10.5px;color:#a7b0bb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+   +'.cc-tag{flex:none;width:42px;font-size:11px;color:#8a7b5c;font-weight:600;letter-spacing:.02em;font-family:"Plus Jakarta Sans",system-ui,sans-serif}'
+   +'.cc-addr{flex:1;min-width:0;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:10.5px;color:#b6ab93;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
    +'.cc-btns{flex:none;display:flex;gap:6px}'
-   +'.cc-btn{font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:10.5px;font-weight:600;border:1px solid #29313b;background:rgba(232,184,75,.06);color:#E8B84B;border-radius:7px;padding:3px 9px;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;line-height:1}'
-   +'.cc-btn:hover{background:rgba(232,184,75,.15)}'
+   /* buttons: forced gold-outline pills, consistent in every context */
+   +'.cc-btn{font-family:"Plus Jakarta Sans",system-ui,sans-serif!important;font-size:10.5px!important;font-weight:600!important;'
+   +'border:1px solid rgba(232,184,75,.42)!important;background:rgba(232,184,75,.08)!important;color:#E8B84B!important;'
+   +'border-radius:7px!important;padding:4px 10px!important;cursor:pointer;white-space:nowrap;text-decoration:none!important;'
+   +'display:inline-flex!important;align-items:center;line-height:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);transition:background .15s,border-color .15s}'
+   +'.cc-btn:hover{background:rgba(232,184,75,.2)!important;border-color:rgba(232,184,75,.7)!important}'
    +'.cc-net{display:block;width:100%;height:auto;touch-action:none;cursor:default}';
   var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 
@@ -44,6 +60,8 @@
   }
 
   /* ── Brain: logical 720x500, shown as a responsive box (width:100%;height:auto).
+       Circle slightly widened (RD=200) and labels on near-vertical nodes aligned
+       sideways, so the two bottom names (OraculoPrecios / OracleGuard) separate.
        Draw order: brain (back, floating) -> dotted lines (middle) -> logos (front). ── */
   function renderBrain(cv){
     var D=window.CONTRATOS||[];
@@ -51,7 +69,7 @@
     if(!cv.classList.contains("cc-net"))cv.classList.add("cc-net");
     var W=720,H=500,dpr=Math.min(window.devicePixelRatio||1,2);
     cv.width=W*dpr;cv.height=H*dpr;ctx.scale(dpr,dpr);
-    var cx=W/2,cy=H/2,RNODE=24,RHUB=44,M=30,RD=188;
+    var cx=W/2,cy=H/2,RNODE=24,RHUB=44,M=30,RD=200;
     var ring=D.filter(function(c){return !c.hub;});
     var byId={},arr=[],imgs={};
     D.forEach(function(c){imgs[c.logo]=new Image();imgs[c.logo].src=LOGO+c.logo+".webp";});
@@ -84,21 +102,17 @@
       var act=drag&&!drag.hub?drag:(over?pick(mp):null);if(!drag)cv.style.cursor=act?"pointer":"default";
       arr.forEach(function(n){var isA=act&&act.id===n.id;n.hs+=((isA?1.4:1)-n.hs)*0.22;});
       ctx.clearRect(0,0,W,H);var ga=Math.min(1,T/0.5);
-      /* 1) brain at the BACK, gentle float */
       if(brain.complete&&brain.naturalWidth){
         var fx=Math.sin(now/1700)*5, fy=Math.sin(now/1250+1.3)*8, fsc=1+Math.sin(now/2100)*0.02;
-        var bsz=RD*1.6*fsc;ctx.globalAlpha=0.92*ga;ctx.drawImage(brain,cx+fx-bsz/2,cy+fy-bsz/2,bsz,bsz);
+        var bsz=RD*1.52*fsc;ctx.globalAlpha=0.92*ga;ctx.drawImage(brain,cx+fx-bsz/2,cy+fy-bsz/2,bsz,bsz);
       }
-      /* 2) dotted lines in the MIDDLE */
       var ph=now/26;
       E.forEach(function(e){var a=byId[e[0]],b=byId[e[1]];var op=Math.min(a.op,b.op);if(op<0.02)return;var hot=act&&(e[0]===act.id||e[1]===act.id);
         ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=COL[a.cat];ctx.globalAlpha=(act?(hot?0.98:0.1):0.52)*op;ctx.lineWidth=hot?2.8:1.4;ctx.setLineDash([3,8]);ctx.lineDashOffset=-ph;ctx.stroke();});
       ctx.setLineDash([]);ctx.globalAlpha=1;
-      /* 3) ring logos + labels ON TOP */
       arr.forEach(function(n){if(n.hub)return;var isA=act&&act.id===n.id;var r=RNODE*n.hs;ctx.globalAlpha=n.op;logo(n,r);
         if(isA){ctx.beginPath();ctx.arc(n.x,n.y,r+2,0,7);ctx.lineWidth=2;ctx.strokeStyle="#E8B84B";ctx.stroke();}
-        ctx.save();ctx.globalAlpha=n.op;ctx.fillStyle="#E8B84B";ctx.font="600 14px 'Plus Jakarta Sans',system-ui,sans-serif";ctx.shadowColor="rgba(0,0,0,.78)";ctx.shadowBlur=4;ctx.shadowOffsetY=1;var la=n.ang;ctx.textAlign=Math.cos(la)>0.35?"left":(Math.cos(la)<-0.35?"right":"center");ctx.textBaseline="middle";ctx.fillText(byIdName(n.id),n.x+Math.cos(la)*(r+10),n.y+Math.sin(la)*(r+16));ctx.restore();});
-      /* 4) hub (Tarifas) on top */
+        ctx.save();ctx.globalAlpha=n.op;ctx.fillStyle="#E8B84B";ctx.font="600 14px 'Plus Jakarta Sans',system-ui,sans-serif";ctx.shadowColor="rgba(0,0,0,.78)";ctx.shadowBlur=4;ctx.shadowOffsetY=1;var la=n.ang,c=Math.cos(la);ctx.textAlign=c>0.15?"left":(c<-0.15?"right":"center");ctx.textBaseline="middle";ctx.fillText(byIdName(n.id),n.x+c*(r+10),n.y+Math.sin(la)*(r+16));ctx.restore();});
       var hub=byId.tarifas;if(hub){ctx.globalAlpha=hub.op;logo(hub,RHUB*hub.hs);
         if(act&&act.id==="tarifas"){ctx.beginPath();ctx.arc(hub.x,hub.y,RHUB*hub.hs+2,0,7);ctx.lineWidth=2;ctx.strokeStyle="#E8B84B";ctx.stroke();}
         ctx.save();ctx.globalAlpha=hub.op;ctx.fillStyle="#E8B84B";ctx.font="700 16px 'Plus Jakarta Sans',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,.82)";ctx.shadowBlur=5;ctx.shadowOffsetY=1;ctx.fillText("Tarifas",hub.x,hub.y+RHUB*hub.hs+5);ctx.restore();}
