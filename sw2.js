@@ -6,7 +6,7 @@
    · Al cambiar VERSION, se borra todo el caché viejo (las URLs ?v= anteriores).
    · HTML (navegaciones): el service worker NO los toca, para que los navegadores
      de wallets inyecten window.ethereum al cargar la página. */
-const VERSION = 'aurex-v455';
+const VERSION = 'aurex-v456';
 const CACHE = 'cc-' + VERSION;
 
 self.addEventListener('install', () => self.skipWaiting());
