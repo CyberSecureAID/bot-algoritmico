@@ -90,7 +90,7 @@
   <div class="hdr-in">
     <a class="back" href="index.html">&larr; Back to site</a>
     <div class="title">Full <b>Transparency</b></div>
-    <span class="chain">BNB Smart Chain · 56</span>
+    <div class="cc-dep-wrap" id="cc-commit-badge"></div>
   </div>
 </header>
 
@@ -119,7 +119,6 @@
     <div class="blq">
       <h3>Verify it yourself</h3>
       <p>Nothing here asks for trust. Every contract below is deployed on BNB Smart Chain and verified on BscScan, proxy and implementation, with a bytecode match, so you read the exact code that runs. The web app is served to your browser as the same native ES module files published in the repository, with no build, bundling or minification step, so you can open any file the site loads and diff it against GitHub line for line. The full commit history is public. There is no private backend deciding what happens to your funds, and no compiled layer hiding what the code does.</p>
-      <div class="cc-commit">Deployed commit (main): <span id="cc-commit">checking…</span></div>
     </div>
     <div class="blq">
       <h3>Your funds never leave your wallet</h3>
@@ -135,16 +134,16 @@
 </section>
 
 <script src="/assets/js/contracts-data.js?v=2"></script>
-<script src="/assets/js/contracts-view.js?v=2"></script>
+<script src="/assets/js/contracts-view.js?v=3"></script>
 <script>
   try{
     if(window.CCView){
       CCView.renderList(document.getElementById('cc-list'));
       CCView.renderBrain(document.getElementById('cc-net'));
       var _dl=document.getElementById('cc-dl'); if(_dl) _dl.addEventListener('click',function(ev){ev.preventDefault();CCView.downloadCSV();});
+      CCView.mountCommit(document.getElementById('cc-commit-badge'),'right');
     }
   }catch(e){console.warn('contracts view:',e);}
-  (function(){var el=document.getElementById('cc-commit');if(!el)return;fetch('https://api.github.com/repos/CyberSecureAID/bot-algoritmico/commits/main').then(function(r){return r.ok?r.json():Promise.reject();}).then(function(d){var sha=(d.sha||'').slice(0,7);var date=(d.commit&&d.commit.author)?new Date(d.commit.author.date).toISOString().slice(0,10):'';el.innerHTML='<a href="'+(d.html_url||'#')+'" target="_blank" rel="noopener">'+sha+'</a>'+(date?' · '+date:'');}).catch(function(){el.innerHTML='<a href="https://github.com/CyberSecureAID/bot-algoritmico/commits/main" target="_blank" rel="noopener">see latest on GitHub</a>';});})();
 </script>
 <script type="module">
   try{
