@@ -381,10 +381,8 @@ if ('serviceWorker' in navigator) {
   .ccx-brain{display:flex;justify-content:center;align-items:center}
   #ccx-net{max-width:600px}
   .ccx-left{display:flex;flex-direction:column}
-  .ccx-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:12px;margin-top:16px}
-  .ccx-actions .cc-dep-wrap{display:block;justify-self:stretch;min-width:0}
-  .ccx-actions .pt-btn,.ccx-actions .cc-dep{width:100%;min-width:0}
-  @media(max-width:560px){.ccx-actions{grid-template-columns:1fr}}
+  .ccx-actions{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+  .ccx-actions .pt-btn,.ccx-actions .cc-dep{min-width:210px}
   @media(max-width:820px){.ccx{grid-template-columns:1fr;gap:26px}.ccx .cc-scroll{max-height:320px}}
 </style>
 <section class="pt-sec pt-bg" id="verificable">
@@ -392,7 +390,7 @@ if ('serviceWorker' in navigator) {
   <div class="pt-wrap">
     <p class="pt-eye">Transparency</p>
     <div class="ccx">
-      <div class="ccx-left"><div class="cc-panel"><div class="cc-scroll"><div id="ccx-list"></div></div></div><div class="ccx-actions"><a class="pt-btn" href="transparency.html">See all contracts</a><div class="cc-dep-wrap" id="ccx-risk-badge"></div><div class="cc-dep-wrap" id="ccx-commit-badge"></div></div></div>
+      <div class="ccx-left"><div class="cc-panel"><div class="cc-scroll"><div id="ccx-list"></div></div></div><div class="ccx-actions"><a class="pt-btn" href="transparency.html">See all contracts <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a><div class="cc-dep-wrap" id="ccx-commit-badge"></div></div></div>
       <div class="ccx-brain"><canvas id="ccx-net"></canvas></div>
     </div>
   </div>
@@ -561,10 +559,9 @@ if ('serviceWorker' in navigator) {
      ══════════════════════════════════════════════════════════════════════ -->
 <script type="module" src="assets/portada/portada.js?v=221"></script>
 <script src="assets/js/contracts-data.js?v=2"></script>
-<script src="assets/js/contracts-view.js?v=7"></script>
+<script src="assets/js/contracts-view.js?v=6"></script>
 <script>try{if(window.CCView){
   var _l=document.getElementById("ccx-list"); if(_l) CCView.renderList(_l);
-  var _rb=document.getElementById("ccx-risk-badge"); if(_rb) CCView.mountRisk(_rb,"gold");
   var _cb=document.getElementById("ccx-commit-badge"); if(_cb) CCView.mountCommit(_cb,"gold");
   var _n=document.getElementById("ccx-net"), _sec=document.getElementById("verificable");
   if(_n){
