@@ -12,18 +12,18 @@
 
   /* Shared styles (literal colors + !important so no host stylesheet overrides them). */
   var css=''
-   /* Dark glass window that holds the cards: neutral near-black fill with a soft
-      blur, a subtle gold hairline rim, a real drop shadow and a raised 3D base. */
-   +'.cc-panel{position:relative;background:linear-gradient(180deg,rgba(18,23,30,.92),rgba(9,12,16,.94));border-radius:16px;padding:12px;'
-   +'-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);'
-   +'box-shadow:inset 0 1px 0 rgba(255,255,255,.055),inset 0 0 0 1px rgba(232,184,75,.16),0 26px 54px rgba(0,0,0,.6),0 6px 0 #05080c}'
+   /* Black glass window with a GOLD 3D bevel (gold frame, gold raised base) and a
+      real drop shadow. Near-black fill keeps the contracts readable. */
+   +'.cc-panel{position:relative;background:rgba(9,10,13,.92);border:1px solid #5c4a1e;border-radius:16px;padding:12px;'
+   +'-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);'
+   +'box-shadow:inset 0 1px 0 rgba(247,219,141,.18),0 26px 54px rgba(0,0,0,.62),0 6px 0 #8f6a1a}'
    +'.cc-scroll{overflow:auto;padding:16px 7px;'
    +'-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%);'
    +'mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%)}'
    +'.cc-scroll::-webkit-scrollbar{width:7px}'
    +'.cc-scroll::-webkit-scrollbar-track{background:transparent}'
    +'.cc-scroll::-webkit-scrollbar-thumb{background:rgba(232,184,75,.32);border-radius:9px}'
-   +'.cc-card{background:rgba(26,32,40,.45)!important;border:1px solid rgba(255,255,255,.06)!important;border-radius:12px;padding:12px 14px;margin-bottom:10px}'
+   +'.cc-card{background:rgba(0,0,0,.3)!important;border:1px solid rgba(232,184,75,.15)!important;border-radius:12px;padding:12px 14px;margin-bottom:10px}'
    +'.cc-card:last-child{margin-bottom:0}'
    +'.cc-name{display:flex;align-items:center;gap:9px;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:14.5px;color:#eaecef;margin-bottom:3px}'
    +'.cc-dot{width:9px;height:9px;border-radius:50%;flex:none}'
@@ -36,6 +36,10 @@
    +'border-radius:7px!important;padding:4px 10px!important;cursor:pointer;white-space:nowrap;text-decoration:none!important;'
    +'display:inline-flex!important;align-items:center;line-height:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);transition:background .15s,border-color .15s}'
    +'.cc-btn:hover{background:rgba(232,184,75,.2)!important;border-color:rgba(232,184,75,.7)!important}'
+   +'.cc-gold-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13.5px;letter-spacing:.2px;white-space:nowrap;height:44px;padding:0 24px;border-radius:10px;cursor:pointer;border:1px solid #c79426;color:#241900!important;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(255,255,255,.28);text-decoration:none;transition:filter .16s,transform .09s,box-shadow .09s}'
+   +'.cc-gold-btn:hover{filter:brightness(1.06)}'
+   +'.cc-gold-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
+   +'.cc-gold-btn svg{width:16px;height:16px;flex:none}'
    +'.cc-net{display:block;width:100%;height:auto;touch-action:none;cursor:default}';
   var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 
@@ -121,5 +125,15 @@
     requestAnimationFrame(draw);
   }
 
-  window.CCView={renderList:renderList,renderBrain:renderBrain};
+  function csvCell(v){v=(v==null?'':String(v));return '"'+v.replace(/"/g,'""')+'"';}
+  function downloadCSV(){
+    var D=window.CONTRATOS||[];
+    var head=['Contract','Category','Proxy address','Implementation address','Proxy on BscScan','Implementation on BscScan','Network'];
+    var lines=[head.map(csvCell).join(',')];
+    D.forEach(function(c){lines.push([c.nombre,c.cat,c.proxy,(c.impl||''),bs(c.proxy),(c.impl?bs(c.impl):''),'BNB Smart Chain (chainId 56)'].map(csvCell).join(','));});
+    var blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='criptocuba-contracts.csv';document.body.appendChild(a);a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},120);
+  }
+  window.CCView={renderList:renderList,renderBrain:renderBrain,downloadCSV:downloadCSV};
 })();
