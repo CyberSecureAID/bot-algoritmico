@@ -951,8 +951,11 @@ export async function cotizarSwap({ inAddr, outAddr, amountInBI, slippageBps = 5
   const feeBps = 10n;
   const netFactor = 10000n - feeBps;
   const outNeto = bestOut * netFactor / 10000n;
-  // Colchón extra (0.3%) porque el swap puede ejecutarse en otro fee tier con precio algo distinto.
-  const colchon = 30n;
+  // Colchón de holgura: subido a 1.0% (antes 0.3%). En smart account EIP-7702 la confirmación
+  // lleva varios segundos (revisar alerta, soy consciente, confirmar) y el precio del BNB se mueve
+  // en ese rato; con el colchón viejo la salida rozaba el mínimo → cartel "probable que falle" y
+  // fallos intermitentes. Con 1.0% la salida queda cómodamente por encima del mínimo.
+  const colchon = 100n;
   const minOut = outNeto - (outNeto * (BigInt(slippageBps) + colchon) / 10000n);
   return { amountOut: outNeto, minOut, fee: best };
 }
