@@ -964,16 +964,13 @@ export async function ejecutarSwap({ inAddr, outAddr, amountInBI, minOut, fee })
   const tokenIn  = esNativoSwap(inAddr)  ? NATIVO : inAddr;
   const tokenOut = esNativoSwap(outAddr) ? NATIVO : outAddr;
   const value = esNativoSwap(inAddr) ? amountInBI : 0n;
-  // Estimamos el gas real y añadimos 35% de margen (cubre el fallback multi-pool).
-  // Pasar un gasLimit realista evita el parpadeo de "probable que falle" de MetaMask.
-  let gasLimit;
-  try {
-    const est = await c.swap.estimateGas(tokenIn, tokenOut, fee, amountInBI, minOut, { value });
-    gasLimit = est + (est * 35n / 100n);
-    // Smart account (EIP-7702): MetaMask enruta por su Delegation Manager y gasta mas gas;
-    // subimos el gasLimit igual que gasMargen, si no sale "es probable que falle" (out of gas).
-    if (await _esSmartAccount(c.runner)) { const boost = est * 2n + 300000n; if (boost > gasLimit) gasLimit = boost; }
-  } catch (_) { gasLimit = 1200000n; }  // si la estimación falla, un valor seguro
+  // estimateGas revela el MOTIVO del revert antes de firmar. Si la tx fuera a revertir,
+  // lanza ese motivo (y NO mandamos una tx condenada que gastaria gas en fallar). Asi el
+  // usuario ve el error real en pantalla, no el generico "es probable que falle".
+  const est = await c.swap.estimateGas(tokenIn, tokenOut, fee, amountInBI, minOut, { value });
+  let gasLimit = est + (est * 35n / 100n);
+  // Smart account (EIP-7702): MetaMask enruta por su Delegation Manager y gasta mas gas.
+  if (await _esSmartAccount(c.runner)) { const boost = est * 2n + 300000n; if (boost > gasLimit) gasLimit = boost; }
   const tx = await c.swap(tokenIn, tokenOut, fee, amountInBI, minOut, { value, gasLimit });
   return esperar(tx);
 }
