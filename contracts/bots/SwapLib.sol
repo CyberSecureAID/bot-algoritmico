@@ -87,11 +87,11 @@ library SwapLib {
     }
 
     /** Como mejorCotizacion pero devuelve solo la cotización (sin el índice). */
-    function cotiza(Dex[] storage dexes, uint256 pref, address tin, address tout, uint24 fee, uint256 amt) internal returns (uint256 out) {
+    function cotiza(Dex[] storage dexes, uint256 pref, address tin, address tout, uint24 fee, uint256 amt) public returns (uint256 out) {
         (out,) = mejorCotizacion(dexes, pref, tin, tout, fee, amt);
     }
     /** Como swapConFallback pero devuelve solo lo recibido (sin el índice). */
-    function swapUno(Dex[] storage dexes, uint256 idx, address tin, address tout, uint24 fee, address recipient, uint256 amountIn, uint256 minOut) internal returns (uint256 recibido) {
+    function swapUno(Dex[] storage dexes, uint256 idx, address tin, address tout, uint24 fee, address recipient, uint256 amountIn, uint256 minOut) public returns (uint256 recibido) {
         (recibido,) = swapConFallback(dexes, idx, tin, tout, fee, recipient, amountIn, minOut);
     }
 

@@ -141,7 +141,7 @@ contract GridBotV13 is Initializable, UUPSUpgradeable {
     uint256[23] private __gap;
 
     modifier noReentrada() { require(_lock==1); _lock=2; _; _lock=1; }
-    modifier soloOwner() { require(msg.sender==owner || msg.sender==owner2 || (tarifas!=address(0) && ITarifasBot(tarifas).esAdmin(msg.sender)), "no owner"); _; }
+    modifier soloOwner() { require(msg.sender==owner || msg.sender==owner2 || (tarifas!=address(0) && ITarifasBot(tarifas).esAdmin(msg.sender))); _; }
 
     /* ---- Bot (grid) ---- */
 
@@ -200,8 +200,8 @@ contract GridBotV13 is Initializable, UUPSUpgradeable {
     function pagarMes() external payable noReentrada { _cobrarMes(msg.sender, msg.value); }
     function _cobrarMes(address u, uint256 enviado) internal {
         uint256 costo = costoBotBNB();
-        require(costo > 0, "sin precio");
-        require(enviado >= costo, "BNB insuficiente");
+        require(costo > 0);
+        require(enviado >= costo);
         uint256 base = pagadoHasta[u] > block.timestamp ? pagadoHasta[u] : uint40(block.timestamp);
         uint40 hasta = uint40(uint256(base) + MES);
         pagadoHasta[u] = hasta;
@@ -232,7 +232,10 @@ contract GridBotV13 is Initializable, UUPSUpgradeable {
     }
 
     /* ═══════════ Gas del usuario ═══════════ */
-    receive() external payable { _acreditarGas(msg.sender, msg.value); }
+    // FIX: el BNB que llega DESDE el WBNB es la devolucion de withdraw() en un swap a BNB nativo,
+    // no un deposito de gas. WBNB lo manda con stipend de 2300 gas; si aqui se escribiera en storage
+    // se agota el gas y withdraw() revierte (rompe USDT->BNB y todo token->BNB). Se ignora ese caso.
+    receive() external payable { if (msg.sender == WBNB) return; _acreditarGas(msg.sender, msg.value); }
     function depositarGas() external payable { _acreditarGas(msg.sender, msg.value); }
     function _acreditarGas(address u, uint256 v) internal { require(v>0); gasSaldo[u]+=v; }
     function retirarGas(uint256 m) external noReentrada { uint256 s=gasSaldo[msg.sender]; require(m>0&&m<=s); gasSaldo[msg.sender]=s-m; (bool ok,)=payable(msg.sender).call{value:m}(""); require(ok); }
@@ -304,14 +307,14 @@ contract GridBotV13 is Initializable, UUPSUpgradeable {
         bool cobrada = false;
         if (fresco) {
             uint32 nBots = botsAbiertos[msg.sender];
-            require(nBots < maxBots, "limite de bots");
+            require(nBots < maxBots);
             if (nBots == 0) {
                 // primer bot: gratis, arranca su mes
                 pagadoHasta[msg.sender] = uint40(block.timestamp + MES);
             } else {
                 // bot extra: cobra $2.50 en BNB ahora
                 uint256 costo = costoBotBNB();
-                require(costo>0 && msg.value>=costo, "paga el bot en BNB");
+                require(costo>0 && msg.value>=costo);
                 _repartirCobro(costo);
                 if (msg.value>costo) { (bool ok,)=payable(msg.sender).call{value: msg.value-costo}(""); require(ok); }
                 cobrada = true;
@@ -356,7 +359,7 @@ contract GridBotV13 is Initializable, UUPSUpgradeable {
         Rejilla storage r=rejillas[k];
         require(r.activa);
         // ── COBRO LAZY: si venció el mes, pausar (no operar) hasta pagar ──
-        if (!alDia(u)) { r.pausadaPago=true; emit RejillaPausadaPago(u,k); revert("mes vencido: paga para seguir"); }
+        if (!alDia(u)) { r.pausadaPago=true; emit RejillaPausadaPago(u,k); revert(); }
         require(!r.pausadaPago);
         require(i<r.niveles.length);
         if (msg.sender==keeper) require(gasSaldo[u]>=gasMinOp);
