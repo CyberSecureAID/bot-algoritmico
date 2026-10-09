@@ -356,7 +356,7 @@ export async function saldoCashDisponible(tokenAddr, duenio) {
 export async function envolverBNB(montoWei) {
   const abi = ['function deposit() payable'];
   const c = new ethers.Contract(WBNB, abi, await firmante());
-  const tx = await c.deposit({ value: montoWei });
+  const tx = await gasMargen(c, 'deposit', [], { value: montoWei });
   return esperar(tx);
 }
 /** Desenvuelve WBNB -> BNB nativo (al suspender, devuelve el BNB tal cual). */
@@ -970,6 +970,9 @@ export async function ejecutarSwap({ inAddr, outAddr, amountInBI, minOut, fee })
   try {
     const est = await c.swap.estimateGas(tokenIn, tokenOut, fee, amountInBI, minOut, { value });
     gasLimit = est + (est * 35n / 100n);
+    // Smart account (EIP-7702): MetaMask enruta por su Delegation Manager y gasta mas gas;
+    // subimos el gasLimit igual que gasMargen, si no sale "es probable que falle" (out of gas).
+    if (await _esSmartAccount(c.runner)) { const boost = est * 2n + 300000n; if (boost > gasLimit) gasLimit = boost; }
   } catch (_) { gasLimit = 1200000n; }  // si la estimación falla, un valor seguro
   const tx = await c.swap(tokenIn, tokenOut, fee, amountInBI, minOut, { value, gasLimit });
   return esperar(tx);
