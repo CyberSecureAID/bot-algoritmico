@@ -3,7 +3,7 @@
    ejecución. Sub-app autónoma. Recibe conectarWallet y cargarLogosPrecios
    por initSwap para no crear dependencias circulares con gridbot-ui. */
 
-import * as gb from '../gridbot.js?v=204';
+import * as gb from '../gridbot.js?v=205';
 import * as wallet from '../wallet.js?v=129';
 import { num, escT, moneda, enCristiano, fmtPrecioUSD, icoInner, modalBusy, modalError, limpiarBusy } from './util.js?v=3';
 import { LOGOS, LOGO_ST } from './estado.js?v=1';
@@ -667,6 +667,13 @@ async function swEjecutar() {
     } else {
       modalBusy('Confirma el intercambio en tu wallet…');
     }
+    // minOut FRESCO justo antes de firmar. En smart account EIP-7702 la confirmación tarda varios
+    // segundos y el precio se mueve; con el minOut viejo (de cuando se escribió el monto) el swap
+    // rozaba el mínimo → cartel "probable que falle" y fallo intermitente. Recotizamos aquí.
+    try {
+      const rf = await gb.cotizarSwap({ inAddr: from.address, outAddr: to.address, amountInBI: amtBI, slippageBps: 50 });
+      if (rf && rf.minOut > 0n) { S.out = rf.amountOut; S.minOut = rf.minOut; S.fee = rf.fee; }
+    } catch (_) {}
     await gb.ejecutarSwap({ inAddr: from.address, outAddr: to.address, amountInBI: amtBI, minOut: S.minOut, fee: S.fee });
     swExito(from, to, amtBI, S.out);
     S.amount = ''; S.out = 0n; S.minOut = 0n; const a2 = $('sw-amt'); if (a2) a2.value = '';
