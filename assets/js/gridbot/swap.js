@@ -51,6 +51,12 @@ const S = { fromId: 'BNB', toId: 'USDT', amount: '', out: 0n, minOut: 0n, fee: 0
 let _swT = null, _swToken = 0;
 const SW_GAS_BUF = 500000000000000n; // 0.0005 BNB de colchon de gas (antes 0.003, era 10x de mas)
 
+/* Idioma de los mensajes del swap: lee el MISMO localStorage que usa el toggle del perfil
+   (clave cco-idioma), para que estos avisos sigan el idioma elegido. 'es' = español;
+   cualquier otro (en, pt, nulo) = inglés. */
+function _swLang() { try { return localStorage.getItem('cco-idioma') === 'es' ? 'es' : 'en'; } catch (_) { return 'en'; } }
+function M(es, en) { return _swLang() === 'es' ? es : en; }
+
 let _swCssOk = false;
 function swInjectCSS() {
   if (_swCssOk) return; _swCssOk = true;
@@ -617,12 +623,12 @@ function swExito(from, to, inWei, outWei) {
   $('cm-title').textContent = '';
   $('cm-body').innerHTML = `<div style="text-align:center;padding:4px 2px 2px">
     <div style="width:60px;height:60px;margin:0 auto 15px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);box-shadow:0 8px 22px rgba(232,184,75,.38),inset 0 1px 0 rgba(255,255,255,.6)">${check}</div>
-    <div style="font-family:var(--display);font-weight:800;font-size:21px;color:var(--gold);margin-bottom:12px;text-shadow:0 1px 2px rgba(0,0,0,.4)">¡Intercambio hecho!</div>
-    <div style="font-family:var(--sans);font-size:14.5px;color:var(--ink-2);line-height:1.65">Cambiaste <b style="color:var(--ink)">${swFmt(inWei, from.decimals)} ${from.simbolo}</b><br>por <b style="color:var(--ink)">~${swFmt(outWei, to.decimals)} ${to.simbolo}</b>.<br><span style="color:var(--ink-3);font-size:13px">Ya está en tu wallet.</span></div>
+    <div style="font-family:var(--display);font-weight:800;font-size:21px;color:var(--gold);margin-bottom:12px;text-shadow:0 1px 2px rgba(0,0,0,.4)">${M('¡Intercambio hecho!', 'Swap done!')}</div>
+    <div style="font-family:var(--sans);font-size:14.5px;color:var(--ink-2);line-height:1.65">${M('Cambiaste', 'You swapped')} <b style="color:var(--ink)">${swFmt(inWei, from.decimals)} ${from.simbolo}</b><br>${M('por', 'for')} <b style="color:var(--ink)">~${swFmt(outWei, to.decimals)} ${to.simbolo}</b>.<br><span style="color:var(--ink-3);font-size:13px">${M('Ya está en tu wallet.', 'It is already in your wallet.')}</span></div>
   </div>`;
   const btns = m.querySelector('.m-btns'); btns.style.display = 'flex';
   $('cm-cancel').style.display = 'none';
-  const ok = $('cm-ok'); ok.textContent = '¡Listo!'; ok.className = 'btn btn-oro'; ok.onclick = () => m.classList.remove('show');
+  const ok = $('cm-ok'); ok.textContent = M('¡Listo!', 'Done!'); ok.className = 'btn btn-oro'; ok.onclick = () => m.classList.remove('show');
   m.classList.add('show');
 }
 
@@ -640,32 +646,35 @@ async function swEjecutar() {
     // Conversión WBNB <-> BNB (una sola firma, sin permiso, 1:1)
     if (act === 'wrap' || act === 'unwrap') {
       modalBusy(act === 'wrap'
-        ? 'Convertir BNB en WBNB.<br>Es una sola firma.<br><br>Confirma en tu wallet.'
-        : 'Convert WBNB to BNB.<br>Es una sola firma.<br><br>Confirma en tu wallet.');
+        ? M('Convertir BNB en WBNB. Una sola firma.<br>Confirma en tu wallet.', 'Convert BNB to WBNB. One signature.<br>Confirm in your wallet.')
+        : M('Convertir WBNB en BNB. Una sola firma.<br>Confirma en tu wallet.', 'Convert WBNB to BNB. One signature.<br>Confirm in your wallet.'));
       if (act === 'wrap') await gb.envolverBNB(amtBI); else await gb.desenvolverBNB(amtBI);
       swExito(from, to, amtBI, amtBI);
       S.amount = ''; S.out = 0n; S.minOut = 0n; const a1 = $('sw-amt'); if (a1) a1.value = '';
       swCargarBalances(); setOut(); swRenderInfo(); swRenderBtn();
       return;
     }
-    if (!(S.out > 0n)) { modalError('No hay ruta para este par ahora mismo. Prueba otra moneda o monto.'); return; }
+    if (!(S.out > 0n)) { modalError(M('No hay ruta para este par ahora. Prueba otra moneda o monto.', 'No route for this pair right now. Try another token or amount.')); return; }
     // Si hace falta permiso, son DOS firmas: permiso + intercambio
     const necesitaPermiso = (act === 'approve');
+    const avisoBNB = gb.esNativoSwap(to.address)
+      ? `<br><span style="font-size:12px;color:var(--ink-3)">${M('Si tu wallet muestra un aviso de simulación, fírmala igual: la operación se completa.', 'If your wallet shows a simulation warning, sign anyway: the swap completes fine.')}</span>`
+      : '';
     if (necesitaPermiso) {
       // Límite de gasto acotado (~$200) para no disparar el aviso de "ilimitado"
       let capBI = amtBI;
       const price = (LOGOS[from.id]?.price) || (from.id === 'WBNB' ? LOGOS['BNB']?.price : null);
       if (price && price > 0) { try { const cb = gb.parse((200 / price).toFixed(Math.min(from.decimals, 18)), from.decimals); if (cb > capBI) capBI = cb; } catch (_) {} }
-      modalBusy(`<b>Step 1 of 2 — ${from.simbolo} permission.</b><br>You authorize a spending limit (you can change or revoke it whenever yoieras). Después confirmarás el intercambio.<br><br>Confirma en tu wallet.`);
+      modalBusy(M(`<b>Paso 1 de 2 — permiso de ${from.simbolo}.</b><br>Autorizas un límite de gasto (lo cambias o revocas cuando quieras).<br>Confirma en tu wallet.`, `<b>Step 1 of 2 — ${from.simbolo} permission.</b><br>You authorize a spending limit (change or revoke it anytime).<br>Confirm in your wallet.`));
       await gb.aprobarSwap(from.address, capBI);
       // refrescar cotización/permiso antes del segundo paso
       const cuenta = wallet.cuentaActual();
       try { S.allow = await gb.allowanceSwap(from.address, cuenta); } catch (_) {}
       const r = await gb.cotizarSwap({ inAddr: from.address, outAddr: to.address, amountInBI: amtBI, slippageBps: 50 });
       if (r) { S.out = r.amountOut; S.minOut = r.minOut; S.fee = r.fee; }
-      modalBusy('<b>Step 2 of 2 — Confirm the swap.</b><br>Last signature to complete.<br><br>Confirm in your wallet.');
+      modalBusy(M('<b>Paso 2 de 2 — confirma el intercambio.</b><br>Última firma.<br>Confirma en tu wallet.', '<b>Step 2 of 2 — confirm the swap.</b><br>Last signature.<br>Confirm in your wallet.') + avisoBNB);
     } else {
-      modalBusy('Confirma el intercambio en tu wallet…');
+      modalBusy(M('Confirma el intercambio en tu wallet.', 'Confirm the swap in your wallet.') + avisoBNB);
     }
     // minOut FRESCO justo antes de firmar. En smart account EIP-7702 la confirmación tarda varios
     // segundos y el precio se mueve; con el minOut viejo (de cuando se escribió el monto) el swap
