@@ -90,10 +90,10 @@ Scalper, órdenes límite). Todo cobrado y administrado por smart contracts.
 | 2 | **OraculoPrecios** | `contracts/staking/repo_OraculoPrecios.sol` | `0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3` | `0x41d9Cb401F453405f2069f93B8a590FE8A58959e` |
 | 3 | **Staking** | `contracts/staking/repo_Staking.sol` | `0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4` | `0x131c136549450C62b431B987745CaA05e493c722` |
 | 4 | **PanelStaking** | `contracts/staking/repo_PanelStaking.sol` | `0xE620D5BD60F70CCdFa4493F3a5B794d1BBEbf8d2` | (sin proxy) |
-| 5 | **GridBot V13** | `contracts/bots/GridBotV13.sol` | `0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B` | `0x6FC596dF121630b71ea3f5b7DfE098B7843DD8a5` |
+| 5 | **GridBot V13** | `contracts/bots/GridBotV13.sol` | `0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B` | `0xE3A5c473B2B0b92166D34Ac42F519B0a324191B7` |
 | 6 | **GridBot V10** | `contracts/GridBotV10.sol` | (ver abajo) | administra SPOT de los indicadores |
 | 7 | **MercadoTokens** | `contracts/MercadoTokens.sol` | `0x39c48394068299Aa3e3ab114F16bfc3DE11F4112` | `0x4782c5A49C7d1Bba1C0A785f90775b47B5315a27` |
-| 8 | **SwapLib** (librería) | `contracts/bots/SwapLib.sol` | (se linkea) | `0x0a0fbd6160158fea25ca2525bd7d4e38b57ddd1f` |
+| 8 | **SwapLib** (librería) | `contracts/bots/SwapLib.sol` | (se linkea) | `0x8365dA05184CdeD0d824504A9E8f87819f39E2ff` |
 | 9 | **PerfilesP2P** | `contracts/p2p/PerfilesP2P.sol` | `0xC01B61B702011747B4c0Ee6B5F2d0F2b4B66880c` | `0xCeA7DD129BF53ac7Ac54CAD6bCA70425449e86eD` |
 | 10 | **MercadoP2P** | `contracts/p2p/MercadoP2P.sol` | `0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025` | `0x1e02c7FaBe2e6eeAc8c17a0689C46E6170aCa2a9` |
 | 11 | **Contabilidad** | `contracts/core/Contabilidad.sol` | `0x7FdE85E0bD53208F380980cfE317A9D4982434Ab` | `0x6F3e055b5C8004F76956F26c4a82662Bca812fF3` |
