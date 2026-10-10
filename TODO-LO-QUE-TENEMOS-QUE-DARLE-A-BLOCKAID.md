@@ -76,9 +76,11 @@ Todas se firman desde la wallet del usuario; nada es custodial. Hay que sacar un
 | Aprobación de token (`approve`) | Permiso ERC-20 acotado al contrato, nunca ilimitado. | token → GridBot | POR SACAR |
 | Depósito de gas (`depositarGas`) | El usuario carga BNB para que su bot opere. | GridBot `0x4e86…` | POR SACAR |
 | Swap (`ejecutarSwap`) | Intercambio directo desde la wallet del usuario. | GridBot `0x4e86…` | POR SACAR |
-| Crear bot (`crearRejilla`) | Abre un bot (grid/acumulador/cashout/DCA). | GridBot `0x4e86…` | POR SACAR |
+| Crear bot (`crearRejilla`) | Abre un bot (grid/acumulador/cashout/DCA). | GridBot `0x4e86…` | `0x378ec677e492cce0fb76f6951eb1dd315eb64281a26e0dbaaa926b579713aaad` (sirve una vez que el 20% al Staking salga limpio) |
 
-> NOTA sobre el hash de suscripción: el primero (`0xb649…`) funcionó, pero el 20% de staking NO llegó al contrato de Staking (el GridBot no estaba autorizado ahí), así que los $2.50 fueron enteros al owner. Se corrige autorizando el GridBot en el Staking (`autorizarContrato`), sin redeploy, y se repite el pago para tener un hash donde cada centavo va a su sitio (20% a Staking `0xdC48…`, 80% a owners). Ese hash limpio reemplaza a este.
+> NOTA sobre el hash de suscripción: se probó dos veces (`0xb649…` de `pagarMes` y `0x378ec6…` al abrir un acumulador). En ambos el cobro de $2.50 funcionó, pero el 20% de staking NO llegó: salió todo al owner ($1.25 + $1.25). Leyendo el código completo del Staking quedó confirmado que `depositarRecompensa` solo revierte por `contratoAutorizado[GridBot] == false`, así que el GridBot sigue sin estar autorizado en el Staking. El GridBot atrapa ese fallo a propósito (`if (!ok)` manda ese 20% a owners) para que el bot del usuario nunca se trabe por un problema del staking. Fix sin redeploy: autorizar el GridBot (`autorizarContrato`) en el proxy del Staking desde la wallet admin, luego `resetMes` a la wallet de prueba y reabrir un bot. Ahí sale el hash limpio (20% $0.50 a Staking `0xdC48…` en WBNB, 80% a owners) que reemplaza a estos.
+>
+> NOTA sobre el reparto a owners: hoy sale `$1.25 + $1.25` porque `owner2` está puesto con la misma wallet del owner. Es correcto e intencional mientras llega la wallet del segundo owner (la aporta quien financia el proyecto). Así se le muestra a Blockaid.
 
 ---
 
@@ -95,6 +97,7 @@ Todas se firman desde la wallet del usuario; nada es custodial. Hay que sacar un
 
 - **Owner actual:** `0x97e01a1C430E0cC826AcA6e9BE643721e45BCA7d` (wallet del dueño).
 - **Modelo multi-owner:** la autoridad vive en el contrato Tarifas (`esAdmin`), que todos los demás consultan. Se puede añadir un segundo owner (owner2) y directores.
+- **Segundo owner (owner2):** hoy está puesto con la misma wallet del owner, así que cada cobro se parte en dos mitades que llegan ambas al mismo dueño ($1.25 + $1.25 de los $2.50). La wallet del segundo owner la aportará más adelante quien financia el proyecto; hasta entonces se queda así y así se le muestra a Blockaid. Jesús es el desarrollador.
 - **Candados de upgrade:** los contratos de Futuros, OraculoPrecios y Staking usan UUPS con candado de 48h (propuesta en cadena + espera + activación, todo público). GridBot usa UUPS soloOwner (sin 48h, para poder arreglar el swap rápido).
 - **No custodia:** ningún contrato guarda capital del usuario; cada operación sale firmada desde su wallet, con permisos acotados.
 - **Pendiente:** declaración formal de claves admin + plan de paso a multisig + auditoría independiente externa.
@@ -109,8 +112,9 @@ Todas se firman desde la wallet del usuario; nada es custodial. Hay que sacar un
 - [ ] **Rebrand en el sitio:** quitar toda referencia a "official Cuban crypto" (107 instancias aprox.).
 - [ ] **Quitar el prize pool** de la portada (contrato ya descartado).
 - [ ] **Anclar el commit de GitHub desplegado + hora** en la página de transparencia.
-- [ ] **Autorizar el GridBot en el Staking** (`autorizarContrato`) para que el 20% llegue bien → rehacer el hash de suscripción limpio.
+- [ ] **Autorizar el GridBot en el Staking** para que el 20% ($0.50) llegue. Causa confirmada leyendo todo el código del Staking: `depositarRecompensa` solo revierte por `contratoAutorizado[GridBot] == false`. Fix sin redeploy, desde la wallet admin (principal del Staking): en el proxy `0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4`, Write as Proxy → `autorizarContrato(0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B, true)`. Después `resetMes(walletPrueba)` en el GridBot y reabrir un bot para sacar el hash limpio.
 - [ ] **Sacar los hashes limpios** de: approve, depositarGas, ejecutarSwap, crearRejilla.
+- [ ] **Gas en bots ya abiertos (UI):** al cargar gas después de abrir un bot, el bot abierto no refresca su saldo de gas ni muestra el aviso de "sin gas". El bot necesita ese gas para disparar las cuadrículas. Revisar el refresco del estado de gas en la interfaz del bot.
 - [ ] **Declaración de claves admin** + plan multisig.
 - [ ] **Auditoría independiente** de los contratos en vivo (externa).
 - [ ] **Disclaimer específico de bots** (modal estilo portada, inglés, escala Blockaid).
@@ -123,4 +127,4 @@ Todas se firman desde la wallet del usuario; nada es custodial. Hay que sacar un
 - **GridBot:** se arregló el swap USDT→BNB (colisión en `receive()` con el stipend de WBNB.withdraw). Se rediseñó el cobro de bots: sin bot gratis, $2.50 = 30 días por cuenta cubren hasta 8 bots, a los 30 días se pausa (no se cierra), reactivar pagando. Se añadieron errores legibles (custom errors) y la función de owner `resetMes`. Implementación actual: `0xE3A5c473B2B0b92166D34Ac42F519B0a324191B7`.
 - **SwapLib:** librería externa linkeada, verificada. Dirección actual: `0x8365dA05184CdeD0d824504A9E8f87819f39E2ff`.
 - **OraculoPrecios y Staking:** se redeployaron con código verificado y se activaron por upgrade UUPS (candado de 48h). Impls: `0x41d9Cb…` y `0x131c13…`.
-- **Pendiente técnico abierto:** autorizar GridBot en Staking para el reparto del 20%; revisar la intermitencia de firmas que aparece con wallets EIP-7702 (MetaMask smart account) vía el Delegation Manager.
+- **Pendiente técnico abierto:** autorizar GridBot en Staking para el reparto del 20% (causa confirmada: el GridBot no está en `contratoAutorizado` del Staking; fix de 1 transacción sin redeploy); el bot ya abierto no refresca el gas cargado después (revisar la UI); revisar la intermitencia de firmas que aparece con wallets EIP-7702 (MetaMask smart account) vía el Delegation Manager.
