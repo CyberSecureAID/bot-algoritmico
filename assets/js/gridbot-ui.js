@@ -5,7 +5,7 @@
  * botones (i), gráfica viva con las cuadrículas, e inversión total en una cifra.
  */
 
-import * as gb from './gridbot.js?v=202';
+import * as gb from './gridbot.js?v=203';
 import { t } from './idioma.js?v=167';
 import * as wallet from './wallet.js?v=129';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
@@ -1389,20 +1389,10 @@ async function onRetirarGas() {
 /* Crear                                                               */
 /* ================================================================== */
 async function asegurarSuscripcion(cuenta) {
-  let act = false;
-  try { act = await gb.estaActivo(cuenta); } catch (_) {}
-  if (act) return true;
-  const precio = await gb.precioSub();
-  if (!(precio > 0n)) { modalError('La activación del bot aún no está configurada. Avísame para revisarlo.'); return false; }
-  const precioBNB = Number(gb.fmtBNB(precio));
-  const ok = await modalConfirm({
-    titulo: 'Activate your bot (30 days)',
-    cuerpo: `To turn on your bot it has to be activated for 30 days. It is a one-time payment of <b>${num(precioBNB, 5)} BNB</b> (≈ $1) that you sign from your wallet. With that you can have <b>as many bots as you want</b> this month.<br><br>Activate now?`,
-    ok: 'Sí, activar'
-  });
-  if (!ok) return false;
-  modalBusy('Activating your bot (sign the payment in your wallet)…');
-  await gb.suscribir();
+  // V14: el cobro ($2.50 por cada bot) ahora va DENTRO de crearRejilla, en la MISMA
+  // transacción que lo monta (apertura atómica, una sola firma). Ya NO se cobra por
+  // separado aquí; si no, se cobraría dos veces. El pago mensual suelto (pagarMes /
+  // suscribir) sigue existiendo para RENOVAR sin abrir bot, no para abrir.
   return true;
 }
 /** Cierra todos los bots del usuario, uno a uno, con aviso claro antes. */

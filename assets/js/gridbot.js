@@ -755,7 +755,12 @@ export async function crearRejilla(config) {
     comprasMax: config.comprasMax ?? 0
   };
   const bot = await cEscribe();
-  const tx = await gasMargen(bot, 'crearRejilla', [c]);
+  // V14: el cobro ($2.50) va DENTRO de crearRejilla => apertura ATÓMICA (una sola
+  // firma). Mandamos el costo + 2% de colchón por si el oráculo se movió entre la
+  // lectura y la firma; el contrato DEVUELVE lo que sobre en la misma transacción.
+  let value = 0n;
+  try { const costo = await bot.costoBotBNB(); value = costo + costo / 50n; } catch (_) {}
+  const tx = await gasMargen(bot, 'crearRejilla', [c], { value });
   return esperar(tx);
 }
 
