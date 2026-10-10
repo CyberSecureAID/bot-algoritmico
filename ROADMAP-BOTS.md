@@ -52,13 +52,37 @@ cómo probar: `HERRAMIENTAS-DESARROLLO.md`.
   operando sobre `struct Rejilla`. Reusar `SwapLib`. Campos nuevos (si hacen falta)
   SIEMPRE al final del struct.
 
-### b) DCA (modo 3): cegar el `intervalo`
-- **Qué:** que la cadencia de compra no sea legible/predecible on-chain.
-- **Por qué:** hoy `intervalo` se guarda en claro en la `Rejilla` → cualquiera ve el
-  calendario de compras (frontrunnable).
-- **Cómo:** evaluar commit-hash del intervalo, o mover el disparo a lógica del keeper
-  con prueba, sin exponer el periodo. (Verificar el camino de ejecución del modo 3
-  antes de tocar.)
+### b) DCA (modo 3): cegar el `intervalo` + DCA INTELIGENTE con take-profit
+**b.1 Cegar el intervalo**
+- **Qué/por qué:** hoy `intervalo` se guarda en claro en la `Rejilla` → la cadencia de
+  compra es legible y frontrunnable.
+- **Cómo:** commit-hash del intervalo o disparo por lógica del keeper con prueba, sin
+  exponer el periodo. Verificar el camino de ejecución del modo 3 antes de tocar.
+
+**b.2 DCA adaptativo (deseo del usuario, para esta misma etapa del DCA)**
+Convertir el DCA de "básico" (solo compra programada) a uno que **entiende su entorno**:
+- **Conoce su estado:** cuánto tiene acumulado y su **precio de entrada PROMEDIO**
+  (promediado real; el promedio cambia con cada compra).
+- **Compra programada por fechas/intervalos** (p. ej. "todos los viernes de cada mes",
+  4 compras/mes). Verificar que la granularidad actual (`intervalo` en segundos +
+  `comprasMax`) cubre "día de la semana / fechas"; si no, ampliarla.
+- **Take-profit OPCIONAL y configurable (NO por defecto — el usuario lo activa):**
+  el usuario define un **% de beneficio**; cuando el **PROMEDIO de TODO lo acumulado**
+  alcanza ese %, el sistema **vende todo** → queda con más capital para seguir
+  recomprando en los días programados. Si el precio vuelve a darle la razón y otra vez
+  hay ese % de beneficio, **vuelve a vender** (ingresos compuestos). La venta se dispara
+  por **% de beneficio alcanzado**, NO por tiempo.
+
+- **⚠ SALVAGUARDA CRÍTICA (no equivocarse):** la venta se evalúa sobre el **promedio de
+  TODA la posición** (coste total acumulado), **nunca** sobre las compras recientes.
+  Ejemplo del usuario: compra de $1,000,000 hoy; 6 meses después, 8 compras de $1,000
+  que están +16%, pero el precio general cayó 40% → en promedio **sigue en pérdida** →
+  **NO se puede vender**, aunque las compras recientes estén en verde.
+- **Cómo:** reutilizar EXACTAMENTE el modelo del Cash Out: piso on-chain
+  `piso = costeTotalAcumulado * (1 + obj)`; vender la posición completa solo si lo
+  recaudado ≥ piso (eso evalúa el promedio por construcción) y re-armar. Si hace falta,
+  librería propia (`DcaLib`) espejo de `CashOutLib`, reusando `SwapLib`. Campos nuevos
+  al final del struct.
 
 ### c) Grid / "Smart Grid" (modo 0): auditar comisiones
 - **Qué:** revisar por qué "se atiborra de comisiones" y bajar la agresividad sin
@@ -104,6 +128,14 @@ cómo probar: `HERRAMIENTAS-DESARROLLO.md`.
 - UI del Cash Out: abrir con la moneda, 50%, campo de límite inferior, botón "Rentable";
   visualizaciones de todos los bots (como la del Smart Grid); tutorial next-next-next
   no salteable tras el disclaimer; actualizar la página "cómo funciona".
+- **UI del DCA (take-profit):** añadir un toggle **"Take Profit"** con un campo claro de
+  **% de beneficio** (en inglés), y un **ícono de información** (como los demás bots) con
+  este texto (borrador EN, afinar al construir):
+  > *Take Profit (optional): when the AVERAGE price of everything you've accumulated
+  > reaches the profit % you set here, the bot sells your whole position — giving you
+  > more capital to keep buying back on your scheduled days. If the price proves you
+  > right again and you hit that % once more, it sells again and keeps generating
+  > income. It only sells when your average is in profit, never on recent buys alone.*
 - FAQ desactualizado: dice "≈$1/mes, bots ilimitados"; ahora es **$2.50 por bot**.
 - Unificar el `gridbot.js` duplicado (`assets/js/gridbot.js` es el vivo; hay otro en
   `assets/js/gridbot/` que no se usa).
