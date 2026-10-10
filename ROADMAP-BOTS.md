@@ -41,16 +41,28 @@ cómo probar: `HERRAMIENTAS-DESARROLLO.md`.
 ## 1) PRÓXIMO UPGRADE DEL CONTRATO (GridBotV15) — lo que falta
 
 ### a) Acumulador → `AcumLib` (librería externa, como CashOutLib)
-- **Qué:** re-armado **on-chain** (Opción A), **vender TODO** a promedio+% (no por
-  nivel suelto), **nunca a pérdida** (piso `C*(1+obj)` como el Cash Out), promediado
-  real a la baja, y re-arme automático sin huecos.
-- **Por qué:** hoy (modo 1) el acumulador compra en escalera (montoC escala con
-  `factorBps`) y **vende por-nivel** con piso `margenBps`. Eso deja ventas parciales
-  y no capitaliza como el Cash Out. El usuario quiere la misma dinámica probada del
-  Cash Out: una regla única por ciclo, vender el total a objetivo, re-armar.
+- **Qué hace el acumulador (según el usuario):** compra, compra, compra hacia abajo
+  con **carácter progresivo** (más baja → compra más, con mayor %), **promedia** el
+  precio de entrada con cada recompra, y **vende TODO** a un % de beneficio. Abre con
+  capital y deja una parte inicial como posición (el usuario recuerda ~30% — **verificar**
+  en el modo-1 actual).
+- **Lo NO negociable (promediado real + take-profit dinámico):**
+  - Debe **conocer su precio promedio actual** (coste total / posición), recalculado en
+    cada recompra. Un acumulador que solo compra hacia abajo y no sabe su promedio NO sirve.
+  - El **take-profit NO es fijo**: varía con las recompras. Si el usuario dice "vender a
+    +10%", vende a `promedio × 1.10`; como el promedio **baja** con cada recompra, el
+    punto de salida en precio **se mueve** — lo que importa es el **+10% sobre el promedio**,
+    no el precio marcado al abrir. Nunca vender por debajo del promedio+objetivo.
+- **Por qué (estado actual, verificado):** hoy (modo 1) compra en escalera (montoC escala
+  con `factorBps`) y **vende por-nivel** con piso `margenBps`. Eso deja ventas parciales y
+  no capitaliza; además hay que **confirmar que sí monta y sí se activa** (auditar el
+  camino de creación/activación del modo 1).
 - **Cómo:** `AcumLib` externa espejo de `CashOutLib` (abrir / comprarNivel / resolver),
-  operando sobre `struct Rejilla`. Reusar `SwapLib`. Campos nuevos (si hacen falta)
+  usando el **mismo piso basado en promedio** `piso = costeTotal·(1+obj)` (evalúa el
+  promedio por construcción), re-arme on-chain sin huecos, reusar `SwapLib`. Campos nuevos
   SIEMPRE al final del struct.
+- **Verificación obligatoria:** que monte, que active, que promedie de verdad, que el
+  take-profit siga al promedio, y que no rompa el swap ni reintroduzca intermitencia.
 
 ### b) DCA (modo 3): cegar el `intervalo` + DCA INTELIGENTE con take-profit
 **b.1 Cegar el intervalo**
@@ -84,17 +96,32 @@ Convertir el DCA de "básico" (solo compra programada) a uno que **entiende su e
   librería propia (`DcaLib`) espejo de `CashOutLib`, reusando `SwapLib`. Campos nuevos
   al final del struct.
 
-### c) Grid / "Smart Grid" (modo 0): auditar comisiones
-- **Qué:** revisar por qué "se atiborra de comisiones" y bajar la agresividad sin
-  romperlo. Confirmar la regla **"vender solo en ganancia"**.
-- **Por qué:** el grid hace un swap en CADA nivel (compra y venta) → cada swap paga
-  0.1% + gas; con muchos niveles/ciclos se acumula. La regla de solo-ganancia ya
-  existe vía `margenBps` (en la venta, el mínimo = `coste*(1+margenBps)`), pero hay
-  que confirmar que está bien puesta en el flujo del Smart Grid y ver si conviene
-  reducir la frecuencia de disparos o agrupar.
-- **Cómo:** auditar `ejecutar` modo 0 y los `construirConfig` del grid; medir cuántos
-  swaps implica un ciclo típico; proponer una optimización (menos disparos / piso de
-  ganancia por nivel) SIN cambiar el modelo de comisión global (0.1% + 20% stake).
+### c) Grid / "Smart Grid" (modo 0): MATAR el error al abrir + capital progresivo
+**Prioridad #1 — causa raíz del "es probable que la transacción falle" (intermitencia):**
+- **Qué pasa:** a veces abre, a veces no. MetaMask avisa "puede fallar" y a veces revierte.
+  Es la MISMA intermitencia por la que hacemos todo esto. La billing ya es atómica (hecho);
+  falta el swap de apertura.
+- **Causa raíz (verificada en el código):** la compra inicial (`_pasoS`) fija
+  `minReal = qG·net/entradaReal·(1−slip)` pegado a una cotización en vivo con poco colchón.
+  Si la ejecución real (o el fee/pool del `swapUno`) no alcanza ese mínimo, revierte →
+  "puede fallar". "Regular comisiones" lo empeora si aprieta el `minOut`.
+- **Cómo (dirección):** aplicar la MISMA disciplina ya probada del Cash Out: cotizar +
+  colchón de slippage razonable + *fallback* que no revierta en volatilidad normal, con
+  cotización y swap en el MISMO fee/pool. Ni tan apretado (revierte) ni tan suelto (MEV en
+  aperturas grandes). **Verificar contra un hash real que falle** antes de decidir el fix.
+
+**Prioridad #2 — capital progresivo (upgrade deseado):**
+- **Qué:** cambiar el 50/50 de cantidad FIJA por nivel a **progresivo**, como el
+  acumulador: mientras más baja el precio, **compra más**; mientras más sube, **vende más**.
+- **Por qué:** promedia mejor en caídas (más capital abajo) y da más beneficio en subidas;
+  carácter progresivo = más capital del usuario, más beneficio. Unifica el Smart Grid con
+  el modelo probado del Cash Out/acumulador (menos código nuevo = menos intermitencia).
+- **Confirmar la regla "vender solo en ganancia"** (hoy vía `margenBps`: venta mínima =
+  `coste·(1+margenBps)`) quede bien puesta en el flujo progresivo.
+
+**Comisiones (cuidado global):** NO tocar el modelo (0.1% `feeBps` + 20% al stake) ni
+reintroducir tarifa fija por operación. Cualquier ajuste de comisión debe dejar el `minOut`
+consistente; si aprieta el swap, vuelve el "puede fallar".
 
 ---
 
