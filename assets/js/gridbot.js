@@ -524,58 +524,58 @@ export async function construirConfig(p) {
   };
 }
 
-/** Config del BOT ACUMULADOR: compra progresiva hacia abajo + venta total en ganancia. */
+/** Config del BOT ACUMULADOR (V15): compra progresiva hacia abajo, promedia y vende TODO a
+ *  promedio+objetivo. La escalera la arma AcumLib ON-CHAIN (paso uniforme desde el promedio),
+ *  así que aquí solo mandamos capital total, fracción inicial, paso, factor progresivo y objetivo.
+ *  Mapa ConfigIn -> AcumLib: compraInicialQuote=montoQuote total, factorBps=paso(escalón),
+ *  margenBps=factor(progresivo), comprasMax=iniBps(fracción inicial), objetivoBps=take-profit. */
 export async function construirConfigAcumulador(p) {
   const rutas = p.rutas || await resolverRutas(p.base, p.quote, p.decBase, p.decQuote);
   const { precio: Pnow } = await precioPar(p.base, p.quote, p.decBase, p.decQuote, rutas);
   if (!(Pnow > 0)) throw new Error('No se pudo leer el precio del par');
 
   const total = Number(p.totalQuoteHumano);
-  const n = p.niveles;                 // niveles de compra (todos debajo de la entrada)
-  const iniPct = p.iniPct;             // 0..1 comprado a mercado al abrir
-  const factor = p.factorPct;          // 0.2 = +20% de volumen por nivel al bajar
+  const n = p.niveles;                 // número de escalones de recompra
+  const iniPct = p.iniPct;             // fracción comprada a mercado al abrir (0..1)
+  const factor = p.factorPct;          // progresivo: +X% de volumen por nivel al bajar
   if (!(total > 0 && n >= 1)) throw new Error('Revisa capital y número de compras');
 
-  const pTop = Pnow * 0.999;           // primer nivel apenas debajo de la entrada
   const pMin = Number(p.pMin);
-  if (!(pMin > 0 && pMin < pTop)) throw new Error('El mínimo debe ser menor que el precio actual');
+  if (!(pMin > 0 && pMin < Pnow)) throw new Error('El mínimo debe ser menor que el precio actual');
 
-  const precios = [];
-  for (let i = 0; i < n; i++) {
-    const t = n === 1 ? 1 : i / (n - 1);        // i=0 abajo (pMin) · i=n-1 arriba (pTop)
-    precios.push(pMin * Math.pow(pTop / pMin, t));
-  }
+  // El paso se deriva del límite inferior: el nivel más hondo (~pMin) cae a Pnow*(1 - n*paso).
+  let pasoBps = Math.round(((1 - pMin / Pnow) / n) * 10000);
+  pasoBps = Math.max(1, Math.min(pasoBps, Math.floor(9999 / n)));   // AcumLib exige paso>0 y paso*n<10000
+  let iniBps = Math.round(iniPct * 10000);
+  iniBps = Math.max(1, Math.min(iniBps, 9999));                     // AcumLib exige 0<iniBps<10000
+  const factorBps = Math.max(0, Math.round(factor * 10000));
+  const objBps = Math.round(p.objetivoPct * 10000);
 
-  const compraInicial = total * iniPct;
-  const restante = total * (1 - iniPct);
-  let sumPesos = 0;
-  for (let d = 0; d < n; d++) sumPesos += (1 + factor * d);   // depth 0 arriba
-  const ordenQuote = restante / sumPesos;                     // unidad base (nivel de arriba)
-
-  const niveles = precios.map((Pi, i) => {
-    const depth = n - 1 - i;                                  // arriba depth 0 · abajo depth n-1
-    const montoC = ordenQuote * (1 + factor * depth);
-    return { minOutCompra: aBI(montoC / Pi, p.decBase), minOutVenta: 0n, estado: 1 };
-  });
-
-  const feeTier = await mejorFeeTier(p.quote, p.base, aBI(ordenQuote, p.decQuote));
+  const feeTier = await mejorFeeTier(p.quote, p.base, aBI(total / n, p.decQuote));
   if (!feeTier) throw new Error('Esta moneda no tiene pool en PancakeSwap V3. Prueba con otra.');
 
-  let ordenBase = aBI(ordenQuote / Pnow, p.decBase); if (ordenBase <= 0n) ordenBase = 1n;
+  // Niveles "vacíos": AcumLib los arma on-chain; solo cuenta la CANTIDAD (n).
+  const niveles = Array.from({ length: n }, () => ({ minOutCompra: 0n, minOutVenta: 0n, estado: 0 }));
+  // Precios de disparo aprox. para mostrar en la UI (trigger_k = Pnow*(1-(k+1)*paso)).
+  const paso = pasoBps / 10000;
+  const precios = Array.from({ length: n }, (_, k) => Pnow * (1 - (k + 1) * paso));
 
   return {
     base: p.base, quote: p.quote,
-    ordenQuote: aBI(ordenQuote, p.decQuote), ordenBase,
+    ordenQuote: 1n, ordenBase: 1n,                 // no usados por AcumLib (el contrato exige >0)
     niveles,
-    slippageBps: p.slippageBps || 0, cooldownSeg: p.cooldownSeg || 0,
+    slippageBps: p.slippageBps || 100, cooldownSeg: p.cooldownSeg || 0,
     tpUnitOut: 0n, slUnitOut: 0n,
     feeTier,
     modo: 1,
-    objetivoBps: Math.round(p.objetivoPct * 10000),
-    factorBps: Math.round(factor * 10000),
-    compraInicialQuote: aBI(compraInicial, p.decQuote), margenBps: 0,
-    _Pnow: Pnow, _ordenQuote: ordenQuote, _compraInicial: compraInicial, _precios: precios,
-    _promedioEstimado: (compraInicial + restante) / ((compraInicial / Pnow) + niveles.reduce((a, nv, i) => a + (ordenQuote * (1 + factor * (n - 1 - i))) / precios[i], 0))
+    objetivoBps: objBps,                           // take-profit %
+    factorBps: pasoBps,                            // AcumLib: PASO (escalón)
+    compraInicialQuote: aBI(total, p.decQuote),    // AcumLib: montoQuote TOTAL
+    margenBps: factorBps,                          // AcumLib: FACTOR progresivo
+    comprasMax: iniBps,                            // AcumLib: iniBps (fracción inicial)
+    botId: 0, intervalo: 0,
+    _Pnow: Pnow, _compraInicial: total * iniPct, _ordenQuote: total * (1 - iniPct) / n, _precios: precios,
+    _promedioEstimado: Pnow * (1 - ((n + 1) / 2) * paso)   // aprox. si se llenan todos los niveles
   };
 }
 
@@ -692,11 +692,13 @@ export async function construirConfigDCA(p) {
     tpUnitOut: 0n, slUnitOut: 0n,
     feeTier,
     modo: 3,
-    objetivoBps: 0, factorBps: 0,
+    // V15: take-profit OPCIONAL. objetivoBps=0 => desactivado (solo compra programada).
+    // >0 => DcaLib vende todo a promedio+objetivo (con la salvaguarda del promedio).
+    objetivoBps: Math.round((p.objetivoPct || 0) * 10000), factorBps: 0,
     compraInicialQuote: 0n,
     margenBps: 0,
     intervalo, comprasMax,
-    _Pnow: Pnow, _montoQuote: montoQuote, _intervalo: intervalo, _comprasMax: comprasMax
+    _Pnow: Pnow, _montoQuote: montoQuote, _intervalo: intervalo, _comprasMax: comprasMax, _takeProfitPct: p.objetivoPct || 0
   };
 }
 
