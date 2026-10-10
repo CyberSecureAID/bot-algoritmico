@@ -87,18 +87,20 @@ Scalper, órdenes límite). Todo cobrado y administrado por smart contracts.
 | # | Contrato | Ubicación en repo | PROXY (usar esta) | Implementación |
 |---|---|---|---|---|
 | 1 | **Tarifas** | `contracts/core/Tarifas.sol` | `0x068729CBB708713266FFdE2374e51db2B063FD7C` | V2: `0x04341ADf9C371b2cbB504F6722fF2e4Cce470824` |
-| 2 | **OraculoPrecios** | `contracts/staking/repo_OraculoPrecios.sol` | `0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3` | `0x0150b62a2355AFc036612B890cbE00F5EcdB8CC7` |
-| 3 | **Staking** | `contracts/staking/repo_Staking.sol` | `0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4` | `0xB96675917b784987F06327a629398ff8637BFc64` |
+| 2 | **OraculoPrecios** | `contracts/staking/repo_OraculoPrecios.sol` | `0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3` | `0x41d9Cb401F453405f2069f93B8a590FE8A58959e` |
+| 3 | **Staking** | `contracts/staking/repo_Staking.sol` | `0xdC4802d8871cEf57A34e4e0E3b1a87226a4A84C4` | `0x131c136549450C62b431B987745CaA05e493c722` |
 | 4 | **PanelStaking** | `contracts/staking/repo_PanelStaking.sol` | `0xE620D5BD60F70CCdFa4493F3a5B794d1BBEbf8d2` | (sin proxy) |
-| 5 | **GridBot V11** | `contracts/bots/GridBotV11.sol` | `0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B` | `0x89bc0f298218118D9DF3Be49672961914fA3aF34` |
+| 5 | **GridBot V13** | `contracts/bots/GridBotV13.sol` | `0x4e86430BC2260FE359d1Ea7Eef8B595fB241F93B` | `0x6FC596dF121630b71ea3f5b7DfE098B7843DD8a5` |
 | 6 | **GridBot V10** | `contracts/GridBotV10.sol` | (ver abajo) | administra SPOT de los indicadores |
 | 7 | **MercadoTokens** | `contracts/MercadoTokens.sol` | `0x39c48394068299Aa3e3ab114F16bfc3DE11F4112` | `0x4782c5A49C7d1Bba1C0A785f90775b47B5315a27` |
-| 8 | **SwapLib** (librería) | `contracts/bots/SwapLib.sol` | (se linkea) | `0x8713F1ABF29fBF912D032eA1c1c60380A8De901f` |
-| 9 | **PerfilesP2P** | `contracts/p2p/PerfilesP2P.sol` | `0xC01B61B702011747B4c0Ee6B5F2d0F2b4B66880c` | ver V5 |
-| 10 | **MercadoP2P** | `contracts/p2p/MercadoP2P.sol` | `0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025` | ver V5 |
-| 11 | **Contabilidad** | `contracts/core/Contabilidad.sol` | `0x7FdE85E0bD53208F380980cfE317A9D4982434Ab` | ver V6 |
-| 12 | **WalletShield** | `contracts/shield/WalletShield.sol` | `0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05` | ver V6 |
-| 13 | **GasFaucet** | `contracts/core/GasFaucet.sol` | `0x71763E9Ad60d3D2Baa833496F8b4f8eeD497B65F` | ver V6 |
+| 8 | **SwapLib** (librería) | `contracts/bots/SwapLib.sol` | (se linkea) | `0x0a0fbd6160158fea25ca2525bd7d4e38b57ddd1f` |
+| 9 | **PerfilesP2P** | `contracts/p2p/PerfilesP2P.sol` | `0xC01B61B702011747B4c0Ee6B5F2d0F2b4B66880c` | `0xCeA7DD129BF53ac7Ac54CAD6bCA70425449e86eD` |
+| 10 | **MercadoP2P** | `contracts/p2p/MercadoP2P.sol` | `0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025` | `0x1e02c7FaBe2e6eeAc8c17a0689C46E6170aCa2a9` |
+| 11 | **Contabilidad** | `contracts/core/Contabilidad.sol` | `0x7FdE85E0bD53208F380980cfE317A9D4982434Ab` | `0x6F3e055b5C8004F76956F26c4a82662Bca812fF3` |
+| 12 | **WalletShield** | `contracts/shield/WalletShield.sol` | `0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05` | `0x4Fe00c77d08A1eE2cF844023353Ea0366E7ece23` |
+| 13 | **GasFaucet** | `contracts/core/GasFaucet.sol` | `0x71763E9Ad60d3D2Baa833496F8b4f8eeD497B65F` | `0x440873C885913D756179AA8823B39B9a0680F5D6` |
+
+> **Actualización (9 oct 2026):** los 16 contratos quedan verificados en BscScan, proxy e implementación. OraculoPrecios y Staking se redesplegaron con código verificado y se activaron por upgrade UUPS (candado de 48h) a las impls de esta tabla; el proxy de cada uno NO cambió. GridBot corre la impl V13 con el arreglo del swap (receive). SwapLib verificada y linkeada por el motor GridBot.
 
 **Qué hace cada uno (base):**
 - **Tarifas:** el CEREBRO. Registro central de comisiones (bps) por servicio + el
@@ -114,7 +116,7 @@ Scalper, órdenes límite). Todo cobrado y administrado por smart contracts.
   `prestar(token,monto,a)`, `devolver(token,monto)`, `disponibleParaPrestar(token)`,
   `depositarRecompensa(token,monto,bps)`, `autorizarContrato(dir,v)` (admin),
   `permitirToken(token)`. El staker SIEMPRE recupera su token exacto.
-- **GridBot V11:** bots de trading + swap multi-DEX. Administra operaciones.
+- **GridBot V13:** bots de trading + swap multi-DEX. Administra operaciones.
 - **GridBot V10:** versión anterior, ADMINISTRA LAS OPERACIONES SPOT de los indicadores
   (liquidity pool, hair pool, smart levels) del hero. El usuario YA ha abierto ops ahí.
 - **Contabilidad:** registro de actividad para el panel admin. `reportar(wallet,srv,
