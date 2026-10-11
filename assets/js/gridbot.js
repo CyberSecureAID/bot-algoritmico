@@ -760,8 +760,17 @@ export async function crearRejilla(config) {
   // V14: el cobro ($2.50) va DENTRO de crearRejilla => apertura ATÓMICA (una sola
   // firma). Mandamos el costo + 2% de colchón por si el oráculo se movió entre la
   // lectura y la firma; el contrato DEVUELVE lo que sobre en la misma transacción.
-  let value = 0n;
-  try { const costo = await bot.costoBotBNB(); value = costo + costo / 50n; } catch (_) {}
+  // El costo ($2.50 en BNB) se lee por RPC resiliente: leeGB rota por TODOS los
+  // nodos con reintentos. Si NO se puede leer, ABORTAMOS con mensaje claro.
+  // ANTES: se leia con bot.costoBotBNB() (provider del wallet, con hipos) y si
+  // fallaba, el catch dejaba value=0 => crearRejilla revertia (NoPagado) SIN
+  // cobrar, de forma intermitente. Esa era la causa del "fallo al abrir".
+  // Mandamos +5% de colchon; el contrato DEVUELVE lo que sobra en la MISMA tx.
+  let costo = 0n;
+  try { costo = await leeGB('costoBotBNB', []); } catch (_) {}
+  if (costo <= 0n) { await new Promise((r) => setTimeout(r, 400)); try { costo = await leeGB('costoBotBNB', []); } catch (_) {} }
+  if (costo <= 0n) throw new Error('No se pudo leer el costo del bot ahora mismo (red). Intenta de nuevo en unos segundos.');
+  const value = costo + costo / 20n;
   const tx = await gasMargen(bot, 'crearRejilla', [c], { value });
   return esperar(tx);
 }

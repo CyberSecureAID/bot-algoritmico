@@ -5,7 +5,7 @@
  * botones (i), gráfica viva con las cuadrículas, e inversión total en una cifra.
  */
 
-import * as gb from './gridbot.js?v=203';
+import * as gb from './gridbot.js?v=206';
 import { t } from './idioma.js?v=167';
 import * as wallet from './wallet.js?v=129';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
@@ -320,9 +320,9 @@ function headerHTML() {
   else if (!wallet.esRedCorrecta()) right = `<button class="btn btn-rojo hdr-btn" id="c-red">Cambiar a BNB Chain</button>`;
   else right = `<span class="c-sep"></span><button class="c-perfil" id="c-perfil" type="button" aria-label="My profile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c.6-3.4 3.2-5 6.5-5s5.9 1.6 6.5 5"/></svg></button><button class="dir" id="c-dir" type="button" title="Cambiar de wallet">${iconoWallet()}<span class="dir-tx">${String(cuenta).slice(-4)}</span><span class="dir-ch"></span></button>`;
   return `<header class="c-hdr">
-    <a class="c-brand" href="./"><img class="c-logo" src="assets/img/cco-logo.png" alt="" width="30" height="30"><img class="c-logo-full" src="assets/img/cco-full.webp" alt="Cripto Cuba Oficial" width="152" height="40" loading="eager"></a>
+    <a class="c-brand" href="./"><img class="c-logo" src="assets/img/cco-logo.png" alt="" width="30" height="30"><img class="c-logo-full" src="assets/img/cco-full.webp" alt="DecFreedom" width="152" height="40" loading="eager"></a>
     <span class="c-estado" id="c-estado" title="Your wallet status"><i></i><b>Not connected</b></span>
-    <img class="c-logo-mov" src="assets/img/cco-movil.webp" alt="CriptoCuba Oficial" width="140" height="91" loading="eager" decoding="async">
+    <img class="c-logo-mov" src="assets/img/cco-movil.webp" alt="DecFreedom" width="140" height="91" loading="eager" decoding="async">
     <div class="c-hdr-r">
 
       <button class="c-swap" id="c-swap" type="button" aria-label="Intercambiar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10 3 6l4-4"/><path d="M3 6h14"/><path d="m17 14 4 4-4 4"/><path d="M21 18H7"/></svg><span class="c-swap-tx">Swap</span></button>
@@ -3085,7 +3085,7 @@ async function compartirBot(card) {
   // Pie: la web primero, que es lo que queremos que se recuerde.
   shadow(12, 2);
   g.fillStyle = 'rgba(232,184,75,.95)'; g.font = `700 25px ${MONO}`; g.textAlign = 'center';
-  g.fillText('CRIPTOCUBAOFICIAL.COM   ·   SIN CUSTODIA   ·   SIN KYC', W / 2, H - 32);
+  g.fillText('DECFREEDOM.COM   ·   SIN CUSTODIA   ·   SIN KYC', W / 2, H - 32);
   g.textAlign = 'left'; noShadow();
 
   /* El logo, arriba a la derecha con su margen. Se dibuja al final para
@@ -3107,9 +3107,9 @@ async function compartirBot(card) {
   const _una = () => { if (_hecho) return; _hecho = true; _pintar(); };
   _logo.onload = () => {
     try {
-      const alto = 74;
+      const alto = 120;
       const ancho = Math.round(_logo.width * (alto / _logo.height));
-      g.drawImage(_logo, W - ancho - 46, 40, ancho, alto);
+      g.drawImage(_logo, W - ancho - 46, 36, ancho, alto);
     } catch (_) {}
     _una();
   };
