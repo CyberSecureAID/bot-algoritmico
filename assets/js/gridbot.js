@@ -156,15 +156,45 @@ function _campo(word, off, size, signed) {
 const _REJ_CEROS = { activa:false, base:'0x0000000000000000000000000000000000000000', quote:'0x0000000000000000000000000000000000000000', niveles:0, totalOps:0, posicionBase:0n, costeQuote:0n, ordenQuote:0n, ordenBase:0n, comprasHechas:0, ventasHechas:0, ciclos:0, gananciaQuote:0n, gasSaldoWei:0n, creadaEn:0, ultimaOpEn:0, intervalo:0n, comprasMax:0 };
 
 async function cEscribe() { return new ethers.Contract(GRIDBOT, ABI, await firmante()); }
-/* Estima el gas real de una transaccion y le da 35% de margen, para que MetaMask
-   no re-simule en conflicto: eso evita el falso "es probable que esta transaccion
-   falle" y la demora en que salga MetaMask. Causa y arreglo documentados en README-V7.
-   Si la transaccion fuera a revertir, estimateGas lanza el motivo antes de firmar
-   y no se gasta gas en un intento fallido. */
+/* Estima el gas con 35% de margen (evita que MetaMask re-simule en conflicto y
+   muestre el falso "es probable que esta transaccion falle").
+   POR QUE FALLABA DE FORMA INTERMITENTE: la estimacion se hacia contra el nodo de
+   la WALLET. Si ese nodo iba un bloque atrasado, lento o limitaba un instante,
+   estimateGas lanzaba (error de red o falso revert) y la apertura/cierre se caia;
+   al reintentar el nodo ya respondia y funcionaba. Ese era el "de pronto si, de
+   pronto no", y no lo arreglaba borrar cache porque no es cache.
+   ARREGLO: se estima contra NUESTROS RPC fiables, rotando igual que leeGB. Si un
+   RPC falla por red, se pasa al siguiente. Si la tx revierte DE VERDAD, se muestra
+   el motivo y no se envia (no se gasta gas en balde). Solo si ningun RPC pudo
+   estimar por un corte de red (sin ser revert) se envia con un limite holgado,
+   para no bloquear la operacion por un hipo pasajero del nodo. */
 async function gasMargen(contrato, metodo, args = [], overrides = {}) {
-  const est = await contrato[metodo].estimateGas(...args, overrides);
-  let gasLimit = est * 135n / 100n;
-  if (await _esSmartAccount(contrato.runner)) { const boost = est * 2n + 300000n; if (boost > gasLimit) gasLimit = boost; }
+  let from;
+  try { from = await contrato.runner.getAddress(); } catch (_) {}
+  let est = null, errReal = null;
+  for (let k = 0; k < RPCS.length; k++) {
+    try {
+      const estimador = from ? new ethers.Contract(GRIDBOT, ABI, provRPC(_rpcIdx)) : contrato;
+      est = await estimador[metodo].estimateGas(...args, from ? { ...overrides, from } : overrides);
+      break;
+    } catch (e) {
+      const esRevert = !!(e && (e.code === 'CALL_EXCEPTION' || e.revert || e.reason ||
+        /execution reverted/i.test(e.shortMessage || e.message || '')));
+      if (esRevert) { errReal = e; break; }   // revert real: mostrar motivo, no enviar
+      _rpcIdx = (_rpcIdx + 1) % RPCS.length;
+      await new Promise((r) => setTimeout(r, 220));
+      if (!from) break;                        // sin RPC propio no tiene sentido rotar
+    }
+  }
+  if (errReal) throw errReal;
+  let gasLimit;
+  if (est != null) {
+    gasLimit = est * 135n / 100n;
+    if (await _esSmartAccount(contrato.runner)) { const boost = est * 2n + 300000n; if (boost > gasLimit) gasLimit = boost; }
+  } else {
+    gasLimit = 1200000n;
+    if (await _esSmartAccount(contrato.runner)) gasLimit = 2000000n;
+  }
   return contrato[metodo](...args, { ...overrides, gasLimit });
 }
 
