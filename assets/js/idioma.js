@@ -1351,6 +1351,7 @@ const DIC = {
     'Soporte': 'Support',
     'Dudas, incidencias y novedades en el canal de Telegram.': 'Questions, issues and news on our Telegram channel.',
     'Abrir Telegram': 'Open Telegram',
+    'Solo nos comunicamos por nuestros canales oficiales aquí indicados. Nadie de nuestro equipo te contactará por vías privadas o informales.': 'We only communicate through our official channels listed here. No one on our team will ever contact you through private or informal channels.',
     'Operar con criptomonedas conlleva riesgo. Un bot ordena y ejecuta tus operaciones, pero no predice el mercado y no garantiza ganancias. Puedes perder parte o la totalidad de lo que inviertas. Opera solo con dinero que puedas permitirte perder. Esta plataforma es no custodial: tú eres el único responsable de la custodia de tu wallet y de tus claves.': 'Trading crypto carries risk. A bot organises and executes your trades, but it does not predict the market and guarantees no profit. You can lose part or all of what you invest. Only trade with money you can afford to lose. This platform is non-custodial: you are solely responsible for the custody of your wallet and your keys.',
     'Plataforma no custodial · BNB Smart Chain': 'Non-custodial platform · BNB Smart Chain',
     /* ── App MÓVIL: barra inferior + ventana de Inicio ──
@@ -2859,6 +2860,7 @@ const DIC = {
     'En directo': 'Ao vivo',
     'Órdenes detectadas': 'Ordens detetadas',
     'Soporte': 'Suporte',
+    'Solo nos comunicamos por nuestros canales oficiales aquí indicados. Nadie de nuestro equipo te contactará por vías privadas o informales.': 'Só nos comunicamos pelos nossos canais oficiais aqui indicados. Ninguém da nossa equipa entrará em contacto por vias privadas ou informais.',
     'Resistencia': 'Resistência',
     'Fuertes': 'Fortes',
     'Falsas': 'Falsas',
