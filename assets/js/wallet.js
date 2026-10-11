@@ -20,13 +20,23 @@ import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 
 const CLAVE_SALIDA = 'bolita.desconectado';
 
-const est = {
-  proveedor: null,
-  cuenta: null,
-  chainId: null,
-  oyentes: new Set(),
-  manejadores: null
-};
+/* El estado de conexion se guarda en UN objeto compartido por TODAS las copias de
+   wallet.js. La web carga wallet.js con varias versiones (?v=125, ?v=129...) y el
+   navegador crea UNA copia por cada version; antes cada copia tenia su propio 'est',
+   asi que solo UNA quedaba conectada y las demas veian la wallet vacia. Por eso
+   Marketplace no detectaba la wallet y por eso fallaba de forma aleatoria segun que
+   copia tocara la accion. Guardandolo en window, todas las copias comparten la MISMA
+   conexion (cuenta, proveedor, oyentes). 'est' solo se muta ('est.cuenta = ...'),
+   nunca se reasigna, por eso compartir el mismo objeto es seguro. */
+const est = (typeof window !== 'undefined')
+  ? (window.__df_wallet_est || (window.__df_wallet_est = {
+      proveedor: null,
+      cuenta: null,
+      chainId: null,
+      oyentes: new Set(),
+      manejadores: null
+    }))
+  : { proveedor: null, cuenta: null, chainId: null, oyentes: new Set(), manejadores: null };
 
 /* ================================================================== */
 /* Detección                                                           */
