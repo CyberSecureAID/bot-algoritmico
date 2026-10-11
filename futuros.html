@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Futures · Cripto Cuba Oficial</title>
+  <title>Futures · DecFreedom</title>
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -1006,7 +1006,7 @@
       const blob = await generarTarjeta(id);
       if (!blob) return;
       const url = URL.createObjectURL(blob);
-      const ENLACE = 'https://criptocubaoficial.com';
+      const ENLACE = 'https://decfreedom.com';
       const ov = document.createElement('div');
       ov.className = 'fx-modal'; ov.style.zIndex = '26000';
       ov.innerHTML = '<div class="bg" style="position:absolute;inset:0;background:rgba(0,0,0,.75)"></div>' +
@@ -1020,9 +1020,9 @@
       document.body.appendChild(ov);
       const cerrar = () => { try { ov.remove(); URL.revokeObjectURL(url); } catch (_) {} };
       ov.querySelector('.bg').onclick = cerrar;
-      const archivo = new File([blob], 'CriptoCubaOficial.png', { type: 'image/png' });
+      const archivo = new File([blob], 'DecFreedom.png', { type: 'image/png' });
       ov.querySelector('#fxsh-dl').onclick = () => {
-        const a = document.createElement('a'); a.href = url; a.download = 'CriptoCubaOficial.png'; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = 'DecFreedom.png'; a.click();
       };
       ov.querySelector('#fxsh-copy').onclick = async () => {
         const b = ov.querySelector('#fxsh-copy');
@@ -1033,10 +1033,10 @@
         // Compartir la imagen JUNTO CON el enlace (como extras.js). Si no se puede,
         // se descarga la imagen normalmente.
         if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-          try { await navigator.share({ files: [archivo], title: 'CriptoCuba Oficial', text: ENLACE }); return; } catch (_) {}
+          try { await navigator.share({ files: [archivo], title: 'DecFreedom', text: ENLACE }); return; } catch (_) {}
         }
-        if (navigator.share) { try { await navigator.share({ title: 'CriptoCuba Oficial', text: ENLACE, url: ENLACE }); return; } catch (_) {} }
-        const a = document.createElement('a'); a.href = url; a.download = 'CriptoCubaOficial.png'; a.click();
+        if (navigator.share) { try { await navigator.share({ title: 'DecFreedom', text: ENLACE, url: ENLACE }); return; } catch (_) {} }
+        const a = document.createElement('a'); a.href = url; a.download = 'DecFreedom.png'; a.click();
       };
     }
     $('f-closeall').onclick = () => {
