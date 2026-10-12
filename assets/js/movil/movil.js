@@ -75,8 +75,7 @@ async function abrir(clave, arg) {
   try {
     switch (clave) {
       case 'addtoken':  { const m = await import('../gridbot/listing.js?v=12'); m.abrirListingMovil && m.abrirListingMovil(); break; }
-      case 'swap':      { inyectarFixSwap(); const m = await import('../gridbot/swap.js?v=9'); m.abrirSwap && m.abrirSwap(); sacarSwapDelWeb();
-                          try { const idi = await import('../idioma.js?v=167'); idi.traducirTodo && idi.traducirTodo(); } catch (_) {} break; }
+      case 'swap':      { location.href = 'modules/swap/swap.html'; break; }   // modulo sellado con pagina propia
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
       case 'alertas':   abrirAlerta(); break;
@@ -160,65 +159,6 @@ function abrirTfMenu(chip, tfs) {
   setTimeout(() => document.addEventListener('click', cerrar), 10);
 }
 
-/* El swap (y su selector de moneda) se insertan dentro de #colmena-app, que en
-   móvil está oculto y además crea un contexto de apilamiento (isolation) que
-   deja el modal por debajo de la cáscara. Los movemos al <body>. */
-/* El swap se inserta en #colmena-app, que en móvil está oculto y con
-   isolation:isolate (contexto de apilamiento) queda por debajo de la cáscara.
-   En vez de mover el modal (rompe su CSS ligado a #colmena-app), elevamos el
-   z-index de #colmena-app mientras el swap está abierto y lo restauramos al
-   cerrarse. Así se ve por encima de la cáscara y conserva todo su estilo. */
-function sacarSwapDelWeb() {
-  const web = $('colmena-app');
-  if (!web) return;
-  web.style.zIndex = '9500';                 // encima de la cáscara (100), debajo del nav (10100)
-  web.style.pointerEvents = 'auto';
-  if (web._mvSwapObs) return;
-  const obs = new MutationObserver(() => {
-    if (!$('swap-modal') && !$('coin-modal')) {   // swap cerrado → restaurar
-      web.style.zIndex = ''; web.style.pointerEvents = '';
-      obs.disconnect(); web._mvSwapObs = null;
-    }
-  });
-  obs.observe(web, { childList: true, subtree: true });
-  web._mvSwapObs = obs;
-}
-
-/* Achica los logos de moneda del swap en móvil (sin tocar el botón central) y,
-   sobre todo, deja HUECO abajo: el modal está centrado y su parte baja (el botón)
-   quedaba PEGADA a la barra inferior perpetua. Con padding-bottom, al estar el
-   modal centrado (align-items:center), la caja sube y queda un margen limpio por
-   encima de la barra. Se aplica también al selector de moneda del swap. */
-function inyectarFixSwap() {
-  if ($('mv-swap-fix')) return;
-  const s = document.createElement('style'); s.id = 'mv-swap-fix';
-  s.textContent = `@media(max-width:760px){
-    #swap-modal,#coin-modal{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))!important}
-    #swap-modal .coin-sel-ico,#coin-modal .cm-coin-ico{width:24px!important;height:24px!important;flex:0 0 auto}
-    #swap-modal .coin-sel-ico svg,#swap-modal .coin-sel-ico img,#coin-modal .cm-coin-ico svg,#coin-modal .cm-coin-ico img{width:24px!important;height:24px!important}
-    #swap-modal .sw-box{max-width:400px}
-
-    /* La X del selector de moneda: en móvil salía sin estilo. */
-    #coin-modal .cm-x,#swap-modal .cm-x{width:34px!important;height:34px!important;border-radius:10px!important;
-      background:rgba(255,255,255,.05)!important;border:1px solid #2b3139!important;color:#7d8794!important;
-      display:grid!important;place-items:center!important;font-size:15px!important;cursor:pointer!important;flex:0 0 auto!important}
-    /* El botón dorado 3D grande: en móvil salía como rectángulo pegado sin
-       estilo. Se le devuelve el bisel dorado y el ancho completo. */
-    #swap-modal .btn-oro3d,#swap-modal .sw-go{width:100%!important;height:52px!important;border-radius:13px!important;
-      border:1px solid #c79426!important;
-      background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426)!important;color:#241900!important;
-      font-family:'Plus Jakarta Sans',sans-serif!important;font-weight:800!important;font-size:16px!important;
-      box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)!important;
-      display:flex!important;align-items:center!important;justify-content:center!important}
-    /* El título del selector, legible y centrado. */
-    #coin-modal .cm-head,#swap-modal .cm-head{display:flex!important;align-items:center!important;justify-content:space-between!important;
-      padding:16px 16px 4px!important;margin-bottom:8px!important}
-    #coin-modal .cm-title,#swap-modal .cm-title{font-family:'Plus Jakarta Sans',sans-serif!important;font-weight:800!important;font-size:19px!important;color:#e9edf5!important;padding:0!important}
-    /* Logos de las monedas en la lista del selector. */
-    #coin-modal .cm-coin-ico img,#coin-modal .cm-coin-ico svg{width:26px!important;height:26px!important;border-radius:50%!important}
-  }`;
-  document.head.appendChild(s);
-}
 
 /* Marketplace en móvil: el overlay se centra y su parte baja quedaba TAPADA por
    la barra inferior — no se podía llegar a los campos ni al botón "Guardar
