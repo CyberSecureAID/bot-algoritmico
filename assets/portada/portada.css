@@ -388,6 +388,7 @@ body{overflow-x:hidden}
 #pt .pt-foot > .pt-wrap{position:relative;z-index:2}
 #pt .pt-foot__g{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,.8fr)) minmax(0,1.2fr);gap:clamp(18px,2.2vw,34px);padding-bottom:20px}
 #pt .pt-foot__b .pt-logo{margin-bottom:12px}
+#pt .pt-foot__b .pt-logo img{height:110px;width:auto}  /* logo vertical, mas grande que el de la cabecera */
 #pt .pt-foot__b p{margin:0 0 16px;font-size:12.5px;line-height:1.58;color:var(--ink3);max-width:30ch}
 #pt .pt-soc{display:flex;gap:7px;flex-wrap:wrap}
 #pt .pt-soc a{width:33px;height:33px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line2);border-radius:8px;color:var(--ink3);transition:color .15s,border-color .15s,background .15s}
