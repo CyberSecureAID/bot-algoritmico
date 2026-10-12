@@ -74,7 +74,7 @@ async function abrir(clave, arg) {
   if (requiereActivacion(clave)) { avisoActivacion(clave); return; }
   try {
     switch (clave) {
-      case 'addtoken':  { const m = await import('../gridbot/listing.js?v=12'); m.abrirListingMovil && m.abrirListingMovil(); break; }
+      case 'addtoken':  { location.href = 'modules/swap/swap.html?abrir=listar'; break; }   // modulo sellado (antes abria una copia vieja de listing.js)
       case 'swap':      { location.href = 'modules/swap/swap.html'; break; }   // modulo sellado con pagina propia
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
