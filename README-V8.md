@@ -97,7 +97,7 @@ Scalper, órdenes límite). Todo cobrado y administrado por smart contracts.
 | 9 | **PerfilesP2P** | `contracts/p2p/PerfilesP2P.sol` | `0xC01B61B702011747B4c0Ee6B5F2d0F2b4B66880c` | `0xCeA7DD129BF53ac7Ac54CAD6bCA70425449e86eD` |
 | 10 | **MercadoP2P** | `contracts/p2p/MercadoP2P.sol` | `0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025` | `0x1e02c7FaBe2e6eeAc8c17a0689C46E6170aCa2a9` |
 | 11 | **Contabilidad** | `contracts/core/Contabilidad.sol` | `0x7FdE85E0bD53208F380980cfE317A9D4982434Ab` | `0x6F3e055b5C8004F76956F26c4a82662Bca812fF3` |
-| 12 | **WalletShield** | `contracts/shield/WalletShield.sol` | `0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05` | `0x4Fe00c77d08A1eE2cF844023353Ea0366E7ece23` |
+| 12 | **WalletShield** | `contracts/shield/WalletShield.sol` | `0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05` | `0x470E277CE046B1B822041Dc616e75D0bdfC2D255` |
 | 13 | **GasFaucet** | `contracts/core/GasFaucet.sol` | `0x71763E9Ad60d3D2Baa833496F8b4f8eeD497B65F` | `0x440873C885913D756179AA8823B39B9a0680F5D6` |
 
 > **Actualización (9 oct 2026):** los 16 contratos quedan verificados en BscScan, proxy e implementación. OraculoPrecios y Staking se redesplegaron con código verificado y se activaron por upgrade UUPS (candado de 48h) a las impls de esta tabla; el proxy de cada uno NO cambió. GridBot corre la impl V13 con el arreglo del swap (receive). SwapLib verificada y linkeada por el motor GridBot.

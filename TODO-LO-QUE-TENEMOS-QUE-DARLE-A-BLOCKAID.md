@@ -59,7 +59,7 @@ Todos en BNB Smart Chain (chainId 56). Formato: proxy (el que se usa) + implemen
 | 12 | PanelStaking (lecturas de staking, no mueve fondos) | no | (impl directa, sin proxy) | `0xE620D5BD60F70CCdFa4493F3a5B794d1BBEbf8d2` |
 | 13 | MercadoP2P (mercado entre pares) | SÍ | `0x17B47a8Fb97F8980b96c94E4b9137182e0Bf8025` | `0x1e02c7FaBe2e6eeAc8c17a0689C46E6170aCa2a9` |
 | 14 | PerfilesP2P (perfiles y reputación P2P) | no | `0xC01B61B702011747B4c0Ee6B5F2d0F2b4B66880c` | `0xCeA7DD129BF53ac7Ac54CAD6bCA70425449e86eD` |
-| 15 | WalletShield (suscripción de seguridad de wallet) | SÍ | `0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05` | `0x4Fe00c77d08A1eE2cF844023353Ea0366E7ece23` |
+| 15 | WalletShield (suscripción de seguridad de wallet) | SÍ | `0x24E34b95dBd7786b0d11E00e7FA256A8763B6D05` | `0x470E277CE046B1B822041Dc616e75D0bdfC2D255` |
 | 16 | GasFaucet (faucet de gas) | no | `0x71763E9Ad60d3D2Baa833496F8b4f8eeD497B65F` | `0x440873C885913D756179AA8823B39B9a0680F5D6` |
 
 Enlace de verificación: `https://bscscan.com/address/<direccion>#code` para cada proxy e implementación.
