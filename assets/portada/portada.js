@@ -111,12 +111,10 @@ async function wallet() {
 }
 
 const PUERTAS = {
-  swap: async () => {
-    const m = await import(J + 'gridbot/swap.js?v=16');
-    m.initSwap(conectar, cargarLogosPrecios);
-    await cargarLogosPrecios();          // rellena los logos antes de abrir
-    m.abrirSwap();
-  },
+  /* El swap ya es un MODULO SELLADO con pagina propia (modules/swap/swap.html).
+     Antes se montaba aqui encima de la app de bots y compartia su CSS, su wallet.js y
+     su motor: por eso cualquier cambio en los bots rompia el swap. Ahora se navega. */
+  swap: () => { location.href = 'modules/swap/swap.html'; },
   market:  async () => (await import(J + 'market.js?v=125')).abrirMarket(),
   liq:     async () => (await import(J + 'liquidity.js?v=126')).abrirLiquidity(),
   pools:   async () => (await import(J + 'liquidity.js?v=126')).abrirPools(),
