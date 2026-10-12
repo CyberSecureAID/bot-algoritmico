@@ -518,27 +518,8 @@
 
       // Wallet Shield: sección propia, se abre importando su módulo.
       if (que === 'shield') {
-        // Esperamos a que la wallet haya terminado de reconectar antes de abrir
-        // la sección: si se abre antes, el estado de la cuenta es inconsistente
-        // y se entra por la rama equivocada (saltándose la pantalla de acceso).
-        var _t0 = Date.now();
-        var _esperar = setInterval(function () {
-          var lista = false;
-          try { lista = (window.__walletLista === true) || (Date.now() - _t0 > 2500); } catch (e) { lista = true; }
-          if (!lista) return;
-          clearInterval(_esperar);
-          import('./assets/js/shield/shield.js?v=182').then(function (m) {
-            if (m.abrirShield) m.abrirShield();
-            // quitar el velo cuando la sección ya está pintada
-            setTimeout(function () {
-              var v = document.getElementById('velo-shield');
-              if (v) { v.style.transition = 'opacity .25s'; v.style.opacity = '0'; setTimeout(function () { v.remove(); }, 300); }
-            }, 120);
-          }).catch(function (e) {
-            console.warn('shield:', e);
-            var v = document.getElementById('velo-shield'); if (v) v.remove();
-          });
-        }, 60);
+        // Wallet Shield es un modulo sellado con pagina propia: se navega, no se monta aqui.
+        location.replace('modules/shield/shield.html');
         return;
       }
 
