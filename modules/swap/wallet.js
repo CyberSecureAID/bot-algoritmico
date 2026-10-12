@@ -126,8 +126,8 @@ export async function conectarWalletConnect() {
       showQrModal: false,                 // la ventana la ponemos nosotros
       rpcMap: { 56: 'https://bsc-dataseed.binance.org' },
       metadata: {
-        name: 'Cripto Cuba Oficial',
-        description: 'Bots que compran barato y venden caro por ti, en tu propia wallet.',
+        name: 'DecFreedom',
+        description: 'Non custodial trading, swap and wallet security on BNB Chain.',
         url: location.origin + location.pathname.replace(/[^/]*$/, ''),
         icons: [location.origin + location.pathname.replace(/[^/]*$/, '') + '../../assets/img/apple-touch-icon.png']
       }
