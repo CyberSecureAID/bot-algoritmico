@@ -1,4 +1,4 @@
-/* gridbot/swap.js — El swap (intercambio) sobre PancakeSwap V3: modal,
+/* gridbot/swap.js: El swap (intercambio) sobre PancakeSwap V3: modal,
    cotización, balances, importar tokens por dirección, wrap/unwrap y
    ejecución. Sub-app autónoma. Recibe conectarWallet y cargarLogosPrecios
    por initSwap para no crear dependencias circulares con gridbot-ui. */
@@ -132,6 +132,9 @@ function swInjectCSS() {
   #swap-modal .sw-find-tx b{font-family:var(--display);color:var(--ink);font-size:14px;font-weight:700}
   #swap-modal .sw-find-tx i{font-style:normal;font-family:var(--mono);color:var(--ink-3);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #swap-modal .sw-find-usd{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:0 0 auto}
+  #swap-modal .sw-find-row.es-listado{border-color:rgba(52,211,153,.2)}
+  #swap-modal .sw-find-row .cm-coin-prot{font-family:var(--mono);font-size:10.5px;font-weight:700;color:#34d399;flex:0 0 auto}
+  #swap-modal .sw-find-row .cm-coin-prot.off{color:var(--ink-3)}
   #swap-modal .sw-find-go{margin-left:2px;font-family:var(--mono);font-size:11px;font-weight:700;color:#3a2800;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border:1px solid #c79426;border-radius:7px;padding:3px 10px;flex:0 0 auto}
   #swap-modal .sw-find-msg{padding:10px 12px;font-family:var(--mono);font-size:12px;color:var(--ink-3);display:flex;align-items:center;justify-content:center;gap:8px}
   #swap-modal .sw-find-msg.err{color:#ff9090}
@@ -211,7 +214,7 @@ function swEsWrap() {
 }
 
 export function abrirSwap() {
-  swInjectCSS(); swSyncWbnbLogo(); swCargarLogosPropio();
+  swInjectCSS(); swSyncWbnbLogo(); swCargarLogosPropio(); swCargarListados();
   const host = $(APP) || document.body;
   const v = $('swap-modal'); if (v) v.remove();
   const from = swMon(S.fromId), to = swMon(S.toId);
@@ -234,12 +237,12 @@ export function abrirSwap() {
       <div class="sw-body">
         <div class="sw-cards">
           <div class="sw-card">
-            <div class="sw-card-top"><span class="sw-lbl">Pagas</span><span class="sw-bal" id="sw-bal-from">—</span></div>
+            <div class="sw-card-top"><span class="sw-lbl">Pagas</span><span class="sw-bal" id="sw-bal-from">...</span></div>
             <div class="sw-card-mid"><input class="sw-amt" id="sw-amt" inputmode="decimal" placeholder="0.0" autocomplete="off"><button class="sw-tok" id="sw-tok-from" type="button">${swTokInner(from)}</button></div>
             <div class="sw-card-bot"><span class="sw-usd" id="sw-usd-from"></span><button class="sw-max" id="sw-max" type="button">MÁX</button></div>
           </div>
           <div class="sw-card">
-            <div class="sw-card-top"><span class="sw-lbl">Recibes (estimado)</span><span class="sw-bal" id="sw-bal-to">—</span></div>
+            <div class="sw-card-top"><span class="sw-lbl">Recibes (estimado)</span><span class="sw-bal" id="sw-bal-to">...</span></div>
             <div class="sw-card-mid"><div class="sw-out" id="sw-out">0.0</div><button class="sw-tok" id="sw-tok-to" type="button">${swTokInner(to)}</button></div>
             <div class="sw-card-bot"><span class="sw-usd" id="sw-usd-to"></span></div>
           </div>
@@ -326,7 +329,7 @@ async function swCargarTarifa() { try { S.feeWei = await gb.tarifaSwap(); } catc
 async function swCargarBalances() {
   const cuenta = wallet.cuentaActual();
   const from = swMon(S.fromId), to = swMon(S.toId);
-  const set = (id, mo, wei) => { const e = $(id); if (e) e.textContent = (wei == null) ? '—' : (swFmt(wei, mo.decimals) + ' ' + mo.simbolo); };
+  const set = (id, mo, wei) => { const e = $(id); if (e) e.textContent = (wei == null) ? '...' : (swFmt(wei, mo.decimals) + ' ' + mo.simbolo); };
   if (!cuenta) { S.balFromWei = 0n; set('sw-bal-from', from, null); set('sw-bal-to', to, null); swRenderBtn(); return; }
   /* ANTES: Promise.all + catch vacio. Si fallaba UNA lectura (un RPC con hipo), las DOS
      quedaban en guion y nadie se enteraba. Era el "swap con guiones" recurrente.
@@ -522,23 +525,51 @@ async function swImportarToken(addr, lado) {
     CUSTOM[key] = t;
     if (!LOGOS[key]) LOGOS[key] = { img: `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${info.address}/logo.png`, price: null, chg: null };
     // ¿Este token está LISTADO en nuestro MercadoTokens? (para comprarlo aquí)
-    try {
-      const lst = await mercadoTK.listadosCompra(info.address);
-      if (tk === _impToken && lst && lst.length > 0) {
-        // tomar el listado con más stock (o el primero)
-        const L = lst.sort((a,b)=> (b.enVenta>a.enVenta?1:-1))[0];
-        LISTADOS[key] = L;
-        // logo desde Firestore (si tiene)
-        try { const logo = await flogosTK.leerLogo(info.address); if (logo) LOGOS[key] = { img: logo, price: null, chg: null }; } catch (_) {}
-        // el nombre/símbolo del listado (que puede estar anclado, ej. USDT.z)
-        t.simbolo = L.simbolo || t.simbolo; t.nombre = L.nombre || t.nombre;
-      }
-    } catch (_) {}
+    await swDetectarListado(key, t);
+    if (tk !== _impToken) return;
     swRenderImport(t, lado);
   } catch (_) {
     if (tk !== _impToken) return;
     const el = $('cm-import'); if (el) { el.className = 'cm-import err'; el.textContent = 'No es un token válido en BNB Chain.'; }
   }
+}
+/* ¿Este token esta LISTADO en MercadoTokens? Si lo esta, lo marca para comprarlo aqui
+   (precio del vendedor + garantia). Lo usan la lista de monedas y la barra de busqueda. */
+async function swDetectarListado(key, t) {
+  try {
+    const lst = await mercadoTK.listadosCompra(t.address);
+    if (!lst || !lst.length) return;
+    const L = lst.sort((a, b) => (b.enVenta > a.enVenta ? 1 : -1))[0];
+    LISTADOS[key] = L;
+    t.simbolo = L.simbolo || t.simbolo; t.nombre = L.nombre || t.nombre;
+    try { const logo = await flogosTK.leerLogo(t.address); if (logo) LOGOS[key] = { img: logo, price: null, chg: null }; } catch (_) {}
+  } catch (_) {}
+}
+/* Precarga TODOS los listados activos al abrir el swap, para que se encuentren por nombre o
+   simbolo (antes solo aparecian pegando el contrato, y solo en la lista de monedas). */
+let _listadosCargados = false;
+async function swCargarListados() {
+  if (_listadosCargados) return; _listadosCargados = true;
+  let lst = [];
+  try { lst = await mercadoTK.listadosActivos(); } catch (_) { _listadosCargados = false; return; }
+  await Promise.all(lst.map(async (L) => {
+    const key = String(L.token).toLowerCase();
+    const prev = LISTADOS[key];
+    if (!prev || L.enVenta > prev.enVenta) LISTADOS[key] = L;
+    if (!CUSTOM[key]) {
+      let dec = 18; try { dec = (await gb.infoToken(L.token)).decimals; } catch (_) {}
+      const limpio = (v, max) => String(v || '').replace(/[^\p{L}\p{N} ._+\-]/gu, '').trim().slice(0, max);
+      const sim = limpio(L.simbolo, 12) || '?';
+      CUSTOM[key] = { id: key, simbolo: sim, nombre: limpio(L.nombre, 40) || sim, address: L.token, decimals: dec, icono: sim[0], color: '#E8B84B', custom: true };
+    }
+    if (!LOGOS[key] || !LOGOS[key].img) {
+      let img = L.logo || '';
+      if (!img) { try { img = await flogosTK.leerLogo(L.token); } catch (_) {} }
+      if (img) LOGOS[key] = { img, price: null, chg: null };
+    }
+  }));
+  // si el usuario ya esta escribiendo, refrescar los resultados
+  try { if (swFindQ()) swFindRender(swFindQ()); } catch (_) {}
 }
 function swRenderImport(t, lado) {
   const el = $('cm-import'); if (!el) return;
@@ -575,11 +606,19 @@ function swFindQ() { const i = $('sw-find-inp'); return i ? i.value.trim() : '';
 function swFindInput() { swFindRender(swFindQ()); }
 function swFindRow(mo) {
   const L = LOGOS[mo.id];
-  const precio = L && L.price != null ? `<span class="sw-find-usd">${fmtPrecioUSD(L.price)}</span>` : '';
-  return `<button type="button" class="sw-find-row" data-id="${mo.id}">
+  const lst = LISTADOS[String(mo.id).toLowerCase()];
+  let precio = L && L.price != null ? `<span class="sw-find-usd">${fmtPrecioUSD(L.price)}</span>` : '';
+  let extra = '';
+  if (lst) {
+    // token listado en nuestra plataforma: precio del vendedor + dias de garantia
+    const dias = Math.ceil((lst.proteccionSeg || 0) / 86400);
+    precio = `<span class="sw-find-usd">$${fmtPrecioListado(lst)}</span>`;
+    extra = dias > 0 ? `<span class="cm-coin-prot">Protected · ${dias}d</span>` : `<span class="cm-coin-prot off">Listed</span>`;
+  }
+  return `<button type="button" class="sw-find-row${lst ? ' es-listado' : ''}" data-id="${mo.id}">
     <span class="coin-sel-ico" style="color:${mo.color || '#e8b84b'}">${icoInner(mo)}</span>
-    <span class="sw-find-tx"><b>${mo.simbolo}</b><i>${mo.nombre}</i></span>
-    ${precio}<span class="sw-find-go">Usar</span>
+    <span class="sw-find-tx"><b>${escT(mo.simbolo)}</b><i>${escT(mo.nombre)}${lst ? ' · Community listing' : ''}</i></span>
+    ${precio}${extra}<span class="sw-find-go">Usar</span>
   </button>`;
 }
 function swFindRender(q) {
@@ -588,8 +627,9 @@ function swFindRender(q) {
   swSyncWbnbLogo();
   res.classList.add('open');
   const ql = q.toLowerCase();
-  const monedas = SWAP_IDS.map((id) => swMon(id)).filter(Boolean).filter((mo) =>
-    (mo.simbolo || '').toLowerCase().includes(ql) || (mo.nombre || '').toLowerCase().includes(ql) || (mo.address || '').toLowerCase() === ql);
+  const coincide = (mo) => (mo.simbolo || '').toLowerCase().includes(ql) || (mo.nombre || '').toLowerCase().includes(ql) || (mo.address || '').toLowerCase() === ql;
+  const listados = Object.keys(LISTADOS).map((k) => CUSTOM[k]).filter(Boolean).filter(coincide);
+  const monedas = [...SWAP_IDS.map((id) => swMon(id)).filter(Boolean).filter(coincide), ...listados];
   let html = monedas.slice(0, 6).map(swFindRow).join('');
   const yaEsta = monedas.some((mo) => (mo.address || '').toLowerCase() === ql);
   if (gb.esDireccion(q) && !yaEsta) {
@@ -608,8 +648,11 @@ async function swFindImport(q) {
   try {
     const info = await gb.infoToken(q);
     if (tk !== _impToken) return;
-    CUSTOM[key] = { id: key, simbolo: info.simbolo, nombre: info.nombre, address: info.address, decimals: info.decimals, icono: (info.simbolo || '?')[0], color: '#E8B84B', custom: true };
+    const t = { id: key, simbolo: info.simbolo, nombre: info.nombre, address: info.address, decimals: info.decimals, icono: (info.simbolo || '?')[0], color: '#E8B84B', custom: true };
+    CUSTOM[key] = t;
     if (!LOGOS[key]) LOGOS[key] = { img: `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${info.address}/logo.png`, price: null, chg: null };
+    await swDetectarListado(key, t);   // antes la barra no miraba MercadoTokens: el token salia como uno cualquiera
+    if (tk !== _impToken) return;
     if (swFindQ().toLowerCase() === key) swFindRender(swFindQ());
   } catch (_) {
     if (tk !== _impToken) return;
@@ -678,14 +721,14 @@ async function swEjecutar() {
       let capBI = amtBI;
       const price = (LOGOS[from.id]?.price) || (from.id === 'WBNB' ? LOGOS['BNB']?.price : null);
       if (price && price > 0) { try { const cb = gb.parse((200 / price).toFixed(Math.min(from.decimals, 18)), from.decimals); if (cb > capBI) capBI = cb; } catch (_) {} }
-      modalBusy(M(`<b>Paso 1 de 2 — permiso de ${from.simbolo}.</b><br>Autorizas un límite de gasto (lo cambias o revocas cuando quieras).<br>Confirma en tu wallet.`, `<b>Step 1 of 2 — ${from.simbolo} permission.</b><br>You authorize a spending limit (change or revoke it anytime).<br>Confirm in your wallet.`));
+      modalBusy(M(`<b>Paso 1 de 2: permiso de ${from.simbolo}.</b><br>Autorizas un límite de gasto (lo cambias o revocas cuando quieras).<br>Confirma en tu wallet.`, `<b>Step 1 of 2: ${from.simbolo} permission.</b><br>You authorize a spending limit (change or revoke it anytime).<br>Confirm in your wallet.`));
       await gb.aprobarSwap(from.address, capBI);
       // refrescar cotización/permiso antes del segundo paso
       const cuenta = wallet.cuentaActual();
       try { S.allow = await gb.allowanceSwap(from.address, cuenta); } catch (_) {}
       const r = await gb.cotizarSwap({ inAddr: from.address, outAddr: to.address, amountInBI: amtBI, slippageBps: 50 });
       if (r) { S.out = r.amountOut; S.minOut = r.minOut; S.fee = r.fee; }
-      modalBusy(M('<b>Paso 2 de 2 — confirma el intercambio.</b><br>Última firma.<br>Confirma en tu wallet.', '<b>Step 2 of 2 — confirm the swap.</b><br>Last signature.<br>Confirm in your wallet.') + avisoBNB);
+      modalBusy(M('<b>Paso 2 de 2: confirma el intercambio.</b><br>Última firma.<br>Confirma en tu wallet.', '<b>Step 2 of 2: confirm the swap.</b><br>Last signature.<br>Confirm in your wallet.') + avisoBNB);
     } else {
       modalBusy(M('Confirma el intercambio en tu wallet.', 'Confirm the swap in your wallet.') + avisoBNB);
     }

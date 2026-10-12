@@ -26,7 +26,13 @@ function inyectarCSS() {
   .lt-title{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
   .lt-how{display:inline-flex !important;align-items:center;gap:5px;background:rgba(232,184,75,.1) !important;border:1px solid var(--gold-soft) !important;color:var(--gold) !important;border-radius:10px !important;padding:6px 11px !important;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--display);white-space:nowrap}
   .lt-how svg{stroke:var(--gold)}
-  .lt-body{padding:0 18px 14px;flex:1;display:flex;flex-direction:column;justify-content:center;overflow-y:auto}
+  .lt-body{padding:0 18px 14px;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:safe center;overflow-y:auto}
+  #lt-panel{max-height:calc(100vh - 84px)}  /* con muchos tokens, el cuerpo hace scroll en vez de salirse de la pantalla */
+  .lt-search{display:flex;align-items:center;gap:8px;margin:2px 0 12px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(11,14,18,.6)}
+  .lt-search svg{flex:none;stroke:var(--ink-3)}
+  .lt-search input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font:inherit;font-size:13px}
+  .lt-search input::placeholder{color:var(--ink-3)}
+  .lt-card.lt-oculto{display:none}
   .lt-grid{display:grid;grid-template-columns:112px 1fr;gap:13px;margin-bottom:10px}
   @media(max-width:560px){ .lt-grid{grid-template-columns:1fr;gap:12px} }
   /* dropzone imagen */
@@ -239,7 +245,8 @@ function htmlFormulario() {
 /* ─────────── Render de la lista de tokens listados (ya listó) ─────────── */
 function htmlLista(items) {
   if (!items.length) return `<div class="lt-empty">You haven't listed any token yet.</div>`;
-  return `<div class="lt-list">${items.map(cardListado).join('')}</div>`;
+  const buscador = items.length > 1 ? `<label class="lt-search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="lt-search" type="text" placeholder="Search your tokens by name, symbol or contract" autocomplete="off"></label>` : '';
+  return buscador + `<div class="lt-list">${items.map(cardListado).join('')}</div>`;
 }
 function cardListado(L) {
   const corta = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
@@ -248,7 +255,7 @@ function cardListado(L) {
   const gan = Number(mercado.fmt(L.ganancia, 18));
   const logo = L.logo ? `<img class="lt-card-logo" src="${L.logo}" alt="">` : `<div class="lt-card-logo ph">${(L.simbolo || L.nombre || '?').slice(0, 3)}</div>`;
   return `
-  <div class="lt-card" data-id="${L.id}">
+  <div class="lt-card" data-id="${L.id}" data-q="${esc((L.nombre || '') + ' ' + (L.simbolo || '') + ' ' + (L.token || '')).toLowerCase()}">
     <div class="lt-card-top">
       ${logo}
       <div class="lt-card-info">
@@ -338,6 +345,11 @@ function verLista() {
   if (toggle) toggle.style.display = 'none';  // ya estás viendo la lista
   body.innerHTML = htmlLista(_misTokens) + `<button class="lt-cta" id="lt-add" style="margin-top:14px">List another token</button>`;
   $('lt-add').onclick = () => verFormulario();
+  const q = $('lt-search');
+  if (q) q.oninput = () => {
+    const t = q.value.trim().toLowerCase();
+    body.querySelectorAll('.lt-card').forEach(c => c.classList.toggle('lt-oculto', !!t && !(c.dataset.q || '').includes(t)));
+  };
 }
 /* Ver el formulario para listar otro (con botón "My tokens" para volver). */
 function verFormulario() {

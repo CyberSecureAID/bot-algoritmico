@@ -1,4 +1,4 @@
-/* mercado.js — capa de conexión al contrato MercadoTokens (listar/comprar/retirar).
+/* mercado.js: capa de conexión al contrato MercadoTokens (listar/comprar/retirar).
    Habla con el proxy desplegado. Reusa ethers desde el vendor. */
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
@@ -157,6 +157,27 @@ export async function listadosCompra(tokenAddr) {
       });
     } catch (_) {}
   }
+  return out;
+}
+
+/** Todos los listados activos con stock (ultimos 300 como maximo), para el buscador del swap.
+    La proteccion (candado de 30 dias) se calcula aqui con `creado`, sin una llamada por listado. */
+const CANDADO_SEG = 30 * 86400;
+export async function listadosActivos() {
+  let total = 0;
+  try { total = Number(await cLee().totalListados()); } catch (_) { return []; }
+  if (!total) return [];
+  const desde = total > 300 ? total - 299 : 1;
+  let arr = [];
+  try { arr = await cLee().pagina(desde, total); } catch (_) { return []; }
+  const ahora = Math.floor(Date.now() / 1000);
+  const out = [];
+  arr.forEach((L, i) => {
+    if (!L.activo || L.enVenta === 0n) return;
+    const creado = Number(L.creado);
+    out.push({ id: desde + i, token: L.token, nombre: L.nombre, simbolo: L.simbolo, logo: L.logo,
+      precio: L.precio, enVenta: L.enVenta, proteccionSeg: Math.max(0, creado + CANDADO_SEG - ahora) });
+  });
   return out;
 }
 
