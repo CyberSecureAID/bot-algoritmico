@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e12">
+<title>Swap · DecFreedom</title>
+<link rel="icon" type="image/png" href="../../assets/img/cco-32.png">
+<link rel="stylesheet" href="./estilos.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Modulo SWAP sellado: esta pagina no carga ningun archivo de fuera de modules/swap/
+     (salvo fuentes e imagenes). Tema y variables definidas aqui mismo. */
+  :root{
+    --bg:#05070a; --ink:#eaecef; --ink-2:#b7bdc6; --ink-3:#7d8794;
+    --gold:#E8B84B; --gold-soft:#C9A84B; --line:#232b36;
+    --display:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --sans:var(--display);
+    --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--display);min-height:100%;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+  *{box-sizing:border-box}
+  ::-webkit-scrollbar{width:0;height:0;display:none} html,body{scrollbar-width:none}
+  #colmena-app{position:relative;min-height:100vh}
+  #sw-top{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));pointer-events:none}
+  #sw-top a,#sw-top span{pointer-events:auto}
+  #sw-top a{color:var(--ink-2);text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  #sw-top a:hover{color:var(--gold)}
+  #sw-cuenta{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div id="sw-top"><a href="../../index.html">&#8592; DecFreedom</a><span id="sw-cuenta"></span></div>
+<div id="colmena-app"></div>
+
+<script>window.__botLogoFail = function (img, ini) { var d = document.createElement("div"); d.className = "pio-mono"; d.textContent = ini; img.replaceWith(d); };</script>
+<script type="module">
+  import * as wallet from './wallet.js';
+  import { initSwap, abrirSwap } from './swap.js';
+  import { arrancarIdioma } from './idioma.js';
+
+  const cta = document.getElementById('sw-cuenta');
+  const pinta = () => { const c = wallet.cuentaActual(); cta.textContent = c ? (c.slice(0, 6) + '\u2026' + c.slice(-4)) : ''; };
+  const enganchar = () => {
+    const x = document.getElementById('sw-x'); if (x) x.onclick = () => { location.href = '../../index.html'; };
+    const bg = document.getElementById('sw-bg'); if (bg) bg.onclick = null;
+  };
+  const montar = () => { abrirSwap(); enganchar(); pinta(); };
+
+  initSwap(async () => { try { await wallet.conectar(); } catch (_) {} montar(); }, () => {});
+  try { await wallet.reconectarSiProcede(); } catch (_) {}
+  montar();
+  try { arrancarIdioma(); } catch (_) {}   // ingles por defecto + observador para lo que se pinte despues
+  try { wallet.alCambiar(() => montar()); } catch (_) {}
+</script>
+</body>
+</html>
