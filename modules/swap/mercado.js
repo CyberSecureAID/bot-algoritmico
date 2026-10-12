@@ -45,6 +45,25 @@ function inyectado() { try { const p = wallet.proveedorActivo && wallet.proveedo
 async function firmante() { return new ethers.BrowserProvider(inyectado()).getSigner(); }
 function cLee() { return new ethers.Contract(MERCADO, ABI, lector()); }
 async function cEscribe() { return new ethers.Contract(MERCADO, ABI, await firmante()); }
+/* Envio con gas estimado + margen (igual que el motor del swap). Sin gasLimit, MetaMask
+   estima por su cuenta y con smart account (Delegation Manager) esa estimacion se queda
+   corta: aviso 'es probable que falle', un intento fallido sin hash y reintento. Si la
+   simulacion revierte, se lanza el motivo real para mostrarlo. */
+async function _esSmart(runner) {
+  try { const a = await runner.getAddress(); const code = await lector().getCode(a); return !!(code && code !== '0x'); } catch (_) { return false; }
+}
+async function enviar(c, metodo, args, overrides = {}) {
+  let est = null;
+  try { est = await c[metodo].estimateGas(...args, overrides); }
+  catch (e) {
+    const esRevert = !!(e && (e.code === 'CALL_EXCEPTION' || e.revert || e.reason || /execution reverted/i.test(e.shortMessage || e.message || '')));
+    if (esRevert) throw e;
+  }
+  if (est == null) return c[metodo](...args, overrides);
+  let gasLimit = est * 135n / 100n;
+  if (await _esSmart(c.runner)) gasLimit += 150000n;
+  return c[metodo](...args, { ...overrides, gasLimit });
+}
 async function esperar(tx) { try { return await tx.wait(); } catch (e) { try { const r = await lector().waitForTransaction(tx.hash, 1, 60000); return r; } catch (_) { throw e; } } }
 
 export function esDireccion(s) { return /^0x[0-9a-fA-F]{40}$/.test((s || '').trim()); }
@@ -86,7 +105,7 @@ export async function costoListar() {
 /** Aprueba el token para el contrato (para poder enviar la cantidad a la venta). */
 export async function aprobar(tokenAddr, montoBI) {
   const t = new ethers.Contract(tokenAddr, ERC20, await firmante());
-  const tx = await t.approve(MERCADO, montoBI);
+  const tx = await enviar(t, 'approve', [MERCADO, montoBI]);
   return esperar(tx);
 }
 export async function allowance(tokenAddr, duenio) {
@@ -101,20 +120,20 @@ export async function balanceToken(tokenAddr, duenio) {
 /** Lista un token. precioUSDT18 = precio por 1 token en USDT (18 dec, figurativo→lo pasamos como precio en BNB equivalente NO; ver nota). */
 export async function listar({ token, nombre, simbolo, logo, cantidadBI, precioBI, valueBNB }) {
   const c = await cEscribe();
-  const tx = await c.listar({ token, nombre, simbolo: simbolo || '', logo: logo || '', cantidad: cantidadBI, precio: precioBI }, { value: valueBNB });
+  const tx = await enviar(c, 'listar', [{ token, nombre, simbolo: simbolo || '', logo: logo || '', cantidad: cantidadBI, precio: precioBI }], { value: valueBNB });
   return esperar(tx);
 }
 export async function comprar(id, cantidadTokenBI, valueBNB) {
   const c = await cEscribe();
-  const tx = await c.comprar(id, cantidadTokenBI, { value: valueBNB });
+  const tx = await enviar(c, 'comprar', [id, cantidadTokenBI], { value: valueBNB });
   return esperar(tx);
 }
-export async function retirarGanancia(id) { const c = await cEscribe(); return esperar(await c.retirarGanancia(id)); }
-export async function retirarTokens(id, cantBI) { const c = await cEscribe(); return esperar(await c.retirarTokens(id, cantBI)); }
-export async function reponer(id, cantBI) { const c = await cEscribe(); return esperar(await c.reponer(id, cantBI)); }
-export async function setPrecio(id, precioBI) { const c = await cEscribe(); return esperar(await c.setPrecio(id, precioBI)); }
-export async function setLogo(id, logo) { const c = await cEscribe(); return esperar(await c.setLogo(id, logo)); }
-export async function devolver(id, cantBI) { const c = await cEscribe(); return esperar(await c.devolver(id, cantBI)); }
+export async function retirarGanancia(id) { const c = await cEscribe(); return esperar(await enviar(c, 'retirarGanancia', [id])); }
+export async function retirarTokens(id, cantBI) { const c = await cEscribe(); return esperar(await enviar(c, 'retirarTokens', [id, cantBI])); }
+export async function reponer(id, cantBI) { const c = await cEscribe(); return esperar(await enviar(c, 'reponer', [id, cantBI])); }
+export async function setPrecio(id, precioBI) { const c = await cEscribe(); return esperar(await enviar(c, 'setPrecio', [id, precioBI])); }
+export async function setLogo(id, logo) { const c = await cEscribe(); return esperar(await enviar(c, 'setLogo', [id, logo])); }
+export async function devolver(id, cantBI) { const c = await cEscribe(); return esperar(await enviar(c, 'devolver', [id, cantBI])); }
 export async function faltaCandado(id) { return cLee().faltaCandado(id); }
 export async function loQueCompre(id, wallet) { return cLee().compradoPor(id, wallet); }
 export async function loQuePague(id, wallet) { return cLee().pagadoPor(id, wallet); }

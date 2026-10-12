@@ -11,6 +11,7 @@ import { APP, BASES } from './config.js';
 import { montarListing, inyectarCSS as inyectarListingCSS } from './listing.js';
 import * as mercadoTK from './mercado.js';
 import * as flogosTK from './firebase-logos.js';
+import { avisoListing } from './aviso.js';
 
 const $ = (id) => document.getElementById(id);
 let _conectarWallet = () => {}, _cargarLogosPrecios = () => {};
@@ -213,6 +214,7 @@ function swEsWrap() {
   return null;
 }
 
+let _deepListarHecho = false;   // el deep link ?abrir=listar se aplica una sola vez (abrirSwap se remonta al cambiar de wallet)
 export function abrirSwap() {
   swInjectCSS(); swSyncWbnbLogo(); swCargarLogosPropio(); swCargarListados();
   const host = $(APP) || document.body;
@@ -266,6 +268,12 @@ export function abrirSwap() {
       if (_inp) { _inp.value = _tokParam; setTimeout(function () { swFindInput(); }, 250); }
     }
   } catch (_) {}
+  // Deep link ?abrir=listar (movil, boton 'List your token'): abre el panel de listado.
+  try {
+    if (new URLSearchParams(location.search).get('abrir') === 'listar') {
+      if (!_deepListarHecho) { _deepListarHecho = true; setTimeout(function () { var b = $('sw-listbtn'); if (b) b.click(); }, 350); }
+    }
+  } catch (_) {}
   $('sw-amt').addEventListener('input', swInput);
   $('sw-max').onclick = swMax;
   $('sw-flip').onclick = swFlip;
@@ -278,6 +286,7 @@ export function abrirSwap() {
     const modal = $('swap-modal');
     const slot = $('lt-slot');
     if (modal.classList.contains('lt-open')) { modal.classList.remove('lt-open'); return; }
+    if (!(await avisoListing())) return;   // terminos de List your token (una vez por navegador)
     modal.classList.add('lt-open');
     try { inyectarListingCSS(); await montarListing(slot, { back: true, onBack: () => modal.classList.remove('lt-open') }); } catch (e) { console.warn('listing:', e); }
     // Igualar la altura del panel de listar a la del swap (medida real, solo en escritorio).

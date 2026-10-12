@@ -6,6 +6,7 @@ import * as flogos from './firebase-logos.js';
 import * as wallet from './wallet.js';
 import * as ethers from './ethers.min.js';
 import { modalError } from './util.js';
+import { avisoListing } from './aviso.js';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -111,7 +112,7 @@ function inyectarCSS() {
   #lt-tip .lt-tbx{max-width:440px;width:100%;background:#0e151c;border:1px solid #2c3946;border-radius:16px;padding:24px 22px;position:relative;max-height:82vh;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
   #lt-tip .lt-tbx::-webkit-scrollbar{display:none;width:0}
   #lt-tip .lt-tbx p{margin:0;font-size:13px;line-height:1.6;color:#d4dbe4}
-  #lt-tip .lt-tbx > p:first-child{padding-right:34px}
+  #lt-tip .lt-tbx > p:first-of-type{padding-right:34px}
   #lt-tip .lt-tx{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid #2c3946;color:#aab6c4;cursor:pointer;z-index:2;font-size:13px}
   @media(max-width:560px){
     .lt-drop{flex-direction:row !important;justify-content:flex-start;gap:12px;min-height:0 !important;padding:12px 14px !important;text-align:left}
@@ -269,8 +270,8 @@ function cardListado(L) {
       <div class="lt-stat"><div class="lt-sl">${ICO.earn} Earnings</div><div class="lt-sv">${gan.toLocaleString('en-US', {maximumFractionDigits:6})} BNB</div></div>
     </div>
     <div class="lt-card-foot">
-      <button class="lt-mini green" data-claim="${L.id}">Withdraw earnings</button>
       <button class="lt-mini" data-withdraw="${L.id}">Withdraw tokens</button>
+      <button class="lt-mini green" data-claim="${L.id}">Withdraw earnings</button>
     </div>
     <button class="lt-del" data-del="${L.id}">Delete listing</button>
   </div>`;
@@ -579,7 +580,8 @@ function alertBonito(txt) {
 }
 
 /* ═══════════ Abrir el listado a pantalla completa (móvil, acceso directo) ═══════════ */
-export function abrirListingMovil() {
+export async function abrirListingMovil() {
+  if (!(await avisoListing())) return;   // terminos de List your token (una vez por navegador)
   inyectarCSS();
   const prev = document.getElementById('lt-movil'); if (prev) prev.remove();
   const dg = document.createElement('dialog'); dg.id = 'lt-movil';

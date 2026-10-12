@@ -85,6 +85,8 @@
   import { initSwap, abrirSwap } from './swap.js';
   import { arrancarIdioma } from './idioma.js';
   import { brasas } from './chispas.js';
+  import { avisoSwap } from './aviso.js';
+  try { avisoSwap(); } catch (e) { console.warn('[swap] aviso:', e); }   // terminos del swap, una vez por navegador
 
   /* Particulas del lobby, exactamente las mismas (chispas.js copiado tal cual). */
   try {
