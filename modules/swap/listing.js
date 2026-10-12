@@ -1,10 +1,11 @@
-/* listing.js — Panel "List your token" que se despliega al lado del Swap.
+/* listing.js: Panel "List your token" que se despliega al lado del Swap.
    Dos vistas: formulario (aún no listó) y lista de tokens listados (ya listó).
    Estilo idéntico al swap (mismo fondo, dorado, glass). Web y base para móvil. */
 import * as mercado from './mercado.js';
 import * as flogos from './firebase-logos.js';
 import * as wallet from './wallet.js';
 import * as ethers from './ethers.min.js';
+import { modalError } from './util.js';
 
 const $ = (id) => document.getElementById(id);
 let _css = false;
@@ -441,7 +442,10 @@ async function listar() {
     // ¿La wallet lista gratis? (owner/admin no paga los $25).
     const admin = await mercado.esAdmin(cuenta());
     const { bnb: costoBNB } = await mercado.costoListar();  // costo de listar ($25 en BNB)
-    const valueBNB = admin ? 0n : costoBNB;                 // admin => 0; usuario => $25
+    /* Colchon del 5%: el contrato recalcula el costo con el oraculo al ejecutar y exige
+       msg.value >= costo; si el precio de BNB se movio desde la cotizacion, revertia con
+       'paga el listado en BNB'. El contrato devuelve el sobrante, asi que es seguro. */
+    const valueBNB = admin ? 0n : costoBNB + costoBNB / 20n;  // admin => 0; usuario => $25 + 5%
     // aprobar el token
     btn.textContent = 'Approve token…';
     const alw = await mercado.allowance(addr, cuenta());
@@ -453,7 +457,7 @@ async function listar() {
     if (F.logo) { try { await flogos.guardarLogo(addr, F.logo); } catch (_) {} }
     btn.textContent = 'Listed';
     await refrescar();
-  } catch (e) { btn.disabled = false; btn.textContent = 'List Token'; formMsg(traducirError(e)); }
+  } catch (e) { btn.disabled = false; btn.textContent = 'List Token'; formMsg(''); modalError(traducirError(e)); }
 }
 
 /* Convierte un precio en USD a BNB (18 dec) usando el oráculo del sistema. */
@@ -504,12 +508,28 @@ async function accionWithdraw(id) {
 
 /* ─────────── Utilidades ─────────── */
 function copiar(t) { try { navigator.clipboard.writeText(t); } catch (_) {} }
+/* Motivo REAL del fallo. Antes casi todo acababa en 'Something went wrong', escondiendo el
+   require del contrato que revirtio en la simulacion (y sin eso no se puede diagnosticar). */
+function motivoDe(e) {
+  try {
+    const partes = [e?.reason, e?.shortMessage, e?.info?.error?.message, e?.error?.message, e?.data?.message, e?.message];
+    return partes.filter(Boolean).join(' | ');
+  } catch (_) { return ''; }
+}
 function traducirError(e) {
-  const m = (e && (e.reason || e.message) || '').toLowerCase();
-  if (m.includes('user rejected') || m.includes('denied')) return 'You cancelled the transaction.';
+  const raw = motivoDe(e); const m = raw.toLowerCase();
+  try { console.warn('[listing] error completo:', e); } catch (_) {}
+  if (m.includes('user rejected') || m.includes('denied') || m.includes('4001')) return 'You cancelled the transaction.';
   if (m.includes('bloqueados')) return 'Earnings are locked for 30 days after listing.';
-  if (m.includes('insufficient') || m.includes('exceeds balance')) return 'Not enough BNB in your wallet.';
-  return 'Something went wrong. Please try again.';
+  if (m.includes('paga el listado')) return 'The listing fee in BNB was not enough at execution time. Please try again.';
+  if (m.includes('demasiada liquidez')) return 'This token already has too much liquidity on PancakeSwap and cannot be listed here.';
+  if (m.includes('no permitido')) return 'This token is not allowed on the marketplace.';
+  if (m.includes('sin tokens')) return 'The contract did not receive any tokens. Your token seems to block transfers to contracts (whitelist, trading not enabled or max limits).';
+  if (m.includes('pausado')) return 'Listings are paused right now.';
+  if (m.includes('nombre/simbolo') || m.includes('datos')) return 'Check the name, symbol, amount and price.';
+  if (m.includes('insufficient funds') || m.includes('exceeds balance')) return 'Not enough BNB in your wallet for fee and gas.';
+  const corto = (e?.reason || e?.shortMessage || '').toString().slice(0, 160);
+  return corto ? ('The transaction would fail: ' + corto) : 'Something went wrong. Please try again.';
 }
 function tipComo() {
   const html = `<div class="lt-tbx"><button class="lt-tx" aria-label="Close">✕</button><div style="font-size:13px;line-height:1.65;color:#d4dbe4">

@@ -62,10 +62,13 @@ export function modalBusyTexto(txt) { const el = $('busy-tx'); if (el) el.innerH
 window._onTxProcesando = function () { const el = document.getElementById('busy-tx'); if (el) el.innerHTML = 'Procesando en la red… <span style="opacity:.6">ya casi</span>'; };
 export function modalError(txt) {
   const m = $('colmena-modal'); if (!m) return;
-  limpiarBusy(); $('cm-title').textContent = 'No se pudo completar'; $('cm-body').textContent = txt;
+  limpiarBusy(); $('cm-title').textContent = 'Could not complete'; $('cm-body').textContent = txt;
   const btns = m.querySelector('.m-btns'); btns.style.display = 'flex';
   $('cm-cancel').style.display = 'none'; const ok = $('cm-ok');
-  ok.textContent = 'Entendido'; ok.className = 'btn btn-linea'; ok.onclick = () => m.classList.remove('show');
+  ok.textContent = 'Got it'; ok.className = 'btn btn-linea'; ok.onclick = () => m.classList.remove('show');
+  /* Antes no anadia 'show': si el error llegaba sin modalBusy previo (p. ej. fallo en la
+     simulacion antes de firmar), la ventana nunca se abria y el usuario no veia nada. */
+  m.onclick = null; m.classList.add('show');
 }
 export function modalClose() { limpiarBusy(); const m = $('colmena-modal'); if (m) m.classList.remove('show'); }
 
