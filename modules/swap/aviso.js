@@ -2,8 +2,8 @@
    Dos avisos, BLOQUEANTES (no se cierran tocando fuera ni con Escape):
      avisoSwap()    al entrar a la pagina del swap. Una vez por navegador.
      avisoListing() al abrir "List your token". Una vez por navegador. Devuelve false si cancela.
-   Para firmar hay que leer hasta el final (la casilla se activa al llegar abajo) y marcar
-   la casilla. Textos en ingles. Sin guiones. Independiente: no importa nada de fuera. */
+   La casilla y los botones van al FINAL del texto, dentro del area con scroll: para firmar
+   hay que bajar hasta ahi (no hay candado que bloquee la casilla). Textos en ingles. Sin guiones. Independiente: no importa nada de fuera. */
 
 const SEAL = './img/disclaimer.webp';
 const WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
@@ -20,8 +20,8 @@ function css() {
     + 'background:linear-gradient(180deg,rgba(15,17,21,.99),rgba(9,10,13,.99));border:1px solid #5c4a1e;box-shadow:0 26px 70px rgba(0,0,0,.66),inset 0 1px 0 rgba(247,219,141,.12),0 6px 0 #352810;'
     + 'font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#d4dae1;transform:translateY(14px);transition:transform .3s ease}'
     + '.av-ov.in .av-box{transform:none}'
-    + '.av-scroll{overflow:auto;padding:22px 24px 6px;display:flow-root;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.5) transparent;min-height:0}'
-    + '.av-foot{padding:10px 24px 20px;border-top:1px solid rgba(255,255,255,.06);flex:none}'
+    + '.av-scroll{overflow:auto;padding:22px 24px 20px;display:flow-root;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.5) transparent;min-height:0}'
+    + '.av-foot{clear:both;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}'
     + '.av-top{display:none}'
     + '.av-fl{float:right;width:138px;height:138px;margin:2px 0 8px 18px;shape-outside:margin-box;user-select:none;pointer-events:none}'
     + '.av-fl img,.av-top img{width:100%;height:auto;display:block;filter:drop-shadow(0 6px 15px rgba(0,0,0,.55))}'
@@ -36,9 +36,7 @@ function css() {
     + '.av-cost{clear:both;margin:12px 0 0;padding:13px 15px;border-radius:12px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.22)}'
     + '.av-cost p{font-size:12.5px;line-height:1.6;color:#c4ccd4;margin:0}.av-cost p+p{margin-top:7px}'
     + '.av-cost .g{color:#E8B84B;font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700}'
-    + '.av-hint{font-size:11.5px;color:#8b96a3;margin:0 0 8px;text-align:center}'
     + '.av-chk{display:flex;align-items:flex-start;gap:10px;margin:0;cursor:pointer;font-size:12.5px;line-height:1.5;color:#d4dae1}'
-    + '.av-chk.off{opacity:.45;cursor:not-allowed}'
     + '.av-chk input{appearance:none;-webkit-appearance:none;flex:none;width:20px;height:20px;margin:0;border-radius:6px;border:1.5px solid #c79426;background:rgba(0,0,0,.4);cursor:pointer;position:relative}'
     + '.av-chk input:checked{background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);border-color:#c79426}'
     + '.av-chk input:checked::after{content:"";position:absolute;left:6.5px;top:2.5px;width:5px;height:10px;border:solid #241900;border-width:0 2.4px 2.4px 0;transform:rotate(45deg)}'
@@ -50,7 +48,7 @@ function css() {
     + '.av-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
     + '.av-btn.off{opacity:.4;cursor:not-allowed;filter:grayscale(.55)}.av-btn.off:active{transform:none}'
     + '.av-btn.sec{background:rgba(255,255,255,.04);color:#c4ccd4;border-color:#2c3946;box-shadow:none;text-shadow:none}'
-    + '@media(max-width:620px){.av-scroll{padding:18px 16px 6px}.av-foot{padding:10px 16px 16px}.av-fl{display:none}'
+    + '@media(max-width:620px){.av-scroll{padding:18px 16px 16px}.av-fl{display:none}'
     + '.av-top{display:block;width:112px;margin:0 auto 14px}.av-h{justify-content:center;text-align:center}'
     + '.av-a{flex-wrap:wrap}.av-btn{flex:1 1 100%;max-width:none}}';
   document.head.appendChild(st);
@@ -70,29 +68,21 @@ function mostrar({ key, titulo, cuerpo, firma, ok, cancelar, enlace }) {
       +     '<div class="av-fl"><img src="' + SEAL + '" alt="" width="138" height="138"></div>'
       +     '<div class="av-h">' + WARN + titulo + '</div>'
       +     cuerpo
-      +   '</div>'
       +   '<div class="av-foot">'
-      +     '<p class="av-hint" id="av-hint">Scroll to the end to enable the signature.</p>'
-      +     '<label class="av-chk off"><input type="checkbox" id="av-agree" disabled><span>' + firma + '</span></label>'
+      +     '<label class="av-chk"><input type="checkbox" id="av-agree"><span>' + firma + '</span></label>'
       +     '<div class="av-a">'
       +       '<button class="av-btn off" type="button" id="av-ok" disabled>' + ok + '</button>'
       +       (cancelar ? '<button class="av-btn sec" type="button" id="av-no">' + cancelar + '</button>' : '')
       +       (enlace ? '<a class="av-btn sec" href="' + enlace + '" role="button">' + SHIELD + 'Full transparency</a>' : '')
       +     '</div>'
       +   '</div>'
+      +   '</div>'
       + '</section>';
     document.body.appendChild(ov);
     requestAnimationFrame(() => ov.classList.add('in'));
     ov.addEventListener('click', (e) => { if (e.target === ov) { e.preventDefault(); e.stopPropagation(); } });
 
-    const sc = ov.querySelector('.av-scroll'), chk = ov.querySelector('#av-agree'), lab = ov.querySelector('.av-chk');
-    const okb = ov.querySelector('#av-ok'), hint = ov.querySelector('#av-hint');
-    const habilitar = () => { chk.removeAttribute('disabled'); lab.classList.remove('off'); hint.style.display = 'none'; };
-    const alFinal = () => sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 8;
-    const revisar = () => { if (alFinal()) habilitar(); };
-    sc.addEventListener('scroll', revisar);
-    // si el texto cabe sin scroll (pantallas altas), se habilita de inmediato
-    setTimeout(revisar, 250); setTimeout(revisar, 1200);
+    const chk = ov.querySelector('#av-agree'), okb = ov.querySelector('#av-ok');
     chk.addEventListener('change', () => {
       if (chk.checked) { okb.classList.remove('off'); okb.removeAttribute('disabled'); }
       else { okb.classList.add('off'); okb.setAttribute('disabled', ''); }
