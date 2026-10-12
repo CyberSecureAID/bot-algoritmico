@@ -683,6 +683,37 @@ function swExito(from, to, inWei, outWei) {
   m.classList.add('show');
 }
 
+/* COMPRA de un token listado en MercadoTokens (el destino es un listado). Se paga en BNB al
+   precio del vendedor; el contrato devuelve el sobrante y manda los tokens al comprador.
+   Esta funcion se llamaba desde swEjecutar pero no existia: el boton 'Buy token' no hacia nada. */
+async function swComprarListado(from, to, amtBI, L) {
+  if (!(S.fromId === 'BNB')) { modalError(M('Para comprar este token paga con BNB.', 'To buy this token, pay with BNB.')); return; }
+  const dec = to.decimals || 18;
+  let tokens = (amtBI * (10n ** BigInt(dec))) / L.precio;
+  if (tokens > L.enVenta) tokens = L.enVenta;
+  if (!(tokens > 0n)) { modalError(M('Cantidad demasiado pequena.', 'Amount too small.')); return; }
+  const coste = (L.precio * tokens) / (10n ** BigInt(dec));   // mismo calculo que el contrato
+  try {
+    modalBusy(M(`<b>Comprar ${swFmt(tokens, dec)} ${to.simbolo}.</b><br>Pagas ${swFmt(coste, 18)} BNB. Una sola firma.<br>Confirma en tu wallet.`,
+                `<b>Buy ${swFmt(tokens, dec)} ${to.simbolo}.</b><br>You pay ${swFmt(coste, 18)} BNB. One signature.<br>Confirm in your wallet.`));
+    await mercadoTK.comprar(L.id, tokens, coste);
+    L.enVenta -= tokens;
+    swExito(from, to, coste, tokens);
+    swCargarBalances();
+  } catch (e) {
+    try { console.warn('[swap] compra listado:', e); } catch (_) {}
+    const m = ((e && (e.reason || e.shortMessage || e.message)) || '').toLowerCase();
+    let txt;
+    if (m.includes('user rejected') || m.includes('denied') || m.includes('4001')) txt = M('Cancelaste la compra.', 'You cancelled the purchase.');
+    else if (m.includes('bnb insuficiente') || m.includes('insufficient funds')) txt = M('No tienes BNB suficiente para la compra y el gas.', 'Not enough BNB for the purchase and gas.');
+    else if (m.includes('cantidad')) txt = M('El vendedor ya no tiene esa cantidad en venta.', 'The seller no longer has that amount for sale.');
+    else if (m.includes('inactivo')) txt = M('Este listado ya no esta activo.', 'This listing is no longer active.');
+    else if (m.includes('pausado')) txt = M('Las compras estan en pausa.', 'Purchases are paused right now.');
+    else txt = M('No se pudo completar la compra.', 'The purchase could not be completed.') + (e && e.reason ? ' (' + String(e.reason).slice(0, 120) + ')' : '');
+    modalError(txt);
+  }
+}
+
 async function swEjecutar() {
   /* Si el panel 'List your token' esta abierto y se pulsa SWAP, se cierra. Por debajo de
      1000px de ancho ese panel OCULTA la caja del swap (.lt-open .sw-box{display:none}); al
