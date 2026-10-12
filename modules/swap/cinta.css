@@ -85,7 +85,7 @@ body{overflow-x:hidden}
    degradado oscuro. Encima, un velo para que la caja del swap se lea sobre cualquier foto. */
 #pt{min-height:100vh;background:#000;position:relative}
 #pt .sw-fondo{position:fixed;inset:0;z-index:0;background:#000 url('./img/fondo-swap.webp') center/cover no-repeat;}
-#pt .sw-fondo::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(0,0,0,.25),rgba(0,0,0,.78) 70%)}
+#pt .sw-fondo::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(0,0,0,.15),rgba(0,0,0,.58) 70%)}  /* velo mas suave */
 #pt .pt-hdr{z-index:100}
 #colmena-app{position:relative;z-index:5;min-height:calc(100vh - 58px)}
 /* El swap venia como ventana modal con velo negro a pantalla completa. Aqui es la pagina:
