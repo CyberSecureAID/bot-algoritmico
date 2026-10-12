@@ -156,45 +156,24 @@ function _campo(word, off, size, signed) {
 const _REJ_CEROS = { activa:false, base:'0x0000000000000000000000000000000000000000', quote:'0x0000000000000000000000000000000000000000', niveles:0, totalOps:0, posicionBase:0n, costeQuote:0n, ordenQuote:0n, ordenBase:0n, comprasHechas:0, ventasHechas:0, ciclos:0, gananciaQuote:0n, gasSaldoWei:0n, creadaEn:0, ultimaOpEn:0, intervalo:0n, comprasMax:0 };
 
 async function cEscribe() { return new ethers.Contract(GRIDBOT, ABI, await firmante()); }
-/* Estima el gas con 35% de margen (evita que MetaMask re-simule en conflicto y
-   muestre el falso "es probable que esta transaccion falle").
-   POR QUE FALLABA DE FORMA INTERMITENTE: la estimacion se hacia contra el nodo de
-   la WALLET. Si ese nodo iba un bloque atrasado, lento o limitaba un instante,
-   estimateGas lanzaba (error de red o falso revert) y la apertura/cierre se caia;
-   al reintentar el nodo ya respondia y funcionaba. Ese era el "de pronto si, de
-   pronto no", y no lo arreglaba borrar cache porque no es cache.
-   ARREGLO: se estima contra NUESTROS RPC fiables, rotando igual que leeGB. Si un
-   RPC falla por red, se pasa al siguiente. Si la tx revierte DE VERDAD, se muestra
-   el motivo y no se envia (no se gasta gas en balde). Solo si ningun RPC pudo
-   estimar por un corte de red (sin ser revert) se envia con un limite holgado,
-   para no bloquear la operacion por un hipo pasajero del nodo. */
+/* Estima el gas con 35% de margen sobre el MISMO contrato que recibe (bot, WBNB, token).
+   Si la estimacion falla por un hipo de red, se envia sin gasLimit y la wallet estima ella.
+   Si la tx revierte de verdad, se lanza el motivo y no se envia (no se gasta gas en balde).
+   Smart account (EIP-7702): la tx va por el Delegation Manager y gasta unos 100-150k mas.
+   NO se dobla el gas: MetaMask comprueba el costo MAXIMO (valor + gasLimit x precio) y con
+   el doble exigia el doble de BNB libre y deshabilitaba el boton aunque el costo real cupiera. */
 async function gasMargen(contrato, metodo, args = [], overrides = {}) {
-  let from;
-  try { from = await contrato.runner.getAddress(); } catch (_) {}
-  let est = null, errReal = null;
-  for (let k = 0; k < RPCS.length; k++) {
-    try {
-      const estimador = from ? new ethers.Contract(GRIDBOT, ABI, provRPC(_rpcIdx)) : contrato;
-      est = await estimador[metodo].estimateGas(...args, from ? { ...overrides, from } : overrides);
-      break;
-    } catch (e) {
-      const esRevert = !!(e && (e.code === 'CALL_EXCEPTION' || e.revert || e.reason ||
-        /execution reverted/i.test(e.shortMessage || e.message || '')));
-      if (esRevert) { errReal = e; break; }   // revert real: mostrar motivo, no enviar
-      _rpcIdx = (_rpcIdx + 1) % RPCS.length;
-      await new Promise((r) => setTimeout(r, 220));
-      if (!from) break;                        // sin RPC propio no tiene sentido rotar
-    }
+  let est = null;
+  try { est = await contrato[metodo].estimateGas(...args, overrides); }
+  catch (e) {
+    const esRevert = !!(e && (e.code === 'CALL_EXCEPTION' || e.revert || e.reason ||
+      /execution reverted/i.test(e.shortMessage || e.message || '')));
+    if (esRevert) throw e;
+    est = null;
   }
-  if (errReal) throw errReal;
-  let gasLimit;
-  if (est != null) {
-    gasLimit = est * 135n / 100n;
-    if (await _esSmartAccount(contrato.runner)) { const boost = est * 2n + 300000n; if (boost > gasLimit) gasLimit = boost; }
-  } else {
-    gasLimit = 1200000n;
-    if (await _esSmartAccount(contrato.runner)) gasLimit = 2000000n;
-  }
+  if (est == null) return contrato[metodo](...args, overrides);
+  let gasLimit = est * 135n / 100n;
+  if (await _esSmartAccount(contrato.runner)) gasLimit = est * 135n / 100n + 150000n;
   return contrato[metodo](...args, { ...overrides, gasLimit });
 }
 
@@ -219,6 +198,18 @@ async function _esSmartAccount(runner) {
   try { const addr = await runner.getAddress(); const code = await lector().getCode(addr); return !!(code && code !== '0x'); }
   catch (_) { return false; }
 }
+/* Igual que _esSmartAccount pero para la wallet conectada ahora, con cache de 1 min
+   por direccion: se consulta en la cotizacion del swap (en cada tecleo) y en el
+   pre-vuelo de los bots, y no hace falta pedir getCode cada vez. */
+let _saCache = { addr: '', val: false, t: 0 };
+async function _esSmartActual() {
+  try {
+    const s = await firmante(); const addr = (await s.getAddress()).toLowerCase();
+    if (_saCache.addr === addr && Date.now() - _saCache.t < 60000) return _saCache.val;
+    const v = await _esSmartAccount(s); _saCache = { addr, val: v, t: Date.now() }; return v;
+  } catch (_) { return false; }
+}
+export async function esSmartAccountActual() { return _esSmartActual(); }
 /** Espera el recibo con nuestro RPC fiable; el de MetaMask a veces no lo devuelve. */
 async function esperar(tx) {
   try { if (typeof window !== 'undefined' && window._onTxProcesando) window._onTxProcesando(); } catch (_) {}
@@ -1001,7 +992,8 @@ export async function cotizarSwap({ inAddr, outAddr, amountInBI, slippageBps = 5
   // lleva varios segundos (revisar alerta, soy consciente, confirmar) y el precio del BNB se mueve
   // en ese rato; con el colchón viejo la salida rozaba el mínimo → cartel "probable que falle" y
   // fallos intermitentes. Con 1.0% la salida queda cómodamente por encima del mínimo.
-  const colchon = 100n;
+  let colchon = 100n;
+  try { if (await _esSmartActual()) colchon = 200n; } catch (_) {}   // smart account: la firma tarda y el precio se mueve
   const minOut = outNeto - (outNeto * (BigInt(slippageBps) + colchon) / 10000n);
   return { amountOut: outNeto, minOut, fee: best };
 }
@@ -1019,7 +1011,7 @@ export async function ejecutarSwap({ inAddr, outAddr, amountInBI, minOut, fee })
   const est = await c.swap.estimateGas(tokenIn, tokenOut, fee, amountInBI, minOut, { value });
   let gasLimit = est + (est * 35n / 100n);
   // Smart account (EIP-7702): MetaMask enruta por su Delegation Manager y gasta mas gas.
-  if (await _esSmartAccount(c.runner)) { const boost = est * 2n + 300000n; if (boost > gasLimit) gasLimit = boost; }
+  if (await _esSmartAccount(c.runner)) gasLimit = est * 135n / 100n + 150000n;   // sin doble: solo la sobrecarga real del Delegation Manager
   const tx = await c.swap(tokenIn, tokenOut, fee, amountInBI, minOut, { value, gasLimit });
   return esperar(tx);
 }

@@ -5,7 +5,7 @@
  * botones (i), gráfica viva con las cuadrículas, e inversión total en una cifra.
  */
 
-import * as gb from './gridbot.js?v=207';
+import * as gb from './gridbot.js?v=208';
 import { t } from './idioma.js?v=167';
 import * as wallet from './wallet.js?v=129';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
@@ -20,7 +20,6 @@ import { inyectarEstilo } from './gridbot/estilos.js?v=201';
 import { moneda, num, _movil, tipoNum, escT, enCristiano, fmtPrecioUSD, icoInner, limpiarBusy, modalBusy, modalBusyTexto, modalError, modalClose } from './gridbot/util.js?v=3';
 import { LOGOS, LOGO_ST } from './gridbot/estado.js?v=1';
 import { APP, BASES, QUOTES, INFO, FEE_CICLO, GAS_OP_USD, VOL_DIARIA, PRESETS, NOMBRE_PRESET, GAS_VUELTA_USD, COM_DEX, LOGOS_WALLET, KEEPER_URL, CONF_BOTS, CLAVE_AVISO, CUPO_TOTAL, CUPO_POR_TIPO, NOMBRE_TIPO, CAT_NOMBRES, BOTMETA, RESERVA_BNB } from './gridbot/config.js?v=1';
-import { abrirSwap, initSwap } from './gridbot/swap.js?v=12';
 
 const $ = (id) => document.getElementById(id);
 // Lo que se OPERA (base). Las estables no pueden ser base.
@@ -35,7 +34,7 @@ const F = { baseId: 'BNB', quoteId: 'USDT', modo: 'geo', precio: null, rutas: nu
 try {
   if (window.matchMedia('(max-width: 760px)').matches && !window._mvHideWeb) {
     const _st = document.createElement('style');
-    _st.textContent = '#colmena-app{visibility:hidden}#swap-modal,#coin-modal{visibility:visible!important}'
+    _st.textContent = '#colmena-app{visibility:hidden}#coin-modal{visibility:visible!important}'
       + '#np-fab-previo,#npFab{display:none!important}';
     (document.head || document.documentElement).appendChild(_st);
     window._mvHideWeb = _st;
@@ -481,7 +480,7 @@ function opcionesMovil() {
 }
 
 function wireHeader() {
-  if ($('c-swap')) $('c-swap').onclick = abrirSwap;
+  if ($('c-swap')) $('c-swap').onclick = () => { location.href = 'modules/swap/swap.html'; };   // swap: modulo sellado
   // La academia se carga solo cuando alguien la pide: no pesa al entrar.
   // Herramientas: se cargan solo al pedirlas.
   /* ══════════════════════════════════════════════════════════════
@@ -3226,7 +3225,6 @@ async function arrancar() {
   // (el montaje móvil se hace AL FINAL, tras el render, para no retrasar la carga)
 
 
-  initSwap(conectarWallet, cargarLogosPrecios);
   const host = $(APP);
   // Splash neutro mientras se resuelve si hay wallet conectada (evita el pestañeo del hero).
   // Sin pantalla de carga: dejamos el fondo negro y ya. Si la wallet responde
@@ -3266,7 +3264,7 @@ async function arrancar() {
   // funcionan (como el 11 de septiembre).
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=76');
+      const m = await import('./movil/movil.js?v=77');
       await m.montarMovil({ conectarWallet });
       // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
       // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.
