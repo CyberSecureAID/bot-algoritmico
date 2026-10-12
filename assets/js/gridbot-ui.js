@@ -3106,15 +3106,16 @@ async function compartirBot(card) {
   const _una = () => { if (_hecho) return; _hecho = true; _pintar(); };
   _logo.onload = () => {
     try {
-      const alto = 120;
+      const alto = 200;                                    // marca de agua grande (logo plano)
       const ancho = Math.round(_logo.width * (alto / _logo.height));
-      g.drawImage(_logo, W - ancho - 46, 36, ancho, alto);
+      g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 18; g.shadowOffsetY = 6;
+      g.drawImage(_logo, W - ancho - 46, 36, ancho, alto); g.restore();
     } catch (_) {}
     _una();
   };
   _logo.onerror = _una;
   setTimeout(_una, 1400);          // por si la imagen se atasca
-  _logo.src = 'assets/img/cco-192.png';
+  _logo.src = 'assets/img/cco-sello.webp';
 }
 function enganchar(cuenta) {
   document.querySelectorAll(`#${APP} .rej`).forEach((el) => {
