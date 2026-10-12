@@ -25,7 +25,7 @@ function inyectarCSS() {
   s.textContent = `
   #shd{position:fixed;top:0;left:0;right:0;bottom:0;height:100dvh;max-height:100dvh;z-index:400;display:flex;flex-direction:column;color:#eaecef;font-family:var(--display,'Segoe UI',sans-serif);
     background:#000 url('./img/fondo-shield.webp') center/cover no-repeat;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  #shd::before{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(3,5,8,.93));z-index:0;pointer-events:none}
+  #shd::before{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(3,5,8,.74));z-index:0;pointer-events:none}  /* velo mas suave: se ve el fondo */
   #shd #shd-fx{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%;will-change:transform}
   #shd *{box-sizing:border-box}
   /* Ocultar la barra de scroll dorada SOLO en Wallet Shield (sigue el scroll, sin barra visible). Más específico que el *::-webkit-scrollbar global de styles.css. */
