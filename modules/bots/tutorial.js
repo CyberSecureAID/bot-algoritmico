@@ -1,4 +1,4 @@
-// tutorial.js — Guía de los bots. Módulo independiente (no toca la lógica existente).
+// tutorial.js: Guia de los bots. Módulo independiente (no toca la lógica existente).
 
 const $ = (id) => document.getElementById(id);
 
@@ -14,56 +14,56 @@ const COL = { grid: '#4d9fff', acum: '#b47cff', cash: '#E8B84B', dca: '#34d97b' 
 /* ───────── Contenido ───────── */
 const BOTS = {
   grid: {
-    nom: 'Smart Grid', tag: 'Gana con el sube y baja del precio',
-    idea: 'Divide un rango de precio en escalones. Compra abajo, vende arriba, y repite cada vez que el precio se mueve dentro de ese rango.',
+    nom: 'Smart Grid', tag: 'Profit from the ups and downs of the price',
+    idea: 'It splits a price range into steps. Buys low, sells high, and repeats every time the price moves inside that range.',
     pasos: [
-      'Eliges un precio mínimo y uno máximo.',
-      'El bot reparte tu dinero en varios escalones.',
-      'Cada vez que el precio baja un escalón, compra.',
-      'Cada vez que sube un escalón, vende con ganancia.'
+      'You choose a minimum and a maximum price.',
+      'The bot spreads your money across several steps.',
+      'Every time the price drops one step, it buys.',
+      'Every time it rises one step, it sells with profit.'
     ],
-    eco: 'El mercado casi nunca sube en línea recta: sube, baja, corrige y vuelve a subir. Ese vaivén, que a la mayoría le molesta, aquí <em>es exactamente de dónde sale la ganancia</em>. Cada tramo completado deja una pequeña utilidad, y muchas pequeñas utilidades repetidas suman.',
-    cadena: 'Todas las órdenes se ejecutan desde un contrato en BNB Smart Chain, contra la liquidez de PancakeSwap. Tus fondos <em>nunca salen de tu control</em>: el bot solo tiene permiso para operar el par que tú definiste.',
-    para: 'Para mercados que se mueven de lado o con vaivén, cuando no quieres adivinar la dirección.'
+    eco: 'The market almost never goes up in a straight line: it rises, falls, corrects and rises again. That swing, which annoys most people, is <em>exactly where the profit comes from</em> here. Each completed step leaves a small gain, and many small repeated gains add up.',
+    cadena: 'Every order runs from a contract on BNB Smart Chain against PancakeSwap liquidity. Your funds <em>never leave your control</em>: the bot only has permission to trade the pair you defined.',
+    para: 'For sideways or choppy markets, when you do not want to guess the direction.'
   },
   acum: {
-    nom: 'Accumulator', tag: 'El equilibrio entre paciencia y beneficio', destacado: true,
-    idea: 'Compra más cantidad mientras más barato está, mejora tu precio promedio, y vende todo junto cuando el conjunto alcanza la ganancia que tú definiste.',
+    nom: 'Accumulator', tag: 'The balance between patience and profit', destacado: true,
+    idea: 'Buys more the cheaper it gets, improves your average price, and sells everything together when the whole position reaches the gain you set.',
     pasos: [
-      'Hace una compra inicial a precio de mercado.',
-      'Si el precio baja, compra otra vez — y <em>compra más</em> que la vez anterior.',
-      'Cada compra barata <em>baja tu precio promedio</em> de entrada.',
-      'Cuando el total gana el % que elegiste, vende todo junto y vuelve a empezar.'
+      'It makes an initial purchase at market price.',
+      'If the price drops, it buys again, and <em>buys more</em> than the previous time.',
+      'Each cheap purchase <em>lowers your average</em> entry price.',
+      'When the total gains the % you chose, it sells everything together and starts again.'
     ],
-    eco: 'Aquí está la clave, y es simple: si el precio cae, en vez de perder el sueño, <em>el bot compra más barato y en mayor cantidad</em>. Eso arrastra tu precio promedio hacia abajo. Y como tu promedio bajó, ya <em>no necesitas que el mercado vuelva a la cima</em> para ganar: basta un repunte hasta tu objetivo. Además vende una sola vez, en bloque, así que <em>paga menos comisiones</em> que un bot que entra y sale a cada rato. Menos operaciones, mejor precio de entrada y un objetivo claro: por eso funciona.',
-    cadena: 'Cada compra y la venta final quedan registradas en la blockchain, con su precio y su hora. Puedes auditar tu precio promedio y tu ganancia real cuando quieras — no dependes de que nadie te lo cuente.',
-    para: 'Para quien entra con capital y quiere que las caídas trabajen a su favor en vez de en su contra.'
+    eco: 'Here is the key, and it is simple: if the price falls, instead of losing sleep, <em>the bot buys cheaper and in larger size</em>. That drags your average price down. And since your average dropped, you <em>no longer need the market back at the top</em> to profit: a rebound is enough.',
+    cadena: 'Every purchase and the final sale are recorded on the blockchain, with price and time. You can audit your average price and your real profit whenever you want; you do not depend on anyone telling you.',
+    para: 'For those entering with capital who want dips to work for them instead of against them.'
   },
   cash: {
-    nom: 'Cash Out', tag: 'Vende en tu precio, sin estar mirando',
-    idea: 'Ya tienes la cripto. Le dices cuánto quieres vender y a qué precio (o a qué % de ganancia), y el bot espera por ti.',
+    nom: 'Cash Out', tag: 'Turn what you already hold into a working position',
+    idea: 'You already hold the coin. The bot sells half now as a stablecoin reserve, keeps half as position, buys back on dips with the reserve, and sells everything once the position is worth your cost plus your target.',
     pasos: [
-      'Eliges la moneda que ya tienes en tu wallet.',
-      'Dices cuánto vender y a qué objetivo.',
-      'El bot vigila el precio las 24 horas.',
-      'Al tocar tu objetivo, vende y te paga en USDT.'
+      'You choose the coin you already hold and how much to commit.',
+      'Half is sold right away: that is your reserve in USDT or USDC.',
+      'On each dip, it buys back one level with the reserve, lowering your average.',
+      'At cost plus your target, it sells everything and starts a new 50/50 cycle.'
     ],
-    eco: 'El error más caro no suele ser comprar mal, sino <em>no vender cuando había que vender</em>. Dejar la orden fijada de antemano te quita de encima la duda y la emoción del momento: el precio llega, se ejecuta, y listo.',
-    cadena: 'La orden vive en el contrato, no en un servidor nuestro. Aunque cierres la página o apagues el teléfono, <em>sigue vigente</em>, y solo tú puedes cancelarla.',
-    para: 'Para quien ya tiene posición y quiere asegurar su salida con la cabeza fría.'
+    eco: 'The most expensive mistake is usually not buying badly, but <em>holding through a drop with nothing in reserve</em>. Keeping half in stablecoin means every dip becomes a cheaper buy, and the exit is fixed in advance: the price arrives, it executes, done.',
+    cadena: 'The rules live in the contract, not on our server. The sale of everything only happens above your cost plus target: <em>the contract refuses any sale below that floor</em>. Only you can cancel it.',
+    para: 'For those who already have a position and want a disciplined exit with a cushion for dips.'
   },
   dca: {
-    nom: 'DCA · Compra automática', tag: 'Construye posición sin sobresaltos',
-    idea: 'Compra un monto fijo cada cierto tiempo, pase lo que pase con el precio. La forma más tranquila de ir entrando al mercado.',
+    nom: 'DCA · Auto buy', tag: 'Build a position without stress',
+    idea: 'Buys a fixed amount every set period, whatever the price does. The calmest way to enter the market.',
     pasos: [
-      'Eliges qué moneda comprar y con qué pagar.',
-      'Dices cuánto comprar y cada cuánto tiempo.',
-      'El bot compra solo, en cada ciclo.',
-      'Tu cripto llega directo a tu wallet.'
+      'You choose which coin to buy and what to pay with.',
+      'You set how much to buy and how often.',
+      'The bot buys on its own, every cycle.',
+      'Your crypto lands straight in your wallet.'
     ],
-    eco: 'Nadie acierta el fondo exacto, ni los profesionales. Comprando repartido en el tiempo, unas veces compras caro y otras barato, y <em>el promedio te acerca al precio justo</em> sin exigirte adivinar nada. Es la estrategia más aburrida y por eso mismo, una de las más sensatas.',
-    cadena: 'Cada compra programada se ejecuta on-chain en su momento exacto y queda su registro. Puedes parar el plan cuando quieras: tú mandas.',
-    para: 'Para quien quiere entrar poco a poco, sin estrés y sin mirar gráficas.'
+    eco: 'Nobody nails the exact bottom, not even professionals. Buying spread over time, sometimes you buy high and sometimes low, and <em>the average brings you close to a fair price</em> without asking you to guess anything. It is the most boring strategy, and for that very reason one of the most sensible.',
+    cadena: 'Each scheduled purchase executes on chain at its exact time and leaves its record. You can stop the plan whenever you want: you are in charge.',
+    para: 'For those who want to enter little by little, without stress and without watching charts.'
   }
 };
 
@@ -141,11 +141,11 @@ export function filaBots() {
       ${d.destacado ? '<span class="rec">Recomendado</span>' : ''}
       <span class="ti">${ICO[k]}</span>
       <span class="tn">${d.nom}</span>
-      <span class="tv">Ver guía</span>
+      <span class="tv">View guide</span>
     </button>`;
   };
   return `<div class="tuto-fila">
-    <div class="tuto-lab">Guía de los bots · <b>toca uno para aprender</b></div>
+    <div class="tuto-lab">Bot guide · <b>tap one to learn</b></div>
     <div class="tuto-grid">${b('grid')}${b('acum')}${b('cash')}${b('dca')}</div>
   </div>`;
 }
@@ -174,7 +174,7 @@ export function abrirTutorial(k) {
   <div class="tu-h">
     <div class="tu-ico">${ICO[k]}</div>
     <div>
-      <div class="tu-nom">${d.nom}${d.destacado ? '<span class="tu-rec">Recomendado</span>' : ''}</div>
+      <div class="tu-nom">${d.nom}${d.destacado ? '<span class="tu-rec">Recommended</span>' : ''}</div>
       <div class="tu-tag">${d.tag}</div>
     </div>
   </div>
@@ -182,17 +182,17 @@ export function abrirTutorial(k) {
   <div class="tu-idea">${d.idea}</div>
 
   <div class="tu-sec">
-    <div class="tu-st">Cómo trabaja, paso a paso</div>
+    <div class="tu-st">How it works, step by step</div>
     ${d.pasos.map((p, i) => `<div class="tu-paso"><span class="n">${i + 1}</span><span class="t">${p}</span></div>`).join('')}
   </div>
 
   <div class="tu-sec">
-    <div class="tu-st">Por qué funciona</div>
+    <div class="tu-st">Why it works</div>
     <div class="tu-box"><p class="tu-p">${d.eco}</p></div>
   </div>
 
   <div class="tu-sec">
-    <div class="tu-st">Qué te garantiza la blockchain</div>
+    <div class="tu-st">What the blockchain guarantees you</div>
     <div class="tu-box"><p class="tu-p">${d.cadena}</p></div>
   </div>
 

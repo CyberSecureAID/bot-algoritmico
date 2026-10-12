@@ -1,4 +1,4 @@
-/* gridbot/estilos.js — Todo el CSS de la app de bots (inyecta la etiqueta
+/* gridbot/estilos.js: Todo el CSS de la app de bots (inyecta la etiqueta
    <style> del overlay) y monta el popup, el modal de confirmación y el
    fallback de logos. Recibe tipoNum() por parámetro (número/texto según
    móvil). Extraído de gridbot-ui.js sin cambiar la lógica. */
@@ -49,7 +49,7 @@ export function inyectarEstilo(tipoNum) {
   #colmena-app .c-ticker-img{height:100%;width:auto;max-width:none;display:block;will-change:transform;animation:ctSlide 34s ease-in-out infinite alternate}
   #colmena-app .c-ticker:hover .c-ticker-img{animation-play-state:paused}
   /* ══════════════════════════════════════════════════════════════
-     LA CINTA — [CORREGIDO] El desplazamiento era -58% fijo. En el móvil
+     LA CINTA: [CORREGIDO] El desplazamiento era -58% fijo. En el móvil
      la cinta es más estrecha, así que ese 58% la sacaba de su sitio y
      se veía el corte del final por la derecha. Ahora cada tamaño mueve
      lo justo para que el borde nunca asome.
@@ -131,7 +131,7 @@ export function inyectarEstilo(tipoNum) {
     #colmena-app .k-l{display:none}
     /* El botón de recargar gas se había estirado. Vuelve a su medida. */
     /* ══════════════════════════════════════════════════════════════
-       EL BOTÓN DE RECARGAR GAS — [CORREGIDO]
+       EL BOTÓN DE RECARGAR GAS: [CORREGIDO]
        Este botón NO es un botón normal: está colocado con porcentajes
        exactos (top 12.39%, height 25.99%) para encajar dentro del dibujo
        de la tarjeta de gas.
@@ -221,12 +221,12 @@ export function inyectarEstilo(tipoNum) {
     #colmena-app .c-swap,#colmena-app .c-prize,#colmena-app .c-market,
     #colmena-app .c-loteria,#colmena-app .c-perfil,#colmena-app .dir,
     #colmena-app .hdr-btn,#colmena-app .hdr-off{min-height:44px}
-    /* :not(#f-gasdep) — ese botón vive dentro de un dibujo y su altura
+    /* :not(#f-gasdep): ese botón vive dentro de un dibujo y su altura
        la manda un porcentaje. Estirarlo a 44px lo hacía desbordar. */
     #colmena-app .bot-tab,#colmena-app .bot-tipo,#colmena-app .seg button,
     #colmena-app .sug,#colmena-app .btn:not(#f-gasdep){min-height:44px}
     /* ══════════════════════════════════════════════════════════════
-       LAS FLECHITAS DE LOS CAMPOS — [POR FIN LA CAUSA REAL]
+       LAS FLECHITAS DE LOS CAMPOS: [POR FIN LA CAUSA REAL]
 
        No eran las flechas del navegador. Son BOTONES PROPIOS de la web,
        dentro de un <span class="stepper-btns">. Por eso llevo cuatro

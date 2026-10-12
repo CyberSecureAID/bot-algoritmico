@@ -1,4 +1,4 @@
-// extras.js — Tres cosas que suman: instalar la app, compartir el resultado
+// extras.js: Tres cosas que suman: instalar la app, compartir el resultado
 // como imagen, y animar los números. Módulo independiente, sin librerías.
 
 const $ = (id) => document.getElementById(id);
@@ -330,9 +330,9 @@ export function tarjetaResultado({ par, tipo, ganancia, moneda, dias, vueltas, i
 
   // Tres datos
   const datos = [
-    ['DÍAS ACTIVO', String(dias ?? '—')],
-    ['VUELTAS', String(vueltas ?? '—')],
-    ['INVERTIDO', invertido != null ? num(invertido, 2) : '—']
+    ['DÍAS ACTIVO', String(dias ?? '...')],
+    ['VUELTAS', String(vueltas ?? '...')],
+    ['INVERTIDO', invertido != null ? num(invertido, 2) : '...']
   ];
   const anchoCol = (W - 220) / 3;
   datos.forEach((d, i) => {
@@ -388,7 +388,7 @@ export async function compartirResultado(datos) {
 const esc_ = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const fecha_ = (seg) => seg ? new Date(seg * 1000).toLocaleString('es', {
   day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-}) : '—';
+}) : '...';
 
 /* Explicación de cada bot, para que quien reciba el archivo lo entienda. */
 const COMO_FUNCIONA = {

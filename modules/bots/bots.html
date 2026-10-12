@@ -48,6 +48,18 @@
   <link rel="apple-touch-icon" href="../../assets/img/aurex-apple.png">
   <!-- Modulo sellado: todo lo que usa esta pagina vive en modules/bots/. No carga las hojas
        del sitio (styles.css, asistente.css): la interfaz de bots no usa ninguna de sus reglas. -->
+  <style>
+    /* Variables que la interfaz de bots tomaba de styles.css (:root). Sin ellas, var(--gold),
+       var(--ink...) caian a sus valores de respaldo y los textos salian marrones. */
+    :root{
+      --gold:#E8B84B; --gold-soft:#C9A84B; --rojo:#FF6B6B;
+      --ink:#E4F5EF; --ink-2:#9DBDB2; --ink-3:#64857A;
+      --display:"Chakra Petch",system-ui,sans-serif;
+      --sans:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+      --r:14px;
+    }
+  </style>
   <style>*{box-sizing:border-box} html{-webkit-text-size-adjust:100%} html,body{overflow-x:hidden;max-width:100%} body{margin:0;font-family:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.6;color:#eaecef;min-height:100vh} input[type="number"]{-moz-appearance:textfield}</style>
   <style>
   /* ══════════════════════════════════════════════════════════════
@@ -257,9 +269,39 @@
       html, body{ height: 100dvh; overflow: hidden; }
     }
   </style>
+  <style>
+    /* MOVIL: la misma vista que mostraba la cascara movil al abrir Bots (antes la inyectaba
+       assets/js/movil/movil.js sobre app.html). Aqui vive dentro del modulo. */
+    @media(max-width:760px){
+      #colmena-app{visibility:visible!important;padding-top:52px;padding-bottom:70px;
+        position:fixed!important;inset:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;z-index:9000}
+      #colmena-app .c-hdr,#colmena-app #c-ticker,#colmena-app .c-ticker{display:none!important}
+      #mv-bots-x{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;z-index:12000;width:38px;height:38px;border-radius:11px;
+        background:rgba(14,21,28,.92);border:1px solid #2b3139;color:#eaecef;font-size:18px;line-height:1;cursor:pointer;display:grid;place-items:center}
+      #colmena-app .rej{padding:13px!important;margin-top:12px!important;border-radius:14px!important}
+      #colmena-app .rej-top{margin-bottom:9px!important}
+      #colmena-app .rej-par{font-size:15px!important}
+      #colmena-app .pio-box{padding:9px 11px!important}
+      #colmena-app .pio-box .v{font-size:14px!important}
+      #colmena-app .rej .l,#colmena-app .rej .r{padding:11px 13px!important}
+      #colmena-app .rej .v{font-size:16px!important;line-height:1.1!important}
+      #colmena-app .rej .k{font-size:11px!important}
+      #colmena-app .rej-btns{margin-top:10px!important}
+      #colmena-app .rej-btns button{padding:11px!important}
+    }
+    @media(min-width:761px){#mv-bots-x{display:none}}
+  </style>
   <script>
-  // Esta pagina es la version de escritorio de los bots. En movil manda la app (app.html).
-  if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) location.replace('../../app.html' + location.search);
+  // En movil, bots-ui.js oculta #colmena-app esperando a la cascara movil (app.html). Aqui la
+  // cascara no existe: se le indica que no oculte nada y se pone la X que vuelve a la app movil.
+  if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) {
+    window._mvHideWeb = { disabled: true };
+    document.addEventListener('DOMContentLoaded', function () {
+      var x = document.createElement('button'); x.id = 'mv-bots-x'; x.type = 'button'; x.innerHTML = '\u2715'; x.setAttribute('aria-label', 'Close');
+      x.onclick = function () { location.href = '../../app.html'; };
+      document.body.appendChild(x);
+    });
+  }
   </script>
 </head>
 <body>
@@ -328,7 +370,19 @@
   </script>
   <script>
   // Puente: ?abrir=X de otras secciones se atiende en app.html (este modulo es solo bots).
-  (function(){ var q=new URLSearchParams(location.search).get('abrir'); if(q && q!=='bots') location.replace('../../app.html'+location.search); })();
+  (function(){
+    var par = new URLSearchParams(location.search);
+    var q = par.get('abrir'); if (q && q !== 'bots') { location.replace('../../app.html' + location.search); return; }
+    var bot = par.get('bot');
+    if (bot && ['grid', 'acum', 'cash', 'dca'].indexOf(bot) !== -1) {
+      var finB = Date.now() + 12000;
+      var tb = setInterval(function () {
+        var b = document.querySelector('#f-tipo [data-tipo="' + bot + '"]');
+        if (b) { clearInterval(tb); setTimeout(function () { b.click(); var caja = document.getElementById('f-tipo'); if (caja && caja.scrollIntoView) caja.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150); return; }
+        if (Date.now() > finB) clearInterval(tb);
+      }, 150);
+    }
+  })();
   </script>
   <!-- ══════════════════════════════════════════════════════════════════
        LA BANDA SUPERIOR VIVE AHORA EN LA PORTADA
@@ -511,6 +565,11 @@
     if (!st) { e.className = ''; e.innerHTML = ''; return; }
     const corta = cuenta.slice(0, 6) + '\u2026' + cuenta.slice(-4);
     const resta = st.pagadoHasta - st.ahora;
+    if (st.esOwner) {
+      const extra = resta > 0 ? ' (plan ' + Math.floor(resta / 86400) + 'd)' : '';
+      e.className = 'on'; e.innerHTML = '<span class="d"></span><b>Owner</b><i>' + corta + '</i>';
+      e.title = 'Owner wallet of the bots contract' + extra + ' (read from the contract)'; return;
+    }
     if (resta <= 0) { e.className = 'off'; e.innerHTML = '<span class="d"></span><b>No active plan</b><i>' + corta + '</i>'; e.title = 'No bot subscription active for this wallet (read from the contract)'; return; }
     const d = Math.floor(resta / 86400), h = Math.floor((resta % 86400) / 3600), m = Math.floor((resta % 3600) / 60);
     const txt = d > 0 ? (d + 'd ' + h + 'h') : (h > 0 ? (h + 'h ' + m + 'm') : (m + 'm'));

@@ -1,4 +1,4 @@
-// orden.js — Poner órdenes desde el gráfico
+// orden.js: Poner órdenes desde el gráfico
 //
 // QUÉ HACE
 //
@@ -10,12 +10,12 @@
 //
 // DOS FORMAS DE OPERAR, a elección del usuario:
 //
-//   ORDEN REAL   — se crea en el contrato con un solo nivel. El
+//   ORDEN REAL  : se crea en el contrato con un solo nivel. El
 //                  keeper la vigila y la ejecuta sola al llegar el
 //                  precio. Consume gas, pero no hay que estar
 //                  delante.
 //
-//   AVISO        — se guarda en el navegador y avisa cuando el
+//   AVISO       : se guarda en el navegador y avisa cuando el
 //                  precio llega. No cuesta gas, pero hay que
 //                  confirmar a mano.
 //
@@ -72,7 +72,7 @@ try { import('./idioma.js').then((m) => { _tr = m; }).catch(() => {}); } catch (
 const T = (t) => { try { return _tr ? _tr.t(t) : t; } catch (_) { return t; } };
 
 const fmt = (p) => {
-  if (!(p > 0)) return '—';
+  if (!(p > 0)) return '...';
   if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
   if (p >= 100) return p.toFixed(2);
   if (p >= 1) return p.toFixed(4);
@@ -97,7 +97,7 @@ const fmt = (p) => {
 /* ══════════════════════════════════════════════════════════════
    LO QUE HAY PUESTO
 
-   Se junta todo —órdenes y alertas— para que las tres herramientas
+   Se junta todo -órdenes y alertas- para que las tres herramientas
    lo pinten igual. Las alertas se leen del almacenamiento, así
    sobreviven a recargar la página.
    ══════════════════════════════════════════════════════════════ */
@@ -163,7 +163,7 @@ export function conectar(cfg) {
   });
 
   /* En el móvil no hay clic derecho: se mantiene pulsado medio
-     segundo. Si el dedo se mueve, se cancela — es que estaba
+     segundo. Si el dedo se mueve, se cancela: es que estaba
      arrastrando el gráfico. */
   let temp = null, x0 = 0, y0 = 0, movido = false;
   cv.addEventListener('touchstart', (e) => {
@@ -195,7 +195,7 @@ export function conectar(cfg) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   EL MENÚ — primer paso
+   EL MENÚ: primer paso
    ══════════════════════════════════════════════════════════════ */
 function abrirMenu(cx, cy, cfg, ev) {
   cerrarTodo();
@@ -253,7 +253,7 @@ function abrirMenu(cx, cy, cfg, ev) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LA FICHA — cantidad, modo y confirmación
+   LA FICHA: cantidad, modo y confirmación
    ══════════════════════════════════════════════════════════════ */
 function abrirFicha(cx, cy, cfg, precio, vender) {
   cerrarTodo();
@@ -626,7 +626,7 @@ async function ponerOrdenReal({ cfg, precio, cant, vender, sl, alPaso }) {
 
        1. Suscripción activa
        2. Envolver BNB a WBNB si se va a vender BNB
-       3. APROBAR el token — sin esto la transacción revierte
+       3. APROBAR el token: sin esto la transacción revierte
        4. Crear la orden
 
      Ahora se usa la misma maquinaria que los bots que ya
@@ -787,7 +787,7 @@ function unidades(gb, valor, dec) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LOS AVISOS — sin gas, se guardan en el navegador
+   LOS AVISOS: sin gas, se guardan en el navegador
    ══════════════════════════════════════════════════════════════ */
 function leerAvisos() {
   try { return JSON.parse(localStorage.getItem(CLAVE_AVISOS) || '[]'); } catch (_) { return []; }
@@ -833,7 +833,7 @@ export async function simbolosOperables() {
 
 let _vigila = null;
 /* ══════════════════════════════════════════════════════════════
-   ÓRDENES COMPLETADAS — aviso con sonido y ficha que queda
+   ÓRDENES COMPLETADAS: aviso con sonido y ficha que queda
    Revisa on-chain si una orden ya se ejecutó (el contrato la marca
    inactiva). Cuando ocurre: suena, sale una ficha con lo ocurrido
    (queda hasta que el usuario la cierra) y se repinta el gráfico.
@@ -1140,7 +1140,7 @@ function cerrarPasos() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   CANCELAR — con confirmación, que es dinero
+   CANCELAR: con confirmación, que es dinero
    ══════════════════════════════════════════════════════════════ */
 export function pedirCancelar(orden, alCancelar) {
   cerrarTodo();

@@ -1,5 +1,5 @@
 /**
- * LA COLMENA — app del bot de rejilla (página propia, pantalla completa)
+ * LA COLMENA: app del bot de rejilla (página propia, pantalla completa)
  * =====================================================================
  * Se dibuja dentro de <div id="colmena-app"> de colmena.html. Lenguaje simple,
  * botones (i), gráfica viva con las cuadrículas, e inversión total en una cifra.
@@ -16,7 +16,7 @@ import * as gestos from './gestos.js';
 import { inyectarEstilo } from './estilos.js';
 import { moneda, num, _movil, tipoNum, escT, enCristiano, fmtPrecioUSD, icoInner, limpiarBusy, modalBusy, modalBusyTexto, modalError, modalClose } from './util.js';
 import { LOGOS, LOGO_ST } from './estado.js';
-import { APP, BASES, QUOTES, INFO, FEE_CICLO, GAS_OP_USD, VOL_DIARIA, PRESETS, NOMBRE_PRESET, GAS_VUELTA_USD, COM_DEX, LOGOS_WALLET, KEEPER_URL, CONF_BOTS, CLAVE_AVISO, CUPO_TOTAL, CUPO_POR_TIPO, NOMBRE_TIPO, CAT_NOMBRES, BOTMETA, RESERVA_BNB } from './config.js';
+import { APP, BASES, QUOTES, INFO, FEE_CICLO, GAS_OP_USD, VOL_DIARIA, PRESETS, NOMBRE_PRESET, GAS_VUELTA_USD, COM_DEX, LOGOS_WALLET, KEEPER_URL, CONF_BOTS, CUPO_TOTAL, CUPO_POR_TIPO, NOMBRE_TIPO, CAT_NOMBRES, BOTMETA, RESERVA_BNB } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 // Lo que se OPERA (base). Las estables no pueden ser base.
@@ -51,7 +51,7 @@ try {
 /* Utilidades                                                          */
 /* ================================================================== */
 function precioFmt(n) {
-  if (n === null || !isFinite(n)) return '—';
+  if (n === null || !isFinite(n)) return '...';
   const a = Math.abs(n);
   if (a === 0) return '0';
   if (a >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -185,12 +185,25 @@ function aviso(el, tipo, msg, ms = 5000) {
   if (ms > 0) _avT.set(el, setTimeout(() => { el.innerHTML = ''; }, ms));
 }
 function iBtn(k) { return `<button class="i-btn" data-info="${k}" type="button">i</button>`; }
+/* La ventanita de informacion queda ANCLADA al boton que la abrio: se vuelve a colocar en
+   cada scroll o cambio de tamano (antes se quedaba quieta en pantalla al desplazarse). */
+let _popBtn = null;
+function colocarPop() {
+  const pop = $('colmena-pop'); if (!pop || !_popBtn || pop.style.display === 'none') return;
+  if (!document.body.contains(_popBtn)) { pop.style.display = 'none'; _popBtn = null; return; }
+  const r = _popBtn.getBoundingClientRect();
+  pop.style.position = 'fixed';
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 300)) + 'px';
+  const alto = pop.offsetHeight || 0;
+  const abajo = r.bottom + 6 + alto <= window.innerHeight;
+  pop.style.top = (abajo ? r.bottom + 6 : Math.max(8, r.top - 6 - alto)) + 'px';
+}
 function abrirPop(btn) {
   const pop = $('colmena-pop'); pop.textContent = INFO[btn.dataset.info] || '';
-  const r = btn.getBoundingClientRect(); pop.style.display = 'block';
-  pop.style.left = Math.min(window.scrollX + r.left, window.scrollX + window.innerWidth - 300) + 'px';
-  pop.style.top = (window.scrollY + r.bottom + 6) + 'px';
+  _popBtn = btn; pop.style.display = 'block'; colocarPop();
 }
+window.addEventListener('scroll', colocarPop, { passive: true, capture: true });
+window.addEventListener('resize', colocarPop, { passive: true });
 function wirePops(root) { (root || document).querySelectorAll('.i-btn').forEach((b) => b.onclick = (e) => { e.stopPropagation(); abrirPop(b); }); }
 
 /* Campo numérico con flechas propias (con estilo) y tope en el mínimo. */
@@ -246,7 +259,7 @@ function nivelesPreview(pMin, pMax, n, modo) {
 /** Dibuja una rejilla. `precios` = array de {p, tipo} donde tipo: 'compra'|'venta'|'off'. */
 function dibujar(precios, precio, pMin, pMax, samples, ops) {
   const W = 560, H = 320, padL = 70, padR = 16, padT = 16, padB = 26;
-  if (!(pMin > 0 && pMax > pMin)) return svgVacio(W, H, 'Pon un rango para ver la rejilla');
+  if (!(pMin > 0 && pMax > pMin)) return svgVacio(W, H, 'Set a range to see the grid');
   const y = (p) => padT + (H - padT - padB) * (1 - (Math.max(pMin, Math.min(pMax, p)) - pMin) / (pMax - pMin));
   const partes = [];
   if (precio && precio >= pMin && precio <= pMax) {
@@ -289,7 +302,7 @@ function dibujar(precios, precio, pMin, pMax, samples, ops) {
     const suave = hayOps || hayTrail;
     partes.push(`<line x1="${padL}" y1="${yp.toFixed(1)}" x2="${W-padR}" y2="${yp.toFixed(1)}" stroke="#E4F5EF" stroke-width="${suave ? 1 : 2}" stroke-dasharray="5 4" opacity="${suave ? '.4' : '1'}"/>`);
     if (!suave) partes.push(`<circle cx="${padL}" cy="${yp.toFixed(1)}" r="4" fill="#E4F5EF"><animate attributeName="r" values="3;7;3" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;.3;1" dur="1.4s" repeatCount="indefinite"/></circle>`);
-    partes.push(`<text x="${W-padR}" y="${(yp - 6).toFixed(1)}" fill="#E4F5EF" font-family="IBM Plex Mono" font-size="11" text-anchor="end">precio ${precioFmt(precio)}${dentro ? '' : ' (fuera)'}</text>`);
+    partes.push(`<text x="${W-padR}" y="${(yp - 6).toFixed(1)}" fill="#E4F5EF" font-family="IBM Plex Mono" font-size="11" text-anchor="end">price ${precioFmt(precio)}${dentro ? '' : ' (outside)'}</text>`);
   }
   partes.push(`<text x="8" y="${padT+9}" fill="#9DBDB2" font-family="IBM Plex Mono" font-size="10">${precioFmt(pMax)}</text>`);
   partes.push(`<text x="8" y="${H-padB+4}" fill="#9DBDB2" font-family="IBM Plex Mono" font-size="10">${precioFmt(pMin)}</text>`);
@@ -301,9 +314,42 @@ function svgVacio(W, H, txt) {
 }
 function graficaPreview() {
   const pMin = parseFloat($('f-min')?.value), pMax = parseFloat($('f-max')?.value), n = parseInt($('f-niv')?.value, 10);
-  if (!(pMin > 0 && pMax > pMin && n >= 2)) return svgVacio(560, 320, 'Pon un rango para ver la rejilla');
+  if (!(pMin > 0 && pMax > pMin && n >= 2)) return svgVacio(560, 320, 'Set a range to see the grid');
   const ps = nivelesPreview(pMin, pMax, n, F.modo).map((p) => ({ p, tipo: F.precio ? (p < F.precio ? 'compra' : 'venta') : 'compra' }));
   return dibujar(ps, F.precio, pMin, pMax);
+}
+/* El mismo tablero para los otros bots: niveles de compra (verde) y salida (rojo). */
+function graficaPreviewAcum() {
+  const n = parseInt($('fa-niv')?.value, 10) || 0;
+  const pMin = parseFloat($('fa-min')?.value) || 0;
+  const obj = parseFloat($('fa-obj-val')?.value) || 0;
+  if (!(F.precio > 0 && n >= 1 && pMin > 0 && pMin < F.precio)) return svgVacio(560, 320, 'Set a floor price to see the buy levels');
+  const pTop = F.precio * 0.999;
+  const ps = [];
+  for (let i = 0; i < n; i++) { const t = n === 1 ? 1 : i / (n - 1); ps.push({ p: pMin * Math.pow(pTop / pMin, t), tipo: 'compra' }); }
+  const tp = obj > 0 ? F.precio * (1 + obj / 100) : 0;
+  if (tp > 0) ps.push({ p: tp, tipo: 'venta' });
+  const hi = Math.max(F.precio, tp) * 1.03, lo = pMin * 0.97;
+  return dibujar(ps, F.precio, lo, hi);
+}
+function graficaPreviewCash() {
+  const n = Math.max(1, Math.round(parseFloat($('fc-niv')?.value) || 5));
+  const paso = parseFloat($('fc-paso')?.value) || 2;
+  const o = objetivoCash();
+  if (!(F.precio > 0) || !(paso > 0) || n * paso >= 100) return svgVacio(560, 320, 'Waiting for the price to draw the ladder');
+  const ps = [];
+  for (let k = 1; k <= n; k++) ps.push({ p: F.precio * (1 - k * paso / 100), tipo: 'compra' });
+  if (o.pct > 0) ps.push({ p: F.precio * (1 + o.pct / 100), tipo: 'venta' });
+  const lo = F.precio * (1 - n * paso / 100) * 0.97, hi = Math.max(F.precio, o.pct > 0 ? F.precio * (1 + o.pct / 100) : F.precio) * 1.03;
+  return dibujar(ps, F.precio, lo, hi);
+}
+function graficaPreviewDCA() {
+  return svgVacio(560, 320, 'Fixed buys on a schedule: no price levels to draw');
+}
+function pintarTablero() {
+  const ch = $('c-chart'); if (!ch) return;
+  const t = F.tipo;
+  ch.innerHTML = t === 'acum' ? graficaPreviewAcum() : t === 'cash' ? graficaPreviewCash() : t === 'dca' ? graficaPreviewDCA() : graficaPreview();
 }
 
 /* ================================================================== */
@@ -638,7 +684,7 @@ function footerHTML() {
       <summary><span class="faq-long">Questions about how the platform works?</span><span class="faq-short">Questions? Tap here</span></summary>
       <div style="padding:16px">
         ${tutorial.filaBots()}
-        <input class="faq-search" id="faq-search" type="text" autocomplete="off" placeholder="Escribe aquí sobre lo que quieres saber…">
+        <input class="faq-search" id="faq-search" type="text" autocomplete="off" placeholder="Type what you want to know...">
         <div class="c-foot-grid" id="faq-grid">${faqs.map(card).join('')}</div>
         <div class="faq-empty" id="faq-empty" style="display:none">No encontramos nada con esa palabra. Prueba con otra.</div>
       </div>
@@ -709,14 +755,14 @@ function render() {
           <img id="f-foto-img" alt="" src="${BOTMETA[F.tipo].img}" onerror="this.classList.add('nocarga')">
           <div class="bot-foto-cap"><b id="f-foto-tit">${BOTMETA[F.tipo].nom}</b><span id="f-foto-des">${BOTMETA[F.tipo].des}</span></div>
         </div>
-        <div class="lab">Moneda ${iBtn('par')}</div>
+        <div class="lab">Coin ${iBtn('par')}</div>
         <div class="fila fila-coins">
           <button type="button" class="coin-sel" id="f-base-btn">
-            <span class="coin-sel-l"><span class="coin-sel-ico" id="fb-ico"></span><span class="coin-sel-tx"><b id="fb-sim">—</b><i id="fb-nom"></i></span></span>
+            <span class="coin-sel-l"><span class="coin-sel-ico" id="fb-ico"></span><span class="coin-sel-tx"><b id="fb-sim">...</b><i id="fb-nom"></i></span></span>
             <span class="coin-chev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
           </button>
           <button type="button" class="coin-sel" id="f-quote-btn">
-            <span class="coin-sel-l"><span class="coin-sel-ico" id="fq-ico"></span><span class="coin-sel-tx"><b id="fq-sim">—</b><i id="fq-nom"></i></span></span>
+            <span class="coin-sel-l"><span class="coin-sel-ico" id="fq-ico"></span><span class="coin-sel-tx"><b id="fq-sim">...</b><i id="fq-nom"></i></span></span>
             <span class="coin-chev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
           </button>
         </div>
@@ -730,12 +776,12 @@ function render() {
           <div class="fila">${campoNum('f-min',{placeholder:'precio bajo',pct:0.005})}${campoNum('f-max',{placeholder:'precio alto',pct:0.005})}</div>
           <div class="fila">
             <div><div class="lab">Cuadrículas ${iBtn('cuadriculas')}</div>${campoNum('f-niv',{value:20,min:2,max:100,step:1,int:true})}</div>
-            <div><div class="lab" style="gap:10px"><span style="display:flex;align-items:center;gap:6px"><span class="inv-lbl">Inv. <span id="f-total-sym">(${moneda(F.quoteId).simbolo})</span></span> ${iBtn('inversion')}</span><span id="f-total-saldo" class="saldo-chip">—</span></div>${campoNum('f-total',{placeholder:'0.00',step:1,min:0})}</div>
+            <div><div class="lab" style="gap:10px"><span style="display:flex;align-items:center;gap:6px"><span class="inv-lbl">Inv. <span id="f-total-sym">(${moneda(F.quoteId).simbolo})</span></span> ${iBtn('inversion')}</span><span id="f-total-saldo" class="saldo-chip">...</span></div>${campoNum('f-total',{placeholder:'0.00',step:1,min:0})}</div>
           </div>
           <div class="lab"><span class="v-l">Gan. cuadrícula %</span><span class="v-s">Ganancia %</span> ${iBtn('margen')} <span style="color:var(--ink-3);font-size:11px;font-family:var(--mono)">opcional</span></div>
           ${campoNum('f-margen',{placeholder:'auto',min:0,max:20,step:0.5})}
           <div id="f-margen-nota"></div>
-          <div class="paso-box"><span>Separación ${iBtn('separacion')}</span><b id="pv-paso">—</b></div>
+          <div class="paso-box"><span>Separación ${iBtn('separacion')}</span><b id="pv-paso">...</b></div>
         </div>
         <div id="f-acum" style="${F.tipo==='acum'?'':'display:none'}">
           <button type="button" class="btn-conf" data-conf-bot="acum"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg><span class="v-l">Configuraciones rentables</span><span class="v-s">Configuración</span><span class="bc-sel" id="conf-sel-acum">elegir</span></button>
@@ -758,28 +804,28 @@ function render() {
           <div class="asesor as-marco" id="fa-prev">
             <div class="as-top"><b>Resumen del acumulador</b></div>
             <div class="as-grid">
-              <div><span>Compra inicial (a mercado)</span><b id="fa-p-ini">—</b></div>
-              <div><span>Precio promedio estimado</span><b id="fa-p-prom">—</b></div>
+              <div><span>Compra inicial (a mercado)</span><b id="fa-p-ini">...</b></div>
+              <div><span>Precio promedio estimado</span><b id="fa-p-prom">...</b></div>
             </div>
             <div class="as-nota"><span class="nota-larga">Buys more the lower the price goes. When the total gains the % you choose, it <b>sells everything at once</b>.</span><span class="nota-corta">Buys the dips and <b>sells everything together</b> when your target is reached.</span></div>
           </div>
         </div>
         <div id="f-cash" style="${F.tipo==='cash'?'':'display:none'}">
           <button type="button" class="btn-conf" data-conf-bot="cash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg><span class="v-l">Configuraciones rentables</span><span class="v-s">Configuración</span><span class="bc-sel" id="conf-sel-cash">elegir</span></button>
-          <div class="cash-note">You sell <b id="cn-b">${moneda(F.baseId).simbolo}</b> and receive <b id="cn-q">${moneda(F.quoteId).simbolo}</b> in your wallet.</div>
+          <div class="cash-note">You commit <b id="cn-b">${moneda(F.baseId).simbolo}</b>. Half is sold now for <b id="cn-q">${moneda(F.quoteId).simbolo}</b> (your reserve), half stays as position. The bot buys back on dips with the reserve and sells everything once the position is worth your cost plus your target.</div>
           <div class="cash-cant-head">
-            <div class="lab" style="margin:0"><span class="v-l">Cantidad a vender</span><span class="v-s">Cantidad</span> ${iBtn('cashcant')}</div>
-            <div class="cash-bal"><span id="fc-saldo">—</span><button type="button" class="cash-max" id="fc-max">Máx</button></div>
+            <div class="lab" style="margin:0"><span class="v-l">Amount to commit</span><span class="v-s">Amount</span> ${iBtn('cashcant')}</div>
+            <div class="cash-bal"><span id="fc-saldo">...</span><button type="button" class="cash-max" id="fc-max">Max</button></div>
           </div>
           ${campoNum('fc-cant',{placeholder:'0.00',step:0.01,min:0,suffix:'fc-cant-usd'})}
           <input type="range" id="fc-slider" class="cash-slider" min="0" max="100" value="0" step="1">
           <div class="seg presets" id="fc-pctamt" style="grid-template-columns:repeat(6,1fr);margin-top:2px">
             <button type="button" data-pa="5">5%</button><button type="button" data-pa="10">10%</button><button type="button" data-pa="25">25%</button><button type="button" data-pa="50">50%</button><button type="button" data-pa="75">75%</button><button type="button" data-pa="100">100%</button>
           </div>
-          <div class="lab" style="margin-top:16px">Vender cuando ${iBtn('cashobj')}</div>
+          <div class="lab" style="margin-top:16px">Sell everything when the position gains ${iBtn('cashobj')}</div>
           <div class="seg presets" id="fc-modo" style="grid-template-columns:1fr 1fr">
-            <button type="button" data-cm="pct" class="on">Suba un %</button>
-            <button type="button" data-cm="precio">Llegue a un precio</button>
+            <button type="button" data-cm="pct" class="on">A percentage</button>
+            <button type="button" data-cm="precio">Reaches a price</button>
           </div>
           <div id="fc-pct-wrap">
             <div class="seg presets" id="fc-pctpreset" style="grid-template-columns:repeat(4,1fr);margin-top:8px">
@@ -787,19 +833,24 @@ function render() {
             </div>
             ${campoNum('fc-pct',{value:10,min:0.5,max:2000,step:1})}
           </div>
-          <div id="fc-precio-wrap" style="display:none;margin-top:8px">${campoNum('fc-precio',{placeholder:'precio objetivo',pct:0.05})}</div>
+          <div id="fc-precio-wrap" style="display:none;margin-top:8px">${campoNum('fc-precio',{placeholder:'target price',pct:0.05})}</div>
+          <div class="fila" style="margin-top:12px">
+            <div><div class="lab"><span class="v-l">Buy back levels</span><span class="v-s">Levels</span> ${iBtn('cashniv')}</div>${campoNum('fc-niv',{value:5,min:1,max:20,step:1,int:true})}</div>
+            <div><div class="lab"><span class="v-l">Spacing between levels %</span><span class="v-s">Spacing %</span> ${iBtn('cashpaso')}</div>${campoNum('fc-paso',{value:2,min:0.5,max:20,step:0.5})}</div>
+          </div>
           <div class="cash-resumen" id="fc-prev">
-            <div class="cr-top">Resumen del Cash Out</div>
+            <div class="cr-top">Cash Out summary</div>
             <div class="cr-rows">
-              <div class="cr-row"><span>Vendes</span><b id="fc-p-cant">—</b></div>
-              <div class="cr-row"><span>Valor ahora</span><b id="fc-p-valor">—</b></div>
-              <div class="cr-row"><span>Recibirás al objetivo</span><b id="fc-p-recibe">—</b></div>
-              <div class="cr-row"><span>Comisión de la venta</span><b id="fc-p-com">—</b></div>
-              <div class="cr-row cr-gan"><span>Ganancia estimada</span><b id="fc-p-gan" class="pos">—</b></div>
+              <div class="cr-row"><span>You commit</span><b id="fc-p-cant">...</b></div>
+              <div class="cr-row"><span>Sold now (reserve)</span><b id="fc-p-vende">...</b></div>
+              <div class="cr-row"><span>Kept as position</span><b id="fc-p-pos">...</b></div>
+              <div class="cr-row"><span>Buy back ladder</span><b id="fc-p-esc">...</b></div>
+              <div class="cr-row"><span>Sells everything at</span><b id="fc-p-recibe">...</b></div>
+              <div class="cr-row cr-gan"><span>Estimated profit per cycle</span><b id="fc-p-gan" class="pos">...</b></div>
             </div>
             <div class="cr-note">
-              <span class="nota-larga">Vende solo cuando el precio llegue a tu objetivo y recibe <b id="fc-p-est">${moneda(F.quoteId).simbolo}</b> en tu wallet.<br><span style="opacity:.75">Ten esa moneda agregada en tu wallet para verla: llega igual.</span></span>
-              <span class="nota-corta">Sells when your target is reached and you receive <b>${moneda(F.quoteId).simbolo}</b> in your wallet.</span>
+              <span class="nota-larga">The sale of everything only happens above your cost plus target: the contract refuses any sale below that floor. After it sells, it starts a new 50/50 cycle by itself. Keep <b id="fc-p-est">${moneda(F.quoteId).simbolo}</b> in your wallet: the buy backs use your reserve.</span>
+              <span class="nota-corta">Sells everything only above cost plus target, then restarts 50/50.</span>
             </div>
           </div>
         </div>
@@ -808,7 +859,7 @@ function render() {
           <div class="cash-note">Compras <b id="dn-b">${moneda(F.baseId).simbolo}</b> con tu <b id="dn-q">${moneda(F.quoteId).simbolo}</b>, un poco cada cierto tiempo.</div>
           <div class="cash-cant-head">
             <div class="lab" style="margin:0"><span class="v-l">Monto por compra</span><span class="v-s">Monto</span> ${iBtn('dcamonto')}</div>
-            <div class="cash-bal"><span id="fd-saldo">—</span></div>
+            <div class="cash-bal"><span id="fd-saldo">...</span></div>
           </div>
           ${campoNum('fd-monto',{placeholder:'0.00',step:1,min:0,suffix:'fd-monto-eq'})}
           <div class="lab" style="margin-top:16px"><span class="v-l">¿Cada cuánto compra?</span><span class="v-s">Cada cuánto</span> ${iBtn('dcafrec')}</div>
@@ -828,10 +879,10 @@ function render() {
           <div class="cash-resumen" id="fd-prev">
             <div class="cr-top">Resumen del DCA</div>
             <div class="cr-rows">
-              <div class="cr-row"><span>Compras</span><b id="fd-p-cada">—</b></div>
+              <div class="cr-row"><span>Compras</span><b id="fd-p-cada">...</b></div>
               <div class="cr-row"><span>Primera compra</span><b id="fd-p-primera">al encender</b></div>
-              <div class="cr-row"><span>Total a invertir</span><b id="fd-p-total">—</b></div>
-              <div class="cr-row"><span>Precio ahora</span><b id="fd-p-precio">—</b></div>
+              <div class="cr-row"><span>Total a invertir</span><b id="fd-p-total">...</b></div>
+              <div class="cr-row"><span>Precio ahora</span><b id="fd-p-precio">...</b></div>
             </div>
             <div class="cr-note">
               <span class="nota-larga">La primera compra se hace al encender. Ten <b>${moneda(F.quoteId).simbolo}</b> cargado en tu wallet para las siguientes.</span>
@@ -839,7 +890,7 @@ function render() {
             </div>
           </div>
         </div>
-        <div style="text-align:right"><button class="btn-avz" id="f-toggleavz">${F.avanzado ? '− Opciones avanzadas' : '+ Opciones avanzadas'}</button></div>
+        <div style="text-align:right"><button class="btn-avz" id="f-toggleavz">${F.avanzado ? '\u2212 Advanced options' : '+ Advanced options'}</button></div>
         <div class="avz" id="f-avz" style="${F.avanzado ? '' : 'display:none'}">
           <div class="fila">
             <div><div class="lab"><span class="v-l">Protección precio %</span><span class="v-s">Protección %</span> ${iBtn('proteccion')}</div>${campoNum('f-slip',{value:1,step:0.5,min:0,max:10})}</div>
@@ -875,15 +926,15 @@ function render() {
           </div>
           <div id="c-hint"></div>
           <div class="prev vacio">
-            <div class="p"><b>Precio</b><span id="pv-precio">—</span></div>
-            <div class="p prep"><span id="pv-compras" class="rep-wrap">—</span></div>
-            <div class="p"><b>Por compra</b><span id="pv-orden">—</span></div>
-            <div class="p"><b>Profit ${iBtn('porcuad')}</b><span id="pv-gan" class="pos">—</span></div>
+            <div class="p"><b>Precio</b><span id="pv-precio">...</span></div>
+            <div class="p prep"><span id="pv-compras" class="rep-wrap">...</span></div>
+            <div class="p"><b>Por compra</b><span id="pv-orden">...</span></div>
+            <div class="p"><b>Profit ${iBtn('porcuad')}</b><span id="pv-gan" class="pos">...</span></div>
           </div>
           <div class="asesor" id="c-asesor" style="display:none">
             <div class="as-top"><b>Estimación</b> ${iBtn('asesor')}</div>
             <div class="as-grid">
-              <div><span>Operaciones/día (est.)</span><b id="as-ops">—</b></div>
+              <div><span>Operaciones/día (est.)</span><b id="as-ops">...</b></div>
             </div>
             <div class="as-nota" id="as-nota"></div>
           </div>
@@ -901,13 +952,13 @@ function render() {
           <div id="c-gasmsg"></div>
           <div id="c-cash-price" class="cash-price" style="display:none;margin-top:16px;margin-bottom:0">
             <div class="cp-lab" id="cash-price-pair">BNB / USDT</div>
-            <div class="cp-val" id="cash-price-val">—</div>
+            <div class="cp-val" id="cash-price-val">...</div>
             <div class="cp-src">precio del mercado</div>
           </div>
         </div>
       </div>
     </div>
-    <div class="colmenas card"><div class="mb-cab"><h3>My bots</h3><div class="mb-der"><span class="c-cupo" id="c-cupo"><b>—</b><span class="cupo-tx">bots activos</span></span><button class="c-cupo" id="c-ver-ord" type="button" title="See your pending limit orders"><span class="cupo-tx">Mis órdenes</span><b id="c-ord-n" style="display:none">0</b></button><button class="btn-cerrar-todos" id="c-cerrar-todos" type="button" title="Close all your bots"><span class="cerrar-largo">Cerrar todos</span><span class="cerrar-corto">Cerrar</span></button></div></div><div id="c-rejillas"><div class="skel" style="height:120px;width:100%;border-radius:14px"></div></div></div>
+    <div class="colmenas card"><div class="mb-cab"><h3>My bots</h3><div class="mb-der"><span class="c-cupo" id="c-cupo"><b>...</b><span class="cupo-tx">bots activos</span></span><button class="c-cupo" id="c-ver-ord" type="button" title="See your pending limit orders"><span class="cupo-tx">Mis órdenes</span><b id="c-ord-n" style="display:none">0</b></button><button class="btn-cerrar-todos" id="c-cerrar-todos" type="button" title="Close all your bots"><span class="cerrar-largo">Cerrar todos</span><span class="cerrar-corto">Cerrar</span></button></div></div><div id="c-rejillas"><div class="skel" style="height:120px;width:100%;border-radius:14px"></div></div></div>
     ${footerHTML()}
   </div>`;
 
@@ -918,7 +969,7 @@ function render() {
   cargarLogosPrecios();
   $('f-toggleavz').onclick = () => {
     F.avanzado = !F.avanzado; const a = $('f-avz'); if (a) a.style.display = F.avanzado ? '' : 'none';
-    $('f-toggleavz').textContent = F.avanzado ? '− Opciones avanzadas' : '+ Opciones avanzadas';
+    $('f-toggleavz').textContent = F.avanzado ? '\u2212 Advanced options' : '+ Advanced options';
   };
   { const e = $('f-total'); if (e) e.oninput = () => { asegurarRentable(); actualizarVista(); }; }
   { const e = $('f-niv'); if (e) e.oninput = () => { asegurarRentable(); actualizarVista(); }; }
@@ -953,7 +1004,7 @@ function render() {
     document.querySelectorAll(`#${APP} #fc-pctpreset button`).forEach((x) => x.classList.remove('on')); b.classList.add('on');
     const v = $('fc-pct'); if (v) { v.value = b.dataset.p; previewCash(); }
   });
-  ['fc-cant', 'fc-pct', 'fc-precio'].forEach((id) => { const e = $(id); if (e) e.oninput = previewCash; });
+  ['fc-cant', 'fc-pct', 'fc-precio', 'fc-niv', 'fc-paso'].forEach((id) => { const e = $(id); if (e) e.oninput = previewCash; });
   if ($('fc-slider')) $('fc-slider').oninput = () => { const pct = parseFloat($('fc-slider').value) || 0; setCantCash(maxCash() * pct / 100); };
   if ($('fc-max')) $('fc-max').onclick = () => setCantCash(maxCash());
   document.querySelectorAll(`#${APP} #fc-pctamt button`).forEach((b) => b.onclick = () => setCantCash(maxCash() * (parseFloat(b.dataset.pa) || 0) / 100));
@@ -1003,7 +1054,7 @@ function actualizarVista() {
   const valido = F.precio && pMin > 0 && pMax > pMin && n >= 2;
   const _prev = document.querySelector(`#${APP} .prev`); if (_prev) _prev.classList.toggle('vacio', !valido);
   const pasoPct = valido ? (Math.pow(pMax / pMin, 1 / (n - 1)) - 1) : null;
-  if ($('pv-paso')) $('pv-paso').textContent = pasoPct != null ? num(pasoPct * 100, 2) + '%' : '—';
+  if ($('pv-paso')) $('pv-paso').textContent = pasoPct != null ? num(pasoPct * 100, 2) + '%' : '...';
 
   const hint = $('c-hint');
   let aviso1 = '';
@@ -1017,13 +1068,13 @@ function actualizarVista() {
     const nSell = ps.filter((p) => p >= F.precio).length, nBuy = n - nSell;
     if ($('pv-compras')) $('pv-compras').innerHTML = `<span class="rep-pill rep-v">${nSell} venden</span><span class="rep-pill rep-c">${nBuy} compran</span>`;
     const ordenQuote = total > 0 ? total / n : 0;
-    if ($('pv-orden')) $('pv-orden').textContent = ordenQuote ? num(ordenQuote, 2) : '—';
+    if ($('pv-orden')) $('pv-orden').textContent = ordenQuote ? num(ordenQuote, 2) : '...';
     const net = ordenQuote * (pasoPct - FEE_CICLO) - 2 * GAS_OP_USD;   // tras comisiones Y gas
     const gEl = $('pv-gan');
-    if (gEl) { gEl.textContent = ordenQuote ? (net >= 0 ? '+' + num(net, 3) : '−' + num(Math.abs(net), 3)) : '—'; gEl.className = net >= 0 ? 'pos' : 'neg'; }
+    if (gEl) { gEl.textContent = ordenQuote ? (net >= 0 ? '+' + num(net, 3) : '−' + num(Math.abs(net), 3)) : '...'; gEl.className = net >= 0 ? 'pos' : 'neg'; }
     asesorar(total, n, pasoPct, ordenQuote, net);
   } else {
-    ['pv-compras','pv-orden','pv-gan'].forEach((id) => { if ($(id)) $(id).textContent = '—'; });
+    ['pv-compras','pv-orden','pv-gan'].forEach((id) => { if ($(id)) $(id).textContent = '...'; });
     const a = $('c-asesor'); if (a) a.style.display = 'none';
   }
 }
@@ -1116,7 +1167,7 @@ function ventanaConfiguraciones() {
   const tarjeta = (id) => {
     const p = PRESETS[id], c = cuenta(p);
     return `<button class="cf-op ${F.preset === id ? 'on' : ''}" data-conf="${id}">
-      <div class="cf-cab"><b>${NOMBRE_PRESET[id]}</b><span class="cf-ops">${p.ops} operaciones</span></div>
+      <div class="cf-cab"><b>${NOMBRE_PRESET[id]}</b><span class="cf-ops">${p.ops} trades</span></div>
       <div class="cf-d">${p.desc}</div>
       <div class="cf-nums">
         <span><i>rango</i>±${(p.rango * 100).toFixed(0)}%</span>
@@ -1249,7 +1300,7 @@ function rangoNecesario(n, margen) {
 async function ampliarRango(pMin, pMax, n, margen) {
   const ok = await modalConfirm({
     titulo: 'Ampliar el rango',
-    cuerpo: `For your <b>${n} grids</b> to earn <b>${num(margen, 1)}%</b> each (above the fee), the range must widen to:<br><br><b>${precioFmt(pMin)} – ${precioFmt(pMax)}</b><br><br>A wider range makes the bot <b>less sensitive</b>: it trades less often, but every trade leaves your profit clean, without the fee eating it. That way you can trade with any capital you want.<br><br>Apply this range?`,
+    cuerpo: `For your <b>${n} grids</b> to earn <b>${num(margen, 1)}%</b> each (above the fee), the range must widen to:<br><br><b>${precioFmt(pMin)} to ${precioFmt(pMax)}</b><br><br>A wider range makes the bot <b>less sensitive</b>: it trades less often, but every trade leaves your profit clean, without the fee eating it. That way you can trade with any capital you want.<br><br>Apply this range?`,
     ok: 'Sí, ampliar'
   });
   if (!ok) return;
@@ -1285,7 +1336,7 @@ function recomputarPorMargen() {
     const aMin = parseFloat($('f-min')?.value) || 0, aMax = parseFloat($('f-max')?.value) || 0;
     const yaOk = aMin > 0 && aMax > 0 && Math.abs(aMin - pMin) / pMin < 0.02 && Math.abs(aMax - pMax) / pMax < 0.02;
     if (!yaOk) {
-      nota.innerHTML = `<div class="hint">For <b>${n} grids</b> at ${num(margen, 1)}% each (spacing ≈ <b>${num(sepObj, 2)}%</b>), the range must be <b>${precioFmt(pMin)} – ${precioFmt(pMax)}</b> (less sensitive bot). <button class="sug" id="f-ampliar" type="button">Apply range</button></div>`;
+      nota.innerHTML = `<div class="hint">For <b>${n} grids</b> at ${num(margen, 1)}% each (spacing ≈ <b>${num(sepObj, 2)}%</b>), the range must be <b>${precioFmt(pMin)} to ${precioFmt(pMax)}</b> (less sensitive bot). <button class="sug" id="f-ampliar" type="button">Apply range</button></div>`;
       if ($('f-ampliar')) $('f-ampliar').onclick = () => ampliarRango(pMin, pMax, n, margen);
     } else {
       nota.innerHTML = `<div class="hint" style="color:var(--neon-lit)">✓ Rango ajustado: ${n} cuadrículas al ${num(margen, 1)}% cada una (separación ≈ ${num(sepObj, 2)}%).</div>`;
@@ -1319,7 +1370,7 @@ function mBI(human, dec) { return gb.parse(Number(human).toFixed(Math.min(dec, 8
 /* ================================================================== */
 async function refrescarGas() {
   const cuenta = wallet.cuentaActual(); const el = $('c-gas'); if (!cuenta || !el) return;
-  try { const s = await gb.gasSaldo(cuenta); el.textContent = `${Number(gb.fmtBNB(s)).toFixed(5)} BNB`; } catch { el.textContent = '—'; }
+  try { const s = await gb.gasSaldo(cuenta); el.textContent = `${Number(gb.fmtBNB(s)).toFixed(5)} BNB`; } catch { el.textContent = '...'; }
 }
 async function refrescarSaldoInversion() {
   const cuenta = wallet.cuentaActual(); const el = $('f-total-saldo'), inp = $('f-total'); if (!el || !cuenta) return;
@@ -1342,7 +1393,7 @@ async function refrescarSaldoCash() {
     const bal = await gb.saldoCashDisponible(gb.dirDe(base), cuenta);
     const balH = Number(gb.fmt(bal, base.decimals));
     F.saldoBase = balH;
-    el.textContent = `Tienes ${num(balH, 4)} ${base.simbolo}`;
+    el.textContent = `You have ${num(balH, 4)} ${base.simbolo}`;
     const inp = $('fc-cant'); if (inp && !inp.value && balH > 0) setCantCash(maxCash());
     else previewCash();
   } catch { el.textContent = ''; }
@@ -1448,43 +1499,38 @@ async function enLotes(lista, fn, tam = 4) {
   return out;
 }
 
-/* ── AVISO DE RIESGO ANTES DEL PRIMER BOT ─────────────────────────────
-   Alguien puede llegar, poner sus ahorros y crear un bot sin que nadie le
-   haya dicho nunca, claramente, que puede perder dinero. Lo contamos en las
-   explicaciones, pero solo lo lee quien va a leerlas.
-   Esto se enseña UNA vez, la primera. Después no vuelve a molestar. */
-
-function yaVioElAviso() {
-  try { return localStorage.getItem(CLAVE_AVISO) === '1'; } catch (_) { return false; }
-}
+/* ── AVISO DE RIESGO ANTES DE ENCENDER CUALQUIER BOT ───────────────────
+   Sale SIEMPRE, en los cuatro bots, al pulsar "Turn on": es la ultima
+   lectura antes de pedir una firma. Sello rojo arriba en el centro, pequeno. */
 
 /** Devuelve true si puede seguir; false si canceló. */
 function avisoDeRiesgo() {
   return new Promise((resolve) => {
-    if (yaVioElAviso()) { resolve(true); return; }
     const d = document.createElement('div');
     d.id = 'riesgo-box';
     d.innerHTML = `<div class="rg-bg"></div>
       <div class="rg-c">
-        <div class="rg-t">Antes de empezar, léelo</div>
-        <div class="rg-s">Es la única vez que te lo enseño, y prefiero decírtelo yo antes de que lo descubras tú.</div>
+        <img class="rg-sello" src="./img/disclaimer.webp" alt="" width="84" height="84">
+        <div class="rg-t">Read this before you turn it on</div>
+        <div class="rg-s">Thirty seconds now can save you money later. This is what you are about to do.</div>
 
-        <div class="rg-p"><span>1</span><div><b>Puedes perder dinero.</b> Estos bots funcionan bien cuando el precio sube y baja dentro de un rango, y funcionan mal cuando el mercado se va en una dirección y no vuelve.</div></div>
-        <div class="rg-p"><span>2</span><div><b>No one can promise you profits.</b> Not me, not any platform. If someone promises you a fixed monthly percentage, be suspicious.</div></div>
-        <div class="rg-p"><span>3</span><div><b>Usa solo dinero que puedas dejar quieto.</b> Meses, no días. Si lo vas a necesitar pronto, esto no es para ese dinero.</div></div>
-        <div class="rg-p"><span>4</span><div><b>Your money stays in your wallet.</b> We do not custody it. But that also means <b>you are responsible for your keys</b>.</div></div>
+        <div class="rg-p"><span>1</span><div><b>You can lose money.</b> Smart Grid and Accumulator do well when the price swings or rebounds; they do badly when the market moves in one direction and does not come back. Cash Out and DCA keep buying on the way down: if the coin keeps falling, your position is worth less. No bot predicts the market.</div></div>
+        <div class="rg-p"><span>2</span><div><b>Nobody can promise you profits.</b> Not us, not any platform. Estimates on this screen are based on past volatility, not on the future. If someone promises you a fixed monthly return, it is a scam.</div></div>
+        <div class="rg-p"><span>3</span><div><b>What you pay.</b> $2.50 in BNB when you turn on each bot, which also renews your 30 day maintenance. Gas for every trade comes from the gas you load (a few cents each). PancakeSwap charges its own swap fee. Nothing else.</div></div>
+        <div class="rg-p"><span>4</span><div><b>Your money stays in your wallet.</b> We never custody it: the bot only gets a limited, revocable permission to trade the pair you chose, and every trade executes from a public contract on BNB Smart Chain. That also means <b>you are responsible for your keys</b>.</div></div>
+        <div class="rg-p"><span>5</span><div><b>Use only money you can leave alone.</b> Months, not days. A bot that is closed early can be closed at a loss.</div></div>
 
         <div class="rg-frase">
-          <div class="rg-frase-t">Tu frase de recuperación</div>
-          <p>They are the <b>12 words</b> your wallet gave you when you created it. They are the key to all your money.</p>
+          <div class="rg-frase-t">Your recovery phrase</div>
+          <p>It is the <b>12 words</b> your wallet gave you when you created it. They are the key to all your money.</p>
           <p><b>Write them on paper</b> and keep them somewhere safe. Not on your phone, not in a photo, not in your email.</p>
-          <p class="rg-frase-x">If you lose them, <b>no one can recover them</b>: not us, not your wallet, no one. And if anyone asks you for them —whoever it is, even claiming to be from DecFreedom— <b>it's a scam</b>. We will never ask you for them.</p>
+          <p class="rg-frase-x">If you lose them, <b>no one can recover them</b>: not us, not your wallet, no one. If anyone asks you for them, whoever it is, even claiming to be from DecFreedom, <b>it is a scam</b>. We will never ask you for them.</p>
         </div>
 
-        <label class="rg-ok"><input type="checkbox" id="rg-check"> <span>Lo he leído y lo entiendo</span></label>
+        <label class="rg-ok"><input type="checkbox" id="rg-check"> <span>I have read this and I understand the risks</span></label>
         <div class="rg-acts">
-          <button class="rg-b gris" id="rg-no">Mejor no</button>
-          <button class="rg-b" id="rg-si" disabled>Entiendo, continuar</button>
+          <button class="rg-b gris" id="rg-no">Not now</button>
+          <button class="rg-b" id="rg-si" disabled>I understand, continue</button>
         </div>
       </div>`;
     document.body.appendChild(d);
@@ -1492,10 +1538,7 @@ function avisoDeRiesgo() {
     const cerrar = (v) => { d.remove(); resolve(v); };
     $('rg-check').onchange = (e) => { $('rg-si').disabled = !e.target.checked; };
     $('rg-no').onclick = () => cerrar(false);
-    $('rg-si').onclick = () => {
-      try { localStorage.setItem(CLAVE_AVISO, '1'); } catch (_) {}
-      cerrar(true);
-    };
+    $('rg-si').onclick = () => cerrar(true);
   });
 }
 
@@ -1506,6 +1549,7 @@ function estilosRiesgo() {
   #riesgo-box{position:fixed;inset:0;z-index:9950;display:flex;align-items:center;justify-content:center;padding:16px}
   #riesgo-box .rg-bg{position:absolute;inset:0;background:rgba(3,5,8,.9);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
   #riesgo-box .rg-c{position:relative;width:100%;max-width:440px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft);border-radius:20px;padding:26px 22px}
+  #riesgo-box .rg-sello{display:block;width:84px;height:84px;margin:0 auto 10px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.55))}
   #riesgo-box .rg-t{font-family:var(--display);font-weight:800;font-size:21px;color:var(--gold);text-align:center}
   #riesgo-box .rg-s{font-family:var(--sans);font-size:12.5px;color:var(--ink-3);text-align:center;margin:8px 0 20px;line-height:1.55}
   #riesgo-box .rg-p{display:flex;gap:12px;align-items:flex-start;margin-bottom:15px}
@@ -1667,14 +1711,14 @@ async function onCrear() {
     const pasos = (aQ < quoteNeed ? 1 : 0) + (aB < baseNeed ? 1 : 0) + 1;
     let i = 0;
     if (aQ < quoteNeed) {
-      i++; modalBusy(`<b>Step ${i} of ${pasos} — ${quote.simbolo} permission.</b><br>You grant the bot permission to use your ${quote.simbolo} and buy when the price drops (up to ${num(topeQuote, 2)} ${quote.simbolo}, a limit you can revoke whenever you want).<br><br>Confirm in your wallet.`);
+      i++; modalBusy(`<b>Step ${i} of ${pasos}: ${quote.simbolo} permission.</b><br>You grant the bot permission to use your ${quote.simbolo} and buy when the price drops (up to ${num(topeQuote, 2)} ${quote.simbolo}, a limit you can revoke whenever you want).<br><br>Confirm in your wallet.`);
       await gb.aprobarToken(p.quote, quoteNeed);
     }
     if (aB < baseNeed) {
-      i++; modalBusy(`<b>Step ${i} of ${pasos} — ${base.simbolo} permission.</b><br>So the bot can sell what it buys and leave you the profit.<br><br>Confirm in your wallet.`);
+      i++; modalBusy(`<b>Step ${i} of ${pasos}: ${base.simbolo} permission.</b><br>So the bot can sell what it buys and leave you the profit.<br><br>Confirm in your wallet.`);
       await gb.aprobarToken(p.base, baseNeed);
     }
-    i++; modalBusy(`<b>Step ${i} of ${pasos} — Turn on.</b><br>Your bot is created with your settings and starts watching the market.<br><br>Confirm in your wallet.`);
+    i++; modalBusy(`<b>Step ${i} of ${pasos}: Turn on.</b><br>Your bot is created with your settings and starts watching the market.<br><br>Confirm in your wallet.`);
     // Cupo: máximo {CUPO_TOTAL} bots y {CUPO_POR_TIPO} de cada tipo.
     const _cupo = await cupoLibre(cuenta, 'grid');
     if (!_cupo.ok) { modalError(_cupo.motivo); return; }
@@ -1850,10 +1894,9 @@ function pintarTipo() {
   if ($('f-cash')) $('f-cash').style.display = t === 'cash' ? '' : 'none';
   if ($('f-dca')) $('f-dca').style.display = t === 'dca' ? '' : 'none';
   // Panel derecho (gráfica/reparto/neto) es solo del Smart Grid.
-  ['c-chart', 'c-hint', 'c-asesor'].forEach((id) => { const e = $(id); if (e) e.style.display = noGrid ? 'none' : ''; });
-  { const as = $('c-acum-side'); if (as) as.style.display = t === 'acum' ? '' : 'none'; }
-  { const cs = $('c-cash-side'); if (cs) cs.style.display = t === 'cash' ? '' : 'none'; }
-  { const ds = $('c-dca-side'); if (ds) ds.style.display = t === 'dca' ? '' : 'none'; }
+  ['c-hint', 'c-asesor'].forEach((id) => { const e = $(id); if (e) e.style.display = noGrid ? 'none' : ''; });
+  { const ch = $('c-chart'); if (ch) ch.style.display = ''; }   // el tablero se ve en los cuatro bots
+  ['c-acum-side', 'c-cash-side', 'c-dca-side'].forEach((id) => { const e = $(id); if (e) e.style.display = 'none'; });
   { const cp = $('c-cash-price'); if (cp) cp.style.display = ''; }   // el precio de ahora sirve en los cuatro bots
   pintarPrecioAhora();
   { const av = $('f-toggleavz'); if (av && av.parentElement) av.parentElement.style.display = t === 'dca' ? 'none' : ''; }
@@ -1867,6 +1910,7 @@ function pintarTipo() {
   if (t === 'cash') refrescarSaldoCash();
   if (t === 'dca') refrescarSaldoDCA();
   if (t === 'acum') previewAcum(); else if (t === 'cash') previewCash(); else if (t === 'dca') previewDCA(); else actualizarVista();
+  pintarTablero();
 }
 function sugerirAcum() {
   if (!F.precio) { aviso($('c-msg'), 'err', 'Wait for the price to load and try again.'); return; }
@@ -1879,7 +1923,7 @@ function previewAcum() {
   const n = parseInt($('fa-niv')?.value, 10) || 0;
   const factor = (parseFloat($('fa-factor')?.value) || 0) / 100;
   const pMin = parseFloat($('fa-min')?.value) || 0;
-  if ($('fa-p-ini')) $('fa-p-ini').textContent = total > 0 ? num(total * ini, 2) + ' ' + moneda(F.quoteId).simbolo : '—';
+  if ($('fa-p-ini')) $('fa-p-ini').textContent = total > 0 ? num(total * ini, 2) + ' ' + moneda(F.quoteId).simbolo : '...';
   const prom = $('fa-p-prom'); if (!prom) return;
   if (total > 0 && n >= 1 && F.precio && pMin > 0 && pMin < F.precio) {
     const pTop = F.precio * 0.999;
@@ -1894,8 +1938,9 @@ function previewAcum() {
       sumQuote += mc; sumBase += mc / Pi;
     }
     const promedio = sumBase > 0 ? sumQuote / sumBase : 0;
-    prom.textContent = promedio > 0 ? precioFmt(promedio) : '—';
-  } else prom.textContent = '—';
+    prom.textContent = promedio > 0 ? precioFmt(promedio) : '...';
+  } else prom.textContent = '...';
+  if (F.tipo === 'acum') pintarTablero();
 }
 async function onCrearAcum() {
   /* El aviso de riesgo va LO PRIMERO, antes de pedir ninguna firma.
@@ -1940,9 +1985,9 @@ async function onCrearAcum() {
     const quoteNeed = mBI(topeQuote, quote.decimals), baseNeed = mBI(topeBase, base.decimals);
     const [aQ, aB] = await Promise.all([gb.allowance(p.quote, cuenta), gb.allowance(p.base, cuenta)]);
     const pasos = (aQ < quoteNeed ? 1 : 0) + (aB < baseNeed ? 1 : 0) + 1; let i = 0;
-    if (aQ < quoteNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos} — ${quote.simbolo} permission.</b><br>So the bot can buy when the price drops.<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.quote, quoteNeed); }
-    if (aB < baseNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos} — ${base.simbolo} permission.</b><br>So it can sell everything accumulated.<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.base, baseNeed); }
-    i++; modalBusy(`<b>Step ${i} of ${pasos} — Turn on.</b><br>Your accumulator is created and makes the initial buy.<br><br>Confirm in your wallet.`);
+    if (aQ < quoteNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos}: ${quote.simbolo} permission.</b><br>So the bot can buy when the price drops.<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.quote, quoteNeed); }
+    if (aB < baseNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos}: ${base.simbolo} permission.</b><br>So it can sell everything accumulated.<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.base, baseNeed); }
+    i++; modalBusy(`<b>Step ${i} of ${pasos}: Turn on.</b><br>Your accumulator is created and makes the initial buy.<br><br>Confirm in your wallet.`);
     // Cupo: máximo {CUPO_TOTAL} bots y {CUPO_POR_TIPO} de cada tipo.
     const _cupo = await cupoLibre(cuenta, 'acum');
     if (!_cupo.ok) { modalError(_cupo.motivo); return; }
@@ -1980,42 +2025,54 @@ function pintarPrecioAhora() {
   if (!cpv && !cpp) return;
   const simB = moneda(F.baseId).simbolo, simQ = moneda(F.quoteId).simbolo;
   if (cpp) cpp.textContent = simB + ' / ' + simQ;
-  if (cpv) cpv.textContent = F.precio > 0 ? precioFmt(F.precio) + ' ' + simQ : '—';
+  if (cpv) cpv.textContent = F.precio > 0 ? precioFmt(F.precio) + ' ' + simQ : '...';
 }
 
 function previewCash() {
   const cant = parseFloat($('fc-cant')?.value) || 0;
-  const modoObj = F.cashModo || 'pct';
-  let targetPrice = 0;
-  if (modoObj === 'precio') targetPrice = parseFloat($('fc-precio')?.value) || 0;
-  else { const pct = parseFloat($('fc-pct')?.value) || 0; if (F.precio && pct > 0) targetPrice = F.precio * (1 + pct / 100); }
   const simB = moneda(F.baseId).simbolo, simQ = moneda(F.quoteId).simbolo;
   const est = $('fc-p-est'); if (est) est.textContent = simQ;
   const cnb = $('cn-b'), cnq = $('cn-q'); if (cnb) cnb.textContent = simB; if (cnq) cnq.textContent = simQ;
   const cpv = $('cash-price-val'), cpp = $('cash-price-pair');
   if (cpp) cpp.textContent = simB + ' / ' + simQ;
-  if (cpv) cpv.textContent = F.precio ? precioFmt(F.precio) + ' ' + simQ : '—';
-  const usd = $('fc-cant-usd'); if (usd) usd.textContent = (cant > 0 && F.precio) ? '≈ ' + num(cant * F.precio, 2) + ' ' + simQ : '';
+  if (cpv) cpv.textContent = F.precio ? precioFmt(F.precio) + ' ' + simQ : '...';
+  const usd = $('fc-cant-usd'); if (usd) usd.textContent = (cant > 0 && F.precio) ? '\u2248 ' + num(cant * F.precio, 2) + ' ' + simQ : '';
   const mx = maxCash(); pintarSlider(mx > 0 ? (cant / mx * 100) : 0);
   const setT = (id, v) => { const e = $(id); if (e) e.textContent = v; };
-  if (cant > 0 && targetPrice > 0 && F.precio) {
-    const valor = cant * F.precio, proceeds = cant * targetPrice, g = proceeds - valor;
-    setT('fc-p-cant', num(cant, 6) + ' ' + simB);
-    setT('fc-p-valor', num(valor, 2) + ' ' + simQ);
-    setT('fc-p-recibe', num(proceeds, 2) + ' ' + simQ);
-    // Lo que se lleva la red y el exchange al vender, para que no sorprenda.
-    const comision = proceeds * 0.0005 + GAS_VUELTA_USD / 2;
-    setT('fc-p-com', '≈ ' + num(comision, 3) + ' ' + simQ);
-    const neto = g - comision;
-    const gan = $('fc-p-gan');
-    if (gan) { gan.textContent = (neto >= 0 ? '+' : '') + num(neto, 2) + ' ' + simQ; gan.className = neto >= 0 ? 'pos' : 'neg'; }
+  const o = objetivoCash();
+  const niv = Math.max(1, Math.round(parseFloat($('fc-niv')?.value) || 5));
+  const paso = parseFloat($('fc-paso')?.value) || 2;
+  setT('fc-p-esc', niv + ' level' + (niv === 1 ? '' : 's') + ' every ' + num(paso, 2) + '% (down to -' + num(niv * paso, 2) + '%)');
+  if (F.tipo === 'cash') pintarTablero();
+  if (cant > 0 && F.precio) {
+    const valor = cant * F.precio, mitad = valor / 2;
+    setT('fc-p-cant', num(cant, 6) + ' ' + simB + ' (\u2248 ' + num(valor, 2) + ' ' + simQ + ')');
+    setT('fc-p-vende', num(cant / 2, 6) + ' ' + simB + ' \u2192 \u2248 ' + num(mitad, 2) + ' ' + simQ);
+    setT('fc-p-pos', num(cant / 2, 6) + ' ' + simB);
+    if (o.pct > 0) {
+      setT('fc-p-recibe', 'cost + ' + num(o.pct, 2) + '%' + (o.precio > 0 ? ' (\u2248 ' + precioFmt(o.precio) + ' ' + simQ + ' without dips)' : ''));
+      // Ganancia del ciclo si no hay caidas: la mitad en posicion gana el objetivo, menos comisiones del DEX y gas.
+      const bruto = mitad * o.pct / 100;
+      const comision = mitad * 2 * COM_DEX + GAS_VUELTA_USD;
+      const neto = bruto - comision;
+      const gan = $('fc-p-gan');
+      if (gan) { gan.textContent = (neto >= 0 ? '+' : '') + num(neto, 2) + ' ' + simQ; gan.className = neto >= 0 ? 'pos' : 'neg'; }
+    } else { setT('fc-p-recibe', '...'); setT('fc-p-gan', '...'); }
   } else {
-    setT('fc-p-com', '—');
-    setT('fc-p-cant', cant > 0 ? num(cant, 6) + ' ' + simB : '—');
-    setT('fc-p-valor', (cant > 0 && F.precio) ? num(cant * F.precio, 2) + ' ' + simQ : '—');
-    setT('fc-p-recibe', '—');
-    const gan = $('fc-p-gan'); if (gan) { gan.textContent = '—'; gan.className = 'pos'; }
+    setT('fc-p-cant', cant > 0 ? num(cant, 6) + ' ' + simB : '...');
+    setT('fc-p-vende', '...'); setT('fc-p-pos', '...'); setT('fc-p-recibe', '...'); setT('fc-p-gan', '...');
   }
+}
+/* Objetivo del Cash Out en % (y precio equivalente si se dio por precio). */
+function objetivoCash() {
+  const modoObj = F.cashModo || 'pct';
+  if (modoObj === 'precio') {
+    const precio = parseFloat($('fc-precio')?.value) || 0;
+    const pct = (F.precio > 0 && precio > F.precio) ? (precio / F.precio - 1) * 100 : 0;
+    return { pct, precio };
+  }
+  const pct = parseFloat($('fc-pct')?.value) || 0;
+  return { pct, precio: F.precio > 0 ? F.precio * (1 + pct / 100) : 0 };
 }
 async function onCrearCashOut() {
   /* El aviso de riesgo va LO PRIMERO, antes de pedir ninguna firma. */
@@ -2023,40 +2080,40 @@ async function onCrearCashOut() {
   const m = $('c-msg'); const base = moneda(F.baseId), quote = moneda(F.quoteId);
   const cuenta = wallet.cuentaActual();
   const cantidad = parseFloat($('fc-cant')?.value) || 0;
-  if (!(cantidad > 0)) { aviso(m, 'err', 'How much do you want to sell?'); return; }
+  if (!(cantidad > 0)) { aviso(m, 'err', 'How much do you want to commit?'); return; }
   if (!F.precio) { aviso(m, 'err', 'Wait for the price to load and try again.'); return; }
-  const modoObj = F.cashModo || 'pct';
-  let targetPrice;
-  if (modoObj === 'precio') {
-    targetPrice = parseFloat($('fc-precio')?.value) || 0;
-    if (!(targetPrice > F.precio)) { aviso(m, 'err', `The target price must be above the current price (${precioFmt(F.precio)}).`); return; }
-  } else {
-    const pct = parseFloat($('fc-pct')?.value) || 0;
-    if (!(pct > 0)) { aviso(m, 'err', 'Choose at what % you want to sell.'); return; }
-    targetPrice = F.precio * (1 + pct / 100);
-  }
+  const o = objetivoCash();
+  if ((F.cashModo || 'pct') === 'precio' && !(o.precio > F.precio)) { aviso(m, 'err', `The target price must be above the current price (${precioFmt(F.precio)}).`); return; }
+  if (!(o.pct > 0)) { aviso(m, 'err', 'Choose at what % gain you want to sell.'); return; }
+  const niv = Math.max(1, Math.round(parseFloat($('fc-niv')?.value) || 5));
+  const paso = parseFloat($('fc-paso')?.value) || 2;
+  if (!(paso > 0) || niv * paso >= 100) { aviso(m, 'err', 'Levels times spacing must stay below 100%.'); return; }
   const p = {
     base: gb.dirDe(base), quote: gb.dirDe(quote), decBase: base.decimals, decQuote: quote.decimals,
-    cantidadBase: cantidad, targetPrice,
+    cantidadBase: cantidad, objetivoPct: o.pct, pasoPct: paso, niveles: niv,
     slippageBps: Math.round((parseFloat($('f-slip')?.value) || 1) * 100), rutas: F.rutas
   };
-  const proceeds = cantidad * targetPrice, gan = cantidad * (targetPrice - F.precio);
+  const valor = cantidad * F.precio, mitad = valor / 2;
   const ok = await modalConfirm({
-    titulo: 'Encender Cash Out',
-    cuerpo: `When <b>${base.simbolo}</b> reaches <b>${precioFmt(targetPrice)} ${quote.simbolo}</b>, the bot will sell your <b>${num(cantidad, 6)} ${base.simbolo}</b> and you will receive <b>~${num(proceeds, 2)} ${quote.simbolo}</b> (profit ~${num(gan, 2)}).<br><br>Your crypto stays in your wallet; you only grant permission to sell it when the target is reached. Add <b>${quote.simbolo}</b> to your wallet to see it.`,
-    ok: 'Sí, encender'
+    titulo: 'Turn on Cash Out',
+    cuerpo: `<b>Right now:</b> the bot sells <b>${num(cantidad / 2, 6)} ${base.simbolo}</b> (about ${num(mitad, 2)} ${quote.simbolo}) into your wallet as reserve and keeps <b>${num(cantidad / 2, 6)} ${base.simbolo}</b> as position.<br><br>
+      <b>On dips:</b> it buys back with the reserve, ${niv} level${niv === 1 ? '' : 's'} every ${num(paso, 2)}%.<br><br>
+      <b>Exit:</b> when the whole position is worth your cost <b>+${num(o.pct, 2)}%</b>, it sells everything into ${quote.simbolo} and starts a new 50/50 cycle. The contract refuses any sale below that floor.<br><br>
+      Your crypto stays in your wallet; you only grant permission to move ${base.simbolo} and ${quote.simbolo} for these operations.`,
+    ok: 'Yes, turn on'
   });
   if (!ok) return;
   try {
-    modalBusy('Comprobando tu saldo…');
+    modalBusy('Checking your balance...');
     const balBI = await gb.saldoCashDisponible(p.base, cuenta);
     const balH = Number(gb.fmt(balBI, base.decimals));
-    if (cantidad > balH + 1e-9) { modalError(`You do not have enough ${base.simbolo}. Your wallet has ${num(balH, 6)} ${base.simbolo} and you want to sell ${num(cantidad, 6)}.`); return; }
+    if (cantidad > balH + 1e-9) { modalError(`You do not have enough ${base.simbolo}. Your wallet has ${num(balH, 6)} ${base.simbolo} and you want to commit ${num(cantidad, 6)}.`); return; }
     if (!(await asegurarSuscripcion(cuenta))) { modalClose(); return; }
-    modalBusy('Preparing your Cash Out with the live price…');
+    modalBusy('Preparing your Cash Out with the live price...');
     const botId = Date.now();
     const config = await gb.construirConfigCashOut(p); config.botId = botId;
     const baseNeed = mBI(cantidad * 3, base.decimals);
+    const quoteNeed = mBI(valor * 3, quote.decimals);
     // Paso: convertir BNB -> WBNB si hace falta (firma aparte)
     if (gb.esBNB(p.base)) {
       const wbnbBal = await gb.balanceToken(p.base, cuenta);
@@ -2068,32 +2125,39 @@ async function onCrearCashOut() {
            para el costo del bot ($2.50) ni para el gas y la ultima firma revertia. */
         await gb.preVueloBNB(cuenta, faltaWei, true);
         await pasoWallet('Prepare your BNB', `<b>${num(falta, 6)} BNB</b> is converted to WBNB so it can be sold (it is still yours).<br><br>Tap <b>Continue</b> and sign in your wallet.`);
-        modalBusy('Converting your BNB… sign in your wallet.');
+        modalBusy('Converting your BNB... sign in your wallet.');
         await gb.envolverBNB(faltaWei);
       }
     }
-    // Paso: permiso si hace falta (firma aparte)
+    // Paso: permisos si hacen falta (firmas aparte): base para vender, quote para recomprar
     const aB = await gb.allowance(p.base, cuenta);
     if (aB < baseNeed) {
       await pasoWallet('Grant permission', `You grant the bot permission to sell your <b>${base.simbolo}</b> when the target is reached (you can revoke it anytime).<br><br>Tap <b>Continue</b> and sign in your wallet.`);
-      modalBusy('Registering the permission… sign in your wallet.');
+      modalBusy('Registering the permission... sign in your wallet.');
       await gb.aprobarToken(p.base, baseNeed);
     }
+    const aQ = await gb.allowance(p.quote, cuenta);
+    if (aQ < quoteNeed) {
+      await pasoWallet('Grant permission', `You grant the bot permission to use your <b>${quote.simbolo}</b> reserve to buy back on dips (you can revoke it anytime).<br><br>Tap <b>Continue</b> and sign in your wallet.`);
+      modalBusy('Registering the permission... sign in your wallet.');
+      await gb.aprobarToken(p.quote, quoteNeed);
+    }
     // Paso final: encender (firma aparte)
-    await pasoWallet('Turn on the bot', 'Last signature: your Cash Out is created and starts watching the price.<br><br>Tap <b>Continue</b> and confirm in your wallet.');
-    modalBusy('Turning on your bot… sign in your wallet.');
+    await pasoWallet('Turn on the bot', 'Last signature: your Cash Out is created, half is sold now and the buy back ladder is set.<br><br>Tap <b>Continue</b> and confirm in your wallet.');
+    modalBusy('Turning on your bot... sign in your wallet.');
     // Cupo: máximo {CUPO_TOTAL} bots y {CUPO_POR_TIPO} de cada tipo.
     const _cupo = await cupoLibre(cuenta, 'cash');
     if (!_cupo.ok) { modalError(_cupo.motivo); return; }
     await gb.crearRejilla(config);
     avisarKeeper(wallet.cuentaActual());
-    recordarPar(cuenta, config.base, config.quote, { decQuote: quote.decimals, decBase: base.decimals, simBase: base.simbolo, simQuote: quote.simbolo, total: config._valorActual, cantBase: cantidad, entry: config._Pnow, creadoLocal: Date.now(), tipo: 'cash', targetPrice, botId });
-    modalDone('¡Cash Out encendido!', `When ${base.simbolo} reaches <b>${precioFmt(targetPrice)}</b>, it will sell and you will receive ${quote.simbolo} in your wallet. Keep <b>gas</b> loaded so it can operate. You will see it in "My bots".`);
+    recordarPar(cuenta, config.base, config.quote, { decQuote: quote.decimals, decBase: base.decimals, simBase: base.simbolo, simQuote: quote.simbolo, total: config._valorActual, cantBase: cantidad, entry: config._Pnow, creadoLocal: Date.now(), tipo: 'cash', targetPrice: o.precio, objetivoPct: o.pct, botId });
+    modalDone('Cash Out is on', `Half of your ${base.simbolo} is now ${quote.simbolo} reserve. The bot will buy back on dips and sell everything at cost <b>+${num(o.pct, 2)}%</b>. Keep <b>gas</b> loaded so it can operate.`);
     refrescarRejillas();
   } catch (e) {
     if (esRechazo(e)) { modalClose(); } else modalError(e?.shortMessage || e?.message || String(e));
   }
 }
+
 function frecNombre(s) {
   return s <= 86400 ? 'every day' : s <= 604800 ? 'every week' : s <= 1209600 ? 'every 15 days' : 'every month';
 }
@@ -2103,7 +2167,7 @@ async function refrescarSaldoDCA() {
   const quote = moneda(F.quoteId);
   try {
     const bal = await gb.balanceToken(gb.dirDe(quote), cuenta);
-    el.textContent = `Tienes ${num(Number(gb.fmt(bal, quote.decimals)), 2)} ${quote.simbolo}`;
+    el.textContent = `You have ${num(Number(gb.fmt(bal, quote.decimals)), 2)} ${quote.simbolo}`;
   } catch { el.textContent = ''; }
   previewDCA();
 }
@@ -2114,12 +2178,12 @@ function previewDCA() {
   const monto = parseFloat($('fd-monto')?.value) || 0;
   const intervalo = F.dcaFrec || 604800, comprasMax = F.dcaNum || 0;
   const eq = $('fd-monto-eq'); if (eq) eq.textContent = (monto > 0 && F.precio) ? '≈ ' + num(monto / F.precio, 6) + ' ' + simB : '';
-  const cada = $('fd-p-cada'); if (cada) cada.textContent = monto > 0 ? `${num(monto, 2)} ${simQ} ${frecNombre(intervalo)}` : '—';
-  const tot = $('fd-p-total'); if (tot) tot.textContent = monto > 0 ? (comprasMax > 0 ? `${num(monto * comprasMax, 2)} ${simQ} (${comprasMax} compras)` : 'Sin límite') : '—';
-  const pr = $('fd-p-precio'); if (pr) pr.textContent = F.precio ? precioFmt(F.precio) + ' ' + simQ : '—';
+  const cada = $('fd-p-cada'); if (cada) cada.textContent = monto > 0 ? `${num(monto, 2)} ${simQ} ${frecNombre(intervalo)}` : '...';
+  const tot = $('fd-p-total'); if (tot) tot.textContent = monto > 0 ? (comprasMax > 0 ? `${num(monto * comprasMax, 2)} ${simQ} (${comprasMax} compras)` : 'Sin límite') : '...';
+  const pr = $('fd-p-precio'); if (pr) pr.textContent = F.precio ? precioFmt(F.precio) + ' ' + simQ : '...';
   const cpv = $('cash-price-val'), cpp = $('cash-price-pair');
   if (cpp) cpp.textContent = simB + ' / ' + simQ;
-  if (cpv) cpv.textContent = F.precio ? precioFmt(F.precio) + ' ' + simQ : '—';
+  if (cpv) cpv.textContent = F.precio ? precioFmt(F.precio) + ' ' + simQ : '...';
 }
 async function onCrearDCA() {
   /* El aviso de riesgo va LO PRIMERO, antes de pedir ninguna firma.
@@ -2155,8 +2219,8 @@ async function onCrearDCA() {
     const quoteNeed = mBI(monto * nAprob, quote.decimals);
     const aQ = await gb.allowance(p.quote, cuenta);
     const pasos = (aQ < quoteNeed ? 1 : 0) + 1; let i = 0;
-    if (aQ < quoteNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos} — ${quote.simbolo} permission.</b><br>You grant the bot permission to buy with your ${quote.simbolo} each cycle (you can revoke it whenever you want).<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.quote, quoteNeed); }
-    i++; modalBusy(`<b>Step ${i} of ${pasos} — Turn on.</b><br>Your DCA is created and makes the first buy now.<br><br>Confirm in your wallet.`);
+    if (aQ < quoteNeed) { i++; modalBusy(`<b>Step ${i} of ${pasos}: ${quote.simbolo} permission.</b><br>You grant the bot permission to buy with your ${quote.simbolo} each cycle (you can revoke it whenever you want).<br><br>Confirm in your wallet.`); await gb.aprobarToken(p.quote, quoteNeed); }
+    i++; modalBusy(`<b>Step ${i} of ${pasos}: Turn on.</b><br>Your DCA is created and makes the first buy now.<br><br>Confirm in your wallet.`);
     // Cupo: máximo {CUPO_TOTAL} bots y {CUPO_POR_TIPO} de cada tipo.
     const _cupo = await cupoLibre(cuenta, 'dca');
     if (!_cupo.ok) { modalError(_cupo.motivo); return; }
@@ -2185,7 +2249,7 @@ function olvidarPar(cuenta, clave) {
   const c = JSON.parse(localStorage.getItem('bot-cerradas') || '{}'); c[clave] = 1; localStorage.setItem('bot-cerradas', JSON.stringify(c));
 }
 function simboloDe(addr) {
-  if (!addr) return '—';
+  if (!addr) return '...';
   if (addr.toLowerCase() === gb.WBNB.toLowerCase()) return 'BNB';
   const m = LISTA_TODAS.find((x) => (x.address || '').toLowerCase() === addr.toLowerCase());
   return m ? m.simbolo : addr.slice(0, 6);
@@ -2219,7 +2283,7 @@ async function arrancarTrail(clave, par, pmin, pmax, decB, decQ, cuenta) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   VENTANA "MIS ÓRDENES" — órdenes limit puestas desde el gráfico.
+   VENTANA "MIS ÓRDENES": órdenes limit puestas desde el gráfico.
    Botón fijo en "Mis bots". Muestra la lista o un estado vacío bonito.
    ═══════════════════════════════════════════════════════════════════ */
 async function abrirMisOrdenes(cuenta) {
@@ -2539,7 +2603,7 @@ async function refrescarPnls() {
       };
       upd(qbox('realizado'), realizado, P(realizado));
       upd(qbox('flotante'), noRealizado, P(noRealizado));
-      /* [CORREGIDO] Este refresco pintaba "— → 600.08": una flecha desde
+      /* [CORREGIDO] Este refresco pintaba "- → 600.08": una flecha desde
          un dato que no existe. Y además con un formato distinto al que
          usa la tarjeta al dibujarse, así que el cartel cambiaba solo a
          los pocos segundos. Ahora respeta el mismo formato, y si no hay
@@ -2571,7 +2635,7 @@ async function refrescarPnls() {
       if (vu) { const v = vu.querySelector('.v'); const v2 = vu.querySelector('.v2');
         if (v) v.textContent = String(R.ciclos); if (v2) v2.textContent = R.totalOps + ' operaciones'; }
       const pm = qbox('medio');
-      if (pm) { const v = pm.querySelector('.v'); if (v) v.textContent = posBase > 0 ? precioFmt(costeQ / posBase) : '—'; }
+      if (pm) { const v = pm.querySelector('.v'); if (v) v.textContent = posBase > 0 ? precioFmt(costeQ / posBase) : '...'; }
     } catch (_) {}
   }
 }
@@ -2651,7 +2715,7 @@ async function tarjeta(cuenta, clave, par, R) {
     if (ps.length) { pmin = Math.min(...ps.map((x) => x.p)); pmax = Math.max(...ps.map((x) => x.p)); }
     /* [RANGO IGUAL CORREGIDO] Estos límites salen de las cuadrículas que
        QUEDAN VIVAS. Si solo queda una, el mínimo y el máximo son el mismo
-       número, y la tarjeta mostraba "600 – 600", que no dice nada.
+       número, y la tarjeta mostraba "600: 600", que no dice nada.
        El rango de verdad es el que se fijó al crear el bot: si lo tenemos
        guardado, ese manda. */
     if (par.pMin > 0 && par.pMax > par.pMin) { pmin = Number(par.pMin); pmax = Number(par.pMax); }
@@ -2699,7 +2763,7 @@ async function tarjeta(cuenta, clave, par, R) {
   const pct = (x) => baseInv > 0 ? (x / baseInv * 100) : 0;
   const sg = (x) => (x < 0 ? '−' : '+'), cls = (x) => (x < 0 ? 'neg' : 'pos');
   /* ══════════════════════════════════════════════════════════════
-     EL PRECIO DE ENTRADA — [FALLO HISTÓRICO CORREGIDO]
+     EL PRECIO DE ENTRADA: [FALLO HISTÓRICO CORREGIDO]
 
      Salía un guion casi siempre porque se leía de `store`, que es la
      memoria de ESTE navegador. Si el bot se creó en el móvil y lo miras
@@ -2758,7 +2822,7 @@ async function tarjeta(cuenta, clave, par, R) {
     : (tipo === 'cash' ? 'Bot Cash Out' : tipo === 'acum' ? 'Bot Accumulator' : tipo === 'dca' ? 'Bot DCA' : 'Bot Smart Grid');
   const invLabel = tipo === 'cash' ? simB : simQ;
   const invValue = tipo === 'cash' ? num((par.cantBase != null ? Number(par.cantBase) : posBase), 6) : num(invertido, 2);
-  const _entValida = entrada != null && entrada > 0 && precioFmt(entrada) !== '—';
+  const _entValida = entrada != null && entrada > 0 && precioFmt(entrada) !== '...';
   // Se guarda en la tarjeta para que el refresco automático lo tenga.
   // Antes solo se guardaba el del navegador: por eso al refrescar
   // aparecía el guion aunque la tarjeta lo hubiera calculado bien.
@@ -2769,7 +2833,7 @@ async function tarjeta(cuenta, clave, par, R) {
   // Una sola casilla: el precio al que entraste y cuánto se ha movido desde
   // entonces. Tener otra con el precio de mercado repetía el mismo dato.
   /* ══════════════════════════════════════════════════════════════
-     PRECIO DE ENTRADA — POR QUÉ FALLABA TRES VECES
+     PRECIO DE ENTRADA: POR QUÉ FALLABA TRES VECES
 
      No era un fallo de lectura. Es que el dato NO EXISTE hasta que el
      bot compra algo: sin compras no hay precio medio de entrada. La
@@ -2798,19 +2862,19 @@ async function tarjeta(cuenta, clave, par, R) {
   const _boxGas = `<div class="pio-box" data-box="gas"><div class="k">Gas (BNB)</div><div class="v ${gasLow ? 'neg' : ''}">${gas}</div><div class="v2" style="color:var(--ink-3)">to trade</div></div>`;
   const _boxGrid = `<div class="pio-box" data-box="realizado"><div class="k">Grid profit ${iBtn('porcuad')}</div><div class="v ${cls(realizado)} numgo" data-to="${Math.abs(realizado)}" data-dec="4" data-pre="${sg(realizado)}">${sg(realizado)}${num(Math.abs(realizado), 4)}</div><div class="v2 ${cls(realizado)}">${sg(pct(realizado))}${num(Math.abs(pct(realizado)), 2)}%</div></div>`;
   /* Un rango con el mismo número arriba y abajo no es un rango: es un
-     dato que no tenemos. Mejor decirlo que enseñar "600 – 600". */
+     dato que no tenemos. Mejor decirlo que enseñar "600: 600". */
   const _rangoOk = pmin > 0 && pmax > pmin;
   const _boxRango = `<div class="pio-box"><div class="k">Rango (${simQ})</div>` +
     (_rangoOk
-      ? `<div class="v" style="font-size:13px">${precioFmt(pmin)} – ${precioFmt(pmax)}</div>`
-      : `<div class="v" style="font-size:13px;color:var(--ink-3)">—</div>`) +
+      ? `<div class="v" style="font-size:13px">${precioFmt(pmin)} to ${precioFmt(pmax)}</div>`
+      : `<div class="v" style="font-size:13px;color:var(--ink-3)">...</div>`) +
     `<div class="v2" style="color:var(--ink-3)">${R.niveles} cuadrícula${Number(R.niveles) === 1 ? '' : 's'}${_rangoOk ? '' : ' activa' + (Number(R.niveles) === 1 ? '' : 's')}</div></div>`;
   const _boxVueltas = `<div class="pio-box" data-box="vueltas"><div class="k">Vueltas / Ops ${iBtn('vueltas')}</div><div class="v numgo" data-to="${Number(R.ciclos)}" data-dec="0">${R.ciclos}</div><div class="v2" style="color:var(--ink-3)">${R.totalOps} operaciones</div></div>`;
-  const _boxMedio = `<div class="pio-box" data-box="medio"><div class="k">Precio medio ${iBtn('promedio')}</div><div class="v" style="font-size:14px">${posBase > 0 ? precioFmt(costeQ / posBase) : '—'}</div><div class="v2" style="color:var(--ink-3)">tu coste</div></div>`;
+  const _boxMedio = `<div class="pio-box" data-box="medio"><div class="k">Precio medio ${iBtn('promedio')}</div><div class="v" style="font-size:14px">${posBase > 0 ? precioFmt(costeQ / posBase) : '...'}</div><div class="v2" style="color:var(--ink-3)">tu coste</div></div>`;
   /* [CORREGIDO] Aquí leía `par.targetPrice`, o sea del navegador, en vez
      de la variable `objetivo` que ya se calcula del contrato unas líneas
      más arriba. Por eso salía un guion aunque el dato existiera. */
-  const _objOk = objetivo > 0 && precioFmt(objetivo) !== '—';
+  const _objOk = objetivo > 0 && precioFmt(objetivo) !== '...';
   /* Si la orden se puso desde la gráfica (clic derecho), se identifica como
      tal en vez de mostrarse como un Cash Out configurado a mano. */
   const _subObj = par.desdeGrafico ? 'orden desde gráfico' : 'precio de venta';
@@ -2823,7 +2887,7 @@ async function tarjeta(cuenta, clave, par, R) {
     `</div>`;
   const _interv = Number(par.intervalo || R.intervalo || 0);
   const _restante = (Number(R.ultimaOpEn) || 0) + _interv - Math.floor(Date.now() / 1000);
-  const _proxTxt = _interv <= 0 ? '—' : _restante <= 0 ? 'pronto' : _restante < 3600 ? 'en ' + Math.ceil(_restante / 60) + ' min' : _restante < 86400 ? 'en ' + Math.ceil(_restante / 3600) + ' h' : 'en ' + Math.ceil(_restante / 86400) + ' días';
+  const _proxTxt = _interv <= 0 ? '...' : _restante <= 0 ? 'pronto' : _restante < 3600 ? 'en ' + Math.ceil(_restante / 60) + ' min' : _restante < 86400 ? 'en ' + Math.ceil(_restante / 3600) + ' h' : 'en ' + Math.ceil(_restante / 86400) + ' días';
   const _cmax = Number(par.comprasMax || R.comprasMax || 0);
   const _boxProxima = `<div class="pio-box"><div class="k">Next buy</div><div class="v" style="font-size:15px">${_proxTxt}</div><div class="v2" style="color:var(--ink-3)">${frecNombre(_interv)}</div></div>`;
   const _boxCompras = `<div class="pio-box"><div class="k">Buys made</div><div class="v">${Number(R.comprasHechas)}${_cmax > 0 ? ' / ' + _cmax : ''}</div><div class="v2" style="color:var(--ink-3)">${_cmax > 0 ? 'of your plan' : 'sin límite'}</div></div>`;
@@ -2919,7 +2983,7 @@ async function tarjeta(cuenta, clave, par, R) {
       }
       return '';
     })()}
-    ${sinPos && !gasLow ? `<div class="gaswarn" style="background:rgba(232,184,75,.08);border-color:var(--gold-soft);color:var(--gold)"><svg class="gw-i" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".35"/><path d="M7 2.6a4.4 4.4 0 0 1 4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 7 7" to="360 7 7" dur="1.1s" repeatCount="indefinite"/></path></svg>Taking the initial position… The bot is buying its first part at market (the keeper executes it in 1–2 min). As soon as it buys, you will see the profit move with the market here.</div>` : ''}
+    ${sinPos && !gasLow ? `<div class="gaswarn" style="background:rgba(232,184,75,.08);border-color:var(--gold-soft);color:var(--gold)"><svg class="gw-i" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".35"/><path d="M7 2.6a4.4 4.4 0 0 1 4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 7 7" to="360 7 7" dur="1.1s" repeatCount="indefinite"/></path></svg>Taking the initial position… The bot is buying its first part at market (the keeper executes it in 1-2 min). As soon as it buys, you will see the profit move with the market here.</div>` : ''}
 
     ${_panel}
 
@@ -2953,9 +3017,9 @@ async function compartirBot(card) {
   const pair = (sb && sq) ? `${sb}/${sq}` : 'MY BOT';
   const nombre = txt('.pio-nombre') || meta.nom;
   const invLab = txt('.pio-band .l .k') || 'Inversión';
-  const inv = txt('.pio-band .l .v') || '—';
+  const inv = txt('.pio-band .l .v') || '...';
   const ganEl = card.querySelector('.pio-band .r');
-  const gan = ganEl?.querySelector('.v')?.textContent?.trim() || '—';
+  const gan = ganEl?.querySelector('.v')?.textContent?.trim() || '...';
   const pct = ganEl?.querySelector('.pct')?.textContent?.trim() || '';
   const neg = ganEl?.classList.contains('neg');
   const bid = card.dataset.bid || '';
@@ -2982,7 +3046,7 @@ async function compartirBot(card) {
   const noShadow = () => { g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0; };
 
   // Puntas doradas con efecto biselado (bicolor, tipo punta de flecha): cada esquina se
-  // parte en diagonal — una cara clara y una oscura — para que no se vea plana.
+  // parte en diagonal: una cara clara y una oscura: para que no se vea plana.
   g.fillStyle = '#c79426'; g.fillRect(0, 0, W, H);
   const RB = 60, claro = '#fbe8a8', oscuro = '#9a6d18', filo = '#6f4f12';
   const bisel = (cx, cy, dx, dy) => {

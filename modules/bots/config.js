@@ -1,4 +1,4 @@
-/* gridbot/config.js — Constantes estáticas de la app de bots.
+/* config.js: Constantes estáticas de la app de bots.
    Datos que no cambian: id del contenedor, listas de monedas base y quote. */
 
 export const APP = 'colmena-app';
@@ -7,47 +7,49 @@ export const BASES = ['BNB', 'BTCB', 'ETH', 'SOL', 'XRP', 'ADA', 'DOT', 'LTC', '
 
 /* ── Constantes de datos movidas desde gridbot-ui.js ── */
 export const INFO = {
-  par: 'Elige qué moneda quieres comprar y vender, y contra cuál (lo normal es una estable como USDT). El bot comprará barato y venderá caro entre esas dos, solo.',
-  rango: 'El precio más bajo y el más alto donde quieres que el bot trabaje. Para que funcione, el precio de ahora debe quedar DENTRO del rango. ¿No sabes qué poner? Dale a "Sugerir".',
-  cuadriculas: 'En cuántos escalones parte el rango. Más cuadrículas = muchas operaciones pequeñas y seguidas. Menos = operaciones más grandes y espaciadas.',
-  inversion: 'Cuánto dinero pones a trabajar. El bot lo reparte entre las cuadrículas para ir comprando por partes cuando el precio baja.',
-  proteccion: 'Cuánta diferencia de precio aceptas al operar. Si el precio salta más que esto justo al operar, el bot no opera para no comprarte caro. Si no sabes, deja 1%.',
-  ritmo: 'Tiempo mínimo entre una operación y otra. Déjalo en 0 y operará cada vez que pueda.',
-  reparto: 'Cuántas cuadrículas quedan por ENCIMA de tu precio de entrada (que se venden) y cuántas por DEBAJO (que compran). El bot compra a mercado el inventario de las de arriba al encender, y deja las de abajo esperando bajadas. El reparto del dinero es proporcional a cada lado, no mitad y mitad.',
-  separacion: 'La distancia, en porcentaje, entre una cuadrícula y la siguiente. Es igual en todas (por eso el bot compra y vende parejo). La calcula el sistema con tu rango y tu número de cuadrículas: más cuadrículas = menos distancia; más rango = más distancia.',
-  estrategia: 'Configuraciones listas según lo que buscas. "Tranquilo": rango amplio y pocas cuadrículas grandes — opera menos pero cada operación rinde y aguanta meses sin salirse; ideal con poco capital. "Equilibrado": punto medio. "Activo": rango más ceñido y más cuadrículas — opera más seguido, pero necesita más capital para que cada cuadrícula sea rentable. Puedes ajustar el rango a mano después.',
-  asesor: 'Estimación aproximada de cuántas operaciones haría el bot al día y cuánto rendiría al mes, según la volatilidad típica de la moneda. NO es una promesa: si el mercado se mueve más, gana más; si se queda quieto, gana menos. Sirve para comparar configuraciones entre sí.',
-  tp: 'Opcional. Si el precio sube hasta aquí, el bot vende todo y termina, dejándote la ganancia.',
-  sl: 'Opcional. Si el precio baja hasta aquí, el bot vende todo para no seguir perdiendo. Un freno de emergencia.',
-  gas: 'La red cobra unos centavos por cada operación (el "gas", no es nuestra comisión). Deja aquí ~2 USD en BNB y el bot se encarga solo. Es tuyo: lo retiras cuando quieras.',
-  ganancia: 'Lo que ya ganaste de verdad, con la comisión y el gas descontados. Es dinero que ya está en tu wallet.',
-  porcuad: 'Lo que ganas cada vez que el bot completa una vuelta (compra abajo y vende arriba), ya con la comisión descontada.',
-  margenmodo: 'Cuando fijas "Ganancia por cuadrícula", elige qué prioriza el sistema. "Ajustar cuadrículas": mantiene tu rango y calcula cuántas cuadrículas caben. "Ampliar rango": mantiene tu número de cuadrículas y te ofrece ampliar el rango (el bot será menos sensible, pero cada cuadrícula gana ese %). Así puedes operar con poco capital sin que la comisión se coma la ganancia.',
-  margen: 'Opcional. Si lo pones, cada cuadrícula se venderá SOLO cuando gane al menos ese % por encima de la comisión — nunca a pérdida. Y el sistema recalcula solo cuántas cuadrículas caben en tu rango para que la separación sea ese %. Déjalo en "auto" para el reparto normal.',
-  tipobot: 'Cuatro formas de trabajar. SMART GRID: compra y vende en cada nivel, muchas operaciones pequeñas. ACCUMULATOR: compra en la caída y vende TODO junto al ganar el % que elijas. CASH OUT: vende la cripto que YA tienes cuando suba al precio o % que elijas. DCA: compra un monto fijo cada cierto tiempo, sin mirar el precio.',
-  dcamonto: 'Cuánto de tu estable (USDT/USDC) se gasta en CADA compra. Por ejemplo, 10 USDT: el bot comprará 10 USDT de tu moneda en cada ciclo. Ten esa estable cargada y aprobada en tu wallet.',
-  dcafrec: 'Cada cuánto compra el bot. Semanal o mensual rinden mejor que diario con montos chicos, porque el gas pesa menos por compra. La primera compra se hace al encender.',
-  dcanum: 'Cuántas compras hará en total. Elige un número (ej. 52 = un año comprando cada semana) o "Infinito" para que siga hasta que lo suspendas o se acabe tu estable.',
-  cashcant: 'Cuánta cripto de la que YA tienes en tu wallet quieres vender. No la compra el bot: es tuya. Solo le das permiso para venderla cuando llegue tu objetivo. Toca "Máx" para vender todo tu saldo.',
-  cashobj: 'Cuándo vender. Por % : vende cuando el precio suba ese porcentaje desde ahora. Por precio: vende cuando llegue exactamente a ese precio. En ambos casos, recibes tu estable (USDT/USDC) en tu wallet.',
-  acmin: 'El precio más bajo hasta donde el bot seguirá comprando. Cuanto más abajo, más aguanta una caída sin quedarse sin comprar. Pon un mínimo realista para tu moneda.',
-  acniv: 'En cuántas compras separadas se reparte tu dinero desde el precio de ahora hasta el mínimo. Más compras = más suave el promediado.',
-  acini: 'Qué parte de tu dinero se compra YA, a precio de mercado, al encender. El resto se reserva para comprar más barato si baja. Ej: 30% ahora, 70% esperando caídas.',
-  acfactor: 'Cuánto MÁS compra en cada nivel según baja. Ej: 20% significa que cada escalón hacia abajo compra 20% más volumen que el anterior. Así, si cae fuerte, promedias mucho mejor.',
-  acobj: 'La ganancia a la que vende TODO de golpe. El bot no vende hasta que tu posición completa esté en ese +% de beneficio. Si está en negativo, espera. Al vender, vuelve a empezar.',
-  promedio: 'El precio promedio al que compraste (tu coste ÷ lo que tienes). Si el mercado sube por encima de este precio, tu posición está en ganancia.',
-  vueltas: 'Una VUELTA ENTERA es una operación completa: el bot compró en una cuadrícula y luego vendió en otra (o al revés). Ahí se concreta la ganancia de rejilla. "Operaciones" cuenta cada compra o cada venta por separado; una vuelta son dos operaciones. Si el precio cruzó una cuadrícula pero aún no ves la vuelta, es que el keeper todavía no ejecutó esa venta on-chain.'
+  par: 'Choose the coin you want to buy and sell, and what to trade it against (usually a stablecoin like USDT). The bot buys low and sells high between those two, on its own.',
+  rango: 'The lowest and highest price where you want the bot to work. The current price must be INSIDE the range. Not sure what to set? Tap "Suggest".',
+  cuadriculas: 'How many steps the range is split into. More grids = many small, frequent trades. Fewer = larger, more spaced trades.',
+  inversion: 'How much money you put to work. The bot spreads it across the grids so it can buy in parts as the price drops.',
+  proteccion: 'How much price slippage you accept per trade. If the price jumps more than this right when trading, the bot skips the trade so you are not filled at a bad price. If unsure, leave 1%.',
+  ritmo: 'Minimum time between one trade and the next. Leave it at 0 and it trades whenever it can.',
+  reparto: 'How many grids sit ABOVE your entry price (they sell) and how many BELOW (they buy). At start the bot buys at market the inventory for the upper grids and leaves the lower ones waiting for dips. Money is split evenly.',
+  separacion: 'The distance, in percent, between one grid and the next. It is the same for all grids. The system calculates it from your range and your number of grids: more grids = less distance; wider range = more distance.',
+  estrategia: 'Ready made setups depending on what you want. "Calm": wide range and few large grids, trades less but each trade pays well and it stays in range for months; ideal with small capital. "Balanced": middle ground. "Active": tighter range, trades more often but can leave the range if the market runs.',
+  asesor: 'Rough estimate of how many trades the bot would make per day and how much it would earn per month, based on the coin\'s typical volatility. NOT a promise: if the market moves more it earns more; if it stays flat it earns less. Use it to compare setups.',
+  tp: 'Optional. If the price rises to here, the bot sells everything and stops, leaving you the profit.',
+  sl: 'Optional. If the price falls to here, the bot sells everything to stop further losses. An emergency brake.',
+  gas: 'The network charges a few cents per trade (the "gas", not our fee). Leave about 2 USD in BNB here and the bot handles it. It is yours: withdraw it anytime.',
+  ganancia: 'What you have really earned, with fees and gas already deducted. Money that is already in your wallet.',
+  porcuad: 'What you earn each time the bot completes a round trip (buy low, sell high), fees already deducted.',
+  margenmodo: 'When you set "Profit per grid", choose what the system prioritizes. "Adjust grids": keeps your range and calculates how many grids fit. "Widen range": keeps your number of grids and offers to widen the range.',
+  margen: 'Optional. If set, each grid sells ONLY when it earns at least this % above fees, never at a loss. The system recalculates how many grids fit in your range so the spacing equals this %. Leave it on "auto" if unsure.',
+  tipobot: 'Four ways to work. SMART GRID: buys and sells at every level, many small trades. ACCUMULATOR: buys the dip and sells EVERYTHING together when it gains the % you choose. CASH OUT: sells half of what you already hold now, buys back on dips and sells everything above your cost plus target. DCA: buys a fixed amount on a schedule.',
+  dcamonto: 'How much of your stablecoin (USDT/USDC) is spent on EACH purchase. For example, 10 USDT: the bot buys 10 USDT of your coin every cycle. Keep that stablecoin funded and approved in your wallet.',
+  dcafrec: 'How often the bot buys. Weekly or monthly perform better than daily with small amounts, because gas weighs less per purchase. The first purchase happens when you turn it on.',
+  dcanum: 'How many purchases in total. Pick a number (e.g. 52 = one year buying weekly) or "Unlimited" to keep going until you stop it or your stablecoin runs out.',
+  cashcant: 'How much of the coin you ALREADY hold you want to commit. Half is sold right away (your reserve in stablecoin), half stays as position. Tap "Max" to commit your whole balance.',
+  cashobj: 'When to sell everything. By %: when the whole position is worth your cost plus that percentage. By price: the equivalent target from the current price. The contract refuses any sale below that floor. You receive your stablecoin (USDT/USDC) in your wallet.',
+  cashniv: 'How many buy back steps the bot prepares below the current price, funded with your reserve. More levels = smoother averaging on the way down.',
+  cashpaso: 'Distance in percent between one buy back level and the next. Levels times spacing is how far down the ladder reaches (5 levels every 2% = down to -10%).',
+  acmin: 'The lowest price down to which the bot keeps buying. The lower it is, the deeper a dip it can absorb without running out of buys. Set a realistic floor for your coin.',
+  acniv: 'How many separate purchases your money is split into, from the current price down to the floor. More purchases = smoother averaging.',
+  acini: 'What part of your money is bought RIGHT NOW at market price when you turn it on. The rest is reserved to buy cheaper if it drops. E.g. 30% now, 70% waiting for dips.',
+  acfactor: 'How much MORE it buys at each level as the price drops. E.g. 20% means each step down buys 20% more volume than the previous one. If it falls hard, you average much better.',
+  acobj: 'The gain at which it sells EVERYTHING at once. The bot does not sell until your whole position is at that +% profit. If it is negative, it waits. After selling, it starts again.',
+  promedio: 'The average price you bought at (your cost divided by what you hold). If the market rises above this price, your position is in profit.',
+  vueltas: 'A FULL ROUND is one complete trade: the bot bought at one grid and then sold at another (or the reverse). That is where grid profit is made. "Trades" counts each buy or each sell separately; one round is two trades.'
 };
 export const FEE_CICLO = 0.0015; // V3: 0.05%×2 PancakeSwap + nuestra comisión en 0
 export const GAS_OP_USD = 0.012; // ~coste de gas por operación en BSC hoy (~0.05 gwei)
 export const VOL_DIARIA = { BNB: 0.04, BTCB: 0.025, ETH: 0.035, SOL: 0.06, DOGE: 0.08, XRP: 0.06, CAKE: 0.07, LINK: 0.06, ADA: 0.06, BABYDOGE: 0.10 }; // volatilidad diaria típica (estimada)
 export const PRESETS = {
-  tranquilo:   { rango: 0.40, grids: 24, sep: 3.59, ops: 'pocas', desc: 'Rango muy amplio. Opera menos veces, pero cada vuelta deja bastante y aguanta meses sin salirse del rango.' },
-  equilibrado: { rango: 0.28, grids: 20, sep: 2.92, ops: 'medias', desc: 'El término medio. Buen número de operaciones y cada una con ganancia holgada. Si no sabes cuál elegir, esta.' },
-  activo:      { rango: 0.16, grids: 14, sep: 2.33, ops: 'muchas', desc: 'Rango ceñido al precio de hoy. Opera más seguido, pero si el mercado se va lejos puede salirse del rango.' },
-  volatil:     { rango: 0.60, grids: 30, sep: 4.73, ops: 'pocas', desc: 'Para monedas que se mueven mucho. Rango enorme para que no se le escape el precio.' }
+  tranquilo:   { rango: 0.40, grids: 24, sep: 3.59, ops: 'few', desc: 'Very wide range. Trades less often, but each round pays well and it stays in range for months.' },
+  equilibrado: { rango: 0.28, grids: 20, sep: 2.92, ops: 'medium', desc: 'The middle ground. A good number of trades, each with a comfortable profit. If unsure, pick this one.' },
+  activo:      { rango: 0.16, grids: 14, sep: 2.33, ops: 'many', desc: 'Range tight around today\'s price. Trades more often, but if the market runs far it can leave the range.' },
+  volatil:     { rango: 0.60, grids: 30, sep: 4.73, ops: 'few', desc: 'For coins that move a lot. A huge range so the price does not escape it.' }
 };
-export const NOMBRE_PRESET = { tranquilo: 'Tranquilo', equilibrado: 'Equilibrado', activo: 'Activo', volatil: 'Volátil' };
+export const NOMBRE_PRESET = { tranquilo: 'Calm', equilibrado: 'Balanced', activo: 'Active', volatil: 'Volatile' };
 export const GAS_VUELTA_USD = 0.025;
 export const COM_DEX = 0.001;          // 0,05% por swap, ida y vuelta
 export const LOGOS_WALLET = {
@@ -109,15 +111,14 @@ export const CONF_BOTS = {
     ]
   }
 };
-export const CLAVE_AVISO = 'aurex-riesgo-visto';
 export const CUPO_TOTAL = 8;
 export const CUPO_POR_TIPO = 2;
 export const NOMBRE_TIPO = { grid: 'Smart Grid', acum: 'Accumulator', cash: 'Cash Out', dca: 'DCA' };
 export const CAT_NOMBRES = { l1: 'Layer 1', defi: 'DeFi', meme: 'Memes' };
 export const BOTMETA = {
-  grid: { nom: 'Smart Grid',  img: './img/bot-grid.webp',       des: 'Compra y vende en niveles; solo cierra cada cuadrícula en ganancia.' },
-  acum: { nom: 'Accumulator', img: './img/bot-acumulador.webp', des: 'Compra en la caída y vende todo junto al llegar a tu ganancia.' },
-  cash: { nom: 'Cash Out',    img: './img/bot-cashout.webp',    des: 'Vende la cripto que ya tienes, al precio o % que elijas.' },
-  dca:  { nom: 'DCA',         img: './img/bot-dca.webp',        des: 'Compra un poco cada cierto tiempo, sin estar pendiente del precio.' }
+  grid: { nom: 'Smart Grid',  img: './img/bot-grid.webp',       des: 'Buys and sells in levels; only closes each grid in profit.' },
+  acum: { nom: 'Accumulator', img: './img/bot-acumulador.webp', des: 'Buys the dip and sells everything together at your target gain.' },
+  cash: { nom: 'Cash Out',    img: './img/bot-cashout.webp',    des: 'Sells half of what you hold now, buys back on dips and sells all above cost plus your target.' },
+  dca:  { nom: 'DCA',         img: './img/bot-dca.webp',        des: 'Buys a little on a schedule, without watching the price.' }
 };
 export const RESERVA_BNB = 0.0015;  // se deja un poco de BNB nativo para el gas de las firmas (~$1)

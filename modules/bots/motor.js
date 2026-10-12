@@ -40,6 +40,9 @@ const ABI = [
   // --- cobro de bots (V11) ---
   'function pagarMes() payable',
   'function costoBotBNB() view returns (uint256)',
+  'function owner() view returns (address)', 'function owner2() view returns (address)',
+  // errores personalizados del contrato y sus librerias: con ellos ethers pone el nombre en e.reason
+  'error LimiteBots()', 'error NoAutorizado()', 'error NoPagado()', 'error Vacio()', 'error Cfg()', 'error Polvora()',
   'function costoBotUSD() view returns (uint256)',
   'function alDia(address) view returns (bool)',
   'function botsAbiertos(address) view returns (uint32)',
@@ -674,8 +677,10 @@ export async function estaActivo(cuenta) {
 export async function estadoSuscripcion(cuenta) {
   if (!cuenta) return null;
   try {
-    const [hasta, alDia, bloque] = await Promise.all([leeGB('pagadoHasta', [cuenta]), leeGB('alDia', [cuenta]).catch(() => null), lector().getBlock('latest').catch(() => null)]);
-    return { pagadoHasta: Number(hasta), alDia: alDia == null ? null : !!alDia, ahora: Number(bloque && bloque.timestamp) || Math.floor(Date.now() / 1000) };
+    const [hasta, alDia, bloque, o1, o2] = await Promise.all([leeGB('pagadoHasta', [cuenta]), leeGB('alDia', [cuenta]).catch(() => null), lector().getBlock('latest').catch(() => null), leeGB('owner', []).catch(() => ''), leeGB('owner2', []).catch(() => '')]);
+    const c = String(cuenta).toLowerCase();
+    const esOwner = [o1, o2].some((a) => a && String(a).toLowerCase() === c);
+    return { pagadoHasta: Number(hasta), alDia: alDia == null ? null : !!alDia, esOwner, ahora: Number(bloque && bloque.timestamp) || Math.floor(Date.now() / 1000) };
   } catch (_) { return null; }
 }
 export async function precioSub() {
@@ -773,39 +778,49 @@ export async function construirConfigDCA(p) {
 }
 
 export async function construirConfigCashOut(p) {
+  /* V15 (CashOutLib): el contrato vende la MITAD al abrir, guarda la otra mitad como posicion,
+     recompra en caidas con la reserva (n niveles separados paso%) y vende todo al llegar a
+     coste + objetivo. Mapeo de campos (GridBotV15.crearRejilla -> CashOutLib.Abrir):
+       compraInicialQuote -> montoBase (cantidad de la moneda que se compromete)
+       objetivoBps        -> obj (objetivo de ganancia)
+       factorBps          -> paso (separacion entre niveles)
+       niveles.length     -> n (numero de niveles)
+     Antes se mandaba un solo nivel con obj=0 y paso=0: el contrato revertia con Cfg(). */
   const rutas = p.rutas || await resolverRutas(p.base, p.quote, p.decBase, p.decQuote);
   const { precio: Pnow } = await precioPar(p.base, p.quote, p.decBase, p.decQuote, rutas);
-  if (!(Pnow > 0)) throw new Error('No se pudo leer el precio del par');
+  if (!(Pnow > 0)) throw new Error('Could not read the pair price');
 
-  const cantidad = Number(p.cantidadBase);          // cantidad de la cripto a vender (humano)
-  if (!(cantidad > 0)) throw new Error('Indica cuánto quieres vender');
-  const targetPrice = Number(p.targetPrice);        // precio objetivo (humano)
-  if (!(targetPrice > Pnow)) throw new Error('El objetivo debe estar por encima del precio actual');
+  const cantidad = Number(p.cantidadBase);
+  if (!(cantidad > 0)) throw new Error('Enter how much you want to commit');
+  const objPct = Number(p.objetivoPct);
+  if (!(objPct > 0)) throw new Error('Choose a target gain above 0%');
+  const n = Math.max(1, Math.round(Number(p.niveles) || 5));
+  const pasoPct = Number(p.pasoPct) || 2;
+  const objetivoBps = Math.round(objPct * 100), pasoBps = Math.round(pasoPct * 100);
+  if (!(pasoBps > 0) || pasoBps * n >= 10000) throw new Error('Levels times spacing must stay below 100%');
+  if (objetivoBps > 65535) throw new Error('Target too high');
 
-  const valorActual = cantidad * Pnow;              // valor de referencia (quote) para calcular la ganancia
-  const proceeds = cantidad * targetPrice;          // lo que recibirá al vender (quote)
-
+  const valorActual = cantidad * Pnow;
   const feeTier = await mejorFeeTier(p.base, p.quote, aBI(cantidad, p.decBase));
-  if (!feeTier) throw new Error('Esta moneda no tiene pool en PancakeSwap V3. Prueba con otra.');
+  if (!feeTier) throw new Error('This coin has no PancakeSwap V3 pool. Try another one.');
 
-  // Un solo nivel de VENTA al precio objetivo.
-  const niveles = [{ minOutCompra: 0n, minOutVenta: aBI(proceeds, p.decQuote), estado: 2 }];
-
-  let ordenBase = aBI(cantidad, p.decBase); if (ordenBase <= 0n) ordenBase = 1n;
+  const montoBase = aBI(cantidad, p.decBase);
+  if (montoBase <= 1n) throw new Error('Amount too small');
+  const niveles = Array.from({ length: n }, () => ({ minOutCompra: 0n, minOutVenta: 0n, estado: 0 }));   // el contrato arma la escalera
   let ordenQuote = aBI(valorActual, p.decQuote); if (ordenQuote <= 0n) ordenQuote = 1n;
 
   return {
     base: p.base, quote: p.quote,
-    ordenQuote, ordenBase,
+    ordenQuote, ordenBase: montoBase,
     niveles,
     slippageBps: p.slippageBps || 0, cooldownSeg: 0,
     tpUnitOut: 0n, slUnitOut: 0n,
     feeTier,
     modo: 2,
-    objetivoBps: 0, factorBps: 0,
-    compraInicialQuote: aBI(valorActual, p.decQuote),   // valor declarado (para la ganancia)
+    objetivoBps, factorBps: pasoBps,
+    compraInicialQuote: montoBase,
     margenBps: 0,
-    _Pnow: Pnow, _valorActual: valorActual, _proceeds: proceeds, _ganancia: proceeds - valorActual, _targetPrice: targetPrice
+    _Pnow: Pnow, _valorActual: valorActual, _objetivoPct: objPct, _niveles: n, _pasoPct: pasoPct
   };
 }
 
