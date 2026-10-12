@@ -1,4 +1,4 @@
-/* movil/movil.js — Cáscara MÓVIL tipo exchange.
+/* movil/movil.js, Cáscara MÓVIL tipo exchange.
    · La barra inferior (Inicio/Mercados/Operar/Activos) es PERPETUA: vive fuera
      de la cáscara, con z-index por encima de todo, visible en toda sección.
    · No hay botón "volver" flotante: se navega con la barra inferior.
@@ -94,7 +94,7 @@ async function abrir(clave, arg) {
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=127'); m.abrirLiquidity && m.abrirLiquidity(); break; }
       case 'shield':    { location.href = 'modules/shield/shield.html'; break; }   // modulo sellado con pagina propia
-      case 'bots':      modoBots(true); break;
+      case 'bots':      { location.href = 'modules/bots/bots.html'; break; }   // modulo sellado con pagina propia (vista movil incluida)
       case 'buscar':    abrirBuscar(api()); break;
       case 'soporte':   abrirSoporte(); break;
       case 'menu':      abrirMenu(api()); break;
@@ -161,7 +161,7 @@ function abrirTfMenu(chip, tfs) {
 
 
 /* Marketplace en móvil: el overlay se centra y su parte baja quedaba TAPADA por
-   la barra inferior — no se podía llegar a los campos ni al botón "Guardar
+   la barra inferior, no se podía llegar a los campos ni al botón "Guardar
    perfil" (salía cortado). Lo anclamos ARRIBA, con scroll propio y hueco para la
    barra, para poder rellenar todo. Y quitamos las dos rayitas del título: una se
    metía dentro del icono de menú de arriba a la derecha. (Solo móvil.) */
@@ -783,7 +783,7 @@ function revisarRed() {
   el.innerHTML = `
     <div class="mv-red-h">
       <span class="mv-red-ico">⚠️</span>
-      <div class="mv-red-tx"><b>Red incorrecta</b><span>Estás en otra red. Cámbiate a <b>BNB Smart Chain</b> para conectarte con CriptoCuba.</span></div>
+      <div class="mv-red-tx"><b>Red incorrecta</b><span>Estás en otra red. Cámbiate a <b>BNB Smart Chain</b> para conectarte con DecFreedom.</span></div>
       <button class="mv-red-x" aria-label="Cerrar">✕</button>
     </div>
     <button class="mv-red-btn" id="mv-red-btn">Cambiar a BNB Smart Chain</button>
