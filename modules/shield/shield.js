@@ -39,6 +39,14 @@ function inyectarCSS() {
   #shd .shd-back:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #shd .shd-bar-t{font-size:15px;font-weight:800;letter-spacing:.2px}
   #shd .shd-bar-t span{color:var(--gold,#E8B84B)}
+  #shd .shd-sub{margin-left:auto;display:none;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;border:1px solid #29313b;background:rgba(14,19,25,.75);font-size:11.5px;line-height:1;white-space:nowrap}
+  #shd .shd-sub.on,#shd .shd-sub.off{display:inline-flex}
+  #shd .shd-sub b{font-weight:800;color:#eaecef}
+  #shd .shd-sub i{font-style:normal;font-family:var(--mono,monospace);font-size:10.5px;color:#79838f}
+  #shd .shd-sub.on{border-color:rgba(46,189,133,.35)} #shd .shd-sub.warn{border-color:rgba(232,184,75,.5)} #shd .shd-sub.warn b{color:var(--gold,#E8B84B)}
+  #shd .shd-sub.off{border-color:rgba(246,70,93,.35)} #shd .shd-sub.off b{color:#f6465d}
+  #shd .shd-sub-dot{width:7px;height:7px;border-radius:50%;background:#2ebd85;box-shadow:0 0 8px rgba(46,189,133,.6)} #shd .shd-sub-dot.off{background:#f6465d;box-shadow:none}
+  @media(max-width:560px){#shd .shd-sub i{display:none}}
   #shd .shd-in{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;z-index:1;width:100%;max-width:820px;margin:0 auto;padding:22px 16px calc(40px + env(safe-area-inset-bottom,0px));position:relative;z-index:2}
   /* Wallet conectada */
   #shd .shd-wallet{display:flex;align-items:center;gap:12px;background:rgba(14,19,25,.78);border:1px solid #1c232b;border-radius:14px;padding:14px 16px;margin-bottom:18px}
@@ -803,10 +811,44 @@ function cerrar() {
 }
 
 function cabecera() {
+  setTimeout(pintarSuscripcion, 0);   // la capsula de suscripcion se rellena leyendo el contrato
   return `<div class="shd-bar">
     <button class="shd-back" id="shd-back">← Back</button>
     <div class="shd-bar-t">Wallet <span>Shield</span></div>
+    <div class="shd-sub" id="shd-sub" title="Subscription status, read live from the contract"></div>
   </div>`;
+}
+
+/* Capsula de suscripcion (arriba a la derecha). Lee expiraEn(wallet) y esOwner(wallet) del
+   contrato en cada pintado y cada 60 s: nada de cache ni de localStorage. El tiempo restante se
+   calcula contra el timestamp del ultimo bloque, no contra el reloj del equipo. Si no hay wallet
+   o la lectura falla, no se muestra nada (nunca un dato inventado). */
+let _subTimer = null;
+async function pintarSuscripcion() {
+  const el = $('shd-sub'); if (!el) return;
+  if (_subTimer) { clearInterval(_subTimer); _subTimer = null; }
+  const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+  if (!cuenta) { el.innerHTML = ''; return; }
+  const miCuenta = cuenta;
+  const dibujar = async () => {
+    const st = await pago.estadoSuscripcion(miCuenta);
+    const e = $('shd-sub'); if (!e) { if (_subTimer) clearInterval(_subTimer); return; }
+    const ahoraCuenta = wallet.cuentaActual && wallet.cuentaActual();
+    if (ahoraCuenta !== miCuenta) { pintarSuscripcion(); return; }   // cambio de wallet: volver a leer para la nueva
+    if (!st) { e.innerHTML = ''; return; }
+    const corta = miCuenta.slice(0, 6) + '\u2026' + miCuenta.slice(-4);
+    if (st.esOwner) { e.innerHTML = `<span class="shd-sub-dot on"></span><b>Owner</b><i>${corta}</i>`; e.className = 'shd-sub on'; return; }
+    const resta = st.expira - st.ahora;
+    if (resta <= 0) { e.innerHTML = `<span class="shd-sub-dot off"></span><b>No active plan</b><i>${corta}</i>`; e.className = 'shd-sub off'; return; }
+    const d = Math.floor(resta / 86400), h = Math.floor((resta % 86400) / 3600), m = Math.floor((resta % 3600) / 60);
+    const txt = d > 0 ? (d + 'd ' + h + 'h') : (h > 0 ? (h + 'h ' + m + 'm') : (m + 'm'));
+    const fin = new Date(st.expira * 1000).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    e.innerHTML = `<span class="shd-sub-dot on"></span><b>${txt} left</b><i>${corta}</i>`;
+    e.title = 'Subscription active until ' + fin + ' (read from the contract)';
+    e.className = 'shd-sub on' + (resta < 3 * 86400 ? ' warn' : '');
+  };
+  await dibujar();
+  _subTimer = setInterval(dibujar, 60000);
 }
 
 function pintarConectar() {

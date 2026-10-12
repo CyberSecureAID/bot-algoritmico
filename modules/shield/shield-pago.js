@@ -87,12 +87,49 @@ export async function infoAcceso(cuenta) {
   return out;
 }
 
+/* Espera a que una transaccion surta efecto COMPROBANDO EL ESTADO en el contrato, no solo el
+   hash. Con smart accounts MetaMask puede reemplazar la transaccion por otra con hash distinto:
+   tx.wait() se quedaba esperando un hash que nunca se mina y la pantalla quedaba congelada aunque
+   el pago ya estaba hecho. Ahora: carrera entre el recibo y un sondeo del estado cada 3 s, hasta
+   3 minutos. Si el estado no cambia en ese tiempo, se lanza error. */
+async function esperarEstado(tx, comprobar) {
+  const inicio = Date.now();
+  const sondeo = (async () => {
+    while (Date.now() - inicio < 180000) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try { if (await comprobar()) return true; } catch (_) {}
+    }
+    return false;
+  })();
+  const recibo = tx.wait().then(() => true).catch(() => false);
+  const primero = await Promise.race([recibo, sondeo]);
+  if (primero && await comprobar().catch(() => false)) return true;
+  // el recibo llego pero el estado aun no se ve (nodo atrasado) o fallo el recibo: seguir sondeando
+  if (await sondeo) return true;
+  throw new Error('La transaccion no se confirmo a tiempo');
+}
+
 /* ── Comprar 30 días de acceso (paga en BNB). La firma el usuario. ── */
 export async function comprarAcceso() {
-  const c = new ethers.Contract(WALLETSHIELD, ABI_SHIELD, await firmante());
+  const signer = await firmante();
+  const cuenta = await signer.getAddress();
+  const lect = new ethers.Contract(WALLETSHIELD, ABI_SHIELD, lector());
+  const antes = Number(await lect.expiraEn(cuenta).catch(() => 0));
+  const c = new ethers.Contract(WALLETSHIELD, ABI_SHIELD, signer);
   const precio = await c.precioBNB();
   const tx = await enviar(c, 'comprarAcceso', [], { value: precio });
-  return tx.wait();
+  return esperarEstado(tx, async () => Number(await lect.expiraEn(cuenta)) > antes);
+}
+
+/* ── Estado de la suscripcion, leido del contrato en el momento (sin cache). Devuelve
+   { esOwner, expira (segundos unix), ahora (timestamp del ultimo bloque) } o null si no se pudo leer. ── */
+export async function estadoSuscripcion(cuenta) {
+  if (!cuenta) return null;
+  try {
+    const c = new ethers.Contract(WALLETSHIELD, ABI_SHIELD, lector());
+    const [owner, exp, bloque] = await Promise.all([c.esOwner(cuenta), c.expiraEn(cuenta), lector().getBlock('latest').catch(() => null)]);
+    return { esOwner: !!owner, expira: Number(exp), ahora: Number(bloque && bloque.timestamp) || Math.floor(Date.now() / 1000) };
+  } catch (_) { return null; }
 }
 
 /* ── Gas Faucet: info y reclamo ── */
@@ -116,9 +153,12 @@ export async function infoFaucet(cuenta) {
 }
 
 export async function reclamarFaucet() {
-  const c = new ethers.Contract(GASFAUCET, ABI_FAUCET, await firmante());
+  const signer = await firmante();
+  const cuenta = await signer.getAddress();
+  const lect = new ethers.Contract(GASFAUCET, ABI_FAUCET, lector());
+  const c = new ethers.Contract(GASFAUCET, ABI_FAUCET, signer);
   const tx = await enviar(c, 'reclamarFaucet', []);
-  return tx.wait();
+  return esperarEstado(tx, async () => !(await lect.puedeReclamar(cuenta)));
 }
 
 /* ── Lista negra comunitaria ── */
@@ -143,5 +183,8 @@ export async function consultarLista(addr, cuenta) {
 export async function reportarLista(addr) {
   const c = new ethers.Contract(WALLETSHIELD, ABI_SHIELD, await firmante());
   const tx = esTron(addr) ? await enviar(c, 'reportarTron', [addr]) : await enviar(c, 'reportarBSC', [addr]);
-  return tx.wait();
+  const cuenta = await c.runner.getAddress();
+  const lect = new ethers.Contract(WALLETSHIELD, ABI_SHIELD, lector());
+  const clave = esTron(addr) ? await lect.claveTron(addr) : await lect.claveBSC(addr);
+  return esperarEstado(tx, async () => lect.yaReporto(clave, cuenta));
 }
