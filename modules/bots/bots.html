@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<style id="ocultar-particulas-movil">@media(max-width:900px){#cco-fx,#cco-bg,#cco-top,#cco-velo{display:none!important}html,body{background:#0B0E11!important}}</style>
+
+  <meta charset="utf-8">
+<!-- Anti-caché del HTML: app.html es la página real de la app. El navegador no
+     debe cachearla, para que siempre pida la versión fresca con los JS nuevos. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- App-like: modo standalone en iOS y Android, sin barras del navegador -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DecFreedom">
+  <meta name="theme-color" content="#05070a">
+  <link rel="manifest" href="../../manifest-aurex.webmanifest">
+  <title>Bots: DecFreedom</title>
+  <meta name="description" content="DecFreedom: pon tu dinero a trabajar en automático. Compra barato y vende caro por ti, sin cuenta en ningún exchange, sin KYC, con tu propia wallet.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="DecFreedom">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:url" content="https://cybersecureaid.github.io/bot-algoritmico/">
+  <meta property="og:title" content="DecFreedom · Pon tu dinero a trabajar en automático">
+  <meta property="og:description" content="Intercambia cualquier cripto y pon tu dinero a trabajar en automático. Sin cuenta, sin KYC, con tu propia wallet en BNB Chain.">
+  <meta property="og:image" content="https://cybersecureaid.github.io/bot-algoritmico/assets/img/aurex-og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="DecFreedom">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="DecFreedom">
+  <meta name="twitter:description" content="Intercambia cualquier cripto y pon tu dinero a trabajar en automático. Sin KYC, con tu propia wallet.">
+  <meta name="twitter:image" content="https://cybersecureaid.github.io/bot-algoritmico/assets/img/aurex-og.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Las fuentes NO bloquean el pintado: si Google Fonts va lento o cae,
+       la página se ve igual con las fuentes del sistema y luego mejora. -->
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+  <link rel="icon" type="image/png" sizes="16x16" href="../../assets/img/cco-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="../../assets/img/cco-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="../../assets/img/cco-48.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="../../assets/img/favicon.png">
+  <link rel="apple-touch-icon" href="../../assets/img/aurex-apple.png">
+  <!-- Modulo sellado: todo lo que usa esta pagina vive en modules/bots/. No carga las hojas
+       del sitio (styles.css, asistente.css): la interfaz de bots no usa ninguna de sus reglas. -->
+  <style>*{box-sizing:border-box} html{-webkit-text-size-adjust:100%} html,body{overflow-x:hidden;max-width:100%} body{margin:0;font-family:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.6;color:#eaecef;min-height:100vh} input[type="number"]{-moz-appearance:textfield}</style>
+  <style>
+  /* ══════════════════════════════════════════════════════════════
+     LAS FLECHITAS DE LA BARRA DE DESPLAZAMIENTO
+     Van AQUÍ, en el HTML, y no en un archivo CSS, por un motivo: cada
+     módulo (market, academy, perfil…) inyecta sus propios estilos al
+     cargarse, y esos se ponen DESPUÉS del archivo, así que lo pisan.
+     Un estilo en el <head> del documento con !important gana siempre.
+     ══════════════════════════════════════════════════════════════ */
+  ::-webkit-scrollbar-button,
+  ::-webkit-scrollbar-button:start,
+  ::-webkit-scrollbar-button:end,
+  ::-webkit-scrollbar-button:start:decrement,
+  ::-webkit-scrollbar-button:end:increment,
+  ::-webkit-scrollbar-button:vertical:start:decrement,
+  ::-webkit-scrollbar-button:vertical:end:increment,
+  ::-webkit-scrollbar-button:vertical:start:increment,
+  ::-webkit-scrollbar-button:vertical:end:decrement,
+  ::-webkit-scrollbar-button:horizontal:start:decrement,
+  ::-webkit-scrollbar-button:horizontal:end:increment,
+  *::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: none !important;
+    background-image: none !important;
+  }
+  ::-webkit-scrollbar { width: 7px !important; height: 7px !important; }
+  ::-webkit-scrollbar-track { background: transparent !important; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(232, 184, 75, .3) !important;
+    border-radius: 20px !important;
+    border: none !important;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(232, 184, 75, .5) !important; }
+  ::-webkit-scrollbar-corner { background: transparent !important; }
+  html { scrollbar-width: thin; scrollbar-color: rgba(232,184,75,.3) transparent; }
+
+  /* ══════════════════════════════════════════════════════════════
+     LAS FLECHITAS DE LOS CAMPOS NUMÉRICOS EN EL MÓVIL
+     Los campos ya se crean como texto, pero esto es la red de
+     seguridad: si algún módulo crea uno nuevo con type=number, aquí
+     se le quitan igual. Va en el <head> para que nada lo pise.
+     ══════════════════════════════════════════════════════════════ */
+  @media (max-width: 760px) {
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button,
+    input::-webkit-outer-spin-button {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      margin: 0 !important;
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      opacity: 0 !important;
+    }
+    input[type="number"] { -moz-appearance: textfield !important; }
+  }
+  </style>
+  <link rel="manifest" href="../../manifest-aurex.webmanifest">
+  <meta name="theme-color" content="#0b0e11">
+  <!-- Seguridad: no filtramos a dónde va el usuario ni permitimos que otros
+       sitios averigüen qué hace aquí. -->
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <style>
+    /* ════════════════════════════════════════════════════════════════
+       FONDO, PARTÍCULAS Y COLOR DE LA PANTALLA DE BOTS
+       ════════════════════════════════════════════════════════════════
+       Reglas clave y por qué son así:
+
+       · #colmena-app tiene isolation:isolate y z-index (lo pone la app por
+         JS). Eso crea un contexto de apilado propio. Por eso el fondo NO
+         puede ir en z-index negativo: quedaría detrás del negro de la app.
+         Solución: #colmena-app TRANSPARENTE, y las capas de fondo por
+         DEBAJO en el orden del documento pero con z-index positivo bajo.
+
+       · El color gris de las tarjetas se controla redefiniendo --panel y
+         --panel-2 aquí (en estilos.js ya se cambiaron los literales por
+         estas variables). Especificidad alta para ganar a la inyección JS.
+
+       · Fondo base oscuro puesto en html/body para que se vea DESDE EL
+         PRIMER FRAME, antes de que monte la app. Así no hay destello gris.
+    */
+    html, body {
+      margin: 0; min-height: 100%;
+      background: #05070a;            /* negro base inmediato, sin destello */
+    }
+
+    /* Velo de entrada: cubre la carga escalonada y se funde una vez. */
+    #cco-velo{
+      position:fixed;inset:0;z-index:9998;background:#05070a;pointer-events:none;
+      opacity:1;transition:opacity .6s ease;
+    }
+    #cco-velo.fuera{opacity:0}
+    /* Capas de fondo, fijas, detrás de la interfaz. */
+    #cco-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-color: #05070a;
+      /* La imagen va AQUÍ, directa, para que se pinte desde el primer frame
+         y no haya el salto negro -> imagen. El degradado queda encima como
+         velo suave, y el color de respaldo debajo por si la imagen falla. */
+      background-image:
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.06), transparent 58%),
+        linear-gradient(180deg, rgba(10,14,19,.35), rgba(5,7,10,.55) 55%),
+        url('./img/bots.webp');
+      background-size: auto, auto, cover;
+      background-position: center, center, center center;
+      background-repeat: no-repeat, no-repeat, no-repeat;
+    }
+
+    /* ── En móvil no se pintan las capas de fondo de escritorio ──
+       Este CSS se aplica antes de que el JS pueda actuar. Sin esta regla se
+       veía la imagen de fondo de los bots unos instantes, hasta que la
+       interfaz móvil se montaba encima. */
+    @media (max-width: 760px) {
+      #cco-bg { background-image: none !important; background-color: #0b0e12 !important; }
+      #cco-top { display: none !important; }
+    }
+
+    /* .con-img ya no hace falta (la imagen está en #cco-bg base). Si la
+       imagen NO existe, el JS quita esta clase; entonces se oculta la capa
+       de imagen dejando solo el degradado. */
+    #cco-bg:not(.con-img) {
+      background-image:
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.06), transparent 58%),
+        linear-gradient(180deg, #0a0e13, #05070a 55%);
+      background-size: auto; background-position: center;
+    }
+    /* Franja superior con la imagen de la cabecera de la portada. */
+    #cco-top {
+      position: fixed; top: 0; left: 0; right: 0; height: 300px; z-index: 0;
+      pointer-events: none; opacity: .8;
+      background-image: url('./img/header.webp');
+      background-size: cover; background-position: center top;
+      -webkit-mask-image: linear-gradient(180deg, #000 0, #000 45%, transparent 100%);
+      mask-image: linear-gradient(180deg, #000 0, #000 45%, transparent 100%);
+    }
+    /* Partículas, sobre el fondo, bajo la interfaz. */
+    #cco-fx { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+    /* La app: transparente para ver el fondo, y por encima de las capas.
+       Especificidad html body para ganar a la inyección JS de estilos.js.
+       Se oscurecen los paneles (antes gris #1b2027) para la nocturnidad. */
+    html body #colmena-app {
+      background: transparent !important;
+      --panel: #10141a;
+      --panel-2: #0a0e13;
+      --line: #232b36;
+      position: relative; z-index: 2; min-height: 100vh;
+    }
+
+    /* Las ventanitas de la app (info, firma de contratos) se montan en el
+       <body>
+       y caían al verde de la lotería (styles.css). Se redefinen las variables
+       verdes a oscuro en :root global para que esas ventanitas salgan oscuras
+       y no verde/amarillas. styles.css se conserva; solo se sobrescriben las
+       variables de color. */
+    :root{
+      --panel:#10141a !important;
+      --panel-2:#0a0e13 !important;
+      --bg:#05070a !important;
+      --bg-2:#0a0e13 !important;
+      --line:#232b36 !important;
+      --line-soft:#1a202a !important;
+      --neon:#E8B84B !important;      /* el 'verde rector' pasa a dorado */
+      --neon-lit:#f4d089 !important;
+      --neon-dim:#c79426 !important;
+    }
+    /* Autofill: Chrome pinta el input de blanco/amarillo al enfocar o
+       autocompletar. Se fuerza el fondo oscuro para que no se vea blanco. */
+    #colmena-app input:-webkit-autofill,
+    #colmena-app input:-webkit-autofill:focus,
+    #colmena-app input:-webkit-autofill:hover{
+      -webkit-text-fill-color:#e9edf5 !important;
+      -webkit-box-shadow:0 0 0 1000px #0d1117 inset !important;
+      caret-color:#e9edf5;
+    }
+  </style>
+  <style id="app-like-fix">
+    /* Experiencia app-like: la app ocupa exactamente la pantalla, respeta
+       las zonas seguras del teléfono (notch, barra inferior) y no rebota. */
+    :root{
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+    html, body{
+      height: 100%;
+      min-height: 100dvh;
+      margin: 0;
+      overscroll-behavior: none;            /* nada de rebote elástico de web */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+    }
+    body{
+      /* el contenido nunca queda bajo la barra de estado ni la barra inferior */
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
+      box-sizing: border-box;
+    }
+    /* Cuando corre como app instalada, se nota aún más el modo pantalla. */
+    @media (display-mode: standalone){
+      html, body{ height: 100dvh; overflow: hidden; }
+    }
+  </style>
+  <script>
+  // Esta pagina es la version de escritorio de los bots. En movil manda la app (app.html).
+  if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) location.replace('../../app.html' + location.search);
+  </script>
+</head>
+<body>
+  <div id="cco-velo" aria-hidden="true"></div>
+  <div id="cco-bg" aria-hidden="true"></div>
+  <div id="cco-top" aria-hidden="true"></div>
+  <canvas id="cco-fx" data-n="260" aria-hidden="true"></canvas>
+  <div id="colmena-app"></div>
+  <script type="module" src="./bots-ui.js"></script>
+  <script>
+  /* Protección contra "clickjacking": si alguien mete CriptoCuba dentro de un
+     marco en su propia web, podría poner botones falsos encima para que
+     firmes algo sin darte cuenta. Si detectamos que no somos la ventana
+     principal, salimos del marco. No afecta al uso normal. */
+  (function () {
+    // Anti-clickjacking suave: si estamos dentro de un marco Y podemos salir,
+    // salimos. Pero NUNCA bloqueamos la página: el navegador de una wallet
+    // (MetaMask, Trust, etc.) carga la web en un webview donde window.top no es
+    // accesible, y eso es LEGÍTIMO. Bloquear ahí impedía entrar desde el móvil.
+    try {
+      if (window.top !== window.self) {
+        // intentamos subir al top; si no se puede (cross-origin), seguimos normal.
+        try { window.top.location = window.self.location.href; } catch (_) {}
+      }
+    } catch (_) { /* webview de wallet: acceso normal, no bloquear */ }
+  })();
+  </script>
+  <script>
+  /* App instalable. El service worker solo guarda la app (pantalla y código);
+     los datos de la blockchain siempre se piden frescos. */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      // Registrar sw3.js (el actual). Antes se registraba sw2.js (viejo), y como
+      // el usuario entra por app.html, seguía usando el service worker viejo que
+      // servía todo cacheado: por eso los cambios no se veían. Desregistramos
+      // cualquier sw que no sea sw3 (una sola vez) y registramos sw3.
+      var yaOK = false;
+      try { yaOK = localStorage.getItem('sw3app-ok') === '1'; } catch (_) {}
+      var paso = yaOK ? Promise.resolve() :
+        navigator.serviceWorker.getRegistrations().then(function (rs) {
+          var viejos = rs.filter(function (r) { var u = (r.active && r.active.scriptURL) || ''; return u.indexOf('sw3.js') === -1; });
+          return Promise.all(viejos.map(function (r) { return r.unregister(); }));
+        }).then(function () { try { localStorage.setItem('sw3app-ok', '1'); } catch (_) {} });
+      paso.catch(function () {}).finally(function () {
+        navigator.serviceWorker.register('../../sw3.js').then(function (reg) { reg.update().catch(function () {}); }).catch(function () {});
+      });
+    });
+  }
+  </script>
+  <script>
+  /* Red de seguridad: si en 20 s la app no arrancó (CDN caído, red lenta), avisamos
+     en vez de dejar un "Cargando…" eterno. */
+  (function () {
+    setTimeout(function () {
+      var app = document.getElementById('colmena-app');
+      if (!app || app.dataset.ok === '1') return;
+      if (app.querySelector('.c-hdr')) return;           // ya cargó
+      app.innerHTML = '<div id="aurex-fallback" style="min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;font-family:system-ui,sans-serif">'
+        + '<div style="font-size:42px">\u26A0\uFE0F</div>'
+        + '<div style="font-family:\'Chakra Petch\',sans-serif;font-weight:800;font-size:20px;color:#E8B84B">No se pudo cargar la app</div>'
+        + '<div style="font-size:14px;color:#b7bdc6;line-height:1.6;max-width:420px">Suele ser un problema temporal de red o de los servidores externos que usamos. Tus fondos est\u00e1n seguros: viven en la blockchain, no aqu\u00ed.</div>'
+        + '<button onclick="location.reload()" style="margin-top:6px;padding:13px 26px;border-radius:12px;border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,#E8B84B 45%,#c79426);color:#3a2800;font-family:\'Chakra Petch\',sans-serif;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #8f6a1a">Reintentar</button>'
+        + '</div>';
+    }, 20000);
+  })();
+  </script>
+  <script>
+  // Puente: ?abrir=X de otras secciones se atiende en app.html (este modulo es solo bots).
+  (function(){ var q=new URLSearchParams(location.search).get('abrir'); if(q && q!=='bots') location.replace('../../app.html'+location.search); })();
+  </script>
+  <!-- ══════════════════════════════════════════════════════════════════
+       LA BANDA SUPERIOR VIVE AHORA EN LA PORTADA
+       Swap, Academy, Tools, Liquidity, Market P2P, Install,
+       perfil y wallet se manejan desde la página de fuera. Aquí solo van
+       los bots.
+
+       Se oculta con CSS y NO se borra del HTML a propósito: gridbot-ui.js
+       engancha esos botones por id al arrancar. Si desaparecieran del DOM
+       no fallaría (todo va con `if ($('...'))`), pero dejarlos evita
+       cualquier sorpresa y hace el cambio reversible borrando este bloque.
+
+       Se deja un enlace de vuelta para no dejar al usuario encerrado.
+       ══════════════════════════════════════════════════════════════════ -->
+  <style>
+    #colmena-app .c-hdr{display:none !important}
+    #cco-volver{
+      position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:10px;
+      padding:14px 22px;
+      /* Transparente con un velo mínimo: deja ver la imagen del header
+         (cco-top) detrás, en vez de taparla con negro opaco. */
+      background:linear-gradient(180deg,rgba(5,7,10,.35),transparent);
+      border-bottom:1px solid rgba(232,184,75,.12);
+    }
+    #cco-volver a{
+      display:inline-flex;align-items:center;gap:8px;text-decoration:none;
+      font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13.5px;
+      color:#b7bdc6;padding:7px 12px;border:1px solid #2b3139;border-radius:9px;
+    }
+    #cco-volver a:hover{color:#E8B84B;border-color:#8f6a1a}
+    #cco-volver b{font-family:"Chakra Petch",system-ui,sans-serif;font-size:13.5px;color:#7d8794;font-weight:600}
+    @media(max-width:760px){#cco-volver{display:none}}
+  </style>
+  <script>
+  (function () {
+    // Solo en escritorio: en el móvil manda la cáscara de siempre.
+    if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) return;
+    var poner = function () {
+      if (document.getElementById('cco-volver')) return;
+      var app = document.getElementById('colmena-app');
+      if (!app) return;
+      var b = document.createElement('div');
+      b.id = 'cco-volver';
+      b.innerHTML = '<a href="../../index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"'
+        + ' stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M13 8H3"/><path d="M7 4L3 8l4 4"/></svg>Volver</a><b>Bots</b>';
+      app.insertBefore(b, app.firstChild);
+    };
+    var t = setInterval(function () { poner(); }, 200);
+    setTimeout(function () { clearInterval(t); }, 15000);
+    document.addEventListener('DOMContentLoaded', poner);
+  })();
+  </script>
+  <script type="module">
+  /* Partículas en la pantalla de bots: el mismo módulo que la portada.
+     Y si existe la imagen de fondo, se activa; si no, queda el degradado. */
+  (async () => {
+    try {
+      const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const lienzo = document.getElementById('cco-fx');
+      let brasas = null;
+      // en móvil NO arrancamos las partículas (no deben verse antes del móvil)
+      const _esMovilP = document.documentElement.classList.contains('es-movil') || (window.matchMedia && window.matchMedia('(max-width:900px)').matches);
+      if (!quieto && lienzo && !_esMovilP) {
+        const chispasUrl = new URL('./chispas.js', import.meta.url).href;
+        const mod = await import(chispasUrl);
+        brasas = mod.brasas;
+        brasas(lienzo);
+        // El canvas mide el viewport (fixed inset:0), pero al montar la app
+        // aún no ha pintado y puede medir 0 -> partículas solo en la esquina.
+        // Se remide varias veces mientras el layout se asienta, y en cada
+        // resize/orientación. Es inmediato (no depende del debounce).
+        const remedir = () => { if (brasas._remedir) brasas._remedir(); };
+        [50, 200, 500, 1000].forEach((t) => setTimeout(remedir, t));
+        window.addEventListener('load', remedir);
+        window.addEventListener('resize', remedir, { passive: true });
+        window.addEventListener('orientationchange', remedir);
+      }
+      const b = document.getElementById('cco-bg');
+      if (b) b.classList.add('con-img');
+
+      // Quitar el velo cuando TODO esté listo: imagen de fondo cargada y las
+      // partículas ya dibujando. Se funde una sola vez y en suave.
+      const velo = document.getElementById('cco-velo');
+      let veloFuera = false;
+      // Cuando la app móvil termina de montar, avisa y quitamos el velo ya.
+      window.addEventListener('app-montada', () => { try { quitarVelo(); } catch(_){} }, { once: true });
+      const quitarVelo = () => {
+        if (veloFuera || !velo) return;
+        veloFuera = true;
+        if (brasas && brasas._remedir) brasas._remedir();   // partículas a tamaño real
+        requestAnimationFrame(() => velo.classList.add('fuera'));
+        setTimeout(() => { if (velo && velo.parentNode) velo.remove(); }, 700);
+      };
+
+      const img = new Image();
+      img.onload  = quitarVelo;                      // imagen lista -> fundir
+      img.onerror = () => { if (b) b.classList.remove('con-img'); quitarVelo(); };
+      img.src = './img/bots.webp';
+      // Si la imagen tarda demasiado (o está cacheada y onload no dispara),
+      // el velo se va igual a los 900 ms: nunca se queda la pantalla negra.
+      setTimeout(quitarVelo, 900);  // tope de seguridad: la pantalla negra nunca dura más de esto
+
+      // La franja superior usa header.webp; si no existe, se oculta sola.
+      const top = new Image();
+      top.onerror = () => { const t = document.getElementById('cco-top'); if (t) t.style.display = 'none'; };
+      top.src = './img/header.webp';
+    } catch (e) {
+      console.warn('[bots] fondo/particulas:', e);
+      // Ante cualquier fallo, fuera el velo: jamás dejar la pantalla negra.
+      const v = document.getElementById('cco-velo'); if (v) v.remove();
+    }
+  })();
+  </script>
+  <script>
+  /* FUERZA EL TEMA OSCURO DE BOTS POR JS (gana al CSS inyectado por la app).
+     La app pinta #colmena-app con fondo #0b0e11 y paneles gris #1b2027 al
+     montar, de forma asíncrona. Una regla CSS puede perder por orden de
+     inyección; una hoja añadida al final del <head> con !important y
+     revisada varias veces NO pierde. Esto no toca ningún archivo del
+     sistema: solo añade una capa de estilo por encima. */
+  (function () {
+    var css = ''
+      + 'html body #colmena-app{background:transparent !important;'
+      +   '--panel:#10141a !important;--panel-2:#0a0e13 !important;--line:#232b36 !important;}'
+      + 'html body #colmena-app .wrap{background:transparent !important;}'
+      // Efecto cristal SOLO en las tarjetas sin imagen (.card, .conectar-box,
+      // .stat). Las que tienen imagen (.gasbox, .cash-price, #c-chart,
+      // .asesor, .as-marco) NO se tocan: se comprobó en estilos.js que usan
+      // url('assets/img/marco-*.webp'). Selectores por nombre exacto, nunca
+      // [class*=...], que fue lo que borró la imagen del gas.
+      + 'html body #colmena-app .card,'
+      +   'html body #colmena-app .conectar-box{'
+      +   'background:linear-gradient(180deg,rgba(18,22,28,.5),rgba(10,14,19,.55)) !important;'
+      +   'backdrop-filter:blur(20px) saturate(150%);'
+      +   '-webkit-backdrop-filter:blur(20px) saturate(150%);'
+      +   'border-color:rgba(232,184,75,.16) !important;'
+      +   'box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06) !important;}'
+      + 'html body #colmena-app .stat{'
+      +   'background:rgba(10,14,19,.42) !important;'
+      +   'backdrop-filter:blur(14px) saturate(140%);'
+      +   '-webkit-backdrop-filter:blur(14px) saturate(140%);}';
+    function aplicar() {
+      var id = 'cco-tema-bots';
+      var el = document.getElementById(id);
+      if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el); }
+      // Siempre al final del head = última palabra en el desempate CSS.
+      if (el !== document.head.lastElementChild) document.head.appendChild(el);
+      if (el.textContent !== css) el.textContent = css;
+    }
+    aplicar();
+    // La app inyecta sus estilos tras montar; se re-asegura unas cuantas veces.
+    [100, 400, 800, 1500, 3000].forEach(function (t) { setTimeout(aplicar, t); });
+    document.addEventListener('DOMContentLoaded', aplicar);
+    window.addEventListener('load', aplicar);
+  })();
+  </script>
+<script src="./aviso.js"></script>
+</body>
+</html>
+ 
