@@ -74,6 +74,12 @@ body{overflow-x:hidden}
 #pt .pt-hdr__a{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto}
 
 /* ---- Pagina del swap ---- */
+/* En el lobby el contenido de la cinta va en una banda centrada de 1200px. Aqui la cinta
+   ocupa TODO el ancho: 'Back' pegado a la esquina izquierda, la capsula de wallet pegada a la
+   derecha, y el menu con sitio de sobra (sin partir 'Wallet Shield'). */
+#pt .pt-hdr__in{max-width:none;padding:0 14px}
+#pt .pt-nav__b{white-space:nowrap}
+
 #pt-chispas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;display:block}
 /* Fondo propio del swap: modules/swap/img/fondo-swap.webp (la sube el usuario). Hasta que exista,
    degradado oscuro. Encima, un velo para que la caja del swap se lea sobre cualquier foto. */
@@ -91,7 +97,7 @@ body{overflow-x:hidden}
 /* Back (izquierda) y capsula de wallet (derecha), con el mismo estilo de ficha del lobby */
 #pt .sw-back{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px 0 9px;border-radius:9px;
   font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink2);background:rgba(255,255,255,.05);
-  border:1px solid var(--line2);text-shadow:0 1px 4px rgba(0,0,0,.9);margin-right:12px;white-space:nowrap}
+  border:1px solid var(--line2);text-shadow:0 1px 4px rgba(0,0,0,.9);margin-right:26px;white-space:nowrap}
 #pt .sw-back:hover{border-color:var(--gold-lo);color:var(--gold)}
 #pt .sw-back svg{width:12px;height:12px}
 #pt .sw-wallet{display:none;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:9px;
