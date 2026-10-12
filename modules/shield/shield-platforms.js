@@ -4,12 +4,12 @@
    plataformas" marcando cuáles son conocidas/seguras y cuáles desconocidas.
    NUESTROS propios contratos SIEMPRE se marcan como seguros (nunca peligrosos). */
 
-// Nuestros contratos (Cripto Cuba): SIEMPRE confiables.
+// Nuestros contratos (DecFreedom): SIEMPRE confiables.
 const NUESTROS = {
-  '0x4e86430bc2260fe359d1ea7eef8b595fb241f93b': 'Cripto Cuba · Bots & Swap',
-  '0x39c48394068299aa3e3ab114f16bfc3de11f4112': 'Cripto Cuba · Token Listing',
-  '0x17b47a8fb97f8980b96c94e4b9137182e0bf8025': 'Cripto Cuba · P2P Market',
-  '0xdc4802d8871cef57a34e4e0e3b1a87226a4a84c4': 'Cripto Cuba · Staking'
+  '0x4e86430bc2260fe359d1ea7eef8b595fb241f93b': 'DecFreedom · Bots & Swap',
+  '0x39c48394068299aa3e3ab114f16bfc3de11f4112': 'DecFreedom · Token Listing',
+  '0x17b47a8fb97f8980b96c94e4b9137182e0bf8025': 'DecFreedom · P2P Market',
+  '0xdc4802d8871cef57a34e4e0e3b1a87226a4a84c4': 'DecFreedom · Staking'
 };
 
 // Protocolos famosos y verificados de BSC (routers y contratos principales).

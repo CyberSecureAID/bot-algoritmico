@@ -77,7 +77,7 @@ export function calcularScore(permisos, stats) {
   if (ilimitadosExt.length > 0) factores.push({ tipo: 'bad', texto: ilimitadosExt.length + ' unlimited external permission' + (ilimitadosExt.length>1?'s':''), detalle: 'Highest risk. A contract can drain all of that token.' });
   if (limitadosExt.length > 0) factores.push({ tipo: 'warn', texto: limitadosExt.length + ' limited external permission' + (limitadosExt.length>1?'s':''), detalle: 'Lower risk, still worth reviewing.' });
   if (externos.length === 0) factores.push({ tipo: 'ok', texto: 'No external permissions', detalle: 'Nothing outside our platform can move your tokens.' });
-  if (nuestros.length > 0) factores.push({ tipo: 'ok', texto: nuestros.length + ' trusted permission' + (nuestros.length>1?'s':'') + ' (Cripto Cuba)', detalle: 'Safe and needed to use our services.' });
+  if (nuestros.length > 0) factores.push({ tipo: 'ok', texto: nuestros.length + ' trusted permission' + (nuestros.length>1?'s':'') + ' (DecFreedom)', detalle: 'Safe and needed to use our services.' });
 
   const consejos = [];
   if (ilimitadosExt.length > 0) consejos.push('Revoke the unlimited permissions you do not actively use.');

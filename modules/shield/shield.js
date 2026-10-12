@@ -1801,7 +1801,7 @@ async function escanear(cuenta, objetivo) {
     'Detecting unlimited permissions',
     'Scanning for known drainer addresses',
     'Verifying spender contracts',
-    'Matching trusted Cripto Cuba contracts',
+    'Matching trusted DecFreedom contracts',
     'Calculating your security score'
   ];
   $('shd-barslot').innerHTML = cabecera();
@@ -1929,7 +1929,7 @@ function pintarResultados(cuenta, permisos, estad, dirEscaneada) {
     html += '<div class="shd-safe"><div class="ic">' + IC.check + '</div><h2 style="margin:0 0 6px;color:#eaecef">Your wallet is clean</h2><p style="margin:0">No active permissions found. Nothing to revoke.</p></div>';
   } else {
     if (externos.length) { html += '<div class="shd-group-t risk">\u26a0 External permissions</div>' + externos.map(filaPerm).join(''); }
-    if (nuestros.length) { html += '<div class="shd-group-t trust">\u2713 Trusted \u00b7 Cripto Cuba</div>' + nuestros.map(filaPerm).join(''); }
+    if (nuestros.length) { html += '<div class="shd-group-t trust">\u2713 Trusted \u00b7 DecFreedom</div>' + nuestros.map(filaPerm).join(''); }
   }
   html += '<div class="shd-how"><b>Tip.</b> Revoking a permission only stops future spending. It never moves or risks your funds. Revoke anything you do not recognise or no longer use.</div>';
   $('shd-in').innerHTML = html;

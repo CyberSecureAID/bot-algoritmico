@@ -56,9 +56,9 @@ export async function analizar(contrato, spender) {
   if (spender && esDireccion(spender)) {
     const spLower = spender.toLowerCase();
     if (NUESTROS[spLower]) {
-      out.veredicto = 'safe'; out.titulo = 'Safe · Cripto Cuba';
+      out.veredicto = 'safe'; out.titulo = 'Safe · DecFreedom';
       out.resumen = `This permission is for ${NUESTROS[spLower]}, one of our own verified contracts. It is safe and needed to use our platform.`;
-      out.hallazgos.push({ tipo: 'ok', t: `Spender is a trusted Cripto Cuba contract` });
+      out.hallazgos.push({ tipo: 'ok', t: `Spender is a trusted DecFreedom contract` });
       return out;
     }
     // spender desconocido: leer el allowance actual del usuario (si está conectado)

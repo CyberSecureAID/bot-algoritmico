@@ -22,6 +22,7 @@ export function css() {
   #shd .shd-card-lista .shd-card-ic{background:rgba(246,70,93,.1);color:#f6465d}
   #shd .shd-card-btn.lista{border-color:rgba(246,70,93,.4);background:rgba(246,70,93,.08);color:#f6465d}
   #shd .shd-card-btn.lista:hover{background:rgba(246,70,93,.16)}
+  #shd .shd-lista-wrap .shd-btn,#shd .shd-lista-wrap .shd-card-btn,#shd .shd-lista-tab{white-space:normal;line-height:1.3}
   #shd .shd-lista-wrap{max-width:560px;margin:0 auto;padding:10px 0}
   #shd .shd-lista-hero{text-align:center}
   #shd .shd-lista-icon{width:56px;height:56px;border-radius:50%;background:rgba(246,70,93,.1);color:#f6465d;display:grid;place-items:center;margin:0 auto 14px}
@@ -87,6 +88,35 @@ async function goplus(addr) {
   finally { clearTimeout(t); }
 }
 
+/* Bases publicas de direcciones reportadas (solo datos, se leen una vez y se guardan en memoria):
+   ScamSniffer (lista de drainers y phishing) y MyEtherWallet darklist (con motivo y fecha).
+   Son direcciones EVM: valen para BSC porque una misma wallet opera en todas las cadenas EVM. */
+const BASES = [
+  { nombre: 'ScamSniffer', url: 'https://raw.githubusercontent.com/scamsniffer/scam-database/main/blacklist/address.json',
+    leer: (j) => { const m = new Map(); (Array.isArray(j) ? j : []).forEach((a) => { if (typeof a === 'string') m.set(a.toLowerCase(), ''); }); return m; } },
+  { nombre: 'MyEtherWallet darklist', url: 'https://raw.githubusercontent.com/MyEtherWallet/ethereum-lists/master/src/addresses/addresses-darklist.json',
+    leer: (j) => { const m = new Map(); (Array.isArray(j) ? j : []).forEach((e) => { if (e && e.address) m.set(String(e.address).toLowerCase(), String(e.comment || '')); }); return m; } }
+];
+const _bases = {};
+async function basePublica(b) {
+  if (_bases[b.nombre]) return _bases[b.nombre];
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 12000);
+  try { const r = await fetch(b.url, { signal: ctl.signal }); const j = await r.json(); _bases[b.nombre] = b.leer(j); }
+  catch (_) { return null; }
+  finally { clearTimeout(t); }
+  return _bases[b.nombre];
+}
+/** { ok, hits:[{fuente, motivo}] }. Solo direcciones EVM (0x). */
+async function basesPublicas(addr) {
+  if (!pago.esBSC(addr)) return { ok: true, hits: [], aplica: false };
+  const k = addr.toLowerCase(); const hits = []; let ok = false;
+  await Promise.all(BASES.map(async (b) => {
+    const m = await basePublica(b); if (!m) return; ok = true;
+    if (m.has(k)) hits.push({ fuente: b.nombre, motivo: m.get(k) });
+  }));
+  return { ok, hits, aplica: true };
+}
+
 function nuestra(addr) {
   const k = (addr || '').toLowerCase();
   if (NUESTROS[k]) return NUESTROS[k];
@@ -104,7 +134,7 @@ export function pintar(cuenta, { cabecera, wireBack, volver, IC }) {
       <div class="shd-lista-hero">
         <div class="shd-lista-icon">${IC_LISTA}</div>
         <h1>Wallet blacklist</h1>
-        <p>Before you send funds to someone you do not know, check their wallet here. The scan runs the address against three sources: wallets reported by DecFreedom subscribers, wallets confirmed by our team, and GoPlus Security, a public threat database with labels for phishing, theft, laundering and honeypot activity. If you were scammed, report the wallet: every report makes the list stronger for everyone. Our own contracts and team wallets are protected and cannot be reported.</p>
+        <p>Before you send funds to someone you do not know, check their wallet here. The scan runs the address against four sources: wallets reported by DecFreedom subscribers, wallets confirmed by our team, GoPlus Security (a public threat database with labels for phishing, theft, laundering and honeypot activity) and the public scam databases of ScamSniffer and MyEtherWallet. If you were scammed, report the wallet: every report makes the list stronger for everyone. Our own contracts and team wallets are protected and cannot be reported.</p>
       </div>
       <div class="shd-lista-tabs">
         <button class="shd-lista-tab on" id="lista-tab-scan">Check a wallet</button>
@@ -125,7 +155,7 @@ function vistaScan(cuenta) {
   $('lista-body').innerHTML = `
     <label class="shd-sim-lbl">Wallet to check</label>
     <input class="shd-sim-in" id="lista-in" placeholder="0x… (BSC) or T… (TRON) wallet" autocomplete="off" spellcheck="false">
-    <button class="shd-btn" id="lista-go" style="width:100%;margin-top:14px">${IC_LISTA} Scan this wallet</button>
+    <button class="shd-btn" id="lista-go" style="width:100%;margin-top:14px">${IC_LISTA} Scan</button>
     <div id="lista-res"></div>
     <p class="shd-lista-note">Not reported does not mean safe: a scammer can use a brand new wallet. Reported means at least one subscriber paid to be here and signed a report with their own wallet, or our team confirmed it. Treat it as a strong warning and verify on your own before sending anything.</p>`;
   $('lista-go').onclick = () => escanear($('lista-in').value.trim(), cuenta);
@@ -142,7 +172,8 @@ async function escanear(addr, cuenta) {
         <li id="ls1"><i></i>Checking DecFreedom protected addresses</li>
         <li id="ls2"><i></i>Reading community reports on chain</li>
         <li id="ls3"><i></i>Querying GoPlus Security threat database</li>
-        <li id="ls4"><i></i>Building the verdict</li>
+        <li id="ls4"><i></i>Checking public scam databases (ScamSniffer, MyEtherWallet)</li>
+        <li id="ls5"><i></i>Building the verdict</li>
       </ul>
     </div>`;
   const paso = (i, estado) => { const el = $('ls' + i); if (el) { el.classList.remove('on', 'ok'); el.classList.add(estado); } };
@@ -153,12 +184,14 @@ async function escanear(addr, cuenta) {
   const [chain] = await Promise.all([pago.consultarLista(addr, cuenta), espera(900)]);
   paso(2, 'ok'); paso(3, 'on');
   const [gp] = await Promise.all([goplus(addr), espera(900)]);
-  paso(3, 'ok'); paso(4, 'on'); await espera(500);
-  res.innerHTML = veredicto(addr, ours, chain, gp);
+  paso(3, 'ok'); paso(4, 'on');
+  const [pub] = await Promise.all([basesPublicas(addr), espera(700)]);
+  paso(4, 'ok'); paso(5, 'on'); await espera(450);
+  res.innerHTML = veredicto(addr, ours, chain, gp, pub);
   const rb = $('lista-rep-go'); if (rb) rb.onclick = () => { $('lista-tab-rep').click(); setTimeout(() => { const i = $('lista-rep-in'); if (i) i.value = addr; }, 30); };
 }
 
-function veredicto(addr, ours, chain, gp) {
+function veredicto(addr, ours, chain, gp, pub) {
   const esTron = pago.esTron(addr);
   const link = esTron ? 'https://tronscan.org/#/address/' + addr : 'https://bscscan.com/address/' + addr;
   let clase, titulo, sub;
@@ -166,17 +199,19 @@ function veredicto(addr, ours, chain, gp) {
   const veto = !!(chain && chain.veto);
   const gpBad = gp.bad.length > 0;
   const gpWarn = !gpBad && gp.tags.length > 0;
+  const pubBad = !!(pub && pub.hits.length);
   if (ours || (chain && chain.prot)) {
     clase = 'ours'; titulo = 'Official DecFreedom address';
     sub = (ours || 'Protected address') + '. This is one of our contracts or team wallets. It is verified and cannot be reported.';
-  } else if (veto || (chain && chain.reportada) || gpBad) {
+  } else if (veto || (chain && chain.reportada) || gpBad || pubBad) {
     clase = 'bad'; titulo = 'Do not send funds to this wallet';
     const partes = [];
     if (veto) partes.push('confirmed as malicious by the DecFreedom team');
     if (comunidad > 0) partes.push('reported by ' + comunidad + ' subscriber' + (comunidad === 1 ? '' : 's'));
     if (gpBad) partes.push('flagged by GoPlus Security');
+    if (pubBad) partes.push('listed in ' + pub.hits.map((h) => h.fuente).join(' and '));
     sub = 'This wallet is ' + partes.join(', ') + '. Anything you send here is very likely lost.';
-  } else if (chain === null && !gp.ok) {
+  } else if (chain === null && !gp.ok && !(pub && pub.ok)) {
     clase = 'warn'; titulo = 'Could not complete the check';
     sub = 'The sources did not answer. Check your connection and try again.';
   } else if (comunidad > 0 || gpWarn) {
@@ -202,13 +237,15 @@ function veredicto(addr, ours, chain, gp) {
       <div class="shd-lista-vs">${esc(sub)}</div>
       <div class="shd-lista-addr">${esc(addr)}</div>
       ${tags}
+      ${pubBad ? `<div class="shd-lista-tags">${pub.hits.map((h) => `<span class="shd-lista-tag">${esc(h.fuente)}${h.motivo ? ': ' + esc(h.motivo.slice(0, 90)) : ''}</span>`).join('')}</div>` : ''}
       <div class="shd-lista-src">
         ${fila('DecFreedom community list', comTxt, comCls)}
         ${fila('GoPlus Security', gpTxt, gpCls)}
+        ${fila('Public scam databases', !pub || !pub.aplica ? 'Not applicable (Tron)' : (!pub.ok ? 'Unavailable' : (pubBad ? 'Listed' : 'Clean')), !pub || !pub.aplica ? '' : (!pub.ok ? 'warn' : (pubBad ? 'bad' : 'ok')))}
         ${fila('Explorer', `<a href="${link}" target="_blank" rel="noopener" style="color:var(--gold,#E8B84B)">Open on ${esTron ? 'TronScan' : 'BscScan'}</a>`)}
       </div>
       ${chain && chain.yaReporte ? '<div class="shd-lista-rep">You already reported this wallet.</div>' : ''}
-      ${puedeReportar ? `<button class="shd-card-btn lista" id="lista-rep-go" style="margin-top:14px">Were you scammed by this wallet? Report it</button>` : ''}
+      ${puedeReportar ? `<button class="shd-card-btn lista" id="lista-rep-go" style="margin-top:14px">Report this wallet</button>` : ''}
     </div>`;
 }
 
@@ -216,7 +253,7 @@ function vistaReporte(cuenta) {
   $('lista-body').innerHTML = `
     <label class="shd-sim-lbl">Wallet to report</label>
     <input class="shd-sim-in" id="lista-rep-in" placeholder="0x… (BSC) or T… (TRON) wallet" autocomplete="off" spellcheck="false">
-    <button class="shd-btn" id="lista-rep-btn" style="width:100%;margin-top:14px">${IC_LISTA} Report this wallet</button>
+    <button class="shd-btn" id="lista-rep-btn" style="width:100%;margin-top:14px">${IC_LISTA} Report</button>
     <div id="lista-rep-res"></div>
     <p class="shd-lista-note">Reports are signed with your wallet and stored on chain. They are free for subscribers (you only pay network gas, a fraction of a cent). One report per wallet per address. Report only wallets that actually scammed you or someone you know: false reports can be cleared by the team and repeated abuse can get a wallet blocked from the service.</p>`;
   $('lista-rep-btn').onclick = async () => {
