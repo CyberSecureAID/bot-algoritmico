@@ -57,6 +57,17 @@ contract WalletShield is Initializable, UUPSUpgradeable {
     bool private _entrada;          // guard de reentrancia
     bool public pausado;            // circuit breaker
 
+    // ─────────── Lista negra comunitaria (v2, variables SOLO anadidas al final) ───────────
+    // Clave de una direccion:
+    //   BSC/EVM: bytes32(uint256(uint160(addr)))          (claveBSC)
+    //   Tron:    keccak256(bytes(direccion en texto))      (claveTron)
+    mapping(bytes32 => uint32)  public reportes;        // reportes acumulados en la epoca actual
+    mapping(bytes32 => uint32)  public epoca;           // sube al limpiar: invalida los "ya reporto" sin recorrer nada
+    mapping(bytes32 => mapping(uint32 => mapping(address => bool))) private _yaReporto; // clave => epoca => reportero
+    mapping(bytes32 => bool)    public vetada;          // confirmada por un owner (peso maximo)
+    mapping(bytes32 => bool)    public protegida;       // nuestras direcciones: no se pueden reportar
+    uint32 public umbralReportes;                       // reportes para considerarla "reportada" (0 = 1)
+
     // ─────────── Eventos ───────────
     event AccesoComprado(address indexed wallet, uint256 pagadoBNB, uint40 expira);
     event OwnerAgregado(address indexed nuevo);
@@ -66,6 +77,10 @@ contract WalletShield is Initializable, UUPSUpgradeable {
     event ParamCambiado(string que, address valor);
     event Pausado(bool estado);
     event Recibido(address indexed de, uint256 monto);
+    event Reportada(bytes32 indexed clave, address indexed por, uint32 total);
+    event Limpiada(bytes32 indexed clave, uint32 nuevaEpoca);
+    event Vetada(bytes32 indexed clave, bool estado);
+    event Protegida(bytes32 indexed clave, bool estado);
 
     // ─────────── Errores (gas-eficientes) ───────────
     error NoAutorizado();
@@ -74,6 +89,9 @@ contract WalletShield is Initializable, UUPSUpgradeable {
     error ParametroInvalido();
     error PagoInsuficiente();
     error SinOraculo();
+    error SinAcceso();
+    error DireccionProtegida();
+    error YaReportada();
 
     modifier soloOwner() { if (!esOwner[msg.sender]) revert NoAutorizado(); _; }
     modifier noReentrante() { if (_entrada) revert Reentrada(); _entrada = true; _; _entrada = false; }
@@ -198,6 +216,68 @@ contract WalletShield is Initializable, UUPSUpgradeable {
 
     /** Circuit breaker de emergencia. */
     function setPausado(bool v) external soloOwner { pausado = v; emit Pausado(v); }
+
+    /* ══════════════════ LISTA NEGRA COMUNITARIA (v2) ══════════════════
+       Los suscriptores reportan wallets que estafaron; cualquiera consulta. Las direcciones
+       del ecosistema (este contrato, los owners, el oraculo, contabilidad, staking, faucet y
+       las que un owner marque como protegidas) NO se pueden reportar. Un owner puede vetar
+       una direccion (confirmada), quitarle el veto o limpiar sus reportes. */
+
+    function claveBSC(address a) public pure returns (bytes32) { return bytes32(uint256(uint160(a))); }
+    function claveTron(string calldata t) public pure returns (bytes32) { return keccak256(bytes(t)); }
+
+    /** ¿Es una direccion del ecosistema? Dinamico: si cambian los parametros, cambia la respuesta. */
+    function esNuestra(address a) public view returns (bool) {
+        if (a == address(this) || a == owner1 || a == owner2 || esOwner[a]) return true;
+        if (a == oraculo || a == contabilidad || a == staking || a == gasFaucet) return true;
+        return protegida[claveBSC(a)];
+    }
+
+    function reportarBSC(address a) external vivo { 
+        if (a == address(0) || a == msg.sender) revert ParametroInvalido();
+        if (esNuestra(a)) revert DireccionProtegida();
+        _reportar(claveBSC(a));
+    }
+    function reportarTron(string calldata t) external vivo {
+        bytes memory b = bytes(t);
+        if (b.length != 34 || b[0] != "T") revert ParametroInvalido();
+        bytes32 k = keccak256(b);
+        if (protegida[k]) revert DireccionProtegida();
+        _reportar(k);
+    }
+    function _reportar(bytes32 k) internal {
+        if (!tieneAcceso(msg.sender)) revert SinAcceso();
+        uint32 e = epoca[k];
+        if (_yaReporto[k][e][msg.sender]) revert YaReportada();
+        _yaReporto[k][e][msg.sender] = true;
+        uint32 n = reportes[k] + 1;
+        reportes[k] = n;
+        emit Reportada(k, msg.sender, n);
+    }
+
+    /** Consulta: reportes acumulados, vetada por owner, protegida (nuestra), y si supera el umbral. */
+    function consultar(bytes32 k) public view returns (uint32 n, bool veto, bool prot, bool reportada) {
+        n = reportes[k]; veto = vetada[k]; prot = protegida[k];
+        uint32 u = umbralReportes == 0 ? 1 : umbralReportes;
+        reportada = veto || n >= u;
+    }
+    function consultarBSC(address a) external view returns (uint32 n, bool veto, bool prot, bool reportada) {
+        (n, veto, prot, reportada) = consultar(claveBSC(a));
+        if (esNuestra(a)) { prot = true; reportada = false; }
+    }
+    function consultarTron(string calldata t) external view returns (uint32 n, bool veto, bool prot, bool reportada) {
+        return consultar(keccak256(bytes(t)));
+    }
+    function yaReporto(bytes32 k, address quien) external view returns (bool) { return _yaReporto[k][epoca[k]][quien]; }
+
+    // ── administracion de la lista (solo owners) ──
+    function vetar(bytes32 k, bool v) external soloOwner { vetada[k] = v; emit Vetada(k, v); }
+    function limpiar(bytes32 k) external soloOwner { reportes[k] = 0; vetada[k] = false; epoca[k] += 1; emit Limpiada(k, epoca[k]); }
+    function setProtegida(bytes32 k, bool v) external soloOwner { protegida[k] = v; emit Protegida(k, v); }
+    function setProtegidasBSC(address[] calldata lista, bool v) external soloOwner {
+        for (uint256 i; i < lista.length; i++) { bytes32 k = claveBSC(lista[i]); protegida[k] = v; emit Protegida(k, v); }
+    }
+    function setUmbralReportes(uint32 u) external soloOwner { umbralReportes = u; }
 
     /* ══════════════════ FONDOS ══════════════════ */
 
