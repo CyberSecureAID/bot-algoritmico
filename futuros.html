@@ -335,7 +335,8 @@
     import { arrancarIdioma, traducirTodo, t } from './assets/js/idioma.js?v=160';
     import * as wallet from './assets/js/wallet.js?v=129';
     import * as ethers from './assets/js/vendor/ethers-6.13.4.min.js?v=129';
-    import { abrirSwap, initSwap } from './assets/js/gridbot/swap.js?v=11';
+    // El swap es ahora un MODULO SELLADO con pagina propia (modules/swap/swap.html): se navega.
+    const abrirSwap = () => { location.href = 'modules/swap/swap.html'; };
 
     const $ = (id) => document.getElementById(id);
     const fmt = (p) => { p = +p; if (!isFinite(p) || !p) return '—'; if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 1 }); if (p >= 1) return p.toFixed(2); if (p >= 0.01) return p.toFixed(5); return p.toPrecision(5); };
@@ -1451,8 +1452,6 @@
         } else if (btn) { btn.style.display = 'none'; }
       } catch (_) {}
     }
-    // Conexión del swap: usa la conexión buena del sitio para su botón interno.
-    try { initSwap(() => { try { wallet.conectar(); } catch (_) {} }, () => {}); } catch (_) {}
 
     /* Botón BNB a USDT. La primera vez muestra un aviso que explica para qué
        sirve (en inglés). Después abre el swap directamente (ya va BNB a USDT).
