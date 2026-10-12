@@ -1,19 +1,53 @@
 /* ESTILOS BASE DEL SWAP (modules/swap/estilos.css)
-   Antes el swap tomaba estas reglas del CSS de la app de bots (estilos.js). Por eso, al tocar
-   cualquier cosa de los bots, la X perdia el estilo, el boton perdia los bordes y los iconos se
-   movian. Ahora viven aqui, dentro del modulo, y no dependen de nadie. */
-@media(max-width:560px){
-#colmena-app .cf-x,#colmena-app .cm-x,#conf-box .cf-x,#colmena-modal .cm-x,
-    #riesgo-box .rg-x,#colmena-app .modal-x{min-width:44px;min-height:44px;font-size:20px}
+   Reglas que el swap tomaba del CSS de la app de bots (estilos.js): selector de moneda,
+   botones, y el modal generico #colmena-modal (busy / error / exito). Ahora viven aqui. */
+:root{
+  --panel:#1b2027;
+  --panel-2:#12161c;
+  --ink:#eaecef;
+  --ink-2:#b7bdc6;
+  --ink-3:#7d8794;
+  --line:#2b3139;
+  --line-soft:rgba(255,255,255,.055);
+  --neon:#12d18e;
+  --neon-lit:#2ee86a;
+  --neon-dim:rgba(14,203,129,.38);
+  --rojo:#f6465d;
+  --az:#4d9fff;
+  --mo:#b47cff;
+  --ve:#34d97b;
+  --acento:var(--gold);
+  --ac-l:#f7db8d;
+  --ac-m:#E8B84B;
+  --ac-d:#c79426;
+  --ac-s:#8f6a1a;
+  --ac-t:#3a2800;
 }
+@media(max-width:560px){
+#colmena-app .cf-x, #colmena-app .cm-x, #conf-box .cf-x, #colmena-modal .cm-x{min-width:44px;min-height:44px;font-size:20px}
+}
+#colmena-modal .busy-wrap{display:flex;align-items:center;justify-content:space-between;gap:18px}
+#colmena-modal .busy-tx{flex:1;line-height:1.55;font-size:14px}
+#colmena-modal .busy-ring{position:relative;width:58px;height:58px;flex:0 0 auto}
+#colmena-modal .busy-ring svg{width:58px;height:58px;transform:rotate(-90deg)}
+#colmena-modal .busy-ring .br-bg{fill:none;stroke:rgba(255,255,255,.1);stroke-width:3}
+#colmena-modal .busy-ring .br-fg{fill:none;stroke:#e8b84b;stroke-width:3.5;stroke-linecap:round;stroke-dasharray:88 120;transform-origin:22px 22px;animation:brspin 1.8s linear infinite}
+@keyframes brspin{to{transform:rotate(360deg)}}
+#colmena-modal .busy-num{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display),Georgia,serif;font-size:22px;font-weight:700;color:rgba(255,255,255,.82)}
+#colmena-modal .btn{width:100%;box-sizing:border-box;border:none;border-radius:12px;padding:14px;font-family:var(--display);font-weight:700;font-size:15px;cursor:pointer;transition:filter .15s}
+#colmena-modal .btn:hover{filter:brightness(1.1)}
+#colmena-modal .btn-oro:hover{filter:none;transform:translateY(-1px);box-shadow:0 6px 0 var(--ac-s),0 12px 24px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.5)}
+#colmena-modal .btn-verde:hover{filter:none;transform:translateY(-1px);box-shadow:0 6px 0 var(--ac-s),0 12px 24px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+#colmena-modal .btn-oro{background:linear-gradient(180deg,var(--ac-l),var(--ac-m) 45%,var(--ac-d));color:var(--ac-t);box-shadow:0 4px 0 var(--ac-s),0 8px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .09s,box-shadow .09s,filter .12s;text-shadow:0 1px 0 rgba(255,255,255,.3)}
+#colmena-modal .btn-oro:active{transform:translateY(4px);box-shadow:0 0 0 var(--ac-s),0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.4)}
 #colmena-app .btn-oro3d{width:100%;border:none;border-radius:13px;padding:16px;font-family:var(--display);font-weight:800;font-size:16px;cursor:pointer;color:#3a2800;letter-spacing:.3px;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);box-shadow:0 5px 0 #8f6a1a,0 11px 24px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.55);transition:transform .09s,box-shadow .09s,filter .12s;text-shadow:0 1px 0 rgba(255,255,255,.3)}
 #colmena-app .btn-oro3d:hover{filter:brightness(1.05)}
 #colmena-app .btn-oro3d:active{transform:translateY(5px);box-shadow:0 0 0 #8f6a1a,0 4px 12px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.4)}
-#colmena-app .coin-sel-ico,#colmena-app .cm-coin-ico{position:relative;overflow:hidden;border-radius:50%;background:#0d1117;border:1px solid var(--line);display:grid;place-items:center;font-weight:700;flex:0 0 auto}
+#colmena-app .cm-coin-ico{position:relative;overflow:hidden;border-radius:50%;background:#0d1117;border:1px solid var(--line);display:grid;place-items:center;font-weight:700;flex:0 0 auto}
 #colmena-app .cm-coin-ico{width:38px;height:38px;font-size:17px}
-#colmena-app .coin-sel-ico img,#colmena-app .cm-coin-ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent}
-#colmena-app .coin-sel-ico.conlogo,#colmena-app .cm-coin-ico.conlogo{background:transparent;border:none}
-#colmena-app .coin-sel-ico.conlogo .ico-fb,#colmena-app .cm-coin-ico.conlogo .ico-fb{display:none}
+#colmena-app .cm-coin-ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent}
+#colmena-app .coin-sel-ico.conlogo, #colmena-app .cm-coin-ico.conlogo{background:transparent;border:none}
+#colmena-app .coin-sel-ico.conlogo .ico-fb, #colmena-app .cm-coin-ico.conlogo .ico-fb{display:none}
 #colmena-app .coin-modal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
 #colmena-app .coin-modal-bg{position:absolute;inset:0;background:rgba(3,5,7,.66);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:cmFade .18s ease}
 #colmena-app .coin-modal-box{position:relative;width:100%;max-width:460px;max-height:84vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:cmPop .22s cubic-bezier(.2,.9,.3,1.2)}
@@ -49,6 +83,10 @@
 #colmena-app .cm-coin-chg.neg{color:var(--rojo)}
 #colmena-app .cm-price-skel{display:inline-block;width:56px;height:12px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.12),rgba(255,255,255,.04));background-size:200% 100%;animation:shimmer 1.3s linear infinite}
 #colmena-app .cm-empty{text-align:center;color:var(--ink-3);font-family:var(--mono);font-size:13px;padding:34px}
+#colmena-modal .btn-verde{background:linear-gradient(180deg,var(--ac-l),var(--ac-m) 45%,var(--ac-d));color:var(--ac-t);box-shadow:0 4px 0 var(--ac-s),0 8px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.4);transition:transform .09s,box-shadow .09s,filter .12s;text-shadow:0 1px 0 rgba(255,255,255,.25)}
+#colmena-modal .btn-verde:active{transform:translateY(4px);box-shadow:0 0 0 var(--ac-s),0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.3)}
+#colmena-modal .btn-linea{background:transparent;border:1px solid var(--line);color:var(--ink)}
+#colmena-modal .btn-rojo{background:transparent;border:1px solid var(--rojo);color:var(--rojo)}
 #cmov .cm-bg{position:absolute;inset:0;background:rgba(3,5,8,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 #cmov .cm-c{position:relative;width:100%;max-width:420px;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft);border-radius:22px 22px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -20px 60px rgba(0,0,0,.75);text-align:center}
 #cmov .cm-x{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid #3a424c;color:#b7bdc6;cursor:pointer}
@@ -61,13 +99,22 @@
 #cmov .cm-n{font-family:var(--sans);font-size:11px;color:#7d8794;line-height:1.45;margin-top:4px}
 #conf-box .cf-x{position:absolute;top:13px;right:13px;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;line-height:1;padding:0;background:rgba(255,255,255,.06);border:1px solid #3a424c;color:#b7bdc6;cursor:pointer;font-size:14px}
 @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 #colmena-app .pio-mono{width:46px;height:46px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#03210f;font-size:14px;background:linear-gradient(135deg,var(--neon),var(--gold))}
-#colmena-app .pio-logo,#colmena-app .pio-mono{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 0 18px rgba(232,184,75,.22),0 6px 18px rgba(0,0,0,.45);width:50px;height:50px}
+#colmena-app .pio-mono{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 0 18px rgba(232,184,75,.22),0 6px 18px rgba(0,0,0,.45);width:50px;height:50px}
 #colmena-app .pio-mono{background:linear-gradient(135deg,#f7db8d,var(--gold))}
+#colmena-modal{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(4,7,10,.66);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);--ac-l:#f7db8d;--ac-m:#E8B84B;--ac-d:#c79426;--ac-s:#8f6a1a;--ac-t:#3a2800;--acento:var(--gold)}
+#colmena-modal.show{display:flex;animation:fade .16s ease both}
+#colmena-modal .m-card{max-width:430px;width:100%;background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--gold-soft);border-radius:18px;padding:26px;box-shadow:0 30px 90px rgba(0,0,0,.7);animation:rise .2s ease both;will-change:transform,opacity}
+#colmena-modal h4{font-family:var(--display);color:var(--gold);font-size:19px;margin:0 0 12px}
+#colmena-modal h4:empty{display:none;margin:0}
+#colmena-modal p{font-size:14px;color:var(--ink-2);line-height:1.55;margin:0 0 20px}
+#colmena-modal .m-btns{display:flex;gap:10px}
+#colmena-modal .m-btns .btn{margin:0;flex:1}
+@keyframes fade{from{opacity:0}to{opacity:1}}
 @media(max-width:560px){
-#colmena-app .pio-logo,#colmena-app .pio-mono{width:42px;height:42px}
+#colmena-app .pio-mono{width:42px;height:42px}
 }
-
 /* Ajustes de movil. Antes los inyectaba movil.js (inyectarFixSwap) solo cuando se abria el swap
    dentro de la app; por eso a veces aparecian y a veces no. Ahora viven aqui, siempre. */
 @media(max-width:760px){

@@ -1,0 +1,107 @@
+/* CINTA SUPERIOR DEL LOBBY, copiada de assets/portada/portada.css (reglas #pt .pt-hdr...).
+   La foto de la cinta (header.webp) y el logo estan en modules/swap/img/. */
+#pt{
+  background:#000;
+  --bg:#000000; --bg2:#050709; --lift:#0e1319; --surf:#12161c;
+  --line:#1c232b; --line2:#29313b;
+  --gold:#E8B84B; --gold-hi:#f4d089; --gold-md:#cf9f2e; --gold-lo:#8f6a1a; --on-gold:#241900;
+  --ink:#eaecef; --ink2:#a7b0bb; --ink3:#79838f; --ink4:#565f6b;
+  --up:#2ebd85; --down:#f6465d;
+  --disp:"Chakra Petch",system-ui,sans-serif;
+  --sans:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --max:1200px;
+  --gut:clamp(18px,3.4vw,44px);
+
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.62;
+  color:var(--ink);
+}
+body{overflow-x:hidden}
+
+#pt a{color:inherit;text-decoration:none}
+#pt button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+#pt img, #pt svg{display:block;max-width:100%}
+#pt :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:5px}
+#pt .pt-hdr{
+  position:sticky;top:0;z-index:100;
+  transition:transform .3s cubic-bezier(.22,.85,.3,1);
+  display:flex;align-items:center;height:58px;
+  background:#07090c;border-bottom:1px solid #1a2029;
+}
+
+
+#pt .pt-hdr::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-image:url('./img/header.webp');
+  background-size:cover;background-position:center;
+  opacity:1;
+}
+
+
+
+#pt .pt-hdr__in{position:relative;z-index:2}
+
+
+#pt .pt-nav__b,
+#pt .pt-logo{flex:0 0 auto;display:flex;align-items:center;text-shadow:0 1px 4px rgba(0,0,0,.9)}
+
+#pt .pt-hdr.pt-stuck{border-bottom-color:#232b36}
+
+#pt .pt-hdr.pt-oculta{transform:translateY(-100%)}
+#pt .pt-hdr__in{display:flex;align-items:center;gap:0;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+
+#pt .pt-logo img{height:40px;width:auto}
+#pt .pt-nav{display:flex;align-items:center;gap:2px;flex:0 1 auto;margin-left:14px}
+#pt .pt-nav__i{position:relative}
+#pt .pt-nav__b{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:500;color:var(--ink2);padding:8px 11px;border-radius:8px;transition:color .15s,background .15s}
+#pt .pt-nav__b:hover{color:var(--ink);background:rgba(255,255,255,.045)}
+#pt .pt-nav__b svg{width:10px;height:10px;opacity:.55;transition:transform .2s}
+#pt .pt-nav__i:hover .pt-nav__b svg{transform:rotate(180deg)}
+#pt .pt-menu{
+  position:absolute;top:calc(100% + 8px);left:0;z-index:300;min-width:236px;padding:7px;
+  background:var(--surf);border:1px solid var(--line2);border-radius:12px;
+  box-shadow:0 20px 44px rgba(0,0,0,.6);
+  opacity:0;visibility:hidden;transform:translateY(-5px);
+  transition:opacity .17s,transform .17s,visibility .17s;
+}
+#pt .pt-nav__i:hover .pt-menu, #pt .pt-nav__i:focus-within .pt-menu{opacity:1;visibility:visible;transform:none}
+#pt .pt-menu a{display:block;padding:9px 11px;border-radius:8px;transition:background .14s}
+#pt .pt-menu a:hover{background:rgba(232,184,75,.07)}
+#pt .pt-menu b{display:block;font-size:13.5px;font-weight:600}
+#pt .pt-menu span{display:block;font-size:12px;line-height:1.42;color:var(--ink3);margin-top:1px}
+#pt .pt-hdr__a{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto}
+
+/* ---- Pagina del swap ---- */
+#pt-chispas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;display:block}
+/* Fondo propio del swap: modules/swap/img/fondo-swap.webp (la sube el usuario). Hasta que exista,
+   degradado oscuro. Encima, un velo para que la caja del swap se lea sobre cualquier foto. */
+#pt{min-height:100vh;background:#000;position:relative}
+#pt .sw-fondo{position:fixed;inset:0;z-index:0;background:#000 url('./img/fondo-swap.webp') center/cover no-repeat;}
+#pt .sw-fondo::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(0,0,0,.25),rgba(0,0,0,.78) 70%)}
+#pt .pt-hdr{z-index:100}
+#colmena-app{position:relative;z-index:5;min-height:calc(100vh - 58px)}
+/* El swap venia como ventana modal con velo negro a pantalla completa. Aqui es la pagina:
+   sin velo, debajo de la cinta, con el fondo y las particulas visibles. */
+#swap-modal{top:58px !important;z-index:50 !important;background:transparent !important}
+#swap-modal .sw-bg{background:transparent !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+#swap-modal .sw-box,#swap-modal .lt-slot{animation:swEntra .32s cubic-bezier(.2,.9,.3,1.1) both}
+@keyframes swEntra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* Back (izquierda) y capsula de wallet (derecha), con el mismo estilo de ficha del lobby */
+#pt .sw-back{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px 0 9px;border-radius:9px;
+  font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink2);background:rgba(255,255,255,.05);
+  border:1px solid var(--line2);text-shadow:0 1px 4px rgba(0,0,0,.9);margin-right:12px;white-space:nowrap}
+#pt .sw-back:hover{border-color:var(--gold-lo);color:var(--gold)}
+#pt .sw-back svg{width:12px;height:12px}
+#pt .sw-wallet{display:none;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:9px;
+  background:rgba(255,255,255,.05);border:1px solid var(--line2);white-space:nowrap}
+#pt .sw-wallet.on{display:inline-flex}
+#pt .sw-wallet .sw-wl{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--ink3)}
+#pt .sw-wallet .sw-wd{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--gold)}
+#pt .sw-wallet .sw-wp{width:7px;height:7px;border-radius:50%;background:#2ebd85;box-shadow:0 0 8px #2ebd85}
+@media(max-width:760px){
+  #pt .pt-nav{display:none}
+  #pt .sw-wallet .sw-wl{display:none}
+  #pt .sw-back{padding:0 10px 0 8px}
+}

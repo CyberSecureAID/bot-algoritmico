@@ -9,13 +9,13 @@
 <meta name="theme-color" content="#0b0e12">
 <title>Swap · DecFreedom</title>
 <link rel="icon" type="image/png" href="../../assets/img/cco-32.png">
-<link rel="stylesheet" href="./estilos.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./estilos.css">
+<link rel="stylesheet" href="./cinta.css">
 <style>
-  /* Modulo SWAP sellado: esta pagina no carga ningun archivo de fuera de modules/swap/
-     (salvo fuentes e imagenes). Tema y variables definidas aqui mismo. */
+  /* Modulo SWAP sellado: esta pagina solo carga archivos de modules/swap/ (mas fuentes y el favicon). */
   :root{
     --bg:#05070a; --ink:#eaecef; --ink-2:#b7bdc6; --ink-3:#7d8794;
     --gold:#E8B84B; --gold-soft:#C9A84B; --line:#232b36;
@@ -23,30 +23,78 @@
     --sans:var(--display);
     --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
   }
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--display);min-height:100%;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+  html,body{margin:0;padding:0;background:#000;color:var(--ink);font-family:var(--display);min-height:100%;-webkit-text-size-adjust:100%;overscroll-behavior:none}
   *{box-sizing:border-box}
   ::-webkit-scrollbar{width:0;height:0;display:none} html,body{scrollbar-width:none}
-  #colmena-app{position:relative;min-height:100vh}
-  #sw-top{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;align-items:center;justify-content:space-between;
-    padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));pointer-events:none}
-  #sw-top a,#sw-top span{pointer-events:auto}
-  #sw-top a{color:var(--ink-2);text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:6px;font-weight:600}
-  #sw-top a:hover{color:var(--gold)}
-  #sw-cuenta{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
 </style>
 </head>
 <body>
-<div id="sw-top"><a href="../../index.html">&#8592; DecFreedom</a><span id="sw-cuenta"></span></div>
-<div id="colmena-app"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="chev"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g></defs></svg>
+<div id="pt">
+  <div class="sw-fondo" aria-hidden="true"></div>
+  <canvas id="pt-chispas" data-n="130" aria-hidden="true"></canvas>
+<header class="pt-hdr" id="hdr">
+  <div class="pt-hdr__in">
+    <a class="sw-back" href="../../index.html" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</a>
+    <a class="pt-logo" href="../../index.html" aria-label="DecFreedom">
+      <img src="./img/cco-full.webp" alt="DecFreedom" width="150" height="30">
+    </a>
+
+    <nav class="pt-nav" aria-label="Principal">
+
+      <div class="pt-nav__i"><a class="pt-nav__b" href="./swap.html">Swap</a></div>
+
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../app.html">Bots</a></div>
+
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../futuros.html?v=14">Futures</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../aportar.html">Staking</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../shield.html">Wallet Shield</a></div>
+
+      <div class="pt-nav__i">
+        <a class="pt-nav__b" href="../../app.html?abrir=analisis">Analysis</a>
+      </div>
+
+      <div class="pt-nav__i">
+        <button class="pt-nav__b" type="button">Herramientas <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
+        <div class="pt-menu">
+          <a href="../../app.html?abrir=tools&tool=polvo"><b>Colector de polvo</b><span>Junta los restos de monedas en una sola</span></a>
+          <a href="../../app.html?abrir=tools&tool=alertas"><b>Alertas de precio</b><span>Te avisa cuando una moneda llega a tu precio</span></a>
+          <a href="../../app.html?abrir=tools&tool=termometro"><b>Miedo y codicia</b><span>El humor del mercado en un número</span></a>
+          <a href="../../app.html?abrir=tools&tool=tecnico"><b>Análisis técnico</b><span>Comprar, vender o esperar, ahora mismo</span></a>
+          <a href="../../app.html?abrir=tools&tool=mapa"><b>Mapa del mercado</b><span>Todas las monedas por tamaño y color</span></a>
+          <a href="../../app.html?abrir=tools&tool=grafica"><b>Gráfica en directo</b><span>Velas y herramientas de dibujo</span></a>
+        </div>
+      </div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../app.html?abrir=market">P2P</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../app.html?abrir=academy">Academia</a></div>
+
+    </nav>
+
+    
+    <div class="pt-hdr__a"><span class="sw-wallet" id="sw-wallet"><span class="sw-wp"></span><span class="sw-wl">Connected wallet</span><span class="sw-wd" id="sw-cuenta"></span></span></div>
+  </div>
+</header>
+  <div id="colmena-app"></div>
+</div>
+<div id="colmena-modal"><div class="m-card"><h4 id="cm-title"></h4><p id="cm-body"></p>
+  <div class="m-btns"><button class="btn btn-linea" id="cm-cancel">Cancelar</button><button class="btn btn-oro" id="cm-ok">Confirmar</button></div></div></div>
 
 <script>window.__botLogoFail = function (img, ini) { var d = document.createElement("div"); d.className = "pio-mono"; d.textContent = ini; img.replaceWith(d); };</script>
 <script type="module">
   import * as wallet from './wallet.js';
   import { initSwap, abrirSwap } from './swap.js';
   import { arrancarIdioma } from './idioma.js';
+  import { brasas } from './chispas.js';
 
-  const cta = document.getElementById('sw-cuenta');
-  const pinta = () => { const c = wallet.cuentaActual(); cta.textContent = c ? (c.slice(0, 6) + '\u2026' + c.slice(-4)) : ''; };
+  /* Particulas del lobby, exactamente las mismas (chispas.js copiado tal cual). */
+  try {
+    const quieto = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
+    const lienzo = document.getElementById('pt-chispas');
+    if (!quieto && lienzo) brasas(lienzo);
+  } catch (e) { console.warn('[swap] chispas:', e); }
+
+  const caps = document.getElementById('sw-wallet'), cta = document.getElementById('sw-cuenta');
+  const pinta = () => { const c = wallet.cuentaActual(); if (c) { cta.textContent = c.slice(0, 6) + '\u2026' + c.slice(-4); caps.classList.add('on'); } else { cta.textContent = ''; caps.classList.remove('on'); } };
   const enganchar = () => {
     const x = document.getElementById('sw-x'); if (x) x.onclick = () => { location.href = '../../index.html'; };
     const bg = document.getElementById('sw-bg'); if (bg) bg.onclick = null;
@@ -56,7 +104,7 @@
   initSwap(async () => { try { await wallet.conectar(); } catch (_) {} montar(); }, () => {});
   try { await wallet.reconectarSiProcede(); } catch (_) {}
   montar();
-  try { arrancarIdioma(); } catch (_) {}   // ingles por defecto + observador para lo que se pinte despues
+  try { arrancarIdioma(); } catch (_) {}
   try { wallet.alCambiar(() => montar()); } catch (_) {}
 </script>
 </body>

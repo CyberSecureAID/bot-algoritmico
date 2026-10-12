@@ -641,6 +641,11 @@ function swExito(from, to, inWei, outWei) {
 }
 
 async function swEjecutar() {
+  /* Si el panel 'List your token' esta abierto y se pulsa SWAP, se cierra. Por debajo de
+     1000px de ancho ese panel OCULTA la caja del swap (.lt-open .sw-box{display:none}); al
+     abrirse el panel lateral de MetaMask el viewport se estrecha y el swap 'desaparecia'.
+     Solo aqui, en el boton Swap: el listing sigue funcionando igual en todo lo demas. */
+  { const _m = $('swap-modal'); if (_m && _m.classList.contains('lt-open')) _m.classList.remove('lt-open'); }
   const act = S.accion;
   if (act === 'connect') { _conectarWallet(); return; }
   if (act === 'net') { wallet.cambiarARedCorrecta().catch(() => {}); return; }
