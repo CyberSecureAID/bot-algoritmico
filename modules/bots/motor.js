@@ -1,5 +1,5 @@
 /**
- * GRIDBOT — capa de contrato + matemática de rejilla (para la web)
+ * GRIDBOT: capa de contrato + matemática de rejilla (para la web)
  * ================================================================
  *
  * Habla con el contrato GridBot desplegado en BSC. Usa `ethers` (desde CDN, sin
@@ -17,7 +17,6 @@
 // sin nada externo que pueda quedarse colgado y dejar la app en 'Cargando…'.
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-console.log('%c[DIAG] gridbot.js CON LOGS cargado OK','color:#0f0;font-weight:bold');
 
 // ⚠️ IMPORTANTE: cambia esta dirección por la de tu PROXY de GridBotV2 recién desplegado.
 // (La de abajo es el contrato V1 viejo; con el V2 ya no sirve.)
@@ -228,6 +227,45 @@ async function esperar(tx) {
   catch (e) { if (e && /revirt|no se completó/i.test(e.message || '')) throw e; return null; }
 }
 
+/* Espera por ESTADO: con smart accounts MetaMask puede reemplazar la transaccion por otra con
+   hash distinto; esperar solo el hash dejaba la pantalla colgada aunque el bot ya existia. Se
+   corre el recibo (esperar) contra un sondeo del contrato cada 3 s, hasta 3 minutos. */
+async function esperarEstado(tx, comprobar) {
+  const inicio = Date.now();
+  const sondeo = (async () => {
+    while (Date.now() - inicio < 180000) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try { if (await comprobar()) return true; } catch (_) {}
+    }
+    return false;
+  })();
+  const recibo = esperar(tx).then(() => true).catch((e) => { if (e && /revirt|no se completó/i.test(e.message || '')) throw e; return false; });
+  const primero = await Promise.race([recibo, sondeo]);
+  if (primero && await comprobar().catch(() => false)) return true;
+  if (await sondeo) return true;
+  throw new Error('The transaction was not confirmed in time. Check your wallet activity before trying again.');
+}
+
+/* Pre-vuelo de BNB nativo: antes de firmar, comprobar que queda BNB para el costo del bot
+   ($2.50 + 5% de colchon) y para el gas. `aGastarWei` es lo que la operacion va a sacar de
+   BNB nativo ANTES del cobro (p. ej. el Cash Out envuelve BNB en WBNB). Lanza un error claro. */
+const GAS_RESERVA_WEI = 2000000000000000n;   // 0.002 BNB
+export async function preVueloBNB(cuenta, aGastarWei = 0n, incluirCosto = true) {
+  if (!cuenta) return;
+  let costo = 0n;
+  if (incluirCosto) { try { costo = await leeGB('costoBotBNB', []); } catch (_) {} }
+  const necesario = (incluirCosto ? costo + costo / 20n : 0n) + GAS_RESERVA_WEI + aGastarWei;
+  const saldo = await saldoNativoBNB(cuenta);
+  if (saldo < necesario) {
+    const f = (w) => Number(ethers.formatEther(w)).toLocaleString('en-US', { maximumFractionDigits: 5 });
+    const partes = [];
+    if (aGastarWei > 0n) partes.push(f(aGastarWei) + ' BNB to convert');
+    if (incluirCosto) partes.push(f(costo + costo / 20n) + ' BNB for the bot fee ($2.50)');
+    partes.push(f(GAS_RESERVA_WEI) + ' BNB reserved for gas');
+    throw new Error('Not enough BNB. You have ' + f(saldo) + ' BNB and this needs ' + f(necesario) + ' BNB: ' + partes.join(' + ') + '. Add BNB or reduce the amount.');
+  }
+}
+
 /** Dirección de un token; si es BNB nativo (address null), usa WBNB. */
 export function dirDe(moneda) {
   return moneda.address ?? WBNB;
@@ -343,6 +381,8 @@ export async function allowance(tokenAddr, duenio) {
 export async function balanceToken(tokenAddr, duenio) {
   let err;
   for (let i = 0; i < RPCS.length; i++) {
+    try { const t = new ethers.Contract(tokenAddr, ERC20, provRPC(_rpcIdx)); const r = await t.balanceOf(duenio); return r; }
+    catch (e) { err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
   }
   throw err;
 }
@@ -352,6 +392,8 @@ export function esBNB(tokenAddr) { return (tokenAddr || '').toLowerCase() === WB
 export async function saldoNativoBNB(duenio) {
   let err;
   for (let i = 0; i < RPCS.length; i++) {
+    try { const r = await provRPC(_rpcIdx).getBalance(duenio); return r; }
+    catch (e) { err = e; _rpcIdx = (_rpcIdx + 1) % RPCS.length; await new Promise(r => setTimeout(r, 160)); }
   }
   throw err;
 }
@@ -627,14 +669,27 @@ export async function revocarToken(tokenAddr) {
 export async function estaActivo(cuenta) {
   try { return await cLee().alDia(cuenta); } catch (_) { return true; }
 }
+/** Estado de la suscripcion de bots, leido del contrato en el momento (sin cache):
+    { pagadoHasta (segundos unix), ahora (timestamp del ultimo bloque), alDia } o null. */
+export async function estadoSuscripcion(cuenta) {
+  if (!cuenta) return null;
+  try {
+    const [hasta, alDia, bloque] = await Promise.all([leeGB('pagadoHasta', [cuenta]), leeGB('alDia', [cuenta]).catch(() => null), lector().getBlock('latest').catch(() => null)]);
+    return { pagadoHasta: Number(hasta), alDia: alDia == null ? null : !!alDia, ahora: Number(bloque && bloque.timestamp) || Math.floor(Date.now() / 1000) };
+  } catch (_) { return null; }
+}
 export async function precioSub() {
   try { return await cLee().costoBotBNB(); } catch (_) { return 0n; }
 }
 export async function suscribir() {
   const bot = await cEscribe();
+  const cuenta = await bot.runner.getAddress();
   const precio = await bot.costoBotBNB();
+  await preVueloBNB(cuenta, 0n, true);
+  const antes = await leeGB('pagadoHasta', [cuenta]).catch(() => -1n);
   const tx = await gasMargen(bot, 'pagarMes', [], { value: precio });
-  return esperar(tx);
+  if (antes < 0n) return esperar(tx);
+  return esperarEstado(tx, async () => (await leeGB('pagadoHasta', [cuenta])) > antes);
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -786,8 +841,12 @@ export async function crearRejilla(config) {
   if (costo <= 0n) { await new Promise((r) => setTimeout(r, 400)); try { costo = await leeGB('costoBotBNB', []); } catch (_) {} }
   if (costo <= 0n) throw new Error('No se pudo leer el costo del bot ahora mismo (red). Intenta de nuevo en unos segundos.');
   const value = costo + costo / 20n;
+  const cuenta = await bot.runner.getAddress();
+  await preVueloBNB(cuenta, 0n, true);
+  const antes = await misRejillas(cuenta).then((l) => l.length).catch(() => -1);
   const tx = await gasMargen(bot, 'crearRejilla', [c], { value });
-  return esperar(tx);
+  if (antes < 0) return esperar(tx);
+  return esperarEstado(tx, async () => (await misRejillas(cuenta)).length > antes);
 }
 
 export async function cerrarAhora(base, quote) {
@@ -875,17 +934,20 @@ export async function historialDe(usuario, desdeBloques = 60000, maxOps = 60) {
   ops.sort((x, y) => (y.tiempo || y.bloque) - (x.tiempo || x.bloque));
   return { error: null, ops: ops.slice(0, maxOps), total: ops.length };
 }
-export async function cerrarAhoraK(clave) {
-  const bot = await cEscribe(); const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]); return esperar(tx);
+async function _cerrarPorClave(clave) {
+  const bot = await cEscribe();
+  const cuenta = await bot.runner.getAddress();
+  const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]);
+  const k = String(clave).toLowerCase();
+  return esperarEstado(tx, async () => !(await misRejillas(cuenta)).some((x) => String(x).toLowerCase() === k));
 }
-export async function cancelarRejillaK(clave) {
-  const bot = await cEscribe(); const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]); return esperar(tx);
-}
+export async function cerrarAhoraK(clave) { return _cerrarPorClave(clave); }
+export async function cancelarRejillaK(clave) { return _cerrarPorClave(clave); }
 export async function cancelarRejilla(base, quote) {
   const bot = await cEscribe();
   const cuenta = wallet.cuentaActual();
   const clave = await bot.claveBot(cuenta, base, quote, 0);
-  const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]); return esperar(tx);
+  return _cerrarPorClave(clave);
 }
 export async function activarRejilla(base, quote, activa) {
   return true; /* V11: activacion/pausa por pago mensual */
@@ -922,7 +984,7 @@ export const fmtBNB = ethers.formatEther;
 export const checksum = ethers.getAddress;
 
 /* ================================================================== */
-/* SWAP — contrato independiente de intercambio (tarifa fija al owner) */
+/* SWAP: contrato independiente de intercambio (tarifa fija al owner) */
 /* ================================================================== */
 /* V11: el swap ahora lo hace el GridBot V11 (comisión porcentual 0.10%, multi-DEX
    con fallback automático, envuelve/desenvuelve BNB<->WBNB, reparte 20% al staking). */

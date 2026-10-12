@@ -360,6 +360,13 @@
     }
     #cco-volver a:hover{color:#E8B84B;border-color:#8f6a1a}
     #cco-volver b{font-family:"Chakra Petch",system-ui,sans-serif;font-size:13.5px;color:#7d8794;font-weight:600}
+    #cco-sub{margin-left:auto;display:none;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;border:1px solid #29313b;background:rgba(14,19,25,.75);font-size:11.5px;line-height:1;white-space:nowrap;color:#eaecef}
+    #cco-sub.on,#cco-sub.off{display:inline-flex}
+    #cco-sub b{font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:11.5px;font-weight:800;color:#eaecef}
+    #cco-sub i{font-style:normal;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;color:#79838f}
+    #cco-sub.on{border-color:rgba(46,189,133,.35)} #cco-sub.warn{border-color:rgba(232,184,75,.5)} #cco-sub.warn b{color:#E8B84B}
+    #cco-sub.off{border-color:rgba(246,70,93,.35)} #cco-sub.off b{color:#f6465d}
+    #cco-sub .d{width:7px;height:7px;border-radius:50%;background:#2ebd85;box-shadow:0 0 8px rgba(46,189,133,.6)} #cco-sub.off .d{background:#f6465d;box-shadow:none}
     @media(max-width:760px){#cco-volver{display:none}}
   </style>
   <script>
@@ -374,7 +381,8 @@
       b.id = 'cco-volver';
       b.innerHTML = '<a href="../../index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"'
         + ' stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-        + '<path d="M13 8H3"/><path d="M7 4L3 8l4 4"/></svg>Volver</a><b>Bots</b>';
+        + '<path d="M13 8H3"/><path d="M7 4L3 8l4 4"/></svg>Back</a><b>Bots</b>'
+        + '<span id="cco-sub" title="Subscription status, read live from the contract"></span>';
       app.insertBefore(b, app.firstChild);
     };
     var t = setInterval(function () { poner(); }, 200);
@@ -486,6 +494,35 @@
     window.addEventListener('load', aplicar);
   })();
   </script>
+<script type="module">
+  /* Capsula de suscripcion de bots: lee pagadoHasta(wallet) del contrato al montar, al cambiar
+     de wallet y cada 60 s. Sin cache. El tiempo restante se mide contra el ultimo bloque. */
+  import * as gb from './motor.js';
+  import * as wallet from './wallet.js';
+  let actual = null;
+  async function pintar() {
+    const el = document.getElementById('cco-sub'); if (!el) return;
+    const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+    if (!cuenta) { el.className = ''; el.innerHTML = ''; return; }
+    actual = cuenta;
+    const st = await gb.estadoSuscripcion(cuenta);
+    if (actual !== cuenta) return;                       // cambio de wallet mientras se leia
+    const e = document.getElementById('cco-sub'); if (!e) return;
+    if (!st) { e.className = ''; e.innerHTML = ''; return; }
+    const corta = cuenta.slice(0, 6) + '\u2026' + cuenta.slice(-4);
+    const resta = st.pagadoHasta - st.ahora;
+    if (resta <= 0) { e.className = 'off'; e.innerHTML = '<span class="d"></span><b>No active plan</b><i>' + corta + '</i>'; e.title = 'No bot subscription active for this wallet (read from the contract)'; return; }
+    const d = Math.floor(resta / 86400), h = Math.floor((resta % 86400) / 3600), m = Math.floor((resta % 3600) / 60);
+    const txt = d > 0 ? (d + 'd ' + h + 'h') : (h > 0 ? (h + 'h ' + m + 'm') : (m + 'm'));
+    const fin = new Date(st.pagadoHasta * 1000).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    e.className = 'on' + (resta < 3 * 86400 ? ' warn' : '');
+    e.innerHTML = '<span class="d"></span><b>' + txt + ' left</b><i>' + corta + '</i>';
+    e.title = 'Bots subscription active until ' + fin + ' (read from the contract)';
+  }
+  const arrancar = () => { pintar(); setInterval(pintar, 60000); try { wallet.alCambiar(() => pintar()); } catch (_) {} };
+  const esperarBarra = setInterval(() => { if (document.getElementById('cco-sub')) { clearInterval(esperarBarra); arrancar(); } }, 300);
+  setTimeout(() => clearInterval(esperarBarra), 20000);
+</script>
 <script src="./aviso.js"></script>
 </body>
 </html>

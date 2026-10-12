@@ -2063,9 +2063,13 @@ async function onCrearCashOut() {
       const wbnbH = Number(gb.fmt(wbnbBal, base.decimals));
       if (cantidad > wbnbH + 1e-12) {
         const falta = cantidad - wbnbH;
+        const faltaWei = mBI(falta * 1.001, base.decimals);
+        /* Pre-vuelo ANTES de envolver: si se convierte todo el BNB en WBNB, no queda BNB
+           para el costo del bot ($2.50) ni para el gas y la ultima firma revertia. */
+        await gb.preVueloBNB(cuenta, faltaWei, true);
         await pasoWallet('Prepare your BNB', `<b>${num(falta, 6)} BNB</b> is converted to WBNB so it can be sold (it is still yours).<br><br>Tap <b>Continue</b> and sign in your wallet.`);
         modalBusy('Converting your BNB… sign in your wallet.');
-        await gb.envolverBNB(mBI(falta * 1.001, base.decimals));
+        await gb.envolverBNB(faltaWei);
       }
     }
     // Paso: permiso si hace falta (firma aparte)
