@@ -5,7 +5,7 @@
 
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-import { LAUNCHPAD, USDT, RPCS } from './config.js';
+import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS } from './config.js';
 
 const CERO = '0x0000000000000000000000000000000000000000';
 
@@ -257,6 +257,93 @@ export async function operaciones(token, max = 80) {
   return ops.slice(0, max);
 }
 function _corto(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
+
+/* ─────────── Verificacion automatica en BscScan ───────────
+   Cada moneda es un TokenDF, el mismo codigo que ya esta verificado dentro del
+   launchpad. Reusamos su Standard JSON verificado y lo reenviamos con la direccion
+   de la moneda y SUS argumentos del constructor (leidos exactos del evento). No
+   hay que compilar ni entrar a Remix: BscScan recompila el proyecto y lo cuadra. */
+let _refVerif = null;   // Standard JSON + version del compilador del launchpad, se pide una vez
+
+function _scanURL(params) {
+  const u = new URL(SCAN.api);
+  for (const k in params) u.searchParams.set(k, params[k]);
+  u.searchParams.set('chainid', String(SCAN.chainId));
+  u.searchParams.set('apikey', SCAN.key);
+  return u.toString();
+}
+async function _scanGet(params) { const r = await fetch(_scanURL(params)); return r.json(); }
+async function _scanPost(params) {
+  const b = new URLSearchParams();
+  for (const k in params) b.set(k, params[k]);
+  b.set('chainid', String(SCAN.chainId)); b.set('apikey', SCAN.key);
+  const r = await fetch(SCAN.api + '?chainid=' + SCAN.chainId, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: b.toString() });
+  return r.json();
+}
+
+/** true si BscScan ya tiene el codigo fuente verificado de esa direccion. */
+export async function verificado(addr) {
+  try {
+    const j = await _scanGet({ module: 'contract', action: 'getsourcecode', address: addr });
+    const r = j && j.result && j.result[0];
+    return !!(r && r.SourceCode && r.SourceCode.length > 2 && r.ABI && r.ABI !== 'Contract source code not verified');
+  } catch (_) { return false; }
+}
+
+/** Standard JSON verificado del launchpad + version del compilador (una sola vez). */
+async function _referencia() {
+  if (_refVerif) return _refVerif;
+  const j = await _scanGet({ module: 'contract', action: 'getsourcecode', address: LAUNCHPAD_IMPL });
+  const r = j && j.result && j.result[0];
+  if (!r || !r.SourceCode) throw new Error('No se pudo leer el contrato de referencia en BscScan.');
+  let src = String(r.SourceCode).trim();
+  if (src.startsWith('{{') && src.endsWith('}}')) src = src.slice(1, -1);   // Etherscan envuelve el standard-json en {{ }}
+  _refVerif = { source: src, compilador: r.CompilerVersion };
+  return _refVerif;
+}
+
+/** Argumentos del constructor de un TokenDF, leidos exactos del evento TokenCreado. */
+async function _ctorArgs(token) {
+  const t0 = _iface.getEvent('TokenCreado').topicHash;
+  const t1 = ethers.zeroPadValue(token, 32);
+  const j = await _scanGet({ module: 'logs', action: 'getLogs', address: LAUNCHPAD, topic0: t0, topic0_1_opr: 'and', topic1: t1, fromBlock: '0', toBlock: 'latest' });
+  const lg = j && j.result && j.result[0];
+  if (!lg || !lg.topics) throw new Error('No encuentro el evento de creacion de esta moneda.');
+  const p = _iface.parseLog({ topics: lg.topics, data: lg.data });
+  const a = p.args;
+  return ethers.AbiCoder.defaultAbiCoder().encode(
+    ['string', 'string', 'uint256', 'address', 'address', 'uint16', 'uint256', 'uint64'],
+    [a.nombre, a.simbolo, a.supply, a.creador, LAUNCHPAD, Number(a.sueloBps), a.vestTotal, a.vestDuracion]
+  ).slice(2);
+}
+
+/** Verifica una moneda en BscScan reusando el build ya verificado del launchpad.
+    Devuelve 'ya' | 'ok' | 'pendiente' | 'error:...'. Nunca lanza. */
+export async function verificar(token) {
+  try {
+    if (await verificado(token)) return 'ya';
+    const { source, compilador } = await _referencia();
+    const ctor = await _ctorArgs(token);
+    const env = await _scanPost({
+      module: 'contract', action: 'verifysourcecode', codeformat: 'solidity-standard-json-input',
+      sourceCode: source, contractaddress: token, contractname: SCAN.contrato,
+      compilerversion: compilador, constructorArguements: ctor
+    });
+    if (String(env.status) !== '1') {
+      if (/already verified/i.test(env.result || '')) return 'ya';
+      return 'error:' + (env.result || 'rechazado');
+    }
+    const guid = env.result;
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const st = await _scanGet({ module: 'contract', action: 'checkverifystatus', guid });
+      const res = String(st.result || '');
+      if (/already verified/i.test(res) || /pass|verified/i.test(res)) return 'ok';
+      if (/fail/i.test(res)) return 'error:' + res;
+    }
+    return 'pendiente';
+  } catch (e) { return 'error:' + (e && (e.message || e)); }
+}
 
 export function parseEther(x) { return ethers.parseEther(String(x)); }
 export function fmtEther(x) { return ethers.formatEther(x); }

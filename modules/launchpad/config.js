@@ -12,6 +12,16 @@ export const RPCS = [
 
 /* Contratos del launchpad (se rellenan en la fase de contrato). */
 export const LAUNCHPAD = '0x2c27B653F4fF3d7D0a4581A272E16E0E4E514128';   // proxy UUPS: fabrica de tokens + pools + candados + destinos (owner1, owner2, staking)
+export const LAUNCHPAD_IMPL = '0x7f49C8E63a9706c18c880a286fbB80AB27cCE8e4';   // implementacion verificada: su Standard JSON incluye TokenDF.sol (base para verificar cada moneda)
+
+/* Verificacion automatica de cada moneda en BscScan (Etherscan V2: una sola API, BSC = chainid 56).
+   Misma key publica que ya usa Wallet Shield (solo lectura y verificacion de codigo). */
+export const SCAN = {
+  api: 'https://api.etherscan.io/v2/api',
+  chainId: 56,
+  key: 'TZQ4M8PRW6J794MWDB1D2WM3FPVVC6NKB6',
+  contrato: 'TokenDF.sol:TokenDF'
+};
 
 /* Monedas con las que se puede poner liquidez. */
 export const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';

@@ -478,6 +478,7 @@ async function crear() {
     // Guardar metadatos locales (logo, supply inicial) para esta moneda.
     const meta = { address: token, nombre: W.nombre, simbolo: W.simbolo, logo: W.logo || '', supply: W.supply, sueloBps: W.suelo ? W.sueloBps : 0, fundadorPct: W.fundadorPct, vestingMeses: W.vestingMeses, antibot: W.antibot, creador: cuenta, creadoEn: Date.now() };
     guardarMeta(meta);
+    try { gb.verificar(token); } catch (_) {}   // verificacion automatica en BscScan, en segundo plano
     modalCerrar();
     const t = deChain(await gb.datosToken(token).catch(() => null), meta) || { ...meta, suelo: meta.sueloBps > 0, reservaSuelo: 0, pool: null, fromChain: true };
     preguntarLiquidez(t);
@@ -565,7 +566,7 @@ function pintarPanel(t) {
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
       <div class="lp-top">
-        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)}<small>${esc(t.simbolo)}</small></div><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button></div></div>
+        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)}<small>${esc(t.simbolo)}</small></div><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span id="lp-verif"></span></div></div>
         <div class="lp-precio"><b>${precioTxt}</b><span class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${cambio24 == null ? '24h · no data yet' : (cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2) + '% · 24h'}</span></div>
         <div class="lp-stats">
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
@@ -656,6 +657,25 @@ function pintarPanel(t) {
   if ($('lp-claim')) $('lp-claim').onclick = () => accionReclamar(t);
   document.querySelectorAll('.lp-chart-tabs button').forEach((b) => b.onclick = () => { document.querySelectorAll('.lp-chart-tabs button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); pintarGrafica(t, b.dataset.r); });
   pintarGrafica(t, '1h');
+  if (!t.demo && t.address) pintarVerif(t.address);
+}
+
+/* Estado de verificacion en BscScan: badge verde con enlace, o boton para verificar
+   (sirve tanto para monedas nuevas como para las creadas antes de esta funcion). */
+async function pintarVerif(addr) {
+  const el = $('lp-verif'); if (!el) return;
+  const url = 'https://bscscan.com/address/' + addr + '#code';
+  const base = 'display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:7px;text-decoration:none;cursor:pointer';
+  const okHTML = `<a href="${url}" target="_blank" rel="noopener" style="${base};color:var(--verde);border:1px solid rgba(46,232,106,.4);background:rgba(46,232,106,.08)">Verified on BscScan</a>`;
+  if (await gb.verificado(addr).catch(() => false)) { el.innerHTML = okHTML; return; }
+  el.innerHTML = `<button type="button" id="lp-verif-b" style="${base};color:var(--gold);border:1px solid rgba(232,184,75,.4);background:rgba(232,184,75,.06)">Verify on BscScan</button>`;
+  const b = $('lp-verif-b'); if (!b) return;
+  b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Verifying on BscScan…';
+    const s = await gb.verificar(addr);
+    if (s === 'ok' || s === 'ya') { el.innerHTML = okHTML; }
+    else { b.disabled = false; b.textContent = s === 'pendiente' ? 'Pending, check again' : 'Verify again'; }
+  };
 }
 
 /* ───────── Acciones del panel (firman contra el contrato) ───────── */
