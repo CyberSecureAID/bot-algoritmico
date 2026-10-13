@@ -122,15 +122,15 @@ function pintarPortada() {
     <section class="lp-hero">
       <img class="lp-hero-ico" src="./img/launchpad-icono.webp" alt="" width="220" height="220" onerror="this.style.display='none'">
       <h1 class="lp-h1">Create your own coin</h1>
-      <p class="lp-sub">A standard BEP-20 with a fixed supply and no mint function, deployed from your wallet with verified source, plus three mechanisms you would otherwise have to build and audit yourself: a floor price backed by a BNB reserve inside the token that any holder can redeem against, liquidity the factory locks for the term you pick so you never hold the LP, and linear founder vesting enforced on chain. The fee rate is immutable at 0.02% per sale; only its destination can change, through a public registry. Free to create, no admin keys over your token, no proxy in the token.</p>
+      <p class="lp-sub">Most launchpads hand you a token. This one hands you a position you can defend. Every coin deployed here carries, in its own immutable contract, the three guarantees a serious buyer checks first: a floor price backed by a BNB reserve that only grows and that any holder can redeem against; liquidity locked by the factory for the term you choose, so there is no LP to pull; and a founder allocation that vests linearly, on chain, with no override. Fixed supply, no mint, no admin keys, no proxy, verified source from block one. Deploying costs you nothing. The ecosystem takes 0.02% per sale and nothing else.</p>
       <div class="lp-cta">
         <button class="lp-b" id="lp-crear">Create</button>
-        <button class="lp-b" id="lp-ver-mios">My coins${mios.length ? ' · ' + mios.length : ''}</button>
+        <button class="lp-b" id="lp-ver-mios" ${mios.length ? '' : 'disabled title="You have not created a coin yet"'}>My coins${mios.length ? ' · ' + mios.length : ''}</button>
         <button class="lp-b" id="lp-info">Learn more</button>
       </div>
     </section>`;
   $('lp-crear').onclick = () => abrirAsistente();
-  $('lp-ver-mios').onclick = () => pintarMios();
+  $('lp-ver-mios').onclick = () => { if (misTokens().length) pintarMios(); };
   $('lp-info').onclick = () => abrirInfo();
 }
 
@@ -200,7 +200,7 @@ function pintarMios() {
     <section class="lp-mios"><h3>My coins</h3><div id="lp-mios-lista"></div></section>`;
   $('lp-volver').onclick = () => pintarPortada();
   const c = $('lp-mios-lista');
-  if (!l.length) { c.innerHTML = `<div class="lp-vacio">You have not created any coin yet.<br><br><button class="lp-b" id="lp-crear2" type="button">Create</button></div>`; $('lp-crear2').onclick = () => abrirAsistente(); return; }
+  if (!l.length) { pintarPortada(); return; }
   c.innerHTML = l.map((t) => `<div class="lp-tok" data-a="${t.address}">
       ${t.logo ? `<img src="${t.logo}" alt="">` : `<div class="lp-ini">${esc((t.simbolo || '?')[0])}</div>`}
       <div><b>${esc(t.nombre)} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(t.simbolo)}</small></b><span>${corto(t.address)}</span></div>

@@ -5,10 +5,12 @@
 #colmena-app button{font:inherit;cursor:pointer}
 
 /* ───────── Portada del launchpad: minima, que se vea el fondo ───────── */
-.lp-hero{text-align:center;padding:14px 0 20px;max-width:720px;margin:0 auto}
-.lp-hero-ico{display:block;width:130px;height:130px;margin:0 auto 4px;object-fit:contain;filter:drop-shadow(0 14px 30px rgba(0,0,0,.75))}
-.lp-h1{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:clamp(26px,3.4vw,38px);line-height:1.1;margin:0 0 12px;color:#f3dc9a;background:linear-gradient(180deg,#fff7df 0%,#f1cf6a 55%,#d9a93a 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 2px rgba(0,0,0,.95)) drop-shadow(0 8px 22px rgba(0,0,0,.8))}
-.lp-sub{margin:0 auto;max-width:680px;color:#e7cf8a;font-family:var(--display);font-weight:500;font-size:14.5px;line-height:1.65;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.98),0 3px 10px rgba(0,0,0,.9),0 8px 26px rgba(0,0,0,.8)}
+.lp-hero{text-align:center;padding:6px 0 20px;max-width:760px;margin:0 auto}
+/* El icono se mide por ANCHO (la imagen es apaisada): alto automatico, nada de caja cuadrada que lo achique. */
+.lp-hero-ico{display:block;width:min(340px,80vw);height:auto;max-height:190px;margin:0 auto 2px;object-fit:contain;filter:drop-shadow(0 14px 30px rgba(0,0,0,.75))}
+.lp-h1{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:clamp(26px,3.4vw,38px);line-height:1.1;margin:0 0 10px;color:#f3dc9a;background:linear-gradient(180deg,#fff7df 0%,#f1cf6a 55%,#d9a93a 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 2px rgba(0,0,0,.95)) drop-shadow(0 8px 22px rgba(0,0,0,.8))}
+
+.lp-sub{margin:0 auto;max-width:720px;color:#f3ead3;font-family:var(--display);font-weight:500;font-size:14.5px;line-height:1.65;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.98),0 3px 10px rgba(0,0,0,.9),0 8px 26px rgba(0,0,0,.8)}
 .lp-cta{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap}
 .lp-cta .lp-b{flex:0 0 150px;min-width:0;padding:0 10px;background:linear-gradient(180deg,#1b2027,#0d1117);border-color:#3a424c;color:var(--gold);box-shadow:0 4px 0 #050709,0 12px 26px rgba(0,0,0,.5)}
 .lp-cta .lp-b:active{box-shadow:0 1px 0 #050709}
@@ -40,7 +42,7 @@
 .lp-nota{margin-top:10px;padding:13px 15px;border-radius:12px;background:rgba(246,70,93,.06);border:1px solid rgba(246,70,93,.28);font-size:12.5px;line-height:1.55;color:var(--ink-2)}
 .lp-nota b{color:#ffc2ca}
 @media(max-width:640px){.lp-poderes,.lp-como{grid-template-columns:1fr}}
-@media(max-width:560px){.lp-hero{padding-top:8px}.lp-hero-ico{width:110px;height:110px}.lp-sub{font-size:13.5px}.lp-cta{flex-direction:column;align-items:stretch}.lp-cta .lp-b{flex:0 0 auto;width:100%}#colmena-app{padding:18px 14px 50px}}
+@media(max-width:560px){.lp-hero{padding-top:4px}.lp-hero-ico{max-height:130px}.lp-sub{font-size:13.5px}.lp-cta{flex-direction:column;align-items:stretch}.lp-cta .lp-b{flex:0 0 auto;width:100%}#colmena-app{padding:18px 14px 50px}}
 
 /* ───────── Mis tokens (lista) ───────── */
 .lp-mios{max-width:720px;margin:10px auto 0}
@@ -182,8 +184,8 @@
 .lp-widget-prev .wp-btn{margin-top:4px;text-align:center;padding:9px;border-radius:9px;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;font-weight:800;font-size:12px}
 .lp-widget-prev .wp-marca{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px;font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;color:var(--ink-3);border-top:1px solid #1c232b}
 .lp-widget-prev .wp-marca img{height:12px;width:auto}
-.lp-volver{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;font-size:13px;color:var(--ink-2);background:none;border:0;padding:0}
-.lp-volver:hover{color:var(--gold)}
+.lp-volver{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px 0 10px;margin-bottom:12px;border-radius:9px;font-family:var(--display);font-size:13px;font-weight:600;color:var(--ink-2);background:rgba(10,13,18,.72);border:1px solid #29313b;cursor:pointer;text-shadow:0 1px 4px rgba(0,0,0,.9)}
+.lp-volver:hover{color:var(--gold);border-color:#8f6a1a}
 /* Tabla de operaciones */
 .lp-txs-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .lp-txs-head h4{margin:0}
