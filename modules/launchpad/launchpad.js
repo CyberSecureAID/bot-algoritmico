@@ -6,6 +6,7 @@
 import * as wallet from './wallet.js';
 import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
+import * as gb from './motor.js';
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -33,6 +34,37 @@ function modal(titulo, cuerpo, { ok = 'Got it', cancel = null } = {}) {
     bo.onclick = () => { m.classList.remove('show'); resolve(true); };
     bc.onclick = () => { m.classList.remove('show'); resolve(false); };
     m.classList.add('show');
+  });
+}
+function modalBusy(titulo, cuerpo) {
+  const m = $('colmena-modal'); if (!m) return;
+  $('cm-title').textContent = titulo; $('cm-body').innerHTML = cuerpo;
+  const b = m.querySelector('.m-btns'); if (b) b.style.display = 'none';
+  m.classList.add('show');
+}
+function modalCerrar() { const m = $('colmena-modal'); if (!m) return; m.classList.remove('show'); const b = m.querySelector('.m-btns'); if (b) b.style.display = ''; }
+window._onTxProcesando = function () { const el = document.getElementById('cm-body'); if (el && document.getElementById('colmena-modal').classList.contains('show')) { const s = el.querySelector('.lp-proc'); if (!s) el.insertAdjacentHTML('beforeend', '<div class="lp-proc" style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--ink-3)">Processing on the network…</div>'); } };
+const esRechazo = (e) => e && (e.code === 'ACTION_REJECTED' || /reject|denied|user\s*rejected/i.test(e.message || ''));
+const errTxt = (e) => (e && (e.shortMessage || e.reason || e.message)) ? String(e.shortMessage || e.reason || e.message).slice(0, 180) : 'Something went wrong. Try again.';
+/* Pequeno modal con un campo numerico. Devuelve el numero o null. */
+function pedirCantidad({ titulo, cuerpo, max, sufijo = '', ok = 'Confirm' }) {
+  return new Promise((resolve) => {
+    const prev = $('lp-wiz'); if (prev) prev.remove();
+    const d = document.createElement('div'); d.id = 'lp-wiz'; d.className = 'lp-wiz-bg';
+    d.innerHTML = `<div class="lp-wiz" style="max-width:420px">
+      <button class="lp-wiz-x" id="pc-x" type="button">✕</button>
+      <div class="lp-wiz-t">${titulo}</div>${cuerpo ? `<div class="lp-wiz-s">${cuerpo}</div>` : ''}
+      <div class="lp-wiz-b"><input type="text" inputmode="decimal" id="pc-in" placeholder="0" autocomplete="off">
+      <div class="lp-hint" id="pc-h">${max != null ? 'You have ' + num(max, 6) + ' ' + sufijo : ''}${max != null ? ' · <button type="button" id="pc-max" style="background:none;border:0;color:var(--gold);cursor:pointer;font-family:var(--mono);font-size:11px">Max</button>' : ''}</div></div>
+      <div class="lp-wiz-acts"><button class="lp-b gris" id="pc-no" type="button">Cancel</button><button class="lp-b" id="pc-ok" type="button">${ok}</button></div>
+      <div class="lp-wiz-msg" id="pc-msg"></div></div>`;
+    document.body.appendChild(d);
+    const cerrar = (v) => { d.remove(); resolve(v); };
+    $('pc-x').onclick = () => cerrar(null); $('pc-no').onclick = () => cerrar(null);
+    d.onclick = (e) => { if (e.target === d) cerrar(null); };
+    if ($('pc-max')) $('pc-max').onclick = () => { $('pc-in').value = String(max); };
+    $('pc-in').focus();
+    $('pc-ok').onclick = () => { const v = Number(($('pc-in').value || '').replace(/[^0-9.]/g, '')) || 0; if (!(v > 0)) { $('pc-msg').textContent = 'Enter an amount.'; return; } if (max != null && v > max + 1e-9) { $('pc-msg').textContent = 'More than you have.'; return; } cerrar(v); };
   });
 }
 
@@ -74,6 +106,44 @@ async function ocultarToken(t) {
   return true;
 }
 function guardarTokens(l) { try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} }
+/* Metadatos locales por moneda (logo, supply inicial): el dato de cadena manda,
+   esto solo guarda lo que la cadena no tiene barato (el logo). */
+function metaLocal(addr) { try { return (JSON.parse(localStorage.getItem('lp-tokens') || '[]')).find((x) => x.address.toLowerCase() === String(addr).toLowerCase()) || null; } catch (_) { return null; } }
+function guardarMeta(meta) { let l = []; try { l = JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) {} const i = l.findIndex((x) => x.address.toLowerCase() === meta.address.toLowerCase()); if (i >= 0) l[i] = { ...l[i], ...meta }; else l.push(meta); try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} const c = JSON.parse(localStorage.getItem('lp-ocultos') || '[]'); const j = c.indexOf(meta.address.toLowerCase()); if (j >= 0) { c.splice(j, 1); localStorage.setItem('lp-ocultos', JSON.stringify(c)); } }
+
+/* datosToken (motor) -> la forma que usa pintarPanel. */
+function deChain(datos, meta) {
+  if (!datos) return null;
+  const pool = datos.pool ? {
+    moneda: datos.moneda, quote: datos.pool.quote,
+    liquidez: Number(gb.fmtEther(datos.pool.rQuote)), tokens: Number(gb.fmtEther(datos.pool.rTok)),
+    rTokWei: datos.pool.rTok, rQuoteWei: datos.pool.rQuote,
+    creadoEn: datos.pool.abiertoEn * 1000,
+    desbloqueoTs: datos.pool.desbloqueo ? datos.pool.desbloqueo * 1000 : null
+  } : null;
+  const liberado = (datos.vestReclamado || 0) + (datos.reclamable || 0);
+  return {
+    address: datos.address, nombre: datos.nombre || (meta && meta.nombre) || '', simbolo: datos.simbolo || (meta && meta.simbolo) || '',
+    logo: (meta && meta.logo) || '', supply: datos.supply,
+    suelo: datos.sueloBps > 0, sueloBps: datos.sueloBps, reservaSuelo: datos.reservaSuelo,
+    fundadorPct: datos.fundadorPct, vestFinTs: (datos.vestInicio + datos.vestDur) * 1000,
+    vestPct: datos.vestTotal > 0 ? Math.min(100, liberado / datos.vestTotal * 100) : 0,
+    reclamable: datos.reclamable, vestTotalCoins: datos.vestTotal,
+    creador: datos.creador, creadoEn: datos.creadoEn * 1000, holders: null, quemado: 0,
+    pool, demo: false, fromChain: true
+  };
+}
+/* Carga una moneda de la cadena y pinta su panel (pagina publica ?token y clics internos). */
+async function cargarToken(addr) {
+  pintarCargando();
+  try {
+    const t = deChain(await gb.datosToken(addr), metaLocal(addr));
+    if (!t) { await modal('Coin not found', 'This coin is not on the launchpad, or the network did not answer. Try again.'); pintarPortada(); return; }
+    t.txs = await gb.operaciones(addr).catch(() => []);
+    pintarPanel(t);
+  } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
+}
+function pintarCargando() { const h = $(APP); if (h) h.innerHTML = `<div style="min-height:60vh;display:flex;align-items:center;justify-content:center"><span style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:#E8B84B;display:inline-block;animation:spin .7s linear infinite"></span></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`; }
 
 /* Muestra de ejemplo para ver el panel sin contrato: launchpad.html?demo=1 */
 function tokenDemo() {
@@ -104,7 +174,7 @@ export function arrancar() {
   const q = new URLSearchParams(location.search);
   if (q.get('demo') === '1') { pintarPanel(tokenDemo()); return; }
   const ver = q.get('token');
-  if (ver) { const t = misTokens().find((x) => x.address.toLowerCase() === ver.toLowerCase()); if (t) { pintarPanel(t); return; } }
+  if (ver && /^0x[0-9a-fA-F]{40}$/.test(ver) && hayContrato()) { cargarToken(ver); return; }
   pintarPortada();
 }
 
@@ -125,12 +195,12 @@ function pintarPortada() {
       <p class="lp-sub">Most launchpads hand you a token. This one hands you a position you can defend. Every coin deployed here carries, in its own immutable contract, the three guarantees a serious buyer checks first: a floor price backed by a BNB reserve that only grows and that any holder can redeem against; liquidity locked by the factory for the term you choose, so there is no LP to pull; and a founder allocation that vests linearly, on chain, with no override. Fixed supply, no mint, no admin keys, no proxy, verified source from block one. Deploying costs you nothing. The ecosystem takes 0.5% of each sale, in BNB, and nothing else: buying, holding and transferring are free.</p>
       <div class="lp-cta">
         <button class="lp-b" id="lp-crear">Create</button>
-        <button class="lp-b" id="lp-ver-mios" ${mios.length ? '' : 'disabled title="You have not created a coin yet"'}>My coins${mios.length ? ' · ' + mios.length : ''}</button>
+        <button class="lp-b" id="lp-ver-mios">My coins</button>
         <button class="lp-b" id="lp-info">Learn more</button>
       </div>
     </section>`;
   $('lp-crear').onclick = () => abrirAsistente();
-  $('lp-ver-mios').onclick = () => { if (misTokens().length) pintarMios(); };
+  $('lp-ver-mios').onclick = () => pintarMios();
   $('lp-info').onclick = () => abrirInfo();
 }
 
@@ -192,21 +262,29 @@ function abrirInfo() {
   $('lp-info-ok').onclick = () => { d.remove(); abrirAsistente(); };
 }
 
-function pintarMios() {
+async function pintarMios() {
   const host = $(APP); if (!host) return;
-  const l = misTokens();
+  const cuenta = wallet.cuentaActual();
+  if (!cuenta) { const si = await modal('Connect your wallet', 'Your coins belong to a wallet. Connect to see them.', { ok: 'Connect', cancel: 'Back' }); if (!si) { pintarPortada(); return; } try { await wallet.conectar(); } catch (_) {} if (!wallet.cuentaActual()) { pintarPortada(); return; } }
   host.innerHTML = `
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
-    <section class="lp-mios"><h3>My coins</h3><div id="lp-mios-lista"></div></section>`;
+    <section class="lp-mios"><h3>My coins</h3><div id="lp-mios-lista"><div class="lp-vacio">Reading the chain…</div></div></section>`;
   $('lp-volver').onclick = () => pintarPortada();
-  const c = $('lp-mios-lista');
-  if (!l.length) { pintarPortada(); return; }
-  c.innerHTML = l.map((t) => `<div class="lp-tok" data-a="${t.address}">
-      ${t.logo ? `<img src="${t.logo}" alt="">` : `<div class="lp-ini">${esc((t.simbolo || '?')[0])}</div>`}
-      <div><b>${esc(t.nombre)} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(t.simbolo)}</small></b><span>${corto(t.address)}</span></div>
-      <span class="lp-est ${t.pool ? '' : 'gris'}">${t.pool ? 'Tradable' : 'No pool'}</span>
-    </div>`).join('');
-  c.querySelectorAll('.lp-tok').forEach((el) => el.onclick = () => { const t = l.find((x) => x.address === el.dataset.a); if (t) pintarPanel(t); });
+  // La cadena manda quien existe; el navegador solo aporta el logo y oculta lo que escondiste.
+  let addrs = [];
+  try { addrs = (await gb.tokensDe(wallet.cuentaActual())).map((a) => String(a)); } catch (_) {}
+  const oc = ocultos();
+  addrs = addrs.filter((a) => !oc.includes(a.toLowerCase()));
+  const c = $('lp-mios-lista'); if (!c) return;
+  if (!addrs.length) { pintarPortada(); return; }
+  c.innerHTML = addrs.map((a) => { const m = metaLocal(a) || {}; return `<div class="lp-tok" data-a="${a}">
+      ${m.logo ? `<img src="${m.logo}" alt="">` : `<div class="lp-ini">${esc((m.simbolo || '?')[0])}</div>`}
+      <div><b>${esc(m.nombre || 'Coin')} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(m.simbolo || '')}</small></b><span>${corto(a)}</span></div>
+      <span class="lp-est" data-pool="${a}">…</span>
+    </div>`; }).join('');
+  c.querySelectorAll('.lp-tok').forEach((el) => el.onclick = () => cargarToken(el.dataset.a));
+  // Estado del pool (tradable / no pool), sin bloquear el render.
+  addrs.forEach(async (a) => { try { const d = await gb.datosToken(a); const e = c.querySelector(`[data-pool="${a}"]`); if (e) { e.textContent = d.pool ? 'Tradable' : 'No pool'; e.classList.toggle('gris', !d.pool); } } catch (_) {} });
 }
 
 /* ───────── Asistente ───────── */
@@ -385,11 +463,30 @@ function reducirLogo(file) {
 async function crear() {
   if (!hayContrato()) {
     wizCerrar();
-    await modal('Contract pending', 'The launchpad contract is not deployed yet. Your configuration is complete and this is exactly what it will create when it goes live.<br><br>The interface is ready; the on-chain part comes in the next phase.');
+    await modal('Launchpad not ready', 'The launchpad contract address is not set yet. Try again shortly.');
     pintarPortada();
     return;
   }
-  // Fase 2: firma crearToken(...) en LAUNCHPAD, espera el evento, guarda address y pasa a la liquidez.
+  const cuenta = wallet.cuentaActual();
+  if (!cuenta) { await modal('Connect your wallet', 'Connect the wallet that will own the coin.'); return; }
+  const prev = $('lp-wiz'); if (prev) prev.remove();
+  modalBusy('Creating your coin', `Confirm in your wallet. This deploys <b>${esc(W.nombre)}</b> on BNB Smart Chain. It is free; you pay only the network gas.`);
+  try {
+    const supply = gb.parseEther(W.supply);
+    const token = await gb.crearToken({ nombre: W.nombre, simbolo: W.simbolo, supply, sueloBps: W.suelo ? W.sueloBps : 0, fundadorPct: W.fundadorPct, vestingMeses: W.fundadorPct ? W.vestingMeses : 0, antibot: W.antibot });
+    if (!token) throw new Error('Created, but the address did not come back. Check My coins in a moment.');
+    // Guardar metadatos locales (logo, supply inicial) para esta moneda.
+    const meta = { address: token, nombre: W.nombre, simbolo: W.simbolo, logo: W.logo || '', supply: W.supply, sueloBps: W.suelo ? W.sueloBps : 0, fundadorPct: W.fundadorPct, vestingMeses: W.vestingMeses, antibot: W.antibot, creador: cuenta, creadoEn: Date.now() };
+    guardarMeta(meta);
+    modalCerrar();
+    const t = deChain(await gb.datosToken(token).catch(() => null), meta) || { ...meta, suelo: meta.sueloBps > 0, reservaSuelo: 0, pool: null, fromChain: true };
+    preguntarLiquidez(t);
+  } catch (e) {
+    modalCerrar();
+    if (esRechazo(e)) { await modal('Cancelled', 'You cancelled the signature. Nothing was created.'); }
+    else await modal('Could not create the coin', errTxt(e));
+    pintarPortada();
+  }
 }
 
 /* ───────── Liquidez (se ofrece justo despues de crear) ───────── */
@@ -423,7 +520,25 @@ function preguntarLiquidez(tok) {
   document.querySelectorAll('#lq-cand .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#lq-cand .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); cand = Number(b.dataset.v); ratio(); });
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(tok.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; } catch (_) {} };
   $('lq-no').onclick = () => { wizCerrar(); pintarPanel(tok); };
-  $('lq-si').onclick = () => { wmsg('Pool creation is wired in the contract phase.'); };
+  $('lq-si').onclick = async () => {
+    const cTok = Number($('lq-tok').value.replace(/[^0-9.]/g, '')) || 0;
+    const cQuote = Number($('lq-cant').value.replace(/[^0-9.]/g, '')) || 0;
+    const monId = $('lq-mon').value;
+    if (!(cTok > 0)) { wmsg('How many coins go into the pool?'); return; }
+    if (!(cQuote > 0)) { wmsg('How much liquidity do you add?'); return; }
+    if (tok.demo) { wmsg('This is a demo coin.'); return; }
+    modalBusy('Launching the pool', `Confirm the signatures in your wallet. You grant permission over your <b>${esc(tok.simbolo)}</b>${monId === 'USDT' ? ' and USDT' : ''}, then the pool is created with the liquidity locked ${cand === 0 ? 'forever' : 'for ' + cand + ' months'}.`);
+    try {
+      await gb.abrirPool({ token: tok.address, cantTok: gb.parseEther(cTok), quoteId: monId, cantQuote: gb.parseEther(cQuote), candadoMeses: cand });
+      modalCerrar();
+      const t = deChain(await gb.datosToken(tok.address).catch(() => null), metaLocal(tok.address)) || tok;
+      pintarPanel(t);
+    } catch (e) {
+      modalCerrar();
+      if (esRechazo(e)) wmsg('You cancelled a signature.');
+      else await modal('Could not launch the pool', errTxt(e));
+    }
+  };
 }
 
 /* ───────── Panel del creador ───────── */
@@ -432,13 +547,13 @@ function pintarPanel(t) {
   const pool = t.pool || null;
   const precio = pool ? pool.liquidez / pool.tokens : 0;
   const mcap = pool ? precio * t.supply : 0;
-  const quemado = t.quemado || 0, holders = t.holders || (pool ? 1 : 1);
+  const quemado = t.quemado || 0, holders = (t.holders === undefined ? (pool ? 1 : 1) : t.holders);
   const suelo = t.suelo ? (t.reservaSuelo || 0) / Math.max(1, t.supply - quemado) : 0;
   const mon = pool ? pool.moneda : 'BNB';
-  const desbloqueo = pool ? (pool.candadoMeses === 0 ? null : pool.creadoEn + pool.candadoMeses * 30 * 86400000) : null;
-  const vestFin = t.creadoEn + (t.vestingMeses || 0) * 30 * 86400000;
-  const vestPct = t.fundadorPct ? Math.min(100, Math.max(0, (Date.now() - t.creadoEn) / (vestFin - t.creadoEn) * 100)) : 0;
-  const fundadorTot = t.supply * (t.fundadorPct || 0) / 100;
+  const desbloqueo = pool ? (pool.desbloqueoTs !== undefined ? pool.desbloqueoTs : (pool.candadoMeses === 0 ? null : pool.creadoEn + pool.candadoMeses * 30 * 86400000)) : null;
+  const vestFin = t.vestFinTs || (t.creadoEn + (t.vestingMeses || 0) * 30 * 86400000);
+  const vestPct = t.vestPct != null ? t.vestPct : (t.fundadorPct ? Math.min(100, Math.max(0, (Date.now() - t.creadoEn) / (vestFin - t.creadoEn) * 100)) : 0);
+  const fundadorTot = t.vestTotalCoins != null ? t.vestTotalCoins : t.supply * (t.fundadorPct || 0) / 100;
   const widgetUrl = `${location.origin}${location.pathname.replace(/launchpad\.html.*$/, '')}widget.html?token=${t.address}`;
   const cuenta = (wallet.cuentaActual() || '').toLowerCase();
   const esAdmin = t.demo || (t.creador && t.creador.toLowerCase() === cuenta);
@@ -455,11 +570,11 @@ function pintarPanel(t) {
         <div class="lp-stats">
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
           <div class="lp-stat"><i>Burned</i><b>${quemado ? num(quemado, 0) : '0'}</b></div>
-          <div class="lp-stat"><i>Holders</i><b>${num(holders, 0)}</b></div>
+          <div class="lp-stat"><i>Holders</i><b>${holders == null ? 'n/a' : num(holders, 0)}</b></div>
           <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcap, 4) + ' ' + mon : '...'}</b></div>
           <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? num(pool.liquidez, 4) + ' ' + mon : 'No pool'}</b></div>
           <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24, 4) + ' ' + mon : '...'}</b></div>
-          <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (suelo > 0 ? suelo.toPrecision(3) + ' BNB' : 'building') : 'off'}</b></div>
+          <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (suelo > 0 ? fmtP(suelo) + ' ' + mon : 'building') : 'off'}</b></div>
         </div>
       </div>
       <div class="lp-main">
@@ -484,9 +599,9 @@ function pintarPanel(t) {
           ${esAdmin ? (pool ? `<button class="lp-b gris" id="lp-ret" ${desbloqueo && Date.now() > desbloqueo ? '' : 'disabled'} type="button">${desbloqueo && Date.now() > desbloqueo ? 'Withdraw' : 'Locked'}</button>` : `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>`) : ''}
         </div>
         ${t.suelo ? `<div class="lp-card"><h4>Floor reserve</h4>
-          <div class="lp-kv"><span>Reserve</span><b>${num(t.reservaSuelo || 0, 5)} BNB</b></div>
+          <div class="lp-kv"><span>Reserve</span><b>${num(t.reservaSuelo || 0, 5)} ${mon}</b></div>
           <div class="lp-kv"><span>Feeds from sales</span><b class="oro">${t.sueloBps / 100}%</b></div>
-          <div class="lp-kv"><span>Floor per coin</span><b>${suelo > 0 ? suelo.toPrecision(3) + ' BNB' : 'building'}</b></div>
+          <div class="lp-kv"><span>Floor per coin</span><b>${suelo > 0 ? fmtP(suelo) + ' ' + mon : 'building'}</b></div>
           <button class="lp-b gris" id="lp-redeem" type="button" ${suelo > 0 ? '' : 'disabled'}>Redeem</button></div>` : ''}
         ${t.fundadorPct ? `<div class="lp-card"><h4>Founder lock</h4>
           <div class="lp-kv"><span>Founder share</span><b>${num(fundadorTot, 0)} ${esc(t.simbolo)}</b></div>
@@ -529,18 +644,55 @@ function pintarPanel(t) {
   fb.onclick = (e) => { e.stopPropagation(); fm.classList.toggle('open'); };
   document.addEventListener('click', () => fm && fm.classList.remove('open'), { once: true });
   fm.querySelectorAll('button').forEach((b) => b.onclick = () => { filtro = b.dataset.f; fb.innerHTML = b.textContent + ' <svg width="10" height="10" viewBox="0 0 14 14"><use href="#chev"/></svg>'; fm.classList.remove('open'); pintarTabla(); });
-  if ($('lp-redeem')) $('lp-redeem').onclick = () => modal('Contract pending', 'Redeeming at the floor is signed against the coin contract in the next phase.');
-  if ($('lp-burn')) $('lp-burn').onclick = () => modal('Contract pending', 'Burning is signed against the coin contract in the next phase.');
+  if ($('lp-redeem')) $('lp-redeem').onclick = () => accionRedimir(t);
+  if ($('lp-burn')) $('lp-burn').onclick = () => accionQuemar(t);
   if ($('lp-fotos')) $('lp-fotos').onclick = () => modal('Coming with the contract', 'Photos and links use the same storage as List your token. It is wired in the next phase.');
   if ($('lp-ocultar')) $('lp-ocultar').onclick = async () => { if (await ocultarToken(t)) { history.replaceState(null, '', location.pathname); pintarPortada(); } };
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { $('lp-copiar').innerHTML = corto(t.address) + ' ' + ICO_COPY; }, 1500); } catch (_) {} };
   $('lp-copy-w').onclick = () => { try { navigator.clipboard.writeText($('lp-code').textContent); $('lp-copy-w').textContent = 'Copied'; setTimeout(() => { $('lp-copy-w').textContent = 'Copy code'; }, 1500); } catch (_) {} };
   if ($('lp-add')) $('lp-add').onclick = () => preguntarLiquidez(t);
-  if ($('lp-ret')) $('lp-ret').onclick = () => modal('Contract pending', 'Withdrawals are signed against the launchpad contract in the next phase.');
-  if ($('lp-claim')) $('lp-claim').onclick = () => modal('Contract pending', 'Claims are signed against the launchpad contract in the next phase.');
+  if ($('lp-ret')) $('lp-ret').onclick = () => accionRetirar(t);
+  if ($('lp-claim')) $('lp-claim').onclick = () => accionReclamar(t);
   document.querySelectorAll('.lp-chart-tabs button').forEach((b) => b.onclick = () => { document.querySelectorAll('.lp-chart-tabs button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); pintarGrafica(t, b.dataset.r); });
   pintarGrafica(t, '1h');
+}
+
+/* ───────── Acciones del panel (firman contra el contrato) ───────── */
+async function _tras(t, titulo, fn) {
+  modalBusy(titulo, 'Confirm in your wallet.');
+  try { await fn(); modalCerrar(); await cargarToken(t.address); }
+  catch (e) { modalCerrar(); if (esRechazo(e)) await modal('Cancelled', 'You cancelled the signature. Nothing changed.'); else await modal('Could not complete', errTxt(e)); }
+}
+async function accionRetirar(t) {
+  if (t.demo) return modal('Demo', 'This is a demo coin.');
+  const ok = await modal('Withdraw liquidity', `The lock is over. Your pooled coins and <b>${num((t.pool && t.pool.liquidez) || 0, 4)} ${t.pool ? t.pool.moneda : 'BNB'}</b> go back to your wallet and the pool closes.`, { ok: 'Withdraw', cancel: 'Cancel' });
+  if (!ok) return; _tras(t, 'Withdrawing liquidity', () => gb.retirarLiquidez(t.address));
+}
+async function accionReclamar(t) {
+  if (t.demo) return modal('Demo', 'This is a demo coin.');
+  const ok = await modal('Claim released coins', `You claim the part of your founder allocation already released: <b>${num(t.reclamable || 0, 4)} ${esc(t.simbolo)}</b>.`, { ok: 'Claim', cancel: 'Cancel' });
+  if (!ok) return; _tras(t, 'Claiming your coins', () => gb.reclamarGoteo(t.address));
+}
+async function accionRedimir(t) {
+  if (t.demo) return modal('Demo', 'This is a demo coin.');
+  const cuenta = wallet.cuentaActual();
+  if (!cuenta) { await modal('Connect your wallet', 'Connect to redeem.'); return; }
+  let saldo = 0; try { saldo = Number(gb.fmtEther(await gb.saldoToken(t.address, cuenta))); } catch (_) {}
+  if (!(saldo > 0)) { await modal('No coins to redeem', `You do not hold any ${esc(t.simbolo)}.`); return; }
+  const floor = t.supply > 0 ? (t.reservaSuelo || 0) / t.supply : 0;
+  const cant = await pedirCantidad({ titulo: 'Redeem at the floor', cuerpo: `Burn ${esc(t.simbolo)} and receive its share of the reserve (~${fmtP(floor)} ${t.pool ? t.pool.moneda : 'BNB'} per coin). The coins you redeem are destroyed.`, max: saldo, sufijo: t.simbolo, ok: 'Redeem' });
+  if (cant == null) return;
+  _tras(t, 'Redeeming at the floor', () => gb.redimir(t.address, gb.parseEther(cant)));
+}
+async function accionQuemar(t) {
+  if (t.demo) return modal('Demo', 'This is a demo coin.');
+  const cuenta = wallet.cuentaActual();
+  let saldo = 0; try { saldo = Number(gb.fmtEther(await gb.saldoToken(t.address, cuenta))); } catch (_) {}
+  if (!(saldo > 0)) { await modal('Nothing to burn', `You do not hold any ${esc(t.simbolo)}.`); return; }
+  const cant = await pedirCantidad({ titulo: 'Burn coins', cuerpo: `Permanently destroy ${esc(t.simbolo)} from your wallet. This lowers the supply and raises the floor per coin. There is no refund.`, max: saldo, sufijo: t.simbolo, ok: 'Burn' });
+  if (cant == null) return;
+  _tras(t, 'Burning coins', () => gb.quemar(t.address, gb.parseEther(cant)));
 }
 
 /* Velas: fase 1 dibuja una serie de muestra en el demo; fase 2 lee los eventos Swap del par
@@ -552,9 +704,23 @@ function velasDemo(t, rango) {
   for (let i = 0; i < n; i++) { const o = p; const c = o * (1 + (rnd() - 0.47) * 0.08); const h = Math.max(o, c) * (1 + rnd() * 0.03); const l = Math.min(o, c) * (1 - rnd() * 0.03); out.push({ o, h, l, c, v: rnd() }); p = c; }
   return out;
 }
+/* Velas reales a partir de las operaciones (eventos Compra/Venta), agrupadas por tiempo. */
+function velasDeOps(ops, rango) {
+  const l = (ops || []).filter((o) => o.precio > 0 && o.tiempo > 0).slice().sort((a, b) => a.tiempo - b.tiempo);
+  if (l.length < 2) return [];
+  const bucket = rango === '1d' ? 86400000 : rango === '4h' ? 14400000 : 3600000;
+  const velas = []; let cur = null;
+  for (const o of l) {
+    const k = Math.floor(o.tiempo / bucket);
+    if (!cur || cur.k !== k) { if (cur) velas.push(cur); cur = { k, o: o.precio, h: o.precio, l: o.precio, c: o.precio, v: o.valor }; }
+    else { cur.h = Math.max(cur.h, o.precio); cur.l = Math.min(cur.l, o.precio); cur.c = o.precio; cur.v += o.valor; }
+  }
+  if (cur) velas.push(cur);
+  return velas.slice(-60);
+}
 function pintarGrafica(t, rango) {
   const cv = $('lp-cv'); if (!cv) return;
-  const velas = velasDemo(t, rango);
+  const velas = t.demo ? velasDemo(t, rango) : velasDeOps(t.txs, rango);
   const W0 = cv.clientWidth || 600, H0 = cv.clientHeight || 380, dpr = window.devicePixelRatio || 1;
   cv.width = W0 * dpr; cv.height = H0 * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr);
   g.clearRect(0, 0, W0, H0);

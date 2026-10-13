@@ -11,7 +11,7 @@ export const RPCS = [
 ];
 
 /* Contratos del launchpad (se rellenan en la fase de contrato). */
-export const LAUNCHPAD = '0x0000000000000000000000000000000000000000';   // proxy UUPS: fabrica de tokens + pools + candados + destinos (owner1, owner2, staking)
+export const LAUNCHPAD = '0x2c27B653F4fF3d7D0a4581A272E16E0E4E514128';   // proxy UUPS: fabrica de tokens + pools + candados + destinos (owner1, owner2, staking)
 
 /* Monedas con las que se puede poner liquidez. */
 export const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
