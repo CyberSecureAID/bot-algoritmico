@@ -94,39 +94,47 @@ body{overflow-x:hidden}
   border:1px solid var(--line2);text-shadow:0 1px 4px rgba(0,0,0,.9);margin-right:26px;white-space:nowrap}
 #pt .sw-back:hover{border-color:var(--gold-lo);color:var(--gold)}
 #pt .sw-back svg{width:12px;height:12px}
-#pt .sw-wallet{display:none;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:9px;
-  background:rgba(255,255,255,.05);border:1px solid var(--line2);white-space:nowrap}
-#pt .sw-wallet.on{display:inline-flex}
-#pt .sw-wallet .sw-wl{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--ink3)}
-#pt .sw-wallet .sw-wd{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--gold)}
-#pt .sw-wallet .sw-wp{width:7px;height:7px;border-radius:50%;background:#2ebd85;box-shadow:0 0 8px #2ebd85}
-#pt .sw-wallet .sw-wp.img{width:18px;height:18px;background:none;box-shadow:none;display:grid;place-items:center}
-#pt .sw-wallet .sw-wp.img img{width:18px;height:18px;border-radius:4px}
-#pt .sw-perfil{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--ink2)}
-#pt .sw-perfil svg{width:17px;height:17px}
-#pt .sw-perfil:hover{border-color:var(--gold-lo);color:var(--gold)}
 @media(max-width:760px){
   #pt .pt-nav{display:none}
-  #pt .sw-wallet .sw-wl{display:none}
   #pt .sw-back{padding:0 10px 0 8px}
 }
 @media(max-width:380px){
   #pt .pt-logo img{height:28px}
   #pt .sw-back{margin-right:8px;padding:0 8px 0 6px}
-  #pt .sw-wallet{padding:0 8px;gap:6px}
-  #pt .sw-wallet .sw-wd{font-size:11px}
 }
 /* Telefono: con el icono de perfil, la cinta se encoge para que la capsula de la wallet no se corte. */
 @media(max-width:460px){
   #pt .sw-back{margin-right:8px;padding:0 8px 0 6px;font-size:0;gap:0}
   #pt .sw-back svg{width:14px;height:14px}
   #pt .pt-logo img{height:30px}
-  #pt .sw-perfil{width:32px;height:32px}
-  #pt .sw-wallet{padding:0 8px;gap:6px}
-  #pt .sw-wallet .sw-wd{font-size:11px}
 }
 @media(max-width:340px){
   #pt .sw-back{flex:0 0 32px;min-width:32px;justify-content:center;padding:0;margin-right:6px}
   #pt .pt-logo img{height:24px}
-  #pt .sw-wallet .sw-wd{font-size:10.5px}
 }
+
+/* Esquina derecha igual que en el lobby: perfil + capsula de la wallet con su logo y 4 letras. */
+#pt .pt-hdr__a{gap:6px}
+#pt .c-perfil{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--ink2)}
+#pt .c-perfil svg{width:16px;height:16px}
+#pt .c-perfil:hover{border-color:var(--gold-lo);color:var(--gold)}
+#pt .dir{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 11px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--ink);font-family:var(--sans);cursor:pointer;white-space:nowrap}
+#pt .dir:hover{border-color:var(--gold-lo)}
+#pt .dir.dir-con{color:var(--gold);font-weight:700;font-size:12.5px;border-color:rgba(232,184,75,.45)}
+#pt .dir .dir-logo{width:16px;height:16px;border-radius:4px;object-fit:contain;flex:0 0 auto}
+#pt .dir .dir-punto{width:8px;height:8px;border-radius:50%;background:#2ebd85;box-shadow:0 0 8px #2ebd85;flex:0 0 auto}
+#pt .dir .dir-tx{font-family:var(--mono);font-size:12px;letter-spacing:.5px;font-weight:700;color:var(--gold)}
+#pt .dir .dir-ch{width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);opacity:.65;margin-left:2px;flex:0 0 auto}
+#wsel{position:fixed;inset:0;z-index:9800}
+#wsel .wsel-bg{position:absolute;inset:0}
+#wsel .wsel-p{position:absolute;width:250px;max-width:calc(100vw - 20px);background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-md);border-radius:16px;padding:9px;box-shadow:0 22px 60px rgba(0,0,0,.72);animation:wselIn .14s ease both}
+@keyframes wselIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+#wsel .wsel-t{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.9px;padding:6px 9px 10px}
+#wsel .wsel-b{width:100%;display:flex;align-items:center;gap:10px;padding:11px;margin-bottom:6px;border-radius:11px;border:1px solid transparent;background:transparent;color:var(--ink);font-family:var(--sans);font-weight:700;font-size:14px;cursor:pointer;text-align:left;min-height:46px}
+#wsel .wsel-b:last-child{margin-bottom:0}
+#wsel .wsel-b:hover{background:rgba(255,255,255,.06);border-color:var(--line2)}
+#wsel .wsel-b.on{background:rgba(232,184,75,.1);border-color:rgba(232,184,75,.4)}
+#wsel .wsel-b img,#wsel .wsel-i{width:22px;height:22px;border-radius:6px;flex:0 0 auto;display:grid;place-items:center;background:rgba(255,255,255,.06);color:var(--ink2)}
+#wsel .wsel-ok{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:#2ebd85}
+#wsel .wsel-v{font-size:12px;color:var(--ink3);padding:4px 9px 6px;line-height:1.45}
+@media(max-width:460px){#pt .c-perfil{width:32px;height:32px}#pt .dir{padding:0 9px;gap:6px}#pt .dir .dir-tx{font-size:11px}}

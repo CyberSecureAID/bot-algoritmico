@@ -5,12 +5,13 @@
 #colmena-app button{font:inherit;cursor:pointer}
 
 /* ───────── Portada del launchpad: minima, que se vea el fondo ───────── */
-.lp-hero{text-align:center;padding:16vh 0 20px;max-width:560px;margin:0 auto}
-.lp-hero-ico{display:block;width:150px;height:150px;margin:0 auto 10px;object-fit:contain;filter:drop-shadow(0 12px 26px rgba(0,0,0,.7))}
-.lp-h1{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:clamp(24px,3.2vw,34px);line-height:1.15;margin:0 0 8px;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.95),0 6px 22px rgba(0,0,0,.85)}
-.lp-sub{margin:0 auto;color:var(--gold);font-family:var(--display);font-weight:600;font-size:14.5px;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,.95),0 4px 14px rgba(0,0,0,.85)}
-.lp-cta{display:flex;gap:10px;justify-content:center;margin-top:22px;flex-wrap:wrap}
-.lp-cta .lp-b{flex:0 0 150px;min-width:0;padding:0 10px}
+.lp-hero{text-align:center;padding:5vh 0 20px;max-width:720px;margin:0 auto}
+.lp-hero-ico{display:block;width:220px;height:220px;margin:0 auto 6px;object-fit:contain;filter:drop-shadow(0 14px 30px rgba(0,0,0,.75))}
+.lp-h1{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:clamp(26px,3.4vw,38px);line-height:1.15;margin:0 0 14px;color:#f3dc9a;background:linear-gradient(180deg,#fff7df 0%,#f1cf6a 55%,#d9a93a 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 2px rgba(0,0,0,.95)) drop-shadow(0 8px 22px rgba(0,0,0,.8))}
+.lp-sub{margin:0 auto;max-width:680px;color:#e7cf8a;font-family:var(--display);font-weight:500;font-size:14.5px;line-height:1.65;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.98),0 3px 10px rgba(0,0,0,.9),0 8px 26px rgba(0,0,0,.8)}
+.lp-cta{display:flex;gap:10px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+.lp-cta .lp-b{flex:0 0 150px;min-width:0;padding:0 10px;background:linear-gradient(180deg,#1b2027,#0d1117);border-color:#3a424c;color:var(--gold);box-shadow:0 4px 0 #050709,0 12px 26px rgba(0,0,0,.5)}
+.lp-cta .lp-b:active{box-shadow:0 1px 0 #050709}
 /* Los dos botones: misma altura, mismo relieve, mismo ancho. Solo cambia el color. */
 .lp-b{min-height:48px;min-width:140px;padding:0 22px;border-radius:13px;border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;font-family:var(--display);font-weight:800;font-size:14.5px;box-shadow:0 4px 0 #8f6a1a,0 12px 26px rgba(0,0,0,.5);transition:transform .08s,box-shadow .08s;white-space:nowrap}
 .lp-b:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a}
@@ -19,7 +20,14 @@
 .lp-b:disabled{opacity:.45;cursor:default;transform:none}
 .lp-b.rojo{border-color:#8c2531;color:#ffc2ca;background:linear-gradient(180deg,#2a1216,#140709);box-shadow:0 4px 0 #0b0304,0 12px 26px rgba(0,0,0,.5)}
 /* Pagina de informacion (dentro del overlay) */
-.lp-wiz.lp-infobox{max-width:760px}
+.lp-wiz.lp-infobox{max-width:800px}
+.lp-sec{margin-top:14px}
+.lp-sec-t{font-family:var(--mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
+.lp-ul{margin:0;padding:0;list-style:none;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.3)}
+.lp-ul li{padding:10px 13px;border-top:1px solid rgba(255,255,255,.055);font-size:13px;line-height:1.55;color:var(--ink-2)}
+.lp-ul li:first-child{border-top:0}
+.lp-ul li b,.lp-poder span b{color:#fff}
+.lp-infobox code,.lp-poder code{font-family:var(--mono);font-size:11.5px;color:var(--gold);background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.2);border-radius:5px;padding:1px 5px}
 .lp-poderes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
 .lp-poder{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left}
 .lp-poder .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:rgba(232,184,75,.12);color:var(--gold);margin-bottom:8px}
@@ -32,7 +40,7 @@
 .lp-nota{margin-top:10px;padding:13px 15px;border-radius:12px;background:rgba(246,70,93,.06);border:1px solid rgba(246,70,93,.28);font-size:12.5px;line-height:1.55;color:var(--ink-2)}
 .lp-nota b{color:#ffc2ca}
 @media(max-width:640px){.lp-poderes,.lp-como{grid-template-columns:1fr}}
-@media(max-width:560px){.lp-hero{padding-top:9vh}.lp-hero-ico{width:120px;height:120px}.lp-cta{flex-direction:column;align-items:stretch}.lp-cta .lp-b{flex:0 0 auto;width:100%}#colmena-app{padding:18px 14px 50px}}
+@media(max-width:560px){.lp-hero{padding-top:3vh}.lp-hero-ico{width:150px;height:150px}.lp-sub{font-size:13.5px}.lp-cta{flex-direction:column;align-items:stretch}.lp-cta .lp-b{flex:0 0 auto;width:100%}#colmena-app{padding:18px 14px 50px}}
 
 /* ───────── Mis tokens (lista) ───────── */
 .lp-mios{max-width:720px;margin:10px auto 0}

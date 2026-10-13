@@ -120,13 +120,13 @@ function pintarPortada() {
   const mios = misTokens();
   host.innerHTML = `
     <section class="lp-hero">
-      <img class="lp-hero-ico" src="./img/launchpad-icono.webp" alt="" width="150" height="150" onerror="this.style.display='none'">
+      <img class="lp-hero-ico" src="./img/launchpad-icono.webp" alt="" width="220" height="220" onerror="this.style.display='none'">
       <h1 class="lp-h1">Create your own coin</h1>
-      <p class="lp-sub">Backed by contract, not by promises. Free to create.</p>
+      <p class="lp-sub">A standard BEP-20 with a fixed supply and no mint function, deployed from your wallet with verified source, plus three mechanisms you would otherwise have to build and audit yourself: a floor price backed by a BNB reserve inside the token that any holder can redeem against, liquidity the factory locks for the term you pick so you never hold the LP, and linear founder vesting enforced on chain. The fee rate is immutable at 0.02% per sale; only its destination can change, through a public registry. Free to create, no admin keys over your token, no proxy in the token.</p>
       <div class="lp-cta">
         <button class="lp-b" id="lp-crear">Create</button>
-        <button class="lp-b gris" id="lp-ver-mios">My coins${mios.length ? ' · ' + mios.length : ''}</button>
-        <button class="lp-b gris" id="lp-info">Learn more</button>
+        <button class="lp-b" id="lp-ver-mios">My coins${mios.length ? ' · ' + mios.length : ''}</button>
+        <button class="lp-b" id="lp-info">Learn more</button>
       </div>
     </section>`;
   $('lp-crear').onclick = () => abrirAsistente();
@@ -134,26 +134,56 @@ function pintarPortada() {
   $('lp-info').onclick = () => abrirInfo();
 }
 
-/* Pagina de informacion: aqui si se cuenta todo, sin recortar. */
+/* Pagina de informacion, escrita para quien de verdad la lee: desarrolladores y creadores
+   con experiencia. Hechos del contrato, mecanica exacta, que controlas y que no. */
 function abrirInfo() {
   const prev = $('lp-info-box'); if (prev) prev.remove();
   const d = document.createElement('div'); d.id = 'lp-info-box'; d.className = 'lp-wiz-bg';
   d.innerHTML = `<div class="lp-wiz lp-infobox">
     <button class="lp-wiz-x" id="lp-info-x" type="button">✕</button>
-    <div class="lp-wiz-t">What you get</div>
-    <div class="lp-wiz-s">A coin on BNB Smart Chain with powers most launchpads cannot offer. Creating it is free: you only pay the network gas.</div>
-    <div class="lp-poderes">
-      <div class="lp-poder"><div class="ic">${ICO.suelo}</div><b>Guaranteed floor price</b><span>Part of every sale goes into a BNB reserve inside the coin. Any holder can burn coins and take their share of the reserve, always. The floor only rises and the coin can never be worth zero.</span></div>
-      <div class="lp-poder"><div class="ic">${ICO.candado}</div><b>Rug-proof liquidity</b><span>The liquidity you add stays locked in our contract for the time you choose (6 months minimum, or forever). You never hold the keys to the pool, and everyone can see it.</span></div>
-      <div class="lp-poder"><div class="ic">${ICO.goteo}</div><b>Founder lock</b><span>Your share of the supply is released drop by drop, on chain, over 3 to 24 months. Buyers know you cannot dump on them.</span></div>
-      <div class="lp-poder"><div class="ic">${ICO.escudo}</div><b>Fair launch</b><span>Anti-bot rules for the first 24 hours: no wallet above 1% of the supply and no buy plus sell in the same block. They switch off by themselves.</span></div>
-    </div>
-    <div class="lp-como">
-      <div><i>1 · ANSWER</i>Name, ticker, supply, logo. Then switch on the powers you want. Two minutes.</div>
-      <div><i>2 · SIGN</i>One signature creates the coin. Add liquidity in BNB or USDT if you want it tradable right away.</div>
-      <div><i>3 · GROW</i>It appears in the DecFreedom Swap by name, ticker or contract. Your coin gets a public page with price, chart and trades. Embed our swap on your site with one line of code.</div>
-    </div>
-    <div class="lp-nota"><b>Every coin created here pays a 0.02% fee on each sale to the DecFreedom ecosystem</b> (half to staking, half to the platform). That is how the launchpad stays free. Creating a coin does not make it valuable: its price depends only on what people pay for it. We never custody your funds and we cannot reverse a transaction.</div>
+    <div class="lp-wiz-t">Technical overview</div>
+    <div class="lp-wiz-s">What the factory deploys, how each mechanism works, and what nobody can change afterwards. If something here is not true of the deployed contract, it is a bug and it is public.</div>
+
+    <div class="lp-sec"><div class="lp-sec-t">Contract facts</div>
+      <ul class="lp-ul">
+        <li><b>Standard BEP-20</b> (ERC-20 ABI), 18 decimals, fixed total supply minted once at creation. No <code>mint</code>, no supply changes, ever.</li>
+        <li><b>Immutable token.</b> No proxy, no upgrade path, no <code>pause</code>, no blacklist, no transfer blocking. The only privileged actions belong to the mechanisms below and are bounded by the parameters you set at creation.</li>
+        <li><b>Verified source.</b> Every token is deployed by the public factory from the same source, so BscScan shows the full code the moment it exists.</li>
+        <li><b>Ecosystem fee: 0.02% of each sale, hard-coded.</b> The rate cannot change. Its destination (half staking, half platform) is read from the public DecFreedom registry, so wallet rotations never require touching your token.</li>
+        <li><b>Deployed from your wallet.</b> You are the creator on chain. DecFreedom holds no key over your token.</li>
+      </ul></div>
+
+    <div class="lp-sec"><div class="lp-sec-t">Mechanisms</div>
+      <div class="lp-poderes">
+        <div class="lp-poder"><div class="ic">${ICO.suelo}</div><b>Floor price (reserve backed)</b><span>On every sell, the share you chose (1 to 5%) is converted to BNB and held inside the token. <code>floor = reserve / circulatingSupply</code>. Any holder can call <code>redeem(amount)</code>: tokens are burned and the holder receives <code>amount × floor</code> from the reserve. The reserve only grows; the floor cannot fall. It is a hard lower bound, not a market price.</span></div>
+        <div class="lp-poder"><div class="ic">${ICO.candado}</div><b>Liquidity lock (factory held)</b><span>The pool is created by the factory and the LP tokens stay in it, locked until the date you chose (6, 12, 24 months or forever). The creator never receives the LP. Withdrawal is only possible after the date, only by the creator, and the date cannot be shortened by anyone.</span></div>
+        <div class="lp-poder"><div class="ic">${ICO.goteo}</div><b>Founder vesting (linear)</b><span>Your share (0 to 20% of supply) sits in the token under a linear schedule of 3 to 24 months. <code>claimable = share × elapsed / duration − claimed</code>. There is no cliff, no early release and no admin override.</span></div>
+        <div class="lp-poder"><div class="ic">${ICO.escudo}</div><b>Launch guard (self expiring)</b><span>For the first 24 hours after the pool opens: max 1% of supply per wallet, and buy plus sell in the same block is rejected. After that the checks are skipped by block timestamp. Nothing to turn off, nothing to abuse later.</span></div>
+      </div></div>
+
+    <div class="lp-sec"><div class="lp-sec-t">What you control</div>
+      <ul class="lp-ul">
+        <li>Name, ticker, supply, logo and all mechanism parameters, once, at creation.</li>
+        <li>Initial liquidity in BNB or USDT, and the lock term.</li>
+        <li>Burning coins from your own wallet; claiming vested coins; withdrawing LP after the lock date.</li>
+        <li>Your public page: logo, photos and links. The page itself (price, chart, trades, reserve, locks) is read from the chain and cannot be edited.</li>
+      </ul></div>
+
+    <div class="lp-sec"><div class="lp-sec-t">What nobody controls</div>
+      <ul class="lp-ul">
+        <li>Supply, fee rate, floor share, lock dates and vesting schedule after deployment.</li>
+        <li>The reserve: it can only leave the contract through <code>redeem</code>, paid to the holder who burns.</li>
+        <li>Transfers: no address can be frozen, taxed differently or blocked.</li>
+      </ul></div>
+
+    <div class="lp-sec"><div class="lp-sec-t">Distribution</div>
+      <ul class="lp-ul">
+        <li>Listed in the DecFreedom Swap by name, ticker or contract from the first block.</li>
+        <li>Public coin page with on-chain candles built from the pair's swap events, trade tape and reserve, lock and vesting state.</li>
+        <li>Embeddable swap widget (one <code>iframe</code>) defaulting to your pair, with the DecFreedom mark. All volume routes through the same public pool.</li>
+      </ul></div>
+
+    <div class="lp-nota"><b>Cost.</b> Creation is free; you pay network gas. 0.02% per sale goes to the ecosystem, plus the DEX swap fee. Nothing else, no subscription, no listing fee. Creating a coin does not give it value; its price is whatever a public pool clears.</div>
     <div class="lp-wiz-acts"><button class="lp-b" id="lp-info-ok" type="button">Create</button></div>
   </div>`;
   document.body.appendChild(d);
@@ -161,6 +191,7 @@ function abrirInfo() {
   d.onclick = (e) => { if (e.target === d) d.remove(); };
   $('lp-info-ok').onclick = () => { d.remove(); abrirAsistente(); };
 }
+
 function pintarMios() {
   const host = $(APP); if (!host) return;
   const l = misTokens();
