@@ -566,7 +566,7 @@ function pintarPanel(t) {
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
       <div class="lp-top">
-        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)}<small>${esc(t.simbolo)}</small></div><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span id="lp-verif"></span></div></div>
+        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)}<small>${esc(t.simbolo)}</small></div><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span id="lp-verif" style="display:block"></span></div></div>
         <div class="lp-precio"><b>${precioTxt}</b><span class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${cambio24 == null ? '24h · no data yet' : (cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2) + '% · 24h'}</span></div>
         <div class="lp-stats">
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
@@ -665,16 +665,19 @@ function pintarPanel(t) {
 async function pintarVerif(addr) {
   const el = $('lp-verif'); if (!el) return;
   const url = 'https://bscscan.com/address/' + addr + '#code';
-  const base = 'display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:7px;text-decoration:none;cursor:pointer';
-  const okHTML = `<a href="${url}" target="_blank" rel="noopener" style="${base};color:var(--verde);border:1px solid rgba(46,232,106,.4);background:rgba(46,232,106,.08)">Verified on BscScan</a>`;
+  const chip = 'display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-family:var(--mono);font-size:11px;padding:6px 11px;border-radius:8px;text-decoration:none;cursor:pointer;line-height:1';
+  const okHTML = `<a href="${url}" target="_blank" rel="noopener" style="${chip};color:var(--verde);border:1px solid rgba(46,232,106,.45);background:rgba(46,232,106,.08)">Verified on BscScan</a>`;
+  el.innerHTML = `<span style="${chip};color:var(--ink-3);border:1px solid var(--line);cursor:default">Checking BscScan…</span>`;
   if (await gb.verificado(addr).catch(() => false)) { el.innerHTML = okHTML; return; }
-  el.innerHTML = `<button type="button" id="lp-verif-b" style="${base};color:var(--gold);border:1px solid rgba(232,184,75,.4);background:rgba(232,184,75,.06)">Verify on BscScan</button>`;
-  const b = $('lp-verif-b'); if (!b) return;
+  el.innerHTML = `<button type="button" id="lp-verif-b" style="${chip};color:var(--gold);border:1px solid rgba(232,184,75,.45);background:rgba(232,184,75,.07)">Verify on BscScan</button><div id="lp-verif-m" style="margin-top:5px;font-family:var(--mono);font-size:10px;line-height:1.4;color:var(--ink-3);max-width:360px;word-break:break-word"></div>`;
+  const b = $('lp-verif-b'), msg = $('lp-verif-m'); if (!b) return;
   b.onclick = async () => {
-    b.disabled = true; b.textContent = 'Verifying on BscScan…';
+    b.disabled = true; b.textContent = 'Verifying on BscScan…'; if (msg) msg.textContent = '';
     const s = await gb.verificar(addr);
-    if (s === 'ok' || s === 'ya') { el.innerHTML = okHTML; }
-    else { b.disabled = false; b.textContent = s === 'pendiente' ? 'Pending, check again' : 'Verify again'; }
+    if (s === 'ok' || s === 'ya') { el.innerHTML = okHTML; return; }
+    b.disabled = false; b.textContent = s === 'pendiente' ? 'Pending, check again' : 'Verify again';
+    if (msg) msg.textContent = s === 'pendiente' ? 'Still compiling on BscScan, try again in a moment.' : (s.indexOf('error:') === 0 ? s.slice(6) : '');
+    try { console.warn('[launchpad verif]', s); } catch (_) {}
   };
 }
 

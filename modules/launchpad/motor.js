@@ -43,6 +43,7 @@ const TOKEN_ABI = [
   'function vestInicio() view returns (uint64)',
   'function vestDuracion() view returns (uint64)',
   'function creador() view returns (address)',
+  'function sueloBps() view returns (uint16)',
   'function reclamarGoteo()',
   'function burn(uint256)',
   'function redimir(uint256)',
@@ -302,18 +303,18 @@ async function _referencia() {
   return _refVerif;
 }
 
-/** Argumentos del constructor de un TokenDF, leidos exactos del evento TokenCreado. */
+/** Argumentos del constructor de un TokenDF, leidos directo de la moneda por RPC.
+    (El modulo logs de Etherscan no es gratis en BSC, asi que NO se usa aqui.)
+    fabrica es siempre el proxy del launchpad; supply es el totalSupply (exacto
+    en una moneda recien creada, que es cuando se verifica). */
 async function _ctorArgs(token) {
-  const t0 = _iface.getEvent('TokenCreado').topicHash;
-  const t1 = ethers.zeroPadValue(token, 32);
-  const j = await _scanGet({ module: 'logs', action: 'getLogs', address: LAUNCHPAD, topic0: t0, topic0_1_opr: 'and', topic1: t1, fromBlock: '0', toBlock: 'latest' });
-  const lg = j && j.result && j.result[0];
-  if (!lg || !lg.topics) throw new Error('No encuentro el evento de creacion de esta moneda.');
-  const p = _iface.parseLog({ topics: lg.topics, data: lg.data });
-  const a = p.args;
+  const [nombre, simbolo, supply, creador, sueloBps, vestTotal, vestDur] = await Promise.all([
+    leeTok(token, 'name', []), leeTok(token, 'symbol', []), leeTok(token, 'totalSupply', []),
+    leeTok(token, 'creador', []), leeTok(token, 'sueloBps', []), leeTok(token, 'vestTotal', []), leeTok(token, 'vestDuracion', [])
+  ]);
   return ethers.AbiCoder.defaultAbiCoder().encode(
     ['string', 'string', 'uint256', 'address', 'address', 'uint16', 'uint256', 'uint64'],
-    [a.nombre, a.simbolo, a.supply, a.creador, LAUNCHPAD, Number(a.sueloBps), a.vestTotal, a.vestDuracion]
+    [nombre, simbolo, supply, creador, LAUNCHPAD, Number(sueloBps), vestTotal, vestDur]
   ).slice(2);
 }
 
