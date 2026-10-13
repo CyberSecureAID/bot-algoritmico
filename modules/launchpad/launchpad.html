@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e12">
+<title>Launchpad · DecFreedom</title>
+<link rel="icon" type="image/png" sizes="16x16" href="../../assets/img/cco-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../../assets/img/cco-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="../../assets/img/cco-48.png">
+<link rel="icon" type="image/png" sizes="64x64" href="../../assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./cinta.css">
+<link rel="stylesheet" href="./launchpad.css">
+<style>
+  /* Modulo LAUNCHPAD sellado: esta pagina solo carga archivos de modules/launchpad/ (mas fuentes y el favicon). */
+  :root{
+    --bg:#05070a; --ink:#eaecef; --ink-2:#b7bdc6; --ink-3:#7d8794;
+    --gold:#E8B84B; --gold-soft:#C9A84B; --line:#232b36; --rojo:#f6465d; --verde:#2ee86a;
+    --display:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --sans:var(--display);
+    --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  }
+  html,body{margin:0;padding:0;background:#000;color:var(--ink);font-family:var(--display);min-height:100%;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+  *{box-sizing:border-box}
+  ::-webkit-scrollbar{width:0;height:0;display:none} html,body{scrollbar-width:none}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="chev"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g></defs></svg>
+<div id="pt">
+  <div class="sw-fondo" aria-hidden="true"></div>
+  <canvas id="pt-chispas" data-n="110" aria-hidden="true"></canvas>
+<header class="pt-hdr" id="hdr">
+  <div class="pt-hdr__in">
+    <a class="sw-back" href="../../index.html" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</a>
+    <a class="pt-logo" href="../../index.html" aria-label="DecFreedom">
+      <img src="./img/cco-full.webp" alt="DecFreedom" width="150" height="30">
+    </a>
+    <nav class="pt-nav" aria-label="Main">
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../swap/swap.html">Swap</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b lp-on" href="./launchpad.html">Launchpad</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../bots/bots.html">Bots</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../futuros.html?v=14">Futures</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../aportar.html">Staking</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../shield/shield.html">Wallet Shield</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../app.html?abrir=analisis">Analysis</a></div>
+      <div class="pt-nav__i">
+        <button class="pt-nav__b" type="button">Tools <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
+        <div class="pt-menu">
+          <a href="../../app.html?abrir=tools&tool=polvo"><b>Dust collector</b><span>Turn coin leftovers into one coin</span></a>
+          <a href="../../app.html?abrir=tools&tool=alertas"><b>Price alerts</b><span>Get notified at your price</span></a>
+          <a href="../../app.html?abrir=tools&tool=termometro"><b>Fear and greed</b><span>Market mood in one number</span></a>
+          <a href="../../app.html?abrir=tools&tool=tecnico"><b>Technical analysis</b><span>Buy, sell or wait, right now</span></a>
+          <a href="../../app.html?abrir=tools&tool=mapa"><b>Market map</b><span>Every coin by size and color</span></a>
+          <a href="../../app.html?abrir=tools&tool=grafica"><b>Live chart</b><span>Candles and drawing tools</span></a>
+        </div>
+      </div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../app.html?abrir=market">P2P</a></div>
+      <div class="pt-nav__i"><a class="pt-nav__b" href="../../app.html?abrir=academy">Academy</a></div>
+    </nav>
+    <div class="pt-hdr__a"><span class="sw-wallet" id="sw-wallet"><span class="sw-wp"></span><span class="sw-wl">Wallet</span><span class="sw-wd" id="sw-cuenta"></span></span></div>
+  </div>
+</header>
+  <div id="colmena-app"></div>
+</div>
+<div id="colmena-modal"><div class="m-card"><h4 id="cm-title"></h4><p id="cm-body"></p>
+  <div class="m-btns"><button class="btn btn-linea" id="cm-cancel">Cancel</button><button class="btn btn-oro" id="cm-ok">Confirm</button></div></div></div>
+
+<script type="module">
+  import * as wallet from './wallet.js';
+  import { arrancar } from './launchpad.js';
+  import { arrancarIdioma } from './idioma.js';
+  import { brasas } from './chispas.js';
+
+  try {
+    const quieto = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
+    const lienzo = document.getElementById('pt-chispas');
+    if (!quieto && lienzo) brasas(lienzo);
+  } catch (e) { console.warn('[launchpad] chispas:', e); }
+
+  const caps = document.getElementById('sw-wallet'), cta = document.getElementById('sw-cuenta');
+  const pinta = () => { const c = wallet.cuentaActual(); if (c) { cta.textContent = c.slice(0, 6) + '…' + c.slice(-4); caps.classList.add('on'); } else { cta.textContent = ''; caps.classList.remove('on'); } };
+
+  try { await wallet.reconectarSiProcede(); } catch (_) {}
+  arrancar();
+  pinta();
+  try { arrancarIdioma(); } catch (_) {}
+  try { wallet.alCambiar(() => { pinta(); arrancar(); }); } catch (_) {}
+</script>
+</body>
+</html>
