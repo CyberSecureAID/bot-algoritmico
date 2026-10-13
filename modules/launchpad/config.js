@@ -11,8 +11,7 @@ export const RPCS = [
 ];
 
 /* Contratos del launchpad (se rellenan en la fase de contrato). */
-export const LAUNCHPAD = '0x0000000000000000000000000000000000000000';   // fabrica de tokens + pools + candados
-export const REGISTRO  = '0x0000000000000000000000000000000000000000';   // Registro DecFreedom: owner1, owner2, staking, Contabilidad
+export const LAUNCHPAD = '0x0000000000000000000000000000000000000000';   // proxy UUPS: fabrica de tokens + pools + candados + destinos (owner1, owner2, staking)
 
 /* Monedas con las que se puede poner liquidez. */
 export const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
@@ -25,7 +24,8 @@ export const LIQUIDEZ = [
 /* Reglas del producto (las mismas que aplicara el contrato). */
 export const REGLAS = {
   decimales: 18,
-  comisionEcosistemaBps: 2,          // 0.02% en cada venta: mitad staking, mitad owners
+  comisionEcosistemaBps: 50,         // 0.5% de lo que recibe el vendedor, en BNB/USDT: 0.20 owner1, 0.20 owner2, 0.10 staking
+  comisionPoolBps: 30,               // 0.3% se queda en las reservas del pool
   sueloMinBps: 100, sueloMaxBps: 500, // 1% a 5% de cada venta a la reserva del suelo
   fundadorMaxPct: 20,                // el creador puede quedarse hasta el 20% del supply
   vestingMeses: [3, 6, 12, 24],

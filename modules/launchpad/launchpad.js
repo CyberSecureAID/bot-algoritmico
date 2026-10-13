@@ -122,7 +122,7 @@ function pintarPortada() {
     <section class="lp-hero">
       <img class="lp-hero-ico" src="./img/launchpad-icono.webp" alt="" width="220" height="220" onerror="this.style.display='none'">
       <h1 class="lp-h1">Create your own coin</h1>
-      <p class="lp-sub">Most launchpads hand you a token. This one hands you a position you can defend. Every coin deployed here carries, in its own immutable contract, the three guarantees a serious buyer checks first: a floor price backed by a BNB reserve that only grows and that any holder can redeem against; liquidity locked by the factory for the term you choose, so there is no LP to pull; and a founder allocation that vests linearly, on chain, with no override. Fixed supply, no mint, no admin keys, no proxy, verified source from block one. Deploying costs you nothing. The ecosystem takes 0.02% per sale and nothing else.</p>
+      <p class="lp-sub">Most launchpads hand you a token. This one hands you a position you can defend. Every coin deployed here carries, in its own immutable contract, the three guarantees a serious buyer checks first: a floor price backed by a BNB reserve that only grows and that any holder can redeem against; liquidity locked by the factory for the term you choose, so there is no LP to pull; and a founder allocation that vests linearly, on chain, with no override. Fixed supply, no mint, no admin keys, no proxy, verified source from block one. Deploying costs you nothing. The ecosystem takes 0.5% of each sale, in BNB, and nothing else: buying, holding and transferring are free.</p>
       <div class="lp-cta">
         <button class="lp-b" id="lp-crear">Create</button>
         <button class="lp-b" id="lp-ver-mios" ${mios.length ? '' : 'disabled title="You have not created a coin yet"'}>My coins${mios.length ? ' · ' + mios.length : ''}</button>
@@ -149,16 +149,16 @@ function abrirInfo() {
         <li><b>Standard BEP-20</b> (ERC-20 ABI), 18 decimals, fixed total supply minted once at creation. No <code>mint</code>, no supply changes, ever.</li>
         <li><b>Immutable token.</b> No proxy, no upgrade path, no <code>pause</code>, no blacklist, no transfer blocking. The only privileged actions belong to the mechanisms below and are bounded by the parameters you set at creation.</li>
         <li><b>Verified source.</b> Every token is deployed by the public factory from the same source, so BscScan shows the full code the moment it exists.</li>
-        <li><b>Ecosystem fee: 0.02% of each sale, hard-coded.</b> The rate cannot change. Its destination (half staking, half platform) is read from the public DecFreedom registry, so wallet rotations never require touching your token.</li>
+        <li><b>Ecosystem fee: 0.5% of what a seller receives, hard-coded in the pool and paid in the pool's quote asset (BNB or USDT), never in your token.</b> The rate cannot change. It splits 0.20% to each of the two platform owners and 0.10% to DecFreedom staking; the destination wallets are read from the public Launchpad contract, so a wallet rotation never touches your token. Buys and wallet to wallet transfers pay nothing.</li>
         <li><b>Deployed from your wallet.</b> You are the creator on chain. DecFreedom holds no key over your token.</li>
       </ul></div>
 
     <div class="lp-sec"><div class="lp-sec-t">Mechanisms</div>
       <div class="lp-poderes">
         <div class="lp-poder"><div class="ic">${ICO.suelo}</div><b>Floor price (reserve backed)</b><span>On every sell, the share you chose (1 to 5%) is converted to BNB and held inside the token. <code>floor = reserve / circulatingSupply</code>. Any holder can call <code>redeem(amount)</code>: tokens are burned and the holder receives <code>amount × floor</code> from the reserve. The reserve only grows; the floor cannot fall. It is a hard lower bound, not a market price.</span></div>
-        <div class="lp-poder"><div class="ic">${ICO.candado}</div><b>Liquidity lock (factory held)</b><span>The pool is created by the factory and the LP tokens stay in it, locked until the date you chose (6, 12, 24 months or forever). The creator never receives the LP. Withdrawal is only possible after the date, only by the creator, and the date cannot be shortened by anyone.</span></div>
+        <div class="lp-poder"><div class="ic">${ICO.candado}</div><b>Liquidity lock (factory held)</b><span>The pool lives inside the public Launchpad contract: constant product, BNB or USDT as quote. There are no LP tokens to hold or to dump; the reserves are locked until the date you chose (6, 12, 24 months or forever). Withdrawal is only possible after the date, only by the creator, and the date cannot be shortened by anyone.</span></div>
         <div class="lp-poder"><div class="ic">${ICO.goteo}</div><b>Founder vesting (linear)</b><span>Your share (0 to 20% of supply) sits in the token under a linear schedule of 3 to 24 months. <code>claimable = share × elapsed / duration − claimed</code>. There is no cliff, no early release and no admin override.</span></div>
-        <div class="lp-poder"><div class="ic">${ICO.escudo}</div><b>Launch guard (self expiring)</b><span>For the first 24 hours after the pool opens: max 1% of supply per wallet, and buy plus sell in the same block is rejected. After that the checks are skipped by block timestamp. Nothing to turn off, nothing to abuse later.</span></div>
+        <div class="lp-poder"><div class="ic">${ICO.escudo}</div><b>Launch guard (self expiring)</b><span>Enforced by the pool for the first 24 hours after it opens: no wallet can buy more than 1% of the supply from the pool, and buy plus sell in the same block is rejected. After that the checks are skipped by block timestamp. Your token itself never restricts transfers.</span></div>
       </div></div>
 
     <div class="lp-sec"><div class="lp-sec-t">What you control</div>
@@ -180,10 +180,10 @@ function abrirInfo() {
       <ul class="lp-ul">
         <li>Listed in the DecFreedom Swap by name, ticker or contract from the first block.</li>
         <li>Public coin page with on-chain candles built from the pair's swap events, trade tape and reserve, lock and vesting state.</li>
-        <li>Embeddable swap widget (one <code>iframe</code>) defaulting to your pair, with the DecFreedom mark. All volume routes through the same public pool.</li>
+        <li>Embeddable swap widget (one <code>iframe</code>) defaulting to your pair, with the DecFreedom mark. All volume routes through the same public pool, so every sale feeds your floor.</li>
       </ul></div>
 
-    <div class="lp-nota"><b>Cost.</b> Creation is free; you pay network gas. 0.02% per sale goes to the ecosystem, plus the DEX swap fee. Nothing else, no subscription, no listing fee. Creating a coin does not give it value; its price is whatever a public pool clears.</div>
+    <div class="lp-nota"><b>Cost.</b> Creation is free; you pay network gas. When someone sells through the pool, 0.5% of the proceeds goes to the ecosystem (0.40% platform, 0.10% staking), paid in BNB or USDT, and the pool keeps a 0.3% swap fee in its own reserves, which belong to your locked liquidity. Buys and transfers are free. Nothing else, no subscription, no listing fee. Creating a coin does not give it value; its price is whatever a public pool clears.</div>
     <div class="lp-wiz-acts"><button class="lp-b" id="lp-info-ok" type="button">Create</button></div>
   </div>`;
   document.body.appendChild(d);
@@ -332,7 +332,7 @@ function pintarPaso(p) {
         <div><span>Floor price</span><b class="${W.suelo ? 'si' : 'no'}">${W.suelo ? 'On · ' + (W.sueloBps / 100) + '% of each sale' : 'Off'}</b></div>
         <div><span>Founder lock</span><b class="${W.fundadorPct ? 'si' : 'no'}">${W.fundadorPct ? W.fundadorPct + '% over ' + W.vestingMeses + ' months' : 'You keep nothing'}</b></div>
         <div><span>Anti-bot launch</span><b class="${W.antibot ? 'si' : 'no'}">${W.antibot ? 'On · first ' + REGLAS.antibot.horas + ' h' : 'Off'}</b></div>
-        <div><span>Ecosystem fee</span><b>0.02% on sales</b></div>
+        <div><span>Ecosystem fee</span><b>0.5% on sales, in BNB</b></div>
         <div><span>Cost</span><b class="si">Free · gas only</b></div>
       </div>
       ${disclaimer()}
@@ -352,7 +352,7 @@ function disclaimer() {
     <p><b>Creating a coin does not give it value.</b> Its price depends only on what other people are willing to pay. Nobody, including you, can promise profits. Most new coins lose all their value.</p>
     <p><b>What is locked stays locked.</b> The liquidity you add and your founder share are released by the contract on the dates you choose. We cannot unlock them early, not for you, not for anyone.</p>
     <p><b>The floor is a reserve, not a promise.</b> The floor price equals the BNB reserve divided by the supply. It rises with sales and never falls, but it is not a guarantee of your market price.</p>
-    <p><b>Fees.</b> Creating is free; you pay the network gas. Every sale of the coin pays 0.02% to the DecFreedom ecosystem and the DEX swap fee. If a transaction reverts, nothing is charged except gas.</p>
+    <p><b>Fees.</b> Creating is free; you pay the network gas. Every sale through the pool pays 0.5% of the proceeds to the DecFreedom ecosystem (0.40% platform, 0.10% staking), in BNB or USDT, and the pool keeps a 0.3% swap fee in its reserves. Buying and transferring are free. If a transaction reverts, nothing is charged except gas.</p>
     <p><b>Your legal duty.</b> Issuing a token may be regulated where you live. You are responsible for complying with your laws, for your buyers and for what you tell them. Do not use this to raise money with claims you cannot keep.</p>
     <p><b>Non-custodial.</b> We never hold your funds or your coins and we cannot reverse any transaction. If you lose your keys, nobody can recover your creator rights.</p>
   </div>`;

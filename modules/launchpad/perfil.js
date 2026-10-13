@@ -60,7 +60,7 @@ function css() {
   #lp-perfil{position:fixed;inset:0;z-index:9700;display:flex;align-items:flex-start;justify-content:flex-end;padding:66px 14px 14px;background:rgba(3,5,8,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
   #lp-perfil .pf-c{width:min(380px,100%);max-height:calc(100vh - 80px);overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);border-radius:18px;padding:18px;box-shadow:0 26px 70px rgba(0,0,0,.7);animation:lpPf .16s ease both;font-family:var(--display,sans-serif)}
   @keyframes lpPf{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
-  #lp-perfil .pf-top{display:flex;align-items:center;gap:14px}
+  #lp-perfil .pf-top{display:flex;align-items:center;gap:14px;padding-right:36px}
   #lp-perfil .pf-ava{position:relative;width:66px;height:66px;border-radius:50%;flex:0 0 auto;background:#0b0e12;border:1px solid #2b3139;display:grid;place-items:center;color:var(--ink-3,#7d8794);overflow:hidden;cursor:pointer}
   #lp-perfil .pf-ava img{width:100%;height:100%;object-fit:cover}
   #lp-perfil .pf-ava svg{width:28px;height:28px}
