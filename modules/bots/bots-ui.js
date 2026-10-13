@@ -96,20 +96,12 @@ function modalConfirm(o) {
  *  Clave en móvil: tras cada firma la wallet te devuelve a su pantalla; este
  *  "Continuar" hace que la siguiente firma la inicie un toque fresco (con la
  *  dApp enfocada), evitando que la wallet te bote entre transacción y transacción. */
+/* Antes paraba el flujo con un boton "Continuar" en cada paso (hasta 4 paradas por bot).
+   Ahora solo muestra la explicacion en la ventana de progreso y sigue: la firma de la
+   wallet es la unica parada real. */
 function pasoWallet(titulo, texto) {
-  return new Promise((resolve) => {
-    const m = $('colmena-modal'); if (!m) return resolve();
-    limpiarBusy();
-    $('cm-title').textContent = titulo || '';
-    $('cm-body').innerHTML = texto || '';
-    m.querySelector('.m-btns').style.display = 'flex';
-    const ok = $('cm-ok'), cancel = $('cm-cancel');
-    if (cancel) cancel.style.display = 'none';
-    ok.textContent = 'Continuar'; ok.className = 'btn btn-oro';
-    m.onclick = null;
-    m.classList.add('show');
-    ok.onclick = () => { ok.onclick = null; resolve(); };
-  });
+  modalBusy(`<b>${titulo || ''}</b><br>${String(texto || '').replace(/<br><br>Tap <b>Continue<\/b> and (sign|confirm) in your wallet\./, '<br><br>Sign in your wallet.')}`);
+  return Promise.resolve();
 }
 function modalDone(titulo, txt) {
   const m = $('colmena-modal'); if (!m) return;
@@ -1669,16 +1661,12 @@ async function onCrear() {
   const total = p.totalQuoteHumano;
 
   const n1 = F.precio && (F.precio < p.pMin || F.precio > p.pMax);
-  const ok = await modalConfirm({
-    titulo: 'Turn on the bot',
-    cuerpo: `Vas a poner a trabajar <b>${num(total, 2)} ${quote.simbolo}</b> en ${simboloDe(p.base)}/${quote.simbolo}.<br><br>Te pediré firmar <b>varias veces</b> en tu wallet y te explicaré cada paso. Tu dinero sigue en tu wallet; solo le das permiso al bot para intercambiar dentro de este par.${n1 ? '<br><br>⚠ The current price is outside your range: the bot will wait for it to enter.' : ''}`,
-    ok: 'Sí, encender'
-  });
-  if (!ok) return;
+  /* Sin confirmacion extra: el disclaimer ya es el OK. El resumen va en la propia ventana
+     de progreso, que ya esta disparando las firmas. */
+  modalBusy(`<b>Turning on your Smart Grid</b><br>${num(total, 2)} ${quote.simbolo} go to work on ${simboloDe(p.base)}/${quote.simbolo}. Your money stays in your wallet; you only grant the bot permission to trade this pair.${n1 ? '<br><br>⚠ The current price is outside your range: the bot will wait for it to enter.' : ''}<br><br>Sign each step in your wallet.`);
 
   try {
     // 0) Verificar saldo real ANTES de firmar nada
-    modalBusy('Comprobando tu saldo…');
     const balBI = await gb.balanceToken(p.quote, cuenta);
     const balH = Number(gb.fmt(balBI, quote.decimals)); F.saldoQuote = balH;
     if (total > balH + 1e-9) { modalError(`You do not have enough ${quote.simbolo}. Your wallet has ${num(balH, 4)} ${quote.simbolo} and you want to invest ${num(total, 2)}. Baja la cantidad o usa "Máx".`); return; }
@@ -1951,14 +1939,8 @@ async function onCrearAcum() {
   if (!(p.niveles >= 2)) { aviso(m, 'err', 'Pon al menos 2 compras.'); return; }
   if (!(p.objetivoPct >= 0.005)) { aviso(m, 'err', 'Choose at what profit % to sell.'); return; }
   const total = p.totalQuoteHumano;
-  const ok = await modalConfirm({
-    titulo: 'Encender el acumulador',
-    cuerpo: `Vas a poner <b>${num(total, 2)} ${quote.simbolo}</b> en ${base.simbolo}. Compra en la caída (más volumen mientras más baja) y vende TODO cuando ganes <b>${num(p.objetivoPct * 100, 1)}%</b>. Luego repite.<br><br>Te pediré firmar varias veces; tu dinero sigue en tu wallet.`,
-    ok: 'Sí, encender'
-  });
-  if (!ok) return;
+  modalBusy(`<b>Turning on your Accumulator</b><br>${num(total, 2)} ${quote.simbolo} go into ${base.simbolo}. It buys on the dip (more volume the lower it goes) and sells EVERYTHING when you are up <b>${num(p.objetivoPct * 100, 1)}%</b>. Then it repeats. Your money stays in your wallet.<br><br>Sign each step in your wallet.`);
   try {
-    modalBusy('Comprobando tu saldo…');
     const balBI = await gb.balanceToken(p.quote, cuenta);
     const balH = Number(gb.fmt(balBI, quote.decimals)); F.saldoQuote = balH;
     if (total > balH + 1e-9) { modalError(`You do not have enough ${quote.simbolo}. There is ${num(balH, 4)} and you want to invest ${num(total, 2)}.`); return; }
@@ -2028,7 +2010,7 @@ function previewCash() {
   const o = objetivoCash();
   const niv = Math.max(1, Math.round(parseFloat($('fc-niv')?.value) || 5));
   const paso = parseFloat($('fc-paso')?.value) || 2;
-  setT('fc-p-esc', niv + ' level' + (niv === 1 ? '' : 's') + ' every ' + num(paso, 2) + '% (down to -' + num(niv * paso, 2) + '%)');
+  setT('fc-p-esc', niv + ' x ' + num(paso, 2) + '% (to -' + num(niv * paso, 2) + '%)');
   if (F.tipo === 'cash') pintarTablero();
   if (cant > 0 && F.precio) {
     const valor = cant * F.precio, mitad = valor / 2;
@@ -2080,18 +2062,11 @@ async function onCrearCashOut() {
     slippageBps: Math.round((parseFloat($('f-slip')?.value) || 1) * 100), rutas: F.rutas
   };
   const valor = cantidad * F.precio, mitad = valor / 2;
-  const ok = await modalConfirm({
-    titulo: 'Turn on Cash Out',
-    cuerpo: `<b>Right now:</b> the bot sells <b>${num(cantidad / 2, 6)} ${base.simbolo}</b> (about ${num(mitad, 2)} ${quote.simbolo}) into your wallet as reserve and keeps <b>${num(cantidad / 2, 6)} ${base.simbolo}</b> as position.<br><br>
-      <b>On dips:</b> it buys back with the reserve, ${niv} level${niv === 1 ? '' : 's'} every ${num(paso, 2)}%.<br><br>
-      <b>Exit:</b> when the whole position is worth your cost <b>+${num(o.pct, 2)}%</b>, it sells everything into ${quote.simbolo} and starts a new 50/50 cycle. The contract refuses any sale below that floor.<br><br>
-      <b>How it runs:</b> our keeper watches the market around the clock and executes each level from the public contract; every automatic trade is paid from your Bot gas. You pay $2.50 in BNB now to turn it on.<br><br>
-      Your crypto stays in your wallet; you only grant permission to move ${base.simbolo} and ${quote.simbolo} for these operations. You can close the bot whenever you want.`,
-    ok: 'Yes, turn on'
-  });
-  if (!ok) return;
+  modalBusy(`<b>Turning on your Cash Out</b><br><b>Right now:</b> the bot sells <b>${num(cantidad / 2, 6)} ${base.simbolo}</b> (about ${num(mitad, 2)} ${quote.simbolo}) into your wallet as reserve and keeps <b>${num(cantidad / 2, 6)} ${base.simbolo}</b> as position.<br>
+      <b>On dips:</b> it buys back with the reserve, ${niv} level${niv === 1 ? '' : 's'} every ${num(paso, 2)}%.<br>
+      <b>Exit:</b> when the whole position is worth your cost <b>+${num(o.pct, 2)}%</b>, it sells everything into ${quote.simbolo} and starts a new 50/50 cycle.<br>
+      Our keeper runs each level from the public contract, paid from your Bot gas. You pay $2.50 in BNB now. Your crypto stays in your wallet.<br><br>Sign each step in your wallet.`);
   try {
-    modalBusy('Checking your balance...');
     const balBI = await gb.saldoCashDisponible(p.base, cuenta);
     const balH = Number(gb.fmt(balBI, base.decimals));
     if (cantidad > balH + 1e-9) { modalError(`You do not have enough ${base.simbolo}. Your wallet has ${num(balH, 6)} ${base.simbolo} and you want to commit ${num(cantidad, 6)}.`); return; }
@@ -2187,15 +2162,9 @@ async function onCrearDCA() {
     base: gb.dirDe(base), quote: gb.dirDe(quote), decBase: base.decimals, decQuote: quote.decimals,
     montoQuote: monto, intervalo, comprasMax, slippageBps: 0, rutas: F.rutas
   };
-  const totalTxt = comprasMax > 0 ? `${num(monto * comprasMax, 2)} ${quote.simbolo} en ${comprasMax} compras` : `no limit (depending on the ${quote.simbolo} you have)`;
-  const ok = await modalConfirm({
-    titulo: 'Turn on DCA',
-    cuerpo: `El bot comprará <b>${num(monto, 2)} ${quote.simbolo}</b> de <b>${base.simbolo}</b> <b>${frecNombre(intervalo)}</b>. La primera compra se hace ahora mismo.<br><br>Total: <b>${totalTxt}</b>. Ten <b>${quote.simbolo}</b> cargado en tu wallet para las siguientes.`,
-    ok: 'Sí, encender'
-  });
-  if (!ok) return;
+  const totalTxt = comprasMax > 0 ? `${num(monto * comprasMax, 2)} ${quote.simbolo} in ${comprasMax} buys` : `no limit (depending on the ${quote.simbolo} you have)`;
+  modalBusy(`<b>Turning on your DCA</b><br>The bot buys <b>${num(monto, 2)} ${quote.simbolo}</b> of <b>${base.simbolo}</b> <b>${frecNombre(intervalo)}</b>. The first buy happens right now.<br><br>Total: <b>${totalTxt}</b>. Keep <b>${quote.simbolo}</b> in your wallet for the next ones.<br><br>Sign each step in your wallet.`);
   try {
-    modalBusy('Comprobando tu saldo…');
     const balH = Number(gb.fmt(await gb.balanceToken(p.quote, cuenta), quote.decimals));
     if (monto > balH + 1e-9) { modalError(`You do not have enough ${quote.simbolo} for the first buy. Your wallet has ${num(balH, 2)} ${quote.simbolo}.`); return; }
     if (!(await asegurarSuscripcion(cuenta))) { modalClose(); return; }

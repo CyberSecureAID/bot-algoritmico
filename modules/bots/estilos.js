@@ -486,6 +486,8 @@ export function inyectarEstilo(tipoNum) {
   #colmena-app .cash-resumen .cr-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 14px;background:rgba(0,0,0,.28);font-family:var(--mono);font-size:12.5px}
   #colmena-app .cash-resumen .cr-row span{color:var(--ink-3);min-width:0}
   #colmena-app .cash-resumen .cr-row b{color:var(--ink);font-family:var(--display);font-size:15px;white-space:nowrap;text-align:right}
+  /* Movil: el valor largo se montaba encima de la etiqueta (nowrap). Ahora puede partir linea. */
+  @media(max-width:560px){#colmena-app .cash-resumen .cr-row b{white-space:normal;font-size:13px;max-width:60%}}
   #colmena-app .cash-resumen .cr-gan b{font-size:18px}
   #colmena-app .cash-resumen .cr-gan b.pos{color:var(--neon-lit);text-shadow:0 0 12px rgba(46,232,106,.3)}
   #colmena-app .cash-resumen .cr-gan b.neg{color:var(--rojo)}
