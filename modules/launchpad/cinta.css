@@ -105,3 +105,9 @@ body{overflow-x:hidden}
   #pt .sw-wallet .sw-wl{display:none}
   #pt .sw-back{padding:0 10px 0 8px}
 }
+@media(max-width:380px){
+  #pt .pt-logo img{height:28px}
+  #pt .sw-back{margin-right:8px;padding:0 8px 0 6px}
+  #pt .sw-wallet{padding:0 8px;gap:6px}
+  #pt .sw-wallet .sw-wd{font-size:11px}
+}

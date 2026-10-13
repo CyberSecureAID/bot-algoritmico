@@ -1,11 +1,10 @@
 /* launchpad/launchpad.js. Interfaz del Launchpad (fase 1: solo front).
    Portada, asistente de una pregunta por pantalla (como el P2P), panel del creador,
-   generador del widget y el robotito Lounge. Las firmas al contrato se enchufan en la
+   generador del widget. Las firmas al contrato se enchufan en la
    fase de contrato: mientras LAUNCHPAD sea 0x0, el boton final avisa "pending". */
 
 import * as wallet from './wallet.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
-import { montarLounge, loungeModo } from './lounge.js';
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -68,7 +67,6 @@ function hace(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
 
 /* ───────── Arranque ───────── */
 export function arrancar() {
-  montarLounge();
   const q = new URLSearchParams(location.search);
   if (q.get('demo') === '1') { pintarPanel(tokenDemo()); return; }
   const ver = q.get('token');
@@ -84,46 +82,63 @@ const ICO = {
   escudo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>'
 };
 function pintarPortada() {
-  loungeModo('grande');
   const host = $(APP); if (!host) return;
   const mios = misTokens();
   host.innerHTML = `
     <section class="lp-hero">
-      <span class="lp-kicker">Launchpad</span>
-      <h1 class="lp-h1">Create your own coin.<br><b>Backed by contract, not by promises.</b></h1>
-      <p class="lp-sub">A few simple questions and your token is live on BNB Smart Chain, with a guaranteed floor price, locked liquidity and a founder lock everyone can verify. Creating it is free: you only pay the network gas.</p>
+      <h1 class="lp-h1">Create your own coin</h1>
+      <p class="lp-sub">Backed by contract, not by promises. Free to create.</p>
       <div class="lp-cta">
-        <button class="lp-b" id="lp-crear">Create my coin</button>
-        <button class="lp-b gris" id="lp-ver-mios">My coins${mios.length ? ' (' + mios.length + ')' : ''}</button>
+        <button class="lp-b" id="lp-crear">Create</button>
+        <button class="lp-b gris" id="lp-ver-mios">My coins${mios.length ? ' · ' + mios.length : ''}</button>
       </div>
-      <div class="lp-poderes">
-        <div class="lp-poder"><div class="ic">${ICO.suelo}</div><b>Guaranteed floor price</b><span>Part of every sale goes into a BNB reserve inside the coin. Any holder can redeem at the floor, always. It can never be worth zero.</span></div>
-        <div class="lp-poder"><div class="ic">${ICO.candado}</div><b>Rug-proof liquidity</b><span>The liquidity you add stays locked in our contract for the time you choose. You never hold the keys to the pool, and everyone can see it.</span></div>
-        <div class="lp-poder"><div class="ic">${ICO.goteo}</div><b>Founder lock</b><span>Your share of the supply is released drop by drop, on chain. Buyers know you cannot dump on them.</span></div>
-        <div class="lp-poder"><div class="ic">${ICO.escudo}</div><b>Fair launch</b><span>Anti-bot rules for the first hours: wallet limit and no buy plus sell in the same block. They switch off by themselves.</span></div>
-      </div>
-      <div class="lp-como">
-        <div><i>1 · ANSWER</i>Name, ticker, supply, logo. Then switch on the powers you want. Two minutes.</div>
-        <div><i>2 · SIGN</i>One signature creates the coin. Add liquidity in BNB or USDT if you want it tradable right away.</div>
-        <div><i>3 · GROW</i>It appears in the DecFreedom Swap by name, ticker or contract. Embed our swap on your site with one line.</div>
-      </div>
-      <div class="lp-nota"><b>Every coin created here pays a 0.02% fee on each sale to the DecFreedom ecosystem</b> (half to staking, half to the platform). That is how the launchpad stays free. Creating a coin does not make it valuable: its price depends only on what people pay for it. We never custody your funds and we cannot reverse a transaction.</div>
-    </section>
-    <section class="lp-mios" id="lp-mios" style="display:none">
-      <h3>My coins</h3>
-      <div id="lp-mios-lista"></div>
+      <button class="lp-link" id="lp-info" type="button">Learn more</button>
     </section>`;
   $('lp-crear').onclick = () => abrirAsistente();
-  $('lp-ver-mios').onclick = () => { pintarMios(); const s = $('lp-mios'); s.style.display = ''; s.scrollIntoView({ behavior: 'smooth' }); };
-  if (mios.length) { pintarMios(); $('lp-mios').style.display = ''; }
+  $('lp-ver-mios').onclick = () => pintarMios();
+  $('lp-info').onclick = () => abrirInfo();
+}
+
+/* Pagina de informacion: aqui si se cuenta todo, sin recortar. */
+function abrirInfo() {
+  const prev = $('lp-info-box'); if (prev) prev.remove();
+  const d = document.createElement('div'); d.id = 'lp-info-box'; d.className = 'lp-wiz-bg';
+  d.innerHTML = `<div class="lp-wiz lp-infobox">
+    <button class="lp-wiz-x" id="lp-info-x" type="button">✕</button>
+    <div class="lp-wiz-t">What you get</div>
+    <div class="lp-wiz-s">A coin on BNB Smart Chain with powers most launchpads cannot offer. Creating it is free: you only pay the network gas.</div>
+    <div class="lp-poderes">
+      <div class="lp-poder"><div class="ic">${ICO.suelo}</div><b>Guaranteed floor price</b><span>Part of every sale goes into a BNB reserve inside the coin. Any holder can burn coins and take their share of the reserve, always. The floor only rises and the coin can never be worth zero.</span></div>
+      <div class="lp-poder"><div class="ic">${ICO.candado}</div><b>Rug-proof liquidity</b><span>The liquidity you add stays locked in our contract for the time you choose (6 months minimum, or forever). You never hold the keys to the pool, and everyone can see it.</span></div>
+      <div class="lp-poder"><div class="ic">${ICO.goteo}</div><b>Founder lock</b><span>Your share of the supply is released drop by drop, on chain, over 3 to 24 months. Buyers know you cannot dump on them.</span></div>
+      <div class="lp-poder"><div class="ic">${ICO.escudo}</div><b>Fair launch</b><span>Anti-bot rules for the first 24 hours: no wallet above 1% of the supply and no buy plus sell in the same block. They switch off by themselves.</span></div>
+    </div>
+    <div class="lp-como">
+      <div><i>1 · ANSWER</i>Name, ticker, supply, logo. Then switch on the powers you want. Two minutes.</div>
+      <div><i>2 · SIGN</i>One signature creates the coin. Add liquidity in BNB or USDT if you want it tradable right away.</div>
+      <div><i>3 · GROW</i>It appears in the DecFreedom Swap by name, ticker or contract. Your coin gets a public page with price, chart and trades. Embed our swap on your site with one line of code.</div>
+    </div>
+    <div class="lp-nota"><b>Every coin created here pays a 0.02% fee on each sale to the DecFreedom ecosystem</b> (half to staking, half to the platform). That is how the launchpad stays free. Creating a coin does not make it valuable: its price depends only on what people pay for it. We never custody your funds and we cannot reverse a transaction.</div>
+    <div class="lp-wiz-acts"><button class="lp-b" id="lp-info-ok" type="button">Create</button></div>
+  </div>`;
+  document.body.appendChild(d);
+  $('lp-info-x').onclick = () => d.remove();
+  d.onclick = (e) => { if (e.target === d) d.remove(); };
+  $('lp-info-ok').onclick = () => { d.remove(); abrirAsistente(); };
 }
 function pintarMios() {
-  const l = misTokens(); const c = $('lp-mios-lista'); if (!c) return;
-  if (!l.length) { c.innerHTML = `<div class="lp-vacio">You have not created any coin yet.</div>`; return; }
+  const host = $(APP); if (!host) return;
+  const l = misTokens();
+  host.innerHTML = `
+    <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
+    <section class="lp-mios"><h3>My coins</h3><div id="lp-mios-lista"></div></section>`;
+  $('lp-volver').onclick = () => pintarPortada();
+  const c = $('lp-mios-lista');
+  if (!l.length) { c.innerHTML = `<div class="lp-vacio">You have not created any coin yet.<br><br><button class="lp-b" id="lp-crear2" type="button">Create</button></div>`; $('lp-crear2').onclick = () => abrirAsistente(); return; }
   c.innerHTML = l.map((t) => `<div class="lp-tok" data-a="${t.address}">
       ${t.logo ? `<img src="${t.logo}" alt="">` : `<div class="lp-ini">${esc((t.simbolo || '?')[0])}</div>`}
       <div><b>${esc(t.nombre)} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(t.simbolo)}</small></b><span>${corto(t.address)}</span></div>
-      <span class="lp-est ${t.pool ? '' : 'gris'}">${t.pool ? 'Tradable' : 'No pool yet'}</span>
+      <span class="lp-est ${t.pool ? '' : 'gris'}">${t.pool ? 'Tradable' : 'No pool'}</span>
     </div>`).join('');
   c.querySelectorAll('.lp-tok').forEach((el) => el.onclick = () => { const t = l.find((x) => x.address === el.dataset.a); if (t) pintarPanel(t); });
 }
@@ -131,10 +146,9 @@ function pintarMios() {
 /* ───────── Asistente ───────── */
 let W = null;
 const PASOS = 8;
-function wizCerrar() { const d = $('lp-wiz'); if (d) d.remove(); loungeModo('rincon'); }
+function wizCerrar() { const d = $('lp-wiz'); if (d) d.remove(); }
 function marco(paso, titulo, sub, cuerpo, { atras = true, seguir = 'Continue' } = {}) {
   const prev = $('lp-wiz'); if (prev) prev.remove();
-  loungeModo('junto');
   const d = document.createElement('div'); d.id = 'lp-wiz'; d.className = 'lp-wiz-bg';
   d.innerHTML = `<div class="lp-wiz">
     <button class="lp-wiz-x" id="wz-x" type="button">✕</button>
@@ -169,17 +183,18 @@ function pintarPaso(p) {
 
   if (p === 1) {
     marco(1, 'What is your coin called?', 'The full name people will see. You can use spaces.',
-      `<input type="text" id="wz-nombre" maxlength="${REGLAS.nombreMax}" placeholder="Pepito Coin" value="${esc(W.nombre)}" autocomplete="off"><div class="lp-hint" id="wz-h"></div>`, { atras: false });
+      `<input type="text" id="wz-nombre" maxlength="${REGLAS.nombreMax}" placeholder="Coin name" value="${esc(W.nombre)}" autocomplete="off"><div class="lp-hint" id="wz-h"></div>`, { atras: false });
     const i = $('wz-nombre'); i.focus();
-    i.oninput = () => { const h = $('wz-h'); h.textContent = i.value.length ? `${i.value.length} / ${REGLAS.nombreMax}` : ''; };
-    $('wz-ok').onclick = () => { const v = i.value.trim(); if (v.length < 2) { wmsg('Give it a name, at least 2 letters.'); return; } W.nombre = v; if (!W.simbolo) W.simbolo = v.replace(/[^a-z]/gi, '').slice(0, 6).toUpperCase(); pintarPaso(2); };
+    /* Solo letras, numeros y espacios: nombres que cualquier wallet y explorador muestran bien. */
+    i.oninput = () => { i.value = i.value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s{2,}/g, ' '); const h = $('wz-h'); h.textContent = i.value.length ? `${i.value.length} / ${REGLAS.nombreMax}` : ''; };
+    $('wz-ok').onclick = () => { const v = i.value.trim(); if (v.length < 2) { wmsg('Give it a name, at least 2 letters.'); return; } if (!/[a-zA-Z]/.test(v)) { wmsg('The name needs at least one letter.'); return; } W.nombre = v; if (!W.simbolo) W.simbolo = v.replace(/[^a-z]/gi, '').slice(0, 6).toUpperCase(); pintarPaso(2); };
     i.onkeydown = (e) => { if (e.key === 'Enter') $('wz-ok').click(); };
     return;
   }
 
   if (p === 2) {
     marco(2, 'And its ticker?', `The short symbol, ${REGLAS.simboloMin} to ${REGLAS.simboloMax} letters. Like BTC or BNB.`,
-      `${previa()}<input type="text" id="wz-sim" maxlength="${REGLAS.simboloMax}" placeholder="PEPITO" value="${esc(W.simbolo)}" autocomplete="off" style="text-transform:uppercase;letter-spacing:2px"><div class="lp-hint" id="wz-h"></div>`);
+      `${previa()}<input type="text" id="wz-sim" maxlength="${REGLAS.simboloMax}" placeholder="TICKER" value="${esc(W.simbolo)}" autocomplete="off" style="text-transform:uppercase;letter-spacing:2px"><div class="lp-hint" id="wz-h"></div>`);
     const i = $('wz-sim'); i.focus();
     i.oninput = () => { i.value = i.value.replace(/[^a-z0-9]/gi, '').toUpperCase(); };
     $('wz-ok').onclick = () => { const v = i.value.trim(); if (v.length < REGLAS.simboloMin) { wmsg(`At least ${REGLAS.simboloMin} letters.`); return; } W.simbolo = v; pintarPaso(3); };
@@ -190,9 +205,9 @@ function pintarPaso(p) {
   if (p === 3) {
     marco(3, 'How many coins will exist?', 'The total supply. It is fixed forever: nobody, not even you, can mint more.',
       `${previa()}<div class="lp-ops" id="wz-pre">${PRESETS_SUPPLY.map((x) => `<button type="button" class="lp-op ${W.supply === x.v ? 'on' : ''}" data-v="${x.v}"><b>${x.t}</b><span>${num(x.v, 0)}</span></button>`).join('')}</div>
-      <div class="lp-sub-op"><div class="lp-lab">or type your own</div><input type="text" inputmode="numeric" id="wz-sup" placeholder="21000000" value="${W.supply && !PRESETS_SUPPLY.some((x) => x.v === W.supply) ? W.supply : ''}" autocomplete="off"><div class="lp-hint" id="wz-h"></div></div>`);
+      <div class="lp-sub-op"><div class="lp-lab">or type your own</div><input type="text" inputmode="numeric" id="wz-sup" placeholder="21000000" value="${W.supply || ''}" autocomplete="off"><div class="lp-hint" id="wz-h"></div></div>`);
     const i = $('wz-sup');
-    document.querySelectorAll('#wz-pre .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#wz-pre .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); W.supply = Number(b.dataset.v); i.value = ''; });
+    document.querySelectorAll('#wz-pre .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#wz-pre .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); W.supply = Number(b.dataset.v); i.value = String(W.supply); $('wz-h').textContent = num(W.supply, 0) + ' ' + W.simbolo; });
     i.oninput = () => { i.value = i.value.replace(/[^0-9]/g, ''); document.querySelectorAll('#wz-pre .lp-op').forEach((x) => x.classList.remove('on')); W.supply = Number(i.value) || 0; $('wz-h').textContent = W.supply ? num(W.supply, 0) + ' ' + W.simbolo : ''; };
     $('wz-ok').onclick = () => { if (!(W.supply >= 1000)) { wmsg('Pick a supply of at least 1,000 coins.'); return; } if (W.supply > 1e15) { wmsg('Too many. Keep it under 1,000 trillion.'); return; } pintarPaso(4); };
     return;
@@ -201,7 +216,7 @@ function pintarPaso(p) {
   if (p === 4) {
     marco(4, 'Give it a face', 'A square logo looks best. We shrink it to 128 px, same as List your token, so it loads fast everywhere.',
       `<label class="lp-logo-drop" for="wz-file">${logoPrev(W, 'lp-logo-prev')}<div><b>${W.logo ? 'Change logo' : 'Upload a logo'}</b><span>PNG, JPG or WEBP. You can skip this and add it later from your panel.</span></div></label>
-      <input type="file" id="wz-file" accept="image/*" style="display:none"><div class="lp-hint" id="wz-h"></div>`, { seguir: W.logo ? 'Continue' : 'Continue without logo' });
+      <input type="file" id="wz-file" accept="image/*" style="display:none"><div class="lp-hint" id="wz-h"></div>`, { seguir: W.logo ? 'Continue' : 'Skip' });
     $('wz-file').onchange = async (e) => {
       const f = e.target.files && e.target.files[0]; if (!f) return;
       $('wz-h').textContent = 'Shrinking your logo…';
@@ -255,7 +270,7 @@ function pintarPaso(p) {
         <div><span>Cost</span><b class="si">Free · gas only</b></div>
       </div>
       ${disclaimer()}
-      <label class="lp-ok"><input type="checkbox" id="wz-acepto"> I have read this and I accept it</label>`, { seguir: 'Create my coin' });
+      <label class="lp-ok"><input type="checkbox" id="wz-acepto"> I have read this and I accept it</label>`, { seguir: 'Create' });
     $('wz-ok').disabled = true;
     $('wz-acepto').onchange = (e) => { $('wz-ok').disabled = !e.target.checked; };
     $('wz-ok').onclick = () => crear();
@@ -314,7 +329,6 @@ async function crear() {
 /* ───────── Liquidez (se ofrece justo despues de crear) ───────── */
 function preguntarLiquidez(tok) {
   const prev = $('lp-wiz'); if (prev) prev.remove();
-  loungeModo('junto');
   const d = document.createElement('div'); d.id = 'lp-wiz'; d.className = 'lp-wiz-bg';
   d.innerHTML = `<div class="lp-wiz">
     <div class="lp-done">${logoPrev(tok, 'lp-logo-prev')}<h4>${esc(tok.nombre)} is live</h4><p>Your coin exists on BNB Smart Chain. Do you want people to be able to buy it right now?</p>
@@ -328,7 +342,7 @@ function preguntarLiquidez(tok) {
       <div class="lp-ops cuatro" id="lq-cand">${REGLAS.candadoMeses.map((v, i) => `<button type="button" class="lp-op ${i === 1 ? 'on' : ''}" data-v="${v}"><b>${v === 0 ? 'Forever' : v + ' mo'}</b><span>${v === 0 ? 'max trust' : v >= 12 ? 'trusted' : 'minimum'}</span></button>`).join('')}</div>
       <div class="lp-ratio" id="lq-ratio">Starting price appears here when you fill both amounts.</div>
     </div>
-    <div class="lp-wiz-acts"><button class="lp-b gris" id="lq-no" type="button">Later</button><button class="lp-b" id="lq-si" type="button">Launch the pool</button></div>
+    <div class="lp-wiz-acts"><button class="lp-b gris" id="lq-no" type="button">Later</button><button class="lp-b" id="lq-si" type="button">Launch</button></div>
     <div class="lp-wiz-msg" id="wz-msg"></div>
   </div>`;
   document.body.appendChild(d);
@@ -348,7 +362,6 @@ function preguntarLiquidez(tok) {
 
 /* ───────── Panel del creador ───────── */
 function pintarPanel(t) {
-  loungeModo('rincon');
   const host = $(APP); if (!host) return;
   const pool = t.pool || null;
   const precio = pool ? pool.liquidez / pool.tokens : 0;
@@ -402,19 +415,19 @@ function pintarPanel(t) {
           <div class="lp-kv"><span>In the pool</span><b>${pool ? num(pool.liquidez, 4) + ' ' + mon : 'none'}</b></div>
           <div class="lp-kv"><span>Lock</span><b>${pool ? (desbloqueo ? 'until ' + new Date(desbloqueo).toLocaleDateString('en-GB') : 'forever') : '...'}</b></div>
           <div class="lp-kv"><span>Status</span><b><span class="lp-sello ${pool ? '' : 'gris'}">${pool ? (desbloqueo && Date.now() > desbloqueo ? 'unlocked' : 'locked') : 'no pool'}</span></b></div>
-          ${esAdmin ? (pool ? `<button class="lp-b gris" id="lp-ret" ${desbloqueo && Date.now() > desbloqueo ? '' : 'disabled'} type="button">${desbloqueo && Date.now() > desbloqueo ? 'Withdraw liquidity' : 'Withdraw (locked)'}</button>` : `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>`) : ''}
+          ${esAdmin ? (pool ? `<button class="lp-b gris" id="lp-ret" ${desbloqueo && Date.now() > desbloqueo ? '' : 'disabled'} type="button">${desbloqueo && Date.now() > desbloqueo ? 'Withdraw' : 'Locked'}</button>` : `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>`) : ''}
         </div>
         ${t.suelo ? `<div class="lp-card"><h4>Floor reserve</h4>
           <div class="lp-kv"><span>Reserve</span><b>${num(t.reservaSuelo || 0, 5)} BNB</b></div>
           <div class="lp-kv"><span>Feeds from sales</span><b class="oro">${t.sueloBps / 100}%</b></div>
           <div class="lp-kv"><span>Floor per coin</span><b>${suelo > 0 ? suelo.toPrecision(3) + ' BNB' : 'building'}</b></div>
-          <button class="lp-b gris" id="lp-redeem" type="button" ${suelo > 0 ? '' : 'disabled'}>Redeem at floor</button></div>` : ''}
+          <button class="lp-b gris" id="lp-redeem" type="button" ${suelo > 0 ? '' : 'disabled'}>Redeem</button></div>` : ''}
         ${t.fundadorPct ? `<div class="lp-card"><h4>Founder lock</h4>
           <div class="lp-kv"><span>Founder share</span><b>${num(fundadorTot, 0)} ${esc(t.simbolo)}</b></div>
           <div class="lp-bar"><i style="width:${vestPct.toFixed(1)}%"></i></div>
           <div class="lp-kv"><span>Released</span><b class="oro">${vestPct.toFixed(1)}%</b></div>
           <div class="lp-kv"><span>Fully released</span><b>${new Date(vestFin).toLocaleDateString('en-GB')}</b></div>
-          ${esAdmin ? `<button class="lp-b gris" id="lp-claim" type="button" ${vestPct > 0 ? '' : 'disabled'}>Claim released coins</button>` : ''}</div>` : ''}
+          ${esAdmin ? `<button class="lp-b gris" id="lp-claim" type="button" ${vestPct > 0 ? '' : 'disabled'}>Claim</button>` : ''}</div>` : ''}
         ${esAdmin ? `<div class="lp-card"><h4>Creator tools</h4>
           <div class="lp-kv"><span>Burn coins</span><b>from your wallet</b></div>
           <button class="lp-b gris" id="lp-burn" type="button">Burn</button>
@@ -427,7 +440,7 @@ function pintarPanel(t) {
             <div class="wp-marca"><img src="./img/cco-full.webp" alt="DecFreedom"> POWERED BY DECFREEDOM</div>
           </div>
           <div class="lp-code" id="lp-code">&lt;iframe src="${esc(widgetUrl)}" width="360" height="520" style="border:0;border-radius:16px" loading="lazy"&gt;&lt;/iframe&gt;</div>
-          <button class="lp-b gris" id="lp-copy-w" type="button">Copy embed code</button>
+          <button class="lp-b gris" id="lp-copy-w" type="button">Copy code</button>
         </div>
       </div>
     </div>`;
@@ -453,7 +466,7 @@ function pintarPanel(t) {
   if ($('lp-fotos')) $('lp-fotos').onclick = () => modal('Coming with the contract', 'Photos and links use the same storage as List your token. It is wired in the next phase.');
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { $('lp-copiar').innerHTML = corto(t.address) + ' ' + ICO_COPY; }, 1500); } catch (_) {} };
-  $('lp-copy-w').onclick = () => { try { navigator.clipboard.writeText($('lp-code').textContent); $('lp-copy-w').textContent = 'Copied'; setTimeout(() => { $('lp-copy-w').textContent = 'Copy embed code'; }, 1500); } catch (_) {} };
+  $('lp-copy-w').onclick = () => { try { navigator.clipboard.writeText($('lp-code').textContent); $('lp-copy-w').textContent = 'Copied'; setTimeout(() => { $('lp-copy-w').textContent = 'Copy code'; }, 1500); } catch (_) {} };
   if ($('lp-add')) $('lp-add').onclick = () => preguntarLiquidez(t);
   if ($('lp-ret')) $('lp-ret').onclick = () => modal('Contract pending', 'Withdrawals are signed against the launchpad contract in the next phase.');
   if ($('lp-claim')) $('lp-claim').onclick = () => modal('Contract pending', 'Claims are signed against the launchpad contract in the next phase.');
