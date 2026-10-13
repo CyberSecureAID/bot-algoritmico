@@ -11,6 +11,7 @@ const LS = { ojo: 'mv-ojo', denom: 'mv-denom' };
 const QUICK = [
   { k: 'sell',      ic: 'market', t: 'P2P' },
   { k: 'swap',      ic: 'swap',   t: 'Swap' },
+  { k: 'launchpad', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4c3 0 6 3 6 6l-6 6-4-4z"/><path d="M10 12l-4 1 2 2 2 2 1-4"/><path d="M6 18l-2 2"/><circle cx="15" cy="9" r="1.3"/></svg>', t: 'Launchpad', tag: 'NEW' },
   { k: 'bots',      ic: 'bot',    t: 'Bots', tag: 'HOT' },
   { k: 'liquidity', ic: 'pool',   t: 'Charts' },
   { k: 'academy',   ic: 'book',   t: 'Academia', tag: 'TOP' },
@@ -96,7 +97,7 @@ export function pintarInicio(host, api) {
     <div class="mv-quick" id="mv-quick">
       ${QUICK.map((q) => `
         <div class="mv-qi" data-k="${q.k}">
-          <div class="mv-qbox">${IC[q.ic] || ''}${q.tag ? `<span class="mv-qtag">${q.tag}</span>` : ''}</div>
+          <div class="mv-qbox">${q.svg || IC[q.ic] || ''}${q.tag ? `<span class="mv-qtag">${q.tag}</span>` : ''}</div>
           <span>${q.t}</span>
         </div>`).join('')}
     </div>

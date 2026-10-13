@@ -8,11 +8,11 @@ import * as wallet from '../wallet.js?v=129';
 import * as gb from '../gridbot.js?v=130';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
-import { pintarInicio } from './inicio.js?v=51';
+import { pintarInicio } from './inicio.js?v=52';
 import { pintarMercados } from './markets.js?v=50';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=54';
 import { pintarActivos } from './activos.js?v=54';
-import { abrirMenu } from './menu.js?v=20';
+import { abrirMenu } from './menu.js?v=21';
 import { abrirBuscar } from './buscar.js?v=20';
 import { abrirAlerta } from './alerta.js?v=20';
 
@@ -94,7 +94,8 @@ async function abrir(clave, arg) {
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=127'); m.abrirLiquidity && m.abrirLiquidity(); break; }
       case 'shield':    { location.href = 'modules/shield/shield.html'; break; }   // modulo sellado con pagina propia
-      case 'bots':      { location.href = 'modules/bots/bots.html'; break; }   // modulo sellado con pagina propia (vista movil incluida)
+      case 'bots':      { location.href = 'modules/bots/bots.html'; break; }
+      case 'launchpad': { location.href = 'modules/launchpad/launchpad.html'; break; }   // modulo sellado con pagina propia   // modulo sellado con pagina propia (vista movil incluida)
       case 'buscar':    abrirBuscar(api()); break;
       case 'soporte':   abrirSoporte(); break;
       case 'menu':      abrirMenu(api()); break;
@@ -783,7 +784,7 @@ function revisarRed() {
   el.innerHTML = `
     <div class="mv-red-h">
       <span class="mv-red-ico">⚠️</span>
-      <div class="mv-red-tx"><b>Red incorrecta</b><span>Estás en otra red. Cámbiate a <b>BNB Smart Chain</b> para conectarte con DecFreedom.</span></div>
+      <div class="mv-red-tx"><b>Red incorrecta</b><span>Estás en otra red. Cámbiate a <b>BNB Smart Chain</b> to use DecFreedom.</span></div>
       <button class="mv-red-x" aria-label="Cerrar">✕</button>
     </div>
     <button class="mv-red-btn" id="mv-red-btn">Cambiar a BNB Smart Chain</button>
