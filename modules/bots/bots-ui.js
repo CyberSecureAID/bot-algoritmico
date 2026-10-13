@@ -3004,14 +3004,13 @@ async function compartirBot(card) {
   const sb = card.dataset.sb || '', sq = card.dataset.sq || '';
   const pair = (sb && sq) ? `${sb}/${sq}` : 'MY BOT';
   const nombre = txt('.pio-nombre') || meta.nom;
-  const invLab = txt('.pio-band .l .k') || 'Inversión';
   const inv = txt('.pio-band .l .v') || '...';
   const ganEl = card.querySelector('.pio-band .r');
   const gan = ganEl?.querySelector('.v')?.textContent?.trim() || '...';
   const pct = ganEl?.querySelector('.pct')?.textContent?.trim() || '';
   const neg = ganEl?.classList.contains('neg');
   const bid = card.dataset.bid || '';
-  const fecha = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  const fecha = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
   const _since = Number(card.querySelector('.pio-time')?.dataset.since || 0);
   let activo = '';
   if (_since > 0) { let s = Math.floor(Date.now() / 1000 - _since); if (s < 0) s = 0; const d = Math.floor(s / 86400); s -= d * 86400; const h = Math.floor(s / 3600); s -= h * 3600; const mm = Math.floor(s / 60); activo = (d > 0 ? d + 'd ' : '') + (d > 0 || h > 0 ? h + 'h ' : '') + mm + 'm'; }
@@ -3067,7 +3066,7 @@ async function compartirBot(card) {
   shadow(18, 3);
   g.fillStyle = acento; g.font = `700 52px ${DISPLAY}`; g.fillText(nombre, lx + lr * 2 + 28, ly + 34);
   g.fillStyle = '#eaecef'; g.font = `500 26px ${MONO}`; g.fillText(`${pair} · ${fecha}`, lx + lr * 2 + 30, ly + 70);
-  if (activo) { g.fillStyle = '#e8b84b'; g.font = `600 22px ${MONO}`; g.fillText(`Activo  ${activo}`, lx + lr * 2 + 30, ly + 102); }
+  if (activo) { g.fillStyle = '#e8b84b'; g.font = `600 22px ${MONO}`; g.fillText(`Active  ${activo}`, lx + lr * 2 + 30, ly + 102); }
   noShadow();
 
   // ── Abajo: banda Inversión ↔ Ganancia (chaflán + verde de la página + 3D dorado) ──
@@ -3084,7 +3083,7 @@ async function compartirBot(card) {
   g.strokeStyle = '#e8b84b'; g.lineWidth = 2.5; rr(bX, bY, bW, bH, 28); g.stroke();                    // borde dorado
   g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1; rr(bX + 2.5, bY + 2.5, bW - 5, bH - 5, 26); g.stroke();
   // izquierda: Inversión (etiqueta dorada, valor blanco)
-  g.fillStyle = '#e8b84b'; g.font = `600 22px ${MONO}`; g.fillText(('Investment (' + sq + ')').toUpperCase(), bX + 36, bY + 60);
+  g.fillStyle = '#e8b84b'; g.font = `600 22px ${MONO}`; g.fillText(('Investment (' + (tipo === 'cash' ? sb : sq) + ')').toUpperCase(), bX + 36, bY + 60);
   g.fillStyle = '#eaecef'; g.font = `700 50px ${DISPLAY}`; g.fillText(inv, bX + 34, bY + 120);
   // derecha: Ganancia total (texto OSCURO sobre verde, como la página)
   g.textAlign = 'right';
@@ -3097,7 +3096,7 @@ async function compartirBot(card) {
   // Pie: la web primero, que es lo que queremos que se recuerde.
   shadow(12, 2);
   g.fillStyle = 'rgba(232,184,75,.95)'; g.font = `700 25px ${MONO}`; g.textAlign = 'center';
-  g.fillText('DECFREEDOM.COM   ·   SIN CUSTODIA   ·   SIN KYC', W / 2, H - 32);
+  g.fillText('DECFREEDOM   ·   NON-CUSTODIAL   ·   NO KYC', W / 2, H - 32);
   g.textAlign = 'left'; noShadow();
 
   /* El logo, arriba a la derecha con su margen. Se dibuja al final para
@@ -3113,23 +3112,37 @@ async function compartirBot(card) {
   /* El logo va arriba a la derecha, con margen para que no se pegue al
      borde. Si tarda o falla, la imagen sale igual sin él: nunca se deja
      al usuario sin su tarjeta por un logo que no cargó. */
-  const _logo = new Image();
-  _logo.crossOrigin = 'anonymous';
+  /* [CAUSA DEL LOGO AUSENTE] El sello (142 KB) se pedia AQUI, al pulsar Share, con un
+     tope de 1.4 s: si tardaba mas (cache fria en GitHub Pages), la tarjeta se exportaba
+     sin logo y el onload posterior ya no podia pintar nada. Ahora el sello se precarga al
+     arrancar el modulo (_selloShare) y si ya esta listo se pinta en el acto; si no, se
+     espera hasta 5 s, que es una descarga pedida por el usuario y merece esperar. */
   let _hecho = false;
   const _una = () => { if (_hecho) return; _hecho = true; _pintar(); };
-  _logo.onload = () => {
+  const _dibujarSello = (img) => {
     try {
-      const alto = 200;                                    // marca de agua grande (logo plano)
-      const ancho = Math.round(_logo.width * (alto / _logo.height));
-      g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 18; g.shadowOffsetY = 6;
-      g.drawImage(_logo, W - ancho - 46, 36, ancho, alto); g.restore();
+      const alto = 110;                                    // antes 200: tapaba media tarjeta
+      const ancho = Math.round(img.width * (alto / img.height));
+      g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 14; g.shadowOffsetY = 5;
+      g.drawImage(img, W - ancho - 44, 40, ancho, alto); g.restore();
     } catch (_) {}
-    _una();
   };
-  _logo.onerror = _una;
-  setTimeout(_una, 1400);          // por si la imagen se atasca
-  _logo.src = './img/cco-sello.webp';
+  const _sello = _selloShare();
+  if (_sello.complete && _sello.naturalWidth > 0) { _dibujarSello(_sello); _una(); return; }
+  _sello.addEventListener('load', () => { _dibujarSello(_sello); _una(); }, { once: true });
+  _sello.addEventListener('error', _una, { once: true });
+  setTimeout(_una, 5000);          // por si la imagen se atasca de verdad
 }
+/* Sello de la tarjeta Share: una sola instancia, precargada al arrancar. */
+let _selloImg = null;
+function _selloShare() {
+  if (_selloImg) return _selloImg;
+  _selloImg = new Image();
+  _selloImg.crossOrigin = 'anonymous';
+  _selloImg.src = './img/cco-sello.webp';
+  return _selloImg;
+}
+try { _selloShare(); } catch (_) {}
 function enganchar(cuenta) {
   document.querySelectorAll(`#${APP} .rej`).forEach((el) => {
     const b = el.dataset.b, q = el.dataset.q, sq = el.dataset.sq, sb = el.dataset.sb;
