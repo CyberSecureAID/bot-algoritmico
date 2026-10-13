@@ -13,6 +13,14 @@ const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 const num = (n, d = 2) => isFinite(n) ? Number(n).toLocaleString('en-US', { maximumFractionDigits: d }) : '...';
 const corto = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
 const CERO = '0x0000000000000000000000000000000000000000';
+/* Precios muy pequenos legibles: 0.0<sub>7</sub>4779 en vez de 4.779e-8. */
+function fmtP(p, sig = 4) {
+  if (!(p > 0) || !isFinite(p)) return '...';
+  if (p >= 0.001) return Number(p.toPrecision(sig)).toString();
+  const e = Math.floor(Math.log10(p)); const ceros = -e - 1;
+  const dig = Math.round(p / Math.pow(10, e - sig + 1)).toString().slice(0, sig);
+  return `0.0<sub>${ceros}</sub>${dig}`;
+}
 const hayContrato = () => LAUNCHPAD && LAUNCHPAD !== CERO;
 
 /* ───────── Modal generico ───────── */
@@ -40,9 +48,23 @@ function tokenDemo() {
     address: '0xD3c0F0000000000000000000000000000000FEED', nombre: 'Pepito Coin', simbolo: 'PEPITO', supply: 100000000, logo: '',
     suelo: true, sueloBps: 300, fundadorPct: 10, vestingMeses: 12, antibot: true,
     pool: { moneda: 'BNB', liquidez: 2.5, tokens: 50000000, candadoMeses: 12, creadoEn: Date.now() - 86400000 * 40 },
-    creadoEn: Date.now() - 86400000 * 40, demo: true
+    creadoEn: Date.now() - 86400000 * 40, demo: true, creador: ''
   };
 }
+
+/* Operaciones de muestra (fase 2: eventos Swap del par, leidos de la cadena). */
+function txsDemo(t) {
+  if (!t.pool || !t.demo) return [];
+  let s = 11; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const base = t.pool.liquidez / t.pool.tokens; const out = [];
+  for (let i = 0; i < 48; i++) {
+    const compra = rnd() > 0.45; const cant = Math.round(1000 + rnd() * 60000); const precio = base * (0.8 + rnd() * 0.5);
+    out.push({ compra, cantidad: cant, valor: cant * precio, precio, tiempo: Date.now() - i * (600000 + rnd() * 1800000), wallet: '0x' + Math.floor(rnd() * 0xffffff).toString(16).padStart(6, '0') + '…' + Math.floor(rnd() * 0xffff).toString(16).padStart(4, '0') });
+  }
+  return out;
+}
+const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+function hace(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; if (s < 3600) return Math.floor(s / 60) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; }
 
 /* ───────── Arranque ───────── */
 export function arrancar() {
@@ -112,7 +134,7 @@ const PASOS = 8;
 function wizCerrar() { const d = $('lp-wiz'); if (d) d.remove(); loungeModo('rincon'); }
 function marco(paso, titulo, sub, cuerpo, { atras = true, seguir = 'Continue' } = {}) {
   const prev = $('lp-wiz'); if (prev) prev.remove();
-  loungeModo('grande');
+  loungeModo('junto');
   const d = document.createElement('div'); d.id = 'lp-wiz'; d.className = 'lp-wiz-bg';
   d.innerHTML = `<div class="lp-wiz">
     <button class="lp-wiz-x" id="wz-x" type="button">✕</button>
@@ -138,7 +160,7 @@ export function abrirAsistente() {
       .then(async (si) => { if (!si) return; try { await wallet.conectar(); } catch (_) { return; } if (wallet.cuentaActual()) abrirAsistente(); });
     return;
   }
-  W = { nombre: '', simbolo: '', supply: 0, logo: '', suelo: true, sueloBps: 300, fundadorPct: 10, vestingMeses: 12, antibot: true };
+  W = { nombre: '', simbolo: '', supply: 0, logo: '', suelo: true, sueloBps: 300, fundadorPct: 10, vestingMeses: 12, antibot: true, creador: wallet.cuentaActual() };
   pintarPaso(1);
 }
 
@@ -292,11 +314,11 @@ async function crear() {
 /* ───────── Liquidez (se ofrece justo despues de crear) ───────── */
 function preguntarLiquidez(tok) {
   const prev = $('lp-wiz'); if (prev) prev.remove();
-  loungeModo('grande');
+  loungeModo('junto');
   const d = document.createElement('div'); d.id = 'lp-wiz'; d.className = 'lp-wiz-bg';
   d.innerHTML = `<div class="lp-wiz">
     <div class="lp-done">${logoPrev(tok, 'lp-logo-prev')}<h4>${esc(tok.nombre)} is live</h4><p>Your coin exists on BNB Smart Chain. Do you want people to be able to buy it right now?</p>
-    <div class="lp-dir" id="lp-copiar">${corto(tok.address)} · copy</div></div>
+    <button class="lp-dir" id="lp-copiar" type="button">${corto(tok.address)} ${ICO_COPY}</button></div>
     <div class="lp-wiz-b" style="margin-top:18px">
       <div class="lp-lab" style="font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin:0 0 7px">Coins you put in the pool</div>
       <input type="text" inputmode="numeric" id="lq-tok" placeholder="${num(tok.supply / 2, 0)}" autocomplete="off">
@@ -319,7 +341,7 @@ function preguntarLiquidez(tok) {
   };
   ['lq-tok', 'lq-cant'].forEach((id) => $(id).oninput = ratio); $('lq-mon').onchange = ratio;
   document.querySelectorAll('#lq-cand .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#lq-cand .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); cand = Number(b.dataset.v); ratio(); });
-  $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(tok.address); $('lp-copiar').textContent = 'copied'; } catch (_) {} };
+  $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(tok.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; } catch (_) {} };
   $('lq-no').onclick = () => { wizCerrar(); pintarPanel(tok); };
   $('lq-si').onclick = () => { wmsg('Pool creation is wired in the contract phase.'); };
 }
@@ -339,41 +361,65 @@ function pintarPanel(t) {
   const vestPct = t.fundadorPct ? Math.min(100, Math.max(0, (Date.now() - t.creadoEn) / (vestFin - t.creadoEn) * 100)) : 0;
   const fundadorTot = t.supply * (t.fundadorPct || 0) / 100;
   const widgetUrl = `${location.origin}${location.pathname.replace(/launchpad\.html.*$/, '')}widget.html?token=${t.address}`;
+  const cuenta = (wallet.cuentaActual() || '').toLowerCase();
+  const esAdmin = t.demo || (t.creador && t.creador.toLowerCase() === cuenta);
+  const txs = t.txs || txsDemo(t);
+  const vol24 = txs.filter((x) => Date.now() - x.tiempo < 86400000).reduce((a, x) => a + x.valor, 0);
+  const cambio24 = (() => { const h = txs.filter((x) => Date.now() - x.tiempo < 86400000); if (h.length < 2) return null; const ult = h[0].precio, ant = h[h.length - 1].precio; return ant > 0 ? (ult / ant - 1) * 100 : null; })();
+  const precioTxt = pool ? fmtP(txs.length ? txs[0].precio : precio) + ' ' + mon : 'no pool';
   host.innerHTML = `
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
       <div class="lp-top">
-        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)}<small>${esc(t.simbolo)}</small></div><div class="lp-dir" id="lp-copiar" title="Copy contract">${corto(t.address)} · copy</div></div></div>
+        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)}<small>${esc(t.simbolo)}</small></div><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button></div></div>
+        <div class="lp-precio"><b>${precioTxt}</b><span class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${cambio24 == null ? '24h · no data yet' : (cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2) + '% · 24h'}</span></div>
         <div class="lp-stats">
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
           <div class="lp-stat"><i>Burned</i><b>${quemado ? num(quemado, 0) : '0'}</b></div>
           <div class="lp-stat"><i>Holders</i><b>${num(holders, 0)}</b></div>
           <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcap, 4) + ' ' + mon : '...'}</b></div>
           <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? num(pool.liquidez, 4) + ' ' + mon : 'No pool'}</b></div>
+          <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24, 4) + ' ' + mon : '...'}</b></div>
           <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (suelo > 0 ? suelo.toPrecision(3) + ' BNB' : 'building') : 'off'}</b></div>
         </div>
       </div>
-      <div class="lp-card lp-chart-card">
-        <div class="lp-chart-tabs"><button class="on" data-r="1h">1h</button><button data-r="4h">4h</button><button data-r="1d">1d</button></div>
-        <div class="lp-chart"><canvas id="lp-cv"></canvas>${pool ? '' : '<div class="lp-chart-vacio">The chart appears as soon as your pool has its first trades.<br>Every candle is read from the chain, nothing else.</div>'}</div>
+      <div class="lp-main">
+        <div class="lp-card lp-chart-card">
+          <div class="lp-chart-tabs"><button class="on" data-r="1h">1h</button><button data-r="4h">4h</button><button data-r="1d">1d</button></div>
+          <div class="lp-chart"><canvas id="lp-cv"></canvas>${pool ? '' : '<div class="lp-chart-vacio">The chart appears as soon as your pool has its first trades.<br>Every candle is read from the chain, nothing else.</div>'}</div>
+        </div>
+        <div class="lp-card lp-txs">
+          <div class="lp-txs-head"><h4>Trades</h4>
+            <div class="lp-filtro" id="lp-filtro"><button type="button" id="lp-filtro-b">Latest <svg width="10" height="10" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
+              <div class="lp-filtro-m" id="lp-filtro-m">
+                <button type="button" data-f="latest">Latest</button><button type="button" data-f="buys">Buys only</button><button type="button" data-f="sells">Sells only</button><button type="button" data-f="bigbuys">Largest buys</button><button type="button" data-f="bigsells">Largest sells</button>
+              </div></div></div>
+          <div class="lp-tabla" id="lp-tabla"></div>
+        </div>
       </div>
       <div class="lp-side">
         <div class="lp-card"><h4>Liquidity</h4>
           <div class="lp-kv"><span>In the pool</span><b>${pool ? num(pool.liquidez, 4) + ' ' + mon : 'none'}</b></div>
           <div class="lp-kv"><span>Lock</span><b>${pool ? (desbloqueo ? 'until ' + new Date(desbloqueo).toLocaleDateString('en-GB') : 'forever') : '...'}</b></div>
           <div class="lp-kv"><span>Status</span><b><span class="lp-sello ${pool ? '' : 'gris'}">${pool ? (desbloqueo && Date.now() > desbloqueo ? 'unlocked' : 'locked') : 'no pool'}</span></b></div>
-          ${pool ? `<button class="lp-b gris" id="lp-ret" ${desbloqueo && Date.now() > desbloqueo ? '' : 'disabled'} type="button">${desbloqueo && Date.now() > desbloqueo ? 'Withdraw liquidity' : 'Withdraw (locked)'}</button>` : `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>`}
+          ${esAdmin ? (pool ? `<button class="lp-b gris" id="lp-ret" ${desbloqueo && Date.now() > desbloqueo ? '' : 'disabled'} type="button">${desbloqueo && Date.now() > desbloqueo ? 'Withdraw liquidity' : 'Withdraw (locked)'}</button>` : `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>`) : ''}
         </div>
         ${t.suelo ? `<div class="lp-card"><h4>Floor reserve</h4>
           <div class="lp-kv"><span>Reserve</span><b>${num(t.reservaSuelo || 0, 5)} BNB</b></div>
           <div class="lp-kv"><span>Feeds from sales</span><b class="oro">${t.sueloBps / 100}%</b></div>
-          <div class="lp-kv"><span>Floor per coin</span><b>${suelo > 0 ? suelo.toPrecision(3) + ' BNB' : 'building'}</b></div></div>` : ''}
+          <div class="lp-kv"><span>Floor per coin</span><b>${suelo > 0 ? suelo.toPrecision(3) + ' BNB' : 'building'}</b></div>
+          <button class="lp-b gris" id="lp-redeem" type="button" ${suelo > 0 ? '' : 'disabled'}>Redeem at floor</button></div>` : ''}
         ${t.fundadorPct ? `<div class="lp-card"><h4>Founder lock</h4>
-          <div class="lp-kv"><span>Your share</span><b>${num(fundadorTot, 0)} ${esc(t.simbolo)}</b></div>
+          <div class="lp-kv"><span>Founder share</span><b>${num(fundadorTot, 0)} ${esc(t.simbolo)}</b></div>
           <div class="lp-bar"><i style="width:${vestPct.toFixed(1)}%"></i></div>
           <div class="lp-kv"><span>Released</span><b class="oro">${vestPct.toFixed(1)}%</b></div>
           <div class="lp-kv"><span>Fully released</span><b>${new Date(vestFin).toLocaleDateString('en-GB')}</b></div>
-          <button class="lp-b gris" id="lp-claim" type="button" ${vestPct > 0 ? '' : 'disabled'}>Claim released coins</button></div>` : ''}
+          ${esAdmin ? `<button class="lp-b gris" id="lp-claim" type="button" ${vestPct > 0 ? '' : 'disabled'}>Claim released coins</button>` : ''}</div>` : ''}
+        ${esAdmin ? `<div class="lp-card"><h4>Creator tools</h4>
+          <div class="lp-kv"><span>Burn coins</span><b>from your wallet</b></div>
+          <button class="lp-b gris" id="lp-burn" type="button">Burn</button>
+          <div class="lp-kv" style="margin-top:8px"><span>Photos and links</span><b>public page</b></div>
+          <button class="lp-b gris" id="lp-fotos" type="button">Edit profile</button></div>` : ''}
         <div class="lp-card"><h4>Embed our swap on your site</h4>
           <div class="lp-widget-prev">
             <div class="wp-top">${logoPrev(t, 'lp-logo-prev')}<b>Buy ${esc(t.simbolo)}</b></div>
@@ -385,8 +431,28 @@ function pintarPanel(t) {
         </div>
       </div>
     </div>`;
+  /* Tabla de operaciones con filtro */
+  let filtro = 'latest';
+  const pintarTabla = () => {
+    let l = txs.slice();
+    if (filtro === 'buys') l = l.filter((x) => x.compra); if (filtro === 'sells') l = l.filter((x) => !x.compra);
+    if (filtro === 'bigbuys') l = l.filter((x) => x.compra).sort((a, b) => b.valor - a.valor);
+    if (filtro === 'bigsells') l = l.filter((x) => !x.compra).sort((a, b) => b.valor - a.valor);
+    const c = $('lp-tabla'); if (!c) return;
+    if (!l.length) { c.innerHTML = `<div class="lp-vacio">No trades yet. They appear here the moment someone buys or sells.</div>`; return; }
+    c.innerHTML = `<div class="lp-tr lp-th"><span>Type</span><span>Amount ${esc(t.simbolo)}</span><span>Value ${mon}</span><span>Price ${mon}</span><span>Wallet</span><span>When</span></div>` +
+      l.slice(0, 60).map((x) => `<div class="lp-tr ${x.compra ? 'buy' : 'sell'}"><span class="lp-tipo"><i></i>${x.compra ? 'BUY' : 'SELL'}</span><span>${num(x.cantidad, 0)}</span><span>${fmtP(x.valor)}</span><span>${fmtP(x.precio)}</span><span class="lp-w">${esc(x.wallet)}</span><span class="lp-t">${hace(x.tiempo)}</span></div>`).join('');
+  };
+  pintarTabla();
+  const fm = $('lp-filtro-m'), fb = $('lp-filtro-b');
+  fb.onclick = (e) => { e.stopPropagation(); fm.classList.toggle('open'); };
+  document.addEventListener('click', () => fm && fm.classList.remove('open'), { once: true });
+  fm.querySelectorAll('button').forEach((b) => b.onclick = () => { filtro = b.dataset.f; fb.innerHTML = b.textContent + ' <svg width="10" height="10" viewBox="0 0 14 14"><use href="#chev"/></svg>'; fm.classList.remove('open'); pintarTabla(); });
+  if ($('lp-redeem')) $('lp-redeem').onclick = () => modal('Contract pending', 'Redeeming at the floor is signed against the coin contract in the next phase.');
+  if ($('lp-burn')) $('lp-burn').onclick = () => modal('Contract pending', 'Burning is signed against the coin contract in the next phase.');
+  if ($('lp-fotos')) $('lp-fotos').onclick = () => modal('Coming with the contract', 'Photos and links use the same storage as List your token. It is wired in the next phase.');
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
-  $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').textContent = 'copied'; setTimeout(() => { $('lp-copiar').textContent = corto(t.address) + ' · copy'; }, 1500); } catch (_) {} };
+  $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { $('lp-copiar').innerHTML = corto(t.address) + ' ' + ICO_COPY; }, 1500); } catch (_) {} };
   $('lp-copy-w').onclick = () => { try { navigator.clipboard.writeText($('lp-code').textContent); $('lp-copy-w').textContent = 'Copied'; setTimeout(() => { $('lp-copy-w').textContent = 'Copy embed code'; }, 1500); } catch (_) {} };
   if ($('lp-add')) $('lp-add').onclick = () => preguntarLiquidez(t);
   if ($('lp-ret')) $('lp-ret').onclick = () => modal('Contract pending', 'Withdrawals are signed against the launchpad contract in the next phase.');

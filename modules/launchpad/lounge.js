@@ -48,10 +48,11 @@ export function montarLounge() {
   return _el;
 }
 
-/* "grande" mientras se configura; "rincon" cuando termina. */
+/* "grande" en la portada; "junto" pegado a la tarjeta del asistente; "rincon" cuando termina. */
 export function loungeModo(modo) {
   if (!_el) montarLounge();
   _el.classList.toggle('rincon', modo === 'rincon');
+  _el.classList.toggle('junto', modo === 'junto');
 }
 
 export function loungeOcultar(si) { if (_el) _el.classList.toggle('fuera', !!si); }
