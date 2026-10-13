@@ -64,7 +64,10 @@
       <div class="pt-nav__i"><a class="pt-nav__b" href="../../app.html?abrir=market">P2P</a></div>
       <div class="pt-nav__i"><a class="pt-nav__b" href="../../app.html?abrir=academy">Academy</a></div>
     </nav>
-    <div class="pt-hdr__a"><span class="sw-wallet" id="sw-wallet"><span class="sw-wp"></span><span class="sw-wl">Wallet</span><span class="sw-wd" id="sw-cuenta"></span></span></div>
+    <div class="pt-hdr__a">
+      <a class="sw-perfil" id="sw-perfil" href="../../app.html?abrir=perfil" aria-label="Profile" title="Profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.3 3.6-5 8-5s8 1.7 8 5"/></svg></a>
+      <span class="sw-wallet" id="sw-wallet"><span class="sw-wp" id="sw-wicon"></span><span class="sw-wl">Wallet</span><span class="sw-wd" id="sw-cuenta"></span></span>
+    </div>
   </div>
 </header>
   <div id="colmena-app"></div>
@@ -77,6 +80,8 @@
   import { arrancar } from './launchpad.js';
   import { arrancarIdioma } from './idioma.js';
   import { brasas } from './chispas.js';
+  import { avisoLaunchpad } from './aviso.js';
+  try { avisoLaunchpad(); } catch (e) { console.warn('[launchpad] aviso:', e); }   // terminos del launchpad, una vez por navegador
 
   try {
     const quieto = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
@@ -85,7 +90,16 @@
   } catch (e) { console.warn('[launchpad] chispas:', e); }
 
   const caps = document.getElementById('sw-wallet'), cta = document.getElementById('sw-cuenta');
-  const pinta = () => { const c = wallet.cuentaActual(); if (c) { cta.textContent = c.slice(0, 6) + '…' + c.slice(-4); caps.classList.add('on'); } else { cta.textContent = ''; caps.classList.remove('on'); } };
+  const wic = document.getElementById('sw-wicon');
+  /* Capsula de la wallet: icono real de la wallet conectada (EIP-6963) si lo da; si no, el punto verde. */
+  const pinta = () => {
+    const c = wallet.cuentaActual();
+    if (c) {
+      cta.textContent = c.slice(0, 6) + '\u2026' + c.slice(-4); caps.classList.add('on');
+      let ico = null; try { ico = wallet.walletInfo() && wallet.walletInfo().icon; } catch (_) {}
+      if (ico) { wic.innerHTML = '<img src="' + ico + '" alt="">'; wic.classList.add('img'); } else { wic.innerHTML = ''; wic.classList.remove('img'); }
+    } else { cta.textContent = ''; caps.classList.remove('on'); }
+  };
 
   try { await wallet.reconectarSiProcede(); } catch (_) {}
   arrancar();

@@ -100,6 +100,11 @@ body{overflow-x:hidden}
 #pt .sw-wallet .sw-wl{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--ink3)}
 #pt .sw-wallet .sw-wd{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--gold)}
 #pt .sw-wallet .sw-wp{width:7px;height:7px;border-radius:50%;background:#2ebd85;box-shadow:0 0 8px #2ebd85}
+#pt .sw-wallet .sw-wp.img{width:18px;height:18px;background:none;box-shadow:none;display:grid;place-items:center}
+#pt .sw-wallet .sw-wp.img img{width:18px;height:18px;border-radius:4px}
+#pt .sw-perfil{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--ink2)}
+#pt .sw-perfil svg{width:17px;height:17px}
+#pt .sw-perfil:hover{border-color:var(--gold-lo);color:var(--gold)}
 @media(max-width:760px){
   #pt .pt-nav{display:none}
   #pt .sw-wallet .sw-wl{display:none}
@@ -110,4 +115,18 @@ body{overflow-x:hidden}
   #pt .sw-back{margin-right:8px;padding:0 8px 0 6px}
   #pt .sw-wallet{padding:0 8px;gap:6px}
   #pt .sw-wallet .sw-wd{font-size:11px}
+}
+/* Telefono: con el icono de perfil, la cinta se encoge para que la capsula de la wallet no se corte. */
+@media(max-width:460px){
+  #pt .sw-back{margin-right:8px;padding:0 8px 0 6px;font-size:0;gap:0}
+  #pt .sw-back svg{width:14px;height:14px}
+  #pt .pt-logo img{height:30px}
+  #pt .sw-perfil{width:32px;height:32px}
+  #pt .sw-wallet{padding:0 8px;gap:6px}
+  #pt .sw-wallet .sw-wd{font-size:11px}
+}
+@media(max-width:340px){
+  #pt .sw-back{flex:0 0 32px;min-width:32px;justify-content:center;padding:0;margin-right:6px}
+  #pt .pt-logo img{height:24px}
+  #pt .sw-wallet .sw-wd{font-size:10.5px}
 }

@@ -4,6 +4,7 @@
    fase de contrato: mientras LAUNCHPAD sea 0x0, el boton final avisa "pending". */
 
 import * as wallet from './wallet.js';
+import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -37,7 +38,40 @@ function modal(titulo, cuerpo, { ok = 'Got it', cancel = null } = {}) {
 
 /* ───────── Tokens del usuario (fase 1: lo que este navegador creo; fase 2: el contrato) ───────── */
 function misTokens() {
-  try { return JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) { return []; }
+  let l = []; try { l = JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) { l = []; }
+  const oc = ocultos();
+  return l.filter((t) => !oc.includes(String(t.address).toLowerCase()));
+}
+/* Tokens que el creador decidio no ver mas en su panel (siguen publicos en la cadena y en el swap).
+   Fase 2: la lista se guarda firmada por wallet en el mismo almacen que las fotos. */
+function ocultos() { try { return JSON.parse(localStorage.getItem('lp-ocultos') || '[]'); } catch (_) { return []; } }
+function ocultar(addr) { const l = ocultos(); l.push(String(addr).toLowerCase()); try { localStorage.setItem('lp-ocultos', JSON.stringify(l)); } catch (_) {} }
+
+/* Tres confirmaciones y una firma de la wallet creadora. Sin la firma no se oculta nada. */
+async function ocultarToken(t) {
+  const p1 = await modal('Hide this coin?', `<b>${esc(t.nombre)}</b> will disappear from your panel. It stays live on the chain and in the swap for everyone.`, { ok: 'Yes, hide it', cancel: 'Cancel' });
+  if (!p1) return false;
+  const p2 = await modal('This cannot be undone', 'The coin is not deleted: holders keep it, buyers keep finding it and its public page keeps working. What you lose is this panel: you will not manage it from here again.', { ok: 'I understand, continue', cancel: 'Cancel' });
+  if (!p2) return false;
+  const p3 = await modal('Last step: sign with your wallet', 'Your wallet will ask you to sign a message (no gas, nothing is sent). Only the wallet that created the coin can hide it. By signing you confirm this is final.', { ok: 'Sign and hide', cancel: 'Cancel' });
+  if (!p3) return false;
+  try {
+    const cuenta = wallet.cuentaActual();
+    if (!cuenta || (t.creador && t.creador.toLowerCase() !== cuenta.toLowerCase() && !t.demo)) { await modal('Not your coin', 'Only the wallet that created this coin can hide it.'); return false; }
+    const bp = new ethers.BrowserProvider(wallet.proveedorActivo());
+    const signer = await bp.getSigner();
+    const msg = `DecFreedom Launchpad\nHide coin from my panel\nCoin: ${t.address}\nWallet: ${cuenta}\nDate: ${new Date().toISOString()}\nThis action is final.`;
+    const firma = await signer.signMessage(msg);
+    const quien = ethers.verifyMessage(msg, firma);
+    if (quien.toLowerCase() !== cuenta.toLowerCase()) { await modal('Signature mismatch', 'The signature does not belong to the connected wallet. Nothing was changed.'); return false; }
+  } catch (e) {
+    const rech = /reject|denied|user/i.test(String(e && (e.message || e)));
+    await modal(rech ? 'Signature cancelled' : 'Could not sign', rech ? 'You cancelled the signature. Nothing was changed.' : 'Your wallet did not sign. Nothing was changed.');
+    return false;
+  }
+  if (!t.demo) ocultar(t.address);
+  await modal('Hidden', `${esc(t.nombre)} no longer shows in your panel.`);
+  return true;
 }
 function guardarTokens(l) { try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} }
 
@@ -86,13 +120,14 @@ function pintarPortada() {
   const mios = misTokens();
   host.innerHTML = `
     <section class="lp-hero">
+      <img class="lp-hero-ico" src="./img/launchpad-icono.webp" alt="" width="150" height="150" onerror="this.style.display='none'">
       <h1 class="lp-h1">Create your own coin</h1>
       <p class="lp-sub">Backed by contract, not by promises. Free to create.</p>
       <div class="lp-cta">
         <button class="lp-b" id="lp-crear">Create</button>
         <button class="lp-b gris" id="lp-ver-mios">My coins${mios.length ? ' · ' + mios.length : ''}</button>
+        <button class="lp-b gris" id="lp-info">Learn more</button>
       </div>
-      <button class="lp-link" id="lp-info" type="button">Learn more</button>
     </section>`;
   $('lp-crear').onclick = () => abrirAsistente();
   $('lp-ver-mios').onclick = () => pintarMios();
@@ -432,7 +467,9 @@ function pintarPanel(t) {
           <div class="lp-kv"><span>Burn coins</span><b>from your wallet</b></div>
           <button class="lp-b gris" id="lp-burn" type="button">Burn</button>
           <div class="lp-kv" style="margin-top:8px"><span>Photos and links</span><b>public page</b></div>
-          <button class="lp-b gris" id="lp-fotos" type="button">Edit profile</button></div>` : ''}
+          <button class="lp-b gris" id="lp-fotos" type="button">Edit profile</button>
+          <div class="lp-kv" style="margin-top:8px"><span>Hide from my panel</span><b>stays public</b></div>
+          <button class="lp-b gris rojo" id="lp-ocultar" type="button">Hide</button></div>` : ''}
         <div class="lp-card"><h4>Embed our swap on your site</h4>
           <div class="lp-widget-prev">
             <div class="wp-top">${logoPrev(t, 'lp-logo-prev')}<b>Buy ${esc(t.simbolo)}</b></div>
@@ -464,6 +501,7 @@ function pintarPanel(t) {
   if ($('lp-redeem')) $('lp-redeem').onclick = () => modal('Contract pending', 'Redeeming at the floor is signed against the coin contract in the next phase.');
   if ($('lp-burn')) $('lp-burn').onclick = () => modal('Contract pending', 'Burning is signed against the coin contract in the next phase.');
   if ($('lp-fotos')) $('lp-fotos').onclick = () => modal('Coming with the contract', 'Photos and links use the same storage as List your token. It is wired in the next phase.');
+  if ($('lp-ocultar')) $('lp-ocultar').onclick = async () => { if (await ocultarToken(t)) { history.replaceState(null, '', location.pathname); pintarPortada(); } };
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { $('lp-copiar').innerHTML = corto(t.address) + ' ' + ICO_COPY; }, 1500); } catch (_) {} };
   $('lp-copy-w').onclick = () => { try { navigator.clipboard.writeText($('lp-code').textContent); $('lp-copy-w').textContent = 'Copied'; setTimeout(() => { $('lp-copy-w').textContent = 'Copy code'; }, 1500); } catch (_) {} };
