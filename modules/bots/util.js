@@ -1,4 +1,4 @@
-/* gridbot/util.js — Utilidades compartidas de la app de bots: formateo
+/* gridbot/util.js, Utilidades compartidas de la app de bots: formateo
    (num, fmtPrecioUSD), escape (escT), detección de móvil, traducción de
    errores a lenguaje llano (enCristiano) y el sistema de modales
    (busy/error). Extraído de gridbot-ui.js sin cambiar la lógica. */
@@ -9,7 +9,7 @@ import { LOGOS } from './estado.js';
 const $ = (id) => document.getElementById(id);
 
 export const moneda = (id) => MONEDAS[id];
-export function num(n, d = 4) { return isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: d }) : '—'; }
+export function num(n, d = 4) { return isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: d }) : '...'; }
 
 export const _movil = () => window.matchMedia('(max-width: 760px)').matches;
 export const tipoNum = () => (_movil() ? 'text' : 'number');
@@ -22,22 +22,22 @@ export function enCristiano(e) {
   // saber qué pasa, y el usuario puede contárnoslo.
   if (/^WC_/.test(crudo)) return crudo;
   const t = crudo.toLowerCase();
-  if (t.includes('user rejected') || t.includes('denied') || t.includes('rechaz')) return 'Cancelaste la operación en tu wallet.';
-  if (t.includes('insufficient funds')) return 'No te alcanza el BNB para pagar la comisión de red.';
-  if (t.includes('transfer amount exceeds balance') || t.includes('exceeds balance')) return 'No tienes suficiente saldo de esa moneda.';
-  if (t.includes('allowance') || t.includes('approve')) return 'Falta dar permiso a la moneda. Inténtalo otra vez.';
-  if (t.includes('no_wallet')) return 'No encontramos ninguna wallet. Instala MetaMask o abre esta página desde tu wallet.';
-  if (t.includes('sin_cuentas')) return 'Tu wallet no dio acceso a ninguna cuenta.';
-  if (t.includes('nonce') || t.includes('replacement')) return 'Tienes otra operación en marcha. Espera a que termine.';
-  if (t.includes('network') || t.includes('rpc') || t.includes('timeout') || t.includes('fetch')) return 'La red va lenta ahora mismo. Prueba de nuevo en un momento.';
-  if (t.includes('chain') || t.includes('red incorrecta')) return 'Cambia tu wallet a la red BNB Smart Chain.';
-  if (t.includes('gas required exceeds') || t.includes('gas limit')) return 'La operación no cabe. Prueba con una cantidad menor.';
-  if (t.includes('revert')) return 'El sistema no aceptó la operación. Revisa los datos e inténtalo otra vez.';
-  return 'No se pudo completar. Inténtalo de nuevo en un momento.';
+  if (t.includes('user rejected') || t.includes('denied') || t.includes('rechaz')) return 'You cancelled the operation in your wallet.';
+  if (t.includes('insufficient funds')) return 'Not enough BNB to pay the network fee.';
+  if (t.includes('transfer amount exceeds balance') || t.includes('exceeds balance')) return 'You do not have enough balance of that coin.';
+  if (t.includes('allowance') || t.includes('approve')) return 'The coin permission is missing. Try again.';
+  if (t.includes('no_wallet')) return 'No wallet found. Install MetaMask or open this page from your wallet.';
+  if (t.includes('sin_cuentas')) return 'Your wallet did not give access to any account.';
+  if (t.includes('nonce') || t.includes('replacement')) return 'You have another operation in progress. Wait for it to finish.';
+  if (t.includes('network') || t.includes('rpc') || t.includes('timeout') || t.includes('fetch')) return 'The network is slow right now. Try again in a moment.';
+  if (t.includes('chain') || t.includes('red incorrecta')) return 'Switch your wallet to BNB Smart Chain.';
+  if (t.includes('gas required exceeds') || t.includes('gas limit')) return 'The operation does not fit. Try a smaller amount.';
+  if (t.includes('revert')) return 'The contract did not accept the operation. Check the data and try again.';
+  return 'Could not complete. Try again in a moment.';
 }
 
 export function fmtPrecioUSD(p) {
-  if (p == null || !isFinite(p)) return '—';
+  if (p == null || !isFinite(p)) return '...';
   if (p >= 1000) return '$' + p.toLocaleString('en-US', { maximumFractionDigits: 0 });
   if (p >= 1) return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (p >= 0.01) return '$' + p.toFixed(4);
@@ -59,13 +59,13 @@ export function modalBusy(txt) {
   }, 2500);
 }
 export function modalBusyTexto(txt) { const el = $('busy-tx'); if (el) el.innerHTML = txt; }
-window._onTxProcesando = function () { const el = document.getElementById('busy-tx'); if (el) el.innerHTML = 'Procesando en la red… <span style="opacity:.6">ya casi</span>'; };
+window._onTxProcesando = function () { const el = document.getElementById('busy-tx'); if (el) el.innerHTML = 'Processing on the network… <span style="opacity:.6">almost there</span>'; };
 export function modalError(txt) {
   const m = $('colmena-modal'); if (!m) return;
-  limpiarBusy(); $('cm-title').textContent = 'No se pudo completar'; $('cm-body').textContent = txt;
+  limpiarBusy(); $('cm-title').textContent = 'Could not complete'; $('cm-body').textContent = txt;
   const btns = m.querySelector('.m-btns'); btns.style.display = 'flex';
   $('cm-cancel').style.display = 'none'; const ok = $('cm-ok');
-  ok.textContent = 'Entendido'; ok.className = 'btn btn-linea'; ok.onclick = () => m.classList.remove('show');
+  ok.textContent = 'Got it'; ok.className = 'btn btn-linea'; ok.onclick = () => m.classList.remove('show');
 }
 export function modalClose() { limpiarBusy(); const m = $('colmena-modal'); if (m) m.classList.remove('show'); }
 
@@ -97,5 +97,5 @@ export function icoInner(mo) {
       src = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/' + addr + '/logo.png';
     }
   }
-  return `<span class="ico-fb">${letra}</span>` + (src ? `<img src="${src}" alt="" onload="this.parentElement.classList.add('conlogo')" onerror="this.style.display='none'">` : '');
+  return `<span class="ico-fb">${letra}</span>` + (src ? `<img src="${src}" alt="" onload="if(this.parentElement)this.parentElement.classList.add('conlogo')" onerror="this.style.display='none'">` : '');
 }

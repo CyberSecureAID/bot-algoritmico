@@ -455,7 +455,7 @@ function abrirSelectorWallet(ancla) {
     const id = b.getAttribute('data-w'); cerrar();
     Promise.resolve().then(() => wallet.conectarCon(id)).catch((e) => {
       const el = $('c-hero-msg') || $('c-msg');
-      console.warn('[Aurex] detalle técnico:', e);
+      console.warn('[DecFreedom] detalle técnico:', e);
       if (el) aviso(el, 'err', enCristiano(e), 7000);
     });
   });
@@ -473,7 +473,7 @@ function avisarKeeper(cuenta) {
 function hacerConexion(fn) {
   Promise.resolve().then(fn).catch((e) => {
     const el = $('c-hero-msg') || $('c-msg');
-    console.warn('[Aurex] detalle técnico:', e);
+    console.warn('[DecFreedom] detalle técnico:', e);
     if (el) aviso(el, 'err', enCristiano(e), 8000);
   });
 }
@@ -1473,7 +1473,7 @@ async function cerrarTodosLosBots(cuenta) {
     for (let i = 0; i < vivos.length; i++) {
       prog.textContent = `Closing ${i + 1} of ${vivos.length}… confirm in your wallet`;
       try { await gb.cancelarRejillaK(vivos[i].k); ok++; }
-      catch (e) { fallos++; console.warn('[Aurex] cerrar bot:', e); }
+      catch (e) { fallos++; console.warn('[DecFreedom] cerrar bot:', e); }
     }
     prog.textContent = fallos === 0
       ? `Done: ${ok} bots closed and your money back.`
@@ -1514,18 +1514,11 @@ function avisoDeRiesgo() {
         <div class="rg-t">Read this before you turn it on</div>
         <div class="rg-s">Thirty seconds now can save you money later. This is what you are about to do.</div>
 
-        <div class="rg-p"><span>1</span><div><b>You can lose money.</b> Smart Grid and Accumulator do well when the price swings or rebounds; they do badly when the market moves in one direction and does not come back. Cash Out and DCA keep buying on the way down: if the coin keeps falling, your position is worth less. No bot predicts the market.</div></div>
-        <div class="rg-p"><span>2</span><div><b>Nobody can promise you profits.</b> Not us, not any platform. Estimates on this screen are based on past volatility, not on the future. If someone promises you a fixed monthly return, it is a scam.</div></div>
-        <div class="rg-p"><span>3</span><div><b>What you pay.</b> $2.50 in BNB when you turn on each bot, which also renews your 30 day maintenance. Gas for every trade comes from the gas you load (a few cents each). PancakeSwap charges its own swap fee. Nothing else.</div></div>
-        <div class="rg-p"><span>4</span><div><b>Your money stays in your wallet.</b> We never custody it: the bot only gets a limited, revocable permission to trade the pair you chose, and every trade executes from a public contract on BNB Smart Chain. That also means <b>you are responsible for your keys</b>.</div></div>
-        <div class="rg-p"><span>5</span><div><b>Use only money you can leave alone.</b> Months, not days. A bot that is closed early can be closed at a loss.</div></div>
-
-        <div class="rg-frase">
-          <div class="rg-frase-t">Your recovery phrase</div>
-          <p>It is the <b>12 words</b> your wallet gave you when you created it. They are the key to all your money.</p>
-          <p><b>Write them on paper</b> and keep them somewhere safe. Not on your phone, not in a photo, not in your email.</p>
-          <p class="rg-frase-x">If you lose them, <b>no one can recover them</b>: not us, not your wallet, no one. If anyone asks you for them, whoever it is, even claiming to be from DecFreedom, <b>it is a scam</b>. We will never ask you for them.</p>
-        </div>
+        <div class="rg-p"><span>1</span><div><b>The risk is yours.</b> A bot only executes the strategy you set; it does not predict the market. You can lose part or all of what you commit, and DecFreedom is not responsible for market losses. Nobody can promise you profits.</div></div>
+        <div class="rg-p"><span>2</span><div><b>What you pay.</b> $2.50 in BNB (at the live rate) each time you turn on a bot. That payment also renews the 30 day maintenance of all your bots. On top of that: network gas, the DEX swap fee, and a small BNB deposit ("Bot gas") that pays the gas of each automatic trade, which you can withdraw anytime. Nothing else.</div></div>
+        <div class="rg-p"><span>3</span><div><b>Your money stays in your wallet.</b> We never hold it. The bot gets a limited permission over the two coins of the pair, which you can revoke from your wallet whenever you want. Every trade runs through a public, verified contract on BNB Smart Chain. You are responsible for your keys: we will never ask for your recovery phrase.</div></div>
+        <div class="rg-p"><span>4</span><div><b>If the transaction fails.</b> Nothing is charged: when a transaction reverts, the bot is not created and the $2.50 is not taken (you only pay the network gas). Open your wallet activity to confirm, make sure you have enough BNB, wait a minute and try again. If it keeps failing, contact us with the transaction hash.</div></div>
+        <div class="rg-p"><span>5</span><div><b>Commit only money you can leave alone for weeks.</b> Closing a bot early can mean closing at a loss. By continuing you confirm you are of legal age where you live and you accept these terms.</div></div>
 
         <label class="rg-ok"><input type="checkbox" id="rg-check"> <span>I have read this and I understand the risks</span></label>
         <div class="rg-acts">
@@ -1556,13 +1549,6 @@ function estilosRiesgo() {
   #riesgo-box .rg-p span{flex:0 0 auto;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);color:#3a2800;font-family:var(--display);font-weight:800;font-size:12px}
   #riesgo-box .rg-p div{font-family:var(--sans);font-size:13px;color:var(--ink-2);line-height:1.6}
   #riesgo-box .rg-p b{color:var(--ink)}
-  #riesgo-box .rg-frase{margin:16px 0 4px;padding:14px;border-radius:12px;background:rgba(246,70,93,.06);border:1px solid rgba(246,70,93,.3)}
-  #riesgo-box .rg-frase-t{font-family:var(--display);font-weight:800;font-size:14px;color:var(--rojo);margin-bottom:8px}
-  #riesgo-box .rg-frase p{font-family:var(--sans);font-size:12.5px;color:var(--ink-2);line-height:1.6;margin:0 0 8px}
-  #riesgo-box .rg-frase p:last-child{margin-bottom:0}
-  #riesgo-box .rg-frase b{color:var(--ink)}
-  #riesgo-box .rg-frase-x{padding-top:8px;border-top:1px solid rgba(246,70,93,.22)}
-  #riesgo-box .rg-frase-x b{color:#ffc2ca}
   #riesgo-box .rg-ok{display:flex;align-items:center;gap:10px;padding:13px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--line);margin:18px 0 14px;cursor:pointer}
   #riesgo-box .rg-ok input{width:19px;height:19px;flex:0 0 auto;accent-color:var(--gold);cursor:pointer}
   #riesgo-box .rg-ok span{font-family:var(--sans);font-size:13px;color:var(--ink)}
@@ -1946,7 +1932,7 @@ async function onCrearAcum() {
   /* El aviso de riesgo va LO PRIMERO, antes de pedir ninguna firma.
      Enseñarlo después de que el usuario ya haya aprobado permisos en su
      wallet no sirve de nada: ya se comprometió. Solo sale la 1ª vez. */
-  if (!(await avisoDeRiesgo())) return;
+  /* El aviso de riesgo ya salio en onCrear(); no se repite aqui. */
   const m = $('c-msg'); const base = moneda(F.baseId), quote = moneda(F.quoteId);
   const cuenta = wallet.cuentaActual();
   const p = {
@@ -2076,7 +2062,7 @@ function objetivoCash() {
 }
 async function onCrearCashOut() {
   /* El aviso de riesgo va LO PRIMERO, antes de pedir ninguna firma. */
-  if (!(await avisoDeRiesgo())) return;
+  /* El aviso de riesgo ya salio en onCrear(); no se repite aqui. */
   const m = $('c-msg'); const base = moneda(F.baseId), quote = moneda(F.quoteId);
   const cuenta = wallet.cuentaActual();
   const cantidad = parseFloat($('fc-cant')?.value) || 0;
@@ -2099,7 +2085,8 @@ async function onCrearCashOut() {
     cuerpo: `<b>Right now:</b> the bot sells <b>${num(cantidad / 2, 6)} ${base.simbolo}</b> (about ${num(mitad, 2)} ${quote.simbolo}) into your wallet as reserve and keeps <b>${num(cantidad / 2, 6)} ${base.simbolo}</b> as position.<br><br>
       <b>On dips:</b> it buys back with the reserve, ${niv} level${niv === 1 ? '' : 's'} every ${num(paso, 2)}%.<br><br>
       <b>Exit:</b> when the whole position is worth your cost <b>+${num(o.pct, 2)}%</b>, it sells everything into ${quote.simbolo} and starts a new 50/50 cycle. The contract refuses any sale below that floor.<br><br>
-      Your crypto stays in your wallet; you only grant permission to move ${base.simbolo} and ${quote.simbolo} for these operations.`,
+      <b>How it runs:</b> our keeper watches the market around the clock and executes each level from the public contract; every automatic trade is paid from your Bot gas. You pay $2.50 in BNB now to turn it on.<br><br>
+      Your crypto stays in your wallet; you only grant permission to move ${base.simbolo} and ${quote.simbolo} for these operations. You can close the bot whenever you want.`,
     ok: 'Yes, turn on'
   });
   if (!ok) return;
@@ -2189,7 +2176,7 @@ async function onCrearDCA() {
   /* El aviso de riesgo va LO PRIMERO, antes de pedir ninguna firma.
      Enseñarlo después de que el usuario ya haya aprobado permisos en su
      wallet no sirve de nada: ya se comprometió. Solo sale la 1ª vez. */
-  if (!(await avisoDeRiesgo())) return;
+  /* El aviso de riesgo ya salio en onCrear(); no se repite aqui. */
   const m = $('c-msg'); const base = moneda(F.baseId), quote = moneda(F.quoteId);
   const cuenta = wallet.cuentaActual();
   const monto = parseFloat($('fd-monto')?.value) || 0;
@@ -2389,7 +2376,7 @@ function tarjetaMinima(clave, par, err, R) {
 function wireMinCancel(cont) {
   cont.querySelectorAll('[data-min-cancel]').forEach((btn) => btn.onclick = async () => {
     const clave = btn.dataset.minCancel;
-    const ok = await modalConfirm({ titulo: 'Cerrar bot', cuerpo: 'This bot will close and the permission is removed. <b>Your crypto stays in your wallet.</b>', ok: 'Sí, cerrar', peligro: true });
+    const ok = await modalConfirm({ titulo: 'Close bot', cuerpo: 'The bot closes and what it holds is sold. <b>The money stays in your wallet.</b>', ok: 'Yes, close', peligro: true });
     if (!ok) return;
     try { modalBusy('Closing the bot… confirm in your wallet.'); await gb.cancelarRejillaK(clave); modalClose(); refrescarRejillas(); }
     catch (e) { modalError(esRechazo(e) ? 'You cancelled the signature.' : (e?.shortMessage || e?.message || String(e))); }
@@ -2559,7 +2546,7 @@ async function refrescarRejillas() {
     wireMinCancel(cont);
     activarContadores();
   } catch (e) {
-    console.warn('[Aurex] detalle técnico:', e);
+    console.warn('[DecFreedom] detalle técnico:', e);
     cont.innerHTML = `<div class="vacio-ok"><div class="vacio-t">Could not read your bots right now</div><div class="vacio-d">The network is slow or there was a brief outage. Your bots and your money remain intact on the blockchain.</div><button class="vacio-b" onclick="location.reload()">Retry</button></div>`;
   }
   if (PNL_TIMER) clearInterval(PNL_TIMER);
@@ -2796,8 +2783,9 @@ async function tarjeta(cuenta, clave, par, R) {
   }
   const mkt = (entrada && precio) ? (precio - entrada) / entrada * 100 : null;
   const sinPos = posBase <= 0 && Number(R.comprasHechas) === 0;
-  const gas = Number(gb.fmtBNB(R.gasSaldoWei)).toFixed(5);   // 5 decimales: con 4, 0.00396 salía 0.0040 y parecía que no cambiaba
-  const gasLow = R.gasSaldoWei < (GASMIN || 0n);
+  const gas = R.gasSaldoWei == null ? '...' : Number(gb.fmtBNB(R.gasSaldoWei)).toFixed(5);   // 5 decimales: con 4, 0.00396 salía 0.0040 y parecía que no cambiaba
+  const gasLow = R.gasSaldoWei != null && R.gasSaldoWei < (GASMIN || 0n);   // dato desconocido (null) = sin aviso
+  const gasMinTxt = GASMIN ? Number(gb.fmtBNB(GASMIN)).toFixed(3) : '0.003';
   const creadoSeg = par.creadoLocal ? Math.floor(par.creadoLocal / 1000) : Number(R.creadaEn);
 
   const obMid = precio || pmin;
@@ -2854,10 +2842,10 @@ async function tarjeta(cuenta, clave, par, R) {
   })();
 
   const _boxEntrada = _entValida
-    ? `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Precio de entrada</span><span class="k-s">Entrada</span></div><div class="v" style="font-size:15px">${precioFmt(entrada)}</div><div class="v2 ${mkt == null ? '' : cls(mkt)}" style="${mkt == null ? 'color:var(--ink-3)' : ''}">${mkt == null ? 'al crear el bot' : 'ahora ' + precioFmt(precio)}</div></div>`
+    ? `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Precio de entrada</span><span class="k-s">Entrada</span></div><div class="v" style="font-size:15px">${precioFmt(entrada)}</div><div class="v2 ${mkt == null ? '' : cls(mkt)}" style="${mkt == null ? 'color:var(--ink-3)' : ''}">${mkt == null ? 'at creation' : 'now ' + precioFmt(precio)}</div></div>`
     : _esperaEn
-      ? `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Buys when it reaches</span><span class="k-s">Buys at</span></div><div class="v" style="font-size:15px">${precioFmt(_esperaEn)}</div><div class="v2" style="color:var(--ink-3)">ahora ${precioFmt(precio)}${precio > 0 ? ' · falta ' + num(Math.abs((precio - _esperaEn) / precio * 100), 2) + '%' : ''}</div></div>`
-      : `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Market price</span><span class="k-s">Market</span></div><div class="v" style="font-size:15px">${precioFmt(precio)}</div><div class="v2" style="color:var(--ink-3)">${sinPos ? 'has not bought yet' : 'ahora mismo'}</div></div>`;
+      ? `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Buys when it reaches</span><span class="k-s">Buys at</span></div><div class="v" style="font-size:15px">${precioFmt(_esperaEn)}</div><div class="v2" style="color:var(--ink-3)">now ${precioFmt(precio)}${precio > 0 ? ' · ' + num(Math.abs((precio - _esperaEn) / precio * 100), 2) + '% away' : ''}</div></div>`
+      : `<div class="pio-box" data-box="entrada"><div class="k"><span class="k-l">Market price</span><span class="k-s">Market</span></div><div class="v" style="font-size:15px">${precioFmt(precio)}</div><div class="v2" style="color:var(--ink-3)">${sinPos ? 'has not bought yet' : 'right now'}</div></div>`;
   const _boxFlotante = `<div class="pio-box" data-box="flotante"><div class="k">Floating ${iBtn('ganancia')}</div><div class="v ${cls(noRealizado)} numgo" data-to="${Math.abs(noRealizado)}" data-dec="4" data-pre="${sg(noRealizado)}">${sg(noRealizado)}${num(Math.abs(noRealizado), 4)}</div><div class="v2 ${cls(noRealizado)}">${sg(pct(noRealizado))}${num(Math.abs(pct(noRealizado)), 2)}%</div></div>`;
   const _boxGas = `<div class="pio-box" data-box="gas"><div class="k">Gas (BNB)</div><div class="v ${gasLow ? 'neg' : ''}">${gas}</div><div class="v2" style="color:var(--ink-3)">to trade</div></div>`;
   const _boxGrid = `<div class="pio-box" data-box="realizado"><div class="k">Grid profit ${iBtn('porcuad')}</div><div class="v ${cls(realizado)} numgo" data-to="${Math.abs(realizado)}" data-dec="4" data-pre="${sg(realizado)}">${sg(realizado)}${num(Math.abs(realizado), 4)}</div><div class="v2 ${cls(realizado)}">${sg(pct(realizado))}${num(Math.abs(pct(realizado)), 2)}%</div></div>`;
@@ -2894,7 +2882,7 @@ async function tarjeta(cuenta, clave, par, R) {
   const _boxPosicion = `<div class="pio-box"><div class="k">Position (${simB})</div><div class="v" style="font-size:15px">${num(posBase, 6)}</div><div class="v2" style="color:var(--ink-3)">accumulated</div></div>`;
   let _boxes;
   if (_esGrafico) _boxes = _boxEntrada + _boxObjetivo + _boxGas;   // orden limit: precio, objetivo y gas
-  else if (tipo === 'cash') _boxes = _boxEntrada + _boxObjetivo;
+  else if (tipo === 'cash') _boxes = _boxEntrada + _boxObjetivo + _boxGas;
   else if (tipo === 'dca') _boxes = _boxProxima + _boxCompras + _boxMedio + _boxPosicion + _boxFlotante + _boxGas;
   else if (tipo === 'acum') _boxes = _boxGrid + _boxFlotante + _boxEntrada + _boxMedio + _boxVueltas + _boxGas;
   else _boxes = _boxGrid + _boxFlotante + _boxEntrada + _boxRango + _boxVueltas + _boxGas;
@@ -2936,7 +2924,7 @@ async function tarjeta(cuenta, clave, par, R) {
       ${logoDe(bAddr, simB)}
       <div class="pio-titles">
         <div class="pio-pair">${simB}/${simQ}</div>
-        <div class="pio-sub"><span class="pio-time" data-since="${creadoSeg}">${tiempoActivo(creadoSeg)}</span><span class="pio-op"> · ${R.activa ? '<span class="dot"></span>operando' : 'detenido'}</span></div>
+        <div class="pio-sub"><span class="pio-time" data-since="${creadoSeg}">${tiempoActivo(creadoSeg)}</span><span class="pio-op"> · ${R.activa ? '<span class="dot"></span>running' : 'stopped'}</span></div>
       </div>
       <div class="pio-tags"><span class="pio-tag share" data-share>↗<span class="lbl"> Compartir</span></span><span class="pio-tag">${_esGrafico ? 'LIMIT' : 'LONG'}</span><span class="pio-tag grey">Spot</span></div>
     </div>
@@ -2949,8 +2937,8 @@ async function tarjeta(cuenta, clave, par, R) {
         <div class="pct">(${sg(pct(totalG))}${num(Math.abs(pct(totalG)), 2)}%)</div></div>
     </div>
 
-    <div class="pio-grid"${tipo === 'cash' ? ' style="grid-template-columns:repeat(2,1fr)"' : ''}>${_boxes}</div>
-    ${gasLow ? `<div class="gaswarn">⚠ Not enough gas: the bot cannot trade. Top up BNB in the gas (above) so it starts buying and selling.</div>` : ''}
+    <div class="pio-grid"${tipo === 'cash' ? ' style="grid-template-columns:repeat(3,1fr)"' : ''}>${_boxes}</div>
+    ${gasLow ? `<div class="gaswarn">⚠ Bot gas is ${gas} BNB and the keeper needs at least ${gasMinTxt} BNB to trade for you. Load BNB in "Bot gas" (in the form at the top) so it starts buying and selling.</div>` : ''}
     ${(() => {
       /* AVISO DE FUERA DE RANGO. Si el precio se va del rango, el bot deja de
          operar y se queda quieto. Antes nadie se enteraba: podías tener un bot
@@ -2988,7 +2976,7 @@ async function tarjeta(cuenta, clave, par, R) {
     ${_panel}
 
     <div class="rej-btns" style="grid-template-columns:1fr">
-      <button class="btn-oro3d" data-acc="terminar">${(tipo === 'cash' || tipo === 'dca') ? 'Suspender' : 'Cerrar y vender'}</button>
+      <button class="btn-oro3d" data-acc="terminar">${(tipo === 'cash' || tipo === 'dca') ? 'Close' : 'Close and sell'}</button>
     </div>
     <div class="rej-msg"></div>
   </div>`;
@@ -3158,7 +3146,7 @@ function enganchar(cuenta) {
             const mb = MONEDAS[sb], mq = MONEDAS[sq];
             const r = await gb.operacionesDe(cuenta, b, q, mb?.decimals ?? 18, mq?.decimals ?? 18);
             ops = r.ops || r || [];
-          } catch (e) { console.warn('[Aurex] historial:', e); }
+          } catch (e) { console.warn('[DecFreedom] historial:', e); }
           extras.descargarHistorial({
             par: `${sb}/${sq}`,
             tipo: r.dataset.nombre || 'Bot DecFreedom',
@@ -3187,19 +3175,17 @@ function enganchar(cuenta) {
       if (acc === 'terminar') {
         const esCash = el.dataset.tipo === 'cash';
         const esDca = el.dataset.tipo === 'dca';
-        const soloCancelar = esCash || esDca;   // no vende: solo detiene
+        /* V15: cerrarAhora(k) es UNA sola funcion para los cuatro bots: vende la posicion que el
+           bot tenga (en Cash Out, la mitad que quedaba; en DCA, lo acumulado) a ${sq} y lo apaga.
+           Antes se llamaba dos veces (vender y luego "cancelar"): dos firmas para lo mismo. */
         const ok = await modalConfirm({
-          titulo: esDca ? 'Suspender DCA' : (esCash ? 'Cerrar Cash Out' : 'Cerrar y vender'),
-          cuerpo: esDca ? `The DCA stops and the permission is removed. <b>The crypto you already bought stays in your wallet.</b>` : (esCash ? `This Cash Out will be cancelled and the permission removed. <b>Your crypto stays in your wallet</b>, nothing is sold.` : `Everything will be sold to <b>${sq}</b> and the bot will close. The money stays in your wallet.`),
-          ok: soloCancelar ? 'Sí, suspender' : 'Sí, cerrar'
+          titulo: esDca ? 'Close DCA' : (esCash ? 'Close Cash Out' : 'Close and sell'),
+          cuerpo: esDca ? `The DCA stops. <b>What it accumulated is sold to ${sq}</b> and the bot closes. The money stays in your wallet.` : (esCash ? `The bot closes: <b>the position it still holds is sold to ${sq}</b> (the reserve is already in your wallet). The money stays in your wallet.` : `Everything will be sold to <b>${sq}</b> and the bot will close. The money stays in your wallet.`),
+          ok: 'Yes, close'
         });
         if (!ok) return;
         try {
-          if (!soloCancelar) {
-            try { modalBusy('Selling to stablecoin… confirm in your wallet.'); await gb.cerrarAhoraK(el.dataset.clave); }
-            catch (e) { if (esRechazo(e)) { modalError('You cancelled the signature. No changes were made.'); return; } }
-          }
-          modalBusy('Closing the bot… confirm in your wallet.'); await gb.cancelarRejillaK(el.dataset.clave);
+          modalBusy('Closing the bot… confirm in your wallet.'); await gb.cerrarAhoraK(el.dataset.clave);
           if (esCash && gb.esBNB(b)) {
             try {
               const wbnbBal = await gb.balanceToken(b, cuenta);

@@ -360,7 +360,7 @@ export async function compartirResultado(datos) {
   const c = tarjetaResultado(datos);
   const blob = await new Promise((r) => c.toBlob(r, 'image/png', 0.95));
   if (!blob) return false;
-  const archivo = new File([blob], 'aurex.png', { type: 'image/png' });
+  const archivo = new File([blob], 'decfreedom.png', { type: 'image/png' });
 
   const movil = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
   if (movil && navigator.canShare && navigator.canShare({ files: [archivo] })) {
@@ -375,7 +375,7 @@ export async function compartirResultado(datos) {
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `aurex-${(datos.par || 'bot').replace('/', '-')}.png`;
+  a.download = `decfreedom-${(datos.par || 'bot').replace('/', '-')}.png`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 3000);
   return true;
@@ -386,30 +386,30 @@ export async function compartirResultado(datos) {
    con todas las operaciones que ha cerrado el bot. */
 
 const esc_ = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const fecha_ = (seg) => seg ? new Date(seg * 1000).toLocaleString('es', {
+const fecha_ = (seg) => seg ? new Date(seg * 1000).toLocaleString('en-GB', {
   day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
 }) : '...';
 
-/* Explicación de cada bot, para que quien reciba el archivo lo entienda. */
+/* How each bot works (V15), so whoever receives the file understands it. */
 const COMO_FUNCIONA = {
   grid: ['Smart Grid',
-    'Reparte tu dinero en varias cuadrículas dentro de un rango de precio. Compra en cada cuadrícula cuando el precio baja hasta ella y vende cuando sube a la siguiente. Cada par compra-venta completo es una vuelta, y deja una pequeña ganancia. El bot solo vende si la ganancia cubre la comisión de red y deja beneficio.'],
+    'Splits your money across several grids inside a price range. It buys at each grid when the price drops to it and sells when the price rises to the next one. Every completed buy and sell pair is one round and leaves a small profit. The bot only sells when the gain covers the network fee and leaves a profit.'],
   acum: ['Accumulator',
-    'Compra poco a poco mientras el precio baja, y compra más cuanto más barato está. Así rebaja tu precio medio de entrada. No vende por partes: espera a que TODA tu posición esté en el porcentaje de ganancia que fijaste, y entonces vende de golpe.'],
+    'Buys a first part at market and then buys more on each dip, with bigger buys the cheaper the price gets, which lowers your average entry price. It does not sell in parts: it waits until the WHOLE position is worth your cost plus the gain you set, then sells everything at once and starts a new cycle.'],
   cash: ['Cash Out',
-    'Vigila el precio y vende tu posición completa cuando alcanza el objetivo que marcaste (Take Profit). Sirve para asegurar una ganancia sin estar pendiente del mercado.'],
+    'When you turn it on it sells half of your coin into the quote currency and keeps that half in your wallet as reserve; the other half stays as position. On dips it buys back with the reserve, level by level at the spacing you chose. When the whole position is worth your cost plus the gain you set, it sells everything and starts a new 50/50 cycle. The contract refuses any sale below that floor.'],
   dca: ['DCA',
-    'Compra una cantidad fija cada cierto tiempo, sin importar el precio. Al comprar caro y barato alternadamente, tu precio medio se suaviza y reduces el riesgo de entrar todo en un mal momento.']
+    'Buys a fixed amount every set period, no matter the price. Buying on highs and lows alternately smooths your average price and lowers the risk of entering everything at a bad moment.']
 };
 
-/** Descarga el historial del bot como hoja de cálculo con formato. */
+/** Downloads the bot history as a formatted spreadsheet. */
 export function descargarHistorial(d) {
   const ops = d.operaciones || [];
   const compras = ops.filter((o) => o.compra);
   const ventas = ops.filter((o) => !o.compra);
   const info = COMO_FUNCIONA[d.claseBot] || [d.tipo || 'Bot', ''];
   const mon = d.moneda || '', bas = d.base || '';
-  const nEs = (v, dec = 8) => String(Number(v ?? 0).toFixed(dec)).replace('.', ',');
+  const nEs = (v, dec = 8) => String(Number(v ?? 0).toFixed(dec));
 
   const G = '#C9A84B', VERDE = '#0f7a3d', ROJO = '#a3243a';
   const th = `background:#12161c;color:${G};font-weight:bold;border:1px solid #2b3139;padding:6px 9px;font-size:11pt`;
@@ -421,7 +421,7 @@ export function descargarHistorial(d) {
     const fondo = o.compra ? '#eaf7ef' : '#fdeef1';
     return `<tr>
       <td style="${td};text-align:center">${i + 1}</td>
-      <td style="${td};background:${fondo};color:${col};font-weight:bold">${o.compra ? 'COMPRA' : 'VENTA'}</td>
+      <td style="${td};background:${fondo};color:${col};font-weight:bold">${o.compra ? 'BUY' : 'SELL'}</td>
       <td style="${td};text-align:right">${nEs(pr)}</td>
       <td style="${td};text-align:right">${cant ? nEs(cant) : ''}</td>
       <td style="${td};text-align:right">${cant ? nEs(cant * pr, 4) : ''}</td>
@@ -429,13 +429,13 @@ export function descargarHistorial(d) {
     </tr>`;
   };
 
-  // El DCA merece su propio calendario de compras.
+  // DCA gets its own buy calendar.
   const bloqueDCA = (d.claseBot === 'dca' && compras.length)
     ? `<tr><td colspan="6" style="height:16px"></td></tr>
-       <tr><td colspan="6" style="${th};font-size:12pt">CALENDARIO DE COMPRAS</td></tr>
+       <tr><td colspan="6" style="${th};font-size:12pt">BUY CALENDAR</td></tr>
        <tr>
-         <td style="${th}">#</td><td style="${th}" colspan="2">Precio (${esc_(mon)})</td>
-         <td style="${th}">Cantidad (${esc_(bas)})</td><td style="${th}" colspan="2">Coste (${esc_(mon)})</td>
+         <td style="${th}">#</td><td style="${th}" colspan="2">Price (${esc_(mon)})</td>
+         <td style="${th}">Amount (${esc_(bas)})</td><td style="${th}" colspan="2">Cost (${esc_(mon)})</td>
        </tr>
        ${compras.map((o, i) => `<tr>
          <td style="${td};text-align:center">${i + 1}</td>
@@ -446,53 +446,53 @@ export function descargarHistorial(d) {
 
   const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">
     <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
-    <x:Name>Historial</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+    <x:Name>History</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
     </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
     </head><body>
     <table cellspacing="0" cellpadding="0" style="font-family:Calibri,Arial,sans-serif;border-collapse:collapse">
       <colgroup><col width="55"><col width="95"><col width="150"><col width="150"><col width="150"><col width="110"></colgroup>
 
-      <tr><td colspan="6" style="background:#0b0e11;color:${G};font-size:22pt;font-weight:bold;padding:14px 12px;letter-spacing:2px">AUREX FINANCE</td></tr>
-      <tr><td colspan="6" style="background:#0b0e11;color:#8b96a3;font-size:10pt;padding:0 12px 12px">Bots de trading en tu propia wallet · sin custodia</td></tr>
+      <tr><td colspan="6" style="background:#0b0e11;color:${G};font-size:22pt;font-weight:bold;padding:14px 12px;letter-spacing:2px">DECFREEDOM</td></tr>
+      <tr><td colspan="6" style="background:#0b0e11;color:#8b96a3;font-size:10pt;padding:0 12px 12px">Trading bots in your own wallet. Non-custodial.</td></tr>
       <tr><td colspan="6" style="height:10px"></td></tr>
 
-      <tr><td colspan="6" style="${th};font-size:14pt">HISTORIAL DEL BOT</td></tr>
-      <tr><td style="${td};font-weight:bold" colspan="2">Par</td><td style="${td}" colspan="4">${esc_(d.par)}</td></tr>
-      <tr><td style="${td};font-weight:bold" colspan="2">Tipo de bot</td><td style="${td}" colspan="4">${esc_(info[0])}</td></tr>
-      <tr><td style="${td};font-weight:bold" colspan="2">Bot creado el</td><td style="${td}" colspan="4">${fecha_(d.creado)}</td></tr>
-      <tr><td style="${td};font-weight:bold" colspan="2">Informe generado</td><td style="${td}" colspan="4">${new Date().toLocaleString('es')}</td></tr>
-      <tr><td style="${td};font-weight:bold" colspan="2">Operaciones cerradas</td><td style="${td}" colspan="4">${ops.length}  (${compras.length} compras · ${ventas.length} ventas)</td></tr>
-      <tr><td style="${td};font-weight:bold" colspan="2">Vueltas completas</td><td style="${td}" colspan="4">${d.ciclos ?? 0}</td></tr>
-      <tr><td style="${td};font-weight:bold" colspan="2">Invertido</td><td style="${td}" colspan="4">${nEs(d.invertido, 2)} ${esc_(mon)}</td></tr>
-      <tr><td style="${td};font-weight:bold" colspan="2">Resultado</td><td style="${td};color:${Number(d.ganancia) >= 0 ? VERDE : ROJO};font-weight:bold" colspan="4">${Number(d.ganancia) >= 0 ? '+' : ''}${nEs(d.ganancia, 2)} ${esc_(mon)}</td></tr>
+      <tr><td colspan="6" style="${th};font-size:14pt">BOT HISTORY</td></tr>
+      <tr><td style="${td};font-weight:bold" colspan="2">Pair</td><td style="${td}" colspan="4">${esc_(d.par)}</td></tr>
+      <tr><td style="${td};font-weight:bold" colspan="2">Bot type</td><td style="${td}" colspan="4">${esc_(info[0])}</td></tr>
+      <tr><td style="${td};font-weight:bold" colspan="2">Bot created on</td><td style="${td}" colspan="4">${fecha_(d.creado)}</td></tr>
+      <tr><td style="${td};font-weight:bold" colspan="2">Report generated</td><td style="${td}" colspan="4">${new Date().toLocaleString('en-GB')}</td></tr>
+      <tr><td style="${td};font-weight:bold" colspan="2">Closed trades</td><td style="${td}" colspan="4">${ops.length}  (${compras.length} buys, ${ventas.length} sells)</td></tr>
+      <tr><td style="${td};font-weight:bold" colspan="2">Completed rounds</td><td style="${td}" colspan="4">${d.ciclos ?? 0}</td></tr>
+      <tr><td style="${td};font-weight:bold" colspan="2">Invested</td><td style="${td}" colspan="4">${nEs(d.invertido, 2)} ${esc_(mon)}</td></tr>
+      <tr><td style="${td};font-weight:bold" colspan="2">Result</td><td style="${td};color:${Number(d.ganancia) >= 0 ? VERDE : ROJO};font-weight:bold" colspan="4">${Number(d.ganancia) >= 0 ? '+' : ''}${nEs(d.ganancia, 2)} ${esc_(mon)}</td></tr>
 
       <tr><td colspan="6" style="height:14px"></td></tr>
-      <tr><td colspan="6" style="${th};font-size:12pt">CÓMO FUNCIONA ESTE BOT</td></tr>
+      <tr><td colspan="6" style="${th};font-size:12pt">HOW THIS BOT WORKS</td></tr>
       <tr><td colspan="6" style="${td};background:#f7f8fa;color:#333">${esc_(info[1])}</td></tr>
 
       <tr><td colspan="6" style="height:14px"></td></tr>
-      <tr><td colspan="6" style="${th};font-size:12pt">OPERACIONES CONCLUIDAS</td></tr>
+      <tr><td colspan="6" style="${th};font-size:12pt">COMPLETED TRADES</td></tr>
       <tr>
         <td style="${th};text-align:center">#</td>
-        <td style="${th}">Tipo</td>
-        <td style="${th};text-align:right">Precio (${esc_(mon)})</td>
-        <td style="${th};text-align:right">Cantidad (${esc_(bas)})</td>
+        <td style="${th}">Type</td>
+        <td style="${th};text-align:right">Price (${esc_(mon)})</td>
+        <td style="${th};text-align:right">Amount (${esc_(bas)})</td>
         <td style="${th};text-align:right">Total (${esc_(mon)})</td>
-        <td style="${th};text-align:center">Bloque</td>
+        <td style="${th};text-align:center">Block</td>
       </tr>
       ${ops.length
         ? ops.map(filaOp).join('')
-        : `<tr><td colspan="6" style="${td};background:#fff8e6;color:#8a6d1f;text-align:center">Este bot todavía no ha cerrado ninguna operación.<br>En cuanto el precio alcance una de tus cuadrículas, aparecerá aquí.</td></tr>`}
+        : `<tr><td colspan="6" style="${td};background:#fff8e6;color:#8a6d1f;text-align:center">This bot has not completed any trade yet.<br>As soon as the price reaches one of its levels, it will appear here.</td></tr>`}
       ${bloqueDCA}
 
       <tr><td colspan="6" style="height:18px"></td></tr>
-      <tr><td colspan="6" style="color:#8b96a3;font-size:9pt;padding:8px 10px;border-top:1px solid #d5d9de">Datos leídos directamente de la blockchain (BNB Smart Chain). DecFreedom no custodia fondos.<br>cybersecureaid.github.io/bot-algoritmico</td></tr>
+      <tr><td colspan="6" style="color:#8b96a3;font-size:9pt;padding:8px 10px;border-top:1px solid #d5d9de">Data read directly from the blockchain (BNB Smart Chain). DecFreedom does not custody funds.<br>criptocubaoficial.com</td></tr>
     </table></body></html>`;
 
   const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `aurex-${String(d.par || 'bot').replace('/', '-')}-${new Date().toISOString().slice(0, 10)}.xls`;
+  a.download = `decfreedom-${String(d.par || 'bot').replace('/', '-')}-${new Date().toISOString().slice(0, 10)}.xls`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 3000);
   return ops.length;
@@ -505,9 +505,9 @@ export function avisoHistorial(alAceptar) {
   d.id = 'hist-av';
   d.innerHTML = `<div class="ha-bg"></div>
     <div class="ha-c">
-      <div class="ha-t">Descargar tu historial</div>
-      <div class="ha-s">Se guarda una hoja de cálculo con <b>todas las operaciones que el bot ha cerrado</b>: compras, ventas, precios y cantidades.<br><br>Si aún no ha cerrado ninguna, el archivo se descargará vacío, indicándolo.</div>
-      <div class="ha-acts"><button class="ha-b gris" data-no>Volver</button><button class="ha-b" data-si>Descargar</button></div>
+      <div class="ha-t">Download your history</div>
+      <div class="ha-s">A spreadsheet is saved with <b>every trade the bot has completed</b>: buys, sells, prices and amounts.<br><br>If it has not completed any yet, the file says so.</div>
+      <div class="ha-acts"><button class="ha-b gris" data-no>Back</button><button class="ha-b" data-si>Download</button></div>
     </div>`;
   document.body.appendChild(d);
   const cerrar = () => d.remove();

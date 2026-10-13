@@ -873,7 +873,9 @@ export async function resumenK(clave) {
   if (_campo(w13, 2, 1) === 0n) return { ..._REJ_CEROS };           // bot cerrado: 1 sola lectura
   const [w0,w1,w4,w5,w6,w7,w9,w12,w14,w16,w17] = await Promise.all([0,1,4,5,6,7,9,12,14,16,17].map(n => _slot(base, n)));
   const cH = Number(_campo(w12,16,4)), vH = Number(_campo(w12,20,4));
-  let gasW = 0n;
+  /* Si la lectura falla, gasW queda en null (dato desconocido), NO en 0: con 0 la tarjeta
+     pintaba "Not enough gas" en rojo por un hipo de RPC aunque el gas estuviera cargado. */
+  let gasW = null;
   try { const d = await leeGB('duenoDe', [clave]); gasW = await leeGB('gasSaldo', [d]); } catch (_) {}
   return {
     activa: true,
@@ -951,11 +953,14 @@ export async function historialDe(usuario, desdeBloques = 60000, maxOps = 60) {
 }
 async function _cerrarPorClave(clave) {
   const bot = await cEscribe();
-  const cuenta = await bot.runner.getAddress();
   const tx = await gasMargen(bot, 'cerrarAhora(bytes32)', [clave]);
-  const k = String(clave).toLowerCase();
-  return esperarEstado(tx, async () => !(await misRejillas(cuenta)).some((x) => String(x).toLowerCase() === k));
+  /* misRejillas (clavesDe) NUNCA se vacia al cerrar: la clave queda registrada. Sondear que la
+     clave "desaparezca" no se cumplia jamas y la pantalla se quedaba en "procesando" 3 minutos
+     aunque el bot ya estaba cerrado. Lo que cambia al cerrar es r.activa (slot 13). */
+  return esperarEstado(tx, async () => !(await _activaK(clave)));
 }
+/* Solo el flag activa del bot (1 lectura de storage). */
+async function _activaK(clave) { return _campo(await _slot(_baseRej(clave), 13), 2, 1) !== 0n; }
 export async function cerrarAhoraK(clave) { return _cerrarPorClave(clave); }
 export async function cancelarRejillaK(clave) { return _cerrarPorClave(clave); }
 export async function cancelarRejilla(base, quote) {
