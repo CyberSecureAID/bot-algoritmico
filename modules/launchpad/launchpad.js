@@ -7,6 +7,7 @@ import * as wallet from './wallet.js';
 import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
 import * as gb from './motor.js';
+import { descargarTokenomics } from './tokenomics.js';
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -46,6 +47,14 @@ function modalCerrar() { const m = $('colmena-modal'); if (!m) return; m.classLi
 window._onTxProcesando = function () { const el = document.getElementById('cm-body'); if (el && document.getElementById('colmena-modal').classList.contains('show')) { const s = el.querySelector('.lp-proc'); if (!s) el.insertAdjacentHTML('beforeend', '<div class="lp-proc" style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--ink-3)">Processing on the network…</div>'); } };
 const esRechazo = (e) => e && (e.code === 'ACTION_REJECTED' || /reject|denied|user\s*rejected/i.test(e.message || ''));
 const errTxt = (e) => (e && (e.shortMessage || e.reason || e.message)) ? String(e.shortMessage || e.reason || e.message).slice(0, 180) : 'Something went wrong. Try again.';
+/* Descarga la ficha tecnica + tokenomics de ESTA moneda (PDF por moneda, generado en el navegador). */
+async function bajarTokenomics(t, btn) {
+  const lab = btn && btn.querySelector('b'); const nodo = lab || btn; const t0 = nodo ? nodo.textContent : '';
+  if (nodo) nodo.textContent = 'Preparing PDF…'; if (btn) btn.disabled = true;
+  try { await descargarTokenomics({ nombre: t.nombre, simbolo: t.simbolo, contrato: t.address, supply: t.supply ? num(t.supply, 0) + ' ' + t.simbolo : '' }); }
+  catch (_) { await modal('Could not build the document', 'The PDF tool could not load. Check your connection and try again.'); }
+  if (nodo) nodo.textContent = t0; if (btn) btn.disabled = false;
+}
 /* Pequeno modal con un campo numerico. Devuelve el numero o null. */
 function pedirCantidad({ titulo, cuerpo, max, sufijo = '', ok = 'Confirm' }) {
   return new Promise((resolve) => {
@@ -215,8 +224,6 @@ function abrirInfo() {
     <button class="lp-wiz-x" id="lp-info-x" type="button">✕</button>
     <div class="lp-wiz-t">Technical overview</div>
     <div class="lp-wiz-s">What the factory deploys, how each mechanism works, and what nobody can change afterwards. If something here is not true of the deployed contract, it is a bug and it is public.</div>
-
-    <a class="lp-dl" href="./tokenomics.pdf" download="DecFreedom-Tokenomics.pdf" target="_blank" rel="noopener">${ICO_DL}<div><b>Download tokenomics</b><span>The full DecFreedom token standard, every function explained, ready to share on your own site.</span></div></a>
 
     <div class="lp-sec"><div class="lp-sec-t">Contract facts</div>
       <ul class="lp-ul">
@@ -572,6 +579,7 @@ function preguntarLiquidez(tok) {
       </div>
     </div>
     <p class="lp-live-note">Your coin exists on BNB Smart Chain. Add liquidity so anyone can buy it now, or do it later from your panel.</p>
+    <button class="lp-dl" id="lp-tokenomic" type="button">${ICO_DL}<div><b>Download tokenomics</b><span>Technical sheet of your coin, ready for your BscScan logo and info request.</span></div></button>
     <div class="lp-wiz-b">
       <div class="lp-lab" style="${lab};margin:0 0 7px">Coins you put in the pool</div>
       <input type="text" inputmode="numeric" id="lq-tok" placeholder="${num(tok.supply / 2, 0)}" autocomplete="off">
@@ -601,6 +609,7 @@ function preguntarLiquidez(tok) {
   selM.querySelectorAll('button').forEach((b) => b.onclick = () => { monId = b.dataset.id; $('lq-sel-t').textContent = b.textContent; selM.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); selM.classList.remove('open'); ratio(); });
   document.querySelectorAll('#lq-cand .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#lq-cand .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); cand = Number(b.dataset.v); ratio(); });
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(tok.address); const c = $('lp-copiar'); c.classList.add('copied'); setTimeout(() => c.classList.remove('copied'), 1400); } catch (_) {} };
+  $('lp-tokenomic').onclick = () => bajarTokenomics(tok, $('lp-tokenomic'));
   $('lq-no').onclick = () => { wizCerrar(); pintarPanel(tok); };
   $('lq-si').onclick = async () => {
     const cTok = Number($('lq-tok').value.replace(/[^0-9.]/g, '')) || 0;
@@ -695,6 +704,8 @@ function pintarPanel(t) {
           <button class="lp-b gris" id="lp-burn" type="button">Burn</button>
           <div class="lp-kv" style="margin-top:8px"><span>Photos and links</span><b>public page</b></div>
           <button class="lp-b gris" id="lp-fotos" type="button">Edit profile</button>
+          <div class="lp-kv" style="margin-top:8px"><span>Tokenomics</span><b>PDF for BscScan</b></div>
+          <button class="lp-b gris" id="lp-tokenomic-p" type="button">Download tokenomics</button>
           <div class="lp-kv" style="margin-top:8px"><span>Hide from my panel</span><b>stays public</b></div>
           <button class="lp-b gris rojo" id="lp-ocultar" type="button">Hide</button></div>` : ''}
         <div class="lp-card"><h4>Embed our swap on your site</h4>
@@ -728,6 +739,7 @@ function pintarPanel(t) {
   if ($('lp-redeem')) $('lp-redeem').onclick = () => accionRedimir(t);
   if ($('lp-burn')) $('lp-burn').onclick = () => accionQuemar(t);
   if ($('lp-fotos')) $('lp-fotos').onclick = () => modal('Coming with the contract', 'Photos and links use the same storage as List your token. It is wired in the next phase.');
+  if ($('lp-tokenomic-p')) $('lp-tokenomic-p').onclick = () => bajarTokenomics(t, $('lp-tokenomic-p'));
   if ($('lp-ocultar')) $('lp-ocultar').onclick = async () => { if (await ocultarToken(t)) { history.replaceState(null, '', location.pathname); pintarPortada(); } };
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { $('lp-copiar').innerHTML = corto(t.address) + ' ' + ICO_COPY; }, 1500); } catch (_) {} };
