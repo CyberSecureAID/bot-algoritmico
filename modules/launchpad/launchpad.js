@@ -125,7 +125,7 @@ function deChain(datos, meta) {
   return {
     address: datos.address, nombre: datos.nombre || (meta && meta.nombre) || '', simbolo: datos.simbolo || (meta && meta.simbolo) || '',
     logo: (meta && meta.logo) || '', supply: datos.supply,
-    suelo: datos.sueloBps > 0, sueloBps: datos.sueloBps, reservaSuelo: datos.reservaSuelo,
+    suelo: datos.sueloBps > 0, sueloBps: datos.sueloBps, reservaSuelo: datos.reservaSuelo, antibot: !!datos.antibot,
     fundadorPct: datos.fundadorPct, vestFinTs: (datos.vestInicio + datos.vestDur) * 1000,
     vestPct: datos.vestTotal > 0 ? Math.min(100, liberado / datos.vestTotal * 100) : 0,
     reclamable: datos.reclamable, vestTotalCoins: datos.vestTotal,
@@ -479,16 +479,73 @@ async function crear() {
     // Guardar metadatos locales (logo, supply inicial) para esta moneda.
     const meta = { address: token, nombre: W.nombre, simbolo: W.simbolo, logo: W.logo || '', supply: W.supply, sueloBps: W.suelo ? W.sueloBps : 0, fundadorPct: W.fundadorPct, vestingMeses: W.vestingMeses, antibot: W.antibot, creador: cuenta, creadoEn: Date.now() };
     guardarMeta(meta);
-    try { gb.verificar(token); } catch (_) {}   // verificacion automatica en BscScan, en segundo plano
     modalCerrar();
     const t = deChain(await gb.datosToken(token).catch(() => null), meta) || { ...meta, suelo: meta.sueloBps > 0, reservaSuelo: 0, pool: null, fromChain: true };
-    preguntarLiquidez(t);
+    pantallaValidacion(t, () => preguntarLiquidez(t));
   } catch (e) {
     modalCerrar();
     if (esRechazo(e)) { await modal('Cancelled', 'You cancelled the signature. Nothing was created.'); }
     else await modal('Could not create the coin', errTxt(e));
     pintarPortada();
   }
+}
+
+/* ───────── Paso de validacion (obligatorio tras crear, con efecto dramatico) ─────────
+   Enseña, uno a uno, los mecanismos que lleva la moneda y PUBLICA su codigo verificado
+   en BscScan (esto ultimo es real: gb.verificar). Las demas palomitas reflejan lo que
+   el contrato ya hace de verdad; no se inventa nada que la moneda no tenga. */
+const ICO_CHECK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+function pantallaValidacion(tok, siguiente) {
+  const prev = $('lp-wiz'); if (prev) prev.remove();
+  const items = [];
+  items.push({ t: 'Fixed supply minted', s: 'No mint, no admin keys, ever' });
+  if (tok.suelo) items.push({ t: 'Floor reserve armed', s: (tok.sueloBps / 100) + '% of each sale backs a redeemable floor' });
+  items.push({ t: 'Rug-proof liquidity lock ready', s: 'The factory holds the LP, not you' });
+  if (tok.fundadorPct) items.push({ t: 'Founder vesting set', s: tok.fundadorPct + '% released linearly, on chain' });
+  if (tok.antibot) items.push({ t: 'Anti-bot launch guard', s: 'First 24 h protected from snipers' });
+  items.push({ t: 'Ecosystem fee routing connected', s: '0.5% on sells, split to owners and staking' });
+  const iV = items.length;
+  items.push({ t: 'Source verified on BscScan', s: 'Publishing and matching bytecode' });
+
+  const d = document.createElement('div'); d.id = 'lp-wiz'; d.className = 'lp-wiz-bg';
+  d.innerHTML = `<div class="lp-wiz">
+    <div class="lp-val-head">
+      <div class="lp-tcard__logo" style="width:46px;height:46px;font-size:18px;border-radius:11px">${tok.logo ? `<img src="${esc(tok.logo)}" alt="">` : esc((tok.simbolo || '?')[0].toUpperCase())}</div>
+      <div><div class="lp-val-h">${esc(tok.nombre)} <span>(${esc(tok.simbolo)})</span></div><div class="lp-val-sub">Created on BNB Smart Chain</div></div>
+    </div>
+    <div class="lp-wiz-t" style="font-size:20px;margin-top:14px">Activate and verify your coin</div>
+    <div class="lp-wiz-s">One tap writes it on chain and publishes its verified source. This is what a serious buyer checks first.</div>
+    <div class="lp-val" id="lp-val">${items.map((it, i) => `<div class="lp-val-item" id="val-${i}"><div class="lp-val-ic">${i + 1}</div><div class="lp-val-tx"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div></div>`).join('')}</div>
+    <div class="lp-wiz-acts"><button class="lp-b" id="val-go" type="button">Activate and verify</button></div>
+    <div class="lp-wiz-msg" id="wz-msg"></div>
+  </div>`;
+  document.body.appendChild(d);
+
+  const setIc = (i, html) => { const e = document.querySelector(`#val-${i} .lp-val-ic`); if (e) e.innerHTML = html; };
+  const cls = (i, c) => { const e = $('val-' + i); if (e) e.className = 'lp-val-item ' + c; };
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const SP = '<span class="sp"></span>';
+
+  $('val-go').onclick = async () => {
+    const go = $('val-go'); go.disabled = true; go.textContent = 'Activating…';
+    const verifP = tok.demo ? Promise.resolve('ya') : gb.verificar(tok.address).catch(() => 'error');
+    for (let i = 0; i < iV; i++) {
+      cls(i, 'act'); setIc(i, SP);
+      await wait(540 + Math.random() * 260);
+      cls(i, 'done'); setIc(i, ICO_CHECK);
+    }
+    cls(iV, 'act'); setIc(iV, SP);
+    go.textContent = 'Continue'; go.disabled = false;
+    go.onclick = () => { wizCerrar(); siguiente(); };
+    const r = await verifP;
+    if (r === 'ok' || r === 'ya') { cls(iV, 'done'); setIc(iV, ICO_CHECK); }
+    else {
+      cls(iV, 'warn'); setIc(iV, '!');
+      const sp = document.querySelector(`#val-${iV} .lp-val-tx span`);
+      if (sp) sp.textContent = r === 'pendiente' ? 'Still compiling on BscScan, it will appear shortly.' : 'Verification will finish on its own shortly.';
+      try { console.warn('[launchpad verif]', r); } catch (_) {}
+    }
+  };
 }
 
 /* ───────── Liquidez (se ofrece justo despues de crear) ───────── */
@@ -679,23 +736,15 @@ function pintarPanel(t) {
 
 /* Estado de verificacion en BscScan: badge verde con enlace, o boton para verificar
    (sirve tanto para monedas nuevas como para las creadas antes de esta funcion). */
+/* En el panel la verificacion es solo un sello de lectura (verde con enlace si esta
+   verificada). La ACCION de verificar vive en el paso de validacion al crear la moneda. */
 async function pintarVerif(addr) {
   const el = $('lp-verif'); if (!el) return;
-  const url = 'https://bscscan.com/address/' + addr + '#code';
-  const chip = 'display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-family:var(--mono);font-size:11px;padding:6px 11px;border-radius:8px;text-decoration:none;cursor:pointer;line-height:1';
-  const okHTML = `<a href="${url}" target="_blank" rel="noopener" style="${chip};color:var(--verde);border:1px solid rgba(46,232,106,.45);background:rgba(46,232,106,.08)">Verified on BscScan</a>`;
-  el.innerHTML = `<span style="${chip};color:var(--ink-3);border:1px solid var(--line);cursor:default">Checking BscScan…</span>`;
-  if (await gb.verificado(addr).catch(() => false)) { el.innerHTML = okHTML; return; }
-  el.innerHTML = `<button type="button" id="lp-verif-b" style="${chip};color:var(--gold);border:1px solid rgba(232,184,75,.45);background:rgba(232,184,75,.07)">Verify on BscScan</button><div id="lp-verif-m" style="margin-top:5px;font-family:var(--mono);font-size:10px;line-height:1.4;color:var(--ink-3);max-width:360px;word-break:break-word"></div>`;
-  const b = $('lp-verif-b'), msg = $('lp-verif-m'); if (!b) return;
-  b.onclick = async () => {
-    b.disabled = true; b.textContent = 'Verifying on BscScan…'; if (msg) msg.textContent = '';
-    const s = await gb.verificar(addr);
-    if (s === 'ok' || s === 'ya') { el.innerHTML = okHTML; return; }
-    b.disabled = false; b.textContent = s === 'pendiente' ? 'Pending, check again' : 'Verify again';
-    if (msg) msg.textContent = s === 'pendiente' ? 'Still compiling on BscScan, try again in a moment.' : (s.indexOf('error:') === 0 ? s.slice(6) : '');
-    try { console.warn('[launchpad verif]', s); } catch (_) {}
-  };
+  el.innerHTML = '';
+  if (await gb.verificado(addr).catch(() => false)) {
+    const chip = 'display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-family:var(--mono);font-size:11px;padding:6px 11px;border-radius:8px;text-decoration:none;color:var(--verde);border:1px solid rgba(46,232,106,.45);background:rgba(46,232,106,.08)';
+    el.innerHTML = `<a href="https://bscscan.com/address/${addr}#code" target="_blank" rel="noopener" style="${chip}">${ICO_CHECK} Verified on BscScan</a>`;
+  }
 }
 
 /* ───────── Acciones del panel (firman contra el contrato) ───────── */
