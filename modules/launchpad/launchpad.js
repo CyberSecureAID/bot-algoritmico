@@ -168,6 +168,7 @@ function txsDemo(t) {
 }
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const ICO_CODE = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>';
+const ICO_DL = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></svg>';
 function hace(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; if (s < 3600) return Math.floor(s / 60) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; }
 
 /* ───────── Arranque ───────── */
@@ -215,13 +216,15 @@ function abrirInfo() {
     <div class="lp-wiz-t">Technical overview</div>
     <div class="lp-wiz-s">What the factory deploys, how each mechanism works, and what nobody can change afterwards. If something here is not true of the deployed contract, it is a bug and it is public.</div>
 
+    <a class="lp-dl" href="./tokenomics.pdf" download="DecFreedom-Tokenomics.pdf" target="_blank" rel="noopener">${ICO_DL}<div><b>Download tokenomics</b><span>The full DecFreedom token standard, every function explained, ready to share on your own site.</span></div></a>
+
     <div class="lp-sec"><div class="lp-sec-t">Contract facts</div>
       <ul class="lp-ul">
         <li><b>Standard BEP-20</b> (ERC-20 ABI), 18 decimals, fixed total supply minted once at creation. No <code>mint</code>, no supply changes, ever.</li>
         <li><b>Immutable token.</b> No proxy, no upgrade path, no <code>pause</code>, no blacklist, no transfer blocking. The only privileged actions belong to the mechanisms below and are bounded by the parameters you set at creation.</li>
         <li><b>Verified source.</b> Every token is deployed by the public factory from the same source, so BscScan shows the full code the moment it exists.</li>
         <li><b>Ecosystem fee: 0.5% of what a seller receives, hard-coded in the pool and paid in the pool's quote asset (BNB or USDT), never in your token.</b> The rate cannot change. It splits 0.20% to each of the two platform owners and 0.10% to DecFreedom staking; the destination wallets are read from the public Launchpad contract, so a wallet rotation never touches your token. Buys and wallet to wallet transfers pay nothing.</li>
-        <li><b>Deployed from your wallet.</b> You are the creator on chain. DecFreedom holds no key over your token.</li>
+        <li><b>You own 100% of your supply.</b> The entire supply is minted to you, the creator: the part you keep and the part that vests to you over time. DecFreedom holds no share of your coin, now or ever, which leaves you in full control of what you do with it.</li>
       </ul></div>
 
     <div class="lp-sec"><div class="lp-sec-t">Mechanisms</div>
@@ -515,6 +518,7 @@ function pantallaValidacion(tok, siguiente) {
     </div>
     <div class="lp-wiz-t" style="font-size:20px;margin-top:14px">Activate and verify your coin</div>
     <div class="lp-wiz-s">One tap writes it on chain and publishes its verified source. This is what a serious buyer checks first.</div>
+    <div class="lp-typebox"><div class="lp-type-lab">Contract address</div><div class="lp-type-line"><span class="lp-type-txt" id="lp-type"></span><span class="lp-type-cur"></span></div></div>
     <div class="lp-val" id="lp-val">${items.map((it, i) => `<div class="lp-val-item" id="val-${i}"><div class="lp-val-ic">${i + 1}</div><div class="lp-val-tx"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div></div>`).join('')}</div>
     <div class="lp-wiz-acts"><button class="lp-b" id="val-go" type="button">Activate and verify</button></div>
     <div class="lp-wiz-msg" id="wz-msg"></div>
@@ -529,6 +533,8 @@ function pantallaValidacion(tok, siguiente) {
   $('val-go').onclick = async () => {
     const go = $('val-go'); go.disabled = true; go.textContent = 'Activating…';
     const verifP = tok.demo ? Promise.resolve('ya') : gb.verificar(tok.address).catch(() => 'error');
+    // Efecto maquina de escribir: el contrato se va escribiendo durante toda la validacion.
+    (() => { const full = tok.address, te = $('lp-type'), cur = d.querySelector('.lp-type-cur'); let ci = 0; const tm = setInterval(() => { if (!$('lp-type')) return clearInterval(tm); if (ci >= full.length) { clearInterval(tm); if (cur) cur.style.display = 'none'; return; } te.textContent = full.slice(0, ++ci); }, 90); })();
     for (let i = 0; i < iV; i++) {
       cls(i, 'act'); setIc(i, SP);
       await wait(540 + Math.random() * 260);
