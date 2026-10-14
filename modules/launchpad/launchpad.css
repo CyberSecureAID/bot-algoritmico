@@ -137,13 +137,15 @@
 .lp-main{display:flex;flex-direction:column;gap:14px;min-width:0}
 .lp-txs{flex:1;display:flex;flex-direction:column;min-height:420px}
 .lp-top{grid-column:1/-1;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:rgba(10,13,18,.66);border:1px solid var(--line);border-radius:18px;padding:14px 16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.lp-top .lp-id{display:flex;align-items:center;gap:12px;min-width:0;flex:0 0 auto}
+.lp-top .lp-id{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 auto}
 .lp-top .lp-logo-prev{width:54px;height:54px;font-size:20px}
 .lp-top .lp-nom{font-family:'Chakra Petch',var(--display);font-size:20px;color:#fff;line-height:1.1}
 .lp-top .lp-nom small{font-family:var(--mono);font-size:12px;color:var(--gold);margin-left:6px}
-.lp-top .lp-dir{margin-top:5px;padding:5px 9px;font-size:10.5px}
+.lp-top .lp-dir{padding:5px 9px;font-size:10.5px}
+.lp-id-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:7px}
+.lp-id-meta .lp-dir{margin-top:0}
 .lp-dir svg{flex:0 0 auto;opacity:.8}
-.lp-precio{display:flex;flex-direction:column;justify-content:center;padding:0 16px;border-left:1px solid #232b36;min-width:150px}
+.lp-precio{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;text-align:right;margin-left:auto;padding-left:16px;min-width:110px}
 .lp-precio b{font-family:var(--display);font-size:21px;color:#fff;white-space:nowrap;line-height:1.1}
 .lp-precio b sub,.lp-tr sub{font-size:.62em;vertical-align:-.25em;color:var(--ink-3);margin:0 1px}
 .lp-precio span{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:3px}

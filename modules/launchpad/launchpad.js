@@ -715,15 +715,15 @@ function pintarPanel(t) {
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
       <div class="lp-top">
-        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)}<small>${esc(t.simbolo)}</small></div><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span id="lp-verif" style="display:block"></span></div></div>
+        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div><div class="lp-id-meta"><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span class="lp-net"><i></i>BNB Smart Chain</span><span id="lp-verif"></span></div></div></div>
         <div class="lp-precio"><b>${precioTxt}</b><span class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${cambio24 == null ? '24h · no data yet' : (cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2) + '% · 24h'}</span></div>
         <div class="lp-stats">
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
           <div class="lp-stat"><i>Burned</i><b>${quemado ? num(quemado, 0) : '0'}</b></div>
           <div class="lp-stat"><i>Holders</i><b>${holders == null ? 'n/a' : num(holders, 0)}</b></div>
-          <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcap, 4) + ' ' + mon : '...'}</b></div>
+          <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcap, 4) + ' ' + mon : 'n/a'}</b></div>
           <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? num(pool.liquidez, 4) + ' ' + mon : 'No pool'}</b></div>
-          <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24, 4) + ' ' + mon : '...'}</b></div>
+          <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24, 4) + ' ' + mon : 'n/a'}</b></div>
           <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (suelo > 0 ? fmtP(suelo) + ' ' + mon : 'building') : 'off'}</b></div>
         </div>
       </div>
@@ -824,7 +824,7 @@ async function pintarVerif(addr) {
   const el = $('lp-verif'); if (!el) return;
   el.innerHTML = '';
   if (await gb.verificado(addr).catch(() => false)) {
-    const chip = 'display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-family:var(--mono);font-size:11px;padding:6px 11px;border-radius:8px;text-decoration:none;color:var(--verde);border:1px solid rgba(46,232,106,.45);background:rgba(46,232,106,.08)';
+    const chip = 'display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:8px;text-decoration:none;color:var(--verde);border:1px solid rgba(46,232,106,.45);background:rgba(46,232,106,.08)';
     el.innerHTML = `<a href="https://bscscan.com/address/${addr}#code" target="_blank" rel="noopener" style="${chip}">${ICO_CHECK} Verified on BscScan</a>`;
   }
 }
