@@ -167,6 +167,7 @@ function txsDemo(t) {
   return out;
 }
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const ICO_CODE = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>';
 function hace(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; if (s < 3600) return Math.floor(s / 60) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; }
 
 /* ───────── Arranque ───────── */
@@ -493,16 +494,30 @@ async function crear() {
 /* ───────── Liquidez (se ofrece justo despues de crear) ───────── */
 function preguntarLiquidez(tok) {
   const prev = $('lp-wiz'); if (prev) prev.remove();
+  const bsc = 'https://bscscan.com/address/' + tok.address + '#code';
+  const lab = 'font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3)';
+  let monId = 'BNB', cand = 12;
   const d = document.createElement('div'); d.id = 'lp-wiz'; d.className = 'lp-wiz-bg';
   d.innerHTML = `<div class="lp-wiz">
-    <div class="lp-done">${logoPrev(tok, 'lp-logo-prev')}<h4>${esc(tok.nombre)} is live</h4><p>Your coin exists on BNB Smart Chain. Do you want people to be able to buy it right now?</p>
-    <button class="lp-dir" id="lp-copiar" type="button">${corto(tok.address)} ${ICO_COPY}</button></div>
-    <div class="lp-wiz-b" style="margin-top:18px">
-      <div class="lp-lab" style="font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin:0 0 7px">Coins you put in the pool</div>
+    <div class="lp-tcard">
+      <span class="lp-live-pill"><i></i>Live</span>
+      <div class="lp-tcard__logo">${tok.logo ? `<img src="${esc(tok.logo)}" alt="">` : esc((tok.simbolo || tok.nombre || '?')[0].toUpperCase())}</div>
+      <div class="lp-tcard__id">
+        <div class="lp-tcard__name">${esc(tok.nombre)} <span>(${esc(tok.simbolo)})</span></div>
+        <button class="lp-addr-full" id="lp-copiar" type="button" title="Copy contract"><span class="lp-addr-txt">${esc(tok.address)}</span>${ICO_COPY}</button>
+        <div class="lp-tcard__meta"><span class="lp-net"><i></i>BNB Smart Chain</span><a class="lp-codelink" href="${bsc}" target="_blank" rel="noopener">${ICO_CODE} View code</a></div>
+      </div>
+    </div>
+    <p class="lp-live-note">Your coin exists on BNB Smart Chain. Add liquidity so anyone can buy it now, or do it later from your panel.</p>
+    <div class="lp-wiz-b">
+      <div class="lp-lab" style="${lab};margin:0 0 7px">Coins you put in the pool</div>
       <input type="text" inputmode="numeric" id="lq-tok" placeholder="${num(tok.supply / 2, 0)}" autocomplete="off">
-      <div class="lp-lab" style="font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin:12px 0 7px">Liquidity you add</div>
-      <div class="lp-liq-row"><input type="text" inputmode="decimal" id="lq-cant" placeholder="0.00" autocomplete="off"><select id="lq-mon">${LIQUIDEZ.map((m) => `<option value="${m.id}">${m.simbolo}</option>`).join('')}</select></div>
-      <div class="lp-lab" style="font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin:12px 0 7px">Locked for</div>
+      <div class="lp-lab" style="${lab};margin:12px 0 7px">Liquidity you add</div>
+      <div class="lp-liq-row"><input type="text" inputmode="decimal" id="lq-cant" placeholder="0.00" autocomplete="off">
+        <div class="lp-sel" id="lq-sel"><button type="button" class="lp-sel__btn" id="lq-sel-b"><span class="lp-sel__t" id="lq-sel-t">BNB</span><svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
+        <div class="lp-sel__menu" id="lq-sel-m">${LIQUIDEZ.map((m) => `<button type="button" data-id="${m.id}" class="${m.id === 'BNB' ? 'on' : ''}">${m.simbolo}</button>`).join('')}</div></div>
+      </div>
+      <div class="lp-lab" style="${lab};margin:12px 0 7px">Locked for</div>
       <div class="lp-ops cuatro" id="lq-cand">${REGLAS.candadoMeses.map((v, i) => `<button type="button" class="lp-op ${i === 1 ? 'on' : ''}" data-v="${v}"><b>${v === 0 ? 'Forever' : v + ' mo'}</b><span>${v === 0 ? 'max trust' : v >= 12 ? 'trusted' : 'minimum'}</span></button>`).join('')}</div>
       <div class="lp-ratio" id="lq-ratio">Starting price appears here when you fill both amounts.</div>
     </div>
@@ -510,21 +525,23 @@ function preguntarLiquidez(tok) {
     <div class="lp-wiz-msg" id="wz-msg"></div>
   </div>`;
   document.body.appendChild(d);
-  let cand = 12;
   const ratio = () => {
-    const t = Number($('lq-tok').value.replace(/[^0-9.]/g, '')) || 0, c = Number($('lq-cant').value.replace(/[^0-9.]/g, '')) || 0, m = $('lq-mon').value;
+    const t = Number($('lq-tok').value.replace(/[^0-9.]/g, '')) || 0, c = Number($('lq-cant').value.replace(/[^0-9.]/g, '')) || 0;
     const r = $('lq-ratio');
     if (!(t > 0 && c > 0)) { r.innerHTML = 'Starting price appears here when you fill both amounts.'; return; }
-    r.innerHTML = `Starting price: <b>1 ${esc(tok.simbolo)} = ${(c / t).toPrecision(4)} ${m}</b> · locked ${cand === 0 ? 'forever' : cand + ' months'}. You never hold the LP: the contract does.`;
+    r.innerHTML = `Starting price: <b>1 ${esc(tok.simbolo)} = ${(c / t).toPrecision(4)} ${monId}</b> · locked ${cand === 0 ? 'forever' : cand + ' months'}. You never hold the LP: the contract does.`;
   };
-  ['lq-tok', 'lq-cant'].forEach((id) => $(id).oninput = ratio); $('lq-mon').onchange = ratio;
+  ['lq-tok', 'lq-cant'].forEach((id) => $(id).oninput = ratio);
+  const selM = $('lq-sel-m');
+  $('lq-sel-b').onclick = (e) => { e.stopPropagation(); selM.classList.toggle('open'); };
+  d.addEventListener('click', (e) => { if (!e.target.closest('#lq-sel')) selM.classList.remove('open'); });
+  selM.querySelectorAll('button').forEach((b) => b.onclick = () => { monId = b.dataset.id; $('lq-sel-t').textContent = b.textContent; selM.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); selM.classList.remove('open'); ratio(); });
   document.querySelectorAll('#lq-cand .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#lq-cand .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); cand = Number(b.dataset.v); ratio(); });
-  $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(tok.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; } catch (_) {} };
+  $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(tok.address); const c = $('lp-copiar'); c.classList.add('copied'); setTimeout(() => c.classList.remove('copied'), 1400); } catch (_) {} };
   $('lq-no').onclick = () => { wizCerrar(); pintarPanel(tok); };
   $('lq-si').onclick = async () => {
     const cTok = Number($('lq-tok').value.replace(/[^0-9.]/g, '')) || 0;
     const cQuote = Number($('lq-cant').value.replace(/[^0-9.]/g, '')) || 0;
-    const monId = $('lq-mon').value;
     if (!(cTok > 0)) { wmsg('How many coins go into the pool?'); return; }
     if (!(cQuote > 0)) { wmsg('How much liquidity do you add?'); return; }
     if (tok.demo) { wmsg('This is a demo coin.'); return; }

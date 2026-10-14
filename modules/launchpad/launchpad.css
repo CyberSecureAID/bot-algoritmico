@@ -220,3 +220,35 @@
 #colmena-modal .btn{min-height:42px;padding:0 16px;border-radius:11px;font-family:var(--display);font-weight:700;font-size:13.5px;cursor:pointer}
 #colmena-modal .btn-oro{border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800}
 #colmena-modal .btn-linea{border:1px solid #3a424c;background:#0d1117;color:var(--ink)}
+
+/* ───────── Tarjeta de entrega del token (post-creacion) ───────── */
+.lp-tcard{position:relative;display:flex;align-items:flex-start;gap:14px;padding:16px;border-radius:16px;background:linear-gradient(180deg,rgba(232,184,75,.06),rgba(0,0,0,.25));border:1px solid rgba(232,184,75,.28)}
+.lp-tcard__logo{width:60px;height:60px;border-radius:14px;flex:0 0 auto;object-fit:cover;background:#12161c;border:1px solid #2b3139;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:24px;color:var(--gold);overflow:hidden}
+.lp-tcard__logo img{width:100%;height:100%;object-fit:cover}
+.lp-tcard__id{min-width:0;flex:1}
+.lp-tcard__name{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:19px;color:#fff;line-height:1.2;word-break:break-word;padding-right:54px}
+.lp-tcard__name span{color:var(--gold);font-family:var(--mono);font-size:13px;font-weight:600}
+.lp-addr-full{display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;padding:8px 10px;border-radius:10px;background:#05070a;border:1px solid #2b3139;cursor:pointer;text-align:left;transition:border-color .15s}
+.lp-addr-full:hover{border-color:var(--gold-soft)}
+.lp-addr-full .lp-addr-txt{flex:1;min-width:0;font-family:var(--mono);font-size:11.5px;color:var(--ink-2);word-break:break-all;line-height:1.35}
+.lp-addr-full svg{flex:0 0 auto;color:var(--ink-3)}
+.lp-addr-full.copied .lp-addr-txt,.lp-addr-full.copied svg{color:var(--verde)}
+.lp-tcard__meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+.lp-net{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--ink-2);background:rgba(255,255,255,.04);border:1px solid #2b3139;border-radius:999px;padding:4px 10px}
+.lp-net i{width:9px;height:9px;background:var(--gold);transform:rotate(45deg);border-radius:1px;flex:0 0 auto}
+.lp-codelink{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--gold);text-decoration:none;border:1px solid rgba(232,184,75,.4);background:rgba(232,184,75,.07);border-radius:999px;padding:4px 10px}
+.lp-codelink:hover{background:rgba(232,184,75,.14)}
+.lp-live-pill{position:absolute;top:14px;right:14px;display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--verde);background:rgba(46,232,106,.1);border:1px solid rgba(46,232,106,.4);border-radius:999px;padding:4px 10px}
+.lp-live-pill i{width:7px;height:7px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px var(--verde)}
+.lp-live-note{margin:14px 0 2px;font-size:13px;line-height:1.5;color:var(--ink-2)}
+/* Selector de moneda propio (sustituye al <select> nativo) */
+.lp-sel{position:relative}
+.lp-sel__btn{display:flex;align-items:center;gap:6px;width:100%;height:100%;min-height:52px;padding:0 13px;border-radius:13px;background:#0b0e12;border:1px solid #2b3139;color:#fff;font-family:var(--display);font-weight:700;font-size:15px}
+.lp-sel__btn:hover{border-color:var(--gold-soft)}
+.lp-sel__btn .lp-sel__t{flex:1;text-align:left}
+.lp-sel__btn svg{flex:0 0 auto;opacity:.65}
+.lp-sel__menu{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;padding:6px;border-radius:12px;background:#12161c;border:1px solid #29313b;box-shadow:0 20px 44px rgba(0,0,0,.6);display:none}
+.lp-sel__menu.open{display:block}
+.lp-sel__menu button{display:block;width:100%;text-align:left;padding:10px 11px;border-radius:9px;border:0;background:none;color:var(--ink-2);font-family:var(--display);font-weight:700;font-size:14px}
+.lp-sel__menu button:hover,.lp-sel__menu button.on{background:rgba(232,184,75,.1);color:var(--gold)}
+@media(max-width:560px){.lp-tcard__name{font-size:17px;padding-right:48px}.lp-tcard__logo{width:52px;height:52px;font-size:21px}}
