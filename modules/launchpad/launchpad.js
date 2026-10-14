@@ -338,6 +338,47 @@ function abrirGuiaListado() {
   d.onclick = (e) => { if (e.target === d) d.remove(); };
 }
 
+/* Instrucciones del widget embebible. Misma ventana que la guia de listado (overlay fijo
+   z-index 9000, scroll en movil), para que nunca salga por detras de la interfaz. */
+function abrirGuiaWidget() {
+  const prev = $('lp-guia'); if (prev) prev.remove();
+  const d = document.createElement('div'); d.id = 'lp-guia'; d.className = 'lp-wiz-bg';
+  d.innerHTML = `<div class="lp-wiz lp-infobox">
+    <button class="lp-wiz-x" id="lp-guia-x" type="button">✕</button>
+    <div class="lp-wiz-t">Add the swap to your site</div>
+    <div class="lp-wiz-s">This widget lets anyone buy and sell your coin straight from your own website, a two way swap through your pool on DecFreedom, with no outside exchange. Here is how to put it on your page and what your visitors need in order to trade.</div>
+
+    <div class="lp-sec"><div class="lp-sec-t">1. Put it on your page</div>
+      <ul class="lp-ul">
+        <li>Press <b>Copy code</b> next to this guide. It copies a single iframe that already points to your coin.</li>
+        <li>Paste it into the HTML of your page, wherever you want the swap to appear.</li>
+        <li>The default size is 360 wide by 520 tall. You can change the width and height; keep it at least 340 wide so it reads well on a phone.</li>
+      </ul>
+      <div class="lp-code" style="margin-top:10px">&lt;iframe src="https://yoursite.com/modules/launchpad/widget.html?token=YOUR_COIN" width="360" height="520" style="border:0;border-radius:16px" loading="lazy"&gt;&lt;/iframe&gt;</div></div>
+
+    <div class="lp-sec"><div class="lp-sec-t">2. How your visitors connect their wallet</div>
+      <ul class="lp-ul">
+        <li>The widget has its <b>own Connect wallet button</b>. Each visitor connects their own wallet to the widget, so your site needs no wallet code of its own.</li>
+        <li><b>On a computer:</b> the visitor needs a wallet browser extension such as MetaMask or Trust Wallet, on BNB Smart Chain. They press Connect wallet, approve, and swap.</li>
+        <li><b>On a phone:</b> they should open your page inside their wallet app browser (the browser built into MetaMask or Trust Wallet), or connect through WalletConnect when it appears. A plain mobile browser with no wallet cannot sign.</li>
+      </ul></div>
+
+    <div class="lp-sec"><div class="lp-sec-t">3. Make sure it works</div>
+      <ul class="lp-ul">
+        <li>Serve your page over <b>https</b>. Wallets do not work on insecure pages.</li>
+        <li>Do not box in the iframe. If you add the <code>sandbox</code> attribute, include <code>allow-scripts</code>, <code>allow-same-origin</code> and <code>allow-popups</code>, or the wallet cannot connect.</li>
+        <li>Every swap routes through your own pool here, so each sale feeds your floor. The widget runs on its own and does not touch your site or our main platform.</li>
+      </ul></div>
+
+    <div class="lp-nota"><b>Shared as is.</b> Creating a coin or sharing a swap does not give it value, and trading always carries risk. You are responsible for how and where you share this widget and for what you tell people.</div>
+    <div class="lp-wiz-acts"><button class="lp-b" id="lp-guia-ok" type="button">Got it</button></div>
+  </div>`;
+  document.body.appendChild(d);
+  $('lp-guia-x').onclick = () => d.remove();
+  $('lp-guia-ok').onclick = () => d.remove();
+  d.onclick = (e) => { if (e.target === d) d.remove(); };
+}
+
 async function pintarMios() {
   const host = $(APP); if (!host) return;
   const cuenta = wallet.cuentaActual();
@@ -823,7 +864,7 @@ function pintarPanel(t) {
             <div class="wp-marca"><img src="./img/cco-full.webp" alt="DecFreedom"></div>
           </div>
           <div class="lp-code" id="lp-code">&lt;iframe src="${esc(widgetUrl)}" width="360" height="520" style="border:0;border-radius:16px" loading="lazy"&gt;&lt;/iframe&gt;</div>
-          <button class="lp-b gris" id="lp-copy-w" type="button">Copy code</button>
+          <div style="display:flex;gap:8px;margin-top:8px"><button class="lp-b gris" id="lp-copy-w" type="button" style="flex:1;min-width:0;padding:0 8px">Copy code</button><button class="lp-b gris" id="lp-instr" type="button" style="flex:1;min-width:0;padding:0 8px">Instructions</button></div>
         </div>
       </div>
     </div>`;
@@ -852,6 +893,7 @@ function pintarPanel(t) {
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { $('lp-copiar').innerHTML = corto(t.address) + ' ' + ICO_COPY; }, 1500); } catch (_) {} };
   $('lp-copy-w').onclick = () => { try { navigator.clipboard.writeText($('lp-code').textContent); $('lp-copy-w').textContent = 'Copied'; setTimeout(() => { $('lp-copy-w').textContent = 'Copy code'; }, 1500); } catch (_) {} };
+  if ($('lp-instr')) $('lp-instr').onclick = () => abrirGuiaWidget();
   if ($('lp-listar')) $('lp-listar').onclick = () => abrirGuiaListado();
   if ($('lp-add')) $('lp-add').onclick = () => preguntarLiquidez(t);
   if ($('lp-ret')) $('lp-ret').onclick = () => accionRetirar(t);
