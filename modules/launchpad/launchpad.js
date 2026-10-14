@@ -8,6 +8,7 @@ import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
 import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
+import { guardarMoneda, leerMoneda, leerMonedas } from './firebase-tokens.js';
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -146,8 +147,11 @@ function deChain(datos, meta) {
 async function cargarToken(addr) {
   pintarCargando();
   try {
-    const t = deChain(await gb.datosToken(addr), metaLocal(addr));
+    const [datos, perfil] = await Promise.all([gb.datosToken(addr), leerMoneda(addr).catch(() => null)]);
+    const t = deChain(datos, metaLocal(addr));
     if (!t) { await modal('Coin not found', 'This coin is not on the launchpad, or the network did not answer. Try again.'); pintarPortada(); return; }
+    // El logo persiste en Firestore (por direccion), no en el navegador: la cadena manda el resto.
+    if (perfil) { if (perfil.logo) t.logo = perfil.logo; t.redes = perfil; }
     t.txs = await gb.operaciones(addr).catch(() => []);
     pintarPanel(t);
   } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
@@ -348,8 +352,10 @@ async function pintarMios() {
   addrs = addrs.filter((a) => !oc.includes(a.toLowerCase()));
   const c = $('lp-mios-lista'); if (!c) return;
   if (!addrs.length) { pintarPortada(); return; }
-  c.innerHTML = addrs.map((a) => { const m = metaLocal(a) || {}; return `<div class="lp-tok" data-a="${a}">
-      ${m.logo ? `<img src="${m.logo}" alt="">` : `<div class="lp-ini">${esc((m.simbolo || '?')[0])}</div>`}
+  // Logos desde Firestore (persisten entre dispositivos); el navegador es solo respaldo.
+  const fs = await leerMonedas(addrs).catch(() => ({}));
+  c.innerHTML = addrs.map((a) => { const m = metaLocal(a) || {}; const fl = fs[a.toLowerCase()]; const logo = (fl && fl.logo) || m.logo; return `<div class="lp-tok" data-a="${a}">
+      ${logo ? `<img src="${logo}" alt="">` : `<div class="lp-ini">${esc((m.simbolo || '?')[0])}</div>`}
       <div><b>${esc(m.nombre || 'Coin')} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(m.simbolo || '')}</small></b><span>${corto(a)}</span></div>
       <span class="lp-est" data-pool="${a}">…</span>
     </div>`; }).join('');
@@ -583,6 +589,8 @@ async function crear() {
     // Guardar metadatos locales (logo, supply inicial) para esta moneda.
     const meta = { address: token, nombre: W.nombre, simbolo: W.simbolo, logo: W.logo || '', supply: W.supply, sueloBps: W.suelo ? W.sueloBps : 0, fundadorPct: W.fundadorPct, vestingMeses: W.vestingMeses, antibot: W.antibot, creador: cuenta, creadoEn: Date.now() };
     guardarMeta(meta);
+    // Persistir el logo en Firestore por direccion, para que no dependa de este navegador.
+    if (W.logo) guardarMoneda(token, { logo: W.logo }).catch(() => {});
     modalCerrar();
     const t = deChain(await gb.datosToken(token).catch(() => null), meta) || { ...meta, suelo: meta.sueloBps > 0, reservaSuelo: 0, pool: null, fromChain: true };
     pantallaValidacion(t, () => preguntarLiquidez(t));
