@@ -9,6 +9,7 @@ import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './conf
 import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
 import { guardarMoneda, leerMoneda, leerMonedas } from './firebase-tokens.js';
+import { filaRedes, abrirEditorMoneda } from './perfil-moneda.js';
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -757,7 +758,7 @@ function pintarPanel(t) {
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
       <div class="lp-top">
-        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div><div class="lp-id-meta"><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span class="lp-net"><i></i>BNB Smart Chain</span><span id="lp-verif"></span></div></div></div>
+        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div><div class="lp-id-meta"><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span class="lp-net"><i></i>BNB Smart Chain</span><span id="lp-verif"></span></div>${filaRedes(t.redes)}</div></div>
         <div class="lp-precio"><b>${precioTxt}</b><span class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${cambio24 == null ? '24h · no data yet' : (cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2) + '% · 24h'}</span></div>
         <div class="lp-stats">
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
@@ -843,7 +844,7 @@ function pintarPanel(t) {
   fm.querySelectorAll('button').forEach((b) => b.onclick = () => { filtro = b.dataset.f; fb.innerHTML = b.textContent + ' <svg width="10" height="10" viewBox="0 0 14 14"><use href="#chev"/></svg>'; fm.classList.remove('open'); pintarTabla(); });
   if ($('lp-redeem')) $('lp-redeem').onclick = () => accionRedimir(t);
   if ($('lp-burn')) $('lp-burn').onclick = () => accionQuemar(t);
-  if ($('lp-fotos')) $('lp-fotos').onclick = () => modal('Coming with the contract', 'Photos and links use the same storage as List your token. It is wired in the next phase.');
+  if ($('lp-fotos')) $('lp-fotos').onclick = () => abrirEditorMoneda(t, () => cargarToken(t.address));
   if ($('lp-tokenomic-p')) $('lp-tokenomic-p').onclick = () => bajarTokenomics(t, $('lp-tokenomic-p'));
   if ($('lp-ocultar')) $('lp-ocultar').onclick = async () => { if (await ocultarToken(t)) { history.replaceState(null, '', location.pathname); pintarPortada(); } };
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
