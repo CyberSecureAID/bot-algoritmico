@@ -162,7 +162,7 @@ function pintarCargando() { const h = $(APP); if (h) h.innerHTML = `<div style="
 /* Muestra de ejemplo para ver el panel sin contrato: launchpad.html?demo=1 */
 function tokenDemo() {
   return {
-    address: '0xD3c0F0000000000000000000000000000000FEED', nombre: 'Pepito Coin', simbolo: 'PEPITO', supply: 100000000, logo: '',
+    address: '0xD3c0F0000000000000000000000000000000FEED', nombre: 'Demo Coin', simbolo: 'DEMO', supply: 100000000, logo: '',
     suelo: true, sueloBps: 300, fundadorPct: 10, vestingMeses: 12, antibot: true,
     pool: { moneda: 'BNB', liquidez: 2.5, tokens: 50000000, candadoMeses: 12, creadoEn: Date.now() - 86400000 * 40 },
     creadoEn: Date.now() - 86400000 * 40, demo: true, creador: ''
