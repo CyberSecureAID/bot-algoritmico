@@ -273,6 +273,66 @@ function abrirInfo() {
   $('lp-info-ok').onclick = () => { d.remove(); abrirAsistente(); };
 }
 
+/* Guia de listado: como mostrar el logo del token en Trust Wallet, MetaMask, BscScan
+   y CoinGecko. Solo informacion publica y verificada de cada plataforma, con sus
+   enlaces oficiales. No garantiza nada: la decision final es de cada plataforma. */
+function abrirGuiaListado() {
+  const prev = $('lp-guia'); if (prev) prev.remove();
+  const lnk = (t, u) => `<a href="${u}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-family:var(--mono);font-size:11px;color:var(--gold);text-decoration:none;border:1px solid rgba(232,184,75,.4);background:rgba(232,184,75,.07);border-radius:999px;padding:5px 11px">${t} ${ICO_CODE}</a>`;
+  const d = document.createElement('div'); d.id = 'lp-guia'; d.className = 'lp-wiz-bg';
+  d.innerHTML = `<div class="lp-wiz lp-infobox">
+    <button class="lp-wiz-x" id="lp-guia-x" type="button">✕</button>
+    <div class="lp-wiz-t">Get your coin listed</div>
+    <div class="lp-wiz-s">How to show your logo on wallets and trackers like Trust Wallet, MetaMask and CoinGecko. Everything here is taken from each platform's public information. Requirements change often and the final decision always belongs to the platform, so confirm the details on the official pages linked in each step. We do not guarantee any listing.</div>
+
+    <div class="lp-sec"><div class="lp-sec-t">BscScan, your explorer</div>
+      <ul class="lp-ul">
+        <li><b>Verified contract. Done here automatically</b> the moment you create your coin, which is the main requirement.</li>
+        <li>A working website and a project email on that same domain.</li>
+        <li>A logo in SVG 32 by 32 or PNG 64 by 64, a neutral description, and the full links to your social channels.</li>
+      </ul>${lnk('BscScan token info guide', 'https://info.etherscan.com/how-to-update-token-info')}</div>
+
+    <div class="lp-sec"><div class="lp-sec-t">Trust Wallet</div>
+      <ul class="lp-ul">
+        <li><b>At least 10,000 holders and 15,000 transactions.</b> Airdropped tokens do not count, and the threshold can be adjusted case by case.</li>
+        <li>A logo file named logo.png, PNG, 256 by 256 pixels, with an info.json that holds your token details.</li>
+        <li>A live website with a whitepaper, active social channels with support, a security audit by a reputable firm, an original identity that does not copy another project, and a CoinMarketCap listing.</li>
+        <li>You submit a request to the Trust Wallet assets repository with a processing fee, around 500 TWT or 2.5 BNB. The fee is not refundable and does not guarantee approval.</li>
+      </ul>${lnk('Trust Wallet listing docs', 'https://developer.trustwallet.com/developer/new-asset')}</div>
+
+    <div class="lp-sec"><div class="lp-sec-t">MetaMask</div>
+      <ul class="lp-ul">
+        <li>Submit your token to MetaMask's public token list so its logo is recognized automatically.</li>
+        <li>Or let each person add your token with its logo using the standard add token method. For a price to show, your coin should trade on well known venues.</li>
+      </ul>${lnk('MetaMask logo guide', 'https://support.metamask.io/develop/how-to-add-a-token-logo/')}</div>
+
+    <div class="lp-sec"><div class="lp-sec-t">CoinGecko and CoinMarketCap</div>
+      <ul class="lp-ul">
+        <li>These trackers feed logos and prices to many wallets at once, so being on them helps everywhere.</li>
+        <li>Your coin must be actively traded on an exchange that the tracker already follows. Then you submit it through their official request form with your details and logo. Reviews can take a few days.</li>
+        <li>Do not have your community spam them with listing requests, because that can disqualify your coin.</li>
+      </ul>${lnk('CoinGecko listing guide', 'https://support.coingecko.com/hc/en-us/articles/7291312302617')}</div>
+
+    <div class="lp-sec"><div class="lp-sec-t">Tips to be well regarded, and to avoid false scam flags</div>
+      <ul class="lp-ul">
+        <li>New coins on BNB Smart Chain are often flagged by automated systems before anyone reviews them. Most of the steps below are already true of your coin here, and they reduce that risk.</li>
+        <li><b>Keep your contract verified.</b> It already is, from the first block.</li>
+        <li><b>Lock your liquidity for a long term and keep a real floor reserve.</b> Both are built into your coin here, and they are among the strongest signals that your project is not a rug.</li>
+        <li>Give your coin a distinct name and symbol that do not imitate a famous coin, so automatic systems do not mark it as an impersonation.</li>
+        <li>Grow real holders and real activity over time. Listings reward longevity, steady liquidity and a genuine community far more than a fast launch.</li>
+        <li>Keep one consistent logo, website and set of social links everywhere you appear.</li>
+        <li>Let people trade your coin on your own site with our embeddable widget, directly in BNB or USDT, through your own pool on this platform. You do not need any outside exchange to open trading.</li>
+      </ul></div>
+
+    <div class="lp-nota"><b>This is a preparation guide, not a promise.</b> It summarizes public information from each platform to help you get ready. The requirements can change at any time, so always confirm the current ones on each official page above. Every listing and logo decision is made by that platform, not by us.</div>
+    <div class="lp-wiz-acts"><button class="lp-b" id="lp-guia-ok" type="button">Got it</button></div>
+  </div>`;
+  document.body.appendChild(d);
+  $('lp-guia-x').onclick = () => d.remove();
+  $('lp-guia-ok').onclick = () => d.remove();
+  d.onclick = (e) => { if (e.target === d) d.remove(); };
+}
+
 async function pintarMios() {
   const host = $(APP); if (!host) return;
   const cuenta = wallet.cuentaActual();
@@ -708,6 +768,9 @@ function pintarPanel(t) {
           <button class="lp-b gris" id="lp-tokenomic-p" type="button">Download tokenomics</button>
           <div class="lp-kv" style="margin-top:8px"><span>Hide from my panel</span><b>stays public</b></div>
           <button class="lp-b gris rojo" id="lp-ocultar" type="button">Hide</button></div>` : ''}
+        <div class="lp-card"><h4>Get listed</h4>
+          <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0 0 2px">Show your logo on Trust Wallet, MetaMask and CoinGecko, and stay clear of automatic scam flags.</p>
+          <button class="lp-b gris" id="lp-listar" type="button">Open the guide</button></div>
         <div class="lp-card"><h4>Embed our swap on your site</h4>
           <div class="lp-widget-prev">
             <div class="wp-top">${logoPrev(t, 'lp-logo-prev')}<b>Buy ${esc(t.simbolo)}</b></div>
@@ -744,6 +807,7 @@ function pintarPanel(t) {
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { $('lp-copiar').innerHTML = corto(t.address) + ' ' + ICO_COPY; }, 1500); } catch (_) {} };
   $('lp-copy-w').onclick = () => { try { navigator.clipboard.writeText($('lp-code').textContent); $('lp-copy-w').textContent = 'Copied'; setTimeout(() => { $('lp-copy-w').textContent = 'Copy code'; }, 1500); } catch (_) {} };
+  if ($('lp-listar')) $('lp-listar').onclick = () => abrirGuiaListado();
   if ($('lp-add')) $('lp-add').onclick = () => preguntarLiquidez(t);
   if ($('lp-ret')) $('lp-ret').onclick = () => accionRetirar(t);
   if ($('lp-claim')) $('lp-claim').onclick = () => accionReclamar(t);
