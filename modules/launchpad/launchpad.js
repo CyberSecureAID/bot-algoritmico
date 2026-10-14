@@ -820,7 +820,7 @@ function pintarPanel(t) {
           <div class="lp-widget-prev">
             <div class="wp-top">${logoPrev(t, 'lp-logo-prev')}<b>Buy ${esc(t.simbolo)}</b></div>
             <div class="wp-box"><div class="wp-in"><span>You pay</span><b>BNB</b></div><div class="wp-in"><span>You get</span><b>${esc(t.simbolo)}</b></div><div class="wp-btn">Swap</div></div>
-            <div class="wp-marca"><img src="./img/cco-full.webp" alt="DecFreedom"> POWERED BY DECFREEDOM</div>
+            <div class="wp-marca"><img src="./img/cco-full.webp" alt="DecFreedom"></div>
           </div>
           <div class="lp-code" id="lp-code">&lt;iframe src="${esc(widgetUrl)}" width="360" height="520" style="border:0;border-radius:16px" loading="lazy"&gt;&lt;/iframe&gt;</div>
           <button class="lp-b gris" id="lp-copy-w" type="button">Copy code</button>

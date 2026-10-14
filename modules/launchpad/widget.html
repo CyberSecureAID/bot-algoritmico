@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e12">
+<title>Swap · DecFreedom</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../assets/img/cco-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Widget embebible SELLADO: solo carga archivos de modules/launchpad/ (mas fuentes). La tarjeta
+     es la misma del swap (clonada), con par fijo BNB (o USDT) frente a la moneda creada. */
+  :root{
+    --bg:#05070a;--ink:#eaecef;--ink-2:#b7bdc6;--ink-3:#7d8794;
+    --gold:#E8B84B;--gold-soft:#C9A84B;--line:#2b3139;--verde:#2ee86a;--rojo:#f6465d;
+    --display:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --sans:var(--display);--mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+    --ac-s:#8f6a1a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%;background:#05070a;color:var(--ink);font-family:var(--display);-webkit-text-size-adjust:100%;overscroll-behavior:none}
+  ::-webkit-scrollbar{width:0;height:0} html,body{scrollbar-width:none}
+
+  .wg-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:14px}
+  .sw-box{position:relative;width:100%;max-width:420px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:wgPop .22s cubic-bezier(.2,.9,.3,1.2)}
+  @keyframes wgPop{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+  .sw-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
+
+  .wg-head{display:flex;align-items:center;gap:11px;padding:15px 18px 4px}
+  .wg-head .coin-sel-ico{width:34px;height:34px}
+  .wg-hname{min-width:0;flex:1}
+  .wg-hname b{display:block;font-family:var(--display);font-weight:700;font-size:16px;color:var(--ink);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wg-hname span{display:block;font-family:var(--mono);font-size:11px;color:var(--gold)}
+  .wg-acct{font-family:var(--mono);font-size:10px;color:var(--ink-3);background:#0b0e11;border:1px solid var(--line);border-radius:8px;padding:4px 8px;white-space:nowrap}
+  .wg-acct i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--verde);margin-right:5px;vertical-align:1px}
+
+  .sw-body{padding:6px 18px 14px}
+  .sw-cards{position:relative}
+  .sw-card{background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
+  .sw-card+.sw-card{margin-top:10px}
+  .sw-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .sw-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px}
+  .sw-bal{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .sw-card-mid{display:flex;align-items:center;gap:10px}
+  .sw-amt{flex:1;min-width:0;background:transparent;border:none;outline:none;-webkit-appearance:none;appearance:none;color:var(--ink);font-family:var(--display);font-weight:700;font-size:25px;padding:0}
+  .sw-amt::placeholder{color:var(--ink-3);opacity:.5}
+  .sw-out{flex:1;min-width:0;color:var(--ink);font-family:var(--display);font-weight:700;font-size:25px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sw-tok{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;background:linear-gradient(180deg,#1b2027,#12161c);border:1px solid var(--gold-soft);border-radius:100px;padding:6px 13px 6px 7px;box-shadow:0 2px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.06)}
+  .sw-tok b{font-family:var(--display);font-size:15px;color:var(--ink);font-weight:700}
+  .sw-card-bot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;min-height:17px}
+  .sw-usd{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .sw-max{font-family:var(--mono);font-size:11px;font-weight:700;color:#3a2800;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border:1px solid #c79426;border-radius:8px;padding:3px 9px;cursor:pointer;box-shadow:0 2px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4);letter-spacing:.5px}
+  .sw-max:active{transform:translateY(2px);box-shadow:0 0 0 #8f6a1a}
+  .sw-flip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:12px;background:linear-gradient(180deg,#232a33,#141a20);border:2px solid #0d1117;color:var(--gold);cursor:pointer;display:grid;place-items:center;box-shadow:0 3px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .22s ease,filter .12s;z-index:3}
+  .sw-flip:hover{filter:brightness(1.2)}
+  .sw-flip:active{transform:translate(-50%,-50%) rotate(180deg)}
+  .sw-info{margin:14px 2px 0;display:flex;flex-direction:column;gap:6px}
+  .sw-info:empty{display:none}
+  .sw-info .r{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+  .sw-info .r span:first-child{color:var(--ink-3)}
+  .sw-go{width:100%;margin-top:16px;border-radius:13px;padding:15px;font-family:var(--display);font-weight:800;font-size:16px;cursor:pointer;letter-spacing:.3px;
+    background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a);border:1px solid #15803d;color:#052e13;
+    box-shadow:0 4px 0 #15803d,inset 0 1px 0 rgba(255,255,255,.35);text-shadow:0 1px 0 rgba(255,255,255,.2);transition:transform .09s,box-shadow .09s,filter .12s}
+  .sw-go:not(:disabled):hover{filter:brightness(1.05)}
+  .sw-go:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
+  .sw-go:not(:disabled):active{transform:translateY(4px);box-shadow:0 1px 0 #15803d,inset 0 1px 0 rgba(255,255,255,.35)}
+
+  .coin-sel-ico{position:relative;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:linear-gradient(180deg,#232b34,#151b22);flex:0 0 auto}
+  .coin-sel-ico .ico-fb{font-family:var(--display);font-weight:800;font-size:12px;color:currentColor;line-height:1}
+  .coin-sel-ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .coin-sel-ico.conlogo .ico-fb{display:none}
+  .coin-sel-ico svg{width:17px;height:17px;display:block}
+
+  .wg-brand{display:flex;justify-content:center;align-items:center;padding:2px 0 14px}
+  .wg-brand a{opacity:.6;transition:opacity .15s}
+  .wg-brand a:hover{opacity:1}
+  .wg-brand img{height:15px;width:auto;display:block}
+  .wg-msg{text-align:center;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);line-height:1.6;padding:40px 20px}
+
+  /* Modal (busy / aviso), minimo. */
+  #colmena-modal{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(4,7,10,.72);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+  #colmena-modal.show{display:flex}
+  #colmena-modal .m-card{max-width:400px;width:100%;background:linear-gradient(180deg,#1b2027,#12161c);border:1px solid var(--gold-soft);border-radius:18px;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.7)}
+  #colmena-modal h4{font-family:var(--display);color:var(--gold);font-size:18px;margin:0 0 11px}
+  #colmena-modal h4:empty{display:none;margin:0}
+  #colmena-modal p{font-size:14px;color:var(--ink-2);line-height:1.55;margin:0 0 18px}
+  #colmena-modal .m-btns{display:flex;gap:10px}
+  #colmena-modal .btn{flex:1;border:none;border-radius:12px;padding:13px;font-family:var(--display);font-weight:700;font-size:15px;cursor:pointer}
+  #colmena-modal .btn-oro{background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;box-shadow:0 4px 0 var(--ac-s)}
+  #colmena-modal .btn-linea{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  .wg-spin{display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:var(--gold);animation:wgspin .8s linear infinite;vertical-align:-4px;margin-left:8px}
+  @keyframes wgspin{to{transform:rotate(360deg)}}
+  @media(max-width:560px){.sw-amt,.sw-out{font-size:22px}}
+</style>
+</head>
+<body>
+<div id="colmena-app"><div class="wg-wrap"><div class="wg-msg">Loading…</div></div></div>
+<div id="colmena-modal"><div class="m-card"><h4 id="cm-title"></h4><p id="cm-body"></p>
+  <div class="m-btns"><button class="btn btn-linea" id="cm-cancel">Cancel</button><button class="btn btn-oro" id="cm-ok">OK</button></div></div></div>
+
+<script type="module">
+import * as wallet from './wallet.js';
+import * as gb from './motor.js';
+import { leerMoneda } from './firebase-tokens.js';
+import { USDT } from './config.js';
+
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const APP = $('colmena-app');
+
+/* ── numeros ── */
+function num(n, d = 6) { n = Number(n); if (!isFinite(n) || n === 0) return '0'; if (n >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: Math.min(d, 6) }); const s = n.toFixed(12).replace(/0+$/, ''); return s.length > 10 ? Number(n).toPrecision(4) : s; }
+
+/* ── modal ── */
+function modal(t, b, { ok = 'OK', cancel = null } = {}) {
+  return new Promise((res) => {
+    const m = $('colmena-modal'); $('cm-title').textContent = t; $('cm-body').innerHTML = b;
+    const bo = $('cm-ok'), bc = $('cm-cancel'), btns = m.querySelector('.m-btns');
+    btns.style.display = 'flex'; bo.textContent = ok;
+    if (cancel) { bc.style.display = ''; bc.textContent = cancel; } else bc.style.display = 'none';
+    m.classList.add('show');
+    bo.onclick = () => { m.classList.remove('show'); res(true); };
+    bc.onclick = () => { m.classList.remove('show'); res(false); };
+  });
+}
+function modalBusy(t, b) { const m = $('colmena-modal'); $('cm-title').textContent = t; $('cm-body').innerHTML = b + '<span class="wg-spin"></span>'; m.querySelector('.m-btns').style.display = 'none'; m.classList.add('show'); }
+function modalCerrar() { $('colmena-modal').classList.remove('show'); }
+window._onTxProcesando = function () { const el = $('cm-body'); if (el && $('colmena-modal').classList.contains('show') && !el.querySelector('.wg-proc')) el.insertAdjacentHTML('beforeend', '<div class="wg-proc" style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--ink-3)">Processing on the network…</div>'); };
+const esRechazo = (e) => /reject|denied|user|cancell/i.test(String((e && (e.message || e.reason)) || e));
+
+/* ── iconos ── */
+const BNB_SVG = '<svg viewBox="0 0 24 24" fill="#f3ba2f"><path d="M12 3.3l2.73 2.73L12 8.76 9.27 6.03 12 3.3zM6.03 9.27l2.73 2.73L6.03 14.73 3.3 12l2.73-2.73zm11.94 0L20.7 12l-2.73 2.73L15.24 12l2.73-2.73zM12 15.24l2.73 2.73L12 20.7l-2.73-2.73L12 15.24zM12 9.4l2.6 2.6L12 14.6 9.4 12 12 9.4z"/></svg>';
+const FLIP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M4 14l3 3 3-3M17 20V7M14 10l3-3 3 3"/></svg>';
+
+/* ── estado ── */
+const q = new URLSearchParams(location.search);
+const TOKEN = (q.get('token') || '').trim();
+const SLIP = 50n, MIL = 10000n, GAS_BUF = 500000000000000n;
+let T = null, logo = '', moneda = 'BNB';
+let dir = 'buy';           // buy = pagas quote (BNB), recibes moneda; sell = al reves
+let amount = '', outWei = 0n, minOut = 0n, maxWei = null;
+let balQuoteWei = 0n, balCoinWei = 0n, quoting = false, accion = 'connect', tmr = null;
+
+const cuenta = () => wallet.cuentaActual();
+const redOk = () => { try { return wallet.esRedCorrecta(); } catch (_) { return true; } }
+const simIn = () => (dir === 'buy' ? moneda : T.simbolo);
+const simOut = () => (dir === 'buy' ? T.simbolo : moneda);
+const decIn = 18, decOut = 18;
+
+function icoQuote() { if (moneda === 'USDT') return '<span class="coin-sel-ico" style="background:#0d1117"><span class="ico-fb" style="color:#26a17b;font-size:15px">₮</span></span>'; return '<span class="coin-sel-ico" style="background:#0d1117">' + BNB_SVG + '</span>'; }
+function icoCoin() { return logo ? `<span class="coin-sel-ico conlogo"><img src="${esc(logo)}" alt=""><span class="ico-fb">${esc((T.simbolo || '?')[0].toUpperCase())}</span></span>` : `<span class="coin-sel-ico" style="color:var(--gold)"><span class="ico-fb">${esc((T.simbolo || '?')[0].toUpperCase())}</span></span>`; }
+function pill(which) { const coin = (which === 'in' ? dir === 'sell' : dir === 'buy'); return (coin ? icoCoin() : icoQuote()) + `<b>${esc(coin ? T.simbolo : moneda)}</b>`; }
+
+/* ── render ── */
+function render() {
+  const cta = cuenta();
+  APP.innerHTML = `<div class="wg-wrap"><div class="sw-box">
+    <div class="wg-head">${icoCoin()}<div class="wg-hname"><b>${esc(T.nombre || T.simbolo)}</b><span>${esc(T.simbolo)}</span></div>${cta ? `<span class="wg-acct"><i></i>${esc(cta.slice(0, 5) + '…' + cta.slice(-4))}</span>` : ''}</div>
+    <div class="sw-body">
+      <div class="sw-cards">
+        <div class="sw-card">
+          <div class="sw-card-top"><span class="sw-lbl">You pay</span><span class="sw-bal" id="wg-bal-in"></span></div>
+          <div class="sw-card-mid"><input class="sw-amt" id="wg-amt" inputmode="decimal" placeholder="0.0" autocomplete="off" value="${esc(amount)}"><span class="sw-tok" id="wg-tok-in">${pill('in')}</span></div>
+          <div class="sw-card-bot"><span class="sw-usd"></span><button class="sw-max" id="wg-max" type="button">MAX</button></div>
+        </div>
+        <div class="sw-card">
+          <div class="sw-card-top"><span class="sw-lbl">You receive (estimated)</span><span class="sw-bal" id="wg-bal-out"></span></div>
+          <div class="sw-card-mid"><div class="sw-out" id="wg-out">0.0</div><span class="sw-tok" id="wg-tok-out">${pill('out')}</span></div>
+          <div class="sw-card-bot"><span class="sw-usd"></span></div>
+        </div>
+        <button class="sw-flip" id="wg-flip" type="button" aria-label="Flip">${FLIP}</button>
+      </div>
+      <div class="sw-info" id="wg-info"></div>
+      <button class="sw-go" id="wg-go" type="button">Connect wallet</button>
+    </div>
+    <div class="wg-brand"><a href="../../index.html" target="_blank" rel="noopener" aria-label="DecFreedom"><img src="./img/cco-full.webp" alt="DecFreedom"></a></div>
+  </div></div>`;
+  $('wg-amt').addEventListener('input', onInput);
+  $('wg-max').onclick = onMax;
+  $('wg-flip').onclick = onFlip;
+  $('wg-go').onclick = onGo;
+  pintarBal(); renderInfo(); renderBtn(); setOut();
+}
+
+function pintarBal() {
+  const bi = $('wg-bal-in'), bo = $('wg-bal-out'); if (!bi) return;
+  const inCoin = dir === 'sell', outCoin = dir === 'buy';
+  const bInWei = inCoin ? balCoinWei : balQuoteWei, bOutWei = outCoin ? balCoinWei : balQuoteWei;
+  bi.textContent = cuenta() ? `Balance: ${num(Number(gb.fmtEther(bInWei)))}` : '';
+  bo.textContent = cuenta() ? `Balance: ${num(Number(gb.fmtEther(bOutWei)))}` : '';
+}
+
+function amountBI() { try { if (maxWei != null) return maxWei; return gb.parseEther((amount || '0').replace(/,/g, '')); } catch (_) { return 0n; } }
+
+function onInput(e) { let v = (e.target.value || '').replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'); e.target.value = v; amount = v; maxWei = null; setOut(); clearTimeout(tmr); tmr = setTimeout(cotizar, 320); }
+function onMax() {
+  if (!cuenta()) return;
+  const inCoin = dir === 'sell';
+  let w = inCoin ? balCoinWei : balQuoteWei;
+  if (!inCoin && moneda === 'BNB') w = w > GAS_BUF ? w - GAS_BUF : 0n;   // deja gas para el BNB nativo
+  maxWei = w; amount = gb.fmtEther(w); const i = $('wg-amt'); if (i) i.value = num(Number(amount)); setOut(); cotizar();
+}
+function onFlip() { dir = dir === 'buy' ? 'sell' : 'buy'; amount = ''; maxWei = null; outWei = 0n; minOut = 0n; render(); cargarBalances(); }
+
+async function cotizar() {
+  const inWei = amountBI();
+  if (!T.pool || inWei <= 0n) { outWei = 0n; minOut = 0n; quoting = false; setOut(); renderInfo(); renderBtn(); return; }
+  quoting = true; renderBtn();
+  try {
+    if (dir === 'buy') { outWei = await gb.cotizarCompra(TOKEN, inWei); }
+    else { const r = await gb.cotizarVenta(TOKEN, inWei, cuenta() || undefined); outWei = r.paraTi; }
+    minOut = outWei * (MIL - SLIP) / MIL;
+  } catch (_) { outWei = 0n; minOut = 0n; }
+  quoting = false; setOut(); renderInfo(); renderBtn();
+}
+
+function setOut() { const o = $('wg-out'); if (o) o.textContent = outWei > 0n ? num(Number(gb.fmtEther(outWei))) : '0.0'; }
+
+function renderInfo() {
+  const el = $('wg-info'); if (!el) return;
+  const rows = [];
+  if (T.pool && outWei > 0n && amountBI() > 0n) {
+    const inN = Number(gb.fmtEther(amountBI())), outN = Number(gb.fmtEther(outWei));
+    if (inN > 0) rows.push(['Price', `1 ${esc(simIn())} ≈ ${num(outN / inN)} ${esc(simOut())}`]);
+    rows.push(['Min received', `${num(Number(gb.fmtEther(minOut)))} ${esc(simOut())}`]);
+  }
+  rows.push(['Fee', '0.5% ecosystem + 0.3% pool']);
+  el.innerHTML = rows.map((r) => `<div class="r"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
+}
+
+function renderBtn() {
+  const b = $('wg-go'); if (!b) return; b.disabled = false;
+  if (!cuenta()) { accion = 'connect'; b.textContent = 'Connect wallet'; return; }
+  if (!redOk()) { accion = 'net'; b.textContent = 'Switch to BNB Chain'; return; }
+  if (!T.pool) { accion = 'x'; b.textContent = 'No liquidity yet'; b.disabled = true; return; }
+  const inWei = amountBI();
+  if (inWei <= 0n) { accion = 'x'; b.textContent = 'Enter an amount'; b.disabled = true; return; }
+  const bal = dir === 'sell' ? balCoinWei : balQuoteWei;
+  if (inWei > bal) { accion = 'x'; b.textContent = 'Insufficient balance'; b.disabled = true; return; }
+  if (quoting) { accion = 'x'; b.textContent = 'Quoting…'; b.disabled = true; return; }
+  if (outWei <= 0n) { accion = 'x'; b.textContent = 'No route'; b.disabled = true; return; }
+  accion = 'swap'; b.textContent = `Swap ${esc(simIn())} for ${esc(simOut())}`;
+}
+
+async function onGo() {
+  if (accion === 'connect') { try { await wallet.conectar(); } catch (_) {} render(); cargarBalances(); return; }
+  if (accion === 'net') { try { await wallet.cambiarARedCorrecta(); } catch (_) {} render(); return; }
+  if (accion !== 'swap') return;
+  const inWei = amountBI();
+  modalBusy(dir === 'buy' ? `Buying ${esc(T.simbolo)}` : `Selling ${esc(T.simbolo)}`, 'Confirm in your wallet.');
+  try {
+    if (dir === 'buy') await gb.comprar({ token: TOKEN, quoteId: moneda, cantQuote: inWei, minOut });
+    else await gb.vender({ token: TOKEN, cantTok: inWei, minOut });
+    modalCerrar();
+    await modal('Done', `Your swap went through. ${esc(simOut())} is in your wallet.`);
+    amount = ''; maxWei = null; outWei = 0n; render(); cargarBalances();
+  } catch (e) {
+    modalCerrar();
+    if (esRechazo(e)) await modal('Cancelled', 'You cancelled the signature. Nothing was swapped.');
+    else await modal('Could not swap', 'The swap did not go through. Try again in a moment.');
+  }
+}
+
+async function cargarBalances() {
+  const c = cuenta(); if (!c) { balQuoteWei = 0n; balCoinWei = 0n; pintarBal(); renderBtn(); return; }
+  try { balCoinWei = await gb.saldoToken(TOKEN, c).catch(() => 0n); } catch (_) { balCoinWei = 0n; }
+  try {
+    if (moneda === 'USDT') balQuoteWei = await gb.saldoToken(USDT, c).catch(() => 0n);
+    else { const prov = wallet.proveedorActivo(); const hex = prov ? await prov.request({ method: 'eth_getBalance', params: [c, 'latest'] }) : '0x0'; balQuoteWei = BigInt(hex); }
+  } catch (_) { balQuoteWei = 0n; }
+  pintarBal(); renderBtn();
+}
+
+function fatal(msg) { APP.innerHTML = `<div class="wg-wrap"><div class="sw-box"><div class="wg-msg">${esc(msg)}</div></div></div>`; }
+
+async function arrancar() {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(TOKEN)) { fatal('No coin selected.'); return; }
+  if (!gb.hayContrato || !gb.hayContrato()) { fatal('The launchpad is not available right now.'); return; }
+  T = await gb.datosToken(TOKEN).catch(() => null);
+  if (!T) { fatal('This coin was not found on the launchpad.'); return; }
+  moneda = T.moneda || 'BNB';
+  try { const m = await leerMoneda(TOKEN); if (m && m.logo) logo = m.logo; } catch (_) {}
+  render();
+  try { await wallet.reconectarSiProcede(); } catch (_) {}
+  render(); cargarBalances();
+  try { wallet.alCambiar(() => { render(); cargarBalances(); }); } catch (_) {}
+}
+arrancar();
+</script>
+</body>
+</html>
