@@ -740,7 +740,7 @@ function pintarPanel(t) {
   const pool = t.pool || null;
   const precio = pool ? pool.liquidez / pool.tokens : 0;
   const mcap = pool ? precio * t.supply : 0;
-  const quemado = t.quemado || 0, holders = (t.holders === undefined ? (pool ? 1 : 1) : t.holders);
+  const quemado = t.quemado || 0;
   const suelo = t.suelo ? (t.reservaSuelo || 0) / Math.max(1, t.supply - quemado) : 0;
   const mon = pool ? pool.moneda : 'BNB';
   const desbloqueo = pool ? (pool.desbloqueoTs !== undefined ? pool.desbloqueoTs : (pool.candadoMeses === 0 ? null : pool.creadoEn + pool.candadoMeses * 30 * 86400000)) : null;
@@ -754,20 +754,22 @@ function pintarPanel(t) {
   const vol24 = txs.filter((x) => Date.now() - x.tiempo < 86400000).reduce((a, x) => a + x.valor, 0);
   const cambio24 = (() => { const h = txs.filter((x) => Date.now() - x.tiempo < 86400000); if (h.length < 2) return null; const ult = h[0].precio, ant = h[h.length - 1].precio; return ant > 0 ? (ult / ant - 1) * 100 : null; })();
   const precioTxt = pool ? fmtP(txs.length ? txs[0].precio : precio) + ' ' + mon : 'no pool';
+  // Holders: distintas wallets vistas en las operaciones, con minimo 1 (el creador tiene el supply).
+  const holders = Math.max(1, new Set(txs.map((x) => x.wallet).filter(Boolean)).size);
   host.innerHTML = `
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
       <div class="lp-top">
-        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div><div class="lp-id-meta"><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span class="lp-net"><i></i>BNB Smart Chain</span><span id="lp-verif"></span></div>${filaRedes(t.redes)}</div></div>
-        <div class="lp-precio"><b>${precioTxt}</b><span class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${cambio24 == null ? '24h · no data yet' : (cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2) + '% · 24h'}</span></div>
+        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div class="lp-id-body"><div class="lp-id-head"><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div><div class="lp-precio"><b class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${precioTxt}</b><span class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${cambio24 == null ? '24h · no data yet' : (cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2) + '% · 24h'}</span></div></div><div class="lp-id-meta"><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span class="lp-net"><i></i>BNB Smart Chain</span></div>${filaRedes(t.redes)}</div></div>
         <div class="lp-stats">
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
           <div class="lp-stat"><i>Burned</i><b>${quemado ? num(quemado, 0) : '0'}</b></div>
-          <div class="lp-stat"><i>Holders</i><b>${holders == null ? 'n/a' : num(holders, 0)}</b></div>
+          <div class="lp-stat"><i>Holders</i><b>${num(holders, 0)}</b></div>
           <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcap, 4) + ' ' + mon : 'n/a'}</b></div>
           <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? num(pool.liquidez, 4) + ' ' + mon : 'No pool'}</b></div>
           <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24, 4) + ' ' + mon : 'n/a'}</b></div>
           <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (suelo > 0 ? fmtP(suelo) + ' ' + mon : 'building') : 'off'}</b></div>
+          <div class="lp-stat"><i>Contract</i><b id="lp-verif-tile">…</b></div>
         </div>
       </div>
       <div class="lp-main">
@@ -856,7 +858,7 @@ function pintarPanel(t) {
   if ($('lp-claim')) $('lp-claim').onclick = () => accionReclamar(t);
   document.querySelectorAll('.lp-chart-tabs button').forEach((b) => b.onclick = () => { document.querySelectorAll('.lp-chart-tabs button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); pintarGrafica(t, b.dataset.r); });
   pintarGrafica(t, '1h');
-  if (!t.demo && t.address) pintarVerif(t.address);
+  if (t.demo) { const vt = $('lp-verif-tile'); if (vt) vt.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px;color:var(--verde);font-size:13.5px">' + ICO_CHECK + ' Verified</span>'; } else if (t.address) pintarVerif(t.address);
 }
 
 /* Estado de verificacion en BscScan: badge verde con enlace, o boton para verificar
@@ -864,12 +866,12 @@ function pintarPanel(t) {
 /* En el panel la verificacion es solo un sello de lectura (verde con enlace si esta
    verificada). La ACCION de verificar vive en el paso de validacion al crear la moneda. */
 async function pintarVerif(addr) {
-  const el = $('lp-verif'); if (!el) return;
-  el.innerHTML = '';
-  if (await gb.verificado(addr).catch(() => false)) {
-    const chip = 'display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:8px;text-decoration:none;color:var(--verde);border:1px solid rgba(46,232,106,.45);background:rgba(46,232,106,.08)';
-    el.innerHTML = `<a href="https://bscscan.com/address/${addr}#code" target="_blank" rel="noopener" style="${chip}">${ICO_CHECK} Verified on BscScan</a>`;
-  }
+  const el = $('lp-verif-tile'); if (!el) return;
+  const ok = await gb.verificado(addr).catch(() => false);
+  const est = 'display:inline-flex;align-items:center;gap:5px;text-decoration:none;font-size:13.5px';
+  el.innerHTML = ok
+    ? `<a href="https://bscscan.com/address/${addr}#code" target="_blank" rel="noopener" style="${est};color:var(--verde)">${ICO_CHECK} Verified</a>`
+    : `<a href="https://bscscan.com/address/${addr}#code" target="_blank" rel="noopener" style="${est};color:var(--ink-3)">Not verified</a>`;
 }
 
 /* ───────── Acciones del panel (firman contra el contrato) ───────── */
