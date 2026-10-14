@@ -360,6 +360,39 @@ async function pintarMios() {
 
 /* ───────── Asistente ───────── */
 let W = null;
+/* Barra de construccion del asistente: los modulos de la moneda se van encendiendo paso a
+   paso. El del paso actual late en dorado; los ya configurados quedan en verde con palomita.
+   Da la sensacion de ir montando la moneda, no de rellenar un formulario. */
+const ICO_W = {
+  id: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.3"/></svg>',
+  supply: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+  logo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 15l-5-5L5 20"/></svg>',
+  deploy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>'
+};
+const WIZ_MODULOS = [
+  { t: 'Identity', ini: 1, fin: 2, ic: ICO_W.id },
+  { t: 'Supply', ini: 3, fin: 3, ic: ICO_W.supply },
+  { t: 'Logo', ini: 4, fin: 4, ic: ICO_W.logo },
+  { t: 'Floor', ini: 5, fin: 5, ic: ICO.suelo },
+  { t: 'Vesting', ini: 6, fin: 6, ic: ICO.goteo },
+  { t: 'Guard', ini: 7, fin: 7, ic: ICO.escudo },
+  { t: 'Deploy', ini: 8, fin: 8, ic: ICO_W.deploy }
+];
+function railHTML(paso) {
+  return WIZ_MODULOS.map((m) => {
+    const st = paso > m.fin ? 'on' : (paso >= m.ini ? 'now' : '');
+    return `<div class="lp-rail-i ${st}"><span class="lp-rail-ic">${st === 'on' ? ICO_CHECK : m.ic}</span><span class="lp-rail-t">${m.t}</span></div>`;
+  }).join('');
+}
+/* Beat de "activando funcion" al avanzar: late el modulo actual y aparece la pildora verde. */
+function activando(hacia, etiqueta) {
+  const chip = document.querySelector('#lp-wiz .lp-rail-i.now');
+  if (chip) chip.classList.add('fx');
+  const m = $('wz-msg'); if (m) { m.className = 'lp-wiz-msg lp-fx'; m.innerHTML = `<span class="lp-fx-ic">${ICO_CHECK}</span><span>${esc(etiqueta)}</span>`; }
+  const ok = $('wz-ok'); if (ok) ok.disabled = true;
+  const bk = $('wz-atras'); if (bk) bk.disabled = true;
+  setTimeout(() => pintarPaso(hacia), 640);
+}
 const PASOS = 8;
 function wizCerrar() { const d = $('lp-wiz'); if (d) d.remove(); }
 function marco(paso, titulo, sub, cuerpo, { atras = true, seguir = 'Continue' } = {}) {
@@ -367,7 +400,8 @@ function marco(paso, titulo, sub, cuerpo, { atras = true, seguir = 'Continue' } 
   const d = document.createElement('div'); d.id = 'lp-wiz'; d.className = 'lp-wiz-bg';
   d.innerHTML = `<div class="lp-wiz">
     <button class="lp-wiz-x" id="wz-x" type="button">✕</button>
-    <div class="lp-wiz-top"><div class="lp-wiz-pasos">${Array.from({ length: PASOS }, (_, i) => `<span class="lp-wiz-d ${i + 1 < paso ? 'ok' : i + 1 === paso ? 'now' : ''}"></span>`).join('')}</div><span class="lp-wiz-n">Step ${paso} of ${PASOS}</span></div>
+    <div class="lp-wiz-top"><span class="lp-wiz-n">Step ${paso} of ${PASOS}</span></div>
+    <div class="lp-rail">${railHTML(paso)}</div>
     <div class="lp-wiz-t">${titulo}</div>
     ${sub ? `<div class="lp-wiz-s">${sub}</div>` : ''}
     <div class="lp-wiz-b">${cuerpo}</div>
@@ -402,7 +436,7 @@ function pintarPaso(p) {
     const i = $('wz-nombre'); i.focus();
     /* Solo letras, numeros y espacios: nombres que cualquier wallet y explorador muestran bien. */
     i.oninput = () => { i.value = i.value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s{2,}/g, ' '); const h = $('wz-h'); h.textContent = i.value.length ? `${i.value.length} / ${REGLAS.nombreMax}` : ''; };
-    $('wz-ok').onclick = () => { const v = i.value.trim(); if (v.length < 2) { wmsg('Give it a name, at least 2 letters.'); return; } if (!/[a-zA-Z]/.test(v)) { wmsg('The name needs at least one letter.'); return; } W.nombre = v; if (!W.simbolo) W.simbolo = v.replace(/[^a-z]/gi, '').slice(0, 6).toUpperCase(); pintarPaso(2); };
+    $('wz-ok').onclick = () => { const v = i.value.trim(); if (v.length < 2) { wmsg('Give it a name, at least 2 letters.'); return; } if (!/[a-zA-Z]/.test(v)) { wmsg('The name needs at least one letter.'); return; } W.nombre = v; if (!W.simbolo) W.simbolo = v.replace(/[^a-z]/gi, '').slice(0, 6).toUpperCase(); activando(2, 'Coin named'); };
     i.onkeydown = (e) => { if (e.key === 'Enter') $('wz-ok').click(); };
     return;
   }
@@ -412,7 +446,7 @@ function pintarPaso(p) {
       `${previa()}<input type="text" id="wz-sim" maxlength="${REGLAS.simboloMax}" placeholder="TICKER" value="${esc(W.simbolo)}" autocomplete="off" style="text-transform:uppercase;letter-spacing:2px"><div class="lp-hint" id="wz-h"></div>`);
     const i = $('wz-sim'); i.focus();
     i.oninput = () => { i.value = i.value.replace(/[^a-z0-9]/gi, '').toUpperCase(); };
-    $('wz-ok').onclick = () => { const v = i.value.trim(); if (v.length < REGLAS.simboloMin) { wmsg(`At least ${REGLAS.simboloMin} letters.`); return; } W.simbolo = v; pintarPaso(3); };
+    $('wz-ok').onclick = () => { const v = i.value.trim(); if (v.length < REGLAS.simboloMin) { wmsg(`At least ${REGLAS.simboloMin} letters.`); return; } W.simbolo = v; activando(3, 'Identity set'); };
     i.onkeydown = (e) => { if (e.key === 'Enter') $('wz-ok').click(); };
     return;
   }
@@ -424,7 +458,7 @@ function pintarPaso(p) {
     const i = $('wz-sup');
     document.querySelectorAll('#wz-pre .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#wz-pre .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); W.supply = Number(b.dataset.v); i.value = String(W.supply); $('wz-h').textContent = num(W.supply, 0) + ' ' + W.simbolo; });
     i.oninput = () => { i.value = i.value.replace(/[^0-9]/g, ''); document.querySelectorAll('#wz-pre .lp-op').forEach((x) => x.classList.remove('on')); W.supply = Number(i.value) || 0; $('wz-h').textContent = W.supply ? num(W.supply, 0) + ' ' + W.simbolo : ''; };
-    $('wz-ok').onclick = () => { if (!(W.supply >= 1000)) { wmsg('Pick a supply of at least 1,000 coins.'); return; } if (W.supply > 1e15) { wmsg('Too many. Keep it under 1,000 trillion.'); return; } pintarPaso(4); };
+    $('wz-ok').onclick = () => { if (!(W.supply >= 1000)) { wmsg('Pick a supply of at least 1,000 coins.'); return; } if (W.supply > 1e15) { wmsg('Too many. Keep it under 1,000 trillion.'); return; } activando(4, 'Supply fixed'); };
     return;
   }
 
@@ -437,7 +471,7 @@ function pintarPaso(p) {
       $('wz-h').textContent = 'Shrinking your logo…';
       try { W.logo = await reducirLogo(f); pintarPaso(4); } catch (_) { $('wz-h').textContent = 'Could not read that image. Try a PNG or JPG.'; }
     };
-    $('wz-ok').onclick = () => pintarPaso(5);
+    $('wz-ok').onclick = () => activando(5, W.logo ? 'Logo added' : 'Logo skipped');
     return;
   }
 
@@ -449,7 +483,7 @@ function pintarPaso(p) {
       <div class="lp-ops cuatro" id="wz-pct">${[1, 2, 3, 5].map((v) => `<button type="button" class="lp-op ${pct === v ? 'on' : ''}" data-v="${v}"><b>${v}%</b><span>${v === 1 ? 'light' : v === 5 ? 'strong' : v === 3 ? 'balanced' : 'soft'}</span></button>`).join('')}</div></div>`);
     $('wz-sw').onclick = () => { W.suelo = !W.suelo; $('wz-sw').classList.toggle('on', W.suelo); $('wz-sub').style.display = W.suelo ? '' : 'none'; };
     document.querySelectorAll('#wz-pct .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#wz-pct .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); W.sueloBps = Number(b.dataset.v) * 100; });
-    $('wz-ok').onclick = () => pintarPaso(6);
+    $('wz-ok').onclick = () => activando(6, W.suelo ? 'Floor reserve armed' : 'Floor left off');
     return;
   }
 
@@ -461,15 +495,15 @@ function pintarPaso(p) {
       <div class="lp-ops cuatro" id="wz-vm">${REGLAS.vestingMeses.map((v) => `<button type="button" class="lp-op ${W.vestingMeses === v ? 'on' : ''}" data-v="${v}"><b>${v} mo</b><span>${v >= 12 ? 'trusted' : 'short'}</span></button>`).join('')}</div></div>`);
     document.querySelectorAll('#wz-fp .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#wz-fp .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); W.fundadorPct = Number(b.dataset.v); $('wz-vs').style.display = W.fundadorPct ? '' : 'none'; });
     document.querySelectorAll('#wz-vm .lp-op').forEach((b) => b.onclick = () => { document.querySelectorAll('#wz-vm .lp-op').forEach((x) => x.classList.remove('on')); b.classList.add('on'); W.vestingMeses = Number(b.dataset.v); });
-    $('wz-ok').onclick = () => pintarPaso(7);
+    $('wz-ok').onclick = () => activando(7, W.fundadorPct ? 'Founder vesting scheduled' : 'No founder share');
     return;
   }
 
   if (p === 7) {
     marco(7, 'Fair launch against bots?', `For the first ${REGLAS.antibot.horas} hours: no wallet can hold more than ${REGLAS.antibot.maxWalletBps / 100}% of the supply and nobody can buy and sell in the same block. Then it switches off by itself.`,
-      `<div class="lp-sw ${W.antibot ? 'on' : ''}" id="wz-sw"><div class="tg"></div><div><b>Anti-bot launch</b><span>Recommended. Sniper bots are the first thing that kills a new coin.</span></div></div>`);
+      `<div class="lp-sw ${W.antibot ? 'on' : ''}" id="wz-sw"><div class="tg"></div><div><b>Launch guard</b><span>Recommended. Sniper bots are the first thing that kills a new coin.</span></div></div>`);
     $('wz-sw').onclick = () => { W.antibot = !W.antibot; $('wz-sw').classList.toggle('on', W.antibot); };
-    $('wz-ok').onclick = () => pintarPaso(8);
+    $('wz-ok').onclick = () => activando(8, W.antibot ? 'Launch guard enabled' : 'Launch guard off');
     return;
   }
 
@@ -480,7 +514,7 @@ function pintarPaso(p) {
         <div><span>Total supply</span><b>${num(W.supply, 0)} ${esc(W.simbolo)}</b></div>
         <div><span>Floor price</span><b class="${W.suelo ? 'si' : 'no'}">${W.suelo ? 'On · ' + (W.sueloBps / 100) + '% of each sale' : 'Off'}</b></div>
         <div><span>Founder lock</span><b class="${W.fundadorPct ? 'si' : 'no'}">${W.fundadorPct ? W.fundadorPct + '% over ' + W.vestingMeses + ' months' : 'You keep nothing'}</b></div>
-        <div><span>Anti-bot launch</span><b class="${W.antibot ? 'si' : 'no'}">${W.antibot ? 'On · first ' + REGLAS.antibot.horas + ' h' : 'Off'}</b></div>
+        <div><span>Launch guard</span><b class="${W.antibot ? 'si' : 'no'}">${W.antibot ? 'On · first ' + REGLAS.antibot.horas + ' h' : 'Off'}</b></div>
         <div><span>Ecosystem fee</span><b>0.5% on sales, in BNB</b></div>
         <div><span>Cost</span><b class="si">Free · gas only</b></div>
       </div>
@@ -503,7 +537,7 @@ function disclaimer() {
     <p><b>The floor is a reserve, not a promise.</b> The floor price equals the BNB reserve divided by the supply. It rises with sales and never falls, but it is not a guarantee of your market price.</p>
     <p><b>Fees.</b> Creating is free; you pay the network gas. Every sale through the pool pays 0.5% of the proceeds to the DecFreedom ecosystem (0.40% platform, 0.10% staking), in BNB or USDT, and the pool keeps a 0.3% swap fee in its reserves. Buying and transferring are free. If a transaction reverts, nothing is charged except gas.</p>
     <p><b>Your legal duty.</b> Issuing a token may be regulated where you live. You are responsible for complying with your laws, for your buyers and for what you tell them. Do not use this to raise money with claims you cannot keep.</p>
-    <p><b>Non-custodial.</b> We never hold your funds or your coins and we cannot reverse any transaction. If you lose your keys, nobody can recover your creator rights.</p>
+    <p><b>Non custodial.</b> We never hold your funds or your coins and we cannot reverse any transaction. If you lose your keys, nobody can recover your creator rights.</p>
   </div>`;
 }
 
@@ -572,7 +606,7 @@ function pantallaValidacion(tok, siguiente) {
   if (tok.suelo) items.push({ t: 'Floor reserve armed', s: (tok.sueloBps / 100) + '% of each sale backs a redeemable floor' });
   items.push({ t: 'Rug-proof liquidity lock ready', s: 'The factory holds the LP, not you' });
   if (tok.fundadorPct) items.push({ t: 'Founder vesting set', s: tok.fundadorPct + '% released linearly, on chain' });
-  if (tok.antibot) items.push({ t: 'Anti-bot launch guard', s: 'First 24 h protected from snipers' });
+  if (tok.antibot) items.push({ t: 'Launch guard', s: 'First 24 h protected from snipers' });
   items.push({ t: 'Ecosystem fee routing connected', s: '0.5% on sells, split to owners and staking' });
   const iV = items.length;
   items.push({ t: 'Source verified on BscScan', s: 'Publishing and matching bytecode' });
