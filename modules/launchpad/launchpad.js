@@ -15,6 +15,8 @@ const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const num = (n, d = 2) => isFinite(n) ? Number(n).toLocaleString('en-US', { maximumFractionDigits: d }) : '...';
+/* Numero compacto para cantidades grandes (supply, quemado): 100M, 2.5B, sin desbordar la casilla. */
+const numC = (n) => { n = Number(n) || 0; if (n >= 1e9) return (n / 1e9).toFixed(n >= 1e10 ? 0 : 2).replace(/\.?0+$/, '') + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 2).replace(/\.?0+$/, '') + 'M'; if (n >= 1e4) return (n / 1e3).toFixed(0) + 'K'; return num(n, 0); };
 const corto = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
 const CERO = '0x0000000000000000000000000000000000000000';
 /* Precios muy pequenos legibles: 0.0<sub>7</sub>4779 en vez de 4.779e-8. */
@@ -819,27 +821,44 @@ function pintarPanel(t) {
   // USDT la tasa es 1; si es BNB se usa la tasa de CoinGecko. Sin tasa (red caida), se cae a la
   // moneda del par de forma honesta. La tasa no toca ninguna transaccion, solo la pantalla.
   const tasa = !pool ? 0 : (mon === 'USDT' ? 1 : (t.bnbUsd > 0 ? t.bnbUsd : 0));
-  // Unidad de pantalla: USDT siempre que se pueda; solo cae a la moneda del par si HAY pool en
-  // BNB y CoinGecko no respondio. Sin pool aun, los valores son 0 y se rotulan en USDT.
-  const unidad = tasa > 0 ? 'USDT' : (pool ? mon : 'USDT');
-  const kU = tasa > 0 ? tasa : 1;
+  const hayUSD = tasa > 0;
+  const kU = hayUSD ? tasa : 1;
   const precioU = precioAhora * kU, mcapU = precioU * t.supply, liqU = pool ? pool.liquidez * kU : 0, vol24U = vol24 * kU, sueloU = suelo * kU;
+  // Formato de dinero: USD con "$" cuando hay tasa; en la moneda del par solo si hay pool y la red
+  // de precios fallo; "$0" cuando aun no hay pool. (small = numero chico, con subindice fmtP.)
+  const fmtMoney = (v, small) => { const b = small ? (v > 0 ? fmtP(v) : '0') : num(v, 2); return hayUSD ? '$' + b : (pool ? b + ' ' + mon : '$' + b); };
+  // Precio grande en USD, y debajo el precio real del par (BNB) como en los exploradores.
+  const precioBig = fmtMoney(precioU, true);
+  const precioNat = pool ? (hayUSD && mon !== 'USDT' ? fmtP(precioAhora) + ' ' + mon : '') : 'no pool';
+  // Porcentaje 24h listo para valores grandes: estas monedas pueden subir 400%, 10,000%, 1,000,000%.
+  const fmtPct = (p) => p == null ? '--' : (Math.abs(p) >= 1000 ? (p >= 0 ? '+' : '') + Math.round(p).toLocaleString('en-US') + '%' : (p >= 0 ? '+' : '') + p.toFixed(2) + '%');
+  const cambioTxt = fmtPct(cambio24);
+  const cambioCls = cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down';
   // Holders: distintas wallets vistas en las operaciones, con minimo 1 (el creador tiene el supply).
   const holders = Math.max(1, new Set(txs.map((x) => x.wallet).filter(Boolean)).size);
   host.innerHTML = `
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
       <div class="lp-top">
-        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div class="lp-id-body"><div class="lp-id-head"><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div></div><div class="lp-id-meta"><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span class="lp-net">${ICO_BNB}BNB Smart Chain</span></div>${redesControl(t, esAdmin)}</div></div>
+        <div class="lp-id">
+          <div class="lp-id-cap">
+            <div class="lp-logo-wrap">${logoPrev(t, 'lp-logo-prev')}<span class="lp-logo-chain" title="BNB Smart Chain">${ICO_BNB}</span></div>
+            <div class="lp-id-main"><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button></div>
+            <div class="lp-id-price"><b class="lp-px ${cambioCls}">${precioBig}</b>${precioNat ? `<span class="lp-px-nat">${precioNat}</span>` : ''}</div>
+          </div>
+          <div class="lp-id-row">
+            <div class="lp-id-soc-cap">${redesControl(t, esAdmin) || '<span class="lp-soc-empty">No links yet</span>'}</div>
+            <div class="lp-24h-cap"><span class="lp-24h-l">24h Change</span><b class="${cambioCls}">${cambioTxt}</b></div>
+          </div>
+        </div>
         <div class="lp-stats">
-          <div class="lp-stat lp-stat-precio"><i>Price${tasa > 0 ? ' · USDT' : ''}</i><b class="lp-precio-b"><span class="lp-precio-n">${pool ? fmtP(precioU) + ' ' + unidad : '0 ' + unidad}</span>${cambio24 == null ? '' : `<span class="lp-chg ${cambio24 >= 0 ? 'up' : 'down'}">${(cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2)}% 24h</span>`}</b></div>
-          <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcapU, 2) + ' ' + unidad : '0 ' + unidad}</b></div>
-          <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? num(liqU, 2) + ' ' + unidad : 'No pool'}</b></div>
-          <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24U, 2) + ' ' + unidad : '0 ' + unidad}</b></div>
-          <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
-          <div class="lp-stat"><i>Burned</i><b>${quemado ? num(quemado, 0) : '0'}</b></div>
+          <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? fmtMoney(mcapU) : '$0'}</b></div>
+          <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? fmtMoney(liqU) : 'No pool'}</b></div>
+          <div class="lp-stat"><i>24h volume</i><b>${pool ? fmtMoney(vol24U) : '$0'}</b></div>
+          <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (sueloU > 0 ? fmtMoney(sueloU, true) : fmtMoney(0)) : 'off'}</b></div>
+          <div class="lp-stat"><i>Supply</i><b title="${num(t.supply, 0)}">${numC(t.supply)}</b></div>
+          <div class="lp-stat"><i>Burned</i><b title="${num(quemado, 0)}">${quemado ? numC(quemado) : '0'}</b></div>
           <div class="lp-stat"><i>Holders</i><b>${num(holders, 0)}</b></div>
-          <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (sueloU > 0 ? fmtP(sueloU) + ' ' + unidad : '0 ' + unidad) : 'off'}</b></div>
           <div class="lp-stat"><i>Contract</i><b id="lp-verif-tile">…</b></div>
         </div>
       </div>
