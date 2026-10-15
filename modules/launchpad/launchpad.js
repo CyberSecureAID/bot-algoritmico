@@ -135,7 +135,9 @@ function deChain(datos, meta) {
   };
 }
 /* Carga una moneda de la cadena y pinta su panel (pagina publica ?token y clics internos). */
+let _panelAddr = null;
 async function cargarToken(addr) {
+  _panelAddr = addr;
   pintarCargando();
   try {
     const [datos, perfil, bnbUsd] = await Promise.all([gb.datosToken(addr), leerMoneda(addr).catch(() => null), gb.precioBNBUSDT().catch(() => 0)]);
@@ -144,8 +146,10 @@ async function cargarToken(addr) {
     // El logo persiste en Firestore (por direccion), no en el navegador: la cadena manda el resto.
     if (perfil) { if (perfil.logo) t.logo = perfil.logo; t.redes = perfil; }
     t.bnbUsd = bnbUsd;   // tasa BNB->USDT para mostrar el panel en USDT
-    t.txs = await gb.operaciones(addr).catch(() => []);
+    t.txs = [];          // pinta ya; el historial real puede tardar en RPC y va en segundo plano
     pintarPanel(t);
+    // Historial real de la cadena en segundo plano: al llegar repinta con grafica, trades, 24h y volumen reales.
+    gb.operaciones(addr).then((ops) => { if (_panelAddr === addr && ops && ops.length) { t.txs = ops; pintarPanel(t); } }).catch(() => {});
   } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
 }
 function pintarCargando() { const h = $(APP); if (h) h.innerHTML = `<div style="min-height:60vh;display:flex;align-items:center;justify-content:center"><span style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:#E8B84B;display:inline-block;animation:spin .7s linear infinite"></span></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`; }
@@ -195,6 +199,7 @@ const ICO = {
   escudo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>'
 };
 function pintarPortada() {
+  _panelAddr = null;   // cancela cualquier repintado de historial en vuelo
   const host = $(APP); if (!host) return;
   const mios = misTokens();
   host.innerHTML = `
@@ -877,12 +882,14 @@ function pintarPanel(t) {
         </div>
       </div>
       <div class="lp-side">
-        <div class="lp-card"><h4>Liquidity</h4>
-          <div class="lp-kv"><span>In the pool</span><b>${pool ? num(pool.liquidez, 4) + ' ' + mon : 'none'}</b></div>
-          <div class="lp-kv"><span>Lock</span><b>${pool ? (desbloqueo ? 'until ' + new Date(desbloqueo).toLocaleDateString('en-GB') : 'forever') : '...'}</b></div>
-          <div class="lp-kv"><span>Status</span><b><span class="lp-sello ${pool ? '' : 'gris'}">${pool ? (desbloqueo && Date.now() > desbloqueo ? 'unlocked' : 'locked') : 'no pool'}</span></b></div>
-          ${esAdmin ? (pool ? `<button class="lp-b gris" id="lp-ret" ${desbloqueo && Date.now() > desbloqueo ? '' : 'disabled'} type="button">${desbloqueo && Date.now() > desbloqueo ? 'Withdraw' : 'Locked'}</button>` : `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>`) : ''}
-        </div>
+        ${pool ? (t.demo ? `<div class="lp-card"><h4>Trade ${esc(t.simbolo)}</h4>
+          <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0">The live swap to buy and sell this coin against ${esc(mon)} shows here once it is a real deployed coin.</p>
+        </div>` : `<div class="lp-card lp-swap-card"><h4>Trade ${esc(t.simbolo)}</h4>
+          <iframe class="lp-swap-frame" src="${esc(widgetUrl)}" title="Swap ${esc(t.simbolo)}" loading="lazy"></iframe>
+        </div>`) : `<div class="lp-card"><h4>Trade ${esc(t.simbolo)}</h4>
+          <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0 0 ${esAdmin ? '10px' : '0'}">This coin has no pool yet, so it cannot be traded. ${esAdmin ? 'Add liquidity to open trading for everyone.' : 'Trading opens when the creator adds liquidity.'}</p>
+          ${esAdmin ? `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>` : ''}
+        </div>`}
         ${t.suelo ? `<div class="lp-card"><h4>Floor reserve</h4>
           <div class="lp-kv"><span>Reserve</span><b>${num(t.reservaSuelo || 0, 5)} ${mon}</b></div>
           <div class="lp-kv"><span>Feeds from sales</span><b class="oro">${t.sueloBps / 100}%</b></div>
@@ -902,7 +909,9 @@ function pintarPanel(t) {
           <div class="lp-kv" style="margin-top:8px"><span>Tokenomics</span><b>PDF for BscScan</b></div>
           <button class="lp-b gris" id="lp-tokenomic-p" type="button">Download tokenomics</button>
           <div class="lp-kv" style="margin-top:8px"><span>Hide from my panel</span><b>stays public</b></div>
-          <button class="lp-b gris rojo" id="lp-ocultar" type="button">Hide</button></div>` : ''}
+          <button class="lp-b gris rojo" id="lp-ocultar" type="button">Hide</button>
+          ${pool ? `<div class="lp-kv" style="margin-top:8px"><span>Liquidity lock</span><b>${desbloqueo ? (Date.now() > desbloqueo ? 'unlocked' : 'until ' + new Date(desbloqueo).toLocaleDateString('en-GB')) : 'forever'}</b></div>
+          <button class="lp-b gris" id="lp-ret" ${desbloqueo && Date.now() > desbloqueo ? '' : 'disabled'} type="button">${desbloqueo && Date.now() > desbloqueo ? 'Withdraw liquidity' : 'Locked'}</button>` : ''}</div>` : ''}
         <div class="lp-card"><h4>Get listed</h4>
           <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0 0 2px">Show your logo on Trust Wallet, MetaMask and CoinGecko, and stay clear of automatic scam flags.</p>
           <button class="lp-b gris" id="lp-listar" type="button">Open the guide</button></div>

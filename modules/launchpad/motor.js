@@ -251,17 +251,38 @@ export async function datosToken(addr) {
   };
 }
 
-/* Operaciones de un token desde los eventos Compra/Venta (sin terceros). */
+/* Operaciones de un token desde los eventos reales Compra/Venta en cadena (sin terceros).
+   Los RPC publicos de BSC limitan el rango de eth_getLogs, asi que NO se pide todo el historial
+   de un golpe (eso fallaba y dejaba grafica, 24h y volumen vacios aunque hubiera trades). Se
+   escanea hacia atras en ventanas pequenas que los RPC aceptan, rotando de RPC si una falla, y
+   se corta al juntar suficientes operaciones o al llegar a la apertura de la pool. */
 export async function operaciones(token, max = 80) {
-  let latest = 0; try { latest = await lector().getBlockNumber(); } catch (_) {}
-  const desde = latest > 400000 ? latest - 400000 : 0;
-  const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(_rpcIdx));
-  let compras = [], ventas = [];
-  try { compras = await cc.queryFilter(cc.filters.Compra(token), desde, latest); } catch (_) {}
-  try { ventas = await cc.queryFilter(cc.filters.Venta(token), desde, latest); } catch (_) {}
+  let latest = 0; try { latest = await lector().getBlockNumber(); } catch (_) { return []; }
+  if (!latest) return [];
+  let abierto = 0; try { abierto = Number((await leeLP('pools', [token])).abiertoEn) || 0; } catch (_) {}
+  const TOPE = 260000;                       // ~9 dias en BSC (3 s/bloque): tope de coste
+  let span = TOPE;
+  if (abierto > 0) { const secs = Math.max(0, Math.floor(Date.now() / 1000) - abierto); span = Math.min(TOPE, Math.ceil(secs / 3) + 2000); }
+  const CHUNK = 9000;                         // rango que aceptan los RPC publicos de BSC
+  const vistos = new Set(); const compras = [], ventas = [];
+  let hi = latest, recorrido = 0, rpc = _rpcIdx % RPCS.length;
+  while (recorrido < span && hi > 0 && (compras.length + ventas.length) < max) {
+    const lo = Math.max(0, hi - CHUNK + 1); let ok = false;
+    for (let intento = 0; intento < RPCS.length && !ok; intento++) {
+      try {
+        const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc));
+        const [c, v] = await Promise.all([cc.queryFilter(cc.filters.Compra(token), lo, hi), cc.queryFilter(cc.filters.Venta(token), lo, hi)]);
+        for (const e of c) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); compras.push(e); } }
+        for (const e of v) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); ventas.push(e); } }
+        ok = true;
+      } catch (_) { rpc = (rpc + 1) % RPCS.length; }
+    }
+    hi = lo - 1; recorrido += CHUNK;
+  }
+  _rpcIdx = rpc;
   const fechas = {};
   const bloques = [...new Set([...compras, ...ventas].map((e) => e.blockNumber))];
-  await Promise.all(bloques.slice(0, 60).map(async (b) => { try { fechas[b] = (await provRPC(_rpcIdx).getBlock(b)).timestamp * 1000; } catch (_) {} }));
+  await Promise.all(bloques.slice(0, 60).map(async (b) => { try { fechas[b] = Number((await provRPC(rpc).getBlock(b)).timestamp) * 1000; } catch (_) {} }));
   const ops = [];
   for (const e of compras) { const a = e.args; const q = Number(ethers.formatEther(a.quoteIn)), tk = Number(ethers.formatEther(a.tokOut)); ops.push({ compra: true, cantidad: tk, valor: q, precio: tk > 0 ? q / tk : 0, wallet: _corto(a.wallet), tiempo: fechas[e.blockNumber] || 0, bloque: e.blockNumber }); }
   for (const e of ventas) { const a = e.args; const q = Number(ethers.formatEther(a.quoteOut)) + Number(ethers.formatEther(a.eco)) + Number(ethers.formatEther(a.suelo)); const tk = Number(ethers.formatEther(a.tokIn)); ops.push({ compra: false, cantidad: tk, valor: q, precio: tk > 0 ? q / tk : 0, wallet: _corto(a.wallet), tiempo: fechas[e.blockNumber] || 0, bloque: e.blockNumber }); }

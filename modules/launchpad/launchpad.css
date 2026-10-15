@@ -193,8 +193,13 @@
 .lp-stat b{display:block;font-family:var(--display);font-size:18px;color:#fff;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lp-stat b.oro{color:var(--gold)}
 .lp-stat b.verde{color:var(--verde)}
+/* Solo la casilla Contract: el valor Verified va centrado; la etiqueta CONTRACT se queda a la izquierda. */
+#lp-verif-tile{text-align:center;overflow:visible;text-overflow:clip}
 .lp-card{background:rgba(10,13,18,.66);border:1px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .lp-card h4{margin:0 0 10px;font-family:var(--mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold)}
+/* Swap real de la moneda (nuestro widget) embebido en el panel, donde antes iba Liquidity. */
+.lp-swap-card{padding:14px 14px 14px}
+.lp-swap-frame{display:block;width:100%;height:478px;border:0;border-radius:12px;background:#0b0e12}
 .lp-chart{position:relative;min-height:380px}
 .lp-chart canvas{width:100%;height:380px;display:block;border-radius:12px;background:rgba(0,0,0,.3)}
 .lp-chart .lp-chart-vacio{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--ink-3);font-size:13.5px;padding:20px;line-height:1.55}
