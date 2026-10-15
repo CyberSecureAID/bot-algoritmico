@@ -10,6 +10,7 @@ import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
 import { guardarMoneda, leerMoneda, leerMonedas } from './firebase-tokens.js';
 import { filaRedes, redesControl, abrirEditorMoneda } from './perfil-moneda.js';
+import { montarSwap } from './swap-inline.js';
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -136,6 +137,7 @@ function deChain(datos, meta) {
 }
 /* Carga una moneda de la cadena y pinta su panel (pagina publica ?token y clics internos). */
 let _panelAddr = null;
+let _swapActual = null;   // instancia del swap inline del panel, para destruirla al repintar
 async function cargarToken(addr) {
   _panelAddr = addr;
   pintarCargando();
@@ -882,13 +884,10 @@ function pintarPanel(t) {
         </div>
       </div>
       <div class="lp-side">
-        ${pool ? (t.demo ? `<div class="lp-card"><h4>Swap</h4>
-          <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0">The live swap to buy and sell this coin against ${esc(mon)} shows here once it is a real deployed coin.</p>
-        </div>` : `<div class="lp-card lp-swap-card"><h4>Swap</h4>
-          <iframe class="lp-swap-frame" src="${esc(widgetUrl)}" title="Swap ${esc(t.simbolo)}" loading="lazy"></iframe>
-        </div>`) : `<div class="lp-card"><h4>Swap</h4>
-          <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0 0 ${esAdmin ? '10px' : '0'}">This coin has no pool yet, so it cannot be traded. ${esAdmin ? 'Add liquidity to open trading for everyone.' : 'Trading opens when the creator adds liquidity.'}</p>
-          ${esAdmin ? `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>` : ''}
+        ${pool && !t.demo ? `<div class="sw-box lp-swbox" id="lp-swap-host"><div class="wg-msg">Loading the swap…</div></div>`
+          : `<div class="lp-card"><h4>Swap</h4>
+          <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0 0 ${(t.demo || esAdmin) ? '10px' : '0'}">${t.demo ? 'The live swap to buy and sell this coin shows here once it is a real deployed coin.' : (esAdmin ? 'This coin has no pool yet, so it cannot be traded. Add liquidity to open trading for everyone.' : 'This coin has no pool yet. Trading opens when the creator adds liquidity.')}</p>
+          ${!t.demo && esAdmin ? `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>` : ''}
         </div>`}
         ${t.suelo ? `<div class="lp-card"><h4>Floor reserve</h4>
           <div class="lp-kv"><span>Reserve</span><b>${num(t.reservaSuelo || 0, 5)} ${mon}</b></div>
@@ -963,6 +962,9 @@ function pintarPanel(t) {
   if (t.demo) { const vt = $('lp-verif-tile'); if (vt) vt.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px;color:var(--verde);font-size:13.5px">' + ICO_CHECK + ' Verified</span>'; } else if (t.address) pintarVerif(t.address);
   // Par en BNB sin tasa todavia (p. ej. panel abierto al vuelo): traer BNB->USDT y repintar en USDT.
   if (pool && mon === 'BNB' && !(t.bnbUsd > 0)) gb.precioBNBUSDT().then((v) => { if (v > 0) { t.bnbUsd = v; pintarPanel(t); } }).catch(() => {});
+  // Swap real de la moneda, montado inline (sin iframe, sin capsula) donde antes iba Liquidity.
+  if (_swapActual) { try { _swapActual.destruir(); } catch (_) {} _swapActual = null; }
+  if (pool && !t.demo && $('lp-swap-host')) _swapActual = montarSwap($('lp-swap-host'), t.address, { logo: t.logo, modal, modalBusy, modalCerrar });
 }
 
 /* Estado de verificacion en BscScan: badge verde con enlace, o boton para verificar

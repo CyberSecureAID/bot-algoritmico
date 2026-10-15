@@ -84,7 +84,7 @@ body{overflow-x:hidden}
 /* Fondo propio del launchpad: modules/launchpad/img/fondo-launchpad.webp (la sube el usuario). Hasta que exista,
    degradado oscuro. Encima, un velo suave para que las tarjetas se lean sobre cualquier foto. */
 #pt{min-height:100vh;background:#000;position:relative}
-#pt .sw-fondo{position:fixed;inset:0;z-index:0;background:#000 url('./img/fondo-launchpad.webp') center/cover no-repeat;}
+#pt .sw-fondo{position:fixed;inset:0;z-index:0;pointer-events:none;background:#000 url('./img/fondo-launchpad.webp') center/cover no-repeat;}
 #pt .sw-fondo::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(0,0,0,.15),rgba(0,0,0,.58) 70%)}  /* velo mas suave */
 #pt .pt-hdr{z-index:100}
 #colmena-app{position:relative;z-index:5;min-height:calc(100vh - 58px)}

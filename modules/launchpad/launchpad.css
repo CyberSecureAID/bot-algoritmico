@@ -197,10 +197,51 @@
 #lp-verif-tile{text-align:center;overflow:visible;text-overflow:clip}
 .lp-card{background:rgba(10,13,18,.66);border:1px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .lp-card h4{margin:0 0 10px;font-family:var(--mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold)}
-/* Swap real de la moneda (nuestro widget) embebido en el panel, donde antes iba Liquidity. */
-.lp-swap-card{padding:12px 6px 6px}
-.lp-swap-card h4{padding:0 8px}
-.lp-swap-frame{display:block;width:100%;height:486px;border:0;border-radius:12px;background:#0b0e12}
+/* Swap real de la moneda, montado INLINE (sin iframe, sin capsula exterior) donde iba Liquidity.
+   Mismas clases que el widget embebible; el motor es swap-inline.js. */
+.lp-swbox{width:100%;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05);overflow:hidden}
+.lp-swbox .wg-head{display:flex;align-items:center;gap:11px;padding:14px 16px 2px}
+.lp-swbox .wg-hname{min-width:0;flex:1}
+.lp-swbox .wg-hname b{display:block;font-family:var(--display);font-weight:700;font-size:15.5px;color:var(--ink);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-swbox .wg-hname span{display:block;font-family:var(--mono);font-size:11px;color:var(--gold)}
+.lp-swbox .wg-acct{font-family:var(--mono);font-size:10px;color:var(--ink-3);background:#0b0e11;border:1px solid var(--line);border-radius:8px;padding:4px 8px;white-space:nowrap}
+.lp-swbox .wg-acct i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--verde);margin-right:5px;vertical-align:1px}
+.lp-swbox .sw-body{padding:8px 16px 14px}
+.lp-swbox .sw-cards{position:relative}
+.lp-swbox .sw-card{background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+.lp-swbox .sw-card+.sw-card{margin-top:9px}
+.lp-swbox .sw-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.lp-swbox .sw-lbl{flex:0 0 auto;font-family:var(--mono);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px}
+.lp-swbox .sw-bal{flex:0 1 auto;min-width:0;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.lp-swbox .sw-card-mid{display:flex;align-items:center;gap:10px}
+.lp-swbox .sw-amt{flex:1;min-width:0;width:100%;background:transparent;border:none;outline:none;appearance:none;-webkit-appearance:none;color:var(--ink);font-family:var(--display);font-weight:700;font-size:23px;padding:0}
+.lp-swbox .sw-amt::placeholder{color:var(--ink-3);opacity:.5}
+.lp-swbox .sw-out{flex:1;min-width:0;color:var(--ink);font-family:var(--display);font-weight:700;font-size:23px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lp-swbox .sw-tok{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;background:linear-gradient(180deg,#1b2027,#12161c);border:1px solid var(--gold-soft);border-radius:100px;padding:6px 13px 6px 7px}
+.lp-swbox .sw-tok b{font-family:var(--display);font-size:14.5px;color:var(--ink);font-weight:700}
+.lp-swbox .sw-card-bot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;min-height:17px}
+.lp-swbox .sw-usd{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.lp-swbox .sw-max{font-family:var(--mono);font-size:11px;font-weight:700;color:#3a2800;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border:1px solid #c79426;border-radius:8px;padding:3px 9px;cursor:pointer;letter-spacing:.5px}
+.lp-swbox .sw-flip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:11px;background:linear-gradient(180deg,#232a33,#141a20);border:2px solid #0d1117;color:var(--gold);cursor:pointer;display:grid;place-items:center;z-index:3;transition:transform .2s}
+.lp-swbox .sw-flip:active{transform:translate(-50%,-50%) rotate(180deg)}
+.lp-swbox .sw-info{margin:13px 2px 0;display:flex;flex-direction:column;gap:6px}
+.lp-swbox .sw-info:empty{display:none}
+.lp-swbox .sw-info .r{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+.lp-swbox .sw-info .r span:first-child{color:var(--ink-3)}
+.lp-swbox .sw-go{width:100%;margin-top:14px;border-radius:12px;padding:13px;font-family:var(--display);font-weight:800;font-size:14.5px;cursor:pointer;letter-spacing:.2px;background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a);border:1px solid #15803d;color:#052e13;box-shadow:0 3px 0 #15803d;transition:transform .09s,box-shadow .09s,filter .12s}
+.lp-swbox .sw-go:not(:disabled):hover{filter:brightness(1.05)}
+.lp-swbox .sw-go:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
+.lp-swbox .sw-go:not(:disabled):active{transform:translateY(3px);box-shadow:0 0 0 #15803d}
+.lp-swbox .coin-sel-ico{position:relative;width:34px;height:34px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:linear-gradient(180deg,#232b34,#151b22);flex:0 0 auto}
+.lp-swbox .coin-sel-ico .ico-fb{font-family:var(--display);font-weight:800;font-size:13px;color:currentColor;line-height:1}
+.lp-swbox .coin-sel-ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.lp-swbox .coin-sel-ico.conlogo .ico-fb{display:none}
+.lp-swbox .sw-tok .coin-sel-ico{width:24px;height:24px}
+.lp-swbox .sw-tok .coin-sel-ico svg{width:16px;height:16px}
+.lp-swbox .sw-tok .coin-sel-ico .ico-fb{font-size:11px}
+.lp-swbox .wg-brand{display:flex;justify-content:center;padding:0 0 12px}
+.lp-swbox .wg-brand img{height:14px;opacity:.6}
+.lp-swbox .wg-msg{text-align:center;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);padding:40px 20px}
 .lp-chart{position:relative;min-height:380px}
 .lp-chart canvas{width:100%;height:380px;display:block;border-radius:12px;background:rgba(0,0,0,.3)}
 .lp-chart .lp-chart-vacio{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--ink-3);font-size:13.5px;padding:20px;line-height:1.55}
