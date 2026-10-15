@@ -4,6 +4,7 @@
 const w = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 
 export const IC = {
+  rocket: w('<path d="M14 4c3 0 6 3 6 6l-6 6-4-4z"/><path d="M10 12l-4 1 2 2 2 2 1-4"/><path d="M6 18l-2 2"/><circle cx="15" cy="9" r="1.3"/>'),
   user: w('<circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.3 3.6-5 8-5s8 1.7 8 5"/>'),
   search: w('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/>'),
   support: w('<path d="M4 13a8 8 0 0116 0"/><rect x="2" y="13" width="4" height="6" rx="1.5"/><rect x="18" y="13" width="4" height="6" rx="1.5"/><path d="M20 19a5 5 0 01-5 4h-2"/>'),

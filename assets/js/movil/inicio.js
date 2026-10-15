@@ -1,6 +1,6 @@
 /* movil/inicio.js — Pantalla 1 (Inicio). */
 
-import { IC } from './iconos.js?v=20';
+import { IC } from './iconos.js?v=21';
 import * as wallet from '../wallet.js?v=129';
 import { money, money0, cantidad, logoDe } from './fmt.js?v=3';
 import * as fperfil from '../firebase-perfil.js?v=1';
@@ -18,6 +18,7 @@ const QUICK = [
 ];
 
 const PROMOS = [
+  { ic: 'rocket', t: 'Launchpad', s: 'Create your own coin in minutes', go: 'launchpad' },
   { ic: 'book',   t: 'Academia CriptoCuba', s: 'Aprende a operar y multiplica tu ventaja', go: 'academy' },
   { ic: 'trophy', t: 'Prize Pool comunitario', s: 'Participa y gana del fondo común', go: 'prize' },
   { ic: 'bot',    t: 'Bots que operan por ti', s: 'Compran abajo y venden arriba, en tu wallet', go: 'bots' },
@@ -28,6 +29,7 @@ const PROMOS = [
 /* TODOS los servicios pasan por las tarjetas. Iconos y colores REALES (los de
    la web para los bots). */
 const SERVICIOS = [
+  { go: 'launchpad', color: '#E8B84B', ic: 'rocket',  kick: 'Launchpad',       h: 'Create your coin',  p: 'Launch your own coin with a floor price and locked liquidity.' },
   { go: 'shield',    color: '#E8B84B', ic: 'shield',  kick: 'Wallet Shield',   h: 'Protege tu wallet', p: 'Revisa permisos, detecta trampas y saca tus fondos a salvo.' },
   { go: 'bots',      color: '#4d9fff', ic: 'botGrid', kick: 'Smart Grid',      h: 'Gana en el rango',   p: 'Compra y vende en niveles; cierra cada cuadrícula solo en ganancia.' },
   { go: 'bots',      color: '#b47cff', ic: 'botAcum', kick: 'Acumulador',      h: 'Compra en caídas',   p: 'Compra por tramos cuando baja y arma posición sin que estés pendiente.' },
