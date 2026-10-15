@@ -266,15 +266,19 @@ export async function operaciones(token, max = 80) {
   if (abierto > 0) { const secs = Math.max(0, Math.floor(Date.now() / 1000) - abierto); span = Math.min(TOPE, Math.ceil(secs / 3) + 2000); }
   const CHUNK = 9000;                         // rango que aceptan los RPC publicos de BSC
   const vistos = new Set(); const compras = [], ventas = [];
+  let apEv = null;                             // evento PoolAbierto (precio de lanzamiento), en el MISMO escaneo
   let hi = latest, recorrido = 0, rpc = _rpcIdx % RPCS.length;
   while (recorrido < span && hi > 0 && (compras.length + ventas.length) < max) {
     const lo = Math.max(0, hi - CHUNK + 1); let ok = false;
     for (let intento = 0; intento < RPCS.length && !ok; intento++) {
       try {
         const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc));
-        const [c, v] = await Promise.all([cc.queryFilter(cc.filters.Compra(token), lo, hi), cc.queryFilter(cc.filters.Venta(token), lo, hi)]);
-        for (const e of c) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); compras.push(e); } }
-        for (const e of v) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); ventas.push(e); } }
+        const consultas = [cc.queryFilter(cc.filters.Compra(token), lo, hi), cc.queryFilter(cc.filters.Venta(token), lo, hi)];
+        if (!apEv) consultas.push(cc.queryFilter(cc.filters.PoolAbierto(token), lo, hi));
+        const res = await Promise.all(consultas);
+        for (const e of res[0]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); compras.push(e); } }
+        for (const e of res[1]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); ventas.push(e); } }
+        if (res[2] && res[2].length) apEv = res[2][0];
         ok = true;
       } catch (_) { rpc = (rpc + 1) % RPCS.length; }
     }
@@ -288,49 +292,19 @@ export async function operaciones(token, max = 80) {
   // precio = el SPOT del evento (precio(token) del contrato tras la operacion = rQuote/rTok), no el
   // precio medio de ejecucion quoteIn/tokOut (que en una curva siempre va por debajo del spot y
   // hacia ver caidas falsas). Si un RPC no trae el campo, se cae al medio de ejecucion.
-  for (const e of compras) { const a = e.args; const q = Number(ethers.formatEther(a.quoteIn)), tk = Number(ethers.formatEther(a.tokOut)); const sp = a.precio != null ? Number(ethers.formatEther(a.precio)) : 0; ops.push({ compra: true, cantidad: tk, valor: q, precio: sp > 0 ? sp : (tk > 0 ? q / tk : 0), wallet: _corto(a.wallet), tiempo: fechas[e.blockNumber] || 0, bloque: e.blockNumber }); }
-  for (const e of ventas) { const a = e.args; const q = Number(ethers.formatEther(a.quoteOut)) + Number(ethers.formatEther(a.eco)) + Number(ethers.formatEther(a.suelo)); const tk = Number(ethers.formatEther(a.tokIn)); const sp = a.precio != null ? Number(ethers.formatEther(a.precio)) : 0; ops.push({ compra: false, cantidad: tk, valor: q, precio: sp > 0 ? sp : (tk > 0 ? q / tk : 0), wallet: _corto(a.wallet), tiempo: fechas[e.blockNumber] || 0, bloque: e.blockNumber }); }
+  // precio = SPOT del evento; ejec = precio medio de ejecucion (quoteIn/tokOut). El spot alimenta la
+  // grafica y el 24h; el ejec es el respaldo para pintar la PRIMERA vela cuando no hay lanzamiento.
+  for (const e of compras) { const a = e.args; const q = Number(ethers.formatEther(a.quoteIn)), tk = Number(ethers.formatEther(a.tokOut)); const sp = a.precio != null ? Number(ethers.formatEther(a.precio)) : 0; const ej = tk > 0 ? q / tk : 0; ops.push({ compra: true, cantidad: tk, valor: q, precio: sp > 0 ? sp : ej, ejec: ej, wallet: _corto(a.wallet), tiempo: fechas[e.blockNumber] || 0, bloque: e.blockNumber }); }
+  for (const e of ventas) { const a = e.args; const q = Number(ethers.formatEther(a.quoteOut)) + Number(ethers.formatEther(a.eco)) + Number(ethers.formatEther(a.suelo)); const tk = Number(ethers.formatEther(a.tokIn)); const sp = a.precio != null ? Number(ethers.formatEther(a.precio)) : 0; const ej = tk > 0 ? q / tk : 0; ops.push({ compra: false, cantidad: tk, valor: q, precio: sp > 0 ? sp : ej, ejec: ej, wallet: _corto(a.wallet), tiempo: fechas[e.blockNumber] || 0, bloque: e.blockNumber }); }
   ops.sort((x, y) => (y.tiempo || y.bloque) - (x.tiempo || x.bloque));
-  return ops.slice(0, max);
+  // Precio de lanzamiento (PoolAbierto) leido en el mismo escaneo, para la base de la grafica y el 24h.
+  let apertura = null;
+  if (apEv) { try { const a = apEv.args; const tokA = Number(ethers.formatEther(a.tok)), quoteA = Number(ethers.formatEther(a.quoteCant)); const pA = tokA > 0 ? quoteA / tokA : 0; let tA = abierto; try { tA = Number((await provRPC(rpc).getBlock(apEv.blockNumber)).timestamp); } catch (_) {} if (pA > 0) apertura = { precio: pA, t: tA }; } catch (_) {} }
+  const salida = ops.slice(0, max);
+  salida.apertura = apertura;
+  return salida;
 }
 function _corto(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
-
-/* Precio de LANZAMIENTO de la pool (quoteCant/tok del evento PoolAbierto). Es el punto de partida
-   real de la grafica y la referencia del 24h cuando la moneda es mas nueva que 24h. El evento esta
-   en el bloque de creacion: se estima ese bloque desde abiertoEn (~3 s/bloque) y se busca una
-   ventana alrededor, rotando de RPC. Devuelve { precio, t } (t en segundos) o null. */
-export async function aperturaPool(token) {
-  let latest = 0; try { latest = await lector().getBlockNumber(); } catch (_) { return null; }
-  if (!latest) return null;
-  let abierto = 0; try { abierto = Number((await leeLP('pools', [token])).abiertoEn) || 0; } catch (_) {}
-  if (!abierto) return null;
-  const now = Math.floor(Date.now() / 1000);
-  const approx = Math.max(0, latest - Math.ceil((now - abierto) / 3));
-  const CHUNK = 9000; let rpc = _rpcIdx % RPCS.length;
-  for (let paso = 0; paso <= 5; paso++) {
-    const centros = paso === 0 ? [approx] : [approx - paso * CHUNK, approx + paso * CHUNK];
-    for (const c of centros) {
-      const lo = Math.max(0, c - Math.floor(CHUNK / 2)), hi = Math.min(latest, c + Math.floor(CHUNK / 2));
-      if (lo > hi) continue;
-      for (let intento = 0; intento < RPCS.length; intento++) {
-        try {
-          const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc));
-          const ev = await cc.queryFilter(cc.filters.PoolAbierto(token), lo, hi);
-          if (ev.length) {
-            const a = ev[0].args;
-            const tok = Number(ethers.formatEther(a.tok)), quoteCant = Number(ethers.formatEther(a.quoteCant));
-            const precio = tok > 0 ? quoteCant / tok : 0;
-            let ts = abierto; try { ts = Number((await provRPC(rpc).getBlock(ev[0].blockNumber)).timestamp); } catch (_) {}
-            _rpcIdx = rpc;
-            return precio > 0 ? { precio, t: ts } : null;
-          }
-          break;
-        } catch (_) { rpc = (rpc + 1) % RPCS.length; }
-      }
-    }
-  }
-  return null;
-}
 
 /* ─────────── Verificacion automatica en BscScan ───────────
    Cada moneda es un TokenDF, el mismo codigo que ya esta verificado dentro del

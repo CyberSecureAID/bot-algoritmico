@@ -153,10 +153,13 @@ async function cargarToken(addr) {
     t.bnbUsd = bnbUsd;   // tasa BNB->USDT para mostrar el panel en USDT
     t.txs = [];          // pinta ya; el historial real puede tardar en RPC y va en segundo plano
     pintarPanel(t);
-    // Historial real de la cadena en segundo plano: al llegar repinta con grafica, trades, 24h y volumen reales.
-    gb.operaciones(addr).then((ops) => { if (_panelAddr === addr && ops && ops.length) { t.txs = ops; pintarPanel(t); } }).catch(() => {});
-    // Precio de lanzamiento (evento PoolAbierto): base de la grafica y referencia del 24h.
-    gb.aperturaPool(addr).then((ap) => { if (_panelAddr === addr && ap && ap.precio > 0) { t.apertura = ap; pintarPanel(t); } }).catch(() => {});
+    // Historial real de la cadena en segundo plano: al llegar repinta con grafica, trades, 24h y volumen
+    // reales. operaciones trae ademas el precio de lanzamiento (PoolAbierto) leido en el mismo escaneo.
+    gb.operaciones(addr).then((ops) => {
+      if (_panelAddr !== addr || !ops) return;
+      if (ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura;
+      if (ops.length) { t.txs = ops; pintarPanel(t); } else if (ops.apertura) pintarPanel(t);
+    }).catch(() => {});
   } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
 }
 function pintarCargando() { const h = $(APP); if (h) h.innerHTML = `<div style="min-height:60vh;display:flex;align-items:center;justify-content:center"><span style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:#E8B84B;display:inline-block;animation:spin .7s linear infinite"></span></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`; }
@@ -830,9 +833,10 @@ function pintarPanel(t) {
     if (!pool) return null;
     const dentro = txs.filter((x) => Date.now() - x.tiempo < 86400000 && x.precio > 0);
     const fuera = txs.filter((x) => Date.now() - x.tiempo >= 86400000 && x.precio > 0);
+    const vieja = dentro.length ? dentro[dentro.length - 1] : null;
     const ref = fuera.length ? fuera[0].precio
               : (t.apertura && t.apertura.precio > 0 ? t.apertura.precio
-              : (dentro.length ? dentro[dentro.length - 1].precio : precio));
+              : (vieja ? (vieja.ejec > 0 ? vieja.ejec : vieja.precio) : precio));
     return ref > 0 ? (precio / ref - 1) * 100 : 0;
   })();
   // Mostrar el panel en USDT (lo que quiere ver un creador), aunque el par sea BNB. Si el par ya es
@@ -1049,7 +1053,9 @@ function velasDeOps(ops, rango, apertura) {
     const k = Math.floor(o.tiempo / bucket);
     if (!cur || cur.k !== k) {
       if (cur) { velas.push(cur); prevClose = cur.c; }
-      const ap = prevClose != null ? prevClose : o.precio;
+      // Sin lanzamiento, la primera vela abre en el precio MEDIO de ejecucion (lo pagado): en una compra
+      // va por debajo del spot, asi que la vela tiene cuerpo verde aunque sea la unica operacion.
+      const ap = prevClose != null ? prevClose : (o.ejec > 0 ? o.ejec : o.precio);
       cur = { k, t: Math.floor(k * bucket / 1000), o: ap, h: Math.max(ap, o.precio), l: Math.min(ap, o.precio), c: o.precio, v: o.valor || 0 };
     } else { cur.h = Math.max(cur.h, o.precio); cur.l = Math.min(cur.l, o.precio); cur.c = o.precio; cur.v += o.valor || 0; }
   }
