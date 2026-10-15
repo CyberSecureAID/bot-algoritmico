@@ -155,6 +155,8 @@ async function cargarToken(addr) {
     pintarPanel(t);
     // Historial real de la cadena en segundo plano: al llegar repinta con grafica, trades, 24h y volumen reales.
     gb.operaciones(addr).then((ops) => { if (_panelAddr === addr && ops && ops.length) { t.txs = ops; pintarPanel(t); } }).catch(() => {});
+    // Precio de lanzamiento (evento PoolAbierto): base de la grafica y referencia del 24h.
+    gb.aperturaPool(addr).then((ap) => { if (_panelAddr === addr && ap && ap.precio > 0) { t.apertura = ap; pintarPanel(t); } }).catch(() => {});
   } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
 }
 function pintarCargando() { const h = $(APP); if (h) h.innerHTML = `<div style="min-height:60vh;display:flex;align-items:center;justify-content:center"><span style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:#E8B84B;display:inline-block;animation:spin .7s linear infinite"></span></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`; }
@@ -816,17 +818,22 @@ function pintarPanel(t) {
   const cuenta = (wallet.cuentaActual() || '').toLowerCase();
   const esAdmin = t.demo || (t.creador && t.creador.toLowerCase() === cuenta);
   const txs = t.txs || txsDemo(t);
-  const precioAhora = pool ? (txs.length ? txs[0].precio : precio) : 0;
+  // Precio ACTUAL = spot de reservas (rQuote/rTok), que es lo que devuelve precio() del contrato.
+  // NO el precio medio de ejecucion del ultimo trade: en una curva ese va por debajo del spot y hacia
+  // ver la moneda en rojo y con una caida falsa aunque acabaras de comprar y subir el precio.
+  const precioAhora = pool ? precio : 0;
   const vol24 = txs.filter((x) => Date.now() - x.tiempo < 86400000).reduce((a, x) => a + x.valor, 0);
-  // Cambio 24h real: con operaciones, del precio mas viejo de las ultimas 24h al actual.
-  // Recien abierta la pool y sin operaciones es 0% (el precio aun no se movio del de apertura);
-  // desde cero no es "100%", es indefinido, asi que no se inventa.
+  // Cambio 24h = (spot actual / precio de referencia - 1). Referencia = precio de hace 24h (ultimo trade
+  // anterior a la ventana); si la moneda es mas nueva que 24h, el precio de lanzamiento (PoolAbierto);
+  // si no hay nada con que comparar, el propio spot (sin movimiento = 0%, no se inventa un 100%).
   const cambio24 = (() => {
     if (!pool) return null;
-    const h = txs.filter((x) => Date.now() - x.tiempo < 86400000 && x.precio > 0);
-    if (!h.length) return 0;
-    const ref = h.length > 1 ? h[h.length - 1].precio : precio;
-    return ref > 0 ? (h[0].precio / ref - 1) * 100 : 0;
+    const dentro = txs.filter((x) => Date.now() - x.tiempo < 86400000 && x.precio > 0);
+    const fuera = txs.filter((x) => Date.now() - x.tiempo >= 86400000 && x.precio > 0);
+    const ref = fuera.length ? fuera[0].precio
+              : (t.apertura && t.apertura.precio > 0 ? t.apertura.precio
+              : (dentro.length ? dentro[dentro.length - 1].precio : precio));
+    return ref > 0 ? (precio / ref - 1) * 100 : 0;
   })();
   // Mostrar el panel en USDT (lo que quiere ver un creador), aunque el par sea BNB. Si el par ya es
   // USDT la tasa es 1; si es BNB se usa la tasa de CoinGecko. Sin tasa (red caida), se cae a la
@@ -875,8 +882,8 @@ function pintarPanel(t) {
       </div>
       <div class="lp-main">
         <div class="lp-card lp-chart-card">
-          <div class="lp-chart-tabs"><button class="on" data-r="1h">1h</button><button data-r="4h">4h</button><button data-r="1d">1d</button></div>
-          <div class="lp-chart"><div id="lp-cv"></div>${pool ? '' : '<div class="lp-chart-vacio">The chart appears as soon as your pool has its first trades.<br>Every candle is read from the chain, nothing else.</div>'}</div>
+          <div class="lp-chart-tabs"><button data-r="1m">1m</button><button data-r="5m">5m</button><button data-r="15m">15m</button><button class="on" data-r="1h">1h</button><button data-r="4h">4h</button><button data-r="1d">1d</button></div>
+          <div class="lp-chart"><div id="lp-cv"></div>${pool && !t.demo ? '' : '<div class="lp-chart-vacio">The chart appears as soon as your pool has its first trades.<br>Every candle is read from the chain, nothing else.</div>'}</div>
         </div>
         <div class="lp-card lp-txs">
           <div class="lp-txs-head"><h4>Trades</h4>
@@ -1021,26 +1028,23 @@ async function accionQuemar(t) {
   _tras(t, 'Burning coins', () => gb.quemar(t.address, gb.parseEther(cant)));
 }
 
-/* Velas: fase 1 dibuja una serie de muestra en el demo; fase 2 lee los eventos Swap del par
-   (eth_getLogs) y arma las velas en el navegador, sin terceros. */
-function velasDemo(t, rango) {
-  if (!t.pool || !t.demo) return [];
-  const n = 60, out = []; let p = t.pool.liquidez / t.pool.tokens; let s = 7;
-  const bucket = rango === '1d' ? 86400 : rango === '4h' ? 14400 : 3600;
-  const now = Math.floor(Date.now() / 1000);
-  const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-  for (let i = 0; i < n; i++) { const o = p; const c = o * (1 + (rnd() - 0.47) * 0.08); const h = Math.max(o, c) * (1 + rnd() * 0.03); const l = Math.min(o, c) * (1 - rnd() * 0.03); const v = (1 + rnd() * 6 + Math.abs(c - o) / o * 40); out.push({ t: now - (n - i) * bucket, o, h, l, c, v }); p = c; }
-  return out;
+/* Milisegundos por vela segun la temporalidad elegida. */
+function bucketMs(rango) {
+  return rango === '1d' ? 86400000 : rango === '4h' ? 14400000 : rango === '15m' ? 900000 : rango === '5m' ? 300000 : rango === '1m' ? 60000 : 3600000;
 }
-/* Velas reales a partir de las operaciones (eventos Compra/Venta), agrupadas por tiempo.
-   Cada vela lleva su tiempo (segundos) para el eje de la grafica profesional. */
-function velasDeOps(ops, rango) {
+/* Velas reales a partir de las operaciones (eventos Compra/Venta), agrupadas por tiempo. El precio
+   de cada punto es el SPOT del evento (precio() del contrato), no el medio de ejecucion. La serie
+   arranca en el precio de LANZAMIENTO (PoolAbierto): asi una sola compra ya pinta una vela con
+   cuerpo que sube del lanzamiento al spot, no solo una barra de volumen. */
+function velasDeOps(ops, rango, apertura) {
   const l = (ops || []).filter((o) => o.precio > 0 && o.tiempo > 0).slice().sort((a, b) => a.tiempo - b.tiempo);
-  if (!l.length) return [];
-  const bucket = rango === '1d' ? 86400000 : rango === '4h' ? 14400000 : 3600000;
-  // La apertura de cada vela es el cierre de la anterior: asi las velas tienen cuerpo y color
-  // (verde/roja) y el grafico se ve como un grafico de velas real, no una escalera de rayas planas.
-  const velas = []; let cur = null, prevClose = null;
+  const bucket = bucketMs(rango);
+  const apP = apertura && apertura.precio > 0 ? apertura.precio : null;
+  const apT = apertura && apertura.t > 0 ? apertura.t : null;
+  if (!l.length) return apP != null ? [{ t: apT || (Math.floor(Date.now() / 1000) - 3600), o: apP, h: apP, l: apP, c: apP, v: 0 }] : [];
+  // La primera vela abre en el precio de LANZAMIENTO: en una curva el precio no se mueve sin trades,
+  // asi que la primera compra pinta una vela con cuerpo que sube del lanzamiento al spot.
+  const velas = []; let cur = null, prevClose = apP;
   for (const o of l) {
     const k = Math.floor(o.tiempo / bucket);
     if (!cur || cur.k !== k) {
@@ -1050,7 +1054,7 @@ function velasDeOps(ops, rango) {
     } else { cur.h = Math.max(cur.h, o.precio); cur.l = Math.min(cur.l, o.precio); cur.c = o.precio; cur.v += o.valor || 0; }
   }
   if (cur) velas.push(cur);
-  return velas.slice(-120);
+  return velas.slice(-240);
 }
 /* Grafica REAL de velas con lightweight-charts (la libreria de la propia TradingView, vendorizada
    en el modulo). Se alimenta del OHLC real de los eventos on-chain (velasDeOps). Mismos datos que
@@ -1061,13 +1065,16 @@ let _chart = null, _serie = null, _vol = null, _chartCont = null, _lineaSuelo = 
 function destruirGrafica() { if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; } if (_chart) { try { _chart.remove(); } catch (_) {} } _chart = null; _serie = null; _vol = null; _chartCont = null; _lineaSuelo = null; }
 function pintarGrafica(t, rango) {
   const cont = $('lp-cv'); if (!cont) return;
-  let velas = t.demo ? velasDemo(t, rango) : velasDeOps(t.txs, rango);
-  // Con pool pero sin operaciones: una vela plana al precio de apertura (dato real del pool), para
-  // que la grafica exista de verdad desde el inicio. Las velas reales llegan con la primera compra.
+  // El demo NO inventa velas: muestra el estado vacio igual que una moneda sin operaciones.
+  let velas = t.demo ? [] : velasDeOps(t.txs, rango, t.apertura);
   if (!velas.length) {
-    const p0 = t.pool ? ((t.pool.liquidez && t.pool.tokens) ? t.pool.liquidez / t.pool.tokens : 0) : 0;
+    if (t.demo) { destruirGrafica(); return; }
+    // Pool sin operaciones aun: una vela plana en el precio de lanzamiento (dato real), o en el spot
+    // de reservas si la apertura todavia no llego. Las velas reales llegan con la primera compra.
+    const p0 = (t.apertura && t.apertura.precio > 0) ? t.apertura.precio : (t.pool ? ((t.pool.liquidez && t.pool.tokens) ? t.pool.liquidez / t.pool.tokens : 0) : 0);
     if (!(p0 > 0)) { destruirGrafica(); return; }
-    velas = [{ t: Math.floor(Date.now() / 1000) - 3600, o: p0, h: p0, l: p0, c: p0 }];
+    const t0 = (t.apertura && t.apertura.t) ? t.apertura.t : (Math.floor(Date.now() / 1000) - 3600);
+    velas = [{ t: t0, o: p0, h: p0, l: p0, c: p0, v: 0 }];
   }
   const lo = Math.min(...velas.map((v) => v.l));
   const minMove = lo >= 1 ? 0.0001 : Math.max(1e-12, Math.pow(10, Math.floor(Math.log10(lo)) - 2));

@@ -193,8 +193,9 @@
 .lp-stat b{display:block;font-family:var(--display);font-size:18px;color:#fff;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lp-stat b.oro{color:var(--gold)}
 .lp-stat b.verde{color:var(--verde)}
-/* Solo la casilla Contract: el valor Verified va centrado; la etiqueta CONTRACT se queda a la izquierda. */
-#lp-verif-tile{text-align:center;overflow:visible;text-overflow:clip}
+/* Solo la casilla Contract: el valor Verified va centrado pero un pelin a la izquierda (padding-right)
+   para que no quede pegado a la derecha. La etiqueta CONTRACT se queda a la izquierda. */
+#lp-verif-tile{text-align:center;padding-right:18px;overflow:visible;text-overflow:clip}
 .lp-card{background:rgba(10,13,18,.66);border:1px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .lp-card h4{margin:0 0 10px;font-family:var(--mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold)}
 /* Swap real de la moneda, montado INLINE (sin iframe, sin capsula exterior) donde iba Liquidity.
