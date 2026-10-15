@@ -5,7 +5,7 @@
 
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS } from './config.js';
+import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS, COINGECKO_BNB } from './config.js';
 
 const CERO = '0x0000000000000000000000000000000000000000';
 
@@ -359,4 +359,22 @@ export async function verificar(token) {
 
 export function parseEther(x) { return ethers.parseEther(String(x)); }
 export function fmtEther(x) { return ethers.formatEther(x); }
+
+/* Precio de BNB en USDT (CoinGecko, gratis). Solo para MOSTRAR el panel en USDT.
+   Cachea 60 s en memoria y guarda el ultimo valor bueno para usarlo de respaldo si la
+   red falla. Devuelve 0 si no hay forma de saberlo (el panel cae a la moneda del par). */
+let _bnbUsd = { v: 0, t: 0 };
+export async function precioBNBUSDT() {
+  const ahora = Date.now();
+  if (_bnbUsd.v > 0 && ahora - _bnbUsd.t < 60000) return _bnbUsd.v;
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(COINGECKO_BNB, { signal: ctrl.signal }); clearTimeout(to);
+    const j = await r.json(); const v = j && j.binancecoin && Number(j.binancecoin.usd);
+    if (v > 0) { _bnbUsd = { v, t: ahora }; try { localStorage.setItem('df-bnbusd', JSON.stringify(_bnbUsd)); } catch (_) {} return v; }
+  } catch (_) {}
+  if (_bnbUsd.v > 0) return _bnbUsd.v;
+  try { const s = JSON.parse(localStorage.getItem('df-bnbusd') || 'null'); if (s && s.v > 0) { _bnbUsd = s; return s.v; } } catch (_) {}
+  return 0;
+}
 export { ethers };

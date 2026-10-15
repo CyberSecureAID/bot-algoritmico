@@ -41,6 +41,32 @@ export function filaRedes(redes) {
   return items ? `<div class="lp-soc">${items}</div>` : '';
 }
 
+/* Icono lapiz (Edit Profile) y mas (+). */
+const IC_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+const IC_MAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+
+/* Control de redes de la cabecera, debajo del contrato.
+   - Cualquiera ve los circulos de las redes ya puestas.
+   - Solo el creador (esAdmin) ve el acceso para editar: si no hay ninguna red, un boton
+     "Edit Profile"; si ya hay al menos una (y faltan), un circulo con "+"; si estan todas, nada.
+   El boton lleva id="lp-redes-edit" para engancharlo en el panel. */
+export function redesControl(t, esAdmin) {
+  css();
+  const redes = t.redes || {};
+  const puestas = REDES_UI.filter((r) => hrefRed(r.k, redes[r.k], r.base));
+  const circulos = puestas.map((r) => {
+    const href = hrefRed(r.k, redes[r.k], r.base);
+    return `<a href="${esc(href)}" target="_blank" rel="noopener nofollow" title="${r.lab}" aria-label="${r.lab}">${r.ic}</a>`;
+  }).join('');
+  let edit = '';
+  if (esAdmin) {
+    if (puestas.length === 0) edit = `<button class="lp-soc-edit" id="lp-redes-edit" type="button">${IC_EDIT}Edit Profile</button>`;
+    else if (puestas.length < REDES_UI.length) edit = `<button class="lp-soc-add" id="lp-redes-edit" type="button" title="Add more links" aria-label="Add more links">${IC_MAS}</button>`;
+  }
+  if (!circulos && !edit) return '';
+  return `<div class="lp-soc">${circulos}${edit}</div>`;
+}
+
 /* Reductor propio: cuadrado 128 px webp (igual que el logo del asistente). */
 function reducir(file) {
   return new Promise((resolve, reject) => {
@@ -110,6 +136,12 @@ function css() {
   .lp-soc a{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:#0b0e12;border:1px solid #2b3139;color:var(--ink-3,#7d8794);transition:color .15s,border-color .15s,transform .08s}
   .lp-soc a:hover{color:var(--gold,#E8B84B);border-color:var(--gold-soft,#C9A84B);transform:translateY(-1px)}
   .lp-soc a svg{width:15px;height:15px;display:block}
+  .lp-soc-add,.lp-soc-edit{font-family:var(--display,sans-serif);cursor:pointer;color:var(--gold,#E8B84B);background:#0b0e12;border:1px dashed var(--gold-soft,#C9A84B);transition:transform .08s,background .15s}
+  .lp-soc-add{width:30px;height:30px;border-radius:9px;display:grid;place-items:center}
+  .lp-soc-add svg{width:15px;height:15px;display:block}
+  .lp-soc-edit{height:30px;border-radius:9px;display:inline-flex;align-items:center;gap:6px;padding:0 11px;font-size:12px;font-weight:700}
+  .lp-soc-edit svg{width:14px;height:14px}
+  .lp-soc-add:hover,.lp-soc-edit:hover{transform:translateY(-1px);background:#12161c}
   .em-bg{position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(3,5,8,.6);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
   .em{position:relative;width:min(460px,100%);max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);border-radius:20px;padding:22px 20px 18px;box-shadow:0 26px 70px rgba(0,0,0,.7);font-family:var(--display,sans-serif);animation:emIn .18s ease both}
   @keyframes emIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}

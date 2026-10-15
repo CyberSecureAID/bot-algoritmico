@@ -9,7 +9,7 @@ import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './conf
 import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
 import { guardarMoneda, leerMoneda, leerMonedas } from './firebase-tokens.js';
-import { filaRedes, abrirEditorMoneda } from './perfil-moneda.js';
+import { filaRedes, redesControl, abrirEditorMoneda } from './perfil-moneda.js';
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -92,28 +92,16 @@ function ocultar(addr) { const l = ocultos(); l.push(String(addr).toLowerCase())
 
 /* Tres confirmaciones y una firma de la wallet creadora. Sin la firma no se oculta nada. */
 async function ocultarToken(t) {
-  const p1 = await modal('Hide this coin?', `<b>${esc(t.nombre)}</b> will disappear from your panel. It stays live on the chain and in the swap for everyone.`, { ok: 'Yes, hide it', cancel: 'Cancel' });
+  // Quitar de mi lista = preferencia local de esta vista (no toca la cadena: la moneda es
+  // permanente para sus holders y su pagina publica). Tres confirmaciones y se quita de verdad;
+  // no se pide firma porque no hay nada que firmar en una accion solo de este navegador.
+  const p1 = await modal('Remove this coin?', `<b>${esc(t.nombre)}</b> will disappear from your list. It stays live on the chain and in the swap for everyone.`, { ok: 'Yes, remove it', cancel: 'Cancel' });
   if (!p1) return false;
-  const p2 = await modal('This cannot be undone', 'The coin is not deleted: holders keep it, buyers keep finding it and its public page keeps working. What you lose is this panel: you will not manage it from here again.', { ok: 'I understand, continue', cancel: 'Cancel' });
+  const p2 = await modal('This cannot be undone here', 'The coin is not deleted from the blockchain: holders keep it, buyers keep finding it and its public page keeps working. What you remove is this card from your list.', { ok: 'I understand, continue', cancel: 'Cancel' });
   if (!p2) return false;
-  const p3 = await modal('Last step: sign with your wallet', 'Your wallet will ask you to sign a message (no gas, nothing is sent). Only the wallet that created the coin can hide it. By signing you confirm this is final.', { ok: 'Sign and hide', cancel: 'Cancel' });
+  const p3 = await modal('Confirm once more', 'Press confirm to remove it from your list. You can open it again any time from its contract address or its public link.', { ok: 'Remove it', cancel: 'Cancel' });
   if (!p3) return false;
-  try {
-    const cuenta = wallet.cuentaActual();
-    if (!cuenta || (t.creador && t.creador.toLowerCase() !== cuenta.toLowerCase() && !t.demo)) { await modal('Not your coin', 'Only the wallet that created this coin can hide it.'); return false; }
-    const bp = new ethers.BrowserProvider(wallet.proveedorActivo());
-    const signer = await bp.getSigner();
-    const msg = `DecFreedom Launchpad\nHide coin from my panel\nCoin: ${t.address}\nWallet: ${cuenta}\nDate: ${new Date().toISOString()}\nThis action is final.`;
-    const firma = await signer.signMessage(msg);
-    const quien = ethers.verifyMessage(msg, firma);
-    if (quien.toLowerCase() !== cuenta.toLowerCase()) { await modal('Signature mismatch', 'The signature does not belong to the connected wallet. Nothing was changed.'); return false; }
-  } catch (e) {
-    const rech = /reject|denied|user/i.test(String(e && (e.message || e)));
-    await modal(rech ? 'Signature cancelled' : 'Could not sign', rech ? 'You cancelled the signature. Nothing was changed.' : 'Your wallet did not sign. Nothing was changed.');
-    return false;
-  }
   if (!t.demo) ocultar(t.address);
-  await modal('Hidden', `${esc(t.nombre)} no longer shows in your panel.`);
   return true;
 }
 function guardarTokens(l) { try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} }
@@ -148,11 +136,12 @@ function deChain(datos, meta) {
 async function cargarToken(addr) {
   pintarCargando();
   try {
-    const [datos, perfil] = await Promise.all([gb.datosToken(addr), leerMoneda(addr).catch(() => null)]);
+    const [datos, perfil, bnbUsd] = await Promise.all([gb.datosToken(addr), leerMoneda(addr).catch(() => null), gb.precioBNBUSDT().catch(() => 0)]);
     const t = deChain(datos, metaLocal(addr));
     if (!t) { await modal('Coin not found', 'This coin is not on the launchpad, or the network did not answer. Try again.'); pintarPortada(); return; }
     // El logo persiste en Firestore (por direccion), no en el navegador: la cadena manda el resto.
     if (perfil) { if (perfil.logo) t.logo = perfil.logo; t.redes = perfil; }
+    t.bnbUsd = bnbUsd;   // tasa BNB->USDT para mostrar el panel en USDT
     t.txs = await gb.operaciones(addr).catch(() => []);
     pintarPanel(t);
   } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
@@ -165,7 +154,7 @@ function tokenDemo() {
     address: '0xD3c0F0000000000000000000000000000000FEED', nombre: 'Demo Coin', simbolo: 'DEMO', supply: 100000000, logo: '',
     suelo: true, sueloBps: 300, fundadorPct: 10, vestingMeses: 12, antibot: true,
     pool: { moneda: 'BNB', liquidez: 2.5, tokens: 50000000, candadoMeses: 12, creadoEn: Date.now() - 86400000 * 40 },
-    creadoEn: Date.now() - 86400000 * 40, demo: true, creador: ''
+    bnbUsd: 600, creadoEn: Date.now() - 86400000 * 40, demo: true, creador: ''
   };
 }
 
@@ -182,6 +171,8 @@ function txsDemo(t) {
 }
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const ICO_CODE = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>';
+/* Logo real de BNB Smart Chain (marca oficial, oro), para el chip de red en vez del rombo. */
+const ICO_BNB = '<svg viewBox="0 0 126.61 126.61" width="14" height="14" aria-hidden="true"><g fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></g></svg>';
 const ICO_DL = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></svg>';
 function hace(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; if (s < 3600) return Math.floor(s / 60) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; }
 
@@ -398,12 +389,28 @@ async function pintarMios() {
   const fs = await leerMonedas(addrs).catch(() => ({}));
   c.innerHTML = addrs.map((a) => { const m = metaLocal(a) || {}; const fl = fs[a.toLowerCase()]; const logo = (fl && fl.logo) || m.logo; return `<div class="lp-tok" data-a="${a}">
       ${logo ? `<img src="${logo}" alt="">` : `<div class="lp-ini">${esc((m.simbolo || '?')[0])}</div>`}
-      <div><b>${esc(m.nombre || 'Coin')} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(m.simbolo || '')}</small></b><span>${corto(a)}</span></div>
-      <span class="lp-est" data-pool="${a}">…</span>
+      <div class="lp-tok-id"><b data-nom="${a}">${esc(m.nombre || 'Coin')} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(m.simbolo || '')}</small></b><span>${corto(a)}</span></div>
+      <div class="lp-tok-end"><div class="lp-tok-nums" data-pool="${a}"><span class="lp-est">…</span></div>
+      <button class="lp-tok-x" data-x="${a}" type="button" title="Remove from my list" aria-label="Remove from my list">✕</button></div>
     </div>`; }).join('');
   c.querySelectorAll('.lp-tok').forEach((el) => el.onclick = () => cargarToken(el.dataset.a));
-  // Estado del pool (tradable / no pool), sin bloquear el render.
-  addrs.forEach(async (a) => { try { const d = await gb.datosToken(a); const e = c.querySelector(`[data-pool="${a}"]`); if (e) { e.textContent = d.pool ? 'Tradable' : 'No pool'; e.classList.toggle('gris', !d.pool); } } catch (_) {} });
+  c.querySelectorAll('.lp-tok-x').forEach((b) => b.onclick = async (e) => {
+    e.stopPropagation(); const a = b.dataset.x; const m = metaLocal(a) || {};
+    const ok = await ocultarToken({ address: a, nombre: m.nombre || 'this coin', simbolo: m.simbolo || '', creador: m.creador || cuenta, demo: false });
+    if (ok) pintarMios();
+  });
+  // Precio y liquidez reales por moneda (dato de cadena), sin bloquear el render.
+  addrs.forEach(async (a) => {
+    try {
+      const d = await gb.datosToken(a); const e = c.querySelector(`[data-pool="${a}"]`); if (!e) return;
+      // Nombre y simbolo reales de la cadena (en otro dispositivo no hay copia local).
+      const nm = c.querySelector(`[data-nom="${a}"]`);
+      if (nm && d.nombre) nm.innerHTML = `${esc(d.nombre)} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(d.simbolo || '')}</small>`;
+      if (d.pool) { const mon = d.moneda || 'BNB'; const liq = Number(gb.fmtEther(d.pool.rQuote));
+        e.innerHTML = `<b class="lp-tok-pr">${fmtP(d.precio)} ${mon}</b><span class="lp-tok-lq">${num(liq, 3)} ${mon} liquidity</span>`; }
+      else e.innerHTML = `<span class="lp-est gris">No pool</span>`;
+    } catch (_) {}
+  });
 }
 
 /* ───────── Asistente ───────── */
@@ -719,7 +726,7 @@ function preguntarLiquidez(tok) {
       <div class="lp-tcard__id">
         <div class="lp-tcard__name">${esc(tok.nombre)} <span>(${esc(tok.simbolo)})</span></div>
         <button class="lp-addr-full" id="lp-copiar" type="button" title="Copy contract"><span class="lp-addr-txt">${esc(tok.address)}</span>${ICO_COPY}</button>
-        <div class="lp-tcard__meta"><span class="lp-net"><i></i>BNB Smart Chain</span><a class="lp-codelink" href="${bsc}" target="_blank" rel="noopener">${ICO_CODE} View code</a></div>
+        <div class="lp-tcard__meta"><span class="lp-net">${ICO_BNB}BNB Smart Chain</span><a class="lp-codelink" href="${bsc}" target="_blank" rel="noopener">${ICO_CODE} View code</a></div>
       </div>
     </div>
     <p class="lp-live-note">Your coin exists on BNB Smart Chain. Add liquidity so anyone can buy it now, or do it later from your panel.</p>
@@ -785,7 +792,6 @@ function pintarPanel(t) {
   const host = $(APP); if (!host) return;
   const pool = t.pool || null;
   const precio = pool ? pool.liquidez / pool.tokens : 0;
-  const mcap = pool ? precio * t.supply : 0;
   const quemado = t.quemado || 0;
   const suelo = t.suelo ? (t.reservaSuelo || 0) / Math.max(1, t.supply - quemado) : 0;
   const mon = pool ? pool.moneda : 'BNB';
@@ -797,24 +803,43 @@ function pintarPanel(t) {
   const cuenta = (wallet.cuentaActual() || '').toLowerCase();
   const esAdmin = t.demo || (t.creador && t.creador.toLowerCase() === cuenta);
   const txs = t.txs || txsDemo(t);
+  const precioAhora = pool ? (txs.length ? txs[0].precio : precio) : 0;
   const vol24 = txs.filter((x) => Date.now() - x.tiempo < 86400000).reduce((a, x) => a + x.valor, 0);
-  const cambio24 = (() => { const h = txs.filter((x) => Date.now() - x.tiempo < 86400000); if (h.length < 2) return null; const ult = h[0].precio, ant = h[h.length - 1].precio; return ant > 0 ? (ult / ant - 1) * 100 : null; })();
-  const precioTxt = pool ? fmtP(txs.length ? txs[0].precio : precio) + ' ' + mon : 'no pool';
+  // Cambio 24h real: con operaciones, del precio mas viejo de las ultimas 24h al actual.
+  // Recien abierta la pool y sin operaciones es 0% (el precio aun no se movio del de apertura);
+  // desde cero no es "100%", es indefinido, asi que no se inventa.
+  const cambio24 = (() => {
+    if (!pool) return null;
+    const h = txs.filter((x) => Date.now() - x.tiempo < 86400000 && x.precio > 0);
+    if (!h.length) return 0;
+    const ref = h.length > 1 ? h[h.length - 1].precio : precio;
+    return ref > 0 ? (h[0].precio / ref - 1) * 100 : 0;
+  })();
+  // Mostrar el panel en USDT (lo que quiere ver un creador), aunque el par sea BNB. Si el par ya es
+  // USDT la tasa es 1; si es BNB se usa la tasa de CoinGecko. Sin tasa (red caida), se cae a la
+  // moneda del par de forma honesta. La tasa no toca ninguna transaccion, solo la pantalla.
+  const tasa = !pool ? 0 : (mon === 'USDT' ? 1 : (t.bnbUsd > 0 ? t.bnbUsd : 0));
+  // Unidad de pantalla: USDT siempre que se pueda; solo cae a la moneda del par si HAY pool en
+  // BNB y CoinGecko no respondio. Sin pool aun, los valores son 0 y se rotulan en USDT.
+  const unidad = tasa > 0 ? 'USDT' : (pool ? mon : 'USDT');
+  const kU = tasa > 0 ? tasa : 1;
+  const precioU = precioAhora * kU, mcapU = precioU * t.supply, liqU = pool ? pool.liquidez * kU : 0, vol24U = vol24 * kU, sueloU = suelo * kU;
   // Holders: distintas wallets vistas en las operaciones, con minimo 1 (el creador tiene el supply).
   const holders = Math.max(1, new Set(txs.map((x) => x.wallet).filter(Boolean)).size);
   host.innerHTML = `
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
       <div class="lp-top">
-        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div class="lp-id-body"><div class="lp-id-head"><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div><div class="lp-precio"><b class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${precioTxt}</b><span class="${cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down'}">${cambio24 == null ? '24h · no data yet' : (cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2) + '% · 24h'}</span></div></div><div class="lp-id-meta"><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span class="lp-net"><i></i>BNB Smart Chain</span></div>${filaRedes(t.redes)}</div></div>
+        <div class="lp-id">${logoPrev(t, 'lp-logo-prev')}<div class="lp-id-body"><div class="lp-id-head"><div class="lp-nom">${esc(t.nombre)} <small>(${esc(t.simbolo)})</small></div></div><div class="lp-id-meta"><button class="lp-dir" id="lp-copiar" type="button" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button><span class="lp-net">${ICO_BNB}BNB Smart Chain</span></div>${redesControl(t, esAdmin)}</div></div>
         <div class="lp-stats">
+          <div class="lp-stat lp-stat-precio"><i>Price${tasa > 0 ? ' · USDT' : ''}</i><b class="lp-precio-b"><span class="lp-precio-n">${pool ? fmtP(precioU) + ' ' + unidad : '0 ' + unidad}</span>${cambio24 == null ? '' : `<span class="lp-chg ${cambio24 >= 0 ? 'up' : 'down'}">${(cambio24 >= 0 ? '+' : '') + cambio24.toFixed(2)}% 24h</span>`}</b></div>
+          <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcapU, 2) + ' ' + unidad : '0 ' + unidad}</b></div>
+          <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? num(liqU, 2) + ' ' + unidad : 'No pool'}</b></div>
+          <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24U, 2) + ' ' + unidad : '0 ' + unidad}</b></div>
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
           <div class="lp-stat"><i>Burned</i><b>${quemado ? num(quemado, 0) : '0'}</b></div>
           <div class="lp-stat"><i>Holders</i><b>${num(holders, 0)}</b></div>
-          <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcap, 4) + ' ' + mon : '0 ' + mon}</b></div>
-          <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? num(pool.liquidez, 4) + ' ' + mon : 'No pool'}</b></div>
-          <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24, 4) + ' ' + mon : '0 ' + mon}</b></div>
-          <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (suelo > 0 ? fmtP(suelo) + ' ' + mon : 'building') : 'off'}</b></div>
+          <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (sueloU > 0 ? fmtP(sueloU) + ' ' + unidad : '0 ' + unidad) : 'off'}</b></div>
           <div class="lp-stat"><i>Contract</i><b id="lp-verif-tile">…</b></div>
         </div>
       </div>
@@ -842,7 +867,7 @@ function pintarPanel(t) {
         ${t.suelo ? `<div class="lp-card"><h4>Floor reserve</h4>
           <div class="lp-kv"><span>Reserve</span><b>${num(t.reservaSuelo || 0, 5)} ${mon}</b></div>
           <div class="lp-kv"><span>Feeds from sales</span><b class="oro">${t.sueloBps / 100}%</b></div>
-          <div class="lp-kv"><span>Floor per coin</span><b>${suelo > 0 ? fmtP(suelo) + ' ' + mon : 'building'}</b></div>
+          <div class="lp-kv"><span>Floor per coin</span><b>${suelo > 0 ? fmtP(suelo) + ' ' + mon : '0 ' + mon}</b></div>
           <button class="lp-b gris" id="lp-redeem" type="button" ${suelo > 0 ? '' : 'disabled'}>Redeem</button></div>` : ''}
         ${t.fundadorPct ? `<div class="lp-card"><h4>Founder lock</h4>
           <div class="lp-kv"><span>Founder share</span><b>${num(fundadorTot, 0)} ${esc(t.simbolo)}</b></div>
@@ -863,9 +888,9 @@ function pintarPanel(t) {
           <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0 0 2px">Show your logo on Trust Wallet, MetaMask and CoinGecko, and stay clear of automatic scam flags.</p>
           <button class="lp-b gris" id="lp-listar" type="button">Open the guide</button></div>
         <div class="lp-card"><h4>Embed our swap on your site</h4>
-          <div class="lp-widget-prev">
+          <div class="lp-widget-prev" id="lp-wprev" role="button" tabindex="0" title="Open the live swap" style="cursor:pointer">
             <div class="wp-top">${logoPrev(t, 'lp-logo-prev')}<b>Buy ${esc(t.simbolo)}</b></div>
-            <div class="wp-box"><div class="wp-in"><span>You pay</span><b>BNB</b></div><div class="wp-in"><span>You get</span><b>${esc(t.simbolo)}</b></div><div class="wp-btn">Swap</div></div>
+            <div class="wp-box"><div class="wp-in"><span>You pay</span><b>BNB</b></div><div class="wp-in"><span>You get</span><b>${esc(t.simbolo)}</b></div><div class="wp-btn">Open swap</div></div>
             <div class="wp-marca"><img src="./img/cco-full.webp" alt="DecFreedom"></div>
           </div>
           <div class="lp-code" id="lp-code">&lt;iframe src="${esc(widgetUrl)}" width="360" height="520" style="border:0;border-radius:16px" loading="lazy"&gt;&lt;/iframe&gt;</div>
@@ -893,12 +918,14 @@ function pintarPanel(t) {
   if ($('lp-redeem')) $('lp-redeem').onclick = () => accionRedimir(t);
   if ($('lp-burn')) $('lp-burn').onclick = () => accionQuemar(t);
   if ($('lp-fotos')) $('lp-fotos').onclick = () => abrirEditorMoneda(t, () => cargarToken(t.address));
+  if ($('lp-redes-edit')) $('lp-redes-edit').onclick = () => abrirEditorMoneda(t, () => cargarToken(t.address));
   if ($('lp-tokenomic-p')) $('lp-tokenomic-p').onclick = () => bajarTokenomics(t, $('lp-tokenomic-p'));
   if ($('lp-ocultar')) $('lp-ocultar').onclick = async () => { if (await ocultarToken(t)) { history.replaceState(null, '', location.pathname); pintarPortada(); } };
   $('lp-volver').onclick = () => { history.replaceState(null, '', location.pathname); pintarPortada(); };
   $('lp-copiar').onclick = () => { try { navigator.clipboard.writeText(t.address); $('lp-copiar').innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { $('lp-copiar').innerHTML = corto(t.address) + ' ' + ICO_COPY; }, 1500); } catch (_) {} };
   $('lp-copy-w').onclick = () => { try { navigator.clipboard.writeText($('lp-code').textContent); $('lp-copy-w').textContent = 'Copied'; setTimeout(() => { $('lp-copy-w').textContent = 'Copy code'; }, 1500); } catch (_) {} };
   if ($('lp-instr')) $('lp-instr').onclick = () => abrirGuiaWidget();
+  if ($('lp-wprev')) { const abrirSwap = () => { try { window.open(widgetUrl, '_blank', 'noopener'); } catch (_) {} }; $('lp-wprev').onclick = abrirSwap; $('lp-wprev').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirSwap(); } }; }
   if ($('lp-listar')) $('lp-listar').onclick = () => abrirGuiaListado();
   if ($('lp-add')) $('lp-add').onclick = () => preguntarLiquidez(t);
   if ($('lp-ret')) $('lp-ret').onclick = () => accionRetirar(t);
@@ -906,6 +933,8 @@ function pintarPanel(t) {
   document.querySelectorAll('.lp-chart-tabs button').forEach((b) => b.onclick = () => { document.querySelectorAll('.lp-chart-tabs button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); pintarGrafica(t, b.dataset.r); });
   pintarGrafica(t, '1h');
   if (t.demo) { const vt = $('lp-verif-tile'); if (vt) vt.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px;color:var(--verde);font-size:13.5px">' + ICO_CHECK + ' Verified</span>'; } else if (t.address) pintarVerif(t.address);
+  // Par en BNB sin tasa todavia (p. ej. panel abierto al vuelo): traer BNB->USDT y repintar en USDT.
+  if (pool && mon === 'BNB' && !(t.bnbUsd > 0)) gb.precioBNBUSDT().then((v) => { if (v > 0) { t.bnbUsd = v; pintarPanel(t); } }).catch(() => {});
 }
 
 /* Estado de verificacion en BscScan: badge verde con enlace, o boton para verificar
@@ -987,7 +1016,19 @@ function pintarGrafica(t, rango) {
   const W0 = cv.clientWidth || 600, H0 = cv.clientHeight || 380, dpr = window.devicePixelRatio || 1;
   cv.width = W0 * dpr; cv.height = H0 * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr);
   g.clearRect(0, 0, W0, H0);
-  if (!velas.length) return;
+  if (!velas.length) {
+    // Con pool pero sin operaciones: linea plana al precio de apertura (reservas del pool, dato real),
+    // en vez de dejar el lienzo en blanco. Las velas aparecen con la primera compra o venta.
+    const p0 = t.pool ? ((t.pool.liquidez && t.pool.tokens) ? t.pool.liquidez / t.pool.tokens : 0) : 0;
+    if (!(p0 > 0)) return;
+    const pL = 10, pR = 64, pT = 14, pB = 22; const yMid = pT + (H0 - pT - pB) * 0.5;
+    g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; g.font = '10px IBM Plex Mono, monospace'; g.textAlign = 'left';
+    for (let k = 0; k <= 4; k++) { const ry = pT + (H0 - pT - pB) * k / 4; g.beginPath(); g.moveTo(pL, ry); g.lineTo(W0 - pR, ry); g.stroke(); }
+    g.setLineDash([5, 4]); g.strokeStyle = '#E8B84B'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(pL, yMid); g.lineTo(W0 - pR, yMid); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#E8B84B'; g.fillText(p0.toPrecision(3), W0 - pR + 6, yMid + 3);
+    g.fillStyle = '#7d8794'; g.textAlign = 'center'; g.fillText('opening price · the first trade draws the candles', W0 / 2, H0 - 6);
+    return;
+  }
   const padL = 10, padR = 64, padT = 14, padB = 22;
   const hi = Math.max(...velas.map((v) => v.h)), lo = Math.min(...velas.map((v) => v.l));
   const y = (p) => padT + (hi - p) / (hi - lo || 1) * (H0 - padT - padB);
