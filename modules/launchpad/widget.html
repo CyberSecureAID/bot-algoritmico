@@ -24,7 +24,7 @@
   html,body{margin:0;padding:0;min-height:100%;background:#05070a;color:var(--ink);font-family:var(--display);-webkit-text-size-adjust:100%;overscroll-behavior:none}
   ::-webkit-scrollbar{width:0;height:0} html,body{scrollbar-width:none}
 
-  .wg-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:14px}
+  .wg-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:8px}
   .sw-box{position:relative;width:100%;max-width:420px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:wgPop .22s cubic-bezier(.2,.9,.3,1.2)}
   @keyframes wgPop{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
   .sw-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
@@ -43,11 +43,12 @@
   .sw-card+.sw-card{margin-top:10px}
   .sw-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
   .sw-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px}
-  .sw-bal{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .sw-bal{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:0 1 auto;min-width:0;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+  .sw-lbl{flex:0 0 auto}
   .sw-card-mid{display:flex;align-items:center;gap:10px}
-  .sw-amt{flex:1;min-width:0;background:transparent;border:none;outline:none;-webkit-appearance:none;appearance:none;color:var(--ink);font-family:var(--display);font-weight:700;font-size:25px;padding:0}
+  .sw-amt{flex:1;min-width:0;width:100%;background:transparent;border:none;outline:none;-webkit-appearance:none;appearance:none;color:var(--ink);font-family:var(--display);font-weight:700;font-size:24px;padding:0}
   .sw-amt::placeholder{color:var(--ink-3);opacity:.5}
-  .sw-out{flex:1;min-width:0;color:var(--ink);font-family:var(--display);font-weight:700;font-size:25px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sw-out{flex:1;min-width:0;color:var(--ink);font-family:var(--display);font-weight:700;font-size:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sw-tok{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;background:linear-gradient(180deg,#1b2027,#12161c);border:1px solid var(--gold-soft);border-radius:100px;padding:6px 13px 6px 7px;box-shadow:0 2px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.06)}
   .sw-tok b{font-family:var(--display);font-size:15px;color:var(--ink);font-weight:700}
   .sw-card-bot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;min-height:17px}
@@ -94,6 +95,7 @@
   .wg-spin{display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:var(--gold);animation:wgspin .8s linear infinite;vertical-align:-4px;margin-left:8px}
   @keyframes wgspin{to{transform:rotate(360deg)}}
   @media(max-width:560px){.sw-amt,.sw-out{font-size:22px}}
+  @media(max-width:380px){.sw-body{padding:4px 13px 13px}.sw-card{padding:11px 13px}.sw-amt,.sw-out{font-size:20px}.sw-tok{padding:5px 11px 5px 6px}.sw-tok b{font-size:14px}}
 </style>
 </head>
 <body>
@@ -112,7 +114,17 @@ const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 const APP = $('colmena-app');
 
 /* ── numeros ── */
-function num(n, d = 6) { n = Number(n); if (!isFinite(n) || n === 0) return '0'; if (n >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: Math.min(d, 6) }); const s = n.toFixed(12).replace(/0+$/, ''); return s.length > 10 ? Number(n).toPrecision(4) : s; }
+function num(n, d = 6) {
+  n = Number(n); if (!isFinite(n) || n === 0) return '0';
+  const a = Math.abs(n);
+  // Cantidades enormes (precio diminuto -> recibes millones/billones) se abrevian para que NUNCA
+  // rompan la tarjeta; los precios diminutos van en notacion compacta. Asi aguanta 14-15 cifras.
+  if (a >= 1e12) return (n / 1e12).toFixed(2).replace(/\.?0+$/, '') + 'T';
+  if (a >= 1e9) return (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+  if (a >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+  if (a >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: Math.min(d, 6) });
+  const s = a.toFixed(12).replace(/0+$/, ''); return s.length > 10 ? Number(n).toPrecision(4) : s;
+}
 
 /* ── modal ── */
 function modal(t, b, { ok = 'OK', cancel = null } = {}) {
@@ -162,12 +174,12 @@ function render() {
     <div class="sw-body">
       <div class="sw-cards">
         <div class="sw-card">
-          <div class="sw-card-top"><span class="sw-lbl">You pay</span><span class="sw-bal" id="wg-bal-in"></span></div>
+          <div class="sw-card-top"><span class="sw-lbl">Pay</span><span class="sw-bal" id="wg-bal-in"></span></div>
           <div class="sw-card-mid"><input class="sw-amt" id="wg-amt" inputmode="decimal" placeholder="0.0" autocomplete="off" value="${esc(amount)}"><span class="sw-tok" id="wg-tok-in">${pill('in')}</span></div>
           <div class="sw-card-bot"><span class="sw-usd"></span><button class="sw-max" id="wg-max" type="button">MAX</button></div>
         </div>
         <div class="sw-card">
-          <div class="sw-card-top"><span class="sw-lbl">You receive (estimated)</span><span class="sw-bal" id="wg-bal-out"></span></div>
+          <div class="sw-card-top"><span class="sw-lbl">Receive</span><span class="sw-bal" id="wg-bal-out"></span></div>
           <div class="sw-card-mid"><div class="sw-out" id="wg-out">0.0</div><span class="sw-tok" id="wg-tok-out">${pill('out')}</span></div>
           <div class="sw-card-bot"><span class="sw-usd"></span></div>
         </div>

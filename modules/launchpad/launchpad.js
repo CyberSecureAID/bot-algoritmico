@@ -882,11 +882,11 @@ function pintarPanel(t) {
         </div>
       </div>
       <div class="lp-side">
-        ${pool ? (t.demo ? `<div class="lp-card"><h4>Trade ${esc(t.simbolo)}</h4>
+        ${pool ? (t.demo ? `<div class="lp-card"><h4>Swap</h4>
           <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0">The live swap to buy and sell this coin against ${esc(mon)} shows here once it is a real deployed coin.</p>
-        </div>` : `<div class="lp-card lp-swap-card"><h4>Trade ${esc(t.simbolo)}</h4>
+        </div>` : `<div class="lp-card lp-swap-card"><h4>Swap</h4>
           <iframe class="lp-swap-frame" src="${esc(widgetUrl)}" title="Swap ${esc(t.simbolo)}" loading="lazy"></iframe>
-        </div>`) : `<div class="lp-card"><h4>Trade ${esc(t.simbolo)}</h4>
+        </div>`) : `<div class="lp-card"><h4>Swap</h4>
           <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0 0 ${esAdmin ? '10px' : '0'}">This coin has no pool yet, so it cannot be traded. ${esAdmin ? 'Add liquidity to open trading for everyone.' : 'Trading opens when the creator adds liquidity.'}</p>
           ${esAdmin ? `<button class="lp-b" id="lp-add" type="button">Add liquidity</button>` : ''}
         </div>`}
