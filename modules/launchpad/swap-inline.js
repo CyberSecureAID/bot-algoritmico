@@ -22,7 +22,8 @@ function num(n) {
   const s = a.toFixed(12).replace(/0+$/, ''); return s.length > 10 ? Number(n).toPrecision(4) : s;
 }
 
-const BNB_SVG = '<svg viewBox="0 0 24 24" fill="#f3ba2f"><path d="M12 3.3l2.73 2.73L12 8.76 9.27 6.03 12 3.3zM6.03 9.27l2.73 2.73L6.03 14.73 3.3 12l2.73-2.73zm11.94 0L20.7 12l-2.73 2.73L15.24 12l2.73-2.73zM12 15.24l2.73 2.73L12 20.7l-2.73-2.73L12 15.24zM12 9.4l2.6 2.6L12 14.6 9.4 12 12 9.4z"/></svg>';
+/* Logo real de BNB (marca oficial, oro) y de Tether (circulo verde con la T). */
+const BNB_SVG = '<svg viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
 const FLIP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M4 14l3 3 3-3M17 20V7M14 10l3-3 3 3"/></svg>';
 const SLIP = 50n, MIL = 10000n, GAS_BUF = 500000000000000n;
 
@@ -46,7 +47,7 @@ export function montarSwap(host, token, opts = {}) {
   const simOut = () => (dir === 'buy' ? T.simbolo : moneda);
   const esRechazo = (e) => /reject|denied|user|cancell/i.test(String((e && (e.message || e.reason)) || e));
 
-  function icoQuote() { if (moneda === 'USDT') return '<span class="coin-sel-ico" style="background:#0d1117"><span class="ico-fb" style="color:#26a17b;font-size:15px">₮</span></span>'; return '<span class="coin-sel-ico" style="background:#0d1117">' + BNB_SVG + '</span>'; }
+  function icoQuote() { if (moneda === 'USDT') return '<span class="coin-sel-ico" style="background:#26a17b"><span class="ico-fb" style="color:#fff;font-size:15px">₮</span></span>'; return '<span class="coin-sel-ico" style="background:#0d1117">' + BNB_SVG + '</span>'; }
   function icoCoin() { return logo ? `<span class="coin-sel-ico conlogo"><img src="${esc(logo)}" alt=""><span class="ico-fb">${esc((T.simbolo || '?')[0].toUpperCase())}</span></span>` : `<span class="coin-sel-ico" style="color:var(--gold,#E8B84B)"><span class="ico-fb">${esc((T.simbolo || '?')[0].toUpperCase())}</span></span>`; }
   function pill(which) { const coin = (which === 'in' ? dir === 'sell' : dir === 'buy'); return (coin ? icoCoin() : icoQuote()) + `<b>${esc(coin ? T.simbolo : moneda)}</b>`; }
 

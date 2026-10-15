@@ -11,6 +11,9 @@ import { descargarTokenomics } from './tokenomics.js';
 import { guardarMoneda, leerMoneda, leerMonedas } from './firebase-tokens.js';
 import { filaRedes, redesControl, abrirEditorMoneda } from './perfil-moneda.js';
 import { montarSwap } from './swap-inline.js';
+/* lightweight-charts: libreria de velas de la propia TradingView (Apache-2.0), vendorizada en el
+   modulo (sellado). Es la que usan los exploradores serios para dibujar graficas reales. */
+import * as LW from './lightweight-charts.mjs';
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -202,6 +205,7 @@ const ICO = {
 };
 function pintarPortada() {
   _panelAddr = null;   // cancela cualquier repintado de historial en vuelo
+  destruirGrafica();
   const host = $(APP); if (!host) return;
   const mios = misTokens();
   host.innerHTML = `
@@ -872,7 +876,7 @@ function pintarPanel(t) {
       <div class="lp-main">
         <div class="lp-card lp-chart-card">
           <div class="lp-chart-tabs"><button class="on" data-r="1h">1h</button><button data-r="4h">4h</button><button data-r="1d">1d</button></div>
-          <div class="lp-chart"><canvas id="lp-cv"></canvas>${pool ? '' : '<div class="lp-chart-vacio">The chart appears as soon as your pool has its first trades.<br>Every candle is read from the chain, nothing else.</div>'}</div>
+          <div class="lp-chart"><div id="lp-cv"></div>${pool ? '' : '<div class="lp-chart-vacio">The chart appears as soon as your pool has its first trades.<br>Every candle is read from the chain, nothing else.</div>'}</div>
         </div>
         <div class="lp-card lp-txs">
           <div class="lp-txs-head"><h4>Trades</h4>
@@ -1022,55 +1026,68 @@ async function accionQuemar(t) {
 function velasDemo(t, rango) {
   if (!t.pool || !t.demo) return [];
   const n = 60, out = []; let p = t.pool.liquidez / t.pool.tokens; let s = 7;
+  const bucket = rango === '1d' ? 86400 : rango === '4h' ? 14400 : 3600;
+  const now = Math.floor(Date.now() / 1000);
   const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-  for (let i = 0; i < n; i++) { const o = p; const c = o * (1 + (rnd() - 0.47) * 0.08); const h = Math.max(o, c) * (1 + rnd() * 0.03); const l = Math.min(o, c) * (1 - rnd() * 0.03); out.push({ o, h, l, c, v: rnd() }); p = c; }
+  for (let i = 0; i < n; i++) { const o = p; const c = o * (1 + (rnd() - 0.47) * 0.08); const h = Math.max(o, c) * (1 + rnd() * 0.03); const l = Math.min(o, c) * (1 - rnd() * 0.03); out.push({ t: now - (n - i) * bucket, o, h, l, c }); p = c; }
   return out;
 }
-/* Velas reales a partir de las operaciones (eventos Compra/Venta), agrupadas por tiempo. */
+/* Velas reales a partir de las operaciones (eventos Compra/Venta), agrupadas por tiempo.
+   Cada vela lleva su tiempo (segundos) para el eje de la grafica profesional. */
 function velasDeOps(ops, rango) {
   const l = (ops || []).filter((o) => o.precio > 0 && o.tiempo > 0).slice().sort((a, b) => a.tiempo - b.tiempo);
-  if (l.length < 2) return [];
+  if (!l.length) return [];
   const bucket = rango === '1d' ? 86400000 : rango === '4h' ? 14400000 : 3600000;
   const velas = []; let cur = null;
   for (const o of l) {
     const k = Math.floor(o.tiempo / bucket);
-    if (!cur || cur.k !== k) { if (cur) velas.push(cur); cur = { k, o: o.precio, h: o.precio, l: o.precio, c: o.precio, v: o.valor }; }
-    else { cur.h = Math.max(cur.h, o.precio); cur.l = Math.min(cur.l, o.precio); cur.c = o.precio; cur.v += o.valor; }
+    if (!cur || cur.k !== k) { if (cur) velas.push(cur); cur = { k, t: Math.floor(k * bucket / 1000), o: o.precio, h: o.precio, l: o.precio, c: o.precio }; }
+    else { cur.h = Math.max(cur.h, o.precio); cur.l = Math.min(cur.l, o.precio); cur.c = o.precio; }
   }
   if (cur) velas.push(cur);
-  return velas.slice(-60);
+  return velas.slice(-120);
 }
+/* Grafica REAL de velas con lightweight-charts (la libreria de la propia TradingView, vendorizada
+   en el modulo). Se alimenta del OHLC real de los eventos on-chain (velasDeOps). Mismos datos que
+   antes, pero render profesional: ejes de tiempo y precio, crosshair, zoom. */
+let _chart = null, _serie = null, _chartCont = null, _lineaSuelo = null;
+function destruirGrafica() { if (_chart) { try { _chart.remove(); } catch (_) {} } _chart = null; _serie = null; _chartCont = null; _lineaSuelo = null; }
 function pintarGrafica(t, rango) {
-  const cv = $('lp-cv'); if (!cv) return;
-  const velas = t.demo ? velasDemo(t, rango) : velasDeOps(t.txs, rango);
-  const W0 = cv.clientWidth || 600, H0 = cv.clientHeight || 380, dpr = window.devicePixelRatio || 1;
-  cv.width = W0 * dpr; cv.height = H0 * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr);
-  g.clearRect(0, 0, W0, H0);
+  const cont = $('lp-cv'); if (!cont) return;
+  let velas = t.demo ? velasDemo(t, rango) : velasDeOps(t.txs, rango);
+  // Con pool pero sin operaciones: una vela plana al precio de apertura (dato real del pool), para
+  // que la grafica exista de verdad desde el inicio. Las velas reales llegan con la primera compra.
   if (!velas.length) {
-    // Con pool pero sin operaciones: linea plana al precio de apertura (reservas del pool, dato real),
-    // en vez de dejar el lienzo en blanco. Las velas aparecen con la primera compra o venta.
     const p0 = t.pool ? ((t.pool.liquidez && t.pool.tokens) ? t.pool.liquidez / t.pool.tokens : 0) : 0;
-    if (!(p0 > 0)) return;
-    const pL = 10, pR = 64, pT = 14, pB = 22; const yMid = pT + (H0 - pT - pB) * 0.5;
-    g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; g.font = '10px IBM Plex Mono, monospace'; g.textAlign = 'left';
-    for (let k = 0; k <= 4; k++) { const ry = pT + (H0 - pT - pB) * k / 4; g.beginPath(); g.moveTo(pL, ry); g.lineTo(W0 - pR, ry); g.stroke(); }
-    g.setLineDash([5, 4]); g.strokeStyle = '#E8B84B'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(pL, yMid); g.lineTo(W0 - pR, yMid); g.stroke(); g.setLineDash([]);
-    g.fillStyle = '#E8B84B'; g.fillText(p0.toPrecision(3), W0 - pR + 6, yMid + 3);
-    g.fillStyle = '#7d8794'; g.textAlign = 'center'; g.fillText('opening price · the first trade draws the candles', W0 / 2, H0 - 6);
-    return;
+    if (!(p0 > 0)) { destruirGrafica(); return; }
+    velas = [{ t: Math.floor(Date.now() / 1000) - 3600, o: p0, h: p0, l: p0, c: p0 }];
   }
-  const padL = 10, padR = 64, padT = 14, padB = 22;
-  const hi = Math.max(...velas.map((v) => v.h)), lo = Math.min(...velas.map((v) => v.l));
-  const y = (p) => padT + (hi - p) / (hi - lo || 1) * (H0 - padT - padB);
-  const w = (W0 - padL - padR) / velas.length;
-  g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; g.font = '10px IBM Plex Mono, monospace'; g.fillStyle = '#7d8794'; g.textAlign = 'left';
-  for (let k = 0; k <= 4; k++) { const p = lo + (hi - lo) * k / 4; const yy = y(p); g.beginPath(); g.moveTo(padL, yy); g.lineTo(W0 - padR, yy); g.stroke(); g.fillText(p.toPrecision(3), W0 - padR + 6, yy + 3); }
-  velas.forEach((v, i) => {
-    const x = padL + i * w + w / 2; const up = v.c >= v.o; g.strokeStyle = g.fillStyle = up ? '#2ebd85' : '#f6465d';
-    g.beginPath(); g.moveTo(x, y(v.h)); g.lineTo(x, y(v.l)); g.stroke();
-    const top = y(Math.max(v.o, v.c)), hh = Math.max(1, Math.abs(y(v.o) - y(v.c)));
-    g.fillRect(x - w * 0.32, top, w * 0.64, hh);
-  });
-  if (t.suelo && t.reservaSuelo) { const f = t.reservaSuelo / t.supply; if (f > lo && f < hi) { g.setLineDash([4, 4]); g.strokeStyle = '#E8B84B'; g.beginPath(); g.moveTo(padL, y(f)); g.lineTo(W0 - padR, y(f)); g.stroke(); g.setLineDash([]); g.fillStyle = '#E8B84B'; g.fillText('floor', W0 - padR + 6, y(f) - 4); } }
-  g.fillStyle = '#7d8794'; g.textAlign = 'center'; g.fillText(rango + ' candles · read from the chain', W0 / 2, H0 - 6);
+  const lo = Math.min(...velas.map((v) => v.l));
+  const minMove = lo >= 1 ? 0.0001 : Math.max(1e-12, Math.pow(10, Math.floor(Math.log10(lo)) - 2));
+  const fmtEje = (p) => { if (!(p > 0)) return '0'; if (p >= 1) return Number(p.toPrecision(6)).toLocaleString('en-US'); const e = Math.floor(Math.log10(p)); return p.toFixed(Math.min(12, Math.max(4, -e + 3))); };
+  if (!_chart || _chartCont !== cont) {
+    destruirGrafica();
+    try {
+      _chart = LW.createChart(cont, {
+        autoSize: true,
+        layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8b96a3', fontFamily: "'IBM Plex Mono', ui-monospace, monospace", fontSize: 10, attributionLogo: false },
+        grid: { vertLines: { color: 'rgba(255,255,255,.045)' }, horzLines: { color: 'rgba(255,255,255,.045)' } },
+        rightPriceScale: { borderColor: '#1c232b' },
+        timeScale: { borderColor: '#1c232b', timeVisible: true, secondsVisible: false },
+        crosshair: { mode: 0, vertLine: { color: '#3a434f', width: 1, labelBackgroundColor: '#c79426' }, horzLine: { color: '#3a434f', labelBackgroundColor: '#c79426' } },
+        localization: { priceFormatter: fmtEje }
+      });
+      _serie = _chart.addSeries(LW.CandlestickSeries, { upColor: '#2ebd85', downColor: '#f6465d', borderUpColor: '#2ebd85', borderDownColor: '#f6465d', wickUpColor: '#2ebd85', wickDownColor: '#f6465d', priceFormat: { type: 'custom', formatter: fmtEje, minMove } });
+      _chartCont = cont;
+    } catch (_) { destruirGrafica(); return; }
+  }
+  try { _serie.applyOptions({ priceFormat: { type: 'custom', formatter: fmtEje, minMove } }); } catch (_) {}
+  _serie.setData(velas.map((v) => ({ time: v.t, open: v.o, high: v.h, low: v.l, close: v.c })));
+  // Linea del floor (reserva / supply), dato real, como referencia.
+  if (_lineaSuelo) { try { _serie.removePriceLine(_lineaSuelo); } catch (_) {} _lineaSuelo = null; }
+  if (t.suelo && t.reservaSuelo && t.supply > 0) {
+    const f = t.reservaSuelo / t.supply;
+    if (f > 0) { try { _lineaSuelo = _serie.createPriceLine({ price: f, color: '#E8B84B', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'floor' }); } catch (_) {} }
+  }
+  try { _chart.timeScale().fitContent(); } catch (_) {}
 }
