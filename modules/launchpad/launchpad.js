@@ -1050,8 +1050,8 @@ function velasDeOps(ops, rango) {
 /* Grafica REAL de velas con lightweight-charts (la libreria de la propia TradingView, vendorizada
    en el modulo). Se alimenta del OHLC real de los eventos on-chain (velasDeOps). Mismos datos que
    antes, pero render profesional: ejes de tiempo y precio, crosshair, zoom. */
-let _chart = null, _serie = null, _chartCont = null, _lineaSuelo = null;
-function destruirGrafica() { if (_chart) { try { _chart.remove(); } catch (_) {} } _chart = null; _serie = null; _chartCont = null; _lineaSuelo = null; }
+let _chart = null, _serie = null, _chartCont = null, _lineaSuelo = null, _ro = null;
+function destruirGrafica() { if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; } if (_chart) { try { _chart.remove(); } catch (_) {} } _chart = null; _serie = null; _chartCont = null; _lineaSuelo = null; }
 function pintarGrafica(t, rango) {
   const cont = $('lp-cv'); if (!cont) return;
   let velas = t.demo ? velasDemo(t, rango) : velasDeOps(t.txs, rango);
@@ -1068,8 +1068,12 @@ function pintarGrafica(t, rango) {
   if (!_chart || _chartCont !== cont) {
     destruirGrafica();
     try {
+      // Tamano EXPLICITO (no autoSize): el contenedor puede medir 0 de alto justo al inyectarse el
+      // panel, y autoSize dejaba la grafica aplastada arriba. Se fija w/h y un ResizeObserver la ajusta.
+      const medir = () => ({ w: cont.clientWidth || cont.offsetWidth || 600, h: cont.clientHeight || 380 });
+      const d0 = medir();
       _chart = LW.createChart(cont, {
-        autoSize: true,
+        width: d0.w, height: d0.h,
         layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8b96a3', fontFamily: "'IBM Plex Mono', ui-monospace, monospace", fontSize: 10, attributionLogo: false },
         grid: { vertLines: { color: 'rgba(255,255,255,.045)' }, horzLines: { color: 'rgba(255,255,255,.045)' } },
         rightPriceScale: { borderColor: '#1c232b' },
@@ -1079,6 +1083,9 @@ function pintarGrafica(t, rango) {
       });
       _serie = _chart.addSeries(LW.CandlestickSeries, { upColor: '#2ebd85', downColor: '#f6465d', borderUpColor: '#2ebd85', borderDownColor: '#f6465d', wickUpColor: '#2ebd85', wickDownColor: '#f6465d', priceFormat: { type: 'custom', formatter: fmtEje, minMove } });
       _chartCont = cont;
+      const ajustar = () => { if (_chart && _chartCont) { const d = medir(); try { _chart.resize(d.w, d.h); } catch (_) {} } };
+      try { _ro = new ResizeObserver(ajustar); _ro.observe(cont); } catch (_) {}
+      requestAnimationFrame(ajustar); setTimeout(ajustar, 140);
     } catch (_) { destruirGrafica(); return; }
   }
   try { _serie.applyOptions({ priceFormat: { type: 'custom', formatter: fmtEje, minMove } }); } catch (_) {}

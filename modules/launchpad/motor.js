@@ -5,7 +5,7 @@
 
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS, COINGECKO_BNB } from './config.js';
+import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS, COINGECKO_BNB, COINGECKO_MERCADOS } from './config.js';
 
 const CERO = '0x0000000000000000000000000000000000000000';
 
@@ -397,5 +397,31 @@ export async function precioBNBUSDT() {
   if (_bnbUsd.v > 0) return _bnbUsd.v;
   try { const s = JSON.parse(localStorage.getItem('df-bnbusd') || 'null'); if (s && s.v > 0) { _bnbUsd = s; return s.v; } } catch (_) {}
   return 0;
+}
+
+/* Logos REALES de BNB y USDT, de CoinGecko coins/markets (campo image), tal cual lo hace el
+   resto de la plataforma. Se cachean 7 dias (memoria + localStorage) porque casi no cambian.
+   Devuelve { BNB, USDT } con las URLs de las imagenes; cadenas vacias si la red falla
+   (el swap cae a su respaldo SVG). NO interviene en ninguna transaccion. */
+let _logosPar = null;
+export async function logosPar() {
+  if (_logosPar && _logosPar.BNB && _logosPar.USDT) return _logosPar;
+  try {
+    const s = JSON.parse(localStorage.getItem('df-logospar') || 'null');
+    if (s && s.BNB && s.USDT && s.t && Date.now() - s.t < 7 * 86400000) { _logosPar = s; return s; }
+  } catch (_) {}
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(COINGECKO_MERCADOS, { signal: ctrl.signal }); clearTimeout(to);
+    const j = await r.json();
+    const bnb = (j || []).find((c) => c.id === 'binancecoin');
+    const usdt = (j || []).find((c) => c.id === 'tether');
+    if (bnb && usdt && bnb.image && usdt.image) {
+      _logosPar = { BNB: bnb.image, USDT: usdt.image, t: Date.now() };
+      try { localStorage.setItem('df-logospar', JSON.stringify(_logosPar)); } catch (_) {}
+      return _logosPar;
+    }
+  } catch (_) {}
+  return { BNB: '', USDT: '' };
 }
 export { ethers };

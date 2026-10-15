@@ -25,6 +25,9 @@ function num(n) {
 /* Logo real de BNB (marca oficial, oro) y de Tether (circulo verde con la T). */
 const BNB_SVG = '<svg viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
 const FLIP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M4 14l3 3 3-3M17 20V7M14 10l3-3 3 3"/></svg>';
+const CHEV = '<svg class="sw-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+/* Respaldo del logo de Tether si CoinGecko no responde: la T sobre el verde oficial. */
+const USDT_FB = '<span class="coin-sel-ico" style="background:#26a17b"><span class="ico-fb" style="color:#fff;font-size:15px">₮</span></span>';
 const SLIP = 50n, MIL = 10000n, GAS_BUF = 500000000000000n;
 
 /* Monta el swap dentro de `host` (un contenedor vacio). Devuelve { destruir }.
@@ -39,6 +42,7 @@ export function montarSwap(host, token, opts = {}) {
   let T = opts.datos || null, logo = opts.logo || '', moneda = 'BNB';
   let dir = 'buy', amount = '', outWei = 0n, minOut = 0n, maxWei = null;
   let balQuoteWei = 0n, balCoinWei = 0n, quoting = false, accion = 'connect', tmr = null, vivo = true;
+  let _logos = { BNB: '', USDT: '' }, menuAbierto = false;
 
   const $ = (id) => host.querySelector('#' + id);
   const cuenta = () => wallet.cuentaActual();
@@ -47,9 +51,49 @@ export function montarSwap(host, token, opts = {}) {
   const simOut = () => (dir === 'buy' ? T.simbolo : moneda);
   const esRechazo = (e) => /reject|denied|user|cancell/i.test(String((e && (e.message || e.reason)) || e));
 
-  function icoQuote() { if (moneda === 'USDT') return '<span class="coin-sel-ico" style="background:#26a17b"><span class="ico-fb" style="color:#fff;font-size:15px">₮</span></span>'; return '<span class="coin-sel-ico" style="background:#0d1117">' + BNB_SVG + '</span>'; }
+  /* Logo REAL de la moneda del par (BNB/USDT), de CoinGecko, igual que en todos los mercados.
+     Si la red no respondio, cae al SVG de BNB o al circulo de Tether. */
+  function icoQuote(cual) {
+    cual = cual || moneda;
+    const url = _logos[cual];
+    if (url) return `<span class="coin-sel-ico conlogo"><img src="${esc(url)}" alt=""></span>`;
+    if (cual === 'USDT') return USDT_FB;
+    return '<span class="coin-sel-ico" style="background:#0d1117">' + BNB_SVG + '</span>';
+  }
   function icoCoin() { return logo ? `<span class="coin-sel-ico conlogo"><img src="${esc(logo)}" alt=""><span class="ico-fb">${esc((T.simbolo || '?')[0].toUpperCase())}</span></span>` : `<span class="coin-sel-ico" style="color:var(--gold,#E8B84B)"><span class="ico-fb">${esc((T.simbolo || '?')[0].toUpperCase())}</span></span>`; }
-  function pill(which) { const coin = (which === 'in' ? dir === 'sell' : dir === 'buy'); return (coin ? icoCoin() : icoQuote()) + `<b>${esc(coin ? T.simbolo : moneda)}</b>`; }
+  /* El lado de la moneda del par es un selector con estilo (chevron). El lado del token es fijo. */
+  function pill(which) {
+    const coin = (which === 'in' ? dir === 'sell' : dir === 'buy');
+    if (coin) return icoCoin() + `<b>${esc(T.simbolo)}</b>`;
+    return icoQuote(moneda) + `<b>${esc(moneda)}</b>` + (T.pool ? CHEV : '');
+  }
+
+  /* Menu del selector de par. El contrato fija UNA moneda por pool (comprar=BNB, comprarConToken=USDT),
+     asi que se muestran BNB y USDT con su logo real: la del pool queda activa y la otra deshabilitada
+     con su motivo. No se simula una opcion que la cadena rechazaria. */
+  function filaOpt(cur) {
+    const on = cur === moneda;
+    return `<button type="button" class="sw-opt${on ? ' on' : ''}" data-cur="${esc(cur)}"${on ? '' : ' disabled'}>${icoQuote(cur)}<b>${esc(cur)}</b><span class="sw-opt-tag">${on ? 'Current pair' : 'No pool'}</span></button>`;
+  }
+  function onDocDown(e) { if (!e.target.closest('.sw-tok-sel') && !e.target.closest('.sw-menu')) cerrarMenu(); }
+  function onEsc(e) { if (e.key === 'Escape') cerrarMenu(); }
+  function cerrarMenu() {
+    const m = host.querySelector('.sw-menu'); if (m) m.remove();
+    menuAbierto = false;
+    document.removeEventListener('pointerdown', onDocDown, true);
+    document.removeEventListener('keydown', onEsc, true);
+  }
+  function abrirMenu(tokEl) {
+    cerrarMenu();
+    const m = document.createElement('div');
+    m.className = 'sw-menu';
+    m.innerHTML = filaOpt('BNB') + filaOpt('USDT') + `<div class="sw-menu-note">Pair set by the coin's pool</div>`;
+    tokEl.appendChild(m);
+    m.querySelectorAll('.sw-opt:not([disabled])').forEach((b) => { b.onclick = (ev) => { ev.stopPropagation(); cerrarMenu(); }; });
+    menuAbierto = true;
+    setTimeout(() => { if (!vivo) return; document.addEventListener('pointerdown', onDocDown, true); document.addEventListener('keydown', onEsc, true); }, 0);
+  }
+  function toggleMenu(tokEl) { if (menuAbierto) cerrarMenu(); else abrirMenu(tokEl); }
 
   function render() {
     const cta = cuenta();
@@ -76,6 +120,9 @@ export function montarSwap(host, token, opts = {}) {
     $('wg-max').onclick = onMax;
     $('wg-flip').onclick = onFlip;
     $('wg-go').onclick = onGo;
+    cerrarMenu();
+    const qtok = $(dir === 'buy' ? 'wg-tok-in' : 'wg-tok-out');
+    if (qtok && T.pool) { qtok.classList.add('sw-tok-sel'); qtok.onclick = (e) => { e.stopPropagation(); toggleMenu(qtok); }; }
     pintarBal(); renderInfo(); renderBtn(); setOut();
   }
 
@@ -169,6 +216,7 @@ export function montarSwap(host, token, opts = {}) {
     if (!T) { host.innerHTML = `<div class="wg-msg">This coin was not found on the launchpad.</div>`; return; }
     moneda = T.moneda || 'BNB';
     if (!logo) { try { const m = await leerMoneda(TOKEN); if (m && m.logo) logo = m.logo; } catch (_) {} }
+    try { _logos = await gb.logosPar(); } catch (_) {}
     if (!vivo) return;
     render();
     cargarBalances();
@@ -176,6 +224,6 @@ export function montarSwap(host, token, opts = {}) {
 
   return {
     refrescar() { if (vivo && T) { render(); cargarBalances(); } },
-    destruir() { vivo = false; try { host.innerHTML = ''; } catch (_) {} }
+    destruir() { vivo = false; cerrarMenu(); try { host.innerHTML = ''; } catch (_) {} }
   };
 }

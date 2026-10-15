@@ -151,7 +151,7 @@ const FLIP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke
 const q = new URLSearchParams(location.search);
 const TOKEN = (q.get('token') || '').trim();
 const SLIP = 50n, MIL = 10000n, GAS_BUF = 500000000000000n;
-let T = null, logo = '', moneda = 'BNB';
+let T = null, logo = '', moneda = 'BNB', _logos = { BNB: '', USDT: '' };
 let dir = 'buy';           // buy = pagas quote (BNB), recibes moneda; sell = al reves
 let amount = '', outWei = 0n, minOut = 0n, maxWei = null;
 let balQuoteWei = 0n, balCoinWei = 0n, quoting = false, accion = 'connect', tmr = null;
@@ -162,7 +162,13 @@ const simIn = () => (dir === 'buy' ? moneda : T.simbolo);
 const simOut = () => (dir === 'buy' ? T.simbolo : moneda);
 const decIn = 18, decOut = 18;
 
-function icoQuote() { if (moneda === 'USDT') return '<span class="coin-sel-ico" style="background:#0d1117"><span class="ico-fb" style="color:#26a17b;font-size:15px">₮</span></span>'; return '<span class="coin-sel-ico" style="background:#0d1117">' + BNB_SVG + '</span>'; }
+/* Logo REAL del par (CoinGecko), igual que en todos los mercados. Respaldo: SVG BNB / circulo Tether. */
+function icoQuote() {
+  const url = _logos[moneda];
+  if (url) return `<span class="coin-sel-ico conlogo"><img src="${esc(url)}" alt=""></span>`;
+  if (moneda === 'USDT') return '<span class="coin-sel-ico" style="background:#26a17b"><span class="ico-fb" style="color:#fff;font-size:15px">₮</span></span>';
+  return '<span class="coin-sel-ico" style="background:#0d1117">' + BNB_SVG + '</span>';
+}
 function icoCoin() { return logo ? `<span class="coin-sel-ico conlogo"><img src="${esc(logo)}" alt=""><span class="ico-fb">${esc((T.simbolo || '?')[0].toUpperCase())}</span></span>` : `<span class="coin-sel-ico" style="color:var(--gold)"><span class="ico-fb">${esc((T.simbolo || '?')[0].toUpperCase())}</span></span>`; }
 function pill(which) { const coin = (which === 'in' ? dir === 'sell' : dir === 'buy'); return (coin ? icoCoin() : icoQuote()) + `<b>${esc(coin ? T.simbolo : moneda)}</b>`; }
 
@@ -295,6 +301,7 @@ async function arrancar() {
   if (!T) { fatal('This coin was not found on the launchpad.'); return; }
   moneda = T.moneda || 'BNB';
   try { const m = await leerMoneda(TOKEN); if (m && m.logo) logo = m.logo; } catch (_) {}
+  try { _logos = await gb.logosPar(); } catch (_) {}
   render();
   try { await wallet.reconectarSiProcede(); } catch (_) {}
   render(); cargarBalances();

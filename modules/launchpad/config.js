@@ -28,6 +28,10 @@ export const SCAN = {
    No interviene en ninguna transaccion: las operaciones siguen en la moneda del par. */
 export const COINGECKO_BNB = 'https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd';
 
+/* Logos REALES de las monedas del par (BNB y USDT), igual que el resto de la plataforma
+   (assets/js/aportar.js y modules/swap/swap.js): coins/markets -> campo image por id de CoinGecko. */
+export const COINGECKO_MERCADOS = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=binancecoin,tether';
+
 /* Monedas con las que se puede poner liquidez. */
 export const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 export const USDT = '0x55d398326f99059fF775485246999027B3197955';
