@@ -1029,7 +1029,7 @@ function velasDemo(t, rango) {
   const bucket = rango === '1d' ? 86400 : rango === '4h' ? 14400 : 3600;
   const now = Math.floor(Date.now() / 1000);
   const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-  for (let i = 0; i < n; i++) { const o = p; const c = o * (1 + (rnd() - 0.47) * 0.08); const h = Math.max(o, c) * (1 + rnd() * 0.03); const l = Math.min(o, c) * (1 - rnd() * 0.03); out.push({ t: now - (n - i) * bucket, o, h, l, c }); p = c; }
+  for (let i = 0; i < n; i++) { const o = p; const c = o * (1 + (rnd() - 0.47) * 0.08); const h = Math.max(o, c) * (1 + rnd() * 0.03); const l = Math.min(o, c) * (1 - rnd() * 0.03); const v = (1 + rnd() * 6 + Math.abs(c - o) / o * 40); out.push({ t: now - (n - i) * bucket, o, h, l, c, v }); p = c; }
   return out;
 }
 /* Velas reales a partir de las operaciones (eventos Compra/Venta), agrupadas por tiempo.
@@ -1038,11 +1038,16 @@ function velasDeOps(ops, rango) {
   const l = (ops || []).filter((o) => o.precio > 0 && o.tiempo > 0).slice().sort((a, b) => a.tiempo - b.tiempo);
   if (!l.length) return [];
   const bucket = rango === '1d' ? 86400000 : rango === '4h' ? 14400000 : 3600000;
-  const velas = []; let cur = null;
+  // La apertura de cada vela es el cierre de la anterior: asi las velas tienen cuerpo y color
+  // (verde/roja) y el grafico se ve como un grafico de velas real, no una escalera de rayas planas.
+  const velas = []; let cur = null, prevClose = null;
   for (const o of l) {
     const k = Math.floor(o.tiempo / bucket);
-    if (!cur || cur.k !== k) { if (cur) velas.push(cur); cur = { k, t: Math.floor(k * bucket / 1000), o: o.precio, h: o.precio, l: o.precio, c: o.precio }; }
-    else { cur.h = Math.max(cur.h, o.precio); cur.l = Math.min(cur.l, o.precio); cur.c = o.precio; }
+    if (!cur || cur.k !== k) {
+      if (cur) { velas.push(cur); prevClose = cur.c; }
+      const ap = prevClose != null ? prevClose : o.precio;
+      cur = { k, t: Math.floor(k * bucket / 1000), o: ap, h: Math.max(ap, o.precio), l: Math.min(ap, o.precio), c: o.precio, v: o.valor || 0 };
+    } else { cur.h = Math.max(cur.h, o.precio); cur.l = Math.min(cur.l, o.precio); cur.c = o.precio; cur.v += o.valor || 0; }
   }
   if (cur) velas.push(cur);
   return velas.slice(-120);
@@ -1050,8 +1055,10 @@ function velasDeOps(ops, rango) {
 /* Grafica REAL de velas con lightweight-charts (la libreria de la propia TradingView, vendorizada
    en el modulo). Se alimenta del OHLC real de los eventos on-chain (velasDeOps). Mismos datos que
    antes, pero render profesional: ejes de tiempo y precio, crosshair, zoom. */
-let _chart = null, _serie = null, _chartCont = null, _lineaSuelo = null, _ro = null;
-function destruirGrafica() { if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; } if (_chart) { try { _chart.remove(); } catch (_) {} } _chart = null; _serie = null; _chartCont = null; _lineaSuelo = null; }
+// Ceros en subindice Unicode (₀₁₂…) para el eje de precio, igual que fmtP usa <sub> en el panel.
+function subCeros(n) { let r = ''; for (const ch of String(n)) r += String.fromCharCode(0x2080 + (ch.charCodeAt(0) - 48)); return r; }
+let _chart = null, _serie = null, _vol = null, _chartCont = null, _lineaSuelo = null, _ro = null;
+function destruirGrafica() { if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; } if (_chart) { try { _chart.remove(); } catch (_) {} } _chart = null; _serie = null; _vol = null; _chartCont = null; _lineaSuelo = null; }
 function pintarGrafica(t, rango) {
   const cont = $('lp-cv'); if (!cont) return;
   let velas = t.demo ? velasDemo(t, rango) : velasDeOps(t.txs, rango);
@@ -1064,7 +1071,16 @@ function pintarGrafica(t, rango) {
   }
   const lo = Math.min(...velas.map((v) => v.l));
   const minMove = lo >= 1 ? 0.0001 : Math.max(1e-12, Math.pow(10, Math.floor(Math.log10(lo)) - 2));
-  const fmtEje = (p) => { if (!(p > 0)) return '0'; if (p >= 1) return Number(p.toPrecision(6)).toLocaleString('en-US'); const e = Math.floor(Math.log10(p)); return p.toFixed(Math.min(12, Math.max(4, -e + 3))); };
+  // Eje de precio con la MISMA notacion compacta del resto del panel (fmtP): 0.0₈5250 en vez de
+  // 0.00000005250. Muestra el precio real, pero con subindice Unicode para los ceros, no una ristra.
+  const fmtEje = (p) => {
+    if (!(p > 0) || !isFinite(p)) return '0';
+    if (p >= 1) return Number(p.toPrecision(6)).toLocaleString('en-US');
+    if (p >= 0.001) return Number(p.toPrecision(4)).toString();
+    const e = Math.floor(Math.log10(p)); const ceros = -e - 1;
+    const dig = Math.round(p / Math.pow(10, e - 3)).toString().slice(0, 4);
+    return '0.0' + subCeros(ceros) + dig;
+  };
   if (!_chart || _chartCont !== cont) {
     destruirGrafica();
     try {
@@ -1076,12 +1092,15 @@ function pintarGrafica(t, rango) {
         width: d0.w, height: d0.h,
         layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8b96a3', fontFamily: "'IBM Plex Mono', ui-monospace, monospace", fontSize: 10, attributionLogo: false },
         grid: { vertLines: { color: 'rgba(255,255,255,.045)' }, horzLines: { color: 'rgba(255,255,255,.045)' } },
-        rightPriceScale: { borderColor: '#1c232b' },
+        rightPriceScale: { borderColor: '#1c232b', scaleMargins: { top: 0.1, bottom: 0.26 } },
         timeScale: { borderColor: '#1c232b', timeVisible: true, secondsVisible: false },
         crosshair: { mode: 0, vertLine: { color: '#3a434f', width: 1, labelBackgroundColor: '#c79426' }, horzLine: { color: '#3a434f', labelBackgroundColor: '#c79426' } },
         localization: { priceFormatter: fmtEje }
       });
       _serie = _chart.addSeries(LW.CandlestickSeries, { upColor: '#2ebd85', downColor: '#f6465d', borderUpColor: '#2ebd85', borderDownColor: '#f6465d', wickUpColor: '#2ebd85', wickDownColor: '#f6465d', priceFormat: { type: 'custom', formatter: fmtEje, minMove } });
+      // Barras de volumen abajo (como DexScreener), en su propia escala para no pisar las velas.
+      _vol = _chart.addSeries(LW.HistogramSeries, { priceScaleId: 'vol', priceFormat: { type: 'volume' }, color: 'rgba(46,189,133,.5)' });
+      try { _chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } }); } catch (_) {}
       _chartCont = cont;
       const ajustar = () => { if (_chart && _chartCont) { const d = medir(); try { _chart.resize(d.w, d.h); } catch (_) {} } };
       try { _ro = new ResizeObserver(ajustar); _ro.observe(cont); } catch (_) {}
@@ -1090,6 +1109,7 @@ function pintarGrafica(t, rango) {
   }
   try { _serie.applyOptions({ priceFormat: { type: 'custom', formatter: fmtEje, minMove } }); } catch (_) {}
   _serie.setData(velas.map((v) => ({ time: v.t, open: v.o, high: v.h, low: v.l, close: v.c })));
+  if (_vol) { try { _vol.setData(velas.map((v) => ({ time: v.t, value: v.v || 0, color: v.c >= v.o ? 'rgba(46,189,133,.5)' : 'rgba(246,70,93,.5)' }))); } catch (_) {} }
   // Linea del floor (reserva / supply), dato real, como referencia.
   if (_lineaSuelo) { try { _serie.removePriceLine(_lineaSuelo); } catch (_) {} _lineaSuelo = null; }
   if (t.suelo && t.reservaSuelo && t.supply > 0) {

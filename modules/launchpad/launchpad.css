@@ -234,7 +234,10 @@
 .lp-swbox .sw-menu-note{padding:7px 9px 4px;font-family:var(--mono);font-size:10px;line-height:1.4;color:var(--ink-3)}
 .lp-swbox .sw-card-bot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;min-height:17px}
 .lp-swbox .sw-usd{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
-.lp-swbox .sw-max{font-family:var(--mono);font-size:11px;font-weight:700;color:#3a2800;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border:1px solid #c79426;border-radius:8px;padding:3px 9px;cursor:pointer;letter-spacing:.5px}
+/* MAX pequeno y discreto. El prefijo #colmena-app es necesario para ganarle a `#colmena-app button{font:inherit}`,
+   que antes forzaba la fuente a 15px y lo hacia enorme. */
+#colmena-app .lp-swbox .sw-max{font-family:var(--mono);font-size:10px;font-weight:700;line-height:1.3;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.34);border-radius:6px;padding:2px 7px;cursor:pointer;letter-spacing:.5px}
+#colmena-app .lp-swbox .sw-max:hover{background:rgba(232,184,75,.18);border-color:var(--gold)}
 .lp-swbox .sw-flip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:11px;background:linear-gradient(180deg,#232a33,#141a20);border:2px solid #0d1117;color:var(--gold);cursor:pointer;display:grid;place-items:center;z-index:3;transition:transform .2s}
 .lp-swbox .sw-flip:active{transform:translate(-50%,-50%) rotate(180deg)}
 .lp-swbox .sw-info{margin:13px 2px 0;display:flex;flex-direction:column;gap:6px}
