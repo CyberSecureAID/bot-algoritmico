@@ -765,12 +765,17 @@ function preguntarLiquidez(tok) {
     try {
       await gb.abrirPool({ token: tok.address, cantTok: gb.parseEther(cTok), quoteId: monId, cantQuote: gb.parseEther(cQuote), candadoMeses: cand });
       modalCerrar();
-      const t = deChain(await gb.datosToken(tok.address).catch(() => null), metaLocal(tok.address)) || tok;
-      pintarPanel(t);
+      // Pool confirmada: cerrar esta ventana (antes se quedaba abierta encima del panel)
+      // y recargar el panel desde la cadena con logo y redes de Firestore.
+      wizCerrar();
+      await cargarToken(tok.address);
     } catch (e) {
       modalCerrar();
-      if (esRechazo(e)) wmsg('You cancelled a signature.');
-      else await modal('Could not launch the pool', errTxt(e));
+      if (esRechazo(e)) { wmsg('You cancelled a signature.'); return; }
+      await modal('Could not launch the pool', errTxt(e));
+      // Si la transaccion salio pero no se confirmo a tiempo, el panel la mostrara al leer la cadena.
+      wizCerrar();
+      await cargarToken(tok.address);
     }
   };
 }
@@ -806,9 +811,9 @@ function pintarPanel(t) {
           <div class="lp-stat"><i>Supply</i><b>${num(t.supply, 0)}</b></div>
           <div class="lp-stat"><i>Burned</i><b>${quemado ? num(quemado, 0) : '0'}</b></div>
           <div class="lp-stat"><i>Holders</i><b>${num(holders, 0)}</b></div>
-          <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcap, 4) + ' ' + mon : 'n/a'}</b></div>
+          <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? num(mcap, 4) + ' ' + mon : '0 ' + mon}</b></div>
           <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? num(pool.liquidez, 4) + ' ' + mon : 'No pool'}</b></div>
-          <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24, 4) + ' ' + mon : 'n/a'}</b></div>
+          <div class="lp-stat"><i>24h volume</i><b>${pool ? num(vol24, 4) + ' ' + mon : '0 ' + mon}</b></div>
           <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (suelo > 0 ? fmtP(suelo) + ' ' + mon : 'building') : 'off'}</b></div>
           <div class="lp-stat"><i>Contract</i><b id="lp-verif-tile">…</b></div>
         </div>

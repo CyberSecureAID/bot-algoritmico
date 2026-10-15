@@ -77,6 +77,17 @@ async function lee(addr, abi, fn, args = []) {
   throw err;
 }
 const leeLP = (fn, args) => lee(LAUNCHPAD, ABI, fn, args);
+/* Pool de una moneda. Un nodo publico atrasado responde activo=false sin error y lee()
+   no rota por eso: si el nodo actual dice que no hay pool, se consulta el resto y
+   gana el primero que la vea. Solo cuesta llamadas extra cuando no hay pool. */
+async function leePool(token) {
+  const pl = await leeLP('pools', [token]);
+  if (pl.activo) return pl;
+  const otros = RPCS.map((_, i) => i).filter((i) => i !== _rpcIdx % RPCS.length);
+  const vistas = await Promise.all(otros.map((i) => new ethers.Contract(LAUNCHPAD, ABI, provRPC(i)).pools(token).catch(() => null)));
+  for (const v of vistas) if (v && v.activo) return v;
+  return pl;
+}
 const leeTok = (addr, fn, args) => lee(addr, TOKEN_ABI, fn, args);
 
 async function cLP() { return new ethers.Contract(LAUNCHPAD, ABI, await firmante()); }
@@ -163,7 +174,7 @@ export async function abrirPool({ token, cantTok, quoteId, cantQuote, candadoMes
   const bot = await cLP();
   const value = esBNB(quote) ? cantQuote : 0n;
   const tx = await gasMargen(bot, 'crearPool', [token, cantTok, quote, cantQuote, candadoMeses], { value });
-  return esperarEstado(tx, async () => { const pl = await leeLP('pools', [token]); return pl.activo; });
+  return esperarEstado(tx, async () => (await leePool(token)).activo);
 }
 
 export async function comprar({ token, quoteId, cantQuote, minOut }) {
@@ -214,7 +225,7 @@ export async function saldoToken(token, cuenta) { try { return await lee(token, 
 
 /** Todo lo que el panel necesita de un token, leido de la cadena. */
 export async function datosToken(addr) {
-  const [i, pl] = await Promise.all([leeLP('info', [addr]), leeLP('pools', [addr])]);
+  const [i, pl] = await Promise.all([leeLP('info', [addr]), leePool(addr)]);
   const [nombre, simbolo, supply] = await Promise.all([
     leeTok(addr, 'name', []).catch(() => ''), leeTok(addr, 'symbol', []).catch(() => ''), leeTok(addr, 'totalSupply', []).catch(() => 0n)
   ]);
