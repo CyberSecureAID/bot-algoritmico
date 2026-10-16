@@ -61,12 +61,21 @@
 /* Barra de busqueda (construida, no imagen) + My coins. Cristal mas oscuro y borde dorado visible,
    coherente con los botones (ni grueso ni invisible). */
 .lpl-searchrow{display:flex;gap:12px;align-items:center;max-width:1000px;margin:0 auto}
-.lpl-search{flex:1 1 auto;display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:14px;background:rgba(7,10,14,.82);border:1px solid rgba(232,184,75,.5);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transition:border-color .15s,box-shadow .15s}
+.lpl-search{position:relative;flex:1 1 auto;display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:14px;background:rgba(7,10,14,.82);border:1px solid rgba(232,184,75,.5);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transition:border-color .15s,box-shadow .15s}
 .lpl-search:focus-within{border-color:var(--gold)}
 .lpl-q-ico{width:20px;height:20px;flex:0 0 auto;color:var(--gold-soft)}
 .lpl-search input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font-family:var(--display);font-size:15px}
 .lpl-search input::placeholder{color:var(--ink-3)}
 .lpl-mycoins{flex:0 0 auto}
+/* Desplegable de busqueda en vivo bajo la barra. */
+.lpl-q-res{position:absolute;top:calc(100% + 7px);left:0;right:0;z-index:60;display:none;max-height:360px;overflow-y:auto;padding:6px;border-radius:14px;background:#12161c;border:1px solid #29313b;box-shadow:0 22px 48px rgba(0,0,0,.6)}
+.lpl-q-res.open{display:block}
+.lpl-q-row{width:100%;display:flex;align-items:center;gap:11px;padding:9px 10px;border:0;border-radius:10px;background:none;cursor:pointer;text-align:left}
+.lpl-q-row:hover{background:rgba(255,255,255,.05)}
+.lpl-q-tx{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.lpl-q-tx b{font-family:var(--display);font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lpl-q-tx i{font-family:var(--mono);font-size:11px;color:var(--ink-3);font-style:normal}
+.lpl-q-empty{padding:16px 10px;text-align:center;color:var(--ink-3);font-size:12.5px}
 /* Contenedor de cada seccion (Featured, Latest, Popular): cristal oscuro, para que el titulo no
    quede "en el aire" y todo quede encapsulado como en el diseño. */
 .lpl-box,.lpl-panel-sec{background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:18px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}

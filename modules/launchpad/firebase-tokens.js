@@ -52,3 +52,26 @@ export async function leerMonedas(tokens) {
   }));
   return out;
 }
+
+/* Logos de los tokens LISTADOS en "List Your Token": esos se guardan en la coleccion "logos"
+   (no "monedas"), por eso leerMoneda no los encuentra. Misma cuenta y key, otra coleccion.
+   Devuelve { direccionMinuscula: dataUrl } de las que tienen logo. No lanza nunca. */
+const BASE_LOGOS = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/logos`;
+export async function leerLogoListado(token) {
+  if (!token) return '';
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(`${BASE_LOGOS}/${String(token).toLowerCase()}?key=${API_KEY}`, { signal: ctrl.signal }); clearTimeout(to);
+    if (!r.ok) return '';
+    const f = (await r.json()).fields || {};
+    return (f.logo && f.logo.stringValue) || '';
+  } catch (_) { return ''; }
+}
+export async function leerLogosListados(tokens) {
+  const out = {};
+  await Promise.all((tokens || []).map(async (t) => {
+    const l = await leerLogoListado(t);
+    if (l) out[String(t).toLowerCase()] = l;
+  }));
+  return out;
+}

@@ -275,31 +275,27 @@ export async function operaciones(token, max = 80) {
   const CHUNK = 9000;                         // rango que aceptan los RPC publicos de BSC
   const vistos = new Set(); const compras = [], ventas = [];
   let apEv = null;                             // evento PoolAbierto (precio de lanzamiento), en el MISMO escaneo
-  // Escaneo por OLAS en paralelo (igual que todosLosTokens): OLA rangos a la vez, cada uno con su RPC.
-  // Antes era rango por rango en serie; para una pool de varios dias eso eran decenas de vueltas y el
-  // panel (y Popular, que llama aqui por moneda) tardaba. El span ya esta acotado por la edad de la pool.
-  let hi = latest, recorrido = 0;
-  const OLA = 6;
+  // Escaneo rango por rango EN SERIE (2-3 getLogs a la vez como mucho). Es lo que siempre funciono: los
+  // RPC publicos de BSC limitan muchas peticiones simultaneas y devuelven vacio, y ahi se perdian las
+  // velas y el 24h. El span ya esta acotado por la edad de la pool, asi que una pool normal es rapida.
+  let hi = latest, recorrido = 0, rpc = _rpcIdx % RPCS.length;
   while (recorrido < span && hi > 0 && (compras.length + ventas.length) < max) {
-    const rangos = [];
-    for (let k = 0; k < OLA && hi > 0 && recorrido < span; k++) { const lo = Math.max(0, hi - CHUNK + 1); rangos.push([lo, hi]); hi = lo - 1; recorrido += CHUNK; }
-    const res = await Promise.all(rangos.map(async ([lo, hi2], idx) => {
-      for (let intento = 0; intento < RPCS.length; intento++) {
-        const rp = (_rpcIdx + idx + intento) % RPCS.length;
-        try {
-          const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rp));
-          return await Promise.all([cc.queryFilter(cc.filters.Compra(token), lo, hi2), cc.queryFilter(cc.filters.Venta(token), lo, hi2), cc.queryFilter(cc.filters.PoolAbierto(token), lo, hi2)]);
-        } catch (_) {}
-      }
-      return [[], [], []];
-    }));
-    for (const r of res) {
-      for (const e of r[0]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); compras.push(e); } }
-      for (const e of r[1]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); ventas.push(e); } }
-      if (!apEv && r[2] && r[2].length) apEv = r[2][0];
+    const lo = Math.max(0, hi - CHUNK + 1); let ok = false;
+    for (let intento = 0; intento < RPCS.length && !ok; intento++) {
+      try {
+        const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc));
+        const consultas = [cc.queryFilter(cc.filters.Compra(token), lo, hi), cc.queryFilter(cc.filters.Venta(token), lo, hi)];
+        if (!apEv) consultas.push(cc.queryFilter(cc.filters.PoolAbierto(token), lo, hi));
+        const res = await Promise.all(consultas);
+        for (const e of res[0]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); compras.push(e); } }
+        for (const e of res[1]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); ventas.push(e); } }
+        if (res[2] && res[2].length) apEv = res[2][0];
+        ok = true;
+      } catch (_) { rpc = (rpc + 1) % RPCS.length; }
     }
+    hi = lo - 1; recorrido += CHUNK;
   }
-  const rpc = _rpcIdx % RPCS.length;   // RPC para los getBlock de fechas/apertura de abajo
+  _rpcIdx = rpc;
   const fechas = {};
   const bloques = [...new Set([...compras, ...ventas].map((e) => e.blockNumber))];
   await Promise.all(bloques.slice(0, 60).map(async (b) => { try { fechas[b] = Number((await provRPC(rpc).getBlock(b)).timestamp) * 1000; } catch (_) {} }));
@@ -326,7 +322,7 @@ function _corto(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
 export async function todosLosTokens(max = 40) {
   let latest = 0; try { latest = await lector().getBlockNumber(); } catch (_) { return []; }
   if (!latest) return [];
-  const CHUNK = 9000, TOPE = 260000, OLA = 6;   // OLA = rangos pedidos A LA VEZ (en paralelo)
+  const CHUNK = 9000, TOPE = 260000, OLA = 3;   // OLA = rangos pedidos A LA VEZ (en paralelo), suave con los RPC
   // Antes se escaneaba rango por rango en serie (~29 vueltas), asi que aunque no hubiera monedas
   // el lobby tardaba ~15 s. Ahora se piden OLA rangos en paralelo por ola, cada uno con su RPC: el
   // mismo barrido completo se hace en ~5 vueltas. Se corta en cuanto se juntan `max` monedas.

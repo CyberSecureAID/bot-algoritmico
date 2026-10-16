@@ -8,7 +8,7 @@ import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
 import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
-import { guardarMoneda, leerMoneda, leerMonedas } from './firebase-tokens.js';
+import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados } from './firebase-tokens.js';
 import { filaRedes, redesControl, abrirEditorMoneda } from './perfil-moneda.js';
 import { montarSwap } from './swap-inline.js';
 /* lightweight-charts: libreria de velas de la propia TradingView (Apache-2.0), vendorizada en el
@@ -282,7 +282,7 @@ function lplCardFeatured(f) {
     <span class="lpl-fcard-ext">${LPL_EXT}</span>
     <div class="lpl-fcard-top"><span class="lpl-logo lpl-logo-lg"><img src="./img/${f.logo}.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${esc(f.simbolo[0])}</span></span>
       <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span></div></div>
-    <div class="lpl-fcard-foot"><span class="lpl-fcard-chain">${LPL_BSC} BSC</span><span class="lpl-badge-prem">${LPL_STAR} Premium</span></div></div>`;
+    <div class="lpl-fcard-foot"><span class="lpl-fcard-chain">${LPL_BSC} BSC</span><span class="lpl-badge-prem">${LPL_STAR} Featured</span></div></div>`;
 }
 const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
 /* Celda del token (logo + nombre). El flex va en un <span> interior, NUNCA en el <td>: un <td> con
@@ -306,13 +306,13 @@ function pintarPortada() {
           <button class="lpl-imgbtn lpl-cta-b" id="lpl-learn" type="button" aria-label="Learn more">${lplImgBtn('btn-learn-more', 'Learn more')}</button>
         </div>
         <div class="lpl-searchrow">
-          <label class="lpl-search">${LPL_LUPA}<input id="lpl-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search by token name, symbol or contract address..."></label>
+          <label class="lpl-search">${LPL_LUPA}<input id="lpl-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search by token name, symbol or contract address..."><div class="lpl-q-res" id="lpl-q-res"></div></label>
           <button class="lpl-imgbtn lpl-mycoins" id="lpl-mycoins" type="button" aria-label="My coins">${lplImgBtn('btn-my-coins', 'My coins')}</button>
         </div>
       </section>
 
       <section class="lpl-box lpl-feat">
-        ${lplSecHead(LPL_STAR, 'Featured Tokens', 'Premium listings for maximum visibility', 'featured')}
+        ${lplSecHead(LPL_STAR, 'Featured Tokens', 'Projects in the spotlight', 'featured')}
         <div class="lpl-feat-wrap">
           <div class="lpl-feat-track" id="lpl-feat-track" style="--n:${LPL_FEATURED.length}">${LPL_FEATURED.map(lplCardFeatured).join('')}</div>
         </div>
@@ -332,7 +332,15 @@ function pintarPortada() {
   $('lpl-create').onclick = () => abrirAsistente();
   $('lpl-learn').onclick = () => abrirInfo();
   $('lpl-mycoins').onclick = () => pintarMios();
-  const q = $('lpl-q'); if (q) q.addEventListener('keydown', (e) => { if (e.key === 'Enter') lplBuscar(q.value.trim()); });
+  // Buscador EN VIVO: mientras se escribe sale un desplegable con las coincidencias (nombre, simbolo o
+  // contrato), incluidos los listados. Enter abre la ventana completa. Antes solo reaccionaba a Enter.
+  const q = $('lpl-q');
+  if (q) {
+    let tmr = null;
+    q.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => lplQDrop(q.value), 180); });
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const r = $('lpl-q-res'); if (r) { r.classList.remove('open'); r.innerHTML = ''; } lplBuscar(q.value.trim()); } });
+    document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.lpl-search')) { const r = $('lpl-q-res'); if (r) { r.classList.remove('open'); r.innerHTML = ''; } } });
+  }
   lplCarrusel();
   host.querySelectorAll('.lpl-viewall').forEach((b) => { b.onclick = () => lplViewAll(b.dataset.v); });
   // Tocar una moneda REAL de Featured (con data-a) muestra primero el disclaimer de token premium
@@ -370,9 +378,16 @@ function lplCargarListas() {
         lista.unshift({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: m.bloque || 0 });
       }
     } catch (_) {}
+    // Lo que el usuario elimino de su panel (My Coins) NO debe reaparecer en el lobby: se filtra TODA
+    // la lista, no solo misTokens, porque el escaneo global en cadena las traeria de vuelta al refrescar.
+    const oc = ocultos();
+    if (oc.length) lista = lista.filter((t) => !oc.includes(String(t.address).toLowerCase()));
     // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
     const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
-    listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()));
+    listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()) && !oc.includes(String(L.address).toLowerCase()));
+    // Logo REAL de los listados: vive en la coleccion "logos" (lo guarda List Your Token), no en
+    // "monedas". Por eso aparecian sin logo. Se lee aqui y se asigna; si no hay, cae a la inicial.
+    if (listados.length) { try { const lg = await leerLogosListados(listados.map((L) => L.address)); listados.forEach((L) => { L.logo = lg[String(L.address).toLowerCase()] || ''; }); } catch (_) {} }
     const bnbUsd = await gb.precioBNBUSDT().catch(() => 0);
     // Hora de las monedas del launchpad: se lee la de las 8 mas nuevas y, con esa ancla, se estima la
     // del resto por numero de bloque (3 s/bloque) sin una llamada por cada una. Los listados ya traen
@@ -424,6 +439,30 @@ function lplPintarPopular(lista) {
   lplFilas(host);
 }
 
+/* Desplegable de busqueda EN VIVO bajo la barra: coincidencias por nombre, simbolo o contrato, de las
+   monedas del lobby y de los listados. Un listado abre su aviso; una moneda normal, su panel. */
+function lplQDrop(valor) {
+  const res = $('lpl-q-res'); if (!res) return;
+  const q = (valor || '').trim().toLowerCase();
+  if (!q) { res.innerHTML = ''; res.classList.remove('open'); return; }
+  const lob = _lobby || { todos: [], listados: [] };
+  const all = (lob.todos || []).concat(lob.listados || []);
+  const match = all.filter((t) => (t.nombre || '').toLowerCase().includes(q) || (t.simbolo || '').toLowerCase().includes(q) || (t.address || '').toLowerCase().includes(q)).slice(0, 7);
+  let html;
+  if (match.length) {
+    html = match.map((t) => `<button type="button" class="lpl-q-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}>${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-q-tx"><b>${esc(t.nombre || 'Coin')}</b><i>${esc(t.simbolo || '')}</i></span>${t.listado ? '<span class="lpl-listed">Listed</span>' : ''}</button>`).join('');
+  } else if (/^0x[0-9a-f]{40}$/.test(q)) {
+    html = `<button type="button" class="lpl-q-row" data-a="${esc(q)}"><span class="lpl-q-tx"><b>Open this contract</b><i>${corto(q)}</i></span></button>`;
+  } else {
+    html = `<div class="lpl-q-empty">No matches yet. Press Enter to search.</div>`;
+  }
+  res.innerHTML = html; res.classList.add('open');
+  res.querySelectorAll('.lpl-q-row').forEach((b) => b.onclick = () => {
+    const a = b.dataset.a; res.classList.remove('open'); res.innerHTML = ''; const inp = $('lpl-q'); if (inp) inp.value = '';
+    if (b.dataset.listado) abrirListado(a); else cargarToken(a);
+  });
+}
+
 function lplBuscar(q) {
   if (!q) return;
   if (/^0x[0-9a-fA-F]{40}$/.test(q)) { cargarToken(q); return; }
@@ -436,8 +475,9 @@ function lplBuscar(q) {
 function avisoPopup(titulo, cuerpoHTML, accion) {
   const prev = document.getElementById('lp-aviso'); if (prev) prev.remove();
   const ov = document.createElement('div'); ov.id = 'lp-aviso'; ov.className = 'lp-aviso';
+  // El enlace navega en la MISMA pestaña (sin target=_blank): no sacar al usuario a una ventana nueva.
   const btn = !accion ? '' : (accion.href
-    ? `<a class="lp-aviso-go" id="lp-aviso-go" href="${accion.href}" target="_blank" rel="noopener">${esc(accion.txt)}</a>`
+    ? `<a class="lp-aviso-go" id="lp-aviso-go" href="${accion.href}">${esc(accion.txt)}</a>`
     : `<button class="lp-aviso-go" id="lp-aviso-go" type="button">${esc(accion.txt)}</button>`);
   ov.innerHTML = `<div class="lp-aviso-card" role="dialog" aria-modal="true">
     <button class="lp-aviso-x" type="button" aria-label="Close">✕</button>
@@ -455,8 +495,8 @@ function avisoPopup(titulo, cuerpoHTML, accion) {
    grafica ni precio de mercado): es un aviso que explica QUE es, su garantia (candado de 30 dias) si
    sigue activa, y lleva a comprarlo al swap. Cada mencion de List Your Token va en azul y clickeable.
    No se muestra el contrato (puede no ser nuestro) ni hay boton de copiar; se cierra con la X. */
-const SWAP_LISTAR = '../swap/swap.html?abrir=listar';   // seccion List Your Token
-const lytLink = (txt) => `<a href="${SWAP_LISTAR}" target="_blank" rel="noopener" class="lp-lyt">${txt || 'List Your Token'}</a>`;
+const SWAP_LISTAR = '../swap/swap.html?abrir=listar';   // seccion List Your Token (misma pestaña)
+const lytLink = (txt) => `<a href="${SWAP_LISTAR}" class="lp-lyt">${txt || 'List Your Token'}</a>`;
 function abrirListado(addr) {
   const L = ((_lobby && _lobby.listados) || []).find((x) => String(x.address).toLowerCase() === String(addr).toLowerCase());
   const nombre = L ? (L.nombre || 'Listed token') : 'Listed token';
@@ -473,7 +513,7 @@ function abrirListado(addr) {
     <p class="lp-aviso-sub">This exists for early projects that need capital and cannot lock two or three million dollars of liquidity to launch. Instead, a team can rally the people who support it: if the community backs the project, they create the token here and sell it directly through ${lytLink()}, with no liquidity required.</p>
     ${precio}${stock}${garantia}
     <p class="lp-aviso-sub">This is not fraud and it is not an endorsement. The platform does not verify or back these listings: there is no liquidity pool, the price is set by the creator, and the value depends entirely on the project and the people behind it. If you buy, you do so at your own responsibility. A money back protection (you can return your tokens for BNB from the same wallet) and the lock of 30 days above apply in the marketplace.</p>`;
-  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?token=' + encodeURIComponent(addr) });
+  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?listado=' + encodeURIComponent(addr) });
 }
 
 /* Disclaimer de token PREMIUM (Featured): quien paga compra solo VISIBILIDAD arriba. Nos desvincula
@@ -481,8 +521,8 @@ function abrirListado(addr) {
    Tras aceptar, continua al panel de la moneda (donde esta el swap para comprarla). Se cierra con la X. */
 function avisoPremium(addr) {
   const cuerpo = `
-    <p>This token is featured here because its project paid to position it at the top. It is not from our platform and we do not back it.</p>
-    <p class="lp-aviso-sub">We only provide the tools to give these tokens visibility. They are not part of our ecosystem. Our platform does not have a cryptocurrency of its own, and we have nothing to do with this token.</p>
+    <p>This token is featured here, but it is not from our platform and we do not back it.</p>
+    <p class="lp-aviso-sub">We only provide the tools to give tokens visibility. They are not part of our ecosystem. Our platform does not have a cryptocurrency of its own, and we have nothing to do with this token.</p>
     <p class="lp-aviso-sub">Anyone who continues to buy must be aware of the risk they take. If you are not completely clear and sure about a token, do not buy it. You do so at your own responsibility.</p>`;
   avisoPopup('About featured tokens', cuerpo, { txt: 'Continue', onclick: () => cargarToken(addr) });
 }
@@ -513,7 +553,7 @@ function lplViewAll(key, filtro) {
     let l = base;
     if (q) { const f = q.toLowerCase(); l = l.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f) || (t.address || '').toLowerCase().includes(f)); }
     l = ordenar(l);
-    if (!l.length) return `<tr class="lpl-empty"><td colspan="${cols.length}">${key === 'featured' ? 'No premium listings yet. Pay to feature your coin here.' : 'No tokens here.'}</td></tr>`;
+    if (!l.length) return `<tr class="lpl-empty"><td colspan="${cols.length}">${key === 'featured' ? 'No featured projects yet.' : 'No tokens here.'}</td></tr>`;
     return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`)}<td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   };
   const d = document.createElement('div'); d.id = 'lpl-overlay'; d.className = 'lpl-ov';
