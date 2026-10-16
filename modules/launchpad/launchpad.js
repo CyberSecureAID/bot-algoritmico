@@ -284,7 +284,10 @@ function lplCardFeatured(f) {
       <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span></div></div>
     <div class="lpl-fcard-foot"><span class="lpl-fcard-chain">${LPL_BSC} BSC</span><span class="lpl-badge-prem">${LPL_STAR} Featured</span></div></div>`;
 }
-const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
+const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Contract': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
+/* Celda de contrato: la direccion del token, pulsable para copiarla al portapapeles. La gente quiere
+   el contrato de la moneda, no el creador. El click copia y NO abre el panel (stopPropagation en lplFilas). */
+function lplCelContrato(t) { return `<td class="lpl-cre"><button type="button" class="lpl-copyc" data-copy="${esc(t.address)}" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button></td>`; }
 /* Celda del token (logo + nombre). El flex va en un <span> interior, NUNCA en el <td>: un <td> con
    display:flex sale del modelo de columnas de la tabla y descuadra el resto hacia la derecha. */
 function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-listed" title="Listed for direct sale, without a liquidity pool">Listed</span>' : ''}</span></td>`; }
@@ -321,7 +324,7 @@ function pintarPortada() {
       <div class="lpl-cols">
         <section class="lpl-panel-sec">
           ${lplSecHead(LPL_CLOCK, 'Latest Created Tokens', 'Recently launched by our community', 'latest')}
-          <div id="lpl-latest">${lplTablaMsg(['#', 'Token', 'Symbol', 'Creator', 'Time', 'Chain'], 'Loading…')}</div>
+          <div id="lpl-latest">${lplTablaMsg(['#', 'Token', 'Symbol', 'Contract', 'Time', 'Chain'], 'Loading…')}</div>
         </section>
         <section class="lpl-panel-sec">
           ${lplSecHead(LPL_FLAME, 'Popular Tokens', 'Most viewed and traded', 'popular')}
@@ -427,8 +430,10 @@ function lplCargarListas() {
     }));
     const activos = conPool.filter((t) => t.activo).sort((a, b) => b.liqUsd - a.liqUsd).slice(0, 8);
     await Promise.all(activos.map(async (t) => {
-      try { const ops = await gb.operaciones(t.address, 300); t.volumen = ops.reduce((a, o) => a + (o.valor || 0), 0); t.holders = new Set(ops.map((o) => o.wallet).filter(Boolean)).size; }
-      catch (_) { t.volumen = 0; t.holders = 0; }
+      // Holders: wallets distintas que operaron, con MINIMO 1 (el creador siempre tiene el supply, aunque
+      // nadie haya comprado todavia). Antes salia 0 en una moneda recien creada, que es falso.
+      try { const ops = await gb.operaciones(t.address, 300); t.volumen = ops.reduce((a, o) => a + (o.valor || 0), 0); t.holders = Math.max(1, new Set(ops.map((o) => o.wallet).filter(Boolean)).size); }
+      catch (_) { t.volumen = 0; t.holders = 1; }
       t.volUsd = t.volumen * (t.moneda === 'USDT' ? 1 : (bnbUsd > 0 ? bnbUsd : 0));
     }));
     await lplLogos(activos);
@@ -441,11 +446,13 @@ function lplCargarListas() {
 function lplFilas(host, lista, tipo) {
   // Un token listado (sin liquidez) no abre el panel de pool: abre su ficha con aviso de compra.
   host.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => { if (r.dataset.listado) abrirListado(r.dataset.a); else cargarToken(r.dataset.a); }; });
+  // El contrato se copia al tocarlo y NO abre el panel (stopPropagation).
+  host.querySelectorAll('.lpl-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
 }
 function lplPintarLatest(lista) {
-  const cols = ['#', 'Token', 'Symbol', 'Creator', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
+  const cols = ['#', 'Token', 'Symbol', 'Contract', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
   if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No coins created yet.'); return; }
-  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-cre">${esc(lplShort(t.creador))}</td><td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${lplCelContrato(t)}<td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
   lplFilas(host);
 }
@@ -531,7 +538,7 @@ function abrirListado(addr) {
     <p class="lp-aviso-sub">This exists for early projects that need capital and cannot lock two or three million dollars of liquidity to launch. Instead, a team can rally the people who support it: if the community backs the project, they create the token here and sell it directly through ${lytLink()}, with no liquidity required.</p>
     ${precio}${stock}${garantia}
     <p class="lp-aviso-sub">This is not fraud and it is not an endorsement. The platform does not verify or back these listings: there is no liquidity pool, the price is set by the creator, and the value depends entirely on the project and the people behind it. If you buy, you do so at your own responsibility. A money back protection (you can return your tokens for BNB from the same wallet) and the lock of 30 days above apply in the marketplace.</p>`;
-  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?listado=' + encodeURIComponent(addr) });
+  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?token=' + encodeURIComponent(addr) });
 }
 
 /* Disclaimer de token PREMIUM (Featured): quien paga compra solo VISIBILIDAD arriba. Nos desvincula
@@ -554,7 +561,7 @@ function lplViewAll(key, filtro) {
   const base = key === 'featured' ? [] : (pop ? (lob.activos || []).slice() : (lob.todos || []).concat(lob.listados || []));
   const cols = key === 'featured' ? ['#', 'Token', 'Symbol', 'Chain']
     : pop ? ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']
-      : ['#', 'Token', 'Symbol', 'Creator', 'Chain'];
+      : ['#', 'Token', 'Symbol', 'Contract', 'Chain'];
   // Orden REAL segun la seccion (funcional, no decorativo).
   const ordenes = pop
     ? [['vol', 'Most traded'], ['liqDesc', 'Highest liquidity'], ['liqAsc', 'Lowest liquidity'], ['mcap', 'Highest market cap']]
@@ -572,7 +579,7 @@ function lplViewAll(key, filtro) {
     if (q) { const f = q.toLowerCase(); l = l.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f) || (t.address || '').toLowerCase().includes(f)); }
     l = ordenar(l);
     if (!l.length) return `<tr class="lpl-empty"><td colspan="${cols.length}">${key === 'featured' ? 'No featured projects yet.' : 'No tokens here.'}</td></tr>`;
-    return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`)}<td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
+    return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : lplCelContrato(t))}<td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   };
   const d = document.createElement('div'); d.id = 'lpl-overlay'; d.className = 'lpl-ov';
   const menu = ordenes.map(([v, t]) => `<button type="button" class="lpl-fopt${v === orden ? ' on' : ''}" data-o="${v}">${esc(t)}</button>`).join('');
