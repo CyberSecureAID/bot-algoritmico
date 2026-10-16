@@ -208,25 +208,170 @@ const ICO = {
   goteo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>',
   escudo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>'
 };
+/* ───────── Lobby del launchpad (espejo del diseño aprobado) ─────────
+   Reutiliza el fondo (.sw-fondo) y la cinta superior que ya existen. Los botones Create, Learn more,
+   My coins y View All son imagenes webp que el creador subio a ./img/; si alguna falta, cae a un
+   boton de texto con el mismo estilo. Featured son 5 ejemplos fijos mientras nadie paga por figurar. */
+const LPL_LUPA = '<svg class="lpl-q-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+const LPL_STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9.6l6.9-.7z"/></svg>';
+const LPL_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>';
+const LPL_FLAME = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s5.5 4 5.5 9a5.5 5.5 0 0 1-11 0c0-1.4.5-2.6 1.2-3.3.1 1.2 1 2 1.9 2 .7 0 1.2-.5 1.2-1.2C6.9 6.8 9 5 12 2z"/></svg>';
+const LPL_EXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10v10M19 5L8 16"/></svg>';
+const LPL_CHL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+const LPL_CHR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+const LPL_BSC = '<svg class="lpl-bsc" viewBox="0 0 24 24" fill="#F3BA2F"><path d="M12 3l2.3 2.3L9.1 10.5 6.8 8.2zM16.6 7.6l2.3 2.3-7.8 7.8-2.3-2.3zM4.1 11l2.3 2.3L4.1 15.6 1.8 13.3zM12 14.5l2.3 2.3L12 19.1l-2.3-2.3z"/></svg>';
+const LPL_FEATURED = [
+  { logo: 'featured-1', nombre: 'AurexAI', simbolo: 'AURX' },
+  { logo: 'featured-2', nombre: 'MoonRider', simbolo: 'MOON' },
+  { logo: 'featured-3', nombre: 'DragonSwap', simbolo: 'DRGN' },
+  { logo: 'featured-4', nombre: 'QuantumX', simbolo: 'QTX' },
+  { logo: 'featured-5', nombre: 'NovaChain', simbolo: 'NOVA' }
+];
+let _lobby = null;
+const lplShort = (a) => a ? String(a).slice(0, 6) + '…' + String(a).slice(-4) : '';
+
+function lplImgBtn(name, label) {
+  return `<img class="lpl-btn-img" src="./img/${name}.webp" alt="${esc(label)}" onerror="this.closest('.lpl-imgbtn').classList.add('fb');this.remove()"><span class="lpl-btn-tx">${esc(label)}</span>`;
+}
+function lplSecHead(ico, title, sub, key) {
+  return `<div class="lpl-sec-head"><div class="lpl-sec-tt"><span class="lpl-sec-ico">${ico}</span><div class="lpl-sec-txt"><b>${esc(title)}</b><span>${esc(sub)}</span></div></div><button class="lpl-imgbtn lpl-viewall" data-v="${key}" type="button" aria-label="View all">${lplImgBtn('btn-view-all', 'View All')}</button></div>`;
+}
+function lplLogo(src, sim) {
+  const l = esc((String(sim || '?'))[0].toUpperCase());
+  return src
+    ? `<span class="lpl-logo"><img src="${esc(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${l}</span></span>`
+    : `<span class="lpl-logo"><span class="lpl-logo-fb">${l}</span></span>`;
+}
+function lplCardFeatured(f) {
+  return `<div class="lpl-fcard" data-ejemplo="1">
+    <span class="lpl-fcard-ext">${LPL_EXT}</span>
+    <div class="lpl-fcard-top"><span class="lpl-logo lpl-logo-lg"><img src="./img/${f.logo}.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${esc(f.simbolo[0])}</span></span>
+      <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span><span class="lpl-badge-prem">${LPL_STAR} Premium</span></div></div>
+    <div class="lpl-fcard-chain">${LPL_BSC} BSC</div></div>`;
+}
+function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>`; }
+function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
+function lplHaceCuanto(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; const m = Math.floor(s / 60); if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; }
+function lplMoney(v) { if (!(v > 0)) return '—'; if (v >= 1e9) return '$' + (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+
 function pintarPortada() {
   _panelAddr = null;   // cancela cualquier repintado de historial en vuelo
   destruirGrafica();
   const host = $(APP); if (!host) return;
-  const mios = misTokens();
   host.innerHTML = `
-    <section class="lp-hero">
-      <img class="lp-hero-ico" src="./img/launchpad-icono.webp" alt="" width="220" height="220" onerror="this.style.display='none'">
-      <h1 class="lp-h1">Create your own coin</h1>
-      <p class="lp-sub">Most launchpads hand you a token. This one hands you a position you can defend. Every coin deployed here carries, in its own immutable contract, the three guarantees a serious buyer checks first: a floor price backed by a BNB reserve that only grows and that any holder can redeem against; liquidity locked by the factory for the term you choose, so there is no LP to pull; and a founder allocation that vests linearly, on chain, with no override. Fixed supply, no mint, no admin keys, no proxy, verified source from block one. Deploying costs you nothing. The ecosystem takes 0.5% of each sale, in BNB, and nothing else: buying, holding and transferring are free.</p>
-      <div class="lp-cta">
-        <button class="lp-b" id="lp-crear">Create</button>
-        <button class="lp-b" id="lp-ver-mios">My coins</button>
-        <button class="lp-b" id="lp-info">Learn more</button>
+    <div class="lpl">
+      <section class="lpl-hero">
+        <img class="lpl-emblem" src="./img/launchpad-icono.webp" alt="" width="200" height="200" onerror="this.style.display='none'">
+        <div class="lpl-cta">
+          <button class="lpl-imgbtn lpl-cta-b" id="lpl-create" type="button" aria-label="Create">${lplImgBtn('btn-create', 'Create')}</button>
+          <button class="lpl-imgbtn lpl-cta-b" id="lpl-learn" type="button" aria-label="Learn more">${lplImgBtn('btn-learn-more', 'Learn more')}</button>
+        </div>
+        <div class="lpl-searchrow">
+          <label class="lpl-search">${LPL_LUPA}<input id="lpl-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search by token name, symbol or contract address..."></label>
+          <button class="lpl-imgbtn lpl-mycoins" id="lpl-mycoins" type="button" aria-label="My coins">${lplImgBtn('btn-my-coins', 'My coins')}</button>
+        </div>
+      </section>
+
+      <section class="lpl-feat">
+        ${lplSecHead(LPL_STAR, 'Featured Tokens', 'Premium listings for maximum visibility', 'featured')}
+        <div class="lpl-feat-wrap">
+          <button class="lpl-arrow" id="lpl-feat-prev" type="button" aria-label="Previous">${LPL_CHL}</button>
+          <div class="lpl-feat-track" id="lpl-feat-track">${LPL_FEATURED.map(lplCardFeatured).join('')}</div>
+          <button class="lpl-arrow" id="lpl-feat-next" type="button" aria-label="Next">${LPL_CHR}</button>
+        </div>
+      </section>
+
+      <div class="lpl-cols">
+        <section class="lpl-panel-sec">
+          ${lplSecHead(LPL_CLOCK, 'Latest Created Tokens', 'Recently launched by our community', 'latest')}
+          <div id="lpl-latest">${lplTablaMsg(['#', 'Token', 'Symbol', 'Creator', 'Time', 'Chain'], 'Loading…')}</div>
+        </section>
+        <section class="lpl-panel-sec">
+          ${lplSecHead(LPL_FLAME, 'Popular Tokens', 'Most viewed and traded', 'popular')}
+          <div id="lpl-popular">${lplTablaMsg(['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain'], 'Loading…')}</div>
+        </section>
       </div>
-    </section>`;
-  $('lp-crear').onclick = () => abrirAsistente();
-  $('lp-ver-mios').onclick = () => pintarMios();
-  $('lp-info').onclick = () => abrirInfo();
+    </div>`;
+  $('lpl-create').onclick = () => abrirAsistente();
+  $('lpl-learn').onclick = () => abrirInfo();
+  $('lpl-mycoins').onclick = () => pintarMios();
+  const q = $('lpl-q'); if (q) q.addEventListener('keydown', (e) => { if (e.key === 'Enter') lplBuscar(q.value.trim()); });
+  lplCarrusel();
+  host.querySelectorAll('.lpl-viewall').forEach((b) => { b.onclick = () => lplViewAll(b.dataset.v); });
+  lplCargarListas();
+}
+
+function lplCarrusel() {
+  const track = $('lpl-feat-track'); if (!track) return;
+  const paso = () => { const c = track.querySelector('.lpl-fcard'); return (c ? c.offsetWidth + 14 : 240) * 2; };
+  const p = $('lpl-feat-prev'), n = $('lpl-feat-next');
+  if (p) p.onclick = () => track.scrollBy({ left: -paso(), behavior: 'smooth' });
+  if (n) n.onclick = () => track.scrollBy({ left: paso(), behavior: 'smooth' });
+}
+
+function lplCargarListas() {
+  gb.todosLosTokens(40).then(async (lista) => {
+    if (!$('lpl-latest')) return;   // ya no estamos en el lobby
+    const latest = lista.slice(0, 5);
+    const bnbUsd = await gb.precioBNBUSDT().catch(() => 0);
+    await Promise.all(latest.map(async (t) => { try { t.tiempo = await gb.tiempoBloque(t.bloque); } catch (_) { t.tiempo = 0; } }));
+    const cand = lista.slice(0, 20);
+    const conPool = await Promise.all(cand.map(async (t) => {
+      const r = await gb.resumenPool(t.address).catch(() => ({ activo: false, liquidez: 0, precio: 0, moneda: 'BNB' }));
+      const rate = r.moneda === 'USDT' ? 1 : (bnbUsd > 0 ? bnbUsd : 0);
+      return { ...t, ...r, mcapUsd: r.activo ? r.precio * t.supply * rate : 0, liqUsd: r.activo ? r.liquidez * rate : 0 };
+    }));
+    const popular = conPool.filter((t) => t.activo).sort((a, b) => b.mcapUsd - a.mcapUsd).slice(0, 5);
+    // logos (Firestore) solo de las filas visibles
+    await Promise.all([...latest, ...popular].map(async (t) => { if (t.logo !== undefined) return; try { const m = await leerMoneda(t.address); t.logo = (m && m.logo) || ''; } catch (_) { t.logo = ''; } }));
+    _lobby = { todos: lista, conPool, bnbUsd };
+    if ($('lpl-latest')) lplPintarLatest(latest);
+    if ($('lpl-popular')) lplPintarPopular(popular);
+  }).catch(() => { if ($('lpl-latest')) lplPintarLatest([]); if ($('lpl-popular')) lplPintarPopular([]); });
+}
+
+function lplFilas(host, lista, tipo) {
+  host.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => cargarToken(r.dataset.a); });
+}
+function lplPintarLatest(lista) {
+  const cols = ['#', 'Token', 'Symbol', 'Creator', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
+  if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No coins created yet.'); return; }
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-cre">${esc(lplShort(t.creador))}</td><td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+  host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
+  lplFilas(host);
+}
+function lplPintarPopular(lista) {
+  const cols = ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']; const host = $('lpl-popular'); if (!host) return;
+  if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No pools with liquidity yet.'); return; }
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">—</td><td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+  host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
+  lplFilas(host);
+}
+
+function lplBuscar(q) {
+  if (!q) return;
+  if (/^0x[0-9a-fA-F]{40}$/.test(q)) { cargarToken(q); return; }
+  lplViewAll('search', q);
+}
+
+function lplViewAll(key, filtro) {
+  const prev = $('lpl-overlay'); if (prev) prev.remove();
+  const lob = _lobby || { todos: [], conPool: [] };
+  const titulos = { featured: 'Featured Tokens', latest: 'Latest Created Tokens', popular: 'Popular Tokens', search: 'Search results' };
+  let lista, cols, pop = false;
+  if (key === 'featured') { lista = []; cols = ['#', 'Token', 'Symbol', 'Chain']; }
+  else if (key === 'popular') { pop = true; lista = lob.conPool.filter((t) => t.activo).sort((a, b) => b.mcapUsd - a.mcapUsd); cols = ['#', 'Token', 'Symbol', 'Market Cap', 'Chain']; }
+  else { lista = lob.todos.slice(); cols = ['#', 'Token', 'Symbol', 'Creator', 'Chain']; }
+  if (key === 'search' && filtro) { const f = filtro.toLowerCase(); lista = lista.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f)); }
+  const vacio = key === 'featured' ? 'No premium listings yet. Pay to feature your coin here.' : 'No tokens here yet.';
+  const cuerpo = !lista.length ? `<tr class="lpl-empty"><td colspan="${cols.length}">${vacio}</td></tr>`
+    : lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td>` : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`}<td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+  const d = document.createElement('div'); d.id = 'lpl-overlay'; d.className = 'lpl-ov';
+  d.innerHTML = `<div class="lpl-ov-card"><div class="lpl-ov-head"><b>${esc(titulos[key] || 'Tokens')}</b><button class="lpl-ov-x" id="lpl-ov-x" type="button" aria-label="Close">✕</button></div><div class="lpl-ov-body"><table class="lpl-table">${lplThead(cols)}<tbody>${cuerpo}</tbody></table></div></div>`;
+  document.body.appendChild(d);
+  $('lpl-ov-x').onclick = () => d.remove();
+  d.onclick = (e) => { if (e.target === d) d.remove(); };
+  d.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => { d.remove(); cargarToken(r.dataset.a); }; });
 }
 
 /* Pagina de informacion, escrita para quien de verdad la lee: desarrolladores y creadores

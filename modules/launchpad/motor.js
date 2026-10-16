@@ -306,6 +306,51 @@ export async function operaciones(token, max = 80) {
 }
 function _corto(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
 
+/* Todas las monedas creadas en el launchpad (evento TokenCreado GLOBAL, sin filtrar por creador),
+   lo mas nuevo primero. Escaneo por ventanas como operaciones. Alimenta Latest Created y Popular. */
+export async function todosLosTokens(max = 40) {
+  let latest = 0; try { latest = await lector().getBlockNumber(); } catch (_) { return []; }
+  if (!latest) return [];
+  const CHUNK = 9000, TOPE = 260000;
+  const vistos = new Set(); const out = [];
+  let hi = latest, recorrido = 0, rpc = _rpcIdx % RPCS.length;
+  while (recorrido < TOPE && hi > 0 && out.length < max) {
+    const lo = Math.max(0, hi - CHUNK + 1); let ok = false;
+    for (let intento = 0; intento < RPCS.length && !ok; intento++) {
+      try {
+        const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc));
+        const ev = await cc.queryFilter(cc.filters.TokenCreado(), lo, hi);
+        for (const e of ev.reverse()) {
+          const a = e.args; const addr = String(a.token); const k = addr.toLowerCase();
+          if (vistos.has(k)) continue; vistos.add(k);
+          out.push({ address: addr, nombre: a.nombre, simbolo: a.simbolo, supply: Number(ethers.formatEther(a.supply)), creador: String(a.creador), bloque: e.blockNumber });
+          if (out.length >= max) break;
+        }
+        ok = true;
+      } catch (_) { rpc = (rpc + 1) % RPCS.length; }
+    }
+    hi = lo - 1; recorrido += CHUNK;
+  }
+  _rpcIdx = rpc;
+  return out;
+}
+
+/* Resumen de la pool de una moneda para las listas del lobby: liquidez (en la moneda del par),
+   precio (par/token), moneda del par y si esta activa. Degrada a inactiva si la red falla. */
+export async function resumenPool(token) {
+  try {
+    const pl = await leePool(token);
+    if (!pl || !pl.activo) return { activo: false, liquidez: 0, precio: 0, moneda: 'BNB' };
+    const rQ = Number(ethers.formatEther(pl.rQuote)), rT = Number(ethers.formatEther(pl.rTok));
+    return { activo: true, liquidez: rQ, precio: rT > 0 ? rQ / rT : 0, moneda: esBNB(pl.quote) ? 'BNB' : 'USDT' };
+  } catch (_) { return { activo: false, liquidez: 0, precio: 0, moneda: 'BNB' }; }
+}
+
+/* Marca de tiempo (ms) de un bloque, para el "hace X" de Latest Created. */
+export async function tiempoBloque(bloque) {
+  try { return Number((await lector().getBlock(bloque)).timestamp) * 1000; } catch (_) { return 0; }
+}
+
 /* ─────────── Verificacion automatica en BscScan ───────────
    Cada moneda es un TokenDF, el mismo codigo que ya esta verificado dentro del
    launchpad. Reusamos su Standard JSON verificado y lo reenviamos con la direccion

@@ -44,6 +44,101 @@
 @media(max-width:640px){.lp-poderes,.lp-como{grid-template-columns:1fr}}
 @media(max-width:560px){.lp-hero{padding-top:4px}.lp-hero-ico{max-height:130px}.lp-sub{font-size:13.5px}.lp-cta{flex-direction:column;align-items:stretch}.lp-cta .lp-b{flex:0 0 auto;width:100%}#colmena-app{padding:18px 14px 50px}}
 
+/* ═════════ Lobby del launchpad (espejo del diseño) ═════════ */
+.lpl{max-width:1200px;margin:0 auto;padding:16px 20px 64px}
+.lpl-hero{text-align:center;padding:6px 0 4px}
+.lpl-emblem{display:block;width:min(200px,42vw);height:auto;margin:0 auto 10px;object-fit:contain;filter:drop-shadow(0 14px 30px rgba(0,0,0,.75))}
+.lpl-cta{display:flex;gap:16px;justify-content:center;align-items:center;margin:2px 0 20px;flex-wrap:wrap}
+/* Botones imagen (Create, Learn more, My coins, View All). Si la imagen falta, cae a boton de texto. */
+.lpl-imgbtn{border:0;background:none;padding:0;margin:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:0}
+.lpl-imgbtn .lpl-btn-img{display:block;height:48px;width:auto}
+.lpl-btn-tx{display:none}
+.lpl-imgbtn.fb .lpl-btn-tx{display:inline-flex;align-items:center;height:48px;padding:0 22px;border-radius:13px;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;font-family:var(--display);font-weight:800;font-size:14.5px;white-space:nowrap}
+.lpl-viewall .lpl-btn-img{height:34px}
+.lpl-viewall.fb .lpl-btn-tx{height:34px;padding:0 14px;border-radius:9px;background:none;border:1px solid var(--gold);color:var(--gold);font-size:12.5px;font-weight:700}
+/* Barra de busqueda (construida, no imagen) + My coins */
+.lpl-searchrow{display:flex;gap:12px;align-items:center;max-width:1000px;margin:0 auto}
+.lpl-search{flex:1 1 auto;display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:14px;background:rgba(10,13,18,.7);border:1px solid rgba(232,184,75,.26);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:border-color .15s}
+.lpl-search:focus-within{border-color:var(--gold)}
+.lpl-q-ico{width:20px;height:20px;flex:0 0 auto;color:var(--ink-3)}
+.lpl-search input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font-family:var(--display);font-size:15px}
+.lpl-search input::placeholder{color:var(--ink-3)}
+.lpl-mycoins{flex:0 0 auto}
+/* Cabecera de seccion (icono + titulo + subtitulo + View All) */
+.lpl-feat{margin-top:30px}
+.lpl-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.lpl-sec-tt{display:flex;align-items:center;gap:12px;min-width:0}
+.lpl-sec-ico{width:36px;height:36px;flex:0 0 auto;display:grid;place-items:center;border-radius:10px;background:rgba(232,184,75,.12);color:var(--gold)}
+.lpl-sec-ico svg{width:20px;height:20px}
+.lpl-sec-txt b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:19px;color:var(--ink);line-height:1.15}
+.lpl-sec-txt span{display:block;font-size:12.5px;color:var(--ink-3)}
+/* Featured: carrusel de 5 ejemplos */
+.lpl-feat-wrap{display:flex;align-items:stretch;gap:8px}
+.lpl-arrow{flex:0 0 auto;width:34px;align-self:stretch;border-radius:11px;border:1px solid var(--line);background:rgba(10,13,18,.55);color:var(--ink-2);cursor:pointer;display:grid;place-items:center;transition:border-color .15s,color .15s}
+.lpl-arrow:hover{border-color:var(--gold-soft);color:var(--gold)}
+.lpl-arrow svg{width:16px;height:16px}
+.lpl-feat-track{flex:1 1 auto;min-width:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,1fr);gap:14px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+.lpl-feat-track::-webkit-scrollbar{display:none}
+.lpl-fcard{position:relative;scroll-snap-align:start;background:rgba(10,13,18,.66);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0;cursor:default}
+.lpl-fcard-ext{position:absolute;top:13px;right:13px;color:var(--ink-3)}
+.lpl-fcard-ext svg{width:15px;height:15px}
+.lpl-fcard-top{display:flex;align-items:center;gap:12px}
+.lpl-fcard-id{min-width:0}
+.lpl-fcard-id b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:16px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lpl-fcard-sym{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:1px}
+.lpl-badge-prem{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-family:var(--mono);font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:#f1cf6a;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.32);border-radius:999px;padding:2px 7px}
+.lpl-badge-prem svg{width:9px;height:9px}
+.lpl-fcard-chain{display:flex;align-items:center;gap:6px;margin-top:13px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.lpl-bsc{width:14px;height:14px;flex:0 0 auto}
+/* Logo redondo con respaldo de letra */
+.lpl-logo{position:relative;width:30px;height:30px;flex:0 0 auto;border-radius:50%;overflow:hidden;display:inline-block;vertical-align:middle;background:linear-gradient(180deg,#232b34,#151b22)}
+.lpl-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.lpl-logo-fb{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:12px;color:var(--gold)}
+.lpl-logo-lg{width:50px;height:50px}
+.lpl-logo-lg .lpl-logo-fb{font-size:19px}
+/* Latest Created + Popular */
+.lpl-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px}
+.lpl-panel-sec{min-width:0;background:rgba(10,13,18,.5);border:1px solid var(--line);border-radius:16px;padding:16px 16px 6px;overflow-x:auto}
+.lpl-table{width:100%;border-collapse:collapse;font-family:var(--display)}
+.lpl-table th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding:0 10px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
+.lpl-table td{padding:11px 10px;font-size:13px;color:var(--ink-2);border-bottom:1px solid rgba(255,255,255,.045);white-space:nowrap}
+.lpl-table tbody tr:last-child td{border-bottom:0}
+.lpl-row{cursor:pointer;transition:background .13s}
+.lpl-row:hover{background:rgba(255,255,255,.035)}
+.lpl-num{color:var(--ink-3);width:22px}
+.lpl-tok{display:flex;align-items:center;gap:9px;max-width:190px}
+.lpl-tok-nom{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis}
+.lpl-sym{color:var(--ink-3);font-family:var(--mono);font-size:12px}
+.lpl-cre{font-family:var(--mono);font-size:12px;color:#7fa0d8}
+.lpl-mcap{color:var(--ink);font-weight:700}
+.lpl-hold{color:var(--ink-2)}
+.lpl-chain{color:var(--ink-3);font-size:12px}
+.lpl-chain .lpl-bsc{vertical-align:-2px;margin-right:5px}
+.lpl-empty td{text-align:center;color:var(--ink-3);padding:28px 10px;font-size:13px;white-space:normal}
+/* Ventana View All / Search (reutiliza el fondo del lobby detras) */
+.lpl-ov{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.lpl-ov-card{width:min(900px,96vw);max-height:86vh;display:flex;flex-direction:column;background:rgba(12,16,22,.94);border:1px solid rgba(232,184,75,.26);border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.lpl-ov-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.lpl-ov-head b{font-family:'Chakra Petch',var(--display);font-size:18px;color:var(--gold)}
+.lpl-ov-x{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:none;color:var(--ink-2);cursor:pointer;font-size:14px;line-height:1}
+.lpl-ov-x:hover{border-color:var(--gold-soft);color:var(--gold)}
+.lpl-ov-body{overflow:auto;padding:6px 14px 14px}
+/* Responsive */
+@media(max-width:860px){.lpl-cols{grid-template-columns:1fr}}
+@media(max-width:560px){
+  .lpl{padding:12px 14px 54px}
+  .lpl-cta{flex-direction:column;align-items:stretch}
+  .lpl-cta .lpl-imgbtn{width:100%}
+  .lpl-cta .lpl-imgbtn .lpl-btn-img{height:46px}
+  .lpl-searchrow{flex-wrap:wrap}
+  .lpl-mycoins{width:100%}
+  .lpl-mycoins .lpl-btn-img{height:46px;width:100%;object-fit:contain}
+  .lpl-arrow{display:none}
+  .lpl-feat-track{grid-auto-columns:minmax(172px,78%)}
+  .lpl-sec-txt b{font-size:17px}
+  .lpl-sec-txt span{font-size:11.5px}
+}
+
 /* ───────── Mis tokens (lista) ───────── */
 .lp-mios{max-width:720px;margin:10px auto 0}
 .lp-mios h3{font-family:'Chakra Petch',var(--display);font-size:18px;color:var(--gold);margin:0 0 12px;letter-spacing:.5px}
