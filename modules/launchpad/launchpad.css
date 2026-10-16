@@ -61,7 +61,9 @@
 /* Barra de busqueda (construida, no imagen) + My coins. Cristal mas oscuro y borde dorado visible,
    coherente con los botones (ni grueso ni invisible). */
 .lpl-searchrow{display:flex;gap:12px;align-items:center;max-width:1000px;margin:0 auto}
-.lpl-search{position:relative;flex:1 1 auto;display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:14px;background:rgba(7,10,14,.82);border:1px solid rgba(232,184,75,.5);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transition:border-color .15s,box-shadow .15s}
+/* z-index:70 para que el desplegable de resultados quede POR ENCIMA de Featured (que crea su propio
+   contexto de apilamiento con backdrop-filter y, al ir despues en el DOM, tapaba el desplegable). */
+.lpl-search{position:relative;z-index:70;flex:1 1 auto;display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:14px;background:rgba(7,10,14,.82);border:1px solid rgba(232,184,75,.5);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transition:border-color .15s,box-shadow .15s}
 .lpl-search:focus-within{border-color:var(--gold)}
 .lpl-q-ico{width:20px;height:20px;flex:0 0 auto;color:var(--gold-soft)}
 .lpl-search input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font-family:var(--display);font-size:15px}

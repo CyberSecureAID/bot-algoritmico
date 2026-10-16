@@ -375,7 +375,7 @@ function lplCargarListas() {
       for (const m of misTokens()) {
         if (!m || !m.address) continue; const k = String(m.address).toLowerCase();
         if (vistos.has(k)) continue; vistos.add(k);
-        lista.unshift({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: m.bloque || 0 });
+        lista.unshift({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: m.bloque || 0, tiempo: m.creadoEn || 0 });
       }
     } catch (_) {}
     // Lo que el usuario elimino de su panel (My Coins) NO debe reaparecer en el lobby: se filtra TODA
@@ -384,6 +384,22 @@ function lplCargarListas() {
     if (oc.length) lista = lista.filter((t) => !oc.includes(String(t.address).toLowerCase()));
     // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
     const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
+    // Monedas del creador CONECTADO (vista on-chain de TODAS las epocas): aseguran que las que el
+    // usuario creo salgan en Latest aunque el escaneo de eventos (ultimos ~9 dias) no las alcance o
+    // esten en otro navegador. Se leen con su fecha real (creadoEn) para ordenarlas bien.
+    try {
+      const cta = wallet.cuentaActual && wallet.cuentaActual();
+      if (cta) {
+        const mias = (await gb.tokensDe(cta).catch(() => [])).map((a) => String(a)).slice(0, 15);
+        await Promise.all(mias.map(async (addr) => {
+          const k = addr.toLowerCase();
+          if (enLp.has(k) || oc.includes(k)) return;
+          const d = await gb.datosToken(addr).catch(() => null); if (!d) return;
+          enLp.add(k);
+          lista.push({ address: addr, nombre: d.nombre || 'Coin', simbolo: d.simbolo || '?', supply: Number(d.supply) || 0, creador: cta, bloque: 0, tiempo: (Number(d.creadoEn) || 0) * 1000 });
+        }));
+      }
+    } catch (_) {}
     listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()) && !oc.includes(String(L.address).toLowerCase()));
     // Logo REAL de los listados: vive en la coleccion "logos" (lo guarda List Your Token), no en
     // "monedas". Por eso aparecian sin logo. Se lee aqui y se asigna; si no hay, cae a la inicial.
@@ -393,7 +409,9 @@ function lplCargarListas() {
     // del resto por numero de bloque (3 s/bloque) sin una llamada por cada una. Los listados ya traen
     // su fecha (creadoEn). Asi Latest mezcla ambos por recencia real.
     const base = lista.slice(0, 8);
-    await Promise.all(base.map(async (t) => { try { t.tiempo = await gb.tiempoBloque(t.bloque); } catch (_) { t.tiempo = 0; } }));
+    // No pisar el tiempo de las que ya lo traen (misTokens y tokensDe traen creadoEn real); solo leer
+    // el de las del escaneo de eventos, que vienen con bloque pero sin hora.
+    await Promise.all(base.map(async (t) => { if (t.tiempo > 0) return; try { t.tiempo = await gb.tiempoBloque(t.bloque); } catch (_) { t.tiempo = 0; } }));
     const anc = base.find((t) => t.tiempo > 0);
     if (anc) lista.forEach((t) => { if (!t.tiempo) t.tiempo = Math.max(0, anc.tiempo - (anc.bloque - (t.bloque || anc.bloque)) * 3000); });
     listados.forEach((L) => { L.tiempo = L.creadoEn || 0; });
