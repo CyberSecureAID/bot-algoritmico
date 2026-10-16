@@ -287,7 +287,7 @@ function lplCardFeatured(f) {
 const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Contract': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
 /* Celda de contrato: la direccion del token, pulsable para copiarla al portapapeles. La gente quiere
    el contrato de la moneda, no el creador. El click copia y NO abre el panel (stopPropagation en lplFilas). */
-function lplCelContrato(t) { return `<td class="lpl-cre"><button type="button" class="lpl-copyc" data-copy="${esc(t.address)}" title="Copy contract">${corto(t.address)} ${ICO_COPY}</button></td>`; }
+function lplCelContrato(t) { return `<td class="lpl-cre"><button type="button" class="lpl-copyc" data-copy="${esc(t.address)}" title="Copy contract">…${esc(String(t.address).slice(-4))} ${ICO_COPY}</button></td>`; }
 /* Celda del token (logo + nombre). El flex va en un <span> interior, NUNCA en el <td>: un <td> con
    display:flex sale del modelo de columnas de la tabla y descuadra el resto hacia la derecha. */
 function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-listed" title="Listed for direct sale, without a liquidity pool">Listed</span>' : ''}</span></td>`; }
@@ -387,22 +387,6 @@ function lplCargarListas() {
     if (oc.length) lista = lista.filter((t) => !oc.includes(String(t.address).toLowerCase()));
     // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
     const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
-    // Monedas del creador CONECTADO (vista on-chain de TODAS las epocas): aseguran que las que el
-    // usuario creo salgan en Latest aunque el escaneo de eventos (ultimos ~9 dias) no las alcance o
-    // esten en otro navegador. Se leen con su fecha real (creadoEn) para ordenarlas bien.
-    try {
-      const cta = wallet.cuentaActual && wallet.cuentaActual();
-      if (cta) {
-        const mias = (await gb.tokensDe(cta).catch(() => [])).map((a) => String(a)).slice(0, 15);
-        await Promise.all(mias.map(async (addr) => {
-          const k = addr.toLowerCase();
-          if (enLp.has(k) || oc.includes(k)) return;
-          const d = await gb.datosToken(addr).catch(() => null); if (!d) return;
-          enLp.add(k);
-          lista.push({ address: addr, nombre: d.nombre || 'Coin', simbolo: d.simbolo || '?', supply: Number(d.supply) || 0, creador: cta, bloque: 0, tiempo: (Number(d.creadoEn) || 0) * 1000 });
-        }));
-      }
-    } catch (_) {}
     listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()) && !oc.includes(String(L.address).toLowerCase()));
     // Logo REAL de los listados: vive en la coleccion "logos" (lo guarda List Your Token), no en
     // "monedas". Por eso aparecian sin logo. Se lee aqui y se asigna; si no hay, cae a la inicial.
