@@ -575,7 +575,7 @@ function abrirListado(addr) {
     <p>You can buy this token, but know what it is first. It was created in ${lytLink()}: a section where a project sells its token <b>without a liquidity pool</b>, at a price the creator sets, paid in BNB.</p>
     ${precio}${stock}${garantia}
     <p class="lp-aviso-sub">We do not verify or back these listings. The value depends only on the project. Buy at your own responsibility. A money back guarantee (return your tokens for BNB from the same wallet) and a 30 day lock apply in the marketplace.</p>`;
-  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?token=' + encodeURIComponent(addr) });
+  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?listado=' + encodeURIComponent(addr) });
 }
 
 /* Disclaimer de token PREMIUM (Featured): quien paga compra solo VISIBILIDAD arriba. Nos desvincula
