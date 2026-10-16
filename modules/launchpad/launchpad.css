@@ -145,7 +145,7 @@
 .lp-aviso-body p{margin:0 0 10px}
 .lp-aviso-body .lp-aviso-sub{font-size:12px;color:var(--ink-3)}
 .lp-aviso-body .lp-kv{margin:0 0 6px}
-.lp-aviso-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin-top:16px;border-radius:12px;font-family:var(--display);font-weight:800;font-size:15px;text-decoration:none;cursor:pointer;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;border:1px solid #c79426}
+.lp-aviso-go{display:flex;width:fit-content;max-width:100%;align-items:center;justify-content:center;min-height:42px;padding:0 44px;margin:16px auto 0;border-radius:12px;font-family:var(--display);font-weight:800;font-size:15px;text-decoration:none;cursor:pointer;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;border:1px solid #c79426}
 .lp-aviso-go:hover{filter:brightness(1.05)}
 /* Tarjeta de Featured que SI es una moneda real (con pool): se puede tocar para abrir su panel. */
 .lpl-fcard-real{cursor:pointer}

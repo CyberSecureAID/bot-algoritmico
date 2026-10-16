@@ -53,6 +53,36 @@ export async function leerMonedas(tokens) {
   return out;
 }
 
+/* Lista de monedas que el usuario ELIMINO de su panel (My Coins), guardada por wallet en Firestore
+   para que SOBREVIVA a borrar cache o cambiar de dispositivo. localStorage no basta: al limpiar datos
+   del sitio se pierde y las borradas reaparecen.
+   Se guarda en la MISMA coleccion "monedas" que ya escribe bien (no en una coleccion nueva que las
+   reglas podrian denegar), bajo una clave por wallet: "ocultos_<wallet>". leerMoneda y leerMonedas
+   solo piden direcciones de token (0x...), nunca esta clave, asi que no colisiona con nada. (Se evita
+   el prefijo "__" porque Firestore reserva los IDs que empiezan y terminan en doble guion bajo.) */
+const claveOcultos = (wallet) => `ocultos_${String(wallet).toLowerCase()}`;
+export async function leerOcultos(wallet) {
+  if (!wallet) return [];
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(`${BASE}/${claveOcultos(wallet)}?key=${API_KEY}`, { signal: ctrl.signal }); clearTimeout(to);
+    if (!r.ok) return [];
+    const f = (await r.json()).fields || {};
+    const vals = f.lista && f.lista.arrayValue && f.lista.arrayValue.values;
+    return Array.isArray(vals) ? vals.map((v) => String(v.stringValue || '').toLowerCase()).filter(Boolean) : [];
+  } catch (_) { return []; }
+}
+export async function guardarOcultos(wallet, lista) {
+  if (!wallet) return false;
+  const values = [...new Set((lista || []).map((a) => String(a).toLowerCase()).filter(Boolean))].map((a) => ({ stringValue: a }));
+  const fields = { ts: { integerValue: String(Date.now()) }, lista: { arrayValue: { values } } };
+  const mask = 'updateMask.fieldPaths=lista&updateMask.fieldPaths=ts';
+  try {
+    const r = await fetch(`${BASE}/${claveOcultos(wallet)}?${mask}&key=${API_KEY}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
+    return r.ok;
+  } catch (_) { return false; }
+}
+
 /* Logos de los tokens LISTADOS en "List Your Token": esos se guardan en la coleccion "logos"
    (no "monedas"), por eso leerMoneda no los encuentra. Misma cuenta y key, otra coleccion.
    Devuelve { direccionMinuscula: dataUrl } de las que tienen logo. No lanza nunca. */

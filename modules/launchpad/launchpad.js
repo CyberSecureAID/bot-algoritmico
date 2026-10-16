@@ -8,7 +8,7 @@ import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
 import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
-import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados } from './firebase-tokens.js';
+import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados, leerOcultos, guardarOcultos } from './firebase-tokens.js';
 import { filaRedes, redesControl, abrirEditorMoneda } from './perfil-moneda.js';
 import { montarSwap } from './swap-inline.js';
 /* lightweight-charts: libreria de velas de la propia TradingView (Apache-2.0), vendorizada en el
@@ -102,9 +102,35 @@ function misTokens() {
   return l.filter((t) => !oc.includes(String(t.address).toLowerCase()));
 }
 /* Tokens que el creador decidio no ver mas en su panel (siguen publicos en la cadena y en el swap).
-   Fase 2: la lista se guarda firmada por wallet en el mismo almacen que las fotos. */
+   La lista vive en DOS sitios: localStorage (lectura instantanea, sincrona) y Firestore por wallet
+   (coleccion "ocultos"). Firestore es la fuente duradera: si el usuario borra los datos del sitio,
+   localStorage se vacia pero al reconectar la wallet se restaura desde Firestore, asi las monedas
+   que elimino NO reaparecen. ocultos() sigue siendo sincrona; sincronizarOcultos() rellena el local
+   desde la nube antes de pintar. */
 function ocultos() { try { return JSON.parse(localStorage.getItem('lp-ocultos') || '[]'); } catch (_) { return []; } }
-function ocultar(addr) { const l = ocultos(); l.push(String(addr).toLowerCase()); try { localStorage.setItem('lp-ocultos', JSON.stringify(l)); } catch (_) {} }
+function fijarOcultosLocal(l) { try { localStorage.setItem('lp-ocultos', JSON.stringify([...new Set((l || []).map((a) => String(a).toLowerCase()))])); } catch (_) {} }
+function ocultar(addr) {
+  const a = String(addr).toLowerCase();
+  const l = ocultos(); if (!l.includes(a)) l.push(a);
+  fijarOcultosLocal(l);
+  // Persistir en la nube por wallet (sin bloquear la UI). Sobrevive a borrar cache.
+  try { const cta = wallet.cuentaActual && wallet.cuentaActual(); if (cta) guardarOcultos(cta, l); } catch (_) {}
+}
+/* Trae la lista de ocultos de Firestore (de la wallet conectada) y la funde con la local, para que
+   las eliminaciones sigan vigentes tras limpiar el navegador. No lanza; si no hay wallet, no hace nada. */
+let _ocSync = false;
+async function sincronizarOcultos(forzar) {
+  try {
+    const cta = wallet.cuentaActual && wallet.cuentaActual();
+    if (!cta) return;
+    if (_ocSync && !forzar) return; _ocSync = true;
+    const rem = await leerOcultos(cta);
+    if (!rem || !rem.length) return;
+    const loc = ocultos();
+    const merged = [...new Set([...loc, ...rem])];
+    if (merged.length !== loc.length) fijarOcultosLocal(merged);
+  } catch (_) {}
+}
 
 /* Tres confirmaciones y una firma de la wallet creadora. Sin la firma no se oculta nada. */
 async function ocultarToken(t) {
@@ -124,7 +150,7 @@ function guardarTokens(l) { try { localStorage.setItem('lp-tokens', JSON.stringi
 /* Metadatos locales por moneda (logo, supply inicial): el dato de cadena manda,
    esto solo guarda lo que la cadena no tiene barato (el logo). */
 function metaLocal(addr) { try { return (JSON.parse(localStorage.getItem('lp-tokens') || '[]')).find((x) => x.address.toLowerCase() === String(addr).toLowerCase()) || null; } catch (_) { return null; } }
-function guardarMeta(meta) { let l = []; try { l = JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) {} const i = l.findIndex((x) => x.address.toLowerCase() === meta.address.toLowerCase()); if (i >= 0) l[i] = { ...l[i], ...meta }; else l.push(meta); try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} const c = JSON.parse(localStorage.getItem('lp-ocultos') || '[]'); const j = c.indexOf(meta.address.toLowerCase()); if (j >= 0) { c.splice(j, 1); localStorage.setItem('lp-ocultos', JSON.stringify(c)); } }
+function guardarMeta(meta) { let l = []; try { l = JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) {} const i = l.findIndex((x) => x.address.toLowerCase() === meta.address.toLowerCase()); if (i >= 0) l[i] = { ...l[i], ...meta }; else l.push(meta); try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} const c = JSON.parse(localStorage.getItem('lp-ocultos') || '[]'); const j = c.indexOf(meta.address.toLowerCase()); if (j >= 0) { c.splice(j, 1); localStorage.setItem('lp-ocultos', JSON.stringify(c)); try { const cta = wallet.cuentaActual && wallet.cuentaActual(); if (cta) guardarOcultos(cta, c); } catch (_) {} } }
 
 /* datosToken (motor) -> la forma que usa pintarPanel. */
 function deChain(datos, meta) {
@@ -381,10 +407,32 @@ function lplCargarListas() {
         lista.unshift({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: m.bloque || 0, tiempo: m.creadoEn || 0 });
       }
     } catch (_) {}
+    // Antes de filtrar, traer de Firestore las monedas que el usuario elimino (sobreviven a borrar
+    // cache): asi las borradas no reaparecen aunque localStorage se haya vaciado.
+    await sincronizarOcultos();
     // Lo que el usuario elimino de su panel (My Coins) NO debe reaparecer en el lobby: se filtra TODA
     // la lista, no solo misTokens, porque el escaneo global en cadena las traeria de vuelta al refrescar.
     const oc = ocultos();
     if (oc.length) lista = lista.filter((t) => !oc.includes(String(t.address).toLowerCase()));
+    // Monedas creadas por la wallet conectada, leidas del PROPIO contrato (tokensDe), no de localStorage.
+    // Es la fuente duradera: si el escaneo global de eventos se queda corto (solo ve ~9 dias) o el
+    // usuario borro la cache, su moneda con pool real seguiria sin salir. Aqui se añade SIEMPRE,
+    // respetando las ocultas. datosToken da nombre/simbolo/supply y la fecha real (creadoEn).
+    try {
+      const cta = wallet.cuentaActual && wallet.cuentaActual();
+      if (cta) {
+        const mias = (await gb.tokensDe(cta).catch(() => [])).map((a) => String(a)).filter(Boolean).slice(0, 12);
+        const yaEsta = new Set(lista.map((t) => String(t.address).toLowerCase()));
+        await Promise.all(mias.map(async (addr) => {
+          const k = addr.toLowerCase();
+          if (yaEsta.has(k) || oc.includes(k)) return;
+          const d = await gb.datosToken(addr).catch(() => null);
+          if (!d || !d.nombre) return;
+          yaEsta.add(k);
+          lista.unshift({ address: addr, nombre: d.nombre, simbolo: d.simbolo || '?', supply: Number(d.supply) || 0, creador: d.creador || cta, bloque: 0, tiempo: (Number(d.creadoEn) || 0) * 1000 });
+        }));
+      }
+    } catch (_) {}
     // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
     const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
     listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()) && !oc.includes(String(L.address).toLowerCase()));
@@ -405,6 +453,10 @@ function lplCargarListas() {
     const latest = lista.concat(listados).sort((a, b) => (b.tiempo || 0) - (a.tiempo || 0)).slice(0, 5);
     await lplLogos(latest);
     if ($('lpl-latest')) lplPintarLatest(latest);
+    // Fijar _lobby YA (con la lista completa) para que "View All" de Latest/busqueda tenga la lista
+    // entera en cuanto Latest esta pintado, sin esperar a que termine el calculo de Popular. activos se
+    // rellena despues. Antes _lobby solo existia tras Popular: abrir View All pronto mostraba vacio.
+    _lobby = { todos: lista, listados, activos: [], bnbUsd };
     // Popular: de las que tienen pool, se miden volumen (sumatoria de los trades) y holders (wallets
     // distintas que operaron), leyendo los eventos en cadena. Se ordena por "mas transaccionado".
     const conPool = await Promise.all(lista.slice(0, 20).map(async (t) => {
@@ -412,7 +464,9 @@ function lplCargarListas() {
       const rate = r.moneda === 'USDT' ? 1 : (bnbUsd > 0 ? bnbUsd : 0);
       return { ...t, ...r, mcapUsd: r.activo ? r.precio * t.supply * rate : 0, liqUsd: r.activo ? r.liquidez * rate : 0 };
     }));
-    const activos = conPool.filter((t) => t.activo).sort((a, b) => b.liqUsd - a.liqUsd).slice(0, 8);
+    // Popular SOLO monedas con liquidez real. Antes bastaba la bandera "activo" del pool, que puede
+    // estar en true con reservas ~0: por eso aparecian monedas sin liquidez. Ahora se exige liqUsd > 0.
+    const activos = conPool.filter((t) => t.activo && t.liqUsd > 0).sort((a, b) => b.liqUsd - a.liqUsd).slice(0, 8);
     await Promise.all(activos.map(async (t) => {
       // Holders: wallets distintas que operaron, con MINIMO 1 (el creador siempre tiene el supply, aunque
       // nadie haya comprado todavia). Antes salia 0 en una moneda recien creada, que es falso.
@@ -422,7 +476,7 @@ function lplCargarListas() {
     }));
     await lplLogos(activos);
     const popular = activos.slice().sort((a, b) => (b.volUsd || 0) - (a.volUsd || 0) || (b.mcapUsd - a.mcapUsd)).slice(0, 5);
-    _lobby = { todos: lista, listados, activos, bnbUsd };
+    _lobby = { todos: lista, listados, activos, bnbUsd };   // ya con activos para el View All de Popular
     if ($('lpl-popular')) lplPintarPopular(popular);
   }).catch(() => { if ($('lpl-latest')) lplPintarLatest([]); if ($('lpl-popular')) lplPintarPopular([]); });
 }
@@ -518,10 +572,9 @@ function abrirListado(addr) {
     ? `<div class="lp-kv"><span>Buyer guarantee</span><b class="verde">Active, ${dias} day${dias === 1 ? '' : 's'} left</b></div>`
     : `<div class="lp-kv"><span>Buyer guarantee</span><b class="oro">Lock of 30 days ended</b></div>`;
   const cuerpo = `
-    <p>You can buy this token, but first know what it is. It was created in ${lytLink()}, a special section of our ecosystem where a project can offer its token for sale <b>without adding a liquidity pool</b>, at a price its creator sets, paid in BNB.</p>
-    <p class="lp-aviso-sub">This exists for early projects that need capital and cannot lock two or three million dollars of liquidity to launch. Instead, a team can rally the people who support it: if the community backs the project, they create the token here and sell it directly through ${lytLink()}, with no liquidity required.</p>
+    <p>You can buy this token, but know what it is first. It was created in ${lytLink()}: a section where a project sells its token <b>without a liquidity pool</b>, at a price the creator sets, paid in BNB.</p>
     ${precio}${stock}${garantia}
-    <p class="lp-aviso-sub">This is not fraud and it is not an endorsement. The platform does not verify or back these listings: there is no liquidity pool, the price is set by the creator, and the value depends entirely on the project and the people behind it. If you buy, you do so at your own responsibility. A money back protection (you can return your tokens for BNB from the same wallet) and the lock of 30 days above apply in the marketplace.</p>`;
+    <p class="lp-aviso-sub">We do not verify or back these listings. The value depends only on the project. Buy at your own responsibility. A money back guarantee (return your tokens for BNB from the same wallet) and a 30 day lock apply in the marketplace.</p>`;
   avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?token=' + encodeURIComponent(addr) });
 }
 
@@ -531,8 +584,7 @@ function abrirListado(addr) {
 function avisoPremium(addr) {
   const cuerpo = `
     <p>This token is featured here, but it is not from our platform and we do not back it.</p>
-    <p class="lp-aviso-sub">We only provide the tools to give tokens visibility. They are not part of our ecosystem. Our platform does not have a cryptocurrency of its own, and we have nothing to do with this token.</p>
-    <p class="lp-aviso-sub">Anyone who continues to buy must be aware of the risk they take. If you are not completely clear and sure about a token, do not buy it. You do so at your own responsibility.</p>`;
+    <p class="lp-aviso-sub">We only provide tools to give tokens visibility. We have no cryptocurrency of our own and nothing to do with this token. If you are not sure about a token, do not buy it. You do so at your own responsibility.</p>`;
   avisoPopup('About featured tokens', cuerpo, { txt: 'Continue', onclick: () => cargarToken(addr) });
 }
 
@@ -760,6 +812,9 @@ async function pintarMios() {
   // La cadena manda quien existe; el navegador solo aporta el logo y oculta lo que escondiste.
   let addrs = [];
   try { addrs = (await gb.tokensDe(wallet.cuentaActual())).map((a) => String(a)); } catch (_) {}
+  // Restaurar desde Firestore lo que el usuario elimino: si borro la cache, localStorage esta vacio
+  // pero las eliminadas NO deben reaparecer. Se fuerza la sincronizacion en esta vista.
+  await sincronizarOcultos(true);
   const oc = ocultos();
   addrs = addrs.filter((a) => !oc.includes(a.toLowerCase()));
   const c = $('lp-mios-lista'); if (!c) return;
