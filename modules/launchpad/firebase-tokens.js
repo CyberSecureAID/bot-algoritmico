@@ -56,16 +56,17 @@ export async function leerMonedas(tokens) {
 /* Lista de monedas que el usuario ELIMINO de su panel (My Coins), guardada por wallet en Firestore
    para que SOBREVIVA a borrar cache o cambiar de dispositivo. localStorage no basta: al limpiar datos
    del sitio se pierde y las borradas reaparecen.
-   Se guarda en la MISMA coleccion "monedas" que ya escribe bien (no en una coleccion nueva que las
-   reglas podrian denegar), bajo una clave por wallet: "ocultos_<wallet>". leerMoneda y leerMonedas
-   solo piden direcciones de token (0x...), nunca esta clave, asi que no colisiona con nada. (Se evita
-   el prefijo "__" porque Firestore reserva los IDs que empiezan y terminan en doble guion bajo.) */
-const claveOcultos = (wallet) => `ocultos_${String(wallet).toLowerCase()}`;
+   Coleccion PROPIA "ocultos", doc = wallet en minuscula, con SOLO los campos lista + ts. No se puede
+   reutilizar "monedas" porque su regla hace hasOnly(['logo','web',...,'ts']) y rechazaria el campo
+   "lista". Requiere en las reglas de Firestore un bloque:  match /ocultos/{wallet} { allow read: if
+   true; allow create, update: if request.resource.data.keys().hasOnly(['lista','ts']); allow delete:
+   if false; }  (añadido, sin tocar logos/perfiles/monedas). */
+const BASE_OCULTOS = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/ocultos`;
 export async function leerOcultos(wallet) {
   if (!wallet) return [];
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
-    const r = await fetch(`${BASE}/${claveOcultos(wallet)}?key=${API_KEY}`, { signal: ctrl.signal }); clearTimeout(to);
+    const r = await fetch(`${BASE_OCULTOS}/${String(wallet).toLowerCase()}?key=${API_KEY}`, { signal: ctrl.signal }); clearTimeout(to);
     if (!r.ok) return [];
     const f = (await r.json()).fields || {};
     const vals = f.lista && f.lista.arrayValue && f.lista.arrayValue.values;
@@ -78,7 +79,7 @@ export async function guardarOcultos(wallet, lista) {
   const fields = { ts: { integerValue: String(Date.now()) }, lista: { arrayValue: { values } } };
   const mask = 'updateMask.fieldPaths=lista&updateMask.fieldPaths=ts';
   try {
-    const r = await fetch(`${BASE}/${claveOcultos(wallet)}?${mask}&key=${API_KEY}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
+    const r = await fetch(`${BASE_OCULTOS}/${String(wallet).toLowerCase()}?${mask}&key=${API_KEY}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
     return r.ok;
   } catch (_) { return false; }
 }
