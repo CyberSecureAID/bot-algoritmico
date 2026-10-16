@@ -56,15 +56,18 @@
 .lpl-imgbtn.fb .lpl-btn-tx{display:inline-flex;align-items:center;height:48px;padding:0 22px;border-radius:13px;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;font-family:var(--display);font-weight:800;font-size:14.5px;white-space:nowrap}
 .lpl-viewall .lpl-btn-img{height:34px}
 .lpl-viewall.fb .lpl-btn-tx{height:34px;padding:0 14px;border-radius:9px;background:none;border:1px solid var(--gold);color:var(--gold);font-size:12.5px;font-weight:700}
-/* Barra de busqueda (construida, no imagen) + My coins */
+/* Barra de busqueda (construida, no imagen) + My coins. Cristal mas oscuro y borde dorado visible,
+   coherente con los botones (ni grueso ni invisible). */
 .lpl-searchrow{display:flex;gap:12px;align-items:center;max-width:1000px;margin:0 auto}
-.lpl-search{flex:1 1 auto;display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:14px;background:rgba(10,13,18,.7);border:1px solid rgba(232,184,75,.26);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:border-color .15s}
-.lpl-search:focus-within{border-color:var(--gold)}
-.lpl-q-ico{width:20px;height:20px;flex:0 0 auto;color:var(--ink-3)}
+.lpl-search{flex:1 1 auto;display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:14px;background:rgba(7,10,14,.82);border:1px solid rgba(232,184,75,.5);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transition:border-color .15s,box-shadow .15s}
+.lpl-search:focus-within{border-color:var(--gold);box-shadow:0 0 0 2px rgba(232,184,75,.12)}
+.lpl-q-ico{width:20px;height:20px;flex:0 0 auto;color:var(--gold-soft)}
 .lpl-search input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font-family:var(--display);font-size:15px}
 .lpl-search input::placeholder{color:var(--ink-3)}
 .lpl-mycoins{flex:0 0 auto}
-/* Cabecera de seccion (icono + titulo + subtitulo + View All) */
+/* Contenedor de cada seccion (Featured, Latest, Popular): cristal oscuro, para que el titulo no
+   quede "en el aire" y todo quede encapsulado como en el diseño. */
+.lpl-box,.lpl-panel-sec{background:rgba(8,11,16,.8);border:1px solid #27303c;border-radius:18px;padding:18px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .lpl-feat{margin-top:30px}
 .lpl-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
 .lpl-sec-tt{display:flex;align-items:center;gap:12px;min-width:0}
@@ -72,24 +75,25 @@
 .lpl-sec-ico svg{width:20px;height:20px}
 .lpl-sec-txt b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:19px;color:var(--ink);line-height:1.15}
 .lpl-sec-txt span{display:block;font-size:12.5px;color:var(--ink-3)}
-/* Featured: carrusel de 5 ejemplos */
-.lpl-feat-wrap{display:flex;align-items:stretch;gap:8px}
-.lpl-arrow{flex:0 0 auto;width:34px;align-self:stretch;border-radius:11px;border:1px solid var(--line);background:rgba(10,13,18,.55);color:var(--ink-2);cursor:pointer;display:grid;place-items:center;transition:border-color .15s,color .15s}
-.lpl-arrow:hover{border-color:var(--gold-soft);color:var(--gold)}
-.lpl-arrow svg{width:16px;height:16px}
-.lpl-feat-track{flex:1 1 auto;min-width:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,1fr);gap:14px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
-.lpl-feat-track::-webkit-scrollbar{display:none}
-.lpl-fcard{position:relative;scroll-snap-align:start;background:rgba(10,13,18,.66);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0;cursor:default}
+/* Featured: 5 o menos encajan exactos; 6 o mas pasan a cinta infinita (.marquee). */
+.lpl-feat-wrap{min-width:0;overflow:hidden}
+.lpl-feat-track{display:grid;grid-template-columns:repeat(var(--n,5),minmax(0,1fr));gap:14px}
+.lpl-feat-track.marquee{display:flex;width:max-content;gap:14px;grid-template-columns:none;animation:lplmq var(--mq,30s) linear infinite}
+.lpl-feat-track.marquee:hover{animation-play-state:paused}
+.lpl-feat-track.marquee .lpl-fcard{flex:0 0 230px}
+@keyframes lplmq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.lpl-fcard{position:relative;display:flex;flex-direction:column;min-height:134px;min-width:0;background:rgba(13,17,23,.72);border:1px solid #2b3440;border-radius:16px;padding:15px;cursor:default}
 .lpl-fcard-ext{position:absolute;top:13px;right:13px;color:var(--ink-3)}
 .lpl-fcard-ext svg{width:15px;height:15px}
 .lpl-fcard-top{display:flex;align-items:center;gap:12px}
 .lpl-fcard-id{min-width:0}
 .lpl-fcard-id b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:16px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lpl-fcard-sym{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:1px}
-.lpl-badge-prem{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-family:var(--mono);font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:#f1cf6a;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.32);border-radius:999px;padding:2px 7px}
+.lpl-fcard-foot{margin-top:auto;padding-top:12px;display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.lpl-badge-prem{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:#f1cf6a;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.32);border-radius:999px;padding:2px 8px}
 .lpl-badge-prem svg{width:9px;height:9px}
-.lpl-fcard-chain{display:flex;align-items:center;gap:6px;margin-top:13px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
-.lpl-bsc{width:14px;height:14px;flex:0 0 auto}
+.lpl-fcard-chain{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.lpl-bsc{width:15px;height:15px;flex:0 0 auto}
 /* Logo redondo con respaldo de letra */
 .lpl-logo{position:relative;width:30px;height:30px;flex:0 0 auto;border-radius:50%;overflow:hidden;display:inline-block;vertical-align:middle;background:linear-gradient(180deg,#232b34,#151b22)}
 .lpl-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -118,9 +122,23 @@
 /* Ventana View All / Search (reutiliza el fondo del lobby detras) */
 .lpl-ov{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .lpl-ov-card{width:min(900px,96vw);max-height:86vh;display:flex;flex-direction:column;background:rgba(12,16,22,.94);border:1px solid rgba(232,184,75,.26);border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
-.lpl-ov-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.lpl-ov-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);flex:0 0 auto;flex-wrap:wrap}
 .lpl-ov-head b{font-family:'Chakra Petch',var(--display);font-size:18px;color:var(--gold)}
-.lpl-ov-x{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:none;color:var(--ink-2);cursor:pointer;font-size:14px;line-height:1}
+.lpl-ov-tools{display:flex;align-items:center;gap:9px}
+.lpl-ov-search{display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;border-radius:10px;background:rgba(7,10,14,.7);border:1px solid rgba(232,184,75,.42)}
+.lpl-ov-search svg{width:16px;height:16px;color:var(--gold-soft)}
+.lpl-ov-search input{width:150px;max-width:40vw;background:none;border:0;outline:0;color:var(--ink);font-family:var(--display);font-size:13.5px}
+.lpl-ov-search input::placeholder{color:var(--ink-3)}
+.lpl-ov-filtro{position:relative}
+.lpl-ov-fbtn{width:38px;height:38px;border-radius:10px;border:1px solid rgba(232,184,75,.42);background:rgba(7,10,14,.7);color:var(--gold);cursor:pointer;display:grid;place-items:center}
+.lpl-ov-fbtn:hover{border-color:var(--gold)}
+.lpl-ov-fbtn svg{width:17px;height:17px}
+.lpl-ov-fmenu{position:absolute;top:calc(100% + 8px);right:0;z-index:5;min-width:188px;padding:6px;background:#141a22;border:1px solid #2a323d;border-radius:13px;box-shadow:0 18px 44px rgba(0,0,0,.6);display:none}
+.lpl-ov-fmenu.open{display:block}
+.lpl-fopt{display:block;width:100%;text-align:left;padding:9px 11px;border-radius:9px;border:0;background:none;color:var(--ink-2);font-family:var(--display);font-size:13px;cursor:pointer}
+.lpl-fopt:hover{background:rgba(255,255,255,.05)}
+.lpl-fopt.on{background:rgba(232,184,75,.12);color:var(--gold)}
+.lpl-ov-x{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:none;color:var(--ink-2);cursor:pointer;font-size:14px;line-height:1}
 .lpl-ov-x:hover{border-color:var(--gold-soft);color:var(--gold)}
 .lpl-ov-body{overflow:auto;padding:6px 14px 14px}
 /* Responsive */
@@ -133,10 +151,14 @@
   .lpl-searchrow{flex-wrap:wrap}
   .lpl-mycoins{width:100%}
   .lpl-mycoins .lpl-btn-img{height:46px;width:100%;object-fit:contain}
-  .lpl-arrow{display:none}
-  .lpl-feat-track{grid-auto-columns:minmax(172px,78%)}
+  /* Featured en movil: desliza (swipe) cuando son 5 o menos; la cinta sigue igual con 6 o mas. */
+  .lpl-feat-track:not(.marquee){display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+  .lpl-feat-track:not(.marquee)::-webkit-scrollbar{display:none}
+  .lpl-feat-track:not(.marquee) .lpl-fcard{flex:0 0 80%;scroll-snap-align:start}
   .lpl-sec-txt b{font-size:17px}
   .lpl-sec-txt span{font-size:11.5px}
+  .lpl-ov-head b{width:100%}
+  .lpl-ov-search input{width:120px}
 }
 
 /* ───────── Mis tokens (lista) ───────── */

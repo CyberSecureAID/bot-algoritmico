@@ -217,9 +217,8 @@ const LPL_STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.
 const LPL_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>';
 const LPL_FLAME = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s5.5 4 5.5 9a5.5 5.5 0 0 1-11 0c0-1.4.5-2.6 1.2-3.3.1 1.2 1 2 1.9 2 .7 0 1.2-.5 1.2-1.2C6.9 6.8 9 5 12 2z"/></svg>';
 const LPL_EXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10v10M19 5L8 16"/></svg>';
-const LPL_CHL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
-const LPL_CHR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
-const LPL_BSC = '<svg class="lpl-bsc" viewBox="0 0 24 24" fill="#F3BA2F"><path d="M12 3l2.3 2.3L9.1 10.5 6.8 8.2zM16.6 7.6l2.3 2.3-7.8 7.8-2.3-2.3zM4.1 11l2.3 2.3L4.1 15.6 1.8 13.3zM12 14.5l2.3 2.3L12 19.1l-2.3-2.3z"/></svg>';
+const LPL_FILTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
+const LPL_BSC = '<svg class="lpl-bsc" viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
 const LPL_FEATURED = [
   { logo: 'featured-1', nombre: 'AurexAI', simbolo: 'AURX' },
   { logo: 'featured-2', nombre: 'MoonRider', simbolo: 'MOON' },
@@ -246,8 +245,8 @@ function lplCardFeatured(f) {
   return `<div class="lpl-fcard" data-ejemplo="1">
     <span class="lpl-fcard-ext">${LPL_EXT}</span>
     <div class="lpl-fcard-top"><span class="lpl-logo lpl-logo-lg"><img src="./img/${f.logo}.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${esc(f.simbolo[0])}</span></span>
-      <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span><span class="lpl-badge-prem">${LPL_STAR} Premium</span></div></div>
-    <div class="lpl-fcard-chain">${LPL_BSC} BSC</div></div>`;
+      <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span></div></div>
+    <div class="lpl-fcard-foot"><span class="lpl-badge-prem">${LPL_STAR} Premium</span><span class="lpl-fcard-chain">${LPL_BSC} BSC</span></div></div>`;
 }
 function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>`; }
 function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
@@ -272,12 +271,10 @@ function pintarPortada() {
         </div>
       </section>
 
-      <section class="lpl-feat">
+      <section class="lpl-box lpl-feat">
         ${lplSecHead(LPL_STAR, 'Featured Tokens', 'Premium listings for maximum visibility', 'featured')}
         <div class="lpl-feat-wrap">
-          <button class="lpl-arrow" id="lpl-feat-prev" type="button" aria-label="Previous">${LPL_CHL}</button>
-          <div class="lpl-feat-track" id="lpl-feat-track">${LPL_FEATURED.map(lplCardFeatured).join('')}</div>
-          <button class="lpl-arrow" id="lpl-feat-next" type="button" aria-label="Next">${LPL_CHR}</button>
+          <div class="lpl-feat-track" id="lpl-feat-track" style="--n:${LPL_FEATURED.length}">${LPL_FEATURED.map(lplCardFeatured).join('')}</div>
         </div>
       </section>
 
@@ -301,12 +298,16 @@ function pintarPortada() {
   lplCargarListas();
 }
 
+/* 5 o menos: estaticas y encajadas. 6 o mas: cinta infinita (ticker) de derecha a izquierda, con
+   el contenido duplicado para que el bucle no tenga costura. Pausa al pasar el raton (CSS). */
 function lplCarrusel() {
   const track = $('lpl-feat-track'); if (!track) return;
-  const paso = () => { const c = track.querySelector('.lpl-fcard'); return (c ? c.offsetWidth + 14 : 240) * 2; };
-  const p = $('lpl-feat-prev'), n = $('lpl-feat-next');
-  if (p) p.onclick = () => track.scrollBy({ left: -paso(), behavior: 'smooth' });
-  if (n) n.onclick = () => track.scrollBy({ left: paso(), behavior: 'smooth' });
+  const n = track.children.length;
+  if (n > 5) {
+    track.style.setProperty('--mq', Math.max(18, n * 3.2) + 's');
+    track.innerHTML += track.innerHTML;
+    track.classList.add('marquee');
+  }
 }
 
 async function lplLogos(lista) {
@@ -369,20 +370,53 @@ function lplViewAll(key, filtro) {
   const prev = $('lpl-overlay'); if (prev) prev.remove();
   const lob = _lobby || { todos: [], activos: [] };
   const titulos = { featured: 'Featured Tokens', latest: 'Latest Created Tokens', popular: 'Popular Tokens', search: 'Search results' };
-  let lista, cols, pop = false;
-  if (key === 'featured') { lista = []; cols = ['#', 'Token', 'Symbol', 'Chain']; }
-  else if (key === 'popular') { pop = true; lista = (lob.activos || []).slice().sort((a, b) => (b.volUsd || 0) - (a.volUsd || 0) || (b.mcapUsd - a.mcapUsd)); cols = ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']; }
-  else { lista = lob.todos.slice(); cols = ['#', 'Token', 'Symbol', 'Creator', 'Chain']; }
-  if (key === 'search' && filtro) { const f = filtro.toLowerCase(); lista = lista.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f)); }
-  const vacio = key === 'featured' ? 'No premium listings yet. Pay to feature your coin here.' : 'No tokens here yet.';
-  const cuerpo = !lista.length ? `<tr class="lpl-empty"><td colspan="${cols.length}">${vacio}</td></tr>`
-    : lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`}<td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+  const pop = key === 'popular';
+  const base = key === 'featured' ? [] : (pop ? (lob.activos || []).slice() : (lob.todos || []).slice());
+  const cols = key === 'featured' ? ['#', 'Token', 'Symbol', 'Chain']
+    : pop ? ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']
+      : ['#', 'Token', 'Symbol', 'Creator', 'Chain'];
+  // Orden REAL segun la seccion (funcional, no decorativo).
+  const ordenes = pop
+    ? [['vol', 'Most traded'], ['liqDesc', 'Highest liquidity'], ['liqAsc', 'Lowest liquidity'], ['mcap', 'Highest market cap']]
+    : [['new', 'Newest first'], ['old', 'Oldest first'], ['az', 'Name A to Z']];
+  let q = key === 'search' ? (filtro || '') : '';
+  let orden = ordenes[0][0];
+  const ordenar = (l) => {
+    l = l.slice();
+    const by = { vol: (a, b) => (b.volUsd || 0) - (a.volUsd || 0), liqDesc: (a, b) => (b.liqUsd || 0) - (a.liqUsd || 0), liqAsc: (a, b) => (a.liqUsd || 0) - (b.liqUsd || 0), mcap: (a, b) => (b.mcapUsd || 0) - (a.mcapUsd || 0), new: (a, b) => (b.bloque || 0) - (a.bloque || 0), old: (a, b) => (a.bloque || 0) - (b.bloque || 0), az: (a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')) };
+    if (by[orden]) l.sort(by[orden]);
+    return l;
+  };
+  const filas = () => {
+    let l = base;
+    if (q) { const f = q.toLowerCase(); l = l.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f) || (t.address || '').toLowerCase().includes(f)); }
+    l = ordenar(l);
+    if (!l.length) return `<tr class="lpl-empty"><td colspan="${cols.length}">${key === 'featured' ? 'No premium listings yet. Pay to feature your coin here.' : 'No tokens here.'}</td></tr>`;
+    return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`)}<td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+  };
   const d = document.createElement('div'); d.id = 'lpl-overlay'; d.className = 'lpl-ov';
-  d.innerHTML = `<div class="lpl-ov-card"><div class="lpl-ov-head"><b>${esc(titulos[key] || 'Tokens')}</b><button class="lpl-ov-x" id="lpl-ov-x" type="button" aria-label="Close">✕</button></div><div class="lpl-ov-body"><table class="lpl-table">${lplThead(cols)}<tbody>${cuerpo}</tbody></table></div></div>`;
+  const menu = ordenes.map(([v, t]) => `<button type="button" class="lpl-fopt${v === orden ? ' on' : ''}" data-o="${v}">${esc(t)}</button>`).join('');
+  d.innerHTML = `<div class="lpl-ov-card">
+    <div class="lpl-ov-head">
+      <b>${esc(titulos[key] || 'Tokens')}</b>
+      <div class="lpl-ov-tools">
+        <label class="lpl-ov-search">${LPL_LUPA}<input id="lpl-ov-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search…" value="${esc(q)}"></label>
+        <div class="lpl-ov-filtro"><button class="lpl-ov-fbtn" id="lpl-ov-fbtn" type="button" aria-label="Sort">${LPL_FILTRO}</button><div class="lpl-ov-fmenu" id="lpl-ov-fmenu">${menu}</div></div>
+        <button class="lpl-ov-x" id="lpl-ov-x" type="button" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="lpl-ov-body"><table class="lpl-table">${lplThead(cols)}<tbody id="lpl-ov-tb">${filas()}</tbody></table></div></div>`;
   document.body.appendChild(d);
-  $('lpl-ov-x').onclick = () => d.remove();
+  const bind = () => { d.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => { d.remove(); cargarToken(r.dataset.a); }; }); };
+  const repintar = () => { const b = d.querySelector('#lpl-ov-tb'); if (b) b.innerHTML = filas(); bind(); };
+  bind();
+  d.querySelector('#lpl-ov-x').onclick = () => d.remove();
   d.onclick = (e) => { if (e.target === d) d.remove(); };
-  d.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => { d.remove(); cargarToken(r.dataset.a); }; });
+  const qi = d.querySelector('#lpl-ov-q'); if (qi) qi.addEventListener('input', () => { q = qi.value.trim(); repintar(); });
+  const fbtn = d.querySelector('#lpl-ov-fbtn'), fmenu = d.querySelector('#lpl-ov-fmenu');
+  if (fbtn) fbtn.onclick = (e) => { e.stopPropagation(); fmenu.classList.toggle('open'); };
+  d.querySelectorAll('.lpl-fopt').forEach((b) => { b.onclick = () => { orden = b.dataset.o; fmenu.classList.remove('open'); d.querySelectorAll('.lpl-fopt').forEach((x) => x.classList.toggle('on', x === b)); repintar(); }; });
+  d.addEventListener('click', (e) => { if (fmenu && !e.target.closest('.lpl-ov-filtro')) fmenu.classList.remove('open'); });
 }
 
 /* Pagina de informacion, escrita para quien de verdad la lee: desarrolladores y creadores
