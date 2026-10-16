@@ -309,23 +309,34 @@ function lplCarrusel() {
   if (n) n.onclick = () => track.scrollBy({ left: paso(), behavior: 'smooth' });
 }
 
+async function lplLogos(lista) {
+  await Promise.all(lista.map(async (t) => { if (t.logo !== undefined) return; try { const m = await leerMoneda(t.address); t.logo = (m && m.logo) || ''; } catch (_) { t.logo = ''; } }));
+}
 function lplCargarListas() {
   gb.todosLosTokens(40).then(async (lista) => {
     if (!$('lpl-latest')) return;   // ya no estamos en el lobby
-    const latest = lista.slice(0, 5);
     const bnbUsd = await gb.precioBNBUSDT().catch(() => 0);
+    // Latest Created: las mas nuevas, con su hora y logo. Se pinta ya (no depende de la actividad).
+    const latest = lista.slice(0, 5);
     await Promise.all(latest.map(async (t) => { try { t.tiempo = await gb.tiempoBloque(t.bloque); } catch (_) { t.tiempo = 0; } }));
-    const cand = lista.slice(0, 20);
-    const conPool = await Promise.all(cand.map(async (t) => {
+    await lplLogos(latest);
+    if ($('lpl-latest')) lplPintarLatest(latest);
+    // Popular: de las que tienen pool, se miden volumen (sumatoria de los trades) y holders (wallets
+    // distintas que operaron), leyendo los eventos en cadena. Se ordena por "mas transaccionado".
+    const conPool = await Promise.all(lista.slice(0, 20).map(async (t) => {
       const r = await gb.resumenPool(t.address).catch(() => ({ activo: false, liquidez: 0, precio: 0, moneda: 'BNB' }));
       const rate = r.moneda === 'USDT' ? 1 : (bnbUsd > 0 ? bnbUsd : 0);
       return { ...t, ...r, mcapUsd: r.activo ? r.precio * t.supply * rate : 0, liqUsd: r.activo ? r.liquidez * rate : 0 };
     }));
-    const popular = conPool.filter((t) => t.activo).sort((a, b) => b.mcapUsd - a.mcapUsd).slice(0, 5);
-    // logos (Firestore) solo de las filas visibles
-    await Promise.all([...latest, ...popular].map(async (t) => { if (t.logo !== undefined) return; try { const m = await leerMoneda(t.address); t.logo = (m && m.logo) || ''; } catch (_) { t.logo = ''; } }));
-    _lobby = { todos: lista, conPool, bnbUsd };
-    if ($('lpl-latest')) lplPintarLatest(latest);
+    const activos = conPool.filter((t) => t.activo).sort((a, b) => b.liqUsd - a.liqUsd).slice(0, 8);
+    await Promise.all(activos.map(async (t) => {
+      try { const ops = await gb.operaciones(t.address, 300); t.volumen = ops.reduce((a, o) => a + (o.valor || 0), 0); t.holders = new Set(ops.map((o) => o.wallet).filter(Boolean)).size; }
+      catch (_) { t.volumen = 0; t.holders = 0; }
+      t.volUsd = t.volumen * (t.moneda === 'USDT' ? 1 : (bnbUsd > 0 ? bnbUsd : 0));
+    }));
+    await lplLogos(activos);
+    const popular = activos.slice().sort((a, b) => (b.volUsd || 0) - (a.volUsd || 0) || (b.mcapUsd - a.mcapUsd)).slice(0, 5);
+    _lobby = { todos: lista, activos, bnbUsd };
     if ($('lpl-popular')) lplPintarPopular(popular);
   }).catch(() => { if ($('lpl-latest')) lplPintarLatest([]); if ($('lpl-popular')) lplPintarPopular([]); });
 }
@@ -343,7 +354,7 @@ function lplPintarLatest(lista) {
 function lplPintarPopular(lista) {
   const cols = ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']; const host = $('lpl-popular'); if (!host) return;
   if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No pools with liquidity yet.'); return; }
-  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">—</td><td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td><td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
   host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
   lplFilas(host);
 }
@@ -356,16 +367,16 @@ function lplBuscar(q) {
 
 function lplViewAll(key, filtro) {
   const prev = $('lpl-overlay'); if (prev) prev.remove();
-  const lob = _lobby || { todos: [], conPool: [] };
+  const lob = _lobby || { todos: [], activos: [] };
   const titulos = { featured: 'Featured Tokens', latest: 'Latest Created Tokens', popular: 'Popular Tokens', search: 'Search results' };
   let lista, cols, pop = false;
   if (key === 'featured') { lista = []; cols = ['#', 'Token', 'Symbol', 'Chain']; }
-  else if (key === 'popular') { pop = true; lista = lob.conPool.filter((t) => t.activo).sort((a, b) => b.mcapUsd - a.mcapUsd); cols = ['#', 'Token', 'Symbol', 'Market Cap', 'Chain']; }
+  else if (key === 'popular') { pop = true; lista = (lob.activos || []).slice().sort((a, b) => (b.volUsd || 0) - (a.volUsd || 0) || (b.mcapUsd - a.mcapUsd)); cols = ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']; }
   else { lista = lob.todos.slice(); cols = ['#', 'Token', 'Symbol', 'Creator', 'Chain']; }
   if (key === 'search' && filtro) { const f = filtro.toLowerCase(); lista = lista.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f)); }
   const vacio = key === 'featured' ? 'No premium listings yet. Pay to feature your coin here.' : 'No tokens here yet.';
   const cuerpo = !lista.length ? `<tr class="lpl-empty"><td colspan="${cols.length}">${vacio}</td></tr>`
-    : lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td>` : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`}<td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+    : lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`}<td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
   const d = document.createElement('div'); d.id = 'lpl-overlay'; d.className = 'lpl-ov';
   d.innerHTML = `<div class="lpl-ov-card"><div class="lpl-ov-head"><b>${esc(titulos[key] || 'Tokens')}</b><button class="lpl-ov-x" id="lpl-ov-x" type="button" aria-label="Close">✕</button></div><div class="lpl-ov-body"><table class="lpl-table">${lplThead(cols)}<tbody>${cuerpo}</tbody></table></div></div>`;
   document.body.appendChild(d);
