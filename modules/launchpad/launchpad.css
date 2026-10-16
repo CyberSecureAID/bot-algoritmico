@@ -117,8 +117,28 @@
 .lpl-tok{max-width:230px}
 .lpl-tok-in{display:flex;align-items:center;gap:9px;max-width:220px}
 .lpl-tok-nom{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;min-width:0}
-/* Distintivo de token listado sin liquidez (List Your Token): pildora roja discreta junto al nombre. */
-.lpl-nolq{flex:0 0 auto;display:inline-flex;align-items:center;padding:1px 7px;border-radius:999px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#f0a9a9;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.32);white-space:nowrap}
+/* Distintivo de token LISTADO sin liquidez (seccion List Your Token): pildora VERDE, no roja. No dice
+   "Community" (haria pensar que lo respaldamos): solo dice que esta listado para venta directa. */
+.lpl-listed{flex:0 0 auto;display:inline-flex;align-items:center;padding:1px 7px;border-radius:999px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#6fe0a6;background:rgba(46,232,106,.12);border:1px solid rgba(46,232,106,.34);white-space:nowrap}
+/* Enlace azul tipo Wikipedia a la seccion List Your Token, dentro del aviso del token listado. */
+.lp-lyt{color:#5aa9ff;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(90,169,255,.4)}
+.lp-lyt:hover{color:#7cbcff;border-bottom-color:#7cbcff}
+/* Popup de aviso (disclaimers): tarjeta con X en la esquina y, si hace falta, un boton de accion
+   centrado de verdad (inline-flex), nunca con el texto pegado al borde superior. */
+.lp-aviso{position:fixed;inset:0;z-index:9850;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(3,5,8,.8);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.lp-aviso-card{position:relative;width:100%;max-width:440px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft);border-radius:18px;padding:22px}
+.lp-aviso-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid #2b3139;color:var(--ink-2);cursor:pointer;font-size:13px;display:grid;place-items:center;padding:0}
+.lp-aviso-x:hover{border-color:var(--gold-soft);color:var(--gold)}
+.lp-aviso-t{margin:0 36px 12px 0;font-family:'Chakra Petch',var(--display);font-size:18px;color:var(--gold)}
+.lp-aviso-body{font-size:13px;line-height:1.55;color:var(--ink-2)}
+.lp-aviso-body p{margin:0 0 10px}
+.lp-aviso-body .lp-aviso-sub{font-size:12px;color:var(--ink-3)}
+.lp-aviso-body .lp-kv{margin:0 0 6px}
+.lp-aviso-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin-top:16px;border-radius:12px;font-family:var(--display);font-weight:800;font-size:15px;text-decoration:none;cursor:pointer;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;border:1px solid #c79426}
+.lp-aviso-go:hover{filter:brightness(1.05)}
+/* Tarjeta de Featured que SI es una moneda real (con pool): se puede tocar para abrir su panel. */
+.lpl-fcard-real{cursor:pointer}
+.lpl-fcard-real:hover{border-color:var(--gold-soft)}
 .lpl-sym{color:var(--ink-3);font-family:var(--mono);font-size:12px}
 .lpl-cre{font-family:var(--mono);font-size:12px;color:#7fa0d8}
 .lpl-mcap{color:var(--ink);font-weight:700}
@@ -174,7 +194,10 @@
   /* Tablas en movil: se ocultan columnas secundarias para que no se desfasen ni desborden. */
   .lpl-table td,.lpl-table th{padding:10px 7px;font-size:12.5px}
   .lpl-c-cre,.lpl-cre,.lpl-c-chain,.lpl-chain,.lpl-c-hold,.lpl-hold{display:none}
-  .lpl-tok,.lpl-tok-in{max-width:136px}
+  /* En movil se ocultan columnas, asi que el token tiene mas sitio; la pildora de comunidad baja a una
+     segunda linea si no cabe (flex-wrap) en vez de cortar el nombre o romper la fila. */
+  .lpl-tok,.lpl-tok-in{max-width:168px}
+  .lpl-tok-in{flex-wrap:wrap;row-gap:3px}
   .lpl-panel-sec{padding:14px 12px 4px}
 }
 
@@ -454,7 +477,7 @@
 /* ───────── Modal generico (busy / error / ok) ───────── */
 #colmena-modal{position:fixed;inset:0;z-index:9800;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(3,5,8,.8);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 #colmena-modal.show{display:flex}
-#colmena-modal .m-card{width:100%;max-width:420px;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft);border-radius:18px;padding:22px}
+#colmena-modal .m-card{width:100%;max-width:420px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft);border-radius:18px;padding:22px}
 #colmena-modal h4{margin:0 0 8px;font-family:'Chakra Petch',var(--display);font-size:18px;color:var(--gold)}
 #colmena-modal p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-2)}
 #colmena-modal .m-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}

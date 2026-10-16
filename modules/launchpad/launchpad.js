@@ -275,7 +275,10 @@ function lplLogo(src, sim) {
     : `<span class="lpl-logo"><span class="lpl-logo-fb">${l}</span></span>`;
 }
 function lplCardFeatured(f) {
-  return `<div class="lpl-fcard" data-ejemplo="1">
+  // Las 5 de ejemplo (sin address) no hacen nada al tocarlas. Una moneda REAL destacada (con address,
+  // cuando exista la monetizacion) se marca con data-a y abre su panel de compra como cualquier otra.
+  const real = f && f.address ? ` data-a="${esc(f.address)}"` : ' data-ejemplo="1"';
+  return `<div class="lpl-fcard${f && f.address ? ' lpl-fcard-real' : ''}"${real}>
     <span class="lpl-fcard-ext">${LPL_EXT}</span>
     <div class="lpl-fcard-top"><span class="lpl-logo lpl-logo-lg"><img src="./img/${f.logo}.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${esc(f.simbolo[0])}</span></span>
       <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span></div></div>
@@ -284,7 +287,7 @@ function lplCardFeatured(f) {
 const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
 /* Celda del token (logo + nombre). El flex va en un <span> interior, NUNCA en el <td>: un <td> con
    display:flex sale del modelo de columnas de la tabla y descuadra el resto hacia la derecha. */
-function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-nolq" title="Listed token without a liquidity pool">No liquidity</span>' : ''}</span></td>`; }
+function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-listed" title="Listed for direct sale, without a liquidity pool">Listed</span>' : ''}</span></td>`; }
 function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th class="${LPL_COLCLS[c] || ''}">${esc(c)}</th>`).join('')}</tr></thead>`; }
 function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
 function lplHaceCuanto(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; const m = Math.floor(s / 60); if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; }
@@ -332,6 +335,9 @@ function pintarPortada() {
   const q = $('lpl-q'); if (q) q.addEventListener('keydown', (e) => { if (e.key === 'Enter') lplBuscar(q.value.trim()); });
   lplCarrusel();
   host.querySelectorAll('.lpl-viewall').forEach((b) => { b.onclick = () => lplViewAll(b.dataset.v); });
+  // Tocar una moneda REAL de Featured (con data-a) muestra primero el disclaimer de token premium
+  // (pagaron por posicionarse, no es nuestro, no lo respaldamos) y luego abre su panel. Ejemplos: nada.
+  const ft = $('lpl-feat-track'); if (ft) ft.addEventListener('click', (e) => { const c = e.target.closest('.lpl-fcard[data-a]'); if (c && c.dataset.a) avisoPremium(c.dataset.a); });
   lplCargarListas();
 }
 
@@ -424,23 +430,61 @@ function lplBuscar(q) {
   lplViewAll('search', q);
 }
 
-/* Ficha de un token LISTADO (sin liquidez). No abre el panel de pool (no tiene grafica ni precio de
-   mercado): explica que es, su precio fijado y donde comprarlo, con aviso antes de comprar. La compra
-   vive en Swap -> List Your Token (modulo aparte); aqui solo se informa. */
+/* Popup de aviso con X en la esquina superior derecha (disclaimers de token listado y de token
+   premium). No usa el modal generico: estos avisos se cierran con la X, no con un boton abajo.
+   `accion` opcional: { txt, href } pinta un enlace; { txt, onclick } pinta un boton. */
+function avisoPopup(titulo, cuerpoHTML, accion) {
+  const prev = document.getElementById('lp-aviso'); if (prev) prev.remove();
+  const ov = document.createElement('div'); ov.id = 'lp-aviso'; ov.className = 'lp-aviso';
+  const btn = !accion ? '' : (accion.href
+    ? `<a class="lp-aviso-go" id="lp-aviso-go" href="${accion.href}" target="_blank" rel="noopener">${esc(accion.txt)}</a>`
+    : `<button class="lp-aviso-go" id="lp-aviso-go" type="button">${esc(accion.txt)}</button>`);
+  ov.innerHTML = `<div class="lp-aviso-card" role="dialog" aria-modal="true">
+    <button class="lp-aviso-x" type="button" aria-label="Close">✕</button>
+    <h4 class="lp-aviso-t">${titulo}</h4>
+    <div class="lp-aviso-body">${cuerpoHTML}</div>${btn}</div>`;
+  document.body.appendChild(ov);
+  const cerrar = () => { try { ov.remove(); } catch (_) {} };
+  ov.querySelector('.lp-aviso-x').onclick = cerrar;
+  ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
+  if (accion && accion.onclick) { const g = ov.querySelector('#lp-aviso-go'); if (g) g.onclick = (e) => { e.preventDefault(); cerrar(); accion.onclick(); }; }
+  return { cerrar };
+}
+
+/* Ficha de un token LISTADO sin liquidez (seccion List Your Token). No es el panel de pool (no tiene
+   grafica ni precio de mercado): es un aviso que explica QUE es, su garantia (candado de 30 dias) si
+   sigue activa, y lleva a comprarlo al swap. Cada mencion de List Your Token va en azul y clickeable.
+   No se muestra el contrato (puede no ser nuestro) ni hay boton de copiar; se cierra con la X. */
+const SWAP_LISTAR = '../swap/swap.html?abrir=listar';   // seccion List Your Token
+const lytLink = (txt) => `<a href="${SWAP_LISTAR}" target="_blank" rel="noopener" class="lp-lyt">${txt || 'List Your Token'}</a>`;
 function abrirListado(addr) {
   const L = ((_lobby && _lobby.listados) || []).find((x) => String(x.address).toLowerCase() === String(addr).toLowerCase());
   const nombre = L ? (L.nombre || 'Listed token') : 'Listed token';
   const sim = L && L.simbolo ? ' (' + esc(L.simbolo) + ')' : '';
   const precio = L && L.precioBNB > 0 ? `<div class="lp-kv"><span>Price</span><b>${fmtP(L.precioBNB)} BNB / token</b></div>` : '';
   const stock = L && L.enVenta > 0 ? `<div class="lp-kv"><span>For sale</span><b>${numC(L.enVenta)} ${esc(L.simbolo || 'tokens')}</b></div>` : '';
+  const prot = L ? (L.proteccionSeg || 0) : 0;
+  const dias = Math.ceil(prot / 86400);
+  const garantia = prot > 0
+    ? `<div class="lp-kv"><span>Buyer guarantee</span><b class="verde">Active, ${dias} day${dias === 1 ? '' : 's'} left</b></div>`
+    : `<div class="lp-kv"><span>Buyer guarantee</span><b class="oro">Lock of 30 days ended</b></div>`;
   const cuerpo = `
-    <p style="margin:0 0 12px;font-size:13.5px;line-height:1.55;color:var(--ink-2)">This is a <b>listed token without a liquidity pool</b>. It has no chart or market price here: it is sold directly by its lister at the price they set, and paid in BNB.</p>
-    <div class="lp-kv"><span>Contract</span><b style="font-family:var(--mono);font-size:11.5px">${corto(addr)}</b></div>
-    ${precio}${stock}
-    <p style="margin:12px 0 0;font-size:12.5px;line-height:1.5;color:var(--ink-3)">To buy it, open <b>Swap → List Your Token</b> and search by name or contract. The platform does not endorse listed tokens; each buyer decides on their own. Buyer protections (a 30-day lock and buy-back) apply in the marketplace.</p>
-    <button id="lp-lst-copy" class="lp-b gris" type="button" style="margin-top:14px">Copy contract</button>`;
-  modal(nombre + sim, cuerpo, { ok: 'Got it' });
-  const cb = $('lp-lst-copy'); if (cb) cb.onclick = () => { try { navigator.clipboard.writeText(addr); cb.textContent = 'Copied'; setTimeout(() => { const b = $('lp-lst-copy'); if (b) b.textContent = 'Copy contract'; }, 1500); } catch (_) {} };
+    <p>You can buy this token, but first know what it is. It was created in ${lytLink()}, a special section of our ecosystem where a project can offer its token for sale <b>without adding a liquidity pool</b>, at a price its creator sets, paid in BNB.</p>
+    <p class="lp-aviso-sub">This exists for early projects that need capital and cannot lock two or three million dollars of liquidity to launch. Instead, a team can rally the people who support it: if the community backs the project, they create the token here and sell it directly through ${lytLink()}, with no liquidity required.</p>
+    ${precio}${stock}${garantia}
+    <p class="lp-aviso-sub">This is not fraud and it is not an endorsement. The platform does not verify or back these listings: there is no liquidity pool, the price is set by the creator, and the value depends entirely on the project and the people behind it. If you buy, you do so at your own responsibility. A money back protection (you can return your tokens for BNB from the same wallet) and the lock of 30 days above apply in the marketplace.</p>`;
+  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?token=' + encodeURIComponent(addr) });
+}
+
+/* Disclaimer de token PREMIUM (Featured): quien paga compra solo VISIBILIDAD arriba. Nos desvincula
+   por completo: no es nuestro, no lo respaldamos, no tenemos moneda propia, cada cual asume su riesgo.
+   Tras aceptar, continua al panel de la moneda (donde esta el swap para comprarla). Se cierra con la X. */
+function avisoPremium(addr) {
+  const cuerpo = `
+    <p>This token is featured here because its project paid to position it at the top. It is not from our platform and we do not back it.</p>
+    <p class="lp-aviso-sub">We only provide the tools to give these tokens visibility. They are not part of our ecosystem. Our platform does not have a cryptocurrency of its own, and we have nothing to do with this token.</p>
+    <p class="lp-aviso-sub">Anyone who continues to buy must be aware of the risk they take. If you are not completely clear and sure about a token, do not buy it. You do so at your own responsibility.</p>`;
+  avisoPopup('About featured tokens', cuerpo, { txt: 'Continue', onclick: () => cargarToken(addr) });
 }
 
 function lplViewAll(key, filtro) {

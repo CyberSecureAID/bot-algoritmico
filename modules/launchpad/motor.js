@@ -379,14 +379,18 @@ export async function listadosMercado(max = 40) {
     catch (_) {}
   }
   if (!arr) return [];
+  const CANDADO = 30 * 86400;              // garantia: 30 dias de bloqueo desde el listado (como en el mercado)
+  const ahora = Math.floor(Date.now() / 1000);
   const out = [];
   arr.forEach((L, i) => {
     if (!L.activo) return;                 // solo listados vivos
+    const creado = Number(L.creado);
     out.push({
       address: String(L.token), nombre: String(L.nombre || ''), simbolo: String(L.simbolo || ''),
       logo: String(L.logo || ''), creador: String(L.vendedor), listado: true,
       idListado: desde + i, precioBNB: Number(ethers.formatEther(L.precio)),
-      enVenta: Number(ethers.formatEther(L.enVenta)), creadoEn: Number(L.creado) * 1000
+      enVenta: Number(ethers.formatEther(L.enVenta)), creadoEn: creado * 1000,
+      proteccionSeg: Math.max(0, creado + CANDADO - ahora)   // segundos restantes de garantia (0 = terminada)
     });
   });
   out.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
