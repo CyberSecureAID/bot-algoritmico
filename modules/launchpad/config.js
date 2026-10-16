@@ -35,6 +35,11 @@ export const COINGECKO_MERCADOS = 'https://api.coingecko.com/api/v3/coins/market
 /* Monedas con las que se puede poner liquidez. */
 export const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 export const USDT = '0x55d398326f99059fF775485246999027B3197955';
+
+/* Mercado de tokens listados SIN liquidez ("List Your Token" del swap). El launchpad SOLO lo LEE
+   (totalListados + pagina) para mostrar esas monedas en Latest Created marcadas como "No liquidity".
+   No se importa modules/swap/ (modulo sellado): se lee el contrato directo con ethers local. */
+export const MERCADO = '0x39c48394068299Aa3e3ab114F16bfc3DE11F4112';
 export const LIQUIDEZ = [
   { id: 'BNB',  simbolo: 'BNB',  address: null, decimals: 18 },
   { id: 'USDT', simbolo: 'USDT', address: USDT, decimals: 18 }

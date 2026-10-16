@@ -5,7 +5,7 @@
 
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS, COINGECKO_BNB, COINGECKO_MERCADOS } from './config.js';
+import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS, COINGECKO_BNB, COINGECKO_MERCADOS, MERCADO } from './config.js';
 
 const CERO = '0x0000000000000000000000000000000000000000';
 
@@ -275,24 +275,31 @@ export async function operaciones(token, max = 80) {
   const CHUNK = 9000;                         // rango que aceptan los RPC publicos de BSC
   const vistos = new Set(); const compras = [], ventas = [];
   let apEv = null;                             // evento PoolAbierto (precio de lanzamiento), en el MISMO escaneo
-  let hi = latest, recorrido = 0, rpc = _rpcIdx % RPCS.length;
+  // Escaneo por OLAS en paralelo (igual que todosLosTokens): OLA rangos a la vez, cada uno con su RPC.
+  // Antes era rango por rango en serie; para una pool de varios dias eso eran decenas de vueltas y el
+  // panel (y Popular, que llama aqui por moneda) tardaba. El span ya esta acotado por la edad de la pool.
+  let hi = latest, recorrido = 0;
+  const OLA = 6;
   while (recorrido < span && hi > 0 && (compras.length + ventas.length) < max) {
-    const lo = Math.max(0, hi - CHUNK + 1); let ok = false;
-    for (let intento = 0; intento < RPCS.length && !ok; intento++) {
-      try {
-        const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc));
-        const consultas = [cc.queryFilter(cc.filters.Compra(token), lo, hi), cc.queryFilter(cc.filters.Venta(token), lo, hi)];
-        if (!apEv) consultas.push(cc.queryFilter(cc.filters.PoolAbierto(token), lo, hi));
-        const res = await Promise.all(consultas);
-        for (const e of res[0]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); compras.push(e); } }
-        for (const e of res[1]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); ventas.push(e); } }
-        if (res[2] && res[2].length) apEv = res[2][0];
-        ok = true;
-      } catch (_) { rpc = (rpc + 1) % RPCS.length; }
+    const rangos = [];
+    for (let k = 0; k < OLA && hi > 0 && recorrido < span; k++) { const lo = Math.max(0, hi - CHUNK + 1); rangos.push([lo, hi]); hi = lo - 1; recorrido += CHUNK; }
+    const res = await Promise.all(rangos.map(async ([lo, hi2], idx) => {
+      for (let intento = 0; intento < RPCS.length; intento++) {
+        const rp = (_rpcIdx + idx + intento) % RPCS.length;
+        try {
+          const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rp));
+          return await Promise.all([cc.queryFilter(cc.filters.Compra(token), lo, hi2), cc.queryFilter(cc.filters.Venta(token), lo, hi2), cc.queryFilter(cc.filters.PoolAbierto(token), lo, hi2)]);
+        } catch (_) {}
+      }
+      return [[], [], []];
+    }));
+    for (const r of res) {
+      for (const e of r[0]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); compras.push(e); } }
+      for (const e of r[1]) { const k = e.transactionHash + ':' + e.index; if (!vistos.has(k)) { vistos.add(k); ventas.push(e); } }
+      if (!apEv && r[2] && r[2].length) apEv = r[2][0];
     }
-    hi = lo - 1; recorrido += CHUNK;
   }
-  _rpcIdx = rpc;
+  const rpc = _rpcIdx % RPCS.length;   // RPC para los getBlock de fechas/apertura de abajo
   const fechas = {};
   const bloques = [...new Set([...compras, ...ventas].map((e) => e.blockNumber))];
   await Promise.all(bloques.slice(0, 60).map(async (b) => { try { fechas[b] = Number((await provRPC(rpc).getBlock(b)).timestamp) * 1000; } catch (_) {} }));
@@ -319,27 +326,70 @@ function _corto(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
 export async function todosLosTokens(max = 40) {
   let latest = 0; try { latest = await lector().getBlockNumber(); } catch (_) { return []; }
   if (!latest) return [];
-  const CHUNK = 9000, TOPE = 260000;
+  const CHUNK = 9000, TOPE = 260000, OLA = 6;   // OLA = rangos pedidos A LA VEZ (en paralelo)
+  // Antes se escaneaba rango por rango en serie (~29 vueltas), asi que aunque no hubiera monedas
+  // el lobby tardaba ~15 s. Ahora se piden OLA rangos en paralelo por ola, cada uno con su RPC: el
+  // mismo barrido completo se hace en ~5 vueltas. Se corta en cuanto se juntan `max` monedas.
   const vistos = new Set(); const out = [];
-  let hi = latest, recorrido = 0, rpc = _rpcIdx % RPCS.length;
+  let hi = latest, recorrido = 0;
   while (recorrido < TOPE && hi > 0 && out.length < max) {
-    const lo = Math.max(0, hi - CHUNK + 1); let ok = false;
-    for (let intento = 0; intento < RPCS.length && !ok; intento++) {
-      try {
-        const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc));
-        const ev = await cc.queryFilter(cc.filters.TokenCreado(), lo, hi);
-        for (const e of ev.reverse()) {
-          const a = e.args; const addr = String(a.token); const k = addr.toLowerCase();
-          if (vistos.has(k)) continue; vistos.add(k);
-          out.push({ address: addr, nombre: a.nombre, simbolo: a.simbolo, supply: Number(ethers.formatEther(a.supply)), creador: String(a.creador), bloque: e.blockNumber });
-          if (out.length >= max) break;
-        }
-        ok = true;
-      } catch (_) { rpc = (rpc + 1) % RPCS.length; }
+    const rangos = [];
+    for (let k = 0; k < OLA && hi > 0 && recorrido < TOPE; k++) {
+      const lo = Math.max(0, hi - CHUNK + 1); rangos.push([lo, hi]); hi = lo - 1; recorrido += CHUNK;
     }
-    hi = lo - 1; recorrido += CHUNK;
+    const res = await Promise.all(rangos.map(async ([lo, hi2], idx) => {
+      for (let intento = 0; intento < RPCS.length; intento++) {
+        const rpc = (_rpcIdx + idx + intento) % RPCS.length;
+        try { const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc)); return await cc.queryFilter(cc.filters.TokenCreado(), lo, hi2); }
+        catch (_) {}
+      }
+      return [];
+    }));
+    for (const ev of res) {
+      for (const e of ev) {
+        const a = e.args; const addr = String(a.token); const k = addr.toLowerCase();
+        if (vistos.has(k)) continue; vistos.add(k);
+        out.push({ address: addr, nombre: a.nombre, simbolo: a.simbolo, supply: Number(ethers.formatEther(a.supply)), creador: String(a.creador), bloque: e.blockNumber });
+      }
+    }
   }
-  _rpcIdx = rpc;
+  out.sort((x, y) => y.bloque - x.bloque);   // lo mas nuevo primero (las olas pueden llegar mezcladas)
+  return out.slice(0, max);
+}
+
+/* Tokens LISTADOS en el mercado "List Your Token" (sin liquidez). SOLO LECTURA del contrato de
+   mercado (totalListados + pagina): el launchpad no puede comprarlos (eso vive en modules/swap/),
+   solo los MUESTRA en Latest Created marcados como "No liquidity". Devuelve lo mas nuevo primero. */
+const MERCADO_ABI = [
+  'function totalListados() view returns (uint256)',
+  'function pagina(uint256 desde,uint256 hasta) view returns (tuple(address vendedor,address token,string nombre,string simbolo,string logo,uint256 precio,uint256 enVenta,uint256 ganancia,uint64 creado,uint64 ultimoRetiro,bool activo)[])'
+];
+export async function listadosMercado(max = 40) {
+  if (!MERCADO || MERCADO === CERO) return [];
+  let total = 0;
+  for (let intento = 0; intento < RPCS.length && !total; intento++) {
+    try { const c = new ethers.Contract(MERCADO, MERCADO_ABI, provRPC((_rpcIdx + intento) % RPCS.length)); total = Number(await c.totalListados()); }
+    catch (_) {}
+  }
+  if (!total) return [];
+  const desde = total > max ? total - (max - 1) : 1;
+  let arr = null;
+  for (let intento = 0; intento < RPCS.length && !arr; intento++) {
+    try { const c = new ethers.Contract(MERCADO, MERCADO_ABI, provRPC((_rpcIdx + intento) % RPCS.length)); arr = await c.pagina(desde, total); }
+    catch (_) {}
+  }
+  if (!arr) return [];
+  const out = [];
+  arr.forEach((L, i) => {
+    if (!L.activo) return;                 // solo listados vivos
+    out.push({
+      address: String(L.token), nombre: String(L.nombre || ''), simbolo: String(L.simbolo || ''),
+      logo: String(L.logo || ''), creador: String(L.vendedor), listado: true,
+      idListado: desde + i, precioBNB: Number(ethers.formatEther(L.precio)),
+      enVenta: Number(ethers.formatEther(L.enVenta)), creadoEn: Number(L.creado) * 1000
+    });
+  });
+  out.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
   return out;
 }
 

@@ -21,6 +21,16 @@ const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 const num = (n, d = 2) => isFinite(n) ? Number(n).toLocaleString('en-US', { maximumFractionDigits: d }) : '...';
 /* Numero compacto para cantidades grandes (supply, quemado): 100M, 2.5B, sin desbordar la casilla. */
 const numC = (n) => { n = Number(n) || 0; if (n >= 1e9) return (n / 1e9).toFixed(n >= 1e10 ? 0 : 2).replace(/\.?0+$/, '') + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 2).replace(/\.?0+$/, '') + 'M'; if (n >= 1e4) return (n / 1e3).toFixed(0) + 'K'; return num(n, 0); };
+/* Dinero compacto para las casillas (Market Cap, liquidez, volumen): 175K, 1.2M, 3.4B, 2T, en vez
+   del numero larguisimo con puntos que se desbordaba. Por debajo de 10K se muestra entero (cabe). */
+const dineroC = (v) => {
+  v = Number(v) || 0; const a = Math.abs(v);
+  if (a >= 1e12) return (v / 1e12).toFixed(2).replace(/\.?0+$/, '') + 'T';
+  if (a >= 1e9) return (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+  if (a >= 999500) return (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+  if (a >= 1e4) return (v / 1e3).toFixed(0) + 'K';
+  return num(v, 2);
+};
 const corto = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
 const CERO = '0x0000000000000000000000000000000000000000';
 /* Precios muy pequenos legibles: 0.0<sub>7</sub>4779 en vez de 4.779e-8. */
@@ -274,7 +284,7 @@ function lplCardFeatured(f) {
 const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
 /* Celda del token (logo + nombre). El flex va en un <span> interior, NUNCA en el <td>: un <td> con
    display:flex sale del modelo de columnas de la tabla y descuadra el resto hacia la derecha. */
-function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></span></td>`; }
+function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-nolq" title="Listed token without a liquidity pool">No liquidity</span>' : ''}</span></td>`; }
 function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th class="${LPL_COLCLS[c] || ''}">${esc(c)}</th>`).join('')}</tr></thead>`; }
 function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
 function lplHaceCuanto(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; const m = Math.floor(s / 60); if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; }
@@ -341,7 +351,9 @@ async function lplLogos(lista) {
   await Promise.all(lista.map(async (t) => { if (t.logo !== undefined) return; try { const m = await leerMoneda(t.address); t.logo = (m && m.logo) || ''; } catch (_) { t.logo = ''; } }));
 }
 function lplCargarListas() {
-  gb.todosLosTokens(40).then(async (lista) => {
+  // Monedas del launchpad (escaneo de eventos) + tokens LISTADOS sin liquidez (List Your Token), en
+  // paralelo. Los listados solo se LEEN del mercado y se muestran en Latest, nunca en Popular.
+  Promise.all([gb.todosLosTokens(40), gb.listadosMercado(40).catch(() => [])]).then(async ([lista, listados]) => {
     if (!$('lpl-latest')) return;   // ya no estamos en el lobby
     // Asegura que SIEMPRE aparezcan las monedas del creador aunque el escaneo global se quede corto.
     try {
@@ -352,10 +364,19 @@ function lplCargarListas() {
         lista.unshift({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: m.bloque || 0 });
       }
     } catch (_) {}
+    // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
+    const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
+    listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()));
     const bnbUsd = await gb.precioBNBUSDT().catch(() => 0);
-    // Latest Created: las mas nuevas, con su hora y logo. Se pinta ya (no depende de la actividad).
-    const latest = lista.slice(0, 5);
-    await Promise.all(latest.map(async (t) => { try { t.tiempo = await gb.tiempoBloque(t.bloque); } catch (_) { t.tiempo = 0; } }));
+    // Hora de las monedas del launchpad: se lee la de las 8 mas nuevas y, con esa ancla, se estima la
+    // del resto por numero de bloque (3 s/bloque) sin una llamada por cada una. Los listados ya traen
+    // su fecha (creadoEn). Asi Latest mezcla ambos por recencia real.
+    const base = lista.slice(0, 8);
+    await Promise.all(base.map(async (t) => { try { t.tiempo = await gb.tiempoBloque(t.bloque); } catch (_) { t.tiempo = 0; } }));
+    const anc = base.find((t) => t.tiempo > 0);
+    if (anc) lista.forEach((t) => { if (!t.tiempo) t.tiempo = Math.max(0, anc.tiempo - (anc.bloque - (t.bloque || anc.bloque)) * 3000); });
+    listados.forEach((L) => { L.tiempo = L.creadoEn || 0; });
+    const latest = lista.concat(listados).sort((a, b) => (b.tiempo || 0) - (a.tiempo || 0)).slice(0, 5);
     await lplLogos(latest);
     if ($('lpl-latest')) lplPintarLatest(latest);
     // Popular: de las que tienen pool, se miden volumen (sumatoria de los trades) y holders (wallets
@@ -373,18 +394,19 @@ function lplCargarListas() {
     }));
     await lplLogos(activos);
     const popular = activos.slice().sort((a, b) => (b.volUsd || 0) - (a.volUsd || 0) || (b.mcapUsd - a.mcapUsd)).slice(0, 5);
-    _lobby = { todos: lista, activos, bnbUsd };
+    _lobby = { todos: lista, listados, activos, bnbUsd };
     if ($('lpl-popular')) lplPintarPopular(popular);
   }).catch(() => { if ($('lpl-latest')) lplPintarLatest([]); if ($('lpl-popular')) lplPintarPopular([]); });
 }
 
 function lplFilas(host, lista, tipo) {
-  host.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => cargarToken(r.dataset.a); });
+  // Un token listado (sin liquidez) no abre el panel de pool: abre su ficha con aviso de compra.
+  host.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => { if (r.dataset.listado) abrirListado(r.dataset.a); else cargarToken(r.dataset.a); }; });
 }
 function lplPintarLatest(lista) {
   const cols = ['#', 'Token', 'Symbol', 'Creator', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
   if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No coins created yet.'); return; }
-  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-cre">${esc(lplShort(t.creador))}</td><td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-cre">${esc(lplShort(t.creador))}</td><td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
   lplFilas(host);
 }
@@ -402,12 +424,32 @@ function lplBuscar(q) {
   lplViewAll('search', q);
 }
 
+/* Ficha de un token LISTADO (sin liquidez). No abre el panel de pool (no tiene grafica ni precio de
+   mercado): explica que es, su precio fijado y donde comprarlo, con aviso antes de comprar. La compra
+   vive en Swap -> List Your Token (modulo aparte); aqui solo se informa. */
+function abrirListado(addr) {
+  const L = ((_lobby && _lobby.listados) || []).find((x) => String(x.address).toLowerCase() === String(addr).toLowerCase());
+  const nombre = L ? (L.nombre || 'Listed token') : 'Listed token';
+  const sim = L && L.simbolo ? ' (' + esc(L.simbolo) + ')' : '';
+  const precio = L && L.precioBNB > 0 ? `<div class="lp-kv"><span>Price</span><b>${fmtP(L.precioBNB)} BNB / token</b></div>` : '';
+  const stock = L && L.enVenta > 0 ? `<div class="lp-kv"><span>For sale</span><b>${numC(L.enVenta)} ${esc(L.simbolo || 'tokens')}</b></div>` : '';
+  const cuerpo = `
+    <p style="margin:0 0 12px;font-size:13.5px;line-height:1.55;color:var(--ink-2)">This is a <b>listed token without a liquidity pool</b>. It has no chart or market price here: it is sold directly by its lister at the price they set, and paid in BNB.</p>
+    <div class="lp-kv"><span>Contract</span><b style="font-family:var(--mono);font-size:11.5px">${corto(addr)}</b></div>
+    ${precio}${stock}
+    <p style="margin:12px 0 0;font-size:12.5px;line-height:1.5;color:var(--ink-3)">To buy it, open <b>Swap → List Your Token</b> and search by name or contract. The platform does not endorse listed tokens; each buyer decides on their own. Buyer protections (a 30-day lock and buy-back) apply in the marketplace.</p>
+    <button id="lp-lst-copy" class="lp-b gris" type="button" style="margin-top:14px">Copy contract</button>`;
+  modal(nombre + sim, cuerpo, { ok: 'Got it' });
+  const cb = $('lp-lst-copy'); if (cb) cb.onclick = () => { try { navigator.clipboard.writeText(addr); cb.textContent = 'Copied'; setTimeout(() => { const b = $('lp-lst-copy'); if (b) b.textContent = 'Copy contract'; }, 1500); } catch (_) {} };
+}
+
 function lplViewAll(key, filtro) {
   const prev = $('lpl-overlay'); if (prev) prev.remove();
   const lob = _lobby || { todos: [], activos: [] };
   const titulos = { featured: 'Featured Tokens', latest: 'Latest Created Tokens', popular: 'Popular Tokens', search: 'Search results' };
   const pop = key === 'popular';
-  const base = key === 'featured' ? [] : (pop ? (lob.activos || []).slice() : (lob.todos || []).slice());
+  // Latest y la busqueda incluyen tambien los tokens listados sin liquidez (solo aparecen aqui).
+  const base = key === 'featured' ? [] : (pop ? (lob.activos || []).slice() : (lob.todos || []).concat(lob.listados || []));
   const cols = key === 'featured' ? ['#', 'Token', 'Symbol', 'Chain']
     : pop ? ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']
       : ['#', 'Token', 'Symbol', 'Creator', 'Chain'];
@@ -419,7 +461,7 @@ function lplViewAll(key, filtro) {
   let orden = ordenes[0][0];
   const ordenar = (l) => {
     l = l.slice();
-    const by = { vol: (a, b) => (b.volUsd || 0) - (a.volUsd || 0), liqDesc: (a, b) => (b.liqUsd || 0) - (a.liqUsd || 0), liqAsc: (a, b) => (a.liqUsd || 0) - (b.liqUsd || 0), mcap: (a, b) => (b.mcapUsd || 0) - (a.mcapUsd || 0), new: (a, b) => (b.bloque || 0) - (a.bloque || 0), old: (a, b) => (a.bloque || 0) - (b.bloque || 0), az: (a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')) };
+    const by = { vol: (a, b) => (b.volUsd || 0) - (a.volUsd || 0), liqDesc: (a, b) => (b.liqUsd || 0) - (a.liqUsd || 0), liqAsc: (a, b) => (a.liqUsd || 0) - (b.liqUsd || 0), mcap: (a, b) => (b.mcapUsd || 0) - (a.mcapUsd || 0), new: (a, b) => (b.tiempo || 0) - (a.tiempo || 0), old: (a, b) => (a.tiempo || 0) - (b.tiempo || 0), az: (a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')) };
     if (by[orden]) l.sort(by[orden]);
     return l;
   };
@@ -428,7 +470,7 @@ function lplViewAll(key, filtro) {
     if (q) { const f = q.toLowerCase(); l = l.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f) || (t.address || '').toLowerCase().includes(f)); }
     l = ordenar(l);
     if (!l.length) return `<tr class="lpl-empty"><td colspan="${cols.length}">${key === 'featured' ? 'No premium listings yet. Pay to feature your coin here.' : 'No tokens here.'}</td></tr>`;
-    return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`)}<td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
+    return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`)}<td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   };
   const d = document.createElement('div'); d.id = 'lpl-overlay'; d.className = 'lpl-ov';
   const menu = ordenes.map(([v, t]) => `<button type="button" class="lpl-fopt${v === orden ? ' on' : ''}" data-o="${v}">${esc(t)}</button>`).join('');
@@ -1074,7 +1116,7 @@ function pintarPanel(t) {
   const precioU = precioAhora * kU, mcapU = precioU * t.supply, liqU = pool ? pool.liquidez * kU : 0, vol24U = vol24 * kU, sueloU = suelo * kU;
   // Formato de dinero: USD con "$" cuando hay tasa; en la moneda del par solo si hay pool y la red
   // de precios fallo; "$0" cuando aun no hay pool. (small = numero chico, con subindice fmtP.)
-  const fmtMoney = (v, small) => { const b = small ? (v > 0 ? fmtP(v) : '0') : num(v, 2); return hayUSD ? '$' + b : (pool ? b + ' ' + mon : '$' + b); };
+  const fmtMoney = (v, small) => { const b = small ? (v > 0 ? fmtP(v) : '0') : dineroC(v); return hayUSD ? '$' + b : (pool ? b + ' ' + mon : '$' + b); };
   // Precio grande en USD, y debajo el precio real del par (BNB) como en los exploradores.
   const precioBig = fmtMoney(precioU, true);
   const precioNat = pool ? (hayUSD && mon !== 'USDT' ? fmtP(precioAhora) + ' ' + mon : '') : 'no pool';

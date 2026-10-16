@@ -73,7 +73,14 @@ export function montarSwap(host, token, opts = {}) {
      con su motivo. No se simula una opcion que la cadena rechazaria. */
   function filaOpt(cur) {
     const on = cur === moneda;
-    return `<button type="button" class="sw-opt${on ? ' on' : ''}" data-cur="${esc(cur)}"${on ? '' : ' disabled'}>${icoQuote(cur)}<b>${esc(cur)}</b><span class="sw-opt-tag">${on ? 'Current pair' : 'No pool'}</span></button>`;
+    // La moneda del par queda activa; la OTRA se muestra atenuada pero SIGUE siendo pulsable: al tocarla
+    // se explica por que no se puede comprar con ella y como habilitarla (abrir pool). No va 'disabled'.
+    return `<button type="button" class="sw-opt${on ? ' on' : ''}" data-cur="${esc(cur)}"${on ? '' : ' style="opacity:.6"'}>${icoQuote(cur)}<b>${esc(cur)}</b><span class="sw-opt-tag">${on ? 'Current pair' : 'No pool'}</span></button>`;
+  }
+  /* Mensaje al tocar la moneda que NO tiene pool: `otra` = la que toco el usuario; `moneda` = la del
+     par (la unica con la que se compra). Explica que para comprar con la otra hay que abrir su pool. */
+  function mensajePar(otra) {
+    return `This pool was created with ${moneda} liquidity, so this coin can only be bought with ${moneda}. To buy it with ${otra}, the coin's owner needs to open a ${otra} pool for this same coin as well. Once there is a ${otra} pool, it can be bought with both ${moneda} and ${otra}.`;
   }
   function onDocDown(e) { if (!e.target.closest('.sw-tok-sel') && !e.target.closest('.sw-menu')) cerrarMenu(); }
   function onEsc(e) { if (e.key === 'Escape') cerrarMenu(); }
@@ -89,7 +96,11 @@ export function montarSwap(host, token, opts = {}) {
     m.className = 'sw-menu';
     m.innerHTML = filaOpt('BNB') + filaOpt('USDT') + `<div class="sw-menu-note">Pair set by the coin's pool</div>`;
     tokEl.appendChild(m);
-    m.querySelectorAll('.sw-opt:not([disabled])').forEach((b) => { b.onclick = (ev) => { ev.stopPropagation(); cerrarMenu(); }; });
+    m.querySelectorAll('.sw-opt').forEach((b) => { b.onclick = (ev) => {
+      ev.stopPropagation(); const cur = b.dataset.cur; cerrarMenu();
+      if (cur === moneda) return;                                   // ya es la moneda del par
+      ui.modal(`Only ${moneda} for this coin`, mensajePar(cur));    // explica por que y como habilitar la otra
+    }; });
     menuAbierto = true;
     setTimeout(() => { if (!vivo) return; document.addEventListener('pointerdown', onDocDown, true); document.addEventListener('keydown', onEsc, true); }, 0);
   }
