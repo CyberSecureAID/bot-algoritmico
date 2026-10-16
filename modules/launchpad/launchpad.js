@@ -156,10 +156,14 @@ async function cargarToken(addr) {
     // Historial real de la cadena en segundo plano: al llegar repinta con grafica, trades, 24h y volumen
     // reales. operaciones trae ademas el precio de lanzamiento (PoolAbierto) leido en el mismo escaneo.
     gb.operaciones(addr).then((ops) => {
-      if (_panelAddr !== addr || !ops) return;
-      if (ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura;
-      if (ops.length) { t.txs = ops; pintarPanel(t); } else if (ops.apertura) pintarPanel(t);
-    }).catch(() => {});
+      if (_panelAddr !== addr) return;
+      t.histListo = true;   // el historial ya llego (aunque venga vacio): quita el estado de carga
+      if (ops) {
+        if (ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura;
+        if (ops.length) t.txs = ops;
+      }
+      pintarPanel(t);       // repinta siempre una vez: dibuja velas/trades/24h o fija el cero real
+    }).catch(() => { if (_panelAddr === addr) { t.histListo = true; pintarPanel(t); } });
   } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
 }
 /* Recarga el panel desde la cadena SIN recargar la pagina ni mostrar el spinner: re-lee reservas
@@ -177,6 +181,7 @@ async function recargarPanel(addr) {
     const ops = await gb.operaciones(addr).catch(() => null);
     if (_panelAddr !== addr) return;
     if (ops) { if (ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura; t.txs = ops.length ? ops : []; }
+    t.histListo = true;   // recarga tras un trade: ya tenemos el historial, nada de estado de carga
     pintarPanel(t);
   } catch (_) {}
 }
@@ -266,7 +271,11 @@ function lplCardFeatured(f) {
       <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span></div></div>
     <div class="lpl-fcard-foot"><span class="lpl-fcard-chain">${LPL_BSC} BSC</span><span class="lpl-badge-prem">${LPL_STAR} Premium</span></div></div>`;
 }
-function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>`; }
+const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
+/* Celda del token (logo + nombre). El flex va en un <span> interior, NUNCA en el <td>: un <td> con
+   display:flex sale del modelo de columnas de la tabla y descuadra el resto hacia la derecha. */
+function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></span></td>`; }
+function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th class="${LPL_COLCLS[c] || ''}">${esc(c)}</th>`).join('')}</tr></thead>`; }
 function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
 function lplHaceCuanto(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; const m = Math.floor(s / 60); if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; }
 function lplMoney(v) { if (!(v > 0)) return '—'; if (v >= 1e9) return '$' + (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
@@ -375,14 +384,14 @@ function lplFilas(host, lista, tipo) {
 function lplPintarLatest(lista) {
   const cols = ['#', 'Token', 'Symbol', 'Creator', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
   if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No coins created yet.'); return; }
-  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-cre">${esc(lplShort(t.creador))}</td><td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-cre">${esc(lplShort(t.creador))}</td><td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
   lplFilas(host);
 }
 function lplPintarPopular(lista) {
   const cols = ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']; const host = $('lpl-popular'); if (!host) return;
   if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No pools with liquidity yet.'); return; }
-  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td><td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
   lplFilas(host);
 }
@@ -419,7 +428,7 @@ function lplViewAll(key, filtro) {
     if (q) { const f = q.toLowerCase(); l = l.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f) || (t.address || '').toLowerCase().includes(f)); }
     l = ordenar(l);
     if (!l.length) return `<tr class="lpl-empty"><td colspan="${cols.length}">${key === 'featured' ? 'No premium listings yet. Pay to feature your coin here.' : 'No tokens here.'}</td></tr>`;
-    return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td><td class="lpl-tok">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span></td><td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`)}<td class="lpl-chain">${LPL_BSC} BSC</td></tr>`).join('');
+    return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : `<td class="lpl-cre">${esc(lplShort(t.creador))}</td>`)}<td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   };
   const d = document.createElement('div'); d.id = 'lpl-overlay'; d.className = 'lpl-ov';
   const menu = ordenes.map(([v, t]) => `<button type="button" class="lpl-fopt${v === orden ? ' on' : ''}" data-o="${v}">${esc(t)}</button>`).join('');
@@ -1075,6 +1084,10 @@ function pintarPanel(t) {
   const cambioCls = cambio24 == null ? '' : cambio24 >= 0 ? 'up' : 'down';
   // Holders: distintas wallets vistas en las operaciones, con minimo 1 (el creador tiene el supply).
   const holders = Math.max(1, new Set(txs.map((x) => x.wallet).filter(Boolean)).size);
+  // Mientras el historial de la cadena aun no llego, el 24h, el volumen y los holders dependen de el:
+  // no se pinta un "0" ni un "+0.00%" falso, se pinta un indicador de carga que se reemplaza al llegar.
+  const histLoad = pool && !t.demo && !t.histListo;
+  const cargando = '<span class="lp-mini-load" aria-label="loading"></span>';
   host.innerHTML = `
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <div class="lp-panel">
@@ -1087,17 +1100,17 @@ function pintarPanel(t) {
           </div>
           <div class="lp-id-row">
             <div class="lp-id-soc-cap">${redesControl(t, esAdmin) || '<span class="lp-soc-empty">No links yet</span>'}</div>
-            <div class="lp-24h-cap"><span class="lp-24h-l">24h Change</span><b class="${cambioCls}">${cambioTxt}</b></div>
+            <div class="lp-24h-cap"><span class="lp-24h-l">24h Change</span><b class="${histLoad ? '' : cambioCls}">${histLoad ? cargando : cambioTxt}</b></div>
           </div>
         </div>
         <div class="lp-stats">
           <div class="lp-stat"><i>Market cap</i><b class="oro">${pool ? fmtMoney(mcapU) : '$0'}</b></div>
           <div class="lp-stat"><i>Real liquidity</i><b class="verde">${pool ? fmtMoney(liqU) : 'No pool'}</b></div>
-          <div class="lp-stat"><i>24h volume</i><b>${pool ? fmtMoney(vol24U) : '$0'}</b></div>
+          <div class="lp-stat"><i>24h volume</i><b>${!pool ? '$0' : (histLoad ? cargando : fmtMoney(vol24U))}</b></div>
           <div class="lp-stat"><i>Floor price</i><b>${t.suelo ? (sueloU > 0 ? fmtMoney(sueloU, true) : fmtMoney(0)) : 'off'}</b></div>
           <div class="lp-stat"><i>Supply</i><b title="${num(t.supply, 0)}">${numC(t.supply)}</b></div>
           <div class="lp-stat"><i>Burned</i><b title="${num(quemado, 0)}">${quemado ? numC(quemado) : '0'}</b></div>
-          <div class="lp-stat"><i>Holders</i><b>${num(holders, 0)}</b></div>
+          <div class="lp-stat"><i>Holders</i><b>${histLoad ? cargando : num(holders, 0)}</b></div>
           <div class="lp-stat"><i>Contract</i><b id="lp-verif-tile">…</b></div>
         </div>
       </div>
@@ -1196,7 +1209,7 @@ function pintarPanel(t) {
   if (pool && mon === 'BNB' && !(t.bnbUsd > 0)) gb.precioBNBUSDT().then((v) => { if (v > 0) { t.bnbUsd = v; pintarPanel(t); } }).catch(() => {});
   // Swap real de la moneda, montado inline (sin iframe, sin capsula) donde antes iba Liquidity.
   if (_swapActual) { try { _swapActual.destruir(); } catch (_) {} _swapActual = null; }
-  if (pool && !t.demo && $('lp-swap-host')) _swapActual = montarSwap($('lp-swap-host'), t.address, { logo: t.logo, modal, modalBusy, modalCerrar, recargarPanel: () => recargarPanel(t.address) });
+  if (pool && !t.demo && $('lp-swap-host')) _swapActual = montarSwap($('lp-swap-host'), t.address, { datos: { nombre: t.nombre, simbolo: t.simbolo, moneda: mon, pool: t.pool }, logo: t.logo, modal, modalBusy, modalCerrar, recargarPanel: () => recargarPanel(t.address) });
 }
 
 /* Estado de verificacion en BscScan: badge verde con enlace, o boton para verificar

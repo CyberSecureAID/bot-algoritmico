@@ -112,14 +112,15 @@
 .lpl-row{cursor:pointer;transition:background .13s}
 .lpl-row:hover{background:rgba(255,255,255,.035)}
 .lpl-num{color:var(--ink-3);width:22px}
-.lpl-tok{display:flex;align-items:center;gap:9px;max-width:190px}
-.lpl-tok-nom{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis}
+.lpl-tok{max-width:200px}
+.lpl-tok-in{display:flex;align-items:center;gap:9px;max-width:190px}
+.lpl-tok-nom{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;min-width:0}
 .lpl-sym{color:var(--ink-3);font-family:var(--mono);font-size:12px}
 .lpl-cre{font-family:var(--mono);font-size:12px;color:#7fa0d8}
 .lpl-mcap{color:var(--ink);font-weight:700}
 .lpl-hold{color:var(--ink-2)}
 .lpl-chain{color:var(--ink-3);font-size:12px}
-.lpl-chain .lpl-bsc{vertical-align:-2px;margin-right:5px}
+.lpl-chain .lpl-bsc{vertical-align:-2px}
 .lpl-empty td{text-align:center;color:var(--ink-3);padding:28px 10px;font-size:13px;white-space:normal}
 /* Ventana View All / Search (reutiliza el fondo del lobby detras) */
 .lpl-ov{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
@@ -143,6 +144,10 @@
 .lpl-ov-x{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:none;color:var(--ink-2);cursor:pointer;font-size:14px;line-height:1}
 .lpl-ov-x:hover{border-color:var(--gold-soft);color:var(--gold)}
 .lpl-ov-body{overflow:auto;padding:6px 14px 14px}
+/* Quitar el contorno dorado de foco (#pt :focus-visible global de cinta.css) DENTRO de los campos de
+   busqueda: el borde dorado del propio campo ya indica el foco; el contorno se veia como un bisel
+   amarillo envolviendo el texto. */
+#pt .lpl-search input:focus,#pt .lpl-search input:focus-visible,#pt .lpl-ov-search input:focus,#pt .lpl-ov-search input:focus-visible{outline:none}
 /* Responsive */
 @media(max-width:860px){.lpl-cols{grid-template-columns:1fr}}
 @media(max-width:560px){
@@ -153,14 +158,20 @@
   .lpl-searchrow{flex-wrap:wrap}
   .lpl-mycoins{width:100%}
   .lpl-mycoins .lpl-btn-img{height:46px;width:100%;object-fit:contain}
-  /* Featured en movil: desliza (swipe) cuando son 5 o menos; la cinta sigue igual con 6 o mas. */
-  .lpl-feat-track:not(.marquee){display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
-  .lpl-feat-track:not(.marquee)::-webkit-scrollbar{display:none}
-  .lpl-feat-track:not(.marquee) .lpl-fcard{flex:0 0 80%;scroll-snap-align:start}
+  /* Featured en movil: LISTA VERTICAL (hacia abajo), no swipe horizontal. */
+  .lpl-feat-track:not(.marquee){display:grid;grid-template-columns:1fr;gap:12px;overflow:visible}
+  .lpl-feat-track:not(.marquee) .lpl-fcard{min-height:0}
   .lpl-sec-txt b{font-size:17px}
   .lpl-sec-txt span{font-size:11.5px}
   .lpl-ov-head b{width:100%}
-  .lpl-ov-search input{width:120px}
+  .lpl-ov-tools{width:100%}
+  .lpl-ov-search{flex:1 1 auto}
+  .lpl-ov-search input{width:100%;max-width:none}
+  /* Tablas en movil: se ocultan columnas secundarias para que no se desfasen ni desborden. */
+  .lpl-table td,.lpl-table th{padding:10px 7px;font-size:12.5px}
+  .lpl-c-cre,.lpl-cre,.lpl-c-chain,.lpl-chain,.lpl-c-hold,.lpl-hold{display:none}
+  .lpl-tok,.lpl-tok-in{max-width:136px}
+  .lpl-panel-sec{padding:14px 12px 4px}
 }
 
 /* ───────── Mis tokens (lista) ───────── */
@@ -312,6 +323,10 @@
 .lp-stat b{display:block;font-family:var(--display);font-size:18px;color:#fff;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lp-stat b.oro{color:var(--gold)}
 .lp-stat b.verde{color:var(--verde)}
+/* Indicador de carga del 24h/volumen/holders mientras llega el historial de la cadena: una barrita
+   que late, en vez de un 0 o un +0.00% que parecen un dato real y confunden. */
+.lp-mini-load{display:inline-block;width:38px;height:11px;border-radius:5px;vertical-align:-1px;background:linear-gradient(90deg,rgba(232,184,75,.1),rgba(232,184,75,.28),rgba(232,184,75,.1));background-size:200% 100%;animation:lpmini 1.1s linear infinite}
+@keyframes lpmini{to{background-position:-200% 0}}
 /* Solo la casilla Contract: el valor Verified va centrado pero un pelin a la izquierda (padding-right)
    para que no quede pegado a la derecha. La etiqueta CONTRACT se queda a la izquierda. */
 #lp-verif-tile{text-align:center;padding-right:18px;overflow:visible;text-overflow:clip}
@@ -430,7 +445,7 @@
 .lp-tr .lp-t{color:var(--ink-3);text-align:right}
 @media(max-width:980px){.lp-panel{grid-template-columns:1fr}.lp-top{grid-template-columns:1fr}.lp-stats{grid-template-columns:repeat(4,1fr);border-left:0;padding-left:0}.lp-txs{min-height:0}.lp-tabla{max-height:520px}}
 @media(max-width:640px){.lp-tr{grid-template-columns:62px 1fr 1fr .8fr;font-size:11px}.lp-tr .lp-w,.lp-tr.lp-th span:nth-child(5),.lp-tr span:nth-child(4),.lp-tr.lp-th span:nth-child(4){display:none}}
-@media(max-width:560px){.lp-top{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:12px;padding:12px}.lp-top .lp-id{width:100%;flex:0 0 auto;gap:8px}.lp-id-cap{flex-direction:column;align-items:center;text-align:center;gap:12px;padding:16px 14px}.lp-logo-wrap{align-self:center}.lp-top .lp-logo-prev{width:72px;height:72px;font-size:28px}.lp-id-main{align-items:center}.lp-top .lp-nom{font-size:20px;white-space:normal}.lp-id-price{align-items:center;text-align:center}.lp-px{font-size:24px}.lp-id-row{flex-direction:column}.lp-id-soc-cap{justify-content:center}.lp-id-soc-cap .lp-soc{justify-content:center}.lp-24h-cap{justify-content:center}.lp-stats{grid-template-columns:repeat(2,1fr);width:100%;border-left:0;padding-left:0}.lp-stat b{font-size:16px}.lp-chart,.lp-chart #lp-cv{min-height:300px;height:300px}}
+@media(max-width:560px){.lp-top{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:12px;padding:12px}.lp-top .lp-id{width:100%;flex:0 0 auto;gap:8px}.lp-id-cap{flex-direction:column;align-items:center;text-align:center;gap:12px;padding:16px 14px}.lp-logo-wrap{align-self:center}.lp-top .lp-logo-prev{width:72px;height:72px;font-size:28px}.lp-id-main{align-items:center}.lp-top .lp-dir{align-self:center}.lp-top .lp-nom{font-size:20px;white-space:normal}.lp-id-price{align-items:center;text-align:center}.lp-px{font-size:24px}.lp-id-row{flex-direction:column}.lp-id-soc-cap{justify-content:center}.lp-id-soc-cap .lp-soc{justify-content:center}.lp-24h-cap{justify-content:center}.lp-stats{grid-template-columns:repeat(2,1fr);width:100%;border-left:0;padding-left:0}.lp-stat b{font-size:16px}.lp-chart,.lp-chart #lp-cv{min-height:300px;height:300px}}
 
 /* ───────── Modal generico (busy / error / ok) ───────── */
 #colmena-modal{position:fixed;inset:0;z-index:9800;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(3,5,8,.8);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}

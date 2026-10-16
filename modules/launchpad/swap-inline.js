@@ -214,7 +214,19 @@ export function montarSwap(host, token, opts = {}) {
   }
 
   (async () => {
-    if (!T) { T = await gb.datosToken(TOKEN).catch(() => null); }
+    // Si el panel ya nos paso los datos de la moneda, pintamos YA, sin esperar a la red: el swap
+    // aparece al instante (nada de "Loading…" colgado). Los logos del par (CoinGecko) y el logo de
+    // la moneda llegan despues y repintan en silencio; los balances se cargan en paralelo.
+    if (T) {
+      moneda = T.moneda || (T.pool && T.pool.moneda) || 'BNB';
+      render();
+      cargarBalances();
+      gb.logosPar().then((l) => { if (vivo && l) { _logos = l; render(); } }).catch(() => {});
+      if (!logo) leerMoneda(TOKEN).then((m) => { if (vivo && m && m.logo) { logo = m.logo; render(); } }).catch(() => {});
+      return;
+    }
+    // Sin datos (p. ej. el widget embebible): leer la moneda de la cadena y luego pintar.
+    T = await gb.datosToken(TOKEN).catch(() => null);
     if (!vivo) return;
     if (!T) { host.innerHTML = `<div class="wg-msg">This coin was not found on the launchpad.</div>`; return; }
     moneda = T.moneda || 'BNB';
