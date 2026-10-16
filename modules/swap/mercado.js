@@ -45,6 +45,25 @@ function inyectado() { try { const p = wallet.proveedorActivo && wallet.proveedo
 async function firmante() { return new ethers.BrowserProvider(inyectado()).getSigner(); }
 function cLee() { return new ethers.Contract(MERCADO, ABI, lector()); }
 async function cEscribe() { return new ethers.Contract(MERCADO, ABI, await firmante()); }
+
+/* Lectura de SOLO LECTURA con ROTACION de RPC, como hace el launchpad (motor.js). El `lector()` de
+   arriba usa un unico RPC (bsc-dataseed.binance.org); si ese RPC falla, limita o devuelve vacio, las
+   lecturas de listados fallaban y el error se tragaba en silencio, asi que el listado NO se detectaba
+   aunque existiera (consola limpia). Con esto, si un RPC falla se prueba el siguiente, y si fallan
+   TODOS se registra en consola con prefijo [SWAP-LIST] (nada de errores silenciosos). No toca la
+   escritura (listar/comprar), que sigue usando la wallet del usuario. */
+const _provs = {};
+function provAt(i) { const k = ((i % RPCS.length) + RPCS.length) % RPCS.length; if (!_provs[k]) _provs[k] = new ethers.JsonRpcProvider(RPCS[k], 56, { staticNetwork: true }); return _provs[k]; }
+let _ri = 0;
+async function leeRot(metodo, args = []) {
+  let ultimo = null;
+  for (let i = 0; i < RPCS.length; i++) {
+    const idx = (_ri + i) % RPCS.length;
+    try { const c = new ethers.Contract(MERCADO, ABI, provAt(idx)); const r = await c[metodo](...args); _ri = idx; return r; }
+    catch (e) { ultimo = e; console.warn(`[SWAP-LIST] ${metodo}(${args.join(',')}) RPC#${idx} fallo:`, (e && (e.shortMessage || e.message)) || e); }
+  }
+  throw ultimo || new Error(`[SWAP-LIST] ${metodo}: todos los RPC fallaron`);
+}
 /* Envio con gas estimado + margen (igual que el motor del swap). Sin gasLimit, MetaMask
    estima por su cuenta y con smart account (Delegation Manager) esa estimacion se queda
    corta: aviso 'es probable que falle', un intento fallido sin hash y reintento. Si la
@@ -162,20 +181,23 @@ export const parse = (v, dec = 18) => ethers.parseUnits(String(v), dec);
 export async function listadosCompra(tokenAddr) {
   if (!esDireccion(tokenAddr)) return [];
   let ids;
-  try { ids = await cLee().listadosDeToken(tokenAddr); } catch (_) { return []; }
+  try { ids = await leeRot('listadosDeToken', [tokenAddr]); }
+  catch (e) { console.warn('[SWAP-LIST] listadosCompra: no se pudo leer listadosDeToken de', tokenAddr, (e && (e.shortMessage || e.message)) || e); return []; }
+  if (!ids || !ids.length) { console.info('[SWAP-LIST] listadosCompra:', tokenAddr, 'no tiene listados en MercadoTokens (listadosDeToken vacio)'); return []; }
   const out = [];
   for (const id of ids) {
     try {
-      const L = await cLee().ver(id);
+      const L = await leeRot('ver', [id]);
       if (!L.activo || L.enVenta === 0n) continue;
       let falta = 0n;
-      try { falta = await cLee().faltaCandado(id); } catch (_) {}
+      try { falta = await leeRot('faltaCandado', [id]); } catch (e) { console.warn('[SWAP-LIST] faltaCandado(' + id + ') fallo:', (e && (e.shortMessage || e.message)) || e); }
       out.push({
         id: Number(id), token: L.token, nombre: L.nombre, simbolo: L.simbolo,
         precio: L.precio, enVenta: L.enVenta, proteccionSeg: Number(falta)
       });
-    } catch (_) {}
+    } catch (e) { console.warn('[SWAP-LIST] ver(' + id + ') fallo:', (e && (e.shortMessage || e.message)) || e); }
   }
+  console.info('[SWAP-LIST] listadosCompra:', tokenAddr, '->', out.length, 'listado(s) activo(s)');
   return out;
 }
 
@@ -184,11 +206,13 @@ export async function listadosCompra(tokenAddr) {
 const CANDADO_SEG = 30 * 86400;
 export async function listadosActivos() {
   let total = 0;
-  try { total = Number(await cLee().totalListados()); } catch (_) { return []; }
-  if (!total) return [];
+  try { total = Number(await leeRot('totalListados', [])); }
+  catch (e) { console.warn('[SWAP-LIST] listadosActivos: totalListados fallo:', (e && (e.shortMessage || e.message)) || e); return []; }
+  if (!total) { console.info('[SWAP-LIST] listadosActivos: totalListados = 0'); return []; }
   const desde = total > 300 ? total - 299 : 1;
   let arr = [];
-  try { arr = await cLee().pagina(desde, total); } catch (_) { return []; }
+  try { arr = await leeRot('pagina', [desde, total]); }
+  catch (e) { console.warn('[SWAP-LIST] listadosActivos: pagina(' + desde + ',' + total + ') fallo:', (e && (e.shortMessage || e.message)) || e); return []; }
   const ahora = Math.floor(Date.now() / 1000);
   const out = [];
   arr.forEach((L, i) => {
@@ -197,6 +221,7 @@ export async function listadosActivos() {
     out.push({ id: desde + i, token: L.token, nombre: L.nombre, simbolo: L.simbolo, logo: L.logo,
       precio: L.precio, enVenta: L.enVenta, proteccionSeg: Math.max(0, creado + CANDADO_SEG - ahora) });
   });
+  console.info('[SWAP-LIST] listadosActivos: total=' + total + ' -> ' + out.length + ' con stock');
   return out;
 }
 
