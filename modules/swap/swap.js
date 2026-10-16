@@ -215,6 +215,7 @@ function swEsWrap() {
 }
 
 let _deepListarHecho = false;   // el deep link ?abrir=listar se aplica una sola vez (abrirSwap se remonta al cambiar de wallet)
+let _deepListado = '';          // ?listado=<contrato>: comprar ESE listado (no el token de pool). Lo aplica swCargarListados al terminar.
 export function abrirSwap() {
   swInjectCSS(); swSyncWbnbLogo(); swCargarLogosPropio(); swCargarListados();
   const host = $(APP) || document.body;
@@ -272,6 +273,15 @@ export function abrirSwap() {
   try {
     if (new URLSearchParams(location.search).get('abrir') === 'listar') {
       if (!_deepListarHecho) { _deepListarHecho = true; setTimeout(function () { var b = $('sw-listbtn'); if (b) b.click(); }, 350); }
+    }
+  } catch (_) {}
+  // Deep link ?listado=<contrato> (desde el launchpad): selecciona ESE listado para comprarlo aqui
+  // (por el mercado, no por su pool). Lo aplica swCargarListados al terminar de cargar los listados.
+  try {
+    var _lstParam = new URLSearchParams(location.search).get('listado');
+    if (_lstParam && /^0x[0-9a-fA-F]{40}$/.test(_lstParam)) {
+      _deepListado = _lstParam.toLowerCase();
+      if (LISTADOS[_deepListado] && CUSTOM[_deepListado]) { swFindPick(_deepListado); _deepListado = ''; }
     }
   } catch (_) {}
   $('sw-amt').addEventListener('input', swInput);
@@ -579,6 +589,8 @@ async function swCargarListados() {
   }));
   // si el usuario ya esta escribiendo, refrescar los resultados
   try { if (swFindQ()) swFindRender(swFindQ()); } catch (_) {}
+  // deep link ?listado=<contrato>: ya cargados los listados, seleccionar el pedido para comprarlo.
+  try { if (_deepListado && LISTADOS[_deepListado] && CUSTOM[_deepListado]) { swFindPick(_deepListado); _deepListado = ''; } } catch (_) {}
 }
 function swRenderImport(t, lado) {
   const el = $('cm-import'); if (!el) return;
@@ -612,7 +624,12 @@ function fmtPrecioListado(L) {
 
 /* ---- Barra de búsqueda universal (bajo el título del panel) ---- */
 function swFindQ() { const i = $('sw-find-inp'); return i ? i.value.trim() : ''; }
-function swFindInput() { swFindRender(swFindQ()); }
+function swFindInput() {
+  // Si los listados aun no se cargaron (p. ej. la primera busqueda), dispararlos para poder encontrar
+  // tokens de "List Your Token" por nombre o simbolo, no solo pegando el contrato.
+  if (!_listadosCargados) { try { swCargarListados(); } catch (_) {} }
+  swFindRender(swFindQ());
+}
 function swFindRow(mo) {
   const L = LOGOS[mo.id];
   const lst = LISTADOS[String(mo.id).toLowerCase()];
