@@ -565,7 +565,9 @@ async function swCargarListados() {
     const key = String(L.token).toLowerCase();
     const prev = LISTADOS[key];
     if (!prev || L.enVenta > prev.enVenta) LISTADOS[key] = L;
-    if (!CUSTOM[key]) {
+    // Construye la ficha del listado. Si ya existe pero era un marcador provisional (_ph, creado por
+    // el buscador para enseñarlo al instante), se rehace con los decimales reales de la cadena.
+    if (!CUSTOM[key] || CUSTOM[key]._ph) {
       let dec = 18; try { dec = (await gb.infoToken(L.token)).decimals; } catch (_) {}
       const limpio = (v, max) => String(v || '').replace(/[^\p{L}\p{N} ._+\-]/gu, '').trim().slice(0, max);
       const sim = limpio(L.simbolo, 12) || '?';
@@ -612,7 +614,26 @@ function fmtPrecioListado(L) {
 
 /* ---- Barra de búsqueda universal (bajo el título del panel) ---- */
 function swFindQ() { const i = $('sw-find-inp'); return i ? i.value.trim() : ''; }
-function swFindInput() { swFindRender(swFindQ()); }
+function swFindInput() {
+  // Al escribir, asegura que los listados de MercadoTokens esten cargados (para buscar por nombre).
+  // swCargarListados se reintenta solo: si el RPC fallo, dejo _listadosCargados en false y aqui vuelve
+  // a intentarlo. Antes era solo un disparo al abrir, que si fallaba dejaba la busqueda por nombre vacia.
+  if (!_listadosCargados) { try { swCargarListados(); } catch (_) {} }
+  swFindRender(swFindQ());
+}
+/* Ficha minima de un listado a partir de LISTADOS, para enseñarlo en el buscador AL INSTANTE aunque
+   la precarga (que lee decimales en cadena) no haya terminado. Se cachea en CUSTOM con la marca _ph
+   para que swCargarListados la rehaga luego con los decimales reales, y para que al elegirlo funcionen
+   la seleccion y el enrutado de compra (ambos leen CUSTOM por esta direccion). */
+function _listadoAMon(k) {
+  if (CUSTOM[k]) return CUSTOM[k];
+  const L = LISTADOS[k]; if (!L) return null;
+  const limpio = (v, max) => String(v || '').replace(/[^\p{L}\p{N} ._+\-]/gu, '').trim().slice(0, max);
+  const sim = limpio(L.simbolo, 12) || '?';
+  const t = { id: k, simbolo: sim, nombre: limpio(L.nombre, 40) || sim, address: L.token || k, decimals: 18, icono: sim[0], color: '#E8B84B', custom: true, _ph: true };
+  CUSTOM[k] = t;
+  return t;
+}
 function swFindRow(mo) {
   const L = LOGOS[mo.id];
   const lst = LISTADOS[String(mo.id).toLowerCase()];
@@ -637,7 +658,7 @@ function swFindRender(q) {
   res.classList.add('open');
   const ql = q.toLowerCase();
   const coincide = (mo) => (mo.simbolo || '').toLowerCase().includes(ql) || (mo.nombre || '').toLowerCase().includes(ql) || (mo.address || '').toLowerCase() === ql;
-  const listados = Object.keys(LISTADOS).map((k) => CUSTOM[k]).filter(Boolean).filter(coincide);
+  const listados = Object.keys(LISTADOS).map((k) => CUSTOM[k] || _listadoAMon(k)).filter(Boolean).filter(coincide);
   const monedas = [...SWAP_IDS.map((id) => swMon(id)).filter(Boolean).filter(coincide), ...listados];
   let html = monedas.slice(0, 6).map(swFindRow).join('');
   const yaEsta = monedas.some((mo) => (mo.address || '').toLowerCase() === ql);
