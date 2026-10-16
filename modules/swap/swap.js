@@ -21,6 +21,10 @@ const WBNB_ADDR = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const WBNB_TOKEN = { id: 'WBNB', simbolo: 'WBNB', nombre: 'Wrapped BNB', address: WBNB_ADDR, decimals: 18, icono: 'W', color: '#F0B90B', cg: 'wbnb' };
 function swMon(id) {
   if (id === 'WBNB') return WBNB_TOKEN;
+  // Gemelo "PancakeSwap" de un token que ademas esta listado: id propio 'pcs:'+direccion para poder
+  // mostrarlo y comprarlo por pool, aparte de su listado. No esta en LISTADOS, asi que el enrutado lo
+  // trata como un token normal (no como listado). El listado conserva su id = direccion.
+  if (typeof id === 'string' && id.startsWith('pcs:')) return CUSTOM[id] || null;
   if (typeof id === 'string' && id.startsWith('0x')) return CUSTOM[id.toLowerCase()] || null;
   return moneda(id);
 }
@@ -267,6 +271,13 @@ export function abrirSwap() {
       var _inp = $('sw-find-inp');
       if (_inp) { _inp.value = _tokParam; setTimeout(function () { swFindInput(); }, 250); }
     }
+  } catch (_) {}
+  // Deep link ?listado=CONTRATO (desde Launchpad, token LISTADO sin liquidez): abre DIRECTAMENTE el
+  // listado de MercadoTokens como destino de compra, NO el token de PancakeSwap. La direccion sola era
+  // ambigua (siempre resolvia al original); por eso el launchpad ahora manda ?listado=.
+  try {
+    var _lstParam = new URLSearchParams(location.search).get('listado');
+    if (_lstParam && /^0x[0-9a-fA-F]{40}$/.test(_lstParam)) { setTimeout(function () { swAbrirListado(_lstParam); }, 300); }
   } catch (_) {}
   // Deep link ?abrir=listar (movil, boton 'List your token'): abre el panel de listado.
   try {
@@ -634,6 +645,16 @@ function _listadoAMon(k) {
   CUSTOM[k] = t;
   return t;
 }
+/* Gemelo "PancakeSwap" de un token que tambien esta listado: misma moneda (misma direccion) con id
+   propio 'pcs:'+direccion, para enseñarlo como fila aparte del listado y comprarlo por la pool. Se
+   reconstruye desde CUSTOM[direccion] en cada llamada para ir siempre al dia. Devuelve null si aun no
+   tenemos el token (no se ha importado). El listado NO se toca: conserva id = direccion y su compra. */
+function monPancake(addr) {
+  const a = String(addr).toLowerCase(); const base = CUSTOM[a]; if (!base) return null;
+  const k = 'pcs:' + a;
+  CUSTOM[k] = { id: k, simbolo: base.simbolo, nombre: base.nombre, address: base.address || a, decimals: base.decimals || 18, icono: base.icono || (base.simbolo || '?')[0], color: base.color || '#E8B84B', custom: true };
+  return CUSTOM[k];
+}
 function swFindRow(mo) {
   const L = LOGOS[mo.id];
   const lst = LISTADOS[String(mo.id).toLowerCase()];
@@ -657,14 +678,23 @@ function swFindRender(q) {
   swSyncWbnbLogo();
   res.classList.add('open');
   const ql = q.toLowerCase();
+  const esList = (mo) => !!(mo && LISTADOS[String(mo.id).toLowerCase()]);   // fila de listado (id = direccion)
   const coincide = (mo) => (mo.simbolo || '').toLowerCase().includes(ql) || (mo.nombre || '').toLowerCase().includes(ql) || (mo.address || '').toLowerCase() === ql;
   const listados = Object.keys(LISTADOS).map((k) => CUSTOM[k] || _listadoAMon(k)).filter(Boolean).filter(coincide);
-  const monedas = [...SWAP_IDS.map((id) => swMon(id)).filter(Boolean).filter(coincide), ...listados];
-  let html = monedas.slice(0, 6).map(swFindRow).join('');
-  const yaEsta = monedas.some((mo) => (mo.address || '').toLowerCase() === ql);
-  if (gb.esDireccion(q) && !yaEsta) {
-    if (CUSTOM[ql]) html += swFindRow(CUSTOM[ql]);
-    else { html += `<div class="sw-find-msg" id="sw-find-imp"><span class="cm-imp-spin"></span>Buscando en BNB Chain…</div>`; swFindImport(q); }
+  const base = SWAP_IDS.map((id) => swMon(id)).filter(Boolean).filter(coincide);
+  // Por cada listado que coincide, si YA tenemos el token importado (existe en PancakeSwap), muestra
+  // tambien su gemelo de PancakeSwap, ARRIBA del listado: las dos filas, como pedia el usuario (la de
+  // la pool sin logo y la del listado con su garantia). El listado conserva su compra por MercadoTokens.
+  const gemelos = [];
+  for (const L of listados) { const tw = monPancake(String(L.address)); if (tw) gemelos.push(tw); }
+  const filas = [...base, ...gemelos, ...listados];
+  let html = filas.slice(0, 8).map(swFindRow).join('');
+  // Si es una direccion y el token de PancakeSwap aun no esta cargado, importarlo para poder mostrar
+  // AMBAS filas (el token de la pool y el listado). Si ya esta, no se vuelve a pedir.
+  const yaToken = filas.some((mo) => !esList(mo) && (mo.address || '').toLowerCase() === ql);
+  if (gb.esDireccion(q) && !yaToken) {
+    html += `<div class="sw-find-msg" id="sw-find-imp"><span class="cm-imp-spin"></span>Buscando en BNB Chain…</div>`;
+    swFindImport(q);
   } else if (!html) {
     html = `<div class="sw-find-msg">Sin resultados. Prueba con otro nombre o pega su dirección.</div>`;
   }
@@ -695,6 +725,24 @@ function swFindPick(id) {
   const inp = $('sw-find-inp'); if (inp) inp.value = '';
   const res = $('sw-find-res'); if (res) { res.innerHTML = ''; res.classList.remove('open'); }
   swPintarToks(); swCargarBalances(); setOut(); swRenderInfo(); swRenderBtn(); swCotizar();
+}
+
+/* Abre directamente el LISTADO de un token (llegada desde Launchpad con ?listado=). Importa el token
+   si hace falta, detecta su listado en MercadoTokens (LISTADOS[direccion]) y lo selecciona como destino
+   con BNB como origen, listo para comprar. El enrutado de compra por LISTADOS[toId] queda intacto. Si
+   no se encontrara el listado, se registra en consola y se deja el token seleccionado igualmente. */
+async function swAbrirListado(addr) {
+  const key = String(addr).trim().toLowerCase();
+  try {
+    if (!CUSTOM[key]) {
+      try { const info = await gb.infoToken(addr); CUSTOM[key] = { id: key, simbolo: info.simbolo, nombre: info.nombre, address: info.address, decimals: info.decimals, icono: (info.simbolo || '?')[0], color: '#E8B84B', custom: true }; }
+      catch (e) { console.warn('[SWAP-LIST] swAbrirListado: no se pudo leer el token', addr, e && (e.shortMessage || e.message)); }
+    }
+    if (!LISTADOS[key]) { await swDetectarListado(key, CUSTOM[key] || { address: addr }); }
+    if (!LISTADOS[key]) console.warn('[SWAP-LIST] swAbrirListado: no se encontro listado activo para', addr);
+    if (S.fromId !== 'BNB' && S.fromId !== 'WBNB') S.fromId = 'BNB';
+    if (CUSTOM[key]) { S.toId = key; S.allow = 0n; swPintarToks(); swCargarBalances(); setOut(); swRenderInfo(); swRenderBtn(); swCotizar(); }
+  } catch (e) { console.warn('[SWAP-LIST] swAbrirListado fallo:', e && (e.shortMessage || e.message)); }
 }
 
 function swExito(from, to, inWei, outWei) {
