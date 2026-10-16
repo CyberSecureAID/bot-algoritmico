@@ -117,14 +117,22 @@ async function gasAprobar(t, spender, monto) {
 }
 async function esperar(tx) {
   try { if (typeof window !== 'undefined' && window._onTxProcesando) window._onTxProcesando(); } catch (_) {}
-  for (let i = 0; i < 6; i++) {
-    try {
-      const rec = await provRPC(i).waitForTransaction(tx.hash, 1, 20000);
-      if (rec) { if (rec.status === 0) throw new Error('The transaction reverted on-chain. Check your balance and gas, and try again.'); return rec; }
-    } catch (e) { if (e && /revert|on-chain/i.test(e.message || '')) throw e; }
-    await new Promise((r) => setTimeout(r, 1500));
+  const chk = (rec) => { if (rec && rec.status === 0) throw new Error('The transaction reverted on-chain. Check your balance and gas, and try again.'); return rec; };
+  // CARRERA: el proveedor de la wallet (que ENVIO la tx y la ve al instante) contra varios RPC
+  // publicos de respaldo. Gana el primero que confirme. Antes se recorrian los RPC uno a uno (hasta
+  // ~2 min) y solo al final se usaba la wallet: por eso la ventana parecia quedarse pegada y habia
+  // que refrescar aunque la compra/creacion ya estuviera hecha en la cadena.
+  const carreras = [];
+  try { if (tx && typeof tx.wait === 'function') carreras.push(tx.wait().then(chk)); } catch (_) {}
+  for (let i = 0; i < RPCS.length; i++) { carreras.push(provRPC(i).waitForTransaction(tx.hash, 1, 120000).then(chk)); }
+  if (!carreras.length) return chk(await tx.wait());
+  try { return await Promise.any(carreras); }
+  catch (agg) {
+    const errs = (agg && agg.errors) ? agg.errors : [agg];
+    const rev = errs.find((e) => e && /revert|on-chain/i.test(String((e && e.message) || '')));
+    if (rev) throw rev;
+    return chk(await tx.wait());
   }
-  const rec = await tx.wait(); if (rec && rec.status === 0) throw new Error('The transaction did not complete on-chain.'); return rec;
 }
 async function esperarEstado(tx, comprobar) {
   const t0 = Date.now();

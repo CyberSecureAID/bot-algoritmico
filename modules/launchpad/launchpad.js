@@ -162,6 +162,24 @@ async function cargarToken(addr) {
     }).catch(() => {});
   } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
 }
+/* Recarga el panel desde la cadena SIN recargar la pagina ni mostrar el spinner: re-lee reservas
+   (precio, liquidez, market cap), el 24h, el volumen, las velas y los trades. Se llama tras cada
+   compra/venta del swap para que todo se actualice al momento, no al refrescar a mano. */
+async function recargarPanel(addr) {
+  if (_panelAddr !== addr) return;
+  try {
+    const [datos, bnbUsd] = await Promise.all([gb.datosToken(addr), gb.precioBNBUSDT().catch(() => 0)]);
+    if (_panelAddr !== addr || !datos) return;
+    const t = deChain(datos, metaLocal(addr)); if (!t) return;
+    const perfil = await leerMoneda(addr).catch(() => null);
+    if (perfil) { if (perfil.logo) t.logo = perfil.logo; t.redes = perfil; }
+    t.bnbUsd = bnbUsd;
+    const ops = await gb.operaciones(addr).catch(() => null);
+    if (_panelAddr !== addr) return;
+    if (ops) { if (ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura; t.txs = ops.length ? ops : []; }
+    pintarPanel(t);
+  } catch (_) {}
+}
 function pintarCargando() { const h = $(APP); if (h) h.innerHTML = `<div style="min-height:60vh;display:flex;align-items:center;justify-content:center"><span style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:#E8B84B;display:inline-block;animation:spin .7s linear infinite"></span></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`; }
 
 /* Muestra de ejemplo para ver el panel sin contrato: launchpad.html?demo=1 */
@@ -246,7 +264,7 @@ function lplCardFeatured(f) {
     <span class="lpl-fcard-ext">${LPL_EXT}</span>
     <div class="lpl-fcard-top"><span class="lpl-logo lpl-logo-lg"><img src="./img/${f.logo}.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${esc(f.simbolo[0])}</span></span>
       <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span></div></div>
-    <div class="lpl-fcard-foot"><span class="lpl-badge-prem">${LPL_STAR} Premium</span><span class="lpl-fcard-chain">${LPL_BSC} BSC</span></div></div>`;
+    <div class="lpl-fcard-foot"><span class="lpl-fcard-chain">${LPL_BSC} BSC</span><span class="lpl-badge-prem">${LPL_STAR} Premium</span></div></div>`;
 }
 function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>`; }
 function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
@@ -316,6 +334,15 @@ async function lplLogos(lista) {
 function lplCargarListas() {
   gb.todosLosTokens(40).then(async (lista) => {
     if (!$('lpl-latest')) return;   // ya no estamos en el lobby
+    // Asegura que SIEMPRE aparezcan las monedas del creador aunque el escaneo global se quede corto.
+    try {
+      const vistos = new Set(lista.map((t) => String(t.address).toLowerCase()));
+      for (const m of misTokens()) {
+        if (!m || !m.address) continue; const k = String(m.address).toLowerCase();
+        if (vistos.has(k)) continue; vistos.add(k);
+        lista.unshift({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: m.bloque || 0 });
+      }
+    } catch (_) {}
     const bnbUsd = await gb.precioBNBUSDT().catch(() => 0);
     // Latest Created: las mas nuevas, con su hora y logo. Se pinta ya (no depende de la actividad).
     const latest = lista.slice(0, 5);
@@ -1169,7 +1196,7 @@ function pintarPanel(t) {
   if (pool && mon === 'BNB' && !(t.bnbUsd > 0)) gb.precioBNBUSDT().then((v) => { if (v > 0) { t.bnbUsd = v; pintarPanel(t); } }).catch(() => {});
   // Swap real de la moneda, montado inline (sin iframe, sin capsula) donde antes iba Liquidity.
   if (_swapActual) { try { _swapActual.destruir(); } catch (_) {} _swapActual = null; }
-  if (pool && !t.demo && $('lp-swap-host')) _swapActual = montarSwap($('lp-swap-host'), t.address, { logo: t.logo, modal, modalBusy, modalCerrar });
+  if (pool && !t.demo && $('lp-swap-host')) _swapActual = montarSwap($('lp-swap-host'), t.address, { logo: t.logo, modal, modalBusy, modalCerrar, recargarPanel: () => recargarPanel(t.address) });
 }
 
 /* Estado de verificacion en BscScan: badge verde con enlace, o boton para verificar
@@ -1319,5 +1346,11 @@ function pintarGrafica(t, rango) {
     const f = t.reservaSuelo / t.supply;
     if (f > 0) { try { _lineaSuelo = _serie.createPriceLine({ price: f, color: '#E8B84B', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'floor' }); } catch (_) {} }
   }
-  try { _chart.timeScale().fitContent(); } catch (_) {}
+  // Con muchas velas, encaja todo. Con pocas, NO estirar: ancho de vela normal (si no, una sola
+   // compra salia como una barra gigantesca de lado a lado). Se fija el espaciado y se ve a la derecha.
+  try {
+    const ts = _chart.timeScale();
+    if (velas.length > 14) ts.fitContent();
+    else { ts.applyOptions({ barSpacing: 14, rightOffset: 8 }); ts.scrollToRealTime(); }
+  } catch (_) {}
 }

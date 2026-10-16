@@ -174,12 +174,12 @@ export function montarSwap(host, token, opts = {}) {
     if (!redOk()) { accion = 'net'; b.textContent = 'Switch to BNB Chain'; return; }
     if (!T.pool) { accion = 'x'; b.textContent = 'No liquidity yet'; b.disabled = true; return; }
     const inWei = amountBI();
-    if (inWei <= 0n) { accion = 'x'; b.textContent = 'Enter amount'; b.disabled = true; return; }
+    if (inWei <= 0n) { accion = 'x'; b.textContent = 'Swap'; b.disabled = true; return; }
     const bal = dir === 'sell' ? balCoinWei : balQuoteWei;
     if (inWei > bal) { accion = 'x'; b.textContent = 'Insufficient balance'; b.disabled = true; return; }
-    if (quoting) { accion = 'x'; b.textContent = 'Quoting…'; b.disabled = true; return; }
+    if (quoting) { accion = 'x'; b.textContent = 'Swap'; b.disabled = true; return; }
     if (outWei <= 0n) { accion = 'x'; b.textContent = 'No route'; b.disabled = true; return; }
-    accion = 'swap'; b.textContent = `Swap ${esc(simIn())} for ${esc(simOut())}`;
+    accion = 'swap'; b.textContent = 'Swap';
   }
   async function onGo() {
     if (accion === 'connect') { try { await wallet.conectar(); } catch (_) {} render(); cargarBalances(); return; }
@@ -190,9 +190,12 @@ export function montarSwap(host, token, opts = {}) {
     try {
       if (dir === 'buy') await gb.comprar({ token: TOKEN, quoteId: moneda, cantQuote: inWei, minOut });
       else await gb.vender({ token: TOKEN, cantTok: inWei, minOut });
+      // Cerrar el modal y seguir sin bloquear: nada de ventana "Got it" que haya que cerrar a mano.
       ui.modalCerrar();
-      await ui.modal('Done', `Your swap went through. ${esc(simOut())} is in your wallet.`);
       amount = ''; maxWei = null; outWei = 0n; render(); cargarBalances();
+      // Refrescar el panel entero (24h, volumen, velas y trades) sin tener que recargar la pagina.
+      try { if (typeof opts.recargarPanel === 'function') opts.recargarPanel(); } catch (_) {}
+      const bb = $('wg-go'); if (bb) { bb.disabled = true; bb.textContent = 'Done ✓'; setTimeout(() => { if (vivo && $('wg-go')) renderBtn(); }, 1600); }
     } catch (e) {
       ui.modalCerrar();
       if (esRechazo(e)) await ui.modal('Cancelled', 'You cancelled the signature. Nothing was swapped.');

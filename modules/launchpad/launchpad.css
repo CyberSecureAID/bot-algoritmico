@@ -50,7 +50,9 @@
 .lpl-emblem{display:block;width:min(200px,42vw);height:auto;margin:0 auto 10px;object-fit:contain;filter:drop-shadow(0 14px 30px rgba(0,0,0,.75))}
 .lpl-cta{display:flex;gap:16px;justify-content:center;align-items:center;margin:2px 0 20px;flex-wrap:wrap}
 /* Botones imagen (Create, Learn more, My coins, View All). Si la imagen falta, cae a boton de texto. */
-.lpl-imgbtn{border:0;background:none;padding:0;margin:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:0}
+.lpl-imgbtn{border:0;background:none;padding:0;margin:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:0;transition:transform .15s ease,filter .15s ease}
+.lpl-imgbtn:hover{transform:scale(1.06);filter:brightness(1.07)}
+.lpl-imgbtn:active{transform:scale(.97)}
 .lpl-imgbtn .lpl-btn-img{display:block;height:48px;width:auto}
 .lpl-btn-tx{display:none}
 .lpl-imgbtn.fb .lpl-btn-tx{display:inline-flex;align-items:center;height:48px;padding:0 22px;border-radius:13px;background:linear-gradient(180deg,#f7db8d,var(--gold) 45%,#c79426);color:#3a2800;font-family:var(--display);font-weight:800;font-size:14.5px;white-space:nowrap}
@@ -60,14 +62,14 @@
    coherente con los botones (ni grueso ni invisible). */
 .lpl-searchrow{display:flex;gap:12px;align-items:center;max-width:1000px;margin:0 auto}
 .lpl-search{flex:1 1 auto;display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;border-radius:14px;background:rgba(7,10,14,.82);border:1px solid rgba(232,184,75,.5);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);transition:border-color .15s,box-shadow .15s}
-.lpl-search:focus-within{border-color:var(--gold);box-shadow:0 0 0 2px rgba(232,184,75,.12)}
+.lpl-search:focus-within{border-color:var(--gold)}
 .lpl-q-ico{width:20px;height:20px;flex:0 0 auto;color:var(--gold-soft)}
 .lpl-search input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font-family:var(--display);font-size:15px}
 .lpl-search input::placeholder{color:var(--ink-3)}
 .lpl-mycoins{flex:0 0 auto}
 /* Contenedor de cada seccion (Featured, Latest, Popular): cristal oscuro, para que el titulo no
    quede "en el aire" y todo quede encapsulado como en el diseño. */
-.lpl-box,.lpl-panel-sec{background:rgba(8,11,16,.8);border:1px solid #27303c;border-radius:18px;padding:18px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.lpl-box,.lpl-panel-sec{background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:18px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .lpl-feat{margin-top:30px}
 .lpl-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
 .lpl-sec-tt{display:flex;align-items:center;gap:12px;min-width:0}
@@ -82,14 +84,14 @@
 .lpl-feat-track.marquee:hover{animation-play-state:paused}
 .lpl-feat-track.marquee .lpl-fcard{flex:0 0 230px}
 @keyframes lplmq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.lpl-fcard{position:relative;display:flex;flex-direction:column;min-height:134px;min-width:0;background:rgba(13,17,23,.72);border:1px solid #2b3440;border-radius:16px;padding:15px;cursor:default}
+.lpl-fcard{position:relative;display:flex;flex-direction:column;min-height:134px;min-width:0;background:rgba(14,18,25,.9);border:1px solid #2d3744;border-radius:16px;padding:15px;cursor:default}
 .lpl-fcard-ext{position:absolute;top:13px;right:13px;color:var(--ink-3)}
 .lpl-fcard-ext svg{width:15px;height:15px}
 .lpl-fcard-top{display:flex;align-items:center;gap:12px}
 .lpl-fcard-id{min-width:0}
 .lpl-fcard-id b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:16px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lpl-fcard-sym{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:1px}
-.lpl-fcard-foot{margin-top:auto;padding-top:12px;display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.lpl-fcard-foot{margin-top:auto;padding-top:12px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:8px}
 .lpl-badge-prem{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:#f1cf6a;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.32);border-radius:999px;padding:2px 8px}
 .lpl-badge-prem svg{width:9px;height:9px}
 .lpl-fcard-chain{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
@@ -363,7 +365,7 @@
 .lp-swbox .sw-info .r{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
 .lp-swbox .sw-info .r span:first-child{color:var(--ink-3)}
 .lp-swbox .sw-go{width:100%;margin-top:14px;border-radius:12px;padding:13px;font-family:var(--display);font-weight:800;font-size:14.5px;cursor:pointer;letter-spacing:.2px;background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a);border:1px solid #15803d;color:#052e13;box-shadow:0 3px 0 #15803d;transition:transform .09s,box-shadow .09s,filter .12s}
-.lp-swbox .sw-go:not(:disabled):hover{filter:brightness(1.05)}
+.lp-swbox .sw-go:not(:disabled):hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 5px 0 #15803d,0 8px 18px rgba(0,0,0,.4)}
 .lp-swbox .sw-go:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
 .lp-swbox .sw-go:not(:disabled):active{transform:translateY(3px);box-shadow:0 0 0 #15803d}
 .lp-swbox .coin-sel-ico{position:relative;width:34px;height:34px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:linear-gradient(180deg,#232b34,#151b22);flex:0 0 auto}
