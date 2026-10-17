@@ -11,7 +11,11 @@ import "./TokenDF.sol";
    Proxy UUPS (este es el contrato de implementacion). Multi-owner.
 
    Que hace:
-     · crearToken: despliega un TokenDF (inmutable, supply fijo) a nombre del creador. Gratis.
+     · crearToken: despliega un TokenDF (inmutable, supply fijo) a nombre del creador.
+       COBRO (nuevo, aditivo): si `cobroActivo`, cobra en la MISMA tx el equivalente a
+       `precioCreacionUSD` en BNB (precio del oraculo ya existente; respaldo si falla) y
+       lo reparte 20% staking / 40% owner1 / 40% owner2. Registra el pago y emite evento.
+       Si `cobroActivo` es false, la creacion sigue siendo gratis EXACTAMENTE como antes.
      · crearPool: el creador deposita monedas + BNB o USDT. El pool vive AQUI (producto
        constante). No hay LP tokens: la liquidez queda bloqueada hasta la fecha elegida
        (o para siempre). Solo el creador puede retirarla, solo tras la fecha.
@@ -25,10 +29,21 @@ import "./TokenDF.sol";
 
    Seguridad: pragma fijo, checks-effects-interactions, guard de reentrancia,
    pausa de emergencia (solo compras/ventas/creacion; retirar liquidez vencida nunca
-   se bloquea), validacion de entradas en todo lo admin.
+   se bloquea), validacion de entradas en todo lo admin. Los pagos de la creacion usan
+   envio seguro (si un receptor rechaza BNB, su parte queda retirable; nunca bloquea la
+   creacion).
    ───────────────────────────────────────────────────────────────────────── */
 
 interface IContabilidadLP { function reportar(address wallet, bytes32 servicio, uint256 generadoUSD, uint256 aStakingUSD, uint256 aOwnersUSD) external; }
+
+// Oraculo ya desplegado del ecosistema (OraculoPrecios). precioUSD(address(0)) = USD por 1 BNB (18 dec).
+interface IOraculoLP { function precioUSD(address token) external view returns (uint256); }
+
+// Fabrica externa que despliega los TokenDF (saca ~9 KB de codigo de creacion fuera de esta
+// implementacion para no superar el limite de 24576 bytes del EVM). Ver FabricaTokenDF.sol.
+interface IFabricaTokenDF {
+    function desplegar(string calldata nombre, string calldata simbolo, uint256 supply, address creador, uint16 sueloBps, uint256 vestTotal, uint64 vestDur) external returns (address token);
+}
 
 contract LaunchpadDF is Initializable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
@@ -59,9 +74,15 @@ contract LaunchpadDF is Initializable, UUPSUpgradeable {
     uint256 public constant SUPPLY_MAX = 1e15 * 1e18;
     bytes32 public constant CLAVE_CONT = keccak256("launchpad");
 
+    // Cobro por creacion (reparto fijo: 20% staking, 40% owner1, 40% owner2 = 1/2/2 de 5 USD).
+    uint16 public constant CREAC_STAKING_BPS = 2000;  // 20%
+    uint16 public constant CREAC_OWNER1_BPS  = 4000;  // 40%
+    uint256 public constant PRECIO_CREAC_MAX = 50e18; // tope de seguridad: nunca mas de 50 USD
+
     /* ─────────── Estado ─────────── */
     struct Info { address creador; uint16 sueloBps; bool antibot; uint64 creadoEn; }
     struct Pool { address quote; uint256 rTok; uint256 rQuote; uint64 abiertoEn; uint64 desbloqueo; bool activo; bool retirado; }
+
 
     address[] public tokens;
     mapping(address => Info) public info;
@@ -73,6 +94,19 @@ contract LaunchpadDF is Initializable, UUPSUpgradeable {
     bool private _entrada;
     bool public pausado;
 
+    /* ─────────── Estado NUEVO (cobro por creacion). Se añade AQUI, antes del __gap, sin
+       reordenar ni cambiar nada de lo anterior. El __gap baja de 40 a 32 (8 huecos usados). ─── */
+    struct Pago { address pagador; uint128 bnb; uint128 usd; uint64 ts; }
+    address public oraculo;                        // OraculoPrecios (BNB/USD via precioUSD(address(0)))
+    uint256 public precioCreacionUSD;              // 18 dec (5e18 = 5 USD)
+    uint256 public tarifaCreacionBNBFallback;      // BNB a cobrar si el oraculo no responde
+    address public owner1Propuesto;                // handover en dos pasos
+    address public owner2Propuesto;
+    mapping(address => Pago) public pagoDe;        // token => pago de su creacion
+    mapping(address => uint256) public saldoRetirable;   // pull: BNB que un receptor no pudo recibir
+    bool public cobroActivo;                       // interruptor del cobro (arranca en false)
+    address public fabricaToken;                   // FabricaTokenDF: despliega las monedas (ver nota de tamaño)
+
     /* ─────────── Eventos ─────────── */
     event TokenCreado(address indexed token, address indexed creador, string nombre, string simbolo, uint256 supply, uint16 sueloBps, uint256 vestTotal, uint64 vestDuracion, bool antibot);
     event PoolAbierto(address indexed token, address indexed creador, address quote, uint256 tok, uint256 quoteCant, uint64 desbloqueo);
@@ -82,9 +116,16 @@ contract LaunchpadDF is Initializable, UUPSUpgradeable {
     event OwnerCambiado(address indexed quien, bool esOwner);
     event ParamCambiado(string nombre, address valor);
     event Pausa(bool pausado);
+    // Nuevos
+    event PagoCreacion(address indexed token, address indexed pagador, uint256 bnb, uint256 usdValor, uint64 timestamp);
+    event CobroConfigurado(address oraculo, uint256 precioUSD, uint256 fallbackBNB);
+    event CobroActivo(bool activo);
+    event OwnerPropuesto(uint8 cual, address propuesto);
+    event Retiro(address indexed quien, uint256 monto);
 
     error NoAutorizado(); error Reentrada(); error Pausado(); error Params(); error SinPool(); error Bloqueado();
     error Slippage(); error Lanzamiento(); error Cantidad(); error YaExiste();
+    error PagoInsuficiente();   // nuevo
 
     modifier soloOwner() { if (!esOwner[msg.sender]) revert NoAutorizado(); _; }
     modifier noReentrada() { if (_entrada) revert Reentrada(); _entrada = true; _; _entrada = false; }
@@ -101,13 +142,27 @@ contract LaunchpadDF is Initializable, UUPSUpgradeable {
         _addOwner(_owner1); _addOwner(_owner2);
     }
 
+    /// Inicializacion de las variables NUEVAS del cobro, una sola vez, durante el upgrade
+    /// (se pasa como data en upgradeToAndCall). No toca `initialize`. `cobroActivo` queda en
+    /// false hasta que un owner lo active con setCobroActivo(true).
+    function inicializarCobro(address _oraculo, uint256 _precioUSD, uint256 _fallbackBNB, address _fabrica) external reinitializer(2) soloOwner {
+        if (_oraculo == address(0) || _fabrica == address(0)) revert Params();
+        if (_precioUSD == 0 || _precioUSD > PRECIO_CREAC_MAX) revert Params();
+        oraculo = _oraculo;
+        precioCreacionUSD = _precioUSD;
+        tarifaCreacionBNBFallback = _fallbackBNB;
+        fabricaToken = _fabrica;
+        emit CobroConfigurado(_oraculo, _precioUSD, _fallbackBNB);
+        emit ParamCambiado("fabricaToken", _fabrica);
+    }
+
     function _authorizeUpgrade(address) internal override soloOwner {}
 
-    /* ═══════════ Crear moneda (gratis) ═══════════ */
+    /* ═══════════ Crear moneda (cobro en BNB dentro de la misma tx) ═══════════ */
     function crearToken(
         string calldata nombre, string calldata simbolo, uint256 supply,
         uint16 sueloBps, uint8 fundadorPct, uint8 vestingMeses, bool antibot
-    ) external activo noReentrada returns (address token) {
+    ) external payable activo noReentrada returns (address token) {
         if (bytes(nombre).length < 2 || bytes(nombre).length > 32) revert Params();
         if (bytes(simbolo).length < 3 || bytes(simbolo).length > 6) revert Params();
         if (supply < SUPPLY_MIN || supply > SUPPLY_MAX) revert Params();
@@ -115,15 +170,94 @@ contract LaunchpadDF is Initializable, UUPSUpgradeable {
         if (fundadorPct > FUNDADOR_MAX_PCT) revert Params();
         if (fundadorPct > 0 && !(vestingMeses == 3 || vestingMeses == 6 || vestingMeses == 12 || vestingMeses == 24)) revert Params();
 
+        // ── COBRO (checks). Si no hay cobro, no se admite BNB (comportamiento igual al de antes). ──
+        if (cobroActivo) { if (msg.value < costoCreacionBNB()) revert PagoInsuficiente(); }
+        else if (msg.value != 0) revert Cantidad();
+
+        // ── EFECTOS: desplegar el token (via fabrica externa) y registrar su estado ──
+        if (fabricaToken == address(0)) revert Params();   // la implementacion exige fabrica configurada
         uint256 vestTotal = supply * fundadorPct / 100;
         uint64 vestDur = fundadorPct > 0 ? uint64(vestingMeses) * MES : 0;
-        token = address(new TokenDF(nombre, simbolo, supply, msg.sender, address(this), sueloBps, vestTotal, vestDur));
+        // creador = msg.sender (el usuario). La `fabrica` del token sera este Launchpad: la fabrica
+        // externa fija fabrica = su propio llamador, que es este contrato. Asi sigue siendo este
+        // Launchpad quien deposita la reserva del suelo, igual que antes.
+        token = IFabricaTokenDF(fabricaToken).desplegar(nombre, simbolo, supply, msg.sender, sueloBps, vestTotal, vestDur);
 
         info[token] = Info({ creador: msg.sender, sueloBps: sueloBps, antibot: antibot, creadoEn: uint64(block.timestamp) });
         tokens.push(token);
         _deCreador[msg.sender].push(token);
-        _reportar(msg.sender, 0, 0, 0);
+
+        // ── Cobro, reparto, reembolso y reporte (interactions, al final; en su propio frame) ──
+        _cobrarCreacion(token);
         emit TokenCreado(token, msg.sender, nombre, simbolo, supply, sueloBps, vestTotal, vestDur, antibot);
+    }
+
+    /** Cobra la creacion (si esta activa), reparte, reembolsa el exceso y reporta. Va en su propio
+        frame para no agotar la pila en crearToken (se mantiene el mismo numero de locales que el
+        original, asi compila sin via-ir y la verificacion en BscScan sigue siendo de un clic).
+        El `req` se recalcula aqui: es el mismo valor que en el pre-check (el oraculo es constante
+        dentro de la misma tx/bloque), y asi no ocupa una variable extra en crearToken. */
+    function _cobrarCreacion(address token) internal {
+        if (!cobroActivo) { _reportar(msg.sender, 0, 0, 0); return; }
+        uint256 req = costoCreacionBNB();                // msg.value >= req ya garantizado en crearToken
+        pagoDe[token] = Pago({ pagador: msg.sender, bnb: uint128(req), usd: uint128(precioCreacionUSD), ts: uint64(block.timestamp) });
+        emit PagoCreacion(token, msg.sender, req, precioCreacionUSD, uint64(block.timestamp));
+        _repartirCreacion(req);
+        uint256 exceso = msg.value - req;
+        if (exceso > 0) _enviarSeguro(msg.sender, exceso);
+        uint256 aStkUSD = precioCreacionUSD * CREAC_STAKING_BPS / BPS;
+        _reportar(msg.sender, precioCreacionUSD, aStkUSD, precioCreacionUSD - aStkUSD);
+    }
+
+    /** Costo actual de crear en BNB (wei). 0 si el cobro esta apagado. Usa el oraculo (USD por 1 BNB,
+        18 dec); si no responde o da precio invalido, cae al respaldo `tarifaCreacionBNBFallback`, asi la
+        creacion nunca se bloquea. El front la lee ANTES de firmar para enviar el value justo (sin
+        aviso de "puede fallar"). */
+    function costoCreacionBNB() public view returns (uint256) {
+        if (!cobroActivo) return 0;
+        address o = oraculo;
+        if (o != address(0)) {
+            try IOraculoLP(o).precioUSD(address(0)) returns (uint256 p) {
+                if (p > 0) return precioCreacionUSD * 1e18 / p;
+            } catch {}
+        }
+        return tarifaCreacionBNBFallback;
+    }
+
+    /** Reparte el pago de la creacion: 20% staking (si falla, a owners), 40% owner1, 40% owner2.
+        La suma es EXACTA (la ultima parte es el resto). Envio seguro: ningun receptor puede abortar. */
+    function _repartirCreacion(uint256 req) internal {
+        uint256 aStk = req * CREAC_STAKING_BPS / BPS;
+        uint256 a1 = req * CREAC_OWNER1_BPS / BPS;
+        uint256 a2 = req - aStk - a1;   // resto exacto, sin polvo
+        bool okS = false;
+        if (aStk > 0 && staking != address(0)) {
+            (okS,) = staking.call{value: aStk}(abi.encodeWithSignature("depositarRecompensaBNB(uint16)", uint16(10000)));
+        }
+        if (!okS) { a1 += aStk / 2; a2 += aStk - aStk / 2; }   // si el staking no acepta, su parte a owners
+        if (owner1 == owner2) {
+            _enviarSeguro(owner1, a1 + a2);
+        } else {
+            _enviarSeguro(owner1, a1);
+            _enviarSeguro(owner2, a2);
+        }
+    }
+
+    /** Envio de BNB que NUNCA revierte: si el receptor rechaza, su monto queda retirable (pull). */
+    function _enviarSeguro(address a, uint256 m) internal {
+        if (m == 0 || a == address(0)) return;
+        (bool ok,) = payable(a).call{value: m, gas: 30000}("");
+        if (!ok) saldoRetirable[a] += m;
+    }
+
+    /** Retira lo que un envio no pudo entregar (owners/staking/pagador que rechazaron BNB). */
+    function retirar() external noReentrada {
+        uint256 m = saldoRetirable[msg.sender];
+        if (m == 0) revert Cantidad();
+        saldoRetirable[msg.sender] = 0;
+        (bool ok,) = payable(msg.sender).call{value: m}("");
+        require(ok, "retiro");
+        emit Retiro(msg.sender, m);
     }
 
     /* ═══════════ Abrir el pool (una vez, solo el creador) ═══════════ */
@@ -222,6 +356,7 @@ contract LaunchpadDF is Initializable, UUPSUpgradeable {
         else { IERC20(quote).forceApprove(token, monto); TokenDF(payable(token)).depositarReservaToken(monto); }
     }
 
+
     /** 0.20% owner1, 0.20% owner2, 0.10% staking (si el staking no acepta, su parte va a los owners). */
     function _repartirEco(address quote, uint256 out) internal {
         uint256 eco = out * ECO_BPS / BPS;              // exactamente lo descontado al vendedor
@@ -292,9 +427,25 @@ contract LaunchpadDF is Initializable, UUPSUpgradeable {
     function _addOwner(address a) internal { if (a == address(0)) revert Params(); if (!esOwner[a]) { esOwner[a] = true; ownersList.push(a); emit OwnerCambiado(a, true); } }
     function setOwner1(address a) external soloOwner { if (a == address(0)) revert Params(); owner1 = a; _addOwner(a); emit ParamCambiado("owner1", a); }
     function setOwner2(address a) external soloOwner { if (a == address(0)) revert Params(); owner2 = a; _addOwner(a); emit ParamCambiado("owner2", a); }
+
+    /* Handover en DOS pasos (sin esperas): proponer (owner) + aceptar (la wallet nueva). Asi no se
+       puede fijar una wallet que no controla quien acepta, y empieza a recibir su parte al aceptar.
+       Las funciones setOwner1/setOwner2 de arriba siguen disponibles para un cambio urgente de un paso. */
+    function proponerOwner1(address a) external soloOwner { if (a == address(0)) revert Params(); owner1Propuesto = a; emit OwnerPropuesto(1, a); }
+    function aceptarOwner1() external { if (msg.sender != owner1Propuesto) revert NoAutorizado(); owner1 = msg.sender; _addOwner(msg.sender); owner1Propuesto = address(0); emit ParamCambiado("owner1", msg.sender); }
+    function proponerOwner2(address a) external soloOwner { if (a == address(0)) revert Params(); owner2Propuesto = a; emit OwnerPropuesto(2, a); }
+    function aceptarOwner2() external { if (msg.sender != owner2Propuesto) revert NoAutorizado(); owner2 = msg.sender; _addOwner(msg.sender); owner2Propuesto = address(0); emit ParamCambiado("owner2", msg.sender); }
+
     function setStaking(address a) external soloOwner { staking = a; emit ParamCambiado("staking", a); }
     function setContabilidad(address a) external soloOwner { contabilidad = a; emit ParamCambiado("contabilidad", a); }
     function pausar(bool v) external soloOwner { pausado = v; emit Pausa(v); }
+
+    // Admin del cobro por creacion.
+    function setCobroActivo(bool v) external soloOwner { cobroActivo = v; emit CobroActivo(v); }
+    function setPrecioCreacionUSD(uint256 u) external soloOwner { if (u == 0 || u > PRECIO_CREAC_MAX) revert Params(); precioCreacionUSD = u; emit CobroConfigurado(oraculo, u, tarifaCreacionBNBFallback); }
+    function setTarifaFallback(uint256 bnb) external soloOwner { tarifaCreacionBNBFallback = bnb; emit CobroConfigurado(oraculo, precioCreacionUSD, bnb); }
+    function setOraculoCreacion(address a) external soloOwner { if (a == address(0)) revert Params(); oraculo = a; emit CobroConfigurado(a, precioCreacionUSD, tarifaCreacionBNBFallback); }
+    function setFabricaToken(address a) external soloOwner { if (a == address(0)) revert Params(); fabricaToken = a; emit ParamCambiado("fabricaToken", a); }
 
     /* ═══════════ Internas ═══════════ */
     function _pull(address t, address de, uint256 m) internal returns (uint256 rec) {
@@ -313,8 +464,11 @@ contract LaunchpadDF is Initializable, UUPSUpgradeable {
         try IContabilidadLP(contabilidad).reportar(wallet, CLAVE_CONT, gen, aStk, aOwn) {} catch {}
     }
 
-    /* El BNB entra solo por comprar / crearPool (con msg.value comprobado). */
+    /* El BNB entra solo por comprar / crearPool / crearToken (con msg.value comprobado). */
     receive() external payable { revert Cantidad(); }
 
-    uint256[40] private __gap;
+    // El original tenia uint256[40] __gap tras `pausado` (slots 14..53). Las variables nuevas ocupan
+    // los slots 14..20 (7 slots; `oraculo` se empaqueta en el hueco libre del slot 13 de `pausado`).
+    // Para conservar EXACTAMENTE la misma huella de almacenamiento, el gap pasa de 40 a 33 (53-21+1).
+    uint256[33] private __gap;
 }
