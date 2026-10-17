@@ -8,7 +8,7 @@ import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
 import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
-import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados, leerOcultos, guardarOcultos } from './firebase-tokens.js';
+import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados, leerOcultos, guardarOcultos, leerHistorial, guardarHistorial } from './firebase-tokens.js';
 import { filaRedes, redesControl, abrirEditorMoneda } from './perfil-moneda.js';
 import { montarSwap } from './swap-inline.js';
 /* lightweight-charts: libreria de velas de la propia TradingView (Apache-2.0), vendorizada en el
@@ -177,29 +177,55 @@ function deChain(datos, meta) {
 /* Carga una moneda de la cadena y pinta su panel (pagina publica ?token y clics internos). */
 let _panelAddr = null;
 let _swapActual = null;   // instancia del swap inline del panel, para destruirla al repintar
+/* Une la CACHE de Firestore con lo reconstruido de la CADENA. La cadena MANDA en su ventana de
+   escaneo: de la cache solo se conservan las operaciones MAS VIEJAS que lo que alcanzo el escaneo (asi
+   se preserva el historial anterior a ~9 dias sin que nadie pueda inyectar trades falsos dentro de la
+   ventana). Dedup implicito por recencia, tope 150. Sin cadena (RPC caido), se deja la cache (mejor
+   que vacio); el siguiente escaneo bueno la corrige. */
+function unirTrades(cache, cadena) {
+  cache = Array.isArray(cache) ? cache : []; cadena = Array.isArray(cadena) ? cadena : [];
+  if (!cadena.length) return cache.slice(0, 150);
+  let minCad = Infinity; for (const o of cadena) { const b = o.bloque || 0; if (b && b < minCad) minCad = b; }
+  const viejas = cache.filter((o) => (o.bloque || 0) > 0 && (o.bloque || 0) < minCad);
+  return [...cadena, ...viejas].sort((x, y) => (y.tiempo || y.bloque || 0) - (x.tiempo || x.bloque || 0)).slice(0, 150);
+}
 async function cargarToken(addr) {
   _panelAddr = addr;
   pintarCargando();
   try {
-    const [datos, perfil, bnbUsd] = await Promise.all([gb.datosToken(addr), leerMoneda(addr).catch(() => null), gb.precioBNBUSDT().catch(() => 0)]);
+    const [datos, perfil, bnbUsd, hist] = await Promise.all([
+      gb.datosToken(addr), leerMoneda(addr).catch(() => null), gb.precioBNBUSDT().catch(() => 0), leerHistorial(addr).catch(() => null)
+    ]);
     const t = deChain(datos, metaLocal(addr));
     if (!t) { await modal('Coin not found', 'This coin is not on the launchpad, or the network did not answer. Try again.'); pintarPortada(); return; }
     // El logo persiste en Firestore (por direccion), no en el navegador: la cadena manda el resto.
     if (perfil) { if (perfil.logo) t.logo = perfil.logo; t.redes = perfil; }
     t.bnbUsd = bnbUsd;   // tasa BNB->USDT para mostrar el panel en USDT
-    t.txs = [];          // pinta ya; el historial real puede tardar en RPC y va en segundo plano
+    // Historial desde la CACHE de Firestore: carga al instante y SOBREVIVE a borrar cache (antes se
+    // reconstruia de cero cada vez y se veia vacio mientras escaneaba). La cadena lo completa abajo.
+    const cache = (hist && Array.isArray(hist.trades)) ? hist.trades : [];
+    if (cache.length) {
+      t.txs = cache;
+      if (hist.apertura && hist.apertura.precio > 0) t.apertura = hist.apertura;
+      t.histListo = true;
+      console.info('[HIST] cache Firestore:', addr, cache.length, 'trades (se muestran al instante)');
+    } else {
+      t.txs = [];
+      console.info('[HIST] sin cache en Firestore para', addr, '-> se reconstruye de la cadena');
+    }
     pintarPanel(t);
-    // Historial real de la cadena en segundo plano: al llegar repinta con grafica, trades, 24h y volumen
-    // reales. operaciones trae ademas el precio de lanzamiento (PoolAbierto) leido en el mismo escaneo.
+    // Reconstruccion on-chain en segundo plano: une con la cache, repinta, y REESCRIBE la cache.
     gb.operaciones(addr).then((ops) => {
       if (_panelAddr !== addr) return;
-      t.histListo = true;   // el historial ya llego (aunque venga vacio): quita el estado de carga
-      if (ops) {
-        if (ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura;
-        if (ops.length) t.txs = ops;
-      }
-      pintarPanel(t);       // repinta siempre una vez: dibuja velas/trades/24h o fija el cero real
-    }).catch(() => { if (_panelAddr === addr) { t.histListo = true; pintarPanel(t); } });
+      t.histListo = true;
+      const cadena = (ops && ops.length) ? ops.slice() : [];
+      if (ops && ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura;
+      const unido = unirTrades(cache, cadena);
+      t.txs = unido;
+      console.info('[HIST] cadena:', addr, cadena.length, 'trades; total tras unir con cache:', unido.length);
+      pintarPanel(t);
+      if (unido.length) { try { guardarHistorial(addr, { trades: unido, apertura: t.apertura || null, bloque: unido.reduce((m, o) => Math.max(m, o.bloque || 0), 0) }); } catch (_) {} }
+    }).catch((e) => { if (_panelAddr === addr) { t.histListo = true; pintarPanel(t); } console.warn('[HIST] operaciones fallo:', (e && (e.shortMessage || e.message)) || e); });
   } catch (_) { await modal('Network busy', 'Could not read this coin right now. Try again in a moment.'); pintarPortada(); }
 }
 /* Recarga el panel desde la cadena SIN recargar la pagina ni mostrar el spinner: re-lee reservas
@@ -214,11 +240,15 @@ async function recargarPanel(addr) {
     const perfil = await leerMoneda(addr).catch(() => null);
     if (perfil) { if (perfil.logo) t.logo = perfil.logo; t.redes = perfil; }
     t.bnbUsd = bnbUsd;
-    const ops = await gb.operaciones(addr).catch(() => null);
+    const [ops, hist] = await Promise.all([gb.operaciones(addr).catch(() => null), leerHistorial(addr).catch(() => null)]);
     if (_panelAddr !== addr) return;
-    if (ops) { if (ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura; t.txs = ops.length ? ops : []; }
+    if (ops && ops.apertura && ops.apertura.precio > 0) t.apertura = ops.apertura;
+    const unido = unirTrades((hist && hist.trades) || [], (ops && ops.length) ? ops.slice() : []);
+    t.txs = unido;
     t.histListo = true;   // recarga tras un trade: ya tenemos el historial, nada de estado de carga
     pintarPanel(t);
+    // Guarda la cache con el trade nuevo incluido, para que no se pierda al recargar.
+    if (unido.length) { try { guardarHistorial(addr, { trades: unido, apertura: t.apertura || null, bloque: unido.reduce((m, o) => Math.max(m, o.bloque || 0), 0) }); } catch (_) {} }
   } catch (_) {}
 }
 function pintarCargando() { const h = $(APP); if (h) h.innerHTML = `<div style="min-height:60vh;display:flex;align-items:center;justify-content:center"><span style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(232,184,75,.25);border-top-color:#E8B84B;display:inline-block;animation:spin .7s linear infinite"></span></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`; }

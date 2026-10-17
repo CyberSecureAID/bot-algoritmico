@@ -84,6 +84,46 @@ export async function guardarOcultos(wallet, lista) {
   } catch (_) { return false; }
 }
 
+/* CACHE del historial del panel (velas, 24h, volumen y transacciones) por token, en Firestore, para
+   que SOBREVIVA a borrar cache y cargue al instante. La cadena sigue siendo la FUENTE DE VERDAD: esto
+   es solo un acelerador (se lee primero, se completa con la cadena, se reescribe). Los trades se guardan
+   como una cadena JSON (campo "trades") para no pelear con el formato de arrays de Firestore.
+   Coleccion "historial", doc = direccion del token en minuscula. Requiere en las reglas:
+     match /historial/{token} { allow read: if true;
+       allow create, update: if request.resource.data.keys().hasOnly(['trades','apertura','bloque','ts'])
+                     && request.resource.data.trades is string && request.resource.data.trades.size() < 400000;
+       allow delete: if false; } */
+const BASE_HIST = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/historial`;
+export async function leerHistorial(token) {
+  if (!token) return null;
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(`${BASE_HIST}/${String(token).toLowerCase()}?key=${API_KEY}`, { signal: ctrl.signal }); clearTimeout(to);
+    if (!r.ok) return null;
+    const f = (await r.json()).fields || {};
+    let trades = []; try { trades = JSON.parse((f.trades && f.trades.stringValue) || '[]'); } catch (_) { trades = []; }
+    let apertura = null; try { apertura = JSON.parse((f.apertura && f.apertura.stringValue) || 'null'); } catch (_) { apertura = null; }
+    const bloque = Number((f.bloque && f.bloque.integerValue) || 0);
+    return { trades: Array.isArray(trades) ? trades : [], apertura, bloque };
+  } catch (_) { return null; }
+}
+export async function guardarHistorial(token, datos) {
+  if (!token || !datos) return false;
+  const trades = JSON.stringify((datos.trades || []).slice(0, 150));
+  if (trades.length > 390000) return false;   // no desbordar el limite de 1 MB del documento
+  const fields = {
+    trades: { stringValue: trades },
+    apertura: { stringValue: JSON.stringify(datos.apertura || null) },
+    bloque: { integerValue: String(Math.floor(datos.bloque || 0)) },
+    ts: { integerValue: String(Date.now()) }
+  };
+  const mask = ['trades', 'apertura', 'bloque', 'ts'].map((k) => `updateMask.fieldPaths=${k}`).join('&');
+  try {
+    const r = await fetch(`${BASE_HIST}/${String(token).toLowerCase()}?${mask}&key=${API_KEY}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
+    return r.ok;
+  } catch (_) { return false; }
+}
+
 /* Logos de los tokens LISTADOS en "List Your Token": esos se guardan en la coleccion "logos"
    (no "monedas"), por eso leerMoneda no los encuentra. Misma cuenta y key, otra coleccion.
    Devuelve { direccionMinuscula: dataUrl } de las que tienen logo. No lanza nunca. */
