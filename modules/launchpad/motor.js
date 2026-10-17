@@ -195,6 +195,22 @@ export async function costoCreacion() {
   } catch (_) { return { bnb: 0n, usd: 0n }; }
 }
 
+/* Borrado GLOBAL de una moneda: el creador FIRMA este mensaje (off-chain, sin gas, sin contrato) y la
+   firma se guarda en Firestore. Las listas ocultan el token SOLO si la firma recupera al creador
+   on-chain (verificarEliminado). Asi solo quien controla la wallet creadora puede ocultar su moneda. */
+const MSG_ELIM = (token) => `DecFreedom hide token ${String(token).toLowerCase()}`;
+export async function firmarEliminacion(token) {
+  const s = await firmante();
+  const firma = await s.signMessage(MSG_ELIM(token));
+  const firmanteDir = await s.getAddress();
+  return { firma, firmante: firmanteDir };
+}
+export function verificarEliminado(token, firma, creador) {
+  if (!firma || !creador) return false;
+  try { return ethers.verifyMessage(MSG_ELIM(token), firma).toLowerCase() === String(creador).toLowerCase(); }
+  catch (_) { return false; }
+}
+
 export async function abrirPool({ token, cantTok, quoteId, cantQuote, candadoMeses }) {
   const cuenta = wallet.cuentaActual();
   await asegurarPermiso(token, cuenta, cantTok);

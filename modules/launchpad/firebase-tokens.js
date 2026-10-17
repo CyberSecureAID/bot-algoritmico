@@ -84,6 +84,47 @@ export async function guardarOcultos(wallet, lista) {
   } catch (_) { return false; }
 }
 
+/* Monedas ELIMINADAS globalmente por su creador: desaparecen de TODA la plataforma, para cualquiera
+   (no solo para la wallet que las borro). Coleccion "eliminados", doc = direccion del token en
+   minuscula, con la FIRMA del creador: { firma, firmante, ts }. El front solo oculta un token si
+   verifyMessage(mensaje, firma) recupera EXACTAMENTE al creador on-chain (info[token].creador); una
+   firma de un tercero no pasa, asi nadie oculta moneda ajena. WRITE-ONCE: la regla deja CREAR pero
+   no sobrescribir ni borrar, asi nadie puede "des-ocultar" lo que el creador oculto. Requiere en las
+   reglas de Firestore (añadido, sin tocar logos/perfiles/monedas/ocultos/historial):
+     match /eliminados/{token} { allow read: if true;
+       allow create: if request.resource.data.keys().hasOnly(['firma','firmante','ts'])
+                     && request.resource.data.firma is string && request.resource.data.firma.size() < 300
+                     && request.resource.data.firmante is string && request.resource.data.firmante.size() < 60
+                     && request.resource.data.ts is int;
+       allow update, delete: if false; } */
+const BASE_ELIM = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/eliminados`;
+export async function leerEliminados() {
+  const out = {};
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(`${BASE_ELIM}?key=${API_KEY}&pageSize=300`, { signal: ctrl.signal }); clearTimeout(to);
+    if (!r.ok) return out;
+    const docs = (await r.json()).documents || [];
+    for (const d of docs) {
+      const id = String(d.name || '').split('/').pop().toLowerCase();
+      const f = d.fields || {};
+      const firma = f.firma && f.firma.stringValue;
+      if (id && firma) out[id] = { firma, firmante: (f.firmante && f.firmante.stringValue) || '', ts: Number((f.ts && f.ts.integerValue) || 0) };
+    }
+  } catch (_) {}
+  return out;
+}
+export async function guardarEliminado(token, firma, firmante) {
+  if (!token || !firma) return false;
+  const id = String(token).toLowerCase();
+  const fields = { firma: { stringValue: String(firma) }, firmante: { stringValue: String(firmante || '').toLowerCase() }, ts: { integerValue: String(Date.now()) } };
+  const mask = 'updateMask.fieldPaths=firma&updateMask.fieldPaths=firmante&updateMask.fieldPaths=ts';
+  try {
+    const r = await fetch(`${BASE_ELIM}/${id}?${mask}&key=${API_KEY}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
+    return r.ok;
+  } catch (_) { return false; }
+}
+
 /* CACHE del historial del panel (velas, 24h, volumen y transacciones) por token, en Firestore, para
    que SOBREVIVA a borrar cache y cargue al instante. La cadena sigue siendo la FUENTE DE VERDAD: esto
    es solo un acelerador (se lee primero, se completa con la cadena, se reescribe). Los trades se guardan

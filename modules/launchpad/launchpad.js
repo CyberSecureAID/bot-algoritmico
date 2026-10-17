@@ -8,7 +8,7 @@ import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
 import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
-import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados, leerOcultos, guardarOcultos, leerHistorial, guardarHistorial } from './firebase-tokens.js';
+import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados, leerOcultos, guardarOcultos, leerHistorial, guardarHistorial, leerEliminados, guardarEliminado } from './firebase-tokens.js';
 import { filaRedes, redesControl, abrirEditorMoneda } from './perfil-moneda.js';
 import { montarSwap } from './swap-inline.js';
 /* lightweight-charts: libreria de velas de la propia TradingView (Apache-2.0), vendorizada en el
@@ -132,19 +132,49 @@ async function sincronizarOcultos(forzar) {
   } catch (_) {}
 }
 
-/* Tres confirmaciones y una firma de la wallet creadora. Sin la firma no se oculta nada. */
+/* Borrado GLOBAL (eliminados): a diferencia de ocultos (por wallet, solo la vista del creador), una
+   moneda eliminada por su creador desaparece para TODO EL MUNDO. Se verifica con la firma del creador
+   contra el creador on-chain de cada moneda, asi nadie puede ocultar la de otro ni "des-ocultar". */
+let _elim = null;
+async function cargarEliminados(forzar) {
+  if (_elim && !forzar) return _elim;
+  try { const m = await leerEliminados(); _elim = m || {}; } catch (_) { _elim = _elim || {}; }
+  return _elim;
+}
+/* true si ESTE token fue eliminado globalmente por su creador (firma valida que recupera al creador). */
+function estaEliminado(addr, creador) {
+  const e = _elim && _elim[String(addr).toLowerCase()];
+  if (!e || !creador) return false;
+  return gb.verificarEliminado(addr, e.firma, creador);
+}
+
+/* Tres confirmaciones y una FIRMA de la wallet creadora. El borrado es GLOBAL y permanente: la moneda
+   desaparece de la plataforma para todos. Sin la firma no se oculta nada, y solo el creador puede. */
 async function ocultarToken(t) {
-  // Quitar de mi lista = preferencia local de esta vista (no toca la cadena: la moneda es
-  // permanente para sus holders y su pagina publica). Tres confirmaciones y se quita de verdad;
-  // no se pide firma porque no hay nada que firmar en una accion solo de este navegador.
-  const p1 = await modal('Remove this coin?', `<b>${esc(t.nombre)}</b> will disappear from your list. It stays live on the chain and in the swap for everyone.`, { ok: 'Yes, remove it', cancel: 'Cancel' });
+  const p1 = await modal('Remove this coin from the platform?', `<b>${esc(t.nombre)}</b> will disappear from DecFreedom for everyone (Latest, Popular and search). It stays live on the chain and in the swap: holders keep it and its public page keeps working.`, { ok: 'Yes, remove it', cancel: 'Cancel' });
   if (!p1) return false;
-  const p2 = await modal('This cannot be undone here', 'The coin is not deleted from the blockchain: holders keep it, buyers keep finding it and its public page keeps working. What you remove is this card from your list.', { ok: 'I understand, continue', cancel: 'Cancel' });
+  const p2 = await modal('This is permanent', 'Removing it is final and cannot be undone. The coin is not deleted from the blockchain, only from this platform. You will sign a message with your wallet to prove you are the creator.', { ok: 'I understand, continue', cancel: 'Cancel' });
   if (!p2) return false;
-  const p3 = await modal('Confirm once more', 'Press confirm to remove it from your list. You can open it again any time from its contract address or its public link.', { ok: 'Remove it', cancel: 'Cancel' });
+  const p3 = await modal('Confirm once more', 'Press confirm and then sign the message in your wallet to remove it for everyone.', { ok: 'Remove it', cancel: 'Cancel' });
   if (!p3) return false;
-  if (!t.demo) ocultar(t.address);
-  return true;
+  if (t.demo) return true;
+  try {
+    const fr = await gb.firmarEliminacion(t.address);                      // firma del creador (off-chain, sin gas)
+    const ok = await guardarEliminado(t.address, fr.firma, fr.firmante);   // global, write-once en Firestore
+    ocultar(t.address);                                                    // local: sale ya de esta vista (siempre)
+    _elim = _elim || {}; _elim[String(t.address).toLowerCase()] = { firma: fr.firma, firmante: fr.firmante, ts: Date.now() };
+    if (!ok) {
+      // Pudo fallar por red o porque YA estaba eliminada (write-once no sobrescribe). Si al releer ya
+      // consta eliminada de forma VALIDA, es exito; si no, avisamos (quedo fuera de tu vista; reintenta).
+      await cargarEliminados(true);
+      if (!estaEliminado(t.address, t.creador)) await modal('Removed from your list', 'It is gone from your list here, but the platform-wide removal could not be saved right now. Try again later to remove it for everyone.');
+    }
+    return true;
+  } catch (e) {
+    if (esRechazo(e)) { await modal('Cancelled', 'You cancelled the signature. Nothing was removed.'); }
+    else await modal('Could not remove it', errTxt(e));
+    return false;
+  }
 }
 function guardarTokens(l) { try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} }
 /* Metadatos locales por moneda (logo, supply inicial): el dato de cadena manda,
@@ -477,6 +507,11 @@ function lplCargarListas() {
         lista.push({ address: addr, nombre: m.nombre, simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: 0, tiempo: (Number(m.creadoEn) || 0) * 1000 });
       }));
     } catch (_) {}
+    // BORRADO GLOBAL: saca de TODAS las listas lo que el creador elimino (firma verificada contra el
+    // creador on-chain de cada moneda). A diferencia de ocultos (por wallet, solo la vista del creador),
+    // esto rige para CUALQUIER visitante. Se refresca en cada carga del lobby.
+    await cargarEliminados(true);
+    lista = lista.filter((t) => !estaEliminado(t.address, t.creador));
     // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
     const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
     listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()) && !oc.includes(String(L.address).toLowerCase()));
@@ -861,6 +896,10 @@ async function pintarMios() {
   await sincronizarOcultos(true);
   const oc = ocultos();
   addrs = addrs.filter((a) => !oc.includes(a.toLowerCase()));
+  // Borrado GLOBAL: fuera tambien de My Coins lo que el creador elimino (firma verificada). Aqui el
+  // creador de cada moneda es la propia wallet conectada (tokensDe devuelve sus monedas).
+  await cargarEliminados(true);
+  { const yo = wallet.cuentaActual(); addrs = addrs.filter((a) => !estaEliminado(a, yo)); }
   const c = $('lp-mios-lista'); if (!c) return;
   if (!addrs.length) { pintarPortada(); return; }
   // Logos desde Firestore (persisten entre dispositivos); el navegador es solo respaldo.
@@ -874,7 +913,7 @@ async function pintarMios() {
   c.querySelectorAll('.lp-tok').forEach((el) => el.onclick = () => cargarToken(el.dataset.a));
   c.querySelectorAll('.lp-tok-x').forEach((b) => b.onclick = async (e) => {
     e.stopPropagation(); const a = b.dataset.x; const m = metaLocal(a) || {};
-    const ok = await ocultarToken({ address: a, nombre: m.nombre || 'this coin', simbolo: m.simbolo || '', creador: m.creador || cuenta, demo: false });
+    const ok = await ocultarToken({ address: a, nombre: m.nombre || 'this coin', simbolo: m.simbolo || '', creador: m.creador || wallet.cuentaActual(), demo: false });
     if (ok) pintarMios();
   });
   // Precio y liquidez reales por moneda (dato de cadena), sin bloquear el render.
