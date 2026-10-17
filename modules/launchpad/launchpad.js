@@ -1094,7 +1094,18 @@ async function crear() {
   const cuenta = wallet.cuentaActual();
   if (!cuenta) { await modal('Connect your wallet', 'Connect the wallet that will own the coin.'); return; }
   const prev = $('lp-wiz'); if (prev) prev.remove();
-  modalBusy('Creating your coin', `Confirm in your wallet. This deploys <b>${esc(W.nombre)}</b> on BNB Smart Chain. It is free; you pay only the network gas.`);
+  // Costo del cobro por creacion (0 si esta apagado). Si hay cobro, se muestra antes de firmar;
+  // si esta apagado o la lectura falla, se mantiene el texto de siempre (crear es gratis).
+  let costoTxt = 'It is free; you pay only the network gas.';
+  try {
+    const c = await gb.costoCreacion();
+    if (c && c.bnb > 0n) {
+      const bnb = (+gb.fmtEther(c.bnb)).toFixed(4);
+      const usd = (c.usd && c.usd > 0n) ? ` (about $${(+gb.fmtEther(c.usd)).toFixed(0)})` : '';
+      costoTxt = `This includes a one-time creation fee of <b>${bnb} BNB</b>${usd}, charged in the same transaction. Any excess is refunded. You also pay the network gas.`;
+    }
+  } catch (_) {}
+  modalBusy('Creating your coin', `Confirm in your wallet. This deploys <b>${esc(W.nombre)}</b> on BNB Smart Chain. ${costoTxt}`);
   try {
     const supply = gb.parseEther(W.supply);
     const token = await gb.crearToken({ nombre: W.nombre, simbolo: W.simbolo, supply, sueloBps: W.suelo ? W.sueloBps : 0, fundadorPct: W.fundadorPct, vestingMeses: W.fundadorPct ? W.vestingMeses : 0, antibot: W.antibot });

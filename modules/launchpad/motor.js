@@ -10,7 +10,10 @@ import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS, COINGECKO_BNB, COINGECKO_M
 const CERO = '0x0000000000000000000000000000000000000000';
 
 const ABI = [
-  'function crearToken(string,string,uint256,uint16,uint8,uint8,bool) returns (address)',
+  'function crearToken(string,string,uint256,uint16,uint8,uint8,bool) payable returns (address)',
+  'function costoCreacionBNB() view returns (uint256)',
+  'function precioCreacionUSD() view returns (uint256)',
+  'function cobroActivo() view returns (bool)',
   'function crearPool(address,uint256,address,uint256,uint8) payable',
   'function comprar(address,uint256) payable returns (uint256)',
   'function comprarConToken(address,uint256,uint256) returns (uint256)',
@@ -160,7 +163,12 @@ async function asegurarPermiso(tokenAddr, dueno, monto) {
 export async function crearToken(p) {
   const bot = await cLP();
   const cuenta = await bot.runner.getAddress();
-  const tx = await gasMargen(bot, 'crearToken', [p.nombre, p.simbolo, p.supply, p.sueloBps, p.fundadorPct, p.vestingMeses, p.antibot]);
+  // Cobro por creacion: si esta activo, el contrato exige el valor en BNB (equivalente a ~5 USD).
+  // Se lee el costo y se envia con un margen del 2% por si el precio del oraculo se mueve entre la
+  // lectura y la firma; el contrato DEVUELVE el exceso. Si el cobro esta apagado, el costo es 0.
+  let valor = 0n;
+  try { const c = await leeLP('costoCreacionBNB'); valor = c > 0n ? (c * 102n / 100n) : 0n; } catch (_) { valor = 0n; }
+  const tx = await gasMargen(bot, 'crearToken', [p.nombre, p.simbolo, p.supply, p.sueloBps, p.fundadorPct, p.vestingMeses, p.antibot], { value: valor });
   const rec = await esperar(tx);
   // Sacar la direccion del token del evento TokenCreado de ESTA wallet.
   let token = null;
@@ -173,6 +181,16 @@ export async function crearToken(p) {
   } catch (_) {}
   if (!token) { const l = await leeLP('tokensDe', [cuenta]); token = l[l.length - 1]; }
   return token;
+}
+
+/* Costo de crear en BNB (wei) y el precio objetivo en USD (18 dec). bnb = 0 si el cobro esta
+   apagado (entonces crear es gratis). Lo usa el asistente para mostrarlo antes de firmar. */
+export async function costoCreacion() {
+  try {
+    const bnb = await leeLP('costoCreacionBNB');
+    let usd = 0n; try { usd = await leeLP('precioCreacionUSD'); } catch (_) {}
+    return { bnb, usd };
+  } catch (_) { return { bnb: 0n, usd: 0n }; }
 }
 
 export async function abrirPool({ token, cantTok, quoteId, cantQuote, candadoMeses }) {
