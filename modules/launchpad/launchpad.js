@@ -8,7 +8,7 @@ import * as ethers from './ethers.min.js';
 import { LAUNCHPAD, LIQUIDEZ, REGLAS, PRESETS_SUPPLY, LOGO_MAX_PX } from './config.js';
 import * as gb from './motor.js';
 import { descargarTokenomics } from './tokenomics.js';
-import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados, leerOcultos, guardarOcultos, leerHistorial, guardarHistorial, leerEliminados, guardarEliminado } from './firebase-tokens.js';
+import { guardarMoneda, leerMoneda, leerMonedas, leerLogosListados, leerHistorial, guardarHistorial, leerEliminados, guardarEliminado } from './firebase-tokens.js';
 import { filaRedes, redesControl, abrirEditorMoneda } from './perfil-moneda.js';
 import { montarSwap } from './swap-inline.js';
 /* lightweight-charts: libreria de velas de la propia TradingView (Apache-2.0), vendorizada en el
@@ -97,39 +97,7 @@ function pedirCantidad({ titulo, cuerpo, max, sufijo = '', ok = 'Confirm' }) {
 
 /* ───────── Tokens del usuario (fase 1: lo que este navegador creo; fase 2: el contrato) ───────── */
 function misTokens() {
-  let l = []; try { l = JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) { l = []; }
-  const oc = ocultos();
-  return l.filter((t) => !oc.includes(String(t.address).toLowerCase()));
-}
-/* Tokens que el creador decidio no ver mas en su panel (siguen publicos en la cadena y en el swap).
-   La lista vive en DOS sitios: localStorage (lectura instantanea, sincrona) y Firestore por wallet
-   (coleccion "ocultos"). Firestore es la fuente duradera: si el usuario borra los datos del sitio,
-   localStorage se vacia pero al reconectar la wallet se restaura desde Firestore, asi las monedas
-   que elimino NO reaparecen. ocultos() sigue siendo sincrona; sincronizarOcultos() rellena el local
-   desde la nube antes de pintar. */
-function ocultos() { try { return JSON.parse(localStorage.getItem('lp-ocultos') || '[]'); } catch (_) { return []; } }
-function fijarOcultosLocal(l) { try { localStorage.setItem('lp-ocultos', JSON.stringify([...new Set((l || []).map((a) => String(a).toLowerCase()))])); } catch (_) {} }
-function ocultar(addr) {
-  const a = String(addr).toLowerCase();
-  const l = ocultos(); if (!l.includes(a)) l.push(a);
-  fijarOcultosLocal(l);
-  // Persistir en la nube por wallet (sin bloquear la UI). Sobrevive a borrar cache.
-  try { const cta = wallet.cuentaActual && wallet.cuentaActual(); if (cta) guardarOcultos(cta, l); } catch (_) {}
-}
-/* Trae la lista de ocultos de Firestore (de la wallet conectada) y la funde con la local, para que
-   las eliminaciones sigan vigentes tras limpiar el navegador. No lanza; si no hay wallet, no hace nada. */
-let _ocSync = false;
-async function sincronizarOcultos(forzar) {
-  try {
-    const cta = wallet.cuentaActual && wallet.cuentaActual();
-    if (!cta) return;
-    if (_ocSync && !forzar) return; _ocSync = true;
-    const rem = await leerOcultos(cta);
-    if (!rem || !rem.length) return;
-    const loc = ocultos();
-    const merged = [...new Set([...loc, ...rem])];
-    if (merged.length !== loc.length) fijarOcultosLocal(merged);
-  } catch (_) {}
+  try { return JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) { return []; }
 }
 
 /* Borrado GLOBAL (eliminados): a diferencia de ocultos (por wallet, solo la vista del creador), una
@@ -161,7 +129,7 @@ async function ocultarToken(t) {
   try {
     const fr = await gb.firmarEliminacion(t.address);                      // firma del creador (off-chain, sin gas)
     const ok = await guardarEliminado(t.address, fr.firma, fr.firmante);   // global, write-once en Firestore
-    ocultar(t.address);                                                    // local: sale ya de esta vista (siempre)
+    // Feedback instantaneo: se mete en el cache de eliminados para que salga ya de todas las vistas.
     _elim = _elim || {}; _elim[String(t.address).toLowerCase()] = { firma: fr.firma, firmante: fr.firmante, ts: Date.now() };
     if (!ok) {
       // Pudo fallar por red o porque YA estaba eliminada (write-once no sobrescribe). Si al releer ya
@@ -180,7 +148,7 @@ function guardarTokens(l) { try { localStorage.setItem('lp-tokens', JSON.stringi
 /* Metadatos locales por moneda (logo, supply inicial): el dato de cadena manda,
    esto solo guarda lo que la cadena no tiene barato (el logo). */
 function metaLocal(addr) { try { return (JSON.parse(localStorage.getItem('lp-tokens') || '[]')).find((x) => x.address.toLowerCase() === String(addr).toLowerCase()) || null; } catch (_) { return null; } }
-function guardarMeta(meta) { let l = []; try { l = JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) {} const i = l.findIndex((x) => x.address.toLowerCase() === meta.address.toLowerCase()); if (i >= 0) l[i] = { ...l[i], ...meta }; else l.push(meta); try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} const c = JSON.parse(localStorage.getItem('lp-ocultos') || '[]'); const j = c.indexOf(meta.address.toLowerCase()); if (j >= 0) { c.splice(j, 1); localStorage.setItem('lp-ocultos', JSON.stringify(c)); try { const cta = wallet.cuentaActual && wallet.cuentaActual(); if (cta) guardarOcultos(cta, c); } catch (_) {} } }
+function guardarMeta(meta) { let l = []; try { l = JSON.parse(localStorage.getItem('lp-tokens') || '[]'); } catch (_) {} const i = l.findIndex((x) => x.address.toLowerCase() === meta.address.toLowerCase()); if (i >= 0) l[i] = { ...l[i], ...meta }; else l.push(meta); try { localStorage.setItem('lp-tokens', JSON.stringify(l)); } catch (_) {} }
 
 /* datosToken (motor) -> la forma que usa pintarPanel. */
 function deChain(datos, meta) {
@@ -467,13 +435,6 @@ function lplCargarListas() {
         lista.unshift({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: m.bloque || 0, tiempo: m.creadoEn || 0 });
       }
     } catch (_) {}
-    // Antes de filtrar, traer de Firestore las monedas que el usuario elimino (sobreviven a borrar
-    // cache): asi las borradas no reaparecen aunque localStorage se haya vaciado.
-    await sincronizarOcultos();
-    // Lo que el usuario elimino de su panel (My Coins) NO debe reaparecer en el lobby: se filtra TODA
-    // la lista, no solo misTokens, porque el escaneo global en cadena las traeria de vuelta al refrescar.
-    const oc = ocultos();
-    if (oc.length) lista = lista.filter((t) => !oc.includes(String(t.address).toLowerCase()));
     // Monedas creadas por la wallet conectada, leidas del PROPIO contrato (tokensDe), no de localStorage.
     // Es la fuente duradera: si el escaneo global de eventos se queda corto (solo ve ~9 dias) o el
     // usuario borro la cache, su moneda con pool real seguiria sin salir. Aqui se añade SIEMPRE,
@@ -485,7 +446,7 @@ function lplCargarListas() {
         const yaEsta = new Set(lista.map((t) => String(t.address).toLowerCase()));
         await Promise.all(mias.map(async (addr) => {
           const k = addr.toLowerCase();
-          if (yaEsta.has(k) || oc.includes(k)) return;
+          if (yaEsta.has(k)) return;
           const d = await gb.datosToken(addr).catch(() => null);
           if (!d || !d.nombre) return;
           yaEsta.add(k);
@@ -496,25 +457,25 @@ function lplCargarListas() {
     // COMPLETITUD AUTORITATIVA: la lista del propio contrato (totalTokens + tokens[]) trae TODAS las
     // monedas, sin la ventana de ~9 dias del escaneo de eventos. Asi una moneda mas antigua (creada
     // hace semanas) aparece para CUALQUIERA y en navegador nuevo/incognito, no solo para su creador.
-    // Se respeta ocultos() y el dedup, para no reabrir el fallo de "las borradas reaparecen".
+    // Lo eliminado globalmente se saca despues, con el filtro de firma (vale para cualquier visitante).
     try {
       const completa = await gb.listaContrato(60);
       const yaE = new Set(lista.map((t) => String(t.address).toLowerCase()));
-      const faltan = completa.filter((a) => { const k = String(a).toLowerCase(); return !yaE.has(k) && !oc.includes(k); }).slice(0, 30);
+      const faltan = completa.filter((a) => !yaE.has(String(a).toLowerCase())).slice(0, 30);
       await Promise.all(faltan.map(async (addr) => {
         const m = await gb.metaToken(addr).catch(() => null);
         if (!m || !m.nombre) return;
         lista.push({ address: addr, nombre: m.nombre, simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: 0, tiempo: (Number(m.creadoEn) || 0) * 1000 });
       }));
     } catch (_) {}
-    // BORRADO GLOBAL: saca de TODAS las listas lo que el creador elimino (firma verificada contra el
-    // creador on-chain de cada moneda). A diferencia de ocultos (por wallet, solo la vista del creador),
-    // esto rige para CUALQUIER visitante. Se refresca en cada carga del lobby.
+    // BORRADO GLOBAL: unica forma de ocultar. Saca de TODAS las listas lo que el creador elimino, con la
+    // firma verificada contra el creador on-chain de cada moneda. Rige IGUAL para cualquier visitante (no
+    // hay vista distinta por wallet). Se refresca en cada carga del lobby.
     await cargarEliminados(true);
     lista = lista.filter((t) => !estaEliminado(t.address, t.creador));
     // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
     const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
-    listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()) && !oc.includes(String(L.address).toLowerCase()));
+    listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()));
     // Logo REAL de los listados: vive en la coleccion "logos" (lo guarda List Your Token), no en
     // "monedas". Por eso aparecian sin logo. Se lee aqui y se asigna; si no hay, cae a la inicial.
     if (listados.length) { try { const lg = await leerLogosListados(listados.map((L) => L.address)); listados.forEach((L) => { L.logo = lg[String(L.address).toLowerCase()] || ''; }); } catch (_) {} }
@@ -888,16 +849,12 @@ async function pintarMios() {
     <button class="lp-volver" id="lp-volver" type="button">‹ Launchpad</button>
     <section class="lp-mios"><h3>My coins</h3><div id="lp-mios-lista"><div class="lp-vacio">Reading the chain…</div></div></section>`;
   $('lp-volver').onclick = () => pintarPortada();
-  // La cadena manda quien existe; el navegador solo aporta el logo y oculta lo que escondiste.
+  // La cadena manda quien existe (tokensDe); el navegador solo aporta el logo.
   let addrs = [];
   try { addrs = (await gb.tokensDe(wallet.cuentaActual())).map((a) => String(a)); } catch (_) {}
-  // Restaurar desde Firestore lo que el usuario elimino: si borro la cache, localStorage esta vacio
-  // pero las eliminadas NO deben reaparecer. Se fuerza la sincronizacion en esta vista.
-  await sincronizarOcultos(true);
-  const oc = ocultos();
-  addrs = addrs.filter((a) => !oc.includes(a.toLowerCase()));
-  // Borrado GLOBAL: fuera tambien de My Coins lo que el creador elimino (firma verificada). Aqui el
-  // creador de cada moneda es la propia wallet conectada (tokensDe devuelve sus monedas).
+  // Unica forma de ocultar: el borrado GLOBAL firmado. Se quitan de My Coins las que el creador
+  // elimino (firma verificada; aqui el creador es la propia wallet conectada). Asi, lo que NO esta
+  // eliminado SIEMPRE aparece aqui y se puede borrar; no hay "oculto por wallet" que lo esconda.
   await cargarEliminados(true);
   { const yo = wallet.cuentaActual(); addrs = addrs.filter((a) => !estaEliminado(a, yo)); }
   const c = $('lp-mios-lista'); if (!c) return;
