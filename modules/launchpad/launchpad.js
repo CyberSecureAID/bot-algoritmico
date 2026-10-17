@@ -119,7 +119,7 @@ function estaEliminado(addr, creador) {
 /* Tres confirmaciones y una FIRMA de la wallet creadora. El borrado es GLOBAL y permanente: la moneda
    desaparece de la plataforma para todos. Sin la firma no se oculta nada, y solo el creador puede. */
 async function ocultarToken(t) {
-  const p1 = await modal('Remove this coin from the platform?', `<b>${esc(t.nombre)}</b> will disappear from DecFreedom for everyone (Latest, Popular and search). It stays live on the chain and in the swap: holders keep it and its public page keeps working.`, { ok: 'Yes, remove it', cancel: 'Cancel' });
+  const p1 = await modal('Remove this coin from the platform?', `<b>${esc(t.nombre)}</b> will disappear from DecFreedom for everyone (New Tokens and search). It stays live on the chain and in the swap: holders keep it and its public page keeps working.`, { ok: 'Yes, remove it', cancel: 'Cancel' });
   if (!p1) return false;
   const p2 = await modal('This is permanent', 'Removing it is final and cannot be undone. The coin is not deleted from the blockchain, only from this platform. You will sign a message with your wallet to prove you are the creator.', { ok: 'I understand, continue', cancel: 'Cancel' });
   if (!p2) return false;
@@ -344,7 +344,7 @@ const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Contract': 'lpl-c-cre', 'Time': 'l
 function lplCelContrato(t) { return `<td class="lpl-cre"><button type="button" class="lpl-copyc" data-copy="${esc(t.address)}" title="Copy contract">…${esc(String(t.address).slice(-4))} ${ICO_COPY}</button></td>`; }
 /* Celda del token (logo + nombre). El flex va en un <span> interior, NUNCA en el <td>: un <td> con
    display:flex sale del modelo de columnas de la tabla y descuadra el resto hacia la derecha. */
-function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-listed" title="Listed for direct sale, without a liquidity pool">Listed</span>' : ''}</span></td>`; }
+function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-listed" title="No liquidity pool: sold directly by its creator in List Your Token">0 Liquidity</span>' : ''}</span></td>`; }
 function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th class="${LPL_COLCLS[c] || ''}">${esc(c)}</th>`).join('')}</tr></thead>`; }
 function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
 function lplHaceCuanto(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; const m = Math.floor(s / 60); if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; }
@@ -375,16 +375,10 @@ function pintarPortada() {
         </div>
       </section>
 
-      <div class="lpl-cols">
-        <section class="lpl-panel-sec">
-          ${lplSecHead(LPL_CLOCK, 'Latest Created Tokens', 'Recently launched by our community', 'latest')}
-          <div id="lpl-latest">${lplTablaMsg(['#', 'Token', 'Symbol', 'Contract', 'Time', 'Chain'], 'Loading…')}</div>
-        </section>
-        <section class="lpl-panel-sec">
-          ${lplSecHead(LPL_FLAME, 'Popular Tokens', 'Most viewed and traded', 'popular')}
-          <div id="lpl-popular">${lplTablaMsg(['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain'], 'Loading…')}</div>
-        </section>
-      </div>
+      <section class="lpl-panel-sec" style="margin-top:32px">
+        ${lplSecHead(LPL_CLOCK, 'New Tokens', 'Freshly launched', 'all')}
+        <div id="lpl-latest">${lplTablaMsg(['#', 'Token', 'Symbol', 'Contract', 'Time', 'Chain'], 'Loading…')}</div>
+      </section>
     </div>`;
   $('lpl-create').onclick = () => abrirAsistente();
   $('lpl-learn').onclick = () => abrirInfo();
@@ -479,10 +473,9 @@ function lplCargarListas() {
     // Logo REAL de los listados: vive en la coleccion "logos" (lo guarda List Your Token), no en
     // "monedas". Por eso aparecian sin logo. Se lee aqui y se asigna; si no hay, cae a la inicial.
     if (listados.length) { try { const lg = await leerLogosListados(listados.map((L) => L.address)); listados.forEach((L) => { L.logo = lg[String(L.address).toLowerCase()] || ''; }); } catch (_) {} }
-    const bnbUsd = await gb.precioBNBUSDT().catch(() => 0);
     // Hora de las monedas del launchpad: se lee la de las 8 mas nuevas y, con esa ancla, se estima la
     // del resto por numero de bloque (3 s/bloque) sin una llamada por cada una. Los listados ya traen
-    // su fecha (creadoEn). Asi Latest mezcla ambos por recencia real.
+    // su fecha (creadoEn). Asi New Tokens mezcla ambos por recencia real.
     const base = lista.slice(0, 8);
     // No pisar el tiempo de las que ya lo traen (misTokens y tokensDe traen creadoEn real); solo leer
     // el de las del escaneo de eventos, que vienen con bloque pero sin hora.
@@ -490,35 +483,15 @@ function lplCargarListas() {
     const anc = base.find((t) => t.tiempo > 0);
     if (anc) lista.forEach((t) => { if (!t.tiempo) t.tiempo = Math.max(0, anc.tiempo - (anc.bloque - (t.bloque || anc.bloque)) * 3000); });
     listados.forEach((L) => { L.tiempo = L.creadoEn || 0; });
+    // Una sola seccion "New Tokens": las 5 MAS NUEVAS (creadas + listadas), por recencia real. Se quito
+    // el calculo de "Popular" (volumen y holders por moneda, muchas lecturas en cadena), que era lo que
+    // demoraba el lobby: ahora pinta en cuanto tiene la lista. El catalogo completo se ve en View All
+    // (scroll infinito que pagina del propio contrato + busqueda por nombre y contrato).
     const latest = lista.concat(listados).sort((a, b) => (b.tiempo || 0) - (a.tiempo || 0)).slice(0, 5);
     await lplLogos(latest);
+    _lobby = { todos: lista, listados };   // base para View All (todo el catalogo) y para la busqueda
     if ($('lpl-latest')) lplPintarLatest(latest);
-    // Fijar _lobby YA (con la lista completa) para que "View All" de Latest/busqueda tenga la lista
-    // entera en cuanto Latest esta pintado, sin esperar a que termine el calculo de Popular. activos se
-    // rellena despues. Antes _lobby solo existia tras Popular: abrir View All pronto mostraba vacio.
-    _lobby = { todos: lista, listados, activos: [], bnbUsd };
-    // Popular: de las que tienen pool, se miden volumen (sumatoria de los trades) y holders (wallets
-    // distintas que operaron), leyendo los eventos en cadena. Se ordena por "mas transaccionado".
-    const conPool = await Promise.all(lista.slice(0, 20).map(async (t) => {
-      const r = await gb.resumenPool(t.address).catch(() => ({ activo: false, liquidez: 0, precio: 0, moneda: 'BNB' }));
-      const rate = r.moneda === 'USDT' ? 1 : (bnbUsd > 0 ? bnbUsd : 0);
-      return { ...t, ...r, mcapUsd: r.activo ? r.precio * t.supply * rate : 0, liqUsd: r.activo ? r.liquidez * rate : 0 };
-    }));
-    // Popular SOLO monedas con liquidez real. Antes bastaba la bandera "activo" del pool, que puede
-    // estar en true con reservas ~0: por eso aparecian monedas sin liquidez. Ahora se exige liqUsd > 0.
-    const activos = conPool.filter((t) => t.activo && t.liqUsd > 0).sort((a, b) => b.liqUsd - a.liqUsd).slice(0, 8);
-    await Promise.all(activos.map(async (t) => {
-      // Holders: wallets distintas que operaron, con MINIMO 1 (el creador siempre tiene el supply, aunque
-      // nadie haya comprado todavia). Antes salia 0 en una moneda recien creada, que es falso.
-      try { const ops = await gb.operaciones(t.address, 300); t.volumen = ops.reduce((a, o) => a + (o.valor || 0), 0); t.holders = Math.max(1, new Set(ops.map((o) => o.wallet).filter(Boolean)).size); }
-      catch (_) { t.volumen = 0; t.holders = 1; }
-      t.volUsd = t.volumen * (t.moneda === 'USDT' ? 1 : (bnbUsd > 0 ? bnbUsd : 0));
-    }));
-    await lplLogos(activos);
-    const popular = activos.slice().sort((a, b) => (b.volUsd || 0) - (a.volUsd || 0) || (b.mcapUsd - a.mcapUsd)).slice(0, 5);
-    _lobby = { todos: lista, listados, activos, bnbUsd };   // ya con activos para el View All de Popular
-    if ($('lpl-popular')) lplPintarPopular(popular);
-  }).catch(() => { if ($('lpl-latest')) lplPintarLatest([]); if ($('lpl-popular')) lplPintarPopular([]); });
+  }).catch(() => { if ($('lpl-latest')) lplPintarLatest([]); });
 }
 
 function lplFilas(host, lista, tipo) {
@@ -534,13 +507,6 @@ function lplPintarLatest(lista) {
   host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
   lplFilas(host);
 }
-function lplPintarPopular(lista) {
-  const cols = ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']; const host = $('lpl-popular'); if (!host) return;
-  if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No pools with liquidity yet.'); return; }
-  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td><td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
-  host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
-  lplFilas(host);
-}
 
 /* Desplegable de busqueda EN VIVO bajo la barra: coincidencias por nombre, simbolo o contrato, de las
    monedas del lobby y de los listados. Un listado abre su aviso; una moneda normal, su panel. */
@@ -553,7 +519,7 @@ function lplQDrop(valor) {
   const match = all.filter((t) => (t.nombre || '').toLowerCase().includes(q) || (t.simbolo || '').toLowerCase().includes(q) || (t.address || '').toLowerCase().includes(q)).slice(0, 7);
   let html;
   if (match.length) {
-    html = match.map((t) => `<button type="button" class="lpl-q-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}>${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-q-tx"><b>${esc(t.nombre || 'Coin')}</b><i>${esc(t.simbolo || '')}</i></span>${t.listado ? '<span class="lpl-listed">Listed</span>' : ''}</button>`).join('');
+    html = match.map((t) => `<button type="button" class="lpl-q-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}>${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-q-tx"><b>${esc(t.nombre || 'Coin')}</b><i>${esc(t.simbolo || '')}</i></span>${t.listado ? '<span class="lpl-listed">0 Liquidity</span>' : ''}</button>`).join('');
   } else if (/^0x[0-9a-f]{40}$/.test(q)) {
     html = `<button type="button" class="lpl-q-row" data-a="${esc(q)}"><span class="lpl-q-tx"><b>Open this contract</b><i>${corto(q)}</i></span></button>`;
   } else {
@@ -628,34 +594,43 @@ function avisoPremium(addr) {
   avisoPopup('About featured tokens', cuerpo, { txt: 'Continue', onclick: () => cargarToken(addr) });
 }
 
+/* Ventana completa. Featured enseña sus ejemplos; "all" y la busqueda muestran TODO el catalogo con
+   scroll infinito: parte de lo que ya cargo el lobby (_lobby.todos + listados, al instante) y, con la
+   ventana abierta, va trayendo por paginas las monedas mas antiguas del propio contrato (listaContrato
+   con salto + metaToken), sin tope, hasta agotarlas. La busqueda filtra por nombre, simbolo o contrato;
+   si pegan un contrato que aun no cargo, se resuelve en el momento con metaToken. Respeta el borrado global. */
 function lplViewAll(key, filtro) {
   const prev = $('lpl-overlay'); if (prev) prev.remove();
-  const lob = _lobby || { todos: [], activos: [] };
-  const titulos = { featured: 'Featured Tokens', latest: 'Latest Created Tokens', popular: 'Popular Tokens', search: 'Search results' };
-  const pop = key === 'popular';
-  // Latest y la busqueda incluyen tambien los tokens listados sin liquidez (solo aparecen aqui).
-  const base = key === 'featured' ? [] : (pop ? (lob.activos || []).slice() : (lob.todos || []).concat(lob.listados || []));
-  const cols = key === 'featured' ? ['#', 'Token', 'Symbol', 'Chain']
-    : pop ? ['#', 'Token', 'Symbol', 'Market Cap', 'Holders', 'Chain']
-      : ['#', 'Token', 'Symbol', 'Contract', 'Chain'];
-  // Orden REAL segun la seccion (funcional, no decorativo).
-  const ordenes = pop
-    ? [['vol', 'Most traded'], ['liqDesc', 'Highest liquidity'], ['liqAsc', 'Lowest liquidity'], ['mcap', 'Highest market cap']]
-    : [['new', 'Newest first'], ['old', 'Oldest first'], ['az', 'Name A to Z']];
+  const lob = _lobby || { todos: [], listados: [] };
+  const titulos = { featured: 'Featured Tokens', all: 'All Tokens', search: 'Search results' };
+  const esFeat = key === 'featured';
+  const cols = esFeat ? ['#', 'Token', 'Symbol', 'Chain'] : ['#', 'Token', 'Symbol', 'Contract', 'Chain'];
+  const ordenes = [['new', 'Newest first'], ['old', 'Oldest first'], ['az', 'Name A to Z']];
   let q = key === 'search' ? (filtro || '') : '';
-  let orden = ordenes[0][0];
+  let orden = 'new';
+  // Catalogo cargado hasta ahora (crece con la paginacion) y control de la lectura por paginas del contrato.
+  const base = esFeat ? [] : (lob.todos || []).concat(lob.listados || []);
+  const vistos = new Set(base.map((t) => String(t.address).toLowerCase()));
+  const buscados = new Set();   // contratos ya resueltos a mano desde la barra de busqueda
+  let saltar = 0, mas = !esFeat, cargando = false, cerrado = false;
   const ordenar = (l) => {
     l = l.slice();
-    const by = { vol: (a, b) => (b.volUsd || 0) - (a.volUsd || 0), liqDesc: (a, b) => (b.liqUsd || 0) - (a.liqUsd || 0), liqAsc: (a, b) => (a.liqUsd || 0) - (b.liqUsd || 0), mcap: (a, b) => (b.mcapUsd || 0) - (a.mcapUsd || 0), new: (a, b) => (b.tiempo || 0) - (a.tiempo || 0), old: (a, b) => (a.tiempo || 0) - (b.tiempo || 0), az: (a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')) };
+    const by = { new: (a, b) => (b.tiempo || 0) - (a.tiempo || 0), old: (a, b) => (a.tiempo || 0) - (b.tiempo || 0), az: (a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')) };
     if (by[orden]) l.sort(by[orden]);
     return l;
   };
-  const filas = () => {
+  const filtradas = () => {
     let l = base;
     if (q) { const f = q.toLowerCase(); l = l.filter((t) => (t.nombre || '').toLowerCase().includes(f) || (t.simbolo || '').toLowerCase().includes(f) || (t.address || '').toLowerCase().includes(f)); }
-    l = ordenar(l);
-    if (!l.length) return `<tr class="lpl-empty"><td colspan="${cols.length}">${key === 'featured' ? 'No featured projects yet.' : 'No tokens here.'}</td></tr>`;
-    return l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${pop ? `<td class="lpl-mcap">${lplMoney(t.mcapUsd)}</td><td class="lpl-hold">${t.holders != null ? t.holders.toLocaleString('en-US') : '—'}</td>` : (key === 'featured' ? '' : lplCelContrato(t))}<td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
+    return ordenar(l);
+  };
+  const filas = () => {
+    const l = filtradas();
+    let html = l.length
+      ? l.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${esFeat ? '' : lplCelContrato(t)}<td class="lpl-chain">${LPL_BSC}</td></tr>`).join('')
+      : `<tr class="lpl-empty"><td colspan="${cols.length}">${esFeat ? 'No featured projects yet.' : (mas ? 'Loading…' : 'No tokens here.')}</td></tr>`;
+    if (!esFeat && mas && l.length) html += `<tr class="lpl-empty lpl-more"><td colspan="${cols.length}">Loading more…</td></tr>`;
+    return html;
   };
   const d = document.createElement('div'); d.id = 'lpl-overlay'; d.className = 'lpl-ov';
   const menu = ordenes.map(([v, t]) => `<button type="button" class="lpl-fopt${v === orden ? ' on' : ''}" data-o="${v}">${esc(t)}</button>`).join('');
@@ -663,23 +638,71 @@ function lplViewAll(key, filtro) {
     <div class="lpl-ov-head">
       <b>${esc(titulos[key] || 'Tokens')}</b>
       <div class="lpl-ov-tools">
-        <label class="lpl-ov-search">${LPL_LUPA}<input id="lpl-ov-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search…" value="${esc(q)}"></label>
+        <label class="lpl-ov-search">${LPL_LUPA}<input id="lpl-ov-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search by name or contract…" value="${esc(q)}"></label>
         <div class="lpl-ov-filtro"><button class="lpl-ov-fbtn" id="lpl-ov-fbtn" type="button" aria-label="Sort">${LPL_FILTRO}</button><div class="lpl-ov-fmenu" id="lpl-ov-fmenu">${menu}</div></div>
         <button class="lpl-ov-x" id="lpl-ov-x" type="button" aria-label="Close">✕</button>
       </div>
     </div>
     <div class="lpl-ov-body"><table class="lpl-table">${lplThead(cols)}<tbody id="lpl-ov-tb">${filas()}</tbody></table></div></div>`;
   document.body.appendChild(d);
-  const bind = () => { d.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => { d.remove(); cargarToken(r.dataset.a); }; }); };
-  const repintar = () => { const b = d.querySelector('#lpl-ov-tb'); if (b) b.innerHTML = filas(); bind(); };
+  const body = d.querySelector('.lpl-ov-body');
+  const cerrar = () => { cerrado = true; try { d.remove(); } catch (_) {} };
+  const bind = () => { d.querySelectorAll('.lpl-row').forEach((r) => { r.onclick = () => { cerrar(); if (r.dataset.listado) abrirListado(r.dataset.a); else cargarToken(r.dataset.a); }; }); };
+  const repintar = () => { const b = d.querySelector('#lpl-ov-tb'); if (!b) return; const sc = body ? body.scrollTop : 0; b.innerHTML = filas(); bind(); if (body) body.scrollTop = sc; };
   bind();
-  d.querySelector('#lpl-ov-x').onclick = () => d.remove();
-  d.onclick = (e) => { if (e.target === d) d.remove(); };
-  const qi = d.querySelector('#lpl-ov-q'); if (qi) qi.addEventListener('input', () => { q = qi.value.trim(); repintar(); });
+  d.querySelector('#lpl-ov-x').onclick = cerrar;
+  d.onclick = (e) => { if (e.target === d) cerrar(); };
+  // Busqueda: filtra lo cargado al instante; si es un contrato que aun no esta cargado, lo resuelve a mano.
+  const qi = d.querySelector('#lpl-ov-q');
+  if (qi) qi.addEventListener('input', () => {
+    q = qi.value.trim(); repintar();
+    const a = q.toLowerCase();
+    if (/^0x[0-9a-f]{40}$/.test(a) && !vistos.has(a) && !buscados.has(a)) {
+      buscados.add(a);
+      gb.metaToken(q).then(async (m) => {
+        if (!m || !m.nombre || cerrado || vistos.has(a)) return;
+        vistos.add(a);
+        const t = { address: q, nombre: m.nombre, simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', tiempo: (Number(m.creadoEn) || 0) * 1000 };
+        await cargarEliminados(false); if (estaEliminado(t.address, t.creador)) return;   // respeta el borrado global
+        try { await lplLogos([t]); } catch (_) {}
+        if (!cerrado) { base.push(t); repintar(); }
+      }).catch(() => {});
+    }
+  });
   const fbtn = d.querySelector('#lpl-ov-fbtn'), fmenu = d.querySelector('#lpl-ov-fmenu');
   if (fbtn) fbtn.onclick = (e) => { e.stopPropagation(); fmenu.classList.toggle('open'); };
   d.querySelectorAll('.lpl-fopt').forEach((b) => { b.onclick = () => { orden = b.dataset.o; fmenu.classList.remove('open'); d.querySelectorAll('.lpl-fopt').forEach((x) => x.classList.toggle('on', x === b)); repintar(); }; });
   d.addEventListener('click', (e) => { if (fmenu && !e.target.closest('.lpl-ov-filtro')) fmenu.classList.remove('open'); });
+  // Carga incremental del catalogo completo, por paginas del contrato (lo mas nuevo ya esta; se van
+  // sumando las mas viejas), respetando el borrado global, hasta agotarlo o cerrar la ventana.
+  async function paginar() {
+    if (esFeat || cargando || !mas || cerrado) return;
+    cargando = true;
+    try {
+      while (mas && !cerrado) {
+        const addrs = await gb.listaContrato(40, saltar).catch(() => []);
+        saltar += 40;
+        if (addrs.length < 40) mas = false;
+        const nuevas = addrs.map((x) => String(x)).filter((x) => !vistos.has(x.toLowerCase()));
+        if (nuevas.length) {
+          await cargarEliminados(false);
+          const metas = await Promise.all(nuevas.map((x) => gb.metaToken(x).catch(() => null)));
+          const add = [];
+          nuevas.forEach((x, i) => {
+            const m = metas[i]; if (!m || !m.nombre) return; const k = x.toLowerCase(); if (vistos.has(k)) return; vistos.add(k);
+            const t = { address: x, nombre: m.nombre, simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', tiempo: (Number(m.creadoEn) || 0) * 1000 };
+            if (estaEliminado(t.address, t.creador)) return;
+            add.push(t);
+          });
+          if (add.length) { try { await lplLogos(add); } catch (_) {} if (cerrado) return; base.push(...add); repintar(); }
+        }
+        if (mas && !cerrado) await new Promise((r) => setTimeout(r, 120));   // suave con los RPC
+      }
+    } catch (_) {}
+    cargando = false;
+    if (!cerrado) repintar();   // quita el "Loading more…" al terminar
+  }
+  paginar();
 }
 
 /* Pagina de informacion, escrita para quien de verdad la lee: desarrolladores y creadores

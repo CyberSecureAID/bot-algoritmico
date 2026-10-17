@@ -393,11 +393,13 @@ export async function todosLosTokens(max = 40) {
    (totalTokens + tokens[i]), del mas nuevo al mas viejo. A diferencia de todosLosTokens (escaneo de
    eventos con ventana ~9 dias), esto NO tiene ventana: trae TODAS las monedas, viejas y nuevas, sin
    depender de logs ni de cache del navegador. Devuelve solo direcciones (se enriquecen con metaToken). */
-export async function listaContrato(max = 60) {
+export async function listaContrato(max = 60, saltar = 0) {
   let total = 0n; try { total = await leeLP('totalTokens', []); } catch (_) { return []; }
   const n = Number(total); if (!n) return [];
-  const lo = Math.max(0, n - max); const idx = [];
-  for (let i = n - 1; i >= lo; i--) idx.push(i);
+  const hi = n - 1 - Math.max(0, Math.floor(saltar));   // indice mas alto a leer (newest-first); saltar = cuantas ya vistas desde el final, para paginar hacia atras (scroll infinito de View All)
+  if (hi < 0) return [];
+  const lo = Math.max(0, hi - max + 1); const idx = [];
+  for (let i = hi; i >= lo; i--) idx.push(i);
   const res = await Promise.all(idx.map(async (i) => { try { return { i, a: String(await leeLP('tokens', [i])) }; } catch (_) { return null; } }));
   return res.filter(Boolean).sort((x, y) => y.i - x.i).map((o) => o.a);
 }
