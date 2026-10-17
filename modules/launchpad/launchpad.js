@@ -463,6 +463,20 @@ function lplCargarListas() {
         }));
       }
     } catch (_) {}
+    // COMPLETITUD AUTORITATIVA: la lista del propio contrato (totalTokens + tokens[]) trae TODAS las
+    // monedas, sin la ventana de ~9 dias del escaneo de eventos. Asi una moneda mas antigua (creada
+    // hace semanas) aparece para CUALQUIERA y en navegador nuevo/incognito, no solo para su creador.
+    // Se respeta ocultos() y el dedup, para no reabrir el fallo de "las borradas reaparecen".
+    try {
+      const completa = await gb.listaContrato(60);
+      const yaE = new Set(lista.map((t) => String(t.address).toLowerCase()));
+      const faltan = completa.filter((a) => { const k = String(a).toLowerCase(); return !yaE.has(k) && !oc.includes(k); }).slice(0, 30);
+      await Promise.all(faltan.map(async (addr) => {
+        const m = await gb.metaToken(addr).catch(() => null);
+        if (!m || !m.nombre) return;
+        lista.push({ address: addr, nombre: m.nombre, simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: 0, tiempo: (Number(m.creadoEn) || 0) * 1000 });
+      }));
+    } catch (_) {}
     // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
     const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
     listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()) && !oc.includes(String(L.address).toLowerCase()));

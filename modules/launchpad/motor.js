@@ -25,6 +25,8 @@ const ABI = [
   'function info(address) view returns (address creador,uint16 sueloBps,bool antibot,uint64 creadoEn)',
   'function pools(address) view returns (address quote,uint256 rTok,uint256 rQuote,uint64 abiertoEn,uint64 desbloqueo,bool activo,bool retirado)',
   'function tokensDe(address) view returns (address[])',
+  'function totalTokens() view returns (uint256)',
+  'function tokens(uint256) view returns (address)',
   'function esOwner(address) view returns (bool)',
   'function destinos() view returns (address,address,address)',
   'event TokenCreado(address indexed token,address indexed creador,string nombre,string simbolo,uint256 supply,uint16 sueloBps,uint256 vestTotal,uint64 vestDuracion,bool antibot)',
@@ -369,6 +371,32 @@ export async function todosLosTokens(max = 40) {
   }
   out.sort((x, y) => y.bloque - x.bloque);   // lo mas nuevo primero (las olas pueden llegar mezcladas)
   return out.slice(0, max);
+}
+
+/* Lista COMPLETA y autoritativa de monedas creadas, leida del array del propio contrato
+   (totalTokens + tokens[i]), del mas nuevo al mas viejo. A diferencia de todosLosTokens (escaneo de
+   eventos con ventana ~9 dias), esto NO tiene ventana: trae TODAS las monedas, viejas y nuevas, sin
+   depender de logs ni de cache del navegador. Devuelve solo direcciones (se enriquecen con metaToken). */
+export async function listaContrato(max = 60) {
+  let total = 0n; try { total = await leeLP('totalTokens', []); } catch (_) { return []; }
+  const n = Number(total); if (!n) return [];
+  const lo = Math.max(0, n - max); const idx = [];
+  for (let i = n - 1; i >= lo; i--) idx.push(i);
+  const res = await Promise.all(idx.map(async (i) => { try { return { i, a: String(await leeLP('tokens', [i])) }; } catch (_) { return null; } }));
+  return res.filter(Boolean).sort((x, y) => y.i - x.i).map((o) => o.a);
+}
+
+/* Metadatos minimos de una moneda (nombre, simbolo, supply, creador, creadoEn) con pocas lecturas.
+   Enriquece las monedas que el escaneo de eventos no trajo (mas viejas que su ventana). */
+export async function metaToken(addr) {
+  try {
+    const [nombre, simbolo, supply, info] = await Promise.all([
+      leeTok(addr, 'name', []).catch(() => ''), leeTok(addr, 'symbol', []).catch(() => ''),
+      leeTok(addr, 'totalSupply', []).catch(() => 0n), leeLP('info', [addr]).catch(() => null)
+    ]);
+    if (!nombre) return null;
+    return { address: addr, nombre, simbolo, supply: Number(ethers.formatEther(supply)), creador: info ? String(info.creador) : '', creadoEn: info ? Number(info.creadoEn) : 0 };
+  } catch (_) { return null; }
 }
 
 /* Tokens LISTADOS en el mercado "List Your Token" (sin liquidez). SOLO LECTURA del contrato de
