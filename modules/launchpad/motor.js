@@ -56,7 +56,7 @@ const TOKEN_ABI = [
   'function approve(address,uint256) returns (bool)',
   'function allowance(address,address) view returns (uint256)'
 ];
-const ERC20_ABI = ['function approve(address,uint256) returns (bool)', 'function allowance(address,address) view returns (uint256)', 'function balanceOf(address) view returns (uint256)'];
+const ERC20_ABI = ['function approve(address,uint256) returns (bool)', 'function allowance(address,address) view returns (uint256)', 'function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'];
 
 export const hayContrato = () => LAUNCHPAD && LAUNCHPAD !== CERO;
 export const esBNB = (q) => !q || q === CERO;
@@ -422,7 +422,9 @@ export async function metaToken(addr) {
    solo los MUESTRA en Latest Created marcados como "No liquidity". Devuelve lo mas nuevo primero. */
 const MERCADO_ABI = [
   'function totalListados() view returns (uint256)',
-  'function pagina(uint256 desde,uint256 hasta) view returns (tuple(address vendedor,address token,string nombre,string simbolo,string logo,uint256 precio,uint256 enVenta,uint256 ganancia,uint64 creado,uint64 ultimoRetiro,bool activo)[])'
+  'function pagina(uint256 desde,uint256 hasta) view returns (tuple(address vendedor,address token,string nombre,string simbolo,string logo,uint256 precio,uint256 enVenta,uint256 ganancia,uint64 creado,uint64 ultimoRetiro,bool activo)[])',
+  'function ver(uint256) view returns (tuple(address vendedor,address token,string nombre,string simbolo,string logo,uint256 precio,uint256 enVenta,uint256 ganancia,uint64 creado,uint64 ultimoRetiro,bool activo))',
+  'function comprar(uint256,uint256) payable'
 ];
 export async function listadosMercado(max = 40) {
   if (!MERCADO || MERCADO === CERO) return [];
@@ -455,6 +457,41 @@ export async function listadosMercado(max = 40) {
   });
   out.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
   return out;
+}
+
+/* ── Compra de un token LISTADO (MercadoTokens) DESDE el propio Launchpad, sin salir al swap ──
+   El Launchpad habla directo con MercadoTokens (modulo sellado: no importa nada del swap). */
+async function cMercado() { return new ethers.Contract(MERCADO, MERCADO_ABI, await firmante()); }
+/* Lectura fresca de un listado por id: precio y stock en WEI, para calcular la compra con precision. */
+export async function verListado(id) {
+  for (let i = 0; i < RPCS.length; i++) {
+    try {
+      const c = new ethers.Contract(MERCADO, MERCADO_ABI, provRPC((_rpcIdx + i) % RPCS.length));
+      // ver(id) es la funcion EXPLICITA del contrato (devuelve el struct completo), igual que hace el
+      // swap. NO usar el getter automatico del mapping public 'listados(id)': Solidity reordena/omite
+      // los campos dinamicos (string) en ese getter, asi que la tupla no cuadra con el ABI y ethers
+      // falla al decodificar; por eso el popup creia que el listado no existia (boton "Close").
+      const L = await c.ver(id);
+      return { vendedor: L.vendedor, token: L.token, precio: L.precio, enVenta: L.enVenta, activo: L.activo };
+    } catch (_) {}
+  }
+  return null;
+}
+export async function decimalsToken(token) {
+  for (let i = 0; i < RPCS.length; i++) {
+    try { return Number(await new ethers.Contract(token, ERC20_ABI, provRPC((_rpcIdx + i) % RPCS.length)).decimals()); } catch (_) {}
+  }
+  return 18;
+}
+export async function saldoBNB(cuenta) {
+  if (!cuenta) return 0n;
+  for (let i = 0; i < RPCS.length; i++) { try { return await provRPC((_rpcIdx + i) % RPCS.length).getBalance(cuenta); } catch (_) {} }
+  return 0n;
+}
+/* Compra: paga `valueBNB` (wei) y recibe `tokensBI` (unidades del token) del listado `id`.
+   Misma mecanica que el swap: el contrato cobra precio*cantidad y DEVUELVE el sobrante. */
+export async function comprarListado(id, tokensBI, valueBNB) {
+  return gasMargen(await cMercado(), 'comprar', [id, tokensBI], { value: valueBNB });
 }
 
 /* Resumen de la pool de una moneda para las listas del lobby: liquidez (en la moneda del par),
@@ -562,6 +599,8 @@ export async function verificar(token) {
 
 export function parseEther(x) { return ethers.parseEther(String(x)); }
 export function fmtEther(x) { return ethers.formatEther(x); }
+export function parseUnits(x, d = 18) { return ethers.parseUnits(String(x), d); }
+export function fmtUnits(x, d = 18) { return ethers.formatUnits(x, d); }
 
 /* Precio de BNB en USDT (CoinGecko, gratis). Solo para MOSTRAR el panel en USDT.
    Cachea 60 s en memoria y guarda el ultimo valor bueno para usarlo de respaldo si la

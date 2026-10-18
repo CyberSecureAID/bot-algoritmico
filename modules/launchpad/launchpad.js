@@ -418,7 +418,23 @@ async function lplPrecios(lista) {
 function lplCargarListas() {
   // Monedas del launchpad (escaneo de eventos) + tokens LISTADOS sin liquidez (List Your Token), en
   // paralelo. Los listados solo se LEEN del mercado y se muestran en Latest, nunca en Popular.
-  Promise.all([gb.todosLosTokens(40), gb.listadosMercado(40).catch(() => [])]).then(async ([lista, listados]) => {
+  // Dos lecturas en paralelo: monedas creadas (escaneo de eventos, ~9 dias de bloques, es lo lento) y
+  // tokens LISTADOS sin liquidez (2 llamadas, rapido). Los listados se pintan EN CUANTO llegan para que
+  // New Tokens no se vea vacio tanto rato; al terminar el escaneo se repinta la lista completa y ordenada.
+  const _pCreados = gb.todosLosTokens(40);
+  const _pListados = gb.listadosMercado(40).catch(() => []);
+  let _lsTemprano = [], _pinto = false;
+  _pListados.then((ls) => {
+    _lsTemprano = ls || [];
+    if ($('lpl-latest') && !_pinto && _lsTemprano.length) {
+      try {
+        _lsTemprano.forEach((L) => { L.tiempo = L.creadoEn || 0; });
+        _lobby = { todos: [], listados: _lsTemprano };   // para que un clic en un listado ya funcione
+        lplPintarLatest(_lsTemprano.slice(0, 5));
+      } catch (_) {}
+    }
+  });
+  Promise.all([_pCreados, _pListados]).then(async ([lista, listados]) => {
     if (!$('lpl-latest')) return;   // ya no estamos en el lobby
     // Asegura que SIEMPRE aparezcan las monedas del creador aunque el escaneo global se quede corto.
     try {
@@ -490,8 +506,9 @@ function lplCargarListas() {
     const latest = lista.concat(listados).sort((a, b) => (b.tiempo || 0) - (a.tiempo || 0)).slice(0, 5);
     await Promise.all([lplLogos(latest), lplPrecios(latest)]);
     _lobby = { todos: lista, listados };   // base para View All (todo el catalogo) y para la busqueda
+    _pinto = true;
     if ($('lpl-latest')) lplPintarLatest(latest);
-  }).catch(() => { if ($('lpl-latest')) lplPintarLatest([]); });
+  }).catch(() => { if ($('lpl-latest') && !_pinto) lplPintarLatest((_lsTemprano || []).slice(0, 5)); });
 }
 
 function lplFilas(host, lista, tipo) {
@@ -582,7 +599,7 @@ function abrirListado(addr) {
     ${precio}${stock}${garantia}
     <p class="lp-aviso-sub"><b>Money-back guarantee.</b> Only the wallet that buys can return the exact tokens it bought and recover exactly the BNB it paid, for <b>30 days counted from the listing date</b> (the time left is shown above), not from your purchase. The seller cannot withdraw the funds during that window, so the refund is always backed. You sell it back in the Swap by reversing the pair.</p>
     <p class="lp-aviso-sub"><b>No endorsement.</b> DecFreedom does not verify, approve or back these listings. The value depends only on the project. When the guarantee ends there is no pool to sell into unless the project adds liquidity. Buy only what you can afford to lose, at your own responsibility.</p>`;
-  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Agree and continue', onclick: () => comprarListadoUI(L) });
+  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Continue', onclick: () => comprarListadoUI(L) });
 }
 
 /* Popup de COMPRA de un token listado sin liquidez, DENTRO del Launchpad (recrea la estetica del swap:
@@ -637,7 +654,7 @@ async function comprarListadoUI(L) {
 
   const info = $('lpc-info'), out = $('lpc-out'), amt = $('lpc-amt'), go = $('lpc-go'),
     balEl = $('lpc-bal'), stockEl = $('lpc-stock'), usdEl = $('lpc-pay-usd');
-  let precio = 0n, enVenta = 0n, dec = 18, bnbUsd = 0, saldo = 0n, listo = false;
+  let precio = 0n, enVenta = 0n, dec = 18, bnbUsd = 0, saldo = 0n, listo = false, leido = false;
   const idL = L.idListado;
 
   // Lectura fresca: precio + stock (wei), decimales del token, rate BNB/USDT y saldo BNB del usuario.
@@ -648,6 +665,7 @@ async function comprarListadoUI(L) {
       cuenta ? gb.saldoBNB(cuenta).catch(() => 0n) : Promise.resolve(0n)
     ]);
     dec = Number(dc) || 18; bnbUsd = px || 0; saldo = sb || 0n;
+    leido = (d != null);
     if (d && d.activo) { precio = d.precio; enVenta = d.enVenta; listo = precio > 0n && enVenta > 0n; }
   } catch (_) {}
   if (!document.getElementById('lpc-ov')) return;   // cerrado mientras cargaba
@@ -657,7 +675,7 @@ async function comprarListadoUI(L) {
   if (wallet.cuentaActual()) balEl.textContent = `Balance: ${(+gb.fmtEther(saldo)).toFixed(4)} BNB`;
   stockEl.textContent = listo ? `For sale: ${numC(Number(gb.fmtUnits(enVenta, dec)))} ${sym}` : '';
 
-  if (!listo) { info.textContent = 'This listing is no longer available.'; go.textContent = 'Close'; go.disabled = false; go.onclick = cerrar; return; }
+  if (!listo) { info.textContent = leido ? 'This listing is no longer available.' : 'Could not load the listing. Check your connection and try again.'; go.textContent = 'Close'; go.disabled = false; go.onclick = cerrar; return; }
   info.innerHTML = `1 ${sym} = <b>${fmtP(precioBNB)} BNB</b>${bnbUsd > 0 ? ` (~$${fmtP(precioBNB * bnbUsd)})` : ''}`;
 
   // tokens a recibir y coste exacto (misma formula que el contrato: coste = precio*tokens/10^dec).
