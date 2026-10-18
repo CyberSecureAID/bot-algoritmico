@@ -719,7 +719,7 @@ function abrirInfo() {
         <li>Embeddable swap widget (one <code>iframe</code>) defaulting to your pair, with the DecFreedom mark. All volume routes through the same public pool, so every sale feeds your floor.</li>
       </ul></div>
 
-    <div class="lp-nota"><b>Cost.</b> Creation is free; you pay network gas. When someone sells through the pool, 0.5% of the proceeds goes to the ecosystem (0.40% platform, 0.10% staking), paid in BNB or USDT, and the pool keeps a 0.3% swap fee in its own reserves, which belong to your locked liquidity. Buys and transfers are free. Nothing else, no subscription, no listing fee. Creating a coin does not give it value; its price is whatever a public pool clears.</div>
+    <div class="lp-nota"><b>Cost.</b> Creating a coin has a one-time fee of about $5, charged in BNB at the live rate (the exact amount is shown before you sign) and any excess refunded, plus the network gas. When someone sells through the pool, 0.5% of the proceeds goes to the ecosystem (0.40% platform, 0.10% staking), paid in BNB or USDT, and the pool keeps a 0.3% swap fee in its own reserves, which belong to your locked liquidity. Buys and transfers are free. Nothing else, no subscription, no listing fee. Creating a coin does not give it value; its price is whatever a public pool clears.</div>
     <div class="lp-wiz-acts"><button class="lp-b" id="lp-info-ok" type="button">Create</button></div>
   </div>`;
   document.body.appendChild(d);
@@ -1033,7 +1033,7 @@ function pintarPaso(p) {
         <div><span>Founder lock</span><b class="${W.fundadorPct ? 'si' : 'no'}">${W.fundadorPct ? W.fundadorPct + '% over ' + W.vestingMeses + ' months' : 'You keep nothing'}</b></div>
         <div><span>Launch guard</span><b class="${W.antibot ? 'si' : 'no'}">${W.antibot ? 'On · first ' + REGLAS.antibot.horas + ' h' : 'Off'}</b></div>
         <div><span>Ecosystem fee</span><b>0.5% on sales, in BNB</b></div>
-        <div><span>Cost</span><b class="si">Free · gas only</b></div>
+        <div><span>Cost</span><b class="si">~$5 in BNB + gas</b></div>
       </div>
       ${disclaimer()}
       <label class="lp-ok"><input type="checkbox" id="wz-acepto"> I have read this and I accept it</label>`, { seguir: 'Create' });
@@ -1052,7 +1052,7 @@ function disclaimer() {
     <p><b>Creating a coin does not give it value.</b> Its price depends only on what other people are willing to pay. Nobody, including you, can promise profits. Most new coins lose all their value.</p>
     <p><b>What is locked stays locked.</b> The liquidity you add and your founder share are released by the contract on the dates you choose. We cannot unlock them early, not for you, not for anyone.</p>
     <p><b>The floor is a reserve, not a promise.</b> The floor price equals the BNB reserve divided by the supply. It rises with sales and never falls, but it is not a guarantee of your market price.</p>
-    <p><b>Fees.</b> Creating is free; you pay the network gas. Every sale through the pool pays 0.5% of the proceeds to the DecFreedom ecosystem (0.40% platform, 0.10% staking), in BNB or USDT, and the pool keeps a 0.3% swap fee in its reserves. Buying and transferring are free. If a transaction reverts, nothing is charged except gas.</p>
+    <p><b>Fees.</b> Creating a coin has a one-time fee of about $5, charged in BNB at the live rate in the same transaction (the exact amount is shown before you sign); any excess is refunded, plus the network gas. Every sale through the pool pays 0.5% of the proceeds to the DecFreedom ecosystem (0.40% platform, 0.10% staking), in BNB or USDT, and the pool keeps a 0.3% swap fee in its reserves. Buying and transferring are free. If a transaction reverts, nothing is charged except gas.</p>
     <p><b>Your legal duty.</b> Issuing a token may be regulated where you live. You are responsible for complying with your laws, for your buyers and for what you tell them. Do not use this to raise money with claims you cannot keep.</p>
     <p><b>Non custodial.</b> We never hold your funds or your coins and we cannot reverse any transaction. If you lose your keys, nobody can recover your creator rights.</p>
   </div>`;
@@ -1092,16 +1092,16 @@ async function crear() {
   const cuenta = wallet.cuentaActual();
   if (!cuenta) { await modal('Connect your wallet', 'Connect the wallet that will own the coin.'); return; }
   const prev = $('lp-wiz'); if (prev) prev.remove();
-  // Costo del cobro por creacion (0 si esta apagado). Si hay cobro, se muestra antes de firmar;
-  // si esta apagado o la lectura falla, se mantiene el texto de siempre (crear es gratis).
-  let costoTxt = 'It is free; you pay only the network gas.';
+  // Costo del cobro por creacion. Si hay cobro se muestra el monto exacto antes de firmar; si esta
+  // apagado (bnb=0) se dice gratis; si la lectura falla, texto neutral (nunca decir "gratis" por error).
+  let costoTxt = 'Your wallet shows the exact total before you sign. You also pay the network gas.';
   try {
     const c = await gb.costoCreacion();
     if (c && c.bnb > 0n) {
       const bnb = (+gb.fmtEther(c.bnb)).toFixed(4);
       const usd = (c.usd && c.usd > 0n) ? ` (about $${(+gb.fmtEther(c.usd)).toFixed(0)})` : '';
       costoTxt = `This includes a one-time creation fee of <b>${bnb} BNB</b>${usd}, charged in the same transaction. Any excess is refunded. You also pay the network gas.`;
-    }
+    } else { costoTxt = 'It is free; you pay only the network gas.'; }
   } catch (_) {}
   modalBusy('Creating your coin', `Confirm in your wallet. This deploys <b>${esc(W.nombre)}</b> on BNB Smart Chain. ${costoTxt}`);
   try {

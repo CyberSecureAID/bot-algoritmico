@@ -115,7 +115,7 @@ export function avisoLaunchpad() {
       +   '<li><b>Removal.</b> DecFreedom may hide from this site any coin reported as fraudulent, that imitates another token or that breaks the law. On chain data cannot be deleted.</li>'
       + '</ul>'
       + '<div class="av-cost">'
-      +   '<p><span class="g">Fees.</span> Creating a coin is free; you pay only the network gas. Every sale through the pool pays a <b>0.5% fee</b> on the proceeds to the DecFreedom ecosystem (0.20% to each platform owner and 0.10% to staking), in BNB or USDT, never in the coin itself; buying and transferring are free. The pool keeps a 0.3% swap fee in its own reserves. If a transaction reverts, nothing is charged except gas.</p>'
+      +   '<p><span class="g">Fees.</span> Creating a coin has a one-time fee of about $5, charged in BNB at the live rate in the same transaction (the exact amount is shown before you sign); any excess is refunded and you also pay the network gas. Every sale through the pool pays a <b>0.5% fee</b> on the proceeds to the DecFreedom ecosystem (0.20% to each platform owner and 0.10% to staking), in BNB or USDT, never in the coin itself; buying and transferring are free. The pool keeps a 0.3% swap fee in its own reserves. If a transaction reverts, nothing is charged except gas.</p>'
       +   '<p><span class="g">Non custodial.</span> We never hold your funds or your coins, we have no access to your keys and we cannot act on your behalf. Review every signature your wallet shows you.</p>'
       + '</div>'
       + '<p class="av-t">This is not financial, investment, legal or tax advice. By continuing you confirm you are of legal age where you live, that you understand these risks and that you act on your own decision.</p>'
