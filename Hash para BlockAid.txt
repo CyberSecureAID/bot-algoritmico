@@ -1,0 +1,11 @@
+List your token (MercadoTokens) hash: 0x7c58b8aa741b2db8c670332fb9f6dfc52c3fe967946d0245b00a77498439e0f0
+
+Swap (GridBot V15) hash: 0x42a08491ee78f91bca4cfec83b9fd5ed4d0a5b9656c63289b741dcb6f7672a93
+
+Wallet Shield (WalletShield) hash: 0x6664653f9f0805b08768d3cc76fa0bc3eec7feb9106e8152cc2deb02898ac3bb
+
+Bots (GridBot V15) hash: 0xf0f5067ce60b2bb3dfd86bfca208bc8715e175cf1c6b1df5f43606bc73865d13
+
+Launchpad (LaunchpadDF) hash: 0xe72411b74c561376cbb079623fb2565b4c618304e62f4925a0240c4100017d01
+
+Launchpad Positioning (FeatureTokens) hash: 0x213c353d3c4569be2c03871ba349c3da005028cb46133bb1d5b3d58ce6ea27ca
