@@ -601,6 +601,8 @@
 .lpl-ft-cta{flex:0 0 auto;min-height:38px;padding:0 18px;border-radius:10px;border:1px solid var(--gold);background:transparent;color:var(--gold);font-family:var(--display);font-weight:800;font-size:13px;cursor:pointer;transition:background .12s;white-space:nowrap}
 .lpl-ft-cta:hover{background:rgba(232,184,75,.12)}
 .lpl-ft-cta:active{background:rgba(232,184,75,.18)}
+/* Grupo de botones del header premium: List Your Token (izq) + Get a spot (der), mismo estilo dorado. */
+.lpl-ft-acts{display:flex;gap:10px;flex:0 0 auto}
 /* Rejilla en filas de 5: cinco por fila, crece hacia abajo (hasta 50), sin scroll horizontal */
 .lpl-ft-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:20px 12px;padding:13px 2px 10px}
 .lpl-ft-card{position:relative;min-width:0;display:flex;align-items:center;gap:10px;height:58px;padding:0 12px;background:rgba(14,18,25,.92);border:1px solid #2d3744;border-radius:13px;cursor:pointer;transition:border-color .12s,transform .08s,box-shadow .12s}
@@ -697,6 +699,8 @@
   .lpl-ft-head{flex-direction:column;align-items:center;text-align:center}
   .lpl-ft-tt{flex-direction:column;align-items:center;gap:8px}
   .lpl-ft-cta{width:100%;max-width:280px}
+  .lpl-ft-acts{width:100%;max-width:360px;gap:8px}
+  .lpl-ft-acts .lpl-ft-cta{flex:1;width:auto;max-width:none;padding:0 10px}
   .lpl-ft-grid{grid-template-columns:1fr;gap:20px}
   .lpl-ft-ov-t,.lpl-ft-ov-sub{text-align:center}
   .ftw-box{gap:16px;max-width:340px}

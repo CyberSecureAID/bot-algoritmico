@@ -84,11 +84,17 @@ function pintar() {
 
   const head = `<div class="lpl-ft-head">
       <div class="lpl-ft-tt"><span class="lpl-ft-ico">${ICO_BNB}</span><div class="lpl-ft-txt"><b>${esc(L('Tokens Premium', 'Premium Tokens'))}</b><span>${esc(L('Los espacios mas vistos del Launchpad', 'The most visible spots on the Launchpad'))}</span></div></div>
-      <button class="lpl-ft-cta" id="lpl-ft-get" type="button">${esc(L('Reservar un espacio', 'Get a spot'))}</button>
+      <div class="lpl-ft-acts">
+        <button class="lpl-ft-cta" id="lpl-ft-lyt" type="button">${esc(L('List Your Token', 'List Your Token'))}</button>
+        <button class="lpl-ft-cta" id="lpl-ft-get" type="button">${esc(L('Reservar un espacio', 'Get a spot'))}</button>
+      </div>
     </div>`;
   host.innerHTML = head + `<div class="lpl-ft-grid">${cards.join('')}</div>`;
 
   const get = $('lpl-ft-get'); if (get) get.onclick = () => flujoComprar();
+  // List Your Token: manda DIRECTO al swap con la ventana de listar abierta (sin disclaimer aqui; el
+  // disclaimer de List your token sale alla, para no duplicarlo). Es navegacion, no importa del swap.
+  const lyt = $('lpl-ft-lyt'); if (lyt) lyt.onclick = () => { location.href = '../swap/swap.html?abrir=listar'; };
   host.querySelectorAll('.lpl-ft-card[data-a]').forEach((c) => { c.onclick = () => { location.href = '?token=' + c.dataset.a; }; });
   host.querySelectorAll('.lpl-ft-card.libre').forEach((c) => { c.onclick = () => flujoComprar(); });
 }
