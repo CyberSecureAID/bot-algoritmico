@@ -188,9 +188,10 @@ function flujoComprar(slotSugerido) {
       <div class="ftd-row"><span class="ftd-k">The fee</span><span class="ftd-v">You pay the price of the spot you pick, once, in BNB at the live rate. Excess is refunded. Non-refundable. Renewable every 30 days. Remove your token anytime (no refund).</span></div>
     </div>`;
   overlayWrap(`<button class="lpl-ft-x" type="button" aria-label="Close">✕</button>
-    <h3 class="lpl-ft-ov-t">${esc(L('Antes de pagar, lee esto', 'Before you pay, read this'))}</h3>
+    <img class="lpl-ft-seal" src="./img/disclaimer.webp" alt="" onerror="this.style.display='none'">
+    <h3 class="lpl-ft-ov-t cen">${esc(L('Antes de pagar, lee esto', 'Before you pay, read this'))}</h3>
     <div class="lpl-ft-ov-body">${cuerpo}</div>
-    <div class="lpl-ft-ov-acts"><button class="lpl-ft-b gris" type="button" id="ft-d-no">${esc(L('Cancelar', 'Cancel'))}</button><button class="lpl-ft-b" type="button" id="ft-d-ok">${esc(L('Entiendo, elegir ubicacion', 'I understand, choose a spot'))}</button></div>`);
+    <div class="lpl-ft-ov-acts cen"><button class="lpl-ft-b gris" type="button" id="ft-d-no">${esc(L('Cancelar', 'Cancel'))}</button><button class="lpl-ft-b" type="button" id="ft-d-ok">${esc(L('Entiendo', 'I understand'))}</button></div>`);
   $('ft-d-no').onclick = cerrarOverlay;
   $('ft-d-ok').onclick = () => elegirUbicacion(Number.isInteger(slotSugerido) ? slotSugerido : null);
 }
