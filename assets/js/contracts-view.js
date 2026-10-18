@@ -136,6 +136,7 @@
       var act=drag&&!drag.hub?drag:(over?pick(mp):null);if(!drag)cv.style.cursor=act?"pointer":"default";
       arr.forEach(function(n){var isA=act&&act.id===n.id;n.hs+=((isA?1.4:1)-n.hs)*0.22;});
       ctx.clearRect(0,0,W,H);var ga=Math.min(1,T/0.5);
+      var zt=ease(T/1.15),Z=0.24+0.76*zt;ctx.save();ctx.translate(cx,cy);ctx.scale(Z,Z);ctx.translate(-cx,-cy);
       if(brain.complete&&brain.naturalWidth){
         var fx=Math.sin(now/1700)*5, fy=Math.sin(now/1250+1.3)*8, fsc=1+Math.sin(now/2100)*0.02;
         var bsz=RD*1.52*fsc;ctx.globalAlpha=0.92*ga;ctx.drawImage(brain,cx+fx-bsz/2,cy+fy-bsz/2,bsz,bsz);
@@ -150,6 +151,7 @@
       var hub=byId.tarifas;if(hub){ctx.globalAlpha=hub.op;logo(hub,RHUB*hub.hs);
         if(act&&act.id==="tarifas"){ctx.beginPath();ctx.arc(hub.x,hub.y,RHUB*hub.hs+2,0,7);ctx.lineWidth=2;ctx.strokeStyle="#E8B84B";ctx.stroke();}
         ctx.save();ctx.globalAlpha=hub.op;ctx.fillStyle="#E8B84B";ctx.font="700 16px 'Plus Jakarta Sans',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,.82)";ctx.shadowBlur=5;ctx.shadowOffsetY=1;ctx.fillText("Tarifas",hub.x,hub.y+RHUB*hub.hs+5);ctx.restore();}
+      ctx.restore();
       requestAnimationFrame(draw);
     }
     function byIdName(id){var c=D.find(function(x){return x.id===id;});return c?c.nombre:id;}
