@@ -20,6 +20,9 @@ const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const num = (n, d = 2) => isFinite(n) ? Number(n).toLocaleString('en-US', { maximumFractionDigits: d }) : '...';
+/* Cantidad de tokens de un trade: decimales adaptativos. Antes se formateaba con 0 decimales, asi una
+   compra pequena (p.ej. 0.2224) salia como "0". Grande -> 2 dec; 1..999 -> 4; <1 -> 6 (sin ceros de mas). */
+const numA = (n) => { n = Number(n) || 0; const a = Math.abs(n); if (!a) return '0'; return num(n, a >= 1000 ? 2 : a >= 1 ? 4 : 6); };
 /* Numero compacto para cantidades grandes (supply, quemado): 100M, 2.5B, sin desbordar la casilla. */
 const numC = (n) => { n = Number(n) || 0; if (n >= 1e9) return (n / 1e9).toFixed(n >= 1e10 ? 0 : 2).replace(/\.?0+$/, '') + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 2).replace(/\.?0+$/, '') + 'M'; if (n >= 1e4) return (n / 1e3).toFixed(0) + 'K'; return num(n, 0); };
 /* Dinero compacto para las casillas (Market Cap, liquidez, volumen): 175K, 1.2M, 3.4B, 2T, en vez
@@ -331,6 +334,14 @@ function lplCelContrato(t) { return `<td class="lpl-cre"><button type="button" c
 function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-listed" title="No liquidity pool: sold directly by its creator in List Your Token">0 Liquidity</span>' : ''}</span></td>`; }
 function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th class="${LPL_COLCLS[c] || ''}">${esc(c)}</th>`).join('')}</tr></thead>`; }
 function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
+/* Esqueleto animado mientras New Tokens lee la cadena (varias lecturas on-chain): barras con brillo que
+   imitan las columnas reales, para que la espera se vea intencional y no un bloque vacio. */
+function lplTablaSkel(cols) {
+  const bar = (w) => `<span class="lpl-sk" style="width:${w}px"></span>`;
+  const anchos = [[96, 42, 52, 46, 20], [120, 38, 52, 52, 20], [84, 46, 52, 40, 20], [108, 40, 52, 48, 20], [92, 44, 52, 44, 20]];
+  const body = anchos.map((a) => `<tr class="lpl-skrow" aria-hidden="true"><td class="lpl-num">${bar(12)}</td><td class="lpl-tok"><span class="lpl-tok-in"><span class="lpl-sk lpl-sk-dot"></span>${bar(a[0])}</span></td><td class="lpl-sym">${bar(a[1])}</td><td class="lpl-cre">${bar(a[2])}</td><td class="lpl-time">${bar(a[3])}</td><td class="lpl-chain">${bar(a[4])}</td></tr>`).join('');
+  return `<table class="lpl-table">${lplThead(cols)}<tbody>${body}</tbody></table>`;
+}
 function lplHaceCuanto(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; const m = Math.floor(s / 60); if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; }
 function lplMoney(v) { if (!(v > 0)) return '—'; if (v >= 1e9) return '$' + (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
 
@@ -356,7 +367,7 @@ function pintarPortada() {
 
       <section class="lpl-panel-sec" style="margin-top:32px">
         ${lplSecHead(LPL_CLOCK, 'New Tokens', 'Freshly launched', 'all')}
-        <div id="lpl-latest">${lplTablaMsg(['#', 'Token', 'Symbol', 'Contract', 'Time', 'Chain'], 'Loading…')}</div>
+        <div id="lpl-latest">${lplTablaSkel(['#', 'Token', 'Symbol', 'Contract', 'Time', 'Chain'])}</div>
       </section>
     </div>`;
   $('lpl-create').onclick = () => abrirAsistente();
@@ -1398,7 +1409,7 @@ function pintarPanel(t) {
     const c = $('lp-tabla'); if (!c) return;
     if (!l.length) { c.innerHTML = `<div class="lp-vacio">No trades yet. They appear here the moment someone buys or sells.</div>`; return; }
     c.innerHTML = `<div class="lp-tr lp-th"><span>Type</span><span>Amount ${esc(t.simbolo)}</span><span>Value ${mon}</span><span>Price ${mon}</span><span>Wallet</span><span>When</span></div>` +
-      l.slice(0, 60).map((x) => `<div class="lp-tr ${x.compra ? 'buy' : 'sell'}"><span class="lp-tipo"><i></i>${x.compra ? 'BUY' : 'SELL'}</span><span>${num(x.cantidad, 0)}</span><span>${fmtP(x.valor)}</span><span>${fmtP(x.precio)}</span><span class="lp-w">${esc(x.wallet)}</span><span class="lp-t">${hace(x.tiempo)}</span></div>`).join('');
+      l.slice(0, 60).map((x) => `<div class="lp-tr ${x.compra ? 'buy' : 'sell'}"><span class="lp-tipo"><i></i>${x.compra ? 'BUY' : 'SELL'}</span><span>${numA(x.cantidad)}</span><span>${fmtP(x.valor)}</span><span>${fmtP(x.precio)}</span><span class="lp-w">${esc(x.wallet)}</span><span class="lp-t">${hace(x.tiempo)}</span></div>`).join('');
   };
   pintarTabla();
   const fm = $('lp-filtro-m'), fb = $('lp-filtro-b');
