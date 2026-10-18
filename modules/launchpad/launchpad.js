@@ -325,21 +325,32 @@ function lplLogo(src, sim) {
     ? `<span class="lpl-logo"><img src="${esc(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${l}</span></span>`
     : `<span class="lpl-logo"><span class="lpl-logo-fb">${l}</span></span>`;
 }
-const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Contract': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
+const LPL_COLCLS = { '#': 'lpl-c-num', 'Price': 'lpl-c-price', 'Creator': 'lpl-c-cre', 'Contract': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
 /* Celda de contrato: la direccion del token, pulsable para copiarla al portapapeles. La gente quiere
    el contrato de la moneda, no el creador. El click copia y NO abre el panel (stopPropagation en lplFilas). */
 function lplCelContrato(t) { return `<td class="lpl-cre"><button type="button" class="lpl-copyc" data-copy="${esc(t.address)}" title="Copy contract">…${esc(String(t.address).slice(-4))} ${ICO_COPY}</button></td>`; }
+/* Nombre abreviado para movil: corta en una palabra decente y agrega "…". Web usa el nombre completo. */
+function abreviarNombre(n) {
+  const w = String(n || '').trim().split(/\s+/);
+  let b = w[0] || '';
+  if (b.length > 10) return b.slice(0, 9) + '…';   // una palabra larga: se corta
+  return w.length > 1 ? b + '…' : b;               // varias palabras: solo la primera + "…"
+}
 /* Celda del token (logo + nombre). El flex va en un <span> interior, NUNCA en el <td>: un <td> con
-   display:flex sale del modelo de columnas de la tabla y descuadra el resto hacia la derecha. */
-function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom">${esc(t.nombre)}</span>${t.listado ? '<span class="lpl-listed" title="No liquidity pool: sold directly by its creator in List Your Token">0 Liquidity</span>' : ''}</span></td>`; }
+   display:flex sale del modelo de columnas de la tabla y descuadra el resto hacia la derecha. Dos
+   variantes del nombre: completa (web) y abreviada (movil); el CSS muestra una u otra. Pildora "0 LIQ". */
+function lplCelTok(t) { return `<td class="lpl-tok"><span class="lpl-tok-in">${lplLogo(t.logo || '', t.simbolo)}<span class="lpl-tok-nom"><span class="lpl-nom-w">${esc(t.nombre)}</span><span class="lpl-nom-m">${esc(abreviarNombre(t.nombre))}</span></span>${t.listado ? '<span class="lpl-listed" title="No liquidity pool: sold directly by its creator in List Your Token">0 LIQ</span>' : ''}</span></td>`; }
+/* Celda de precio: el precio del token en USDT, SIN sigla al lado (empujaria la columna Symbol). Sin
+   pool ni liquidez -> un guion. */
+function lplCelPrecio(t) { return `<td class="lpl-price">${t.precioView > 0 ? fmtP(t.precioView) : '<span class="lpl-price-no">—</span>'}</td>`; }
 function lplThead(cols) { return `<thead><tr>${cols.map((c) => `<th class="${LPL_COLCLS[c] || ''}">${esc(c)}</th>`).join('')}</tr></thead>`; }
 function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(cols)}<tbody><tr class="lpl-empty"><td colspan="${cols.length}">${esc(msg)}</td></tr></tbody></table>`; }
 /* Esqueleto animado mientras New Tokens lee la cadena (varias lecturas on-chain): barras con brillo que
    imitan las columnas reales, para que la espera se vea intencional y no un bloque vacio. */
 function lplTablaSkel(cols) {
   const bar = (w) => `<span class="lpl-sk" style="width:${w}px"></span>`;
-  const anchos = [[96, 42, 52, 46, 20], [120, 38, 52, 52, 20], [84, 46, 52, 40, 20], [108, 40, 52, 48, 20], [92, 44, 52, 44, 20]];
-  const body = anchos.map((a) => `<tr class="lpl-skrow" aria-hidden="true"><td class="lpl-num">${bar(12)}</td><td class="lpl-tok"><span class="lpl-tok-in"><span class="lpl-sk lpl-sk-dot"></span>${bar(a[0])}</span></td><td class="lpl-sym">${bar(a[1])}</td><td class="lpl-cre">${bar(a[2])}</td><td class="lpl-time">${bar(a[3])}</td><td class="lpl-chain">${bar(a[4])}</td></tr>`).join('');
+  const anchos = [[96, 50, 42, 52, 46, 20], [120, 46, 38, 52, 52, 20], [84, 54, 46, 52, 40, 20], [108, 48, 40, 52, 48, 20], [92, 52, 44, 52, 44, 20]];
+  const body = anchos.map((a) => `<tr class="lpl-skrow" aria-hidden="true"><td class="lpl-num">${bar(12)}</td><td class="lpl-tok"><span class="lpl-tok-in"><span class="lpl-sk lpl-sk-dot"></span>${bar(a[0])}</span></td><td class="lpl-price">${bar(a[1])}</td><td class="lpl-sym">${bar(a[2])}</td><td class="lpl-cre">${bar(a[3])}</td><td class="lpl-time">${bar(a[4])}</td><td class="lpl-chain">${bar(a[5])}</td></tr>`).join('');
   return `<table class="lpl-table">${lplThead(cols)}<tbody>${body}</tbody></table>`;
 }
 function lplHaceCuanto(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; const m = Math.floor(s / 60); if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; }
@@ -367,7 +378,7 @@ function pintarPortada() {
 
       <section class="lpl-panel-sec" style="margin-top:32px">
         ${lplSecHead(LPL_CLOCK, 'New Tokens', 'Freshly launched', 'all')}
-        <div id="lpl-latest">${lplTablaSkel(['#', 'Token', 'Symbol', 'Contract', 'Time', 'Chain'])}</div>
+        <div id="lpl-latest">${lplTablaSkel(['#', 'Token', 'Price', 'Symbol', 'Contract', 'Time', 'Chain'])}</div>
       </section>
     </div>`;
   $('lpl-create').onclick = () => abrirAsistente();
@@ -389,6 +400,20 @@ function pintarPortada() {
 
 async function lplLogos(lista) {
   await Promise.all(lista.map(async (t) => { if (t.logo !== undefined) return; try { const m = await leerMoneda(t.address); t.logo = (m && m.logo) || ''; } catch (_) { t.logo = ''; } }));
+}
+/* Precio por fila de New Tokens, SIEMPRE en USDT. Listado sin liquidez: precio del vendedor (BNB) * rate.
+   Moneda con pool: el spot; si el pool es en BNB se multiplica por el rate BNB/USDT, si ya es en USDT va
+   directo. Se lee en paralelo con los logos, solo para las 5 visibles; si falla o no hay pool, guion. */
+async function lplPrecios(lista) {
+  const bnbUsd = await gb.precioBNBUSDT().catch(() => 0);
+  await Promise.all(lista.map(async (t) => {
+    if (t.precioView !== undefined) return;
+    if (t.listado) { t.precioView = (t.precioBNB > 0 && bnbUsd > 0) ? t.precioBNB * bnbUsd : 0; return; }
+    try {
+      const d = await gb.datosToken(t.address); const p = (d && d.precio) || 0;
+      t.precioView = p > 0 ? (d.moneda === 'USDT' ? p : (bnbUsd > 0 ? p * bnbUsd : 0)) : 0;
+    } catch (_) { t.precioView = 0; }
+  }));
 }
 function lplCargarListas() {
   // Monedas del launchpad (escaneo de eventos) + tokens LISTADOS sin liquidez (List Your Token), en
@@ -463,7 +488,7 @@ function lplCargarListas() {
     // demoraba el lobby: ahora pinta en cuanto tiene la lista. El catalogo completo se ve en View All
     // (scroll infinito que pagina del propio contrato + busqueda por nombre y contrato).
     const latest = lista.concat(listados).sort((a, b) => (b.tiempo || 0) - (a.tiempo || 0)).slice(0, 5);
-    await lplLogos(latest);
+    await Promise.all([lplLogos(latest), lplPrecios(latest)]);
     _lobby = { todos: lista, listados };   // base para View All (todo el catalogo) y para la busqueda
     if ($('lpl-latest')) lplPintarLatest(latest);
   }).catch(() => { if ($('lpl-latest')) lplPintarLatest([]); });
@@ -476,9 +501,9 @@ function lplFilas(host, lista, tipo) {
   host.querySelectorAll('.lpl-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
 }
 function lplPintarLatest(lista) {
-  const cols = ['#', 'Token', 'Symbol', 'Contract', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
+  const cols = ['#', 'Token', 'Price', 'Symbol', 'Contract', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
   if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No coins created yet.'); return; }
-  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${lplCelContrato(t)}<td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}${lplCelPrecio(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${lplCelContrato(t)}<td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
   lplFilas(host);
 }

@@ -127,10 +127,11 @@
 .lpl-num{color:var(--ink-3);width:22px}
 .lpl-tok{max-width:230px}
 .lpl-tok-in{display:flex;align-items:center;gap:9px;max-width:220px}
-.lpl-tok-nom{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;min-width:0}
+.lpl-tok-nom{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;min-width:0;white-space:nowrap}
+.lpl-nom-m{display:none}
 /* Distintivo de token LISTADO sin liquidez (seccion List Your Token): pildora VERDE, no roja. No dice
    "Community" (haria pensar que lo respaldamos): solo dice que esta listado para venta directa. */
-.lpl-listed{flex:0 0 auto;display:inline-flex;align-items:center;padding:1px 7px;border-radius:999px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#6fe0a6;background:rgba(46,232,106,.12);border:1px solid rgba(46,232,106,.34);white-space:nowrap}
+.lpl-listed{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;height:16px;padding:0 8px;line-height:1;border-radius:999px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#6fe0a6;background:rgba(46,232,106,.12);border:1px solid rgba(46,232,106,.34);white-space:nowrap}
 /* Enlace azul tipo Wikipedia a la seccion List Your Token, dentro del aviso del token listado. */
 .lp-lyt{color:#5aa9ff;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(90,169,255,.4)}
 .lp-lyt:hover{color:#7cbcff;border-bottom-color:#7cbcff}
@@ -159,6 +160,8 @@
 .lpl-mcap{color:var(--ink);font-weight:700}
 .lpl-hold{color:var(--ink-2)}
 .lpl-chain{color:var(--ink-3);font-size:12px}
+.lpl-price{font-family:var(--mono);font-size:12px;color:var(--ink-2);white-space:nowrap}
+.lpl-price-no{color:var(--ink-3)}
 .lpl-chain .lpl-bsc{vertical-align:-2px}
 /* New Tokens: esqueleto de carga (brillo que se mueve). */
 .lpl-sk{display:inline-block;height:11px;border-radius:6px;vertical-align:middle;background:linear-gradient(90deg,rgba(255,255,255,.05) 0,rgba(255,255,255,.12) 50%,rgba(255,255,255,.05) 100%);background-size:200% 100%;animation:lplShim 1.2s linear infinite}
@@ -219,6 +222,18 @@
   /* Tablas en movil: se ocultan columnas secundarias para que no se desfasen ni desborden. */
   .lpl-table td,.lpl-table th{padding:10px 7px;font-size:12.5px}
   .lpl-c-cre,.lpl-cre,.lpl-c-chain,.lpl-chain,.lpl-c-hold,.lpl-hold{display:none}
+  /* New Tokens en movil: SOLO Token + Price (lo demas se oculta). */
+  #lpl-latest .lpl-num,#lpl-latest .lpl-c-num,#lpl-latest .lpl-sym,#lpl-latest .lpl-c-sym,#lpl-latest .lpl-time,#lpl-latest .lpl-c-time{display:none}
+  /* Chain (icono BNB) SI se muestra en movil, a la derecha, para llenar el espacio vacio. */
+  #lpl-latest .lpl-chain,#lpl-latest .lpl-c-chain{display:table-cell;width:54px;text-align:right;padding-right:14px}
+  #lpl-latest .lpl-tok,#lpl-latest .lpl-tok-in{max-width:none}
+  #lpl-latest .lpl-table{table-layout:fixed}
+  #lpl-latest .lpl-c-price,#lpl-latest .lpl-price{width:72px;overflow:hidden}
+  /* Nombre base 0 para no forzar salto de linea (queda junto al logo); en movil se usa la variante
+     abreviada. Solo la pildora "0 LIQ" baja a la segunda linea. */
+  #lpl-latest .lpl-tok-nom{flex:1 1 0}
+  #lpl-latest .lpl-nom-w{display:none}
+  #lpl-latest .lpl-nom-m{display:inline}
   /* En movil se ocultan columnas, asi que el token tiene mas sitio; la pildora de comunidad baja a una
      segunda linea si no cabe (flex-wrap) en vez de cortar el nombre o romper la fila. */
   .lpl-tok,.lpl-tok-in{max-width:168px}
