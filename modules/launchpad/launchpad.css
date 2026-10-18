@@ -603,6 +603,56 @@
 .lpl-ft-cta:active{background:rgba(232,184,75,.18)}
 /* Grupo de botones del header premium: List Your Token (izq) + Get a spot (der), mismo estilo dorado. */
 .lpl-ft-acts{display:flex;gap:10px;flex:0 0 auto}
+/* ── Popup de compra de token listado (estetica de swap, dentro del Launchpad) ── */
+/* Popup de compra recrea la estetica del area de Swap: tarjeta oscura con linea dorada y textura,
+   sub-tarjetas traslucidas, pills con el logo circular de la moneda y boton verde "Swap". Estilos
+   PROPIOS (modulo sellado: no importa CSS ni JS del swap; la textura es un asset de marca compartido). */
+.lpc-ov{position:fixed;inset:0;z-index:1200;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px}
+.lpc-card{position:relative;width:100%;max-width:436px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow-y:auto;max-height:calc(100vh - 32px)}
+.lpc-card::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('../../assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;pointer-events:none}
+.lpc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5;z-index:2}
+.lpc-card>*{position:relative;z-index:1}
+.lpc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 18px 10px}
+.lpc-tt{display:flex;align-items:center;gap:10px;min-width:0}
+.lpc-tt-tx{min-width:0}
+.lpc-tt-tx>b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:16px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.lpc-tt-tx>span{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:2px}
+.lpc-x{flex:0 0 auto;width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-2);display:grid;place-items:center;cursor:pointer;font-size:13px}
+.lpc-x:hover{color:var(--ink)}
+.lpc-body{padding:2px 18px 20px}
+.lpc-cards{position:relative}
+.lpc-box{background:rgba(11,14,17,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
+.lpc-box+.lpc-box{margin-top:10px}
+.lpc-box-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.lpc-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px}
+.lpc-bal{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.lpc-box-mid{display:flex;align-items:center;gap:10px}
+.lpc-amt{flex:1;min-width:0;background:transparent;border:none;outline:none;box-shadow:none;-webkit-appearance:none;appearance:none;color:var(--ink);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:26px;padding:0}
+.lpc-amt::placeholder{color:var(--ink-3);opacity:.5}
+.lpc-out{flex:1;min-width:0;color:var(--ink);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lpc-tok{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;background:linear-gradient(180deg,#1b2027,#12161c);border:1px solid var(--gold-soft);border-radius:100px;padding:6px 13px 6px 7px;box-shadow:0 2px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.06)}
+.lpc-tok b{font-family:'Chakra Petch',var(--display);font-size:15px;color:var(--ink);font-weight:700}
+.lpc-ico{position:relative;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:linear-gradient(180deg,#232b34,#151b22);flex:0 0 auto}
+.lpc-ico .lpc-fb{font-family:'Chakra Petch',var(--display);font-weight:800;font-size:12px;color:currentColor;line-height:1}
+.lpc-ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;opacity:0;transition:opacity .15s}
+.lpc-ico.conlogo img{opacity:1}
+.lpc-ico.conlogo .lpc-fb{opacity:0}
+.lpc-box-bot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;min-height:17px}
+.lpc-usd{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.lpc-max{font-family:var(--mono);font-size:11px;font-weight:700;color:#3a2800;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border:1px solid #c79426;border-radius:8px;padding:3px 9px;cursor:pointer;box-shadow:0 2px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4);letter-spacing:.5px}
+.lpc-max:active{transform:translateY(2px);box-shadow:0 0 0 #8f6a1a}
+.lpc-flip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:12px;background:linear-gradient(180deg,#232a33,#141a20);border:2px solid #0d1117;color:var(--gold);display:grid;place-items:center;box-shadow:0 3px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);z-index:3}
+.lpc-gar{font-family:var(--mono);font-size:11px;font-weight:700}
+.lpc-gar.verde{color:var(--verde)}
+.lpc-gar.oro{color:var(--gold)}
+.lpc-info{margin:14px 2px 0;font-family:var(--mono);font-size:12px;color:var(--ink-2);text-align:center;line-height:1.55}
+.lpc-info b{color:var(--ink)}
+.lpc-go{width:100%;margin-top:16px;min-height:52px;border-radius:14px;border:1px solid #15803d;background:linear-gradient(180deg,#3ddc84,#22c55e 46%,#16a34a);color:#052e13;font-family:'Chakra Petch',var(--display);font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 4px 0 #15803d,inset 0 1px 0 rgba(255,255,255,.35);text-shadow:0 1px 0 rgba(255,255,255,.2)}
+.lpc-go:not(:disabled):hover{filter:brightness(1.05)}
+.lpc-go:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
+.lpc-go:not(:disabled):active{transform:translateY(4px);box-shadow:0 1px 0 #15803d,inset 0 1px 0 rgba(255,255,255,.35)}
+.lpc-note{margin:12px 2px 0;font-family:var(--mono);font-size:10.5px;line-height:1.55;color:var(--ink-3);text-align:center}
+@media(max-width:560px){.lpc-amt,.lpc-out{font-size:22px}}
 /* Rejilla en filas de 5: cinco por fila, crece hacia abajo (hasta 50), sin scroll horizontal */
 .lpl-ft-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:20px 12px;padding:13px 2px 10px}
 .lpl-ft-card{position:relative;min-width:0;display:flex;align-items:center;gap:10px;height:58px;padding:0 12px;background:rgba(14,18,25,.92);border:1px solid #2d3744;border-radius:13px;cursor:pointer;transition:border-color .12s,transform .08s,box-shadow .12s}

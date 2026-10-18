@@ -578,10 +578,133 @@ function abrirListado(addr) {
     ? `<div class="lp-kv"><span>Buyer guarantee</span><b class="verde">Active, ${dias} day${dias === 1 ? '' : 's'} left</b></div>`
     : `<div class="lp-kv"><span>Buyer guarantee</span><b class="oro">Lock of 30 days ended</b></div>`;
   const cuerpo = `
-    <p>You can buy this token, but know what it is first. It was created in ${lytLink()}: a section where a project sells its token <b>without a liquidity pool</b>, at a price the creator sets, paid in BNB.</p>
+    <p>You can buy this token, but understand what it is first. It was listed in ${lytLink()}: a section where a project sells its token <b>without a liquidity pool</b>, at a fixed price it sets, paid in BNB. There is no market pool here.</p>
     ${precio}${stock}${garantia}
-    <p class="lp-aviso-sub">We do not verify or back these listings. The value depends only on the project. Buy at your own responsibility. A money back guarantee (return your tokens for BNB from the same wallet) and a 30 day lock apply in the marketplace.</p>`;
-  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?listado=' + encodeURIComponent(addr) });
+    <p class="lp-aviso-sub"><b>Money-back guarantee.</b> Only the wallet that buys can return the exact tokens it bought and recover exactly the BNB it paid, for <b>30 days counted from the listing date</b> (the time left is shown above), not from your purchase. The seller cannot withdraw the funds during that window, so the refund is always backed. You sell it back in the Swap by reversing the pair.</p>
+    <p class="lp-aviso-sub"><b>No endorsement.</b> DecFreedom does not verify, approve or back these listings. The value depends only on the project. When the guarantee ends there is no pool to sell into unless the project adds liquidity. Buy only what you can afford to lose, at your own responsibility.</p>`;
+  avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Agree and continue', onclick: () => comprarListadoUI(L) });
+}
+
+/* Popup de COMPRA de un token listado sin liquidez, DENTRO del Launchpad (recrea la estetica del swap:
+   "You pay BNB / You receive TOKEN"). Solo compra; la venta/devolucion se hace en el swap. Llama unica-
+   mente a MercadoTokens (gb.comprarListado); modulo sellado, no importa nada del swap. */
+async function comprarListadoUI(L) {
+  if (!L) return;
+  const prev = document.getElementById('lpc-ov'); if (prev) prev.remove();
+  const sym = esc(L.simbolo || 'TOKEN');
+  const prot = L.proteccionSeg || 0; const dias = Math.ceil(prot / 86400);
+  const gar = prot > 0
+    ? `<span class="lpc-gar verde">Guarantee: ${dias} day${dias === 1 ? '' : 's'} left</span>`
+    : `<span class="lpc-gar oro">Guarantee ended</span>`;
+  // Logos circulares de la moneda, mismo patron visual que el swap: letra de fondo + imagen que
+  // aparece al cargar. BNB: logo oficial por la direccion de WBNB en Trust Wallet. Token listado:
+  // su logo (Firebase) si lo tiene, o Trust Wallet por su contrato; si ninguno carga, queda la letra.
+  const TW = (a) => `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${a}/logo.png`;
+  const bnbLogo = TW('0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c');
+  const tokLogo = L.logo || (/^0x[0-9a-fA-F]{40}$/.test(String(L.address || '')) ? TW(L.address) : '');
+  const lpcIco = (src, letra, color) => `<span class="lpc-ico" style="color:${color}"><span class="lpc-fb">${esc(String(letra || '?')[0].toUpperCase())}</span>${src ? `<img src="${esc(src)}" alt="" onload="this.parentElement.classList.add('conlogo')" onerror="this.style.display='none'">` : ''}</span>`;
+  const pillBNB = `<span class="lpc-tok">${lpcIco(bnbLogo, 'B', '#F0B90B')}<b>BNB</b></span>`;
+  const pillTok = `<span class="lpc-tok">${lpcIco(tokLogo, L.simbolo || '?', 'var(--gold)')}<b>${sym}</b></span>`;
+  const ov = document.createElement('div'); ov.id = 'lpc-ov'; ov.className = 'lpc-ov';
+  ov.innerHTML = `<div class="lpc-card" role="dialog" aria-modal="true">
+      <div class="lpc-head">
+        <div class="lpc-tt">${lpcIco(tokLogo, L.simbolo || '?', 'var(--gold)')}<div class="lpc-tt-tx"><b>${esc(L.nombre || 'Listed token')}</b><span>${sym} <span class="lpl-listed">0 LIQ</span></span></div></div>
+        <button class="lpc-x" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="lpc-body">
+        <div class="lpc-cards">
+          <div class="lpc-box">
+            <div class="lpc-box-top"><span class="lpc-lbl">You pay</span><span class="lpc-bal" id="lpc-bal"></span></div>
+            <div class="lpc-box-mid"><input class="lpc-amt" id="lpc-amt" inputmode="decimal" placeholder="0.0" autocomplete="off">${pillBNB}</div>
+            <div class="lpc-box-bot"><span class="lpc-usd" id="lpc-pay-usd"></span><button class="lpc-max" id="lpc-max" type="button">MAX</button></div>
+          </div>
+          <div class="lpc-flip" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+          <div class="lpc-box">
+            <div class="lpc-box-top"><span class="lpc-lbl">You receive (est.)</span><span class="lpc-bal" id="lpc-stock"></span></div>
+            <div class="lpc-box-mid"><div class="lpc-out" id="lpc-out">0.0</div>${pillTok}</div>
+            <div class="lpc-box-bot">${gar}</div>
+          </div>
+        </div>
+        <div class="lpc-info" id="lpc-info">Loading price…</div>
+        <button class="lpc-go" id="lpc-go" type="button" disabled>Swap</button>
+        <p class="lpc-note">You pay in BNB, the only currency this listing accepts. Direct purchase from the seller through the public MercadoTokens contract; any excess BNB is refunded in the same transaction.</p>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  const cerrar = () => { try { ov.remove(); } catch (_) {} };
+  ov.querySelector('.lpc-x').onclick = cerrar;
+  ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
+
+  const info = $('lpc-info'), out = $('lpc-out'), amt = $('lpc-amt'), go = $('lpc-go'),
+    balEl = $('lpc-bal'), stockEl = $('lpc-stock'), usdEl = $('lpc-pay-usd');
+  let precio = 0n, enVenta = 0n, dec = 18, bnbUsd = 0, saldo = 0n, listo = false;
+  const idL = L.idListado;
+
+  // Lectura fresca: precio + stock (wei), decimales del token, rate BNB/USDT y saldo BNB del usuario.
+  try {
+    const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+    const [d, dc, px, sb] = await Promise.all([
+      gb.verListado(idL), gb.decimalsToken(L.address), gb.precioBNBUSDT().catch(() => 0),
+      cuenta ? gb.saldoBNB(cuenta).catch(() => 0n) : Promise.resolve(0n)
+    ]);
+    dec = Number(dc) || 18; bnbUsd = px || 0; saldo = sb || 0n;
+    if (d && d.activo) { precio = d.precio; enVenta = d.enVenta; listo = precio > 0n && enVenta > 0n; }
+  } catch (_) {}
+  if (!document.getElementById('lpc-ov')) return;   // cerrado mientras cargaba
+
+  const ten = 10n ** BigInt(dec);
+  const precioBNB = Number(gb.fmtEther(precio));
+  if (wallet.cuentaActual()) balEl.textContent = `Balance: ${(+gb.fmtEther(saldo)).toFixed(4)} BNB`;
+  stockEl.textContent = listo ? `For sale: ${numC(Number(gb.fmtUnits(enVenta, dec)))} ${sym}` : '';
+
+  if (!listo) { info.textContent = 'This listing is no longer available.'; go.textContent = 'Close'; go.disabled = false; go.onclick = cerrar; return; }
+  info.innerHTML = `1 ${sym} = <b>${fmtP(precioBNB)} BNB</b>${bnbUsd > 0 ? ` (~$${fmtP(precioBNB * bnbUsd)})` : ''}`;
+
+  // tokens a recibir y coste exacto (misma formula que el contrato: coste = precio*tokens/10^dec).
+  const calc = () => {
+    let bnbWei = 0n; try { bnbWei = gb.parseEther((amt.value || '0').replace(/[^0-9.]/g, '') || '0'); } catch (_) { bnbWei = 0n; }
+    let tokens = precio > 0n ? (bnbWei * ten) / precio : 0n;
+    if (tokens > enVenta) tokens = enVenta;
+    out.textContent = tokens > 0n ? numC(Number(gb.fmtUnits(tokens, dec))) : '0.0';
+    if (usdEl) usdEl.textContent = (bnbUsd > 0 && bnbWei > 0n) ? `~$${fmtP(Number(gb.fmtEther(bnbWei)) * bnbUsd)}` : '';
+    return { tokens, coste: (precio * tokens) / ten };
+  };
+  amt.addEventListener('input', calc);
+  $('lpc-max').onclick = () => {
+    let m = saldo - gb.parseEther('0.003'); if (m < 0n) m = 0n;   // deja margen para el gas
+    amt.value = (+gb.fmtEther(m)).toFixed(6).replace(/\.?0+$/, ''); calc();
+  };
+
+  const pintarBoton = () => { go.disabled = false; go.textContent = wallet.cuentaActual() ? 'Swap' : 'Connect wallet'; };
+  pintarBoton();
+  go.onclick = async () => {
+    if (!wallet.cuentaActual()) {
+      try { await wallet.conectar(); } catch (_) {}
+      if (wallet.cuentaActual()) { try { saldo = await gb.saldoBNB(wallet.cuentaActual()); balEl.textContent = `Balance: ${(+gb.fmtEther(saldo)).toFixed(4)} BNB`; } catch (_) {} pintarBoton(); }
+      return;
+    }
+    const { tokens, coste } = calc();
+    if (!(tokens > 0n)) { info.textContent = 'Enter how much BNB you want to spend.'; return; }
+    if (coste > saldo) { info.textContent = 'Not enough BNB for this purchase and gas.'; return; }
+    cerrar();
+    modalBusy('Confirming swap', `You pay <b>${(+gb.fmtEther(coste)).toFixed(6)} BNB</b> for <b>${numC(Number(gb.fmtUnits(tokens, dec)))} ${sym}</b>. Confirm in your wallet. Any excess is refunded.`);
+    try {
+      await gb.comprarListado(idL, tokens, coste);
+      modalCerrar();
+      await modal('Swap complete', `You received <b>${numC(Number(gb.fmtUnits(tokens, dec)))} ${sym}</b>. To sell it back within the guarantee, use the Swap and reverse the pair.`);
+    } catch (e) {
+      const m = ((e && (e.reason || e.shortMessage || e.message)) || '').toLowerCase();
+      let txt;
+      if (m.includes('user rejected') || m.includes('denied') || m.includes('4001')) txt = 'You cancelled the purchase.';
+      else if (m.includes('insufficient') || m.includes('insuficiente')) txt = 'Not enough BNB for the purchase and gas.';
+      else if (m.includes('cantidad')) txt = 'The seller no longer has that amount for sale.';
+      else if (m.includes('inactivo')) txt = 'This listing is no longer active.';
+      else if (m.includes('pausado')) txt = 'Purchases are paused right now.';
+      else txt = 'The purchase could not be completed.' + (e && e.reason ? ' (' + String(e.reason).slice(0, 100) + ')' : '');
+      modalCerrar();
+      await modal('Swap not completed', txt);
+    }
+  };
 }
 
 /* Ventana completa. Featured enseña sus ejemplos; "all" y la busqueda muestran TODO el catalogo con
