@@ -40,6 +40,10 @@ export const USDT = '0x55d398326f99059fF775485246999027B3197955';
    (totalListados + pagina) para mostrar esas monedas en Latest Created marcadas como "No liquidity".
    No se importa modules/swap/ (modulo sellado): se lee el contrato directo con ethers local. */
 export const MERCADO = '0x39c48394068299Aa3e3ab114F16bfc3DE11F4112';
+
+/* Feature Tokens: 50 espacios premium por suscripcion mensual en BNB (contrato NUEVO e independiente,
+   proxy UUPS). El launchpad SOLO interactua con este contrato para la seccion premium; no toca nada mas. */
+export const FEATURE_TOKENS = '0xA33815a406b2Ea03a262a6e5E180dc328ea7C584';
 export const LIQUIDEZ = [
   { id: 'BNB',  simbolo: 'BNB',  address: null, decimals: 18 },
   { id: 'USDT', simbolo: 'USDT', address: USDT, decimals: 18 }

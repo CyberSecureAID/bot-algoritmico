@@ -14,6 +14,7 @@ import { montarSwap } from './swap-inline.js';
 /* lightweight-charts: libreria de velas de la propia TradingView (Apache-2.0), vendorizada en el
    modulo (sellado). Es la que usan los exploradores serios para dibujar graficas reales. */
 import * as LW from './lightweight-charts.mjs';
+import * as ft from './feature-tokens.js';   // seccion premium (Feature Tokens), modulo aparte del mismo launchpad
 
 const $ = (id) => document.getElementById(id);
 const APP = 'colmena-app';
@@ -306,13 +307,6 @@ const LPL_FLAME = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s5
 const LPL_EXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10v10M19 5L8 16"/></svg>';
 const LPL_FILTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
 const LPL_BSC = '<svg class="lpl-bsc" viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
-const LPL_FEATURED = [
-  { logo: 'featured-1', nombre: 'AurexAI', simbolo: 'AURX' },
-  { logo: 'featured-2', nombre: 'MoonRider', simbolo: 'MOON' },
-  { logo: 'featured-3', nombre: 'DragonSwap', simbolo: 'DRGN' },
-  { logo: 'featured-4', nombre: 'QuantumX', simbolo: 'QTX' },
-  { logo: 'featured-5', nombre: 'NovaChain', simbolo: 'NOVA' }
-];
 let _lobby = null;
 const lplShort = (a) => a ? String(a).slice(0, 6) + '…' + String(a).slice(-4) : '';
 
@@ -327,16 +321,6 @@ function lplLogo(src, sim) {
   return src
     ? `<span class="lpl-logo"><img src="${esc(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${l}</span></span>`
     : `<span class="lpl-logo"><span class="lpl-logo-fb">${l}</span></span>`;
-}
-function lplCardFeatured(f) {
-  // Las 5 de ejemplo (sin address) no hacen nada al tocarlas. Una moneda REAL destacada (con address,
-  // cuando exista la monetizacion) se marca con data-a y abre su panel de compra como cualquier otra.
-  const real = f && f.address ? ` data-a="${esc(f.address)}"` : ' data-ejemplo="1"';
-  return `<div class="lpl-fcard${f && f.address ? ' lpl-fcard-real' : ''}"${real}>
-    <span class="lpl-fcard-ext">${LPL_EXT}</span>
-    <div class="lpl-fcard-top"><span class="lpl-logo lpl-logo-lg"><img src="./img/${f.logo}.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lpl-logo-fb" style="display:none">${esc(f.simbolo[0])}</span></span>
-      <div class="lpl-fcard-id"><b>${esc(f.nombre)}</b><span class="lpl-fcard-sym">${esc(f.simbolo)}</span></div></div>
-    <div class="lpl-fcard-foot"><span class="lpl-fcard-chain">${LPL_BSC} BSC</span><span class="lpl-badge-prem">${LPL_STAR} Featured</span></div></div>`;
 }
 const LPL_COLCLS = { 'Creator': 'lpl-c-cre', 'Contract': 'lpl-c-cre', 'Time': 'lpl-c-time', 'Chain': 'lpl-c-chain', 'Holders': 'lpl-c-hold', 'Market Cap': 'lpl-c-mcap', 'Symbol': 'lpl-c-sym' };
 /* Celda de contrato: la direccion del token, pulsable para copiarla al portapapeles. La gente quiere
@@ -368,12 +352,7 @@ function pintarPortada() {
         </div>
       </section>
 
-      <section class="lpl-box lpl-feat">
-        ${lplSecHead(LPL_STAR, 'Featured Tokens', 'Projects in the spotlight', 'featured')}
-        <div class="lpl-feat-wrap">
-          <div class="lpl-feat-track" id="lpl-feat-track" style="--n:${LPL_FEATURED.length}">${LPL_FEATURED.map(lplCardFeatured).join('')}</div>
-        </div>
-      </section>
+      <section class="lpl-box lpl-ft" id="lpl-ft"></section>
 
       <section class="lpl-panel-sec" style="margin-top:32px">
         ${lplSecHead(LPL_CLOCK, 'New Tokens', 'Freshly launched', 'all')}
@@ -392,24 +371,9 @@ function pintarPortada() {
     q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const r = $('lpl-q-res'); if (r) { r.classList.remove('open'); r.innerHTML = ''; } lplBuscar(q.value.trim()); } });
     document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.lpl-search')) { const r = $('lpl-q-res'); if (r) { r.classList.remove('open'); r.innerHTML = ''; } } });
   }
-  lplCarrusel();
   host.querySelectorAll('.lpl-viewall').forEach((b) => { b.onclick = () => lplViewAll(b.dataset.v); });
-  // Tocar una moneda REAL de Featured (con data-a) muestra primero el disclaimer de token premium
-  // (pagaron por posicionarse, no es nuestro, no lo respaldamos) y luego abre su panel. Ejemplos: nada.
-  const ft = $('lpl-feat-track'); if (ft) ft.addEventListener('click', (e) => { const c = e.target.closest('.lpl-fcard[data-a]'); if (c && c.dataset.a) avisoPremium(c.dataset.a); });
+  ft.montar();            // seccion premium (Feature Tokens), en su propio modulo
   lplCargarListas();
-}
-
-/* 5 o menos: estaticas y encajadas. 6 o mas: cinta infinita (ticker) de derecha a izquierda, con
-   el contenido duplicado para que el bucle no tenga costura. Pausa al pasar el raton (CSS). */
-function lplCarrusel() {
-  const track = $('lpl-feat-track'); if (!track) return;
-  const n = track.children.length;
-  if (n > 5) {
-    track.style.setProperty('--mq', Math.max(18, n * 3.2) + 's');
-    track.innerHTML += track.innerHTML;
-    track.classList.add('marquee');
-  }
 }
 
 async function lplLogos(lista) {
@@ -582,16 +546,6 @@ function abrirListado(addr) {
     ${precio}${stock}${garantia}
     <p class="lp-aviso-sub">We do not verify or back these listings. The value depends only on the project. Buy at your own responsibility. A money back guarantee (return your tokens for BNB from the same wallet) and a 30 day lock apply in the marketplace.</p>`;
   avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Swap', href: '../swap/swap.html?listado=' + encodeURIComponent(addr) });
-}
-
-/* Disclaimer de token PREMIUM (Featured): quien paga compra solo VISIBILIDAD arriba. Nos desvincula
-   por completo: no es nuestro, no lo respaldamos, no tenemos moneda propia, cada cual asume su riesgo.
-   Tras aceptar, continua al panel de la moneda (donde esta el swap para comprarla). Se cierra con la X. */
-function avisoPremium(addr) {
-  const cuerpo = `
-    <p>This token is featured here, but it is not from our platform and we do not back it.</p>
-    <p class="lp-aviso-sub">We only provide tools to give tokens visibility. We have no cryptocurrency of our own and nothing to do with this token. If you are not sure about a token, do not buy it. You do so at your own responsibility.</p>`;
-  avisoPopup('About featured tokens', cuerpo, { txt: 'Continue', onclick: () => cargarToken(addr) });
 }
 
 /* Ventana completa. Featured enseña sus ejemplos; "all" y la busqueda muestran TODO el catalogo con

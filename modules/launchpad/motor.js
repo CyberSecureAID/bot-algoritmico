@@ -5,7 +5,7 @@
 
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS, COINGECKO_BNB, COINGECKO_MERCADOS, MERCADO } from './config.js';
+import { LAUNCHPAD, LAUNCHPAD_IMPL, SCAN, USDT, RPCS, COINGECKO_BNB, COINGECKO_MERCADOS, MERCADO, FEATURE_TOKENS } from './config.js';
 
 const CERO = '0x0000000000000000000000000000000000000000';
 
@@ -606,4 +606,65 @@ export async function logosPar() {
   } catch (_) {}
   return { BNB: '', USDT: '' };
 }
+/* ═══════════ Feature Tokens (espacios premium por suscripcion) ═══════════
+   Contrato NUEVO e independiente (proxy UUPS). Aqui SOLO se lee/escribe este contrato; no toca nada
+   del launchpad. estadoEspacios() trae los 50 espacios en una sola llamada (estado por fecha). */
+const FT_ABI = [
+  'function estadoEspacios() view returns (address[50] token, address[50] inquilino, uint64[50] expira, uint8[50] estado, uint256[50] precioUSD, uint256[50] precioBNB)',
+  'function costoBNB(uint8 slot) view returns (uint256)',
+  'function espacio(uint8 slot) view returns (address token, address inquilino, uint64 expira, uint8 estado)',
+  'function reservar(uint8 slot, address token) payable',
+  'function renovar(uint8 slot) payable',
+  'function liberarMio(uint8 slot)'
+];
+export const hayFeatureTokens = () => FEATURE_TOKENS && FEATURE_TOKENS !== CERO;
+const leeFT = (fn, args) => lee(FEATURE_TOKENS, FT_ABI, fn, args);
+async function cFT() { return new ethers.Contract(FEATURE_TOKENS, FT_ABI, await firmante()); }
+
+/* Los 50 espacios en una sola lectura. Cada uno: posicion (1..50), estado (0 libre, 1 activo, 2 gracia),
+   token/inquilino/expira y precio en USD (18 dec) y en BNB (wei) ya calculados por el contrato. */
+export async function ftEstado() {
+  try {
+    const r = await leeFT('estadoEspacios', []);
+    const out = [];
+    for (let i = 0; i < 50; i++) {
+      out.push({
+        slot: i, pos: i + 1,
+        token: String(r.token[i]),
+        inquilino: String(r.inquilino[i]),
+        expira: Number(r.expira[i]),
+        estado: Number(r.estado[i]),
+        precioUSD: r.precioUSD[i],
+        precioBNB: r.precioBNB[i]
+      });
+    }
+    return out;
+  } catch (_) { return []; }
+}
+export async function ftCosto(slot) { try { return await leeFT('costoBNB', [slot]); } catch (_) { return 0n; } }
+
+/* Reserva un espacio y ubica un token (una sola tx). Envia el value con 2% de margen; el contrato
+   DEVUELVE el exceso. El contrato verifica on-chain que msg.sender es el dueño del token. */
+export async function ftReservar(slot, token) {
+  const c = await cFT();
+  let valor = 0n;
+  try { const q = await leeFT('costoBNB', [slot]); valor = q > 0n ? (q * 102n / 100n) : 0n; } catch (_) {}
+  const tx = await gasMargen(c, 'reservar', [slot, token], { value: valor });
+  return await esperar(tx);
+}
+/* Renueva 30 dias el espacio del inquilino (mismo cobro). */
+export async function ftRenovar(slot) {
+  const c = await cFT();
+  let valor = 0n;
+  try { const q = await leeFT('costoBNB', [slot]); valor = q > 0n ? (q * 102n / 100n) : 0n; } catch (_) {}
+  const tx = await gasMargen(c, 'renovar', [slot], { value: valor });
+  return await esperar(tx);
+}
+/* El inquilino retira su propio token del espacio (sin reembolso). Solo quien lo publico. */
+export async function ftLiberar(slot) {
+  const c = await cFT();
+  const tx = await gasMargen(c, 'liberarMio', [slot], {});
+  return await esperar(tx);
+}
+
 export { ethers };
