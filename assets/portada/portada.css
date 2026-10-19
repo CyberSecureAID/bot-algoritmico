@@ -182,6 +182,13 @@ body{overflow-x:hidden}
 }
 #pt .pt-wbox .c-perfil:hover{color:var(--gold);border-color:var(--gold-lo);background:rgba(232,184,75,.07)}
 #pt .pt-wbox .dir{margin:0}
+/* BLINDAJE: la capsula vive dentro de un #colmena-app local y hereda la hoja de la app. A <=560px esa
+   hoja convierte .c-hdr-r en un panel desplegable absoluto (columna, fondo oscuro, 212px) que aqui no
+   tiene menu que lo oculte: aparecia flotando bajo la cabecera al comprimir la ventana (F12). Estas
+   reglas, mas especificas, la mantienen como capsula en linea a cualquier ancho. */
+#pt .pt-wbox #colmena-app .c-hdr-r,#pt .pt-wbox .c-hdr-r{position:static;top:auto;right:auto;flex-direction:row;align-items:center;gap:6px;min-width:0;width:auto;background:none;border:0;border-radius:0;padding:0;box-shadow:none;animation:none;z-index:auto}
+#pt .pt-wbox .c-hdr-r>.c-perfil{width:36px;height:36px;min-height:0;min-width:0;justify-content:center;gap:0;padding:0;border-radius:9px;border:1px solid var(--line2);background:none;color:var(--ink2);font-size:inherit;box-shadow:none}
+#pt .pt-wbox .c-hdr-r>.dir{width:auto;height:36px;min-height:0;min-width:0;justify-content:center;gap:7px;padding:0 12px;border-radius:9px;border:1px solid var(--line2);background:rgba(255,255,255,.05);color:var(--ink2);font-size:12px;max-width:none;overflow:visible;box-shadow:none;text-shadow:none}
 /* Aviso de red equivocada, en el mismo sitio. */
 #pt .pt-wbad{
   display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;
