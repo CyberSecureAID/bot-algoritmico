@@ -36,7 +36,7 @@
     + '.cc-disc-h svg{width:17px;height:17px;flex:none}'
     + '.cc-disc-t{font-size:12.5px;line-height:1.58;color:#c4ccd4;margin:0 0 8px}'
     + '.cc-disc-t.last{margin-bottom:0}'
-    + '.cc-disc-a{display:flex;align-items:center;gap:12px;margin-top:16px}'
+    + '.cc-disc-a{display:flex;align-items:stretch;justify-content:center;gap:12px;margin-top:16px}'
     + '.cc-disc-btn{flex:1 1 0;max-width:220px;min-width:0;box-sizing:border-box;'
     + 'display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;'
     + 'height:44px;padding:0 18px;border-radius:11px;'
@@ -89,7 +89,7 @@
       + '<p class="cc-disc-t last">This is not financial, investment, legal, or tax advice. You are responsible for your own decisions and for how you use these tools, and we are not liable for your losses or for any misuse. Every contract we run is public and verifiable on BscScan.</p>'
       + '<div class="cc-disc-a">'
       +   '<button class="cc-disc-btn" type="button" id="cc-disc-ok">I understand</button>'
-      +   '<a class="cc-disc-btn" href="transparency.html" role="button">' + SHIELD + 'Full transparency</a>'
+      +   '<a class="cc-disc-btn" href="transparency.html" role="button">' + SHIELD + 'Transparency</a>'
       + '</div>';
     document.body.appendChild(el);
     place(el);

@@ -54,8 +54,8 @@
     + '.ccb-chk input{appearance:none;-webkit-appearance:none;flex:none;width:20px;height:20px;margin:0;border-radius:6px;border:1.5px solid #c79426;background:rgba(0,0,0,.4);cursor:pointer;position:relative;transition:background .15s}'
     + '.ccb-chk input:checked{background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);border-color:#c79426}'
     + '.ccb-chk input:checked::after{content:"";position:absolute;left:6.5px;top:2.5px;width:5px;height:10px;border:solid #241900;border-width:0 2.4px 2.4px 0;transform:rotate(45deg)}'
-    + '.ccb-disc-a{display:flex;align-items:center;gap:12px;clear:both;margin-top:16px}'
-    + '.ccb-disc-btn{flex:1 1 0;max-width:240px;min-width:0;'
+    + '.ccb-disc-a{display:flex;align-items:stretch;justify-content:center;gap:12px;clear:both;margin-top:16px}'
+    + '.ccb-disc-btn{flex:1 1 0;max-width:230px;min-width:0;box-sizing:border-box;'
     + 'display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;'
     + 'height:46px;padding:0 18px;border-radius:12px;'
     + 'font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:.2px;white-space:nowrap;'
@@ -71,7 +71,7 @@
     + '.ccb-disc-fl{display:none}'
     + '.ccb-disc-top{display:block;width:112px;margin:0 auto 14px}'
     + '.ccb-disc-h{justify-content:center;text-align:center}'
-    + '.ccb-disc-a{flex-wrap:wrap}.ccb-disc-btn{flex:1 1 100%;max-width:none}}';
+    + '.ccb-disc-a{flex-direction:column}.ccb-disc-btn{flex:1 1 auto;width:100%;max-width:none}}';
 
   // wei (BigInt) -> texto BNB con hasta 5 decimales, sin ceros de cola.
   function fmtBNB(wei) {
@@ -127,8 +127,8 @@
       + '</div>'
       + '<label class="ccb-chk"><input type="checkbox" id="ccb-agree"><span>I have read and I accept the <b>Terms and Conditions</b>. I understand these bots do not guarantee any profit and that I use them at my own risk.</span></label>'
       + '<div class="ccb-disc-a">'
-      +   '<button class="ccb-disc-btn off" type="button" id="ccb-ok" disabled>Enter the bots</button>'
-      +   '<a class="ccb-disc-btn" href="transparency.html" role="button">' + SHIELD + 'Full transparency</a>'
+      +   '<button class="ccb-disc-btn off" type="button" id="ccb-ok" disabled>Bots</button>'
+      +   '<a class="ccb-disc-btn" href="transparency.html" role="button">' + SHIELD + 'Transparency</a>'
       + '</div>';
     ov.appendChild(el);
     document.body.appendChild(ov);
