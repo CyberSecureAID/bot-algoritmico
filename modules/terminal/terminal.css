@@ -67,3 +67,50 @@
   .tm-sec-txt span{display:none}
   .tm-live span{display:none}.tm-live{padding:0 10px}
 }
+
+/* ───────── Ficha del token (overlay) con semaforo de seguridad ───────── */
+.tm-ov{position:fixed;inset:0;z-index:1200;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px}
+.tm-ficha{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);padding:16px 18px 18px;scrollbar-width:thin}
+.tm-ficha::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
+.tm-f-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.tm-f-tt{display:flex;align-items:center;gap:10px;min-width:0}
+.tm-f-tt .tm-logo{width:36px;height:36px}
+.tm-f-tx{min-width:0}
+.tm-f-tx b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:16px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-f-tx span{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-f-tx i{font-style:normal;color:#8ef0b0}
+.tm-f-x{flex:0 0 auto;width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-2);display:grid;place-items:center;cursor:pointer;font-size:13px}
+.tm-sem{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(11,14,17,.72);margin-bottom:12px}
+.tm-sem-ico{width:38px;height:38px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.06);color:var(--ink-2)}
+.tm-sem-ico svg{width:20px;height:20px}
+.tm-sem b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;color:var(--ink)}
+.tm-sem span{display:block;font-size:12px;color:var(--ink-3);margin-top:1px}
+.tm-sem.ok{border-color:rgba(46,232,106,.35);background:rgba(46,232,106,.08)}.tm-sem.ok .tm-sem-ico{background:rgba(46,232,106,.18);color:#2ee86a}.tm-sem.ok b{color:#8ef0b0}
+.tm-sem.warn{border-color:rgba(232,184,75,.4);background:rgba(232,184,75,.08)}.tm-sem.warn .tm-sem-ico{background:rgba(232,184,75,.18);color:var(--gold)}.tm-sem.warn b{color:#f1cf6a}
+.tm-sem.bad{border-color:rgba(246,70,93,.45);background:rgba(246,70,93,.1)}.tm-sem.bad .tm-sem-ico{background:rgba(246,70,93,.2);color:#ff7f93}.tm-sem.bad b{color:#ff9aa9}
+.tm-sem.pend .tm-sem-ico{animation:tmGira 1.2s linear infinite}
+@keyframes tmGira{to{transform:rotate(360deg)}}
+.tm-kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.tm-kv>div{background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:9px 10px;min-width:0}
+.tm-kv span{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px;white-space:nowrap}
+.tm-kv b{display:block;font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-kv b sub{font-size:9px}
+.tm-kv .tm-copyc{padding:2px 7px;font-size:11px}
+.tm-hall{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px}
+.tm-hall li{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:rgba(11,14,17,.6)}
+.tm-h-ico{width:22px;height:22px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;margin-top:1px}
+.tm-h-ico svg{width:13px;height:13px}
+.tm-hall li b{display:block;font-size:13px;color:var(--ink);font-weight:600}
+.tm-hall li span{display:block;font-size:12px;color:var(--ink-3);line-height:1.4}
+.tm-hall li.ok .tm-h-ico{background:rgba(46,232,106,.18);color:#2ee86a}
+.tm-hall li.warn .tm-h-ico{background:rgba(232,184,75,.18);color:var(--gold)}
+.tm-hall li.bad{border-color:rgba(246,70,93,.35)}.tm-hall li.bad .tm-h-ico{background:rgba(246,70,93,.2);color:#ff7f93}
+.tm-hall li.info .tm-h-ico{background:rgba(127,160,216,.18);color:#9fb6d6}
+.tm-h-sk{height:40px;align-items:center}
+.tm-f-acts{display:flex;align-items:stretch;justify-content:center;gap:12px}
+.tm-b{flex:1 1 0;max-width:230px;min-width:0;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 18px;border-radius:12px;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;letter-spacing:.2px;white-space:nowrap;text-decoration:none;cursor:pointer;border:1px solid #c79426;color:#241900;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(255,255,255,.28)}
+.tm-b.sec{background:linear-gradient(180deg,#1b2027,#0d1117);color:#E8B84B;border-color:#8f6a1a;box-shadow:0 4px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);text-shadow:none}
+.tm-b:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}
+.tm-b.sec:active{box-shadow:0 1px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06)}
+.tm-f-note{margin:12px 2px 0;font-family:var(--mono);font-size:10.5px;line-height:1.55;color:var(--ink-3);text-align:center}
+@media(max-width:560px){.tm-kv{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-f-acts{flex-direction:column}.tm-b{flex:0 0 auto;max-width:none;width:100%;min-height:46px}}

@@ -3,6 +3,7 @@
    o USDT, y monedas creadas en el Launchpad de DecFreedom). Misma tabla y estetica que New Tokens. */
 
 import * as gb from './motor.js';
+import { auditar } from './auditoria.js';
 import { FEED, SCAN_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -87,6 +88,67 @@ function pintar() {
   if (!_items.length) return;   // sigue el esqueleto hasta el primer token
   host.innerHTML = `<table class="tm-table">${thead()}<tbody>${_items.map(fila).join('')}</tbody></table>`;
   host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
-  // Por ahora la fila abre el token en BscScan; la fase siguiente abre la ficha con Shield y compra.
-  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => window.open(SCAN_URL + '/token/' + r.dataset.a, '_blank', 'noopener'); });
+  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) abrirFicha(it); }; });
+}
+
+/* ───────── Ficha del token: datos + auditoria de seguridad en semaforo ───────── */
+const ICO_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>';
+const ICO_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
+const ICO_BAD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+const ICO_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
+const ICO_N = { ok: ICO_OK, warn: ICO_WARN, bad: ICO_BAD, info: ICO_INFO, pend: ICO_INFO };
+const TXT_NIVEL = { ok: 'Safe to trade', warn: 'Trade with caution', bad: 'Do not buy', pend: 'Checking security' };
+const pct = (v) => (v == null || !isFinite(v)) ? '—' : (Math.round(v * 10) / 10) + '%';
+
+export function abrirFicha(it) {
+  const prev = $('tm-ov'); if (prev) prev.remove();
+  const liqUsd = it.moneda === 'USDT' ? it.liquidez : it.liquidez * _bnbUsd;
+  const precioUsd = it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd;
+  const ov = document.createElement('div'); ov.id = 'tm-ov'; ov.className = 'tm-ov';
+  ov.innerHTML = `<div class="tm-ficha" role="dialog" aria-modal="true">
+    <div class="tm-f-head">
+      <div class="tm-f-tt">${logo(it.simbolo)}<div class="tm-f-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago · ${it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : 'PancakeSwap ' + it.moneda + ' pair'}</span></div></div>
+      <button class="tm-f-x" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="tm-sem pend" id="tm-sem"><span class="tm-sem-ico">${ICO_INFO}</span><div><b>${TXT_NIVEL.pend}</b><span>Reading the contract and the security scanner…</span></div></div>
+    <div class="tm-kv">
+      <div><span>Liquidity</span><b>${liqUsd > 0 ? money(liqUsd) : (it.par ? '—' : 'Launchpad pool')}</b></div>
+      <div><span>Price</span><b>${precioUsd > 0 ? '$' + fmtP(precioUsd) : '—'}</b></div>
+      <div><span>Holders</span><b id="tm-k-hold">—</b></div>
+      <div><span>Top 10</span><b id="tm-k-top">—</b></div>
+      <div><span>Creator</span><b id="tm-k-cre">—</b></div>
+      <div><span>Buy / Sell tax</span><b id="tm-k-tax">—</b></div>
+      <div><span>LP secured</span><b id="tm-k-lp">—</b></div>
+      <div><span>Contract</span><b><button class="tm-copyc" type="button" data-copy="${esc(it.token)}">${corto(it.token)} ${ICO_COPY}</button></b></div>
+    </div>
+    <ul class="tm-hall" id="tm-hall"><li class="tm-h-sk"><span class="tm-sk" style="width:60%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:45%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:70%"></span></li></ul>
+    <div class="tm-f-acts">
+      <a class="tm-b sec" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a>
+      <a class="tm-b" href="../swap/swap.html?token=${esc(it.token)}">Trade in Swap</a>
+    </div>
+    <p class="tm-f-note">This check reads what the contract allows today. It does not predict price and it is not a recommendation. Anyone can lose money on a new token.</p>
+  </div>`;
+  document.body.appendChild(ov);
+  const cerrar = () => { try { ov.remove(); } catch (_) {} };
+  ov.querySelector('.tm-f-x').onclick = cerrar;
+  ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
+  const cb = ov.querySelector('.tm-copyc'); cb.onclick = () => { try { navigator.clipboard.writeText(cb.dataset.copy); const o = cb.innerHTML; cb.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (cb.isConnected) cb.innerHTML = o; }, 1200); } catch (_) {} };
+  auditar(it.token, it.par).then((r) => { if (ov.isConnected) pintarAuditoria(r); }).catch((e) => { try { console.warn('[TERM-AUDIT] fallo', e); } catch (_) {} if (ov.isConnected) pintarAuditoria({ nivel: 'pend', titulo: 'Checking', hallazgos: [{ n: 'info', t: 'Security check unavailable', d: 'Could not reach the scanner. Try again.' }], datos: {} }); });
+}
+function pintarAuditoria(r) {
+  const sem = $('tm-sem'); if (!sem) return;
+  sem.className = 'tm-sem ' + r.nivel;
+  const nb = (r.hallazgos || []).filter((x) => x.n === 'bad').length, nw = (r.hallazgos || []).filter((x) => x.n === 'warn').length;
+  const sub = r.nivel === 'pend' ? esc(r.titulo) : r.nivel === 'ok' ? 'No red flags found in the contract'
+    : (nb ? nb + ' critical issue' + (nb > 1 ? 's' : '') : '') + (nb && nw ? ' and ' : '') + (nw ? nw + ' warning' + (nw > 1 ? 's' : '') : '');
+  sem.innerHTML = `<span class="tm-sem-ico">${ICO_N[r.nivel]}</span><div><b>${TXT_NIVEL[r.nivel]}</b><span>${sub}</span></div>`;
+  const d = r.datos || {};
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set('tm-k-hold', d.holders != null ? Number(d.holders).toLocaleString('en-US') : '—');
+  set('tm-k-top', pct(d.top10Pct));
+  set('tm-k-cre', pct(d.creadorPct));
+  set('tm-k-tax', (d.buyTax != null || d.sellTax != null) ? pct(d.buyTax || 0) + ' / ' + pct(d.sellTax || 0) : '—');
+  set('tm-k-lp', pct(d.lpAsegurada));
+  const ul = $('tm-hall'); if (!ul) return;
+  ul.innerHTML = r.hallazgos.map((x) => `<li class="${x.n}"><span class="tm-h-ico">${ICO_N[x.n] || ICO_INFO}</span><div><b>${esc(x.t)}</b><span>${esc(x.d || '')}</span></div></li>`).join('');
 }
