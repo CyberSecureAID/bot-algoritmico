@@ -124,7 +124,7 @@ body{overflow-x:hidden}
    navegador anima sin recalcular la página. */
 #pt .pt-hdr.pt-oculta{transform:translateY(-100%)}
 /* Logo y servicios arrancan donde siempre (borde de la banda de 1200 px); wallet y Contracts pegados a la esquina derecha. */
-#pt .pt-hdr__in{display:flex;align-items:center;gap:0;width:100%;max-width:none;margin:0 auto;padding:0 14px 0 max(14px,calc(50% - 600px + var(--gut)))}
+#pt .pt-hdr__in{display:flex;align-items:center;gap:0;width:100%;max-width:none;margin:0 auto;padding:0 14px}  /* logo pegado a la izquierda: mas sitio para los servicios */
 /* El logo REAL del repo, el mismo que usa la app. */
 #pt .pt-logo img{height:40px;width:auto}
 #pt .pt-nav{display:flex;align-items:center;gap:2px;flex:0 1 auto;margin-left:14px}
@@ -648,3 +648,14 @@ html{scrollbar-width:thin;scrollbar-color:#2b3139 #0e1319}
   #pt .pt-shots{grid-template-columns:repeat(2,1fr)}
   #pt .pt-shot-link:last-child{grid-column:1 / -1}
 }
+
+/* SERVICIO ACTIVO (.lp-on): el item de la pagina actual se enciende en dorado, emite un halo suave y lleva
+   debajo una linea que es gruesa en el centro y se afina hacia los lados, con su propia luz. */
+#pt .pt-nav__b.lp-on{position:relative;color:#f1cf6a;text-shadow:0 0 16px rgba(232,184,75,.55),0 0 2px rgba(232,184,75,.35),0 1px 4px rgba(0,0,0,.9)}
+#pt .pt-nav__b.lp-on:hover{color:#f6dc8a;background:transparent}
+#pt .pt-nav__b.lp-on::before{content:"";position:absolute;left:0;right:0;bottom:-10px;height:22px;pointer-events:none;
+  background:radial-gradient(ellipse 60% 100% at 50% 100%,rgba(232,184,75,.42),rgba(232,184,75,.12) 45%,transparent 72%)}
+#pt .pt-nav__b.lp-on::after{content:"";position:absolute;left:2px;right:2px;bottom:-1px;height:3px;pointer-events:none;border-radius:3px;
+  background:radial-gradient(ellipse 50% 100% at 50% 100%,#fff3c4 0%,#E8B84B 30%,rgba(232,184,75,.55) 60%,transparent 100%)}
+@media(max-width:1000px){#pt .pt-nav.pt-nav--open .pt-nav__b.lp-on::before,#pt .pt-nav.pt-nav--open .pt-nav__b.lp-on::after{display:none}
+  #pt .pt-nav.pt-nav--open .pt-nav__b.lp-on{background:rgba(232,184,75,.1)}}
