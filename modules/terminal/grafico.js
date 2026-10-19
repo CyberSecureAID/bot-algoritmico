@@ -95,14 +95,31 @@ function fmtEje(p) {
   return '0.0' + subCeros(ceros) + dig;
 }
 
-let _chart = null, _serie = null, _ro = null, _cont = null;
+let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0;
 /* Precio (en las unidades del eje, aqui USD) a la altura Y relativa al contenedor del grafico.
    Lo usa la vista grande para el clic derecho: poner una alerta al precio donde se hizo clic. */
 export function precioEnY(y) { try { return (_serie && y != null) ? _serie.coordinateToPrice(y) : null; } catch (_) { return null; } }
+/* Marca horizontal en el eje al precio de ENTRADA de una posicion abierta (como TradingView). El eje de
+   precios se amplia para que la linea de entrada SIEMPRE quede a la vista, aunque el precio se haya movido. */
+export function marcarEntrada(price, etiqueta) {
+  limpiarEntrada();
+  try {
+    if (_serie && price > 0 && isFinite(price)) {
+      _entradaPrecio = Number(price);
+      _lineaEntrada = _serie.createPriceLine({ price: _entradaPrecio, color: '#E8B84B', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: etiqueta || 'Entry' });
+      _serie.applyOptions({ autoscaleInfoProvider: (orig) => { const r = orig && orig(); if (!r || !r.priceRange) return r; const p = _entradaPrecio; return { priceRange: { minValue: Math.min(r.priceRange.minValue, p), maxValue: Math.max(r.priceRange.maxValue, p) }, margins: r.margins }; } });
+    }
+  } catch (_) {}
+}
+export function limpiarEntrada() {
+  try { if (_serie && _lineaEntrada) _serie.removePriceLine(_lineaEntrada); } catch (_) {}
+  try { if (_serie) _serie.applyOptions({ autoscaleInfoProvider: undefined }); } catch (_) {}
+  _lineaEntrada = null; _entradaPrecio = 0;
+}
 export function destruirGrafico() {
   if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; }
   if (_chart) { try { _chart.remove(); } catch (_) {} }
-  _chart = null; _serie = null; _cont = null;
+  _chart = null; _serie = null; _cont = null; _lineaEntrada = null; _entradaPrecio = 0;
 }
 export function montarGrafico(cont, velas) {
   if (!cont || !Array.isArray(velas) || !velas.length) return false;

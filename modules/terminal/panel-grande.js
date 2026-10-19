@@ -10,7 +10,7 @@
    clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
-import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY } from './grafico.js';
+import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
 import { SCAN_URL, FACTORY, WBNB, USDT } from './config.js';
 import { abrirCompra, saldoBNB, saldoToken } from './compra.js';
 import { listaDe, enVivo } from './posiciones.js';
@@ -165,11 +165,17 @@ function css() {
 .tg-pick-empty{padding:26px 10px;text-align:center;color:var(--ink-3,#7d8794);font-size:12px}
 .tg-anillo{width:34px;height:34px;border-radius:50%;border:3px solid #1c232b;border-top-color:var(--gold,#E8B84B);animation:tgSpin .8s linear infinite}
 @keyframes tgSpin{to{transform:rotate(360deg)}}
-.tg-ctx{position:fixed;z-index:1300;min-width:172px;background:#0b0f14;border:1px solid #2a323d;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.6);padding:12px;animation:tgIn .12s ease}
+.tg-ctx{position:fixed;z-index:1300;min-width:206px;background:#0b0f14;border:1px solid #2a323d;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.6);padding:12px;animation:tgIn .12s ease}
 .tg-ctx-px{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--gold,#E8B84B)} .tg-ctx-px sub{font-size:.62em}
 .tg-ctx-pc{font-family:var(--mono);font-size:12px;margin:3px 0 10px} .tg-ctx-pc.up{color:var(--verde,#2ee86a)} .tg-ctx-pc.down{color:var(--rojo,#f6465d)}
-.tg-ctx-set{width:100%;height:38px;border-radius:10px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold,#E8B84B);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;cursor:pointer}
-.tg-ctx-set:active{transform:translateY(1px)}
+.tg-ctx-pos{font-family:var(--mono);font-size:11px;margin:0 0 10px;padding:7px 9px;border-radius:9px;background:#0e141b;border:1px solid var(--line,#232b36)}
+.tg-ctx-pos.up{color:#3ddc84} .tg-ctx-pos.down{color:#ff5c6c}
+.tg-ctx-btns{display:flex;gap:7px}
+.tg-ctx-b{flex:1 1 0;height:37px;border-radius:10px;border:1px solid;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;cursor:pointer}
+.tg-ctx-b.alert{background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold,#E8B84B);border-color:#8f6a1a}
+.tg-ctx-b.buy{background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;border-color:#1f8f63}
+.tg-ctx-b.sell{background:linear-gradient(180deg,#f6465d,#c42d41);color:#fff;border-color:#c42d41}
+.tg-ctx-b:active{transform:translateY(1px)}
 @media(max-width:860px){
   .tm-big-main{grid-template-columns:1fr;grid-auto-rows:minmax(0,auto)}
   .tg-left,.tg-right{max-height:none}
@@ -295,7 +301,7 @@ export async function abrirGrande(it0, ctx) {
     try {
       const velas = await velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: bnbUsd(), quoteEsUSDT: it.moneda === 'USDT' });
       if (!ov.isConnected) return;
-      if (velas && velas.length && cv) { if (msg) msg.hidden = true; montarGrafico(cv, velas); }
+      if (velas && velas.length && cv) { if (msg) msg.hidden = true; montarGrafico(cv, velas); marcarEntradaDe(it); }
       else if (msg) { msg.hidden = false; msg.textContent = 'No trades yet'; }
     } catch (_) { if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'Chart unavailable'; } }
   }
@@ -445,26 +451,66 @@ async function derPositions(it) {
   host.querySelectorAll('.tg-pos-ca').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const ca = b.dataset.ca; try { navigator.clipboard.writeText(ca); } catch (_) {} const inp = $('tg-find-in'); if (inp) inp.value = ca; const o = b.innerHTML; b.textContent = 'copied'; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1100); }; });
 }
 
-/* ── Clic derecho en la grafica: poner una alerta al precio del clic, con el % vs el precio actual ── */
+/* ── Marca la entrada de la posicion abierta de este token en la grafica (si la hay) ── */
+function marcarEntradaDe(it) {
+  try {
+    if (!it || !it.par) { limpiarEntrada(); return; }
+    const c = wallet.cuentaActual(); if (!c) { limpiarEntrada(); return; }
+    const pos = listaDe(c).find((p) => p.token && p.token.toLowerCase() === it.token.toLowerCase());
+    if (!pos) { limpiarEntrada(); return; }
+    const dec = pos.decimales || 18;
+    const amt = Number(ethers.formatUnits(BigInt(pos.cantidad || '0'), dec));
+    if (!(amt > 0) || !(pos.costoUsd > 0)) { limpiarEntrada(); return; }
+    const entry = pos.costoUsd / amt;
+    if (entry > 0) marcarEntrada(entry, 'Entry $' + fmtTxt(entry));
+  } catch (_) {}
+}
+/* Posicion guardada de este token con su ganancia aproximada al precio actual, o null. */
+function posicionDe(it) {
+  try {
+    const c = wallet.cuentaActual(); if (!c) return null;
+    const pos = listaDe(c).find((p) => p.token && p.token.toLowerCase() === it.token.toLowerCase());
+    if (!pos) return null;
+    const dec = pos.decimales || 18;
+    const amt = Number(ethers.formatUnits(BigInt(pos.cantidad || '0'), dec));
+    if (!(amt > 0)) return null;
+    const pnl = amt * (_precioUsd || 0) - (pos.costoUsd || 0);
+    const pnlPct = (pos.costoUsd > 0) ? pnl / pos.costoUsd * 100 : 0;
+    return { pnl, pnlPct };
+  } catch (_) { return null; }
+}
+function openBuyOrSell(it, modo) {
+  const aud = _ctx && _ctx.auditoriaDe ? _ctx.auditoriaDe(it) : null;
+  const go = () => { try { abrirCompra(it, aud, modo); } catch (_) {} };
+  if (!wallet.cuentaActual()) { wallet.conectar().then(go).catch(go); } else go();
+}
+
+/* ── Clic derecho en la grafica: debajo del precio, solo alerta; encima, alerta y (segun tengas o no la
+   moneda) vender o comprar, a mercado. La compra y la venta usan el flujo probado abrirCompra. ── */
 function abrirCtx(x, y, px) {
   cerrarCtx();
+  const it = _itActual; if (!it) return;
   const cur = _precioUsd > 0 ? _precioUsd : 0;
   const diff = cur > 0 ? (px - cur) / cur * 100 : 0;
   const up = px >= cur;
+  const pos = posicionDe(it);
   const el = document.createElement('div'); el.className = 'tg-ctx'; el.id = 'tg-ctx';
-  el.innerHTML = `<div class="tg-ctx-px">$${fmtP(px, 5)}</div>
-    <div class="tg-ctx-pc ${up ? 'up' : 'down'}">${cur > 0 ? (up ? '+' : '-') + pct(Math.abs(diff)) + (up ? ' above market' : ' below market') : 'Set a price alert'}</div>
-    <button class="tg-ctx-set" type="button">Set alert here</button>`;
+  let html = `<div class="tg-ctx-px">$${fmtP(px, 5)}</div><div class="tg-ctx-pc ${up ? 'up' : 'down'}">${cur > 0 ? (up ? '+' : '-') + pct(Math.abs(diff)) + (up ? ' above market' : ' below market') : 'Set a price alert'}</div>`;
+  if (pos) html += `<div class="tg-ctx-pos ${pos.pnl >= 0 ? 'up' : 'down'}">Position ${pos.pnl >= 0 ? '+' : '-'}$${fmtTxt(Math.abs(pos.pnl))} · ${pos.pnl >= 0 ? '+' : '-'}${pct(Math.abs(pos.pnlPct))} now</div>`;
+  html += `<div class="tg-ctx-btns"><button class="tg-ctx-b alert" type="button">Set alert</button>`;
+  if (up && pos) html += `<button class="tg-ctx-b sell" type="button">Sell</button>`;
+  else if (up && !pos) html += `<button class="tg-ctx-b buy" type="button">Buy</button>`;
+  html += `</div>`;
+  el.innerHTML = html;
   document.body.appendChild(el);
-  const w = el.offsetWidth || 180, h = el.offsetHeight || 96;
+  const w = el.offsetWidth || 200, h = el.offsetHeight || 110;
   let left = x + 8, top = y + 8;
   if (left + w > window.innerWidth) left = x - w - 8;
   if (top + h > window.innerHeight) top = y - h - 8;
   el.style.left = Math.max(6, left) + 'px'; el.style.top = Math.max(6, top) + 'px';
-  el.querySelector('.tg-ctx-set').onclick = () => {
-    try { crearAlerta(_itActual, px, up ? 'up' : 'down'); } catch (_) {}
-    cerrarCtx(); try { derOpenAlerts(_itActual); } catch (_) {}
-  };
+  el.querySelector('.tg-ctx-b.alert').onclick = () => { try { crearAlerta(it, px, up ? 'up' : 'down'); } catch (_) {} cerrarCtx(); try { derOpenAlerts(it); } catch (_) {} };
+  const bBuy = el.querySelector('.tg-ctx-b.buy'); if (bBuy) bBuy.onclick = () => { cerrarCtx(); openBuyOrSell(it, 'buy'); };
+  const bSell = el.querySelector('.tg-ctx-b.sell'); if (bSell) bSell.onclick = () => { cerrarCtx(); openBuyOrSell(it, 'sell'); };
   setTimeout(() => { document.addEventListener('mousedown', ctxFuera, true); document.addEventListener('keydown', ctxEsc, true); }, 0);
 }
 function ctxFuera(e) { const el = document.getElementById('tg-ctx'); if (el && !el.contains(e.target)) cerrarCtx(); }

@@ -95,14 +95,14 @@ const marcaBNB = () => `<span class="tmc-ico tmc-bnb"><span class="tmc-fb">B</sp
 /* ── Ventana de compra y venta ──
    it: item del feed (token, simbolo, nombre, decimales, quote). aud: resultado de la auditoria
    ({nivel}) o null. Con nivel 'bad' la compra queda bloqueada (vender si se permite: salir siempre se puede). */
-export function abrirCompra(it, aud) {
+export function abrirCompra(it, aud, modoInicial) {
   if (!it) return;
   const prev = $('tmc-ov'); if (prev) prev.remove();
   const sym = esc(it.simbolo || 'TOKEN');
   const dec = Number(it.decimales) || 18;
   const quote = quoteDe(it);
   const nivel = aud && aud.nivel ? aud.nivel : 'pend';
-  let modo = 'buy';                           // 'buy' | 'sell'
+  let modo = (modoInicial === 'sell') ? 'sell' : 'buy';   // 'buy' | 'sell'
   let bnbUsd = 0, saldo = null, saldoTok = null, permiso = 0n, slipBps = SLIPPAGE.porDefecto;
   let cot = null, cotPara = 0n, ocupado = false, firmando = false, mensaje = false;
 
@@ -113,7 +113,7 @@ export function abrirCompra(it, aud) {
         <button class="tmc-x" type="button" aria-label="Close">✕</button>
       </div>
       <div class="tmc-body">
-        <div class="tmc-tabs" role="tablist"><button type="button" class="on" data-m="buy" role="tab">Buy</button><button type="button" data-m="sell" role="tab">Sell</button></div>
+        <div class="tmc-tabs" role="tablist"><button type="button" class="${modo === 'buy' ? 'on' : ''}" data-m="buy" role="tab">Buy</button><button type="button" class="${modo === 'sell' ? 'on' : ''}" data-m="sell" role="tab">Sell</button></div>
         <div class="tmc-cards">
           <div class="tmc-box">
             <div class="tmc-box-top"><span class="tmc-lbl">You pay</span><span class="tmc-bal" id="tmc-bal"></span></div>
