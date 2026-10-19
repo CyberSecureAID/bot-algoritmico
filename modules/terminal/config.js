@@ -28,7 +28,10 @@ export const COINGECKO_BNB = 'https://api.coingecko.com/api/v3/simple/price?ids=
 
 /* Feed: cuantos bloques hacia atras al abrir (BSC ~0.45 s por bloque: 4000 ~ 30 min), cuantos
    por consulta (los RPC publicos limitan el rango de eth_getLogs) y cada cuanto se sondea. */
-export const FEED = { bloquesInicio: 4000, bloquesPorConsulta: 1000, sondeoMs: 3000, maxFilas: 80 };
+export const FEED = { bloquesInicio: 4000, bloquesPorConsulta: 1000, sondeoMs: 3000, maxFilas: 80,
+  /* four.meme crea cientos de tokens por hora sin par ni liquidez: encendido inunda la lista y tapa los pares
+     reales de PancakeSwap. Apagado por defecto; ponlo en true para incluirlos. */
+  fourMeme: false };
 
 export const SCAN_URL = 'https://bscscan.com';
 

@@ -6,22 +6,12 @@
    Todo lo que pasa se registra en consola con prefijo [TERM]. */
 
 import * as ethers from './ethers.min.js';
-import { RPCS, FACTORY, WBNB, USDT, LAUNCHPAD, FOURMEME, COINGECKO_BNB, FEED } from './config.js';
+import { FACTORY, WBNB, USDT, LAUNCHPAD, FOURMEME, COINGECKO_BNB, FEED } from './config.js';
 
 const log = (...a) => { try { console.info('[TERM]', ...a); } catch (_) {} };
 
-/* ── RPC con rotacion: si uno falla, se prueba el siguiente ── */
-let _rpcIdx = 0; const _prov = {};
-function provRPC(i) { const u = RPCS[((i % RPCS.length) + RPCS.length) % RPCS.length]; if (!_prov[u]) _prov[u] = new ethers.JsonRpcProvider(u, 56, { staticNetwork: true }); return _prov[u]; }
-async function conRotacion(fn) {
-  let err;
-  for (let k = 0; k < RPCS.length; k++) {
-    const i = _rpcIdx + k;
-    try { return await fn(provRPC(i)); }
-    catch (e) { err = e; _rpcIdx = (i + 1) % RPCS.length; }
-  }
-  throw err;
-}
+import { conRotacion, bloqueActual as _bloque } from './rpc.js';
+export const bloqueActual = _bloque;
 
 /* ── ABIs minimos ── */
 const IFACE_FACTORY = new ethers.Interface(['event PairCreated(address indexed token0,address indexed token1,address pair,uint256)']);
@@ -35,7 +25,6 @@ const TOPIC_TOKEN = IFACE_LP.getEvent('TokenCreado').topicHash;
 const TOPIC_4M = IFACE_4M.getEvent('TokenCreate').topicHash;
 const esQuote = (a) => { const x = String(a).toLowerCase(); return x === WBNB.toLowerCase() || x === USDT.toLowerCase(); };
 
-export const bloqueActual = () => conRotacion((p) => p.getBlockNumber());
 
 /* Decodifica un log de la fabrica o del launchpad a un item del feed. Funcion pura (se prueba sin red). */
 export function decodificar(l) {
@@ -65,7 +54,7 @@ export async function logsRango(desde, hasta) {
   const [a, b, c] = await Promise.all([
     conRotacion((p) => p.getLogs({ address: FACTORY, topics: [TOPIC_PAIR], fromBlock: desde, toBlock: hasta })).catch((e) => { log('getLogs pancake fallo', desde, hasta, e && e.shortMessage || e); return []; }),
     conRotacion((p) => p.getLogs({ address: LAUNCHPAD, topics: [TOPIC_TOKEN], fromBlock: desde, toBlock: hasta })).catch((e) => { log('getLogs launchpad fallo', desde, hasta, e && e.shortMessage || e); return []; }),
-    conRotacion((p) => p.getLogs({ address: FOURMEME, topics: [TOPIC_4M], fromBlock: desde, toBlock: hasta })).catch((e) => { log('getLogs four.meme fallo', desde, hasta, e && e.shortMessage || e); return []; })
+    FEED.fourMeme ? conRotacion((p) => p.getLogs({ address: FOURMEME, topics: [TOPIC_4M], fromBlock: desde, toBlock: hasta })).catch((e) => { log('getLogs four.meme fallo', desde, hasta, e && e.shortMessage || e); return []; }) : Promise.resolve([])
   ]);
   return a.concat(b, c).map(decodificar).filter(Boolean);
 }

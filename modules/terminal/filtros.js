@@ -140,7 +140,7 @@ export function abrirFiltros(deps) {
   const enCola = new Set(); const cola = [];
   const encolar = (vivo) => { for (const it of vivo) { const k = it.token.toLowerCase(); if (!enCola.has(k) && !deps.auditoriaDe(it)) { enCola.add(k); cola.push(it); } } };
   const worker = async () => { while (abierto()) { const it = cola.shift(); if (!it) { await new Promise((r) => setTimeout(r, 400)); continue; } try { await deps.auditarCache(it); } catch (e) { log('audit fallo', it.token, e && e.message); } enCola.delete(it.token.toLowerCase()); await new Promise((r) => setTimeout(r, 250)); } };
-  [0, 1, 2].forEach(worker);
+  [0, 1].forEach(worker);
 
   let ultimaClave = '';
   const pintar = (forzar) => {

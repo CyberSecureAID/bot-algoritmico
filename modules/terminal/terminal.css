@@ -128,13 +128,31 @@
 .tm-sem.ok{border-color:rgba(46,232,106,.35);background:rgba(46,232,106,.08)}.tm-sem.ok .tm-sem-ico{background:rgba(46,232,106,.18);color:#2ee86a}.tm-sem.ok b{color:#8ef0b0}
 .tm-sem.warn{border-color:rgba(232,184,75,.4);background:rgba(232,184,75,.08)}.tm-sem.warn .tm-sem-ico{background:rgba(232,184,75,.18);color:var(--gold)}.tm-sem.warn b{color:#f1cf6a}
 .tm-sem.bad{border-color:rgba(246,70,93,.45);background:rgba(246,70,93,.1)}.tm-sem.bad .tm-sem-ico{background:rgba(246,70,93,.2);color:#ff7f93}.tm-sem.bad b{color:#ff9aa9}
-.tm-sem.pend .tm-sem-ico{animation:tmGira 1.2s linear infinite}
+.tm-sem.pend .tm-sem-ico{background:rgba(232,184,75,.1)}
+/* Anillo de progreso real: arco dorado girando sobre un aro tenue (sin icono estatico) */
+.tm-anillo{display:block;width:20px;height:20px;border-radius:50%;border:2.5px solid rgba(232,184,75,.18);border-top-color:var(--gold);animation:tmGira .8s linear infinite}
 @keyframes tmGira{to{transform:rotate(360deg)}}
+/* Pasos de la comprobacion dentro del mismo semaforo (misma altura que la linea de texto): circulo vacio,
+   anillo girando mientras corre, tick verde al terminar, punto rojo si ese paso no respondio. */
+.tm-sem span.tm-pasos{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;line-height:16px;min-height:16px}
+.tm-pasos u{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
+.tm-pasos i{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(255,255,255,.22);vertical-align:-1px;margin-right:4px;box-sizing:border-box;position:relative}
+.tm-pasos i.run{border-color:rgba(232,184,75,.25);border-top-color:var(--gold);animation:tmGira .8s linear infinite}
+.tm-pasos i.ok{border-color:#2ee86a;background:#2ee86a}
+.tm-pasos i.ok::after{content:"";position:absolute;left:2px;top:3.5px;width:4px;height:2px;border-left:1.6px solid #0b0e11;border-bottom:1.6px solid #0b0e11;transform:rotate(-45deg)}
+.tm-pasos i.fail{border-color:#ff7f93;background:rgba(246,70,93,.45)}
+.tm-pasos em{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-right:0}
+.tm-pasos i.ok+em{color:#8ef0b0}
+@media (max-width:480px){.tm-sem{gap:9px}.tm-sem .tm-sem-ico{width:32px;height:32px}.tm-sem span.tm-pasos{gap:0 5px}.tm-pasos em{font-size:9.5px}.tm-pasos i{margin-right:3px}}
+.tm-sem>div{flex:1 1 auto;min-width:0}
+.tm-sem-retry{flex:0 0 auto;margin-left:auto;height:30px;padding:0 14px;border-radius:9px;border:1px solid rgba(232,184,75,.5);background:rgba(232,184,75,.08);color:var(--gold);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12px;cursor:pointer}
+.tm-kv .tm-sk{height:12px;vertical-align:middle}
 .tm-kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
 .tm-kv>div{background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:9px 10px;min-width:0}
 .tm-kv span{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px;white-space:nowrap}
 .tm-kv b{display:block;font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tm-kv b sub{font-size:9px}
+.tm-kv b#tm-k-cre,.tm-kv b#tm-k-hold{letter-spacing:-.3px}
 .tm-kv .tm-copyc{padding:2px 7px;font-size:11px}
 .tm-hall{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px}
 .tm-hall li{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:rgba(11,14,17,.6)}

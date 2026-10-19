@@ -7,7 +7,8 @@
 
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-import { RPCS, TERMINAL_SWAP, WBNB, USDT, SCAN_URL, SLIPPAGE } from './config.js';
+import { TERMINAL_SWAP, WBNB, USDT, SCAN_URL, SLIPPAGE } from './config.js';
+import { conRotacion } from './rpc.js';
 import { precioBNBUSDT } from './motor.js';
 
 const log = (...a) => { try { console.info('[TERM-BUY]', ...a); } catch (_) {} };
@@ -25,9 +26,6 @@ const ERC20 = ['function balanceOf(address) view returns (uint256)', 'function a
 const LOGO_BNB = 'https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png';
 
 /* ── RPC con rotacion (lecturas) y firmante (escritura) ── */
-let _rpcIdx = 0; const _prov = {};
-function provRPC(i) { const u = RPCS[((i % RPCS.length) + RPCS.length) % RPCS.length]; if (!_prov[u]) _prov[u] = new ethers.JsonRpcProvider(u, 56, { staticNetwork: true }); return _prov[u]; }
-async function conRotacion(fn) { let err; for (let k = 0; k < RPCS.length; k++) { const i = _rpcIdx + k; try { return await fn(provRPC(i)); } catch (e) { err = e; _rpcIdx = (i + 1) % RPCS.length; } } throw err; }
 function inyectado() {
   try { const p = wallet.proveedorActivo && wallet.proveedorActivo(); if (p) return p; } catch (_) {}
   if (typeof window !== 'undefined' && window.ethereum) return window.ethereum;
