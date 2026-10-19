@@ -1,10 +1,10 @@
 /* terminal/filtros.js. Ventana de filtros de la Terminal (modulo sellado).
-   La lista "New pairs" se mueve sin parar. Aqui se abre una copia CONGELADA (snapshot) de esa misma
-   lista, con el mismo aspecto, y encima una fila de filtros marcables (punto verde cuando estan activos):
-     With liquidity · Highest liquidity · Safe only · BNB pairs · USDT pairs · Custom checks
-   "Custom checks" abre la lista de comprobaciones de la auditoria para elegir cuales exigir.
-   Cada token del snapshot se audita (con cache compartida) y su semaforo aparece en una columna "Check";
-   los filtros de seguridad se aplican a medida que llegan los resultados. "Refresh" toma otra foto. */
+   New pairs es un torrente: aqui se abre la misma lista pero VACIA y bajo control. No aparece ningun token
+   hasta que marcas un filtro; a partir de ahi la ventana vuelve a leer la lista viva cada segundo y muestra
+   solo lo que pasa los filtros marcados (punto verde = activo). Cada token se audita una sola vez (cache
+   compartida con la ficha) y su semaforo aparece en la columna Check. Los filtros de seguridad se aplican
+   segun llegan los resultados; los tokens aun sin datos del escaner cuentan como "checking" y no se muestran.
+   Ocho filtros (numero par: en movil van de dos en dos). "Custom checks" abre la lista de comprobaciones. */
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -13,9 +13,11 @@ const log = (...a) => { try { console.info('[TERM-FIL]', ...a); } catch (_) {} }
 const CHIPS = [
   { k: 'liq', t: 'With liquidity' },
   { k: 'top', t: 'Highest liquidity' },
-  { k: 'safe', t: 'Safe only' },
+  { k: 'sell', t: 'Can be sold' },
+  { k: 'nored', t: 'No red flags' },
   { k: 'bnb', t: 'BNB pairs' },
   { k: 'usdt', t: 'USDT pairs' },
+  { k: 'lp', t: 'Launchpad only' },
   { k: 'custom', t: 'Custom checks' }
 ];
 const CHECKS = [
@@ -41,8 +43,7 @@ function css() {
     + '.tm-fil-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px 10px}'
     + '.tm-fil-head .tm-sec-tt{min-width:0}'
     + '.tm-fil-acts{display:flex;align-items:center;gap:8px;flex:0 0 auto}'
-    + '.tm-fil-acts .tm-b{flex:0 0 auto;height:36px;min-width:0;padding:0 14px;font-size:12.5px}'
-    + '.tm-chips{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:4px 18px 12px}'
+    + '.tm-chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:4px 18px 12px}'
     + '.tm-chip{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 10px;border-radius:11px;border:1px solid #2a333f;background:linear-gradient(180deg,#1b2027,#0d1117);color:#b7bdc6;font-family:"Chakra Petch",var(--display);font-weight:700;font-size:12.5px;letter-spacing:.2px;white-space:nowrap;cursor:pointer;box-shadow:0 3px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);transition:color .15s,border-color .15s}'
     + '.tm-chip i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:#2b333d;box-shadow:inset 0 1px 2px rgba(0,0,0,.6);transition:background .15s,box-shadow .15s}'
     + '.tm-chip:hover{color:#eaecef;border-color:#8f6a1a}'
@@ -52,8 +53,10 @@ function css() {
     + '.tm-chip b{font-family:var(--mono);font-size:10.5px;color:#2ee86a;font-weight:700}'
     + '.tm-fil-body{flex:1 1 auto;min-height:0;overflow:auto;padding:0 18px 16px;scrollbar-width:none}'
     + '.tm-fil-body::-webkit-scrollbar{width:0;height:0;display:none}'
-    + '.tm-fil-empty{padding:40px 10px;text-align:center;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);line-height:1.6}'
+    + '.tm-fil-empty{padding:44px 14px;text-align:center;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);line-height:1.7}'
+    + '.tm-fil-empty b{display:block;font-family:"Chakra Petch",var(--display);font-size:15px;color:var(--ink-2);margin-bottom:6px}'
     + '.tm-fil-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 18px 8px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}'
+    + '.tm-fil-bar .vivo{display:inline-flex;align-items:center;gap:6px;color:#8ef0b0}.tm-fil-bar .vivo i{width:7px;height:7px;border-radius:50%;background:#2ee86a;animation:tmFilPend 1.4s ease-in-out infinite}'
     + '.tm-chk{width:92px}.tm-c-chk{width:92px}'
     + '.tm-sem-p{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;border:1px solid var(--line);color:var(--ink-3);background:rgba(255,255,255,.04)}'
     + '.tm-sem-p i{width:7px;height:7px;border-radius:50%;background:#6b7580;flex:0 0 auto}'
@@ -70,11 +73,11 @@ function css() {
     + '.tm-cc-list input:checked{background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426)}'
     + '.tm-cc-list input:checked::after{content:"";position:absolute;left:6.5px;top:2.5px;width:5px;height:10px;border:solid #241900;border-width:0 2.4px 2.4px 0;transform:rotate(45deg)}'
     + '.tm-cc-list b{display:block;font-size:13px;color:var(--ink);font-weight:600}.tm-cc-list span{display:block;font-size:11.5px;color:var(--ink-3)}'
-    + '@media(max-width:900px){.tm-chips{grid-template-columns:repeat(3,minmax(0,1fr))}}'
+    + '.tm-cc-note{margin:0 0 12px;font-family:var(--mono);font-size:11px;color:var(--ink-3);line-height:1.5}'
     + '@media(max-width:760px){.tm-ov.tm-ov-fil{padding:8px}.tm-fil{height:calc(100vh - 16px);border-radius:16px}.tm-fil-head,.tm-chips,.tm-fil-bar{padding-left:12px;padding-right:12px}.tm-fil-body{padding:0 10px 12px}'
     + '.tm-chips{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-chip{font-size:12px;padding:0 8px}.tm-fil-head .tm-sec-txt span{display:none}'
     + '.tm-chk,.tm-c-chk{width:52px;padding-left:4px;padding-right:4px}.tm-sem-p{padding:0;width:22px;justify-content:center;border-color:transparent;background:none}.tm-sem-p span{display:none}'
-    + '.tm-ov-fil .tm-c-chain,.tm-ov-fil .tm-chain{display:none}}';   /* en movil Chain cede su sitio a Check (semaforo); su cabecera ya cabe */
+    + '.tm-ov-fil .tm-c-chain,.tm-ov-fil .tm-chain{display:none}}';   /* en movil Chain cede su sitio a Check (semaforo) */
   document.head.appendChild(st);
 }
 
@@ -84,6 +87,7 @@ function elegirChecks(actuales) {
     const ov = document.createElement('div'); ov.className = 'tm-ov';
     ov.innerHTML = `<div class="tm-cc" role="dialog" aria-modal="true">
       <div class="tm-f-head"><div class="tm-f-tt"><div class="tm-f-tx"><b>Custom checks</b><span>Show only tokens that pass every check you mark</span></div></div><button class="tm-f-x" type="button" aria-label="Close">✕</button></div>
+      <p class="tm-cc-note">The more checks you mark, the fewer tokens pass. Newborn tokens rarely pass more than five or six. Ownership renounced and liquidity secured are the rarest in the first minutes.</p>
       <ul class="tm-cc-list">${CHECKS.map((c) => `<li><label class="${actuales.has(c.k) ? 'on' : ''}"><input type="checkbox" data-k="${c.k}" ${actuales.has(c.k) ? 'checked' : ''}><div><b>${c.t}</b><span>${c.d}</span></div></label></li>`).join('')}</ul>
       <div class="tm-f-acts"><button class="tm-b sec" type="button" id="tm-cc-clear">Clear</button><button class="tm-b" type="button" id="tm-cc-ok">Apply</button></div>
     </div>`;
@@ -98,73 +102,84 @@ function elegirChecks(actuales) {
   });
 }
 
-/* Abre la ventana. deps: items() copia de la lista, fila(it,i,extra), thead(extra), abrirFicha(it),
-   auditarCache(it) y auditoriaDe(it) del modulo principal. */
+/* Abre la ventana. deps: items() lista viva, fila(it,i,extra), thead(extra), abrirFicha(it),
+   auditarCache(it), auditoriaDe(it) y bnbUsd() del modulo principal. */
 export function abrirFiltros(deps) {
   css();
   const prev = $('tm-fil-ov'); if (prev) prev.remove();
   const on = new Set(); let checks = new Set();
-  let snap = deps.items(); let tomado = Date.now();
   const ov = document.createElement('div'); ov.id = 'tm-fil-ov'; ov.className = 'tm-ov tm-ov-fil';
   ov.innerHTML = `<div class="tm-fil" role="dialog" aria-modal="true">
     <div class="tm-fil-head">
-      <div class="tm-sec-tt"><div class="tm-sec-txt"><b>New pairs</b><span>A still copy of the live list. Mark the filters you want; the list does not move until you refresh.</span></div></div>
-      <div class="tm-fil-acts"><button class="tm-b sec" type="button" id="tm-fil-refresh">Refresh</button><button class="tm-f-x" type="button" aria-label="Close">✕</button></div>
+      <div class="tm-sec-tt"><div class="tm-sec-txt"><b>New pairs</b><span>Same live list, under control: nothing shows until you mark a filter.</span></div></div>
+      <div class="tm-fil-acts"><button class="tm-f-x" type="button" aria-label="Close">✕</button></div>
     </div>
     <div class="tm-chips" id="tm-chips">${CHIPS.map((c) => `<button class="tm-chip" type="button" data-k="${c.k}"><i></i><span>${c.t}</span></button>`).join('')}</div>
-    <div class="tm-fil-bar"><span id="tm-fil-n"></span><span id="tm-fil-t"></span></div>
+    <div class="tm-fil-bar"><span id="tm-fil-n"></span><span class="vivo"><i></i><span id="tm-fil-t">Live</span></span></div>
     <div class="tm-fil-body" id="tm-fil-body"></div>
   </div>`;
   document.body.appendChild(ov);
-  const cerrar = () => { try { ov.remove(); } catch (_) {} };
+  const abierto = () => !!$('tm-fil-ov');
+  let timer = null;
+  const cerrar = () => { clearInterval(timer); try { ov.remove(); } catch (_) {} };
   ov.querySelector('.tm-f-x').onclick = cerrar;
   ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
-  const abierto = () => !!$('tm-fil-ov');
 
   const celda = (it) => { const r = deps.auditoriaDe(it); const n = r ? r.nivel : 'pend'; return `<td class="tm-chk"><span class="tm-sem-p ${n}" title="${TXT[n]}"><i></i><span>${TXT[n]}</span></span></td>`; };
+  const hayFiltro = () => on.size > 0;
+  const necesitaDatos = () => on.has('sell') || on.has('nored') || (on.has('custom') && checks.size > 0);
   const pasa = (it) => {
     if (on.has('liq') && !(it.liquidez > 0)) return false;
+    if (on.has('lp') && it.fuente !== 'launchpad') return false;
     if (on.has('bnb') && !on.has('usdt') && it.moneda !== 'BNB') return false;
     if (on.has('usdt') && !on.has('bnb') && it.moneda !== 'USDT') return false;
-    const r = deps.auditoriaDe(it);
-    if (on.has('safe') && !(r && r.nivel === 'ok')) return false;
-    if (on.has('custom') && checks.size) { if (!r || !r.datos || !r.datos.checks) return false; for (const k of checks) if (!r.datos.checks[k]) return false; }
+    if (necesitaDatos()) {
+      const r = deps.auditoriaDe(it);
+      if (!r || r.nivel === 'pend' || !r.datos || !r.datos.checks) return false;   // sin datos del escaner aun: no se muestra
+      if (on.has('sell') && !r.datos.checks.sellable) return false;
+      if (on.has('nored') && r.nivel === 'bad') return false;
+      if (on.has('custom')) for (const k of checks) if (!r.datos.checks[k]) return false;
+    }
     return true;
   };
   const liqUsd = (it) => (it.moneda === 'USDT' ? it.liquidez : it.liquidez * (deps.bnbUsd ? deps.bnbUsd() : 1));
-  const pintar = () => {
+
+  // Auditoria continua de lo que entra en la lista viva, de 3 en 3, con cache. Nunca audita dos veces el mismo token.
+  const enCola = new Set(); const cola = [];
+  const encolar = (vivo) => { for (const it of vivo) { const k = it.token.toLowerCase(); if (!enCola.has(k) && !deps.auditoriaDe(it)) { enCola.add(k); cola.push(it); } } };
+  const worker = async () => { while (abierto()) { const it = cola.shift(); if (!it) { await new Promise((r) => setTimeout(r, 400)); continue; } try { await deps.auditarCache(it); } catch (e) { log('audit fallo', it.token, e && e.message); } enCola.delete(it.token.toLowerCase()); await new Promise((r) => setTimeout(r, 250)); } };
+  [0, 1, 2].forEach(worker);
+
+  let ultimaClave = '';
+  const pintar = (forzar) => {
     const host = $('tm-fil-body'); if (!host) return;
-    let lista = snap.filter(pasa);
+    const vivo = deps.items();
+    if (hayFiltro()) encolar(vivo);
+    let lista = hayFiltro() ? vivo.filter(pasa) : [];
     if (on.has('top')) lista = lista.slice().sort((a, b) => liqUsd(b) - liqUsd(a));
-    $('tm-fil-n').textContent = `${lista.length} of ${snap.length} tokens`;
-    $('tm-fil-t').textContent = 'Snapshot ' + new Date(tomado).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (!snap.length) { host.innerHTML = '<div class="tm-fil-empty">The live list is still empty. Wait for the first pairs and press Refresh.</div>'; return; }
-    if (!lista.length) { host.innerHTML = '<div class="tm-fil-empty">No token in this snapshot passes the marked filters.' + ((on.has('safe') || on.has('custom')) ? '<br>Security checks are still running for some tokens; results appear as they arrive.' : '') + '</div>'; return; }
+    const checking = hayFiltro() && necesitaDatos() ? vivo.filter((it) => { const r = deps.auditoriaDe(it); return !r || r.nivel === 'pend'; }).length : 0;
+    $('tm-fil-n').textContent = hayFiltro() ? `${lista.length} of ${vivo.length} tokens` + (checking ? ` · ${checking} checking` : '') : `${vivo.length} tokens in the live list`;
+    const clave = lista.map((it) => it.token + ':' + (deps.auditoriaDe(it) || {}).nivel).join('|');
+    if (!forzar && clave === ultimaClave) return;   // nada cambio: no se repinta (sin parpadeo)
+    ultimaClave = clave;
+    if (!hayFiltro()) { host.innerHTML = '<div class="tm-fil-empty"><b>Mark a filter to start</b>The list stays empty until you choose what you want to see. It then updates by itself every second.</div>'; return; }
+    if (!lista.length) { host.innerHTML = '<div class="tm-fil-empty"><b>No token passes these filters yet</b>' + (checking ? 'Security checks are still running for ' + checking + ' token' + (checking > 1 ? 's' : '') + '; matches appear as results arrive.' : 'New pairs keep coming in: this window keeps watching.') + '</div>'; return; }
     host.innerHTML = `<table class="tm-table">${deps.thead('<th class="tm-c-chk">Check</th>')}<tbody>${lista.map((it, i) => deps.fila(it, i, celda(it))).join('')}</tbody></table>`;
     host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); } catch (_) {} }; });
-    host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = snap.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) deps.abrirFicha(it); }; });
+    host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = deps.items().find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) deps.abrirFicha(it); }; });
   };
   const pintarChips = () => { ov.querySelectorAll('.tm-chip').forEach((b) => { const k = b.dataset.k; b.classList.toggle('on', on.has(k)); if (k === 'custom') b.querySelector('span').innerHTML = 'Custom checks' + (checks.size ? ' <b>' + checks.size + '</b>' : ''); }); };
-
-  // Auditorias del snapshot, de 4 en 4, con cache; cada resultado repinta (los filtros de seguridad se aplican al llegar).
-  let gen = 0;
-  const auditarTodo = async () => {
-    const g = ++gen; const cola = snap.slice(); let repintar = null;
-    const programa = () => { if (repintar) return; repintar = setTimeout(() => { repintar = null; if (abierto() && g === gen) pintar(); }, 250); };
-    const worker = async () => { while (cola.length && abierto() && g === gen) { const it = cola.shift(); try { await deps.auditarCache(it); } catch (e) { log('audit fallo', it.token, e && e.message); } programa(); } };
-    await Promise.all([0, 1, 2, 3].map(worker));
-    log('snapshot auditado', snap.length);
-  };
 
   ov.querySelectorAll('.tm-chip').forEach((b) => {
     b.onclick = async () => {
       const k = b.dataset.k;
       if (k === 'custom') { checks = await elegirChecks(checks); if (checks.size) on.add('custom'); else on.delete('custom'); }
       else if (on.has(k)) on.delete(k); else on.add(k);
-      pintarChips(); pintar();
+      pintarChips(); pintar(true);
+      log('filtros', [...on].join(','), checks.size ? [...checks].join(',') : '');
     };
   });
-  $('tm-fil-refresh').onclick = () => { snap = deps.items(); tomado = Date.now(); pintar(); auditarTodo(); log('refresh', snap.length); };
-  pintarChips(); pintar(); auditarTodo();
-  log('abierto', snap.length, 'tokens');
+  pintarChips(); pintar(true);
+  timer = setInterval(() => { if (!abierto()) { clearInterval(timer); return; } pintar(false); }, 1000);   // lectura viva cada segundo
+  log('abierto');
 }

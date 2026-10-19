@@ -80,7 +80,11 @@
   .tm-tok-nom{min-width:0;flex:1 1 0}
   .tm-tok .tm-badge{padding:0 6px}
   .tm-sec-txt span{display:none}
-  .tm-live span{display:none}.tm-live{padding:0 10px}
+  /* Cabecera de New pairs: en movil no caben titulo + Filters + Live en una linea (Live se salia del panel).
+     El titulo va arriba y la fila de Filters + Live debajo, a lo ancho. */
+  .tm-sec-head{flex-wrap:wrap;gap:10px}
+  .tm-sec-r{flex:1 0 100%;justify-content:space-between}
+  .tm-live{padding:0 12px}
   /* Cabeceras y distintivos largos pasan a su forma corta: 'Liquidity'->'Liq', 'Launchpad'->'LP'. */
   .tm-lg{display:none}.tm-sm{display:inline}
 }
@@ -134,7 +138,7 @@
 .tm-b:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}
 .tm-b.sec:active{box-shadow:0 1px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06)}
 .tm-f-note{margin:12px 2px 0;font-family:var(--mono);font-size:10.5px;line-height:1.55;color:var(--ink-3);text-align:center}
-@media(max-width:560px){.tm-kv{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-f-acts{flex-direction:column}.tm-b{flex:0 0 auto;max-width:none;width:100%;min-height:46px}}
+@media(max-width:560px){.tm-kv{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-f-acts{flex-direction:column}.tm-f-acts .tm-b{flex:0 0 auto;max-width:none;width:100%;min-height:46px}}   /* solo los botones apilados de la ficha; antes alcanzaba a Filters y a How it works */
 
 /* Ventana de compra (misma escala visual que nuestro swap; reglas calcadas del popup del launchpad) */
 /* Marca propia del token: monograma de dos letras sobre un tono derivado del contrato (sin emoji, sin logo ajeno) */

@@ -172,8 +172,10 @@ function pintarAuditoria(r) {
   sem.className = 'tm-sem ' + r.nivel;
   const bS = $('tm-f-swap'); if (bS) { if (r.nivel === 'bad') { bS.disabled = true; bS.textContent = 'Do not buy'; } else { bS.disabled = false; bS.textContent = 'Swap'; } }
   const nb = (r.hallazgos || []).filter((x) => x.n === 'bad').length, nw = (r.hallazgos || []).filter((x) => x.n === 'warn').length;
-  const sub = r.nivel === 'pend' ? esc(r.titulo) : r.nivel === 'ok' ? 'No red flags found in the contract'
-    : (nb ? nb + ' critical issue' + (nb > 1 ? 's' : '') : '') + (nb && nw ? ' and ' : '') + (nw ? nw + ' warning' + (nw > 1 ? 's' : '') : '');
+  const ck = r.datos && r.datos.checks ? Object.values(r.datos.checks) : null;
+  const pasa = ck ? ' · passes ' + ck.filter(Boolean).length + ' of ' + ck.length + ' checks' : '';
+  const sub = r.nivel === 'pend' ? esc(r.titulo) : (r.nivel === 'ok' ? 'No red flags found in the contract'
+    : (nb ? nb + ' critical issue' + (nb > 1 ? 's' : '') : '') + (nb && nw ? ' and ' : '') + (nw ? nw + ' warning' + (nw > 1 ? 's' : '') : '')) + pasa;
   sem.innerHTML = `<span class="tm-sem-ico">${ICO_N[r.nivel]}</span><div><b>${TXT_NIVEL[r.nivel]}</b><span>${sub}</span></div>`;
   const d = r.datos || {};
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
