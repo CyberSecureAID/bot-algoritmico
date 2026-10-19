@@ -38,17 +38,17 @@ function css() {
     + '.av-chk input{appearance:none;-webkit-appearance:none;flex:none;width:20px;height:20px;margin:0;border-radius:6px;border:1.5px solid #c79426;background:rgba(0,0,0,.4);cursor:pointer;position:relative}'
     + '.av-chk input:checked{background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);border-color:#c79426}'
     + '.av-chk input:checked::after{content:"";position:absolute;left:6.5px;top:2.5px;width:5px;height:10px;border:solid #241900;border-width:0 2.4px 2.4px 0;transform:rotate(45deg)}'
-    + '.av-a{display:flex;align-items:center;gap:12px;margin-top:14px}'
-    + '.av-btn{flex:1 1 0;max-width:240px;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;height:46px;padding:0 18px;border-radius:12px;'
+    + '.av-a{display:flex;align-items:stretch;justify-content:center;gap:12px;margin-top:14px}'
+    + '.av-btn{flex:1 1 0;max-width:230px;min-width:0;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;height:46px;padding:0 18px;border-radius:12px;'
     + 'font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:.2px;white-space:nowrap;border:1px solid #c79426;color:#241900;'
     + 'background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);box-shadow:0 4px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(255,255,255,.28);transition:filter .15s,opacity .15s}'
     + '.av-btn svg{width:15px;height:15px;flex:none}.av-btn:hover{filter:brightness(1.06)}'
     + '.av-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.5)}'
     + '.av-btn.off{opacity:.4;cursor:not-allowed;filter:grayscale(.55)}.av-btn.off:active{transform:none}'
-    + '.av-btn.sec{background:rgba(255,255,255,.04);color:#c4ccd4;border-color:#2c3946;box-shadow:none;text-shadow:none}'
+    + '.av-btn.sec{background:linear-gradient(180deg,#1b2027,#0d1117);color:#E8B84B;border-color:#8f6a1a;box-shadow:0 4px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);text-shadow:none}.av-btn.sec:active{box-shadow:0 1px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06)}'
     + '@media(max-width:620px){.av-scroll{padding:18px 16px 16px}.av-fl{display:none}'
     + '.av-top{display:block;width:112px;margin:0 auto 14px}.av-h{justify-content:center;text-align:center}'
-    + '.av-a{flex-wrap:wrap}.av-btn{flex:1 1 100%;max-width:none}}';
+    + '.av-a{flex-direction:column}.av-btn{flex:1 1 auto;width:100%;max-width:none}}';
   document.head.appendChild(st);
 }
 
@@ -71,7 +71,7 @@ function mostrar({ key, titulo, cuerpo, firma, ok, cancelar, enlace }) {
       +     '<div class="av-a">'
       +       '<button class="av-btn off" type="button" id="av-ok" disabled>' + ok + '</button>'
       +       (cancelar ? '<button class="av-btn sec" type="button" id="av-no">' + cancelar + '</button>' : '')
-      +       (enlace ? '<a class="av-btn sec" href="' + enlace + '" role="button">' + SHIELD + 'Full transparency</a>' : '')
+      +       (enlace ? '<a class="av-btn sec" href="' + enlace + '" role="button">' + SHIELD + 'Transparency</a>' : '')
       +     '</div>'
       +   '</div>'
       +   '</div>'
@@ -100,7 +100,7 @@ export function avisoLaunchpad() {
   return mostrar({
     key: 'df_launchpad_ack_v1',
     titulo: 'Before you use the Launchpad',
-    ok: 'Enter the Launchpad',
+    ok: 'Launchpad',
     enlace: '../../transparency.html',
     firma: 'I have read and I accept the <b>Terms and Conditions</b> of the Launchpad. I understand that I am the sole issuer of any coin I create, that DecFreedom does not review, endorse or promote it, and that DecFreedom is not liable for anything I or anyone else does with it.',
     cuerpo: ''
