@@ -63,7 +63,7 @@ export function arrancar() {
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
   if (_parar) _parar();
   _parar = gb.arrancarFeed({
-    alNuevo: (it) => { _items.push(it); _items.sort((a, b) => b.bloque - a.bloque); if (_items.length > FEED.maxFilas) _items.length = FEED.maxFilas; pintar(); },
+    alNuevo: (it) => { _items.push(it); _items.sort((a, b) => b.bloque - a.bloque); if (_items.length > FEED.maxFilas) _items.length = FEED.maxFilas; encolarAuditoria(it); pintar(); },
     alEstado: ({ bloque, vivo, error }) => {
       const el = $('tm-live'); if (!el) return;
       el.classList.toggle('off', !vivo);
@@ -100,11 +100,28 @@ function fila(it, i, extra = '') {
     ${extra}<td class="tm-chain">${ICO_BSC}</td>
   </tr>`;
 }
+/* Semaforo por fila (columna Check): punto de color + texto, sin emojis. Rojo = Do not buy. */
+const TXT_CHK = { ok: 'Safe', warn: 'Caution', bad: 'Do not buy', pend: 'Checking' };
+const celdaCheck = (it) => { const r = auditoriaDe(it); const n = r ? r.nivel : 'pend'; return `<td class="tm-chk"><span class="tm-sem-p ${n}" title="${TXT_CHK[n]}"><i></i><span>${TXT_CHK[n]}</span></span></td>`; };
+let _verRojos = false;   // los 'Do not buy' van ocultos; un enlace bajo la tabla los muestra
+/* Auditoria continua de la lista principal: cada token una vez (cache), de 2 en 2, y repinta al llegar cada resultado. */
+const _colaAud = []; const _enColaAud = new Set(); let _audArrancada = false, _repintar = null;
+function encolarAuditoria(it) { const k = it.token.toLowerCase(); if (_enColaAud.has(k) || auditoriaDe(it)) return; _enColaAud.add(k); _colaAud.push(it); arrancarAuditorias(); }
+function arrancarAuditorias() {
+  if (_audArrancada) return; _audArrancada = true;
+  const worker = async () => { for (;;) { const it = _colaAud.shift(); if (!it) { await new Promise((r) => setTimeout(r, 500)); continue; } try { await auditarCache(it); } catch (_) {} _enColaAud.delete(it.token.toLowerCase()); clearTimeout(_repintar); _repintar = setTimeout(pintar, 300); await new Promise((r) => setTimeout(r, 250)); } };
+  [0, 1].forEach(worker);
+}
 function pintar() {
   const host = $('tm-feed'); if (!host) return;
   if (!_items.length) return;   // sigue el esqueleto hasta el primer token
-  // (it, i): nunca pasar el 3er argumento de map (el array) a fila, cuyo tercer parametro `extra` es la celda opcional de la ventana de filtros.
-  host.innerHTML = `<table class="tm-table">${thead()}<tbody>${_items.map((it, i) => fila(it, i)).join('')}</tbody></table>`;
+  const esRojo = (it) => { const r = auditoriaDe(it); return !!(r && r.nivel === 'bad'); };
+  const vis = _verRojos ? _items : _items.filter((it) => !esRojo(it));
+  const ocultos = _items.length - vis.length;
+  // (it, i): nunca pasar el 3er argumento de map (el array) a fila, cuyo tercer parametro `extra` es la celda Check.
+  host.innerHTML = `<table class="tm-table">${thead('<th class="tm-c-chk"><span class="tm-lg">Check</span><span class="tm-sm">Chk</span></th>')}<tbody>${vis.map((it, i) => fila(it, i, celdaCheck(it))).join('')}</tbody></table>`
+    + (ocultos || _verRojos ? `<div class="tm-ocultos">${ocultos ? ocultos + ' token' + (ocultos > 1 ? 's' : '') + ' hidden: Do not buy' : 'Showing Do not buy tokens'} <button type="button" id="tm-ver-rojos">${_verRojos ? 'Hide' : 'Show'}</button></div>` : '');
+  const vr = $('tm-ver-rojos'); if (vr) vr.onclick = () => { _verRojos = !_verRojos; pintar(); };
   host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
   host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) abrirFicha(it); }; });
 }

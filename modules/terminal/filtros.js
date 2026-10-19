@@ -57,13 +57,6 @@ function css() {
     + '.tm-fil-empty b{display:block;font-family:"Chakra Petch",var(--display);font-size:15px;color:var(--ink-2);margin-bottom:6px}'
     + '.tm-fil-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 18px 8px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}'
     + '.tm-fil-bar .vivo{display:inline-flex;align-items:center;gap:6px;color:#8ef0b0}.tm-fil-bar .vivo i{width:7px;height:7px;border-radius:50%;background:#2ee86a;animation:tmFilPend 1.4s ease-in-out infinite}'
-    + '.tm-chk{width:92px}.tm-c-chk{width:92px}'
-    + '.tm-sem-p{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;border:1px solid var(--line);color:var(--ink-3);background:rgba(255,255,255,.04)}'
-    + '.tm-sem-p i{width:7px;height:7px;border-radius:50%;background:#6b7580;flex:0 0 auto}'
-    + '.tm-sem-p.ok{color:#8ef0b0;border-color:rgba(46,232,106,.35)}.tm-sem-p.ok i{background:#2ee86a;box-shadow:0 0 6px rgba(46,232,106,.8)}'
-    + '.tm-sem-p.warn{color:#f1cf6a;border-color:rgba(232,184,75,.4)}.tm-sem-p.warn i{background:var(--gold);box-shadow:0 0 6px rgba(232,184,75,.8)}'
-    + '.tm-sem-p.bad{color:#ff9aa9;border-color:rgba(246,70,93,.45)}.tm-sem-p.bad i{background:#f6465d;box-shadow:0 0 6px rgba(246,70,93,.8)}'
-    + '.tm-sem-p.pend i{animation:tmFilPend 1s ease-in-out infinite}@keyframes tmFilPend{50%{opacity:.3}}'
     + '.tm-cc{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 32px);overflow-y:auto;scrollbar-width:none;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.06);padding:16px 18px 18px}'
     + '.tm-cc::-webkit-scrollbar{width:0;height:0;display:none}'
     + '.tm-cc-list{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px}'
@@ -76,7 +69,6 @@ function css() {
     + '.tm-cc-note{margin:0 0 12px;font-family:var(--mono);font-size:11px;color:var(--ink-3);line-height:1.5}'
     + '@media(max-width:760px){.tm-ov.tm-ov-fil{padding:8px}.tm-fil{height:calc(100vh - 16px);border-radius:16px}.tm-fil-head,.tm-chips,.tm-fil-bar{padding-left:12px;padding-right:12px}.tm-fil-body{padding:0 10px 12px}'
     + '.tm-chips{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-chip{font-size:12px;padding:0 8px}.tm-fil-head .tm-sec-txt span{display:none}'
-    + '.tm-chk,.tm-c-chk{width:52px;padding-left:4px;padding-right:4px}.tm-sem-p{padding:0;width:22px;justify-content:center;border-color:transparent;background:none}.tm-sem-p span{display:none}'
     + '.tm-ov-fil .tm-c-chain,.tm-ov-fil .tm-chain{display:none}}';   /* en movil Chain cede su sitio a Check (semaforo) */
   document.head.appendChild(st);
 }
@@ -137,7 +129,7 @@ export function abrirFiltros(deps) {
       const r = deps.auditoriaDe(it);
       if (!r || r.nivel === 'pend' || !r.datos || !r.datos.checks) return false;   // sin datos del escaner aun: no se muestra
       if (on.has('sell') && !r.datos.checks.sellable) return false;
-      if (on.has('nored') && r.nivel === 'bad') return false;
+      if (on.has('nored') && r.nivel !== 'ok') return false;   // solo verde: ni problema critico ni aviso (lo mismo que 'Safe to trade' en la ficha)
       if (on.has('custom')) for (const k of checks) if (!r.datos.checks[k]) return false;
     }
     return true;
@@ -164,7 +156,7 @@ export function abrirFiltros(deps) {
     ultimaClave = clave;
     if (!hayFiltro()) { host.innerHTML = '<div class="tm-fil-empty"><b>Mark a filter to start</b>The list stays empty until you choose what you want to see. It then updates by itself every second.</div>'; return; }
     if (!lista.length) { host.innerHTML = '<div class="tm-fil-empty"><b>No token passes these filters yet</b>' + (checking ? 'Security checks are still running for ' + checking + ' token' + (checking > 1 ? 's' : '') + '; matches appear as results arrive.' : 'New pairs keep coming in: this window keeps watching.') + '</div>'; return; }
-    host.innerHTML = `<table class="tm-table">${deps.thead('<th class="tm-c-chk">Check</th>')}<tbody>${lista.map((it, i) => deps.fila(it, i, celda(it))).join('')}</tbody></table>`;
+    host.innerHTML = `<table class="tm-table">${deps.thead('<th class="tm-c-chk"><span class="tm-lg">Check</span><span class="tm-sm">Chk</span></th>')}<tbody>${lista.map((it, i) => deps.fila(it, i, celda(it))).join('')}</tbody></table>`;
     host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); } catch (_) {} }; });
     host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = deps.items().find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) deps.abrirFicha(it); }; });
   };

@@ -51,6 +51,20 @@
 .tm-copyc:hover{border-color:var(--gold-soft);color:var(--gold)}
 .tm-copyc svg{flex:0 0 auto;opacity:.7}
 .tm-chain{color:var(--ink-3);font-size:12px;text-align:right;padding-right:14px}
+/* Columna Check (semaforo por fila) y aviso de rojos ocultos */
+.tm-chk,.tm-c-chk{width:112px}
+.tm-sem-p{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;border:1px solid var(--line);color:var(--ink-3);background:rgba(255,255,255,.04)}
+.tm-sem-p i{width:7px;height:7px;border-radius:50%;background:#6b7580;flex:0 0 auto}
+.tm-sem-p.ok{color:#8ef0b0;border-color:rgba(46,232,106,.35)}.tm-sem-p.ok i{background:#2ee86a;box-shadow:0 0 6px rgba(46,232,106,.8)}
+.tm-sem-p.warn{color:#f1cf6a;border-color:rgba(232,184,75,.4)}.tm-sem-p.warn i{background:var(--gold);box-shadow:0 0 6px rgba(232,184,75,.8)}
+.tm-sem-p.bad{color:#ff9aa9;border-color:rgba(246,70,93,.45)}.tm-sem-p.bad i{background:#f6465d;box-shadow:0 0 6px rgba(246,70,93,.8)}
+.tm-sem-p.pend i{animation:tmPend 1s ease-in-out infinite}@keyframes tmPend{50%{opacity:.3}}
+.tm-ocultos{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 6px 8px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.tm-ocultos button{font:inherit;font-weight:700;color:var(--gold);background:none;border:1px solid rgba(232,184,75,.4);border-radius:8px;padding:3px 10px;cursor:pointer}
+/* Boton Filters: punto rojo que late, para que se vea que ahi se domestica la lista */
+.tm-fil-b{position:relative}
+.tm-fil-b::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:#f6465d;box-shadow:0 0 0 0 rgba(246,70,93,.7);animation:tmLate 1.5s ease-out infinite}
+@keyframes tmLate{0%{box-shadow:0 0 0 0 rgba(246,70,93,.7)}100%{box-shadow:0 0 0 8px rgba(246,70,93,0)}}
 .tm-bsc{width:15px;height:15px;vertical-align:-2px}
 /* Etiquetas largas/cortas: la larga de serie, la corta solo en movil (ver media query de abajo). */
 .tm-sm{display:none}
@@ -70,8 +84,10 @@
   .tm-c-age,.tm-age{width:42px}
   .tm-c-liq,.tm-liq{width:68px;overflow:hidden}
   .tm-c-price,.tm-price{width:72px;overflow:hidden}
-  .tm-c-chain,.tm-chain{width:36px;padding-right:8px}
-  .tm-table th.tm-c-chain{font-size:0}   /* columna de solo icono: su cabecera 'Chain' no cabe en 36px y no aporta */
+  /* Con la columna Check no cabe tambien Chain (solo icono de la red, siempre BNB): en movil se oculta. */
+  .tm-c-chain,.tm-chain{display:none}
+  .tm-chk,.tm-c-chk{width:40px;padding-left:4px;padding-right:4px}   /* cabecera corta 'Chk' + punto: deja sitio al nombre del token en moviles estrechos */
+  .tm-sem-p{padding:0;width:22px;justify-content:center;border-color:transparent;background:none}.tm-sem-p span{display:none}
   .tm-tok{overflow:hidden}
   /* En una fila flex el nombre no encogia y empujaba el distintivo del par fuera de la celda. Con flex+min-width:0
      el nombre se recorta con puntos suspensivos; logo, separaciones y distintivo algo mas compactos para caber en moviles estrechos. */
