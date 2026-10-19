@@ -96,6 +96,9 @@ function fmtEje(p) {
 }
 
 let _chart = null, _serie = null, _ro = null, _cont = null;
+/* Precio (en las unidades del eje, aqui USD) a la altura Y relativa al contenedor del grafico.
+   Lo usa la vista grande para el clic derecho: poner una alerta al precio donde se hizo clic. */
+export function precioEnY(y) { try { return (_serie && y != null) ? _serie.coordinateToPrice(y) : null; } catch (_) { return null; } }
 export function destruirGrafico() {
   if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; }
   if (_chart) { try { _chart.remove(); } catch (_) {} }

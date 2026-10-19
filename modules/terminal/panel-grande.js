@@ -10,7 +10,7 @@
    clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
-import { velasDeToken, montarGrafico, destruirGrafico, precioActual } from './grafico.js';
+import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY } from './grafico.js';
 import { SCAN_URL, FACTORY, WBNB, USDT } from './config.js';
 import { abrirCompra, saldoBNB, saldoToken } from './compra.js';
 import { listaDe, enVivo } from './posiciones.js';
@@ -138,6 +138,11 @@ function css() {
 .tg-pick-empty{padding:26px 10px;text-align:center;color:var(--ink-3,#7d8794);font-size:12px}
 .tg-anillo{width:34px;height:34px;border-radius:50%;border:3px solid #1c232b;border-top-color:var(--gold,#E8B84B);animation:tgSpin .8s linear infinite}
 @keyframes tgSpin{to{transform:rotate(360deg)}}
+.tg-ctx{position:fixed;z-index:1300;min-width:172px;background:#0b0f14;border:1px solid #2a323d;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.6);padding:12px;animation:tgIn .12s ease}
+.tg-ctx-px{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--gold,#E8B84B)} .tg-ctx-px sub{font-size:.62em}
+.tg-ctx-pc{font-family:var(--mono);font-size:12px;margin:3px 0 10px} .tg-ctx-pc.up{color:var(--verde,#2ee86a)} .tg-ctx-pc.down{color:var(--rojo,#f6465d)}
+.tg-ctx-set{width:100%;height:38px;border-radius:10px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold,#E8B84B);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;cursor:pointer}
+.tg-ctx-set:active{transform:translateY(1px)}
 @media(max-width:860px){
   .tm-big-main{grid-template-columns:1fr;grid-auto-rows:minmax(0,auto)}
   .tg-left,.tg-right{max-height:none}
@@ -198,6 +203,15 @@ export async function abrirGrande(it0, ctx) {
   $('tg-close').onclick = cerrar;
   document.addEventListener('keydown', onEsc);
   _cargar = cargar;
+  // Clic derecho en la grafica: poner una alerta al precio del clic (solo alertas, nunca compra).
+  const cvEl = $('tg-chart-cv');
+  if (cvEl) cvEl.addEventListener('contextmenu', (e) => {
+    if (!_itActual || !_itActual.par) return;
+    e.preventDefault();
+    const rect = cvEl.getBoundingClientRect();
+    let px = null; try { px = precioEnY(e.clientY - rect.top); } catch (_) {}
+    if (px != null && px > 0 && isFinite(px)) abrirCtx(e.clientX, e.clientY, Number(px));
+  });
 
   // Selector de tokens del feed (lista estilo New pairs que carga en la grafica).
   const togglePicker = () => {
@@ -395,8 +409,38 @@ async function derPositions(it) {
   host.querySelectorAll('.tg-posrow').forEach((r) => { r.onclick = () => { const d = datos.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d && _cargar) _cargar({ token: d.token, par: d.par, quote: d.quote || null, moneda: d.moneda || 'BNB', simbolo: d.simbolo, nombre: d.nombre || d.simbolo, decimales: d.decimales || 18, fuente: 'pancake', tiempo: 0, bloque: 0, liquidez: 0, precio: 0, creador: '' }); }; });
 }
 
+/* ── Clic derecho en la grafica: poner una alerta al precio del clic, con el % vs el precio actual ── */
+function abrirCtx(x, y, px) {
+  cerrarCtx();
+  const cur = _precioUsd > 0 ? _precioUsd : 0;
+  const diff = cur > 0 ? (px - cur) / cur * 100 : 0;
+  const up = px >= cur;
+  const el = document.createElement('div'); el.className = 'tg-ctx'; el.id = 'tg-ctx';
+  el.innerHTML = `<div class="tg-ctx-px">$${fmtP(px, 5)}</div>
+    <div class="tg-ctx-pc ${up ? 'up' : 'down'}">${cur > 0 ? (up ? '+' : '-') + pct(Math.abs(diff)) + (up ? ' above market' : ' below market') : 'Set a price alert'}</div>
+    <button class="tg-ctx-set" type="button">Set alert here</button>`;
+  document.body.appendChild(el);
+  const w = el.offsetWidth || 180, h = el.offsetHeight || 96;
+  let left = x + 8, top = y + 8;
+  if (left + w > window.innerWidth) left = x - w - 8;
+  if (top + h > window.innerHeight) top = y - h - 8;
+  el.style.left = Math.max(6, left) + 'px'; el.style.top = Math.max(6, top) + 'px';
+  el.querySelector('.tg-ctx-set').onclick = () => {
+    try { crearAlerta(_itActual, px, up ? 'up' : 'down'); } catch (_) {}
+    cerrarCtx(); try { derOpenAlerts(_itActual); } catch (_) {}
+  };
+  setTimeout(() => { document.addEventListener('mousedown', ctxFuera, true); document.addEventListener('keydown', ctxEsc, true); }, 0);
+}
+function ctxFuera(e) { const el = document.getElementById('tg-ctx'); if (el && !el.contains(e.target)) cerrarCtx(); }
+function ctxEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); cerrarCtx(); } }
+function cerrarCtx() {
+  const el = document.getElementById('tg-ctx'); if (el) { try { el.remove(); } catch (_) {} }
+  document.removeEventListener('mousedown', ctxFuera, true); document.removeEventListener('keydown', ctxEsc, true);
+}
+
 function onEsc(e) { if (e.key === 'Escape') cerrar(); }
 export function cerrar() {
+  cerrarCtx();
   document.removeEventListener('keydown', onEsc);
   try { destruirGrafico(); } catch (_) {}
   const ov = $('tm-big-ov'); if (ov) { try { ov.remove(); } catch (_) {} }
