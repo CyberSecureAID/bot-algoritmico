@@ -26,6 +26,8 @@ const cortoDir = (a) => a ? (String(a).slice(0, 6) + '…' + String(a).slice(-4)
 const ICO_BSC = '<svg viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const ICO_SEARCH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>';
+const LOGO_BNB = 'https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png';
+const LOGO_USDT = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png';
 
 const LOGO_TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/';
 function logo(addr) {
@@ -65,8 +67,8 @@ function css() {
 .tg-price b{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1;color:var(--gold,#E8B84B)}
 .tg-price b sub{font-size:.62em}
 .tg-price span{font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794);margin-top:3px;letter-spacing:.3px}
-.tg-find{flex:1 1 auto;display:flex;justify-content:center;gap:10px;min-width:0}
-.tg-find-in{position:relative;display:flex;align-items:center;max-width:420px;width:100%}
+.tg-find{flex:1 1 auto;display:flex;gap:10px;min-width:0}
+.tg-find-in{position:relative;display:flex;align-items:center;flex:1 1 auto;max-width:none;width:100%}
 .tg-find-in .tg-ico{position:absolute;left:12px;color:var(--ink-3,#7d8794);display:flex}
 .tg-find-in input{width:100%;height:42px;padding:0 14px 0 36px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink,#eaecef);font-family:var(--mono);font-size:12px;outline:none}
 .tg-find-in input:focus{border-color:#8f6a1a}
@@ -97,8 +99,9 @@ function css() {
 .tg-tabs2 .t.on{color:var(--gold,#E8B84B);border-color:#8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117)}
 .tg-op{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .tg-op[hidden]{display:none}
-.tg-op-price{display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink-3,#7d8794)}
-.tg-op-price b{font-size:15px;color:var(--gold,#E8B84B)} .tg-op-price b sub{font-size:.62em}
+.tg-mktcap{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--line,#232b36);background:linear-gradient(180deg,#0d1319,#0a0e13)}
+.tg-mktcap b{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--gold,#E8B84B)} .tg-mktcap b sub{font-size:.62em}
+.tg-mktcap span{font-family:var(--mono);font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3,#7d8794)}
 .tg-op-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
 .tg-al-set{display:flex;align-items:center;gap:8px;position:relative}
 .tg-al-set .tg-al-d{position:absolute;left:12px;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:13px}
@@ -111,20 +114,44 @@ function css() {
 .tg-mbtn.sec{flex:0 0 auto;height:44px;padding:0 16px;background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold,#E8B84B);border:1px solid #8f6a1a;box-shadow:0 3px 0 #060809;font-size:13px}
 .tg-mbtn.sec:active{transform:translateY(2px);box-shadow:0 1px 0 #060809}
 .tg-balrow{display:flex;gap:8px;margin-top:12px}
-.tg-bal{flex:1 1 0;border:1px solid var(--line,#232b36);background:#0b0f14;border-radius:10px;padding:8px 10px}
-.tg-bal span{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794)}
-.tg-bal b{font-family:var(--mono);font-size:13px}
-.tg-mt{margin-top:14px}
-.tg-alrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:9px;border:1px solid var(--line,#232b36);background:#0b0f14;font-family:var(--mono);font-size:12px;margin-bottom:6px}
-.tg-alrow.done{border-color:#2e7d52;color:var(--verde,#2ee86a)}
-.tg-alx{background:none;border:0;color:var(--ink-3,#7d8794);font-size:12px;cursor:pointer;padding:2px 4px}
+.tg-bal{flex:1 1 0;display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--line,#232b36);background:linear-gradient(180deg,#0d1319,#0a0e13);border-radius:11px;padding:8px 10px}
+.tg-bal-ic{width:22px;height:22px;border-radius:50%;flex:0 0 auto;background:#0b0f14}
+.tg-bal-tx{min-width:0}
+.tg-bal-tx span{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-3,#7d8794)}
+.tg-bal-tx b{font-family:var(--mono);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-mt{margin-top:16px}
+.tg-alrow{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0b0f14;margin-bottom:6px}
+.tg-alrow b{flex:1 1 auto;font-family:var(--mono);font-size:13px}
+.tg-alrow em{font-style:normal;font-size:10px;color:var(--verde,#2ee86a);text-transform:uppercase;letter-spacing:.5px}
+.tg-alrow.done{border-color:#2e7d52}
+.tg-aldir{width:0;height:0;flex:0 0 auto;border-left:5px solid transparent;border-right:5px solid transparent}
+.tg-aldir.up{border-bottom:8px solid var(--verde,#2ee86a)}
+.tg-aldir.down{border-top:8px solid var(--rojo,#f6465d)}
+.tg-alx{background:none;border:0;color:var(--ink-3,#7d8794);font-size:12px;cursor:pointer;padding:2px 4px;flex:0 0 auto}
 .tg-alx:hover{color:var(--rojo,#f6465d)}
-.tg-posrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0b0f14;margin-bottom:6px;cursor:pointer;border-left:3px solid #3a434f}
+.tg-posrow{position:relative;display:flex;align-items:stretch;gap:10px;padding:12px 13px;border-radius:14px;border:1px solid var(--line,#232b36);background:linear-gradient(180deg,#10171f,#0a0e13);margin-bottom:8px;cursor:pointer;border-left:3px solid #3a434f;overflow:hidden;transition:background .12s,transform .1s}
+.tg-posrow::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;background:radial-gradient(120% 90% at 50% 120%,rgba(57,214,127,.08),transparent 60%)}
+.tg-posrow.down::after{background:radial-gradient(120% 90% at 50% 120%,rgba(246,88,108,.07),transparent 60%)}
 .tg-posrow.up{border-left-color:var(--verde,#2ee86a)} .tg-posrow.down{border-left-color:var(--rojo,#f6465d)}
-.tg-posrow:hover{background:#121823}
-.tg-posnm b{display:block;font-size:13px;font-weight:700} .tg-posnm span{font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794)}
-.tg-posv{text-align:right} .tg-posv b{display:block;font-family:var(--mono);font-size:13px} .tg-posv span{font-family:var(--mono);font-size:10px}
-.tg-posv span.up{color:var(--verde,#2ee86a)} .tg-posv span.down{color:var(--rojo,#f6465d)}
+.tg-posrow:hover{background:linear-gradient(180deg,#14202a,#0d1219);transform:translateY(-1px)}
+.tg-posrow>*{position:relative;z-index:1}
+.tg-posL{flex:0 0 94px;display:flex;align-items:center;gap:8px;min-width:0}
+.tg-posL .tg-logo{width:28px;height:28px;flex:0 0 auto} .tg-posL .tg-logo-fb{padding:6px}
+.tg-pos-id{min-width:0;display:flex;flex-direction:column;gap:3px}
+.tg-pos-id>b{font-size:13px;font-weight:700;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-pos-ca{display:inline-flex;align-items:center;gap:3px;max-width:100%;font-family:var(--mono);font-size:9.5px;color:var(--ink-3,#7d8794);background:none;border:0;padding:0;cursor:pointer;white-space:nowrap}
+.tg-pos-ca svg{width:11px;height:11px;flex:0 0 auto;opacity:.7}
+.tg-pos-ca:hover{color:var(--gold,#E8B84B)}
+.tg-posDiv{flex:0 0 1px;align-self:stretch;margin:9px 2px;background:linear-gradient(to bottom,transparent,rgba(255,255,255,.16) 30%,rgba(255,255,255,.16) 70%,transparent)}
+.tg-posC{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0}
+.tg-posC .pc{font-family:'Chakra Petch',var(--display);font-weight:800;font-size:26px;line-height:1;letter-spacing:-.5px}
+.tg-posC.up .pc{color:#3ddc84;text-shadow:0 2px 4px rgba(0,0,0,.75),0 0 18px rgba(46,232,106,.32)}
+.tg-posC.down .pc{color:#ff5c6c;text-shadow:0 2px 4px rgba(0,0,0,.75),0 0 18px rgba(246,70,93,.28)}
+.tg-posC .gain{font-family:var(--mono);font-size:11.5px;font-weight:600;margin-top:4px}
+.tg-posC.up .gain{color:#3ddc84} .tg-posC.down .gain{color:#ff5c6c}
+.tg-posR{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;justify-content:center}
+.tg-posR b{font-family:var(--mono);font-size:13px;font-weight:600;color:#eaecef;line-height:1}
+.tg-posR span{font-family:var(--mono);font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3,#7d8794);margin-top:3px}
 .tg-soon{font-size:11px;color:var(--ink-3,#7d8794);text-align:center;line-height:1.5;margin-top:2px}
 .tg-pick{position:absolute;top:66px;left:50%;transform:translateX(-50%);width:min(520px,92vw);max-height:62vh;overflow:auto;background:#0b0f14;border:1px solid #2a323d;border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.6);z-index:5;padding:8px}
 .tg-pick-h{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 10px;font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
@@ -338,9 +365,9 @@ function pintarDer(it, ctx) {
   host.innerHTML = `
     <div class="tg-tabs2" id="tg-op-tabs"><button type="button" class="t on" data-op="market">Market</button><button type="button" class="t" data-op="alert">Alert</button></div>
     <div class="tg-op" id="tg-op-market">
-      <div class="tg-op-price">Market price<b id="tg-mkt-price">${_precioUsd > 0 ? '$' + fmtP(_precioUsd, 5) : '$0'}</b></div>
+      <div class="tg-mktcap"><b id="tg-mkt-price">${_precioUsd > 0 ? '$' + fmtP(_precioUsd, 5) : '$0'}</b><span>Market price</span></div>
       <button class="tg-mbtn buy" id="tg-openlong" type="button">Open Long</button>
-      <div class="tg-soon">Buys at market in the swap window (pays with BNB). Your keys, your coins.</div>
+      <div class="tg-soon">Buys at market (pays with BNB). Your keys, your coins.</div>
     </div>
     <div class="tg-op" id="tg-op-alert" hidden>
       <label class="tg-op-lbl">Alert me at price</label>
@@ -379,8 +406,8 @@ function derBalances(it) {
   const host = $('tg-balrow'); if (!host) return;
   const c = wallet.cuentaActual();
   if (!c) { host.innerHTML = `<button class="tg-mbtn sec" id="tg-conn" type="button">Connect wallet</button>`; const b = $('tg-conn'); if (b) b.onclick = async () => { try { await wallet.conectar(); } catch (_) {} if (_itActual) pintarDer(_itActual, _ctx); }; return; }
-  host.innerHTML = `<div class="tg-bal"><span>Wallet</span><b id="tg-bal-bnb">…</b></div><div class="tg-bal"><span>USDT</span><b id="tg-bal-usdt">…</b></div>`;
-  saldoBNB(c).then((w) => { const e = $('tg-bal-bnb'); if (e) e.textContent = (+ethers.formatEther(w)).toFixed(4) + ' BNB'; }).catch(() => {});
+  host.innerHTML = `<div class="tg-bal"><img class="tg-bal-ic" src="${LOGO_BNB}" alt="" onerror="this.remove()"><div class="tg-bal-tx"><span>Wallet</span><b id="tg-bal-bnb">…</b></div></div><div class="tg-bal"><img class="tg-bal-ic" src="${LOGO_USDT}" alt="" onerror="this.remove()"><div class="tg-bal-tx"><span>USDT</span><b id="tg-bal-usdt">…</b></div></div>`;
+  saldoBNB(c).then((w) => { const e = $('tg-bal-bnb'); if (e) e.textContent = (+ethers.formatEther(w)).toFixed(4); }).catch(() => {});
   saldoToken(USDT, c).then((w) => { const e = $('tg-bal-usdt'); if (e) e.textContent = (+ethers.formatUnits(w, 18)).toFixed(2); }).catch(() => {});
 }
 
@@ -388,7 +415,7 @@ function derOpenAlerts(it) {
   const host = $('tg-openalerts'); if (!host) return;
   const l = alertasDe(it.token);
   if (!l.length) { host.innerHTML = `<div class="tg-soon">No alerts for this token.</div>`; return; }
-  host.innerHTML = l.map((a) => `<div class="tg-alrow ${a.disparada ? 'done' : ''}"><span>${a.dir === 'up' ? '≥' : '≤'} $${fmtP(a.objetivo)}${a.disparada ? ' · hit' : ''}</span><button class="tg-alx" data-id="${esc(a.id)}" type="button" aria-label="Remove">✕</button></div>`).join('');
+  host.innerHTML = l.map((a) => `<div class="tg-alrow ${a.disparada ? 'done' : ''}"><span class="tg-aldir ${a.dir}"></span><b>$${fmtP(a.objetivo)}</b>${a.disparada ? '<em>hit</em>' : ''}<button class="tg-alx" data-id="${esc(a.id)}" type="button" aria-label="Remove">✕</button></div>`).join('');
   host.querySelectorAll('.tg-alx').forEach((b) => { b.onclick = () => { quitarAlerta(b.dataset.id); derOpenAlerts(it); }; });
 }
 
@@ -405,8 +432,17 @@ async function derPositions(it) {
   if (!datos.length) { host.innerHTML = `<div class="tg-soon">No open positions right now.</div>`; return; }
   datos.sort((a, b) => b.valorUsd - a.valorUsd);
   const sg = (v) => v >= 0 ? '+' : '-';
-  host.innerHTML = datos.map((d) => `<div class="tg-posrow ${d.pnlUsd >= 0 ? 'up' : 'down'}" data-a="${esc(d.token)}"><div class="tg-posnm"><b>${esc(d.simbolo || '?')}</b><span>in $${fmtP(d.entradaUsd)}</span></div><div class="tg-posv"><b>${money(d.valorUsd)}</b><span class="${d.pnlUsd >= 0 ? 'up' : 'down'}">${sg(d.pnlUsd)}${money(Math.abs(d.pnlUsd))} · ${sg(d.pnlPct)}${pct(Math.abs(d.pnlPct))}</span></div></div>`).join('');
-  host.querySelectorAll('.tg-posrow').forEach((r) => { r.onclick = () => { const d = datos.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d && _cargar) _cargar({ token: d.token, par: d.par, quote: d.quote || null, moneda: d.moneda || 'BNB', simbolo: d.simbolo, nombre: d.nombre || d.simbolo, decimales: d.decimales || 18, fuente: 'pancake', tiempo: 0, bloque: 0, liquidez: 0, precio: 0, creador: '' }); }; });
+  host.innerHTML = datos.map((d) => {
+    const up = d.pnlUsd >= 0;
+    return `<div class="tg-posrow ${up ? 'up' : 'down'}" data-a="${esc(d.token)}">
+      <div class="tg-posL">${logo(d.token)}<div class="tg-pos-id"><b title="${esc(d.simbolo || '?')}">${esc(d.simbolo || '?')}</b><button class="tg-pos-ca" data-ca="${esc(d.token)}" type="button" title="Copy contract">${corto(d.token)}${ICO_COPY}</button></div></div>
+      <span class="tg-posDiv"></span>
+      <div class="tg-posC ${up ? 'up' : 'down'}"><div class="pc">${sg(d.pnlPct)}${pct(Math.abs(d.pnlPct))}</div><div class="gain">${sg(d.pnlUsd)}${money(Math.abs(d.pnlUsd))}</div></div>
+      <div class="tg-posR"><b>${money(d.valorUsd)}</b><span>value</span></div>
+    </div>`;
+  }).join('');
+  host.querySelectorAll('.tg-posrow').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.tg-pos-ca')) return; const d = datos.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d && _cargar) _cargar({ token: d.token, par: d.par, quote: d.quote || null, moneda: d.moneda || 'BNB', simbolo: d.simbolo, nombre: d.nombre || d.simbolo, decimales: d.decimales || 18, fuente: 'pancake', tiempo: 0, bloque: 0, liquidez: 0, precio: 0, creador: '' }); }; });
+  host.querySelectorAll('.tg-pos-ca').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const ca = b.dataset.ca; try { navigator.clipboard.writeText(ca); } catch (_) {} const inp = $('tg-find-in'); if (inp) inp.value = ca; const o = b.innerHTML; b.textContent = 'copied'; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1100); }; });
 }
 
 /* ── Clic derecho en la grafica: poner una alerta al precio del clic, con el % vs el precio actual ── */
