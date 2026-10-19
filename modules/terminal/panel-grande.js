@@ -10,10 +10,10 @@
    clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
-import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
-import { SCAN_URL, FACTORY, WBNB, USDT } from './config.js';
-import { abrirCompra, saldoBNB, saldoToken } from './compra.js';
-import { listaDe, enVivo } from './posiciones.js';
+import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada, marcarActual, limpiarActual } from './grafico.js';
+import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE } from './config.js';
+import { abrirCompra, saldoBNB, saldoToken, cotizarCompra, comprar } from './compra.js';
+import { listaDe, enVivo, registrarCompra } from './posiciones.js';
 import { crearAlerta, alertasDe, quitarAlerta } from './alertas.js';
 import * as wallet from './wallet.js';
 
@@ -176,6 +176,32 @@ function css() {
 .tg-ctx-b.buy{background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;border-color:#1f8f63}
 .tg-ctx-b.sell{background:linear-gradient(180deg,#f6465d,#c42d41);color:#fff;border-color:#c42d41}
 .tg-ctx-b:active{transform:translateY(1px)}
+.tg-buy-ov{position:fixed;inset:0;z-index:1400;background:rgba(3,5,7,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:tgIn .14s ease}
+.tg-buy{width:320px;max-width:100%;background:#0b0f14;border:1px solid #2a323d;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);padding:16px}
+.tg-buy-h{display:flex;align-items:center;gap:10px}
+.tg-buy-h .tg-logo{width:34px;height:34px;flex:0 0 auto}
+.tg-buy-ht{flex:1 1 auto;min-width:0}
+.tg-buy-ht b{display:block;font-family:'Chakra Petch',var(--display);font-size:15px;font-weight:700}
+.tg-buy-ht span{font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794);text-transform:uppercase;letter-spacing:.5px}
+.tg-buy-x{width:30px;height:30px;border-radius:9px;border:1px solid var(--line,#232b36);background:#0d1117;color:var(--ink-2,#b7bdc6);font-size:14px;cursor:pointer;flex:0 0 auto}
+.tg-buy-note{margin:13px 0 0;padding:9px 11px;border-radius:10px;background:#15110a;border:1px solid #4a3a16;color:#e8c877;font-size:11.5px;line-height:1.45}
+.tg-buy-note b{color:#f3d488}
+.tg-buy-cur{display:flex;gap:7px;margin-top:14px}
+.tg-buy-c{flex:1 1 0;height:38px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0d1117;color:var(--ink-2,#b7bdc6);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;cursor:pointer}
+.tg-buy-c.on{color:var(--gold,#E8B84B);border-color:#8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117)}
+.tg-buy-c:disabled{opacity:.4;cursor:not-allowed;font-size:11px}
+.tg-buy-amtrow{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
+.tg-buy-amtrow b{font-size:17px;font-weight:700;color:var(--ink,#eaecef)}
+.tg-buy-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;background:#1c232b;margin-top:10px;outline:none}
+.tg-buy-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--gold,#E8B84B);border:2px solid #0b0f14;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.tg-buy-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold,#E8B84B);border:2px solid #0b0f14;cursor:pointer}
+.tg-buy-get{margin-top:14px;padding:11px;border-radius:11px;background:#0e141b;border:1px solid var(--line,#232b36);font-family:var(--mono);font-size:12px;color:var(--ink-3,#7d8794);text-align:center}
+.tg-buy-get b{color:var(--ink,#eaecef);font-size:14px}
+.tg-buy-go{width:100%;height:46px;margin-top:14px;border-radius:12px;border:0;background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #0c4d35,inset 0 1px 0 rgba(255,255,255,.2)}
+.tg-buy-go:active{transform:translateY(3px);box-shadow:0 1px 0 #0c4d35}
+.tg-buy-go:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;filter:grayscale(.3)}
+.tg-buy-msg{margin-top:10px;font-family:var(--mono);font-size:11.5px;line-height:1.5;text-align:center}
+.tg-buy-msg.ok{color:var(--verde,#2ee86a)} .tg-buy-msg.bad{color:var(--rojo,#f6465d)} .tg-buy-msg a{color:var(--gold,#E8B84B)}
 @media(max-width:860px){
   .tm-big-main{grid-template-columns:1fr;grid-auto-rows:minmax(0,auto)}
   .tg-left,.tg-right{max-height:none}
@@ -390,11 +416,7 @@ function pintarDer(it, ctx) {
     const m = b.dataset.op, mk = $('tg-op-market'), al = $('tg-op-alert'); if (mk) mk.hidden = m !== 'market'; if (al) al.hidden = m !== 'alert';
   }; });
   const ol = $('tg-openlong');
-  if (ol) ol.onclick = async () => {
-    if (!wallet.cuentaActual()) { try { await wallet.conectar(); } catch (_) {} derBalances(it); derPositions(it); return; }
-    const aud = ctx && ctx.auditoriaDe ? ctx.auditoriaDe(it) : null;
-    try { abrirCompra(it, aud); } catch (_) {}
-  };
+  if (ol) ol.onclick = () => abrirCompraRapida(it, false);
   const setA = $('tg-al-set'), inA = $('tg-al-price');
   const poner = () => {
     const v = parseFloat(String(inA.value).replace(/[, $]/g, '')); if (!(v > 0)) { inA.focus(); return; }
@@ -480,9 +502,110 @@ function posicionDe(it) {
   } catch (_) { return null; }
 }
 function openBuyOrSell(it, modo) {
+  if (modo === 'buy') { abrirCompraRapida(it, true); return; }
   const aud = _ctx && _ctx.auditoriaDe ? _ctx.auditoriaDe(it) : null;
-  const go = () => { try { abrirCompra(it, aud, modo); } catch (_) {} };
+  const go = () => { try { abrirCompra(it, aud, 'sell'); } catch (_) {} };
   if (!wallet.cuentaActual()) { wallet.conectar().then(go).catch(go); } else go();
+}
+function numCorto(n) { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; if (n >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: 2 }); return n.toLocaleString('en-US', { maximumFractionDigits: 6 }); }
+
+/* ── Compra rapida a mercado: mini formulario (barra de monto, aviso de entrada a mercado, confirmar).
+   Reusa las primitivas probadas de compra.js (cotizar, comprar) y registra la posicion. Paga con BNB. ── */
+let _buyTk = 0;
+function abrirCompraRapida(it, desdeClic) {
+  if (!it || !it.par) return;
+  cerrarCompraRapida();
+  const quote = it.moneda === 'USDT' ? USDT : WBNB;
+  const sym = esc(it.simbolo || 'TOKEN');
+  const dec = it.decimales || 18;
+  const bnbUsd = _ctx && _ctx.bnbUsd ? _ctx.bnbUsd() : 0;
+  let balance = 0n, prc = 0, cot = null, cotPara = 0n, ocupado = false;
+  let gas = 0n; try { gas = ethers.parseEther('0.003'); } catch (_) {}
+  const ov = document.createElement('div'); ov.id = 'tg-buy-ov'; ov.className = 'tg-buy-ov';
+  ov.innerHTML = `<div class="tg-buy" role="dialog" aria-modal="true">
+    <div class="tg-buy-h">${logo(it.token)}<div class="tg-buy-ht"><b>${sym}</b><span>Buy at market</span></div><button class="tg-buy-x" type="button" aria-label="Close">✕</button></div>
+    ${desdeClic ? `<div class="tg-buy-note">Opens at market, now <b>$${fmtP(_precioUsd, 5)}</b>, not at the price you clicked.</div>` : ''}
+    <div class="tg-buy-cur"><button class="tg-buy-c on" type="button">BNB</button><button class="tg-buy-c" type="button" disabled title="Needs a contract update">USDT soon</button></div>
+    <div class="tg-buy-amtrow"><span>Amount</span><span id="tg-buy-bal">Balance …</span></div>
+    <input class="tg-buy-slider" id="tg-buy-sl" type="range" min="0" max="100" value="0" aria-label="Amount">
+    <div class="tg-buy-amtrow"><b id="tg-buy-val">0 BNB</b><span id="tg-buy-usd"></span></div>
+    <div class="tg-buy-get">You get <b id="tg-buy-out">0</b> ${sym}</div>
+    <button class="tg-buy-go" id="tg-buy-go" type="button">Confirm buy</button>
+    <div class="tg-buy-msg" id="tg-buy-msg"></div>
+  </div>`;
+  document.body.appendChild(ov);
+  if (desdeClic && _precioUsd > 0) { try { marcarActual(_precioUsd); } catch (_) {} }
+  ov.querySelector('.tg-buy-x').onclick = () => { if (!ocupado) cerrarCompraRapida(); };
+  ov.addEventListener('click', (e) => { if (e.target === ov && !ocupado) cerrarCompraRapida(); });
+  const sl = $('tg-buy-sl'), valEl = $('tg-buy-val'), usdEl = $('tg-buy-usd'), outEl = $('tg-buy-out'), balEl = $('tg-buy-bal'), go = $('tg-buy-go'), msg = $('tg-buy-msg');
+  const maxWei = () => (balance > gas ? balance - gas : 0n);
+  const montoWei = () => maxWei() * BigInt(prc) / 100n;
+  const estado = () => {
+    if (ocupado) return;
+    if (!wallet.cuentaActual()) { go.disabled = false; go.textContent = 'Connect wallet'; return; }
+    const w = montoWei();
+    if (!(w > 0n)) { go.disabled = true; go.textContent = 'Enter an amount'; return; }
+    if (!cot || cotPara !== w) { go.disabled = true; go.textContent = 'Getting price…'; return; }
+    if (!(cot.tokOut > 0n)) { go.disabled = true; go.textContent = 'No liquidity'; return; }
+    go.disabled = false; go.textContent = 'Confirm buy';
+  };
+  const pintar = () => {
+    const w = montoWei();
+    valEl.textContent = (+ethers.formatEther(w)).toFixed(4) + ' BNB';
+    usdEl.textContent = (bnbUsd > 0 && w > 0n) ? '~$' + fmtTxt(Number(ethers.formatEther(w)) * bnbUsd) : '';
+    if (cot && cotPara === w && w > 0n) outEl.textContent = numCorto(Number(ethers.formatUnits(cot.tokOut, dec)));
+    else outEl.textContent = w > 0n ? '…' : '0';
+    estado();
+  };
+  let _t = null;
+  const cotizar = async () => {
+    const w = montoWei(); if (!(w > 0n)) { cot = null; cotPara = 0n; pintar(); return; }
+    const tk = ++_buyTk;
+    try { const r = await cotizarCompra(it.token, quote, w); if (tk !== _buyTk || !$('tg-buy-ov')) return; cot = r; cotPara = w; }
+    catch (_) { if (tk !== _buyTk) return; cot = { tokOut: 0n, comision: 0n }; cotPara = w; }
+    pintar();
+  };
+  sl.addEventListener('input', () => { prc = Number(sl.value) || 0; cot = null; pintar(); clearTimeout(_t); _t = setTimeout(cotizar, 300); });
+  const cargarSaldo = async () => {
+    const c = wallet.cuentaActual(); if (!c) { balEl.textContent = 'Connect wallet'; estado(); return; }
+    try { balance = await saldoBNB(c); } catch (_) { balance = 0n; }
+    if ($('tg-buy-ov')) { balEl.textContent = 'Balance ' + (+ethers.formatEther(balance)).toFixed(4) + ' BNB'; pintar(); }
+  };
+  cargarSaldo();
+  go.onclick = async () => {
+    if (!wallet.cuentaActual()) { try { await wallet.conectar(); } catch (_) {} cargarSaldo(); return; }
+    const w = montoWei(); if (!(w > 0n) || !cot || cotPara !== w || !(cot.tokOut > 0n)) return;
+    const slip = BigInt(SLIPPAGE.porDefecto); const minOut = cot.tokOut - cot.tokOut * slip / 10000n;
+    ocupado = true; go.disabled = true; go.textContent = 'Confirm in your wallet…'; if (sl) sl.disabled = true; msg.className = 'tg-buy-msg'; msg.textContent = '';
+    try {
+      const cuenta = wallet.cuentaActual();
+      const balAntes = await saldoToken(it.token, cuenta).catch(() => 0n);
+      const rc = await comprar({ token: it.token, quote, bnbWei: w, minOut });
+      const balDespues = await saldoToken(it.token, cuenta).catch(() => 0n);
+      const recibido = balDespues > balAntes ? balDespues - balAntes : 0n;
+      try { registrarCompra(cuenta, it, recibido, w, bnbUsd); } catch (_) {}
+      go.textContent = 'Bought'; msg.className = 'tg-buy-msg ok'; msg.innerHTML = 'Done. The ' + sym + ' is in your wallet. <a href="' + SCAN_URL + '/tx/' + esc(rc.hash) + '" target="_blank" rel="noopener">View</a>';
+      try { if (_itActual && _itActual.token.toLowerCase() === it.token.toLowerCase()) marcarEntradaDe(_itActual); } catch (_) {}
+      try { derPositions(it); derBalances(it); } catch (_) {}
+      setTimeout(() => cerrarCompraRapida(), 2600);
+    } catch (e) {
+      ocupado = false; if (sl) sl.disabled = false;
+      const m = ((e && (e.reason || e.shortMessage || e.message)) || '').toLowerCase();
+      msg.className = 'tg-buy-msg bad';
+      msg.textContent = (m.includes('rejected') || m.includes('denied') || m.includes('4001')) ? 'You cancelled.'
+        : m.includes('insufficient') ? 'Not enough BNB for the swap and gas.'
+        : (m.includes('slippage') || m.includes('insufficient_output')) ? 'Price moved too much. Raise your amount or try again.'
+        : 'The transaction could not be completed.';
+      estado();
+    }
+  };
+  setTimeout(() => { document.addEventListener('keydown', buyEsc, true); }, 0);
+}
+function buyEsc(e) { if (e.key === 'Escape' && document.getElementById('tg-buy-ov')) { e.stopPropagation(); cerrarCompraRapida(); } }
+function cerrarCompraRapida() {
+  try { limpiarActual(); } catch (_) {}
+  document.removeEventListener('keydown', buyEsc, true);
+  const ov = document.getElementById('tg-buy-ov'); if (ov) { try { ov.remove(); } catch (_) {} }
 }
 
 /* ── Clic derecho en la grafica: debajo del precio, solo alerta; encima, alerta y (segun tengas o no la
@@ -522,7 +645,7 @@ function cerrarCtx() {
 
 function onEsc(e) { if (e.key === 'Escape') cerrar(); }
 export function cerrar() {
-  cerrarCtx();
+  cerrarCtx(); cerrarCompraRapida();
   document.removeEventListener('keydown', onEsc);
   try { destruirGrafico(); } catch (_) {}
   const ov = $('tm-big-ov'); if (ov) { try { ov.remove(); } catch (_) {} }

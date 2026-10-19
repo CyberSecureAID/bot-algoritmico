@@ -95,7 +95,7 @@ function fmtEje(p) {
   return '0.0' + subCeros(ceros) + dig;
 }
 
-let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0;
+let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0, _lineaActual = null;
 /* Precio (en las unidades del eje, aqui USD) a la altura Y relativa al contenedor del grafico.
    Lo usa la vista grande para el clic derecho: poner una alerta al precio donde se hizo clic. */
 export function precioEnY(y) { try { return (_serie && y != null) ? _serie.coordinateToPrice(y) : null; } catch (_) { return null; } }
@@ -116,10 +116,17 @@ export function limpiarEntrada() {
   try { if (_serie) _serie.applyOptions({ autoscaleInfoProvider: undefined }); } catch (_) {}
   _lineaEntrada = null; _entradaPrecio = 0;
 }
+/* Linea punteada en el PRECIO ACTUAL (a mercado). Se muestra mientras la compra rapida esta abierta,
+   para dejar claro que la entrada se ejecuta aqui y no en el punto donde se hizo clic. */
+export function marcarActual(price) {
+  limpiarActual();
+  try { if (_serie && price > 0 && isFinite(price)) _lineaActual = _serie.createPriceLine({ price: Number(price), color: '#9fb0c0', lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: 'Market' }); } catch (_) {}
+}
+export function limpiarActual() { try { if (_serie && _lineaActual) _serie.removePriceLine(_lineaActual); } catch (_) {} _lineaActual = null; }
 export function destruirGrafico() {
   if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; }
   if (_chart) { try { _chart.remove(); } catch (_) {} }
-  _chart = null; _serie = null; _cont = null; _lineaEntrada = null; _entradaPrecio = 0;
+  _chart = null; _serie = null; _cont = null; _lineaEntrada = null; _entradaPrecio = 0; _lineaActual = null;
 }
 export function montarGrafico(cont, velas) {
   if (!cont || !Array.isArray(velas) || !velas.length) return false;
