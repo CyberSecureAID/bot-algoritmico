@@ -25,3 +25,10 @@ export const COINGECKO_BNB = 'https://api.coingecko.com/api/v3/simple/price?ids=
 export const FEED = { bloquesInicio: 4000, bloquesPorConsulta: 1000, sondeoMs: 3000, maxFilas: 80 };
 
 export const SCAN_URL = 'https://bscscan.com';
+
+/* TerminalSwap (proxy UUPS): compra y venta por PancakeSwap V2 con la comision del 1% repartida
+   en cadena (0.10% staking, 0.45% owner1, 0.45% owner2). Implementacion verificada:
+   0x98DaD1D90496Be6cc2736467DA6bD001Ff3B4b03. */
+export const TERMINAL_SWAP = '0x2555290Fdf19D1699c91332E193CA6A86ad45dee';
+/* Slippage por defecto y opciones (en bps). Tokens recien nacidos: pools finas, se mueve rapido. */
+export const SLIPPAGE = { porDefecto: 300, opciones: [100, 300, 1000] };

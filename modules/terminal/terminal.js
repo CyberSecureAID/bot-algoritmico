@@ -5,6 +5,7 @@
 import * as ethers from './ethers.min.js';
 import * as gb from './motor.js';
 import { auditar } from './auditoria.js';
+import { abrirCompra } from './compra.js';
 import { FEED, SCAN_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -132,20 +133,23 @@ export function abrirFicha(it) {
     <ul class="tm-hall" id="tm-hall"><li class="tm-h-sk"><span class="tm-sk" style="width:60%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:45%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:70%"></span></li></ul>
     <div class="tm-f-acts">
       <a class="tm-b sec" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a>
-      <a class="tm-b" href="../swap/swap.html?token=${esc(it.token)}">Swap</a>
+      ${it.fuente === 'launchpad' ? `<a class="tm-b" href="../launchpad/launchpad.html">Launchpad</a>` : `<button class="tm-b" id="tm-f-swap" type="button">Swap</button>`}
     </div>
     <p class="tm-f-note">This check reads what the contract allows today. It does not predict price and it is not a recommendation. Anyone can lose money on a new token.</p>
   </div>`;
   document.body.appendChild(ov);
   const cerrar = () => { try { ov.remove(); } catch (_) {} };
+  let _aud = null;
+  const bSwap = $('tm-f-swap'); if (bSwap) bSwap.onclick = () => abrirCompra(it, _aud);
   ov.querySelector('.tm-f-x').onclick = cerrar;
   ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
   const cb = ov.querySelector('.tm-copyc'); cb.onclick = () => { try { navigator.clipboard.writeText(cb.dataset.copy); const o = cb.innerHTML; cb.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (cb.isConnected) cb.innerHTML = o; }, 1200); } catch (_) {} };
-  auditar(it.token, it.par).then((r) => { if (ov.isConnected) pintarAuditoria(r); }).catch((e) => { try { console.warn('[TERM-AUDIT] fallo', e); } catch (_) {} if (ov.isConnected) pintarAuditoria({ nivel: 'pend', titulo: 'Checking', hallazgos: [{ n: 'info', t: 'Security check unavailable', d: 'Could not reach the scanner. Try again.' }], datos: {} }); });
+  auditar(it.token, it.par).then((r) => { _aud = r; if (ov.isConnected) pintarAuditoria(r); }).catch((e) => { try { console.warn('[TERM-AUDIT] fallo', e); } catch (_) {} if (ov.isConnected) pintarAuditoria({ nivel: 'pend', titulo: 'Checking', hallazgos: [{ n: 'info', t: 'Security check unavailable', d: 'Could not reach the scanner. Try again.' }], datos: {} }); });
 }
 function pintarAuditoria(r) {
   const sem = $('tm-sem'); if (!sem) return;
   sem.className = 'tm-sem ' + r.nivel;
+  const bS = $('tm-f-swap'); if (bS) { if (r.nivel === 'bad') { bS.disabled = true; bS.textContent = 'Do not buy'; } else { bS.disabled = false; bS.textContent = 'Swap'; } }
   const nb = (r.hallazgos || []).filter((x) => x.n === 'bad').length, nw = (r.hallazgos || []).filter((x) => x.n === 'warn').length;
   const sub = r.nivel === 'pend' ? esc(r.titulo) : r.nivel === 'ok' ? 'No red flags found in the contract'
     : (nb ? nb + ' critical issue' + (nb > 1 ? 's' : '') : '') + (nb && nw ? ' and ' : '') + (nw ? nw + ' warning' + (nw > 1 ? 's' : '') : '');
