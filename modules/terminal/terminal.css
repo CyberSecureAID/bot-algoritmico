@@ -16,14 +16,14 @@
 .tm-panel{min-width:0;background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:16px 16px 6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow-x:auto}
 .tm-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
 .tm-sec-r{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.tm-fil-b.tm-b{flex:0 0 auto;height:30px;min-width:0;padding:0 14px;font-size:12px;border-radius:999px}
+.tm-fil-b.tm-b{flex:0 0 auto;min-width:0;padding:0 18px}
 .tm-sec-tt{display:flex;align-items:center;gap:12px;min-width:0}
 .tm-sec-ico{width:36px;height:36px;flex:0 0 auto;display:grid;place-items:center;border-radius:10px;background:rgba(232,184,75,.12);color:var(--gold)}
 .tm-sec-ico svg{width:20px;height:20px}
 .tm-sec-txt b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:19px;color:var(--ink);line-height:1.15}
 .tm-sec-txt span{display:block;font-size:12.5px;color:var(--ink-3)}
-.tm-live{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;height:30px;padding:0 12px;border-radius:999px;border:1px solid rgba(46,232,106,.3);background:rgba(46,232,106,.08);font-family:var(--mono);font-size:11px;color:#8ef0b0;white-space:nowrap}
-.tm-live.off{border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08);color:#f1cf6a}
+.tm-live{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;height:46px;padding:0 18px;border-radius:12px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117);box-shadow:0 4px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);font-family:var(--mono);font-size:12px;color:#E8B84B;white-space:nowrap}
+.tm-live.off{color:#9aa3ad;border-color:#394049}
 
 .tm-table{width:100%;border-collapse:collapse;font-family:var(--display)}
 .tm-table th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding:0 10px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -97,8 +97,9 @@
   /* Cabecera de New pairs: en movil no caben titulo + Filters + Live en una linea (Live se salia del panel).
      El titulo va arriba y la fila de Filters + Live debajo, a lo ancho. */
   .tm-sec-head{flex-wrap:wrap;gap:10px}
-  .tm-sec-r{flex:1 0 100%;justify-content:space-between}
-  .tm-live{padding:0 12px}
+  .tm-sec-r{flex:1 0 100%;flex-wrap:wrap;gap:8px}
+  .tm-sec-r>.tm-b{flex:1 1 0;max-width:none}
+  .tm-live{flex:1 0 100%;justify-content:center;height:42px;padding:0 16px}
   /* Cabeceras y distintivos largos pasan a su forma corta: 'Liquidity'->'Liq', 'Launchpad'->'LP'. */
   .tm-lg{display:none}.tm-sm{display:inline}
 }
