@@ -14,6 +14,12 @@ export const FACTORY = '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73';
 export const WBNB    = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 export const USDT    = '0x55d398326f99059fF775485246999027B3197955';
 
+/* four.meme (BNB Chain): TokenManager2 emite TokenCreate por cada moneda creada ahi (tokens creados desde
+   el 5 de septiembre de 2024). Direccion contrastada en dos fuentes independientes: la documentacion de
+   Bitquery (four-meme-api) y el repositorio four-meme-community/four-meme-ai (references/contract-addresses.md). */
+export const FOURMEME = '0x5c952063c7fc8610FFDB798152D69F0B9550762b';
+export const FOURMEME_URL = 'https://four.meme/token/';
+
 /* Launchpad de DecFreedom (proxy): emite TokenCreado por cada moneda creada aqui. */
 export const LAUNCHPAD = '0x2c27B653F4fF3d7D0a4581A272E16E0E4E514128';
 

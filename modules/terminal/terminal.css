@@ -42,6 +42,7 @@
 .tm-logo-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#0b0e12}
 .tm-badge{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;height:16px;padding:0 8px;line-height:1;border-radius:999px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#9fb6d6;background:rgba(127,160,216,.12);border:1px solid rgba(127,160,216,.3);white-space:nowrap}
 .tm-badge.lp{color:#f1cf6a;background:rgba(232,184,75,.12);border-color:rgba(232,184,75,.34)}
+.tm-badge.fm{color:#c9b3ff;background:rgba(168,140,255,.12);border-color:rgba(168,140,255,.36)}   /* four.meme */
 .tm-sym{color:var(--ink-3);font-family:var(--mono);font-size:12px}
 .tm-age{font-family:var(--mono);font-size:12px;color:#8ef0b0}
 .tm-liq,.tm-price{font-family:var(--mono);font-size:12px;color:var(--ink-2)}

@@ -8,7 +8,7 @@ import { auditar } from './auditoria.js';
 import { abrirCompra } from './compra.js';
 import { comoFunciona } from './aviso.js';
 import { abrirFiltros } from './filtros.js';
-import { FEED, SCAN_URL } from './config.js';
+import { FEED, SCAN_URL, FOURMEME_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -87,8 +87,8 @@ function skeleton() {
 function fila(it, i, extra = '') {
   const liqUsd = it.moneda === 'USDT' ? it.liquidez : it.liquidez * _bnbUsd;
   const precioUsd = it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd;
-  const liqTxt = it.par ? (liqUsd > 0 ? money(liqUsd) : (it.liquidez > 0 ? fmtP(it.liquidez, 3) + ' ' + it.moneda : '—')) : '<span class="tm-badge lp"><span class="tm-lg">Launchpad</span><span class="tm-sm">LP</span></span>';
-  const fuente = it.fuente === 'launchpad' ? '<span class="tm-badge lp">LP</span>' : (it.moneda === 'USDT' ? '<span class="tm-badge">USDT</span>' : '');
+  const liqTxt = it.par ? (liqUsd > 0 ? money(liqUsd) : (it.liquidez > 0 ? fmtP(it.liquidez, 3) + ' ' + it.moneda : '—')) : (it.fuente === 'fourmeme' ? '<span class="tm-badge fm"><span class="tm-lg">four.meme</span><span class="tm-sm">4M</span></span>' : '<span class="tm-badge lp"><span class="tm-lg">Launchpad</span><span class="tm-sm">LP</span></span>');
+  const fuente = it.fuente === 'launchpad' ? '<span class="tm-badge lp">LP</span>' : it.fuente === 'fourmeme' ? '<span class="tm-badge fm">4M</span>' : (it.moneda === 'USDT' ? '<span class="tm-badge">USDT</span>' : '');
   return `<tr class="tm-row" data-a="${esc(it.token)}">
     <td class="tm-num">${i + 1}</td>
     <td class="tm-tok"><span class="tm-tok-in">${logo(it.simbolo, it.token)}<span class="tm-tok-nom" title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</span>${fuente}</span></td>
@@ -154,12 +154,12 @@ export function abrirFicha(it) {
   const ov = document.createElement('div'); ov.id = 'tm-ov'; ov.className = 'tm-ov';
   ov.innerHTML = `<div class="tm-ficha" role="dialog" aria-modal="true">
     <div class="tm-f-head">
-      <div class="tm-f-tt">${logo(it.simbolo, it.token)}<div class="tm-f-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago · ${it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : 'PancakeSwap ' + it.moneda + ' pair'}</span></div></div>
+      <div class="tm-f-tt">${logo(it.simbolo, it.token)}<div class="tm-f-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago · ${it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : it.fuente === 'fourmeme' ? 'four.meme bonding curve' : 'PancakeSwap ' + it.moneda + ' pair'}</span></div></div>
       <button class="tm-f-x" type="button" aria-label="Close">✕</button>
     </div>
     <div class="tm-sem pend" id="tm-sem"><span class="tm-sem-ico">${ICO_INFO}</span><div><b>${TXT_NIVEL.pend}</b><span>Reading the contract and the security scanner…</span></div></div>
     <div class="tm-kv">
-      <div><span>Liquidity</span><b>${liqUsd > 0 ? money(liqUsd) : (it.par ? '—' : 'Launchpad pool')}</b></div>
+      <div><span>Liquidity</span><b>${liqUsd > 0 ? money(liqUsd) : (it.par ? '—' : (it.fuente === 'fourmeme' ? 'four.meme curve' : 'Launchpad pool'))}</b></div>
       <div><span>Price</span><b>${precioUsd > 0 ? '$' + fmtP(precioUsd) : '—'}</b></div>
       <div><span>Holders</span><b id="tm-k-hold">—</b></div>
       <div><span>Top 10</span><b id="tm-k-top">—</b></div>
@@ -171,7 +171,7 @@ export function abrirFicha(it) {
     <ul class="tm-hall" id="tm-hall"><li class="tm-h-sk"><span class="tm-sk" style="width:60%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:45%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:70%"></span></li></ul>
     <div class="tm-f-acts">
       <a class="tm-b sec" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a>
-      ${it.fuente === 'launchpad' ? `<a class="tm-b" href="../launchpad/launchpad.html">Launchpad</a>` : `<button class="tm-b" id="tm-f-swap" type="button">Swap</button>`}
+      ${it.fuente === 'launchpad' ? `<a class="tm-b" href="../launchpad/launchpad.html">Launchpad</a>` : it.fuente === 'fourmeme' ? `<a class="tm-b" href="${FOURMEME_URL}${esc(it.token)}" target="_blank" rel="noopener">four.meme</a>` : `<button class="tm-b" id="tm-f-swap" type="button">Swap</button>`}
     </div>
     <p class="tm-f-note">This check reads what the contract allows today. It does not predict price and it is not a recommendation. Anyone can lose money on a new token.</p>
   </div>`;

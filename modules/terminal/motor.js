@@ -6,7 +6,7 @@
    Todo lo que pasa se registra en consola con prefijo [TERM]. */
 
 import * as ethers from './ethers.min.js';
-import { RPCS, FACTORY, WBNB, USDT, LAUNCHPAD, COINGECKO_BNB, FEED } from './config.js';
+import { RPCS, FACTORY, WBNB, USDT, LAUNCHPAD, FOURMEME, COINGECKO_BNB, FEED } from './config.js';
 
 const log = (...a) => { try { console.info('[TERM]', ...a); } catch (_) {} };
 
@@ -26,10 +26,13 @@ async function conRotacion(fn) {
 /* ── ABIs minimos ── */
 const IFACE_FACTORY = new ethers.Interface(['event PairCreated(address indexed token0,address indexed token1,address pair,uint256)']);
 const IFACE_LP = new ethers.Interface(['event TokenCreado(address indexed token,address indexed creador,string nombre,string simbolo,uint256 supply,uint16 sueloBps,uint256 vestTotal,uint64 vestDuracion,bool antibot)']);
+/* four.meme TokenManager2: ningun parametro indexado (todo va en data). Firma tomada del repositorio four-meme-community/four-meme-ai. */
+const IFACE_4M = new ethers.Interface(['event TokenCreate(address creator,address token,uint256 requestId,string name,string symbol,uint256 totalSupply,uint256 launchTime,uint256 launchFee)']);
 const ERC20_ABI = ['function name() view returns (string)', 'function symbol() view returns (string)', 'function decimals() view returns (uint8)', 'function totalSupply() view returns (uint256)'];
 const PAIR_ABI = ['function getReserves() view returns (uint112,uint112,uint32)', 'function token0() view returns (address)'];
 const TOPIC_PAIR = IFACE_FACTORY.getEvent('PairCreated').topicHash;
 const TOPIC_TOKEN = IFACE_LP.getEvent('TokenCreado').topicHash;
+const TOPIC_4M = IFACE_4M.getEvent('TokenCreate').topicHash;
 const esQuote = (a) => { const x = String(a).toLowerCase(); return x === WBNB.toLowerCase() || x === USDT.toLowerCase(); };
 
 export const bloqueActual = () => conRotacion((p) => p.getBlockNumber());
@@ -49,16 +52,22 @@ export function decodificar(l) {
     const ev = IFACE_LP.parseLog({ topics: l.topics, data: l.data }); if (!ev) return null;
     return { token: String(ev.args.token), quote: null, moneda: 'BNB', par: null, fuente: 'launchpad', nombre: String(ev.args.nombre), simbolo: String(ev.args.simbolo), supply: ev.args.supply, creador: String(ev.args.creador), bloque: Number(l.blockNumber), tx: l.transactionHash };
   }
+  if (addr === FOURMEME.toLowerCase() && l.topics && l.topics[0] === TOPIC_4M) {
+    const ev = IFACE_4M.parseLog({ topics: l.topics, data: l.data }); if (!ev) return null;
+    // Nace en la curva de four.meme (no hay par en PancakeSwap hasta que gradua): par null, liquidez 0.
+    return { token: String(ev.args.token), quote: null, moneda: 'BNB', par: null, fuente: 'fourmeme', nombre: String(ev.args.name), simbolo: String(ev.args.symbol), supply: ev.args.totalSupply, creador: String(ev.args.creator), bloque: Number(l.blockNumber), tx: l.transactionHash };
+  }
   return null;
 }
 
 /* Logs de ambas fuentes en un rango de bloques (en paralelo, cada una con rotacion de RPC). */
 export async function logsRango(desde, hasta) {
-  const [a, b] = await Promise.all([
+  const [a, b, c] = await Promise.all([
     conRotacion((p) => p.getLogs({ address: FACTORY, topics: [TOPIC_PAIR], fromBlock: desde, toBlock: hasta })).catch((e) => { log('getLogs pancake fallo', desde, hasta, e && e.shortMessage || e); return []; }),
-    conRotacion((p) => p.getLogs({ address: LAUNCHPAD, topics: [TOPIC_TOKEN], fromBlock: desde, toBlock: hasta })).catch((e) => { log('getLogs launchpad fallo', desde, hasta, e && e.shortMessage || e); return []; })
+    conRotacion((p) => p.getLogs({ address: LAUNCHPAD, topics: [TOPIC_TOKEN], fromBlock: desde, toBlock: hasta })).catch((e) => { log('getLogs launchpad fallo', desde, hasta, e && e.shortMessage || e); return []; }),
+    conRotacion((p) => p.getLogs({ address: FOURMEME, topics: [TOPIC_4M], fromBlock: desde, toBlock: hasta })).catch((e) => { log('getLogs four.meme fallo', desde, hasta, e && e.shortMessage || e); return []; })
   ]);
-  return a.concat(b).map(decodificar).filter(Boolean);
+  return a.concat(b, c).map(decodificar).filter(Boolean);
 }
 
 /* Metadatos del token (nombre, simbolo, decimales, supply). Tolerante: lo que falle queda vacio. */
@@ -118,7 +127,7 @@ export function arrancarFeed({ alNuevo, alEstado }) {
   const estado = (x) => { try { alEstado && alEstado(x); } catch (_) {} };
 
   async function enriquecer(it) {
-    const meta = it.fuente === 'launchpad' && it.nombre ? { nombre: it.nombre, simbolo: it.simbolo, decimales: 18, supply: it.supply } : await metaToken(it.token);
+    const meta = (it.fuente === 'launchpad' || it.fuente === 'fourmeme') && it.nombre ? { nombre: it.nombre, simbolo: it.simbolo, decimales: 18, supply: it.supply } : await metaToken(it.token);
     Object.assign(it, meta);
     it.tiempo = await tiempoBloque(it.bloque);
     if (it.par) { try { Object.assign(it, await reservasPar(it.par, it.token, it.decimales)); } catch (e) { it.liquidez = 0; it.precio = 0; } }
