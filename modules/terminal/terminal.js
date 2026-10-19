@@ -8,6 +8,7 @@ import { auditar, PASOS, PASOS_TXT } from './auditoria.js';
 import { abrirCompra } from './compra.js';
 import { comoFunciona } from './aviso.js';
 import { abrirFiltros } from './filtros.js';
+import { velasDeToken, montarGrafico, destruirGrafico } from './grafico.js';
 import { FEED, SCAN_URL, FOURMEME_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -167,6 +168,7 @@ export function abrirFicha(it) {
       <div class="tm-f-tt">${logo(it.simbolo, it.token)}<div class="tm-f-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago · ${it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : it.fuente === 'fourmeme' ? 'four.meme bonding curve' : 'PancakeSwap ' + it.moneda + ' pair'}</span></div></div>
       <button class="tm-f-x" type="button" aria-label="Close">✕</button>
     </div>
+    <div class="tm-chart"><div class="tm-chart-cv" id="tm-chart-cv"></div><div class="tm-chart-msg" id="tm-chart-msg"><span class="tm-anillo"></span></div></div>
     <div class="tm-sem pend" id="tm-sem">${semPend()}</div>
     <div class="tm-kv">
       <div><span>Liquidity</span><b>${liqUsd > 0 ? money(liqUsd) : (it.par ? '$0' : (it.fuente === 'fourmeme' ? 'four.meme curve' : 'Launchpad pool'))}</b></div>
@@ -188,7 +190,19 @@ export function abrirFicha(it) {
   </div>`;
   document.body.appendChild(ov);
   let nRepesca = 0, tRepesca = 0;
-  const cerrar = () => { clearTimeout(tRepesca); try { ov.remove(); } catch (_) {} };
+  const cerrar = () => { clearTimeout(tRepesca); try { destruirGrafico(); } catch (_) {} try { ov.remove(); } catch (_) {} };
+  // Grafico de velas reales del par (una vela por operacion). Solo pares de PancakeSwap.
+  (function cargarGrafico() {
+    const msg = $('tm-chart-msg'), cv = $('tm-chart-cv');
+    if (!it.par) { if (msg) { msg.innerHTML = it.fuente === 'fourmeme' ? 'Trades on four.meme' : 'Trades on the Launchpad'; } return; }
+    velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: _bnbUsd, quoteEsUSDT: it.moneda === 'USDT' })
+      .then((velas) => {
+        if (!ov.isConnected) return;
+        if (velas && velas.length && cv) { if (msg) msg.hidden = true; montarGrafico(cv, velas); }
+        else if (msg) { msg.innerHTML = 'No trades yet'; }
+      })
+      .catch(() => { if (msg && ov.isConnected) msg.innerHTML = 'Chart unavailable'; });
+  })();
   let _audFicha = auditoriaDe(it);
   const bSwap = $('tm-f-swap'); if (bSwap) bSwap.onclick = () => abrirCompra(it, _audFicha);
   ov.querySelector('.tm-f-x').onclick = cerrar;

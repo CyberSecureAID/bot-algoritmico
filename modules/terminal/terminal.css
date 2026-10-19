@@ -154,6 +154,12 @@
 .tm-kv b sub{font-size:9px}
 .tm-kv b#tm-k-cre,.tm-kv b#tm-k-hold{letter-spacing:-.3px}
 .tm-kv .tm-copyc{padding:2px 7px;font-size:11px}
+/* Grafico de velas (una vela por operacion real del par) */
+.tm-chart{position:relative;height:220px;margin:0 0 12px;border:1px solid var(--line);border-radius:14px;background:rgba(11,14,17,.6);overflow:hidden}
+.tm-chart-cv{position:absolute;inset:0}
+.tm-chart-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--ink-3);pointer-events:none}
+.tm-chart-msg[hidden]{display:none}
+@media (max-width:480px){.tm-chart{height:180px}}
 /* Top holders (inteligencia del token): cabecera con resumen, filas con barra y etiqueta */
 .tm-holders{margin:0 0 12px;border:1px solid var(--line);border-radius:14px;background:rgba(11,14,17,.6);overflow:hidden}
 .tm-holders[hidden]{display:none}
