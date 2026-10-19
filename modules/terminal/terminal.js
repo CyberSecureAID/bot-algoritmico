@@ -52,12 +52,12 @@ export function arrancar() {
     <section class="tm-hero">
       <h1 class="tm-h1">Terminal</h1>
       <p class="tm-sub">New tokens on BNB Chain, the second they are born. Checked by Wallet Shield before you buy. Your wallet, your keys.</p>
-      <div class="tm-hero-acts"><button class="tm-b sec" id="tm-pos" type="button">My positions</button><button class="tm-b sec" id="tm-how" type="button">How it works</button></div>
+      <div class="tm-hero-acts"><button class="tm-b sec" id="tm-how" type="button">How it works</button></div>
     </section>
     <section class="tm-panel">
       <div class="tm-sec-head">
         <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b></div></div>
-        <div class="tm-sec-r"><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><i></i><span>Connecting…</span></div></div>
+        <div class="tm-sec-r"><button class="tm-b sec" id="tm-pos" type="button">Positions</button><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
       </div>
       <div id="tm-feed">${skeleton()}</div>
     </section>`;
@@ -169,7 +169,7 @@ export function abrirFicha(it) {
   const ov = document.createElement('div'); ov.id = 'tm-ov'; ov.className = 'tm-ov';
   ov.innerHTML = `<div class="tm-ficha" role="dialog" aria-modal="true">
     <div class="tm-f-head">
-      <div class="tm-f-tt">${logo(it.simbolo, it.token)}<div class="tm-f-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago · ${it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : it.fuente === 'fourmeme' ? 'four.meme bonding curve' : 'PancakeSwap ' + it.moneda + ' pair'}</span></div></div>
+      <div class="tm-f-tt">${logo(it.simbolo, it.token)}<div class="tm-f-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago · ${it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : it.fuente === 'fourmeme' ? 'four.meme bonding curve' : it.moneda + ' pair'}</span></div></div>
       <button class="tm-f-x" type="button" aria-label="Close">✕</button>
     </div>
     <div class="tm-chart"><div class="tm-chart-cv" id="tm-chart-cv"></div><div class="tm-chart-msg" id="tm-chart-msg"><span class="tm-anillo"></span></div></div>
@@ -299,10 +299,11 @@ export async function abrirPosiciones() {
   const totPnl = totVal - totCost, totPct = totCost > 0 ? totPnl / totCost * 100 : 0;
   const sg = (v) => (v >= 0 ? '+' : '-'), cl = (v) => (v >= 0 ? 'up' : 'down');
   tot.hidden = false;
-  tot.innerHTML = `<div><span>Total value</span><b>${money(totVal)}</b></div><div><span>Profit / loss</span><b class="${cl(totPnl)}">${sg(totPnl)}${money(Math.abs(totPnl))} · ${sg(totPct)}${pct(Math.abs(totPct))}</b></div>`;
-  body.innerHTML = vivas.map((d) => `<div class="tm-pos-row" data-a="${esc(d.token)}">
-      <div class="tm-pos-tk">${logo(d.simbolo, d.token)}<div class="tm-pos-nm"><b>${esc(d.simbolo || '?')}</b><span>${numC(d.cant)} · ${d.precioUsd > 0 ? '$' + fmtP(d.precioUsd) : '$0'}</span></div></div>
-      <div class="tm-pos-val"><b>${money(d.valorUsd)}</b><span class="${cl(d.pnlUsd)}">${sg(d.pnlUsd)}${money(Math.abs(d.pnlUsd))} · ${sg(d.pnlPct)}${pct(Math.abs(d.pnlPct))}</span></div>
+  tot.innerHTML = `<div class="tm-pos-tv"><span>Total value</span><b>${money(totVal)}</b></div>
+    <div class="tm-pos-tp ${cl(totPnl)}"><span>Profit / loss</span><b>${sg(totPnl)}${money(Math.abs(totPnl))}</b><em>${sg(totPct)}${pct(Math.abs(totPct))}</em></div>`;
+  body.innerHTML = vivas.map((d) => `<div class="tm-pos-row ${cl(d.pnlUsd)}" data-a="${esc(d.token)}">
+      <div class="tm-pos-tk">${logo(d.simbolo, d.token)}<div class="tm-pos-nm"><b>${esc(d.simbolo || '?')}</b><span>${numC(d.cant)} · in $${fmtP(d.entradaUsd)}</span></div></div>
+      <div class="tm-pos-val"><b>${money(d.valorUsd)}</b><span class="tm-pos-pnl ${cl(d.pnlUsd)}">${sg(d.pnlUsd)}${money(Math.abs(d.pnlUsd))} · ${sg(d.pnlPct)}${pct(Math.abs(d.pnlPct))}</span></div>
       <button class="tm-pos-x" type="button" data-f="${esc(d.token)}" title="Remove from list">✕</button>
     </div>`).join('');
   body.querySelectorAll('.tm-pos-row').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.tm-pos-x')) return; const d = vivas.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d) { cerrar(); abrirFicha(itDePos(d)); } }; });
