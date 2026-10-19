@@ -353,46 +353,20 @@ export async function operaciones(token, max = 80) {
 }
 function _corto(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
 
-/* Todas las monedas creadas en el launchpad (evento TokenCreado GLOBAL, sin filtrar por creador),
-   lo mas nuevo primero. Escaneo por ventanas como operaciones. Alimenta Latest Created y Popular. */
-export async function todosLosTokens(max = 40) {
-  let latest = 0; try { latest = await lector().getBlockNumber(); } catch (_) { return []; }
-  if (!latest) return [];
-  const CHUNK = 9000, TOPE = 260000, OLA = 3;   // OLA = rangos pedidos A LA VEZ (en paralelo), suave con los RPC
-  // Antes se escaneaba rango por rango en serie (~29 vueltas), asi que aunque no hubiera monedas
-  // el lobby tardaba ~15 s. Ahora se piden OLA rangos en paralelo por ola, cada uno con su RPC: el
-  // mismo barrido completo se hace en ~5 vueltas. Se corta en cuanto se juntan `max` monedas.
-  const vistos = new Set(); const out = [];
-  let hi = latest, recorrido = 0;
-  while (recorrido < TOPE && hi > 0 && out.length < max) {
-    const rangos = [];
-    for (let k = 0; k < OLA && hi > 0 && recorrido < TOPE; k++) {
-      const lo = Math.max(0, hi - CHUNK + 1); rangos.push([lo, hi]); hi = lo - 1; recorrido += CHUNK;
-    }
-    const res = await Promise.all(rangos.map(async ([lo, hi2], idx) => {
-      for (let intento = 0; intento < RPCS.length; intento++) {
-        const rpc = (_rpcIdx + idx + intento) % RPCS.length;
-        try { const cc = new ethers.Contract(LAUNCHPAD, ABI, provRPC(rpc)); return await cc.queryFilter(cc.filters.TokenCreado(), lo, hi2); }
-        catch (_) {}
-      }
-      return [];
-    }));
-    for (const ev of res) {
-      for (const e of ev) {
-        const a = e.args; const addr = String(a.token); const k = addr.toLowerCase();
-        if (vistos.has(k)) continue; vistos.add(k);
-        out.push({ address: addr, nombre: a.nombre, simbolo: a.simbolo, supply: Number(ethers.formatEther(a.supply)), creador: String(a.creador), bloque: e.blockNumber });
-      }
-    }
-  }
-  out.sort((x, y) => y.bloque - x.bloque);   // lo mas nuevo primero (las olas pueden llegar mezcladas)
-  return out.slice(0, max);
+/* Precio de una moneda del launchpad para las listas: solo lee su pool (una llamada), sin traer todo
+   lo que necesita el panel (datosToken hace ~15 lecturas por moneda). precio = quote por token. */
+export async function precioToken(addr) {
+  try {
+    const pl = await leePool(addr);
+    if (!pl || !pl.activo || !(pl.rTok > 0n)) return { precio: 0, moneda: 'BNB' };
+    return { precio: Number(ethers.formatEther(pl.rQuote)) / Number(ethers.formatEther(pl.rTok)), moneda: esBNB(pl.quote) ? 'BNB' : 'USDT' };
+  } catch (_) { return { precio: 0, moneda: 'BNB' }; }
 }
 
 /* Lista COMPLETA y autoritativa de monedas creadas, leida del array del propio contrato
-   (totalTokens + tokens[i]), del mas nuevo al mas viejo. A diferencia de todosLosTokens (escaneo de
-   eventos con ventana ~9 dias), esto NO tiene ventana: trae TODAS las monedas, viejas y nuevas, sin
-   depender de logs ni de cache del navegador. Devuelve solo direcciones (se enriquecen con metaToken). */
+   (totalTokens + tokens[i]), del mas nuevo al mas viejo. Es la fuente de New Tokens y de View All:
+   no depende de escanear eventos (logs) ni de cache del navegador, y cada moneda trae su fecha real
+   en info(addr).creadoEn. Devuelve solo direcciones (se enriquecen con metaToken). */
 export async function listaContrato(max = 60, saltar = 0) {
   let total = 0n; try { total = await leeLP('totalTokens', []); } catch (_) { return []; }
   const n = Number(total); if (!n) return [];
@@ -452,6 +426,7 @@ export async function listadosMercado(max = 40) {
       logo: String(L.logo || ''), creador: String(L.vendedor), listado: true,
       idListado: desde + i, precioBNB: Number(ethers.formatEther(L.precio)),
       enVenta: Number(ethers.formatEther(L.enVenta)), creadoEn: creado * 1000,
+      precioWei: L.precio, enVentaWei: L.enVenta,   // valores EXACTOS (wei) para la compra desde el launchpad
       proteccionSeg: Math.max(0, creado + CANDADO - ahora)   // segundos restantes de garantia (0 = terminada)
     });
   });
@@ -505,10 +480,6 @@ export async function resumenPool(token) {
   } catch (_) { return { activo: false, liquidez: 0, precio: 0, moneda: 'BNB' }; }
 }
 
-/* Marca de tiempo (ms) de un bloque, para el "hace X" de Latest Created. */
-export async function tiempoBloque(bloque) {
-  try { return Number((await lector().getBlock(bloque)).timestamp) * 1000; } catch (_) { return 0; }
-}
 
 /* ─────────── Verificacion automatica en BscScan ───────────
    Cada moneda es un TokenDF, el mismo codigo que ya esta verificado dentro del

@@ -350,7 +350,7 @@ function lplTablaMsg(cols, msg) { return `<table class="lpl-table">${lplThead(co
 function lplTablaSkel(cols) {
   const bar = (w) => `<span class="lpl-sk" style="width:${w}px"></span>`;
   const anchos = [[96, 50, 42, 52, 46, 20], [120, 46, 38, 52, 52, 20], [84, 54, 46, 52, 40, 20], [108, 48, 40, 52, 48, 20], [92, 52, 44, 52, 44, 20]];
-  const body = anchos.map((a) => `<tr class="lpl-skrow" aria-hidden="true"><td class="lpl-num">${bar(12)}</td><td class="lpl-tok"><span class="lpl-tok-in"><span class="lpl-sk lpl-sk-dot"></span>${bar(a[0])}</span></td><td class="lpl-price">${bar(a[1])}</td><td class="lpl-sym">${bar(a[2])}</td><td class="lpl-cre">${bar(a[3])}</td><td class="lpl-time">${bar(a[4])}</td><td class="lpl-chain">${bar(a[5])}</td></tr>`).join('');
+  const body = anchos.map((a) => `<tr class="lpl-skrow" aria-hidden="true"><td class="lpl-num">${bar(12)}</td><td class="lpl-tok"><span class="lpl-tok-in"><span class="lpl-sk lpl-sk-dot"></span>${bar(a[0])}</span></td><td class="lpl-sym">${bar(a[2])}</td><td class="lpl-price">${bar(a[1])}</td><td class="lpl-cre">${bar(a[3])}</td><td class="lpl-time">${bar(a[4])}</td><td class="lpl-chain">${bar(a[5])}</td></tr>`).join('');
   return `<table class="lpl-table">${lplThead(cols)}<tbody>${body}</tbody></table>`;
 }
 function lplHaceCuanto(ms) { const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's ago'; const m = Math.floor(s / 60); if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; }
@@ -378,7 +378,7 @@ function pintarPortada() {
 
       <section class="lpl-panel-sec" style="margin-top:32px">
         ${lplSecHead(LPL_CLOCK, 'New Tokens', 'Freshly launched', 'all')}
-        <div id="lpl-latest">${lplTablaSkel(['#', 'Token', 'Price', 'Symbol', 'Contract', 'Time', 'Chain'])}</div>
+        <div id="lpl-latest">${lplTablaSkel(['#', 'Token', 'Symbol', 'Price', 'Contract', 'Time', 'Chain'])}</div>
       </section>
     </div>`;
   $('lpl-create').onclick = () => abrirAsistente();
@@ -410,105 +410,43 @@ async function lplPrecios(lista) {
     if (t.precioView !== undefined) return;
     if (t.listado) { t.precioView = (t.precioBNB > 0 && bnbUsd > 0) ? t.precioBNB * bnbUsd : 0; return; }
     try {
-      const d = await gb.datosToken(t.address); const p = (d && d.precio) || 0;
+      const d = await gb.precioToken(t.address); const p = (d && d.precio) || 0;
       t.precioView = p > 0 ? (d.moneda === 'USDT' ? p : (bnbUsd > 0 ? p * bnbUsd : 0)) : 0;
     } catch (_) { t.precioView = 0; }
   }));
 }
 function lplCargarListas() {
-  // Monedas del launchpad (escaneo de eventos) + tokens LISTADOS sin liquidez (List Your Token), en
-  // paralelo. Los listados solo se LEEN del mercado y se muestran en Latest, nunca en Popular.
-  // Dos lecturas en paralelo: monedas creadas (escaneo de eventos, ~9 dias de bloques, es lo lento) y
-  // tokens LISTADOS sin liquidez (2 llamadas, rapido). Los listados se pintan EN CUANTO llegan para que
-  // New Tokens no se vea vacio tanto rato; al terminar el escaneo se repinta la lista completa y ordenada.
-  const _pCreados = gb.todosLosTokens(40);
-  const _pListados = gb.listadosMercado(40).catch(() => []);
-  let _lsTemprano = [], _pinto = false;
-  _pListados.then((ls) => {
-    _lsTemprano = ls || [];
-    if ($('lpl-latest') && !_pinto && _lsTemprano.length) {
-      try {
-        _lsTemprano.forEach((L) => { L.tiempo = L.creadoEn || 0; });
-        _lobby = { todos: [], listados: _lsTemprano };   // para que un clic en un listado ya funcione
-        lplPintarLatest(_lsTemprano.slice(0, 5));
-      } catch (_) {}
-    }
-  });
-  Promise.all([_pCreados, _pListados]).then(async ([lista, listados]) => {
+  // New Tokens se lee del PROPIO contrato (totalTokens + tokens[i] + info/name/symbol) y del mercado de
+  // listados, todo en paralelo: 3 rondas de lecturas. Nada de escanear eventos por rangos de bloques
+  // (eso tardaba minutos en los RPC publicos). Se pinta UNA sola vez, completo: nombre, logo y precio.
+  const t0 = Date.now();
+  (async () => {
+    const [dirs, lsRaw] = await Promise.all([gb.listaContrato(12).catch(() => []), gb.listadosMercado(40).catch(() => [])]);
     if (!$('lpl-latest')) return;   // ya no estamos en el lobby
-    // Asegura que SIEMPRE aparezcan las monedas del creador aunque el escaneo global se quede corto.
-    try {
-      const vistos = new Set(lista.map((t) => String(t.address).toLowerCase()));
-      for (const m of misTokens()) {
-        if (!m || !m.address) continue; const k = String(m.address).toLowerCase();
-        if (vistos.has(k)) continue; vistos.add(k);
-        lista.unshift({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: m.bloque || 0, tiempo: m.creadoEn || 0 });
-      }
-    } catch (_) {}
-    // Monedas creadas por la wallet conectada, leidas del PROPIO contrato (tokensDe), no de localStorage.
-    // Es la fuente duradera: si el escaneo global de eventos se queda corto (solo ve ~9 dias) o el
-    // usuario borro la cache, su moneda con pool real seguiria sin salir. Aqui se añade SIEMPRE,
-    // respetando las ocultas. datosToken da nombre/simbolo/supply y la fecha real (creadoEn).
-    try {
-      const cta = wallet.cuentaActual && wallet.cuentaActual();
-      if (cta) {
-        const mias = (await gb.tokensDe(cta).catch(() => [])).map((a) => String(a)).filter(Boolean).slice(0, 12);
-        const yaEsta = new Set(lista.map((t) => String(t.address).toLowerCase()));
-        await Promise.all(mias.map(async (addr) => {
-          const k = addr.toLowerCase();
-          if (yaEsta.has(k)) return;
-          const d = await gb.datosToken(addr).catch(() => null);
-          if (!d || !d.nombre) return;
-          yaEsta.add(k);
-          lista.unshift({ address: addr, nombre: d.nombre, simbolo: d.simbolo || '?', supply: Number(d.supply) || 0, creador: d.creador || cta, bloque: 0, tiempo: (Number(d.creadoEn) || 0) * 1000 });
-        }));
-      }
-    } catch (_) {}
-    // COMPLETITUD AUTORITATIVA: la lista del propio contrato (totalTokens + tokens[]) trae TODAS las
-    // monedas, sin la ventana de ~9 dias del escaneo de eventos. Asi una moneda mas antigua (creada
-    // hace semanas) aparece para CUALQUIERA y en navegador nuevo/incognito, no solo para su creador.
-    // Lo eliminado globalmente se saca despues, con el filtro de firma (vale para cualquier visitante).
-    try {
-      const completa = await gb.listaContrato(60);
-      const yaE = new Set(lista.map((t) => String(t.address).toLowerCase()));
-      const faltan = completa.filter((a) => !yaE.has(String(a).toLowerCase())).slice(0, 30);
-      await Promise.all(faltan.map(async (addr) => {
-        const m = await gb.metaToken(addr).catch(() => null);
-        if (!m || !m.nombre) return;
-        lista.push({ address: addr, nombre: m.nombre, simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: 0, tiempo: (Number(m.creadoEn) || 0) * 1000 });
-      }));
-    } catch (_) {}
-    // BORRADO GLOBAL: unica forma de ocultar. Saca de TODAS las listas lo que el creador elimino, con la
-    // firma verificada contra el creador on-chain de cada moneda. Rige IGUAL para cualquier visitante (no
-    // hay vista distinta por wallet). Se refresca en cada carga del lobby.
+    // Monedas creadas: metadatos y fecha real (info.creadoEn) de cada una, en paralelo.
+    const metas = await Promise.all(dirs.map((a) => gb.metaToken(a).catch(() => null)));
+    let lista = metas.filter((m) => m && m.nombre).map((m) => ({ address: m.address, nombre: m.nombre, simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: 0, tiempo: (Number(m.creadoEn) || 0) * 1000 }));
+    // Respaldo: si el contrato no respondio, al menos las monedas del creador guardadas en este navegador.
+    if (!lista.length) {
+      const vistos = new Set();
+      for (const m of misTokens()) { if (!m || !m.address || vistos.has(String(m.address).toLowerCase())) continue; vistos.add(String(m.address).toLowerCase()); lista.push({ address: m.address, nombre: m.nombre || m.simbolo || 'Coin', simbolo: m.simbolo || '?', supply: Number(m.supply) || 0, creador: m.creador || '', bloque: 0, tiempo: m.creadoEn || 0 }); }
+    }
+    // BORRADO GLOBAL: lo que el creador elimino (firma verificada) no sale para nadie.
     await cargarEliminados(true);
     lista = lista.filter((t) => !estaEliminado(t.address, t.creador));
-    // Una moneda ya creada en el launchpad no se duplica si tambien aparece listada en el mercado.
+    // Listados sin liquidez: no se duplican si la moneda ya es del launchpad; su fecha es la del listado.
     const enLp = new Set(lista.map((t) => String(t.address).toLowerCase()));
-    listados = (listados || []).filter((L) => L.address && !enLp.has(String(L.address).toLowerCase()));
-    // Logo REAL de los listados: vive en la coleccion "logos" (lo guarda List Your Token), no en
-    // "monedas". Por eso aparecian sin logo. Se lee aqui y se asigna; si no hay, cae a la inicial.
-    if (listados.length) { try { const lg = await leerLogosListados(listados.map((L) => L.address)); listados.forEach((L) => { L.logo = lg[String(L.address).toLowerCase()] || ''; }); } catch (_) {} }
-    // Hora de las monedas del launchpad: se lee la de las 8 mas nuevas y, con esa ancla, se estima la
-    // del resto por numero de bloque (3 s/bloque) sin una llamada por cada una. Los listados ya traen
-    // su fecha (creadoEn). Asi New Tokens mezcla ambos por recencia real.
-    const base = lista.slice(0, 8);
-    // No pisar el tiempo de las que ya lo traen (misTokens y tokensDe traen creadoEn real); solo leer
-    // el de las del escaneo de eventos, que vienen con bloque pero sin hora.
-    await Promise.all(base.map(async (t) => { if (t.tiempo > 0) return; try { t.tiempo = await gb.tiempoBloque(t.bloque); } catch (_) { t.tiempo = 0; } }));
-    const anc = base.find((t) => t.tiempo > 0);
-    if (anc) lista.forEach((t) => { if (!t.tiempo) t.tiempo = Math.max(0, anc.tiempo - (anc.bloque - (t.bloque || anc.bloque)) * 3000); });
-    listados.forEach((L) => { L.tiempo = L.creadoEn || 0; });
-    // Una sola seccion "New Tokens": las 5 MAS NUEVAS (creadas + listadas), por recencia real. Se quito
-    // el calculo de "Popular" (volumen y holders por moneda, muchas lecturas en cadena), que era lo que
-    // demoraba el lobby: ahora pinta en cuanto tiene la lista. El catalogo completo se ve en View All
-    // (scroll infinito que pagina del propio contrato + busqueda por nombre y contrato).
+    const listados = (lsRaw || []).filter((Lx) => Lx.address && !enLp.has(String(Lx.address).toLowerCase()));
+    listados.forEach((Lx) => { Lx.tiempo = Lx.creadoEn || 0; });
+    if (listados.length) { try { const lg = await leerLogosListados(listados.map((Lx) => Lx.address)); listados.forEach((Lx) => { Lx.logo = lg[String(Lx.address).toLowerCase()] || Lx.logo || ''; }); } catch (_) {} }
+    // Las 5 mas nuevas (creadas + listadas) por fecha real; logos y precios antes de pintar.
     const latest = lista.concat(listados).sort((a, b) => (b.tiempo || 0) - (a.tiempo || 0)).slice(0, 5);
     await Promise.all([lplLogos(latest), lplPrecios(latest)]);
-    _lobby = { todos: lista, listados };   // base para View All (todo el catalogo) y para la busqueda
-    _pinto = true;
-    if ($('lpl-latest')) lplPintarLatest(latest);
-  }).catch(() => { if ($('lpl-latest') && !_pinto) lplPintarLatest((_lsTemprano || []).slice(0, 5)); });
+    if (!$('lpl-latest')) return;
+    _lobby = { todos: lista, listados };   // base para View All (que pagina del contrato) y la busqueda
+    lplPintarLatest(latest);
+    try { console.info('[LP-NEW] ' + latest.length + ' tokens en ' + (Date.now() - t0) + ' ms (creadas ' + lista.length + ', listadas ' + listados.length + ')'); } catch (_) {}
+  })().catch((e) => { try { console.warn('[LP-NEW] fallo', e); } catch (_) {} if ($('lpl-latest')) lplPintarLatest([]); });
 }
 
 function lplFilas(host, lista, tipo) {
@@ -518,9 +456,9 @@ function lplFilas(host, lista, tipo) {
   host.querySelectorAll('.lpl-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
 }
 function lplPintarLatest(lista) {
-  const cols = ['#', 'Token', 'Price', 'Symbol', 'Contract', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
+  const cols = ['#', 'Token', 'Symbol', 'Price', 'Contract', 'Time', 'Chain']; const host = $('lpl-latest'); if (!host) return;
   if (!lista.length) { host.innerHTML = lplTablaMsg(cols, 'No coins created yet.'); return; }
-  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}${lplCelPrecio(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${lplCelContrato(t)}<td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
+  const filas = lista.map((t, i) => `<tr class="lpl-row" data-a="${esc(t.address)}"${t.listado ? ' data-listado="1"' : ''}><td class="lpl-num">${i + 1}</td>${lplCelTok(t)}<td class="lpl-sym">${esc(t.simbolo)}</td>${lplCelPrecio(t)}${lplCelContrato(t)}<td class="lpl-time">${t.tiempo ? lplHaceCuanto(t.tiempo) : '—'}</td><td class="lpl-chain">${LPL_BSC}</td></tr>`).join('');
   host.innerHTML = `<table class="lpl-table">${lplThead(cols)}<tbody>${filas}</tbody></table>`;
   lplFilas(host);
 }
@@ -602,20 +540,29 @@ function abrirListado(addr) {
   avisoPopup(esc(nombre) + sim, cuerpo, { txt: 'Continue', onclick: () => comprarListadoUI(L) });
 }
 
-/* Popup de COMPRA de un token listado sin liquidez, DENTRO del Launchpad (recrea la estetica del swap:
-   "You pay BNB / You receive TOKEN"). Solo compra; la venta/devolucion se hace en el swap. Llama unica-
-   mente a MercadoTokens (gb.comprarListado); modulo sellado, no importa nada del swap. */
+/* Popup de COMPRA de un token listado sin liquidez, DENTRO del Launchpad (misma estetica del swap:
+   "You pay BNB / You receive TOKEN"). Solo compra; la devolucion se hace en el swap. Habla UNICAMENTE
+   con MercadoTokens (gb.verListado / gb.comprarListado); modulo sellado, no importa nada del swap.
+   Diseño: arranca con los datos del listado que YA se leyeron del contrato (precioWei/enVentaWei),
+   asi la ventana nunca nace muerta; cada lectura fresca (stock, decimales, saldo, BNB/USD) va por su
+   cuenta y actualiza su pedazo, y antes de pagar se verifica el listado en vivo. Estados del boton:
+   Swap / Connect wallet / Sold out / Listing closed. Todo lo que pasa se registra en consola [LP-BUY]. */
 async function comprarListadoUI(L) {
   if (!L) return;
   const prev = document.getElementById('lpc-ov'); if (prev) prev.remove();
+  const log = (...a) => { try { console.info('[LP-BUY]', ...a); } catch (_) {} };
   const sym = esc(L.simbolo || 'TOKEN');
+  const idL = L.idListado;
+  // Estado inicial EXACTO desde el listado (wei). Respaldo desde los numeros si viniera de una cache vieja.
+  let precio = 0n, enVenta = 0n;
+  try { precio = L.precioWei != null ? BigInt(L.precioWei) : (L.precioBNB > 0 ? gb.parseEther(String(L.precioBNB)) : 0n); } catch (_) { precio = 0n; }
+  try { enVenta = L.enVentaWei != null ? BigInt(L.enVentaWei) : (L.enVenta > 0 ? gb.parseUnits(String(L.enVenta)) : 0n); } catch (_) { enVenta = 0n; }
+  let dec = 18, bnbUsd = 0, saldo = null, activo = true;
   const prot = L.proteccionSeg || 0; const dias = Math.ceil(prot / 86400);
   const gar = prot > 0
     ? `<span class="lpc-gar verde">Guarantee: ${dias} day${dias === 1 ? '' : 's'} left</span>`
     : `<span class="lpc-gar oro">Guarantee ended</span>`;
-  // Logos circulares de la moneda, mismo patron visual que el swap: letra de fondo + imagen que
-  // aparece al cargar. BNB: logo oficial por la direccion de WBNB en Trust Wallet. Token listado:
-  // su logo (Firebase) si lo tiene, o Trust Wallet por su contrato; si ninguno carga, queda la letra.
+  // Logos circulares, mismo patron visual que el swap: letra de fondo + imagen que aparece al cargar.
   const TW = (a) => `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/${a}/logo.png`;
   const bnbLogo = TW('0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c');
   const tokLogo = L.logo || (/^0x[0-9a-fA-F]{40}$/.test(String(L.address || '')) ? TW(L.address) : '');
@@ -642,8 +589,8 @@ async function comprarListadoUI(L) {
             <div class="lpc-box-bot">${gar}</div>
           </div>
         </div>
-        <div class="lpc-info" id="lpc-info">Loading price…</div>
-        <button class="lpc-go" id="lpc-go" type="button" disabled>Swap</button>
+        <div class="lpc-info" id="lpc-info"></div>
+        <button class="lpc-go" id="lpc-go" type="button">Swap</button>
         <p class="lpc-note">You pay in BNB, the only currency this listing accepts. Direct purchase from the seller through the public MercadoTokens contract; any excess BNB is refunded in the same transaction.</p>
       </div>
     </div>`;
@@ -651,59 +598,77 @@ async function comprarListadoUI(L) {
   const cerrar = () => { try { ov.remove(); } catch (_) {} };
   ov.querySelector('.lpc-x').onclick = cerrar;
   ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
+  const abierto = () => !!document.getElementById('lpc-ov');
 
   const info = $('lpc-info'), out = $('lpc-out'), amt = $('lpc-amt'), go = $('lpc-go'),
     balEl = $('lpc-bal'), stockEl = $('lpc-stock'), usdEl = $('lpc-pay-usd');
-  let precio = 0n, enVenta = 0n, dec = 18, bnbUsd = 0, saldo = 0n, listo = false, leido = false;
-  const idL = L.idListado;
-
-  // Lectura fresca: precio + stock (wei), decimales del token, rate BNB/USDT y saldo BNB del usuario.
-  try {
-    const cuenta = wallet.cuentaActual && wallet.cuentaActual();
-    const [d, dc, px, sb] = await Promise.all([
-      gb.verListado(idL), gb.decimalsToken(L.address), gb.precioBNBUSDT().catch(() => 0),
-      cuenta ? gb.saldoBNB(cuenta).catch(() => 0n) : Promise.resolve(0n)
-    ]);
-    dec = Number(dc) || 18; bnbUsd = px || 0; saldo = sb || 0n;
-    leido = (d != null);
-    if (d && d.activo) { precio = d.precio; enVenta = d.enVenta; listo = precio > 0n && enVenta > 0n; }
-  } catch (_) {}
-  if (!document.getElementById('lpc-ov')) return;   // cerrado mientras cargaba
-
-  const ten = 10n ** BigInt(dec);
-  const precioBNB = Number(gb.fmtEther(precio));
-  if (wallet.cuentaActual()) balEl.textContent = `Balance: ${(+gb.fmtEther(saldo)).toFixed(4)} BNB`;
-  stockEl.textContent = listo ? `For sale: ${numC(Number(gb.fmtUnits(enVenta, dec)))} ${sym}` : '';
-
-  if (!listo) { info.textContent = leido ? 'This listing is no longer available.' : 'Could not load the listing. Check your connection and try again.'; go.textContent = 'Close'; go.disabled = false; go.onclick = cerrar; return; }
-  info.innerHTML = `1 ${sym} = <b>${fmtP(precioBNB)} BNB</b>${bnbUsd > 0 ? ` (~$${fmtP(precioBNB * bnbUsd)})` : ''}`;
-
+  const ten = () => 10n ** BigInt(dec);
+  const pintarStock = () => { stockEl.textContent = `For sale: ${numC(Number(gb.fmtUnits(enVenta, dec)))} ${sym}`; };
+  const pintarPrecio = () => {
+    const pb = Number(gb.fmtEther(precio));
+    info.innerHTML = pb > 0 ? `1 ${sym} = <b>${fmtP(pb)} BNB</b>${bnbUsd > 0 ? ` (~$${fmtP(pb * bnbUsd)})` : ''}` : '';
+  };
+  const pintarSaldo = () => {
+    const c = wallet.cuentaActual();
+    balEl.textContent = !c ? '' : (saldo == null ? 'Balance: …' : `Balance: ${(+gb.fmtEther(saldo)).toFixed(4)} BNB`);
+  };
   // tokens a recibir y coste exacto (misma formula que el contrato: coste = precio*tokens/10^dec).
   const calc = () => {
     let bnbWei = 0n; try { bnbWei = gb.parseEther((amt.value || '0').replace(/[^0-9.]/g, '') || '0'); } catch (_) { bnbWei = 0n; }
-    let tokens = precio > 0n ? (bnbWei * ten) / precio : 0n;
+    let tokens = precio > 0n ? (bnbWei * ten()) / precio : 0n;
     if (tokens > enVenta) tokens = enVenta;
     out.textContent = tokens > 0n ? numC(Number(gb.fmtUnits(tokens, dec))) : '0.0';
-    if (usdEl) usdEl.textContent = (bnbUsd > 0 && bnbWei > 0n) ? `~$${fmtP(Number(gb.fmtEther(bnbWei)) * bnbUsd)}` : '';
-    return { tokens, coste: (precio * tokens) / ten };
+    usdEl.textContent = (bnbUsd > 0 && bnbWei > 0n) ? `~$${fmtP(Number(gb.fmtEther(bnbWei)) * bnbUsd)}` : '';
+    return { tokens, coste: (precio * tokens) / ten() };
   };
+  // Estado del boton segun el listado y la wallet. Nunca "Close": si no se puede comprar, dice por que.
+  const estado = () => {
+    if (!activo) { go.disabled = true; go.textContent = 'Listing closed'; info.textContent = 'The seller closed this listing.'; return; }
+    if (!(enVenta > 0n)) { go.disabled = true; go.textContent = 'Sold out'; info.textContent = `Sold out: 0 ${sym} left for sale.`; return; }
+    go.disabled = false; go.textContent = wallet.cuentaActual() ? 'Swap' : 'Connect wallet';
+  };
+  pintarStock(); pintarPrecio(); pintarSaldo(); estado();
+  log('abierto', { id: idL, token: L.address, precioWei: String(precio), enVentaWei: String(enVenta), cuenta: wallet.cuentaActual() || null });
+
+  const leerSaldo = async () => {
+    const c = wallet.cuentaActual(); if (!c) { saldo = null; pintarSaldo(); return; }
+    try { saldo = await gb.saldoBNB(c); log('saldo', String(saldo)); } catch (e) { log('saldo fallo', e); }
+    if (abierto()) pintarSaldo();
+  };
+  // Lectura fresca del listado en el contrato. Devuelve true si se pudo leer.
+  const refrescar = async () => {
+    const d = await gb.verListado(idL);
+    log('ver(' + idL + ')', d ? { activo: d.activo, precio: String(d.precio), enVenta: String(d.enVenta) } : null);
+    if (!d) return false;
+    activo = !!d.activo; precio = d.precio; enVenta = d.enVenta;
+    if (abierto()) { pintarStock(); pintarPrecio(); calc(); estado(); }
+    return true;
+  };
+  // Cada lectura por su cuenta: la que falle no tumba a las demas, y lo que llega se pinta al momento.
+  gb.decimalsToken(L.address).then((d) => { dec = Number(d) || 18; if (abierto()) { pintarStock(); calc(); } }).catch((e) => log('decimals fallo', e));
+  gb.precioBNBUSDT().then((p) => { bnbUsd = p || 0; if (abierto()) { pintarPrecio(); calc(); } }).catch(() => {});
+  leerSaldo();
+  refrescar().catch((e) => log('ver fallo', e));
+
   amt.addEventListener('input', calc);
-  $('lpc-max').onclick = () => {
-    let m = saldo - gb.parseEther('0.003'); if (m < 0n) m = 0n;   // deja margen para el gas
+  $('lpc-max').onclick = async () => {
+    if (!wallet.cuentaActual()) { go.click(); return; }
+    if (saldo == null) await leerSaldo();
+    let m = (saldo || 0n) - gb.parseEther('0.003'); if (m < 0n) m = 0n;   // deja margen para el gas
     amt.value = (+gb.fmtEther(m)).toFixed(6).replace(/\.?0+$/, ''); calc();
   };
-
-  const pintarBoton = () => { go.disabled = false; go.textContent = wallet.cuentaActual() ? 'Swap' : 'Connect wallet'; };
-  pintarBoton();
   go.onclick = async () => {
     if (!wallet.cuentaActual()) {
-      try { await wallet.conectar(); } catch (_) {}
-      if (wallet.cuentaActual()) { try { saldo = await gb.saldoBNB(wallet.cuentaActual()); balEl.textContent = `Balance: ${(+gb.fmtEther(saldo)).toFixed(4)} BNB`; } catch (_) {} pintarBoton(); }
-      return;
+      try { await wallet.conectar(); } catch (e) { log('conectar fallo', e); }
+      await leerSaldo(); estado(); return;
     }
+    // Verificacion en vivo antes de pagar (stock y precio pueden haber cambiado).
+    let ok = false; try { ok = await refrescar(); } catch (e) { log('ver fallo', e); }
+    if (!ok) { info.textContent = 'Could not verify the listing on chain right now. Try again.'; return; }
+    if (!activo || !(enVenta > 0n)) return;   // estado() ya explico el motivo
     const { tokens, coste } = calc();
     if (!(tokens > 0n)) { info.textContent = 'Enter how much BNB you want to spend.'; return; }
-    if (coste > saldo) { info.textContent = 'Not enough BNB for this purchase and gas.'; return; }
+    if (saldo != null && coste > saldo) { info.textContent = 'Not enough BNB for this purchase and gas.'; return; }
     cerrar();
     modalBusy('Confirming swap', `You pay <b>${(+gb.fmtEther(coste)).toFixed(6)} BNB</b> for <b>${numC(Number(gb.fmtUnits(tokens, dec)))} ${sym}</b>. Confirm in your wallet. Any excess is refunded.`);
     try {
@@ -711,6 +676,7 @@ async function comprarListadoUI(L) {
       modalCerrar();
       await modal('Swap complete', `You received <b>${numC(Number(gb.fmtUnits(tokens, dec)))} ${sym}</b>. To sell it back within the guarantee, use the Swap and reverse the pair.`);
     } catch (e) {
+      log('comprar fallo', e);
       const m = ((e && (e.reason || e.shortMessage || e.message)) || '').toLowerCase();
       let txt;
       if (m.includes('user rejected') || m.includes('denied') || m.includes('4001')) txt = 'You cancelled the purchase.';
