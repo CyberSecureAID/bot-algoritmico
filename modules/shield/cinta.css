@@ -1,0 +1,120 @@
+/* CINTA SUPERIOR DE BOTS (modulo sellado). Copia de la cinta del lobby (assets/portada/portada.css y
+   modules/terminal/cinta.css) ajustada a esta pagina: vive dentro de #shd-barslot, la barra que bots.html
+   inserta al principio de #colmena-app en escritorio. Sin perfil, sin wallet y sin Contracts: la esquina
+   derecha es la pastilla de suscripcion (#cco-sub) que ya existia. La foto y el logo estan en ./img/. */
+/* CINTA SUPERIOR DEL LOBBY, copiada de assets/portada/portada.css (reglas #shd-barslot .pt-hdr...).
+   La foto de la cinta (header.webp) y el logo estan en modules/launchpad/img/. */
+#shd-barslot{
+  position:relative;z-index:5;display:block;padding:0;border:0;background:none;flex:0 0 auto;
+  --bg:#000000; --bg2:#050709; --lift:#0e1319; --surf:#12161c;
+  --line:#1c232b; --line2:#29313b;
+  --gold:#E8B84B; --gold-hi:#f4d089; --gold-md:#cf9f2e; --gold-lo:#8f6a1a; --on-gold:#241900;
+  --ink:#eaecef; --ink2:#a7b0bb; --ink3:#79838f; --ink4:#565f6b;
+  --up:#2ebd85; --down:#f6465d;
+  --disp:"Chakra Petch",system-ui,sans-serif;
+  --sans:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --max:1200px;
+  --gut:clamp(18px,3.4vw,44px);
+
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.62;
+  color:var(--ink);
+}
+
+#shd-barslot a{color:inherit;text-decoration:none}
+#shd-barslot .pt-hdr button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}  /* solo cabecera: antes pisaba los botones del panel de listado */
+#shd-barslot img, #shd-barslot svg{display:block;max-width:100%}
+#shd-barslot :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:5px}
+#shd-barslot .pt-hdr{
+  position:relative;z-index:1;width:100%;
+  transition:transform .3s cubic-bezier(.22,.85,.3,1);
+  display:flex;align-items:center;height:58px;
+  background:#07090c;border-bottom:1px solid #1a2029;
+}
+
+
+#shd-barslot .pt-hdr::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-image:url('./img/header.webp');
+  background-size:cover;background-position:center;
+  opacity:1;
+}
+
+
+
+#shd-barslot .pt-hdr__in{position:relative;z-index:2}
+
+
+#shd-barslot .pt-nav__b,
+#shd-barslot .pt-logo{flex:0 0 auto;display:flex;align-items:center;text-shadow:0 1px 4px rgba(0,0,0,.9)}
+
+#shd-barslot .pt-hdr.pt-stuck{border-bottom-color:#232b36}
+
+#shd-barslot .pt-hdr.pt-oculta{transform:translateY(-100%)}
+#shd-barslot .pt-hdr__in{display:flex;align-items:center;gap:0;width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+
+#shd-barslot .pt-logo img{height:40px;width:auto}
+#shd-barslot .pt-nav{display:flex;align-items:center;gap:2px;flex:0 1 auto;margin-left:14px}
+#shd-barslot .pt-nav__i{position:relative}
+#shd-barslot .pt-nav__b{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:500;color:var(--ink2);padding:8px 11px;border-radius:8px;transition:color .15s,background .15s}
+#shd-barslot .pt-nav__b:hover{color:var(--ink);background:rgba(255,255,255,.045)}
+#shd-barslot .pt-nav__b svg{width:10px;height:10px;opacity:.55;transition:transform .2s}
+#shd-barslot .pt-nav__i:hover .pt-nav__b svg{transform:rotate(180deg)}
+#shd-barslot .pt-menu{
+  position:absolute;top:calc(100% + 8px);left:0;z-index:300;min-width:236px;padding:7px;
+  background:var(--surf);border:1px solid var(--line2);border-radius:12px;
+  box-shadow:0 20px 44px rgba(0,0,0,.6);
+  opacity:0;visibility:hidden;transform:translateY(-5px);
+  transition:opacity .17s,transform .17s,visibility .17s;
+}
+#shd-barslot .pt-nav__i:hover .pt-menu, #shd-barslot .pt-nav__i:focus-within .pt-menu{opacity:1;visibility:visible;transform:none}
+#shd-barslot .pt-menu a{display:block;padding:9px 11px;border-radius:8px;transition:background .14s}
+#shd-barslot .pt-menu a:hover{background:rgba(232,184,75,.07)}
+#shd-barslot .pt-menu b{display:block;font-size:13.5px;font-weight:600}
+#shd-barslot .pt-menu span{display:block;font-size:12px;line-height:1.42;color:var(--ink3);margin-top:1px}
+#shd-barslot .pt-hdr__a{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto}
+
+#shd-barslot .sw-back{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px 0 9px;border-radius:9px;
+  font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink2);background:rgba(255,255,255,.05);
+  border:1px solid var(--line2);text-shadow:0 1px 4px rgba(0,0,0,.9);margin-right:26px;white-space:nowrap}
+#shd-barslot .sw-back:hover{border-color:var(--gold-lo);color:var(--gold)}
+#shd-barslot .sw-back svg{width:12px;height:12px}
+
+#shd-barslot .pt-hdr__in{max-width:none;padding:0 14px}
+#shd-barslot .pt-nav__b{white-space:nowrap}
+@media(max-width:760px){#shd-barslot .pt-nav{display:none}}
+/* La cinta lleva 11 items (Terminal). Para que los 11 quepan sin montarse ni empujar la esquina
+   derecha fuera de la pantalla, se compacta por tramos y, en anchos intermedios, la nav se desliza en
+   horizontal dentro de su hueco (sin barra visible) en vez de desbordar la pagina. */
+@media(max-width:1340px){#shd-barslot .pt-nav__b{font-size:12.5px;padding:8px 8px}}
+@media(max-width:1200px){#shd-barslot .pt-nav{margin-left:8px}#shd-barslot .pt-nav__b{font-size:12px;padding:7px 6px;gap:4px}#shd-barslot .pt-logo img{width:124px;height:auto}}
+@media(max-width:1120px) and (min-width:761px){
+  #shd-barslot .pt-nav{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
+  #shd-barslot .pt-nav::-webkit-scrollbar{display:none}
+  #shd-barslot .pt-hdr__a{flex:0 0 auto}
+}
+/* "Tools" es un <button>: la regla generica `#shd-barslot .pt-hdr button{font:inherit}` le ganaba al tamano de la
+   nav y lo dejaba mas grande que los enlaces. Mismo tamano y peso que el resto, en cada tramo. */
+#shd-barslot .pt-hdr button.pt-nav__b{font-size:13.5px;font-weight:500;color:var(--ink2)}
+#shd-barslot .pt-hdr button.pt-nav__b:hover{color:var(--ink)}
+@media(max-width:1340px){#shd-barslot .pt-hdr button.pt-nav__b{font-size:12.5px}}
+@media(max-width:1200px){#shd-barslot .pt-hdr button.pt-nav__b{font-size:12px}}
+
+
+/* SERVICIO ACTIVO (.lp-on): el item de la pagina actual se enciende en dorado, emite un halo suave y lleva
+   en el BORDE INFERIOR de la cinta (58px: centro del item + 29px) una linea gruesa en el centro que se afina
+   hacia los lados, con su propia luz. */
+#shd-barslot .pt-nav__b.lp-on{position:relative;color:#f1cf6a;text-shadow:0 0 16px rgba(232,184,75,.55),0 0 2px rgba(232,184,75,.35),0 1px 4px rgba(0,0,0,.9)}
+#shd-barslot .pt-nav__b.lp-on:hover{color:#f6dc8a;background:transparent}
+#shd-barslot .pt-nav__b.lp-on::before{content:"";position:absolute;left:0;right:0;top:calc(50% + 7px);height:22px;pointer-events:none;
+  background:radial-gradient(ellipse 60% 100% at 50% 100%,rgba(232,184,75,.42),rgba(232,184,75,.12) 45%,transparent 72%)}
+#shd-barslot .pt-nav__b.lp-on::after{content:"";position:absolute;left:2px;right:2px;top:calc(50% + 26px);height:3px;pointer-events:none;border-radius:3px;
+  background:radial-gradient(ellipse 50% 100% at 50% 100%,#fff3c4 0%,#E8B84B 30%,rgba(232,184,75,.55) 60%,transparent 100%)}
+@media(max-width:1000px){#shd-barslot .pt-nav.pt-nav--open .pt-nav__b.lp-on::before,#shd-barslot .pt-nav.pt-nav--open .pt-nav__b.lp-on::after{display:none}
+  #shd-barslot .pt-nav.pt-nav--open .pt-nav__b.lp-on{background:rgba(232,184,75,.1)}}
+
+
+/* La capsula #shd-sub ya tiene estilo en shield.js; aqui solo se coloca en la esquina derecha. */
+#shd-barslot .pt-hdr__a #shd-sub{margin-left:0}

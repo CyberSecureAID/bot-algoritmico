@@ -812,11 +812,29 @@ function cerrar() {
 
 function cabecera() {
   setTimeout(pintarSuscripcion, 0);   // la capsula de suscripcion se rellena leyendo el contrato
-  return `<div class="shd-bar">
-    <button class="shd-back" id="shd-back">← Back</button>
-    <div class="shd-bar-t">Wallet <span>Shield</span></div>
-    <div class="shd-sub" id="shd-sub" title="Subscription status, read live from the contract"></div>
-  </div>`;
+  // Cinta del lobby (misma que Swap, Launchpad, Terminal y Bots), con Shield encendido. Sin perfil, wallet ni
+  // Contracts: la esquina derecha es la capsula de suscripcion (#shd-sub) de siempre. Back conserva su id.
+  const CH = '<svg width="12" height="12" viewBox="0 0 14 14"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const it = (h, t, on) => '<div class="pt-nav__i"><a class="pt-nav__b' + (on ? ' lp-on' : '') + '" href="' + h + '">' + t + '</a></div>';
+  return '<header class="pt-hdr"><div class="pt-hdr__in">'
+    + '<button class="sw-back" id="shd-back" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button>'
+    + '<a class="pt-logo" href="../../index.html" aria-label="DecFreedom"><img src="./img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
+    + '<nav class="pt-nav" aria-label="Main">'
+    + it('../swap/swap.html', 'Swap') + it('../launchpad/launchpad.html', 'Launchpad') + it('../terminal/terminal.html', 'Terminal')
+    + it('../bots/bots.html', 'Bots') + it('../../futuros.html?v=14', 'Futures') + it('../../aportar.html', 'Staking')
+    + it('./shield.html', 'Shield', true) + it('../../app.html?abrir=analisis', 'Analysis')
+    + '<div class="pt-nav__i"><button class="pt-nav__b" type="button">Tools ' + CH + '</button><div class="pt-menu">'
+    + '<a href="../../app.html?abrir=tools&tool=polvo"><b>Dust collector</b><span>Turn coin leftovers into one coin</span></a>'
+    + '<a href="../../app.html?abrir=tools&tool=alertas"><b>Price alerts</b><span>Get notified at your price</span></a>'
+    + '<a href="../../app.html?abrir=tools&tool=termometro"><b>Fear and greed</b><span>Market mood in one number</span></a>'
+    + '<a href="../../app.html?abrir=tools&tool=tecnico"><b>Technical analysis</b><span>Buy, sell or wait, right now</span></a>'
+    + '<a href="../../app.html?abrir=tools&tool=mapa"><b>Market map</b><span>Every coin by size and color</span></a>'
+    + '<a href="../../app.html?abrir=tools&tool=grafica"><b>Live chart</b><span>Candles and drawing tools</span></a>'
+    + '</div></div>'
+    + it('../../app.html?abrir=market', 'P2P') + it('../../app.html?abrir=academy', 'Academy')
+    + '</nav>'
+    + '<div class="pt-hdr__a"><div class="shd-sub" id="shd-sub" title="Subscription status, read live from the contract"></div></div>'
+    + '</div></header>';
 }
 
 /* Capsula de suscripcion (arriba a la derecha). Lee expiraEn(wallet) y esOwner(wallet) del
