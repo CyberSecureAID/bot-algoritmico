@@ -158,3 +158,30 @@ body{overflow-x:hidden}
 #wsel .wsel-ok{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:#2ebd85}
 #wsel .wsel-v{font-size:12px;color:var(--ink3);padding:4px 9px 6px;line-height:1.45}
 @media(max-width:460px){#pt .pt-hdr__a .c-perfil{width:32px;height:32px}#pt .pt-hdr__a .dir{padding:0 9px;gap:6px}}
+
+/* La cinta lleva un item mas (Terminal). Para que los 11 quepan sin montarse ni empujar la esquina
+   derecha fuera de la pantalla, se compacta por tramos y, en anchos intermedios, la nav se desliza en
+   horizontal dentro de su hueco (sin barra visible) en vez de desbordar la pagina. */
+@media(max-width:1340px){#pt .pt-nav__b{font-size:12.5px;padding:8px 8px}}
+@media(max-width:1200px){#pt .pt-nav{margin-left:8px}#pt .pt-nav__b{font-size:12px;padding:7px 6px;gap:4px}#pt .pt-logo img{width:124px;height:auto}}
+@media(max-width:1120px) and (min-width:761px){
+  #pt .pt-nav{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
+  #pt .pt-nav::-webkit-scrollbar{display:none}
+  #pt .pt-hdr__a{flex:0 0 auto}
+}
+/* "Tools" es un <button>: la regla generica `#pt .pt-hdr button{font:inherit}` le ganaba al tamano de la
+   nav y lo dejaba mas grande que los enlaces. Mismo tamano y peso que el resto, en cada tramo. */
+#pt .pt-hdr button.pt-nav__b{font-size:13.5px;font-weight:500}
+@media(max-width:1340px){#pt .pt-hdr button.pt-nav__b{font-size:12.5px}}
+@media(max-width:1200px){#pt .pt-hdr button.pt-nav__b{font-size:12px}}
+
+/* SERVICIO ACTIVO (.lp-on): el item de la pagina actual se enciende en dorado, emite un halo suave y lleva
+   debajo una linea que es gruesa en el centro y se afina hacia los lados, con su propia luz. */
+#pt .pt-nav__b.lp-on{position:relative;color:#f1cf6a;text-shadow:0 0 16px rgba(232,184,75,.55),0 0 2px rgba(232,184,75,.35),0 1px 4px rgba(0,0,0,.9)}
+#pt .pt-nav__b.lp-on:hover{color:#f6dc8a;background:transparent}
+#pt .pt-nav__b.lp-on::before{content:"";position:absolute;left:0;right:0;bottom:-10px;height:22px;pointer-events:none;
+  background:radial-gradient(ellipse 60% 100% at 50% 100%,rgba(232,184,75,.42),rgba(232,184,75,.12) 45%,transparent 72%)}
+#pt .pt-nav__b.lp-on::after{content:"";position:absolute;left:2px;right:2px;bottom:-1px;height:3px;pointer-events:none;border-radius:3px;
+  background:radial-gradient(ellipse 50% 100% at 50% 100%,#fff3c4 0%,#E8B84B 30%,rgba(232,184,75,.55) 60%,transparent 100%)}
+@media(max-width:1000px){#pt .pt-nav.pt-nav--open .pt-nav__b.lp-on::before,#pt .pt-nav.pt-nav--open .pt-nav__b.lp-on::after{display:none}
+  #pt .pt-nav.pt-nav--open .pt-nav__b.lp-on{background:rgba(232,184,75,.1)}}
