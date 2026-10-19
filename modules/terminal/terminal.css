@@ -15,6 +15,8 @@
 /* ───────── Panel del feed (mismo lenguaje que New Tokens del Launchpad) ───────── */
 .tm-panel{min-width:0;background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:16px 16px 6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow-x:auto}
 .tm-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.tm-sec-r{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.tm-fil-b.tm-b{flex:0 0 auto;height:30px;min-width:0;padding:0 14px;font-size:12px;border-radius:999px}
 .tm-sec-tt{display:flex;align-items:center;gap:12px;min-width:0}
 .tm-sec-ico{width:36px;height:36px;flex:0 0 auto;display:grid;place-items:center;border-radius:10px;background:rgba(232,184,75,.12);color:var(--gold)}
 .tm-sec-ico svg{width:20px;height:20px}
@@ -73,7 +75,8 @@
 
 /* ───────── Ficha del token (overlay) con semaforo de seguridad ───────── */
 .tm-ov{position:fixed;inset:0;z-index:1200;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px}
-.tm-ficha{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);padding:16px 18px 18px;scrollbar-width:thin}
+.tm-ficha{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);padding:16px 18px 18px;scrollbar-width:none}
+.tm-ficha::-webkit-scrollbar,.tmc-card::-webkit-scrollbar{width:0;height:0;display:none}   /* sin barra: se desplaza igual */
 .tm-ficha::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
 .tm-f-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .tm-f-tt{display:flex;align-items:center;gap:10px;min-width:0}
@@ -135,7 +138,7 @@
 .tmc-info a{color:var(--gold)}
 .tm-b:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
 .tmc-ov{position:fixed;inset:0;z-index:1200;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px}
-.tmc-card{position:relative;width:100%;max-width:436px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow-y:auto;max-height:calc(100vh - 32px)}
+.tmc-card{position:relative;scrollbar-width:none;width:100%;max-width:436px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow-y:auto;max-height:calc(100vh - 32px)}
 .tmc-card::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('../../assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;pointer-events:none}
 .tmc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5;z-index:2}
 .tmc-card>*{position:relative;z-index:1}
@@ -149,7 +152,7 @@
 .tmc-body{padding:6px 18px 20px}
 .tmc-cards{position:relative}
 .tmc-box{background:rgba(11,14,17,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
-.tmc-box+.tmc-box{margin-top:10px}
+.tmc-box+.tmc-box,.tmc-flip+.tmc-box{margin-top:10px}   /* la flecha va entre las dos tarjetas: sin esta regla quedaban pegadas */
 .tmc-box-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .tmc-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px}
 .tmc-bal{font-family:var(--mono);font-size:11px;color:var(--ink-3)}

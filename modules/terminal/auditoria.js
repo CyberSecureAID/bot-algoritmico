@@ -126,6 +126,19 @@ export function evaluar(gp, cad) {
   if (si('is_airdrop_scam')) h.push({ n: 'bad', t: 'Airdrop scam pattern', d: 'Flagged as an airdrop scam.' });
   if (si('honeypot_with_same_creator')) h.push({ n: 'warn', t: 'Creator made honeypots before', d: 'Same creator deployed honeypot tokens.' });
 
+  // Comprobaciones sueltas (true/false) para los filtros personalizados de la lista. Solo con datos de GoPlus.
+  datos.checks = {
+    sellable: !si('is_honeypot') && !si('cannot_sell_all') && !si('cannot_buy'),
+    lowTax: (bt == null || bt < 0.1) && (st == null || st < 0.1),
+    notMintable: !si('is_mintable'),
+    noPause: !si('transfer_pausable'),
+    noBlacklist: !si('is_blacklisted'),
+    verified: si('is_open_source'),
+    renounced: !!ownerMuerto && !si('hidden_owner') && !si('can_take_back_ownership'),
+    lpSecured: asegurada >= 90,
+    creatorSmall: cp == null || cp < 0.2,
+    notConcentrated: top10 == null || top10 < 70
+  };
   const nivel = h.some((x) => x.n === 'bad') ? 'bad' : (h.some((x) => x.n === 'warn') ? 'warn' : 'ok');
   const titulo = nivel === 'bad' ? 'Do not buy' : nivel === 'warn' ? 'Caution' : 'No red flags in the code';
   // orden: malo, aviso, ok, info

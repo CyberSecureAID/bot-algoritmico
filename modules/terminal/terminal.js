@@ -7,6 +7,7 @@ import * as gb from './motor.js';
 import { auditar } from './auditoria.js';
 import { abrirCompra } from './compra.js';
 import { comoFunciona } from './aviso.js';
+import { abrirFiltros } from './filtros.js';
 import { FEED, SCAN_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -52,10 +53,11 @@ export function arrancar() {
     <section class="tm-panel">
       <div class="tm-sec-head">
         <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b><span>PancakeSwap and DecFreedom Launchpad, live from the chain</span></div></div>
-        <div class="tm-live" id="tm-live"><i></i><span>Connecting…</span></div>
+        <div class="tm-sec-r"><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><i></i><span>Connecting…</span></div></div>
       </div>
       <div id="tm-feed">${skeleton()}</div>
     </section>`;
+  const fb = $('tm-filtros'); if (fb) fb.onclick = () => abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
   const how = $('tm-how'); if (how) how.onclick = () => { try { comoFunciona(); } catch (e) { console.warn('[TERM] how', e); } };
   gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); }).catch(() => {});
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
@@ -73,13 +75,13 @@ export function arrancar() {
 
 const COLS = ['#', 'Token', 'Symbol', 'Age', 'Liquidity', 'Price', 'Contract', 'Chain'];
 const CLS = { '#': 'tm-c-num', 'Symbol': 'tm-c-sym', 'Age': 'tm-c-age', 'Liquidity': 'tm-c-liq', 'Price': 'tm-c-price', 'Contract': 'tm-c-cre', 'Chain': 'tm-c-chain' };
-const thead = () => `<thead><tr>${COLS.map((c) => `<th class="${CLS[c] || ''}">${c}</th>`).join('')}</tr></thead>`;
+const thead = (extra = '') => `<thead><tr>${COLS.map((c) => (c === 'Chain' ? extra : '') + `<th class="${CLS[c] || ''}">${c}</th>`).join('')}</tr></thead>`;
 function skeleton() {
   const bar = (w) => `<span class="tm-sk" style="width:${w}px"></span>`;
   const filas = [96, 120, 84, 108, 92].map((w) => `<tr class="tm-skrow" aria-hidden="true"><td class="tm-num">${bar(12)}</td><td><span class="tm-tok-in"><span class="tm-sk tm-sk-dot"></span>${bar(w)}</span></td><td class="tm-sym">${bar(40)}</td><td class="tm-age">${bar(28)}</td><td class="tm-liq">${bar(60)}</td><td class="tm-price">${bar(52)}</td><td class="tm-cre">${bar(70)}</td><td class="tm-chain">${bar(20)}</td></tr>`).join('');
   return `<table class="tm-table">${thead()}<tbody>${filas}</tbody></table>`;
 }
-function fila(it, i) {
+function fila(it, i, extra = '') {
   const liqUsd = it.moneda === 'USDT' ? it.liquidez : it.liquidez * _bnbUsd;
   const precioUsd = it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd;
   const liqTxt = it.par ? (liqUsd > 0 ? money(liqUsd) : (it.liquidez > 0 ? fmtP(it.liquidez, 3) + ' ' + it.moneda : '—')) : '<span class="tm-badge lp">Launchpad</span>';
@@ -92,7 +94,7 @@ function fila(it, i) {
     <td class="tm-liq">${liqTxt}</td>
     <td class="tm-price">${precioUsd > 0 ? fmtP(precioUsd) : '—'}</td>
     <td class="tm-cre"><button class="tm-copyc" type="button" data-copy="${esc(it.token)}" title="${esc(it.token)}">${corto(it.token)} ${ICO_COPY}</button></td>
-    <td class="tm-chain">${ICO_BSC}</td>
+    ${extra}<td class="tm-chain">${ICO_BSC}</td>
   </tr>`;
 }
 function pintar() {
@@ -102,6 +104,18 @@ function pintar() {
   host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
   host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) abrirFicha(it); }; });
 }
+
+/* Cache de auditorias: una por token, compartida por la ficha y la ventana de filtros. Un resultado
+   'pend' (GoPlus aun sin datos) se guarda solo 60 s para volver a preguntar. */
+const _aud = new Map();
+export function auditarCache(it) {
+  const k = String(it.token).toLowerCase(); const c = _aud.get(k);
+  if (c && (c.r ? (c.r.nivel !== 'pend' || Date.now() - c.t < 60000) : Date.now() - c.t < 30000)) return c.p;
+  const p = auditar(it.token, it.par).then((r) => { _aud.set(k, { p, r, t: Date.now() }); return r; }).catch((e) => { _aud.delete(k); throw e; });
+  _aud.set(k, { p, r: null, t: Date.now() });
+  return p;
+}
+export const auditoriaDe = (it) => { const c = _aud.get(String(it.token).toLowerCase()); return c && c.r ? c.r : null; };
 
 /* ───────── Ficha del token: datos + auditoria de seguridad en semaforo ───────── */
 const ICO_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>';
@@ -142,12 +156,12 @@ export function abrirFicha(it) {
   </div>`;
   document.body.appendChild(ov);
   const cerrar = () => { try { ov.remove(); } catch (_) {} };
-  let _aud = null;
-  const bSwap = $('tm-f-swap'); if (bSwap) bSwap.onclick = () => abrirCompra(it, _aud);
+  let _audFicha = auditoriaDe(it);
+  const bSwap = $('tm-f-swap'); if (bSwap) bSwap.onclick = () => abrirCompra(it, _audFicha);
   ov.querySelector('.tm-f-x').onclick = cerrar;
   ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
   const cb = ov.querySelector('.tm-copyc'); cb.onclick = () => { try { navigator.clipboard.writeText(cb.dataset.copy); const o = cb.innerHTML; cb.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (cb.isConnected) cb.innerHTML = o; }, 1200); } catch (_) {} };
-  auditar(it.token, it.par).then((r) => { _aud = r; if (ov.isConnected) pintarAuditoria(r); }).catch((e) => { try { console.warn('[TERM-AUDIT] fallo', e); } catch (_) {} if (ov.isConnected) pintarAuditoria({ nivel: 'pend', titulo: 'Checking', hallazgos: [{ n: 'info', t: 'Security check unavailable', d: 'Could not reach the scanner. Try again.' }], datos: {} }); });
+  auditarCache(it).then((r) => { _audFicha = r; if (ov.isConnected) pintarAuditoria(r); }).catch((e) => { try { console.warn('[TERM-AUDIT] fallo', e); } catch (_) {} if (ov.isConnected) pintarAuditoria({ nivel: 'pend', titulo: 'Checking', hallazgos: [{ n: 'info', t: 'Security check unavailable', d: 'Could not reach the scanner. Try again.' }], datos: {} }); });
 }
 function pintarAuditoria(r) {
   const sem = $('tm-sem'); if (!sem) return;
