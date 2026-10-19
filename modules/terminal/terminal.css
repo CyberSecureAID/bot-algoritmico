@@ -9,6 +9,7 @@
 .tm-h1{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:clamp(26px,3.4vw,38px);line-height:1.1;margin:0 0 10px;color:#f3dc9a;background:linear-gradient(180deg,#fff7df 0%,#f1cf6a 55%,#d9a93a 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 2px rgba(0,0,0,.95)) drop-shadow(0 8px 22px rgba(0,0,0,.8))}
 .tm-sub{margin:0 auto;max-width:720px;color:#f3ead3;font-family:var(--display);font-weight:500;font-size:14.5px;line-height:1.65;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.98),0 3px 10px rgba(0,0,0,.9),0 8px 26px rgba(0,0,0,.8)}
 
+.tm-hero-acts{display:flex;justify-content:center;margin-top:14px}.tm-hero-acts .tm-b{flex:0 0 auto;min-width:170px}
 @media(max-width:560px){#tm-app{padding:18px 14px 50px}.tm-sub{font-size:13.5px}}
 
 /* ───────── Panel del feed (mismo lenguaje que New Tokens del Launchpad) ───────── */
@@ -121,7 +122,13 @@
 @media(max-width:560px){.tm-kv{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-f-acts{flex-direction:column}.tm-b{flex:0 0 auto;max-width:none;width:100%;min-height:46px}}
 
 /* Ventana de compra (misma escala visual que nuestro swap; reglas calcadas del popup del launchpad) */
-.tmc-fb svg{width:15px;height:15px;display:block}
+/* Marca propia del token: monograma de dos letras sobre un tono derivado del contrato (sin emoji, sin logo ajeno) */
+.tmc-mono{background:linear-gradient(180deg,hsl(var(--h) 38% 26%),hsl(var(--h) 42% 13%));box-shadow:inset 0 0 0 1px hsl(var(--h) 45% 38% / .7)}
+.tmc-mono .tmc-fb{font-size:10px;letter-spacing:.3px;color:hsl(var(--h) 70% 78%)}
+.tmc-bnb{color:#F0B90B}
+.tmc-tabs{display:flex;gap:4px;margin:0 0 12px;padding:4px;border-radius:12px;background:rgba(11,14,17,.72);border:1px solid var(--line)}
+.tmc-tabs button{flex:1 1 0;height:34px;border:0;border-radius:9px;background:transparent;color:var(--ink-3);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;letter-spacing:.3px;cursor:pointer;transition:color .15s,background .15s}
+.tmc-tabs button.on{color:#241900;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);box-shadow:0 2px 0 #8f6a1a,inset 0 1px 0 rgba(255,255,255,.4)}
 .tmc-slip{display:inline-flex;gap:4px}
 .tmc-slip button{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--ink-3);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:7px;padding:2px 7px;cursor:pointer}
 .tmc-slip button.on{color:#3a2800;background:linear-gradient(180deg,#f7db8d,var(--gold) 55%,#c79426);border-color:#c79426}
@@ -139,7 +146,7 @@
 .tmc-tt-tx>span{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:2px}
 .tmc-x{flex:0 0 auto;width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-2);display:grid;place-items:center;cursor:pointer;font-size:13px}
 .tmc-x:hover{color:var(--ink)}
-.tmc-body{padding:2px 18px 20px}
+.tmc-body{padding:6px 18px 20px}
 .tmc-cards{position:relative}
 .tmc-box{background:rgba(11,14,17,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
 .tmc-box+.tmc-box{margin-top:10px}

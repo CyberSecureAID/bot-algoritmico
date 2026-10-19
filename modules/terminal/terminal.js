@@ -6,6 +6,7 @@ import * as ethers from './ethers.min.js';
 import * as gb from './motor.js';
 import { auditar } from './auditoria.js';
 import { abrirCompra } from './compra.js';
+import { comoFunciona } from './aviso.js';
 import { FEED, SCAN_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -46,6 +47,7 @@ export function arrancar() {
     <section class="tm-hero">
       <h1 class="tm-h1">Terminal</h1>
       <p class="tm-sub">New tokens on BNB Chain, the second they are born. Checked by Wallet Shield before you buy. Your wallet, your keys.</p>
+      <div class="tm-hero-acts"><button class="tm-b sec" id="tm-how" type="button">How it works</button></div>
     </section>
     <section class="tm-panel">
       <div class="tm-sec-head">
@@ -54,6 +56,7 @@ export function arrancar() {
       </div>
       <div id="tm-feed">${skeleton()}</div>
     </section>`;
+  const how = $('tm-how'); if (how) how.onclick = () => { try { comoFunciona(); } catch (e) { console.warn('[TERM] how', e); } };
   gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); }).catch(() => {});
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
   if (_parar) _parar();

@@ -76,6 +76,7 @@
   import { brasas } from './chispas.js';
   import { pintarCabecera } from './cabecera.js';
   import { arrancar } from './terminal.js';
+  import { avisoTerminal } from './aviso.js';
 
   try {
     const quieto = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
@@ -87,6 +88,7 @@
   try { await wallet.reconectarSiProcede(); } catch (_) {}
   arrancar();
   pinta();
+  try { avisoTerminal(); } catch (e) { console.warn('[terminal] aviso:', e); }   // terminos de la Terminal, una vez por navegador
   try { wallet.alCambiar(() => pinta()); } catch (_) {}
 </script>
 </body>
