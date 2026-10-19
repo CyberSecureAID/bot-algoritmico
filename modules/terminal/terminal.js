@@ -12,6 +12,7 @@ import { velasDeToken, montarGrafico, destruirGrafico, precioActual } from './gr
 import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante } from './alertas.js';
+import { abrirGrande } from './panel-grande.js';
 import { FEED, SCAN_URL, FOURMEME_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -66,6 +67,10 @@ let _items = [];          // mas nuevo primero
 let _bnbUsd = 0;
 let _parar = null;
 
+// En PC (pantalla ancha) al tocar un token o Positions se abre la vista grande; en movil, la ficha / el panel.
+const esGrande = () => { try { return window.innerWidth >= 860; } catch (_) { return false; } };
+const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, abrirFicha, auditarCache, auditoriaDe });
+
 export function arrancar() {
   const host = $('tm-app'); if (!host) return;
   host.innerHTML = `
@@ -83,7 +88,7 @@ export function arrancar() {
     </section>`;
   const fb = $('tm-filtros'); if (fb) fb.onclick = () => abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
   const how = $('tm-how'); if (how) how.onclick = () => { try { comoFunciona(); } catch (e) { console.warn('[TERM] how', e); } };
-  const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { abrirPanel('positions'); } catch (e) { console.warn('[TERM] pos', e); } };
+  const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); } catch (e) { console.warn('[TERM] pos', e); } };
   gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); }).catch(() => {});
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
   // Vigilante de alertas: avisa (notificacion + aviso en la app) cuando el precio toca el objetivo. Solo mientras el Terminal este abierto.
@@ -150,7 +155,7 @@ function pintar() {
     + (ocultos || _verRojos ? `<div class="tm-ocultos">${ocultos ? ocultos + ' token' + (ocultos > 1 ? 's' : '') + ' hidden: Do not buy' : 'Showing Do not buy tokens'} <button type="button" id="tm-ver-rojos">${_verRojos ? 'Hide' : 'Show'}</button></div>` : '');
   const vr = $('tm-ver-rojos'); if (vr) vr.onclick = () => { _verRojos = !_verRojos; pintar(); };
   host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
-  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) abrirFicha(it); }; });
+  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) (esGrande() ? abrirGrande(it, ctxGrande()) : abrirFicha(it)); }; });
 }
 
 /* Cache de auditorias: una por token, compartida por la ficha y la ventana de filtros. Un resultado
