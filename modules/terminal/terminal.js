@@ -2,6 +2,7 @@
    Fase 2: feed en vivo de tokens recien nacidos en BNB Chain (pares nuevos de PancakeSwap contra BNB
    o USDT, y monedas creadas en el Launchpad de DecFreedom). Misma tabla y estetica que New Tokens. */
 
+import * as ethers from './ethers.min.js';
 import * as gb from './motor.js';
 import { auditar } from './auditoria.js';
 import { FEED, SCAN_URL } from './config.js';
@@ -25,7 +26,14 @@ function fmtP(p, sig = 4) {
 function money(v) { if (!(v > 0)) return '—'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
 function hace(ms) { if (!ms) return '—'; const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's'; const m = Math.floor(s / 60); if (m < 60) return m + 'm'; const h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
 function abreviar(n) { const s = String(n || '').trim(); if (!s) return 'Token'; const p = s.split(/\s+/)[0]; return p.length > 12 ? p.slice(0, 11) + '…' : (s.length > p.length ? p + '…' : p); }
-const logo = (sim) => `<span class="tm-logo"><span class="tm-logo-fb">${esc((String(sim || '?'))[0].toUpperCase())}</span></span>`;
+/* Logo del token: se intenta el de Trust Wallet (repositorio publico, sin servidor propio). Un token recien
+   nacido casi nunca lo tiene; entonces queda el rombo de BNB Chain como marca de la red, nunca un hueco. */
+const LOGO_TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/';
+const logo = (sim, addr) => {
+  let a = ''; try { a = ethers.getAddress(String(addr || '')); } catch (_) {}
+  const img = a ? `<img class="tm-logo-img" src="${LOGO_TW}${a}/logo.png" alt="" loading="lazy" onerror="this.remove()">` : '';
+  return `<span class="tm-logo"><span class="tm-logo-fb">${ICO_BSC}</span>${img}</span>`;
+};
 
 let _items = [];          // mas nuevo primero
 let _bnbUsd = 0;
@@ -74,7 +82,7 @@ function fila(it, i) {
   const fuente = it.fuente === 'launchpad' ? '<span class="tm-badge lp">LP</span>' : (it.moneda === 'USDT' ? '<span class="tm-badge">USDT</span>' : '');
   return `<tr class="tm-row" data-a="${esc(it.token)}">
     <td class="tm-num">${i + 1}</td>
-    <td class="tm-tok"><span class="tm-tok-in">${logo(it.simbolo)}<span class="tm-tok-nom" title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</span>${fuente}</span></td>
+    <td class="tm-tok"><span class="tm-tok-in">${logo(it.simbolo, it.token)}<span class="tm-tok-nom" title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</span>${fuente}</span></td>
     <td class="tm-sym">${esc(it.simbolo || '?')}</td>
     <td class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</td>
     <td class="tm-liq">${liqTxt}</td>
@@ -107,7 +115,7 @@ export function abrirFicha(it) {
   const ov = document.createElement('div'); ov.id = 'tm-ov'; ov.className = 'tm-ov';
   ov.innerHTML = `<div class="tm-ficha" role="dialog" aria-modal="true">
     <div class="tm-f-head">
-      <div class="tm-f-tt">${logo(it.simbolo)}<div class="tm-f-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago · ${it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : 'PancakeSwap ' + it.moneda + ' pair'}</span></div></div>
+      <div class="tm-f-tt">${logo(it.simbolo, it.token)}<div class="tm-f-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago · ${it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : 'PancakeSwap ' + it.moneda + ' pair'}</span></div></div>
       <button class="tm-f-x" type="button" aria-label="Close">✕</button>
     </div>
     <div class="tm-sem pend" id="tm-sem"><span class="tm-sem-ico">${ICO_INFO}</span><div><b>${TXT_NIVEL.pend}</b><span>Reading the contract and the security scanner…</span></div></div>
@@ -124,7 +132,7 @@ export function abrirFicha(it) {
     <ul class="tm-hall" id="tm-hall"><li class="tm-h-sk"><span class="tm-sk" style="width:60%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:45%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:70%"></span></li></ul>
     <div class="tm-f-acts">
       <a class="tm-b sec" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a>
-      <a class="tm-b" href="../swap/swap.html?token=${esc(it.token)}">Trade in Swap</a>
+      <a class="tm-b" href="../swap/swap.html?token=${esc(it.token)}">Swap</a>
     </div>
     <p class="tm-f-note">This check reads what the contract allows today. It does not predict price and it is not a recommendation. Anyone can lose money on a new token.</p>
   </div>`;
