@@ -68,18 +68,14 @@
     <div class="pt-hdr__a" id="pt-hdr-a"></div>
   </div>
 </header>
-  <main id="tm-app">
-    <section class="tm-hero">
-      <h1 class="tm-h1">Terminal</h1>
-      <p class="tm-sub">New tokens on BNB Chain, the second they are born. Checked by Wallet Shield before you buy. Your wallet, your keys.</p>
-    </section>
-  </main>
+  <main id="tm-app"></main>
 </div>
 
 <script type="module">
   import * as wallet from './wallet.js';
   import { brasas } from './chispas.js';
   import { pintarCabecera } from './cabecera.js';
+  import { arrancar } from './terminal.js';
 
   try {
     const quieto = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
@@ -89,6 +85,7 @@
 
   const pinta = () => { try { pintarCabecera(document.getElementById('pt-hdr-a')); } catch (e) { console.warn('[terminal] cabecera:', e); } };
   try { await wallet.reconectarSiProcede(); } catch (_) {}
+  arrancar();
   pinta();
   try { wallet.alCambiar(() => pinta()); } catch (_) {}
 </script>
