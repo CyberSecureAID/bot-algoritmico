@@ -46,6 +46,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="../../assets/img/cco-48.png">
   <link rel="icon" type="image/png" sizes="64x64" href="../../assets/img/favicon.png">
   <link rel="apple-touch-icon" href="../../assets/img/aurex-apple.png">
+  <link rel="stylesheet" href="./cinta.css">
   <!-- Modulo sellado: todo lo que usa esta pagina vive en modules/bots/. No carga las hojas
        del sitio (styles.css, asistente.css): la interfaz de bots no usa ninguna de sus reglas. -->
   <style>
@@ -399,22 +400,8 @@
        ══════════════════════════════════════════════════════════════════ -->
   <style>
     #colmena-app .c-hdr{display:none !important}
-    #cco-volver{
-      position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:10px;
-      padding:14px 22px;
-      /* Transparente con un velo mínimo: deja ver la imagen del header
-         (cco-top) detrás, en vez de taparla con negro opaco. */
-      background:linear-gradient(180deg,rgba(5,7,10,.35),transparent);
-      border-bottom:1px solid rgba(232,184,75,.12);
-    }
-    #cco-volver a{
-      display:inline-flex;align-items:center;gap:8px;text-decoration:none;
-      font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13.5px;
-      color:#b7bdc6;padding:7px 12px;border:1px solid #2b3139;border-radius:9px;
-    }
-    #cco-volver a:hover{color:#E8B84B;border-color:#8f6a1a}
-    #cco-volver b{font-family:"Chakra Petch",system-ui,sans-serif;font-size:13.5px;color:#7d8794;font-weight:600}
-    #cco-sub{margin-left:auto;display:none;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;border:1px solid #29313b;background:rgba(14,19,25,.75);font-size:11.5px;line-height:1;white-space:nowrap;color:#eaecef}
+    /* La barra #cco-volver es ahora la cinta completa del lobby (logo + servicios): sus reglas viven en ./cinta.css. */
+    #cco-sub{display:none;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;border:1px solid #29313b;background:rgba(14,19,25,.75);font-size:11.5px;line-height:1;white-space:nowrap;color:#eaecef}
     #cco-sub.on,#cco-sub.off{display:inline-flex}
     #cco-sub b{font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:11.5px;font-weight:800;color:#eaecef}
     #cco-sub i{font-style:normal;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;color:#79838f}
@@ -433,10 +420,29 @@
       if (!app) return;
       var b = document.createElement('div');
       b.id = 'cco-volver';
-      b.innerHTML = '<a href="../../index.html"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"'
-        + ' stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-        + '<path d="M13 8H3"/><path d="M7 4L3 8l4 4"/></svg>Back</a><b>Bots</b>'
-        + '<span id="cco-sub" title="Subscription status, read live from the contract"></span>';
+      // Cinta del lobby (misma que Swap, Launchpad y Terminal), con Bots encendido. Sin perfil, wallet ni
+      // Contracts: aqui la esquina derecha es la pastilla de suscripcion (#cco-sub), que ya existia.
+      var CH = '<svg width="12" height="12" viewBox="0 0 14 14"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      var it = function (h, t, on) { return '<div class="pt-nav__i"><a class="pt-nav__b' + (on ? ' lp-on' : '') + '" href="' + h + '">' + t + '</a></div>'; };
+      b.innerHTML = '<header class="pt-hdr"><div class="pt-hdr__in">'
+        + '<a class="sw-back" href="../../index.html" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</a>'
+        + '<a class="pt-logo" href="../../index.html" aria-label="DecFreedom"><img src="./img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
+        + '<nav class="pt-nav" aria-label="Main">'
+        + it('../swap/swap.html', 'Swap') + it('../launchpad/launchpad.html', 'Launchpad') + it('../terminal/terminal.html', 'Terminal')
+        + it('./bots.html', 'Bots', true) + it('../../futuros.html?v=14', 'Futures') + it('../../aportar.html', 'Staking')
+        + it('../shield/shield.html', 'Shield') + it('../../app.html?abrir=analisis', 'Analysis')
+        + '<div class="pt-nav__i"><button class="pt-nav__b" type="button">Tools ' + CH + '</button><div class="pt-menu">'
+        + '<a href="../../app.html?abrir=tools&tool=polvo"><b>Dust collector</b><span>Turn coin leftovers into one coin</span></a>'
+        + '<a href="../../app.html?abrir=tools&tool=alertas"><b>Price alerts</b><span>Get notified at your price</span></a>'
+        + '<a href="../../app.html?abrir=tools&tool=termometro"><b>Fear and greed</b><span>Market mood in one number</span></a>'
+        + '<a href="../../app.html?abrir=tools&tool=tecnico"><b>Technical analysis</b><span>Buy, sell or wait, right now</span></a>'
+        + '<a href="../../app.html?abrir=tools&tool=mapa"><b>Market map</b><span>Every coin by size and color</span></a>'
+        + '<a href="../../app.html?abrir=tools&tool=grafica"><b>Live chart</b><span>Candles and drawing tools</span></a>'
+        + '</div></div>'
+        + it('../../app.html?abrir=market', 'P2P') + it('../../app.html?abrir=academy', 'Academy')
+        + '</nav>'
+        + '<div class="pt-hdr__a"><span id="cco-sub" title="Subscription status, read live from the contract"></span></div>'
+        + '</div></header>';
       app.insertBefore(b, app.firstChild);
     };
     var t = setInterval(function () { poner(); }, 200);
