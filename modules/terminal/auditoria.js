@@ -45,8 +45,10 @@ const addrTopic = (t) => ethers.getAddress('0x' + String(t).slice(-40));
 /* Holders reales a partir de los eventos Transfer del token. Reconstruye el saldo de cada direccion
    (entradas menos salidas) desde antes de la primera transferencia hasta hoy. Si al terminar los saldos
    no cuadran con totalSupply, amplia la ventana hacia atras (el token pudo desplegarse antes del par). */
+const CERO = '0x0000000000000000000000000000000000000000';
+const MAX_MOVS = 8000;   // tope de seguridad; un token nuevo tiene pocas transferencias
 export async function leerHolders(token, desdeBloque, hasta, par) {
-  const saldos = new Map(); const txs = new Set();
+  const saldos = new Map(); const txs = new Set(); const movs = [];
   let primero = null;
   const leerTramo = async (ini, fin) => {
     const logs = await conRotacion((p) => p.getLogs({ address: token, topics: [TOPIC_TRANSFER], fromBlock: ini, toBlock: fin }));
@@ -55,6 +57,7 @@ export async function leerHolders(token, desdeBloque, hasta, par) {
       const de = addrTopic(l.topics[1]).toLowerCase(), a = addrTopic(l.topics[2]).toLowerCase();
       const v = BigInt(l.data === '0x' ? 0 : l.data);
       saldos.set(de, (saldos.get(de) || 0n) - v); saldos.set(a, (saldos.get(a) || 0n) + v); txs.add(l.transactionHash);
+      if (movs.length < MAX_MOVS) movs.push({ b: Number(l.blockNumber), de, a, v });
       if (primero == null || l.blockNumber < primero) primero = l.blockNumber;
     }
     return logs.length;
@@ -66,15 +69,49 @@ export async function leerHolders(token, desdeBloque, hasta, par) {
   await Promise.all(trozos.map(([a, b]) => leerTramo(a, b)));
   const cuadra = () => { let s = 0n; for (const [, v] of saldos) if (v > 0n) s += v; return sup === 0n || (s >= sup && s - sup <= sup / 1000n) || (s <= sup && sup - s <= sup / 1000n); };
   for (let k = 0; k < MAX_TRAMOS && !cuadra() && ini > 0; k++) { const nIni = Math.max(0, ini - TRAMO); await leerTramo(nIni, ini - 1); ini = nIni; }
-  const quitar = new Set([...MUERTAS, String(par || '').toLowerCase()]);
+  const parL = String(par || '').toLowerCase();
+  const quitar = new Set([...MUERTAS, parL]);
   const lista = [...saldos].filter(([a, v]) => v > 0n && !quitar.has(a)).sort((x, y) => (y[1] > x[1] ? 1 : y[1] < x[1] ? -1 : 0));
   const pctDe = (v) => sup > 0n ? Number((v * 10000n) / sup) / 100 : 0;
-  return { completo: cuadra(), holders: lista.length, txs: txs.size, top10Pct: pctDe(lista.slice(0, 10).reduce((s, [, v]) => s + v, 0n)), saldos, supply: sup, pctDe, primerBloque: primero };
+  const saldoDe = (a) => { const v = saldos.get(a); return v && v > 0n ? v : 0n; };
+
+  // ── Inteligencia (de los mismos movimientos) ──
+  // Mint: la primera transferencia desde la direccion cero. Su receptor suele ser el creador.
+  const mintMov = movs.filter((m) => m.de === CERO).sort((a, b) => a.b - b.b)[0] || null;
+  const mintTo = mintMov ? mintMov.a : null;
+  const mintBlock = mintMov ? mintMov.b : null;
+  // Primer bloque de trading: el bloque mas temprano con una compra desde el par.
+  let bloqueTrade = null;
+  if (parL) for (const m of movs) if (m.de === parL && (bloqueTrade == null || m.b < bloqueTrade)) bloqueTrade = m.b;
+  // Snipers: wallets que compraron al par en ese primer bloque de trading (y que aun tienen saldo).
+  const snipSet = new Set();
+  if (bloqueTrade != null) for (const m of movs) if (m.de === parL && m.b === bloqueTrade && !quitar.has(m.a)) snipSet.add(m.a);
+  let snipPct = 0n; for (const a of snipSet) snipPct += saldoDe(a);
+  // Bundle (wallets conectadas): recibieron tokens directo del creador (no por el par) o en el bloque del mint.
+  const bundleSet = new Set();
+  for (const m of movs) {
+    if (quitar.has(m.a) || m.a === mintTo) continue;
+    const delCreador = mintTo && m.de === mintTo && m.de !== parL;
+    const enMint = mintBlock != null && m.b === mintBlock && m.de !== CERO && m.de !== parL;
+    if (delCreador || enMint) bundleSet.add(m.a);
+  }
+  let bundlePct = 0n; for (const a of bundleSet) bundlePct += saldoDe(a);
+  const etiqueta = (a) => a === mintTo ? 'creator' : (snipSet.has(a) ? 'sniper' : (bundleSet.has(a) ? 'bundle' : ''));
+  const topHolders = lista.slice(0, 10).map(([a, v]) => ({ addr: a, pct: pctDe(v), tag: etiqueta(a) }));
+
+  return {
+    completo: cuadra(), holders: lista.length, txs: txs.size,
+    top10Pct: pctDe(lista.slice(0, 10).reduce((s, [, v]) => s + v, 0n)),
+    saldos, supply: sup, pctDe, primerBloque: primero, mintTo,
+    topHolders,
+    snipers: snipSet.size, snipersPct: pctDe(snipPct),
+    bundle: bundleSet.size, bundlePct: pctDe(bundlePct)
+  };
 }
 
 /* Lecturas propias, paso a paso. it: fila del feed (tx de creacion, bloque, creador si la fuente lo da). */
 export async function leerCadena(token, par, it = {}, alPaso = () => {}, conHolders = true) {
-  const out = { hayCodigo: null, owner: null, lpQuemadaPct: null, creador: it.creador || null, holders: null, txs: null, top10Pct: null, creadorPct: null, holdersCompleto: null };
+  const out = { hayCodigo: null, owner: null, lpQuemadaPct: null, creador: it.creador || null, holders: null, txs: null, top10Pct: null, creadorPct: null, holdersCompleto: null, topHolders: null, snipers: null, snipersPct: null, bundle: null, bundlePct: null };
   const paso = async (id, ms, fn) => { alPaso(id, 'run'); try { await conTiempo(fn(), ms); alPaso(id, 'ok'); } catch (e) { log('paso', id, 'fallo', e && e.message); alPaso(id, 'fail'); } };
   const tCode = paso('code', 10000, async () => { const code = await conRotacion((p) => p.getCode(token)); out.hayCodigo = !!(code && code !== '0x'); });
   const tOwner = paso('owner', 10000, async () => { try { out.owner = String(await conRotacion((p) => new ethers.Contract(token, ABI, p).owner())); } catch (_) { out.owner = null; } });   // sin owner(): no es Ownable
@@ -103,6 +140,8 @@ export async function leerCadena(token, par, it = {}, alPaso = () => {}, conHold
       const desde = it.bloque ? Number(it.bloque) : Math.max(0, hasta - TRAMO * 4);
       const h = await leerHolders(token, desde, hasta, par);
       out.holders = h.holders; out.txs = h.txs; out.top10Pct = h.top10Pct; out.holdersCompleto = h.completo;
+      out.topHolders = h.topHolders; out.snipers = h.snipers; out.snipersPct = h.snipersPct; out.bundle = h.bundle; out.bundlePct = h.bundlePct;
+      if (!out.creador && h.mintTo) out.creador = h.mintTo;
       if (!out.creador && h.primerBloque != null) {
         // Sin tx de creacion: el creador es quien recibio la primera transferencia (el mint).
         const logs = await conRotacion((p) => p.getLogs({ address: token, topics: [TOPIC_TRANSFER], fromBlock: h.primerBloque, toBlock: h.primerBloque }));
@@ -146,12 +185,21 @@ export function evaluar(gp, cad) {
   if (hcC != null) datos.holders = hcC;
   if (cpC != null) datos.creadorPct = cpC * 100;
   if (t10C != null) datos.top10Pct = t10C;
+  // Inteligencia leida en cadena: top holders, snipers (primer bloque de trading) y bundle (wallets conectadas).
+  if (cad && cad.topHolders) datos.topHolders = cad.topHolders;
+  if (cad && cad.snipers != null) { datos.snipers = cad.snipers; datos.snipersPct = cad.snipersPct; }
+  if (cad && cad.bundle != null) { datos.bundle = cad.bundle; datos.bundlePct = cad.bundlePct; }
+  const avisoReparto = () => {
+    if (cad && cad.snipers > 0 && cad.snipersPct >= 10) h.push({ n: 'warn', t: cad.snipers + ' snipers hold ' + Math.round(cad.snipersPct) + '%', d: 'Wallets that bought in the very first block can dump on later buyers.' });
+    if (cad && cad.bundle >= 3 && cad.bundlePct >= 15) h.push({ n: 'warn', t: cad.bundle + ' connected wallets hold ' + Math.round(cad.bundlePct) + '%', d: 'Several wallets funded by the creator or bought in the same block (possible bundle).' });
+  };
 
   if (!gp) {
     const nivel = h.some((x) => x.n === 'bad') ? 'bad' : 'pend';
     if (cpC != null && cpC >= 0.2) h.push({ n: 'warn', t: 'Creator holds ' + Math.round(cpC * 100) + '%', d: 'A large creator bag can be dumped on buyers.' });
     if (t10C != null && t10C >= 70) h.push({ n: 'warn', t: 'Top 10 hold ' + Math.round(t10C) + '%', d: 'Very concentrated supply.' });
     if (datos.lpQuemada != null) { datos.lpAsegurada = datos.lpQuemada; if (datos.lpQuemada >= 90) h.push({ n: 'ok', t: 'Liquidity burned (' + Math.round(datos.lpQuemada) + '%)', d: 'The pool cannot be pulled.' }); else h.push({ n: 'warn', t: 'Liquidity not burned', d: 'The creator can remove the pool at any time (rug pull).' }); }
+    avisoReparto();
     h.push({ n: 'info', t: 'Scanner data not available yet', d: 'Honeypot and tax checks need the security scanner, which has not indexed this token yet. Holders, creator and liquidity above are read from the chain.' });
     return { nivel, titulo: nivel === 'bad' ? 'Do not buy' : 'Checking', hallazgos: h, datos };
   }
@@ -196,6 +244,7 @@ export function evaluar(gp, cad) {
   if (cp != null && cp >= 0.2) h.push({ n: 'warn', t: 'Creator holds ' + Math.round(cp * 100) + '%', d: 'A large creator bag can be dumped on buyers.' });
   if (top10 != null && top10 >= 70) h.push({ n: 'warn', t: 'Top 10 hold ' + Math.round(top10) + '%', d: 'Very concentrated supply.' });
   if (hc != null && hc < 20) h.push({ n: 'info', t: 'Only ' + hc + ' holders', d: 'Very early. Thin market.' });
+  avisoReparto();
 
   // Liquidez
   let lpLock = 0, lpTotal = 0;

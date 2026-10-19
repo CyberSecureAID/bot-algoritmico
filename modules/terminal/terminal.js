@@ -178,6 +178,7 @@ export function abrirFicha(it) {
       <div><span>LP secured</span><b id="tm-k-lp"><span class="tm-sk" style="width:38px"></span></b></div>
       <div><span>Contract</span><b><button class="tm-copyc" type="button" data-copy="${esc(it.token)}">${corto(it.token)} ${ICO_COPY}</button></b></div>
     </div>
+    <div class="tm-holders" id="tm-holders" hidden></div>
     <ul class="tm-hall" id="tm-hall"><li class="tm-h-sk"><span class="tm-sk" style="width:60%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:45%"></span></li><li class="tm-h-sk"><span class="tm-sk" style="width:70%"></span></li></ul>
     <div class="tm-f-acts">
       <a class="tm-b sec" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a>
@@ -224,6 +225,23 @@ function pintarAuditoria(r, reintentar) {
   set('tm-k-cre', (cre ? corto(cre) : '') + (d.creadorPct != null ? (cre ? ' ' : '') + pct(d.creadorPct) : (cre ? '' : '0%')));
   set('tm-k-tax', pct(d.buyTax || 0) + ' / ' + pct(d.sellTax || 0));
   set('tm-k-lp', d.lpAsegurada != null ? pct(d.lpAsegurada) : '0%');
+  // Top holders leidos en cadena, con etiqueta (creator, sniper, bundle) y resumen de concentracion.
+  const hostH = $('tm-holders');
+  if (hostH) {
+    const th = Array.isArray(d.topHolders) ? d.topHolders : null;
+    if (th && th.length) {
+      const resumen = [];
+      if (d.snipers) resumen.push(d.snipers + ' sniper' + (d.snipers > 1 ? 's' : '') + ' ' + pct(d.snipersPct));
+      if (d.bundle) resumen.push(d.bundle + ' bundled ' + pct(d.bundlePct));
+      const filas = th.map((x) => {
+        const tag = x.tag ? `<em class="tm-hd-tag ${x.tag}">${x.tag}</em>` : '';
+        const w = Math.max(4, Math.min(100, x.pct || 0));
+        return `<a class="tm-hd" href="${SCAN_URL}/address/${esc(x.addr)}" target="_blank" rel="noopener"><span class="tm-hd-a">${corto(x.addr)}${tag}</span><span class="tm-hd-bar"><i style="width:${w}%"></i></span><b>${pct(x.pct)}</b></a>`;
+      }).join('');
+      hostH.innerHTML = `<div class="tm-hd-head"><b>Top holders</b>${resumen.length ? `<span>${esc(resumen.join(' · '))}</span>` : ''}</div>${filas}`;
+      hostH.hidden = false;
+    } else { hostH.hidden = true; }
+  }
   const ul = $('tm-hall'); if (!ul) return;
   ul.innerHTML = r.hallazgos.map((x) => `<li class="${x.n}"><span class="tm-h-ico">${ICO_N[x.n] || ICO_INFO}</span><div><b>${esc(x.t)}</b><span>${esc(x.d || '')}</span></div></li>`).join('');
 }

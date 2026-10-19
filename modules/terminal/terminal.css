@@ -154,6 +154,24 @@
 .tm-kv b sub{font-size:9px}
 .tm-kv b#tm-k-cre,.tm-kv b#tm-k-hold{letter-spacing:-.3px}
 .tm-kv .tm-copyc{padding:2px 7px;font-size:11px}
+/* Top holders (inteligencia del token): cabecera con resumen, filas con barra y etiqueta */
+.tm-holders{margin:0 0 12px;border:1px solid var(--line);border-radius:14px;background:rgba(11,14,17,.6);overflow:hidden}
+.tm-holders[hidden]{display:none}
+.tm-hd-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.tm-hd-head b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;color:var(--ink)}
+.tm-hd-head span{font-family:var(--mono);font-size:10.5px;color:#f1cf6a;text-align:right;min-width:0}
+.tm-hd{display:flex;align-items:center;gap:10px;padding:7px 12px;text-decoration:none;color:var(--ink-2);border-top:1px solid rgba(255,255,255,.03)}
+.tm-hd:first-of-type{border-top:0}
+.tm-hd:hover{background:rgba(255,255,255,.03)}
+.tm-hd-a{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2);flex:0 0 auto;min-width:96px}
+.tm-hd-tag{font-style:normal;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:9px;letter-spacing:.3px;text-transform:uppercase;padding:1px 5px;border-radius:5px}
+.tm-hd-tag.creator{background:rgba(232,184,75,.16);color:var(--gold)}
+.tm-hd-tag.sniper{background:rgba(246,70,93,.16);color:#ff7f93}
+.tm-hd-tag.bundle{background:rgba(232,184,75,.12);color:#f1cf6a}
+.tm-hd-bar{flex:1 1 auto;height:6px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;min-width:30px}
+.tm-hd-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#f1cf6a)}
+.tm-hd b{flex:0 0 auto;font-family:var(--mono);font-size:11.5px;color:var(--ink);min-width:44px;text-align:right}
+@media (max-width:480px){.tm-hd-a{min-width:84px}.tm-hd-head span{font-size:10px}}
 .tm-hall{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px}
 .tm-hall li{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:rgba(11,14,17,.6)}
 /* Medidas pares (22 y 14): el hueco a cada lado es de 4px exactos; con 13px quedaba en 4.5px y el navegador
