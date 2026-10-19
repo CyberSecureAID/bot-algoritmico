@@ -210,36 +210,6 @@
 .tm-pos-x{position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:6px;border:0;background:transparent;color:var(--ink-3);font-size:11px;cursor:pointer;line-height:1;z-index:1}
 .tm-pos-x:hover{background:rgba(255,255,255,.06);color:var(--ink-2)}
 @media (max-width:480px){.tm-pos-tv b,.tm-pos-tp b{font-size:17px}.tm-pos-nm b{font-size:14px}.tm-pos-val b{font-size:14px}}
-/* Pestañas del panel (Positions / Watchlist / Alerts) */
-.tm-tabs{display:flex;gap:6px;margin:0 0 12px;background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:12px;padding:4px}
-.tm-tabs button{flex:1 1 0;height:34px;border:0;border-radius:9px;background:transparent;color:var(--ink-3);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;cursor:pointer}
-.tm-tabs button.on{background:rgba(232,184,75,.14);color:var(--gold)}
-/* Cabecera de la ficha: estrella de watchlist */
-.tm-f-hbtns{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.tm-f-star{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-3);display:grid;place-items:center;cursor:pointer}
-.tm-f-star.on{color:var(--gold);border-color:rgba(232,184,75,.4);background:rgba(232,184,75,.1)}
-/* Fila de alerta de precio en la ficha */
-.tm-f-alert{margin:0 0 12px}
-.tm-f-alert-set{display:flex;align-items:center;gap:8px;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:6px 8px 6px 11px}
-.tm-f-alert-ico{color:var(--gold);display:flex;flex:0 0 auto}
-.tm-f-alert-set input{flex:1 1 auto;min-width:0;background:transparent;border:0;color:var(--ink);font-family:var(--mono);font-size:13px;outline:none}
-.tm-f-alert-set input::placeholder{color:var(--ink-3)}
-.tm-f-alert-set .tm-b{flex:0 0 auto;min-height:32px;padding:0 14px}
-.tm-f-alert-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.tm-al-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.28);border-radius:8px;padding:3px 4px 3px 8px}
-.tm-al-chip.done{color:#8ef0b0;background:rgba(46,232,106,.1);border-color:rgba(46,232,106,.3)}
-.tm-al-x{border:0;background:transparent;color:inherit;opacity:.7;font-size:10px;cursor:pointer;line-height:1;padding:2px}
-.tm-al-x:hover{opacity:1}
-/* Avisos de alerta (toasts) */
-.tm-toasts{position:fixed;top:14px;right:14px;z-index:2147483000;display:flex;flex-direction:column;gap:8px;max-width:340px}
-.tm-toast{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-radius:13px;border:1px solid rgba(232,184,75,.4);background:rgba(20,17,10,.96);box-shadow:0 10px 30px rgba(0,0,0,.5);cursor:pointer;animation:tmToastIn .25s ease-out}
-.tm-toast-ico{flex:0 0 auto;color:var(--gold);margin-top:1px}
-.tm-toast-tx{flex:1 1 auto;min-width:0}
-.tm-toast-tx b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;color:var(--ink)}
-.tm-toast-tx span{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-2);margin-top:2px}
-.tm-toast-x{flex:0 0 auto;border:0;background:transparent;color:var(--ink-3);font-size:12px;cursor:pointer;line-height:1}
-@keyframes tmToastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
-@media (max-width:480px){.tm-toasts{left:12px;right:12px;max-width:none}}
 .tm-hall{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px}
 .tm-hall li{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:rgba(11,14,17,.6)}
 /* Medidas pares (22 y 14): el hueco a cada lado es de 4px exactos; con 13px quedaba en 4.5px y el navegador
