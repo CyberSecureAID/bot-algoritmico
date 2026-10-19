@@ -75,7 +75,10 @@ export function arrancar() {
 
 const COLS = ['#', 'Token', 'Symbol', 'Age', 'Liquidity', 'Price', 'Contract', 'Chain'];
 const CLS = { '#': 'tm-c-num', 'Symbol': 'tm-c-sym', 'Age': 'tm-c-age', 'Liquidity': 'tm-c-liq', 'Price': 'tm-c-price', 'Contract': 'tm-c-cre', 'Chain': 'tm-c-chain' };
-const thead = (extra = '') => `<thead><tr>${COLS.map((c) => (c === 'Chain' ? extra : '') + `<th class="${CLS[c] || ''}">${c}</th>`).join('')}</tr></thead>`;
+// En movil 'Liquidity' no cabe en su columna (se cortaba a 'LIQUIDIT'): se muestra 'Liq'. El resto de
+// cabeceras son cortas y caben. tm-lg = solo escritorio, tm-sm = solo movil (reglas en terminal.css).
+const LBL = (c) => c === 'Liquidity' ? '<span class="tm-lg">Liquidity</span><span class="tm-sm">Liq</span>' : c;
+const thead = (extra = '') => `<thead><tr>${COLS.map((c) => (c === 'Chain' ? extra : '') + `<th class="${CLS[c] || ''}">${LBL(c)}</th>`).join('')}</tr></thead>`;
 function skeleton() {
   const bar = (w) => `<span class="tm-sk" style="width:${w}px"></span>`;
   const filas = [96, 120, 84, 108, 92].map((w) => `<tr class="tm-skrow" aria-hidden="true"><td class="tm-num">${bar(12)}</td><td><span class="tm-tok-in"><span class="tm-sk tm-sk-dot"></span>${bar(w)}</span></td><td class="tm-sym">${bar(40)}</td><td class="tm-age">${bar(28)}</td><td class="tm-liq">${bar(60)}</td><td class="tm-price">${bar(52)}</td><td class="tm-cre">${bar(70)}</td><td class="tm-chain">${bar(20)}</td></tr>`).join('');
@@ -84,7 +87,7 @@ function skeleton() {
 function fila(it, i, extra = '') {
   const liqUsd = it.moneda === 'USDT' ? it.liquidez : it.liquidez * _bnbUsd;
   const precioUsd = it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd;
-  const liqTxt = it.par ? (liqUsd > 0 ? money(liqUsd) : (it.liquidez > 0 ? fmtP(it.liquidez, 3) + ' ' + it.moneda : '—')) : '<span class="tm-badge lp">Launchpad</span>';
+  const liqTxt = it.par ? (liqUsd > 0 ? money(liqUsd) : (it.liquidez > 0 ? fmtP(it.liquidez, 3) + ' ' + it.moneda : '—')) : '<span class="tm-badge lp"><span class="tm-lg">Launchpad</span><span class="tm-sm">LP</span></span>';
   const fuente = it.fuente === 'launchpad' ? '<span class="tm-badge lp">LP</span>' : (it.moneda === 'USDT' ? '<span class="tm-badge">USDT</span>' : '');
   return `<tr class="tm-row" data-a="${esc(it.token)}">
     <td class="tm-num">${i + 1}</td>
@@ -100,7 +103,8 @@ function fila(it, i, extra = '') {
 function pintar() {
   const host = $('tm-feed'); if (!host) return;
   if (!_items.length) return;   // sigue el esqueleto hasta el primer token
-  host.innerHTML = `<table class="tm-table">${thead()}<tbody>${_items.map(fila).join('')}</tbody></table>`;
+  // (it, i): nunca pasar el 3er argumento de map (el array) a fila, cuyo tercer parametro `extra` es la celda opcional de la ventana de filtros.
+  host.innerHTML = `<table class="tm-table">${thead()}<tbody>${_items.map((it, i) => fila(it, i)).join('')}</tbody></table>`;
   host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
   host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) abrirFicha(it); }; });
 }

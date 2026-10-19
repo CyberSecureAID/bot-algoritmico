@@ -52,6 +52,8 @@
 .tm-copyc svg{flex:0 0 auto;opacity:.7}
 .tm-chain{color:var(--ink-3);font-size:12px;text-align:right;padding-right:14px}
 .tm-bsc{width:15px;height:15px;vertical-align:-2px}
+/* Etiquetas largas/cortas: la larga de serie, la corta solo en movil (ver media query de abajo). */
+.tm-sm{display:none}
 
 /* Esqueleto mientras llega el primer token */
 .tm-sk{display:inline-block;height:11px;border-radius:5px;background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.14),rgba(255,255,255,.06));background-size:200% 100%;animation:tmSk 1.3s linear infinite;vertical-align:middle}
@@ -65,12 +67,22 @@
   .tm-table{table-layout:fixed}
   .tm-c-num,.tm-num,.tm-c-sym,.tm-sym,.tm-c-cre,.tm-cre{display:none}
   .tm-tok-in{max-width:none}
-  .tm-c-age,.tm-age{width:44px}
-  .tm-c-liq,.tm-liq{width:72px;overflow:hidden}
-  .tm-c-price,.tm-price{width:74px;overflow:hidden}
-  .tm-c-chain,.tm-chain{width:40px;padding-right:8px}
+  .tm-c-age,.tm-age{width:42px}
+  .tm-c-liq,.tm-liq{width:68px;overflow:hidden}
+  .tm-c-price,.tm-price{width:72px;overflow:hidden}
+  .tm-c-chain,.tm-chain{width:36px;padding-right:8px}
+  .tm-table th.tm-c-chain{font-size:0}   /* columna de solo icono: su cabecera 'Chain' no cabe en 36px y no aporta */
+  .tm-tok{overflow:hidden}
+  /* En una fila flex el nombre no encogia y empujaba el distintivo del par fuera de la celda. Con flex+min-width:0
+     el nombre se recorta con puntos suspensivos; logo, separaciones y distintivo algo mas compactos para caber en moviles estrechos. */
+  .tm-tok-in{gap:6px}
+  .tm-logo{width:26px;height:26px}
+  .tm-tok-nom{min-width:0;flex:1 1 0}
+  .tm-tok .tm-badge{padding:0 6px}
   .tm-sec-txt span{display:none}
   .tm-live span{display:none}.tm-live{padding:0 10px}
+  /* Cabeceras y distintivos largos pasan a su forma corta: 'Liquidity'->'Liq', 'Launchpad'->'LP'. */
+  .tm-lg{display:none}.tm-sm{display:inline}
 }
 
 /* ───────── Ficha del token (overlay) con semaforo de seguridad ───────── */

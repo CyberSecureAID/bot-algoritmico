@@ -73,8 +73,8 @@ function css() {
     + '@media(max-width:900px){.tm-chips{grid-template-columns:repeat(3,minmax(0,1fr))}}'
     + '@media(max-width:760px){.tm-ov.tm-ov-fil{padding:8px}.tm-fil{height:calc(100vh - 16px);border-radius:16px}.tm-fil-head,.tm-chips,.tm-fil-bar{padding-left:12px;padding-right:12px}.tm-fil-body{padding:0 10px 12px}'
     + '.tm-chips{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-chip{font-size:12px;padding:0 8px}.tm-fil-head .tm-sec-txt span{display:none}'
-    + '.tm-chk,.tm-c-chk{width:30px;padding-left:4px;padding-right:4px}.tm-table th.tm-c-chk{font-size:0}.tm-sem-p{padding:0;width:22px;justify-content:center;border-color:transparent;background:none}.tm-sem-p span{display:none}'
-    + '.tm-ov-fil .tm-c-chain,.tm-ov-fil .tm-chain{display:none}}';   /* en movil la columna Chain cede su sitio al semaforo */
+    + '.tm-chk,.tm-c-chk{width:52px;padding-left:4px;padding-right:4px}.tm-sem-p{padding:0;width:22px;justify-content:center;border-color:transparent;background:none}.tm-sem-p span{display:none}'
+    + '.tm-ov-fil .tm-c-chain,.tm-ov-fil .tm-chain{display:none}}';   /* en movil Chain cede su sitio a Check (semaforo); su cabecera ya cabe */
   document.head.appendChild(st);
 }
 
