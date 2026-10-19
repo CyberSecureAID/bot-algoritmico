@@ -12,6 +12,10 @@ import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual } from './grafico.js';
 import { SCAN_URL, FACTORY, WBNB, USDT } from './config.js';
+import { abrirCompra, saldoBNB, saldoToken } from './compra.js';
+import { listaDe, enVivo } from './posiciones.js';
+import { crearAlerta, alertasDe, quitarAlerta } from './alertas.js';
+import * as wallet from './wallet.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -88,12 +92,39 @@ function css() {
 .tg-sem i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:#7d8794}
 .tg-sem.ok i{background:var(--verde,#2ee86a)} .tg-sem.warn i{background:#f1cf6a} .tg-sem.bad i{background:var(--rojo,#f6465d)} .tg-sem.pend i{background:#7d8794}
 .tg-sem b{font-size:12.5px;font-weight:700} .tg-sem span{display:block;font-size:11px;color:var(--ink-3,#7d8794)}
-.tg-trade-mock{display:flex;flex-direction:column;gap:10px}
 .tg-tabs2{display:flex;gap:6px}
-.tg-tabs2 .t{flex:1 1 0;text-align:center;padding:9px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0b0f14;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12px;color:var(--ink-2,#b7bdc6)}
+.tg-tabs2 .t{flex:1 1 0;text-align:center;padding:9px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0b0f14;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12px;color:var(--ink-2,#b7bdc6);cursor:pointer}
 .tg-tabs2 .t.on{color:var(--gold,#E8B84B);border-color:#8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117)}
-.tg-mock-row{height:40px;border-radius:10px;border:1px dashed #2a323d;background:#0a0e13;display:flex;align-items:center;padding:0 12px;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:11px}
-.tg-mock-btn{height:44px;border-radius:11px;background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;opacity:.5}
+.tg-op{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.tg-op[hidden]{display:none}
+.tg-op-price{display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink-3,#7d8794)}
+.tg-op-price b{font-size:15px;color:var(--gold,#E8B84B)} .tg-op-price b sub{font-size:.62em}
+.tg-op-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
+.tg-al-set{display:flex;align-items:center;gap:8px;position:relative}
+.tg-al-set .tg-al-d{position:absolute;left:12px;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:13px}
+.tg-al-set input{flex:1 1 auto;height:44px;padding:0 12px 0 24px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink,#eaecef);font-family:var(--mono);font-size:14px;outline:none;min-width:0}
+.tg-al-set input:focus{border-color:#8f6a1a}
+.tg-al-hint{font-size:11px;color:var(--ink-3,#7d8794);line-height:1.5}
+.tg-mbtn{height:46px;border-radius:12px;border:0;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.tg-mbtn.buy{background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;box-shadow:0 4px 0 #0c4d35,inset 0 1px 0 rgba(255,255,255,.2)}
+.tg-mbtn.buy:active{transform:translateY(3px);box-shadow:0 1px 0 #0c4d35}
+.tg-mbtn.sec{flex:0 0 auto;height:44px;padding:0 16px;background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold,#E8B84B);border:1px solid #8f6a1a;box-shadow:0 3px 0 #060809;font-size:13px}
+.tg-mbtn.sec:active{transform:translateY(2px);box-shadow:0 1px 0 #060809}
+.tg-balrow{display:flex;gap:8px;margin-top:12px}
+.tg-bal{flex:1 1 0;border:1px solid var(--line,#232b36);background:#0b0f14;border-radius:10px;padding:8px 10px}
+.tg-bal span{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794)}
+.tg-bal b{font-family:var(--mono);font-size:13px}
+.tg-mt{margin-top:14px}
+.tg-alrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:9px;border:1px solid var(--line,#232b36);background:#0b0f14;font-family:var(--mono);font-size:12px;margin-bottom:6px}
+.tg-alrow.done{border-color:#2e7d52;color:var(--verde,#2ee86a)}
+.tg-alx{background:none;border:0;color:var(--ink-3,#7d8794);font-size:12px;cursor:pointer;padding:2px 4px}
+.tg-alx:hover{color:var(--rojo,#f6465d)}
+.tg-posrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0b0f14;margin-bottom:6px;cursor:pointer;border-left:3px solid #3a434f}
+.tg-posrow.up{border-left-color:var(--verde,#2ee86a)} .tg-posrow.down{border-left-color:var(--rojo,#f6465d)}
+.tg-posrow:hover{background:#121823}
+.tg-posnm b{display:block;font-size:13px;font-weight:700} .tg-posnm span{font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794)}
+.tg-posv{text-align:right} .tg-posv b{display:block;font-family:var(--mono);font-size:13px} .tg-posv span{font-family:var(--mono);font-size:10px}
+.tg-posv span.up{color:var(--verde,#2ee86a)} .tg-posv span.down{color:var(--rojo,#f6465d)}
 .tg-soon{font-size:11px;color:var(--ink-3,#7d8794);text-align:center;line-height:1.5;margin-top:2px}
 .tg-pick{position:absolute;top:66px;left:50%;transform:translateX(-50%);width:min(520px,92vw);max-height:62vh;overflow:auto;background:#0b0f14;border:1px solid #2a323d;border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.6);z-index:5;padding:8px}
 .tg-pick-h{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 10px;font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
@@ -138,9 +169,10 @@ async function resolver(addr, feed) {
   return { token: dir, par, quote: null, moneda, simbolo: String(sym || '?'), nombre: String(nom || 'Token'), decimales: Number(dec) || 18, fuente: 'pancake', tiempo: 0, liquidez: 0, precio: 0, bloque: 0, creador: '' };
 }
 
-let _ov = null;
+let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null;
 export async function abrirGrande(it0, ctx) {
   ctx = ctx || {};
+  _ctx = ctx;
   const bnbUsd = () => (ctx.bnbUsd ? ctx.bnbUsd() : 0);
   const feed = () => (ctx.items ? ctx.items() : []);
   css();
@@ -165,6 +197,7 @@ export async function abrirGrande(it0, ctx) {
 
   $('tg-close').onclick = cerrar;
   document.addEventListener('keydown', onEsc);
+  _cargar = cargar;
 
   // Selector de tokens del feed (lista estilo New pairs que carga en la grafica).
   const togglePicker = () => {
@@ -202,14 +235,14 @@ export async function abrirGrande(it0, ctx) {
   }
   if (inicial) cargar(inicial);
   else {
-    pintarId(null); pintarPrecio(0); pintarIzq(null, ctx); pintarDer();
+    pintarId(null); pintarPrecio(0); pintarIzq(null, ctx); pintarDer(null, ctx);
     const msg = $('tg-chart-msg'); if (msg) { msg.hidden = false; msg.textContent = 'No token selected. Paste a contract or open the Tokens list.'; }
   }
 
   // ── carga de un token en toda la vista ──
   async function cargar(it) {
     if (!ov.isConnected) return;
-    pintarId(it); pintarDer();
+    _itActual = it; pintarId(it); pintarDer(it, ctx);
     const cv = $('tg-chart-cv'), msg = $('tg-chart-msg');
     if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
     try { destruirGrafico(); } catch (_) {}
@@ -233,8 +266,10 @@ export async function abrirGrande(it0, ctx) {
     idEl.innerHTML = `${logo(it.token)}<div class="tg-id-tx"><b title="${esc(it.nombre || '')}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · ${sub}</span></div>`;
   }
   function pintarPrecio(p) {
+    _precioUsd = p || 0;
     const el = $('tg-price'); if (!el) return;
     el.innerHTML = `<b>${p > 0 ? '$' + fmtP(p, 5) : '$0'}</b><span>LIVE PRICE</span>`;
+    const mp = document.getElementById('tg-mkt-price'); if (mp) mp.innerHTML = p > 0 ? '$' + fmtP(p, 5) : '$0';
   }
 }
 
@@ -281,18 +316,83 @@ function pintarIzq(it, ctx) {
   }
 }
 
-/* ── Panel derecho: maqueta del area de operar (se construye en la siguiente entrega) ── */
-function pintarDer() {
+/* ── Panel derecho: area de operar (spot). Market (compra a mercado por el flujo probado abrirCompra),
+   Alert (alerta de precio, reusa alertas.js), saldos, Open Alerts y Positions (reusan compra/posiciones). ── */
+function pintarDer(it, ctx) {
   const host = $('tg-right'); if (!host) return;
+  if (!it) { host.innerHTML = `<div class="tg-sec-t">Trade</div><div class="tg-soon" style="margin-top:4px">Pick a token to buy, set a price alert and see your live positions.</div>`; return; }
   host.innerHTML = `
-    <div class="tg-sec-t">Trade</div>
-    <div class="tg-trade-mock">
-      <div class="tg-tabs2"><div class="t on">Market</div><div class="t">Alert</div></div>
-      <div class="tg-mock-row">Amount</div>
-      <div class="tg-mock-row">Pay with BNB or USDT</div>
-      <div class="tg-mock-btn">Open Long</div>
-      <div class="tg-soon">Market buy, price alert, your balances, Open Alerts and your live Positions land here in the next step.</div>
-    </div>`;
+    <div class="tg-tabs2" id="tg-op-tabs"><button type="button" class="t on" data-op="market">Market</button><button type="button" class="t" data-op="alert">Alert</button></div>
+    <div class="tg-op" id="tg-op-market">
+      <div class="tg-op-price">Market price<b id="tg-mkt-price">${_precioUsd > 0 ? '$' + fmtP(_precioUsd, 5) : '$0'}</b></div>
+      <button class="tg-mbtn buy" id="tg-openlong" type="button">Open Long</button>
+      <div class="tg-soon">Buys at market in the swap window (pays with BNB). Your keys, your coins.</div>
+    </div>
+    <div class="tg-op" id="tg-op-alert" hidden>
+      <label class="tg-op-lbl">Alert me at price</label>
+      <div class="tg-al-set"><span class="tg-al-d">$</span><input id="tg-al-price" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0"><button class="tg-mbtn sec" id="tg-al-set" type="button">Set</button></div>
+      <div class="tg-al-hint" id="tg-al-hint">You get a browser notification when the price is hit. It is not an order and never touches your funds.</div>
+    </div>
+    <div class="tg-balrow" id="tg-balrow"></div>
+    <div class="tg-sec-t tg-mt">Open alerts</div>
+    <div id="tg-openalerts"><div class="tg-soon">No alerts yet.</div></div>
+    <div class="tg-sec-t tg-mt">Positions</div>
+    <div id="tg-positions"><div class="tg-soon">No positions yet.</div></div>`;
+  host.querySelectorAll('#tg-op-tabs button').forEach((b) => { b.onclick = () => {
+    host.querySelectorAll('#tg-op-tabs button').forEach((x) => x.classList.toggle('on', x === b));
+    const m = b.dataset.op, mk = $('tg-op-market'), al = $('tg-op-alert'); if (mk) mk.hidden = m !== 'market'; if (al) al.hidden = m !== 'alert';
+  }; });
+  const ol = $('tg-openlong');
+  if (ol) ol.onclick = async () => {
+    if (!wallet.cuentaActual()) { try { await wallet.conectar(); } catch (_) {} derBalances(it); derPositions(it); return; }
+    const aud = ctx && ctx.auditoriaDe ? ctx.auditoriaDe(it) : null;
+    try { abrirCompra(it, aud); } catch (_) {}
+  };
+  const setA = $('tg-al-set'), inA = $('tg-al-price');
+  const poner = () => {
+    const v = parseFloat(String(inA.value).replace(/[, $]/g, '')); if (!(v > 0)) { inA.focus(); return; }
+    const ref = _precioUsd > 0 ? _precioUsd : 0; const dir = ref > 0 ? (v >= ref ? 'up' : 'down') : 'up';
+    crearAlerta(it, v, dir); inA.value = '';
+    const h = $('tg-al-hint'); if (h) h.textContent = 'Alert set at $' + fmtTxt(v) + '. ' + (dir === 'up' ? 'Notifies when the price rises to it.' : 'Notifies when the price falls to it.');
+    derOpenAlerts(it);
+  };
+  if (setA && inA) { setA.onclick = poner; inA.onkeydown = (e) => { if (e.key === 'Enter') poner(); }; }
+  derBalances(it); derOpenAlerts(it); derPositions(it);
+}
+function fmtTxt(p) { return String(fmtP(p, 5)).replace(/<sub>(\d+)<\/sub>/, (m, z) => '0'.repeat(+z)); }
+
+function derBalances(it) {
+  const host = $('tg-balrow'); if (!host) return;
+  const c = wallet.cuentaActual();
+  if (!c) { host.innerHTML = `<button class="tg-mbtn sec" id="tg-conn" type="button">Connect wallet</button>`; const b = $('tg-conn'); if (b) b.onclick = async () => { try { await wallet.conectar(); } catch (_) {} if (_itActual) pintarDer(_itActual, _ctx); }; return; }
+  host.innerHTML = `<div class="tg-bal"><span>Wallet</span><b id="tg-bal-bnb">…</b></div><div class="tg-bal"><span>USDT</span><b id="tg-bal-usdt">…</b></div>`;
+  saldoBNB(c).then((w) => { const e = $('tg-bal-bnb'); if (e) e.textContent = (+ethers.formatEther(w)).toFixed(4) + ' BNB'; }).catch(() => {});
+  saldoToken(USDT, c).then((w) => { const e = $('tg-bal-usdt'); if (e) e.textContent = (+ethers.formatUnits(w, 18)).toFixed(2); }).catch(() => {});
+}
+
+function derOpenAlerts(it) {
+  const host = $('tg-openalerts'); if (!host) return;
+  const l = alertasDe(it.token);
+  if (!l.length) { host.innerHTML = `<div class="tg-soon">No alerts for this token.</div>`; return; }
+  host.innerHTML = l.map((a) => `<div class="tg-alrow ${a.disparada ? 'done' : ''}"><span>${a.dir === 'up' ? '≥' : '≤'} $${fmtP(a.objetivo)}${a.disparada ? ' · hit' : ''}</span><button class="tg-alx" data-id="${esc(a.id)}" type="button" aria-label="Remove">✕</button></div>`).join('');
+  host.querySelectorAll('.tg-alx').forEach((b) => { b.onclick = () => { quitarAlerta(b.dataset.id); derOpenAlerts(it); }; });
+}
+
+async function derPositions(it) {
+  const host = $('tg-positions'); if (!host) return;
+  const c = wallet.cuentaActual();
+  if (!c) { host.innerHTML = `<div class="tg-soon">Connect your wallet to see positions.</div>`; return; }
+  const lista = listaDe(c);
+  if (!lista.length) { host.innerHTML = `<div class="tg-soon">No positions yet. Buy a token here and it shows with live profit.</div>`; return; }
+  host.innerHTML = `<div class="tg-soon">Reading on chain…</div>`;
+  const bnb = (_ctx && _ctx.bnbUsd) ? _ctx.bnbUsd() : 0;
+  const datos = (await Promise.all(lista.map((p) => enVivo(c, p, bnb).catch(() => null)))).filter((d) => d && d.cant > 0);
+  if (!$('tg-positions')) return;
+  if (!datos.length) { host.innerHTML = `<div class="tg-soon">No open positions right now.</div>`; return; }
+  datos.sort((a, b) => b.valorUsd - a.valorUsd);
+  const sg = (v) => v >= 0 ? '+' : '-';
+  host.innerHTML = datos.map((d) => `<div class="tg-posrow ${d.pnlUsd >= 0 ? 'up' : 'down'}" data-a="${esc(d.token)}"><div class="tg-posnm"><b>${esc(d.simbolo || '?')}</b><span>in $${fmtP(d.entradaUsd)}</span></div><div class="tg-posv"><b>${money(d.valorUsd)}</b><span class="${d.pnlUsd >= 0 ? 'up' : 'down'}">${sg(d.pnlUsd)}${money(Math.abs(d.pnlUsd))} · ${sg(d.pnlPct)}${pct(Math.abs(d.pnlPct))}</span></div></div>`).join('');
+  host.querySelectorAll('.tg-posrow').forEach((r) => { r.onclick = () => { const d = datos.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d && _cargar) _cargar({ token: d.token, par: d.par, quote: d.quote || null, moneda: d.moneda || 'BNB', simbolo: d.simbolo, nombre: d.nombre || d.simbolo, decimales: d.decimales || 18, fuente: 'pancake', tiempo: 0, bloque: 0, liquidez: 0, precio: 0, creador: '' }); }; });
 }
 
 function onEsc(e) { if (e.key === 'Escape') cerrar(); }
@@ -300,5 +400,5 @@ export function cerrar() {
   document.removeEventListener('keydown', onEsc);
   try { destruirGrafico(); } catch (_) {}
   const ov = $('tm-big-ov'); if (ov) { try { ov.remove(); } catch (_) {} }
-  _ov = null;
+  _ov = null; _cargar = null; _itActual = null;
 }
