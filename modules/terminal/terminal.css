@@ -16,14 +16,14 @@
 .tm-panel{min-width:0;background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:16px 16px 6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow-x:auto}
 .tm-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
 .tm-sec-r{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.tm-fil-b.tm-b{flex:0 0 auto;min-width:0;padding:0 18px}
+.tm-fil-b.tm-b{flex:0 0 auto;height:30px;min-width:0;padding:0 14px;font-size:12px;border-radius:999px}
 .tm-sec-tt{display:flex;align-items:center;gap:12px;min-width:0}
 .tm-sec-ico{width:36px;height:36px;flex:0 0 auto;display:grid;place-items:center;border-radius:10px;background:rgba(232,184,75,.12);color:var(--gold)}
 .tm-sec-ico svg{width:20px;height:20px}
 .tm-sec-txt b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:19px;color:var(--ink);line-height:1.15}
 .tm-sec-txt span{display:block;font-size:12.5px;color:var(--ink-3)}
-.tm-live{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;height:46px;padding:0 18px;border-radius:12px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117);box-shadow:0 4px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);font-family:var(--mono);font-size:12px;color:#E8B84B;white-space:nowrap}
-.tm-live.off{color:#9aa3ad;border-color:#394049}
+.tm-live{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;height:30px;padding:0 12px;border-radius:999px;border:1px solid rgba(46,232,106,.3);background:rgba(46,232,106,.08);font-family:var(--mono);font-size:11px;color:#8ef0b0;white-space:nowrap}
+.tm-live.off{border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08);color:#f1cf6a}
 
 .tm-table{width:100%;border-collapse:collapse;font-family:var(--display)}
 .tm-table th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding:0 10px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -97,9 +97,8 @@
   /* Cabecera de New pairs: en movil no caben titulo + Filters + Live en una linea (Live se salia del panel).
      El titulo va arriba y la fila de Filters + Live debajo, a lo ancho. */
   .tm-sec-head{flex-wrap:wrap;gap:10px}
-  .tm-sec-r{flex:1 0 100%;flex-wrap:wrap;gap:8px}
-  .tm-sec-r>.tm-b{flex:1 1 0;max-width:none}
-  .tm-live{flex:1 0 100%;justify-content:center;height:42px;padding:0 16px}
+  .tm-sec-r{flex:1 0 100%;justify-content:space-between}
+  .tm-live{padding:0 12px}
   /* Cabeceras y distintivos largos pasan a su forma corta: 'Liquidity'->'Liq', 'Launchpad'->'LP'. */
   .tm-lg{display:none}.tm-sm{display:inline}
 }
@@ -211,36 +210,6 @@
 .tm-pos-x{position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:6px;border:0;background:transparent;color:var(--ink-3);font-size:11px;cursor:pointer;line-height:1;z-index:1}
 .tm-pos-x:hover{background:rgba(255,255,255,.06);color:var(--ink-2)}
 @media (max-width:480px){.tm-pos-tv b,.tm-pos-tp b{font-size:17px}.tm-pos-nm b{font-size:14px}.tm-pos-val b{font-size:14px}}
-/* Pestañas del panel (Positions / Watchlist / Alerts) */
-.tm-tabs{display:flex;gap:6px;margin:0 0 12px;background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:12px;padding:4px}
-.tm-tabs button{flex:1 1 0;height:34px;border:0;border-radius:9px;background:transparent;color:var(--ink-3);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;cursor:pointer}
-.tm-tabs button.on{background:rgba(232,184,75,.14);color:var(--gold)}
-/* Cabecera de la ficha: estrella de watchlist */
-.tm-f-hbtns{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.tm-f-star{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-3);display:grid;place-items:center;cursor:pointer}
-.tm-f-star.on{color:var(--gold);border-color:rgba(232,184,75,.4);background:rgba(232,184,75,.1)}
-/* Fila de alerta de precio en la ficha */
-.tm-f-alert{margin:0 0 12px}
-.tm-f-alert-set{display:flex;align-items:center;gap:8px;background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:6px 8px 6px 11px}
-.tm-f-alert-ico{color:var(--gold);display:flex;flex:0 0 auto}
-.tm-f-alert-set input{flex:1 1 auto;min-width:0;background:transparent;border:0;color:var(--ink);font-family:var(--mono);font-size:13px;outline:none}
-.tm-f-alert-set input::placeholder{color:var(--ink-3)}
-.tm-f-alert-set .tm-b{flex:0 0 auto;min-height:32px;padding:0 14px}
-.tm-f-alert-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.tm-al-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.28);border-radius:8px;padding:3px 4px 3px 8px}
-.tm-al-chip.done{color:#8ef0b0;background:rgba(46,232,106,.1);border-color:rgba(46,232,106,.3)}
-.tm-al-x{border:0;background:transparent;color:inherit;opacity:.7;font-size:10px;cursor:pointer;line-height:1;padding:2px}
-.tm-al-x:hover{opacity:1}
-/* Avisos de alerta (toasts) */
-.tm-toasts{position:fixed;top:14px;right:14px;z-index:2147483000;display:flex;flex-direction:column;gap:8px;max-width:340px}
-.tm-toast{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-radius:13px;border:1px solid rgba(232,184,75,.4);background:rgba(20,17,10,.96);box-shadow:0 10px 30px rgba(0,0,0,.5);cursor:pointer;animation:tmToastIn .25s ease-out}
-.tm-toast-ico{flex:0 0 auto;color:var(--gold);margin-top:1px}
-.tm-toast-tx{flex:1 1 auto;min-width:0}
-.tm-toast-tx b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;color:var(--ink)}
-.tm-toast-tx span{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-2);margin-top:2px}
-.tm-toast-x{flex:0 0 auto;border:0;background:transparent;color:var(--ink-3);font-size:12px;cursor:pointer;line-height:1}
-@keyframes tmToastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
-@media (max-width:480px){.tm-toasts{left:12px;right:12px;max-width:none}}
 .tm-hall{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px}
 .tm-hall li{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:rgba(11,14,17,.6)}
 /* Medidas pares (22 y 14): el hueco a cada lado es de 4px exactos; con 13px quedaba en 4.5px y el navegador
