@@ -37,7 +37,7 @@
     + '.cc-disc-t{font-size:12.5px;line-height:1.58;color:#c4ccd4;margin:0 0 8px}'
     + '.cc-disc-t.last{margin-bottom:0}'
     + '.cc-disc-a{display:flex;align-items:center;gap:12px;margin-top:16px}'
-    + '.cc-disc-btn{flex:1 1 0;max-width:220px;min-width:0;'
+    + '.cc-disc-btn{flex:1 1 0;max-width:220px;min-width:0;box-sizing:border-box;'
     + 'display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;'
     + 'height:44px;padding:0 18px;border-radius:11px;'
     + 'font-family:"Chakra Petch",system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:.2px;white-space:nowrap;'
@@ -51,7 +51,7 @@
     + 'max-height:calc(100dvh - 110px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.5) transparent}'
     + '.cc-disc-push,.cc-disc-fl{display:none}'
     + '.cc-disc-top{display:block;width:124px;margin:2px auto 14px}'
-    + '.cc-disc-a{flex-wrap:wrap}.cc-disc-btn{flex:1 1 0;max-width:none}}';
+    + '.cc-disc-a{flex-direction:column;align-items:stretch;gap:10px}.cc-disc-btn{flex:1 1 auto;width:100%;max-width:none}}';
 
   /* Alinea la base del cuño con la base de los botones midiendo en vivo. El cuño
      se empuja hacia abajo con un "push" invisible; iteramos porque al moverlo el
