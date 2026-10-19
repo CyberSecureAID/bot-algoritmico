@@ -68,6 +68,22 @@ export async function velasDeToken({ par, token, decToken = 18, decQuote = 18, b
   return velas;
 }
 
+/* Precio actual del token en USD, leido de las reservas vivas del par (una sola lectura). */
+const ABI_RES = ['function getReserves() view returns (uint112, uint112, uint32)', 'function token0() view returns (address)'];
+export async function precioActual({ par, token, decToken = 18, decQuote = 18, bnbUsd = 0, quoteEsUSDT = false }) {
+  if (!par) return 0;
+  try {
+    const c = (p) => new ethers.Contract(par, ABI_RES, p);
+    const [res, token0] = await Promise.all([conRotacion((p) => c(p).getReserves()), conRotacion((p) => c(p).token0())]);
+    const tokenEs0 = String(token0).toLowerCase() === String(token).toLowerCase();
+    const rTok = BigInt(tokenEs0 ? res[0] : res[1]), rQuote = BigInt(tokenEs0 ? res[1] : res[0]);
+    if (rTok === 0n) return 0;
+    const esc = Math.pow(10, decToken - decQuote);
+    const p = (Number(rQuote) / Number(rTok)) * esc * (quoteEsUSDT ? 1 : (bnbUsd || 0));
+    return (p > 0 && isFinite(p)) ? p : 0;
+  } catch (_) { return 0; }
+}
+
 /* ── Render ── */
 function subCeros(n) { let r = ''; for (const ch of String(n)) r += String.fromCharCode(0x2080 + (ch.charCodeAt(0) - 48)); return r; }
 function fmtEje(p) {

@@ -9,6 +9,8 @@ import { abrirCompra } from './compra.js';
 import { comoFunciona } from './aviso.js';
 import { abrirFiltros } from './filtros.js';
 import { velasDeToken, montarGrafico, destruirGrafico } from './grafico.js';
+import * as wallet from './wallet.js';
+import { listaDe, enVivo, olvidar } from './posiciones.js';
 import { FEED, SCAN_URL, FOURMEME_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -28,6 +30,7 @@ function fmtP(p, sig = 4) {
   return `0.0<sub>${ceros}</sub>${dig}`;
 }
 function money(v) { if (!(v > 0)) return '$0'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+function numC(n) { n = Number(n) || 0; if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; if (n >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: 2 }); return n.toLocaleString('en-US', { maximumFractionDigits: 6 }); }
 function hace(ms) { if (!ms) return '0s'; const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's'; const m = Math.floor(s / 60); if (m < 60) return m + 'm'; const h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
 function abreviar(n) { const s = String(n || '').trim(); if (!s) return 'Token'; const p = s.split(/\s+/)[0]; return p.length > 12 ? p.slice(0, 11) + '…' : (s.length > p.length ? p + '…' : p); }
 /* Logo del token: se intenta el de Trust Wallet (repositorio publico, sin servidor propio). Un token recien
@@ -49,7 +52,7 @@ export function arrancar() {
     <section class="tm-hero">
       <h1 class="tm-h1">Terminal</h1>
       <p class="tm-sub">New tokens on BNB Chain, the second they are born. Checked by Wallet Shield before you buy. Your wallet, your keys.</p>
-      <div class="tm-hero-acts"><button class="tm-b sec" id="tm-how" type="button">How it works</button></div>
+      <div class="tm-hero-acts"><button class="tm-b sec" id="tm-pos" type="button">My positions</button><button class="tm-b sec" id="tm-how" type="button">How it works</button></div>
     </section>
     <section class="tm-panel">
       <div class="tm-sec-head">
@@ -60,6 +63,7 @@ export function arrancar() {
     </section>`;
   const fb = $('tm-filtros'); if (fb) fb.onclick = () => abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
   const how = $('tm-how'); if (how) how.onclick = () => { try { comoFunciona(); } catch (e) { console.warn('[TERM] how', e); } };
+  const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { abrirPosiciones(); } catch (e) { console.warn('[TERM] pos', e); } };
   gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); }).catch(() => {});
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
   if (_parar) _parar();
@@ -258,4 +262,49 @@ function pintarAuditoria(r, reintentar) {
   }
   const ul = $('tm-hall'); if (!ul) return;
   ul.innerHTML = r.hallazgos.map((x) => `<li class="${x.n}"><span class="tm-h-ico">${ICO_N[x.n] || ICO_INFO}</span><div><b>${esc(x.t)}</b><span>${esc(x.d || '')}</span></div></li>`).join('');
+}
+
+/* ───────── Mis posiciones (no custodial: registradas en el navegador al comprar por el Terminal) ───────── */
+function itDePos(d) {
+  return { token: d.token, par: d.par, quote: d.quote, moneda: d.moneda || 'BNB', simbolo: d.simbolo, nombre: d.nombre || d.simbolo, decimales: d.decimales || 18, fuente: 'pancake', tiempo: d.abierta || 0, liquidez: 0, precio: d.moneda === 'USDT' ? d.precioUsd : (_bnbUsd > 0 ? d.precioUsd / _bnbUsd : 0), creador: '' };
+}
+export async function abrirPosiciones() {
+  const prev = $('tm-pos-ov'); if (prev) prev.remove();
+  const ov = document.createElement('div'); ov.id = 'tm-pos-ov'; ov.className = 'tm-ov';
+  ov.innerHTML = `<div class="tm-ficha tm-pos-card" role="dialog" aria-modal="true">
+    <div class="tm-f-head"><div class="tm-f-tx"><b>My positions</b><span>Opened from the Terminal · your wallet, your keys</span></div><button class="tm-f-x" type="button" aria-label="Close">✕</button></div>
+    <div class="tm-pos-tot" id="tm-pos-tot" hidden></div>
+    <div class="tm-pos-body" id="tm-pos-body"><div class="tm-pos-msg"><span class="tm-anillo"></span></div></div>
+    <p class="tm-f-note">Value and profit are read live from the chain. Entry cost is based on your buys made here. Not a recommendation.</p>
+  </div>`;
+  document.body.appendChild(ov);
+  const cerrar = () => { try { ov.remove(); } catch (_) {} };
+  ov.querySelector('.tm-f-x').onclick = cerrar;
+  ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
+  const body = $('tm-pos-body'), tot = $('tm-pos-tot');
+  const cuenta = wallet.cuentaActual();
+  if (!cuenta) {
+    body.innerHTML = `<div class="tm-pos-empty"><b>Connect your wallet</b><span>Your Terminal positions and live profit will show here.</span><button class="tm-b" id="tm-pos-conn" type="button">Connect wallet</button></div>`;
+    const bc = $('tm-pos-conn'); if (bc) bc.onclick = async () => { try { await wallet.conectar(); } catch (_) {} if (ov.isConnected) { cerrar(); abrirPosiciones(); } };
+    return;
+  }
+  const lista = listaDe(cuenta);
+  if (!lista.length) { body.innerHTML = `<div class="tm-pos-empty"><b>No positions yet</b><span>Buy a token from the Terminal and it shows here with your live profit.</span></div>`; return; }
+  const datos = await Promise.all(lista.map((p) => enVivo(cuenta, p, _bnbUsd).catch(() => null)));
+  if (!ov.isConnected) return;
+  const vivas = datos.filter((d) => d && d.cant > 0);
+  if (!vivas.length) { body.innerHTML = `<div class="tm-pos-empty"><b>No open positions</b><span>You are not holding any token bought here right now.</span></div>`; return; }
+  vivas.sort((a, b) => b.valorUsd - a.valorUsd);
+  const totVal = vivas.reduce((s, d) => s + d.valorUsd, 0), totCost = vivas.reduce((s, d) => s + d.costoUsd, 0);
+  const totPnl = totVal - totCost, totPct = totCost > 0 ? totPnl / totCost * 100 : 0;
+  const sg = (v) => (v >= 0 ? '+' : '-'), cl = (v) => (v >= 0 ? 'up' : 'down');
+  tot.hidden = false;
+  tot.innerHTML = `<div><span>Total value</span><b>${money(totVal)}</b></div><div><span>Profit / loss</span><b class="${cl(totPnl)}">${sg(totPnl)}${money(Math.abs(totPnl))} · ${sg(totPct)}${pct(Math.abs(totPct))}</b></div>`;
+  body.innerHTML = vivas.map((d) => `<div class="tm-pos-row" data-a="${esc(d.token)}">
+      <div class="tm-pos-tk">${logo(d.simbolo, d.token)}<div class="tm-pos-nm"><b>${esc(d.simbolo || '?')}</b><span>${numC(d.cant)} · ${d.precioUsd > 0 ? '$' + fmtP(d.precioUsd) : '$0'}</span></div></div>
+      <div class="tm-pos-val"><b>${money(d.valorUsd)}</b><span class="${cl(d.pnlUsd)}">${sg(d.pnlUsd)}${money(Math.abs(d.pnlUsd))} · ${sg(d.pnlPct)}${pct(Math.abs(d.pnlPct))}</span></div>
+      <button class="tm-pos-x" type="button" data-f="${esc(d.token)}" title="Remove from list">✕</button>
+    </div>`).join('');
+  body.querySelectorAll('.tm-pos-row').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.tm-pos-x')) return; const d = vivas.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d) { cerrar(); abrirFicha(itDePos(d)); } }; });
+  body.querySelectorAll('.tm-pos-x').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); olvidar(cuenta, b.dataset.f); cerrar(); abrirPosiciones(); }; });
 }

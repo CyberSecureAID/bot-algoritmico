@@ -178,6 +178,33 @@
 .tm-hd-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#f1cf6a)}
 .tm-hd b{flex:0 0 auto;font-family:var(--mono);font-size:11.5px;color:var(--ink);min-width:44px;text-align:right}
 @media (max-width:480px){.tm-hd-a{min-width:84px}.tm-hd-head span{font-size:10px}}
+/* Mis posiciones (panel) */
+.tm-pos-card{max-height:86vh;display:flex;flex-direction:column}
+.tm-pos-tot{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.tm-pos-tot[hidden]{display:none}
+.tm-pos-tot>div{background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:12px;padding:9px 11px;min-width:0}
+.tm-pos-tot span{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.tm-pos-tot b{display:block;font-family:var(--mono);font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-pos-body{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.tm-pos-msg{display:flex;align-items:center;justify-content:center;padding:28px 0}
+.tm-pos-empty{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:26px 16px}
+.tm-pos-empty b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;color:var(--ink)}
+.tm-pos-empty span{font-size:12.5px;color:var(--ink-3);max-width:280px}
+.tm-pos-empty .tm-b{margin-top:6px}
+.tm-pos-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:rgba(11,14,17,.6);cursor:pointer;position:relative}
+.tm-pos-row:hover{background:rgba(255,255,255,.03)}
+.tm-pos-tk{display:flex;align-items:center;gap:9px;flex:1 1 auto;min-width:0}
+.tm-pos-nm{min-width:0}
+.tm-pos-nm b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13.5px;color:var(--ink)}
+.tm-pos-nm span{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-pos-val{flex:0 0 auto;text-align:right;padding-right:18px}
+.tm-pos-val b{display:block;font-family:var(--mono);font-size:13.5px;color:var(--ink)}
+.tm-pos-val span{display:block;font-family:var(--mono);font-size:11px;white-space:nowrap}
+.tm-pos-val .up,.tm-pos-tot .up{color:#2ee86a}
+.tm-pos-val .down,.tm-pos-tot .down{color:#ff7f93}
+.tm-pos-x{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:6px;border:0;background:transparent;color:var(--ink-3);font-size:11px;cursor:pointer;line-height:1}
+.tm-pos-x:hover{background:rgba(255,255,255,.06);color:var(--ink-2)}
+@media (max-width:480px){.tm-pos-nm b{font-size:13px}.tm-pos-val b{font-size:13px}.tm-pos-tot b{font-size:12.5px}}
 .tm-hall{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px}
 .tm-hall li{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:rgba(11,14,17,.6)}
 /* Medidas pares (22 y 14): el hueco a cada lado es de 4px exactos; con 13px quedaba en 4.5px y el navegador

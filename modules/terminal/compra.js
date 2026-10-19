@@ -10,6 +10,7 @@ import * as wallet from './wallet.js';
 import { TERMINAL_SWAP, WBNB, USDT, SCAN_URL, SLIPPAGE } from './config.js';
 import { conRotacion } from './rpc.js';
 import { precioBNBUSDT } from './motor.js';
+import { registrarCompra, registrarVenta } from './posiciones.js';
 
 const log = (...a) => { try { console.info('[TERM-BUY]', ...a); } catch (_) {} };
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -255,10 +256,20 @@ export function abrirCompra(it, aud) {
       ? `You pay <b>${fmtBNB(w)} BNB</b> for at least <b>${numC(Number(ethers.formatUnits(min, dec)))} ${sym}</b>.`
       : `You sell <b>${numC(Number(ethers.formatUnits(w, dec)))} ${sym}</b> for at least <b>${fmtBNB(min - min * 100n / 10000n)} BNB</b>.`;
     try {
+      const cuenta = wallet.cuentaActual();
+      const balAntes = (modo === 'buy' && cuenta) ? await saldoToken(it.token, cuenta).catch(() => 0n) : 0n;
       const rc = modo === 'buy' ? await comprar({ token: it.token, quote, bnbWei: w, minOut: min }) : await vender({ token: it.token, quote, cantidad: w, minOut: min });
       firmando = false; go.textContent = modo === 'buy' ? 'Swap complete' : 'Sold';
       info.innerHTML = `Done. ${modo === 'buy' ? 'The ' + sym + ' is' : 'The BNB is'} in your wallet. <a href="${SCAN_URL}/tx/${esc(rc.hash)}" target="_blank" rel="noopener">View on BscScan</a>`;
       log('ok', modo, rc.hash);
+      // Registrar la posicion (no custodial, solo en el navegador) para "My positions".
+      try {
+        if (cuenta && modo === 'buy') {
+          const balDespues = await saldoToken(it.token, cuenta).catch(() => 0n);
+          const recibido = balDespues > balAntes ? balDespues - balAntes : 0n;
+          registrarCompra(cuenta, it, recibido, w, bnbUsd);
+        } else if (cuenta && modo === 'sell') { registrarVenta(cuenta, it.token, w); }
+      } catch (_) {}
       // El boton se queda unos segundos; luego la ventana vuelve a estar lista para otra operacion.
       setTimeout(() => { ocupado = false; amt.disabled = false; amt.value = ''; cot = null; cotPara = 0n; if (abierto()) { pintarCot(); estado(); leerSaldos(); } }, 3000);
     } catch (e) {
