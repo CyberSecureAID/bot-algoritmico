@@ -19,6 +19,8 @@ import { FEED, SCAN_URL, FOURMEME_URL } from './config.js';
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const corto = (a) => a ? '…' + String(a).slice(-4) : '';
+/* Precio del token en USDT: si el par ya es contra USDT, es directo; si es contra BNB, se multiplica por el precio de BNB. */
+const usdDe = (it) => (it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd);
 
 const ICO_BSC = '<svg class="tm-bsc" viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
@@ -36,8 +38,12 @@ const ICO_REFRESH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none"
 const ICO_EXPAND = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6"/><path d="M3 3l7 7"/><path d="M15 21h6v-6"/><path d="M21 21l-7-7"/></svg>';
 const ICO_BNB = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="11" fill="#F0B90B"/><path fill="#0b0e11" d="M12 5.4 14.3 7.7 12 10 9.7 7.7Z M7 10.4 9.3 12.7 7 15 4.7 12.7Z M17 10.4 19.3 12.7 17 15 14.7 12.7Z M12 10.4 14.3 12.7 12 15 9.7 12.7Z M12 15.4 14.3 17.7 12 20 9.7 17.7Z"/></svg>';
 const ICO_EXT = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>';
+const ICO_TREND = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M17 4h4v4"/></svg>';
 const ICO_CHECK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>';
-const ICO_VERIF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="m12 1.5 2.4 1.7 2.9-.2 1.1 2.7 2.4 1.6-.6 2.9.9 2.8-2.1 2 .1 2.9-2.8.8-1.7 2.4-2.8-.7-2.7 1.1-1.9-2.2-2.9-.3-.8-2.8-2.4-1.6.3-2.9-1.4-2.5 1.9-2.2.1-2.9 2.8-.8z"/><path d="m8.5 12 2.4 2.4 4.6-4.9" fill="none" stroke="#04140c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICO_VERIF = '<svg viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="10" fill="#2ebd85"/><path d="m7.8 12 2.6 2.6L16.2 9" fill="none" stroke="#06231a" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+/* Logo de BNB oficial (imagen de CoinGecko, la misma que usamos en toda la pagina). Si no carga, cae al glifo BSC. */
+const LOGO_BNB = 'https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png';
+const bnbCoin = () => `<span class="tm-bnbimg">${ICO_BSC}<img src="${LOGO_BNB}" alt="" loading="lazy" onload="this.parentElement.classList.add('on')" onerror="this.remove()"></span>`;
 
 /* Precio: cifras significativas, con subindice para los muy pequenos (igual que el launchpad). */
 function fmtP(p, sig = 4) {
@@ -95,7 +101,7 @@ export function arrancar() {
     </div>
     <div class="tm-lobby">
       <aside class="tm-side">
-        <div class="tm-brand"><span class="tm-brand-ico">${ICO_BNB}</span><div class="tm-brand-tx"><b>Terminal</b><span>New tokens. Real opportunities.</span></div></div>
+        <div class="tm-brand"><span class="tm-brand-ico">${bnbCoin()}</span><div class="tm-brand-tx"><b>Terminal</b><span>New tokens. Real opportunities.</span></div></div>
         <nav class="tm-nav" id="tm-nav">
           <button class="tm-nav-b on" data-nav="pairs" type="button"><span class="tm-nav-ic">${ICO_BOLT}</span>New pairs<em class="tm-nav-live">Live</em></button>
           <button class="tm-nav-b" data-nav="mine" type="button"><span class="tm-nav-ic">${ICO_WALLET}</span>My tokens</button>
@@ -115,6 +121,8 @@ export function arrancar() {
           <div class="tm-stats-row"><span>Volume (24h)</span><b>$12.4M</b></div>
           <div class="tm-stats-row"><span>Txs (24h)</span><b>1.84M</b></div>
         </div>
+        <div class="tm-movers" id="tm-movers"></div>
+        <div class="tm-netstat"><i></i>Network connected</div>
       </aside>
       <main class="tm-center">
         <section class="tm-panel">
@@ -222,7 +230,7 @@ const theadLobby = () => `<thead><tr>${COLS_L.map((c) => { const k = c === '#' ?
 const mNum = (tk, k) => { const m = mercadoDe(tk); return m ? (Number(m[k]) || 0) : 0; };
 const cambioDe = (tk) => { const m = mercadoDe(tk); return (m && m.cambio24 != null) ? m.cambio24 : -1e12; };
 function filaLobby(it, i) {
-  const mon = it.moneda || 'BNB';
+  const pu = usdDe(it);
   const listo = mercadoListo(it.token), m = mercadoDe(it.token);
   const sk = (w) => `<span class="tm-sk" style="width:${w}px"></span>`;
   const chg = m && m.cambio24 != null ? m.cambio24 : null;
@@ -230,7 +238,7 @@ function filaLobby(it, i) {
   return `<tr class="tm-row" data-a="${esc(it.token)}">
     <td class="tm-num">${i + 1}</td>
     <td class="tm-tok"><span class="tm-tok-in">${logo(it.simbolo, it.token)}<span class="tm-tok-id"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span>${esc(it.simbolo || '?')}</span></span></span></td>
-    <td class="tm-cl-price"><b>${it.precio > 0 ? fmtP(it.precio) + ' ' + mon : '0 ' + mon}</b>${chgTxt}</td>
+    <td class="tm-cl-price"><b>${pu > 0 ? '$' + fmtP(pu) : '$0'}</b>${chgTxt}</td>
     <td class="tm-cl-mc">${listo ? money(m ? m.mc : 0) : sk(42)}</td>
     <td class="tm-cl-buyers">${listo ? numC(m ? m.buys24 : 0) : sk(30)}</td>
     <td class="tm-cl-volume">${listo ? money(m ? m.vol24 : 0) : sk(46)}</td>
@@ -257,7 +265,24 @@ function pintar() {
   cueReaplica(host);
   const faltan = vis.filter((x) => x.par).map((x) => x.token).filter((t) => !mercadoListo(t));
   if (faltan.length) cargarMercado(faltan).then(() => { clearTimeout(_repM); _repM = setTimeout(pintar, 60); }).catch(() => {});
+  pintarMovers();
   asegurarSelCP();
+}
+/* Tarjeta "Top movers" del lateral: los 3 tokens que mas suben (24h, datos reales); si aun no hay datos de
+   mercado, los 3 de mayor liquidez. Rellena el hueco del lateral con algo util y clicable. */
+function pintarMovers() {
+  const host = $('tm-movers'); if (!host) return;
+  const conDatos = _items.filter((x) => x.par && mercadoDe(x.token) && mercadoDe(x.token).cambio24 != null);
+  let top;
+  if (conDatos.length >= 2) top = conDatos.slice().sort((a, b) => mercadoDe(b.token).cambio24 - mercadoDe(a.token).cambio24).slice(0, 3);
+  else top = _items.filter((x) => x.par && x.liquidez > 0).sort((a, b) => b.liquidez - a.liquidez).slice(0, 3);
+  if (!top.length) { host.innerHTML = ''; return; }
+  host.innerHTML = `<div class="tm-movers-h">${ICO_TREND}<b>Top movers</b></div>` + top.map((it) => {
+    const m = mercadoDe(it.token); const chg = m && m.cambio24 != null ? m.cambio24 : null; const pu = usdDe(it);
+    const chgTxt = chg != null ? `<em class="tm-chg ${chg >= 0 ? 'up' : 'down'}">${chg >= 0 ? '+' : ''}${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%</em>` : '';
+    return `<button class="tm-mover" type="button" data-a="${esc(it.token)}">${logo(it.simbolo, it.token)}<span class="tm-mover-id"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span>${esc(it.simbolo || '?')}</span></span><span class="tm-mover-px"><b>${pu > 0 ? '$' + fmtP(pu) : '$0'}</b>${chgTxt}</span></button>`;
+  }).join('');
+  host.querySelectorAll('.tm-mover').forEach((b) => { b.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === b.dataset.a.toLowerCase()); if (it) (esGrande() ? seleccionarCP(it) : abrirFicha(it)); }; });
 }
 /* Al entrar, los primeros tokens CON liquidez dan un destello dorado (como un clic) una sola vez, para
    invitar a tocarlos. Solo una vez por carga (si no, molesta); hasta 4 filas; en secuencia (clic clic clic).
@@ -351,10 +376,10 @@ function cabeceraCP(it) {
 /* Precio en la moneda del par (BNB o USDT) + % 24h real de DexScreener, en la linea bajo el nombre. */
 function precioCP(it) {
   const px = cpEl('tm-cp-px'); if (!px) return;
-  const mon = it.moneda || 'BNB';
+  const pu = usdDe(it);
   const m = mercadoDe(it.token); const chg = m && m.cambio24 != null ? m.cambio24 : null;
   const chgTxt = chg != null ? `<em class="tm-chg ${chg >= 0 ? 'up' : 'down'}">${chg >= 0 ? '+' : ''}${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%</em>` : '';
-  px.innerHTML = `<b>${it.precio > 0 ? fmtP(it.precio) + ' ' + mon : '0 ' + mon}</b>${chgTxt}`;
+  px.innerHTML = `<b>${pu > 0 ? '$' + fmtP(pu) : '$0'}</b>${chgTxt}`;
 }
 /* Monta el grafico desde las velas crudas en cache, reagrupadas al timeframe activo. */
 function renderCP() {
@@ -426,7 +451,7 @@ function montarRail(it) {
   _railTok = it.token; _railMode = 'buy';
   const mon = it.moneda || 'BNB';
   const m = mercadoDe(it.token), aud = auditoriaDe(it);
-  const precioTxt = it.precio > 0 ? fmtP(it.precio) + ' ' + mon : '0 ' + mon;
+  const pu = usdDe(it); const precioTxt = pu > 0 ? '$' + fmtP(pu) : '$0';
   rail.innerHTML = `
     <div class="tm-tc">
       <div class="tm-tc-top">
@@ -444,7 +469,7 @@ function montarRail(it) {
     <div class="tm-trade">
       <div class="tm-trade-tabs" id="tm-trade-tabs"><button class="on" data-m="buy" type="button">Buy</button><button data-m="sell" type="button">Sell</button></div>
       <label class="tm-trade-lbl">Amount</label>
-      <div class="tm-trade-in"><input id="tm-amt" type="text" inputmode="decimal" autocomplete="off" value="0.1"><span class="tm-trade-cur">${ICO_BNB}<b>BNB</b></span></div>
+      <div class="tm-trade-in"><input id="tm-amt" type="text" inputmode="decimal" autocomplete="off" value="0.1"><span class="tm-trade-cur">${bnbCoin()}<b>BNB</b></span></div>
       <div class="tm-trade-quick" id="tm-trade-quick"><button data-a="0.05" type="button">0.05</button><button data-a="0.1" class="on" type="button">0.1</button><button data-a="0.5" type="button">0.5</button><button data-a="1" type="button">1</button></div>
       <button class="tm-trade-go" id="tm-trade-go" type="button">Buy now</button>
       <div class="tm-trade-est">

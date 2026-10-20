@@ -133,7 +133,7 @@ function fmtEje(p) {
   return '0.0' + subCeros(ceros) + dig;
 }
 
-let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0, _lineaActual = null;
+let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0, _lineaActual = null, _vol = null;
 /* Precio (en las unidades del eje, aqui USD) a la altura Y relativa al contenedor del grafico.
    Lo usa la vista grande para el clic derecho: poner una alerta al precio donde se hizo clic. */
 export function precioEnY(y) { try { return (_serie && y != null) ? _serie.coordinateToPrice(y) : null; } catch (_) { return null; } }
@@ -164,7 +164,7 @@ export function limpiarActual() { try { if (_serie && _lineaActual) _serie.remov
 export function destruirGrafico() {
   if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; }
   if (_chart) { try { _chart.remove(); } catch (_) {} }
-  _chart = null; _serie = null; _cont = null; _lineaEntrada = null; _entradaPrecio = 0; _lineaActual = null;
+  _chart = null; _serie = null; _cont = null; _lineaEntrada = null; _entradaPrecio = 0; _lineaActual = null; _vol = null;
 }
 export function montarGrafico(cont, velas) {
   if (!cont || !Array.isArray(velas) || !velas.length) return false;

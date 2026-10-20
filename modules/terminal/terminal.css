@@ -23,8 +23,31 @@
 .tm-bell:hover{border-color:#8f6a1a;color:var(--gold);background:rgba(13,17,23,.82)}
 .tm-lobby{display:grid;grid-template-columns:258px minmax(0,1fr) 322px;gap:16px;align-items:stretch}
 .tm-side{display:flex;flex-direction:column;gap:12px}
+.tm-netstat{display:flex;align-items:center;gap:8px;padding:6px 2px 2px;font-size:11.5px;color:var(--ink-3)}
+.tm-netstat i{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px rgba(46,189,133,.7);flex:0 0 auto}
+/* Tarjeta "Top movers" del lateral (rellena el hueco con datos utiles y clicables). */
+.tm-movers{border:1px solid rgba(232,184,75,.14);border-radius:14px;padding:12px;background:linear-gradient(180deg,rgba(23,30,41,.62),rgba(10,14,20,.92));box-shadow:0 12px 28px -18px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+.tm-movers-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--gold)}
+.tm-movers-h svg{width:15px;height:15px}
+.tm-movers-h b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;color:var(--ink)}
+.tm-mover{display:flex;align-items:center;gap:9px;width:100%;background:transparent;border:0;padding:6px 4px;border-radius:9px;cursor:pointer;text-align:left}
+.tm-mover:hover{background:rgba(255,255,255,.04)}
+.tm-mover .tm-logo{width:24px;height:24px;flex:0 0 auto}
+.tm-mover-id{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.tm-mover-id b{font-size:11.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-mover-id span{font-family:var(--mono);font-size:9px;color:var(--ink-3)}
+.tm-mover-px{flex:0 0 auto;text-align:right;display:flex;flex-direction:column}
+.tm-mover-px b{font-family:var(--mono);font-size:11px;color:var(--ink)}
+.tm-mover-px .tm-chg{font-size:9.5px}
 .tm-brand{position:relative;display:flex;align-items:center;gap:11px;padding:15px 14px;border-radius:14px;border:1px solid rgba(232,184,75,.18);background:linear-gradient(180deg,#121823,#0a0e13);box-shadow:0 10px 26px -14px rgba(0,0,0,.7),inset 0 1px 0 rgba(232,184,75,.12),inset 0 0 22px rgba(232,184,75,.05)}
 .tm-brand-ico{width:34px;height:34px;flex:0 0 auto;color:var(--gold);display:inline-flex}.tm-brand-ico svg{width:34px;height:34px}
+/* Logo de BNB oficial (imagen de CoinGecko) con glifo BSC de respaldo si la imagen no carga. */
+.tm-bnbimg{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.tm-bnbimg svg,.tm-bnbimg img{width:100%;height:100%}
+.tm-bnbimg img{position:absolute;inset:0;border-radius:50%;object-fit:cover}
+.tm-bnbimg.on svg{visibility:hidden}
+.tm-brand-ico .tm-bnbimg{width:34px;height:34px}
+.tm-trade-cur .tm-bnbimg{width:18px;height:18px}
 .tm-brand-tx b{display:block;font-family:'Chakra Petch',var(--display);font-size:15px;font-weight:700;line-height:1.1}
 .tm-brand-tx span{font-size:11px;color:var(--ink-3)}
 .tm-nav{display:flex;flex-direction:column;gap:3px;padding:8px;border:1px solid rgba(232,184,75,.1);border-radius:14px;background:linear-gradient(180deg,#111822,#0a0e13);box-shadow:0 8px 22px -14px rgba(0,0,0,.6)}
@@ -39,8 +62,8 @@
 .tm-howcard{position:relative;display:block;width:100%;aspect-ratio:1/1;text-align:left;border:1px solid rgba(232,184,75,.14);border-radius:14px;overflow:hidden;background:#0d1319;cursor:pointer;margin-top:2px;box-shadow:0 10px 26px -14px rgba(0,0,0,.7)}
 .tm-howcard::before{content:"";position:absolute;inset:0;background:url('./img/como-funciona.webp') center/cover no-repeat;z-index:0}
 .tm-howcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,10,.15) 30%,rgba(5,7,10,.55) 60%,rgba(5,7,10,.95));z-index:1}
-.tm-howcard-in{position:absolute;inset:0;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:14px}
-.tm-howcard-txw{display:flex;flex-direction:column;gap:9px;min-width:0}
+.tm-howcard-in{position:absolute;inset:0;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:14px 14px 15px 17px}
+.tm-howcard-txw{display:flex;flex-direction:column;gap:9px;min-width:0;flex:1 1 auto;padding-right:6px}
 .tm-howcard-line{display:inline-flex;align-items:center;gap:7px}
 .tm-howcard-line::before{content:"";width:26px;height:3px;border-radius:2px;background:var(--gold)}
 .tm-howcard-line::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold)}
@@ -49,7 +72,7 @@
 .tm-howcard:hover .tm-howcard-btn{filter:brightness(1.06)}
 .tm-howcard:active{transform:translateY(1px)}
 /* Tarjeta de estadisticas de red (textura.webp de fondo, difuminada). */
-.tm-stats{position:relative;margin-top:auto;border:1px solid rgba(232,184,75,.16);border-radius:14px;overflow:hidden;padding:14px;background:linear-gradient(180deg,#12100a,#0c0a06);box-shadow:0 8px 22px -14px rgba(0,0,0,.6),inset 0 0 20px rgba(232,184,75,.05)}
+.tm-stats{position:relative;border:1px solid rgba(232,184,75,.16);border-radius:14px;overflow:hidden;padding:14px;background:linear-gradient(180deg,#12100a,#0c0a06);box-shadow:0 8px 22px -14px rgba(0,0,0,.6),inset 0 0 20px rgba(232,184,75,.05)}
 .tm-stats::before{content:"";position:absolute;inset:0;background:url('./img/textura.webp') center/cover no-repeat;opacity:.5;z-index:0}
 .tm-stats>*{position:relative;z-index:1}
 .tm-stats-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
@@ -77,13 +100,13 @@
 .tm-table-l{table-layout:fixed;width:100%}
 .tm-table-l th,.tm-table-l td{text-align:left;vertical-align:middle;overflow:hidden;padding:0 8px}
 .tm-table-l th{padding-bottom:10px}
-.tm-table-l .tm-cl-num{width:24px}
-.tm-table-l .tm-cl-price{width:116px}
-.tm-table-l .tm-cl-mc{width:58px}
-.tm-table-l .tm-cl-buyers{width:58px}
-.tm-table-l .tm-cl-volume{width:64px}
-.tm-table-l .tm-cl-time{width:44px}
-.tm-table-l .tm-cl-buy{width:58px;text-align:right}
+.tm-table-l .tm-cl-num{width:22px}
+.tm-table-l .tm-cl-price{width:106px}
+.tm-table-l .tm-cl-mc{width:52px}
+.tm-table-l .tm-cl-buyers{width:50px}
+.tm-table-l .tm-cl-volume{width:58px}
+.tm-table-l .tm-cl-time{width:40px}
+.tm-table-l .tm-cl-buy{width:68px;text-align:center;padding-right:10px}
 .tm-table-l .tm-tok-in{max-width:none}
 .tm-table-l .tm-tok-in .tm-logo{width:28px;height:28px;flex:0 0 auto}
 .tm-table-l .tm-tok-id{display:flex;flex-direction:column;gap:1px;min-width:0}
@@ -94,10 +117,10 @@
 .tm-chg{font-style:normal;font-family:var(--mono);font-size:10px}
 .tm-chg.up{color:var(--verde)}.tm-chg.down{color:var(--rojo)}
 .tm-cl-mc,.tm-cl-buyers,.tm-cl-volume,.tm-age{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm-buybtn{font-family:var(--display);font-weight:600;font-size:11px;color:var(--gold);background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.5);border-radius:8px;padding:5px 0;width:52px;cursor:pointer;transition:background .13s,border-color .13s}
-.tm-buybtn:hover{background:rgba(232,184,75,.22);border-color:var(--gold)}.tm-buybtn:active{transform:translateY(1px)}
+.tm-buybtn{font-family:var(--display);font-weight:700;font-size:11px;color:var(--gold);background:linear-gradient(180deg,rgba(232,184,75,.2),rgba(232,184,75,.07));border:1px solid rgba(232,184,75,.55);border-radius:8px;padding:6px 0;width:50px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.08);transition:background .13s,border-color .13s}
+.tm-buybtn:hover{background:linear-gradient(180deg,rgba(232,184,75,.32),rgba(232,184,75,.14));border-color:var(--gold)}.tm-buybtn:active{transform:translateY(1px)}
 /* La tabla muestra ~7 filas; el resto con scroll, cabecera fija, barra fina estilizada. */
-.tm-feed-scroll{max-height:378px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
+.tm-feed-scroll{max-height:428px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
 .tm-feed-scroll thead th{position:sticky;top:0;height:34px;padding:0 8px;background:#0a0e13;z-index:2}
 .tm-feed-scroll tbody td{height:49px;padding:0 8px}
 .tm-feed-scroll tbody td{height:56px;padding-top:0;padding-bottom:0}
@@ -105,7 +128,7 @@
 @media(max-width:960px){.tm-table-l .tm-cl-volume{display:none}}
 @media(max-width:860px){.tm-table-l .tm-cl-buyers{display:none}.tm-tabrow{overflow-x:auto;-webkit-overflow-scrolling:touch}.tm-tabs3{display:flex;width:max-content}}
 /* ── Grafico inline del centro (Modulo 4), DEBAJO de la tabla: cabecera del token + precio + % y timeframes ── */
-.tm-cp{position:relative;min-width:0;flex:1 1 auto;display:flex;flex-direction:column;background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:14px 16px;margin-top:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.tm-cp{position:relative;min-width:0;flex:1 1 auto;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(23,30,41,.72),rgba(10,14,20,.95));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px 16px;margin-top:14px;box-shadow:0 22px 46px -26px rgba(0,0,0,.92),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .tm-cp-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
 .tm-cp-tt{display:flex;align-items:center;gap:11px;min-width:0}
 .tm-cp-tt .tm-logo{width:36px;height:36px;flex:0 0 auto}
@@ -128,20 +151,22 @@
 .tm-cp-all svg{width:15px;height:15px}
 .tm-cp-all:hover{color:var(--gold);border-color:#8f6a1a}
 .tm-cp-all:disabled{opacity:.4;cursor:default}
-.tm-cp-chart{flex:1 1 auto;min-height:210px;margin:0}
+.tm-cp-chart{flex:1 1 auto;min-height:230px;margin:0}
 .tm-cp-chart::before{content:"";position:absolute;inset:0;background:url('./img/textura.webp') center/cover no-repeat;opacity:.07;z-index:0;pointer-events:none}
 .tm-row.sel{background:rgba(232,184,75,.06);box-shadow:inset 3px 0 0 var(--gold),inset 0 0 26px rgba(232,184,75,.12)}
 @media(max-width:859px){.tm-cp{display:none}}
 /* ── Panel derecho (Modulos 5 y 6): tarjeta del token, compra/venta, verificaciones y actividad ── */
 .tm-rail{display:flex;flex-direction:column;gap:14px}
-.tm-tc,.tm-trade,.tm-checks,.tm-acts{background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:16px;padding:15px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.tm-tc,.tm-trade,.tm-checks,.tm-acts{background:linear-gradient(180deg,rgba(23,30,41,.72),rgba(10,14,20,.95));border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:15px;box-shadow:0 18px 40px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+/* La tarjeta del token lleva un halo dorado sutil arriba, para jerarquia (es la seleccionada). */
+.tm-tc{border-color:rgba(232,184,75,.22);box-shadow:0 18px 40px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(232,184,75,.14),inset 0 0 30px rgba(232,184,75,.05)}
 .tm-tc{position:relative}
 .tm-tc-top{display:flex;align-items:center;gap:11px}
 .tm-tc-top .tm-logo{width:42px;height:42px;flex:0 0 auto}
 .tm-tc-id{min-width:0;flex:1 1 auto}
 .tm-tc-nm{display:flex;align-items:center;gap:7px;min-width:0}
 .tm-tc-nm b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:16px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm-verif{display:inline-flex;color:var(--gold);flex:0 0 auto}
+.tm-verif{display:inline-flex;align-items:center;flex:0 0 auto}
 .tm-tc-new{font-style:normal;flex:0 0 auto;font-family:var(--mono);font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:#04140c;background:linear-gradient(180deg,#f7db8d,#E8B84B);border-radius:999px;padding:2px 7px;font-weight:700}
 .tm-tc-id>span{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
 .tm-tc-link{flex:0 0 auto;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:9px;color:var(--ink-2)}
@@ -157,7 +182,7 @@
 .tm-tc-open:hover{background:rgba(232,184,75,.12)}
 /* Checks y actividad con scroll propio; la actividad crece para que la columna termine al mismo nivel. */
 .tm-checks-list{max-height:168px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
-.tm-acts{flex:1 1 auto;min-height:132px;display:flex;flex-direction:column}
+.tm-acts{flex:1 1 auto;min-height:120px;display:flex;flex-direction:column}
 .tm-acts-list{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
 .tm-checks-list::-webkit-scrollbar,.tm-acts-list::-webkit-scrollbar,.tm-feed-scroll::-webkit-scrollbar{width:6px}
 .tm-checks-list::-webkit-scrollbar-thumb,.tm-acts-list::-webkit-scrollbar-thumb,.tm-feed-scroll::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
@@ -210,7 +235,7 @@
 @media(max-width:560px){#tm-app{padding:18px 14px 50px}.tm-sub{font-size:13.5px}}
 
 /* ───────── Panel del feed (mismo lenguaje que New Tokens del Launchpad) ───────── */
-.tm-panel{min-width:0;background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:16px 16px 6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow-x:auto}
+.tm-panel{min-width:0;background:linear-gradient(180deg,rgba(23,30,41,.72),rgba(10,14,20,.95));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px 16px 8px;box-shadow:0 22px 46px -26px rgba(0,0,0,.92),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow:hidden}
 .tm-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
 .tm-sec-r{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 .tm-fil-b.tm-b{flex:0 0 auto;min-width:0;padding:0 18px}
