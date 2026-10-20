@@ -743,14 +743,13 @@ async function dibujarSello(cv, kind, p, it, niv) {
 }
 function wireSelloDescarga(sem, it) {
   const btn = sem.querySelector('.tg-sello-dl'), cv = sem.querySelector('.tg-sello-cv'); if (!btn || !cv) return;
+  // Save DESCARGA la imagen directo (no abre el menu de compartir del sistema).
   btn.onclick = () => {
     try {
       cv.toBlob((blob) => {
         if (!blob) return;
         const sym = ((it && it.simbolo) ? String(it.simbolo) : 'token').replace(/[^\w-]/g, '').slice(0, 20) || 'token';
-        const fn = `DecFreedom-${sym}-security.png`;
-        try { const file = new File([blob], fn, { type: 'image/png' }); if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: 'DecFreedom security check' }).catch(() => bajarBlob(blob, fn)); return; } } catch (_) {}
-        bajarBlob(blob, fn);
+        bajarBlob(blob, `DecFreedom-${sym}-security.png`);
       }, 'image/png');
     } catch (_) {}
   };
