@@ -55,3 +55,5 @@ export const FEE_BPS = 100;
    ajustado: el contrato exige un minimo (minOut), asi que un bot solo puede sacar hasta ese slippage y, si
    el precio se pasa, la tx REVIERTE aqui mismo y no pierdes fondos (solo el intento). */
 export const PROTECCION = { slipProtegido: 300, opciones: [100, 300, 1000] };
+/* Montos de compra rapida (un toque), en BNB. */
+export const PRESETS_BNB = [0.05, 0.1, 0.5, 1];

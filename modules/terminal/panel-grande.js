@@ -12,7 +12,7 @@ import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
 import { historialCreador } from './creador.js';
-import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE, PROTECCION } from './config.js';
+import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE, PROTECCION, PRESETS_BNB } from './config.js';
 import { disclaimerProtect } from './protect.js';
 import { abrirCompra, saldoBNB, saldoToken, cotizarCompra, comprar } from './compra.js';
 import { listaDe, enVivo, registrarCompra } from './posiciones.js';
@@ -298,6 +298,11 @@ function css() {
 .tg-buy-go{width:100%;height:46px;margin-top:2px;border-radius:12px;border:0;background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #0c4d35,inset 0 1px 0 rgba(255,255,255,.2)}
 .tg-buy-go:active{transform:translateY(3px);box-shadow:0 1px 0 #0c4d35}
 .tg-buy-go:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;filter:grayscale(.3)}
+/* Presets de compra (un toque). */
+.tg-buy-presets{display:flex;gap:6px;margin-top:2px}
+.tg-buy-presets button{flex:1 1 0;padding:7px 4px;border-radius:9px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink-2,#b7bdc6);font-family:var(--mono);font-size:11.5px;font-weight:600;cursor:pointer;transition:border-color .13s,color .13s}
+.tg-buy-presets button:hover{color:var(--ink,#eaecef)}
+.tg-buy-presets button.on{border-color:#8f6a1a;color:var(--gold,#E8B84B);background:linear-gradient(180deg,#1b2027,#0d1117)}
 /* Compra protegida (anti sandwich): toggle, medidor de riesgo de bot, slippage y RPC privado. */
 .tg-prot{margin-top:4px;border:1px solid var(--line,#232b36);border-radius:11px;background:rgba(11,14,17,.5);padding:9px 10px;display:flex;flex-direction:column;gap:8px}
 .tg-prot-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -800,7 +805,7 @@ function montarMercado(it) {
   const sym = esc(it.simbolo || 'TOKEN');
   const dec = it.decimales || 18;
   const bnbUsd = _ctx && _ctx.bnbUsd ? _ctx.bnbUsd() : 0;
-  let balance = 0n, prc = 0, cot = null, cotPara = 0n, ocupado = false, protegido = false, slipBps = PROTECCION.slipProtegido;
+  let balance = 0n, prc = 0, cot = null, cotPara = 0n, ocupado = false, protegido = false, slipBps = PROTECCION.slipProtegido, _presetWei = null;
   let gas = 0n; try { gas = ethers.parseEther('0.003'); } catch (_) {}
   host.innerHTML = `
     <div class="tg-mktcap"><b id="tg-mkt-price">${_precioUsd > 0 ? '$' + fmtP(_precioUsd, 5) : '$0'}</b><span>Market price</span></div>
@@ -808,6 +813,7 @@ function montarMercado(it) {
     <div class="tg-buy-amtrow"><span>Amount · buys ${sym} at market</span><span id="tg-buy-bal">Balance …</span></div>
     <input class="tg-buy-slider" id="tg-buy-sl" type="range" min="0" max="100" value="0" aria-label="Amount">
     <div class="tg-buy-amtrow"><b id="tg-buy-val">0 BNB</b><span id="tg-buy-usd"></span></div>
+    <div class="tg-buy-presets" id="tg-buy-presets">${PRESETS_BNB.map((v) => `<button type="button" data-v="${v}">${v}</button>`).join('')}</div>
     <div class="tg-buy-get">You get <b id="tg-buy-out">0</b> ${sym}</div>
     <div class="tg-prot" id="tg-prot">
       <div class="tg-prot-row"><label class="tg-prot-tog"><input type="checkbox" id="tg-prot-on"><span class="tg-prot-sw"></span><b>Protected</b></label><span class="tg-prot-meter ok" id="tg-prot-meter"></span></div>
@@ -819,7 +825,8 @@ function montarMercado(it) {
   const sl = $('tg-buy-sl'), valEl = $('tg-buy-val'), usdEl = $('tg-buy-usd'), outEl = $('tg-buy-out'), balEl = $('tg-buy-bal'), go = $('tg-buy-go'), msg = $('tg-buy-msg');
   const vivo = () => $('tg-buy-go') === go;   // el form sigue montado (no se recargo con otro token)
   const maxWei = () => (balance > gas ? balance - gas : 0n);
-  const montoWei = () => maxWei() * BigInt(prc) / 100n;
+  // Monto a comprar: si hay preset activo manda el preset (acotado al maximo); si no, el % del slider.
+  const montoWei = () => { if (_presetWei != null) { const mx = maxWei(); return _presetWei > mx ? mx : _presetWei; } return maxWei() * BigInt(prc) / 100n; };
   const estado = () => {
     if (ocupado) return;
     if (!wallet.cuentaActual()) { go.disabled = false; go.textContent = 'Connect wallet'; return; }
@@ -852,7 +859,17 @@ function montarMercado(it) {
     catch (_) { if (tk !== _buyTk) return; cot = { tokOut: 0n, comision: 0n }; cotPara = w; }
     pintar();
   };
-  if (sl) sl.addEventListener('input', () => { prc = Number(sl.value) || 0; cot = null; pintar(); clearTimeout(_t); _t = setTimeout(cotizar, 300); });
+  if (sl) sl.addEventListener('input', () => { prc = Number(sl.value) || 0; _presetWei = null; const pb = $('tg-buy-presets'); if (pb) pb.querySelectorAll('button').forEach((x) => x.classList.remove('on')); cot = null; pintar(); clearTimeout(_t); _t = setTimeout(cotizar, 300); });
+  // Presets de compra (un toque): fijan el monto EXACTO en BNB, acotado al maximo disponible.
+  const presetBox = $('tg-buy-presets');
+  if (presetBox) presetBox.querySelectorAll('button').forEach((b) => { b.onclick = () => {
+    let wei = 0n; try { wei = ethers.parseEther(String(parseFloat(b.dataset.v) || 0)); } catch (_) {}
+    if (!(wei > 0n)) return;
+    const mx = maxWei(); _presetWei = wei > mx ? mx : wei;
+    if (sl) sl.value = mx > 0n ? Math.min(100, Math.round(Number(_presetWei * 100n / mx))) : 0;
+    presetBox.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    cot = null; pintar(); clearTimeout(_t); _t = setTimeout(cotizar, 300);
+  }; });
   const cargarSaldo = async () => {
     const c = wallet.cuentaActual(); if (!c) { balEl.textContent = 'Connect wallet'; estado(); return; }
     try { balance = await saldoBNB(c); } catch (_) { balance = 0n; }

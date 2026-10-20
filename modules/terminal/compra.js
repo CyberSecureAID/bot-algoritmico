@@ -7,7 +7,7 @@
 
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-import { TERMINAL_SWAP, WBNB, USDT, SCAN_URL, SLIPPAGE } from './config.js';
+import { TERMINAL_SWAP, WBNB, USDT, SCAN_URL, SLIPPAGE, PRESETS_BNB } from './config.js';
 import { conRotacion } from './rpc.js';
 import { precioBNBUSDT } from './motor.js';
 import { registrarCompra, registrarVenta } from './posiciones.js';
@@ -120,6 +120,7 @@ export function abrirCompra(it, aud, modoInicial) {
             <div class="tmc-box-mid"><input class="tmc-amt" id="tmc-amt" inputmode="decimal" placeholder="0.0" autocomplete="off"><span class="tmc-tok" id="tmc-tok-in"></span></div>
             <div class="tmc-box-bot"><span class="tmc-usd" id="tmc-usd"></span><button class="tmc-max" id="tmc-max" type="button">MAX</button></div>
           </div>
+          <div class="tmc-presets" id="tmc-presets">${PRESETS_BNB.map((v) => `<button type="button" data-v="${v}">${v} BNB</button>`).join('')}</div>
           <div class="tmc-flip" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
           <div class="tmc-box">
             <div class="tmc-box-top"><span class="tmc-lbl">You receive (est.)</span><span class="tmc-bal" id="tmc-min"></span></div>
@@ -141,7 +142,7 @@ export function abrirCompra(it, aud, modoInicial) {
 
   const info = $('tmc-info'), out = $('tmc-out'), amt = $('tmc-amt'), go = $('tmc-go'), balEl = $('tmc-bal'), usdEl = $('tmc-usd'), minEl = $('tmc-min');
   const pillBNB = `${marcaBNB()}<b>BNB</b>`, pillTok = `${marcaToken(it)}<b>${sym}</b>`;
-  const pintarPildoras = () => { $('tmc-tok-in').innerHTML = modo === 'buy' ? pillBNB : pillTok; $('tmc-tok-out').innerHTML = modo === 'buy' ? pillTok : pillBNB; if (go) go.classList.toggle('sell', modo === 'sell'); };
+  const pintarPildoras = () => { $('tmc-tok-in').innerHTML = modo === 'buy' ? pillBNB : pillTok; $('tmc-tok-out').innerHTML = modo === 'buy' ? pillTok : pillBNB; if (go) go.classList.toggle('sell', modo === 'sell'); const pp = $('tmc-presets'); if (pp) pp.hidden = modo !== 'buy'; };
 
   const entrada = () => { try { const v = (amt.value || '0').replace(/[^0-9.]/g, '') || '0'; return modo === 'buy' ? ethers.parseEther(v) : ethers.parseUnits(v, dec); } catch (_) { return 0n; } };
   const salidaEst = () => (cot ? (modo === 'buy' ? cot.tokOut : cot.neto) : 0n);
@@ -244,7 +245,9 @@ export function abrirCompra(it, aud, modoInicial) {
 
   precioBNBUSDT().then((p) => { bnbUsd = p || 0; if (abierto()) pintarCot(); }).catch(() => {});
   leerSaldos();
-  amt.addEventListener('input', programar);
+  amt.addEventListener('input', () => { const pp = $('tmc-presets'); if (pp) pp.querySelectorAll('button').forEach((x) => x.classList.remove('on')); programar(); });
+  const presetModal = $('tmc-presets');
+  if (presetModal) presetModal.querySelectorAll('button').forEach((b) => { b.onclick = () => { if (modo !== 'buy') return; amt.value = String(parseFloat(b.dataset.v) || 0); presetModal.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); programar(); }; });
   ov.querySelectorAll('.tmc-tabs button').forEach((b) => { b.onclick = () => cambiarModo(b.dataset.m); });
   const slipIn = $('tmc-slip-in');
   $('tmc-slip').querySelectorAll('button').forEach((b) => { b.onclick = () => { slipBps = Number(b.dataset.b); if (slipIn) slipIn.value = ''; $('tmc-slip').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintarCot(); estado(); pintarProt(); }; });
