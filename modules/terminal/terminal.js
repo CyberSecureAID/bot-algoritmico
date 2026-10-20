@@ -25,6 +25,12 @@ const ICO_BOLT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICO_BELL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
 const ICO_STAR = '<svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.8 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z"/></svg>';
 const ICO_STAR_O = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.8 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z"/></svg>';
+const ICO_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>';
+const ICO_DIAMOND = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 22 12 12 22 2 12z" opacity=".25"/><path d="M12 6.2 17.8 12 12 17.8 6.2 12z"/></svg>';
+const ICO_WALLET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7V6a2 2 0 0 1 2-2h11"/><circle cx="16.5" cy="13" r="1.3" fill="currentColor" stroke="none"/></svg>';
+const ICO_SHIELD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.3 2.9 7.6 7 9 4.1-1.4 7-4.7 7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>';
+const ICO_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const ICO_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
 
 /* Precio: cifras significativas, con subindice para los muy pequenos (igual que el launchpad). */
 function fmtP(p, sig = 4) {
@@ -74,21 +80,49 @@ const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, a
 export function arrancar() {
   const host = $('tm-app'); if (!host) return;
   host.innerHTML = `
-    <section class="tm-hero">
-      <h1 class="tm-h1">Terminal</h1>
-      <p class="tm-sub">New tokens on BNB Chain, the second they are born. Checked by Wallet Shield before you buy. Your wallet, your keys.</p>
-      <div class="tm-hero-acts"><button class="tm-b sec" id="tm-how" type="button">How it works</button></div>
-    </section>
-    <section class="tm-panel">
-      <div class="tm-sec-head">
-        <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b></div></div>
-        <div class="tm-sec-r"><button class="tm-b sec" id="tm-pos" type="button">Positions</button><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
+    <div class="tm-head"><div class="tm-head-bg"></div>
+      <div class="tm-topbar">
+        <div class="tm-search"><span class="tm-search-ico">${ICO_SEARCH}</span><input id="tm-search" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, contract or address…"></div>
+        <button class="tm-bell" id="tm-bell" type="button" aria-label="Price alerts">${ICO_BELL}</button>
+        <button class="tm-prof" id="tm-prof" type="button" aria-label="Profile">${ICO_USER}</button>
       </div>
-      <div id="tm-feed">${skeleton()}</div>
-    </section>`;
+    </div>
+    <div class="tm-lobby">
+      <aside class="tm-side">
+        <div class="tm-brand"><span class="tm-brand-ico">${ICO_DIAMOND}</span><div class="tm-brand-tx"><b>Terminal</b><span>New tokens. Real opportunities.</span></div></div>
+        <nav class="tm-nav" id="tm-nav">
+          <button class="tm-nav-b on" data-nav="pairs" type="button"><span class="tm-nav-ic">${ICO_BOLT}</span>New pairs<em class="tm-nav-live">Live</em></button>
+          <button class="tm-nav-b" data-nav="mine" type="button"><span class="tm-nav-ic">${ICO_WALLET}</span>My tokens</button>
+          <button class="tm-nav-b" data-nav="checks" type="button"><span class="tm-nav-ic">${ICO_SHIELD}</span>Verifications</button>
+          <button class="tm-nav-b" data-nav="alerts" type="button"><span class="tm-nav-ic">${ICO_BELL}</span>Alerts</button>
+          <button class="tm-nav-b" data-nav="history" type="button"><span class="tm-nav-ic">${ICO_CLOCK}</span>History</button>
+        </nav>
+        <button class="tm-howlink" id="tm-how" type="button">How it works</button>
+      </aside>
+      <main class="tm-center">
+        <section class="tm-panel">
+          <div class="tm-sec-head">
+            <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b><span>Newest tokens on BNB Chain</span></div></div>
+            <div class="tm-sec-r"><button class="tm-b sec" id="tm-pos" type="button">Positions</button><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
+          </div>
+          <div id="tm-feed">${skeleton()}</div>
+        </section>
+      </main>
+      <aside class="tm-rail">
+        <div class="tm-rail-ph"><span class="tm-rail-ph-ic">${ICO_BOLT}</span><b>Select a token</b><span>Tap any token to see its details, chart and trade panel here.</span></div>
+      </aside>
+    </div>`;
   const fb = $('tm-filtros'); if (fb) fb.onclick = () => abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
   const how = $('tm-how'); if (how) how.onclick = () => { try { comoFunciona(); } catch (e) { console.warn('[TERM] how', e); } };
   const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); } catch (e) { console.warn('[TERM] pos', e); } };
+  const bus = $('tm-search'); if (bus) bus.oninput = () => { _busqueda = (bus.value || '').trim().toLowerCase(); pintar(); };
+  const bell = $('tm-bell'); if (bell) bell.onclick = () => { try { abrirPanel('alerts'); } catch (_) {} };
+  const nav = $('tm-nav');
+  if (nav) nav.querySelectorAll('.tm-nav-b').forEach((b) => { b.onclick = () => { const n = b.dataset.nav; try {
+    if (n === 'mine' || n === 'history') { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); }
+    else if (n === 'alerts') abrirPanel('alerts');
+    else if (n === 'checks') abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
+  } catch (_) {} }; });
   gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); }).catch(() => {});
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
   // Vigilante de alertas: avisa (notificacion + aviso en la app) cuando el precio toca el objetivo. Solo mientras el Terminal este abierto.
@@ -137,6 +171,8 @@ function fila(it, i, extra = '') {
 const TXT_CHK = { ok: 'Safe', warn: 'Caution', bad: 'Do not buy', pend: 'Checking' };
 const celdaCheck = (it) => { const r = auditoriaDe(it); const n = r ? r.nivel : 'pend'; return `<td class="tm-chk"><span class="tm-sem-p ${n}" title="${TXT_CHK[n]}"><i></i><span>${TXT_CHK[n]}</span></span></td>`; };
 let _verRojos = false;   // los 'Do not buy' van ocultos; un enlace bajo la tabla los muestra
+let _busqueda = '';      // filtro de la barra de busqueda (simbolo, nombre o contrato)
+const coincide = (it) => { if (!_busqueda) return true; const s = _busqueda; return String(it.simbolo || '').toLowerCase().includes(s) || String(it.nombre || '').toLowerCase().includes(s) || String(it.token || '').toLowerCase().includes(s); };
 /* Auditoria continua de la lista principal: cada token una vez (cache), de 2 en 2, y repinta al llegar cada resultado. */
 const _colaAud = []; const _enColaAud = new Set(); let _audArrancada = false, _repintar = null;
 function encolarAuditoria(it) { const k = it.token.toLowerCase(); if (_enColaAud.has(k) || auditoriaDe(it)) return; _enColaAud.add(k); _colaAud.push(it); arrancarAuditorias(); }
@@ -149,7 +185,7 @@ function pintar() {
   const host = $('tm-feed'); if (!host) return;
   if (!_items.length) return;   // sigue el esqueleto hasta el primer token
   const esRojo = (it) => { const r = auditoriaDe(it); return !!(r && r.nivel === 'bad'); };
-  const vis = _verRojos ? _items : _items.filter((it) => !esRojo(it));
+  const vis = (_verRojos ? _items : _items.filter((it) => !esRojo(it))).filter(coincide);
   const ocultos = _items.length - vis.length;
   // (it, i): nunca pasar el 3er argumento de map (el array) a fila, cuyo tercer parametro `extra` es la celda Check.
   host.innerHTML = `<table class="tm-table">${thead('<th class="tm-c-chk"><span class="tm-lg">Check</span><span class="tm-sm">Chk</span></th>')}<tbody>${vis.map((it, i) => fila(it, i, celdaCheck(it))).join('')}</tbody></table>`
