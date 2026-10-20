@@ -354,9 +354,9 @@ function headerHTML() {
   else if (!wallet.esRedCorrecta()) right = `<button class="btn btn-rojo hdr-btn" id="c-red">Cambiar a BNB Chain</button>`;
   else right = `<span class="c-sep"></span><button class="c-perfil" id="c-perfil" type="button" aria-label="My profile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c.6-3.4 3.2-5 6.5-5s5.9 1.6 6.5 5"/></svg></button><button class="dir" id="c-dir" type="button" title="Cambiar de wallet">${iconoWallet()}<span class="dir-tx">${String(cuenta).slice(-4)}</span><span class="dir-ch"></span></button>`;
   return `<header class="c-hdr">
-    <a class="c-brand" href="./"><img class="c-logo" src="./img/cco-logo.png" alt="" width="30" height="30"><img class="c-logo-full" src="./img/cco-full.webp" alt="DecFreedom" width="152" height="40" loading="eager"></a>
+    <a class="c-brand" href="./"><img class="c-logo" src="../../assets/img/cco-logo.png" alt="" width="30" height="30"><img class="c-logo-full" src="../../assets/img/cco-full.webp" alt="DecFreedom" width="152" height="40" loading="eager"></a>
     <span class="c-estado" id="c-estado" title="Your wallet status"><i></i><b>Not connected</b></span>
-    <img class="c-logo-mov" src="./img/cco-movil.webp" alt="DecFreedom" width="140" height="91" loading="eager" decoding="async">
+    <img class="c-logo-mov" src="../../assets/img/cco-movil.webp" alt="DecFreedom" width="140" height="91" loading="eager" decoding="async">
     <div class="c-hdr-r">
 
       <button class="c-swap" id="c-swap" type="button" aria-label="Intercambiar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10 3 6l4-4"/><path d="M3 6h14"/><path d="m17 14 4 4-4 4"/><path d="M21 18H7"/></svg><span class="c-swap-tx">Swap</span></button>
