@@ -97,7 +97,19 @@ export function arrancar() {
           <button class="tm-nav-b" data-nav="alerts" type="button"><span class="tm-nav-ic">${ICO_BELL}</span>Alerts</button>
           <button class="tm-nav-b" data-nav="history" type="button"><span class="tm-nav-ic">${ICO_CLOCK}</span>History</button>
         </nav>
-        <button class="tm-howlink" id="tm-how" type="button">How it works</button>
+        <div class="tm-howcard" id="tm-how" role="button" tabindex="0">
+          <div class="tm-howcard-in">
+            <span class="tm-howcard-line"></span>
+            <div class="tm-howcard-tx">The right information at the exact moment makes the difference.</div>
+            <span class="tm-howcard-btn">How it works</span>
+          </div>
+        </div>
+        <div class="tm-stats">
+          <div class="tm-stats-h"><span class="tm-stats-ic">${ICO_BSC}</span><div class="tm-stats-ht"><b>Network stats</b><span>BNB Chain</span></div></div>
+          <div class="tm-stats-row"><span>New tokens (24h)</span><b>3,842</b></div>
+          <div class="tm-stats-row"><span>Volume (24h)</span><b>$12.4M</b></div>
+          <div class="tm-stats-row"><span>Txs (24h)</span><b>1.84M</b></div>
+        </div>
       </aside>
       <main class="tm-center">
         <section class="tm-panel">

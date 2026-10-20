@@ -29,8 +29,30 @@
 .tm-nav-b.on{background:linear-gradient(180deg,#1b2027,#0d1117);border-color:#8f6a1a;color:var(--gold)}
 .tm-nav-b.on .tm-nav-ic{color:var(--gold)}
 .tm-nav-live{margin-left:auto;font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--verde);background:rgba(46,232,106,.1);border:1px solid rgba(46,232,106,.3);border-radius:999px;padding:1px 7px}
-.tm-howlink{margin-top:2px;padding:10px;border-radius:11px;border:1px dashed #2a323d;background:transparent;color:var(--ink-3);font-family:var(--display);font-size:12px}
-.tm-howlink:hover{color:var(--gold);border-color:#8f6a1a}
+/* Tarjeta How it works (imagen como-funciona.webp con el boton dentro, a la derecha). */
+.tm-howcard{position:relative;display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:148px;background:#0d1319;cursor:pointer;margin-top:2px}
+.tm-howcard::before{content:"";position:absolute;inset:0;background:url('./img/como-funciona.webp') center/cover no-repeat;z-index:0}
+.tm-howcard::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,7,10,.9),rgba(5,7,10,.4) 68%,rgba(5,7,10,.1));z-index:1}
+.tm-howcard-in{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-height:148px;padding:14px}
+.tm-howcard-line{display:inline-flex;align-items:center;gap:7px}
+.tm-howcard-line::before{content:"";width:26px;height:3px;border-radius:2px;background:var(--gold)}
+.tm-howcard-line::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold)}
+.tm-howcard-tx{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:14px;line-height:1.3;color:#fff;max-width:74%;text-shadow:0 1px 3px rgba(0,0,0,.65)}
+.tm-howcard-btn{align-self:flex-end;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:11.5px;color:#241900;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);border:1px solid #c79426;border-radius:9px;padding:7px 13px;box-shadow:0 2px 0 #8f6a1a}
+.tm-howcard:hover .tm-howcard-btn{filter:brightness(1.06)}
+.tm-howcard:active{transform:translateY(1px)}
+/* Tarjeta de estadisticas de red (textura.webp de fondo, difuminada). */
+.tm-stats{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;padding:14px;background:linear-gradient(180deg,#12100a,#0c0a06)}
+.tm-stats::before{content:"";position:absolute;inset:0;background:url('./img/textura.webp') center/cover no-repeat;opacity:.5;z-index:0}
+.tm-stats>*{position:relative;z-index:1}
+.tm-stats-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.tm-stats-ic{width:26px;height:26px;flex:0 0 auto;display:inline-flex}.tm-stats-ic svg{width:26px;height:26px}
+.tm-stats-ht b{display:block;font-family:'Chakra Petch',var(--display);font-size:13px;font-weight:700;line-height:1.1}
+.tm-stats-ht span{font-size:10px;color:var(--ink-3)}
+.tm-stats-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid rgba(255,255,255,.055);font-family:var(--mono);font-size:12px}
+.tm-stats-row:first-of-type{border-top:0}
+.tm-stats-row span{color:var(--ink-3)}
+.tm-stats-row b{font-weight:600}
 .tm-center{min-width:0}
 .tm-rail{position:sticky;top:12px}
 .tm-rail-ph{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:44px 18px;border-radius:14px;border:1px dashed #2a323d;background:linear-gradient(180deg,#0d1319,#0a0e13);color:var(--ink-3)}
