@@ -8,7 +8,7 @@ import { auditar, PASOS, PASOS_TXT } from './auditoria.js';
 import { abrirCompra } from './compra.js';
 import { comoFunciona } from './aviso.js';
 import { abrirFiltros } from './filtros.js';
-import { velasDeToken, montarGrafico, destruirGrafico, precioActual } from './grafico.js';
+import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecientes } from './grafico.js';
 import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante } from './alertas.js';
@@ -35,6 +35,9 @@ const ICO_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICO_REFRESH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v4h-4"/></svg>';
 const ICO_EXPAND = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6"/><path d="M3 3l7 7"/><path d="M15 21h6v-6"/><path d="M21 21l-7-7"/></svg>';
 const ICO_BNB = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6 15 5.6 12 8.6 9 5.6zM7 7.6 10 10.6 7 13.6 4 10.6zM17 7.6 20 10.6 17 13.6 14 10.6zM12 9.6 15.1 12.7 12 15.8 8.9 12.7zM12 14.9 15 17.9 12 20.9 9 17.9z"/></svg>';
+const ICO_EXT = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>';
+const ICO_CHECK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>';
+const ICO_VERIF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="m12 1.5 2.4 1.7 2.9-.2 1.1 2.7 2.4 1.6-.6 2.9.9 2.8-2.1 2 .1 2.9-2.8.8-1.7 2.4-2.8-.7-2.7 1.1-1.9-2.2-2.9-.3-.8-2.8-2.4-1.6.3-2.9-1.4-2.5 1.9-2.2.1-2.9 2.8-.8z"/><path d="m8.5 12 2.4 2.4 4.6-4.9" fill="none" stroke="#04140c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 /* Precio: cifras significativas, con subindice para los muy pequenos (igual que el launchpad). */
 function fmtP(p, sig = 4) {
@@ -102,8 +105,7 @@ export function arrancar() {
         </nav>
         <div class="tm-howcard" id="tm-how" role="button" tabindex="0">
           <div class="tm-howcard-in">
-            <span class="tm-howcard-line"></span>
-            <div class="tm-howcard-tx">The right information at the exact moment makes the difference.</div>
+            <div class="tm-howcard-txw"><span class="tm-howcard-line"></span><div class="tm-howcard-tx">The right information at the exact moment makes the difference.</div></div>
             <span class="tm-howcard-btn">How it works</span>
           </div>
         </div>
@@ -343,7 +345,7 @@ function agrupar(velas, seg) {
 /* Cabecera: logo + Nombre (SIMBOLO) y, debajo, el precio en la moneda del par + % 24h real. Sin "ago". */
 function cabeceraCP(it) {
   const tt = cpEl('tm-cp-tt'); if (!tt) return;
-  tt.innerHTML = `${logo(it.simbolo, it.token)}<div class="tm-cp-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')} <i>(${esc(it.simbolo || '?')})</i></b><div class="tm-cp-px" id="tm-cp-px"></div></div>`;
+  tt.innerHTML = `${logo(it.simbolo, it.token)}<div class="tm-cp-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')} <i>(${esc(it.simbolo || '?')})</i><span id="tm-cp-verif">${verifBadge(auditoriaDe(it))}</span></b><div class="tm-cp-px" id="tm-cp-px"></div></div>`;
   precioCP(it);
 }
 /* Precio en la moneda del par (BNB o USDT) + % 24h real de DexScreener, en la linea bajo el nombre. */
@@ -379,6 +381,7 @@ function seleccionarCP(it) {
   const all = cpEl('tm-cp-all'); if (all) all.disabled = false;
   const host = $('tm-feed'); if (host) { host.querySelectorAll('.tm-row.sel').forEach((r) => r.classList.remove('sel')); const ar = host.querySelector(`.tm-row[data-a="${it.token}"]`); if (ar) ar.classList.add('sel'); }
   cargarCP(it);
+  try { if (esGrande()) montarRail(it); } catch (_) {}
 }
 /* Por defecto (escritorio) elige el token con MAS liquidez, no el primero que llega (que suele ser basura).
    Con un margen para que el feed se pueble y "mas liquidez" tenga sentido. */
@@ -397,6 +400,114 @@ function verGrande(it) {
     _cpObs = new MutationObserver(() => { if (!document.getElementById('tm-big-ov')) { try { _cpObs.disconnect(); } catch (_) {} _cpObs = null; if (_sel) renderCP(); } });
     _cpObs.observe(document.body, { childList: true });
   } catch (_) {}
+}
+/* ── Panel derecho (Modulos 5 y 6): tarjeta del token + compra/venta + verificaciones + actividad ─────────
+   Reusa lo ya probado: mercadoDe (MC/compradores/volumen reales de DexScreener), auditarCache (las
+   verificaciones reales del contrato), abrirCompra (la compra/venta real pasa por la ventana probada) y
+   tradesRecientes (operaciones reales del par). Nada se inventa; si un dato no existe se muestra vacio. */
+const corto2 = (a) => { const s = String(a || ''); return s.length > 10 ? s.slice(0, 6) + '…' + s.slice(-4) : s; };
+let _railTok = '', _railMode = 'buy';
+function verifBadge(aud) {
+  if (!aud || aud.nivel === 'pend') return '';
+  const ok = aud.nivel === 'ok' || (aud.datos && aud.datos.checks && aud.datos.checks.verified);
+  return ok ? `<span class="tm-verif" title="Contract verified, no red flags">${ICO_VERIF}</span>` : '';
+}
+function railVacio() {
+  const rail = document.querySelector('.tm-rail'); if (!rail) return;
+  rail.innerHTML = `<div class="tm-rail-ph"><span class="tm-rail-ph-ic">${ICO_BOLT}</span><b>Select a token</b><span>Tap any token to see its details, chart and trade panel here.</span></div>`;
+}
+const checksSkeleton = () => [0, 1, 2, 3].map(() => `<div class="tm-check pend"><span class="tm-sk" style="width:120px"></span><span class="tm-sk" style="width:44px"></span></div>`).join('');
+const actsSkeleton = () => [0, 1, 2].map(() => `<div class="tm-act"><span class="tm-sk" style="width:94px"></span><span class="tm-sk" style="width:64px"></span></div>`).join('');
+/* Monta la tarjeta del token + compra/venta + verificaciones + actividad para `it`. */
+function montarRail(it) {
+  const rail = document.querySelector('.tm-rail'); if (!rail || !it) return;
+  _railTok = it.token; _railMode = 'buy';
+  const mon = it.moneda || 'BNB';
+  const m = mercadoDe(it.token), aud = auditoriaDe(it);
+  const precioTxt = it.precio > 0 ? fmtP(it.precio) + ' ' + mon : '0 ' + mon;
+  rail.innerHTML = `
+    <div class="tm-tc">
+      <div class="tm-tc-top">
+        ${logo(it.simbolo, it.token)}
+        <div class="tm-tc-id"><div class="tm-tc-nm"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span id="tm-tc-verif">${verifBadge(aud)}</span><em class="tm-tc-new">New</em></div><span>${esc(it.simbolo || '?')}</span></div>
+        <a class="tm-tc-link" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener" aria-label="View on BscScan">${ICO_EXT}</a>
+      </div>
+      <button class="tm-tc-ca tm-copyc" type="button" data-copy="${esc(it.token)}">${corto2(it.token)} ${ICO_COPY}</button>
+      <div class="tm-tc-stats">
+        <div><b id="tm-st-mc">${m ? money(m.mc) : '—'}</b><span>Market cap</span></div>
+        <div><b id="tm-st-bu">${m ? numC(m.buys24) : '—'}</b><span>Buyers</span></div>
+        <div><b id="tm-st-vo">${m ? money(m.vol24) : '—'}</b><span>Volume 24h</span></div>
+      </div>
+    </div>
+    <div class="tm-trade">
+      <div class="tm-trade-tabs" id="tm-trade-tabs"><button class="on" data-m="buy" type="button">Buy</button><button data-m="sell" type="button">Sell</button></div>
+      <label class="tm-trade-lbl">Amount</label>
+      <div class="tm-trade-in"><input id="tm-amt" type="text" inputmode="decimal" autocomplete="off" value="0.1"><span class="tm-trade-cur">${ICO_BNB}<b>BNB</b></span></div>
+      <div class="tm-trade-quick" id="tm-trade-quick"><button data-a="0.05" type="button">0.05</button><button data-a="0.1" class="on" type="button">0.1</button><button data-a="0.5" type="button">0.5</button><button data-a="1" type="button">1</button></div>
+      <button class="tm-trade-go" id="tm-trade-go" type="button">Buy now</button>
+      <div class="tm-trade-est">
+        <div><span>Est. tokens</span><b id="tm-est-tok">~ …</b></div>
+        <div><span>Est. price</span><b>${precioTxt}</b></div>
+      </div>
+    </div>
+    <div class="tm-checks">
+      <div class="tm-checks-h">${ICO_SHIELD}<b>Security checks</b></div>
+      <div class="tm-checks-list" id="tm-checks-list">${checksSkeleton()}</div>
+    </div>
+    <div class="tm-acts">
+      <div class="tm-acts-h"><b>Recent activity</b></div>
+      <div class="tm-acts-list" id="tm-acts-list">${actsSkeleton()}</div>
+    </div>`;
+  const cb = rail.querySelector('.tm-copyc'); if (cb) cb.onclick = () => { try { navigator.clipboard.writeText(cb.dataset.copy); const o = cb.innerHTML; cb.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (cb.isConnected) cb.innerHTML = o; }, 1200); } catch (_) {} };
+  const amt = $('tm-amt'), estTok = $('tm-est-tok');
+  const precioBNB = mon === 'BNB' ? it.precio : (it.precio / (_bnbUsd || 1));
+  const recalc = () => { const v = parseFloat((amt && amt.value) || '0') || 0; if (estTok) estTok.textContent = (v > 0 && precioBNB > 0) ? '~ ' + numC(v / precioBNB) + ' ' + (it.simbolo || '') : '~ …'; };
+  if (amt) amt.oninput = recalc; recalc();
+  const quick = $('tm-trade-quick');
+  if (quick) quick.querySelectorAll('button').forEach((b) => { b.onclick = () => { if (amt) amt.value = b.dataset.a; quick.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); recalc(); }; });
+  const tabs = $('tm-trade-tabs'), go = $('tm-trade-go');
+  if (tabs) tabs.querySelectorAll('button').forEach((b) => { b.onclick = () => { _railMode = b.dataset.m; tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); if (go) { go.textContent = _railMode === 'sell' ? 'Sell now' : 'Buy now'; go.classList.toggle('sell', _railMode === 'sell'); } }; });
+  if (go) go.onclick = () => { try { abrirCompra(it, auditoriaDe(it), _railMode === 'sell' ? 'sell' : 'buy'); } catch (_) {} };
+  try { cargarMercado([it.token]).then(() => updateRailStats(it)).catch(() => {}); } catch (_) {}
+  cargarChecks(it);
+  cargarActividad(it);
+}
+function updateRailStats(it) {
+  if (_railTok !== it.token) return;
+  const m = mercadoDe(it.token), M = $('tm-st-mc'), B = $('tm-st-bu'), V = $('tm-st-vo');
+  if (M) M.textContent = m ? money(m.mc) : '—'; if (B) B.textContent = m ? numC(m.buys24) : '—'; if (V) V.textContent = m ? money(m.vol24) : '—';
+}
+/* Las 4 verificaciones de seguridad desde los datos REALES de la auditoria del contrato. */
+function pintaChecks(it, r) {
+  if (_railTok !== it.token) return;
+  const host = $('tm-checks-list'); if (!host) return;
+  const c = (r && r.datos && r.datos.checks) ? r.datos.checks : {};
+  const lp = (r && r.datos && r.datos.lpAsegurada != null) ? Math.round(r.datos.lpAsegurada) + '%' : (c.lpSecured ? 'Yes' : '—');
+  const t10 = (r && r.datos && r.datos.top10Pct != null) ? 'Top10 ' + Math.round(r.datos.top10Pct) + '%' : null;
+  const fila = (ok, label, val) => `<div class="tm-check ${ok ? 'ok' : 'no'}"><span class="tm-check-l"><i>${ok ? ICO_CHECK : '✕'}</i>${label}</span><b>${val}</b></div>`;
+  host.innerHTML =
+    fila(!!c.sellable, 'No honeypot', c.sellable ? 'Sellable' : 'Risky') +
+    fila(!!c.lpSecured, 'Liquidity burned', lp) +
+    fila(!!c.renounced, 'Ownership renounced', c.renounced ? 'Yes' : 'No') +
+    fila(!!c.notConcentrated, 'Token distribution', t10 || (c.notConcentrated ? 'Healthy' : 'Concentrated'));
+  const bdg = verifBadge(r); const vb = $('tm-tc-verif'); if (vb) vb.innerHTML = bdg; const vc = $('tm-cp-verif'); if (vc) vc.innerHTML = bdg;
+}
+function cargarChecks(it) {
+  const yo = auditoriaDe(it);
+  if (yo && yo.nivel !== 'pend') { pintaChecks(it, yo); return; }
+  auditarCache(it).then((r) => pintaChecks(it, r)).catch(() => { if (_railTok === it.token) { const h = $('tm-checks-list'); if (h) h.innerHTML = `<div class="tm-check pend"><span class="tm-check-l">Checks unavailable</span><b></b></div>`; } });
+}
+/* Operaciones recientes REALES del par (compras/ventas), para "Recent activity". */
+function cargarActividad(it) {
+  const host = $('tm-acts-list'); if (!host) return;
+  if (!it.par) { host.innerHTML = `<div class="tm-act-empty">No pair activity</div>`; return; }
+  tradesRecientes({ par: it.par, token: it.token, decQuote: 18, quoteEsUSDT: it.moneda === 'USDT', limite: 6 })
+    .then((list) => {
+      if (_railTok !== it.token) return;
+      if (!list || !list.length) { host.innerHTML = `<div class="tm-act-empty">No recent trades</div>`; return; }
+      host.innerHTML = list.map((t) => `<div class="tm-act"><span class="tm-act-who"><i class="tm-act-dot ${t.tipo}"></i>${corto2(t.who)}</span><span class="tm-act-mid ${t.tipo}">${t.tipo === 'buy' ? 'Bought' : 'Sold'} ${(+t.quoteAmt).toLocaleString('en-US', { maximumFractionDigits: 3 })} ${t.moneda}</span><span class="tm-act-t">${hace(t.time)}</span></div>`).join('');
+    })
+    .catch(() => { if (_railTok === it.token) host.innerHTML = `<div class="tm-act-empty">Activity unavailable</div>`; });
 }
 export function abrirFicha(it) {
   _creadorFicha = it.creador || '';

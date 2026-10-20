@@ -84,6 +84,44 @@ export async function precioActual({ par, token, decToken = 18, decQuote = 18, b
   } catch (_) { return 0; }
 }
 
+/* Operaciones recientes del par (compras/ventas REALES), para el panel "Recent activity" de la derecha.
+   Lee los eventos Swap de PancakeSwap V2: si sale token es compra, si entra token es venta; el otro lado
+   es el monto en la moneda del par (BNB o USDT). El trader es el `to` (topic indexado). Nada inventado. */
+const TOPIC_SWAP = ethers.id('Swap(address,uint256,uint256,uint256,uint256,address)');
+export async function tradesRecientes({ par, token, decQuote = 18, quoteEsUSDT = false, limite = 6 }) {
+  if (!par) return [];
+  let token0;
+  try { token0 = String(await conRotacion((p) => new ethers.Contract(par, ABI_PAR, p).token0())).toLowerCase(); }
+  catch (_) { return []; }
+  const tokenEs0 = token0 === String(token).toLowerCase();
+  const hasta = await bloqueActual();
+  const desde = Math.max(0, hasta - TRAMO * 4);
+  const trozos = []; for (let b = desde; b <= hasta; b += TRAMO) trozos.push([b, Math.min(hasta, b + TRAMO - 1)]);
+  const porTramo = await Promise.all(trozos.map(([a, b]) =>
+    conRotacion((p) => p.getLogs({ address: par, topics: [TOPIC_SWAP], fromBlock: a, toBlock: b })).catch(() => [])));
+  let logs = []; for (const ls of porTramo) logs = logs.concat(ls);
+  if (!logs.length) return [];
+  logs.sort((x, y) => (Number(y.blockNumber) - Number(x.blockNumber)) || ((y.logIndex ?? y.index ?? 0) - (x.logIndex ?? x.index ?? 0)));
+  const ahora = Math.floor(Date.now() / 1000);
+  const escQuote = Math.pow(10, -decQuote);
+  const out = [];
+  for (const l of logs) {
+    const d = (l.data || '0x').slice(2);
+    if (d.length < 256) continue;
+    const a0In = BigInt('0x' + d.slice(0, 64)), a1In = BigInt('0x' + d.slice(64, 128)), a0Out = BigInt('0x' + d.slice(128, 192)), a1Out = BigInt('0x' + d.slice(192, 256));
+    const tokOut = tokenEs0 ? a0Out : a1Out, tokIn = tokenEs0 ? a0In : a1In;
+    const quoteIn = tokenEs0 ? a1In : a0In, quoteOut = tokenEs0 ? a1Out : a0Out;
+    let tipo, quoteWei;
+    if (tokOut > 0n) { tipo = 'buy'; quoteWei = quoteIn; }
+    else if (tokIn > 0n) { tipo = 'sell'; quoteWei = quoteOut; }
+    else continue;
+    const who = (l.topics && l.topics[2]) ? ('0x' + String(l.topics[2]).slice(-40)) : '';
+    out.push({ tipo, quoteAmt: Number(quoteWei) * escQuote, moneda: quoteEsUSDT ? 'USDT' : 'BNB', who, time: (ahora - Math.round((hasta - Number(l.blockNumber)) * 0.75)) * 1000 });
+    if (out.length >= limite) break;
+  }
+  return out;
+}
+
 /* ── Render ── */
 function subCeros(n) { let r = ''; for (const ch of String(n)) r += String.fromCharCode(0x2080 + (ch.charCodeAt(0) - 48)); return r; }
 function fmtEje(p) {
