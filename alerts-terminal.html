@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DecFreedom Alerts — Terminal (gratis)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05070a; --panel:rgba(13,17,22,.72); --panel2:rgba(20,26,33,.66);
+  --line:#232b36; --line2:#2d3742; --ink:#eaecef; --ink2:#b7bdc6; --ink3:#7d8794;
+  --gold:#E8B84B; --gold-d:#8f6a1a; --verde:#2ee86a; --rojo:#f6465d; --cyan:#35d0e0;
+  --disp:'Chakra Petch',system-ui,sans-serif; --sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;display:flex;justify-content:center;align-items:flex-start;padding:22px 16px 40px;min-height:100%}
+#cc-particles{position:fixed;inset:0;z-index:0;pointer-events:none}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(900px 560px at 80% -10%,rgba(232,184,75,.16),transparent 60%),
+    radial-gradient(760px 520px at 8% 110%,rgba(232,184,75,.06),transparent 60%)}
+.app{position:relative;z-index:1;width:100%;max-width:448px}
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:18px}
+.bell{position:relative;width:46px;height:46px;flex:0 0 auto;border-radius:14px;display:grid;place-items:center;
+  background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid var(--gold-d);
+  box-shadow:0 3px 0 #060809,inset 0 1px 0 rgba(255,255,255,.07),0 0 24px rgba(232,184,75,.26);color:var(--gold)}
+.bell svg{width:23px;height:23px}
+.bell .dot{position:absolute;top:8px;right:9px;width:9px;height:9px;border-radius:50%;background:var(--rojo);
+  border:2px solid #0d1117;animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(246,70,93,.55)}70%{box-shadow:0 0 0 8px rgba(246,70,93,0)}100%{box-shadow:0 0 0 0 rgba(246,70,93,0)}}
+.brand-tx{flex:1 1 auto;min-width:0;line-height:1.08}
+.brand-tx b{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.3px;display:block}
+.brand-tx b i{color:var(--gold);font-style:normal}
+.brand-tx span{display:block;font-size:11.5px;color:var(--ink3);margin-top:3px}
+.chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:9px;
+  font-family:var(--disp);font-weight:700;font-size:10.5px;letter-spacing:.4px;
+  border:1px solid rgba(46,232,106,.4);background:rgba(46,232,106,.1);color:var(--verde)}
+.chip .pin{width:6px;height:6px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px var(--verde)}
+.ribbon{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;margin-bottom:16px;
+  border:1px solid rgba(232,184,75,.26);background:rgba(232,184,75,.06)}
+.ribbon svg{width:17px;height:17px;color:var(--gold);flex:0 0 auto}
+.ribbon p{margin:0;font-size:12px;color:var(--ink2);line-height:1.35}
+.ribbon p b{color:var(--gold);font-family:var(--disp)}
+.card{border-radius:16px;border:1px solid var(--line);background:var(--panel);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.sec-t{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--ink2);margin:20px 2px 10px;display:flex;align-items:center;gap:8px}
+.sec-t em{font-style:normal;color:var(--ink3);font-size:11px}
+.sec-t .ln{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.compose{padding:16px}
+.compose h3{margin:0 0 13px;font-family:var(--disp);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.compose h3 .k{width:6px;height:16px;border-radius:3px;background:linear-gradient(var(--gold),var(--gold-d))}
+.field{display:flex;gap:9px;margin-bottom:10px}
+.tok-pick{flex:1;display:flex;align-items:center;gap:9px;height:50px;padding:0 12px;border-radius:12px;border:1px solid var(--line2);background:#0b0f14;cursor:pointer}
+.coin{width:30px;height:30px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;font-family:var(--disp);font-weight:700;font-size:12px;color:#06120b}
+.coin.usdtz{background:conic-gradient(from 210deg,#26A17B,#53c79f,#26A17B)}
+.coin.cake{background:conic-gradient(from 200deg,#d1884f,#f0b47a,#d1884f);color:#2a160a}
+.coin.bnb{background:conic-gradient(from 220deg,#f3ba2f,#ffd874,#f3ba2f);color:#2a2102}
+.coin.pepe{background:conic-gradient(from 220deg,#3aa75a,#76e39a,#3aa75a)}
+.tok-pick .nm{flex:1;min-width:0;line-height:1.15}
+.tok-pick .nm b{display:block;font-family:var(--disp);font-weight:700;font-size:14px}
+.tok-pick .nm span{display:block;font-size:11px;color:var(--ink3)}
+.tok-pick .chev{color:var(--ink3)}
+.price-in{position:relative;width:150px;flex:0 0 auto}
+.price-in .d{position:absolute;left:12px;top:0;height:50px;display:flex;align-items:center;color:var(--gold);font-family:var(--disp);font-weight:700}
+.price-in input{width:100%;height:50px;padding:0 12px 0 26px;border-radius:12px;border:1px solid var(--line2);background:#0b0f14;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:16px;outline:none}
+.price-in input:focus{border-color:var(--gold-d)}
+.seg{display:flex;gap:6px;margin-bottom:14px}
+.seg button{flex:1;height:44px;border-radius:11px;border:1px solid var(--line2);background:#0b0f14;cursor:pointer;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:.18s}
+.seg button svg{width:15px;height:15px}
+.seg button.up.on{color:var(--verde);border-color:rgba(46,232,106,.5);background:rgba(46,232,106,.1);box-shadow:inset 0 0 18px rgba(46,232,106,.08)}
+.seg button.down.on{color:var(--rojo);border-color:rgba(246,70,93,.5);background:rgba(246,70,93,.1);box-shadow:inset 0 0 18px rgba(246,70,93,.08)}
+.btn-create{width:100%;height:50px;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(180deg,#f2d072,var(--gold));color:#0b0e11;font-family:var(--disp);font-weight:700;font-size:14.5px;letter-spacing:.3px;box-shadow:0 4px 0 var(--gold-d),0 8px 26px rgba(232,184,75,.34);display:inline-flex;align-items:center;justify-content:center;gap:9px}
+.btn-create:active{transform:translateY(3px)}
+.btn-create svg{width:18px;height:18px}
+.alert{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);margin-bottom:9px;position:relative;overflow:hidden}
+.alert .coin{width:38px;height:38px;font-size:13px}
+.alert .mid{flex:1;min-width:0}
+.alert .row1{display:flex;align-items:center;gap:8px}
+.alert .row1 b{font-family:var(--disp);font-weight:700;font-size:14.5px}
+.alert .dir{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;font-family:var(--disp);letter-spacing:.3px;padding:2px 7px;border-radius:6px}
+.alert .dir svg{width:11px;height:11px}
+.alert .dir.up{color:var(--verde);background:rgba(46,232,106,.12)}
+.alert .dir.down{color:var(--rojo);background:rgba(246,70,93,.12)}
+.alert .target{font-size:12px;color:var(--ink2);margin:3px 0 7px}
+.alert .target b{color:var(--ink);font-family:var(--disp)}
+.bar{height:5px;border-radius:3px;background:#0b0f14;overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.bar i.up{background:linear-gradient(90deg,#1c7a43,var(--verde))}
+.bar i.down{background:linear-gradient(90deg,#9a2b3a,var(--rojo))}
+.alert .now{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--ink3)}
+.alert .now b{color:var(--ink2);font-family:var(--disp)}
+.alert .side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:0 0 auto}
+.pill{font-family:var(--disp);font-weight:700;font-size:10px;letter-spacing:.4px;padding:4px 9px;border-radius:7px;white-space:nowrap}
+.pill.watch{color:var(--cyan);background:rgba(53,208,224,.12);border:1px solid rgba(53,208,224,.3)}
+.pill.near{color:var(--gold);background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.35)}
+.icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line2);background:#0b0f14;color:var(--ink3);display:grid;place-items:center;cursor:pointer}
+.icon-btn svg{width:14px;height:14px}
+.alert.near{border-color:rgba(232,184,75,.4);box-shadow:inset 0 0 26px rgba(232,184,75,.07)}
+.alert.hit{border-color:rgba(46,232,106,.55);background:linear-gradient(180deg,rgba(46,232,106,.1),rgba(13,17,22,.75));box-shadow:0 0 0 1px rgba(46,232,106,.25),0 10px 30px rgba(46,232,106,.14);animation:hitglow 2.4s ease-in-out infinite}
+@keyframes hitglow{0%,100%{box-shadow:0 0 0 1px rgba(46,232,106,.2),0 8px 26px rgba(46,232,106,.1)}50%{box-shadow:0 0 0 1px rgba(46,232,106,.45),0 10px 34px rgba(46,232,106,.22)}}
+.alert.hit .hitmark{display:inline-flex;align-items:center;gap:5px;font-family:var(--disp);font-weight:700;font-size:11px;color:var(--verde)}
+.alert.hit .hitmark svg{width:13px;height:13px}
+.noti-wrap{margin-top:14px}
+.noti{display:flex;align-items:flex-start;gap:11px;padding:13px;border-radius:15px;border:1px solid var(--line2);background:linear-gradient(180deg,rgba(26,32,40,.92),rgba(14,18,23,.92));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.noti .ico{width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;background:linear-gradient(135deg,#1b2027,#0d1117);border:1px solid var(--gold-d);color:var(--gold)}
+.noti .ico svg{width:18px;height:18px}
+.noti .body{flex:1;min-width:0}
+.noti .body .t{display:flex;justify-content:space-between;align-items:center}
+.noti .body .t b{font-family:var(--disp);font-weight:700;font-size:12.5px;color:var(--ink)}
+.noti .body .t span{font-size:10.5px;color:var(--ink3)}
+.noti .body p{margin:3px 0 0;font-size:12.5px;color:var(--ink2);line-height:1.35}
+.noti .body p b{color:var(--verde);font-family:var(--disp)}
+.hint{font-size:10.5px;color:var(--ink3);text-align:center;margin:7px 4px 0}
+.foot{margin-top:22px;text-align:center}
+.foot .inst{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:11px;cursor:pointer;border:1px solid var(--gold-d);background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold);font-family:var(--disp);font-weight:700;font-size:12.5px;box-shadow:0 0 22px rgba(232,184,75,.18)}
+.foot .inst svg{width:16px;height:16px}
+.foot p{margin:11px 0 0;font-size:10.5px;color:var(--ink3);line-height:1.5}
+.foot .dom{color:var(--gold);font-family:var(--disp);font-weight:700}
+.tag{display:inline-block;margin:0 0 2px;font-size:9.5px;letter-spacing:1.5px;color:var(--ink3);text-transform:uppercase;font-family:var(--disp)}
+</style>
+</head>
+<body>
+<canvas id="cc-particles"></canvas>
+<div class="app">
+
+  <div class="brand">
+    <div class="bell">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <span class="dot"></span>
+    </div>
+    <div class="brand-tx">
+      <b>DecFreedom <i>Alerts</i></b>
+      <span>Price alerts for the tokens you're hunting</span>
+    </div>
+    <div class="chip"><span class="pin"></span> FREE</div>
+  </div>
+
+  <div class="ribbon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></svg>
+    <p>Pick a token, set a price, and we ping you the instant it hits — so you can buy at <b>your</b> number.</p>
+  </div>
+
+  <div class="card compose">
+    <h3><span class="k"></span> New price alert</h3>
+    <div class="field">
+      <div class="tok-pick">
+        <span class="coin usdtz">Z</span>
+        <div class="nm"><b>USDT.z</b><span>Tether USD Bridged · BSC</span></div>
+        <span class="chev"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      </div>
+      <div class="price-in"><span class="d">$</span><input value="0.000100" inputmode="decimal"></div>
+    </div>
+    <div class="seg">
+      <button class="up" onclick="seg(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 14l5-5 5 5"/></svg> Rises above</button>
+      <button class="down on" onclick="seg(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg> Drops below</button>
+    </div>
+    <button class="btn-create">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      Create alert
+    </button>
+  </div>
+
+  <div class="sec-t">Active alerts <em>· 4 watching</em><span class="ln"></span></div>
+
+  <div class="alert hit">
+    <span class="coin pepe">P</span>
+    <div class="mid">
+      <div class="row1"><b>PEPE</b> <span class="dir up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 14l5-5 5 5"/></svg>ABOVE</span></div>
+      <div class="target">Target <b>$0.0000090</b> · <span class="hitmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>Hit $0.0000091</span></div>
+      <div class="bar"><i class="up" style="width:100%"></i></div>
+      <div class="now"><span>Now <b>$0.0000091</b></span><span>triggered 2m ago</span></div>
+    </div>
+    <div class="side"><span class="pill near">NOTIFIED</span><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div>
+  </div>
+
+  <div class="alert near">
+    <span class="coin bnb">B</span>
+    <div class="mid">
+      <div class="row1"><b>BNB</b> <span class="dir up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 14l5-5 5 5"/></svg>ABOVE</span></div>
+      <div class="target">Notify when it rises above <b>$650.00</b></div>
+      <div class="bar"><i class="up" style="width:92%"></i></div>
+      <div class="now"><span>Now <b>$642.10</b></span><span>1.2% away</span></div>
+    </div>
+    <div class="side"><span class="pill near">ALMOST</span><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div>
+  </div>
+
+  <div class="alert">
+    <span class="coin usdtz">Z</span>
+    <div class="mid">
+      <div class="row1"><b>USDT.z</b> <span class="dir down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>BELOW</span></div>
+      <div class="target">Notify when it drops below <b>$0.000100</b></div>
+      <div class="bar"><i class="down" style="width:46%"></i></div>
+      <div class="now"><span>Now <b>$0.000116</b></span><span>14% away</span></div>
+    </div>
+    <div class="side"><span class="pill watch">WATCHING</span><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div>
+  </div>
+
+  <div class="alert">
+    <span class="coin cake">C</span>
+    <div class="mid">
+      <div class="row1"><b>CAKE</b> <span class="dir up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 14l5-5 5 5"/></svg>ABOVE</span></div>
+      <div class="target">Notify when it rises above <b>$3.20</b></div>
+      <div class="bar"><i class="up" style="width:68%"></i></div>
+      <div class="now"><span>Now <b>$2.98</b></span><span>6.9% away</span></div>
+    </div>
+    <div class="side"><span class="pill watch">WATCHING</span><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div>
+  </div>
+
+  <div class="sec-t">This is what you get<span class="ln"></span></div>
+  <div class="noti-wrap">
+    <div class="noti">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+      <div class="body">
+        <div class="t"><b>DecFreedom Alerts</b><span>now</span></div>
+        <p><b>PEPE</b> rose above your target of $0.0000090 — now $0.0000091. Tap to open the chart.</p>
+      </div>
+    </div>
+    <p class="hint">Delivered the instant your price is hit, on your phone's lock screen.</p>
+  </div>
+
+  <div class="foot">
+    <span class="tag">Free · installable · no wallet needed</span><br>
+    <span class="inst"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg> Add DecFreedom Alerts to home screen</span>
+    <p>Syncs with the alerts you set inside your <b>Terminal</b><br><span class="dom">decfreedom.com</span></p>
+  </div>
+
+</div>
+<script>
+function seg(btn){ const p=btn.parentElement; p.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+(function(){ const c=document.getElementById('cc-particles'),x=c.getContext('2d');let w,h,P;
+  const COL=['rgba(232,184,75,','rgba(46,232,106,'];
+  function rs(){w=c.width=innerWidth;h=c.height=innerHeight;P=Array.from({length:Math.min(42,Math.floor(w/28))},()=>({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.7+.5,s:Math.random()*.25+.05,a:Math.random()*.4+.12,c:COL[Math.floor(Math.random()*COL.length)]}));}
+  function draw(){x.clearRect(0,0,w,h);for(const p of P){p.y-=p.s;if(p.y<-5){p.y=h+5;p.x=Math.random()*w;}x.beginPath();x.arc(p.x,p.y,p.r,0,6.28);x.fillStyle=p.c+p.a+')';x.fill();}requestAnimationFrame(draw);}
+  addEventListener('resize',rs);rs();draw();})();
+</script>
+</body>
+</html>

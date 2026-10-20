@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wallet Watcher — WalletShield (de pago)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05070a; --panel:rgba(13,17,22,.72); --panel2:rgba(20,26,33,.66);
+  --line:#232b36; --line2:#2d3742; --ink:#eaecef; --ink2:#b7bdc6; --ink3:#7d8794;
+  --gold:#E8B84B; --gold-d:#8f6a1a; --verde:#2ee86a; --rojo:#f6465d;
+  --cyan:#35d0e0; --cyan-d:#1a6f78;
+  --disp:'Chakra Petch',system-ui,sans-serif; --sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;display:flex;flex-direction:column;align-items:center;padding:0 16px 40px;min-height:100%}
+#cc-particles{position:fixed;inset:0;z-index:0;pointer-events:none}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(900px 560px at 80% -10%,rgba(53,208,224,.15),transparent 60%),
+    radial-gradient(760px 520px at 8% 110%,rgba(53,208,224,.06),transparent 60%)}
+/* switch de demo (control del revisor, NO es parte de la app) */
+.demo{position:relative;z-index:3;margin:14px 0 8px;display:flex;align-items:center;gap:8px;font:600 11px var(--sans);color:var(--ink3)}
+.demo b{font-family:var(--disp);color:var(--ink2);letter-spacing:.3px}
+.demo button{height:28px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);background:#0b0f14;color:var(--ink3);font-family:var(--disp);font-weight:700;font-size:11px;cursor:pointer}
+.demo button.on{color:#06181b;background:var(--cyan);border-color:var(--cyan)}
+.app{position:relative;z-index:1;width:100%;max-width:448px;padding-top:6px}
+
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.eye{position:relative;width:46px;height:46px;flex:0 0 auto;border-radius:14px;display:grid;place-items:center;
+  background:linear-gradient(180deg,#121b1d,#0b1012);border:1px solid var(--cyan-d);
+  box-shadow:0 3px 0 #050a0b,inset 0 1px 0 rgba(255,255,255,.07),0 0 24px rgba(53,208,224,.26);color:var(--cyan)}
+.eye svg{width:23px;height:23px}
+.brand-tx{flex:1 1 auto;min-width:0;line-height:1.08}
+.brand-tx b{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.brand-tx b i{color:var(--cyan);font-style:normal}
+.pro{font-size:9.5px;letter-spacing:.6px;color:#1b1403;background:linear-gradient(180deg,#f2d072,var(--gold));padding:3px 7px;border-radius:6px;font-weight:700}
+.brand-tx span{display:block;font-size:11.5px;color:var(--ink3);margin-top:4px}
+
+/* banner de suscripción (estado activo) */
+.sub{display:flex;align-items:center;gap:11px;padding:12px 13px;border-radius:13px;margin-bottom:16px;
+  border:1px solid rgba(53,208,224,.3);background:linear-gradient(180deg,rgba(53,208,224,.1),rgba(13,17,22,.6))}
+.sub .sh{width:34px;height:34px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;color:var(--cyan);background:rgba(53,208,224,.12)}
+.sub .sh svg{width:18px;height:18px}
+.sub .si{flex:1;min-width:0}
+.sub .si b{font-family:var(--disp);font-weight:700;font-size:12.5px;display:block;letter-spacing:.3px}
+.sub .si b em{font-style:normal;color:var(--cyan)}
+.sub .si .cd{height:4px;border-radius:2px;background:#0b0f14;margin:6px 0 4px;overflow:hidden}
+.sub .si .cd i{display:block;height:100%;width:62%;background:linear-gradient(90deg,var(--cyan-d),var(--cyan));border-radius:2px}
+.sub .si span{font-size:10.5px;color:var(--ink3)}
+.sub .ren{flex:0 0 auto;height:34px;padding:0 13px;border-radius:9px;border:0;cursor:pointer;
+  background:linear-gradient(180deg,#5fe0ee,var(--cyan));color:#06181b;font-family:var(--disp);font-weight:700;font-size:11.5px;box-shadow:0 3px 0 var(--cyan-d)}
+
+.card{border-radius:16px;border:1px solid var(--line);background:var(--panel);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.sec-t{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);margin:20px 2px 10px;display:flex;align-items:center;gap:8px}
+.sec-t em{font-style:normal;color:var(--ink3);font-size:11px}
+.sec-t .ln{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.coin{width:30px;height:30px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;font-family:var(--disp);font-weight:700;font-size:12px}
+.wallet{padding:15px;margin-bottom:9px}
+.wallet .wh{display:flex;align-items:center;gap:11px}
+.wallet .wav{width:42px;height:42px;border-radius:12px;flex:0 0 auto;display:grid;place-items:center;background:conic-gradient(from 160deg,#35d0e0,#1a6f78,#35d0e0);color:#042b30;font-family:var(--disp);font-weight:700;font-size:15px}
+.wallet .wtx{flex:1;min-width:0}
+.wallet .wtx b{font-family:var(--disp);font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+.wallet .wtx b .vb{font-size:9.5px;color:var(--cyan);background:rgba(53,208,224,.12);border:1px solid rgba(53,208,224,.3);padding:2px 6px;border-radius:6px;letter-spacing:.3px}
+.wallet .wtx span{font-size:11px;color:var(--ink3);font-family:var(--disp)}
+.wbtn{height:34px;padding:0 13px;border-radius:9px;border:1px solid rgba(53,208,224,.45);background:rgba(53,208,224,.1);color:var(--cyan);font-family:var(--disp);font-weight:700;font-size:11.5px;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.wbtn svg{width:13px;height:13px}
+.moves{margin-top:13px;border-top:1px solid var(--line);padding-top:4px}
+.move{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid rgba(35,43,54,.5)}
+.move:last-child{border-bottom:0}
+.move .mi{width:28px;height:28px;border-radius:8px;flex:0 0 auto;display:grid;place-items:center}
+.move .mi.buy{background:rgba(46,232,106,.12);color:var(--verde)}
+.move .mi.sell{background:rgba(246,70,93,.12);color:var(--rojo)}
+.move .mi svg{width:14px;height:14px}
+.move .mtx{flex:1;min-width:0}
+.move .mtx b{font-size:13px;font-family:var(--disp);font-weight:600}
+.move .mtx b em{font-style:normal;color:var(--ink3);font-weight:500;font-size:11.5px}
+.move .mtx span{display:block;font-size:10.5px;color:var(--ink3);margin-top:1px}
+.move .mv{text-align:right;flex:0 0 auto}
+.move .mv b{font-family:var(--disp);font-size:13px}
+.move .mv b.buy{color:var(--verde)}.move .mv b.sell{color:var(--rojo)}
+.move .mv span{display:block;font-size:10px;color:var(--ink3)}
+.noti-wrap{margin-top:14px}
+.noti{display:flex;align-items:flex-start;gap:11px;padding:13px;border-radius:15px;border:1px solid var(--line2);background:linear-gradient(180deg,rgba(26,32,40,.92),rgba(14,18,23,.92));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.noti .ico{width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;background:linear-gradient(135deg,#121b1d,#0b1012);border:1px solid var(--cyan-d);color:var(--cyan)}
+.noti .ico svg{width:18px;height:18px}
+.noti .body{flex:1;min-width:0}
+.noti .body .t{display:flex;justify-content:space-between;align-items:center}
+.noti .body .t b{font-family:var(--disp);font-weight:700;font-size:12.5px;color:var(--ink)}
+.noti .body .t span{font-size:10.5px;color:var(--ink3)}
+.noti .body p{margin:3px 0 0;font-size:12.5px;color:var(--ink2);line-height:1.35}
+.noti .body p b{color:var(--cyan);font-family:var(--disp)}
+.hint{font-size:10.5px;color:var(--ink3);text-align:center;margin:7px 4px 0}
+.compose{padding:16px}
+.field{display:flex;gap:9px;margin-bottom:10px}
+.tok-pick{flex:1;display:flex;align-items:center;gap:9px;height:50px;padding:0 12px;border-radius:12px;border:1px solid var(--line2);background:#0b0f14}
+.tok-pick .nm{flex:1;min-width:0;line-height:1.15}
+.tok-pick .nm b{display:block;font-family:var(--disp);font-weight:700;font-size:14px}
+.tok-pick .nm span{display:block;font-size:11px;color:var(--ink3)}
+.btn-create{width:100%;height:50px;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(180deg,#5fe0ee,var(--cyan));color:#06181b;font-family:var(--disp);font-weight:700;font-size:14.5px;letter-spacing:.3px;box-shadow:0 4px 0 var(--cyan-d),0 8px 26px rgba(53,208,224,.3);display:inline-flex;align-items:center;justify-content:center;gap:9px}
+.btn-create svg{width:18px;height:18px}
+.foot{margin-top:22px;text-align:center}
+.foot p{margin:11px 0 0;font-size:10.5px;color:var(--ink3);line-height:1.5}
+.foot .dom{color:var(--cyan);font-family:var(--disp);font-weight:700}
+.tag{display:inline-block;margin:0 0 2px;font-size:9.5px;letter-spacing:1.5px;color:var(--ink3);text-transform:uppercase;font-family:var(--disp)}
+
+/* ====== ESTADO VENCIDO (candado) ====== */
+.lock{display:none;text-align:center;padding:30px 20px 24px}
+.lock .lk{width:64px;height:64px;margin:0 auto 16px;border-radius:18px;display:grid;place-items:center;color:var(--gold);
+  background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid var(--gold-d);box-shadow:0 0 30px rgba(232,184,75,.18)}
+.lock .lk svg{width:30px;height:30px}
+.lock h2{margin:0 0 7px;font-family:var(--disp);font-weight:700;font-size:19px}
+.lock p{margin:0 auto 18px;max-width:330px;font-size:12.5px;color:var(--ink2);line-height:1.5}
+.lock .codebox{display:flex;gap:8px;max-width:360px;margin:0 auto 10px}
+.lock .codebox input{flex:1;height:50px;padding:0 14px;border-radius:12px;border:1px solid var(--line2);background:#0b0f14;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:2px;text-align:center;text-transform:uppercase;outline:none}
+.lock .codebox input::placeholder{color:#44505d;letter-spacing:2px}
+.lock .codebox input:focus{border-color:var(--cyan-d)}
+.lock .unlock{height:50px;padding:0 20px;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(180deg,#5fe0ee,var(--cyan));color:#06181b;font-family:var(--disp);font-weight:700;font-size:14px;box-shadow:0 4px 0 var(--cyan-d)}
+.lock .ren2{display:inline-flex;align-items:center;gap:7px;margin-top:14px;height:44px;padding:0 18px;border-radius:11px;cursor:pointer;border:1px solid var(--gold-d);background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold);font-family:var(--disp);font-weight:700;font-size:12.5px;box-shadow:0 0 20px rgba(232,184,75,.16)}
+.lock .ren2 svg{width:15px;height:15px}
+.lock .note{margin-top:16px;font-size:10.5px;color:var(--ink3)}
+.lock .note b{color:var(--ink2);font-family:var(--disp)}
+
+/* alterna activo/vencido */
+body.locked .sub,body.locked #content{display:none}
+body.locked .lock{display:block}
+</style>
+</head>
+<body>
+<canvas id="cc-particles"></canvas>
+
+<div class="demo"><b>DEMO:</b>
+  <button class="on" id="d-act" onclick="setState(false)">Suscripción activa</button>
+  <button id="d-exp" onclick="setState(true)">Vencida (candado)</button>
+</div>
+
+<div class="app">
+
+  <div class="brand">
+    <div class="eye">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <div class="brand-tx">
+      <b>Wallet <i>Watcher</i> <span class="pro">PRO</span></b>
+      <span>Track any wallet's moves · a WalletShield tool</span>
+    </div>
+  </div>
+
+  <!-- banner de suscripción (estado activo) -->
+  <div class="sub">
+    <div class="sh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <div class="si">
+      <b>WalletShield PRO · <em>active</em></b>
+      <div class="cd"><i></i></div>
+      <span>Renews with your subscription · 31 days left (until 20 Nov 2026)</span>
+    </div>
+    <button class="ren">Renew</button>
+  </div>
+
+  <div id="content">
+    <div class="sec-t">Wallets you follow <em>· 1</em><span class="ln"></span></div>
+    <div class="card wallet">
+      <div class="wh">
+        <div class="wav">0x</div>
+        <div class="wtx"><b>Whale · bugatti.bnb <span class="vb">FOLLOWING</span></b><span>0x7a9f…c3D1 · BSC</span></div>
+        <button class="wbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>Watching</button>
+      </div>
+      <div class="moves">
+        <div class="move">
+          <div class="mi buy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+          <div class="mtx"><b>Bought CAKE <em>· PancakeSwap</em></b><span>2 minutes ago</span></div>
+          <div class="mv"><b class="buy">+1,480</b><span>$4,410</span></div>
+        </div>
+        <div class="move">
+          <div class="mi sell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+          <div class="mtx"><b>Sold USDT.z <em>· swap</em></b><span>26 minutes ago</span></div>
+          <div class="mv"><b class="sell">−9,900</b><span>$9,900</span></div>
+        </div>
+        <div class="move">
+          <div class="mi buy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+          <div class="mtx"><b>Bought BNB <em>· new position</em></b><span>1 hour ago</span></div>
+          <div class="mv"><b class="buy">+12.5</b><span>$8,020</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-t">You get pinged when they move<span class="ln"></span></div>
+    <div class="noti-wrap">
+      <div class="noti">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <div class="body">
+          <div class="t"><b>Wallet Watcher</b><span>now</span></div>
+          <p>A wallet you follow <b>just bought CAKE</b> — 1,480 ($4,410) on PancakeSwap. Tap to see the move.</p>
+        </div>
+      </div>
+      <p class="hint">Buys, sells and transfers of any wallet you follow — BSC &amp; Tron.</p>
+    </div>
+
+    <div class="sec-t">Add a wallet<span class="ln"></span></div>
+    <div class="card compose">
+      <div class="field">
+        <div class="tok-pick"><span class="coin" style="background:conic-gradient(from 160deg,#35d0e0,#1a6f78,#35d0e0);color:#042b30">0x</span><div class="nm"><b>Paste wallet address</b><span>0x… (BSC) or T… (Tron)</span></div></div>
+      </div>
+      <button class="btn-create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg> Watch this wallet</button>
+    </div>
+  </div>
+
+  <!-- ====== estado vencido ====== -->
+  <div class="lock">
+    <div class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+    <h2>Your Wallet Watcher access ended</h2>
+    <p>Wallet Watcher is a WalletShield PRO tool. Renew your subscription to get a fresh access code and keep tracking wallets.</p>
+    <div class="codebox"><input placeholder="WW-••••-••••" value=""><button class="unlock">Unlock</button></div>
+    <div class="note">Your code looks like <b>WW-7K2F-2611</b> — the last digits (<b>2611</b>) are the month it expires (Nov 2026).</div>
+    <br>
+    <span class="ren2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Renew with WalletShield</span>
+  </div>
+
+  <div class="foot">
+    <span class="tag">PRO · installable · renews with your plan</span>
+    <p>Part of <b style="color:var(--ink2)">WalletShield</b> · access tied to your subscription<br><span class="dom">decfreedom.com</span></p>
+  </div>
+
+</div>
+<script>
+function setState(locked){
+  document.body.classList.toggle('locked',locked);
+  document.getElementById('d-act').classList.toggle('on',!locked);
+  document.getElementById('d-exp').classList.toggle('on',locked);
+}
+(function(){ const c=document.getElementById('cc-particles'),x=c.getContext('2d');let w,h,P;
+  const COL=['rgba(53,208,224,','rgba(232,184,75,'];
+  function rs(){w=c.width=innerWidth;h=c.height=innerHeight;P=Array.from({length:Math.min(42,Math.floor(w/28))},()=>({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.7+.5,s:Math.random()*.25+.05,a:Math.random()*.4+.12,c:COL[Math.floor(Math.random()*COL.length)]}));}
+  function draw(){x.clearRect(0,0,w,h);for(const p of P){p.y-=p.s;if(p.y<-5){p.y=h+5;p.x=Math.random()*w;}x.beginPath();x.arc(p.x,p.y,p.r,0,6.28);x.fillStyle=p.c+p.a+')';x.fill();}requestAnimationFrame(draw);}
+  addEventListener('resize',rs);rs();draw();})();
+</script>
+</body>
+</html>
