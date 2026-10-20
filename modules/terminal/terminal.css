@@ -18,7 +18,23 @@
 .tm-search input::placeholder{color:var(--ink-3)}
 .tm-search:hover input,.tm-search input:focus{background:rgba(13,17,23,.82);border-color:#8f6a1a}
 .tm-search:hover .tm-search-ico{color:var(--gold)}
-.tm-bell{justify-self:start;flex:0 0 auto;width:44px;height:44px;border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(13,17,23,.38);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.tm-topbar-r{display:flex;align-items:center;gap:10px;min-width:0}
+.tm-bell{flex:0 0 auto;width:44px;height:44px;border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(13,17,23,.38);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+/* Resumen de posicion activa (junto a la campanita), con bordes redondeados; boton hacia la grafica grande. */
+.tm-poswidget{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:9px;height:44px;padding:0 12px;border-radius:13px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(23,30,41,.6),rgba(10,14,20,.85));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;text-align:left}
+.tm-poswidget:hover{border-color:#8f6a1a}
+.tm-poswidget.empty{cursor:default;justify-content:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.tm-poswidget.empty:hover{border-color:rgba(255,255,255,.08)}
+.tm-pw-dot{width:7px;height:7px;border-radius:50%;background:var(--ink-3);flex:0 0 auto}
+.tm-poswidget .tm-logo{width:26px;height:26px;flex:0 0 auto}
+.tm-pw-id{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;line-height:1.12}
+.tm-pw-id b{font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-pw-id>span{font-size:9px;color:var(--ink-3)}
+.tm-pw-pnl{flex:0 0 auto;text-align:right;display:flex;flex-direction:column;line-height:1.12}
+.tm-pw-pnl b{font-family:var(--mono);font-size:13px}
+.tm-pw-pnl>span{font-family:var(--mono);font-size:9px;color:var(--ink-3)}
+.tm-pw-pnl.up b{color:var(--verde)}.tm-pw-pnl.down b{color:var(--rojo)}
+@media(max-width:1180px){.tm-poswidget{display:none}}
 .tm-bell svg{width:19px;height:19px}
 .tm-bell:hover{border-color:#8f6a1a;color:var(--gold);background:rgba(13,17,23,.82)}
 .tm-lobby{display:grid;grid-template-columns:258px minmax(0,1fr) 322px;gap:16px;align-items:stretch}
@@ -191,14 +207,32 @@
 .tm-trade-tabs button{flex:1 1 0;border:0;background:transparent;color:var(--ink-3);font-family:var(--display);font-weight:700;font-size:13px;padding:8px;border-radius:8px;cursor:pointer}
 .tm-trade-tabs button.on{color:#04140c;background:linear-gradient(180deg,#8be0b0,#2ebd85 50%,#1f9d6c)}
 .tm-trade-tabs button:last-child.on{color:#2a0206;background:linear-gradient(180deg,#ff9fab,#f6465d 50%,#c62f42)}
-.tm-trade-lbl{display:block;font-size:11px;color:var(--ink-3);margin-bottom:6px}
-.tm-trade-in{display:flex;align-items:center;gap:8px;background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:11px;padding:0 12px;height:48px;margin-bottom:9px}
+/* Token que se compra */
+.tm-trade-buytok{display:flex;align-items:center;gap:8px;margin-bottom:11px;padding:7px 10px;background:rgba(11,14,17,.5);border:1px solid var(--line);border-radius:10px;min-width:0}
+.tm-trade-buytok .tm-logo{width:24px;height:24px;flex:0 0 auto}
+.tm-trade-buytok span{font-family:var(--mono);font-size:11px;color:var(--ink-2);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-trade-buytok em{font-style:normal;color:var(--ink-3)}.tm-trade-buytok b{color:var(--ink)}
+.tm-trade-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.tm-trade-lbl{font-size:11px;color:var(--ink-3)}
+.tm-trade-bal{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.tm-trade-in{display:flex;align-items:center;gap:8px;background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:11px;padding:0 8px 0 12px;height:48px;margin-bottom:4px}
 .tm-trade-in input{flex:1 1 auto;min-width:0;background:transparent;border:0;outline:none;color:var(--ink);font-family:var(--mono);font-size:18px;font-weight:600}
-.tm-trade-cur{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;color:var(--ink);font-family:var(--display);font-weight:700;font-size:13px}
-.tm-trade-cur svg{width:18px;height:18px;color:var(--gold)}
-.tm-trade-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:13px}
-.tm-trade-quick button{border:1px solid var(--line);background:rgba(11,14,17,.5);color:var(--ink-2);border-radius:9px;padding:7px 0;font-family:var(--mono);font-size:12px;cursor:pointer}
-.tm-trade-quick button.on,.tm-trade-quick button:hover{border-color:#8f6a1a;color:var(--gold)}
+/* Selector de moneda BNB/USDT */
+.tm-ccy{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.32);border-radius:10px;padding:5px 9px;color:var(--ink);font-family:var(--display);font-weight:700;font-size:12.5px;cursor:pointer}
+.tm-ccy:hover{background:rgba(232,184,75,.18)}
+.tm-ccy .tm-bnbimg{width:18px;height:18px}
+.tm-ccy svg{width:12px;height:12px;color:var(--ink-3)}
+.tm-ccy.fixed{cursor:default;background:rgba(255,255,255,.04);border-color:var(--line)}
+/* Barra 0-100% del capital */
+.tm-slider{margin:12px 0 14px}
+.tm-slider input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--gold) 0%,rgba(232,184,75,.15) 0%);outline:none;cursor:pointer}
+.tm-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);border:2px solid #0a0e13;box-shadow:0 2px 6px rgba(0,0,0,.55);cursor:pointer}
+.tm-slider input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--gold);border:2px solid #0a0e13;cursor:pointer}
+.tm-slider-l{display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-family:var(--mono);font-size:9.5px;color:var(--ink-3)}
+.tm-slider-l b{color:var(--gold);font-weight:600}
+/* Fallback del logo USDT (si la imagen no carga) */
+.tm-usdtimg .tm-usdt-fb{display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#26a17b;color:#fff;font-weight:700;font-size:11px}
+.tm-usdtimg.on .tm-usdt-fb{display:none}
 .tm-trade-go{width:100%;border:0;border-radius:12px;padding:13px;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:14px;color:#04140c;background:linear-gradient(180deg,#8be0b0,#2ebd85 50%,#1f9d6c);cursor:pointer;box-shadow:0 3px 0 #156b4a}
 .tm-trade-go.sell{color:#2a0206;background:linear-gradient(180deg,#ff9fab,#f6465d 50%,#c62f42);box-shadow:0 3px 0 #8e2130}
 .tm-trade-go:hover{filter:brightness(1.05)}.tm-trade-go:active{transform:translateY(1px)}

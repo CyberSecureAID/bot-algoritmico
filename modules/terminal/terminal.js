@@ -5,7 +5,7 @@
 import * as ethers from './ethers.min.js';
 import * as gb from './motor.js';
 import { auditar, PASOS, PASOS_TXT } from './auditoria.js';
-import { abrirCompra } from './compra.js';
+import { abrirCompra, saldoBNB, saldoToken } from './compra.js';
 import { comoFunciona } from './aviso.js';
 import { abrirFiltros } from './filtros.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecientes } from './grafico.js';
@@ -14,7 +14,7 @@ import { listaDe, enVivo, olvidar } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante } from './alertas.js';
 import { abrirGrande } from './panel-grande.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
-import { FEED, SCAN_URL, FOURMEME_URL } from './config.js';
+import { FEED, SCAN_URL, FOURMEME_URL, USDT } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -39,11 +39,15 @@ const ICO_EXPAND = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" 
 const ICO_BNB = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="11" fill="#F0B90B"/><path fill="#0b0e11" d="M12 5.4 14.3 7.7 12 10 9.7 7.7Z M7 10.4 9.3 12.7 7 15 4.7 12.7Z M17 10.4 19.3 12.7 17 15 14.7 12.7Z M12 10.4 14.3 12.7 12 15 9.7 12.7Z M12 15.4 14.3 17.7 12 20 9.7 17.7Z"/></svg>';
 const ICO_EXT = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>';
 const ICO_TREND = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M17 4h4v4"/></svg>';
+const ICO_CHEV = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 const ICO_CHECK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>';
 const ICO_VERIF = '<svg viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="10" fill="#2ebd85"/><path d="m7.8 12 2.6 2.6L16.2 9" fill="none" stroke="#06231a" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 /* Logo de BNB oficial (imagen de CoinGecko, la misma que usamos en toda la pagina). Si no carga, cae al glifo BSC. */
 const LOGO_BNB = 'https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png';
+const LOGO_USDT = 'https://coin-images.coingecko.com/coins/images/325/large/Tether.png';
 const bnbCoin = () => `<span class="tm-bnbimg">${ICO_BSC}<img src="${LOGO_BNB}" alt="" loading="lazy" onload="this.parentElement.classList.add('on')" onerror="this.remove()"></span>`;
+const usdtCoin = () => `<span class="tm-bnbimg tm-usdtimg"><span class="tm-usdt-fb">$</span><img src="${LOGO_USDT}" alt="" loading="lazy" onload="this.parentElement.classList.add('on')" onerror="this.remove()"></span>`;
+const monedaCoin = (c) => (c === 'USDT' ? usdtCoin() : bnbCoin());
 
 /* Precio: cifras significativas, con subindice para los muy pequenos (igual que el launchpad). */
 function fmtP(p, sig = 4) {
@@ -97,7 +101,7 @@ export function arrancar() {
     <div class="tm-topbar">
       <span class="tm-topbar-sp"></span>
       <div class="tm-search"><span class="tm-search-ico">${ICO_SEARCH}</span><input id="tm-search" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, contract or address…"></div>
-      <button class="tm-bell" id="tm-bell" type="button" aria-label="Price alerts">${ICO_BELL}</button>
+      <div class="tm-topbar-r"><button class="tm-bell" id="tm-bell" type="button" aria-label="Price alerts">${ICO_BELL}</button><button class="tm-poswidget empty" id="tm-poswidget" type="button" disabled><span class="tm-pw-dot"></span>No active positions</button></div>
     </div>
     <div class="tm-lobby">
       <aside class="tm-side">
@@ -163,8 +167,9 @@ export function arrancar() {
     else if (n === 'alerts') abrirPanel('alerts');
     else if (n === 'checks') abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
   } catch (_) {} }; });
-  gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); }).catch(() => {});
+  gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); try { pintarPosWidget(); } catch (_) {} }).catch(() => {});
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
+  try { pintarPosWidget(); setInterval(() => { try { pintarPosWidget(); } catch (_) {} }, 15000); } catch (_) {}
   // Vigilante de alertas: avisa (notificacion + aviso en la app) cuando el precio toca el objetivo. Solo mientras el Terminal este abierto.
   try { arrancarVigilante(() => _bnbUsd, (a, p) => tmAviso(a, p)); } catch (_) {}
   if (_parar) _parar();
@@ -283,6 +288,24 @@ function pintarMovers() {
     return `<button class="tm-mover" type="button" data-a="${esc(it.token)}">${logo(it.simbolo, it.token)}<span class="tm-mover-id"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span>${esc(it.simbolo || '?')}</span></span><span class="tm-mover-px"><b>${pu > 0 ? '$' + fmtP(pu) : '$0'}</b>${chgTxt}</span></button>`;
   }).join('');
   host.querySelectorAll('.tm-mover').forEach((b) => { b.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === b.dataset.a.toLowerCase()); if (it) (esGrande() ? seleccionarCP(it) : abrirFicha(it)); }; });
+}
+/* Resumen de posicion activa junto a la campanita. Si hay posiciones, muestra la primera (simbolo + PnL% +
+   valor) y al tocarla abre la grafica grande de ese token (donde se ven todas). Si no, "No active positions". */
+function pintarPosWidget() {
+  const host = $('tm-poswidget'); if (!host) return;
+  const vacio = (txt) => { host.className = 'tm-poswidget empty'; host.disabled = true; host.onclick = null; host.innerHTML = `<span class="tm-pw-dot"></span>${txt || 'No active positions'}`; };
+  let cuenta = null; try { cuenta = wallet.cuentaActual(); } catch (_) {}
+  if (!cuenta) { vacio(); return; }
+  let lista = []; try { lista = listaDe(cuenta) || []; } catch (_) {}
+  if (!lista.length) { vacio(); return; }
+  const pos = lista[0];
+  enVivo(cuenta, pos, _bnbUsd).then((v) => {
+    if (!v) { vacio(); return; }
+    const pnl = Number(v.pnlPct) || 0, up = pnl >= 0;
+    host.className = 'tm-poswidget'; host.disabled = false;
+    host.innerHTML = `${logo(v.simbolo || pos.simbolo, v.token || pos.token)}<span class="tm-pw-id"><b>${esc(v.simbolo || pos.simbolo || '?')}</b><span>${lista.length > 1 ? lista.length + ' positions' : 'Position'}</span></span><span class="tm-pw-pnl ${up ? 'up' : 'down'}"><b>${up ? '+' : ''}${pnl.toFixed(1)}%</b><span>$${fmtP(v.valorUsd || 0)}</span></span>`;
+    host.onclick = () => { const t = v.token || pos.token; const it = _items.find((x) => x.token.toLowerCase() === String(t).toLowerCase()) || { token: t, simbolo: v.simbolo || pos.simbolo, nombre: v.simbolo || pos.simbolo, decimales: 18, moneda: 'BNB', par: null, precio: 0 }; try { verGrande(it); } catch (_) {} };
+  }).catch(() => vacio());
 }
 /* Al entrar, los primeros tokens CON liquidez dan un destello dorado (como un clic) una sola vez, para
    invitar a tocarlos. Solo una vez por carga (si no, molesta); hasta 4 filas; en secuencia (clic clic clic).
@@ -433,7 +456,8 @@ function verGrande(it) {
    tradesRecientes (operaciones reales del par). Nada se inventa; si un dato no existe se muestra vacio. */
 const corto2 = (a) => { const s = String(a || ''); return s.length > 10 ? s.slice(0, 6) + '…' + s.slice(-4) : s; };
 const liqTxtRail = (it) => { const l = it.moneda === 'USDT' ? it.liquidez : it.liquidez * _bnbUsd; return l > 0 ? money(l) : '—'; };
-let _railTok = '', _railMode = 'buy';
+let _railTok = '', _railMode = 'buy', _ccy = 'BNB', _bal = 0;
+const fmtAmt = (n) => { n = Number(n) || 0; if (n <= 0) return '0'; return (n < 1 ? n.toFixed(6) : n.toFixed(4)).replace(/\.?0+$/, ''); };
 function verifBadge(aud) {
   if (!aud || aud.nivel === 'pend') return '';
   const ok = aud.nivel === 'ok' || (aud.datos && aud.datos.checks && aud.datos.checks.verified);
@@ -468,9 +492,10 @@ function montarRail(it) {
     </div>
     <div class="tm-trade">
       <div class="tm-trade-tabs" id="tm-trade-tabs"><button class="on" data-m="buy" type="button">Buy</button><button data-m="sell" type="button">Sell</button></div>
-      <label class="tm-trade-lbl">Amount</label>
-      <div class="tm-trade-in"><input id="tm-amt" type="text" inputmode="decimal" autocomplete="off" value="0.1"><span class="tm-trade-cur">${bnbCoin()}<b>BNB</b></span></div>
-      <div class="tm-trade-quick" id="tm-trade-quick"><button data-a="0.05" type="button">0.05</button><button data-a="0.1" class="on" type="button">0.1</button><button data-a="0.5" type="button">0.5</button><button data-a="1" type="button">1</button></div>
+      <div class="tm-trade-buytok">${logo(it.simbolo, it.token)}<span><em id="tm-trade-verb">Buying</em> <b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b> · ${esc(it.simbolo || '?')}</span></div>
+      <div class="tm-trade-top"><span class="tm-trade-lbl">Amount</span><span class="tm-trade-bal" id="tm-bal">Balance: …</span></div>
+      <div class="tm-trade-in"><input id="tm-amt" type="text" inputmode="decimal" autocomplete="off" value="0"><button class="tm-ccy" id="tm-ccy" type="button">${monedaCoin('BNB')}<b id="tm-ccy-t">BNB</b>${ICO_CHEV}</button></div>
+      <div class="tm-slider"><input type="range" id="tm-slider" min="0" max="100" step="1" value="0"><div class="tm-slider-l"><span>0%</span><b id="tm-slider-v">0%</b><span>100%</span></div></div>
       <button class="tm-trade-go" id="tm-trade-go" type="button">Buy now</button>
       <div class="tm-trade-est">
         <div><span>Est. tokens</span><b id="tm-est-tok">~ …</b></div>
@@ -486,15 +511,57 @@ function montarRail(it) {
       <div class="tm-acts-list" id="tm-acts-list">${actsSkeleton()}</div>
     </div>`;
   const openb = $('tm-tc-open'); if (openb) openb.onclick = () => { try { verGrande(it); } catch (_) {} };
-  const amt = $('tm-amt'), estTok = $('tm-est-tok');
-  const precioBNB = mon === 'BNB' ? it.precio : (it.precio / (_bnbUsd || 1));
-  const recalc = () => { const v = parseFloat((amt && amt.value) || '0') || 0; if (estTok) estTok.textContent = (v > 0 && precioBNB > 0) ? '~ ' + numC(v / precioBNB) + ' ' + (it.simbolo || '') : '~ …'; };
-  if (amt) amt.oninput = recalc; recalc();
-  const quick = $('tm-trade-quick');
-  if (quick) quick.querySelectorAll('button').forEach((b) => { b.onclick = () => { if (amt) amt.value = b.dataset.a; quick.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); recalc(); }; });
-  const tabs = $('tm-trade-tabs'), go = $('tm-trade-go');
-  if (tabs) tabs.querySelectorAll('button').forEach((b) => { b.onclick = () => { _railMode = b.dataset.m; tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); if (go) { go.textContent = _railMode === 'sell' ? 'Sell now' : 'Buy now'; go.classList.toggle('sell', _railMode === 'sell'); } }; });
-  if (go) go.onclick = () => { try { abrirCompra(it, auditoriaDe(it), _railMode === 'sell' ? 'sell' : 'buy'); } catch (_) {} };
+  const amt = $('tm-amt'), estTok = $('tm-est-tok'), go = $('tm-trade-go'), tabs = $('tm-trade-tabs'), ccyBtn = $('tm-ccy'), slider = $('tm-slider'), sliderV = $('tm-slider-v'), balEl = $('tm-bal');
+  // Importe tecleado -> USD (para estimar tokens o lo que recibes).
+  const montoUsd = (v) => (_railMode === 'sell' ? v * usdDe(it) : (_ccy === 'USDT' ? v : v * _bnbUsd));
+  const recalc = () => {
+    const v = parseFloat((amt && amt.value) || '0') || 0;
+    if (!estTok) return; const pu = usdDe(it);
+    if (_railMode === 'buy') estTok.textContent = (v > 0 && pu > 0) ? '~ ' + numC(montoUsd(v) / pu) + ' ' + (it.simbolo || '') : '~ …';
+    else estTok.textContent = (v > 0 && _bnbUsd > 0) ? '~ ' + fmtAmt(montoUsd(v) / (_ccy === 'USDT' ? 1 : _bnbUsd)) + ' ' + _ccy : '~ …';
+  };
+  // La barra 0-100% mueve el importe segun el saldo.
+  const fillSlider = (pct) => { if (slider) slider.style.background = 'linear-gradient(90deg,#E8B84B ' + pct + '%,rgba(232,184,75,.15) ' + pct + '%)'; };
+  const porPct = (pct) => { if (sliderV) sliderV.textContent = pct + '%'; fillSlider(pct); if (amt && _bal > 0) amt.value = fmtAmt(_bal * pct / 100); recalc(); };
+  const syncSlider = () => { if (!slider) return; const v = parseFloat((amt && amt.value) || '0') || 0; const pct = _bal > 0 ? Math.max(0, Math.min(100, Math.round(v / _bal * 100))) : 0; slider.value = pct; if (sliderV) sliderV.textContent = pct + '%'; fillSlider(pct); };
+  // Saldo real de la wallet (BNB, USDT, o el token si se vende). Si no hay wallet, lo dice.
+  const cargarBalance = () => {
+    if (!balEl) return;
+    let cuenta = null; try { cuenta = wallet.cuentaActual(); } catch (_) {}
+    if (!cuenta) { _bal = 0; balEl.textContent = 'Connect wallet'; return; }
+    balEl.textContent = 'Balance: …';
+    const quien = _railMode === 'sell' ? 'tok' : _ccy;
+    const prom = _railMode === 'sell' ? saldoToken(it.token, cuenta) : (_ccy === 'USDT' ? saldoToken(USDT, cuenta) : saldoBNB(cuenta));
+    prom.then((w) => {
+      if (_railTok !== it.token) return;
+      const dec = _railMode === 'sell' ? (it.decimales || 18) : 18;
+      _bal = Number(ethers.formatUnits(w, dec));
+      const unidad = _railMode === 'sell' ? (it.simbolo || '') : _ccy;
+      balEl.textContent = 'Balance: ' + fmtAmt(_bal) + ' ' + unidad;
+      syncSlider();
+    }).catch(() => { if (_railTok === it.token) { _bal = 0; balEl.textContent = 'Balance: —'; } });
+  };
+  const pintarCcy = () => {
+    if (!ccyBtn) return;
+    if (_railMode === 'sell') { ccyBtn.innerHTML = `${logo(it.simbolo, it.token)}<b>${esc(it.simbolo || '?')}</b>`; ccyBtn.classList.add('fixed'); }
+    else { ccyBtn.innerHTML = `${monedaCoin(_ccy)}<b id="tm-ccy-t">${_ccy}</b>${ICO_CHEV}`; ccyBtn.classList.remove('fixed'); }
+  };
+  if (amt) amt.oninput = () => { recalc(); syncSlider(); };
+  if (slider) slider.oninput = () => porPct(Number(slider.value) || 0);
+  if (ccyBtn) ccyBtn.onclick = () => { if (_railMode !== 'buy') return; _ccy = _ccy === 'BNB' ? 'USDT' : 'BNB'; pintarCcy(); if (amt) amt.value = '0'; if (slider) slider.value = 0; cargarBalance(); recalc(); };
+  if (tabs) tabs.querySelectorAll('button').forEach((b) => { b.onclick = () => {
+    _railMode = b.dataset.m; tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    const verb = $('tm-trade-verb'); if (verb) verb.textContent = _railMode === 'sell' ? 'Selling' : 'Buying';
+    if (go) { go.textContent = _railMode === 'sell' ? 'Sell now' : 'Buy now'; go.classList.toggle('sell', _railMode === 'sell'); }
+    pintarCcy(); if (amt) amt.value = '0'; if (slider) slider.value = 0; if (sliderV) sliderV.textContent = '0%'; cargarBalance(); recalc();
+  }; });
+  if (go) go.onclick = () => { try {
+    abrirCompra(it, auditoriaDe(it), _railMode === 'sell' ? 'sell' : 'buy');
+    const v = parseFloat((amt && amt.value) || '0') || 0;
+    let pre = v; if (_railMode === 'buy' && _ccy === 'USDT' && _bnbUsd > 0) pre = v / _bnbUsd;   // la ventana paga en BNB
+    if (pre > 0) setTimeout(() => { const mi = document.getElementById('tmc-amt'); if (mi) { mi.value = fmtAmt(pre); mi.dispatchEvent(new Event('input', { bubbles: true })); } }, 80);
+  } catch (_) {} };
+  pintarCcy(); cargarBalance(); recalc();
   try { cargarMercado([it.token]).then(() => updateRailStats(it)).catch(() => {}); } catch (_) {}
   cargarChecks(it);
   cargarActividad(it);
