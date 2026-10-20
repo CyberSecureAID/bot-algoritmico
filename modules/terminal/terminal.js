@@ -10,7 +10,7 @@ import { comoFunciona } from './aviso.js';
 import { abrirFiltros } from './filtros.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecientes } from './grafico.js';
 import * as wallet from './wallet.js';
-import { listaDe, enVivo, olvidar } from './posiciones.js';
+import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante } from './alertas.js';
 import { abrirGrande } from './panel-grande.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
@@ -163,9 +163,10 @@ export function arrancar() {
   const cpall = $('tm-cp-all'); if (cpall) cpall.onclick = () => { if (_sel) verGrande(_sel); };
   const nav = $('tm-nav');
   if (nav) nav.querySelectorAll('.tm-nav-b').forEach((b) => { b.onclick = () => { const n = b.dataset.nav; try {
-    if (n === 'mine' || n === 'history') { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); }
+    if (n === 'mine') abrirPanel('positions');
+    else if (n === 'history') abrirPanel('history');
     else if (n === 'alerts') abrirPanel('alerts');
-    else if (n === 'checks') abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
+    else if (n === 'checks') abrirPanel('verif');
   } catch (_) {} }; });
   gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); try { pintarPosWidget(); } catch (_) {} }).catch(() => {});
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
@@ -740,8 +741,8 @@ export async function abrirPanel(tab = 'positions') {
   const prev = $('tm-pos-ov'); if (prev) prev.remove();
   const ov = document.createElement('div'); ov.id = 'tm-pos-ov'; ov.className = 'tm-ov';
   ov.innerHTML = `<div class="tm-ficha tm-pos-card" role="dialog" aria-modal="true">
-    <div class="tm-f-head"><div class="tm-f-tx"><b>My Terminal</b><span>Positions, watchlist and alerts · your wallet, your keys</span></div><button class="tm-f-x" type="button" aria-label="Close">✕</button></div>
-    <div class="tm-tabs" id="tm-tabs"><button type="button" data-t="positions">Positions</button><button type="button" data-t="watch">Watchlist</button><button type="button" data-t="alerts">Alerts</button></div>
+    <div class="tm-f-head"><div class="tm-f-tx"><b>My Terminal</b><span>Your tokens, verifications, alerts and history · your wallet, your keys</span></div><button class="tm-f-x" type="button" aria-label="Close">✕</button></div>
+    <div class="tm-tabs" id="tm-tabs"><button type="button" data-t="positions">My tokens</button><button type="button" data-t="verif">Verifications</button><button type="button" data-t="alerts">Alerts</button><button type="button" data-t="history">History</button><button type="button" data-t="watch">Watchlist</button></div>
     <div class="tm-pos-body" id="tm-pos-body">${cargando}</div>
     <p class="tm-f-note" id="tm-pos-note"></p>
   </div>`;
@@ -752,7 +753,7 @@ export async function abrirPanel(tab = 'positions') {
   const body = $('tm-pos-body'), note = $('tm-pos-note'), tabs = $('tm-tabs');
   const vivo = () => ov.isConnected;
   const abrirDe = (o) => { cerrar(); abrirFicha(itMin(o)); };
-  const ir = (t) => { tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t)); body.innerHTML = cargando; if (t === 'watch') renderWatch(); else if (t === 'alerts') renderAlertas(); else renderPositions(); };
+  const ir = (t) => { tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t)); body.innerHTML = cargando; if (t === 'watch') renderWatch(); else if (t === 'alerts') renderAlertas(); else if (t === 'verif') renderVerif(); else if (t === 'history') renderHistory(); else renderPositions(); };
   tabs.querySelectorAll('button').forEach((b) => { b.onclick = () => ir(b.dataset.t); });
 
   async function renderPositions() {
@@ -803,6 +804,31 @@ export async function abrirPanel(tab = 'positions') {
         <button class="tm-pos-x" type="button" data-f="${esc(a.id)}" title="Remove alert">✕</button></div>`; }).join('');
     body.querySelectorAll('.tm-pos-row').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.tm-pos-x')) return; const a = l.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (a) abrirDe(a); }; });
     body.querySelectorAll('.tm-pos-x').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); quitarAlerta(b.dataset.f); ir('alerts'); }; });
+  }
+
+  function renderVerif() {
+    note.textContent = 'Tokens in the current feed that cleared every security check. Checks read live from the chain; always do your own research.';
+    const items = _items.slice();
+    const ok = items.map((it) => ({ it, r: auditoriaDe(it) })).filter((x) => x.r && x.r.nivel === 'ok');
+    if (!ok.length) { const pend = items.some((it) => !auditoriaDe(it)); body.innerHTML = `<div class="tm-pos-empty"><b>No verified tokens yet</b><span>${pend ? 'Security checks are still running on the current pairs. Give it a moment.' : 'None of the current pairs cleared every check.'}</span></div>`; return; }
+    ok.sort((a, b) => (b.it.liquidez || 0) - (a.it.liquidez || 0));
+    body.innerHTML = ok.map(({ it, r }) => { const c = (r.datos && r.datos.checks) || {}; const keys = Object.keys(c); const passed = keys.filter((k) => c[k]).length; const total = keys.length || 10; const pu = usdDe(it); return `<div class="tm-pos-row tm-verif-row" data-a="${esc(it.token)}">
+        <div class="tm-vrow-tk">${logo(it.simbolo, it.token)}<span class="tm-vrow-nm"><b>${esc(abreviar(it.nombre || ''))}</b><i>(${esc(it.simbolo || '?')})</i></span></div>
+        <span class="tm-vchk">${ICO_VERIF} ${passed}/${total} checks</span>
+        <b class="tm-vrow-px">${pu > 0 ? '$' + fmtP(pu) : '$0'}</b></div>`; }).join('');
+    body.querySelectorAll('.tm-pos-row').forEach((row) => { row.onclick = () => { const x = ok.find((o) => o.it.token.toLowerCase() === row.dataset.a.toLowerCase()); if (!x) return; cerrar(); try { if (esGrande()) { seleccionarCP(x.it); verGrande(x.it); } else abrirFicha(x.it); } catch (_) {} }; });
+  }
+
+  async function renderHistory() {
+    note.textContent = 'Every buy and sell you make through the Terminal, kept in your browser only. It never leaves your device.';
+    const cuenta = wallet.cuentaActual();
+    if (!cuenta) { body.innerHTML = `<div class="tm-pos-empty"><b>Connect your wallet</b><span>Your Terminal trade history will show here.</span><button class="tm-b" id="tm-pos-conn" type="button">Connect wallet</button></div>`; const bc = $('tm-pos-conn'); if (bc) bc.onclick = async () => { try { await wallet.conectar(); } catch (_) {} if (vivo()) ir('history'); }; return; }
+    const l = historialDe(cuenta);
+    if (!l.length) { body.innerHTML = `<div class="tm-pos-empty"><b>No operations yet</b><span>Buy or sell a token from the Terminal and it shows up here with the time and amount.</span></div>`; return; }
+    body.innerHTML = l.map((h) => `<div class="tm-pos-row tm-hist-row ${h.side === 'sell' ? 'sell' : 'buy'}" data-a="${esc(h.token)}">
+        <div class="tm-pos-tk">${logo(h.simbolo, h.token)}<div class="tm-pos-nm"><b>${esc(h.simbolo || '?')}</b><span><em class="tm-hist-side ${h.side === 'sell' ? 'sell' : 'buy'}">${h.side === 'sell' ? 'Sold' : 'Bought'}</em> ${numC(h.cant)}</span></div></div>
+        <div class="tm-pos-val"><b>${h.side === 'buy' && h.usd > 0 ? money(h.usd) : ''}</b><span>${hace(h.ts)} ago</span></div></div>`).join('');
+    body.querySelectorAll('.tm-pos-row').forEach((r) => { r.onclick = () => { const h = l.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (h) abrirDe(h); }; });
   }
 
   ir(tab);

@@ -8,11 +8,17 @@ import { conRotacion } from './rpc.js';
 import { precioActual } from './grafico.js';
 
 const KEY = 'df_terminal_pos_v1';
+const KEY_H = 'df_terminal_hist_v1';
 const ERC = ['function balanceOf(address) view returns (uint256)'];
 const clave = (w) => String(w || '').toLowerCase();
 
 function leerTodo() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) { return {}; } }
 function guardar(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (_) {} }
+function leerHist() { try { return JSON.parse(localStorage.getItem(KEY_H) || '{}'); } catch (_) { return {}; } }
+function apuntarHist(wallet, e) { try { const all = leerHist(); const w = clave(wallet); const arr = all[w] || (all[w] = []); arr.unshift({ ...e, ts: Date.now() }); if (arr.length > 120) arr.length = 120; localStorage.setItem(KEY_H, JSON.stringify(all)); } catch (_) {} }
+
+/* Historial de operaciones hechas por el Terminal (array, mas reciente primero). */
+export function historialDe(wallet) { try { return (leerHist()[clave(wallet)] || []).slice(); } catch (_) { return []; } }
 
 /* Posiciones guardadas de una wallet (array). */
 export function listaDe(wallet) { const t = leerTodo()[clave(wallet)] || {}; return Object.values(t); }
@@ -29,6 +35,7 @@ export function registrarCompra(wallet, it, tokensRecibidos, bnbWei, bnbUsd) {
     p.costoUsd = (p.costoUsd || 0) + Number(ethers.formatEther(bnbWei)) * (bnbUsd || 0);
     p.ult = Date.now();
     guardar(all);
+    apuntarHist(wallet, { side: 'buy', token: it.token, simbolo: it.simbolo || '?', nombre: it.nombre || '', par: it.par || null, quote: it.quote || null, moneda: it.moneda || 'BNB', decimales: it.decimales || 18, cant: Number(ethers.formatUnits(tokensRecibidos, it.decimales || 18)) || 0, usd: Number(ethers.formatEther(bnbWei)) * (bnbUsd || 0) });
   } catch (_) {}
 }
 
@@ -44,6 +51,7 @@ export function registrarVenta(wallet, token, tokensVendidos) {
     p.costoUsd = p.costoUsd - p.costoUsd * (Number(fracBps) / 10000);
     p.cantidad = (tenia - vend).toString();
     if (BigInt(p.cantidad) <= 0n) delete m[k];
+    apuntarHist(wallet, { side: 'sell', token: p.token, simbolo: p.simbolo || '?', nombre: p.nombre || '', par: p.par || null, quote: p.quote || null, moneda: p.moneda || 'BNB', decimales: p.decimales || 18, cant: Number(ethers.formatUnits(vend, p.decimales || 18)) || 0 });
     guardar(all);
   } catch (_) {}
 }
