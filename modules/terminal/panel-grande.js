@@ -9,10 +9,10 @@
    selector de tokens. La columna de operar (Market / Alert, saldos, Open Alerts, Positions) y el
    clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
-import { conRotacion } from './rpc.js';
+import { resolverContrato } from './resolver.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
 import { historialCreador } from './creador.js';
-import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE, PROTECCION, PRESETS_BNB } from './config.js';
+import { SCAN_URL, WBNB, USDT, SLIPPAGE, PROTECCION, PRESETS_BNB } from './config.js';
 import { disclaimerProtect } from './protect.js';
 import { abrirCompra, saldoBNB, saldoToken, cotizarCompra, comprar } from './compra.js';
 import { listaDe, enVivo, registrarCompra } from './posiciones.js';
@@ -22,7 +22,6 @@ import * as wallet from './wallet.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const ZERO = '0x0000000000000000000000000000000000000000';
 const corto = (a) => a ? '…' + String(a).slice(-4) : '';
 const cortoDir = (a) => a ? (String(a).slice(0, 6) + '…' + String(a).slice(-4)) : '';
 
@@ -356,27 +355,14 @@ function css() {
   document.head.appendChild(st);
 }
 
-/* ── Resolver un token por contrato: primero en el feed; si no, por la fabrica de PancakeSwap ── */
+/* ── Resolver un token por contrato: primero en el feed; si no, por el resolvedor COMPARTIDO (el mismo que
+   usa el lobby), que consulta los pares con WBNB y con USDT y se queda con el de MAS liquidez. Antes aqui se
+   tomaba el primer par que existiera, por eso tokens como USDT.z (par WBNB muerto) no mostraban grafica. ── */
 async function resolver(addr, feed) {
   let dir; try { dir = ethers.getAddress(String(addr || '').trim()); } catch (_) { return null; }
   const hit = (feed || []).find((x) => x.token && x.token.toLowerCase() === dir.toLowerCase());
   if (hit) return hit;
-  const facI = ['function getPair(address,address) view returns (address)'];
-  const ercI = ['function decimals() view returns (uint8)', 'function symbol() view returns (string)', 'function name() view returns (string)'];
-  let par = null, moneda = 'BNB', quoteEsUSDT = false;
-  const pBNB = await conRotacion((p) => new ethers.Contract(FACTORY, facI, p).getPair(dir, WBNB)).catch(() => null);
-  if (pBNB && pBNB !== ZERO) { par = pBNB; }
-  else {
-    const pU = await conRotacion((p) => new ethers.Contract(FACTORY, facI, p).getPair(dir, USDT)).catch(() => null);
-    if (pU && pU !== ZERO) { par = pU; moneda = 'USDT'; quoteEsUSDT = true; }
-  }
-  if (!par) return null;
-  const [dec, sym, nom] = await Promise.all([
-    conRotacion((p) => new ethers.Contract(dir, ercI, p).decimals()).catch(() => 18),
-    conRotacion((p) => new ethers.Contract(dir, ercI, p).symbol()).catch(() => '?'),
-    conRotacion((p) => new ethers.Contract(dir, ercI, p).name()).catch(() => 'Token')
-  ]);
-  return { token: dir, par, quote: null, moneda, simbolo: String(sym || '?'), nombre: String(nom || 'Token'), decimales: Number(dec) || 18, fuente: 'pancake', tiempo: 0, liquidez: 0, precio: 0, bloque: 0, creador: '' };
+  return await resolverContrato(dir);
 }
 
 let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60;
@@ -467,8 +453,11 @@ export async function abrirGrande(it0, ctx) {
   const buscar = async () => {
     const v = ($('tg-find-in').value || '').trim(); if (!v) return;
     const msg = $('tg-chart-msg'); if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
-    const it = await resolver(v, feed());
-    if (!it) { if (msg) { msg.hidden = false; msg.textContent = 'No PancakeSwap pair found for that contract.'; } return; }
+    let it = await resolver(v, feed());
+    // Reintento unico: un fallo transitorio de RPC hacia que resolver devolviera null y saliera "no pair",
+    // obligando a salir y volver a entrar. Si de verdad no hay par, el segundo intento tambien da null.
+    if (!it && ov.isConnected) { await new Promise((r) => setTimeout(r, 900)); it = await resolver(v, feed()); }
+    if (!it) { if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'No PancakeSwap pair found for that contract.'; } return; }
     $('tg-find-in').value = '';
     cargar(it);
   };

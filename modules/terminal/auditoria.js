@@ -28,14 +28,20 @@ export const PASOS_TXT = { code: 'Code', owner: 'Owner', scanner: 'Scan', lp: 'L
 
 /* ── 1) GoPlus ── */
 export async function leerGoPlus(token) {
-  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 9000);
-  try {
-    const r = await fetch(GOPLUS + encodeURIComponent(String(token).toLowerCase()), { signal: ctl.signal });
-    const j = await r.json();
-    const d = j && j.result && j.result[String(token).toLowerCase()];
-    return d || null;      // null = GoPlus aun no tiene datos (tokens de hace segundos)
-  } catch (e) { log('goplus fallo', e && e.message); return null; }
-  finally { clearTimeout(t); }
+  const dir = String(token).toLowerCase();
+  const pedir = async () => {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 9000);
+    try {
+      const r = await fetch(GOPLUS + encodeURIComponent(dir), { signal: ctl.signal });
+      const j = await r.json();
+      return (j && j.result && j.result[dir]) || null;   // null = GoPlus aun no tiene datos (tokens de hace segundos)
+    } finally { clearTimeout(t); }
+  };
+  // Un reintento: GoPlus a veces devuelve 429 o un cuerpo vacio al primer golpe (p.ej. tokens muy consultados
+  // como USDT.z, con decenas de miles de holders) y eso dejaba el Security Check en "Limited check" sin serlo.
+  try { const a = await pedir(); if (a) return a; } catch (e) { log('goplus intento 1', e && e.message); }
+  try { await new Promise((r) => setTimeout(r, 700)); return (await pedir()) || null; }
+  catch (e) { log('goplus intento 2', e && e.message); return null; }
 }
 
 /* ── 2) Lecturas propias ── */
