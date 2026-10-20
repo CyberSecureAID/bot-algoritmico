@@ -265,7 +265,7 @@ function pintar() {
     + (ocultos || _verRojos ? `<div class="tm-ocultos">${ocultos ? ocultos + ' token' + (ocultos > 1 ? 's' : '') + ' hidden: Do not buy' : 'Showing Do not buy tokens'} <button type="button" id="tm-ver-rojos">${_verRojos ? 'Hide' : 'Show'}</button></div>` : '');
   const vr = $('tm-ver-rojos'); if (vr) vr.onclick = () => { _verRojos = !_verRojos; pintar(); };
   host.querySelectorAll('.tm-buybtn').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const it = _items.find((x) => x.token.toLowerCase() === b.dataset.buy.toLowerCase()); if (it) { try { abrirCompra(it, auditoriaDe(it)); } catch (_) {} } }; });
-  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) (esGrande() ? seleccionarCP(it) : abrirFicha(it)); }; });
+  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (!it) return; if (esGrande()) { seleccionarCP(it); verGrande(it); } else abrirFicha(it); }; });
   if (_sel) { const ar = host.querySelector(`.tm-row[data-a="${_sel.token}"]`); if (ar) ar.classList.add('sel'); }
   cueReaplica(host);
   const faltan = vis.filter((x) => x.par).map((x) => x.token).filter((t) => !mercadoListo(t));

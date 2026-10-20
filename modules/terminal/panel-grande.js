@@ -25,6 +25,8 @@ const cortoDir = (a) => a ? (String(a).slice(0, 6) + '…' + String(a).slice(-4)
 
 const ICO_BSC = '<svg viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const ICO_CHECK = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>';
+const ICO_X = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 const ICO_SEARCH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>';
 const LOGO_BNB = 'https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png';
 const LOGO_USDT = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png';
@@ -90,6 +92,23 @@ function css() {
 .tg-kv>div span{color:var(--ink-3,#7d8794);font-family:var(--mono)}
 .tg-kv>div b{font-weight:700;text-align:right;font-family:var(--mono)}
 .tg-kv .tg-copyc{display:inline-flex;align-items:center;gap:5px;background:none;border:0;color:var(--gold,#E8B84B);font-family:var(--mono);font-size:12px;cursor:pointer;padding:0}
+/* Check security: lista completa de verificaciones con palomita/cruz. */
+.tg-checks{display:flex;flex-direction:column}
+.tg-chk{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid rgba(255,255,255,.05);font-size:12px}
+.tg-chk:first-child{border-top:0}
+.tg-chk>span{display:flex;align-items:center;gap:8px;color:var(--ink-2,#c3c9d2)}
+.tg-chk>span i{width:17px;height:17px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-style:normal}
+.tg-chk.ok>span i{color:var(--verde,#2ebd85);background:rgba(46,189,133,.14)}
+.tg-chk.no>span i{color:var(--rojo,#f6465d);background:rgba(246,70,93,.14)}
+.tg-chk>b{font-family:var(--mono);font-size:11.5px;font-weight:600;color:#eaecef}
+.tg-chk.ok>b{color:var(--verde,#2ebd85)}
+.tg-chk.pend>span{color:var(--ink-3,#7d8794)}
+/* Open alerts y Positions con scroll propio (barra fina) para muchas monedas. */
+#tg-openalerts{max-height:168px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
+#tg-positions{max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
+#tg-openalerts::-webkit-scrollbar,#tg-positions::-webkit-scrollbar{width:6px}
+#tg-openalerts::-webkit-scrollbar-thumb,#tg-positions::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
+#tg-openalerts::-webkit-scrollbar-track,#tg-positions::-webkit-scrollbar-track{background:transparent}
 .tg-sem{display:flex;align-items:center;gap:9px;padding:10px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0b0f14;margin-bottom:14px}
 .tg-sem i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:#7d8794}
 .tg-sem.ok i{background:var(--verde,#2ee86a)} .tg-sem.warn i{background:#f1cf6a} .tg-sem.bad i{background:var(--rojo,#f6465d)} .tg-sem.pend i{background:#7d8794}
@@ -365,7 +384,9 @@ function pintarIzq(it, ctx) {
       <div><span>LP secured</span><b id="tg-k-lp"><span class="tm-sk" style="width:36px"></span></b></div>
       <div><span>Contract</span><b><button class="tg-copyc" type="button" id="tg-k-copy">${corto(it.token)} ${ICO_COPY}</button></b></div>
       <div><span>Explorer</span><b><a class="tg-copyc" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a></b></div>
-    </div>`;
+    </div>
+    <div class="tg-sec-t tg-mt">Check security</div>
+    <div class="tg-checks" id="tg-checks"><div class="tg-chk pend"><span>Reading the contract…</span><b></b></div></div>`;
   const cp = $('tg-k-copy'); if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(it.token); const o = cp.innerHTML; cp.textContent = 'copied'; setTimeout(() => { if (cp.isConnected) cp.innerHTML = o; }, 1200); } catch (_) {} };
   // seguridad (reutiliza la cache de auditoria de la Terminal)
   if (ctx && ctx.auditarCache && it.par) {
@@ -379,14 +400,36 @@ function pintarIzq(it, ctx) {
       set('tg-k-hold', (d.holders != null ? Number(d.holders).toLocaleString('en-US') : '0') + (d.txs != null ? ' · ' + Number(d.txs).toLocaleString('en-US') + ' txs' : ''));
       set('tg-k-top', d.top10Pct != null ? pct(d.top10Pct) : '0%');
       const cre = d.creador || it.creador || '';
-      set('tg-k-cre', (cre ? corto(cre) : '') + (d.creadorPct != null ? (cre ? ' ' : '') + pct(d.creadorPct) : (cre ? '' : '0%')));
+      const creEl = $('tg-k-cre');
+      if (creEl) {
+        if (cre) { creEl.innerHTML = `<button class="tg-copyc" type="button">${corto(cre)}${d.creadorPct != null ? ' ' + pct(d.creadorPct) : ''} ${ICO_COPY}</button>`; const cb = creEl.querySelector('button'); if (cb) cb.onclick = () => { try { navigator.clipboard.writeText(cre); const o = cb.innerHTML; cb.textContent = 'copied'; setTimeout(() => { if (cb.isConnected) cb.innerHTML = o; }, 1200); } catch (_) {} }; }
+        else creEl.textContent = d.creadorPct != null ? pct(d.creadorPct) : '0%';
+      }
       set('tg-k-tax', pct(d.buyTax || 0) + ' / ' + pct(d.sellTax || 0));
       set('tg-k-lp', d.lpAsegurada != null ? pct(d.lpAsegurada) : '0%');
+      const ch = $('tg-checks'); if (ch) ch.innerHTML = checksBig(r);
     }).catch(() => {});
   } else {
     ['tg-k-hold', 'tg-k-top', 'tg-k-cre', 'tg-k-tax', 'tg-k-lp'].forEach((id) => { const e = $(id); if (e) e.textContent = '0'; });
     const sem = $('tg-sem'); if (sem) { sem.className = 'tg-sem pend'; sem.querySelector('b').textContent = 'Not a PancakeSwap pair'; sem.querySelector('span').textContent = 'Security check runs on pair tokens'; }
   }
+}
+
+/* Lista completa de verificaciones de seguridad (datos reales de la auditoria) para el panel izquierdo. */
+function checksBig(r) {
+  const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null;
+  const d = (r && r.datos) ? r.datos : {};
+  if (!c) return `<div class="tg-chk pend"><span>Security check not available</span><b></b></div>`;
+  const fila = (ok, label, val) => `<div class="tg-chk ${ok ? 'ok' : 'no'}"><span><i>${ok ? ICO_CHECK : ICO_X}</i>${label}</span><b>${val || ''}</b></div>`;
+  return fila(!!c.sellable, 'No honeypot', c.sellable ? 'Sellable' : 'Risky')
+    + fila(!!c.lpSecured, 'Liquidity burned', d.lpAsegurada != null ? pct(d.lpAsegurada) : (c.lpSecured ? 'Yes' : 'No'))
+    + fila(!!c.renounced, 'Ownership renounced', c.renounced ? 'Yes' : 'No')
+    + fila(!!c.lowTax, 'Low taxes', pct(d.buyTax || 0) + ' / ' + pct(d.sellTax || 0))
+    + fila(!!c.notMintable, 'Not mintable', c.notMintable ? 'Yes' : 'Mintable')
+    + fila(!!c.noPause, 'Not pausable', c.noPause ? 'Yes' : 'Pausable')
+    + fila(!!c.noBlacklist, 'No blacklist', c.noBlacklist ? 'Yes' : 'Risk')
+    + fila(!!c.notConcentrated, 'Distribution', d.top10Pct != null ? 'Top10 ' + pct(d.top10Pct) : (c.notConcentrated ? 'Healthy' : 'Concentrated'))
+    + fila(!!c.verified, 'Verified source', c.verified ? 'Yes' : 'No');
 }
 
 /* ── Panel derecho: area de operar (spot). Market (compra a mercado por el flujo probado abrirCompra),
