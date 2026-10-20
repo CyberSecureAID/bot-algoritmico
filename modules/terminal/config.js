@@ -48,3 +48,10 @@ export const SLIPPAGE = { porDefecto: 300, opciones: [100, 300, 1000] };
 export const BSCSCAN_API = 'TZQ4M8PRW6J794MWDB1D2WM3FPVVC6NKB6';
 export const BSCSCAN_V2 = 'https://api.etherscan.io/v2/api';
 export const DEXSCREENER_TOK = 'https://api.dexscreener.com/latest/dex/tokens/';
+
+/* Comision de Terminal: 1% en BNB, por compra y por venta. El reparto exacto lo hace el contrato. */
+export const FEE_BPS = 100;
+/* Compra protegida (anti sandwich), TODO interno, sin depender de nadie externo. "Protegido" = slippage
+   ajustado: el contrato exige un minimo (minOut), asi que un bot solo puede sacar hasta ese slippage y, si
+   el precio se pasa, la tx REVIERTE aqui mismo y no pierdes fondos (solo el intento). */
+export const PROTECCION = { slipProtegido: 300, opciones: [100, 300, 1000] };

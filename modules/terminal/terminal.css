@@ -672,6 +672,10 @@
 .tmc-imp.warn{color:#e8b84b}
 .tmc-imp.bad{color:#ff7f93}
 .tmc-rev-warn{margin-top:1px;padding-top:8px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;line-height:1.5;color:#ffb0bd}
+/* Compra protegida en la ventana modal: medidor de riesgo de bot + maxima proteccion (RPC privado). */
+.tmc-prot{display:flex;align-items:center;gap:8px;margin:12px 2px 0}
+.tmc-prot-meter{font-family:var(--mono);font-size:11.5px;font-weight:700}
+.tmc-prot-meter.ok{color:#2ee86a}.tmc-prot-meter.warn{color:var(--gold,#E8B84B)}.tmc-prot-meter.bad{color:#ff8da0}
 .tmc-go.sell{border-color:#b91c1c;background:linear-gradient(180deg,#ff8a9c,#f6465d 46%,#c81e3a);color:#2e0208;box-shadow:0 4px 0 #8f1420,inset 0 1px 0 rgba(255,255,255,.3);text-shadow:0 1px 0 rgba(255,255,255,.15)}
 .tmc-go.sell:not(:disabled):active{transform:translateY(4px);box-shadow:0 1px 0 #8f1420,inset 0 1px 0 rgba(255,255,255,.3)}
 .tmc-go.busy{position:relative;overflow:hidden}

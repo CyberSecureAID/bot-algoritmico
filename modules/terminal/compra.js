@@ -128,6 +128,7 @@ export function abrirCompra(it, aud, modoInicial) {
           </div>
         </div>
         <div class="tmc-rev" id="tmc-rev" hidden></div>
+        <div class="tmc-prot"><span class="tmc-prot-meter ok" id="tmc-prot-meter"></span></div>
         <div class="tmc-info" id="tmc-info"></div>
         <button class="tmc-go" id="tmc-go" type="button">Swap</button>
       </div>
@@ -183,10 +184,18 @@ export function abrirCompra(it, aud, modoInicial) {
       fila('Rate', px > 0 ? `1 ${sym} = ${fmtP(px, 3)} BNB${bnbUsd > 0 ? ` · $${fmtP(px * bnbUsd, 3)}` : ''}` : '—')
       + (impact != null ? fila('Price impact', `${impAbs < 0.01 ? '&lt;0.01' : impAbs.toFixed(2)}%`, 'tmc-imp ' + impCls) : '')
       + fila('Min received', `${fmtSalida(minNeto)} ${modo === 'buy' ? sym : 'BNB'}`)
-      + fila('Fee', `${fmtBNB(cot.comision, 5)} BNB`)
+      + fila('Fee (1%)', `${fmtBNB(cot.comision, 5)} BNB`)
       + fila('Max slippage', `${slipBps / 100}%`, slipCls ? 'tmc-imp ' + slipCls : '')
       + (impCls === 'bad' ? `<div class="tmc-rev-warn">High price impact. The pool is thin for this size; trade less or expect a worse price.</div>` : '')
       + (slipBps > 1500 ? `<div class="tmc-rev-warn">Very high slippage. A bot could take up to ${slipBps / 100}% of this trade.</div>` : '');
+  };
+  // Medidor de proteccion siempre visible: cuanto puede sacar un bot (= tu slippage). El contrato nunca
+  // te entrega menos de tu minimo; si el precio se pasa, la tx revierte y no pierdes fondos.
+  const pintarProt = () => {
+    const m = $('tmc-prot-meter'); if (!m) return;
+    const pn = slipBps / 100; const cls = slipBps <= 300 ? 'ok' : slipBps <= 1000 ? 'warn' : 'bad';
+    m.className = 'tmc-prot-meter ' + cls;
+    m.textContent = 'Protected · a bot can take ≤ ' + (Number.isInteger(pn) ? pn : pn.toFixed(1)) + '%';
   };
   // Estado del boton. Nunca "Close": si no se puede operar, dice por que.
   const estado = () => {
@@ -202,7 +211,7 @@ export function abrirCompra(it, aud, modoInicial) {
     if (modo === 'sell' && permiso < w) { go.disabled = false; go.textContent = `Approve ${sym}`; return; }
     go.disabled = false; go.textContent = modo === 'buy' ? (nivel === 'pend' ? 'Swap (not checked yet)' : 'Swap') : 'Sell';
   };
-  pintarPildoras(); pintarSaldo(); pintarCot(); estado();
+  pintarPildoras(); pintarSaldo(); pintarCot(); estado(); pintarProt();
   log('abierto', { token: it.token, quote, nivel, cuenta: wallet.cuentaActual() || null });
 
   const leerSaldos = async () => {
@@ -238,8 +247,8 @@ export function abrirCompra(it, aud, modoInicial) {
   amt.addEventListener('input', programar);
   ov.querySelectorAll('.tmc-tabs button').forEach((b) => { b.onclick = () => cambiarModo(b.dataset.m); });
   const slipIn = $('tmc-slip-in');
-  $('tmc-slip').querySelectorAll('button').forEach((b) => { b.onclick = () => { slipBps = Number(b.dataset.b); if (slipIn) slipIn.value = ''; $('tmc-slip').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintarCot(); estado(); }; });
-  if (slipIn) slipIn.oninput = () => { const v = parseFloat((slipIn.value || '').replace(/[^0-9.]/g, '')); if (v > 0) slipBps = Math.max(10, Math.min(5000, Math.round(v * 100))); $('tmc-slip').querySelectorAll('button').forEach((x) => x.classList.remove('on')); pintarCot(); estado(); };
+  $('tmc-slip').querySelectorAll('button').forEach((b) => { b.onclick = () => { slipBps = Number(b.dataset.b); if (slipIn) slipIn.value = ''; $('tmc-slip').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintarCot(); estado(); pintarProt(); }; });
+  if (slipIn) slipIn.oninput = () => { const v = parseFloat((slipIn.value || '').replace(/[^0-9.]/g, '')); if (v > 0) slipBps = Math.max(10, Math.min(5000, Math.round(v * 100))); $('tmc-slip').querySelectorAll('button').forEach((x) => x.classList.remove('on')); pintarCot(); estado(); pintarProt(); };
   $('tmc-max').onclick = async () => {
     if (!wallet.cuentaActual()) { go.click(); return; }
     if (saldo == null || saldoTok == null) await leerSaldos();

@@ -12,7 +12,7 @@ import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
 import { historialCreador } from './creador.js';
-import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE } from './config.js';
+import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE, FEE_BPS, PROTECCION } from './config.js';
 import { abrirCompra, saldoBNB, saldoToken, cotizarCompra, comprar } from './compra.js';
 import { listaDe, enVivo, registrarCompra } from './posiciones.js';
 import { crearAlerta, alertasDe, quitarAlerta } from './alertas.js';
@@ -292,6 +292,24 @@ function css() {
 .tg-buy-go{width:100%;height:46px;margin-top:2px;border-radius:12px;border:0;background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #0c4d35,inset 0 1px 0 rgba(255,255,255,.2)}
 .tg-buy-go:active{transform:translateY(3px);box-shadow:0 1px 0 #0c4d35}
 .tg-buy-go:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;filter:grayscale(.3)}
+/* Compra protegida (anti sandwich): toggle, medidor de riesgo de bot, slippage y RPC privado. */
+.tg-prot{margin-top:4px;border:1px solid var(--line,#232b36);border-radius:11px;background:rgba(11,14,17,.5);padding:9px 10px;display:flex;flex-direction:column;gap:8px}
+.tg-prot-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tg-prot-tog{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.tg-prot-tog input{position:absolute;opacity:0;width:0;height:0}
+.tg-prot-sw{width:34px;height:19px;border-radius:999px;background:#2a323c;position:relative;transition:background .15s;flex:0 0 auto}
+.tg-prot-sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .15s}
+.tg-prot-tog input:checked+.tg-prot-sw{background:#2ebd85}
+.tg-prot-tog input:checked+.tg-prot-sw::after{transform:translateX(15px)}
+.tg-prot-tog b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px}
+.tg-prot-meter{font-family:var(--mono);font-size:11px;font-weight:600}
+.tg-prot-meter.ok{color:#2ee86a}.tg-prot-meter.warn{color:var(--gold,#E8B84B)}.tg-prot-meter.bad{color:#ff7f93}
+.tg-prot-slip{display:flex;gap:5px}
+.tg-prot-slip[hidden]{display:none}
+.tg-prot-slip button{flex:1 1 0;padding:5px;border-radius:8px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:11px;cursor:pointer}
+.tg-prot-slip button.on{border-color:#8f6a1a;color:var(--gold,#E8B84B);background:linear-gradient(180deg,#1b2027,#0d1117)}
+.tg-prot-note{font-family:var(--mono);font-size:10px;line-height:1.45;color:var(--ink-3,#7d8794)}
+.tg-buy-fee{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794);text-align:center;margin-top:2px}
 .tg-buy-msg{font-family:var(--mono);font-size:11.5px;line-height:1.5;text-align:center}
 .tg-buy-msg.ok{color:var(--verde,#2ee86a)} .tg-buy-msg.bad{color:var(--rojo,#f6465d)} .tg-buy-msg a{color:var(--gold,#E8B84B)}
 @media(max-width:860px){
@@ -770,7 +788,7 @@ function montarMercado(it) {
   const sym = esc(it.simbolo || 'TOKEN');
   const dec = it.decimales || 18;
   const bnbUsd = _ctx && _ctx.bnbUsd ? _ctx.bnbUsd() : 0;
-  let balance = 0n, prc = 0, cot = null, cotPara = 0n, ocupado = false;
+  let balance = 0n, prc = 0, cot = null, cotPara = 0n, ocupado = false, protegido = true, slipBps = PROTECCION.slipProtegido;
   let gas = 0n; try { gas = ethers.parseEther('0.003'); } catch (_) {}
   host.innerHTML = `
     <div class="tg-mktcap"><b id="tg-mkt-price">${_precioUsd > 0 ? '$' + fmtP(_precioUsd, 5) : '$0'}</b><span>Market price</span></div>
@@ -779,6 +797,12 @@ function montarMercado(it) {
     <input class="tg-buy-slider" id="tg-buy-sl" type="range" min="0" max="100" value="0" aria-label="Amount">
     <div class="tg-buy-amtrow"><b id="tg-buy-val">0 BNB</b><span id="tg-buy-usd"></span></div>
     <div class="tg-buy-get">You get <b id="tg-buy-out">0</b> ${sym}</div>
+    <div class="tg-prot" id="tg-prot">
+      <div class="tg-prot-row"><label class="tg-prot-tog"><input type="checkbox" id="tg-prot-on" checked><span class="tg-prot-sw"></span><b>Protected</b></label><span class="tg-prot-meter ok" id="tg-prot-meter"></span></div>
+      <div class="tg-prot-slip" id="tg-prot-slip" hidden>${PROTECCION.opciones.map((b) => `<button type="button" data-b="${b}"${b === PROTECCION.slipProtegido ? ' class="on"' : ''}>${b / 100}%</button>`).join('')}</div>
+      <div class="tg-prot-note">Your order reverts here before it fills at a bad price. Nothing leaves to anyone.</div>
+    </div>
+    <div class="tg-buy-fee" id="tg-buy-fee">Fee ${FEE_BPS / 100}% in BNB</div>
     <button class="tg-buy-go" id="tg-buy-go" type="button">Confirm buy</button>
     <div class="tg-buy-msg" id="tg-buy-msg"></div>`;
   const sl = $('tg-buy-sl'), valEl = $('tg-buy-val'), usdEl = $('tg-buy-usd'), outEl = $('tg-buy-out'), balEl = $('tg-buy-bal'), go = $('tg-buy-go'), msg = $('tg-buy-msg');
@@ -800,7 +824,16 @@ function montarMercado(it) {
     usdEl.textContent = (bnbUsd > 0 && w > 0n) ? '~$' + fmtTxt(Number(ethers.formatEther(w)) * bnbUsd) : '';
     if (cot && cotPara === w && w > 0n) outEl.textContent = numCorto(Number(ethers.formatUnits(cot.tokOut, dec)));
     else outEl.textContent = w > 0n ? '…' : '0';
+    const feeEl = $('tg-buy-fee');
+    if (feeEl) feeEl.innerHTML = (cot && cotPara === w && w > 0n && cot.comision != null && cot.comision > 0n) ? `Fee ${FEE_BPS / 100}% · ${(+ethers.formatEther(cot.comision)).toFixed(6).replace(/\.?0+$/, '')} BNB` : `Fee ${FEE_BPS / 100}% in BNB`;
     estado();
+  };
+  // Medidor de proteccion: cuanto puede sacar un bot (= slippage). Protegido oculta el selector y fija lo seguro.
+  const pintarProt = () => {
+    const m = $('tg-prot-meter'), slipBox = $('tg-prot-slip');
+    if (slipBox) slipBox.hidden = protegido;
+    const pn = slipBps / 100; const cls = slipBps <= 300 ? 'ok' : slipBps <= 1000 ? 'warn' : 'bad';
+    if (m) { m.className = 'tg-prot-meter ' + cls; m.textContent = 'Bot can take ≤ ' + (Number.isInteger(pn) ? pn : pn.toFixed(1)) + '%'; }
   };
   let _t = null;
   const cotizar = async () => {
@@ -817,10 +850,14 @@ function montarMercado(it) {
     if (vivo()) { balEl.textContent = 'Balance ' + (+ethers.formatEther(balance)).toFixed(4) + ' BNB'; pintar(); }
   };
   cargarSaldo();
+  // Compra protegida: toggle (ON = slippage seguro), selector al apagarlo, y "maxima proteccion" (RPC privado).
+  const protOn = $('tg-prot-on'); if (protOn) protOn.onchange = () => { protegido = protOn.checked; if (protegido) slipBps = PROTECCION.slipProtegido; pintarProt(); };
+  const protSlip = $('tg-prot-slip'); if (protSlip) protSlip.querySelectorAll('button').forEach((b) => { b.onclick = () => { slipBps = Number(b.dataset.b) || PROTECCION.slipProtegido; protSlip.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintarProt(); }; });
+  pintarProt();
   go.onclick = async () => {
     if (!wallet.cuentaActual()) { try { await wallet.conectar(); } catch (_) {} cargarSaldo(); try { derBalances(it); } catch (_) {} return; }
     const w = montoWei(); if (!(w > 0n) || !cot || cotPara !== w || !(cot.tokOut > 0n)) return;
-    const slip = BigInt(SLIPPAGE.porDefecto); const minOut = cot.tokOut - cot.tokOut * slip / 10000n;
+    const slip = BigInt(slipBps); const minOut = cot.tokOut - cot.tokOut * slip / 10000n;
     ocupado = true; go.disabled = true; go.textContent = 'Confirm in your wallet…'; if (sl) sl.disabled = true; msg.className = 'tg-buy-msg'; msg.textContent = '';
     try {
       const cuenta = wallet.cuentaActual();
