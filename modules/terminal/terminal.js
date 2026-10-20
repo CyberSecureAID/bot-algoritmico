@@ -630,8 +630,10 @@ function pintaChecks(it, r) {
 }
 function cargarChecks(it) {
   const yo = auditoriaDe(it);
-  if (yo && yo.nivel !== 'pend') { pintaChecks(it, yo); return; }
-  auditarCache(it).then((r) => pintaChecks(it, r)).catch(() => { if (_railTok === it.token) { const h = $('tm-checks-list'); if (h) h.innerHTML = `<div class="tm-check pend"><span class="tm-check-l">Checks unavailable</span><b></b></div>`; } });
+  // Solo reusa cache COMPLETA: con la rapida los datos de holders/concentracion llegan vacios y marcaba X
+  // en todo (era la incongruencia entre este panel y el de Full Chart). Pide auditoria completa, como alla.
+  if (yo && yo.nivel !== 'pend' && yo.completo) { pintaChecks(it, yo); return; }
+  auditarCache(it, null, true).then((r) => pintaChecks(it, r)).catch(() => { if (_railTok === it.token) { const h = $('tm-checks-list'); if (h) h.innerHTML = `<div class="tm-check pend"><span class="tm-check-l">Checks unavailable</span><b></b></div>`; } });
 }
 /* Operaciones recientes REALES del par (compras/ventas), para "Recent activity". */
 function cargarActividad(it) {

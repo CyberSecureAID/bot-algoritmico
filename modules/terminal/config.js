@@ -41,3 +41,10 @@ export const SCAN_URL = 'https://bscscan.com';
 export const TERMINAL_SWAP = '0x2555290Fdf19D1699c91332E193CA6A86ad45dee';
 /* Slippage por defecto y opciones (en bps). Tokens recien nacidos: pools finas, se mueve rapido. */
 export const SLIPPAGE = { porDefecto: 300, opciones: [100, 300, 1000] };
+
+/* Historial del creador (defensa de entrada): BscScan via Etherscan V2 lista los contratos que ya desplego
+   una wallet; DexScreener da la liquidez viva de cada uno. Son APIs publicas, sin servidor nuestro. La key
+   es la misma del ecosistema (rate-limit, no es un secreto; ya va del lado del cliente en el resto del sitio). */
+export const BSCSCAN_API = 'TZQ4M8PRW6J794MWDB1D2WM3FPVVC6NKB6';
+export const BSCSCAN_V2 = 'https://api.etherscan.io/v2/api';
+export const DEXSCREENER_TOK = 'https://api.dexscreener.com/latest/dex/tokens/';

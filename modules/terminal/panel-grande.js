@@ -11,6 +11,7 @@
 import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
+import { historialCreador } from './creador.js';
 import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE } from './config.js';
 import { abrirCompra, saldoBNB, saldoToken, cotizarCompra, comprar } from './compra.js';
 import { listaDe, enVivo, registrarCompra } from './posiciones.js';
@@ -65,9 +66,9 @@ function css() {
 @keyframes tgIn{from{opacity:0}to{opacity:1}}
 .tm-big *{box-sizing:border-box}
 .tm-big-top{flex:0 0 auto;display:grid;grid-template-columns:272px 1fr 316px;gap:1px;align-items:center;border-bottom:1px solid var(--line,#232b36);background:linear-gradient(180deg,#0b0f14,#070a0e)}
-.tg-top-l{display:flex;align-items:center;gap:11px;min-width:0;padding:12px 14px}
+.tg-top-l{display:flex;align-items:center;gap:11px;min-width:0;padding:12px 14px;overflow:hidden}
 .tg-top-r{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:12px 14px}
-.tg-id{display:flex;align-items:center;gap:11px;min-width:0}
+.tg-id{display:flex;align-items:center;gap:11px;min-width:0;flex:1 1 auto;overflow:hidden}
 .tg-logo{position:relative;display:inline-flex;width:40px;height:40px;border-radius:50%;overflow:hidden;flex:0 0 auto;background:#0d1117;border:1px solid #1c232b}
 .tg-logo-fb,.tg-logo-img{position:absolute;inset:0;width:100%;height:100%}
 .tg-logo-fb{display:flex;align-items:center;justify-content:center;padding:9px}
@@ -75,8 +76,8 @@ function css() {
 .tg-id-tx{min-width:0}
 .tg-id-tx b{display:block;font-family:'Chakra Petch',var(--display);font-size:16px;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tg-id-tx span{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794);white-space:nowrap}
-.tg-price{display:flex;flex-direction:column;justify-content:center;padding-left:6px}
-.tg-price b{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1;color:var(--gold,#E8B84B)}
+.tg-price{display:flex;flex-direction:column;justify-content:center;padding-left:6px;flex:0 1 auto;min-width:0;overflow:hidden}
+.tg-price b{font-family:var(--mono);font-size:18px;font-weight:700;line-height:1.05;color:var(--gold,#E8B84B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .tg-price b sub{font-size:.62em}
 .tg-price span{font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794);margin-top:3px;letter-spacing:.3px}
 .tg-find{display:flex;min-width:0;padding:12px 8px}
@@ -100,6 +101,10 @@ function css() {
 .tg-tool svg{width:17px;height:17px}
 .tg-tool:hover{color:var(--ink,#eaecef);border-color:#3a434f}
 .tg-tool.on{color:var(--gold,#E8B84B);border-color:#8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117)}
+.tg-tf{display:inline-flex;gap:2px;align-items:center;background:rgba(11,15,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--line,#232b36);border-radius:9px;padding:2px;height:32px}
+.tg-tf button{border:0;background:transparent;color:var(--ink-3,#7d8794);font-family:'Chakra Petch',var(--display);font-weight:600;font-size:11px;padding:4px 8px;border-radius:7px;cursor:pointer;transition:color .13s,background .13s}
+.tg-tf button:hover{color:var(--ink,#eaecef)}
+.tg-tf button.on{background:rgba(232,184,75,.14);color:var(--gold,#E8B84B)}
 .tg-mdcapture{position:absolute;inset:0;z-index:3;cursor:crosshair}
 .tg-mdcapture[hidden]{display:none}
 .tg-mdbox{position:absolute;z-index:3;pointer-events:none;border:1px dashed var(--gold,#E8B84B);background:rgba(232,184,75,.08);border-radius:2px}
@@ -122,6 +127,22 @@ function css() {
 .tg-link:hover{border-color:#8f6a1a;transform:translateY(-1px)}
 .tg-link b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;color:var(--gold,#E8B84B)}
 .tg-link span{font-size:11px;color:var(--ink-3,#7d8794)}
+/* Historial del creador (defensa de entrada). */
+.tg-creador{display:flex;flex-direction:column;gap:7px;padding:10px 11px;border-radius:11px;border:1px solid var(--line,#232b36);background:rgba(11,14,17,.72)}
+.tg-creador.ok{border-color:rgba(46,232,106,.3);background:rgba(46,232,106,.06)}
+.tg-creador.warn{border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.07)}
+.tg-creador.bad{border-color:rgba(246,70,93,.4);background:rgba(246,70,93,.09)}
+.tg-cre-v{display:flex;align-items:center;gap:8px}
+.tg-cre-v i{width:18px;height:18px;flex:0 0 auto;display:inline-flex}
+.tg-cre-v i svg{width:18px;height:18px}
+.tg-cre-v b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;line-height:1.2;color:var(--ink,#eaecef)}
+.tg-creador.ok .tg-cre-v i{color:#2ee86a}.tg-creador.warn .tg-cre-v i{color:var(--gold,#E8B84B)}.tg-creador.bad .tg-cre-v i{color:#ff7f93}
+.tg-cre-list{display:flex;flex-wrap:wrap;gap:5px}
+.tg-cre-tok{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:7px;border:1px solid var(--line,#232b36);background:#0b0f14;font-family:var(--mono);font-size:10.5px;color:var(--ink-2,#b7bdc6);text-decoration:none}
+.tg-cre-tok em{font-style:normal;font-size:9.5px;color:var(--ink-3,#7d8794)}
+.tg-cre-tok.muerto{opacity:.74}.tg-cre-tok.muerto em{color:#ff9aa9}
+.tg-cre-tok.vivo em{color:#8ef0b0}
+.tg-cre-mut{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
 /* Check security: lista completa de verificaciones con palomita/cruz. */
 .tg-checks{display:flex;flex-direction:column}
 .tg-chk{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid rgba(255,255,255,.05);font-size:12px}
@@ -181,8 +202,8 @@ function css() {
 .tg-op{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .tg-op[hidden]{display:none}
 .tg-mktcap{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--line,#232b36);background:linear-gradient(180deg,#0d1319,#0a0e13)}
-.tg-mktcap b{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--gold,#E8B84B)} .tg-mktcap b sub{font-size:.62em}
-.tg-mktcap span{font-family:var(--mono);font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3,#7d8794)}
+.tg-mktcap b{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--gold,#E8B84B);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .tg-mktcap b sub{font-size:.62em}
+.tg-mktcap span{flex:0 0 auto;font-family:var(--mono);font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3,#7d8794)}
 .tg-op-lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
 .tg-al-set{display:flex;align-items:center;gap:8px;position:relative}
 .tg-al-set .tg-al-d{position:absolute;left:12px;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:13px}
@@ -307,7 +328,7 @@ async function resolver(addr, feed) {
   return { token: dir, par, quote: null, moneda, simbolo: String(sym || '?'), nombre: String(nom || 'Token'), decimales: Number(dec) || 18, fuente: 'pancake', tiempo: 0, liquidez: 0, precio: 0, bloque: 0, creador: '' };
 }
 
-let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null;
+let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60;
 export async function abrirGrande(it0, ctx) {
   ctx = ctx || {};
   _ctx = ctx;
@@ -324,7 +345,7 @@ export async function abrirGrande(it0, ctx) {
     </div>
     <div class="tm-big-main">
       <div class="tg-col tg-left" id="tg-left"></div>
-      <div class="tg-col tg-chart"><div class="tg-chart-cv" id="tg-chart-cv"></div><div class="tg-tools"><button class="tg-tool" id="tg-ruler" type="button" title="Measure % and range">${ICO_RULER}</button></div><div class="tg-mdcapture" id="tg-mdcap" hidden></div><div class="tg-mdbox" id="tg-mdbox" hidden></div><div class="tg-chart-msg" id="tg-chart-msg"><span class="tg-anillo"></span></div></div>
+      <div class="tg-col tg-chart"><div class="tg-chart-cv" id="tg-chart-cv"></div><div class="tg-tools"><button class="tg-tool" id="tg-ruler" type="button" title="Measure % and range">${ICO_RULER}</button><div class="tg-tf" id="tg-tf">${[['60', '1m'], ['300', '5m'], ['900', '15m'], ['3600', '1h'], ['14400', '4h'], ['86400', '1d']].map(([s, l]) => `<button data-sec="${s}" type="button"${Number(s) === _tfSecBig ? ' class="on"' : ''}>${l}</button>`).join('')}</div></div><div class="tg-mdcapture" id="tg-mdcap" hidden></div><div class="tg-mdbox" id="tg-mdbox" hidden></div><div class="tg-chart-msg" id="tg-chart-msg"><span class="tg-anillo"></span></div></div>
       <div class="tg-col tg-right" id="tg-right"></div>
     </div>`;
   document.body.appendChild(ov);
@@ -364,6 +385,16 @@ export async function abrirGrande(it0, ctx) {
     const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
     document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
   });
+
+  // Temporalidades (mismo set que el grafico del lobby): reagrupan las velas crudas en cubos de tiempo,
+  // sin volver a llamar al RPC. Al cambiar, se limpia cualquier medicion de la regla (sus coordenadas cambian).
+  const tfBox = $('tg-tf');
+  if (tfBox) tfBox.querySelectorAll('button').forEach((b) => { b.onclick = () => {
+    _tfSecBig = Number(b.dataset.sec) || 60;
+    tfBox.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    if (mdbox) mdbox.hidden = true;
+    renderChartBig();
+  }; });
 
   // Selector de tokens del feed (lista estilo New pairs que carga en la grafica).
   const togglePicker = () => {
@@ -409,20 +440,29 @@ export async function abrirGrande(it0, ctx) {
   async function cargar(it) {
     if (!ov.isConnected) return;
     _itActual = it; pintarId(it); pintarDer(it, ctx);
-    const cv = $('tg-chart-cv'), msg = $('tg-chart-msg');
+    const msg = $('tg-chart-msg');
     if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
     try { destruirGrafico(); } catch (_) {}
+    _velasRawBig = null;
     // precio en vivo
     precioActual({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bnbUsd: bnbUsd(), quoteEsUSDT: it.moneda === 'USDT' })
       .then((p) => { if (ov.isConnected) pintarPrecio(p); }).catch(() => {});
     pintarIzq(it, ctx);
-    // grafica
-    try {
-      const velas = await velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: bnbUsd(), quoteEsUSDT: it.moneda === 'USDT' });
-      if (!ov.isConnected) return;
-      if (velas && velas.length && cv) { if (msg) msg.hidden = true; montarGrafico(cv, velas); marcarEntradaDe(it); }
-      else if (msg) { msg.hidden = false; msg.textContent = 'No trades yet'; }
-    } catch (_) { if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'Chart unavailable'; } }
+    // grafica: velas crudas (una por operacion) reagrupadas al timeframe activo. Reintento unico ante un
+    // fallo transitorio de getLogs (era la causa de que la grafica a veces no cargara para ciertos tokens).
+    const pedir = async (reintentar) => {
+      try {
+        const velas = await velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: bnbUsd(), quoteEsUSDT: it.moneda === 'USDT' });
+        if (!ov.isConnected || _itActual !== it) return;
+        if (velas && velas.length) { _velasRawBig = velas; renderChartBig(); }
+        else if (reintentar && it.par) { setTimeout(() => { if (ov.isConnected && _itActual === it) pedir(false); }, 1300); }
+        else { _velasRawBig = []; renderChartBig(); }
+      } catch (_) {
+        if (reintentar && it.par) { setTimeout(() => { if (ov.isConnected && _itActual === it) pedir(false); }, 1300); }
+        else if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'Chart unavailable'; }
+      }
+    };
+    pedir(true);
   }
 
   function pintarId(it) {
@@ -449,6 +489,8 @@ function pintarIzq(it, ctx) {
     <div class="tg-sec-t">Security check</div>
     <div class="tg-sem pend" id="tg-sem">${semPendBig()}</div>
     <div class="tg-checks" id="tg-checks">${checksScan()}</div>
+    <div class="tg-sec-t tg-mt">Creator track record</div>
+    <div class="tg-creador" id="tg-creador"><span class="tm-sk" style="width:60%"></span></div>
     <div class="tg-sec-t tg-mt">Token info</div>
     <div class="tg-kv">
       <div><span>Liquidity</span><b>${liqUsd > 0 ? money(liqUsd) : (it.par ? '$0' : 'Pool')}</b></div>
@@ -473,23 +515,38 @@ function pintarIzq(it, ctx) {
   if (ctx && ctx.auditarCache && it.par) {
     const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
     const alPaso = (id, e) => { const el = host.querySelector('#tg-sem .tg-pasos i[data-p="' + id + '"]'); if (el) el.className = e; };
-    ctx.auditarCache(it, alPaso, true).then((r) => {
-      if (!$('tg-left') || !r) return;
+    // Rellena Token info con lo que traiga la auditoria. final=true cierra los campos que sigan vacios.
+    const rellenar = (r, final) => {
+      if (!r || !$('tg-left') || _itActual !== it) return;
       const d = r.datos || {};
-      set('tg-k-hold', (d.holders != null ? Number(d.holders).toLocaleString('en-US') : '0') + (d.txs != null ? ' · ' + Number(d.txs).toLocaleString('en-US') + ' txs' : ''));
-      set('tg-k-top', d.top10Pct != null ? pct(d.top10Pct) : '0%');
+      if (d.holders != null) set('tg-k-hold', Number(d.holders).toLocaleString('en-US') + (d.txs != null ? ' · ' + Number(d.txs).toLocaleString('en-US') + ' txs' : ''));
+      else if (final) set('tg-k-hold', '0');
+      if (d.top10Pct != null) set('tg-k-top', pct(d.top10Pct)); else if (final) set('tg-k-top', '0%');
       const cre = d.creador || it.creador || '';
       const creEl = $('tg-k-cre');
-      if (creEl) {
-        if (cre) { creEl.innerHTML = `<button class="tg-copyc" type="button">${corto(cre)}${d.creadorPct != null ? ' ' + pct(d.creadorPct) : ''} ${ICO_COPY}</button>`; const cb = creEl.querySelector('button'); if (cb) cb.onclick = () => { try { navigator.clipboard.writeText(cre); const o = cb.innerHTML; cb.textContent = 'copied'; setTimeout(() => { if (cb.isConnected) cb.innerHTML = o; }, 1200); } catch (_) {} }; }
-        else creEl.textContent = d.creadorPct != null ? pct(d.creadorPct) : '0%';
-      }
+      if (creEl && cre) { creEl.innerHTML = `<button class="tg-copyc" type="button">${corto(cre)}${d.creadorPct != null ? ' ' + pct(d.creadorPct) : ''} ${ICO_COPY}</button>`; const cb = creEl.querySelector('button'); if (cb) cb.onclick = () => { try { navigator.clipboard.writeText(cre); const o = cb.innerHTML; cb.textContent = 'copied'; setTimeout(() => { if (cb.isConnected) cb.innerHTML = o; }, 1200); } catch (_) {} }; }
+      else if (creEl && final) set('tg-k-cre', d.creadorPct != null ? pct(d.creadorPct) : '0%');
       set('tg-k-tax', pct(d.buyTax || 0) + ' / ' + pct(d.sellTax || 0));
-      set('tg-k-lp', d.lpAsegurada != null ? pct(d.lpAsegurada) : '0%');
-      const ch = $('tg-checks');
-      const dur = ch ? revelarChecks(ch, r) : 0;   // los checks caen en cascada; el veredicto cierra la escena
-      setTimeout(() => { if ($('tg-sem')) pintaSemBig(r); }, dur + 160);
-    }).catch(() => { pintaSemBig({ nivel: 'pend', titulo: 'Check unavailable' }); const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>Security check unavailable</span><b></b></div>`; });
+      if (d.lpAsegurada != null) set('tg-k-lp', pct(d.lpAsegurada)); else if (final) set('tg-k-lp', '0%');
+    };
+    let cascada = false, creadorPedido = false, verdictoListo = false, lastR = null;
+    const reveler = (r) => {
+      if (!$('tg-sem') || _itActual !== it) return;
+      lastR = r;   // guarda el resultado mas completo que haya llegado
+      if (cascada) { refrescarChecks(r); if (verdictoListo) pintaSemBig(r); return; }   // ya se animo: refresca sin re-animar
+      cascada = true;
+      const ch = $('tg-checks'); const dur = ch ? revelarChecks(ch, r) : 0;   // cascada dramatica; el veredicto cierra la escena
+      setTimeout(() => { if ($('tg-sem') && _itActual === it) { verdictoListo = true; pintaSemBig(lastR || r); } }, dur + 160);
+    };
+    const verCreador = (r) => { if (creadorPedido) return; const cre = (r && r.datos && r.datos.creador) || it.creador; if (!cre) return; creadorPedido = true; historialCreadorBig(it, cre); };
+    // Pass 1 RAPIDO (sin holders): veredicto y cascada en pocos segundos. Antes se esperaba la auditoria
+    // completa (hasta ~26s reconstruyendo holders) y por eso el Check Security parecia congelado. Ya no.
+    ctx.auditarCache(it, alPaso, false).then((r) => { rellenar(r, false); reveler(r); verCreador(r); }).catch(() => {});
+    // Pass 2 COMPLETO (holders, concentracion, snipers, bundle): afina Token info y los checks sin re-animar.
+    ctx.auditarCache(it, alPaso, true).then((r) => {
+      rellenar(r, true); reveler(r); verCreador(r);
+      if (!creadorPedido) { const el = $('tg-creador'); if (el && _itActual === it) { el.className = 'tg-creador'; el.innerHTML = '<span class="tg-cre-mut">Unknown creator</span>'; } }
+    }).catch(() => { if (!cascada) { pintaSemBig({ nivel: 'pend', titulo: 'Check unavailable' }); const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>Security check unavailable</span><b></b></div>`; } });
   } else {
     ['tg-k-hold', 'tg-k-top', 'tg-k-cre', 'tg-k-tax', 'tg-k-lp'].forEach((id) => { const e = $(id); if (e) e.textContent = '0'; });
     const sem = $('tg-sem'); if (sem) { sem.className = 'tg-sem pend'; sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.pend}</span><div><b>Not a PancakeSwap pair</b><span>Security check runs on pair tokens</span></div>`; }
@@ -541,6 +598,31 @@ function revelarChecks(host, r) {
     }, CHK_STEP * i + CHK_DELAY);
   });
   return CHK_STEP * rows.length + CHK_DELAY;
+}
+/* Refresca valor y color de los checks ya revelados con el resultado completo, SIN volver a animar
+   (lo usa el segundo paso de la auditoria para afinar Distribution y demas sin repetir la cascada). */
+function refrescarChecks(r) {
+  const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null; if (!c) return;
+  const d = (r && r.datos) ? r.datos : {};
+  const ch = $('tg-checks'); if (!ch) return;
+  ch.querySelectorAll('.tg-chk').forEach((row, i) => {
+    if (!row.isConnected) return; const def = CHECKS_DEF[i]; if (!def) return;
+    const ok = !!c[def.k];
+    row.className = 'tg-chk rev ' + (ok ? 'ok' : 'no');
+    row.innerHTML = `<span><i>${ok ? ICO_CHECK : ICO_X}</i>${def.t}</span><b>${def.v(c, d)}</b>`;
+  });
+}
+/* Historial del creador: pide el resumen (BscScan + DexScreener, sin servidor) y lo pinta en Security. */
+function historialCreadorBig(it, creador) {
+  const host = $('tg-creador'); if (!host) return;
+  historialCreador(creador, it.token).then((h) => {
+    const el = $('tg-creador'); if (!el || _itActual !== it) return;
+    if (!h) { el.className = 'tg-creador'; el.innerHTML = '<span class="tg-cre-mut">Creator history unavailable</span>'; return; }
+    const niv = h.nivel === 'bad' ? 'bad' : (h.nivel === 'warn' ? 'warn' : 'ok');
+    el.className = 'tg-creador ' + niv;
+    const lista = (h.tokens && h.tokens.length) ? `<div class="tg-cre-list">${h.tokens.slice(0, 6).map((t) => `<a class="tg-cre-tok ${t.estado}" href="${SCAN_URL}/token/${t.addr}" target="_blank" rel="noopener" title="${esc(t.addr)}">${esc(t.simbolo || corto(t.addr))}<em>${t.liq >= 1000 ? '$' + Math.round(t.liq / 1000) + 'k' : (t.liq > 0 ? '$' + Math.round(t.liq) : 'dead')}</em></a>`).join('')}</div>` : '';
+    el.innerHTML = `<div class="tg-cre-v"><i>${ICO_SEM[niv] || ICO_SEM.pend}</i><b>${esc(h.texto)}</b></div>${lista}`;
+  }).catch(() => { const el = $('tg-creador'); if (el) { el.className = 'tg-creador'; el.innerHTML = '<span class="tg-cre-mut">Creator history unavailable</span>'; } });
 }
 
 /* ── Panel derecho: area de operar (spot). Market (compra a mercado por el flujo probado abrirCompra),
@@ -623,6 +705,27 @@ async function derPositions(it) {
 }
 
 /* ── Marca la entrada de la posicion abierta de este token en la grafica (si la hay) ── */
+/* Reagrupa las velas por-operacion en cubos de 'seg' segundos (OHLC real por cubo), igual que el lobby. */
+function agruparBig(velas, seg) {
+  if (!Array.isArray(velas) || !velas.length) return [];
+  if (!seg || seg <= 0) return velas.slice();
+  const m = new Map();
+  for (const v of velas) {
+    const k = Math.floor(v.time / seg) * seg;
+    const e = m.get(k);
+    if (!e) m.set(k, { time: k, open: v.open, high: v.high, low: v.low, close: v.close });
+    else { if (v.high > e.high) e.high = v.high; if (v.low < e.low) e.low = v.low; e.close = v.close; }
+  }
+  return [...m.values()].sort((a, b) => a.time - b.time);
+}
+/* Monta el grafico del Full Chart desde las velas crudas en cache, reagrupadas al timeframe activo. */
+function renderChartBig() {
+  const cv = $('tg-chart-cv'), msg = $('tg-chart-msg'); if (!cv) return;
+  if (_velasRawBig == null) { if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; } return; }
+  const velas = agruparBig(_velasRawBig, _tfSecBig);
+  if (velas.length) { if (msg) msg.hidden = true; montarGrafico(cv, velas); marcarEntradaDe(_itActual); }
+  else { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = 'No trades yet'; } }
+}
 function marcarEntradaDe(it) {
   try {
     if (!it || !it.par) { limpiarEntrada(); return; }
