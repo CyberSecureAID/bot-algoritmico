@@ -818,7 +818,7 @@ function cabecera() {
   const it = (h, t, on) => '<div class="pt-nav__i"><a class="pt-nav__b' + (on ? ' lp-on' : '') + '" href="' + h + '">' + t + '</a></div>';
   return '<header class="pt-hdr"><div class="pt-hdr__in">'
     + '<button class="sw-back" id="shd-back" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button>'
-    + '<a class="pt-logo" href="../../index.html" aria-label="DecFreedom"><img src="./img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
+    + '<a class="pt-logo" href="../../index.html" aria-label="DecFreedom"><img src="../../assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
     + '<nav class="pt-nav" aria-label="Main">'
     + it('../swap/swap.html', 'Swap') + it('../launchpad/launchpad.html', 'Launchpad') + it('../terminal/terminal.html', 'Terminal')
     + it('../bots/bots.html', 'Bots') + it('../../futuros.html?v=14', 'Futures') + it('../../aportar.html', 'Staking')
