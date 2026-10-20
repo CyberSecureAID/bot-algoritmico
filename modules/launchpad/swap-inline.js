@@ -126,7 +126,7 @@ export function montarSwap(host, token, opts = {}) {
         <div class="sw-info" id="wg-info"></div>
         <button class="sw-go" id="wg-go" type="button">Connect wallet</button>
       </div>
-      ${opts.brand ? `<div class="wg-brand"><a href="../../index.html" target="_blank" rel="noopener" aria-label="DecFreedom"><img src="./img/cco-full.webp" alt="DecFreedom"></a></div>` : ''}`;
+      ${opts.brand ? `<div class="wg-brand"><a href="../../index.html" target="_blank" rel="noopener" aria-label="DecFreedom"><img src="../../assets/img/cco-full.webp" alt="DecFreedom"></a></div>` : ''}`;
     $('wg-amt').addEventListener('input', onInput);
     $('wg-max').onclick = onMax;
     $('wg-flip').onclick = onFlip;
