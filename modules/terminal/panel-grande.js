@@ -12,7 +12,8 @@ import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
 import { historialCreador } from './creador.js';
-import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE, FEE_BPS, PROTECCION } from './config.js';
+import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE, PROTECCION } from './config.js';
+import { disclaimerProtect } from './protect.js';
 import { abrirCompra, saldoBNB, saldoToken, cotizarCompra, comprar } from './compra.js';
 import { listaDe, enVivo, registrarCompra } from './posiciones.js';
 import { crearAlerta, alertasDe, quitarAlerta } from './alertas.js';
@@ -33,7 +34,8 @@ const ICO_SEM = {
   ok: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
   warn: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
   bad: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
-  pend: '<i class="tg-anillo2"></i>'
+  pend: '<i class="tg-anillo2"></i>',
+  info: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'
 };
 const ICO_SEARCH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>';
 const ICO_RULER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="5" r="2.2"/><path d="M8.5 15.5v-3M12 12V9M15.5 8.5v-3" stroke-width="1.6"/></svg>';
@@ -186,6 +188,10 @@ function css() {
 .tg-sem.warn{border-color:rgba(232,184,75,.4);background:rgba(232,184,75,.08)}.tg-sem.warn .tg-sem-ico{background:rgba(232,184,75,.18);color:var(--gold,#E8B84B)}.tg-sem.warn b{color:#f1cf6a}
 .tg-sem.bad{border-color:rgba(246,70,93,.45);background:rgba(246,70,93,.1)}.tg-sem.bad .tg-sem-ico{background:rgba(246,70,93,.2);color:#ff7f93}.tg-sem.bad b{color:#ff9aa9}
 .tg-sem.pend .tg-sem-ico{background:rgba(232,184,75,.1)}
+.tg-sem.limited{border-color:var(--line,#232b36);background:rgba(255,255,255,.03)}
+.tg-sem.limited .tg-sem-ico{background:rgba(255,255,255,.07);color:var(--ink-3,#7d8794)}
+.tg-sem.limited>div>b{color:var(--ink-2,#b7bdc6)}
+.tg-chk-note{font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--ink-3,#7d8794);padding:8px 2px}
 .tg-anillo2{display:block;width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(232,184,75,.18);border-top-color:var(--gold,#E8B84B);animation:tgSpin .8s linear infinite}
 .tg-sem .tg-pasos{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;line-height:16px;min-height:16px;margin-top:3px}
 .tg-pasos u{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
@@ -309,7 +315,6 @@ function css() {
 .tg-prot-slip button{flex:1 1 0;padding:5px;border-radius:8px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:11px;cursor:pointer}
 .tg-prot-slip button.on{border-color:#8f6a1a;color:var(--gold,#E8B84B);background:linear-gradient(180deg,#1b2027,#0d1117)}
 .tg-prot-note{font-family:var(--mono);font-size:10px;line-height:1.45;color:var(--ink-3,#7d8794)}
-.tg-buy-fee{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794);text-align:center;margin-top:2px}
 .tg-buy-msg{font-family:var(--mono);font-size:11.5px;line-height:1.5;text-align:center}
 .tg-buy-msg.ok{color:var(--verde,#2ee86a)} .tg-buy-msg.bad{color:var(--rojo,#f6465d)} .tg-buy-msg a{color:var(--gold,#E8B84B)}
 @media(max-width:860px){
@@ -577,11 +582,18 @@ function semPendBig() {
 }
 function pintaSemBig(r) {
   const sem = $('tg-sem'); if (!sem) return;
-  const TXT = { ok: 'Safe to trade', warn: 'Trade with caution', bad: 'Do not buy', pend: 'Checking security' };
   const niv = r && r.nivel ? r.nivel : 'pend';
+  if (niv === 'pend') {
+    // La auditoria TERMINO pero el escaner aun no indexo este token. No sigue cargando: estado claro y
+    // estatico (sin spinner), para que nunca parezca congelado. Los datos de cadena ya estan abajo.
+    sem.className = 'tg-sem limited';
+    sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.info}</span><div><b>Limited check</b><span>The scanner has not indexed this token yet. On-chain data below is live.</span></div>`;
+    return;
+  }
+  const TXT = { ok: 'Safe to trade', warn: 'Trade with caution', bad: 'Do not buy' };
   const sub = niv === 'ok' ? 'No red flags in the contract' : ((r && r.titulo) || 'Reading the contract…');
   sem.className = 'tg-sem ' + niv;
-  sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM[niv] || ICO_SEM.pend}</span><div><b>${TXT[niv] || 'Checked'}</b><span>${esc(sub)}</span></div>`;
+  sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM[niv] || ICO_SEM.info}</span><div><b>${TXT[niv] || 'Checked'}</b><span>${esc(sub)}</span></div>`;
 }
 
 /* Las 9 verificaciones (dato real de la auditoria). Se pintan primero "escaneando" (barra que corre) y
@@ -606,7 +618,7 @@ function revelarChecks(host, r) {
   const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null;
   const d = (r && r.datos) ? r.datos : {};
   const rows = host.querySelectorAll('.tg-chk');
-  if (!c) { rows.forEach((row) => { row.className = 'tg-chk pend'; row.innerHTML = `<span>Check unavailable</span><b></b>`; }); return 0; }
+  if (!c) { host.innerHTML = `<div class="tg-chk-note">Honeypot and tax checks need the scanner, which hasn't indexed this token yet. Holders, creator and liquidity above are read live from the chain.</div>`; return 0; }
   rows.forEach((row, i) => {
     setTimeout(() => {
       if (!row.isConnected) return;
@@ -788,7 +800,7 @@ function montarMercado(it) {
   const sym = esc(it.simbolo || 'TOKEN');
   const dec = it.decimales || 18;
   const bnbUsd = _ctx && _ctx.bnbUsd ? _ctx.bnbUsd() : 0;
-  let balance = 0n, prc = 0, cot = null, cotPara = 0n, ocupado = false, protegido = true, slipBps = PROTECCION.slipProtegido;
+  let balance = 0n, prc = 0, cot = null, cotPara = 0n, ocupado = false, protegido = false, slipBps = PROTECCION.slipProtegido;
   let gas = 0n; try { gas = ethers.parseEther('0.003'); } catch (_) {}
   host.innerHTML = `
     <div class="tg-mktcap"><b id="tg-mkt-price">${_precioUsd > 0 ? '$' + fmtP(_precioUsd, 5) : '$0'}</b><span>Market price</span></div>
@@ -798,11 +810,10 @@ function montarMercado(it) {
     <div class="tg-buy-amtrow"><b id="tg-buy-val">0 BNB</b><span id="tg-buy-usd"></span></div>
     <div class="tg-buy-get">You get <b id="tg-buy-out">0</b> ${sym}</div>
     <div class="tg-prot" id="tg-prot">
-      <div class="tg-prot-row"><label class="tg-prot-tog"><input type="checkbox" id="tg-prot-on" checked><span class="tg-prot-sw"></span><b>Protected</b></label><span class="tg-prot-meter ok" id="tg-prot-meter"></span></div>
+      <div class="tg-prot-row"><label class="tg-prot-tog"><input type="checkbox" id="tg-prot-on"><span class="tg-prot-sw"></span><b>Protected</b></label><span class="tg-prot-meter ok" id="tg-prot-meter"></span></div>
       <div class="tg-prot-slip" id="tg-prot-slip" hidden>${PROTECCION.opciones.map((b) => `<button type="button" data-b="${b}"${b === PROTECCION.slipProtegido ? ' class="on"' : ''}>${b / 100}%</button>`).join('')}</div>
       <div class="tg-prot-note">Your order reverts here before it fills at a bad price. Nothing leaves to anyone.</div>
     </div>
-    <div class="tg-buy-fee" id="tg-buy-fee">Fee ${FEE_BPS / 100}% in BNB</div>
     <button class="tg-buy-go" id="tg-buy-go" type="button">Confirm buy</button>
     <div class="tg-buy-msg" id="tg-buy-msg"></div>`;
   const sl = $('tg-buy-sl'), valEl = $('tg-buy-val'), usdEl = $('tg-buy-usd'), outEl = $('tg-buy-out'), balEl = $('tg-buy-bal'), go = $('tg-buy-go'), msg = $('tg-buy-msg');
@@ -824,8 +835,6 @@ function montarMercado(it) {
     usdEl.textContent = (bnbUsd > 0 && w > 0n) ? '~$' + fmtTxt(Number(ethers.formatEther(w)) * bnbUsd) : '';
     if (cot && cotPara === w && w > 0n) outEl.textContent = numCorto(Number(ethers.formatUnits(cot.tokOut, dec)));
     else outEl.textContent = w > 0n ? '…' : '0';
-    const feeEl = $('tg-buy-fee');
-    if (feeEl) feeEl.innerHTML = (cot && cotPara === w && w > 0n && cot.comision != null && cot.comision > 0n) ? `Fee ${FEE_BPS / 100}% · ${(+ethers.formatEther(cot.comision)).toFixed(6).replace(/\.?0+$/, '')} BNB` : `Fee ${FEE_BPS / 100}% in BNB`;
     estado();
   };
   // Medidor de proteccion: cuanto puede sacar un bot (= slippage). Protegido oculta el selector y fija lo seguro.
@@ -851,7 +860,16 @@ function montarMercado(it) {
   };
   cargarSaldo();
   // Compra protegida: toggle (ON = slippage seguro), selector al apagarlo, y "maxima proteccion" (RPC privado).
-  const protOn = $('tg-prot-on'); if (protOn) protOn.onchange = () => { protegido = protOn.checked; if (protegido) slipBps = PROTECCION.slipProtegido; pintarProt(); };
+  // Protected OFF por default. Al activarlo sale el disclaimer (suma 1%, total 2%); si cancela, vuelve a OFF.
+  const protOn = $('tg-prot-on'); if (protOn) protOn.onchange = () => {
+    if (protOn.checked) {
+      disclaimerProtect((ok) => {
+        if (!$('tg-prot-on')) return;
+        if (ok) { protegido = true; slipBps = PROTECCION.slipProtegido; } else { protOn.checked = false; protegido = false; }
+        pintarProt();
+      });
+    } else { protegido = false; pintarProt(); }
+  };
   const protSlip = $('tg-prot-slip'); if (protSlip) protSlip.querySelectorAll('button').forEach((b) => { b.onclick = () => { slipBps = Number(b.dataset.b) || PROTECCION.slipProtegido; protSlip.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintarProt(); }; });
   pintarProt();
   go.onclick = async () => {

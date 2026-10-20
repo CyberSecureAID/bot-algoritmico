@@ -184,7 +184,7 @@ export function abrirCompra(it, aud, modoInicial) {
       fila('Rate', px > 0 ? `1 ${sym} = ${fmtP(px, 3)} BNB${bnbUsd > 0 ? ` · $${fmtP(px * bnbUsd, 3)}` : ''}` : '—')
       + (impact != null ? fila('Price impact', `${impAbs < 0.01 ? '&lt;0.01' : impAbs.toFixed(2)}%`, 'tmc-imp ' + impCls) : '')
       + fila('Min received', `${fmtSalida(minNeto)} ${modo === 'buy' ? sym : 'BNB'}`)
-      + fila('Fee (1%)', `${fmtBNB(cot.comision, 5)} BNB`)
+      + fila('Fee', `${fmtBNB(cot.comision, 5)} BNB`)
       + fila('Max slippage', `${slipBps / 100}%`, slipCls ? 'tmc-imp ' + slipCls : '')
       + (impCls === 'bad' ? `<div class="tmc-rev-warn">High price impact. The pool is thin for this size; trade less or expect a worse price.</div>` : '')
       + (slipBps > 1500 ? `<div class="tmc-rev-warn">Very high slippage. A bot could take up to ${slipBps / 100}% of this trade.</div>` : '');
@@ -195,7 +195,7 @@ export function abrirCompra(it, aud, modoInicial) {
     const m = $('tmc-prot-meter'); if (!m) return;
     const pn = slipBps / 100; const cls = slipBps <= 300 ? 'ok' : slipBps <= 1000 ? 'warn' : 'bad';
     m.className = 'tmc-prot-meter ' + cls;
-    m.textContent = 'Protected · a bot can take ≤ ' + (Number.isInteger(pn) ? pn : pn.toFixed(1)) + '%';
+    m.textContent = 'A bot can take ≤ ' + (Number.isInteger(pn) ? pn : pn.toFixed(1)) + '%';
   };
   // Estado del boton. Nunca "Close": si no se puede operar, dice por que.
   const estado = () => {
