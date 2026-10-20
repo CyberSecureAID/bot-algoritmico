@@ -69,11 +69,20 @@ export function arrancarVigilante(bnbUsdFn, onDisparo, cadaMs) {
 export function detenerVigilante() { if (_timer) { clearTimeout(_timer); _timer = null; } }
 
 function fmtP(p) { if (!(p > 0)) return '0'; if (p >= 1) return String(Number(p.toPrecision(6))); if (p >= 0.001) return String(Number(p.toPrecision(4))); return p.toExponential(2); }
+let _icono; try { _icono = new URL('../../assets/img/cco-192.png', import.meta.url).href; } catch (_) { _icono = undefined; }
+/* Muestra el aviso. En movil (Android/Chrome) el constructor new Notification() NO funciona: hay que usar
+   el service worker (registration.showNotification). Si hay SW controlando la pagina lo usamos; si no (p.ej.
+   escritorio sin SW), caemos al constructor clasico. Nunca lanza: si falla, nadie pierde nada. */
 function notificar(a, p) {
   try {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      const n = new Notification('DecFreedom Terminal', { body: a.simbolo + ' hit $' + fmtP(p) + ' (target $' + fmtP(a.objetivo) + '). Sell manually if you want.', tag: a.id });
-      n.onclick = () => { try { window.focus(); } catch (_) {} };
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const titulo = 'DecFreedom Alerts';
+    const opts = { body: a.simbolo + ' hit $' + fmtP(p) + ' (target $' + fmtP(a.objetivo) + '). Sell manually if you want.', tag: a.id, icon: _icono };
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then((reg) => reg.showNotification(titulo, opts)).catch(() => directo(titulo, opts));
+      return;
     }
+    directo(titulo, opts);
   } catch (_) {}
 }
+function directo(titulo, opts) { try { const n = new Notification(titulo, opts); n.onclick = () => { try { window.focus(); } catch (_) {} }; } catch (_) {} }
