@@ -13,6 +13,7 @@ import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante, marcarVistas } from './alertas.js';
 import { abrirGrande } from './panel-grande.js';
+import { resolverContrato, esContrato } from './resolver.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
 import { FEED, SCAN_URL, FOURMEME_URL, USDT } from './config.js';
 
@@ -163,7 +164,13 @@ export function arrancar() {
   const fb = $('tm-filtros'); if (fb) fb.onclick = () => abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
   const how = $('tm-how'); if (how) how.onclick = () => { try { comoFunciona(); } catch (e) { console.warn('[TERM] how', e); } };
   const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); } catch (e) { console.warn('[TERM] pos', e); } };
-  const bus = $('tm-search'); if (bus) bus.oninput = () => { _busqueda = (bus.value || '').trim().toLowerCase(); pintar(); };
+  const bus = $('tm-search'); if (bus) bus.oninput = () => {
+    const raw = (bus.value || '').trim(); _busqueda = raw.toLowerCase();
+    if (esContrato(raw) && !_items.some((it) => it.token.toLowerCase() === raw.toLowerCase())) {
+      _lobResolQ = raw.toLowerCase(); _lobResuelto = 'load'; const mine = ++_lobResolN; pintar();
+      resolverContrato(raw).then((it) => { if (mine !== _lobResolN) return; _lobResuelto = it || 'none'; pintar(); }).catch(() => { if (mine === _lobResolN) { _lobResuelto = 'none'; pintar(); } });
+    } else { _lobResuelto = null; _lobResolQ = ''; pintar(); }
+  };
   const bell = $('tm-bell'); if (bell) bell.onclick = () => { try { abrirPanel('alerts'); } catch (_) {} };
   try { pintarBell(); } catch (_) {}
   const tabs3 = $('tm-tabs3');
@@ -230,6 +237,7 @@ const TXT_CHK = { ok: 'Safe', warn: 'Caution', bad: 'Do not buy', pend: 'Checkin
 const celdaCheck = (it) => { const r = auditoriaDe(it); const n = r ? r.nivel : 'pend'; return `<td class="tm-chk"><span class="tm-sem-p ${n}" title="${TXT_CHK[n]}"><i></i><span>${TXT_CHK[n]}</span></span></td>`; };
 let _verRojos = false;   // los 'Do not buy' van ocultos; un enlace bajo la tabla los muestra
 let _busqueda = '';      // filtro de la barra de busqueda (simbolo, nombre o contrato)
+let _lobResuelto = null, _lobResolN = 0, _lobResolQ = '';   // contrato pegado que no esta en el feed: se resuelve en cadena
 const coincide = (it) => { if (!_busqueda) return true; const s = _busqueda; return String(it.simbolo || '').toLowerCase().includes(s) || String(it.nombre || '').toLowerCase().includes(s) || String(it.token || '').toLowerCase().includes(s); };
 /* Auditoria continua de la lista principal: cada token una vez (cache), de 2 en 2, y repinta al llegar cada resultado. */
 const _colaAud = []; const _enColaAud = new Set(); let _audArrancada = false, _repintar = null;
@@ -273,17 +281,35 @@ function pintar() {
   else if (_tab === 'buyers') vis = base.slice().sort((a, b) => mNum(b.token, 'buys24') - mNum(a.token, 'buys24'));
   else if (_tab === 'trend') vis = base.slice().sort((a, b) => cambioDe(b.token) - cambioDe(a.token));
   const ocultos = _items.length - base.length;
-  host.innerHTML = `<table class="tm-table tm-table-l">${theadLobby()}<tbody>${vis.map((it, i) => filaLobby(it, i)).join('')}</tbody></table>`
-    + (ocultos || _verRojos ? `<div class="tm-ocultos">${ocultos ? ocultos + ' token' + (ocultos > 1 ? 's' : '') + ' hidden: Do not buy' : 'Showing Do not buy tokens'} <button type="button" id="tm-ver-rojos">${_verRojos ? 'Hide' : 'Show'}</button></div>` : '');
-  const vr = $('tm-ver-rojos'); if (vr) vr.onclick = () => { _verRojos = !_verRojos; pintar(); };
-  host.querySelectorAll('.tm-buybtn').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const it = _items.find((x) => x.token.toLowerCase() === b.dataset.buy.toLowerCase()); if (it) { try { abrirCompra(it, auditoriaDe(it)); } catch (_) {} } }; });
-  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (!it) return; if (esGrande()) { seleccionarCP(it); verGrande(it); } else abrirFicha(it); }; });
-  if (_sel) { const ar = host.querySelector(`.tm-row[data-a="${_sel.token}"]`); if (ar) ar.classList.add('sel'); }
+  const mostrarRes = !base.length && esContrato(_busqueda) && _busqueda === _lobResolQ && !!_lobResuelto;
+  if (mostrarRes) {
+    host.innerHTML = bannerContrato();
+    const ob = $('tm-res-open'); if (ob) ob.onclick = () => { const it = _lobResuelto; if (it && typeof it === 'object') { if (esGrande()) { seleccionarCP(it); verGrande(it); } else abrirFicha(it); } };
+  } else {
+    host.innerHTML = `<table class="tm-table tm-table-l">${theadLobby()}<tbody>${vis.map((it, i) => filaLobby(it, i)).join('')}</tbody></table>`
+      + (ocultos || _verRojos ? `<div class="tm-ocultos">${ocultos ? ocultos + ' token' + (ocultos > 1 ? 's' : '') + ' hidden: Do not buy' : 'Showing Do not buy tokens'} <button type="button" id="tm-ver-rojos">${_verRojos ? 'Hide' : 'Show'}</button></div>` : '');
+    const vr = $('tm-ver-rojos'); if (vr) vr.onclick = () => { _verRojos = !_verRojos; pintar(); };
+    host.querySelectorAll('.tm-buybtn').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const it = _items.find((x) => x.token.toLowerCase() === b.dataset.buy.toLowerCase()); if (it) { try { abrirCompra(it, auditoriaDe(it)); } catch (_) {} } }; });
+    host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (!it) return; if (esGrande()) { seleccionarCP(it); verGrande(it); } else abrirFicha(it); }; });
+    if (_sel) { const ar = host.querySelector(`.tm-row[data-a="${_sel.token}"]`); if (ar) ar.classList.add('sel'); }
+  }
   cueReaplica(host);
   const faltan = vis.filter((x) => x.par).map((x) => x.token).filter((t) => !mercadoListo(t));
   if (faltan.length) cargarMercado(faltan).then(() => { clearTimeout(_repM); _repM = setTimeout(pintar, 60); }).catch(() => {});
   pintarMovers();
   asegurarSelCP();
+}
+/* Resultado de buscar un CONTRATO que no esta en el feed: tarjeta con el token resuelto en cadena (o aviso). */
+function bannerContrato() {
+  const r = _lobResuelto;
+  if (r === 'load') return `<div class="tm-res"><div class="tm-res-load"><i></i>Looking up this contract on-chain…</div></div>`;
+  if (r === 'none' || !r || typeof r !== 'object') return `<div class="tm-res"><div class="tm-res-none"><b>No token found</b><span>This contract has no PancakeSwap pair, so there is nothing to trade here. Double-check the address.</span></div></div>`;
+  const pu = usdDe(r); const liq = r.moneda === 'USDT' ? r.liquidez : r.liquidez * _bnbUsd;
+  return `<div class="tm-res"><div class="tm-res-card">
+      <div class="tm-res-tk">${logo(r.simbolo, r.token)}<div class="tm-res-id"><b title="${esc(r.nombre || '')}">${esc(abreviar(r.nombre || r.simbolo || 'Token'))} <i>(${esc(r.simbolo || '?')})</i></b><span>${esc(corto2(r.token))} · ${r.moneda} pair</span></div></div>
+      <div class="tm-res-m"><div><b>${pu > 0 ? '$' + fmtP(pu) : '—'}</b><span>Price</span></div><div><b>${liq > 0 ? money(liq) : '—'}</b><span>Liquidity</span></div></div>
+      <button class="tm-b tm-res-open" id="tm-res-open" type="button">Open ${esc(r.simbolo || 'token')}</button>
+    </div></div>`;
 }
 /* Tarjeta "Top movers" del lateral: los 3 tokens que mas suben (24h, datos reales); si aun no hay datos de
    mercado, los 3 de mayor liquidez. Rellena el hueco del lateral con algo util y clicable. */
@@ -811,25 +837,40 @@ export async function abrirPanel(tab = 'positions') {
     body.innerHTML = `<div class="tm-alnew">
         <div class="tm-alnew-h">New price alert</div>
         <div class="tm-alnew-ctl">
-          <div class="tm-alnew-pick"><input id="tm-alnew-q" class="tm-alnew-q" type="text" placeholder="Search a token…" autocomplete="off"><div class="tm-alnew-drop" id="tm-alnew-drop" hidden></div></div>
+          <div class="tm-alnew-pick"><input id="tm-alnew-q" class="tm-alnew-q" type="text" placeholder="Name or paste a contract…" autocomplete="off" spellcheck="false"><div class="tm-alnew-drop" id="tm-alnew-drop" hidden></div></div>
           <input id="tm-alnew-px" class="tm-alnew-px" type="text" inputmode="decimal" placeholder="Target $" disabled>
           <button id="tm-alnew-add" class="tm-b sec tm-alnew-add" type="button" disabled>Set</button>
         </div>
-        <div class="tm-alnew-hint" id="tm-alnew-hint">Pick a token, then type a target price.</div>
+        <div class="tm-alnew-hint" id="tm-alnew-hint">A token is its contract, not its name. Paste the contract to pick the exact one.</div>
       </div>
       <div id="tm-al-listwrap" class="tm-al-listwrap">${cargando}</div>`;
     const q = $('tm-alnew-q'), drop = $('tm-alnew-drop'), pxIn = $('tm-alnew-px'), addB = $('tm-alnew-add'), hint = $('tm-alnew-hint');
     const fuente = () => { const seen = new Set(), out = []; for (const it of _items) { if (!it.par) continue; const k = it.token.toLowerCase(); if (seen.has(k)) continue; seen.add(k); out.push(it); } return out; };
     const cerrarDrop = () => { if (drop) drop.hidden = true; };
+    let _alResolN = 0;
+    const optHTML = (it) => { const pu = usdDe(it); return `<button class="tm-alnew-opt" type="button" data-a="${esc(it.token)}">${logo(it.simbolo, it.token)}<span class="tm-alnew-oid"><b>${esc(it.simbolo || '?')}</b><span>${esc(abreviar(it.nombre || ''))} · ${esc(corto2(it.token))}</span></span><span class="tm-alnew-opx">${pu > 0 ? '$' + fmtP(pu) : '—'}</span></button>`; };
+    const wireOpts = (resuelto) => { drop.querySelectorAll('.tm-alnew-opt').forEach((b) => { b.onclick = () => { const a = b.dataset.a; let it = _items.find((x) => x.token.toLowerCase() === a.toLowerCase()); if (!it && resuelto && resuelto.token.toLowerCase() === a.toLowerCase()) it = resuelto; if (it) elegir(it); }; }); };
     const pintarDrop = (txt) => {
-      const t = (txt || '').trim().toLowerCase();
+      const raw = (txt || '').trim();
+      if (esContrato(raw)) {
+        const enFeed = fuente().find((it) => it.token.toLowerCase() === raw.toLowerCase());
+        if (enFeed) { drop.innerHTML = optHTML(enFeed); drop.hidden = false; wireOpts(); return; }
+        const mine = ++_alResolN;
+        drop.innerHTML = `<div class="tm-alnew-none">Looking up contract…</div>`; drop.hidden = false;
+        resolverContrato(raw).then((it) => {
+          if (mine !== _alResolN || !drop.isConnected) return;
+          if (!it) { drop.innerHTML = `<div class="tm-alnew-none">No PancakeSwap pair found for this contract.</div>`; drop.hidden = false; return; }
+          drop.innerHTML = optHTML(it); drop.hidden = false; wireOpts(it);
+        }).catch(() => { if (mine === _alResolN && drop.isConnected) { drop.innerHTML = `<div class="tm-alnew-none">Could not look up this contract.</div>`; drop.hidden = false; } });
+        return;
+      }
+      const t = raw.toLowerCase();
       let arr = fuente();
-      if (t) arr = arr.filter((it) => (it.simbolo || '').toLowerCase().includes(t) || (it.nombre || '').toLowerCase().includes(t));
+      if (t) arr = arr.filter((it) => (it.simbolo || '').toLowerCase().includes(t) || (it.nombre || '').toLowerCase().includes(t) || (it.token || '').toLowerCase().includes(t));
       arr = arr.slice(0, 7);
-      if (!arr.length) { drop.innerHTML = `<div class="tm-alnew-none">No tokens match</div>`; drop.hidden = false; return; }
-      drop.innerHTML = arr.map((it) => { const pu = usdDe(it); return `<button class="tm-alnew-opt" type="button" data-a="${esc(it.token)}">${logo(it.simbolo, it.token)}<span class="tm-alnew-oid"><b>${esc(it.simbolo || '?')}</b><span>${esc(abreviar(it.nombre || ''))}</span></span><span class="tm-alnew-opx">${pu > 0 ? '$' + fmtP(pu) : '—'}</span></button>`; }).join('');
-      drop.hidden = false;
-      drop.querySelectorAll('.tm-alnew-opt').forEach((b) => { b.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === b.dataset.a.toLowerCase()); if (it) elegir(it); }; });
+      if (!arr.length) { drop.innerHTML = `<div class="tm-alnew-none">No tokens match. Paste a contract to search any token.</div>`; drop.hidden = false; return; }
+      drop.innerHTML = arr.map((it) => optHTML(it)).join('');
+      drop.hidden = false; wireOpts();
     };
     const refDir = () => {
       if (!_alSel) { addB.disabled = true; return; }

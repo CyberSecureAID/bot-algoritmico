@@ -13,6 +13,8 @@ const log = (...a) => { try { console.info('[TERM-FIL]', ...a); } catch (_) {} }
 const CHIPS = [
   { k: 'liq', t: 'With liquidity' },
   { k: 'top', t: 'Highest liquidity' },
+  { k: 'fresh', t: 'New under 1h' },
+  { k: 'new', t: 'Newest first' },
   { k: 'sell', t: 'Can be sold' },
   { k: 'nored', t: 'No red flags' },
   { k: 'bnb', t: 'BNB pairs' },
@@ -122,6 +124,7 @@ export function abrirFiltros(deps) {
   const necesitaDatos = () => on.has('sell') || on.has('nored') || (on.has('custom') && checks.size > 0);
   const pasa = (it) => {
     if (on.has('liq') && !(it.liquidez > 0)) return false;
+    if (on.has('fresh') && !(it.tiempo && (Date.now() - it.tiempo) < 3600000)) return false;
     if (on.has('lp') && it.fuente !== 'launchpad') return false;
     if (on.has('bnb') && !on.has('usdt') && it.moneda !== 'BNB') return false;
     if (on.has('usdt') && !on.has('bnb') && it.moneda !== 'USDT') return false;
@@ -148,7 +151,8 @@ export function abrirFiltros(deps) {
     const vivo = deps.items();
     if (hayFiltro()) encolar(vivo);
     let lista = hayFiltro() ? vivo.filter(pasa) : [];
-    if (on.has('top')) lista = lista.slice().sort((a, b) => liqUsd(b) - liqUsd(a));
+    if (on.has('new')) lista = lista.slice().sort((a, b) => (b.tiempo || 0) - (a.tiempo || 0));
+    else if (on.has('top')) lista = lista.slice().sort((a, b) => liqUsd(b) - liqUsd(a));
     const checking = hayFiltro() && necesitaDatos() ? vivo.filter((it) => { const r = deps.auditoriaDe(it); return !r || r.nivel === 'pend'; }).length : 0;
     $('tm-fil-n').textContent = hayFiltro() ? `${lista.length} of ${vivo.length} tokens` + (checking ? ` · ${checking} checking` : '') : `${vivo.length} tokens in the live list`;
     const clave = lista.map((it) => it.token + ':' + (deps.auditoriaDe(it) || {}).nivel).join('|');
