@@ -32,6 +32,8 @@ const ICO_WALLET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const ICO_SHIELD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.3 2.9 7.6 7 9 4.1-1.4 7-4.7 7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>';
 const ICO_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 const ICO_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
+const ICO_REFRESH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v4h-4"/></svg>';
+const ICO_EXPAND = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6"/><path d="M3 3l7 7"/><path d="M15 21h6v-6"/><path d="M21 21l-7-7"/></svg>';
 
 /* Precio: cifras significativas, con subindice para los muy pequenos (igual que el launchpad). */
 function fmtP(p, sig = 4) {
@@ -113,6 +115,18 @@ export function arrancar() {
         </div>
       </aside>
       <main class="tm-center">
+        <section class="tm-cp" id="tm-cp">
+          <div class="tm-cp-head">
+            <div class="tm-cp-tt" id="tm-cp-tt"><span class="tm-cp-ph">${ICO_BOLT}<b>Chart</b><span>Pick a token to load its live chart</span></span></div>
+            <div class="tm-cp-right"><div class="tm-cp-px" id="tm-cp-px"></div><button class="tm-cp-all" id="tm-cp-all" type="button" disabled>${ICO_EXPAND}View All</button></div>
+          </div>
+          <div class="tm-cp-bar">
+            <span class="tm-cp-sp"></span>
+            <div class="tm-tf" id="tm-cp-tf"><button data-sec="60" class="on" type="button">1m</button><button data-sec="300" type="button">5m</button><button data-sec="900" type="button">15m</button><button data-sec="3600" type="button">1h</button></div>
+            <div class="tm-cp-tools"><button class="tm-cp-tool" id="tm-cp-refresh" type="button" aria-label="Refresh chart" disabled>${ICO_REFRESH}</button></div>
+          </div>
+          <div class="tm-chart tm-cp-chart"><div class="tm-chart-cv" id="tm-cp-cv"></div><div class="tm-chart-msg" id="tm-cp-msg">Pick a token</div></div>
+        </section>
         <section class="tm-panel">
           <div class="tm-sec-head">
             <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b><span>Newest tokens on BNB Chain</span></div></div>
@@ -133,6 +147,11 @@ export function arrancar() {
   const bell = $('tm-bell'); if (bell) bell.onclick = () => { try { abrirPanel('alerts'); } catch (_) {} };
   const tabs3 = $('tm-tabs3');
   if (tabs3) tabs3.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tab = b.dataset.tab; tabs3.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintar(); }; });
+  // Grafico inline (Modulo 4): timeframes, refrescar y View All.
+  const cptf = $('tm-cp-tf');
+  if (cptf) cptf.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tfSec = Number(b.dataset.sec) || 60; cptf.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); renderCP(); }; });
+  const cpre = $('tm-cp-refresh'); if (cpre) cpre.onclick = () => { if (_sel) cargarCP(_sel); };
+  const cpall = $('tm-cp-all'); if (cpall) cpall.onclick = () => { if (_sel) verGrande(_sel); };
   const nav = $('tm-nav');
   if (nav) nav.querySelectorAll('.tm-nav-b').forEach((b) => { b.onclick = () => { const n = b.dataset.nav; try {
     if (n === 'mine' || n === 'history') { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); }
@@ -235,10 +254,12 @@ function pintar() {
     + (ocultos || _verRojos ? `<div class="tm-ocultos">${ocultos ? ocultos + ' token' + (ocultos > 1 ? 's' : '') + ' hidden: Do not buy' : 'Showing Do not buy tokens'} <button type="button" id="tm-ver-rojos">${_verRojos ? 'Hide' : 'Show'}</button></div>` : '');
   const vr = $('tm-ver-rojos'); if (vr) vr.onclick = () => { _verRojos = !_verRojos; pintar(); };
   host.querySelectorAll('.tm-buybtn').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const it = _items.find((x) => x.token.toLowerCase() === b.dataset.buy.toLowerCase()); if (it) { try { abrirCompra(it, auditoriaDe(it)); } catch (_) {} } }; });
-  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) (esGrande() ? abrirGrande(it, ctxGrande()) : abrirFicha(it)); }; });
+  host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) (esGrande() ? seleccionarCP(it) : abrirFicha(it)); }; });
+  if (_sel) { const ar = host.querySelector(`.tm-row[data-a="${_sel.token}"]`); if (ar) ar.classList.add('sel'); }
   cueReaplica(host);
   const faltan = vis.filter((x) => x.par).map((x) => x.token).filter((t) => !mercadoListo(t));
   if (faltan.length) cargarMercado(faltan).then(() => { clearTimeout(_repM); _repM = setTimeout(pintar, 60); }).catch(() => {});
+  asegurarSelCP();
 }
 /* Al entrar, los primeros tokens CON liquidez dan un destello dorado (como un clic) una sola vez, para
    invitar a tocarlos. Solo una vez por carga (si no, molesta); hasta 4 filas; en secuencia (clic clic clic).
@@ -300,6 +321,85 @@ const pct = (v) => (v == null || !isFinite(v)) ? '0%' : (Math.round(v * 10) / 10
 
 const semPend = () => `<span class="tm-sem-ico"><i class="tm-anillo"></i></span><div><b>${TXT_NIVEL.pend}</b><span class="tm-pasos">${PASOS.map((id) => `<u><i data-p="${id}"></i><em>${PASOS_TXT[id]}</em></u>`).join('')}</span></div>`;
 let _creadorFicha = '';
+/* ── Grafico inline del lobby (Modulo 4) ──────────────────────────────────────
+   Grafico rectangular en el centro, sobre la tabla. Cabecera con el token y su precio
+   en USDT (+% 24h real de DexScreener). Los timeframes (1m/5m/15m/1h) reagrupan las
+   MISMAS velas reales (una por operacion, leidas de la cadena) en cubos de tiempo: no
+   se inventa nada ni se vuelve a llamar al RPC al cambiar de timeframe. View All abre
+   la vista grande. grafico.js tiene una sola instancia; mientras la vista grande esta
+   abierta la toma prestada, por eso al cerrarse re-montamos aqui. En movil (<860) el
+   panel se oculta y el toque abre la ficha. */
+let _sel = null, _tfSec = 60, _velasRaw = null, _cpTok = '', _cpObs = null;
+const cpEl = (id) => document.getElementById(id);
+/* Reagrupa las velas por-operacion en cubos de 'seg' segundos (OHLC real por cubo). */
+function agrupar(velas, seg) {
+  if (!Array.isArray(velas) || !velas.length) return [];
+  if (!seg || seg <= 0) return velas.slice();
+  const m = new Map();
+  for (const v of velas) {
+    const k = Math.floor(v.time / seg) * seg;
+    const e = m.get(k);
+    if (!e) m.set(k, { time: k, open: v.open, high: v.high, low: v.low, close: v.close });
+    else { if (v.high > e.high) e.high = v.high; if (v.low < e.low) e.low = v.low; e.close = v.close; }
+  }
+  return [...m.values()].sort((a, b) => a.time - b.time);
+}
+function cabeceraCP(it) {
+  const tt = cpEl('tm-cp-tt'); if (!tt) return;
+  tt.innerHTML = `${logo(it.simbolo, it.token)}<div class="tm-cp-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago</span></div>`;
+  precioCP(it);
+}
+/* Precio en USDT (lectura viva del par) + % 24h real de DexScreener. */
+function precioCP(it) {
+  const px = cpEl('tm-cp-px'); if (!px) return;
+  const base = it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd;
+  const m = mercadoDe(it.token); const chg = m && m.cambio24 != null ? m.cambio24 : null;
+  const chgTxt = chg != null ? `<em class="tm-chg ${chg >= 0 ? 'up' : 'down'}">${chg >= 0 ? '+' : ''}${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%</em>` : '';
+  px.innerHTML = `<b>${base > 0 ? '$' + fmtP(base) : '$0'}</b>${chgTxt}`;
+  if (it.par) precioActual({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bnbUsd: _bnbUsd, quoteEsUSDT: it.moneda === 'USDT' }).then((p) => { if (p > 0 && _sel && _sel.token === it.token) { const b = px.querySelector('b'); if (b) b.textContent = '$' + fmtP(p); } }).catch(() => {});
+}
+/* Monta el grafico desde las velas crudas en cache, reagrupadas al timeframe activo. */
+function renderCP() {
+  const cv = cpEl('tm-cp-cv'), msg = cpEl('tm-cp-msg'); if (!cv) return;
+  if (!_sel) { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = 'Pick a token'; } return; }
+  if (!_sel.par) { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = _sel.fuente === 'fourmeme' ? 'Trades on four.meme' : 'Trades on the Launchpad'; } return; }
+  if (_velasRaw == null) { if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tm-anillo"></span>'; } return; }
+  const velas = agrupar(_velasRaw, _tfSec);
+  if (velas.length) { if (msg) msg.hidden = true; montarGrafico(cv, velas); }
+  else { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = 'No trades yet'; } }
+}
+/* Lee las velas reales del par (una por operacion) y las guarda para reagrupar sin re-llamar. */
+function cargarCP(it) {
+  _cpTok = it.token; _velasRaw = null; renderCP();
+  if (!it.par) return;
+  velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: _bnbUsd, quoteEsUSDT: it.moneda === 'USDT' })
+    .then((velas) => { if (_cpTok !== it.token) return; _velasRaw = velas || []; renderCP(); })
+    .catch(() => { if (_cpTok !== it.token) return; _velasRaw = []; const msg = cpEl('tm-cp-msg'); if (msg) { msg.hidden = false; msg.textContent = 'Chart unavailable'; } });
+}
+/* Selecciona un token: cabecera + grafico + controles. Marca la fila activa en la tabla. */
+function seleccionarCP(it) {
+  if (!it) return; _sel = it;
+  cabeceraCP(it);
+  const all = cpEl('tm-cp-all'), re = cpEl('tm-cp-refresh'); if (all) all.disabled = false; if (re) re.disabled = !it.par;
+  const host = $('tm-feed'); if (host) { host.querySelectorAll('.tm-row.sel').forEach((r) => r.classList.remove('sel')); const ar = host.querySelector(`.tm-row[data-a="${it.token}"]`); if (ar) ar.classList.add('sel'); }
+  cargarCP(it);
+  try { const cp = cpEl('tm-cp'); if (cp) cp.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+}
+/* Al entrar, si no hay seleccion y estamos en escritorio, elige el primer token liquido. */
+function asegurarSelCP() {
+  if (_sel || !esGrande()) return;
+  const it = _items.find((x) => x.par && x.liquidez > 0);
+  if (it) seleccionarCP(it);
+}
+/* View All: abre la vista grande con el token actual; al cerrarse, re-monta el grafico inline. */
+function verGrande(it) {
+  try { abrirGrande(it, ctxGrande()); } catch (_) { return; }
+  try { if (_cpObs) _cpObs.disconnect(); } catch (_) {}
+  try {
+    _cpObs = new MutationObserver(() => { if (!document.getElementById('tm-big-ov')) { try { _cpObs.disconnect(); } catch (_) {} _cpObs = null; if (_sel) renderCP(); } });
+    _cpObs.observe(document.body, { childList: true });
+  } catch (_) {}
+}
 export function abrirFicha(it) {
   _creadorFicha = it.creador || '';
   const prev = $('tm-ov'); if (prev) prev.remove();

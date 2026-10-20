@@ -81,6 +81,38 @@
 @media(max-width:1080px){.tm-table-l .tm-cl-mc{display:none}}
 @media(max-width:960px){.tm-table-l .tm-cl-volume{display:none}}
 @media(max-width:860px){.tm-table-l .tm-cl-buyers{display:none}.tm-tabrow{overflow-x:auto;-webkit-overflow-scrolling:touch}.tm-tabs3{display:flex;width:max-content}}
+/* ── Grafico inline del centro (Modulo 4): cabecera del token, precio USDT + %, timeframes centrados, View All ── */
+.tm-cp{min-width:0;background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:14px 16px;margin-bottom:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.tm-cp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px}
+.tm-cp-tt{display:flex;align-items:center;gap:11px;min-width:0}
+.tm-cp-tt .tm-logo{width:34px;height:34px;flex:0 0 auto}
+.tm-cp-tx{min-width:0}
+.tm-cp-tx b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:16px;line-height:1.15;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-cp-tx span{font-size:11.5px;color:var(--ink-3)}
+.tm-cp-ph{display:flex;align-items:center;gap:10px;color:var(--ink-3)}
+.tm-cp-ph svg{width:22px;height:22px;color:var(--gold);opacity:.7;flex:0 0 auto}
+.tm-cp-ph b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;color:var(--ink-2)}
+.tm-cp-ph>span{font-size:12px}
+.tm-cp-right{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.tm-cp-px{display:flex;align-items:baseline;gap:7px;white-space:nowrap}
+.tm-cp-px b{font-family:var(--mono);font-weight:600;font-size:17px;color:var(--ink)}
+.tm-cp-px .tm-chg{font-size:12px;margin:0}
+.tm-cp-all{display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:600;font-size:12.5px;color:#E8B84B;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid #8f6a1a;border-radius:11px;padding:8px 14px;cursor:pointer;box-shadow:0 3px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);white-space:nowrap}
+.tm-cp-all svg{width:14px;height:14px}
+.tm-cp-all:hover{filter:brightness(1.08)}
+.tm-cp-all:disabled{opacity:.45;cursor:default;box-shadow:none}
+.tm-cp-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:12px}
+.tm-tf{justify-self:center;display:inline-flex;gap:3px;background:#0b0f14;border:1px solid var(--line);border-radius:11px;padding:3px}
+.tm-tf button{border:0;background:transparent;color:var(--ink-3);font-family:var(--mono);font-weight:600;font-size:12px;padding:5px 12px;border-radius:8px;cursor:pointer}
+.tm-tf button:hover{color:var(--ink)}
+.tm-tf button.on{background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold);box-shadow:inset 0 0 0 1px #8f6a1a}
+.tm-cp-tools{justify-self:end;display:inline-flex;gap:6px}
+.tm-cp-tool{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;background:#0b0f14;color:var(--ink-2);cursor:pointer}
+.tm-cp-tool:hover{border-color:#8f6a1a;color:var(--gold)}
+.tm-cp-tool:disabled{opacity:.4;cursor:default}
+.tm-cp-chart{height:264px;margin:0}
+.tm-row.sel{background:rgba(232,184,75,.07);box-shadow:inset 3px 0 0 var(--gold)}
+@media(max-width:859px){.tm-cp{display:none}}
 
 /* ───────── Portada de la terminal: minima, que se vea el fondo ───────── */
 .tm-hero{text-align:center;padding:10px 0 22px;max-width:760px;margin:0 auto}
