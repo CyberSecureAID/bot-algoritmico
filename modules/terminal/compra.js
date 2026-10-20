@@ -124,9 +124,10 @@ export function abrirCompra(it, aud, modoInicial) {
           <div class="tmc-box">
             <div class="tmc-box-top"><span class="tmc-lbl">You receive (est.)</span><span class="tmc-bal" id="tmc-min"></span></div>
             <div class="tmc-box-mid"><div class="tmc-out" id="tmc-out">0.0</div><span class="tmc-tok" id="tmc-tok-out"></span></div>
-            <div class="tmc-box-bot"><span class="tmc-lbl">Slippage</span><span class="tmc-slip" id="tmc-slip">${SLIPPAGE.opciones.map((b) => `<button type="button" data-b="${b}" class="${b === slipBps ? 'on' : ''}">${b / 100}%</button>`).join('')}</span></div>
+            <div class="tmc-box-bot"><span class="tmc-lbl">Slippage</span><span class="tmc-slip" id="tmc-slip">${SLIPPAGE.opciones.map((b) => `<button type="button" data-b="${b}" class="${b === slipBps ? 'on' : ''}">${b / 100}%</button>`).join('')}<input class="tmc-slip-in" id="tmc-slip-in" inputmode="decimal" placeholder="Custom" maxlength="5" autocomplete="off"></span></div>
           </div>
         </div>
+        <div class="tmc-rev" id="tmc-rev" hidden></div>
         <div class="tmc-info" id="tmc-info"></div>
         <button class="tmc-go" id="tmc-go" type="button">Swap</button>
       </div>
@@ -139,7 +140,7 @@ export function abrirCompra(it, aud, modoInicial) {
 
   const info = $('tmc-info'), out = $('tmc-out'), amt = $('tmc-amt'), go = $('tmc-go'), balEl = $('tmc-bal'), usdEl = $('tmc-usd'), minEl = $('tmc-min');
   const pillBNB = `${marcaBNB()}<b>BNB</b>`, pillTok = `${marcaToken(it)}<b>${sym}</b>`;
-  const pintarPildoras = () => { $('tmc-tok-in').innerHTML = modo === 'buy' ? pillBNB : pillTok; $('tmc-tok-out').innerHTML = modo === 'buy' ? pillTok : pillBNB; };
+  const pintarPildoras = () => { $('tmc-tok-in').innerHTML = modo === 'buy' ? pillBNB : pillTok; $('tmc-tok-out').innerHTML = modo === 'buy' ? pillTok : pillBNB; if (go) go.classList.toggle('sell', modo === 'sell'); };
 
   const entrada = () => { try { const v = (amt.value || '0').replace(/[^0-9.]/g, '') || '0'; return modo === 'buy' ? ethers.parseEther(v) : ethers.parseUnits(v, dec); } catch (_) { return 0n; } };
   const salidaEst = () => (cot ? (modo === 'buy' ? cot.tokOut : cot.neto) : 0n);
@@ -155,14 +156,37 @@ export function abrirCompra(it, aud, modoInicial) {
   const pintarCot = () => {
     const w = entrada();
     usdEl.textContent = (bnbUsd > 0 && w > 0n && modo === 'buy') ? `~$${fmtP(Number(ethers.formatEther(w)) * bnbUsd)}` : '';
-    if (!cot || !(w > 0n) || cotPara !== w) { out.textContent = w > 0n ? '…' : '0.0'; minEl.textContent = ''; if (!mensaje) info.textContent = ''; return; }
+    if (!cot || !(w > 0n) || cotPara !== w) { out.textContent = w > 0n ? '…' : '0.0'; minEl.textContent = ''; if (!mensaje) info.textContent = ''; pintarRev(); return; }
     out.textContent = fmtSalida(salidaEst());
     const minNeto = modo === 'buy' ? minOut() : minOut() - minOut() * 100n / 10000n;   // venta: minimo que te llega, ya sin el 1%
     minEl.textContent = `Min: ${fmtSalida(minNeto)} ${modo === 'buy' ? sym : 'BNB'}`;
+    pintarRev();
+  };
+  // Detalle de la operacion: tasa, impacto en precio, minimo que recibes, comision y slippage. Se ve antes de confirmar.
+  const pintarRev = () => {
+    const rev = $('tmc-rev'); if (!rev) return;
+    const w = entrada();
+    if (!cot || !(w > 0n) || cotPara !== w || !(salidaEst() > 0n)) { rev.hidden = true; rev.innerHTML = ''; return; }
     const bnb = modo === 'buy' ? Number(ethers.formatEther(w - cot.comision)) : Number(ethers.formatEther(cot.bruto));
     const toks = modo === 'buy' ? Number(ethers.formatUnits(cot.tokOut, dec)) : Number(ethers.formatUnits(w, dec));
-    const px = toks > 0 ? bnb / toks : 0;
-    if (!mensaje) info.innerHTML = px > 0 ? `1 ${sym} = <b>${fmtP(px, 3)} BNB</b>${bnbUsd > 0 ? ` (~$${fmtP(px * bnbUsd, 3)})` : ''} · fee <b>${fmtBNB(cot.comision, 5)} BNB</b>` : '';
+    const px = toks > 0 ? bnb / toks : 0;                       // precio efectivo de la operacion (BNB por token)
+    const spot = Number(it.precio) || 0;                        // precio spot del feed, en la moneda del par
+    let impact = null;
+    if (spot > 0 && px > 0) { const pxCmp = quote === USDT ? (bnbUsd > 0 ? px * bnbUsd : 0) : px; if (pxCmp > 0) impact = modo === 'buy' ? (pxCmp / spot - 1) * 100 : (1 - pxCmp / spot) * 100; }
+    const impAbs = impact == null ? null : Math.abs(impact);
+    const impCls = impAbs == null ? '' : impAbs < 1 ? 'ok' : impAbs < 5 ? 'warn' : 'bad';
+    const minNeto = modo === 'buy' ? minOut() : minOut() - minOut() * 100n / 10000n;
+    const slipCls = slipBps > 1500 ? 'bad' : slipBps > 500 ? 'warn' : '';
+    const fila = (l, v, cls) => `<div class="tmc-rev-r"><span>${l}</span><b class="${cls || ''}">${v}</b></div>`;
+    rev.hidden = false;
+    rev.innerHTML =
+      fila('Rate', px > 0 ? `1 ${sym} = ${fmtP(px, 3)} BNB${bnbUsd > 0 ? ` · $${fmtP(px * bnbUsd, 3)}` : ''}` : '—')
+      + (impact != null ? fila('Price impact', `${impAbs < 0.01 ? '&lt;0.01' : impAbs.toFixed(2)}%`, 'tmc-imp ' + impCls) : '')
+      + fila('Min received', `${fmtSalida(minNeto)} ${modo === 'buy' ? sym : 'BNB'}`)
+      + fila('Fee', `${fmtBNB(cot.comision, 5)} BNB`)
+      + fila('Max slippage', `${slipBps / 100}%`, slipCls ? 'tmc-imp ' + slipCls : '')
+      + (impCls === 'bad' ? `<div class="tmc-rev-warn">High price impact. The pool is thin for this size; trade less or expect a worse price.</div>` : '')
+      + (slipBps > 1500 ? `<div class="tmc-rev-warn">Very high slippage. A bot could take up to ${slipBps / 100}% of this trade.</div>` : '');
   };
   // Estado del boton. Nunca "Close": si no se puede operar, dice por que.
   const estado = () => {
@@ -213,7 +237,9 @@ export function abrirCompra(it, aud, modoInicial) {
   leerSaldos();
   amt.addEventListener('input', programar);
   ov.querySelectorAll('.tmc-tabs button').forEach((b) => { b.onclick = () => cambiarModo(b.dataset.m); });
-  $('tmc-slip').querySelectorAll('button').forEach((b) => { b.onclick = () => { slipBps = Number(b.dataset.b); $('tmc-slip').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintarCot(); }; });
+  const slipIn = $('tmc-slip-in');
+  $('tmc-slip').querySelectorAll('button').forEach((b) => { b.onclick = () => { slipBps = Number(b.dataset.b); if (slipIn) slipIn.value = ''; $('tmc-slip').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintarCot(); estado(); }; });
+  if (slipIn) slipIn.oninput = () => { const v = parseFloat((slipIn.value || '').replace(/[^0-9.]/g, '')); if (v > 0) slipBps = Math.max(10, Math.min(5000, Math.round(v * 100))); $('tmc-slip').querySelectorAll('button').forEach((x) => x.classList.remove('on')); pintarCot(); estado(); };
   $('tmc-max').onclick = async () => {
     if (!wallet.cuentaActual()) { go.click(); return; }
     if (saldo == null || saldoTok == null) await leerSaldos();
@@ -234,8 +260,8 @@ export function abrirCompra(it, aud, modoInicial) {
     if (m.includes('transfer_failed') || m.includes('transferhelper') || m.includes('transfer_from_failed')) return 'The token refused the transfer. It may block this side of the trade (honeypot behavior).';
     return 'The transaction could not be completed.' + (e && e.reason ? ' (' + String(e.reason).slice(0, 100) + ')' : '');
   };
-  const trabajando = (txt) => { ocupado = true; firmando = true; go.disabled = true; go.textContent = txt; amt.disabled = true; };
-  const libre = () => { firmando = false; ocupado = false; amt.disabled = false; estado(); };
+  const trabajando = (txt) => { ocupado = true; firmando = true; go.disabled = true; go.textContent = txt; amt.disabled = true; go.classList.add('busy'); };
+  const libre = () => { firmando = false; ocupado = false; amt.disabled = false; go.classList.remove('busy'); estado(); };
 
   go.onclick = async () => {
     if (!wallet.cuentaActual()) {
@@ -259,7 +285,7 @@ export function abrirCompra(it, aud, modoInicial) {
       const cuenta = wallet.cuentaActual();
       const balAntes = (modo === 'buy' && cuenta) ? await saldoToken(it.token, cuenta).catch(() => 0n) : 0n;
       const rc = modo === 'buy' ? await comprar({ token: it.token, quote, bnbWei: w, minOut: min }) : await vender({ token: it.token, quote, cantidad: w, minOut: min });
-      firmando = false; go.textContent = modo === 'buy' ? 'Swap complete' : 'Sold';
+      firmando = false; go.classList.remove('busy'); go.textContent = modo === 'buy' ? 'Swap complete' : 'Sold';
       info.innerHTML = `Done. ${modo === 'buy' ? 'The ' + sym + ' is' : 'The BNB is'} in your wallet. <a href="${SCAN_URL}/tx/${esc(rc.hash)}" target="_blank" rel="noopener">View on BscScan</a>`;
       log('ok', modo, rc.hash);
       // Registrar la posicion (no custodial, solo en el navegador) para "My positions".
