@@ -34,7 +34,7 @@ const ICO_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const ICO_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
 const ICO_REFRESH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v4h-4"/></svg>';
 const ICO_EXPAND = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6"/><path d="M3 3l7 7"/><path d="M15 21h6v-6"/><path d="M21 21l-7-7"/></svg>';
-const ICO_BNB = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6 15 5.6 12 8.6 9 5.6zM7 7.6 10 10.6 7 13.6 4 10.6zM17 7.6 20 10.6 17 13.6 14 10.6zM12 9.6 15.1 12.7 12 15.8 8.9 12.7zM12 14.9 15 17.9 12 20.9 9 17.9z"/></svg>';
+const ICO_BNB = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="11" fill="#F0B90B"/><path fill="#0b0e11" d="M12 5.4 14.3 7.7 12 10 9.7 7.7Z M7 10.4 9.3 12.7 7 15 4.7 12.7Z M17 10.4 19.3 12.7 17 15 14.7 12.7Z M12 10.4 14.3 12.7 12 15 9.7 12.7Z M12 15.4 14.3 17.7 12 20 9.7 17.7Z"/></svg>';
 const ICO_EXT = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>';
 const ICO_CHECK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>';
 const ICO_VERIF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="m12 1.5 2.4 1.7 2.9-.2 1.1 2.7 2.4 1.6-.6 2.9.9 2.8-2.1 2 .1 2.9-2.8.8-1.7 2.4-2.8-.7-2.7 1.1-1.9-2.2-2.9-.3-.8-2.8-2.4-1.6.3-2.9-1.4-2.5 1.9-2.2.1-2.9 2.8-.8z"/><path d="m8.5 12 2.4 2.4 4.6-4.9" fill="none" stroke="#04140c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -105,7 +105,7 @@ export function arrancar() {
         </nav>
         <div class="tm-howcard" id="tm-how" role="button" tabindex="0">
           <div class="tm-howcard-in">
-            <div class="tm-howcard-txw"><span class="tm-howcard-line"></span><div class="tm-howcard-tx">The right information at the exact moment makes the difference.</div></div>
+            <div class="tm-howcard-txw"><div class="tm-howcard-tx">The right information at the exact moment makes the difference.</div><span class="tm-howcard-line"></span></div>
             <span class="tm-howcard-btn">How it works</span>
           </div>
         </div>
@@ -388,8 +388,9 @@ function seleccionarCP(it) {
 function asegurarSelCP() {
   if (_sel || !esGrande()) return;
   if (_items.length < 6 && (Date.now() - _t0) < 1500) return;
+  const score = (x) => (x.liquidez || 0) + (mercadoDe(x.token) ? 1e15 : 0);   // prioriza tokens con datos de mercado
   let best = null;
-  for (const x of _items) { if (x.par && x.liquidez > 0 && (!best || x.liquidez > best.liquidez)) best = x; }
+  for (const x of _items) { if (x.par && x.liquidez > 0 && (!best || score(x) > score(best))) best = x; }
   if (best) seleccionarCP(best);
 }
 /* View All: abre la vista grande con el token actual; al cerrarse, re-monta el grafico inline. */
@@ -406,6 +407,7 @@ function verGrande(it) {
    verificaciones reales del contrato), abrirCompra (la compra/venta real pasa por la ventana probada) y
    tradesRecientes (operaciones reales del par). Nada se inventa; si un dato no existe se muestra vacio. */
 const corto2 = (a) => { const s = String(a || ''); return s.length > 10 ? s.slice(0, 6) + '…' + s.slice(-4) : s; };
+const liqTxtRail = (it) => { const l = it.moneda === 'USDT' ? it.liquidez : it.liquidez * _bnbUsd; return l > 0 ? money(l) : '—'; };
 let _railTok = '', _railMode = 'buy';
 function verifBadge(aud) {
   if (!aud || aud.nivel === 'pend') return '';
@@ -432,12 +434,12 @@ function montarRail(it) {
         <div class="tm-tc-id"><div class="tm-tc-nm"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span id="tm-tc-verif">${verifBadge(aud)}</span><em class="tm-tc-new">New</em></div><span>${esc(it.simbolo || '?')}</span></div>
         <a class="tm-tc-link" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener" aria-label="View on BscScan">${ICO_EXT}</a>
       </div>
-      <button class="tm-tc-ca tm-copyc" type="button" data-copy="${esc(it.token)}">${corto2(it.token)} ${ICO_COPY}</button>
       <div class="tm-tc-stats">
-        <div><b id="tm-st-mc">${m ? money(m.mc) : '—'}</b><span>Market cap</span></div>
+        <div><b id="tm-st-mc">${m ? money(m.mc) : liqTxtRail(it)}</b><span>${m ? 'Market cap' : 'Liquidity'}</span></div>
         <div><b id="tm-st-bu">${m ? numC(m.buys24) : '—'}</b><span>Buyers</span></div>
         <div><b id="tm-st-vo">${m ? money(m.vol24) : '—'}</b><span>Volume 24h</span></div>
       </div>
+      <button class="tm-tc-open" id="tm-tc-open" type="button">${ICO_EXPAND}Open full chart</button>
     </div>
     <div class="tm-trade">
       <div class="tm-trade-tabs" id="tm-trade-tabs"><button class="on" data-m="buy" type="button">Buy</button><button data-m="sell" type="button">Sell</button></div>
@@ -458,7 +460,7 @@ function montarRail(it) {
       <div class="tm-acts-h"><b>Recent activity</b></div>
       <div class="tm-acts-list" id="tm-acts-list">${actsSkeleton()}</div>
     </div>`;
-  const cb = rail.querySelector('.tm-copyc'); if (cb) cb.onclick = () => { try { navigator.clipboard.writeText(cb.dataset.copy); const o = cb.innerHTML; cb.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (cb.isConnected) cb.innerHTML = o; }, 1200); } catch (_) {} };
+  const openb = $('tm-tc-open'); if (openb) openb.onclick = () => { try { verGrande(it); } catch (_) {} };
   const amt = $('tm-amt'), estTok = $('tm-est-tok');
   const precioBNB = mon === 'BNB' ? it.precio : (it.precio / (_bnbUsd || 1));
   const recalc = () => { const v = parseFloat((amt && amt.value) || '0') || 0; if (estTok) estTok.textContent = (v > 0 && precioBNB > 0) ? '~ ' + numC(v / precioBNB) + ' ' + (it.simbolo || '') : '~ …'; };
@@ -475,7 +477,8 @@ function montarRail(it) {
 function updateRailStats(it) {
   if (_railTok !== it.token) return;
   const m = mercadoDe(it.token), M = $('tm-st-mc'), B = $('tm-st-bu'), V = $('tm-st-vo');
-  if (M) M.textContent = m ? money(m.mc) : '—'; if (B) B.textContent = m ? numC(m.buys24) : '—'; if (V) V.textContent = m ? money(m.vol24) : '—';
+  if (M) { M.textContent = m ? money(m.mc) : liqTxtRail(it); const lbl = M.parentElement && M.parentElement.querySelector('span'); if (lbl) lbl.textContent = m ? 'Market cap' : 'Liquidity'; }
+  if (B) B.textContent = m ? numC(m.buys24) : '—'; if (V) V.textContent = m ? money(m.vol24) : '—';
 }
 /* Las 4 verificaciones de seguridad desde los datos REALES de la auditoria del contrato. */
 function pintaChecks(it, r) {
