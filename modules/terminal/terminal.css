@@ -5,24 +5,28 @@
 #tm-app button{font:inherit;cursor:pointer}
 
 /* ───────── Lobby del Terminal (rediseno): banner + barra superior + rejilla de 3 columnas ───────── */
-.tm-head{position:relative;min-height:70px;margin:0 0 18px}
-.tm-head-bg{position:absolute;inset:0 -40px 0;background:url('./img/banner.webp') center top/cover no-repeat;-webkit-mask-image:linear-gradient(180deg,#000 24%,transparent);mask-image:linear-gradient(180deg,#000 24%,transparent);opacity:.92;pointer-events:none;z-index:0}
-.tm-topbar{position:relative;z-index:1;display:flex;align-items:center;gap:12px;padding:20px 0 0}
-.tm-search{flex:1 1 auto;position:relative;display:flex;align-items:center;min-width:0}
-.tm-search-ico{position:absolute;left:16px;width:18px;height:18px;color:var(--ink-3);display:inline-flex;pointer-events:none}
-.tm-search input{width:100%;height:46px;padding:0 16px 0 44px;border-radius:13px;border:1px solid var(--line);background:rgba(13,17,23,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--ink);font-family:var(--display);font-size:14px;outline:none}
-.tm-search input:focus{border-color:#8f6a1a}
-.tm-bell,.tm-prof{flex:0 0 auto;width:46px;height:46px;border-radius:13px;border:1px solid var(--line);background:rgba(13,17,23,.72);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
-.tm-prof{border-radius:50%}
-.tm-bell svg{width:19px;height:19px}.tm-prof svg{width:20px;height:20px}
-.tm-bell:hover,.tm-prof:hover{border-color:#8f6a1a;color:var(--gold)}
+/* Banner: franja visible bajo el loader que se difumina hacia el contenido. */
+.tm-head{position:relative;height:120px;margin:0 0 14px;border-radius:0 0 16px 16px;overflow:hidden}
+.tm-head-bg{position:absolute;inset:0 -40px;background:url('./img/banner.webp') center 30%/cover no-repeat;-webkit-mask-image:linear-gradient(180deg,#000 54%,transparent);mask-image:linear-gradient(180deg,#000 54%,transparent);opacity:.95;pointer-events:none}
+/* Barra superior alineada a la rejilla del lobby: la busqueda ocupa solo el ancho de la columna central. */
+.tm-topbar{display:grid;grid-template-columns:258px minmax(0,1fr) 322px;gap:16px;align-items:center;margin:0 0 16px}
+.tm-topbar-sp{min-width:0}
+.tm-search{position:relative;display:flex;align-items:center;min-width:0}
+.tm-search-ico{position:absolute;left:15px;width:18px;height:18px;color:var(--ink-3);display:inline-flex;pointer-events:none;transition:color .15s}
+.tm-search input{width:100%;height:44px;padding:0 16px 0 42px;border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(13,17,23,.38);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--ink);font-family:var(--display);font-size:14px;outline:none;transition:background .15s,border-color .15s}
+.tm-search input::placeholder{color:var(--ink-3)}
+.tm-search:hover input,.tm-search input:focus{background:rgba(13,17,23,.82);border-color:#8f6a1a}
+.tm-search:hover .tm-search-ico{color:var(--gold)}
+.tm-bell{justify-self:start;flex:0 0 auto;width:44px;height:44px;border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(13,17,23,.38);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.tm-bell svg{width:19px;height:19px}
+.tm-bell:hover{border-color:#8f6a1a;color:var(--gold);background:rgba(13,17,23,.82)}
 .tm-lobby{display:grid;grid-template-columns:258px minmax(0,1fr) 322px;gap:16px;align-items:start}
 .tm-side{display:flex;flex-direction:column;gap:12px;position:sticky;top:12px}
 .tm-brand{display:flex;align-items:center;gap:11px;padding:14px;border-radius:14px;border:1px solid var(--line);background:linear-gradient(180deg,#0e141b,#0a0e13)}
 .tm-brand-ico{width:34px;height:34px;flex:0 0 auto;color:var(--gold);display:inline-flex}.tm-brand-ico svg{width:34px;height:34px}
 .tm-brand-tx b{display:block;font-family:'Chakra Petch',var(--display);font-size:15px;font-weight:700;line-height:1.1}
 .tm-brand-tx span{font-size:11px;color:var(--ink-3)}
-.tm-nav{display:flex;flex-direction:column;gap:4px}
+.tm-nav{display:flex;flex-direction:column;gap:3px;padding:8px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#0e141b,#0a0e13)}
 .tm-nav-b{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;border:1px solid transparent;background:transparent;color:var(--ink-2);font-family:var(--display);font-weight:600;font-size:13.5px;text-align:left}
 .tm-nav-ic{width:18px;height:18px;flex:0 0 auto;display:inline-flex;color:var(--ink-3)}.tm-nav-ic svg{width:18px;height:18px}
 .tm-nav-b:hover{background:rgba(255,255,255,.03);color:var(--ink)}
@@ -58,59 +62,58 @@
 .tm-rail-ph{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:44px 18px;border-radius:14px;border:1px dashed #2a323d;background:linear-gradient(180deg,#0d1319,#0a0e13);color:var(--ink-3)}
 .tm-rail-ph-ic{width:34px;height:34px;color:var(--gold);opacity:.55;display:inline-flex}.tm-rail-ph-ic svg{width:34px;height:34px}
 .tm-rail-ph b{color:var(--ink-2);font-size:14px}.tm-rail-ph span{font-size:12px;line-height:1.5}
-@media(max-width:1180px){.tm-lobby{grid-template-columns:238px minmax(0,1fr)}.tm-rail{display:none}}
-@media(max-width:880px){.tm-lobby{grid-template-columns:1fr}.tm-side{display:none}.tm-head{min-height:0}.tm-head-bg{inset:0 -18px 0}}
+@media(max-width:1180px){.tm-lobby{grid-template-columns:238px minmax(0,1fr)}.tm-rail{display:none}.tm-topbar{grid-template-columns:238px minmax(0,1fr) auto}}
+@media(max-width:880px){.tm-lobby{grid-template-columns:1fr}.tm-side{display:none}.tm-head{height:84px}.tm-head-bg{inset:0 -18px}.tm-topbar{grid-template-columns:minmax(0,1fr) auto}.tm-topbar-sp{display:none}}
 /* Pestanas y columnas de la tabla New pairs (MC / Buyers / Volume) + boton Buy por fila. */
 .tm-tabrow{margin:0 0 13px}
 .tm-tabs3{display:inline-flex;gap:4px;background:#0b0f14;border:1px solid var(--line);border-radius:11px;padding:3px}
 .tm-tabs3 button{border:0;background:transparent;color:var(--ink-3);font-family:var(--display);font-weight:600;font-size:12px;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap}
 .tm-tabs3 button:hover{color:var(--ink)}
 .tm-tabs3 button.on{background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold);box-shadow:inset 0 0 0 1px #8f6a1a}
-.tm-table-l th,.tm-table-l td{text-align:right}
-.tm-table-l .tm-cl-num,.tm-table-l .tm-num,.tm-table-l .tm-cl-token,.tm-table-l .tm-tok{text-align:left}
+.tm-table-l th,.tm-table-l td{text-align:left;vertical-align:middle}
 .tm-table-l .tm-tok-id{display:flex;flex-direction:column;gap:1px;min-width:0}
-.tm-table-l .tm-tok-id b{font-size:13px;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-table-l .tm-tok-id b{font-size:13px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tm-table-l .tm-tok-id span{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
-.tm-cl-price b{font-family:var(--mono);font-weight:600}
-.tm-chg{font-style:normal;font-family:var(--mono);font-size:10.5px;margin-left:6px}
+.tm-cl-price b{display:block;font-family:var(--mono);font-weight:600;color:var(--ink)}
+.tm-cl-price .tm-chg{display:block;margin:2px 0 0}
+.tm-chg{font-style:normal;font-family:var(--mono);font-size:11px}
 .tm-chg.up{color:var(--verde)}.tm-chg.down{color:var(--rojo)}
 .tm-cl-mc,.tm-cl-buyers,.tm-cl-volume{font-family:var(--mono);font-size:12.5px;color:var(--ink-2)}
-.tm-cl-buy{width:1%;white-space:nowrap}
-.tm-buybtn{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12px;color:#04140c;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);border:1px solid #c79426;border-radius:9px;padding:7px 15px;cursor:pointer;box-shadow:0 2px 0 #8f6a1a}
-.tm-buybtn:hover{filter:brightness(1.05)}.tm-buybtn:active{transform:translateY(1px);box-shadow:0 1px 0 #8f6a1a}
+.tm-cl-buy{width:1px;white-space:nowrap;text-align:right}
+.tm-buybtn{font-family:var(--display);font-weight:600;font-size:11.5px;color:var(--gold);background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.5);border-radius:9px;padding:6px 15px;cursor:pointer;transition:background .13s,border-color .13s}
+.tm-buybtn:hover{background:rgba(232,184,75,.22);border-color:var(--gold)}.tm-buybtn:active{transform:translateY(1px)}
+/* La tabla muestra ~7 filas; el resto se alcanza con scroll y la cabecera queda fija arriba. */
+.tm-feed-scroll{max-height:418px;overflow-y:auto;overflow-x:hidden}
+.tm-feed-scroll thead th{position:sticky;top:0;background:#0a0e13;z-index:2}
 @media(max-width:1080px){.tm-table-l .tm-cl-mc{display:none}}
 @media(max-width:960px){.tm-table-l .tm-cl-volume{display:none}}
 @media(max-width:860px){.tm-table-l .tm-cl-buyers{display:none}.tm-tabrow{overflow-x:auto;-webkit-overflow-scrolling:touch}.tm-tabs3{display:flex;width:max-content}}
-/* ── Grafico inline del centro (Modulo 4): cabecera del token, precio USDT + %, timeframes centrados, View All ── */
-.tm-cp{min-width:0;background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:14px 16px;margin-bottom:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.tm-cp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px}
+/* ── Grafico inline del centro (Modulo 4), DEBAJO de la tabla: cabecera del token + precio + % y timeframes ── */
+.tm-cp{position:relative;min-width:0;background:rgba(9,12,17,.93);border:1px solid #2a333f;border-radius:18px;padding:14px 16px;margin-top:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.tm-cp-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
 .tm-cp-tt{display:flex;align-items:center;gap:11px;min-width:0}
-.tm-cp-tt .tm-logo{width:34px;height:34px;flex:0 0 auto}
+.tm-cp-tt .tm-logo{width:36px;height:36px;flex:0 0 auto}
 .tm-cp-tx{min-width:0}
 .tm-cp-tx b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:16px;line-height:1.15;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm-cp-tx span{font-size:11.5px;color:var(--ink-3)}
+.tm-cp-tx b i{font-style:normal;font-weight:600;color:var(--ink-3);font-size:13px}
 .tm-cp-ph{display:flex;align-items:center;gap:10px;color:var(--ink-3)}
 .tm-cp-ph svg{width:22px;height:22px;color:var(--gold);opacity:.7;flex:0 0 auto}
 .tm-cp-ph b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;color:var(--ink-2)}
 .tm-cp-ph>span{font-size:12px}
-.tm-cp-right{display:flex;align-items:center;gap:12px;flex:0 0 auto}
-.tm-cp-px{display:flex;align-items:baseline;gap:7px;white-space:nowrap}
-.tm-cp-px b{font-family:var(--mono);font-weight:600;font-size:17px;color:var(--ink)}
-.tm-cp-px .tm-chg{font-size:12px;margin:0}
-.tm-cp-all{display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-weight:600;font-size:12.5px;color:#E8B84B;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid #8f6a1a;border-radius:11px;padding:8px 14px;cursor:pointer;box-shadow:0 3px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);white-space:nowrap}
-.tm-cp-all svg{width:14px;height:14px}
-.tm-cp-all:hover{filter:brightness(1.08)}
-.tm-cp-all:disabled{opacity:.45;cursor:default;box-shadow:none}
-.tm-cp-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:12px}
-.tm-tf{justify-self:center;display:inline-flex;gap:3px;background:#0b0f14;border:1px solid var(--line);border-radius:11px;padding:3px}
-.tm-tf button{border:0;background:transparent;color:var(--ink-3);font-family:var(--mono);font-weight:600;font-size:12px;padding:5px 12px;border-radius:8px;cursor:pointer}
+.tm-cp-px{display:flex;align-items:baseline;gap:8px;white-space:nowrap;margin-top:2px}
+.tm-cp-px b{font-family:var(--mono);font-weight:600;font-size:14.5px;color:var(--ink)}
+.tm-cp-px .tm-chg{font-size:12px}
+.tm-cp-right{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.tm-tf{display:inline-flex;gap:2px;background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:10px;padding:2px}
+.tm-tf button{border:0;background:transparent;color:var(--ink-3);font-family:var(--display);font-weight:600;font-size:11.5px;padding:5px 10px;border-radius:8px;cursor:pointer;transition:color .13s,background .13s}
 .tm-tf button:hover{color:var(--ink)}
-.tm-tf button.on{background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold);box-shadow:inset 0 0 0 1px #8f6a1a}
-.tm-cp-tools{justify-self:end;display:inline-flex;gap:6px}
-.tm-cp-tool{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;background:#0b0f14;color:var(--ink-2);cursor:pointer}
-.tm-cp-tool:hover{border-color:#8f6a1a;color:var(--gold)}
-.tm-cp-tool:disabled{opacity:.4;cursor:default}
-.tm-cp-chart{height:264px;margin:0}
+.tm-tf button.on{background:rgba(232,184,75,.14);color:var(--gold)}
+.tm-cp-all{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;color:var(--ink-2);background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:color .13s,border-color .13s}
+.tm-cp-all svg{width:15px;height:15px}
+.tm-cp-all:hover{color:var(--gold);border-color:#8f6a1a}
+.tm-cp-all:disabled{opacity:.4;cursor:default}
+.tm-cp-chart{height:300px;margin:0}
+.tm-cp-chart::before{content:"";position:absolute;inset:0;background:url('./img/textura.webp') center/cover no-repeat;opacity:.07;z-index:0;pointer-events:none}
 .tm-row.sel{background:rgba(232,184,75,.07);box-shadow:inset 3px 0 0 var(--gold)}
 @media(max-width:859px){.tm-cp{display:none}}
 

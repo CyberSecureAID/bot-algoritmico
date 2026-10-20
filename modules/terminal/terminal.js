@@ -34,6 +34,7 @@ const ICO_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const ICO_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
 const ICO_REFRESH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v4h-4"/></svg>';
 const ICO_EXPAND = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6"/><path d="M3 3l7 7"/><path d="M15 21h6v-6"/><path d="M21 21l-7-7"/></svg>';
+const ICO_BNB = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6 15 5.6 12 8.6 9 5.6zM7 7.6 10 10.6 7 13.6 4 10.6zM17 7.6 20 10.6 17 13.6 14 10.6zM12 9.6 15.1 12.7 12 15.8 8.9 12.7zM12 14.9 15 17.9 12 20.9 9 17.9z"/></svg>';
 
 /* Precio: cifras significativas, con subindice para los muy pequenos (igual que el launchpad). */
 function fmtP(p, sig = 4) {
@@ -83,16 +84,15 @@ const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, a
 export function arrancar() {
   const host = $('tm-app'); if (!host) return;
   host.innerHTML = `
-    <div class="tm-head"><div class="tm-head-bg"></div>
-      <div class="tm-topbar">
-        <div class="tm-search"><span class="tm-search-ico">${ICO_SEARCH}</span><input id="tm-search" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, contract or address…"></div>
-        <button class="tm-bell" id="tm-bell" type="button" aria-label="Price alerts">${ICO_BELL}</button>
-        <button class="tm-prof" id="tm-prof" type="button" aria-label="Profile">${ICO_USER}</button>
-      </div>
+    <div class="tm-head"><div class="tm-head-bg"></div></div>
+    <div class="tm-topbar">
+      <span class="tm-topbar-sp"></span>
+      <div class="tm-search"><span class="tm-search-ico">${ICO_SEARCH}</span><input id="tm-search" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, contract or address…"></div>
+      <button class="tm-bell" id="tm-bell" type="button" aria-label="Price alerts">${ICO_BELL}</button>
     </div>
     <div class="tm-lobby">
       <aside class="tm-side">
-        <div class="tm-brand"><span class="tm-brand-ico">${ICO_DIAMOND}</span><div class="tm-brand-tx"><b>Terminal</b><span>New tokens. Real opportunities.</span></div></div>
+        <div class="tm-brand"><span class="tm-brand-ico">${ICO_BNB}</span><div class="tm-brand-tx"><b>Terminal</b><span>New tokens. Real opportunities.</span></div></div>
         <nav class="tm-nav" id="tm-nav">
           <button class="tm-nav-b on" data-nav="pairs" type="button"><span class="tm-nav-ic">${ICO_BOLT}</span>New pairs<em class="tm-nav-live">Live</em></button>
           <button class="tm-nav-b" data-nav="mine" type="button"><span class="tm-nav-ic">${ICO_WALLET}</span>My tokens</button>
@@ -115,31 +115,27 @@ export function arrancar() {
         </div>
       </aside>
       <main class="tm-center">
-        <section class="tm-cp" id="tm-cp">
-          <div class="tm-cp-head">
-            <div class="tm-cp-tt" id="tm-cp-tt"><span class="tm-cp-ph">${ICO_BOLT}<b>Chart</b><span>Pick a token to load its live chart</span></span></div>
-            <div class="tm-cp-right"><div class="tm-cp-px" id="tm-cp-px"></div><button class="tm-cp-all" id="tm-cp-all" type="button" disabled>${ICO_EXPAND}View All</button></div>
-          </div>
-          <div class="tm-cp-bar">
-            <span class="tm-cp-sp"></span>
-            <div class="tm-tf" id="tm-cp-tf"><button data-sec="60" class="on" type="button">1m</button><button data-sec="300" type="button">5m</button><button data-sec="900" type="button">15m</button><button data-sec="3600" type="button">1h</button></div>
-            <div class="tm-cp-tools"><button class="tm-cp-tool" id="tm-cp-refresh" type="button" aria-label="Refresh chart" disabled>${ICO_REFRESH}</button></div>
-          </div>
-          <div class="tm-chart tm-cp-chart"><div class="tm-chart-cv" id="tm-cp-cv"></div><div class="tm-chart-msg" id="tm-cp-msg">Pick a token</div></div>
-        </section>
         <section class="tm-panel">
           <div class="tm-sec-head">
             <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b><span>Newest tokens on BNB Chain</span></div></div>
             <div class="tm-sec-r"><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
           </div>
           <div class="tm-tabrow"><div class="tm-tabs3" id="tm-tabs3"><button data-tab="all" class="on" type="button">All</button><button data-tab="trend" type="button">Trending</button><button data-tab="vol" type="button">Volume</button><button data-tab="buyers" type="button">Buyers</button></div></div>
-          <div id="tm-feed">${skeleton()}</div>
+          <div id="tm-feed" class="tm-feed-scroll">${skeleton()}</div>
+        </section>
+        <section class="tm-cp" id="tm-cp">
+          <div class="tm-cp-head">
+            <div class="tm-cp-tt" id="tm-cp-tt"><span class="tm-cp-ph">${ICO_BOLT}<b>Chart</b><span>Pick a token below to load its live chart</span></span></div>
+            <div class="tm-cp-right"><div class="tm-tf" id="tm-cp-tf"><button data-sec="60" type="button">1m</button><button data-sec="300" type="button">5m</button><button data-sec="900" class="on" type="button">15m</button><button data-sec="3600" type="button">1h</button><button data-sec="14400" type="button">4h</button><button data-sec="86400" type="button">1d</button></div><button class="tm-cp-all" id="tm-cp-all" type="button" aria-label="View full chart" disabled>${ICO_EXPAND}</button></div>
+          </div>
+          <div class="tm-chart tm-cp-chart"><div class="tm-chart-cv" id="tm-cp-cv"></div><div class="tm-chart-msg" id="tm-cp-msg">Pick a token below</div></div>
         </section>
       </main>
       <aside class="tm-rail">
         <div class="tm-rail-ph"><span class="tm-rail-ph-ic">${ICO_BOLT}</span><b>Select a token</b><span>Tap any token to see its details, chart and trade panel here.</span></div>
       </aside>
     </div>`;
+  _t0 = Date.now();
   const fb = $('tm-filtros'); if (fb) fb.onclick = () => abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
   const how = $('tm-how'); if (how) how.onclick = () => { try { comoFunciona(); } catch (e) { console.warn('[TERM] how', e); } };
   const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); } catch (e) { console.warn('[TERM] pos', e); } };
@@ -149,8 +145,7 @@ export function arrancar() {
   if (tabs3) tabs3.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tab = b.dataset.tab; tabs3.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintar(); }; });
   // Grafico inline (Modulo 4): timeframes, refrescar y View All.
   const cptf = $('tm-cp-tf');
-  if (cptf) cptf.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tfSec = Number(b.dataset.sec) || 60; cptf.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); renderCP(); }; });
-  const cpre = $('tm-cp-refresh'); if (cpre) cpre.onclick = () => { if (_sel) cargarCP(_sel); };
+  if (cptf) cptf.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tfSec = Number(b.dataset.sec) || 900; cptf.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); renderCP(); }; });
   const cpall = $('tm-cp-all'); if (cpall) cpall.onclick = () => { if (_sel) verGrande(_sel); };
   const nav = $('tm-nav');
   if (nav) nav.querySelectorAll('.tm-nav-b').forEach((b) => { b.onclick = () => { const n = b.dataset.nav; try {
@@ -173,6 +168,7 @@ export function arrancar() {
     }
   });
   try { setTimeout(cueIntento, 1200); } catch (_) {}   // destello de invitacion cuando el lote inicial ya esta en pantalla
+  try { setTimeout(asegurarSelCP, 1600); } catch (_) {}   // token por defecto (el de mas liquidez) cuando el feed ya se poblo
 }
 
 const COLS = ['#', 'Token', 'Symbol', 'Age', 'Liquidity', 'Price', 'Contract', 'Chain'];
@@ -224,7 +220,7 @@ const theadLobby = () => `<thead><tr>${COLS_L.map((c) => { const k = c === '#' ?
 const mNum = (tk, k) => { const m = mercadoDe(tk); return m ? (Number(m[k]) || 0) : 0; };
 const cambioDe = (tk) => { const m = mercadoDe(tk); return (m && m.cambio24 != null) ? m.cambio24 : -1e12; };
 function filaLobby(it, i) {
-  const precioUsd = it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd;
+  const mon = it.moneda || 'BNB';
   const listo = mercadoListo(it.token), m = mercadoDe(it.token);
   const sk = (w) => `<span class="tm-sk" style="width:${w}px"></span>`;
   const chg = m && m.cambio24 != null ? m.cambio24 : null;
@@ -232,7 +228,7 @@ function filaLobby(it, i) {
   return `<tr class="tm-row" data-a="${esc(it.token)}">
     <td class="tm-num">${i + 1}</td>
     <td class="tm-tok"><span class="tm-tok-in">${logo(it.simbolo, it.token)}<span class="tm-tok-id"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span>${esc(it.simbolo || '?')}</span></span></span></td>
-    <td class="tm-cl-price"><b>${precioUsd > 0 ? '$' + fmtP(precioUsd) : '$0'}</b>${chgTxt}</td>
+    <td class="tm-cl-price"><b>${it.precio > 0 ? fmtP(it.precio) + ' ' + mon : '0 ' + mon}</b>${chgTxt}</td>
     <td class="tm-cl-mc">${listo ? money(m ? m.mc : 0) : sk(42)}</td>
     <td class="tm-cl-buyers">${listo ? numC(m ? m.buys24 : 0) : sk(30)}</td>
     <td class="tm-cl-volume">${listo ? money(m ? m.vol24 : 0) : sk(46)}</td>
@@ -329,7 +325,7 @@ let _creadorFicha = '';
    la vista grande. grafico.js tiene una sola instancia; mientras la vista grande esta
    abierta la toma prestada, por eso al cerrarse re-montamos aqui. En movil (<860) el
    panel se oculta y el toque abre la ficha. */
-let _sel = null, _tfSec = 60, _velasRaw = null, _cpTok = '', _cpObs = null;
+let _sel = null, _tfSec = 900, _velasRaw = null, _cpTok = '', _cpObs = null, _t0 = 0;
 const cpEl = (id) => document.getElementById(id);
 /* Reagrupa las velas por-operacion en cubos de 'seg' segundos (OHLC real por cubo). */
 function agrupar(velas, seg) {
@@ -344,19 +340,19 @@ function agrupar(velas, seg) {
   }
   return [...m.values()].sort((a, b) => a.time - b.time);
 }
+/* Cabecera: logo + Nombre (SIMBOLO) y, debajo, el precio en la moneda del par + % 24h real. Sin "ago". */
 function cabeceraCP(it) {
   const tt = cpEl('tm-cp-tt'); if (!tt) return;
-  tt.innerHTML = `${logo(it.simbolo, it.token)}<div class="tm-cp-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · <i class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</i> ago</span></div>`;
+  tt.innerHTML = `${logo(it.simbolo, it.token)}<div class="tm-cp-tx"><b title="${esc(it.nombre)}">${esc(it.nombre || 'Token')} <i>(${esc(it.simbolo || '?')})</i></b><div class="tm-cp-px" id="tm-cp-px"></div></div>`;
   precioCP(it);
 }
-/* Precio en USDT (lectura viva del par) + % 24h real de DexScreener. */
+/* Precio en la moneda del par (BNB o USDT) + % 24h real de DexScreener, en la linea bajo el nombre. */
 function precioCP(it) {
   const px = cpEl('tm-cp-px'); if (!px) return;
-  const base = it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd;
+  const mon = it.moneda || 'BNB';
   const m = mercadoDe(it.token); const chg = m && m.cambio24 != null ? m.cambio24 : null;
   const chgTxt = chg != null ? `<em class="tm-chg ${chg >= 0 ? 'up' : 'down'}">${chg >= 0 ? '+' : ''}${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%</em>` : '';
-  px.innerHTML = `<b>${base > 0 ? '$' + fmtP(base) : '$0'}</b>${chgTxt}`;
-  if (it.par) precioActual({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bnbUsd: _bnbUsd, quoteEsUSDT: it.moneda === 'USDT' }).then((p) => { if (p > 0 && _sel && _sel.token === it.token) { const b = px.querySelector('b'); if (b) b.textContent = '$' + fmtP(p); } }).catch(() => {});
+  px.innerHTML = `<b>${it.precio > 0 ? fmtP(it.precio) + ' ' + mon : '0 ' + mon}</b>${chgTxt}`;
 }
 /* Monta el grafico desde las velas crudas en cache, reagrupadas al timeframe activo. */
 function renderCP() {
@@ -380,16 +376,18 @@ function cargarCP(it) {
 function seleccionarCP(it) {
   if (!it) return; _sel = it;
   cabeceraCP(it);
-  const all = cpEl('tm-cp-all'), re = cpEl('tm-cp-refresh'); if (all) all.disabled = false; if (re) re.disabled = !it.par;
+  const all = cpEl('tm-cp-all'); if (all) all.disabled = false;
   const host = $('tm-feed'); if (host) { host.querySelectorAll('.tm-row.sel').forEach((r) => r.classList.remove('sel')); const ar = host.querySelector(`.tm-row[data-a="${it.token}"]`); if (ar) ar.classList.add('sel'); }
   cargarCP(it);
-  try { const cp = cpEl('tm-cp'); if (cp) cp.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
 }
-/* Al entrar, si no hay seleccion y estamos en escritorio, elige el primer token liquido. */
+/* Por defecto (escritorio) elige el token con MAS liquidez, no el primero que llega (que suele ser basura).
+   Con un margen para que el feed se pueble y "mas liquidez" tenga sentido. */
 function asegurarSelCP() {
   if (_sel || !esGrande()) return;
-  const it = _items.find((x) => x.par && x.liquidez > 0);
-  if (it) seleccionarCP(it);
+  if (_items.length < 6 && (Date.now() - _t0) < 1500) return;
+  let best = null;
+  for (const x of _items) { if (x.par && x.liquidez > 0 && (!best || x.liquidez > best.liquidez)) best = x; }
+  if (best) seleccionarCP(best);
 }
 /* View All: abre la vista grande con el token actual; al cerrarse, re-monta el grafico inline. */
 function verGrande(it) {
