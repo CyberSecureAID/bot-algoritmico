@@ -10,11 +10,12 @@
    clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
 import { conRotacion } from './rpc.js';
-import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada, marcarActual, limpiarActual } from './grafico.js';
+import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
 import { SCAN_URL, FACTORY, WBNB, USDT, SLIPPAGE } from './config.js';
 import { abrirCompra, saldoBNB, saldoToken, cotizarCompra, comprar } from './compra.js';
 import { listaDe, enVivo, registrarCompra } from './posiciones.js';
 import { crearAlerta, alertasDe, quitarAlerta } from './alertas.js';
+import { PASOS, PASOS_TXT } from './auditoria.js';
 import * as wallet from './wallet.js';
 
 const $ = (id) => document.getElementById(id);
@@ -27,7 +28,14 @@ const ICO_BSC = '<svg viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const ICO_CHECK = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>';
 const ICO_X = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+const ICO_SEM = {
+  ok: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  bad: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  pend: '<i class="tg-anillo2"></i>'
+};
 const ICO_SEARCH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>';
+const ICO_RULER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="5" r="2.2"/><path d="M8.5 15.5v-3M12 12V9M15.5 8.5v-3" stroke-width="1.6"/></svg>';
 const LOGO_BNB = 'https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png';
 const LOGO_USDT = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png';
 
@@ -56,7 +64,9 @@ function css() {
 .tm-big{position:fixed;inset:0;z-index:1200;display:flex;flex-direction:column;background:#05070a;color:var(--ink,#eaecef);font-family:var(--display,sans-serif);animation:tgIn .18s ease}
 @keyframes tgIn{from{opacity:0}to{opacity:1}}
 .tm-big *{box-sizing:border-box}
-.tm-big-top{flex:0 0 auto;display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--line,#232b36);background:linear-gradient(180deg,#0b0f14,#070a0e)}
+.tm-big-top{flex:0 0 auto;display:grid;grid-template-columns:272px 1fr 316px;gap:1px;align-items:center;border-bottom:1px solid var(--line,#232b36);background:linear-gradient(180deg,#0b0f14,#070a0e)}
+.tg-top-l{display:flex;align-items:center;gap:11px;min-width:0;padding:12px 14px}
+.tg-top-r{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:12px 14px}
 .tg-id{display:flex;align-items:center;gap:11px;min-width:0}
 .tg-logo{position:relative;display:inline-flex;width:40px;height:40px;border-radius:50%;overflow:hidden;flex:0 0 auto;background:#0d1117;border:1px solid #1c232b}
 .tg-logo-fb,.tg-logo-img{position:absolute;inset:0;width:100%;height:100%}
@@ -69,7 +79,7 @@ function css() {
 .tg-price b{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1;color:var(--gold,#E8B84B)}
 .tg-price b sub{font-size:.62em}
 .tg-price span{font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794);margin-top:3px;letter-spacing:.3px}
-.tg-find{flex:1 1 auto;display:flex;gap:10px;min-width:0}
+.tg-find{display:flex;min-width:0;padding:12px 8px}
 .tg-find-in{position:relative;display:flex;align-items:center;flex:1 1 auto;max-width:none;width:100%}
 .tg-find-in .tg-ico{position:absolute;left:12px;color:var(--ink-3,#7d8794);display:flex}
 .tg-find-in input{width:100%;height:42px;padding:0 14px 0 36px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink,#eaecef);font-family:var(--mono);font-size:12px;outline:none}
@@ -85,6 +95,20 @@ function css() {
 .tg-chart-cv{position:absolute;inset:0}
 .tg-chart-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:13px;pointer-events:none}
 .tg-chart-msg[hidden]{display:none}
+.tg-tools{position:absolute;top:8px;left:8px;z-index:4;display:flex;gap:6px}
+.tg-tool{width:32px;height:32px;border-radius:9px;border:1px solid var(--line,#232b36);background:rgba(11,15,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--ink-2,#b7bdc6);display:grid;place-items:center;cursor:pointer;transition:color .14s,border-color .14s}
+.tg-tool svg{width:17px;height:17px}
+.tg-tool:hover{color:var(--ink,#eaecef);border-color:#3a434f}
+.tg-tool.on{color:var(--gold,#E8B84B);border-color:#8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117)}
+.tg-mdcapture{position:absolute;inset:0;z-index:3;cursor:crosshair}
+.tg-mdcapture[hidden]{display:none}
+.tg-mdbox{position:absolute;z-index:3;pointer-events:none;border:1px dashed var(--gold,#E8B84B);background:rgba(232,184,75,.08);border-radius:2px}
+.tg-mdbox[hidden]{display:none}
+.tg-mdbox.up{border-color:#2ee86a;background:rgba(46,232,106,.1)}
+.tg-mdbox.down{border-color:#ff5c6c;background:rgba(246,70,93,.1)}
+.tg-md-lbl{position:absolute;top:-23px;left:-1px;white-space:nowrap;font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;background:#0b0f14;border:1px solid var(--line,#232b36);color:var(--ink,#eaecef);box-shadow:0 6px 16px rgba(0,0,0,.5)}
+.tg-mdbox.up .tg-md-lbl{color:#2ee86a;border-color:rgba(46,232,106,.4)}
+.tg-mdbox.down .tg-md-lbl{color:#ff5c6c;border-color:rgba(246,70,93,.4)}
 .tg-right{padding:14px;display:flex;flex-direction:column;gap:12px}
 .tg-sec-t{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3,#7d8794);margin:0 0 10px}
 .tg-kv{display:flex;flex-direction:column;gap:9px}
@@ -92,6 +116,12 @@ function css() {
 .tg-kv>div span{color:var(--ink-3,#7d8794);font-family:var(--mono)}
 .tg-kv>div b{font-weight:700;text-align:right;font-family:var(--mono)}
 .tg-kv .tg-copyc{display:inline-flex;align-items:center;gap:5px;background:none;border:0;color:var(--gold,#E8B84B);font-family:var(--mono);font-size:12px;cursor:pointer;padding:0}
+/* Cross-check: accesos externos utiles antes de comprar. */
+.tg-links{display:flex;flex-direction:column;gap:7px}
+.tg-link{display:flex;flex-direction:column;gap:1px;padding:9px 11px;border-radius:11px;border:1px solid var(--line,#232b36);background:linear-gradient(180deg,#0d1319,#0a0e13);text-decoration:none;transition:border-color .15s,transform .15s}
+.tg-link:hover{border-color:#8f6a1a;transform:translateY(-1px)}
+.tg-link b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;color:var(--gold,#E8B84B)}
+.tg-link span{font-size:11px;color:var(--ink-3,#7d8794)}
 /* Check security: lista completa de verificaciones con palomita/cruz. */
 .tg-checks{display:flex;flex-direction:column}
 .tg-chk{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid rgba(255,255,255,.05);font-size:12px}
@@ -102,17 +132,49 @@ function css() {
 .tg-chk.no>span i{color:var(--rojo,#f6465d);background:rgba(246,70,93,.14)}
 .tg-chk>b{font-family:var(--mono);font-size:11.5px;font-weight:600;color:#eaecef}
 .tg-chk.ok>b{color:var(--verde,#2ebd85)}
+.tg-chk.no>b{color:#ff9aa9}
 .tg-chk.pend>span{color:var(--ink-3,#7d8794)}
+.tg-chk>span i svg{width:11px;height:11px;display:block}
+/* Escaneo dramatico: cada check arranca con un giro + barra que corre, y se revela resolviendo a check/X. */
+.tg-chk-sp{width:17px;height:17px;flex:0 0 auto;box-sizing:border-box;border-radius:50%;border:1.6px solid rgba(232,184,75,.22);border-top-color:var(--gold,#E8B84B);animation:tgSpin .7s linear infinite}
+.tg-chk.scan>span{color:var(--ink-3,#7d8794)}
+.tg-chk-bar{position:relative;width:52px;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;flex:0 0 auto}
+.tg-chk-bar em{position:absolute;top:0;bottom:0;left:0;width:38%;border-radius:999px;background:linear-gradient(90deg,transparent,var(--gold,#E8B84B),transparent);animation:tgScanBar 1.05s ease-in-out infinite}
+@keyframes tgScanBar{0%{transform:translateX(-130%)}100%{transform:translateX(330%)}}
+.tg-chk.rev{animation:tgChkRev .36s cubic-bezier(.2,.8,.3,1)}
+@keyframes tgChkRev{0%{opacity:0;transform:translateY(5px)}60%{opacity:1}100%{transform:none}}
+.tg-chk.rev>span i{animation:tgChkPop .42s ease-out}
+@keyframes tgChkPop{0%{transform:scale(.35)}55%{transform:scale(1.2)}100%{transform:scale(1)}}
+.tg-sem.ok,.tg-sem.warn,.tg-sem.bad{animation:tgSemPop .5s cubic-bezier(.2,.8,.3,1)}
+@keyframes tgSemPop{0%{transform:scale(.96);opacity:.45}100%{transform:none;opacity:1}}
+.tg-sem.ok .tg-sem-ico svg,.tg-sem.warn .tg-sem-ico svg,.tg-sem.bad .tg-sem-ico svg{animation:tgChkPop .5s ease-out}
 /* Open alerts y Positions con scroll propio (barra fina) para muchas monedas. */
 #tg-openalerts{max-height:168px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
 #tg-positions{max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
 #tg-openalerts::-webkit-scrollbar,#tg-positions::-webkit-scrollbar{width:6px}
 #tg-openalerts::-webkit-scrollbar-thumb,#tg-positions::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
 #tg-openalerts::-webkit-scrollbar-track,#tg-positions::-webkit-scrollbar-track{background:transparent}
-.tg-sem{display:flex;align-items:center;gap:9px;padding:10px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0b0f14;margin-bottom:14px}
-.tg-sem i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:#7d8794}
-.tg-sem.ok i{background:var(--verde,#2ee86a)} .tg-sem.warn i{background:#f1cf6a} .tg-sem.bad i{background:var(--rojo,#f6465d)} .tg-sem.pend i{background:#7d8794}
-.tg-sem b{font-size:12.5px;font-weight:700} .tg-sem span{display:block;font-size:11px;color:var(--ink-3,#7d8794)}
+.tg-sem{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:13px;border:1px solid var(--line,#232b36);background:rgba(11,14,17,.72);margin-bottom:10px}
+.tg-sem>div{flex:1 1 auto;min-width:0}
+.tg-sem-ico{width:36px;height:36px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;line-height:0;background:rgba(255,255,255,.06);color:var(--ink-2,#b7bdc6)}
+.tg-sem-ico svg{width:19px;height:19px;display:block;grid-area:1/1}
+.tg-sem-ico .tg-anillo2{grid-area:1/1}
+.tg-sem>div>b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:14px;color:var(--ink,#eaecef)}
+.tg-sem>div>span{display:block;font-size:11.5px;color:var(--ink-3,#7d8794);margin-top:1px}
+.tg-sem.ok{border-color:rgba(46,232,106,.35);background:rgba(46,232,106,.08)}.tg-sem.ok .tg-sem-ico{background:rgba(46,232,106,.18);color:#2ee86a}.tg-sem.ok b{color:#8ef0b0}
+.tg-sem.warn{border-color:rgba(232,184,75,.4);background:rgba(232,184,75,.08)}.tg-sem.warn .tg-sem-ico{background:rgba(232,184,75,.18);color:var(--gold,#E8B84B)}.tg-sem.warn b{color:#f1cf6a}
+.tg-sem.bad{border-color:rgba(246,70,93,.45);background:rgba(246,70,93,.1)}.tg-sem.bad .tg-sem-ico{background:rgba(246,70,93,.2);color:#ff7f93}.tg-sem.bad b{color:#ff9aa9}
+.tg-sem.pend .tg-sem-ico{background:rgba(232,184,75,.1)}
+.tg-anillo2{display:block;width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(232,184,75,.18);border-top-color:var(--gold,#E8B84B);animation:tgSpin .8s linear infinite}
+.tg-sem .tg-pasos{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;line-height:16px;min-height:16px;margin-top:3px}
+.tg-pasos u{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
+.tg-pasos i{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(255,255,255,.22);margin-right:4px;box-sizing:border-box;position:relative}
+.tg-pasos i.run{border-color:rgba(232,184,75,.25);border-top-color:var(--gold,#E8B84B);animation:tgSpin .8s linear infinite}
+.tg-pasos i.ok{border-color:#2ee86a;background:#2ee86a}
+.tg-pasos i.ok::after{content:"";position:absolute;left:2px;top:3.5px;width:4px;height:2px;border-left:1.6px solid #0b0e11;border-bottom:1.6px solid #0b0e11;transform:rotate(-45deg)}
+.tg-pasos i.fail{border-color:#ff7f93;background:rgba(246,70,93,.45)}
+.tg-pasos em{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794)}
+.tg-pasos i.ok+em{color:#8ef0b0}
 .tg-tabs2{display:flex;gap:6px}
 .tg-tabs2 .t{flex:1 1 0;text-align:center;padding:9px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0b0f14;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12px;color:var(--ink-2,#b7bdc6);cursor:pointer}
 .tg-tabs2 .t.on{color:var(--gold,#E8B84B);border-color:#8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117)}
@@ -195,33 +257,26 @@ function css() {
 .tg-ctx-b.buy{background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;border-color:#1f8f63}
 .tg-ctx-b.sell{background:linear-gradient(180deg,#f6465d,#c42d41);color:#fff;border-color:#c42d41}
 .tg-ctx-b:active{transform:translateY(1px)}
-.tg-buy-ov{position:fixed;inset:0;z-index:1400;background:rgba(3,5,7,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:tgIn .14s ease}
-.tg-buy{width:320px;max-width:100%;background:#0b0f14;border:1px solid #2a323d;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);padding:16px}
-.tg-buy-h{display:flex;align-items:center;gap:10px}
-.tg-buy-h .tg-logo{width:34px;height:34px;flex:0 0 auto}
-.tg-buy-ht{flex:1 1 auto;min-width:0}
-.tg-buy-ht b{display:block;font-family:'Chakra Petch',var(--display);font-size:15px;font-weight:700}
-.tg-buy-ht span{font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794);text-transform:uppercase;letter-spacing:.5px}
-.tg-buy-x{width:30px;height:30px;border-radius:9px;border:1px solid var(--line,#232b36);background:#0d1117;color:var(--ink-2,#b7bdc6);font-size:14px;cursor:pointer;flex:0 0 auto}
-.tg-buy-note{margin:13px 0 0;padding:9px 11px;border-radius:10px;background:#15110a;border:1px solid #4a3a16;color:#e8c877;font-size:11.5px;line-height:1.45}
-.tg-buy-note b{color:#f3d488}
-.tg-buy-cur{display:flex;gap:7px;margin-top:14px}
+.tg-buy-cur{display:flex;gap:7px}
 .tg-buy-c{flex:1 1 0;height:38px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0d1117;color:var(--ink-2,#b7bdc6);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;cursor:pointer}
 .tg-buy-c.on{color:var(--gold,#E8B84B);border-color:#8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117)}
 .tg-buy-c:disabled{opacity:.4;cursor:not-allowed;font-size:11px}
-.tg-buy-amtrow{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
+.tg-buy-amtrow{display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
 .tg-buy-amtrow b{font-size:17px;font-weight:700;color:var(--ink,#eaecef)}
-.tg-buy-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;background:#1c232b;margin-top:10px;outline:none}
+.tg-buy-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;background:#1c232b;margin:2px 0;outline:none}
 .tg-buy-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--gold,#E8B84B);border:2px solid #0b0f14;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.5)}
 .tg-buy-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold,#E8B84B);border:2px solid #0b0f14;cursor:pointer}
-.tg-buy-get{margin-top:14px;padding:11px;border-radius:11px;background:#0e141b;border:1px solid var(--line,#232b36);font-family:var(--mono);font-size:12px;color:var(--ink-3,#7d8794);text-align:center}
+.tg-buy-get{padding:11px;border-radius:11px;background:#0e141b;border:1px solid var(--line,#232b36);font-family:var(--mono);font-size:12px;color:var(--ink-3,#7d8794);text-align:center}
 .tg-buy-get b{color:var(--ink,#eaecef);font-size:14px}
-.tg-buy-go{width:100%;height:46px;margin-top:14px;border-radius:12px;border:0;background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #0c4d35,inset 0 1px 0 rgba(255,255,255,.2)}
+.tg-buy-go{width:100%;height:46px;margin-top:2px;border-radius:12px;border:0;background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 0 #0c4d35,inset 0 1px 0 rgba(255,255,255,.2)}
 .tg-buy-go:active{transform:translateY(3px);box-shadow:0 1px 0 #0c4d35}
 .tg-buy-go:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;filter:grayscale(.3)}
-.tg-buy-msg{margin-top:10px;font-family:var(--mono);font-size:11.5px;line-height:1.5;text-align:center}
+.tg-buy-msg{font-family:var(--mono);font-size:11.5px;line-height:1.5;text-align:center}
 .tg-buy-msg.ok{color:var(--verde,#2ee86a)} .tg-buy-msg.bad{color:var(--rojo,#f6465d)} .tg-buy-msg a{color:var(--gold,#E8B84B)}
 @media(max-width:860px){
+  .tm-big-top{grid-template-columns:auto minmax(0,1fr) auto}
+  .tg-top-l{gap:8px;padding:10px}.tg-find{padding:10px 6px}.tg-top-r{padding:10px;gap:8px}
+  .tg-price{display:none}
   .tm-big-main{grid-template-columns:1fr;grid-auto-rows:minmax(0,auto)}
   .tg-left,.tg-right{max-height:none}
   .tg-chart{min-height:300px}
@@ -263,17 +318,13 @@ export async function abrirGrande(it0, ctx) {
   const ov = document.createElement('div'); ov.id = 'tm-big-ov'; ov.className = 'tm-big'; _ov = ov;
   ov.innerHTML = `
     <div class="tm-big-top">
-      <div class="tg-id" id="tg-id"></div>
-      <div class="tg-price" id="tg-price"></div>
-      <div class="tg-find">
-        <div class="tg-find-in"><span class="tg-ico">${ICO_SEARCH}</span><input id="tg-find-in" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a token contract 0x…"></div>
-        <button class="tg-find-tok" id="tg-find-tok" type="button">Tokens</button>
-      </div>
-      <button class="tg-x" id="tg-close" type="button" aria-label="Close">✕</button>
+      <div class="tg-top-l"><div class="tg-id" id="tg-id"></div><div class="tg-price" id="tg-price"></div></div>
+      <div class="tg-find"><div class="tg-find-in"><span class="tg-ico">${ICO_SEARCH}</span><input id="tg-find-in" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a token contract 0x…"></div></div>
+      <div class="tg-top-r"><button class="tg-find-tok" id="tg-find-tok" type="button">Tokens</button><button class="tg-x" id="tg-close" type="button" aria-label="Close">✕</button></div>
     </div>
     <div class="tm-big-main">
       <div class="tg-col tg-left" id="tg-left"></div>
-      <div class="tg-col tg-chart"><div class="tg-chart-cv" id="tg-chart-cv"></div><div class="tg-chart-msg" id="tg-chart-msg"><span class="tg-anillo"></span></div></div>
+      <div class="tg-col tg-chart"><div class="tg-chart-cv" id="tg-chart-cv"></div><div class="tg-tools"><button class="tg-tool" id="tg-ruler" type="button" title="Measure % and range">${ICO_RULER}</button></div><div class="tg-mdcapture" id="tg-mdcap" hidden></div><div class="tg-mdbox" id="tg-mdbox" hidden></div><div class="tg-chart-msg" id="tg-chart-msg"><span class="tg-anillo"></span></div></div>
       <div class="tg-col tg-right" id="tg-right"></div>
     </div>`;
   document.body.appendChild(ov);
@@ -289,6 +340,29 @@ export async function abrirGrande(it0, ctx) {
     const rect = cvEl.getBoundingClientRect();
     let px = null; try { px = precioEnY(e.clientY - rect.top); } catch (_) {}
     if (px != null && px > 0 && isFinite(px)) abrirCtx(e.clientX, e.clientY, Number(px));
+  });
+
+  // Regla de medicion (estilo TradingView): un overlay captura el arrastre y mide el % y el rango de precio.
+  const ruler = $('tg-ruler'), cap = $('tg-mdcap'), mdbox = $('tg-mdbox');
+  let _mdStart = null;
+  const dibujarMd = (x2, y2) => {
+    if (!_mdStart || !mdbox) return;
+    const x1 = _mdStart.x, y1 = _mdStart.y;
+    const left = Math.min(x1, x2), top = Math.min(y1, y2), wdt = Math.max(1, Math.abs(x2 - x1)), hgt = Math.max(1, Math.abs(y2 - y1));
+    let p1 = 0, p2 = 0; try { p1 = Number(precioEnY(y1)) || 0; p2 = Number(precioEnY(y2)) || 0; } catch (_) {}
+    mdbox.className = 'tg-mdbox ' + (p2 >= p1 ? 'up' : 'down');
+    mdbox.style.left = left + 'px'; mdbox.style.top = top + 'px'; mdbox.style.width = wdt + 'px'; mdbox.style.height = hgt + 'px';
+    if (p1 > 0 && p2 > 0) { const chg = (p2 - p1) / p1 * 100; mdbox.innerHTML = `<span class="tg-md-lbl">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% · $${fmtTxt(Math.min(p1, p2))} → $${fmtTxt(Math.max(p1, p2))}</span>`; }
+    else mdbox.innerHTML = '';
+  };
+  if (ruler && cap) ruler.onclick = () => { const on = !ruler.classList.contains('on'); ruler.classList.toggle('on', on); cap.hidden = !on; if (!on && mdbox) { mdbox.hidden = true; _mdStart = null; } };
+  if (cap) cap.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return; e.preventDefault();
+    const r = cap.getBoundingClientRect(); _mdStart = { x: e.clientX - r.left, y: e.clientY - r.top };
+    if (mdbox) mdbox.hidden = false; dibujarMd(_mdStart.x, _mdStart.y);
+    const mv = (ev) => { const rr = cap.getBoundingClientRect(); dibujarMd(ev.clientX - rr.left, ev.clientY - rr.top); };
+    const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
   });
 
   // Selector de tokens del feed (lista estilo New pairs que carga en la grafica).
@@ -372,8 +446,10 @@ function pintarIzq(it, ctx) {
   const bnbUsd = ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0;
   const liqUsd = it.moneda === 'USDT' ? it.liquidez : it.liquidez * bnbUsd;
   host.innerHTML = `
-    <div class="tg-sem pend" id="tg-sem"><i></i><div><b>Checking security</b><span>Reading the contract…</span></div></div>
-    <div class="tg-sec-t">Token info</div>
+    <div class="tg-sec-t">Security check</div>
+    <div class="tg-sem pend" id="tg-sem">${semPendBig()}</div>
+    <div class="tg-checks" id="tg-checks">${checksScan()}</div>
+    <div class="tg-sec-t tg-mt">Token info</div>
     <div class="tg-kv">
       <div><span>Liquidity</span><b>${liqUsd > 0 ? money(liqUsd) : (it.par ? '$0' : 'Pool')}</b></div>
       <div><span>Pair</span><b>${esc(it.moneda || 'BNB')}</b></div>
@@ -385,18 +461,21 @@ function pintarIzq(it, ctx) {
       <div><span>Contract</span><b><button class="tg-copyc" type="button" id="tg-k-copy">${corto(it.token)} ${ICO_COPY}</button></b></div>
       <div><span>Explorer</span><b><a class="tg-copyc" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a></b></div>
     </div>
-    <div class="tg-sec-t tg-mt">Check security</div>
-    <div class="tg-checks" id="tg-checks"><div class="tg-chk pend"><span>Reading the contract…</span><b></b></div></div>`;
+    <div class="tg-sec-t tg-mt">Cross-check before you buy</div>
+    <div class="tg-links">
+      <a class="tg-link" href="https://dexscreener.com/bsc/${esc(it.par || it.token)}" target="_blank" rel="noopener"><b>DexScreener</b><span>Price, buyers & liquidity history</span></a>
+      <a class="tg-link" href="https://pancakeswap.finance/swap?outputCurrency=${esc(it.token)}" target="_blank" rel="noopener"><b>PancakeSwap</b><span>The pool this trades against</span></a>
+      <a class="tg-link" href="${SCAN_URL}/address/${esc(it.par || it.token)}#code" target="_blank" rel="noopener"><b>Pair on BscScan</b><span>Verify the LP and holders</span></a>
+    </div>`;
   const cp = $('tg-k-copy'); if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(it.token); const o = cp.innerHTML; cp.textContent = 'copied'; setTimeout(() => { if (cp.isConnected) cp.innerHTML = o; }, 1200); } catch (_) {} };
-  // seguridad (reutiliza la cache de auditoria de la Terminal)
+  // Verificacion en tiempo real: los pasos (code, owner, scan, lp, holders) se encienden segun llega cada
+  // resultado, igual que la ficha emergente; al terminar, el semaforo y la lista detallada de checks.
   if (ctx && ctx.auditarCache && it.par) {
     const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
-    ctx.auditarCache(it, null, false).then((r) => {
+    const alPaso = (id, e) => { const el = host.querySelector('#tg-sem .tg-pasos i[data-p="' + id + '"]'); if (el) el.className = e; };
+    ctx.auditarCache(it, alPaso, true).then((r) => {
       if (!$('tg-left') || !r) return;
       const d = r.datos || {};
-      const sem = $('tg-sem');
-      const TXT = { ok: 'Safe to trade', warn: 'Trade with caution', bad: 'Do not buy', pend: 'Checking security' };
-      if (sem) { sem.className = 'tg-sem ' + (r.nivel || 'pend'); sem.querySelector('b').textContent = TXT[r.nivel] || 'Checked'; sem.querySelector('span').textContent = r.nivel === 'ok' ? 'No red flags in the contract' : (r.titulo || ''); }
       set('tg-k-hold', (d.holders != null ? Number(d.holders).toLocaleString('en-US') : '0') + (d.txs != null ? ' · ' + Number(d.txs).toLocaleString('en-US') + ' txs' : ''));
       set('tg-k-top', d.top10Pct != null ? pct(d.top10Pct) : '0%');
       const cre = d.creador || it.creador || '';
@@ -407,29 +486,61 @@ function pintarIzq(it, ctx) {
       }
       set('tg-k-tax', pct(d.buyTax || 0) + ' / ' + pct(d.sellTax || 0));
       set('tg-k-lp', d.lpAsegurada != null ? pct(d.lpAsegurada) : '0%');
-      const ch = $('tg-checks'); if (ch) ch.innerHTML = checksBig(r);
-    }).catch(() => {});
+      const ch = $('tg-checks');
+      const dur = ch ? revelarChecks(ch, r) : 0;   // los checks caen en cascada; el veredicto cierra la escena
+      setTimeout(() => { if ($('tg-sem')) pintaSemBig(r); }, dur + 160);
+    }).catch(() => { pintaSemBig({ nivel: 'pend', titulo: 'Check unavailable' }); const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>Security check unavailable</span><b></b></div>`; });
   } else {
     ['tg-k-hold', 'tg-k-top', 'tg-k-cre', 'tg-k-tax', 'tg-k-lp'].forEach((id) => { const e = $(id); if (e) e.textContent = '0'; });
-    const sem = $('tg-sem'); if (sem) { sem.className = 'tg-sem pend'; sem.querySelector('b').textContent = 'Not a PancakeSwap pair'; sem.querySelector('span').textContent = 'Security check runs on pair tokens'; }
+    const sem = $('tg-sem'); if (sem) { sem.className = 'tg-sem pend'; sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.pend}</span><div><b>Not a PancakeSwap pair</b><span>Security check runs on pair tokens</span></div>`; }
+    const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>No pair to verify</span><b></b></div>`;
   }
 }
+/* Semaforo inicial con los pasos de verificacion (se encienden en vivo) y resultado final, como la ficha. */
+function semPendBig() {
+  return `<span class="tg-sem-ico">${ICO_SEM.pend}</span><div><b>Checking security</b><span class="tg-pasos">${PASOS.map((id) => `<u><i data-p="${id}"></i><em>${PASOS_TXT[id]}</em></u>`).join('')}</span></div>`;
+}
+function pintaSemBig(r) {
+  const sem = $('tg-sem'); if (!sem) return;
+  const TXT = { ok: 'Safe to trade', warn: 'Trade with caution', bad: 'Do not buy', pend: 'Checking security' };
+  const niv = r && r.nivel ? r.nivel : 'pend';
+  const sub = niv === 'ok' ? 'No red flags in the contract' : ((r && r.titulo) || 'Reading the contract…');
+  sem.className = 'tg-sem ' + niv;
+  sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM[niv] || ICO_SEM.pend}</span><div><b>${TXT[niv] || 'Checked'}</b><span>${esc(sub)}</span></div>`;
+}
 
-/* Lista completa de verificaciones de seguridad (datos reales de la auditoria) para el panel izquierdo. */
-function checksBig(r) {
+/* Las 9 verificaciones (dato real de la auditoria). Se pintan primero "escaneando" (barra que corre) y
+   luego se revelan una a una, en cascada, resolviendo a palomita verde o X roja: procedimiento dramatico. */
+const CHECKS_DEF = [
+  { k: 'sellable', t: 'No honeypot', v: (c) => c.sellable ? 'Sellable' : 'Risky' },
+  { k: 'lpSecured', t: 'Liquidity burned', v: (c, d) => d.lpAsegurada != null ? pct(d.lpAsegurada) : (c.lpSecured ? 'Yes' : 'No') },
+  { k: 'renounced', t: 'Ownership renounced', v: (c) => c.renounced ? 'Yes' : 'No' },
+  { k: 'lowTax', t: 'Low taxes', v: (c, d) => pct(d.buyTax || 0) + ' / ' + pct(d.sellTax || 0) },
+  { k: 'notMintable', t: 'Not mintable', v: (c) => c.notMintable ? 'Yes' : 'Mintable' },
+  { k: 'noPause', t: 'Not pausable', v: (c) => c.noPause ? 'Yes' : 'Pausable' },
+  { k: 'noBlacklist', t: 'No blacklist', v: (c) => c.noBlacklist ? 'Yes' : 'Risk' },
+  { k: 'notConcentrated', t: 'Distribution', v: (c, d) => d.top10Pct != null ? 'Top 10 ' + pct(d.top10Pct) : (c.notConcentrated ? 'Healthy' : 'Concentrated') },
+  { k: 'verified', t: 'Verified source', v: (c) => c.verified ? 'Yes' : 'No' }
+];
+const CHK_STEP = 150, CHK_DELAY = 260;
+function checksScan() {
+  return CHECKS_DEF.map((c) => `<div class="tg-chk scan"><span><i class="tg-chk-sp"></i>${c.t}</span><b class="tg-chk-bar"><em></em></b></div>`).join('');
+}
+/* Revela cada check con retardo escalonado. Devuelve cuanto dura toda la cascada (ms). */
+function revelarChecks(host, r) {
   const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null;
   const d = (r && r.datos) ? r.datos : {};
-  if (!c) return `<div class="tg-chk pend"><span>Security check not available</span><b></b></div>`;
-  const fila = (ok, label, val) => `<div class="tg-chk ${ok ? 'ok' : 'no'}"><span><i>${ok ? ICO_CHECK : ICO_X}</i>${label}</span><b>${val || ''}</b></div>`;
-  return fila(!!c.sellable, 'No honeypot', c.sellable ? 'Sellable' : 'Risky')
-    + fila(!!c.lpSecured, 'Liquidity burned', d.lpAsegurada != null ? pct(d.lpAsegurada) : (c.lpSecured ? 'Yes' : 'No'))
-    + fila(!!c.renounced, 'Ownership renounced', c.renounced ? 'Yes' : 'No')
-    + fila(!!c.lowTax, 'Low taxes', pct(d.buyTax || 0) + ' / ' + pct(d.sellTax || 0))
-    + fila(!!c.notMintable, 'Not mintable', c.notMintable ? 'Yes' : 'Mintable')
-    + fila(!!c.noPause, 'Not pausable', c.noPause ? 'Yes' : 'Pausable')
-    + fila(!!c.noBlacklist, 'No blacklist', c.noBlacklist ? 'Yes' : 'Risk')
-    + fila(!!c.notConcentrated, 'Distribution', d.top10Pct != null ? 'Top10 ' + pct(d.top10Pct) : (c.notConcentrated ? 'Healthy' : 'Concentrated'))
-    + fila(!!c.verified, 'Verified source', c.verified ? 'Yes' : 'No');
+  const rows = host.querySelectorAll('.tg-chk');
+  if (!c) { rows.forEach((row) => { row.className = 'tg-chk pend'; row.innerHTML = `<span>Check unavailable</span><b></b>`; }); return 0; }
+  rows.forEach((row, i) => {
+    setTimeout(() => {
+      if (!row.isConnected) return;
+      const def = CHECKS_DEF[i]; const ok = !!c[def.k];
+      row.className = 'tg-chk rev ' + (ok ? 'ok' : 'no');
+      row.innerHTML = `<span><i>${ok ? ICO_CHECK : ICO_X}</i>${def.t}</span><b>${def.v(c, d)}</b>`;
+    }, CHK_STEP * i + CHK_DELAY);
+  });
+  return CHK_STEP * rows.length + CHK_DELAY;
 }
 
 /* ── Panel derecho: area de operar (spot). Market (compra a mercado por el flujo probado abrirCompra),
@@ -439,11 +550,7 @@ function pintarDer(it, ctx) {
   if (!it) { host.innerHTML = `<div class="tg-sec-t">Trade</div><div class="tg-soon" style="margin-top:4px">Pick a token to buy, set a price alert and see your live positions.</div>`; return; }
   host.innerHTML = `
     <div class="tg-tabs2" id="tg-op-tabs"><button type="button" class="t on" data-op="market">Market</button><button type="button" class="t" data-op="alert">Alert</button></div>
-    <div class="tg-op" id="tg-op-market">
-      <div class="tg-mktcap"><b id="tg-mkt-price">${_precioUsd > 0 ? '$' + fmtP(_precioUsd, 5) : '$0'}</b><span>Market price</span></div>
-      <button class="tg-mbtn buy" id="tg-openlong" type="button">Open Long</button>
-      <div class="tg-soon">Buys at market (pays with BNB). Your keys, your coins.</div>
-    </div>
+    <div class="tg-op" id="tg-op-market"></div>
     <div class="tg-op" id="tg-op-alert" hidden>
       <label class="tg-op-lbl">Alert me at price</label>
       <div class="tg-al-set"><span class="tg-al-d">$</span><input id="tg-al-price" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0"><button class="tg-mbtn sec" id="tg-al-set" type="button">Set</button></div>
@@ -458,8 +565,7 @@ function pintarDer(it, ctx) {
     host.querySelectorAll('#tg-op-tabs button').forEach((x) => x.classList.toggle('on', x === b));
     const m = b.dataset.op, mk = $('tg-op-market'), al = $('tg-op-alert'); if (mk) mk.hidden = m !== 'market'; if (al) al.hidden = m !== 'alert';
   }; });
-  const ol = $('tg-openlong');
-  if (ol) ol.onclick = () => abrirCompraRapida(it, false);
+  montarMercado(it);
   const setA = $('tg-al-set'), inA = $('tg-al-price');
   const poner = () => {
     const v = parseFloat(String(inA.value).replace(/[, $]/g, '')); if (!(v > 0)) { inA.focus(); return; }
@@ -545,42 +651,35 @@ function posicionDe(it) {
   } catch (_) { return null; }
 }
 function openBuyOrSell(it, modo) {
-  if (modo === 'buy') { abrirCompraRapida(it, true); return; }
+  if (modo === 'buy') { const t = document.querySelector('#tg-op-tabs button[data-op="market"]'); if (t) t.click(); try { const sl = $('tg-buy-sl'); if (sl) { sl.scrollIntoView({ block: 'nearest' }); sl.focus(); } } catch (_) {} return; }
   const aud = _ctx && _ctx.auditoriaDe ? _ctx.auditoriaDe(it) : null;
   const go = () => { try { abrirCompra(it, aud, 'sell'); } catch (_) {} };
   if (!wallet.cuentaActual()) { wallet.conectar().then(go).catch(go); } else go();
 }
 function numCorto(n) { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; if (n >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: 2 }); return n.toLocaleString('en-US', { maximumFractionDigits: 6 }); }
 
-/* ── Compra rapida a mercado: mini formulario (barra de monto, aviso de entrada a mercado, confirmar).
-   Reusa las primitivas probadas de compra.js (cotizar, comprar) y registra la posicion. Paga con BNB. ── */
+/* Compra a mercado INCRUSTADA en la pestaña Market (sin ventana emergente): moneda, monto por barra,
+   lo que recibes y Confirm buy. Reusa las primitivas probadas de compra.js (cotizar, comprar) y paga con BNB. */
 let _buyTk = 0;
-function abrirCompraRapida(it, desdeClic) {
-  if (!it || !it.par) return;
-  cerrarCompraRapida();
+function montarMercado(it) {
+  const host = $('tg-op-market'); if (!host || !it) return;
   const quote = it.moneda === 'USDT' ? USDT : WBNB;
   const sym = esc(it.simbolo || 'TOKEN');
   const dec = it.decimales || 18;
   const bnbUsd = _ctx && _ctx.bnbUsd ? _ctx.bnbUsd() : 0;
   let balance = 0n, prc = 0, cot = null, cotPara = 0n, ocupado = false;
   let gas = 0n; try { gas = ethers.parseEther('0.003'); } catch (_) {}
-  const ov = document.createElement('div'); ov.id = 'tg-buy-ov'; ov.className = 'tg-buy-ov';
-  ov.innerHTML = `<div class="tg-buy" role="dialog" aria-modal="true">
-    <div class="tg-buy-h">${logo(it.token)}<div class="tg-buy-ht"><b>${sym}</b><span>Buy at market</span></div><button class="tg-buy-x" type="button" aria-label="Close">✕</button></div>
-    ${desdeClic ? `<div class="tg-buy-note">Opens at market, now <b>$${fmtP(_precioUsd, 5)}</b>, not at the price you clicked.</div>` : ''}
+  host.innerHTML = `
+    <div class="tg-mktcap"><b id="tg-mkt-price">${_precioUsd > 0 ? '$' + fmtP(_precioUsd, 5) : '$0'}</b><span>Market price</span></div>
     <div class="tg-buy-cur"><button class="tg-buy-c on" type="button">BNB</button><button class="tg-buy-c" type="button" disabled title="Needs a contract update">USDT soon</button></div>
-    <div class="tg-buy-amtrow"><span>Amount</span><span id="tg-buy-bal">Balance …</span></div>
+    <div class="tg-buy-amtrow"><span>Amount · buys ${sym} at market</span><span id="tg-buy-bal">Balance …</span></div>
     <input class="tg-buy-slider" id="tg-buy-sl" type="range" min="0" max="100" value="0" aria-label="Amount">
     <div class="tg-buy-amtrow"><b id="tg-buy-val">0 BNB</b><span id="tg-buy-usd"></span></div>
     <div class="tg-buy-get">You get <b id="tg-buy-out">0</b> ${sym}</div>
     <button class="tg-buy-go" id="tg-buy-go" type="button">Confirm buy</button>
-    <div class="tg-buy-msg" id="tg-buy-msg"></div>
-  </div>`;
-  document.body.appendChild(ov);
-  if (desdeClic && _precioUsd > 0) { try { marcarActual(_precioUsd); } catch (_) {} }
-  ov.querySelector('.tg-buy-x').onclick = () => { if (!ocupado) cerrarCompraRapida(); };
-  ov.addEventListener('click', (e) => { if (e.target === ov && !ocupado) cerrarCompraRapida(); });
+    <div class="tg-buy-msg" id="tg-buy-msg"></div>`;
   const sl = $('tg-buy-sl'), valEl = $('tg-buy-val'), usdEl = $('tg-buy-usd'), outEl = $('tg-buy-out'), balEl = $('tg-buy-bal'), go = $('tg-buy-go'), msg = $('tg-buy-msg');
+  const vivo = () => $('tg-buy-go') === go;   // el form sigue montado (no se recargo con otro token)
   const maxWei = () => (balance > gas ? balance - gas : 0n);
   const montoWei = () => maxWei() * BigInt(prc) / 100n;
   const estado = () => {
@@ -604,19 +703,19 @@ function abrirCompraRapida(it, desdeClic) {
   const cotizar = async () => {
     const w = montoWei(); if (!(w > 0n)) { cot = null; cotPara = 0n; pintar(); return; }
     const tk = ++_buyTk;
-    try { const r = await cotizarCompra(it.token, quote, w); if (tk !== _buyTk || !$('tg-buy-ov')) return; cot = r; cotPara = w; }
+    try { const r = await cotizarCompra(it.token, quote, w); if (tk !== _buyTk || !vivo()) return; cot = r; cotPara = w; }
     catch (_) { if (tk !== _buyTk) return; cot = { tokOut: 0n, comision: 0n }; cotPara = w; }
     pintar();
   };
-  sl.addEventListener('input', () => { prc = Number(sl.value) || 0; cot = null; pintar(); clearTimeout(_t); _t = setTimeout(cotizar, 300); });
+  if (sl) sl.addEventListener('input', () => { prc = Number(sl.value) || 0; cot = null; pintar(); clearTimeout(_t); _t = setTimeout(cotizar, 300); });
   const cargarSaldo = async () => {
     const c = wallet.cuentaActual(); if (!c) { balEl.textContent = 'Connect wallet'; estado(); return; }
     try { balance = await saldoBNB(c); } catch (_) { balance = 0n; }
-    if ($('tg-buy-ov')) { balEl.textContent = 'Balance ' + (+ethers.formatEther(balance)).toFixed(4) + ' BNB'; pintar(); }
+    if (vivo()) { balEl.textContent = 'Balance ' + (+ethers.formatEther(balance)).toFixed(4) + ' BNB'; pintar(); }
   };
   cargarSaldo();
   go.onclick = async () => {
-    if (!wallet.cuentaActual()) { try { await wallet.conectar(); } catch (_) {} cargarSaldo(); return; }
+    if (!wallet.cuentaActual()) { try { await wallet.conectar(); } catch (_) {} cargarSaldo(); try { derBalances(it); } catch (_) {} return; }
     const w = montoWei(); if (!(w > 0n) || !cot || cotPara !== w || !(cot.tokOut > 0n)) return;
     const slip = BigInt(SLIPPAGE.porDefecto); const minOut = cot.tokOut - cot.tokOut * slip / 10000n;
     ocupado = true; go.disabled = true; go.textContent = 'Confirm in your wallet…'; if (sl) sl.disabled = true; msg.className = 'tg-buy-msg'; msg.textContent = '';
@@ -627,28 +726,22 @@ function abrirCompraRapida(it, desdeClic) {
       const balDespues = await saldoToken(it.token, cuenta).catch(() => 0n);
       const recibido = balDespues > balAntes ? balDespues - balAntes : 0n;
       try { registrarCompra(cuenta, it, recibido, w, bnbUsd); } catch (_) {}
-      go.textContent = 'Bought'; msg.className = 'tg-buy-msg ok'; msg.innerHTML = 'Done. The ' + sym + ' is in your wallet. <a href="' + SCAN_URL + '/tx/' + esc(rc.hash) + '" target="_blank" rel="noopener">View</a>';
+      ocupado = false; if (sl) { sl.disabled = false; sl.value = 0; } prc = 0; cot = null; cotPara = 0n;
+      if (vivo()) { go.textContent = 'Bought'; msg.className = 'tg-buy-msg ok'; msg.innerHTML = 'Done. The ' + sym + ' is in your wallet. <a href="' + SCAN_URL + '/tx/' + esc(rc.hash) + '" target="_blank" rel="noopener">View</a>'; }
       try { if (_itActual && _itActual.token.toLowerCase() === it.token.toLowerCase()) marcarEntradaDe(_itActual); } catch (_) {}
       try { derPositions(it); derBalances(it); } catch (_) {}
-      setTimeout(() => cerrarCompraRapida(), 2600);
+      setTimeout(() => { if (vivo()) { msg.textContent = ''; msg.className = 'tg-buy-msg'; pintar(); } }, 3200);
     } catch (e) {
       ocupado = false; if (sl) sl.disabled = false;
       const m = ((e && (e.reason || e.shortMessage || e.message)) || '').toLowerCase();
       msg.className = 'tg-buy-msg bad';
       msg.textContent = (m.includes('rejected') || m.includes('denied') || m.includes('4001')) ? 'You cancelled.'
         : m.includes('insufficient') ? 'Not enough BNB for the swap and gas.'
-        : (m.includes('slippage') || m.includes('insufficient_output')) ? 'Price moved too much. Raise your amount or try again.'
+        : (m.includes('slippage') || m.includes('insufficient_output')) ? 'Price moved too much. Lower the amount or try again.'
         : 'The transaction could not be completed.';
       estado();
     }
   };
-  setTimeout(() => { document.addEventListener('keydown', buyEsc, true); }, 0);
-}
-function buyEsc(e) { if (e.key === 'Escape' && document.getElementById('tg-buy-ov')) { e.stopPropagation(); cerrarCompraRapida(); } }
-function cerrarCompraRapida() {
-  try { limpiarActual(); } catch (_) {}
-  document.removeEventListener('keydown', buyEsc, true);
-  const ov = document.getElementById('tg-buy-ov'); if (ov) { try { ov.remove(); } catch (_) {} }
 }
 
 /* ── Clic derecho en la grafica: debajo del precio, solo alerta; encima, alerta y (segun tengas o no la
@@ -688,7 +781,7 @@ function cerrarCtx() {
 
 function onEsc(e) { if (e.key === 'Escape') cerrar(); }
 export function cerrar() {
-  cerrarCtx(); cerrarCompraRapida();
+  cerrarCtx();
   document.removeEventListener('keydown', onEsc);
   try { destruirGrafico(); } catch (_) {}
   const ov = $('tm-big-ov'); if (ov) { try { ov.remove(); } catch (_) {} }

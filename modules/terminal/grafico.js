@@ -123,14 +123,15 @@ export async function tradesRecientes({ par, token, decQuote = 18, quoteEsUSDT =
 }
 
 /* ── Render ── */
-function subCeros(n) { let r = ''; for (const ch of String(n)) r += String.fromCharCode(0x2080 + (ch.charCodeAt(0) - 48)); return r; }
 function fmtEje(p) {
   if (!(p > 0) || !isFinite(p)) return '0';
   if (p >= 1) { try { return Number(p.toPrecision(6)).toLocaleString('en-US'); } catch (_) { return String(Number(p.toPrecision(6))); } }
   if (p >= 0.001) return Number(p.toPrecision(4)).toString();
-  const e = Math.floor(Math.log10(p)); const ceros = -e - 1;
-  const dig = Math.round(p / Math.pow(10, e - 3)).toString().slice(0, 4);
-  return '0.0' + subCeros(ceros) + dig;
+  // Precios diminutos: decimal plano con 3 cifras significativas. El eje se dibuja en canvas y la fuente
+  // no trae subindices (antes salia "0 0 0 0 0 0", ilegible); un decimal normal siempre se lee bien.
+  const e = Math.floor(Math.log10(p));
+  const dec = Math.min(18, -e + 2);
+  return p.toFixed(dec).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0, _lineaActual = null, _vol = null;

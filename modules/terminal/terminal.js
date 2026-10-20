@@ -136,8 +136,8 @@ export function arrancar() {
           <div class="tm-stats-row"><span>Volume (24h)</span><b>$12.4M</b></div>
           <div class="tm-stats-row"><span>Txs (24h)</span><b>1.84M</b></div>
         </div>
-        <div class="tm-movers" id="tm-movers"></div>
         <div class="tm-netstat"><i></i>Network connected</div>
+        <div class="tm-movers" id="tm-movers"></div>
       </aside>
       <main class="tm-center">
         <section class="tm-panel">
@@ -145,7 +145,7 @@ export function arrancar() {
             <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b><span>Newest tokens on BNB Chain</span></div></div>
             <div class="tm-sec-r"><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
           </div>
-          <div class="tm-tabrow"><div class="tm-tabs3" id="tm-tabs3"><button data-tab="all" class="on" type="button">All</button><button data-tab="trend" type="button">Trending</button><button data-tab="vol" type="button">Volume</button><button data-tab="buyers" type="button">Buyers</button></div></div>
+          <div class="tm-tabrow"><div class="tm-tabs3" id="tm-tabs3"><button data-tab="vol" class="on" type="button">Volume</button><button data-tab="trend" type="button">Trending</button><button data-tab="buyers" type="button">Buyers</button><button data-tab="all" type="button">All</button></div></div>
           <div id="tm-feed" class="tm-feed-scroll">${skeleton()}</div>
         </section>
         <section class="tm-cp" id="tm-cp">
@@ -249,7 +249,7 @@ function arrancarAuditorias() {
 }
 /* ── Tabla del lobby (rediseno): # / Token / Price / MC / Buyers / Volume / Time / Buy. MC, Buyers y
    Volume vienen de DexScreener (reales); un token recien nacido aun sin indexar muestra 0 hasta tenerlo. ── */
-let _tab = 'all', _repM = null;
+let _tab = 'vol', _repM = null;
 const COLS_L = ['#', 'Token', 'Price', 'MC', 'Buyers', 'Volume', 'Time'];
 const theadLobby = () => `<thead><tr>${COLS_L.map((c) => { const k = c === '#' ? 'num' : c.toLowerCase(); return `<th class="tm-cl-${k}">${c === '#' ? '' : c}</th>`; }).join('')}<th class="tm-cl-buy"></th></tr></thead>`;
 const mNum = (tk, k) => { const m = mercadoDe(tk); return m ? (Number(m[k]) || 0) : 0; };
@@ -474,9 +474,12 @@ function seleccionarCP(it) {
 function asegurarSelCP() {
   if (_sel || !esGrande()) return;
   if (_items.length < 6 && (Date.now() - _t0) < 1500) return;
-  const score = (x) => (x.liquidez || 0) + (mercadoDe(x.token) ? 1e15 : 0);   // prioriza tokens con datos de mercado
-  let best = null;
-  for (const x of _items) { if (x.par && x.liquidez > 0 && (!best || score(x) > score(best))) best = x; }
+  const cand = _items.filter((x) => x.par && x.liquidez > 0);
+  if (!cand.length) return;
+  const vol = (x) => mNum(x.token, 'vol24') || 0;
+  const conVol = cand.filter((x) => vol(x) > 0);
+  // Por defecto el #1 por volumen (siempre tiene grafico y datos que mostrar); si aun no hay volumen, el mas liquido.
+  const best = conVol.length ? conVol.reduce((a, b) => (vol(b) > vol(a) ? b : a)) : cand.reduce((a, b) => ((b.liquidez || 0) > (a.liquidez || 0) ? b : a));
   if (best) seleccionarCP(best);
 }
 /* View All: abre la vista grande con el token actual; al cerrarse, re-monta el grafico inline. */
