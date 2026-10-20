@@ -60,6 +60,27 @@
 .tm-rail-ph b{color:var(--ink-2);font-size:14px}.tm-rail-ph span{font-size:12px;line-height:1.5}
 @media(max-width:1180px){.tm-lobby{grid-template-columns:238px minmax(0,1fr)}.tm-rail{display:none}}
 @media(max-width:880px){.tm-lobby{grid-template-columns:1fr}.tm-side{display:none}.tm-head{min-height:0}.tm-head-bg{inset:0 -18px 0}}
+/* Pestanas y columnas de la tabla New pairs (MC / Buyers / Volume) + boton Buy por fila. */
+.tm-tabrow{margin:0 0 13px}
+.tm-tabs3{display:inline-flex;gap:4px;background:#0b0f14;border:1px solid var(--line);border-radius:11px;padding:3px}
+.tm-tabs3 button{border:0;background:transparent;color:var(--ink-3);font-family:var(--display);font-weight:600;font-size:12px;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.tm-tabs3 button:hover{color:var(--ink)}
+.tm-tabs3 button.on{background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold);box-shadow:inset 0 0 0 1px #8f6a1a}
+.tm-table-l th,.tm-table-l td{text-align:right}
+.tm-table-l .tm-cl-num,.tm-table-l .tm-num,.tm-table-l .tm-cl-token,.tm-table-l .tm-tok{text-align:left}
+.tm-table-l .tm-tok-id{display:flex;flex-direction:column;gap:1px;min-width:0}
+.tm-table-l .tm-tok-id b{font-size:13px;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-table-l .tm-tok-id span{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.tm-cl-price b{font-family:var(--mono);font-weight:600}
+.tm-chg{font-style:normal;font-family:var(--mono);font-size:10.5px;margin-left:6px}
+.tm-chg.up{color:var(--verde)}.tm-chg.down{color:var(--rojo)}
+.tm-cl-mc,.tm-cl-buyers,.tm-cl-volume{font-family:var(--mono);font-size:12.5px;color:var(--ink-2)}
+.tm-cl-buy{width:1%;white-space:nowrap}
+.tm-buybtn{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12px;color:#04140c;background:linear-gradient(180deg,#f7db8d,#E8B84B 46%,#c79426);border:1px solid #c79426;border-radius:9px;padding:7px 15px;cursor:pointer;box-shadow:0 2px 0 #8f6a1a}
+.tm-buybtn:hover{filter:brightness(1.05)}.tm-buybtn:active{transform:translateY(1px);box-shadow:0 1px 0 #8f6a1a}
+@media(max-width:1080px){.tm-table-l .tm-cl-mc{display:none}}
+@media(max-width:960px){.tm-table-l .tm-cl-volume{display:none}}
+@media(max-width:860px){.tm-table-l .tm-cl-buyers{display:none}.tm-tabrow{overflow-x:auto;-webkit-overflow-scrolling:touch}.tm-tabs3{display:flex;width:max-content}}
 
 /* ───────── Portada de la terminal: minima, que se vea el fondo ───────── */
 .tm-hero{text-align:center;padding:10px 0 22px;max-width:760px;margin:0 auto}

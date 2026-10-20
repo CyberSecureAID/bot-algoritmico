@@ -13,6 +13,7 @@ import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante } from './alertas.js';
 import { abrirGrande } from './panel-grande.js';
+import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
 import { FEED, SCAN_URL, FOURMEME_URL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -115,8 +116,9 @@ export function arrancar() {
         <section class="tm-panel">
           <div class="tm-sec-head">
             <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b><span>Newest tokens on BNB Chain</span></div></div>
-            <div class="tm-sec-r"><button class="tm-b sec" id="tm-pos" type="button">Positions</button><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
+            <div class="tm-sec-r"><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
           </div>
+          <div class="tm-tabrow"><div class="tm-tabs3" id="tm-tabs3"><button data-tab="all" class="on" type="button">All</button><button data-tab="trend" type="button">Trending</button><button data-tab="vol" type="button">Volume</button><button data-tab="buyers" type="button">Buyers</button></div></div>
           <div id="tm-feed">${skeleton()}</div>
         </section>
       </main>
@@ -129,6 +131,8 @@ export function arrancar() {
   const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); } catch (e) { console.warn('[TERM] pos', e); } };
   const bus = $('tm-search'); if (bus) bus.oninput = () => { _busqueda = (bus.value || '').trim().toLowerCase(); pintar(); };
   const bell = $('tm-bell'); if (bell) bell.onclick = () => { try { abrirPanel('alerts'); } catch (_) {} };
+  const tabs3 = $('tm-tabs3');
+  if (tabs3) tabs3.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tab = b.dataset.tab; tabs3.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintar(); }; });
   const nav = $('tm-nav');
   if (nav) nav.querySelectorAll('.tm-nav-b').forEach((b) => { b.onclick = () => { const n = b.dataset.nav; try {
     if (n === 'mine' || n === 'history') { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); }
@@ -160,8 +164,8 @@ const LBL = (c) => c === 'Liquidity' ? '<span class="tm-lg">Liquidity</span><spa
 const thead = (extra = '') => `<thead><tr>${COLS.map((c) => (c === 'Chain' ? extra : '') + `<th class="${CLS[c] || ''}">${LBL(c)}</th>`).join('')}</tr></thead>`;
 function skeleton() {
   const bar = (w) => `<span class="tm-sk" style="width:${w}px"></span>`;
-  const filas = [96, 120, 84, 108, 92].map((w) => `<tr class="tm-skrow" aria-hidden="true"><td class="tm-num">${bar(12)}</td><td><span class="tm-tok-in"><span class="tm-sk tm-sk-dot"></span>${bar(w)}</span></td><td class="tm-sym">${bar(40)}</td><td class="tm-age">${bar(28)}</td><td class="tm-liq">${bar(60)}</td><td class="tm-price">${bar(52)}</td><td class="tm-cre">${bar(70)}</td><td class="tm-chain">${bar(20)}</td></tr>`).join('');
-  return `<table class="tm-table">${thead()}<tbody>${filas}</tbody></table>`;
+  const filas = [96, 120, 84, 108, 92].map((w) => `<tr class="tm-skrow" aria-hidden="true"><td class="tm-num">${bar(12)}</td><td class="tm-tok"><span class="tm-tok-in"><span class="tm-sk tm-sk-dot"></span><span class="tm-tok-id">${bar(w)}</span></span></td><td class="tm-cl-price">${bar(52)}</td><td class="tm-cl-mc">${bar(42)}</td><td class="tm-cl-buyers">${bar(30)}</td><td class="tm-cl-volume">${bar(46)}</td><td class="tm-age">${bar(28)}</td><td class="tm-cl-buy">${bar(44)}</td></tr>`).join('');
+  return `<table class="tm-table tm-table-l">${theadLobby()}<tbody>${filas}</tbody></table>`;
 }
 function fila(it, i, extra = '') {
   const liqUsd = it.moneda === 'USDT' ? it.liquidez : it.liquidez * _bnbUsd;
@@ -193,19 +197,48 @@ function arrancarAuditorias() {
   const worker = async () => { for (;;) { const it = _colaAud.shift(); if (!it) { await new Promise((r) => setTimeout(r, 500)); continue; } try { await auditarCache(it); } catch (_) {} _enColaAud.delete(it.token.toLowerCase()); clearTimeout(_repintar); _repintar = setTimeout(pintar, 300); await new Promise((r) => setTimeout(r, 250)); } };
   worker();
 }
+/* ── Tabla del lobby (rediseno): # / Token / Price / MC / Buyers / Volume / Time / Buy. MC, Buyers y
+   Volume vienen de DexScreener (reales); un token recien nacido aun sin indexar muestra 0 hasta tenerlo. ── */
+let _tab = 'all', _repM = null;
+const COLS_L = ['#', 'Token', 'Price', 'MC', 'Buyers', 'Volume', 'Time'];
+const theadLobby = () => `<thead><tr>${COLS_L.map((c) => { const k = c === '#' ? 'num' : c.toLowerCase(); return `<th class="tm-cl-${k}">${c === '#' ? '' : c}</th>`; }).join('')}<th class="tm-cl-buy"></th></tr></thead>`;
+const mNum = (tk, k) => { const m = mercadoDe(tk); return m ? (Number(m[k]) || 0) : 0; };
+const cambioDe = (tk) => { const m = mercadoDe(tk); return (m && m.cambio24 != null) ? m.cambio24 : -1e12; };
+function filaLobby(it, i) {
+  const precioUsd = it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd;
+  const listo = mercadoListo(it.token), m = mercadoDe(it.token);
+  const sk = (w) => `<span class="tm-sk" style="width:${w}px"></span>`;
+  const chg = m && m.cambio24 != null ? m.cambio24 : null;
+  const chgTxt = chg != null ? `<em class="tm-chg ${chg >= 0 ? 'up' : 'down'}">${chg >= 0 ? '+' : ''}${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%</em>` : '';
+  return `<tr class="tm-row" data-a="${esc(it.token)}">
+    <td class="tm-num">${i + 1}</td>
+    <td class="tm-tok"><span class="tm-tok-in">${logo(it.simbolo, it.token)}<span class="tm-tok-id"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span>${esc(it.simbolo || '?')}</span></span></span></td>
+    <td class="tm-cl-price"><b>${precioUsd > 0 ? '$' + fmtP(precioUsd) : '$0'}</b>${chgTxt}</td>
+    <td class="tm-cl-mc">${listo ? money(m ? m.mc : 0) : sk(42)}</td>
+    <td class="tm-cl-buyers">${listo ? numC(m ? m.buys24 : 0) : sk(30)}</td>
+    <td class="tm-cl-volume">${listo ? money(m ? m.vol24 : 0) : sk(46)}</td>
+    <td class="tm-age" data-t="${it.tiempo || 0}">${hace(it.tiempo)}</td>
+    <td class="tm-cl-buy"><button class="tm-buybtn" type="button" data-buy="${esc(it.token)}">Buy</button></td>
+  </tr>`;
+}
 function pintar() {
   const host = $('tm-feed'); if (!host) return;
   if (!_items.length) return;   // sigue el esqueleto hasta el primer token
   const esRojo = (it) => { const r = auditoriaDe(it); return !!(r && r.nivel === 'bad'); };
-  const vis = (_verRojos ? _items : _items.filter((it) => !esRojo(it))).filter(coincide);
-  const ocultos = _items.length - vis.length;
-  // (it, i): nunca pasar el 3er argumento de map (el array) a fila, cuyo tercer parametro `extra` es la celda Check.
-  host.innerHTML = `<table class="tm-table">${thead('<th class="tm-c-chk"><span class="tm-lg">Check</span><span class="tm-sm">Chk</span></th>')}<tbody>${vis.map((it, i) => fila(it, i, celdaCheck(it))).join('')}</tbody></table>`
+  const base = (_verRojos ? _items : _items.filter((it) => !esRojo(it))).filter(coincide);
+  let vis = base;
+  if (_tab === 'vol') vis = base.slice().sort((a, b) => mNum(b.token, 'vol24') - mNum(a.token, 'vol24'));
+  else if (_tab === 'buyers') vis = base.slice().sort((a, b) => mNum(b.token, 'buys24') - mNum(a.token, 'buys24'));
+  else if (_tab === 'trend') vis = base.slice().sort((a, b) => cambioDe(b.token) - cambioDe(a.token));
+  const ocultos = _items.length - base.length;
+  host.innerHTML = `<table class="tm-table tm-table-l">${theadLobby()}<tbody>${vis.map((it, i) => filaLobby(it, i)).join('')}</tbody></table>`
     + (ocultos || _verRojos ? `<div class="tm-ocultos">${ocultos ? ocultos + ' token' + (ocultos > 1 ? 's' : '') + ' hidden: Do not buy' : 'Showing Do not buy tokens'} <button type="button" id="tm-ver-rojos">${_verRojos ? 'Hide' : 'Show'}</button></div>` : '');
   const vr = $('tm-ver-rojos'); if (vr) vr.onclick = () => { _verRojos = !_verRojos; pintar(); };
-  host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
+  host.querySelectorAll('.tm-buybtn').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const it = _items.find((x) => x.token.toLowerCase() === b.dataset.buy.toLowerCase()); if (it) { try { abrirCompra(it, auditoriaDe(it)); } catch (_) {} } }; });
   host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) (esGrande() ? abrirGrande(it, ctxGrande()) : abrirFicha(it)); }; });
   cueReaplica(host);
+  const faltan = vis.filter((x) => x.par).map((x) => x.token).filter((t) => !mercadoListo(t));
+  if (faltan.length) cargarMercado(faltan).then(() => { clearTimeout(_repM); _repM = setTimeout(pintar, 60); }).catch(() => {});
 }
 /* Al entrar, los primeros tokens CON liquidez dan un destello dorado (como un clic) una sola vez, para
    invitar a tocarlos. Solo una vez por carga (si no, molesta); hasta 4 filas; en secuencia (clic clic clic).
