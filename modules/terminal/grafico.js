@@ -17,7 +17,10 @@ import { conRotacion, bloqueActual } from './rpc.js';
 const TOPIC_SYNC = ethers.id('Sync(uint112,uint112)');
 const ABI_PAR = ['function token0() view returns (address)'];
 const TRAMO = 1000;               // bloques por getLogs (limite habitual de los RPC publicos)
-const MAX_TRAMOS = 12;            // tope de rango hacia atras si no sabemos el bloque de creacion
+const MAX_TRAMOS = 12;            // trozos por lote (12 * 1000 = 12000 bloques, ~2.5 h)
+const LOTE = TRAMO * MAX_TRAMOS;  // tamano de cada lote de busqueda hacia atras (token buscado, sin bloque)
+const MAX_LOTES = 3;              // hasta 3 lotes (36000 bloques) si el token tiene poco volumen
+const MIN_VELAS = 15;            // si un lote reciente trae menos Sync que esto, se amplia hacia atras
 
 /* Lee los Sync del par y arma las velas.
    par: direccion del par V2. token: el token. decToken/decQuote: decimales (BNB y USDT = 18).
@@ -29,12 +32,28 @@ export async function velasDeToken({ par, token, decToken = 18, decQuote = 18, b
   catch (_) { return []; }
   const tokenEs0 = token0 === String(token).toLowerCase();
   const hasta = await bloqueActual();
-  const desde = bloque ? Math.max(0, Number(bloque) - TRAMO) : Math.max(0, hasta - TRAMO * MAX_TRAMOS);
-
-  const trozos = []; for (let b = desde; b <= hasta; b += TRAMO) trozos.push([b, Math.min(hasta, b + TRAMO - 1)]);
-  const porTramo = await Promise.all(trozos.map(([a, b]) =>
-    conRotacion((p) => p.getLogs({ address: par, topics: [TOPIC_SYNC], fromBlock: a, toBlock: b })).catch(() => [])));
-  let logs = []; for (const ls of porTramo) logs = logs.concat(ls);
+  // Lee los Sync de un rango [a,b] en trozos de TRAMO, en paralelo. Un trozo que falle cuenta como vacio.
+  const leerRango = async (a, b) => {
+    const trozos = []; for (let x = a; x <= b; x += TRAMO) trozos.push([x, Math.min(b, x + TRAMO - 1)]);
+    const porTramo = await Promise.all(trozos.map(([p1, p2]) =>
+      conRotacion((pr) => pr.getLogs({ address: par, topics: [TOPIC_SYNC], fromBlock: p1, toBlock: p2 })).catch(() => [])));
+    let ls = []; for (const t of porTramo) ls = ls.concat(t); return ls;
+  };
+  let logs;
+  if (bloque) {
+    // Token del feed: ventana desde su creacion (reciente, rango acotado).
+    logs = await leerRango(Math.max(0, Number(bloque) - TRAMO), hasta);
+  } else {
+    // Token buscado (sin bloque de creacion): ventana reciente y, si trae pocas velas (tokens de BAJO volumen
+    // como USDT.z), se amplia hacia atras por lotes hasta tener suficientes o llegar al tope. Asi la grafica
+    // deja de salir "a veces si, a veces no": siempre encuentra el historial reciente que exista.
+    logs = [];
+    for (let i = 0; i < MAX_LOTES; i++) {
+      const b = hasta - i * LOTE, a = Math.max(0, b - LOTE + 1);
+      logs = logs.concat(await leerRango(a, b));
+      if (logs.length >= MIN_VELAS || a === 0) break;
+    }
+  }
   if (!logs.length) return [];
   logs.sort((x, y) => (Number(x.blockNumber) - Number(y.blockNumber)) || ((x.logIndex ?? x.index ?? 0) - (y.logIndex ?? y.index ?? 0)));
 
@@ -134,7 +153,7 @@ function fmtEje(p) {
   return p.toFixed(dec).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0, _lineaActual = null, _vol = null;
+let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0, _lineaActual = null, _vol = null, _lineasAl = [];
 /* Precio (en las unidades del eje, aqui USD) a la altura Y relativa al contenedor del grafico.
    Lo usa la vista grande para el clic derecho: poner una alerta al precio donde se hizo clic. */
 export function precioEnY(y) { try { return (_serie && y != null) ? _serie.coordinateToPrice(y) : null; } catch (_) { return null; } }
@@ -162,10 +181,25 @@ export function marcarActual(price) {
   try { if (_serie && price > 0 && isFinite(price)) _lineaActual = _serie.createPriceLine({ price: Number(price), color: '#9fb0c0', lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: 'Market' }); } catch (_) {}
 }
 export function limpiarActual() { try { if (_serie && _lineaActual) _serie.removePriceLine(_lineaActual); } catch (_) {} _lineaActual = null; }
+
+/* Marca las ALERTAS de precio del token en la grafica como lineas horizontales (verde=sube, rojo=baja),
+   con su precio en la etiqueta del eje. lista: [{price, dir:'up'|'down', title}]. Se vuelve a llamar al
+   crear o borrar una alerta. */
+export function marcarAlertas(lista) {
+  limpiarAlertas();
+  try {
+    if (!_serie || !Array.isArray(lista)) return;
+    for (const a of lista) {
+      if (!(a && a.price > 0 && isFinite(a.price))) continue;
+      _lineasAl.push(_serie.createPriceLine({ price: Number(a.price), color: a.dir === 'up' ? '#2ee86a' : '#f6465d', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: a.title || 'Alert' }));
+    }
+  } catch (_) {}
+}
+export function limpiarAlertas() { try { if (_serie) for (const l of _lineasAl) { try { _serie.removePriceLine(l); } catch (_) {} } } catch (_) {} _lineasAl = []; }
 export function destruirGrafico() {
   if (_ro) { try { _ro.disconnect(); } catch (_) {} _ro = null; }
   if (_chart) { try { _chart.remove(); } catch (_) {} }
-  _chart = null; _serie = null; _cont = null; _lineaEntrada = null; _entradaPrecio = 0; _lineaActual = null; _vol = null;
+  _chart = null; _serie = null; _cont = null; _lineaEntrada = null; _entradaPrecio = 0; _lineaActual = null; _vol = null; _lineasAl = [];
 }
 export function montarGrafico(cont, velas) {
   if (!cont || !Array.isArray(velas) || !velas.length) return false;

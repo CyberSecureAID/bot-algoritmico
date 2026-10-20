@@ -10,7 +10,8 @@
    clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
 import { resolverContrato } from './resolver.js';
-import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada } from './grafico.js';
+import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada, marcarAlertas } from './grafico.js';
+import { precioUsdVivo } from './precio.js';
 import { historialCreador } from './creador.js';
 import { SCAN_URL, WBNB, USDT, SLIPPAGE, PROTECCION, PRESETS_BNB } from './config.js';
 import { disclaimerProtect } from './protect.js';
@@ -98,6 +99,7 @@ function css() {
 .tg-chart-cv{position:absolute;inset:0}
 .tg-chart-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:13px;pointer-events:none}
 .tg-chart-msg[hidden]{display:none}
+.tg-wm{position:absolute;left:12px;bottom:10px;height:20px;width:auto;max-width:150px;opacity:.2;pointer-events:none;z-index:3;user-select:none}
 .tg-tools{position:absolute;top:8px;left:8px;z-index:4;display:flex;gap:6px}
 .tg-tool{width:32px;height:32px;border-radius:9px;border:1px solid var(--line,#232b36);background:rgba(11,15,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--ink-2,#b7bdc6);display:grid;place-items:center;cursor:pointer;transition:color .14s,border-color .14s}
 .tg-tool svg{width:17px;height:17px}
@@ -216,6 +218,11 @@ function css() {
 .tg-al-set input{flex:1 1 auto;height:44px;padding:0 12px 0 24px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink,#eaecef);font-family:var(--mono);font-size:14px;outline:none;min-width:0}
 .tg-al-set input:focus{border-color:#8f6a1a}
 .tg-al-hint{font-size:11px;color:var(--ink-3,#7d8794);line-height:1.5}
+.tg-al-presets{display:flex;gap:6px;margin-top:9px}
+.tg-al-chip{flex:1;height:36px;border-radius:9px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink-2,#b7bdc6);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
+.tg-al-chip.up{color:#8ef0b0}.tg-al-chip.up:hover{border-color:rgba(46,232,106,.5);background:rgba(46,232,106,.1)}
+.tg-al-chip.dn{color:#ff9aa9}.tg-al-chip.dn:hover{border-color:rgba(246,70,93,.5);background:rgba(246,70,93,.1)}
+.tg-al-chip:active{transform:translateY(1px)}
 .tg-mbtn{height:46px;border-radius:12px;border:0;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .tg-mbtn.buy{background:linear-gradient(180deg,#2ebd85,#1f8f63);color:#04140c;box-shadow:0 4px 0 #0c4d35,inset 0 1px 0 rgba(255,255,255,.2)}
 .tg-mbtn.buy:active{transform:translateY(3px);box-shadow:0 1px 0 #0c4d35}
@@ -365,10 +372,11 @@ async function resolver(addr, feed) {
   return await resolverContrato(dir);
 }
 
-let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60;
-export async function abrirGrande(it0, ctx) {
+let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60, _abrirAlerta = false;
+export async function abrirGrande(it0, ctx, opts) {
   ctx = ctx || {};
   _ctx = ctx;
+  _abrirAlerta = !!(opts && opts.alerta);   // la campanita / "Alerts" abren el OFC directo en la pestaña Alert
   const bnbUsd = () => (ctx.bnbUsd ? ctx.bnbUsd() : 0);
   const feed = () => (ctx.items ? ctx.items() : []);
   css();
@@ -382,7 +390,7 @@ export async function abrirGrande(it0, ctx) {
     </div>
     <div class="tm-big-main">
       <div class="tg-col tg-left" id="tg-left"></div>
-      <div class="tg-col tg-chart"><div class="tg-chart-cv" id="tg-chart-cv"></div><div class="tg-tools"><button class="tg-tool" id="tg-ruler" type="button" title="Measure % and range">${ICO_RULER}</button><div class="tg-tf" id="tg-tf">${[['60', '1m'], ['300', '5m'], ['900', '15m'], ['3600', '1h'], ['14400', '4h'], ['86400', '1d']].map(([s, l]) => `<button data-sec="${s}" type="button"${Number(s) === _tfSecBig ? ' class="on"' : ''}>${l}</button>`).join('')}</div></div><div class="tg-mdcapture" id="tg-mdcap" hidden></div><div class="tg-mdbox" id="tg-mdbox" hidden></div><div class="tg-chart-msg" id="tg-chart-msg"><span class="tg-anillo"></span></div></div>
+      <div class="tg-col tg-chart"><div class="tg-chart-cv" id="tg-chart-cv"></div><img class="tg-wm" src="../../branding/decfreedomlogohorizontal.webp" onerror="this.onerror=null;this.src='../../assets/img/cco-full.webp'" alt=""><div class="tg-tools"><button class="tg-tool" id="tg-ruler" type="button" title="Measure % and range">${ICO_RULER}</button><div class="tg-tf" id="tg-tf">${[['60', '1m'], ['300', '5m'], ['900', '15m'], ['3600', '1h'], ['14400', '4h'], ['86400', '1d']].map(([s, l]) => `<button data-sec="${s}" type="button"${Number(s) === _tfSecBig ? ' class="on"' : ''}>${l}</button>`).join('')}</div></div><div class="tg-mdcapture" id="tg-mdcap" hidden></div><div class="tg-mdbox" id="tg-mdbox" hidden></div><div class="tg-chart-msg" id="tg-chart-msg"><span class="tg-anillo"></span></div></div>
       <div class="tg-col tg-right" id="tg-right"></div>
     </div>`;
   document.body.appendChild(ov);
@@ -485,7 +493,7 @@ export async function abrirGrande(it0, ctx) {
     try { destruirGrafico(); } catch (_) {}
     _velasRawBig = null;
     // precio en vivo
-    precioActual({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bnbUsd: bnbUsd(), quoteEsUSDT: it.moneda === 'USDT' })
+    precioUsdVivo(it, bnbUsd())
       .then((p) => { if (ov.isConnected) pintarPrecio(p); }).catch(() => {});
     pintarIzq(it, ctx);
     // grafica: velas crudas (una por operacion) reagrupadas al timeframe activo. Reintento unico ante un
@@ -513,6 +521,7 @@ export async function abrirGrande(it0, ctx) {
   }
   function pintarPrecio(p) {
     _precioUsd = p || 0;
+    const ai = document.getElementById('tg-al-price'); if (ai && p > 0 && !ai.value) ai.placeholder = fmtTxt(p);
     const el = $('tg-price'); if (!el) return;
     el.innerHTML = `<b>${p > 0 ? '$' + fmtP(p, 5) : '$0'}</b><span>LIVE PRICE</span>`;
     const mp = document.getElementById('tg-mkt-price'); if (mp) mp.innerHTML = p > 0 ? '$' + fmtP(p, 5) : '$0';
@@ -762,12 +771,34 @@ const CHK_STEP = 150, CHK_DELAY = 260;
 function checksScan() {
   return CHECKS_DEF.map((c) => `<div class="tg-chk scan"><span><i class="tg-chk-sp"></i>${c.t}</span><b class="tg-chk-bar"><em></em></b></div>`).join('');
 }
+/* Cuando GoPlus aun no indexo el token, en vez de NO mostrar nada (el usuario lo vio en monedas de Binance
+   reconocidas con Token info completo), revela los hallazgos leidos EN CADENA (propiedad renunciada, liquidez
+   quemada, concentracion del top 10, creador, snipers, bundle) como checks reales. Honeypot e impuestos siguen
+   necesitando el escaner, y eso se dice en la nota. animar=true hace la cascada; false repinta sin animar. */
+function pintarOnchain(host, r, animar) {
+  const onchain = ((r && r.hallazgos) || []).filter((x) => x && (x.n === 'ok' || x.n === 'warn' || x.n === 'bad'));
+  const NOTA = `<div class="tg-chk-note">Honeypot and tax checks need the security scanner, which hasn't indexed this token yet. The on-chain checks above are read live from the chain.</div>`;
+  if (!onchain.length) { host.innerHTML = `<div class="tg-chk-note">Honeypot and tax checks need the scanner, which hasn't indexed this token yet. Holders, creator and liquidity above are read live from the chain.</div>`; return 0; }
+  const VERB = { ok: 'Safe', warn: 'Caution', bad: 'Risk' };
+  const fila = (x) => { const ok = x.n === 'ok'; return `<div class="tg-chk rev ${ok ? 'ok' : 'no'}"><span><i>${ok ? ICO_CHECK : ICO_X}</i>${esc(x.t)}</span><b>${VERB[x.n] || ''}</b></div>`; };
+  if (!animar) { host.innerHTML = onchain.map(fila).join('') + NOTA; return 0; }
+  host.innerHTML = onchain.map(() => `<div class="tg-chk scan"><span><i class="tg-chk-sp"></i></span><b class="tg-chk-bar"><em></em></b></div>`).join('') + NOTA;
+  const rows = host.querySelectorAll('.tg-chk');
+  rows.forEach((row, i) => {
+    setTimeout(() => {
+      if (!row.isConnected) return; const x = onchain[i]; if (!x) return; const ok = x.n === 'ok';
+      row.className = 'tg-chk rev ' + (ok ? 'ok' : 'no');
+      row.innerHTML = `<span><i>${ok ? ICO_CHECK : ICO_X}</i>${esc(x.t)}</span><b>${VERB[x.n] || ''}</b>`;
+    }, CHK_STEP * i + CHK_DELAY);
+  });
+  return CHK_STEP * rows.length + CHK_DELAY;
+}
 /* Revela cada check con retardo escalonado. Devuelve cuanto dura toda la cascada (ms). */
 function revelarChecks(host, r) {
   const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null;
   const d = (r && r.datos) ? r.datos : {};
   const rows = host.querySelectorAll('.tg-chk');
-  if (!c) { host.innerHTML = `<div class="tg-chk-note">Honeypot and tax checks need the scanner, which hasn't indexed this token yet. Holders, creator and liquidity above are read live from the chain.</div>`; return 0; }
+  if (!c) { return pintarOnchain(host, r, true); }
   rows.forEach((row, i) => {
     setTimeout(() => {
       if (!row.isConnected) return;
@@ -781,9 +812,10 @@ function revelarChecks(host, r) {
 /* Refresca valor y color de los checks ya revelados con el resultado completo, SIN volver a animar
    (lo usa el segundo paso de la auditoria para afinar Distribution y demas sin repetir la cascada). */
 function refrescarChecks(r) {
-  const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null; if (!c) return;
+  const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null;
   const d = (r && r.datos) ? r.datos : {};
   const ch = $('tg-checks'); if (!ch) return;
+  if (!c) { pintarOnchain(ch, r, false); return; }   // sin escaner: repinta los hallazgos en cadena (pass 2 trae mas)
   ch.querySelectorAll('.tg-chk').forEach((row, i) => {
     if (!row.isConnected) return; const def = CHECKS_DEF[i]; if (!def) return;
     const ok = !!c[def.k];
@@ -809,13 +841,15 @@ function historialCreadorBig(it, creador) {
 function pintarDer(it, ctx) {
   const host = $('tg-right'); if (!host) return;
   if (!it) { host.innerHTML = `<div class="tg-sec-t">Trade</div><div class="tg-soon" style="margin-top:4px">Pick a token to buy, set a price alert and see your live positions.</div>`; return; }
+  const oper = it.operable !== false;   // Tron (y BSC sin ruta de swap) NO son operables: solo alertas, Market bloqueado
   host.innerHTML = `
-    <div class="tg-tabs2" id="tg-op-tabs"><button type="button" class="t on" data-op="market">Market</button><button type="button" class="t" data-op="alert">Alert</button></div>
-    <div class="tg-op" id="tg-op-market"></div>
-    <div class="tg-op" id="tg-op-alert" hidden>
+    <div class="tg-tabs2" id="tg-op-tabs"><button type="button" class="t${oper ? ' on' : ''}" data-op="market"${oper ? '' : ' disabled title="Not tradable here yet"'}>Market</button><button type="button" class="t${oper ? '' : ' on'}" data-op="alert">Alert</button></div>
+    <div class="tg-op" id="tg-op-market"${oper ? '' : ' hidden'}></div>
+    <div class="tg-op" id="tg-op-alert"${oper ? ' hidden' : ''}>
       <label class="tg-op-lbl">Alert me at price</label>
       <div class="tg-al-set"><span class="tg-al-d">$</span><input id="tg-al-price" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0"><button class="tg-mbtn sec" id="tg-al-set" type="button">Set</button></div>
-      <div class="tg-al-hint" id="tg-al-hint">You get a browser notification when the price is hit. It is not an order and never touches your funds.</div>
+      <div class="tg-al-presets" id="tg-al-presets"></div>
+      <div class="tg-al-hint" id="tg-al-hint">You get a notification when the price is hit. It is not an order and never touches your funds.</div>
     </div>
     <div class="tg-balrow" id="tg-balrow"></div>
     <div class="tg-sec-t tg-mt">Open alerts</div>
@@ -823,11 +857,14 @@ function pintarDer(it, ctx) {
     <div class="tg-sec-t tg-mt">Positions</div>
     <div id="tg-positions"><div class="tg-soon">No positions yet.</div></div>`;
   host.querySelectorAll('#tg-op-tabs button').forEach((b) => { b.onclick = () => {
+    if (b.disabled) return;
     host.querySelectorAll('#tg-op-tabs button').forEach((x) => x.classList.toggle('on', x === b));
     const m = b.dataset.op, mk = $('tg-op-market'), al = $('tg-op-alert'); if (mk) mk.hidden = m !== 'market'; if (al) al.hidden = m !== 'alert';
   }; });
-  montarMercado(it);
+  if (oper) montarMercado(it);
+  else { const mk = $('tg-op-market'); if (mk) mk.innerHTML = `<div class="tg-soon">${it.red === 'tron' ? 'Tron token — trading is not available here yet. You can still set price alerts below.' : 'Not tradable here yet. You can still set price alerts.'}</div>`; }
   const setA = $('tg-al-set'), inA = $('tg-al-price');
+  if (inA && _precioUsd > 0) inA.placeholder = fmtTxt(_precioUsd);
   const poner = () => {
     const v = parseFloat(String(inA.value).replace(/[, $]/g, '')); if (!(v > 0)) { inA.focus(); return; }
     const ref = _precioUsd > 0 ? _precioUsd : 0; const dir = ref > 0 ? (v >= ref ? 'up' : 'down') : 'up';
@@ -836,7 +873,22 @@ function pintarDer(it, ctx) {
     derOpenAlerts(it);
   };
   if (setA && inA) { setA.onclick = poner; inA.onkeydown = (e) => { if (e.key === 'Enter') poner(); }; }
+  // Presets: tocas un % y rellena el objetivo (± sobre el precio EN VIVO que ves en la grafica), para fijar
+  // la alerta de un vistazo sin tener que calcular el precio a mano. Rojo = baja (comprar), verde = sube (vender).
+  const presets = $('tg-al-presets');
+  if (presets) {
+    presets.innerHTML = [-20, -10, 10, 20].map((p) => `<button class="tg-al-chip ${p < 0 ? 'dn' : 'up'}" type="button" data-pct="${p}">${p > 0 ? '+' : ''}${p}%</button>`).join('');
+    presets.querySelectorAll('.tg-al-chip').forEach((b) => b.onclick = () => {
+      const ref = _precioUsd > 0 ? _precioUsd : 0;
+      const h = $('tg-al-hint');
+      if (!(ref > 0)) { if (h) h.textContent = 'Waiting for the live price…'; return; }
+      const pc = Number(b.dataset.pct), tgt = ref * (1 + pc / 100);
+      if (inA) { inA.value = fmtTxt(tgt); inA.focus(); }
+      if (h) h.innerHTML = `Notify when ${esc(it.simbolo || 'it')} ${pc > 0 ? 'rises' : 'drops'} ${Math.abs(pc)}% to <b>$${fmtTxt(tgt)}</b>. Tap Set.`;
+    });
+  }
   derBalances(it); derOpenAlerts(it); derPositions(it);
+  if (_abrirAlerta) { _abrirAlerta = false; const ab = host.querySelector('#tg-op-tabs button[data-op="alert"]'); if (ab) ab.click(); }
 }
 function fmtTxt(p) { return String(fmtP(p, 5)).replace(/<sub>(\d+)<\/sub>/, (m, z) => '0'.repeat(+z)); }
 
@@ -849,9 +901,14 @@ function derBalances(it) {
   saldoToken(USDT, c).then((w) => { const e = $('tg-bal-usdt'); if (e) e.textContent = (+ethers.formatUnits(w, 18)).toFixed(2); }).catch(() => {});
 }
 
+/* Marca en la grafica las alertas (no disparadas) de este token: verde=sube, rojo=baja. */
+function marcarAlertasBig(it) {
+  try { if (!it) { marcarAlertas([]); return; } marcarAlertas(alertasDe(it.token).filter((a) => !a.disparada).map((a) => ({ price: a.objetivo, dir: a.dir, title: '$' + fmtTxt(a.objetivo) }))); } catch (_) {}
+}
 function derOpenAlerts(it) {
   const host = $('tg-openalerts'); if (!host) return;
   const l = alertasDe(it.token);
+  marcarAlertasBig(it);
   if (!l.length) { host.innerHTML = `<div class="tg-soon">No alerts for this token.</div>`; return; }
   host.innerHTML = l.map((a) => `<div class="tg-alrow ${a.disparada ? 'done' : ''}"><span class="tg-aldir ${a.dir}"></span><b>$${fmtP(a.objetivo)}</b>${a.disparada ? '<em>hit</em>' : ''}<button class="tg-alx" data-id="${esc(a.id)}" type="button" aria-label="Remove">✕</button></div>`).join('');
   host.querySelectorAll('.tg-alx').forEach((b) => { b.onclick = () => { quitarAlerta(b.dataset.id); derOpenAlerts(it); }; });
@@ -902,7 +959,7 @@ function renderChartBig() {
   const cv = $('tg-chart-cv'), msg = $('tg-chart-msg'); if (!cv) return;
   if (_velasRawBig == null) { if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; } return; }
   const velas = agruparBig(_velasRawBig, _tfSecBig);
-  if (velas.length) { if (msg) msg.hidden = true; montarGrafico(cv, velas); marcarEntradaDe(_itActual); }
+  if (velas.length) { if (msg) msg.hidden = true; montarGrafico(cv, velas); marcarEntradaDe(_itActual); marcarAlertasBig(_itActual); }
   else { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = 'No trades yet'; } }
 }
 function marcarEntradaDe(it) {

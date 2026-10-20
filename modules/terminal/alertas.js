@@ -2,7 +2,7 @@
    La alerta NO es una orden ni toca fondos: solo AVISA (notificacion del navegador y aviso dentro de la
    app) cuando el precio toca tu objetivo, mientras el Terminal este abierto. Tu vendes a mano. Si el
    aviso falla, nadie pierde nada: se revisa a mano. Todo vive en el navegador (localStorage). */
-import { precioActual } from './grafico.js';
+import { precioUsdVivo } from './precio.js';
 
 const KEY_A = 'df_terminal_alert_v1';
 const KEY_W = 'df_terminal_watch_v1';
@@ -27,7 +27,7 @@ export function alertasDe(token) { return leer(KEY_A).filter((a) => low(a.token)
 export function crearAlerta(it, objetivoUsd, dir) {
   if (!(objetivoUsd > 0) || (dir !== 'up' && dir !== 'down')) return null;
   const l = leer(KEY_A);
-  const a = { id: 'a' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), token: it.token, simbolo: it.simbolo || '?', par: it.par || null, moneda: it.moneda || 'BNB', decimales: it.decimales || 18, objetivo: objetivoUsd, dir, creada: Date.now(), disparada: false };
+  const a = { id: 'a' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), token: it.token, simbolo: it.simbolo || '?', par: it.par || null, moneda: it.moneda || 'BNB', decimales: it.decimales || 18, fuentePrecio: it.fuentePrecio || 'v2', red: it.red || 'bsc', objetivo: objetivoUsd, dir, creada: Date.now(), disparada: false };
   l.unshift(a); esc(KEY_A, l);
   try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (_) {}
   return a;
@@ -50,7 +50,7 @@ export function arrancarVigilante(bnbUsdFn, onDisparo, cadaMs) {
         for (const a of activas) porToken[low(a.token)] = a;           // un precio por token
         const precios = {};
         await Promise.all(Object.values(porToken).map(async (a) => {
-          precios[low(a.token)] = await precioActual({ par: a.par, token: a.token, decToken: a.decimales || 18, decQuote: 18, bnbUsd, quoteEsUSDT: a.moneda === 'USDT' }).catch(() => 0);
+          precios[low(a.token)] = await precioUsdVivo(a, bnbUsd).catch(() => 0);
         }));
         const l = leer(KEY_A); let cambio = false;
         for (const a of l) {

@@ -21,7 +21,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const corto = (a) => a ? '…' + String(a).slice(-4) : '';
 /* Precio del token en USDT: si el par ya es contra USDT, es directo; si es contra BNB, se multiplica por el precio de BNB. */
-const usdDe = (it) => (it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd);
+const usdDe = (it) => (it && it.precioUsd > 0 ? it.precioUsd : (it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd));
 
 const ICO_BSC = '<svg class="tm-bsc" viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
@@ -171,7 +171,7 @@ export function arrancar() {
       resolverContrato(raw).then((it) => { if (mine !== _lobResolN) return; _lobResuelto = it || 'none'; pintar(); }).catch(() => { if (mine === _lobResolN) { _lobResuelto = 'none'; pintar(); } });
     } else { _lobResuelto = null; _lobResolQ = ''; pintar(); }
   };
-  const bell = $('tm-bell'); if (bell) bell.onclick = () => { try { abrirPanel('alerts'); } catch (_) {} };
+  const bell = $('tm-bell'); if (bell) bell.onclick = () => { try { abrirGrande(_sel || null, ctxGrande(), { alerta: true }); } catch (_) {} };
   try { pintarBell(); } catch (_) {}
   const tabs3 = $('tm-tabs3');
   if (tabs3) tabs3.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tab = b.dataset.tab; tabs3.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintar(); }; });
@@ -183,7 +183,7 @@ export function arrancar() {
   if (nav) nav.querySelectorAll('.tm-nav-b').forEach((b) => { b.onclick = () => { const n = b.dataset.nav; try {
     if (n === 'mine') abrirPanel('positions');
     else if (n === 'history') abrirPanel('history');
-    else if (n === 'alerts') abrirPanel('alerts');
+    else if (n === 'alerts') { try { abrirGrande(_sel || null, ctxGrande(), { alerta: true }); } catch (_) {} }
     else if (n === 'checks') abrirPanel('verif');
   } catch (_) {} }; });
   gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); try { pintarPosWidget(); } catch (_) {} }).catch(() => {});
@@ -886,7 +886,7 @@ export async function abrirPanel(tab = 'positions') {
     const elegir = (it) => {
       _alSel = it; const pu = usdDe(it);
       q.value = it.simbolo || '?'; cerrarDrop();
-      pxIn.disabled = false; pxIn.value = pu > 0 ? fmtP(pu) : '';
+      pxIn.disabled = false; pxIn.value = pu > 0 ? String(fmtP(pu)).replace(/<sub>(\d+)<\/sub>/, (m, z) => '0'.repeat(+z)) : '';
       hint.innerHTML = pu > 0 ? `Now <b>$${fmtP(pu)}</b>. Set a target above or below.` : 'Type the target price for this token.';
       refDir(); try { pxIn.focus(); pxIn.select(); } catch (_) {}
     };
