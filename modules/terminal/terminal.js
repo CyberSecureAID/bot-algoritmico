@@ -103,6 +103,7 @@ export function arrancar() {
       if (error) try { console.warn('[TERM] estado', error); } catch (_) {}
     }
   });
+  try { setTimeout(cueIntento, 1200); } catch (_) {}   // destello de invitacion cuando el lote inicial ya esta en pantalla
 }
 
 const COLS = ['#', 'Token', 'Symbol', 'Age', 'Liquidity', 'Price', 'Contract', 'Chain'];
@@ -156,6 +157,36 @@ function pintar() {
   const vr = $('tm-ver-rojos'); if (vr) vr.onclick = () => { _verRojos = !_verRojos; pintar(); };
   host.querySelectorAll('.tm-copyc').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); try { navigator.clipboard.writeText(b.dataset.copy); const o = b.innerHTML; b.innerHTML = 'copied ' + ICO_COPY; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1200); } catch (_) {} }; });
   host.querySelectorAll('.tm-row').forEach((r) => { r.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (it) (esGrande() ? abrirGrande(it, ctxGrande()) : abrirFicha(it)); }; });
+  cueReaplica(host);
+}
+/* Al entrar, los primeros tokens CON liquidez dan un destello dorado (como un clic) una sola vez, para
+   invitar a tocarlos. Solo una vez por carga (si no, molesta); hasta 4 filas; en secuencia (clic clic clic).
+   El set se captura con un temporizador (no en el primer pintar, que aun no tiene todo el lote); pintar()
+   solo lo REAPLICA mientras dura, porque reconstruye la tabla en cada repintado. */
+let _cueHecho = false, _cueSet = null, _cueIni = 0, _cueTries = 0;
+const CUE_DUR = 1.3;      // duracion visible del destello por fila (s)
+function cueIntento() {
+  if (_cueHecho) return;
+  const host = $('tm-feed'); if (!host) return;
+  const toks = [];
+  host.querySelectorAll('.tm-row').forEach((r) => {
+    if (toks.length >= 4) return;
+    const it = _items.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase());
+    if (it && it.par && it.liquidez > 0) toks.push(it.token.toLowerCase());
+  });
+  if (toks.length) { _cueHecho = true; _cueSet = toks; _cueIni = Date.now(); cueReaplica(host); return; }
+  if (_cueTries < 3) { _cueTries++; setTimeout(cueIntento, 1500); }   // aun sin tokens con liquidez: reintenta
+}
+function cueReaplica(host) {
+  if (!_cueSet) return;
+  const t = (Date.now() - _cueIni) / 1000;
+  host.querySelectorAll('.tm-row').forEach((r) => {
+    const i = _cueSet.indexOf(r.dataset.a.toLowerCase()); if (i < 0) return;
+    const ini = i * 0.18;
+    if (t >= ini + CUE_DUR) return;        // esta fila ya termino su destello; el desfase negativo continua la animacion
+    r.style.animationDelay = (ini - t) + 's';
+    r.classList.add('tm-cue');
+  });
 }
 
 /* Cache de auditorias: una por token, compartida por la ficha y la ventana de filtros. Un resultado
