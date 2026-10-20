@@ -9,7 +9,7 @@
    selector de tokens. La columna de operar (Market / Alert, saldos, Open Alerts, Positions) y el
    clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
-import { resolverContrato } from './resolver.js';
+import { resolverContrato, esContrato } from './resolver.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada, marcarAlertas } from './grafico.js';
 import { precioUsdVivo } from './precio.js';
 import { historialCreador } from './creador.js';
@@ -217,7 +217,16 @@ function css() {
 .tg-al-set .tg-al-d{position:absolute;left:12px;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:13px}
 .tg-al-set input{flex:1 1 auto;height:44px;padding:0 12px 0 24px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink,#eaecef);font-family:var(--mono);font-size:14px;outline:none;min-width:0}
 .tg-al-set input:focus{border-color:#8f6a1a}
-.tg-al-hint{font-size:11px;color:var(--ink-3,#7d8794);line-height:1.5}
+.tg-al-hint{font-size:11px;color:var(--ink-3,#7d8794);line-height:1.5;margin-top:8px}
+.tg-al-custom{display:flex;align-items:center;gap:8px;margin-top:8px}
+.tg-al-custom .lb{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794);flex:0 0 auto}
+.tg-al-custom input{flex:1 1 auto;min-width:0;height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink,#eaecef);font-family:var(--mono);font-size:13px;outline:none}
+.tg-al-custom input:focus{border-color:#8f6a1a}
+.tg-al-pctgo{flex:0 0 auto;height:38px;padding:0 14px;border-radius:10px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold,#E8B84B);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12px;cursor:pointer}
+.tg-al-pctgo:active{transform:translateY(1px)}
+.tg-al-go{width:100%;height:48px;margin-top:11px;border-radius:12px;border:0;background:linear-gradient(180deg,#E8B84B,#b8862a);color:#1a1205;font-family:'Chakra Petch',var(--display);font-weight:800;font-size:15px;letter-spacing:.3px;cursor:pointer;box-shadow:0 4px 0 #5e4411,inset 0 1px 0 rgba(255,255,255,.3)}
+.tg-al-go:active{transform:translateY(3px);box-shadow:0 1px 0 #5e4411}
+.tg-al-go:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
 .tg-al-presets{display:flex;gap:6px;margin-top:9px}
 .tg-al-chip{flex:1;height:36px;border-radius:9px;border:1px solid var(--line,#232b36);background:#0b0f14;color:var(--ink-2,#b7bdc6);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
 .tg-al-chip.up{color:#8ef0b0}.tg-al-chip.up:hover{border-color:rgba(46,232,106,.5);background:rgba(46,232,106,.1)}
@@ -365,11 +374,20 @@ function css() {
 /* ── Resolver un token por contrato: primero en el feed; si no, por el resolvedor COMPARTIDO (el mismo que
    usa el lobby), que consulta los pares con WBNB y con USDT y se queda con el de MAS liquidez. Antes aqui se
    tomaba el primer par que existiera, por eso tokens como USDT.z (par WBNB muerto) no mostraban grafica. ── */
-async function resolver(addr, feed) {
-  let dir; try { dir = ethers.getAddress(String(addr || '').trim()); } catch (_) { return null; }
-  const hit = (feed || []).find((x) => x.token && x.token.toLowerCase() === dir.toLowerCase());
+async function resolver(q, feed) {
+  const s = String(q || '').trim(); if (!s) return null;
+  const low = s.toLowerCase();
+  const f = feed || [];
+  // 1) En el feed: por contrato exacto, o por SIMBOLO/NOMBRE (igual que el buscador del lobby). Antes aqui se
+  //    hacia ethers.getAddress(), que lanzaba con nombres, simbolos y direcciones Tron -> la busqueda del OFC
+  //    solo funcionaba pegando un 0x exacto y jamas llegaba al resolvedor global/Tron. Esa era la causa raiz.
+  let hit = f.find((x) => x.token && x.token.toLowerCase() === low);
+  if (!hit) { const ex = f.filter((x) => (x.simbolo || '').toLowerCase() === low || (x.nombre || '').toLowerCase() === low); if (ex.length) hit = ex.sort((a, b) => (b.liquidez || 0) - (a.liquidez || 0))[0]; }
+  if (!hit) { const pa = f.filter((x) => (x.simbolo || '').toLowerCase().includes(low) || (x.nombre || '').toLowerCase().includes(low)); if (pa.length) hit = pa.sort((a, b) => (b.liquidez || 0) - (a.liquidez || 0))[0]; }
   if (hit) return hit;
-  return await resolverContrato(dir);
+  // 2) Un CONTRATO que no esta en el feed (BSC 0x… o Tron T…): resolvedor COMPARTIDO (global y multicadena).
+  if (esContrato(s)) return await resolverContrato(s);
+  return null;
 }
 
 let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60, _abrirAlerta = false;
@@ -385,7 +403,7 @@ export async function abrirGrande(it0, ctx, opts) {
   ov.innerHTML = `
     <div class="tm-big-top">
       <div class="tg-top-l"><div class="tg-id" id="tg-id"></div><div class="tg-price" id="tg-price"></div></div>
-      <div class="tg-find"><div class="tg-find-in"><span class="tg-ico">${ICO_SEARCH}</span><input id="tg-find-in" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a token contract 0x…"></div></div>
+      <div class="tg-find"><div class="tg-find-in"><span class="tg-ico">${ICO_SEARCH}</span><input id="tg-find-in" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, symbol or contract (BSC / Tron)…"></div></div>
       <div class="tg-top-r"><button class="tg-find-tok" id="tg-find-tok" type="button">Tokens</button><button class="tg-x" id="tg-close" type="button" aria-label="Close">✕</button></div>
     </div>
     <div class="tm-big-main">
@@ -465,7 +483,7 @@ export async function abrirGrande(it0, ctx, opts) {
     // Reintento unico: un fallo transitorio de RPC hacia que resolver devolviera null y saliera "no pair",
     // obligando a salir y volver a entrar. Si de verdad no hay par, el segundo intento tambien da null.
     if (!it && ov.isConnected) { await new Promise((r) => setTimeout(r, 900)); it = await resolver(v, feed()); }
-    if (!it) { if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'No PancakeSwap pair found for that contract.'; } return; }
+    if (!it) { if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'No token found for that search. Try the exact symbol or paste the contract.'; } return; }
     $('tg-find-in').value = '';
     cargar(it);
   };
@@ -489,9 +507,14 @@ export async function abrirGrande(it0, ctx, opts) {
     if (!ov.isConnected) return;
     _itActual = it; pintarId(it); pintarDer(it, ctx);
     const msg = $('tg-chart-msg');
-    if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
     try { destruirGrafico(); } catch (_) {}
-    _velasRawBig = null;
+    // Siembra con las velas que el lobby YA tiene de este token (si las hay): el grafico aparece al instante y,
+    // si el refetch de abajo fallara, el OFC conserva ESTAS en vez de quedarse vacio. Asi la MISMA moneda que
+    // tiene grafico abajo lo tiene tambien en Open Full Chart (era la incongruencia reportada).
+    const sembradas = (ctx && typeof ctx.velasDe === 'function') ? ctx.velasDe(it.token) : null;
+    _velasRawBig = (sembradas && sembradas.length) ? sembradas : null;
+    if (_velasRawBig) renderChartBig();
+    else if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
     // precio en vivo
     precioUsdVivo(it, bnbUsd())
       .then((p) => { if (ov.isConnected) pintarPrecio(p); }).catch(() => {});
@@ -504,10 +527,10 @@ export async function abrirGrande(it0, ctx, opts) {
         if (!ov.isConnected || _itActual !== it) return;
         if (velas && velas.length) { _velasRawBig = velas; renderChartBig(); }
         else if (reintentar && it.par) { setTimeout(() => { if (ov.isConnected && _itActual === it) pedir(false); }, 1300); }
-        else { _velasRawBig = []; renderChartBig(); }
+        else if (!(_velasRawBig && _velasRawBig.length)) { _velasRawBig = []; renderChartBig(); }   // sin semilla del lobby: vacio
       } catch (_) {
         if (reintentar && it.par) { setTimeout(() => { if (ov.isConnected && _itActual === it) pedir(false); }, 1300); }
-        else if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'Chart unavailable'; }
+        else if (!(_velasRawBig && _velasRawBig.length) && msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'Chart unavailable'; }
       }
     };
     pedir(true);
@@ -846,10 +869,12 @@ function pintarDer(it, ctx) {
     <div class="tg-tabs2" id="tg-op-tabs"><button type="button" class="t${oper ? ' on' : ''}" data-op="market"${oper ? '' : ' disabled title="Not tradable here yet"'}>Market</button><button type="button" class="t${oper ? '' : ' on'}" data-op="alert">Alert</button></div>
     <div class="tg-op" id="tg-op-market"${oper ? '' : ' hidden'}></div>
     <div class="tg-op" id="tg-op-alert"${oper ? ' hidden' : ''}>
-      <label class="tg-op-lbl">Alert me at price</label>
-      <div class="tg-al-set"><span class="tg-al-d">$</span><input id="tg-al-price" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0"><button class="tg-mbtn sec" id="tg-al-set" type="button">Set</button></div>
+      <label class="tg-op-lbl">Alert me when the price reaches</label>
+      <div class="tg-al-set"><span class="tg-al-d">$</span><input id="tg-al-price" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0"></div>
       <div class="tg-al-presets" id="tg-al-presets"></div>
-      <div class="tg-al-hint" id="tg-al-hint">You get a notification when the price is hit. It is not an order and never touches your funds.</div>
+      <div class="tg-al-custom"><span class="lb">or move</span><input id="tg-al-pct" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 35 or -15"><button class="tg-al-pctgo" id="tg-al-pctgo" type="button">Apply %</button></div>
+      <div class="tg-al-hint" id="tg-al-hint">Tap a move, type a target or a %. You get a notification when it is hit — it is not an order and never touches your funds.</div>
+      <button class="tg-al-go" id="tg-al-set" type="button">Set price alert</button>
     </div>
     <div class="tg-balrow" id="tg-balrow"></div>
     <div class="tg-sec-t tg-mt">Open alerts</div>
@@ -863,34 +888,51 @@ function pintarDer(it, ctx) {
   }; });
   if (oper) montarMercado(it);
   else { const mk = $('tg-op-market'); if (mk) mk.innerHTML = `<div class="tg-soon">${it.red === 'tron' ? 'Tron token — trading is not available here yet. You can still set price alerts below.' : 'Not tradable here yet. You can still set price alerts.'}</div>`; }
-  const setA = $('tg-al-set'), inA = $('tg-al-price');
-  if (inA && _precioUsd > 0) inA.placeholder = fmtTxt(_precioUsd);
+  const setA = $('tg-al-set'), inA = $('tg-al-price'), pctIn = $('tg-al-pct'), pctGo = $('tg-al-pctgo');
+  if (inA) inA.placeholder = precioGrafBig() > 0 ? fmtTxt(precioGrafBig()) : '0.0';
+  const sim = esc(it.simbolo || 'it');
+  // Rellena el objetivo a partir de un % de movimiento sobre el precio del GRAFICO (lo que ve el usuario), para
+  // que nunca tenga que escribir un precio con doce ceros ni calcularlo a mano. Deja el numero en el campo listo.
+  const aplicarMov = (pc) => {
+    const ref = precioGrafBig(), h = $('tg-al-hint');
+    if (!(ref > 0)) { if (h) h.textContent = 'Waiting for the live price…'; return; }
+    if (!isFinite(pc) || pc === 0) { if (pctIn) pctIn.focus(); return; }
+    const tgt = ref * (1 + pc / 100);
+    if (inA) inA.value = fmtTxt(tgt);
+    if (h) h.innerHTML = `Notify when ${sim} ${pc > 0 ? 'rises' : 'drops'} ${Math.abs(pc)}% to <b>$${fmtP(tgt, 5)}</b>. Tap “Set price alert”.`;
+  };
   const poner = () => {
     const v = parseFloat(String(inA.value).replace(/[, $]/g, '')); if (!(v > 0)) { inA.focus(); return; }
-    const ref = _precioUsd > 0 ? _precioUsd : 0; const dir = ref > 0 ? (v >= ref ? 'up' : 'down') : 'up';
-    crearAlerta(it, v, dir); inA.value = '';
-    const h = $('tg-al-hint'); if (h) h.textContent = 'Alert set at $' + fmtTxt(v) + '. ' + (dir === 'up' ? 'Notifies when the price rises to it.' : 'Notifies when the price falls to it.');
+    const ref = precioGrafBig(); const dir = ref > 0 ? (v >= ref ? 'up' : 'down') : 'up';
+    crearAlerta(it, v, dir); inA.value = ''; if (pctIn) pctIn.value = '';
+    const h = $('tg-al-hint'); if (h) h.innerHTML = `Alert set at <b>$${fmtP(v, 5)}</b>. ${dir === 'up' ? 'Notifies when the price rises to it.' : 'Notifies when the price falls to it.'}`;
     derOpenAlerts(it);
   };
   if (setA && inA) { setA.onclick = poner; inA.onkeydown = (e) => { if (e.key === 'Enter') poner(); }; }
-  // Presets: tocas un % y rellena el objetivo (± sobre el precio EN VIVO que ves en la grafica), para fijar
-  // la alerta de un vistazo sin tener que calcular el precio a mano. Rojo = baja (comprar), verde = sube (vender).
+  if (pctGo && pctIn) { const go = () => { const pc = parseFloat(String(pctIn.value).replace(/[%\s]/g, '').replace(',', '.')); aplicarMov(pc); }; pctGo.onclick = go; pctIn.onkeydown = (e) => { if (e.key === 'Enter') go(); }; }
+  // Presets rapidos: ± sobre el precio del grafico. Rojo = baja (comprar barato), verde = sube (vender caro).
   const presets = $('tg-al-presets');
   if (presets) {
     presets.innerHTML = [-20, -10, 10, 20].map((p) => `<button class="tg-al-chip ${p < 0 ? 'dn' : 'up'}" type="button" data-pct="${p}">${p > 0 ? '+' : ''}${p}%</button>`).join('');
-    presets.querySelectorAll('.tg-al-chip').forEach((b) => b.onclick = () => {
-      const ref = _precioUsd > 0 ? _precioUsd : 0;
-      const h = $('tg-al-hint');
-      if (!(ref > 0)) { if (h) h.textContent = 'Waiting for the live price…'; return; }
-      const pc = Number(b.dataset.pct), tgt = ref * (1 + pc / 100);
-      if (inA) { inA.value = fmtTxt(tgt); inA.focus(); }
-      if (h) h.innerHTML = `Notify when ${esc(it.simbolo || 'it')} ${pc > 0 ? 'rises' : 'drops'} ${Math.abs(pc)}% to <b>$${fmtTxt(tgt)}</b>. Tap Set.`;
-    });
+    presets.querySelectorAll('.tg-al-chip').forEach((b) => b.onclick = () => aplicarMov(Number(b.dataset.pct)));
   }
   derBalances(it); derOpenAlerts(it); derPositions(it);
   if (_abrirAlerta) { _abrirAlerta = false; const ab = host.querySelector('#tg-op-tabs button[data-op="alert"]'); if (ab) ab.click(); }
 }
-function fmtTxt(p) { return String(fmtP(p, 5)).replace(/<sub>(\d+)<\/sub>/, (m, z) => '0'.repeat(+z)); }
+/* Pasa el precio a texto plano para un <input> o un canvas (sin <sub>). fmtP devuelve "0.0<sub>n</sub>dig",
+   donde el bloque "0.0<sub>n</sub>" entero significa "0." + n ceros (p.ej. 0.0<sub>3</sub>1732 = 0.0001732).
+   Hay que sustituir TODO ese bloque, no solo el <sub>: si se dejaba el "0.0" literal y ademas se expandia el
+   subindice, salia un cero de mas (0.00001732) y el numero quedaba 10x mas pequeno -> la alerta se creaba 10x
+   por debajo del precio y aparecia debajo de la vela. Esa era la causa raiz de esa incongruencia. */
+function fmtTxt(p) { return String(fmtP(p, 5)).replace(/0\.0<sub>(\d+)<\/sub>/, (m, z) => '0.' + '0'.repeat(+z)); }
+/* Precio que se VE en el grafico ahora mismo (cierre de la ultima vela). Las alertas y los presets se calculan
+   sobre ESTE precio, no sobre _precioUsd, para que un +20% quede SIEMPRE por encima de las velas dibujadas y
+   nunca caiga por debajo del precio actual (era la incongruencia que reporto el usuario). Si no hay velas, usa
+   el precio en vivo. */
+function precioGrafBig() {
+  try { if (Array.isArray(_velasRawBig) && _velasRawBig.length) { const v = _velasRawBig[_velasRawBig.length - 1]; if (v && v.close > 0 && isFinite(v.close)) return v.close; } } catch (_) {}
+  return (_precioUsd > 0 && isFinite(_precioUsd)) ? _precioUsd : 0;
+}
 
 function derBalances(it) {
   const host = $('tg-balrow'); if (!host) return;
@@ -903,7 +945,7 @@ function derBalances(it) {
 
 /* Marca en la grafica las alertas (no disparadas) de este token: verde=sube, rojo=baja. */
 function marcarAlertasBig(it) {
-  try { if (!it) { marcarAlertas([]); return; } marcarAlertas(alertasDe(it.token).filter((a) => !a.disparada).map((a) => ({ price: a.objetivo, dir: a.dir, title: '$' + fmtTxt(a.objetivo) }))); } catch (_) {}
+  try { if (!it) { marcarAlertas([]); return; } marcarAlertas(alertasDe(it.token).filter((a) => !a.disparada).map((a) => ({ price: a.objetivo, dir: a.dir, title: (a.dir === 'up' ? '▲ ' : '▼ ') + 'Alert $' + fmtTxt(a.objetivo) }))); } catch (_) {}
 }
 function derOpenAlerts(it) {
   const host = $('tg-openalerts'); if (!host) return;

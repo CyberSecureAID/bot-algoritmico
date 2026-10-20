@@ -103,7 +103,11 @@ let _parar = null;
 
 // En PC (pantalla ancha) al tocar un token o Positions se abre la vista grande; en movil, la ficha / el panel.
 const esGrande = () => { try { return window.innerWidth >= 860; } catch (_) { return false; } };
-const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, abrirFicha, auditarCache, auditoriaDe });
+const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, abrirFicha, auditarCache, auditoriaDe,
+  // Velas YA cargadas del token seleccionado en el lobby: el OFC las reutiliza para que la MISMA moneda que
+  // tiene grafico abajo lo tenga tambien al abrir Open Full Chart (antes el OFC volvia a descargar por su
+  // cuenta y a veces fallaba donde el lobby si tenia datos -> grafico vacio por esa via. Esa era la causa).
+  velasDe: (tok) => ((_cpTok && tok && String(_cpTok).toLowerCase() === String(tok).toLowerCase() && Array.isArray(_velasRaw) && _velasRaw.length) ? _velasRaw.slice() : null) });
 
 export function arrancar() {
   const host = $('tm-app'); if (!host) return;
@@ -886,7 +890,7 @@ export async function abrirPanel(tab = 'positions') {
     const elegir = (it) => {
       _alSel = it; const pu = usdDe(it);
       q.value = it.simbolo || '?'; cerrarDrop();
-      pxIn.disabled = false; pxIn.value = pu > 0 ? String(fmtP(pu)).replace(/<sub>(\d+)<\/sub>/, (m, z) => '0'.repeat(+z)) : '';
+      pxIn.disabled = false; pxIn.value = pu > 0 ? String(fmtP(pu)).replace(/0\.0<sub>(\d+)<\/sub>/, (m, z) => '0.' + '0'.repeat(+z)) : '';
       hint.innerHTML = pu > 0 ? `Now <b>$${fmtP(pu)}</b>. Set a target above or below.` : 'Type the target price for this token.';
       refDir(); try { pxIn.focus(); pxIn.select(); } catch (_) {}
     };

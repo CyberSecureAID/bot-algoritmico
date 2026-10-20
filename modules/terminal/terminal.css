@@ -441,7 +441,10 @@
 .tm-hd b{flex:0 0 auto;font-family:var(--mono);font-size:11.5px;color:var(--ink);min-width:44px;text-align:right}
 @media (max-width:480px){.tm-hd-a{min-width:84px}.tm-hd-head span{font-size:10px}}
 /* Mis posiciones (panel): lo que mas llama la atencion es la entrada y la ganancia, asi que se lucen. */
-.tm-pos-card{max-height:86vh;display:flex;flex-direction:column}
+/* My Terminal: popup mas ancho que la ficha de un token (480px), porque aqui caben 5 pestanas con sus listas
+   (tokens, verificaciones, alertas, historial, watchlist) y antes salian amontonadas en una ventanita diminuta. */
+.tm-pos-card{max-width:680px;width:100%;max-height:86vh;padding:18px 20px 20px;display:flex;flex-direction:column}
+.tm-pos-card .tm-pos-body{min-height:220px}
 .tm-pos-tot{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 13px}
 .tm-pos-tot[hidden]{display:none}
 .tm-pos-tv,.tm-pos-tp{border:1px solid var(--line);border-radius:13px;padding:11px 13px;min-width:0}
@@ -476,8 +479,9 @@
 .tm-pos-x:hover{background:rgba(255,255,255,.06);color:var(--ink-2)}
 @media (max-width:480px){.tm-pos-tv b,.tm-pos-tp b{font-size:17px}.tm-pos-nm b{font-size:14px}.tm-pos-val b{font-size:14px}}
 /* Pestañas del panel (Positions / Watchlist / Alerts) */
-.tm-tabs{display:flex;gap:4px;margin:0 0 12px;background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:12px;padding:4px}
-.tm-tabs button{flex:1 1 0;min-width:0;height:34px;border:0;border-radius:9px;background:transparent;color:var(--ink-3);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:11px;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.tm-tabs{display:flex;gap:5px;margin:0 0 14px;background:rgba(11,14,17,.6);border:1px solid var(--line);border-radius:12px;padding:5px}
+.tm-tabs button{flex:1 1 0;min-width:0;height:40px;border:0;border-radius:9px;background:transparent;color:var(--ink-3);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:background .14s,color .14s}
+.tm-tabs button:hover{color:var(--ink-2)}
 .tm-tabs button.on{background:rgba(232,184,75,.14);color:var(--gold)}
 @media (max-width:480px){.tm-tabs{overflow-x:auto;scrollbar-width:none}.tm-tabs::-webkit-scrollbar{display:none}.tm-tabs button{flex:0 0 auto;padding:0 13px}}
 .tm-pos-row.tm-verif-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:9px}
