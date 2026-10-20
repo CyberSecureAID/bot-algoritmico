@@ -11,7 +11,7 @@ import { abrirFiltros } from './filtros.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecientes } from './grafico.js';
 import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
-import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante } from './alertas.js';
+import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante, marcarVistas } from './alertas.js';
 import { abrirGrande } from './panel-grande.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
 import { FEED, SCAN_URL, FOURMEME_URL, USDT } from './config.js';
@@ -75,6 +75,16 @@ function tmAviso(a, p) {
     setTimeout(quitar, 11000);
   } catch (_) {}
 }
+// Campanita del topbar: numero de alertas armadas; se pone en rojo cuando alguna se dispara y aun no la has visto.
+function pintarBell() {
+  const b = $('tm-bell-badge'); if (!b) return;
+  let l = []; try { l = listaAlertas(); } catch (_) {}
+  const activas = l.filter((a) => !a.disparada).length;
+  const nuevas = l.filter((a) => a.disparada && !a.visto).length;
+  if (nuevas > 0) { b.hidden = false; b.className = 'tm-bell-badge fired'; b.textContent = nuevas > 9 ? '9+' : String(nuevas); }
+  else if (activas > 0) { b.hidden = false; b.className = 'tm-bell-badge'; b.textContent = activas > 9 ? '9+' : String(activas); }
+  else { b.hidden = true; b.className = 'tm-bell-badge'; b.textContent = ''; }
+}
 function hace(ms) { if (!ms) return '0s'; const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's'; const m = Math.floor(s / 60); if (m < 60) return m + 'm'; const h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
 function abreviar(n) { const s = String(n || '').trim(); if (!s) return 'Token'; const p = s.split(/\s+/)[0]; return p.length > 12 ? p.slice(0, 11) + '…' : (s.length > p.length ? p + '…' : p); }
 /* Logo del token: se intenta el de Trust Wallet (repositorio publico, sin servidor propio). Un token recien
@@ -101,7 +111,7 @@ export function arrancar() {
     <div class="tm-topbar">
       <span class="tm-topbar-sp"></span>
       <div class="tm-search"><span class="tm-search-ico">${ICO_SEARCH}</span><input id="tm-search" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, contract or address…"></div>
-      <div class="tm-topbar-r"><button class="tm-bell" id="tm-bell" type="button" aria-label="Price alerts">${ICO_BELL}</button><button class="tm-poswidget empty" id="tm-poswidget" type="button" disabled><span class="tm-pw-dot"></span>No active positions</button></div>
+      <div class="tm-topbar-r"><button class="tm-bell" id="tm-bell" type="button" aria-label="Price alerts">${ICO_BELL}<span class="tm-bell-badge" id="tm-bell-badge" hidden></span></button><button class="tm-poswidget empty" id="tm-poswidget" type="button" disabled><span class="tm-pw-dot"></span>No active positions</button></div>
     </div>
     <div class="tm-lobby">
       <aside class="tm-side">
@@ -155,6 +165,7 @@ export function arrancar() {
   const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); } catch (e) { console.warn('[TERM] pos', e); } };
   const bus = $('tm-search'); if (bus) bus.oninput = () => { _busqueda = (bus.value || '').trim().toLowerCase(); pintar(); };
   const bell = $('tm-bell'); if (bell) bell.onclick = () => { try { abrirPanel('alerts'); } catch (_) {} };
+  try { pintarBell(); } catch (_) {}
   const tabs3 = $('tm-tabs3');
   if (tabs3) tabs3.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tab = b.dataset.tab; tabs3.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintar(); }; });
   // Grafico inline (Modulo 4): timeframes, refrescar y View All.
@@ -172,7 +183,7 @@ export function arrancar() {
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
   try { pintarPosWidget(); setInterval(() => { try { pintarPosWidget(); } catch (_) {} }, 15000); } catch (_) {}
   // Vigilante de alertas: avisa (notificacion + aviso en la app) cuando el precio toca el objetivo. Solo mientras el Terminal este abierto.
-  try { arrancarVigilante(() => _bnbUsd, (a, p) => tmAviso(a, p)); } catch (_) {}
+  try { arrancarVigilante(() => _bnbUsd, (a, p) => { tmAviso(a, p); try { pintarBell(); } catch (_) {} }); } catch (_) {}
   if (_parar) _parar();
   _parar = gb.arrancarFeed({
     alNuevo: (it) => { _items.push(it); _items.sort((a, b) => b.bloque - a.bloque); if (_items.length > FEED.maxFilas) _items.length = FEED.maxFilas; encolarAuditoria(it); pintar(); },
@@ -668,7 +679,7 @@ export function abrirFicha(it) {
     const host = $('tm-al-list'); if (!host) return;
     const al = alertasDe(it.token);
     host.innerHTML = al.map((a) => `<span class="tm-al-chip ${a.disparada ? 'done' : ''}" data-id="${a.id}">${a.dir === 'up' ? '≥' : '≤'} $${fmtP(a.objetivo)}${a.disparada ? ' · hit' : ''}<button class="tm-al-x" type="button" data-id="${a.id}" aria-label="Remove">✕</button></span>`).join('');
-    host.querySelectorAll('.tm-al-x').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); quitarAlerta(b.dataset.id); pintarAlertas(); }; });
+    host.querySelectorAll('.tm-al-x').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); quitarAlerta(b.dataset.id); pintarAlertas(); try { pintarBell(); } catch (_) {} }; });
   };
   const alIn = $('tm-al-in'), alAdd = $('tm-al-add');
   if (alAdd && alIn) {
@@ -677,7 +688,7 @@ export function abrirFicha(it) {
       const v = parseFloat(String(alIn.value).replace(/[, $]/g, '')); if (!(v > 0)) { alIn.focus(); return; }
       const ref = precioUsd > 0 ? precioUsd : 0;
       const dir = ref > 0 ? (v >= ref ? 'up' : 'down') : 'up';
-      crearAlerta(it, v, dir); alIn.value = ''; pintarAlertas();
+      crearAlerta(it, v, dir); alIn.value = ''; pintarAlertas(); try { pintarBell(); } catch (_) {}
     };
     alAdd.onclick = poner;
     alIn.onkeydown = (e) => { if (e.key === 'Enter') poner(); };
@@ -752,6 +763,7 @@ export async function abrirPanel(tab = 'positions') {
   ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
   const body = $('tm-pos-body'), note = $('tm-pos-note'), tabs = $('tm-tabs');
   const vivo = () => ov.isConnected;
+  let _alSel = null;
   const abrirDe = (o) => { cerrar(); abrirFicha(itMin(o)); };
   const ir = (t) => { tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t)); body.innerHTML = cargando; if (t === 'watch') renderWatch(); else if (t === 'alerts') renderAlertas(); else if (t === 'verif') renderVerif(); else if (t === 'history') renderHistory(); else renderPositions(); };
   tabs.querySelectorAll('button').forEach((b) => { b.onclick = () => ir(b.dataset.t); });
@@ -791,19 +803,87 @@ export async function abrirPanel(tab = 'positions') {
     body.querySelectorAll('.tm-pos-x').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); quitarWatch(b.dataset.f); ir('watch'); }; });
   }
 
-  async function renderAlertas() {
-    note.textContent = 'Alerts notify you while the Terminal is open. They are not orders and never touch your funds.';
+  function renderAlertas() {
+    note.textContent = 'Alerts watch the price while the Terminal is open and notify you when your target is hit. They are not orders and never touch your funds.';
+    try { marcarVistas(); } catch (_) {}
+    try { pintarBell(); } catch (_) {}
+    _alSel = null;
+    body.innerHTML = `<div class="tm-alnew">
+        <div class="tm-alnew-h">New price alert</div>
+        <div class="tm-alnew-ctl">
+          <div class="tm-alnew-pick"><input id="tm-alnew-q" class="tm-alnew-q" type="text" placeholder="Search a token…" autocomplete="off"><div class="tm-alnew-drop" id="tm-alnew-drop" hidden></div></div>
+          <input id="tm-alnew-px" class="tm-alnew-px" type="text" inputmode="decimal" placeholder="Target $" disabled>
+          <button id="tm-alnew-add" class="tm-b sec tm-alnew-add" type="button" disabled>Set</button>
+        </div>
+        <div class="tm-alnew-hint" id="tm-alnew-hint">Pick a token, then type a target price.</div>
+      </div>
+      <div id="tm-al-listwrap" class="tm-al-listwrap">${cargando}</div>`;
+    const q = $('tm-alnew-q'), drop = $('tm-alnew-drop'), pxIn = $('tm-alnew-px'), addB = $('tm-alnew-add'), hint = $('tm-alnew-hint');
+    const fuente = () => { const seen = new Set(), out = []; for (const it of _items) { if (!it.par) continue; const k = it.token.toLowerCase(); if (seen.has(k)) continue; seen.add(k); out.push(it); } return out; };
+    const cerrarDrop = () => { if (drop) drop.hidden = true; };
+    const pintarDrop = (txt) => {
+      const t = (txt || '').trim().toLowerCase();
+      let arr = fuente();
+      if (t) arr = arr.filter((it) => (it.simbolo || '').toLowerCase().includes(t) || (it.nombre || '').toLowerCase().includes(t));
+      arr = arr.slice(0, 7);
+      if (!arr.length) { drop.innerHTML = `<div class="tm-alnew-none">No tokens match</div>`; drop.hidden = false; return; }
+      drop.innerHTML = arr.map((it) => { const pu = usdDe(it); return `<button class="tm-alnew-opt" type="button" data-a="${esc(it.token)}">${logo(it.simbolo, it.token)}<span class="tm-alnew-oid"><b>${esc(it.simbolo || '?')}</b><span>${esc(abreviar(it.nombre || ''))}</span></span><span class="tm-alnew-opx">${pu > 0 ? '$' + fmtP(pu) : '—'}</span></button>`; }).join('');
+      drop.hidden = false;
+      drop.querySelectorAll('.tm-alnew-opt').forEach((b) => { b.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === b.dataset.a.toLowerCase()); if (it) elegir(it); }; });
+    };
+    const refDir = () => {
+      if (!_alSel) { addB.disabled = true; return; }
+      const pu = usdDe(_alSel); const v = parseFloat(String(pxIn.value || '').replace(/,/g, '')) || 0;
+      addB.disabled = !(v > 0);
+      if (v > 0 && pu > 0) { const dir = v >= pu ? 'up' : 'down'; hint.innerHTML = `Now <b>$${fmtP(pu)}</b> · fires when price goes ${dir === 'up' ? '≥' : '≤'} <b>$${fmtP(v)}</b>.`; }
+    };
+    const elegir = (it) => {
+      _alSel = it; const pu = usdDe(it);
+      q.value = it.simbolo || '?'; cerrarDrop();
+      pxIn.disabled = false; pxIn.value = pu > 0 ? fmtP(pu) : '';
+      hint.innerHTML = pu > 0 ? `Now <b>$${fmtP(pu)}</b>. Set a target above or below.` : 'Type the target price for this token.';
+      refDir(); try { pxIn.focus(); pxIn.select(); } catch (_) {}
+    };
+    const crear = () => {
+      if (!_alSel) return;
+      const pu = usdDe(_alSel); const v = parseFloat(String(pxIn.value || '').replace(/,/g, '')) || 0;
+      if (!(v > 0)) { try { pxIn.focus(); } catch (_) {} return; }
+      const dir = v >= pu ? 'up' : 'down';
+      try { crearAlerta(_alSel, v, dir); } catch (_) {}
+      _alSel = null; q.value = ''; pxIn.value = ''; pxIn.disabled = true; addB.disabled = true;
+      hint.textContent = 'Alert set. It fires while the Terminal is open.';
+      pintarListaAl(); try { pintarBell(); } catch (_) {}
+    };
+    if (q) { q.oninput = () => { _alSel = null; pxIn.disabled = true; pxIn.value = ''; addB.disabled = true; pintarDrop(q.value); }; q.onfocus = () => { if (!_alSel) pintarDrop(q.value); }; q.onblur = () => setTimeout(cerrarDrop, 160); }
+    if (pxIn) { pxIn.oninput = refDir; pxIn.onkeydown = (e) => { if (e.key === 'Enter') crear(); }; }
+    if (addB) addB.onclick = crear;
+    pintarListaAl();
+  }
+
+  async function pintarListaAl() {
+    const wrap = $('tm-al-listwrap'); if (!wrap) return;
     const l = listaAlertas();
-    if (!l.length) { body.innerHTML = `<div class="tm-pos-empty"><b>No alerts set</b><span>Open a token and set a price alert. You get a notification when it is hit.</span></div>`; return; }
-    const porToken = {}; for (const a of l) if (a.par && !(a.token.toLowerCase() in porToken)) porToken[a.token.toLowerCase()] = a;
-    const precios = {}; await Promise.all(Object.values(porToken).map(async (a) => { precios[a.token.toLowerCase()] = await precioActual({ par: a.par, token: a.token, decToken: a.decimales || 18, decQuote: 18, bnbUsd: _bnbUsd, quoteEsUSDT: a.moneda === 'USDT' }).catch(() => 0); }));
-    if (!vivo()) return;
-    body.innerHTML = l.map((a) => { const p = precios[a.token.toLowerCase()] || 0; return `<div class="tm-pos-row ${a.disparada ? 'up' : ''}" data-a="${esc(a.token)}">
-        <div class="tm-pos-tk">${logo(a.simbolo, a.token)}<div class="tm-pos-nm"><b>${esc(a.simbolo || '?')}</b><span>when ${a.dir === 'up' ? '≥' : '≤'} $${fmtP(a.objetivo)}${a.disparada ? ' · hit' : ''}</span></div></div>
-        <div class="tm-pos-val"><b>${p > 0 ? '$' + fmtP(p) : '$0'}</b><span>now</span></div>
-        <button class="tm-pos-x" type="button" data-f="${esc(a.id)}" title="Remove alert">✕</button></div>`; }).join('');
-    body.querySelectorAll('.tm-pos-row').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.tm-pos-x')) return; const a = l.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (a) abrirDe(a); }; });
-    body.querySelectorAll('.tm-pos-x').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); quitarAlerta(b.dataset.f); ir('alerts'); }; });
+    if (!l.length) { wrap.innerHTML = `<div class="tm-al-empty"><span>No alerts yet. Pick a token above, or set one from any token's chart.</span></div>`; return; }
+    const activas = l.filter((a) => !a.disparada), disp = l.filter((a) => a.disparada);
+    const fila = (a, now) => `<div class="tm-pos-row tm-al-row ${a.disparada ? 'done' : ''}" data-a="${esc(a.token)}">
+        <div class="tm-pos-tk">${logo(a.simbolo, a.token)}<div class="tm-pos-nm"><b>${esc(a.simbolo || '?')}</b><span>${a.disparada ? 'hit' : 'fires'} ${a.dir === 'up' ? '≥' : '≤'} $${fmtP(a.objetivo)}</span></div></div>
+        <div class="tm-pos-val"><b>${now > 0 ? '$' + fmtP(now) : '—'}</b><span class="tm-al-when ${a.disparada ? 'done' : ''}">${a.disparada ? 'hit ' + hace(a.cuando || a.creada) + ' ago' : 'now'}</span></div>
+        <button class="tm-pos-x" type="button" data-f="${esc(a.id)}" title="Remove alert">✕</button></div>`;
+    let html = '';
+    if (activas.length) html += `<div class="tm-al-sec"><span>Active</span></div>` + activas.map((a) => fila(a, 0)).join('');
+    if (disp.length) html += `<div class="tm-al-sec"><span>Triggered</span><button class="tm-al-clear" id="tm-al-clear" type="button">Clear</button></div>` + disp.map((a) => fila(a, a.precioDisparo || 0)).join('');
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('.tm-pos-x').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); quitarAlerta(b.dataset.f); pintarListaAl(); try { pintarBell(); } catch (_) {} }; });
+    wrap.querySelectorAll('.tm-al-row').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.tm-pos-x')) return; const a = l.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (a) abrirDe(a); }; });
+    const clr = $('tm-al-clear'); if (clr) clr.onclick = () => { listaAlertas().filter((a) => a.disparada).forEach((a) => quitarAlerta(a.id)); pintarListaAl(); try { pintarBell(); } catch (_) {} };
+    const act = activas.filter((a) => a.par);
+    if (act.length) {
+      const porToken = {}; for (const a of act) porToken[a.token.toLowerCase()] = a;
+      const precios = {};
+      await Promise.all(Object.values(porToken).map(async (a) => { precios[a.token.toLowerCase()] = await precioActual({ par: a.par, token: a.token, decToken: a.decimales || 18, decQuote: 18, bnbUsd: _bnbUsd, quoteEsUSDT: a.moneda === 'USDT' }).catch(() => 0); }));
+      if (!vivo() || !wrap.isConnected) return;
+      wrap.querySelectorAll('.tm-al-row').forEach((r) => { if (r.classList.contains('done')) return; const a = activas.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (!a) return; const now = precios[a.token.toLowerCase()] || 0; const bEl = r.querySelector('.tm-pos-val b'); if (bEl) bEl.textContent = now > 0 ? '$' + fmtP(now) : '—'; });
+    }
   }
 
   function renderVerif() {

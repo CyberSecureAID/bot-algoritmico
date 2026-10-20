@@ -33,6 +33,8 @@ export function crearAlerta(it, objetivoUsd, dir) {
   return a;
 }
 export function quitarAlerta(id) { esc(KEY_A, leer(KEY_A).filter((a) => a.id !== id)); }
+/* Marca como vistas las alertas ya disparadas (apaga el aviso rojo de la campanita). */
+export function marcarVistas() { const l = leer(KEY_A); let c = false; for (const a of l) if (a.disparada && !a.visto) { a.visto = true; c = true; } if (c) esc(KEY_A, l); return c; }
 
 /* ───── Vigilante: corre mientras el Terminal este abierto ───── */
 let _timer = null;
