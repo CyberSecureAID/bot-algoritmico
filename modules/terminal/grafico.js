@@ -146,11 +146,12 @@ function fmtEje(p) {
   if (!(p > 0) || !isFinite(p)) return '0';
   if (p >= 1) { try { return Number(p.toPrecision(6)).toLocaleString('en-US'); } catch (_) { return String(Number(p.toPrecision(6))); } }
   if (p >= 0.001) return Number(p.toPrecision(4)).toString();
-  // Precios diminutos: decimal plano con 3 cifras significativas. El eje se dibuja en canvas y la fuente
-  // no trae subindices (antes salia "0 0 0 0 0 0", ilegible); un decimal normal siempre se lee bien.
-  const e = Math.floor(Math.log10(p));
-  const dec = Math.min(18, -e + 2);
-  return p.toFixed(dec).replace(/0+$/, '').replace(/\.$/, '');
+  // Precios pequenos (hasta ~8 ceros): decimal plano, corto, con 3 cifras significativas. El eje se dibuja con
+  // la fuente del grafico, que NO trae subindices (antes salia "0 0 0 0 0 0"), asi que nada de subindices aqui.
+  if (p >= 1e-8) { const e = Math.floor(Math.log10(p)); return p.toFixed(Math.min(12, -e + 2)).replace(/0+$/, '').replace(/\.$/, ''); }
+  // EXTREMO (miles de ceros): notacion cientifica compacta "1.23e-14". Ocupa ~8 caracteres SIEMPRE, asi el eje
+  // no se ensancha ni "dobla" el grafico, y lightweight-charts puede dibujar los ticks (ver minMove abajo).
+  return Number(p.toPrecision(3)).toExponential();
 }
 
 let _chart = null, _serie = null, _ro = null, _cont = null, _lineaEntrada = null, _entradaPrecio = 0, _lineaActual = null, _vol = null, _lineasAl = [];
@@ -205,7 +206,10 @@ export function montarGrafico(cont, velas) {
   if (!cont || !Array.isArray(velas) || !velas.length) return false;
   destruirGrafico();
   const lo = Math.min(...velas.map((v) => v.low));
-  const minMove = lo >= 1 ? 0.0001 : Math.max(1e-12, Math.pow(10, Math.floor(Math.log10(lo)) - 2));
+  // minMove = el "escalon" minimo del eje. ANTES estaba clavado en 1e-12: un token cuyo precio es MENOR que eso
+  // (miles de ceros) caia todo al mismo escalon -> las velas se aplastaban y el grafico se rompia. AHORA el
+  // escalon sigue a la magnitud real del precio (suelo 1e-18, cubre hasta 18 decimales) y las velas se dibujan.
+  const minMove = lo >= 1 ? 0.0001 : Math.max(1e-18, Math.pow(10, Math.floor(Math.log10(lo)) - 1));
   const medir = () => ({ w: cont.clientWidth || cont.offsetWidth || 600, h: cont.clientHeight || 220 });
   try {
     const d0 = medir();

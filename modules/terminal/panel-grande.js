@@ -110,7 +110,7 @@ function css() {
 .tg-chart-cv{position:absolute;inset:0}
 .tg-chart-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:13px;pointer-events:none}
 .tg-chart-msg[hidden]{display:none}
-.tg-wm{position:absolute;left:12px;bottom:6px;height:20px;width:auto;max-width:150px;opacity:.2;pointer-events:none;z-index:3;user-select:none}
+.tg-wm{position:absolute;left:12px;bottom:4px;height:20px;width:auto;max-width:150px;opacity:.2;pointer-events:none;z-index:3;user-select:none}
 .tg-tools{position:absolute;top:8px;left:8px;z-index:4;display:flex;gap:6px}
 .tg-tool{width:32px;height:32px;border-radius:9px;border:1px solid var(--line,#232b36);background:rgba(11,15,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--ink-2,#b7bdc6);display:grid;place-items:center;cursor:pointer;transition:color .14s,border-color .14s}
 .tg-tool svg{width:17px;height:17px}
@@ -132,6 +132,7 @@ function css() {
 .tg-right{padding:14px;display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
 .tg-right::-webkit-scrollbar{width:6px}.tg-right::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
 .tg-sec-t{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3,#7d8794);margin:0 0 10px}
+.tg-sec-head{text-align:center;font-size:11px;letter-spacing:2px;color:var(--gold,#E8B84B);margin-bottom:12px}
 .tg-kv{display:flex;flex-direction:column;gap:9px}
 .tg-kv>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}
 .tg-kv>div span{color:var(--ink-3,#7d8794);font-family:var(--mono)}
@@ -143,6 +144,25 @@ function css() {
 .tg-link:hover{border-color:#8f6a1a;transform:translateY(-1px)}
 .tg-link b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;color:var(--gold,#E8B84B)}
 .tg-link span{font-size:11px;color:var(--ink-3,#7d8794)}
+/* Boton grande de descarga del diagnostico completo (debajo de los 9 checks, bien visible) */
+.tg-diag-dl{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin:12px 0 4px;padding:13px 14px;border-radius:12px;border:1px solid rgba(232,184,75,.4);background:linear-gradient(180deg,rgba(232,184,75,.16),rgba(232,184,75,.07));color:var(--gold,#E8B84B);font:800 13px/1 'Chakra Petch',var(--display,sans-serif);letter-spacing:.04em;cursor:pointer;opacity:.5;pointer-events:none;transition:opacity .25s,transform .15s,box-shadow .2s}
+.tg-diag-dl.on{opacity:1;pointer-events:auto;box-shadow:0 0 0 1px rgba(232,184,75,.12),0 8px 22px -12px rgba(232,184,75,.5)}
+.tg-diag-dl.on:hover{transform:translateY(-1px);background:linear-gradient(180deg,rgba(232,184,75,.24),rgba(232,184,75,.1))}
+.tg-diag-dl:active{transform:translateY(0)}
+.tg-diag-dl svg{width:16px;height:16px}
+.tg-diag-dl.busy{opacity:.7;pointer-events:none}
+/* DecFreedom top picks (reemplaza el Cross-check externo) */
+.tg-tops{display:flex;flex-direction:column;gap:7px}
+.tg-top{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:11px;border:1px solid var(--line,#232b36);background:linear-gradient(180deg,#0d1319,#0a0e13);cursor:pointer;text-align:left;transition:border-color .15s,transform .15s}
+.tg-top:hover{border-color:#8f6a1a;transform:translateY(-1px)}
+.tg-top .tg-logo,.tg-top .tm-logo{flex:0 0 auto}
+.tg-top-id{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.tg-top-id b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:13px;color:var(--ink-1,#eaecef)}
+.tg-top-id span{font-size:11px;color:var(--ink-3,#7d8794);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-top-liq{text-align:right;flex:0 0 auto}
+.tg-top-liq b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;color:#3DED8C}
+.tg-top-liq span{font-size:10px;color:var(--ink-3,#7d8794)}
+.tg-top-empty{padding:11px;border-radius:11px;border:1px dashed var(--line,#232b36);color:var(--ink-3,#7d8794);font-size:11.5px;text-align:center}
 /* Historial del creador (defensa de entrada). */
 .tg-creador{display:flex;flex-direction:column;gap:7px;padding:10px 11px;border-radius:11px;border:1px solid var(--line,#232b36);background:rgba(11,14,17,.72)}
 .tg-creador.ok{border-color:rgba(46,232,106,.3);background:rgba(46,232,106,.06)}
@@ -655,16 +675,34 @@ export async function abrirGrande(it0, ctx, opts) {
   }
 }
 
+/* Las 3 monedas MEJOR posicionadas del Terminal por liquidez real (proxy solido de solidez: una pool profunda
+   es dificil de manipular y de rugear). Excluye la moneda abierta. Reemplaza al viejo "Cross-check" de enlaces
+   externos: ahora son NUESTRAS mejores monedas y cada una abre su propio Open Full Chart. */
+function topDecFreedom(ctx, exclToken) {
+  const bnb = ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0;
+  const feed = (ctx && ctx.items ? ctx.items() : []) || [];
+  const low = (s) => String(s || '').toLowerCase();
+  const ex = low(exclToken), seen = new Set(), out = [];
+  const scored = feed
+    .filter((t) => t && t.token && low(t.token) !== ex && t.operable !== false)
+    .map((t) => ({ t, liq: (t.moneda === 'USDT' ? t.liquidez : t.liquidez * bnb) || 0 }))
+    .filter((x) => x.liq > 0)
+    .sort((a, b) => b.liq - a.liq);
+  for (const x of scored) { const k = low(x.t.token); if (seen.has(k)) continue; seen.add(k); out.push(x); if (out.length >= 3) break; }
+  return out;
+}
 /* ── Panel izquierdo: informacion del token (facts al momento + seguridad por la cache de auditoria) ── */
 function pintarIzq(it, ctx) {
   const host = $('tg-left'); if (!host) return;
   if (!it) { host.innerHTML = `<div class="tg-sec-t">Token info</div><div class="tg-kv"><div><span>Pick a token to see its info</span></div></div>`; return; }
   const bnbUsd = ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0;
   const liqUsd = it.moneda === 'USDT' ? it.liquidez : it.liquidez * bnbUsd;
+  const tops = topDecFreedom(ctx, it.token);
   host.innerHTML = `
-    <div class="tg-sec-t">Security check</div>
+    <div class="tg-sec-t tg-sec-head">Security check</div>
     <div class="tg-sem pend" id="tg-sem">${semPendBig()}</div>
     <div class="tg-checks" id="tg-checks">${checksScan()}</div>
+    <button class="tg-diag-dl" id="tg-diag-dl" type="button" disabled>${ICO_DL}<span>Download full diagnosis</span></button>
     <div class="tg-sec-t tg-mt">Creator track record</div>
     <div class="tg-creador" id="tg-creador"><span class="tm-sk" style="width:60%"></span></div>
     <div class="tg-sec-t tg-mt">Token info</div>
@@ -679,12 +717,9 @@ function pintarIzq(it, ctx) {
       <div><span>Contract</span><b><button class="tg-copyc" type="button" id="tg-k-copy">${corto(it.token)} ${ICO_COPY}</button></b></div>
       <div><span>Explorer</span><b><a class="tg-copyc" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a></b></div>
     </div>
-    <div class="tg-sec-t tg-mt">Cross-check before you buy</div>
-    <div class="tg-links">
-      <a class="tg-link" href="https://dexscreener.com/bsc/${esc(it.par || it.token)}" target="_blank" rel="noopener"><b>DexScreener</b><span>Price, buyers & liquidity history</span></a>
-      <a class="tg-link" href="https://pancakeswap.finance/swap?outputCurrency=${esc(it.token)}" target="_blank" rel="noopener"><b>PancakeSwap</b><span>The pool this trades against</span></a>
-      <a class="tg-link" href="${SCAN_URL}/address/${esc(it.par || it.token)}#code" target="_blank" rel="noopener"><b>Pair on BscScan</b><span>Verify the LP and holders</span></a>
-    </div>`;
+    <div class="tg-sec-t tg-mt">DecFreedom top picks</div>
+    <div class="tg-tops" id="tg-tops">${tops.length ? tops.map((x) => `<button class="tg-top" type="button" data-a="${esc(x.t.token)}">${logo(x.t.token, x.t.red, x.t.logoUrl)}<div class="tg-top-id"><b>${esc(x.t.simbolo || '?')}</b><span>${esc((x.t.nombre || x.t.simbolo || '').slice(0, 20))}</span></div><div class="tg-top-liq"><b>${money(x.liq)}</b><span>liquidity</span></div></button>`).join('') : `<div class="tg-top-empty">Open the Terminal lobby to rank its deepest, safest tokens here.</div>`}</div>`;
+  host.querySelectorAll('#tg-tops .tg-top[data-a]').forEach((b) => { b.onclick = () => { const x = (ctx && ctx.items ? ctx.items() : []).find((t) => t && t.token && t.token.toLowerCase() === b.dataset.a.toLowerCase()); if (x && _cargar) _cargar(x); }; });
   const cp = $('tg-k-copy'); if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(it.token); const o = cp.innerHTML; cp.textContent = 'copied'; setTimeout(() => { if (cp.isConnected) cp.innerHTML = o; }, 1200); } catch (_) {} };
   // Verificacion en tiempo real: los pasos (code, owner, scan, lp, holders) se encienden segun llega cada
   // resultado, igual que la ficha emergente; al terminar, el semaforo y la lista detallada de checks.
@@ -744,62 +779,102 @@ function semPendBig() {
 function pintaSemBig(r, it) {
   const sem = $('tg-sem'); if (!sem) return;
   const niv = r && r.nivel ? r.nivel : 'pend';
-  if (niv === 'pend') {
-    // La auditoria TERMINO pero el escaner aun no indexo este token. No sigue cargando: estado claro y
-    // estatico (sin spinner), para que nunca parezca congelado. Los datos de cadena ya estan abajo.
+  // ¿Hay ALGUN dato real? (GoPlus, honeypot.is, Tron/TronScan o lectura en cadena). Con que haya uno, se pinta
+  // el SELLO con su %: el usuario exige que SIEMPRE salga el analisis dramatico, nunca el parrafo plano.
+  const hayDato = !!(r && ((r.datos && (r.datos.holders != null || r.datos.checks || r.datos.lpAsegurada != null)) || ((r.hallazgos || []).some((h) => h.n === 'ok' || h.n === 'warn' || h.n === 'bad'))));
+  if (niv === 'pend' && !hayDato) {
+    // Caso extremo: NINGUNA fuente publica respondio todavia. No es "sin resultado para siempre": es "aun
+    // analizando". Estado claro y estatico (sin spinner infinito) para que nunca parezca congelado.
     sem.className = 'tg-sem limited'; delete sem.dataset.sello;
-    // Coherencia: si la cadena SI respondio (hay hallazgos reales abajo), es un chequeo PARCIAL, no "sin datos".
-    // Antes decia "no indexado / sin datos" encima de una lista de verdictos reales -> se contradecia solo.
-    const hayCadena = !!(r && ((r.datos && r.datos.holders != null) || ((r.hallazgos || []).some((h) => h.n === 'ok' || h.n === 'warn' || h.n === 'bad'))));
-    sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.info}</span><div><b>${hayCadena ? 'Partial check' : 'Limited check'}</b><span>${hayCadena ? 'Ownership, liquidity and distribution are read live below. The honeypot &amp; tax scanner hasn’t indexed this token yet.' : 'The honeypot &amp; tax scanner hasn’t indexed this token yet. On-chain reads are below.'}</span></div>`;
+    sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.info}</span><div><b>Still analyzing…</b><span>No public source has answered yet. Reopen the token to retry.</span></div>`;
     return;
   }
-  // Veredicto listo -> SELLO visual descargable (sustituye al texto Safe/Caution/Do not buy que salia aqui).
-  // Verde (sec-safe) solo cuando no hay banderas (ok). Rojo (sec-risk) para warn y bad: el token tiene riesgo
-  // real. La imagen habla SIEMPRE del TOKEN, nunca de DecFreedom (lo deja escrito dibujarSello).
+  // Veredicto (o datos de cadena) listos -> SELLO visual descargable. El escudo (verde sec-safe / rojo sec-risk),
+  // el numero y la etiqueta los decide bandaSeguridad A PARTIR DEL PUNTAJE, para que jamas se contradigan.
   const it0 = it || _itActual;
-  const kind = niv === 'ok' ? 'ok' : 'risk';
   const p = scorePct(r);
-  const firma = (it0 && it0.token ? it0.token : '') + '|' + kind + '|' + p;
+  const band = bandaSeguridad(p, r);
+  const kind = band.kind;
+  const parcial = niv === 'pend';   // hay datos de cadena pero el escaner aun no: sello con nota de "parcial"
+  const firma = (it0 && it0.token ? it0.token : '') + '|' + kind + '|' + p + (parcial ? '|p' : '');
   if (sem.dataset.sello === firma) return;   // ya dibujado para este token/veredicto: no repetir
   sem.dataset.sello = firma;
   sem.className = 'tg-sello-wrap';
-  sem.innerHTML = selloMarkup(kind, p, niv, r);
+  sem.innerHTML = selloMarkup(kind, p, niv, r, band, parcial);
   const cv = sem.querySelector('.tg-sello-cv');
-  if (cv) dibujarSello(cv, kind, p, it0, niv);
-  wireSelloDescarga(sem, it0);
+  if (cv) dibujarSello(cv, kind, p, it0, niv, r, band);
+  wireSelloDescarga(sem, it0, r, band, p);
 }
-/* Porcentaje de seguridad del token (HONESTO): suma ponderada de las comprobaciones reales de la auditoria,
-   con los "asesinos" (honeypot = no vendible, LP sin quemar) pesando mas. Se ajusta a la banda del veredicto
-   para que el numero NUNCA contradiga el diagnostico (un 'bad' jamas muestra un % alto, un 'ok' jamas bajo). */
-const SELLO_PESOS = { sellable: 24, lpSecured: 20, noBlacklist: 12, notMintable: 10, noPause: 8, renounced: 9, notConcentrated: 9, verified: 4, lowTax: 4 };
+/* Puntaje de seguridad REAL del token (0-100, MAS ALTO = MAS SEGURO). Es la fraccion PONDERADA de las
+   comprobaciones que SI tienen dato, ponderada ademas por CONFIANZA (cuanta de la seguridad total se pudo
+   medir). Asi se acaba la discordancia que tenia el usuario:
+     · ANTES: se sumaban pesos y se CLAVABA el numero dentro de la banda del veredicto ([45,70] para 'warn').
+       Resultado: 1 falla, 2 fallas o 7 aprobados -> TODOS daban 70%, y un token con MAS fallas podia mostrar
+       MENOS % que uno con menos (porque ambos chocaban contra el mismo techo). Sin sentido.
+     · AHORA: es monotono. Cada falla baja el numero de verdad; mas fallas => menor puntaje, SIEMPRE. Dos tokens
+       se pueden comparar: el peor siempre tiene menor % y (abajo) escudo mas rojo.
+   Los "asesinos" mandan por encima de todo: no-vendible (honeypot) pone techo 12 pase lo que pase, e impostor
+   casi 0. Si no hay checks de GoPlus, puntua con lo leido en cadena. NUNCA devuelve vacio: siempre un numero. */
+const SELLO_PESOS = { sellable: 26, lpSecured: 15, lowTax: 12, verified: 10, notConcentrated: 10, renounced: 8, notMintable: 8, noPause: 6, noBlacklist: 5 };
+const SELLO_TOTAL = 100;   // suma de todos los pesos (cobertura completa)
 function scorePct(r) {
-  if (r && r.impostor) return 4;   // scam que se hace pasar por un estable mayor: siempre muy bajo, nunca 99%
-  const niv = r && r.nivel;
-  const banda = niv === 'ok' ? [82, 99] : niv === 'warn' ? [45, 70] : [8, 32];
+  if (r && r.impostor) return 3;                       // scam que imita un estable mayor: casi 0, jamas 99%
   const c = r && r.datos && r.datos.checks;
-  if (c) { let s = 0; for (const k in SELLO_PESOS) if (c[k]) s += SELLO_PESOS[k]; return Math.max(banda[0], Math.min(banda[1], Math.round(s))); }
-  // Sin GoPlus: puntua con lo que SI se leyo en cadena (LP, propiedad, concentracion) y lo mapea dentro de la
-  // banda del veredicto. Asi el % NO es un relleno fijo: baja de verdad cuando la LP/propiedad/concentracion
-  // estan mal, y es coherente con los hallazgos que se ven abajo (antes salia siempre el punto medio).
+  if (c) {
+    let got = 0, tot = 0;
+    for (const k in SELLO_PESOS) { if (c[k] === undefined) continue; tot += SELLO_PESOS[k]; if (c[k]) got += SELLO_PESOS[k]; }
+    if (tot) {
+      // conf = fraccion de la seguridad total que de verdad se midio. Con cobertura parcial el numero se mezcla
+      // con un neutro (50) para no gritar "100%" por un solo check bueno ni "0%" por un solo check malo.
+      const conf = tot / SELLO_TOTAL;
+      let s = Math.round(50 * (1 - conf) + (got / tot) * 100 * conf);
+      if (c.sellable === false) s = Math.min(s, 12);   // no se puede vender: techo de honeypot, pase lo que pase
+      return Math.max(2, Math.min(99, s));
+    }
+  }
+  return scoreCadena(r);
+}
+/* Puntaje con SOLO lo leido en cadena (sin GoPlus): LP, propiedad, concentracion, bolsa del creador, verificado.
+   Mezcla por confianza igual que arriba. Si no hay ni una senal, mapea el nivel del veredicto (ultimo recurso)
+   para no inventar un numero. Asi la seccion SIEMPRE muestra un %, nunca el parrafo. */
+function scoreCadena(r) {
   const d = (r && r.datos) || {}, hall = (r && r.hallazgos) || [];
-  const chk = [
-    d.lpAsegurada != null ? d.lpAsegurada >= 90 : null,
-    hall.some((x) => x.t === 'Ownership renounced') ? true : (hall.some((x) => x.n === 'warn' && /owner/i.test(x.t)) ? false : null),
-    d.top10Pct != null ? d.top10Pct < 70 : null
-  ].filter((v) => v !== null);
-  if (!chk.length) return Math.round((banda[0] + banda[1]) / 2);
-  const frac = chk.filter(Boolean).length / chk.length;
-  return Math.round(banda[0] + (banda[1] - banda[0]) * frac);
+  const sen = [];
+  if (d.lpAsegurada != null) sen.push([20, d.lpAsegurada >= 90]);
+  if (hall.some((x) => /renounced/i.test(x.t))) sen.push([10, true]);
+  else if (hall.some((x) => x.n === 'warn' && /owner/i.test(x.t))) sen.push([10, false]);
+  if (d.top10Pct != null) sen.push([12, d.top10Pct < 70]);
+  if (d.creadorPct != null) sen.push([10, d.creadorPct < 20]);
+  if (hall.some((x) => x.n === 'ok' && /verified/i.test(x.t))) sen.push([8, true]);
+  else if (hall.some((x) => /not verified|source not/i.test(x.t))) sen.push([8, false]);
+  if (!sen.length) { const niv = r && r.nivel; return niv === 'ok' ? 85 : niv === 'warn' ? 58 : niv === 'bad' ? 18 : 50; }
+  let got = 0, tot = 0; for (const [w, ok] of sen) { tot += w; if (ok) got += w; }
+  const conf = Math.min(1, tot / 60);                  // 60 = cobertura "suficiente" leyendo solo cadena
+  return Math.max(2, Math.min(99, Math.round(50 * (1 - conf) + (got / tot) * 100 * conf)));
+}
+/* Banda visual del puntaje: etiqueta, color y QUE escudo (verde sec-safe / rojo sec-risk). TODO sigue al
+   PUNTAJE, no al nivel: color, numero y etiqueta jamas se contradicen. Verde desde 70; por debajo, rojo. Los
+   asesinos (honeypot/impostor) fuerzan rojo con su etiqueta propia aunque el numero quedara alto por otra via. */
+function bandaSeguridad(p, r) {
+  if (r && r.impostor) return { kind: 'risk', etq: 'FAKE — DO NOT BUY', vshort: 'Fake token', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
+  if (r && r.datos && r.datos.checks && r.datos.checks.sellable === false) return { kind: 'risk', etq: 'HONEYPOT — DO NOT BUY', vshort: 'Honeypot', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
+  if (p >= 85) return { kind: 'ok', etq: 'STRONG', vshort: 'Strong', col: '#3DED8C', glow: 'rgba(61,237,140,.55)' };
+  if (p >= 70) return { kind: 'ok', etq: 'SOLID', vshort: 'Solid', col: '#8BE86A', glow: 'rgba(139,232,106,.5)' };
+  if (p >= 55) return { kind: 'risk', etq: 'TRADE WITH CAUTION', vshort: 'Caution', col: '#E8B84B', glow: 'rgba(232,184,75,.5)' };
+  if (p >= 35) return { kind: 'risk', etq: 'HIGH RISK', vshort: 'High risk', col: '#FF8A3D', glow: 'rgba(255,138,61,.5)' };
+  return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Do not buy', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
 }
 const SELLO_BG = { ok: new URL('./img/sec-safe.webp', import.meta.url).href, risk: new URL('./img/sec-risk.webp', import.meta.url).href };
-function selloMarkup(kind, p, niv, r) {
-  // Leyenda nitida DEBAJO de la imagen (texto normal del panel): en la columna estrecha el texto pequeno
-  // quemado en la imagen se ve diminuto, asi que aqui se repite legible, dejando claro que es del TOKEN.
+function selloMarkup(kind, p, niv, r, band, parcial) {
+  // Leyenda nitida DEBAJO de la imagen. El boton de descarga YA NO va en la esquina del escudo: ahora es un
+  // boton grande al final de TODO el diagnostico (mas visible). Aqui solo queda el escudo + la leyenda legible.
   const imp = r && r.impostor;
-  const vshort = imp ? ('Fake ' + imp) : niv === 'ok' ? 'Looks safe' : niv === 'warn' ? 'Caution' : 'Do not buy';
-  const cap = imp ? `Impersonates <b>${esc(imp)}</b> — this is NOT the official ${esc(imp)} contract. Likely scam.` : 'security rating of this token, not of DecFreedom';
-  return `<div class="tg-sello ${kind}"><canvas class="tg-sello-cv"></canvas><div class="tg-sello-sk"><i class="tg-anillo2"></i></div><button class="tg-sello-dl" type="button" disabled aria-label="Save image">${ICO_DL}<span>Save</span></button></div><p class="tg-sello-cap ${kind}"><b>${vshort} · ${p}%</b> · ${cap}</p>`;
+  const vshort = (band && band.vshort) || (imp ? ('Fake ' + imp) : 'Checking');
+  const cap = imp
+    ? `Impersonates <b>${esc(imp)}</b> — this is NOT the official ${esc(imp)} contract. Likely scam.`
+    : (parcial ? 'on-chain only · the honeypot &amp; tax scanner hasn’t indexed this token yet'
+               : 'security score of this token, higher is safer — not a rating of DecFreedom');
+  return `<div class="tg-sello ${kind}"><canvas class="tg-sello-cv"></canvas><div class="tg-sello-sk"><i class="tg-anillo2"></i></div></div><p class="tg-sello-cap ${kind}"><b>${esc(vshort)} · ${p}%</b> · ${cap}</p>`;
 }
 /* Cache (promesa) para no recargar el fondo en cada repintado del sello. */
 const _selloImgCache = {};
@@ -822,15 +897,15 @@ function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.
    se deja INTACTO: representa la seguridad del token, no se le encima nada. En el recuadro HUD (derecha) va
    el % gigante; encima, en la banda vacia, el icono y el simbolo de la MONEDA; debajo, el texto que aclara
    que el porcentaje es de ESE token, no de DecFreedom; y abajo-izquierda, la marca decfreedom.com. */
-async function dibujarSello(cv, kind, p, it, niv) {
+async function dibujarSello(cv, kind, p, it, niv, r, band) {
+  band = band || bandaSeguridad(p, r);
   try {
     const bg = await cargarImg(kind === 'ok' ? SELLO_BG.ok : SELLO_BG.risk, true);
     if (!cv.isConnected || (it && _itActual !== it)) return;
     const W = bg.naturalWidth || 1672, H = bg.naturalHeight || 941;
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H); ctx.drawImage(bg, 0, 0, W, H);
-    const col = kind === 'ok' ? '#3DED8C' : '#FF4357';
-    const glow = kind === 'ok' ? 'rgba(61,237,140,.55)' : 'rgba(255,67,87,.5)';
+    const col = band.col, glow = band.glow;          // color/glow del PUNTAJE, para que nada se contradiga
     const cx = W * 0.79;                         // centro del recuadro HUD (mitad derecha)
     const sym = ((it && it.simbolo) ? String(it.simbolo) : 'TOKEN').toUpperCase().replace(/\s+/g, '').slice(0, 12);
     let ic = null; try { ic = await cargarLogoTok(it); } catch (_) { ic = null; }
@@ -860,15 +935,15 @@ async function dibujarSello(cv, kind, p, it, niv) {
     ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`;
     while (ctx.measureText(ptxt).width > maxP && pf > 50) { pf -= 6; ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`; }
     ctx.fillText(ptxt, cx, H * 0.43);
-    // ── Etiqueta del veredicto (dentro del recuadro, bajo el %) ──
-    const etq = niv === 'ok' ? 'LOOKS SAFE' : niv === 'warn' ? 'TRADE WITH CAUTION' : 'DO NOT BUY';
+    // ── Etiqueta de la banda (dentro del recuadro, bajo el %) — sale del PUNTAJE, no del nivel ──
+    const etq = band.etq;
     ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.006;
     let ef = Math.round(H * 0.04); ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`;
     while (ctx.measureText(etq).width > W * 0.33 && ef > 20) { ef -= 2; ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`; }
     ctx.fillText(etq, cx, H * 0.575);
     // ── Aclaracion: el % es de ESTE token, NO de DecFreedom (clave para no generar mala publicidad) ──
-    const l1 = niv === 'ok' ? `${sym} looks safe to trade right now` : niv === 'warn' ? `${sym} needs caution before you trade` : `${sym} is not safe to trade right now`;
-    const l2 = 'Security rating of this token, not of DecFreedom';
+    const l1 = (r && r.impostor) ? `${sym} is a fake — do not trade` : kind === 'ok' ? `${sym} looks safe to trade right now` : `${sym} carries real risk — be careful`;
+    const l2 = 'Security score of this token, not of DecFreedom';
     const maxL = W * 0.40;
     ctx.shadowColor = 'rgba(0,0,0,.82)'; ctx.shadowBlur = 7; ctx.fillStyle = 'rgba(255,255,255,.94)';
     let f1 = Math.round(H * 0.032); ctx.font = `600 ${f1}px Arial, sans-serif`;
@@ -884,26 +959,167 @@ async function dibujarSello(cv, kind, p, it, niv) {
     const bx = W * 0.035, by = H * 0.945; ctx.fillStyle = '#FFFFFF'; ctx.fillText('DecFreedom', bx, by);
     const bw = ctx.measureText('DecFreedom').width; ctx.fillStyle = col; ctx.fillText('.com', bx + bw, by);
     const wrap = cv.closest('.tg-sello'); if (wrap) wrap.classList.add('ready');
-    const btn = wrap && wrap.querySelector('.tg-sello-dl'); if (btn) btn.disabled = false;
+    const dbtn = $('tg-diag-dl'); if (dbtn) { dbtn.disabled = false; dbtn.classList.add('on'); }   // habilita la descarga del diagnostico completo
   } catch (e) {
-    // Si el fondo no carga, no dejamos hueco: tarjeta de texto clara (mismo mensaje, sin imagen).
-    const sem = $('tg-sem'); if (sem) { delete sem.dataset.sello; sem.className = 'tg-sem ' + (niv || 'bad'); sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM[niv] || ICO_SEM.info}</span><div><b>${niv === 'ok' ? 'Safe to trade' : niv === 'warn' ? 'Trade with caution' : 'Do not buy'} · ${p}%</b><span>Security score of this token, not of DecFreedom.</span></div>`; }
+    // Si el fondo no carga, no dejamos hueco: tarjeta de texto clara (mismo mensaje, sin imagen). La descarga
+    // del diagnostico sigue habilitada (se dibuja su propio escudo de respaldo sin la imagen de fondo).
+    const sem = $('tg-sem'); if (sem) { delete sem.dataset.sello; sem.className = 'tg-sem ' + (band.kind === 'ok' ? 'ok' : 'bad'); sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM[niv] || ICO_SEM.info}</span><div><b>${esc(band.vshort)} · ${p}%</b><span>Security score of this token, not of DecFreedom.</span></div>`; }
+    const dbtn = $('tg-diag-dl'); if (dbtn) { dbtn.disabled = false; dbtn.classList.add('on'); }
   }
 }
-function wireSelloDescarga(sem, it) {
-  const btn = sem.querySelector('.tg-sello-dl'), cv = sem.querySelector('.tg-sello-cv'); if (!btn || !cv) return;
-  // Save DESCARGA la imagen directo (no abre el menu de compartir del sistema).
-  btn.onclick = () => {
+/* Descarga el DIAGNOSTICO COMPLETO (no solo el escudito): el boton grande del fondo construye en un canvas
+   propio toda la seccion — encabezado centrado, moneda, escudo + %, los 9 checks con ✓/✗, resumen y nuestra
+   marca — a alta resolucion y SIN la barra de scroll (es un canvas, no una captura del HTML). */
+function wireSelloDescarga(sem, it, r, band, p) {
+  const btn = $('tg-diag-dl'); if (!btn) return;
+  btn.onclick = async () => {
+    if (btn.classList.contains('busy')) return;
+    const o = btn.innerHTML; btn.classList.add('busy'); btn.innerHTML = `${ICO_DL}<span>Rendering…</span>`;
     try {
-      cv.toBlob((blob) => {
-        if (!blob) return;
-        const sym = ((it && it.simbolo) ? String(it.simbolo) : 'token').replace(/[^\w-]/g, '').slice(0, 20) || 'token';
-        bajarBlob(blob, `DecFreedom-${sym}-security.png`);
+      const canvas = await dibujarDiagnostico(r, it, band, p);
+      canvas.toBlob((blob) => {
+        if (blob) { const sym = ((it && it.simbolo) ? String(it.simbolo) : 'token').replace(/[^\w-]/g, '').slice(0, 20) || 'token'; bajarBlob(blob, `DecFreedom-${sym}-diagnosis.png`); }
+        btn.classList.remove('busy'); btn.innerHTML = o;
       }, 'image/png');
-    } catch (_) {}
+    } catch (_) { btn.classList.remove('busy'); btn.innerHTML = o; }
   };
 }
 function bajarBlob(blob, fn) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = fn; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1500); }
+
+/* Texto centrado con interletrado manual (canvas no tiene letter-spacing). */
+function drawSpaced(ctx, txt, cx, y, sp) {
+  let w = 0; for (const ch of txt) w += ctx.measureText(ch).width + sp; w -= sp;
+  const prev = ctx.textAlign; ctx.textAlign = 'left'; let x = cx - w / 2;
+  for (const ch of txt) { ctx.fillText(ch, x, y); x += ctx.measureText(ch).width + sp; }
+  ctx.textAlign = prev;
+}
+/* Insignia ✓ (verde) o ✗ (roja) dibujada a mano (sin SVG) para cada check del diagnostico. */
+function badge(ctx, x, y, r, ok) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = ok ? 'rgba(61,237,140,.15)' : 'rgba(255,67,87,.15)'; ctx.fill();
+  ctx.lineWidth = Math.max(2, r * 0.16); ctx.strokeStyle = ok ? '#3DED8C' : '#FF4357'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (ok) { ctx.moveTo(x - r * 0.42, y + r * 0.02); ctx.lineTo(x - r * 0.08, y + r * 0.34); ctx.lineTo(x + r * 0.46, y - r * 0.34); }
+  else { ctx.moveTo(x - r * 0.32, y - r * 0.32); ctx.lineTo(x + r * 0.32, y + r * 0.32); ctx.moveTo(x + r * 0.32, y - r * 0.32); ctx.lineTo(x - r * 0.32, y + r * 0.32); }
+  ctx.stroke(); ctx.restore();
+}
+/* Overlay del escudo (simbolo + % gigante + etiqueta de banda) dentro de un rectangulo dado. Lo usa la imagen
+   de diagnostico sobre el escudo de fondo; mismas proporciones que el sello en pantalla. */
+function pintarHUD(ctx, X, Y, W, H, p, band, sym, ic) {
+  const col = band.col, glow = band.glow, cx = X + W * 0.79, cxCoin = X + W * 0.75;
+  let fS = Math.round(H * 0.085); ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`;
+  let symW = ctx.measureText(sym).width;
+  const icoSz = ic ? Math.round(H * 0.13) : 0, gap = ic ? Math.round(W * 0.012) : 0, maxGrp = W * 0.34;
+  while (icoSz + gap + symW > maxGrp && fS > 18) { fS -= 3; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; symW = ctx.measureText(sym).width; }
+  const grpW = icoSz + gap + symW, rowY = Y + H * 0.14, rightMax = X + W * 0.955;
+  let gx = cxCoin - grpW / 2; if (gx + grpW > rightMax) gx = rightMax - grpW;
+  if (ic) {
+    const iy = rowY - icoSz / 2; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28);
+    ctx.save(); ctx.clip(); ctx.drawImage(ic, gx, iy, icoSz, icoSz); ctx.restore();
+    ctx.lineWidth = Math.max(2, H * 0.005); ctx.strokeStyle = 'rgba(255,255,255,.32)'; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28); ctx.stroke();
+    gx += icoSz + gap;
+  }
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,.72)'; ctx.shadowBlur = 10;
+  ctx.fillStyle = '#FFFFFF'; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(sym, gx, rowY);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.022;
+  let pf = Math.round(H * 0.3); const maxP = W * 0.32, ptxt = p + '%';
+  ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`;
+  while (ctx.measureText(ptxt).width > maxP && pf > 30) { pf -= 6; ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`; }
+  ctx.fillText(ptxt, cx, Y + H * 0.44);
+  ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.006;
+  let ef = Math.round(H * 0.05); ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`;
+  while (ctx.measureText(band.etq).width > W * 0.36 && ef > 14) { ef -= 2; ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`; }
+  ctx.fillText(band.etq, cx, Y + H * 0.66); ctx.shadowBlur = 0;
+}
+/* Construye el canvas del diagnostico completo del token y lo devuelve (para descargar en PNG de alta calidad).
+   Alto dinamico segun cuantos checks y datos haya. SC=2 => imagen nitida para compartir. */
+async function dibujarDiagnostico(r, it, band, p) {
+  const SC = 2, Wc = 1120, pad = 44;
+  const c = r && r.datos && r.datos.checks, d = (r && r.datos) || {};
+  const sym = ((it && it.simbolo) ? String(it.simbolo) : 'TOKEN').toUpperCase().replace(/\s+/g, '').slice(0, 14);
+  const name = (it && it.nombre) ? String(it.nombre) : '';
+  const rows = [];
+  if (c) { for (const def of CHECKS_DEF) { const ok = !!c[def.k]; let val = ''; try { val = def.v(c, d); } catch (_) {} rows.push({ ok, t: def.t, v: val }); } }
+  else { for (const h of ((r && r.hallazgos) || [])) { if (h.n === 'info') continue; rows.push({ ok: h.n === 'ok', t: h.t, v: '' }); if (rows.length >= 9) break; } if (!rows.length) rows.push({ ok: false, t: 'Analysis', v: (r && r.titulo) || '—' }); }
+  const sumItems = [];
+  if (d.holders != null) sumItems.push(['Holders', Number(d.holders).toLocaleString('en-US')]);
+  if (d.top10Pct != null) sumItems.push(['Top 10', Math.round(d.top10Pct) + '%']);
+  if (d.buyTax != null || d.sellTax != null) sumItems.push(['Buy / Sell', Math.round(d.buyTax || 0) + '/' + Math.round(d.sellTax || 0) + '%']);
+  if (d.lpAsegurada != null) sumItems.push(['LP secured', Math.round(d.lpAsegurada) + '%']);
+  if (d.creador) sumItems.push(['Creator', corto(d.creador)]);
+  const headerH = 150, coinH = name && name.toUpperCase() !== sym ? 118 : 86;
+  const heroW = Wc - pad * 2, heroH = Math.round(heroW * (941 / 1672) * 0.66);
+  const rowH = 60, listH = rows.length * rowH + 16, sumH = sumItems.length ? 112 : 0, footH = 118;
+  const Hc = headerH + coinH + heroH + 24 + listH + sumH + footH;
+  const cv = document.createElement('canvas'); cv.width = Wc * SC; cv.height = Hc * SC;
+  const ctx = cv.getContext('2d'); ctx.scale(SC, SC);
+  const g = ctx.createLinearGradient(0, 0, 0, Hc); g.addColorStop(0, '#0C1014'); g.addColorStop(1, '#080A0D');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, Wc, Hc);
+  ctx.strokeStyle = band.kind === 'ok' ? 'rgba(61,237,140,.25)' : 'rgba(255,67,87,.22)'; ctx.lineWidth = 2; rrect(ctx, 6, 6, Wc - 12, Hc - 12, 20); ctx.stroke();
+  // Encabezado CENTRADO
+  let y = 40; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#E8B84B'; ctx.font = `700 22px "Chakra Petch", Arial, sans-serif`; drawSpaced(ctx, 'SECURITY CHECK', Wc / 2, y + 6, 6);
+  ctx.fillStyle = 'rgba(173,182,194,.8)'; ctx.font = `500 14px Arial, sans-serif`; ctx.fillText('DecFreedom token diagnosis', Wc / 2, y + 34);
+  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, y + 58); ctx.lineTo(Wc - pad, y + 58); ctx.stroke();
+  y = headerH;
+  // Moneda (logo + simbolo + nombre) centrada
+  let ic = null; try { ic = await cargarLogoTok(it); } catch (_) { ic = null; }
+  const icoSz = 56; ctx.font = `800 40px "Chakra Petch", Arial, sans-serif`; const symW = ctx.measureText(sym).width;
+  const grpW = (ic ? icoSz + 14 : 0) + symW; let gx = Wc / 2 - grpW / 2;
+  if (ic) { const iy = y + 4; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28); ctx.save(); ctx.clip(); ctx.drawImage(ic, gx, iy, icoSz, icoSz); ctx.restore(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.3)'; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28); ctx.stroke(); gx += icoSz + 14; }
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#FFFFFF'; ctx.font = `800 40px "Chakra Petch", Arial, sans-serif`; ctx.fillText(sym, gx, y + 32);
+  if (name && name.toUpperCase() !== sym) { ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(173,182,194,.75)'; ctx.font = `500 16px Arial, sans-serif`; ctx.fillText(name.slice(0, 44), Wc / 2, y + 74); }
+  y = headerH + coinH;
+  // Escudo hero (fondo sec-safe/risk encajado + overlay % / banda)
+  const hx = pad, hy = y, hw = heroW, hh = heroH;
+  try {
+    const bg = await cargarImg(band.kind === 'ok' ? SELLO_BG.ok : SELLO_BG.risk, true);
+    ctx.save(); rrect(ctx, hx, hy, hw, hh, 16); ctx.clip();
+    const ar = bg.naturalWidth / bg.naturalHeight, rr = hw / hh; let dw, dh, dx, dy;
+    if (ar > rr) { dh = hh; dw = hh * ar; dx = hx - (dw - hw) / 2; dy = hy; } else { dw = hw; dh = hw / ar; dx = hx; dy = hy - (dh - hh) / 2; }
+    ctx.drawImage(bg, dx, dy, dw, dh); ctx.restore();
+    pintarHUD(ctx, hx, hy, hw, hh, p, band, sym, ic);
+  } catch (_) {
+    ctx.fillStyle = band.kind === 'ok' ? 'rgba(61,237,140,.08)' : 'rgba(255,67,87,.08)'; rrect(ctx, hx, hy, hw, hh, 16); ctx.fill();
+    ctx.strokeStyle = band.col; ctx.lineWidth = 2; rrect(ctx, hx, hy, hw, hh, 16); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = band.col; ctx.font = `800 ${Math.round(hh * 0.42)}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(p + '%', Wc / 2, hy + hh * 0.42);
+    ctx.font = `700 ${Math.round(hh * 0.12)}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(band.etq, Wc / 2, hy + hh * 0.78);
+  }
+  y = headerH + coinH + heroH + 24;
+  // Lista de checks
+  ctx.shadowBlur = 0;
+  for (const row of rows) {
+    const cyc = y + rowH / 2;
+    badge(ctx, pad + 18, cyc, 14, !!row.ok);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#D7DCE3'; ctx.font = `600 19px Arial, sans-serif`; ctx.fillText(row.t, pad + 48, cyc);
+    if (row.v) { ctx.textAlign = 'right'; ctx.fillStyle = row.ok ? '#6BE89A' : '#FF6475'; ctx.font = `700 18px "Chakra Petch", Arial, sans-serif`; ctx.fillText(String(row.v), Wc - pad - 4, cyc); }
+    ctx.strokeStyle = 'rgba(255,255,255,.055)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad + 48, y + rowH); ctx.lineTo(Wc - pad - 4, y + rowH); ctx.stroke();
+    y += rowH;
+  }
+  y += 16;
+  // Tiles de resumen
+  if (sumItems.length) {
+    const n = sumItems.length, gapx = 12, tw = (Wc - pad * 2 - gapx * (n - 1)) / n, th = 84;
+    for (let i = 0; i < n; i++) {
+      const tx = pad + i * (tw + gapx);
+      ctx.fillStyle = 'rgba(255,255,255,.035)'; rrect(ctx, tx, y, tw, th, 12); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 1; rrect(ctx, tx, y, tw, th, 12); ctx.stroke();
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = 'rgba(125,135,148,.95)'; ctx.font = `600 11px Arial, sans-serif`; ctx.fillText(sumItems[i][0].toUpperCase(), tx + 13, y + 28);
+      ctx.fillStyle = '#EAECF1'; ctx.font = `800 19px "Chakra Petch", Arial, sans-serif`; ctx.fillText(String(sumItems[i][1]), tx + 13, y + 58);
+    }
+    y += th + 24;
+  }
+  // Pie: nuestra marca (sello) + aclaracion + fecha
+  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(Wc - pad, y); ctx.stroke();
+  const fy = y + 42; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#FFFFFF'; ctx.font = `800 26px "Chakra Petch", Arial, sans-serif`; ctx.fillText('DecFreedom', pad, fy);
+  const dw2 = ctx.measureText('DecFreedom').width; ctx.fillStyle = band.col; ctx.fillText('.com', pad + dw2, fy);
+  ctx.fillStyle = 'rgba(173,182,194,.82)'; ctx.font = `500 13px Arial, sans-serif`; ctx.fillText('Security diagnosis of this token — not a rating of DecFreedom', pad, fy + 26);
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(125,135,148,.85)'; ctx.font = `500 13px Arial, sans-serif`; ctx.fillText(new Date().toISOString().slice(0, 10), Wc - pad, fy + 26);
+  return cv;
+}
 
 /* Las 9 verificaciones (dato real de la auditoria). Se pintan primero "escaneando" (barra que corre) y
    luego se revelan una a una, en cascada, resolviendo a palomita verde o X roja: procedimiento dramatico. */
