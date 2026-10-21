@@ -26,22 +26,37 @@ const MAX_TRAMOS = 12;       // hacia atras desde el bloque de creacion si aun f
 export const PASOS = ['code', 'owner', 'scanner', 'lp', 'holders'];
 export const PASOS_TXT = { code: 'Code', owner: 'Owner', scanner: 'Scan', lp: 'LP', holders: 'Holders' };
 
-/* ── 1) GoPlus ── */
+/* ── 1) GoPlus ──
+   CAUSA RAIZ del "siempre Partial check": GoPlus EMPEZO a bloquear las peticiones del navegador. Cuando el
+   fetch lleva el header Origin (toda peticion cross-origin del navegador lo lleva) responde 403 Forbidden, asi
+   que la llamada DIRECTA desde la web fallaba SIEMPRE -> gp=null -> todos los tokens caian a 'pend', incluso
+   monedas que GoPlus SI tiene indexadas (USDT.z devuelve code:1 con 67868 holders si se pide sin Origin).
+   Por eso "antes funcionaba" y de un dia para otro dejo de funcionar: no fue el codigo, fue su politica.
+   Solucion: ir por proxies CORS en cascada (el mismo patron ya probado que usa tron.js). El directo se intenta
+   primero por si GoPlus deja de bloquear; el primer proxy que responda gana. */
+const GP_PROXIES = [
+  (u) => u,
+  (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  (u) => 'https://thingproxy.freeboard.io/fetch/' + u
+];
 export async function leerGoPlus(token) {
   const dir = String(token).toLowerCase();
-  const pedir = async () => {
-    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 9000);
+  const url = GOPLUS + encodeURIComponent(dir);
+  const pedir = async (prox) => {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
     try {
-      const r = await fetch(GOPLUS + encodeURIComponent(dir), { signal: ctl.signal });
+      const r = await fetch(prox(url), { signal: ctl.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       const j = await r.json();
-      return (j && j.result && j.result[dir]) || null;   // null = GoPlus aun no tiene datos (tokens de hace segundos)
+      return (j && j.result && j.result[dir]) || null;   // null = GoPlus aun no tiene el token (recien creado)
     } finally { clearTimeout(t); }
   };
-  // Un reintento: GoPlus a veces devuelve 429 o un cuerpo vacio al primer golpe (p.ej. tokens muy consultados
-  // como USDT.z, con decenas de miles de holders) y eso dejaba el Security Check en "Limited check" sin serlo.
-  try { const a = await pedir(); if (a) return a; } catch (e) { log('goplus intento 1', e && e.message); }
-  try { await new Promise((r) => setTimeout(r, 700)); return (await pedir()) || null; }
-  catch (e) { log('goplus intento 2', e && e.message); return null; }
+  for (let i = 0; i < GP_PROXIES.length; i++) {
+    try { const a = await pedir(GP_PROXIES[i]); if (a) return a; } catch (e) { log('goplus via ' + i, e && e.message); }
+  }
+  return null;
 }
 
 /* ── 2) Lecturas propias ── */
@@ -201,13 +216,17 @@ export function evaluar(gp, cad) {
   };
 
   if (!gp) {
-    const nivel = h.some((x) => x.n === 'bad') ? 'bad' : 'pend';
     if (cpC != null && cpC >= 0.2) h.push({ n: 'warn', t: 'Creator holds ' + Math.round(cpC * 100) + '%', d: 'A large creator bag can be dumped on buyers.' });
     if (t10C != null && t10C >= 70) h.push({ n: 'warn', t: 'Top 10 hold ' + Math.round(t10C) + '%', d: 'Very concentrated supply.' });
     if (datos.lpQuemada != null) { datos.lpAsegurada = datos.lpQuemada; if (datos.lpQuemada >= 90) h.push({ n: 'ok', t: 'Liquidity burned (' + Math.round(datos.lpQuemada) + '%)', d: 'The pool cannot be pulled.' }); else h.push({ n: 'warn', t: 'Liquidity not burned', d: 'The creator can remove the pool at any time (rug pull).' }); }
     avisoReparto();
+    // Veredicto con lo leido EN CADENA aunque el escaner (honeypot/impuestos) no respondiera. Si hay banderas
+    // (propiedad, LP, concentracion, snipers), DIAGNOSTICA (warn/bad) en vez de quedarte en "pendiente": el
+    // usuario tenia razon, con esos datos SE PUEDE dar un veredicto. Si la cadena esta limpia pero NO se pudo
+    // comprobar honeypot/impuestos, si queda 'pend' (no se puede AFIRMAR que es segura sin esa parte).
+    const nivel = h.some((x) => x.n === 'bad') ? 'bad' : (h.some((x) => x.n === 'warn') ? 'warn' : 'pend');
     h.push({ n: 'info', t: 'Scanner data not available yet', d: 'Honeypot and tax checks need the security scanner, which has not indexed this token yet. Holders, creator and liquidity above are read from the chain.' });
-    return { nivel, titulo: nivel === 'bad' ? 'Do not buy' : 'Checking', hallazgos: h, datos };
+    return { nivel, titulo: nivel === 'bad' ? 'Do not buy' : nivel === 'warn' ? 'On-chain risks found' : 'Checking', hallazgos: h, datos };
   }
 
   // Venta

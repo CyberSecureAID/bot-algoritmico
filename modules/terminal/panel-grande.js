@@ -288,10 +288,9 @@ function css() {
 .tg-pick-row .nm span{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794)}
 .tg-pick-row .pr{text-align:right;font-family:var(--mono);font-size:12px;color:var(--gold,#E8B84B);flex:0 0 auto}
 .tg-pick-empty{padding:26px 10px;text-align:center;color:var(--ink-3,#7d8794);font-size:12px}
-.tg-pick-res{justify-content:space-between;border:1px dashed #3a434f;margin-top:4px}
-.tg-pick-res:hover{background:#121823;border-color:#8f6a1a}
-.tg-pick-reslbl{font-family:var(--mono);font-size:12px;color:var(--gold,#E8B84B)}
-.tg-pick-go{color:var(--gold,#E8B84B);font-weight:700;font-size:15px}
+.tg-pick-res{justify-content:flex-start;cursor:default}
+.tg-pick-reslbl{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--ink-3,#7d8794)}
+.tg-pick-anillo{width:13px;height:13px;flex:0 0 auto;border-radius:50%;border:2px solid rgba(232,184,75,.22);border-top-color:var(--gold,#E8B84B);animation:tgSpin .8s linear infinite}
 .tg-anillo{width:34px;height:34px;border-radius:50%;border:3px solid #1c232b;border-top-color:var(--gold,#E8B84B);animation:tgSpin .8s linear infinite}
 @keyframes tgSpin{to{transform:rotate(360deg)}}
 .tg-ctx{position:fixed;z-index:1300;min-width:206px;background:#0b0f14;border:1px solid #2a323d;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.6);padding:12px;animation:tgIn .12s ease}
@@ -486,12 +485,15 @@ export async function abrirGrande(it0, ctx, opts) {
   //    cadena. Antes solo reaccionaba a Enter y sin lista: el usuario tecleaba, no veia NADA y parecia que la
   //    barra estaba muerta. Esa era la causa real de "la busqueda del OFC sigue sin funcionar". ──
   const findIn = $('tg-find-in');
-  let _sTmr = null;
+  let _sTmr = null, _sResolN = 0;
   const cerrarRes = () => { const d = $('tg-sresults'); if (d) d.remove(); };
-  const filaRes = (x) => {
-    const pu = x.moneda === 'USDT' ? (x.precioUsd || x.precio || 0) : ((x.precio || 0) * bnbUsd());
-    return `<div class="tg-pick-row" data-a="${esc(x.token)}">${logo(x.token)}<div class="nm"><b>${esc(x.simbolo || '?')}</b><span>${esc(x.nombre || cortoDir(x.token))}</span></div><div class="pr">${pu > 0 ? '$' + fmtP(pu) : ''}</div></div>`;
+  // Parte interna de una fila de resultado (logo + nombre + precio), sin el <div> contenedor.
+  const filaResInner = (x) => {
+    const pu = x.precioUsd > 0 ? x.precioUsd : (x.moneda === 'USDT' ? (x.precio || 0) : ((x.precio || 0) * bnbUsd()));
+    return `${logo(x.token)}<div class="nm"><b>${esc(x.simbolo || '?')}</b><span>${esc(x.nombre || cortoDir(x.token))}</span></div><div class="pr">${pu > 0 ? '$' + fmtP(pu) : ''}</div>`;
   };
+  const filaRes = (x) => `<div class="tg-pick-row" data-a="${esc(x.token)}">${filaResInner(x)}</div>`;
+  const cargarRow = (d) => d.querySelectorAll('.tg-pick-row[data-a]').forEach((r) => { r.onclick = () => { const x = feed().find((t) => t.token.toLowerCase() === r.dataset.a.toLowerCase()); if (x) { cerrarRes(); if (findIn) findIn.value = ''; cargar(x); } }; });
   const pintarRes = (q) => {
     const s = String(q || '').trim();
     const prevPick = $('tg-pick'); if (prevPick) prevPick.remove();   // no solapar con el boton Tokens
@@ -499,22 +501,27 @@ export async function abrirGrande(it0, ctx, opts) {
     const low = s.toLowerCase(); const f = feed();
     const matches = f.filter((x) => x.token && (x.token.toLowerCase() === low || (x.simbolo || '').toLowerCase().includes(low) || (x.nombre || '').toLowerCase().includes(low)))
       .sort((a, b) => ((b.liquidez || 0) - (a.liquidez || 0))).slice(0, 8);
-    let rows = matches.map(filaRes).join('');
     const enFeed = f.some((x) => x.token && x.token.toLowerCase() === low);
-    if (esContrato(s) && !enFeed) rows += `<div class="tg-pick-row tg-pick-res" data-res="${esc(s)}"><span class="tg-pick-reslbl">Search this ${/^T/.test(s) ? 'Tron' : 'BSC'} contract on-chain</span><span class="tg-pick-go">→</span></div>`;
-    if (!rows) rows = `<div class="tg-pick-empty">No match. Paste a full contract (0x… or T…).</div>`;
+    const esC = esContrato(s) && !enFeed;   // contrato (BSC/Tron) que no esta en el feed -> hay que resolverlo
+    let rows = matches.map(filaRes).join('');
+    // Mientras resuelve el contrato mostramos "Looking up…"; NO un boton. Antes salia "Search this contract
+    // on-chain" (un mensaje muerto que no mostraba la moneda) -> el usuario pegaba el contrato y no veia su token.
+    if (esC) rows += `<div class="tg-pick-row tg-pick-res"><span class="tg-pick-reslbl"><span class="tg-pick-anillo"></span>Looking up ${/^T/.test(s) ? 'Tron' : 'BSC'} contract…</span></div>`;
+    if (!rows) rows = `<div class="tg-pick-empty">Type a name/symbol, or paste a full contract (0x… or T…).</div>`;
     let d = $('tg-sresults');
     if (!d) { d = document.createElement('div'); d.className = 'tg-pick'; d.id = 'tg-sresults'; ov.querySelector('.tm-big-top').appendChild(d); }
-    d.innerHTML = rows;
-    d.querySelectorAll('.tg-pick-row[data-a]').forEach((r) => { r.onclick = () => { const x = f.find((t) => t.token.toLowerCase() === r.dataset.a.toLowerCase()); cerrarRes(); if (findIn) findIn.value = ''; if (x) cargar(x); }; });
-    const rr = d.querySelector('.tg-pick-res');
-    if (rr) rr.onclick = async () => {
-      rr.innerHTML = '<span class="tg-pick-reslbl">Searching on-chain…</span>';
-      const it = await resolver(rr.dataset.res, feed()).catch(() => null);
-      cerrarRes(); if (findIn) findIn.value = '';
-      if (it) cargar(it);
-      else { const msg = $('tg-chart-msg'); if (msg) { msg.hidden = false; msg.textContent = 'No pair or data found for that contract.'; } }
-    };
+    d.innerHTML = rows; cargarRow(d);
+    if (esC) {
+      const mine = ++_sResolN;
+      resolverContrato(s).then((it) => {
+        const d2 = $('tg-sresults'); if (mine !== _sResolN || !d2) return;   // el usuario siguio tecleando
+        const row = d2.querySelector('.tg-pick-res'); if (!row) return;
+        if (!it) { row.outerHTML = `<div class="tg-pick-empty">No pair or data found for that contract.</div>`; return; }
+        const nuevo = document.createElement('div'); nuevo.className = 'tg-pick-row'; nuevo.innerHTML = filaResInner(it);
+        nuevo.onclick = () => { cerrarRes(); if (findIn) findIn.value = ''; cargar(it); };   // carga el token RESUELTO
+        row.replaceWith(nuevo);
+      }).catch(() => { const d2 = $('tg-sresults'); if (mine === _sResolN && d2) { const row = d2.querySelector('.tg-pick-res'); if (row) row.outerHTML = `<div class="tg-pick-empty">Could not look up that contract.</div>`; } });
+    }
   };
   // Enter: si hay lista, carga el primer resultado; si no, resuelve el texto (nombre, simbolo o contrato).
   const buscarEnter = async () => {
@@ -719,9 +726,19 @@ function scorePct(r) {
   const niv = r && r.nivel;
   const banda = niv === 'ok' ? [82, 99] : niv === 'warn' ? [45, 70] : [8, 32];
   const c = r && r.datos && r.datos.checks;
-  if (!c) return Math.round((banda[0] + banda[1]) / 2);
-  let s = 0; for (const k in SELLO_PESOS) if (c[k]) s += SELLO_PESOS[k];
-  return Math.max(banda[0], Math.min(banda[1], Math.round(s)));
+  if (c) { let s = 0; for (const k in SELLO_PESOS) if (c[k]) s += SELLO_PESOS[k]; return Math.max(banda[0], Math.min(banda[1], Math.round(s))); }
+  // Sin GoPlus: puntua con lo que SI se leyo en cadena (LP, propiedad, concentracion) y lo mapea dentro de la
+  // banda del veredicto. Asi el % NO es un relleno fijo: baja de verdad cuando la LP/propiedad/concentracion
+  // estan mal, y es coherente con los hallazgos que se ven abajo (antes salia siempre el punto medio).
+  const d = (r && r.datos) || {}, hall = (r && r.hallazgos) || [];
+  const chk = [
+    d.lpAsegurada != null ? d.lpAsegurada >= 90 : null,
+    hall.some((x) => x.t === 'Ownership renounced') ? true : (hall.some((x) => x.n === 'warn' && /owner/i.test(x.t)) ? false : null),
+    d.top10Pct != null ? d.top10Pct < 70 : null
+  ].filter((v) => v !== null);
+  if (!chk.length) return Math.round((banda[0] + banda[1]) / 2);
+  const frac = chk.filter(Boolean).length / chk.length;
+  return Math.round(banda[0] + (banda[1] - banda[0]) * frac);
 }
 const SELLO_BG = { ok: new URL('./img/sec-safe.webp', import.meta.url).href, risk: new URL('./img/sec-risk.webp', import.meta.url).href };
 function selloMarkup(kind, p, niv) {
