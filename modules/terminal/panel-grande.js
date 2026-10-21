@@ -1500,7 +1500,9 @@ function montarMercado(it) {
     const protEl = $('tg-prot'); if (!protEl) return;
     const w = (wallet.cuentaActual && wallet.cuentaActual()) || null;
     if (esOwner(w)) return;
-    bloquearProtect(protEl, { bnbUsd: ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0, onDesbloquear: () => { desbloquearProtectUI(); pintarIzqReal(it, ctx); refrescarPill(ctx); } });
+    // Scope de montarMercado: aqui NO existe `ctx` (monta recibe solo `it`). Se usan `bnbUsd` (numero local) y
+    // `_ctx` (el ctx a nivel de modulo). Este era el bug: `ctx is not defined` rompia pintarDer y con el toda la carga.
+    bloquearProtect(protEl, { bnbUsd, onDesbloquear: () => { desbloquearProtectUI(); pintarIzqReal(it, _ctx); refrescarPill(_ctx); } });
     estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearProtectUI(); }).catch(() => {});
   })();
   go.onclick = async () => {
