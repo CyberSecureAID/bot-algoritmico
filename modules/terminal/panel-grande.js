@@ -52,11 +52,12 @@ function logo(addr) {
 function fmtP(p, sig = 4) {
   if (!(p > 0) || !isFinite(p)) return '0';
   if (p >= 0.001) return Number(p.toPrecision(sig)).toString();
-  const e = Math.floor(Math.log10(p)); const ceros = -e - 1;
-  const dig = Math.round(p / Math.pow(10, e - sig + 1)).toString().slice(0, sig);
-  return `0.0<sub>${ceros}</sub>${dig}`;
+  const e = Math.floor(Math.log10(p));
+  let dig = Math.round(p / Math.pow(10, e - sig + 1)), ceros = -e - 1;
+  if (dig >= Math.pow(10, sig)) { dig = Math.floor(dig / 10); ceros -= 1; }   // el redondeo cruzo una potencia de 10: un cero menos
+  return `0.0<sub>${Math.max(0, ceros)}</sub>${String(dig).slice(0, sig)}`;
 }
-function money(v) { if (!(v > 0)) return '$0'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+function money(v) { if (!(v > 0)) return '$0'; if (v >= 1e12) return '$' + (v / 1e12).toFixed(2).replace(/\.?0+$/, '') + 'T'; if (v >= 1e9) return '$' + (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
 const pct = (v) => (v == null || !isFinite(v)) ? '0%' : (Math.round(v * 10) / 10) + '%';
 
 /* ── CSS propio (patron del modulo: inyectado, sin tocar el HTML ni terminal.css) ── */
@@ -287,6 +288,10 @@ function css() {
 .tg-pick-row .nm span{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-3,#7d8794)}
 .tg-pick-row .pr{text-align:right;font-family:var(--mono);font-size:12px;color:var(--gold,#E8B84B);flex:0 0 auto}
 .tg-pick-empty{padding:26px 10px;text-align:center;color:var(--ink-3,#7d8794);font-size:12px}
+.tg-pick-res{justify-content:space-between;border:1px dashed #3a434f;margin-top:4px}
+.tg-pick-res:hover{background:#121823;border-color:#8f6a1a}
+.tg-pick-reslbl{font-family:var(--mono);font-size:12px;color:var(--gold,#E8B84B)}
+.tg-pick-go{color:var(--gold,#E8B84B);font-weight:700;font-size:15px}
 .tg-anillo{width:34px;height:34px;border-radius:50%;border:3px solid #1c232b;border-top-color:var(--gold,#E8B84B);animation:tgSpin .8s linear infinite}
 @keyframes tgSpin{to{transform:rotate(360deg)}}
 .tg-ctx{position:fixed;z-index:1300;min-width:206px;background:#0b0f14;border:1px solid #2a323d;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.6);padding:12px;animation:tgIn .12s ease}
@@ -461,6 +466,7 @@ export async function abrirGrande(it0, ctx, opts) {
 
   // Selector de tokens del feed (lista estilo New pairs que carga en la grafica).
   const togglePicker = () => {
+    { const sr = $('tg-sresults'); if (sr) sr.remove(); }   // cierra resultados de busqueda viva para no solapar
     const prev = $('tg-pick'); if (prev) { prev.remove(); return; }
     const lista = feed().filter((x) => x.par && (x.liquidez > 0 || x.precio > 0))
       .sort((a, b) => ((b.moneda === 'USDT' ? b.liquidez : b.liquidez * bnbUsd()) - (a.moneda === 'USDT' ? a.liquidez : a.liquidez * bnbUsd())));
@@ -475,19 +481,58 @@ export async function abrirGrande(it0, ctx, opts) {
   };
   $('tg-find-tok').onclick = togglePicker;
 
-  // Buscar por contrato.
-  const buscar = async () => {
-    const v = ($('tg-find-in').value || '').trim(); if (!v) return;
+  // ── Busqueda VIVA (igual que el buscador del lobby): al TECLEAR filtra el feed y muestra una lista para
+  //    tocar; si el texto es un contrato (BSC 0x… o Tron T…) que no esta en el feed, ofrece resolverlo en
+  //    cadena. Antes solo reaccionaba a Enter y sin lista: el usuario tecleaba, no veia NADA y parecia que la
+  //    barra estaba muerta. Esa era la causa real de "la busqueda del OFC sigue sin funcionar". ──
+  const findIn = $('tg-find-in');
+  let _sTmr = null;
+  const cerrarRes = () => { const d = $('tg-sresults'); if (d) d.remove(); };
+  const filaRes = (x) => {
+    const pu = x.moneda === 'USDT' ? (x.precioUsd || x.precio || 0) : ((x.precio || 0) * bnbUsd());
+    return `<div class="tg-pick-row" data-a="${esc(x.token)}">${logo(x.token)}<div class="nm"><b>${esc(x.simbolo || '?')}</b><span>${esc(x.nombre || cortoDir(x.token))}</span></div><div class="pr">${pu > 0 ? '$' + fmtP(pu) : ''}</div></div>`;
+  };
+  const pintarRes = (q) => {
+    const s = String(q || '').trim();
+    const prevPick = $('tg-pick'); if (prevPick) prevPick.remove();   // no solapar con el boton Tokens
+    if (!s) { cerrarRes(); return; }
+    const low = s.toLowerCase(); const f = feed();
+    const matches = f.filter((x) => x.token && (x.token.toLowerCase() === low || (x.simbolo || '').toLowerCase().includes(low) || (x.nombre || '').toLowerCase().includes(low)))
+      .sort((a, b) => ((b.liquidez || 0) - (a.liquidez || 0))).slice(0, 8);
+    let rows = matches.map(filaRes).join('');
+    const enFeed = f.some((x) => x.token && x.token.toLowerCase() === low);
+    if (esContrato(s) && !enFeed) rows += `<div class="tg-pick-row tg-pick-res" data-res="${esc(s)}"><span class="tg-pick-reslbl">Search this ${/^T/.test(s) ? 'Tron' : 'BSC'} contract on-chain</span><span class="tg-pick-go">→</span></div>`;
+    if (!rows) rows = `<div class="tg-pick-empty">No match. Paste a full contract (0x… or T…).</div>`;
+    let d = $('tg-sresults');
+    if (!d) { d = document.createElement('div'); d.className = 'tg-pick'; d.id = 'tg-sresults'; ov.querySelector('.tm-big-top').appendChild(d); }
+    d.innerHTML = rows;
+    d.querySelectorAll('.tg-pick-row[data-a]').forEach((r) => { r.onclick = () => { const x = f.find((t) => t.token.toLowerCase() === r.dataset.a.toLowerCase()); cerrarRes(); if (findIn) findIn.value = ''; if (x) cargar(x); }; });
+    const rr = d.querySelector('.tg-pick-res');
+    if (rr) rr.onclick = async () => {
+      rr.innerHTML = '<span class="tg-pick-reslbl">Searching on-chain…</span>';
+      const it = await resolver(rr.dataset.res, feed()).catch(() => null);
+      cerrarRes(); if (findIn) findIn.value = '';
+      if (it) cargar(it);
+      else { const msg = $('tg-chart-msg'); if (msg) { msg.hidden = false; msg.textContent = 'No pair or data found for that contract.'; } }
+    };
+  };
+  // Enter: si hay lista, carga el primer resultado; si no, resuelve el texto (nombre, simbolo o contrato).
+  const buscarEnter = async () => {
+    const v = (findIn && findIn.value || '').trim(); if (!v) return;
+    const d = $('tg-sresults'); const first = d && d.querySelector('.tg-pick-row[data-a]');
+    if (first) { first.click(); return; }
     const msg = $('tg-chart-msg'); if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
     let it = await resolver(v, feed());
-    // Reintento unico: un fallo transitorio de RPC hacia que resolver devolviera null y saliera "no pair",
-    // obligando a salir y volver a entrar. Si de verdad no hay par, el segundo intento tambien da null.
     if (!it && ov.isConnected) { await new Promise((r) => setTimeout(r, 900)); it = await resolver(v, feed()); }
-    if (!it) { if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'No token found for that search. Try the exact symbol or paste the contract.'; } return; }
-    $('tg-find-in').value = '';
-    cargar(it);
+    cerrarRes();
+    if (!it) { if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'No token found. Paste a full contract (0x… or T…).'; } return; }
+    findIn.value = ''; cargar(it);
   };
-  $('tg-find-in').onkeydown = (e) => { if (e.key === 'Enter') buscar(); };
+  if (findIn) {
+    findIn.addEventListener('input', () => { clearTimeout(_sTmr); const q = findIn.value; _sTmr = setTimeout(() => pintarRes(q), 150); });
+    findIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarEnter(); } else if (e.key === 'Escape') { cerrarRes(); } });
+    findIn.addEventListener('blur', () => setTimeout(cerrarRes, 200));
+  }
 
   // Token inicial: el que se toco, o el de mayor liquidez del feed.
   let inicial = it0;
@@ -505,7 +550,16 @@ export async function abrirGrande(it0, ctx, opts) {
   // ── carga de un token en toda la vista ──
   async function cargar(it) {
     if (!ov.isConnected) return;
-    _itActual = it; pintarId(it); pintarDer(it, ctx);
+    _itActual = it; pintarId(it);
+    // Token SIN par (Launchpad/four.meme que pudo graduar a un par de PancakeSwap): resuelve su par real como
+    // hace el buscador, para que la MISMA moneda no salga "muerta" ($0 / sin grafico / sin seguridad) al abrirla
+    // desde el feed cuando por el buscador aparece viva. Si de verdad no hay par, se queda como estaba.
+    if (!it.par && it.token) {
+      const res = await resolverContrato(it.token).catch(() => null);
+      if (!ov.isConnected || _itActual !== it) return;
+      if (res && res.par) { it = { ...it, ...res }; _itActual = it; pintarId(it); }
+    }
+    pintarDer(it, ctx);
     const msg = $('tg-chart-msg');
     try { destruirGrafico(); } catch (_) {}
     // Siembra con las velas que el lobby YA tiene de este token (si las hay): el grafico aparece al instante y,
@@ -636,7 +690,10 @@ function pintaSemBig(r, it) {
     // La auditoria TERMINO pero el escaner aun no indexo este token. No sigue cargando: estado claro y
     // estatico (sin spinner), para que nunca parezca congelado. Los datos de cadena ya estan abajo.
     sem.className = 'tg-sem limited'; delete sem.dataset.sello;
-    sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.info}</span><div><b>Limited check</b><span>The scanner has not indexed this token yet. On-chain data below is live.</span></div>`;
+    // Coherencia: si la cadena SI respondio (hay hallazgos reales abajo), es un chequeo PARCIAL, no "sin datos".
+    // Antes decia "no indexado / sin datos" encima de una lista de verdictos reales -> se contradecia solo.
+    const hayCadena = !!(r && ((r.datos && r.datos.holders != null) || ((r.hallazgos || []).some((h) => h.n === 'ok' || h.n === 'warn' || h.n === 'bad'))));
+    sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.info}</span><div><b>${hayCadena ? 'Partial check' : 'Limited check'}</b><span>${hayCadena ? 'Ownership, liquidity and distribution are read live below. The honeypot &amp; tax scanner hasn’t indexed this token yet.' : 'The honeypot &amp; tax scanner hasn’t indexed this token yet. On-chain reads are below.'}</span></div>`;
     return;
   }
   // Veredicto listo -> SELLO visual descargable (sustituye al texto Safe/Caution/Do not buy que salia aqui).
@@ -802,8 +859,10 @@ function pintarOnchain(host, r, animar) {
   const onchain = ((r && r.hallazgos) || []).filter((x) => x && (x.n === 'ok' || x.n === 'warn' || x.n === 'bad'));
   const NOTA = `<div class="tg-chk-note">Honeypot and tax checks need the security scanner, which hasn't indexed this token yet. The on-chain checks above are read live from the chain.</div>`;
   if (!onchain.length) { host.innerHTML = `<div class="tg-chk-note">Honeypot and tax checks need the scanner, which hasn't indexed this token yet. Holders, creator and liquidity above are read live from the chain.</div>`; return 0; }
-  const VERB = { ok: 'Safe', warn: 'Caution', bad: 'Risk' };
-  const fila = (x) => { const ok = x.n === 'ok'; return `<div class="tg-chk rev ${ok ? 'ok' : 'no'}"><span><i>${ok ? ICO_CHECK : ICO_X}</i>${esc(x.t)}</span><b>${VERB[x.n] || ''}</b></div>`; };
+  // El texto del hallazgo ("Top 10 hold 70%", "Owner still in control") YA es el veredicto; antes cada fila
+  // repetia ademas la palabra "Caution" en la columna derecha -> salia "Caution / Caution / Caution". Se quita:
+  // el icono (check verde / X roja) y el color de la fila ya dicen si es bueno o un riesgo.
+  const fila = (x) => { const ok = x.n === 'ok'; return `<div class="tg-chk rev ${ok ? 'ok' : 'no'}"><span><i>${ok ? ICO_CHECK : ICO_X}</i>${esc(x.t)}</span><b></b></div>`; };
   if (!animar) { host.innerHTML = onchain.map(fila).join('') + NOTA; return 0; }
   host.innerHTML = onchain.map(() => `<div class="tg-chk scan"><span><i class="tg-chk-sp"></i></span><b class="tg-chk-bar"><em></em></b></div>`).join('') + NOTA;
   const rows = host.querySelectorAll('.tg-chk');
@@ -811,7 +870,7 @@ function pintarOnchain(host, r, animar) {
     setTimeout(() => {
       if (!row.isConnected) return; const x = onchain[i]; if (!x) return; const ok = x.n === 'ok';
       row.className = 'tg-chk rev ' + (ok ? 'ok' : 'no');
-      row.innerHTML = `<span><i>${ok ? ICO_CHECK : ICO_X}</i>${esc(x.t)}</span><b>${VERB[x.n] || ''}</b>`;
+      row.innerHTML = `<span><i>${ok ? ICO_CHECK : ICO_X}</i>${esc(x.t)}</span><b></b>`;
     }, CHK_STEP * i + CHK_DELAY);
   });
   return CHK_STEP * rows.length + CHK_DELAY;

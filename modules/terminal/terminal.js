@@ -21,7 +21,14 @@ const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const corto = (a) => a ? '…' + String(a).slice(-4) : '';
 /* Precio del token en USDT: si el par ya es contra USDT, es directo; si es contra BNB, se multiplica por el precio de BNB. */
-const usdDe = (it) => (it && it.precioUsd > 0 ? it.precioUsd : (it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd));
+// Precio en USD para el lobby. Prefiere el precio FRESCO de DexScreener (el mismo que ya alimenta el 24h %)
+// en vez del precio CONGELADO que se leyo una sola vez al entrar el token al feed: asi el lobby no muestra un
+// precio viejo mientras el Full Chart muestra el vivo (era una incongruencia visible en todos los tokens).
+const usdDe = (it) => {
+  if (!it) return 0;
+  const m = mercadoDe(it.token); if (m && m.precioUsd > 0) return m.precioUsd;
+  return it.precioUsd > 0 ? it.precioUsd : (it.moneda === 'USDT' ? it.precio : it.precio * _bnbUsd);
+};
 
 const ICO_BSC = '<svg class="tm-bsc" viewBox="0 0 126.61 126.61" fill="#F3BA2F"><path d="M38.73 53.2 63.3 28.63l24.6 24.6 14.3-14.31L63.3 0 24.42 38.89z"/><path d="M0 63.3l14.3-14.3 14.31 14.3-14.31 14.3z"/><path d="M38.73 73.41 63.3 97.98l24.59-24.58 14.31 14.29-38.9 38.91L24.42 87.7z"/><path d="M98 63.3l14.3-14.3 14.31 14.3-14.31 14.31z"/><path d="M77.83 63.3 63.3 48.77 52.56 59.51l-1.24 1.23-2.54 2.55 14.52 14.53z"/></svg>';
 const ICO_COPY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
@@ -54,11 +61,12 @@ const monedaCoin = (c) => (c === 'USDT' ? usdtCoin() : bnbCoin());
 function fmtP(p, sig = 4) {
   if (!(p > 0) || !isFinite(p)) return '0';
   if (p >= 0.001) return Number(p.toPrecision(sig)).toString();
-  const e = Math.floor(Math.log10(p)); const ceros = -e - 1;
-  const dig = Math.round(p / Math.pow(10, e - sig + 1)).toString().slice(0, sig);
-  return `0.0<sub>${ceros}</sub>${dig}`;
+  const e = Math.floor(Math.log10(p));
+  let dig = Math.round(p / Math.pow(10, e - sig + 1)), ceros = -e - 1;
+  if (dig >= Math.pow(10, sig)) { dig = Math.floor(dig / 10); ceros -= 1; }   // el redondeo cruzo una potencia de 10: un cero menos
+  return `0.0<sub>${Math.max(0, ceros)}</sub>${String(dig).slice(0, sig)}`;
 }
-function money(v) { if (!(v > 0)) return '$0'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+function money(v) { if (!(v > 0)) return '$0'; if (v >= 1e12) return '$' + (v / 1e12).toFixed(2).replace(/\.?0+$/, '') + 'T'; if (v >= 1e9) return '$' + (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (v >= 1e3) return '$' + (v / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); }
 function numC(n) { n = Number(n) || 0; if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'; if (n >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: 2 }); return n.toLocaleString('en-US', { maximumFractionDigits: 6 }); }
 // Construye una fila minima del feed desde un objeto guardado (posicion, watch o alerta) para abrir su ficha.
 function itMin(o) { const precioUsd = o.precioUsd || 0; return { token: o.token, par: o.par || null, quote: o.quote || null, moneda: o.moneda || 'BNB', simbolo: o.simbolo || '?', nombre: o.nombre || o.simbolo || 'Token', decimales: o.decimales || 18, fuente: 'pancake', tiempo: o.ts || o.abierta || 0, liquidez: 0, precio: o.moneda === 'USDT' ? precioUsd : (_bnbUsd > 0 ? precioUsd / _bnbUsd : 0), creador: '' }; }
@@ -621,15 +629,32 @@ function updateRailStats(it) {
 function pintaChecks(it, r) {
   if (_railTok !== it.token) return;
   const host = $('tm-checks-list'); if (!host) return;
-  const c = (r && r.datos && r.datos.checks) ? r.datos.checks : {};
-  const lp = (r && r.datos && r.datos.lpAsegurada != null) ? Math.round(r.datos.lpAsegurada) + '%' : (c.lpSecured ? 'Yes' : '—');
-  const t10 = (r && r.datos && r.datos.top10Pct != null) ? 'Top10 ' + Math.round(r.datos.top10Pct) + '%' : null;
-  const fila = (ok, label, val) => `<div class="tm-check ${ok ? 'ok' : 'no'}"><span class="tm-check-l"><i>${ok ? ICO_CHECK : '✕'}</i>${label}</span><b>${val}</b></div>`;
-  host.innerHTML =
-    fila(!!c.sellable, 'No honeypot', c.sellable ? 'Sellable' : 'Risky') +
-    fila(!!c.lpSecured, 'Liquidity burned', lp) +
-    fila(!!c.renounced, 'Ownership renounced', c.renounced ? 'Yes' : 'No') +
-    fila(!!c.notConcentrated, 'Token distribution', t10 || (c.notConcentrated ? 'Healthy' : 'Concentrated'));
+  const d = (r && r.datos) ? r.datos : {};
+  const c = d.checks || null;
+  const fila = (estado, label, val) => `<div class="tm-check ${estado}"><span class="tm-check-l"><i>${estado === 'ok' ? ICO_CHECK : estado === 'no' ? '✕' : '·'}</i>${label}</span><b>${val}</b></div>`;
+  if (c) {
+    // GoPlus indexo el token: verdictos completos (incluye honeypot e impuestos simulados).
+    const lp = d.lpAsegurada != null ? Math.round(d.lpAsegurada) + '%' : (c.lpSecured ? 'Yes' : '—');
+    const t10 = d.top10Pct != null ? 'Top10 ' + Math.round(d.top10Pct) + '%' : null;
+    host.innerHTML =
+      fila(c.sellable ? 'ok' : 'no', 'No honeypot', c.sellable ? 'Sellable' : 'Risky') +
+      fila(c.lpSecured ? 'ok' : 'no', 'Liquidity burned', lp) +
+      fila(c.renounced ? 'ok' : 'no', 'Ownership renounced', c.renounced ? 'Yes' : 'No') +
+      fila(c.notConcentrated ? 'ok' : 'no', 'Token distribution', t10 || (c.notConcentrated ? 'Healthy' : 'Concentrated'));
+  } else {
+    // GoPlus AUN no indexo el token: NO inventar fallos. Antes aqui salian 4 X falsas ("No honeypot -> Risky",
+    // "Ownership renounced -> No") para un token que nunca se escaneo, justo lo CONTRARIO a lo que muestra el
+    // Full Chart del mismo token. Mostramos lo que SI se lee en cadena y dejamos honeypot/impuestos "Scan pending".
+    const hall = (r && r.hallazgos) || [];
+    const ren = hall.some((h) => h.t === 'Ownership renounced') ? 'ok' : (hall.some((h) => h.n === 'warn' && /owner/i.test(h.t)) ? 'no' : 'pend');
+    const lpv = d.lpAsegurada != null ? Math.round(d.lpAsegurada) : null;
+    const t10v = d.top10Pct != null ? Math.round(d.top10Pct) : null;
+    host.innerHTML =
+      fila('pend', 'No honeypot', 'Scan pending') +
+      fila(lpv != null ? (lpv >= 90 ? 'ok' : 'no') : 'pend', 'Liquidity burned', lpv != null ? lpv + '%' : 'Scan pending') +
+      fila(ren, 'Ownership renounced', ren === 'ok' ? 'Yes' : ren === 'no' ? 'No' : '—') +
+      fila(t10v != null ? (t10v >= 70 ? 'no' : 'ok') : 'pend', 'Token distribution', t10v != null ? 'Top10 ' + t10v + '%' : '—');
+  }
   const bdg = verifBadge(r); const vb = $('tm-tc-verif'); if (vb) vb.innerHTML = bdg; const vc = $('tm-cp-verif'); if (vc) vc.innerHTML = bdg;
 }
 function cargarChecks(it) {
@@ -748,7 +773,7 @@ function pintarAuditoria(r, reintentar) {
     : (nb ? nb + ' critical issue' + (nb > 1 ? 's' : '') : '') + (nb && nw ? ' and ' : '') + (nw ? nw + ' warning' + (nw > 1 ? 's' : '') : '')) + pasa;
   const sinDatos = r.nivel === 'pend';
   const sinCadena = sinDatos && !(r.datos && r.datos.holders != null);      // ni el escaner ni la cadena respondieron
-  sem.innerHTML = `<span class="tm-sem-ico">${ICO_N[r.nivel]}</span><div><b>${sinCadena ? 'Not checked yet' : sinDatos ? 'Scanner pending' : TXT_NIVEL[r.nivel]}</b><span>${sinCadena ? 'The scanner or the network did not answer in time.' : sinDatos ? 'Chain data loaded. Scanner still indexing. Rechecking.' : sub}</span></div>` + (sinCadena && reintentar ? '<button class="tm-sem-retry" type="button" id="tm-sem-retry">Retry</button>' : '');
+  sem.innerHTML = `<span class="tm-sem-ico">${ICO_N[r.nivel]}</span><div><b>${sinCadena ? 'Not checked yet' : sinDatos ? 'Partial check' : TXT_NIVEL[r.nivel]}</b><span>${sinCadena ? 'The scanner or the network did not answer in time.' : sinDatos ? 'On-chain checks are live below. The honeypot &amp; tax scanner is still indexing.' : sub}</span></div>` + (sinCadena && reintentar ? '<button class="tm-sem-retry" type="button" id="tm-sem-retry">Retry</button>' : '');
   const rb = $('tm-sem-retry'); if (rb && reintentar) rb.onclick = reintentar;
   const d = r.datos || {};
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
@@ -777,7 +802,10 @@ function pintarAuditoria(r, reintentar) {
     } else { hostH.hidden = true; }
   }
   const ul = $('tm-hall'); if (!ul) return;
-  ul.innerHTML = r.hallazgos.map((x) => `<li class="${x.n}"><span class="tm-h-ico">${ICO_N[x.n] || ICO_INFO}</span><div><b>${esc(x.t)}</b><span>${esc(x.d || '')}</span></div></li>`).join('');
+  // Quita la nota 'info' ("Scanner data not available yet"): la cabecera ya dice que el escaner esta pendiente,
+  // y mostrarla DENTRO de la lista junto a hallazgos reales era la contradiccion "muestra datos pero dice que
+  // no hay datos" (igual que ya hace el Full Chart, que la filtra).
+  ul.innerHTML = (r.hallazgos || []).filter((x) => x.n !== 'info').map((x) => `<li class="${x.n}"><span class="tm-h-ico">${ICO_N[x.n] || ICO_INFO}</span><div><b>${esc(x.t)}</b><span>${esc(x.d || '')}</span></div></li>`).join('');
 }
 
 /* ───────── Mis posiciones (no custodial: registradas en el navegador al comprar por el Terminal) ───────── */
@@ -932,7 +960,7 @@ export async function abrirPanel(tab = 'positions') {
       const precios = {};
       await Promise.all(Object.values(porToken).map(async (a) => { precios[a.token.toLowerCase()] = await precioActual({ par: a.par, token: a.token, decToken: a.decimales || 18, decQuote: 18, bnbUsd: _bnbUsd, quoteEsUSDT: a.moneda === 'USDT' }).catch(() => 0); }));
       if (!vivo() || !wrap.isConnected) return;
-      wrap.querySelectorAll('.tm-al-row').forEach((r) => { if (r.classList.contains('done')) return; const a = activas.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (!a) return; const now = precios[a.token.toLowerCase()] || 0; const bEl = r.querySelector('.tm-pos-val b'); if (bEl) bEl.textContent = now > 0 ? '$' + fmtP(now) : '—'; });
+      wrap.querySelectorAll('.tm-al-row').forEach((r) => { if (r.classList.contains('done')) return; const a = activas.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (!a) return; const now = precios[a.token.toLowerCase()] || 0; const bEl = r.querySelector('.tm-pos-val b'); if (bEl) bEl.innerHTML = now > 0 ? '$' + fmtP(now) : '—'; });   // innerHTML: fmtP trae <sub> para precios diminutos; con textContent salian las etiquetas literales
     }
   }
 

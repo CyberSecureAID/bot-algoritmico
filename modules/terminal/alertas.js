@@ -43,7 +43,11 @@ export function arrancarVigilante(bnbUsdFn, onDisparo, cadaMs) {
   const ms = cadaMs || (typeof window !== 'undefined' && window.__alertMs) || 20000;
   const tic = async () => {
     try {
-      const activas = leer(KEY_A).filter((a) => !a.disparada && a.par);
+      // Vigila toda alerta cuyo precio sepamos leer: V2 necesita par; DexScreener y Tron NO (precioUsdVivo
+      // usa el token). Antes el filtro exigia a.par, asi que las alertas de Tron (par=null) y de tokens sin
+      // par V2 se creaban pero NUNCA se disparaban. Esa era una incongruencia real del feature multicadena.
+      const vigilable = (a) => !!(a.par || a.fuentePrecio === 'dex' || a.fuentePrecio === 'tron');
+      const activas = leer(KEY_A).filter((a) => !a.disparada && vigilable(a));
       if (activas.length) {
         const bnbUsd = (bnbUsdFn && bnbUsdFn()) || 0;
         const porToken = {};
@@ -54,7 +58,7 @@ export function arrancarVigilante(bnbUsdFn, onDisparo, cadaMs) {
         }));
         const l = leer(KEY_A); let cambio = false;
         for (const a of l) {
-          if (a.disparada || !a.par) continue;
+          if (a.disparada || !vigilable(a)) continue;
           const p = precios[low(a.token)]; if (!(p > 0)) continue;
           const toca = a.dir === 'up' ? p >= a.objetivo : p <= a.objetivo;
           if (toca) { a.disparada = true; a.precioDisparo = p; a.cuando = Date.now(); cambio = true; notificar(a, p); if (onDisparo) try { onDisparo(a, p); } catch (_) {} }
@@ -68,7 +72,17 @@ export function arrancarVigilante(bnbUsdFn, onDisparo, cadaMs) {
 }
 export function detenerVigilante() { if (_timer) { clearTimeout(_timer); _timer = null; } }
 
-function fmtP(p) { if (!(p > 0)) return '0'; if (p >= 1) return String(Number(p.toPrecision(6))); if (p >= 0.001) return String(Number(p.toPrecision(4))); return p.toExponential(2); }
+/* Precio para el TEXTO de la notificacion (sin HTML, sin subindices). Decimal plano legible en vez de notacion
+   exponencial fea (1.73e-4): para precios diminutos expande los ceros a mano con 4 cifras significativas. */
+function fmtP(p) {
+  if (!(p > 0) || !isFinite(p)) return '0';
+  if (p >= 1) return String(Number(p.toPrecision(6)));
+  if (p >= 0.001) return String(Number(p.toPrecision(4)));
+  const e = Math.floor(Math.log10(p));
+  let dig = Math.round(p / Math.pow(10, e - 3)), ceros = -e - 1;
+  if (dig >= 1e4) { dig = Math.floor(dig / 10); ceros -= 1; }   // el redondeo cruzo una potencia de 10
+  return '0.' + '0'.repeat(Math.max(0, ceros)) + String(dig).slice(0, 4);
+}
 let _icono; try { _icono = new URL('../../assets/img/cco-192.png', import.meta.url).href; } catch (_) { _icono = undefined; }
 /* Muestra el aviso. En movil (Android/Chrome) el constructor new Notification() NO funciona: hay que usar
    el service worker (registration.showNotification). Si hay SW controlando la pagina lo usamos; si no (p.ej.
