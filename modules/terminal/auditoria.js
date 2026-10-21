@@ -538,6 +538,20 @@ export async function auditar(token, par, it = {}, alPaso = () => {}, conHolders
     }
   } catch (_) {}
   if (conHolders) await anadirReputacionCreador(res, '56');   // reputacion del wallet creador (solo en el pase completo)
+  // Holders: BscScan NO da el conteo gratis (es de pago). Si la reconstruccion on-chain no cuadro (token grande,
+  // ventana corta), se complementa con la estimacion de GeckoTerminal, MARCADA como estimada (honesto: no se
+  // inventa, se dice "~"). Asi nunca mostramos 0 ni menos que los demas cuando de verdad hay holders.
+  if (conHolders) {
+    try {
+      const d = res.datos || {};
+      const incompleto = d.holders == null || d.holders === 0 || (cad && cad.holdersCompleto === false);
+      if (incompleto) {
+        const { infoGecko } = await import('./gecko.js');
+        const inf = await conTiempo(infoGecko(token, it.red || 'bsc'), 8000).catch(() => null);
+        if (inf && inf.holders != null && (d.holders == null || inf.holders > d.holders)) { d.holders = inf.holders; d.holdersEstimado = true; res.datos = d; }
+      }
+    } catch (_) {}
+  }
   log(token, res.nivel, res.hallazgos.map((x) => x.t));
   return res;
 }

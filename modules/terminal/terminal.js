@@ -785,7 +785,7 @@ function pintarAuditoria(r, reintentar) {
   const d = r.datos || {};
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
   // Terminada la comprobacion, lo que no se sabe se muestra como 0 (nunca un guion ni un hueco).
-  set('tm-k-hold', (d.holders != null ? Number(d.holders).toLocaleString('en-US') : '0') + (d.txs != null ? ' · ' + Number(d.txs).toLocaleString('en-US') + ' txs' : ''));
+  set('tm-k-hold', (d.holders != null ? (d.holdersEstimado ? '~' : '') + Number(d.holders).toLocaleString('en-US') : '0') + (d.txs != null ? ' (' + Number(d.txs).toLocaleString('en-US') + ' txs)' : ''));
   set('tm-k-top', d.top10Pct != null ? pct(d.top10Pct) : '0%');
   const cre = d.creador || _creadorFicha || '';
   set('tm-k-cre', (cre ? corto(cre) : '') + (d.creadorPct != null ? (cre ? ' ' : '') + pct(d.creadorPct) : (cre ? '' : '0%')));

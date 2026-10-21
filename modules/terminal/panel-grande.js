@@ -738,7 +738,7 @@ function pintarIzq(it, ctx) {
     const rellenar = (r, final) => {
       if (!r || !$('tg-left') || _itActual !== it) return;
       const d = r.datos || {};
-      if (d.holders != null) set('tg-k-hold', Number(d.holders).toLocaleString('en-US') + (d.txs != null ? ' · ' + Number(d.txs).toLocaleString('en-US') + ' txs' : ''));
+      if (d.holders != null) set('tg-k-hold', (d.holdersEstimado ? '~' : '') + Number(d.holders).toLocaleString('en-US') + (d.txs != null ? ' (' + Number(d.txs).toLocaleString('en-US') + ' txs)' : ''));
       else if (final) set('tg-k-hold', '0');
       if (d.top10Pct != null) set('tg-k-top', pct(d.top10Pct)); else if (final) set('tg-k-top', '0%');
       const cre = d.creador || it.creador || '';
