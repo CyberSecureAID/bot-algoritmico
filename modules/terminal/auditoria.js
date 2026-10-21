@@ -14,6 +14,40 @@
 
 import * as ethers from './ethers.min.js';
 import { conRotacion, conTiempo } from './rpc.js';
+import { BSCSCAN_API, BSCSCAN_V2 } from './config.js';
+
+/* ── BscScan (Etherscan V2) ── Datos AUTORITATIVOS, los MISMOS que muestra BscScan, para que nuestro Security
+   Check jamas sea incongruente con el explorador. Gratis (la key ya esta en config), CORS abierto, 5 req/s.
+   Dos cosas que solo el explorador da bien:
+     · getcontractcreation -> creador real + BLOQUE de creacion. El bloque es la pieza que faltaba: ancla el
+       escaneo de holders al nacimiento del token, asi un token nuevo (IBVM: 4 holders) los muestra TODOS en
+       vez de 0 (antes solo miraba ~4000 bloques hacia atras y perdia la historia).
+     · getsourcecode -> si el contrato esta VERIFICADO (igual que BscScan). Fin del "verified: No" en contratos
+       que si estan verificados. */
+export async function bscScanInfo(token) {
+  const base = BSCSCAN_V2 + '?chainid=56&apikey=' + BSCSCAN_API;
+  const get = async (q) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), 9000); try { const r = await fetch(base + q, { signal: c.signal }); if (!r.ok) return null; return await r.json(); } finally { clearTimeout(t); } };
+  const [cre, src] = await Promise.all([
+    get('&module=contract&action=getcontractcreation&contractaddresses=' + token).catch(() => null),
+    get('&module=contract&action=getsourcecode&address=' + token).catch(() => null)
+  ]);
+  const out = {};
+  if (cre && Array.isArray(cre.result) && cre.result[0]) {
+    const c0 = cre.result[0];
+    if (c0.contractCreator) out.creador = c0.contractCreator;
+    if (c0.txHash) out.txCreacion = c0.txHash;
+    if (c0.blockNumber != null && c0.blockNumber !== '') out.bloque = Number(c0.blockNumber);
+  }
+  if (src && Array.isArray(src.result) && src.result[0]) {
+    const s = src.result[0];
+    // Verificado si la ABI NO es el texto de "no verificado" (el campo status miente: es "1" aun sin verificar).
+    out.verificado = !!(s.ABI && s.ABI !== 'Contract source code not verified');
+    if (s.ContractName) out.nombre = s.ContractName;
+    out.esProxy = s.Proxy === '1';
+    if (s.Implementation) out.impl = s.Implementation;
+  }
+  return out;
+}
 
 const log = (...a) => { try { console.info('[TERM-AUDIT]', ...a); } catch (_) {} };
 const GOPLUS = 'https://api.gopluslabs.io/api/v1/token_security/';   // + chain_id ('56' BSC, 'tron' Tron)
@@ -291,7 +325,10 @@ export async function leerHolders(token, desdeBloque, hasta, par) {
 
 /* Lecturas propias, paso a paso. it: fila del feed (tx de creacion, bloque, creador si la fuente lo da). */
 export async function leerCadena(token, par, it = {}, alPaso = () => {}, conHolders = true) {
-  const out = { hayCodigo: null, owner: null, lpQuemadaPct: null, creador: it.creador || null, holders: null, txs: null, top10Pct: null, creadorPct: null, holdersCompleto: null, topHolders: null, snipers: null, snipersPct: null, bundle: null, bundlePct: null };
+  const out = { hayCodigo: null, owner: null, lpQuemadaPct: null, creador: it.creador || null, holders: null, txs: null, top10Pct: null, creadorPct: null, holdersCompleto: null, topHolders: null, snipers: null, snipersPct: null, bundle: null, bundlePct: null, verificado: null, nombre: null };
+  // BscScan solo en el analisis COMPLETO (OFC / ficha): ahi importa la precision. En el pase ligero del feed
+  // (decenas de tokens) no se llama, para no gastar el rate-limit (5/s) en filas que no lo necesitan.
+  const bscP = conHolders ? bscScanInfo(token).catch(() => null) : Promise.resolve(null);
   const paso = async (id, ms, fn) => { alPaso(id, 'run'); try { await conTiempo(fn(), ms); alPaso(id, 'ok'); } catch (e) { log('paso', id, 'fallo', e && e.message); alPaso(id, 'fail'); } };
   const tCode = paso('code', 10000, async () => { const code = await conRotacion((p) => p.getCode(token)); out.hayCodigo = !!(code && code !== '0x'); });
   const tOwner = paso('owner', 10000, async () => { try { out.owner = String(await conRotacion((p) => new ethers.Contract(token, ABI, p).owner())); } catch (_) { out.owner = null; } });   // sin owner(): no es Ownable
@@ -306,18 +343,23 @@ export async function leerCadena(token, par, it = {}, alPaso = () => {}, conHold
     // Creador: quien envio la tx que creo el par o el token (lo que BscScan llama "Creator").
     if (!out.creador && it.tx) { try { const tx = await conRotacion((p) => p.getTransaction(it.tx)); if (tx && tx.from) out.creador = String(tx.from); } catch (_) {} }
   };
+  const aplicarBsc = (bsc) => { if (!bsc) return; if (!out.creador && bsc.creador) out.creador = bsc.creador; if (bsc.verificado != null) out.verificado = bsc.verificado; if (bsc.nombre && !out.nombre) out.nombre = bsc.nombre; };
   const tHold = !conHolders
     ? paso('holders', 12000, async () => {
       // Version ligera (lista y filtros): creador y su bolsa con dos lecturas, sin reconstruir holders.
-      await leerCreador(); if (!out.creador) return;
+      await leerCreador(); aplicarBsc(await bscP);
+      if (!out.creador) return;
       const c = (p) => new ethers.Contract(token, ABI, p);
       const [sup, v] = await Promise.all([conRotacion((p) => c(p).totalSupply()), conRotacion((p) => c(p).balanceOf(out.creador))]);
       out.creadorPct = sup > 0n ? Number((v * 10000n) / sup) / 100 : 0;
     })
     : paso('holders', 25000, async () => {
       await leerCreador();
+      const bsc = await bscP; aplicarBsc(bsc);
       const hasta = await conRotacion((p) => p.getBlockNumber());
-      const desde = it.bloque ? Number(it.bloque) : Math.max(0, hasta - TRAMO * 4);
+      // Ancla el escaneo en el BLOQUE DE CREACION real (BscScan). Asi se barre toda la historia del token y
+      // un token nuevo con pocas tx (IBVM) muestra TODOS sus holders, no 0. Sin ese dato, respaldo a la ventana.
+      const desde = it.bloque ? Number(it.bloque) : (bsc && bsc.bloque != null ? bsc.bloque : Math.max(0, hasta - TRAMO * 4));
       const h = await leerHolders(token, desde, hasta, par);
       out.holders = h.holders; out.txs = h.txs; out.top10Pct = h.top10Pct; out.holdersCompleto = h.completo;
       out.topHolders = h.topHolders; out.snipers = h.snipers; out.snipersPct = h.snipersPct; out.bundle = h.bundle; out.bundlePct = h.bundlePct;
@@ -378,6 +420,9 @@ export function evaluar(gp, cad) {
     if (cpC != null && cpC >= 0.2) h.push({ n: 'warn', t: 'Creator holds ' + Math.round(cpC * 100) + '%', d: 'A large creator bag can be dumped on buyers.' });
     if (t10C != null && t10C >= 70) h.push({ n: 'warn', t: 'Top 10 hold ' + Math.round(t10C) + '%', d: 'Very concentrated supply.' });
     if (datos.lpQuemada != null) { datos.lpAsegurada = datos.lpQuemada; if (datos.lpQuemada >= 90) h.push({ n: 'ok', t: 'Liquidity burned (' + Math.round(datos.lpQuemada) + '%)', d: 'The pool cannot be pulled.' }); else h.push({ n: 'warn', t: 'Liquidity not burned', d: 'The creator can remove the pool at any time (rug pull).' }); }
+    // Verificado por BscScan (autoritativo): aunque GoPlus no respondiera, si BscScan dice verificado lo decimos.
+    if (cad && cad.verificado === true) h.push({ n: 'ok', t: 'Source verified', d: 'The code is public and verified on BscScan.' });
+    else if (cad && cad.verificado === false) h.push({ n: 'warn', t: 'Source not verified', d: 'The code is not verified on BscScan.' });
     avisoReparto();
     // Veredicto con lo leido EN CADENA aunque el escaner (honeypot/impuestos) no respondiera. Si hay banderas
     // (propiedad, LP, concentracion, snipers), DIAGNOSTICA (warn/bad) en vez de quedarte en "pendiente": el
@@ -412,8 +457,11 @@ export function evaluar(gp, cad) {
   if (si('is_whitelisted')) h.push({ n: 'info', t: 'Whitelist function', d: 'Some wallets may be exempt from limits or taxes.' });
   if (si('external_call')) h.push({ n: 'warn', t: 'External calls', d: 'Transfers call another contract; behavior can change.' });
   if (si('is_proxy')) h.push({ n: 'warn', t: 'Upgradeable proxy', d: 'The code can be replaced later.' });
-  if (f('is_open_source') === '0') h.push({ n: 'warn', t: 'Source not verified', d: 'The code cannot be read on BscScan.' });
-  else if (si('is_open_source')) h.push({ n: 'ok', t: 'Source verified', d: 'The code is public on BscScan.' });
+  // Verificado: BscScan manda (autoritativo). Si BscScan dice verificado, lo es, aunque GoPlus este obsoleto.
+  const verif = (cad && cad.verificado === true) || si('is_open_source');
+  if (verif) h.push({ n: 'ok', t: 'Source verified', d: 'The code is public and verified on BscScan.' });
+  else if (cad && cad.verificado === false) h.push({ n: 'warn', t: 'Source not verified', d: 'The code is not verified on BscScan.' });
+  else if (f('is_open_source') === '0') h.push({ n: 'warn', t: 'Source not verified', d: 'The code cannot be read on BscScan.' });
   if (si('is_anti_whale')) h.push({ n: 'info', t: 'Anti whale limits', d: 'Max buy or max wallet limits apply.' });
 
   // Distribucion
@@ -453,7 +501,7 @@ export function evaluar(gp, cad) {
     notMintable: !si('is_mintable'),
     noPause: !si('transfer_pausable'),
     noBlacklist: !si('is_blacklisted'),
-    verified: si('is_open_source'),
+    verified: (cad && cad.verificado === true) || si('is_open_source'),
     renounced: !!ownerMuerto && !si('hidden_owner') && !si('can_take_back_ownership'),
     lpSecured: asegurada >= 90,
     creatorSmall: cp == null || cp < 0.2,

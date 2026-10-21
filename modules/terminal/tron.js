@@ -31,7 +31,7 @@ async function tronApi(endpoint, params) {
   throw new Error('TronScan unreachable');
 }
 function tokOf(j) { const a = j && (j.trc20_tokens || j.data || j.tokens); return (Array.isArray(a) && a[0]) || null; }
-const precioDe = (t) => Number((t && t.market_info && t.market_info.priceInUsd) || (t && t.priceInUsd) || 0) || 0;
+const precioDe = (t) => Number((t && t.market_info && t.market_info.priceInUsd) || (t && t.priceInUsd) || (t && t.price) || 0) || 0;
 
 /* Resuelve un contrato TRC20 a un item de la Terminal (no operable; solo info + alertas). null si no existe. */
 export async function resolverTron(addr) {
@@ -50,10 +50,35 @@ export async function resolverTron(addr) {
 export async function precioTron(token) {
   try { return precioDe(tokOf(await tronApi('token_trc20', { contract: String(token).trim(), limit: 1, start: 0 }))); } catch (_) { return 0; }
 }
-/* Datos para el Security Check de un token Tron (holders, verificado, precio). */
+/* Detalle del contrato Tron desde /api/contract: aqui SI vive el verify_status (0 sin verificar, 1 parcial,
+   2 verificado) y el creador real. CAUSA RAIZ del "Tron sale sin verificar": antes se leia verify_status de
+   /token_trc20, donde ese campo NO existe -> siempre falso. Ahora se lee de donde de verdad esta. */
+export async function contratoTron(token) {
+  try {
+    const j = await tronApi('contract', { contract: String(token).trim() });
+    const d = j && Array.isArray(j.data) && j.data[0];
+    if (!d) return null;
+    const vs = Number(d.verify_status || 0);
+    return { verificado: vs >= 1, verifNivel: vs, creador: (d.creator && d.creator.address) || '', esProxy: !!d.is_proxy };
+  } catch (_) { return null; }
+}
+/* Datos para el Security Check de un token Tron (holders, verificado, creador, precio). Combina token_trc20
+   (holders/precio/simbolo/emisor) con /api/contract (verify_status/creador autoritativos). */
 export async function seguridadTron(token) {
-  try { const t = tokOf(await tronApi('token_trc20', { contract: String(token).trim(), limit: 1, start: 0 })); if (!t) return null;
-    return { holders: Number(t.holders_count) || 0, verificado: !!(t.verify_status || t.vip), precioUsd: precioDe(t), creador: t.issue_address || '', simbolo: t.symbol || '?' };
+  try {
+    const [t, ct] = await Promise.all([
+      tronApi('token_trc20', { contract: String(token).trim(), limit: 1, start: 0 }).then(tokOf).catch(() => null),
+      contratoTron(token).catch(() => null)
+    ]);
+    if (!t && !ct) return null;
+    const tk = t || {};
+    return {
+      holders: Number(tk.holders_count) || 0,
+      verificado: !!(ct && ct.verificado) || !!tk.vip,   // verify_status de /api/contract manda
+      precioUsd: precioDe(tk),
+      creador: (ct && ct.creador) || tk.issue_address || '',
+      simbolo: tk.symbol || '?'
+    };
   } catch (_) { return null; }
 }
 /* TronGrid (nodo PUBLICO de Tron, sin API key, CORS abierto: es lo que usa TronLink/TronWeb desde el navegador).
