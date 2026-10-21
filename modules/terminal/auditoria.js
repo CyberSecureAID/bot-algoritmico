@@ -540,7 +540,7 @@ export async function auditar(token, par, it = {}, alPaso = () => {}, conHolders
   if (conHolders) await anadirReputacionCreador(res, '56');   // reputacion del wallet creador (solo en el pase completo)
   // Holders: BscScan NO da el conteo gratis (es de pago). Si la reconstruccion on-chain no cuadro (token grande,
   // ventana corta), se complementa con la estimacion de GeckoTerminal, MARCADA como estimada (honesto: no se
-  // inventa, se dice "~"). Asi nunca mostramos 0 ni menos que los demas cuando de verdad hay holders.
+  // inventa, se dice "~"). Asi  nunca mostramos 0 ni menos que los demas cuando de verdad hay holders.
   if (conHolders) {
     try {
       const d = res.datos || {};

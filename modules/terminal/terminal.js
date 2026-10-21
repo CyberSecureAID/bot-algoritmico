@@ -1,6 +1,6 @@
 /* terminal/terminal.js. Interfaz de la Terminal (modulo sellado: solo ./motor.js y ./config.js).
    Fase 2: feed en vivo de tokens recien nacidos en BNB Chain (pares nuevos de PancakeSwap contra BNB
-   o USDT, y monedas creadas en el Launchpad de DecFreedom). Misma tabla y estetica que New Tokens. */
+   o USDT, y monedas creadas en el Launchpad  de DecFreedom). Misma tabla y estetica que New Tokens. */
 
 import * as ethers from './ethers.min.js';
 import * as gb from './motor.js';

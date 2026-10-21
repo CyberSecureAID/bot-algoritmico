@@ -7,7 +7,7 @@
 
    Esta entrega es el ARMAZON: layout de tres zonas, grafica funcionando, buscador por contrato y
    selector de tokens. La columna de operar (Market / Alert, saldos, Open Alerts, Positions) y el
-   clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
+   clic  en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
 import { resolverContrato, esContrato } from './resolver.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada, marcarAlertas } from './grafico.js';
