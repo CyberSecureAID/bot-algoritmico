@@ -110,28 +110,36 @@ function hpComoGp(hp) {
    evaluar() para que el sello, los checks y el veredicto se pinten igual que en BSC. Asi una moneda de Tron deja
    de quedarse en "Not a PancakeSwap pair": sale con su Security Check real. */
 export async function auditarTron(token, it = {}) {
-  let gp = null, ts = null;
+  let gp = null, ts = null, tg = null;
   try { gp = await leerGoPlus(token, 'tron'); } catch (_) {}
-  try { const m = await import('./tron.js'); ts = await m.seguridadTron(token); } catch (_) {}
+  // TronScan (holders/verificado/creador) + TronGrid (on-chain: existe/creador/verificado) en PARALELO. Son las
+  // dos fuentes publicas de Tron; con que UNA responda, el token sale con veredicto real (nunca "sin datos").
+  try { const m = await import('./tron.js'); const [a, b] = await Promise.all([m.seguridadTron(token).catch(() => null), m.tronGridContrato(token).catch(() => null)]); ts = a; tg = b; } catch (_) {}
+  // Combina ambas: lo que falte en una lo rellena la otra. holders solo los da TronScan; existencia/creador/
+  // verificado los confirma TronGrid leyendo la cadena directamente.
+  const info = {};
+  if (ts) { if (ts.holders != null) info.holders = ts.holders; if (ts.creador) info.creador = ts.creador; if (ts.verificado) info.verificado = true; }
+  if (tg) { if (info.creador == null && tg.creador) info.creador = tg.creador; if (tg.verificado) info.verificado = true; }
+  const hayTron = !!(ts || tg);
   const cad = {};
-  if (ts) { if (ts.holders != null) cad.holders = ts.holders; if (ts.creador) cad.creador = ts.creador; }
+  if (info.holders != null) cad.holders = info.holders;
+  if (info.creador) cad.creador = info.creador;
   const res = evaluar(gp, cad); res.completo = true; res.red = 'tron';
-  // Sin GoPlus-tron, evaluar() cae a 'pend' con el parrafo "Scanner data not available". Pero si TronScan SI dio
-  // datos publicos (verificado, holders) NO se deja al usuario sin resultado: se da un veredicto real con ellos.
-  // Codigo verificado + base amplia de holders es senal buena; sin verificar es precaucion. Asi un token de Tron
-  // SIEMPRE sale con algo cuando hay datos publicos, en vez de quedarse en "honeypot and tax checks need...".
-  if (!gp && ts) {
+  // Sin GoPlus-tron, evaluar() cae a 'pend'. Pero si TronScan o TronGrid dieron datos publicos NO se deja al
+  // usuario sin resultado: veredicto real con ellos. Verificado + base amplia de holders = buena senal; sin
+  // verificar = precaucion. Asi un token de Tron SIEMPRE sale con algo, nunca el parrafo del escaner.
+  if (!gp && hayTron) {
     res.hallazgos = res.hallazgos.filter((x) => !(x.n === 'info' && /scanner/i.test(x.t)));
-    if (ts.verificado) res.hallazgos.push({ n: 'ok', t: 'Verified on TronScan', d: 'The contract source is public and verified on TronScan.' });
-    else res.hallazgos.unshift({ n: 'warn', t: 'Source not verified on TronScan', d: 'The contract source is not public on TronScan. Trade with caution.' });
-    if (ts.holders >= 1000) res.hallazgos.push({ n: 'ok', t: ts.holders.toLocaleString() + ' holders', d: 'A wide holder base, consistent with a real, traded token.' });
-    else if (ts.holders > 0 && ts.holders < 20) res.hallazgos.push({ n: 'info', t: 'Only ' + ts.holders + ' holders', d: 'Very early. Thin market.' });
+    if (info.verificado) res.hallazgos.push({ n: 'ok', t: 'Source verified on-chain', d: 'The contract source is public and verified on Tron.' });
+    else res.hallazgos.unshift({ n: 'warn', t: 'Source not verified', d: 'The contract source is not public on Tron. Trade with caution.' });
+    if (info.holders >= 1000) res.hallazgos.push({ n: 'ok', t: Number(info.holders).toLocaleString('en-US') + ' holders', d: 'A wide holder base, consistent with a real, traded token.' });
+    else if (info.holders > 0 && info.holders < 20) res.hallazgos.push({ n: 'info', t: 'Only ' + info.holders + ' holders', d: 'Very early. Thin market.' });
     if (!res.datos) res.datos = {};
-    res.datos.checks = { verified: !!ts.verificado };
+    res.datos.checks = { verified: !!info.verificado };
     res.nivel = res.hallazgos.some((x) => x.n === 'bad') ? 'bad' : res.hallazgos.some((x) => x.n === 'warn') ? 'warn' : 'ok';
     res.titulo = res.nivel === 'bad' ? 'Do not buy' : res.nivel === 'warn' ? 'Caution' : 'No red flags found';
   }
-  if (ts && ts.verificado) { if (!res.datos) res.datos = {}; if (!res.datos.checks) res.datos.checks = {}; res.datos.checks.verified = true; }
+  if (info.verificado) { if (!res.datos) res.datos = {}; if (!res.datos.checks) res.datos.checks = {}; res.datos.checks.verified = true; }
   try {
     const imp = tokenImpostor(it.simbolo || (gp && gp.token_symbol), token, 'tron');
     if (imp) { res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Do not buy — fake ' + imp; res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '.' }); }
@@ -305,7 +313,8 @@ export function evaluar(gp, cad) {
     // usuario tenia razon, con esos datos SE PUEDE dar un veredicto. Si la cadena esta limpia pero NO se pudo
     // comprobar honeypot/impuestos, si queda 'pend' (no se puede AFIRMAR que es segura sin esa parte).
     const nivel = h.some((x) => x.n === 'bad') ? 'bad' : (h.some((x) => x.n === 'warn') ? 'warn' : 'pend');
-    h.push({ n: 'info', t: 'Scanner data not available yet', d: 'Honeypot and tax checks need the security scanner, which has not indexed this token yet. Holders, creator and liquidity above are read from the chain.' });
+    // NADA de parrafo "scanner no disponible": el diagnostico son los hallazgos REALES de cadena (propiedad, LP,
+    // concentracion, snipers), cada uno con su motivo. El usuario odia esa coletilla; aqui no se añade.
     return { nivel, titulo: nivel === 'bad' ? 'Do not buy' : nivel === 'warn' ? 'On-chain risks found' : 'Checking', hallazgos: h, datos };
   }
 

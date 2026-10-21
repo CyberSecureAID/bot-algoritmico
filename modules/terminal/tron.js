@@ -56,3 +56,16 @@ export async function seguridadTron(token) {
     return { holders: Number(t.holders_count) || 0, verificado: !!(t.verify_status || t.vip), precioUsd: precioDe(t), creador: t.issue_address || '', simbolo: t.symbol || '?' };
   } catch (_) { return null; }
 }
+/* TronGrid (nodo PUBLICO de Tron, sin API key, CORS abierto: es lo que usa TronLink/TronWeb desde el navegador).
+   Es la CAPA ON-CHAIN de Tron — el respaldo deterministico para que un token de Tron SIEMPRE de un veredicto
+   real aunque GoPlus-tron y TronScan no respondan: confirma que el contrato EXISTE en cadena, y lee su creador
+   y si trae ABI (codigo publico/verificado). Defensivo: devuelve null si algo falla, nunca rompe el analisis. */
+export async function tronGridContrato(token) {
+  try {
+    const c = new AbortController(); const t = setTimeout(() => c.abort(), 8000);
+    const r = await fetch('https://api.trongrid.io/wallet/getcontract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: String(token).trim(), visible: true }), signal: c.signal });
+    clearTimeout(t); if (!r.ok) return null;
+    const j = await r.json(); if (!j || (!j.bytecode && !j.contract_address)) return null;   // sin bytecode no es un contrato
+    return { existe: true, creador: j.origin_address || '', verificado: !!(j.abi && j.abi.entrys && j.abi.entrys.length), nombre: j.name || '' };
+  } catch (_) { return null; }
+}

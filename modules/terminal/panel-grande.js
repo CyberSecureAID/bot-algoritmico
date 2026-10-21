@@ -856,12 +856,12 @@ function scoreCadena(r) {
    PUNTAJE, no al nivel: color, numero y etiqueta jamas se contradicen. Verde desde 70; por debajo, rojo. Los
    asesinos (honeypot/impostor) fuerzan rojo con su etiqueta propia aunque el numero quedara alto por otra via. */
 function bandaSeguridad(p, r) {
-  if (r && r.impostor) return { kind: 'risk', etq: 'FAKE — DO NOT BUY', vshort: 'Fake token', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
-  if (r && r.datos && r.datos.checks && r.datos.checks.sellable === false) return { kind: 'risk', etq: 'HONEYPOT — DO NOT BUY', vshort: 'Honeypot', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
-  if (p >= 85) return { kind: 'ok', etq: 'STRONG', vshort: 'Strong', col: '#3DED8C', glow: 'rgba(61,237,140,.55)' };
-  if (p >= 70) return { kind: 'ok', etq: 'SOLID', vshort: 'Solid', col: '#8BE86A', glow: 'rgba(139,232,106,.5)' };
-  if (p >= 55) return { kind: 'risk', etq: 'TRADE WITH CAUTION', vshort: 'Caution', col: '#E8B84B', glow: 'rgba(232,184,75,.5)' };
-  if (p >= 35) return { kind: 'risk', etq: 'HIGH RISK', vshort: 'High risk', col: '#FF8A3D', glow: 'rgba(255,138,61,.5)' };
+  // Vocabulario APROBADO por el usuario (el de siempre): LOOKS SAFE / TRADE WITH CAUTION / DO NOT BUY. Nada de
+  // "SOLID/STRONG". Lo unico nuevo es que el COLOR y QUE escudo (verde ≥70 / rojo <70) siguen al PUNTAJE.
+  if (r && r.impostor) return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Fake token', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
+  if (r && r.datos && r.datos.checks && r.datos.checks.sellable === false) return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Honeypot', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
+  if (p >= 70) return { kind: 'ok', etq: 'LOOKS SAFE', vshort: 'Looks safe', col: '#3DED8C', glow: 'rgba(61,237,140,.55)' };
+  if (p >= 40) return { kind: 'risk', etq: 'TRADE WITH CAUTION', vshort: 'Caution', col: '#E8B84B', glow: 'rgba(232,184,75,.5)' };
   return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Do not buy', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
 }
 const SELLO_BG = { ok: new URL('./img/sec-safe.webp', import.meta.url).href, risk: new URL('./img/sec-risk.webp', import.meta.url).href };
@@ -872,7 +872,7 @@ function selloMarkup(kind, p, niv, r, band, parcial) {
   const vshort = (band && band.vshort) || (imp ? ('Fake ' + imp) : 'Checking');
   const cap = imp
     ? `Impersonates <b>${esc(imp)}</b> — this is NOT the official ${esc(imp)} contract. Likely scam.`
-    : (parcial ? 'on-chain only · the honeypot &amp; tax scanner hasn’t indexed this token yet'
+    : (parcial ? 'based on live on-chain data — score of this token, not of DecFreedom'
                : 'security score of this token, higher is safer — not a rating of DecFreedom');
   return `<div class="tg-sello ${kind}"><canvas class="tg-sello-cv"></canvas><div class="tg-sello-sk"><i class="tg-anillo2"></i></div></div><p class="tg-sello-cap ${kind}"><b>${esc(vshort)} · ${p}%</b> · ${cap}</p>`;
 }
@@ -897,6 +897,58 @@ function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.
    se deja INTACTO: representa la seguridad del token, no se le encima nada. En el recuadro HUD (derecha) va
    el % gigante; encima, en la banda vacia, el icono y el simbolo de la MONEDA; debajo, el texto que aclara
    que el porcentaje es de ESE token, no de DecFreedom; y abajo-izquierda, la marca decfreedom.com. */
+/* Compone el escudo SOBRE el fondo ya dibujado en el rectangulo [X,Y,W,H]: arriba (en la banda vacia, nunca
+   sobre el dibujo del escudo que esta a la IZQUIERDA) el logo+simbolo; en el recuadro HUD de la derecha el %
+   gigante; bajo el % la etiqueta; dos lineas aclaratorias; y abajo-izquierda la marca decfreedom.com. Todo en
+   proporciones RELATIVAS al rectangulo, asi el escudo se ve IDENTICO en pantalla y en la imagen descargable
+   (misma composicion, solo cambia el tamano). */
+function componerEscudo(ctx, X, Y, W, H, p, band, it, ic) {
+  const col = band.col, glow = band.glow, cx = X + W * 0.79, cxCoin = X + W * 0.75;
+  const sym = ((it && it.simbolo) ? String(it.simbolo) : 'TOKEN').toUpperCase().replace(/\s+/g, '').slice(0, 12);
+  let fS = Math.round(H * 0.075); ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`;
+  let symW = ctx.measureText(sym).width;
+  const icoSz = ic ? Math.round(H * 0.12) : 0, gap = ic ? Math.round(W * 0.012) : 0, maxGrp = W * 0.34;
+  while (icoSz + gap + symW > maxGrp && fS > 20) { fS -= 4; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; symW = ctx.measureText(sym).width; }
+  const grpW = icoSz + gap + symW, rowY = Y + H * 0.125, rightMax = X + W * 0.955;
+  let gx = cxCoin - grpW / 2; if (gx + grpW > rightMax) gx = rightMax - grpW;
+  if (ic) {
+    const iy = rowY - icoSz / 2; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28);
+    ctx.save(); ctx.clip(); ctx.drawImage(ic, gx, iy, icoSz, icoSz); ctx.restore();
+    ctx.lineWidth = Math.max(2, H * 0.004); ctx.strokeStyle = 'rgba(255,255,255,.32)'; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28); ctx.stroke();
+    gx += icoSz + gap;
+  }
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,.72)'; ctx.shadowBlur = 10;
+  ctx.fillStyle = '#FFFFFF'; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(sym, gx, rowY);
+  // % gigante centrado en el recuadro HUD
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.022;
+  let pf = Math.round(H * 0.25); const maxP = W * 0.32, ptxt = p + '%';
+  ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`;
+  while (ctx.measureText(ptxt).width > maxP && pf > 40) { pf -= 6; ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`; }
+  ctx.fillText(ptxt, cx, Y + H * 0.43);
+  // Etiqueta bajo el % (LOOKS SAFE / TRADE WITH CAUTION / DO NOT BUY)
+  ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.006;
+  let ef = Math.round(H * 0.04); ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`;
+  while (ctx.measureText(band.etq).width > W * 0.33 && ef > 16) { ef -= 2; ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`; }
+  ctx.fillText(band.etq, cx, Y + H * 0.575);
+  // Dos lineas aclaratorias: el % es de ESTE token, NO de DecFreedom
+  const l1 = (band.kind === 'ok') ? `${sym} looks safe to trade right now` : `${sym} carries real risk — be careful`;
+  const l2 = 'Security score of this token, not of DecFreedom';
+  const maxL = W * 0.40;
+  ctx.shadowColor = 'rgba(0,0,0,.82)'; ctx.shadowBlur = 7; ctx.fillStyle = 'rgba(255,255,255,.94)';
+  let f1 = Math.round(H * 0.032); ctx.font = `600 ${f1}px Arial, sans-serif`;
+  while (ctx.measureText(l1).width > maxL && f1 > 14) { f1 -= 1; ctx.font = `600 ${f1}px Arial, sans-serif`; }
+  ctx.fillText(l1, cx, Y + H * 0.70);
+  ctx.fillStyle = 'rgba(255,255,255,.74)';
+  let f2 = Math.round(H * 0.027); ctx.font = `500 ${f2}px Arial, sans-serif`;
+  while (ctx.measureText(l2).width > maxL && f2 > 12) { f2 -= 1; ctx.font = `500 ${f2}px Arial, sans-serif`; }
+  ctx.fillText(l2, cx, Y + H * 0.755);
+  // Marca decfreedom.com abajo-izquierda
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.shadowColor = 'rgba(0,0,0,.88)'; ctx.shadowBlur = 9;
+  ctx.font = `800 ${Math.round(H * 0.042)}px "Chakra Petch", Arial, sans-serif`;
+  const bx = X + W * 0.035, by = Y + H * 0.945; ctx.fillStyle = '#FFFFFF'; ctx.fillText('DecFreedom', bx, by);
+  const bw = ctx.measureText('DecFreedom').width; ctx.fillStyle = col; ctx.fillText('.com', bx + bw, by);
+  ctx.shadowBlur = 0;
+}
 async function dibujarSello(cv, kind, p, it, niv, r, band) {
   band = band || bandaSeguridad(p, r);
   try {
@@ -905,64 +957,12 @@ async function dibujarSello(cv, kind, p, it, niv, r, band) {
     const W = bg.naturalWidth || 1672, H = bg.naturalHeight || 941;
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H); ctx.drawImage(bg, 0, 0, W, H);
-    const col = band.col, glow = band.glow;          // color/glow del PUNTAJE, para que nada se contradiga
-    const cx = W * 0.79;                         // centro del recuadro HUD (mitad derecha)
-    const sym = ((it && it.simbolo) ? String(it.simbolo) : 'TOKEN').toUpperCase().replace(/\s+/g, '').slice(0, 12);
     let ic = null; try { ic = await cargarLogoTok(it); } catch (_) { ic = null; }
     if (!cv.isConnected || (it && _itActual !== it)) return;
-    // ── Moneda: [icono] SIMBOLO en fila (solo eso, sin el nombre). El grupo se centra algo a la IZQUIERDA del
-    //    % y, ademas, se limita su borde derecho: asi ningun simbolo largo (ni en otro alfabeto) se sale de la
-    //    imagen. El escudo (izquierda) nunca se tapa porque esto va arriba, en la banda vacia. ──
-    const cxCoin = W * 0.75;
-    let fS = Math.round(H * 0.075);
-    ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`;
-    let symW = ctx.measureText(sym).width;
-    const icoSz = ic ? Math.round(H * 0.12) : 0, gap = ic ? Math.round(W * 0.012) : 0, maxGrp = W * 0.34;
-    while (icoSz + gap + symW > maxGrp && fS > 28) { fS -= 4; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; symW = ctx.measureText(sym).width; }
-    const grpW = icoSz + gap + symW, rowY = H * 0.125, rightMax = W * 0.955;
-    let gx = cxCoin - grpW / 2; if (gx + grpW > rightMax) gx = rightMax - grpW;
-    if (ic) {
-      const iy = rowY - icoSz / 2; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28);
-      ctx.save(); ctx.clip(); ctx.drawImage(ic, gx, iy, icoSz, icoSz); ctx.restore();
-      ctx.lineWidth = Math.max(2, H * 0.004); ctx.strokeStyle = 'rgba(255,255,255,.32)'; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28); ctx.stroke();
-      gx += icoSz + gap;
-    }
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,.72)'; ctx.shadowBlur = 10;
-    ctx.fillStyle = '#FFFFFF'; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(sym, gx, rowY);
-    // ── Porcentaje gigante centrado en el recuadro ──
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.022;
-    let pf = Math.round(H * 0.25); const maxP = W * 0.32, ptxt = p + '%';
-    ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`;
-    while (ctx.measureText(ptxt).width > maxP && pf > 50) { pf -= 6; ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`; }
-    ctx.fillText(ptxt, cx, H * 0.43);
-    // ── Etiqueta de la banda (dentro del recuadro, bajo el %) — sale del PUNTAJE, no del nivel ──
-    const etq = band.etq;
-    ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.006;
-    let ef = Math.round(H * 0.04); ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`;
-    while (ctx.measureText(etq).width > W * 0.33 && ef > 20) { ef -= 2; ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`; }
-    ctx.fillText(etq, cx, H * 0.575);
-    // ── Aclaracion: el % es de ESTE token, NO de DecFreedom (clave para no generar mala publicidad) ──
-    const l1 = (r && r.impostor) ? `${sym} is a fake — do not trade` : kind === 'ok' ? `${sym} looks safe to trade right now` : `${sym} carries real risk — be careful`;
-    const l2 = 'Security score of this token, not of DecFreedom';
-    const maxL = W * 0.40;
-    ctx.shadowColor = 'rgba(0,0,0,.82)'; ctx.shadowBlur = 7; ctx.fillStyle = 'rgba(255,255,255,.94)';
-    let f1 = Math.round(H * 0.032); ctx.font = `600 ${f1}px Arial, sans-serif`;
-    while (ctx.measureText(l1).width > maxL && f1 > 16) { f1 -= 1; ctx.font = `600 ${f1}px Arial, sans-serif`; }
-    ctx.fillText(l1, cx, H * 0.70);
-    ctx.fillStyle = 'rgba(255,255,255,.74)';
-    let f2 = Math.round(H * 0.027); ctx.font = `500 ${f2}px Arial, sans-serif`;
-    while (ctx.measureText(l2).width > maxL && f2 > 14) { f2 -= 1; ctx.font = `500 ${f2}px Arial, sans-serif`; }
-    ctx.fillText(l2, cx, H * 0.755);
-    // ── Marca: decfreedom.com abajo-izquierda (lo que convierte la imagen compartida en publicidad nuestra) ──
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.shadowColor = 'rgba(0,0,0,.88)'; ctx.shadowBlur = 9;
-    ctx.font = `800 ${Math.round(H * 0.042)}px "Chakra Petch", Arial, sans-serif`;
-    const bx = W * 0.035, by = H * 0.945; ctx.fillStyle = '#FFFFFF'; ctx.fillText('DecFreedom', bx, by);
-    const bw = ctx.measureText('DecFreedom').width; ctx.fillStyle = col; ctx.fillText('.com', bx + bw, by);
+    componerEscudo(ctx, 0, 0, W, H, p, band, it, ic);
     const wrap = cv.closest('.tg-sello'); if (wrap) wrap.classList.add('ready');
     const dbtn = $('tg-diag-dl'); if (dbtn) { dbtn.disabled = false; dbtn.classList.add('on'); }   // habilita la descarga del diagnostico completo
   } catch (e) {
-    // Si el fondo no carga, no dejamos hueco: tarjeta de texto clara (mismo mensaje, sin imagen). La descarga
-    // del diagnostico sigue habilitada (se dibuja su propio escudo de respaldo sin la imagen de fondo).
     const sem = $('tg-sem'); if (sem) { delete sem.dataset.sello; sem.className = 'tg-sem ' + (band.kind === 'ok' ? 'ok' : 'bad'); sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM[niv] || ICO_SEM.info}</span><div><b>${esc(band.vshort)} · ${p}%</b><span>Security score of this token, not of DecFreedom.</span></div>`; }
     const dbtn = $('tg-diag-dl'); if (dbtn) { dbtn.disabled = false; dbtn.classList.add('on'); }
   }
@@ -1004,41 +1004,12 @@ function badge(ctx, x, y, r, ok) {
   else { ctx.moveTo(x - r * 0.32, y - r * 0.32); ctx.lineTo(x + r * 0.32, y + r * 0.32); ctx.moveTo(x + r * 0.32, y - r * 0.32); ctx.lineTo(x - r * 0.32, y + r * 0.32); }
   ctx.stroke(); ctx.restore();
 }
-/* Overlay del escudo (simbolo + % gigante + etiqueta de banda) dentro de un rectangulo dado. Lo usa la imagen
-   de diagnostico sobre el escudo de fondo; mismas proporciones que el sello en pantalla. */
-function pintarHUD(ctx, X, Y, W, H, p, band, sym, ic) {
-  const col = band.col, glow = band.glow, cx = X + W * 0.79, cxCoin = X + W * 0.75;
-  let fS = Math.round(H * 0.085); ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`;
-  let symW = ctx.measureText(sym).width;
-  const icoSz = ic ? Math.round(H * 0.13) : 0, gap = ic ? Math.round(W * 0.012) : 0, maxGrp = W * 0.34;
-  while (icoSz + gap + symW > maxGrp && fS > 18) { fS -= 3; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; symW = ctx.measureText(sym).width; }
-  const grpW = icoSz + gap + symW, rowY = Y + H * 0.14, rightMax = X + W * 0.955;
-  let gx = cxCoin - grpW / 2; if (gx + grpW > rightMax) gx = rightMax - grpW;
-  if (ic) {
-    const iy = rowY - icoSz / 2; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28);
-    ctx.save(); ctx.clip(); ctx.drawImage(ic, gx, iy, icoSz, icoSz); ctx.restore();
-    ctx.lineWidth = Math.max(2, H * 0.005); ctx.strokeStyle = 'rgba(255,255,255,.32)'; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28); ctx.stroke();
-    gx += icoSz + gap;
-  }
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,.72)'; ctx.shadowBlur = 10;
-  ctx.fillStyle = '#FFFFFF'; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(sym, gx, rowY);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.022;
-  let pf = Math.round(H * 0.3); const maxP = W * 0.32, ptxt = p + '%';
-  ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`;
-  while (ctx.measureText(ptxt).width > maxP && pf > 30) { pf -= 6; ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`; }
-  ctx.fillText(ptxt, cx, Y + H * 0.44);
-  ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.006;
-  let ef = Math.round(H * 0.05); ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`;
-  while (ctx.measureText(band.etq).width > W * 0.36 && ef > 14) { ef -= 2; ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`; }
-  ctx.fillText(band.etq, cx, Y + H * 0.66); ctx.shadowBlur = 0;
-}
-/* Construye el canvas del diagnostico completo del token y lo devuelve (para descargar en PNG de alta calidad).
-   Alto dinamico segun cuantos checks y datos haya. SC=2 => imagen nitida para compartir. */
+/* Construye el canvas del diagnostico COMPLETO del token y lo devuelve (PNG de alta calidad para compartir).
+   Encabezado centrado -> escudo COMPLETO (sin recortar, misma composicion que en pantalla) -> 9 checks ->
+   resumen -> pie. SC=2 = imagen nitida. Alto dinamico segun cuantos checks/datos haya. */
 async function dibujarDiagnostico(r, it, band, p) {
   const SC = 2, Wc = 1120, pad = 44;
   const c = r && r.datos && r.datos.checks, d = (r && r.datos) || {};
-  const sym = ((it && it.simbolo) ? String(it.simbolo) : 'TOKEN').toUpperCase().replace(/\s+/g, '').slice(0, 14);
-  const name = (it && it.nombre) ? String(it.nombre) : '';
   const rows = [];
   if (c) { for (const def of CHECKS_DEF) { const ok = !!c[def.k]; let val = ''; try { val = def.v(c, d); } catch (_) {} rows.push({ ok, t: def.t, v: val }); } }
   else { for (const h of ((r && r.hallazgos) || [])) { if (h.n === 'info') continue; rows.push({ ok: h.n === 'ok', t: h.t, v: '' }); if (rows.length >= 9) break; } if (!rows.length) rows.push({ ok: false, t: 'Analysis', v: (r && r.titulo) || '—' }); }
@@ -1048,45 +1019,39 @@ async function dibujarDiagnostico(r, it, band, p) {
   if (d.buyTax != null || d.sellTax != null) sumItems.push(['Buy / Sell', Math.round(d.buyTax || 0) + '/' + Math.round(d.sellTax || 0) + '%']);
   if (d.lpAsegurada != null) sumItems.push(['LP secured', Math.round(d.lpAsegurada) + '%']);
   if (d.creador) sumItems.push(['Creator', corto(d.creador)]);
-  const headerH = 150, coinH = name && name.toUpperCase() !== sym ? 118 : 86;
-  const heroW = Wc - pad * 2, heroH = Math.round(heroW * (941 / 1672) * 0.66);
+  const headerH = 118;
+  const heroW = Wc - pad * 2, heroH = Math.round(heroW * (941 / 1672));   // escudo COMPLETO, mismo aspecto, SIN recorte
   const rowH = 60, listH = rows.length * rowH + 16, sumH = sumItems.length ? 112 : 0, footH = 118;
-  const Hc = headerH + coinH + heroH + 24 + listH + sumH + footH;
+  const Hc = headerH + heroH + 20 + listH + sumH + footH;
   const cv = document.createElement('canvas'); cv.width = Wc * SC; cv.height = Hc * SC;
   const ctx = cv.getContext('2d'); ctx.scale(SC, SC);
   const g = ctx.createLinearGradient(0, 0, 0, Hc); g.addColorStop(0, '#0C1014'); g.addColorStop(1, '#080A0D');
   ctx.fillStyle = g; ctx.fillRect(0, 0, Wc, Hc);
   ctx.strokeStyle = band.kind === 'ok' ? 'rgba(61,237,140,.25)' : 'rgba(255,67,87,.22)'; ctx.lineWidth = 2; rrect(ctx, 6, 6, Wc - 12, Hc - 12, 20); ctx.stroke();
-  // Encabezado CENTRADO
-  let y = 40; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  // Encabezado CENTRADO (el nombre de la moneda NO se repite aqui: ya va en el escudo, para no duplicarlo)
+  let y = 38; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = '#E8B84B'; ctx.font = `700 22px "Chakra Petch", Arial, sans-serif`; drawSpaced(ctx, 'SECURITY CHECK', Wc / 2, y + 6, 6);
-  ctx.fillStyle = 'rgba(173,182,194,.8)'; ctx.font = `500 14px Arial, sans-serif`; ctx.fillText('DecFreedom token diagnosis', Wc / 2, y + 34);
-  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, y + 58); ctx.lineTo(Wc - pad, y + 58); ctx.stroke();
+  ctx.fillStyle = 'rgba(173,182,194,.8)'; ctx.font = `500 14px Arial, sans-serif`; ctx.fillText('DecFreedom token security diagnosis', Wc / 2, y + 34);
+  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, y + 56); ctx.lineTo(Wc - pad, y + 56); ctx.stroke();
   y = headerH;
-  // Moneda (logo + simbolo + nombre) centrada
+  // Escudo COMPLETO (sin recortar): el rect ya tiene el aspecto 1672:941, asi que la imagen entra entera; la
+  // composicion (%, simbolo, etiqueta) es la MISMA funcion que en pantalla, para que se vea identico y perfecto.
   let ic = null; try { ic = await cargarLogoTok(it); } catch (_) { ic = null; }
-  const icoSz = 56; ctx.font = `800 40px "Chakra Petch", Arial, sans-serif`; const symW = ctx.measureText(sym).width;
-  const grpW = (ic ? icoSz + 14 : 0) + symW; let gx = Wc / 2 - grpW / 2;
-  if (ic) { const iy = y + 4; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28); ctx.save(); ctx.clip(); ctx.drawImage(ic, gx, iy, icoSz, icoSz); ctx.restore(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.3)'; rrect(ctx, gx, iy, icoSz, icoSz, icoSz * 0.28); ctx.stroke(); gx += icoSz + 14; }
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#FFFFFF'; ctx.font = `800 40px "Chakra Petch", Arial, sans-serif`; ctx.fillText(sym, gx, y + 32);
-  if (name && name.toUpperCase() !== sym) { ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(173,182,194,.75)'; ctx.font = `500 16px Arial, sans-serif`; ctx.fillText(name.slice(0, 44), Wc / 2, y + 74); }
-  y = headerH + coinH;
-  // Escudo hero (fondo sec-safe/risk encajado + overlay % / banda)
   const hx = pad, hy = y, hw = heroW, hh = heroH;
   try {
     const bg = await cargarImg(band.kind === 'ok' ? SELLO_BG.ok : SELLO_BG.risk, true);
     ctx.save(); rrect(ctx, hx, hy, hw, hh, 16); ctx.clip();
-    const ar = bg.naturalWidth / bg.naturalHeight, rr = hw / hh; let dw, dh, dx, dy;
-    if (ar > rr) { dh = hh; dw = hh * ar; dx = hx - (dw - hw) / 2; dy = hy; } else { dw = hw; dh = hw / ar; dx = hx; dy = hy - (dh - hh) / 2; }
-    ctx.drawImage(bg, dx, dy, dw, dh); ctx.restore();
-    pintarHUD(ctx, hx, hy, hw, hh, p, band, sym, ic);
+    ctx.drawImage(bg, hx, hy, hw, hh);
+    ctx.restore();
+    componerEscudo(ctx, hx, hy, hw, hh, p, band, it, ic);
   } catch (_) {
+    // Respaldo si la imagen no carga: panel plano con % centrado (sin recorte ni montajes raros).
     ctx.fillStyle = band.kind === 'ok' ? 'rgba(61,237,140,.08)' : 'rgba(255,67,87,.08)'; rrect(ctx, hx, hy, hw, hh, 16); ctx.fill();
     ctx.strokeStyle = band.col; ctx.lineWidth = 2; rrect(ctx, hx, hy, hw, hh, 16); ctx.stroke();
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = band.col; ctx.font = `800 ${Math.round(hh * 0.42)}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(p + '%', Wc / 2, hy + hh * 0.42);
-    ctx.font = `700 ${Math.round(hh * 0.12)}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(band.etq, Wc / 2, hy + hh * 0.78);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = band.col; ctx.font = `800 ${Math.round(hh * 0.4)}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(p + '%', Wc / 2, hy + hh * 0.42);
+    ctx.font = `700 ${Math.round(hh * 0.1)}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(band.etq, Wc / 2, hy + hh * 0.72);
   }
-  y = headerH + coinH + heroH + 24;
+  y = headerH + heroH + 20;
   // Lista de checks
   ctx.shadowBlur = 0;
   for (const row of rows) {
@@ -1144,14 +1109,15 @@ function checksScan() {
    necesitando el escaner, y eso se dice en la nota. animar=true hace la cascada; false repinta sin animar. */
 function pintarOnchain(host, r, animar) {
   const onchain = ((r && r.hallazgos) || []).filter((x) => x && (x.n === 'ok' || x.n === 'warn' || x.n === 'bad'));
-  const NOTA = `<div class="tg-chk-note">Honeypot and tax checks need the security scanner, which hasn't indexed this token yet. The on-chain checks above are read live from the chain.</div>`;
-  if (!onchain.length) { host.innerHTML = `<div class="tg-chk-note">Honeypot and tax checks need the scanner, which hasn't indexed this token yet. Holders, creator and liquidity above are read live from the chain.</div>`; return 0; }
+  // SIN coletilla de "scanner no indexado" (el usuario la odia con razon): el diagnostico son los hallazgos
+  // REALES de cadena, cada uno con su motivo. Nada de parrafos pidiendo disculpas por el escaner.
+  if (!onchain.length) { host.innerHTML = `<div class="tg-chk-note">Live on-chain analysis — reopen the token if nothing appears.</div>`; return 0; }
   // El texto del hallazgo ("Top 10 hold 70%", "Owner still in control") YA es el veredicto; antes cada fila
   // repetia ademas la palabra "Caution" en la columna derecha -> salia "Caution / Caution / Caution". Se quita:
   // el icono (check verde / X roja) y el color de la fila ya dicen si es bueno o un riesgo.
   const fila = (x) => { const ok = x.n === 'ok'; return `<div class="tg-chk rev ${ok ? 'ok' : 'no'}"><span><i>${ok ? ICO_CHECK : ICO_X}</i>${esc(x.t)}</span><b></b></div>`; };
-  if (!animar) { host.innerHTML = onchain.map(fila).join('') + NOTA; return 0; }
-  host.innerHTML = onchain.map(() => `<div class="tg-chk scan"><span><i class="tg-chk-sp"></i></span><b class="tg-chk-bar"><em></em></b></div>`).join('') + NOTA;
+  if (!animar) { host.innerHTML = onchain.map(fila).join(''); return 0; }
+  host.innerHTML = onchain.map(() => `<div class="tg-chk scan"><span><i class="tg-chk-sp"></i></span><b class="tg-chk-bar"><em></em></b></div>`).join('');
   const rows = host.querySelectorAll('.tg-chk');
   rows.forEach((row, i) => {
     setTimeout(() => {

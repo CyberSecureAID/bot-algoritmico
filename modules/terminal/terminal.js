@@ -780,7 +780,7 @@ function pintarAuditoria(r, reintentar) {
     : (nb ? nb + ' critical issue' + (nb > 1 ? 's' : '') : '') + (nb && nw ? ' and ' : '') + (nw ? nw + ' warning' + (nw > 1 ? 's' : '') : '')) + pasa;
   const sinDatos = r.nivel === 'pend';
   const sinCadena = sinDatos && !(r.datos && r.datos.holders != null);      // ni el escaner ni la cadena respondieron
-  sem.innerHTML = `<span class="tm-sem-ico">${ICO_N[r.nivel]}</span><div><b>${sinCadena ? 'Not checked yet' : sinDatos ? 'Partial check' : TXT_NIVEL[r.nivel]}</b><span>${sinCadena ? 'The scanner or the network did not answer in time.' : sinDatos ? 'On-chain checks are live below. The honeypot &amp; tax scanner is still indexing.' : sub}</span></div>` + (sinCadena && reintentar ? '<button class="tm-sem-retry" type="button" id="tm-sem-retry">Retry</button>' : '');
+  sem.innerHTML = `<span class="tm-sem-ico">${ICO_N[r.nivel]}</span><div><b>${sinCadena ? 'Analyzing…' : sinDatos ? 'Live diagnosis' : TXT_NIVEL[r.nivel]}</b><span>${sinCadena ? 'No source answered yet — reopen the token to retry.' : sinDatos ? 'Read live from the chain below.' : sub}</span></div>` + (sinCadena && reintentar ? '<button class="tm-sem-retry" type="button" id="tm-sem-retry">Retry</button>' : '');
   const rb = $('tm-sem-retry'); if (rb && reintentar) rb.onclick = reintentar;
   const d = r.datos || {};
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
