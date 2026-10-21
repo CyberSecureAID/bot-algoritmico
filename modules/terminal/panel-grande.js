@@ -870,11 +870,12 @@ function selloMarkup(kind, p, niv, r, band, parcial) {
   // boton grande al final de TODO el diagnostico (mas visible). Aqui solo queda el escudo + la leyenda legible.
   const imp = r && r.impostor;
   const vshort = (band && band.vshort) || (imp ? ('Fake ' + imp) : 'Checking');
+  // Sin guiones ni puntos medios en toda la leyenda (el usuario los odia): frases con punto y coma normales.
   const cap = imp
-    ? `Impersonates <b>${esc(imp)}</b> — this is NOT the official ${esc(imp)} contract. Likely scam.`
-    : (parcial ? 'based on live on-chain data — score of this token, not of DecFreedom'
-               : 'security score of this token, higher is safer — not a rating of DecFreedom');
-  return `<div class="tg-sello ${kind}"><canvas class="tg-sello-cv"></canvas><div class="tg-sello-sk"><i class="tg-anillo2"></i></div></div><p class="tg-sello-cap ${kind}"><b>${esc(vshort)} · ${p}%</b> · ${cap}</p>`;
+    ? `Impersonates <b>${esc(imp)}</b>. This is NOT the official ${esc(imp)} contract. Likely a scam.`
+    : (parcial ? 'live on-chain score of this token, not of DecFreedom'
+               : 'security score of this token (higher is safer), not of DecFreedom');
+  return `<div class="tg-sello ${kind}"><canvas class="tg-sello-cv"></canvas><div class="tg-sello-sk"><i class="tg-anillo2"></i></div></div><p class="tg-sello-cap ${kind}"><b>${p}% ${esc(vshort)}.</b> ${cap}</p>`;
 }
 /* Cache (promesa) para no recargar el fondo en cada repintado del sello. */
 const _selloImgCache = {};
@@ -919,29 +920,14 @@ function componerEscudo(ctx, X, Y, W, H, p, band, it, ic) {
   }
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,.72)'; ctx.shadowBlur = 10;
   ctx.fillStyle = '#FFFFFF'; ctx.font = `800 ${fS}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(sym, gx, rowY);
-  // % gigante centrado en el recuadro HUD
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.022;
-  let pf = Math.round(H * 0.25); const maxP = W * 0.32, ptxt = p + '%';
+  // SOLO el % dentro del recuadro HUD, CENTRADO y solo. NADA debajo: ni palabra (LOOKS SAFE/etc.) ni lineas ni
+  // guiones. El usuario lo quiere limpio, con el porcentaje centrado como estaba "perfecto". La etiqueta y la
+  // aclaracion "de este token, no de DecFreedom" viven FUERA del escudo (en la leyenda y en el pie).
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.024;
+  let pf = Math.round(H * 0.3); const maxP = W * 0.33, ptxt = p + '%';
   ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`;
   while (ctx.measureText(ptxt).width > maxP && pf > 40) { pf -= 6; ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`; }
-  ctx.fillText(ptxt, cx, Y + H * 0.43);
-  // Etiqueta bajo el % (LOOKS SAFE / TRADE WITH CAUTION / DO NOT BUY)
-  ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.006;
-  let ef = Math.round(H * 0.04); ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`;
-  while (ctx.measureText(band.etq).width > W * 0.33 && ef > 16) { ef -= 2; ctx.font = `700 ${ef}px "Chakra Petch", Arial, sans-serif`; }
-  ctx.fillText(band.etq, cx, Y + H * 0.575);
-  // Dos lineas aclaratorias: el % es de ESTE token, NO de DecFreedom
-  const l1 = (band.kind === 'ok') ? `${sym} looks safe to trade right now` : `${sym} carries real risk — be careful`;
-  const l2 = 'Security score of this token, not of DecFreedom';
-  const maxL = W * 0.40;
-  ctx.shadowColor = 'rgba(0,0,0,.82)'; ctx.shadowBlur = 7; ctx.fillStyle = 'rgba(255,255,255,.94)';
-  let f1 = Math.round(H * 0.032); ctx.font = `600 ${f1}px Arial, sans-serif`;
-  while (ctx.measureText(l1).width > maxL && f1 > 14) { f1 -= 1; ctx.font = `600 ${f1}px Arial, sans-serif`; }
-  ctx.fillText(l1, cx, Y + H * 0.70);
-  ctx.fillStyle = 'rgba(255,255,255,.74)';
-  let f2 = Math.round(H * 0.027); ctx.font = `500 ${f2}px Arial, sans-serif`;
-  while (ctx.measureText(l2).width > maxL && f2 > 12) { f2 -= 1; ctx.font = `500 ${f2}px Arial, sans-serif`; }
-  ctx.fillText(l2, cx, Y + H * 0.755);
+  ctx.fillText(ptxt, cx, Y + H * 0.46);
   // Marca decfreedom.com abajo-izquierda
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.shadowColor = 'rgba(0,0,0,.88)'; ctx.shadowBlur = 9;
   ctx.font = `800 ${Math.round(H * 0.042)}px "Chakra Petch", Arial, sans-serif`;
@@ -963,7 +949,7 @@ async function dibujarSello(cv, kind, p, it, niv, r, band) {
     const wrap = cv.closest('.tg-sello'); if (wrap) wrap.classList.add('ready');
     const dbtn = $('tg-diag-dl'); if (dbtn) { dbtn.disabled = false; dbtn.classList.add('on'); }   // habilita la descarga del diagnostico completo
   } catch (e) {
-    const sem = $('tg-sem'); if (sem) { delete sem.dataset.sello; sem.className = 'tg-sem ' + (band.kind === 'ok' ? 'ok' : 'bad'); sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM[niv] || ICO_SEM.info}</span><div><b>${esc(band.vshort)} · ${p}%</b><span>Security score of this token, not of DecFreedom.</span></div>`; }
+    const sem = $('tg-sem'); if (sem) { delete sem.dataset.sello; sem.className = 'tg-sem ' + (band.kind === 'ok' ? 'ok' : 'bad'); sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM[niv] || ICO_SEM.info}</span><div><b>${p}% ${esc(band.vshort)}</b><span>Security score of this token, not of DecFreedom.</span></div>`; }
     const dbtn = $('tg-diag-dl'); if (dbtn) { dbtn.disabled = false; dbtn.classList.add('on'); }
   }
 }
@@ -1012,7 +998,7 @@ async function dibujarDiagnostico(r, it, band, p) {
   const c = r && r.datos && r.datos.checks, d = (r && r.datos) || {};
   const rows = [];
   if (c) { for (const def of CHECKS_DEF) { const ok = !!c[def.k]; let val = ''; try { val = def.v(c, d); } catch (_) {} rows.push({ ok, t: def.t, v: val }); } }
-  else { for (const h of ((r && r.hallazgos) || [])) { if (h.n === 'info') continue; rows.push({ ok: h.n === 'ok', t: h.t, v: '' }); if (rows.length >= 9) break; } if (!rows.length) rows.push({ ok: false, t: 'Analysis', v: (r && r.titulo) || '—' }); }
+  else { for (const h of ((r && r.hallazgos) || [])) { if (h.n === 'info') continue; rows.push({ ok: h.n === 'ok', t: h.t, v: '' }); if (rows.length >= 9) break; } if (!rows.length) rows.push({ ok: false, t: 'Analysis', v: (r && r.titulo) || '' }); }
   const sumItems = [];
   if (d.holders != null) sumItems.push(['Holders', Number(d.holders).toLocaleString('en-US')]);
   if (d.top10Pct != null) sumItems.push(['Top 10', Math.round(d.top10Pct) + '%']);
@@ -1081,7 +1067,7 @@ async function dibujarDiagnostico(r, it, band, p) {
   const fy = y + 42; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = '#FFFFFF'; ctx.font = `800 26px "Chakra Petch", Arial, sans-serif`; ctx.fillText('DecFreedom', pad, fy);
   const dw2 = ctx.measureText('DecFreedom').width; ctx.fillStyle = band.col; ctx.fillText('.com', pad + dw2, fy);
-  ctx.fillStyle = 'rgba(173,182,194,.82)'; ctx.font = `500 13px Arial, sans-serif`; ctx.fillText('Security diagnosis of this token — not a rating of DecFreedom', pad, fy + 26);
+  ctx.fillStyle = 'rgba(173,182,194,.82)'; ctx.font = `500 13px Arial, sans-serif`; ctx.fillText('Security diagnosis of this token, not a rating of DecFreedom', pad, fy + 26);
   ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(125,135,148,.85)'; ctx.font = `500 13px Arial, sans-serif`; ctx.fillText(new Date().toISOString().slice(0, 10), Wc - pad, fy + 26);
   return cv;
 }
@@ -1111,7 +1097,7 @@ function pintarOnchain(host, r, animar) {
   const onchain = ((r && r.hallazgos) || []).filter((x) => x && (x.n === 'ok' || x.n === 'warn' || x.n === 'bad'));
   // SIN coletilla de "scanner no indexado" (el usuario la odia con razon): el diagnostico son los hallazgos
   // REALES de cadena, cada uno con su motivo. Nada de parrafos pidiendo disculpas por el escaner.
-  if (!onchain.length) { host.innerHTML = `<div class="tg-chk-note">Live on-chain analysis — reopen the token if nothing appears.</div>`; return 0; }
+  if (!onchain.length) { host.innerHTML = `<div class="tg-chk-note">Live on-chain analysis. Reopen the token if nothing appears.</div>`; return 0; }
   // El texto del hallazgo ("Top 10 hold 70%", "Owner still in control") YA es el veredicto; antes cada fila
   // repetia ademas la palabra "Caution" en la columna derecha -> salia "Caution / Caution / Caution". Se quita:
   // el icono (check verde / X roja) y el color de la fila ya dicen si es bueno o un riesgo.

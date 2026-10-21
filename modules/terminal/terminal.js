@@ -638,10 +638,10 @@ function pintaChecks(it, r) {
   const host = $('tm-checks-list'); if (!host) return;
   const d = (r && r.datos) ? r.datos : {};
   const c = d.checks || null;
-  const fila = (estado, label, val) => `<div class="tm-check ${estado}"><span class="tm-check-l"><i>${estado === 'ok' ? ICO_CHECK : estado === 'no' ? '✕' : '·'}</i>${label}</span><b>${val}</b></div>`;
+  const fila = (estado, label, val) => `<div class="tm-check ${estado}"><span class="tm-check-l"><i>${estado === 'ok' ? ICO_CHECK : estado === 'no' ? '✕' : '○'}</i>${label}</span><b>${val}</b></div>`;
   if (c) {
     // GoPlus indexo el token: verdictos completos (incluye honeypot e impuestos simulados).
-    const lp = d.lpAsegurada != null ? Math.round(d.lpAsegurada) + '%' : (c.lpSecured ? 'Yes' : '—');
+    const lp = d.lpAsegurada != null ? Math.round(d.lpAsegurada) + '%' : (c.lpSecured ? 'Yes' : 'No');
     const t10 = d.top10Pct != null ? 'Top10 ' + Math.round(d.top10Pct) + '%' : null;
     host.innerHTML =
       fila(c.sellable ? 'ok' : 'no', 'No honeypot', c.sellable ? 'Sellable' : 'Risky') +
@@ -659,8 +659,8 @@ function pintaChecks(it, r) {
     host.innerHTML =
       fila('pend', 'No honeypot', 'Scan pending') +
       fila(lpv != null ? (lpv >= 90 ? 'ok' : 'no') : 'pend', 'Liquidity burned', lpv != null ? lpv + '%' : 'Scan pending') +
-      fila(ren, 'Ownership renounced', ren === 'ok' ? 'Yes' : ren === 'no' ? 'No' : '—') +
-      fila(t10v != null ? (t10v >= 70 ? 'no' : 'ok') : 'pend', 'Token distribution', t10v != null ? 'Top10 ' + t10v + '%' : '—');
+      fila(ren, 'Ownership renounced', ren === 'ok' ? 'Yes' : ren === 'no' ? 'No' : 'Scan pending') +
+      fila(t10v != null ? (t10v >= 70 ? 'no' : 'ok') : 'pend', 'Token distribution', t10v != null ? 'Top10 ' + t10v + '%' : 'Scan pending');
   }
   const bdg = verifBadge(r); const vb = $('tm-tc-verif'); if (vb) vb.innerHTML = bdg; const vc = $('tm-cp-verif'); if (vc) vc.innerHTML = bdg;
 }
@@ -780,7 +780,7 @@ function pintarAuditoria(r, reintentar) {
     : (nb ? nb + ' critical issue' + (nb > 1 ? 's' : '') : '') + (nb && nw ? ' and ' : '') + (nw ? nw + ' warning' + (nw > 1 ? 's' : '') : '')) + pasa;
   const sinDatos = r.nivel === 'pend';
   const sinCadena = sinDatos && !(r.datos && r.datos.holders != null);      // ni el escaner ni la cadena respondieron
-  sem.innerHTML = `<span class="tm-sem-ico">${ICO_N[r.nivel]}</span><div><b>${sinCadena ? 'Analyzing…' : sinDatos ? 'Live diagnosis' : TXT_NIVEL[r.nivel]}</b><span>${sinCadena ? 'No source answered yet — reopen the token to retry.' : sinDatos ? 'Read live from the chain below.' : sub}</span></div>` + (sinCadena && reintentar ? '<button class="tm-sem-retry" type="button" id="tm-sem-retry">Retry</button>' : '');
+  sem.innerHTML = `<span class="tm-sem-ico">${ICO_N[r.nivel]}</span><div><b>${sinCadena ? 'Analyzing…' : sinDatos ? 'Live diagnosis' : TXT_NIVEL[r.nivel]}</b><span>${sinCadena ? 'No source answered yet. Reopen the token to retry.' : sinDatos ? 'Read live from the chain below.' : sub}</span></div>` + (sinCadena && reintentar ? '<button class="tm-sem-retry" type="button" id="tm-sem-retry">Retry</button>' : '');
   const rb = $('tm-sem-retry'); if (rb && reintentar) rb.onclick = reintentar;
   const d = r.datos || {};
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };

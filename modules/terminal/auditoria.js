@@ -105,6 +105,22 @@ function hpComoGp(hp) {
   if (hp.honeypotResult.isHoneypot) g.cannot_sell_all = '1';
   return g;
 }
+/* FUSIONA GoPlus + honeypot.is en un solo objeto. Clave para no dar FALSOS NEGATIVOS: si GoPlus esta obsoleto
+   (p.ej. dice que un contrato VERIFICADO en BscScan no tiene codigo abierto, como pasa con tokens de fabricas
+   tipo SmartDeFi), pero honeypot.is confirma lo contrario, gana la senal POSITIVA. honeypot/impuestos: si
+   cualquiera marca peligro, se marca (seguridad). Lo que falte en una fuente lo rellena la otra. */
+function fusionarGp(gp, hp) {
+  if (!gp) return hp; if (!hp) return gp;
+  const m = { ...gp };
+  if (gp.is_open_source !== '1' && hp.is_open_source === '1') m.is_open_source = '1';   // verificado si CUALQUIERA lo dice
+  if (hp.is_honeypot === '1') { m.is_honeypot = '1'; m.cannot_sell_all = '1'; }           // peligro si cualquiera lo dice
+  if ((m.holder_count == null || m.holder_count === '0') && hp.holder_count) m.holder_count = hp.holder_count;
+  if (!m.creator_address && hp.creator_address) m.creator_address = hp.creator_address;
+  if (m.buy_tax == null && hp.buy_tax != null) m.buy_tax = hp.buy_tax;
+  if (m.sell_tax == null && hp.sell_tax != null) m.sell_tax = hp.sell_tax;
+  if (!m.token_symbol && hp.token_symbol) m.token_symbol = hp.token_symbol;
+  return m;
+}
 /* Auditoria de un token TRON: no hay RPC de Tron aqui, asi que se combina GoPlus (chain 'tron': honeypot, lista
    negra, mint, pausable, propietario) con TronScan (holders, creador, verificado). Devuelve el MISMO formato que
    evaluar() para que el sello, los checks y el veredicto se pinten igual que en BSC. Asi una moneda de Tron deja
@@ -142,7 +158,7 @@ export async function auditarTron(token, it = {}) {
   if (info.verificado) { if (!res.datos) res.datos = {}; if (!res.datos.checks) res.datos.checks = {}; res.datos.checks.verified = true; }
   try {
     const imp = tokenImpostor(it.simbolo || (gp && gp.token_symbol), token, 'tron');
-    if (imp) { res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Do not buy — fake ' + imp; res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '.' }); }
+    if (imp) { res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Fake ' + imp + ', do not buy'; res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '.' }); }
   } catch (_) {}
   return res;
 }
@@ -405,7 +421,7 @@ export async function auditar(token, par, it = {}, alPaso = () => {}, conHolders
   const hpP = conTiempo(leerHoneypotIs(token), 10000).catch(() => null);
   const cadP = conTiempo(leerCadena(token, par, it, alPaso, conHolders), 26000).catch(() => ({}));
   const [gp, hp, cad] = await Promise.all([gpP, hpP, cadP]);
-  const gpUsar = gp || hpComoGp(hp);   // GoPlus primero (mas completo); si falla, honeypot.is
+  const gpUsar = fusionarGp(gp, hpComoGp(hp));   // GoPlus + honeypot.is fusionados: gana la senal positiva, se rellenan huecos
   alPaso('scanner', gpUsar ? 'ok' : 'fail');
   const res = evaluar(gpUsar, cad); res.completo = !!conHolders;
   if (hp && hp.honeypotResult && hp.honeypotResult.isHoneypot) { res.nivel = 'bad'; if (!res.hallazgos.some((x) => /honeypot/i.test(x.t))) res.hallazgos.unshift({ n: 'bad', t: 'Honeypot (sell simulation failed)', d: 'A real buy+sell simulation shows you could buy but NOT sell. Do not trade it.' }); }
@@ -414,7 +430,7 @@ export async function auditar(token, par, it = {}, alPaso = () => {}, conHolders
   try {
     const imp = tokenImpostor(it.simbolo || (gpUsar && gpUsar.token_symbol), token, it.red);
     if (imp) {
-      res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Do not buy — fake ' + imp;
+      res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Fake ' + imp + ', do not buy';
       res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '. Do not trade it.' });
     }
   } catch (_) {}
