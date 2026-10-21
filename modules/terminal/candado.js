@@ -124,7 +124,7 @@ export function montarCandado(host, opts) {
         <div class="tg-lock-mid">
           <h4 class="tg-lock-h">See the full security report</h4>
           <p class="tg-lock-p">Unlock every token's full diagnosis, plus Protect on every buy at no extra fee.</p>
-          <button class="tg-lock-btn" id="tg-lock-btn" type="button">${ICO_KEY}<span>Unlock for ${bnb > 0 ? bnb.toFixed(4) + ' BNB' : 'BNB'}</span>${ICO_LOCK}</button>
+          <button class="tg-lock-btn" id="tg-lock-btn" type="button">${ICO_KEY}<span>Unlock${bnb > 0 ? ' ' + bnb.toFixed(4) + ' BNB' : ''}</span>${ICO_LOCK}</button>
           <span class="tg-lock-sub">$${SUB_PRECIO_USD.toFixed(2)} for ${SUB_DIAS} days</span>
         </div>
         <div class="tg-lock-ex"><canvas class="tg-lock-cv" id="tg-lock-ex-safe"></canvas><span class="tg-lock-cap ok">Looks safe example</span></div>
@@ -222,8 +222,8 @@ function inyectarCSS() {
 .tg-lock-mid{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:0 4px}
 .tg-lock-h{margin:0;font:800 14.5px/1.2 'Chakra Petch',var(--display,sans-serif);color:var(--ink-1,#eaecef)}
 .tg-lock-p{margin:0;max-width:264px;font:500 11.5px/1.5 var(--display,sans-serif);color:var(--ink-3,#9aa3af)}
-.tg-lock-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:2px;padding:10px 18px;border-radius:12px;border:1px solid rgba(232,184,75,.5);background:linear-gradient(180deg,rgba(232,184,75,.24),rgba(232,184,75,.1));color:var(--gold,#E8B84B);font:800 13px/1 'Chakra Petch',var(--display,sans-serif);letter-spacing:.03em;cursor:pointer;box-shadow:0 10px 26px -14px rgba(232,184,75,.6);transition:transform .15s,background .15s}
-.tg-lock-btn:hover{transform:translateY(-1px);background:linear-gradient(180deg,rgba(232,184,75,.32),rgba(232,184,75,.14))}
+.tg-lock-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:2px;padding:10px 18px;border-radius:12px;border:1px solid rgba(232,184,75,.42);background:linear-gradient(180deg,rgba(232,184,75,.16),rgba(232,184,75,.07));color:var(--gold,#E8B84B);font:800 13px/1 'Chakra Petch',var(--display,sans-serif);letter-spacing:.03em;cursor:pointer;box-shadow:0 6px 16px -12px rgba(0,0,0,.7);transition:transform .15s,background .15s,border-color .15s}
+.tg-lock-btn:hover{transform:translateY(-1px);border-color:rgba(232,184,75,.6);background:linear-gradient(180deg,rgba(232,184,75,.22),rgba(232,184,75,.1))}
 .tg-lock-btn svg{width:14px;height:14px;opacity:.95}
 .tg-lock-sub{font:600 11px/1 var(--display,sans-serif);color:var(--ink-3,#7d8794)}
 /* candado sobre el boton Protect */

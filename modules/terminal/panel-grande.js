@@ -17,7 +17,7 @@ import { SCAN_URL, WBNB, USDT, SLIPPAGE, PROTECCION, PRESETS_BNB } from './confi
 import { disclaimerProtect } from './protect.js';
 import { abrirCompra, saldoBNB, saldoToken, cotizarCompra, comprar } from './compra.js';
 import { listaDe, enVivo, registrarCompra } from './posiciones.js';
-import { crearAlerta, alertasDe, quitarAlerta } from './alertas.js';
+import { crearAlerta, alertasDe, listaAlertas, quitarAlerta } from './alertas.js';
 import { PASOS, PASOS_TXT } from './auditoria.js';
 import * as wallet from './wallet.js';
 import { esOwner, estadoSuscripcion, montarCandado, pintarPill, bloquearProtect } from './candado.js';
@@ -206,12 +206,11 @@ function css() {
 .tg-sem.ok,.tg-sem.warn,.tg-sem.bad{animation:tgSemPop .5s cubic-bezier(.2,.8,.3,1)}
 @keyframes tgSemPop{0%{transform:scale(.96);opacity:.45}100%{transform:none;opacity:1}}
 .tg-sem.ok .tg-sem-ico svg,.tg-sem.warn .tg-sem-ico svg,.tg-sem.bad .tg-sem-ico svg{animation:tgChkPop .5s ease-out}
-/* Open alerts y Positions con scroll propio (barra fina) para muchas monedas. */
-#tg-openalerts{max-height:168px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
+/* Open alerts y Positions SIN scroll propio: el panel derecho entero (.tg-right) es el unico scroll, asi al
+   arrastrar la barra derecha se ven TODAS las alertas y TODAS las posiciones de corrido (lo que pidio el usuario:
+   "si tengo 10 posiciones, poder hacer scroll y verlas todas, igual que las alertas"). El doble scroll anidado
+   de antes atrapaba la rueda dentro de la caja de alertas y dejaba las posiciones fuera de vista. */
 #tg-positions{min-height:0}
-#tg-openalerts::-webkit-scrollbar,#tg-positions::-webkit-scrollbar{width:6px}
-#tg-openalerts::-webkit-scrollbar-thumb,#tg-positions::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
-#tg-openalerts::-webkit-scrollbar-track,#tg-positions::-webkit-scrollbar-track{background:transparent}
 .tg-sem{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:13px;border:1px solid var(--line,#232b36);background:rgba(11,14,17,.72);margin-bottom:10px}
 .tg-sem>div{flex:1 1 auto;min-width:0}
 .tg-sem-ico{width:36px;height:36px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;line-height:0;background:rgba(255,255,255,.06);color:var(--ink-2,#b7bdc6)}
@@ -278,9 +277,14 @@ function css() {
 .tg-bal-tx b{font-family:var(--mono);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tg-mt{margin-top:16px}
 .tg-alrow{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;border:1px solid var(--line,#232b36);background:#0b0f14;margin-bottom:6px}
-.tg-alrow b{flex:1 1 auto;font-family:var(--mono);font-size:13px}
+.tg-alrow:not(.cur){cursor:pointer}
+.tg-alrow:not(.cur):hover{border-color:rgba(232,184,75,.45);background:#0e141b}
+.tg-alrow.cur{border-color:rgba(232,184,75,.4);background:#0e141b}
+.tg-alsym{flex:0 0 auto;max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800;font-size:12px;letter-spacing:.2px;color:var(--ink,#e8edf2)}
+.tg-alrow b{flex:1 1 auto;text-align:right;font-family:var(--mono);font-size:13px}
 .tg-alrow em{font-style:normal;font-size:10px;color:var(--verde,#2ee86a);text-transform:uppercase;letter-spacing:.5px}
 .tg-alrow.done{border-color:#2e7d52}
+.tg-alrow.done .tg-alsym{opacity:.6}
 .tg-aldir{width:0;height:0;flex:0 0 auto;border-left:5px solid transparent;border-right:5px solid transparent}
 .tg-aldir.up{border-bottom:8px solid var(--verde,#2ee86a)}
 .tg-aldir.down{border-top:8px solid var(--rojo,#f6465d)}
@@ -1304,13 +1308,28 @@ function derBalances(it) {
 function marcarAlertasBig(it) {
   try { if (!it) { marcarAlertas([]); return; } marcarAlertas(alertasDe(it.token).filter((a) => !a.disparada).map((a) => ({ price: a.objetivo, dir: a.dir, title: (a.dir === 'up' ? '▲ ' : '▼ ') + 'Alert $' + fmtTxt(a.objetivo) }))); } catch (_) {}
 }
+/* Open alerts: muestra TODAS tus alertas (de cualquier token), no solo las del token abierto. Antes filtraba por
+   it.token, asi que una alerta puesta en una moneda "desaparecia" al abrir otra y solo se veia en el lobby
+   (History/Verifications): esa era la causa de "la alerta no sale". Ahora cada alerta que creas, en BSC o Tron,
+   aparece aqui con su simbolo; la del token abierto va resaltada y marcada en la grafica. Tocar una de OTRO token
+   la abre en el OFC. El ✕ la cancela siempre. */
 function derOpenAlerts(it) {
   const host = $('tg-openalerts'); if (!host) return;
-  const l = alertasDe(it.token);
   marcarAlertasBig(it);
-  if (!l.length) { host.innerHTML = `<div class="tg-soon">No alerts for this token.</div>`; return; }
-  host.innerHTML = l.map((a) => `<div class="tg-alrow ${a.disparada ? 'done' : ''}"><span class="tg-aldir ${a.dir}"></span><b>$${fmtP(a.objetivo)}</b>${a.disparada ? '<em>hit</em>' : ''}<button class="tg-alx" data-id="${esc(a.id)}" type="button" aria-label="Remove">✕</button></div>`).join('');
-  host.querySelectorAll('.tg-alx').forEach((b) => { b.onclick = () => { quitarAlerta(b.dataset.id); derOpenAlerts(it); }; });
+  const todas = listaAlertas();
+  if (!todas.length) { host.innerHTML = `<div class="tg-soon">No alerts yet. Set one above and every alert you create, on any token, shows here.</div>`; return; }
+  const actual = (it && it.token) ? String(it.token).toLowerCase() : '';
+  host.innerHTML = todas.map((a) => {
+    const mismo = actual && String(a.token).toLowerCase() === actual;
+    const red = a.red === 'tron' ? 'TRON' : 'BSC';
+    return `<div class="tg-alrow ${a.disparada ? 'done' : ''}${mismo ? ' cur' : ''}" data-id="${esc(a.id)}"${mismo ? '' : ' title="Open ' + esc(a.simbolo || 'token') + '"'}><span class="tg-aldir ${a.dir}"></span><span class="tg-alsym" data-net="${red}">${esc(a.simbolo || '?')}</span><b>$${fmtP(a.objetivo)}</b>${a.disparada ? '<em>hit</em>' : ''}<button class="tg-alx" data-id="${esc(a.id)}" type="button" aria-label="Remove alert">✕</button></div>`;
+  }).join('');
+  host.querySelectorAll('.tg-alx').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); quitarAlerta(b.dataset.id); derOpenAlerts(_itActual); }; });
+  // Tocar una alerta de OTRO token la abre en el OFC (misma ventana), usando el cargador del modulo.
+  host.querySelectorAll('.tg-alrow:not(.cur)').forEach((row) => { row.onclick = () => {
+    const a = listaAlertas().find((x) => x.id === row.dataset.id); if (!a || !_cargar) return;
+    try { _cargar({ token: a.token, simbolo: a.simbolo, par: a.par || null, moneda: a.moneda || 'BNB', decimales: a.decimales || 18, red: a.red || 'bsc', fuentePrecio: a.fuentePrecio || 'v2', operable: a.red !== 'tron' }); } catch (_) {}
+  }; });
 }
 /* Lo llama el vigilante (terminal.js) cuando una alerta se dispara, para refrescar Open Alerts del OFC si esta
    abierto: la alerta pasa a 'hit' pero SIGUE con su boton de cancelar, sin tener que reabrir la pestaña. */
