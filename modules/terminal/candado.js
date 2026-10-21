@@ -92,7 +92,12 @@ async function dibujarEjemplo(cv, kind, pct) {
     ctx.shadowColor = 'rgba(0,0,0,.72)'; ctx.shadowBlur = 10; ctx.fillStyle = '#fff';
     ctx.font = `800 ${Math.round(H * 0.072)}px "Chakra Petch", Arial, sans-serif`; ctx.fillText('EXAMPLE', W * 0.75, H * 0.125);
     ctx.fillStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = W * 0.024;
-    ctx.font = `800 ${Math.round(H * 0.3)}px "Chakra Petch", Arial, sans-serif`; ctx.fillText(pct + '%', W * 0.79, H * 0.46);
+    // Encaja el % dentro del recuadro HUD: "100%" es mas ancho que "1%", asi que si no cabe se reduce la fuente
+    // (igual que el escudo real). Antes "100%" se salia por la derecha de la tarjeta verde.
+    let pf = Math.round(H * 0.3); const ptxt = pct + '%', maxP = W * 0.33;
+    ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`;
+    while (ctx.measureText(ptxt).width > maxP && pf > 36) { pf -= 6; ctx.font = `800 ${pf}px "Chakra Petch", Arial, sans-serif`; }
+    ctx.fillText(ptxt, W * 0.79, H * 0.46);
   } catch (_) {}
 }
 
@@ -249,7 +254,8 @@ function inyectarCSS() {
 .tg-pay-msg{display:block;min-height:14px;margin-top:9px;font:600 11.5px/1.3 var(--display,sans-serif);color:var(--ink-3,#7d8794)}
 .tg-pay-msg.ok{color:#3DED8C}.tg-pay-msg.err{color:#ff6475}
 /* pastilla del encabezado */
-.tg-sub-pill{display:inline-flex;align-items:center;gap:7px;padding:0 11px;height:42px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0d1117;color:var(--ink-3,#7d8794);white-space:nowrap}
+.tg-sub-pill{display:inline-flex;align-items:center;gap:7px;padding:0 11px;height:42px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0d1117;color:var(--ink-3,#7d8794);white-space:nowrap;flex:0 0 auto}
+.tg-sub-pill[hidden]{display:none}
 .tg-sub-pill.on{border-color:rgba(61,237,140,.35);background:rgba(61,237,140,.07)}
 .tg-sub-pill i{display:inline-flex;width:14px;height:14px;color:var(--ink-3,#7d8794)}
 .tg-sub-pill.on i{color:#3DED8C}

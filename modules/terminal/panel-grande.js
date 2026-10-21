@@ -454,8 +454,7 @@ export async function abrirGrande(it0, ctx, opts) {
     <div class="tm-big-top">
       <div class="tg-top-l"><div class="tg-id" id="tg-id"></div><div class="tg-price" id="tg-price"></div></div>
       <div class="tg-find"><div class="tg-find-in"><span class="tg-ico">${ICO_SEARCH}</span><input id="tg-find-in" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, symbol or contract (BSC / Tron)…"></div></div>
-      <div class="tg-sub-pill" id="tg-sub-pill" hidden></div>
-      <div class="tg-top-r"><button class="tg-find-tok" id="tg-find-tok" type="button">Tokens</button><button class="tg-x" id="tg-close" type="button" aria-label="Close">✕</button></div>
+      <div class="tg-top-r"><div class="tg-sub-pill" id="tg-sub-pill" hidden></div><button class="tg-find-tok" id="tg-find-tok" type="button">Tokens</button><button class="tg-x" id="tg-close" type="button" aria-label="Close">✕</button></div>
     </div>
     <div class="tm-big-main">
       <div class="tg-col tg-left" id="tg-left"></div>
