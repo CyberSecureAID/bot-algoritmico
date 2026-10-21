@@ -626,6 +626,14 @@ export async function abrirGrande(it0, ctx, opts) {
       if (!ov.isConnected || _itActual !== it) return;
       if (res && res.par) { it = { ...it, ...res }; _itActual = it; pintarId(it); }
     }
+    // LOGO: si el token no trae logo (verificado pero sin entrada en TrustWallet), se pide a GeckoTerminal
+    // (/info image_url) y se repinta el identificador cuando llega. Asi deja de salir el escudo generico.
+    if (!it.logoUrl && it.token) {
+      const itLogo = it;
+      import('./gecko.js').then(({ infoGecko }) => infoGecko(it.token, it.red)).then((inf) => {
+        if (inf && inf.imageUrl && _itActual === itLogo) { itLogo.logoUrl = inf.imageUrl; pintarId(itLogo); }
+      }).catch(() => {});
+    }
     pintarDer(it, ctx);
     const msg = $('tg-chart-msg');
     try { destruirGrafico(); } catch (_) {}

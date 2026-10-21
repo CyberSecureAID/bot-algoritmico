@@ -70,3 +70,14 @@ export async function velasGecko(token, red, tfSec) {
 export async function precioGecko(token, red) {
   try { const v = await velasGecko(token, red, 900); return v.length ? v[v.length - 1].close : 0; } catch (_) { return 0; }
 }
+/* Info del token en GeckoTerminal (/info): LOGO real (image_url), nº de holders, gt_score y si GeckoTerminal lo
+   marca honeypot. Para tokens verificados/con pool que NO tienen logo en TrustWallet, de aqui sale el logo que
+   antes no aparecia. Ademas da senales extra de seguridad (bonus, Fase 4). Cubre BSC y Tron. null si no indexado. */
+export async function infoGecko(token, red) {
+  const net = RED_GT[red] || 'bsc';
+  let j; try { j = await jget('/networks/' + net + '/tokens/' + encodeURIComponent(token) + '/info'); } catch (_) { return null; }
+  const a = j && j.data && j.data.attributes; if (!a) return null;
+  const img = (a.image_url && !/missing/i.test(a.image_url)) ? a.image_url : '';
+  const holders = (a.holders && a.holders.count != null) ? Number(a.holders.count) : null;
+  return { imageUrl: img, holders, gtScore: a.gt_score != null ? Number(a.gt_score) : null, honeypot: a.is_honeypot === true };
+}
