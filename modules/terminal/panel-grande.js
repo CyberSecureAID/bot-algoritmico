@@ -7,7 +7,7 @@
 
    Esta entrega es el ARMAZON: layout de tres zonas, grafica funcionando, buscador por contrato y
    selector de tokens. La columna de operar (Market / Alert, saldos, Open Alerts, Positions) y el
-   clic  en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
+   clic en la grafica llegan en las siguientes entregas; aqui va su maqueta. */
 import * as ethers from './ethers.min.js';
 import { resolverContrato, esContrato } from './resolver.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, precioEnY, marcarEntrada, limpiarEntrada, marcarAlertas } from './grafico.js';
@@ -20,6 +20,7 @@ import { listaDe, enVivo, registrarCompra } from './posiciones.js';
 import { crearAlerta, alertasDe, quitarAlerta } from './alertas.js';
 import { PASOS, PASOS_TXT } from './auditoria.js';
 import * as wallet from './wallet.js';
+import { esOwner, estadoSuscripcion, montarCandado, pintarPill, bloquearProtect } from './candado.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -453,6 +454,7 @@ export async function abrirGrande(it0, ctx, opts) {
     <div class="tm-big-top">
       <div class="tg-top-l"><div class="tg-id" id="tg-id"></div><div class="tg-price" id="tg-price"></div></div>
       <div class="tg-find"><div class="tg-find-in"><span class="tg-ico">${ICO_SEARCH}</span><input id="tg-find-in" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, symbol or contract (BSC / Tron)…"></div></div>
+      <div class="tg-sub-pill" id="tg-sub-pill" hidden></div>
       <div class="tg-top-r"><button class="tg-find-tok" id="tg-find-tok" type="button">Tokens</button><button class="tg-x" id="tg-close" type="button" aria-label="Close">✕</button></div>
     </div>
     <div class="tm-big-main">
@@ -700,7 +702,31 @@ function topDecFreedom(ctx, exclToken) {
   return out;
 }
 /* ── Panel izquierdo: informacion del token (facts al momento + seguridad por la cache de auditoria) ── */
+/* Candado: decide si la columna de seguridad se muestra REAL (owner o suscrito) o BLOQUEADA (señuelo + CTA, sin
+   ejecutar la auditoria autentica). Owner: desbloqueo inmediato (sync). Resto: bloqueado ya, y se confirma la
+   suscripcion EN CADENA; si esta activa, se desbloquea sin recargar. */
 function pintarIzq(it, ctx) {
+  const host = $('tg-left'); if (!host) return;
+  if (!it) { host.innerHTML = `<div class="tg-sec-t">Token info</div><div class="tg-kv"><div><span>Pick a token to see its info</span></div></div>`; refrescarPill(ctx); return; }
+  const w = (wallet.cuentaActual && wallet.cuentaActual()) || null;
+  if (esOwner(w)) { pintarIzqReal(it, ctx); refrescarPill(ctx); return; }   // owner: todo desbloqueado (para probar)
+  // Bloqueado por defecto: el señuelo se pinta, la auditoria REAL no se ejecuta (nada real entra al DOM).
+  montarCandado(host, { bnbUsd: ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0, onDesbloquear: () => { if (_itActual === it) { pintarIzqReal(it, ctx); desbloquearProtectUI(); refrescarPill(ctx); } } });
+  refrescarPill(ctx);
+  estadoSuscripcion(w).then((sub) => { if (_itActual === it && sub && sub.activa) { pintarIzqReal(it, ctx); desbloquearProtectUI(); refrescarPill(ctx); } });
+}
+/* Quita el candado del boton Protect (tras pagar o si ya hay suscripcion), sin re-renderizar el formulario. */
+function desbloquearProtectUI() { const el = $('tg-prot'); if (el) { const l = el.querySelector('.tg-prot-lock'); if (l) l.remove(); el.classList.remove('tg-prot-locked'); } }
+/* Actualiza la pastilla del encabezado (wallet + tiempo de suscripcion). */
+function refrescarPill(ctx) {
+  const host = $('tg-sub-pill'); if (!host) return;
+  const w = (wallet.cuentaActual && wallet.cuentaActual()) || null;
+  if (!w) { pintarPill(host, null, null); return; }
+  if (esOwner(w)) { pintarPill(host, { owner: true, activa: true }, w); return; }
+  pintarPill(host, { activa: false }, w);
+  estadoSuscripcion(w).then((sub) => pintarPill(host, sub, w)).catch(() => {});
+}
+function pintarIzqReal(it, ctx) {
   const host = $('tg-left'); if (!host) return;
   if (!it) { host.innerHTML = `<div class="tg-sec-t">Token info</div><div class="tg-kv"><div><span>Pick a token to see its info</span></div></div>`; return; }
   const bnbUsd = ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0;
@@ -870,8 +896,9 @@ function bandaSeguridad(p, r) {
   if (r && r.impostor) return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Fake token', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
   if (r && r.peligroCreador) return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Bad creator', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
   if (r && r.datos && r.datos.checks && r.datos.checks.sellable === false) return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Honeypot', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
+  // El COLOR del % sigue al ESCUDO: verde (sec-safe) -> % verde; rojo (sec-risk) -> % ROJO (nada de amarillo).
   if (p >= 70) return { kind: 'ok', etq: 'LOOKS SAFE', vshort: 'Looks safe', col: '#3DED8C', glow: 'rgba(61,237,140,.55)' };
-  if (p >= 40) return { kind: 'risk', etq: 'TRADE WITH CAUTION', vshort: 'Caution', col: '#E8B84B', glow: 'rgba(232,184,75,.5)' };
+  if (p >= 40) return { kind: 'risk', etq: 'TRADE WITH CAUTION', vshort: 'Caution', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
   return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Do not buy', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
 }
 const SELLO_BG = { ok: new URL('./img/sec-safe.webp', import.meta.url).href, risk: new URL('./img/sec-risk.webp', import.meta.url).href };
@@ -1467,6 +1494,15 @@ function montarMercado(it) {
   };
   const protSlip = $('tg-prot-slip'); if (protSlip) protSlip.querySelectorAll('button').forEach((b) => { b.onclick = () => { slipBps = Number(b.dataset.b) || PROTECCION.slipProtegido; protSlip.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintarProt(); }; });
   pintarProt();
+  // CANDADO de Protect: Protect va INCLUIDO en el plan (ya no suma 1% extra). Sin suscripcion (y sin ser owner)
+  // se bloquea el boton (borroso + candado); tocarlo abre el modal de pago. Owner o suscrito: libre.
+  (function gatearProtect() {
+    const protEl = $('tg-prot'); if (!protEl) return;
+    const w = (wallet.cuentaActual && wallet.cuentaActual()) || null;
+    if (esOwner(w)) return;
+    bloquearProtect(protEl, { bnbUsd: ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0, onDesbloquear: () => { desbloquearProtectUI(); pintarIzqReal(it, ctx); refrescarPill(ctx); } });
+    estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearProtectUI(); }).catch(() => {});
+  })();
   go.onclick = async () => {
     if (!wallet.cuentaActual()) { try { await wallet.conectar(); } catch (_) {} cargarSaldo(); try { derBalances(it); } catch (_) {} return; }
     const w = montoWei(); if (!(w > 0n) || !cot || cotPara !== w || !(cot.tokOut > 0n)) return;
