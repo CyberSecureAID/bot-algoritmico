@@ -819,6 +819,7 @@ const SELLO_PESOS = { sellable: 26, lpSecured: 15, lowTax: 12, verified: 10, not
 const SELLO_TOTAL = 100;   // suma de todos los pesos (cobertura completa)
 function scorePct(r) {
   if (r && r.impostor) return 3;                       // scam que imita un estable mayor: casi 0, jamas 99%
+  if (r && r.peligroCreador) return 6;                 // wallet creador ligado a honeypots/robos/sanciones: casi 0
   const c = r && r.datos && r.datos.checks;
   if (c) {
     let got = 0, tot = 0;
@@ -859,6 +860,7 @@ function bandaSeguridad(p, r) {
   // Vocabulario APROBADO por el usuario (el de siempre): LOOKS SAFE / TRADE WITH CAUTION / DO NOT BUY. Nada de
   // "SOLID/STRONG". Lo unico nuevo es que el COLOR y QUE escudo (verde ≥70 / rojo <70) siguen al PUNTAJE.
   if (r && r.impostor) return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Fake token', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
+  if (r && r.peligroCreador) return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Bad creator', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
   if (r && r.datos && r.datos.checks && r.datos.checks.sellable === false) return { kind: 'risk', etq: 'DO NOT BUY', vshort: 'Honeypot', col: '#FF4357', glow: 'rgba(255,67,87,.5)' };
   if (p >= 70) return { kind: 'ok', etq: 'LOOKS SAFE', vshort: 'Looks safe', col: '#3DED8C', glow: 'rgba(61,237,140,.55)' };
   if (p >= 40) return { kind: 'risk', etq: 'TRADE WITH CAUTION', vshort: 'Caution', col: '#E8B84B', glow: 'rgba(232,184,75,.5)' };

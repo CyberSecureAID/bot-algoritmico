@@ -121,6 +121,60 @@ function fusionarGp(gp, hp) {
   if (!m.token_symbol && hp.token_symbol) m.token_symbol = hp.token_symbol;
   return m;
 }
+/* ── Reputacion del WALLET creador/propietario (GoPlus address_security) ──
+   Esto es lo que tienen Token Sniffer / De.Fi / Quick Intel y nosotros NO teniamos: una base de datos de actores
+   maliciosos. No analiza el contrato, analiza AL WALLET que lo hizo: ¿ha estado ligado a honeypots, phishing,
+   robos, lavado, sanciones, mezcladores? Un contrato "limpio" hecho por un estafador reincidente es una trampa,
+   y esto lo caza. Misma API keyless de GoPlus, por el mismo cascade de proxies (cubre BSC chain '56' y 'tron'). */
+const ADDRSEC = 'https://api.gopluslabs.io/api/v1/address_security/';
+export async function leerAddressSecurity(addr, chain = '56') {
+  const a = String(addr || '').trim(); if (!a || a === '0x0000000000000000000000000000000000000000') return null;
+  const url = ADDRSEC + encodeURIComponent(a) + '?chain_id=' + chain;
+  const pedir = async (prox) => {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(prox(url), { signal: ctl.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); const j = await r.json(); return (j && j.result) || null; }
+    finally { clearTimeout(t); }
+  };
+  for (let i = 0; i < GP_PROXIES.length; i++) { try { const s = await pedir(GP_PROXIES[i]); if (s) return s; } catch (e) { log('addrsec via ' + i, e && e.message); } }
+  return null;
+}
+// Banderas del wallet -> hallazgo (nivel, titulo, detalle). bad = delito grave; warn = sospecha.
+const WALLET_FLAGS = {
+  honeypot_related_address: ['bad', 'Creator tied to honeypots', 'The wallet that created this token is linked to known honeypot tokens.'],
+  phishing_activities: ['bad', 'Creator tied to phishing', 'The creator wallet has known phishing activity.'],
+  stealing_attack: ['bad', 'Creator tied to theft', 'The creator wallet is linked to token-stealing attacks.'],
+  cybercrime: ['bad', 'Creator tied to cybercrime', 'The creator wallet is linked to cybercrime.'],
+  money_laundering: ['bad', 'Creator tied to laundering', 'The creator wallet is linked to money laundering.'],
+  financial_crime: ['bad', 'Creator tied to financial crime', 'The creator wallet is linked to financial crime.'],
+  sanctioned: ['bad', 'Creator wallet sanctioned', 'The creator wallet is on a sanctions list.'],
+  blackmail_activities: ['warn', 'Creator tied to blackmail', 'The creator wallet is linked to blackmail activity.'],
+  darkweb_transactions: ['warn', 'Creator tied to darkweb', 'The creator wallet has darkweb-linked transactions.'],
+  mixer: ['warn', 'Creator used a mixer', 'The creator wallet funnelled funds through a mixer (hides origin).'],
+  fake_kyc: ['warn', 'Creator tied to fake KYC', 'The creator wallet is linked to fake KYC services.'],
+  malicious_mining_activities: ['warn', 'Creator tied to malicious mining', 'The creator wallet is linked to malicious mining.'],
+  blacklist_doubt: ['warn', 'Creator wallet on a blacklist', 'The creator wallet appears on third-party blacklists.']
+};
+function riesgosWallet(sec) {
+  const out = []; if (!sec) return out;
+  for (const k in WALLET_FLAGS) { if (String(sec[k]) === '1') { const [n, t, d] = WALLET_FLAGS[k]; out.push({ n, t, d }); } }
+  const nmc = parseInt(sec.number_of_malicious_contracts_created, 10);
+  if (nmc > 0) out.push({ n: 'bad', t: 'Creator made ' + nmc + ' malicious contract' + (nmc > 1 ? 's' : ''), d: 'This wallet has deployed malicious contracts before. A clean-looking token from a repeat offender is a red flag.' });
+  return out;
+}
+/* Añade al resultado la reputacion del creador. Un hallazgo 'bad' del wallet hunde el veredicto a 'bad' y marca
+   res.peligroCreador (para que el % y el escudo tambien bajen, no solo el texto). chain: '56' BSC, 'tron' Tron. */
+async function anadirReputacionCreador(res, chain) {
+  try {
+    const wallet = (res && res.datos && res.datos.creador) || '';
+    if (!wallet) return;
+    const sec = await conTiempo(leerAddressSecurity(wallet, chain), 9000).catch(() => null);
+    const rr = riesgosWallet(sec);
+    if (!rr.length) return;
+    res.hallazgos = rr.concat(res.hallazgos || []);
+    if (rr.some((x) => x.n === 'bad')) { res.nivel = 'bad'; res.titulo = 'Do not buy'; res.peligroCreador = true; }
+    else if (res.nivel === 'ok') { res.nivel = 'warn'; }
+  } catch (_) {}
+}
 /* Auditoria de un token TRON: no hay RPC de Tron aqui, asi que se combina GoPlus (chain 'tron': honeypot, lista
    negra, mint, pausable, propietario) con TronScan (holders, creador, verificado). Devuelve el MISMO formato que
    evaluar() para que el sello, los checks y el veredicto se pinten igual que en BSC. Asi una moneda de Tron deja
@@ -160,6 +214,7 @@ export async function auditarTron(token, it = {}) {
     const imp = tokenImpostor(it.simbolo || (gp && gp.token_symbol), token, 'tron');
     if (imp) { res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Fake ' + imp + ', do not buy'; res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '.' }); }
   } catch (_) {}
+  await anadirReputacionCreador(res, 'tron');   // reputacion del wallet creador tambien en Tron
   return res;
 }
 
@@ -434,6 +489,7 @@ export async function auditar(token, par, it = {}, alPaso = () => {}, conHolders
       res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '. Do not trade it.' });
     }
   } catch (_) {}
+  if (conHolders) await anadirReputacionCreador(res, '56');   // reputacion del wallet creador (solo en el pase completo)
   log(token, res.nivel, res.hallazgos.map((x) => x.t));
   return res;
 }
