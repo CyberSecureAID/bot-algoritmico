@@ -424,12 +424,6 @@
 .tm-chart-msg[hidden]{display:none}
 /* Marca de agua del logo en el grafico del lobby (misma que el Open Full Chart). */
 .tm-wm{position:absolute;left:12px;bottom:6px;height:18px;width:auto;max-width:140px;opacity:.2;pointer-events:none;z-index:3;user-select:none}
-/* Sello de seguridad (el MISMO del Open Full Chart) sobre el grafico del lobby, esquina superior derecha. */
-.tm-sello{position:absolute;top:8px;right:8px;width:152px;max-width:46%;padding:0;border:0;background:none;cursor:pointer;z-index:4;line-height:0;border-radius:11px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.5);transition:transform .15s,box-shadow .15s}
-.tm-sello:hover{transform:translateY(-1px) scale(1.02);box-shadow:0 10px 26px rgba(0,0,0,.62)}
-.tm-sello[hidden]{display:none}
-.tm-sello-cv{display:block;width:100%;height:auto}
-@media (max-width:480px){.tm-sello{width:118px;top:6px;right:6px}}
 @media (max-width:480px){.tm-chart{height:180px}}
 /* Top holders (inteligencia del token): cabecera con resumen, filas con barra y etiqueta */
 .tm-holders{margin:0 0 12px;border:1px solid var(--line);border-radius:14px;background:rgba(11,14,17,.6);overflow:hidden}

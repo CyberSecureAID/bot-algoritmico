@@ -773,7 +773,7 @@ function pintaSemBig(r, it) {
    con los "asesinos" (honeypot = no vendible, LP sin quemar) pesando mas. Se ajusta a la banda del veredicto
    para que el numero NUNCA contradiga el diagnostico (un 'bad' jamas muestra un % alto, un 'ok' jamas bajo). */
 const SELLO_PESOS = { sellable: 24, lpSecured: 20, noBlacklist: 12, notMintable: 10, noPause: 8, renounced: 9, notConcentrated: 9, verified: 4, lowTax: 4 };
-export function scorePct(r) {
+function scorePct(r) {
   if (r && r.impostor) return 4;   // scam que se hace pasar por un estable mayor: siempre muy bajo, nunca 99%
   const niv = r && r.nivel;
   const banda = niv === 'ok' ? [82, 99] : niv === 'warn' ? [45, 70] : [8, 32];
@@ -822,12 +822,10 @@ function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.
    se deja INTACTO: representa la seguridad del token, no se le encima nada. En el recuadro HUD (derecha) va
    el % gigante; encima, en la banda vacia, el icono y el simbolo de la MONEDA; debajo, el texto que aclara
    que el porcentaje es de ESE token, no de DecFreedom; y abajo-izquierda, la marca decfreedom.com. */
-export function selloKind(niv) { return niv === 'ok' ? 'ok' : 'risk'; }
-export async function dibujarSello(cv, kind, p, it, niv, vigente) {
-  const ok = vigente || (() => !it || _itActual === it);   // guard por defecto = token actual del OFC; el lobby pasa el suyo
+async function dibujarSello(cv, kind, p, it, niv) {
   try {
     const bg = await cargarImg(kind === 'ok' ? SELLO_BG.ok : SELLO_BG.risk, true);
-    if (!cv.isConnected || !ok()) return;
+    if (!cv.isConnected || (it && _itActual !== it)) return;
     const W = bg.naturalWidth || 1672, H = bg.naturalHeight || 941;
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H); ctx.drawImage(bg, 0, 0, W, H);
@@ -836,7 +834,7 @@ export async function dibujarSello(cv, kind, p, it, niv, vigente) {
     const cx = W * 0.79;                         // centro del recuadro HUD (mitad derecha)
     const sym = ((it && it.simbolo) ? String(it.simbolo) : 'TOKEN').toUpperCase().replace(/\s+/g, '').slice(0, 12);
     let ic = null; try { ic = await cargarLogoTok(it); } catch (_) { ic = null; }
-    if (!cv.isConnected || !ok()) return;
+    if (!cv.isConnected || (it && _itActual !== it)) return;
     // ── Moneda: [icono] SIMBOLO en fila (solo eso, sin el nombre). El grupo se centra algo a la IZQUIERDA del
     //    % y, ademas, se limita su borde derecho: asi ningun simbolo largo (ni en otro alfabeto) se sale de la
     //    imagen. El escudo (izquierda) nunca se tapa porque esto va arriba, en la banda vacia. ──

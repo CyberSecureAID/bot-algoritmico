@@ -83,6 +83,28 @@ export async function leerGoPlus(token, chain = '56') {
   }
   return null;
 }
+/* honeypot.is: SEGUNDA fuente para BSC. SIMULA una compra y una venta reales (detecta bloqueos de venta que el
+   analisis estatico no ve). CORS abierto (*), sin key, sin proxy. Si GoPlus no responde, esta SI da veredicto,
+   para que el Security Check casi nunca se quede sin resultado. Solo BSC/EVM (es un simulador). */
+export async function leerHoneypotIs(token) {
+  try {
+    const c = new AbortController(); const t = setTimeout(() => c.abort(), 9000);
+    const r = await fetch('https://api.honeypot.is/v2/IsHoneypot?address=' + encodeURIComponent(token) + '&chainID=56', { signal: c.signal });
+    clearTimeout(t); if (!r.ok) return null; return await r.json();
+  } catch (e) { log('honeypot.is', e && e.message); return null; }
+}
+/* Traduce la respuesta de honeypot.is al formato de campos de GoPlus para que evaluar() la use igual. */
+function hpComoGp(hp) {
+  if (!hp || !hp.honeypotResult) return null;
+  const sim = hp.simulationResult || {}, code = hp.contractCode || {}, tk = hp.token || {};
+  const g = { is_honeypot: hp.honeypotResult.isHoneypot ? '1' : '0', is_open_source: code.openSource ? '1' : '0', is_proxy: code.isProxy ? '1' : '0' };
+  if (tk.symbol) g.token_symbol = tk.symbol; if (tk.name) g.token_name = tk.name;
+  if (tk.totalHolders != null) g.holder_count = String(tk.totalHolders);
+  if (sim.buyTax != null) g.buy_tax = String(Number(sim.buyTax) / 100);
+  if (sim.sellTax != null) g.sell_tax = String(Number(sim.sellTax) / 100);
+  if (hp.honeypotResult.isHoneypot) g.cannot_sell_all = '1';
+  return g;
+}
 /* Auditoria de un token TRON: no hay RPC de Tron aqui, asi que se combina GoPlus (chain 'tron': honeypot, lista
    negra, mint, pausable, propietario) con TronScan (holders, creador, verificado). Devuelve el MISMO formato que
    evaluar() para que el sello, los checks y el veredicto se pinten igual que en BSC. Asi una moneda de Tron deja
@@ -94,6 +116,21 @@ export async function auditarTron(token, it = {}) {
   const cad = {};
   if (ts) { if (ts.holders != null) cad.holders = ts.holders; if (ts.creador) cad.creador = ts.creador; }
   const res = evaluar(gp, cad); res.completo = true; res.red = 'tron';
+  // Sin GoPlus-tron, evaluar() cae a 'pend' con el parrafo "Scanner data not available". Pero si TronScan SI dio
+  // datos publicos (verificado, holders) NO se deja al usuario sin resultado: se da un veredicto real con ellos.
+  // Codigo verificado + base amplia de holders es senal buena; sin verificar es precaucion. Asi un token de Tron
+  // SIEMPRE sale con algo cuando hay datos publicos, en vez de quedarse en "honeypot and tax checks need...".
+  if (!gp && ts) {
+    res.hallazgos = res.hallazgos.filter((x) => !(x.n === 'info' && /scanner/i.test(x.t)));
+    if (ts.verificado) res.hallazgos.push({ n: 'ok', t: 'Verified on TronScan', d: 'The contract source is public and verified on TronScan.' });
+    else res.hallazgos.unshift({ n: 'warn', t: 'Source not verified on TronScan', d: 'The contract source is not public on TronScan. Trade with caution.' });
+    if (ts.holders >= 1000) res.hallazgos.push({ n: 'ok', t: ts.holders.toLocaleString() + ' holders', d: 'A wide holder base, consistent with a real, traded token.' });
+    else if (ts.holders > 0 && ts.holders < 20) res.hallazgos.push({ n: 'info', t: 'Only ' + ts.holders + ' holders', d: 'Very early. Thin market.' });
+    if (!res.datos) res.datos = {};
+    res.datos.checks = { verified: !!ts.verificado };
+    res.nivel = res.hallazgos.some((x) => x.n === 'bad') ? 'bad' : res.hallazgos.some((x) => x.n === 'warn') ? 'warn' : 'ok';
+    res.titulo = res.nivel === 'bad' ? 'Do not buy' : res.nivel === 'warn' ? 'Caution' : 'No red flags found';
+  }
   if (ts && ts.verificado) { if (!res.datos) res.datos = {}; if (!res.datos.checks) res.datos.checks = {}; res.datos.checks.verified = true; }
   try {
     const imp = tokenImpostor(it.simbolo || (gp && gp.token_symbol), token, 'tron');
@@ -352,13 +389,21 @@ export function evaluar(gp, cad) {
 /* Auditoria completa de un token. alPaso(id, 'run'|'ok'|'fail') por cada paso de PASOS.
    Topes por paso y global de 25 s: aunque un RPC o GoPlus no respondan, la ficha siempre recibe un resultado. */
 export async function auditar(token, par, it = {}, alPaso = () => {}, conHolders = true) {
-  const gpP = (async () => { alPaso('scanner', 'run'); const g = await conTiempo(leerGoPlus(token), 12000).catch(() => null); alPaso('scanner', g ? 'ok' : 'fail'); return g; })();
-  const [gp, cad] = await Promise.all([gpP, conTiempo(leerCadena(token, par, it, alPaso, conHolders), 26000).catch(() => ({}))]);
-  const res = evaluar(gp, cad); res.completo = !!conHolders;
+  alPaso('scanner', 'run');
+  // DOS escaneres en paralelo para BSC: GoPlus (estatico, muchas banderas) y honeypot.is (simula compra+venta).
+  // Si GoPlus no responde, honeypot.is da el veredicto -> el Security Check casi nunca se queda sin resultado.
+  const gpP = conTiempo(leerGoPlus(token), 12000).catch(() => null);
+  const hpP = conTiempo(leerHoneypotIs(token), 10000).catch(() => null);
+  const cadP = conTiempo(leerCadena(token, par, it, alPaso, conHolders), 26000).catch(() => ({}));
+  const [gp, hp, cad] = await Promise.all([gpP, hpP, cadP]);
+  const gpUsar = gp || hpComoGp(hp);   // GoPlus primero (mas completo); si falla, honeypot.is
+  alPaso('scanner', gpUsar ? 'ok' : 'fail');
+  const res = evaluar(gpUsar, cad); res.completo = !!conHolders;
+  if (hp && hp.honeypotResult && hp.honeypotResult.isHoneypot) { res.nivel = 'bad'; if (!res.hallazgos.some((x) => /honeypot/i.test(x.t))) res.hallazgos.unshift({ n: 'bad', t: 'Honeypot (sell simulation failed)', d: 'A real buy+sell simulation shows you could buy but NOT sell. Do not trade it.' }); }
   // IMPOSTOR: un token cuyo simbolo imita a un estable mayor pero su contrato NO es el oficial es un scam, por
   // mucho que GoPlus diga que el contrato no es honeypot. Fuerza veredicto 'bad' y lo pone como primer hallazgo.
   try {
-    const imp = tokenImpostor(it.simbolo || (gp && gp.token_symbol), token, it.red);
+    const imp = tokenImpostor(it.simbolo || (gpUsar && gpUsar.token_symbol), token, it.red);
     if (imp) {
       res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Do not buy — fake ' + imp;
       res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '. Do not trade it.' });

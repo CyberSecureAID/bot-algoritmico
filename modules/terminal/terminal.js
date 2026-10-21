@@ -12,7 +12,7 @@ import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecie
 import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante, marcarVistas } from './alertas.js';
-import { abrirGrande, refrescarAlertasOFC, dibujarSello, scorePct, selloKind } from './panel-grande.js';
+import { abrirGrande, refrescarAlertasOFC } from './panel-grande.js';
 import { resolverContrato, esContrato } from './resolver.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
 import { FEED, SCAN_URL, FOURMEME_URL, USDT } from './config.js';
@@ -171,7 +171,7 @@ export function arrancar() {
             <div class="tm-cp-tt" id="tm-cp-tt"><span class="tm-cp-ph">${ICO_BOLT}<b>Chart</b><span>Pick a token below to load its live chart</span></span></div>
             <div class="tm-cp-right"><div class="tm-tf" id="tm-cp-tf"><button data-sec="60" type="button">1m</button><button data-sec="300" type="button">5m</button><button data-sec="900" class="on" type="button">15m</button><button data-sec="3600" type="button">1h</button><button data-sec="14400" type="button">4h</button><button data-sec="86400" type="button">1d</button></div><button class="tm-cp-all" id="tm-cp-all" type="button" aria-label="View full chart" disabled>${ICO_EXPAND}</button></div>
           </div>
-          <div class="tm-chart tm-cp-chart"><div class="tm-chart-cv" id="tm-cp-cv"></div><img class="tm-wm" src="../../branding/decfreedomlogohorizontal.webp" onerror="this.onerror=null;this.src='../../assets/img/cco-full.webp'" alt=""><button class="tm-sello" id="tm-cp-sello" type="button" title="Open the full security seal" hidden><canvas class="tm-sello-cv"></canvas></button><div class="tm-chart-msg" id="tm-cp-msg">Pick a token below</div></div>
+          <div class="tm-chart tm-cp-chart"><div class="tm-chart-cv" id="tm-cp-cv"></div><img class="tm-wm" src="../../branding/decfreedomlogohorizontal.webp" onerror="this.onerror=null;this.src='../../assets/img/cco-full.webp'" alt=""><div class="tm-chart-msg" id="tm-cp-msg">Pick a token below</div></div>
         </section>
       </main>
       <aside class="tm-rail">
@@ -474,7 +474,6 @@ function renderCP() {
 /* Lee las velas reales del par (una por operacion) y las guarda para reagrupar sin re-llamar. */
 function cargarCP(it) {
   _cpTok = it.token; _velasRaw = null; renderCP();
-  { const sl = cpEl('tm-cp-sello'); if (sl) sl.hidden = true; }   // oculta el sello del token anterior hasta el nuevo veredicto
   if (!it.par) return;
   velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: _bnbUsd, quoteEsUSDT: it.moneda === 'USDT' })
     .then((velas) => { if (_cpTok !== it.token) return; _velasRaw = velas || []; renderCP(); })
@@ -664,21 +663,6 @@ function pintaChecks(it, r) {
       fila(t10v != null ? (t10v >= 70 ? 'no' : 'ok') : 'pend', 'Token distribution', t10v != null ? 'Top10 ' + t10v + '%' : '—');
   }
   const bdg = verifBadge(r); const vb = $('tm-tc-verif'); if (vb) vb.innerHTML = bdg; const vc = $('tm-cp-verif'); if (vc) vc.innerHTML = bdg;
-  try { pintaSelloLobby(it, r); } catch (_) {}
-}
-/* Dibuja el MISMO sello del Open Full Chart sobre el grafico del lobby (esquina), cuando el veredicto del token
-   seleccionado esta listo. Es el sello identico (reusa dibujarSello del OFC), escalado por CSS. Tocarlo abre el
-   OFC con el sello grande y su boton de descarga. Si aun no hay veredicto (o cambio el token), se oculta. */
-let _selloTok = '';
-function pintaSelloLobby(it, r) {
-  const wrap = cpEl('tm-cp-sello'); if (!wrap) return;
-  const niv = r && r.nivel;
-  if (!it || !_sel || _sel.token !== it.token || !(niv === 'ok' || niv === 'warn' || niv === 'bad')) { wrap.hidden = true; return; }
-  _selloTok = it.token;
-  const cv = wrap.querySelector('.tm-sello-cv'); if (!cv) return;
-  wrap.hidden = false;
-  wrap.onclick = () => { try { verGrande(it); } catch (_) {} };
-  try { dibujarSello(cv, selloKind(niv), scorePct(r), it, niv, () => _selloTok === it.token && _sel && _sel.token === it.token); } catch (_) {}
 }
 function cargarChecks(it) {
   const yo = auditoriaDe(it);
