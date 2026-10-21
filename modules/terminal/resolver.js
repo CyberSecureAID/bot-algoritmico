@@ -93,5 +93,17 @@ export async function resolverContrato(addr) {
       tiempo: 0, creador: '', resuelto: true
     };
   }
+  // Sin par ni en DexScreener (token de Launchpad pre-graduacion, o un contrato sin pool todavia): en vez de
+  // devolver null y que salga "no hay nada", se devuelve un item MINIMO. Asi al menos el ANALIZADOR se dispara
+  // (lee codigo, owner, holders en cadena) y la grafica intenta GeckoTerminal. No operable ni graficable por V2.
+  if (meta.simbolo || meta.nombre) {
+    return {
+      token, par: null, quote: null, moneda: 'BNB',
+      simbolo: meta.simbolo || '?', nombre: meta.nombre || meta.simbolo || 'Token', decimales: dec,
+      liquidez: 0, precio: 0, precioUsd: 0,
+      fuente: 'onchain', fuentePrecio: 'dex', graficable: false, operable: false, red: 'bsc',
+      soloAnalisis: true, tiempo: 0, creador: '', resuelto: true
+    };
+  }
   return null;
 }

@@ -16,8 +16,33 @@ import * as ethers from './ethers.min.js';
 import { conRotacion, conTiempo } from './rpc.js';
 
 const log = (...a) => { try { console.info('[TERM-AUDIT]', ...a); } catch (_) {} };
-const GOPLUS = 'https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=';
+const GOPLUS = 'https://api.gopluslabs.io/api/v1/token_security/';   // + chain_id ('56' BSC, 'tron' Tron)
 const MUERTAS = ['0x000000000000000000000000000000000000dead', '0x0000000000000000000000000000000000000000', '0x0000000000000000000000000000000000000001'];
+
+/* Contratos OFICIALES de los estables mayores (los unicos legitimos). Cualquier token cuyo SIMBOLO imite a uno
+   de estos pero cuyo contrato NO sea el oficial es un IMPOSTOR (scam que se hace pasar por USDT/USDC/etc.). Asi
+   el Security Check deja de dar 99% a un USDT.z falso sin bloquear a ciegas por el nombre: compara la direccion. */
+const OFICIALES = {
+  USDT: { bsc: '0x55d398326f99059ff775485246999027b3197955', tron: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' },
+  USDC: { bsc: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', tron: 'TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8' },
+  BUSD: { bsc: '0xe9e7cea3dedca5984780bafc599bd69add087d56' },
+  DAI: { bsc: '0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3' },
+  TUSD: { bsc: '0x14016e85a25aeb13065688cafb43044c2ef86784' }
+};
+/* Devuelve el simbolo mayor que imita (p.ej. 'USDT') si el token es impostor, o null si es legitimo. */
+export function tokenImpostor(simbolo, address, red) {
+  const s = String(simbolo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');   // "USDT.z" -> "USDTZ"
+  if (!s) return null;
+  const tron = red === 'tron';
+  for (const base in OFICIALES) {
+    if (s === base || (s.startsWith(base) && s.length > base.length)) {       // imita a `base`
+      const of = OFICIALES[base][tron ? 'tron' : 'bsc']; if (!of) continue;
+      const real = tron ? (String(address) === of) : (String(address || '').toLowerCase() === of);
+      if (!real) return base;                                                 // imita pero NO es el oficial -> impostor
+    }
+  }
+  return null;
+}
 
 const ABI = ['function owner() view returns (address)', 'function balanceOf(address) view returns (uint256)', 'function totalSupply() view returns (uint256)'];
 const TOPIC_TRANSFER = ethers.id('Transfer(address,address,uint256)');
@@ -41,22 +66,40 @@ const GP_PROXIES = [
   (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   (u) => 'https://thingproxy.freeboard.io/fetch/' + u
 ];
-export async function leerGoPlus(token) {
-  const dir = String(token).toLowerCase();
-  const url = GOPLUS + encodeURIComponent(dir);
+export async function leerGoPlus(token, chain = '56') {
+  const addr = String(token);
+  const url = GOPLUS + chain + '?contract_addresses=' + encodeURIComponent(addr);
   const pedir = async (prox) => {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
     try {
       const r = await fetch(prox(url), { signal: ctl.signal });
       if (!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json();
-      return (j && j.result && j.result[dir]) || null;   // null = GoPlus aun no tiene el token (recien creado)
+      const j = await r.json(); const res = j && j.result; if (!res) return null;
+      return res[addr] || res[addr.toLowerCase()] || null;   // EVM: clave en minuscula; Tron: base58 tal cual
     } finally { clearTimeout(t); }
   };
   for (let i = 0; i < GP_PROXIES.length; i++) {
     try { const a = await pedir(GP_PROXIES[i]); if (a) return a; } catch (e) { log('goplus via ' + i, e && e.message); }
   }
   return null;
+}
+/* Auditoria de un token TRON: no hay RPC de Tron aqui, asi que se combina GoPlus (chain 'tron': honeypot, lista
+   negra, mint, pausable, propietario) con TronScan (holders, creador, verificado). Devuelve el MISMO formato que
+   evaluar() para que el sello, los checks y el veredicto se pinten igual que en BSC. Asi una moneda de Tron deja
+   de quedarse en "Not a PancakeSwap pair": sale con su Security Check real. */
+export async function auditarTron(token, it = {}) {
+  let gp = null, ts = null;
+  try { gp = await leerGoPlus(token, 'tron'); } catch (_) {}
+  try { const m = await import('./tron.js'); ts = await m.seguridadTron(token); } catch (_) {}
+  const cad = {};
+  if (ts) { if (ts.holders != null) cad.holders = ts.holders; if (ts.creador) cad.creador = ts.creador; }
+  const res = evaluar(gp, cad); res.completo = true; res.red = 'tron';
+  if (ts && ts.verificado) { if (!res.datos) res.datos = {}; if (!res.datos.checks) res.datos.checks = {}; res.datos.checks.verified = true; }
+  try {
+    const imp = tokenImpostor(it.simbolo || (gp && gp.token_symbol), token, 'tron');
+    if (imp) { res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Do not buy — fake ' + imp; res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '.' }); }
+  } catch (_) {}
+  return res;
 }
 
 /* ── 2) Lecturas propias ── */
@@ -312,6 +355,15 @@ export async function auditar(token, par, it = {}, alPaso = () => {}, conHolders
   const gpP = (async () => { alPaso('scanner', 'run'); const g = await conTiempo(leerGoPlus(token), 12000).catch(() => null); alPaso('scanner', g ? 'ok' : 'fail'); return g; })();
   const [gp, cad] = await Promise.all([gpP, conTiempo(leerCadena(token, par, it, alPaso, conHolders), 26000).catch(() => ({}))]);
   const res = evaluar(gp, cad); res.completo = !!conHolders;
+  // IMPOSTOR: un token cuyo simbolo imita a un estable mayor pero su contrato NO es el oficial es un scam, por
+  // mucho que GoPlus diga que el contrato no es honeypot. Fuerza veredicto 'bad' y lo pone como primer hallazgo.
+  try {
+    const imp = tokenImpostor(it.simbolo || (gp && gp.token_symbol), token, it.red);
+    if (imp) {
+      res.impostor = imp; res.nivel = 'bad'; res.titulo = 'Do not buy — fake ' + imp;
+      res.hallazgos.unshift({ n: 'bad', t: 'Impersonates ' + imp, d: 'The symbol mimics ' + imp + ' but this is NOT the official ' + imp + ' contract. Almost certainly a scam token made to pass as ' + imp + '. Do not trade it.' });
+    }
+  } catch (_) {}
   log(token, res.nivel, res.hallazgos.map((x) => x.t));
   return res;
 }

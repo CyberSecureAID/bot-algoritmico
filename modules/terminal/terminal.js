@@ -12,7 +12,7 @@ import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecie
 import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante, marcarVistas } from './alertas.js';
-import { abrirGrande } from './panel-grande.js';
+import { abrirGrande, refrescarAlertasOFC } from './panel-grande.js';
 import { resolverContrato, esContrato } from './resolver.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
 import { FEED, SCAN_URL, FOURMEME_URL, USDT } from './config.js';
@@ -99,9 +99,15 @@ function abreviar(n) { const s = String(n || '').trim(); if (!s) return 'Token';
 /* Logo del token: se intenta el de Trust Wallet (repositorio publico, sin servidor propio). Un token recien
    nacido casi nunca lo tiene; entonces queda el rombo de BNB Chain como marca de la red, nunca un hueco. */
 const LOGO_TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/';
-const logo = (sim, addr) => {
+const ICO_TRON = '<svg class="tm-tron" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#EC0928"/><path fill="#fff" d="M24 11.5 8.7 8.8l8 16.4 9-12.1-1.7-1.6zm-1.9 1.3.9.9-2.4 3.2.3-3.8 1.2-.3zm-2.7.2-.4 4.3-3.4-7 3.8.7-.1 2zm-4.9-.8 3 6.2-5-10.3 2 4.1z"/></svg>';
+const logo = (sim, addr, red, logoUrl) => {
+  if (red === 'tron') {
+    const img = logoUrl ? `<img class="tm-logo-img" src="${esc(logoUrl)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+    return `<span class="tm-logo"><span class="tm-logo-fb">${ICO_TRON}</span>${img}</span>`;
+  }
   let a = ''; try { a = ethers.getAddress(String(addr || '')); } catch (_) {}
-  const img = a ? `<img class="tm-logo-img" src="${LOGO_TW}${a}/logo.png" alt="" loading="lazy" onerror="this.remove()">` : '';
+  const src = logoUrl || (a ? LOGO_TW + a + '/logo.png' : '');
+  const img = src ? `<img class="tm-logo-img" src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">` : '';
   return `<span class="tm-logo"><span class="tm-logo-fb">${ICO_BSC}</span>${img}</span>`;
 };
 
@@ -165,7 +171,7 @@ export function arrancar() {
             <div class="tm-cp-tt" id="tm-cp-tt"><span class="tm-cp-ph">${ICO_BOLT}<b>Chart</b><span>Pick a token below to load its live chart</span></span></div>
             <div class="tm-cp-right"><div class="tm-tf" id="tm-cp-tf"><button data-sec="60" type="button">1m</button><button data-sec="300" type="button">5m</button><button data-sec="900" class="on" type="button">15m</button><button data-sec="3600" type="button">1h</button><button data-sec="14400" type="button">4h</button><button data-sec="86400" type="button">1d</button></div><button class="tm-cp-all" id="tm-cp-all" type="button" aria-label="View full chart" disabled>${ICO_EXPAND}</button></div>
           </div>
-          <div class="tm-chart tm-cp-chart"><div class="tm-chart-cv" id="tm-cp-cv"></div><div class="tm-chart-msg" id="tm-cp-msg">Pick a token below</div></div>
+          <div class="tm-chart tm-cp-chart"><div class="tm-chart-cv" id="tm-cp-cv"></div><img class="tm-wm" src="../../branding/decfreedomlogohorizontal.webp" onerror="this.onerror=null;this.src='../../assets/img/cco-full.webp'" alt=""><div class="tm-chart-msg" id="tm-cp-msg">Pick a token below</div></div>
         </section>
       </main>
       <aside class="tm-rail">
@@ -202,7 +208,7 @@ export function arrancar() {
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
   try { pintarPosWidget(); setInterval(() => { try { pintarPosWidget(); } catch (_) {} }, 15000); } catch (_) {}
   // Vigilante de alertas: avisa (notificacion + aviso en la app) cuando el precio toca el objetivo. Solo mientras el Terminal este abierto.
-  try { arrancarVigilante(() => _bnbUsd, (a, p) => { tmAviso(a, p); try { pintarBell(); } catch (_) {} }); } catch (_) {}
+  try { arrancarVigilante(() => _bnbUsd, (a, p) => { tmAviso(a, p); try { pintarBell(); } catch (_) {} try { refrescarAlertasOFC(); } catch (_) {} }); } catch (_) {}
   if (_parar) _parar();
   _parar = gb.arrancarFeed({
     alNuevo: (it) => { _items.push(it); _items.sort((a, b) => b.bloque - a.bloque); if (_items.length > FEED.maxFilas) _items.length = FEED.maxFilas; encolarAuditoria(it); pintar(); },
@@ -315,10 +321,11 @@ function pintar() {
 function bannerContrato() {
   const r = _lobResuelto;
   if (r === 'load') return `<div class="tm-res"><div class="tm-res-load"><i></i>Looking up this contract on-chain…</div></div>`;
-  if (r === 'none' || !r || typeof r !== 'object') return `<div class="tm-res"><div class="tm-res-none"><b>No token found</b><span>This contract has no PancakeSwap pair, so there is nothing to trade here. Double-check the address.</span></div></div>`;
-  const pu = usdDe(r); const liq = r.moneda === 'USDT' ? r.liquidez : r.liquidez * _bnbUsd;
+  if (r === 'none' || !r || typeof r !== 'object') return `<div class="tm-res"><div class="tm-res-none"><b>No token found</b><span>Could not resolve this contract. Double-check the address (BSC 0x… or Tron T…).</span></div></div>`;
+  const pu = usdDe(r); const liq = r.red === 'tron' ? 0 : (r.moneda === 'USDT' ? r.liquidez : r.liquidez * _bnbUsd);
+  const redTxt = r.red === 'tron' ? 'Tron network' : (r.moneda || 'BNB') + ' pair';
   return `<div class="tm-res"><div class="tm-res-card">
-      <div class="tm-res-tk">${logo(r.simbolo, r.token)}<div class="tm-res-id"><b title="${esc(r.nombre || '')}">${esc(abreviar(r.nombre || r.simbolo || 'Token'))} <i>(${esc(r.simbolo || '?')})</i></b><span>${esc(corto2(r.token))} · ${r.moneda} pair</span></div></div>
+      <div class="tm-res-tk">${logo(r.simbolo, r.token, r.red, r.logoUrl)}<div class="tm-res-id"><b title="${esc(r.nombre || '')}">${esc(abreviar(r.nombre || r.simbolo || 'Token'))} <i>(${esc(r.simbolo || '?')})</i></b><span>${esc(corto2(r.token))} · ${redTxt}</span></div></div>
       <div class="tm-res-m"><div><b>${pu > 0 ? '$' + fmtP(pu) : '—'}</b><span>Price</span></div><div><b>${liq > 0 ? money(liq) : '—'}</b><span>Liquidity</span></div></div>
       <button class="tm-b tm-res-open" id="tm-res-open" type="button">Open ${esc(r.simbolo || 'token')}</button>
     </div></div>`;

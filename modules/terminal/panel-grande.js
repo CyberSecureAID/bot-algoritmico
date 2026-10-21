@@ -44,9 +44,18 @@ const LOGO_BNB = 'https://coin-images.coingecko.com/coins/images/825/large/bnb-i
 const LOGO_USDT = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png';
 
 const LOGO_TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/';
-function logo(addr) {
+// Logo de Tron (marca roja). Un token de Tron NUNCA debe salir con el icono de BNB: si TronScan trae su icono
+// se usa ese, y si no, este icono rojo que representa la red Tron (nunca un emoji).
+const ICO_TRON = '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#EC0928"/><path fill="#fff" d="M24 11.5 8.7 8.8l8 16.4 9-12.1-1.7-1.6zm-1.9 1.3.9.9-2.4 3.2.3-3.8 1.2-.3zm-2.7.2-.4 4.3-3.4-7 3.8.7-.1 2zm-4.9-.8 3 6.2-5-10.3 2 4.1z"/></svg>';
+// logo(addr, red, logoUrl): BSC usa TrustWallet + respaldo BNB; Tron usa el icono/logo de TronScan + respaldo Tron.
+function logo(addr, red, logoUrl) {
+  if (red === 'tron') {
+    const img = logoUrl ? `<img class="tg-logo-img" src="${esc(logoUrl)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+    return `<span class="tg-logo"><span class="tg-logo-fb">${ICO_TRON}</span>${img}</span>`;
+  }
   let a = ''; try { a = ethers.getAddress(String(addr || '')); } catch (_) {}
-  const img = a ? `<img class="tg-logo-img" src="${LOGO_TW}${a}/logo.png" alt="" loading="lazy" onerror="this.remove()">` : '';
+  const src = logoUrl || (a ? LOGO_TW + a + '/logo.png' : '');
+  const img = src ? `<img class="tg-logo-img" src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">` : '';
   return `<span class="tg-logo"><span class="tg-logo-fb">${ICO_BSC}</span>${img}</span>`;
 }
 function fmtP(p, sig = 4) {
@@ -95,12 +104,13 @@ function css() {
 .tg-x:hover{color:#fff;border-color:#3a434f}
 .tm-big-main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:272px 1fr 316px;gap:1px;background:var(--line,#232b36)}
 .tg-col{background:#05070a;min-height:0;overflow:auto}
-.tg-left{padding:14px}
+.tg-left{padding:14px;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
+.tg-left::-webkit-scrollbar{width:6px}.tg-left::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
 .tg-chart{background:#070a0e;position:relative;min-height:0}
 .tg-chart-cv{position:absolute;inset:0}
 .tg-chart-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-3,#7d8794);font-family:var(--mono);font-size:13px;pointer-events:none}
 .tg-chart-msg[hidden]{display:none}
-.tg-wm{position:absolute;left:12px;bottom:10px;height:20px;width:auto;max-width:150px;opacity:.2;pointer-events:none;z-index:3;user-select:none}
+.tg-wm{position:absolute;left:12px;bottom:6px;height:20px;width:auto;max-width:150px;opacity:.2;pointer-events:none;z-index:3;user-select:none}
 .tg-tools{position:absolute;top:8px;left:8px;z-index:4;display:flex;gap:6px}
 .tg-tool{width:32px;height:32px;border-radius:9px;border:1px solid var(--line,#232b36);background:rgba(11,15,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--ink-2,#b7bdc6);display:grid;place-items:center;cursor:pointer;transition:color .14s,border-color .14s}
 .tg-tool svg{width:17px;height:17px}
@@ -119,7 +129,8 @@ function css() {
 .tg-md-lbl{position:absolute;top:-23px;left:-1px;white-space:nowrap;font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;background:#0b0f14;border:1px solid var(--line,#232b36);color:var(--ink,#eaecef);box-shadow:0 6px 16px rgba(0,0,0,.5)}
 .tg-mdbox.up .tg-md-lbl{color:#2ee86a;border-color:rgba(46,232,106,.4)}
 .tg-mdbox.down .tg-md-lbl{color:#ff5c6c;border-color:rgba(246,70,93,.4)}
-.tg-right{padding:14px;display:flex;flex-direction:column;gap:12px}
+.tg-right{padding:14px;display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
+.tg-right::-webkit-scrollbar{width:6px}.tg-right::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
 .tg-sec-t{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3,#7d8794);margin:0 0 10px}
 .tg-kv{display:flex;flex-direction:column;gap:9px}
 .tg-kv>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}
@@ -176,7 +187,7 @@ function css() {
 .tg-sem.ok .tg-sem-ico svg,.tg-sem.warn .tg-sem-ico svg,.tg-sem.bad .tg-sem-ico svg{animation:tgChkPop .5s ease-out}
 /* Open alerts y Positions con scroll propio (barra fina) para muchas monedas. */
 #tg-openalerts{max-height:168px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
-#tg-positions{max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
+#tg-positions{min-height:0}
 #tg-openalerts::-webkit-scrollbar,#tg-positions::-webkit-scrollbar{width:6px}
 #tg-openalerts::-webkit-scrollbar-thumb,#tg-positions::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
 #tg-openalerts::-webkit-scrollbar-track,#tg-positions::-webkit-scrollbar-track{background:transparent}
@@ -394,7 +405,21 @@ async function resolver(q, feed) {
   return null;
 }
 
-let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60, _abrirAlerta = false;
+let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60, _abrirAlerta = false, _chartFuente = 'v2';
+/* Respaldo de grafica por GeckoTerminal (Tron / tokens sin par V2). Modulo-nivel para que lo use tanto la carga
+   del token como el cambio de temporalidad. Guarda contra _itActual para descartar respuestas de otro token. */
+async function cargarVelasGecko(it) {
+  if (!it) return;
+  const msg = $('tg-chart-msg'); if (msg && !(_velasRawBig && _velasRawBig.length)) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
+  try {
+    const { velasGecko } = await import('./gecko.js');
+    const velas = await velasGecko(it.token, it.red, _tfSecBig);
+    if (_itActual !== it) return;
+    _chartFuente = 'gecko';
+    _velasRawBig = (velas && velas.length) ? velas : [];
+    renderChartBig();
+  } catch (_) { if (_itActual === it) { if (!(_velasRawBig && _velasRawBig.length)) _velasRawBig = []; renderChartBig(); } }
+}
 export async function abrirGrande(it0, ctx, opts) {
   ctx = ctx || {};
   _ctx = ctx;
@@ -460,7 +485,9 @@ export async function abrirGrande(it0, ctx, opts) {
     _tfSecBig = Number(b.dataset.sec) || 60;
     tfBox.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
     if (mdbox) mdbox.hidden = true;
-    renderChartBig();
+    // V2: reagrupa las velas en cache sin re-llamar. GeckoTerminal: el timeframe es otra consulta, hay que pedirla.
+    if (_chartFuente === 'gecko' && _itActual) cargarVelasGecko(_itActual);
+    else renderChartBig();
   }; });
 
   // Selector de tokens del feed (lista estilo New pairs que carga en la grafica).
@@ -490,7 +517,7 @@ export async function abrirGrande(it0, ctx, opts) {
   // Parte interna de una fila de resultado (logo + nombre + precio), sin el <div> contenedor.
   const filaResInner = (x) => {
     const pu = x.precioUsd > 0 ? x.precioUsd : (x.moneda === 'USDT' ? (x.precio || 0) : ((x.precio || 0) * bnbUsd()));
-    return `${logo(x.token)}<div class="nm"><b>${esc(x.simbolo || '?')}</b><span>${esc(x.nombre || cortoDir(x.token))}</span></div><div class="pr">${pu > 0 ? '$' + fmtP(pu) : ''}</div>`;
+    return `${logo(x.token, x.red, x.logoUrl)}<div class="nm"><b>${esc(x.simbolo || '?')}</b><span>${esc(x.nombre || cortoDir(x.token))}</span></div><div class="pr">${pu > 0 ? '$' + fmtP(pu) : ''}</div>`;
   };
   const filaRes = (x) => `<div class="tg-pick-row" data-a="${esc(x.token)}">${filaResInner(x)}</div>`;
   const cargarRow = (d) => d.querySelectorAll('.tg-pick-row[data-a]').forEach((r) => { r.onclick = () => { const x = feed().find((t) => t.token.toLowerCase() === r.dataset.a.toLowerCase()); if (x) { cerrarRes(); if (findIn) findIn.value = ''; cargar(x); } }; });
@@ -523,22 +550,35 @@ export async function abrirGrande(it0, ctx, opts) {
       }).catch(() => { const d2 = $('tg-sresults'); if (mine === _sResolN && d2) { const row = d2.querySelector('.tg-pick-res'); if (row) row.outerHTML = `<div class="tg-pick-empty">Could not look up that contract.</div>`; } });
     }
   };
-  // Enter: si hay lista, carga el primer resultado; si no, resuelve el texto (nombre, simbolo o contrato).
+  // Pegar un CONTRATO completo (BSC 0x… o Tron T…) lo resuelve y lo CARGA directo en la vista (cabecera +
+  // precio + grafica + seguridad). Antes solo lo mostraba en una lista desplegable que se cerraba al tocar
+  // fuera (el usuario pegaba y, al dar clic en la grafica, el resultado desaparecia). Ahora no hay nada que
+  // tocar: la moneda se carga sola. (El feed por nombre/simbolo sigue con lista desplegable.)
+  const cargarContrato = async (s) => {
+    const mine = ++_sResolN; cerrarRes();
+    const msg = $('tg-chart-msg'); if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
+    let it = await resolverContrato(s).catch(() => null);
+    if (!it && ov.isConnected) { await new Promise((r) => setTimeout(r, 900)); it = await resolverContrato(s).catch(() => null); }
+    if (mine !== _sResolN || !ov.isConnected) return;   // el usuario siguio tecleando o cerro la vista
+    if (it) { if (findIn) findIn.value = ''; cargar(it); }
+    else if (msg) { msg.hidden = false; msg.textContent = 'No pair or data found for that contract.'; }
+  };
+  // Enter: contrato -> carga directo; si hay lista -> primer resultado; si no -> resuelve nombre/simbolo.
   const buscarEnter = async () => {
     const v = (findIn && findIn.value || '').trim(); if (!v) return;
+    if (esContrato(v)) { cargarContrato(v); return; }
     const d = $('tg-sresults'); const first = d && d.querySelector('.tg-pick-row[data-a]');
     if (first) { first.click(); return; }
     const msg = $('tg-chart-msg'); if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
     let it = await resolver(v, feed());
-    if (!it && ov.isConnected) { await new Promise((r) => setTimeout(r, 900)); it = await resolver(v, feed()); }
     cerrarRes();
     if (!it) { if (msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'No token found. Paste a full contract (0x… or T…).'; } return; }
     findIn.value = ''; cargar(it);
   };
   if (findIn) {
-    findIn.addEventListener('input', () => { clearTimeout(_sTmr); const q = findIn.value; _sTmr = setTimeout(() => pintarRes(q), 150); });
+    findIn.addEventListener('input', () => { clearTimeout(_sTmr); const q = (findIn.value || '').trim(); _sTmr = setTimeout(() => { if (esContrato(q)) cargarContrato(q); else pintarRes(q); }, 220); });
     findIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarEnter(); } else if (e.key === 'Escape') { cerrarRes(); } });
-    findIn.addEventListener('blur', () => setTimeout(cerrarRes, 200));
+    findIn.addEventListener('blur', () => setTimeout(cerrarRes, 220));
   }
 
   // Token inicial: el que se toco, o el de mayor liquidez del feed.
@@ -569,10 +609,11 @@ export async function abrirGrande(it0, ctx, opts) {
     pintarDer(it, ctx);
     const msg = $('tg-chart-msg');
     try { destruirGrafico(); } catch (_) {}
-    // Siembra con las velas que el lobby YA tiene de este token (si las hay): el grafico aparece al instante y,
-    // si el refetch de abajo fallara, el OFC conserva ESTAS en vez de quedarse vacio. Asi la MISMA moneda que
-    // tiene grafico abajo lo tiene tambien en Open Full Chart (era la incongruencia reportada).
-    const sembradas = (ctx && typeof ctx.velasDe === 'function') ? ctx.velasDe(it.token) : null;
+    const graf = it.graficable !== false && !!it.par;   // par V2 -> metodo Sync; si no, GeckoTerminal (Tron/V3/otras)
+    _chartFuente = graf ? 'v2' : 'gecko';
+    // Siembra con las velas del lobby (solo el metodo V2): el grafico aparece al instante y se conserva si el
+    // refetch falla. Asi la misma moneda que tiene grafico abajo lo tiene tambien en Open Full Chart.
+    const sembradas = (graf && ctx && typeof ctx.velasDe === 'function') ? ctx.velasDe(it.token) : null;
     _velasRawBig = (sembradas && sembradas.length) ? sembradas : null;
     if (_velasRawBig) renderChartBig();
     else if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; }
@@ -580,18 +621,20 @@ export async function abrirGrande(it0, ctx, opts) {
     precioUsdVivo(it, bnbUsd())
       .then((p) => { if (ov.isConnected) pintarPrecio(p); }).catch(() => {});
     pintarIzq(it, ctx);
-    // grafica: velas crudas (una por operacion) reagrupadas al timeframe activo. Reintento unico ante un
-    // fallo transitorio de getLogs (era la causa de que la grafica a veces no cargara para ciertos tokens).
+    if (!graf) { cargarVelasGecko(it); return; }   // Tron / sin par V2: la grafica viene de GeckoTerminal
+    // Par V2: velas crudas (una por operacion) reagrupadas al timeframe. Reintento unico ante fallo de getLogs;
+    // si tras el reintento no hay Sync, cae a GeckoTerminal (asi un token con poca actividad on-chain pero con
+    // grafico en GeckoTerminal tambien se dibuja, en vez de quedarse en "No trades yet").
     const pedir = async (reintentar) => {
       try {
         const velas = await velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: bnbUsd(), quoteEsUSDT: it.moneda === 'USDT' });
         if (!ov.isConnected || _itActual !== it) return;
-        if (velas && velas.length) { _velasRawBig = velas; renderChartBig(); }
+        if (velas && velas.length) { _chartFuente = 'v2'; _velasRawBig = velas; renderChartBig(); }
         else if (reintentar && it.par) { setTimeout(() => { if (ov.isConnected && _itActual === it) pedir(false); }, 1300); }
-        else if (!(_velasRawBig && _velasRawBig.length)) { _velasRawBig = []; renderChartBig(); }   // sin semilla del lobby: vacio
+        else if (!(_velasRawBig && _velasRawBig.length)) { cargarVelasGecko(it); }   // sin Sync: respaldo GeckoTerminal
       } catch (_) {
         if (reintentar && it.par) { setTimeout(() => { if (ov.isConnected && _itActual === it) pedir(false); }, 1300); }
-        else if (!(_velasRawBig && _velasRawBig.length) && msg && ov.isConnected) { msg.hidden = false; msg.textContent = 'Chart unavailable'; }
+        else if (!(_velasRawBig && _velasRawBig.length)) { cargarVelasGecko(it); }
       }
     };
     pedir(true);
@@ -600,8 +643,8 @@ export async function abrirGrande(it0, ctx, opts) {
   function pintarId(it) {
     const idEl = $('tg-id'); if (!idEl) return;
     if (!it) { idEl.innerHTML = ''; return; }
-    const sub = it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : it.fuente === 'fourmeme' ? 'four.meme' : (it.moneda || 'BNB') + ' pair';
-    idEl.innerHTML = `${logo(it.token)}<div class="tg-id-tx"><b title="${esc(it.nombre || '')}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · ${sub}</span></div>`;
+    const sub = it.red === 'tron' ? 'Tron network' : it.fuente === 'launchpad' ? 'DecFreedom Launchpad' : it.fuente === 'fourmeme' ? 'four.meme' : (it.moneda || 'BNB') + ' pair';
+    idEl.innerHTML = `${logo(it.token, it.red, it.logoUrl)}<div class="tg-id-tx"><b title="${esc(it.nombre || '')}">${esc(it.nombre || 'Token')}</b><span>${esc(it.simbolo || '?')} · ${sub}</span></div>`;
   }
   function pintarPrecio(p) {
     _precioUsd = p || 0;
@@ -645,7 +688,7 @@ function pintarIzq(it, ctx) {
   const cp = $('tg-k-copy'); if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(it.token); const o = cp.innerHTML; cp.textContent = 'copied'; setTimeout(() => { if (cp.isConnected) cp.innerHTML = o; }, 1200); } catch (_) {} };
   // Verificacion en tiempo real: los pasos (code, owner, scan, lp, holders) se encienden segun llega cada
   // resultado, igual que la ficha emergente; al terminar, el semaforo y la lista detallada de checks.
-  if (ctx && ctx.auditarCache && it.par) {
+  if (ctx && ctx.auditarCache) {   // BSC (con o SIN par: Launchpad) y Tron: el analizador SIEMPRE se dispara
     const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
     const alPaso = (id, e) => { const el = host.querySelector('#tg-sem .tg-pasos i[data-p="' + id + '"]'); if (el) el.className = e; };
     // Rellena Token info con lo que traiga la auditoria. final=true cierra los campos que sigan vacios.
@@ -672,18 +715,26 @@ function pintarIzq(it, ctx) {
       setTimeout(() => { if ($('tg-sem') && _itActual === it) { verdictoListo = true; pintaSemBig(lastR || r, it); } }, dur + 160);
     };
     const verCreador = (r) => { if (creadorPedido) return; const cre = (r && r.datos && r.datos.creador) || it.creador; if (!cre) return; creadorPedido = true; historialCreadorBig(it, cre); };
-    // Pass 1 RAPIDO (sin holders): veredicto y cascada en pocos segundos. Antes se esperaba la auditoria
-    // completa (hasta ~26s reconstruyendo holders) y por eso el Check Security parecia congelado. Ya no.
-    ctx.auditarCache(it, alPaso, false).then((r) => { rellenar(r, false); reveler(r); verCreador(r); }).catch(() => {});
-    // Pass 2 COMPLETO (holders, concentracion, snipers, bundle): afina Token info y los checks sin re-animar.
-    ctx.auditarCache(it, alPaso, true).then((r) => {
-      rellenar(r, true); reveler(r); verCreador(r);
-      if (!creadorPedido) { const el = $('tg-creador'); if (el && _itActual === it) { el.className = 'tg-creador'; el.innerHTML = '<span class="tg-cre-mut">Unknown creator</span>'; } }
-    }).catch(() => { if (!cascada) { pintaSemBig({ nivel: 'pend', titulo: 'Check unavailable' }, it); const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>Security check unavailable</span><b></b></div>`; } });
+    if (it.red === 'tron') {
+      // TRON: sin RPC de Tron, el analisis viene de GoPlus(tron) + TronScan. Asi un token de Tron sale con su
+      // Security Check real en vez de quedarse en "Not a PancakeSwap pair".
+      for (const id of PASOS) alPaso(id, id === 'scanner' ? 'run' : 'na');
+      import('./auditoria.js').then(({ auditarTron }) => auditarTron(it.token, it)).then((r) => {
+        if (_itActual !== it) return; alPaso('scanner', 'ok'); rellenar(r, true); reveler(r); verCreador(r);
+        if (!creadorPedido) { const el = $('tg-creador'); if (el && _itActual === it) { el.className = 'tg-creador'; el.innerHTML = '<span class="tg-cre-mut">Unknown creator</span>'; } }
+      }).catch(() => { if (!cascada) { pintaSemBig({ nivel: 'pend', titulo: 'Check unavailable' }, it); const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>Security check unavailable</span><b></b></div>`; } });
+    } else {
+      // BSC (con o sin par): on-chain propio + GoPlus. Pass 1 rapido (veredicto en segundos) y Pass 2 completo.
+      ctx.auditarCache(it, alPaso, false).then((r) => { rellenar(r, false); reveler(r); verCreador(r); }).catch(() => {});
+      ctx.auditarCache(it, alPaso, true).then((r) => {
+        rellenar(r, true); reveler(r); verCreador(r);
+        if (!creadorPedido) { const el = $('tg-creador'); if (el && _itActual === it) { el.className = 'tg-creador'; el.innerHTML = '<span class="tg-cre-mut">Unknown creator</span>'; } }
+      }).catch(() => { if (!cascada) { pintaSemBig({ nivel: 'pend', titulo: 'Check unavailable' }, it); const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>Security check unavailable</span><b></b></div>`; } });
+    }
   } else {
     ['tg-k-hold', 'tg-k-top', 'tg-k-cre', 'tg-k-tax', 'tg-k-lp'].forEach((id) => { const e = $(id); if (e) e.textContent = '0'; });
-    const sem = $('tg-sem'); if (sem) { sem.className = 'tg-sem pend'; sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.pend}</span><div><b>Not a PancakeSwap pair</b><span>Security check runs on pair tokens</span></div>`; }
-    const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>No pair to verify</span><b></b></div>`;
+    const sem = $('tg-sem'); if (sem) { sem.className = 'tg-sem pend'; sem.innerHTML = `<span class="tg-sem-ico">${ICO_SEM.pend}</span><div><b>Security check unavailable</b><span>Reopen this token to retry</span></div>`; }
+    const ch = $('tg-checks'); if (ch) ch.innerHTML = `<div class="tg-chk pend"><span>No data to verify</span><b></b></div>`;
   }
 }
 /* Semaforo inicial con los pasos de verificacion (se encienden en vivo) y resultado final, como la ficha. */
@@ -713,7 +764,7 @@ function pintaSemBig(r, it) {
   if (sem.dataset.sello === firma) return;   // ya dibujado para este token/veredicto: no repetir
   sem.dataset.sello = firma;
   sem.className = 'tg-sello-wrap';
-  sem.innerHTML = selloMarkup(kind, p, niv);
+  sem.innerHTML = selloMarkup(kind, p, niv, r);
   const cv = sem.querySelector('.tg-sello-cv');
   if (cv) dibujarSello(cv, kind, p, it0, niv);
   wireSelloDescarga(sem, it0);
@@ -723,6 +774,7 @@ function pintaSemBig(r, it) {
    para que el numero NUNCA contradiga el diagnostico (un 'bad' jamas muestra un % alto, un 'ok' jamas bajo). */
 const SELLO_PESOS = { sellable: 24, lpSecured: 20, noBlacklist: 12, notMintable: 10, noPause: 8, renounced: 9, notConcentrated: 9, verified: 4, lowTax: 4 };
 function scorePct(r) {
+  if (r && r.impostor) return 4;   // scam que se hace pasar por un estable mayor: siempre muy bajo, nunca 99%
   const niv = r && r.nivel;
   const banda = niv === 'ok' ? [82, 99] : niv === 'warn' ? [45, 70] : [8, 32];
   const c = r && r.datos && r.datos.checks;
@@ -741,11 +793,13 @@ function scorePct(r) {
   return Math.round(banda[0] + (banda[1] - banda[0]) * frac);
 }
 const SELLO_BG = { ok: new URL('./img/sec-safe.webp', import.meta.url).href, risk: new URL('./img/sec-risk.webp', import.meta.url).href };
-function selloMarkup(kind, p, niv) {
+function selloMarkup(kind, p, niv, r) {
   // Leyenda nitida DEBAJO de la imagen (texto normal del panel): en la columna estrecha el texto pequeno
   // quemado en la imagen se ve diminuto, asi que aqui se repite legible, dejando claro que es del TOKEN.
-  const vshort = niv === 'ok' ? 'Looks safe' : niv === 'warn' ? 'Caution' : 'Do not buy';
-  return `<div class="tg-sello ${kind}"><canvas class="tg-sello-cv"></canvas><div class="tg-sello-sk"><i class="tg-anillo2"></i></div><button class="tg-sello-dl" type="button" disabled aria-label="Save image">${ICO_DL}<span>Save</span></button></div><p class="tg-sello-cap ${kind}"><b>${vshort} · ${p}%</b> · security rating of this token, not of DecFreedom</p>`;
+  const imp = r && r.impostor;
+  const vshort = imp ? ('Fake ' + imp) : niv === 'ok' ? 'Looks safe' : niv === 'warn' ? 'Caution' : 'Do not buy';
+  const cap = imp ? `Impersonates <b>${esc(imp)}</b> — this is NOT the official ${esc(imp)} contract. Likely scam.` : 'security rating of this token, not of DecFreedom';
+  return `<div class="tg-sello ${kind}"><canvas class="tg-sello-cv"></canvas><div class="tg-sello-sk"><i class="tg-anillo2"></i></div><button class="tg-sello-dl" type="button" disabled aria-label="Save image">${ICO_DL}<span>Save</span></button></div><p class="tg-sello-cap ${kind}"><b>${vshort} · ${p}%</b> · ${cap}</p>`;
 }
 /* Cache (promesa) para no recargar el fondo en cada repintado del sello. */
 const _selloImgCache = {};
@@ -897,6 +951,9 @@ function revelarChecks(host, r) {
   const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null;
   const d = (r && r.datos) ? r.datos : {};
   const rows = host.querySelectorAll('.tg-chk');
+  // IMPOSTOR: muestra los hallazgos (que empiezan por "Impersonates USDT", rojo) en vez de las casillas verdes
+  // de GoPlus, que para un fake USDT confunden ("no es honeypot" da igual si se hace pasar por Tether).
+  if (r && r.impostor) { return pintarOnchain(host, r, true); }
   if (!c) { return pintarOnchain(host, r, true); }
   rows.forEach((row, i) => {
     setTimeout(() => {
@@ -914,6 +971,7 @@ function refrescarChecks(r) {
   const c = (r && r.datos && r.datos.checks) ? r.datos.checks : null;
   const d = (r && r.datos) ? r.datos : {};
   const ch = $('tg-checks'); if (!ch) return;
+  if (r && r.impostor) { pintarOnchain(ch, r, false); return; }
   if (!c) { pintarOnchain(ch, r, false); return; }   // sin escaner: repinta los hallazgos en cadena (pass 2 trae mas)
   ch.querySelectorAll('.tg-chk').forEach((row, i) => {
     if (!row.isConnected) return; const def = CHECKS_DEF[i]; if (!def) return;
@@ -977,11 +1035,30 @@ function pintarDer(it, ctx) {
     if (inA) inA.value = fmtTxt(tgt);
     if (h) h.innerHTML = `Notify when ${sim} ${pc > 0 ? 'rises' : 'drops'} ${Math.abs(pc)}% to <b>$${fmtP(tgt, 5)}</b>. Tap “Set price alert”.`;
   };
-  const poner = () => {
+  let _ponerBusy = false;
+  const poner = async () => {
+    if (_ponerBusy) return;
     const v = parseFloat(String(inA.value).replace(/[, $]/g, '')); if (!(v > 0)) { inA.focus(); return; }
-    const ref = precioGrafBig(); const dir = ref > 0 ? (v >= ref ? 'up' : 'down') : 'up';
-    crearAlerta(it, v, dir); inA.value = ''; if (pctIn) pctIn.value = '';
-    const h = $('tg-al-hint'); if (h) h.innerHTML = `Alert set at <b>$${fmtP(v, 5)}</b>. ${dir === 'up' ? 'Notifies when the price rises to it.' : 'Notifies when the price falls to it.'}`;
+    const h = $('tg-al-hint');
+    // Valida contra el precio EN VIVO (la MISMA fuente que vigila la alerta), no contra el cierre del grafico.
+    // Asi la direccion y el objetivo concuerdan con lo que disparara la alerta. Si el objetivo YA esta alcanzado
+    // (igual o pasado el precio actual) NO se crea: se avisa. Esa descoordinacion era la causa del "se disparo
+    // nada mas ponerla" (la alerta se creaba ya cumplida porque el precio vivo difiere del cierre del grafico).
+    _ponerBusy = true; if (setA) { setA.disabled = true; setA.textContent = 'Checking price…'; }
+    let ref = 0; try { ref = await precioUsdVivo(it, bnbUsd()); } catch (_) {}
+    if (!(ref > 0)) ref = precioGrafBig();
+    _ponerBusy = false; if (setA) { setA.disabled = false; setA.textContent = 'Set price alert'; }
+    if (ref > 0) {
+      const dirUp = v > ref * 1.0005, dirDn = v < ref * 0.9995;
+      if (!dirUp && !dirDn) { if (h) h.innerHTML = `That target is the current price (<b>$${fmtP(ref, 5)}</b>). Pick one a bit above or below.`; return; }
+      const dir = dirUp ? 'up' : 'down';
+      crearAlerta(it, v, dir); inA.value = ''; if (pctIn) pctIn.value = '';
+      if (h) h.innerHTML = `Alert set at <b>$${fmtP(v, 5)}</b>. ${dir === 'up' ? 'Notifies when the price RISES to it.' : 'Notifies when the price FALLS to it.'}`;
+    } else {
+      const dir = v >= precioGrafBig() ? 'up' : 'down';   // sin precio en vivo: cae al cierre del grafico
+      crearAlerta(it, v, dir); inA.value = ''; if (pctIn) pctIn.value = '';
+      if (h) h.innerHTML = `Alert set at <b>$${fmtP(v, 5)}</b>.`;
+    }
     derOpenAlerts(it);
   };
   if (setA && inA) { setA.onclick = poner; inA.onkeydown = (e) => { if (e.key === 'Enter') poner(); }; }
@@ -1031,6 +1108,9 @@ function derOpenAlerts(it) {
   host.innerHTML = l.map((a) => `<div class="tg-alrow ${a.disparada ? 'done' : ''}"><span class="tg-aldir ${a.dir}"></span><b>$${fmtP(a.objetivo)}</b>${a.disparada ? '<em>hit</em>' : ''}<button class="tg-alx" data-id="${esc(a.id)}" type="button" aria-label="Remove">✕</button></div>`).join('');
   host.querySelectorAll('.tg-alx').forEach((b) => { b.onclick = () => { quitarAlerta(b.dataset.id); derOpenAlerts(it); }; });
 }
+/* Lo llama el vigilante (terminal.js) cuando una alerta se dispara, para refrescar Open Alerts del OFC si esta
+   abierto: la alerta pasa a 'hit' pero SIGUE con su boton de cancelar, sin tener que reabrir la pestaña. */
+export function refrescarAlertasOFC() { try { if (_ov && _ov.isConnected && _itActual) derOpenAlerts(_itActual); } catch (_) {} }
 
 async function derPositions(it) {
   const host = $('tg-positions'); if (!host) return;
@@ -1076,9 +1156,10 @@ function agruparBig(velas, seg) {
 function renderChartBig() {
   const cv = $('tg-chart-cv'), msg = $('tg-chart-msg'); if (!cv) return;
   if (_velasRawBig == null) { if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tg-anillo"></span>'; } return; }
-  const velas = agruparBig(_velasRawBig, _tfSecBig);
+  // GeckoTerminal ya entrega las velas al timeframe pedido: NO se reagrupan. El metodo V2 (eventos Sync) si.
+  const velas = _chartFuente === 'gecko' ? _velasRawBig : agruparBig(_velasRawBig, _tfSecBig);
   if (velas.length) { if (msg) msg.hidden = true; montarGrafico(cv, velas); marcarEntradaDe(_itActual); marcarAlertasBig(_itActual); }
-  else { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = 'No trades yet'; } }
+  else { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = _chartFuente === 'gecko' ? 'No chart data for this token yet' : 'No trades yet'; } }
 }
 function marcarEntradaDe(it) {
   try {
