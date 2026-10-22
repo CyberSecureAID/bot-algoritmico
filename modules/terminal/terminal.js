@@ -204,9 +204,6 @@ export function arrancar() {
     else if (n === 'checks') abrirPanel('verif');
   } catch (_) {} }; });
   gb.precioBNBUSDT().then((v) => { _bnbUsd = v || 0; pintar(); try { pintarPosWidget(); } catch (_) {} }).catch(() => {});
-  // Rail por defecto = compra rapida por contrato (no una moneda al azar). Y Top movers se re-ajusta al tamano.
-  try { if (esGrande()) railQuickBuy(); } catch (_) {}
-  if (!_resizeWired) { _resizeWired = true; window.addEventListener('resize', () => { clearTimeout(_resizeT); _resizeT = setTimeout(() => { try { pintarMovers(); } catch (_) {} }, 160); }); }
   setInterval(() => { document.querySelectorAll('#tm-feed .tm-age').forEach((td) => { td.textContent = hace(Number(td.dataset.t)); }); }, 1000);
   try { pintarPosWidget(); setInterval(() => { try { pintarPosWidget(); } catch (_) {} }, 15000); } catch (_) {}
   // Vigilante de alertas: avisa (notificacion + aviso en la app) cuando el precio toca el objetivo. Solo mientras el Terminal este abierto.
@@ -318,7 +315,6 @@ function pintar() {
   if (faltan.length) cargarMercado(faltan).then(() => { clearTimeout(_repM); _repM = setTimeout(pintar, 60); }).catch(() => {});
   pintarWinner();
   pintarMovers();
-  if ($('tm-qb-sug-list')) { try { pintarQbSug(); } catch (_) {} }   // refresca "Trending now" del quick buy
   asegurarSelCP();
 }
 /* Resultado de buscar un CONTRATO que no esta en el feed: tarjeta con el token resuelto en cadena (o aviso). */
@@ -353,9 +349,8 @@ function pintarWinner() {
   host.innerHTML = `<span class="tm-winner-ico">${bnbCoin()}</span><div class="tm-winner-main"><div class="tm-winner-top"><span class="tm-winner-lbl">Prime mover</span><b class="tm-winner-price">${pu > 0 ? '$' + fmtP(pu) : '$0'}</b></div><div class="tm-winner-nm"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span>${esc(it.simbolo || '?')}</span></div><em class="tm-winner-chg tm-chg up">+${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%</em></div>`;
   host.onclick = () => { const t = _items.find((x) => x.token.toLowerCase() === String(host.dataset.a || '').toLowerCase()); if (!t) return; try { esGrande() ? verGrande(t) : abrirFicha(t); } catch (_) {} };
 }
-/* Top movers adaptativo: renderiza hasta 8 y recorta las que no caben, para que la tarjeta llene el lateral y
-   termine a la misma altura que el grafico y la actividad (las tres columnas se estiran por el grid). El #1 ya
-   sale arriba como "Prime mover", asi que aqui empieza en el #2 y no se repite. */
+/* Top movers: los 5 que mas suben (24h). El #1 ya sale arriba como "Prime mover", asi que aqui empieza en el #2
+   y no se repite. Cantidad FIJA (5): llena el hueco que dejaba stats sin empujar ni deformar el resto. */
 function pintarMovers() {
   const host = $('tm-movers'); if (!host) return;
   const conDatos = _items.filter((x) => x.par && mercadoDe(x.token) && mercadoDe(x.token).cambio24 != null);
@@ -363,22 +358,14 @@ function pintarMovers() {
   if (conDatos.length >= 2) orden = conDatos.slice().sort((a, b) => mercadoDe(b.token).cambio24 - mercadoDe(a.token).cambio24);
   else orden = _items.filter((x) => x.par && x.liquidez > 0).sort((a, b) => b.liquidez - a.liquidez);
   const w = winnerTok(); const wkey = w ? w.token.toLowerCase() : null;
-  const top = orden.filter((it) => !wkey || it.token.toLowerCase() !== wkey).slice(0, 14);
+  const top = orden.filter((it) => !wkey || it.token.toLowerCase() !== wkey).slice(0, 5);
   if (!top.length) { host.innerHTML = ''; return; }
-  host.innerHTML = `<div class="tm-movers-h">${ICO_TREND}<b>Top movers</b></div><div class="tm-movers-list" id="tm-movers-list">` + top.map((it) => {
+  host.innerHTML = `<div class="tm-movers-h">${ICO_TREND}<b>Top movers</b></div>` + top.map((it) => {
     const m = mercadoDe(it.token); const chg = m && m.cambio24 != null ? m.cambio24 : null; const pu = usdDe(it);
     const chgTxt = chg != null ? `<em class="tm-chg ${chg >= 0 ? 'up' : 'down'}">${chg >= 0 ? '+' : ''}${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%</em>` : '';
     return `<button class="tm-mover" type="button" data-a="${esc(it.token)}">${logo(it.simbolo, it.token)}<span class="tm-mover-id"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span>${esc(it.simbolo || '?')}</span></span><span class="tm-mover-px"><b>${pu > 0 ? '$' + fmtP(pu) : '$0'}</b>${chgTxt}</span></button>`;
-  }).join('') + `</div>`;
+  }).join('');
   host.querySelectorAll('.tm-mover').forEach((b) => { b.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === b.dataset.a.toLowerCase()); if (it) (esGrande() ? seleccionarCP(it) : abrirFicha(it)); }; });
-  ajustarMovers();
-}
-/* Quita las ultimas filas de Top movers que no caben en el alto disponible (minimo 3), para que no desborden ni
-   dejen hueco. Se vuelve a llamar al repintar y al redimensionar la ventana. */
-function ajustarMovers() {
-  const list = $('tm-movers-list'); if (!list) return;
-  let guard = 0;
-  while (list.scrollHeight > list.clientHeight + 1 && list.children.length > 3 && guard++ < 24) list.removeChild(list.lastElementChild);
 }
 /* Resumen de posicion activa junto a la campanita. Si hay posiciones, muestra la primera (simbolo + PnL% +
    valor) y al tocarla abre la grafica grande de ese token (donde se ven todas). Si no, "No active positions". */
@@ -514,14 +501,13 @@ function cargarCP(it) {
     .catch(() => { if (_cpTok !== it.token) return; _velasRaw = []; const msg = cpEl('tm-cp-msg'); if (msg) { msg.hidden = false; msg.textContent = 'Chart unavailable'; } });
 }
 /* Selecciona un token: cabecera + grafico + controles. Marca la fila activa en la tabla. */
-function seleccionarCP(it, montaRail = true) {
+function seleccionarCP(it) {
   if (!it) return; _sel = it;
   cabeceraCP(it);
   const all = cpEl('tm-cp-all'); if (all) all.disabled = false;
   const host = $('tm-feed'); if (host) { host.querySelectorAll('.tm-row.sel').forEach((r) => r.classList.remove('sel')); const ar = host.querySelector(`.tm-row[data-a="${it.token}"]`); if (ar) ar.classList.add('sel'); }
   cargarCP(it);
-  // montaRail=false: solo pone el grafico central por defecto, SIN tocar el rail (deja la compra rapida visible).
-  try { if (montaRail && esGrande()) montarRail(it); } catch (_) {}
+  try { if (esGrande()) montarRail(it); } catch (_) {}
 }
 /* Por defecto (escritorio) elige el token con MAS liquidez, no el primero que llega (que suele ser basura).
    Con un margen para que el feed se pueble y "mas liquidez" tenga sentido. */
@@ -534,8 +520,7 @@ function asegurarSelCP() {
   const conVol = cand.filter((x) => vol(x) > 0);
   // Por defecto el #1 por volumen (siempre tiene grafico y datos que mostrar); si aun no hay volumen, el mas liquido.
   const best = conVol.length ? conVol.reduce((a, b) => (vol(b) > vol(a) ? b : a)) : cand.reduce((a, b) => ((b.liquidez || 0) > (a.liquidez || 0) ? b : a));
-  // Solo el grafico central por defecto; el rail queda en "compra rapida" (contrato) hasta que el usuario elija.
-  if (best) seleccionarCP(best, false);
+  if (best) seleccionarCP(best);
 }
 /* View All: abre la vista grande con el token actual; al cerrarse, re-monta el grafico inline. */
 function verGrande(it) {
@@ -553,7 +538,6 @@ function verGrande(it) {
 const corto2 = (a) => { const s = String(a || ''); return s.length > 10 ? s.slice(0, 6) + '…' + s.slice(-4) : s; };
 const liqTxtRail = (it) => { const l = it.moneda === 'USDT' ? it.liquidez : it.liquidez * _bnbUsd; return l > 0 ? money(l) : '—'; };
 let _railTok = '', _railMode = 'buy', _ccy = 'BNB', _bal = 0;
-let _resizeWired = false, _resizeT = null;
 const fmtAmt = (n) => { n = Number(n) || 0; if (n <= 0) return '0'; return (n < 1 ? n.toFixed(6) : n.toFixed(4)).replace(/\.?0+$/, ''); };
 function verifBadge(aud) {
   if (!aud || aud.nivel === 'pend') return '';
@@ -563,69 +547,6 @@ function verifBadge(aud) {
 function railVacio() {
   const rail = document.querySelector('.tm-rail'); if (!rail) return;
   rail.innerHTML = `<div class="tm-rail-ph"><span class="tm-rail-ph-ic">${ICO_BOLT}</span><b>Select a token</b><span>Tap any token to see its details, chart and trade panel here.</span></div>`;
-}
-/* Compra rapida: estado por defecto del rail. En vez de una moneda al azar que no se podia cambiar (cada toque
-   en el feed abre el Full Chart), aqui el usuario PEGA el contrato del token que quiere, sale la moneda debajo, la
-   carga y compra desde su wallet con la MISMA comision del 1% que el Full Chart. Sin placeholders: usa el mismo
-   resolverContrato del buscador y la misma ventana de compra (abrirCompra) ya probada. */
-function railQuickBuy() {
-  const rail = document.querySelector('.tm-rail'); if (!rail) return;
-  _railTok = '';
-  rail.innerHTML = `
-    <div class="tm-qb">
-      <div class="tm-qb-h">${ICO_BOLT}<div class="tm-qb-ht"><b>Quick buy</b><span>Paste a contract, or pick a hot token below</span></div></div>
-      <div class="tm-qb-find"><span class="tm-qb-ico">${ICO_SEARCH}</span><input id="tm-qb-ct" type="text" autocomplete="off" spellcheck="false" placeholder="Enter token contract (0x… or T…)"></div>
-      <div class="tm-qb-res" id="tm-qb-res"></div>
-      <div class="tm-qb-sug">
-        <div class="tm-qb-sug-h">${ICO_TREND}<b>Trending now</b></div>
-        <div class="tm-qb-sug-list" id="tm-qb-sug-list"></div>
-      </div>
-      <div class="tm-qb-note">Buys and sells run through the public contract with the same 1% fee as Open Full Chart. Non custodial: it trades from your own wallet, never ours.</div>
-    </div>`;
-  wireQuickBuy();
-  pintarQbSug();
-}
-/* Lista "Trending now" dentro de la compra rapida: un toque carga el token en el panel (grafico + swap) para
-   comprarlo, sin abrir el Full Chart. Rellena el alto del rail (adaptativo) para que no quede hueco vacio. */
-function pintarQbSug() {
-  const host = $('tm-qb-sug-list'); if (!host) return;
-  const conDatos = _items.filter((x) => x.par && mercadoDe(x.token) && mercadoDe(x.token).cambio24 != null);
-  const orden = conDatos.length >= 2 ? conDatos.slice().sort((a, b) => mercadoDe(b.token).cambio24 - mercadoDe(a.token).cambio24) : _items.filter((x) => x.par && x.liquidez > 0).sort((a, b) => b.liquidez - a.liquidez);
-  const top = orden.slice(0, 24);
-  if (!top.length) { host.innerHTML = `<div class="tm-qb-sug-empty">Loading fresh pairs…</div>`; return; }
-  host.innerHTML = top.map((it) => {
-    const m = mercadoDe(it.token); const chg = m && m.cambio24 != null ? m.cambio24 : null; const pu = usdDe(it);
-    const chgTxt = chg != null ? `<em class="tm-chg ${chg >= 0 ? 'up' : 'down'}">${chg >= 0 ? '+' : ''}${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%</em>` : '';
-    return `<button class="tm-qb-sug-row" type="button" data-a="${esc(it.token)}">${logo(it.simbolo, it.token)}<span class="tm-qb-sug-id"><b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b><span>${esc(it.simbolo || '?')}</span></span><span class="tm-qb-sug-px"><b>${pu > 0 ? '$' + fmtP(pu) : '$0'}</b>${chgTxt}</span></button>`;
-  }).join('');
-  host.querySelectorAll('.tm-qb-sug-row').forEach((b) => { b.onclick = () => { const it = _items.find((x) => x.token.toLowerCase() === b.dataset.a.toLowerCase()); if (it) { try { esGrande() ? seleccionarCP(it) : abrirFicha(it); } catch (_) {} } }; });
-  let guard = 0;
-  while (host.scrollHeight > host.clientHeight + 1 && host.children.length > 2 && guard++ < 24) host.removeChild(host.lastElementChild);
-}
-function wireQuickBuy() {
-  const inp = $('tm-qb-ct'), res = $('tm-qb-res'); if (!inp) return;
-  let n = 0;
-  const lanzar = () => {
-    const raw = (inp.value || '').trim();
-    if (!esContrato(raw)) { if (res) res.innerHTML = ''; return; }
-    const mine = ++n;
-    if (res) res.innerHTML = `<div class="tm-qb-load"><i></i>Looking up this contract on-chain…</div>`;
-    resolverContrato(raw).then((it) => {
-      if (mine !== n) return;
-      if (!it || typeof it !== 'object') { if (res) res.innerHTML = `<div class="tm-qb-none">No token found. Double-check the address (BSC 0x… or Tron T…).</div>`; return; }
-      pintarQbRes(it);
-    }).catch(() => { if (mine === n && res) res.innerHTML = `<div class="tm-qb-none">Could not resolve this contract. Try again.</div>`; });
-  };
-  inp.oninput = lanzar;
-  inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); lanzar(); } };
-}
-/* Token resuelto desde el contrato pegado: tarjeta clicable. Al tocarla, carga el token en el panel (grafico +
-   compra/venta) con seleccionarCP, de forma que la moneda, el grafico y el swap quedan en el MISMO token. */
-function pintarQbRes(it) {
-  const res = $('tm-qb-res'); if (!res) return;
-  const pu = usdDe(it); const redTxt = it.red === 'tron' ? 'Tron' : (it.moneda || 'BNB') + ' pair';
-  res.innerHTML = `<button class="tm-qb-tk" type="button">${logo(it.simbolo, it.token, it.red, it.logoUrl)}<span class="tm-qb-tk-id"><b title="${esc(it.nombre || '')}">${esc(abreviar(it.nombre || it.simbolo || 'Token'))}</b><span>${esc(it.simbolo || '?')} · ${redTxt}</span></span><span class="tm-qb-tk-px"><b>${pu > 0 ? '$' + fmtP(pu) : '—'}</b><em>Load</em></span></button>`;
-  const b = res.querySelector('.tm-qb-tk'); if (b) b.onclick = () => { try { if (esGrande()) seleccionarCP(it); else abrirFicha(it); } catch (_) {} };
 }
 const checksSkeleton = () => [0, 1, 2, 3].map(() => `<div class="tm-check pend"><span class="tm-sk" style="width:120px"></span><span class="tm-sk" style="width:44px"></span></div>`).join('');
 const actsSkeleton = () => [0, 1, 2].map(() => `<div class="tm-act"><span class="tm-sk" style="width:94px"></span><span class="tm-sk" style="width:64px"></span></div>`).join('');
@@ -652,7 +573,10 @@ function montarRail(it) {
     </div>
     <div class="tm-trade">
       <div class="tm-trade-tabs" id="tm-trade-tabs"><button class="on" data-m="buy" type="button">Buy</button><button data-m="sell" type="button">Sell</button></div>
-      <div class="tm-trade-buytok">${logo(it.simbolo, it.token)}<span class="tm-trade-bt-tx"><em id="tm-trade-verb">Buying</em> <b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b> · ${esc(it.simbolo || '?')}</span><button class="tm-trade-change" id="tm-trade-change" type="button" title="Buy a different token">${ICO_SEARCH}<span>Change</span></button></div>
+      <div class="tm-trade-buytok" id="tm-trade-buytok">
+        <div class="tm-trade-bt-cur" id="tm-trade-bt-cur">${logo(it.simbolo, it.token)}<span class="tm-trade-bt-tx"><em id="tm-trade-verb">Buying</em> <b title="${esc(it.nombre)}">${esc(abreviar(it.nombre))}</b> · ${esc(it.simbolo || '?')}</span><button class="tm-trade-change" id="tm-trade-change" type="button" title="Pick another token">${ICO_SEARCH}<span>Change</span></button></div>
+        <div class="tm-trade-bt-find" id="tm-trade-bt-find" hidden><div class="tm-trade-bt-in"><span class="tm-trade-bt-ico">${ICO_SEARCH}</span><input id="tm-trade-ct" type="text" autocomplete="off" spellcheck="false" placeholder="Paste token contract (0x… or T…)"><button class="tm-trade-bt-x" id="tm-trade-ct-x" type="button" aria-label="Cancel">✕</button></div><div class="tm-trade-ct-res" id="tm-trade-ct-res"></div></div>
+      </div>
       <div class="tm-trade-top"><span class="tm-trade-lbl">Amount</span><span class="tm-trade-bal" id="tm-bal">Balance: …</span></div>
       <div class="tm-trade-in"><input id="tm-amt" type="text" inputmode="decimal" autocomplete="off" value="0"><button class="tm-ccy" id="tm-ccy" type="button">${monedaCoin('BNB')}<b id="tm-ccy-t">BNB</b>${ICO_CHEV}</button></div>
       <div class="tm-slider"><input type="range" id="tm-slider" min="0" max="100" step="1" value="0"><div class="tm-slider-l"><span>0%</span><b id="tm-slider-v">0%</b><span>100%</span></div></div>
@@ -671,8 +595,31 @@ function montarRail(it) {
       <div class="tm-acts-list" id="tm-acts-list">${actsSkeleton()}</div>
     </div>`;
   const openb = $('tm-tc-open'); if (openb) openb.onclick = () => { try { verGrande(it); } catch (_) {} };
-  // "Change": vuelve a la compra rapida por contrato (elegir otra moneda sin abrir el Full Chart).
-  const chgb = $('tm-trade-change'); if (chgb) chgb.onclick = () => { try { railQuickBuy(); } catch (_) {} };
+  // Cambiar la moneda del swap: barrita de busqueda INLINE por contrato. No abre el Full Chart ni borra el rail:
+  // al elegir el token resuelto, re-monta este mismo panel (tarjeta + swap + checks + actividad) para esa moneda.
+  const btCur = $('tm-trade-bt-cur'), btFind = $('tm-trade-bt-find'), btChg = $('tm-trade-change'), btIn = $('tm-trade-ct'), btX = $('tm-trade-ct-x'), btRes = $('tm-trade-ct-res');
+  const abrirBtFind = () => { if (btCur) btCur.hidden = true; if (btFind) btFind.hidden = false; if (btRes) btRes.innerHTML = ''; if (btIn) { btIn.value = ''; btIn.focus(); } };
+  const cerrarBtFind = () => { if (btFind) btFind.hidden = true; if (btCur) btCur.hidden = false; if (btRes) btRes.innerHTML = ''; };
+  if (btChg) btChg.onclick = abrirBtFind;
+  if (btX) btX.onclick = cerrarBtFind;
+  if (btIn) {
+    let nR = 0;
+    const buscarTok = () => {
+      const raw = (btIn.value || '').trim();
+      if (!esContrato(raw)) { if (btRes) btRes.innerHTML = ''; return; }
+      const mine = ++nR;
+      if (btRes) btRes.innerHTML = `<div class="tm-trade-ct-load"><i></i>Looking up this contract…</div>`;
+      resolverContrato(raw).then((nit) => {
+        if (mine !== nR || _railTok !== it.token) return;
+        if (!nit || typeof nit !== 'object') { if (btRes) btRes.innerHTML = `<div class="tm-trade-ct-none">No token found. Check the address (BSC 0x… or Tron T…).</div>`; return; }
+        const pux = usdDe(nit); const redTxt = nit.red === 'tron' ? 'Tron' : (nit.moneda || 'BNB') + ' pair';
+        btRes.innerHTML = `<button class="tm-trade-ct-tk" type="button">${logo(nit.simbolo, nit.token, nit.red, nit.logoUrl)}<span class="tm-trade-ct-id"><b title="${esc(nit.nombre || '')}">${esc(abreviar(nit.nombre || nit.simbolo || 'Token'))}</b><span>${esc(nit.simbolo || '?')} · ${redTxt}</span></span><span class="tm-trade-ct-px"><b>${pux > 0 ? '$' + fmtP(pux) : '—'}</b><em>Select</em></span></button>`;
+        const pick = btRes.querySelector('.tm-trade-ct-tk'); if (pick) pick.onclick = () => { try { esGrande() ? seleccionarCP(nit) : abrirFicha(nit); } catch (_) {} };
+      }).catch(() => { if (mine === nR && btRes) btRes.innerHTML = `<div class="tm-trade-ct-none">Could not resolve this contract. Try again.</div>`; });
+    };
+    btIn.oninput = buscarTok;
+    btIn.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarTok(); } else if (e.key === 'Escape') cerrarBtFind(); };
+  }
   const amt = $('tm-amt'), estTok = $('tm-est-tok'), go = $('tm-trade-go'), tabs = $('tm-trade-tabs'), ccyBtn = $('tm-ccy'), slider = $('tm-slider'), sliderV = $('tm-slider-v'), balEl = $('tm-bal');
   // Importe tecleado -> USD (para estimar tokens o lo que recibes).
   const montoUsd = (v) => (_railMode === 'sell' ? v * usdDe(it) : (_ccy === 'USDT' ? v : v * _bnbUsd));

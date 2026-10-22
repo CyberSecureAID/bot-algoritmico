@@ -45,9 +45,10 @@
 .tm-side{display:flex;flex-direction:column;gap:12px}
 /* Tarjeta "Top movers" del lateral: crece para llenar el hueco (flex:1) y termina a la misma altura que el
    grafico y la actividad; la lista interior se recorta a las filas que caben (JS ajustarMovers). */
-.tm-movers{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border:1px solid rgba(232,184,75,.14);border-radius:14px;padding:12px;background:linear-gradient(180deg,rgba(23,30,41,.62),rgba(10,14,20,.92));box-shadow:0 12px 28px -18px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
-.tm-movers-list{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:1px}
-.tm-movers-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--gold);flex:0 0 auto}
+/* Top movers: altura natural (5 filas) y pegado ABAJO con margin-top:auto (como hacia antes el netstat), para que
+   termine a la misma linea que el grafico y la actividad, sin flex que estire y deforme el resto de la columna. */
+.tm-movers{margin-top:auto;border:1px solid rgba(232,184,75,.14);border-radius:14px;padding:12px;background:linear-gradient(180deg,rgba(23,30,41,.62),rgba(10,14,20,.92));box-shadow:0 12px 28px -18px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+.tm-movers-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--gold)}
 .tm-movers-h svg{width:15px;height:15px}
 .tm-movers-h b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;color:var(--ink)}
 .tm-mover{display:flex;align-items:center;gap:9px;width:100%;background:transparent;border:0;padding:6px 4px;border-radius:9px;cursor:pointer;text-align:left}
@@ -87,48 +88,31 @@
 .tm-winner-chg.up{color:var(--verde)}.tm-winner-chg.down{color:var(--rojo)}
 .tm-winner-chg.muted{font-size:10.5px;font-weight:600;color:var(--ink-3)}
 /* ── Boton "Change" dentro del swap del rail: abre la compra rapida por contrato ── */
+/* Selector de moneda del swap: la fila actual con el boton "Change", y la busqueda inline por contrato. */
+.tm-trade-bt-cur{display:flex;align-items:center;gap:8px}
+.tm-trade-bt-cur[hidden]{display:none}
 .tm-trade-bt-tx{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tm-trade-change{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;margin-left:auto;padding:4px 9px;border-radius:8px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold);font-family:'Chakra Petch',var(--display);font-weight:700;font-size:10px;cursor:pointer;transition:filter .15s}
 .tm-trade-change svg{width:12px;height:12px}.tm-trade-change:hover{filter:brightness(1.1)}
-/* ── Compra rapida (rail por defecto): pega un contrato, carga la moneda y compra con 1% de comision ── */
-.tm-qb{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:14px;border:1px solid rgba(232,184,75,.16);background:linear-gradient(180deg,rgba(23,30,41,.72),rgba(10,14,20,.95))}
-.tm-qb-h{display:flex;align-items:center;gap:10px;color:var(--gold)}
-.tm-qb-h svg{width:20px;height:20px;flex:0 0 auto}
-.tm-qb-ht b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:14px;color:var(--ink)}
-.tm-qb-ht span{font-size:11px;color:var(--ink-3)}
-.tm-qb-find{position:relative;display:flex;align-items:center}
-.tm-qb-ico{position:absolute;left:12px;width:16px;height:16px;color:var(--ink-3);pointer-events:none;display:inline-flex}
-.tm-qb-find input{width:100%;height:44px;padding:0 14px 0 36px;border-radius:11px;border:1px solid var(--line);background:#0b0f14;color:var(--ink);font-family:var(--mono);font-size:12px;outline:none}
-.tm-qb-find input:focus{border-color:#8f6a1a}
-.tm-qb-res:empty{display:none}
-.tm-qb-load,.tm-qb-none{display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:#0b0f14;font-size:12px;color:var(--ink-3)}
-.tm-qb-load i{width:13px;height:13px;flex:0 0 auto;border:2px solid rgba(232,184,75,.25);border-top-color:var(--gold);border-radius:50%;animation:tmSpin .7s linear infinite}
-.tm-qb-tk{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border-radius:11px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#131a12,#0a0e13);cursor:pointer;transition:border-color .15s,transform .15s}
-.tm-qb-tk:hover{border-color:var(--verde);transform:translateY(-1px)}
-.tm-qb-tk .tm-logo{width:28px;height:28px;flex:0 0 auto}
-.tm-qb-tk-id{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
-.tm-qb-tk-id b{font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm-qb-tk-id span{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm-qb-tk-px{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.tm-qb-tk-px b{font-family:var(--mono);font-size:11px;color:var(--ink)}
-.tm-qb-tk-px em{font-style:normal;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--verde);background:rgba(46,232,106,.1);border:1px solid rgba(46,232,106,.3);border-radius:999px;padding:1px 7px}
-.tm-qb-note{font-size:10.5px;line-height:1.5;color:var(--ink-3);flex:0 0 auto}
-/* "Trending now" dentro del quick buy: llena el alto del rail (adaptativo, se recorta a lo que cabe). */
-.tm-qb-sug{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:7px;padding-top:4px;border-top:1px solid rgba(255,255,255,.06)}
-.tm-qb-sug-h{display:flex;align-items:center;gap:7px;color:var(--gold);flex:0 0 auto}
-.tm-qb-sug-h svg{width:14px;height:14px}
-.tm-qb-sug-h b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:11.5px;color:var(--ink)}
-.tm-qb-sug-list{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:1px}
-.tm-qb-sug-row{display:flex;align-items:center;gap:9px;width:100%;background:transparent;border:0;padding:7px 5px;border-radius:9px;cursor:pointer;text-align:left}
-.tm-qb-sug-row:hover{background:rgba(255,255,255,.04)}
-.tm-qb-sug-row .tm-logo{width:24px;height:24px;flex:0 0 auto}
-.tm-qb-sug-id{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
-.tm-qb-sug-id b{font-size:11.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm-qb-sug-id span{font-family:var(--mono);font-size:9px;color:var(--ink-3)}
-.tm-qb-sug-px{flex:0 0 auto;text-align:right;display:flex;flex-direction:column}
-.tm-qb-sug-px b{font-family:var(--mono);font-size:11px;color:var(--ink)}
-.tm-qb-sug-px .tm-chg{font-size:9.5px}
-.tm-qb-sug-empty{font-size:11px;color:var(--ink-3);padding:6px 4px}
+.tm-trade-bt-find[hidden]{display:none}
+.tm-trade-bt-in{position:relative;display:flex;align-items:center}
+.tm-trade-bt-ico{position:absolute;left:10px;width:15px;height:15px;color:var(--ink-3);pointer-events:none;display:inline-flex}
+.tm-trade-bt-in input{width:100%;height:40px;padding:0 34px 0 32px;border-radius:10px;border:1px solid #8f6a1a;background:#0b0f14;color:var(--ink);font-family:var(--mono);font-size:11.5px;outline:none}
+.tm-trade-bt-x{position:absolute;right:6px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;background:none;border:0;color:var(--ink-3);font-size:13px;cursor:pointer}
+.tm-trade-bt-x:hover{color:var(--rojo)}
+.tm-trade-ct-res:empty{display:none}
+.tm-trade-ct-res{margin-top:7px}
+.tm-trade-ct-load,.tm-trade-ct-none{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:#0b0f14;font-size:11.5px;color:var(--ink-3)}
+.tm-trade-ct-load i{width:12px;height:12px;flex:0 0 auto;border:2px solid rgba(232,184,75,.25);border-top-color:var(--gold);border-radius:50%;animation:tmSpin .7s linear infinite}
+.tm-trade-ct-tk{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#131a12,#0a0e13);cursor:pointer;transition:border-color .15s,transform .15s}
+.tm-trade-ct-tk:hover{border-color:var(--verde);transform:translateY(-1px)}
+.tm-trade-ct-tk .tm-logo{width:26px;height:26px;flex:0 0 auto}
+.tm-trade-ct-id{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.tm-trade-ct-id b{font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-trade-ct-id span{font-family:var(--mono);font-size:9px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-trade-ct-px{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.tm-trade-ct-px b{font-family:var(--mono);font-size:10.5px;color:var(--ink)}
+.tm-trade-ct-px em{font-style:normal;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--verde);background:rgba(46,232,106,.1);border:1px solid rgba(46,232,106,.3);border-radius:999px;padding:1px 7px}
 @keyframes tmSpin{to{transform:rotate(360deg)}}
 .tm-nav{display:flex;flex-direction:column;gap:3px;padding:8px;border:1px solid rgba(232,184,75,.1);border-radius:14px;background:linear-gradient(180deg,rgba(23,30,41,.42),rgba(12,16,22,.52));backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);box-shadow:0 8px 22px -14px rgba(0,0,0,.6)}
 .tm-nav-b{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;border:1px solid transparent;background:transparent;color:var(--ink-2);font-family:var(--display);font-weight:600;font-size:13.5px;text-align:left}
