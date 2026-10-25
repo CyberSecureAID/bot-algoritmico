@@ -8,6 +8,7 @@
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
 import { TERMINAL, WBNB, USDT, SCAN_URL, SLIPPAGE, PRESETS_BNB } from './config.js';
+import { referidorGuardado } from './referidos.js';
 import { conRotacion } from './rpc.js';
 import { precioBNBUSDT } from './motor.js';
 import { registrarCompra, registrarVenta } from './posiciones.js';
@@ -17,8 +18,8 @@ const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 const $ = (id) => document.getElementById(id);
 
 const ABI = [
-  'function comprar(address token, address quote, uint256 minOut, uint256 deadline) payable',
-  'function vender(address token, address quote, uint256 cantidad, uint256 minOut, uint256 deadline)',
+  'function comprar(address token, address quote, uint256 minOut, uint256 deadline, address referidor) payable',
+  'function vender(address token, address quote, uint256 cantidad, uint256 minOut, uint256 deadline, address referidor)',
   'function cotizarCompra(address token, address quote, uint256 bnbIn) view returns (uint256 tokOut, uint256 comision)',
   'function cotizarVenta(address token, address quote, uint256 tokIn) view returns (uint256 bnbBruto, uint256 bnbNeto, uint256 comision)'
 ];
@@ -62,7 +63,8 @@ async function enviar(fnEstimar, fnTx) {
 export async function comprar({ token, quote, bnbWei, minOut }) {
   const c = new ethers.Contract(TERMINAL, ABI, await firmante());
   const dl = Math.floor(Date.now() / 1000) + 180;
-  return enviar(() => c.comprar.estimateGas(token, quote, minOut, dl, { value: bnbWei }), (g) => c.comprar(token, quote, minOut, dl, { value: bnbWei, gasLimit: g }));
+  const ref = referidorGuardado() || ethers.ZeroAddress;
+  return enviar(() => c.comprar.estimateGas(token, quote, minOut, dl, ref, { value: bnbWei }), (g) => c.comprar(token, quote, minOut, dl, ref, { value: bnbWei, gasLimit: g }));
 }
 export async function aprobar(token, cantidad) {
   const t = new ethers.Contract(token, ERC20, await firmante());
@@ -71,7 +73,8 @@ export async function aprobar(token, cantidad) {
 export async function vender({ token, quote, cantidad, minOut }) {
   const c = new ethers.Contract(TERMINAL, ABI, await firmante());
   const dl = Math.floor(Date.now() / 1000) + 180;
-  return enviar(() => c.vender.estimateGas(token, quote, cantidad, minOut, dl), (g) => c.vender(token, quote, cantidad, minOut, dl, { gasLimit: g }));
+  const ref = referidorGuardado() || ethers.ZeroAddress;
+  return enviar(() => c.vender.estimateGas(token, quote, cantidad, minOut, dl, ref), (g) => c.vender(token, quote, cantidad, minOut, dl, ref, { gasLimit: g }));
 }
 
 /* ── Formato ── */

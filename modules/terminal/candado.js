@@ -9,6 +9,7 @@
    Modulo sellado: solo importa de ./ dentro de terminal. */
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
+import { referidorGuardado } from './referidos.js';
 
 /* ── Config ── */
 // OWNERS: wallets que NUNCA pagan (pruebas y administracion). PON AQUI TU(S) WALLET(S) para ver todo desbloqueado.
@@ -39,7 +40,7 @@ const _idServicio = (s) => { try { return ethers.id(String(s || '')); } catch (_
 const ABI_SUB = [
   'function subscriptionExpiry(address, bytes32) view returns (uint256)',
   'function priceWei(bytes32) view returns (uint256)',
-  'function subscribe(bytes32) payable'
+  'function subscribe(bytes32,address) payable'
 ];
 const SELLO = { ok: new URL('./img/sec-safe.webp', import.meta.url).href, risk: new URL('./img/sec-risk.webp', import.meta.url).href };
 
@@ -130,7 +131,8 @@ export async function suscribir(bnbUsd, servicio) {
   const id = _idServicio(servicio);
   let wei = null; try { wei = await c.priceWei(id); } catch (_) {}
   if (!wei || wei === 0n) { const bnb = precio / (bnbUsd || 1); wei = ethers.parseEther(bnb.toFixed(18)); }
-  const tx = await c.subscribe(id, { value: wei });
+  const ref = referidorGuardado() || ethers.ZeroAddress;
+  const tx = await c.subscribe(id, ref, { value: wei });
   await tx.wait();
   // Pago confirmado -> registrar 30 dias de ESTE servicio y avisar al bus para que se abra solo, sin recargar.
   let w = ''; try { w = await signer.getAddress(); } catch (_) {}

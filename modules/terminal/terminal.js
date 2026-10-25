@@ -8,6 +8,7 @@ import { auditar, PASOS, PASOS_TXT } from './auditoria.js';
 import { abrirCompra, saldoBNB, saldoToken } from './compra.js';
 import { comoFunciona } from './aviso.js';
 import { abrirFiltros } from './filtros.js';
+import { abrirReferidos, capturarRef } from './referidos.js';
 import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecientes } from './grafico.js';
 import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
@@ -304,7 +305,7 @@ export function arrancar() {
         <section class="tm-panel">
           <div class="tm-sec-head">
             <div class="tm-sec-tt"><span class="tm-sec-ico">${ICO_BOLT}</span><div class="tm-sec-txt"><b>New pairs</b><span>Newest tokens on BNB Chain</span></div></div>
-            <div class="tm-sec-r"><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
+            <div class="tm-sec-r"><button class="tm-b sec tm-ref-b" id="tm-refs" type="button">Referrals</button><button class="tm-b sec tm-fil-b" id="tm-filtros" type="button">Filters</button><div class="tm-live" id="tm-live"><span>Connecting…</span></div></div>
           </div>
           <div class="tm-tabrow"><div class="tm-tabs3" id="tm-tabs3"><button data-tab="vol" class="on" type="button">Volume</button><button data-tab="trend" type="button">Trending</button><button data-tab="buyers" type="button">Buyers</button><button data-tab="all" type="button">All</button></div></div>
           <div id="tm-feed" class="tm-feed-scroll">${skeleton()}</div>
@@ -323,6 +324,8 @@ export function arrancar() {
     </div>`;
   _t0 = Date.now();
   const fb = $('tm-filtros'); if (fb) fb.onclick = () => abrirFiltros({ items: () => _items.slice(), fila, thead, abrirFicha, auditarCache, auditoriaDe, bnbUsd: () => _bnbUsd });
+  const rf = $('tm-refs'); if (rf) rf.onclick = () => { try { abrirReferidos(); } catch (e) { console.warn('[TERM] refs', e); } };
+  try { capturarRef(); } catch (_) {}
   const how = $('tm-how'); if (how) how.onclick = () => { try { comoFunciona(); } catch (e) { console.warn('[TERM] how', e); } };
   const bpos = $('tm-pos'); if (bpos) bpos.onclick = () => { try { if (esGrande()) abrirGrande(null, ctxGrande()); else abrirPanel('positions'); } catch (e) { console.warn('[TERM] pos', e); } };
   const bus = $('tm-search'); if (bus) bus.oninput = () => {
