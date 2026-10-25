@@ -35,10 +35,11 @@ export const FEED = { bloquesInicio: 4000, bloquesPorConsulta: 1000, sondeoMs: 3
 
 export const SCAN_URL = 'https://bscscan.com';
 
-/* TerminalSwap (proxy UUPS): compra y venta por PancakeSwap V2 con la comision del 1% repartida
-   en cadena (0.10% staking, 0.45% owner1, 0.45% owner2). Implementacion verificada:
-   0x98DaD1D90496Be6cc2736467DA6bD001Ff3B4b03. */
-export const TERMINAL_SWAP = '0x2555290Fdf19D1699c91332E193CA6A86ad45dee';
+/* Terminal (proxy UUPS ERC1967): compra/venta por PancakeSwap V2 + registro de referidos + suscripciones
+   por servicio. Comision del 1% repartida en cadena: 0.10% staking + 0.10% referidor (o 0.20% staking si no
+   hay referidor) y 0.80% a los owners (0.40%/0.40%). Se interactua SIEMPRE con el PROXY. Implementacion:
+   0x2c9e4D29546E6b4398178fdE9618658C1348b49F. Sustituye al antiguo TerminalSwap. */
+export const TERMINAL = '0x458aA14D2B1144b34f0FD22e2F9d7031B5f288B7';
 /* Slippage por defecto y opciones (en bps). Tokens recien nacidos: pools finas, se mueve rapido. */
 export const SLIPPAGE = { porDefecto: 300, opciones: [100, 300, 1000] };
 

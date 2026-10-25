@@ -323,6 +323,7 @@ function abrirModalPago(bnbUsd, servicio) {
 export function pintarPill(host, estado, w) {
   if (!host) return;
   if (!w) { host.innerHTML = ''; host.hidden = true; return; }
+  inyectarCSS();
   let right = 'locked', on = false;
   if (estado && estado.owner) { right = 'owner'; on = true; }
   else if (estado && estado.activa && estado.expira > 0) { const d = Math.max(0, Math.ceil((estado.expira * 1000 - Date.now()) / 86400000)); right = d + 'd left'; on = true; }
@@ -394,6 +395,7 @@ function inyectarCSS() {
 .tg-sub-pill[hidden]{display:none}
 .tg-sub-pill.on{border-color:rgba(61,237,140,.35);background:rgba(61,237,140,.07)}
 .tg-sub-pill i{display:inline-flex;width:14px;height:14px;color:var(--ink-3,#7d8794)}
+.tg-sub-pill i svg{width:14px;height:14px;display:block}
 .tg-sub-pill.on i{color:#3DED8C}
 .tg-sub-pill b{font:800 12px/1 'Chakra Petch',var(--display,sans-serif);color:var(--ink-2,#b7bdc6);letter-spacing:.02em}
 .tg-sub-pill span{font:600 11px/1 var(--display,sans-serif)}

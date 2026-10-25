@@ -1,13 +1,13 @@
 /* terminal/compra.js. Compra y venta de un token desde la Terminal (modulo sellado).
    Ventana con el MISMO aspecto que nuestro swap (tarjetas You pay / You receive, pildoras de moneda,
    boton verde), con dos pestañas: Buy (BNB -> token) y Sell (token -> BNB). Por debajo va al contrato
-   TerminalSwap (PancakeSwap V2), que retiene el 1% y entrega directo a la wallet del usuario.
+   Terminal (PancakeSwap V2), que retiene el 1% y entrega directo a la wallet del usuario.
    No custodial: nada se queda en ningun sitio. Lecturas por RPC con rotacion; la firma por la wallet.
    Todo en consola con [TERM-BUY]. */
 
 import * as ethers from './ethers.min.js';
 import * as wallet from './wallet.js';
-import { TERMINAL_SWAP, WBNB, USDT, SCAN_URL, SLIPPAGE, PRESETS_BNB } from './config.js';
+import { TERMINAL, WBNB, USDT, SCAN_URL, SLIPPAGE, PRESETS_BNB } from './config.js';
 import { conRotacion } from './rpc.js';
 import { precioBNBUSDT } from './motor.js';
 import { registrarCompra, registrarVenta } from './posiciones.js';
@@ -39,16 +39,16 @@ function quoteDe(it) { return it && it.quote && String(it.quote).toLowerCase() =
 
 /* ── Lecturas ── */
 export async function cotizarCompra(token, quote, bnbWei) {
-  const r = await conRotacion((p) => new ethers.Contract(TERMINAL_SWAP, ABI, p).cotizarCompra(token, quote, bnbWei));
+  const r = await conRotacion((p) => new ethers.Contract(TERMINAL, ABI, p).cotizarCompra(token, quote, bnbWei));
   return { tokOut: r[0], comision: r[1] };
 }
 export async function cotizarVenta(token, quote, tokWei) {
-  const r = await conRotacion((p) => new ethers.Contract(TERMINAL_SWAP, ABI, p).cotizarVenta(token, quote, tokWei));
+  const r = await conRotacion((p) => new ethers.Contract(TERMINAL, ABI, p).cotizarVenta(token, quote, tokWei));
   return { bruto: r[0], neto: r[1], comision: r[2] };
 }
 export async function saldoBNB(cuenta) { return conRotacion((p) => p.getBalance(cuenta)); }
 export async function saldoToken(token, cuenta) { return conRotacion((p) => new ethers.Contract(token, ERC20, p).balanceOf(cuenta)); }
-export async function permisoToken(token, cuenta) { return conRotacion((p) => new ethers.Contract(token, ERC20, p).allowance(cuenta, TERMINAL_SWAP)); }
+export async function permisoToken(token, cuenta) { return conRotacion((p) => new ethers.Contract(token, ERC20, p).allowance(cuenta, TERMINAL)); }
 
 /* ── Escrituras: estimateGas primero (revela el motivo del revert antes de firmar), luego la tx ── */
 async function enviar(fnEstimar, fnTx) {
@@ -60,16 +60,16 @@ async function enviar(fnEstimar, fnTx) {
   return rc;
 }
 export async function comprar({ token, quote, bnbWei, minOut }) {
-  const c = new ethers.Contract(TERMINAL_SWAP, ABI, await firmante());
+  const c = new ethers.Contract(TERMINAL, ABI, await firmante());
   const dl = Math.floor(Date.now() / 1000) + 180;
   return enviar(() => c.comprar.estimateGas(token, quote, minOut, dl, { value: bnbWei }), (g) => c.comprar(token, quote, minOut, dl, { value: bnbWei, gasLimit: g }));
 }
 export async function aprobar(token, cantidad) {
   const t = new ethers.Contract(token, ERC20, await firmante());
-  return enviar(() => t.approve.estimateGas(TERMINAL_SWAP, cantidad), (g) => t.approve(TERMINAL_SWAP, cantidad, { gasLimit: g }));
+  return enviar(() => t.approve.estimateGas(TERMINAL, cantidad), (g) => t.approve(TERMINAL, cantidad, { gasLimit: g }));
 }
 export async function vender({ token, quote, cantidad, minOut }) {
-  const c = new ethers.Contract(TERMINAL_SWAP, ABI, await firmante());
+  const c = new ethers.Contract(TERMINAL, ABI, await firmante());
   const dl = Math.floor(Date.now() / 1000) + 180;
   return enviar(() => c.vender.estimateGas(token, quote, cantidad, minOut, dl), (g) => c.vender(token, quote, cantidad, minOut, dl, { gasLimit: g }));
 }
@@ -283,7 +283,7 @@ export function abrirCompra(it, aud, modoInicial) {
     const w = entrada(); if (!(w > 0n) || !cot || cotPara !== w || !(salidaEst() > 0n)) return;
     // Venta sin permiso: primero approve exacto, luego el boton pasa a Sell.
     if (modo === 'sell' && permiso < w) {
-      trabajando('Confirm approval in your wallet…'); mensaje = true; info.textContent = `Allow the TerminalSwap contract to take ${numC(Number(ethers.formatUnits(w, dec)))} ${sym} from your wallet.`;
+      trabajando('Confirm approval in your wallet…'); mensaje = true; info.textContent = `Allow the Terminal contract to take ${numC(Number(ethers.formatUnits(w, dec)))} ${sym} from your wallet.`;
       try { await aprobar(it.token, w); permiso = w; mensaje = false; pintarCot(); log('approve ok'); }
       catch (e) { mensaje = true; info.textContent = fallo(e); }
       libre(); return;
