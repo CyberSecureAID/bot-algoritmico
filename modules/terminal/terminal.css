@@ -30,12 +30,12 @@
 .tm-search:hover .tm-search-ico{color:var(--gold)}
 .tm-topbar-r{display:flex;align-items:center;gap:10px;min-width:0}
 .tm-bell{position:relative;flex:0 0 auto;width:44px;height:44px;border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(13,17,23,.38);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.tm-bell-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:linear-gradient(180deg,#f7db8d,#E8B84B);color:#241900;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:10px;line-height:1;display:inline-flex;align-items:center;justify-content:center;border:2px solid #0b0f14}
+.tm-bell-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:linear-gradient(180deg,#f7db8d,#E8B84B);color:#241900;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:10px;line-height:1;display:inline-flex;align-items:center;justify-content:center;border:2px solid #0b0e12}
 .tm-bell-badge[hidden]{display:none}
 .tm-bell-badge.fired{background:linear-gradient(180deg,#ff8a9c,#f6465d);color:#fff;animation:tmBellPulse 1.6s ease-in-out infinite}
 @keyframes tmBellPulse{0%,100%{box-shadow:0 0 0 0 rgba(246,70,93,.55)}50%{box-shadow:0 0 0 5px rgba(246,70,93,0)}}
 /* Resumen de posicion activa (junto a la campanita), con bordes redondeados; boton hacia la grafica grande. */
-.tm-poswidget{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:9px;height:44px;padding:0 12px;border-radius:13px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(23,30,41,.6),rgba(10,14,20,.85));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;text-align:left}
+.tm-poswidget{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:9px;height:44px;padding:0 12px;border-radius:13px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(12,15,20,.6),rgba(8,10,14,.85));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;text-align:left}
 .tm-poswidget:hover{border-color:#8f6a1a}
 .tm-poswidget.empty{cursor:default;justify-content:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
 .tm-poswidget.empty:hover{border-color:rgba(255,255,255,.08)}
@@ -57,7 +57,7 @@
    grafico y la actividad; la lista interior se recorta a las filas que caben (JS ajustarMovers). */
 /* Top movers: altura natural (5 filas) y pegado ABAJO con margin-top:auto (como hacia antes el netstat), para que
    termine a la misma linea que el grafico y la actividad, sin flex que estire y deforme el resto de la columna. */
-.tm-movers{margin-top:auto;border:1px solid rgba(232,184,75,.14);border-radius:14px;padding:12px;background:linear-gradient(180deg,rgba(23,30,41,.62),rgba(10,14,20,.92));box-shadow:0 12px 28px -18px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+.tm-movers{margin-top:auto;border:1px solid rgba(232,184,75,.14);border-radius:14px;padding:12px;background:linear-gradient(180deg,rgba(12,15,20,.62),rgba(8,10,14,.92));box-shadow:0 12px 28px -18px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
 .tm-movers-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--gold)}
 .tm-movers-h svg{width:15px;height:15px}
 .tm-movers-h b{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:12.5px;color:var(--ink)}
@@ -70,7 +70,7 @@
 .tm-mover-px{flex:0 0 auto;text-align:right;display:flex;flex-direction:column}
 .tm-mover-px b{font-family:var(--mono);font-size:11px;color:var(--ink)}
 .tm-mover-px .tm-chg{font-size:9.5px}
-.tm-brand{position:relative;display:flex;align-items:center;gap:11px;padding:15px 14px;border-radius:14px;border:1px solid rgba(232,184,75,.18);background:linear-gradient(180deg,#121823,#0a0e13);box-shadow:0 10px 26px -14px rgba(0,0,0,.7),inset 0 1px 0 rgba(232,184,75,.12),inset 0 0 22px rgba(232,184,75,.05)}
+.tm-brand{position:relative;display:flex;align-items:center;gap:11px;padding:15px 14px;border-radius:14px;border:1px solid rgba(232,184,75,.18);background:linear-gradient(180deg,#161b22,#0b0e12);box-shadow:0 10px 26px -14px rgba(0,0,0,.7),inset 0 1px 0 rgba(232,184,75,.12),inset 0 0 22px rgba(232,184,75,.05)}
 .tm-brand-ico{width:34px;height:34px;flex:0 0 auto;color:var(--gold);display:inline-flex}.tm-brand-ico svg{width:34px;height:34px}
 /* Logo de BNB oficial (imagen de CoinGecko) con glifo BSC de respaldo si la imagen no carga. */
 .tm-bnbimg{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
@@ -82,7 +82,7 @@
 .tm-brand-tx b{display:block;font-family:'Chakra Petch',var(--display);font-size:15px;font-weight:700;line-height:1.1}
 .tm-brand-tx span{font-size:11px;color:var(--ink-3)}
 /* ── "Prime mover": el token con mayor subida ahora, destaca arriba del lateral y abre el Full Chart al tocar. ── */
-.tm-winner{position:relative;display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:13px 14px;border-radius:14px;border:1px solid rgba(46,232,106,.26);background:linear-gradient(180deg,#101a16,#0a0e13);box-shadow:0 10px 26px -14px rgba(0,0,0,.7),inset 0 1px 0 rgba(46,232,106,.14),inset 0 0 22px rgba(46,232,106,.05);cursor:pointer;transition:border-color .15s,transform .15s}
+.tm-winner{position:relative;display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:13px 14px;border-radius:14px;border:1px solid rgba(46,232,106,.26);background:linear-gradient(180deg,#101a16,#0b0e12);box-shadow:0 10px 26px -14px rgba(0,0,0,.7),inset 0 1px 0 rgba(46,232,106,.14),inset 0 0 22px rgba(46,232,106,.05);cursor:pointer;transition:border-color .15s,transform .15s}
 .tm-winner:hover{border-color:rgba(46,232,106,.5);transform:translateY(-1px)}
 .tm-winner:active{transform:translateY(0)}
 .tm-winner-ico{width:34px;height:34px;flex:0 0 auto;color:var(--gold);display:inline-flex}
@@ -108,14 +108,14 @@
 .tm-trade-bt-find[hidden]{display:none}
 .tm-trade-bt-in{position:relative;display:flex;align-items:center}
 .tm-trade-bt-ico{position:absolute;left:10px;width:15px;height:15px;color:var(--ink-3);pointer-events:none;display:inline-flex}
-.tm-trade-bt-in input{width:100%;height:40px;padding:0 34px 0 32px;border-radius:10px;border:1px solid #8f6a1a;background:#0b0f14;color:var(--ink);font-family:var(--mono);font-size:11.5px;outline:none}
+.tm-trade-bt-in input{width:100%;height:40px;padding:0 34px 0 32px;border-radius:10px;border:1px solid #8f6a1a;background:#0b0e12;color:var(--ink);font-family:var(--mono);font-size:11.5px;outline:none}
 .tm-trade-bt-x{position:absolute;right:6px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;background:none;border:0;color:var(--ink-3);font-size:13px;cursor:pointer}
 .tm-trade-bt-x:hover{color:var(--rojo)}
 .tm-trade-ct-res:empty{display:none}
 .tm-trade-ct-res{margin-top:7px}
-.tm-trade-ct-load,.tm-trade-ct-none{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:#0b0f14;font-size:11.5px;color:var(--ink-3)}
+.tm-trade-ct-load,.tm-trade-ct-none{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:#0b0e12;font-size:11.5px;color:var(--ink-3)}
 .tm-trade-ct-load i{width:12px;height:12px;flex:0 0 auto;border:2px solid rgba(232,184,75,.25);border-top-color:var(--gold);border-radius:50%;animation:tmSpin .7s linear infinite}
-.tm-trade-ct-tk{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#131a12,#0a0e13);cursor:pointer;transition:border-color .15s,transform .15s}
+.tm-trade-ct-tk{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1px solid #8f6a1a;background:linear-gradient(180deg,#131a12,#0b0e12);cursor:pointer;transition:border-color .15s,transform .15s}
 .tm-trade-ct-tk:hover{border-color:var(--verde);transform:translateY(-1px)}
 .tm-trade-ct-tk .tm-logo{width:26px;height:26px;flex:0 0 auto}
 .tm-trade-ct-id{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
@@ -125,7 +125,7 @@
 .tm-trade-ct-px b{font-family:var(--mono);font-size:10.5px;color:var(--ink)}
 .tm-trade-ct-px em{font-style:normal;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--verde);background:rgba(46,232,106,.1);border:1px solid rgba(46,232,106,.3);border-radius:999px;padding:1px 7px}
 @keyframes tmSpin{to{transform:rotate(360deg)}}
-.tm-nav{display:flex;flex-direction:column;gap:3px;padding:8px;border:1px solid rgba(232,184,75,.1);border-radius:14px;background:linear-gradient(180deg,rgba(23,30,41,.42),rgba(12,16,22,.52));backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);box-shadow:0 8px 22px -14px rgba(0,0,0,.6)}
+.tm-nav{display:flex;flex-direction:column;gap:3px;padding:8px;border:1px solid rgba(232,184,75,.1);border-radius:14px;background:linear-gradient(180deg,rgba(12,15,20,.42),rgba(8,10,14,.52));backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);box-shadow:0 8px 22px -14px rgba(0,0,0,.6)}
 .tm-nav-b{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;border:1px solid transparent;background:transparent;color:var(--ink-2);font-family:var(--display);font-weight:600;font-size:13.5px;text-align:left}
 .tm-nav-ic{width:18px;height:18px;flex:0 0 auto;display:inline-flex;color:var(--ink-3)}.tm-nav-ic svg{width:18px;height:18px}
 .tm-nav-b:hover{background:rgba(255,255,255,.03);color:var(--ink)}
@@ -134,7 +134,7 @@
 .tm-nav-live{margin-left:auto;font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--verde);background:rgba(46,232,106,.1);border:1px solid rgba(46,232,106,.3);border-radius:999px;padding:1px 7px}
 /* Tarjeta How it works (imagen como-funciona.webp con el boton dentro, a la derecha). */
 /* Tarjeta cuadrada: imagen de fondo + abajo la rayita con el texto a la izquierda y el boton a la derecha. */
-.tm-howcard{position:relative;display:block;width:100%;aspect-ratio:1/1;text-align:left;border:1px solid rgba(232,184,75,.14);border-radius:14px;overflow:hidden;background:#0d1319;cursor:pointer;margin-top:2px;box-shadow:0 10px 26px -14px rgba(0,0,0,.7)}
+.tm-howcard{position:relative;display:block;width:100%;aspect-ratio:1/1;text-align:left;border:1px solid rgba(232,184,75,.14);border-radius:14px;overflow:hidden;background:#0b0e12;cursor:pointer;margin-top:2px;box-shadow:0 10px 26px -14px rgba(0,0,0,.7)}
 .tm-howcard::before{content:"";position:absolute;inset:0;background:url('./img/como-funciona.webp') center/cover no-repeat;z-index:0}
 .tm-howcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,10,.15) 30%,rgba(5,7,10,.55) 60%,rgba(5,7,10,.95));z-index:1}
 .tm-howcard-in{position:absolute;inset:0;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:14px 14px 15px 17px}
@@ -160,7 +160,7 @@
 .tm-stats-row b{font-weight:600}
 .tm-center{min-width:0;display:flex;flex-direction:column}
 .tm-rail{display:flex;flex-direction:column}
-.tm-rail-ph{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:44px 18px;border-radius:14px;border:1px dashed #2a323d;background:linear-gradient(180deg,#0d1319,#0a0e13);color:var(--ink-3)}
+.tm-rail-ph{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:44px 18px;border-radius:14px;border:1px dashed #2a323d;background:linear-gradient(180deg,#0b0e12,#0b0e12);color:var(--ink-3)}
 .tm-rail-ph-ic{width:34px;height:34px;color:var(--gold);opacity:.55;display:inline-flex}.tm-rail-ph-ic svg{width:34px;height:34px}
 .tm-rail-ph b{color:var(--ink-2);font-size:14px}.tm-rail-ph span{font-size:12px;line-height:1.5}
 /* Debajo de 1180px el lobby pasa a 2 columnas (sin rail): el ticker de tarjetas grandes se oculta y el banner
@@ -169,7 +169,7 @@
 @media(max-width:880px){.tm-lobby{grid-template-columns:1fr}.tm-side{display:none}.tm-head{height:84px}.tm-head-bg{inset:0 -18px}.tm-topbar{grid-template-columns:minmax(0,1fr) auto}.tm-topbar-sp{display:none}}
 /* Pestanas y columnas de la tabla New pairs (MC / Buyers / Volume) + boton Buy por fila. */
 .tm-tabrow{margin:0 0 13px}
-.tm-tabs3{display:inline-flex;gap:4px;background:#0b0f14;border:1px solid var(--line);border-radius:11px;padding:3px}
+.tm-tabs3{display:inline-flex;gap:4px;background:#0b0e12;border:1px solid var(--line);border-radius:11px;padding:3px}
 .tm-tabs3 button{border:0;background:transparent;color:var(--ink-3);font-family:var(--display);font-weight:600;font-size:12px;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap}
 .tm-tabs3 button:hover{color:var(--ink)}
 .tm-tabs3 button.on{background:linear-gradient(180deg,#1b2027,#0d1117);color:var(--gold);box-shadow:inset 0 0 0 1px #8f6a1a}
@@ -198,14 +198,14 @@
 .tm-buybtn:hover{background:linear-gradient(180deg,rgba(232,184,75,.32),rgba(232,184,75,.14));border-color:var(--gold)}.tm-buybtn:active{transform:translateY(1px)}
 /* La tabla muestra ~7 filas; el resto con scroll, cabecera fija, barra fina estilizada. */
 .tm-feed-scroll{max-height:428px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
-.tm-feed-scroll thead th{position:sticky;top:0;height:34px;padding:0 8px;background:#0a0e13;z-index:2}
+.tm-feed-scroll thead th{position:sticky;top:0;height:34px;padding:0 8px;background:#0b0e12;z-index:2}
 .tm-feed-scroll tbody td{height:49px;padding:0 8px}
 .tm-feed-scroll tbody td{height:56px;padding-top:0;padding-bottom:0}
 @media(max-width:1080px){.tm-table-l .tm-cl-mc{display:none}}
 @media(max-width:960px){.tm-table-l .tm-cl-volume{display:none}}
 @media(max-width:860px){.tm-table-l .tm-cl-buyers{display:none}.tm-tabrow{overflow-x:auto;-webkit-overflow-scrolling:touch}.tm-tabs3{display:flex;width:max-content}}
 /* ── Grafico inline del centro (Modulo 4), DEBAJO de la tabla: cabecera del token + precio + % y timeframes ── */
-.tm-cp{position:relative;min-width:0;flex:1 1 auto;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(23,30,41,.72),rgba(10,14,20,.95));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px 16px;margin-top:14px;box-shadow:0 22px 46px -26px rgba(0,0,0,.92),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.tm-cp{position:relative;min-width:0;flex:1 1 auto;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(12,15,20,.72),rgba(8,10,14,.95));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px 16px;margin-top:14px;box-shadow:0 22px 46px -26px rgba(0,0,0,.92),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .tm-cp-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
 .tm-cp-tt{display:flex;align-items:center;gap:11px;min-width:0}
 .tm-cp-tt .tm-logo{width:36px;height:36px;flex:0 0 auto}
@@ -234,7 +234,7 @@
 @media(max-width:859px){.tm-cp{display:none}}
 /* ── Panel derecho (Modulos 5 y 6): tarjeta del token, compra/venta, verificaciones y actividad ── */
 .tm-rail{display:flex;flex-direction:column;gap:14px}
-.tm-tc,.tm-trade,.tm-checks,.tm-acts{background:linear-gradient(180deg,rgba(23,30,41,.72),rgba(10,14,20,.95));border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:15px;box-shadow:0 18px 40px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.tm-tc,.tm-trade,.tm-checks,.tm-acts{background:linear-gradient(180deg,rgba(12,15,20,.72),rgba(8,10,14,.95));border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:15px;box-shadow:0 18px 40px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 /* La tarjeta del token lleva un halo dorado sutil arriba, para jerarquia (es la seleccionada). */
 .tm-tc{border-color:rgba(232,184,75,.22);box-shadow:0 18px 40px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(232,184,75,.14),inset 0 0 30px rgba(232,184,75,.05)}
 .tm-tc{position:relative}
@@ -264,7 +264,7 @@
 .tm-checks-list::-webkit-scrollbar,.tm-acts-list::-webkit-scrollbar,.tm-feed-scroll::-webkit-scrollbar{width:6px}
 .tm-checks-list::-webkit-scrollbar-thumb,.tm-acts-list::-webkit-scrollbar-thumb,.tm-feed-scroll::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
 .tm-checks-list::-webkit-scrollbar-track,.tm-acts-list::-webkit-scrollbar-track,.tm-feed-scroll::-webkit-scrollbar-track{background:transparent}
-.tm-trade-tabs{display:flex;gap:4px;background:#0b0f14;border:1px solid var(--line);border-radius:11px;padding:3px;margin-bottom:12px}
+.tm-trade-tabs{display:flex;gap:4px;background:#0b0e12;border:1px solid var(--line);border-radius:11px;padding:3px;margin-bottom:12px}
 .tm-trade-tabs button{flex:1 1 0;border:0;background:transparent;color:var(--ink-3);font-family:var(--display);font-weight:700;font-size:13px;padding:8px;border-radius:8px;cursor:pointer}
 .tm-trade-tabs button.on{color:#04140c;background:linear-gradient(180deg,#8be0b0,#2ebd85 50%,#1f9d6c)}
 .tm-trade-tabs button:last-child.on{color:#2a0206;background:linear-gradient(180deg,#ff9fab,#f6465d 50%,#c62f42)}
@@ -287,8 +287,8 @@
 /* Barra 0-100% del capital */
 .tm-slider{margin:12px 0 14px}
 .tm-slider input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--gold) 0%,rgba(232,184,75,.15) 0%);outline:none;cursor:pointer}
-.tm-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);border:2px solid #0a0e13;box-shadow:0 2px 6px rgba(0,0,0,.55);cursor:pointer}
-.tm-slider input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--gold);border:2px solid #0a0e13;cursor:pointer}
+.tm-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);border:2px solid #0b0e12;box-shadow:0 2px 6px rgba(0,0,0,.55);cursor:pointer}
+.tm-slider input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--gold);border:2px solid #0b0e12;cursor:pointer}
 .tm-slider-l{display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-family:var(--mono);font-size:9.5px;color:var(--ink-3)}
 .tm-slider-l b{color:var(--gold);font-weight:600}
 /* Fallback del logo USDT (si la imagen no carga) */
@@ -331,7 +331,7 @@
 @media(max-width:560px){#tm-app{padding:18px 14px 50px}.tm-sub{font-size:13.5px}}
 
 /* ───────── Panel del feed (mismo lenguaje que New Tokens del Launchpad) ───────── */
-.tm-panel{min-width:0;background:linear-gradient(180deg,rgba(23,30,41,.72),rgba(10,14,20,.95));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px 16px 8px;box-shadow:0 22px 46px -26px rgba(0,0,0,.92),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow:hidden}
+.tm-panel{min-width:0;background:linear-gradient(180deg,rgba(12,15,20,.72),rgba(8,10,14,.95));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px 16px 8px;box-shadow:0 22px 46px -26px rgba(0,0,0,.92),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow:hidden}
 .tm-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
 .tm-sec-r{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 .tm-fil-b.tm-b{flex:0 0 auto;min-width:0;padding:0 18px}
@@ -432,7 +432,7 @@
 
 /* ───────── Ficha del token (overlay) con semaforo de seguridad ───────── */
 .tm-ov{position:fixed;inset:0;z-index:1200;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px}
-.tm-ficha{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);padding:16px 18px 18px;scrollbar-width:none}
+.tm-ficha{position:relative;width:100%;max-width:480px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#161b22,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);padding:16px 18px 18px;scrollbar-width:none}
 .tm-ficha::-webkit-scrollbar,.tmc-card::-webkit-scrollbar{width:0;height:0;display:none}   /* sin barra: se desplaza igual */
 .tm-ficha::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
 .tm-f-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
@@ -606,7 +606,7 @@
 .tm-res-none{text-align:center;padding:30px 16px}
 .tm-res-none b{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:15px;color:var(--ink-2);margin-bottom:6px}
 .tm-res-none span{font-family:var(--mono);font-size:12px;color:var(--ink-3);line-height:1.6}
-.tm-res-card{max-width:460px;margin:8px auto;background:linear-gradient(180deg,rgba(23,30,41,.72),rgba(10,14,20,.95));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 18px 44px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
+.tm-res-card{max-width:460px;margin:8px auto;background:linear-gradient(180deg,rgba(12,15,20,.72),rgba(8,10,14,.95));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 18px 44px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
 .tm-res-tk{display:flex;align-items:center;gap:12px;min-width:0}
 .tm-res-tk .tm-logo{width:40px;height:40px}
 .tm-res-id{min-width:0}
@@ -684,7 +684,7 @@
 .tmc-info a{color:var(--gold)}
 .tm-b:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
 .tmc-ov{position:fixed;inset:0;z-index:1200;background:rgba(3,5,7,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px}
-.tmc-card{position:relative;scrollbar-width:none;width:100%;max-width:436px;background:linear-gradient(180deg,#171d25,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow-y:auto;max-height:calc(100vh - 32px)}
+.tmc-card{position:relative;scrollbar-width:none;width:100%;max-width:436px;background:linear-gradient(180deg,#161b22,#0d1117);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(232,184,75,.06),inset 0 1px 0 rgba(255,255,255,.06);overflow-y:auto;max-height:calc(100vh - 32px)}
 .tmc-card::after{content:"";position:absolute;inset:0;z-index:0;background-image:url('../../assets/portada/img/swap-bg.webp');background-size:cover;background-position:center;opacity:.12;pointer-events:none}
 .tmc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5;z-index:2}
 .tmc-card>*{position:relative;z-index:1}
@@ -752,7 +752,7 @@
 .tmc-prot-meter.ok{color:#2ee86a}.tmc-prot-meter.warn{color:var(--gold,#E8B84B)}.tmc-prot-meter.bad{color:#ff8da0}
 /* Disclaimer de la compra protegida (sale al activar Protected). Interno, sin referencias externas. */
 .tg-pdisc-ov{position:fixed;inset:0;z-index:1400;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(3,5,8,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
-.tg-pdisc{width:100%;max-width:360px;background:linear-gradient(180deg,#121820,#0b0f14);border:1px solid var(--line,#232b36);border-radius:16px;padding:22px 20px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.tg-pdisc{width:100%;max-width:360px;background:linear-gradient(180deg,#121820,#0b0e12);border:1px solid var(--line,#232b36);border-radius:16px;padding:22px 20px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.6)}
 .tg-pdisc-ic{display:inline-flex;width:54px;height:54px;border-radius:50%;align-items:center;justify-content:center;background:rgba(46,189,133,.14);color:#2ebd85;margin-bottom:12px}
 .tg-pdisc-t{display:block;font-family:'Chakra Petch',var(--display);font-weight:700;font-size:18px;color:var(--ink,#eaecef);margin-bottom:8px}
 .tg-pdisc-p{margin:0 0 10px;font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--ink-2,#b7bdc6)}
