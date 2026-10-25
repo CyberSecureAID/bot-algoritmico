@@ -42,21 +42,22 @@ const ICO_SEARCH = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" 
 const ICO_RULER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="5" r="2.2"/><path d="M8.5 15.5v-3M12 12V9M15.5 8.5v-3" stroke-width="1.6"/></svg>';
 const ICO_DL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg>';
 const LOGO_BNB = 'https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png';
-const LOGO_USDT = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png';
+const LOGO_USDT = 'https://coin-images.coingecko.com/coins/images/325/large/Tether.png';   // logo real de USDT (CoinGecko)
 
 const LOGO_TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/';
+const LOGO_FB = new URL('./img/token-fallback.webp', import.meta.url).href;   // imagen ejemplarizante para tokens sin logo
 // Logo de Tron (marca roja). Un token de Tron NUNCA debe salir con el icono de BNB: si TronScan trae su icono
 // se usa ese, y si no, este icono rojo que representa la red Tron (nunca un emoji).
 const ICO_TRON = '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#EC0928"/><path fill="#fff" d="M24 11.5 8.7 8.8l8 16.4 9-12.1-1.7-1.6zm-1.9 1.3.9.9-2.4 3.2.3-3.8 1.2-.3zm-2.7.2-.4 4.3-3.4-7 3.8.7-.1 2zm-4.9-.8 3 6.2-5-10.3 2 4.1z"/></svg>';
 // logo(addr, red, logoUrl): BSC usa TrustWallet + respaldo BNB; Tron usa el icono/logo de TronScan + respaldo Tron.
 function logo(addr, red, logoUrl) {
   if (red === 'tron') {
-    const img = logoUrl ? `<img class="tg-logo-img" src="${esc(logoUrl)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+    const img = logoUrl ? `<img class="tg-logo-img" src="${esc(logoUrl)}" alt="" loading="lazy" onload="this.classList.add('on')" onerror="this.remove()">` : '';
     return `<span class="tg-logo"><span class="tg-logo-fb">${ICO_TRON}</span>${img}</span>`;
   }
   let a = ''; try { a = ethers.getAddress(String(addr || '')); } catch (_) {}
   const src = logoUrl || (a ? LOGO_TW + a + '/logo.png' : '');
-  const img = src ? `<img class="tg-logo-img" src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+  const img = src ? `<img class="tg-logo-img" src="${esc(src)}" alt="" loading="lazy" onload="this.classList.add('on')" onerror="this.remove()">` : '';
   return `<span class="tg-logo"><span class="tg-logo-fb">${ICO_BSC}</span>${img}</span>`;
 }
 function fmtP(p, sig = 4) {
@@ -85,8 +86,10 @@ export function css() {
 .tg-id{display:flex;align-items:center;gap:11px;min-width:0;flex:1 1 auto;overflow:hidden}
 .tg-logo{position:relative;display:inline-flex;width:40px;height:40px;border-radius:50%;overflow:hidden;flex:0 0 auto;background:#0d1117;border:1px solid #1c232b}
 .tg-logo-fb,.tg-logo-img{position:absolute;inset:0;width:100%;height:100%}
-.tg-logo-fb{display:flex;align-items:center;justify-content:center;padding:9px}
-.tg-logo-img{object-fit:cover;background:#0d1117}
+.tg-logo-fb{display:flex;align-items:center;justify-content:center;padding:9px;background:url('${LOGO_FB}') center/cover no-repeat border-box}
+.tg-logo-fb svg{display:none}
+.tg-logo-img{object-fit:cover;background:#0d1117;opacity:0;transition:opacity .15s}
+.tg-logo-img.on{opacity:1}
 .tg-id-tx{min-width:0}
 .tg-id-tx b{display:block;font-family:'Chakra Petch',var(--display);font-size:16px;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tg-id-tx span{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794);white-space:nowrap}
@@ -341,10 +344,11 @@ export function css() {
 .pcd-new svg{width:13px;height:13px}
 .pcd-pair{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:14px;color:#C3CCD6;font-weight:600}
 .pcd-coin{display:inline-flex;align-items:center;gap:6px}
-.pcd-cdot{width:18px;height:18px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:9px;font-weight:800;color:#0a0a0a}
-.pcd-cdot.bnb{background:radial-gradient(circle at 35% 30%,#ffe08a,#FFD050)}
-.pcd-cdot.usdt{background:radial-gradient(circle at 35% 30%,#4fd1a5,#26A17B);color:#fff}
-.pcd-cdot.tok{background:radial-gradient(circle at 35% 30%,rgba(var(--cr),.9),rgba(var(--cr),.4))}
+.pcd-cimg{width:18px;height:18px;border-radius:50%;flex:0 0 auto;overflow:hidden;position:relative;background:#0a1016;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.pcd-cimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pcd-cimg.bnb{background:radial-gradient(circle at 35% 30%,#ffe08a,#FFD050)}
+.pcd-cimg.usdt{background:radial-gradient(circle at 35% 30%,#4fd1a5,#26A17B)}
+.pcd-cimg .tg-logo{width:100%!important;height:100%!important;border:0;border-radius:50%}
 .pcd-arrow{color:#8A96A2;font-size:15px}
 .pcd-vdiv{flex:0 0 1px;align-self:stretch;margin:6px 0;background:linear-gradient(to bottom,transparent,rgba(var(--cr),.28) 20%,rgba(var(--cr),.28) 80%,transparent)}
 .pcd-stats{flex:0 0 21%;display:flex;flex-direction:column;justify-content:center;gap:11px;padding:0 22px;min-width:0}
@@ -1464,13 +1468,13 @@ export function tarjetaPos(d) {
         <div class="pcd-nm"><b title="${nombre}">${sym}</b><a class="pcd-ext" href="${SCAN_URL}/token/${esc(d.token)}" target="_blank" rel="noopener" aria-label="View on explorer">${PC_EXT}</a></div>
         <span class="pcd-sub">${nombre}</span>
         ${nuevo ? `<span class="pcd-new">${PC_FLAME}New</span>` : ''}
-        <div class="pcd-pair"><span class="pcd-coin"><span class="pcd-cdot ${payCls}">${pay[0]}</span>${pay}</span><span class="pcd-arrow">→</span><span class="pcd-coin"><span class="pcd-cdot tok">${(sym[0] || '?')}</span>${sym}</span></div>
+        <div class="pcd-pair"><span class="pcd-coin"><span class="pcd-cimg ${payCls}"><img src="${pay === 'USDT' ? LOGO_USDT : LOGO_BNB}" alt="" loading="lazy" onerror="this.remove()"></span>${pay}</span><span class="pcd-arrow">→</span><span class="pcd-coin"><span class="pcd-cimg pcd-cimg-tok">${logo(d.token, d.red, d.logoUrl)}</span>${sym}</span></div>
       </div>
     </div>
     <div class="pcd-vdiv"></div>
     <div class="pcd-stats">
       <div class="pcd-kv"><span class="lbl">Entry Price</span><b>${entry}</b></div>
-      <div class="pcd-kv"><span class="lbl">Current Price</span><b>${cur}</b></div>
+      <div class="pcd-kv"><span class="lbl">Current Price</span><b class="pcd-cur">${cur}</b></div>
       <div class="pcd-hdiv"></div>
       <div class="pcd-qty"><div class="pcd-kv"><span class="lbl">Quantity</span><b>${qtyP(d.cant)}</b></div><div class="pcd-kv"><span class="lbl">Invested</span><b>${invP(d.costoUsd)}</b></div></div>
     </div>

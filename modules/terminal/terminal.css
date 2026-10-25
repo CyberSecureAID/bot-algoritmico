@@ -6,15 +6,16 @@
 
 /* ───────── Lobby del Terminal (rediseno): banner + barra superior + rejilla de 3 columnas ───────── */
 /* Banner: franja visible bajo el loader que se difumina hacia el contenido. */
-.tm-head{position:relative;height:168px;margin:0 0 14px;border-radius:0 0 16px 16px;overflow:hidden}
+.tm-head{position:relative;height:150px;margin:0 0 14px;border-radius:0 0 16px 16px;overflow:hidden}
 .tm-head-bg{position:absolute;inset:0;background:url('./img/banner.webp') center bottom/cover no-repeat;-webkit-mask-image:linear-gradient(180deg,#000 70%,transparent);mask-image:linear-gradient(180deg,#000 70%,transparent);opacity:.98;pointer-events:none}
-/* ── Ticker dentro del banner, encima del buscador: operaciones de ejemplo con la MISMA tarjeta que las
-      posiciones del Open Full Chart (.pcd, inyectada por panel-grande.js), a escala. Estilo Pump. ── */
-.tm-ticker{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none;--tk-travel:10px}
-.tm-tk-op{position:absolute;left:50%;top:50%;width:1100px;transform:translate(-50%,-50%) scale(.78);transform-origin:center;pointer-events:none;animation:tmTkFlow 3.5s ease-in-out forwards;will-change:transform,opacity,filter}
+/* ── Ticker dentro del banner, encima del buscador: UNA operacion REAL a la vez (misma tarjeta .pcd del OFC,
+      a escala). No cicla rapido: vive varios minutos con el P&L evolucionando en vivo; al cambiar de operacion
+      hace un fundido suave (sin brincos ni mareo). ── */
+.tm-ticker{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none}
+.tm-tk-op{position:absolute;left:50%;top:50%;width:1100px;transform:translate(-50%,-50%) scale(.6);transform-origin:center;pointer-events:none;opacity:0;transition:opacity .55s ease;will-change:opacity}
+.tm-tk-op.on{opacity:1}
 .tm-tk-op .pcd{cursor:default}
-@keyframes tmTkFlow{0%{opacity:0;transform:translate(-50%,calc(-50% - var(--tk-travel))) scale(.72);filter:blur(7px)}16%{opacity:1;transform:translate(-50%,-50%) scale(.78);filter:blur(0)}72%{opacity:1;transform:translate(-50%,-50%) scale(.78);filter:blur(0)}100%{opacity:0;transform:translate(-50%,calc(-50% + var(--tk-travel))) scale(.72);filter:blur(7px)}}
-@media(prefers-reduced-motion:reduce){.tm-tk-op{animation-name:tmTkFade}@keyframes tmTkFade{0%,100%{opacity:0}16%,72%{opacity:1}}}
+.tm-tk-op .tk-live{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 /* Barra superior alineada a la rejilla del lobby: la busqueda ocupa solo el ancho de la columna central. */
 .tm-topbar{display:grid;grid-template-columns:258px minmax(0,1fr) 322px;gap:16px;align-items:center;margin:0 0 16px}
 .tm-topbar-sp{min-width:0}
@@ -84,6 +85,7 @@
 .tm-winner:active{transform:translateY(0)}
 .tm-winner-ico{width:34px;height:34px;flex:0 0 auto;color:var(--gold);display:inline-flex}
 .tm-winner-ico .tm-bnbimg{width:34px;height:34px}.tm-winner-ico svg{width:34px;height:34px}
+.tm-winner-ico .tm-logo{width:40px;height:40px;flex:0 0 auto}
 .tm-winner-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
 .tm-winner-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .tm-winner-lbl{font-family:'Chakra Petch',var(--display);font-weight:700;font-size:8.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--verde)}
@@ -352,9 +354,13 @@
 .tm-tok-in{display:flex;align-items:center;gap:9px;max-width:240px}
 .tm-tok-nom{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tm-logo{position:relative;width:30px;height:30px;flex:0 0 auto;border-radius:50%;overflow:hidden;display:inline-block;vertical-align:middle;background:linear-gradient(180deg,#232b34,#151b22)}
-.tm-logo-fb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#F3BA2F}
-.tm-logo-fb svg{width:58%;height:58%;display:block}
-.tm-logo-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#0b0e12}
+/* Fallback de logo: la imagen ejemplarizante (local, carga instantanea) va de FONDO; el logo real va encima y
+   solo se ve cuando ha cargado del todo (.on). Si el token tiene logo (BSC/Tron) el real manda; si no, se ve la
+   imagen ejemplarizante. Nunca se ve rota ni la moneda sin logo. */
+.tm-logo-fb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#F3BA2F;background:url('./img/token-fallback.webp') center/cover no-repeat}
+.tm-logo-fb svg{display:none}
+.tm-logo-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#0b0e12;opacity:0;transition:opacity .15s}
+.tm-logo-img.on{opacity:1}
 .tm-badge{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;height:16px;padding:0 8px;line-height:1;border-radius:999px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#9fb6d6;background:rgba(127,160,216,.12);border:1px solid rgba(127,160,216,.3);white-space:nowrap}
 .tm-badge.lp{color:#f1cf6a;background:rgba(232,184,75,.12);border-color:rgba(232,184,75,.34)}
 .tm-badge.fm{color:#c9b3ff;background:rgba(168,140,255,.12);border-color:rgba(168,140,255,.36)}   /* four.meme */
