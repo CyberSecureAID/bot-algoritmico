@@ -27,6 +27,35 @@ const ABI_SUB = [
 ];
 const SELLO = { ok: new URL('./img/sec-safe.webp', import.meta.url).href, risk: new URL('./img/sec-risk.webp', import.meta.url).href };
 
+/* ── Propagacion de desbloqueo (reactivo, sin recargar) + cache de sesion ──
+   Problema que evita: con varias zonas bloqueadas (Security Check del lobby, el del OFC, el boton Protect),
+   pagar debe quitar el candado de TODAS al instante, no solo de la que abrio el modal; y los re-render
+   posteriores (elegir otro token, reabrir el OFC) deben seguir desbloqueados sin que el usuario recargue.
+   Como: cada candado se apunta al bus (_escuchar) con su accion de "abrirse"; al confirmarse el pago,
+   suscribir() registra 30 dias en cache y llama a _emitir -> se abren TODOS los candados vivos. */
+const _subCache = new Map();                                   // wallet(min) -> expira (ts seg) confirmado esta sesion
+function _recordarExpira(w, exp) { if (!w || !exp) return; const k = String(w).toLowerCase(); if (exp > (_subCache.get(k) || 0)) _subCache.set(k, exp); }
+function _expiraCache(w) { return w ? (_subCache.get(String(w).toLowerCase()) || 0) : 0; }
+const _oyentes = new Set();                                    // { host, fn }: candados que se abren solos al confirmarse un pago
+function _escuchar(host, fn) {
+  for (const e of [..._oyentes]) if (e.host === host || (e.host && !e.host.isConnected)) _oyentes.delete(e);   // dedupe por host + poda de muertos
+  const entry = { host: host || null, fn }; _oyentes.add(entry); return entry;
+}
+function _emitir(w, exp) {
+  for (const e of [..._oyentes]) {
+    if (e.host && !e.host.isConnected) { _oyentes.delete(e); continue; }                                       // limpia lo que ya no esta en el DOM
+    try { e.fn({ wallet: w, expira: exp }); } catch (_) {}
+  }
+}
+/* Re-lee la cadena y, si hay suscripcion activa, abre todos los candados (util al cargar o tras un evento de wallet,
+   para reflejar un pago previo sin recargar). No hace nada si no esta activa. */
+export async function sincronizar(w) {
+  try { const s = await estadoSuscripcion(w); if (s && s.activa) _emitir(w || '', s.expira || 0); return s; } catch (_) { return null; }
+}
+/* Chequeo SINCRONO de la cache: true si ya confirmamos un pago activo esta sesion. Sirve para abrir sin ni un
+   parpadeo de candado al re-renderizar (p.ej. elegir otro token) despues de pagar, sin esperar la lectura en cadena. */
+export function activoEnCache(w) { return _expiraCache(w) > Math.floor(Date.now() / 1000); }
+
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const ICO_LOCK = '<svg viewBox="0 0 24 24" fill="none"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="15.3" r="1.5" fill="currentColor"/></svg>';
 const ICO_KEY = '<svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="8" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M11 11l8 8M16 16l2-2M18.5 18.5l2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
@@ -50,14 +79,18 @@ function proveedor() { try { const p = wallet.proveedorActivo && wallet.proveedo
 /* Estado de suscripcion: {activa, expira(ts seg), inicio(ts seg), owner}. Owner -> activa. Sin contrato/wallet -> inactiva. */
 export async function estadoSuscripcion(w) {
   if (esOwner(w)) return { activa: true, expira: 0, inicio: 0, owner: true };
-  if (!w || !SUB_CONTRATO) return { activa: false, expira: 0, inicio: 0, owner: false };
+  const now = Math.floor(Date.now() / 1000);
+  const cache = _expiraCache(w);                        // lo ya confirmado esta sesion (p.ej. tras pagar)
+  const base = (exp) => ({ activa: exp > now, expira: exp, inicio: exp ? exp - SUB_DIAS * 86400 : 0, owner: false });
+  if (!w) return base(0);
+  if (!SUB_CONTRATO) return base(cache);                // sin contrato aun: manda lo confirmado en sesion
   try {
-    const pr = proveedor(); if (!pr) return { activa: false, expira: 0, inicio: 0, owner: false };
+    const pr = proveedor(); if (!pr) return base(cache);
     const c = new ethers.Contract(SUB_CONTRATO, ABI_SUB, pr);
     const exp = Number(await c.subscriptionExpiry(w));
-    const inicio = exp ? exp - SUB_DIAS * 86400 : 0;   // primer dia del periodo actual
-    return { activa: exp > Math.floor(Date.now() / 1000), expira: exp, inicio, owner: false };
-  } catch (_) { return { activa: false, expira: 0, inicio: 0, owner: false }; }
+    _recordarExpira(w, exp);
+    return base(Math.max(exp, cache));                  // nunca por debajo de lo ya confirmado: evita falso bloqueo por nodo lento
+  } catch (_) { return base(cache); }
 }
 
 /* Cobra el equivalente a SUB_PRECIO_USD en BNB via el contrato y activa SUB_DIAS. Devuelve el hash. */
@@ -70,6 +103,12 @@ export async function suscribir(bnbUsd) {
   if (!wei || wei === 0n) { const bnb = SUB_PRECIO_USD / (bnbUsd || 1); wei = ethers.parseEther(bnb.toFixed(18)); }
   const tx = await c.subscribe({ value: wei });
   await tx.wait();
+  // Pago confirmado -> registrar 30 dias y AVISAR a todo lo bloqueado para que se abra solo, sin recargar.
+  let w = ''; try { w = await signer.getAddress(); } catch (_) {}
+  let exp = Math.floor(Date.now() / 1000) + SUB_DIAS * 86400;                       // piso optimista: 30 dias desde ahora
+  try { const real = Number(await c.subscriptionExpiry(w)); if (real > exp) exp = real; } catch (_) {}   // renovacion: el contrato suma sobre lo que quedaba
+  _recordarExpira(w, exp);
+  _emitir(w, exp);
   return tx.hash;
 }
 
@@ -115,25 +154,28 @@ export function montarCandado(host, opts) {
   inyectarCSS();
   const bnbUsd = (opts && opts.bnbUsd) || 0;
   const bnb = bnbUsd > 0 ? (SUB_PRECIO_USD / bnbUsd) : 0;
+  const sinHeader = !!(opts && opts.sinHeader);   // el lobby trae su propia cabecera; el OFC usa la de aqui
   host.innerHTML = `
-    <div class="tg-sec-t tg-sec-head">Security check</div>
+    ${sinHeader ? '' : '<div class="tg-sec-t tg-sec-head">Security check</div>'}
     <div class="tg-lock">
       <div class="tg-lock-decoy" aria-hidden="true">${decoy()}</div>
       <div class="tg-lock-card">
-        <div class="tg-lock-ex"><canvas class="tg-lock-cv" id="tg-lock-ex-risk"></canvas><span class="tg-lock-cap risk">High risk example</span></div>
+        <div class="tg-lock-ex"><canvas class="tg-lock-cv" data-ex="risk"></canvas><span class="tg-lock-cap risk">High risk example</span></div>
         <div class="tg-lock-mid">
           <h4 class="tg-lock-h">See the full security report</h4>
           <p class="tg-lock-p">Unlock every token's full diagnosis, plus Protect on every buy at no extra fee.</p>
-          <button class="tg-lock-btn" id="tg-lock-btn" type="button">${ICO_KEY}<span>Unlock${bnb > 0 ? ' ' + bnb.toFixed(4) + ' BNB' : ''}</span>${ICO_LOCK}</button>
+          <button class="tg-lock-btn" type="button">${ICO_KEY}<span>Unlock${bnb > 0 ? ' ' + bnb.toFixed(4) + ' BNB' : ''}</span>${ICO_LOCK}</button>
           <span class="tg-lock-sub">$${SUB_PRECIO_USD.toFixed(2)} for ${SUB_DIAS} days</span>
         </div>
-        <div class="tg-lock-ex"><canvas class="tg-lock-cv" id="tg-lock-ex-safe"></canvas><span class="tg-lock-cap ok">Looks safe example</span></div>
+        <div class="tg-lock-ex"><canvas class="tg-lock-cv" data-ex="safe"></canvas><span class="tg-lock-cap ok">Looks safe example</span></div>
       </div>
     </div>`;
-  dibujarEjemplo(host.querySelector('#tg-lock-ex-risk'), 'risk', 1);
-  dibujarEjemplo(host.querySelector('#tg-lock-ex-safe'), 'ok', 100);
-  const btn = host.querySelector('#tg-lock-btn');
-  if (btn) btn.onclick = () => abrirModalPago(bnbUsd, opts && opts.onDesbloquear);
+  dibujarEjemplo(host.querySelector('[data-ex="risk"]'), 'risk', 1);
+  dibujarEjemplo(host.querySelector('[data-ex="safe"]'), 'ok', 100);
+  const btn = host.querySelector('.tg-lock-btn');
+  if (btn) btn.onclick = () => abrirModalPago(bnbUsd);
+  // Bus: si se paga desde CUALQUIER candado (este, el del OFC, Protect...), este tambien se abre solo sin recargar.
+  _escuchar(host, () => { if (host.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } });
 }
 
 /* Bloquea el boton Protect: lo deja borroso y pone encima un candado. Al tocar, abre el modal de pago. */
@@ -145,14 +187,16 @@ export function bloquearProtect(protEl, opts) {
   const ov = document.createElement('button');
   ov.type = 'button'; ov.className = 'tg-prot-lock';
   ov.innerHTML = `<i>${ICO_LOCK}</i><span>Protect is part of the plan</span><em>Unlock</em>`;
-  ov.onclick = () => abrirModalPago(bnbUsd, opts && opts.onDesbloquear);
+  ov.onclick = () => abrirModalPago(bnbUsd);
   protEl.appendChild(ov);
+  // Bus: pagar en cualquier sitio tambien quita este candado al instante.
+  _escuchar(protEl, () => { if (protEl.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } });
 }
 
 /* Modal de pago con disclaimer (nos exonera de responsabilidad). Compartido por el candado de la izquierda y el
    del boton Protect. Confirmar -> MetaMask cobra el equivalente a 2.50 USD en BNB y activa 30 dias. */
 let _modalAbierto = false;
-function abrirModalPago(bnbUsd, onDesbloquear) {
+function abrirModalPago(bnbUsd) {
   if (_modalAbierto) return; _modalAbierto = true; inyectarCSS();
   const bnb = bnbUsd > 0 ? (SUB_PRECIO_USD / bnbUsd) : 0;
   const ov = document.createElement('div'); ov.className = 'tg-pay-ov';
@@ -183,9 +227,8 @@ function abrirModalPago(bnbUsd, onDesbloquear) {
     if (!w) { msg.className = 'tg-pay-msg'; msg.textContent = 'Connect your wallet first.'; try { await wallet.conectar(); } catch (_) {} return; }
     const o = go.innerHTML; go.classList.add('busy'); go.innerHTML = `${ICO_KEY}<span>Confirm in your wallet…</span>`;
     try {
-      await suscribir(bnbUsd);
+      await suscribir(bnbUsd);   // al confirmarse, suscribir() avisa al bus y se abren TODOS los candados vivos
       msg.className = 'tg-pay-msg ok'; msg.textContent = 'Unlocked. Enjoy.';
-      if (onDesbloquear) onDesbloquear();
       setTimeout(cerrar, 900);
     } catch (e) {
       go.classList.remove('busy'); go.innerHTML = o;

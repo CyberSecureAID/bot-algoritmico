@@ -13,6 +13,7 @@ import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante, marcarVistas } from './alertas.js';
 import { abrirGrande, refrescarAlertasOFC } from './panel-grande.js';
+import { esOwner, estadoSuscripcion, montarCandado, activoEnCache } from './candado.js';
 import { resolverContrato, esContrato } from './resolver.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
 import { FEED, SCAN_URL, FOURMEME_URL, USDT } from './config.js';
@@ -627,7 +628,7 @@ function montarRail(it) {
         <div><span>Est. price</span><b>${precioTxt}</b></div>
       </div>
     </div>
-    <div class="tm-checks">
+    <div class="tm-checks" id="tm-checks">
       <div class="tm-checks-h">${ICO_SHIELD}<b>Security checks</b></div>
       <div class="tm-checks-list" id="tm-checks-list">${checksSkeleton()}</div>
     </div>
@@ -713,7 +714,7 @@ function montarRail(it) {
   } catch (_) {} };
   pintarCcy(); cargarBalance(); recalc();
   try { cargarMercado([it.token]).then(() => updateRailStats(it)).catch(() => {}); } catch (_) {}
-  cargarChecks(it);
+  montarChecksRail(it);
   cargarActividad(it);
 }
 function updateRailStats(it) {
@@ -753,6 +754,28 @@ function pintaChecks(it, r) {
       fila(t10v != null ? (t10v >= 70 ? 'no' : 'ok') : 'pend', 'Token distribution', t10v != null ? 'Top10 ' + t10v + '%' : 'Scan pending');
   }
   const bdg = verifBadge(r); const vb = $('tm-tc-verif'); if (vb) vb.innerHTML = bdg; const vc = $('tm-cp-verif'); if (vc) vc.innerHTML = bdg;
+}
+/* Security Check del lobby con candado de suscripcion. Por defecto BLOQUEADO: borroso + candado + boton Unlock
+   (el MISMO de candado.js), montado dentro de la lista; la cabecera "Security checks" del rail se mantiene.
+   La auditoria real NO corre bloqueada -> los datos reales NUNCA entran al DOM (quitar el blur por F12 solo
+   revela el señuelo). Owner o suscrito: se abre y corre la auditoria real. Via el bus de candado.js, pagar en
+   CUALQUIER sitio lo abre al instante SIN recargar; y como el pago queda en cache, al elegir otro token sigue
+   desbloqueado (sin parpadeo). */
+const checksRailInner = () => `<div class="tm-checks-h">${ICO_SHIELD}<b>Security checks</b></div><div class="tm-checks-list" id="tm-checks-list">${checksSkeleton()}</div>`;
+function desbloquearChecksRail(it) {
+  const host = $('tm-checks'); if (!host || !host.isConnected || _railTok !== it.token) return;
+  host.innerHTML = checksRailInner();
+  cargarChecks(it);
+}
+function montarChecksRail(it) {
+  const host = $('tm-checks'); if (!host) return;
+  let w = null; try { w = wallet.cuentaActual(); } catch (_) {}
+  if (esOwner(w) || activoEnCache(w)) { desbloquearChecksRail(it); return; }          // owner o ya pagado esta sesion: abierto sin parpadeo
+  // Mantiene la cabecera "Security checks" del rail y monta el candado (señuelo) en un hueco propio SIN el
+  // max-height de la lista, para que el bloqueo se vea entero. La auditoria real no corre estando bloqueado.
+  host.innerHTML = `<div class="tm-checks-h">${ICO_SHIELD}<b>Security checks</b></div><div id="tm-checks-lock"></div>`;
+  montarCandado($('tm-checks-lock'), { bnbUsd: _bnbUsd, sinHeader: true, onDesbloquear: () => desbloquearChecksRail(it) });   // bloqueado + apuntado al bus
+  estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearChecksRail(it); }).catch(() => {});   // suscripcion previa -> abre sin recargar
 }
 function cargarChecks(it) {
   const yo = auditoriaDe(it);
