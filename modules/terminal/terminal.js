@@ -278,7 +278,7 @@ export function arrancar() {
     </div>
     <div class="tm-lobby">
       <aside class="tm-side">
-        <button class="tm-winner" id="tm-winner" type="button"><span class="tm-winner-ico">${bnbCoin()}</span><div class="tm-winner-main"><div class="tm-winner-top"><span class="tm-winner-lbl">Prime mover</span><b class="tm-winner-price"></b></div><div class="tm-winner-nm"><b>Scanning…</b></div><em class="tm-winner-chg muted">Finding the top gainer right now</em></div></button>
+        <div class="tm-winner" id="tm-winner" role="button" tabindex="0"><span class="tm-winner-ico">${bnbCoin()}</span><div class="tm-winner-main"><div class="tm-winner-top"><span class="tm-winner-lbl">Prime mover</span><b class="tm-winner-price"></b></div><div class="tm-winner-nm"><b>Scanning…</b></div><em class="tm-winner-chg muted">Finding the top gainer right now</em></div></div>
         <nav class="tm-nav" id="tm-nav">
           <button class="tm-nav-b on" data-nav="pairs" type="button"><span class="tm-nav-ic">${ICO_BOLT}</span>New pairs<em class="tm-nav-live">Live</em></button>
           <button class="tm-nav-b" data-nav="mine" type="button"><span class="tm-nav-ic">${ICO_WALLET}</span>My tokens</button>
@@ -487,7 +487,14 @@ function winnerTok() {
 }
 function pintarWinner() {
   const host = $('tm-winner'); if (!host) return;
-  const it = winnerTok(); if (!it) return;   // mantiene el placeholder hasta tener un ganador real
+  let w = null; try { w = wallet.cuentaActual(); } catch (_) {}
+  if (!(esOwner(w) || activoEnCache(w))) {   // bloqueado: borroso + Unlock + precio + info (una sola vez; el bus lo abre al pagar en cualquier zona)
+    if (!host.classList.contains('tg-zlk-host')) { bloquearZona(host, { bnbUsd: _bnbUsd, decoy: primeDecoy(), info: INFO_PRIME, onDesbloquear: pintarWinner }); estadoSuscripcion(w).then((s) => { if (s && s.activa) pintarWinner(); }).catch(() => {}); }
+    return;
+  }
+  const recienAbierto = host.classList.contains('tg-zlk-host'); if (recienAbierto) host.classList.remove('tg-zlk-host');
+  const it = winnerTok();
+  if (!it) { if (recienAbierto) host.innerHTML = `<span class="tm-winner-ico">${bnbCoin()}</span><div class="tm-winner-main"><div class="tm-winner-top"><span class="tm-winner-lbl">Prime mover</span><b class="tm-winner-price"></b></div><div class="tm-winner-nm"><b>Scanning…</b></div><em class="tm-winner-chg muted">Finding the top gainer right now</em></div>`; return; }   // mantiene el placeholder hasta tener un ganador real
   const m = mercadoDe(it.token), chg = m.cambio24, pu = usdDe(it);
   const chgTxt = `${chg >= 0 ? '+' : ''}${Math.abs(chg) >= 100 ? chg.toFixed(0) : chg.toFixed(1)}%`;
   host.dataset.a = it.token;
@@ -498,6 +505,12 @@ function pintarWinner() {
    y no se repite. Cantidad FIJA (5): llena el hueco que dejaba stats sin empujar ni deformar el resto. */
 function pintarMovers() {
   const host = $('tm-movers'); if (!host) return;
+  let wacc = null; try { wacc = wallet.cuentaActual(); } catch (_) {}
+  if (!(esOwner(wacc) || activoEnCache(wacc))) {   // bloqueado: borroso + Unlock + precio + info (una sola vez)
+    if (!host.classList.contains('tg-zlk-host')) { bloquearZona(host, { bnbUsd: _bnbUsd, decoy: moversDecoy(), info: INFO_MOVERS, onDesbloquear: pintarMovers }); estadoSuscripcion(wacc).then((s) => { if (s && s.activa) pintarMovers(); }).catch(() => {}); }
+    return;
+  }
+  if (host.classList.contains('tg-zlk-host')) host.classList.remove('tg-zlk-host');
   const conDatos = _items.filter((x) => x.par && mercadoDe(x.token) && mercadoDe(x.token).cambio24 != null);
   let orden;
   if (conDatos.length >= 2) orden = conDatos.slice().sort((a, b) => mercadoDe(b.token).cambio24 - mercadoDe(a.token).cambio24);
@@ -874,6 +887,8 @@ function pintaChecks(it, r) {
    desbloqueado (sin parpadeo). */
 const INFO_CHECKS = 'The full security report: live honeypot and tax simulation, liquidity lock, ownership and holder distribution. Hidden until you unlock the plan.';
 const INFO_ACTS = 'Recent real buys and sells on this pair, so you can read momentum and who is trading before you ape in.';
+const INFO_PRIME = 'Prime Mover is the single biggest gainer on BNB Chain at this exact moment, updated live — the one coin moving hardest right now, so you can see it before everyone else does. Unlocking the Terminal plan ($2.50/month) turns on this and the whole Terminal: live scanner, security checks, charts and price alerts. We promise no gains — only the information, early.';
+const INFO_MOVERS = 'Top Movers ranks the coins pumping hardest over the last 24 hours, refreshed live, so you spot momentum early instead of chasing it late. It is part of the Terminal plan: $2.50/month unlocks everything in the Terminal. No profit is promised — just a faster, clearer read of the market.';
 /* Señuelo del Security Check: 4 filas de ejemplo con el mismo formato (NUNCA datos reales). */
 const checksDecoy = () => {
   const f = (estado, label, val) => `<div class="tm-check ${estado}"><span class="tm-check-l"><i>${estado === 'ok' ? ICO_CHECK : '✕'}</i>${label}</span><b>${val}</b></div>`;
@@ -884,6 +899,10 @@ const actsDecoy = () => {
   const rows = [['buy', '0x7a…9b', 'Bought', '1.2', 'BNB', '2m'], ['buy', '0x18…0f', 'Bought', '850', 'USDT', '4m'], ['sell', '0x3c…e5', 'Sold', '0.4', 'BNB', '6m'], ['buy', '0x9d…71', 'Bought', '3.1', 'BNB', '9m'], ['buy', '0xa2…c4', 'Bought', '420', 'USDT', '12m']];
   return rows.map(([tipo, who, verbo, amt, mon, t]) => `<div class="tm-act"><span class="tm-act-who"><i class="tm-act-dot ${tipo}"></i>${who}</span><span class="tm-act-mid ${tipo}">${verbo} ${amt} ${mon}</span><span class="tm-act-t">${t}</span></div>`).join('');
 };
+/* Señuelos (borrosos) para Prime Mover y Top Movers: NUNCA datos reales, solo para que se vea que hay algo
+   valioso detras del candado. Mismas clases que el contenido real para que el blur luzca autentico. */
+const primeDecoy = () => `<span class="tm-winner-ico">${bnbCoin()}</span><div class="tm-winner-main"><div class="tm-winner-top"><span class="tm-winner-lbl">Prime mover</span><b class="tm-winner-price">$0.0<sub>4</sub>2471</b></div><div class="tm-winner-nm"><b>Top Gainer</b><span>WINR</span></div><em class="tm-winner-chg tm-chg up">+312%</em></div>`;
+const moversDecoy = () => `<div class="tm-movers-h">${ICO_TREND}<b>Top movers</b></div>` + [['Alpha', 'ALPHA', '+248%'], ['Rocket', 'RKT', '+176%'], ['Nova', 'NOVA', '+131%'], ['Pulse', 'PLS', '+98%'], ['Vertex', 'VRTX', '+72%']].map(([nm, s, c]) => `<div class="tm-mover"><span class="tm-mover-ico"></span><span class="tm-mover-id"><b>${nm}</b><span>${s}</span></span><span class="tm-mover-px"><b>$0.0<sub>3</sub>84</b><em class="tm-chg up">${c}</em></span></div>`).join('');
 /* Security Check del lobby con candado LIGERO: MANTIENE el tamaño de la ventana (borroso + boton + info); no
    estira el layout. La auditoria real NO corre bloqueada -> datos reales nunca entran al DOM. Owner/suscrito:
    real. Conectado al bus: pagar en cualquier sitio lo abre al instante, sin recargar. */
