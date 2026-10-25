@@ -16,7 +16,7 @@ export const OWNERS = [
   // '0xTU_WALLET_OWNER_1',
   // '0xTU_WALLET_OWNER_2'
 ];
-export const SUB_CONTRATO = '';      // direccion del contrato de suscripcion (Fase 2). Vacio = aun no desplegado.
+export const SUB_CONTRATO = '0x458aA14D2B1144b34f0FD22e2F9d7031B5f288B7';   // Terminal.sol (proxy ERC1967). Se interactua SIEMPRE con el proxy, nunca con la implementacion.
 export const SUB_PRECIO_USD = 2.5;   // precio por defecto por servicio (USD; se cobra el equivalente en BNB)
 export const SUB_DIAS = 30;
 /* CADA servicio de la Terminal se paga y desbloquea POR SEPARADO (pagar uno NO abre los demas). Cada compra
