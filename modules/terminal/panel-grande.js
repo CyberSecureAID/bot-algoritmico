@@ -326,7 +326,7 @@ export function css() {
 .tg-posfull-h b{font-family:'Chakra Petch',var(--display,sans-serif);font-weight:700;font-size:16px;color:#eaecef}
 .tg-posfull-h .sub{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794);margin-left:3px}
 #tg-positions{display:flex;flex-direction:column;gap:16px}
-.pcd{--c:#00F5C0;--c-soft:#1BE8AD;--cr:0,245,192;position:relative;display:flex;align-items:stretch;border-radius:22px;padding:20px 24px;background:linear-gradient(180deg,#070d13,#03080d);border:1px solid rgba(var(--cr),.14);box-shadow:0 20px 50px -30px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.03),inset 0 0 0 1px rgba(var(--cr),.04);overflow:hidden;cursor:pointer;transition:transform .12s,border-color .15s}
+.pcd{--c:#00F5C0;--c-soft:#1BE8AD;--cr:0,245,192;position:relative;display:flex;align-items:stretch;border-radius:22px;padding:20px 24px;background:linear-gradient(180deg,#0a0c10,#080a0d);border:1px solid rgba(var(--cr),.14);box-shadow:0 20px 50px -30px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.03),inset 0 0 0 1px rgba(var(--cr),.04);overflow:hidden;cursor:pointer;transition:transform .12s,border-color .15s}
 .pcd:hover{transform:translateY(-1px);border-color:rgba(var(--cr),.3)}
 .pcd::before{content:"";position:absolute;top:0;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--cr),.5),transparent);opacity:.7}
 .pcd.down{--c:#FF385F;--c-soft:#FF5C77;--cr:255,56,95}
@@ -342,8 +342,10 @@ export function css() {
 .pcd-sub{max-width:100%;font-size:14px;color:#8A96A2;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pcd-new{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;margin-top:2px;padding:4px 11px 4px 9px;border-radius:999px;font-weight:700;font-size:12.5px;color:var(--c-soft);background:rgba(var(--cr),.08);border:1px solid rgba(var(--cr),.3)}
 .pcd-new svg{width:13px;height:13px}
-.pcd-pair{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:14px;color:#C3CCD6;font-weight:600}
-.pcd-coin{display:inline-flex;align-items:center;gap:6px}
+.pcd-pair{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:14px;color:#C3CCD6;font-weight:600;min-width:0;max-width:100%;overflow:hidden}
+.pcd-coin{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;min-width:0}
+.pcd-coin-tok{flex:0 1 auto;min-width:0}
+.pcd-psym{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pcd-cimg{width:18px;height:18px;border-radius:50%;flex:0 0 auto;overflow:hidden;position:relative;background:#0b0e12;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
 .pcd-cimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .pcd-cimg.bnb{background:radial-gradient(circle at 35% 30%,#ffe08a,#FFD050)}
@@ -366,21 +368,16 @@ export function css() {
 .pcd-pnl-usd{align-self:flex-start;font-weight:700;font-size:23px;color:var(--c-soft);letter-spacing:-.3px}
 .pcd-right{flex:1 1 auto;position:relative;min-width:0;align-self:stretch;margin-left:28px}
 .pcd-right::before{content:"";position:absolute;left:0;top:6%;bottom:6%;width:2px;border-radius:2px;background:linear-gradient(to bottom,transparent,rgba(var(--cr),.7) 13%,rgba(var(--cr),.6) 50%,rgba(var(--cr),.7) 87%,transparent);box-shadow:0 0 10px rgba(var(--cr),.4)}
-.pcd-age{position:absolute;top:20px;right:24px;z-index:4;display:inline-flex;align-items:center;gap:9px;padding:7px 13px;border-radius:14px;background:rgba(8,10,14,.78);backdrop-filter:blur(3px);border:1px solid rgba(255,255,255,.07)}
-.pcd-age svg{width:16px;height:16px;color:#8A96A2;flex:0 0 auto}
-.pcd-age span{display:flex;flex-direction:column;line-height:1.25}
-.pcd-age .l{font-size:11px;color:#8A96A2}.pcd-age .v{font-size:13px;color:#F6FBFF;font-weight:600}
 .pcd-base{position:absolute;left:0;right:6%;bottom:13%;height:1.5px;border-radius:2px;background:linear-gradient(90deg,rgba(var(--cr),.6),rgba(var(--cr),.22),transparent);box-shadow:0 0 6px rgba(var(--cr),.22)}
 .pcd-chart{position:absolute;left:28px;right:6%;top:27%;bottom:13%;overflow:visible}
 .pcd-spark-svg{position:absolute;inset:0;width:100%;height:100%}
 .pcd-dot-end{position:absolute;right:0;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 40% 36%,#fff,var(--c));box-shadow:0 0 11px 2px rgba(var(--cr),.9);transform:translateY(-50%)}
-.pcd-status{position:absolute;bottom:0;right:0;display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;background:rgba(var(--cr),.07);border:1px solid rgba(var(--cr),.2);font-size:13px;font-weight:600;color:#C3CCD6}
+.pcd-status{position:absolute;top:16px;right:18px;z-index:4;display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:rgba(var(--cr),.09);border:1px solid rgba(var(--cr),.28);font-size:13px;font-weight:600;color:var(--c-soft)}
 .pcd-status i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px 1px rgba(var(--cr),.8);flex:0 0 auto}
 @media(max-width:820px){
   .tg-posfull{padding:16px 13px 26px}
   .pcd{flex-wrap:wrap;padding:16px 16px}
   .pcd-id{flex:1 1 100%;order:1;padding-right:0;min-width:0}
-  .pcd-age{top:14px;right:14px;padding:6px 11px}
   .pcd-logo{width:60px;height:60px}
   .pcd-idtx{flex:1 1 auto;min-width:0}
   .pcd-nm b{font-size:20px}.pcd-sub{font-size:13px}
@@ -1426,7 +1423,6 @@ function derOpenAlerts(it) {
 export function refrescarAlertasOFC() { try { if (_ov && _ov.isConnected && _itActual) derOpenAlerts(_itActual); } catch (_) {} }
 
 /* ── Tarjeta de posicion (replica aprobada) para la seccion full-width del OFC. Datos REALES de enVivo. ── */
-const PC_CLK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 const PC_EXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6"/><path d="M15 9l-6 6"/></svg>';
 const PC_FLAME = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3-1 4-2 6s0 4 0 4-3-1-3-4c0 0-3 2-3 6a8 8 0 0 0 16 0c0-5-5-6-5-10 0 0-1 1-3-2z"/></svg>';
 const PC_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>';
@@ -1442,7 +1438,6 @@ function pctCompact(v) {
   if (s === '1000') { s = '1'; u++; }
   return sg + s + (PC_SUF[u] || '') + '%';
 }
-function haceP(ms) { if (!ms) return '—'; const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's'; const m = Math.floor(s / 60); if (m < 60) return m + 'm'; const h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
 function qtyP(n) { n = Number(n) || 0; if (n < 1e6) return n.toLocaleString('en-US', { maximumFractionDigits: n < 1 ? 4 : 0 }); const U = [['T', 1e12], ['B', 1e9], ['M', 1e6]]; for (const [s, v] of U) { if (n >= v) { const x = n / v; return (x < 10 ? x.toFixed(2) : x < 100 ? x.toFixed(1) : Math.round(x)) + s; } } return String(Math.round(n)); }
 function invP(n) { n = Number(n) || 0; return n < 1000 ? '$' + n.toFixed(2) : money(n); }
 let _pcSpkN = 0;
@@ -1454,6 +1449,18 @@ function pcSpark(up) {
   const area = d + ' L100,100 L0,100 Z', ly = pts[N - 1], c = up ? '#00F5C0' : '#FF385F', id = 'pcspk' + (_pcSpkN++);
   return `<svg class="pcd-spark-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".38"/><stop offset=".7" stop-color="${c}" stop-opacity=".07"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${c}" stroke-width="1.7" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 2.5px ${c})"/></svg><span class="pcd-dot-end" style="top:${ly.toFixed(1)}%"></span>`;
 }
+/* Ajusta el % de P&L para que SIEMPRE sea lo mas grande posible dentro de su caja: nunca diminuto, nunca
+   cortado. Asi el porcentaje es el protagonista y se ve grande sea "-17%" o "+1.6K%". Se llama tras render. */
+export function ajustarPct(pcd) {
+  if (!pcd) return;
+  const el = pcd.querySelector('.pcd-pnl-pct'), box = pcd.querySelector('.pcd-pnl');
+  if (!el || !box) return;
+  el.style.fontSize = '';                                        // vuelve al maximo que marca el CSS
+  const max = parseFloat(getComputedStyle(el).fontSize) || 56;
+  const avail = box.clientWidth - 28;                            // ancho util (menos padding)
+  const w = el.scrollWidth;
+  if (w > avail && avail > 0) el.style.fontSize = Math.max(24, Math.floor(max * avail / w)) + 'px';
+}
 export function tarjetaPos(d) {
   const up = d.pnlUsd >= 0;
   const sym = esc(d.simbolo || '?'), nombre = esc(d.nombre || d.simbolo || 'Token');
@@ -1461,14 +1468,14 @@ export function tarjetaPos(d) {
   const entry = d.entradaUsd > 0 ? '$' + fmtP(d.entradaUsd) : '—', cur = d.precioUsd > 0 ? '$' + fmtP(d.precioUsd) : '—';
   const nuevo = d.abierta && (Date.now() - d.abierta < 86400000);
   return `<div class="pcd ${up ? 'up' : 'down'}" data-a="${esc(d.token)}">
-    <div class="pcd-age">${PC_CLK}<span><span class="l">Token Age</span><span class="v">${haceP(d.abierta)} ago</span></span></div>
+    <div class="pcd-status"><i></i>Position Active</div>
     <div class="pcd-id">
       <div class="pcd-logo"><span>${logo(d.token, d.red, d.logoUrl)}</span></div>
       <div class="pcd-idtx">
         <div class="pcd-nm"><b title="${nombre}">${sym}</b><a class="pcd-ext" href="${SCAN_URL}/token/${esc(d.token)}" target="_blank" rel="noopener" aria-label="View on explorer">${PC_EXT}</a></div>
         <span class="pcd-sub">${nombre}</span>
         ${nuevo ? `<span class="pcd-new">${PC_FLAME}New</span>` : ''}
-        <div class="pcd-pair"><span class="pcd-coin"><span class="pcd-cimg ${payCls}"><img src="${pay === 'USDT' ? LOGO_USDT : LOGO_BNB}" alt="" loading="lazy" onerror="this.remove()"></span>${pay}</span><span class="pcd-arrow">→</span><span class="pcd-coin"><span class="pcd-cimg pcd-cimg-tok">${logo(d.token, d.red, d.logoUrl)}</span>${sym}</span></div>
+        <div class="pcd-pair"><span class="pcd-coin"><span class="pcd-cimg ${payCls}"><img src="${pay === 'USDT' ? LOGO_USDT : LOGO_BNB}" alt="" loading="lazy" onerror="this.remove()"></span>${pay}</span><span class="pcd-arrow">→</span><span class="pcd-coin pcd-coin-tok"><span class="pcd-cimg pcd-cimg-tok">${logo(d.token, d.red, d.logoUrl)}</span><span class="pcd-psym">${sym}</span></span></div>
       </div>
     </div>
     <div class="pcd-vdiv"></div>
@@ -1487,7 +1494,6 @@ export function tarjetaPos(d) {
     <div class="pcd-right">
       <span class="pcd-base"></span>
       <div class="pcd-chart">${pcSpark(up)}</div>
-      <div class="pcd-status"><i></i>Position Active</div>
     </div>
   </div>`;
 }
@@ -1507,6 +1513,7 @@ async function derPositions() {
   datos.sort((a, b) => b.valorUsd - a.valorUsd);
   if (sub) sub.textContent = datos.length + ' open · live';
   host.innerHTML = datos.map((d) => tarjetaPos(d)).join('');
+  host.querySelectorAll('.pcd').forEach((p) => ajustarPct(p));
   host.querySelectorAll('.pcd').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.pcd-ext')) return; const d = datos.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d && _cargar) _cargar({ token: d.token, par: d.par, quote: d.quote || null, moneda: d.moneda || 'BNB', simbolo: d.simbolo, nombre: d.nombre || d.simbolo, decimales: d.decimales || 18, fuente: 'pancake', tiempo: 0, bloque: 0, liquidez: 0, precio: 0, creador: '' }); }; });
 }
 

@@ -12,7 +12,7 @@ import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecie
 import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante, marcarVistas } from './alertas.js';
-import { abrirGrande, refrescarAlertasOFC, tarjetaPos, css as cssOFC } from './panel-grande.js';
+import { abrirGrande, refrescarAlertasOFC, tarjetaPos, ajustarPct, css as cssOFC } from './panel-grande.js';
 import { esOwner, estadoSuscripcion, bloquearZona, activoEnCache } from './candado.js';
 import { resolverContrato, esContrato } from './resolver.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
@@ -133,7 +133,7 @@ const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, a
    sea absurdo (mayoria ganancias, variadas). Al cruzar a NEGATIVO toda la tarjeta se pone roja y al volver,
    verde. Se puede TOCAR -> abre esa misma moneda real en Open Full Chart; el icono ↗ abre el scanner.
    Dura 3-8 min, rota sin repetir token. Reutiliza la tarjeta de posiciones del OFC (tarjetaPos). ─── */
-let _tkTO = null, _tkPoll = null, _tkRAF = 0, _tkAgeTO = null, _tkRec = [], _tkE = null, _tkGen = 0;
+let _tkTO = null, _tkPoll = null, _tkRAF = 0, _tkRec = [], _tkE = null, _tkGen = 0;
 const TK_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>';
 const TK_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 7l10 10"/><path d="M16 17H7V8"/></svg>';
 /* tokens vivos reales con par, precio actual y cambio 24h conocidos (los que de verdad se estan moviendo) */
@@ -159,7 +159,6 @@ function _tkPct(v) {
   return sg + s + (TK_SUF[u] || '') + '%';
 }
 function _tkUsd(v) { const a = Math.abs(v), s = v < 0 ? '-' : '+'; return s + (a < 1000 ? '$' + a.toFixed(2) : money(a)); }
-function _tkAgeTxt(ms) { if (!ms) return '—'; const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's'; const m = Math.floor(s / 60); if (m < 60) return m + 'm'; const h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
 /* Operacion CREIBLE: % inicial e inversion ACOPLADOS para que el $ nunca sea absurdo (mayoria ganancias,
    variadas). A mas % -> stake mas pequeno (como en la realidad). El precio real luego mueve %/$ de verdad. */
 function _tkPlan() {
@@ -210,10 +209,9 @@ async function _tkStart() {
     const ext = op.querySelector('.pcd-ext'); if (ext) ext.addEventListener('click', (ev) => ev.stopPropagation());
   }
   requestAnimationFrame(() => { if (gen === _tkGen && op) op.classList.add('on'); });   // fade-in suave
+  try { ajustarPct(card); } catch (_) {}                                            // el % arranca al tamano maximo que cabe
   if (_tkPoll) clearInterval(_tkPoll);
   _tkPoll = setInterval(async () => { const e = _tkE; if (!e || e.gen !== _tkGen) return; const p = await _tkRealPrice(e.it); if (!_tkE || _tkE.gen !== gen) return; if (p > 0) { e.target = p; e.hist.push(p); if (e.hist.length > 80) e.hist.shift(); } }, 9000);  // precio REAL cada 9s
-  if (_tkAgeTO) clearInterval(_tkAgeTO);
-  _tkAgeTO = setInterval(() => { const e = _tkE; if (!e || !e.card) return; const v = e.card.querySelector('.pcd-age .v'); if (v) v.textContent = _tkAgeTxt(e.abierta) + ' ago'; }, 1000);   // Token Age REAL, vivo
   if (_tkRAF) cancelAnimationFrame(_tkRAF); _tkRAF = requestAnimationFrame(_tkFrame);
   if (_tkTO) clearTimeout(_tkTO); _tkTO = setTimeout(_tkNext, dur);
 }
@@ -225,7 +223,7 @@ function _tkFrame() {
   const pct = (e.cur - e.entry) / e.entry * 100, up = pct >= 0;
   if (up !== e.sign) { e.sign = up; e.card.classList.toggle('up', up); e.card.classList.toggle('down', !up);
     const h = e.card.querySelector('.pcd-pnl-h'); if (h) h.innerHTML = (up ? TK_UP : TK_DN) + 'P&L'; }
-  const pctEl = e.card.querySelector('.pcd-pnl-pct'); if (pctEl) { const t = _tkPct(pct); if (pctEl.textContent !== t) pctEl.textContent = t; pctEl.style.fontSize = t.length >= 8 ? '74%' : t.length >= 6 ? '86%' : ''; }
+  const pctEl = e.card.querySelector('.pcd-pnl-pct'); if (pctEl) { const t = _tkPct(pct); if (pctEl.textContent !== t) { pctEl.textContent = t; ajustarPct(e.card); } }
   const usdEl = e.card.querySelector('.pcd-pnl-usd'); if (usdEl) usdEl.textContent = _tkUsd(e.inv * pct / 100);
   const curEl = e.card.querySelector('.pcd-cur'); if (curEl) curEl.innerHTML = '$' + fmtP(e.cur);
   _tkDraw(up);
@@ -250,12 +248,12 @@ function _tkNext() {
   const host = $('tm-ticker'); if (!host || !host.isConnected) { montarTickerStop(); return; }
   _tkGen++;                                                                         // invalida polls/awaits en curso
   if (_tkPoll) { clearInterval(_tkPoll); _tkPoll = null; }
-  if (_tkAgeTO) { clearInterval(_tkAgeTO); _tkAgeTO = null; }
+ 
   if (_tkRAF) { cancelAnimationFrame(_tkRAF); _tkRAF = 0; }
   const o = host.querySelector('.tm-tk-op'); if (o) o.classList.remove('on');
   _tkTO = setTimeout(_tkStart, 650);                                               // tras el fade-out, nueva operacion
 }
-function montarTickerStop() { _tkGen++; if (_tkTO) { clearTimeout(_tkTO); _tkTO = null; } if (_tkPoll) { clearInterval(_tkPoll); _tkPoll = null; } if (_tkAgeTO) { clearInterval(_tkAgeTO); _tkAgeTO = null; } if (_tkRAF) { cancelAnimationFrame(_tkRAF); _tkRAF = 0; } _tkE = null; }
+function montarTickerStop() { _tkGen++; if (_tkTO) { clearTimeout(_tkTO); _tkTO = null; } if (_tkPoll) { clearInterval(_tkPoll); _tkPoll = null; } if (_tkRAF) { cancelAnimationFrame(_tkRAF); _tkRAF = 0; } _tkE = null; }
 function montarTicker() {
   montarTickerStop();
   const host = $('tm-ticker'); if (!host) return;
