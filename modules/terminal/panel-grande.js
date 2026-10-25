@@ -72,7 +72,7 @@ const pct = (v) => (v == null || !isFinite(v)) ? '0%' : (Math.round(v * 10) / 10
 
 /* ── CSS propio (patron del modulo: inyectado, sin tocar el HTML ni terminal.css) ── */
 let _css = false;
-function css() {
+export function css() {
   if (_css) return; _css = true;
   const st = document.createElement('style'); st.id = 'tm-big-css';
   st.textContent = `
@@ -1450,7 +1450,7 @@ function pcSpark(up) {
   const area = d + ' L100,100 L0,100 Z', ly = pts[N - 1], c = up ? '#00F5C0' : '#FF385F', id = 'pcspk' + (_pcSpkN++);
   return `<svg class="pcd-spark-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".38"/><stop offset=".7" stop-color="${c}" stop-opacity=".07"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${c}" stroke-width="1.7" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 2.5px ${c})"/></svg><span class="pcd-dot-end" style="top:${ly.toFixed(1)}%"></span>`;
 }
-function tarjetaPos(d) {
+export function tarjetaPos(d) {
   const up = d.pnlUsd >= 0;
   const sym = esc(d.simbolo || '?'), nombre = esc(d.nombre || d.simbolo || 'Token');
   const pay = d.moneda === 'USDT' ? 'USDT' : 'BNB', payCls = pay.toLowerCase();

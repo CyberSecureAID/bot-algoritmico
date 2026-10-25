@@ -6,24 +6,15 @@
 
 /* ───────── Lobby del Terminal (rediseno): banner + barra superior + rejilla de 3 columnas ───────── */
 /* Banner: franja visible bajo el loader que se difumina hacia el contenido. */
-.tm-head{position:relative;height:140px;margin:0 0 14px;border-radius:0 0 16px 16px;overflow:hidden}
+.tm-head{position:relative;height:168px;margin:0 0 14px;border-radius:0 0 16px 16px;overflow:hidden}
 .tm-head-bg{position:absolute;inset:0;background:url('./img/banner.webp') center bottom/cover no-repeat;-webkit-mask-image:linear-gradient(180deg,#000 70%,transparent);mask-image:linear-gradient(180deg,#000 70%,transparent);opacity:.98;pointer-events:none}
-/* ── Ticker de actividad (operaciones placeholder estilo Pump) dentro del banner, encima del buscador ── */
-.tm-ticker{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none;--tk-travel:54px}
-.tm-tk-op{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:10px;white-space:nowrap;padding:9px 15px;border-radius:999px;background:rgba(8,12,18,.72);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);border:1px solid rgba(255,255,255,.09);box-shadow:0 12px 32px -14px rgba(0,0,0,.85);animation:tmTkFlow 3s ease-in-out forwards;will-change:transform,opacity,filter}
-.tm-tk-op.up{border-color:rgba(46,232,106,.32);box-shadow:0 12px 32px -14px rgba(0,0,0,.85),0 0 24px -9px rgba(46,232,106,.55)}
-.tm-tk-op.down{border-color:rgba(246,70,93,.32);box-shadow:0 12px 32px -14px rgba(0,0,0,.85),0 0 24px -9px rgba(246,70,93,.5)}
-.tm-tk-av{width:26px;height:26px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-family:var(--mono);font-size:9px;font-weight:800;color:#06121f;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}
-.tm-tk-tx{font-family:var(--display);font-size:13px;color:var(--ink-2)}
-.tm-tk-tx b{font-family:var(--mono);font-weight:600;color:#cfd7e0}
-.tm-tk-tx i{font-style:normal;color:var(--ink-3)}
-.tm-tk-tx em{font-style:normal;font-weight:700;color:#f6fbff}
-.tm-tk-amt{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
-.tm-tk-pnl{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:-.2px;padding:2px 10px;border-radius:999px}
-.tm-tk-op.up .tm-tk-pnl{color:#1be8ad;background:rgba(46,232,106,.1);text-shadow:0 0 14px rgba(46,232,106,.5)}
-.tm-tk-op.down .tm-tk-pnl{color:#ff5c77;background:rgba(246,70,93,.1);text-shadow:0 0 14px rgba(246,70,93,.45)}
-@keyframes tmTkFlow{0%{opacity:0;transform:translate(-50%,calc(-50% - var(--tk-travel))) scale(.9);filter:blur(7px)}16%{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0)}68%{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0)}100%{opacity:0;transform:translate(-50%,calc(-50% + var(--tk-travel))) scale(.9);filter:blur(7px)}}
-@media(prefers-reduced-motion:reduce){.tm-tk-op{animation-name:tmTkFade}@keyframes tmTkFade{0%,100%{opacity:0}16%,68%{opacity:1}}}
+/* ── Ticker dentro del banner, encima del buscador: operaciones de ejemplo con la MISMA tarjeta que las
+      posiciones del Open Full Chart (.pcd, inyectada por panel-grande.js), a escala. Estilo Pump. ── */
+.tm-ticker{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none;--tk-travel:10px}
+.tm-tk-op{position:absolute;left:50%;top:50%;width:1100px;transform:translate(-50%,-50%) scale(.78);transform-origin:center;pointer-events:none;animation:tmTkFlow 3.5s ease-in-out forwards;will-change:transform,opacity,filter}
+.tm-tk-op .pcd{cursor:default}
+@keyframes tmTkFlow{0%{opacity:0;transform:translate(-50%,calc(-50% - var(--tk-travel))) scale(.72);filter:blur(7px)}16%{opacity:1;transform:translate(-50%,-50%) scale(.78);filter:blur(0)}72%{opacity:1;transform:translate(-50%,-50%) scale(.78);filter:blur(0)}100%{opacity:0;transform:translate(-50%,calc(-50% + var(--tk-travel))) scale(.72);filter:blur(7px)}}
+@media(prefers-reduced-motion:reduce){.tm-tk-op{animation-name:tmTkFade}@keyframes tmTkFade{0%,100%{opacity:0}16%,72%{opacity:1}}}
 /* Barra superior alineada a la rejilla del lobby: la busqueda ocupa solo el ancho de la columna central. */
 .tm-topbar{display:grid;grid-template-columns:258px minmax(0,1fr) 322px;gap:16px;align-items:center;margin:0 0 16px}
 .tm-topbar-sp{min-width:0}
@@ -168,14 +159,10 @@
 .tm-rail-ph{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:44px 18px;border-radius:14px;border:1px dashed #2a323d;background:linear-gradient(180deg,#0d1319,#0a0e13);color:var(--ink-3)}
 .tm-rail-ph-ic{width:34px;height:34px;color:var(--gold);opacity:.55;display:inline-flex}.tm-rail-ph-ic svg{width:34px;height:34px}
 .tm-rail-ph b{color:var(--ink-2);font-size:14px}.tm-rail-ph span{font-size:12px;line-height:1.5}
-@media(max-width:1180px){.tm-lobby{grid-template-columns:238px minmax(0,1fr)}.tm-rail{display:none}.tm-topbar{grid-template-columns:238px minmax(0,1fr) auto}}
-@media(max-width:880px){.tm-lobby{grid-template-columns:1fr}.tm-side{display:none}.tm-head{height:84px}.tm-head-bg{inset:0 -18px}.tm-topbar{grid-template-columns:minmax(0,1fr) auto}.tm-topbar-sp{display:none}
-  .tm-ticker{--tk-travel:30px}
-  .tm-tk-op{gap:8px;padding:7px 12px}
-  .tm-tk-av{width:22px;height:22px}
-  .tm-tk-tx{font-size:12px}
-  .tm-tk-tx i,.tm-tk-amt{display:none}
-  .tm-tk-pnl{font-size:12.5px;padding:2px 8px}}
+/* Debajo de 1180px el lobby pasa a 2 columnas (sin rail): el ticker de tarjetas grandes se oculta y el banner
+   vuelve a su alto normal (las tarjetas .pcd necesitan el ancho del lobby completo para no encaballarse). */
+@media(max-width:1180px){.tm-lobby{grid-template-columns:238px minmax(0,1fr)}.tm-rail{display:none}.tm-topbar{grid-template-columns:238px minmax(0,1fr) auto}.tm-head{height:140px}.tm-ticker{display:none}}
+@media(max-width:880px){.tm-lobby{grid-template-columns:1fr}.tm-side{display:none}.tm-head{height:84px}.tm-head-bg{inset:0 -18px}.tm-topbar{grid-template-columns:minmax(0,1fr) auto}.tm-topbar-sp{display:none}}
 /* Pestanas y columnas de la tabla New pairs (MC / Buyers / Volume) + boton Buy por fila. */
 .tm-tabrow{margin:0 0 13px}
 .tm-tabs3{display:inline-flex;gap:4px;background:#0b0f14;border:1px solid var(--line);border-radius:11px;padding:3px}

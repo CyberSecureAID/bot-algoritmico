@@ -60,6 +60,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&':
 const ICO_LOCK = '<svg viewBox="0 0 24 24" fill="none"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="15.3" r="1.5" fill="currentColor"/></svg>';
 const ICO_KEY = '<svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="8" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M11 11l8 8M16 16l2-2M18.5 18.5l2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 const ICO_SHIELD = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 2.5v5.5c0 4.5-3 8-7 9.5-4-1.5-7-5-7-9.5V5.5L12 3z" stroke="currentColor" stroke-width="1.6"/><path d="M9 12l2 2 4-4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICO_INFO = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor"/></svg>';
 
 const BENEFICIOS = [
   'Live buy and sell simulation: real honeypot and true taxes, not just the code.',
@@ -193,6 +194,41 @@ export function bloquearProtect(protEl, opts) {
   _escuchar(protEl, () => { if (protEl.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } });
 }
 
+/* Candado LIGERO para zonas del lobby (Security check, Recent activity). MANTIENE el tamaño de la ventana:
+   deja el contenido (un señuelo, NUNCA datos reales) borroso y encima un boton pequeño centrado + (opcional)
+   un boton de info que explica para que sirve. Pagar abre el modal; conectado al bus -> cualquier pago lo abre.
+   opts = { bnbUsd, decoy (HTML señuelo), onDesbloquear, info (texto), etiqueta (texto del boton) } */
+export function bloquearZona(host, opts) {
+  if (!host) return;
+  inyectarCSS();
+  const bnbUsd = (opts && opts.bnbUsd) || 0;
+  const bnb = bnbUsd > 0 ? (SUB_PRECIO_USD / bnbUsd) : 0;
+  const decoyHTML = (opts && opts.decoy) || '';
+  const info = opts && opts.info;
+  const etiqueta = (opts && opts.etiqueta) || 'Unlock';
+  host.classList.add('tg-zlk-host');
+  host.innerHTML = `
+    <div class="tg-zlk-blur" aria-hidden="true">${decoyHTML}</div>
+    <div class="tg-zlk-over">
+      <button class="tg-zlk-btn" type="button">${ICO_KEY}<span>${esc(etiqueta)}${bnb > 0 ? ' ' + bnb.toFixed(4) + ' BNB' : ''}</span>${ICO_LOCK}</button>
+      ${info ? `<button class="tg-zlk-i" type="button" aria-label="What is this?">${ICO_INFO}</button>` : ''}
+    </div>`;
+  const btn = host.querySelector('.tg-zlk-btn'); if (btn) btn.onclick = () => abrirModalPago(bnbUsd);
+  if (info) { const ib = host.querySelector('.tg-zlk-i'); if (ib) ib.onclick = (e) => { e.stopPropagation(); mostrarInfo(ib, info); }; }
+  _escuchar(host, () => { if (host.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } });
+}
+
+/* Globo de info pequeño junto al boton (toggle: se cierra al pulsar fuera o de nuevo). */
+let _infoOpen = null;
+function mostrarInfo(anchor, texto) {
+  const host = anchor.closest('.tg-zlk-host') || anchor.parentElement || document.body;
+  if (_infoOpen) { const prev = _infoOpen; const same = prev._for === anchor; prev.remove(); _infoOpen = null; if (same) return; }
+  const tip = document.createElement('div'); tip.className = 'tg-info-pop'; tip.textContent = texto; tip._for = anchor;
+  host.appendChild(tip); _infoOpen = tip;
+  const cerrar = (ev) => { if (tip.contains(ev.target) || anchor === ev.target || anchor.contains(ev.target)) return; if (tip.isConnected) tip.remove(); if (_infoOpen === tip) _infoOpen = null; document.removeEventListener('click', cerrar, true); };
+  setTimeout(() => document.addEventListener('click', cerrar, true), 0);
+}
+
 /* Modal de pago con disclaimer (nos exonera de responsabilidad). Compartido por el candado de la izquierda y el
    del boton Protect. Confirmar -> MetaMask cobra el equivalente a 2.50 USD en BNB y activa 30 dias. */
 let _modalAbierto = false;
@@ -275,6 +311,17 @@ function inyectarCSS() {
 .tg-prot-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid rgba(232,184,75,.4);border-radius:11px;background:rgba(8,11,14,.5);color:var(--ink-2,#b7bdc6);font:700 12px/1 'Chakra Petch',var(--display,sans-serif);cursor:pointer}
 .tg-prot-lock i{display:inline-flex;width:15px;height:15px;color:var(--gold,#E8B84B)}
 .tg-prot-lock em{font-style:normal;padding:4px 9px;border-radius:7px;background:rgba(232,184,75,.16);color:var(--gold,#E8B84B);font-weight:800}
+/* candado LIGERO de zonas del lobby: mantiene el tamaño de la ventana, borroso + boton centrado + info */
+.tg-zlk-host{position:relative;overflow:hidden}
+.tg-zlk-blur{filter:blur(5px) saturate(.8);opacity:.45;pointer-events:none;user-select:none}
+.tg-zlk-over{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:radial-gradient(120% 90% at 50% 50%,rgba(8,11,14,.4),rgba(8,11,14,.78))}
+.tg-zlk-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:11px;border:1px solid rgba(232,184,75,.45);background:linear-gradient(180deg,rgba(232,184,75,.2),rgba(232,184,75,.08));color:var(--gold,#E8B84B);font:800 12px/1 'Chakra Petch',var(--display,sans-serif);letter-spacing:.02em;cursor:pointer;box-shadow:0 6px 16px -10px rgba(0,0,0,.8);transition:transform .15s,border-color .15s,background .15s}
+.tg-zlk-btn:hover{transform:translateY(-1px);border-color:rgba(232,184,75,.65);background:linear-gradient(180deg,rgba(232,184,75,.28),rgba(232,184,75,.12))}
+.tg-zlk-btn svg{width:13px;height:13px}
+.tg-zlk-i{width:24px;height:24px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(13,17,23,.6);color:var(--ink-3,#9aa3af);cursor:pointer}
+.tg-zlk-i:hover{color:var(--gold,#E8B84B);border-color:rgba(232,184,75,.4)}
+.tg-zlk-i svg{width:15px;height:15px}
+.tg-info-pop{position:absolute;left:50%;bottom:9px;transform:translateX(-50%);z-index:6;width:max-content;max-width:min(240px,88%);padding:8px 11px;border-radius:9px;border:1px solid rgba(232,184,75,.28);background:#0c1117;color:var(--ink-2,#b7bdc6);font:500 10.5px/1.45 var(--display,sans-serif);box-shadow:0 12px 30px -12px rgba(0,0,0,.85)}
 /* modal de pago */
 .tg-pay-ov{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(5,7,10,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .tg-pay{position:relative;width:100%;max-width:400px;max-height:90vh;overflow:auto;border-radius:16px;border:1px solid rgba(232,184,75,.26);background:linear-gradient(180deg,#0e1319,#0a0d11);padding:22px 20px 18px;text-align:center;box-shadow:0 30px 80px -30px rgba(0,0,0,.8)}

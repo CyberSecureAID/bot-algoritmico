@@ -12,8 +12,8 @@ import { velasDeToken, montarGrafico, destruirGrafico, precioActual, tradesRecie
 import * as wallet from './wallet.js';
 import { listaDe, enVivo, olvidar, historialDe } from './posiciones.js';
 import { listaWatch, enWatch, alternarWatch, quitarWatch, listaAlertas, alertasDe, crearAlerta, quitarAlerta, arrancarVigilante, marcarVistas } from './alertas.js';
-import { abrirGrande, refrescarAlertasOFC } from './panel-grande.js';
-import { esOwner, estadoSuscripcion, montarCandado, activoEnCache } from './candado.js';
+import { abrirGrande, refrescarAlertasOFC, tarjetaPos, css as cssOFC } from './panel-grande.js';
+import { esOwner, estadoSuscripcion, bloquearZona, activoEnCache } from './candado.js';
 import { resolverContrato, esContrato } from './resolver.js';
 import { mercadoDe, mercadoListo, cargarMercado } from './mercado.js';
 import { FEED, SCAN_URL, FOURMEME_URL, USDT } from './config.js';
@@ -124,44 +124,46 @@ const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, a
   // cuenta y a veces fallaba donde el lobby si tenia datos -> grafico vacio por esa via. Esa era la causa).
   velasDe: (tok) => ((_cpTok && tok && String(_cpTok).toLowerCase() === String(tok).toLowerCase() && Array.isArray(_velasRaw) && _velasRaw.length) ? _velasRaw.slice() : null) });
 
-/* ─── Ticker de actividad del lobby: operaciones PLACEHOLDER (estilo Pump: entran por arriba, se aclaran
-   en el centro, se desvanecen hacia abajo). Es el UNICO lugar con datos de ejemplo del proyecto. ─── */
-let _tkTimer = null;
-const TK_TOKS = ['PEPE', 'WOJAK', 'SHIBZ', 'FLOKI', 'BONK', 'TURBO', 'DOGE', 'MOON', 'CHAD', 'GIGA', 'WIF', 'MYRO', 'BRETT', 'POPCAT', 'MEW', 'NEIRO', 'SPX', 'ANDY', 'PNUT', 'MANEKI'];
-const TK_BUY = ['bought', 'aped into', 'scooped', 'grabbed', 'sniped', 'longed'];
-const TK_SELL = ['sold', 'dumped', 'took profit on', 'closed'];
+/* ─── Ticker de actividad del lobby: operaciones de EJEMPLO mostradas con la MISMA tarjeta que las posiciones
+   activas del Open Full Chart (tarjetaPos), a escala, flotando sobre el buscador. Estilo Pump: entran por arriba,
+   nitidas en el centro, se desvanecen abajo. MUCHAS mas ganancias (GRANDES) que perdidas, variada. UNICO ejemplo. ─── */
+let _tkTimer = null, _tkLastTok = '';
+const TK_TOKS = ['PEPE', 'WOJAK', 'SHIBZ', 'FLOKI', 'BONK', 'TURBO', 'DOGE', 'MOON', 'CHAD', 'GIGA', 'WIF', 'MYRO', 'BRETT', 'POPCAT', 'MEW', 'NEIRO', 'SPX', 'ANDY', 'PNUT', 'MANEKI', 'MOG', 'PONKE', 'TOSHI', 'DEGEN', 'SLERF', 'BOME', 'MICHI', 'BILLY', 'WEN', 'SNEK', 'GME', 'HOPPY'];
+const TK_NAMES = ['Coin', 'Inu', 'Protocol', 'Finance', 'Network', 'Chain', 'Labs', 'World', 'Cash'];
+const TK_GAINS = [120, 160, 210, 260, 300, 340, 380, 440, 500, 560, 640, 720, 800, 920, 1100, 1400, 1800, 2400, 3200, 5000, 7800];  // pesado hacia GRANDE
+const TK_LOSS = [9, 13, 18, 24, 31, 38, 44];
 const _tkHex = (n) => { let s = ''; for (let i = 0; i < n; i++) s += '0123456789abcdef'[(Math.random() * 16) | 0]; return s; };
 const _tkPick = (a) => a[(Math.random() * a.length) | 0];
-function _tkAmount() {
-  if (Math.random() < 0.5) return _tkPick([0.25, 0.5, 0.8, 1.2, 2.4, 3.1, 5, 8.4, 12]) + ' BNB';
-  return '$' + _tkPick([120, 340, 420, 690, 1200, 2400, 3100, 5600, 9800]).toLocaleString('en-US');
+/* Operacion de ejemplo con los MISMOS campos que entrega enVivo, para alimentar tarjetaPos tal cual. */
+function _tkOp() {
+  const up = Math.random() < 0.88;                                     // MUCHAS mas ganancias que perdidas
+  let sim; do { sim = _tkPick(TK_TOKS); } while (sim === _tkLastTok && TK_TOKS.length > 1); _tkLastTok = sim;   // no repetir la de justo antes
+  const pct = up ? _tkPick(TK_GAINS) : -_tkPick(TK_LOSS);              // ganancias GRANDES
+  const entrada = _tkPick([1e-7, 3e-6, 1.2e-5, 4.8e-5, 2.3e-4, 1.1e-3, 0.004, 0.021]);
+  const costoUsd = _tkPick([120, 240, 340, 520, 870, 1300, 2600, 4200]);
+  return {
+    token: '0x' + _tkHex(40), red: 'bsc', simbolo: sim, nombre: sim + ' ' + _tkPick(TK_NAMES),
+    moneda: Math.random() < 0.5 ? 'BNB' : 'USDT', entradaUsd: entrada, precioUsd: entrada * (1 + pct / 100),
+    cant: costoUsd / entrada, costoUsd, pnlUsd: costoUsd * pct / 100, pnlPct: pct,
+    abierta: Date.now() - _tkPick([4, 12, 35, 90, 240, 600]) * 60000, logoUrl: ''
+  };
 }
-function _tkPct(up) {
-  if (up) { const g = _tkPick([12, 28, 52, 87, 140, 230, 420, 780, 1400, 3200]); return '+' + (g < 1000 ? g : (g / 1000).toFixed(1).replace(/\.0$/, '') + 'K') + '%'; }
-  return '-' + _tkPick([8, 12, 19, 27, 34, 48]) + '%';
-}
-function _tkAvatar(seed) { let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 360; return `linear-gradient(135deg,hsl(${h} 72% 56%),hsl(${(h + 42) % 360} 72% 46%))`; }
 function _tkSpawn() {
   const host = $('tm-ticker');
   if (!host || !host.isConnected) { if (_tkTimer) { clearInterval(_tkTimer); _tkTimer = null; } return; }
   while (host.children.length > 2) host.firstChild.remove();           // tope si la pestana estuvo en 2o plano
-  const up = Math.random() < 0.78;                                     // mayoria ganancias, algunas perdidas
-  const w = '0x' + _tkHex(4) + '…' + _tkHex(4);
-  const el = document.createElement('div');
-  el.className = 'tm-tk-op ' + (up ? 'up' : 'down');
-  el.innerHTML = `<span class="tm-tk-av" style="background:${_tkAvatar(w)}">${w.slice(2, 4).toUpperCase()}</span>`
-    + `<span class="tm-tk-tx"><b>${w}</b> <i>${up ? _tkPick(TK_BUY) : _tkPick(TK_SELL)}</i> <em>$${_tkPick(TK_TOKS)}</em></span>`
-    + `<span class="tm-tk-amt">${_tkAmount()}</span>`
-    + `<span class="tm-tk-pnl">${_tkPct(up)}</span>`;
+  const el = document.createElement('div'); el.className = 'tm-tk-op';
+  try { el.innerHTML = tarjetaPos(_tkOp()); } catch (_) { return; }    // la MISMA tarjeta del OFC
   el.addEventListener('animationend', () => el.remove());
   host.appendChild(el);
 }
 function montarTicker() {
   if (_tkTimer) { clearInterval(_tkTimer); _tkTimer = null; }
   const host = $('tm-ticker'); if (!host) return;
+  try { cssOFC(); } catch (_) {}                                       // asegura el CSS de .pcd en el lobby
   host.innerHTML = '';
   _tkSpawn();
-  _tkTimer = setInterval(_tkSpawn, 2600);
+  _tkTimer = setInterval(_tkSpawn, 3200);
 }
 
 export function arrancar() {
@@ -715,7 +717,7 @@ function montarRail(it) {
   pintarCcy(); cargarBalance(); recalc();
   try { cargarMercado([it.token]).then(() => updateRailStats(it)).catch(() => {}); } catch (_) {}
   montarChecksRail(it);
-  cargarActividad(it);
+  montarActsRail(it);
 }
 function updateRailStats(it) {
   if (_railTok !== it.token) return;
@@ -761,21 +763,45 @@ function pintaChecks(it, r) {
    revela el señuelo). Owner o suscrito: se abre y corre la auditoria real. Via el bus de candado.js, pagar en
    CUALQUIER sitio lo abre al instante SIN recargar; y como el pago queda en cache, al elegir otro token sigue
    desbloqueado (sin parpadeo). */
-const checksRailInner = () => `<div class="tm-checks-h">${ICO_SHIELD}<b>Security checks</b></div><div class="tm-checks-list" id="tm-checks-list">${checksSkeleton()}</div>`;
+const INFO_CHECKS = 'The full security report: live honeypot and tax simulation, liquidity lock, ownership and holder distribution. Hidden until you unlock the plan.';
+const INFO_ACTS = 'Recent real buys and sells on this pair, so you can read momentum and who is trading before you ape in.';
+/* Señuelo del Security Check: 4 filas de ejemplo con el mismo formato (NUNCA datos reales). */
+const checksDecoy = () => {
+  const f = (estado, label, val) => `<div class="tm-check ${estado}"><span class="tm-check-l"><i>${estado === 'ok' ? ICO_CHECK : '✕'}</i>${label}</span><b>${val}</b></div>`;
+  return f('ok', 'No honeypot', 'Sellable') + f('ok', 'Liquidity burned', '100%') + f('ok', 'Ownership renounced', 'Yes') + f('ok', 'Token distribution', 'Healthy');
+};
+/* Señuelo de Recent Activity: 5 operaciones de ejemplo (NUNCA datos reales). */
+const actsDecoy = () => {
+  const rows = [['buy', '0x7a…9b', 'Bought', '1.2', 'BNB', '2m'], ['buy', '0x18…0f', 'Bought', '850', 'USDT', '4m'], ['sell', '0x3c…e5', 'Sold', '0.4', 'BNB', '6m'], ['buy', '0x9d…71', 'Bought', '3.1', 'BNB', '9m'], ['buy', '0xa2…c4', 'Bought', '420', 'USDT', '12m']];
+  return rows.map(([tipo, who, verbo, amt, mon, t]) => `<div class="tm-act"><span class="tm-act-who"><i class="tm-act-dot ${tipo}"></i>${who}</span><span class="tm-act-mid ${tipo}">${verbo} ${amt} ${mon}</span><span class="tm-act-t">${t}</span></div>`).join('');
+};
+/* Security Check del lobby con candado LIGERO: MANTIENE el tamaño de la ventana (borroso + boton + info); no
+   estira el layout. La auditoria real NO corre bloqueada -> datos reales nunca entran al DOM. Owner/suscrito:
+   real. Conectado al bus: pagar en cualquier sitio lo abre al instante, sin recargar. */
 function desbloquearChecksRail(it) {
-  const host = $('tm-checks'); if (!host || !host.isConnected || _railTok !== it.token) return;
-  host.innerHTML = checksRailInner();
+  const host = $('tm-checks-list'); if (!host || !host.isConnected || _railTok !== it.token) return;
+  host.classList.remove('tg-zlk-host'); host.innerHTML = checksSkeleton();
   cargarChecks(it);
 }
 function montarChecksRail(it) {
-  const host = $('tm-checks'); if (!host) return;
+  const host = $('tm-checks-list'); if (!host) return;
   let w = null; try { w = wallet.cuentaActual(); } catch (_) {}
-  if (esOwner(w) || activoEnCache(w)) { desbloquearChecksRail(it); return; }          // owner o ya pagado esta sesion: abierto sin parpadeo
-  // Mantiene la cabecera "Security checks" del rail y monta el candado (señuelo) en un hueco propio SIN el
-  // max-height de la lista, para que el bloqueo se vea entero. La auditoria real no corre estando bloqueado.
-  host.innerHTML = `<div class="tm-checks-h">${ICO_SHIELD}<b>Security checks</b></div><div id="tm-checks-lock"></div>`;
-  montarCandado($('tm-checks-lock'), { bnbUsd: _bnbUsd, sinHeader: true, onDesbloquear: () => desbloquearChecksRail(it) });   // bloqueado + apuntado al bus
-  estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearChecksRail(it); }).catch(() => {});   // suscripcion previa -> abre sin recargar
+  if (esOwner(w) || activoEnCache(w)) { desbloquearChecksRail(it); return; }
+  bloquearZona(host, { bnbUsd: _bnbUsd, decoy: checksDecoy(), info: INFO_CHECKS, onDesbloquear: () => desbloquearChecksRail(it) });
+  estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearChecksRail(it); }).catch(() => {});
+}
+/* Recent Activity del lobby con el MISMO candado ligero + boton de info. Mismo bus de desbloqueo. */
+function desbloquearActsRail(it) {
+  const host = $('tm-acts-list'); if (!host || !host.isConnected || _railTok !== it.token) return;
+  host.classList.remove('tg-zlk-host'); host.innerHTML = actsSkeleton();
+  cargarActividad(it);
+}
+function montarActsRail(it) {
+  const host = $('tm-acts-list'); if (!host) return;
+  let w = null; try { w = wallet.cuentaActual(); } catch (_) {}
+  if (esOwner(w) || activoEnCache(w)) { desbloquearActsRail(it); return; }
+  bloquearZona(host, { bnbUsd: _bnbUsd, decoy: actsDecoy(), info: INFO_ACTS, onDesbloquear: () => desbloquearActsRail(it) });
+  estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearActsRail(it); }).catch(() => {});
 }
 function cargarChecks(it) {
   const yo = auditoriaDe(it);
