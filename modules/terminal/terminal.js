@@ -488,8 +488,8 @@ function winnerTok() {
 function pintarWinner() {
   const host = $('tm-winner'); if (!host) return;
   let w = null; try { w = wallet.cuentaActual(); } catch (_) {}
-  if (!(esOwner(w) || activoEnCache(w))) {   // bloqueado: borroso + Unlock + precio + info (una sola vez; el bus lo abre al pagar en cualquier zona)
-    if (!host.classList.contains('tg-zlk-host')) { bloquearZona(host, { bnbUsd: _bnbUsd, decoy: primeDecoy(), info: INFO_PRIME, onDesbloquear: pintarWinner }); estadoSuscripcion(w).then((s) => { if (s && s.activa) pintarWinner(); }).catch(() => {}); }
+  if (!(esOwner(w) || activoEnCache(w, 'prime'))) {   // bloqueado SOLO por su servicio: pagar otro NO lo abre
+    if (!host.classList.contains('tg-zlk-host')) { bloquearZona(host, { bnbUsd: _bnbUsd, servicio: 'prime', decoy: primeDecoy(), info: INFO_PRIME, onDesbloquear: pintarWinner }); estadoSuscripcion(w, 'prime').then((s) => { if (s && s.activa) pintarWinner(); }).catch(() => {}); }
     return;
   }
   const recienAbierto = host.classList.contains('tg-zlk-host'); if (recienAbierto) host.classList.remove('tg-zlk-host');
@@ -506,8 +506,8 @@ function pintarWinner() {
 function pintarMovers() {
   const host = $('tm-movers'); if (!host) return;
   let wacc = null; try { wacc = wallet.cuentaActual(); } catch (_) {}
-  if (!(esOwner(wacc) || activoEnCache(wacc))) {   // bloqueado: borroso + Unlock + precio + info (una sola vez)
-    if (!host.classList.contains('tg-zlk-host')) { bloquearZona(host, { bnbUsd: _bnbUsd, decoy: moversDecoy(), info: INFO_MOVERS, onDesbloquear: pintarMovers }); estadoSuscripcion(wacc).then((s) => { if (s && s.activa) pintarMovers(); }).catch(() => {}); }
+  if (!(esOwner(wacc) || activoEnCache(wacc, 'movers'))) {   // bloqueado SOLO por su servicio
+    if (!host.classList.contains('tg-zlk-host')) { bloquearZona(host, { bnbUsd: _bnbUsd, servicio: 'movers', decoy: moversDecoy(), info: INFO_MOVERS, onDesbloquear: pintarMovers }); estadoSuscripcion(wacc, 'movers').then((s) => { if (s && s.activa) pintarMovers(); }).catch(() => {}); }
     return;
   }
   if (host.classList.contains('tg-zlk-host')) host.classList.remove('tg-zlk-host');
@@ -885,10 +885,10 @@ function pintaChecks(it, r) {
    revela el señuelo). Owner o suscrito: se abre y corre la auditoria real. Via el bus de candado.js, pagar en
    CUALQUIER sitio lo abre al instante SIN recargar; y como el pago queda en cache, al elegir otro token sigue
    desbloqueado (sin parpadeo). */
-const INFO_CHECKS = 'The complete security report on this coin: a live honeypot and tax simulation, the liquidity lock, who controls the contract and how the supply is spread. It stays hidden until you unlock the Terminal.';
-const INFO_ACTS = 'The real buys and sells happening on this pair right now, so you can read the momentum and see who is trading before you commit.';
-const INFO_PRIME = 'The single biggest gainer on BNB Chain at this exact moment, updated live, so you catch the coin moving hardest before everyone else. Unlocking the Terminal turns on this and every tool inside it. We promise no gains, only the information, early.';
-const INFO_MOVERS = 'The coins pumping hardest over the last 24 hours, ranked and refreshed live, so you spot momentum early instead of chasing it late. Part of the full Terminal plan. No profit is promised, only a faster, clearer read of the market.';
+const INFO_CHECKS = 'A quick security read on the selected coin: a live honeypot and tax look, liquidity and ownership. This is a simplified view, about 10% of the full report; the complete 100% report is inside Open Full Chart. You unlock this one on its own, separate from everything else.';
+const INFO_ACTS = 'The real buys and sells happening on this pair right now, so you can read the momentum and see who is trading before you commit. You unlock this one on its own, separate from everything else.';
+const INFO_PRIME = 'The single biggest gainer on BNB Chain at this exact moment, updated live, so you catch the coin moving hardest before everyone else. You unlock this one on its own, separate from everything else. We promise no gains, only the information, early.';
+const INFO_MOVERS = 'The coins pumping hardest over the last 24 hours, ranked and refreshed live, so you spot momentum early instead of chasing it late. You unlock this one on its own, separate from everything else. No profit is promised, only a faster, clearer read of the market.';
 /* Señuelo del Security Check: 4 filas de ejemplo con el mismo formato (NUNCA datos reales). */
 const checksDecoy = () => {
   const f = (estado, label, val) => `<div class="tm-check ${estado}"><span class="tm-check-l"><i>${estado === 'ok' ? ICO_CHECK : '✕'}</i>${label}</span><b>${val}</b></div>`;
@@ -914,9 +914,9 @@ function desbloquearChecksRail(it) {
 function montarChecksRail(it) {
   const host = $('tm-checks-list'); if (!host) return;
   let w = null; try { w = wallet.cuentaActual(); } catch (_) {}
-  if (esOwner(w) || activoEnCache(w)) { desbloquearChecksRail(it); return; }
-  bloquearZona(host, { bnbUsd: _bnbUsd, decoy: checksDecoy(), info: INFO_CHECKS, onDesbloquear: () => desbloquearChecksRail(it) });
-  estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearChecksRail(it); }).catch(() => {});
+  if (esOwner(w) || activoEnCache(w, 'checks-lobby')) { desbloquearChecksRail(it); return; }
+  bloquearZona(host, { bnbUsd: _bnbUsd, servicio: 'checks-lobby', decoy: checksDecoy(), info: INFO_CHECKS, onDesbloquear: () => desbloquearChecksRail(it) });
+  estadoSuscripcion(w, 'checks-lobby').then((sub) => { if (sub && sub.activa) desbloquearChecksRail(it); }).catch(() => {});
 }
 /* Recent Activity del lobby con el MISMO candado ligero + boton de info. Mismo bus de desbloqueo. */
 function desbloquearActsRail(it) {
@@ -927,9 +927,9 @@ function desbloquearActsRail(it) {
 function montarActsRail(it) {
   const host = $('tm-acts-list'); if (!host) return;
   let w = null; try { w = wallet.cuentaActual(); } catch (_) {}
-  if (esOwner(w) || activoEnCache(w)) { desbloquearActsRail(it); return; }
-  bloquearZona(host, { bnbUsd: _bnbUsd, decoy: actsDecoy(), info: INFO_ACTS, onDesbloquear: () => desbloquearActsRail(it) });
-  estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearActsRail(it); }).catch(() => {});
+  if (esOwner(w) || activoEnCache(w, 'acts')) { desbloquearActsRail(it); return; }
+  bloquearZona(host, { bnbUsd: _bnbUsd, servicio: 'acts', decoy: actsDecoy(), info: INFO_ACTS, onDesbloquear: () => desbloquearActsRail(it) });
+  estadoSuscripcion(w, 'acts').then((sub) => { if (sub && sub.activa) desbloquearActsRail(it); }).catch(() => {});
 }
 function cargarChecks(it) {
   const yo = auditoriaDe(it);

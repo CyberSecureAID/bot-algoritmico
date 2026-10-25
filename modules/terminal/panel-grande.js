@@ -803,9 +803,9 @@ function pintarIzq(it, ctx) {
   const w = (wallet.cuentaActual && wallet.cuentaActual()) || null;
   if (esOwner(w)) { pintarIzqReal(it, ctx); refrescarPill(ctx); return; }   // owner: todo desbloqueado (para probar)
   // Bloqueado por defecto: el señuelo se pinta, la auditoria REAL no se ejecuta (nada real entra al DOM).
-  montarCandado(host, { bnbUsd: ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0, onDesbloquear: () => { if (_itActual === it) { pintarIzqReal(it, ctx); desbloquearProtectUI(); refrescarPill(ctx); } } });
+  montarCandado(host, { bnbUsd: ctx && ctx.bnbUsd ? ctx.bnbUsd() : 0, servicio: 'checks-ofc', onDesbloquear: () => { if (_itActual === it) { pintarIzqReal(it, ctx); refrescarPill(ctx); } } });   // SOLO el Security Check; Protect se paga aparte
   refrescarPill(ctx);
-  estadoSuscripcion(w).then((sub) => { if (_itActual === it && sub && sub.activa) { pintarIzqReal(it, ctx); desbloquearProtectUI(); refrescarPill(ctx); } });
+  estadoSuscripcion(w, 'checks-ofc').then((sub) => { if (_itActual === it && sub && sub.activa) { pintarIzqReal(it, ctx); refrescarPill(ctx); } });
 }
 /* Quita el candado del boton Protect (tras pagar o si ya hay suscripcion), sin re-renderizar el formulario. */
 function desbloquearProtectUI() { const el = $('tg-prot'); if (el) { const l = el.querySelector('.tg-prot-lock'); if (l) l.remove(); el.classList.remove('tg-prot-locked'); } }
@@ -816,7 +816,7 @@ function refrescarPill(ctx) {
   if (!w) { pintarPill(host, null, null); return; }
   if (esOwner(w)) { pintarPill(host, { owner: true, activa: true }, w); return; }
   pintarPill(host, { activa: false }, w);
-  estadoSuscripcion(w).then((sub) => pintarPill(host, sub, w)).catch(() => {});
+  estadoSuscripcion(w, 'checks-ofc').then((sub) => pintarPill(host, sub, w)).catch(() => {});   // la pastilla refleja el Security Check de Open Full Chart (su servicio); no desbloquea nada
 }
 function pintarIzqReal(it, ctx) {
   const host = $('tg-left'); if (!host) return;
@@ -1676,8 +1676,8 @@ function montarMercado(it) {
     if (esOwner(w)) return;
     // Scope de montarMercado: aqui NO existe `ctx` (monta recibe solo `it`). Se usan `bnbUsd` (numero local) y
     // `_ctx` (el ctx a nivel de modulo). Este era el bug: `ctx is not defined` rompia pintarDer y con el toda la carga.
-    bloquearProtect(protEl, { bnbUsd, onDesbloquear: () => { desbloquearProtectUI(); pintarIzqReal(it, _ctx); refrescarPill(_ctx); } });
-    estadoSuscripcion(w).then((sub) => { if (sub && sub.activa) desbloquearProtectUI(); }).catch(() => {});
+    bloquearProtect(protEl, { bnbUsd, servicio: 'protect', onDesbloquear: () => { desbloquearProtectUI(); refrescarPill(_ctx); } });   // SOLO Protect; el Security Check se paga aparte
+    estadoSuscripcion(w, 'protect').then((sub) => { if (sub && sub.activa) desbloquearProtectUI(); }).catch(() => {});
   })();
   go.onclick = async () => {
     if (!wallet.cuentaActual()) { try { await wallet.conectar(); } catch (_) {} cargarSaldo(); try { derBalances(it); } catch (_) {} return; }

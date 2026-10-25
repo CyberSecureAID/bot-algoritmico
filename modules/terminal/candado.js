@@ -17,44 +17,63 @@ export const OWNERS = [
   // '0xTU_WALLET_OWNER_2'
 ];
 export const SUB_CONTRATO = '';      // direccion del contrato de suscripcion (Fase 2). Vacio = aun no desplegado.
-export const SUB_PRECIO_USD = 2.5;   // coste mensual en USD (se cobra el equivalente en BNB)
+export const SUB_PRECIO_USD = 2.5;   // precio por defecto por servicio (USD; se cobra el equivalente en BNB)
 export const SUB_DIAS = 30;
+/* CADA servicio de la Terminal se paga y desbloquea POR SEPARADO (pagar uno NO abre los demas). Cada compra
+   dura 30 dias y luego se vuelve a bloquear. Precio por servicio (USD): el Security Check del lobby es una
+   version SIMPLIFICADA (~10% del total) y por eso vale menos; el 100% esta dentro de Open Full Chart. */
+export const PRECIO_SERVICIO = { prime: 2.5, movers: 2.5, 'checks-lobby': 1, acts: 2.5, 'checks-ofc': 2.5, protect: 2.5 };
+export function precioDe(servicio) { const p = PRECIO_SERVICIO[servicio]; return (p != null) ? p : SUB_PRECIO_USD; }
+const NOMBRE_SERVICIO = { prime: 'Prime Mover', movers: 'Top Movers', 'checks-lobby': 'Security Check (quick view)', acts: 'Recent Activity', 'checks-ofc': 'Full Security Check', protect: 'Protect' };
+const DESC_SERVICIO = {
+  prime: 'See the single biggest gainer on BNB Chain at this moment, live.',
+  movers: 'See the coins pumping hardest over the last 24 hours, live.',
+  'checks-lobby': 'A quick security read on the selected coin. This is a simplified view, about 10% of the full report; the complete 100% report is inside Open Full Chart.',
+  acts: 'See the real buys and sells happening on this pair right now.',
+  'checks-ofc': 'The complete security report: live honeypot and tax simulation, liquidity, ownership, holder map and creator forensics.',
+  protect: 'Turn on Protect on your buys, with no extra swap fee.'
+};
+const _idServicio = (s) => { try { return ethers.id(String(s || '')); } catch (_) { return s || ''; } };
 
+// Contrato POR SERVICIO (Fase 2): cada servicio se identifica con un bytes32 (ethers.id del nombre).
 const ABI_SUB = [
-  'function subscriptionExpiry(address) view returns (uint256)',
-  'function priceWei() view returns (uint256)',
-  'function subscribe() payable'
+  'function subscriptionExpiry(address, bytes32) view returns (uint256)',
+  'function priceWei(bytes32) view returns (uint256)',
+  'function subscribe(bytes32) payable'
 ];
 const SELLO = { ok: new URL('./img/sec-safe.webp', import.meta.url).href, risk: new URL('./img/sec-risk.webp', import.meta.url).href };
 
-/* ── Propagacion de desbloqueo (reactivo, sin recargar) + cache de sesion ──
-   Problema que evita: con varias zonas bloqueadas (Security Check del lobby, el del OFC, el boton Protect),
-   pagar debe quitar el candado de TODAS al instante, no solo de la que abrio el modal; y los re-render
-   posteriores (elegir otro token, reabrir el OFC) deben seguir desbloqueados sin que el usuario recargue.
-   Como: cada candado se apunta al bus (_escuchar) con su accion de "abrirse"; al confirmarse el pago,
-   suscribir() registra 30 dias en cache y llama a _emitir -> se abren TODOS los candados vivos. */
-const _subCache = new Map();                                   // wallet(min) -> expira (ts seg) confirmado esta sesion
-function _recordarExpira(w, exp) { if (!w || !exp) return; const k = String(w).toLowerCase(); if (exp > (_subCache.get(k) || 0)) _subCache.set(k, exp); }
-function _expiraCache(w) { return w ? (_subCache.get(String(w).toLowerCase()) || 0) : 0; }
-const _oyentes = new Set();                                    // { host, fn }: candados que se abren solos al confirmarse un pago
-function _escuchar(host, fn) {
+/* ── Propagacion de desbloqueo POR SERVICIO (reactivo, sin recargar) + cache de sesion ──
+   Problema que evita: con varias zonas bloqueadas (Prime, Top Movers, Recent Activity, el Security Check del
+   lobby, el del OFC y el boton Protect), pagar UN servicio debe abrir al instante SOLO la zona de ESE servicio,
+   nunca las demas; y los re-render posteriores (elegir otro token, reabrir el OFC) deben seguir reflejando lo
+   que ya esta pagado sin que el usuario recargue.
+   Como: cada candado se apunta al bus (_escuchar) con SU servicio; al confirmarse el pago, suscribir() registra
+   30 dias en cache para ese servicio y llama a _emitir(servicio) -> se abre UNICAMENTE el candado de ese servicio. */
+const _subCache = new Map();                                   // "wallet|servicio" -> expira (ts seg) confirmado esta sesion
+const _ck = (w, s) => String(w || '').toLowerCase() + '|' + (s || '');
+function _recordarExpira(w, s, exp) { if (!w || !exp) return; const k = _ck(w, s); if (exp > (_subCache.get(k) || 0)) _subCache.set(k, exp); }
+function _expiraCache(w, s) { return w ? (_subCache.get(_ck(w, s)) || 0) : 0; }
+const _oyentes = new Set();                                    // { host, fn, servicio }: cada candado se abre solo al pagar SU servicio
+function _escuchar(host, fn, servicio) {
   for (const e of [..._oyentes]) if (e.host === host || (e.host && !e.host.isConnected)) _oyentes.delete(e);   // dedupe por host + poda de muertos
-  const entry = { host: host || null, fn }; _oyentes.add(entry); return entry;
+  const entry = { host: host || null, fn, servicio: servicio || null }; _oyentes.add(entry); return entry;
 }
-function _emitir(w, exp) {
+function _emitir(w, exp, servicio) {
   for (const e of [..._oyentes]) {
     if (e.host && !e.host.isConnected) { _oyentes.delete(e); continue; }                                       // limpia lo que ya no esta en el DOM
-    try { e.fn({ wallet: w, expira: exp }); } catch (_) {}
+    if ((e.servicio || null) !== (servicio || null)) continue;                                                 // SOLO se abre la zona del MISMO servicio pagado; cualquier otra (o una sin servicio) se queda cerrada: pagar uno NUNCA abre los demas
+    try { e.fn({ wallet: w, expira: exp, servicio }); } catch (_) {}
   }
 }
-/* Re-lee la cadena y, si hay suscripcion activa, abre todos los candados (util al cargar o tras un evento de wallet,
-   para reflejar un pago previo sin recargar). No hace nada si no esta activa. */
+/* Re-lee la cadena servicio por servicio y reabre SOLO los que esten activos para esta wallet (util al cargar o
+   tras un evento de wallet, para reflejar pagos previos sin recargar). Un servicio inactivo se queda bloqueado. */
 export async function sincronizar(w) {
-  try { const s = await estadoSuscripcion(w); if (s && s.activa) _emitir(w || '', s.expira || 0); return s; } catch (_) { return null; }
+  try { for (const s of Object.keys(PRECIO_SERVICIO)) { const st = await estadoSuscripcion(w, s); if (st && st.activa) _emitir(w || '', st.expira || 0, s); } } catch (_) {} return null;
 }
 /* Chequeo SINCRONO de la cache: true si ya confirmamos un pago activo esta sesion. Sirve para abrir sin ni un
    parpadeo de candado al re-renderizar (p.ej. elegir otro token) despues de pagar, sin esperar la lectura en cadena. */
-export function activoEnCache(w) { return _expiraCache(w) > Math.floor(Date.now() / 1000); }
+export function activoEnCache(w, servicio) { return _expiraCache(w, servicio) > Math.floor(Date.now() / 1000); }
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const ICO_LOCK = '<svg viewBox="0 0 24 24" fill="none"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="15.3" r="1.5" fill="currentColor"/></svg>';
@@ -66,8 +85,7 @@ const BENEFICIOS = [
   'Liquidity burned or locked, ownership, mint, pause and blacklist rights.',
   'Full holder map: top wallets, snipers, bundled wallets and the creator bag.',
   'Creator wallet reputation: past honeypots, scams, sanctions and mixers.',
-  'Chart, logo and holders on BSC and Tron, matched to the explorer.',
-  'Protect on every buy, with no extra fee.'
+  'Chart, logo and holders on BSC and Tron, matched to the explorer.'
 ];
 
 export function esOwner(w) {
@@ -77,38 +95,49 @@ export function esOwner(w) {
 function proveedor() { try { const p = wallet.proveedorActivo && wallet.proveedorActivo(); return p ? new ethers.BrowserProvider(p) : null; } catch (_) { return null; } }
 
 /* Estado de suscripcion: {activa, expira(ts seg), inicio(ts seg), owner}. Owner -> activa. Sin contrato/wallet -> inactiva. */
-export async function estadoSuscripcion(w) {
+export async function estadoSuscripcion(w, servicio) {
   if (esOwner(w)) return { activa: true, expira: 0, inicio: 0, owner: true };
   const now = Math.floor(Date.now() / 1000);
-  const cache = _expiraCache(w);                        // lo ya confirmado esta sesion (p.ej. tras pagar)
+  const cache = _expiraCache(w, servicio);              // lo ya confirmado esta sesion para ESTE servicio
   const base = (exp) => ({ activa: exp > now, expira: exp, inicio: exp ? exp - SUB_DIAS * 86400 : 0, owner: false });
   if (!w) return base(0);
   if (!SUB_CONTRATO) return base(cache);                // sin contrato aun: manda lo confirmado en sesion
   try {
     const pr = proveedor(); if (!pr) return base(cache);
     const c = new ethers.Contract(SUB_CONTRATO, ABI_SUB, pr);
-    const exp = Number(await c.subscriptionExpiry(w));
-    _recordarExpira(w, exp);
+    const exp = Number(await c.subscriptionExpiry(w, _idServicio(servicio)));
+    _recordarExpira(w, servicio, exp);
     return base(Math.max(exp, cache));                  // nunca por debajo de lo ya confirmado: evita falso bloqueo por nodo lento
   } catch (_) { return base(cache); }
 }
 
-/* Cobra el equivalente a SUB_PRECIO_USD en BNB via el contrato y activa SUB_DIAS. Devuelve el hash. */
-export async function suscribir(bnbUsd) {
-  if (!SUB_CONTRATO) throw new Error('nolive');
+/* Cobra el equivalente al precio de ESE servicio en BNB via el contrato y activa SUB_DIAS SOLO para ese
+   servicio. Al confirmarse avisa al bus con el servicio -> se abre unicamente esa zona (nunca las demas). */
+export async function suscribir(bnbUsd, servicio) {
+  const precio = precioDe(servicio);
+  if (!SUB_CONTRATO) {
+    // DEMO hasta desplegar el contrato (Fase 2): desbloqueo local de ESTE servicio en la sesion, para poder
+    // probar el front sin cobrar. Cuando SUB_CONTRATO tenga direccion, se exige el pago real de abajo.
+    let w = ''; try { w = (wallet.cuentaActual && wallet.cuentaActual()) || ''; } catch (_) {}
+    if (!w) throw new Error('nowallet');
+    const exp = Math.floor(Date.now() / 1000) + SUB_DIAS * 86400;
+    _recordarExpira(w, servicio, exp); _emitir(w, exp, servicio);
+    return 'demo';
+  }
   const pr = proveedor(); if (!pr) throw new Error('nowallet');
   const signer = await pr.getSigner();
   const c = new ethers.Contract(SUB_CONTRATO, ABI_SUB, signer);
-  let wei = null; try { wei = await c.priceWei(); } catch (_) {}
-  if (!wei || wei === 0n) { const bnb = SUB_PRECIO_USD / (bnbUsd || 1); wei = ethers.parseEther(bnb.toFixed(18)); }
-  const tx = await c.subscribe({ value: wei });
+  const id = _idServicio(servicio);
+  let wei = null; try { wei = await c.priceWei(id); } catch (_) {}
+  if (!wei || wei === 0n) { const bnb = precio / (bnbUsd || 1); wei = ethers.parseEther(bnb.toFixed(18)); }
+  const tx = await c.subscribe(id, { value: wei });
   await tx.wait();
-  // Pago confirmado -> registrar 30 dias y AVISAR a todo lo bloqueado para que se abra solo, sin recargar.
+  // Pago confirmado -> registrar 30 dias de ESTE servicio y avisar al bus para que se abra solo, sin recargar.
   let w = ''; try { w = await signer.getAddress(); } catch (_) {}
   let exp = Math.floor(Date.now() / 1000) + SUB_DIAS * 86400;                       // piso optimista: 30 dias desde ahora
-  try { const real = Number(await c.subscriptionExpiry(w)); if (real > exp) exp = real; } catch (_) {}   // renovacion: el contrato suma sobre lo que quedaba
-  _recordarExpira(w, exp);
-  _emitir(w, exp);
+  try { const real = Number(await c.subscriptionExpiry(w, id)); if (real > exp) exp = real; } catch (_) {}   // renovacion: el contrato suma sobre lo que quedaba
+  _recordarExpira(w, servicio, exp);
+  _emitir(w, exp, servicio);
   return tx.hash;
 }
 
@@ -153,7 +182,8 @@ function decoy() {
 export function montarCandado(host, opts) {
   inyectarCSS();
   const bnbUsd = (opts && opts.bnbUsd) || 0;
-  const bnb = bnbUsd > 0 ? (SUB_PRECIO_USD / bnbUsd) : 0;
+  const servicio = (opts && opts.servicio) || 'checks-ofc';
+  const bnb = bnbUsd > 0 ? (precioDe(servicio) / bnbUsd) : 0;
   const sinHeader = !!(opts && opts.sinHeader);   // el lobby trae su propia cabecera; el OFC usa la de aqui
   host.innerHTML = `
     ${sinHeader ? '' : '<div class="tg-sec-t tg-sec-head">Security check</div>'}
@@ -163,9 +193,9 @@ export function montarCandado(host, opts) {
         <div class="tg-lock-ex"><canvas class="tg-lock-cv" data-ex="risk"></canvas><span class="tg-lock-cap risk">High risk example</span></div>
         <div class="tg-lock-mid">
           <h4 class="tg-lock-h">See the full security report</h4>
-          <p class="tg-lock-p">Unlock every token's full diagnosis, plus Protect on every buy at no extra fee.</p>
+          <p class="tg-lock-p">Unlock the full 100% security report on every token: a live buy and sell test, the real taxes, liquidity, the full holder map and the creator's track record.</p>
           <button class="tg-lock-btn" type="button">${ICO_KEY}<span>Unlock${bnb > 0 ? ' ' + bnb.toFixed(4) + ' BNB' : ''}</span>${ICO_LOCK}</button>
-          <span class="tg-lock-sub">$${SUB_PRECIO_USD.toFixed(2)} for ${SUB_DIAS} days</span>
+          <span class="tg-lock-sub">$${precioDe(servicio).toFixed(2)} for ${SUB_DIAS} days, this service only</span>
         </div>
         <div class="tg-lock-ex"><canvas class="tg-lock-cv" data-ex="safe"></canvas><span class="tg-lock-cap ok">Looks safe example</span></div>
       </div>
@@ -173,9 +203,9 @@ export function montarCandado(host, opts) {
   dibujarEjemplo(host.querySelector('[data-ex="risk"]'), 'risk', 1);
   dibujarEjemplo(host.querySelector('[data-ex="safe"]'), 'ok', 100);
   const btn = host.querySelector('.tg-lock-btn');
-  if (btn) btn.onclick = () => abrirModalPago(bnbUsd);
-  // Bus: si se paga desde CUALQUIER candado (este, el del OFC, Protect...), este tambien se abre solo sin recargar.
-  _escuchar(host, () => { if (host.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } });
+  if (btn) btn.onclick = () => abrirModalPago(bnbUsd, servicio);
+  // Bus POR SERVICIO: este candado solo se abre si se paga SU servicio (nunca por pagar otro).
+  _escuchar(host, () => { if (host.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } }, servicio);
 }
 
 /* Bloquea el boton Protect: lo deja borroso y pone encima un candado. Al tocar, abre el modal de pago. */
@@ -184,13 +214,14 @@ export function bloquearProtect(protEl, opts) {
   inyectarCSS();
   protEl.classList.add('tg-prot-locked');
   const bnbUsd = (opts && opts.bnbUsd) || 0;
+  const servicio = (opts && opts.servicio) || 'protect';
   const ov = document.createElement('button');
   ov.type = 'button'; ov.className = 'tg-prot-lock';
-  ov.innerHTML = `<i>${ICO_LOCK}</i><span>Protect is part of the plan</span><em>Unlock</em>`;
-  ov.onclick = () => abrirModalPago(bnbUsd);
+  ov.innerHTML = `<i>${ICO_LOCK}</i><span>Protect</span><em>Unlock</em>`;
+  ov.onclick = () => abrirModalPago(bnbUsd, servicio);
   protEl.appendChild(ov);
-  // Bus: pagar en cualquier sitio tambien quita este candado al instante.
-  _escuchar(protEl, () => { if (protEl.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } });
+  // Bus POR SERVICIO: este candado solo se quita al pagar Protect (nunca por pagar otro servicio).
+  _escuchar(protEl, () => { if (protEl.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } }, servicio);
 }
 
 /* Candado LIGERO para zonas del lobby (Security check, Recent activity). MANTIENE el tamaño de la ventana:
@@ -201,7 +232,8 @@ export function bloquearZona(host, opts) {
   if (!host) return;
   inyectarCSS();
   const bnbUsd = (opts && opts.bnbUsd) || 0;
-  const bnb = bnbUsd > 0 ? (SUB_PRECIO_USD / bnbUsd) : 0;
+  const servicio = (opts && opts.servicio) || null;
+  const bnb = bnbUsd > 0 ? (precioDe(servicio) / bnbUsd) : 0;
   const decoyHTML = (opts && opts.decoy) || '';
   const info = opts && opts.info;
   const etiqueta = (opts && opts.etiqueta) || 'Unlock';
@@ -212,9 +244,9 @@ export function bloquearZona(host, opts) {
       <button class="tg-zlk-btn" type="button">${ICO_KEY}<span>${esc(etiqueta)}${bnb > 0 ? ' ' + bnb.toFixed(4) + ' BNB' : ''}</span>${ICO_LOCK}</button>
       ${info ? `<button class="tg-zlk-i" type="button" aria-label="More info"><span class="tg-zlk-i-p">+</span>info</button>` : ''}
     </div>`;
-  const btn = host.querySelector('.tg-zlk-btn'); if (btn) btn.onclick = () => abrirModalPago(bnbUsd);
+  const btn = host.querySelector('.tg-zlk-btn'); if (btn) btn.onclick = () => abrirModalPago(bnbUsd, servicio);
   if (info) { const ib = host.querySelector('.tg-zlk-i'); if (ib) ib.onclick = (e) => { e.stopPropagation(); mostrarInfo(ib, info); }; }
-  _escuchar(host, () => { if (host.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } });
+  _escuchar(host, () => { if (host.isConnected && opts && typeof opts.onDesbloquear === 'function') { try { opts.onDesbloquear(); } catch (_) {} } }, servicio);
 }
 
 /* Globo de info junto al boton (toggle). Va en <body> con position:fixed para que NUNCA lo recorte el
@@ -239,22 +271,26 @@ function mostrarInfo(anchor, texto) {
   setTimeout(() => { document.addEventListener('click', _infoCerrar, true); window.addEventListener('scroll', _infoCerrar, true); window.addEventListener('resize', _infoCerrar, true); }, 0);
 }
 
-/* Modal de pago con disclaimer (nos exonera de responsabilidad). Compartido por el candado de la izquierda y el
-   del boton Protect. Confirmar -> MetaMask cobra el equivalente a 2.50 USD en BNB y activa 30 dias. */
+/* Modal de pago POR SERVICIO con disclaimer que nos exonera. Muestra QUE servicio se desbloquea, su precio,
+   y deja claro que paga SOLO ese servicio. Confirmar -> cobra el equivalente a su precio en BNB y activa 30 dias. */
 let _modalAbierto = false;
-function abrirModalPago(bnbUsd) {
+function abrirModalPago(bnbUsd, servicio) {
   if (_modalAbierto) return; _modalAbierto = true; inyectarCSS();
-  const bnb = bnbUsd > 0 ? (SUB_PRECIO_USD / bnbUsd) : 0;
+  const precio = precioDe(servicio);
+  const bnb = bnbUsd > 0 ? (precio / bnbUsd) : 0;
+  const nombre = NOMBRE_SERVICIO[servicio] || 'this service';
+  const desc = DESC_SERVICIO[servicio] || 'Unlock this part of the Terminal.';
+  const lista = servicio === 'checks-ofc' ? `<ul class="tg-pay-list">${BENEFICIOS.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>` : '';
   const ov = document.createElement('div'); ov.className = 'tg-pay-ov';
   ov.innerHTML = `
     <div class="tg-pay" role="dialog" aria-modal="true">
       <button class="tg-pay-x" type="button" aria-label="Close">✕</button>
       <div class="tg-pay-ico">${ICO_SHIELD}</div>
-      <h3 class="tg-pay-h">Full token intelligence</h3>
-      <p class="tg-pay-sub">Everything a serious buyer verifies before trading, in one panel. All the explorer shows, plus the live simulation and forensics it cannot.</p>
-      <ul class="tg-pay-list">${BENEFICIOS.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>
-      <div class="tg-pay-price"><b>${bnb > 0 ? bnb.toFixed(4) + ' BNB' : '— BNB'}</b><span>≈ $${SUB_PRECIO_USD.toFixed(2)} for ${SUB_DIAS} days, renewable</span></div>
-      <p class="tg-pay-disc">This panel shows security and market information for research only. It is not financial advice and not a guarantee of any outcome. Trading tokens is risky and you can lose your funds. You alone are responsible for your decisions. By subscribing you agree that DecFreedom is not liable for any loss, trade, or result.</p>
+      <h3 class="tg-pay-h">Unlock ${esc(nombre)}</h3>
+      <p class="tg-pay-sub">${esc(desc)}</p>
+      ${lista}
+      <div class="tg-pay-price"><b>${bnb > 0 ? bnb.toFixed(4) + ' BNB' : '— BNB'}</b><span>≈ $${precio.toFixed(2)} for ${SUB_DIAS} days, renewable. This unlocks ${esc(nombre)} only.</span></div>
+      <p class="tg-pay-disc">Each Terminal service is paid for and unlocked on its own. This service shows public on-chain information for research only. It is not financial advice and not a guarantee of any outcome. Trading tokens is risky and you can lose your funds. You alone are responsible for your decisions. By paying you agree that DecFreedom is not liable for any loss, trade, or result.</p>
       <div class="tg-pay-row">
         <button class="tg-pay-cancel" type="button">Cancel</button>
         <button class="tg-pay-go" type="button">${ICO_KEY}<span>Pay ${bnb > 0 ? bnb.toFixed(4) + ' BNB' : 'in BNB'}</span></button>
@@ -273,12 +309,12 @@ function abrirModalPago(bnbUsd) {
     if (!w) { msg.className = 'tg-pay-msg'; msg.textContent = 'Connect your wallet first.'; try { await wallet.conectar(); } catch (_) {} return; }
     const o = go.innerHTML; go.classList.add('busy'); go.innerHTML = `${ICO_KEY}<span>Confirm in your wallet…</span>`;
     try {
-      await suscribir(bnbUsd);   // al confirmarse, suscribir() avisa al bus y se abren TODOS los candados vivos
-      msg.className = 'tg-pay-msg ok'; msg.textContent = 'Unlocked. Enjoy.';
+      await suscribir(bnbUsd, servicio);   // al confirmarse, el bus abre SOLO la zona de ESTE servicio, sin recargar
+      msg.className = 'tg-pay-msg ok'; msg.textContent = nombre + ' unlocked.';
       setTimeout(cerrar, 900);
     } catch (e) {
       go.classList.remove('busy'); go.innerHTML = o;
-      msg.className = 'tg-pay-msg err'; msg.textContent = (e && e.message === 'nolive') ? 'The subscription service is launching soon.' : (e && e.message === 'nowallet') ? 'No wallet detected.' : 'Payment was not completed.';
+      msg.className = 'tg-pay-msg err'; msg.textContent = (e && e.message === 'nowallet') ? 'Connect your wallet first.' : 'Payment was not completed.';
     }
   };
 }
