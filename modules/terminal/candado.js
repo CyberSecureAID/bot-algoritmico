@@ -13,8 +13,8 @@ import * as wallet from './wallet.js';
 /* ── Config ── */
 // OWNERS: wallets que NUNCA pagan (pruebas y administracion). PON AQUI TU(S) WALLET(S) para ver todo desbloqueado.
 export const OWNERS = [
-  // '0xTU_WALLET_OWNER_1',
-  // '0xTU_WALLET_OWNER_2'
+  '0x97e01a1C430E0cC826AcA6e9BE643721e45BCA7d',   // owner1
+  '0x97e01a1C430E0cC826AcA6e9BE643721e45BCA7d'    // owner2 (hoy la MISMA wallet; cambiar esta linea cuando el socio de su direccion)
 ];
 export const SUB_CONTRATO = '0x458aA14D2B1144b34f0FD22e2F9d7031B5f288B7';   // Terminal.sol (proxy ERC1967). Se interactua SIEMPRE con el proxy, nunca con la implementacion.
 export const SUB_PRECIO_USD = 2.5;   // precio por defecto por servicio (USD; se cobra el equivalente en BNB)
