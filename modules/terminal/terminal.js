@@ -885,10 +885,10 @@ function pintaChecks(it, r) {
    revela el señuelo). Owner o suscrito: se abre y corre la auditoria real. Via el bus de candado.js, pagar en
    CUALQUIER sitio lo abre al instante SIN recargar; y como el pago queda en cache, al elegir otro token sigue
    desbloqueado (sin parpadeo). */
-const INFO_CHECKS = 'The full security report: live honeypot and tax simulation, liquidity lock, ownership and holder distribution. Hidden until you unlock the plan.';
-const INFO_ACTS = 'Recent real buys and sells on this pair, so you can read momentum and who is trading before you ape in.';
-const INFO_PRIME = 'Prime Mover is the single biggest gainer on BNB Chain at this exact moment, updated live — the one coin moving hardest right now, so you can see it before everyone else does. Unlocking the Terminal plan ($2.50/month) turns on this and the whole Terminal: live scanner, security checks, charts and price alerts. We promise no gains — only the information, early.';
-const INFO_MOVERS = 'Top Movers ranks the coins pumping hardest over the last 24 hours, refreshed live, so you spot momentum early instead of chasing it late. It is part of the Terminal plan: $2.50/month unlocks everything in the Terminal. No profit is promised — just a faster, clearer read of the market.';
+const INFO_CHECKS = 'The complete security report on this coin: a live honeypot and tax simulation, the liquidity lock, who controls the contract and how the supply is spread. It stays hidden until you unlock the Terminal.';
+const INFO_ACTS = 'The real buys and sells happening on this pair right now, so you can read the momentum and see who is trading before you commit.';
+const INFO_PRIME = 'The single biggest gainer on BNB Chain at this exact moment, updated live, so you catch the coin moving hardest before everyone else. Unlocking the Terminal turns on this and every tool inside it. We promise no gains, only the information, early.';
+const INFO_MOVERS = 'The coins pumping hardest over the last 24 hours, ranked and refreshed live, so you spot momentum early instead of chasing it late. Part of the full Terminal plan. No profit is promised, only a faster, clearer read of the market.';
 /* Señuelo del Security Check: 4 filas de ejemplo con el mismo formato (NUNCA datos reales). */
 const checksDecoy = () => {
   const f = (estado, label, val) => `<div class="tm-check ${estado}"><span class="tm-check-l"><i>${estado === 'ok' ? ICO_CHECK : '✕'}</i>${label}</span><b>${val}</b></div>`;
