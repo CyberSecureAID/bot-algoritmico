@@ -85,7 +85,7 @@
     var D=window.CONTRATOS||[],html="";
     D.forEach(function(c){
       html+='<div class="cc-card"><div class="cc-name"><span class="cc-dot" style="background:'+(COL[c.cat]||'#888')+'"></span>'+c.nombre+'</div>';
-      html+=row(c.lib?'Library':(c.impl?'Proxy':'Contract'),c.proxy);
+      html+=row(c.lib?'Library':(c.impl?'Proxy':'Addr'),c.proxy);
       if(c.impl)html+=row('Impl',c.impl);
       html+='</div>';
     });
