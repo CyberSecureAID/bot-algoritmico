@@ -123,10 +123,50 @@ const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, a
   // cuenta y a veces fallaba donde el lobby si tenia datos -> grafico vacio por esa via. Esa era la causa).
   velasDe: (tok) => ((_cpTok && tok && String(_cpTok).toLowerCase() === String(tok).toLowerCase() && Array.isArray(_velasRaw) && _velasRaw.length) ? _velasRaw.slice() : null) });
 
+/* ─── Ticker de actividad del lobby: operaciones PLACEHOLDER (estilo Pump: entran por arriba, se aclaran
+   en el centro, se desvanecen hacia abajo). Es el UNICO lugar con datos de ejemplo del proyecto. ─── */
+let _tkTimer = null;
+const TK_TOKS = ['PEPE', 'WOJAK', 'SHIBZ', 'FLOKI', 'BONK', 'TURBO', 'DOGE', 'MOON', 'CHAD', 'GIGA', 'WIF', 'MYRO', 'BRETT', 'POPCAT', 'MEW', 'NEIRO', 'SPX', 'ANDY', 'PNUT', 'MANEKI'];
+const TK_BUY = ['bought', 'aped into', 'scooped', 'grabbed', 'sniped', 'longed'];
+const TK_SELL = ['sold', 'dumped', 'took profit on', 'closed'];
+const _tkHex = (n) => { let s = ''; for (let i = 0; i < n; i++) s += '0123456789abcdef'[(Math.random() * 16) | 0]; return s; };
+const _tkPick = (a) => a[(Math.random() * a.length) | 0];
+function _tkAmount() {
+  if (Math.random() < 0.5) return _tkPick([0.25, 0.5, 0.8, 1.2, 2.4, 3.1, 5, 8.4, 12]) + ' BNB';
+  return '$' + _tkPick([120, 340, 420, 690, 1200, 2400, 3100, 5600, 9800]).toLocaleString('en-US');
+}
+function _tkPct(up) {
+  if (up) { const g = _tkPick([12, 28, 52, 87, 140, 230, 420, 780, 1400, 3200]); return '+' + (g < 1000 ? g : (g / 1000).toFixed(1).replace(/\.0$/, '') + 'K') + '%'; }
+  return '-' + _tkPick([8, 12, 19, 27, 34, 48]) + '%';
+}
+function _tkAvatar(seed) { let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 360; return `linear-gradient(135deg,hsl(${h} 72% 56%),hsl(${(h + 42) % 360} 72% 46%))`; }
+function _tkSpawn() {
+  const host = $('tm-ticker');
+  if (!host || !host.isConnected) { if (_tkTimer) { clearInterval(_tkTimer); _tkTimer = null; } return; }
+  while (host.children.length > 2) host.firstChild.remove();           // tope si la pestana estuvo en 2o plano
+  const up = Math.random() < 0.78;                                     // mayoria ganancias, algunas perdidas
+  const w = '0x' + _tkHex(4) + '…' + _tkHex(4);
+  const el = document.createElement('div');
+  el.className = 'tm-tk-op ' + (up ? 'up' : 'down');
+  el.innerHTML = `<span class="tm-tk-av" style="background:${_tkAvatar(w)}">${w.slice(2, 4).toUpperCase()}</span>`
+    + `<span class="tm-tk-tx"><b>${w}</b> <i>${up ? _tkPick(TK_BUY) : _tkPick(TK_SELL)}</i> <em>$${_tkPick(TK_TOKS)}</em></span>`
+    + `<span class="tm-tk-amt">${_tkAmount()}</span>`
+    + `<span class="tm-tk-pnl">${_tkPct(up)}</span>`;
+  el.addEventListener('animationend', () => el.remove());
+  host.appendChild(el);
+}
+function montarTicker() {
+  if (_tkTimer) { clearInterval(_tkTimer); _tkTimer = null; }
+  const host = $('tm-ticker'); if (!host) return;
+  host.innerHTML = '';
+  _tkSpawn();
+  _tkTimer = setInterval(_tkSpawn, 2600);
+}
+
 export function arrancar() {
   const host = $('tm-app'); if (!host) return;
   host.innerHTML = `
-    <div class="tm-head"><div class="tm-head-bg"></div></div>
+    <div class="tm-head"><div class="tm-head-bg"></div><div class="tm-ticker" id="tm-ticker" aria-hidden="true"></div></div>
     <div class="tm-topbar">
       <span class="tm-topbar-sp"></span>
       <div class="tm-search"><span class="tm-search-ico">${ICO_SEARCH}</span><input id="tm-search" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, contract or address…"></div>
@@ -190,6 +230,7 @@ export function arrancar() {
   };
   const bell = $('tm-bell'); if (bell) bell.onclick = () => { try { abrirGrande(_sel || null, ctxGrande(), { alerta: true }); } catch (_) {} };
   try { pintarBell(); } catch (_) {}
+  try { montarTicker(); } catch (_) {}
   const tabs3 = $('tm-tabs3');
   if (tabs3) tabs3.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tab = b.dataset.tab; tabs3.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintar(); }; });
   // Grafico inline (Modulo 4): timeframes, refrescar y View All.
