@@ -122,7 +122,7 @@ const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, a
   // Velas YA cargadas del token seleccionado en el lobby: el OFC las reutiliza para que la MISMA moneda que
   // tiene grafico abajo lo tenga tambien al abrir Open Full Chart (antes el OFC volvia a descargar por su
   // cuenta y a veces fallaba donde el lobby si tenia datos -> grafico vacio por esa via. Esa era la causa).
-  velasDe: (tok) => ((_cpTok && tok && String(_cpTok).toLowerCase() === String(tok).toLowerCase() && Array.isArray(_velasRaw) && _velasRaw.length) ? _velasRaw.slice() : null) });
+  velasDe: (tok) => ((_cpFuente === 'v2' && _cpTok && tok && String(_cpTok).toLowerCase() === String(tok).toLowerCase() && Array.isArray(_velasRaw) && _velasRaw.length) ? _velasRaw.slice() : null) });
 
 /* ─── Ticker de actividad del lobby: UNA operacion a la vez con un token REAL del area de trading.
    REAL y monitorizado en vivo: el token, su logo, el PRECIO ACTUAL (precioActual on-chain, el MISMO que
@@ -334,7 +334,7 @@ export function arrancar() {
   if (tabs3) tabs3.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tab = b.dataset.tab; tabs3.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintar(); }; });
   // Grafico inline (Modulo 4): timeframes, refrescar y View All.
   const cptf = $('tm-cp-tf');
-  if (cptf) cptf.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tfSec = Number(b.dataset.sec) || 900; cptf.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); renderCP(); }; });
+  if (cptf) cptf.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tfSec = Number(b.dataset.sec) || 900; cptf.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); if (_cpFuente === 'gecko' && _sel) cargarCPGecko(_sel); else renderCP(); }; });
   const cpall = $('tm-cp-all'); if (cpall) cpall.onclick = () => { if (_sel) verGrande(_sel); };
   const nav = $('tm-nav');
   if (nav) nav.querySelectorAll('.tm-nav-b').forEach((b) => { b.onclick = () => { const n = b.dataset.nav; try {
@@ -593,7 +593,7 @@ let _creadorFicha = '';
    la vista grande. grafico.js tiene una sola instancia; mientras la vista grande esta
    abierta la toma prestada, por eso al cerrarse re-montamos aqui. En movil (<860) el
    panel se oculta y el toque abre la ficha. */
-let _sel = null, _tfSec = 900, _velasRaw = null, _cpTok = '', _cpObs = null, _t0 = 0;
+let _sel = null, _tfSec = 900, _velasRaw = null, _cpTok = '', _cpObs = null, _t0 = 0, _cpFuente = 'v2';
 const cpEl = (id) => document.getElementById(id);
 /* Reagrupa las velas por-operacion en cubos de 'seg' segundos (OHLC real por cubo). */
 function agrupar(velas, seg) {
@@ -628,17 +628,25 @@ function renderCP() {
   if (!_sel) { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = 'Pick a token'; } return; }
   if (!_sel.par) { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = _sel.fuente === 'fourmeme' ? 'Trades on four.meme' : 'Trades on the Launchpad'; } return; }
   if (_velasRaw == null) { if (msg) { msg.hidden = false; msg.innerHTML = '<span class="tm-anillo"></span>'; } return; }
-  const velas = agrupar(_velasRaw, _tfSec);
+  const velas = _cpFuente === 'gecko' ? (_velasRaw || []) : agrupar(_velasRaw, _tfSec);   // gecko ya viene al timeframe pedido
   if (velas.length) { if (msg) msg.hidden = true; montarGrafico(cv, velas); }
-  else { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = 'No trades yet'; } }
+  else { try { destruirGrafico(); } catch (_) {} if (msg) { msg.hidden = false; msg.textContent = _cpFuente === 'gecko' ? 'No chart data yet' : 'No trades yet'; } }
 }
-/* Lee las velas reales del par (una por operacion) y las guarda para reagrupar sin re-llamar. */
+/* Lee las velas reales del par (una por operacion) y las guarda para reagrupar sin re-llamar.
+   Si el par no da velas on-chain (V3 / otra DEX / sin Sync util), cae a GeckoTerminal -> casi cualquier
+   token con par muestra grafico, igual que DexScreener. */
 function cargarCP(it) {
-  _cpTok = it.token; _velasRaw = null; renderCP();
+  _cpTok = it.token; _velasRaw = null; _cpFuente = 'v2'; renderCP();
   if (!it.par) return;
   velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: _bnbUsd, quoteEsUSDT: it.moneda === 'USDT' })
-    .then((velas) => { if (_cpTok !== it.token) return; _velasRaw = velas || []; renderCP(); })
-    .catch(() => { if (_cpTok !== it.token) return; _velasRaw = []; const msg = cpEl('tm-cp-msg'); if (msg) { msg.hidden = false; msg.textContent = 'Chart unavailable'; } });
+    .then((velas) => { if (_cpTok !== it.token) return; if (velas && velas.length) { _cpFuente = 'v2'; _velasRaw = velas; renderCP(); } else cargarCPGecko(it); })
+    .catch(() => { if (_cpTok !== it.token) return; cargarCPGecko(it); });
+}
+/* Respaldo del grafico inline: GeckoTerminal (mismo formato de velas). Cubre lo que el metodo on-chain no alcanza. */
+function cargarCPGecko(it) {
+  import('./gecko.js').then(({ velasGecko }) => velasGecko(it.token, it.red, _tfSec))
+    .then((velas) => { if (_cpTok !== it.token) return; _cpFuente = 'gecko'; _velasRaw = (velas && velas.length) ? velas : []; renderCP(); })
+    .catch(() => { if (_cpTok !== it.token) return; _cpFuente = 'gecko'; _velasRaw = []; renderCP(); });
 }
 /* Selecciona un token: cabecera + grafico + controles. Marca la fila activa en la tabla. */
 function seleccionarCP(it) {
@@ -960,13 +968,16 @@ export function abrirFicha(it) {
   (function cargarGrafico() {
     const msg = $('tm-chart-msg'), cv = $('tm-chart-cv');
     if (!it.par) { if (msg) { msg.innerHTML = it.fuente === 'fourmeme' ? 'Trades on four.meme' : 'Trades on the Launchpad'; } return; }
+    const gecko = () => import('./gecko.js').then(({ velasGecko }) => velasGecko(it.token, it.red, _tfSec))
+      .then((velas) => { if (!ov.isConnected) return; if (velas && velas.length && cv) { if (msg) msg.hidden = true; montarGrafico(cv, velas); } else if (msg) { msg.innerHTML = 'No chart data yet'; } })
+      .catch(() => { if (msg && ov.isConnected) msg.innerHTML = 'Chart unavailable'; });
     velasDeToken({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bloque: it.bloque, bnbUsd: _bnbUsd, quoteEsUSDT: it.moneda === 'USDT' })
       .then((velas) => {
         if (!ov.isConnected) return;
         if (velas && velas.length && cv) { if (msg) msg.hidden = true; montarGrafico(cv, velas); }
-        else if (msg) { msg.innerHTML = 'No trades yet'; }
+        else gecko();
       })
-      .catch(() => { if (msg && ov.isConnected) msg.innerHTML = 'Chart unavailable'; });
+      .catch(() => gecko());
   })();
   let _audFicha = auditoriaDe(it);
   const bSwap = $('tm-f-swap'); if (bSwap) bSwap.onclick = () => abrirCompra(it, _audFicha);
