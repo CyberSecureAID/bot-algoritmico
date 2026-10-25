@@ -53,12 +53,12 @@ const ICO_TRON = '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="
 function logo(addr, red, logoUrl) {
   if (red === 'tron') {
     const img = logoUrl ? `<img class="tg-logo-img" src="${esc(logoUrl)}" alt="" loading="lazy" onload="this.classList.add('on')" onerror="this.remove()">` : '';
-    return `<span class="tg-logo"><span class="tg-logo-fb">${ICO_TRON}</span>${img}</span>`;
+    return `<span class="tg-logo"><span class="tg-logo-fb"></span>${img}</span>`;
   }
   let a = ''; try { a = ethers.getAddress(String(addr || '')); } catch (_) {}
   const src = logoUrl || (a ? LOGO_TW + a + '/logo.png' : '');
   const img = src ? `<img class="tg-logo-img" src="${esc(src)}" alt="" loading="lazy" onload="this.classList.add('on')" onerror="this.remove()">` : '';
-  return `<span class="tg-logo"><span class="tg-logo-fb">${ICO_BSC}</span>${img}</span>`;
+  return `<span class="tg-logo"><span class="tg-logo-fb"></span>${img}</span>`;
 }
 function fmtP(p, sig = 4) {
   if (!(p > 0) || !isFinite(p)) return '0';

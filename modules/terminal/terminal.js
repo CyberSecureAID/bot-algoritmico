@@ -104,12 +104,12 @@ const ICO_TRON = '<svg class="tm-tron" viewBox="0 0 32 32"><circle cx="16" cy="1
 const logo = (sim, addr, red, logoUrl) => {
   if (red === 'tron') {
     const img = logoUrl ? `<img class="tm-logo-img" src="${esc(logoUrl)}" alt="" loading="lazy" onload="this.classList.add('on')" onerror="this.remove()">` : '';
-    return `<span class="tm-logo"><span class="tm-logo-fb">${ICO_TRON}</span>${img}</span>`;
+    return `<span class="tm-logo"><span class="tm-logo-fb"></span>${img}</span>`;
   }
   let a = ''; try { a = ethers.getAddress(String(addr || '')); } catch (_) {}
   const src = logoUrl || (a ? LOGO_TW + a + '/logo.png' : '');
   const img = src ? `<img class="tm-logo-img" src="${esc(src)}" alt="" loading="lazy" onload="this.classList.add('on')" onerror="this.remove()">` : '';
-  return `<span class="tm-logo"><span class="tm-logo-fb">${ICO_BSC}</span>${img}</span>`;
+  return `<span class="tm-logo"><span class="tm-logo-fb"></span>${img}</span>`;
 };
 
 let _items = [];          // mas nuevo primero
@@ -124,13 +124,16 @@ const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, a
   // cuenta y a veces fallaba donde el lobby si tenia datos -> grafico vacio por esa via. Esa era la causa).
   velasDe: (tok) => ((_cpTok && tok && String(_cpTok).toLowerCase() === String(tok).toLowerCase() && Array.isArray(_velasRaw) && _velasRaw.length) ? _velasRaw.slice() : null) });
 
-/* ─── Ticker de actividad del lobby: UNA operacion a la vez con un token REAL del area de trading. El nombre, el
-   logo, el precio actual y el enlace al scanner son REALES; solo se simula el punto de entrada (un precio reciente
-   por el que el token paso) y la evolucion en vivo del P&L. El % sube y baja de forma fluida (rAF): al cruzar a
-   NEGATIVO toda la tarjeta se pone roja y al volver, verde (la MISMA operacion). Cada operacion dura un rato
-   distinto (3-8 min) y no se repite el token: rota por los tokens vivos del lobby -> historial inmenso y variado.
-   Reutiliza la MISMA tarjeta de las posiciones del OFC (tarjetaPos). Nada placeholder salvo entrada + evolucion. ─── */
-let _tkTO = null, _tkWalk = null, _tkRAF = 0, _tkRec = [], _tkE = null;
+/* ─── Ticker de actividad del lobby: UNA operacion a la vez con un token REAL del area de trading.
+   REAL y monitorizado en vivo: el token, su logo, el PRECIO ACTUAL (precioActual on-chain, el MISMO que
+   usa Open Full Chart), el % y el $ del P&L (se derivan del precio real) y la grafica (puntos reales segun
+   va entrando el precio). SIMULADO (lo UNICO): la inversion, la cantidad y el precio de ENTRADA.
+   Todo es coherente por construccion: entrada fija, %=(precioReal-entrada)/entrada y $=inv*%/100, asi que
+   cantidad*precioReal - inversion = $ exacto. El % inicial y la inversion van ACOPLADOS para que el $ nunca
+   sea absurdo (mayoria ganancias, variadas). Al cruzar a NEGATIVO toda la tarjeta se pone roja y al volver,
+   verde. Se puede TOCAR -> abre esa misma moneda real en Open Full Chart; el icono ↗ abre el scanner.
+   Dura 3-8 min, rota sin repetir token. Reutiliza la tarjeta de posiciones del OFC (tarjetaPos). ─── */
+let _tkTO = null, _tkPoll = null, _tkRAF = 0, _tkAgeTO = null, _tkRec = [], _tkE = null, _tkGen = 0;
 const TK_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>';
 const TK_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 7l10 10"/><path d="M16 17H7V8"/></svg>';
 /* tokens vivos reales con par, precio actual y cambio 24h conocidos (los que de verdad se estan moviendo) */
@@ -143,90 +146,116 @@ function _tkPickTok() {
   _tkRec.push(it.token.toLowerCase()); const tope = Math.max(1, Math.min(50, pool.length - 1)); while (_tkRec.length > tope) _tkRec.shift();
   return it;
 }
-const TK_SUF = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];   // hasta 10^33 (mas de 26 cifras)
-function _tkComp(a, dec) { let n = a, u = 0; while (n >= 1000 && u < TK_SUF.length - 1) { n /= 1000; u++; } let x = (u > 0 && dec && n < 10) ? Math.round(n * 10) / 10 : Math.round(n); if (x >= 1000) { x = 1; u = Math.min(u + 1, TK_SUF.length - 1); } return x + TK_SUF[u]; }
-/* % REAL compacto: <10 -> 1 decimal (8.4%); 10-999 -> entero (34%, 319%); desde mil -> K/M/B/T... SIN decimales
-   (1K%, 259K%, 3M%, 8T%). Nunca se sale del recuadro, soporta porcentajes gigantescos (14+ cifras como IRYS). */
-function _tkFmtPct(v) { const s = v < 0 ? '-' : '+', a = Math.abs(v); if (a < 10) return s + (Math.round(a * 10) / 10) + '%'; if (a < 1000) return s + Math.round(a) + '%'; return s + _tkComp(a, false) + '%'; }
-function _tkFmtUsd(v) { const s = v < 0 ? '-' : '+', a = Math.abs(v); if (a < 1000) return s + '$' + a.toFixed(2); return s + '$' + _tkComp(a, true); }
-/* Perfil de la operacion (los memecoins hacen % agresivos): la mayoria grandes, algunas "choppy" que cruzan a
-   negativo (verde<->rojo). El % inicial es REAL vs una entrada simulada pero plausible (salen de casi 0). */
-function _tkProfile() { const r = Math.random(); return r < 0.33 ? 'choppy' : r < 0.73 ? 'big' : 'monster'; }
-function _tkPnl0(p) {
-  if (p === 'choppy') return 6 + Math.random() * 74;                                 // 6-80%  (puede cruzar a negativo)
-  if (p === 'big') return 120 + Math.random() * 6500;                                // 120-6600%
-  return Math.pow(10, 4 + Math.random() * 9) * (0.5 + Math.random());                // 10mil% .. ~10 billones% (hasta 14 cifras)
+/* % compacto IGUAL que la tarjeta (pctCompact): <1000 -> entero sin decimales (8%, 319%); desde mil -> K/M/B/T
+   con <=1 decimal. El usuario lo pidio asi: ni 8.41% ni 34.1%, y nunca se sale del recuadro. */
+const TK_SUF = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];
+function _tkPct(v) {
+  if (v == null || !isFinite(v)) return '0%';
+  const sg = v < 0 ? '-' : '+'; let a = Math.abs(v);
+  if (a < 1000) return sg + Math.round(a) + '%';
+  let u = 0; while (a >= 1000 && u < TK_SUF.length - 1) { a /= 1000; u++; }
+  let s = a < 10 ? (Math.round(a * 10) / 10).toFixed(1).replace(/\.0$/, '') : String(Math.round(a));
+  if (s === '1000') { s = '1'; u++; }
+  return sg + s + (TK_SUF[u] || '') + '%';
 }
-function _tkCardData(e, pnl) { const it = e.it; return { token: it.token, red: it.red || 'bsc', simbolo: it.simbolo, nombre: it.nombre, moneda: it.moneda || 'BNB', entradaUsd: e.entry, precioUsd: e.entry * (1 + pnl / 100), cant: e.inv / e.entry, costoUsd: e.inv, pnlUsd: e.inv * pnl / 100, pnlPct: pnl, abierta: e.abierta, logoUrl: it.logoUrl || '' }; }
-
-function _tkStart() {
+function _tkUsd(v) { const a = Math.abs(v), s = v < 0 ? '-' : '+'; return s + (a < 1000 ? '$' + a.toFixed(2) : money(a)); }
+function _tkAgeTxt(ms) { if (!ms) return '—'; const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's'; const m = Math.floor(s / 60); if (m < 60) return m + 'm'; const h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
+/* Operacion CREIBLE: % inicial e inversion ACOPLADOS para que el $ nunca sea absurdo (mayoria ganancias,
+   variadas). A mas % -> stake mas pequeno (como en la realidad). El precio real luego mueve %/$ de verdad. */
+function _tkPlan() {
+  const r = Math.random(), pick = (a) => a[(Math.random() * a.length) | 0];
+  if (r < 0.14) return { pct: -(5 + Math.random() * 58), inv: pick([50, 80, 120, 200, 350, 500, 800]) };          // ~14% en perdida
+  if (r < 0.62) return { pct: 18 + Math.random() * 360, inv: pick([80, 120, 200, 350, 500, 800, 1200, 2000]) };   // ganancia modesta
+  if (r < 0.88) return { pct: 380 + Math.random() * 2600, inv: pick([40, 60, 100, 160, 250, 400]) };              // ganancia grande
+  return { pct: 3000 + Math.random() * 24000, inv: pick([20, 30, 50, 80, 120]) };                                 // "leyenda" (stake pequeno)
+}
+/* Datos de la tarjeta: TODO coherente. entrada fija (simulada), precio actual REAL, %=(real-entrada)/entrada,
+   $=inv*%/100, cantidad=inv/entrada  =>  cantidad*real - inv === $ exacto. */
+function _tkCardData(e) {
+  const it = e.it, pct = (e.cur - e.entry) / e.entry * 100;
+  return { token: it.token, red: it.red || 'bsc', simbolo: it.simbolo, nombre: it.nombre, moneda: it.moneda || 'BNB', entradaUsd: e.entry, precioUsd: e.cur, cant: e.inv / e.entry, costoUsd: e.inv, pnlUsd: e.inv * pct / 100, pnlPct: pct, abierta: e.abierta, logoUrl: it.logoUrl || '' };
+}
+/* Historial "de mentiritas" SOLO para darle cuerpo a la grafica: ~36 puntos desde la entrada hasta el precio
+   real de arranque (organico). De ahi en adelante son puntos REALES del precio segun van entrando. */
+function _tkPrefix(entry, cur, n) {
+  const out = [];
+  for (let i = 0; i < n; i++) { const t = i / (n - 1); const base = entry + (cur - entry) * Math.pow(t, 1.35); const wob = (cur - entry) * 0.06 * (Math.sin(i * 0.7) + Math.sin(i * 1.9 + 1) * 0.5) * (1 - t); out.push(Math.max(1e-30, base + wob)); }
+  out[n - 1] = cur; return out;
+}
+/* Precio REAL on-chain (el MISMO que usa Open Full Chart / las posiciones). Si falla, cae al precio de cache. */
+async function _tkRealPrice(it) {
+  try { const p = await precioActual({ par: it.par, token: it.token, decToken: it.decimales || 18, decQuote: 18, bnbUsd: _bnbUsd, quoteEsUSDT: it.moneda === 'USDT' }); if (p > 0 && isFinite(p)) return p; } catch (_) {}
+  const u = usdDe(it); return u > 0 ? u : 0;
+}
+async function _tkStart() {
   const host = $('tm-ticker'); if (!host || !host.isConnected) { montarTickerStop(); return; }
+  const gen = ++_tkGen;
   const it = _tkPickTok();
-  if (!it) { host.innerHTML = ''; _tkTO = setTimeout(_tkStart, 5000); return; }   // aun sin tokens reales con datos: reintenta
-  const cur0 = usdDe(it); if (!(cur0 > 0)) { _tkTO = setTimeout(_tkStart, 3000); return; }  // precio ACTUAL real
-  const prof = _tkProfile(), pnl0 = _tkPnl0(prof);                                  // % inicial REAL vs una entrada simulada plausible
-  const entry = cur0 / (1 + pnl0 / 100);                                           // entrada = precio bajo plausible (memecoins salen de ~0)
-  const inv = [40, 60, 120, 240, 420, 750, 1300][(Math.random() * 7) | 0];
-  const dur = 180000 + Math.random() * 300000;                                     // 3 a 8 min, variado
-  const abierta = it.tiempo ? it.tiempo * 1000 : Date.now() - (5 + Math.random() * 1400) * 60000;  // Token Age REAL si lo hay (nunca "—")
-  const amp = prof === 'choppy' ? 0.4 + Math.random() * 0.28 : prof === 'big' ? 0.1 + Math.random() * 0.16 : 0.07 + Math.random() * 0.12;
-  const mean = prof === 'choppy' ? 0.9 : 1;                                         // el precio simulado oscila alrededor del actual; choppy tiende a bajar y cruzar a negativo
-  _tkE = { it, cur0, entry, inv, abierta, pnl0, amp, mean, facT: 1, dispFac: 1, disp: pnl0, hist: [pnl0], t0: Date.now(), dur, ph: Math.random() * 6.283, ph2: Math.random() * 6.283, sign: pnl0 >= 0 };
-  host.innerHTML = `<div class="tm-tk-op">${tarjetaPos(_tkCardData(_tkE, pnl0))}</div>`;
-  const card = host.querySelector('.pcd'); if (!card) { _tkTO = setTimeout(_tkStart, 5000); return; }
+  if (!it) { host.innerHTML = ''; _tkTO = setTimeout(_tkStart, 5000); return; }     // aun sin tokens reales con datos
+  const cur0 = await _tkRealPrice(it);                                              // precio REAL de arranque (on-chain)
+  if (gen !== _tkGen) return;                                                       // se reinicio durante el await
+  if (!(cur0 > 0)) { _tkTO = setTimeout(_tkStart, 3000); return; }
+  const plan = _tkPlan();                                                           // SIMULADO: % inicial + inversion (acoplados)
+  const entry = cur0 / (1 + plan.pct / 100);                                        // SIMULADO: entrada plausible por la que paso
+  const abierta = it.tiempo || (Date.now() - (5 + Math.random() * 1400) * 60000);   // Token Age REAL (it.tiempo YA viene en ms)
+  const dur = 180000 + Math.random() * 300000;                                      // 3-8 min, variado
+  _tkE = { it, entry, inv: plan.inv, cur: cur0, target: cur0, abierta, t0: Date.now(), dur, hist: _tkPrefix(entry, cur0, 36), sign: plan.pct >= 0, gen };
+  host.innerHTML = `<div class="tm-tk-op">${tarjetaPos(_tkCardData(_tkE))}</div>`;
+  const op = host.querySelector('.tm-tk-op'), card = host.querySelector('.pcd');
+  if (!card) { _tkTO = setTimeout(_tkStart, 5000); return; }
   _tkE.card = card;
   const ch = card.querySelector('.pcd-chart'); if (ch) ch.innerHTML = '<svg class="tk-live" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>';
-  requestAnimationFrame(() => { const o = host.querySelector('.tm-tk-op'); if (o) o.classList.add('on'); });   // fade-in suave
-  if (_tkWalk) clearInterval(_tkWalk); _tkWalk = setInterval(_tkWalkStep, 850);     // avance del vaiven (datos)
-  if (_tkRAF) cancelAnimationFrame(_tkRAF); _tkRAF = requestAnimationFrame(_tkFrame);  // render fluido
+  if (op) {   // tocar la tarjeta -> abrir ESA moneda real en OFC; el icono ↗ (scanner) no propaga
+    op.addEventListener('click', () => { const t = _tkE && _tkE.it; if (!t) return; try { if (esGrande()) { seleccionarCP(t); verGrande(t); } else abrirFicha(t); } catch (_) {} });
+    const ext = op.querySelector('.pcd-ext'); if (ext) ext.addEventListener('click', (ev) => ev.stopPropagation());
+  }
+  requestAnimationFrame(() => { if (gen === _tkGen && op) op.classList.add('on'); });   // fade-in suave
+  if (_tkPoll) clearInterval(_tkPoll);
+  _tkPoll = setInterval(async () => { const e = _tkE; if (!e || e.gen !== _tkGen) return; const p = await _tkRealPrice(e.it); if (!_tkE || _tkE.gen !== gen) return; if (p > 0) { e.target = p; e.hist.push(p); if (e.hist.length > 80) e.hist.shift(); } }, 9000);  // precio REAL cada 9s
+  if (_tkAgeTO) clearInterval(_tkAgeTO);
+  _tkAgeTO = setInterval(() => { const e = _tkE; if (!e || !e.card) return; const v = e.card.querySelector('.pcd-age .v'); if (v) v.textContent = _tkAgeTxt(e.abierta) + ' ago'; }, 1000);   // Token Age REAL, vivo
+  if (_tkRAF) cancelAnimationFrame(_tkRAF); _tkRAF = requestAnimationFrame(_tkFrame);
   if (_tkTO) clearTimeout(_tkTO); _tkTO = setTimeout(_tkNext, dur);
 }
-/* Paso del vaiven: nueva meta del FACTOR de precio (precio simulado / precio actual) con trayectoria organica. */
-function _tkWalkStep() {
-  const e = _tkE; if (!e) return;
-  const f = Math.min(1, (Date.now() - e.t0) / e.dur);
-  const osc = 0.6 * Math.sin(6.283 * f * 1.25 + e.ph) + 0.3 * Math.sin(6.283 * f * 3.1 + e.ph2) + 0.16 * Math.sin(6.283 * f * 6.3 + 1);
-  e.facT = Math.max(0.1, e.mean + e.amp * osc + (Math.random() - 0.5) * e.amp * 0.16);
-  e.hist.push(e.disp); if (e.hist.length > 70) e.hist.shift();
-}
-/* Render por frame: suaviza el factor hacia la meta y recalcula el % REAL (vs la entrada) + precio actual, color y chart. */
+/* Render por frame: el precio MOSTRADO se acerca suavemente al ultimo precio REAL (interpola entre medidas
+   reales, nunca inventa mas alla). Recalcula %/$ coherentes, el color y la grafica. */
 function _tkFrame() {
   const e = _tkE, host = $('tm-ticker'); if (!e || !host || !host.isConnected) { montarTickerStop(); return; }
-  e.dispFac += (e.facT - e.dispFac) * 0.05;                                         // easing lento = fluido
-  const pnl = ((1 + e.pnl0 / 100) * e.dispFac - 1) * 100;                           // % = (precioActualSimulado / entrada - 1)
-  e.disp = pnl;
-  const up = pnl >= 0;
+  e.cur += (e.target - e.cur) * 0.08;                                               // easing hacia el precio real
+  const pct = (e.cur - e.entry) / e.entry * 100, up = pct >= 0;
   if (up !== e.sign) { e.sign = up; e.card.classList.toggle('up', up); e.card.classList.toggle('down', !up);
     const h = e.card.querySelector('.pcd-pnl-h'); if (h) h.innerHTML = (up ? TK_UP : TK_DN) + 'P&L'; }
-  const pct = e.card.querySelector('.pcd-pnl-pct'); if (pct) { const t = _tkFmtPct(pnl); pct.textContent = t; pct.style.fontSize = t.length >= 7 ? '82%' : ''; }   // red de seguridad para % muy largos
-  const usd = e.card.querySelector('.pcd-pnl-usd'); if (usd) usd.textContent = _tkFmtUsd(e.inv * pnl / 100);
-  const curb = e.card.querySelector('.pcd-cur'); if (curb) curb.innerHTML = '$' + fmtP(e.cur0 * e.dispFac);
-  _tkDraw();
+  const pctEl = e.card.querySelector('.pcd-pnl-pct'); if (pctEl) { const t = _tkPct(pct); if (pctEl.textContent !== t) pctEl.textContent = t; pctEl.style.fontSize = t.length >= 8 ? '74%' : t.length >= 6 ? '86%' : ''; }
+  const usdEl = e.card.querySelector('.pcd-pnl-usd'); if (usdEl) usdEl.textContent = _tkUsd(e.inv * pct / 100);
+  const curEl = e.card.querySelector('.pcd-cur'); if (curEl) curEl.innerHTML = '$' + fmtP(e.cur);
+  _tkDraw(up);
   _tkRAF = requestAnimationFrame(_tkFrame);
 }
-/* Chart organico en vivo: linea suave del P&L con la punta siguiendo el valor mostrado. */
-function _tkDraw() {
+/* Grafica en vivo: linea suave del PRECIO (prefijo de cuerpo + puntos reales) con la punta en el precio actual. */
+function _tkDraw(up) {
   const e = _tkE; if (!e || !e.card) return;
   const svg = e.card.querySelector('.tk-live'); if (!svg) return;
-  const pts = e.hist.concat(e.disp), n = pts.length; if (n < 2) return;
-  let lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts); if (hi - lo < 1e-9) { hi += 1; lo -= 1; } const pad = (hi - lo) * 0.2; lo -= pad; hi += pad;
+  const pts = e.hist.concat(e.cur), n = pts.length; if (n < 2) return;
+  let lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts); if (hi - lo < 1e-30) { hi = hi * 1.001 + 1e-30; lo = lo * 0.999 - 1e-30; } const pad = (hi - lo) * 0.2; lo -= pad; hi += pad;
   const X = (i) => i / (n - 1) * 100, Y = (v) => 100 - (v - lo) / (hi - lo) * 100;
   let d = 'M0,' + Y(pts[0]).toFixed(2);                                            // curva suave (midpoints cuadraticos)
   for (let i = 1; i < n; i++) { const mx = (X(i - 1) + X(i)) / 2, my = (Y(pts[i - 1]) + Y(pts[i])) / 2; d += ' Q' + X(i - 1).toFixed(2) + ',' + Y(pts[i - 1]).toFixed(2) + ' ' + mx.toFixed(2) + ',' + my.toFixed(2); }
   d += ' L100,' + Y(pts[n - 1]).toFixed(2);
-  const up = e.disp >= 0, c = up ? '#00F5C0' : '#FF385F', area = d + ' L100,100 L0,100 Z';
+  const c = up ? '#00F5C0' : '#FF385F', area = d + ' L100,100 L0,100 Z';
   svg.innerHTML = `<defs><linearGradient id="tkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".34"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#tkg)"/><path d="${d}" fill="none" stroke="${c}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 2px ${c})"/>`;
   const dot = e.card.querySelector('.pcd-dot-end'); if (dot) { dot.style.top = Y(pts[n - 1]).toFixed(1) + '%'; dot.style.background = `radial-gradient(circle at 40% 36%,#fff,${c})`; dot.style.boxShadow = `0 0 11px 2px ${up ? 'rgba(0,245,192,.9)' : 'rgba(255,56,95,.9)'}`; }
 }
 /* Fin de la operacion: se desvanece y entra otra (token distinto) sin brincos. */
 function _tkNext() {
   const host = $('tm-ticker'); if (!host || !host.isConnected) { montarTickerStop(); return; }
-  if (_tkWalk) { clearInterval(_tkWalk); _tkWalk = null; }
+  _tkGen++;                                                                         // invalida polls/awaits en curso
+  if (_tkPoll) { clearInterval(_tkPoll); _tkPoll = null; }
+  if (_tkAgeTO) { clearInterval(_tkAgeTO); _tkAgeTO = null; }
   if (_tkRAF) { cancelAnimationFrame(_tkRAF); _tkRAF = 0; }
   const o = host.querySelector('.tm-tk-op'); if (o) o.classList.remove('on');
   _tkTO = setTimeout(_tkStart, 650);                                               // tras el fade-out, nueva operacion
 }
-function montarTickerStop() { if (_tkTO) { clearTimeout(_tkTO); _tkTO = null; } if (_tkWalk) { clearInterval(_tkWalk); _tkWalk = null; } if (_tkRAF) { cancelAnimationFrame(_tkRAF); _tkRAF = 0; } _tkE = null; }
+function montarTickerStop() { _tkGen++; if (_tkTO) { clearTimeout(_tkTO); _tkTO = null; } if (_tkPoll) { clearInterval(_tkPoll); _tkPoll = null; } if (_tkAgeTO) { clearInterval(_tkAgeTO); _tkAgeTO = null; } if (_tkRAF) { cancelAnimationFrame(_tkRAF); _tkRAF = 0; } _tkE = null; }
 function montarTicker() {
   montarTickerStop();
   const host = $('tm-ticker'); if (!host) return;
