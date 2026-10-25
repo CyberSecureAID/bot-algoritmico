@@ -136,8 +136,13 @@ const ctxGrande = () => ({ items: () => _items.slice(), bnbUsd: () => _bnbUsd, a
 let _tkTO = null, _tkPoll = null, _tkRAF = 0, _tkRec = [], _tkE = null, _tkGen = 0;
 const TK_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>';
 const TK_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 7l10 10"/><path d="M16 17H7V8"/></svg>';
-/* tokens vivos reales con par, precio actual y cambio 24h conocidos (los que de verdad se estan moviendo) */
-function _tkPool() { return _items.filter((x) => x.par && usdDe(x) > 0 && mercadoDe(x.token) && mercadoDe(x.token).cambio24 != null); }
+/* Solo monedas SANAS para el ejemplo motivador: en verde (cambio24>0) y sin desplome. Si hay pocas en verde,
+   respaldo a las que al menos NO se estan desplomando (cambio24>-8). Nunca rugs/colapsadas (-100%). */
+function _tkPool() {
+  const base = _items.filter((x) => x.par && usdDe(x) > 0 && mercadoDe(x.token) && mercadoDe(x.token).cambio24 != null);
+  const verde = base.filter((x) => mercadoDe(x.token).cambio24 > 0);
+  return verde.length >= 3 ? verde : base.filter((x) => mercadoDe(x.token).cambio24 > -8);
+}
 function _tkPickTok() {
   const pool = _tkPool(); if (!pool.length) return null;
   let cand = pool.filter((p) => !_tkRec.includes(p.token.toLowerCase()));
@@ -163,7 +168,7 @@ function _tkUsd(v) { const a = Math.abs(v), s = v < 0 ? '-' : '+'; return s + (a
    variadas). A mas % -> stake mas pequeno (como en la realidad). El precio real luego mueve %/$ de verdad. */
 function _tkPlan() {
   const r = Math.random(), pick = (a) => a[(Math.random() * a.length) | 0];
-  if (r < 0.14) return { pct: -(5 + Math.random() * 58), inv: pick([50, 80, 120, 200, 350, 500, 800]) };          // ~14% en perdida
+  if (r < 0.14) return { pct: -(3 + Math.random() * 15), inv: pick([50, 80, 120, 200, 350, 500, 800]) };          // ~14% perdida PEQUENA (-3% a -18%), nunca un desastre
   if (r < 0.62) return { pct: 18 + Math.random() * 360, inv: pick([80, 120, 200, 350, 500, 800, 1200, 2000]) };   // ganancia modesta
   if (r < 0.88) return { pct: 380 + Math.random() * 2600, inv: pick([40, 60, 100, 160, 250, 400]) };              // ganancia grande
   return { pct: 3000 + Math.random() * 24000, inv: pick([20, 30, 50, 80, 120]) };                                 // "leyenda" (stake pequeno)
@@ -211,7 +216,7 @@ async function _tkStart() {
   requestAnimationFrame(() => { if (gen === _tkGen && op) op.classList.add('on'); });   // fade-in suave
   try { ajustarPct(card); } catch (_) {}                                            // el % arranca al tamano maximo que cabe
   if (_tkPoll) clearInterval(_tkPoll);
-  _tkPoll = setInterval(async () => { const e = _tkE; if (!e || e.gen !== _tkGen) return; const p = await _tkRealPrice(e.it); if (!_tkE || _tkE.gen !== gen) return; if (p > 0) { e.target = p; e.hist.push(p); if (e.hist.length > 80) e.hist.shift(); } }, 9000);  // precio REAL cada 9s
+  _tkPoll = setInterval(async () => { const e = _tkE; if (!e || e.gen !== _tkGen) return; const p = await _tkRealPrice(e.it); if (!_tkE || _tkE.gen !== gen) return; if (p > 0) { if ((p - e.entry) / e.entry * 100 < -25) { _tkNext(); return; } e.target = p; e.hist.push(p); if (e.hist.length > 80) e.hist.shift(); } }, 9000);  // precio REAL cada 9s; si se desploma (-25%) corta y pasa a otra moneda -> jamas se muestra un -100%
   if (_tkRAF) cancelAnimationFrame(_tkRAF); _tkRAF = requestAnimationFrame(_tkFrame);
   if (_tkTO) clearTimeout(_tkTO); _tkTO = setTimeout(_tkNext, dur);
 }
