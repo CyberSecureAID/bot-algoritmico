@@ -103,7 +103,7 @@ function css() {
 .tg-find-tok:active{transform:translateY(2px);box-shadow:0 1px 0 #060809}
 .tg-x{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:11px;border:1px solid var(--line,#232b36);background:#0d1117;color:var(--ink-2,#b7bdc6);font-size:17px;cursor:pointer}
 .tg-x:hover{color:#fff;border-color:#3a434f}
-.tm-big-main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:272px 1fr 316px;gap:1px;background:var(--line,#232b36)}
+.tm-big-main{height:100%;min-height:440px;display:grid;grid-template-columns:272px 1fr 316px;gap:1px;background:var(--line,#232b36)}
 .tg-col{background:#05070a;min-height:0;overflow:auto}
 .tg-left{padding:14px;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
 .tg-left::-webkit-scrollbar{width:6px}.tg-left::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:3px}
@@ -314,6 +314,79 @@ function css() {
 .tg-posR b{font-family:var(--mono);font-size:13px;font-weight:600;color:#eaecef;line-height:1}
 .tg-posR span{font-family:var(--mono);font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3,#7d8794);margin-top:3px}
 .tg-soon{font-size:11px;color:var(--ink-3,#7d8794);text-align:center;line-height:1.5;margin-top:2px}
+/* ====== Posiciones full-width del OFC: seccion + tarjeta (replica aprobada, prefijo pcd) ====== */
+.tm-big-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,184,75,.3) transparent}
+.tm-big-scroll::-webkit-scrollbar{width:9px}.tm-big-scroll::-webkit-scrollbar-thumb{background:rgba(232,184,75,.3);border-radius:4px}
+.tg-posfull{padding:24px 28px 40px;display:flex;flex-direction:column;gap:16px;border-top:1px solid var(--line,#232b36);background:linear-gradient(180deg,#070a0e,#05070a)}
+.tg-posfull-h{display:flex;align-items:center;gap:10px}
+.tg-posfull-h .ic{width:18px;height:18px;color:var(--gold,#E8B84B);display:inline-flex;flex:0 0 auto}.tg-posfull-h .ic svg{width:100%;height:100%}
+.tg-posfull-h b{font-family:'Chakra Petch',var(--display,sans-serif);font-weight:700;font-size:16px;color:#eaecef}
+.tg-posfull-h .sub{font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794);margin-left:3px}
+#tg-positions{display:flex;flex-direction:column;gap:16px}
+.pcd{--c:#00F5C0;--c-soft:#1BE8AD;--cr:0,245,192;position:relative;display:flex;align-items:stretch;border-radius:22px;padding:20px 24px;background:linear-gradient(180deg,#070d13,#03080d);border:1px solid rgba(var(--cr),.14);box-shadow:0 20px 50px -30px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.03),inset 0 0 0 1px rgba(var(--cr),.04);overflow:hidden;cursor:pointer;transition:transform .12s,border-color .15s}
+.pcd:hover{transform:translateY(-1px);border-color:rgba(var(--cr),.3)}
+.pcd::before{content:"";position:absolute;top:0;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--cr),.5),transparent);opacity:.7}
+.pcd.down{--c:#FF385F;--c-soft:#FF5C77;--cr:255,56,95}
+.pcd-id{flex:0 0 27%;display:flex;align-items:center;gap:16px;padding-right:20px;min-width:0}
+.pcd-logo{position:relative;flex:0 0 auto;width:84px;height:84px;border-radius:50%;padding:4px;background:conic-gradient(from 150deg,rgba(var(--cr),.9),rgba(var(--cr),.25),rgba(var(--cr),.9));box-shadow:0 0 20px -2px rgba(var(--cr),.55),inset 0 0 0 1px rgba(var(--cr),.3)}
+.pcd-logo>span{display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:#0a1016}
+.pcd-logo .tg-logo{width:100%!important;height:100%!important;border-radius:50%}
+.pcd-logo img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.pcd-idtx{min-width:0;display:flex;flex-direction:column;gap:5px}
+.pcd-nm{display:flex;align-items:center;gap:8px;min-width:0}
+.pcd-nm b{flex:0 1 auto;min-width:0;max-width:100%;font-weight:800;font-size:25px;letter-spacing:.3px;color:#F6FBFF;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcd-ext{width:16px;height:16px;flex:0 0 auto;color:#5d6773;display:inline-flex}.pcd-ext svg{width:100%;height:100%}
+.pcd-sub{max-width:100%;font-size:14px;color:#8A96A2;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcd-new{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;margin-top:2px;padding:4px 11px 4px 9px;border-radius:999px;font-weight:700;font-size:12.5px;color:var(--c-soft);background:rgba(var(--cr),.08);border:1px solid rgba(var(--cr),.3)}
+.pcd-new svg{width:13px;height:13px}
+.pcd-pair{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:14px;color:#C3CCD6;font-weight:600}
+.pcd-coin{display:inline-flex;align-items:center;gap:6px}
+.pcd-cdot{width:18px;height:18px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:9px;font-weight:800;color:#0a0a0a}
+.pcd-cdot.bnb{background:radial-gradient(circle at 35% 30%,#ffe08a,#FFD050)}
+.pcd-cdot.usdt{background:radial-gradient(circle at 35% 30%,#4fd1a5,#26A17B);color:#fff}
+.pcd-cdot.tok{background:radial-gradient(circle at 35% 30%,rgba(var(--cr),.9),rgba(var(--cr),.4))}
+.pcd-arrow{color:#8A96A2;font-size:15px}
+.pcd-vdiv{flex:0 0 1px;align-self:stretch;margin:6px 0;background:linear-gradient(to bottom,transparent,rgba(var(--cr),.28) 20%,rgba(var(--cr),.28) 80%,transparent)}
+.pcd-stats{flex:0 0 21%;display:flex;flex-direction:column;justify-content:center;gap:11px;padding:0 22px;min-width:0}
+.pcd-kv{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pcd-kv .lbl{font-size:13px;color:#8A96A2;line-height:1}
+.pcd-kv b{font-family:var(--mono);font-size:19px;font-weight:600;color:#F6FBFF;line-height:1.1;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcd-kv b sub{font-size:.62em;vertical-align:-.1em}
+.pcd-hdiv{height:1px;background:linear-gradient(90deg,rgba(var(--cr),.28),transparent);margin:2px 0}
+.pcd-qty{display:flex;gap:24px}
+.pcd-qty .pcd-kv b{font-size:16px}
+.pcd-pnl{flex:0 0 24%;display:flex;flex-direction:column;justify-content:space-between;margin:0 2px;padding:16px 20px;border-radius:18px;background:radial-gradient(130% 120% at 30% 10%,rgba(var(--cr),.1),rgba(var(--cr),.02));border:1px solid rgba(var(--cr),.45);box-shadow:0 0 26px -6px rgba(var(--cr),.4),inset 0 0 30px -10px rgba(var(--cr),.3)}
+.pcd-pnl-h{align-self:flex-start;display:flex;align-items:center;gap:8px;font-size:18px;font-weight:600;color:var(--c-soft)}
+.pcd-pnl-h svg{width:19px;height:19px}
+.pcd-pnl-pct{align-self:center;font-weight:800;font-size:56px;line-height:1;letter-spacing:-1.5px;color:var(--c);text-shadow:0 2px 10px rgba(0,0,0,.5),0 0 30px rgba(var(--cr),.45);white-space:nowrap}
+.pcd-pnl-usd{align-self:flex-start;font-weight:700;font-size:23px;color:var(--c-soft);letter-spacing:-.3px}
+.pcd-right{flex:1 1 auto;position:relative;min-width:0;align-self:stretch;margin-left:28px}
+.pcd-right::before{content:"";position:absolute;left:0;top:6%;bottom:6%;width:2px;border-radius:2px;background:linear-gradient(to bottom,transparent,rgba(var(--cr),.7) 13%,rgba(var(--cr),.6) 50%,rgba(var(--cr),.7) 87%,transparent);box-shadow:0 0 10px rgba(var(--cr),.4)}
+.pcd-age{position:absolute;top:0;right:0;display:inline-flex;align-items:center;gap:9px;padding:7px 13px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
+.pcd-age svg{width:16px;height:16px;color:#8A96A2;flex:0 0 auto}
+.pcd-age span{display:flex;flex-direction:column;line-height:1.25}
+.pcd-age .l{font-size:11px;color:#8A96A2}.pcd-age .v{font-size:13px;color:#F6FBFF;font-weight:600}
+.pcd-base{position:absolute;left:0;right:6%;bottom:13%;height:1.5px;border-radius:2px;background:linear-gradient(90deg,rgba(var(--cr),.6),rgba(var(--cr),.22),transparent);box-shadow:0 0 6px rgba(var(--cr),.22)}
+.pcd-chart{position:absolute;left:28px;right:6%;top:27%;bottom:13%;overflow:visible}
+.pcd-spark-svg{position:absolute;inset:0;width:100%;height:100%}
+.pcd-dot-end{position:absolute;right:0;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 40% 36%,#fff,var(--c));box-shadow:0 0 11px 2px rgba(var(--cr),.9);transform:translateY(-50%)}
+.pcd-status{position:absolute;bottom:0;right:0;display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;background:rgba(var(--cr),.07);border:1px solid rgba(var(--cr),.2);font-size:13px;font-weight:600;color:#C3CCD6}
+.pcd-status i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px 1px rgba(var(--cr),.8);flex:0 0 auto}
+@media(max-width:820px){
+  .tg-posfull{padding:16px 13px 26px}
+  .pcd{flex-wrap:wrap;padding:16px 16px}
+  .pcd-id{flex:1 1 100%;order:1;padding-right:0}
+  .pcd-logo{width:60px;height:60px}
+  .pcd-nm b{font-size:20px}.pcd-sub{font-size:13px}
+  .pcd-vdiv{display:none}
+  .pcd-pnl{flex:1 1 100%;order:2;margin:14px 0 0;padding:14px 18px;min-width:0}
+  .pcd-pnl-pct{font-size:clamp(34px,13vw,50px)}
+  .pcd-stats{flex:1 1 100%;order:3;flex-direction:row;flex-wrap:wrap;justify-content:space-between;padding:14px 0 0;gap:13px 18px;min-width:0}
+  .pcd-qty{display:contents}
+  .pcd-stats .pcd-kv{flex:1 1 40%;min-width:0;max-width:48%}
+  .pcd-hdiv{display:none}
+  .pcd-right{flex:1 1 100%;order:4;margin:14px 0 0;min-height:118px}
+}
 .tg-pick{position:absolute;top:66px;left:50%;transform:translateX(-50%);width:min(520px,92vw);max-height:62vh;overflow:auto;background:#0b0f14;border:1px solid #2a323d;border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.6);z-index:5;padding:8px}
 .tg-pick-h{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 10px;font-family:var(--mono);font-size:11px;color:var(--ink-3,#7d8794)}
 .tg-pick-row{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:10px;cursor:pointer}
@@ -430,7 +503,7 @@ async function resolver(q, feed) {
   return null;
 }
 
-let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60, _abrirAlerta = false, _chartFuente = 'v2';
+let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60, _abrirAlerta = false, _chartFuente = 'v2', _posTimer = null;
 /* Respaldo de grafica por GeckoTerminal (Tron / tokens sin par V2). Modulo-nivel para que lo use tanto la carga
    del token como el cambio de temporalidad. Guarda contra _itActual para descartar respuestas de otro token. */
 async function cargarVelasGecko(it) {
@@ -460,10 +533,16 @@ export async function abrirGrande(it0, ctx, opts) {
       <div class="tg-find"><div class="tg-find-in"><span class="tg-ico">${ICO_SEARCH}</span><input id="tg-find-in" type="text" autocomplete="off" spellcheck="false" placeholder="Search token, symbol or contract (BSC / Tron)…"></div></div>
       <div class="tg-top-r"><div class="tg-sub-pill" id="tg-sub-pill" hidden></div><button class="tg-find-tok" id="tg-find-tok" type="button">Tokens</button><button class="tg-x" id="tg-close" type="button" aria-label="Close">✕</button></div>
     </div>
-    <div class="tm-big-main">
-      <div class="tg-col tg-left" id="tg-left"></div>
-      <div class="tg-col tg-chart"><div class="tg-chart-cv" id="tg-chart-cv"></div><img class="tg-wm" src="../../branding/decfreedomlogohorizontal.webp" onerror="this.onerror=null;this.src='../../assets/img/cco-full.webp'" alt=""><div class="tg-tools"><button class="tg-tool" id="tg-ruler" type="button" title="Measure % and range">${ICO_RULER}</button><div class="tg-tf" id="tg-tf">${[['60', '1m'], ['300', '5m'], ['900', '15m'], ['3600', '1h'], ['14400', '4h'], ['86400', '1d']].map(([s, l]) => `<button data-sec="${s}" type="button"${Number(s) === _tfSecBig ? ' class="on"' : ''}>${l}</button>`).join('')}</div></div><div class="tg-mdcapture" id="tg-mdcap" hidden></div><div class="tg-mdbox" id="tg-mdbox" hidden></div><div class="tg-chart-msg" id="tg-chart-msg"><span class="tg-anillo"></span></div></div>
-      <div class="tg-col tg-right" id="tg-right"></div>
+    <div class="tm-big-scroll">
+      <div class="tm-big-main">
+        <div class="tg-col tg-left" id="tg-left"></div>
+        <div class="tg-col tg-chart"><div class="tg-chart-cv" id="tg-chart-cv"></div><img class="tg-wm" src="../../branding/decfreedomlogohorizontal.webp" onerror="this.onerror=null;this.src='../../assets/img/cco-full.webp'" alt=""><div class="tg-tools"><button class="tg-tool" id="tg-ruler" type="button" title="Measure % and range">${ICO_RULER}</button><div class="tg-tf" id="tg-tf">${[['60', '1m'], ['300', '5m'], ['900', '15m'], ['3600', '1h'], ['14400', '4h'], ['86400', '1d']].map(([s, l]) => `<button data-sec="${s}" type="button"${Number(s) === _tfSecBig ? ' class="on"' : ''}>${l}</button>`).join('')}</div></div><div class="tg-mdcapture" id="tg-mdcap" hidden></div><div class="tg-mdbox" id="tg-mdbox" hidden></div><div class="tg-chart-msg" id="tg-chart-msg"><span class="tg-anillo"></span></div></div>
+        <div class="tg-col tg-right" id="tg-right"></div>
+      </div>
+      <section class="tg-posfull">
+        <div class="tg-posfull-h"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 4h7v7"/></svg></span><b>Your positions</b><span class="sub" id="tg-posfull-sub"></span></div>
+        <div id="tg-positions"><div class="tg-soon">Connect your wallet to see your live positions here.</div></div>
+      </section>
     </div>`;
   document.body.appendChild(ov);
 
@@ -618,6 +697,11 @@ export async function abrirGrande(it0, ctx, opts) {
     pintarId(null); pintarPrecio(0); pintarIzq(null, ctx); pintarDer(null, ctx);
     const msg = $('tg-chart-msg'); if (msg) { msg.hidden = false; msg.textContent = 'No token selected. Paste a contract or open the Tokens list.'; }
   }
+
+  // Posiciones full-width: se pintan al abrir y se refrescan SOLAS (polling) para P&L en vivo sin recargar.
+  try { derPositions(); } catch (_) {}
+  if (_posTimer) clearInterval(_posTimer);
+  _posTimer = setInterval(() => { if (_ov && _ov.isConnected) { try { derPositions(); } catch (_) {} } else if (_posTimer) { clearInterval(_posTimer); _posTimer = null; } }, 18000);
 
   // ── carga de un token en toda la vista ──
   async function cargar(it) {
@@ -1220,9 +1304,7 @@ function pintarDer(it, ctx) {
     </div>
     <div class="tg-balrow" id="tg-balrow"></div>
     <div class="tg-sec-t tg-mt">Open alerts</div>
-    <div id="tg-openalerts"><div class="tg-soon">No alerts yet.</div></div>
-    <div class="tg-sec-t tg-mt">Positions</div>
-    <div id="tg-positions"><div class="tg-soon">No positions yet.</div></div>`;
+    <div id="tg-openalerts"><div class="tg-soon">No alerts yet.</div></div>`;
   host.querySelectorAll('#tg-op-tabs button').forEach((b) => { b.onclick = () => {
     if (b.disabled) return;
     host.querySelectorAll('#tg-op-tabs button').forEach((x) => x.classList.toggle('on', x === b));
@@ -1277,7 +1359,7 @@ function pintarDer(it, ctx) {
     presets.innerHTML = [-20, -10, 10, 20].map((p) => `<button class="tg-al-chip ${p < 0 ? 'dn' : 'up'}" type="button" data-pct="${p}">${p > 0 ? '+' : ''}${p}%</button>`).join('');
     presets.querySelectorAll('.tg-al-chip').forEach((b) => b.onclick = () => aplicarMov(Number(b.dataset.pct)));
   }
-  derBalances(it); derOpenAlerts(it); derPositions(it);
+  derBalances(it); derOpenAlerts(it); derPositions();
   if (_abrirAlerta) { _abrirAlerta = false; const ab = host.querySelector('#tg-op-tabs button[data-op="alert"]'); if (ab) ab.click(); }
 }
 /* Pasa el precio a texto plano para un <input> o un canvas (sin <sub>). fmtP devuelve "0.0<sub>n</sub>dig",
@@ -1335,30 +1417,89 @@ function derOpenAlerts(it) {
    abierto: la alerta pasa a 'hit' pero SIGUE con su boton de cancelar, sin tener que reabrir la pestaña. */
 export function refrescarAlertasOFC() { try { if (_ov && _ov.isConnected && _itActual) derOpenAlerts(_itActual); } catch (_) {} }
 
-async function derPositions(it) {
+/* ── Tarjeta de posicion (replica aprobada) para la seccion full-width del OFC. Datos REALES de enVivo. ── */
+const PC_CLK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const PC_EXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6"/><path d="M15 9l-6 6"/></svg>';
+const PC_FLAME = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3-1 4-2 6s0 4 0 4-3-1-3-4c0 0-3 2-3 6a8 8 0 0 0 16 0c0-5-5-6-5-10 0 0-1 1-3-2z"/></svg>';
+const PC_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>';
+const PC_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 7l10 10"/><path d="M16 17H7V8"/></svg>';
+const PC_SUF = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
+/* % compacto sin decimales: <=999 entero, luego K/M/B/T... (max ~7 chars). Nunca desborda la capsula. */
+function pctCompact(v) {
+  if (v == null || !isFinite(v)) return '0%';
+  const sg = v < 0 ? '-' : '+'; let a = Math.abs(v);
+  if (a < 1000) return sg + Math.round(a) + '%';
+  let u = 0; while (a >= 1000 && u < PC_SUF.length - 1) { a /= 1000; u++; }
+  let s = a < 10 ? (Math.round(a * 10) / 10).toFixed(1).replace(/\.0$/, '') : String(Math.round(a));
+  if (s === '1000') { s = '1'; u++; }
+  return sg + s + (PC_SUF[u] || '') + '%';
+}
+function haceP(ms) { if (!ms) return '—'; const s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); if (s < 60) return s + 's'; const m = Math.floor(s / 60); if (m < 60) return m + 'm'; const h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
+function qtyP(n) { n = Number(n) || 0; if (n < 1e6) return n.toLocaleString('en-US', { maximumFractionDigits: n < 1 ? 4 : 0 }); const U = [['T', 1e12], ['B', 1e9], ['M', 1e6]]; for (const [s, v] of U) { if (n >= v) { const x = n / v; return (x < 10 ? x.toFixed(2) : x < 100 ? x.toFixed(1) : Math.round(x)) + s; } } return String(Math.round(n)); }
+function invP(n) { n = Number(n) || 0; return n < 1000 ? '$' + n.toFixed(2) : money(n); }
+let _pcSpkN = 0;
+/* sparkline figurativa (alta frecuencia): sube en ganancia, baja en perdida. NO usa datos de mercado. */
+function pcSpark(up) {
+  const N = 60, W = 100, pts = [];
+  for (let i = 0; i < N; i++) { const t = i / (N - 1); const trend = up ? (90 - t * 79) : (11 + t * 79); const noise = Math.sin(i * 0.38 + 0.5) * 5.4 + Math.sin(i * 0.9) * 3 + Math.sin(i * 1.9 + 1.2) * 1.9 + Math.sin(i * 4.3 + 0.4) * 1.2 + Math.sin(i * 8.7) * 0.7; pts.push(Math.max(7, Math.min(93, trend + noise))); }
+  let d = 'M0,' + pts[0].toFixed(2); for (let i = 1; i < N; i++) d += ' L' + (i * (W / (N - 1))).toFixed(2) + ',' + pts[i].toFixed(2);
+  const area = d + ' L100,100 L0,100 Z', ly = pts[N - 1], c = up ? '#00F5C0' : '#FF385F', id = 'pcspk' + (_pcSpkN++);
+  return `<svg class="pcd-spark-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".38"/><stop offset=".7" stop-color="${c}" stop-opacity=".07"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${c}" stroke-width="1.7" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 2.5px ${c})"/></svg><span class="pcd-dot-end" style="top:${ly.toFixed(1)}%"></span>`;
+}
+function tarjetaPos(d) {
+  const up = d.pnlUsd >= 0;
+  const sym = esc(d.simbolo || '?'), nombre = esc(d.nombre || d.simbolo || 'Token');
+  const pay = d.moneda === 'USDT' ? 'USDT' : 'BNB', payCls = pay.toLowerCase();
+  const entry = d.entradaUsd > 0 ? '$' + fmtP(d.entradaUsd) : '—', cur = d.precioUsd > 0 ? '$' + fmtP(d.precioUsd) : '—';
+  const nuevo = d.abierta && (Date.now() - d.abierta < 86400000);
+  return `<div class="pcd ${up ? 'up' : 'down'}" data-a="${esc(d.token)}">
+    <div class="pcd-id">
+      <div class="pcd-logo"><span>${logo(d.token, d.red, d.logoUrl)}</span></div>
+      <div class="pcd-idtx">
+        <div class="pcd-nm"><b title="${nombre}">${sym}</b><a class="pcd-ext" href="${SCAN_URL}/token/${esc(d.token)}" target="_blank" rel="noopener" aria-label="View on explorer">${PC_EXT}</a></div>
+        <span class="pcd-sub">${nombre}</span>
+        ${nuevo ? `<span class="pcd-new">${PC_FLAME}New</span>` : ''}
+        <div class="pcd-pair"><span class="pcd-coin"><span class="pcd-cdot ${payCls}">${pay[0]}</span>${pay}</span><span class="pcd-arrow">→</span><span class="pcd-coin"><span class="pcd-cdot tok">${(sym[0] || '?')}</span>${sym}</span></div>
+      </div>
+    </div>
+    <div class="pcd-vdiv"></div>
+    <div class="pcd-stats">
+      <div class="pcd-kv"><span class="lbl">Entry Price</span><b>${entry}</b></div>
+      <div class="pcd-kv"><span class="lbl">Current Price</span><b>${cur}</b></div>
+      <div class="pcd-hdiv"></div>
+      <div class="pcd-qty"><div class="pcd-kv"><span class="lbl">Quantity</span><b>${qtyP(d.cant)}</b></div><div class="pcd-kv"><span class="lbl">Invested</span><b>${invP(d.costoUsd)}</b></div></div>
+    </div>
+    <div class="pcd-vdiv"></div>
+    <div class="pcd-pnl">
+      <div class="pcd-pnl-h">${up ? PC_UP : PC_DN}P&L</div>
+      <div class="pcd-pnl-pct">${pctCompact(d.pnlPct)}</div>
+      <div class="pcd-pnl-usd">${d.pnlUsd >= 0 ? '+' : '-'}${invP(Math.abs(d.pnlUsd))}</div>
+    </div>
+    <div class="pcd-right">
+      <div class="pcd-age">${PC_CLK}<span><span class="l">Token Age</span><span class="v">${haceP(d.abierta)} ago</span></span></div>
+      <span class="pcd-base"></span>
+      <div class="pcd-chart">${pcSpark(up)}</div>
+      <div class="pcd-status"><i></i>Position Active</div>
+    </div>
+  </div>`;
+}
+/* Posiciones REALES del usuario (todas), en tarjetas full-width. Se refresca sola por polling (ver abrirGrande). */
+async function derPositions() {
   const host = $('tg-positions'); if (!host) return;
+  const sub = $('tg-posfull-sub');
   const c = wallet.cuentaActual();
-  if (!c) { host.innerHTML = `<div class="tg-soon">Connect your wallet to see positions.</div>`; return; }
+  if (!c) { host.innerHTML = `<div class="tg-soon">Connect your wallet to see your live positions here.</div>`; if (sub) sub.textContent = ''; return; }
   const lista = listaDe(c);
-  if (!lista.length) { host.innerHTML = `<div class="tg-soon">No positions yet. Buy a token here and it shows with live profit.</div>`; return; }
-  host.innerHTML = `<div class="tg-soon">Reading on chain…</div>`;
+  if (!lista.length) { host.innerHTML = `<div class="tg-soon">No positions yet. Buy a token here and it shows up with live profit.</div>`; if (sub) sub.textContent = ''; return; }
+  if (!host.querySelector('.pcd')) host.innerHTML = `<div class="tg-soon">Reading your positions on chain…</div>`;
   const bnb = (_ctx && _ctx.bnbUsd) ? _ctx.bnbUsd() : 0;
   const datos = (await Promise.all(lista.map((p) => enVivo(c, p, bnb).catch(() => null)))).filter((d) => d && d.cant > 0);
   if (!$('tg-positions')) return;
-  if (!datos.length) { host.innerHTML = `<div class="tg-soon">No open positions right now.</div>`; return; }
+  if (!datos.length) { host.innerHTML = `<div class="tg-soon">No open positions right now.</div>`; if (sub) sub.textContent = ''; return; }
   datos.sort((a, b) => b.valorUsd - a.valorUsd);
-  const sg = (v) => v >= 0 ? '+' : '-';
-  host.innerHTML = datos.map((d) => {
-    const up = d.pnlUsd >= 0;
-    return `<div class="tg-posrow ${up ? 'up' : 'down'}" data-a="${esc(d.token)}">
-      <div class="tg-posL">${logo(d.token)}<div class="tg-pos-id"><b title="${esc(d.simbolo || '?')}">${esc(d.simbolo || '?')}</b><button class="tg-pos-ca" data-ca="${esc(d.token)}" type="button" title="Copy contract">${corto(d.token)}${ICO_COPY}</button></div></div>
-      <span class="tg-posDiv"></span>
-      <div class="tg-posC ${up ? 'up' : 'down'}"><div class="pc">${sg(d.pnlPct)}${pct(Math.abs(d.pnlPct))}</div><div class="gain">${sg(d.pnlUsd)}${money(Math.abs(d.pnlUsd))}</div></div>
-      <div class="tg-posR"><b>${money(d.valorUsd)}</b><span>value</span></div>
-    </div>`;
-  }).join('');
-  host.querySelectorAll('.tg-posrow').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.tg-pos-ca')) return; const d = datos.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d && _cargar) _cargar({ token: d.token, par: d.par, quote: d.quote || null, moneda: d.moneda || 'BNB', simbolo: d.simbolo, nombre: d.nombre || d.simbolo, decimales: d.decimales || 18, fuente: 'pancake', tiempo: 0, bloque: 0, liquidez: 0, precio: 0, creador: '' }); }; });
-  host.querySelectorAll('.tg-pos-ca').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const ca = b.dataset.ca; try { navigator.clipboard.writeText(ca); } catch (_) {} const inp = $('tg-find-in'); if (inp) inp.value = ca; const o = b.innerHTML; b.textContent = 'copied'; setTimeout(() => { if (b.isConnected) b.innerHTML = o; }, 1100); }; });
+  if (sub) sub.textContent = datos.length + ' open · live';
+  host.innerHTML = datos.map((d) => tarjetaPos(d)).join('');
+  host.querySelectorAll('.pcd').forEach((r) => { r.onclick = (e) => { if (e.target.closest('.pcd-ext')) return; const d = datos.find((x) => x.token.toLowerCase() === r.dataset.a.toLowerCase()); if (d && _cargar) _cargar({ token: d.token, par: d.par, quote: d.quote || null, moneda: d.moneda || 'BNB', simbolo: d.simbolo, nombre: d.nombre || d.simbolo, decimales: d.decimales || 18, fuente: 'pancake', tiempo: 0, bloque: 0, liquidez: 0, precio: 0, creador: '' }); }; });
 }
 
 /* ── Marca la entrada de la posicion abierta de este token en la grafica (si la hay) ── */
@@ -1538,7 +1679,7 @@ function montarMercado(it) {
       ocupado = false; if (sl) { sl.disabled = false; sl.value = 0; } prc = 0; cot = null; cotPara = 0n;
       if (vivo()) { go.textContent = 'Bought'; msg.className = 'tg-buy-msg ok'; msg.innerHTML = 'Done. The ' + sym + ' is in your wallet. <a href="' + SCAN_URL + '/tx/' + esc(rc.hash) + '" target="_blank" rel="noopener">View</a>'; }
       try { if (_itActual && _itActual.token.toLowerCase() === it.token.toLowerCase()) marcarEntradaDe(_itActual); } catch (_) {}
-      try { derPositions(it); derBalances(it); } catch (_) {}
+      try { derPositions(); derBalances(it); } catch (_) {}
       setTimeout(() => { if (vivo()) { msg.textContent = ''; msg.className = 'tg-buy-msg'; pintar(); } }, 3200);
     } catch (e) {
       ocupado = false; if (sl) sl.disabled = false;
@@ -1594,5 +1735,6 @@ export function cerrar() {
   document.removeEventListener('keydown', onEsc);
   try { destruirGrafico(); } catch (_) {}
   const ov = $('tm-big-ov'); if (ov) { try { ov.remove(); } catch (_) {} }
+  if (_posTimer) { clearInterval(_posTimer); _posTimer = null; }
   _ov = null; _cargar = null; _itActual = null;
 }
