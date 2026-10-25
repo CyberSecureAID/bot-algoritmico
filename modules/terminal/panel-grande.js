@@ -362,7 +362,7 @@ function css() {
 .pcd-pnl-usd{align-self:flex-start;font-weight:700;font-size:23px;color:var(--c-soft);letter-spacing:-.3px}
 .pcd-right{flex:1 1 auto;position:relative;min-width:0;align-self:stretch;margin-left:28px}
 .pcd-right::before{content:"";position:absolute;left:0;top:6%;bottom:6%;width:2px;border-radius:2px;background:linear-gradient(to bottom,transparent,rgba(var(--cr),.7) 13%,rgba(var(--cr),.6) 50%,rgba(var(--cr),.7) 87%,transparent);box-shadow:0 0 10px rgba(var(--cr),.4)}
-.pcd-age{position:absolute;top:0;right:0;display:inline-flex;align-items:center;gap:9px;padding:7px 13px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
+.pcd-age{position:absolute;top:20px;right:24px;z-index:4;display:inline-flex;align-items:center;gap:9px;padding:7px 13px;border-radius:14px;background:rgba(10,14,20,.78);backdrop-filter:blur(3px);border:1px solid rgba(255,255,255,.07)}
 .pcd-age svg{width:16px;height:16px;color:#8A96A2;flex:0 0 auto}
 .pcd-age span{display:flex;flex-direction:column;line-height:1.25}
 .pcd-age .l{font-size:11px;color:#8A96A2}.pcd-age .v{font-size:13px;color:#F6FBFF;font-weight:600}
@@ -375,15 +375,19 @@ function css() {
 @media(max-width:820px){
   .tg-posfull{padding:16px 13px 26px}
   .pcd{flex-wrap:wrap;padding:16px 16px}
-  .pcd-id{flex:1 1 100%;order:1;padding-right:0}
+  .pcd-id{flex:1 1 100%;order:1;padding-right:0;min-width:0}
+  .pcd-age{top:14px;right:14px;padding:6px 11px}
   .pcd-logo{width:60px;height:60px}
+  .pcd-idtx{flex:1 1 auto;min-width:0}
   .pcd-nm b{font-size:20px}.pcd-sub{font-size:13px}
+  .pcd-nm,.pcd-sub{max-width:calc(100% - 104px)}
+  .pcd-pair{flex-wrap:nowrap;white-space:nowrap}
   .pcd-vdiv{display:none}
   .pcd-pnl{flex:1 1 100%;order:2;margin:14px 0 0;padding:14px 18px;min-width:0}
   .pcd-pnl-pct{font-size:clamp(34px,13vw,50px)}
-  .pcd-stats{flex:1 1 100%;order:3;flex-direction:row;flex-wrap:wrap;justify-content:space-between;padding:14px 0 0;gap:13px 18px;min-width:0}
+  .pcd-stats{flex:1 1 100%;order:3;display:grid;grid-template-columns:1fr 1fr;gap:15px 14px;padding:16px 0 0;min-width:0}
   .pcd-qty{display:contents}
-  .pcd-stats .pcd-kv{flex:1 1 40%;min-width:0;max-width:48%}
+  .pcd-stats .pcd-kv{align-items:center;text-align:center;width:100%;min-width:0;max-width:100%}
   .pcd-hdiv{display:none}
   .pcd-right{flex:1 1 100%;order:4;margin:14px 0 0;min-height:118px}
 }
@@ -1453,6 +1457,7 @@ function tarjetaPos(d) {
   const entry = d.entradaUsd > 0 ? '$' + fmtP(d.entradaUsd) : '—', cur = d.precioUsd > 0 ? '$' + fmtP(d.precioUsd) : '—';
   const nuevo = d.abierta && (Date.now() - d.abierta < 86400000);
   return `<div class="pcd ${up ? 'up' : 'down'}" data-a="${esc(d.token)}">
+    <div class="pcd-age">${PC_CLK}<span><span class="l">Token Age</span><span class="v">${haceP(d.abierta)} ago</span></span></div>
     <div class="pcd-id">
       <div class="pcd-logo"><span>${logo(d.token, d.red, d.logoUrl)}</span></div>
       <div class="pcd-idtx">
@@ -1476,7 +1481,6 @@ function tarjetaPos(d) {
       <div class="pcd-pnl-usd">${d.pnlUsd >= 0 ? '+' : '-'}${invP(Math.abs(d.pnlUsd))}</div>
     </div>
     <div class="pcd-right">
-      <div class="pcd-age">${PC_CLK}<span><span class="l">Token Age</span><span class="v">${haceP(d.abierta)} ago</span></span></div>
       <span class="pcd-base"></span>
       <div class="pcd-chart">${pcSpark(up)}</div>
       <div class="pcd-status"><i></i>Position Active</div>
