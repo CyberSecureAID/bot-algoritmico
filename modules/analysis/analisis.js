@@ -269,7 +269,7 @@ export function abrirSelector(origen, wallet, ethers) {
         const r = el.getBoundingClientRect();
         const x = (e.clientX - r.left) / r.width - 0.5;
         const y = (e.clientY - r.top) / r.height - 0.5;
-        el.style.transform = 'perspective(700px) rotateY(' + (x * 8) + 'deg) rotateX(' + (-y * 8) + 'deg) translateY(-3px)';
+        el.style.transform = 'perspective(650px) rotateY(' + (x * 13) + 'deg) rotateX(' + (-y * 13) + 'deg) translateY(-5px) scale(1.03)';
       };
       el.onmouseleave = () => { el.style.transform = ''; };
     });
