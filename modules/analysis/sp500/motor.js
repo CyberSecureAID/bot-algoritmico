@@ -1,37 +1,48 @@
 /* ══════════════════════════════════════════════════════════════
-   sp500/motor.js — El motor de la estrategia Dawn Breakout (SP500)
+   sp500/motor.js — TD SEQUENTIAL (DeMark) para el S&P 500.
 
-   Cálculo puro sobre las velas: no toca el DOM ni la interfaz.
-   Recibe velas {t,o,h,l,c,v} (t en ms) y devuelve datos.
+   Calculo puro sobre las velas {t,o,h,l,c,v}: no toca el DOM.
 
-   LA ESTRATEGIA (como la definió Jesús)
+   QUE ES
 
-   El mercado de EE.UU. abre a las 9:30 (hora de Nueva York, ET).
-   Durante la primera parte de la sesión se forma una CAJA con el
-   máximo y el mínimo de ese arranque. La caja se cierra a una hora
-   (por defecto las 10:00; opción primera hora, 10:30). En ese
-   instante se mira DÓNDE quedó el precio dentro de la caja, partida
-   en tres franjas iguales:
+   El TD Sequential de Tom DeMark es el indicador de agotamiento mas
+   cotizado del mundo profesional: lo licencia Bloomberg y lo usan
+   fondos. No persigue la tendencia: cuenta cuando un movimiento se
+   esta agotando y es probable que gire.
 
-     · franja BAJA  → día bajista. El techo de la caja ya es el
-                      máximo del día. Señal de VENTA.
-     · franja ALTA  → día alcista. El piso de la caja ya es el
-                      mínimo del día. Señal de COMPRA.
-     · franja MEDIA → lateralización. No hay señal.
+   Resuelve de raiz el problema del "standby": la cuenta se ve subir
+   vela por vela (1 a 9 el Setup, luego 1 a 13 el Countdown), y en
+   todo momento se sabe el PRECIO EXACTO que la proxima vela debe
+   cerrar para avanzar la cuenta. El usuario ve la senal acercarse.
 
-   Relación riesgo beneficio 1 a 2.
+   REGLAS (estandar DeMark, objetivas y codificables)
 
-   HONESTIDAD
+   TD Setup (la cuenta a 9)
+     · Compra: 9 cierres seguidos por DEBAJO del cierre de 4 velas
+       antes. Venta: 9 cierres seguidos por ENCIMA. Si una vela rompe
+       la racha, la cuenta se reinicia.
+     · Perfeccion (compra): el minimo de la vela 8 o 9 es menor o
+       igual que los minimos de la 6 y la 7. (Venta: con los maximos.)
+     · TDST: al cerrar un Setup de compra se traza una RESISTENCIA en
+       el maximo del tramo; al cerrar uno de venta, un SOPORTE en el
+       minimo. Son los umbrales que, de romperse, invalidan el giro.
 
-   La regla de los tercios NO es una estrategia documentada con
-   respaldo publicado: es una variante. Por eso aquí se codifica tal
-   cual y el propio motor la COMPRUEBA con un backtest sobre las
-   velas reales que entrega el feed. La tasa de acierto la dicen los
-   datos, no el rumor.
+   TD Countdown (la cuenta a 13)
+     · Empieza tras un Setup completo. Compra: se cuentan velas (no
+       seguidas) cuyo cierre es menor o igual que el MINIMO de 2 velas
+       antes, hasta 13. Venta: cierre mayor o igual que el MAXIMO de 2
+       velas antes.
+     · Regla de la barra 13: ademas de cumplir la condicion, en compra
+       el minimo de la vela 13 debe ser menor o igual que el cierre de
+       la vela 8 del propio Countdown (en venta, con el maximo). Si no,
+       se aplaza hasta que una vela lo cumpla.
+     · Un Setup opuesto completo cancela el Countdown en curso.
+
+   SENALES: un 9 de compra es posible suelo; un 9 de venta, posible
+   techo; un 13 es la version fuerte. El acierto NO se promete: el
+   motor hace un BACKTEST real y ensena la tasa sobre el SPY.
    ══════════════════════════════════════════════════════════════ */
 
-/* Horas en hora de Nueva York (ET), robusto ante horario de verano
-   y ante la zona horaria del usuario, vía Intl. */
 const _ET = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/New_York',
   year: 'numeric', month: '2-digit', day: '2-digit',
@@ -43,155 +54,150 @@ function _parts(ms) {
   let h = +p.hour; if (h === 24) h = 0;
   return { y: +p.year, mo: +p.month, d: +p.day, h, mi: +p.minute, wd: p.weekday };
 }
-/** Identificador de día ET (AAAAMMDD). */
 export function etDay(ms) { const q = _parts(ms); return q.y * 10000 + q.mo * 100 + q.d; }
-/** Minutos desde medianoche ET. */
 export function etMin(ms) { const q = _parts(ms); return q.h * 60 + q.mi; }
-/** ¿Es fin de semana en ET? */
 export function etFinde(ms) { const w = _parts(ms).wd; return w === 'Sat' || w === 'Sun'; }
-/** Etiqueta de hora ET "HH:MM". */
 export function etHora(ms) { const q = _parts(ms); return String(q.h).padStart(2, '0') + ':' + String(q.mi).padStart(2, '0'); }
-/** Etiqueta de fecha ET "DD mmm". */
 export function etFecha(ms) {
   const q = _parts(ms);
   const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][q.mo - 1];
   return String(q.d).padStart(2, '0') + ' ' + m;
 }
 
-/* Sesión regular de EE.UU. (cash), en minutos ET. */
-export const APERTURA = 570;   // 9:30
-export const CIERRE = 960;     // 16:00
-/* Fin de la caja según la ventana elegida. */
-export const VENTANAS = { '30': 600, '60': 630 };   // 10:00 y 10:30
-export const VENTANA_ET = { '30': '10:00', '60': '10:30' };
+export const APERTURA = 570;   // 9:30 ET
+export const CIERRE = 960;     // 16:00 ET
 
-/** Deja solo las velas de la sesión regular (9:30 a 16:00 ET), de lunes
- *  a viernes. Así cada día es una sesión limpia y el eje comprime los
- *  huecos de la noche, como en TradingView. */
+/* Solo sesion regular (para intradia). Las velas diarias pasan sin filtrar. */
 export function soloRTH(velas) {
-  return velas.filter((v) => {
-    const m = etMin(v.t);
-    return m >= APERTURA && m < CIERRE && !etFinde(v.t);
-  });
+  return velas.filter((v) => { const m = etMin(v.t); return m >= APERTURA && m < CIERRE && !etFinde(v.t); });
 }
 
-const minTF = (tf) => (tf === '1m' ? 1 : 5);
+/* ══ EL MOTOR TD SEQUENTIAL ══
+   Devuelve, por vela, la cuenta de Setup (1 a 9) y de Countdown (1 a 13),
+   las senales (9 y 13), las lineas TDST, y el estado EN VIVO con el umbral
+   que la proxima vela debe cerrar para avanzar la cuenta. */
+export function computeTD(velas) {
+  const n = velas.length;
+  const bars = [];
+  for (let k = 0; k < n; k++) bars.push({ setup: null, countdown: null, nine: false, thirteen: false, perfected: false });
+  const signals = [];
+  const tdstLineas = [];   // {i, nivel, tipo:'res'|'sup'}
 
-/** En qué franja de la caja cae un precio: 'baja', 'media' o 'alta'. */
-export function franja(precio, lo, hi) {
-  const R = hi - lo;
-  if (!(R > 0)) return 'media';
-  const t1 = lo + R / 3, t2 = lo + (2 * R) / 3;
-  if (precio <= t1) return 'baja';
-  if (precio >= t2) return 'alta';
-  return 'media';
-}
+  // ── 1) TD SETUP ──
+  let buy = 0, sell = 0;
+  for (let i = 0; i < n; i++) {
+    if (i < 4) continue;
+    const c4 = velas[i - 4].c;
+    if (velas[i].c < c4) { buy++; sell = 0; }
+    else if (velas[i].c > c4) { sell++; buy = 0; }
+    else { buy = 0; sell = 0; }
 
-/** La señal del día a partir de la franja. Riesgo beneficio 1 a 2. */
-export function senalDe(fr, lo, hi, precio) {
-  if (fr === 'baja') {
-    const stop = hi, riesgo = stop - precio;
-    if (!(riesgo > 0)) return null;
-    return { lado: 'venta', entrada: precio, stop, objetivo: precio - 2 * riesgo, riesgo, rr: 2 };
-  }
-  if (fr === 'alta') {
-    const stop = lo, riesgo = precio - stop;
-    if (!(riesgo > 0)) return null;
-    return { lado: 'compra', entrada: precio, stop, objetivo: precio + 2 * riesgo, riesgo, rr: 2 };
-  }
-  return null;   // franja media: sin señal
-}
+    if (buy > 0 && buy <= 9) bars[i].setup = { dir: 'buy', n: buy };
+    if (sell > 0 && sell <= 9) bars[i].setup = { dir: 'sell', n: sell };
 
-/** Resultado de una señal recorriendo las velas posteriores del día.
- *  'ganada' si llega al objetivo antes que al stop, 'perdida' si no, y
- *  'abierta' si no se resuelve antes del cierre. Si una misma vela toca
- *  ambos, cuenta como perdida (criterio conservador, no infla el acierto). */
-export function resultado(despues, s) {
-  for (const v of despues) {
-    if (s.lado === 'venta') {
-      if (v.h >= s.stop) return 'perdida';
-      if (v.l <= s.objetivo) return 'ganada';
-    } else {
-      if (v.l <= s.stop) return 'perdida';
-      if (v.h >= s.objetivo) return 'ganada';
+    if (buy === 9) {
+      let lo = Infinity, hi = -Infinity;
+      for (let k = i - 8; k <= i; k++) { if (velas[k].l < lo) lo = velas[k].l; if (velas[k].h > hi) hi = velas[k].h; }
+      bars[i].nine = true;
+      bars[i].perfected = Math.min(velas[i - 1].l, velas[i].l) <= Math.min(velas[i - 3].l, velas[i - 2].l);
+      signals.push({ i, tipo: 'buy9', precio: velas[i].c, lo, hi, perfected: bars[i].perfected });
+      tdstLineas.push({ i, nivel: hi, tipo: 'res' });
+      buy = 0;
+    }
+    if (sell === 9) {
+      let lo = Infinity, hi = -Infinity;
+      for (let k = i - 8; k <= i; k++) { if (velas[k].l < lo) lo = velas[k].l; if (velas[k].h > hi) hi = velas[k].h; }
+      bars[i].nine = true;
+      bars[i].perfected = Math.max(velas[i - 1].h, velas[i].h) >= Math.max(velas[i - 3].h, velas[i - 2].h);
+      signals.push({ i, tipo: 'sell9', precio: velas[i].c, lo, hi, perfected: bars[i].perfected });
+      tdstLineas.push({ i, nivel: lo, tipo: 'sup' });
+      sell = 0;
     }
   }
-  return 'abierta';
-}
 
-/** Analiza todas las sesiones de las velas (ya filtradas a RTH) para una
- *  ventana dada. Devuelve un objeto por día con los índices (sobre el
- *  array recibido), la caja, la franja, la señal y el resultado. */
-export function analizarDias(rth, finMin, tf) {
-  const tfm = minTF(tf);
-  const dias = [];
-  let i = 0;
-  const n = rth.length;
-  while (i < n) {
-    const dia = etDay(rth[i].t);
-    const i0 = i;
-    while (i < n && etDay(rth[i].t) === dia) i++;
-    const iFin = i - 1;                 // última vela de la sesión
-    // Velas de la caja: desde apertura hasta el fin de la ventana
-    let iBox = -1, hi = -Infinity, lo = Infinity;
-    for (let k = i0; k <= iFin; k++) {
-      const m = etMin(rth[k].t);
-      if (m < finMin) {
-        if (rth[k].h > hi) hi = rth[k].h;
-        if (rth[k].l < lo) lo = rth[k].l;
-        iBox = k;
-      }
+  // ── 2) TD COUNTDOWN ──
+  let cd = null;   // {dir, count, bar8close}
+  for (let i = 0; i < n; i++) {
+    if (bars[i].nine && bars[i].setup) {
+      const d9 = bars[i].setup.dir;
+      // Un Setup opuesto cancela y reinicia; uno del mismo lado NO reinicia (deja avanzar el Countdown).
+      if (!cd || cd.dir !== d9) { cd = { dir: d9, count: 0, bar8close: null }; continue; }
     }
-    if (iBox < 0) { continue; }         // sin datos de caja ese día
-    // La caja está completa si la última vela de la caja cierra en finMin
-    const completa = etMin(rth[iBox].t) >= finMin - tfm;
-    const iRead = iBox;
-    const precio = rth[iRead].c;
-    const fr = franja(precio, lo, hi);
-    const s = completa ? senalDe(fr, lo, hi, precio) : null;
-    let res = 'abierta';
-    if (s) res = resultado(rth.slice(iRead + 1, iFin + 1), s);
-    dias.push({
-      dia, i0, iFin, iBox, iRead,
-      caja: { hi, lo, R: hi - lo },
-      franja: fr, completa,
-      senal: s, resultado: res,
-      t0: rth[i0].t, tRead: rth[iRead].t, tFin: rth[iFin].t
-    });
+    if (!cd || i < 2) continue;
+    const dir = cd.dir;
+    const qual = dir === 'buy' ? (velas[i].c <= velas[i - 2].l) : (velas[i].c >= velas[i - 2].h);
+    if (!qual) continue;
+    const next = cd.count + 1;
+    if (next === 8) cd.bar8close = velas[i].c;
+    if (next === 13) {
+      const ok = dir === 'buy' ? (cd.bar8close == null || velas[i].l <= cd.bar8close)
+                               : (cd.bar8close == null || velas[i].h >= cd.bar8close);
+      if (!ok) { cd.count = 12; bars[i].countdown = { dir, n: 12, deferred: true }; continue; }
+    }
+    cd.count = next;
+    bars[i].countdown = { dir, n: cd.count };
+    if (cd.count === 13) { bars[i].thirteen = true; signals.push({ i, tipo: dir === 'buy' ? 'buy13' : 'sell13', precio: velas[i].c }); cd = null; }
   }
-  return dias;
+
+  // ── 3) ESTADO EN VIVO (umbral de la proxima vela) ──
+  let tdstRes = null, tdstSup = null;
+  for (const l of tdstLineas) { if (l.tipo === 'res') tdstRes = l.nivel; else tdstSup = l.nivel; }
+  const liveSetup = n > 0 ? bars[n - 1].setup : null;
+  const liveCD = cd && cd.count > 0 ? { dir: cd.dir, n: cd.count } : null;
+
+  let siguiente = null;
+  if (liveCD) {
+    const dir = liveCD.dir;
+    siguiente = {
+      que: 'countdown', dir, n: liveCD.n, faltan: 13 - liveCD.n,
+      umbral: dir === 'buy' ? velas[n - 2].l : velas[n - 2].h,
+      relacion: dir === 'buy' ? 'close_leq_low' : 'close_geq_high'
+    };
+  } else if (liveSetup && liveSetup.n < 9) {
+    const dir = liveSetup.dir;
+    siguiente = {
+      que: 'setup', dir, n: liveSetup.n, faltan: 9 - liveSetup.n,
+      umbral: velas[n - 4].c,
+      relacion: dir === 'buy' ? 'close_below' : 'close_above'
+    };
+  } else if (n >= 4) {
+    // sin cuenta activa: que vela iniciaria un setup
+    const umbral = velas[n - 4].c;
+    siguiente = { que: 'flip', dir: null, n: 0, faltan: 9, umbral, relacion: 'flip' };
+  }
+
+  return { bars, signals, tdstLineas, vivo: { setup: liveSetup, countdown: liveCD, siguiente, tdstRes, tdstSup } };
 }
 
-/** Backtest honesto: recorre los días completos (excluye el día en curso)
- *  y cuenta el acierto real de la regla para esa ventana. */
-export function backtest(rth, finMin, tf, diaHoy) {
-  const dias = analizarDias(rth, finMin, tf);
-  let g = 0, p = 0, ab = 0, comp = 0, vend = 0, cerrShort = 0;
-  for (const d of dias) {
-    if (diaHoy && d.dia === diaHoy) continue;   // el día en curso no cuenta
-    if (!d.senal) continue;
-    if (d.senal.lado === 'compra') comp++; else vend++;
-    if (d.resultado === 'ganada') g++;
-    else if (d.resultado === 'perdida') p++;
-    else ab++;
+/* ══ BACKTEST honesto por REACCION ══
+   La forma fiel de medir TD: tras un 9, se mira la ventana de reaccion
+   (las siguientes NR velas, 4 por defecto, que es cuando DeMark espera
+   el giro). Acierto = el recorrido a favor del 9 supera al adverso en
+   esa ventana. Se reporta tambien el movimiento medio favorable y
+   adverso. Sin R:R inventado: numeros reales sobre el SPY. */
+export function backtestTD(velas, NR) {
+  const n = velas.length;
+  const { signals } = computeTD(velas);
+  NR = NR || 4;
+  let win = 0, los = 0, nueves = 0, treces = 0, compras = 0, ventas = 0, favSum = 0, advSum = 0, cnt = 0;
+  for (const s of signals) {
+    if (s.tipo === 'buy13' || s.tipo === 'sell13') { treces++; continue; }
+    nueves++;
+    const compra = s.tipo === 'buy9';
+    if (compra) compras++; else ventas++;
+    const entrada = s.precio;
+    const fin = Math.min(n - 1, s.i + NR);
+    if (fin <= s.i) continue;
+    let hiMax = -Infinity, loMin = Infinity;
+    for (let k = s.i + 1; k <= fin; k++) { if (velas[k].h > hiMax) hiMax = velas[k].h; if (velas[k].l < loMin) loMin = velas[k].l; }
+    const up = hiMax - entrada, dn = entrada - loMin;
+    const fav = compra ? up : dn, adv = compra ? dn : up;
+    if (entrada > 0) { favSum += (Math.max(0, fav) / entrada) * 100; advSum += (Math.max(0, adv) / entrada) * 100; cnt++; }
+    if (fav > adv) win++; else los++;
   }
-  const res = g + p;
-  const winrate = res > 0 ? (g / res) * 100 : 0;
-  // Esperanza en R con riesgo beneficio 1 a 2: gana 2R, pierde 1R
-  const expR = res > 0 ? (g * 2 - p * 1) / res : 0;
-  return {
-    sesiones: dias.length, senales: g + p + ab,
-    ganadas: g, perdidas: p, abiertas: ab,
-    compras: comp, ventas: vend,
-    winrate, expR, muestra: res
-  };
-}
-
-/** Compara las dos ventanas sobre los mismos datos, para que los datos
- *  decidan cuál conviene por defecto. */
-export function compararVentanas(rth, tf, diaHoy) {
-  return {
-    '30': backtest(rth, VENTANAS['30'], tf, diaHoy),
-    '60': backtest(rth, VENTANAS['60'], tf, diaHoy)
-  };
+  const muestra = win + los;
+  const winrate = muestra > 0 ? (win / muestra) * 100 : 0;
+  const favAvg = cnt > 0 ? favSum / cnt : 0;
+  const advAvg = cnt > 0 ? advSum / cnt : 0;
+  return { nueves, treces, win, los, compras, ventas, winrate, muestra, favAvg, advAvg, NR };
 }

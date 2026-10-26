@@ -30,10 +30,11 @@ const PROXIES = [
   (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
 ];
 
-const TF_TD = { '1m': '1min', '5m': '5min' };
-const TF_FMP = { '1m': '1min', '5m': '5min' };
-const TF_YH = { '1m': '1m', '5m': '5m' };
-const RANGO_YH = { '1m': '5d', '5m': '1mo' };
+const TF_TD = { '5m': '5min', '15m': '15min', '1h': '1h', '1d': '1day' };
+const TF_FMP = { '5m': '5min', '15m': '15min', '1h': '1hour' };
+const TF_YH = { '5m': '5m', '15m': '15m', '1h': '1h', '1d': '1d' };
+const RANGO_YH = { '5m': '1mo', '15m': '3mo', '1h': '6mo', '1d': '2y' };
+export const ES_DIARIA = (tf) => tf === '1d';
 
 async function pedir(url, ms = 12000) {
   const ctl = new AbortController();
@@ -59,7 +60,7 @@ async function feedTwelveData(tf) {
   const j = await pedir(url);
   if (!j || j.status === 'error' || !Array.isArray(j.values)) throw new Error(j && j.message ? j.message : 'twelvedata sin datos');
   const velas = j.values.map((x) => ({
-    t: Date.parse(x.datetime.replace(' ', 'T') + 'Z'),
+    t: Date.parse(x.datetime.includes(' ') ? x.datetime.replace(' ', 'T') + 'Z' : x.datetime + 'T00:00:00Z'),
     o: +x.open, h: +x.high, l: +x.low, c: +x.close, v: +(x.volume || 0)
   }));
   return limpiar(velas);
@@ -83,6 +84,13 @@ function etWallToMs(str) {
   return asUTC - etOffsetMin(asUTC) * 60000;
 }
 async function feedFMP(tf) {
+  if (tf === '1d') {
+    const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${SIMBOLO}?timeseries=600&apikey=${CLAVES.fmp}`;
+    const j = await pedir(url);
+    const arr = j && j.historical;
+    if (!Array.isArray(arr)) throw new Error('fmp sin datos');
+    return limpiar(arr.map((x) => ({ t: etWallToMs(x.date), o: +x.open, h: +x.high, l: +x.low, c: +x.close, v: +(x.volume || 0) })));
+  }
   const url = `https://financialmodelingprep.com/api/v3/historical-chart/${TF_FMP[tf]}/${SIMBOLO}?apikey=${CLAVES.fmp}`;
   const j = await pedir(url);
   if (!Array.isArray(j)) throw new Error(j && j['Error Message'] ? j['Error Message'] : 'fmp sin datos');
