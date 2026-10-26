@@ -74,10 +74,18 @@ export async function abrirSP500() {
   const cv = $('#sp-cv'), cont = $('#sp-graf'), wait = $('#sp-wait');
   const chart = crearChart(cv, cont);
 
-  let rawVelas = [], fuente = '', tf = '5m', win = '30';
+  let rawVelas = [], fuente = '', tf = '5m', win = '30', tfOk = '5m';
   let pollTimer = null, animOn = false;
 
   const mercadoAbierto = () => { const n = Date.now(); return !etFinde(n) && etMin(n) >= APERTURA && etMin(n) < CIERRE; };
+
+  function marcarTf() { const g = $('#sp-tf'); if (g) g.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.tf === tf)); }
+  function toast(msg) {
+    let t = ov.querySelector('.sp-toast');
+    if (!t) { t = document.createElement('div'); t.className = 'sp-toast'; cont.appendChild(t); }
+    t.textContent = msg; t.classList.add('on');
+    clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2600);
+  }
 
   function recomputar() {
     const rth = soloRTH(rawVelas);
@@ -165,22 +173,27 @@ export async function abrirSP500() {
     return f.format(d);
   }
 
-  async function cargar() {
+  async function cargar(inicial) {
     try {
-      wait.style.display = 'flex';
-      wait.innerHTML = `<div class="sp-spin"></div><b>Loading S&P 500</b>`;
+      if (inicial) { wait.style.display = 'flex'; wait.innerHTML = `<div class="sp-spin"></div><b>Loading S&P 500</b>`; }
       const r = await traerVelasSP(tf);
-      rawVelas = r.velas; fuente = r.fuente;
-      if (!rawVelas.length) throw new Error('empty');
+      if (!r.velas || !r.velas.length) throw new Error('empty');
+      rawVelas = r.velas; fuente = r.fuente; tfOk = tf;
       wait.style.display = 'none';
       recomputar();
       arrancarAnim();
     } catch (e) {
+      // Si ya hay datos en pantalla, NUNCA borramos la grafica: avisamos y seguimos.
+      if (!inicial && rawVelas.length) {
+        if (tf !== tfOk) { tf = tfOk; marcarTf(); recomputar(); }
+        toast('Could not load that view. Staying on ' + tfOk + '.');
+        return;
+      }
       wait.style.display = 'flex';
       wait.innerHTML = `<b>Could not load the data right now.</b>
-        <span>The free feeds may be busy, or you can add a free API key in datos.js for a stronger primary source.</span>
+        <span>The free feeds may be busy. Tip: add a free API key in datos.js for a stronger primary source.</span>
         <button class="sp-retry" id="sp-retry">Retry</button>`;
-      const b = $('#sp-retry'); if (b) b.onclick = cargar;
+      const b = $('#sp-retry'); if (b) b.onclick = () => cargar(true);
     }
   }
 
@@ -211,7 +224,7 @@ export async function abrirSP500() {
     if (b.dataset.tf === tf) return;
     tf = b.dataset.tf;
     $('#sp-tf').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-    cargar();
+    cargar(false);
   });
   $('#sp-win').addEventListener('click', (e) => {
     const b = e.target.closest('[data-win]'); if (!b) return;
@@ -253,7 +266,7 @@ export async function abrirSP500() {
 
   document.addEventListener('visibilitychange', () => { if (!document.hidden && document.getElementById('sp-overlay')) chart.dibujar(); });
 
-  await cargar();
+  await cargar(true);
   reprogramarPoll();
 }
 
@@ -304,6 +317,10 @@ function inyectarCSS() {
 .sp-spin{width:34px;height:34px;border:3px solid rgba(232,184,75,.2);border-top-color:var(--gold);border-radius:50%;animation:sp-spin .9s linear infinite}
 @keyframes sp-spin{to{transform:rotate(360deg)}}
 .sp-retry{margin-top:4px;padding:8px 18px;border:1px solid rgba(232,184,75,.5);border-radius:10px;background:rgba(232,184,75,.12);color:var(--gold);font-weight:700;cursor:pointer}
+.sp-toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%) translateY(10px);z-index:6;pointer-events:none;
+  background:rgba(16,20,26,.96);border:1px solid var(--line);color:#eaecef;font-size:12px;padding:9px 14px;border-radius:10px;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .18s,transform .18s;max-width:84%;text-align:center}
+.sp-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .sp-side{width:330px;flex:none;border-left:1px solid var(--line);overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:#080b10}
 .sp-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,#0c111a,#0a0d13)}
 .sp-h{margin:0 0 10px;font-family:"Chakra Petch",system-ui,sans-serif;font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:#cfd6df;display:flex;align-items:center;gap:8px}
