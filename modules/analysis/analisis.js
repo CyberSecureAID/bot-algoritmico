@@ -124,7 +124,9 @@ const ICO = {
   spot: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>',
   x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   cart: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3.5h2.2l2.2 11a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.2L20.5 7H6.3"/></svg>',
-  colab: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3"/><circle cx="16.5" cy="8.5" r="2.6"/><path d="M2.5 19c.5-3 2.6-4.6 6-4.6 1.9 0 3.5.5 4.6 1.5M14 18.8c.3-2.6 2-4 4.6-4 2 0 3.5.9 4.2 2.7"/></svg>'
+  colab: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3"/><circle cx="16.5" cy="8.5" r="2.6"/><path d="M2.5 19c.5-3 2.6-4.6 6-4.6 1.9 0 3.5.5 4.6 1.5M14 18.8c.3-2.6 2-4 4.6-4 2 0 3.5.9 4.2 2.7"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>'
 };
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -197,7 +199,6 @@ function abrirServicio(h, card) {
       <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
       <div class="an-srv-grid">
         <div class="an-srv-info">
-          <span class="an-badge an-badge-${esc(h.cat)}">${esc(catTxt)}</span>
           <h2 class="an-srv-nom">${esc(h.nombre)}</h2>
           <p class="an-srv-desc">${esc(h.desc)}</p>
           <div class="an-srv-precio">
@@ -282,41 +283,28 @@ function abrirColaboracion() {
     <div class="an-modal-card an-colab-card">
       <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
       <img class="an-colab-corona" src="${CORONA}" alt="">
-      <h2 class="an-colab-t">Sell with us</h2>
-      <p class="an-colab-sub">We sell our own strategies and indicators here. If you have a trading <b>strategy</b>, <b>indicator</b> or <b>bot</b> you would like to sell on DecFreedom, tell us below and we will get back to you by email.</p>
-      <label class="an-f-lbl">What do you want to sell?</label>
-      <div class="an-f-seg" id="cf-tipo"><button class="on" type="button" data-v="Strategy">Strategy</button><button type="button" data-v="Indicator">Indicator</button><button type="button" data-v="Bot">Bot</button></div>
-      <label class="an-f-lbl">Do you have a verifiable backtest we can review?</label>
-      <div class="an-f-seg" id="cf-bt"><button class="on" type="button" data-v="Yes">Yes</button><button type="button" data-v="No">No</button></div>
-      <label class="an-f-lbl">Your email <span>(we reply here)</span></label>
-      <input class="an-f-in" id="cf-mail" type="email" autocomplete="email" placeholder="you@email.com">
-      <label class="an-f-lbl">Brief description of what you offer</label>
-      <textarea class="an-f-in an-f-ta" id="cf-desc" placeholder="What it does, which markets and timeframe, and the kind of results..."></textarea>
-      <label class="an-f-lbl">Price you would propose <span>(USD)</span></label>
-      <input class="an-f-in" id="cf-precio" type="text" placeholder="e.g. 25 / month">
-      <p class="an-colab-nota">Note: we price with monthly/annual plans and quantity discounts, so the final price is agreed together, not fixed unilaterally.</p>
-      <button class="an-pay gold" id="cf-send" type="button">Send proposal by email</button>
-      <div class="an-colab-msg" id="cf-msg"></div>
+      <div class="an-colab-mailbox">
+        <a class="an-colab-addr" href="mailto:${COLAB_EMAIL}?subject=${encodeURIComponent('Collaboration proposal')}">${esc(COLAB_EMAIL)}</a>
+        <button class="an-colab-copy" id="cf-copy" type="button" aria-label="Copy email">${ICO.copy}</button>
+      </div>
+      <p class="an-colab-sub">If you have a profitable strategy or a trading indicator that you want to sell on our platform, get in touch with us by email. We will need you to send us the following information:</p>
+      <ul class="an-colab-list">
+        <li>What it is: a strategy, an indicator or a bot.</li>
+        <li>Profitability history that we can study.</li>
+        <li>Risk and reward ratio.</li>
+        <li>How it works, and on which markets and timeframes.</li>
+        <li>A way for us to verify it, such as a public backtest.</li>
+        <li>The price you would propose. We work with monthly and annual plans and quantity discounts, so the final price is agreed together.</li>
+      </ul>
+      <a class="an-pay gold an-colab-mail" href="mailto:${COLAB_EMAIL}?subject=${encodeURIComponent('Collaboration proposal')}">Email us</a>
     </div>`;
   sel.appendChild(m);
   requestAnimationFrame(() => m.classList.add('on'));
-  m.querySelectorAll('.an-f-seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => { seg.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); }));
   const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
   m.querySelector('.an-modal-x').onclick = cerrar;
   m.querySelector('.an-modal-bg').onclick = cerrar;
-  m.querySelector('#cf-send').onclick = () => {
-    const tipo = m.querySelector('#cf-tipo .on').dataset.v;
-    const bt = m.querySelector('#cf-bt .on').dataset.v;
-    const mail = (m.querySelector('#cf-mail').value || '').trim();
-    const desc = (m.querySelector('#cf-desc').value || '').trim();
-    const precio = (m.querySelector('#cf-precio').value || '').trim();
-    const msg = m.querySelector('#cf-msg');
-    if (!mail || !desc) { msg.textContent = 'Please add your email and a short description first.'; return; }
-    const asunto = 'Collaboration proposal - ' + tipo;
-    const cuerpo = 'Type: ' + tipo + '\nVerifiable backtest: ' + bt + '\nContact email: ' + mail + '\nProposed price: ' + (precio || '(not specified)') + '\n\nDescription:\n' + desc + '\n';
-    window.location.href = 'mailto:' + COLAB_EMAIL + '?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
-    msg.textContent = 'Opening your email app to send to ' + COLAB_EMAIL + '…';
-  };
+  const cp = m.querySelector('#cf-copy');
+  if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(COLAB_EMAIL); } catch (_) {} cp.classList.add('ok'); cp.innerHTML = ICO.check; setTimeout(() => { cp.classList.remove('ok'); cp.innerHTML = ICO.copy; }, 1500); };
 }
 
 /* Disclaimer corporativo (reutiliza el sello del sitio). Sale una vez por
@@ -334,30 +322,20 @@ function mostrarDisclaimer(reView) {
     <div class="an-modal-bg"></div>
     <div class="an-modal-card an-disc-card">
       <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
-      <img class="an-disc-sello" src="${DISCLAIMER_IMG}" alt="">
-      <h2 class="an-disc-t">Important notice</h2>
-      <div class="an-disc-body">
-        <p>DecFreedom provides analytical tools, indicators and trading strategies for informational and educational purposes only. Nothing offered here is financial, investment, legal or tax advice, a recommendation, or a solicitation to buy or sell any asset.</p>
-        <p>We do not guarantee any result, profit or performance of any kind. Trading digital assets carries substantial risk and you may lose part or all of your capital. Past or simulated performance never guarantees future results. Every decision is your own and you are solely responsible for it.</p>
-        <p>All tools are provided as is, without warranty of any kind. They may contain errors, delays or inaccuracies, and part of the data may come from third parties. To the maximum extent permitted by law, DecFreedom, its owners, contributors and affiliates accept no liability for any loss or damage arising from the use of this platform or from reliance on anything shown here.</p>
-        <p>You are responsible for complying with the laws of your own jurisdiction. By continuing you confirm that you have read, understood and accepted this notice and our Terms and Conditions.</p>
+      <div class="an-disc-box">
+        <img class="an-disc-top" src="${DISCLAIMER_IMG}" alt="">
+        <img class="an-disc-fl" src="${DISCLAIMER_IMG}" alt="">
+        <p>DecFreedom provides analytical tools, indicators and strategies for informational and educational purposes only. Nothing here is financial, investment, legal or tax advice, and we do not guarantee any result, profit or performance. Trading digital assets carries substantial risk and you may lose part or all of your capital. Every decision is your own and you are solely responsible for it.</p>
+        <p>All tools are provided as is, without warranty of any kind, and part of the data may come from third parties. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this platform. By continuing you accept this notice and our Terms and Conditions.</p>
+        <button class="an-pay gold an-disc-ok" id="an-disc-ok">${reView ? 'Close' : 'Accept'}</button>
       </div>
-      ${reView ? '' : '<label class="an-disc-chk"><input type="checkbox" id="an-disc-agree"><span>I have read, understood and accept this notice.</span></label>'}
-      <button class="an-pay gold${reView ? '' : ' off'}" id="an-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'I understand and continue'}</button>
     </div>`;
   sel.appendChild(m);
   requestAnimationFrame(() => m.classList.add('on'));
   const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
   const x = m.querySelector('.an-modal-x'); if (x) x.onclick = cerrar;
   m.querySelector('.an-modal-bg').onclick = cerrar;
-  const ok = m.querySelector('#an-disc-ok');
-  if (reView) {
-    ok.onclick = cerrar;
-  } else {
-    const chk = m.querySelector('#an-disc-agree');
-    chk.onchange = () => { ok.classList.toggle('off', !chk.checked); ok.disabled = !chk.checked; };
-    ok.onclick = () => { if (!chk.checked) return; try { localStorage.setItem(DISC_KEY, '1'); } catch (_) {} cerrar(); };
-  }
+  m.querySelector('#an-disc-ok').onclick = () => { if (!reView) { try { localStorage.setItem(DISC_KEY, '1'); } catch (_) {} } cerrar(); };
 }
 
 export function abrirSelector(origen, wallet, ethers) {
@@ -614,7 +592,7 @@ const CSS = `
 #an-sel .an-card{display:flex;flex-direction:column;text-align:left;font-family:inherit;color:inherit;background:linear-gradient(180deg,#121820,#0b0e12);border:1px solid #232b36;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.04);transform-style:preserve-3d;transition:transform .15s ease,border-color .14s,box-shadow .18s;will-change:transform}
 #an-sel .an-card:hover{border-color:var(--gold);box-shadow:0 18px 44px rgba(232,184,75,.14)}
 #an-sel .an-card.soon{cursor:default}
-#an-sel .an-media{position:relative;width:100%;aspect-ratio:16/9;flex:0 0 auto}
+#an-sel .an-media{position:relative;width:100%;aspect-ratio:16/9;flex:0 0 auto;border-radius:16px 16px 0 0;overflow:hidden}
 #an-sel .an-img{position:absolute;inset:0;background:#0e1319 center/cover no-repeat;border-bottom:1px solid #1c232b}
 #an-sel .an-img.ph{display:grid;place-items:center}
 #an-sel .an-img.ph::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:20px 20px;opacity:.35}
@@ -673,10 +651,10 @@ const CSS = `
 #an-sel .an-modal-x{position:absolute;top:12px;right:12px;z-index:3;width:34px;height:34px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--ink2);cursor:pointer}
 #an-sel .an-modal-x:hover{color:var(--gold);border-color:var(--gold-lo)}
 #an-sel .an-srv-grid{display:grid;grid-template-columns:1fr 300px}
-#an-sel .an-srv-info{padding:26px 24px 24px;display:flex;flex-direction:column}
+#an-sel .an-srv-info{padding:22px 22px 20px;display:flex;flex-direction:column}
 #an-sel .an-srv-info .an-badge{position:static;align-self:flex-start;margin-bottom:12px}
-#an-sel .an-srv-nom{font-size:23px;font-weight:900;color:#eaecef;margin:0 0 10px}
-#an-sel .an-srv-desc{font-size:13.5px;line-height:1.65;color:#c4ccd4;margin:0 0 20px}
+#an-sel .an-srv-nom{font-size:21px;font-weight:900;color:#eaecef;margin:0 0 8px}
+#an-sel .an-srv-desc{font-size:13px;line-height:1.55;color:#c4ccd4;margin:0 0 14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 #an-sel .an-srv-acts{display:flex;flex-direction:column;gap:9px;margin-top:auto}
 #an-sel .an-pay{display:inline-flex;align-items:center;justify-content:center;height:46px;border-radius:12px;border:1px solid #2a333f;background:linear-gradient(180deg,#1b2027,#0d1117);color:#eaecef;font-family:var(--disp);font-weight:700;font-size:13.5px;cursor:pointer;box-shadow:0 3px 0 #060809;transition:border-color .14s}
 #an-sel .an-pay:hover{border-color:var(--gold-lo)}
@@ -717,7 +695,16 @@ const CSS = `
 #an-sel .an-colab-card{max-width:480px;padding:0 26px 26px;text-align:center}
 #an-sel .an-colab-corona{display:block;width:100%;max-width:300px;height:auto;margin:8px auto 2px;filter:drop-shadow(0 10px 22px rgba(0,0,0,.5))}
 #an-sel .an-colab-t{font-size:23px;font-weight:900;color:#eaecef;margin:0 0 8px}
-#an-sel .an-colab-sub{font-size:13px;line-height:1.6;color:#c4ccd4;margin:0 0 6px}
+#an-sel .an-colab-sub{text-align:left;font-size:13px;line-height:1.6;color:#c4ccd4;margin:2px 0 12px}
+#an-sel .an-colab-list{text-align:left;margin:0 0 18px;padding:0 0 0 20px;display:flex;flex-direction:column;gap:7px}
+#an-sel .an-colab-list li{font-size:12.5px;line-height:1.5;color:#c4ccd4}
+#an-sel .an-colab-list li::marker{color:var(--gold)}
+#an-sel .an-colab-mailbox{display:flex;align-items:center;gap:8px;margin:2px 0 16px;padding:8px 8px 8px 14px;border:1px solid var(--line2);border-radius:12px;background:rgba(232,184,75,.06)}
+#an-sel .an-colab-addr{flex:1;min-width:0;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+#an-sel .an-colab-copy{flex:0 0 auto;width:36px;height:36px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--ink2);cursor:pointer}
+#an-sel .an-colab-copy:hover{color:var(--gold);border-color:var(--gold-lo)}
+#an-sel .an-colab-copy.ok{color:#5ff0b0;border-color:rgba(46,189,133,.5)}
+#an-sel .an-colab-mail{width:100%;text-decoration:none}
 #an-sel .an-f-lbl{display:block;text-align:left;font-size:12px;font-weight:700;color:#a7b0bb;margin:14px 0 7px}
 #an-sel .an-f-lbl span{color:#79838f;font-weight:500}
 #an-sel .an-f-seg{display:flex;gap:7px}
@@ -745,18 +732,30 @@ const CSS = `
 #an-sel .an-disc-link{background:none;border:0;color:#79838f;font-family:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 #an-sel .an-disc-link:hover{color:var(--gold)}
 /* modal disclaimer */
-#an-sel .an-disc-card{max-width:560px;padding:4px 28px 26px;text-align:center}
-#an-sel .an-disc-sello{display:block;width:120px;height:auto;margin:14px auto 4px;filter:drop-shadow(0 10px 22px rgba(0,0,0,.5))}
-#an-sel .an-disc-t{font-size:22px;font-weight:900;color:#eaecef;margin:0 0 14px}
-#an-sel .an-disc-body{text-align:left;max-height:40vh;overflow-y:auto;scrollbar-width:none;padding-right:4px}
-#an-sel .an-disc-body::-webkit-scrollbar{display:none}
-#an-sel .an-disc-body p{font-size:12.5px;line-height:1.65;color:#c4ccd4;margin:0 0 11px}
-#an-sel .an-disc-chk{display:flex;align-items:flex-start;gap:9px;text-align:left;margin:16px 0 14px;cursor:pointer}
-#an-sel .an-disc-chk input{flex:0 0 auto;width:18px;height:18px;margin-top:1px;accent-color:var(--gold);cursor:pointer}
-#an-sel .an-disc-chk span{font-size:12.5px;color:#c4ccd4;line-height:1.5}
-#an-sel .an-disc-card .an-pay{width:100%}
+#an-sel .an-disc-card{max-width:600px;padding:0}
+#an-sel .an-disc-box{display:flow-root;padding:24px 26px 22px;text-align:left}
+#an-sel .an-disc-top{display:none}
+#an-sel .an-disc-fl{float:right;width:132px;height:132px;margin:2px 0 8px 20px;shape-outside:margin-box;filter:drop-shadow(0 8px 18px rgba(0,0,0,.5))}
+#an-sel .an-disc-box p{font-size:12.8px;line-height:1.65;color:#c4ccd4;margin:0 0 12px}
+#an-sel .an-disc-ok{clear:both;width:100%;margin-top:4px}
 @media(max-width:620px){
+  #an-sel .an-modal{padding:12px}
+  #an-sel .an-cat-hd{gap:8px}
+  #an-sel .an-search{flex:1 1 100%;order:-1}
+  #an-sel .an-chip{flex:1}
   #an-sel .an-srv-grid{grid-template-columns:1fr}
-  #an-sel .an-srv-media{min-height:170px;border-left:0;border-bottom:1px solid #1c232b;border-radius:20px 20px 0 0;order:-1}
+  #an-sel .an-srv-media{min-height:150px;border-left:0;border-bottom:1px solid #1c232b;border-radius:20px 20px 0 0;order:-1}
+  #an-sel .an-srv-info{padding:18px}
+  #an-sel .an-colab-card{padding:0 18px 20px}
+  #an-sel .an-colab-corona{max-width:230px}
+  #an-sel .an-disc-box{padding:18px;text-align:center}
+  #an-sel .an-disc-box p{text-align:left}
+  #an-sel .an-disc-fl{display:none}
+  #an-sel .an-disc-top{display:block;width:100px;margin:2px auto 12px}
+}
+@media(max-width:400px){
+  #an-sel .an-modal{padding:8px}
+  #an-sel .an-srv-precio{gap:7px}
+  #an-sel .an-pp b{font-size:19px}
 }
 `;
