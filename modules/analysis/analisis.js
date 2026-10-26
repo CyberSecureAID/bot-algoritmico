@@ -57,10 +57,20 @@ const HERRAMIENTAS = [
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator' };
 
-/* Precios de EJEMPLO por servicio (placeholder). En la ultima fase los leera el
-   contrato (editables desde el panel admin). [mensualUSD, anualUSD]. */
-const PRECIOS = { pools:[20,180], hair:[20,180], smart:[30,270], hfs:[15,135], vp:[20,180], mtf:[30,270], flow:[25,225], liq:[30,270] };
-const precioDe = (id) => PRECIOS[id] || [0, 0];
+/* PRECIOS Y DESCUENTOS.
+   Base UNIFORME por servicio: $25/mes, $300/año (=12x25). Editables desde el
+   panel admin (solo owner) cuando se haga el contrato.
+   Descuento por CANTIDAD de servicios comprados juntos (entre TODOS, no
+   acumulativo), creciente, con TOPE: mensual 30%, anual 50%.
+   ⚠ IMPORTANTE: el descuento DEFINITIVO lo calcula y valida el CONTRATO, no el
+   front-end, para que nadie pueda forzar un descuento del 100%. Esto de aqui es
+   solo la vista; el contrato tendra la misma tabla. */
+const MES_BASE = 25;     // USD/mes por servicio
+const ANIO_BASE = 300;   // USD/año por servicio
+const DESC_MES  = [0, 0.10, 0.20, 0.25, 0.30];            // 1,2,3,4,5+ servicios (tope 30%)
+const DESC_ANIO = [0, 0.20, 0.30, 0.40, 0.45, 0.50];      // 1,2,3,4,5,6+ servicios (tope 50%)
+const descPorCantidad = (tabla, n) => tabla[Math.min(Math.max(n, 1), tabla.length) - 1];
+const precioUnit = (n, anual) => Math.round((anual ? ANIO_BASE : MES_BASE) * (1 - descPorCantidad(anual ? DESC_ANIO : DESC_MES, n)));
 
 /* Carrito (local por navegador; el pago real se conecta con el contrato al final). */
 const CART_KEY = 'an-carrito';
@@ -97,7 +107,8 @@ const ICO = {
   search: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>',
   spot: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>',
   x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-  cart: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3.5h2.2l2.2 11a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.2L20.5 7H6.3"/></svg>'
+  cart: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3.5h2.2l2.2 11a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.2L20.5 7H6.3"/></svg>',
+  colab: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3"/><circle cx="16.5" cy="8.5" r="2.6"/><path d="M2.5 19c.5-3 2.6-4.6 6-4.6 1.9 0 3.5.5 4.6 1.5M14 18.8c.3-2.6 2-4 4.6-4 2 0 3.5.9 4.2 2.7"/></svg>'
 };
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -157,7 +168,7 @@ function toast(txt) {
 function abrirServicio(h, card) {
   const sel = document.getElementById('an-sel'); if (!sel) return;
   const old = sel.querySelector('#an-srv'); if (old) old.remove();
-  const [mes, anio] = precioDe(h.id);
+  const mes = MES_BASE, anio = ANIO_BASE;
   const catTxt = CAT_NOMBRE[h.cat] || '';
   const media = h.img
     ? `<div class="an-srv-img" data-img="${esc(h.img)}"></div>`
@@ -178,6 +189,7 @@ function abrirServicio(h, card) {
             <button class="an-pay gold" data-plan="anio">Pay annual · $${anio}</button>
             <button class="an-cart-add${enCarrito(h.id) ? ' on' : ''}">${enCarrito(h.id) ? 'In cart' : 'Add to cart'}</button>
           </div>
+          <div class="an-srv-hint">Bundle services in the cart for up to 30% off monthly or 50% off annual.</div>
           ${h.listo ? '<button class="an-srv-open">Open now</button>' : '<div class="an-srv-soon">Coming soon</div>'}
         </div>
         <div class="an-srv-media">${media}</div>
@@ -202,8 +214,11 @@ function abrirCarrito() {
   const sel = document.getElementById('an-sel'); if (!sel) return;
   const old = sel.querySelector('#an-cart'); if (old) old.remove();
   const items = CARRITO.map((id) => HERRAMIENTAS.find((h) => h.id === id)).filter(Boolean);
-  const totMes = items.reduce((s, h) => s + precioDe(h.id)[0], 0);
-  const totAnio = items.reduce((s, h) => s + precioDe(h.id)[1], 0);
+  const n = items.length;
+  const uMes = precioUnit(n, false), uAnio = precioUnit(n, true);
+  const totMes = n * uMes, totAnio = n * uAnio;
+  const baseMes = n * MES_BASE, baseAnio = n * ANIO_BASE;
+  const dMes = Math.round(descPorCantidad(DESC_MES, n) * 100), dAnio = Math.round(descPorCantidad(DESC_ANIO, n) * 100);
   const m = document.createElement('div');
   m.className = 'an-modal'; m.id = 'an-cart';
   m.innerHTML = `
@@ -212,12 +227,13 @@ function abrirCarrito() {
       <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
       <h2 class="an-srv-nom">Your cart</h2>
       ${items.length ? `
-        <div class="an-cart-list">${items.map((h) => { const p = precioDe(h.id); return `<div class="an-cart-item" data-id="${esc(h.id)}"><div class="an-cart-it-n"><b>${esc(h.nombre)}</b><span>$${p[0]}/mo · $${p[1]}/yr</span></div><button class="an-cart-rm" aria-label="Remove">${ICO.x}</button></div>`; }).join('')}</div>
-        <div class="an-cart-tot"><span>Total</span><b>$${totMes}/mo  ·  $${totAnio}/yr</b></div>
+        <div class="an-cart-list">${items.map((h) => `<div class="an-cart-item" data-id="${esc(h.id)}"><div class="an-cart-it-n"><b>${esc(h.nombre)}</b><span>${esc(CAT_NOMBRE[h.cat] || '')}</span></div><button class="an-cart-rm" aria-label="Remove">${ICO.x}</button></div>`).join('')}</div>
+        ${n >= 2 ? `<div class="an-cart-desc">Bundle of ${n} · <b>−${dMes}%</b> monthly · <b>−${dAnio}%</b> annual</div>` : ''}
+        <div class="an-cart-tot"><span>Total</span><b>${n >= 2 ? `<s>$${baseMes}</s> ` : ''}$${totMes}/mo &nbsp;·&nbsp; ${n >= 2 ? `<s>$${baseAnio}</s> ` : ''}$${totAnio}/yr</b></div>
         <div class="an-srv-acts">
           <button class="an-pay" data-plan="mes">Pay all monthly · $${totMes}</button>
           <button class="an-pay gold" data-plan="anio">Pay all annual · $${totAnio}</button>
-        </div>` : '<div class="an-cart-empty">Your cart is empty. Open a service and add it here to pay several at once.</div>'}
+        </div>` : '<div class="an-cart-empty">Your cart is empty. Open a service and add it here to pay several at once — the more you bundle, the bigger the discount.</div>'}
     </div>`;
   sel.appendChild(m);
   requestAnimationFrame(() => m.classList.add('on'));
@@ -226,6 +242,58 @@ function abrirCarrito() {
   m.querySelector('.an-modal-bg').onclick = cerrar;
   m.querySelectorAll('.an-pay').forEach((b) => b.onclick = () => toast('El pago del carrito se conecta en la ultima fase (contrato).'));
   m.querySelectorAll('.an-cart-rm').forEach((b) => b.onclick = () => { const id = b.closest('.an-cart-item').dataset.id; toggleCarrito(id); abrirCarrito(); });
+}
+
+/* Colaboracion: terceros que quieran VENDER su estrategia/indicador/bot aqui.
+   Es por CORREO (@gmail del footer): el formulario abre el correo del usuario con
+   los datos listos; les respondemos por el mismo correo. Reutiliza la corona. */
+const COLAB_EMAIL = 'supportdecfreedom@gmail.com';
+const CORONA = 'assets/portada/img/analisis-pro.webp';
+function abrirColaboracion() {
+  const sel = document.getElementById('an-sel'); if (!sel) return;
+  const old = sel.querySelector('#an-colab-m'); if (old) old.remove();
+  const m = document.createElement('div');
+  m.className = 'an-modal'; m.id = 'an-colab-m';
+  m.innerHTML = `
+    <div class="an-modal-bg"></div>
+    <div class="an-modal-card an-colab-card">
+      <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
+      <img class="an-colab-corona" src="${CORONA}" alt="">
+      <h2 class="an-colab-t">Sell with us</h2>
+      <p class="an-colab-sub">We sell our own strategies and indicators here. If you have a trading <b>strategy</b>, <b>indicator</b> or <b>bot</b> you would like to sell on DecFreedom, tell us below and we will get back to you by email.</p>
+      <label class="an-f-lbl">What do you want to sell?</label>
+      <div class="an-f-seg" id="cf-tipo"><button class="on" type="button" data-v="Strategy">Strategy</button><button type="button" data-v="Indicator">Indicator</button><button type="button" data-v="Bot">Bot</button></div>
+      <label class="an-f-lbl">Do you have a verifiable backtest we can review?</label>
+      <div class="an-f-seg" id="cf-bt"><button class="on" type="button" data-v="Yes">Yes</button><button type="button" data-v="No">No</button></div>
+      <label class="an-f-lbl">Your email <span>(we reply here)</span></label>
+      <input class="an-f-in" id="cf-mail" type="email" autocomplete="email" placeholder="you@email.com">
+      <label class="an-f-lbl">Brief description of what you offer</label>
+      <textarea class="an-f-in an-f-ta" id="cf-desc" placeholder="What it does, which markets and timeframe, and the kind of results..."></textarea>
+      <label class="an-f-lbl">Price you would propose <span>(USD)</span></label>
+      <input class="an-f-in" id="cf-precio" type="text" placeholder="e.g. 25 / month">
+      <p class="an-colab-nota">Note: we price with monthly/annual plans and quantity discounts, so the final price is agreed together, not fixed unilaterally.</p>
+      <button class="an-pay gold" id="cf-send" type="button">Send proposal by email</button>
+      <div class="an-colab-msg" id="cf-msg"></div>
+    </div>`;
+  sel.appendChild(m);
+  requestAnimationFrame(() => m.classList.add('on'));
+  m.querySelectorAll('.an-f-seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => { seg.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); }));
+  const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
+  m.querySelector('.an-modal-x').onclick = cerrar;
+  m.querySelector('.an-modal-bg').onclick = cerrar;
+  m.querySelector('#cf-send').onclick = () => {
+    const tipo = m.querySelector('#cf-tipo .on').dataset.v;
+    const bt = m.querySelector('#cf-bt .on').dataset.v;
+    const mail = (m.querySelector('#cf-mail').value || '').trim();
+    const desc = (m.querySelector('#cf-desc').value || '').trim();
+    const precio = (m.querySelector('#cf-precio').value || '').trim();
+    const msg = m.querySelector('#cf-msg');
+    if (!mail || !desc) { msg.textContent = 'Please add your email and a short description first.'; return; }
+    const asunto = 'Collaboration proposal - ' + tipo;
+    const cuerpo = 'Type: ' + tipo + '\nVerifiable backtest: ' + bt + '\nContact email: ' + mail + '\nProposed price: ' + (precio || '(not specified)') + '\n\nDescription:\n' + desc + '\n';
+    window.location.href = 'mailto:' + COLAB_EMAIL + '?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
+    msg.textContent = 'Opening your email app to send to ' + COLAB_EMAIL + '…';
+  };
 }
 
 export function abrirSelector(origen, wallet, ethers) {
@@ -263,6 +331,7 @@ export function abrirSelector(origen, wallet, ethers) {
   // ── Catalogo: buscador + dos chips (Strategies / Indicators). Sin banda negra, sin brand, sin selects. ──
   const catHeadHTML = `
     <div class="an-cat-hd">
+      <button class="an-colab" id="an-colab" type="button">${ICO.colab}<span>Collaboration</span></button>
       <label class="an-search">${ICO.search}<input id="an-q" type="search" autocomplete="off" placeholder="Search for a tool, indicator or strategy..."></label>
       <button class="an-chip" type="button" data-cat="strategy">Strategies</button>
       <button class="an-chip" type="button" data-cat="indicator">Indicators</button>
@@ -394,6 +463,9 @@ export function abrirSelector(origen, wallet, ethers) {
   const cartBtn = $('#an-cartbtn');
   if (cartBtn) cartBtn.onclick = abrirCarrito;
   actualizarCart();
+
+  const colabBtn = $('#an-colab');
+  if (colabBtn) colabBtn.onclick = abrirColaboracion;
 }
 
 /* ── CSS. La CINTA es copia de los cinta.css de las secciones aprobadas
@@ -562,6 +634,34 @@ const CSS = `
 #an-sel .an-cart-tot{display:flex;align-items:center;justify-content:space-between;padding:12px 2px;margin-bottom:12px;border-top:1px solid #232b36;font-size:13px;color:#c4ccd4}
 #an-sel .an-cart-tot b{color:#eaecef;font-family:var(--mono)}
 #an-sel .an-cart-empty{text-align:center;color:#8b96a3;font-size:13.5px;line-height:1.6;padding:24px 10px}
+#an-sel .an-srv-hint{margin-top:10px;font-size:11.5px;color:#8b96a3;text-align:center}
+#an-sel .an-cart-desc{display:flex;align-items:center;justify-content:center;gap:5px;margin:4px 0 10px;padding:9px;border-radius:10px;background:rgba(46,189,133,.08);border:1px solid rgba(46,189,133,.28);color:#8ef0b0;font-size:12px;font-weight:600}
+#an-sel .an-cart-desc b{color:#5ff0b0}
+#an-sel .an-cart-tot s{color:#6d7681;font-weight:400;margin-right:2px}
+/* boton Collaboration (izquierda del buscador) */
+#an-sel .an-colab{display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 15px;flex:0 0 auto;border-radius:11px;border:1px solid #2a333f;background:linear-gradient(180deg,#1b2027,#0d1117);color:#b7bdc6;font-family:var(--disp);font-weight:700;font-size:12.5px;cursor:pointer;box-shadow:0 3px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);transition:color .15s,border-color .15s}
+#an-sel .an-colab:hover{color:var(--gold);border-color:var(--gold-lo)}
+#an-sel .an-colab:active{transform:translateY(2px);box-shadow:0 1px 0 #060809}
+#an-sel .an-colab svg{color:var(--gold)}
+/* modal colaboracion */
+#an-sel .an-colab-card{max-width:480px;padding:0 26px 26px;text-align:center}
+#an-sel .an-colab-corona{display:block;width:100%;max-width:300px;height:auto;margin:8px auto 2px;filter:drop-shadow(0 10px 22px rgba(0,0,0,.5))}
+#an-sel .an-colab-t{font-size:23px;font-weight:900;color:#eaecef;margin:0 0 8px}
+#an-sel .an-colab-sub{font-size:13px;line-height:1.6;color:#c4ccd4;margin:0 0 6px}
+#an-sel .an-f-lbl{display:block;text-align:left;font-size:12px;font-weight:700;color:#a7b0bb;margin:14px 0 7px}
+#an-sel .an-f-lbl span{color:#79838f;font-weight:500}
+#an-sel .an-f-seg{display:flex;gap:7px}
+#an-sel .an-f-seg button{flex:1;height:40px;border-radius:10px;border:1px solid #2a333f;background:linear-gradient(180deg,#1b2027,#0d1117);color:#b7bdc6;font-family:var(--disp);font-weight:700;font-size:12.5px;cursor:pointer}
+#an-sel .an-f-seg button:hover{border-color:var(--gold-lo)}
+#an-sel .an-f-seg button.on{color:#f1cf6a;border-color:rgba(232,184,75,.55)}
+#an-sel .an-f-in{width:100%;background:#0d1117;border:1px solid #2a333f;border-radius:10px;color:#eaecef;font-family:inherit;font-size:13.5px;padding:11px 13px;outline:0}
+#an-sel .an-f-in:focus{border-color:var(--gold-lo)}
+#an-sel .an-f-in::placeholder{color:#6d7681}
+#an-sel .an-f-ta{min-height:88px;resize:vertical;line-height:1.5}
+#an-sel .an-colab-nota{text-align:left;font-size:11.5px;line-height:1.5;color:#8b96a3;margin:14px 0 16px}
+#an-sel .an-colab-card .an-pay{width:100%}
+#an-sel .an-colab-msg{font-size:12.5px;color:#8ef0b0;margin-top:12px;min-height:16px}
+@media(max-width:620px){#an-sel .an-colab span{display:none}}
 @media(max-width:620px){
   #an-sel .an-srv-grid{grid-template-columns:1fr}
   #an-sel .an-srv-media{min-height:170px;border-left:0;border-bottom:1px solid #1c232b;border-radius:20px 20px 0 0;order:-1}
