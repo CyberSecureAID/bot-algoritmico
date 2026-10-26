@@ -57,6 +57,20 @@ const HERRAMIENTAS = [
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator' };
 
+/* Precios de EJEMPLO por servicio (placeholder). En la ultima fase los leera el
+   contrato (editables desde el panel admin). [mensualUSD, anualUSD]. */
+const PRECIOS = { pools:[20,180], hair:[20,180], smart:[30,270], hfs:[15,135], vp:[20,180], mtf:[30,270], flow:[25,225], liq:[30,270] };
+const precioDe = (id) => PRECIOS[id] || [0, 0];
+
+/* Carrito (local por navegador; el pago real se conecta con el contrato al final). */
+const CART_KEY = 'an-carrito';
+function cargarCarrito() { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch (_) { return []; } }
+let CARRITO = cargarCarrito();
+function guardarCarrito() { try { localStorage.setItem(CART_KEY, JSON.stringify(CARRITO)); } catch (_) {} }
+const enCarrito = (id) => CARRITO.indexOf(id) !== -1;
+function toggleCarrito(id) { if (enCarrito(id)) CARRITO = CARRITO.filter((x) => x !== id); else CARRITO.push(id); guardarCarrito(); actualizarCart(); }
+function actualizarCart() { const n = document.querySelector('#an-sel .an-cartn'); if (n) { n.textContent = CARRITO.length; n.style.display = CARRITO.length ? 'grid' : 'none'; } }
+
 /* Cinta: mismos items y orden que el lobby, con Analysis ENTRE Bots y Futures. */
 const NAV = [
   ['Swap', 'app.html?abrir=swap'],
@@ -81,7 +95,9 @@ const ICO = {
   chev: '<svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
   search: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>',
-  spot: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>'
+  spot: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>',
+  x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  cart: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3.5h2.2l2.2 11a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.2L20.5 7H6.3"/></svg>'
 };
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -136,6 +152,82 @@ function toast(txt) {
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2400);
 }
 
+/* Ventana emergente de un servicio: imagen (de la tarjeta) + que es + precio +
+   pago mensual / anual / anadir al carrito. El pago real se conecta al final. */
+function abrirServicio(h, card) {
+  const sel = document.getElementById('an-sel'); if (!sel) return;
+  const old = sel.querySelector('#an-srv'); if (old) old.remove();
+  const [mes, anio] = precioDe(h.id);
+  const catTxt = CAT_NOMBRE[h.cat] || '';
+  const media = h.img
+    ? `<div class="an-srv-img" data-img="${esc(h.img)}"></div>`
+    : `<div class="an-srv-img ph ph-${esc(h.cat)}"><span class="an-ph-ini">${esc(h.nombre[0])}</span></div>`;
+  const m = document.createElement('div');
+  m.className = 'an-modal'; m.id = 'an-srv';
+  m.innerHTML = `
+    <div class="an-modal-bg"></div>
+    <div class="an-modal-card an-srv-card">
+      <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
+      <div class="an-srv-grid">
+        <div class="an-srv-info">
+          <span class="an-badge an-badge-${esc(h.cat)}">${esc(catTxt)}</span>
+          <h2 class="an-srv-nom">${esc(h.nombre)}</h2>
+          <p class="an-srv-desc">${esc(h.desc)}</p>
+          <div class="an-srv-acts">
+            <button class="an-pay" data-plan="mes">Pay monthly · $${mes}</button>
+            <button class="an-pay gold" data-plan="anio">Pay annual · $${anio}</button>
+            <button class="an-cart-add${enCarrito(h.id) ? ' on' : ''}">${enCarrito(h.id) ? 'In cart' : 'Add to cart'}</button>
+          </div>
+          ${h.listo ? '<button class="an-srv-open">Open now</button>' : '<div class="an-srv-soon">Coming soon</div>'}
+        </div>
+        <div class="an-srv-media">${media}</div>
+      </div>
+    </div>`;
+  sel.appendChild(m);
+  requestAnimationFrame(() => m.classList.add('on'));
+  const im = m.querySelector('.an-srv-img[data-img]');
+  if (im) { const i = new Image(); i.onload = () => { im.style.backgroundImage = `url(${im.dataset.img})`; im.classList.add('con'); }; i.src = im.dataset.img; }
+  const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
+  m.querySelector('.an-modal-x').onclick = cerrar;
+  m.querySelector('.an-modal-bg').onclick = cerrar;
+  m.querySelectorAll('.an-pay').forEach((b) => b.onclick = () => toast('El pago por servicio se conecta en la ultima fase (contrato).'));
+  const add = m.querySelector('.an-cart-add');
+  add.onclick = () => { toggleCarrito(h.id); add.classList.toggle('on', enCarrito(h.id)); add.textContent = enCarrito(h.id) ? 'In cart' : 'Add to cart'; };
+  const open = m.querySelector('.an-srv-open');
+  if (open) open.onclick = () => { cerrar(); if (h.abre) abrirTool(h.abre, card); };
+}
+
+/* Carrito: pagar varios servicios de una vez (mensual o anual). Pago real al final. */
+function abrirCarrito() {
+  const sel = document.getElementById('an-sel'); if (!sel) return;
+  const old = sel.querySelector('#an-cart'); if (old) old.remove();
+  const items = CARRITO.map((id) => HERRAMIENTAS.find((h) => h.id === id)).filter(Boolean);
+  const totMes = items.reduce((s, h) => s + precioDe(h.id)[0], 0);
+  const totAnio = items.reduce((s, h) => s + precioDe(h.id)[1], 0);
+  const m = document.createElement('div');
+  m.className = 'an-modal'; m.id = 'an-cart';
+  m.innerHTML = `
+    <div class="an-modal-bg"></div>
+    <div class="an-modal-card an-cart-card">
+      <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
+      <h2 class="an-srv-nom">Your cart</h2>
+      ${items.length ? `
+        <div class="an-cart-list">${items.map((h) => { const p = precioDe(h.id); return `<div class="an-cart-item" data-id="${esc(h.id)}"><div class="an-cart-it-n"><b>${esc(h.nombre)}</b><span>$${p[0]}/mo · $${p[1]}/yr</span></div><button class="an-cart-rm" aria-label="Remove">${ICO.x}</button></div>`; }).join('')}</div>
+        <div class="an-cart-tot"><span>Total</span><b>$${totMes}/mo  ·  $${totAnio}/yr</b></div>
+        <div class="an-srv-acts">
+          <button class="an-pay" data-plan="mes">Pay all monthly · $${totMes}</button>
+          <button class="an-pay gold" data-plan="anio">Pay all annual · $${totAnio}</button>
+        </div>` : '<div class="an-cart-empty">Your cart is empty. Open a service and add it here to pay several at once.</div>'}
+    </div>`;
+  sel.appendChild(m);
+  requestAnimationFrame(() => m.classList.add('on'));
+  const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
+  m.querySelector('.an-modal-x').onclick = cerrar;
+  m.querySelector('.an-modal-bg').onclick = cerrar;
+  m.querySelectorAll('.an-pay').forEach((b) => b.onclick = () => toast('El pago del carrito se conecta en la ultima fase (contrato).'));
+  m.querySelectorAll('.an-cart-rm').forEach((b) => b.onclick = () => { const id = b.closest('.an-cart-item').dataset.id; toggleCarrito(id); abrirCarrito(); });
+}
+
 export function abrirSelector(origen, wallet, ethers) {
   const prev = document.getElementById('an-sel'); if (prev) prev.remove();
 
@@ -174,6 +266,7 @@ export function abrirSelector(origen, wallet, ethers) {
       <label class="an-search">${ICO.search}<input id="an-q" type="search" autocomplete="off" placeholder="Search for a tool, indicator or strategy..."></label>
       <button class="an-chip" type="button" data-cat="strategy">Strategies</button>
       <button class="an-chip" type="button" data-cat="indicator">Indicators</button>
+      <button class="an-cartbtn" id="an-cartbtn" type="button" aria-label="Cart">${ICO.cart}<span class="an-cartn">0</span></button>
     </div>`;
 
   ov.innerHTML = `
@@ -230,7 +323,7 @@ export function abrirSelector(origen, wallet, ethers) {
       ? `<div class="an-img" data-img="${esc(h.img)}"></div>`
       : `<div class="an-img ph ph-${esc(h.cat)}"><span class="an-ph-ini">${esc(h.nombre[0])}</span></div>`;
     return `
-      <button class="an-card${h.listo ? '' : ' soon'}" type="button" data-tilt data-abre="${esc(h.abre || '')}" data-listo="${h.listo ? '1' : '0'}" title="${esc(h.desc)}">
+      <button class="an-card${h.listo ? '' : ' soon'}" type="button" data-tilt data-id="${esc(h.id)}" data-abre="${esc(h.abre || '')}" data-listo="${h.listo ? '1' : '0'}" title="${esc(h.desc)}">
         <div class="an-media">
           ${medio}
           <span class="an-badge an-badge-${esc(h.cat)}">${esc(catTxt)}</span>
@@ -294,9 +387,13 @@ export function abrirSelector(origen, wallet, ethers) {
 
   grid.addEventListener('click', (e) => {
     const card = e.target.closest('.an-card'); if (!card) return;
-    if (card.dataset.listo !== '1' || !card.dataset.abre) { toast('Coming soon'); return; }
-    abrirTool(card.dataset.abre, card);
+    const h = HERRAMIENTAS.find((x) => x.id === card.dataset.id);
+    if (h) abrirServicio(h, card);
   });
+
+  const cartBtn = $('#an-cartbtn');
+  if (cartBtn) cartBtn.onclick = abrirCarrito;
+  actualizarCart();
 }
 
 /* ── CSS. La CINTA es copia de los cinta.css de las secciones aprobadas
@@ -417,4 +514,56 @@ const CSS = `
 }
 @media(max-width:560px){#an-sel .c-contratos{display:none}}
 @media(max-width:480px){#an-sel .an-grid{grid-template-columns:1fr}#an-sel .an-search{flex:1 1 100%}}
+
+/* ── Boton carrito (header) ── */
+#an-sel .an-cartbtn{position:relative;width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;border-radius:11px;border:1px solid #2a333f;background:linear-gradient(180deg,#1b2027,#0d1117);color:#b7bdc6;cursor:pointer;box-shadow:0 3px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);transition:color .15s,border-color .15s}
+#an-sel .an-cartbtn:hover{color:#eaecef;border-color:var(--gold-lo)}
+#an-sel .an-cartbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #060809}
+#an-sel .an-cartn{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;display:none;place-items:center;border-radius:100px;background:linear-gradient(180deg,#f4d089,#E8B84B 60%,#cf9f2e);color:#241900;font-family:var(--mono);font-size:10.5px;font-weight:800}
+
+/* ── Modales (popup de servicio + carrito) ── */
+#an-sel .an-modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;opacity:0;transition:opacity .18s;padding:20px}
+#an-sel .an-modal.on{opacity:1}
+#an-sel .an-modal-bg{position:absolute;inset:0;background:rgba(3,5,8,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#an-sel .an-modal-card{position:relative;z-index:1;width:100%;max-width:720px;max-height:88vh;overflow-y:auto;scrollbar-width:none;background:linear-gradient(180deg,#121820,#0b0e12);border:1px solid #2a333f;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.05);transform:translateY(8px) scale(.98);transition:transform .18s}
+#an-sel .an-modal-card::-webkit-scrollbar{display:none}
+#an-sel .an-modal.on .an-modal-card{transform:none}
+#an-sel .an-modal-x{position:absolute;top:12px;right:12px;z-index:3;width:34px;height:34px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--ink2);cursor:pointer}
+#an-sel .an-modal-x:hover{color:var(--gold);border-color:var(--gold-lo)}
+#an-sel .an-srv-grid{display:grid;grid-template-columns:1fr 300px}
+#an-sel .an-srv-info{padding:26px 24px 24px;display:flex;flex-direction:column}
+#an-sel .an-srv-info .an-badge{position:static;align-self:flex-start;margin-bottom:12px}
+#an-sel .an-srv-nom{font-size:23px;font-weight:900;color:#eaecef;margin:0 0 10px}
+#an-sel .an-srv-desc{font-size:13.5px;line-height:1.65;color:#c4ccd4;margin:0 0 20px}
+#an-sel .an-srv-acts{display:flex;flex-direction:column;gap:9px;margin-top:auto}
+#an-sel .an-pay{display:inline-flex;align-items:center;justify-content:center;height:46px;border-radius:12px;border:1px solid #2a333f;background:linear-gradient(180deg,#1b2027,#0d1117);color:#eaecef;font-family:var(--disp);font-weight:700;font-size:13.5px;cursor:pointer;box-shadow:0 3px 0 #060809;transition:border-color .14s}
+#an-sel .an-pay:hover{border-color:var(--gold-lo)}
+#an-sel .an-pay:active{transform:translateY(2px);box-shadow:0 1px 0 #060809}
+#an-sel .an-pay.gold{border-color:var(--gold-md);background:linear-gradient(180deg,#f4d089,#E8B84B 55%,#cf9f2e);color:#241900;box-shadow:0 3px 0 #8f6a1a}
+#an-sel .an-pay.gold:active{box-shadow:0 1px 0 #8f6a1a}
+#an-sel .an-cart-add{height:42px;border-radius:12px;border:1px dashed #3a4552;background:transparent;color:var(--ink2);font-family:var(--disp);font-weight:700;font-size:12.5px;cursor:pointer;transition:color .14s,border-color .14s}
+#an-sel .an-cart-add:hover{color:#eaecef;border-color:var(--gold-lo)}
+#an-sel .an-cart-add.on{color:#5ff0b0;border-color:rgba(46,189,133,.5);border-style:solid}
+#an-sel .an-srv-open{margin-top:12px;height:44px;border-radius:12px;border:1px solid rgba(232,184,75,.4);background:rgba(232,184,75,.08);color:var(--gold);font-family:var(--disp);font-weight:800;font-size:13px;cursor:pointer}
+#an-sel .an-srv-open:hover{background:rgba(232,184,75,.16)}
+#an-sel .an-srv-soon{margin-top:12px;text-align:center;font-size:12px;color:#79838f;padding:11px;border:1px solid #2b3340;border-radius:12px}
+#an-sel .an-srv-media{position:relative;min-height:280px;border-left:1px solid #1c232b;border-radius:0 20px 20px 0;overflow:hidden}
+#an-sel .an-srv-img{position:absolute;inset:0;background:#0e1319 center/cover no-repeat}
+#an-sel .an-srv-img.ph{display:grid;place-items:center}
+#an-sel .an-srv-img.ph.ph-indicator{background:radial-gradient(circle at 50% 40%,rgba(46,189,133,.3),rgba(10,14,18,.4))}
+#an-sel .an-srv-img.ph.ph-strategy{background:radial-gradient(circle at 50% 40%,rgba(74,163,255,.3),rgba(10,14,18,.4))}
+#an-sel .an-cart-card{max-width:460px;padding:26px 24px 24px}
+#an-sel .an-cart-list{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+#an-sel .an-cart-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid #232b36;border-radius:12px;background:rgba(255,255,255,.02)}
+#an-sel .an-cart-it-n b{display:block;font-size:14px;font-weight:700;color:#eaecef}
+#an-sel .an-cart-it-n span{display:block;font-size:11.5px;color:#8b96a3;margin-top:2px}
+#an-sel .an-cart-rm{width:30px;height:30px;flex:0 0 auto;display:grid;place-items:center;border-radius:8px;border:1px solid var(--line2);background:transparent;color:#8b96a3;cursor:pointer}
+#an-sel .an-cart-rm:hover{color:#f6465d;border-color:rgba(246,70,93,.5)}
+#an-sel .an-cart-tot{display:flex;align-items:center;justify-content:space-between;padding:12px 2px;margin-bottom:12px;border-top:1px solid #232b36;font-size:13px;color:#c4ccd4}
+#an-sel .an-cart-tot b{color:#eaecef;font-family:var(--mono)}
+#an-sel .an-cart-empty{text-align:center;color:#8b96a3;font-size:13.5px;line-height:1.6;padding:24px 10px}
+@media(max-width:620px){
+  #an-sel .an-srv-grid{grid-template-columns:1fr}
+  #an-sel .an-srv-media{min-height:170px;border-left:0;border-bottom:1px solid #1c232b;border-radius:20px 20px 0 0;order:-1}
+}
 `;
