@@ -78,8 +78,8 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
   const esHero = origen === 'hero';
 
   const intro = esHero
-    ? 'Institutional grade order flow, read from the market itself. The engine reconstructs the real volume resting behind every block of orders and follows the live book in real time, mapping where capital is committed and where price is likely to turn. Liquidity Pools and Hair Pools are built from genuine flow, not lagging indicators, and every level is verifiable on the chart. Fast, precise, and made for traders who act on evidence.'
-    : 'Bring institutional order flow onto the chart you already trade. Liquidity Pools and Hair Pools overlay the exact zones where capital is committed and where price tends to react, computed live from real volume and the order book, on your current chart and timeframe, with full leverage in play. The same read the desks use, now inside your futures workspace.';
+    ? 'Institutional grade order flow, read from the market itself. The engine reconstructs the real volume resting behind every block of orders and follows the live book in real time, mapping where capital is committed and where price is likely to turn. Liquidity Pools and Heard Pools are built from genuine flow, not lagging indicators, and every level is verifiable on the chart. Fast, precise, and made for traders who act on evidence.'
+    : 'Bring institutional order flow onto the chart you already trade. Liquidity Pools and Heard Pools overlay the exact zones where capital is committed and where price tends to react, computed live from real volume and the order book, on your current chart and timeframe, with full leverage in play. The same read the desks use, now inside your futures workspace.';
 
   // Precios del contrato (nunca fijos); si falla la lectura, respaldo 20 / 100.
   let pMes = '$20', pAnio = '$100', yaUso = false;
@@ -93,7 +93,7 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
 
   const PLANES = [
     { id: 'free', plan: null, nombre: 'Free',    amt: 'Free', unidad: '10 minutes, once', detalle: 'Full access to all three tools for a single session of ten minutes. One time per wallet.', free: true },
-    { id: 'mes',  plan: 0,    nombre: 'Monthly', amt: pMes,   unidad: 'per month',         detalle: 'Unlimited access to Liquidity Pools, Hair Pools and Smart Pools.' },
+    { id: 'mes',  plan: 0,    nombre: 'Monthly', amt: pMes,   unidad: 'per month',         detalle: 'Unlimited access to Liquidity Pools, Heard Pools and Smart Pools.' },
     { id: 'anio', plan: 1,    nombre: 'Annual',  amt: pAnio,  unidad: 'per year',          detalle: 'Twelve months for the price of five. Our most chosen plan.', top: true }
   ];
 

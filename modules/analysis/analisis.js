@@ -18,7 +18,7 @@
 */
 
 import { brasas } from './chispas.js';
-import { abrirCobroAnalisis, tieneAccesoAnalisis, segundosAnalisis, esOwnerAnalisis } from './analisis-pro.js?v=4';
+import { abrirCobroAnalisis, tieneAccesoAnalisis, segundosAnalisis, esOwnerAnalisis } from './analisis-pro.js?v=5';
 
 /* Rutas RELATIVAS A LA RAIZ (overlay montado sobre index.html / app.html /
    futuros.html). Logo y foto de cinta: los mismos del sitio. Fondo: en el modulo. */
@@ -33,7 +33,7 @@ const HERRAMIENTAS = [
   { id:'pools', abre:'pools', nombre:'Liquidity Pools', cat:'indicator', img:'assets/img/serv-pools.webp', activos:['Crypto'], spot:true,  listo:true,
     lema:'Where the money is trapped',
     desc:'A real time liquidation map. We reconstruct the volume resting inside every block of orders and project the exact price zones where leveraged positions are waiting to be swept.' },
-  { id:'hair', abre:'heat', nombre:'Hair Pools', cat:'indicator', img:'assets/img/serv-libro.webp', activos:['Crypto'], spot:true, listo:true,
+  { id:'hair', abre:'heat', nombre:'Heard Pools', cat:'indicator', img:'assets/img/serv-libro.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'See what the big players do',
     desc:'The order book lies. We watch every wall over time and separate the real committed capital from the theater, so you know which levels truly hold.' },
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'strategy', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
@@ -71,6 +71,22 @@ const DESC_MES  = [0, 0.10, 0.20, 0.25, 0.30];            // 1,2,3,4,5+ servicio
 const DESC_ANIO = [0, 0.20, 0.30, 0.40, 0.45, 0.50];      // 1,2,3,4,5,6+ servicios (tope 50%)
 const descPorCantidad = (tabla, n) => tabla[Math.min(Math.max(n, 1), tabla.length) - 1];
 const precioUnit = (n, anual) => Math.round((anual ? ANIO_BASE : MES_BASE) * (1 - descPorCantidad(anual ? DESC_ANIO : DESC_MES, n)));
+
+/* Todo se PAGA EN BNB. Los precios son en USD y se convierten con el MISMO
+   oraculo del sitio (OraculoPrecios.precioUSD(address(0)) = BNB/USD, 18 dec). */
+const ORACULO = '0xf51bf11D8C8905bc044B7Fb3B002Bf3F84c977f3';
+let BNB_USD = 0;
+async function leerBNB(wallet, ethers) {
+  try {
+    const prov = new (ethers.BrowserProvider)((wallet && wallet.proveedorActivo && wallet.proveedorActivo()) || window.ethereum);
+    const c = new (ethers.Contract)(ORACULO, ['function precioUSD(address) view returns (uint256)'], prov);
+    const raw = await c.precioUSD('0x0000000000000000000000000000000000000000');
+    const v = Number(raw) / 1e18;
+    if (v > 0) { BNB_USD = v; ['#an-srv', '#an-cart'].forEach((s) => { const m = document.querySelector(s); if (m) pintarBNB(m); }); }
+  } catch (_) {}
+}
+function bnbTxt(usd) { if (!(BNB_USD > 0)) return ''; const v = usd / BNB_USD; return '≈ ' + v.toFixed(v < 1 ? 4 : 3) + ' BNB'; }
+function pintarBNB(cont) { if (!cont) return; cont.querySelectorAll('[data-bnb]').forEach((el) => { const t = bnbTxt(Number(el.dataset.bnb)); el.textContent = t || 'in BNB'; }); }
 
 /* Carrito (local por navegador; el pago real se conecta con el contrato al final). */
 const CART_KEY = 'an-carrito';
@@ -184,12 +200,16 @@ function abrirServicio(h, card) {
           <span class="an-badge an-badge-${esc(h.cat)}">${esc(catTxt)}</span>
           <h2 class="an-srv-nom">${esc(h.nombre)}</h2>
           <p class="an-srv-desc">${esc(h.desc)}</p>
+          <div class="an-srv-precio">
+            <div class="an-pp"><span>Monthly</span><b>$${mes}</b><i data-bnb="${mes}"></i></div>
+            <div class="an-pp"><span>Annual</span><b>$${anio}</b><i data-bnb="${anio}"></i></div>
+          </div>
           <div class="an-srv-acts">
-            <button class="an-pay" data-plan="mes">Pay monthly · $${mes}</button>
-            <button class="an-pay gold" data-plan="anio">Pay annual · $${anio}</button>
+            <button class="an-pay" data-plan="mes">Pay monthly</button>
+            <button class="an-pay gold" data-plan="anio">Pay annual</button>
             <button class="an-cart-add${enCarrito(h.id) ? ' on' : ''}">${enCarrito(h.id) ? 'In cart' : 'Add to cart'}</button>
           </div>
-          <div class="an-srv-hint">Bundle services in the cart for up to 30% off monthly or 50% off annual.</div>
+          <div class="an-srv-hint">Priced in USD, charged in BNB. Bundle in the cart for up to 30% off monthly or 50% off annual.</div>
           ${h.listo ? '<button class="an-srv-open">Open now</button>' : '<div class="an-srv-soon">Coming soon</div>'}
         </div>
         <div class="an-srv-media">${media}</div>
@@ -197,6 +217,7 @@ function abrirServicio(h, card) {
     </div>`;
   sel.appendChild(m);
   requestAnimationFrame(() => m.classList.add('on'));
+  pintarBNB(m);
   const im = m.querySelector('.an-srv-img[data-img]');
   if (im) { const i = new Image(); i.onload = () => { im.style.backgroundImage = `url(${im.dataset.img})`; im.classList.add('con'); }; i.src = im.dataset.img; }
   const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
@@ -228,18 +249,20 @@ function abrirCarrito() {
       <h2 class="an-srv-nom">Your cart</h2>
       ${items.length ? `
         <div class="an-cart-list">${items.map((h) => `<div class="an-cart-item" data-id="${esc(h.id)}"><div class="an-cart-it-n"><b>${esc(h.nombre)}</b><span>${esc(CAT_NOMBRE[h.cat] || '')}</span></div><button class="an-cart-rm" aria-label="Remove">${ICO.x}</button></div>`).join('')}</div>
-        ${n >= 2 ? `<div class="an-cart-desc">Bundle of ${n} · <b>−${dMes}%</b> monthly · <b>−${dAnio}%</b> annual</div>` : ''}
+        ${n >= 2 ? `<div class="an-cart-desc">Bundle of ${n} · <b>${dMes}% off</b> monthly · <b>${dAnio}% off</b> annual</div>` : ''}
         <div class="an-cart-tot"><span>Total</span><b>${n >= 2 ? `<s>$${baseMes}</s> ` : ''}$${totMes}/mo &nbsp;·&nbsp; ${n >= 2 ? `<s>$${baseAnio}</s> ` : ''}$${totAnio}/yr</b></div>
+        <div class="an-cart-bnb"><span data-bnb="${totMes}"></span> / mo &nbsp;·&nbsp; <span data-bnb="${totAnio}"></span> / yr &nbsp;·&nbsp; charged in BNB</div>
         <div class="an-srv-acts">
           <button class="an-pay" data-plan="mes">Pay all monthly · $${totMes}</button>
           <button class="an-pay gold" data-plan="anio">Pay all annual · $${totAnio}</button>
-        </div>` : '<div class="an-cart-empty">Your cart is empty. Open a service and add it here to pay several at once — the more you bundle, the bigger the discount.</div>'}
+        </div>` : '<div class="an-cart-empty">Your cart is empty. Open a service and add it here to pay several at once. The more you bundle, the bigger the discount.</div>'}
     </div>`;
   sel.appendChild(m);
   requestAnimationFrame(() => m.classList.add('on'));
   const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
   m.querySelector('.an-modal-x').onclick = cerrar;
   m.querySelector('.an-modal-bg').onclick = cerrar;
+  pintarBNB(m);
   m.querySelectorAll('.an-pay').forEach((b) => b.onclick = () => toast('El pago del carrito se conecta en la ultima fase (contrato).'));
   m.querySelectorAll('.an-cart-rm').forEach((b) => b.onclick = () => { const id = b.closest('.an-cart-item').dataset.id; toggleCarrito(id); abrirCarrito(); });
 }
@@ -296,6 +319,47 @@ function abrirColaboracion() {
   };
 }
 
+/* Disclaimer corporativo (reutiliza el sello del sitio). Sale una vez por
+   navegador con aceptacion, y se puede reabrir desde el enlace. Sin promesas de
+   resultado: nos exonera de responsabilidad. */
+const DISCLAIMER_IMG = 'assets/portada/red/disclaimer.webp';
+const DISC_KEY = 'an-disclaimer-ok';
+function mostrarDisclaimer(reView) {
+  const sel = document.getElementById('an-sel'); if (!sel) return;
+  if (!reView) { try { if (localStorage.getItem(DISC_KEY)) return; } catch (_) {} }
+  const old = sel.querySelector('#an-disc'); if (old) old.remove();
+  const m = document.createElement('div');
+  m.className = 'an-modal'; m.id = 'an-disc';
+  m.innerHTML = `
+    <div class="an-modal-bg"></div>
+    <div class="an-modal-card an-disc-card">
+      <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
+      <img class="an-disc-sello" src="${DISCLAIMER_IMG}" alt="">
+      <h2 class="an-disc-t">Important notice</h2>
+      <div class="an-disc-body">
+        <p>DecFreedom provides analytical tools, indicators and trading strategies for informational and educational purposes only. Nothing offered here is financial, investment, legal or tax advice, a recommendation, or a solicitation to buy or sell any asset.</p>
+        <p>We do not guarantee any result, profit or performance of any kind. Trading digital assets carries substantial risk and you may lose part or all of your capital. Past or simulated performance never guarantees future results. Every decision is your own and you are solely responsible for it.</p>
+        <p>All tools are provided as is, without warranty of any kind. They may contain errors, delays or inaccuracies, and part of the data may come from third parties. To the maximum extent permitted by law, DecFreedom, its owners, contributors and affiliates accept no liability for any loss or damage arising from the use of this platform or from reliance on anything shown here.</p>
+        <p>You are responsible for complying with the laws of your own jurisdiction. By continuing you confirm that you have read, understood and accepted this notice and our Terms and Conditions.</p>
+      </div>
+      ${reView ? '' : '<label class="an-disc-chk"><input type="checkbox" id="an-disc-agree"><span>I have read, understood and accept this notice.</span></label>'}
+      <button class="an-pay gold${reView ? '' : ' off'}" id="an-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'I understand and continue'}</button>
+    </div>`;
+  sel.appendChild(m);
+  requestAnimationFrame(() => m.classList.add('on'));
+  const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
+  const x = m.querySelector('.an-modal-x'); if (x) x.onclick = cerrar;
+  m.querySelector('.an-modal-bg').onclick = cerrar;
+  const ok = m.querySelector('#an-disc-ok');
+  if (reView) {
+    ok.onclick = cerrar;
+  } else {
+    const chk = m.querySelector('#an-disc-agree');
+    chk.onchange = () => { ok.classList.toggle('off', !chk.checked); ok.disabled = !chk.checked; };
+    ok.onclick = () => { if (!chk.checked) return; try { localStorage.setItem(DISC_KEY, '1'); } catch (_) {} cerrar(); };
+  }
+}
+
 export function abrirSelector(origen, wallet, ethers) {
   const prev = document.getElementById('an-sel'); if (prev) prev.remove();
 
@@ -347,6 +411,7 @@ export function abrirSelector(origen, wallet, ethers) {
         ${catHeadHTML}
         <div class="an-grid" id="an-grid"></div>
         <div class="an-empty" id="an-empty" hidden>No tools match your search.</div>
+        <div class="an-foot"><button class="an-disc-link" id="an-disc-link" type="button">Disclaimer</button></div>
       </div>
     </div>
     <style>${CSS}</style>`;
@@ -361,6 +426,7 @@ export function abrirSelector(origen, wallet, ethers) {
 
   // Particulas de la casa
   let particulas = null; try { particulas = brasas($('.an-chispas')); } catch (_) {}
+  try { leerBNB(wallet, ethers); } catch (_) {}
 
   // Un SOLO boton: ultimos 4 de la wallet + dias de suscripcion, u "Owner".
   (async () => {
@@ -466,6 +532,10 @@ export function abrirSelector(origen, wallet, ethers) {
 
   const colabBtn = $('#an-colab');
   if (colabBtn) colabBtn.onclick = abrirColaboracion;
+
+  const discLink = $('#an-disc-link');
+  if (discLink) discLink.onclick = () => mostrarDisclaimer(true);
+  mostrarDisclaimer(false);
 }
 
 /* ── CSS. La CINTA es copia de los cinta.css de las secciones aprobadas
@@ -662,6 +732,29 @@ const CSS = `
 #an-sel .an-colab-card .an-pay{width:100%}
 #an-sel .an-colab-msg{font-size:12.5px;color:#8ef0b0;margin-top:12px;min-height:16px}
 @media(max-width:620px){#an-sel .an-colab span{display:none}}
+/* precio con BNB en el popup */
+#an-sel .an-srv-precio{display:flex;gap:10px;margin-bottom:14px}
+#an-sel .an-pp{flex:1;padding:12px;border:1px solid #232b36;border-radius:12px;background:rgba(255,255,255,.02);text-align:center}
+#an-sel .an-pp span{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8b96a3;margin-bottom:4px}
+#an-sel .an-pp b{display:block;font-size:22px;font-weight:900;color:#eaecef;line-height:1.1}
+#an-sel .an-pp i{display:block;font-style:normal;font-family:var(--mono);font-size:11px;color:var(--gold);margin-top:3px}
+#an-sel .an-cart-bnb{text-align:right;font-family:var(--mono);font-size:11px;color:var(--gold);margin:-6px 0 12px}
+#an-sel .an-pay.off{opacity:.5;cursor:not-allowed}
+/* footer disclaimer */
+#an-sel .an-foot{text-align:center;padding:22px 0 4px}
+#an-sel .an-disc-link{background:none;border:0;color:#79838f;font-family:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+#an-sel .an-disc-link:hover{color:var(--gold)}
+/* modal disclaimer */
+#an-sel .an-disc-card{max-width:560px;padding:4px 28px 26px;text-align:center}
+#an-sel .an-disc-sello{display:block;width:120px;height:auto;margin:14px auto 4px;filter:drop-shadow(0 10px 22px rgba(0,0,0,.5))}
+#an-sel .an-disc-t{font-size:22px;font-weight:900;color:#eaecef;margin:0 0 14px}
+#an-sel .an-disc-body{text-align:left;max-height:40vh;overflow-y:auto;scrollbar-width:none;padding-right:4px}
+#an-sel .an-disc-body::-webkit-scrollbar{display:none}
+#an-sel .an-disc-body p{font-size:12.5px;line-height:1.65;color:#c4ccd4;margin:0 0 11px}
+#an-sel .an-disc-chk{display:flex;align-items:flex-start;gap:9px;text-align:left;margin:16px 0 14px;cursor:pointer}
+#an-sel .an-disc-chk input{flex:0 0 auto;width:18px;height:18px;margin-top:1px;accent-color:var(--gold);cursor:pointer}
+#an-sel .an-disc-chk span{font-size:12.5px;color:#c4ccd4;line-height:1.5}
+#an-sel .an-disc-card .an-pay{width:100%}
 @media(max-width:620px){
   #an-sel .an-srv-grid{grid-template-columns:1fr}
   #an-sel .an-srv-media{min-height:170px;border-left:0;border-bottom:1px solid #1c232b;border-radius:20px 20px 0 0;order:-1}
