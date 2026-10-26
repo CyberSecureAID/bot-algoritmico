@@ -9,3 +9,5 @@ Bots (GridBot V15) hash: 0xf0f5067ce60b2bb3dfd86bfca208bc8715e175cf1c6b1df5f4360
 Launchpad (LaunchpadDF) hash: 0xe72411b74c561376cbb079623fb2565b4c618304e62f4925a0240c4100017d01
 
 Launchpad Positioning (FeatureTokens) hash: 0x213c353d3c4569be2c03871ba349c3da005028cb46133bb1d5b3d58ce6ea27ca
+
+Terminal (Terminal) hash: 0xc734f95fb0a40c239569ea945309f79ec2f5a56bd018e4ab000cbec0b9c23708
