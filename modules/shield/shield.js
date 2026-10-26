@@ -821,8 +821,8 @@ function cabecera() {
     + '<a class="pt-logo" href="../../index.html" aria-label="DecFreedom"><img src="../../assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
     + '<nav class="pt-nav" aria-label="Main">'
     + it('../swap/swap.html', 'Swap') + it('../launchpad/launchpad.html', 'Launchpad') + it('../terminal/terminal.html', 'Terminal')
-    + it('../bots/bots.html', 'Bots') + it('../../futuros.html?v=14', 'Futures') + it('../../aportar.html', 'Staking')
-    + it('./shield.html', 'Shield', true) + it('../../app.html?abrir=analisis', 'Analysis')
+    + it('../bots/bots.html', 'Bots') + it('../../app.html?abrir=analisis', 'Analysis') + it('../../futuros.html?v=14', 'Futures') + it('../../aportar.html', 'Staking')
+    + it('./shield.html', 'Shield', true)
     + '<div class="pt-nav__i"><button class="pt-nav__b" type="button">Tools ' + CH + '</button><div class="pt-menu">'
     + '<a href="../../app.html?abrir=tools&tool=polvo"><b>Dust collector</b><span>Turn coin leftovers into one coin</span></a>'
     + '<a href="../../app.html?abrir=tools&tool=alertas"><b>Price alerts</b><span>Get notified at your price</span></a>'
