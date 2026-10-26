@@ -523,6 +523,22 @@
         return;
       }
 
+      // Analysis: overlay propio (igual que en el lobby). Se importa su modulo
+      // con la wallet y ethers, y se abre encima de la app.
+      if (que === 'analisis') {
+        (async function () {
+          try {
+            var J = new URL('assets/js/', document.baseURI).href;
+            var w = await import(J + 'wallet.js?v=129');
+            try { await w.reconectarSiProcede(); } catch (_) {}
+            var ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
+            var m = await import(new URL('modules/analysis/analisis.js?v=5', document.baseURI).href);
+            await m.abrirAnalisis('hero', w, ethers);
+          } catch (_) {}
+        })();
+        return;
+      }
+
       // Cada destino de la portada, con el id del botón que ya existe.
       var BOTONES = {
         swap:     'c-swap',
