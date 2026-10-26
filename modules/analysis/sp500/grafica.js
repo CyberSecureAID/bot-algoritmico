@@ -45,12 +45,10 @@ export function crearChart(cv, cont) {
     velas: [], td: null, precio: 0, tf: '1d', diaria: true,
     fuente: '', cruz: null,
     vista: { desde: 0, ancho: 80, zoomY: 1, offsetY: 0 },
-    _geo: null, marca: null
+    _geo: null
   };
-
-  const marca = new Image();
-  marca.onload = () => { S.marca = marca; dibujar(); };
-  marca.src = new URL('../../../assets/img/cco-full.webp', import.meta.url).href;
+  // La marca de agua va como <img> en la esquina inferior izquierda (en sp500.js),
+  // igual que Liquidity, Heard y Smart Pools. Aqui no se dibuja nada al centro.
 
   function numEt(g, x, y, txt, color, destacado) {
     if (destacado) {
@@ -94,7 +92,6 @@ export function crearChart(cv, cont) {
     const paso = x1 / ancho;
     const idxVis = (i) => (i - primero) * paso + paso / 2;
 
-    if (S.marca) { const mw = Math.min(x1 * 0.4, 340), mh = mw * (S.marca.height / S.marca.width); g.save(); g.globalAlpha = 0.05; g.drawImage(S.marca, (x1 - mw) / 2, (y1 - mh) / 2, mw, mh); g.restore(); }
 
     // Rango vertical
     let alto = -Infinity, bajo = Infinity;
@@ -148,7 +145,7 @@ export function crearChart(cv, cont) {
     const verNum = paso >= 7;
     vis.forEach((v, li) => {
       const i = primero + li; const b = td.bars[i]; if (!b) return;
-      const x = i * paso + paso / 2;
+      const x = li * paso + paso / 2;   // indice LOCAL: las cuentas quedan clavadas a su vela, no flotan
       if (b.setup && (verNum || b.setup.n === 9)) {
         const buyS = b.setup.dir === 'buy';
         const col = buyS ? COL.buy : COL.sell;

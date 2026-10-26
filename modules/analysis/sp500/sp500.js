@@ -60,7 +60,7 @@ export async function abrirSP500() {
       </div>
     </header>
     <div class="sp-main">
-      <div class="sp-graf" id="sp-graf"><canvas id="sp-cv"></canvas>
+      <div class="sp-graf" id="sp-graf"><canvas id="sp-cv"></canvas><img class="sp-marca" src="assets/img/cco-marca.webp" alt="">
         <div class="sp-wait" id="sp-wait"><div class="sp-spin"></div><b>Loading S&P 500</b></div>
       </div>
       <aside class="sp-side">
@@ -366,6 +366,7 @@ function inyectarCSS() {
 .sp-main{flex:1;display:flex;min-height:0}
 .sp-graf{flex:1;position:relative;min-width:0;background:var(--surf)}
 #sp-cv{display:block;width:100%;height:100%;touch-action:none}
+.sp-marca{position:absolute;left:14px;bottom:30px;pointer-events:none;height:34px;width:auto;opacity:.72;filter:drop-shadow(0 2px 6px rgba(0,0,0,.85));z-index:2;user-select:none}
 .sp-wait{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(5,7,10,.72);text-align:center;padding:24px}
 .sp-wait b{font-size:14px}.sp-wait span{font-size:12px;color:#79838f;max-width:320px;line-height:1.5}
 .sp-spin{width:34px;height:34px;border:3px solid rgba(232,184,75,.2);border-top-color:var(--gold);border-radius:50%;animation:sp-spin .9s linear infinite}
@@ -422,6 +423,7 @@ function inyectarCSS() {
   .sp-bar .col-wide,.sp-bar .hide-md{display:none}
   .sp-coin .sp-nm span{display:none}.sp-px{font-size:17px}
   .sp-graf{height:46vh}
+  .sp-marca{height:26px;left:10px;bottom:24px}
 }`;
   document.head.appendChild(st);
 }

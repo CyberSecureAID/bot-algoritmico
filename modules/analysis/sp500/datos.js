@@ -68,6 +68,9 @@ const limpiar = (velas) => {
   const vistos = new Set();
   return velas
     .filter((v) => v && isFinite(v.t) && isFinite(v.o) && isFinite(v.h) && isFinite(v.l) && isFinite(v.c))
+    // Descarta velas rotas (valores no positivos, maximo por debajo del minimo, o
+    // rango absurdo tipo mecha infinita) que ensucian la grafica y la escala.
+    .filter((v) => v.o > 0 && v.h > 0 && v.l > 0 && v.c > 0 && v.h >= v.l && (v.h - v.l) <= v.c * 0.4)
     .filter((v) => { if (vistos.has(v.t)) return false; vistos.add(v.t); return true; })
     .sort((a, b) => a.t - b.t);
 };
