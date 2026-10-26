@@ -271,7 +271,7 @@ export async function abrirSP500() {
   }
 
   function arrancarAnim() { if (animOn) return; animOn = true; const paso = () => { if (!document.getElementById('sp-overlay')) { animOn = false; return; } if (mercadoAbierto() && !document.hidden) chart.dibujar(); setTimeout(() => requestAnimationFrame(paso), 55); }; requestAnimationFrame(paso); }
-  function reprogramarPoll() { clearInterval(pollTimer); pollTimer = setInterval(async () => { if (!document.getElementById('sp-overlay')) { clearInterval(pollTimer); return; } if (!mercadoAbierto() || document.hidden) return; try { const r = await traerVelasSP(tf); if (r.velas.length) { rawVelas = r.velas; fuente = r.fuente; recomputar(); } } catch (_) {} }, 30000); }
+  function reprogramarPoll() { clearInterval(pollTimer); pollTimer = setInterval(async () => { if (!document.getElementById('sp-overlay')) { clearInterval(pollTimer); return; } if (ES_DIARIA(tf) || !mercadoAbierto() || document.hidden) return; try { const r = await traerVelasSP(tf); if (r.velas.length) { rawVelas = r.velas; fuente = r.fuente; recomputar(); } } catch (_) {} }, 60000); }
 
   /* ── Controles ── */
   const tfdd = $('#sp-tf');

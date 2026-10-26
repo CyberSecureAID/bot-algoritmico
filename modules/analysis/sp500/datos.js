@@ -18,7 +18,8 @@
    ══════════════════════════════════════════════════════════════ */
 
 export const CLAVES = {
-  twelvedata: '',   // ← clave gratis de https://twelvedata.com (opcional, recomendada)
+  marketstack: 'a80815ee20262ebb09fd1ed058729046',   // clave gratis de marketstack (EOD = solo DIARIO, 100 peticiones al mes). Puedes rotarla con "Reset Key".
+  twelvedata: 'bdeb2354693b4596a38c6e6f35e544f9',   // clave gratis de Twelve Data: da INTRADIA (5m/15m/1h) y diaria, 800 al dia. Rotable en twelvedata.com.
   fmp: ''           // ← clave gratis de https://financialmodelingprep.com (opcional)
 };
 
@@ -117,6 +118,17 @@ async function feedFMP(tf) {
   return limpiar(velas);
 }
 
+/* ── 0) marketstack (clave gratis, EOD = solo DIARIO). Fiable para 1d.
+   Plan gratis: 100 peticiones al MES, asi que una por carga y SIN sondeo. ── */
+async function feedMarketstack(tf) {
+  if (tf !== '1d') throw new Error('marketstack free: solo diario');
+  const url = `https://api.marketstack.com/v1/eod?access_key=${CLAVES.marketstack}&symbols=SPY&limit=1000`;
+  const j = await pedir(url);
+  if (!j || !Array.isArray(j.data)) throw new Error(j && j.error ? (j.error.message || 'marketstack error') : 'marketstack sin datos');
+  const velas = j.data.map((x) => ({ t: Date.parse(x.date), o: +x.open, h: +x.high, l: +x.low, c: +x.close, v: +(x.volume || 0) }));
+  return limpiar(velas);
+}
+
 /* ── 3) Yahoo (sin clave, vía proxy, UTC) ── */
 function parseYahoo(j) {
   const r = j && j.chart && j.chart.result && j.chart.result[0];
@@ -163,6 +175,7 @@ export async function traerVelasSP(tf) {
     return { velas: limpiar(window.__SP500_MOCK__(tf) || []), fuente: 'simulado' };
   }
   const vias = [];
+  if (CLAVES.marketstack) vias.push(['marketstack', () => feedMarketstack(tf)]);
   if (CLAVES.twelvedata) vias.push(['Twelve Data', () => feedTwelveData(tf)]);
   if (CLAVES.fmp) vias.push(['FMP', () => feedFMP(tf)]);
   vias.push(['Yahoo', () => feedYahoo(tf)]);
