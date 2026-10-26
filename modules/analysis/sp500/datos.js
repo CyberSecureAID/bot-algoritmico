@@ -25,10 +25,27 @@ export const CLAVES = {
 const SIMBOLO = 'SPY';   // el ETF del S&P 500: abre justo a las 9:30 ET y es el que dan gratis
 
 /* Proxies públicos para Yahoo (CORS). Se prueban en orden. */
+/* Proxies CORS para fuentes sin clave (Yahoo, Stooq). Se prueban en orden.
+   corsproxy.io se quito: ahora exige registro y devuelve 401. */
 const PROXIES = [
-  (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-  (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
+  { make: (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u), wrap: false },
+  { make: (u) => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u), wrap: true },
+  { make: (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u), wrap: false }
 ];
+/* Devuelve el TEXTO de una URL ajena pasando por un proxy CORS, con relevo. */
+async function viaProxy(target, ms = 14000) {
+  let ultimo;
+  for (const px of PROXIES) {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(px.make(target), { signal: ctl.signal, cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (px.wrap) { const j = await r.json(); if (j && typeof j.contents === 'string' && j.contents) return j.contents; throw new Error('wrap vacio'); }
+      return await r.text();
+    } catch (e) { ultimo = e; } finally { clearTimeout(t); }
+  }
+  throw ultimo || new Error('proxy sin datos');
+}
 
 const TF_TD = { '5m': '5min', '15m': '15min', '1h': '1h', '1d': '1day' };
 const TF_FMP = { '5m': '5min', '15m': '15min', '1h': '1hour' };
@@ -115,15 +132,28 @@ function parseYahoo(j) {
 }
 async function feedYahoo(tf) {
   const target = `https://query1.finance.yahoo.com/v8/finance/chart/${SIMBOLO}?interval=${TF_YH[tf]}&range=${RANGO_YH[tf]}&includePrePost=false`;
-  let ultimo;
-  for (const envolver of PROXIES) {
-    try {
-      const j = await pedir(envolver(target), 14000);
-      const velas = parseYahoo(j);
-      if (velas.length > 20) return velas;
-    } catch (e) { ultimo = e; }
+  const txt = await viaProxy(target);
+  return parseYahoo(JSON.parse(txt));
+}
+
+/* ── 4) Stooq (sin clave, vía proxy, CSV). Solo diario, ultimo recurso. ── */
+function parseStooqCSV(txt) {
+  const lineas = txt.trim().split(/\r?\n/);
+  if (lineas.length < 3) throw new Error('stooq sin datos');
+  const velas = [];
+  for (let i = 1; i < lineas.length; i++) {
+    const c = lineas[i].split(',');
+    if (c.length < 5) continue;
+    const o = +c[1], h = +c[2], l = +c[3], cl = +c[4], v = +(c[5] || 0);
+    if (isFinite(o) && isFinite(cl)) velas.push({ t: etWallToMs(c[0]), o, h, l, c: cl, v });
   }
-  throw ultimo || new Error('yahoo sin datos');
+  return limpiar(velas);
+}
+async function feedStooq(tf) {
+  if (tf !== '1d') throw new Error('stooq solo diario');
+  const txt = await viaProxy('https://stooq.com/q/d/l/?s=spy.us&i=d');
+  if (/^\s*</.test(txt) || /html/i.test(txt.slice(0, 40))) throw new Error('stooq html');
+  return parseStooqCSV(txt);
 }
 
 /** Trae las velas de SPY probando las fuentes en orden, con relevo. Devuelve
@@ -136,6 +166,7 @@ export async function traerVelasSP(tf) {
   if (CLAVES.twelvedata) vias.push(['Twelve Data', () => feedTwelveData(tf)]);
   if (CLAVES.fmp) vias.push(['FMP', () => feedFMP(tf)]);
   vias.push(['Yahoo', () => feedYahoo(tf)]);
+  vias.push(['Stooq', () => feedStooq(tf)]);
   let ultimo;
   for (const [nombre, fn] of vias) {
     try {
