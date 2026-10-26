@@ -85,7 +85,7 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
 
   const PLANES = [
     { id: 'free', plan: null, nombre: 'Free',    amt: 'Free', unidad: '10 minutes, once', detalle: 'Full access to all three tools for a single session of ten minutes. One time per wallet.', free: true },
-    { id: 'mes',  plan: 0,    nombre: 'Monthly', amt: pMes,   unidad: 'per month',         detalle: 'Unlimited access to Liquidity Pools, Hair Pools and Smart Levels.' },
+    { id: 'mes',  plan: 0,    nombre: 'Monthly', amt: pMes,   unidad: 'per month',         detalle: 'Unlimited access to Liquidity Pools, Hair Pools and Smart Pools.' },
     { id: 'anio', plan: 1,    nombre: 'Annual',  amt: pAnio,  unidad: 'per year',          detalle: 'Twelve months for the price of five. Our most chosen plan.', top: true }
   ];
 
