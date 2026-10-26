@@ -60,6 +60,14 @@ export async function segundosAnalisis(wallet, ethers) {
     return Number(await c.segundosRestantes(cuenta));
   } catch (_) { return 0; }
 }
+export async function esOwnerAnalisis(wallet, ethers) {
+  try {
+    const cuenta = wallet.cuentaActual && wallet.cuentaActual();
+    if (!cuenta) return false;
+    const c = new (ethers.Contract)(ANALISIS_ADDR, ABI, _prov(wallet, ethers));
+    return await c.esOwner(cuenta);
+  } catch (_) { return false; }
+}
 
 function _fmtUSD(usd2) { return '$' + (Number(usd2) / 100).toFixed(0); }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
