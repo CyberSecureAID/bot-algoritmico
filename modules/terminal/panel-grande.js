@@ -508,7 +508,7 @@ async function resolver(q, feed) {
   return null;
 }
 
-let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 60, _abrirAlerta = false, _chartFuente = 'v2', _posTimer = null;
+let _ov = null, _cargar = null, _precioUsd = 0, _itActual = null, _ctx = null, _velasRawBig = null, _tfSecBig = 14400, _abrirAlerta = false, _chartFuente = 'v2', _posTimer = null;
 /* Respaldo de grafica por GeckoTerminal (Tron / tokens sin par V2). Modulo-nivel para que lo use tanto la carga
    del token como el cambio de temporalidad. Guarda contra _itActual para descartar respuestas de otro token. */
 async function cargarVelasGecko(it) {
@@ -591,7 +591,7 @@ export async function abrirGrande(it0, ctx, opts) {
   // sin volver a llamar al RPC. Al cambiar, se limpia cualquier medicion de la regla (sus coordenadas cambian).
   const tfBox = $('tg-tf');
   if (tfBox) tfBox.querySelectorAll('button').forEach((b) => { b.onclick = () => {
-    _tfSecBig = Number(b.dataset.sec) || 60;
+    _tfSecBig = Number(b.dataset.sec) || 14400;
     tfBox.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
     if (mdbox) mdbox.hidden = true;
     // V2: reagrupa las velas en cache sin re-llamar. GeckoTerminal: el timeframe es otra consulta, hay que pedirla.

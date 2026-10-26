@@ -313,7 +313,7 @@ export function arrancar() {
         <section class="tm-cp" id="tm-cp">
           <div class="tm-cp-head">
             <div class="tm-cp-tt" id="tm-cp-tt"><span class="tm-cp-ph">${ICO_BOLT}<b>Chart</b><span>Pick a token below to load its live chart</span></span></div>
-            <div class="tm-cp-right"><div class="tm-tf" id="tm-cp-tf"><button data-sec="60" type="button">1m</button><button data-sec="300" type="button">5m</button><button data-sec="900" class="on" type="button">15m</button><button data-sec="3600" type="button">1h</button><button data-sec="14400" type="button">4h</button><button data-sec="86400" type="button">1d</button></div><button class="tm-cp-all" id="tm-cp-all" type="button" aria-label="View full chart" disabled>${ICO_EXPAND}</button></div>
+            <div class="tm-cp-right"><div class="tm-tf" id="tm-cp-tf"><button data-sec="60" type="button">1m</button><button data-sec="300" type="button">5m</button><button data-sec="900" type="button">15m</button><button data-sec="3600" type="button">1h</button><button data-sec="14400" class="on" type="button">4h</button><button data-sec="86400" type="button">1d</button></div><button class="tm-cp-all" id="tm-cp-all" type="button" aria-label="View full chart" disabled>${ICO_EXPAND}</button></div>
           </div>
           <div class="tm-chart tm-cp-chart"><div class="tm-chart-cv" id="tm-cp-cv"></div><img class="tm-wm" src="../../branding/decfreedomlogohorizontal.webp" onerror="this.onerror=null;this.src='../../assets/img/cco-full.webp'" alt=""><div class="tm-chart-msg" id="tm-cp-msg">Pick a token below</div></div>
         </section>
@@ -342,7 +342,7 @@ export function arrancar() {
   if (tabs3) tabs3.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tab = b.dataset.tab; tabs3.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); pintar(); }; });
   // Grafico inline (Modulo 4): timeframes, refrescar y View All.
   const cptf = $('tm-cp-tf');
-  if (cptf) cptf.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tfSec = Number(b.dataset.sec) || 900; cptf.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); if (_cpFuente === 'gecko' && _sel) cargarCPGecko(_sel); else renderCP(); }; });
+  if (cptf) cptf.querySelectorAll('button').forEach((b) => { b.onclick = () => { _tfSec = Number(b.dataset.sec) || 14400; cptf.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); if (_cpFuente === 'gecko' && _sel) cargarCPGecko(_sel); else renderCP(); }; });
   const cpall = $('tm-cp-all'); if (cpall) cpall.onclick = () => { if (_sel) verGrande(_sel); };
   const nav = $('tm-nav');
   if (nav) nav.querySelectorAll('.tm-nav-b').forEach((b) => { b.onclick = () => { const n = b.dataset.nav; try {
@@ -614,7 +614,7 @@ let _creadorFicha = '';
    la vista grande. grafico.js tiene una sola instancia; mientras la vista grande esta
    abierta la toma prestada, por eso al cerrarse re-montamos aqui. En movil (<860) el
    panel se oculta y el toque abre la ficha. */
-let _sel = null, _tfSec = 900, _velasRaw = null, _cpTok = '', _cpObs = null, _t0 = 0, _cpFuente = 'v2';
+let _sel = null, _tfSec = 14400, _velasRaw = null, _cpTok = '', _cpObs = null, _t0 = 0, _cpFuente = 'v2';
 const cpEl = (id) => document.getElementById(id);
 /* Reagrupa las velas por-operacion en cubos de 'seg' segundos (OHLC real por cubo). */
 function agrupar(velas, seg) {
