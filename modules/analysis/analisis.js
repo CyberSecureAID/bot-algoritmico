@@ -39,6 +39,9 @@ const HERRAMIENTAS = [
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'strategy', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
     lema:'Where to buy and where to sell',
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
+  { id:'sp', abre:'sp500', nombre:'SP500 Dawn', cat:'strategy', img:null, activos:['US Stocks'], spot:false, listo:true,
+    lema:'The opening range decides the day',
+    desc:'The US market opens and prints a box. Where price sits inside that box at the read time points the day up, down or sideways, with entry, stop and target drawn live on the chart and backtested on real data.' },
   { id:'hfs', abre:null, nombre:'High Frequency Signals', cat:'indicator', img:null, activos:['Crypto'], spot:false, listo:false,
     lema:'Momentum and scalping, tick by tick',
     desc:'Real time signals built for scalping and momentum: micro-shifts in flow, speed and aggression surfaced the instant they happen.' },
@@ -152,6 +155,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=126')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=127')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
+    else if (abre === 'sp500')  await (await import(new URL('./sp500/sp500.js?v=1', import.meta.url).href)).abrirSP500();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
