@@ -8,16 +8,17 @@
    derecho premium que dice la estructura y QUÉ HACER.
    ══════════════════════════════════════════════════════════════ */
 
-import { crearChart } from './grafica.js?v=2';
-import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=2';
-import { analizar, momentoMTF, rsi, backtest, PERIODO } from './motor.js?v=2';
+import { crearChart } from './grafica.js?v=4';
+import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=4';
+import { analizar, momentoMTF, backtest, LEN } from './motor.js?v=4';
 
 const MARCA = new URL('../../../assets/img/cco-marca.webp', import.meta.url).href;
 const ICO = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   how: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 0 1 4.6 1.2c0 1.7-2.1 2-2.1 3.3"/><path d="M12 17h.01"/></svg>',
-  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  exp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M8 8l4-4 4 4"/><path d="M12 4v12"/></svg>'
 };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (p) => (p >= 1000 ? p.toLocaleString('en-US', { maximumFractionDigits: 2 }) : (p || 0).toFixed(p >= 1 ? 2 : 4));
@@ -34,7 +35,6 @@ export async function abrirStructural() {
   const ov = document.createElement('div'); ov.id = 'sl-overlay';
   let sim = SIMBOLOS.find((s) => s.id === lget('sl-sim', POR_DEFECTO)) || SIMBOLOS[0];
   let tf = lget('sl-tf', '1d'); if (!TFS.some((t) => t[0] === tf)) tf = '1d';
-  let filtro = lget('sl-filtro', 'trend'); if (filtro !== 'trend' && filtro !== 'none') filtro = 'trend';
 
   ov.innerHTML = `
     <header class="sl-bar">
@@ -54,11 +54,12 @@ export async function abrirStructural() {
         <div class="menu">${TFS.map((t) => `<button data-tf="${t[0]}"${t[0] === tf ? ' class="on"' : ''}>${t[1]}</button>`).join('')}</div>
       </div>
       <div class="col"><span class="l">Change</span><b class="v" id="sl-chg">...</b></div>
-      <div class="col"><span class="l">Structure</span><b class="v" id="sl-str">...</b></div>
+      <div class="col"><span class="l">Trend</span><b class="v" id="sl-str">...</b></div>
       <div class="col"><span class="l">Signal</span><b class="v" id="sl-sig">...</b></div>
-      <div class="col hide-sm"><span class="l">RSI</span><b class="v" id="sl-rsi">...</b></div>
+      <div class="col hide-sm"><span class="l">Mom</span><b class="v" id="sl-rsi">...</b></div>
       <div class="sl-right">
         <div class="sl-live" id="sl-live"><i></i><b>...</b></div>
+        <button class="sl-ib" id="sl-export" title="Export as image">${ICO.exp}</button>
         <button class="sl-ib" id="sl-how" title="How it works">${ICO.how}</button>
       </div>
     </header>
@@ -98,49 +99,39 @@ export async function abrirStructural() {
   const aplicarLogo = (el, s) => ponerLogo(el, s, 'sl-ico');
 
   /* ── cabecera: precio, cambio, estructura, señal, rsi ── */
-  function pintarBar(velas, E, rsiUlt) {
+  function pintarBar(velas, E) {
     if (!velas.length) return;
     const last = velas[velas.length - 1], prev = velas.length > 1 ? velas[velas.length - 2].c : last.o;
     const chg = prev ? ((last.c - prev) / prev) * 100 : 0;
-    const px = $('#sl-px'); px.textContent = fmt(last.c); px.className = 'sl-px ' + (chg >= 0 ? 'up' : 'dn');
+    const px = $('#sl-px'); px.textContent = fmt(last.c); px.className = 'sl-px ' + (E.trendActual === -1 ? 'dn' : 'up');
     const cE = $('#sl-chg'); cE.textContent = (chg >= 0 ? UP : DN) + ' ' + Math.abs(chg).toFixed(2) + '%'; cE.className = 'v ' + (chg >= 0 ? 'up' : 'dn');
-    const st = $('#sl-str'); const S = E.sesgo; st.textContent = S === 'alcista' ? 'Bullish' : S === 'bajista' ? 'Bearish' : S === 'mixto' ? 'Mixed' : 'Range'; st.className = 'v ' + (S === 'alcista' ? 'up' : S === 'bajista' ? 'dn' : '');
+    const st = $('#sl-str'); st.textContent = E.trendActual === 1 ? 'Bullish' : E.trendActual === -1 ? 'Bearish' : 'Neutral'; st.className = 'v ' + (E.trendActual === 1 ? 'up' : E.trendActual === -1 ? 'dn' : '');
     const sg = $('#sl-sig'); const u = E.ultima; sg.textContent = u ? u.tipo : '—'; sg.className = 'v ' + (u ? (u.tipo === 'LONG' ? 'up' : 'dn') : '');
-    const r = $('#sl-rsi'); r.textContent = isFinite(rsiUlt) ? rsiUlt.toFixed(0) : '--'; r.className = 'v ' + (rsiUlt >= 70 ? 'dn' : rsiUlt <= 30 ? 'up' : '');
+    const r = $('#sl-rsi'); r.textContent = isFinite(E.changeActual) ? (E.changeActual >= 0 ? '+' : '') + E.changeActual.toFixed(2) : '--'; r.className = 'v ' + (E.changeActual > 0 ? 'up' : E.changeActual < 0 ? 'dn' : '');
   }
   function pintarLive() { const el = $('#sl-live'); if (!el) return; el.innerHTML = `<i></i><b>LIVE</b><em>${esc(chart.S.fuente || '')}</em>`; }
 
   /* ── panel derecho ── */
   function pintarPanel(E, velas, mtf, bt) {
-    // estructura
+    // estado del indicador
     const se = $('#sl-struct');
-    const chip = E.sesgo === 'alcista' ? ['Bullish structure', 'bull'] : E.sesgo === 'bajista' ? ['Bearish structure', 'bear'] : E.sesgo === 'mixto' ? ['Losing structure', 'neu'] : ['Range', 'neu'];
-    const px = E.precio;
-    // Niveles por POSICIÓN (no por rol): una línea rota se proyecta al lado contrario,
-    // así que resistencia = lo más cercano por ARRIBA, soporte = lo más cercano por ABAJO.
-    const cand = [];
-    if (E.resistenciaHoy) cand.push(E.resistenciaHoy);
-    if (E.soporteHoy) cand.push(E.soporteHoy);
-    (E.pivotsH || []).slice(-5).forEach((p) => cand.push(p.price));
-    (E.pivotsL || []).slice(-5).forEach((p) => cand.push(p.price));
-    const overhead = cand.filter((v) => v > px * 1.0004).sort((a, b) => a - b);
-    const below = cand.filter((v) => v < px * 0.9996).sort((a, b) => b - a);
-    const res = overhead.length ? overhead[0] : null, sop = below.length ? below[0] : null;
-    const dRes = res ? ((res - px) / px * 100) : null, dSop = sop ? ((px - sop) / px * 100) : null;
-    se.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Structure</h3><span class="sl-chip sl-chip-${chip[1]}">${chip[0]}</span></div>
+    const chip = E.trendActual === 1 ? ['Bullish trend', 'bull'] : E.trendActual === -1 ? ['Bearish trend', 'bear'] : ['Neutral', 'neu'];
+    const ch = E.changeActual, sobre = E.sobre200;
+    const momCls = E.trendActual === 1 ? 'sop' : E.trendActual === -1 ? 'res' : 'px';
+    se.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">State</h3><span class="sl-chip sl-chip-${chip[1]}">${chip[0]}</span></div>
       <div class="sl-lv">
-        <div class="sl-lvrow res"><span>Resistance</span><b>${res ? fmt(res) : '—'}</b><em>${dRes != null ? (dRes >= 0 ? '+' : '') + dRes.toFixed(2) + '%' : ''}</em></div>
-        <div class="sl-lvrow px"><span>Price</span><b>${fmt(px)}</b><em></em></div>
-        <div class="sl-lvrow sop"><span>Support</span><b>${sop ? fmt(sop) : '—'}</b><em>${dSop != null ? '−' + Math.abs(dSop).toFixed(2) + '%' : ''}</em></div>
+        <div class="sl-lvrow ${momCls}"><span>Momentum</span><b>${isFinite(ch) ? (ch >= 0 ? '+' : '') + ch.toFixed(3) : '--'}</b><em>thr ±${E.l.toFixed(2)}</em></div>
+        <div class="sl-lvrow ${sobre ? 'sop' : 'res'}"><span>200-EMA</span><b>${sobre == null ? '—' : sobre ? 'Price above' : 'Price below'}</b><em>${isFinite(E.e200Hoy) ? fmt(E.e200Hoy) : ''}</em></div>
+        <div class="sl-lvrow px"><span>Lookback</span><b>${E.len}</b><em>filter on</em></div>
       </div>`;
 
     // señal + qué hacer
     const sg = $('#sl-signal'); const u = E.ultima;
-    let tono = 'neu', titulo = 'No active break', texto = '';
-    if (u && E.sesgo === 'alcista') { tono = 'long'; titulo = 'LONG — structure flipped up'; texto = `Price broke the descending resistance at <b>${fmt(u.nivel)}</b>. Bias is long while it holds above that level; a close back below weakens it.`; }
-    else if (u && E.sesgo === 'bajista') { tono = 'short'; titulo = 'SHORT — structure flipped down'; texto = `Price broke the ascending support at <b>${fmt(u.nivel)}</b>. Bias is short while it stays below that level; a close back above weakens it.`; }
-    else if (u) { tono = 'neu'; titulo = `Last signal: ${u.tipo} at ${fmt(u.nivel)}`; texto = `Price has moved back through the ${u.tipo === 'LONG' ? 'long' : 'short'} level — structure is no longer clean. Wait for the next break of ${res ? 'resistance ' + fmt(res) : 'resistance'} or ${sop ? 'support ' + fmt(sop) : 'support'}.`; }
-    else { texto = `No trendline break yet. Price is working between ${sop ? 'support <b>' + fmt(sop) + '</b>' : 'support'} and ${res ? 'resistance <b>' + fmt(res) + '</b>' : 'resistance'}. The signal fires on the break.`; }
+    let tono = 'neu', titulo = 'Waiting for a signal', texto = '';
+    if (u && u.tipo === 'LONG' && E.trendActual === 1) { tono = 'long'; titulo = 'LONG — momentum up, above 200-EMA'; texto = `Momentum flipped green with price above the 200-EMA. Bias is long while momentum holds green; a flip to red, or a close below the 200-EMA, ends it.`; }
+    else if (u && u.tipo === 'SHORT' && E.trendActual === -1) { tono = 'short'; titulo = 'SHORT — momentum down, below 200-EMA'; texto = `Momentum flipped red with price below the 200-EMA. Bias is short while momentum holds red; a flip to green, or a close above the 200-EMA, ends it.`; }
+    else if (u) { tono = 'neu'; titulo = `Last signal: ${u.tipo}`; texto = `The last signal was ${u.tipo}, but momentum and the 200-EMA are no longer aligned. The next alert fires when momentum flips in the direction of the 200-EMA.`; }
+    else { texto = `No signal yet. A LONG fires when momentum turns green with price above the 200-EMA; a SHORT when it turns red below it. One per regime.`; }
     sg.className = 'sl-card sl-signal ' + tono;
     sg.innerHTML = `<div class="sl-sgtop"><span class="sl-dot"></span><h3 class="sl-h">${esc(titulo)}</h3></div>
       <p class="sl-say">${texto}</p>
@@ -164,8 +155,7 @@ export async function abrirStructural() {
     const pf = $('#sl-perf');
     if (pf && bt) {
       const pfv = bt.pf === Infinity ? '∞' : bt.pf.toFixed(2);
-      pf.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Backtest ${String.fromCharCode(183)} this history</h3>
-        <button class="sl-tog ${filtro === 'trend' ? 'on' : ''}" id="sl-tog">Trend filter · ${filtro === 'trend' ? 'ON' : 'OFF'}</button></div>
+      pf.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Backtest ${String.fromCharCode(183)} this history</h3><span class="sl-chip sl-chip-bull">no repaint</span></div>
         <div class="sl-stats">
           <div class="sl-stat"><span>Win rate</span><b>${bt.n ? bt.winRate.toFixed(0) + '%' : '--'}</b></div>
           <div class="sl-stat"><span>Profit factor</span><b class="${bt.pf >= 1 ? 'g' : 'r'}">${bt.n ? pfv : '--'}</b></div>
@@ -174,7 +164,6 @@ export async function abrirStructural() {
         </div>
         <div class="sl-eq"><span>Net result, reversal</span><b class="${bt.retornoTotal >= 0 ? 'g' : 'r'}">${bt.retornoTotal >= 0 ? '+' : ''}${bt.retornoTotal.toFixed(1)}%</b></div>
         <p class="sl-note">Walk-forward, no repaint: entry at each signal, ATR stop, exit at the opposite signal, over the ${bt.n} signals in the loaded history. Past results do not guarantee future ones.</p>`;
-      const tg = $('#sl-tog'); if (tg) tg.onclick = () => { filtro = filtro === 'trend' ? 'none' : 'trend'; lset('sl-filtro', filtro); recomputar(); };
     }
   }
 
@@ -199,12 +188,43 @@ export async function abrirStructural() {
   }
   function recomputar() {
     const velas = velasActuales; if (!velas.length) return;
-    const E = analizar(velas, { period: PERIODO, filtro }); chart.S.estructura = E;
-    const rl = rsi(velas); const rsiUlt = rl.length ? rl[rl.length - 1] : NaN;
+    const E = analizar(velas, { len: LEN }); chart.S.ind = E;
     const mtf = momentoMTF(velas, [1, 4, 12]);
-    const bt = backtest(velas, { period: PERIODO, filtro });
-    chart.dibujar(); pintarBar(velas, E, rsiUlt); pintarPanel(E, velas, mtf, bt); pintarLive();
+    const bt = backtest(velas, { len: LEN });
+    chart.dibujar(); pintarBar(velas, E); pintarPanel(E, velas, mtf, bt); pintarLive();
   }
+
+  /* ── exportar toda la gráfica como imagen, con la marca de agua ── */
+  function exportar() {
+    try {
+      const e2 = cv.width / cv.clientWidth || 1, W = cv.width;
+      const hCab = 56 * e2, hPie = 54 * e2;
+      const out = document.createElement('canvas'); out.width = W; out.height = hCab + cv.height + hPie;
+      const g = out.getContext('2d'); g.fillStyle = '#0b0f16'; g.fillRect(0, 0, out.width, out.height);
+      g.fillStyle = '#0a0d13'; g.fillRect(0, 0, W, hCab); g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(0, hCab - 1, W, 1);
+      g.textAlign = 'left'; g.fillStyle = '#eaecef'; g.font = `800 ${20 * e2}px system-ui,sans-serif`; g.fillText(sim.n, 20 * e2, 25 * e2);
+      g.font = `700 ${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#7d8794'; g.fillText(sim.corto + ' · Structural Logic · ' + (TFS.find((t) => t[0] === tf) || TFS[5])[1], 20 * e2, 44 * e2);
+      g.textAlign = 'right'; g.fillStyle = '#E8B84B'; g.font = `800 ${20 * e2}px system-ui,sans-serif`; g.fillText(fmt(chart.S.precio), W - 20 * e2, 35 * e2);
+      g.drawImage(cv, 0, hCab);
+      const yB = hCab + cv.height; g.fillStyle = '#0b0e12'; g.fillRect(0, yB, W, hPie); g.fillStyle = 'rgba(232,184,75,.4)'; g.fillRect(0, yB, W, 2 * e2);
+      let done = false;
+      const bajar = () => { if (done) return; done = true; try { out.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'structural-logic-' + sim.corto + '-' + Date.now() + '.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); toast('Chart image downloaded'); }, 'image/png'); } catch (_) { toast('Could not export right now'); } };
+      const textos = (wLogo) => { const x0 = wLogo ? 20 * e2 + wLogo + 14 * e2 : 20 * e2; g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${16 * e2}px system-ui,sans-serif`; g.fillText('Structural Logic', x0, yB + 25 * e2); g.font = `700 ${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText('decfreedom.com', x0, yB + 43 * e2); g.textAlign = 'right'; g.fillStyle = '#6b7681'; g.font = `${10 * e2}px ui-monospace,monospace`; g.fillText('Not investment advice', W - 20 * e2, yB + 25 * e2); g.fillText(new Date().toLocaleString('en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), W - 20 * e2, yB + 43 * e2); g.textAlign = 'left'; };
+      const logo = new Image();
+      logo.onload = () => {
+        try {
+          const wh = 30 * e2, ww = Math.round(logo.width * (wh / logo.height));
+          g.save(); g.globalAlpha = 0.5; g.drawImage(logo, 16 * e2, yB - 36 * e2 - wh, ww, wh); g.restore();   // marca de agua dentro del gráfico
+          const fh = 30 * e2, fw = Math.round(logo.width * (fh / logo.height)); g.drawImage(logo, 20 * e2, yB + (hPie - fh) / 2, fw, fh); textos(fw);
+        } catch (_) { textos(0); }
+        bajar();
+      };
+      logo.onerror = () => { textos(0); bajar(); };
+      setTimeout(() => { textos(0); bajar(); }, 1600);
+      logo.src = MARCA;
+    } catch (_) { toast('Could not export right now'); }
+  }
+
   function arrancarAnim() { if (animOn) return; animOn = true; const paso = () => { if (!document.getElementById('sl-overlay')) { animOn = false; return; } if (!document.hidden) chart.dibujar(); setTimeout(() => requestAnimationFrame(paso), 80); }; requestAnimationFrame(paso); }
 
   /* ── selector de símbolo ── */
@@ -236,6 +256,7 @@ export async function abrirStructural() {
 
   const cerrar = () => { try { chart.destruir(); } catch (_) {} try { ov.remove(); } catch (_) {} };
   $('#sl-back').onclick = cerrar;
+  $('#sl-export').onclick = exportar;
   $('#sl-how').onclick = abrirComo;
   document.addEventListener('visibilitychange', () => { if (!document.hidden && document.getElementById('sl-overlay')) chart.dibujar(); });
 
@@ -245,14 +266,14 @@ export async function abrirStructural() {
     m.innerHTML = `<div class="sl-modal-bg"></div><div class="sl-modal-card">
       <button class="sl-modal-x" aria-label="Close">${ICO.x}</button>
       <h2>Structural Logic, in plain words</h2>
-      <p>The engine reads the market's own structure: it finds the swing highs and lows, draws the <b>descending resistance</b> and the <b>ascending support</b> that contain price, and projects them forward.</p>
+      <p>It smooths price into a lag-reduced moving average — the coloured candles and line on the chart — and measures its slope against volatility. That slope is the <b>momentum</b> in the lower pane.</p>
       <ul>
-        <li><b>LONG</b> fires when price breaks up through the resistance — structure flips bullish.</li>
-        <li><b>SHORT</b> fires when price breaks down through the support — structure flips bearish.</li>
-        <li><b>The panel</b> tells you the current structure, the exact level to watch, and what the break means.</li>
-        <li><b>Momentum</b> shows RSI and Stochastic across timeframes, so you see when the move is aligned.</li>
+        <li>Chart and momentum turn <b>green</b> when momentum pushes above the long threshold, <b>red</b> below the short threshold.</li>
+        <li><b>LONG</b> fires when it turns green with price above the hidden 200-EMA; <b>SHORT</b> when it turns red below it. One alert per regime.</li>
+        <li>The hidden <b>200-EMA filter</b> keeps you with the bigger trend and cuts the counter-trend noise.</li>
+        <li><b>Backtest</b> shows the real, no-repaint stats of these signals over the loaded history.</li>
       </ul>
-      <p class="sl-note">Levels and signals are context, not a guarantee. Educational only, not investment advice.</p></div>`;
+      <p class="sl-note">Signals are context, not a guarantee. Educational only, not investment advice.</p></div>`;
     ov.appendChild(m); requestAnimationFrame(() => m.classList.add('on'));
     const close = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 160); };
     m.querySelector('.sl-modal-x').onclick = close; m.querySelector('.sl-modal-bg').onclick = close;
