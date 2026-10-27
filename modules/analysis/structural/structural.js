@@ -8,9 +8,9 @@
    derecho premium que dice la estructura y QUÉ HACER.
    ══════════════════════════════════════════════════════════════ */
 
-import { crearChart } from './grafica.js?v=4';
-import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=4';
-import { analizar, momentoMTF, backtest, LEN } from './motor.js?v=4';
+import { crearChart } from './grafica.js?v=5';
+import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=5';
+import { analizar, momentoMTF, backtest, LEN } from './motor.js?v=5';
 
 const MARCA = new URL('../../../assets/img/cco-marca.webp', import.meta.url).href;
 const ICO = {
@@ -34,7 +34,7 @@ export async function abrirStructural() {
   const prev = document.getElementById('sl-overlay'); if (prev) prev.remove();
   const ov = document.createElement('div'); ov.id = 'sl-overlay';
   let sim = SIMBOLOS.find((s) => s.id === lget('sl-sim', POR_DEFECTO)) || SIMBOLOS[0];
-  let tf = lget('sl-tf', '1d'); if (!TFS.some((t) => t[0] === tf)) tf = '1d';
+  let tf = lget('sl-tf', '1h'); if (!TFS.some((t) => t[0] === tf)) tf = '1h';
 
   ov.innerHTML = `
     <header class="sl-bar">
@@ -56,7 +56,7 @@ export async function abrirStructural() {
       <div class="col"><span class="l">Change</span><b class="v" id="sl-chg">...</b></div>
       <div class="col"><span class="l">Trend</span><b class="v" id="sl-str">...</b></div>
       <div class="col"><span class="l">Signal</span><b class="v" id="sl-sig">...</b></div>
-      <div class="col hide-sm"><span class="l">Mom</span><b class="v" id="sl-rsi">...</b></div>
+      <div class="col hide-sm"><span class="l">Conv</span><b class="v" id="sl-rsi">...</b></div>
       <div class="sl-right">
         <div class="sl-live" id="sl-live"><i></i><b>...</b></div>
         <button class="sl-ib" id="sl-export" title="Export as image">${ICO.exp}</button>
@@ -64,7 +64,7 @@ export async function abrirStructural() {
       </div>
     </header>
     <div class="sl-main">
-      <div class="sl-graf" id="sl-graf"><canvas id="sl-cv"></canvas><img class="sl-marca" src="${MARCA}" alt="">
+      <div class="sl-graf" id="sl-graf"><canvas id="sl-cv"></canvas>
         <div class="sl-wait" id="sl-wait"><div class="sl-spin"></div><b>Loading market data</b></div>
       </div>
       <aside class="sl-side">
@@ -79,7 +79,7 @@ export async function abrirStructural() {
 
   const $ = (s) => ov.querySelector(s);
   const cv = $('#sl-cv'), cont = $('#sl-graf'), wait = $('#sl-wait');
-  const chart = crearChart(cv, cont);
+  const chart = crearChart(cv, cont); chart.S.marcaUrl = MARCA;
   let animOn = false, velasActuales = [];
 
   function toast(msg) { let t = ov.querySelector('.sl-toast'); if (!t) { t = document.createElement('div'); t.className = 'sl-toast'; cont.appendChild(t); } t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2800); }
@@ -107,31 +107,33 @@ export async function abrirStructural() {
     const cE = $('#sl-chg'); cE.textContent = (chg >= 0 ? UP : DN) + ' ' + Math.abs(chg).toFixed(2) + '%'; cE.className = 'v ' + (chg >= 0 ? 'up' : 'dn');
     const st = $('#sl-str'); st.textContent = E.trendActual === 1 ? 'Bullish' : E.trendActual === -1 ? 'Bearish' : 'Neutral'; st.className = 'v ' + (E.trendActual === 1 ? 'up' : E.trendActual === -1 ? 'dn' : '');
     const sg = $('#sl-sig'); const u = E.ultima; sg.textContent = u ? u.tipo : '—'; sg.className = 'v ' + (u ? (u.tipo === 'LONG' ? 'up' : 'dn') : '');
-    const r = $('#sl-rsi'); r.textContent = isFinite(E.changeActual) ? (E.changeActual >= 0 ? '+' : '') + E.changeActual.toFixed(2) : '--'; r.className = 'v ' + (E.changeActual > 0 ? 'up' : E.changeActual < 0 ? 'dn' : '');
+    const r = $('#sl-rsi'); r.textContent = (E.conviccion || 0) + ''; r.className = 'v ' + (E.trendActual === 1 ? 'up' : E.trendActual === -1 ? 'dn' : '');
   }
   function pintarLive() { const el = $('#sl-live'); if (!el) return; el.innerHTML = `<i></i><b>LIVE</b><em>${esc(chart.S.fuente || '')}</em>`; }
 
   /* ── panel derecho ── */
   function pintarPanel(E, velas, mtf, bt) {
-    // estado del indicador
+    // lectura ejecutiva (sin exponer la mecánica)
     const se = $('#sl-struct');
-    const chip = E.trendActual === 1 ? ['Bullish trend', 'bull'] : E.trendActual === -1 ? ['Bearish trend', 'bear'] : ['Neutral', 'neu'];
-    const ch = E.changeActual, sobre = E.sobre200;
-    const momCls = E.trendActual === 1 ? 'sop' : E.trendActual === -1 ? 'res' : 'px';
-    se.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">State</h3><span class="sl-chip sl-chip-${chip[1]}">${chip[0]}</span></div>
+    const biasChip = E.trendActual === 1 ? ['Long bias', 'bull'] : E.trendActual === -1 ? ['Short bias', 'bear'] : ['Neutral', 'neu'];
+    const reg = E.regimen === 'risk-on' ? ['Risk-on', 'bull'] : E.regimen === 'risk-off' ? ['Risk-off', 'bear'] : ['Transition', 'neu'];
+    const conv = E.conviccion || 0, convCls = conv >= 60 ? 'g' : conv >= 30 ? '' : 'r';
+    const biasCls = E.trendActual === 1 ? 'sop' : E.trendActual === -1 ? 'res' : 'px';
+    se.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Read</h3><span class="sl-chip sl-chip-${biasChip[1]}">${biasChip[0]}</span></div>
       <div class="sl-lv">
-        <div class="sl-lvrow ${momCls}"><span>Momentum</span><b>${isFinite(ch) ? (ch >= 0 ? '+' : '') + ch.toFixed(3) : '--'}</b><em>thr ±${E.l.toFixed(2)}</em></div>
-        <div class="sl-lvrow ${sobre ? 'sop' : 'res'}"><span>200-EMA</span><b>${sobre == null ? '—' : sobre ? 'Price above' : 'Price below'}</b><em>${isFinite(E.e200Hoy) ? fmt(E.e200Hoy) : ''}</em></div>
-        <div class="sl-lvrow px"><span>Lookback</span><b>${E.len}</b><em>filter on</em></div>
-      </div>`;
+        <div class="sl-lvrow ${biasCls}"><span>Bias</span><b>${E.trendActual === 1 ? 'Long' : E.trendActual === -1 ? 'Short' : 'Flat'}</b><em>${E.ultima ? 'last ' + E.ultima.tipo.toLowerCase() : 'no call'}</em></div>
+        <div class="sl-lvrow ${E.regimen === 'risk-on' ? 'sop' : E.regimen === 'risk-off' ? 'res' : 'px'}"><span>Regime</span><b>${reg[0]}</b><em>higher trend</em></div>
+        <div class="sl-lvrow px"><span>Conviction</span><b class="sl-conv ${convCls}">${conv}</b><em>0–100</em></div>
+      </div>
+      <div class="sl-convbar"><span style="width:${conv}%"></span></div>`;
 
-    // señal + qué hacer
+    // señal + qué hacer (ejecutivo)
     const sg = $('#sl-signal'); const u = E.ultima;
-    let tono = 'neu', titulo = 'Waiting for a signal', texto = '';
-    if (u && u.tipo === 'LONG' && E.trendActual === 1) { tono = 'long'; titulo = 'LONG — momentum up, above 200-EMA'; texto = `Momentum flipped green with price above the 200-EMA. Bias is long while momentum holds green; a flip to red, or a close below the 200-EMA, ends it.`; }
-    else if (u && u.tipo === 'SHORT' && E.trendActual === -1) { tono = 'short'; titulo = 'SHORT — momentum down, below 200-EMA'; texto = `Momentum flipped red with price below the 200-EMA. Bias is short while momentum holds red; a flip to green, or a close above the 200-EMA, ends it.`; }
-    else if (u) { tono = 'neu'; titulo = `Last signal: ${u.tipo}`; texto = `The last signal was ${u.tipo}, but momentum and the 200-EMA are no longer aligned. The next alert fires when momentum flips in the direction of the 200-EMA.`; }
-    else { texto = `No signal yet. A LONG fires when momentum turns green with price above the 200-EMA; a SHORT when it turns red below it. One per regime.`; }
+    let tono = 'neu', titulo = 'Flat — stand aside', texto = '';
+    if (u && u.tipo === 'LONG' && E.trendActual === 1) { tono = 'long'; titulo = 'Long — aligned with the regime'; texto = `The engine is long inside a confirmed risk-on regime. Stay with it while conviction holds; the position is cut when the read turns or the regime breaks.`; }
+    else if (u && u.tipo === 'SHORT' && E.trendActual === -1) { tono = 'short'; titulo = 'Short — aligned with the regime'; texto = `The engine is short inside a confirmed risk-off regime. Stay with it while conviction holds; the position is cut when the read turns or the regime breaks.`; }
+    else if (u) { tono = 'neu'; titulo = `Flat — last call was ${u.tipo.toLowerCase()}`; texto = `The last call was ${u.tipo.toLowerCase()}, but the read and the regime no longer agree. The engine waits for the next alignment before committing again.`; }
+    else { texto = `No position. The engine commits only when the read and the broader regime agree — one clean call per regime, no chasing.`; }
     sg.className = 'sl-card sl-signal ' + tono;
     sg.innerHTML = `<div class="sl-sgtop"><span class="sl-dot"></span><h3 class="sl-h">${esc(titulo)}</h3></div>
       <p class="sl-say">${texto}</p>
@@ -225,7 +227,7 @@ export async function abrirStructural() {
     } catch (_) { toast('Could not export right now'); }
   }
 
-  function arrancarAnim() { if (animOn) return; animOn = true; const paso = () => { if (!document.getElementById('sl-overlay')) { animOn = false; return; } if (!document.hidden) chart.dibujar(); setTimeout(() => requestAnimationFrame(paso), 80); }; requestAnimationFrame(paso); }
+  function arrancarAnim() { if (animOn) return; animOn = true; const paso = () => { if (!document.getElementById('sl-overlay')) { animOn = false; return; } if (!document.hidden) chart.dibujar(); setTimeout(() => requestAnimationFrame(paso), 40); }; requestAnimationFrame(paso); }
 
   /* ── selector de símbolo ── */
   function pintarLista(q) {
@@ -370,6 +372,9 @@ function inyectarCSS() {
 .sl-lvrow.res{border-left:2px solid var(--short)}.sl-lvrow.res b{color:#ff8a95}
 .sl-lvrow.sop{border-left:2px solid var(--long)}.sl-lvrow.sop b{color:#6ff0ad}
 .sl-lvrow.px{border-left:2px solid var(--gold)}.sl-lvrow.px b{color:var(--gold)}
+.sl-conv.g{color:#2ee86a}.sl-conv.r{color:#ff6b7a}
+.sl-convbar{margin-top:11px;height:6px;border-radius:4px;background:#0a0e14;overflow:hidden;border:1px solid var(--line)}
+.sl-convbar span{display:block;height:100%;background:linear-gradient(90deg,#2ebd85,#E8B84B);border-radius:4px;transition:width .5s ease}
 .sl-signal{position:relative}
 .sl-sgtop{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .sl-dot{width:9px;height:9px;border-radius:50%;background:#5a636e;flex:none}

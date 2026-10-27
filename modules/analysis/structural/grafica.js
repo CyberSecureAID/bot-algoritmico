@@ -29,9 +29,11 @@ const fechaCruz = (t, tf) => { const d = new Date(t); return INTRA(tf) ? d.toLoc
 
 export function crearChart(cv, cont) {
   const S = {
-    velas: [], ind: null, precio: 0, tf: '1d', fuente: '', cruz: null,
+    velas: [], ind: null, precio: 0, tf: '1h', fuente: '', cruz: null, marcaUrl: null,
     vista: { desde: -6, ancho: 130, zoomY: 1, offsetY: 0 }, _geo: null
   };
+  let marcaImg = null, marcaTry = false;
+  const cargarMarca = () => { if (marcaImg || marcaTry || !S.marcaUrl) return; marcaTry = true; const im = new Image(); im.onload = () => { marcaImg = im; }; im.src = S.marcaUrl; };
 
   function pill(g, cx, cy, txt, rgb, fuerte, pulso) {
     g.font = (fuerte ? '800 11px' : '800 9.5px') + ' "Chakra Petch",system-ui,sans-serif';
@@ -127,35 +129,69 @@ export function crearChart(cv, cont) {
     }
     g.restore();
 
-    // ── marcadores LONG/SHORT ──
+    // ── CIRCUITO: la luz viaja desde la señal activa hasta el precio actual ──
     const ult = ind.ultima;
+    if (ult && ult.bar < total - 1) {
+      const a0 = ult.bar, a1 = total - 1, span = Math.max(1, a1 - a0);
+      const per = 1500 + span * 16, head = a0 + ((performance.now() % per) / per) * span;
+      const rgbU = ult.tipo === 'LONG' ? COL.upRGB : COL.dnRGB;
+      g.save(); g.lineCap = 'round';
+      for (let i = Math.max(a0 + 1, primero + 1); i <= Math.min(a1, fin - 1); i++) {
+        if (!isFinite(ind.cda[i]) || !isFinite(ind.cda[i - 1])) continue;
+        const d = head - i, br = d >= 0 ? Math.max(0, 1 - d / (span * 0.45)) : Math.max(0, 1 + d * 0.8);
+        if (br <= 0.03) continue;
+        const x = xAt(i), y = Yp(ind.cda[i]), xp = xAt(i - 1), yp = Yp(ind.cda[i - 1]);
+        g.strokeStyle = `rgba(255,255,255,${0.12 * br})`; g.lineWidth = 2 + 3 * br; g.shadowColor = `rgba(${rgbU},${0.9 * br})`; g.shadowBlur = 12 * br;
+        g.beginPath(); g.moveTo(xp, yp); g.lineTo(x, y); g.stroke();
+      }
+      const hb = Math.round(head);
+      if (hb >= primero && hb < fin && isFinite(ind.cda[hb])) { const x = xAt(hb), y = Yp(ind.cda[hb]); g.shadowColor = `rgba(${rgbU},1)`; g.shadowBlur = 16; g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 3, 0, 6.283); g.fill(); }
+      g.restore();
+    }
+
+    // ── marcadores: cada uno como alerta con anillo latente; la última con etiqueta ──
     (ind.senales || []).forEach((sg) => {
       if (sg.bar < primero || sg.bar >= fin) return;
       const v = S.velas[sg.bar]; if (!v) return;
       const x = xAt(sg.bar), esLong = sg.tipo === 'LONG', rgb = esLong ? COL.upRGB : COL.dnRGB, fuerte = ult && sg.bar === ult.bar;
-      const ty = esLong ? Yp(v.l) + 11 : Yp(v.h) - 11, ts = fuerte ? 6 : 4.4;
-      g.save(); g.fillStyle = `rgb(${rgb})`; g.shadowColor = `rgba(${rgb},${fuerte ? .95 : .5})`; g.shadowBlur = fuerte ? 11 : 5;
+      const ty = esLong ? Yp(v.l) + 12 : Yp(v.h) - 12, ts = fuerte ? 6 : 4.6;
+      g.save();
+      g.strokeStyle = `rgba(${rgb},${0.14 + 0.34 * pulso})`; g.lineWidth = 1.2;
+      g.beginPath(); g.arc(x, ty, (fuerte ? 10 : 7.5) + pulso * (fuerte ? 3 : 2), 0, 6.283); g.stroke();
+      g.fillStyle = `rgb(${rgb})`; g.shadowColor = `rgba(${rgb},${fuerte ? .95 : .7})`; g.shadowBlur = fuerte ? 12 : 7;
       g.beginPath();
       if (esLong) { g.moveTo(x, ty - ts); g.lineTo(x - ts, ty + ts); g.lineTo(x + ts, ty + ts); } else { g.moveTo(x, ty + ts); g.lineTo(x - ts, ty - ts); g.lineTo(x + ts, ty - ts); }
       g.closePath(); g.fill(); g.restore();
-      if (fuerte) pill(g, x, esLong ? ty + 20 : ty - 20, sg.tipo, rgb, true, pulso);
+      if (fuerte) pill(g, x, esLong ? ty + 22 : ty - 22, sg.tipo, rgb, true, pulso);
     });
 
     // ── precio actual ──
     const yP = Yp(S.precio);
     if (yP > 0 && yP < pH) { g.strokeStyle = `rgba(${COL.goldRGB},.8)`; g.setLineDash([5, 4]); g.lineWidth = 1.1; g.beginPath(); g.moveTo(0, yP); g.lineTo(x1, yP); g.stroke(); g.setLineDash([]); }
 
+    // ── marca de agua en el panel de precio (abajo-izquierda) ──
+    cargarMarca();
+    if (marcaImg && marcaImg.height) { const wh = Math.min(30, pH * 0.085), ww = marcaImg.width * (wh / marcaImg.height); g.save(); g.globalAlpha = 0.4; try { g.drawImage(marcaImg, 14, pH - wh - 12, ww, wh); } catch (_) {} g.restore(); }
+
     // ══ SUBPANEL: oscilador de momento ══
     g.fillStyle = 'rgba(255,255,255,.015)'; g.fillRect(0, oscTop, x1, oscH);
     const y0 = Yo(0), yL = Yo(ind.l), yS = Yo(ind.s);
     // banda entre umbrales
     g.fillStyle = 'rgba(120,120,130,.08)'; g.fillRect(0, Math.min(yL, yS), x1, Math.abs(yS - yL));
-    // relleno del momento a cero (verde arriba / rojo abajo)
-    for (let i = primero + 1; i < Math.min(total, fin); i++) {
+    // histograma de momento: barras con degradado + onda de latencia que recorre
+    const bw = Math.max(1.5, paso * 0.64);
+    if (!S._t0) S._t0 = performance.now();
+    const crecer = clamp((performance.now() - S._t0) / 500, 0, 1);
+    const faseH = (performance.now() / 1500) % 1;
+    for (let i = primero; i < Math.min(total, fin); i++) {
       if (!isFinite(ind.change[i])) continue;
-      const x = xAt(i), yc = Yo(ind.change[i]), up = ind.change[i] >= 0;
-      g.fillStyle = up ? `rgba(${COL.upRGB},.5)` : `rgba(${COL.dnRGB},.5)`;
-      g.fillRect(x - paso / 2, Math.min(yc, y0), Math.max(1, paso), Math.abs(yc - y0));
+      const x = xAt(i), v = ind.change[i], up = v >= 0, rel = (i - primero) / Math.max(1, ancho);
+      const dist = Math.min(Math.abs(rel - faseH), Math.abs(rel - faseH + 1), Math.abs(rel - faseH - 1));
+      const brillo = Math.max(0, 1 - dist * 6);
+      const yTip = y0 + (Yo(v) - y0) * crecer, rgb = up ? COL.upRGB : COL.dnRGB;
+      const grad = g.createLinearGradient(0, y0, 0, yTip);
+      grad.addColorStop(0, `rgba(${rgb},0.14)`); grad.addColorStop(1, `rgba(${rgb},${0.5 + 0.4 * brillo})`);
+      g.fillStyle = grad; g.fillRect(x - bw / 2, Math.min(y0, yTip), bw, Math.max(1, Math.abs(yTip - y0)));
     }
     // línea del momento
     g.save(); g.lineWidth = 1.6; g.lineJoin = 'round'; let pO = null;

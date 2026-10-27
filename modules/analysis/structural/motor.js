@@ -99,19 +99,33 @@ export function analizar(velas, opts = {}) {
   // EMA200 oculta (filtro)
   const e200 = emaArr(C, opts.emaFiltro || EMA_FILTRO);
 
-  // señales: entrar en el estado "tendencia alineada con EMA200", una por régimen
+  // señales (validado en datos reales): el régimen lo manda la EMA200.
+  //   LONG  solo si el CUERPO de la vela cierra por encima de la EMA200 Y la
+  //         EMA200 va subiendo (tendencia mayor alcista).
+  //   SHORT simétrico. Una por régimen; se ignora el arranque hasta que la
+  //         EMA200 esté formada (warmup). Esto mata las entradas que no
+  //         consolidan (el whipsaw alrededor de la media).
   const senales = [];
   let bullPrev = false, bearPrev = false, lastSig = null;
+  const guard = opts.emaFiltro || EMA_FILTRO, slopeN = opts.slope || 20;
   for (let i = 0; i < n; i++) {
-    const f200 = isFinite(e200[i]);
-    const bull = trend[i] === 1 && f200 && velas[i].c > e200[i];
-    const bear = trend[i] === -1 && f200 && velas[i].c < e200[i];
+    if (i < guard || !isFinite(e200[i])) { bullPrev = false; bearPrev = false; continue; }
+    const cuerpoArriba = Math.min(velas[i].o, velas[i].c) > e200[i];
+    const cuerpoAbajo = Math.max(velas[i].o, velas[i].c) < e200[i];
+    const subeE = i >= slopeN && e200[i] > e200[i - slopeN];
+    const bajaE = i >= slopeN && e200[i] < e200[i - slopeN];
+    const bull = trend[i] === 1 && cuerpoArriba && subeE;
+    const bear = trend[i] === -1 && cuerpoAbajo && bajaE;
     if (bull && !bullPrev && lastSig !== 'LONG') { senales.push({ bar: i, t: velas[i].t, price: velas[i].c, tipo: 'LONG' }); lastSig = 'LONG'; }
     else if (bear && !bearPrev && lastSig !== 'SHORT') { senales.push({ bar: i, t: velas[i].t, price: velas[i].c, tipo: 'SHORT' }); lastSig = 'SHORT'; }
     bullPrev = bull; bearPrev = bear;
   }
   const ultima = senales.length ? senales[senales.length - 1] : null;
 
+  const sobre = n && isFinite(e200[n - 1]) ? velas[n - 1].c > e200[n - 1] : null;
+  const emaSube = (n > slopeN && isFinite(e200[n - 1]) && isFinite(e200[n - 1 - slopeN])) ? e200[n - 1] > e200[n - 1 - slopeN] : null;
+  const regimen = (sobre === true && emaSube === true) ? 'risk-on' : (sobre === false && emaSube === false) ? 'risk-off' : 'mixed';
+  const conviccion = n && isFinite(change[n - 1]) ? Math.max(0, Math.min(100, Math.round(Math.abs(change[n - 1]) / 0.22 * 100))) : 0;
   return {
     len, l, s, n, precio: n ? velas[n - 1].c : 0,
     oda, hda, lda, cda, change, trend, e200,
@@ -119,7 +133,7 @@ export function analizar(velas, opts = {}) {
     trendActual: n ? trend[n - 1] : 0,
     changeActual: n ? change[n - 1] : NaN,
     sesgo: n && trend[n - 1] === 1 ? 'alcista' : n && trend[n - 1] === -1 ? 'bajista' : 'neutro',
-    sobre200: n && isFinite(e200[n - 1]) ? velas[n - 1].c > e200[n - 1] : null,
+    sobre200: sobre, emaSube, regimen, conviccion,
     e200Hoy: n ? e200[n - 1] : NaN
   };
 }
