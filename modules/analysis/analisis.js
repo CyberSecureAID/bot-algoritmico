@@ -322,24 +322,48 @@ function mostrarDisclaimer(reView) {
   const old = sel.querySelector('#an-disc'); if (old) old.remove();
   const m = document.createElement('div');
   m.className = 'an-modal'; m.id = 'an-disc';
+  // Modo obligatorio (al entrar): EXONERANTE. Sin X y sin cierre tocando fuera; la unica
+  // salida es marcar la casilla y pulsar Accept. Asi nadie puede decir que no acepto los
+  // terminos. Modo re-lectura (desde el enlace "Disclaimer", ya aceptado): se puede cerrar.
   m.innerHTML = `
     <div class="an-modal-bg"></div>
     <div class="an-modal-card an-disc-card">
-      <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
+      ${reView ? `<button class="an-modal-x" aria-label="Close">${ICO.x}</button>` : ''}
       <div class="an-disc-box">
         <img class="an-disc-top" src="${DISCLAIMER_IMG}" alt="">
         <img class="an-disc-fl" src="${DISCLAIMER_IMG}" alt="">
         <p>DecFreedom provides analytical tools, indicators and strategies for informational and educational purposes only. Nothing here is financial, investment, legal or tax advice, and we do not guarantee any result, profit or performance. Trading digital assets carries substantial risk and you may lose part or all of your capital. Every decision is your own and you are solely responsible for it.</p>
         <p>All tools are provided as is, without warranty of any kind, and part of the data may come from third parties. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this platform. By continuing you accept this notice and our Terms and Conditions.</p>
-        <button class="an-pay gold an-disc-ok" id="an-disc-ok">${reView ? 'Close' : 'Accept'}</button>
+        ${reView ? '' : `<label class="an-disc-chk" style="display:flex;align-items:flex-start;gap:10px;margin:2px 0 14px;cursor:pointer;font-size:12.5px;line-height:1.5;color:#d4dae1">
+          <input type="checkbox" id="an-disc-agree" style="flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:#E8B84B;cursor:pointer">
+          <span>I have read and I accept the <b style="color:#e9eef3">Terms and Conditions</b> and this notice. I understand these tools do not guarantee any result and that I use them entirely at my own risk.</span>
+        </label>`}
+        <button class="an-pay gold an-disc-ok" id="an-disc-ok"${reView ? '' : ' disabled style="opacity:.45;cursor:not-allowed"'}>${reView ? 'Close' : 'Accept'}</button>
       </div>
     </div>`;
   sel.appendChild(m);
   requestAnimationFrame(() => m.classList.add('on'));
   const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
-  const x = m.querySelector('.an-modal-x'); if (x) x.onclick = cerrar;
-  m.querySelector('.an-modal-bg').onclick = cerrar;
-  m.querySelector('#an-disc-ok').onclick = () => { if (!reView) { try { localStorage.setItem(DISC_KEY, '1'); } catch (_) {} } cerrar(); };
+  if (reView) {
+    const x = m.querySelector('.an-modal-x'); if (x) x.onclick = cerrar;
+    m.querySelector('.an-modal-bg').onclick = cerrar;
+  } else {
+    // Bloqueante: tocar fuera NO cierra.
+    m.querySelector('.an-modal-bg').onclick = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const chk = m.querySelector('#an-disc-agree'), ok = m.querySelector('#an-disc-ok');
+    chk.addEventListener('change', () => {
+      if (chk.checked) { ok.removeAttribute('disabled'); ok.style.opacity = ''; ok.style.cursor = ''; }
+      else { ok.setAttribute('disabled', ''); ok.style.opacity = '.45'; ok.style.cursor = 'not-allowed'; }
+    });
+  }
+  m.querySelector('#an-disc-ok').onclick = () => {
+    if (!reView) {
+      const chk = m.querySelector('#an-disc-agree');
+      if (!chk || !chk.checked) return;   // sin marcar la casilla, no procede
+      try { localStorage.setItem(DISC_KEY, '1'); } catch (_) {}
+    }
+    cerrar();
+  };
 }
 
 export function abrirSelector(origen, wallet, ethers) {
