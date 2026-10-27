@@ -108,3 +108,48 @@ export function metricasLibro(bids, asks, tape) {
   const spoof = med > 0 ? Math.max(0, Math.min(100, (maxW / med - 1) * 14)) : 0;
   return { obi, vpin, net, spoof };
 }
+
+/* ---- Analizador: lee el flujo actual y lo resume en lenguaje claro ----
+   No es recomendacion de inversion: es un esquema logico de lo que pasa. */
+export function analizarFlujo(velas, met, tick) {
+  const n = velas.length; if (!n) return null;
+  const v = velas[n - 1];
+  const filas = filasDe(v, tick), an = analizar(filas, tick);
+  const cvd = velas.slice(-6).reduce((s, x) => s + x.delta, 0);
+  const px = v.c, sobreVA = px > an.vaHi, bajoVA = px < an.vaLo;
+  let buySt = 0, sellSt = 0; filas.forEach((r) => { if (r._buy) buySt++; if (r._sell) sellSt++; });
+  const obi = met.obi || 50, vpin = met.vpin || 0;
+
+  let score = 0;
+  score += v.delta > 0 ? 2 : v.delta < 0 ? -2 : 0;
+  score += (obi - 50) / 12;
+  score += sobreVA ? 1.5 : bajoVA ? -1.5 : 0;
+  score += cvd > 0 ? 1 : cvd < 0 ? -1 : 0;
+  score += (buySt - sellSt) * 0.4;
+  const sesgo = score > 1.6 ? 'bull' : score < -1.6 ? 'bear' : 'neu';
+  const fuerza = Math.max(8, Math.min(100, Math.round(Math.abs(score) * 15)));
+
+  let titulo;
+  if (buySt >= 3 && buySt > sellSt) titulo = 'Stacked buying pressure';
+  else if (sellSt >= 3 && sellSt > buySt) titulo = 'Stacked selling pressure';
+  else if (sesgo === 'bull' && sobreVA) titulo = 'Buyers in control, above value';
+  else if (sesgo === 'bear' && bajoVA) titulo = 'Sellers in control, below value';
+  else if (v.delta > 0 && px <= an.poc) titulo = 'Buying into the control level';
+  else if (v.delta < 0 && px >= an.poc) titulo = 'Selling into the control level';
+  else if (sesgo === 'neu') titulo = 'Balanced, two way flow';
+  else titulo = sesgo === 'bull' ? 'Buyers leaning in' : 'Sellers leaning in';
+
+  const dirTxt = sesgo === 'bull' ? 'buyers' : sesgo === 'bear' ? 'sellers' : 'neither side';
+  const vaTxt = sobreVA ? 'trading above the value area' : bajoVA ? 'trading below the value area' : 'holding inside the value area';
+  const lectura = `Price is ${vaTxt}. Aggression favours ${dirTxt} and the resting book leans to the ${obi >= 50 ? 'bid' : 'offer'}. ${vpin > 55 ? 'Order flow is one sided and fast.' : 'Order flow is balanced in speed.'}`;
+
+  const puntos = [
+    ['Candle delta', v.delta >= 0 ? 'positive' : 'negative'],
+    ['Bias, last 6 bars', cvd >= 0 ? 'net buying' : 'net selling'],
+    ['Book imbalance', Math.round(obi) + '% bid'],
+    ['Aggression, VPIN', Math.round(vpin) + '%'],
+    ['Price vs value', sobreVA ? 'above' : bajoVA ? 'below' : 'inside'],
+    ['Stacked imbalances', buySt > sellSt ? buySt + ' buy' : sellSt > buySt ? sellSt + ' sell' : 'none']
+  ];
+  return { titulo, lectura, sesgo, fuerza, puntos };
+}
