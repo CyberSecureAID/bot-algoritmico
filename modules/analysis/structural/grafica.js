@@ -7,7 +7,7 @@
    SHORT (rojo) con efecto neón, la última resaltada y latiendo.
    ══════════════════════════════════════════════════════════════ */
 
-import { valorLinea } from './motor.js?v=1';
+import { valorLinea } from './motor.js?v=2';
 
 function redondeado(g, x, y, w, h, r) {
   r = Math.min(r, w / 2, h / 2);

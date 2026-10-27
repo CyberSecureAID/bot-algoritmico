@@ -66,6 +66,27 @@ export function rsi(velas, periodo = 14) {
   return out;
 }
 
+/* ---------- EMA (media exponencial), serie causal (solo pasado) ---------- */
+export function ema(velas, periodo = 50) {
+  const n = velas.length, out = new Array(n).fill(NaN);
+  if (!n) return out;
+  const k = 2 / (periodo + 1); let e = velas[0].c; out[0] = e;
+  for (let i = 1; i < n; i++) { e = velas[i].c * k + e * (1 - k); out[i] = e; }
+  return out;
+}
+
+/* ---------- ATR (rango verdadero medio), para stops por volatilidad ---------- */
+export function atr(velas, periodo = 14) {
+  const n = velas.length, out = new Array(n).fill(NaN);
+  if (n < 2) return out;
+  const tr = (i) => Math.max(velas[i].h - velas[i].l, Math.abs(velas[i].h - velas[i - 1].c), Math.abs(velas[i].l - velas[i - 1].c));
+  let a = 0; const m = Math.min(periodo, n - 1);
+  for (let i = 1; i <= m; i++) a += tr(i);
+  a /= m; out[m] = a;
+  for (let i = m + 1; i < n; i++) { a = (a * (periodo - 1) + tr(i)) / periodo; out[i] = a; }
+  return out;
+}
+
 /* ---------- Estocástico %K (14), último valor ---------- */
 export function stoch(velas, periodo = 14) {
   const n = velas.length;
@@ -138,11 +159,18 @@ export function analizar(velas, opts = {}) {
     }
   }
 
-  // Flips: UNA señal por giro de estructura (no cada micro-ruptura repetida),
-  // para que el gráfico no se llene de etiquetas encimadas.
-  const flips = [];
+  // Flips crudos: UNA señal por giro de estructura (no cada micro-ruptura).
+  const flipsCrudos = [];
   let dir = null;
-  for (const s of senales) { if (s.tipo !== dir) { flips.push(s); dir = s.tipo; } }
+  for (const s of senales) { if (s.tipo !== dir) { flipsCrudos.push(s); dir = s.tipo; } }
+  // Filtro de TENDENCIA (causal, no repinta): solo LONG con el cierre sobre la
+  // EMA lenta y SHORT por debajo. Quita los giros a contratendencia (el whipsaw
+  // que hace perder). opts.filtro = 'trend' (por defecto) | 'none'.
+  const filtro = opts.filtro || 'trend';
+  const te = ema(velas, opts.emaLen || 50);
+  const flips = (filtro === 'trend')
+    ? flipsCrudos.filter((s) => (s.tipo === 'LONG' ? velas[s.bar].c >= te[s.bar] : velas[s.bar].c <= te[s.bar]))
+    : flipsCrudos.slice();
   const ultima = flips.length ? flips[flips.length - 1] : null;
   const precio = n ? velas[n - 1].c : 0;
 
@@ -163,7 +191,51 @@ export function analizar(velas, opts = {}) {
     pivotsH: H, pivotsL: L,
     resistencia: curU, soporte: curL,
     resistenciaHoy, soporteHoy,
-    senales, flips, ultima, sesgo,
+    senales, flips, flipsCrudos, ultima, sesgo,
     valorLinea
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   backtest — mide el sistema como se operaría de verdad, SIN mirar al
+   futuro: entra en el cierre de cada señal, con el stop en el nivel roto
+   (si el precio vuelve a cruzarlo, la idea quedó invalidada), y sale al
+   giro opuesto. Devuelve win rate, profit factor, expectativa en R y la
+   lista de operaciones para auditar una por una.
+   R = resultado / riesgo. Expectativa > 0 en R = sistema con ventaja.
+   ══════════════════════════════════════════════════════════════ */
+export function backtest(velas, opts = {}) {
+  const E = analizar(velas, opts);
+  const flips = E.flips;
+  const at = atr(velas, opts.atr || 14);
+  const kStop = opts.kStop || 1.5;              // stop = 1.5 x ATR (riesgo por volatilidad real)
+  const trades = [];
+  for (let i = 0; i < flips.length; i++) {
+    const s = flips[i], esLong = s.tipo === 'LONG';
+    const entry = s.price;
+    const a = isFinite(at[s.bar]) && at[s.bar] > 0 ? at[s.bar] : entry * 0.01;
+    const risk = kStop * a;
+    const next = flips[i + 1];
+    const exitBar = next ? next.bar : velas.length - 1;
+    if (exitBar <= s.bar) continue;
+    const exit = velas[exitBar].c;
+    const move = esLong ? (exit - entry) : (entry - exit);
+    trades.push({ tipo: s.tipo, bar: s.bar, entry, exit, R: move / risk, retPct: (move / entry) * 100, barras: exitBar - s.bar });
+  }
+  const n = trades.length;
+  const wins = trades.filter((t) => t.retPct > 0), losses = trades.filter((t) => t.retPct <= 0);
+  const sumWinPct = wins.reduce((a, t) => a + t.retPct, 0), sumLossPct = Math.abs(losses.reduce((a, t) => a + t.retPct, 0));
+  const sumR = trades.reduce((a, t) => a + t.R, 0);
+  let eq = 1; for (const t of trades) eq *= (1 + t.retPct / 100);   // retorno compuesto (reversión siempre en mercado)
+  const avgWinPct = wins.length ? sumWinPct / wins.length : 0, avgLossPct = losses.length ? sumLossPct / losses.length : 0;
+  return {
+    n, ganados: wins.length, perdidos: losses.length,
+    winRate: n ? (wins.length / n) * 100 : 0,
+    pf: sumLossPct > 0 ? sumWinPct / sumLossPct : (sumWinPct > 0 ? Infinity : 0),
+    expectativaR: n ? sumR / n : 0,
+    retornoTotal: (eq - 1) * 100,
+    avgWinPct, avgLossPct,
+    avgRR: avgLossPct > 0 ? avgWinPct / avgLossPct : 0,
+    trades
   };
 }

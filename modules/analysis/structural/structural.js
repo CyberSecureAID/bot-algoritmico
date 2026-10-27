@@ -8,9 +8,9 @@
    derecho premium que dice la estructura y QUÉ HACER.
    ══════════════════════════════════════════════════════════════ */
 
-import { crearChart } from './grafica.js?v=1';
-import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=1';
-import { analizar, momentoMTF, rsi, PERIODO } from './motor.js?v=1';
+import { crearChart } from './grafica.js?v=2';
+import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=2';
+import { analizar, momentoMTF, rsi, backtest, PERIODO } from './motor.js?v=2';
 
 const MARCA = new URL('../../../assets/img/cco-marca.webp', import.meta.url).href;
 const ICO = {
@@ -34,6 +34,7 @@ export async function abrirStructural() {
   const ov = document.createElement('div'); ov.id = 'sl-overlay';
   let sim = SIMBOLOS.find((s) => s.id === lget('sl-sim', POR_DEFECTO)) || SIMBOLOS[0];
   let tf = lget('sl-tf', '1d'); if (!TFS.some((t) => t[0] === tf)) tf = '1d';
+  let filtro = lget('sl-filtro', 'trend'); if (filtro !== 'trend' && filtro !== 'none') filtro = 'trend';
 
   ov.innerHTML = `
     <header class="sl-bar">
@@ -68,6 +69,7 @@ export async function abrirStructural() {
       <aside class="sl-side">
         <section class="sl-card" id="sl-struct"></section>
         <section class="sl-card sl-signal" id="sl-signal"></section>
+        <section class="sl-card" id="sl-perf"></section>
         <section class="sl-card" id="sl-mom"></section>
         <p class="sl-foot">Structural Logic reads live price structure. Educational tool, not investment advice.</p>
       </aside>
@@ -77,18 +79,23 @@ export async function abrirStructural() {
   const $ = (s) => ov.querySelector(s);
   const cv = $('#sl-cv'), cont = $('#sl-graf'), wait = $('#sl-wait');
   const chart = crearChart(cv, cont);
-  let animOn = false;
+  let animOn = false, velasActuales = [];
 
   function toast(msg) { let t = ov.querySelector('.sl-toast'); if (!t) { t = document.createElement('div'); t.className = 'sl-toast'; cont.appendChild(t); } t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2800); }
 
-  /* ── logos ── */
-  function badge(el, s) { el.className = 'sl-ico sl-badge ' + (s.tipo === 'Crypto' ? 'cr' : 'ix'); el.textContent = s.corto.slice(0, 4); el.style.backgroundImage = ''; }
-  function aplicarLogo(el, s) {
-    badge(el, s);
-    if (s.tipo === 'Crypto' && s.cg) {
-      logoCripto(s.cg).then((url) => { if (url) { el.textContent = ''; el.className = 'sl-ico sl-img'; el.style.backgroundImage = `url("${url}")`; } }).catch(() => {});
+  /* ── logos: emblema de marca para índices, imagen de CoinGecko para cripto ── */
+  const MARCA_IX = { spx: 'S&P', ndx: 'NDX', dji: 'DJ', rut: 'R2K' };
+  function ponerLogo(el, s, base) {
+    base = base || 'sl-ico';
+    el.style.backgroundImage = '';
+    if (s.tipo === 'Crypto') {
+      el.className = base + ' sl-badge cr'; el.textContent = s.corto.slice(0, 4);
+      if (s.cg) logoCripto(s.cg).then((url) => { if (url) { el.textContent = ''; el.className = base + ' sl-img'; el.style.backgroundImage = `url("${url}")`; } }).catch(() => {});
+    } else {
+      el.className = base + ' sl-ixlogo sl-lg-' + s.id; el.textContent = MARCA_IX[s.id] || s.corto.slice(0, 3);
     }
   }
+  const aplicarLogo = (el, s) => ponerLogo(el, s, 'sl-ico');
 
   /* ── cabecera: precio, cambio, estructura, señal, rsi ── */
   function pintarBar(velas, E, rsiUlt) {
@@ -104,7 +111,7 @@ export async function abrirStructural() {
   function pintarLive() { const el = $('#sl-live'); if (!el) return; el.innerHTML = `<i></i><b>LIVE</b><em>${esc(chart.S.fuente || '')}</em>`; }
 
   /* ── panel derecho ── */
-  function pintarPanel(E, velas, mtf) {
+  function pintarPanel(E, velas, mtf, bt) {
     // estructura
     const se = $('#sl-struct');
     const chip = E.sesgo === 'alcista' ? ['Bullish structure', 'bull'] : E.sesgo === 'bajista' ? ['Bearish structure', 'bear'] : E.sesgo === 'mixto' ? ['Losing structure', 'neu'] : ['Range', 'neu'];
@@ -152,6 +159,23 @@ export async function abrirStructural() {
     mm.innerHTML = `<h3 class="sl-h">Momentum ${String.fromCharCode(183)} multi-timeframe</h3>
       <div class="sl-mtable"><div class="sl-mtr sl-mth"><span>TF</span><b>RSI</b><b>Stoch</b></div>${rows}</div>
       <p class="sl-note">Green = oversold (room up), red = overbought (room down). RSI 14 and Stochastic 14, read across timeframes for alignment.</p>`;
+
+    // backtest sobre la historia cargada (datos reales en la máquina del usuario)
+    const pf = $('#sl-perf');
+    if (pf && bt) {
+      const pfv = bt.pf === Infinity ? '∞' : bt.pf.toFixed(2);
+      pf.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Backtest ${String.fromCharCode(183)} this history</h3>
+        <button class="sl-tog ${filtro === 'trend' ? 'on' : ''}" id="sl-tog">Trend filter · ${filtro === 'trend' ? 'ON' : 'OFF'}</button></div>
+        <div class="sl-stats">
+          <div class="sl-stat"><span>Win rate</span><b>${bt.n ? bt.winRate.toFixed(0) + '%' : '--'}</b></div>
+          <div class="sl-stat"><span>Profit factor</span><b class="${bt.pf >= 1 ? 'g' : 'r'}">${bt.n ? pfv : '--'}</b></div>
+          <div class="sl-stat"><span>Avg R:R</span><b>${bt.n ? bt.avgRR.toFixed(2) : '--'}</b></div>
+          <div class="sl-stat"><span>Signals</span><b>${bt.n}</b></div>
+        </div>
+        <div class="sl-eq"><span>Net result, reversal</span><b class="${bt.retornoTotal >= 0 ? 'g' : 'r'}">${bt.retornoTotal >= 0 ? '+' : ''}${bt.retornoTotal.toFixed(1)}%</b></div>
+        <p class="sl-note">Walk-forward, no repaint: entry at each signal, ATR stop, exit at the opposite signal, over the ${bt.n} signals in the loaded history. Past results do not guarantee future ones.</p>`;
+      const tg = $('#sl-tog'); if (tg) tg.onclick = () => { filtro = filtro === 'trend' ? 'none' : 'trend'; lset('sl-filtro', filtro); recomputar(); };
+    }
   }
 
   async function cargar(inicial) {
@@ -163,17 +187,23 @@ export async function abrirStructural() {
       const velas = r.velas;
       if (!velas || velas.length < 40) throw new Error('poca historia');
       wait.style.display = 'none';
+      velasActuales = velas;
       chart.S.velas = velas; chart.S.tf = tf; chart.S.precio = velas[velas.length - 1].c; chart.S.fuente = r.fuente;
-      const E = analizar(velas, { period: PERIODO }); chart.S.estructura = E;
-      const rl = rsi(velas); const rsiUlt = rl.length ? rl[rl.length - 1] : NaN;
-      const mtf = momentoMTF(velas, [1, 4, 12]);
-      chart.dibujar(); pintarBar(velas, E, rsiUlt); pintarPanel(E, velas, mtf); pintarLive();
+      recomputar();
       arrancarAnim();
     } catch (e) {
       wait.style.display = 'flex';
       wait.innerHTML = `<b>Could not load the data right now.</b><span>The feed may be busy. Try again in a moment.</span><button class="sl-retry" id="sl-retry">Retry</button>`;
       const b = $('#sl-retry'); if (b) b.onclick = () => cargar(true);
     }
+  }
+  function recomputar() {
+    const velas = velasActuales; if (!velas.length) return;
+    const E = analizar(velas, { period: PERIODO, filtro }); chart.S.estructura = E;
+    const rl = rsi(velas); const rsiUlt = rl.length ? rl[rl.length - 1] : NaN;
+    const mtf = momentoMTF(velas, [1, 4, 12]);
+    const bt = backtest(velas, { period: PERIODO, filtro });
+    chart.dibujar(); pintarBar(velas, E, rsiUlt); pintarPanel(E, velas, mtf, bt); pintarLive();
   }
   function arrancarAnim() { if (animOn) return; animOn = true; const paso = () => { if (!document.getElementById('sl-overlay')) { animOn = false; return; } if (!document.hidden) chart.dibujar(); setTimeout(() => requestAnimationFrame(paso), 80); }; requestAnimationFrame(paso); }
 
@@ -186,10 +216,9 @@ export async function abrirStructural() {
     const ix = grupo('Index'), cr = grupo('Crypto');
     list.innerHTML = (ix.length ? `<div class="sl-gh">Indices</div>${render(ix)}` : '') + (cr.length ? `<div class="sl-gh">Crypto</div>${render(cr)}` : '') || `<div class="sl-empty">No match</div>`;
     list.querySelectorAll('.sl-item').forEach((b) => {
-      b.onclick = () => { const s = SIMBOLOS.find((x) => x.id === b.dataset.id); if (!s) return; sim = s; lset('sl-sim', s.id); cerrarMenu(); cargar(true); };
-      const icoEl = b.querySelector('.sl-ico2'); const s = SIMBOLOS.find((x) => x.id === b.dataset.id);
-      if (s && s.tipo === 'Crypto' && s.cg) logoCripto(s.cg).then((url) => { if (url) { icoEl.textContent = ''; icoEl.classList.add('img'); icoEl.style.backgroundImage = `url("${url}")`; } }).catch(() => {});
-      else if (s) icoEl.classList.add(s.tipo === 'Crypto' ? 'cr' : 'ix');
+      const s = SIMBOLOS.find((x) => x.id === b.dataset.id);
+      b.onclick = () => { if (!s) return; sim = s; lset('sl-sim', s.id); cerrarMenu(); cargar(true); };
+      const icoEl = b.querySelector('.sl-ico2'); if (s && icoEl) ponerLogo(icoEl, s, 'sl-ico2');
     });
   }
   const coin = $('#sl-coin'), menu = $('#sl-menu'), q = $('#sl-q');
@@ -251,6 +280,11 @@ function inyectarCSS() {
 .sl-badge.cr{color:var(--gold);background:radial-gradient(circle at 30% 30%,#223049,#121826);border:1px solid #2a3647}
 .sl-badge#sl-ico{box-shadow:0 0 0 1px rgba(232,184,75,.25)}
 .sl-img{border:1px solid #2a3647}
+.sl-ixlogo{color:#fff;border:1px solid rgba(255,255,255,.18);font-weight:800;letter-spacing:.2px;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.sl-lg-spx{background:radial-gradient(circle at 32% 28%,#ff4255,#c20017)}
+.sl-lg-ndx{background:radial-gradient(circle at 32% 28%,#2bb6f2,#0071c5)}
+.sl-lg-dji{background:radial-gradient(circle at 32% 28%,#3a5aa8,#13244f)}
+.sl-lg-rut{background:radial-gradient(circle at 32% 28%,#a877e0,#5e2fa3)}
 .sl-coin .sl-nm{display:flex;flex-direction:column;line-height:1.12}
 .sl-coin .sl-nm b{font-family:"Chakra Petch",system-ui,sans-serif;font-weight:800;font-size:15px}
 .sl-coin .sl-nm span{font-size:9px;color:#79838f;font-family:"IBM Plex Mono",monospace;white-space:nowrap}
@@ -302,7 +336,7 @@ function inyectarCSS() {
 .sl-toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%) translateY(10px);z-index:6;pointer-events:none;background:rgba(16,20,26,.96);border:1px solid var(--line);color:#eaecef;font-size:12px;padding:9px 14px;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .18s,transform .18s;max-width:84%;text-align:center}
 .sl-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .sl-side{width:340px;flex:none;border-left:1px solid var(--line);overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:#080b10}
-.sl-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,#0c111a,#0a0d13)}
+.sl-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,#0c111a,#0a0d13);flex:none}
 .sl-h{margin:0;font-family:"Chakra Petch",system-ui,sans-serif;font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:#cfd6df}
 .sl-readtop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px}
 .sl-chip{font-size:10px;font-weight:800;letter-spacing:.3px;padding:4px 9px;border-radius:999px;font-family:"IBM Plex Mono",monospace;flex:none}
@@ -315,7 +349,7 @@ function inyectarCSS() {
 .sl-lvrow.res{border-left:2px solid var(--short)}.sl-lvrow.res b{color:#ff8a95}
 .sl-lvrow.sop{border-left:2px solid var(--long)}.sl-lvrow.sop b{color:#6ff0ad}
 .sl-lvrow.px{border-left:2px solid var(--gold)}.sl-lvrow.px b{color:var(--gold)}
-.sl-signal{position:relative;overflow:hidden}
+.sl-signal{position:relative}
 .sl-sgtop{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .sl-dot{width:9px;height:9px;border-radius:50%;background:#5a636e;flex:none}
 .sl-signal.long{border-color:rgba(46,232,106,.4);background:linear-gradient(180deg,rgba(46,232,106,.08),#0a0d13)}
@@ -334,6 +368,16 @@ function inyectarCSS() {
 .sl-mth{background:rgba(255,255,255,.03)}.sl-mth span,.sl-mth b{color:#79838f;font-size:10px;font-weight:700;text-transform:uppercase}
 .m-ob{color:#ff6b7a}.m-os{color:#2ee86a}.m-nu{color:#c2cad3}
 .sl-note{font-size:11px;line-height:1.5;color:#6f7985;margin:8px 0 0}
+.sl-tog{font-size:9.5px;font-weight:700;font-family:"IBM Plex Mono",monospace;padding:4px 9px;border-radius:999px;border:1px solid var(--line);background:#0a0e14;color:#79838f;cursor:pointer;white-space:nowrap}
+.sl-tog.on{border-color:rgba(46,232,106,.5);color:#2ee86a;background:rgba(46,232,106,.1)}
+.sl-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sl-stat{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#0a0e14}
+.sl-stat span{display:block;font-size:9px;color:#79838f;font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.sl-stat b{font-family:"Chakra Petch",system-ui,sans-serif;font-size:17px;font-weight:800;color:#eaecef}
+.sl-stat b.g{color:#2ee86a}.sl-stat b.r{color:#ff6b7a}
+.sl-eq{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#0a0e14}
+.sl-eq span{font-size:11px;color:#9aa4af;font-family:"IBM Plex Mono",monospace}
+.sl-eq b{font-family:"Chakra Petch",system-ui,sans-serif;font-size:16px;font-weight:800}.sl-eq b.g{color:#2ee86a}.sl-eq b.r{color:#ff6b7a}
 .sl-foot{font-size:10.5px;color:#5f6974;line-height:1.5;margin:2px 2px 0;text-align:center}
 .sl-modal{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;padding:18px;opacity:0;transition:opacity .16s}.sl-modal.on{opacity:1}
 .sl-modal-bg{position:absolute;inset:0;background:rgba(5,7,10,.72);backdrop-filter:blur(3px)}
