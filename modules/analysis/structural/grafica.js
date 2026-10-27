@@ -2,10 +2,19 @@
    structural/grafica.js — Lienzo de "Structural Logic" (dos paneles).
 
    Arriba (precio): velas ORIGINALES coloreadas por tendencia + velas
-   SUAVIZADAS (la "media móvil especial" con cuerpo tipo volumen) + la
-   línea de cierre suavizado + marcadores LONG/SHORT.
+   SUAVIZADAS (la "estructura" con cuerpo tipo volumen) + la línea de
+   cierre suavizado + alertas LONG/SHORT completas.
    Abajo (subpanel): el oscilador de momento con sus umbrales y rellenos.
    Zoom/paneo sincronizado entre los dos.
+
+   Dinámicas vivas:
+     · Iluminación ESCALONADA (dominó) sobre las VELAS, desde la última
+       señal hasta la vela actual — la misma latencia que enamora en el
+       momentum, pero en el precio.
+     · Punto viajero con el color de la señal (verde long / rojo short).
+     · Medidor de "próxima señal" arriba a la derecha (distancia al eje).
+     · Caja de posición SL/TP 1:2 proyectada desde la última señal.
+     · Clic derecho = la MISMA dinámica de órdenes de los pools (orden.js).
    ══════════════════════════════════════════════════════════════ */
 
 function redondeado(g, x, y, w, h, r) {
@@ -29,12 +38,33 @@ const fechaCruz = (t, tf) => { const d = new Date(t); return INTRA(tf) ? d.toLoc
 
 export function crearChart(cv, cont) {
   const S = {
-    velas: [], ind: null, precio: 0, tf: '1h', fuente: '', cruz: null, marcaUrl: null,
+    velas: [], ind: null, precio: 0, tf: '1h', fuente: '', marca: 'DecFreedom', marcaUrl: null,
+    par: '', simbolo: '', cruz: null,
     vista: { desde: -6, ancho: 130, zoomY: 1, offsetY: 0 }, _geo: null
   };
   let marcaImg = null, marcaTry = false;
   const cargarMarca = () => { if (marcaImg || marcaTry || !S.marcaUrl) return; marcaTry = true; const im = new Image(); im.onload = () => { marcaImg = im; }; im.src = S.marcaUrl; };
 
+  /* ── órdenes por clic derecho: EXACTAMENTE la dinámica de los pools ── */
+  let od = null, zonasOd = [];
+  import(new URL('../../../assets/js/orden.js?v=126', import.meta.url).href).then((m) => {
+    od = m; S._od = m;
+    try {
+      m.conectar({
+        canvas: cv,
+        precioEn: (y) => { const G = S._geo; if (!G) return 0; const yy = clamp(y, 0, G.pH); return G.pMin + (G.pMax - G.pMin) * (1 - yy / G.pH); },
+        precioActual: () => S.precio,
+        par: () => S.par || '',
+        simbolo: () => S.simbolo || '',
+        repintar: () => dibujar()
+      });
+      m.clicCancelar(cv, () => zonasOd, () => dibujar());
+    } catch (_) {}
+    dibujar();
+  }).catch(() => {});
+  const cerrarOrden = () => { try { if (od && od.cerrarFichas) od.cerrarFichas(); } catch (_) {} };
+
+  /* ── etiqueta tipo "píldora" (se usa para el marcador fuerte y la cruz) ── */
   function pill(g, cx, cy, txt, rgb, fuerte, pulso) {
     g.font = (fuerte ? '800 11px' : '800 9.5px') + ' "Chakra Petch",system-ui,sans-serif';
     const w = g.measureText(txt).width + (fuerte ? 18 : 13), h = fuerte ? 20 : 16, x = cx - w / 2, y = cy - h / 2;
@@ -44,6 +74,73 @@ export function crearChart(cv, cont) {
     g.fillStyle = 'rgba(8,12,18,.94)'; redondeado(g, x, y, w, h, h / 2); g.fill();
     g.shadowBlur = 0; g.strokeStyle = `rgba(${rgb},1)`; g.lineWidth = fuerte ? 1.5 : 1.1; redondeado(g, x, y, w, h, h / 2); g.stroke();
     g.fillStyle = `rgb(${rgb})`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, cx, cy + 0.5); g.textBaseline = 'alphabetic';
+    g.restore();
+  }
+
+  /* ── alerta histórica completa: flecha anclada a la vela + etiqueta
+       LONG/SHORT. Todas se ven como lo que son, no como triangulitos. ── */
+  function alerta(g, x, yAncla, esLong, rgb, fuerte, pulso) {
+    const dir = esLong ? 1 : -1;                 // long debajo, short encima
+    const ts = fuerte ? 6.5 : 5;
+    const puntaY = yAncla + dir * 3;
+    g.save();
+    // anillo latente
+    g.strokeStyle = `rgba(${rgb},${0.12 + 0.3 * pulso})`; g.lineWidth = 1.1;
+    g.beginPath(); g.arc(x, puntaY + dir * ts, (fuerte ? 9 : 7) + pulso * (fuerte ? 3 : 1.6), 0, 6.283); g.stroke();
+    // flecha sólida
+    g.fillStyle = `rgb(${rgb})`; g.shadowColor = `rgba(${rgb},${fuerte ? .95 : .7})`; g.shadowBlur = fuerte ? 12 : 7;
+    g.beginPath();
+    if (esLong) { g.moveTo(x, puntaY); g.lineTo(x - ts, puntaY + ts * 1.7); g.lineTo(x + ts, puntaY + ts * 1.7); }
+    else { g.moveTo(x, puntaY); g.lineTo(x - ts, puntaY - ts * 1.7); g.lineTo(x + ts, puntaY - ts * 1.7); }
+    g.closePath(); g.fill();
+    g.restore();
+    // etiqueta
+    const txt = esLong ? 'LONG' : 'SHORT';
+    const ety = puntaY + dir * (ts * 1.7 + (fuerte ? 13 : 11));
+    pill(g, x, ety, txt, rgb, fuerte, fuerte ? pulso : 0);
+  }
+
+  /* ── etiqueta de nivel pegada al eje de precio (TP / ENTRY / SL) ── */
+  function nivelDer(g, x1, y, tag, rgb, valor) {
+    g.save();
+    g.font = '800 8.5px "IBM Plex Mono",ui-monospace,monospace';
+    const txt = tag + ' ' + valor, w = g.measureText(txt).width + 14;
+    const x = x1 - w - 4;
+    g.globalAlpha = 0.96; g.fillStyle = 'rgba(8,12,18,.9)';
+    redondeado(g, x, y - 8, w, 16, 5); g.fill();
+    g.globalAlpha = 1; g.strokeStyle = `rgba(${rgb},.85)`; g.lineWidth = 1; redondeado(g, x, y - 8, w, 16, 5); g.stroke();
+    g.fillStyle = `rgb(${rgb})`; g.textAlign = 'left'; g.fillText(txt, x + 7, y + 3);
+    g.restore();
+  }
+
+  /* ── medidor de próxima señal (arriba-derecha, dentro del precio) ── */
+  function medidor(g, x1, ind) {
+    const e = ind.e200Hoy; if (!isFinite(e) || !(S.precio > 0)) return;
+    const d = ((S.precio - e) / e) * 100;                 // distancia al eje, con signo (%)
+    // Sigmoide sobre la distancia: por encima del eje favorece LONG, por debajo
+    // SHORT. Cuanto más cerca del eje, más 50/50 (la alerta contraria está cerca).
+    let longP = 100 / (1 + Math.exp(-0.42 * d));          // ya es 0..100
+    if (ind.emaSube === true) longP += 5; else if (ind.emaSube === false) longP -= 5;
+    longP = clamp(Math.round(longP), 2, 98); const shortP = 100 - longP;
+    const w = 158, h = 58, x = x1 - w - 10, y = 10;
+    g.save();
+    g.fillStyle = 'rgba(9,12,18,.86)'; redondeado(g, x, y, w, h, 10); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = 1; redondeado(g, x, y, w, h, 10); g.stroke();
+    g.font = '800 8px "IBM Plex Mono",ui-monospace,monospace'; g.textAlign = 'left';
+    g.fillStyle = '#8b94a0'; g.fillText('NEXT SIGNAL', x + 10, y + 13);
+    g.textAlign = 'right'; g.fillStyle = d >= 0 ? `rgb(${COL.upRGB})` : `rgb(${COL.dnRGB})`;
+    g.fillText((d >= 0 ? '+' : '') + d.toFixed(2) + '% to base', x + w - 10, y + 13);
+    const bx = x + 46, bw = w - 56;
+    const fila = (yy, lab, pct, rgb) => {
+      g.textAlign = 'left'; g.font = '800 9px "Chakra Petch",system-ui,sans-serif'; g.fillStyle = `rgb(${rgb})`;
+      g.fillText(lab, x + 10, yy + 4);
+      g.fillStyle = 'rgba(255,255,255,.07)'; redondeado(g, bx, yy - 3.5, bw, 7, 3.5); g.fill();
+      g.fillStyle = `rgba(${rgb},.9)`; redondeado(g, bx, yy - 3.5, Math.max(4, bw * pct / 100), 7, 3.5); g.fill();
+      g.textAlign = 'right'; g.font = '800 9px "IBM Plex Mono",ui-monospace,monospace'; g.fillStyle = '#eaecef';
+      g.fillText(pct + '%', x + w - 10, yy + 3.5);
+    };
+    fila(y + 30, 'LONG', longP, COL.upRGB);
+    fila(y + 46, 'SHORT', shortP, COL.dnRGB);
     g.restore();
   }
 
@@ -98,8 +195,10 @@ export function crearChart(cv, cont) {
     g.strokeStyle = 'rgba(255,255,255,.03)'; g.lineWidth = 1;
     for (let i = 1; i < 5; i++) { const y = (pH / 5) * i; g.beginPath(); g.moveTo(0, y); g.lineTo(x1, y); g.stroke(); }
 
-    // ── VELAS SUAVIZADAS (la "MA especial", semitransparente, detrás) ──
-    const cw = Math.max(1.2, paso * 0.6);
+    const cw = Math.max(1.2, paso * 0.6);       // ancho vela suavizada
+    const cwo = Math.max(1, paso * 0.46);        // ancho vela original
+
+    // ── VELAS SUAVIZADAS (la "estructura", semitransparente, detrás) ──
     for (let i = primero; i < Math.min(total, fin); i++) {
       if (!isFinite(ind.oda[i]) || !isFinite(ind.cda[i])) continue;
       const x = xAt(i), rgb = cTrendRGB(ind.trend[i]);
@@ -110,7 +209,6 @@ export function crearChart(cv, cont) {
     }
 
     // ── VELAS ORIGINALES coloreadas por tendencia (delante) ──
-    const cwo = Math.max(1, paso * 0.46);
     for (let i = primero; i < Math.min(total, fin); i++) {
       const v = S.velas[i], x = xAt(i), c = cTrend(ind.trend[i]);
       g.strokeStyle = c; g.fillStyle = c; g.lineWidth = Math.max(0.8, paso * 0.08);
@@ -129,41 +227,74 @@ export function crearChart(cv, cont) {
     }
     g.restore();
 
-    // ── CIRCUITO: la luz viaja desde la señal activa hasta el precio actual ──
+    // ── ILUMINACIÓN ESCALONADA (DOMINÓ) SOBRE LAS VELAS ──
+    //    Desde la última señal hasta la vela actual, cada vela se enciende
+    //    por turno (como el momentum). El punto viajero lleva el color de
+    //    la señal: verde en long, rojo en short. Nunca blanco.
     const ult = ind.ultima;
     if (ult && ult.bar < total - 1) {
       const a0 = ult.bar, a1 = total - 1, span = Math.max(1, a1 - a0);
-      const per = 1500 + span * 16, head = a0 + ((performance.now() % per) / per) * span;
+      const per = 1400 + span * 15, head = a0 + ((performance.now() % per) / per) * span;
       const rgbU = ult.tipo === 'LONG' ? COL.upRGB : COL.dnRGB;
       g.save(); g.lineCap = 'round';
-      for (let i = Math.max(a0 + 1, primero + 1); i <= Math.min(a1, fin - 1); i++) {
-        if (!isFinite(ind.cda[i]) || !isFinite(ind.cda[i - 1])) continue;
-        const d = head - i, br = d >= 0 ? Math.max(0, 1 - d / (span * 0.45)) : Math.max(0, 1 + d * 0.8);
-        if (br <= 0.03) continue;
-        const x = xAt(i), y = Yp(ind.cda[i]), xp = xAt(i - 1), yp = Yp(ind.cda[i - 1]);
-        g.strokeStyle = `rgba(255,255,255,${0.12 * br})`; g.lineWidth = 2 + 3 * br; g.shadowColor = `rgba(${rgbU},${0.9 * br})`; g.shadowBlur = 12 * br;
-        g.beginPath(); g.moveTo(xp, yp); g.lineTo(x, y); g.stroke();
+      for (let i = Math.max(a0, primero); i <= Math.min(a1, fin - 1); i++) {
+        const v = S.velas[i]; if (!v) continue;
+        const d = head - i;
+        const br = d >= 0 ? Math.max(0, 1 - d / (span * 0.5)) : Math.max(0, 1 + d * 0.9);
+        if (br <= 0.04) continue;
+        const x = xAt(i);
+        g.strokeStyle = `rgba(${rgbU},${0.22 + 0.68 * br})`; g.lineWidth = Math.max(1, paso * 0.1);
+        g.shadowColor = `rgba(${rgbU},${0.9 * br})`; g.shadowBlur = 16 * br;
+        g.beginPath(); g.moveTo(x, Yp(v.h)); g.lineTo(x, Yp(v.l)); g.stroke();
+        const a = Yp(Math.max(v.o, v.c)), b = Yp(Math.min(v.o, v.c));
+        g.fillStyle = `rgba(${rgbU},${0.28 + 0.6 * br})`;
+        g.fillRect(x - cwo / 2, a, cwo, Math.max(1, b - a));
       }
       const hb = Math.round(head);
-      if (hb >= primero && hb < fin && isFinite(ind.cda[hb])) { const x = xAt(hb), y = Yp(ind.cda[hb]); g.shadowColor = `rgba(${rgbU},1)`; g.shadowBlur = 16; g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 3, 0, 6.283); g.fill(); }
+      if (hb >= primero && hb < fin) {
+        const v = S.velas[hb];
+        if (v) {
+          const x = xAt(hb), y = Yp(v.c);
+          g.shadowColor = `rgba(${rgbU},1)`; g.shadowBlur = 18; g.fillStyle = `rgb(${rgbU})`;
+          g.beginPath(); g.arc(x, y, 3.3, 0, 6.283); g.fill();
+          g.shadowBlur = 0; g.fillStyle = COL.bg; g.beginPath(); g.arc(x, y, 1.1, 0, 6.283); g.fill();
+        }
+      }
       g.restore();
     }
 
-    // ── marcadores: cada uno como alerta con anillo latente; la última con etiqueta ──
+    // ── CAJA DE POSICIÓN SL/TP 1:2 (proyección desde la última señal) ──
+    if (ult && isFinite(ult.sl) && isFinite(ult.tp) && isFinite(ult.entry)) {
+      const xe = clamp(xAt(ult.bar), 0, x1 - 2);
+      const yE = Yp(ult.entry), ySL = Yp(ult.sl), yTP = Yp(ult.tp);
+      g.save();
+      g.fillStyle = `rgba(${COL.upRGB},.06)`; g.fillRect(xe, Math.min(yE, yTP), x1 - xe, Math.abs(yTP - yE));
+      g.fillStyle = `rgba(${COL.dnRGB},.06)`; g.fillRect(xe, Math.min(yE, ySL), x1 - xe, Math.abs(ySL - yE));
+      g.setLineDash([3, 3]); g.lineWidth = 1;
+      g.strokeStyle = `rgba(${COL.upRGB},.7)`; g.beginPath(); g.moveTo(xe, yTP); g.lineTo(x1, yTP); g.stroke();
+      g.strokeStyle = `rgba(${COL.dnRGB},.7)`; g.beginPath(); g.moveTo(xe, ySL); g.lineTo(x1, ySL); g.stroke();
+      g.setLineDash([]); g.strokeStyle = `rgba(${COL.goldRGB},.85)`; g.lineWidth = 1.1; g.beginPath(); g.moveTo(xe, yE); g.lineTo(x1, yE); g.stroke();
+      g.restore();
+      nivelDer(g, x1, yTP, 'TP', COL.upRGB, fmt(ult.tp));
+      nivelDer(g, x1, yE, '◆', COL.goldRGB, fmt(ult.entry));
+      nivelDer(g, x1, ySL, 'SL', COL.dnRGB, fmt(ult.sl));
+    }
+
+    // ── ALERTAS: cada señal visible como LONG/SHORT completo ──
     (ind.senales || []).forEach((sg) => {
       if (sg.bar < primero || sg.bar >= fin) return;
       const v = S.velas[sg.bar]; if (!v) return;
-      const x = xAt(sg.bar), esLong = sg.tipo === 'LONG', rgb = esLong ? COL.upRGB : COL.dnRGB, fuerte = ult && sg.bar === ult.bar;
-      const ty = esLong ? Yp(v.l) + 12 : Yp(v.h) - 12, ts = fuerte ? 6 : 4.6;
-      g.save();
-      g.strokeStyle = `rgba(${rgb},${0.14 + 0.34 * pulso})`; g.lineWidth = 1.2;
-      g.beginPath(); g.arc(x, ty, (fuerte ? 10 : 7.5) + pulso * (fuerte ? 3 : 2), 0, 6.283); g.stroke();
-      g.fillStyle = `rgb(${rgb})`; g.shadowColor = `rgba(${rgb},${fuerte ? .95 : .7})`; g.shadowBlur = fuerte ? 12 : 7;
-      g.beginPath();
-      if (esLong) { g.moveTo(x, ty - ts); g.lineTo(x - ts, ty + ts); g.lineTo(x + ts, ty + ts); } else { g.moveTo(x, ty + ts); g.lineTo(x - ts, ty - ts); g.lineTo(x + ts, ty - ts); }
-      g.closePath(); g.fill(); g.restore();
-      if (fuerte) pill(g, x, esLong ? ty + 22 : ty - 22, sg.tipo, rgb, true, pulso);
+      const x = xAt(sg.bar), esLong = sg.tipo === 'LONG', rgb = esLong ? COL.upRGB : COL.dnRGB;
+      const fuerte = ult && sg.bar === ult.bar;
+      const yAncla = esLong ? Yp(v.l) + 7 : Yp(v.h) - 7;
+      alerta(g, x, yAncla, esLong, rgb, fuerte, pulso);
     });
+
+    // ── medidor de próxima señal ──
+    medidor(g, x1, ind);
+
+    // ── órdenes/alertas del clic derecho (encima de todo, estilo pools) ──
+    if (od && od.pintar) { try { zonasOd = od.pintar(g, { x1, y1: pH, Y: Yp, pMin, pMax, simbolo: S.simbolo }) || []; } catch (_) { zonasOd = []; } }
 
     // ── precio actual ──
     const yP = Yp(S.precio);
@@ -176,9 +307,7 @@ export function crearChart(cv, cont) {
     // ══ SUBPANEL: oscilador de momento ══
     g.fillStyle = 'rgba(255,255,255,.015)'; g.fillRect(0, oscTop, x1, oscH);
     const y0 = Yo(0), yL = Yo(ind.l), yS = Yo(ind.s);
-    // banda entre umbrales
     g.fillStyle = 'rgba(120,120,130,.08)'; g.fillRect(0, Math.min(yL, yS), x1, Math.abs(yS - yL));
-    // histograma de momento: barras con degradado + onda de latencia que recorre
     const bw = Math.max(1.5, paso * 0.64);
     if (!S._t0) S._t0 = performance.now();
     const crecer = clamp((performance.now() - S._t0) / 500, 0, 1);
@@ -193,22 +322,18 @@ export function crearChart(cv, cont) {
       grad.addColorStop(0, `rgba(${rgb},0.14)`); grad.addColorStop(1, `rgba(${rgb},${0.5 + 0.4 * brillo})`);
       g.fillStyle = grad; g.fillRect(x - bw / 2, Math.min(y0, yTip), bw, Math.max(1, Math.abs(yTip - y0)));
     }
-    // línea del momento
     g.save(); g.lineWidth = 1.6; g.lineJoin = 'round'; let pO = null;
     for (let i = primero; i < Math.min(total, fin); i++) { if (!isFinite(ind.change[i])) { pO = null; continue; } const x = xAt(i), y = Yo(ind.change[i]); if (pO) { g.strokeStyle = cTrend(ind.trend[i]); g.beginPath(); g.moveTo(pO.x, pO.y); g.lineTo(x, y); g.stroke(); } pO = { x, y }; }
     g.restore();
-    // umbrales
     g.setLineDash([4, 4]); g.lineWidth = 1;
     g.strokeStyle = `rgba(${COL.upRGB},.5)`; g.beginPath(); g.moveTo(0, yL); g.lineTo(x1, yL); g.stroke();
     g.strokeStyle = `rgba(${COL.dnRGB},.5)`; g.beginPath(); g.moveTo(0, yS); g.lineTo(x1, yS); g.stroke();
     g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.moveTo(0, y0); g.lineTo(x1, y0); g.stroke();
-    // etiqueta del subpanel
     g.fillStyle = '#8b94a0'; g.font = '700 10px "Chakra Petch",system-ui,sans-serif'; g.textAlign = 'left';
     g.fillText('Momentum', 8, oscTop + 14);
     g.fillStyle = cTrend(ind.trendActual); g.font = '700 10px "IBM Plex Mono",ui-monospace,monospace';
     g.fillText((isFinite(ind.changeActual) ? (ind.changeActual >= 0 ? '+' : '') + ind.changeActual.toFixed(3) : '--'), 78, oscTop + 14);
 
-    // divisoria entre paneles
     g.strokeStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.moveTo(0, oscTop - gap / 2); g.lineTo(x1, oscTop - gap / 2); g.stroke();
 
     // ── escala de precio (derecha, panel de arriba) ──
@@ -217,7 +342,6 @@ export function crearChart(cv, cont) {
     g.font = '10px "IBM Plex Mono",ui-monospace,monospace'; g.textAlign = 'left';
     for (let i = 0; i <= 5; i++) { const p = pMin + (pMax - pMin) * (i / 5), y = Yp(p); if (y < 6 || y > pH - 2 || Math.abs(y - yP) < 12) continue; g.fillStyle = COL.eje; g.fillText(fmt(p), x1 + 7, y + 3.4); }
     if (yP > 0 && yP < pH) { g.fillStyle = COL.gold; redondeado(g, x1 + 2, yP - 9, mDer - 5, 18, 4); g.fill(); g.fillStyle = '#2a1c00'; g.font = 'bold 10px "IBM Plex Mono",ui-monospace,monospace'; g.fillText(fmt(S.precio), x1 + 6, yP + 3.5); }
-    // escala del oscilador
     g.font = '9px "IBM Plex Mono",ui-monospace,monospace'; g.fillStyle = COL.eje; g.textAlign = 'left';
     [[ind.l, yL], [0, y0], [ind.s, yS]].forEach(([val, y]) => { if (y > oscTop + 2 && y < oscBot - 2) g.fillText((val >= 0 ? '+' : '') + val.toFixed(2), x1 + 7, y + 3); });
 
@@ -244,21 +368,24 @@ export function crearChart(cv, cont) {
   /* ══ GESTOS ══ */
   let pend = false;
   const refrescar = () => { if (pend) return; pend = true; requestAnimationFrame(() => { pend = false; dibujar(); }); };
-  const zoomX = (f) => { S.vista.ancho = Math.max(24, Math.min(1200, Math.round(S.vista.ancho * f))); refrescar(); };
+  const zoomX = (f) => { S.vista.ancho = Math.max(24, Math.min(2000, Math.round(S.vista.ancho * f))); refrescar(); };
   const zoomY = (f) => { S.vista.zoomY = Math.max(0.3, Math.min(5, (S.vista.zoomY || 1) * f)); refrescar(); };
   const enEscala = (x) => x > cv.clientWidth - 64;
   const loc = (e, t) => { const r = cv.getBoundingClientRect(); const s = t || e; return { x: s.clientX - r.left, y: s.clientY - r.top }; };
+  // tope de paneo: permite retroceder hasta la PRIMERA vela cargada.
+  const topePan = () => Math.max(0, S.velas.length - 1);
+  const sueloPan = () => -Math.floor(S.vista.ancho * 0.6);
   cv.addEventListener('wheel', (e) => { e.preventDefault(); const p = loc(e); if (enEscala(p.x)) zoomY(e.deltaY > 0 ? 1.12 : 0.9); else zoomX(e.deltaY > 0 ? 1.15 : 0.87); }, { passive: false });
   let arr = false, ax = 0, ay = 0, modo = 'libre';
   cv.addEventListener('mousedown', (e) => { if (e.button !== 0) return; const p = loc(e); modo = enEscala(p.x) ? 'y' : 'libre'; arr = true; ax = e.clientX; ay = e.clientY; cv.style.cursor = modo === 'y' ? 'ns-resize' : 'grabbing'; });
-  cv.addEventListener('mousemove', (e) => { const p = loc(e); if (!arr) { S.cruz = { x: Math.round(p.x), y: Math.round(p.y) }; cv.style.cursor = enEscala(p.x) ? 'ns-resize' : 'crosshair'; refrescar(); } });
+  cv.addEventListener('mousemove', (e) => { const p = loc(e); if (!arr) { S.cruz = { x: Math.round(p.x), y: Math.round(p.y) }; if (cv.style.cursor !== 'pointer') cv.style.cursor = enEscala(p.x) ? 'ns-resize' : 'crosshair'; refrescar(); } });
   cv.addEventListener('mouseleave', () => { S.cruz = null; refrescar(); });
   window.addEventListener('mousemove', (e) => {
     if (!arr) return;
     if (modo === 'y') { const dy = e.clientY - ay; if (Math.abs(dy) > 2) { zoomY(1 + dy * 0.004); ay = e.clientY; } return; }
     let cambio = false; const paso = (cv.clientWidth - 62) / S.vista.ancho;
     const d = Math.round((e.clientX - ax) / Math.max(1, paso));
-    if (d !== 0) { const tope = Math.max(0, S.velas.length - S.vista.ancho) + Math.floor(S.vista.ancho * 0.6), suelo = -Math.floor(S.vista.ancho * 0.6); S.vista.desde = Math.max(suelo, Math.min(tope, S.vista.desde + d)); ax = e.clientX; cambio = true; }
+    if (d !== 0) { S.vista.desde = Math.max(sueloPan(), Math.min(topePan(), S.vista.desde + d)); ax = e.clientX; cambio = true; }
     const dy = e.clientY - ay; if (Math.abs(dy) > 1) { S.vista.offsetY = (S.vista.offsetY || 0) + dy; ay = e.clientY; cambio = true; }
     if (cambio) refrescar();
   });
@@ -267,10 +394,10 @@ export function crearChart(cv, cont) {
   let d0 = 0, dy0 = 0, tx = 0, tarr = false;
   cv.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { tx = e.touches[0].clientX; tarr = true; } else if (e.touches.length === 2) { tarr = false; d0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); dy0 = Math.abs(e.touches[0].clientY - e.touches[1].clientY); } }, { passive: true });
   cv.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 1 && tarr) { e.preventDefault(); const paso = (cv.clientWidth - 62) / S.vista.ancho; const d = Math.round((e.touches[0].clientX - tx) / Math.max(1, paso)); if (d !== 0) { const tope = Math.max(0, S.velas.length - S.vista.ancho) + Math.floor(S.vista.ancho * 0.6), suelo = -Math.floor(S.vista.ancho * 0.6); S.vista.desde = Math.max(suelo, Math.min(tope, S.vista.desde + d)); tx = e.touches[0].clientX; refrescar(); } }
+    if (e.touches.length === 1 && tarr) { e.preventDefault(); const paso = (cv.clientWidth - 62) / S.vista.ancho; const d = Math.round((e.touches[0].clientX - tx) / Math.max(1, paso)); if (d !== 0) { S.vista.desde = Math.max(sueloPan(), Math.min(topePan(), S.vista.desde + d)); tx = e.touches[0].clientX; refrescar(); } }
     else if (e.touches.length === 2 && d0 > 0) { e.preventDefault(); const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); const dy = Math.abs(e.touches[0].clientY - e.touches[1].clientY); if (dy > dy0 * 1.3 || dy0 > dy * 1.3) { zoomY(dy0 / Math.max(1, dy)); dy0 = dy; } else if (Math.abs(d - d0) > 8) { zoomX(d0 / d); } d0 = d; } }, { passive: false });
   cv.addEventListener('touchend', () => { tarr = false; d0 = 0; });
   const ro = new ResizeObserver(() => dibujar()); ro.observe(cont);
   cv.style.cursor = 'crosshair';
-  return { S, dibujar, refrescar, destruir() { try { ro.disconnect(); } catch (_) {} } };
+  return { S, dibujar, refrescar, cerrarOrden, destruir() { try { ro.disconnect(); } catch (_) {} try { cerrarOrden(); } catch (_) {} } };
 }

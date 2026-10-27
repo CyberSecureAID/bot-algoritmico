@@ -76,12 +76,24 @@ async function viaProxy(target, ms = 14000) {
   throw ultimo || new Error('proxy sin datos');
 }
 
-/* ── 1) Binance (cripto, directo con CORS abierto) ── */
+/* ── 1) Binance (cripto, directo con CORS abierto) ──
+   Se pagina hacia atrás con endTime para traer MUCHA más historia
+   (hasta ~3000 velas intradía): así el usuario puede retroceder en el
+   gráfico y verificar todas las señales del pasado, no solo un tramo corto. */
 async function feedBinance(sym, tf) {
   const iv = TF_BN[tf]; if (!iv) throw new Error('binance tf');
-  const j = await pedir(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${iv}&limit=1000`);
-  if (!Array.isArray(j)) throw new Error('binance sin datos');
-  return limpiar(j.map((k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5] })));
+  const PAG = (tf === '1d' || tf === '1w') ? 1 : 3;
+  let all = [], endTime = null;
+  for (let p = 0; p < PAG; p++) {
+    const u = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${iv}&limit=1000` + (endTime ? `&endTime=${endTime}` : '');
+    const j = await pedir(u);
+    if (!Array.isArray(j) || !j.length) break;
+    all = j.concat(all);
+    endTime = j[0][0] - 1;          // justo antes de la vela más antigua del lote
+    if (j.length < 1000) break;     // ya no hay más historia disponible
+  }
+  if (!all.length) throw new Error('binance sin datos');
+  return limpiar(all.map((k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5] })));
 }
 
 /* ── 2) Twelve Data (índices vía ETF, clave gratis) ── */

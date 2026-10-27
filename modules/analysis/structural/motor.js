@@ -122,6 +122,22 @@ export function analizar(velas, opts = {}) {
   }
   const ultima = senales.length ? senales[senales.length - 1] : null;
 
+  // Plan de riesgo de la ÚLTIMA señal: stop a 1.5·ATR(14), objetivo 1:2.
+  //   (El estudio en datos reales dice que salir en la señal opuesta rinde
+  //   más que un TP fijo; el 1:2 se dibuja como REFERENCIA de gestión, no
+  //   como promesa. Lo honesto va en el panel.)
+  if (ultima) {
+    const at14 = atr(velas, 14);
+    const aU = isFinite(at14[ultima.bar]) && at14[ultima.bar] > 0 ? at14[ultima.bar] : ultima.price * 0.01;
+    const risk = 1.5 * aU;
+    const esL = ultima.tipo === 'LONG';
+    ultima.entry = ultima.price;
+    ultima.risk = risk;
+    ultima.sl = esL ? ultima.price - risk : ultima.price + risk;
+    ultima.tp = esL ? ultima.price + 2 * risk : ultima.price - 2 * risk;
+    ultima.rr = 2;
+  }
+
   const sobre = n && isFinite(e200[n - 1]) ? velas[n - 1].c > e200[n - 1] : null;
   const emaSube = (n > slopeN && isFinite(e200[n - 1]) && isFinite(e200[n - 1 - slopeN])) ? e200[n - 1] > e200[n - 1 - slopeN] : null;
   const regimen = (sobre === true && emaSube === true) ? 'risk-on' : (sobre === false && emaSube === false) ? 'risk-off' : 'mixed';
@@ -153,14 +169,20 @@ export function backtest(velas, opts = {}) {
     const exit = velas[limit].c, move = esLong ? (exit - entry) : (entry - exit);
     trades.push({ tipo: sg.tipo, bar: sg.bar, entry, exit, R: move / risk, retPct: (move / entry) * 100, barras: limit - sg.bar });
   }
-  const nt = trades.length, wins = trades.filter((x) => x.retPct > 0), losses = trades.filter((x) => x.retPct <= 0);
-  const sw = wins.reduce((a, x) => a + x.retPct, 0), sl = Math.abs(losses.reduce((a, x) => a + x.retPct, 0)), sr = trades.reduce((a, x) => a + x.R, 0);
-  let eq = 1; for (const x of trades) eq *= (1 + x.retPct / 100);
-  const aw = wins.length ? sw / wins.length : 0, al = losses.length ? sl / losses.length : 0;
+  /* Métricas CONSISTENTES en R (riesgo normalizado por volatilidad), que es
+     como una mesa real mide un sistema: cada operación arriesga una fracción
+     fija del capital (1%% por defecto) dimensionada por el stop ATR. Así el
+     Profit Factor, la expectativa y el resultado neto cuentan la MISMA
+     historia (no se mezcla R con %% de notional fijo, que se contradicen). */
+  const f = opts.riesgo || 0.01;
+  const nt = trades.length, wins = trades.filter((x) => x.R > 0), losses = trades.filter((x) => x.R <= 0);
+  const swR = wins.reduce((a, x) => a + x.R, 0), slR = Math.abs(losses.reduce((a, x) => a + x.R, 0)), sr = trades.reduce((a, x) => a + x.R, 0);
+  let eq = 1; for (const x of trades) eq *= (1 + f * x.R);
+  const aw = wins.length ? swR / wins.length : 0, al = losses.length ? slR / losses.length : 0;
   return {
     n: nt, ganados: wins.length, perdidos: losses.length,
     winRate: nt ? wins.length / nt * 100 : 0,
-    pf: sl > 0 ? sw / sl : (sw > 0 ? Infinity : 0),
+    pf: slR > 0 ? swR / slR : (swR > 0 ? Infinity : 0),
     expectativaR: nt ? sr / nt : 0, retornoTotal: (eq - 1) * 100,
     avgWinPct: aw, avgLossPct: al, avgRR: al > 0 ? aw / al : 0, trades
   };

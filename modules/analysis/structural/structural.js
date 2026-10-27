@@ -8,9 +8,9 @@
    derecho premium que dice la estructura y QUÉ HACER.
    ══════════════════════════════════════════════════════════════ */
 
-import { crearChart } from './grafica.js?v=5';
-import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=5';
-import { analizar, momentoMTF, backtest, LEN } from './motor.js?v=5';
+import { crearChart } from './grafica.js?v=6';
+import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=6';
+import { analizar, momentoMTF, backtest, LEN } from './motor.js?v=6';
 
 const MARCA = new URL('../../../assets/img/cco-marca.webp', import.meta.url).href;
 const ICO = {
@@ -68,8 +68,9 @@ export async function abrirStructural() {
         <div class="sl-wait" id="sl-wait"><div class="sl-spin"></div><b>Loading market data</b></div>
       </div>
       <aside class="sl-side">
-        <section class="sl-card" id="sl-struct"></section>
+        <section class="sl-card sl-pos" id="sl-struct"></section>
         <section class="sl-card sl-signal" id="sl-signal"></section>
+        <section class="sl-card" id="sl-plan"></section>
         <section class="sl-card" id="sl-perf"></section>
         <section class="sl-card" id="sl-mom"></section>
         <p class="sl-foot">Structural Logic reads live price structure. Educational tool, not investment advice.</p>
@@ -109,37 +110,76 @@ export async function abrirStructural() {
     const sg = $('#sl-sig'); const u = E.ultima; sg.textContent = u ? u.tipo : '—'; sg.className = 'v ' + (u ? (u.tipo === 'LONG' ? 'up' : 'dn') : '');
     const r = $('#sl-rsi'); r.textContent = (E.conviccion || 0) + ''; r.className = 'v ' + (E.trendActual === 1 ? 'up' : E.trendActual === -1 ? 'dn' : '');
   }
-  function pintarLive() { const el = $('#sl-live'); if (!el) return; el.innerHTML = `<i></i><b>LIVE</b><em>${esc(chart.S.fuente || '')}</em>`; }
+  function pintarLive() { const el = $('#sl-live'); if (!el) return; el.innerHTML = `<i></i><b>LIVE</b><em>DecFreedom</em>`; }
 
-  /* ── panel derecho ── */
+  /* ── panel derecho ejecutivo (sala de trading, sin jerga de indicador) ── */
   function pintarPanel(E, velas, mtf, bt) {
-    // lectura ejecutiva (sin exponer la mecánica)
-    const se = $('#sl-struct');
-    const biasChip = E.trendActual === 1 ? ['Long bias', 'bull'] : E.trendActual === -1 ? ['Short bias', 'bear'] : ['Neutral', 'neu'];
+    const u = E.ultima;
+    const stance = E.trendActual === 1 ? ['LONG', 'long'] : E.trendActual === -1 ? ['SHORT', 'short'] : ['FLAT', 'flat'];
     const reg = E.regimen === 'risk-on' ? ['Risk-on', 'bull'] : E.regimen === 'risk-off' ? ['Risk-off', 'bear'] : ['Transition', 'neu'];
     const conv = E.conviccion || 0, convCls = conv >= 60 ? 'g' : conv >= 30 ? '' : 'r';
-    const biasCls = E.trendActual === 1 ? 'sop' : E.trendActual === -1 ? 'res' : 'px';
-    se.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Read</h3><span class="sl-chip sl-chip-${biasChip[1]}">${biasChip[0]}</span></div>
-      <div class="sl-lv">
-        <div class="sl-lvrow ${biasCls}"><span>Bias</span><b>${E.trendActual === 1 ? 'Long' : E.trendActual === -1 ? 'Short' : 'Flat'}</b><em>${E.ultima ? 'last ' + E.ultima.tipo.toLowerCase() : 'no call'}</em></div>
-        <div class="sl-lvrow ${E.regimen === 'risk-on' ? 'sop' : E.regimen === 'risk-off' ? 'res' : 'px'}"><span>Regime</span><b>${reg[0]}</b><em>higher trend</em></div>
-        <div class="sl-lvrow px"><span>Conviction</span><b class="sl-conv ${convCls}">${conv}</b><em>0–100</em></div>
-      </div>
-      <div class="sl-convbar"><span style="width:${conv}%"></span></div>`;
+    const aligned = (u && u.tipo === 'LONG' && E.trendActual === 1) || (u && u.tipo === 'SHORT' && E.trendActual === -1);
+    const session = !u ? ['Idle', ''] : aligned ? ['Aligned', 'g'] : ['Divergent', 'r'];
 
-    // señal + qué hacer (ejecutivo)
-    const sg = $('#sl-signal'); const u = E.ultima;
-    let tono = 'neu', titulo = 'Flat — stand aside', texto = '';
-    if (u && u.tipo === 'LONG' && E.trendActual === 1) { tono = 'long'; titulo = 'Long — aligned with the regime'; texto = `The engine is long inside a confirmed risk-on regime. Stay with it while conviction holds; the position is cut when the read turns or the regime breaks.`; }
-    else if (u && u.tipo === 'SHORT' && E.trendActual === -1) { tono = 'short'; titulo = 'Short — aligned with the regime'; texto = `The engine is short inside a confirmed risk-off regime. Stay with it while conviction holds; the position is cut when the read turns or the regime breaks.`; }
-    else if (u) { tono = 'neu'; titulo = `Flat — last call was ${u.tipo.toLowerCase()}`; texto = `The last call was ${u.tipo.toLowerCase()}, but the read and the regime no longer agree. The engine waits for the next alignment before committing again.`; }
-    else { texto = `No position. The engine commits only when the read and the broader regime agree — one clean call per regime, no chasing.`; }
+    // ── POSITIONING (cabecera de mesa) ──
+    const se = $('#sl-struct');
+    se.innerHTML = `<div class="sl-deskhead">
+        <div class="sl-deskl"><span class="sl-desklbl">Positioning</span>
+          <div class="sl-stance sl-st-${stance[1]}"><i></i><b>${stance[0]}</b></div></div>
+        <span class="sl-chip sl-chip-${reg[1]}">${reg[0]}</span>
+      </div>
+      <div class="sl-gaugehd"><span>Conviction</span><b class="sl-convn ${convCls}">${conv}<em>/100</em></b></div>
+      <div class="sl-convbar"><span style="width:${conv}%"></span></div>
+      <div class="sl-deskgrid">
+        <div class="sl-dk"><span>Session</span><b class="${session[1]}">${session[0]}</b></div>
+        <div class="sl-dk"><span>Last call</span><b class="${u ? (u.tipo === 'LONG' ? 'g' : 'r') : ''}">${u ? u.tipo : '—'}</b></div>
+      </div>`;
+
+    // ── TACTICAL READ (prosa ejecutiva) ──
+    const sg = $('#sl-signal');
+    let tono = 'neu', titulo = 'Stand aside', texto = '';
+    if (u && u.tipo === 'LONG' && E.trendActual === 1) { tono = 'long'; titulo = 'Long — with the regime'; texto = `The desk is long inside a confirmed risk-on regime. Hold while conviction holds; the book is cut when the read turns or the regime breaks.`; }
+    else if (u && u.tipo === 'SHORT' && E.trendActual === -1) { tono = 'short'; titulo = 'Short — with the regime'; texto = `The desk is short inside a confirmed risk-off regime. Hold while conviction holds; the book is cut when the read turns or the regime breaks.`; }
+    else if (u) { tono = 'neu'; titulo = `Divergent — last call ${u.tipo.toLowerCase()}`; texto = `The last call was ${u.tipo.toLowerCase()}, but the read and the broader regime no longer agree. The desk waits for the next alignment before committing fresh risk.`; }
+    else { texto = `No position. The desk commits only when the read and the broader regime agree — one clean call per regime, no chasing.`; }
     sg.className = 'sl-card sl-signal ' + tono;
     sg.innerHTML = `<div class="sl-sgtop"><span class="sl-dot"></span><h3 class="sl-h">${esc(titulo)}</h3></div>
-      <p class="sl-say">${texto}</p>
-      <p class="sl-na">This is not investment advice.</p>`;
+      <p class="sl-say">${texto}</p>`;
 
-    // momento multi-temporalidad
+    // ── TRADE PLAN 1:2 (los niveles de la gráfica, en versión ejecutiva) ──
+    const pl = $('#sl-plan');
+    if (pl) {
+      if (u && isFinite(u.entry) && isFinite(u.sl) && isFinite(u.tp)) {
+        const dir = u.tipo === 'LONG' ? 'bull' : 'bear';
+        pl.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Trade plan ${String.fromCharCode(183)} 1:2</h3><span class="sl-chip sl-chip-${dir}">${u.tipo}</span></div>
+          <div class="sl-plan">
+            <div class="sl-pl tp"><span>Target</span><b>${fmt(u.tp)}</b><em>+2R</em></div>
+            <div class="sl-pl en"><span>Entry</span><b>${fmt(u.entry)}</b><em>signal</em></div>
+            <div class="sl-pl sl"><span>Stop</span><b>${fmt(u.sl)}</b><em>−1R</em></div>
+          </div>
+          <p class="sl-note">Projected on the chart from the last signal — risk one unit (1.5×ATR) to make two. Our own test exits at the opposite signal, which backtests stronger than a fixed target, so treat 1:2 as a discipline frame, not a promise.</p>`;
+      } else {
+        pl.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Trade plan ${String.fromCharCode(183)} 1:2</h3><span class="sl-chip sl-chip-neu">Flat</span></div>
+          <p class="sl-note">No active plan. Levels are drawn the moment a LONG or SHORT alert fires.</p>`;
+      }
+    }
+
+    // ── EDGE (backtest real de la historia cargada) ──
+    const pf = $('#sl-perf');
+    if (pf && bt) {
+      const pfv = bt.pf === Infinity ? '∞' : bt.pf.toFixed(2);
+      pf.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Edge ${String.fromCharCode(183)} backtested</h3><span class="sl-chip sl-chip-bull">no repaint</span></div>
+        <div class="sl-stats">
+          <div class="sl-stat"><span>Win rate</span><b>${bt.n ? bt.winRate.toFixed(0) + '%' : '--'}</b></div>
+          <div class="sl-stat"><span>Profit factor</span><b class="${bt.pf >= 1 ? 'g' : 'r'}">${bt.n ? pfv : '--'}</b></div>
+          <div class="sl-stat"><span>Avg R:R</span><b>${bt.n ? bt.avgRR.toFixed(2) : '--'}</b></div>
+          <div class="sl-stat"><span>Signals</span><b>${bt.n}</b></div>
+        </div>
+        <div class="sl-eq"><span>Net ${String.fromCharCode(183)} 1% risk/trade</span><b class="${bt.retornoTotal >= 0 ? 'g' : 'r'}">${bt.retornoTotal >= 0 ? '+' : ''}${bt.retornoTotal.toFixed(1)}%</b></div>
+        <p class="sl-note">Walk-forward, no repaint: enter at each signal, exit at the opposite one, risking a fixed 1% per trade sized by the ATR stop — the way a desk runs it. A small, stable edge, consistent out-of-sample, not curve-fit. Past results do not guarantee future ones.</p>`;
+    }
+
+    // ── MOMENTUM multi-temporalidad ──
     const mm = $('#sl-mom');
     const bm = baseMin[tf] || 1;
     const rows = mtf.map((m) => {
@@ -152,21 +192,6 @@ export async function abrirStructural() {
     mm.innerHTML = `<h3 class="sl-h">Momentum ${String.fromCharCode(183)} multi-timeframe</h3>
       <div class="sl-mtable"><div class="sl-mtr sl-mth"><span>TF</span><b>RSI</b><b>Stoch</b></div>${rows}</div>
       <p class="sl-note">Green = oversold (room up), red = overbought (room down). RSI 14 and Stochastic 14, read across timeframes for alignment.</p>`;
-
-    // backtest sobre la historia cargada (datos reales en la máquina del usuario)
-    const pf = $('#sl-perf');
-    if (pf && bt) {
-      const pfv = bt.pf === Infinity ? '∞' : bt.pf.toFixed(2);
-      pf.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Backtest ${String.fromCharCode(183)} this history</h3><span class="sl-chip sl-chip-bull">no repaint</span></div>
-        <div class="sl-stats">
-          <div class="sl-stat"><span>Win rate</span><b>${bt.n ? bt.winRate.toFixed(0) + '%' : '--'}</b></div>
-          <div class="sl-stat"><span>Profit factor</span><b class="${bt.pf >= 1 ? 'g' : 'r'}">${bt.n ? pfv : '--'}</b></div>
-          <div class="sl-stat"><span>Avg R:R</span><b>${bt.n ? bt.avgRR.toFixed(2) : '--'}</b></div>
-          <div class="sl-stat"><span>Signals</span><b>${bt.n}</b></div>
-        </div>
-        <div class="sl-eq"><span>Net result, reversal</span><b class="${bt.retornoTotal >= 0 ? 'g' : 'r'}">${bt.retornoTotal >= 0 ? '+' : ''}${bt.retornoTotal.toFixed(1)}%</b></div>
-        <p class="sl-note">Walk-forward, no repaint: entry at each signal, ATR stop, exit at the opposite signal, over the ${bt.n} signals in the loaded history. Past results do not guarantee future ones.</p>`;
-    }
   }
 
   async function cargar(inicial) {
@@ -180,6 +205,10 @@ export async function abrirStructural() {
       wait.style.display = 'none';
       velasActuales = velas;
       chart.S.velas = velas; chart.S.tf = tf; chart.S.precio = velas[velas.length - 1].c; chart.S.fuente = r.fuente;
+      // Par/símbolo para el clic derecho (operar en spot). Solo cripto: los
+      // índices no se operan en spot desde aquí, y orden.js lo dice solo.
+      if (sim.tipo === 'Crypto') { chart.S.par = sim.corto; chart.S.simbolo = sim.bn || (sim.corto + 'USDT'); }
+      else { chart.S.par = ''; chart.S.simbolo = ''; }
       recomputar();
       arrancarAnim();
     } catch (e) {
@@ -239,7 +268,7 @@ export async function abrirStructural() {
     list.innerHTML = (ix.length ? `<div class="sl-gh">Indices</div>${render(ix)}` : '') + (cr.length ? `<div class="sl-gh">Crypto</div>${render(cr)}` : '') || `<div class="sl-empty">No match</div>`;
     list.querySelectorAll('.sl-item').forEach((b) => {
       const s = SIMBOLOS.find((x) => x.id === b.dataset.id);
-      b.onclick = () => { if (!s) return; sim = s; lset('sl-sim', s.id); cerrarMenu(); cargar(true); };
+      b.onclick = () => { if (!s) return; sim = s; lset('sl-sim', s.id); try { chart.cerrarOrden && chart.cerrarOrden(); } catch (_) {} cerrarMenu(); cargar(true); };
       const icoEl = b.querySelector('.sl-ico2'); if (s && icoEl) ponerLogo(icoEl, s, 'sl-ico2');
     });
   }
@@ -253,7 +282,7 @@ export async function abrirStructural() {
   /* ── temporalidad ── */
   const tfdd = $('#sl-tf');
   $('#sl-tfcur').onclick = (e) => { e.stopPropagation(); tfdd.classList.toggle('open'); };
-  tfdd.querySelector('.menu').addEventListener('click', (e) => { const b = e.target.closest('[data-tf]'); if (!b) return; tfdd.classList.remove('open'); if (b.dataset.tf === tf) return; tf = b.dataset.tf; lset('sl-tf', tf); tfdd.querySelectorAll('[data-tf]').forEach((x) => x.classList.toggle('on', x === b)); $('#sl-tfcur').childNodes[0].nodeValue = (TFS.find((t) => t[0] === tf) || TFS[5])[1] + ' '; cargar(true); });
+  tfdd.querySelector('.menu').addEventListener('click', (e) => { const b = e.target.closest('[data-tf]'); if (!b) return; tfdd.classList.remove('open'); if (b.dataset.tf === tf) return; tf = b.dataset.tf; lset('sl-tf', tf); try { chart.cerrarOrden && chart.cerrarOrden(); } catch (_) {} tfdd.querySelectorAll('[data-tf]').forEach((x) => x.classList.toggle('on', x === b)); $('#sl-tfcur').childNodes[0].nodeValue = (TFS.find((t) => t[0] === tf) || TFS[5])[1] + ' '; cargar(true); });
   document.addEventListener('click', (e) => { if (!tfdd.contains(e.target)) tfdd.classList.remove('open'); if (!coin.contains(e.target)) cerrarMenu(); });
 
   const cerrar = () => { try { chart.destruir(); } catch (_) {} try { ov.remove(); } catch (_) {} };
@@ -373,8 +402,38 @@ function inyectarCSS() {
 .sl-lvrow.sop{border-left:2px solid var(--long)}.sl-lvrow.sop b{color:#6ff0ad}
 .sl-lvrow.px{border-left:2px solid var(--gold)}.sl-lvrow.px b{color:var(--gold)}
 .sl-conv.g{color:#2ee86a}.sl-conv.r{color:#ff6b7a}
-.sl-convbar{margin-top:11px;height:6px;border-radius:4px;background:#0a0e14;overflow:hidden;border:1px solid var(--line)}
+.sl-convbar{margin-top:8px;height:6px;border-radius:4px;background:#0a0e14;overflow:hidden;border:1px solid var(--line)}
 .sl-convbar span{display:block;height:100%;background:linear-gradient(90deg,#2ebd85,#E8B84B);border-radius:4px;transition:width .5s ease}
+/* ── mesa de trading (Positioning) ── */
+.sl-pos{background:linear-gradient(180deg,#0e141e,#0a0d13)}
+.sl-deskhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.sl-deskl{display:flex;flex-direction:column;gap:5px}
+.sl-desklbl{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:#6f7985}
+.sl-stance{display:flex;align-items:center;gap:8px}
+.sl-stance i{width:9px;height:9px;border-radius:50%;flex:none;background:#5a636e}
+.sl-stance b{font-family:"Chakra Petch",system-ui,sans-serif;font-weight:800;font-size:24px;letter-spacing:.6px;line-height:1;color:#cfd6df}
+.sl-st-long b{color:#2ee86a}.sl-st-long i{background:#2ee86a;box-shadow:0 0 12px rgba(46,232,106,.9);animation:sl-glow 1.6s infinite}
+.sl-st-short b{color:#ff5b6e}.sl-st-short i{background:#ff5b6e;box-shadow:0 0 12px rgba(255,91,110,.9);animation:sl-glow 1.6s infinite}
+.sl-st-flat b{color:#9aa4af}
+.sl-gaugehd{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+.sl-gaugehd span{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#9aa4af}
+.sl-convn{font-family:"Chakra Petch",system-ui,sans-serif;font-weight:800;font-size:17px;color:#eaecef}
+.sl-convn em{font-style:normal;font-size:10px;color:#6f7985;font-weight:700}
+.sl-convn.g{color:#2ee86a}.sl-convn.r{color:#ff6b7a}
+.sl-deskgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.sl-dk{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#0a0e14}
+.sl-dk span{display:block;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:#79838f;margin-bottom:3px}
+.sl-dk b{font-family:"Chakra Petch",system-ui,sans-serif;font-size:14px;font-weight:800;color:#eaecef}
+.sl-dk b.g{color:#2ee86a}.sl-dk b.r{color:#ff6b7a}
+/* ── plan de operación ── */
+.sl-plan{display:flex;flex-direction:column;gap:6px}
+.sl-pl{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#0a0e14;border-left-width:3px}
+.sl-pl span{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:#9aa4af}
+.sl-pl b{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;font-weight:700;text-align:right;color:#eaecef}
+.sl-pl em{font-style:normal;font-family:"IBM Plex Mono",monospace;font-size:10px;color:#79838f;min-width:30px;text-align:right}
+.sl-pl.tp{border-left-color:var(--long)}.sl-pl.tp b{color:#6ff0ad}
+.sl-pl.en{border-left-color:var(--gold)}.sl-pl.en b{color:var(--gold)}
+.sl-pl.sl{border-left-color:var(--short)}.sl-pl.sl b{color:#ff8a95}
 .sl-signal{position:relative}
 .sl-sgtop{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .sl-dot{width:9px;height:9px;border-radius:50%;background:#5a636e;flex:none}
