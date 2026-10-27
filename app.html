@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Analisis tiene pagina propia (modules/analysis/analisis.html). Si se llega
+     a app.html pidiendo Analisis, se redirige ANTES de pintar nada, para no ver
+     los Bots ni su aviso un instante. location.replace: el Back no cae aqui. -->
+<script>try{if(new URLSearchParams(location.search).get('abrir')==='analisis'){location.replace('modules/analysis/analisis.html'+location.hash);}}catch(e){}</script>
 <style id="ocultar-particulas-movil">@media(max-width:900px){#cco-fx,#cco-bg,#cco-top,#cco-velo{display:none!important}html,body{background:#0B0E11!important}}</style>
 
   <meta charset="utf-8">
@@ -520,22 +524,6 @@
       if (que === 'shield') {
         // Wallet Shield es un modulo sellado con pagina propia: se navega, no se monta aqui.
         location.replace('modules/shield/shield.html');
-        return;
-      }
-
-      // Analysis: overlay propio (igual que en el lobby). Se importa su modulo
-      // con la wallet y ethers, y se abre encima de la app.
-      if (que === 'analisis') {
-        (async function () {
-          try {
-            var J = new URL('assets/js/', document.baseURI).href;
-            var w = await import(J + 'wallet.js?v=129');
-            try { await w.reconectarSiProcede(); } catch (_) {}
-            var ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
-            var m = await import(new URL('modules/analysis/analisis.js?v=5', document.baseURI).href);
-            await m.abrirAnalisis('hero', w, ethers);
-          } catch (_) {}
-        })();
         return;
       }
 
