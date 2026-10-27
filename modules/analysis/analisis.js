@@ -18,7 +18,7 @@
 */
 
 import { brasas } from './chispas.js';
-import { abrirCobroAnalisis, tieneAccesoAnalisis, segundosAnalisis, esOwnerAnalisis } from './analisis-pro.js?v=5';
+import { abrirCobroAnalisis, tieneAccesoAnalisis, segundosAnalisis, esOwnerAnalisis } from './analisis-pro.js?v=6';
 
 /* Rutas RELATIVAS A LA RAIZ (overlay montado sobre index.html / app.html /
    futuros.html). Logo y foto de cinta: los mismos del sitio. Fondo: en el modulo. */
@@ -39,9 +39,9 @@ const HERRAMIENTAS = [
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'strategy', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
     lema:'Where to buy and where to sell',
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
-  { id:'sp', abre:'sp500', nombre:'SP500 Sequential', cat:'strategy', img:null, activos:['US Stocks'], spot:false, listo:true,
-    lema:'Time the turn before it happens',
-    desc:'TD Sequential, the DeMark exhaustion indicator the pros pay for. The count builds 1 to 9 then 1 to 13, always showing the exact level the next bar must close to advance it, so you see the turn coming. TDST levels and a real backtest included.' },
+  { id:'sp', abre:'sp500', nombre:'SP500 Edges', cat:'strategy', img:null, activos:['US Stocks'], spot:false, listo:true,
+    lema:'The real odds, not another line',
+    desc:'A quantified edges engine. It reads the market state today and, over 20 years of history, shows the real probabilities: how the S&P behaved after this exact setup, with every past case marked on the chart to verify. What quant services charge for, not a TradingView overlay.' },
   { id:'hfs', abre:null, nombre:'High Frequency Signals', cat:'indicator', img:null, activos:['Crypto'], spot:false, listo:false,
     lema:'Momentum and scalping, tick by tick',
     desc:'Real time signals built for scalping and momentum: micro-shifts in flow, speed and aggression surfaced the instant they happen.' },
@@ -490,7 +490,15 @@ export function abrirSelector(origen, wallet, ethers) {
   // ── Interaccion ──
   const cerrar = () => { try { if (particulas) particulas.parar(); } catch (_) {} try { ov.remove(); } catch (_) {} };
   const back = $('#an-back');
-  back.onclick = (e) => { e.preventDefault(); cerrar(); };   // volvemos a donde estaba el usuario (no recarga)
+  back.onclick = (e) => {
+    e.preventDefault();
+    if (window.__ANALISIS_PAGINA__) {   // pagina propia: salimos de verdad, no dejamos nada debajo (ni los bots)
+      if (history.length > 1) history.back();
+      else location.href = new URL('../../index.html', import.meta.url).href;
+      return;
+    }
+    cerrar();   // overlay (portada): volvemos a donde estaba el usuario (no recarga)
+  };
 
   const q = $('#an-q');
   q.addEventListener('input', () => { estado.q = q.value || ''; render(); });

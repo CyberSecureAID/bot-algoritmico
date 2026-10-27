@@ -210,7 +210,14 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
 
   const msg = (t) => { const e = $('#ap-msg'); if (e) e.textContent = t || ''; };
   const cerrar = () => { try { ov.remove(); } catch (_) {} };
-  $('#ap-back').onclick = cerrar;
+  $('#ap-back').onclick = () => {
+    if (window.__ANALISIS_PAGINA__) {   // pagina propia: salir de verdad, no dejar la pagina en blanco
+      if (history.length > 1) history.back();
+      else location.href = new URL('../../index.html', import.meta.url).href;
+      return;
+    }
+    cerrar();
+  };
 
   ov.querySelectorAll('.ap-plan').forEach((b) => b.onclick = () => { planSel = b.dataset.plan; refrescar(); });
   ov.querySelectorAll('.ap-cur').forEach((b) => b.onclick = () => { curSel = b.dataset.cur; refrescar(); });
