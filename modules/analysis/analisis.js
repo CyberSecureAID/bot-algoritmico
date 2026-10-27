@@ -39,9 +39,9 @@ const HERRAMIENTAS = [
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'strategy', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
     lema:'Where to buy and where to sell',
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
-  { id:'sp', abre:'sp500', nombre:'SP500 Edges', cat:'strategy', img:null, activos:['US Stocks'], spot:false, listo:true,
-    lema:'The real odds, not another line',
-    desc:'A quantified edges engine. It reads the market state today and, over 20 years of history, shows the real probabilities: how the S&P behaved after this exact setup, with every past case marked on the chart to verify. What quant services charge for, not a TradingView overlay.' },
+  { id:'sp', abre:'structural', nombre:'Structural Logic', cat:'strategy', img:null, activos:['Indices','Crypto'], spot:false, listo:true,
+    lema:'The trend, and the moment it breaks',
+    desc:'Reads market structure live: it draws the resistance and support that contain price, then fires LONG or SHORT the instant the trend breaks — with the exact level to act on and a multi-timeframe momentum read beside it. S&P 500 by default, plus indices and crypto.' },
   { id:'hfs', abre:null, nombre:'High Frequency Signals', cat:'indicator', img:null, activos:['Crypto'], spot:false, listo:false,
     lema:'Momentum and scalping, tick by tick',
     desc:'Real time signals built for scalping and momentum: micro-shifts in flow, speed and aggression surfaced the instant they happen.' },
@@ -152,7 +152,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=126')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=127')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
-    else if (abre === 'sp500')  await (await import(new URL('./sp500/sp500.js?v=1', import.meta.url).href)).abrirSP500();
+    else if (abre === 'structural') await (await import(new URL('./structural/structural.js?v=1', import.meta.url).href)).abrirStructural();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
