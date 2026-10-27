@@ -51,9 +51,9 @@ const HERRAMIENTAS = [
   { id:'mtf', abre:null, nombre:'Multi Timeframe', cat:'strategy', img:null, activos:['Crypto'], spot:false, listo:false,
     lema:'Aligned views, better decisions',
     desc:'One read across every timeframe at once. When the short and the long align, conviction is high; when they disagree, you see the conflict first.' },
-  { id:'flow', abre:null, nombre:'Order Flow', cat:'indicator', img:null, activos:['Crypto'], spot:false, listo:false,
+  { id:'flow', abre:'orderflow', nombre:'Order Flow', cat:'indicator', img:null, activos:['Crypto'], spot:false, listo:true,
     lema:'Track the real movement of capital',
-    desc:'The raw tape, made legible: who is hitting the bid, who is lifting the offer, and where aggression is actually coming from.' },
+    desc:'The raw tape, made legible: who is hitting the bid, who is lifting the offer, and where aggression is actually coming from. Live footprint, order book and delta, straight from the exchange.' },
   { id:'liq', abre:null, nombre:'Liquidation Zones', cat:'strategy', img:null, activos:['Crypto'], spot:false, listo:false,
     lema:'Where leverage gets wiped out',
     desc:'The price areas where cascades of leveraged positions are set to unwind. Magnets for price and the fuel behind violent moves.' }
@@ -156,6 +156,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=127')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
     else if (abre === 'sp500')  await (await import(new URL('./sp500/sp500.js?v=1', import.meta.url).href)).abrirSP500();
+    else if (abre === 'orderflow') await (await import(new URL('./orderflow/orderflow.js?v=1', import.meta.url).href)).abrirOrderFlow();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
