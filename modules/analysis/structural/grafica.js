@@ -134,27 +134,38 @@ export function crearChart(cv, cont) {
       if (E.resistencia) lineaProyectada(g, E.resistencia, primero, ancho, paso, Y, COL.res);
       if (E.soporte) lineaProyectada(g, E.soporte, primero, ancho, paso, Y, COL.sop);
 
-      const ultimaBar = E.ultima ? E.ultima.bar : -1;
-      (E.senales || []).forEach((s) => {
+      const flips = E.flips || [];
+      const ult = E.ultima;
+      const drawnX = [];
+      const cerca = (x) => drawnX.some((dx) => Math.abs(dx - x) < 18);
+      const marca = (s, fuerte) => {
         if (s.bar < primero || s.bar >= fin) return;
         const v = S.velas[s.bar]; if (!v) return;
         const x = (s.bar - primero) * paso + paso / 2;
+        if (!fuerte && cerca(x)) return;
+        drawnX.push(x);
         const esLong = s.tipo === 'LONG';
         const rgb = esLong ? COL.longRGB : COL.shortRGB;
-        const fuerte = s.bar === ultimaBar;
-        // conector al nivel de ruptura
-        const yNivel = Y(s.nivel);
-        const cyPill = esLong ? Y(v.l) + (fuerte ? 26 : 18) : Y(v.h) - (fuerte ? 26 : 18);
+        const ty = esLong ? Y(v.l) + 11 : Y(v.h) - 11;
+        const ts = fuerte ? 6 : 4.4;
+        // triángulo del giro (verde arriba para LONG, rojo abajo para SHORT)
         g.save();
-        g.strokeStyle = `rgba(${rgb},${fuerte ? .7 : .4})`; g.lineWidth = 1; g.setLineDash([2, 3]);
-        g.beginPath(); g.moveTo(x, yNivel); g.lineTo(x, cyPill + (esLong ? -9 : 9)); g.stroke();
-        g.setLineDash([]);
-        // punto en el nivel de ruptura
-        g.fillStyle = `rgb(${rgb})`; g.shadowColor = `rgba(${rgb},.9)`; g.shadowBlur = fuerte ? 10 : 5;
-        g.beginPath(); g.arc(x, yNivel, fuerte ? 3.4 : 2.3, 0, 6.283); g.fill();
+        g.fillStyle = `rgb(${rgb})`; g.shadowColor = `rgba(${rgb},${fuerte ? .95 : .55})`; g.shadowBlur = fuerte ? 11 : 5;
+        g.beginPath();
+        if (esLong) { g.moveTo(x, ty - ts); g.lineTo(x - ts, ty + ts); g.lineTo(x + ts, ty + ts); }
+        else { g.moveTo(x, ty + ts); g.lineTo(x - ts, ty - ts); g.lineTo(x + ts, ty - ts); }
+        g.closePath(); g.fill();
         g.restore();
-        pill(g, x, cyPill, s.tipo, rgb, fuerte, pulso);
-      });
+        // solo la ÚLTIMA señal lleva etiqueta grande con texto
+        if (fuerte) {
+          const cyPill = esLong ? ty + 20 : ty - 20;
+          g.save(); g.strokeStyle = `rgba(${rgb},.6)`; g.lineWidth = 1; g.setLineDash([2, 3]);
+          g.beginPath(); g.moveTo(x, ty); g.lineTo(x, cyPill + (esLong ? -9 : 9)); g.stroke(); g.setLineDash([]); g.restore();
+          pill(g, x, cyPill, s.tipo, rgb, true, pulso);
+        }
+      };
+      if (ult) marca(ult, true);
+      for (let k = flips.length - 1; k >= 0; k--) { if (ult && flips[k].bar === ult.bar) continue; marca(flips[k], false); }
     }
 
     // precio actual

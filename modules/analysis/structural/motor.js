@@ -138,7 +138,12 @@ export function analizar(velas, opts = {}) {
     }
   }
 
-  const ultima = senales.length ? senales[senales.length - 1] : null;
+  // Flips: UNA señal por giro de estructura (no cada micro-ruptura repetida),
+  // para que el gráfico no se llene de etiquetas encimadas.
+  const flips = [];
+  let dir = null;
+  for (const s of senales) { if (s.tipo !== dir) { flips.push(s); dir = s.tipo; } }
+  const ultima = flips.length ? flips[flips.length - 1] : null;
   const precio = n ? velas[n - 1].c : 0;
 
   // Sesgo estructural actual, en lenguaje de la herramienta.
@@ -158,7 +163,7 @@ export function analizar(velas, opts = {}) {
     pivotsH: H, pivotsL: L,
     resistencia: curU, soporte: curL,
     resistenciaHoy, soporteHoy,
-    senales, ultima, sesgo,
+    senales, flips, ultima, sesgo,
     valorLinea
   };
 }
