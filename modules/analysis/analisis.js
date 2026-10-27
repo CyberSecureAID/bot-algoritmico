@@ -156,7 +156,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=127')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
     else if (abre === 'sp500')  await (await import(new URL('./sp500/sp500.js?v=1', import.meta.url).href)).abrirSP500();
-    else if (abre === 'orderflow') await (await import(new URL('./orderflow/orderflow.js?v=1', import.meta.url).href)).abrirOrderFlow();
+    else if (abre === 'orderflow') await (await import(new URL('./orderflow/orderflow.js?v=2', import.meta.url).href)).abrirOrderFlow();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
