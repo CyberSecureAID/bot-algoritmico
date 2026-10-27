@@ -152,7 +152,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=126')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=127')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
-    else if (abre === 'structural') await (await import(new URL('./structural/structural.js?v=5', import.meta.url).href)).abrirStructural();
+    else if (abre === 'structural') await (await import(new URL('./structural/structural.js?v=6', import.meta.url).href)).abrirStructural();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
