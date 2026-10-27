@@ -1,26 +1,30 @@
 /* ══════════════════════════════════════════════════════════════
-   structural/datos.js — Datos multimoneda para "Structural Logic".
+   structural/datos.js — Datos multimoneda para "Structural Logic",
+   con VARIAS fuentes y RELEVO automático (como el SP500 que ya jala).
 
-   Una sola vía universal: Yahoo Finance (sin clave) vía proxy CORS,
-   que sirve IGUAL índices (^GSPC, ^NDX, ^DJI, ^RUT) y cripto
-   (BTC-USD, ETH-USD, …). Se normaliza a {t,o,h,l,c,v} en ms, ascendente.
-
-   SP500 sale por defecto. Hay un hook de simulación (window.__SL_MOCK__)
-   para poder verificar el render sin red.
+   - Cripto  → Binance directo (CORS abierto, sin proxy) → Yahoo (respaldo).
+   - Índices → Twelve Data con el ETF (SPY/QQQ/DIA/IWM, clave gratis que ya
+               usa el sitio) → Yahoo → Stooq (diario).
+   Todo se normaliza a {t,o,h,l,c,v} en ms, ascendente. SP500 por defecto.
+   Hay un hook de simulación (window.__SL_MOCK__) para verificar sin red.
    ══════════════════════════════════════════════════════════════ */
 
-/* Símbolos ofrecidos. 'logo' = id de logo propio (índices, SVG en el overlay);
-   'cg' = id de CoinGecko para el logo (cripto, misma fuente que el resto del sitio). */
+export const CLAVES = {
+  twelvedata: 'bdeb2354693b4596a38c6e6f35e544f9',   // clave gratis de Twelve Data (la misma del SP500). Rotable en twelvedata.com.
+  fmp: ''
+};
+
+/* Símbolos. Índices servidos por su ETF (lo que da gratis y fiable). */
 export const SIMBOLOS = [
-  { id: 'spx', y: '^GSPC', n: 'S&P 500',      corto: 'SPX',  tipo: 'Index',  logo: 'spx' },
-  { id: 'ndx', y: '^NDX',  n: 'Nasdaq 100',   corto: 'NDX',  tipo: 'Index',  logo: 'ndx' },
-  { id: 'dji', y: '^DJI',  n: 'Dow Jones',    corto: 'DJIA', tipo: 'Index',  logo: 'dji' },
-  { id: 'rut', y: '^RUT',  n: 'Russell 2000', corto: 'RUT',  tipo: 'Index',  logo: 'rut' },
-  { id: 'btc', y: 'BTC-USD', n: 'Bitcoin',    corto: 'BTC',  tipo: 'Crypto', cg: 'bitcoin' },
-  { id: 'eth', y: 'ETH-USD', n: 'Ethereum',   corto: 'ETH',  tipo: 'Crypto', cg: 'ethereum' },
-  { id: 'bnb', y: 'BNB-USD', n: 'BNB',        corto: 'BNB',  tipo: 'Crypto', cg: 'binancecoin' },
-  { id: 'sol', y: 'SOL-USD', n: 'Solana',     corto: 'SOL',  tipo: 'Crypto', cg: 'solana' },
-  { id: 'xrp', y: 'XRP-USD', n: 'XRP',        corto: 'XRP',  tipo: 'Crypto', cg: 'ripple' }
+  { id: 'spx', n: 'S&P 500',      corto: 'SPX',  tipo: 'Index',  td: 'SPY', yh: 'SPY', stq: 'spy.us' },
+  { id: 'ndx', n: 'Nasdaq 100',   corto: 'NDX',  tipo: 'Index',  td: 'QQQ', yh: 'QQQ', stq: 'qqq.us' },
+  { id: 'dji', n: 'Dow Jones',    corto: 'DJIA', tipo: 'Index',  td: 'DIA', yh: 'DIA', stq: 'dia.us' },
+  { id: 'rut', n: 'Russell 2000', corto: 'RUT',  tipo: 'Index',  td: 'IWM', yh: 'IWM', stq: 'iwm.us' },
+  { id: 'btc', n: 'Bitcoin',      corto: 'BTC',  tipo: 'Crypto', bn: 'BTCUSDT', yh: 'BTC-USD', cg: 'bitcoin' },
+  { id: 'eth', n: 'Ethereum',     corto: 'ETH',  tipo: 'Crypto', bn: 'ETHUSDT', yh: 'ETH-USD', cg: 'ethereum' },
+  { id: 'bnb', n: 'BNB',          corto: 'BNB',  tipo: 'Crypto', bn: 'BNBUSDT', yh: 'BNB-USD', cg: 'binancecoin' },
+  { id: 'sol', n: 'Solana',       corto: 'SOL',  tipo: 'Crypto', bn: 'SOLUSDT', yh: 'SOL-USD', cg: 'solana' },
+  { id: 'xrp', n: 'XRP',          corto: 'XRP',  tipo: 'Crypto', bn: 'XRPUSDT', yh: 'XRP-USD', cg: 'ripple' }
 ];
 export const POR_DEFECTO = 'spx';
 
@@ -34,9 +38,25 @@ export const TFS = [
   ['1d', '1D', '1d', '10y'],
   ['1w', '1W', '1wk', '10y']
 ];
+const TF_BN = { '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1h', '1d': '1d', '1w': '1w' };
+const TF_TD = { '1m': '1min', '5m': '5min', '15m': '15min', '30m': '30min', '1h': '1h', '1d': '1day', '1w': '1week' };
 export const simuladoActivo = () => typeof window !== 'undefined' && typeof window.__SL_MOCK__ === 'function';
 
-/* Proxies CORS para Yahoo (se prueban en orden). */
+/* ── utilidades ── */
+const limpiar = (velas) => {
+  const vistos = new Set();
+  return velas
+    .filter((v) => v && isFinite(v.t) && isFinite(v.o) && isFinite(v.h) && isFinite(v.l) && isFinite(v.c))
+    .filter((v) => v.o > 0 && v.h > 0 && v.l > 0 && v.c > 0 && v.h >= v.l)
+    .filter((v) => { if (vistos.has(v.t)) return false; vistos.add(v.t); return true; })
+    .sort((a, b) => a.t - b.t);
+};
+async function pedir(url, ms = 12000) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
+  finally { clearTimeout(t); }
+}
+/* Proxies CORS (para Yahoo y Stooq, que no permiten fetch directo). */
 const PROXIES = [
   { make: (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u), wrap: false },
   { make: (u) => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u), wrap: true },
@@ -56,15 +76,26 @@ async function viaProxy(target, ms = 14000) {
   throw ultimo || new Error('proxy sin datos');
 }
 
-const limpiar = (velas) => {
-  const vistos = new Set();
-  return velas
-    .filter((v) => v && isFinite(v.t) && isFinite(v.o) && isFinite(v.h) && isFinite(v.l) && isFinite(v.c))
-    .filter((v) => v.o > 0 && v.h > 0 && v.l > 0 && v.c > 0 && v.h >= v.l)
-    .filter((v) => { if (vistos.has(v.t)) return false; vistos.add(v.t); return true; })
-    .sort((a, b) => a.t - b.t);
-};
+/* ── 1) Binance (cripto, directo con CORS abierto) ── */
+async function feedBinance(sym, tf) {
+  const iv = TF_BN[tf]; if (!iv) throw new Error('binance tf');
+  const j = await pedir(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${iv}&limit=1000`);
+  if (!Array.isArray(j)) throw new Error('binance sin datos');
+  return limpiar(j.map((k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5] })));
+}
 
+/* ── 2) Twelve Data (índices vía ETF, clave gratis) ── */
+async function feedTwelveData(sym, tf) {
+  const iv = TF_TD[tf]; if (!iv || !CLAVES.twelvedata) throw new Error('td no disponible');
+  const j = await pedir(`https://api.twelvedata.com/time_series?symbol=${sym}&interval=${iv}&outputsize=5000&timezone=UTC&apikey=${CLAVES.twelvedata}`);
+  if (!j || j.status === 'error' || !Array.isArray(j.values)) throw new Error(j && j.message ? j.message : 'td sin datos');
+  return limpiar(j.values.map((x) => ({
+    t: Date.parse(x.datetime.includes(' ') ? x.datetime.replace(' ', 'T') + 'Z' : x.datetime + 'T00:00:00Z'),
+    o: +x.open, h: +x.high, l: +x.low, c: +x.close, v: +(x.volume || 0)
+  })));
+}
+
+/* ── 3) Yahoo (universal, vía proxy) ── */
 function parseYahoo(j) {
   const r = j && j.chart && j.chart.result && j.chart.result[0];
   if (!r || !r.timestamp) throw new Error('yahoo sin datos');
@@ -77,14 +108,44 @@ function parseYahoo(j) {
   }
   return limpiar(velas);
 }
-
-/* Trae velas de un símbolo Yahoo en una temporalidad. */
-export async function traerVelas(simY, tf) {
-  if (simuladoActivo()) return limpiar(window.__SL_MOCK__(simY, tf) || []);
+async function feedYahoo(sym, tf) {
   const T = TFS.find((t) => t[0] === tf) || TFS[5];
-  const target = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(simY)}?interval=${T[2]}&range=${T[3]}&includePrePost=false`;
-  const txt = await viaProxy(target);
-  return parseYahoo(JSON.parse(txt));
+  const target = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${T[2]}&range=${T[3]}&includePrePost=false`;
+  return parseYahoo(JSON.parse(await viaProxy(target)));
+}
+
+/* ── 4) Stooq (índices vía ETF, diario, último recurso) ── */
+async function feedStooq(stq) {
+  const txt = await viaProxy(`https://stooq.com/q/d/l/?s=${stq}&i=d`);
+  if (/^\s*</.test(txt) || /html/i.test(txt.slice(0, 40))) throw new Error('stooq html');
+  const lineas = txt.trim().split(/\r?\n/); if (lineas.length < 3) throw new Error('stooq sin datos');
+  const velas = [];
+  for (let i = 1; i < lineas.length; i++) {
+    const c = lineas[i].split(','); if (c.length < 5) continue;
+    const o = +c[1], h = +c[2], l = +c[3], cl = +c[4], v = +(c[5] || 0);
+    if (isFinite(o) && isFinite(cl)) velas.push({ t: Date.parse(c[0] + 'T00:00:00Z'), o, h, l, c: cl, v });
+  }
+  return limpiar(velas);
+}
+
+/* Trae velas de un símbolo probando sus fuentes en orden. Devuelve {velas, fuente}. */
+export async function traerVelas(sim, tf) {
+  if (simuladoActivo()) return { velas: limpiar(window.__SL_MOCK__(sim, tf) || []), fuente: 'simulado' };
+  const vias = [];
+  if (sim.tipo === 'Crypto') {
+    if (sim.bn) vias.push(['Binance', () => feedBinance(sim.bn, tf)]);
+    if (sim.yh) vias.push(['Yahoo', () => feedYahoo(sim.yh, tf)]);
+  } else {
+    if (sim.td && CLAVES.twelvedata && TF_TD[tf]) vias.push(['Twelve Data', () => feedTwelveData(sim.td, tf)]);
+    if (sim.yh) vias.push(['Yahoo', () => feedYahoo(sim.yh, tf)]);
+    if (tf === '1d' && sim.stq) vias.push(['Stooq', () => feedStooq(sim.stq)]);
+  }
+  let ultimo;
+  for (const [nombre, fn] of vias) {
+    try { const velas = await fn(); if (velas && velas.length > 30) return { velas, fuente: nombre }; }
+    catch (e) { ultimo = e; }
+  }
+  throw ultimo || new Error('sin datos de ninguna fuente');
 }
 
 /* Logo de cripto desde CoinGecko, con la MISMA cache que el resto del sitio. */

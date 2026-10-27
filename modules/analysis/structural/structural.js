@@ -159,10 +159,11 @@ export async function abrirStructural() {
       if (inicial) { wait.style.display = 'flex'; wait.innerHTML = `<div class="sl-spin"></div><b>Loading ${esc(sim.n)}</b>`; }
       $('#sl-nm').textContent = sim.n; $('#sl-sub').textContent = sim.corto + ' ' + String.fromCharCode(183) + ' Structural Logic';
       aplicarLogo($('#sl-ico'), sim);
-      const velas = await traerVelas(sim.y, tf);
+      const r = await traerVelas(sim, tf);
+      const velas = r.velas;
       if (!velas || velas.length < 40) throw new Error('poca historia');
       wait.style.display = 'none';
-      chart.S.velas = velas; chart.S.tf = tf; chart.S.precio = velas[velas.length - 1].c; chart.S.fuente = 'Yahoo';
+      chart.S.velas = velas; chart.S.tf = tf; chart.S.precio = velas[velas.length - 1].c; chart.S.fuente = r.fuente;
       const E = analizar(velas, { period: PERIODO }); chart.S.estructura = E;
       const rl = rsi(velas); const rsiUlt = rl.length ? rl[rl.length - 1] : NaN;
       const mtf = momentoMTF(velas, [1, 4, 12]);
