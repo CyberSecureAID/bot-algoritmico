@@ -645,7 +645,7 @@ async function portada() {
   d.id = 'lqp-overlay';
   d.innerHTML = `<div class="lq-bg"></div>
     <div class="lqp-c">
-      <button class="lqp-x" id="lqp-x" aria-label="Cerrar">✕</button>
+      <button class="lqp-x" id="lqp-x" aria-label="Close">✕</button>
 
       <div class="lqp-eyebrow">Herramientas Pro</div>
       <h2 class="lqp-t">Análisis profesional</h2>
@@ -798,10 +798,10 @@ export async function abrirPools() {
         </button>
         <div class="lq-grupo" title="Filter by leverage">
           ${['todos', '10', '25', '50', '100'].map((a) =>
-            `<button class="lq-b ${a === V.apal ? 'on' : ''}" data-apal="${a}">${a === 'todos' ? 'Todo' : 'x' + a}</button>`).join('')}
+            `<button class="lq-b ${a === V.apal ? 'on' : ''}" data-apal="${a}">${a === 'todos' ? 'All' : 'x' + a}</button>`).join('')}
         </div>
         <div class="lq-grupo lq-slider">
-          <span>Filtro</span>
+          <span>Filter</span>
           <input type="range" id="lq-int" min="55" max="260" value="55">
         </div>
         <!-- En el móvil, todo esto se recoge en un menú: en la barra
@@ -826,13 +826,13 @@ export async function abrirPools() {
       </div>
 
       <div class="lq-caja" id="lq-caja">
-        <div class="lq-cargando">Calculando el mapa de liquidaciones…</div>
+        <div class="lq-cargando">Calculating the liquidity map…</div>
       </div>
 
       <div class="lq-escala">
-        <span>menos liquidez</span>
+        <span>less liquidity</span>
         <i class="lq-gr"></i>
-        <span>muros de liquidación</span>
+        <span>liquidation walls</span>
       </div>
     </div>`;
   document.body.appendChild(d);
@@ -886,21 +886,21 @@ export async function abrirPools() {
       <div class="lqm-tit">Leverage</div>
       <div class="lqm-fila">
         ${['todos', '10', '25', '50', '100'].map((a) =>
-          `<button class="lqm-chip ${a === V.apal ? 'on' : ''}" data-mapal="${a}">${a === 'todos' ? 'Todo' : 'x' + a}</button>`).join('')}
+          `<button class="lqm-chip ${a === V.apal ? 'on' : ''}" data-mapal="${a}">${a === 'todos' ? 'All' : 'x' + a}</button>`).join('')}
       </div>
 
-      <div class="lqm-tit">Filtro de ruido</div>
+      <div class="lqm-tit">Noise filter</div>
       <input type="range" class="lqm-range" id="lqm-int" min="55" max="260" value="${Math.round(V.intensidad * 100)}">
 
-      <div class="lqm-tit">Mostrar</div>
+      <div class="lqm-tit">Show</div>
       <button class="lqm-op" data-mtog="perfil">
-        <span>Perfil de volumen</span><i class="${V.verPerfil ? 'on' : ''}"></i>
+        <span>Volume profile</span><i class="${V.verPerfil ? 'on' : ''}"></i>
       </button>
       <button class="lqm-op" data-mtog="mapa">
-        <span>Mapa de liquidez</span><i class="${V.verMapa ? 'on' : ''}"></i>
+        <span>Liquidity map</span><i class="${V.verMapa ? 'on' : ''}"></i>
       </button>
       <button class="lqm-op" data-mtog="fit">
-        <span>Reencuadrar</span>
+        <span>Reframe</span>
       </button>`;
     document.body.appendChild(m);
 
@@ -975,7 +975,7 @@ async function pintar() {
   clearInterval(_vivo);
   V.mapa = null;
   V.velas = [];
-  caja.innerHTML = `<div class="lq-cargando">Calculando zonas de liquidez…</div>`;
+  caja.innerHTML = `<div class="lq-cargando">Calculating liquidity zones…</div>`;
 
   try {
     const par = PARES.find((p) => p.id === _par) || PARES[0];
