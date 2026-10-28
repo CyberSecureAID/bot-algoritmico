@@ -468,6 +468,24 @@ function columnaDe(mapa, c, sinRefuerzo) {
    vista del usuario.
    ══════════════════════════════════════════════════════════════ */
 let _vivo = null;
+let _vivoPx = null;
+
+/* ── Cabecera: precio en vivo + rango de 24h de la moneda seleccionada.
+   Es INDEPENDIENTE del motor del mapa: solo lee el ticker 24h de Binance y
+   pinta la barra superior. No toca velas, ni mapa, ni zonas. ── */
+async function actualizarCabeceraPrecio() {
+  if (!document.getElementById('lq-px-now')) return;
+  try {
+    const par = PARES.find((p) => p.id === _par) || PARES[0];
+    const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${par.s}`);
+    const j = await r.json();
+    const now = Number(j.lastPrice), hi = Number(j.highPrice), lo = Number(j.lowPrice), chg = Number(j.priceChangePercent);
+    const now2 = document.getElementById('lq-px-now');
+    if (now2 && isFinite(now) && now > 0) { now2.textContent = fmt(now); now2.className = 'lq-px-now ' + (isFinite(chg) && chg < 0 ? 'dn' : 'up'); }
+    const eh = document.getElementById('lq-px-hi'); if (eh && isFinite(hi) && hi > 0) eh.textContent = fmt(hi);
+    const el = document.getElementById('lq-px-lo'); if (el && isFinite(lo) && lo > 0) el.textContent = fmt(lo);
+  } catch (_) {}
+}
 function arrancarVivo() {
   clearInterval(_vivo);
   const idVivo = _cargaId;
@@ -745,12 +763,23 @@ export async function abrirPools() {
     <div class="lq-c">
       <!-- Todo en una sola barra, como TradingView: el gráfico manda. -->
       <div class="lq-barra">
+        <!-- Back arriba-izquierda, IDÉNTICO al de las demás secciones (sw-back). -->
+        <button class="lq-back" id="lq-back" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Back</button>
         <!-- Moneda y temporalidad como desplegables: con 26 monedas
              una fila de botones no cabe en ningún sitio. -->
         <button class="lq-sel" id="lq-sel-par">
+          <i class="lq-logo" id="lq-cur-logo" data-cg="${esc((PARES.find((p) => p.id === _par) || PARES[0]).cg || '')}"></i>
           <b>${_par}</b>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
+        <!-- Precio en vivo + rango de las últimas 24h de la moneda. -->
+        <div class="lq-px" id="lq-px">
+          <b id="lq-px-now" class="lq-px-now">—</b>
+          <span class="lq-px-hl">
+            <span><em>24h L</em><i id="lq-px-lo">—</i></span>
+            <span><em>24h H</em><i id="lq-px-hi">—</i></span>
+          </span>
+        </div>
         <button class="lq-sel" id="lq-sel-tf">
           <b>${(TFS.find((t) => t.id === _tf) || TFS[3]).n}</b>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
@@ -781,7 +810,6 @@ export async function abrirPools() {
           <button class="lq-ayuda" id="lq-ver" title="Show or hide the map">◉</button>
           <button class="lq-ayuda" id="lq-fit" title="Reencuadrar">⤢</button>
           <button class="lq-ayuda" id="lq-ayuda" title="Cómo funciona">?</button>
-          <button class="lq-x" aria-label="Cerrar">✕</button>
         </div>
       </div>
 
@@ -799,13 +827,13 @@ export async function abrirPools() {
 
   const cerrar = () => {
     cerrarMenus();
-    clearInterval(_vivo);
+    clearInterval(_vivo); clearInterval(_vivoPx);
     const e = $('lq-overlay'); if (e) e.remove();
     /* Al cerrar se vuelve a la portada de Liquidity, no se sale. */
     try { if (window.__lqpVolver) window.__lqpVolver(); } catch (_) {}
   };
   d.querySelector('.lq-bg').onclick = cerrar;
-  d.querySelector('.lq-x').onclick = cerrar;
+  { const bk = $('lq-back'); if (bk) bk.onclick = cerrar; }
 
   $('lq-sel-par').onclick = (e) => { e.stopPropagation(); menuPares(); };
   $('lq-sel-tf').onclick  = (e) => { e.stopPropagation(); menuTfs(); };
@@ -903,6 +931,12 @@ export async function abrirPools() {
 
   $('lq-foto').onclick = () => guardarImagen();
   { const bc = $('lq-cal'); if (bc) bc.onclick = () => { try { window.abrirCalendario && window.abrirCalendario(); } catch (_) {} }; }
+
+  // Cabecera: logo de la moneda actual + precio y rango 24h en vivo.
+  ponerLogosLq();
+  actualizarCabeceraPrecio();
+  clearInterval(_vivoPx);
+  _vivoPx = setInterval(actualizarCabeceraPrecio, 6000);
 
   pintar();
   // Al girar el móvil o cambiar de tamaño, se vuelve a dibujar.
@@ -2170,6 +2204,11 @@ function menuPares() {
     try { if (_od && _od.cerrarFichas) _od.cerrarFichas(); } catch (_) {}
     const b = $('lq-sel-par').querySelector('b');
     if (b) b.textContent = v;
+    // cabecera: logo + precio/rango de la nueva moneda
+    const lg = $('lq-cur-logo'), np = PARES.find((p) => p.id === v) || PARES[0];
+    if (lg) { lg.dataset.cg = np.cg || ''; lg.style.backgroundImage = ''; lg.classList.remove('con'); ponerLogosLq(); }
+    ['lq-px-now', 'lq-px-hi', 'lq-px-lo'].forEach((id) => { const e = $(id); if (e) e.textContent = '—'; });
+    actualizarCabeceraPrecio();
     V.dibujos = [];          // los dibujos son de la moneda anterior
     pintar();
   }, true);
@@ -2567,6 +2606,25 @@ function estilos() {
     padding:0;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#8b96a3;
     font-family:var(--mono,monospace);font-size:14px;font-weight:700}
   #lq-overlay .lq-ayuda:hover,#lq-overlay .lq-x:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  /* Back arriba-izquierda: COPIA 1:1 del botón sw-back de las demás secciones */
+  #lq-overlay .lq-back{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:36px;padding:0 12px 0 9px;border-radius:9px;
+    font-family:var(--sans,inherit);font-size:13px;font-weight:600;color:var(--ink2,#8b96a3);background:rgba(255,255,255,.05);
+    border:1px solid var(--line2,#2b3139);text-shadow:0 1px 4px rgba(0,0,0,.9);white-space:nowrap;cursor:pointer;margin-right:8px}
+  #lq-overlay .lq-back svg{width:12px;height:12px}
+  #lq-overlay .lq-back:hover{border-color:var(--gold-lo,#C9A84B);color:var(--gold,#E8B84B)}
+  /* Logo de la moneda dentro del selector */
+  #lq-overlay #lq-sel-par .lq-logo{width:18px;height:18px}
+  /* Precio en vivo + rango 24h */
+  #lq-overlay .lq-px{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:0 2px;white-space:nowrap}
+  #lq-overlay .lq-px-now{font-family:ui-monospace,monospace;font-weight:800;font-size:15px;color:#eaecef}
+  #lq-overlay .lq-px-now.up{color:#2ebd85}
+  #lq-overlay .lq-px-now.dn{color:#f6465d}
+  #lq-overlay .lq-px-hl{display:flex;gap:10px;align-items:center}
+  #lq-overlay .lq-px-hl>span{display:flex;flex-direction:column;line-height:1.05}
+  #lq-overlay .lq-px-hl em{font-style:normal;font-size:8px;letter-spacing:.3px;text-transform:uppercase;color:#79838f;font-family:ui-monospace,monospace}
+  #lq-overlay .lq-px-hl i{font-style:normal;font-size:11px;font-weight:700;color:#aeb6c0;font-family:ui-monospace,monospace}
+  @media(max-width:900px){#lq-overlay .lq-px-hl{display:none}}
+  @media(max-width:760px){#lq-overlay .lq-px{display:none}}
   #lq-overlay .lq-news{position:relative}
   #lq-overlay .lq-news .lq-news-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#f6465d;box-shadow:0 0 0 0 rgba(246,70,93,.6);animation:lqNewsPulse 2.2s infinite}
   @keyframes lqNewsPulse{0%{box-shadow:0 0 0 0 rgba(246,70,93,.55)}70%{box-shadow:0 0 0 6px rgba(246,70,93,0)}100%{box-shadow:0 0 0 0 rgba(246,70,93,0)}}
