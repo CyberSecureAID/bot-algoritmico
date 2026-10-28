@@ -821,7 +821,7 @@ export async function abrirPools() {
           </button>
           <button class="lq-ayuda" id="lq-ver" title="Show or hide the map">◉</button>
           <button class="lq-ayuda" id="lq-fit" title="Reencuadrar">⤢</button>
-          <button class="lq-ayuda" id="lq-ayuda" title="Cómo funciona">?</button>
+          <button class="lq-ayuda" id="lq-ayuda" title="How it works">?</button>
         </div>
       </div>
 
@@ -2415,109 +2415,108 @@ function ayuda() {
   d.id = 'lq-ayuda-box';
   d.innerHTML = `<div class="lq-bg"></div>
     <div class="lqa-c">
-      <button class="lqa-x" id="lqa-x" aria-label="Cerrar">✕</button>
+      <button class="lqa-x" id="lqa-x" aria-label="Close">✕</button>
 
       <div class="lqa-tabs">
-        <button class="lqa-tab on" data-gtab="operar">Cómo operar con esto</button>
-        <button class="lqa-tab" data-gtab="leer">Cómo se lee el mapa</button>
+        <button class="lqa-tab on" data-gtab="operar">How to trade it</button>
+        <button class="lqa-tab" data-gtab="leer">How to read the map</button>
       </div>
 
       <div class="lqa-pane on" id="gp-operar">
         <div class="lqa-intro">
-          Lo que tienes delante es <b>el mapa de dónde está el dinero atrapado</b>.
-          Esos niveles no son opiniones ni predicciones: son posiciones reales
-          esperando a ser cerradas. Y el precio tiende a ir a buscarlas.
+          What you are looking at is <b>the map of where the money is trapped</b>.
+          These levels are not opinions or forecasts: they are real leveraged
+          positions waiting to be closed out, and price tends to go hunting for them.
         </div>
 
         <div class="lqa-p">
-          <b>1 · Los muros rojos son imanes</b>
-          Donde el mapa se pone rojo hay una concentración de posiciones que se
-          liquidarían a ese precio. Cuando el mercado se acerca, esas
-          liquidaciones se disparan en cadena y <b>aceleran el movimiento</b>
-          en esa dirección.
-          <i>Qué hacer: si estás dentro y ves un muro rojo cerca en tu contra, ese es un buen sitio para tener cuidado. Si estás fuera, es donde el precio suele ir antes de girar.</i>
+          <b>1 · The red walls are magnets</b>
+          Where the map turns red, a cluster of positions would be liquidated at
+          that price. <b>The deeper the red, the more liquidity sits there.</b>
+          When price approaches, those liquidations fire in a chain and
+          <b>accelerate the move</b> toward the wall.
+          <i>How to use it: the most intense red is where price is most likely to be pulled, and often where it bounces once that liquidity is taken. If you are in a trade and a red wall sits against you, treat it as a danger zone.</i>
         </div>
 
         <div class="lqa-p">
-          <b>2 · El precio va a por la liquidez, no a por tu análisis</b>
-          Un techo con muchas órdenes acumuladas encima raramente se respeta
-          para siempre. El mercado suele <b>barrer esa zona</b>, recoger las
-          liquidaciones, y solo entonces decidir hacia dónde va.
-          <i>Qué hacer: desconfía de las rupturas justo antes de un muro. Muchas veces es el barrido, no el movimiento de verdad.</i>
+          <b>2 · Price hunts liquidity, not your analysis</b>
+          A ceiling with orders stacked above it rarely holds forever. The market
+          tends to <b>sweep that zone</b>, collect the liquidations, and only then
+          decide where to go.
+          <i>How to use it: be wary of breakouts right before a wall. More often than not it is the sweep, not the real move.</i>
         </div>
 
         <div class="lqa-p">
-          <b>3 · Las zonas vacías se cruzan rápido</b>
-          Donde el mapa está oscuro no hay nada que frene al precio. Son
-          tramos que el mercado <b>atraviesa en minutos</b>.
-          <i>Qué hacer: si tu objetivo está al otro lado de una zona vacía, es alcanzable. Si está detrás de un muro rojo, cuesta mucho más.</i>
+          <b>3 · Empty zones get crossed fast</b>
+          Where the map is dark, nothing slows price down. These are stretches the
+          market <b>covers in minutes</b>.
+          <i>How to use it: if your target sits on the far side of an empty zone, it is reachable. Behind a red wall, it is much harder.</i>
         </div>
 
         <div class="lqa-p">
-          <b>4 · Cambia el apalancamiento para ver quién sostiene</b>
-          El filtro x10 muestra dónde están las posiciones más conservadoras;
-          x100, las más agresivas. <b>Las de x100 saltan primero</b> y son las
-          que provocan los movimientos bruscos.
-          <i>Qué hacer: si el x100 muestra un muro cerca del precio, espera volatilidad pronto.</i>
+          <b>4 · Switch leverage to see who is holding</b>
+          The x10 filter shows the conservative positions; x100, the aggressive
+          ones. <b>The x100 positions blow up first</b> and are what triggers the
+          sharp moves.
+          <i>How to use it: if x100 shows a wall near price, expect volatility soon.</i>
         </div>
 
         <div class="lqa-p">
-          <b>5 · Súbelo de temporalidad para ver el cuadro grande</b>
-          En 15 minutos ves lo que va a pasar hoy. En diario, dónde está el
-          dinero de verdad. <b>Los niveles del diario mandan sobre los del
-          intradía.</b>
-          <i>Qué hacer: mira primero en 4h o diario para saber hacia dónde sopla el viento, y luego baja a buscar tu entrada.</i>
+          <b>5 · Zoom out for the big picture</b>
+          On 15 minutes you see what happens today. On the daily, where the real
+          money sits. <b>Daily levels outrank intraday ones.</b>
+          <i>How to use it: check 4h or daily first to see which way the wind is blowing, then drop down to find your entry.</i>
         </div>
 
         <div class="lqa-aviso">
-          Esto es <b>información, no una señal</b>. No te decimos cuándo comprar
-          ni cuándo vender: te enseñamos dónde está la liquidez para que decidas
-          tú con más contexto del que tenías antes.
+          This is <b>information, not a signal</b>. We do not tell you when to buy
+          or sell: we show you where the liquidity is, so you decide with more
+          context than you had before.
         </div>
       </div>
 
       <div class="lqa-pane" id="gp-leer">
         <div class="lqa-p">
-          <b>De dónde salen estos datos</b>
-          Por cada vela se estima qué posiciones se abrieron y con cuánto
-          apalancamiento. Con eso se calcula a qué precio saltaría cada una, y
-          todo se acumula en el mapa. Cuando el precio toca un nivel, esas
-          posiciones <b>ya se liquidaron</b> y desaparecen: por eso el mapa se
-          va consumiendo por donde pasa el precio.
+          <b>Where this data comes from</b>
+          For every candle we estimate which positions opened and at what leverage.
+          From that we compute the price each one would be liquidated at, and it all
+          stacks into the map. When price touches a level, those positions
+          <b>have already been liquidated</b> and disappear: that is why the map
+          burns away where price has been.
         </div>
 
         <div class="lqa-p">
-          <b>Los colores</b>
-          <span class="lqa-col"><i style="background:rgb(34,70,167)"></i>Azul — liquidez de fondo</span>
-          <span class="lqa-col"><i style="background:rgb(8,190,12)"></i>Verde — acumulación media</span>
-          <span class="lqa-col"><i style="background:rgb(228,229,5)"></i>Amarillo — zona importante</span>
-          <span class="lqa-col"><i style="background:rgb(255,0,0)"></i>Rojo — <b>zona de liquidación</b></span>
+          <b>The colors</b>
+          <span class="lqa-col"><i style="background:rgb(34,70,167)"></i>Blue · background liquidity</span>
+          <span class="lqa-col"><i style="background:rgb(8,190,12)"></i>Green · medium build-up</span>
+          <span class="lqa-col"><i style="background:rgb(228,229,5)"></i>Yellow · important zone</span>
+          <span class="lqa-col"><i style="background:rgb(255,0,0)"></i>Red · <b>liquidation zone, the most liquidity</b></span>
         </div>
 
         <div class="lqa-p">
-          <b>El perfil de volumen</b>
-          A la derecha, cuánto se negoció a cada precio.
-          <span class="lqa-col"><i style="background:rgb(38,166,154)"></i>Verde — volumen comprador</span>
-          <span class="lqa-col"><i style="background:rgb(239,83,80)"></i>Rojo — volumen vendedor</span>
-          <span class="lqa-col"><i style="background:rgb(232,184,75)"></i>Dorado (POC) — donde más se negoció</span>
-          <b>VAH</b> y <b>VAL</b> marcan el área de valor: donde ocurrió el 70%
-          del negocio. Dentro, el precio se atasca; fuera, corre.
+          <b>The volume profile</b>
+          On the right, how much traded at each price.
+          <span class="lqa-col"><i style="background:rgb(38,166,154)"></i>Green · buying volume</span>
+          <span class="lqa-col"><i style="background:rgb(239,83,80)"></i>Red · selling volume</span>
+          <span class="lqa-col"><i style="background:rgb(232,184,75)"></i>Gold (POC) · where the most traded</span>
+          <b>VAH</b> and <b>VAL</b> mark the value area: where 70% of the business
+          happened. Inside it price stalls; outside it runs.
         </div>
 
         <div class="lqa-p">
-          <b>El filtro de ruido</b>
-          Súbelo para quedarte solo con las zonas fuertes. Bájalo para ver el
-          mapa completo. No cambia los datos: cambia cuánto se muestra.
+          <b>The noise filter</b>
+          Raise it to keep only the strong zones. Lower it to see the full map. It
+          does not change the data: only how much is shown.
         </div>
 
         <div class="lqa-aviso">
-          Son <b>estimaciones</b> a partir de precio y volumen público. Ningún
-          exchange publica su motor de liquidación: ninguna herramienta del
-          mercado, ni la más cara, tiene ese dato.
+          These are <b>estimates</b> from public price and volume. No exchange
+          publishes its liquidation engine: no tool on the market, not even the
+          most expensive, has that data.
         </div>
       </div>
 
-      <button class="lqa-b" id="lqa-cerrar">Entendido</button>
+      <button class="lqa-b" id="lqa-cerrar">Got it</button>
     </div>`;
   document.body.appendChild(d);
 
