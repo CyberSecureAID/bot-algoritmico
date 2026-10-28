@@ -839,7 +839,7 @@ export async function abrirPools() {
 
   const cerrar = () => {
     cerrarMenus();
-    clearInterval(_vivo); clearInterval(_vivoPx); pararAnimPerfil();
+    clearInterval(_vivo); clearInterval(_vivoPx);
     const e = $('lq-overlay'); if (e) e.remove();
     /* Al cerrar se vuelve a la portada de Liquidity, no se sale. */
     try { if (window.__lqpVolver) window.__lqpVolver(); } catch (_) {}
@@ -924,7 +924,7 @@ export async function abrirPools() {
     m.querySelectorAll('[data-mtog]').forEach((b) => b.onclick = () => {
       const q = b.dataset.mtog;
       if (q === 'fit') { encuadrar(); m.remove(); return; }
-      if (q === 'perfil') { V.verPerfil = !V.verPerfil; $('lq-perfil')?.classList.toggle('apagado', !V.verPerfil); if (V.verPerfil) arrancarAnimPerfil(); else pararAnimPerfil(); }
+      if (q === 'perfil') { V.verPerfil = !V.verPerfil; $('lq-perfil')?.classList.toggle('apagado', !V.verPerfil); }
       if (q === 'mapa') { V.verMapa = !V.verMapa; $('lq-ver')?.classList.toggle('apagado', !V.verMapa); }
       const i = b.querySelector('i');
       if (i) i.classList.toggle('on', q === 'perfil' ? V.verPerfil : V.verMapa);
@@ -938,7 +938,6 @@ export async function abrirPools() {
   $('lq-perfil').onclick = () => {
     V.verPerfil = !V.verPerfil;
     $('lq-perfil').classList.toggle('apagado', !V.verPerfil);
-    if (V.verPerfil) arrancarAnimPerfil(); else pararAnimPerfil();
     dibujar();
   };
 
@@ -1129,25 +1128,6 @@ function ajustarY() {
   V.yMax = alto + m;
   V.yMin = Math.max(0, bajo - m);
 }
-
-let _animPerfil = null, _animLastT = 0;
-/* Animación del perfil de volumen (neón en movimiento). Corre SOLO cuando el
-   perfil está activo (es opt-in, apagado por defecto), a ~25fps, y se detiene
-   al apagarlo, al arrastrar o al cerrar. No cambia ningún dato: solo redibuja
-   para que la onda de luz avance. */
-function arrancarAnimPerfil() {
-  if (_animPerfil) return;
-  const paso = (t) => {
-    _animPerfil = requestAnimationFrame(paso);
-    if (!V.verPerfil || !document.getElementById('lq-overlay')) { pararAnimPerfil(); return; }
-    if (V.arrastrando) return;
-    if (t - _animLastT < 40) return;
-    _animLastT = t;
-    dibujar();
-  };
-  _animPerfil = requestAnimationFrame(paso);
-}
-function pararAnimPerfil() { if (_animPerfil) { cancelAnimationFrame(_animPerfil); _animPerfil = null; } }
 
 function dibujar() {
   const caja = $('lq-caja');
@@ -1460,17 +1440,15 @@ function dibujar() {
       g.fillStyle = 'rgba(232,184,75,.045)';
       g.fillRect(xVelas + 4, yVA1, x1 - xVelas - 4, yVA2 - yVA1);
 
-      /* ── NEÓN EN MOVIMIENTO ──────────────────────────────────────────
-         La luz viaja de DERECHA a IZQUIERDA sobre las barras. No se cambia
-         ningún dato: mismas posiciones, anchos y split compra/venta; solo el
-         relleno (degradado neón + onda) y un brillo en la barra que cruza. */
-      const faseP = (performance.now() / 2200) % 1;
-      const sweepX = xBorde - faseP * anchoMax;            // derecha → izquierda
-      const segNeon = (xFrom, segW, rgb, op, yA, h) => {
+      /* Efecto CRISTAL: cada barra con degradado claro→oscuro, translúcido en
+         la punta y sólido en la base (de un lado a otro). ESTÁTICO, sin
+         animación. Intenso para que se vea real, no opaco. Mismos datos,
+         anchos y split compra/venta; solo cambia el relleno. */
+      const segCristal = (xFrom, segW, rgb, op, yA, h) => {
         if (segW <= 0.3) return;
         const gx = g.createLinearGradient(xFrom, 0, xFrom + segW, 0);
-        gx.addColorStop(0, `rgba(${rgb},${op * 0.34})`);   // punta izq., tenue
-        gx.addColorStop(1, `rgba(${rgb},${op})`);          // base der., intenso
+        gx.addColorStop(0, `rgba(${rgb},${op * 0.5})`);    // punta: cristal translúcido
+        gx.addColorStop(1, `rgba(${rgb},${op})`);          // base: sólido e intenso
         g.fillStyle = gx; g.fillRect(xFrom, yA, segW, h);
       };
       for (let f = 0; f < FP; f++) {
@@ -1481,31 +1459,15 @@ function dibujar() {
         const h = Math.max(1.5, yB - yA - 1);
         const w = anchoMax * (total[f] / pocMax);
         const dentroVA = f >= abajo && f <= arriba;
-        const xL = xBorde - w;
-        const op = dentroVA ? 0.95 : 0.6;
-        const lit = sweepX >= xL && sweepX <= xBorde;       // ¿la onda cruza esta barra?
+        const op = dentroVA ? 1 : 0.85;
 
-        g.save();
-        if (lit) { g.shadowColor = (f === pocIdx) ? 'rgba(240,200,90,.9)' : 'rgba(255,255,255,.5)'; g.shadowBlur = 9; }
         if (f === pocIdx) {
-          segNeon(xL, w, '240,200,90', 0.98, yA, h);        // POC dorado, entero
+          segCristal(xBorde - w, w, '245,205,95', 1, yA, h);    // POC dorado
         } else {
           const wC = w * (compras[f] / Math.max(1e-9, total[f]));
           const wV = w - wC;
-          segNeon(xBorde - w, wV, '255,70,90', op, yA, h);  // ventas (izquierda)
-          segNeon(xBorde - wC, wC, '46,232,106', op, yA, h); // compras (derecha)
-        }
-        g.restore();
-
-        // La onda: banda clara que recorre la barra, de derecha a izquierda.
-        if (lit) {
-          const bandW = 16, x0 = Math.max(xL, sweepX - bandW);
-          const gw = g.createLinearGradient(x0, 0, sweepX, 0);
-          gw.addColorStop(0, 'rgba(255,255,255,0)');
-          gw.addColorStop(1, 'rgba(255,255,255,.26)');
-          g.save(); g.globalCompositeOperation = 'lighter';
-          g.fillStyle = gw; g.fillRect(x0, yA, sweepX - x0, h);
-          g.restore();
+          segCristal(xBorde - w, wV, '255,70,90', op, yA, h);   // ventas (izquierda)
+          segCristal(xBorde - wC, wC, '46,232,106', op, yA, h); // compras (derecha)
         }
       }
 
