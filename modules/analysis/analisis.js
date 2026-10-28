@@ -38,37 +38,23 @@ const HERRAMIENTAS = [
     desc:'The order book lies. We watch every wall over time and separate the real committed capital from the theater, so you know which levels truly hold.' },
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'strategy', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
     lema:'Where to buy and where to sell',
-    desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
-  { id:'sp', abre:'structural', nombre:'Structural Logic', cat:'strategy', img:null, activos:['Indices','Crypto'], spot:false, listo:true,
-    lema:'The trend, and the moment it breaks',
-    desc:'Reads market structure live: it draws the resistance and support that contain price, then fires LONG or SHORT the instant the trend breaks — with the exact level to act on and a multi-timeframe momentum read beside it. S&P 500 by default, plus indices and crypto.' },
-  { id:'hfs', abre:null, nombre:'High Frequency Signals', cat:'indicator', img:null, activos:['Crypto'], spot:false, listo:false,
-    lema:'Momentum and scalping, tick by tick',
-    desc:'Real time signals built for scalping and momentum: micro-shifts in flow, speed and aggression surfaced the instant they happen.' },
-  { id:'vp', abre:null, nombre:'Volume Profile', cat:'indicator', img:null, activos:['Crypto'], spot:true, listo:false,
-    lema:'Market structure and value zones',
-    desc:'The distribution of traded volume by price: value areas, points of control and the empty zones price slides through.' },
-  { id:'mtf', abre:null, nombre:'Multi Timeframe', cat:'strategy', img:null, activos:['Crypto'], spot:false, listo:false,
-    lema:'Aligned views, better decisions',
-    desc:'One read across every timeframe at once. When the short and the long align, conviction is high; when they disagree, you see the conflict first.' },
-  { id:'liq', abre:null, nombre:'Liquidation Zones', cat:'strategy', img:null, activos:['Crypto'], spot:false, listo:false,
-    lema:'Where leverage gets wiped out',
-    desc:'The price areas where cascades of leveraged positions are set to unwind. Magnets for price and the fuel behind violent moves.' }
+    desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator' };
 
 /* PRECIOS Y DESCUENTOS.
    Base UNIFORME por servicio: $25/mes, $300/año (=12x25). Editables desde el
    panel admin (solo owner) cuando se haga el contrato.
-   Descuento por CANTIDAD de servicios comprados juntos (entre TODOS, no
-   acumulativo), creciente, con TOPE: mensual 30%, anual 50%.
+   Descuento por CANTIDAD de servicios comprados juntos (hay 3 en total, no
+   acumulativo), creciente, con TOPE al llevar las 3: mensual 30%, anual 50%.
+   Comprar el paquete completo (3) = el mayor descuento.
    ⚠ IMPORTANTE: el descuento DEFINITIVO lo calcula y valida el CONTRATO, no el
    front-end, para que nadie pueda forzar un descuento del 100%. Esto de aqui es
    solo la vista; el contrato tendra la misma tabla. */
 const MES_BASE = 25;     // USD/mes por servicio
 const ANIO_BASE = 300;   // USD/año por servicio
-const DESC_MES  = [0, 0.10, 0.20, 0.25, 0.30];            // 1,2,3,4,5+ servicios (tope 30%)
-const DESC_ANIO = [0, 0.20, 0.30, 0.40, 0.45, 0.50];      // 1,2,3,4,5,6+ servicios (tope 50%)
+const DESC_MES  = [0, 0.15, 0.30];     // 1,2,3 servicios (tope 30% con las 3)
+const DESC_ANIO = [0, 0.25, 0.50];     // 1,2,3 servicios (tope 50% con las 3)
 const descPorCantidad = (tabla, n) => tabla[Math.min(Math.max(n, 1), tabla.length) - 1];
 const precioUnit = (n, anual) => Math.round((anual ? ANIO_BASE : MES_BASE) * (1 - descPorCantidad(anual ? DESC_ANIO : DESC_MES, n)));
 
@@ -152,7 +138,6 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=126')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=127')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
-    else if (abre === 'structural') await (await import(new URL('./structural/structural.js?v=6', import.meta.url).href)).abrirStructural();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
@@ -621,7 +606,7 @@ const CSS = `
 #an-sel .an-chip:active{transform:translateY(2px);box-shadow:0 1px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06)}
 
 /* rejilla 4 col, tarjetas de IGUAL alto y ancho */
-#an-sel .an-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:stretch}
+#an-sel .an-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
 #an-sel .an-card{display:flex;flex-direction:column;text-align:left;font-family:inherit;color:inherit;background:linear-gradient(180deg,#121820,#0b0e12);border:1px solid #232b36;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.04);transform-style:preserve-3d;transition:transform .15s ease,border-color .14s,box-shadow .18s;will-change:transform}
 #an-sel .an-card:hover{border-color:var(--gold);box-shadow:0 18px 44px rgba(232,184,75,.14)}
 #an-sel .an-card.soon{cursor:default}
