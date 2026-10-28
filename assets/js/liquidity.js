@@ -1156,7 +1156,7 @@ function dibujar() {
   /* Órdenes desde el gráfico: clic derecho o toque largo. */
   if (!cv.dataset.ordenOk) {
     cv.dataset.ordenOk = '1';
-    import('./orden.js?v=126').then((od) => {
+    import('./orden.js?v=127').then((od) => {
       od.conectar({
         canvas: cv,
         precioEn: (yy) => {
@@ -1894,7 +1894,7 @@ function dibujar() {
   /* ── Tus órdenes y alertas (clic derecho): AL FINAL, encima de todo ── */
   if (_od) {
     _zonasOd = _od.pintar(g, {
-      x1, Y, pMin: yMin, pMax: yMax,
+      x1, y1, Y, pMin: yMin, pMax: yMax,
       simbolo: (PARES.find((p) => p.id === _par) || {}).s || ''
     });
   }

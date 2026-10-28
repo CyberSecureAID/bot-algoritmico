@@ -68,7 +68,7 @@ function buscarMoneda(MONEDAS, simb) {
 }
 
 let _tr = null;
-try { import('./idioma.js?v=126').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
+try { import('./idioma.js?v=127').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
 const T = (t) => { try { return _tr ? _tr.t(t) : t; } catch (_) { return t; } };
 
 const fmt = (p) => {
@@ -239,7 +239,10 @@ function abrirMenu(cx, cy, cfg, ev) {
         <span>${esc(T(vender ? 'Ganancia' : 'Descuento'))}</span>
       </div>
     </div>
-    <button class="od-m-b" type="button">${esc(T('Establecer posición'))}</button>`;
+    <div class="od-m-acc">
+      <button class="od-m-b" type="button">${esc(T('Establecer posición'))}</button>
+      <button class="od-m-alert" type="button" title="${esc(T('Pon una alerta de precio en este nivel'))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span>${esc(T('Alerta'))}</span></button>
+    </div>`;
   document.body.appendChild(d);
   colocar(d, cx, cy);
 
@@ -247,6 +250,21 @@ function abrirMenu(cx, cy, cfg, ev) {
     e.stopPropagation();
     d.remove();
     abrirFicha(cx, cy, cfg, precio, vender);
+  };
+  /* Alerta de precio en UN clic: crea el MISMO aviso que la ficha en modo
+     "Solo avisarme" (sin pasos ni gas). El vigilante que ya está en marcha
+     lo recoge y pintar() lo dibuja en dorado sobre el mapa. Real, no
+     provisional. El contrato/Cloudflare no interviene en una alerta. */
+  d.querySelector('.od-m-alert').onclick = (e) => {
+    e.stopPropagation();
+    guardarAviso({
+      par: cfg.par ? cfg.par() : '',
+      simbolo: cfg.simbolo ? cfg.simbolo() : '',
+      precio, cant: 0, vender, sl: 0, cuando: Date.now()
+    });
+    d.remove();
+    if (cfg.repintar) cfg.repintar();
+    toastAlerta(vender, precio);
   };
   d.addEventListener('click', (e) => e.stopPropagation());
   setTimeout(() => document.addEventListener('click', cerrarTodo, { once: true }), 10);
@@ -966,6 +984,23 @@ function sonar(a, precioAhora) {
   setTimeout(() => { if (t.parentNode) t.remove(); }, 15000);
 }
 
+/* Confirmación breve al poner una alerta de precio con un clic.
+   Mismo lenguaje visual que el aviso que salta cuando el precio llega. */
+function toastAlerta(vender, precio) {
+  const t = document.createElement('div');
+  t.className = 'od-toast ' + (vender ? 'vender' : 'comprar');
+  t.innerHTML = `
+    <span class="od-t-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+    <div>
+      <b>${esc(T('Alerta puesta'))}</b>
+      <span>${esc(T('Te avisaremos cuando el precio llegue a'))} ${fmt(precio)}</span>
+    </div>
+    <button type="button" class="od-t-x">✕</button>`;
+  document.body.appendChild(t);
+  t.querySelector('.od-t-x').onclick = () => t.remove();
+  setTimeout(() => { if (t.parentNode) t.remove(); }, 6000);
+}
+
 /* ══════════════════════════════════════════════════════════════
    PINTAR LAS ÓRDENES SOBRE EL GRÁFICO
 
@@ -1289,6 +1324,17 @@ function estilos() {
     font-family:var(--display,sans-serif);font-weight:800;font-size:12.5px;border:none}
   .od-menu.comprar .od-m-b{background:linear-gradient(180deg,#4dffa0,#1fc96e);color:#04210f}
   .od-menu.vender .od-m-b{background:linear-gradient(180deg,#ff8a95,#e03546);color:#2a0509}
+  /* Dos acciones del MISMO tamaño: Establecer posición + Alerta (un clic).
+     La alerta lleva el color de la zona (rojo encima del precio, verde
+     debajo), igual que el otro botón; el icono de campana la distingue. */
+  .od-m-acc{display:flex;gap:7px;align-items:stretch}
+  .od-m-acc .od-m-b{flex:1;width:auto}
+  .od-m-alert{flex:1;min-height:38px;border-radius:9px;cursor:pointer;border:none;
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;line-height:1.1;
+    font-family:var(--display,sans-serif);font-weight:800;font-size:12px}
+  .od-m-alert svg{width:14px;height:14px;flex:0 0 auto}
+  .od-menu.comprar .od-m-alert{background:linear-gradient(180deg,#4dffa0,#1fc96e);color:#04210f}
+  .od-menu.vender .od-m-alert{background:linear-gradient(180deg,#ff8a95,#e03546);color:#2a0509}
 
   /* La ficha */
   /* [CORREGIDO] Al escribir la cantidad aparecía el resumen y la
@@ -1422,6 +1468,7 @@ function estilos() {
   .od-toast.comprar{border-color:rgba(46,232,106,.55)}
   .od-toast.vender{border-color:rgba(246,70,93,.55)}
   .od-t-ic{font-size:16px;flex:0 0 auto}
+  .od-t-ic svg{width:16px;height:16px;display:block}
   .od-toast.comprar .od-t-ic{color:#2ee86a}
   .od-toast.vender .od-t-ic{color:#f6465d}
   .od-toast b{display:block;font-family:var(--display,sans-serif);font-weight:800;
