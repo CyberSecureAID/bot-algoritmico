@@ -807,20 +807,20 @@ export async function abrirPools() {
         <!-- En el móvil, todo esto se recoge en un menú: en la barra
              solo quedan moneda, temporalidad, foto, ayuda y cerrar. -->
         <div class="lq-der">
-          <button class="lq-ayuda solo-movil" id="lq-mas" title="Más opciones">
+          <button class="lq-ayuda solo-movil" id="lq-mas" title="More options">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
-          <button class="lq-ayuda" id="lq-foto" title="Guardar imagen">
+          <button class="lq-ayuda" id="lq-foto" title="Save image">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
           <button class="lq-ayuda" id="lq-cal" title="Economic calendar">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4M7.5 13h2M11 13h2M14.5 13h2"/></svg>
           </button>
-          <button class="lq-ayuda apagado" id="lq-perfil" title="Perfil de volumen">
+          <button class="lq-ayuda apagado" id="lq-perfil" title="Volume profile">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M21 6H9M21 11H5M21 16H12M21 21H8"/></svg>
           </button>
           <button class="lq-ayuda" id="lq-ver" title="Show or hide the map">◉</button>
-          <button class="lq-ayuda" id="lq-fit" title="Reencuadrar">⤢</button>
+          <button class="lq-ayuda" id="lq-fit" title="Reframe">⤢</button>
           <button class="lq-ayuda" id="lq-ayuda" title="How it works">?</button>
         </div>
       </div>
@@ -1619,8 +1619,8 @@ function dibujar() {
       const tx = px + 13;
       g.textAlign = 'left';
       g.fillStyle = col; g.font = 'bold 10.5px ui-monospace,monospace';
-      g.fillText(alcista ? '\u25b2 SOPORTE \u00b7 DEMANDA'
-                         : '\u25bc RESISTENCIA \u00b7 OFERTA', tx, py + 18);
+      g.fillText(alcista ? '\u25b2 SUPPORT \u00b7 DEMAND'
+                         : '\u25bc RESISTANCE \u00b7 SUPPLY', tx, py + 18);
 
       // ── PRECIO (hero) + píldora de distancia al precio actual ──
       g.fillStyle = '#f2f5f8'; g.font = 'bold 16px ui-monospace,monospace';
@@ -1638,7 +1638,7 @@ function dibujar() {
       // ── RANGO de la zona (izq) + medidor de FUERZA en puntos (der) ──
       g.fillStyle = '#8b95a1'; g.font = '9px ui-monospace,monospace'; g.textAlign = 'left';
       const rango = (z.pLow && z.pHigh && Math.abs(z.pHigh - z.pLow) > 1e-9)
-        ? 'Zona ' + fmt(z.pLow) + '\u2013' + fmt(z.pHigh)
+        ? 'Zone ' + fmt(z.pLow) + '\u2013' + fmt(z.pHigh)
         : 'Liquidity wall';
       g.fillText(rango, tx, py + hb + 40);
       const nf = Math.max(1, Math.min(5, z.filas || 1));   // fuerza = nº de muros (1..5)
@@ -1651,7 +1651,7 @@ function dibujar() {
       // ── QUÉ ES (lógica correcta: encima=venta/oferta, debajo=compra/demanda) ──
       g.fillStyle = '#c8d0d8'; g.font = '9.5px ui-monospace,monospace';
       if (alcista) {
-        g.fillText('Compra acumulada DEBAJO del precio.', tx, py + hb + 58);
+        g.fillText('Buying stacked BELOW price.', tx, py + hb + 58);
         g.fillText('Floor that holds up the drops.', tx, py + hb + 71);
       } else {
         g.fillText('Accumulated selling ABOVE the price.', tx, py + hb + 58);
@@ -1663,12 +1663,12 @@ function dibujar() {
       //    neutra y aviso honesto, en vez de pintarla toda roja. ──
       const sinFlujo = (volC + volV) <= 0;
       g.fillStyle = '#8b95a1'; g.font = '8.5px ui-monospace,monospace'; g.textAlign = 'left';
-      g.fillText('Flujo en la zona', tx, py + hb + 90);
+      g.fillText('Flow in the zone', tx, py + hb + 90);
       if (!sinFlujo) { g.textAlign = 'right'; g.fillText('Total ' + fmtV(volT), px + pw - 13, py + hb + 90); g.textAlign = 'left'; }
       const bx = tx, by = py + hb + 96, bw = pw - 26, bh = 10;
       g.save(); redondeadoLq(g, bx, by, bw, bh, 5); g.clip();
       if (sinFlujo) {
-        g.fillStyle = 'rgba(150,160,172,.30)'; g.fillRect(bx, by, bw, bh);
+        g.fillStyle = 'rgba(232,184,75,.28)'; g.fillRect(bx, by, bw, bh);
       } else {
         const wc = Math.max(0, Math.min(bw, bw * (volC / volT)));
         g.fillStyle = 'rgba(46,232,106,.95)'; g.fillRect(bx, by, wc, bh);
@@ -1678,7 +1678,7 @@ function dibujar() {
       g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1; redondeadoLq(g, bx, by, bw, bh, 5); g.stroke();
       if (sinFlujo) {
         g.fillStyle = '#8b95a1'; g.font = '8.5px ui-monospace,monospace'; g.textAlign = 'center';
-        g.fillText('Sin actividad reciente en la zona', bx + bw / 2, by + bh + 13);
+        g.fillText('Resting liquidity, not yet swept', bx + bw / 2, by + bh + 13);
         g.textAlign = 'left';
       } else {
         g.font = 'bold 8.5px ui-monospace,monospace';
@@ -1698,15 +1698,15 @@ function dibujar() {
          nivel de liquidez. Nada de frases vacías. ── */
       let dom;
       if (sinFlujo) {
-        dom = [alcista ? 'Piso de liquidez' : 'Techo de liquidez', '150,160,172'];
+        dom = [alcista ? 'Liquidity floor' : 'Liquidity ceiling', '232,184,75'];
       } else if (!alcista) {                 // RESISTENCIA (techo · oferta)
-        dom = volV > volC * 1.25 ? ['Oferta firme: techo s\u00f3lido', '255,107,122']
-            : volC > volV * 1.25 ? ['Compradores atrapados arriba', '245,183,74']
-            : ['Techo en disputa', '196,204,212'];
+        dom = volV > volC * 1.25 ? ['Firm supply, solid ceiling', '255,107,122']
+            : volC > volV * 1.25 ? ['Buyers trapped above', '245,183,74']
+            : ['Ceiling in play', '196,204,212'];
       } else {                               // SOPORTE (piso · demanda)
-        dom = volC > volV * 1.25 ? ['Demanda firme: piso s\u00f3lido', '46,232,106']
-            : volV > volC * 1.25 ? ['Ventas absorbidas: piso probado', '245,183,74']
-            : ['Piso en disputa', '196,204,212'];
+        dom = volC > volV * 1.25 ? ['Firm demand, solid floor', '46,232,106']
+            : volV > volC * 1.25 ? ['Selling absorbed, floor tested', '245,183,74']
+            : ['Floor in play', '196,204,212'];
       }
       const chy = py + ph - 26, chh = 18, chx = px + 10, chw = pw - 20;
       g.fillStyle = `rgba(${dom[1]},.14)`; redondeadoLq(g, chx, chy, chw, chh, 7); g.fill();
