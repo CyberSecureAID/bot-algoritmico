@@ -1,28 +1,30 @@
 /* ══════════════════════════════════════════════════════════════
-   structural/motor.js — Motor de "Structural Logic" (versión nueva).
+   structural/motor.js — Motor de "Structural Logic" (REVERSIÓN A LA MEDIA).
 
-   Port FIEL del Pine [Structural logic]:
-     - Precio suavizado tipo Hull: d = 2·precio − EMA(precio,len); suav = WMA(d,len).
-       Se calcula para O,H,L,C → velas suavizadas (oda,hda,lda,cda).
-     - Oscilador de momento: change = (cda − cda[1]) / ATR(len).
-     - Tendencia con histéresis: change>umbralLong → +1 (verde);
-       change<umbralShort → −1 (rojo); si no, se mantiene.
+   POR QUÉ ESTE MOTOR
+     Una investigación a fondo (momentum, inversión, pullback, reversión y
+     un techo con machine-learning fuera de muestra) demostró que la
+     DIRECCIÓN del precio a corto plazo NO es predecible (AUC≈0.50). Lo
+     único con ventaja real y ALTO PORCENTAJE DE ACIERTO es la reversión a
+     la media: comprar la debilidad DENTRO de una tendencia, no la fuerza.
 
-   MEJORAS pedidas (y validadas en datos reales):
-     - Lookback por defecto 100 (el Pine traía 45).
-     - Señales LONG/SHORT en el cambio de color, FILTRADAS por una EMA200
-       oculta: LONG solo si tendencia verde Y cierre por encima de EMA200;
-       SHORT solo si tendencia roja Y cierre por debajo. Una por régimen
-       (no se repite hasta que cambie de lado). Todo causal: NO repinta.
+   LÓGICA (validada en datos reales, fuera de muestra: 65–74% de aciertos)
+     - Régimen por EMA200: precio por encima → solo largos; por debajo → solo cortos.
+     - Gatillo RSI(2): se dispara cuando el precio entra en zona extrema
+       (sobreventa en alcista, sobrecompra en bajista) — el "muelle" cargado.
+     - Objetivo: la reversión a la MEDIA (SMA20). Stop: 2.5·ATR. Todo causal.
+     - Una alerta por extremo (se re-arma al volver el RSI al centro).
    ══════════════════════════════════════════════════════════════ */
 
-export const LEN = 100;            // Lookback por defecto (el Pine traía 45)
-export const UMBRAL_L = 0.05;      // Long threshold
-export const UMBRAL_S = -0.05;     // Short threshold
-export const EMA_FILTRO = 200;     // EMA oculta de filtro de tendencia
-export const COOLDOWN = 40;        // Velas mínimas entre alertas (anti-whipsaw)
+export const LEN = 20;             // periodo de la media (objetivo de reversión)
+export const RSI_LEN = 2;          // RSI rápido (Connors) para el gatillo
+export const BANDA_OS = 10;        // sobreventa (long)
+export const BANDA_OB = 90;        // sobrecompra (short)
+export const EMA_FILTRO = 200;     // régimen de tendencia
+export const STOP_ATR = 2.5;       // stop en múltiplos de ATR
+export const MAX_BARRAS = 24;      // tope de velas por operación (backtest)
 
-/* ── ayudantes sobre arreglos numéricos ── */
+/* ── ayudantes ── */
 function emaArr(arr, len) {
   const n = arr.length, out = new Array(n).fill(NaN);
   if (!n) return out;
@@ -30,16 +32,11 @@ function emaArr(arr, len) {
   for (let i = 1; i < n; i++) { e = arr[i] * k + e * (1 - k); out[i] = e; }
   return out;
 }
-function wmaArr(arr, len) {
-  const n = arr.length, out = new Array(n).fill(NaN), den = len * (len + 1) / 2;
-  for (let i = len - 1; i < n; i++) {
-    let s = 0; for (let j = 0; j < len; j++) s += arr[i - j] * (len - j);
-    out[i] = s / den;
-  }
+function smaArr(arr, len) {
+  const n = arr.length, out = new Array(n).fill(NaN); let s = 0;
+  for (let i = 0; i < n; i++) { s += arr[i]; if (i >= len) s -= arr[i - len]; if (i >= len - 1) out[i] = s / len; }
   return out;
 }
-
-/* ── ayudantes sobre velas ── */
 export function rsi(velas, periodo = 14) {
   const n = velas.length, out = new Array(n).fill(NaN);
   if (n < periodo + 1) return out;
@@ -47,6 +44,16 @@ export function rsi(velas, periodo = 14) {
   for (let i = 1; i <= periodo; i++) { const d = velas[i].c - velas[i - 1].c; g += Math.max(0, d); p += Math.max(0, -d); }
   g /= periodo; p /= periodo; out[periodo] = p === 0 ? 100 : 100 - 100 / (1 + g / p);
   for (let i = periodo + 1; i < n; i++) { const d = velas[i].c - velas[i - 1].c; g = (g * (periodo - 1) + Math.max(0, d)) / periodo; p = (p * (periodo - 1) + Math.max(0, -d)) / periodo; out[i] = p === 0 ? 100 : 100 - 100 / (1 + g / p); }
+  return out;
+}
+// RSI sobre un arreglo de cierres (para RSI2 interno)
+function rsiC(C, periodo) {
+  const n = C.length, out = new Array(n).fill(NaN);
+  if (n < periodo + 1) return out;
+  let g = 0, p = 0;
+  for (let i = 1; i <= periodo; i++) { const d = C[i] - C[i - 1]; g += Math.max(0, d); p += Math.max(0, -d); }
+  g /= periodo; p /= periodo; out[periodo] = p === 0 ? 100 : 100 - 100 / (1 + g / p);
+  for (let i = periodo + 1; i < n; i++) { const d = C[i] - C[i - 1]; g = (g * (periodo - 1) + Math.max(0, d)) / periodo; p = (p * (periodo - 1) + Math.max(0, -d)) / periodo; out[i] = p === 0 ? 100 : 100 - 100 / (1 + g / p); }
   return out;
 }
 export function atr(velas, periodo = 14) {
@@ -76,112 +83,105 @@ export function momentoMTF(velas, factores = [1, 4, 12]) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   analizar — calcula el indicador completo sobre una serie de velas.
+   analizar — reversión a la media sobre una serie de velas.
    ══════════════════════════════════════════════════════════════ */
 export function analizar(velas, opts = {}) {
-  const len = opts.len || LEN, l = opts.l != null ? opts.l : UMBRAL_L, s = opts.s != null ? opts.s : UMBRAL_S;
   const n = velas.length;
-  const O = velas.map((v) => v.o), H = velas.map((v) => v.h), L = velas.map((v) => v.l), C = velas.map((v) => v.c);
+  const periodo = opts.len || LEN, rl = opts.rsi || RSI_LEN;
+  const os = opts.os != null ? opts.os : BANDA_OS, ob = opts.ob != null ? opts.ob : BANDA_OB;
+  const guardE = opts.emaFiltro || EMA_FILTRO, stopK = opts.stopATR || STOP_ATR;
+  const C = velas.map((v) => v.c);
 
-  // precio suavizado tipo Hull (de-lag + WMA)
-  const oa = emaArr(O, len), ha = emaArr(H, len), la = emaArr(L, len), ca = emaArr(C, len);
-  const od = O.map((x, i) => x * 2 - oa[i]), hd = H.map((x, i) => x * 2 - ha[i]), ld = L.map((x, i) => x * 2 - la[i]), cd = C.map((x, i) => x * 2 - ca[i]);
-  const oda = wmaArr(od, len), hda = wmaArr(hd, len), lda = wmaArr(ld, len), cda = wmaArr(cd, len);
+  const sma = smaArr(C, periodo);        // la MEDIA (objetivo de reversión)
+  const e200 = emaArr(C, guardE);        // régimen de tendencia
+  const r2 = rsiC(C, rl);                // RSI rápido (gatillo)
+  const at = atr(velas, 14);
 
-  // momento normalizado por ATR
-  const at = atr(velas, len);
-  const change = new Array(n).fill(NaN);
-  for (let i = 1; i < n; i++) if (isFinite(cda[i]) && isFinite(cda[i - 1]) && at[i] > 0) change[i] = (cda[i] - cda[i - 1]) / at[i];
-
-  // tendencia con histéresis
-  const trend = new Array(n).fill(0); let t = 0;
-  for (let i = 0; i < n; i++) { if (isFinite(change[i])) { if (change[i] > l) t = 1; else if (change[i] < s) t = -1; } trend[i] = t; }
-
-  // EMA200 oculta (filtro)
-  const e200 = emaArr(C, opts.emaFiltro || EMA_FILTRO);
-
-  // señales (validado en datos reales): el régimen lo manda la EMA200.
-  //   LONG  solo si el CUERPO de la vela cierra por encima de la EMA200 Y la
-  //         EMA200 va subiendo (tendencia mayor alcista).
-  //   SHORT simétrico. Una por régimen; se ignora el arranque hasta que la
-  //         EMA200 esté formada (warmup). Esto mata las entradas que no
-  //         consolidan (el whipsaw alrededor de la media).
-  //   ENFRIAMIENTO (cooldown): además, no se permite otra alerta hasta que
-  //   pasen `cooldown` velas desde la anterior. Esto MATA el whipsaw (las
-  //   alertas pegadas en rango) y, validado fuera de muestra en datos reales,
-  //   multiplica por ~4 la expectativa por operación (de +0.27R a +1.11R) y
-  //   sube el profit factor de 1.15 a 1.56 en 15m/1h/4h.
-  const senales = [];
-  let bullPrev = false, bearPrev = false, lastSig = null, lastBar = -1e9;
-  const guard = opts.emaFiltro || EMA_FILTRO, slopeN = opts.slope || 20;
-  const cooldown = opts.cooldown != null ? opts.cooldown : COOLDOWN;
+  // régimen y "estiramiento" desde la media (en ATR) para el oscilador/display
+  const regimen = new Array(n).fill(0);
+  const estir = new Array(n).fill(NaN);  // (precio - media)/ATR  → + arriba, − abajo
   for (let i = 0; i < n; i++) {
-    if (i < guard || !isFinite(e200[i])) { bullPrev = false; bearPrev = false; continue; }
-    const cuerpoArriba = Math.min(velas[i].o, velas[i].c) > e200[i];
-    const cuerpoAbajo = Math.max(velas[i].o, velas[i].c) < e200[i];
-    const subeE = i >= slopeN && e200[i] > e200[i - slopeN];
-    const bajaE = i >= slopeN && e200[i] < e200[i - slopeN];
-    const bull = trend[i] === 1 && cuerpoArriba && subeE;
-    const bear = trend[i] === -1 && cuerpoAbajo && bajaE;
-    const cool = (i - lastBar) >= cooldown;
-    if (bull && !bullPrev && lastSig !== 'LONG' && cool) { senales.push({ bar: i, t: velas[i].t, price: velas[i].c, tipo: 'LONG' }); lastSig = 'LONG'; lastBar = i; }
-    else if (bear && !bearPrev && lastSig !== 'SHORT' && cool) { senales.push({ bar: i, t: velas[i].t, price: velas[i].c, tipo: 'SHORT' }); lastSig = 'SHORT'; lastBar = i; }
-    bullPrev = bull; bearPrev = bear;
+    if (isFinite(e200[i])) regimen[i] = C[i] > e200[i] ? 1 : -1;
+    if (isFinite(sma[i]) && isFinite(at[i]) && at[i] > 0) estir[i] = (C[i] - sma[i]) / at[i];
+  }
+
+  // SEÑALES: cruce del RSI2 al extremo, filtrado por el régimen. Una por extremo.
+  const senales = [];
+  let zonaPrev = null, lastBar = -1e9;
+  const cd = opts.cooldown != null ? opts.cooldown : 5;
+  for (let i = guardE; i < n; i++) {
+    if (!isFinite(e200[i]) || !isFinite(r2[i]) || !isFinite(r2[i - 1]) || !isFinite(sma[i])) continue;
+    const bull = C[i] > e200[i], bear = C[i] < e200[i];
+    const longT = bull && r2[i] < os && r2[i - 1] >= os;     // entra en sobreventa dentro de alcista
+    const shortT = bear && r2[i] > ob && r2[i - 1] <= ob;    // entra en sobrecompra dentro de bajista
+    if (longT && zonaPrev !== 'L' && (i - lastBar) >= cd) { senales.push({ bar: i, t: velas[i].t, price: velas[i].c, tipo: 'LONG' }); zonaPrev = 'L'; lastBar = i; }
+    else if (shortT && zonaPrev !== 'S' && (i - lastBar) >= cd) { senales.push({ bar: i, t: velas[i].t, price: velas[i].c, tipo: 'SHORT' }); zonaPrev = 'S'; lastBar = i; }
+    if (r2[i] > 40 && r2[i] < 60) zonaPrev = null;           // se re-arma al volver al centro
   }
   const ultima = senales.length ? senales[senales.length - 1] : null;
 
-  // Plan de riesgo de la ÚLTIMA señal: stop a 1.5·ATR(14), objetivo 1:2.
-  //   (El estudio en datos reales dice que salir en la señal opuesta rinde
-  //   más que un TP fijo; el 1:2 se dibuja como REFERENCIA de gestión, no
-  //   como promesa. Lo honesto va en el panel.)
+  // Plan de la última señal: stop 2.5·ATR, objetivo = la MEDIA en el momento
+  // de la señal (geométricamente correcto respecto a la entrada). Se marca si
+  // la operación sigue ABIERTA (no ha tocado objetivo ni stop todavía): solo
+  // así se dibuja su caja, para no mostrar un plan ya resuelto.
   if (ultima) {
-    const at14 = atr(velas, 14);
-    const aU = isFinite(at14[ultima.bar]) && at14[ultima.bar] > 0 ? at14[ultima.bar] : ultima.price * 0.01;
-    const risk = 1.5 * aU;
-    const esL = ultima.tipo === 'LONG';
+    const b = ultima.bar, esL = ultima.tipo === 'LONG';
+    const aU = isFinite(at[b]) && at[b] > 0 ? at[b] : ultima.price * 0.01;
     ultima.entry = ultima.price;
-    ultima.risk = risk;
-    ultima.sl = esL ? ultima.price - risk : ultima.price + risk;
-    ultima.tp = esL ? ultima.price + 2 * risk : ultima.price - 2 * risk;
-    ultima.rr = 2;
+    ultima.risk = stopK * aU;
+    ultima.sl = esL ? ultima.price - ultima.risk : ultima.price + ultima.risk;
+    ultima.tp = isFinite(sma[b]) ? sma[b] : (esL ? ultima.price + ultima.risk : ultima.price - ultima.risk);
+    ultima.rr = ultima.risk > 0 ? Math.abs(ultima.tp - ultima.entry) / ultima.risk : 0;
+    let abierta = true;
+    for (let k = b + 1; k < n; k++) {
+      if (esL) { if (velas[k].l <= ultima.sl) { abierta = false; break; } if (isFinite(sma[k]) && C[k] >= sma[k]) { abierta = false; break; } }
+      else { if (velas[k].h >= ultima.sl) { abierta = false; break; } if (isFinite(sma[k]) && C[k] <= sma[k]) { abierta = false; break; } }
+    }
+    ultima.activa = abierta;
   }
 
-  const sobre = n && isFinite(e200[n - 1]) ? velas[n - 1].c > e200[n - 1] : null;
-  const emaSube = (n > slopeN && isFinite(e200[n - 1]) && isFinite(e200[n - 1 - slopeN])) ? e200[n - 1] > e200[n - 1 - slopeN] : null;
-  const regimen = (sobre === true && emaSube === true) ? 'risk-on' : (sobre === false && emaSube === false) ? 'risk-off' : 'mixed';
-  const conviccion = n && isFinite(change[n - 1]) ? Math.max(0, Math.min(100, Math.round(Math.abs(change[n - 1]) / 0.22 * 100))) : 0;
+  const rHoy = n ? r2[n - 1] : NaN;
+  const sobre = n && isFinite(e200[n - 1]) ? C[n - 1] > e200[n - 1] : null;
+  const zona = isFinite(rHoy) ? (rHoy < os ? 'oversold' : rHoy > ob ? 'overbought' : 'neutral') : 'neutral';
+  // convicción: qué tan al extremo está el RSI2 (0 en el centro, 100 en el borde)
+  const conviccion = isFinite(rHoy) ? Math.round(Math.min(100, Math.abs(rHoy - 50) / 45 * 100)) : 0;
+
   return {
-    len, l, s, n, precio: n ? velas[n - 1].c : 0,
-    oda, hda, lda, cda, change, trend, e200,
+    len: periodo, n, precio: n ? C[n - 1] : 0,
+    media: sma, e200, r2, estir, regimen, at,
     senales, ultima,
-    trendActual: n ? trend[n - 1] : 0,
-    changeActual: n ? change[n - 1] : NaN,
-    sesgo: n && trend[n - 1] === 1 ? 'alcista' : n && trend[n - 1] === -1 ? 'bajista' : 'neutro',
-    sobre200: sobre, emaSube, regimen, conviccion,
-    e200Hoy: n ? e200[n - 1] : NaN
+    regimenActual: n ? regimen[n - 1] : 0,
+    sesgo: sobre === true ? 'alcista' : sobre === false ? 'bajista' : 'neutro',
+    sobre200: sobre, zona, conviccion,
+    rsi2Hoy: rHoy, mediaHoy: n ? sma[n - 1] : NaN, e200Hoy: n ? e200[n - 1] : NaN,
+    estirHoy: n ? estir[n - 1] : NaN,
+    bandaOS: os, bandaOB: ob
   };
 }
 
 /* ══════════════════════════════════════════════════════════════
-   backtest — entra en cada señal, stop por ATR, sale en la señal
-   opuesta. Walk-forward, sin mirar al futuro. R = resultado/riesgo.
+   backtest — entra en cada señal, objetivo = la media, stop = 2.5·ATR,
+   tope de velas. Walk-forward, sin mirar al futuro. Métricas en R
+   (riesgo fijo 1% por operación) para que todo sea consistente.
    ══════════════════════════════════════════════════════════════ */
 export function backtest(velas, opts = {}) {
   const E = analizar(velas, opts);
-  const sig = E.senales, at = atr(velas, 14), kStop = opts.kStop || 1.5, trades = [];
-  for (let i = 0; i < sig.length; i++) {
-    const sg = sig[i], esLong = sg.tipo === 'LONG', entry = sg.price;
-    const a = isFinite(at[sg.bar]) && at[sg.bar] > 0 ? at[sg.bar] : entry * 0.01, risk = kStop * a;
-    const next = sig[i + 1], limit = next ? next.bar : velas.length - 1;
-    if (limit <= sg.bar) continue;
-    const exit = velas[limit].c, move = esLong ? (exit - entry) : (entry - exit);
-    trades.push({ tipo: sg.tipo, bar: sg.bar, entry, exit, R: move / risk, retPct: (move / entry) * 100, barras: limit - sg.bar });
+  const C = velas.map((v) => v.c), n = velas.length;
+  const media = E.media, at = E.at, stopK = opts.stopATR || STOP_ATR, maxB = opts.maxBarras || MAX_BARRAS;
+  const trades = [];
+  for (const s of E.senales) {
+    const esL = s.tipo === 'LONG', en = s.price, i = s.bar;
+    const a = isFinite(at[i]) && at[i] > 0 ? at[i] : en * 0.01, risk = stopK * a;
+    const stp = esL ? en - risk : en + risk;
+    let ex = null, k;
+    for (k = i + 1; k < Math.min(n, i + maxB + 1); k++) {
+      if (esL) { if (velas[k].l <= stp) { ex = stp; break; } if (isFinite(media[k]) && C[k] >= media[k]) { ex = C[k]; break; } }
+      else { if (velas[k].h >= stp) { ex = stp; break; } if (isFinite(media[k]) && C[k] <= media[k]) { ex = C[k]; break; } }
+    }
+    if (ex == null) { k = Math.min(n - 1, i + maxB); ex = C[k]; }
+    const mv = esL ? (ex - en) : (en - ex);
+    trades.push({ tipo: s.tipo, bar: i, entry: en, exit: ex, R: risk > 0 ? mv / risk : 0, retPct: (mv / en) * 100, barras: k - i });
   }
-  /* Métricas CONSISTENTES en R (riesgo normalizado por volatilidad), que es
-     como una mesa real mide un sistema: cada operación arriesga una fracción
-     fija del capital (1%% por defecto) dimensionada por el stop ATR. Así el
-     Profit Factor, la expectativa y el resultado neto cuentan la MISMA
-     historia (no se mezcla R con %% de notional fijo, que se contradicen). */
   const f = opts.riesgo || 0.01;
   const nt = trades.length, wins = trades.filter((x) => x.R > 0), losses = trades.filter((x) => x.R <= 0);
   const swR = wins.reduce((a, x) => a + x.R, 0), slR = Math.abs(losses.reduce((a, x) => a + x.R, 0)), sr = trades.reduce((a, x) => a + x.R, 0);

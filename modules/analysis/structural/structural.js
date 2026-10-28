@@ -8,9 +8,9 @@
    derecho premium que dice la estructura y QUÉ HACER.
    ══════════════════════════════════════════════════════════════ */
 
-import { crearChart } from './grafica.js?v=6';
-import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=6';
-import { analizar, momentoMTF, backtest, LEN } from './motor.js?v=6';
+import { crearChart } from './grafica.js?v=7';
+import { traerVelas, logoCripto, SIMBOLOS, POR_DEFECTO, TFS } from './datos.js?v=7';
+import { analizar, momentoMTF, backtest, LEN } from './motor.js?v=7';
 
 const MARCA = new URL('../../../assets/img/cco-marca.webp', import.meta.url).href;
 const ICO = {
@@ -54,9 +54,9 @@ export async function abrirStructural() {
         <div class="menu">${TFS.map((t) => `<button data-tf="${t[0]}"${t[0] === tf ? ' class="on"' : ''}>${t[1]}</button>`).join('')}</div>
       </div>
       <div class="col"><span class="l">Change</span><b class="v" id="sl-chg">...</b></div>
-      <div class="col"><span class="l">Trend</span><b class="v" id="sl-str">...</b></div>
-      <div class="col"><span class="l">Signal</span><b class="v" id="sl-sig">...</b></div>
-      <div class="col hide-sm"><span class="l">Conv</span><b class="v" id="sl-rsi">...</b></div>
+      <div class="col"><span class="l">Regime</span><b class="v" id="sl-str">...</b></div>
+      <div class="col"><span class="l">Alert</span><b class="v" id="sl-sig">...</b></div>
+      <div class="col hide-sm"><span class="l">Zone</span><b class="v" id="sl-rsi">...</b></div>
       <div class="sl-right">
         <div class="sl-live" id="sl-live"><i></i><b>...</b></div>
         <button class="sl-ib" id="sl-export" title="Export as image">${ICO.exp}</button>
@@ -104,72 +104,75 @@ export async function abrirStructural() {
     if (!velas.length) return;
     const last = velas[velas.length - 1], prev = velas.length > 1 ? velas[velas.length - 2].c : last.o;
     const chg = prev ? ((last.c - prev) / prev) * 100 : 0;
-    const px = $('#sl-px'); px.textContent = fmt(last.c); px.className = 'sl-px ' + (E.trendActual === -1 ? 'dn' : 'up');
+    const px = $('#sl-px'); px.textContent = fmt(last.c); px.className = 'sl-px ' + (E.regimenActual === -1 ? 'dn' : 'up');
     const cE = $('#sl-chg'); cE.textContent = (chg >= 0 ? UP : DN) + ' ' + Math.abs(chg).toFixed(2) + '%'; cE.className = 'v ' + (chg >= 0 ? 'up' : 'dn');
-    const st = $('#sl-str'); st.textContent = E.trendActual === 1 ? 'Bullish' : E.trendActual === -1 ? 'Bearish' : 'Neutral'; st.className = 'v ' + (E.trendActual === 1 ? 'up' : E.trendActual === -1 ? 'dn' : '');
-    const sg = $('#sl-sig'); const u = E.ultima; sg.textContent = u ? u.tipo : 'FLAT'; sg.className = 'v ' + (u ? (u.tipo === 'LONG' ? 'up' : 'dn') : '');
-    const r = $('#sl-rsi'); r.textContent = (E.conviccion || 0) + ''; r.className = 'v ' + (E.trendActual === 1 ? 'up' : E.trendActual === -1 ? 'dn' : '');
+    const st = $('#sl-str'); st.textContent = E.regimenActual === 1 ? 'Bullish' : E.regimenActual === -1 ? 'Bearish' : 'Neutral'; st.className = 'v ' + (E.regimenActual === 1 ? 'up' : E.regimenActual === -1 ? 'dn' : '');
+    const sg = $('#sl-sig'); const u = E.ultima; const ua = u && u.activa; sg.textContent = ua ? u.tipo : 'FLAT'; sg.className = 'v ' + (ua ? (u.tipo === 'LONG' ? 'up' : 'dn') : '');
+    const z = E.zona === 'oversold' ? ['Oversold', 'up'] : E.zona === 'overbought' ? ['Overbought', 'dn'] : ['Neutral', ''];
+    const r = $('#sl-rsi'); r.textContent = z[0]; r.className = 'v ' + z[1];
   }
   function pintarLive() { const el = $('#sl-live'); if (!el) return; el.innerHTML = `<i></i><b>LIVE</b><em>DecFreedom</em>`; }
 
-  /* ── panel institucional (hoja de mesa, tabular y sobrio, SIN guiones) ── */
+  /* ── panel institucional de REVERSIÓN (tabular, sobrio, SIN guiones) ── */
   function pintarPanel(E, velas, mtf, bt) {
     const u = E.ultima;
-    const bias = E.trendActual === 1 ? ['LONG', 'bull'] : E.trendActual === -1 ? ['SHORT', 'bear'] : ['FLAT', 'flat'];
-    const reg = E.regimen === 'risk-on' ? 'Risk On' : E.regimen === 'risk-off' ? 'Risk Off' : 'Neutral';
+    const reg = E.regimenActual === 1 ? ['Bullish', 'bull'] : E.regimenActual === -1 ? ['Bearish', 'bear'] : ['Neutral', 'flat'];
+    const zn = E.zona === 'oversold' ? ['Oversold', 'bull'] : E.zona === 'overbought' ? ['Overbought', 'bear'] : ['Neutral', 'flat'];
     const conv = E.conviccion || 0;
 
-    // ── DIRECTIONAL BIAS ──
+    // ── READ: régimen, zona, extremo ──
     const se = $('#sl-struct');
-    se.innerHTML = `<div class="sl-ex-hd"><span>Directional bias</span><em>${esc(sim.corto)}</em></div>
+    se.innerHTML = `<div class="sl-ex-hd"><span>Reversion read</span><em>${esc(sim.corto)}</em></div>
       <div class="sl-ex-rows">
-        <div class="sl-ex-r"><span>Bias</span><b class="${bias[1]}">${bias[0]}</b></div>
-        <div class="sl-ex-r"><span>Regime</span><b>${reg}</b></div>
-        <div class="sl-ex-r"><span>Conviction</span><b>${conv} / 100</b></div>
+        <div class="sl-ex-r"><span>Regime</span><b class="${reg[1]}">${reg[0]}</b></div>
+        <div class="sl-ex-r"><span>Zone</span><b class="${zn[1]}">${zn[0]}</b></div>
+        <div class="sl-ex-r"><span>Extreme</span><b>${conv} / 100</b></div>
       </div>
       <div class="sl-ex-bar"><span style="width:${conv}%"></span></div>`;
 
-    // ── DESK ASSESSMENT (sin guiones) ──
+    // ── DESK ASSESSMENT (reversión, sin guiones) ──
     const sg = $('#sl-signal');
     let tono = 'neu', texto = '';
-    if (u && u.tipo === 'LONG' && E.trendActual === 1) { tono = 'long'; texto = `Long exposure held within a confirmed risk on regime. Conviction supports staying with the position. The book is cut on a regime shift or a reversal in the read.`; }
-    else if (u && u.tipo === 'SHORT' && E.trendActual === -1) { tono = 'short'; texto = `Short exposure held within a confirmed risk off regime. Conviction supports staying with the position. The book is cut on a regime shift or a reversal in the read.`; }
-    else if (u) { tono = 'neu'; texto = `Last call was ${u.tipo.toLowerCase()}. The read and the broader regime no longer agree, so the desk waits for the next alignment before committing fresh risk.`; }
-    else { texto = `No position. The desk commits only when the read and the broader regime agree. One clean call per regime, no chasing.`; }
+    if (E.regimenActual === 1 && E.zona === 'oversold') { tono = 'long'; texto = `Price is stretched below its mean inside a bullish regime. This is a long reversion setup: the desk buys the weakness and targets the snap back to the mean, with one defined stop below.`; }
+    else if (E.regimenActual === -1 && E.zona === 'overbought') { tono = 'short'; texto = `Price is stretched above its mean inside a bearish regime. This is a short reversion setup: the desk fades the strength and targets the snap back to the mean, with one defined stop above.`; }
+    else if (E.regimenActual === 1) { tono = 'neu'; texto = `Bullish regime, no extreme in play. The desk waits for price to stretch into oversold before buying the dip toward the mean. No chasing.`; }
+    else if (E.regimenActual === -1) { tono = 'neu'; texto = `Bearish regime, no extreme in play. The desk waits for price to stretch into overbought before fading the rally toward the mean. No chasing.`; }
+    else { texto = `Flat regime. The desk only fades extremes in the direction of the trend. It waits for both a regime and a stretch.`; }
     sg.className = 'sl-card sl-signal ' + tono;
     sg.innerHTML = `<div class="sl-ex-hd"><span>Desk assessment</span></div>
       <p class="sl-ex-note">${texto}</p>`;
 
-    // ── RISK PARAMETERS (plan 1:2, los niveles de la gráfica) ──
+    // ── RISK PARAMETERS: entrada, objetivo = la media, stop ATR ──
     const pl = $('#sl-plan');
     if (pl) {
-      if (u && isFinite(u.entry) && isFinite(u.sl) && isFinite(u.tp)) {
-        pl.innerHTML = `<div class="sl-ex-hd"><span>Risk parameters</span><em>1 : 2</em></div>
+      if (u && u.activa && isFinite(u.entry) && isFinite(u.sl) && isFinite(u.tp)) {
+        const rr = isFinite(u.rr) ? u.rr.toFixed(2) : '--';
+        pl.innerHTML = `<div class="sl-ex-hd"><span>Risk parameters</span><em>${esc(u.tipo)}</em></div>
           <div class="sl-ex-rows">
-            <div class="sl-ex-r"><span>Entry</span><b class="gold">${fmt(u.entry)}</b><i>${u.tipo}</i></div>
-            <div class="sl-ex-r tp"><span>Target</span><b>${fmt(u.tp)}</b><i>2R</i></div>
-            <div class="sl-ex-r sl"><span>Stop</span><b>${fmt(u.sl)}</b><i>1R</i></div>
+            <div class="sl-ex-r"><span>Entry</span><b class="gold">${fmt(u.entry)}</b><i>last</i></div>
+            <div class="sl-ex-r tp"><span>Target</span><b>${fmt(u.tp)}</b><i>mean</i></div>
+            <div class="sl-ex-r sl"><span>Stop</span><b>${fmt(u.sl)}</b><i>ATR</i></div>
           </div>
-          <p class="sl-ex-fine">Projected on the chart from the last signal: risk one unit (1.5 ATR) to make two. The desk test exits at the opposite signal, which backtests stronger than a fixed target, so treat 1 : 2 as a discipline frame, not a promise.</p>`;
+          <p class="sl-ex-fine">The target is the snap back to the mean, the stop is 2.5 ATR beyond entry. A high hit rate with a modest reward to risk of ${rr}. Size the position so one stop is a small, fixed fraction of capital.</p>`;
       } else {
         pl.innerHTML = `<div class="sl-ex-hd"><span>Risk parameters</span><em>flat</em></div>
-          <p class="sl-ex-fine">No active plan. Levels are drawn the moment a long or short alert fires.</p>`;
+          <p class="sl-ex-fine">No active setup. Levels are drawn the moment price stretches into an extreme and an alert fires.</p>`;
       }
     }
 
-    // ── BACKTESTED EDGE ──
+    // ── BACKTESTED EDGE (el win rate es el protagonista) ──
     const pf = $('#sl-perf');
     if (pf && bt) {
       const pfv = bt.pf === Infinity ? 'inf' : bt.pf.toFixed(2);
       pf.innerHTML = `<div class="sl-ex-hd"><span>Backtested edge</span><em>no repaint</em></div>
         <div class="sl-ex-rows">
-          <div class="sl-ex-r"><span>Win rate</span><b>${bt.n ? bt.winRate.toFixed(0) + '%' : 'n/a'}</b></div>
+          <div class="sl-ex-r"><span>Hit rate</span><b class="${bt.winRate >= 55 ? 'bull' : ''}">${bt.n ? bt.winRate.toFixed(0) + '%' : 'n/a'}</b></div>
           <div class="sl-ex-r"><span>Profit factor</span><b class="${bt.pf >= 1 ? 'bull' : 'bear'}">${bt.n ? pfv : 'n/a'}</b></div>
           <div class="sl-ex-r"><span>Expectancy</span><b class="${bt.expectativaR >= 0 ? 'bull' : 'bear'}">${bt.n ? (bt.expectativaR >= 0 ? '+' : '') + bt.expectativaR.toFixed(2) + ' R' : 'n/a'}</b></div>
           <div class="sl-ex-r"><span>Signals</span><b>${bt.n}</b></div>
           <div class="sl-ex-r"><span>Net, 1% risk</span><b class="${bt.retornoTotal >= 0 ? 'bull' : 'bear'}">${bt.n ? (bt.retornoTotal >= 0 ? '+' : '') + bt.retornoTotal.toFixed(1) + '%' : 'n/a'}</b></div>
         </div>
-        <p class="sl-ex-fine">Walk forward, no repaint. Enter at each signal, exit at the opposite one, risking a fixed 1% per trade sized by the ATR stop, the way a desk runs it. A small, stable edge, consistent out of sample, not curve fit. Past results do not guarantee future ones.</p>`;
+        <p class="sl-ex-fine">Walk forward, no repaint, over the loaded history. Buy the oversold dip in an uptrend, sell the overbought rally in a downtrend, exit on the snap back to the mean. Strongest on 4h, daily and indices. Past results do not guarantee future ones.</p>`;
     }
 
     // ── MOMENTUM across timeframes ──
@@ -184,7 +187,7 @@ export async function abrirStructural() {
     }).join('');
     mm.innerHTML = `<div class="sl-ex-hd"><span>Momentum across timeframes</span></div>
       <div class="sl-mtable"><div class="sl-mtr sl-mth"><span>TF</span><b>RSI</b><b>Stoch</b></div>${rows}</div>
-      <p class="sl-ex-fine">Green marks oversold with room to rise, red marks overbought with room to fall. RSI 14 and Stochastic 14, read across timeframes for alignment.</p>`;
+      <p class="sl-ex-fine">Green marks oversold with room to rise, red marks overbought with room to fall. RSI 14 and Stochastic 14, read across timeframes for confluence with the reversion.</p>`;
   }
 
   async function cargar(inicial) {
@@ -286,14 +289,14 @@ export async function abrirStructural() {
     m.innerHTML = `<div class="sl-modal-bg"></div><div class="sl-modal-card">
       <button class="sl-modal-x" aria-label="Close">${ICO.x}</button>
       <h2>Structural Logic, in plain words</h2>
-      <p>It smooths price into a fast, responsive average (the coloured candles and line on the chart) and measures its slope against volatility. That slope is the <b>momentum</b> in the lower pane.</p>
+      <p>It does not try to predict direction (nothing reliably can at short range). It does something with a real, measurable edge: it <b>fades extremes in the direction of the trend</b>. Buy fear, sell greed, collect the snap back to the mean.</p>
       <ul>
-        <li>Chart and momentum turn <b>green</b> when momentum pushes above the long threshold, <b>red</b> below the short threshold.</li>
-        <li>A <b>long</b> fires when it turns green with price above a hidden 200 period baseline. A <b>short</b> fires when it turns red below it. One alert per regime.</li>
-        <li>That hidden baseline keeps you with the larger trend, and a cooldown of 40 bars between alerts cuts the chop so signals stay spaced and clean.</li>
-        <li>The <b>backtest</b> shows the real, non repainting stats of these signals over the loaded history.</li>
+        <li>A hidden 200 period baseline sets the <b>regime</b>. Above it the tool only looks for longs, below it only for shorts. The candles are coloured by that regime.</li>
+        <li>The coloured line is the <b>mean</b>. The lower pane shows how far price is stretched from it.</li>
+        <li>A <b>long</b> fires when price stretches into oversold inside a bullish regime, a <b>short</b> when it stretches into overbought inside a bearish one. The target is the snap back to the mean, the stop is 2.5 ATR beyond.</li>
+        <li>The <b>backtest</b> shows the real, non repainting hit rate over the loaded history. It is strongest on 4h, daily and indices, where reversion is most reliable.</li>
       </ul>
-      <p class="sl-note">Signals are context, not a guarantee. Educational only, not investment advice.</p></div>`;
+      <p class="sl-note">A high hit rate with a modest reward to risk. Size each trade small and fixed. Educational only, not investment advice.</p></div>`;
     ov.appendChild(m); requestAnimationFrame(() => m.classList.add('on'));
     const close = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 160); };
     m.querySelector('.sl-modal-x').onclick = close; m.querySelector('.sl-modal-bg').onclick = close;
