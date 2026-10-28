@@ -237,6 +237,7 @@ export function crearChart(cv, cont) {
       const per = 1400 + span * 15, head = a0 + ((performance.now() % per) / per) * span;
       const rgbU = ult.tipo === 'LONG' ? COL.upRGB : COL.dnRGB;
       g.save(); g.lineCap = 'round';
+      // (a) velas: dominó
       for (let i = Math.max(a0, primero); i <= Math.min(a1, fin - 1); i++) {
         const v = S.velas[i]; if (!v) continue;
         const d = head - i;
@@ -250,14 +251,27 @@ export function crearChart(cv, cont) {
         g.fillStyle = `rgba(${rgbU},${0.28 + 0.6 * br})`;
         g.fillRect(x - cwo / 2, a, cwo, Math.max(1, b - a));
       }
+      // (b) misma luz viajando por la LÍNEA de colores de arriba (mismo head → terminan a la vez)
+      g.shadowBlur = 0;
+      for (let i = Math.max(a0 + 1, primero + 1); i <= Math.min(a1, fin - 1); i++) {
+        if (!isFinite(ind.cda[i]) || !isFinite(ind.cda[i - 1])) continue;
+        const d = head - i;
+        const br = d >= 0 ? Math.max(0, 1 - d / (span * 0.5)) : Math.max(0, 1 + d * 0.9);
+        if (br <= 0.04) continue;
+        const x = xAt(i), y = Yp(ind.cda[i]), xp = xAt(i - 1), yp = Yp(ind.cda[i - 1]);
+        g.strokeStyle = `rgba(255,255,255,${0.1 * br})`; g.lineWidth = 2 + 3 * br;
+        g.shadowColor = `rgba(${rgbU},${0.95 * br})`; g.shadowBlur = 14 * br;
+        g.beginPath(); g.moveTo(xp, yp); g.lineTo(x, y); g.stroke();
+      }
+      // (c) los DOS puntos (vela y línea), con el color de la señal
       const hb = Math.round(head);
       if (hb >= primero && hb < fin) {
         const v = S.velas[hb];
         if (v) {
-          const x = xAt(hb), y = Yp(v.c);
-          g.shadowColor = `rgba(${rgbU},1)`; g.shadowBlur = 18; g.fillStyle = `rgb(${rgbU})`;
-          g.beginPath(); g.arc(x, y, 3.3, 0, 6.283); g.fill();
-          g.shadowBlur = 0; g.fillStyle = COL.bg; g.beginPath(); g.arc(x, y, 1.1, 0, 6.283); g.fill();
+          const x = xAt(hb);
+          const punto = (y) => { g.shadowColor = `rgba(${rgbU},1)`; g.shadowBlur = 18; g.fillStyle = `rgb(${rgbU})`; g.beginPath(); g.arc(x, y, 3.3, 0, 6.283); g.fill(); g.shadowBlur = 0; g.fillStyle = COL.bg; g.beginPath(); g.arc(x, y, 1.1, 0, 6.283); g.fill(); };
+          if (isFinite(ind.cda[hb])) punto(Yp(ind.cda[hb]));
+          punto(Yp(v.c));
         }
       }
       g.restore();

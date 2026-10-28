@@ -107,91 +107,84 @@ export async function abrirStructural() {
     const px = $('#sl-px'); px.textContent = fmt(last.c); px.className = 'sl-px ' + (E.trendActual === -1 ? 'dn' : 'up');
     const cE = $('#sl-chg'); cE.textContent = (chg >= 0 ? UP : DN) + ' ' + Math.abs(chg).toFixed(2) + '%'; cE.className = 'v ' + (chg >= 0 ? 'up' : 'dn');
     const st = $('#sl-str'); st.textContent = E.trendActual === 1 ? 'Bullish' : E.trendActual === -1 ? 'Bearish' : 'Neutral'; st.className = 'v ' + (E.trendActual === 1 ? 'up' : E.trendActual === -1 ? 'dn' : '');
-    const sg = $('#sl-sig'); const u = E.ultima; sg.textContent = u ? u.tipo : '—'; sg.className = 'v ' + (u ? (u.tipo === 'LONG' ? 'up' : 'dn') : '');
+    const sg = $('#sl-sig'); const u = E.ultima; sg.textContent = u ? u.tipo : 'FLAT'; sg.className = 'v ' + (u ? (u.tipo === 'LONG' ? 'up' : 'dn') : '');
     const r = $('#sl-rsi'); r.textContent = (E.conviccion || 0) + ''; r.className = 'v ' + (E.trendActual === 1 ? 'up' : E.trendActual === -1 ? 'dn' : '');
   }
   function pintarLive() { const el = $('#sl-live'); if (!el) return; el.innerHTML = `<i></i><b>LIVE</b><em>DecFreedom</em>`; }
 
-  /* ── panel derecho ejecutivo (sala de trading, sin jerga de indicador) ── */
+  /* ── panel institucional (hoja de mesa, tabular y sobrio, SIN guiones) ── */
   function pintarPanel(E, velas, mtf, bt) {
     const u = E.ultima;
-    const stance = E.trendActual === 1 ? ['LONG', 'long'] : E.trendActual === -1 ? ['SHORT', 'short'] : ['FLAT', 'flat'];
-    const reg = E.regimen === 'risk-on' ? ['Risk-on', 'bull'] : E.regimen === 'risk-off' ? ['Risk-off', 'bear'] : ['Transition', 'neu'];
-    const conv = E.conviccion || 0, convCls = conv >= 60 ? 'g' : conv >= 30 ? '' : 'r';
-    const aligned = (u && u.tipo === 'LONG' && E.trendActual === 1) || (u && u.tipo === 'SHORT' && E.trendActual === -1);
-    const session = !u ? ['Idle', ''] : aligned ? ['Aligned', 'g'] : ['Divergent', 'r'];
+    const bias = E.trendActual === 1 ? ['LONG', 'bull'] : E.trendActual === -1 ? ['SHORT', 'bear'] : ['FLAT', 'flat'];
+    const reg = E.regimen === 'risk-on' ? 'Risk On' : E.regimen === 'risk-off' ? 'Risk Off' : 'Neutral';
+    const conv = E.conviccion || 0;
 
-    // ── POSITIONING (cabecera de mesa) ──
+    // ── DIRECTIONAL BIAS ──
     const se = $('#sl-struct');
-    se.innerHTML = `<div class="sl-deskhead">
-        <div class="sl-deskl"><span class="sl-desklbl">Positioning</span>
-          <div class="sl-stance sl-st-${stance[1]}"><i></i><b>${stance[0]}</b></div></div>
-        <span class="sl-chip sl-chip-${reg[1]}">${reg[0]}</span>
+    se.innerHTML = `<div class="sl-ex-hd"><span>Directional bias</span><em>${esc(sim.corto)}</em></div>
+      <div class="sl-ex-rows">
+        <div class="sl-ex-r"><span>Bias</span><b class="${bias[1]}">${bias[0]}</b></div>
+        <div class="sl-ex-r"><span>Regime</span><b>${reg}</b></div>
+        <div class="sl-ex-r"><span>Conviction</span><b>${conv} / 100</b></div>
       </div>
-      <div class="sl-gaugehd"><span>Conviction</span><b class="sl-convn ${convCls}">${conv}<em>/100</em></b></div>
-      <div class="sl-convbar"><span style="width:${conv}%"></span></div>
-      <div class="sl-deskgrid">
-        <div class="sl-dk"><span>Session</span><b class="${session[1]}">${session[0]}</b></div>
-        <div class="sl-dk"><span>Last call</span><b class="${u ? (u.tipo === 'LONG' ? 'g' : 'r') : ''}">${u ? u.tipo : '—'}</b></div>
-      </div>`;
+      <div class="sl-ex-bar"><span style="width:${conv}%"></span></div>`;
 
-    // ── TACTICAL READ (prosa ejecutiva) ──
+    // ── DESK ASSESSMENT (sin guiones) ──
     const sg = $('#sl-signal');
-    let tono = 'neu', titulo = 'Stand aside', texto = '';
-    if (u && u.tipo === 'LONG' && E.trendActual === 1) { tono = 'long'; titulo = 'Long — with the regime'; texto = `The desk is long inside a confirmed risk-on regime. Hold while conviction holds; the book is cut when the read turns or the regime breaks.`; }
-    else if (u && u.tipo === 'SHORT' && E.trendActual === -1) { tono = 'short'; titulo = 'Short — with the regime'; texto = `The desk is short inside a confirmed risk-off regime. Hold while conviction holds; the book is cut when the read turns or the regime breaks.`; }
-    else if (u) { tono = 'neu'; titulo = `Divergent — last call ${u.tipo.toLowerCase()}`; texto = `The last call was ${u.tipo.toLowerCase()}, but the read and the broader regime no longer agree. The desk waits for the next alignment before committing fresh risk.`; }
-    else { texto = `No position. The desk commits only when the read and the broader regime agree — one clean call per regime, no chasing.`; }
+    let tono = 'neu', texto = '';
+    if (u && u.tipo === 'LONG' && E.trendActual === 1) { tono = 'long'; texto = `Long exposure held within a confirmed risk on regime. Conviction supports staying with the position. The book is cut on a regime shift or a reversal in the read.`; }
+    else if (u && u.tipo === 'SHORT' && E.trendActual === -1) { tono = 'short'; texto = `Short exposure held within a confirmed risk off regime. Conviction supports staying with the position. The book is cut on a regime shift or a reversal in the read.`; }
+    else if (u) { tono = 'neu'; texto = `Last call was ${u.tipo.toLowerCase()}. The read and the broader regime no longer agree, so the desk waits for the next alignment before committing fresh risk.`; }
+    else { texto = `No position. The desk commits only when the read and the broader regime agree. One clean call per regime, no chasing.`; }
     sg.className = 'sl-card sl-signal ' + tono;
-    sg.innerHTML = `<div class="sl-sgtop"><span class="sl-dot"></span><h3 class="sl-h">${esc(titulo)}</h3></div>
-      <p class="sl-say">${texto}</p>`;
+    sg.innerHTML = `<div class="sl-ex-hd"><span>Desk assessment</span></div>
+      <p class="sl-ex-note">${texto}</p>`;
 
-    // ── TRADE PLAN 1:2 (los niveles de la gráfica, en versión ejecutiva) ──
+    // ── RISK PARAMETERS (plan 1:2, los niveles de la gráfica) ──
     const pl = $('#sl-plan');
     if (pl) {
       if (u && isFinite(u.entry) && isFinite(u.sl) && isFinite(u.tp)) {
-        const dir = u.tipo === 'LONG' ? 'bull' : 'bear';
-        pl.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Trade plan ${String.fromCharCode(183)} 1:2</h3><span class="sl-chip sl-chip-${dir}">${u.tipo}</span></div>
-          <div class="sl-plan">
-            <div class="sl-pl tp"><span>Target</span><b>${fmt(u.tp)}</b><em>+2R</em></div>
-            <div class="sl-pl en"><span>Entry</span><b>${fmt(u.entry)}</b><em>signal</em></div>
-            <div class="sl-pl sl"><span>Stop</span><b>${fmt(u.sl)}</b><em>−1R</em></div>
+        pl.innerHTML = `<div class="sl-ex-hd"><span>Risk parameters</span><em>1 : 2</em></div>
+          <div class="sl-ex-rows">
+            <div class="sl-ex-r"><span>Entry</span><b class="gold">${fmt(u.entry)}</b><i>${u.tipo}</i></div>
+            <div class="sl-ex-r tp"><span>Target</span><b>${fmt(u.tp)}</b><i>2R</i></div>
+            <div class="sl-ex-r sl"><span>Stop</span><b>${fmt(u.sl)}</b><i>1R</i></div>
           </div>
-          <p class="sl-note">Projected on the chart from the last signal — risk one unit (1.5×ATR) to make two. Our own test exits at the opposite signal, which backtests stronger than a fixed target, so treat 1:2 as a discipline frame, not a promise.</p>`;
+          <p class="sl-ex-fine">Projected on the chart from the last signal: risk one unit (1.5 ATR) to make two. The desk test exits at the opposite signal, which backtests stronger than a fixed target, so treat 1 : 2 as a discipline frame, not a promise.</p>`;
       } else {
-        pl.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Trade plan ${String.fromCharCode(183)} 1:2</h3><span class="sl-chip sl-chip-neu">Flat</span></div>
-          <p class="sl-note">No active plan. Levels are drawn the moment a LONG or SHORT alert fires.</p>`;
+        pl.innerHTML = `<div class="sl-ex-hd"><span>Risk parameters</span><em>flat</em></div>
+          <p class="sl-ex-fine">No active plan. Levels are drawn the moment a long or short alert fires.</p>`;
       }
     }
 
-    // ── EDGE (backtest real de la historia cargada) ──
+    // ── BACKTESTED EDGE ──
     const pf = $('#sl-perf');
     if (pf && bt) {
-      const pfv = bt.pf === Infinity ? '∞' : bt.pf.toFixed(2);
-      pf.innerHTML = `<div class="sl-readtop"><h3 class="sl-h">Edge ${String.fromCharCode(183)} backtested</h3><span class="sl-chip sl-chip-bull">no repaint</span></div>
-        <div class="sl-stats">
-          <div class="sl-stat"><span>Win rate</span><b>${bt.n ? bt.winRate.toFixed(0) + '%' : '--'}</b></div>
-          <div class="sl-stat"><span>Profit factor</span><b class="${bt.pf >= 1 ? 'g' : 'r'}">${bt.n ? pfv : '--'}</b></div>
-          <div class="sl-stat"><span>Avg R:R</span><b>${bt.n ? bt.avgRR.toFixed(2) : '--'}</b></div>
-          <div class="sl-stat"><span>Signals</span><b>${bt.n}</b></div>
+      const pfv = bt.pf === Infinity ? 'inf' : bt.pf.toFixed(2);
+      pf.innerHTML = `<div class="sl-ex-hd"><span>Backtested edge</span><em>no repaint</em></div>
+        <div class="sl-ex-rows">
+          <div class="sl-ex-r"><span>Win rate</span><b>${bt.n ? bt.winRate.toFixed(0) + '%' : 'n/a'}</b></div>
+          <div class="sl-ex-r"><span>Profit factor</span><b class="${bt.pf >= 1 ? 'bull' : 'bear'}">${bt.n ? pfv : 'n/a'}</b></div>
+          <div class="sl-ex-r"><span>Expectancy</span><b class="${bt.expectativaR >= 0 ? 'bull' : 'bear'}">${bt.n ? (bt.expectativaR >= 0 ? '+' : '') + bt.expectativaR.toFixed(2) + ' R' : 'n/a'}</b></div>
+          <div class="sl-ex-r"><span>Signals</span><b>${bt.n}</b></div>
+          <div class="sl-ex-r"><span>Net, 1% risk</span><b class="${bt.retornoTotal >= 0 ? 'bull' : 'bear'}">${bt.n ? (bt.retornoTotal >= 0 ? '+' : '') + bt.retornoTotal.toFixed(1) + '%' : 'n/a'}</b></div>
         </div>
-        <div class="sl-eq"><span>Net ${String.fromCharCode(183)} 1% risk/trade</span><b class="${bt.retornoTotal >= 0 ? 'g' : 'r'}">${bt.retornoTotal >= 0 ? '+' : ''}${bt.retornoTotal.toFixed(1)}%</b></div>
-        <p class="sl-note">Walk-forward, no repaint: enter at each signal, exit at the opposite one, risking a fixed 1% per trade sized by the ATR stop — the way a desk runs it. A small, stable edge, consistent out-of-sample, not curve-fit. Past results do not guarantee future ones.</p>`;
+        <p class="sl-ex-fine">Walk forward, no repaint. Enter at each signal, exit at the opposite one, risking a fixed 1% per trade sized by the ATR stop, the way a desk runs it. A small, stable edge, consistent out of sample, not curve fit. Past results do not guarantee future ones.</p>`;
     }
 
-    // ── MOMENTUM multi-temporalidad ──
+    // ── MOMENTUM across timeframes ──
     const mm = $('#sl-mom');
     const bm = baseMin[tf] || 1;
     const rows = mtf.map((m) => {
       const lab = etiquetaTF(bm * m.factor);
       const re = MOM[m.rsiEstado], ste = MOM[m.stochEstado];
       return `<div class="sl-mtr"><span>${lab}</span>
-        <b class="m-${re[1]}">${isFinite(m.rsi) ? m.rsi.toFixed(0) : '--'}</b>
-        <b class="m-${ste[1]}">${isFinite(m.stoch) ? m.stoch.toFixed(0) : '--'}</b></div>`;
+        <b class="m-${re[1]}">${isFinite(m.rsi) ? m.rsi.toFixed(0) : 'n/a'}</b>
+        <b class="m-${ste[1]}">${isFinite(m.stoch) ? m.stoch.toFixed(0) : 'n/a'}</b></div>`;
     }).join('');
-    mm.innerHTML = `<h3 class="sl-h">Momentum ${String.fromCharCode(183)} multi-timeframe</h3>
+    mm.innerHTML = `<div class="sl-ex-hd"><span>Momentum across timeframes</span></div>
       <div class="sl-mtable"><div class="sl-mtr sl-mth"><span>TF</span><b>RSI</b><b>Stoch</b></div>${rows}</div>
-      <p class="sl-note">Green = oversold (room up), red = overbought (room down). RSI 14 and Stochastic 14, read across timeframes for alignment.</p>`;
+      <p class="sl-ex-fine">Green marks oversold with room to rise, red marks overbought with room to fall. RSI 14 and Stochastic 14, read across timeframes for alignment.</p>`;
   }
 
   async function cargar(inicial) {
@@ -240,19 +233,15 @@ export async function abrirStructural() {
       const yB = hCab + cv.height; g.fillStyle = '#0b0e12'; g.fillRect(0, yB, W, hPie); g.fillStyle = 'rgba(232,184,75,.4)'; g.fillRect(0, yB, W, 2 * e2);
       let done = false;
       const bajar = () => { if (done) return; done = true; try { out.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'structural-logic-' + sim.corto + '-' + Date.now() + '.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); toast('Chart image downloaded'); }, 'image/png'); } catch (_) { toast('Could not export right now'); } };
-      const textos = (wLogo) => { const x0 = wLogo ? 20 * e2 + wLogo + 14 * e2 : 20 * e2; g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${16 * e2}px system-ui,sans-serif`; g.fillText('Structural Logic', x0, yB + 25 * e2); g.font = `700 ${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText('decfreedom.com', x0, yB + 43 * e2); g.textAlign = 'right'; g.fillStyle = '#6b7681'; g.font = `${10 * e2}px ui-monospace,monospace`; g.fillText('Not investment advice', W - 20 * e2, yB + 25 * e2); g.fillText(new Date().toLocaleString('en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), W - 20 * e2, yB + 43 * e2); g.textAlign = 'left'; };
-      const logo = new Image();
-      logo.onload = () => {
-        try {
-          const wh = 30 * e2, ww = Math.round(logo.width * (wh / logo.height));
-          g.save(); g.globalAlpha = 0.5; g.drawImage(logo, 16 * e2, yB - 36 * e2 - wh, ww, wh); g.restore();   // marca de agua dentro del gráfico
-          const fh = 30 * e2, fw = Math.round(logo.width * (fh / logo.height)); g.drawImage(logo, 20 * e2, yB + (hPie - fh) / 2, fw, fh); textos(fw);
-        } catch (_) { textos(0); }
-        bajar();
-      };
-      logo.onerror = () => { textos(0); bajar(); };
-      setTimeout(() => { textos(0); bajar(); }, 1600);
-      logo.src = MARCA;
+      // La marca de agua va SOLO en la gráfica (ya viene incrustada en el
+      // lienzo que se copió arriba). El pie lleva texto, sin repetir el logo.
+      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${15 * e2}px system-ui,sans-serif`; g.fillText('Structural Logic', 20 * e2, yB + 25 * e2);
+      g.font = `700 ${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText('decfreedom.com', 20 * e2, yB + 43 * e2);
+      g.textAlign = 'right'; g.fillStyle = '#6b7681'; g.font = `${10 * e2}px ui-monospace,monospace`;
+      g.fillText('Not investment advice', W - 20 * e2, yB + 25 * e2);
+      g.fillText(new Date().toLocaleString('en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), W - 20 * e2, yB + 43 * e2);
+      g.textAlign = 'left';
+      bajar();
     } catch (_) { toast('Could not export right now'); }
   }
 
@@ -297,12 +286,12 @@ export async function abrirStructural() {
     m.innerHTML = `<div class="sl-modal-bg"></div><div class="sl-modal-card">
       <button class="sl-modal-x" aria-label="Close">${ICO.x}</button>
       <h2>Structural Logic, in plain words</h2>
-      <p>It smooths price into a lag-reduced moving average — the coloured candles and line on the chart — and measures its slope against volatility. That slope is the <b>momentum</b> in the lower pane.</p>
+      <p>It smooths price into a fast, responsive average (the coloured candles and line on the chart) and measures its slope against volatility. That slope is the <b>momentum</b> in the lower pane.</p>
       <ul>
         <li>Chart and momentum turn <b>green</b> when momentum pushes above the long threshold, <b>red</b> below the short threshold.</li>
-        <li><b>LONG</b> fires when it turns green with price above the hidden 200-EMA; <b>SHORT</b> when it turns red below it. One alert per regime.</li>
-        <li>The hidden <b>200-EMA filter</b> keeps you with the bigger trend and cuts the counter-trend noise.</li>
-        <li><b>Backtest</b> shows the real, no-repaint stats of these signals over the loaded history.</li>
+        <li>A <b>long</b> fires when it turns green with price above a hidden 200 period baseline. A <b>short</b> fires when it turns red below it. One alert per regime.</li>
+        <li>That hidden baseline keeps you with the larger trend, and a cooldown of 40 bars between alerts cuts the chop so signals stay spaced and clean.</li>
+        <li>The <b>backtest</b> shows the real, non repainting stats of these signals over the loaded history.</li>
       </ul>
       <p class="sl-note">Signals are context, not a guarantee. Educational only, not investment advice.</p></div>`;
     ov.appendChild(m); requestAnimationFrame(() => m.classList.add('on'));
@@ -434,6 +423,25 @@ function inyectarCSS() {
 .sl-pl.tp{border-left-color:var(--long)}.sl-pl.tp b{color:#6ff0ad}
 .sl-pl.en{border-left-color:var(--gold)}.sl-pl.en b{color:var(--gold)}
 .sl-pl.sl{border-left-color:var(--short)}.sl-pl.sl b{color:#ff8a95}
+/* ── panel institucional (terminal de mesa) ── */
+.sl-ex-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+.sl-ex-hd>span{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:#aeb6c0}
+.sl-ex-hd>em{font-style:normal;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.8px;color:#6f7985;text-transform:uppercase}
+.sl-ex-rows{display:flex;flex-direction:column}
+.sl-ex-r{display:grid;grid-template-columns:1fr auto auto;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.sl-ex-r:last-child{border-bottom:0}
+.sl-ex-r>span{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.3px;color:#8b94a0}
+.sl-ex-r>b{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14.5px;font-weight:600;color:#eaecef;text-align:right;letter-spacing:.2px}
+.sl-ex-r>i{font-style:normal;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:9.5px;color:#6f7985;min-width:30px;text-align:right;letter-spacing:.3px}
+.sl-ex-r>b.bull{color:#2ebd85}.sl-ex-r>b.bear{color:#f6465d}.sl-ex-r>b.flat{color:#c2cad3}.sl-ex-r>b.gold{color:var(--gold)}
+.sl-ex-r.tp>b{color:#6ff0ad}.sl-ex-r.sl>b{color:#ff8a95}
+.sl-ex-bar{margin-top:11px;height:4px;border-radius:3px;background:#0a0e14;overflow:hidden;border:1px solid var(--line)}
+.sl-ex-bar span{display:block;height:100%;background:linear-gradient(90deg,#2ebd85,#E8B84B);transition:width .5s ease}
+.sl-ex-note{font-size:12.5px;line-height:1.65;color:#c6ced6;margin:0}
+.sl-ex-fine{font-size:10.5px;line-height:1.55;color:#6f7985;margin:10px 0 0;border-top:1px solid rgba(255,255,255,.045);padding-top:9px}
+.sl-signal.long{border-left:2px solid var(--long);background:linear-gradient(180deg,#0c111a,#0a0d13)}
+.sl-signal.short{border-left:2px solid var(--short);background:linear-gradient(180deg,#0c111a,#0a0d13)}
+.sl-signal.long .sl-ex-hd>span{color:#8ff4bd}.sl-signal.short .sl-ex-hd>span{color:#ff9aa4}
 .sl-signal{position:relative}
 .sl-sgtop{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .sl-dot{width:9px;height:9px;border-radius:50%;background:#5a636e;flex:none}
