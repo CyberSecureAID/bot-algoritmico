@@ -486,6 +486,18 @@ async function actualizarCabeceraPrecio() {
     const el = document.getElementById('lq-px-lo'); if (el && isFinite(lo) && lo > 0) el.textContent = fmt(lo);
   } catch (_) {}
 }
+
+/* Calendario económico: si news.js no está cargado (p.ej. tras modularizar el
+   área y no venir el index.html que lo traía), se carga al vuelo y luego abre.
+   Mismo patrón que muros.js, para que las 3 pools se comporten igual. */
+function abrirCalendarioSeguro() {
+  const fn = () => { try { window.abrirCalendario && window.abrirCalendario(); } catch (_) {} };
+  if (typeof window.abrirCalendario === 'function') { fn(); return; }
+  if (document.getElementById('news-js-lazy')) { setTimeout(abrirCalendarioSeguro, 300); return; }
+  const s = document.createElement('script'); s.id = 'news-js-lazy'; s.src = 'assets/js/news.js?v=10';
+  s.onload = fn;
+  document.head.appendChild(s);
+}
 function arrancarVivo() {
   clearInterval(_vivo);
   const idVivo = _cargaId;
@@ -930,7 +942,7 @@ export async function abrirPools() {
   };
 
   $('lq-foto').onclick = () => guardarImagen();
-  { const bc = $('lq-cal'); if (bc) bc.onclick = () => { try { window.abrirCalendario && window.abrirCalendario(); } catch (_) {} }; }
+  { const bc = $('lq-cal'); if (bc) bc.onclick = () => abrirCalendarioSeguro(); }
 
   // Cabecera: logo de la moneda actual + precio y rango 24h en vivo.
   ponerLogosLq();
@@ -2282,11 +2294,11 @@ function guardarImagen() {
       g.textAlign = 'left';
       g.fillStyle = '#E8B84B';
       g.font = `800 ${19 * esc2}px system-ui,sans-serif`;
-      g.fillText('Mapa de Liquidaciones', xTexto, yB + 34 * esc2);
+      g.fillText('Liquidity Pools', xTexto, yB + 34 * esc2);
 
       g.font = `700 ${14 * esc2}px ui-monospace,monospace`;
       g.fillStyle = '#C9A84B';
-      g.fillText('CriptoCubaOficial.com', xTexto, yB + 56 * esc2);
+      g.fillText('decfreedom.com', xTexto, yB + 56 * esc2);
 
       // A la derecha, el par y la fecha
       g.textAlign = 'right';
@@ -2307,7 +2319,7 @@ function guardarImagen() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `criptocuba-${_par}-${_tf}-${Date.now()}.png`;
+      a.download = `decfreedom-liquidity-${_par}-${_tf}-${Date.now()}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     }, 'image/png');
