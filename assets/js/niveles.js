@@ -106,9 +106,10 @@ export async function abrirNiveles() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
 
-        <div class="nv-tfs">
-          ${TFS.map((t) => `<button class="nv-tf ${t.id === N.tf ? 'on' : ''}" data-ntf="${t.id}">${t.n}</button>`).join('')}
-        </div>
+        <button class="nv-sel nv-sel-tf" id="nv-sel-tf">
+          <b id="nv-tf-lbl">${esc((TFS.find((t) => t.id === N.tf) || TFS[0]).n)}</b>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
 
         <div class="nv-estado" id="nv-estado"></div>
 
@@ -166,7 +167,7 @@ export async function abrirNiveles() {
   const cerrar = () => {
     try { clearInterval(_reloj); } catch (_) {}
     _reloj = null; _widgetVivo = false;
-    document.querySelectorAll('#nv-picker,#nv-ayuda-box,#nv-herr-panel,.nv-pop,#nv-ind-modal,#nv-herr-menu,.od-menu,.od-ficha').forEach((x) => x.remove());
+    document.querySelectorAll('#nv-picker,#nv-ayuda-box,#nv-herr-panel,.nv-pop,#nv-ind-modal,#nv-herr-menu,#nv-tfmenu,.od-menu,.od-ficha').forEach((x) => x.remove());
     const e = $('nv-overlay'); if (e) e.remove();
     /* Al cerrar se vuelve a la portada de Liquidity, no se sale. */
     try { if (window.__lqpVolver) window.__lqpVolver(); } catch (_) {}
@@ -288,13 +289,7 @@ export async function abrirNiveles() {
   }
   $('nv-sel').onclick = (e) => { e.stopPropagation(); menuPares(); };
 
-  d.querySelectorAll('[data-ntf]').forEach((b) => b.onclick = () => {
-    N.tf = b.dataset.ntf;
-    d.querySelectorAll('[data-ntf]').forEach((x) => x.classList.toggle('on', x.dataset.ntf === N.tf));
-    N.vista.desde = 0;
-    try { if (N.cerrarFichas) N.cerrarFichas(); } catch (_) {}
-    recargar();
-  });
+  $('nv-sel-tf').onclick = (e) => { e.stopPropagation(); menuTfsNv(); };
 
   ponerLogos();
   recargar();
@@ -304,6 +299,37 @@ export async function abrirNiveles() {
     clearTimeout(_t);
     _t = setTimeout(() => { if ($('nv-cv')) { dibujar(); burbujas(); } }, 250);
   });
+}
+
+/* Selector de temporalidad: MISMO popup grid que Liquidity y Heat Pools
+   (#nv-tfmenu, rejilla de 3 columnas con TODAS las TFs). Volver a tocar
+   el chip lo cierra. Reemplaza la fila de 4 botones anterior. */
+function menuTfsNv() {
+  const ancla = $('nv-sel-tf');
+  const ya = $('nv-tfmenu'); if (ya) { ya.remove(); return; }
+  const menu = document.createElement('div');
+  menu.id = 'nv-tfmenu';
+  menu.innerHTML = TFS.map((t) =>
+    `<button type="button" class="nv-tfmenu-it ${t.id === N.tf ? 'on' : ''}" data-ntf="${t.id}">${esc(t.n)}</button>`).join('');
+  document.body.appendChild(menu);
+  const r = ancla.getBoundingClientRect();
+  const w = menu.offsetWidth || 210;
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+  menu.querySelectorAll('.nv-tfmenu-it').forEach((it) => it.onclick = () => {
+    N.tf = it.dataset.ntf;
+    const lbl = $('nv-tf-lbl'); if (lbl) lbl.textContent = (TFS.find((t) => t.id === N.tf) || {}).n || N.tf;
+    N.vista.desde = 0;
+    try { if (N.cerrarFichas) N.cerrarFichas(); } catch (_) {}
+    menu.remove();
+    recargar();
+  });
+  const cerrarM = (ev) => {
+    if (!menu.contains(ev.target) && ev.target !== ancla && !ancla.contains(ev.target)) {
+      menu.remove(); document.removeEventListener('click', cerrarM);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', cerrarM), 10);
 }
 
 let _reloj = null;
@@ -370,7 +396,7 @@ function pintarEstado() {
     /* Cambio de las últimas 24 h, calculado con las velas reales (el número
        de velas equivale exactamente a 24 h según la temporalidad). Cápsula
        verde si sube, roja si baja, gris si está plano. */
-    const perTf = { '15m': 96, '1h': 24, '4h': 6, '1d': 1 };
+    const perTf = { '1m': 1440, '3m': 480, '5m': 288, '15m': 96, '30m': 48, '1h': 24, '2h': 12, '4h': 6, '6h': 4, '12h': 2, '1d': 1, '1w': 1 };
     const n24 = perTf[N.tf] || 24;
     let c24 = 0;
     if (N.velas && N.velas.length > 1) {
@@ -391,7 +417,9 @@ function pintarEstado() {
   if (!cuantas) { meta.innerHTML = ''; return; }
 
   const horizonte = {
-    '15m': 'horas', '1h': 'de 1 a 3 días', '4h': 'de 3 a 10 días', '1d': 'semanas'
+    '1m': 'minutos', '3m': 'minutos', '5m': 'minutos', '15m': 'horas', '30m': 'horas',
+    '1h': 'de 1 a 3 días', '2h': 'días', '4h': 'de 3 a 10 días', '6h': 'días',
+    '12h': 'de 1 a 3 semanas', '1d': 'semanas', '1w': 'meses'
   }[N.tf] || '';
 
   meta.innerHTML = `
