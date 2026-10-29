@@ -99,6 +99,7 @@ export async function abrirNiveles() {
   d.innerHTML = `<div class="nv-bg"></div>
     <div class="nv-c">
       <header class="nv-cab">
+        <button class="nv-back" id="nv-back" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Back</button>
         <button class="nv-sel" id="nv-sel">
           <i class="nv-logo" data-cg="${esc((PARES.find((p) => p.id === N.par) || {}).cg || '')}"></i>
           <b>${esc(N.par)}</b>
@@ -117,20 +118,10 @@ export async function abrirNiveles() {
           <button class="nv-ico" id="nv-cal" title="Economic calendar">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4M7.5 13h2M11 13h2M14.5 13h2"/></svg>
           </button>
-          <button class="nv-ico" id="nv-widget" title="Overlay (floating window on top of everything)">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="15" rx="2"/><rect x="12" y="11" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
-          </button>
-          <button class="nv-ico" id="nv-foto" title="Compartir">
+          <button class="nv-ico" id="nv-foto" title="Share image">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
-          <button class="nv-ico nv-herr-btn" id="nv-herr" title="Indicators">
-            <svg class="nv-ind-ic" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><rect x="2.6" y="13" width="3.2" height="8" rx="1"/><rect x="7.7" y="9.5" width="3.2" height="11.5" rx="1"/><rect x="12.8" y="6" width="3.2" height="15" rx="1"/><rect x="17.9" y="3" width="3.2" height="18" rx="1"/></svg>
-            <span class="nv-ind-tx">Indicators</span>
-          </button>
-          <button class="nv-ico nv-comof" id="nv-ayuda">
-            <span class="nv-cf-tx">Cómo funciona</span><span class="nv-cf-s">?</span>
-          </button>
-          <button class="nv-ico" id="nv-x" aria-label="Cerrar">✕</button>
+          <button class="nv-ico" id="nv-ayuda" title="How it works">?</button>
         </div>
       </header>
 
@@ -140,9 +131,6 @@ export async function abrirNiveles() {
       <div class="nv-veredicto" id="nv-veredicto">
         <div class="nv-caps" id="nv-caps"></div>
         <div class="nv-meta" id="nv-meta"></div>
-        <button class="nv-herr-m" id="nv-herr-m" title="Indicators" aria-label="Indicators">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><rect x="2.6" y="13" width="3.2" height="8" rx="1"/><rect x="7.7" y="9.5" width="3.2" height="11.5" rx="1"/><rect x="12.8" y="6" width="3.2" height="15" rx="1"/><rect x="17.9" y="3" width="3.2" height="18" rx="1"/></svg>
-        </button>
       </div>
 
       <div class="nv-graf" id="nv-graf">
@@ -184,11 +172,9 @@ export async function abrirNiveles() {
     try { if (window.__lqpVolver) window.__lqpVolver(); } catch (_) {}
   };
   d.querySelector('.nv-bg').onclick = cerrar;
-  $('nv-x').onclick = cerrar;
+  { const bk = $('nv-back'); if (bk) bk.onclick = cerrar; }
   $('nv-ayuda').onclick = () => ayuda();
   { const cb = $('nv-cal'); if (cb) cb.onclick = () => { try { window.abrirCalendario && window.abrirCalendario(); } catch (_) {} }; }
-  $('nv-herr').onclick = (e) => { e.stopPropagation(); menuHerramientas($('nv-herr')); };
-  { const hm = $('nv-herr-m'); if (hm) hm.onclick = (e) => { e.stopPropagation(); menuHerramientas(hm); }; }
   $('nv-foto').onclick = () => guardarImagen(N.par, N.tf);
   /* ── Superponer: convierte el análisis en una ventana flotante que se
      puede mover, agrandar/achicar y queda por encima de todo. Funciona
@@ -298,8 +284,7 @@ export async function abrirNiveles() {
     }, { passive: true });
     window.addEventListener('touchend', () => { if (mv) { mv = null; guardarFlot(); } });
 
-    // Recordar entre sesiones (solo la flotante en página; el PiP nativo es aparte)
-    try { const gg = JSON.parse(localStorage.getItem('cco-flotante') || 'null'); if (gg && gg.on && !('documentPictureInPicture' in window)) activarFlotante(gg); } catch (_) {}
+    // Ventana flotante retirada: no se auto-restaura (el botón ya no existe).
   }
   $('nv-sel').onclick = (e) => { e.stopPropagation(); menuPares(); };
 
