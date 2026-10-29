@@ -960,11 +960,32 @@ function arrancarVigilante() {
   }, 30000);
 }
 
+/* Sonido de la alerta: una campanada ascendente de 3 notas, clara y audible.
+   Antes la alerta NO sonaba (solo notificación + toast). Si la pestaña está en
+   segundo plano, suena cuando el navegador lo permite; la notificación siempre
+   llega. Nada de marca vieja: el texto dice DecFreedom. */
+function pitidoAlerta() {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1175, 1568].forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      const t0 = ac.currentTime + i * 0.16;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.5, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t0); o.stop(t0 + 0.52);
+    });
+  } catch (_) {}
+}
+
 function sonar(a, precioAhora) {
+  pitidoAlerta();
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(`${a.par} ${a.vender ? '▼' : '▲'} ${fmt(a.precio)}`, {
-        body: T('El precio ha llegado a tu nivel. Abre CriptoCuba para confirmar la orden.'),
+        body: 'Price reached your level — open DecFreedom to confirm.',
         icon: 'assets/img/aurex-192.png'
       });
     }
@@ -975,8 +996,8 @@ function sonar(a, precioAhora) {
   t.innerHTML = `
     <span class="od-t-ic">${a.vender ? '▼' : '▲'}</span>
     <div>
-      <b>${esc(a.par)} ${esc(T('llegó a'))} ${fmt(a.precio)}</b>
-      <span>${esc(T('Tu aviso se ha cumplido. Precio ahora:'))} ${fmt(precioAhora)}</span>
+      <b>${esc(a.par)} reached ${fmt(a.precio)}</b>
+      <span>Alert triggered — price now: ${fmt(precioAhora)}</span>
     </div>
     <button type="button" class="od-t-x">✕</button>`;
   document.body.appendChild(t);
