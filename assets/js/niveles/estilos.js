@@ -43,6 +43,12 @@ export function estilos() {
     padding:9px 12px;background:#0a0d13;border-bottom:1px solid #1a1f28;
     position:relative;z-index:30;overflow:visible}
   #nv-overlay .nv-cab::-webkit-scrollbar{display:none}
+  /* Back arriba-izquierda: COPIA 1:1 del botón de las demás secciones (lq-back) */
+  #nv-overlay .nv-back{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:36px;padding:0 12px 0 9px;border-radius:9px;
+    font-family:var(--sans,inherit);font-size:13px;font-weight:600;color:#8b96a3;background:rgba(255,255,255,.05);
+    border:1px solid #2b3139;white-space:nowrap;cursor:pointer}
+  #nv-overlay .nv-back svg{width:12px;height:12px}
+  #nv-overlay .nv-back:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
   #nv-overlay .nv-sel{display:inline-flex;align-items:center;gap:9px;flex:0 0 auto;min-height:36px;
     padding:0 12px;border-radius:10px;background:#141922;border:1px solid #2b3139;color:#eaecef;
     cursor:pointer;font-family:var(--mono,monospace);font-size:12.5px}

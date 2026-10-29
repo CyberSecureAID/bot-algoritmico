@@ -245,39 +245,39 @@ export async function ponerLogos() {
 
 const PASOS_NV = [
   {
-    t: 'Un centro completo, no solo gráficas',
-    d: 'Smart Levels es un entorno de <b>análisis, visualización y operación</b> en un mismo lugar: estudias el mercado en tiempo real, dibujas, mides y <b>operas directo desde la gráfica</b>.',
-    x: 'Todo con velas reales del mercado. Verde es comprar, rojo es vender.'
+    t: 'A full desk, not just charts',
+    d: 'Smart Pools is an <b>analysis, drawing and trading</b> environment in one place: study the market in real time, draw, measure and <b>trade straight from the chart</b>.',
+    x: 'All on real market candles. Green is buy, red is sell.'
   },
   {
-    t: 'Compra y vende desde la gráfica',
-    d: 'Haz <b>clic derecho</b> (o mantén pulsado en móvil) sobre el precio y elige <b>Comprar aquí</b> o <b>Vender aquí</b> en la zona que quieras. Ves el % de beneficio y de riesgo antes de confirmar.',
-    x: 'Es no custodial: operas desde tu propia wallet, sin cuenta ni intermediarios.'
+    t: 'Buy and sell from the chart',
+    d: '<b>Right-click</b> (or long-press on mobile) on the price and choose <b>Buy here</b> or <b>Sell here</b> at the zone you want. You see the profit % and the risk % before confirming.',
+    x: 'Non-custodial: you trade from your own wallet, no account, no middlemen.'
   },
   {
-    t: 'Alertas de precio',
-    d: 'Coloca <b>alertas</b> en los niveles que te importan y recibe aviso cuando el precio llegue, sin tener que estar mirando la pantalla.',
-    x: 'Combínalas con los indicadores para no perderte una entrada.'
+    t: 'Price alerts',
+    d: 'Drop <b>alerts</b> on the levels that matter and get notified — with a sound — when price reaches them, without watching the screen.',
+    x: 'Pair them with the levels so you never miss an entry.'
   },
   {
-    t: 'Representa posiciones en tiempo real',
-    d: 'Con las herramientas de <b>posición larga y corta</b> pintas tu entrada, tu objetivo y tu stop, y ves en vivo el <b>beneficio, el riesgo y la relación R:R</b> mientras el precio se mueve.',
-    x: 'Ajústalas arrastrando: sube el objetivo, baja el stop, amplía a los lados.'
+    t: 'Live positions',
+    d: 'With the <b>long and short position</b> tools you draw your entry, target and stop, and watch the <b>profit, risk and R:R</b> update live as price moves.',
+    x: 'Adjust by dragging: raise the target, lower the stop, widen the sides.'
   },
   {
-    t: 'Indicadores premium',
-    d: 'Desde <b>Indicators</b> activas indicadores creados por nosotros, como <b>Marea</b>, que te dice hacia qué lado está el mercado y <b>cuánto falta</b> para que salte una alerta de long o de short.',
-    x: 'El recuadro de la esquina se recoge tocándolo para que no estorbe.'
+    t: 'The Faro indicator',
+    d: 'Smart Pools reads the market with <b>Faro</b>, our own indicator, on by default: it marks the <b>range top and floor</b>, the key <b>buy and sell</b> levels, and — when it has a clear read — the current <b>trend</b>.',
+    x: 'Everything on the chart comes from live price action, not guesses.'
   },
   {
-    t: 'Herramientas modernas de dibujo',
-    d: 'Líneas, Fibonacci, regla, texto, marcadores, rectángulos… con una dinámica ágil que en varios aspectos <b>supera a plataformas como TradingView</b>. Traza, edita y mueve todo con el cursor.',
-    x: 'La barra se oculta sola; acerca el cursor al borde izquierdo para desplegarla.'
+    t: 'Modern drawing tools',
+    d: 'Lines, Fibonacci, ruler, text, markers, rectangles… with a fast, clean flow that in several ways <b>beats platforms like TradingView</b>. Draw, edit and move it all with the cursor.',
+    x: 'The toolbar hides itself; bring the cursor to the left edge to open it.'
   },
   {
-    t: 'Cambia de moneda y de tiempo',
-    d: 'Arriba a la izquierda cambias de <b>criptomoneda</b> y eliges la <b>temporalidad</b> (15m, 1H, 4H, 1D). Arrastra para recorrer el tiempo y usa la rueda para acercar.',
-    x: 'Esto es análisis, no una promesa. Usa siempre stop y no arriesgues más de lo que puedas perder.'
+    t: 'Switch coin and timeframe',
+    d: 'Top-left you switch <b>coin</b> and pick the <b>timeframe</b>. Drag to move through time and scroll to zoom in.',
+    x: 'This is analysis, not a promise. Always use a stop and never risk more than you can lose.'
   }
 ];
 
@@ -290,7 +290,7 @@ export function ayuda() {
   d.innerHTML = `<div class="nv-bg"></div>
     <div class="nva-c">
       <button class="nva-x" id="nva-x" aria-label="Cerrar">✕</button>
-      <div class="nva-eyebrow">Smart Levels</div>
+      <div class="nva-eyebrow">Smart Pools</div>
       <div id="nva-cuerpo"></div>
     </div>`;
   document.body.appendChild(d);
@@ -306,7 +306,7 @@ function pasoNv() {
   const ultimo = _pasoNv === PASOS_NV.length - 1;
   c.innerHTML = `
     <div class="nva-card">
-      <div class="nva-n">${_pasoNv + 1} <em>de ${PASOS_NV.length}</em></div>
+      <div class="nva-n">${_pasoNv + 1} <em>of ${PASOS_NV.length}</em></div>
       <div class="nva-t">${p.t}</div>
       <div class="nva-d">${p.d}</div>
       <div class="nva-x2">${p.x}</div>
@@ -315,8 +315,8 @@ function pasoNv() {
       ${PASOS_NV.map((_, i) => `<i class="${i === _pasoNv ? 'on' : ''}" data-pnv="${i}"></i>`).join('')}
     </div>
     <div class="nva-acts">
-      ${_pasoNv > 0 ? '<button class="nva-atras" id="nva-atras">Atrás</button>' : ''}
-      <button class="nva-b" id="nva-sig">${ultimo ? 'Entendido' : 'Saber más'}</button>
+      ${_pasoNv > 0 ? '<button class="nva-atras" id="nva-atras">Back</button>' : ''}
+      <button class="nva-b" id="nva-sig">${ultimo ? 'Got it' : 'Learn more'}</button>
     </div>`;
   $('nva-sig').onclick = () => {
     if (ultimo) { document.getElementById('nv-ayuda-box')?.remove(); return; }
