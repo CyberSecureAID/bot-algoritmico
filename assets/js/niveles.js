@@ -63,8 +63,8 @@ const $ = (id) => document.getElementById(id);
  *  La elección es estable por par y hora: no cambia en cada refresco. */
 
 const nombreTend = (d) => ({
-  alcista: 'alcista', bajista: 'bajista',
-  lateral: 'lateral', indefinida: 'sin definir'
+  alcista: 'bullish', bajista: 'bearish',
+  lateral: 'sideways', indefinida: 'undefined'
 }[d] || d);
 
 
@@ -377,7 +377,7 @@ async function recargar() {
       else { N.trazo = 1; dibujar(); burbujas(); }
     } catch (_) {
       if (N.cargando) {
-        N.error = 'No se pudieron cargar los datos del mercado.';
+        N.error = 'Could not load market data.';
         N.cargando = false;
         dibujar();
       }
@@ -407,7 +407,7 @@ function pintarEstado() {
     const c24txt = (c24 >= 0 ? '+' : '') + c24.toFixed(2) + '%';
     e.innerHTML = `<span class="nv-pill ${cls}">${esc(txt.charAt(0).toUpperCase() + txt.slice(1))}</span>
       <span class="nv-precio">${fmt(N.precio)}</span>
-      <span class="nv-24h ${c24cls}" title="${esc(T('Cambio 24h'))}">${c24txt}</span>`;
+      <span class="nv-24h ${c24cls}" title="${esc(T('24h change'))}">${c24txt}</span>`;
   }
 
   /* Solo el horizonte y el número de lecturas: lo demás lo dicen
@@ -417,14 +417,14 @@ function pintarEstado() {
   if (!cuantas) { meta.innerHTML = ''; return; }
 
   const horizonte = {
-    '1m': 'minutos', '3m': 'minutos', '5m': 'minutos', '15m': 'horas', '30m': 'horas',
-    '1h': 'de 1 a 3 días', '2h': 'días', '4h': 'de 3 a 10 días', '6h': 'días',
-    '12h': 'de 1 a 3 semanas', '1d': 'semanas', '1w': 'meses'
+    '1m': 'minutes', '3m': 'minutes', '5m': 'minutes', '15m': 'hours', '30m': 'hours',
+    '1h': '1 to 3 days', '2h': 'days', '4h': '3 to 10 days', '6h': 'days',
+    '12h': '1 to 3 weeks', '1d': 'weeks', '1w': 'months'
   }[N.tf] || '';
 
   meta.innerHTML = `
-    ${horizonte ? `<span class="nv-v-hz">${esc(T('Horizonte'))}: ${esc(T(horizonte))}</span>` : ''}
-    <span class="nv-v-pt">${cuantas} ${cuantas === 1 ? esc(T('lectura')) : esc(T('lecturas'))}</span>`;
+    ${horizonte ? `<span class="nv-v-hz">${esc(T('Horizon'))}: ${esc(T(horizonte))}</span>` : ''}
+    <span class="nv-v-pt">${cuantas} ${cuantas === 1 ? esc(T('reading')) : esc(T('readings'))}</span>`;
 }
 
 /* ══════════════════════════════════════════════════════════════
