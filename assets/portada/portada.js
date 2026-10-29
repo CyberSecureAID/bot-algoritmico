@@ -118,7 +118,7 @@ const PUERTAS = {
   market:  async () => (await import(J + 'market.js?v=125')).abrirMarket(),
   liq:     async () => (await import(J + 'liquidity.js?v=126')).abrirLiquidity(),
   pools:   async () => (await import(J + 'liquidity.js?v=126')).abrirPools(),
-  heat:    async () => (await import(J + 'muros.js?v=127')).abrirMuros(),
+  heat:    async () => (await import(J + 'muros.js?v=128')).abrirMuros(),
   levels:  async () => (await import(J + 'niveles.js?v=127')).abrirNiveles(),
   tools:   async (tid) => (await import(J + 'tools.js?v=128')).abrirTools(tid),
   academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
@@ -128,7 +128,7 @@ const PUERTAS = {
   analisis: async () => {
     const w = await wallet();
     const ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
-    const m = await import(new URL('modules/analysis/analisis.js?v=8', document.baseURI).href);
+    const m = await import(new URL('modules/analysis/analisis.js?v=3', document.baseURI).href);
     await m.abrirAnalisis('hero', w, ethers);
   }
 };
