@@ -53,8 +53,16 @@ export const PARES = [
 ];
 
 export const TFS = [
+  { id: '1m',  n: '1m' },
+  { id: '3m',  n: '3m' },
+  { id: '5m',  n: '5m' },
   { id: '15m', n: '15m' },
+  { id: '30m', n: '30m' },
   { id: '1h',  n: '1H' },
+  { id: '2h',  n: '2H' },
   { id: '4h',  n: '4H' },
-  { id: '1d',  n: '1D' }
+  { id: '6h',  n: '6H' },
+  { id: '12h', n: '12H' },
+  { id: '1d',  n: '1D' },
+  { id: '1w',  n: '1W' }
 ];
