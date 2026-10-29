@@ -33,7 +33,7 @@ const HERRAMIENTAS = [
   { id:'pools', abre:'pools', nombre:'Liquidity Pools', cat:'indicator', img:'assets/img/serv-pools.webp', activos:['Crypto'], spot:true,  listo:true,
     lema:'Where the money is trapped',
     desc:'A real time liquidation map. We reconstruct the volume resting inside every block of orders and project the exact price zones where leveraged positions are waiting to be swept.' },
-  { id:'hair', abre:'heat', nombre:'Heard Pools', cat:'indicator', img:'assets/img/serv-libro.webp', activos:['Crypto'], spot:true, listo:true,
+  { id:'hair', abre:'heat', nombre:'Heat Pools', cat:'indicator', img:'assets/img/serv-libro.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'See what the big players do',
     desc:'The order book lies. We watch every wall over time and separate the real committed capital from the theater, so you know which levels truly hold.' },
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'strategy', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
@@ -136,7 +136,7 @@ async function abrirTool(abre, cardEl) {
 
   try {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=126')).abrirPools();
-    else if (abre === 'heat')   await (await import(base + 'muros.js?v=127')).abrirMuros();
+    else if (abre === 'heat')   await (await import(base + 'muros.js?v=128')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
