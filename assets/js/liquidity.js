@@ -97,15 +97,18 @@ const PARES = [
   { id: 'TIA',   s: 'TIAUSDT',   n: 'Celestia',  cg: 'celestia' }
 ];
 const TFS = [
+  { id: '1m',  n: '1m' },
+  { id: '3m',  n: '3m' },
   { id: '5m',  n: '5m' },
   { id: '15m', n: '15m' },
   { id: '30m', n: '30m' },
   { id: '1h',  n: '1H' },
   { id: '2h',  n: '2H' },
   { id: '4h',  n: '4H' },
+  { id: '6h',  n: '6H' },
   { id: '12h', n: '12H' },
   { id: '1d',  n: '1D' },
-  { id: '1w',  n: '1S' }
+  { id: '1w',  n: '1W' }
 ];
 
 let _od = null;              // módulo de órdenes
@@ -736,7 +739,7 @@ async function portada() {
     if (sv.id === 'pools') { abrirPools(); ocultarPortada(); return; }
     if (sv.id === 'libro') {
       try {
-        const mu = await import('./muros.js?v=128');
+        const mu = await import('./muros.js?v=129');
         mu.abrirMuros(); ocultarPortada();
       } catch (er) { console.warn('[CCO] radar:', er); }
       return;
@@ -2135,7 +2138,7 @@ async function pagar(plan, moneda) {
    Un desplegable con buscador es más rápido y ocupa nada.
    ══════════════════════════════════════════════════════════════ */
 function cerrarMenus() {
-  document.querySelectorAll('.lq-menu').forEach((x) => x.remove());
+  document.querySelectorAll('.lq-menu, #lq-tfmenu').forEach((x) => x.remove());
 }
 
 function abrirMenu(anclaje, html, alSeleccionar, conBuscador) {
@@ -2233,19 +2236,35 @@ function menuPares() {
 }
 
 function menuTfs() {
-  const html = TFS.map((t) => `
-    <button data-val="${t.id}" data-busca="${t.n.toLowerCase()}"
-            class="lq-op ${t.id === _tf ? 'on' : ''}">
-      <b>${t.id}</b><span>${esc(t.n)}</span>
-      ${t.id === _tf ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m20 6-11 11-5-5"/></svg>' : ''}
-    </button>`).join('');
-  abrirMenu($('lq-sel-tf'), html, (v) => {
-    _tf = v;
-    const b = $('lq-sel-tf').querySelector('b');
-    if (b) b.textContent = (TFS.find((t) => t.id === v) || {}).n || v;
+  /* Mismo desplegable que Heat Pools (#mu-tfmenu): un cuadradito en rejilla de
+     3 columnas con TODAS las temporalidades, no la lista vertical. Uniformidad
+     entre secciones. Volver a tocar el botón lo cierra. */
+  const ancla = $('lq-sel-tf');
+  const ya = $('lq-tfmenu'); if (ya) { ya.remove(); return; }
+  cerrarMenus();
+  const menu = document.createElement('div');
+  menu.id = 'lq-tfmenu';
+  menu.innerHTML = TFS.map((t) =>
+    `<button type="button" class="lq-tfmenu-it ${t.id === _tf ? 'on' : ''}" data-ltf="${t.id}">${esc(t.n)}</button>`).join('');
+  document.body.appendChild(menu);
+  const r = ancla.getBoundingClientRect();
+  const w = menu.offsetWidth || 210;
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+  menu.querySelectorAll('.lq-tfmenu-it').forEach((it) => it.onclick = () => {
+    _tf = it.dataset.ltf;
+    const b = ancla.querySelector('b');
+    if (b) b.textContent = (TFS.find((t) => t.id === _tf) || {}).n || _tf;
     V.dibujos = [];
+    menu.remove();
     pintar();
-  }, false);
+  });
+  const cerrarM = (ev) => {
+    if (!menu.contains(ev.target) && ev.target !== ancla && !ancla.contains(ev.target)) {
+      menu.remove(); document.removeEventListener('click', cerrarM);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', cerrarM), 10);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2623,6 +2642,18 @@ function estilos() {
     padding:0;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#8b96a3;
     font-family:var(--mono,monospace);font-size:14px;font-weight:700}
   #lq-overlay .lq-ayuda:hover,#lq-overlay .lq-x:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  /* Desplegable de temporalidad: IDÉNTICO al de Heat Pools (#mu-tfmenu): rejilla
+     de 3 columnas con todas las TFs. Va en el body, por eso no lleva #lq-overlay. */
+  #lq-tfmenu{position:fixed;z-index:12000;background:#12161c;border:1px solid #2b3139;border-radius:14px;
+    padding:6px;box-shadow:0 18px 44px rgba(0,0,0,.6);display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;
+    min-width:210px;max-height:60vh;overflow-y:auto;animation:lqTfMenu .16s ease}
+  @keyframes lqTfMenu{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  #lq-tfmenu .lq-tfmenu-it{min-height:42px;border-radius:10px;border:1px solid transparent;
+    background:rgba(255,255,255,.04);color:#c7cdd6;font-family:var(--mono,monospace);font-weight:700;
+    font-size:13px;cursor:pointer}
+  #lq-tfmenu .lq-tfmenu-it:hover{border-color:#3a424c;color:#eaecef}
+  #lq-tfmenu .lq-tfmenu-it.on{background:linear-gradient(180deg,#f7db8d,var(--gold,#E8B84B) 55%,#c79426);
+    color:#3a2800;border-color:var(--gold,#E8B84B)}
   /* Back arriba-izquierda: COPIA 1:1 del botón sw-back de las demás secciones */
   #lq-overlay .lq-back{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:36px;padding:0 12px 0 9px;border-radius:9px;
     font-family:var(--sans,inherit);font-size:13px;font-weight:600;color:var(--ink2,#8b96a3);background:rgba(255,255,255,.05);

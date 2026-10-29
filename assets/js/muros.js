@@ -213,7 +213,7 @@ const M = {
   mercado: null,      // VWAP, VAH/VAL, sesión, sesgo, backtest
   delta: null,        // order-flow real (aggTrades): agresor comprador vs vendedor
   contexto: null,     // contexto multi-símbolo (BTC/ETH en demanda/oferta)
-  tema: (() => { try { return localStorage.getItem('mu_tema') === 'claro' ? 'claro' : 'oscuro'; } catch (_) { return 'oscuro'; } })(),
+  tema: 'oscuro',   // Heat Pools siempre oscuro: modo claro retirado (sin botón de tema)
   tf: '1h',           // temporalidad por defecto del radar
   ancho: window.innerWidth < 760 ? 65 : 100,  // cuántas velas se ven
   filtro: 'todos',
@@ -1317,16 +1317,10 @@ export async function abrirMuros() {
           <button class="mu-ico" id="mu-cal" title="Economic calendar">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2"/></svg>
           </button>
-          <button class="mu-ico" id="mu-tema" title="Light/dark theme">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-          </button>
           <button class="mu-ico" id="mu-foto" title="Share image">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
-          <button class="mu-ico mu-comofunciona" id="mu-ayuda" title="How it works">
-            <span class="mu-cf-txt">How it works</span>
-            <span class="mu-cf-sig">?</span>
-          </button>
+          <button class="mu-ico" id="mu-ayuda" title="How it works">?</button>
         </div>
       </div>
 
@@ -1382,13 +1376,6 @@ export async function abrirMuros() {
     if (bD) bD.onclick = () => set('double');
     { const sh = $('mu-share'); if (sh) sh.onclick = () => compartirSenal(); }
   }
-  $('mu-tema').onclick = () => {
-    M.tema = M.tema === 'claro' ? 'oscuro' : 'claro';
-    try { localStorage.setItem('mu_tema', M.tema); } catch (_) {}
-    const ov = $('mu-overlay'); if (ov) ov.classList.toggle('mu-claro', M.tema === 'claro');
-    dibujar();
-  };
-
   /* ONBOARDING: la primera vez que se abre el radar, se muestra el tutorial
      solo (una sola vez por navegador). */
   /* La tarjeta de ayuda ya NO se abre sola al entrar: el usuario la abre cuando
@@ -3308,17 +3295,6 @@ function estilos() {
   #mu-overlay .mu-news{position:relative}
   #mu-overlay .mu-news .mu-news-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:#f6465d;box-shadow:0 0 0 0 rgba(246,70,93,.6);animation:muNewsPulse 2.2s infinite}
   @keyframes muNewsPulse{0%{box-shadow:0 0 0 0 rgba(246,70,93,.55)}70%{box-shadow:0 0 0 6px rgba(246,70,93,0)}100%{box-shadow:0 0 0 0 rgba(246,70,93,0)}}
-  /* "Cómo funciona" con texto en escritorio, solo el signo en móvil. */
-  #mu-overlay .mu-comofunciona{width:auto;padding:0 14px;gap:0;
-    border-color:rgba(232,184,75,.4);color:var(--gold,#E8B84B)}
-  #mu-overlay .mu-cf-txt{font-family:var(--display,sans-serif);font-weight:700;font-size:12.5px;
-    white-space:nowrap;letter-spacing:.2px}
-  #mu-overlay .mu-cf-sig{display:none}
-  @media(max-width:860px){
-    #mu-overlay .mu-comofunciona{width:36px;padding:0}
-    #mu-overlay .mu-cf-txt{display:none}
-    #mu-overlay .mu-cf-sig{display:block;font-size:14px;font-weight:700}
-  }
   /* Avisos del narrador */
   #mu-overlay .mu-dist2.cerca{background:rgba(232,184,75,.2);color:#E8B84B}
   #mu-overlay .mu-dist2.urge{background:rgba(246,70,93,.25);color:#ff8a95;
