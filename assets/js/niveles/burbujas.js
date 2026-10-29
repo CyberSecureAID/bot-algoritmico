@@ -49,8 +49,8 @@ export function burbujas() {
   caja.dataset.firma = firma;
 
   const ic = { compra: '▲', venta: '▼', vigilar: '◆', aviso: '✱', tendencia: '➜', contexto: '·' };
-  const etq = { compra: 'COMPRA', venta: 'VENTA', vigilar: 'VIGILAR', aviso: 'ESPERA',
-                tendencia: 'TENDENCIA', contexto: 'CONTEXTO' };
+  const etq = { compra: 'BUY', venta: 'SELL', vigilar: 'WATCH', aviso: 'WAIT',
+                tendencia: 'TREND', contexto: 'CONTEXT' };
 
   caja.innerHTML = `${N.mensajes.map((m, idx) => `
     <div class="nv-cap t-${m.tipo} ${m.esPlan ? 'plan' : ''} avisa" data-nvm="${idx}">
@@ -72,8 +72,8 @@ export function burbujas() {
         ${m.plan ? planHTML(m.plan) : ''}
 
         <div class="nv-acts">
-          <button class="nv-pm-mas" type="button">${esc(T('Por qué lo digo'))} ▾</button>
-          ${m.p ? `<button class="nv-senala" type="button">${esc(T('Señálame dónde está'))}</button>` : ''}
+          <button class="nv-pm-mas" type="button">${esc(T('Why I say this'))} ▾</button>
+          ${m.p ? `<button class="nv-senala" type="button">${esc(T('Show me where'))}</button>` : ''}
         </div>
 
         <!-- Herramientas que el usuario puede pedir -->
@@ -99,7 +99,7 @@ export function burbujas() {
       e.stopPropagation();
       el.classList.toggle('con-detalle');
       mas.textContent = el.classList.contains('con-detalle')
-        ? T('Ocultar') + ' ▴' : T('Por qué lo digo') + ' ▾';
+        ? T('Hide') + ' ▴' : T('Why I say this') + ' ▾';
     };
     const vw = el.querySelector('[data-vwap]');
     if (vw) vw.onclick = (e) => {
@@ -158,9 +158,9 @@ function planHTML(p) {
   const largo = p.lado === 'compra';
   return `
   <div class="nv-plan">
-    <div class="nv-plan-t">${esc(T('Plan de operación'))}</div>
+    <div class="nv-plan-t">${esc(T('Trade plan'))}</div>
     <div class="nv-plan-fila entrada">
-      <span>${esc(T('Entrada'))}</span><b>${fmt(p.entrada)}</b>
+      <span>${esc(T('Entry'))}</span><b>${fmt(p.entrada)}</b>
     </div>
     <div class="nv-plan-fila stop">
       <span>${esc(T('Stop'))}</span><b>${fmt(p.stop)}</b>
@@ -168,12 +168,12 @@ function planHTML(p) {
     </div>
     ${p.obj.map((o, i) => `
     <div class="nv-plan-fila obj">
-      <span>${esc(T('Objetivo'))} ${i + 1} <em>${o.r}R</em></span><b>${fmt(o.p)}</b>
+      <span>${esc(T('Target'))} ${i + 1} <em>${o.r}R</em></span><b>${fmt(o.p)}</b>
       <i>+${o.pct.toFixed(2)}%</i>
     </div>`).join('')}
     <div class="nv-plan-pie">
-      ${esc(T('Riesgo/beneficio'))} <b>1:${p.rr}</b> ·
-      ${esc(T('Volatilidad media'))} <b>${fmt(p.atr)}</b>
+      ${esc(T('Risk/reward'))} <b>1:${p.rr}</b> ·
+      ${esc(T('Avg. volatility'))} <b>${fmt(p.atr)}</b>
     </div>
   </div>`;
 }
