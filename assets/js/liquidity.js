@@ -736,7 +736,7 @@ async function portada() {
     if (sv.id === 'pools') { abrirPools(); ocultarPortada(); return; }
     if (sv.id === 'libro') {
       try {
-        const mu = await import('./muros.js?v=127');
+        const mu = await import('./muros.js?v=128');
         mu.abrirMuros(); ocultarPortada();
       } catch (er) { console.warn('[CCO] radar:', er); }
       return;

@@ -1,4 +1,4 @@
-// muros.js — Lógica Estructural Avanzada
+// muros.js — Heat Pools
 //
 // EL PROBLEMA QUE RESUELVE
 //
@@ -112,7 +112,7 @@ const PARES = [
 let _par = 'BNB';
 /* Nombre/dominio de la web en UN solo sitio: si cambia, se cambia aquí y se
    actualiza en todas las imágenes y textos que lo usan. */
-const WEB_DOMINIO = 'CriptoCubaOficial.com';
+const WEB_DOMINIO = 'decfreedom.com';
 let _od = null;              // módulo de órdenes
 let _zonasOd = [];           // dónde pulsar para cancelar
 
@@ -1286,6 +1286,7 @@ export async function abrirMuros() {
   d.innerHTML = `<div class="mu-bg"></div>
     <div class="mu-c">
       <div class="mu-barra">
+        <button class="mu-back" id="mu-back" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Back</button>
         <button class="mu-sel" id="mu-sel">
           <i class="mu-logo" data-cg="${esc((PARES.find((p) => p.id === _par) || {}).cg || '')}"></i>
           <b>${esc(_par)}</b>
@@ -1295,13 +1296,13 @@ export async function abrirMuros() {
         <div class="mu-tfs">
           ${TFS.map((t) => `<button class="mu-tf ${t.id === M.tf ? 'on' : ''}" data-tf="${t.id}">${t.n}</button>`).join('')}
         </div>
-        <button class="mu-tfchip" id="mu-tfchip" type="button" aria-label="Temporalidad">
+        <button class="mu-tfchip" id="mu-tfchip" type="button" aria-label="Timeframe">
           <b id="mu-tfchip-t">${esc((TFS.find((t) => t.id === M.tf) || TFS[0]).n)}</b>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
 
         <div class="mu-px">
-          <span>Precio ahora</span>
+          <span>Price now</span>
           <b id="mu-px-v">—</b>
         </div>
 
@@ -1316,23 +1317,22 @@ export async function abrirMuros() {
           <button class="mu-ico" id="mu-cal" title="Economic calendar">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2"/></svg>
           </button>
-          <button class="mu-ico" id="mu-tema" title="Tema claro/oscuro">
+          <button class="mu-ico" id="mu-tema" title="Light/dark theme">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
           </button>
-          <button class="mu-ico" id="mu-foto" title="Compartir imagen">
+          <button class="mu-ico" id="mu-foto" title="Share image">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
-          <button class="mu-ico mu-comofunciona" id="mu-ayuda" title="Cómo funciona">
-            <span class="mu-cf-txt">Cómo funciona</span>
+          <button class="mu-ico mu-comofunciona" id="mu-ayuda" title="How it works">
+            <span class="mu-cf-txt">How it works</span>
             <span class="mu-cf-sig">?</span>
           </button>
-          <button class="mu-ico" id="mu-x" aria-label="Cerrar">✕</button>
         </div>
       </div>
 
       <div class="mu-mtabs" id="mu-mtabs">
-        <button class="mu-mtab on" data-vista="graf" type="button">Gr\u00e1fica</button>
-        <button class="mu-mtab" data-vista="ord" type="button">\u00d3rdenes <i id="mu-mtab-n">0</i></button>
+        <button class="mu-mtab on" data-vista="graf" type="button">Chart</button>
+        <button class="mu-mtab" data-vista="ord" type="button">Orders <i id="mu-mtab-n">0</i></button>
       </div>
 
       <div class="mu-cuerpo m-graf" id="mu-cuerpo">
@@ -1340,8 +1340,8 @@ export async function abrirMuros() {
           <canvas class="mu-cv" id="mu-cv"></canvas>
           <div class="mu-esperando" id="mu-esperando">
             <div class="mu-spin"></div>
-            <b>Analizando el libro de órdenes</b>
-            <span>Necesitamos unos segundos de observación para distinguir el dinero real del humo.</span>
+            <b>Reading the order book</b>
+            <span>We need a few seconds of observation to tell real money from noise.</span>
             <div class="mu-progreso"><i id="mu-prog"></i></div>
           </div>
           <img class="mu-marca" src="assets/img/cco-marca.webp" alt="">
@@ -1362,7 +1362,7 @@ export async function abrirMuros() {
     try { if (window.__lqpVolver) window.__lqpVolver(); } catch (_) {}
   };
   d.querySelector('.mu-bg').onclick = cerrar;
-  $('mu-x').onclick = cerrar;
+  { const bk = $('mu-back'); if (bk) bk.onclick = cerrar; }
   $('mu-ayuda').onclick = () => ayuda();
   $('mu-sel').onclick = (e) => { e.stopPropagation(); menuPares(); };
 
@@ -3017,7 +3017,7 @@ function menuPares() {
   const m = document.createElement('div');
   m.id = 'mu-picker';
   m.innerHTML = `
-    <input class="mu-buscar" id="mu-buscar" placeholder="Buscar…" autocomplete="off">
+    <input class="mu-buscar" id="mu-buscar" placeholder="Search…" autocomplete="off">
     <div class="mu-lista-mon">
       ${PARES.map((p) => `
         <button class="mu-op ${p.id === _par ? 'on' : ''}" data-mv="${p.id}"
@@ -3106,54 +3106,54 @@ async function ponerLogos() {
    ══════════════════════════════════════════════════════════════ */
 const PASOS_MU = [
   {
-    t: 'Qué es Heat Pools',
-    d: 'Heat Pools es una herramienta de <b>high performance</b> que revela <b>dónde se concentra el volumen de negociación</b> en los niveles más exactos del mercado. Analiza los datos en <b>tiempo real</b> (precio, niveles de negociación y liquidez) y los pinta como un <b>mapa de calor</b> sobre las zonas donde el dinero de verdad se ha estado acumulando.',
-    x: 'It is the first tool of its kind on the platform: it shows you at a glance where the real market interest is.'
+    t: 'What Heat Pools is',
+    d: 'Heat Pools is a <b>high-performance</b> tool that reveals <b>where trading volume concentrates</b> at the most precise levels of the market. It reads the data in <b>real time</b> (price, traded levels and liquidity) and paints it as a <b>heat map</b> over the zones where real money has been piling up.',
+    x: 'The hottest zones are where the most orders sit — that is where price tends to react.'
   },
   {
     t: 'What it is for',
-    d: 'Sobre cada zona de interés, Heat Pools proyecta el mapa de calor y te ofrece <b>entradas listas para operar</b>, con su <b>stop</b> y su <b>objetivo</b> ya calculados. No tienes que ser un experto en análisis técnico: el sistema hace el trabajo y te señala los niveles.',
-    x: 'The idea is for you to see clearly where to buy and where to sell, without racking your brain.'
+    d: 'Over each zone of interest, Heat Pools projects the heat map and hands you <b>ready-to-trade entries</b>, with the <b>stop</b> and the <b>target</b> already calculated. You do not need to be a technical-analysis expert: the system does the work and marks the levels for you.',
+    x: 'The goal is simple: see clearly where to buy and where to sell, without racking your brain.'
   },
   {
-    t: 'Step 1 · Open Heat Pools and choose a coin',
-    d: 'Abre la sección <b>Heat Pools</b> y arriba selecciona la <b>criptomoneda</b> que quieras analizar. Tienes una amplia gama de monedas disponibles para hacer análisis técnico.',
-    x: 'You can switch coins whenever you want to look for opportunities in several at once.'
+    t: 'Step 1 · Open Heat Pools and pick a coin',
+    d: 'Open the <b>Heat Pools</b> section and, at the top, select the <b>coin</b> you want to analyze. A wide range of coins is available for technical analysis.',
+    x: 'Switch coins whenever you want to scan several markets for opportunities.'
   },
   {
     t: 'Step 2 · Choose the timeframe',
-    d: 'Selecciona la <b>temporalidad</b> en la que deseas operar. Se recomienda <b>de 5 minutos en adelante</b>: las temporalidades más pequeñas también funcionan, pero cuanto <b>más grande</b> es la temporalidad, <b>mejor</b> suele ser la lectura. No quedan invalidadas las demás; simplemente las mayores dan señales más sólidas.',
-    x: 'Rule of thumb: if in doubt, go up a timeframe. Bigger, more reliable.'
+    d: 'Pick the <b>timeframe</b> you want to trade. <b>5 minutes and up</b> is recommended: smaller ones still work, but the <b>higher</b> the timeframe, the <b>cleaner</b> the reading usually is. The smaller ones are not invalid — the higher ones simply give sturdier signals.',
+    x: 'Rule of thumb: when in doubt, go up a timeframe. Bigger, more reliable.'
   },
   {
     t: 'Step 3 · Enable entries (Single or Double)',
-    d: 'Cuando tengas clara tu dinámica, toca <b>Single</b> o <b>Double</b> para habilitar las entradas disponibles. <b>Single</b> pone una posición por zona; <b>Double</b> pone dos: la segunda entra donde iría el stop de la primera, de modo que una operación doble puede <b>salvar el stop</b> de una simple y darte mayor probabilidad de éxito.',
-    x: 'Double is recommended when you want to spread the risk and protect the trade better.'
+    d: 'Once your plan is clear, tap <b>Single</b> or <b>Double</b> to enable the available entries. <b>Single</b> places one position per zone; <b>Double</b> places two — the second enters where the stop of the first one would be, so a double trade can <b>save the stop</b> of a single one and raise your odds.',
+    x: 'Double is handy when you want to spread the risk and protect the trade better.'
   },
   {
-    t: 'ALWAYS trade with the trend',
-    d: 'Aunque el sistema marque buenas zonas, opera <b>a favor de la tendencia predominante</b>. No tiene sentido entrar en contra del rumbo grande del mercado: aunque la zona sea válida, la probabilidad de éxito baja y el resultado puede no ser el esperado.',
-    x: 'Primero mira hacia dónde va el mercado en general; después usa las zonas para entrar en esa dirección.'
+    t: 'Always trade with the trend',
+    d: 'Even when the system marks good zones, trade <b>in the direction of the dominant trend</b>. Entering against the larger direction of the market makes little sense: even a valid zone has lower odds, and the result may not be what you expect.',
+    x: 'First check where the market is heading overall; then use the zones to enter in that direction.'
   },
   {
     t: 'Manage risk wisely',
-    d: 'Las entradas vienen con una relación <b>riesgo/beneficio de 1:2</b>. Cuando lleves ganado el equivalente a lo que arriesgaste, un buen hábito es: en <b>futuros</b>, mover el stop al <b>precio de entrada</b> (así ya no puedes perder); en <b>spot</b>, no necesitas stop, porque <b>no hay precio de liquidación</b>: compras y vendes de forma orgánica con paciencia.',
-    x: 'In spot there is no liquidation, so trading calmly with adequate capital you can manage without stress.'
+    d: 'Entries come with a <b>1:2 risk/reward</b> ratio. Once you are up by what you risked, a good habit is: in <b>futures</b>, move the stop to your <b>entry price</b> (now you can no longer lose); in <b>spot</b>, you do not need a stop, because there is <b>no liquidation price</b> — you buy and sell organically, with patience.',
+    x: 'In spot there is no liquidation, so with the right capital you can trade calmly, without stress.'
   },
   {
     t: 'Share your signals and analysis',
-    d: 'Con <b>Share signal</b> generas una imagen y un texto con las entradas, stops y objetivos, ideal si quieres crear tu propio <b>grupo de señales</b> y cobrar por ese servicio: la plataforma te lo permite. Con <b>compartir imagen</b> envías el escenario actual del mercado a amigos o clientes.',
+    d: 'With <b>Share signal</b> you generate an image and a text with the entries, stops and targets — perfect if you want to run your own <b>signal group</b> and charge for it: the platform lets you. With <b>Share image</b> you send the current market picture to friends or clients.',
     x: 'Many users turn this into income: they set up signal or analysis groups using the platform.'
   },
   {
     t: 'Extra tools',
-    d: 'Puedes cambiar entre <b>tema claro y oscuro</b>, consultar el <b>calendario económico</b> actualizado de hoy en tiempo real, y analizar una <b>amplia variedad de criptomonedas</b> en múltiples temporalidades para encontrar más oportunidades.',
-    x: 'Everything is on the same screen, one tap away, so you never lose sight of an opportunity.'
+    d: 'Switch between <b>light and dark theme</b>, check the <b>economic calendar</b> updated live for today, and analyze a <b>wide variety of coins</b> across multiple timeframes to find more opportunities.',
+    x: 'Everything is on one screen, a tap away, so you never lose sight of an opportunity.'
   },
   {
     t: 'An honest recommendation',
-    d: 'Esto es <b>trading en los mercados financieros</b>. Aunque operes en spot, <b>arriesga solo lo que estés dispuesto a perder</b>: nunca inviertas tus ahorros personales ni dinero que necesites. Con paciencia, disciplina y el capital adecuado, Heat Pools es una herramienta poderosa para operar de forma más inteligente.',
-    x: 'Consistency is worth more than haste. Trade responsibly and let the tool work for you.'
+    d: 'This is <b>trading in the financial markets</b>. Even in spot, <b>risk only what you are willing to lose</b>: never invest your personal savings or money you need. With patience, discipline and the right capital, Heat Pools is a powerful tool to trade more intelligently.',
+    x: 'Consistency beats haste. Trade responsibly and let the tool work for you.'
   }
 ];
 
@@ -3184,7 +3184,7 @@ function pintarPaso() {
 
   c.innerHTML = `
     <div class="mua-card">
-      <div class="mua-n">${_pasoMu + 1} <em>de ${PASOS_MU.length}</em></div>
+      <div class="mua-n">${_pasoMu + 1} <em>of ${PASOS_MU.length}</em></div>
       <div class="mua-t">${p.t}</div>
       <div class="mua-d">${p.d}</div>
       <div class="mua-x2">${p.x}</div>
@@ -3195,8 +3195,8 @@ function pintarPaso() {
     </div>
 
     <div class="mua-acts">
-      ${_pasoMu > 0 ? '<button class="mua-atras" id="mua-atras">Atrás</button>' : ''}
-      <button class="mua-b" id="mua-sig">${ultimo ? 'Entendido' : 'Saber más'}</button>
+      ${_pasoMu > 0 ? '<button class="mua-atras" id="mua-atras">Back</button>' : ''}
+      <button class="mua-b" id="mua-sig">${ultimo ? 'Got it' : 'Learn more'}</button>
     </div>`;
 
   $('mua-sig').onclick = () => {
@@ -3225,6 +3225,12 @@ function estilos() {
   /* ── Barra ── */
   #mu-overlay .mu-barra{display:flex;align-items:center;gap:12px;flex:0 0 auto;position:relative;
     padding:9px 136px 9px 12px;background:#0b0e12;border-bottom:1px solid #1c2128}
+  /* Back arriba-izquierda: COPIA 1:1 del botón sw-back / lq-back de las demás secciones */
+  #mu-overlay .mu-back{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:36px;padding:0 12px 0 9px;border-radius:9px;
+    font-family:var(--sans,inherit);font-size:13px;font-weight:600;color:var(--ink2,#8b96a3);background:rgba(255,255,255,.05);
+    border:1px solid var(--line2,#2b3139);text-shadow:0 1px 4px rgba(0,0,0,.9);white-space:nowrap;cursor:pointer;margin-right:8px}
+  #mu-overlay .mu-back svg{width:12px;height:12px}
+  #mu-overlay .mu-back:hover{border-color:var(--gold-lo,#C9A84B);color:var(--gold,#E8B84B)}
   #mu-overlay .mu-sel{display:inline-flex;align-items:center;gap:9px;flex:0 0 auto;min-height:36px;
     padding:0 12px;border-radius:10px;background:#12161c;border:1px solid #2b3139;color:#eaecef;
     cursor:pointer;font-family:var(--mono,monospace);font-size:12.5px}
@@ -4763,7 +4769,7 @@ function guardarImagen() {
       g.textAlign = 'left';
       g.fillStyle = '#E8B84B';
       g.font = `800 ${19 * e2}px system-ui,sans-serif`;
-      g.fillText('Lógica Estructural Avanzada', x, yB + 34 * e2);
+      g.fillText('Heat Pools', x, yB + 34 * e2);
       g.font = `700 ${14 * e2}px ui-monospace,monospace`;
       g.fillStyle = '#C9A84B';
       g.fillText(WEB_DOMINIO, x, yB + 56 * e2);
@@ -4773,7 +4779,7 @@ function guardarImagen() {
       g.fillText(`${_par} · ${M.tf}`, out.width - 20 * e2, yB + 34 * e2);
       g.font = `${11 * e2}px ui-monospace,monospace`;
       g.fillStyle = '#6b7681';
-      g.fillText(new Date().toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
         out.width - 20 * e2, yB + 56 * e2);
       g.textAlign = 'left';
     };
@@ -4783,7 +4789,7 @@ function guardarImagen() {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `criptocuba-radar-${_par}-${Date.now()}.png`;
+      a.href = url; a.download = `decfreedom-heatpools-${_par}-${Date.now()}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     }, 'image/png');
