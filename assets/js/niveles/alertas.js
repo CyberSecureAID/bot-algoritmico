@@ -2,9 +2,9 @@
    sistema y sondeo periódico del mercado. Extraído de niveles.js sin
    cambiar la lógica (solo activarAlertasMarea ahora recibe par y tf). */
 
-import { N } from './estado.js?v=2';
-import { fmt } from './util.js?v=2';
-import { traerVelas, calcularATR, marea } from './motor.js?v=2';
+import { N } from './estado.js?v=1';
+import { fmt } from './util.js?v=1';
+import { traerVelas, calcularATR, marea } from './motor.js?v=1';
 
 let _alertaInt = null;
 let _audioCtx = null;

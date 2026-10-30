@@ -4,14 +4,14 @@
    dibujado. Extraído de niveles.js. Recibe recargar por initRender para no
    crear dependencias circulares. Sin cambios de lógica. */
 
-import { N } from './estado.js?v=2';
-import { T } from './i18n.js?v=2';
-import { fmt, esc, redondeado, hora, fecha } from './util.js?v=2';
-import { panelMarea } from './panel.js?v=2';
-import { dibujarHerramientas, dibAxy, dibXYa, _tfMs, DIB_FIBS, guardarDib } from './dibujo.js?v=2';
-import { gestos } from './interaccion.js?v=2';
-import { burbujas } from './burbujas.js?v=2';
-import { PARES } from './config.js?v=2';
+import { N } from './estado.js?v=1';
+import { T } from './i18n.js?v=1';
+import { fmt, esc, redondeado, hora, fecha } from './util.js?v=1';
+import { panelMarea } from './panel.js?v=1';
+import { dibujarHerramientas, dibAxy, dibXYa, _tfMs, DIB_FIBS, guardarDib } from './dibujo.js?v=1';
+import { gestos } from './interaccion.js?v=1';
+import { burbujas } from './burbujas.js?v=1';
+import { PARES } from './config.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 function velaEn(i) { return N.velas[i] || null; }
@@ -69,8 +69,8 @@ export function dibujar() {
   if (N.error) {
     if (esp) {
       esp.style.display = '';
-      esp.innerHTML = `<b>${esc(N.error)}</b><span>Check your connection and try again.</span>
-        <button class="nv-btn" id="nv-retry">Retry</button>`;
+      esp.innerHTML = `<b>${esc(N.error)}</b><span>Revisa tu conexión y vuelve a intentarlo.</span>
+        <button class="nv-btn" id="nv-retry">Reintentar</button>`;
       const b = $('nv-retry'); if (b) b.onclick = () => _recargar();
     }
     return;
@@ -165,7 +165,7 @@ export function dibujar() {
     /* [MEJORADO] Las etiquetas se confundían con el rojo de las
        velas. Ahora llevan sombra y borde claro: se despegan del
        fondo sin recurrir a neones. */
-    const txt = (esS ? 'BUY ' : 'SELL ') + fmt(n.p) + '  ·  ' + n.toques + (n.toques === 1 ? ' tap' : ' taps');
+    const txt = (esS ? 'COMPRA ' : 'VENDE ') + fmt(n.p) + '  ·  ' + n.toques + (n.toques === 1 ? ' toque' : ' toques');
     g.font = 'bold 11.5px ui-monospace,monospace';
     const w = g.measureText(txt).width + 24;
     const yEt = y - 16;
@@ -259,7 +259,7 @@ export function dibujar() {
       }
 
       // Etiqueta
-      const et = L.tipo === 'alcista' ? 'UPTREND' : 'DOWNTREND';
+      const et = L.tipo === 'alcista' ? 'TENDENCIA ALCISTA' : 'TENDENCIA BAJISTA';
       g.font = 'bold 9px ui-monospace,monospace';
       const w = g.measureText(et).width + 14;
       const xE = Math.max(4, Math.min(x1 - w - 4, xB - w / 2));
@@ -422,7 +422,7 @@ export function dibujar() {
       /* La banda tapaba las velas. Solo un borde suave. */
       g.fillStyle = 'rgba(232,184,75,.02)';
       g.fillRect(0, yA, x1, yB - yA);
-      ['RANGE TOP', 'RANGE FLOOR'].forEach((et, k) => {
+      ['TECHO DEL RANGO', 'SUELO DEL RANGO'].forEach((et, k) => {
         const y = k === 0 ? yA : yB;
         g.font = 'bold 9px ui-monospace,monospace';
         const w = g.measureText(et).width + 14;
@@ -469,7 +469,7 @@ export function dibujar() {
     g.lineTo(xDe, yN);
     g.stroke();
 
-    const et = (suelo ? 'DOUBLE BOTTOM' : 'DOUBLE TOP') + (d.confirmado ? ' ✓' : '');
+    const et = (suelo ? 'DOBLE SUELO' : 'DOBLE TECHO') + (d.confirmado ? ' ✓' : '');
     g.font = 'bold 9px ui-monospace,monospace';
     const w = g.measureText(et).width + 14;
     // Anclada al primer extremo del patrón, no al centro
@@ -494,12 +494,7 @@ export function dibujar() {
       const primero = Math.max(0, fin - ancho);
       if ((e.tipo === 'ob' || e.tipo === 'barrido') && e.iRef >= primero - 2 && e.iRef <= fin && (!_ultOb || e.iRef > _ultOb.iRef)) _ultOb = e;
     });
-    /* [T5] Menos ruido en el Faro: se dibujan solo las estructuras MÁS
-       RECIENTES (las viejas ya cumplieron su función y solo amontonaban
-       etiquetas). La zona institucional activa (_ultOb) siempre entra. */
-    const _estrDib = (N.estructuras || []).slice().sort((a, b) => (b.iRef || 0) - (a.iRef || 0)).slice(0, 3);
-    if (_ultOb && _estrDib.indexOf(_ultOb) === -1) _estrDib.push(_ultOb);
-    _estrDib.forEach((e) => {
+    (N.estructuras || []).forEach((e) => {
     const primero = Math.max(0, fin - ancho);
     if (e.iRef < primero - 2 || e.iRef > fin) return;
     const col = e.dir === 'alcista' ? '#2ee86a' : '#f6465d';
@@ -558,8 +553,8 @@ export function dibujar() {
       g.strokeRect(x0, yTop, x1 - x0, alto); g.setLineDash([]);
 
       // Etiqueta compacta y legible (fondo oscuro + texto del color), pegada a la banda
-      const et = e.tipo === 'ob' ? (largo ? 'DEMAND' : 'SUPPLY')
-                                 : (largo ? 'SWEEP ↓' : 'SWEEP ↑');
+      const et = e.tipo === 'ob' ? (largo ? 'DEMANDA' : 'OFERTA')
+                                 : (largo ? 'BARRIDO ↓' : 'BARRIDO ↑');
       g.font = 'bold 8.5px ui-monospace,monospace';
       const wLab = g.measureText(et).width + 14;
       etiquetas.push({
@@ -624,10 +619,10 @@ export function dibujar() {
           g.fillStyle = acc; redondeado(g, cxc, cyc + 11, 3, ch - 22, 2); g.fill();
           g.textAlign = 'left';
           g.fillStyle = acc; g.font = '800 10px "Chakra Petch", system-ui, sans-serif';
-          g.fillText(largo ? 'BUY · LONG' : 'SELL · SHORT', cxc + 12, cyc + 18);
+          g.fillText(largo ? 'COMPRA · LONG' : 'VENTA · SHORT', cxc + 12, cyc + 18);
           const divX = cxc + cw - 44;
           g.fillStyle = '#79838f'; g.font = 'bold 7.5px "Plus Jakarta Sans", system-ui, sans-serif';
-          g.fillText('TARGET', cxc + 12, cyc + 36); g.fillText('STOP', cxc + 12, cyc + 52);
+          g.fillText('OBJETIVO', cxc + 12, cyc + 36); g.fillText('STOP', cxc + 12, cyc + 52);
           g.fillStyle = '#2ee86a'; g.font = '800 12px "Chakra Petch", system-ui, sans-serif'; g.fillText(`+${gPct.toFixed(2)}%`, cxc + 60, cyc + 37);
           g.fillStyle = '#ff5b6e'; g.fillText(`−${rPct.toFixed(2)}%`, cxc + 60, cyc + 53);
           g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = 1; g.beginPath(); g.moveTo(divX, cyc + 26); g.lineTo(divX, cyc + ch - 9); g.stroke();
@@ -720,39 +715,6 @@ export function dibujar() {
       x1, y1, Y, pMin, pMax,
       simbolo: (PARES.find((p) => p.id === N.par) || {}).s || ''
     });
-  }
-
-  /* ══ MÁXIMO Y MÍNIMO DEL DÍA (24h) ══
-     [T5] Referencia SIEMPRE presente cuando el Faro está encendido. Antes el
-     máximo/mínimo solo aparecía a veces (dependía de que un nivel o el rango
-     cayeran ahí). Se calcula sobre las últimas 24h reales de velas. */
-  if (_verBase && N.velas.length) {
-    const desdeDia = N.velas[N.velas.length - 1].t - 24 * 3600 * 1000;
-    let hi = -Infinity, lo = Infinity;
-    for (let i = N.velas.length - 1; i >= 0; i--) {
-      const v = N.velas[i];
-      if (v.t < desdeDia) break;
-      if (v.h > hi) hi = v.h;
-      if (v.l < lo) lo = v.l;
-    }
-    if (hi > 0 && lo < Infinity) {
-      [['24H HIGH', hi, true], ['24H LOW', lo, false]].forEach(([lab, p, arriba]) => {
-        if (p < pMin || p > pMax) return;
-        const y = Y(p);
-        g.strokeStyle = 'rgba(139,150,163,.32)';
-        g.setLineDash([2, 5]); g.lineWidth = 1;
-        g.beginPath(); g.moveTo(0, y); g.lineTo(x1, y); g.stroke();
-        g.setLineDash([]);
-        const et = lab + ' ' + fmt(p);
-        g.font = 'bold 8.5px ui-monospace,monospace';
-        const w = g.measureText(et).width + 12;
-        g.fillStyle = 'rgba(11,15,22,.9)';
-        redondeado(g, x1 - w - 6, y + (arriba ? -16 : 3), w, 14, 4); g.fill();
-        g.fillStyle = '#9aa4af';
-        g.textAlign = 'left';
-        g.fillText(et, x1 - w, y + (arriba ? -6 : 13));
-      });
-    }
   }
 
   /* ── El precio actual ── */

@@ -422,14 +422,6 @@ export function estilos() {
     font-family:var(--mono,monospace);font-size:9.5px;letter-spacing:.5px;padding:0 8px}
   #nv-overlay .nv-senala{background:rgba(232,184,75,.12);border-color:rgba(232,184,75,.4);
     color:var(--gold,#E8B84B);font-weight:700}
-  /* "Show me where" activo por defecto: cuando está marcando, se rellena. */
-  #nv-overlay .nv-senala.on{background:rgba(232,184,75,.3);border-color:var(--gold,#E8B84B);color:#fff}
-  /* Botón cuadrado de idioma por analista (ES / EN), arriba a la derecha del popup. */
-  #nv-overlay .nv-lang{flex:0 0 auto;align-self:flex-start;width:30px;height:24px;border-radius:7px;cursor:pointer;
-    background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#8b96a3;
-    font-family:var(--mono,monospace);font-size:10px;font-weight:700;letter-spacing:.5px;padding:0;
-    display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s,color .15s}
-  #nv-overlay .nv-lang:hover{background:rgba(232,184,75,.14);border-color:rgba(232,184,75,.45);color:var(--gold,#E8B84B)}
   #nv-overlay .nv-herr{margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}
   #nv-overlay .nv-herr-t{font-family:var(--mono,monospace);font-size:8.5px;color:#5c6672;
     text-transform:uppercase;letter-spacing:1.2px;margin-bottom:6px}
