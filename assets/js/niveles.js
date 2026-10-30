@@ -119,6 +119,9 @@ export async function abrirNiveles() {
           <button class="nv-ico" id="nv-cal" title="Economic calendar">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4M7.5 13h2M11 13h2M14.5 13h2"/></svg>
           </button>
+          <button class="nv-ico ${N.verPerfil ? 'on' : ''}" id="nv-perfil" title="Liquidity profile">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M6.5 8.5h9M6.5 12h6M6.5 15.5h11"/></svg>
+          </button>
           <button class="nv-ico" id="nv-foto" title="Share image">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
@@ -176,6 +179,7 @@ export async function abrirNiveles() {
   { const bk = $('nv-back'); if (bk) bk.onclick = cerrar; }
   $('nv-ayuda').onclick = () => ayuda();
   { const cb = $('nv-cal'); if (cb) cb.onclick = () => { try { window.abrirCalendario && window.abrirCalendario(); } catch (_) {} }; }
+  { const pb = $('nv-perfil'); if (pb) pb.onclick = () => { N.verPerfil = !N.verPerfil; pb.classList.toggle('on', N.verPerfil); dibujar(); }; }
   $('nv-foto').onclick = () => guardarImagen(N.par, N.tf);
   /* ── Superponer: convierte el análisis en una ventana flotante que se
      puede mover, agrandar/achicar y queda por encima de todo. Funciona
