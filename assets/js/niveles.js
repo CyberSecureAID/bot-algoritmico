@@ -356,6 +356,18 @@ async function recargar() {
       sembrar(hashCadena(N.par + '|' + N.tf) + new Date().getHours() * 101);
       analizar(N.par);
 
+      /* [T5] Línea de tendencia ESTABLE: antes parpadeaba (salía y desaparecía
+         entre refrescos). Si esta vez no salió pero la tendencia no ha cambiado
+         de dirección, se mantiene la última buena. Guardada por moneda para no
+         arrastrar la línea de otra. */
+      if (N.linea) {
+        N._lineaFija = { par: N.par, tipo: N.linea.tipo, linea: N.linea };
+      } else if (N._lineaFija && N._lineaFija.par === N.par && N.tendencia &&
+                 ((N.tendencia.dir === 'alcista' && N._lineaFija.tipo === 'alcista') ||
+                  (N.tendencia.dir === 'bajista' && N._lineaFija.tipo === 'bajista'))) {
+        N.linea = N._lineaFija.linea;
+      }
+
       /* [CORREGIDO] El plan cambiaba de dirección entre refrescos y
          eso deja al usuario tirado a medio trade. Ahora una vez
          fijado, se mantiene mientras la tendencia no cambie de
