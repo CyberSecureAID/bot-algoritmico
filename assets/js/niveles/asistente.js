@@ -209,6 +209,15 @@ export function analizar(par) {
 
   /* ══════════════════ 1. SETUP ══════════════════ */
   const sesgo = dirM || (alcC ? 'alcista' : bajC ? 'bajista' : null);   // la mayor manda; si no hay, la corta
+
+  /* [T4·motor] Zonas institucionales (order block) y barridos SOLO a favor
+     del sesgo. Con tendencia bajista clara, pintar una "DEMAND" verde debajo
+     es una incongruencia que confunde: el Faro refuerza el análisis, no lo
+     contradice. BOS/CHoCH se mantienen: son avisos de estructura. */
+  if (sesgo) {
+    N.estructuras = (N.estructuras || []).filter((e) =>
+      (e.tipo !== 'ob' && e.tipo !== 'barrido') || e.dir === sesgo);
+  }
   const imp = N.impulso;
   const candidatos = [];
 
