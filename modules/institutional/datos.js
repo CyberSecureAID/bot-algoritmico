@@ -8,26 +8,13 @@
    un hosting estático: esos paneles se conectan en el "entorno conectado" que
    describe el disclaimer. Cada llamada lleva timeout y cadena de respaldo. */
 
-import { PARES } from '../../assets/js/niveles/config.js?v=1';
+import { PARES, TFS } from '../../assets/js/niveles/config.js?v=1';
 
-export { PARES };
+export { PARES, TFS };   // MISMAS temporalidades clásicas que el resto de secciones
 
 const BINANCE = 'https://api.binance.com/api/v3';
 const COINGECKO = 'https://api.coingecko.com/api/v3';
 const FNG = 'https://api.alternative.me/fng/?limit=1';
-
-/* rango → intervalo/límite de Binance (tabla de OpenTerminal). */
-export const RANGOS = {
-  '1D':  { interval: '5m',  limit: 288 },
-  '5D':  { interval: '15m', limit: 480 },
-  '1M':  { interval: '1h',  limit: 720 },
-  '6M':  { interval: '4h',  limit: 1080 },
-  'YTD': { interval: '1d',  limit: 400 },
-  '1Y':  { interval: '1d',  limit: 365 },
-  '5Y':  { interval: '1w',  limit: 260 },
-  'MAX': { interval: '1M',  limit: 200 }
-};
-export const ORDEN_RANGOS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', 'MAX'];
 
 async function traer(url, ms = 8000) {
   const ctl = new AbortController();
@@ -39,9 +26,10 @@ async function traer(url, ms = 8000) {
   } finally { clearTimeout(t); }
 }
 
-/* Velas OHLCV. `time` en SEGUNDOS para lightweight-charts. */
-export async function velas(simbolo, rango = '6M') {
-  const { interval, limit } = RANGOS[rango] || RANGOS['6M'];
+/* Velas OHLCV. `time` en SEGUNDOS para lightweight-charts. El intervalo es una
+   temporalidad clásica de Binance (1m, 5m, 1h, 4h, 1d, 1w…), la misma lista que
+   usan las demás secciones (config.js TFS). */
+export async function velas(simbolo, interval = '1h', limit = 500) {
   const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${limit}`);
   return j.map((k) => ({
     time: Math.floor(k[0] / 1000),
