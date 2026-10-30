@@ -723,7 +723,7 @@ function menuPares() {
       ${['cripto', 'divisa', 'materia'].map((gr) => {
         const lista = PARES.filter((p) => (p.grupo || 'cripto') === gr);
         if (!lista.length) return '';
-        const tit = { cripto: 'Criptomonedas', divisa: 'Forex', materia: 'Materias primas' }[gr];
+        const tit = { cripto: 'Crypto', divisa: 'Forex', materia: 'Commodities' }[gr];
         return `<div class="nv-grupo">${esc(T(tit))}</div>` + lista.map((p) => `
           <button class="nv-op ${p.id === N.par ? 'on' : ''}" data-np="${p.id}"
                   data-busca="${esc((p.id + ' ' + p.n).toLowerCase())}">

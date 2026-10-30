@@ -13,7 +13,7 @@
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 import * as wallet from './wallet.js?v=129';
 import { montarBarra } from './niveles/barra.js?v=1';   // la misma barra de herramientas de Smart Pools
-import { PARES } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
+import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 
 /* ══════════════════════════════════════════════════════════════
    SUSCRIPCIÓN A LAS HERRAMIENTAS PRO
@@ -2190,9 +2190,9 @@ async function ponerLogosLq() {
   }
   document.querySelectorAll('.lq-logo').forEach((el) => {
     const url = _logosLq && el.dataset.cg && _logosLq[el.dataset.cg];
-    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; el.classList.remove('con-ico'); }
-    else if (el.dataset.ico) { el.style.backgroundImage = ''; el.classList.remove('con'); el.textContent = el.dataset.ico; el.classList.add('con-ico'); }
-    else { el.textContent = ''; el.classList.remove('con-ico'); }
+    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; el.classList.remove('con-ico', 'con-svg'); }
+    else if (el.dataset.ico) { el.style.backgroundImage = ''; el.classList.remove('con'); pintarIcono(el); }
+    else { el.textContent = ''; el.classList.remove('con-ico', 'con-svg'); }
   });
 }
 
@@ -2639,17 +2639,21 @@ function estilos() {
     border:1px solid #2b3139;background:#0b0e12;color:#eaecef;
     font-family:var(--sans,sans-serif);font-size:13px;min-height:38px}
   .lq-buscar:focus{outline:none;border-color:var(--gold-soft,#C9A84B)}
-  #lq-overlay .lq-filtro{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;margin:2px 0 6px;padding:0 11px;
-    border-radius:9px;border:1px solid #2b3139;background:rgba(255,255,255,.03);color:#9aa4af;cursor:pointer;
-    font-family:var(--mono,monospace);font-size:10px;letter-spacing:.3px}
-  #lq-overlay .lq-filtro:hover{border-color:#C9A84B}
-  #lq-overlay .lq-filtro.on{background:rgba(232,184,75,.14);border-color:#E8B84B;color:#E8B84B}
-  #lq-overlay .lq-fl-ic{font-size:12px;flex:0 0 auto}
-  #lq-overlay .lq-cat{font-family:var(--mono,monospace);font-size:8.5px;color:#E8B84B;letter-spacing:1px;
-    text-transform:uppercase;padding:8px 4px 4px;opacity:.8}
-  #lq-overlay .lq-op.no-operable b{color:#5c6672}
-  #lq-overlay .lq-op.no-operable:after{content:'analysis only';margin-left:auto;font-family:var(--mono,monospace);
-    font-size:8px;color:#5c6672;letter-spacing:.3px;flex:0 0 auto}
+  /* [UNIFICADO] Mismo botón de filtro que Smart Pools (nv). El menú (.lq-menu)
+     se inserta en el body, por eso se ancla a .lq-menu, no a #lq-overlay. */
+  .lq-menu .lq-filtro{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;
+    padding:0 11px;margin-bottom:6px;border-radius:9px;cursor:pointer;
+    background:rgba(255,255,255,.04);border:1px solid #2b3139;color:#8b96a3;
+    font-family:"Plus Jakarta Sans", system-ui, sans-serif;font-size:12px;text-align:left}
+  .lq-menu .lq-filtro:hover{border-color:var(--gold-soft,#C9A84B)}
+  .lq-menu .lq-filtro.on{background:rgba(232,184,75,.14);border-color:var(--gold,#E8B84B);
+    color:var(--gold,#E8B84B);font-weight:600}
+  .lq-menu .lq-fl-ic{font-size:12px;flex:0 0 auto}
+  .lq-menu .lq-cat{font-family:var(--mono,monospace);font-size:8.5px;color:var(--gold,#E8B84B);
+    text-transform:uppercase;letter-spacing:1.3px;padding:9px 11px 4px}
+  .lq-menu .lq-op.no-operable b{color:#5c6672}
+  .lq-menu .lq-op.no-operable:after{content:'analysis only';margin-left:auto;
+    font-family:var(--mono,monospace);font-size:8px;color:#4a525c;flex:0 0 auto}
   .lq-op{display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border-radius:9px;
     background:transparent;border:none;color:#b7bdc6;cursor:pointer;text-align:left;min-height:40px}
   .lq-op:hover{background:rgba(255,255,255,.05)}
@@ -2659,6 +2663,8 @@ function estilos() {
   .lq-logo.con-ico{background:#1c2127;color:#e8ecf2;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
   .lq-logo.con{background-size:cover;background-position:center}
   .lq-logo.con{background-color:transparent;border-color:transparent}
+  .lq-logo.con-svg{background:none;border-color:transparent;overflow:hidden;padding:0}
+  .lq-logo.con-svg svg{width:100%;height:100%;display:block}
   .lq-op b{font-family:var(--mono,monospace);font-size:12px;font-weight:700;min-width:44px}
   .lq-op span{flex:1;font-family:var(--sans,sans-serif);font-size:12px;color:#7d8794;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
