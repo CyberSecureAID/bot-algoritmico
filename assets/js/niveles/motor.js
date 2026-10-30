@@ -79,7 +79,77 @@ export function pivotes(velas, lado = 3) {
    crecientes = alcista. Decrecientes = bajista. Mezclados = rango.
    Es como lee el mercado un trader de verdad.
    ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   1b. SWINGS (ZigZag por ATR) — los giros que ve un trader
+
+   Un giro cuenta solo si el precio se mueve en contra al menos
+   max(1,8 × ATR, 1 %). Así se ignoran los micro-pivotes de 3 velas y
+   quedan los máximos y mínimos de verdad: los que un ojo entrenado
+   marca en la gráfica. Devuelve {altos, bajos} alternados y {lista}.
+   ══════════════════════════════════════════════════════════════ */
+export function swings(velas, atr) {
+  const altos = [], bajos = [], lista = [];
+  if (velas.length < 20) return { altos, bajos, lista };
+  const ref = velas[velas.length - 1].c || 1;
+  const umbral = Math.max((atr || 0) * 1.8, ref * 0.01);
+  let dir = 0, extI = 0, extP = velas[0].c;
+  // arranque: busca la primera dirección
+  for (let i = 1; i < velas.length; i++) {
+    const v = velas[i];
+    if (dir === 0) {
+      if (v.h - extP >= umbral) { dir = 1; extI = i; extP = v.h; }
+      else if (extP - v.l >= umbral) { dir = -1; extI = i; extP = v.l; }
+      else if (v.h > extP && v.l < extP) { /* nada */ }
+      continue;
+    }
+    if (dir === 1) {
+      if (v.h >= extP) { extP = v.h; extI = i; }
+      else if (extP - v.l >= umbral) {
+        altos.push({ i: extI, p: extP, t: velas[extI].t }); lista.push({ i: extI, p: extP, tipo: 'H' });
+        dir = -1; extP = v.l; extI = i;
+      }
+    } else {
+      if (v.l <= extP) { extP = v.l; extI = i; }
+      else if (v.h - extP >= umbral) {
+        bajos.push({ i: extI, p: extP, t: velas[extI].t }); lista.push({ i: extI, p: extP, tipo: 'L' });
+        dir = 1; extP = v.h; extI = i;
+      }
+    }
+  }
+  /* El extremo en curso (aún sin confirmar giro) también cuenta como
+     referencia: es el mínimo/máximo más reciente que el trader ve. */
+  if (dir === 1) { altos.push({ i: extI, p: extP, t: velas[extI].t, enCurso: true }); lista.push({ i: extI, p: extP, tipo: 'H', enCurso: true }); }
+  if (dir === -1) { bajos.push({ i: extI, p: extP, t: velas[extI].t, enCurso: true }); lista.push({ i: extI, p: extP, tipo: 'L', enCurso: true }); }
+  return { altos, bajos, lista, umbral };
+}
+
 export function tendencia(velas, piv) {
+  /* [T4·motor] Antes decidía con los 2 últimos micro-pivotes (ventana de 3
+     velas): en 1h eso es ruido y daba "lateral" con tendencias evidentes.
+     Ahora: secuencia de los últimos swings reales (ZigZag por ATR) +
+     pendiente de los cierres. */
+  if (piv.lista && piv.lista.length >= 4) {
+    const H = piv.altos.slice(-3), L = piv.bajos.slice(-3);
+    let up = 0, down = 0, comp = 0;
+    for (let k = 1; k < H.length; k++) { comp++; if (H[k].p > H[k - 1].p) up++; else down++; }
+    for (let k = 1; k < L.length; k++) { comp++; if (L[k].p > L[k - 1].p) up++; else down++; }
+    const n = Math.min(60, velas.length);
+    const tr = velas.slice(-n);
+    const mov = ((tr[tr.length - 1].c - tr[0].c) / tr[0].c) * 100;
+    // pendiente de cierres normalizada por precio
+    let sx = 0, sy = 0, sxy = 0, sxx = 0;
+    tr.forEach((v, i) => { sx += i; sy += v.c; sxy += i * v.c; sxx += i * i; });
+    const den = n * sxx - sx * sx;
+    const pend = den ? ((n * sxy - sx * sy) / den) / (sy / n) * n * 100 : 0;   // % a lo largo del tramo
+    const fuerza = Math.min(100, Math.abs(mov) * 8 + Math.abs(pend) * 2);
+    if (comp >= 2) {
+      if (down >= comp - 0 && pend <= 0) return { dir: 'bajista', fuerza, mov, swings: piv.lista.slice(-6) };
+      if (up >= comp - 0 && pend >= 0) return { dir: 'alcista', fuerza, mov, swings: piv.lista.slice(-6) };
+      if (down >= Math.ceil(comp * 0.75) && pend < 0) return { dir: 'bajista', fuerza, mov, swings: piv.lista.slice(-6) };
+      if (up >= Math.ceil(comp * 0.75) && pend > 0) return { dir: 'alcista', fuerza, mov, swings: piv.lista.slice(-6) };
+    }
+    return { dir: 'lateral', fuerza: 0, mov, swings: piv.lista.slice(-6) };
+  }
   const ua = piv.altos.slice(-3), ub = piv.bajos.slice(-3);
   /* Si no hay pivotes suficientes, se mira el movimiento neto: es
      mejor que devolver "indefinida" y quedarse sin lectura. */
@@ -613,9 +683,10 @@ export function calcularTendencia(velas, piv, tend) {
    ══════════════════════════════════════════════════════════════ */
 export function calcularTendenciaMayor(velas, piv) {
   if (velas.length < 80) return null;
+  /* Con swings reales bastan 3 puntos para una línea mayor fiable */
   const desde = Math.max(0, velas.length - 240);
   const recta = (pts) => {
-    const n = pts.length; if (n < 4) return null;
+    const n = pts.length; if (n < 3) return null;
     let sx = 0, sy = 0, sxy = 0, sxx = 0;
     pts.forEach((p) => { sx += p.i; sy += p.p; sxy += p.i * p.p; sxx += p.i * p.i; });
     const den = n * sxx - sx * sx; if (Math.abs(den) < 1e-9) return null;
@@ -627,8 +698,8 @@ export function calcularTendenciaMayor(velas, piv) {
   const bajos = piv.bajos.filter((p) => p.i >= desde).slice(-10);
   const altos = piv.altos.filter((p) => p.i >= desde).slice(-10);
   const rA = recta(bajos), rB = recta(altos);
-  const okA = rA && rA.m > 0 && rA.r2 >= 0.5;
-  const okB = rB && rB.m < 0 && rB.r2 >= 0.5;
+  const okA = rA && rA.m > 0 && rA.r2 >= 0.35;
+  const okB = rB && rB.m < 0 && rB.r2 >= 0.35;
   const ini = velas[desde].c, fin = velas[velas.length - 1].c;
   const movPct = ((fin - ini) / ini) * 100;
   /* Coherencia: una línea alcista con el precio neto cayendo (o al revés)

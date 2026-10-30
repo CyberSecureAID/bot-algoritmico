@@ -19,7 +19,7 @@
 
 import { N } from './estado.js?v=1';
 import { elegir, fmt } from './util.js?v=1';
-import { pivotes, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, calcularTendenciaMayor, detectarDobles, marea, calcularATR, construirPlan } from './motor.js?v=1';
+import { pivotes, swings, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, calcularTendenciaMayor, detectarDobles, marea, calcularATR, construirPlan } from './motor.js?v=1';
 
 const dos = (en, es) => ({ en, es });
 const pc = (x, d = 1) => (x >= 0 ? '+' : '') + x.toFixed(d) + '%';
@@ -38,16 +38,18 @@ export function analizar(par) {
   const v = N.velas;
   if (v.length < 40) { N.mensajes = []; return; }
 
-  const piv = pivotes(v);
-  N.tendencia = tendencia(v, piv);
+  const piv = pivotes(v);                 // micro-pivotes: para niveles (toques) y dobles
+  N.atr = calcularATR(v);
+  const zz = swings(v, N.atr);            // swings reales (ZigZag por ATR): tendencia, líneas, estructura
+  N.swings = zz;
+  N.tendencia = tendencia(v, zz);
   N.rango = detectarRango(v);
   N.impulso = detectarImpulso(v);
-  N.estructuras = detectarEstructuras(v, piv);
-  N.linea = calcularTendencia(v, piv, N.tendencia);
-  N.lineaMayor = calcularTendenciaMayor(v, piv);
+  N.estructuras = detectarEstructuras(v, zz);
+  N.linea = calcularTendencia(v, zz, N.tendencia);
+  N.lineaMayor = calcularTendenciaMayor(v, zz);
   N.precio = v[v.length - 1].c;
   N.dobles = detectarDobles(v, piv, N.precio);
-  N.atr = calcularATR(v);
   N.marea = marea(v, N.atr);
   N.niveles = calcularNiveles(v, piv, N.precio);
   if (N.rango) {
@@ -121,11 +123,32 @@ export function analizar(par) {
     dos(`24h change ${pc(chg24, 2)}; price sits ${pos24 > 66 ? 'near the day high' : pos24 < 34 ? 'near the day low' : 'mid-range'} (${fmt(l24)}–${fmt(h24)}). Volatility ${atrPct.toFixed(2)}% per candle.`,
         `Cambio 24h ${pc(chg24, 2)}; el precio está ${pos24 > 66 ? 'cerca del máximo del día' : pos24 < 34 ? 'cerca del mínimo del día' : 'a media banda'} (${fmt(l24)}–${fmt(h24)}). Volatilidad ${atrPct.toFixed(2)}% por vela.`)
   ]);
+  /* Último swing: qué acaba de hacer el precio (ruptura de mínimo/máximo, rebote…) */
+  const L2 = zz.bajos.slice(-2), H2 = zz.altos.slice(-2);
+  let fraseSwing = dos('', '');
+  const recienteL = L2.length === 2 && (v.length - 1 - L2[1].i) <= 40;
+  const recienteH = H2.length === 2 && (v.length - 1 - H2[1].i) <= 40;
+  if (recienteL && L2[1].p < L2[0].p && (!recienteH || L2[1].i > H2[1].i || H2[1].p < H2[0].p)) {
+    const hPrev = zz.altos.filter((h) => h.i < L2[1].i).slice(-1)[0];
+    const topeAntes = hPrev ? hPrev.p : L2[0].p;   // último máximo swing antes del nuevo mínimo: de ahí arranca la pierna
+    const caida = ((L2[1].p - topeAntes) / topeAntes) * 100;
+    const reb = ((precio - L2[1].p) / L2[1].p) * 100;
+    fraseSwing = dos(` Latest move: price broke the previous low (${fmt(L2[0].p)}) and printed a new low at ${fmt(L2[1].p)} (${pc(caida)} leg); it has since bounced ${pc(reb)} — a retest, not a reversal, until ${fmt(L2[0].p)} is reclaimed with a close.`,
+                     ` Último movimiento: el precio rompió el mínimo previo (${fmt(L2[0].p)}) y marcó un nuevo mínimo en ${fmt(L2[1].p)} (pierna de ${pc(caida)}); desde ahí rebota ${pc(reb)} — un retesteo, no un giro, mientras no recupere ${fmt(L2[0].p)} con un cierre.`);
+  } else if (recienteH && H2[1].p > H2[0].p && (!recienteL || H2[1].i > L2[1].i || L2[1].p > L2[0].p)) {
+    const lPrev = zz.bajos.filter((l) => l.i < H2[1].i).slice(-1)[0];
+    const sueloAntes = lPrev ? lPrev.p : H2[0].p;
+    const subida = ((H2[1].p - sueloAntes) / sueloAntes) * 100;
+    const ret = ((precio - H2[1].p) / H2[1].p) * 100;
+    fraseSwing = dos(` Latest move: price broke the previous high (${fmt(H2[0].p)}) and printed a new high at ${fmt(H2[1].p)} (${pc(subida)} leg); it has since pulled back ${pc(ret)} — a retest, not a reversal, until ${fmt(H2[0].p)} is lost with a close.`,
+                     ` Último movimiento: el precio rompió el máximo previo (${fmt(H2[0].p)}) y marcó un nuevo máximo en ${fmt(H2[1].p)} (pierna de ${pc(subida)}); desde ahí retrocede ${pc(ret)} — un retesteo, no un giro, mientras no pierda ${fmt(H2[0].p)} con un cierre.`);
+  }
+
   const contexto = {
     tipo: 'tendencia', p: precio, prioridad: 5,
     iAncla: mayor ? mayor.pts[Math.floor(mayor.pts.length / 2)].i : (N.linea ? N.linea.pts[0].i : null),
     titulo: tituloC,
-    txt: dos(`${fraseMayor.en} ${fraseCorta.en} ${frase24.en}`, `${fraseMayor.es} ${fraseCorta.es} ${frase24.es}`),
+    txt: dos(`${fraseMayor.en} ${fraseCorta.en}${fraseSwing.en} ${frase24.en}`, `${fraseMayor.es} ${fraseCorta.es}${fraseSwing.es} ${frase24.es}`),
     hacer: hacerC,
     detalle: [
       dos(`Major trend: ${mayor ? (alcM ? 'bullish' : 'bearish') + ' · ' + pc(mayor.movPct) + ' over ' + durM.en : 'none'}`, `Tendencia mayor: ${mayor ? (alcM ? 'alcista' : 'bajista') + ' · ' + pc(mayor.movPct) + ' en ' + durM.es : 'ninguna'}`),
@@ -212,6 +235,24 @@ export function analizar(par) {
     const plan = construirPlan('venta', rCerca.p, rCerca.p * 1.006, N.atr, objetivo);
     if (plan) candidatos.push({ clave: 'nivel', largo: false, plan, nivel: rCerca, puntos: 25 + rCerca.toques * 3 + Math.min(20, plan.rr * 5) });
   }
+  /* d) RETESTEO DEL NIVEL ROTO: rompió el mínimo (o máximo) previo con fuerza y
+     vuelve a él por el otro lado. Es el escenario de continuación más limpio. */
+  if (L2.length === 2 && L2[1].p < L2[0].p && sesgo === 'bajista') {
+    const roto = L2[0].p, distR = ((roto - precio) / precio) * 100;         // cuánto falta para volver al nivel roto (desde abajo)
+    if (distR > -0.8 && distR < 3.5) {
+      const objetivo = Math.min(L2[1].p, sCerca && sCerca.p < precio ? sCerca.p : L2[1].p);
+      const plan = construirPlan('venta', roto, roto * 1.006, N.atr, objetivo);
+      if (plan) candidatos.push({ clave: 'retesteo', largo: false, plan, roto, nuevo: L2[1].p, puntos: 35 + Math.min(20, plan.rr * 5) });
+    }
+  }
+  if (H2.length === 2 && H2[1].p > H2[0].p && sesgo === 'alcista') {
+    const roto = H2[0].p, distR = ((precio - roto) / precio) * 100;
+    if (distR > -0.8 && distR < 3.5) {
+      const objetivo = Math.max(H2[1].p, rCerca && rCerca.p > precio ? rCerca.p : H2[1].p);
+      const plan = construirPlan('compra', roto, roto * 0.994, N.atr, objetivo);
+      if (plan) candidatos.push({ clave: 'retesteo', largo: true, plan, roto, nuevo: H2[1].p, puntos: 35 + Math.min(20, plan.rr * 5) });
+    }
+  }
   /* c) Doble suelo/techo confirmado */
   (N.dobles || []).filter((d) => d.confirmado).forEach((d) => {
     const largo = d.tipo === 'dobleSuelo';
@@ -247,6 +288,21 @@ export function analizar(par) {
                   dos(`Entry is now, not later: the zone is being tested. Stop ${fmt(plan.stop)}, first target ${fmt(plan.obj[0].p)}, main target ${fmt(plan.objetivo)}.`, `La entrada es ahora, no después: la zona se está probando. Stop ${fmt(plan.stop)}, primer objetivo ${fmt(plan.obj[0].p)}, objetivo principal ${fmt(plan.objetivo)}.`)])
         : elegir([dos(`Not yet: set an alert at ${fmt(p)}. Enter only when price tags the zone and holds it; entering ${apc(i.distZona)} early turns a ${rr}:1 trade into a coin flip.`, `Todavía no: pon una alerta en ${fmt(p)}. Entra solo cuando el precio toque la zona y la aguante; entrar ${apc(i.distZona)} antes convierte un ${rr}:1 en cara o cruz.`),
                   dos(`Prepare the order at ${fmt(p)} with stop ${fmt(plan.stop)} and let price come to you.`, `Prepara la orden en ${fmt(p)} con stop ${fmt(plan.stop)} y deja que el precio venga a ti.`)]);
+    } else if (mejor.clave === 'retesteo') {
+      p = mejor.roto; marca = null;
+      titulo = elegir([dos(largo ? `Breakout retest: buy ${fmt(mejor.roto)}` : `Breakdown retest: sell ${fmt(mejor.roto)}`, largo ? `Retesteo de ruptura: comprar ${fmt(mejor.roto)}` : `Retesteo de ruptura: vender ${fmt(mejor.roto)}`),
+                       dos(largo ? 'Old resistance turned support' : 'Old support turned resistance', largo ? 'Resistencia que ahora es soporte' : 'Soporte que ahora es resistencia'),
+                       dos(`Continuation ${largo ? 'long' : 'short'}, ${rr}:1`, `Continuación ${largo ? 'larga' : 'corta'}, ${rr}:1`)]);
+      txt = elegir([
+        dos(`Price broke the previous ${largo ? 'high' : 'low'} at ${fmt(mejor.roto)} and made a new ${largo ? 'high' : 'low'} at ${fmt(mejor.nuevo)}. Now it is coming back to ${fmt(mejor.roto)} from the ${largo ? 'top' : 'bottom'}: the broken level should act as ${largo ? 'support' : 'resistance'}, ${conMayor.en}. Stop ${fmt(plan.stop)}, target ${fmt(plan.objetivo)}: ${rr} to 1.`,
+            `El precio rompió el ${largo ? 'máximo' : 'mínimo'} previo en ${fmt(mejor.roto)} e hizo un nuevo ${largo ? 'máximo' : 'mínimo'} en ${fmt(mejor.nuevo)}. Ahora vuelve a ${fmt(mejor.roto)} por ${largo ? 'arriba' : 'abajo'}: el nivel roto debe actuar como ${largo ? 'soporte' : 'resistencia'}, ${conMayor.es}. Stop ${fmt(plan.stop)}, objetivo ${fmt(plan.objetivo)}: ${rr} a 1.`),
+        dos(`Classic continuation: ${largo ? 'breakout' : 'breakdown'} of ${fmt(mejor.roto)}, new ${largo ? 'high' : 'low'} at ${fmt(mejor.nuevo)}, and a pullback into the broken level. ${largo ? 'Buy' : 'Sell'} the retest with stop ${fmt(plan.stop)} and target ${fmt(plan.objetivo)} (${rr}:1).`,
+            `Continuación de libro: ${largo ? 'ruptura' : 'rotura'} de ${fmt(mejor.roto)}, nuevo ${largo ? 'máximo' : 'mínimo'} en ${fmt(mejor.nuevo)}, y retroceso al nivel roto. ${largo ? 'Compra' : 'Vende'} el retesteo con stop ${fmt(plan.stop)} y objetivo ${fmt(plan.objetivo)} (${rr}:1).`)
+      ]);
+      hacer = elegir([dos(`Wait for price to reach ${fmt(mejor.roto)} and get rejected there (a ${largo ? 'bullish' : 'bearish'} close). Entry at the rejection, stop ${fmt(plan.stop)}. If price closes ${largo ? 'below' : 'above'} ${fmt(plan.stop)}, the ${largo ? 'breakout' : 'breakdown'} failed: stand aside.`,
+                          `Espera a que el precio llegue a ${fmt(mejor.roto)} y sea rechazado ahí (un cierre ${largo ? 'alcista' : 'bajista'}). Entrada en el rechazo, stop ${fmt(plan.stop)}. Si cierra ${largo ? 'debajo de' : 'encima de'} ${fmt(plan.stop)}, la ruptura falló: fuera.`),
+                      dos(`Do not ${largo ? 'buy' : 'sell'} here mid-air: the edge is at ${fmt(mejor.roto)}. Order there, stop ${fmt(plan.stop)}, first target ${fmt(plan.obj[0].p)}, main target ${fmt(plan.objetivo)}.`,
+                          `No ${largo ? 'compres' : 'vendas'} aquí en el aire: la ventaja está en ${fmt(mejor.roto)}. Orden ahí, stop ${fmt(plan.stop)}, primer objetivo ${fmt(plan.obj[0].p)}, objetivo principal ${fmt(plan.objetivo)}.`)]);
     } else if (mejor.clave === 'nivel') {
       const n = mejor.nivel; p = n.p; marca = null;
       titulo = elegir([dos(largo ? `Buy zone at ${fmt(n.p)}` : `Sell zone at ${fmt(n.p)}`, largo ? `Zona de compra en ${fmt(n.p)}` : `Zona de venta en ${fmt(n.p)}`),
