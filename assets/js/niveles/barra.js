@@ -141,7 +141,7 @@ export function montarBarra(host, opciones = {}) {
     const r = host.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
     if (x < 20) { clearTimeout(tHide); tools.classList.add('abierta'); }
-    else if (x > 90) { clearTimeout(tHide); tHide = setTimeout(() => tools.classList.remove('abierta'), 300); }
+    else if (x > 90 && !tools.dataset.pop) { clearTimeout(tHide); tHide = setTimeout(() => tools.classList.remove('abierta'), 300); }
     if (N._geo === geo) aplicarCaptura(x, y);
   });
   host.addEventListener('click', () => setTimeout(() => aplicarCaptura(), 0), true);

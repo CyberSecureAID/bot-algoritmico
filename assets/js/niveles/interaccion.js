@@ -101,7 +101,10 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     if (CON_PUNTEADO.includes(t)) h += `<span class="nv-tb-sep"></span><button class="nv-tb-b ${o.punteado ? 'on' : ''}" data-a="dash" title="Punteado">╌</button>`;
     if (esPos || t === 'rect') h += '<span class="nv-tb-sep"></span>' + [['Suave', .45], ['Media', .7], ['Fuerte', 1]].map((e) => `<button class="nv-tb-b nv-tb-tx ${((o.intensidad != null ? o.intensidad : 1) === e[1]) ? 'on' : ''}" data-int="${e[1]}" title="Intensidad del color">${e[0]}</button>`).join('');
     if (t === 'fib') h += `<span class="nv-tb-sep"></span><button class="nv-tb-b nv-tb-niv" data-a="fibpop" title="Niveles">Niveles</button>`;
-    h += `<span class="nv-tb-sep"></span><button class="nv-tb-b nv-tb-del" data-a="del" title="Eliminar"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>`;
+    /* [FIX] El botón Eliminar solo cuando hay un dibujo SELECCIONADO. Antes
+       salía siempre: con una herramienta recién elegida y nada dibujado, el
+       botón no hacía nada y la barra parecía rota. */
+    if (objSel()) h += `<span class="nv-tb-sep"></span><button class="nv-tb-b nv-tb-del" data-a="del" title="Eliminar"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>`;
     topbar.innerHTML = h; topbar.style.display = 'flex';
   };
   const aplicar = (prop, val) => {
@@ -114,10 +117,14 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
 
   // ── Popups flotantes (color, niveles Fibonacci, tipos de línea) ──
   let popActual = null;
-  const cerrarPopups = () => { if (grafEl) grafEl.querySelectorAll('.nv-pop').forEach((p) => p.remove()); popActual = null; };
+  /* [FIX barra] Mientras hay un popup abierto (líneas, cursores, color, fib,
+     limpiar) la barra NO se oculta: se marca tools.dataset.pop y todos los
+     caminos de auto-ocultado lo respetan (aquí y en barra.js). */
+  const cerrarPopups = () => { if (grafEl) grafEl.querySelectorAll('.nv-pop').forEach((p) => p.remove()); popActual = null; if (tools) delete tools.dataset.pop; };
   const crearPop = (anchor, abajo, src) => {
     cerrarPopups();
     popActual = src || null;
+    if (tools) tools.dataset.pop = '1';
     const pop = document.createElement('div'); pop.className = 'nv-pop'; if (src) pop.dataset.src = src;
     grafEl.appendChild(pop);
     const gr = grafEl.getBoundingClientRect(), ar = anchor.getBoundingClientRect();
@@ -127,7 +134,7 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
       pop.style.top = Math.max(6, Math.min(gr.height - ph - 6, abajo ? (ar.bottom - gr.top + 6) : (ar.top - gr.top))) + 'px';
     });
     setTimeout(() => document.addEventListener('mousedown', function cerra(ev) {
-      if (!pop.contains(ev.target) && !(topbar && topbar.contains(ev.target)) && !(tools && tools.contains(ev.target))) { pop.remove(); popActual = null; document.removeEventListener('mousedown', cerra); }
+      if (!pop.contains(ev.target) && !(topbar && topbar.contains(ev.target)) && !(tools && tools.contains(ev.target))) { pop.remove(); popActual = null; if (tools) delete tools.dataset.pop; document.removeEventListener('mousedown', cerra); }
     }), 0);
     return pop;
   };
@@ -206,7 +213,7 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     const tab = document.createElement('div'); tab.className = 'nv-tools-tab'; if (!document.getElementById('nv-tools-tab')) tab.id = 'nv-tools-tab'; grafEl.appendChild(tab);
     let tHide = null;
     abrirBarra = () => { clearTimeout(tHide); tools.classList.add('abierta'); };
-    cerrarBarra = () => { clearTimeout(tHide); tHide = setTimeout(() => tools.classList.remove('abierta'), 300); };
+    cerrarBarra = () => { if (tools.dataset.pop) return; clearTimeout(tHide); tHide = setTimeout(() => tools.classList.remove('abierta'), 300); };
     tools.addEventListener('mouseenter', abrirBarra);
     tools.addEventListener('mouseleave', cerrarBarra);
   }
