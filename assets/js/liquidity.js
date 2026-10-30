@@ -12,6 +12,7 @@
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 import * as wallet from './wallet.js?v=129';
+import { montarBarra } from './niveles/barra.js?v=1';   // la misma barra de herramientas de Smart Pools
 
 /* ══════════════════════════════════════════════════════════════
    SUSCRIPCIÓN A LAS HERRAMIENTAS PRO
@@ -112,6 +113,7 @@ const TFS = [
 ];
 
 let _od = null;              // módulo de órdenes
+let _barra = null;           // barra de herramientas compartida (Smart Pools)
 let _zonasOd = [];           // dónde pulsar para cancelar
 let _par = 'BNB';
 let _tf = '1h';
@@ -1147,6 +1149,7 @@ function dibujar() {
       <img class="lq-marca" src="assets/img/cco-marca.webp" alt="">`;
     cv = caja.querySelector('.lq-cv');
     engancharGestos(cv);
+    _barra = montarBarra(caja);
   }
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   if (cv.width !== Math.round(W * dpr)) {
@@ -1902,6 +1905,9 @@ function dibujar() {
     });
   }
 
+  /* Barra de herramientas compartida: se le pasa la geometría de ESTA
+     gráfica y repinta los dibujos del usuario encima. */
+  if (_barra) _barra.redibujar({ W, H, x1: xVelas, y1, pMin: yMin, pMax: yMax, Y, ancho: V.ancho, paso, fin: desde + V.ancho }, V.mapa.velas, _par);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2632,7 +2638,7 @@ function estilos() {
   /* La marca de agua: nuestra, en la esquina, discreta */
   /* La marca de agua: se tiene que ver quiénes somos. Al 28% de
      opacidad prácticamente desaparecía sobre el mapa. */
-  #lq-overlay .lq-marca{position:absolute;left:14px;bottom:30px;pointer-events:none;
+  #lq-overlay .lq-marca{position:absolute;left:56px;bottom:30px;pointer-events:none;
     height:40px;width:auto;opacity:.72;user-select:none;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,.85))}
   @media(max-width:760px){

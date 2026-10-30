@@ -22,6 +22,7 @@
 //     mercado. Es la señal más fuerte que existe en el libro.
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
+import { montarBarra } from './niveles/barra.js?v=1';   // la misma barra de herramientas de Smart Pools
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -114,6 +115,7 @@ let _par = 'BNB';
    actualiza en todas las imágenes y textos que lo usan. */
 const WEB_DOMINIO = 'decfreedom.com';
 let _od = null;              // módulo de órdenes
+let _barra = null;           // barra de herramientas compartida (Smart Pools)
 let _zonasOd = [];           // dónde pulsar para cancelar
 
 /* ══════════════════════════════════════════════════════════════
@@ -1848,6 +1850,7 @@ function dibujar() {
   if (!cv.dataset.listo) {
     engancharGestos(cv);
     cv.dataset.listo = '1';
+    _barra = montarBarra(zona);
     /* Órdenes desde el gráfico: clic derecho o toque largo. */
     import('./orden.js?v=126').then((od) => {
       od.conectar({
@@ -2304,6 +2307,9 @@ function dibujar() {
     });
     g.textAlign = 'left'; g.restore();
   }
+
+  /* Barra de herramientas compartida: geometría de ESTA gráfica. */
+  if (_barra && M._geo) _barra.redibujar({ W, H, x1: xVelas, y1, pMin, pMax, Y, ancho, paso: M._geo.paso, fin }, M.velas, _par);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3310,7 +3316,7 @@ function estilos() {
   #mu-overlay .mu-cv{display:block}
   /* El logo, corrido a la derecha: en la izquierda tapaba la columna
      de precios. */
-  #mu-overlay .mu-marca{position:absolute;left:14px;bottom:30px;height:38px;width:auto;opacity:.75;pointer-events:none;filter:drop-shadow(0 2px 8px rgba(0,0,0,.95))}
+  #mu-overlay .mu-marca{position:absolute;left:56px;bottom:30px;height:38px;width:auto;opacity:.75;pointer-events:none;filter:drop-shadow(0 2px 8px rgba(0,0,0,.95))}
 
   /* Pantalla de espera */
   /* [CORREGIDO] Esta capa tapaba el lienzo y se comía el clic

@@ -149,8 +149,8 @@ export async function abrirNiveles() {
           <button class="nv-tool" data-h="poscorta" title="Short position"><svg viewBox="0 0 24 24"><rect x="4" y="13" width="16" height="7" rx="1.2"/><rect x="4" y="4" width="16" height="7" rx="1.2" opacity=".55"/><path d="M12 20v2"/></svg></button>
           <span class="nv-tool-sep"></span>
           <button class="nv-tool" data-h="borrar" title="Eraser (tap a drawing)"><svg viewBox="0 0 24 24"><path d="M4 15l7-7 7 7-4 4H8z"/><path d="M9 20h11"/></svg></button>
-          <button class="nv-tool nv-tool-tg" id="nv-iman" title="Snap to candles"><svg viewBox="0 0 24 24"><path d="M6 4v7a6 6 0 0 0 12 0V4"/><path d="M6 4h4M14 4h4"/></svg></button>
-          <button class="nv-tool" id="nv-limpiar" title="Clear all"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>
+          <button class="nv-tool nv-tool-tg nv-tool-iman" id="nv-iman" title="Snap to candles"><svg viewBox="0 0 24 24"><path d="M6 4v7a6 6 0 0 0 12 0V4"/><path d="M6 4h4M14 4h4"/></svg></button>
+          <button class="nv-tool nv-tool-limpiar" id="nv-limpiar" title="Clear all"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>
         </div>
         <canvas class="nv-cv" id="nv-cv"></canvas>
         <div class="nv-burbujas" id="nv-burbujas"></div>
