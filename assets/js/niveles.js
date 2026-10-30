@@ -122,6 +122,9 @@ export async function abrirNiveles() {
           <button class="nv-ico ${N.verPerfil ? 'on' : ''}" id="nv-perfil" title="Liquidity profile">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M6.5 8.5h9M6.5 12h6M6.5 15.5h11"/></svg>
           </button>
+          <button class="nv-ico ${N.verTendencia ? 'on' : ''}" id="nv-tend" title="Trend lines">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-9"/><circle cx="3" cy="17" r="1.4" fill="currentColor" stroke="none"/><circle cx="21" cy="6" r="1.4" fill="currentColor" stroke="none"/></svg>
+          </button>
           <button class="nv-ico" id="nv-foto" title="Share image">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
@@ -180,6 +183,7 @@ export async function abrirNiveles() {
   $('nv-ayuda').onclick = () => ayuda();
   { const cb = $('nv-cal'); if (cb) cb.onclick = () => { try { window.abrirCalendario && window.abrirCalendario(); } catch (_) {} }; }
   { const pb = $('nv-perfil'); if (pb) pb.onclick = () => { N.verPerfil = !N.verPerfil; pb.classList.toggle('on', N.verPerfil); dibujar(); }; }
+  { const tb = $('nv-tend'); if (tb) tb.onclick = () => { N.verTendencia = !N.verTendencia; tb.classList.toggle('on', N.verTendencia); dibujar(); }; }
   $('nv-foto').onclick = () => guardarImagen(N.par, N.tf);
   /* ── Superponer: convierte el análisis en una ventana flotante que se
      puede mover, agrandar/achicar y queda por encima de todo. Funciona
