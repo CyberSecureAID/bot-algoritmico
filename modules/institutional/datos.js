@@ -107,3 +107,20 @@ export async function fearGreed() {
     return { valor: +d.value, etiqueta: d.value_classification };
   } catch (_) { return null; }
 }
+
+/* Logos de las monedas (cg → url). Reutiliza la MISMA caché del sitio
+   ('aurex-logos', la que llena ponerLogos de las otras secciones) para no
+   volver a pedir; si no está, los trae de CoinGecko y la deja cacheada. */
+const CLAVE_LOGOS = 'aurex-logos';
+let _logos = null;
+export async function logos() {
+  if (_logos) return _logos;
+  try { const g = JSON.parse(localStorage.getItem(CLAVE_LOGOS) || 'null'); if (g && g.datos) { _logos = g.datos; return _logos; } } catch (_) {}
+  try {
+    const ids = PARES.filter((p) => p.cg).map((p) => p.cg).join(',');
+    const j = await traer(`${COINGECKO}/coins/markets?vs_currency=usd&ids=${ids}&per_page=250&page=1`);
+    _logos = {}; j.forEach((x) => { _logos[x.id] = x.image; });
+    try { localStorage.setItem(CLAVE_LOGOS, JSON.stringify({ cuando: Date.now(), datos: _logos })); } catch (_) {}
+  } catch (_) { _logos = {}; }
+  return _logos;
+}
