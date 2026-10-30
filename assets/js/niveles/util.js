@@ -39,7 +39,8 @@ export const fmt = (p) => {
   if (!(p > 0)) return '—';
   if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
   if (p >= 100) return p.toFixed(1);
-  if (p >= 1) return p.toFixed(3);
+  if (p >= 5) return p.toFixed(3);
+  if (p >= 1) return p.toFixed(4);   // divisas (EUR/GBP ~1.18): muestra el pip
   if (p >= 0.01) return p.toFixed(5);
   return p.toFixed(8);
 };

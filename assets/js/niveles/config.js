@@ -113,6 +113,24 @@ export const PARES = [
   { id: 'PAXG',   s: 'PAXGUSDT',   n: 'Oro (PAX Gold)',       cg: 'pax-gold', grupo: 'materia' }
 ];
 
+/* ── LOGOS de divisas (EUR, GBP…) ──────────────────────────────────────────
+   Las divisas no tienen logo en CoinGecko. En vez de pintar el carácter suelto
+   (€, £), dibujamos una MONEDA en SVG con el símbolo oficial de la divisa, para
+   que se vea como un logo de verdad y no como texto. Clave = el `ico` del par. */
+export const ICONOS = {
+  '€': '<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="19.3" fill="#1257d6"/><ellipse cx="20" cy="12.5" rx="14" ry="7.5" fill="#3f7bf0" opacity=".55"/><circle cx="20" cy="20" r="19.3" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.1"/><text x="20.2" y="21.6" text-anchor="middle" dominant-baseline="central" font-family="\'Chakra Petch\',\'Plus Jakarta Sans\',system-ui,sans-serif" font-size="22" font-weight="800" fill="#fff">€</text></svg>',
+  '£': '<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="19.3" fill="#e7b63f"/><ellipse cx="20" cy="12.5" rx="14" ry="7.5" fill="#f6d98a" opacity=".65"/><circle cx="20" cy="20" r="19.3" fill="none" stroke="rgba(120,80,0,.4)" stroke-width="1.1"/><text x="20.2" y="21.6" text-anchor="middle" dominant-baseline="central" font-family="\'Chakra Petch\',\'Plus Jakarta Sans\',system-ui,sans-serif" font-size="22" font-weight="800" fill="#4a3608">£</text></svg>'
+};
+
+/* Pinta el logo de un par SIN imagen de CoinGecko: si su `ico` tiene moneda SVG
+   la inyecta; si no, deja el carácter de respaldo. Gestiona las clases para no
+   dejar restos de un render anterior. El llamador ya limpió backgroundImage. */
+export function pintarIcono(el) {
+  const svg = ICONOS[el.dataset.ico || ''];
+  if (svg) { el.innerHTML = svg; el.classList.add('con-svg'); el.classList.remove('con-ico'); return; }
+  el.classList.remove('con-svg'); el.textContent = el.dataset.ico || ''; el.classList.add('con-ico');
+}
+
 export const TFS = [
   { id: '1m',  n: '1m' },
   { id: '3m',  n: '3m' },

@@ -59,6 +59,8 @@ export function estilos() {
   .nv-logo.con-ico{background:#1c2127;color:#e8ecf2;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
   .nv-logo.con{background-size:cover;background-position:center}
   .nv-logo.con{background-color:transparent;border-color:transparent}
+  .nv-logo.con-svg{background:none;border-color:transparent;overflow:hidden;padding:0}
+  .nv-logo.con-svg svg{width:100%;height:100%;display:block}
   #nv-overlay .nv-tfs{display:flex;gap:2px;flex:0 0 auto;padding:3px;background:#141922;border-radius:9px}
   #nv-overlay .nv-tf{min-height:30px;padding:0 13px;border-radius:7px;border:none;background:transparent;
     color:#7d8794;font-family:var(--mono,monospace);font-size:11px;font-weight:700;cursor:pointer}
@@ -594,7 +596,7 @@ export function estilos() {
     color:var(--gold,#E8B84B);font-weight:600}
   #nv-picker .nv-fl-ic{font-size:12px;flex:0 0 auto}
   #nv-picker .nv-op.no-operable b{color:#5c6672}
-  #nv-picker .nv-op.no-operable:after{content:'solo análisis';margin-left:auto;
+  #nv-picker .nv-op.no-operable:after{content:'analysis only';margin-left:auto;
     font-family:var(--mono,monospace);font-size:8px;color:#4a525c;flex:0 0 auto}
 
   #nv-picker .nv-grupo{font-family:var(--mono,monospace);font-size:8.5px;color:var(--gold,#E8B84B);

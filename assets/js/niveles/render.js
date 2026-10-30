@@ -194,6 +194,115 @@ export function dibujar() {
     g.fillRect(x - cuerpo / 2, yA, cuerpo, Math.max(1.2, yB - yA));
   });
 
+  /* ══ LIQUIDITY POOLS — la identidad de Smart Pools ══
+     Perfil de volumen por precio: DÓNDE se ha acumulado la liquidez (el
+     volumen negociado) en lo visible. Es la "pool" de Smart Pools —las
+     franjas de precio donde el dinero se concentra—, dibujada como agua
+     acumulada en el borde derecho. Es pasiva y discreta; solo se apaga con
+     la "Gráfica limpia". Reutiliza las velas, no añade peticiones. */
+  if (!N.limpia && vis.length > 5) {
+    const BINS = 60;
+    const vol = new Array(BINS).fill(0);
+    const rango = (pMax - pMin) || 1;
+    vis.forEach((v) => {
+      const b0 = Math.max(0, Math.min(BINS - 1, Math.floor((v.l - pMin) / rango * BINS)));
+      const b1 = Math.max(0, Math.min(BINS - 1, Math.floor((v.h - pMin) / rango * BINS)));
+      const reparto = v.v / ((b1 - b0 + 1) || 1);
+      for (let b = b0; b <= b1; b++) vol[b] += reparto;
+    });
+    let maxV = 0, poc = 0, total = 0;
+    for (let b = 0; b < BINS; b++) { total += vol[b]; if (vol[b] > maxV) { maxV = vol[b]; poc = b; } }
+    if (maxV > 0) {
+      const anchoMax = Math.min(104, x1 * 0.19);
+      const hBin = y1 / BINS;
+      const xDe = (b) => x1 - (vol[b] / maxV) * anchoMax;   // borde del perfil en la franja b
+      const yDe = (b) => y1 - (b + 0.5) * hBin;             // centro vertical de la franja
+      const precioDe = (b) => pMin + (b + 0.5) / BINS * rango;
+
+      /* ZONA DE VALOR: franja de precio que concentra ~70% de la liquidez
+         negociada (dónde está "aparcado" el dinero). Se expande desde la pool
+         principal hacia el lado con más volumen, como en el perfil de mercado. */
+      let acc = vol[poc], vaLo = poc, vaHi = poc;
+      const obj = total * 0.7;
+      let guard = 0;
+      while (acc < obj && (vaLo > 0 || vaHi < BINS - 1) && guard++ < BINS) {
+        const ab = vaHi < BINS - 1 ? vol[vaHi + 1] : -1;
+        const be = vaLo > 0 ? vol[vaLo - 1] : -1;
+        if (ab >= be) { acc += vol[++vaHi]; } else { acc += vol[--vaLo]; }
+      }
+      const yVaTop = y1 - (vaHi + 1) * hBin, yVaBot = y1 - vaLo * hBin;
+
+      g.save();
+      /* 1) Banda tenue de la zona de valor, detrás del perfil. */
+      g.fillStyle = 'rgba(34,211,238,.055)';
+      g.fillRect(x1 - anchoMax - 2, yVaTop, anchoMax + 2, Math.max(1, yVaBot - yVaTop));
+
+      /* 2) Perfil como lámina de agua: relleno degradado hacia el borde. */
+      g.beginPath();
+      g.moveTo(x1, y1);
+      for (let b = 0; b < BINS; b++) g.lineTo(vol[b] > 0 ? xDe(b) : x1, yDe(b));
+      g.lineTo(x1, 0);
+      g.closePath();
+      const grad = g.createLinearGradient(x1 - anchoMax, 0, x1, 0);
+      grad.addColorStop(0, 'rgba(34,211,238,0)');
+      grad.addColorStop(0.65, 'rgba(34,211,238,.10)');
+      grad.addColorStop(1, 'rgba(56,224,248,.30)');
+      g.fillStyle = grad; g.fill();
+
+      /* Borde iluminado (la "superficie" del agua), con glow. */
+      g.beginPath();
+      for (let b = 0; b < BINS; b++) { const x = vol[b] > 0 ? xDe(b) : x1; if (b === 0) g.moveTo(x, yDe(b)); else g.lineTo(x, yDe(b)); }
+      g.strokeStyle = 'rgba(103,232,249,.8)'; g.lineWidth = 1.3;
+      g.shadowColor = 'rgba(34,211,238,.9)'; g.shadowBlur = 7;
+      g.stroke();
+      g.shadowBlur = 0;
+
+      /* 3) Pools secundarias: máximos locales fuertes (otras franjas donde se
+         acumuló liquidez), etiquetadas con su precio. */
+      const pools = [];
+      for (let b = 2; b < BINS - 2; b++) {
+        if (Math.abs(b - poc) <= 2) continue;
+        if (vol[b] >= maxV * 0.5 && vol[b] >= vol[b - 1] && vol[b] >= vol[b + 1]) pools.push(b);
+      }
+      pools.sort((a, c) => vol[c] - vol[a]);
+      g.font = '600 8px ui-monospace,monospace'; g.textAlign = 'right';
+      pools.slice(0, 2).forEach((b) => {
+        const y = yDe(b);
+        g.strokeStyle = 'rgba(103,232,249,.2)'; g.lineWidth = 1; g.setLineDash([1, 3]);
+        g.beginPath(); g.moveTo(xDe(b), y); g.lineTo(x1, y); g.stroke(); g.setLineDash([]);
+        g.fillStyle = 'rgba(165,243,252,.62)';
+        g.fillText(fmt(precioDe(b)), x1 - 3, y - 2.5);
+      });
+
+      /* 4) POOL PRINCIPAL (point of control): la franja de mayor liquidez,
+         con su precio en una etiqueta destacada. */
+      const yPoc = yDe(poc);
+      g.strokeStyle = 'rgba(103,232,249,.85)'; g.lineWidth = 1.4; g.setLineDash([3, 3]);
+      g.beginPath(); g.moveTo(x1 - anchoMax, yPoc); g.lineTo(x1, yPoc); g.stroke(); g.setLineDash([]);
+      const etPoc = fmt(precioDe(poc));
+      g.font = '700 8.5px ui-monospace,monospace';
+      const pw = g.measureText(etPoc).width + 34, ph = 15;
+      const pxP = Math.max(4, x1 - anchoMax - 6 - pw), pyP = Math.max(14, yPoc - ph / 2);
+      g.fillStyle = 'rgba(8,16,20,.92)';
+      g.beginPath(); if (g.roundRect) g.roundRect(pxP, pyP, pw, ph, 4); else g.rect(pxP, pyP, pw, ph); g.fill();
+      g.strokeStyle = 'rgba(103,232,249,.5)'; g.lineWidth = 1; g.stroke();
+      const cyP = pyP + ph / 2;
+      g.fillStyle = '#67e8f9'; g.textAlign = 'left'; g.font = '700 7px ui-monospace,monospace';
+      g.fillText('POOL', pxP + 7, cyP + 2.5);
+      g.fillStyle = '#e6feff'; g.font = '700 8.5px ui-monospace,monospace'; g.textAlign = 'right';
+      g.fillText(etPoc, pxP + pw - 7, cyP + 2.7);
+
+      /* 5) Firma de la sección. */
+      g.font = '800 8px "Chakra Petch", ui-monospace, monospace'; g.textAlign = 'right';
+      g.fillStyle = 'rgba(103,232,249,.72)';
+      g.fillText('LIQUIDITY POOLS', x1 - 12, 11);
+      g.beginPath(); g.arc(x1 - 6, 8.6, 2.2, 0, 7); g.fillStyle = '#34d3ee'; g.fill();
+
+      g.restore();
+      g.textAlign = 'left';
+    }
+  }
+
   const idxVis = (i) => {
     const pri = Math.max(0, fin - ancho);
     return (i - pri) * paso + paso / 2;

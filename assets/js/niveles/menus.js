@@ -6,7 +6,7 @@
 import { N } from './estado.js?v=1';
 import { T } from './i18n.js?v=1';
 import { esc, fmt } from './util.js?v=1';
-import { PARES } from './config.js?v=1';
+import { PARES, pintarIcono } from './config.js?v=1';
 import { avisoMarea, activarAlertasMarea, desactivarAlertas } from './alertas.js?v=1';
 
 const $ = (id) => document.getElementById(id);
@@ -239,9 +239,9 @@ export async function ponerLogos() {
   }
   document.querySelectorAll('.nv-logo').forEach((el) => {
     const url = _logos && el.dataset.cg && _logos[el.dataset.cg];
-    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; el.classList.remove('con-ico'); }
-    else if (el.dataset.ico) { el.style.backgroundImage = ''; el.classList.remove('con'); el.textContent = el.dataset.ico; el.classList.add('con-ico'); }
-    else { el.textContent = ''; el.classList.remove('con-ico'); }
+    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; el.classList.remove('con-ico', 'con-svg'); }
+    else if (el.dataset.ico) { el.style.backgroundImage = ''; el.classList.remove('con'); pintarIcono(el); }
+    else { el.textContent = ''; el.classList.remove('con-ico', 'con-svg'); }
   });
 }
 
