@@ -23,21 +23,21 @@
 // nada claro, el asistente lo dice: "ahora mismo no hay entrada".
 // Preferimos callar que inventar una señal.
 
-import { pivotes, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, detectarDobles, marea, calcularATR, construirPlan, traerVelas } from './niveles/motor.js?v=2';
-import { estilos } from './niveles/estilos.js?v=2';
-import { N } from './niveles/estado.js?v=2';
-import { PARES, TFS } from './niveles/config.js?v=2';
-import { DIB_FIBS, _tfMs, dibAxy, dibXYa, dibujarHerramientas, guardarDib, cargarDib } from './niveles/dibujo.js?v=2';
-import { avisoMarea, activarAlertasMarea, desactivarAlertas } from './niveles/alertas.js?v=2';
-import { guardarImagen } from './niveles/imagen.js?v=2';
-import { panelMarea } from './niveles/panel.js?v=2';
-import { T } from './niveles/i18n.js?v=2';
-import { analizar } from './niveles/asistente.js?v=2';
-import { guiaIndicador, menuAlertas, abrirWidget, registrarIndicador, ponerLogos, ayuda } from './niveles/menus.js?v=2';
-import { gestos } from './niveles/interaccion.js?v=2';
-import { burbujas, initBurbujas } from './niveles/burbujas.js?v=2';
-import { dibujar, initRender } from './niveles/render.js?v=2';
-import { esc, elegir, sembrar, hashCadena, fmt, miles, hora, fecha, _hex2rgb, redondeado } from './niveles/util.js?v=2';
+import { pivotes, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, detectarDobles, marea, calcularATR, construirPlan, traerVelas } from './niveles/motor.js?v=1';
+import { estilos } from './niveles/estilos.js?v=1';
+import { N } from './niveles/estado.js?v=1';
+import { PARES, TFS } from './niveles/config.js?v=1';
+import { DIB_FIBS, _tfMs, dibAxy, dibXYa, dibujarHerramientas, guardarDib, cargarDib } from './niveles/dibujo.js?v=1';
+import { avisoMarea, activarAlertasMarea, desactivarAlertas } from './niveles/alertas.js?v=1';
+import { guardarImagen } from './niveles/imagen.js?v=1';
+import { panelMarea } from './niveles/panel.js?v=1';
+import { T } from './niveles/i18n.js?v=1';
+import { analizar } from './niveles/asistente.js?v=1';
+import { guiaIndicador, menuAlertas, abrirWidget, registrarIndicador, ponerLogos, ayuda } from './niveles/menus.js?v=1';
+import { gestos } from './niveles/interaccion.js?v=1';
+import { burbujas, initBurbujas } from './niveles/burbujas.js?v=1';
+import { dibujar, initRender } from './niveles/render.js?v=1';
+import { esc, elegir, sembrar, fmt, miles, hora, fecha, _hex2rgb, redondeado } from './niveles/util.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -350,23 +350,10 @@ async function recargar() {
     try {
       const par = PARES.find((p) => p.id === N.par) || PARES[0];
       N.velas = await traerVelas(par.s, N.tf, 1000);
-      /* La semilla se fija por MONEDA + timeframe (y la hora, para que roten
-         con el tiempo). Así las frases no bailan en cada refresco, pero dos
-         monedas distintas no cuentan la lectura con las mismas palabras. */
-      sembrar(hashCadena(N.par + '|' + N.tf) + new Date().getHours() * 101);
+      /* La semilla se fija por par y hora: así las frases no bailan
+         en cada refresco, pero cambian con el tiempo. */
+      sembrar((N.par.charCodeAt(0) + new Date().getHours()) * 1.7);
       analizar(N.par);
-
-      /* [T5] Línea de tendencia ESTABLE: antes parpadeaba (salía y desaparecía
-         entre refrescos). Si esta vez no salió pero la tendencia no ha cambiado
-         de dirección, se mantiene la última buena. Guardada por moneda para no
-         arrastrar la línea de otra. */
-      if (N.linea) {
-        N._lineaFija = { par: N.par, tipo: N.linea.tipo, linea: N.linea };
-      } else if (N._lineaFija && N._lineaFija.par === N.par && N.tendencia &&
-                 ((N.tendencia.dir === 'alcista' && N._lineaFija.tipo === 'alcista') ||
-                  (N.tendencia.dir === 'bajista' && N._lineaFija.tipo === 'bajista'))) {
-        N.linea = N._lineaFija.linea;
-      }
 
       /* [CORREGIDO] El plan cambiaba de dirección entre refrescos y
          eso deja al usuario tirado a medio trade. Ahora una vez

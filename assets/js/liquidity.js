@@ -746,7 +746,7 @@ async function portada() {
     }
     if (sv.id === 'tercero') {
       try {
-        const sl = await import('./niveles.js?v=128');
+        const sl = await import('./niveles.js?v=127');
         sl.abrirNiveles(); ocultarPortada();
       } catch (er) { console.warn('[CCO] niveles:', er); }
     }
