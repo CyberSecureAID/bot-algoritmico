@@ -2,8 +2,8 @@
    agua, par y temporalidad). Extraído de niveles.js; ahora recibe par y
    tf por parámetro en vez de leer las variables del módulo. */
 
-import { N } from './estado.js?v=1';
-import { fmt, redondeado } from './util.js?v=1';
+import { N } from './estado.js?v=2';
+import { fmt, redondeado } from './util.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const nombreTend = (d) => ({ alcista: 'bullish', bajista: 'bearish', lateral: 'sideways', indefinida: 'undefined' }[d] || d);

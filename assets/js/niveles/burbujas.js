@@ -8,9 +8,9 @@
    se marca por defecto en la gráfica el nivel del que habla ("Show me where"
    activo). Los textos vienen como { en, es } desde asistente.js. */
 
-import { N } from './estado.js?v=1';
-import { T } from './i18n.js?v=1';
-import { esc, fmt } from './util.js?v=1';
+import { N } from './estado.js?v=2';
+import { T } from './i18n.js?v=2';
+import { esc, fmt } from './util.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 let _dibujar = () => {};

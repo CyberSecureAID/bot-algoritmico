@@ -3,11 +3,11 @@
    monedas y la ayuda '¿Cómo funciona?'. Extraído de niveles.js; menuAlertas
    y abrirWidget ahora reciben el par y la temporalidad por parámetro. */
 
-import { N } from './estado.js?v=1';
-import { T } from './i18n.js?v=1';
-import { esc, fmt } from './util.js?v=1';
-import { PARES } from './config.js?v=1';
-import { avisoMarea, activarAlertasMarea, desactivarAlertas } from './alertas.js?v=1';
+import { N } from './estado.js?v=2';
+import { T } from './i18n.js?v=2';
+import { esc, fmt } from './util.js?v=2';
+import { PARES } from './config.js?v=2';
+import { avisoMarea, activarAlertasMarea, desactivarAlertas } from './alertas.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 

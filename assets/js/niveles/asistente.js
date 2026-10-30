@@ -9,9 +9,9 @@
    semilla por moneda (ver util.js/niveles.js): dos pares distintos ya no
    cuentan la misma lectura con las mismas palabras. */
 
-import { N } from './estado.js?v=1';
-import { elegir, fmt } from './util.js?v=1';
-import { pivotes, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, detectarDobles, marea, calcularATR, construirPlan } from './motor.js?v=1';
+import { N } from './estado.js?v=2';
+import { elegir, fmt } from './util.js?v=2';
+import { pivotes, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, detectarDobles, marea, calcularATR, construirPlan } from './motor.js?v=2';
 
 /* Par bilingüe: { en, es }. elegir() escoge uno de la lista igual que antes. */
 const dos = (en, es) => ({ en, es });

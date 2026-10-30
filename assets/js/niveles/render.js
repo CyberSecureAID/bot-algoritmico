@@ -4,14 +4,14 @@
    dibujado. Extraído de niveles.js. Recibe recargar por initRender para no
    crear dependencias circulares. Sin cambios de lógica. */
 
-import { N } from './estado.js?v=1';
-import { T } from './i18n.js?v=1';
-import { fmt, esc, redondeado, hora, fecha } from './util.js?v=1';
-import { panelMarea } from './panel.js?v=1';
-import { dibujarHerramientas, dibAxy, dibXYa, _tfMs, DIB_FIBS, guardarDib } from './dibujo.js?v=1';
-import { gestos } from './interaccion.js?v=1';
-import { burbujas } from './burbujas.js?v=1';
-import { PARES } from './config.js?v=1';
+import { N } from './estado.js?v=2';
+import { T } from './i18n.js?v=2';
+import { fmt, esc, redondeado, hora, fecha } from './util.js?v=2';
+import { panelMarea } from './panel.js?v=2';
+import { dibujarHerramientas, dibAxy, dibXYa, _tfMs, DIB_FIBS, guardarDib } from './dibujo.js?v=2';
+import { gestos } from './interaccion.js?v=2';
+import { burbujas } from './burbujas.js?v=2';
+import { PARES } from './config.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 function velaEn(i) { return N.velas[i] || null; }

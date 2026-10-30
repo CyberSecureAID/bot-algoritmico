@@ -2,8 +2,8 @@
    estado del ciclo y la confluencia). Recibe el contexto y los datos ya
    calculados. Extraído de niveles.js sin cambiar la lógica. */
 
-import { N } from './estado.js?v=1';
-import { fmt, redondeado } from './util.js?v=1';
+import { N } from './estado.js?v=2';
+import { fmt, redondeado } from './util.js?v=2';
 
 export function panelMarea(g, MA, x1, W) {
   const P = MA.panel;

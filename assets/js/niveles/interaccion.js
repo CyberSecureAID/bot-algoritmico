@@ -3,9 +3,9 @@
    Extraído de niveles.js; recibe dibujar/burbujas/guardarDib por parámetro
    para no crear dependencias circulares. Sin cambios de lógica. */
 
-import { N } from './estado.js?v=1';
-import { T } from './i18n.js?v=1';
-import { dibAxy, dibXYa, _tfMs, DIB_FIBS } from './dibujo.js?v=1';
+import { N } from './estado.js?v=2';
+import { T } from './i18n.js?v=2';
+import { dibAxy, dibXYa, _tfMs, DIB_FIBS } from './dibujo.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 

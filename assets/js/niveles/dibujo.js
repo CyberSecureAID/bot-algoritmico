@@ -3,8 +3,8 @@
    herramienta del usuario (líneas, fibonacci, posiciones, texto,
    marcadores, regla…). Extraído de niveles.js sin cambiar la lógica. */
 
-import { N } from './estado.js?v=1';
-import { fmt, redondeado, _hex2rgb } from './util.js?v=1';
+import { N } from './estado.js?v=2';
+import { fmt, redondeado, _hex2rgb } from './util.js?v=2';
 
 export const DIB_FIBS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
 export const _tfMs = () => {
