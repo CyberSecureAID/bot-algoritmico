@@ -530,12 +530,15 @@ export async function reconectarSiProcede() {
   const prov = detectar();
   if (!prov) return null;
 
+  // Si la extensión está muda (puente caído: "Receiving end does not exist"),
+  // la petición nunca responde y toda la interfaz se quedaba colgada. Límite.
+  const conLimite = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
   try {
-    const cuentas = await prov.request({ method: 'eth_accounts' });
+    const cuentas = await conLimite(prov.request({ method: 'eth_accounts' }), 6000);
     if (cuentas?.length) {
       est.proveedor = prov;
       est.cuenta = cuentas[0];
-      est.chainId = await prov.request({ method: 'eth_chainId' });
+      est.chainId = await conLimite(prov.request({ method: 'eth_chainId' }), 6000);
       engancharEventos(prov);
       avisar();
       _listo();
