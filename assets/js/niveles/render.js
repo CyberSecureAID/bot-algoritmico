@@ -306,7 +306,7 @@ export function dibujar() {
   /* ══ LA LÍNEA DE TENDENCIA ══
      Se traza delante del usuario cuando abre: da la sensación de
      que alguien está dibujando el análisis en directo. */
-  if (N.linea && N.trazo > 0 && _verBase) {
+  if (N.linea && N.trazo > 0 && !N.limpia && N.verTendencia) {
     const L = N.linea;
     const iA = L.pts[0].i, iB = Math.max(L.pts[L.pts.length - 1].i, fin - 1);
     const xA = idxVis(iA), xB = idxVis(iB);
@@ -363,7 +363,7 @@ export function dibujar() {
   /* ══ LA LÍNEA DE TENDENCIA MAYOR (jerárquica) ══
      Tendencia de fondo sobre ~240 velas. Discontinua y más fina que la
      corta, para que se distingan de un vistazo. */
-  if (N.lineaMayor && N.trazo >= 1 && _verBase) {
+  if (N.lineaMayor && N.trazo >= 1 && !N.limpia && N.verTendencia) {
     const L = N.lineaMayor;
     const iA = L.pts[0].i, iB = Math.max(L.pts[L.pts.length - 1].i, fin - 1);
     const xA = idxVis(iA), xB = Math.min(x1, idxVis(iB));

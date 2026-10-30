@@ -10,6 +10,7 @@ export const N = {
   rango: null,        // si está lateral
   verEstructura: true, // Faro (indicador 'estructura') ENCENDIDO por defecto: representa la sección
   verPerfil: true,    // perfil de liquidez (barras) ENCENDIDO por defecto; toggle en la barra superior
+  verTendencia: true, // líneas de tendencia (corto + mayor) ENCENDIDAS por defecto; toggle en la barra superior
   mensajes: [],       // lo que dice el asistente
   vista: { desde: 0, ancho: 90, zoomY: 1 },
   cargando: true,

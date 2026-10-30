@@ -48,6 +48,11 @@ export function analizar(par) {
   N.estructuras = detectarEstructuras(v, zz);
   N.linea = calcularTendencia(v, zz, N.tendencia);
   N.lineaMayor = calcularTendenciaMayor(v, zz);
+  /* REGLA: no se muestran dos líneas en la misma dirección (ruido redundante).
+     La mayor (punteada, de fondo) solo aparece si APORTA algo distinto a la
+     corta: dirección contraria (un retroceso dentro de la tendencia de fondo).
+     Si ambas coinciden, basta con la corta (la línea fina). */
+  if (N.linea && N.lineaMayor && N.linea.tipo === N.lineaMayor.tipo) N.lineaMayor = null;
   N.precio = v[v.length - 1].c;
   N.dobles = detectarDobles(v, piv, N.precio);
   N.marea = marea(v, N.atr);
@@ -81,7 +86,6 @@ export function analizar(par) {
 
   /* ══════════════════ 2. CONTEXTO ══════════════════ */
   const durM = mayor ? duracion(mayor.velas, tf) : null;
-  const ajusteM = mayor ? Math.round(mayor.r2 * 100) : 0;
   let tituloC, txtC, hacerC;
   if (alcM && alcC) {
     tituloC = elegir([dos('Uptrend on both horizons', 'Alcista en los dos horizontes'), dos('Trend and pullbacks agree: up', 'Fondo y corto plazo coinciden: arriba'), dos('Rising structure, long and short term', 'Estructura al alza en largo y corto plazo')]);
@@ -105,10 +109,10 @@ export function analizar(par) {
                      dos(`No trend to lean on. Here the edge is in the extremes, not in the middle of the range.`, `No hay tendencia donde apoyarse. Aquí la ventaja está en los extremos, no en medio del rango.`)]);
   }
   const fraseMayor = mayor
-    ? elegir([dos(`Over the last ${durM.en} price moved ${pc(mayor.movPct)} along a ${alcM ? 'rising' : 'falling'} line touched ${mayor.pts.length} times (fit ${ajusteM}%).`,
-                  `En las últimas ${durM.es} el precio se movió ${pc(mayor.movPct)} sobre una línea ${alcM ? 'ascendente' : 'descendente'} tocada ${mayor.pts.length} veces (ajuste ${ajusteM}%).`),
-              dos(`The major line (${mayor.pts.length} ${alcM ? 'lows' : 'highs'}, ${ajusteM}% fit) has carried price ${pc(mayor.movPct)} over ${durM.en}.`,
-                  `La línea mayor (${mayor.pts.length} ${alcM ? 'mínimos' : 'máximos'}, ajuste ${ajusteM}%) ha llevado el precio ${pc(mayor.movPct)} en ${durM.es}.`)])
+    ? elegir([dos(`Over the last ${durM.en} price moved ${pc(mayor.movPct)} along a ${alcM ? 'rising' : 'falling'} line that touches ${mayor.pts.length} ${alcM ? 'lows' : 'highs'}.`,
+                  `En las últimas ${durM.es} el precio se movió ${pc(mayor.movPct)} sobre una línea ${alcM ? 'ascendente' : 'descendente'} que toca ${mayor.pts.length} ${alcM ? 'mínimos' : 'máximos'}.`),
+              dos(`The major line connects ${mayor.pts.length} ${alcM ? 'lows' : 'highs'} and has carried price ${pc(mayor.movPct)} over ${durM.en}.`,
+                  `La línea mayor une ${mayor.pts.length} ${alcM ? 'mínimos' : 'máximos'} y ha llevado el precio ${pc(mayor.movPct)} en ${durM.es}.`)])
     : elegir([dos('No major trend line fits the last weeks of pivots.', 'Ninguna línea mayor ajusta los pivotes de las últimas semanas.'),
               dos('The longer structure has no clean direction.', 'La estructura larga no tiene dirección limpia.')]);
   const fraseCorta = elegir([
@@ -155,7 +159,7 @@ export function analizar(par) {
       dos(`Short-term trend (${tf}): ${alcC ? 'bullish' : bajC ? 'bearish' : 'sideways'} · ${pc(corta.mov)}`, `Tendencia corta (${tf}): ${alcC ? 'alcista' : bajC ? 'bajista' : 'lateral'} · ${pc(corta.mov)}`),
       dos(`24h: ${pc(chg24, 2)} · high ${fmt(h24)} · low ${fmt(l24)}`, `24h: ${pc(chg24, 2)} · máximo ${fmt(h24)} · mínimo ${fmt(l24)}`),
       dos(`Average true range: ${fmt(N.atr)} (${atrPct.toFixed(2)}%)`, `Rango medio real: ${fmt(N.atr)} (${atrPct.toFixed(2)}%)`),
-      dos('Measured on real pivots (least-squares line), not on indicators', 'Medido sobre pivotes reales (recta por mínimos cuadrados), no sobre indicadores')
+      dos('Drawn by connecting real swing extremes, not on indicators', 'Trazada uniendo extremos reales de los giros, no sobre indicadores')
     ]
   };
 

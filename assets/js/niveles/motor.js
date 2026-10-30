@@ -612,102 +612,84 @@ export function detectarEstructuras(velas, piv) {
    dibujan solo cuando el ajuste es bueno de verdad.
    ══════════════════════════════════════════════════════════════ */
 export function calcularTendencia(velas, piv, tend) {
-  /* Ajuste por mínimos cuadrados: la recta que mejor pasa por los
-     puntos. No es una estimación a ojo. */
-  const recta = (pts) => {
-    const n = pts.length;
-    if (n < 3) return null;
-    let sx = 0, sy = 0, sxy = 0, sxx = 0;
-    pts.forEach((p) => { sx += p.i; sy += p.p; sxy += p.i * p.p; sxx += p.i * p.i; });
-    const den = n * sxx - sx * sx;
-    if (Math.abs(den) < 1e-9) return null;
-    const m = (n * sxy - sx * sy) / den;
-    const b = (sy - m * sx) / n;
+  /* [REESCRITO] Antes se trazaba por MÍNIMOS CUADRADOS: la recta pasaba por el
+     MEDIO de los pivotes y cortaba las velas. Una línea de tendencia de verdad
+     TOCA los extremos: une los MÁXIMOS cuando es bajista (resistencia por encima
+     del precio) y los MÍNIMOS cuando es alcista (soporte por debajo). Corto
+     plazo = solo los pivotes recientes. */
+  const altos = (piv.altos || []).slice(-6);
+  const bajos = (piv.bajos || []).slice(-6);
+  let tipo = tend && tend.dir;
+  if (tipo !== 'alcista' && tipo !== 'bajista') {
+    const n = velas.length, ini = velas[Math.max(0, n - 60)].c, fin = velas[n - 1].c;
+    tipo = fin < ini ? 'bajista' : 'alcista';   // lateral: decide por el movimiento reciente
+  }
+  const L = tipo === 'bajista' ? lineaPorExtremos(altos, 'resistencia')
+                               : lineaPorExtremos(bajos, 'soporte');
+  if (!L) return null;
+  return { tipo, ...L };
+}
 
-    // Qué tan bien se ajustan los puntos a la recta (R²)
-    const media = sy / n;
-    let ssTot = 0, ssRes = 0;
-    pts.forEach((p) => {
-      const est = m * p.i + b;
-      ssTot += Math.pow(p.p - media, 2);
-      ssRes += Math.pow(p.p - est, 2);
-    });
-    const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
-    return { m, b, r2, pts };
+/* Recta ENVOLVENTE que TOCA los extremos (no la que pasa por el medio).
+   'resistencia' (bajista) → ancla en el MÁXIMO y elige el pico posterior cuya
+   pendiente deja la recta por ENCIMA de todos los máximos (línea sobre techos).
+   'soporte' (alcista)     → ancla en el MÍNIMO y deja la recta por DEBAJO de
+   todos los mínimos. Devuelve { m, b, pts } o null. */
+function lineaPorExtremos(pts, lado) {
+  if (!pts || pts.length < 2) return null;
+  const resist = lado === 'resistencia';
+  // índice del extremo (máx o mín) dentro de pts[0..hasta]
+  const extremoEn = (hasta) => {
+    let ia = 0;
+    for (let k = 1; k <= hasta; k++) if (resist ? pts[k].p > pts[ia].p : pts[k].p < pts[ia].p) ia = k;
+    return ia;
   };
-
-  /* [CORREGIDO] Casi nunca se trazaba: exigía tendencia ya definida
-     Y un ajuste altísimo. Ahora se prueban los dos lados siempre y
-     se queda con el que mejor se ajuste, con un umbral razonable.
-     Si de verdad no hay recta que valga, no se dibuja: pero eso
-     ahora es la excepción, no la norma. */
-  const probar = (pts, signo) => {
-    if (pts.length < 3) return null;
-    // Se prueba con 6, 5 y 4 puntos: la que mejor encaje
-    let mejor = null;
-    for (const cuantos of [6, 5, 4]) {
-      const sub = pts.slice(-cuantos);
-      if (sub.length < 3) continue;
-      const r = recta(sub);
-      if (!r) continue;
-      if (signo > 0 && r.m <= 0) continue;
-      if (signo < 0 && r.m >= 0) continue;
-      if (r.r2 < 0.35) continue;                // umbral realista (algo más permisivo: la línea aparece de forma más consistente)
-      if (!mejor || r.r2 > mejor.r2) mejor = r;
+  const construir = (ia) => {
+    const A = pts[ia];
+    let jb = -1, mejor = resist ? -Infinity : Infinity;
+    for (let k = ia + 1; k < pts.length; k++) {
+      const m = (pts[k].p - A.p) / ((pts[k].i - A.i) || 1);
+      if (resist ? m > mejor : m < mejor) { mejor = m; jb = k; }
     }
-    return mejor;
+    return jb < 0 ? null : armarLinea(A, pts[jb], mejor, pts, resist);
   };
+  // ancla en el extremo global; si es el último pivote, ancla en el extremo previo
+  let ia = extremoEn(pts.length - 1);
+  if (ia === pts.length - 1) ia = extremoEn(pts.length - 2);
+  return construir(ia);
+}
 
-  const alc = probar(piv.bajos, 1);
-  const baj = probar(piv.altos, -1);
-
-  /* Si hay tendencia declarada, manda ella. Si no, la que mejor
-     ajuste tenga. */
-  if (tend.dir === 'alcista' && alc) return { tipo: 'alcista', ...alc };
-  if (tend.dir === 'bajista' && baj) return { tipo: 'bajista', ...baj };
-  if (alc && baj) return alc.r2 >= baj.r2
-    ? { tipo: 'alcista', ...alc } : { tipo: 'bajista', ...baj };
-  if (alc) return { tipo: 'alcista', ...alc };
-  if (baj) return { tipo: 'bajista', ...baj };
-  return null;
+function armarLinea(A, B, m, pts, resist) {
+  const b = A.p - m * A.i;
+  const tol = Math.abs(A.p) * 0.0012 + Math.abs(B.p - A.p) * 0.12;
+  const tocados = pts.filter((q) => Math.abs((m * q.i + b) - q.p) <= (tol || Math.abs(A.p) * 0.002 + 1e-9));
+  const usados = (tocados.length >= 2 ? tocados : [A, B]).slice().sort((x, y) => x.i - y.i);
+  return { m, b, pts: usados };
 }
 
 /* ══════════════════════════════════════════════════════════════
    7b. LÍNEA DE TENDENCIA MAYOR (jerárquica)
 
-   La misma recta por mínimos cuadrados, pero sobre los pivotes de las
-   últimas 240 velas (hasta 10 puntos). Define la tendencia de fondo; la
-   línea corta (calcularTendencia) define la de corto plazo. Ver ambas es
-   lo que permite decir "retroceso dentro de una tendencia mayor" o
-   "corto plazo contra la de fondo".
+   Igual que la corta pero sobre la ventana larga (~240 velas): UNE LOS
+   EXTREMOS de fondo (máximos si baja, mínimos si sube). Debe abarcar un buen
+   tramo para ser de verdad "mayor" y no un eco de la corta. Ver ambas permite
+   decir "retroceso dentro de una tendencia mayor" o "corto contra el fondo".
    ══════════════════════════════════════════════════════════════ */
 export function calcularTendenciaMayor(velas, piv) {
   if (velas.length < 80) return null;
-  /* Con swings reales bastan 3 puntos para una línea mayor fiable */
   const desde = Math.max(0, velas.length - 240);
-  const recta = (pts) => {
-    const n = pts.length; if (n < 3) return null;
-    let sx = 0, sy = 0, sxy = 0, sxx = 0;
-    pts.forEach((p) => { sx += p.i; sy += p.p; sxy += p.i * p.p; sxx += p.i * p.i; });
-    const den = n * sxx - sx * sx; if (Math.abs(den) < 1e-9) return null;
-    const m = (n * sxy - sx * sy) / den, b = (sy - m * sx) / n, media = sy / n;
-    let ssT = 0, ssR = 0;
-    pts.forEach((p) => { ssT += Math.pow(p.p - media, 2); ssR += Math.pow(p.p - (m * p.i + b), 2); });
-    return { m, b, r2: ssT > 0 ? 1 - ssR / ssT : 0, pts };
-  };
-  const bajos = piv.bajos.filter((p) => p.i >= desde).slice(-10);
-  const altos = piv.altos.filter((p) => p.i >= desde).slice(-10);
-  const rA = recta(bajos), rB = recta(altos);
-  const okA = rA && rA.m > 0 && rA.r2 >= 0.35;
-  const okB = rB && rB.m < 0 && rB.r2 >= 0.35;
+  const bajos = (piv.bajos || []).filter((p) => p.i >= desde);
+  const altos = (piv.altos || []).filter((p) => p.i >= desde);
   const ini = velas[desde].c, fin = velas[velas.length - 1].c;
   const movPct = ((fin - ini) / ini) * 100;
-  /* Coherencia: una línea alcista con el precio neto cayendo (o al revés)
-     confunde más de lo que ayuda. Se exige que el signo coincida. */
-  const okA2 = okA && movPct > 0, okB2 = okB && movPct < 0;
-  if (okA2 && (!okB2 || rA.r2 >= rB.r2)) return { tipo: 'alcista', movPct, velas: velas.length - desde, ...rA };
-  if (okB2) return { tipo: 'bajista', movPct, velas: velas.length - desde, ...rB };
-  return null;
+  const tipo = movPct < 0 ? 'bajista' : 'alcista';   // la de fondo sigue el movimiento neto
+  const L = tipo === 'bajista' ? lineaPorExtremos(altos, 'resistencia')
+                               : lineaPorExtremos(bajos, 'soporte');
+  if (!L || L.pts.length < 2) return null;
+  // debe abarcar ~18% de la ventana; si no, es de corto plazo y no "mayor"
+  const span = L.pts[L.pts.length - 1].i - L.pts[0].i;
+  if (span < (velas.length - desde) * 0.18) return null;
+  return { tipo, movPct, velas: velas.length - desde, ...L };
 }
 
 /* ══════════════════════════════════════════════════════════════
