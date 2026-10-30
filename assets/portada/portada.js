@@ -119,7 +119,7 @@ const PUERTAS = {
   liq:     async () => (await import(J + 'liquidity.js?v=129')).abrirLiquidity(),
   pools:   async () => (await import(J + 'liquidity.js?v=129')).abrirPools(),
   heat:    async () => (await import(J + 'muros.js?v=129')).abrirMuros(),
-  levels:  async () => (await import(J + 'niveles.js?v=127')).abrirNiveles(),
+  levels:  async () => (await import(J + 'niveles.js?v=128')).abrirNiveles(),
   tools:   async (tid) => (await import(J + 'tools.js?v=128')).abrirTools(tid),
   academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
