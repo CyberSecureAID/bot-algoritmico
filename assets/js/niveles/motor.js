@@ -569,7 +569,7 @@ export function calcularTendencia(velas, piv, tend) {
       if (!r) continue;
       if (signo > 0 && r.m <= 0) continue;
       if (signo < 0 && r.m >= 0) continue;
-      if (r.r2 < 0.4) continue;                 // umbral realista
+      if (r.r2 < 0.35) continue;                // umbral realista (algo más permisivo: la línea aparece de forma más consistente)
       if (!mejor || r.r2 > mejor.r2) mejor = r;
     }
     return mejor;
