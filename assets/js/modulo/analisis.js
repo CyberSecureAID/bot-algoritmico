@@ -52,7 +52,7 @@ async function abrirTool(abre) {
   const base = new URL('../', import.meta.url).href;   // => assets/js/
   if (abre === 'pools')  return (await import(base + 'liquidity.js?v=126')).abrirPools();
   if (abre === 'heat')   return (await import(base + 'muros.js?v=127')).abrirMuros();
-  if (abre === 'levels') return (await import(base + 'niveles.js?v=127')).abrirNiveles();
+  if (abre === 'levels') return (await import(base + 'niveles.js?v=128')).abrirNiveles();
 }
 
 export function abrirSelector(origen, wallet, ethers) {
