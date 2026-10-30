@@ -210,19 +210,17 @@ export function calcularNiveles(velas, piv, precio) {
      Ahora vale con una de las dos condiciones fuertes, y el rango
      de distancia es más amplio. Se sigue exigiendo calidad, pero
      sin dejar el mercado entero fuera. */
+  /* [T4·motor] Menos líneas y mejores: ≥3 toques, o 2 toques con fuerza
+     ≥45. Sin respaldo "flojo": si no hay nivel real, se dice que no lo hay.
+     Máximo 4 en pantalla, a distancia operable (<12%). */
   const validos = grupos.filter((g) =>
-    Math.abs(g.dist) > 0.08 && Math.abs(g.dist) < 18 &&
-    (g.toques >= 3 || (g.toques >= 2 && g.fuerza >= 38) || g.fuerza >= 60)
+    Math.abs(g.dist) > 0.08 && Math.abs(g.dist) < 12 &&
+    (g.toques >= 3 || (g.toques >= 2 && g.fuerza >= 45))
   );
 
-  /* Si aun así no pasa nada, se relaja al mínimo antes que mentir
-     con un "no hay nada": mejor un nivel flojo bien etiquetado. */
-  const lista = validos.length ? validos
-    : grupos.filter((g) => g.toques >= 2 && Math.abs(g.dist) > 0.08);
-
-  return lista
+  return validos
     .sort((a, b) => b.fuerza - a.fuerza)
-    .slice(0, 6)
+    .slice(0, 4)
     .sort((a, b) => b.p - a.p);
 }
 
@@ -253,6 +251,16 @@ export function detectarImpulso(velas) {
   const rangos = tramo.map((v) => v.h - v.l).sort((a, b) => a - b);
   const rMed = rangos[Math.floor(rangos.length / 2)] || 1;
 
+  /* [T4·motor] Un impulso tiene que ser un MOVIMIENTO DE VERDAD, no una
+     racha de 3 velas de 0,6%. Se exige: recorrido ≥ 2,5 veces la vela típica
+     en %, y ≥ 1,5%, y al menos un cuarto del rango de las 60 velas. Así no
+     sale "retroceso del 66% del impulso" en cada moneda por un micro-tramo. */
+  const precioRef = tramo[tramo.length - 1].c || 1;
+  const velaTipicaPct = (rMed / precioRef) * 100;
+  const altoT = Math.max(...tramo.map((v) => v.h)), bajoT = Math.min(...tramo.map((v) => v.l));
+  const rangoTramoPct = ((altoT - bajoT) / bajoT) * 100;
+  const minPct = Math.max(1.5, velaTipicaPct * 2.5, rangoTramoPct * 0.25);
+
   let mejor = null;
 
   for (let i = 0; i < tramo.length - 5; i++) {
@@ -275,7 +283,7 @@ export function detectarImpulso(velas) {
          Ahora se admite desde 60% de pureza y 0,6% de recorrido,
          que sigue siendo un movimiento con intención. */
       const fuerza = Math.abs(mov) / (rMed * largo);
-      if (pureza >= 0.6 && fuerza > 0.4 && pct > 0.6) {
+      if (pureza >= 0.6 && fuerza > 0.4 && pct >= minPct) {
         const puntos = pct * pureza * fuerza;
         if (!mejor || puntos > mejor.puntos) {
           mejor = {
@@ -434,13 +442,18 @@ export function detectarEstructuras(velas, piv) {
   /* ── BARRIDO DE LIQUIDEZ ──
      La mecha atraviesa un extremo previo pero el cuerpo cierra de
      vuelta: han recogido los stops y han devuelto el precio. */
-  const mirar = velas.slice(-14);
-  const base = velas.length - 14;
-  mirar.forEach((v, k) => {
-    const i = base + k;
-    if (i < 8) return;
-    const previas = velas.slice(Math.max(0, i - 20), i);
-    if (previas.length < 8) return;
+  /* [T4·motor] Antes cualquier mecha que pasara el máximo de 20 velas era
+     "barrido": salía en todas las monedas. Ahora: solo las últimas 8 velas,
+     contra el extremo de las 40 previas (un nivel que importa), y se queda
+     el MÁS RECIENTE. */
+  const mirar = velas.slice(-8);
+  const base = velas.length - 8;
+  mirar.slice().reverse().forEach((v, k) => {
+    const i = base + (mirar.length - 1 - k);
+    if (i < 20) return;
+    if (out.some((e) => e.tipo === 'barrido')) return;
+    const previas = velas.slice(Math.max(0, i - 40), i);
+    if (previas.length < 20) return;
     const maxPrev = Math.max(...previas.map((x) => x.h));
     const minPrev = Math.min(...previas.map((x) => x.l));
 
@@ -569,7 +582,7 @@ export function calcularTendencia(velas, piv, tend) {
       if (!r) continue;
       if (signo > 0 && r.m <= 0) continue;
       if (signo < 0 && r.m >= 0) continue;
-      if (r.r2 < 0.4) continue;                 // umbral realista
+      if (r.r2 < 0.35) continue;                // umbral realista (algo más permisivo: la línea aparece de forma más consistente)
       if (!mejor || r.r2 > mejor.r2) mejor = r;
     }
     return mejor;
@@ -586,6 +599,43 @@ export function calcularTendencia(velas, piv, tend) {
     ? { tipo: 'alcista', ...alc } : { tipo: 'bajista', ...baj };
   if (alc) return { tipo: 'alcista', ...alc };
   if (baj) return { tipo: 'bajista', ...baj };
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   7b. LÍNEA DE TENDENCIA MAYOR (jerárquica)
+
+   La misma recta por mínimos cuadrados, pero sobre los pivotes de las
+   últimas 240 velas (hasta 10 puntos). Define la tendencia de fondo; la
+   línea corta (calcularTendencia) define la de corto plazo. Ver ambas es
+   lo que permite decir "retroceso dentro de una tendencia mayor" o
+   "corto plazo contra la de fondo".
+   ══════════════════════════════════════════════════════════════ */
+export function calcularTendenciaMayor(velas, piv) {
+  if (velas.length < 80) return null;
+  const desde = Math.max(0, velas.length - 240);
+  const recta = (pts) => {
+    const n = pts.length; if (n < 4) return null;
+    let sx = 0, sy = 0, sxy = 0, sxx = 0;
+    pts.forEach((p) => { sx += p.i; sy += p.p; sxy += p.i * p.p; sxx += p.i * p.i; });
+    const den = n * sxx - sx * sx; if (Math.abs(den) < 1e-9) return null;
+    const m = (n * sxy - sx * sy) / den, b = (sy - m * sx) / n, media = sy / n;
+    let ssT = 0, ssR = 0;
+    pts.forEach((p) => { ssT += Math.pow(p.p - media, 2); ssR += Math.pow(p.p - (m * p.i + b), 2); });
+    return { m, b, r2: ssT > 0 ? 1 - ssR / ssT : 0, pts };
+  };
+  const bajos = piv.bajos.filter((p) => p.i >= desde).slice(-10);
+  const altos = piv.altos.filter((p) => p.i >= desde).slice(-10);
+  const rA = recta(bajos), rB = recta(altos);
+  const okA = rA && rA.m > 0 && rA.r2 >= 0.5;
+  const okB = rB && rB.m < 0 && rB.r2 >= 0.5;
+  const ini = velas[desde].c, fin = velas[velas.length - 1].c;
+  const movPct = ((fin - ini) / ini) * 100;
+  /* Coherencia: una línea alcista con el precio neto cayendo (o al revés)
+     confunde más de lo que ayuda. Se exige que el signo coincida. */
+  const okA2 = okA && movPct > 0, okB2 = okB && movPct < 0;
+  if (okA2 && (!okB2 || rA.r2 >= rB.r2)) return { tipo: 'alcista', movPct, velas: velas.length - desde, ...rA };
+  if (okB2) return { tipo: 'bajista', movPct, velas: velas.length - desde, ...rB };
   return null;
 }
 
@@ -1014,7 +1064,7 @@ const FIBS = [
      · Relación riesgo/beneficio calculada
      · Cuánto arriesgar del capital
    ══════════════════════════════════════════════════════════════ */
-export function construirPlan(lado, entrada, stopBase, atr) {
+export function construirPlan(lado, entrada, stopBase, atr, objetivoEstructural) {
   if (!(entrada > 0) || !(atr > 0)) return null;
   const largo = lado === 'compra';
 
@@ -1036,11 +1086,20 @@ export function construirPlan(lado, entrada, stopBase, atr) {
     pct: ((riesgo * r) / entrada) * 100
   }));
 
+  /* [T4·motor] R:R REAL: si hay un objetivo estructural (nivel/extremo del
+     movimiento), se mide contra él. Si no, el plan estándar es 2R. */
+  let rrReal = 2;
+  if (objetivoEstructural > 0) {
+    const premio = largo ? objetivoEstructural - entrada : entrada - objetivoEstructural;
+    rrReal = premio > 0 ? premio / riesgo : 0;
+  }
+
   return {
     lado, entrada, stop, riesgo,
     riesgoPct: (riesgo / entrada) * 100,
     obj,
-    rr: 2,
+    rr: Math.round(rrReal * 10) / 10,
+    objetivo: objetivoEstructural > 0 ? objetivoEstructural : obj[1].p,
     atr
   };
 }
