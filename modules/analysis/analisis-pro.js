@@ -86,9 +86,12 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
   try {
     const cuenta = wallet.cuentaActual && wallet.cuentaActual();
     const c = new (ethers.Contract)(ANALISIS_ADDR, ABI, _prov(wallet, ethers));
-    const [m, a] = await Promise.all([c.precioMesUSD(), c.precioAnioUSD()]);
+    // Límite de tiempo: si la wallet/RPC no responde, se usan los precios de respaldo
+    // y la pantalla abre igual (antes se quedaba colgada sin abrir nada).
+    const lim = (pr, ms) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
+    const [m, a] = await lim(Promise.all([c.precioMesUSD(), c.precioAnioUSD()]), 6000);
     pMes = _fmtUSD(m); pAnio = _fmtUSD(a);
-    if (cuenta) { try { yaUso = await c.pruebaUsada(cuenta); } catch (_) {} }
+    if (cuenta) { try { yaUso = await lim(c.pruebaUsada(cuenta), 6000); } catch (_) {} }
   } catch (_) {}
 
   const PLANES = [

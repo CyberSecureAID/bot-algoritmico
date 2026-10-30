@@ -119,7 +119,8 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': 
 
 export async function abrirAnalisis(origen, wallet, ethers) {
   let acceso = false;
-  try { acceso = await tieneAccesoAnalisis(wallet, ethers); } catch (_) {}
+  // Límite de tiempo: si la wallet no responde, no se cuelga el botón.
+  try { acceso = await Promise.race([tieneAccesoAnalisis(wallet, ethers), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 8000))]); } catch (_) {}
   if (acceso) return abrirSelector(origen, wallet, ethers);
   return abrirCobroAnalisis(origen, wallet, ethers, () => abrirSelector(origen, wallet, ethers));
 }
