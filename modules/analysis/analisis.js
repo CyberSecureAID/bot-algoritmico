@@ -36,7 +36,7 @@ const HERRAMIENTAS = [
   { id:'hair', abre:'heat', nombre:'Heat Pools', cat:'indicator', img:'assets/img/serv-libro.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'See what the big players do',
     desc:'The order book lies. We watch every wall over time and separate the real committed capital from the theater, so you know which levels truly hold.' },
-  { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'strategy', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
+  { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'indicator', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
     lema:'Where to buy and where to sell',
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' }
 ];
@@ -119,8 +119,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': 
 
 export async function abrirAnalisis(origen, wallet, ethers) {
   let acceso = false;
-  // Límite de tiempo: si la wallet no responde, no se cuelga el botón.
-  try { acceso = await Promise.race([tieneAccesoAnalisis(wallet, ethers), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 8000))]); } catch (_) {}
+  try { acceso = await tieneAccesoAnalisis(wallet, ethers); } catch (_) {}
   if (acceso) return abrirSelector(origen, wallet, ethers);
   return abrirCobroAnalisis(origen, wallet, ethers, () => abrirSelector(origen, wallet, ethers));
 }
@@ -386,8 +385,6 @@ export function abrirSelector(origen, wallet, ethers) {
     <div class="an-cat-hd">
       <button class="an-colab" id="an-colab" type="button">${ICO.colab}<span>Collaboration</span></button>
       <label class="an-search">${ICO.search}<input id="an-q" type="search" autocomplete="off" placeholder="Search for a tool, indicator or strategy..."></label>
-      <button class="an-chip" type="button" data-cat="strategy">Strategies</button>
-      <button class="an-chip" type="button" data-cat="indicator">Indicators</button>
       <button class="an-cartbtn" id="an-cartbtn" type="button" aria-label="Cart">${ICO.cart}<span class="an-cartn">0</span></button>
     </div>`;
 
@@ -400,7 +397,7 @@ export function abrirSelector(origen, wallet, ethers) {
         ${catHeadHTML}
         <div class="an-grid" id="an-grid"></div>
         <div class="an-empty" id="an-empty" hidden>No tools match your search.</div>
-        <div class="an-foot"><button class="an-disc-link" id="an-disc-link" type="button">Disclaimer</button></div>
+        <div class="an-foot"><button class="an-disc-link" id="an-disc-link" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 7.6-7 9-4-1.4-7-4.4-7-9V6z"/><path d="M12 9v4"/><path d="M12 16.5h.01"/></svg>Disclaimer</button></div>
       </div>
     </div>
     <style>${CSS}</style>`;
@@ -747,9 +744,15 @@ const CSS = `
 #an-sel .an-cart-bnb{text-align:right;font-family:var(--mono);font-size:11px;color:var(--gold);margin:-6px 0 12px}
 #an-sel .an-pay.off{opacity:.5;cursor:not-allowed}
 /* footer disclaimer */
-#an-sel .an-foot{text-align:center;padding:22px 0 4px}
-#an-sel .an-disc-link{background:none;border:0;color:#79838f;font-family:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-#an-sel .an-disc-link:hover{color:var(--gold)}
+#an-sel .an-foot{text-align:center;padding:22px 0 6px}
+/* Botón NEGRO (mismo sistema que los chips de Terminal), no texto subrayado. */
+#an-sel .an-disc-link{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 22px;border-radius:11px;
+  border:1px solid #2a333f;background:linear-gradient(180deg,#1b2027,#0d1117);color:#c3cad3;
+  font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.3px;cursor:pointer;
+  box-shadow:0 3px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06);transition:color .15s,border-color .15s,transform .05s,box-shadow .05s}
+#an-sel .an-disc-link:hover{color:#f1cf6a;border-color:rgba(232,184,75,.55)}
+#an-sel .an-disc-link:active{transform:translateY(2px);box-shadow:0 1px 0 #060809,inset 0 1px 0 rgba(255,255,255,.06)}
+#an-sel .an-disc-link svg{opacity:.85;flex:0 0 auto}
 /* modal disclaimer */
 #an-sel .an-disc-card{max-width:600px;padding:0}
 #an-sel .an-disc-box{display:flow-root;padding:24px 26px 22px;text-align:left}
