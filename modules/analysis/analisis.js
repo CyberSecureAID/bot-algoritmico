@@ -36,14 +36,14 @@ const HERRAMIENTAS = [
   { id:'hair', abre:'heat', nombre:'Heat Pools', cat:'indicator', img:'assets/img/serv-libro.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'See what the big players do',
     desc:'The order book lies. We watch every wall over time and separate the real committed capital from the theater, so you know which levels truly hold.' },
-  { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'indicator', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:false, listo:true,
+  { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'indicator', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Where to buy and where to sell',
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
-  { id:'inst', abre:'inst', nombre:'Institutional Analysis', cat:'indicator', img:'modules/institutional/preview.svg', activos:['Crypto'], spot:false, listo:true,
+  { id:'inst', abre:'inst', nombre:'Institutional Analysis', cat:'analysis', img:'modules/institutional/preview.svg', activos:['Crypto'], spot:false, listo:true,
     lema:'The whole market, one desk',
     desc:'A professional analysis terminal: pro charting with six indicators, live quotes and watchlist, a market-wide heatmap and macro sentiment — the systems an institutional desk watches, wired into one screen.' }
 ];
-const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator' };
+const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis' };
 
 /* PRECIOS Y DESCUENTOS.
    Base UNIFORME por servicio: $25/mes, $300/año (=12x25). Editables desde el
@@ -621,6 +621,7 @@ const CSS = `
 #an-sel .an-ph-ini{position:relative;z-index:1;font-size:44px;font-weight:900;color:rgba(255,255,255,.22)}
 #an-sel .an-badge{position:absolute;top:9px;left:9px;z-index:2;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:100px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #an-sel .an-badge-indicator{color:#5ff0b0;background:rgba(46,189,133,.16);border:1px solid rgba(46,189,133,.4)}
+#an-sel .an-badge-analysis{color:#f1cf6a;background:rgba(232,184,75,.16);border:1px solid rgba(232,184,75,.42)}
 #an-sel .an-badge-strategy{color:#9cc9ff;background:rgba(74,163,255,.16);border:1px solid rgba(74,163,255,.4)}
 #an-sel .an-spot{position:absolute;top:9px;right:9px;z-index:2;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#cdd5dd;background:rgba(5,7,10,.55);border:1px solid rgba(255,255,255,.14);border-radius:100px;padding:3px 8px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #an-sel .an-spot svg{width:11px;height:11px;color:#2ebd85}
