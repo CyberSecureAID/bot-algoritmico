@@ -23,94 +23,18 @@
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 import { montarBarra } from './niveles/barra.js?v=1';   // la misma barra de herramientas de Smart Pools
+import { PARES } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const PARES = [
-  { id: 'BTC',   s: 'BTCUSDT',   n: 'Bitcoin',    cg: 'bitcoin' },
-  { id: 'ETH',   s: 'ETHUSDT',   n: 'Ethereum',   cg: 'ethereum' },
-  { id: 'BNB',   s: 'BNBUSDT',   n: 'BNB',        cg: 'binancecoin' },
-  { id: 'SOL',   s: 'SOLUSDT',   n: 'Solana',     cg: 'solana' },
-  { id: 'XRP',   s: 'XRPUSDT',   n: 'XRP',        cg: 'ripple' },
-  { id: 'DOGE',  s: 'DOGEUSDT',  n: 'Dogecoin',   cg: 'dogecoin' },
-  { id: 'ADA',   s: 'ADAUSDT',   n: 'Cardano',    cg: 'cardano' },
-  { id: 'AVAX',  s: 'AVAXUSDT',  n: 'Avalanche',  cg: 'avalanche-2' },
-  { id: 'LINK',  s: 'LINKUSDT',  n: 'Chainlink',  cg: 'chainlink' },
-  { id: 'DOT',   s: 'DOTUSDT',   n: 'Polkadot',   cg: 'polkadot' },
-  { id: 'POL',   s: 'POLUSDT',   n: 'Polygon',    cg: 'matic-network' },
-  { id: 'LTC',   s: 'LTCUSDT',   n: 'Litecoin',   cg: 'litecoin' },
-  { id: 'TRX',   s: 'TRXUSDT',   n: 'TRON',       cg: 'tron' },
-  { id: 'SHIB',  s: 'SHIBUSDT',  n: 'Shiba Inu',  cg: 'shiba-inu' },
-  { id: 'PEPE',  s: 'PEPEUSDT',  n: 'Pepe',       cg: 'pepe' },
-  { id: 'NEAR',  s: 'NEARUSDT',  n: 'NEAR',       cg: 'near' },
-  { id: 'SUI',   s: 'SUIUSDT',   n: 'Sui',        cg: 'sui' },
-  { id: 'ARB',   s: 'ARBUSDT',   n: 'Arbitrum',   cg: 'arbitrum' },
-  { id: 'OP',    s: 'OPUSDT',    n: 'Optimism',   cg: 'optimism' },
-  { id: 'ATOM',  s: 'ATOMUSDT',  n: 'Cosmos',     cg: 'cosmos' },
-  { id: 'UNI',   s: 'UNIUSDT',   n: 'Uniswap',    cg: 'uniswap' },
-  { id: 'INJ',   s: 'INJUSDT',   n: 'Injective',  cg: 'injective-protocol' },
-  { id: 'TON',   s: 'TONUSDT',   n: 'Toncoin',    cg: 'the-open-network' },
-  { id: 'APT',   s: 'APTUSDT',   n: 'Aptos',      cg: 'aptos' },
-  { id: 'FIL',   s: 'FILUSDT',   n: 'Filecoin',   cg: 'filecoin' },
-  { id: 'ETC',   s: 'ETCUSDT',   n: 'Ethereum Classic', cg: 'ethereum-classic' },
-  { id: 'HBAR',  s: 'HBARUSDT',  n: 'Hedera',     cg: 'hedera-hashgraph' },
-  { id: 'ICP',   s: 'ICPUSDT',   n: 'Internet Computer', cg: 'internet-computer' },
-  { id: 'IMX',   s: 'IMXUSDT',   n: 'Immutable',  cg: 'immutable-x' },
-  { id: 'RENDER',s: 'RENDERUSDT',n: 'Render',     cg: 'render-token' },
-  { id: 'STX',   s: 'STXUSDT',   n: 'Stacks',     cg: 'blockstack' },
-  { id: 'TIA',   s: 'TIAUSDT',   n: 'Celestia',   cg: 'celestia' },
-  { id: 'SEI',   s: 'SEIUSDT',   n: 'Sei',        cg: 'sei-network' },
-  { id: 'ALGO',  s: 'ALGOUSDT',  n: 'Algorand',   cg: 'algorand' },
-  { id: 'VET',   s: 'VETUSDT',   n: 'VeChain',    cg: 'vechain' },
-  { id: 'GALA',  s: 'GALAUSDT',  n: 'Gala',       cg: 'gala' },
-  { id: 'SAND',  s: 'SANDUSDT',  n: 'The Sandbox',cg: 'the-sandbox' },
-  { id: 'MANA',  s: 'MANAUSDT',  n: 'Decentraland', cg: 'decentraland' },
-  { id: 'AXS',   s: 'AXSUSDT',   n: 'Axie Infinity', cg: 'axie-infinity' },
-  { id: 'AAVE',  s: 'AAVEUSDT',  n: 'Aave',       cg: 'aave' },
-  { id: 'MKR',   s: 'MKRUSDT',   n: 'Maker',      cg: 'maker' },
-  { id: 'GRT',   s: 'GRTUSDT',   n: 'The Graph',  cg: 'the-graph' },
-  { id: 'LDO',   s: 'LDOUSDT',   n: 'Lido DAO',   cg: 'lido-dao' },
-  { id: 'CRV',   s: 'CRVUSDT',   n: 'Curve',      cg: 'curve-dao-token' },
-  { id: 'SNX',   s: 'SNXUSDT',   n: 'Synthetix',  cg: 'havven' },
-  { id: 'RUNE',  s: 'RUNEUSDT',  n: 'THORChain',  cg: 'thorchain' },
-  { id: 'FLOW',  s: 'FLOWUSDT',  n: 'Flow',       cg: 'flow' },
-  { id: 'CHZ',   s: 'CHZUSDT',   n: 'Chiliz',     cg: 'chiliz' },
-  { id: 'THETA', s: 'THETAUSDT', n: 'Theta',      cg: 'theta-token' },
-  { id: 'XLM',   s: 'XLMUSDT',   n: 'Stellar',    cg: 'stellar' },
-  { id: 'XTZ',   s: 'XTZUSDT',   n: 'Tezos',      cg: 'tezos' },
-  { id: 'EOS',   s: 'EOSUSDT',   n: 'EOS',        cg: 'eos' },
-  { id: 'IOTA',  s: 'IOTAUSDT',  n: 'IOTA',       cg: 'iota' },
-  { id: 'CAKE',  s: 'CAKEUSDT',  n: 'PancakeSwap',cg: 'pancakeswap-token' },
-  { id: 'DYDX',  s: 'DYDXUSDT',  n: 'dYdX',       cg: 'dydx-chain' },
-  { id: 'JUP',   s: 'JUPUSDT',   n: 'Jupiter',    cg: 'jupiter-exchange-solana' },
-  { id: 'PYTH',  s: 'PYTHUSDT',  n: 'Pyth',       cg: 'pyth-network' },
-  { id: 'WIF',   s: 'WIFUSDT',   n: 'dogwifhat',  cg: 'dogwifcoin' },
-  { id: 'BONK',  s: 'BONKUSDT',  n: 'Bonk',       cg: 'bonk' },
-  { id: 'FLOKI', s: 'FLOKIUSDT', n: 'Floki',      cg: 'floki' },
-  { id: 'JASMY', s: 'JASMYUSDT', n: 'JasmyCoin',  cg: 'jasmycoin' },
-  { id: 'ENA',   s: 'ENAUSDT',   n: 'Ethena',     cg: 'ethena' },
-  { id: 'W',     s: 'WUSDT',     n: 'Wormhole',   cg: 'wormhole' },
-  { id: 'STRK',  s: 'STRKUSDT',  n: 'Starknet',   cg: 'starknet' },
-  { id: 'PENDLE',s: 'PENDLEUSDT',n: 'Pendle',     cg: 'pendle' },
-  { id: 'ENS',   s: 'ENSUSDT',   n: 'ENS',        cg: 'ethereum-name-service' },
-  { id: 'COMP',  s: 'COMPUSDT',  n: 'Compound',   cg: 'compound-governance-token' },
-  { id: 'DASH',  s: 'DASHUSDT',  n: 'Dash',       cg: 'dash' },
-  { id: 'ZEC',   s: 'ZECUSDT',   n: 'Zcash',      cg: 'zcash' },
-  { id: 'KAVA',  s: 'KAVAUSDT',  n: 'Kava',       cg: 'kava' },
-  { id: 'MINA',  s: 'MINAUSDT',  n: 'Mina',       cg: 'mina-protocol' },
-  { id: 'ROSE',  s: 'ROSEUSDT',  n: 'Oasis',      cg: 'oasis-network' },
-  { id: 'ZIL',   s: 'ZILUSDT',   n: 'Zilliqa',    cg: 'zilliqa' },
-  { id: 'QNT',   s: 'QNTUSDT',   n: 'Quant',      cg: 'quant-network' },
-  { id: 'GMT',   s: 'GMTUSDT',   n: 'GMT',        cg: 'stepn' },
-  { id: 'APE',   s: 'APEUSDT',   n: 'ApeCoin',    cg: 'apecoin' },
-  { id: 'LRC',   s: 'LRCUSDT',   n: 'Loopring',   cg: 'loopring' },
-  { id: 'ANKR',  s: 'ANKRUSDT',  n: 'Ankr',       cg: 'ankr' },
-  { id: 'WLD',   s: 'WLDUSDT',   n: 'Worldcoin',  cg: 'worldcoin-wld' },
-  { id: 'NOT',   s: 'NOTUSDT',   n: 'Notcoin',    cg: 'notcoin' }
-];
+/* [UNIFICADO] La lista de monedas vive en niveles/config.js, compartida por
+   las tres secciones. Antes había una lista local (distinta) aquí. */
+/* PARES se importa arriba (ver import de ./niveles/config.js). */
 
 let _par = 'BNB';
+let _soloOp = false;          // filtro del selector: solo las operables
+let _operables = null;        // símbolos con contrato en BNB Chain (tokens.js)
 /* Nombre/dominio de la web en UN solo sitio: si cambia, se cambia aquí y se
    actualiza en todas las imágenes y textos que lo usan. */
 const WEB_DOMINIO = 'decfreedom.com';
@@ -1290,7 +1214,7 @@ export async function abrirMuros() {
       <div class="mu-barra">
         <button class="mu-back" id="mu-back" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Back</button>
         <button class="mu-sel" id="mu-sel">
-          <i class="mu-logo" data-cg="${esc((PARES.find((p) => p.id === _par) || {}).cg || '')}"></i>
+          <i class="mu-logo" data-cg="${esc((PARES.find((p) => p.id === _par) || {}).cg || '')}" data-ico="${esc((PARES.find((p) => p.id === _par) || {}).ico || '')}"></i>
           <b>${esc(_par)}</b>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
@@ -3011,14 +2935,22 @@ function menuPares() {
   m.id = 'mu-picker';
   m.innerHTML = `
     <input class="mu-buscar" id="mu-buscar" placeholder="Search…" autocomplete="off">
+    <button class="mu-filtro ${_soloOp ? 'on' : ''}" id="mu-filtro" type="button">
+      <span class="mu-fl-ic">${_soloOp ? '\u2713' : '\u25CB'}</span> Only the ones I can trade
+    </button>
     <div class="mu-lista-mon">
-      ${PARES.map((p) => `
-        <button class="mu-op ${p.id === _par ? 'on' : ''}" data-mv="${p.id}"
-                data-busca="${esc((p.id + ' ' + p.n).toLowerCase())}">
-          <i class="mu-logo" data-cg="${esc(p.cg)}"></i>
-          <b>${esc(p.id)}</b><span>${esc(p.n)}</span>
-          ${p.id === _par ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m20 6-11 11-5-5"/></svg>' : ''}
-        </button>`).join('')}
+      ${['cripto', 'divisa', 'materia'].map((gr) => {
+        const lista = PARES.filter((p) => (p.grupo || 'cripto') === gr);
+        if (!lista.length) return '';
+        const tit = { cripto: 'Crypto', divisa: 'Forex', materia: 'Commodities' }[gr];
+        return `<div class="mu-cat">${esc(tit)}</div>` + lista.map((p) => `
+          <button class="mu-op ${p.id === _par ? 'on' : ''}" data-mv="${p.id}"
+                  data-busca="${esc((p.id + ' ' + p.n).toLowerCase())}">
+            <i class="mu-logo" data-cg="${esc(p.cg)}" data-ico="${esc(p.ico || '')}"></i>
+            <b>${esc(p.id)}</b><span>${esc(p.n)}</span>
+            ${p.id === _par ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m20 6-11 11-5-5"/></svg>' : ''}
+          </button>`).join('');
+      }).join('')}
     </div>`;
   document.body.appendChild(m);
 
@@ -3029,13 +2961,40 @@ function menuPares() {
   setTimeout(ponerLogos, 30);
 
   m.addEventListener('click', (e) => e.stopPropagation());
-  $('mu-buscar').oninput = (e) => {
-    const q = e.target.value.toLowerCase().trim();
+  const ocultarVacios = () => m.querySelectorAll('.mu-cat').forEach((g) => {
+    let hay = false, sig = g.nextElementSibling;
+    while (sig && !sig.classList.contains('mu-cat')) { if (sig.style.display !== 'none') { hay = true; break; } sig = sig.nextElementSibling; }
+    g.style.display = hay ? '' : 'none';
+  });
+  const aplicarBusqueda = () => {
+    const q = ($('mu-buscar').value || '').toLowerCase().trim();
     m.querySelectorAll('[data-mv]').forEach((x) => {
-      x.style.display = !q || x.dataset.busca.includes(q) ? '' : 'none';
+      const okB = !q || x.dataset.busca.includes(q);
+      const okF = !_soloOp || !x.classList.contains('no-operable');
+      x.style.display = (okB && okF) ? '' : 'none';
     });
+    ocultarVacios();
   };
+  $('mu-buscar').oninput = aplicarBusqueda;
   setTimeout(() => { try { $('mu-buscar').focus(); } catch (_) {} }, 60);
+  /* Filtro "solo operables": marca las que tienen contrato en BNB Chain. */
+  const aplicarFiltro = async () => {
+    if (!_operables) {
+      try { const tk = await import('./tokens.js?v=125'); _operables = new Set(Object.values(tk.MONEDAS).map((x) => x.simbolo)); }
+      catch (_) { _operables = new Set(); }
+    }
+    m.querySelectorAll('[data-mv]').forEach((x) => x.classList.toggle('no-operable', !_operables.has(x.dataset.mv)));
+    aplicarBusqueda();
+  };
+  const bf = $('mu-filtro');
+  if (bf) bf.onclick = (e) => {
+    e.stopPropagation();
+    _soloOp = !_soloOp;
+    bf.classList.toggle('on', _soloOp);
+    bf.querySelector('.mu-fl-ic').textContent = _soloOp ? '\u2713' : '\u25CB';
+    aplicarFiltro();
+  };
+  aplicarFiltro();
 
   m.querySelectorAll('[data-mv]').forEach((b) => b.onclick = () => {
     _par = b.dataset.mv;
@@ -3045,8 +3004,9 @@ function menuPares() {
     const bb = anc.querySelector('b'); if (bb) bb.textContent = _par;
     const lg = anc.querySelector('.mu-logo');
     if (lg) {
-      lg.dataset.cg = (PARES.find((x) => x.id === _par) || {}).cg || '';
-      lg.classList.remove('con'); lg.style.backgroundImage = '';
+      const _p = PARES.find((x) => x.id === _par) || {};
+      lg.dataset.cg = _p.cg || ''; lg.dataset.ico = _p.ico || '';
+      lg.classList.remove('con'); lg.style.backgroundImage = ''; lg.textContent = ''; lg.classList.remove('con-ico');
     }
     m.remove();
     // Cambiar de moneda es empezar de cero: el historial no vale
@@ -3082,9 +3042,11 @@ async function ponerLogos() {
       try { localStorage.setItem(CLAVE_LOGOS, JSON.stringify({ cuando: Date.now(), datos: _logos })); } catch (_) {}
     } catch (_) { _logos = {}; }
   }
-  document.querySelectorAll('.mu-logo[data-cg]').forEach((el) => {
-    const url = _logos && _logos[el.dataset.cg];
-    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); }
+  document.querySelectorAll('.mu-logo').forEach((el) => {
+    const url = _logos && el.dataset.cg && _logos[el.dataset.cg];
+    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; el.classList.remove('con-ico'); }
+    else if (el.dataset.ico) { el.style.backgroundImage = ''; el.classList.remove('con'); el.textContent = el.dataset.ico; el.classList.add('con-ico'); }
+    else { el.textContent = ''; el.classList.remove('con-ico'); }
   });
 }
 
@@ -3232,6 +3194,8 @@ function estilos() {
   #mu-overlay .mu-sel svg{width:13px;height:13px;opacity:.6}
   .mu-logo{width:20px;height:20px;border-radius:50%;flex:0 0 auto;display:block;
     background:rgba(255,255,255,.06) center/cover no-repeat;border:1px solid #2b3139}
+  .mu-logo.con-ico{background:#1c2127;color:#e8ecf2;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
+  .mu-logo.con{background-size:cover;background-position:center}
   .mu-logo.con{background-color:transparent;border-color:transparent}
   #mu-overlay .mu-estado-err{align-self:center;font-family:var(--mono,monospace);font-size:10px;color:#f6465d;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
@@ -3621,6 +3585,17 @@ function estilos() {
     font-family:var(--sans,sans-serif);font-size:13px;min-height:38px}
   #mu-picker .mu-buscar:focus{outline:none;border-color:var(--gold-soft,#C9A84B)}
   #mu-picker .mu-lista-mon{overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+  #mu-picker .mu-filtro{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;margin:2px 0 6px;padding:0 11px;
+    border-radius:9px;border:1px solid #2b3139;background:rgba(255,255,255,.03);color:#9aa4af;cursor:pointer;
+    font-family:var(--mono,monospace);font-size:10px;letter-spacing:.3px}
+  #mu-picker .mu-filtro:hover{border-color:#C9A84B}
+  #mu-picker .mu-filtro.on{background:rgba(232,184,75,.14);border-color:#E8B84B;color:#E8B84B}
+  #mu-picker .mu-fl-ic{font-size:12px;flex:0 0 auto}
+  #mu-picker .mu-cat{font-family:var(--mono,monospace);font-size:8.5px;color:#E8B84B;letter-spacing:1px;
+    text-transform:uppercase;padding:8px 4px 4px;opacity:.8}
+  #mu-picker .mu-op.no-operable b{color:#5c6672}
+  #mu-picker .mu-op.no-operable:after{content:'analysis only';margin-left:auto;font-family:var(--mono,monospace);
+    font-size:8px;color:#5c6672;letter-spacing:.3px;flex:0 0 auto}
   #mu-picker .mu-op{display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;
     border-radius:9px;background:transparent;border:none;color:#b7bdc6;cursor:pointer;
     text-align:left;min-height:42px}

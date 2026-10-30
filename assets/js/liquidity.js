@@ -13,6 +13,7 @@
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 import * as wallet from './wallet.js?v=129';
 import { montarBarra } from './niveles/barra.js?v=1';   // la misma barra de herramientas de Smart Pools
+import { PARES } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 
 /* ══════════════════════════════════════════════════════════════
    SUSCRIPCIÓN A LAS HERRAMIENTAS PRO
@@ -69,34 +70,9 @@ const rgba = (c) => {
 
 /* Monedas disponibles, con su par en Binance. */
 /* El campo `cg` es el identificador en CoinGecko, para el logo. */
-const PARES = [
-  { id: 'BTC',   s: 'BTCUSDT',   n: 'Bitcoin',   cg: 'bitcoin' },
-  { id: 'ETH',   s: 'ETHUSDT',   n: 'Ethereum',  cg: 'ethereum' },
-  { id: 'BNB',   s: 'BNBUSDT',   n: 'BNB',       cg: 'binancecoin' },
-  { id: 'SOL',   s: 'SOLUSDT',   n: 'Solana',    cg: 'solana' },
-  { id: 'XRP',   s: 'XRPUSDT',   n: 'XRP',       cg: 'ripple' },
-  { id: 'DOGE',  s: 'DOGEUSDT',  n: 'Dogecoin',  cg: 'dogecoin' },
-  { id: 'ADA',   s: 'ADAUSDT',   n: 'Cardano',   cg: 'cardano' },
-  { id: 'AVAX',  s: 'AVAXUSDT',  n: 'Avalanche', cg: 'avalanche-2' },
-  { id: 'LINK',  s: 'LINKUSDT',  n: 'Chainlink', cg: 'chainlink' },
-  { id: 'DOT',   s: 'DOTUSDT',   n: 'Polkadot',  cg: 'polkadot' },
-  { id: 'MATIC', s: 'MATICUSDT', n: 'Polygon',   cg: 'matic-network' },
-  { id: 'LTC',   s: 'LTCUSDT',   n: 'Litecoin',  cg: 'litecoin' },
-  { id: 'TRX',   s: 'TRXUSDT',   n: 'TRON',      cg: 'tron' },
-  { id: 'SHIB',  s: 'SHIBUSDT',  n: 'Shiba Inu', cg: 'shiba-inu' },
-  { id: 'PEPE',  s: 'PEPEUSDT',  n: 'Pepe',      cg: 'pepe' },
-  { id: 'NEAR',  s: 'NEARUSDT',  n: 'NEAR',      cg: 'near' },
-  { id: 'APT',   s: 'APTUSDT',   n: 'Aptos',     cg: 'aptos' },
-  { id: 'ARB',   s: 'ARBUSDT',   n: 'Arbitrum',  cg: 'arbitrum' },
-  { id: 'OP',    s: 'OPUSDT',    n: 'Optimism',  cg: 'optimism' },
-  { id: 'INJ',   s: 'INJUSDT',   n: 'Injective', cg: 'injective-protocol' },
-  { id: 'SUI',   s: 'SUIUSDT',   n: 'Sui',       cg: 'sui' },
-  { id: 'ATOM',  s: 'ATOMUSDT',  n: 'Cosmos',    cg: 'cosmos' },
-  { id: 'FIL',   s: 'FILUSDT',   n: 'Filecoin',  cg: 'filecoin' },
-  { id: 'UNI',   s: 'UNIUSDT',   n: 'Uniswap',   cg: 'uniswap' },
-  { id: 'WIF',   s: 'WIFUSDT',   n: 'dogwifhat', cg: 'dogwifcoin' },
-  { id: 'TIA',   s: 'TIAUSDT',   n: 'Celestia',  cg: 'celestia' }
-];
+/* [UNIFICADO] La lista de monedas vive en niveles/config.js, compartida por
+   las tres secciones. Antes había una lista local (distinta) aquí. */
+/* PARES se importa arriba (ver import de ./niveles/config.js). */
 const TFS = [
   { id: '1m',  n: '1m' },
   { id: '3m',  n: '3m' },
@@ -116,6 +92,8 @@ let _od = null;              // módulo de órdenes
 let _barra = null;           // barra de herramientas compartida (Smart Pools)
 let _zonasOd = [];           // dónde pulsar para cancelar
 let _par = 'BNB';
+let _soloOp = false;          // filtro del selector: solo las operables
+let _operables = null;        // símbolos con contrato en BNB Chain (tokens.js)
 let _tf = '1h';
 
 /* ══════════════════════════════════════════════════════════════
@@ -785,7 +763,7 @@ export async function abrirPools() {
         <!-- Moneda y temporalidad como desplegables: con 26 monedas
              una fila de botones no cabe en ningún sitio. -->
         <button class="lq-sel" id="lq-sel-par">
-          <i class="lq-logo" id="lq-cur-logo" data-cg="${esc((PARES.find((p) => p.id === _par) || PARES[0]).cg || '')}"></i>
+          <i class="lq-logo" id="lq-cur-logo" data-cg="${esc((PARES.find((p) => p.id === _par) || PARES[0]).cg || '')}" data-ico="${esc((PARES.find((p) => p.id === _par) || PARES[0]).ico || '')}"></i>
           <b>${_par}</b>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
@@ -2210,21 +2188,33 @@ async function ponerLogosLq() {
       try { localStorage.setItem(CLAVE_LOGOS_LQ, JSON.stringify({ cuando: Date.now(), datos: _logosLq })); } catch (_) {}
     } catch (_) { _logosLq = {}; }
   }
-  document.querySelectorAll('.lq-logo[data-cg]').forEach((el) => {
-    const url = _logosLq && _logosLq[el.dataset.cg];
-    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); }
+  document.querySelectorAll('.lq-logo').forEach((el) => {
+    const url = _logosLq && el.dataset.cg && _logosLq[el.dataset.cg];
+    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; el.classList.remove('con-ico'); }
+    else if (el.dataset.ico) { el.style.backgroundImage = ''; el.classList.remove('con'); el.textContent = el.dataset.ico; el.classList.add('con-ico'); }
+    else { el.textContent = ''; el.classList.remove('con-ico'); }
   });
 }
 
 function menuPares() {
-  const html = PARES.map((p) => `
-    <button data-val="${p.id}" data-busca="${(p.id + ' ' + p.n).toLowerCase()}"
-            class="lq-op ${p.id === _par ? 'on' : ''}">
-      <i class="lq-logo" data-cg="${esc(p.cg || '')}"></i>
-      <b>${p.id}</b><span>${esc(p.n)}</span>
-      ${p.id === _par ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m20 6-11 11-5-5"/></svg>' : ''}
-    </button>`).join('');
+  /* [UNIFICADO] Mismo selector que Smart Pools: agrupado (Crypto/Forex/
+     Commodities) y con el filtro "solo las que puedo operar". */
+  const html = `<button class="lq-filtro ${_soloOp ? 'on' : ''}" id="lq-filtro" type="button">`
+    + `<span class="lq-fl-ic">${_soloOp ? '\u2713' : '\u25CB'}</span> Only the ones I can trade</button>`
+    + ['cripto', 'divisa', 'materia'].map((gr) => {
+        const lista = PARES.filter((p) => (p.grupo || 'cripto') === gr);
+        if (!lista.length) return '';
+        const tit = { cripto: 'Crypto', divisa: 'Forex', materia: 'Commodities' }[gr];
+        return `<div class="lq-cat">${esc(tit)}</div>` + lista.map((p) => `
+          <button data-val="${p.id}" data-busca="${(p.id + ' ' + p.n).toLowerCase()}"
+                  class="lq-op ${p.id === _par ? 'on' : ''}">
+            <i class="lq-logo" data-cg="${esc(p.cg || '')}" data-ico="${esc(p.ico || '')}"></i>
+            <b>${p.id}</b><span>${esc(p.n)}</span>
+            ${p.id === _par ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m20 6-11 11-5-5"/></svg>' : ''}
+          </button>`).join('');
+      }).join('');
   setTimeout(ponerLogosLq, 40);
+  setTimeout(montarFiltroLq, 10);
   abrirMenu($('lq-sel-par'), html, (v) => {
     _par = v;
     /* Una ficha de otra moneda no puede quedarse abierta. */
@@ -2233,12 +2223,52 @@ function menuPares() {
     if (b) b.textContent = v;
     // cabecera: logo + precio/rango de la nueva moneda
     const lg = $('lq-cur-logo'), np = PARES.find((p) => p.id === v) || PARES[0];
-    if (lg) { lg.dataset.cg = np.cg || ''; lg.style.backgroundImage = ''; lg.classList.remove('con'); ponerLogosLq(); }
+    if (lg) { lg.dataset.cg = np.cg || ''; lg.dataset.ico = np.ico || ''; lg.style.backgroundImage = ''; lg.classList.remove('con'); lg.textContent = ''; lg.classList.remove('con-ico'); ponerLogosLq(); }
     ['lq-px-now', 'lq-px-hi', 'lq-px-lo'].forEach((id) => { const e = $(id); if (e) e.textContent = '—'; });
     actualizarCabeceraPrecio();
     V.dibujos = [];          // los dibujos son de la moneda anterior
     pintar();
   }, true);
+}
+
+/* Cablea el filtro "solo operables" y la búsqueda agrupada sobre el menú que
+   crea abrirMenu (.lq-menu en el body). Se llama justo tras abrir el menú. */
+function montarFiltroLq() {
+  const m = document.querySelector('.lq-menu'); if (!m) return;
+  const ocultarVacios = () => m.querySelectorAll('.lq-cat').forEach((g) => {
+    let hay = false, sig = g.nextElementSibling;
+    while (sig && !sig.classList.contains('lq-cat')) { if (sig.style.display !== 'none') { hay = true; break; } sig = sig.nextElementSibling; }
+    g.style.display = hay ? '' : 'none';
+  });
+  const aplicarBusqueda = () => {
+    const bus = m.querySelector('#lq-buscar');
+    const q = (bus && bus.value || '').toLowerCase().trim();
+    m.querySelectorAll('[data-val]').forEach((x) => {
+      const okB = !q || x.dataset.busca.includes(q);
+      const okF = !_soloOp || !x.classList.contains('no-operable');
+      x.style.display = (okB && okF) ? '' : 'none';
+    });
+    ocultarVacios();
+  };
+  const bus = m.querySelector('#lq-buscar');
+  if (bus) bus.oninput = aplicarBusqueda;      // reemplaza la búsqueda plana de abrirMenu
+  const aplicarFiltro = async () => {
+    if (!_operables) {
+      try { const tk = await import('./tokens.js?v=125'); _operables = new Set(Object.values(tk.MONEDAS).map((x) => x.simbolo)); }
+      catch (_) { _operables = new Set(); }
+    }
+    m.querySelectorAll('[data-val]').forEach((x) => x.classList.toggle('no-operable', !_operables.has(x.dataset.val)));
+    aplicarBusqueda();
+  };
+  const bf = m.querySelector('#lq-filtro');
+  if (bf) bf.onclick = (e) => {
+    e.stopPropagation();
+    _soloOp = !_soloOp;
+    bf.classList.toggle('on', _soloOp);
+    bf.querySelector('.lq-fl-ic').textContent = _soloOp ? '\u2713' : '\u25CB';
+    aplicarFiltro();
+  };
+  aplicarFiltro();
 }
 
 function menuTfs() {
@@ -2609,12 +2639,25 @@ function estilos() {
     border:1px solid #2b3139;background:#0b0e12;color:#eaecef;
     font-family:var(--sans,sans-serif);font-size:13px;min-height:38px}
   .lq-buscar:focus{outline:none;border-color:var(--gold-soft,#C9A84B)}
+  #lq-overlay .lq-filtro{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;margin:2px 0 6px;padding:0 11px;
+    border-radius:9px;border:1px solid #2b3139;background:rgba(255,255,255,.03);color:#9aa4af;cursor:pointer;
+    font-family:var(--mono,monospace);font-size:10px;letter-spacing:.3px}
+  #lq-overlay .lq-filtro:hover{border-color:#C9A84B}
+  #lq-overlay .lq-filtro.on{background:rgba(232,184,75,.14);border-color:#E8B84B;color:#E8B84B}
+  #lq-overlay .lq-fl-ic{font-size:12px;flex:0 0 auto}
+  #lq-overlay .lq-cat{font-family:var(--mono,monospace);font-size:8.5px;color:#E8B84B;letter-spacing:1px;
+    text-transform:uppercase;padding:8px 4px 4px;opacity:.8}
+  #lq-overlay .lq-op.no-operable b{color:#5c6672}
+  #lq-overlay .lq-op.no-operable:after{content:'analysis only';margin-left:auto;font-family:var(--mono,monospace);
+    font-size:8px;color:#5c6672;letter-spacing:.3px;flex:0 0 auto}
   .lq-op{display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border-radius:9px;
     background:transparent;border:none;color:#b7bdc6;cursor:pointer;text-align:left;min-height:40px}
   .lq-op:hover{background:rgba(255,255,255,.05)}
   .lq-op.on{background:rgba(232,184,75,.1);color:var(--gold,#E8B84B)}
   .lq-logo{width:22px;height:22px;border-radius:50%;flex:0 0 auto;
     background:rgba(255,255,255,.06) center/cover no-repeat;border:1px solid #2b3139}
+  .lq-logo.con-ico{background:#1c2127;color:#e8ecf2;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
+  .lq-logo.con{background-size:cover;background-position:center}
   .lq-logo.con{background-color:transparent;border-color:transparent}
   .lq-op b{font-family:var(--mono,monospace);font-size:12px;font-weight:700;min-width:44px}
   .lq-op span{flex:1;font-family:var(--sans,sans-serif);font-size:12px;color:#7d8794;

@@ -101,7 +101,7 @@ export async function abrirNiveles() {
       <header class="nv-cab">
         <button class="nv-back" id="nv-back" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Back</button>
         <button class="nv-sel" id="nv-sel">
-          <i class="nv-logo" data-cg="${esc((PARES.find((p) => p.id === N.par) || {}).cg || '')}"></i>
+          <i class="nv-logo" data-cg="${esc((PARES.find((p) => p.id === N.par) || {}).cg || '')}" data-ico="${esc((PARES.find((p) => p.id === N.par) || {}).ico || '')}"></i>
           <b>${esc(N.par)}</b>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
@@ -727,7 +727,7 @@ function menuPares() {
         return `<div class="nv-grupo">${esc(T(tit))}</div>` + lista.map((p) => `
           <button class="nv-op ${p.id === N.par ? 'on' : ''}" data-np="${p.id}"
                   data-busca="${esc((p.id + ' ' + p.n).toLowerCase())}">
-            <i class="nv-logo" data-cg="${esc(p.cg)}"></i>
+            <i class="nv-logo" data-cg="${esc(p.cg)}" data-ico="${esc(p.ico || '')}"></i>
             <b>${esc(p.id)}</b><span>${esc(p.n)}</span>
           </button>`).join('');
       }).join('')}
@@ -797,7 +797,7 @@ function menuPares() {
     N.par = b.dataset.np;
     const bb = anc.querySelector('b'); if (bb) bb.textContent = N.par;
     const lg = anc.querySelector('.nv-logo');
-    if (lg) { lg.dataset.cg = (PARES.find((x) => x.id === N.par) || {}).cg || ''; lg.classList.remove('con'); lg.style.backgroundImage = ''; }
+    if (lg) { const _p = PARES.find((x) => x.id === N.par) || {}; lg.dataset.cg = _p.cg || ''; lg.dataset.ico = _p.ico || ''; lg.classList.remove('con'); lg.style.backgroundImage = ''; }
     m.remove();
     /* Una ficha de otra moneda no puede quedarse abierta. */
     try { if (N.cerrarFichas) N.cerrarFichas(); } catch (_) {}
