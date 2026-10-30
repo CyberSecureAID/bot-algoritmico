@@ -1,7 +1,12 @@
 /* niveles/burbujas.js — Burbujas del asistente sobre la gráfica (los
    mensajes que explican qué está pasando) + su escritura letra a letra y
-   la tabla del plan. Extraído de niveles.js. Usa initBurbujas(dibujar)
-   para volver a dibujar al abrir/cerrar una burbuja, sin import circular. */
+   la tabla del plan. Usa initBurbujas(dibujar) para volver a dibujar al
+   abrir/cerrar una burbuja, sin import circular.
+
+   [T4] Cada analista es bilingüe. Arranca en el idioma del sitio y trae un
+   botón cuadrado "ES"/"EN" que cambia SOLO ese popup. Al abrir un analista
+   se marca por defecto en la gráfica el nivel del que habla ("Show me where"
+   activo). Los textos vienen como { en, es } desde asistente.js. */
 
 import { N } from './estado.js?v=1';
 import { T } from './i18n.js?v=1';
@@ -11,134 +16,157 @@ const $ = (id) => document.getElementById(id);
 let _dibujar = () => {};
 export function initBurbujas(dibujar) { _dibujar = dibujar; }
 
+/* Escoge el lado del par bilingüe; tolera strings sueltos por si acaso. */
+const L = (f, lang) => (f && typeof f === 'object')
+  ? (f[lang] != null ? f[lang] : f.en)
+  : (f == null ? '' : f);
+
+/* Idioma con el que arranca cada popup: el del sitio (idioma.js fija
+   document.documentElement.lang). Inglés si no se puede leer. */
+const idiomaSitio = () => {
+  try { return (document.documentElement.lang || 'en').toLowerCase().startsWith('es') ? 'es' : 'en'; }
+  catch (_) { return 'en'; }
+};
+
+/* Etiquetas de interfaz del panel, en los dos idiomas que ofrece el botón. */
+const UI = {
+  en: { why: 'Why I say this', hide: 'Hide', show: 'Show me where', plan: 'Trade plan',
+        entry: 'Entry', stop: 'Stop', target: 'Target', rr: 'Risk/reward', vol: 'Avg. volatility' },
+  es: { why: 'Por qué lo digo', hide: 'Ocultar', show: 'Muéstrame dónde', plan: 'Plan de trade',
+        entry: 'Entrada', stop: 'Stop', target: 'Objetivo', rr: 'Riesgo/beneficio', vol: 'Volatilidad media' }
+};
+
+const ic = { compra: '▲', venta: '▼', vigilar: '◆', aviso: '✱', tendencia: '➜', contexto: '·' };
+const etq = { compra: 'BUY', venta: 'SELL', vigilar: 'WATCH', aviso: 'WAIT', tendencia: 'TREND', contexto: 'CONTEXT' };
+
 export function burbujas() {
   const caja = $('nv-caps');
   if (!caja || !N._geo || N.cargando) return;
   if (!N.mensajes.length) { caja.innerHTML = ''; return; }
 
-  /* ══════════════════════════════════════════════════════════
-     LAS CÁPSULAS
-
-     [REPLANTEADO] Se quitaron los puntos latiendo y las cuerdas:
-     ensuciaban la gráfica y con el zoom se volvían locos.
-
-     Ahora las cápsulas van arriba a la derecha, que es donde no
-     hay velas (el mercado avanza de izquierda a derecha). Se
-     tocan, se despliegan hacia abajo, y solo si el usuario pulsa
-     "Señálame dónde está" aparece la línea al nivel.
-     ══════════════════════════════════════════════════════════ */
-  /* [CORREGIDO] La firma incluía los números con decimales, así que
-     cualquier micromovimiento del precio la cambiaba y las tarjetas
-     se rehacían y reanimaban cada 30 segundos con el mismo mensaje.
-
-     Ahora los números se redondean para la firma: solo se rehace
-     cuando el mensaje cambia de verdad. */
+  /* [CORREGIDO] La firma redondea los números: solo se rehace (y reanima)
+     cuando el mensaje cambia de verdad, no en cada micromovimiento. La firma
+     se calcula en inglés para que sea estable independientemente del idioma
+     en que el usuario tenga abierto cada popup. */
   const firma = N.mensajes
-    .map((m) => m.tipo + '|' + m.titulo + '|' + String(m.txt).replace(/[\d.,]+/g, '#'))
+    .map((m) => m.tipo + '|' + L(m.titulo, 'en') + '|' + String(L(m.txt, 'en')).replace(/[\d.,]+/g, '#'))
     .join('~');
   if (caja.dataset.firma === firma) {
-    /* Mismo mensaje: solo se refrescan las cifras, sin reanimar. */
+    /* Mismo mensaje: solo se refrescan las cifras, en el idioma de cada popup. */
     N.mensajes.forEach((m, i) => {
-      const el = caja.querySelector(`[data-nvm="${i}"] .nv-pm-tx`);
-      if (el && el.dataset.hecho) el.textContent = T(m.txt);
-      const h = caja.querySelector(`[data-nvm="${i}"] .nv-pm-hacer`);
-      if (h) h.textContent = T(m.hacer);
+      const cap = caja.querySelector(`[data-nvm="${i}"]`);
+      if (!cap) return;
+      const lang = cap.dataset.lang === 'es' ? 'es' : 'en';
+      const el = cap.querySelector('.nv-pm-tx');
+      if (el && el.dataset.hecho) el.textContent = L(m.txt, lang);
+      const h = cap.querySelector('.nv-pm-hacer');
+      if (h) h.textContent = L(m.hacer, lang);
     });
     return;
   }
   caja.dataset.firma = firma;
 
-  const ic = { compra: '▲', venta: '▼', vigilar: '◆', aviso: '✱', tendencia: '➜', contexto: '·' };
-  const etq = { compra: 'BUY', venta: 'SELL', vigilar: 'WATCH', aviso: 'WAIT',
-                tendencia: 'TREND', contexto: 'CONTEXT' };
-
+  const base = idiomaSitio();
   caja.innerHTML = `${N.mensajes.map((m, idx) => `
-    <div class="nv-cap t-${m.tipo} ${m.esPlan ? 'plan' : ''} avisa" data-nvm="${idx}">
+    <div class="nv-cap t-${m.tipo} ${m.esPlan ? 'plan' : ''} avisa" data-nvm="${idx}" data-lang="${base}">
       <button class="nv-cap-b" type="button">
         <span class="nv-num">${idx + 1}</span>
         <img class="nv-cap-ava" src="assets/img/jesus-avatar.webp" alt="">
         <span class="nv-cap-tx">${ic[m.tipo] || '✱'} ${esc(T(etq[m.tipo] || ''))}</span>
         <span class="nv-cap-fl">▾</span>
       </button>
-
-      <div class="nv-cap-panel">
-        <div class="nv-pm-cab">
-          <img class="nv-pm-ava" src="assets/img/jesus-avatar.webp" alt="">
-          <div class="nv-pm-quien"><b>Jesús</b><span>${esc(T(m.titulo))}</span></div>
-        </div>
-        <div class="nv-pm-tx" data-escribir="${esc(T(m.txt))}"></div>
-        <div class="nv-pm-hacer">${esc(T(m.hacer))}</div>
-
-        ${m.plan ? planHTML(m.plan) : ''}
-
-        <div class="nv-acts">
-          <button class="nv-pm-mas" type="button">${esc(T('Why I say this'))} ▾</button>
-          ${m.p ? `<button class="nv-senala" type="button">${esc(T('Show me where'))}</button>` : ''}
-        </div>
-
-        <!-- Herramientas que el usuario puede pedir -->
-        <div class="nv-pm-det">
-          ${(m.detalle || []).map((x) => `<div class="nv-pm-li">${esc(T(x))}</div>`).join('')}
-        </div>
-      </div>
+      <div class="nv-cap-panel">${panelInner(m, idx, base)}</div>
     </div>`).join('')}`;
 
-  caja.querySelectorAll('[data-nvm]').forEach((el, idx) => {
+  caja.querySelectorAll('[data-nvm]').forEach((el) => {
+    const idx = +el.dataset.nvm;
     const b = el.querySelector('.nv-cap-b');
-    const mas = el.querySelector('.nv-pm-mas');
-    const sen = el.querySelector('.nv-senala');
 
     b.onclick = (e) => {
       e.stopPropagation();
-      el.classList.remove('avisa');      // ya la miró: deja de avisar
-      const ab = el.classList.contains('abierto');
+      el.classList.remove('avisa');               // ya la miró: deja de avisar
+      const abierta = el.classList.contains('abierto');
       caja.querySelectorAll('.nv-cap').forEach((x) => x.classList.remove('abierto'));
-      if (!ab) { el.classList.add('abierto'); escribir(el.querySelector('[data-escribir]')); }
-    };
-    mas.onclick = (e) => {
-      e.stopPropagation();
-      el.classList.toggle('con-detalle');
-      mas.textContent = el.classList.contains('con-detalle')
-        ? T('Hide') + ' ▴' : T('Why I say this') + ' ▾';
-    };
-    const vw = el.querySelector('[data-vwap]');
-    if (vw) vw.onclick = (e) => {
-      e.stopPropagation();
-      N.verVWAP = !N.verVWAP;
-      vw.classList.toggle('on', N.verVWAP);
-      if (N.verVWAP) el.classList.remove('abierto');
-      _dibujar();
-    };
-    const pf = el.querySelector('[data-perfil]');
-    if (pf) pf.onclick = (e) => {
-      e.stopPropagation();
-      N.verPerfil = !N.verPerfil;
-      pf.classList.toggle('on', N.verPerfil);
-      if (N.verPerfil) el.classList.remove('abierto');
-      _dibujar();
+      if (!abierta) {
+        el.classList.add('abierto');
+        /* "Show me where" activo por defecto: marca en la gráfica el nivel
+           del que habla este analista en cuanto se abre. */
+        if (N.mensajes[idx] && N.mensajes[idx].p) {
+          N.senalado = idx;
+          const sb = el.querySelector('.nv-senala'); if (sb) sb.classList.add('on');
+          _dibujar();
+        }
+        escribir(el.querySelector('[data-escribir]'));
+      } else if (N.senalado === idx) {
+        N.senalado = null;                         // se cerró: quita la marca
+        _dibujar();
+      }
     };
 
-    const fib = el.querySelector('[data-fib]');
-    if (fib) fib.onclick = (e) => {
-      e.stopPropagation();
-      N.verFibo = !N.verFibo;
-      fib.classList.toggle('on', N.verFibo);
-      if (N.verFibo) { el.classList.remove('abierto'); animarFibo(); }
-      else _dibujar();
-    };
-
-    if (sen) sen.onclick = (e) => {
-      e.stopPropagation();
-      /* Se cierra la cápsula y se marca el nivel en la gráfica */
-      el.classList.remove('abierto');
-      N.senalado = N.senalado === idx ? null : idx;
-      _dibujar();
-    };
+    bindPanel(el, idx);
   });
+}
 
-  /* [CORREGIDO] Ninguna se abre sola: molestaba y tapaba la gráfica
-     nada más entrar. La flecha parpadea para avisar de que hay algo
-     que leer, y el usuario decide cuándo. */
+/* Construye el interior del panel en el idioma pedido. Se usa al pintar y al
+   cambiar de idioma con el botón. */
+function panelInner(m, idx, lang) {
+  const u = UI[lang] || UI.en;
+  return `
+    <div class="nv-pm-cab">
+      <img class="nv-pm-ava" src="assets/img/jesus-avatar.webp" alt="">
+      <div class="nv-pm-quien"><b>Jesús</b><span>${esc(L(m.titulo, lang))}</span></div>
+      <button class="nv-lang" type="button" title="${lang === 'en' ? 'Ver en español' : 'View in English'}">${lang === 'en' ? 'ES' : 'EN'}</button>
+    </div>
+    <div class="nv-pm-tx" data-escribir="${esc(L(m.txt, lang))}"></div>
+    <div class="nv-pm-hacer">${esc(L(m.hacer, lang))}</div>
+
+    ${m.plan ? planHTML(m.plan, lang) : ''}
+
+    <div class="nv-acts">
+      <button class="nv-pm-mas" type="button">${esc(u.why)} ▾</button>
+      ${m.p ? `<button class="nv-senala" type="button">${esc(u.show)}</button>` : ''}
+    </div>
+
+    <div class="nv-pm-det">
+      ${(m.detalle || []).map((x) => `<div class="nv-pm-li">${esc(L(x, lang))}</div>`).join('')}
+    </div>`;
+}
+
+/* Cablea los botones internos del panel (se vuelve a llamar tras cambiar de
+   idioma, porque el innerHTML del panel se rehace). */
+function bindPanel(el, idx) {
+  const lang = () => (el.dataset.lang === 'es' ? 'es' : 'en');
+
+  const mas = el.querySelector('.nv-pm-mas');
+  if (mas) mas.onclick = (e) => {
+    e.stopPropagation();
+    const u = UI[lang()] || UI.en;
+    el.classList.toggle('con-detalle');
+    mas.textContent = el.classList.contains('con-detalle') ? u.hide + ' ▴' : u.why + ' ▾';
+  };
+
+  const sen = el.querySelector('.nv-senala');
+  if (sen) {
+    if (N.senalado === idx) sen.classList.add('on');
+    sen.onclick = (e) => {
+      e.stopPropagation();
+      /* Alterna la marca SIN cerrar el popup, para ver texto y nivel a la vez. */
+      if (N.senalado === idx) { N.senalado = null; sen.classList.remove('on'); }
+      else { N.senalado = idx; sen.classList.add('on'); }
+      _dibujar();
+    };
+  }
+
+  const lng = el.querySelector('.nv-lang');
+  if (lng) lng.onclick = (e) => {
+    e.stopPropagation();
+    const nx = (el.dataset.lang === 'es') ? 'en' : 'es';
+    el.dataset.lang = nx;
+    const panel = el.querySelector('.nv-cap-panel');
+    panel.innerHTML = panelInner(N.mensajes[idx], idx, nx);
+    bindPanel(el, idx);                            // recablea los nodos nuevos
+    if (el.classList.contains('abierto')) escribir(panel.querySelector('[data-escribir]'));
+  };
 }
 
 function escribir(el) {
@@ -153,27 +181,27 @@ function escribir(el) {
   }, 13);
 }
 
-function planHTML(p) {
+function planHTML(p, lang) {
   if (!p) return '';
-  const largo = p.lado === 'compra';
+  const u = UI[lang] || UI.en;
   return `
   <div class="nv-plan">
-    <div class="nv-plan-t">${esc(T('Trade plan'))}</div>
+    <div class="nv-plan-t">${esc(u.plan)}</div>
     <div class="nv-plan-fila entrada">
-      <span>${esc(T('Entry'))}</span><b>${fmt(p.entrada)}</b>
+      <span>${esc(u.entry)}</span><b>${fmt(p.entrada)}</b>
     </div>
     <div class="nv-plan-fila stop">
-      <span>${esc(T('Stop'))}</span><b>${fmt(p.stop)}</b>
+      <span>${esc(u.stop)}</span><b>${fmt(p.stop)}</b>
       <i>−${p.riesgoPct.toFixed(2)}%</i>
     </div>
     ${p.obj.map((o, i) => `
     <div class="nv-plan-fila obj">
-      <span>${esc(T('Target'))} ${i + 1} <em>${o.r}R</em></span><b>${fmt(o.p)}</b>
+      <span>${esc(u.target)} ${i + 1} <em>${o.r}R</em></span><b>${fmt(o.p)}</b>
       <i>+${o.pct.toFixed(2)}%</i>
     </div>`).join('')}
     <div class="nv-plan-pie">
-      ${esc(T('Risk/reward'))} <b>1:${p.rr}</b> ·
-      ${esc(T('Avg. volatility'))} <b>${fmt(p.atr)}</b>
+      ${esc(u.rr)} <b>1:${p.rr}</b> ·
+      ${esc(u.vol)} <b>${fmt(p.atr)}</b>
     </div>
   </div>`;
 }
