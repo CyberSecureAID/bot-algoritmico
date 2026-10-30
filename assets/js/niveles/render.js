@@ -6,7 +6,7 @@
 
 import { N } from './estado.js?v=1';
 import { T } from './i18n.js?v=1';
-import { fmt, esc, redondeado, hora, fecha } from './util.js?v=1';
+import { fmt, miles, esc, redondeado, hora, fecha } from './util.js?v=1';
 import { panelMarea } from './panel.js?v=1';
 import { dibujarHerramientas, dibAxy, dibXYa, _tfMs, DIB_FIBS, guardarDib } from './dibujo.js?v=1';
 import { gestos } from './interaccion.js?v=1';
@@ -194,14 +194,14 @@ export function dibujar() {
     g.fillRect(x - cuerpo / 2, yA, cuerpo, Math.max(1.2, yB - yA));
   });
 
-  /* ══ LIQUIDITY POOLS — la identidad de Smart Pools ══
-     Perfil de volumen por precio: DÓNDE se ha acumulado la liquidez (el
-     volumen negociado) en lo visible. Es la "pool" de Smart Pools —las
-     franjas de precio donde el dinero se concentra—, dibujada como agua
-     acumulada en el borde derecho. Es pasiva y discreta; solo se apaga con
-     la "Gráfica limpia". Reutiliza las velas, no añade peticiones. */
-  if (!N.limpia && vis.length > 5) {
-    const BINS = 60;
+  /* ══ LIQUIDITY POOLS — barras de liquidez por precio ══
+     Perfil de volumen en BARRAS HORIZONTALES: cada franja de precio muestra
+     cuánta liquidez (volumen negociado) se acumuló ahí. Las barras más largas
+     y brillantes son las "pools" donde está aparcado el dinero; las franjas
+     fuertes llevan etiqueta con CUÁNTA liquidez hay. Se enciende/apaga con el
+     botón de perfil de la barra superior. Reutiliza las velas, no pide datos. */
+  if (!N.limpia && N.verPerfil && vis.length > 5) {
+    const BINS = 46;
     const vol = new Array(BINS).fill(0);
     const rango = (pMax - pMin) || 1;
     vis.forEach((v) => {
@@ -210,91 +210,70 @@ export function dibujar() {
       const reparto = v.v / ((b1 - b0 + 1) || 1);
       for (let b = b0; b <= b1; b++) vol[b] += reparto;
     });
-    let maxV = 0, poc = 0, total = 0;
-    for (let b = 0; b < BINS; b++) { total += vol[b]; if (vol[b] > maxV) { maxV = vol[b]; poc = b; } }
+    let maxV = 0, poc = 0;
+    for (let b = 0; b < BINS; b++) if (vol[b] > maxV) { maxV = vol[b]; poc = b; }
     if (maxV > 0) {
-      const anchoMax = Math.min(104, x1 * 0.19);
+      const anchoMax = Math.min(96, x1 * 0.18);
       const hBin = y1 / BINS;
-      const xDe = (b) => x1 - (vol[b] / maxV) * anchoMax;   // borde del perfil en la franja b
-      const yDe = (b) => y1 - (b + 0.5) * hBin;             // centro vertical de la franja
-      const precioDe = (b) => pMin + (b + 0.5) / BINS * rango;
-
-      /* ZONA DE VALOR: franja de precio que concentra ~70% de la liquidez
-         negociada (dónde está "aparcado" el dinero). Se expande desde la pool
-         principal hacia el lado con más volumen, como en el perfil de mercado. */
-      let acc = vol[poc], vaLo = poc, vaHi = poc;
-      const obj = total * 0.7;
-      let guard = 0;
-      while (acc < obj && (vaLo > 0 || vaHi < BINS - 1) && guard++ < BINS) {
-        const ab = vaHi < BINS - 1 ? vol[vaHi + 1] : -1;
-        const be = vaLo > 0 ? vol[vaLo - 1] : -1;
-        if (ab >= be) { acc += vol[++vaHi]; } else { acc += vol[--vaLo]; }
-      }
-      const yVaTop = y1 - (vaHi + 1) * hBin, yVaBot = y1 - vaLo * hBin;
-
+      const alto = Math.max(1.5, hBin - 1.8);
       g.save();
-      /* 1) Banda tenue de la zona de valor, detrás del perfil. */
-      g.fillStyle = 'rgba(34,211,238,.055)';
-      g.fillRect(x1 - anchoMax - 2, yVaTop, anchoMax + 2, Math.max(1, yVaBot - yVaTop));
 
-      /* 2) Perfil como lámina de agua: relleno degradado hacia el borde. */
-      g.beginPath();
-      g.moveTo(x1, y1);
-      for (let b = 0; b < BINS; b++) g.lineTo(vol[b] > 0 ? xDe(b) : x1, yDe(b));
-      g.lineTo(x1, 0);
-      g.closePath();
-      const grad = g.createLinearGradient(x1 - anchoMax, 0, x1, 0);
-      grad.addColorStop(0, 'rgba(34,211,238,0)');
-      grad.addColorStop(0.65, 'rgba(34,211,238,.10)');
-      grad.addColorStop(1, 'rgba(56,224,248,.30)');
-      g.fillStyle = grad; g.fill();
-
-      /* Borde iluminado (la "superficie" del agua), con glow. */
-      g.beginPath();
-      for (let b = 0; b < BINS; b++) { const x = vol[b] > 0 ? xDe(b) : x1; if (b === 0) g.moveTo(x, yDe(b)); else g.lineTo(x, yDe(b)); }
-      g.strokeStyle = 'rgba(103,232,249,.8)'; g.lineWidth = 1.3;
-      g.shadowColor = 'rgba(34,211,238,.9)'; g.shadowBlur = 7;
-      g.stroke();
-      g.shadowBlur = 0;
-
-      /* 3) Pools secundarias: máximos locales fuertes (otras franjas donde se
-         acumuló liquidez), etiquetadas con su precio. */
-      const pools = [];
-      for (let b = 2; b < BINS - 2; b++) {
-        if (Math.abs(b - poc) <= 2) continue;
-        if (vol[b] >= maxV * 0.5 && vol[b] >= vol[b - 1] && vol[b] >= vol[b + 1]) pools.push(b);
+      /* Barras horizontales: largo y brillo proporcionales a la liquidez. */
+      for (let b = 0; b < BINS; b++) {
+        if (vol[b] <= 0) continue;
+        const r = vol[b] / maxV;
+        const w = Math.max(2, r * anchoMax);
+        const yb = y1 - (b + 1) * hBin;
+        const esPoc = b === poc;
+        const grad = g.createLinearGradient(x1 - w, 0, x1, 0);
+        grad.addColorStop(0, 'rgba(34,211,238,0)');
+        grad.addColorStop(1, esPoc ? 'rgba(103,232,249,.5)' : `rgba(34,211,238,${(0.12 + r * 0.24).toFixed(3)})`);
+        g.fillStyle = grad;
+        g.fillRect(x1 - w, yb + 0.9, w, alto);
       }
-      pools.sort((a, c) => vol[c] - vol[a]);
-      g.font = '600 8px ui-monospace,monospace'; g.textAlign = 'right';
-      pools.slice(0, 2).forEach((b) => {
-        const y = yDe(b);
-        g.strokeStyle = 'rgba(103,232,249,.2)'; g.lineWidth = 1; g.setLineDash([1, 3]);
-        g.beginPath(); g.moveTo(xDe(b), y); g.lineTo(x1, y); g.stroke(); g.setLineDash([]);
-        g.fillStyle = 'rgba(165,243,252,.62)';
-        g.fillText(fmt(precioDe(b)), x1 - 3, y - 2.5);
+
+      /* Resalte de la POOL principal (point of control) con glow suave. */
+      {
+        const yb = y1 - (poc + 1) * hBin;
+        g.save();
+        g.shadowColor = 'rgba(34,211,238,.75)'; g.shadowBlur = 8;
+        g.fillStyle = 'rgba(103,232,249,.22)';
+        g.fillRect(x1 - anchoMax, yb + 0.9, anchoMax, alto);
+        g.restore();
+      }
+
+      /* Etiquetas: en las 3 franjas más fuertes, CUÁNTA liquidez hay (volumen).
+         La principal lleva además su precio. Se evita amontonar etiquetas. */
+      const orden = [];
+      for (let b = 0; b < BINS; b++) if (vol[b] > 0) orden.push(b);
+      orden.sort((a, c) => vol[c] - vol[a]);
+      const marcar = [];
+      for (const b of orden) {
+        if (marcar.length >= 3) break;
+        if (marcar.some((m) => Math.abs(m - b) < 3)) continue;
+        marcar.push(b);
+      }
+      g.textBaseline = 'middle';
+      marcar.forEach((b) => {
+        const esPoc = b === poc;
+        const y = y1 - (b + 0.5) * hBin;
+        const w = (vol[b] / maxV) * anchoMax;
+        const txt = esPoc ? (fmt(pMin + (b + 0.5) / BINS * rango) + '  ·  ' + miles(vol[b])) : miles(vol[b]);
+        g.font = esPoc ? '800 8.5px ui-monospace,monospace' : '600 8px ui-monospace,monospace';
+        const pad = 6, bw = g.measureText(txt).width + pad * 2, bh = esPoc ? 15 : 13;
+        const bx = Math.max(3, x1 - w - 5 - bw), by = Math.max(13, Math.min(y1 - bh - 2, y - bh / 2));
+        g.fillStyle = 'rgba(8,16,20,.9)';
+        g.beginPath(); if (g.roundRect) g.roundRect(bx, by, bw, bh, 4); else g.rect(bx, by, bw, bh); g.fill();
+        g.strokeStyle = esPoc ? 'rgba(103,232,249,.55)' : 'rgba(34,211,238,.28)'; g.lineWidth = 1; g.stroke();
+        g.fillStyle = esPoc ? '#e6feff' : 'rgba(165,243,252,.75)';
+        g.textAlign = 'left';
+        g.fillText(txt, bx + pad, by + bh / 2 + 0.5);
       });
+      g.textBaseline = 'alphabetic';
 
-      /* 4) POOL PRINCIPAL (point of control): la franja de mayor liquidez,
-         con su precio en una etiqueta destacada. */
-      const yPoc = yDe(poc);
-      g.strokeStyle = 'rgba(103,232,249,.85)'; g.lineWidth = 1.4; g.setLineDash([3, 3]);
-      g.beginPath(); g.moveTo(x1 - anchoMax, yPoc); g.lineTo(x1, yPoc); g.stroke(); g.setLineDash([]);
-      const etPoc = fmt(precioDe(poc));
-      g.font = '700 8.5px ui-monospace,monospace';
-      const pw = g.measureText(etPoc).width + 34, ph = 15;
-      const pxP = Math.max(4, x1 - anchoMax - 6 - pw), pyP = Math.max(14, yPoc - ph / 2);
-      g.fillStyle = 'rgba(8,16,20,.92)';
-      g.beginPath(); if (g.roundRect) g.roundRect(pxP, pyP, pw, ph, 4); else g.rect(pxP, pyP, pw, ph); g.fill();
-      g.strokeStyle = 'rgba(103,232,249,.5)'; g.lineWidth = 1; g.stroke();
-      const cyP = pyP + ph / 2;
-      g.fillStyle = '#67e8f9'; g.textAlign = 'left'; g.font = '700 7px ui-monospace,monospace';
-      g.fillText('POOL', pxP + 7, cyP + 2.5);
-      g.fillStyle = '#e6feff'; g.font = '700 8.5px ui-monospace,monospace'; g.textAlign = 'right';
-      g.fillText(etPoc, pxP + pw - 7, cyP + 2.7);
-
-      /* 5) Firma de la sección. */
+      /* Firma de la sección. */
       g.font = '800 8px "Chakra Petch", ui-monospace, monospace'; g.textAlign = 'right';
-      g.fillStyle = 'rgba(103,232,249,.72)';
+      g.fillStyle = 'rgba(103,232,249,.7)';
       g.fillText('LIQUIDITY POOLS', x1 - 12, 11);
       g.beginPath(); g.arc(x1 - 6, 8.6, 2.2, 0, 7); g.fillStyle = '#34d3ee'; g.fill();
 
@@ -703,81 +682,12 @@ export function dibujar() {
         borde: col + '99', font: 'bold 8.5px ui-monospace,monospace', pad: 7
       });
 
-      // ── Herramienta de posición: solo en la zona institucional MÁS RECIENTE ──
-      if (e === _ultOb) {
-        const pHi = Math.max(e.zonaA, e.zonaB), pLo = Math.min(e.zonaA, e.zonaB);
-        const banda = pHi - pLo, buffer = Math.max(banda * 0.12, pHi * 0.0004);
-        const bandPct = pHi > 0 ? (banda / pHi) * 100 : 0;
-        const RR = bandPct > 1.0 ? 1.0 : 1.5;   // franja ancha → R:R modesto
-        let pE, pS, pT;
-        if (largo) { pE = pHi; pS = pLo - buffer; pT = pE + (pE - pS) * RR; }
-        else { pE = pLo; pS = pHi + buffer; pT = pE - (pS - pE) * RR; }
-        /* La operación ya se resolvió: el precio alcanzó el objetivo o rompió el
-           stop. No se proyecta más (deja de tener sentido); la banda de la zona
-           permanece como referencia. Cuando surja otra zona más reciente, la
-           proyección se traslada sola a ella. */
-        const resuelta = largo ? (N.precio >= pT || N.precio <= pS) : (N.precio <= pT || N.precio >= pS);
-        if (!resuelta) {
-        const yE = Y(pE), yS = Y(pS), yT = Y(pT);
-        const acc = largo ? '#2ee86a' : '#ff3b52', accRGB = largo ? '46,232,106' : '255,59,82';
-        const xs = x0;
-        // ancho MODERADO: la proyección termina antes del borde para verse completa
-        const xFin = Math.min(x1 - 12, Math.max(x0 + 150, idxVis(N.velas.length - 1) + paso * 8));
-        // zonas ganancia / riesgo tenues
-        g.fillStyle = 'rgba(46,232,106,.09)'; g.fillRect(xs, Math.min(yE, yT), xFin - xs, Math.abs(yT - yE));
-        g.fillStyle = 'rgba(255,59,82,.09)'; g.fillRect(xs, Math.min(yE, yS), xFin - xs, Math.abs(yS - yE));
-        // líneas objetivo / entrada / stop
-        [['#2ee86a', yT], ['#eaecef', yE], ['#ff3b52', yS]].forEach((r) => {
-          g.strokeStyle = r[0]; g.lineWidth = 1.4; g.beginPath(); g.moveTo(xs, r[1]); g.lineTo(xFin, r[1]); g.stroke();
-        });
-        // borde derecho que cierra la posición, para que se vea dónde termina
-        g.strokeStyle = `rgba(${accRGB},.5)`; g.lineWidth = 1.2; g.beginPath(); g.moveTo(xFin, Math.min(yT, yS)); g.lineTo(xFin, Math.max(yT, yS)); g.stroke();
-        const gPct = Math.abs((pT - pE) / pE) * 100, rPct = Math.abs((pS - pE) / pE) * 100;
-        if (!N._faroExp) {
-          // ── MINIMIZADO: solo una pastillita sobre la línea de entrada ──
-          g.font = '800 9.5px "Chakra Petch", system-ui, sans-serif';
-          const et = (largo ? '▲ ' : '▼ ') + 'R:R ' + RR.toFixed(1);
-          const pw = g.measureText(et).width + 24, ph = 20;
-          const px = xFin - pw, py = Math.max(4, Math.min(y1 - ph - 4, yE - ph / 2));
-          g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 10;
-          g.fillStyle = 'rgba(12,16,23,.96)'; redondeado(g, px, py, pw, ph, 10); g.fill(); g.restore();
-          g.strokeStyle = `rgba(${accRGB},.6)`; g.lineWidth = 1.1; redondeado(g, px, py, pw, ph, 10); g.stroke();
-          g.fillStyle = acc; g.textAlign = 'left'; g.fillText(et, px + 9, py + ph / 2 + 3.3);
-          // signo + de "expandir"
-          g.strokeStyle = '#9aa4b0'; g.lineWidth = 1.4;
-          const plusX = px + pw - 11, plusY = py + ph / 2;
-          g.beginPath(); g.moveTo(plusX - 3, plusY); g.lineTo(plusX + 3, plusY); g.moveTo(plusX, plusY - 3); g.lineTo(plusX, plusY + 3); g.stroke();
-          N._faroBtn = { x: px, y: py, w: pw, h: ph };
-        } else {
-          // ── EXPANDIDO: recuadro completo con botón "−" para minimizar ──
-          const cw = 154, ch = 70;
-          let cyc = Math.min(yE, yT, yS) - 8; cyc = Math.max(4, Math.min(y1 - ch - 4, cyc));
-          let cxc = Math.max(4, xFin - cw);
-          g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 16;
-          g.fillStyle = 'rgba(12,16,23,.97)'; redondeado(g, cxc, cyc, cw, ch, 12); g.fill(); g.restore();
-          g.strokeStyle = `rgba(${accRGB},.5)`; g.lineWidth = 1.1; redondeado(g, cxc, cyc, cw, ch, 12); g.stroke();
-          g.fillStyle = acc; redondeado(g, cxc, cyc + 11, 3, ch - 22, 2); g.fill();
-          g.textAlign = 'left';
-          g.fillStyle = acc; g.font = '800 10px "Chakra Petch", system-ui, sans-serif';
-          g.fillText(largo ? 'BUY · LONG' : 'SELL · SHORT', cxc + 12, cyc + 18);
-          const divX = cxc + cw - 44;
-          g.fillStyle = '#79838f'; g.font = 'bold 7.5px "Plus Jakarta Sans", system-ui, sans-serif';
-          g.fillText('TARGET', cxc + 12, cyc + 36); g.fillText('STOP', cxc + 12, cyc + 52);
-          g.fillStyle = '#2ee86a'; g.font = '800 12px "Chakra Petch", system-ui, sans-serif'; g.fillText(`+${gPct.toFixed(2)}%`, cxc + 60, cyc + 37);
-          g.fillStyle = '#ff5b6e'; g.fillText(`−${rPct.toFixed(2)}%`, cxc + 60, cyc + 53);
-          g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = 1; g.beginPath(); g.moveTo(divX, cyc + 26); g.lineTo(divX, cyc + ch - 9); g.stroke();
-          g.textAlign = 'center';
-          const rrX = divX + (cxc + cw - divX) / 2;
-          g.fillStyle = '#79838f'; g.font = 'bold 7.5px "Plus Jakarta Sans", system-ui, sans-serif'; g.fillText('R:R', rrX, cyc + 34);
-          g.fillStyle = '#E8B84B'; g.font = '800 17px "Chakra Petch", system-ui, sans-serif'; g.fillText(RR.toFixed(1), rrX, cyc + 52);
-          g.textAlign = 'left';
-          // botón "−" para minimizar, arriba a la derecha
-          const mb = { x: cxc + cw - 22, y: cyc + 6, w: 16, h: 16 };
-          g.strokeStyle = '#9aa4b0'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(mb.x + 3, mb.y + 8); g.lineTo(mb.x + 13, mb.y + 8); g.stroke();
-          N._faroBtn = { x: mb.x - 3, y: mb.y - 3, w: mb.w + 6, h: mb.h + 6 };
-        }
-        }
-      }
+      /* [RETIRADO] Aquí se autoproyectaba una posición LONG/SHORT sobre la zona
+         institucional más reciente (entrada/stop/objetivo/R:R). Se quitó porque
+         aparecía sola, sin que el usuario la pidiera y sin una regla que él
+         pudiera explicar. La banda y la etiqueta de la zona (arriba) se quedan
+         como referencia de estructura; para operar está la herramienta manual
+         de posición (barra de dibujo). */
     }
   });
   }

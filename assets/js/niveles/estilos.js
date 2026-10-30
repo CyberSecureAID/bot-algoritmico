@@ -96,6 +96,7 @@ export function estilos() {
     background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#8b96a3;
     font-family:var(--mono,monospace);font-size:14px;font-weight:700}
   #nv-overlay .nv-ico:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #nv-overlay .nv-ico.on{background:rgba(34,211,238,.14);border-color:rgba(34,211,238,.6);color:#67e8f9}
   #nv-overlay .nv-comof{width:auto;padding:0 14px;border-color:rgba(232,184,75,.4);color:var(--gold,#E8B84B)}
   /* Los botones que llevan ícono + texto deben ir en FILA. La base
      .nv-ico usa grid con una sola celda, que los apilaba (el texto caía
