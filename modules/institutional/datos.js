@@ -1,0 +1,121 @@
+/* modules/institutional/datos.js
+   Capa de datos del terminal de Análisis Institucional.
+
+   TODO es del lado del cliente y sobre fuentes públicas CON CORS (las mismas
+   que ya usa la plataforma): Binance (velas, ticker 24h), CoinGecko (board y
+   dominancia) y alternative.me (índice miedo/codicia). El backend de
+   OpenTerminal (Yahoo, RSS, FRED, SEC…) necesita servidor propio y no corre en
+   un hosting estático: esos paneles se conectan en el "entorno conectado" que
+   describe el disclaimer. Cada llamada lleva timeout y cadena de respaldo. */
+
+import { PARES } from '../../assets/js/niveles/config.js?v=1';
+
+export { PARES };
+
+const BINANCE = 'https://api.binance.com/api/v3';
+const COINGECKO = 'https://api.coingecko.com/api/v3';
+const FNG = 'https://api.alternative.me/fng/?limit=1';
+
+/* rango → intervalo/límite de Binance (tabla de OpenTerminal). */
+export const RANGOS = {
+  '1D':  { interval: '5m',  limit: 288 },
+  '5D':  { interval: '15m', limit: 480 },
+  '1M':  { interval: '1h',  limit: 720 },
+  '6M':  { interval: '4h',  limit: 1080 },
+  'YTD': { interval: '1d',  limit: 400 },
+  '1Y':  { interval: '1d',  limit: 365 },
+  '5Y':  { interval: '1w',  limit: 260 },
+  'MAX': { interval: '1M',  limit: 200 }
+};
+export const ORDEN_RANGOS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', 'MAX'];
+
+async function traer(url, ms = 8000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctl.signal });
+    if (!r.ok) throw new Error(url + ' → ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* Velas OHLCV. `time` en SEGUNDOS para lightweight-charts. */
+export async function velas(simbolo, rango = '6M') {
+  const { interval, limit } = RANGOS[rango] || RANGOS['6M'];
+  const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${limit}`);
+  return j.map((k) => ({
+    time: Math.floor(k[0] / 1000),
+    open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5]
+  }));
+}
+
+/* Ticker 24h de un símbolo: último, cambio %, OHLC del día, volumen. */
+export async function ticker(simbolo) {
+  const t = await traer(`${BINANCE}/ticker/24hr?symbol=${encodeURIComponent(simbolo)}`);
+  return {
+    simbolo,
+    last: +t.lastPrice,
+    bid: +t.bidPrice, ask: +t.askPrice,
+    open: +t.openPrice, high: +t.highPrice, low: +t.lowPrice,
+    prevClose: +t.prevClosePrice,
+    chg: +t.priceChange, chgPct: +t.priceChangePercent,
+    volBase: +t.volume, volQuote: +t.quoteVolume
+  };
+}
+
+/* Varios tickers de una sola llamada (para la watchlist). */
+export async function tickers(simbolos) {
+  if (!simbolos.length) return [];
+  const url = `${BINANCE}/ticker/24hr?symbols=${encodeURIComponent(JSON.stringify(simbolos))}`;
+  const j = await traer(url);
+  return j.map((t) => ({ simbolo: t.symbol, last: +t.lastPrice, chgPct: +t.priceChangePercent, volQuote: +t.quoteVolume, high: +t.highPrice, low: +t.lowPrice }));
+}
+
+/* Board de mercado: top por capitalización, con cambio 24h/7d y sparkline.
+   Fuente principal CoinGecko; respaldo = tickers de Binance sobre el catálogo. */
+export async function board() {
+  try {
+    const ids = PARES.filter((p) => p.cg).map((p) => p.cg).slice(0, 60).join(',');
+    const j = await traer(`${COINGECKO}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=60&page=1&sparkline=true&price_change_percentage=24h,7d`);
+    return j.map((c) => ({
+      id: c.id, simbolo: (c.symbol || '').toUpperCase(), nombre: c.name, img: c.image,
+      price: c.current_price, chg24: c.price_change_percentage_24h_in_currency ?? c.price_change_percentage_24h,
+      chg7: c.price_change_percentage_7d_in_currency, mcap: c.market_cap,
+      spark: (c.sparkline_in_7d && c.sparkline_in_7d.price) || []
+    })).filter((c) => c.price != null);
+  } catch (_) {
+    // Respaldo: construir el board desde Binance (sin mcap real ni sparkline)
+    const pares = PARES.filter((p) => p.grupo !== 'divisa' && p.grupo !== 'materia').slice(0, 40);
+    const map = {};
+    PARES.forEach((p) => { map[p.s] = p; });
+    const ts = await tickers(pares.map((p) => p.s));
+    return ts.map((t) => {
+      const p = map[t.simbolo] || {};
+      return { id: p.cg || t.simbolo, simbolo: p.id || t.simbolo.replace('USDT', ''), nombre: p.n || t.simbolo, img: '', price: t.last, chg24: t.chgPct, chg7: null, mcap: t.volQuote, spark: [] };
+    }).sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
+  }
+}
+
+/* Macro cripto: capitalización total, dominancia BTC/ETH, cambio 24h. */
+export async function global() {
+  const j = await traer(`${COINGECKO}/global`);
+  const d = j && j.data ? j.data : {};
+  return {
+    totalMcap: d.total_market_cap ? d.total_market_cap.usd : null,
+    totalVol: d.total_volume ? d.total_volume.usd : null,
+    btcDom: d.market_cap_percentage ? d.market_cap_percentage.btc : null,
+    ethDom: d.market_cap_percentage ? d.market_cap_percentage.eth : null,
+    mcapChg: d.market_cap_change_percentage_24h_usd ?? null,
+    activas: d.active_cryptocurrencies ?? null
+  };
+}
+
+/* Índice miedo/codicia (0–100). */
+export async function fearGreed() {
+  try {
+    const j = await traer(FNG, 6000);
+    const d = j && j.data && j.data[0];
+    if (!d) return null;
+    return { valor: +d.value, etiqueta: d.value_classification };
+  } catch (_) { return null; }
+}
