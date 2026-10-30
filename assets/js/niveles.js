@@ -37,7 +37,7 @@ import { guiaIndicador, menuAlertas, abrirWidget, registrarIndicador, ponerLogos
 import { gestos } from './niveles/interaccion.js?v=1';
 import { burbujas, initBurbujas } from './niveles/burbujas.js?v=1';
 import { dibujar, initRender } from './niveles/render.js?v=1';
-import { esc, elegir, sembrar, fmt, miles, hora, fecha, _hex2rgb, redondeado } from './niveles/util.js?v=1';
+import { esc, elegir, sembrar, hashCadena, fmt, miles, hora, fecha, _hex2rgb, redondeado } from './niveles/util.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -350,9 +350,10 @@ async function recargar() {
     try {
       const par = PARES.find((p) => p.id === N.par) || PARES[0];
       N.velas = await traerVelas(par.s, N.tf, 1000);
-      /* La semilla se fija por par y hora: así las frases no bailan
-         en cada refresco, pero cambian con el tiempo. */
-      sembrar((N.par.charCodeAt(0) + new Date().getHours()) * 1.7);
+      /* La semilla se fija por MONEDA + timeframe (y la hora, para que roten
+         con el tiempo). Así las frases no bailan en cada refresco, pero dos
+         monedas distintas no cuentan la lectura con las mismas palabras. */
+      sembrar(hashCadena(N.par + '|' + N.tf) + new Date().getHours() * 101);
       analizar(N.par);
 
       /* [CORREGIDO] El plan cambiaba de dirección entre refrescos y
