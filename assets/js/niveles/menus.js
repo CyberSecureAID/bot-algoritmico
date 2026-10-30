@@ -237,9 +237,11 @@ export async function ponerLogos() {
       try { localStorage.setItem(CLAVE_LOGOS, JSON.stringify({ cuando: Date.now(), datos: _logos })); } catch (_) {}
     } catch (_) { _logos = {}; }
   }
-  document.querySelectorAll('.nv-logo[data-cg]').forEach((el) => {
-    const url = _logos && _logos[el.dataset.cg];
-    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); }
+  document.querySelectorAll('.nv-logo').forEach((el) => {
+    const url = _logos && el.dataset.cg && _logos[el.dataset.cg];
+    if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; el.classList.remove('con-ico'); }
+    else if (el.dataset.ico) { el.style.backgroundImage = ''; el.classList.remove('con'); el.textContent = el.dataset.ico; el.classList.add('con-ico'); }
+    else { el.textContent = ''; el.classList.remove('con-ico'); }
   });
 }
 

@@ -56,6 +56,8 @@ export function estilos() {
   #nv-overlay .nv-sel svg{width:13px;height:13px;opacity:.6}
   .nv-logo{width:20px;height:20px;border-radius:50%;flex:0 0 auto;display:block;
     background:rgba(255,255,255,.06) center/cover no-repeat;border:1px solid #2b3139}
+  .nv-logo.con-ico{background:#1c2127;color:#e8ecf2;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
+  .nv-logo.con{background-size:cover;background-position:center}
   .nv-logo.con{background-color:transparent;border-color:transparent}
   #nv-overlay .nv-tfs{display:flex;gap:2px;flex:0 0 auto;padding:3px;background:#141922;border-radius:9px}
   #nv-overlay .nv-tf{min-height:30px;padding:0 13px;border-radius:7px;border:none;background:transparent;
