@@ -48,7 +48,14 @@ export function dibujar() {
     }).catch(() => {});
   }
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  if (cv.width !== Math.round(W * dpr)) {
+  /* [CORREGIDO] Antes solo se comprobaba el ANCHO. Si cambiaba solo el ALTO
+     (p. ej. al aparecer la banda de análisis o al ajustarse el layout), el
+     canvas no se redimensionaba y conservaba su altura vieja: fillRect limpia
+     hasta la H nueva y el render anterior (más alto) quedaba SIN BORRAR abajo.
+     Eso salía como una franja "reflejo" en la imagen exportada. Ahora se
+     comprueban ambas dimensiones, así que un cambio de alto también reinicia
+     (y limpia por completo) el lienzo. */
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) {
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
   }

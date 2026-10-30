@@ -8,6 +8,11 @@ import { fmt, redondeado } from './util.js?v=1';
 const $ = (id) => document.getElementById(id);
 const nombreTend = (d) => ({ alcista: 'bullish', bajista: 'bearish', lateral: 'sideways', indefinida: 'undefined' }[d] || d);
 
+/* Los títulos del análisis son bilingües ({en, es}); hay que escoger el lado,
+   igual que en la gráfica en vivo. Sin esto salía "[object Object]". */
+const _lang = (document.documentElement.lang || 'en').slice(0, 2);
+const L = (f) => (f && typeof f === 'object') ? (f[_lang] != null ? f[_lang] : f.en) : (f == null ? '' : f);
+
 export function guardarImagen(par, tf) {
   const cv = $('nv-cv'); if (!cv) return;
 
@@ -95,7 +100,7 @@ export function guardarImagen(par, tf) {
         const et = { compra: 'BUY', venta: 'SELL', vigilar: 'WATCH',
                      aviso: 'WAIT', tendencia: 'TREND', contexto: 'CONTEXT' }[m.tipo] || '';
         const c = m.tipo === 'compra' ? '#2ee86a' : m.tipo === 'venta' ? '#f6465d' : '#E8B84B';
-        const txt = `${i + 1}  ${et}  ·  ${m.titulo}`;
+        const txt = `${i + 1}  ${et}  ·  ${L(m.titulo)}`;
         g.font = `700 ${12 * e2}px system-ui,sans-serif`;
         const w = g.measureText(txt).width + 26 * e2;
         if (x + w > W - 20 * e2) return;
