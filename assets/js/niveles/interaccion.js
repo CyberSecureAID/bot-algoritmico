@@ -37,11 +37,14 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
 
   /* ══ Herramientas de dibujo: barra lateral, ajustes e interacción ══ */
   const loc = (e, t) => { const r = cv.getBoundingClientRect(); const s = t || e; return { x: s.clientX - r.left, y: s.clientY - r.top }; };
-  const tools = document.getElementById('nv-tools');
+  /* [BARRA COMPARTIDA] Todo se resuelve RELATIVO al contenedor del canvas
+     (nv-graf en Smart Pools, .nv-host en Heat/Liquidity): así la misma barra
+     funciona en las tres gráficas sin ids duplicados. */
+  const grafEl = cv.parentElement;
+  const tools = grafEl ? grafEl.querySelector('.nv-tools') : null;
   let abrirBarra = () => {}, cerrarBarra = () => {};
-  const grafEl = document.getElementById('nv-graf');
-  let topbar = document.getElementById('nv-topbar');
-  if (!topbar && grafEl) { topbar = document.createElement('div'); topbar.id = 'nv-topbar'; topbar.style.display = 'none'; grafEl.appendChild(topbar); }
+  let topbar = grafEl ? grafEl.querySelector('.nv-topbar') : null;
+  if (!topbar && grafEl) { topbar = document.createElement('div'); topbar.className = 'nv-topbar'; if (!document.getElementById('nv-topbar')) topbar.id = 'nv-topbar'; topbar.style.display = 'none'; grafEl.appendChild(topbar); }
   if (topbar && grafEl && !topbar._movible) {
     topbar._movible = true;
     let tb = null;
@@ -182,9 +185,9 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
       if (b.dataset.fly === 'cursores') { if (popActual === 'cursores') { cerrarPopups(); return; } flyCursores(b); return; }
       seleccionar(b.dataset.h);
     }));
-    const bIman = document.getElementById('nv-iman');
+    const bIman = tools.querySelector('.nv-tool-iman') || document.getElementById('nv-iman');
     if (bIman) { bIman.classList.toggle('on', !!N.imant); bIman.addEventListener('click', () => { N.imant = !N.imant; bIman.classList.toggle('on', N.imant); }); }
-    const bLimp = document.getElementById('nv-limpiar');
+    const bLimp = tools.querySelector('.nv-tool-limpiar') || document.getElementById('nv-limpiar');
     if (bLimp) bLimp.addEventListener('click', () => {
       if (popActual === 'limpiar') { cerrarPopups(); return; }
       const pop = crearPop(bLimp, false, 'limpiar'); pop.classList.add('nv-pop-menu');
@@ -200,7 +203,7 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     });
     // Auto-ocultar: la barra sale al acercar el cursor al borde izquierdo
     tools.classList.add('nv-oculta');
-    const tab = document.createElement('div'); tab.id = 'nv-tools-tab'; grafEl.appendChild(tab);
+    const tab = document.createElement('div'); tab.className = 'nv-tools-tab'; if (!document.getElementById('nv-tools-tab')) tab.id = 'nv-tools-tab'; grafEl.appendChild(tab);
     let tHide = null;
     abrirBarra = () => { clearTimeout(tHide); tools.classList.add('abierta'); };
     cerrarBarra = () => { clearTimeout(tHide); tHide = setTimeout(() => tools.classList.remove('abierta'), 300); };

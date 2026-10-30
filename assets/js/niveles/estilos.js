@@ -237,23 +237,23 @@ export function estilos() {
   #nv-overlay .nv-tools.nv-oculta{transform:translate(calc(-100% - 12px),-50%);opacity:0;pointer-events:none;
     transition:transform .22s ease,opacity .22s ease}
   #nv-overlay .nv-tools.nv-oculta.abierta,#nv-overlay .nv-tools.nv-oculta.forz{transform:translate(0,-50%);opacity:1;pointer-events:auto}
-  #nv-overlay #nv-tools-tab{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:9996;pointer-events:none;
+  #nv-overlay .nv-tools-tab{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:9996;pointer-events:none;
     width:9px;height:66px;border-radius:0 8px 8px 0;
     background:linear-gradient(180deg,rgba(34,211,238,.65),rgba(232,184,75,.6));
     box-shadow:2px 0 12px rgba(0,0,0,.5),inset -1px 0 0 rgba(255,255,255,.25);transition:opacity .2s}
-  #nv-overlay .nv-tools.abierta ~ #nv-tools-tab,#nv-overlay .nv-tools.forz ~ #nv-tools-tab{opacity:0;pointer-events:none}
+  #nv-overlay .nv-tools.abierta ~ .nv-tools-tab,#nv-overlay .nv-tools.forz ~ .nv-tools-tab{opacity:0;pointer-events:none}
   @media(max-width:760px){ #nv-overlay .nv-tools{left:5px;padding:4px;gap:2px}
     #nv-overlay .nv-tool{width:29px;height:29px}
     #nv-overlay .nv-tool svg{width:16px;height:16px} }
   /* ── Barra de ajustes horizontal (arriba) ── */
   #nv-overlay .nv-tool{position:relative}
-  #nv-overlay #nv-topbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:10000;
+  #nv-overlay .nv-topbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:10000;
     display:flex;align-items:center;gap:3px;padding:6px 8px;border-radius:14px;
     background:linear-gradient(180deg,rgba(24,30,40,.94),rgba(14,18,26,.94));
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
     border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 40px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
     max-width:calc(100% - 96px);overflow-x:auto;scrollbar-width:none}
-  #nv-overlay #nv-topbar::-webkit-scrollbar{display:none}
+  #nv-overlay .nv-topbar::-webkit-scrollbar{display:none}
   #nv-overlay .nv-tb-grip{flex:0 0 auto;width:16px;height:26px;margin-right:2px;cursor:grab;display:inline-flex;align-items:center;justify-content:center;color:#5c6672}
   #nv-overlay .nv-tb-grip:hover{color:#9aa4b0}
   #nv-overlay .nv-tb-grip:active{cursor:grabbing}
@@ -744,5 +744,28 @@ export function estilos() {
     #nv-overlay .nv-marca{height:26px;left:50px;bottom:34px}
     #nv-ayuda-box .nva-c{padding:20px 14px}
   }`;
+  /* [BARRA COMPARTIDA] La misma barra de herramientas se monta también en
+     Heat Pools y Liquidity Pools dentro de un contenedor .nv-host. Se copian
+     SOLO las reglas de la barra (popups, ajustes, pestaña) cambiando el
+     ámbito #nv-overlay → .nv-host, sin duplicar a mano ni tocar el resto. */
+  const base = s.textContent;
+  /* Se quitan comentarios y los bloques @media completos (llaves balanceadas):
+     las reglas de móvil de la barra no deben copiarse sin su condición. */
+  let zona = base.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (let k = zona.indexOf('@media'); k >= 0; k = zona.indexOf('@media')) {
+    let i = zona.indexOf('{', k), prof = 0;
+    for (; i < zona.length; i++) { if (zona[i] === '{') prof++; else if (zona[i] === '}' && --prof === 0) break; }
+    zona = zona.slice(0, k) + zona.slice(i + 1);
+  }
+  const TOK = ['.nv-tool', '.nv-tools', '.nv-fly', '.nv-topbar', '.nv-tb-', '.nv-pop', '.nv-pc', '.nv-pf', '.nv-fl', '.nv-txt-in', '.nv-goma', '.nv-tools-tab'];
+  const copia = [];
+  zona.replace(/([^{}]+)\{([^{}]*)\}/g, (m, sel, cuerpo) => {
+    const sl = sel.trim();
+    if (sl.indexOf('#nv-overlay') === 0 && TOK.some((t) => sl.indexOf(t) >= 0) && sl.indexOf('.nv-pm') < 0) {
+      copia.push(sl.split(',').map((x) => x.trim().replace(/^#nv-overlay/, '.nv-host')).join(',') + '{' + cuerpo + '}');
+    }
+    return m;
+  });
+  s.textContent = base + '\n' + copia.join('\n');
   document.head.appendChild(s);
 }
