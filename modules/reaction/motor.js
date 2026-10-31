@@ -121,7 +121,7 @@ export function detectarReaction(velas) {
     const quality = clip(0.42 * matchQ + 0.20 * vq + 0.18 * dq + 0.20 * aq);
     const pressure = clip(0.28 + 0.58 * quality);
     const depth = Math.max(atrP * ZONE_ATR, MINTICK * 2);
-    live.push({ id: nextId++, p: anchor, depth, quality, pressure, attackRv: 1, attackDelta: upper ? formDelta : -formDelta, confirms: 2, touches: 0, bornBar: pivBar, anchorBar, pairStartBar: seedBar, upper, inZone: false, lastTouchBar: -1, touchRv: 0 });
+    live.push({ id: nextId++, p: anchor, depth, quality, pressure, attackRv: 1, attackDelta: upper ? formDelta : -formDelta, confirms: 2, touches: 0, bornBar: pivBar, anchorBar, pairStartBar: seedBar, upper, inZone: false, lastTouchBar: -1, touchRv: 0, touchBars: [] });
     while (live.length > LIVE_MAX) live.shift();
   };
   const reconfirm = (id, p, pivBar, vq, dq, aq, dl) => {
@@ -134,6 +134,8 @@ export function detectarReaction(velas) {
     lv.attackDelta = lv.attackDelta * 0.75 + (lv.upper ? dl : -dl) * 0.25;
     lv.confirms += 1;
     lv.lastTouchBar = pivBar; lv.touchRv = 1.45;
+    (lv.touchBars = lv.touchBars || []).push({ bar: pivBar, rv: 1.45 });
+    while (lv.touchBars.length > 24) lv.touchBars.shift();
   };
   const registerLvl = (seeds, upper, p, pivBar, atrP, vq, dq, aq, dl) => {
     const liveId = findLive(upper, p);
@@ -207,7 +209,7 @@ export function detectarReaction(velas) {
             lv.attackRv = lv.attackRv * 0.85 + relVol * 0.15;
             lv.attackDelta = lv.attackDelta * 0.85 + (lv.upper ? barDelta : -barDelta) * 0.15;
           }
-          if (fresh) { lv.touches += 1; lv.lastTouchBar = i; lv.touchRv = relVol; }
+          if (fresh) { lv.touches += 1; lv.lastTouchBar = i; lv.touchRv = relVol; (lv.touchBars = lv.touchBars || []).push({ bar: i, rv: relVol }); while (lv.touchBars.length > 24) lv.touchBars.shift(); }
         }
       }
     }

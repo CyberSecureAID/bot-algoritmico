@@ -13,7 +13,9 @@
 
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=1';
 import { PARES, pintarIcono, TFS } from '../../assets/js/niveles/config.js?v=1';
-import { detectarReaction, zoneBounds } from './motor.js?v=1';
+import { detectarReaction, zoneBounds, touchRings } from './motor.js?v=2';
+import { N } from '../../assets/js/niveles/estado.js?v=1';
+import { cargarDib } from '../../assets/js/niveles/dibujo.js?v=1';
 
 const WEB = 'decfreedom.com';
 /* Ruta del logo resuelta contra la URL del script (no del documento): así
@@ -166,6 +168,11 @@ function dibujar() {
     engancharGestos(cv);
     cv.dataset.listo = '1';
     _barra = montarBarra(zona);
+    // barra.js solo carga los dibujos cuando el par CAMBIA (par !== N.par). Como
+    // N.par arranca en 'BTC' por defecto, al abrir en BTC nunca se cargaban y
+    // N.dibujos quedaba undefined → al soltar un trazo, soltarDib() reventaba
+    // (push sobre undefined) y la barra quedaba congelada. Lo garantizamos aquí.
+    try { N.par = _par; cargarDib(); } catch (_) { N.dibujos = N.dibujos || []; }
     import('../../assets/js/orden.js?v=126').then((od) => {
       od.conectar({
         canvas: cv,
@@ -193,7 +200,7 @@ function dibujar() {
   const huecoMax = Math.floor(ancho * 0.45);
   // Con Single/Double activo se reserva hueco a la derecha para proyectar las
   // cajas de posición ADELANTADAS al precio (igual que Heat Pools).
-  const futNec = M._modoPos ? Math.min(huecoMax, M._modoPos === 'double' ? 30 : 16) : 0;
+  const futNec = M._modoPos ? Math.min(huecoMax, M._modoPos === 'double' ? 32 : 16) : 0;
   let desp = Math.max(-huecoMax, Math.min(M.desplaz || 0, Math.max(0, M.velas.length - ancho)));
   if (futNec && (M.desplaz || 0) <= 0 && desp > -futNec) desp = -futNec;
   M.desplaz = desp;
@@ -289,68 +296,83 @@ function dibujarVelas(g, vis, Y, paso) {
 /* Dibuja las zonas. pase=false → bandas detrás; pase=true → líneas ancla +
    marcadores titilando (encima). upper=rojo(short), lower=verde(long). */
 function dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, encima, titila) {
-  const live = M.data.live || [];
-  live.forEach((lv) => {
+  const live = M.data.live || [], dead = M.data.dead || [];
+  const uno = (lv, muerto) => {
     if (lv.p > pMax || lv.p < pMin) return;
     const rgb = lv.upper ? '255,74,90' : '40,210,100';   // SUPERIOR=resistencia=ROJO(short); INFERIOR=soporte=VERDE(long)
     const [zTop, zBot] = zoneBounds(lv.upper, lv.p, lv.depth);
     const yTop = Y(Math.max(zTop, zBot)), yBot = Y(Math.min(zTop, zBot));
     const yAnc = Y(lv.p);
     const xa = Math.max(0, Xbar(lv.anchorBar));           // la zona ARRANCA en el pivote ancla (como el indicador)
+    // Vivas → infinitas a la derecha. ROTAS → terminan en la barra de ruptura
+    // (no son infinitas: quedan "detrás del precio").
+    const xRight = muerto ? Math.min(x1, Math.max(xa + 4, Xbar(lv.breakBar != null ? lv.breakBar : lv.anchorBar))) : x1;
+    const at = muerto ? 0.4 : 1;                          // las rotas, más tenues
+    if (xRight <= xa) return;
     if (!encima) {
-      // caja EXTERIOR de la zona, del ancla al borde derecho (no a todo el ancho)
-      const aOut = (0.07 + 0.12 * lv.pressure) * (0.85 + 0.3 * pulso);
+      // caja EXTERIOR de la zona, del ancla a su borde derecho
+      const aOut = (0.09 + 0.16 * lv.pressure) * (0.85 + 0.3 * pulso) * at;
       g.fillStyle = `rgba(${rgb},${aOut.toFixed(3)})`;
-      g.fillRect(xa, Math.min(yTop, yBot), x1 - xa, Math.abs(yBot - yTop));
+      g.fillRect(xa, Math.min(yTop, yBot), xRight - xa, Math.abs(yBot - yTop));
       // caja INTERIOR (45% de la profundidad, más opaca) — el "corazón" de la zona
       const [iTop, iBot] = lv.upper ? [lv.p, lv.p - lv.depth * 0.45] : [lv.p + lv.depth * 0.45, lv.p];
       const yiT = Y(Math.max(iTop, iBot)), yiB = Y(Math.min(iTop, iBot));
-      g.fillStyle = `rgba(${rgb},${(aOut * 1.6).toFixed(3)})`;
-      g.fillRect(xa, Math.min(yiT, yiB), x1 - xa, Math.abs(yiB - yiT));
-      // bordes de la zona, también desde el ancla
-      g.strokeStyle = `rgba(${rgb},.42)`; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(xa, yTop); g.lineTo(x1, yTop); g.stroke();
-      g.beginPath(); g.moveTo(xa, yBot); g.lineTo(x1, yBot); g.stroke();
+      g.fillStyle = `rgba(${rgb},${(aOut * 1.7).toFixed(3)})`;
+      g.fillRect(xa, Math.min(yiT, yiB), xRight - xa, Math.abs(yiB - yiT));
+      // bordes de la zona
+      g.strokeStyle = `rgba(${rgb},${(0.5 * at).toFixed(3)})`; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(xa, yTop); g.lineTo(xRight, yTop); g.stroke();
+      g.beginPath(); g.moveTo(xa, yBot); g.lineTo(xRight, yBot); g.stroke();
       // traza entre los dos pivotes que formaron el nivel (punteada dorada)
-      if (lv.pairStartBar != null) {
+      if (!muerto && lv.pairStartBar != null) {
         const xs = Xbar(lv.pairStartBar), ys = Y(lv.pairStartPx != null ? lv.pairStartPx : lv.p);
         g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 1; g.setLineDash([5, 4]);
         g.beginPath(); g.moveTo(Math.max(0, xs), ys); g.lineTo(xa, yAnc); g.stroke(); g.setLineDash([]);
       }
       return;
     }
-    // ── encima: línea ancla del ancla al borde derecho; grosor por presión ──
-    const grosor = lv.pressure >= 0.82 ? 4 : lv.pressure >= 0.62 ? 3 : lv.pressure >= 0.42 ? 2 : 1;
-    g.save(); g.strokeStyle = `rgba(${rgb},${(0.6 + 0.3 * pulso).toFixed(3)})`; g.lineWidth = grosor;
-    g.shadowColor = `rgba(${rgb},.6)`; g.shadowBlur = 5 + 7 * pulso;
-    g.beginPath(); g.moveTo(xa, yAnc); g.lineTo(x1, yAnc); g.stroke(); g.restore();
-    // marcador de SCORE en el ancla → CÍRCULO en capas (anillos por presión) con núcleo dorado
-    marcadorAnillos(g, xa, yAnc, rgb, lv.ringN || 1, titila, false);
-    // marcador de ÚLTIMO TOQUE → DIAMANTE en capas
-    if (lv.lastTouchBar != null && lv.lastTouchBar >= 0 && lv.lastTouchBar !== lv.anchorBar) {
-      const xt = Xbar(lv.lastTouchBar); if (xt > 0 && xt < x1) marcadorAnillos(g, xt, yAnc, rgb, lv.touchN || 1, titila, true);
+    // ── encima: línea ancla; grosor por presión ──
+    const grosor = muerto ? 1 : (lv.pressure >= 0.82 ? 4 : lv.pressure >= 0.62 ? 3 : lv.pressure >= 0.42 ? 2 : 1);
+    g.save();
+    g.strokeStyle = `rgba(${rgb},${((muerto ? 0.4 : 0.6 + 0.3 * pulso)).toFixed(3)})`; g.lineWidth = grosor;
+    if (muerto) g.setLineDash([4, 4]); else { g.shadowColor = `rgba(${rgb},.6)`; g.shadowBlur = 5 + 7 * pulso; }
+    g.beginPath(); g.moveTo(xa, yAnc); g.lineTo(xRight, yAnc); g.stroke(); g.restore(); g.setLineDash([]);
+    // SCORE en el ancla → círculo en capas con núcleo dorado
+    marcadorAnillos(g, xa, yAnc, rgb, lv.ringN || 1, muerto ? 0 : titila, false, at);
+    // TODOS los toques → diamantes en capas (por eso el chart se ve "poblado")
+    (lv.touchBars || []).forEach((tb) => {
+      const xt = Xbar(tb.bar); if (xt <= xa + 2 || xt >= xRight) return;
+      marcadorAnillos(g, xt, yAnc, rgb, touchRings(tb.rv || 1), muerto ? 0 : titila, true, at);
+    });
+    // retest de una zona rota → diamante sólido
+    if (muerto && lv.retestBar != null) {
+      const xr = Xbar(lv.retestBar);
+      if (xr > 0 && xr < x1) { g.save(); g.shadowColor = `rgba(${rgb},.6)`; g.shadowBlur = 7; g.fillStyle = `rgba(${rgb},.92)`; forma(g, xr, Y(lv.p), 6, true); g.fill(); g.restore(); }
     }
-  });
+  };
+  dead.forEach((lv) => uno(lv, true));
+  live.forEach((lv) => uno(lv, false));
 }
 
 /* Marcador en capas (anillos) que titila: núcleo dorado + anillos del color.
-   diamante=false → CÍRCULO (score, en el ancla); diamante=true → DIAMANTE (toque). */
-function marcadorAnillos(g, x, y, rgb, nivel, titila, diamante) {
-  const t = titila == null ? 1 : titila;
+   diamante=false → CÍRCULO (score, en el ancla); diamante=true → DIAMANTE (toque).
+   at = atenuación (zonas rotas se pintan más tenues). */
+function marcadorAnillos(g, x, y, rgb, nivel, titila, diamante, at) {
+  const t = titila == null ? 1 : titila; at = at == null ? 1 : at;
   const base = diamante ? 9 : 10;
   const r = base + nivel * 2.2;
   const pulse = 0.6 + 0.4 * t;
   g.save();
   // halo exterior
-  g.shadowColor = `rgba(${rgb},${(0.45 * pulse).toFixed(3)})`; g.shadowBlur = 8 + 10 * t;
-  g.fillStyle = `rgba(${rgb},${(0.16 + 0.14 * pulse).toFixed(3)})`;
+  g.shadowColor = `rgba(${rgb},${(0.45 * pulse * at).toFixed(3)})`; g.shadowBlur = 8 + 10 * t;
+  g.fillStyle = `rgba(${rgb},${((0.16 + 0.14 * pulse) * at).toFixed(3)})`;
   forma(g, x, y, r * pulse, diamante); g.fill();
   g.shadowBlur = 0;
   // anillo del color
-  g.strokeStyle = `rgba(${rgb},${(0.6 + 0.3 * t).toFixed(3)})`; g.lineWidth = 2;
+  g.strokeStyle = `rgba(${rgb},${((0.6 + 0.3 * t) * at).toFixed(3)})`; g.lineWidth = 2;
   forma(g, x, y, r * (0.8 + 0.1 * pulse), diamante); g.stroke();
   // núcleo dorado
-  g.fillStyle = `rgba(232,184,75,${(0.85 * (0.7 + 0.3 * t)).toFixed(3)})`;
+  g.fillStyle = `rgba(232,184,75,${(0.85 * (0.7 + 0.3 * t) * at).toFixed(3)})`;
   forma(g, x, y, Math.max(2.5, r * 0.34), diamante); g.fill();
   g.restore();
 }
@@ -399,31 +421,33 @@ function posicionesDeNiveles() {
   if (!precio) return [];
   const live = (M.data.live || []).filter((lv) => lv.pressure >= 0.3);
   const doble = M._modoPos === 'double';
-  const RR = 2;
   const bLast = M.velas.length - 1;
-  const W = 11, GAP = 3;                                  // caja y hueco, en velas
-  const slotX = (s) => bLast + 3 + s * (W + GAP);
+  const W = 13, GAP = 2;                                  // caja y hueco, en velas
+  const slotX = (s) => bLast + 1 + s * (W + GAP);
   const sup = live.filter((lv) => lv.upper && lv.p > precio).sort((a, b) => a.p - b.p)[0];   // resistencia más cercana
   const inf = live.filter((lv) => !lv.upper && lv.p < precio).sort((a, b) => b.p - a.p)[0];  // soporte más cercano
   const out = [];
-  const mk = (tipo, pe, sl, slot) => {
+  /* REGLA (idéntica a la de Heat Pools): el TAMAÑO de la caja (= profundidad de
+     la zona) marca el STOP; el TAKE PROFIT es el DOBLE (1:2). La entrada va en la
+     BASE del rectángulo. En corto el TP va hacia abajo; en largo, hacia arriba.
+     Double = una 2ª operación JUSTO AL LADO que entra donde está el stop de la 1ª
+     (para "salvar el stop" de la primera). */
+  const mk = (tipo, pe, d, slot) => {
     const corto = tipo === 'corto';
-    const riesgo = Math.abs(sl - pe) || (geo.pMax - geo.pMin) * 0.01;
-    const pT = corto ? pe - RR * riesgo : pe + RR * riesgo;
+    const sl = corto ? pe + d : pe - d;                  // stop = una altura de caja
+    const pT = corto ? pe - 2 * d : pe + 2 * d;          // take profit = el doble
     const b0 = slotX(slot);
-    return { tipo, pe, pStop: sl, pTarget: pT, b0, b1: b0 + W, rr: RR, oculto: true, cardPos: 'izq' };
+    return { tipo, pe, pStop: sl, pTarget: pT, b0, b1: b0 + W, rr: 2, oculto: true, cardPos: 'izq' };
   };
   if (sup) {
-    const [zTop, zBot] = zoneBounds(true, sup.p, sup.depth);     // zTop=p, zBot=p-depth
-    const e1 = sup.p, sl1 = Math.max(zTop, zBot) + sup.depth * 0.6;
-    out.push(mk('corto', e1, sl1, 0));
-    if (doble) { const e2 = sl1, sl2 = e2 + Math.abs(sl1 - e1); out.push(mk('corto', e2, sl2, 1)); }
+    const d = sup.depth, base = sup.p - d;               // base de la zona de resistencia (zBot)
+    out.push(mk('corto', base, d, 0));
+    if (doble) out.push(mk('corto', base + d, d, 1));    // la 2ª entra en el stop de la 1ª
   }
   if (inf) {
-    const [zTop, zBot] = zoneBounds(false, inf.p, inf.depth);    // zTop=p+depth, zBot=p
-    const e1 = inf.p, sl1 = Math.min(zTop, zBot) - inf.depth * 0.6;
-    out.push(mk('largo', e1, sl1, 0));
-    if (doble) { const e2 = sl1, sl2 = e2 - Math.abs(e1 - sl1); out.push(mk('largo', e2, sl2, 1)); }
+    const d = inf.depth, base = inf.p;                   // base de la zona de soporte (zBot)
+    out.push(mk('largo', base, d, 0));
+    if (doble) out.push(mk('largo', base - d, d, 1));    // la 2ª entra en el stop de la 1ª
   }
   return out;
 }
@@ -452,9 +476,9 @@ function dibujarPosicion(g, P) {
   const rgbT = _hex2rgb(cT), rgbS = _hex2rgb(cS);
   const acc = largo ? '#2ee86a' : '#ff4a5a', accRGB = largo ? '46,232,106' : '255,74,90';
 
-  // zonas ganancia / riesgo (tinte suave)
-  g.fillStyle = `rgba(${rgbT},.11)`; g.fillRect(x, Math.min(ye, yt), w, Math.abs(yt - ye));
-  g.fillStyle = `rgba(${rgbS},.11)`; g.fillRect(x, Math.min(ye, ys), w, Math.abs(ys - ye));
+  // zonas ganancia / riesgo (bloques, como la herramienta de posición)
+  g.fillStyle = `rgba(${rgbT},.16)`; g.fillRect(x, Math.min(ye, yt), w, Math.abs(yt - ye));
+  g.fillStyle = `rgba(${rgbS},.16)`; g.fillRect(x, Math.min(ye, ys), w, Math.abs(ys - ye));
   // 3 líneas objetivo / entrada / stop
   [[cT, yt], [cE, ye], [cS, ys]].forEach((r) => {
     g.strokeStyle = r[0]; g.lineWidth = 2; g.beginPath(); g.moveTo(x, r[1]); g.lineTo(x + w, r[1]); g.stroke();
