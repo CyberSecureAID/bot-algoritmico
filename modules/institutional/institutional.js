@@ -11,7 +11,7 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=7';
+import { estilos } from './estilos.js?v=8';
 import * as D from './datos.js?v=4';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf } from './indicadores.js?v=5';

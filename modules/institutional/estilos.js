@@ -62,8 +62,8 @@ const CSS = `
 .it-coin-lg.con{color:transparent; border-color:transparent}
 
 /* chips desplegables (TF / Indicadores) */
-.it-chip{font-family:var(--it-mono); font-size:12px; height:34px; padding:0 12px; border-radius:9px; cursor:pointer; background:rgba(255,255,255,.04); border:1px solid var(--it-line-2); color:#c3cad3; letter-spacing:.03em; display:inline-flex; align-items:center; gap:4px; flex:0 0 auto; font-weight:700}
-.it-chip:hover{border-color:var(--it-gold-soft); color:var(--it-gold)}
+.it-chip{font-family:var(--it-mono); font-size:13.5px; height:36px; padding:0 12px; border-radius:11px; cursor:pointer; background:#12161c; border:1px solid #2b3139; color:#eaecef; letter-spacing:.03em; display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; font-weight:800}
+.it-chip:hover{border-color:var(--it-gold)}
 .it-chip svg{opacity:.7}
 
 /* precio + máx/mín del día */
@@ -140,10 +140,10 @@ const CSS = `
 
 /* ── Popups ── */
 .it-pop{position:fixed; z-index:10045; background:#0c1016; border:1px solid var(--it-line-2); border-radius:11px; padding:7px; box-shadow:0 20px 55px rgba(0,0,0,.65); color:var(--it-ink); font-family:var(--it-mono)}
-.it-tfmenu{display:grid; grid-template-columns:repeat(3,1fr); gap:5px; width:220px}
-.it-tf-it{height:34px; border-radius:8px; border:1px solid var(--it-line-2); background:rgba(255,255,255,.03); color:#aeb6c0; cursor:pointer; font-family:var(--it-mono); font-size:12px; font-weight:700}
-.it-tf-it:hover{border-color:var(--it-gold-soft); color:var(--it-gold)}
-.it-tf-it.on{background:rgba(232,184,75,.15); border-color:var(--it-gold); color:var(--it-gold)}
+.it-tfmenu{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; min-width:210px}
+.it-tf-it{min-height:42px; border-radius:10px; border:1px solid transparent; background:rgba(255,255,255,.04); color:#c7cdd6; cursor:pointer; font-family:var(--it-mono); font-size:13px; font-weight:700}
+.it-tf-it:hover{border-color:#3a424c; color:#eaecef}
+.it-tf-it.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426); color:#3a2800; border-color:var(--it-gold)}
 .it-inmenu{width:218px; max-height:64vh; overflow-y:auto}
 .it-pop-tit{font-size:9px; letter-spacing:.14em; color:var(--it-gold); text-transform:uppercase; padding:8px 8px 4px; opacity:.85}
 .it-in-it{display:flex; align-items:center; gap:9px; width:100%; height:34px; padding:0 9px; border-radius:8px; border:0; background:transparent; color:#b7bdc6; cursor:pointer; text-align:left; font-family:var(--it-mono); font-size:12.5px}
