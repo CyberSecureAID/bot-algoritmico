@@ -57,6 +57,25 @@ export async function velas(simbolo, interval = '1h', limit = 500) {
   return out;
 }
 
+/* Streaming de velas EN VIVO por WebSocket de Binance (navegador → Binance,
+   sin servidor propio). Emite la vela en formación en cada tick y, al cerrar,
+   llega con k.x === true. `interval` es la MISMA temporalidad de Binance que
+   usa velas() (TFS). Reconecta solo si la conexión se cae. Devuelve { cerrar }. */
+export function streamVelas(simbolo, interval, onKline) {
+  const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${interval}`;
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket(url); } catch (_) { reintentar(); return; }
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onKline(d.k); } catch (_) {} };
+    ws.onclose = () => { if (!cerrado) reintentar(); };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  const reintentar = () => { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
+}
+
 /* Ticker 24h de un símbolo: último, cambio %, OHLC del día, volumen. */
 export async function ticker(simbolo) {
   const t = await traer(`${BINANCE}/ticker/24hr?symbol=${encodeURIComponent(simbolo)}`);

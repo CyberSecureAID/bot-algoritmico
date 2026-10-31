@@ -12,7 +12,7 @@
 */
 
 import { estilos } from './estilos.js?v=9';
-import * as D from './datos.js?v=5';
+import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
@@ -151,6 +151,7 @@ function cerrar() {
   if (S._cvObs) { try { S._cvObs.disconnect(); } catch (_) {} S._cvObs = null; }
   if (S.oleajeRAF) { try { cancelAnimationFrame(S.oleajeRAF); } catch (_) {} S.oleajeRAF = null; }
   if (S.conf) { try { if (S.conf.raf) cancelAnimationFrame(S.conf.raf); } catch (_) {} const _cc = document.getElementById('it-conf-cv'); if (_cc) _cc.remove(); S.conf = null; }
+  if (_stream) { try { _stream.cerrar(); } catch (_) {} _stream = null; _streamKey = ''; }   // cierra el WebSocket de velas en vivo
   if (S.barra) { try { S.barra.desmontar(); } catch (_) {} S.barra = null; }
   S.dibMontada = false;
   try { if (S.chart) S.chart.remove(); } catch (_) {}
@@ -391,6 +392,7 @@ function actualizarIndBtn() { const btn = document.getElementById('it-in-btn'); 
 /* ── CHART ── */
 async function cargarChart() {
   if (S.cargandoChart) return; S.cargandoChart = true;
+  if (_stream) { try { _stream.cerrar(); } catch (_) {} _stream = null; _streamKey = ''; }   // corta el stream anterior antes de recargar otra moneda/temporalidad
   const title = document.getElementById('it-chart-title');
   if (title) title.textContent = 'CHART · ' + S.par.id + 'USD';
   try { S.velas = await D.velas(S.par.s, S.tf, 3000); }   // historial profundo PAGINADO (análisis / backtesting hacia atrás)
@@ -399,7 +401,63 @@ async function cargarChart() {
   S.velasDib = S.velas.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
   pintarChart();
   montarDibujo();            // la barra de herramientas (una vez)
+  conectarStream();          // velas EN VIVO por WebSocket (chart + indicadores + confluencia)
   S.cargandoChart = false;
+}
+
+/* ── Velas EN VIVO (WebSocket de Binance) ──
+   La vela en formación se actualiza en CADA tick (barato). Al CERRAR una vela
+   (k.x) se recalculan indicadores y confluencia: así los indicadores avanzan
+   solos y la confluencia dispara en vivo cuando se forma la combinación. ── */
+let _stream = null, _streamKey = '';
+function conectarStream() {
+  const key = S.par.s + '|' + S.tf;
+  if (_streamKey === key && _stream) return;
+  if (_stream) { try { _stream.cerrar(); } catch (_) {} _stream = null; }
+  _streamKey = key;
+  try { _stream = D.streamVelas(S.par.s, S.tf, onKlineInst); } catch (_) { _stream = null; }
+}
+function onKlineInst(k) {
+  if (!S.serieVela || !S.velas.length || !k) return;
+  const c = { time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v };
+  if (!(c.close > 0)) return;
+  const last = S.velas[S.velas.length - 1];
+  if (c.time === last.time) { S.velas[S.velas.length - 1] = c; }        // misma vela en formación
+  else if (c.time > last.time) { S.velas.push(c); }                      // nueva vela
+  else return;                                                           // vela vieja → ignorar
+  try { S.serieVela.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }); } catch (_) {}
+  try { if (S.serieVol) S.serieVol.update({ time: c.time, value: c.volume, color: c.close >= c.open ? 'rgba(46,232,106,.26)' : 'rgba(255,91,110,.26)' }); } catch (_) {}
+  pintarPrecioVivo(c.close);
+  if (k.x === true) {        // vela CERRADA → recalcular indicadores + confluencia
+    S.velasDib = S.velas.map((v) => ({ t: v.time, o: v.open, h: v.high, l: v.low, c: v.close, v: v.volume }));
+    rerenderVivo();
+    revisarConfluenciaViva();
+  }
+}
+function pintarPrecioVivo(precio) {
+  if (S.ultTicker) S.ultTicker.last = precio;
+  const px = document.getElementById('it-top-px');
+  if (px) { px.textContent = fmtP(precio); px.className = 'it-px ' + cls(S.ultTicker ? S.ultTicker.chgPct : 0); }
+}
+/* Re-render al cerrar vela SIN perder la vista: si el usuario estaba pegado al
+   borde derecho, se sigue la última vela; si estaba estudiando historial, se
+   respeta su zoom/posición exacta. */
+function rerenderVivo() {
+  let vr = null, atEdge = true;
+  try { const ts0 = S.chart.timeScale(); vr = ts0.getVisibleLogicalRange(); if (vr) atEdge = vr.to >= (S.velas.length - 2); } catch (_) {}
+  pintarChart();
+  if (!atEdge && vr) { try { S.chart.timeScale().setVisibleLogicalRange(vr); } catch (_) {} }
+}
+function revisarConfluenciaViva() {
+  if (!S.conf || !S.conf.on || !S.conf.anchors.length) return;
+  try {
+    ensureConfEstado();
+    const lastT = S.velas[S.velas.length - 1].time;
+    for (const a of S.conf.anchors) {
+      const firma = firmaEn(S.conf.estado, a.time);
+      if (firma && firmaEn(S.conf.estado, lastT) === firma) { pingConf(); break; }   // ¡confluencia disparada en vivo!
+    }
+  } catch (_) {}
 }
 
 /* Asegura la leyenda y la marca de agua como capas persistentes del chart, SIN
@@ -633,7 +691,7 @@ function arrancarConfLoop() {
 }
 function ensureConfEstado() {
   const keys = confActivas().sort();
-  const hash = S.par.id + '|' + S.tf + '|' + keys.join(',');
+  const hash = S.par.id + '|' + S.tf + '|' + keys.join(',') + '|' + S.velas.length;   // la longitud cambia al cerrar vela → se recalcula en vivo
   if (S.conf.hash === hash && S.conf.estado) return;
   S.conf.hash = hash;
   S.conf.estado = construirEstados(keys, S.velas);
