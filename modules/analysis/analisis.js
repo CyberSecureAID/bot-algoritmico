@@ -141,7 +141,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=129')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=129')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=3', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=4', import.meta.url).href)).abrirInstitutional();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
@@ -161,6 +161,30 @@ async function abrirTool(abre, cardEl) {
   const obs = new MutationObserver(revisar);
   obs.observe(document.body, { childList: true });
   const tmr = setInterval(revisar, 400);
+}
+
+/* ── Persistencia de sección en la URL (refrescar NO saca al lobby) ──
+   El hash refleja qué overlay de herramienta está presente. Un único observador
+   lo sincroniza (lo pone al abrir, lo quita al cerrar), independiente de modales
+   o del flujo de cada herramienta. Al cargar el selector con #<tool> se reabre. */
+const OVERLAY2TOOL = { 'lq-overlay': 'pools', 'mu-overlay': 'heat', 'nv-overlay': 'levels', 'it-overlay': 'inst' };
+function sincronizarHashTool() {
+  try {
+    const id = Object.keys(OVERLAY2TOOL).find((x) => document.getElementById(x));
+    if (id) { const h = '#' + OVERLAY2TOOL[id]; if (location.hash !== h) history.replaceState(null, '', h); }
+    else if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  } catch (_) {}
+}
+function iniciarHashSync() {
+  if (window.__anHashObs) return;
+  try { window.__anHashObs = new MutationObserver(() => sincronizarHashTool()); window.__anHashObs.observe(document.body, { childList: true }); } catch (_) {}
+}
+function restaurarDesdeHash() {
+  iniciarHashSync();
+  let t = ''; try { t = (location.hash || '').replace(/^#/, '').trim(); } catch (_) { return; }
+  if (!t) return;
+  const h = HERRAMIENTAS.find((s) => s.abre === t || s.id === t);
+  if (h && h.abre && !Object.keys(OVERLAY2TOOL).some((x) => document.getElementById(x))) setTimeout(() => abrirTool(h.abre, null), 60);
 }
 
 function toast(txt) {
@@ -534,6 +558,8 @@ export function abrirSelector(origen, wallet, ethers) {
   const discLink = $('#an-disc-link');
   if (discLink) discLink.onclick = () => mostrarDisclaimer(true);
   mostrarDisclaimer(false);
+
+  restaurarDesdeHash();   // si venías de un refresco con #<tool>, reabre esa sección
 }
 
 /* ── CSS. La CINTA es copia de los cinta.css de las secciones aprobadas
