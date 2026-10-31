@@ -103,7 +103,7 @@ export async function abrirReaction() {
   $('rz-foto').onclick = guardarImagen;
   $('rz-tfchip').onclick = (e) => { e.stopPropagation(); menuTf(); };
   { const bS = $('rz-pos-single'), bD = $('rz-pos-double');
-    const set = (modo) => { M._modoPos = (M._modoPos === modo) ? null : modo; bS.classList.toggle('on', M._modoPos === 'single'); bD.classList.toggle('on', M._modoPos === 'double'); M._posAuto = null; dibujar(); };
+    const set = (modo) => { M._modoPos = (M._modoPos === modo) ? null : modo; bS.classList.toggle('on', M._modoPos === 'single'); bD.classList.toggle('on', M._modoPos === 'double'); M._posAuto = null; if (!M._modoPos) M.desplaz = 0; dibujar(); };
     bS.onclick = () => set('single'); bD.onclick = () => set('double'); }
 
   ponerLogos();
@@ -191,7 +191,11 @@ function dibujar() {
   const x1 = W - mDer, y1 = H - mAba, xVelas = x1;
   const ancho = Math.min(M.velas.length, M.ancho || 100);
   const huecoMax = Math.floor(ancho * 0.45);
-  const desp = Math.max(-huecoMax, Math.min(M.desplaz || 0, Math.max(0, M.velas.length - ancho)));
+  // Con Single/Double activo se reserva hueco a la derecha para proyectar las
+  // cajas de posición ADELANTADAS al precio (igual que Heat Pools).
+  const futNec = M._modoPos ? Math.min(huecoMax, M._modoPos === 'double' ? 30 : 16) : 0;
+  let desp = Math.max(-huecoMax, Math.min(M.desplaz || 0, Math.max(0, M.velas.length - ancho)));
+  if (futNec && (M.desplaz || 0) <= 0 && desp > -futNec) desp = -futNec;
   M.desplaz = desp;
   const fin = M.velas.length - desp;
   const vis = M.velas.slice(Math.max(0, fin - ancho), Math.min(M.velas.length, fin));
@@ -245,11 +249,11 @@ function dibujar() {
   dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, true, titila);
   dibujarTriangulos(g, Xbar, Y, titila);
 
-  // ── Herramientas de posición (Single/Double) ──
+  // ── Herramientas de posición (Single/Double): cajas proyectadas como Heat Pools ──
   if (M._modoPos) {
     if (!M._posAuto) M._posAuto = posicionesDeNiveles();
-    M._posAuto.forEach((Pz) => dibujarPosicion(g, Pz, x1, Y, Xbar));
-  } else M._posAuto = null;
+    M._posAuto.forEach((Pz) => dibujarPosicion(g, Pz));
+  } else { M._posAuto = null; }
 
   // eje de precios (marcas)
   g.fillStyle = pal().dim; g.font = '10px ui-monospace,monospace'; g.textAlign = 'left';
@@ -288,47 +292,52 @@ function dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, encima, titila) {
   const live = M.data.live || [];
   live.forEach((lv) => {
     if (lv.p > pMax || lv.p < pMin) return;
-    const rojo = lv.upper;                       // SUPERIOR = resistencia = ROJO = short
-    const rgb = rojo ? '255,74,90' : '40,210,100';
+    const rgb = lv.upper ? '255,74,90' : '40,210,100';   // SUPERIOR=resistencia=ROJO(short); INFERIOR=soporte=VERDE(long)
     const [zTop, zBot] = zoneBounds(lv.upper, lv.p, lv.depth);
     const yTop = Y(Math.max(zTop, zBot)), yBot = Y(Math.min(zTop, zBot));
     const yAnc = Y(lv.p);
-    const intensidad = 0.10 + 0.14 * lv.pressure;
-    const xa = Math.max(0, Xbar(lv.anchorBar));
+    const xa = Math.max(0, Xbar(lv.anchorBar));           // la zona ARRANCA en el pivote ancla (como el indicador)
     if (!encima) {
-      // banda sutil a todo el ancho
-      g.fillStyle = `rgba(${rgb},${(intensidad * (0.85 + 0.3 * pulso)).toFixed(3)})`;
-      g.fillRect(0, Math.min(yTop, yBot), x1, Math.abs(yBot - yTop));
-      // borde superior e inferior finos
-      g.strokeStyle = `rgba(${rgb},.5)`; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(0, yTop); g.lineTo(x1, yTop); g.stroke();
-      g.beginPath(); g.moveTo(0, yBot); g.lineTo(x1, yBot); g.stroke();
-      // traza entre los dos pivotes que formaron el nivel (dotted dorado)
+      // caja EXTERIOR de la zona, del ancla al borde derecho (no a todo el ancho)
+      const aOut = (0.07 + 0.12 * lv.pressure) * (0.85 + 0.3 * pulso);
+      g.fillStyle = `rgba(${rgb},${aOut.toFixed(3)})`;
+      g.fillRect(xa, Math.min(yTop, yBot), x1 - xa, Math.abs(yBot - yTop));
+      // caja INTERIOR (45% de la profundidad, más opaca) — el "corazón" de la zona
+      const [iTop, iBot] = lv.upper ? [lv.p, lv.p - lv.depth * 0.45] : [lv.p + lv.depth * 0.45, lv.p];
+      const yiT = Y(Math.max(iTop, iBot)), yiB = Y(Math.min(iTop, iBot));
+      g.fillStyle = `rgba(${rgb},${(aOut * 1.6).toFixed(3)})`;
+      g.fillRect(xa, Math.min(yiT, yiB), x1 - xa, Math.abs(yiB - yiT));
+      // bordes de la zona, también desde el ancla
+      g.strokeStyle = `rgba(${rgb},.42)`; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(xa, yTop); g.lineTo(x1, yTop); g.stroke();
+      g.beginPath(); g.moveTo(xa, yBot); g.lineTo(x1, yBot); g.stroke();
+      // traza entre los dos pivotes que formaron el nivel (punteada dorada)
       if (lv.pairStartBar != null) {
-        const xs = Xbar(lv.pairStartBar);
-        g.strokeStyle = 'rgba(232,184,75,.45)'; g.lineWidth = 1; g.setLineDash([5, 4]);
-        g.beginPath(); g.moveTo(Math.max(0, xs), yAnc); g.lineTo(xa, yAnc); g.stroke(); g.setLineDash([]);
+        const xs = Xbar(lv.pairStartBar), ys = Y(lv.pairStartPx != null ? lv.pairStartPx : lv.p);
+        g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 1; g.setLineDash([5, 4]);
+        g.beginPath(); g.moveTo(Math.max(0, xs), ys); g.lineTo(xa, yAnc); g.stroke(); g.setLineDash([]);
       }
       return;
     }
-    // ── encima: línea ancla (barra horizontal) desde el ancla hasta el borde derecho ──
+    // ── encima: línea ancla del ancla al borde derecho; grosor por presión ──
     const grosor = lv.pressure >= 0.82 ? 4 : lv.pressure >= 0.62 ? 3 : lv.pressure >= 0.42 ? 2 : 1;
-    g.save(); g.strokeStyle = `rgba(${rgb},${(0.55 + 0.35 * pulso).toFixed(3)})`; g.lineWidth = grosor;
+    g.save(); g.strokeStyle = `rgba(${rgb},${(0.6 + 0.3 * pulso).toFixed(3)})`; g.lineWidth = grosor;
     g.shadowColor = `rgba(${rgb},.6)`; g.shadowBlur = 5 + 7 * pulso;
-    g.beginPath(); g.moveTo(Math.max(0, xa), yAnc); g.lineTo(x1, yAnc); g.stroke(); g.restore();
-    // marcador de "score" en el ancla (diamante/círculo que titila por presión)
-    marcadorAnillos(g, xa, yAnc, rgb, lv.ringN || 1, titila, true);
-    // marcador de último toque
+    g.beginPath(); g.moveTo(xa, yAnc); g.lineTo(x1, yAnc); g.stroke(); g.restore();
+    // marcador de SCORE en el ancla → CÍRCULO en capas (anillos por presión) con núcleo dorado
+    marcadorAnillos(g, xa, yAnc, rgb, lv.ringN || 1, titila, false);
+    // marcador de ÚLTIMO TOQUE → DIAMANTE en capas
     if (lv.lastTouchBar != null && lv.lastTouchBar >= 0 && lv.lastTouchBar !== lv.anchorBar) {
-      const xt = Xbar(lv.lastTouchBar); if (xt > 0 && xt < x1) marcadorAnillos(g, xt, yAnc, rgb, lv.touchN || 1, titila, false);
+      const xt = Xbar(lv.lastTouchBar); if (xt > 0 && xt < x1) marcadorAnillos(g, xt, yAnc, rgb, lv.touchN || 1, titila, true);
     }
   });
 }
 
-/* Marcador en capas (anillos) que titila: núcleo dorado + anillos del color. */
+/* Marcador en capas (anillos) que titila: núcleo dorado + anillos del color.
+   diamante=false → CÍRCULO (score, en el ancla); diamante=true → DIAMANTE (toque). */
 function marcadorAnillos(g, x, y, rgb, nivel, titila, diamante) {
   const t = titila == null ? 1 : titila;
-  const base = diamante ? 11 : 8;
+  const base = diamante ? 9 : 10;
   const r = base + nivel * 2.2;
   const pulse = 0.6 + 0.4 * t;
   g.save();
@@ -372,62 +381,166 @@ function dibujarTriangulos(g, Xbar, Y, titila) {
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
 /* ══════════════════ POSICIONES (Single / Double) ══════════════════
-   Short en niveles superiores (rojo), Long en inferiores (verde). Siguen al
-   precio: se proyectan en el nivel relevante MÁS CERCANO por encima/por debajo
-   del precio, listas ANTES de que el precio los toque. Double añade una entrada
-   de respaldo en el borde de la zona. RR 1:2 por defecto. */
+   Puerto FIEL de la herramienta de Heat Pools: cajas de posición ancladas en el
+   tiempo y PROYECTADAS a la derecha del precio (adelantadas, listas antes de que
+   el precio toque la zona). Short en la resistencia roja más cercana por encima;
+   Long en el soporte verde más cercano por debajo. Single = una entrada por lado;
+   Double = una segunda que entra donde estaría el stop de la primera (mismo
+   diámetro) para "salvar el stop". RR 1:2. Tarjeta minimizada por defecto: un
+   botón L/S que se expande al pulsarlo (igual que Heat Pools). */
+const _ORD_RZ = ['izq', 'abajo', 'der', 'arriba'];
+function mXbar(b) { const g = M._geo; if (!g) return 0; return (b - g.pri) * g.paso + g.paso / 2; }
+function mYp(p) { const g = M._geo; if (!g) return 0; return g.y1 - g.y1 * ((p - g.pMin) / Math.max(1e-9, g.pMax - g.pMin)); }
+function _hex2rgb(hex) { const n = parseInt((hex || '#2ee86a').slice(1), 16); return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`; }
+
 function posicionesDeNiveles() {
-  const live = (M.data.live || []).filter((lv) => lv.pressure >= 0.3);
+  const geo = M._geo; if (!geo) return [];
   const precio = M.precio || (M.velas.length ? M.velas[M.velas.length - 1].c : 0);
   if (!precio) return [];
+  const live = (M.data.live || []).filter((lv) => lv.pressure >= 0.3);
   const doble = M._modoPos === 'double';
   const RR = 2;
-  const sup = live.filter((lv) => lv.upper && lv.p > precio).sort((a, b) => a.p - b.p);   // resistencias por encima
-  const inf = live.filter((lv) => !lv.upper && lv.p < precio).sort((a, b) => b.p - a.p);  // soportes por debajo
+  const bLast = M.velas.length - 1;
+  const W = 11, GAP = 3;                                  // caja y hueco, en velas
+  const slotX = (s) => bLast + 3 + s * (W + GAP);
+  const sup = live.filter((lv) => lv.upper && lv.p > precio).sort((a, b) => a.p - b.p)[0];   // resistencia más cercana
+  const inf = live.filter((lv) => !lv.upper && lv.p < precio).sort((a, b) => b.p - a.p)[0];  // soporte más cercano
   const out = [];
-  const nearestN = 2;
-  sup.slice(0, nearestN).forEach((lv) => {
-    const [zTop, zBot] = zoneBounds(true, lv.p, lv.depth);     // zTop=p, zBot=p-depth
-    const e1 = lv.p, sl = Math.max(zTop, zBot) + lv.depth * 0.6, riesgo = Math.abs(sl - e1) || lv.depth;
-    const tp = e1 - RR * riesgo;
-    out.push({ tipo: 'corto', pe: e1, pe2: doble ? sl : null, pStop: sl, pTarget: tp, p: lv.p, anchorBar: lv.anchorBar, rr: RR });
-  });
-  inf.slice(0, nearestN).forEach((lv) => {
-    const [zTop, zBot] = zoneBounds(false, lv.p, lv.depth);    // zTop=p+depth, zBot=p
-    const e1 = lv.p, sl = Math.min(zTop, zBot) - lv.depth * 0.6, riesgo = Math.abs(e1 - sl) || lv.depth;
-    const tp = e1 + RR * riesgo;
-    out.push({ tipo: 'largo', pe: e1, pe2: doble ? sl : null, pStop: sl, pTarget: tp, p: lv.p, anchorBar: lv.anchorBar, rr: RR });
-  });
+  const mk = (tipo, pe, sl, slot) => {
+    const corto = tipo === 'corto';
+    const riesgo = Math.abs(sl - pe) || (geo.pMax - geo.pMin) * 0.01;
+    const pT = corto ? pe - RR * riesgo : pe + RR * riesgo;
+    const b0 = slotX(slot);
+    return { tipo, pe, pStop: sl, pTarget: pT, b0, b1: b0 + W, rr: RR, oculto: true, cardPos: 'izq' };
+  };
+  if (sup) {
+    const [zTop, zBot] = zoneBounds(true, sup.p, sup.depth);     // zTop=p, zBot=p-depth
+    const e1 = sup.p, sl1 = Math.max(zTop, zBot) + sup.depth * 0.6;
+    out.push(mk('corto', e1, sl1, 0));
+    if (doble) { const e2 = sl1, sl2 = e2 + Math.abs(sl1 - e1); out.push(mk('corto', e2, sl2, 1)); }
+  }
+  if (inf) {
+    const [zTop, zBot] = zoneBounds(false, inf.p, inf.depth);    // zTop=p+depth, zBot=p
+    const e1 = inf.p, sl1 = Math.min(zTop, zBot) - inf.depth * 0.6;
+    out.push(mk('largo', e1, sl1, 0));
+    if (doble) { const e2 = sl1, sl2 = e2 - Math.abs(e1 - sl1); out.push(mk('largo', e2, sl2, 1)); }
+  }
   return out;
 }
 
-function dibujarPosicion(g, Pz, x1, Y, Xbar) {
-  const largo = Pz.tipo === 'largo';
-  const acc = largo ? '46,232,106' : '255,74,90';
-  const x0 = Math.max(10, Math.min(x1 - 180, Xbar(Pz.anchorBar)));
-  const w = x1 - x0;
-  const yE = Y(Pz.pe), yT = Y(Pz.pTarget), yS = Y(Pz.pStop);
-  // zonas de ganancia (verde) y riesgo (rojo)
-  g.fillStyle = `rgba(46,232,106,.12)`; g.fillRect(x0, Math.min(yE, yT), w, Math.abs(yT - yE));
-  g.fillStyle = `rgba(255,74,90,.12)`; g.fillRect(x0, Math.min(yE, yS), w, Math.abs(yS - yE));
-  // líneas entry / target / stop
-  const linea = (y, col, dash) => { g.strokeStyle = col; g.lineWidth = 1.4; if (dash) g.setLineDash(dash); g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.setLineDash([]); };
-  linea(yT, '#2ee86a');
-  linea(yE, '#eaecef', [5, 3]);
-  linea(yS, '#ff5b6e');
-  if (Pz.pe2 != null) { const yE2 = Y(Pz.pe2); linea(yE2, 'rgba(234,236,239,.55)', [2, 3]); }   // entrada de respaldo (Double)
-  // tarjeta compacta con el veredicto
-  const cw = 150, ch = 54, cx = x1 - cw - 8, cy = Math.max(6, Math.min(Y(Pz.pe) - ch / 2, (M._geo ? M._geo.y1 : 400) - ch - 6));
-  g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 12; g.fillStyle = 'rgba(12,16,23,.95)'; redondeado(g, cx, cy, cw, ch, 10); g.fill(); g.restore();
-  g.strokeStyle = `rgba(${acc},.5)`; g.lineWidth = 1; redondeado(g, cx + .5, cy + .5, cw - 1, ch - 1, 10); g.stroke();
-  g.fillStyle = `rgb(${acc})`; g.font = '800 12px "Chakra Petch",ui-monospace,monospace'; g.textAlign = 'left';
-  g.fillText(largo ? 'LONG' : 'SHORT', cx + 11, cy + 20);
-  g.fillStyle = '#9aa4af'; g.font = '9px ui-monospace,monospace';
-  g.fillText('TP ' + fmt(Pz.pTarget), cx + 11, cy + 35);
-  g.fillText('SL ' + fmt(Pz.pStop), cx + 11, cy + 47);
-  g.textAlign = 'right'; g.fillStyle = '#E8B84B'; g.font = '800 15px "Chakra Petch",ui-monospace,monospace';
-  g.fillText('1:' + Pz.rr, cx + cw - 11, cy + 30);
-  g.fillStyle = '#79838f'; g.font = '8px ui-monospace,monospace'; g.fillText('R : R', cx + cw - 11, cy + 43);
+function _anclaTarjetaRZ(pos, x, w, yt, ye, ys, cw, ch, x1, y1) {
+  const yTop = Math.min(yt, ye, ys), yBot = Math.max(yt, ye, ys), cyMid = (yTop + yBot) / 2;
+  let cx, cy; pos = pos || 'izq';
+  if (pos === 'izq') { cx = x - cw - 12; cy = cyMid - ch / 2; }
+  else if (pos === 'arriba') { cx = x + w / 2 - cw / 2; cy = yTop - ch - 10; }
+  else if (pos === 'abajo') { cx = x + w / 2 - cw / 2; cy = yBot + 10; }
+  else { cx = x + w + 12; cy = cyMid - ch / 2; }
+  cx = Math.max(4, Math.min(x1 - cw - 4, cx)); cy = Math.max(4, Math.min(y1 - ch - 4, cy));
+  return { cx, cy };
+}
+
+/* Dibujo FIEL de la herramienta de posición de Heat Pools. */
+function dibujarPosicion(g, P) {
+  const geo = M._geo; if (!P || !geo) return;
+  const largo = P.tipo === 'largo';
+  const x1 = geo.xVelas, y1 = geo.y1;
+  const Ax = mXbar(P.b0), Bx = mXbar(P.b1);
+  const pe = P.pe, pT = P.pTarget, pS = P.pStop;
+  const ye = mYp(pe), yt = mYp(pT), ys = mYp(pS);
+  const x = Math.min(Ax, Bx), w = Math.abs(Bx - Ax) || 120;
+  const cT = '#2ee86a', cE = '#eaecef', cS = '#ff4a5a';
+  const rgbT = _hex2rgb(cT), rgbS = _hex2rgb(cS);
+  const acc = largo ? '#2ee86a' : '#ff4a5a', accRGB = largo ? '46,232,106' : '255,74,90';
+
+  // zonas ganancia / riesgo (tinte suave)
+  g.fillStyle = `rgba(${rgbT},.11)`; g.fillRect(x, Math.min(ye, yt), w, Math.abs(yt - ye));
+  g.fillStyle = `rgba(${rgbS},.11)`; g.fillRect(x, Math.min(ye, ys), w, Math.abs(ys - ye));
+  // 3 líneas objetivo / entrada / stop
+  [[cT, yt], [cE, ye], [cS, ys]].forEach((r) => {
+    g.strokeStyle = r[0]; g.lineWidth = 2; g.beginPath(); g.moveTo(x, r[1]); g.lineTo(x + w, r[1]); g.stroke();
+  });
+  if (!P.oculto) {
+    g.save();
+    [[cT, yt], [cE, ye], [cS, ys]].forEach((r) => {
+      [x, x + w].forEach((xx) => {
+        g.fillStyle = '#0b0e12'; g.beginPath(); g.arc(xx, r[1], 3.6, 0, 6.283); g.fill();
+        g.fillStyle = r[0]; g.beginPath(); g.arc(xx, r[1], 2.4, 0, 6.283); g.fill();
+      });
+    });
+    g.restore();
+  }
+  P._pos = { x, w, yt, ye, ys };
+  const gPct = ((pT - pe) / pe) * 100, rPct = ((pS - pe) / pe) * 100;
+  const rr = Math.abs(rPct) > 0 ? Math.abs(gPct / rPct) : 0;
+
+  if (P.oculto) {
+    const bw = 30, bh = 17;
+    const bcx = x + w / 2, bcy = ye + (yt - ye) * 0.35;
+    const mp = { cx: bcx - bw / 2, cy: bcy - bh / 2 };
+    g.save(); g.shadowColor = `rgba(${accRGB},.55)`; g.shadowBlur = 9;
+    g.fillStyle = acc; redondeado(g, mp.cx, mp.cy, bw, bh, 5); g.fill();
+    g.shadowColor = 'transparent';
+    g.fillStyle = '#0b0f16'; g.font = '800 10px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(largo ? 'L' : 'S', mp.cx + 10, mp.cy + bh / 2 + .5);
+    g.font = '800 8px system-ui,sans-serif'; g.fillText('▾', mp.cx + 21, mp.cy + bh / 2 - .5);
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.restore();
+    P._miniBtn = { x: mp.cx, y: mp.cy, w: bw, h: bh }; P._hideBtn = P._arrL = P._arrR = null;
+    return;
+  }
+  P._miniBtn = null;
+
+  // ── Tarjeta (a escala, OPACA) ──
+  const Sc = 0.72;
+  const cw = 210, ch = 132;
+  const ap = _anclaTarjetaRZ(P.cardPos, x, w, yt, ye, ys, cw * Sc, ch * Sc, x1, y1);
+  const cx = ap.cx, cy = ap.cy;
+  const hbL = { x: cw - 34, y: 9, w: 24, h: 19 };
+  const rxL = cw - 42, divXL = cw - 76, ay2L = ch - 18;
+  const alL = { x: rxL - 27, y: ay2L - 11, w: 22, h: 22 }, arL = { x: rxL + 5, y: ay2L - 11, w: 22, h: 22 };
+  const rrTxt = Math.abs(rr - Math.round(rr)) < 0.06 ? String(Math.round(rr)) : rr.toFixed(1);
+  g.save();
+  g.translate(cx, cy); g.scale(Sc, Sc);
+  g.shadowColor = 'rgba(0,0,0,.62)'; g.shadowBlur = 22;
+  g.fillStyle = 'rgba(12,16,23,1)'; redondeado(g, 0, 0, cw, ch, 16); g.fill();
+  g.shadowColor = 'transparent';
+  g.strokeStyle = `rgba(${accRGB},.55)`; g.lineWidth = 1.2; redondeado(g, 0, 0, cw, ch, 16); g.stroke();
+  g.fillStyle = acc; redondeado(g, 0, 14, 4, ch - 28, 2); g.fill();
+  g.textAlign = 'left';
+  g.fillStyle = acc; g.font = '800 11px "Chakra Petch",system-ui,sans-serif';
+  g.fillText(largo ? 'LONG POSITION' : 'SHORT POSITION', 16, 23);
+  g.fillStyle = 'rgba(255,255,255,.1)'; redondeado(g, hbL.x, hbL.y, hbL.w, hbL.h, 6); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1; redondeado(g, hbL.x, hbL.y, hbL.w, hbL.h, 6); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(hbL.x + 6, hbL.y + 9.5); g.lineTo(hbL.x + 18, hbL.y + 9.5); g.stroke();
+  const colX = 16;
+  g.fillStyle = '#79838f'; g.font = 'bold 9px system-ui,sans-serif'; g.fillText('TAKE PROFIT', colX, 46);
+  g.save(); g.shadowColor = 'rgba(46,232,106,.65)'; g.shadowBlur = 14;
+  g.fillStyle = cT; g.font = '800 27px system-ui,sans-serif';
+  g.fillText(`+${Math.abs(gPct).toFixed(2)}%`, colX, 73); g.restore();
+  g.fillStyle = '#79838f'; g.font = 'bold 9px system-ui,sans-serif'; g.fillText('STOP LOSS', colX, 95);
+  g.save(); g.shadowColor = `rgba(${rgbS},.65)`; g.shadowBlur = 14;
+  g.fillStyle = cS; g.font = '800 23px system-ui,sans-serif';
+  g.fillText(`−${Math.abs(rPct).toFixed(2)}%`, colX, 120); g.restore();
+  g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(divXL, 40); g.lineTo(divXL, ch - 34); g.stroke();
+  g.textAlign = 'center';
+  g.fillStyle = '#79838f'; g.font = 'bold 9px system-ui,sans-serif'; g.fillText('R : R', rxL, 56);
+  g.save(); g.shadowColor = 'rgba(232,184,75,.55)'; g.shadowBlur = 12;
+  g.fillStyle = '#E8B84B'; g.font = '800 23px system-ui,sans-serif';
+  g.fillText(`1:${rrTxt}`, rxL, 84); g.restore();
+  [[alL, -1], [arL, 1]].forEach((f) => {
+    g.fillStyle = 'rgba(255,255,255,.09)'; redondeado(g, f[0].x, f[0].y, 22, 22, 6); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = 1; redondeado(g, f[0].x, f[0].y, 22, 22, 6); g.stroke();
+    g.strokeStyle = '#c3cad2'; g.lineWidth = 1.8; g.beginPath();
+    const mx = f[0].x + 11, my = f[0].y + 11;
+    if (f[1] < 0) { g.moveTo(mx + 3, my - 4); g.lineTo(mx - 3, my); g.lineTo(mx + 3, my + 4); }
+    else { g.moveTo(mx - 3, my - 4); g.lineTo(mx + 3, my); g.lineTo(mx - 3, my + 4); }
+    g.stroke();
+  });
+  g.restore();
+  P._hideBtn = { x: cx + hbL.x * Sc, y: cy + hbL.y * Sc, w: hbL.w * Sc, h: hbL.h * Sc };
+  P._arrL = { x: cx + alL.x * Sc, y: cy + alL.y * Sc, w: 22 * Sc, h: 22 * Sc };
+  P._arrR = { x: cx + arL.x * Sc, y: cy + arL.y * Sc, w: 22 * Sc, h: 22 * Sc };
   g.textAlign = 'left';
 }
 
@@ -435,12 +548,33 @@ function dibujarPosicion(g, Pz, x1, Y, Xbar) {
 function engancharGestos(cv) {
   const zoom = (f) => { const maxA = Math.max(60, (M.velas.length || 700) - 2); M.ancho = Math.max(14, Math.min(maxA, Math.round((M.ancho || 100) * f))); dibujar(); };
   let ax = 0, ay = 0, arr = false; const enEscala = (x) => x > cv.clientWidth - 70;
+  const dRz = (lx, ly, rc) => rc && lx >= rc.x - 6 && lx <= rc.x + rc.w + 6 && ly >= rc.y - 6 && ly <= rc.y + rc.h + 6;
   cv.addEventListener('wheel', (e) => { e.preventDefault(); zoom(e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
-  cv.addEventListener('mousedown', (e) => { const r = cv.getBoundingClientRect(); ax = e.clientX - r.left; ay = e.clientY - r.top; arr = !enEscala(ax); });
+  cv.addEventListener('mousedown', (e) => {
+    const r = cv.getBoundingClientRect(); const lx = e.clientX - r.left, ly = e.clientY - r.top;
+    // Posiciones automáticas: expandir / minimizar / mover su tarjeta (igual que Heat Pools)
+    for (const P of (M._posAuto || [])) {
+      if (P.oculto && dRz(lx, ly, P._miniBtn)) { P.oculto = false; dibujar(); return; }
+      if (!P.oculto) {
+        if (dRz(lx, ly, P._hideBtn)) { P.oculto = true; dibujar(); return; }
+        if (dRz(lx, ly, P._arrL)) { P.cardPos = _ORD_RZ[(_ORD_RZ.indexOf(P.cardPos || 'izq') + 3) % 4]; dibujar(); return; }
+        if (dRz(lx, ly, P._arrR)) { P.cardPos = _ORD_RZ[(_ORD_RZ.indexOf(P.cardPos || 'izq') + 1) % 4]; dibujar(); return; }
+      }
+    }
+    ax = lx; ay = ly; arr = !enEscala(lx);
+  });
   window.addEventListener('mousemove', (e) => {
     const r = cv.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
     M._cursor = { x, y };
-    if (!arr) { if (M._geo) dibujar(); return; }
+    if (!arr) {
+      let ptr = false;
+      for (const P of (M._posAuto || [])) {
+        if (P.oculto) { if (dRz(x, y, P._miniBtn)) { ptr = true; break; } }
+        else if (dRz(x, y, P._hideBtn) || dRz(x, y, P._arrL) || dRz(x, y, P._arrR)) { ptr = true; break; }
+      }
+      cv.style.cursor = ptr ? 'pointer' : 'crosshair';
+      if (M._geo) dibujar(); return;
+    }
     const paso = M._geo ? M._geo.paso : 8; const dx = x - ax, dy = y - ay;
     if (Math.abs(dx) > paso) { M.desplaz = (M.desplaz || 0) + Math.round(dx / paso); ax = x; }
     M.offsetY = (M.offsetY || 0) + dy; ay = y; dibujar();
@@ -472,7 +606,8 @@ function menuTf() {
   const ancla = $('rz-tfchip'); const m = document.createElement('div'); m.id = 'rz-tfmenu'; m.className = 'rz-pop rz-tfpop';
   m.innerHTML = TFS.map((t) => `<button class="rz-tf-it ${t.id === M.tf ? 'on' : ''}" data-tf="${t.id}">${esc(t.n)}</button>`).join('');
   document.body.appendChild(m);
-  const r = ancla.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, r.left) + 'px';
+  const r = ancla.getBoundingClientRect(); const w = m.offsetWidth || 210;
+  m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
   m.querySelectorAll('.rz-tf-it').forEach((b) => b.onclick = () => { M.tf = b.dataset.tf; $('rz-tfchip-t').textContent = (TFS.find((t) => t.id === M.tf) || {}).n || M.tf; m.remove(); M._posAuto = null; cargarVelas(); });
   const fuera = (ev) => { if (!m.contains(ev.target) && !ancla.contains(ev.target)) { m.remove(); document.removeEventListener('mousedown', fuera); } };
   setTimeout(() => document.addEventListener('mousedown', fuera), 10);
@@ -527,21 +662,78 @@ function guardarImagen() {
   } catch (_) { devolver(); }
 }
 
-/* ══════════════════ AYUDA ══════════════════ */
+/* ══════════════════ AYUDA (stepper experto, igual que Heat Pools) ══════════════════ */
+const PASOS_RZ = [
+  {
+    t: 'What Reaction Zones is',
+    d: 'Reaction Zones is a <b>structural engine</b> that maps the exact price levels where the market is <b>statistically likely to react</b>. It confirms swing pivots, pairs the ones that agree on a level, and reads the <b>live break pressure</b> on each one from volume, absorption, approach speed and range compression.',
+    x: 'A level is not drawn until real structure confirms it, so what you see is where orders have actually defended price.'
+  },
+  {
+    t: 'Reading the zones',
+    d: 'A <b>red zone above price</b> is resistance and frames a <b>short</b>. A <b>green zone below price</b> is support and frames a <b>long</b>. The <b>brighter and thicker</b> a zone pulses, the more break pressure it is carrying, so a faint zone is passive and a bright, heavy one is primed to give way.',
+    x: 'Pressure is a live read, not a fixed label: a zone can cool down or heat up as price works into it.'
+  },
+  {
+    t: 'Markers and breaks',
+    d: 'The <b>layered circle</b> on each anchor grades the level by formation quality and current pressure, with a gold core at the center. A <b>diamond</b> marks every fresh retest of the zone. When price finally clears a level with conviction, a <b>triangle</b> prints the confirmed break and the old zone fades into history.',
+    x: 'More rings on the circle means a stronger, better-defended level. Watch retests on diamonds for continuation.'
+  },
+  {
+    t: 'Pick coin and timeframe',
+    d: 'Select the <b>coin</b> at the top and the <b>timeframe</b> you intend to trade. Higher timeframes build <b>sturdier zones</b> with cleaner pressure reads; lower ones react faster but carry more noise. The level logic is identical on every timeframe.',
+    x: 'When a zone appears on more than one timeframe at the same price, treat it as a heavier level.'
+  },
+  {
+    t: 'Project entries (Single / Double)',
+    d: 'Tap <b>Single</b> to project one position at the nearest zone on each side, placed <b>ahead of price</b> so the trade is ready before price arrives: a short waiting at the red zone, a long waiting at the green. Tap <b>Double</b> to add a <b>backup entry</b> that fills where the first stop sits, so a second fill can <b>rescue the stop</b> of the first and lift your average.',
+    x: 'Every projected trade is sized to a 1:2 risk/reward. Minimized by default; tap the L/S tag to expand the ticket.'
+  },
+  {
+    t: 'Place your own orders',
+    d: 'Right-click anywhere on the chart to drop your <b>own order or price alert</b> exactly where you want it, and use the <b>drawing tools</b> on the left for your own structure. Reaction Zones maps the levels; you stay in full control of the execution.',
+    x: 'Use the share button to export the current chart, watermark included, for your signals or analysis.'
+  },
+  {
+    t: 'Manage risk like a professional',
+    d: 'Entries are framed at <b>1:2 risk/reward</b>. Once price has moved your risk in profit, in <b>futures</b> move the stop to your <b>entry</b> so the trade can no longer lose; in <b>spot</b> there is no liquidation, so you can size properly and let the idea breathe. Trade <b>with</b> the dominant trend, not against it.',
+    x: 'Analysis only: nothing here is executed for you, and no level is a guarantee. Risk is managed, never removed.'
+  }
+];
+let _pasoRZ = 0;
 function ayuda() {
   if ($('rz-ayuda-box')) { $('rz-ayuda-box').remove(); return; }
-  const m = document.createElement('div'); m.id = 'rz-ayuda-box'; m.className = 'rz-modal';
-  m.innerHTML = `<div class="rz-modal-bg"></div><div class="rz-modal-card">
-    <button class="rz-modal-x">✕</button>
-    <h3>Reaction Zones</h3>
-    <p>The engine scans market structure and marks the <b>price levels where a reaction is likely</b> — built from repeated pivots, with a live <b>break-pressure</b> read (volume, absorption, approach and compression).</p>
-    <p><span class="rz-dot-r"></span> <b>Red levels</b> sit above price — resistance → <b>short</b> context.<br>
-    <span class="rz-dot-g"></span> <b>Green levels</b> sit below price — support → <b>long</b> context.</p>
-    <p>The brighter and thicker a level pulses, the more pressure it is under. Triangles mark confirmed breaks. Use <b>Single</b> to auto-project a position at the nearest levels, <b>Double</b> to add a backup entry. Right-click the chart to place your own order or alert.</p>
-    <p class="rz-dis">Analysis only — no orders are executed. Place your trades at a 1:1 or 1:2 risk–reward as you prefer.</p></div>`;
-  document.body.appendChild(m);
-  const cerrarM = () => m.remove();
-  m.querySelector('.rz-modal-x').onclick = cerrarM; m.querySelector('.rz-modal-bg').onclick = cerrarM;
+  _pasoRZ = 0;
+  const d = document.createElement('div'); d.id = 'rz-ayuda-box';
+  d.innerHTML = `<div class="rz-ab-bg"></div>
+    <div class="rz-ab-c">
+      <button class="rz-ab-x" aria-label="Close">✕</button>
+      <div class="rz-ab-eyebrow">Reaction Zones</div>
+      <div id="rz-ab-cuerpo"></div>
+    </div>`;
+  document.body.appendChild(d);
+  const q = () => d.remove();
+  d.querySelector('.rz-ab-bg').onclick = q; d.querySelector('.rz-ab-x').onclick = q;
+  pintarPasoRZ();
+}
+function pintarPasoRZ() {
+  const c = $('rz-ab-cuerpo'); if (!c) return;
+  const p = PASOS_RZ[_pasoRZ]; const ultimo = _pasoRZ === PASOS_RZ.length - 1;
+  c.innerHTML = `
+    <div class="rz-ab-card">
+      <div class="rz-ab-n">${_pasoRZ + 1} <em>of ${PASOS_RZ.length}</em></div>
+      <div class="rz-ab-t">${p.t}</div>
+      <div class="rz-ab-d">${p.d}</div>
+      <div class="rz-ab-x2">${p.x}</div>
+    </div>
+    <div class="rz-ab-dots">${PASOS_RZ.map((_, i) => `<i class="${i === _pasoRZ ? 'on' : ''}" data-paso="${i}"></i>`).join('')}</div>
+    <div class="rz-ab-acts">
+      ${_pasoRZ > 0 ? '<button class="rz-ab-back" id="rz-ab-back">Back</button>' : ''}
+      <button class="rz-ab-next" id="rz-ab-next">${ultimo ? 'Got it' : 'Learn more'}</button>
+    </div>`;
+  $('rz-ab-next').onclick = () => { if (_pasoRZ >= PASOS_RZ.length - 1) { $('rz-ayuda-box')?.remove(); return; } _pasoRZ++; pintarPasoRZ(); };
+  const at = $('rz-ab-back'); if (at) at.onclick = () => { _pasoRZ = Math.max(0, _pasoRZ - 1); pintarPasoRZ(); };
+  c.querySelectorAll('[data-paso]').forEach((b) => b.onclick = () => { _pasoRZ = Number(b.dataset.paso); pintarPasoRZ(); });
 }
 
 /* ══════════════════ ESTILOS ══════════════════ */
@@ -571,9 +763,9 @@ const CSS = `
 .rz-logo.con,.rz-mini.con{border-color:transparent;color:transparent}
 .rz-logo.con-svg,.rz-mini.con-svg{background:none;border:none}
 .rz-logo.con-svg svg,.rz-mini.con-svg svg{width:100%;height:100%}
-.rz-tfchip{display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 11px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid #2a333f;color:#c3cad3;cursor:pointer;font-family:var(--mono);font-weight:700;font-size:12px}
-.rz-tfchip svg{width:11px;height:11px;color:#7d8794}
-.rz-tfchip:hover{border-color:var(--gold);color:var(--gold)}
+.rz-tfchip{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:11px;background:#12161c;border:1px solid #2b3139;color:#eaecef;cursor:pointer;font-family:var(--mono);font-weight:800;font-size:13.5px}
+.rz-tfchip svg{width:12px;height:12px;color:#8b96a3}
+.rz-tfchip:hover{border-color:var(--gold)}
 .rz-px{display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:84px}
 .rz-px-v{font-family:var(--mono);font-weight:800;font-size:18px;line-height:1}
 .rz-px-v.up{color:var(--g)} .rz-px-v.down{color:var(--r)}
@@ -583,11 +775,11 @@ const CSS = `
 .rz-badge-spot{background:rgba(40,210,100,.12);color:#54e08a;border-color:rgba(40,210,100,.3)}
 .rz-estado{font-family:var(--mono);font-size:11px;color:var(--r)}
 .rz-der{display:flex;align-items:center;gap:9px;margin-left:auto}
-.rz-pos-split{display:flex;border:1px solid #2a333f;border-radius:9px;overflow:hidden}
-.rz-pos-half{height:34px;padding:0 13px;border:0;background:rgba(255,255,255,.03);color:#aeb6c0;cursor:pointer;font-family:var(--mono);font-weight:700;font-size:12px}
-.rz-pos-half+.rz-pos-half{border-left:1px solid #2a333f}
-.rz-pos-half:hover{color:#e7ebf0}
-.rz-pos-half.on{background:rgba(232,184,75,.18);color:var(--gold)}
+.rz-pos-split{display:inline-flex;flex:0 0 auto;height:36px;border-radius:9px;overflow:hidden;border:1px solid rgba(232,184,75,.55);background:rgba(232,184,75,.06)}
+.rz-pos-half{background:transparent;border:0;color:#d8b24a;font:700 12px system-ui,sans-serif;padding:0 13px;cursor:pointer;letter-spacing:.2px;transition:background .15s,color .15s}
+.rz-pos-half+.rz-pos-half{border-left:1px solid rgba(232,184,75,.35)}
+.rz-pos-half:hover{background:rgba(232,184,75,.14)}
+.rz-pos-half.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800}
 .rz-ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid #2a333f;color:#9aa4af;font-weight:800}
 .rz-ico:hover{border-color:var(--gold);color:var(--gold)}
 .rz-graf{flex:1 1 auto;min-height:0;position:relative;background:#0a0e14}
@@ -610,18 +802,29 @@ const CSS = `
 .rz-cm-it:hover{background:rgba(232,184,75,.1)} .rz-cm-it.on{background:rgba(232,184,75,.16)}
 .rz-cm-it b{font-family:var(--mono);min-width:50px;color:var(--gold);font-weight:800}
 .rz-cm-it span{color:#7d8794;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rz-tfpop{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:7px;width:220px}
-.rz-tf-it{height:34px;border-radius:8px;border:1px solid #2a333f;background:rgba(255,255,255,.03);color:#aeb6c0;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:700}
-.rz-tf-it:hover{border-color:var(--gold);color:var(--gold)} .rz-tf-it.on{background:rgba(232,184,75,.15);border-color:var(--gold);color:var(--gold)}
-.rz-modal{position:fixed;inset:0;z-index:10060;display:flex;align-items:center;justify-content:center;padding:18px;font-family:"Plus Jakarta Sans",system-ui,sans-serif}
-.rz-modal-bg{position:absolute;inset:0;background:rgba(4,7,11,.8);backdrop-filter:blur(3px)}
-.rz-modal-card{position:relative;width:min(560px,96vw);max-height:90vh;overflow-y:auto;background:linear-gradient(180deg,#121823,#0b0e13);border:1px solid #2a333f;border-radius:16px;padding:26px 28px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
-.rz-modal-card h3{margin:2px 0 12px;font-family:var(--mono);font-size:20px;color:var(--gold)}
-.rz-modal-card p{margin:0 0 13px;font-size:13px;line-height:1.6;color:#c4ccd4}
-.rz-modal-card p b{color:#e9eef3}
-.rz-dis{color:#8b96a3 !important;font-size:12px !important}
-.rz-modal-x{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:8px;border:1px solid #2a333f;background:rgba(255,255,255,.04);color:#9aa4af;cursor:pointer}
-.rz-dot-r,.rz-dot-g{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:4px}
-.rz-dot-r{background:var(--r)} .rz-dot-g{background:var(--g)}
+.rz-tfpop{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:6px;min-width:210px;background:#12161c;border-color:#2b3139;border-radius:14px}
+.rz-tf-it{min-height:42px;border-radius:10px;border:1px solid transparent;background:rgba(255,255,255,.04);color:#c7cdd6;cursor:pointer;font-family:var(--mono);font-size:13px;font-weight:700}
+.rz-tf-it:hover{border-color:#3a424c;color:#eaecef}
+.rz-tf-it.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;border-color:var(--gold)}
+/* ── Ayuda: stepper experto (igual que Heat Pools) ── */
+#rz-ayuda-box{position:fixed;inset:0;z-index:10300;display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Plus Jakarta Sans",system-ui,sans-serif}
+.rz-ab-bg{position:absolute;inset:0;background:rgba(3,5,8,.93)}
+.rz-ab-c{position:relative;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #C9A84B;border-radius:20px;padding:24px 20px}
+.rz-ab-x{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;padding:0;cursor:pointer;font-size:15px;z-index:5;background:rgba(255,255,255,.06);border:1px solid #3a424c;color:#b7bdc6}
+.rz-ab-eyebrow{font-family:var(--mono);font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;text-align:center;margin-bottom:18px}
+.rz-ab-card{padding:24px 20px;border-radius:16px;text-align:center;margin-bottom:18px;background:linear-gradient(165deg,rgba(232,184,75,.08),rgba(255,255,255,.015));border:1px solid rgba(232,184,75,.26)}
+.rz-ab-n{font-family:var(--mono);font-size:11px;color:var(--gold);font-weight:700;margin-bottom:10px}
+.rz-ab-n em{font-style:normal;color:#5c6672;font-weight:400}
+.rz-ab-t{font-weight:800;font-size:21px;color:#eaecef;margin-bottom:12px;line-height:1.25}
+.rz-ab-d{font-size:14px;color:#b7bdc6;line-height:1.65;margin-bottom:14px}
+.rz-ab-d b{color:var(--gold);font-weight:700}
+.rz-ab-x2{padding:12px 14px;border-radius:11px;background:rgba(255,255,255,.035);border-left:2px solid #C9A84B;font-size:12.5px;color:#8b96a3;line-height:1.55;text-align:left}
+.rz-ab-dots{display:flex;gap:5px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
+.rz-ab-dots i{width:7px;height:7px;border-radius:50%;background:#2b3139;cursor:pointer;transition:background .18s,transform .18s}
+.rz-ab-dots i.on{background:var(--gold);transform:scale(1.35)}
+.rz-ab-acts{display:flex;gap:9px}
+.rz-ab-back{flex:0 0 auto;min-height:48px;padding:0 20px;border-radius:12px;background:transparent;border:1px solid #2b3139;color:#8b96a3;cursor:pointer;font-weight:700;font-size:13px}
+.rz-ab-back:hover{border-color:#3a424c;color:#b7bdc6}
+.rz-ab-next{flex:1;min-height:48px;border-radius:12px;border:0;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;font-weight:800;font-size:14px;cursor:pointer}
 @media(max-width:900px){ .rz-sel span,.rz-px,.rz-badge{display:none} }
 `;
