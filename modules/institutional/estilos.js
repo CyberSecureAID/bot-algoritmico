@@ -175,18 +175,20 @@ const CSS = `
 .it-tbl .sym{display:flex; align-items:center; gap:8px}
 .up{color:var(--it-up)} .down{color:var(--it-down)} .dim{color:var(--it-dim)} .gold{color:var(--it-gold)}
 
-/* ── Heatmap (treemap: área ∝ magnitud del movimiento 24h) ── */
-#it-p-board-body{overflow:hidden}
-.it-tile{position:absolute; border-radius:6px; display:flex; flex-direction:column; justify-content:center; gap:1px; cursor:pointer; border:1px solid rgba(0,0,0,.25); overflow:hidden; opacity:1; transform:scale(1);
+/* ── Heatmap (treemap: área ∝ magnitud del movimiento 24h) — estética premium ── */
+#it-p-board-body{overflow:hidden; background:radial-gradient(130% 120% at 50% 0%, #0d1219, #090c11)}
+.it-tile{position:absolute; border-radius:7px; display:flex; flex-direction:column; justify-content:center; gap:1px; cursor:pointer; overflow:hidden; opacity:1; transform:scale(1);
+  border:1px solid rgba(255,255,255,.06); box-shadow:inset 0 1px 1px rgba(255,255,255,.1), inset 0 -11px 26px rgba(0,0,0,.24), 0 1px 2px rgba(0,0,0,.35);
+  will-change:filter, transform;
   transition:left .6s cubic-bezier(.4,0,.2,1), top .6s cubic-bezier(.4,0,.2,1), width .6s cubic-bezier(.4,0,.2,1), height .6s cubic-bezier(.4,0,.2,1), background .5s ease, opacity .45s ease, transform .45s ease}
-.it-tile.it-tile-in{opacity:0; transform:scale(.55); transition:none}
-.it-tile b{font-family:var(--it-mono); font-weight:800; color:#fff; letter-spacing:.02em; text-shadow:0 1px 2px rgba(0,0,0,.55); line-height:1.05}
-.it-tile em{font-family:var(--it-mono); font-style:normal; font-weight:800; line-height:1.1}
-.it-tile .pr{font-family:var(--it-mono); color:rgba(255,255,255,.72); line-height:1.1}
-.it-tile:hover{outline:2px solid var(--it-gold); outline-offset:-2px; z-index:3}
-.it-tile.on{outline:2px solid #fff; outline-offset:-2px; z-index:2}
-.it-hm-wm{position:absolute; left:8px; bottom:7px; z-index:3; pointer-events:none; opacity:.72}
-.it-hm-wm img{height:22px; width:auto; display:block; filter:drop-shadow(0 2px 6px rgba(0,0,0,.8))}
+.it-tile.it-tile-in{opacity:0; transform:scale(.5); transition:none}
+.it-tile b{font-family:var(--it-mono); font-weight:800; color:#fff; letter-spacing:.01em; text-shadow:0 1px 3px rgba(0,0,0,.6); line-height:1.02}
+.it-tile em{font-family:var(--it-mono); font-style:normal; font-weight:800; line-height:1.1; text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.it-tile .pr{font-family:var(--it-mono); color:rgba(255,255,255,.78); line-height:1.1; text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.it-tile:hover{outline:2px solid var(--it-gold); outline-offset:-2px; z-index:3; filter:brightness(1.12) !important}
+.it-tile.on{outline:2px solid rgba(255,255,255,.9); outline-offset:-2px; z-index:2}
+.it-hm-wm{position:absolute; left:10px; bottom:9px; z-index:3; pointer-events:none; opacity:.8}
+.it-hm-wm img{height:26px; width:auto; display:block; filter:drop-shadow(0 2px 7px rgba(0,0,0,.9))}
 
 /* ── SIGNALS — rating técnico (lo premium) ── */
 .it-sig-wrap{padding:13px 14px 12px; border-bottom:1px solid var(--it-line)}

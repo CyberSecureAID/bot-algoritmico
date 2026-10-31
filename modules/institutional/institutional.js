@@ -11,9 +11,9 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=5';
+import { estilos } from './estilos.js?v=6';
 import * as D from './datos.js?v=4';
-import { sma, ema, wma, hma, dema, tema, vwap, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf } from './indicadores.js?v=4';
+import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf } from './indicadores.js?v=5';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -34,7 +34,7 @@ const LOGO = 'assets/img/cco-marca.png';
 const LOGO_ALT = 'assets/img/cco-full.webp';
 const SELLO = 'assets/portada/red/disclaimer.webp';
 const DISC_KEY = 'it-disclaimer-ok';
-const LAYOUT_KEY = 'it-layout-v3';   // v3: la gráfica domina (reinicia layouts guardados antiguos)
+const LAYOUT_KEY = 'it-layout-v4';   // v4: la gráfica domina aún más (reinicia layouts guardados antiguos)
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -99,7 +99,7 @@ const S = {
   par: null, tf: '1h', ind: { EMA50: true }, velas: [], velasDib: [], chart: null, serieVela: null, serieVol: null, legendRefs: [], marks: [], marksApi: null,
   refQuote: null, refBoard: null, cargandoChart: false, onResize: null, barra: null, dibMontada: false,
   layout: null, zTop: 10, maxed: null, hidden: {}, logos: {}, board: [], boardObs: null, ultTicker: null,
-  tileEls: {}, senal: null, senalPar: null, senalTF: {}
+  tileEls: {}, senal: null, senalPar: null, senalTF: {}, oleajeRAF: null
 };
 const PANELES = ['it-p-chart', 'it-p-quote', 'it-p-watch', 'it-p-board', 'it-p-macro'];
 const LISTA_WATCH = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK', 'LTC', 'DOT', 'TRX'];
@@ -136,11 +136,14 @@ function cerrar() {
   if (S.onResize) window.removeEventListener('resize', S.onResize);
   if (S.boardObs) { try { S.boardObs.disconnect(); } catch (_) {} S.boardObs = null; }
   if (S._cvObs) { try { S._cvObs.disconnect(); } catch (_) {} S._cvObs = null; }
+  if (S.oleajeRAF) { try { cancelAnimationFrame(S.oleajeRAF); } catch (_) {} S.oleajeRAF = null; }
   if (S.barra) { try { S.barra.desmontar(); } catch (_) {} S.barra = null; }
   S.dibMontada = false;
   try { if (S.chart) S.chart.remove(); } catch (_) {}
   S.chart = null;
   const ov = document.getElementById('it-overlay'); if (ov) ov.remove();
+  // Back SIEMPRE devuelve al selector de Analysis (no fuera): lo revelamos explícitamente.
+  const sel = document.getElementById('an-sel'); if (sel) sel.style.display = '';
 }
 
 /* ── Plantilla ── */
@@ -201,7 +204,7 @@ function plantilla() {
     ${panel('it-p-macro', 'SIGNALS')}
   </div>
   <div class="it-foot">
-    <div>DecFreedom · Institutional Analysis — <a href="https://decfreedom.com" target="_blank" rel="noopener">decfreedom.com</a></div>
+    <div>Institutional Analysis</div>
     <div>Live technical analysis · <button class="it-disc-link" id="it-disc-link" type="button">Disclaimer</button> · not financial advice</div>
   </div>`;
 }
@@ -349,7 +352,7 @@ async function cargarChart() {
   if (S.cargandoChart) return; S.cargandoChart = true;
   const title = document.getElementById('it-chart-title');
   if (title) title.textContent = 'CHART · ' + S.par.id + 'USD';
-  try { S.velas = await D.velas(S.par.s, S.tf, 1000); }   // más historial para desplazar a la izquierda
+  try { S.velas = await D.velas(S.par.s, S.tf, 2000); }   // historial profundo (análisis / backtesting)
   catch (_) { S.velas = []; const cv = document.getElementById('it-cv'); if (cv) cv.innerHTML = '<div class="it-legend" id="it-legend"></div>' + vacio('Could not reach the market data feed.'); S.cargandoChart = false; return; }
   // velas en el formato de la barra de dibujo (t en segundos → la barra normaliza a ms)
   S.velasDib = S.velas.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
@@ -409,7 +412,7 @@ function pintarChart() {
     if (S.ind.DEMA) linea('DEMA 20', 'DEMA', dema(V, 20), '#fb7185');
     if (S.ind.TEMA) linea('TEMA 20', 'TEMA', tema(V, 20), '#e879f9');
     // ── Overlays con bandas / tendencia (coloreados; sin marcas L/S) ──
-    if (S.ind.VWAP) linea('VWAP', 'VWAP', vwap(V), '#c678dd', 0, 2);
+    if (S.ind.VWAP) { const vb = vwapBands(V, 2); linea('VWAP', 'VWAP', vb.mid, '#c678dd', 0, 2); linea(null, null, vb.up, 'rgba(198,120,221,.5)'); linea(null, null, vb.lo, 'rgba(198,120,221,.5)'); }
     if (S.ind.BOLL) { const b = bollinger(V, 20, 2); linea('Bollinger', 'BOLL', b.middle, 'rgba(150,160,175,.6)'); linea(null, null, b.upper, 'rgba(120,180,255,.65)'); linea(null, null, b.lower, 'rgba(120,180,255,.65)'); }
     if (S.ind.DONCH) { const d = donchian(V, 20); linea('Donchian', 'DONCH', d.upper, 'rgba(232,184,75,.6)'); linea(null, null, d.lower, 'rgba(232,184,75,.6)'); }
     if (S.ind.KELT) { const k = keltner(V, 20, 2); linea('Keltner', 'KELT', k.upper, 'rgba(198,120,221,.6)'); linea(null, null, k.middle, 'rgba(198,120,221,.3)'); linea(null, null, k.lower, 'rgba(198,120,221,.6)'); }
@@ -445,11 +448,11 @@ function pintarChart() {
   } catch (_) {}
 
   S.legendRefs = refs;
-  // Vista por defecto LEGIBLE: ~120 velas recientes grandes, con historial a la izquierda.
+  // Vista por defecto: ~190 velas recientes (mucha gráfica y legible), con miles más a la izquierda.
   try {
     const ts = chart.timeScale();
-    const vis = Math.min(V.length, 120);
-    ts.setVisibleLogicalRange({ from: V.length - vis, to: V.length + 3 });
+    const vis = Math.min(V.length, 190);
+    ts.setVisibleLogicalRange({ from: V.length - vis, to: V.length + 2 });
     ts.subscribeVisibleLogicalRangeChange(() => sincronizarDib());
   } catch (_) {}
   pintarIndLegend();     // leyenda ESTÁTICA (solo indicadores activos, con ✕). Sin OHLC que salte con el cursor.
@@ -603,24 +606,64 @@ function pintarHeat() {
     el.style.padding = (Math.min(w, h) < 34 ? 2 : 6) + 'px';
     el.title = sym + '  ' + fmtPct(c.chg24);
     el.classList.toggle('on', c.id === S.par.cg || sym === S.par.id);
-    // texto a escala
+    // texto FUERTEMENTE a escala: tile grande = letra grande, tile chico = letra chica.
     const base = Math.min(w, h);
-    let fSym = Math.min(base * 0.34, (w - 6) / Math.max(1, sym.length * 0.58), 26);
-    const verText = w > 14 && h > 12;
-    const verPct = verText && h > 28 && w > 30;
-    const verPr = verText && h > 62 && w > 60;
+    let fSym = Math.min(base * 0.44, (w - 8) / Math.max(1, sym.length * 0.62));
+    fSym = Math.max(5, Math.min(fSym, 72));
+    const verText = w > 16 && h > 14;
+    const verPct = verText && h > base * 0.78 && h > 30 && w > 34;
+    const verPr = verText && h > 72 && w > 72;
     let inner = '';
     if (verText) {
-      fSym = Math.max(5.5, fSym);
       inner = `<b style="font-size:${fSym.toFixed(1)}px">${esc(sym)}</b>`;
-      if (verPr) inner += `<div class="pr" style="font-size:${Math.max(6, fSym * 0.5).toFixed(1)}px">${fmtP(c.price)}</div>`;
-      if (verPct) inner += `<em style="font-size:${Math.max(6, fSym * 0.64).toFixed(1)}px;color:${(c.chg24 || 0) >= 0 ? '#d6ffe6' : '#ffd7dc'}">${fmtPct(c.chg24)}</em>`;
+      if (verPr) inner += `<div class="pr" style="font-size:${(fSym * 0.4).toFixed(1)}px">${fmtP(c.price)}</div>`;
+      if (verPct) inner += `<em style="font-size:${(fSym * 0.52).toFixed(1)}px;color:${(c.chg24 || 0) >= 0 ? '#d6ffe6' : '#ffd7dc'}">${fmtPct(c.chg24)}</em>`;
     }
     el.innerHTML = inner;
     if (nuevo) requestAnimationFrame(() => el.classList.remove('it-tile-in'));
   });
   Object.keys(S.tileEls).forEach((sym) => { if (!vivos[sym]) { try { S.tileEls[sym].remove(); } catch (_) {} delete S.tileEls[sym]; } });
   if (!body.querySelector('.it-hm-wm')) { const wm = document.createElement('div'); wm.className = 'it-hm-wm'; wm.innerHTML = `<img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'">`; body.appendChild(wm); }
+}
+
+/* "Oleaje" orgánico del heatmap: ondas de brillo que nacen en puntos que van
+   cambiando (impredecible), recorren las casillas como un enjambre/ola y se
+   desvanecen; las casillas pequeñas realzan un pelín más (de pequeña a grande).
+   Es solo filter (GPU), ~25fps → estético y barato. Se usa en pantalla completa. */
+function iniciarOleaje() {
+  if (S.oleajeRAF) return;
+  const rnd = () => Math.random();
+  const nuevoOrigen = (now) => {
+    const abajoDer = rnd() < 0.5;   // sesgo hacia la zona de casillas pequeñas (abajo-der)
+    return { x: abajoDer ? 0.55 + rnd() * 0.45 : rnd(), y: abajoDer ? 0.55 + rnd() * 0.45 : rnd(), t0: now, vida: 3800 + rnd() * 5200, speed: 0.85 + rnd() * 0.85 };
+  };
+  let origenes = [nuevoOrigen(performance.now() - 2600), nuevoOrigen(performance.now() - 1300), nuevoOrigen(performance.now())];
+  let last = 0;
+  const paso = (now) => {
+    S.oleajeRAF = requestAnimationFrame(paso);
+    if (now - last < 40) return; last = now;    // ~25fps
+    const body = document.getElementById('it-p-board-body');
+    if (!body || !S.tileEls || body.offsetParent === null) return;
+    const W = body.clientWidth || 1, H = body.clientHeight || 1, diag = Math.hypot(W, H) || 1;
+    origenes = origenes.map((o) => (now - o.t0 > o.vida) ? nuevoOrigen(now) : o);
+    for (const sym in S.tileEls) {
+      const el = S.tileEls[sym]; if (!el || !el.isConnected) continue;
+      const w = parseFloat(el.style.width) || 0, h = parseFloat(el.style.height) || 0;
+      const cx = (parseFloat(el.style.left) || 0) + w / 2, cy = (parseFloat(el.style.top) || 0) + h / 2;
+      let inten = 0;
+      for (const o of origenes) {
+        const age = (now - o.t0) / 1000;
+        const front = age * o.speed;
+        const d = Math.hypot(cx - o.x * W, cy - o.y * H) / diag;
+        const dd = d - front;
+        inten += Math.exp(-(dd * dd) * 11) * Math.max(0, 1 - age / (o.vida / 1000));
+      }
+      const chico = (w * h) < 4200 ? 1.3 : 1;
+      inten = Math.min(1, inten * chico);
+      el.style.filter = inten > 0.02 ? `brightness(${(1 + inten * 0.24).toFixed(3)}) saturate(${(1 + inten * 0.28).toFixed(3)})` : '';
+    }
+  };
+  S.oleajeRAF = requestAnimationFrame(paso);
 }
 async function cargarBoard() {
   const body = document.getElementById('it-p-board-body'); if (!body) return;
@@ -630,6 +673,7 @@ async function cargarBoard() {
   body.style.overflow = 'hidden';
   if (body.querySelector('.it-empty')) { body.innerHTML = ''; S.tileEls = {}; }   // quita el spinner inicial antes del 1.er render
   pintarHeat();
+  iniciarOleaje();
   if (!S.boardObs && window.ResizeObserver) { S.boardObs = new ResizeObserver(() => pintarHeat()); S.boardObs.observe(body); }
 }
 
@@ -726,11 +770,11 @@ async function cargarMacro() {
 }
 
 /* ── VENTANAS: z-index propio, traer-al-frente, maximizar, cerrar, redimensionar ── */
-// La GRÁFICA domina (70% × 70%): mucho más espacio para análisis/backtesting.
+// La GRÁFICA domina (73% × 72%): máximo espacio para análisis/backtesting.
 const DEF_LAYOUT = {
-  'it-p-chart': [0.006, 0.01, 0.70, 0.70], 'it-p-quote': [0.712, 0.01, 0.282, 0.30],
-  'it-p-watch': [0.712, 0.315, 0.282, 0.30], 'it-p-board': [0.006, 0.715, 0.70, 0.275],
-  'it-p-macro': [0.712, 0.62, 0.282, 0.37]
+  'it-p-chart': [0.006, 0.01, 0.73, 0.72], 'it-p-quote': [0.742, 0.01, 0.252, 0.30],
+  'it-p-watch': [0.742, 0.315, 0.252, 0.30], 'it-p-board': [0.006, 0.735, 0.73, 0.255],
+  'it-p-macro': [0.742, 0.62, 0.252, 0.37]
 };
 function cargarLayout() { try { const j = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); if (j && typeof j === 'object') S.layout = j; } catch (_) {} }
 function guardarLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(S.layout)); } catch (_) {} }

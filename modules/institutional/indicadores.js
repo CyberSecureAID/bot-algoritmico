@@ -40,6 +40,30 @@ export function vwap(velas) {
   return out;
 }
 
+/* VWAP RODANTE con bandas de desviación estándar (canal): media ponderada por
+   volumen sobre una ventana móvil + ±mult·σ. A diferencia del VWAP anclado,
+   abraza el precio y da bandas ajustadas y útiles. Ventana deslizante O(n). */
+export function vwapBands(velas, mult = 2, win = 100) {
+  const mid = [], up = [], lo = [];
+  const n = velas.length; win = Math.min(win, n) || 1;
+  let sPV = 0, sV = 0, sPV2 = 0;
+  const tp = (c) => (c.high + c.low + c.close) / 3;
+  for (let i = 0; i < n; i++) {
+    const t = tp(velas[i]), v = velas[i].volume;
+    sPV += t * v; sV += v; sPV2 += t * t * v;
+    if (i >= win) { const o = velas[i - win], to = tp(o); sPV -= to * o.volume; sV -= o.volume; sPV2 -= to * to * o.volume; }
+    if (i >= win - 1 && sV > 0) {
+      const vw = sPV / sV;
+      const varr = Math.max(0, sPV2 / sV - vw * vw);
+      const sd = Math.sqrt(varr);
+      mid.push({ time: velas[i].time, value: vw });
+      up.push({ time: velas[i].time, value: vw + mult * sd });
+      lo.push({ time: velas[i].time, value: vw - mult * sd });
+    }
+  }
+  return { mid, up, lo };
+}
+
 export function rsi(velas, period = 14) {
   const out = [];
   let avgGain = 0, avgLoss = 0;
