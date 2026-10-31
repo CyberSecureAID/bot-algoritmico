@@ -28,13 +28,33 @@ async function traer(url, ms = 8000) {
 
 /* Velas OHLCV. `time` en SEGUNDOS para lightweight-charts. El intervalo es una
    temporalidad clásica de Binance (1m, 5m, 1h, 4h, 1d, 1w…), la misma lista que
-   usan las demás secciones (config.js TFS). */
+   usan las demás secciones (config.js TFS).
+
+   Binance topa en 1000 velas por llamada. Si se piden más (backtesting), se
+   PAGINA hacia atrás con `endTime` en varias llamadas y se unen. Para `limit`
+   ≤ 1000 el comportamiento es idéntico al de antes (una sola llamada). */
+const mapK = (k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] });
 export async function velas(simbolo, interval = '1h', limit = 500) {
-  const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${limit}`);
-  return j.map((k) => ({
-    time: Math.floor(k[0] / 1000),
-    open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5]
-  }));
+  const MAX = 1000;
+  if (limit <= MAX) {
+    const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${limit}`);
+    return j.map(mapK);
+  }
+  let restante = limit, endTime = null; const lotes = [];
+  for (let i = 0; i < 12 && restante > 0; i++) {           // tope de seguridad: 12 llamadas
+    const n = Math.min(MAX, restante);
+    const u = `${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${n}` + (endTime != null ? `&endTime=${endTime}` : '');
+    let j; try { j = await traer(u); } catch (_) { break; }
+    if (!j || !j.length) break;
+    lotes.unshift(j);
+    endTime = j[0][0] - 1;                                  // justo antes de la vela más antigua recibida
+    restante -= j.length;
+    if (j.length < n) break;                                // no hay más historia disponible
+  }
+  const vistos = new Set(); const out = [];
+  for (const lote of lotes) for (const k of lote) { const t = Math.floor(k[0] / 1000); if (!vistos.has(t)) { vistos.add(t); out.push(mapK(k)); } }
+  out.sort((a, b) => a.time - b.time);
+  return out;
 }
 
 /* Ticker 24h de un símbolo: último, cambio %, OHLC del día, volumen. */

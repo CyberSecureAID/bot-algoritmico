@@ -12,7 +12,7 @@
 */
 
 import { estilos } from './estilos.js?v=8';
-import * as D from './datos.js?v=4';
+import * as D from './datos.js?v=5';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf } from './indicadores.js?v=5';
 
@@ -152,6 +152,19 @@ function cerrar() {
   const sel = document.getElementById('an-sel'); if (sel) sel.style.display = '';
 }
 
+/* Back INTELIGENTE: si hay pantalla completa real del navegador o una ventana
+   maximizada, Back sale de ESO y deja al usuario DENTRO de Institutional (no lo
+   bota afuera). Solo cuando ya está en la vista normal, Back cierra la sección y
+   vuelve al selector de Analysis. */
+function backInteligente() {
+  if (enFullscreen() || S.maxed) {
+    if (enFullscreen()) salirUltra();
+    if (S.maxed) { S.maxed = null; aplicarLayout(); setTimeout(() => pintarHeat({ instant: true }), 60); }
+    return;
+  }
+  cerrar();
+}
+
 /* ── Plantilla ── */
 const IC_ULTRA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
 const IC_MAX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
@@ -240,7 +253,7 @@ function pintarCoin() {
 }
 
 function cablearTop(ov) {
-  $('#it-back', ov).onclick = cerrar;
+  $('#it-back', ov).onclick = backInteligente;
   $('#it-coin', ov).onclick = (e) => { e.stopPropagation(); menuMonedas(); };
   $('#it-tf-btn', ov).onclick = (e) => { e.stopPropagation(); menuTf(); };
   $('#it-in-btn', ov).onclick = (e) => { e.stopPropagation(); menuInd(); };
@@ -277,6 +290,7 @@ function setSimbolo(par) {
   S.par = par; pintarCoin();
   cargarChart(); cargarQuote();
   document.querySelectorAll('#it-p-watch-body tr, #it-p-board-body .it-tile').forEach((el) => el.classList.remove('on'));
+  const wr = document.querySelector('#it-p-watch-body tr[data-id="' + (S.par.id || '') + '"]'); if (wr) wr.classList.add('on');   // resalta la nueva al instante
 }
 
 /* ── Popups ── */
@@ -363,7 +377,7 @@ async function cargarChart() {
   if (S.cargandoChart) return; S.cargandoChart = true;
   const title = document.getElementById('it-chart-title');
   if (title) title.textContent = 'CHART · ' + S.par.id + 'USD';
-  try { S.velas = await D.velas(S.par.s, S.tf, 2000); }   // historial profundo (análisis / backtesting)
+  try { S.velas = await D.velas(S.par.s, S.tf, 3000); }   // historial profundo PAGINADO (análisis / backtesting hacia atrás)
   catch (_) { S.velas = []; const cv = document.getElementById('it-cv'); if (cv) cv.innerHTML = '<div class="it-legend" id="it-legend"></div>' + vacio('Could not reach the market data feed.'); S.cargandoChart = false; return; }
   // velas en el formato de la barra de dibujo (t en segundos → la barra normaliza a ms)
   S.velasDib = S.velas.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
@@ -622,12 +636,32 @@ async function cargarQuote() {
 /* ── WATCHLIST ── */
 async function cargarWatch() {
   const body = document.getElementById('it-p-watch-body'); if (!body) return;
-  const pares = LISTA_WATCH.map((id) => D.PARES.find((p) => p.id === id)).filter(Boolean);
+  // TODAS las monedas cripto (las de Binance con par USDT), con las de referencia
+  // arriba. La tabla se construye UNA sola vez y luego se actualizan las celdas
+  // por símbolo: nunca se reconstruye en cada refresco → no se pierde el scroll
+  // ni la fila seleccionada.
+  const cripto = D.PARES.filter((p) => p.grupo !== 'divisa' && p.grupo !== 'materia');
+  const top = LISTA_WATCH.map((id) => cripto.find((p) => p.id === id)).filter(Boolean);
+  const pares = top.concat(cripto.filter((p) => !LISTA_WATCH.includes(p.id)));
   let ts; try { ts = await D.tickers(pares.map((p) => p.s)); } catch (_) { if (body.querySelector('.it-spin')) body.innerHTML = vacio('Watchlist feed unavailable.'); return; }
   const map = {}; ts.forEach((t) => { map[t.simbolo] = t; });
-  const rows = pares.map((p) => { const t = map[p.s] || {}; const c = cls(t.chgPct); const on = p.id === S.par.id ? ' class="on"' : ''; return `<tr data-id="${esc(p.id)}"${on}><td><div class="sym">${logoHTML('it-mini-lg', p)}<b class="gold">${esc(p.id)}</b></div></td><td>${fmtP(t.last)}</td><td class="${c}">${fmtPct(t.chgPct)}</td></tr>`; }).join('');
-  body.innerHTML = `<table class="it-tbl"><thead><tr><th>Symbol</th><th>Last</th><th>24h</th></tr></thead><tbody>${rows}</tbody></table>`;
-  body.querySelectorAll('tr[data-id]').forEach((tr) => tr.onclick = () => { const p = D.PARES.find((x) => x.id === tr.dataset.id); if (p) setSimbolo(p); });
+  let tb = body.querySelector('.it-tbl tbody');
+  if (!tb) {
+    const rows = pares.map((p) => `<tr data-id="${esc(p.id)}" data-s="${esc(p.s)}"${p.id === S.par.id ? ' class="on"' : ''}><td><div class="sym">${logoHTML('it-mini-lg', p)}<b class="gold">${esc(p.id)}</b></div></td><td class="w-last">—</td><td class="w-chg dim">—</td></tr>`).join('');
+    body.innerHTML = `<table class="it-tbl"><thead><tr><th>Symbol</th><th>Last</th><th>24h</th></tr></thead><tbody>${rows}</tbody></table>`;
+    tb = body.querySelector('.it-tbl tbody');
+    tb.querySelectorAll('tr[data-id]').forEach((tr) => tr.onclick = () => {
+      const p = D.PARES.find((x) => x.id === tr.dataset.id); if (!p) return;
+      tb.querySelectorAll('tr.on').forEach((r) => r.classList.remove('on')); tr.classList.add('on');   // selección instantánea
+      setSimbolo(p);
+    });
+  }
+  tb.querySelectorAll('tr[data-id]').forEach((tr) => {
+    const t = map[tr.dataset.s];
+    const last = tr.querySelector('.w-last'), chg = tr.querySelector('.w-chg');
+    if (t) { if (last) last.textContent = fmtP(t.last); if (chg) { chg.textContent = fmtPct(t.chgPct); chg.className = 'w-chg ' + cls(t.chgPct); } }
+    tr.classList.toggle('on', tr.dataset.id === S.par.id);
+  });
 }
 
 /* ── MARKET HEATMAP (treemap: tamaño por magnitud del % 24h) ── */
