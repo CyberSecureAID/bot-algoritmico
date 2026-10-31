@@ -74,6 +74,48 @@ async function traerVelas(simbolo, tf, n = 120) {
   }));
 }
 
+/* ── Velas EN VIVO por WebSocket de Binance ──
+   La vela en formación se refleja al instante (aquí sí hay que repintar: el
+   pulso de 130 ms solo redibuja cuando hay una zona activa) y al cerrar se
+   recalcula el análisis. El sondeo de 12 s queda de resync (conserva el fallback
+   de hosts). El PRECIO NO se toca aquí: lo da el libro de órdenes en vivo. `t`
+   en segundos, `vol`/`volC` en quote (como traerVelas: k.q y k.Q del WS). ── */
+let _muStream = null, _muStreamKey = '', _traerMu = null, _muDrawPend = false;
+function streamVelasMu(simbolo, tf, onK) {
+  const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${tf}`;
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket(url); } catch (_) { tmr = setTimeout(abrir, 2500); return; }
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onK(d.k); } catch (_) {} };
+    ws.onclose = () => { if (!cerrado) { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); } };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} } };
+}
+function conectarStreamMu() {
+  const par = PARES.find((p) => p.id === _par) || PARES[0];
+  if (!par || !par.s) return;
+  const key = par.s + '|' + M.tf;
+  if (_muStreamKey === key && _muStream) return;
+  if (_muStream) { try { _muStream.cerrar(); } catch (_) {} _muStream = null; }
+  _muStreamKey = key;
+  try { _muStream = streamVelasMu(par.s, M.tf, onKlineMu); } catch (_) { _muStream = null; }
+}
+function muDibujarVivo() { if (_muDrawPend) return; _muDrawPend = true; requestAnimationFrame(() => { _muDrawPend = false; try { dibujar(); } catch (_) {} }); }
+function onKlineMu(k) {
+  if (!k || !M.velas || !M.velas.length) return;
+  const c = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, vol: +k.q || +k.v || 0, volC: +k.Q || 0 };
+  if (!(c.c > 0)) return;
+  const last = M.velas[M.velas.length - 1];
+  if (c.t === last.t) { M.velas[M.velas.length - 1] = c; }        // misma vela en formación
+  else if (c.t > last.t) { M.velas.push(c); }                      // nueva vela
+  else return;                                                     // vieja → ignorar
+  muDibujarVivo();                                                 // repinta la vela en vivo (1/frame)
+  if (k.x === true && _traerMu) { try { _traerMu(); } catch (_) {} }   // al CERRAR: análisis inmediato (zonas/estructuras)
+}
+
 /* ══════════════════════════════════════════════════════════════
    DATOS con RESPALDO. El radar necesita el libro (api/v3/depth). Binance ha
    ido geo-bloqueando api.binance.com en algunas regiones; cuando pasa, el
@@ -1273,6 +1315,7 @@ export async function abrirMuros() {
 
   const cerrar = () => {
     clearInterval(_reloj); clearInterval(_relojVelas); clearInterval(_relojPulso);
+    if (_muStream) { try { _muStream.cerrar(); } catch (_) {} _muStream = null; _muStreamKey = ''; }   // cierra el WebSocket de velas en vivo
     cerrarWSLibro();
     M._pos = null; M._tend = null; M._posList = null; quitarPager(); quitarGuiaSVG();  // las herramientas viven DENTRO del radar
     if (_planFuera) { document.removeEventListener('pointerdown', _planFuera, true); _planFuera = null; }
@@ -1412,6 +1455,7 @@ function refrescarNumeros() {
  *  como el libro, y no hace falta pedirlas cada segundo y medio. */
 async function cargarVelas() {
   clearInterval(_relojVelas);
+  if (_muStream) { try { _muStream.cerrar(); } catch (_) {} _muStream = null; _muStreamKey = ''; }   // corta el stream anterior antes de recargar
   const traer = async () => {
     if (!$('mu-cv')) { clearInterval(_relojVelas); return; }
     try {
@@ -1454,8 +1498,10 @@ async function cargarVelas() {
       dibujar();
     } catch (_) {}
   };
+  _traerMu = traer;             // referencia para que el cierre de vela (WS) dispare análisis inmediato
   await traer();
   _relojVelas = setInterval(traer, 12000);
+  conectarStreamMu();           // velas EN VIVO por WebSocket (el sondeo de 12 s queda de resync)
 }
 
 /* Sube la confianza de una zona cuando coincide con un nivel institucional

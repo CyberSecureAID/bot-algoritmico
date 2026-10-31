@@ -453,6 +453,48 @@ function columnaDe(mapa, c, sinRefuerzo) {
 let _vivo = null;
 let _vivoPx = null;
 
+/* ── Velas EN VIVO por WebSocket de Binance ──
+   Afina el sondeo de 3 s: la vela en formación se mueve tick a tick (el cierre
+   del kline ya es el último precio operado). El mapa de liquidez se recomputa
+   solo al abrir/cerrar vela (no en cada tick). El sondeo de 3 s queda de resync.
+   `t` en segundos, `v` volumen base, igual que traerVelas. ── */
+let _lqStream = null, _lqStreamKey = '', _lqDrawPend = false;
+function streamVelasLq(simbolo, tf, onK) {
+  const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${tf}`;
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket(url); } catch (_) { tmr = setTimeout(abrir, 2500); return; }
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onK(d.k); } catch (_) {} };
+    ws.onclose = () => { if (!cerrado) { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); } };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} } };
+}
+function conectarStreamLq() {
+  const par = PARES.find((p) => p.id === _par) || PARES[0];
+  if (!par || !par.s) return;
+  const key = par.s + '|' + _tf;
+  if (_lqStreamKey === key && _lqStream) return;
+  if (_lqStream) { try { _lqStream.cerrar(); } catch (_) {} _lqStream = null; }
+  _lqStreamKey = key;
+  try { _lqStream = streamVelasLq(par.s, _tf, onKlineLq); } catch (_) { _lqStream = null; }
+}
+function lqDibujarVivo() { if (_lqDrawPend) return; _lqDrawPend = true; requestAnimationFrame(() => { _lqDrawPend = false; try { dibujar(); } catch (_) {} }); }
+function onKlineLq(k) {
+  if (!k || !V.velas || !V.velas.length || V.arrastrando || !V.mapa) return;
+  const c = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: +k.v };
+  if (!(c.c > 0)) return;
+  const last = V.velas[V.velas.length - 1];
+  let nueva = false;
+  if (c.t === last.t) { V.velas[V.velas.length - 1] = c; }                                   // misma vela en formación
+  else if (c.t > last.t) { V.velas.push(c); nueva = true; if (V.velas.length > 520) V.velas = V.velas.slice(-500); }   // nueva vela
+  else return;                                                                               // vieja → ignorar
+  if (nueva || k.x === true) { const m = construirMapa(V.velas); if (m) V.mapa = m; }         // nueva/cierre → recomputa el mapa de liquidez
+  lqDibujarVivo();                                                                            // vela en vivo (1/frame)
+}
+
 /* ── Cabecera: precio en vivo + rango de 24h de la moneda seleccionada.
    Es INDEPENDIENTE del motor del mapa: solo lee el ticker 24h de Binance y
    pinta la barra superior. No toca velas, ni mapa, ni zonas. ── */
@@ -483,6 +525,7 @@ function abrirCalendarioSeguro() {
 }
 function arrancarVivo() {
   clearInterval(_vivo);
+  if (_lqStream) { try { _lqStream.cerrar(); } catch (_) {} _lqStream = null; _lqStreamKey = ''; }   // corta el stream anterior antes de recargar
   const idVivo = _cargaId;
   _vivo = setInterval(async () => {
     // Si ya se cambió de temporalidad, este reloj es de la carga vieja
@@ -523,6 +566,7 @@ function arrancarVivo() {
       if (m2 && idVivo === _cargaId) { V.mapa = m2; dibujar(); }
     } catch (_) {}
   }, 3000);   // 3 s: el precio tiene que verse moverse
+  conectarStreamLq();   // velas EN VIVO por WebSocket (el sondeo de 3 s queda de resync)
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -823,6 +867,7 @@ export async function abrirPools() {
   const cerrar = () => {
     cerrarMenus();
     clearInterval(_vivo); clearInterval(_vivoPx);
+    if (_lqStream) { try { _lqStream.cerrar(); } catch (_) {} _lqStream = null; _lqStreamKey = ''; }   // cierra el WebSocket de velas en vivo
     const e = $('lq-overlay'); if (e) e.remove();
     /* Al cerrar se vuelve a la portada de Liquidity, no se sale. */
     try { if (window.__lqpVolver) window.__lqpVolver(); } catch (_) {}
