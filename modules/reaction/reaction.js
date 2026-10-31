@@ -22,6 +22,11 @@ const WEB = 'decfreedom.com';
    /assets/img/cco-marca.png carga igual aunque la página se sirva desde
    /modules/analysis/. Es la marca de agua del export y del lienzo. */
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
+/* "Puntera": señalador (flecha morada) del nacimiento de cada barra vigente y de
+   sus toques. Resuelta contra la URL del script → modules/reaction/img/puntera.webp */
+const PUNTERA = new Image(); let _punteraOk = false;
+PUNTERA.onload = () => { _punteraOk = true; };
+PUNTERA.src = new URL('./img/puntera.webp', import.meta.url).href;
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let _par = 'BTC';
@@ -253,6 +258,9 @@ function dibujar() {
   // ── VELAS ──
   dibujarVelas(g, vis, Y, paso);
 
+  // ── PUNTERAS: señaladores del nacimiento de cada barra VIGENTE y de sus toques ──
+  dibujarPunteras(g, x1, Xbar, Y, pMin, pMax, now);
+
   // línea del precio
   if (M.precio > 0) {
     const yp = Y(M.precio); g.strokeStyle = 'rgba(232,184,75,.55)'; g.lineWidth = 1; g.setLineDash([3, 3]);
@@ -362,6 +370,42 @@ function dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, now, W) {
   };
   dead.forEach((lv) => uno(lv, true));
   live.forEach((lv) => uno(lv, false));
+}
+
+/* Señaladores "puntera": uno en el NACIMIENTO de cada barra VIGENTE (no en las
+   rotas) y uno en cada TOQUE del precio. Si hay toques muy pegados, se funden en
+   uno (no se superponen). Zona SUPERIOR → puntera arriba, apuntando hacia abajo;
+   zona INFERIOR → puntera abajo, apuntando hacia arriba (volteada). Flotabilidad
+   suave y ligero zoom al pasar el cursor. Sin ninguna otra función. */
+function dibujarPunteras(g, x1, Xbar, Y, pMin, pMax, now) {
+  if (!_punteraOk || !PUNTERA.width) return;
+  const live = M.data.live || [];
+  const w0 = 24, h0 = Math.round(w0 * (PUNTERA.height / PUNTERA.width));
+  const cur = M._cursor;
+  live.forEach((lv) => {
+    if (lv.p > pMax || lv.p < pMin) return;
+    const arriba = lv.upper;                               // superior → arriba (apunta abajo)
+    const [zTop, zBot] = zoneBounds(lv.upper, lv.p, lv.depth);
+    const yZT = Y(Math.max(zTop, zBot)), yZB = Y(Math.min(zTop, zBot));
+    // nacimiento + toques → X, visibles, ordenados y SIN pegarse (se funden)
+    const bars = [lv.anchorBar].concat((lv.touchBars || []).map((t) => t.bar));
+    const xs = Array.from(new Set(bars)).map((b) => Xbar(b)).filter((x) => x > 3 && x < x1 - 3).sort((a, b) => a - b);
+    const kept = [];
+    for (const x of xs) { if (!kept.length || x - kept[kept.length - 1] >= w0 * 0.92) kept.push(x); }
+    kept.forEach((x) => {
+      const bob = Math.sin(now / 680 + x * 0.045) * 1.8;   // flotabilidad SUAVE (no exagerada)
+      const botU = yZT - 5 + bob;                          // ancla inferior (zona superior)
+      const topL = yZB + 5 + bob;                          // ancla superior (zona inferior)
+      const rectTop0 = arriba ? botU - h0 : topL;
+      let sc = 1;
+      if (cur && Math.abs(cur.x - x) <= w0 * 0.6 && cur.y >= rectTop0 - 3 && cur.y <= rectTop0 + h0 + 3) sc = 1.26;  // zoom al pasar el cursor
+      const w = w0 * sc, h = h0 * sc, topY = arriba ? (botU - h) : topL, dx = x - w / 2;
+      g.save(); g.shadowColor = 'rgba(168,85,247,.55)'; g.shadowBlur = 7; g.globalAlpha = 0.96;
+      if (arriba) g.drawImage(PUNTERA, dx, topY, w, h);
+      else { g.translate(x, topY); g.scale(1, -1); g.drawImage(PUNTERA, -w / 2, -h, w, h); }   // volteada → apunta hacia arriba
+      g.restore();
+    });
+  });
 }
 
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
