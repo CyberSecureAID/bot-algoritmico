@@ -57,6 +57,46 @@ async function traerVelas(simbolo, tf, n = 700) {
   return j.map((x) => ({ t: Math.floor(x[0] / 1000), o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: +x[7] || +x[5] || 0 }));
 }
 
+/* ── Velas EN VIVO por WebSocket de Binance ──
+   La vela en formación se ve al instante (el bucle de 90 ms ya repinta); al
+   cerrar se recalculan las zonas. El sondeo de 15 s sigue como resync/respaldo,
+   así que se conserva el fallback de hosts si stream.binance.com estuviera
+   bloqueado. `t` en SEGUNDOS y `v` en volumen quote, igual que traerVelas. ── */
+let _rzStream = null, _rzStreamKey = '';
+function streamVelasRz(simbolo, tf, onK) {
+  const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${tf}`;
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket(url); } catch (_) { tmr = setTimeout(abrir, 2500); return; }
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onK(d.k); } catch (_) {} };
+    ws.onclose = () => { if (!cerrado) { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); } };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} } };
+}
+function conectarStreamRz() {
+  const p = PARES.find((x) => x.id === _par) || {};
+  if (!p.s) return;
+  const key = p.s + '|' + M.tf;
+  if (_rzStreamKey === key && _rzStream) return;
+  if (_rzStream) { try { _rzStream.cerrar(); } catch (_) {} _rzStream = null; }
+  _rzStreamKey = key;
+  try { _rzStream = streamVelasRz(p.s, M.tf, onKlineRz); } catch (_) { _rzStream = null; }
+}
+function onKlineRz(k) {
+  if (!k || !M.velas || !M.velas.length) return;
+  const c = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: +k.q || +k.v || 0 };
+  if (!(c.c > 0)) return;
+  const last = M.velas[M.velas.length - 1];
+  if (c.t === last.t) { M.velas[M.velas.length - 1] = c; }        // misma vela en formación
+  else if (c.t > last.t) { M.velas.push(c); }                      // nueva vela
+  else return;                                                     // vieja → ignorar
+  M.precio = c.c;                                                  // el bucle de 90 ms repinta solo
+  if (k.x === true) { try { recalcular(); } catch (_) {} }         // al CERRAR: recalcular zonas de reacción
+}
+
 const fmt = (p) => {
   if (!(p > 0)) return '—';
   if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -133,6 +173,7 @@ export async function abrirReaction() {
 
 function cerrar() {
   clearInterval(_reloj); clearInterval(_pulso);
+  if (_rzStream) { try { _rzStream.cerrar(); } catch (_) {} _rzStream = null; _rzStreamKey = ''; }   // cierra el WebSocket de velas en vivo
   if (M._onResize) window.removeEventListener('resize', M._onResize);
   if (_barra) { try { _barra.desmontar(); } catch (_) {} _barra = null; }
   document.querySelectorAll('#rz-picker, #rz-tfmenu, #rz-ayuda-box').forEach((x) => x.remove());
@@ -142,6 +183,7 @@ function cerrar() {
 
 async function cargarVelas() {
   M.cargando = true;
+  if (_rzStream) { try { _rzStream.cerrar(); } catch (_) {} _rzStream = null; _rzStreamKey = ''; }   // corta el stream anterior antes de recargar otra moneda/temporalidad
   const p = PARES.find((x) => x.id === _par) || {};
   try {
     M.velas = await traerVelas(p.s, M.tf, 700);
@@ -154,6 +196,7 @@ async function cargarVelas() {
   _reloj = setInterval(async () => {
     try { const v = await traerVelas(p.s, M.tf, 700); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; recalcular(); dibujar(); } catch (_) {}
   }, 15000);
+  conectarStreamRz();          // velas EN VIVO por WebSocket (el sondeo de 15 s queda de resync)
 }
 function recalcular() {
   try { M.data = detectarReaction(M.velas); } catch (_) { M.data = { live: [], dead: [], triangles: [] }; }
