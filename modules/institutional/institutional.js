@@ -31,8 +31,10 @@ async function cargarBarra() {
   return _montarBarra;
 }
 
-const LOGO = 'assets/img/cco-marca.png';
-const LOGO_ALT = 'assets/img/cco-full.webp';
+/* Resueltas contra la URL del script (no del documento) para que la marca de
+   agua cargue aunque la página se sirva desde /modules/analysis/. */
+const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
+const LOGO_ALT = new URL('../../assets/img/cco-full.webp', import.meta.url).href;
 const SELLO = 'assets/portada/red/disclaimer.webp';
 const DISC_KEY = 'it-disclaimer-ok';
 const LAYOUT_KEY = 'it-layout-v4';   // v4: la gráfica domina aún más (reinicia layouts guardados antiguos)
@@ -536,19 +538,71 @@ function pintarIndLegend() {
 function exportar() {
   if (!S.chart) { return; }
   let src; try { src = S.chart.takeScreenshot(); } catch (_) { return; }
-  const W = src.width, Hh = 46, Hf = 30;
-  const out = document.createElement('canvas'); out.width = W; out.height = Hh + src.height + Hf;
+  const cv = document.getElementById('it-cv');
+  const e2 = (cv && cv.clientWidth) ? (src.width / cv.clientWidth) : 1;
+  const Hh = Math.round(46 * e2);      // cabecera: par · tf + precio
+  const barra = Math.round(78 * e2);   // pie con la marca — uniforme con Heat/Liquidity Pools
+  const out = document.createElement('canvas');
+  out.width = src.width; out.height = Hh + src.height + barra;
   const g = out.getContext('2d');
-  g.fillStyle = '#0b0e13'; g.fillRect(0, 0, out.width, out.height);
+  g.fillStyle = '#0a0e14'; g.fillRect(0, 0, out.width, out.height);
+
+  // ── cabecera superior: par · tf (izq) + precio (der) ──
   const tf = (D.TFS.find((t) => t.id === S.tf) || {}).n || S.tf;
-  g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = '800 18px "Chakra Petch", system-ui, monospace';
-  g.fillText(S.par.id + 'USD · ' + tf, 16, 30);
-  if (S.ultTicker) { g.textAlign = 'right'; g.fillStyle = '#eaecef'; g.fillText(fmtP(S.ultTicker.last) + '  ' + fmtPct(S.ultTicker.chgPct), W - 16, 30); }
+  g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${18 * e2}px "Chakra Petch", system-ui, monospace`;
+  g.fillText(S.par.id + 'USD · ' + tf, 16 * e2, 30 * e2);
+  if (S.ultTicker) { g.textAlign = 'right'; g.fillStyle = '#eaecef'; g.fillText(fmtP(S.ultTicker.last) + '  ' + fmtPct(S.ultTicker.chgPct), out.width - 16 * e2, 30 * e2); }
+
+  // ── chart ──
   g.drawImage(src, 0, Hh);
-  g.fillStyle = '#0a0d12'; g.fillRect(0, Hh + src.height, W, Hf);
-  g.textAlign = 'left'; g.fillStyle = '#C9A84B'; g.font = '700 12px "Chakra Petch", system-ui, monospace';
-  g.fillText('DecFreedom · Institutional Analysis — decfreedom.com', 14, Hh + src.height + 20);
-  out.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-institutional-${S.par.id}-${S.tf}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
+
+  // ── pie de página con la marca (logo + nombre + dominio · par·tf + fecha) ──
+  const yB = Hh + src.height;
+  g.fillStyle = '#0b0e12'; g.fillRect(0, yB, out.width, barra);
+  g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, out.width, 2 * e2);
+
+  const textos = (x) => {
+    g.textAlign = 'left';
+    g.fillStyle = '#E8B84B';
+    g.font = `800 ${19 * e2}px system-ui,sans-serif`;
+    g.fillText('Institutional Analysis', x, yB + 34 * e2);
+    g.font = `700 ${14 * e2}px ui-monospace,monospace`;
+    g.fillStyle = '#C9A84B';
+    g.fillText('decfreedom.com', x, yB + 56 * e2);
+    g.textAlign = 'right';
+    g.fillStyle = '#8b96a3';
+    g.font = `700 ${14 * e2}px ui-monospace,monospace`;
+    g.fillText(`${S.par.id} · ${tf}`, out.width - 20 * e2, yB + 34 * e2);
+    g.font = `${11 * e2}px ui-monospace,monospace`;
+    g.fillStyle = '#6b7681';
+    g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      out.width - 20 * e2, yB + 56 * e2);
+    g.textAlign = 'left';
+  };
+
+  const bajar = () => out.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `decfreedom-institutional-${S.par.id}-${S.tf}-${Date.now()}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }, 'image/png');
+
+  const logo = new Image();
+  let hecho = false;
+  const una = (w) => { if (hecho) return; hecho = true; textos(w ? 20 * e2 + w + 18 * e2 : 20 * e2); bajar(); };
+  logo.onload = () => {
+    try {
+      const alto = 52 * e2;
+      const ancho = Math.round(logo.width * (alto / logo.height));
+      g.drawImage(logo, 20 * e2, yB + (barra - alto) / 2, ancho, alto);
+      una(ancho);
+    } catch (_) { una(0); }
+  };
+  logo.onerror = () => una(0);
+  setTimeout(() => una(0), 1500);
+  logo.src = LOGO;
 }
 
 /* ── QUOTE (+ cabecera superior) ── */
