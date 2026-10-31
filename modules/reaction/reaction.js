@@ -94,6 +94,7 @@ export async function abrirReaction() {
             <button class="rz-pos-half" id="rz-pos-single">Single</button>
             <button class="rz-pos-half" id="rz-pos-double">Double</button>
           </div>
+          <button class="rz-share" id="rz-share" title="Share signal" disabled>Share signal</button>
           <button class="rz-ico" id="rz-foto" title="Share image"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
           <button class="rz-ico" id="rz-ayuda" title="How it works">?</button>
         </div>
@@ -111,9 +112,10 @@ export async function abrirReaction() {
   $('rz-sel').onclick = (e) => { e.stopPropagation(); menuPares(); };
   $('rz-ayuda').onclick = ayuda;
   $('rz-foto').onclick = guardarImagen;
+  $('rz-share').onclick = () => compartirSenal();
   $('rz-tfchip').onclick = (e) => { e.stopPropagation(); menuTf(); };
-  { const bS = $('rz-pos-single'), bD = $('rz-pos-double');
-    const set = (modo) => { M._modoPos = (M._modoPos === modo) ? null : modo; bS.classList.toggle('on', M._modoPos === 'single'); bD.classList.toggle('on', M._modoPos === 'double'); M._posAuto = null; if (!M._modoPos) M.desplaz = 0; dibujar(); };
+  { const bS = $('rz-pos-single'), bD = $('rz-pos-double'), bSh = $('rz-share');
+    const set = (modo) => { M._modoPos = (M._modoPos === modo) ? null : modo; bS.classList.toggle('on', M._modoPos === 'single'); bD.classList.toggle('on', M._modoPos === 'double'); if (bSh) bSh.disabled = !M._modoPos; M._posAuto = null; if (!M._modoPos) M.desplaz = 0; dibujar(); };
     bS.onclick = () => set('single'); bD.onclick = () => set('double'); }
 
   ponerLogos();
@@ -330,7 +332,12 @@ function dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, now, W) {
     const yTop = Y(Math.max(zTop, zBot)), yBot = Y(Math.min(zTop, zBot));
     const hh = Math.abs(yBot - yTop); if (hh < 1) return;
     const xa = Math.max(0, Xbar(lv.anchorBar));
-    const xRight = muerto ? Math.min(x1, Math.max(xa + 4, Xbar(lv.breakBar != null ? lv.breakBar : lv.anchorBar))) : x1;
+    let xRight = x1;
+    if (muerto) {
+      const xb = Xbar(lv.breakBar != null ? lv.breakBar : lv.anchorBar);
+      if (xb <= 2) return;   // zona ROTA totalmente fuera por la izquierda → no pintar (evita las "rayitas" pegadas al borde)
+      xRight = Math.min(x1, Math.max(xa + 4, xb));
+    }
     if (xRight <= xa) return;
     const yTp = Math.min(yTop, yBot), ww = xRight - xa;
     const recency = clip01((lv.anchorBar - pri) / Math.max(1, ancho));   // 0 vieja → 1 reciente
@@ -394,7 +401,10 @@ function posicionesDeNiveles() {
     const sl = corto ? pe + d : pe - d;                  // stop = una altura de caja
     const pT = corto ? pe - 2 * d : pe + 2 * d;          // take profit = el doble
     const b0 = slotX(slot);
-    return { tipo, pe, pStop: sl, pTarget: pT, b0, b1: b0 + W, rr: 2, oculto: true, cardPos: 'izq' };
+    // Color de las rayas de precio: principal blanco, respaldo (doble) dorado,
+    // para distinguir los precios de una operación y de la otra.
+    const lineCol = slot === 0 ? '#eaecef' : '#E8B84B';
+    return { tipo, pe, pStop: sl, pTarget: pT, b0, b1: b0 + W, rr: 2, oculto: true, cardPos: 'izq', slot, lineCol };
   };
   if (sup) {
     const d = sup.depth, base = sup.p - d;               // base de la zona de resistencia (zBot)
@@ -402,9 +412,12 @@ function posicionesDeNiveles() {
     if (doble) out.push(mk('corto', base + d, d, 1));    // la 2ª entra en el stop de la 1ª
   }
   if (inf) {
-    const d = inf.depth, base = inf.p;                   // base de la zona de soporte (zBot)
+    // LONG: la entrada va ARRIBA de la caja (borde superior de la zona de soporte,
+    // el más cercano al precio), el stop ABAJO (borde inferior) y el TP el doble
+    // hacia arriba. Simétrico al short (que ya estaba bien).
+    const d = inf.depth, base = inf.p + d;               // borde superior de la zona (zTop)
     out.push(mk('largo', base, d, 0));
-    if (doble) out.push(mk('largo', base - d, d, 1));    // la 2ª entra en el stop de la 1ª
+    if (doble) out.push(mk('largo', base - d, d, 1));    // la 2ª entra en el stop de la 1ª (= inf.p)
   }
   return out;
 }
@@ -440,6 +453,20 @@ function dibujarPosicion(g, P) {
   [[cT, yt], [cE, ye], [cS, ys]].forEach((r) => {
     g.strokeStyle = r[0]; g.lineWidth = 2; g.beginPath(); g.moveTo(x, r[1]); g.lineTo(x + w, r[1]); g.stroke();
   });
+  // ── Rayas PUNTEADAS hasta el eje de precios, con etiqueta (para leer/copiar). ──
+  //    Color POR OPERACIÓN (principal blanco, respaldo dorado) para no confundir
+  //    los precios de una y otra al pulsar Double.
+  { const lc = P.lineCol || '#eaecef', lcRGB = _hex2rgb(lc), mDer = 66;
+    g.save();
+    [['TP', pT, yt], ['EN', pe, ye], ['SL', pS, ys]].forEach(([lab, pr, yy]) => {
+      g.setLineDash([2, 3]); g.lineWidth = 1; g.strokeStyle = `rgba(${lcRGB},.85)`;
+      g.beginPath(); g.moveTo(x + w, yy); g.lineTo(x1, yy); g.stroke(); g.setLineDash([]);
+      g.fillStyle = lc; redondeado(g, x1 + 2, yy - 8, mDer - 4, 16, 4); g.fill();
+      g.fillStyle = '#0b0e12'; g.font = '800 8px ui-monospace,monospace'; g.textAlign = 'left';
+      g.fillText(`${lab} ${fmt(pr)}`, x1 + 5, yy + 3);
+    });
+    g.restore(); g.textAlign = 'left';
+  }
   if (!P.oculto) {
     g.save();
     [[cT, yt], [cE, ye], [cS, ys]].forEach((r) => {
@@ -649,6 +676,89 @@ function guardarImagen() {
   } catch (_) { devolver(); }
 }
 
+/* ══════════════════ SHARE SIGNAL (misma dinámica que Heat Pools, adaptada) ══════════
+   Copia un texto y genera una IMAGEN: gráfico + columnas ENTRY/STOP/TARGET de las
+   posiciones (single/double), R:R 1:2, logo de la moneda, sección, fecha, precio y
+   temporalidad. Solo se usa con Single/Double activo. */
+function compartirSenal() {
+  const pos = M._posAuto || posicionesDeNiveles();
+  const sh = $('rz-share');
+  const flash = (m) => { if (sh) { const t = sh.dataset.base || sh.textContent; sh.dataset.base = t; sh.textContent = m; setTimeout(() => { sh.textContent = t; }, 1500); } };
+  if (!pos.length) { flash('No signals'); return; }
+  const par = PARES.find((p) => p.id === _par) || { id: _par };
+  const dec = (v) => { const a = Math.abs(v); return a >= 1000 ? v.toFixed(1) : a >= 1 ? v.toFixed(3) : v.toFixed(5); };
+  const hora = new Date().toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+  const precio = M.precio ? dec(M.precio) : '—';
+  const ents = pos.map((p) => dec(p.pe)), sls = pos.map((p) => dec(p.pStop)), tps = pos.map((p) => dec(p.pTarget));
+  const n = ents.length;
+  const lista = (arr) => arr.map((v, i) => `${i + 1}: ${v}`).join('\n');
+  const txt = `REACTION ZONES — SIGNAL\n\n${par.id} · ${M.tf} · ${hora} UTC · Price ${precio}\n\nENTRY\n${lista(ents)}\n\nSTOP LOSS\n${lista(sls)}\n\nTAKE PROFIT\n${lista(tps)}\n\nRISK : REWARD — 1:2\n\n${WEB} · Reaction Zones`;
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => flash('Copied ✓')).catch(() => {});
+
+  const chart = $('rz-cv');
+  const W = 1180, BG = '#0a0d12';
+  const chartH = chart && chart.width ? Math.round(W * (chart.height / chart.width)) : 0;
+  const padX = 54, headH = 156, rowH = 56, rrH = 92, footH = 84;
+  const H = chartH + headH + n * rowH + rrH + footH;
+  const cv = document.createElement('canvas'), g = cv.getContext('2d'); cv.width = W; cv.height = H;
+  const cargar = (src, cors) => new Promise((res) => { if (!src) return res(null); const im = new Image(); if (cors) im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+  const prep = (async () => {
+    const sym = par.id.toLowerCase();
+    let coin = await cargar(`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${sym}.png`, true);
+    if (!coin && window.__aurexLogos && par.cg && window.__aurexLogos[par.cg]) coin = await cargar(window.__aurexLogos[par.cg], true);
+    const marca = await cargar(LOGO, false);
+    return [coin, marca];
+  })();
+  prep.then(([coin, marca]) => {
+    g.fillStyle = BG; g.fillRect(0, 0, W, H);
+    if (chart && chart.width) g.drawImage(chart, 0, 0, W, chartH);
+    const y0 = chartH;
+    g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, y0 + 0.5); g.lineTo(W, y0 + 0.5); g.stroke();
+    const ls = 72, lx = padX, ly = y0 + 30;
+    g.save(); g.beginPath(); g.arc(lx + ls / 2, ly + ls / 2, ls / 2, 0, 6.2832); g.closePath();
+    g.fillStyle = coin ? '#ffffff' : '#141b25'; g.fill();
+    if (coin) { g.clip(); g.drawImage(coin, lx, ly, ls, ls); }
+    else { g.fillStyle = '#a855f7'; g.font = '800 24px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(par.id.slice(0, 4), lx + ls / 2, ly + ls / 2 + 1); }
+    g.restore();
+    if (coin) { g.strokeStyle = 'rgba(168,85,247,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(lx + ls / 2, ly + ls / 2, ls / 2, 0, 6.2832); g.stroke(); }
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    const tx = lx + ls + 24;
+    g.fillStyle = '#a855f7'; g.font = '800 40px system-ui,sans-serif'; g.fillText('Reaction', tx, y0 + 56);
+    const hw = g.measureText('Reaction').width;
+    g.fillStyle = '#e8ecf2'; g.font = '800 40px system-ui,sans-serif'; g.fillText(' Zones', tx + hw, y0 + 56);
+    g.fillStyle = '#8b95a1'; g.font = '600 18px ui-monospace,monospace';
+    g.fillText(`${par.id}    ·    ${M.tf}    ·    ${hora} UTC    ·    Price ${precio}`, tx, y0 + 88);
+    const colBlock = 250;
+    const xs = [padX, Math.round(W / 2 - colBlock / 2), W - padX - colBlock];
+    const cols = [['ENTRY', ents, '#e8ecf2'], ['STOP LOSS', sls, '#ff5b6e'], ['TARGET', tps, '#2ee86a']];
+    const colY = y0 + headH;
+    cols.forEach((c, ci) => {
+      const cx = xs[ci]; g.textAlign = 'left';
+      g.fillStyle = c[2]; g.font = '800 20px system-ui,sans-serif'; g.fillText(c[0], cx, colY);
+      g.strokeStyle = c[2]; g.globalAlpha = .3; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx, colY + 13); g.lineTo(cx + colBlock, colY + 13); g.stroke(); g.globalAlpha = 1;
+      c[1].forEach((v, i) => {
+        const ry = colY + 46 + i * rowH;
+        g.fillStyle = '#5a6570'; g.font = '700 17px ui-monospace,monospace'; g.fillText(String(i + 1), cx, ry);
+        g.fillStyle = '#eef2f6'; g.font = '800 27px ui-monospace,monospace'; g.fillText(v, cx + 32, ry + 2);
+      });
+    });
+    const rry = colY + 46 + n * rowH + 40;
+    g.textAlign = 'center';
+    g.fillStyle = '#8b95a1'; g.font = '700 18px system-ui,sans-serif'; g.fillText('RISK : REWARD', W / 2 - 60, rry);
+    g.fillStyle = '#E8B84B'; g.font = '800 26px system-ui,sans-serif'; g.fillText('1 : 2', W / 2 + 90, rry + 1);
+    const fy = H - footH;
+    g.fillStyle = 'rgba(255,255,255,.03)'; g.fillRect(0, fy, W, footH);
+    g.strokeStyle = 'rgba(232,184,75,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, fy + 0.5); g.lineTo(W, fy + 0.5); g.stroke();
+    g.textAlign = 'left'; g.textBaseline = 'middle';
+    let dx = padX;
+    if (marca) { const mh = 46, mw = marca.width * (mh / marca.height); g.drawImage(marca, padX, fy + (footH - mh) / 2, mw, mh); dx = padX + mw + 18; }
+    g.fillStyle = '#dfe5ec'; g.font = '700 19px system-ui,sans-serif'; g.fillText(WEB, dx, fy + footH / 2 + 1);
+    g.fillStyle = '#E8B84B'; g.font = '800 19px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('Reaction Zones', W - padX, fy + footH / 2 + 1);
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    try { cv.toBlob((b) => { if (!b) return; const url = URL.createObjectURL(b), a = document.createElement('a'); a.href = url; a.download = `decfreedom-reactionzones-${par.id}-${M.tf}-${Date.now()}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); }, 'image/png'); } catch (e) { flash('Copied ✓'); }
+  });
+}
+
 /* ══════════════════ AYUDA (stepper experto, igual que Heat Pools) ══════════════════ */
 const PASOS_RZ = [
   {
@@ -767,6 +877,9 @@ const CSS = `
 .rz-pos-half+.rz-pos-half{border-left:1px solid rgba(232,184,75,.35)}
 .rz-pos-half:hover{background:rgba(232,184,75,.14)}
 .rz-pos-half.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800}
+.rz-share{height:36px;border-radius:9px;border:1px solid rgba(46,232,106,.55);background:rgba(46,232,106,.08);color:#39e07a;font:700 12px system-ui,sans-serif;padding:0 14px;cursor:pointer;white-space:nowrap;transition:filter .15s,opacity .15s}
+.rz-share:hover{filter:brightness(1.15)}
+.rz-share:disabled{opacity:.4;cursor:not-allowed;filter:none}
 .rz-ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid #2a333f;color:#9aa4af;font-weight:800}
 .rz-ico:hover{border-color:var(--gold);color:var(--gold)}
 .rz-graf{flex:1 1 auto;min-height:0;position:relative;background:#0a0e14}
