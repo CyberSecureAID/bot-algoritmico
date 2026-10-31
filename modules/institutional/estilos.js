@@ -89,6 +89,9 @@ const CSS = `
 
 .it-mini-lg{width:19px; height:19px; flex:0 0 auto; border-radius:50%; background:#1b222c center/cover no-repeat; display:grid; place-items:center; font-family:var(--it-mono); font-weight:800; font-size:9px; color:var(--it-gold); border:1px solid var(--it-line-2)}
 .it-mini-lg.con{color:transparent; border-color:transparent}
+/* Logos de divisas (EUR €, GBP £): moneda SVG que llena el círculo */
+.it-coin-lg.con-svg, .it-mini-lg.con-svg{background:none; border:none; overflow:hidden}
+.it-coin-lg.con-svg svg, .it-mini-lg.con-svg svg{width:100%; height:100%; display:block}
 
 /* ── Rejilla: apilada en móvil, flotante (movible/redimensionable) en escritorio ── */
 .it-grid{flex:1 1 auto; min-height:0}
@@ -106,6 +109,14 @@ const CSS = `
 .it-pbtn svg{width:13px; height:13px}
 .it-pbtn:hover{border-color:var(--it-gold-soft); color:var(--it-gold)}
 .it-pbtn.it-x:hover{border-color:var(--it-down); color:var(--it-down); background:rgba(255,91,110,.08)}
+.it-pbtn.it-ultra:hover{border-color:var(--it-gold); color:var(--it-gold); background:rgba(232,184,75,.1)}
+/* ── Ultra screen: fondo limpio (sin barra/encabezados/pie) + botón de salida ── */
+#it-overlay[data-ultra="1"] .it-top, #it-overlay[data-ultra="1"] .it-foot, #it-overlay[data-ultra="1"] .it-ph{display:none !important}
+#it-overlay[data-ultra="1"] .it-panel{border:none; border-radius:0}
+.it-ultra-exit{position:absolute; top:14px; right:14px; z-index:10060; width:40px; height:40px; border-radius:11px; display:grid; place-items:center; cursor:pointer;
+  background:rgba(12,16,22,.85); -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px); border:1px solid var(--it-gold-soft); color:var(--it-gold); box-shadow:0 8px 28px rgba(0,0,0,.65); opacity:.55; transition:opacity .2s}
+.it-ultra-exit:hover{opacity:1; background:rgba(232,184,75,.16)}
+.it-ultra-exit svg{width:19px; height:19px}
 .it-pb{flex:1 1 auto; min-height:0; overflow:auto; position:relative; background:transparent}
 .it-resize{display:none}
 .it-grid.it-float .it-resize{display:block; position:absolute; right:0; bottom:0; width:18px; height:18px; cursor:nwse-resize; z-index:8;
@@ -182,9 +193,9 @@ const CSS = `
   will-change:filter, transform;
   transition:left .6s cubic-bezier(.4,0,.2,1), top .6s cubic-bezier(.4,0,.2,1), width .6s cubic-bezier(.4,0,.2,1), height .6s cubic-bezier(.4,0,.2,1), background .5s ease, opacity .45s ease, transform .45s ease}
 .it-tile.it-tile-in{opacity:0; transform:scale(.5); transition:none}
-.it-tile b{font-family:var(--it-mono); font-weight:800; color:#fff; letter-spacing:.01em; text-shadow:0 1px 3px rgba(0,0,0,.6); line-height:1.02}
-.it-tile em{font-family:var(--it-mono); font-style:normal; font-weight:800; line-height:1.1; text-shadow:0 1px 2px rgba(0,0,0,.5)}
-.it-tile .pr{font-family:var(--it-mono); color:rgba(255,255,255,.78); line-height:1.1; text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.it-hm-noanim .it-tile{transition:none !important}   /* al redimensionar: reacomodo instantáneo, sin trabas */
+.it-tile b{font-family:var(--it-mono); font-weight:800; color:#fff; letter-spacing:.005em; text-shadow:0 1px 3px rgba(0,0,0,.6); line-height:1; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:clip}
+.it-tile em{font-family:var(--it-mono); font-style:normal; font-weight:700; line-height:1.1; margin-top:3px; text-shadow:0 1px 2px rgba(0,0,0,.5)}
 .it-tile:hover{outline:2px solid var(--it-gold); outline-offset:-2px; z-index:3; filter:brightness(1.12) !important}
 .it-tile.on{outline:2px solid rgba(255,255,255,.9); outline-offset:-2px; z-index:2}
 .it-hm-wm{position:absolute; left:10px; bottom:9px; z-index:3; pointer-events:none; opacity:.8}

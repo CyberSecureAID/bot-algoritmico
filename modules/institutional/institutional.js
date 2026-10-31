@@ -11,8 +11,9 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=6';
+import { estilos } from './estilos.js?v=7';
 import * as D from './datos.js?v=4';
+import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf } from './indicadores.js?v=5';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
@@ -120,6 +121,7 @@ export async function abrirInstitutional() {
   aplicarLayout();
   S.onResize = () => aplicarLayout();
   window.addEventListener('resize', S.onResize);
+  if (!S._fsWired) { S._fsWired = true; document.addEventListener('fullscreenchange', onFsChange); document.addEventListener('webkitfullscreenchange', onFsChange); }
   mostrarDisclaimer(false);
 
   D.logos().then((m) => { S.logos = m || {}; pintarCoin(); }).catch(() => {});
@@ -141,23 +143,30 @@ function cerrar() {
   S.dibMontada = false;
   try { if (S.chart) S.chart.remove(); } catch (_) {}
   S.chart = null;
+  try { if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (_) {}
+  const eb = document.getElementById('it-ultra-exit'); if (eb) eb.remove();
   const ov = document.getElementById('it-overlay'); if (ov) ov.remove();
   // Back SIEMPRE devuelve al selector de Analysis (no fuera): lo revelamos explícitamente.
   const sel = document.getElementById('an-sel'); if (sel) sel.style.display = '';
 }
 
 /* ── Plantilla ── */
+const IC_ULTRA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
+const IC_MAX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+const IC_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function ctrlPanel(id) {
+  return `<div class="it-ph-ctrl">
+    <button class="it-pbtn it-ultra" data-ultra="${id}" title="Ultra screen (full browser)">${IC_ULTRA}</button>
+    <button class="it-pbtn it-max" data-max="${id}" title="Fullscreen">${IC_MAX}</button>
+    <button class="it-pbtn it-x" data-close="${id}" title="Close">${IC_X}</button>
+  </div>`;
+}
 function panel(id, titulo, extra) {
-  const max = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
-  const x = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   return `<div class="it-panel" id="${id}">
     <div class="it-ph">
       <h4>${titulo}</h4>
       ${extra || ''}
-      <div class="it-ph-ctrl">
-        <button class="it-pbtn it-max" data-max="${id}" title="Fullscreen">${max}</button>
-        <button class="it-pbtn it-x" data-close="${id}" title="Close">${x}</button>
-      </div>
+      ${ctrlPanel(id)}
     </div>
     <div class="it-pb" id="${id}-body">${cargando()}</div>
     <span class="it-resize" data-rz></span>
@@ -190,10 +199,7 @@ function plantilla() {
   <div class="it-grid" id="it-grid">
     <div class="it-panel" id="it-p-chart">
       <div class="it-ph"><h4 id="it-chart-title">CHART</h4>
-        <div class="it-ph-ctrl">
-          <button class="it-pbtn it-max" data-max="it-p-chart" title="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
-          <button class="it-pbtn it-x" data-close="it-p-chart" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-        </div>
+        ${ctrlPanel('it-p-chart')}
       </div>
       <div class="it-pb"><div class="it-cv" id="it-cv"><div class="it-legend" id="it-legend"></div></div></div>
       <span class="it-resize" data-rz></span>
@@ -214,6 +220,7 @@ function vacio(t) { return `<div class="it-empty"><svg viewBox="0 0 24 24" fill=
 function logoHTML(cls2, p) {
   const url = p && p.cg && S.logos[p.cg];
   if (url) return `<i class="${cls2} con" style="background-image:url(${esc(url)})"></i>`;
+  if (p && p.ico && ICONOS[p.ico]) return `<i class="${cls2} con-svg">${ICONOS[p.ico]}</i>`;   // divisas (EUR, GBP…)
   return `<i class="${cls2}">${esc((p && p.id || '?')[0])}</i>`;
 }
 
@@ -222,8 +229,10 @@ function pintarCoin() {
   const lg = document.getElementById('it-coin-lg'), id = document.getElementById('it-coin-id'), nm = document.getElementById('it-coin-nm');
   if (!lg) return;
   const url = S.par.cg && S.logos[S.par.cg];
+  lg.classList.remove('con', 'con-svg');
   if (url) { lg.style.backgroundImage = `url(${url})`; lg.classList.add('con'); lg.textContent = ''; }
-  else { lg.style.backgroundImage = ''; lg.classList.remove('con'); lg.textContent = (S.par.id || '?')[0]; }
+  else if (S.par.ico && ICONOS[S.par.ico]) { lg.style.backgroundImage = ''; lg.classList.add('con-svg'); lg.innerHTML = ICONOS[S.par.ico]; }   // divisas
+  else { lg.style.backgroundImage = ''; lg.textContent = (S.par.id || '?')[0]; }
   if (id) id.textContent = S.par.id;
   if (nm) nm.textContent = S.par.n || '';
 }
@@ -582,16 +591,19 @@ function treemap(items, W, H) {
 /* Treemap con ACTUALIZACIÓN POR CLAVE: los tiles no se recrean en cada refresco,
    se reposicionan/redimensionan con transición CSS (animación de crecer/encoger).
    El texto se ESCALA al tamaño del tile (se reduce, no se elimina). */
-function pintarHeat() {
+function pintarHeat(opts) {
   const body = document.getElementById('it-p-board-body'); if (!body || !S.board.length) return;
   const W = body.clientWidth, H = body.clientHeight; if (W < 10 || H < 10) return;
+  // Al redimensionar la ventana NO se anima (evita el "tranque"); solo al refrescar datos.
+  const instant = !!(opts && opts.instant);
+  body.classList.toggle('it-hm-noanim', instant);
   const items = S.board.map((c) => ({ ...c, v: Math.abs(c.chg24 || 0) + 0.3 }));
   const laid = treemap(items, W, H);
-  const tinte = (ch) => { const x = Math.max(-10, Math.min(10, ch || 0)) / 10; return x >= 0 ? `rgba(46,232,106,${(0.14 + x * 0.6).toFixed(3)})` : `rgba(255,91,110,${(0.14 + (-x) * 0.6).toFixed(3)})`; };
+  const tinte = (ch) => { const x = Math.max(-10, Math.min(10, ch || 0)) / 10; return x >= 0 ? `rgba(40,210,100,${(0.16 + x * 0.6).toFixed(3)})` : `rgba(240,70,90,${(0.16 + (-x) * 0.6).toFixed(3)})`; };
   S.tileEls = S.tileEls || {};
   const vivos = {};
   laid.forEach((c) => {
-    const w = Math.max(0, c.w - 3), h = Math.max(0, c.h - 3);
+    const w = Math.max(0, c.w - 4), h = Math.max(0, c.h - 4);   // 4px gap → respira
     const sym = String(c.simbolo || ''); vivos[sym] = 1;
     let el = S.tileEls[sym]; if (el && !el.isConnected) el = null;
     const nuevo = !el;
@@ -601,25 +613,29 @@ function pintarHeat() {
       body.appendChild(el); S.tileEls[sym] = el;
     }
     el.dataset.cg = c.id;
-    el.style.left = c.x + 'px'; el.style.top = c.y + 'px'; el.style.width = w + 'px'; el.style.height = h + 'px';
-    el.style.background = tinte(c.chg24);
-    el.style.padding = (Math.min(w, h) < 34 ? 2 : 6) + 'px';
+    // ── Escritura por DIFF: solo se toca lo que cambió (transiciones suaves, sin trabas) ──
+    if (el._x !== c.x) { el.style.left = c.x + 'px'; el._x = c.x; }
+    if (el._y !== c.y) { el.style.top = c.y + 'px'; el._y = c.y; }
+    if (el._w !== w) { el.style.width = w + 'px'; el._w = w; }
+    if (el._h !== h) { el.style.height = h + 'px'; el._h = h; }
+    const bg = tinte(c.chg24); if (el._bg !== bg) { el.style.background = bg; el._bg = bg; }
+    const on = (c.id === S.par.cg || sym === S.par.id); if (el._on !== on) { el.classList.toggle('on', on); el._on = on; }
     el.title = sym + '  ' + fmtPct(c.chg24);
-    el.classList.toggle('on', c.id === S.par.cg || sym === S.par.id);
-    // texto FUERTEMENTE a escala: tile grande = letra grande, tile chico = letra chica.
+    // ── Tipografía PROFESIONAL: moderada, con jerarquía clara (símbolo > %), sin precio ──
     const base = Math.min(w, h);
-    let fSym = Math.min(base * 0.44, (w - 8) / Math.max(1, sym.length * 0.62));
-    fSym = Math.max(5, Math.min(fSym, 72));
-    const verText = w > 16 && h > 14;
-    const verPct = verText && h > base * 0.78 && h > 30 && w > 34;
-    const verPr = verText && h > 72 && w > 72;
+    let fSym = Math.min(base * 0.19, (w - 10) / Math.max(1, sym.length * 0.62));
+    fSym = Math.max(8.5, Math.min(fSym, 34));
+    const fPct = Math.max(7, Math.min(fSym * 0.52, 15));
+    const verSym = w > 20 && h > 15 && (w - 6) / Math.max(1, sym.length * 0.62) >= 7;
+    const verPct = verSym && h > fSym + fPct + 11 && w > 34;
+    const pad = base < 30 ? 2 : (base < 70 ? 4 : 7);
     let inner = '';
-    if (verText) {
+    if (verSym) {
       inner = `<b style="font-size:${fSym.toFixed(1)}px">${esc(sym)}</b>`;
-      if (verPr) inner += `<div class="pr" style="font-size:${(fSym * 0.4).toFixed(1)}px">${fmtP(c.price)}</div>`;
-      if (verPct) inner += `<em style="font-size:${(fSym * 0.52).toFixed(1)}px;color:${(c.chg24 || 0) >= 0 ? '#d6ffe6' : '#ffd7dc'}">${fmtPct(c.chg24)}</em>`;
+      if (verPct) inner += `<em style="font-size:${fPct.toFixed(1)}px;color:${(c.chg24 || 0) >= 0 ? '#c9ffe0' : '#ffd2d8'}">${fmtPct(c.chg24)}</em>`;
     }
-    el.innerHTML = inner;
+    if (el._pad !== pad) { el.style.padding = pad + 'px'; el._pad = pad; }
+    if (el._txt !== inner) { el.innerHTML = inner; el._txt = inner; }
     if (nuevo) requestAnimationFrame(() => el.classList.remove('it-tile-in'));
   });
   Object.keys(S.tileEls).forEach((sym) => { if (!vivos[sym]) { try { S.tileEls[sym].remove(); } catch (_) {} delete S.tileEls[sym]; } });
@@ -674,7 +690,7 @@ async function cargarBoard() {
   if (body.querySelector('.it-empty')) { body.innerHTML = ''; S.tileEls = {}; }   // quita el spinner inicial antes del 1.er render
   pintarHeat();
   iniciarOleaje();
-  if (!S.boardObs && window.ResizeObserver) { S.boardObs = new ResizeObserver(() => pintarHeat()); S.boardObs.observe(body); }
+  if (!S.boardObs && window.ResizeObserver) { S.boardObs = new ResizeObserver(() => pintarHeat({ instant: true })); S.boardObs.observe(body); }
 }
 
 /* ── MACRO ── */
@@ -795,11 +811,45 @@ function aplicarLayout() {
     const [x, y, w, h] = lay[id] || DEF_LAYOUT[id];
     el.style.left = (x * W) + 'px'; el.style.top = (y * H) + 'px'; el.style.width = (w * W) + 'px'; el.style.height = (h * H) + 'px';
   });
-  setTimeout(pintarHeat, 30);
+  setTimeout(() => pintarHeat({ instant: true }), 30);
 }
 function traerFrente(el) { if (window.innerWidth < 980) return; el.style.zIndex = ++S.zTop; }
-function maximizar(id) { S.maxed = (S.maxed === id) ? null : id; aplicarLayout(); setTimeout(pintarHeat, 60); }
+function maximizar(id) { S.maxed = (S.maxed === id) ? null : id; aplicarLayout(); setTimeout(() => pintarHeat({ instant: true }), 60); }
 function cerrarPanel(id) { S.hidden[id] = true; if (S.maxed === id) S.maxed = null; const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+/* ── Ultra screen: fullscreen REAL del navegador (sin barras), con la ventana
+   maximizada. Un botón flotante vuelve al modo normal (fullscreen regular). ── */
+function enFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function entrarUltra(id) {
+  const ov = document.getElementById('it-overlay'); if (!ov) return;
+  S.maxed = id; aplicarLayout(); setTimeout(() => pintarHeat({ instant: true }), 60);
+  const req = ov.requestFullscreen || ov.webkitRequestFullscreen || ov.msRequestFullscreen;
+  if (req) { try { const r = req.call(ov); if (r && r.catch) r.catch(() => {}); } catch (_) {} }
+  else { onFsChange(); }   // sin API: al menos muestra el botón de salida
+}
+function salirUltra() {
+  try { if (enFullscreen()) { const ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen; ex.call(document); } } catch (_) {}
+  onFsChange();
+}
+function onFsChange() {
+  const ov = document.getElementById('it-overlay'); if (!ov) return;
+  let btn = document.getElementById('it-ultra-exit');
+  if (enFullscreen()) {
+    ov.dataset.ultra = '1';
+    if (!btn) {
+      btn = document.createElement('button'); btn.id = 'it-ultra-exit'; btn.className = 'it-ultra-exit'; btn.title = 'Exit ultra screen';
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>';
+      btn.onclick = (e) => { e.stopPropagation(); salirUltra(); };
+      ov.appendChild(btn);
+    }
+  } else {
+    ov.dataset.ultra = '';
+    if (btn) btn.remove();
+  }
+  // El grid cambia de tamaño (se ocultan barra/pie/encabezados): recomputar ventanas.
+  try { aplicarLayout(); } catch (_) {}
+  setTimeout(() => pintarHeat({ instant: true }), 50);
+}
 function resetLayout() { S.layout = null; S.hidden = {}; S.maxed = null; try { localStorage.removeItem(LAYOUT_KEY); } catch (_) {} PANELES.forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = ''; }); aplicarLayout(); }
 
 function montarVentanas() {
@@ -818,14 +868,14 @@ function montarVentanas() {
   const mover = (e) => {
     if (!modo) return; const p = e.touches ? e.touches[0] : e; const dx = p.clientX - sx, dy = p.clientY - sy; const W = grid.clientWidth, H = grid.clientHeight;
     if (modo === 'drag') { el.style.left = Math.max(0, Math.min(W - sw, sl + dx)) + 'px'; el.style.top = Math.max(0, Math.min(H - sh, st + dy)) + 'px'; }
-    else { el.style.width = Math.max(220, Math.min(W - sl, sw + dx)) + 'px'; el.style.height = Math.max(140, Math.min(H - st, sh + dy)) + 'px'; if (el.id === 'it-p-board') pintarHeat(); }
+    else { el.style.width = Math.max(220, Math.min(W - sl, sw + dx)) + 'px'; el.style.height = Math.max(140, Math.min(H - st, sh + dy)) + 'px'; if (el.id === 'it-p-board') pintarHeat({ instant: true }); }
     e.preventDefault();
   };
   const soltar = () => {
     if (!modo || !el) return; const W = grid.clientWidth, H = grid.clientHeight;
     S.layout = S.layout || JSON.parse(JSON.stringify(DEF_LAYOUT));
     S.layout[el.id] = [parseFloat(el.style.left) / W, parseFloat(el.style.top) / H, parseFloat(el.style.width) / W, parseFloat(el.style.height) / H];
-    guardarLayout(); el.classList.remove('it-dragging'); if (el.id === 'it-p-board') pintarHeat();
+    guardarLayout(); el.classList.remove('it-dragging'); if (el.id === 'it-p-board') pintarHeat({ instant: true });
     modo = null; el = null;
     document.removeEventListener('mousemove', mover); document.removeEventListener('mouseup', soltar);
     document.removeEventListener('touchmove', mover); document.removeEventListener('touchend', soltar);
@@ -839,6 +889,7 @@ function montarVentanas() {
     }
     const rz = panel.querySelector('[data-rz]');
     if (rz) { rz.addEventListener('mousedown', (e) => empezar(e, panel, 'resize')); rz.addEventListener('touchstart', (e) => empezar(e, panel, 'resize'), { passive: false }); }
+    const ul = panel.querySelector('.it-ultra'); if (ul) ul.onclick = (e) => { e.stopPropagation(); entrarUltra(panel.id); };
     const mx = panel.querySelector('.it-max'); if (mx) mx.onclick = (e) => { e.stopPropagation(); maximizar(panel.id); };
     const cx = panel.querySelector('.it-x'); if (cx) cx.onclick = (e) => { e.stopPropagation(); cerrarPanel(panel.id); };
   });
