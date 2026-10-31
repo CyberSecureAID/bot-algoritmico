@@ -11,11 +11,12 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=8';
+import { estilos } from './estilos.js?v=9';
 import * as D from './datos.js?v=5';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
+import { construirEstados, firmaEn, escanear, soportado as confSoportado } from './confluencia.js?v=1';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -149,6 +150,7 @@ function cerrar() {
   if (S.boardObs) { try { S.boardObs.disconnect(); } catch (_) {} S.boardObs = null; }
   if (S._cvObs) { try { S._cvObs.disconnect(); } catch (_) {} S._cvObs = null; }
   if (S.oleajeRAF) { try { cancelAnimationFrame(S.oleajeRAF); } catch (_) {} S.oleajeRAF = null; }
+  if (S.conf) { try { if (S.conf.raf) cancelAnimationFrame(S.conf.raf); } catch (_) {} const _cc = document.getElementById('it-conf-cv'); if (_cc) _cc.remove(); S.conf = null; }
   if (S.barra) { try { S.barra.desmontar(); } catch (_) {} S.barra = null; }
   S.dibMontada = false;
   try { if (S.chart) S.chart.remove(); } catch (_) {}
@@ -177,6 +179,7 @@ function backInteligente() {
 const IC_ULTRA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
 const IC_MAX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
 const IC_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const IC_CONF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg>';
 function ctrlPanel(id) {
   return `<div class="it-ph-ctrl">
     <button class="it-pbtn it-ultra" data-ultra="${id}" title="Ultra screen (full browser)">${IC_ULTRA}</button>
@@ -222,6 +225,10 @@ function plantilla() {
   <div class="it-grid" id="it-grid">
     <div class="it-panel" id="it-p-chart">
       <div class="it-ph"><h4 id="it-chart-title">CHART</h4>
+        <div class="it-conf-wrap">
+          <button class="it-conf" id="it-conf" title="Confluence — mark where a multi-indicator combo lines up">${IC_CONF}<span>Confluence</span></button>
+          <button class="it-conf-clear" id="it-conf-clear" title="Clear confluence points">${IC_X}</button>
+        </div>
         ${ctrlPanel('it-p-chart')}
       </div>
       <div class="it-pb"><div class="it-cv" id="it-cv"><div class="it-legend" id="it-legend"></div></div></div>
@@ -268,6 +275,7 @@ function cablearTop(ov) {
   $('#it-export', ov).onclick = exportar;
   $('#it-reset', ov).onclick = resetLayout;
   $('#it-disc-link', ov).onclick = () => mostrarDisclaimer(true);
+  { const cf = $('#it-conf', ov); if (cf) cf.onclick = toggleConfluencia; const cfc = $('#it-conf-clear', ov); if (cfc) cfc.onclick = limpiarAnclas; }
   pintarCoin();
   const tfNm = (D.TFS.find((t) => t.id === S.tf) || {}).n || S.tf;
   $('#it-tf-btn', ov).childNodes[0].nodeValue = tfNm + ' ';
@@ -503,6 +511,7 @@ function pintarChart() {
   pintarIndLegend();     // leyenda ESTÁTICA (solo indicadores activos, con ✕). Sin OHLC que salte con el cursor.
   sincronizarDib();
   calcularSenales();     // panel SIGNALS (rating técnico)
+  montarConfluencia(); refrescarConfUI();   // re-anexa el overlay de confluencia sobre el gráfico recién creado
 }
 
 /* ── Puente con la barra de dibujo (misma de Smart/Heat/Liquidity Pools) ──
@@ -557,6 +566,205 @@ async function montarDibujo() {
     if (window.ResizeObserver && !S._cvObs) { S._cvObs = new ResizeObserver(() => sincronizarDib()); S._cvObs.observe(cv); }
     sincronizarDib();
   } catch (_) { S.barra = null; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CONFLUENCIA (Fase 3) — marcador multi-indicador + backtesting.
+   Con ≥2 indicadores el usuario activa el modo y hace clic: capturamos la
+   FIRMA de todos los indicadores activos en esa vela (precio vs cada media,
+   MACD vs señal, zona del RSI, dirección del Supertrend, …) y marcamos con una
+   tachuela (verde LONG debajo / roja SHORT arriba). Luego se recorre el
+   historial y cada vez que esa misma firma vuelve a cumplirse cae otra
+   tachuela. El motor (firma/escaneo) está en confluencia.js; aquí va la UI. ══ */
+function confActivas() { return Object.keys(S.ind).filter((k) => S.ind[k] && confSoportado(k)); }
+
+function toggleConfluencia() {
+  if (!S.conf) S.conf = { on: false, anchors: [], estado: null, hash: '', cursor: null, raf: null, marks: [], matchKey: '' };
+  if (confActivas().length < 2) { instruccionesConfluencia(confActivas().length); return; }
+  montarConfluencia();
+  S.conf.on = !S.conf.on;
+  refrescarConfUI();
+  if (S.conf.on) arrancarConfLoop();
+}
+function limpiarAnclas() {
+  if (!S.conf) return;
+  S.conf.anchors = []; S.conf.marks = []; S.conf.matchKey = '';
+  refrescarConfUI();
+  const g = S.conf.ctx, cc = S.conf.cv; if (g && cc) g.clearRect(0, 0, cc.width, cc.height);
+}
+function refrescarConfUI() {
+  const b = document.getElementById('it-conf'); if (b) b.classList.toggle('on', !!(S.conf && S.conf.on));
+  const c = document.getElementById('it-conf-clear'); if (c) c.style.display = (S.conf && S.conf.anchors.length) ? 'inline-flex' : 'none';
+}
+
+function montarConfluencia() {
+  const cv = document.getElementById('it-cv'); if (!cv) return;
+  if (!S.conf) S.conf = { on: false, anchors: [], estado: null, hash: '', cursor: null, raf: null, marks: [], matchKey: '' };
+  let cc = document.getElementById('it-conf-cv');
+  if (!cc) { cc = document.createElement('canvas'); cc.id = 'it-conf-cv'; cc.className = 'it-conf-cv'; }
+  cv.appendChild(cc);                           // re-anexar → queda sobre el gráfico recién creado
+  S.conf.cv = cc; S.conf.ctx = cc.getContext('2d');
+  dimensionarConf();
+  if (!S.conf._wired) {
+    S.conf._wired = true;
+    cv.addEventListener('mousemove', (e) => { const r = cv.getBoundingClientRect(); S.conf.cursor = { x: e.clientX - r.left, y: e.clientY - r.top }; });
+    cv.addEventListener('mouseleave', () => { S.conf.cursor = null; });
+  }
+  if (S.chart && S.conf._clickChart !== S.chart) {   // re-suscribir el clic al chart recién creado
+    S.conf._clickChart = S.chart;
+    try { S.chart.subscribeClick((p) => onConfClick(p)); } catch (_) {}
+  }
+  if (S.conf.on || S.conf.anchors.length) arrancarConfLoop();
+}
+function dimensionarConf() {
+  const cc = S.conf && S.conf.cv, cv = document.getElementById('it-cv'); if (!cc || !cv) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+  if (cc.width !== Math.round(w * dpr) || cc.height !== Math.round(h * dpr)) { cc.width = Math.round(w * dpr); cc.height = Math.round(h * dpr); cc.style.width = w + 'px'; cc.style.height = h + 'px'; }
+  S.conf._dpr = dpr;
+}
+function arrancarConfLoop() {
+  if (!S.conf || S.conf.raf) return;
+  const paso = (now) => {
+    if (!S.conf || (!S.conf.on && !S.conf.anchors.length)) { const g = S.conf && S.conf.ctx, cc = S.conf && S.conf.cv; if (g && cc) g.clearRect(0, 0, cc.width, cc.height); if (S.conf) S.conf.raf = null; return; }
+    try { dibujarConf(now); } catch (_) {}
+    S.conf.raf = requestAnimationFrame(paso);
+  };
+  S.conf.raf = requestAnimationFrame(paso);
+}
+function ensureConfEstado() {
+  const keys = confActivas().sort();
+  const hash = S.par.id + '|' + S.tf + '|' + keys.join(',');
+  if (S.conf.hash === hash && S.conf.estado) return;
+  S.conf.hash = hash;
+  S.conf.estado = construirEstados(keys, S.velas);
+  S.conf.velaMap = new Map(S.velas.map((v) => [v.time, v]));
+  S.conf.matchKey = '';
+}
+function recomputarMarks() {
+  ensureConfEstado();
+  const key = S.conf.hash + '#' + S.conf.anchors.length;
+  if (S.conf.matchKey === key) return;
+  S.conf.matchKey = key;
+  const marks = [];
+  for (const a of S.conf.anchors) {
+    const firma = firmaEn(S.conf.estado, a.time);
+    let times = firma ? escanear(S.conf.estado, S.velas, firma) : [];
+    if (times.indexOf(a.time) === -1) times = times.concat([a.time]);   // siempre marca el punto que eligió el usuario
+    for (const tm of times) marks.push({ time: tm, side: a.side });
+  }
+  S.conf.marks = marks;
+}
+function onConfClick(param) {
+  if (!S.conf || !S.conf.on || !param || param.time == null || !param.point || !S.serieVela) return;
+  const price = S.serieVela.coordinateToPrice(param.point.y);
+  ensureConfEstado();
+  const vela = S.conf.velaMap ? S.conf.velaMap.get(param.time) : null;
+  if (price == null || !vela) return;
+  const side = price > vela.close ? 'short' : 'long';   // clic encima del precio → SHORT; debajo → LONG
+  S.conf.anchors.push({ time: param.time, side });
+  S.conf.matchKey = '';
+  refrescarConfUI();
+  arrancarConfLoop();
+  pingConf();
+}
+function pingConf() {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(760, ac.currentTime); o.frequency.exponentialRampToValueAtTime(1180, ac.currentTime + 0.12);
+    g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.07, ac.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.25);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.27);
+    setTimeout(() => { try { ac.close(); } catch (_) {} }, 500);
+  } catch (_) {}
+}
+function dibujarConf(now) {
+  const cc = S.conf.cv, g = S.conf.ctx; if (!cc || !g || !S.chart || !S.serieVela) return;
+  dimensionarConf();
+  const dpr = S.conf._dpr || 1; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cc.width / dpr, H = cc.height / dpr;
+  g.clearRect(0, 0, W, H);
+  if (S.conf.on && S.conf.cursor) dibujarCarriles(g, W, H, S.conf.cursor, now);
+  dibujarTachuelas(g, now);
+}
+function dibujarCarriles(g, W, H, cur, now) {
+  const x = cur.x, y = cur.y; if (x < 0 || y < 0 || x > W || y > H) return;
+  const col = '232,184,75', ph = (now % 1500) / 1500;
+  g.save();
+  g.strokeStyle = `rgba(${col},.20)`; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+  const seg = 54;
+  const pulso = (ex, ey) => {
+    const dx = x - ex, dy = y - ey, len = Math.hypot(dx, dy) || 1, lead = ph, trail = Math.max(0, lead - seg / len);
+    const lx = ex + dx * lead, ly = ey + dy * lead, tx = ex + dx * trail, ty = ey + dy * trail;
+    const grd = g.createLinearGradient(tx, ty, lx, ly);
+    grd.addColorStop(0, `rgba(${col},0)`); grd.addColorStop(1, `rgba(${col},.95)`);
+    g.strokeStyle = grd; g.lineWidth = 2.4; g.beginPath(); g.moveTo(tx, ty); g.lineTo(lx, ly); g.stroke();
+  };
+  pulso(0, y); pulso(W, y); pulso(x, 0); pulso(x, H);
+  g.fillStyle = `rgba(${col},${(0.3 + 0.18 * Math.sin(now / 200)).toFixed(3)})`;
+  g.beginPath(); g.arc(x, y, 4.5, 0, 6.2832); g.fill();
+  g.restore();
+}
+function dibujarTachuelas(g, now) {
+  if (!S.conf.anchors.length) return;
+  recomputarMarks();
+  const ts = S.chart.timeScale();
+  const pts = [];
+  for (const m of S.conf.marks) {
+    let x; try { x = ts.timeToCoordinate(m.time); } catch (_) { x = null; }
+    if (x == null) continue;
+    const vela = S.conf.velaMap.get(m.time); if (!vela) continue;
+    pts.push({ x, side: m.side, vela });
+  }
+  pts.sort((a, b) => a.x - b.x);
+  const W0 = 48, keep = [];
+  for (const p of pts) { const last = keep[keep.length - 1]; if (!last || p.side !== last.side || Math.abs(p.x - last.x) >= W0 * 0.8) keep.push(p); }   // no superponer tachuelas
+  for (const p of keep) tachuela(g, p.x, p.vela, p.side, now);
+}
+function tachuela(g, x, vela, side, now) {
+  const serie = S.serieVela, short = side === 'short';
+  const yRef = short ? serie.priceToCoordinate(vela.high) : serie.priceToCoordinate(vela.low);
+  if (yRef == null) return;
+  const txt = short ? 'SHORT' : 'LONG', bg = short ? '#ff0000' : '#00e676', fg = short ? '#ffe000' : '#ffffff';
+  const fs = 10, padX = 7, tip = 6, gap = 9;
+  g.font = `800 ${fs}px "Chakra Petch", ui-monospace, monospace`;
+  const w = Math.ceil(g.measureText(txt).width) + padX * 2, h = fs + 9, pulse = 0.5 + 0.5 * Math.sin(now / 430 + x * 0.04);
+  const bx = x - w / 2; let by;
+  if (short) { const downTip = yRef - gap; by = downTip - tip - h; } else { const upTip = yRef + gap; by = upTip + tip; }
+  g.save();
+  g.shadowColor = short ? 'rgba(255,0,0,.8)' : 'rgba(0,230,118,.8)';
+  g.shadowBlur = 5 + 8 * pulse;
+  g.fillStyle = bg; rrect(g, bx, by, w, h, 4); g.fill();
+  g.beginPath();
+  if (short) { g.moveTo(x - tip, by + h); g.lineTo(x + tip, by + h); g.lineTo(x, by + h + tip); } else { g.moveTo(x - tip, by); g.lineTo(x + tip, by); g.lineTo(x, by - tip); }
+  g.closePath(); g.fill();
+  g.shadowBlur = 0;
+  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(txt, x, by + h / 2 + 0.5);
+  g.restore();
+}
+function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function instruccionesConfluencia(n) {
+  const old = document.getElementById('it-confhelp'); if (old) old.remove();
+  const m = document.createElement('div'); m.className = 'it-modal'; m.id = 'it-confhelp';
+  m.innerHTML = `<div class="it-modal-bg"></div><div class="it-modal-card it-conf-card">
+    <button class="it-modal-x" aria-label="Close">✕</button>
+    <div class="it-disc-box">
+      <div class="it-conf-ic">${IC_CONF}</div>
+      <h3>Confluence</h3>
+      <p class="it-conf-warn">You currently have ${n === 0 ? 'no indicators' : 'only one indicator'} active. You need to apply <b>two or more indicators</b> to define a confluence point. Open the <b>Indicators</b> menu, pick the ones you want to combine, and this button will unlock.</p>
+      <div class="it-conf-how">
+        <div class="it-conf-how-t">How it works</div>
+        <p>With two or more indicators on the chart, turn on <b>Confluence</b> and click anywhere on the chart. Click <b>above price</b> to drop a <span class="cf-s">SHORT</span> marker, <b>below price</b> for a <span class="cf-l">LONG</span> one.</p>
+        <p>At that moment we capture the exact state of every active indicator — price vs each moving average, MACD vs its signal, the RSI zone, Supertrend direction, and so on. From then on, <b>every time that same combination lines up again</b> — back through history for backtesting, and live as new candles form — a matching marker is dropped on the chart.</p>
+        <p>Add as many indicators as you like to make the combo stricter, and place as many confluence points as you need to build your own strategy combos.</p>
+      </div>
+      <button class="it-pay" id="it-confhelp-ok">Got it</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  requestAnimationFrame(() => m.classList.add('on'));
+  const cerrarM = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
+  m.querySelector('.it-modal-x').onclick = cerrarM; m.querySelector('.it-modal-bg').onclick = cerrarM; m.querySelector('#it-confhelp-ok').onclick = cerrarM;
 }
 
 /* Leyenda ESTÁTICA: solo la lista de indicadores activos, cada uno con su ✕.

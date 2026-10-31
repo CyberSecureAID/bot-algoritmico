@@ -340,8 +340,28 @@ const CSS = `
 @media(max-width:760px){ #it-overlay .nv-tools{left:5px;padding:4px;gap:2px}
   #it-overlay .nv-tool{width:29px;height:29px} #it-overlay .nv-tool svg{width:16px;height:16px} }
 
+/* ── Confluencia (Fase 3) ── */
+.it-conf-wrap{display:flex; align-items:center; gap:6px; margin-left:auto}
+.it-conf{font-family:var(--it-mono); font-size:11px; font-weight:800; height:26px; padding:0 10px; border-radius:8px; cursor:pointer; background:rgba(232,184,75,.08); border:1px solid rgba(232,184,75,.45); color:var(--it-gold); display:inline-flex; align-items:center; gap:6px; letter-spacing:.04em; white-space:nowrap; transition:background .15s,border-color .15s,color .15s,box-shadow .2s}
+.it-conf svg{width:13px; height:13px}
+.it-conf:hover{background:rgba(232,184,75,.16); border-color:var(--it-gold)}
+.it-conf.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 60%,#c79426); color:#2a1d00; border-color:#E8B84B; box-shadow:0 0 14px rgba(232,184,75,.45)}
+.it-conf-clear{font-family:var(--it-mono); height:26px; width:26px; border-radius:7px; cursor:pointer; background:rgba(255,91,110,.08); border:1px solid rgba(255,91,110,.42); color:var(--it-down); display:none; align-items:center; justify-content:center}
+.it-conf-clear svg{width:12px; height:12px}
+.it-conf-clear:hover{background:rgba(255,91,110,.18); border-color:var(--it-down)}
+.it-conf-cv{position:absolute; inset:0; z-index:6; pointer-events:none}
+.it-conf-card{max-width:520px}
+.it-conf-ic{width:46px; height:46px; border-radius:12px; display:grid; place-items:center; background:rgba(232,184,75,.12); border:1px solid rgba(232,184,75,.4); color:var(--it-gold); margin-bottom:12px}
+.it-conf-ic svg{width:24px; height:24px}
+.it-conf-warn{background:rgba(232,184,75,.07); border:1px solid rgba(232,184,75,.28); border-radius:10px; padding:11px 13px; color:#e7d6ab !important}
+.it-conf-how{margin-top:14px; border-top:1px solid var(--it-line); padding-top:12px}
+.it-conf-how-t{font-family:var(--it-mono); font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--it-gold); margin-bottom:8px}
+.it-conf-how p{margin:0 0 9px}
+.cf-s{color:#ff5b6e; font-weight:800}
+.cf-l{color:#00e676; font-weight:800}
+
 /* ── Responsive top bar ── */
-@media (max-width:1180px){ .it-coin span{display:none} .it-search{max-width:200px} }
+@media (max-width:1180px){ .it-coin span{display:none} .it-search{max-width:200px} .it-conf span{display:none} .it-conf{padding:0 8px} }
 @media (max-width:980px){ .it-pxbox{display:none} }
 @media (max-width:620px){
   .it-disc-seal{float:none; display:block; width:96px; height:96px; margin:0 auto 12px}
