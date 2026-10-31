@@ -145,7 +145,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=129')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=8', import.meta.url).href)).abrirInstitutional();
-    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=2', import.meta.url).href)).abrirReaction();
+    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=3', import.meta.url).href)).abrirReaction();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
@@ -187,6 +187,9 @@ function restaurarDesdeHash() {
   iniciarHashSync();
   let t = ''; try { t = (location.hash || '').replace(/^#/, '').trim(); } catch (_) { return; }
   if (!t) return;
+  // Si el disclaimer aún NO se aceptó, no abrir la herramienta directamente: se
+  // quedaría tapando el disclaimer y éste aparecería recién al pulsar Back.
+  try { if (!localStorage.getItem(DISC_KEY)) return; } catch (_) {}
   const h = HERRAMIENTAS.find((s) => s.abre === t || s.id === t);
   if (h && h.abre && !Object.keys(OVERLAY2TOOL).some((x) => document.getElementById(x))) setTimeout(() => abrirTool(h.abre, null), 60);
 }
