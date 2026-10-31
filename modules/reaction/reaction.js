@@ -681,13 +681,21 @@ function ponerLogos(root) {
   cargarLogosCache(root);
 }
 let _logosFetch = null;
+/* Garantiza que window.__aurexLogos esté cargado (caché local o CoinGecko) y
+   DEVUELVE una promesa esperable. Lo usan tanto los logos de la interfaz como
+   el export de señal: así, igual que Heat Pools espera a ponerLogos() antes de
+   dibujar, aquí se espera a tener el logo antes de pintarlo en la imagen. */
+function asegurarLogos() {
+  if (window.__aurexLogos && Object.keys(window.__aurexLogos).length) return Promise.resolve();
+  try { const g = JSON.parse(localStorage.getItem('aurex-logos') || 'null'); if (g && g.datos && Object.keys(g.datos).length) { window.__aurexLogos = g.datos; return Promise.resolve(); } } catch (_) {}
+  if (!_logosFetch) {
+    const ids = PARES.filter((p) => p.cg).map((p) => p.cg).join(',');
+    _logosFetch = fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&per_page=250&page=1`).then((r) => r.json()).then((j) => { const m = {}; j.forEach((x) => { m[x.id] = x.image; }); window.__aurexLogos = m; try { localStorage.setItem('aurex-logos', JSON.stringify({ cuando: Date.now(), datos: m })); } catch (_) {} }).catch(() => { window.__aurexLogos = window.__aurexLogos || {}; });
+  }
+  return _logosFetch;
+}
 function cargarLogosCache(root) {
-  try { const g = JSON.parse(localStorage.getItem('aurex-logos') || 'null'); if (g && g.datos) { window.__aurexLogos = g.datos; aplicarLogos(root); return; } } catch (_) {}
-  if (window.__aurexLogos) { aplicarLogos(root); return; }
-  if (_logosFetch) { _logosFetch.then(() => aplicarLogos(root)); return; }
-  const ids = PARES.filter((p) => p.cg).map((p) => p.cg).join(',');
-  _logosFetch = fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&per_page=250&page=1`).then((r) => r.json()).then((j) => { const m = {}; j.forEach((x) => { m[x.id] = x.image; }); window.__aurexLogos = m; try { localStorage.setItem('aurex-logos', JSON.stringify({ cuando: Date.now(), datos: m })); } catch (_) {} }).catch(() => { window.__aurexLogos = {}; });
-  _logosFetch.then(() => aplicarLogos(root));
+  asegurarLogos().then(() => aplicarLogos(root));
 }
 function aplicarLogos(root) {
   if (!window.__aurexLogos) return;
@@ -749,7 +757,10 @@ function compartirSenal() {
   const prep = (async () => {
     const sym = par.id.toLowerCase();
     let coin = await cargar(`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${sym}.png`, true);
-    if (!coin && window.__aurexLogos && par.cg && window.__aurexLogos[par.cg]) coin = await cargar(window.__aurexLogos[par.cg], true);
+    if (!coin && par.cg) {                                   // spothq no tiene monedas nuevas (p.ej. JUP) → respaldo CoinGecko
+      if (!(window.__aurexLogos && window.__aurexLogos[par.cg])) { try { await asegurarLogos(); } catch (_) {} }
+      if (window.__aurexLogos && window.__aurexLogos[par.cg]) coin = await cargar(window.__aurexLogos[par.cg], true);
+    }
     const marca = await cargar(LOGO, false);
     return [coin, marca];
   })();
