@@ -434,3 +434,163 @@ export function cmf(velas, period = 20) {
   }
   return out;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SET AMPLIADO (Fase 2): más medias, un overlay y más osciladores. Mismo
+   contrato: entran velas {time,open,high,low,close,volume}, salen {time,value}
+   (o un objeto de series). Matemática estándar, sin dependencias externas.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* VWMA — media ponderada por VOLUMEN: Σ(close·vol)/Σ(vol) en ventana móvil. */
+export function vwma(velas, period = 20) {
+  const out = []; let sPV = 0, sV = 0;
+  for (let i = 0; i < velas.length; i++) {
+    sPV += velas[i].close * velas[i].volume; sV += velas[i].volume;
+    if (i >= period) { sPV -= velas[i - period].close * velas[i - period].volume; sV -= velas[i - period].volume; }
+    if (i >= period - 1) out.push({ time: velas[i].time, value: sV ? sPV / sV : velas[i].close });
+  }
+  return out;
+}
+
+/* ALMA — Arnaud Legoux MA: pesos gaussianos desplazados (poco lag, suave). */
+export function alma(velas, period = 20, offset = 0.85, sigma = 6) {
+  const c = velas.map((v) => v.close); const out = [];
+  const m = offset * (period - 1), s = period / sigma; const w = []; let norm = 0;
+  for (let k = 0; k < period; k++) { const wk = Math.exp(-((k - m) ** 2) / (2 * s * s)); w.push(wk); norm += wk; }
+  for (let i = period - 1; i < c.length; i++) {
+    let sum = 0; for (let k = 0; k < period; k++) sum += c[i - period + 1 + k] * w[k];
+    out.push({ time: velas[i].time, value: norm ? sum / norm : c[i] });
+  }
+  return out;
+}
+
+/* ZLEMA — EMA de lag cero: EMA sobre (close + (close − close[lag])), lag=(n−1)/2. */
+export function zlema(velas, period = 20) {
+  const c = velas.map((v) => v.close); const lag = Math.floor((period - 1) / 2);
+  const de = c.map((v, i) => i >= lag ? 2 * v - c[i - lag] : v);
+  const e = emaArr(de, period);
+  return e.map((value, i) => ({ time: velas[i].time, value })).slice(period - 1);
+}
+
+/* KAMA — Kaufman Adaptive MA: acelera en tendencia, frena en rango (ratio de eficiencia). */
+export function kama(velas, period = 10, fast = 2, slow = 30) {
+  const c = velas.map((v) => v.close); const out = [];
+  if (c.length <= period) return out;
+  const fastSC = 2 / (fast + 1), slowSC = 2 / (slow + 1);
+  let prev = c[period - 1];
+  for (let i = period; i < c.length; i++) {
+    const change = Math.abs(c[i] - c[i - period]);
+    let vol = 0; for (let k = i - period + 1; k <= i; k++) vol += Math.abs(c[k] - c[k - 1]);
+    const er = vol ? change / vol : 0;
+    const sc = (er * (fastSC - slowSC) + slowSC) ** 2;
+    prev = prev + sc * (c[i] - prev);
+    out.push({ time: velas[i].time, value: prev });
+  }
+  return out;
+}
+
+/* Envelopes — SMA ± porcentaje (canal simple alrededor del precio). */
+export function envelopes(velas, period = 20, pct = 2.5) {
+  const mid = sma(velas, period); const f = pct / 100;
+  const upper = mid.map((p) => ({ time: p.time, value: p.value * (1 + f) }));
+  const lower = mid.map((p) => ({ time: p.time, value: p.value * (1 - f) }));
+  return { upper, middle: mid, lower };
+}
+
+/* Stochastic RSI — estocástico aplicado sobre el RSI (0–100). {k,d}. */
+export function stochRsi(velas, rsiP = 14, stochP = 14, kS = 3, dS = 3) {
+  const r = rsi(velas, rsiP); const kRaw = [];
+  for (let i = stochP - 1; i < r.length; i++) {
+    let hi = -Infinity, lo = Infinity;
+    for (let k = i - stochP + 1; k <= i; k++) { if (r[k].value > hi) hi = r[k].value; if (r[k].value < lo) lo = r[k].value; }
+    kRaw.push({ time: r[i].time, value: hi === lo ? 0 : 100 * (r[i].value - lo) / (hi - lo) });
+  }
+  const suav = (arr, p) => { const o = []; for (let i = p - 1; i < arr.length; i++) { let s = 0; for (let j = i - p + 1; j <= i; j++) s += arr[j].value; o.push({ time: arr[i].time, value: s / p }); } return o; };
+  const k = suav(kRaw, kS), d = suav(k, dS);
+  return { k, d };
+}
+
+/* PPO — Percentage Price Oscillator (el MACD en %): 100·(EMAfast−EMAslow)/EMAslow. */
+export function ppo(velas, fast = 12, slow = 26, signal = 9) {
+  const c = velas.map((v) => v.close);
+  const fastE = emaArr(c, fast), slowE = emaArr(c, slow);
+  const ppoLine = velas.map((v, i) => ({ time: v.time, value: slowE[i] ? 100 * (fastE[i] - slowE[i]) / slowE[i] : 0 })).slice(slow - 1);
+  const k = 2 / (signal + 1); let prev = null;
+  const sig = ppoLine.map((p) => { prev = prev === null ? p.value : p.value * k + prev * (1 - k); return { time: p.time, value: prev }; });
+  const histogram = ppoLine.map((p, i) => ({ time: p.time, value: p.value - sig[i].value }));
+  return { ppo: ppoLine, signal: sig, histogram };
+}
+
+/* TRIX — variación % de un EMA triple (momentum filtrado). {trix,signal}. */
+export function trix(velas, period = 15, signalP = 9) {
+  const c = velas.map((v) => v.close);
+  const e1 = emaArr(c, period), e2 = emaArr(e1, period), e3 = emaArr(e2, period);
+  const line = [];
+  for (let i = 1; i < e3.length; i++) { const p = e3[i - 1]; line.push({ time: velas[i].time, value: p ? 100 * (e3[i] - p) / p : 0 }); }
+  const trixArr = line.slice(Math.min(line.length, 3 * period));
+  const sv = trixArr.map((p) => p.value); const se = emaArr(sv, signalP);
+  const signal = trixArr.map((p, i) => ({ time: p.time, value: se[i] })).slice(signalP - 1);
+  return { trix: trixArr, signal };
+}
+
+/* Vortex — VI+ / VI−: dirección y fuerza de tendencia. {plus,minus}. */
+export function vortex(velas, period = 14) {
+  const vmP = [], vmM = [], tr = [];
+  for (let i = 1; i < velas.length; i++) {
+    vmP.push(Math.abs(velas[i].high - velas[i - 1].low));
+    vmM.push(Math.abs(velas[i].low - velas[i - 1].high));
+    const h = velas[i].high, l = velas[i].low, pc = velas[i - 1].close;
+    tr.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+  }
+  const plus = [], minus = [];
+  for (let i = period - 1; i < vmP.length; i++) {
+    let sP = 0, sM = 0, sT = 0;
+    for (let k = i - period + 1; k <= i; k++) { sP += vmP[k]; sM += vmM[k]; sT += tr[k]; }
+    const t = velas[i + 1].time;
+    plus.push({ time: t, value: sT ? sP / sT : 0 });
+    minus.push({ time: t, value: sT ? sM / sT : 0 });
+  }
+  return { plus, minus };
+}
+
+/* Aroon — cuántas barras hace del máximo/mínimo de la ventana (0–100). {up,down}. */
+export function aroon(velas, period = 14) {
+  const up = [], down = [];
+  for (let i = period; i < velas.length; i++) {
+    let hiIdx = i, loIdx = i;
+    for (let k = i - period; k <= i; k++) { if (velas[k].high >= velas[hiIdx].high) hiIdx = k; if (velas[k].low <= velas[loIdx].low) loIdx = k; }
+    up.push({ time: velas[i].time, value: 100 * (period - (i - hiIdx)) / period });
+    down.push({ time: velas[i].time, value: 100 * (period - (i - loIdx)) / period });
+  }
+  return { up, down };
+}
+
+/* Fisher Transform — resalta giros del precio. {fisher,trigger}. */
+export function fisher(velas, period = 9) {
+  const out = [], trig = []; let prevV = 0, prevF = 0;
+  const hl = velas.map((v) => (v.high + v.low) / 2);
+  for (let i = period - 1; i < velas.length; i++) {
+    let hi = -Infinity, lo = Infinity;
+    for (let k = i - period + 1; k <= i; k++) { if (hl[k] > hi) hi = hl[k]; if (hl[k] < lo) lo = hl[k]; }
+    const rng = (hi - lo) || 1e-9;
+    let v = 0.33 * 2 * ((hl[i] - lo) / rng - 0.5) + 0.67 * prevV;
+    v = Math.max(-0.999, Math.min(0.999, v));
+    const f = 0.5 * Math.log((1 + v) / (1 - v)) + 0.5 * prevF;
+    out.push({ time: velas[i].time, value: f });
+    trig.push({ time: velas[i].time, value: prevF });
+    prevV = v; prevF = f;
+  }
+  return { fisher: out, trigger: trig };
+}
+
+/* CMO — Chande Momentum Oscillator (−100..100). */
+export function cmo(velas, period = 14) {
+  const out = [];
+  for (let i = period; i < velas.length; i++) {
+    let up = 0, dn = 0;
+    for (let k = i - period + 1; k <= i; k++) { const d = velas[k].close - velas[k - 1].close; if (d > 0) up += d; else dn += -d; }
+    const s = up + dn;
+    out.push({ time: velas[i].time, value: s ? 100 * (up - dn) / s : 0 });
+  }
+  return out;
+}

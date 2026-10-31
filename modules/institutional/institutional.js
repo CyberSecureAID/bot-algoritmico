@@ -14,7 +14,8 @@
 import { estilos } from './estilos.js?v=8';
 import * as D from './datos.js?v=5';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
-import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf } from './indicadores.js?v=5';
+import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
+  vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -71,10 +72,13 @@ const INDS = [
   { k: 'EMA200', nm: 'EMA 200', tipo: 'ma' }, { k: 'SMA', nm: 'SMA 20', tipo: 'ma' },
   { k: 'WMA', nm: 'WMA 20', tipo: 'ma' }, { k: 'HMA', nm: 'HMA 20', tipo: 'ma' },
   { k: 'DEMA', nm: 'DEMA 20', tipo: 'ma' }, { k: 'TEMA', nm: 'TEMA 20', tipo: 'ma' },
+  { k: 'VWMA', nm: 'VWMA 20', tipo: 'ma' }, { k: 'ALMA', nm: 'ALMA 20', tipo: 'ma' },
+  { k: 'ZLEMA', nm: 'ZLEMA 20', tipo: 'ma' }, { k: 'KAMA', nm: 'KAMA 10', tipo: 'ma' },
   // Overlays con bandas / tendencia
   { k: 'VWAP', nm: 'VWAP', tipo: 'overlay', sig: true }, { k: 'BOLL', nm: 'Bollinger', tipo: 'overlay', sig: true },
   { k: 'DONCH', nm: 'Donchian', tipo: 'overlay' }, { k: 'KELT', nm: 'Keltner', tipo: 'overlay', sig: true },
   { k: 'PSAR', nm: 'Parabolic SAR', tipo: 'overlay', sig: true }, { k: 'ST', nm: 'Supertrend', tipo: 'overlay', sig: true },
+  { k: 'ENV', nm: 'Envelopes', tipo: 'overlay' },
   // Osciladores (panel propio)
   { k: 'RSI', nm: 'RSI 14', tipo: 'pane' }, { k: 'MACD', nm: 'MACD', tipo: 'pane' },
   { k: 'STOCH', nm: 'Stochastic', tipo: 'pane' }, { k: 'ATR', nm: 'ATR 14', tipo: 'pane' },
@@ -83,7 +87,11 @@ const INDS = [
   { k: 'ADX', nm: 'ADX 14', tipo: 'pane' }, { k: 'MFI', nm: 'MFI 14', tipo: 'pane' },
   { k: 'AO', nm: 'Awesome Osc.', tipo: 'pane' }, { k: 'MOM', nm: 'Momentum', tipo: 'pane' },
   { k: 'STDDEV', nm: 'Std Deviation', tipo: 'pane' }, { k: 'UO', nm: 'Ultimate Osc.', tipo: 'pane' },
-  { k: 'CMF', nm: 'Chaikin MF', tipo: 'pane' }
+  { k: 'CMF', nm: 'Chaikin MF', tipo: 'pane' },
+  { k: 'STOCHRSI', nm: 'Stoch RSI', tipo: 'pane' }, { k: 'PPO', nm: 'PPO · MACD %', tipo: 'pane' },
+  { k: 'TRIX', nm: 'TRIX 15', tipo: 'pane' }, { k: 'VORTEX', nm: 'Vortex 14', tipo: 'pane' },
+  { k: 'AROON', nm: 'Aroon 14', tipo: 'pane' }, { k: 'FISHER', nm: 'Fisher Transform', tipo: 'pane' },
+  { k: 'CMO', nm: 'CMO 14', tipo: 'pane' }
 ];
 
 function cargarLWC() {
@@ -436,11 +444,16 @@ function pintarChart() {
     if (S.ind.HMA) linea('HMA 20', 'HMA', hma(V, 20), '#a3e635', 0, 2);
     if (S.ind.DEMA) linea('DEMA 20', 'DEMA', dema(V, 20), '#fb7185');
     if (S.ind.TEMA) linea('TEMA 20', 'TEMA', tema(V, 20), '#e879f9');
+    if (S.ind.VWMA) linea('VWMA 20', 'VWMA', vwma(V, 20), '#f0b90b');
+    if (S.ind.ALMA) linea('ALMA 20', 'ALMA', alma(V, 20), '#38bdf8');
+    if (S.ind.ZLEMA) linea('ZLEMA 20', 'ZLEMA', zlema(V, 20), '#a3e635');
+    if (S.ind.KAMA) linea('KAMA 10', 'KAMA', kama(V, 10), '#fb7185', 0, 2);
     // ── Overlays con bandas / tendencia (coloreados; sin marcas L/S) ──
     if (S.ind.VWAP) { const vb = vwapBands(V, 2); linea('VWAP', 'VWAP', vb.mid, '#c678dd', 0, 2); linea(null, null, vb.up, 'rgba(198,120,221,.5)'); linea(null, null, vb.lo, 'rgba(198,120,221,.5)'); }
     if (S.ind.BOLL) { const b = bollinger(V, 20, 2); linea('Bollinger', 'BOLL', b.middle, 'rgba(150,160,175,.6)'); linea(null, null, b.upper, 'rgba(120,180,255,.65)'); linea(null, null, b.lower, 'rgba(120,180,255,.65)'); }
     if (S.ind.DONCH) { const d = donchian(V, 20); linea('Donchian', 'DONCH', d.upper, 'rgba(232,184,75,.6)'); linea(null, null, d.lower, 'rgba(232,184,75,.6)'); }
     if (S.ind.KELT) { const k = keltner(V, 20, 2); linea('Keltner', 'KELT', k.upper, 'rgba(198,120,221,.6)'); linea(null, null, k.middle, 'rgba(198,120,221,.3)'); linea(null, null, k.lower, 'rgba(198,120,221,.6)'); }
+    if (S.ind.ENV) { const e = envelopes(V, 20, 2.5); linea('Envelopes', 'ENV', e.middle, 'rgba(159,176,194,.55)'); linea(null, null, e.upper, 'rgba(232,184,75,.55)'); linea(null, null, e.lower, 'rgba(232,184,75,.55)'); }
     // Parabolic SAR: puntos verdes (alcista) / rojos (bajista)
     if (S.ind.PSAR) {
       const ps = psar(V);
@@ -470,6 +483,13 @@ function pintarChart() {
     if (S.ind.STDDEV) linea('Std Deviation', 'STDDEV', stddev(V, 20), '#c678dd', abrir());
     if (S.ind.UO) linea('Ultimate Osc.', 'UO', ultimate(V), '#E8B84B', abrir());
     if (S.ind.CMF) linea('Chaikin MF', 'CMF', cmf(V, 20), '#38bdf8', abrir());
+    if (S.ind.STOCHRSI) { const p = abrir(); const sr = stochRsi(V); linea('Stoch RSI %K', 'STOCHRSI', sr.k, '#E8B84B', p); linea(null, null, sr.d, '#4aa3ff', p); }
+    if (S.ind.PPO) { const p = abrir(); const pp = ppo(V); chart.addSeries(LC.HistogramSeries, {}, p).setData(pp.histogram.map((x) => ({ time: x.time, value: x.value, color: x.value >= 0 ? 'rgba(46,232,106,.5)' : 'rgba(255,91,110,.5)' }))); linea('PPO', 'PPO', pp.ppo, '#E8B84B', p); linea(null, null, pp.signal, '#ffffff', p); }
+    if (S.ind.TRIX) { const p = abrir(); const tx = trix(V, 15); linea('TRIX 15', 'TRIX', tx.trix, '#E8B84B', p); linea(null, null, tx.signal, '#ff9f43', p); }
+    if (S.ind.VORTEX) { const p = abrir(); const vx = vortex(V, 14); linea('Vortex VI+', 'VORTEX', vx.plus, '#2ee86a', p); linea(null, null, vx.minus, '#ff5b6e', p); }
+    if (S.ind.AROON) { const p = abrir(); const ar = aroon(V, 14); linea('Aroon Up', 'AROON', ar.up, '#2ee86a', p); linea(null, null, ar.down, '#ff5b6e', p); }
+    if (S.ind.FISHER) { const p = abrir(); const fi = fisher(V, 9); linea('Fisher', 'FISHER', fi.fisher, '#E8B84B', p); linea(null, null, fi.trigger, '#4aa3ff', p); }
+    if (S.ind.CMO) linea('CMO 14', 'CMO', cmo(V, 14), '#c678dd', abrir());
   } catch (_) {}
 
   S.legendRefs = refs;
