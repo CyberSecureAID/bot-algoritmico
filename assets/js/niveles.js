@@ -172,6 +172,7 @@ export async function abrirNiveles() {
 
   const cerrar = () => {
     try { clearInterval(_reloj); } catch (_) {}
+    if (_nvStream) { try { _nvStream.cerrar(); } catch (_) {} _nvStream = null; _nvStreamKey = ''; }   // cierra el WebSocket de velas en vivo
     _reloj = null; _widgetVivo = false;
     document.querySelectorAll('#nv-picker,#nv-ayuda-box,#nv-herr-panel,.nv-pop,#nv-ind-modal,#nv-herr-menu,#nv-tfmenu,.od-menu,.od-ficha').forEach((x) => x.remove());
     const e = $('nv-overlay'); if (e) e.remove();
@@ -346,8 +347,49 @@ let _planFijo = null;
 let _soloOperables = false;  // filtro del selector de monedas
 let _operables = null;       // las que tienen contrato en BNB Chain
 
+/* ── Velas EN VIVO por WebSocket de Binance ──
+   La vela en formación se refleja al instante y, al cerrar, el análisis se
+   recalcula enseguida (no se espera al refresco de 30 s). El sondeo REST sigue
+   activo como resync de respaldo. Ojo: aquí `t` va en MILISEGUNDOS, igual que
+   lo devuelve motor.js (x[0] sin dividir). ── */
+let _nvStream = null, _nvStreamKey = '', _tickNv = null, _nvDrawPend = false;
+function streamVelasNv(simbolo, tf, onK) {
+  const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${tf}`;
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket(url); } catch (_) { tmr = setTimeout(abrir, 2500); return; }
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onK(d.k); } catch (_) {} };
+    ws.onclose = () => { if (!cerrado) { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); } };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} } };
+}
+function conectarStreamNv() {
+  const par = PARES.find((p) => p.id === N.par) || PARES[0];
+  const key = par.s + '|' + N.tf;
+  if (_nvStreamKey === key && _nvStream) return;
+  if (_nvStream) { try { _nvStream.cerrar(); } catch (_) {} _nvStream = null; }
+  _nvStreamKey = key;
+  try { _nvStream = streamVelasNv(par.s, N.tf, onKlineNv); } catch (_) { _nvStream = null; }
+}
+function nvDibujarVivo() { if (_nvDrawPend) return; _nvDrawPend = true; requestAnimationFrame(() => { _nvDrawPend = false; try { dibujar(); } catch (_) {} }); }
+function onKlineNv(k) {
+  if (!k || !N.velas || !N.velas.length) return;
+  const c = { t: k.t, o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: +k.v };   // t en MS (como motor.js)
+  if (!(c.c > 0)) return;
+  const last = N.velas[N.velas.length - 1];
+  if (c.t === last.t) { N.velas[N.velas.length - 1] = c; }        // misma vela en formación
+  else if (c.t > last.t) { N.velas.push(c); }                      // nueva vela
+  else return;                                                     // vieja → ignorar
+  N.precio = c.c; N.trazo = 1; nvDibujarVivo();                    // vela + precio en vivo (throttle a 1/frame)
+  if (k.x === true && _tickNv) { try { _tickNv(); } catch (_) {} } // al CERRAR: análisis inmediato
+}
+
 async function recargar() {
   clearInterval(_reloj);
+  if (_nvStream) { try { _nvStream.cerrar(); } catch (_) {} _nvStream = null; _nvStreamKey = ''; }   // corta el stream anterior antes de recargar
   N.cargando = true; N.error = null;
   _planFijo = null;      // al cambiar de par o marco, se replantea
   const esp = $('nv-esperando'); if (esp) esp.style.display = '';
@@ -404,8 +446,10 @@ async function recargar() {
       }
     }
   };
+  _tickNv = tick;                 // referencia para que el cierre de vela (WS) dispare análisis inmediato
   await tick();
   _reloj = setInterval(tick, 30000);
+  conectarStreamNv();             // velas EN VIVO por WebSocket (el sondeo de 30 s queda de resync)
 }
 
 function pintarEstado() {
