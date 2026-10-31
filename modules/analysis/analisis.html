@@ -83,7 +83,7 @@
     } catch (_) {}
     // La seccion. abrirAnalisis revisa el acceso de pago igual que desde la portada.
     try {
-      const m = await import('./analisis.js?v=12');
+      const m = await import('./analisis.js?v=13');
       await m.abrirAnalisis('hero', W, ethers);
     } catch (e) {
       console.warn('analisis:', e);
