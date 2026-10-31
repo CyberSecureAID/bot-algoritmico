@@ -16,9 +16,9 @@
    El motor no pinta: solo marca upper=true/false; el render decide el color. */
 
 // ── Parámetros (equivalentes a los inputs del indicador) ──
-const PIV = 20;            // confirmación de pivote (izq/der)
-const MATCH_PCT = 0.90;    // % de distancia máx. entre dos pivotes del mismo lado
-const GAP_MIN = 2;         // mínimo de barras entre las dos confirmaciones
+const PIV = 8;             // confirmación de pivote (izq/der) — corto: capta reacciones RECIENTES
+const MATCH_PCT = 0.90;    // % de distancia para agrupar un pivote con una zona existente
+const GAP_MIN = 2;         // (sin uso en el modo por-pivote; se conserva por compatibilidad)
 const MAX_UNBROKEN = 600;  // barras máx. que un nivel vive sin romperse
 const ZONE_ATR = 1.12;     // profundidad de la zona (en ATR)
 const PRESSURE_SPEED = 1;  // sensibilidad de la presión de ruptura
@@ -97,17 +97,9 @@ export function detectarReaction(velas) {
   const atr = atrArr(V, 14);
   const avg = smaVol(V, VOL_LEN);
 
-  const upSeeds = [], dnSeeds = [], live = [], dead = [], triangles = [];
+  const live = [], dead = [], triangles = [];
   let nextId = 1;
 
-  const prune = (upper, arr, i) => {
-    for (let k = arr.length - 1; k >= 0; k--) {
-      const s = arr[k];
-      const tol = s.p * MATCH_PCT * 0.01;
-      const invalid = upper ? V[i].h > s.p + tol : V[i].l < s.p - tol;
-      if (invalid) arr.splice(k, 1);
-    }
-  };
   const findLive = (upper, p) => {
     let id = -1, best = 1e20;
     for (let k = 0; k < live.length; k++) {
@@ -117,11 +109,11 @@ export function detectarReaction(velas) {
     }
     return id;
   };
-  const makeLvl = (upper, anchor, anchorBar, pivBar, seedBar, atrP, matchQ, vq, dq, aq, formDelta) => {
-    const quality = clip(0.42 * matchQ + 0.20 * vq + 0.18 * dq + 0.20 * aq);
-    const pressure = clip(0.28 + 0.58 * quality);
+  const makeLvl = (upper, anchor, pivBar, atrP, vq, dq, aq, formDelta) => {
+    const quality = clip(0.34 + 0.22 * vq + 0.18 * dq + 0.26 * aq);
+    const pressure = clip(0.30 + 0.52 * quality);
     const depth = Math.max(atrP * ZONE_ATR, MINTICK * 2);
-    live.push({ id: nextId++, p: anchor, depth, quality, pressure, attackRv: 1, attackDelta: upper ? formDelta : -formDelta, confirms: 2, touches: 0, bornBar: pivBar, anchorBar, pairStartBar: seedBar, upper, inZone: false, lastTouchBar: -1, touchRv: 0, touchBars: [] });
+    live.push({ id: nextId++, p: anchor, depth, quality, pressure, attackRv: 1, attackDelta: upper ? formDelta : -formDelta, confirms: 1, touches: 0, bornBar: pivBar, anchorBar: pivBar, upper, inZone: false, lastTouchBar: -1, touchRv: 0, touchBars: [] });
     while (live.length > LIVE_MAX) live.shift();
   };
   const reconfirm = (id, p, pivBar, vq, dq, aq, dl) => {
@@ -137,27 +129,13 @@ export function detectarReaction(velas) {
     (lv.touchBars = lv.touchBars || []).push({ bar: pivBar, rv: 1.45 });
     while (lv.touchBars.length > 24) lv.touchBars.shift();
   };
-  const registerLvl = (seeds, upper, p, pivBar, atrP, vq, dq, aq, dl) => {
+  /* Modo POR-PIVOTE: cada pivote confirmado ABRE una zona (si no coincide con una
+     viva cercana, que entonces se REFUERZA). Así aparecen zonas recientes y
+     cercanas al precio en cualquier moneda, no solo pares históricos lejanos. */
+  const registerLvl = (upper, p, pivBar, atrP, vq, dq, aq, dl) => {
     const liveId = findLive(upper, p);
     if (liveId >= 0) { reconfirm(liveId, p, pivBar, vq, dq, aq, dl); return; }
-    let pick = -1, best = 1e20;
-    for (let k = 0; k < seeds.length; k++) {
-      const s = seeds[k], tol = s.p * MATCH_PCT * 0.01, dist = Math.abs(p - s.p);
-      if (dist <= tol && pivBar - s.b >= GAP_MIN && dist < best) { best = dist; pick = k; if (dist === 0) break; }
-    }
-    if (pick === -1) {
-      seeds.push({ p, b: pivBar, vq, dq, aq, dl });
-      while (seeds.length > SEED_MAX) seeds.shift();
-    } else {
-      const s = seeds[pick];
-      const tol = Math.max(s.p * MATCH_PCT * 0.01, MINTICK);
-      const matchQ = clip(1 - Math.abs(p - s.p) / tol);
-      const anchor = upper ? Math.max(s.p, p) : Math.min(s.p, p);
-      const anchorBar = upper ? (p > s.p ? pivBar : s.b) : (p < s.p ? pivBar : s.b);
-      const cvq = (s.vq + vq) * 0.5, cdq = (s.dq + dq) * 0.5, caq = Math.max(s.aq, aq), cdl = (s.dl + dl) * 0.5;
-      makeLvl(upper, anchor, anchorBar, pivBar, s.b, atrP, matchQ, cvq, cdq, caq, cdl);
-      seeds.splice(pick, 1);
-    }
+    makeLvl(upper, p, pivBar, atrP, vq, dq, aq, dl);
   };
   const isBreak = (lv, i, atrNow) => {
     const pad = Math.max(atrNow * BREAK_ATR, 0);
@@ -168,8 +146,6 @@ export function detectarReaction(velas) {
 
   for (let i = 0; i < n; i++) {
     const atrNow = Math.max(atr[i], MINTICK);
-    // 1) prune seeds
-    prune(true, upSeeds, i); prune(false, dnSeeds, i);
     // 2) manage live (presión / ruptura / caducidad)
     if (live.length > 0) {
       const volBase = Math.max(avg[i] || V[i].v, 1);
@@ -224,11 +200,11 @@ export function detectarReaction(velas) {
     const kH = i - PIV;
     if (kH >= 0 && esPivHigh(V, kH)) {
       const [vq, dq, aq, dl] = pivotFeatures(V, avg, i, PIV);
-      registerLvl(upSeeds, true, V[kH].h, kH, Math.max(atr[kH] || atrNow, MINTICK), vq, dq, aq, dl);
+      registerLvl(true, V[kH].h, kH, Math.max(atr[kH] || atrNow, MINTICK), vq, dq, aq, dl);
     }
     if (kH >= 0 && esPivLow(V, kH)) {
       const [vq, dq, aq, dl] = pivotFeatures(V, avg, i, PIV);
-      registerLvl(dnSeeds, false, V[kH].l, kH, Math.max(atr[kH] || atrNow, MINTICK), vq, dq, aq, dl);
+      registerLvl(false, V[kH].l, kH, Math.max(atr[kH] || atrNow, MINTICK), vq, dq, aq, dl);
     }
   }
 

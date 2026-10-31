@@ -60,6 +60,14 @@ const fmt = (p) => {
   if (p >= 0.01) return p.toFixed(5);
   return p.toFixed(8);
 };
+/* Etiqueta del eje de tiempo: hora en intradía, fecha en diario/semanal. */
+function fmtFecha(tsSec) {
+  const d = new Date(tsSec * 1000);
+  const intradia = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h'].includes(M.tf);
+  return intradia
+    ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
 
 /* ══════════════════ APERTURA ══════════════════ */
 export async function abrirReaction() {
@@ -235,10 +243,10 @@ function dibujar() {
 
   const now = Date.now();
   const pulso = 0.5 + 0.5 * Math.sin(now / 420);          // latido lento de zonas
-  const titila = 0.5 + 0.5 * Math.sin(now / 240);         // titilar de puntos
 
-  // ── ZONAS (detrás de las velas): bandas sutiles ── (upper=rojo/short, lower=verde/long)
-  dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, false);
+  // ── ZONAS: barras MORADAS con barrido de luz (detrás de las velas). Solo barras:
+  //    sin triángulos ni rombos. Las recientes salen más intensas. ──
+  dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, now, W);
 
   // ── VELAS ──
   dibujarVelas(g, vis, Y, paso);
@@ -252,10 +260,6 @@ function dibujar() {
     g.fillStyle = '#071018'; g.font = 'bold 10px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(fmt(M.precio), x1 + 6, yp + 3.5);
   }
 
-  // ── ZONAS encima: líneas ancla + marcadores titilando + triángulos ──
-  dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, true, titila);
-  dibujarTriangulos(g, Xbar, Y, titila);
-
   // ── Herramientas de posición (Single/Double): cajas proyectadas como Heat Pools ──
   if (M._modoPos) {
     if (!M._posAuto) M._posAuto = posicionesDeNiveles();
@@ -266,14 +270,28 @@ function dibujar() {
   g.fillStyle = pal().dim; g.font = '10px ui-monospace,monospace'; g.textAlign = 'left';
   for (let i = 0; i <= 5; i++) { const y = (y1 / 5) * i; const pr = pMax - (pMax - pMin) * (i / 5); g.fillText(fmt(pr), x1 + 6, y + (i === 0 ? 10 : i === 5 ? -3 : 3)); }
 
-  // crosshair
+  // eje de TIEMPO (abajo): fechas/horas, igual que las demás secciones
+  g.fillStyle = '#0b0e12'; g.fillRect(0, y1, W, mAba);
+  g.fillStyle = pal().dim; g.font = '9px ui-monospace,monospace'; g.textAlign = 'center';
+  const cadaX = Math.max(1, Math.floor(vis.length / 7));
+  vis.forEach((v, i) => { if (i % cadaX !== 0) return; const x = i * paso + paso / 2; if (x > xVelas - 14) return; g.fillText(fmtFecha(v.t), x, y1 + 14); });
+  g.textAlign = 'left';
+
+  // crosshair + tachuelas de precio (der) y hora (abajo)
   if (M._cursor && M._cursor.x < x1 && M._cursor.y < y1 && M._cursor.x > 0 && M._cursor.y > 0) {
     const cx = M._cursor.x, cy = M._cursor.y, pCur = pMin + (pMax - pMin) * ((y1 - cy) / y1);
     g.save(); g.strokeStyle = 'rgba(200,210,224,.4)'; g.lineWidth = 1; g.setLineDash([4, 4]);
     g.beginPath(); g.moveTo(cx, 0); g.lineTo(cx, y1); g.stroke();
     g.beginPath(); g.moveTo(0, cy); g.lineTo(x1, cy); g.stroke(); g.restore(); g.setLineDash([]);
     g.fillStyle = '#e8ecf2'; redondeado(g, x1 + 2, cy - 9, mDer - 4, 18, 4); g.fill();
-    g.fillStyle = '#0b0e12'; g.font = 'bold 10px ui-monospace,monospace'; g.fillText(fmt(pCur), x1 + 6, cy + 3.5);
+    g.fillStyle = '#0b0e12'; g.font = 'bold 10px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(fmt(pCur), x1 + 6, cy + 3.5);
+    const idx = Math.floor(cx / paso);
+    if (idx >= 0 && idx < vis.length) {
+      const ht = fmtFecha(vis[idx].t); g.font = 'bold 9px ui-monospace,monospace';
+      const hw = g.measureText(ht).width + 12;
+      g.fillStyle = '#e8ecf2'; redondeado(g, Math.max(2, Math.min(x1 - hw, cx - hw / 2)), y1 + 3, hw, 15, 4); g.fill();
+      g.fillStyle = '#0b0e12'; g.textAlign = 'center'; g.fillText(ht, Math.max(2 + hw / 2, Math.min(x1 - hw / 2, cx)), y1 + 13.5); g.textAlign = 'left';
+    }
   }
 
   // barra de dibujo compartida
@@ -293,111 +311,50 @@ function dibujarVelas(g, vis, Y, paso) {
   }
 }
 
-/* Dibuja las zonas. pase=false → bandas detrás; pase=true → líneas ancla +
-   marcadores titilando (encima). upper=rojo(short), lower=verde(long). */
-function dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, encima, titila) {
+/* ZONAS = barras MORADAS, y nada más (sin triángulos ni rombos). Un BARRIDO de
+   luz las recorre de izquierda a derecha, como la iluminación del heatmap de
+   Institutional. Las RECIENTES salen más intensas; las ROTAS, tenues y NO
+   infinitas (terminan en la ruptura, "detrás del precio"). */
+const clip01 = (x) => Math.max(0, Math.min(1, x));
+const PURP = '168,85,247', PURP_HI = '203,150,255';
+function dibujarZonas(g, x1, Y, pMin, pMax, Xbar, pulso, now, W) {
   const live = M.data.live || [], dead = M.data.dead || [];
+  const geo = M._geo; const ancho = geo ? geo.ancho : 1, fin = geo ? geo.fin : 0, pri = fin - ancho;
+  // Gradiente de BARRIDO: franjas claras que se desplazan (compartido entre barras).
+  const s = (now % 3200) / 3200;
+  const gr = g.createLinearGradient(0, 0, W, 0);
+  for (let i = 0; i <= 14; i++) { const p = i / 14, b = 0.5 + 0.5 * Math.cos((p - s) * Math.PI * 4); gr.addColorStop(p, `rgba(${PURP_HI},${(0.02 + 0.13 * b).toFixed(3)})`); }
   const uno = (lv, muerto) => {
     if (lv.p > pMax || lv.p < pMin) return;
-    const rgb = lv.upper ? '255,74,90' : '40,210,100';   // SUPERIOR=resistencia=ROJO(short); INFERIOR=soporte=VERDE(long)
     const [zTop, zBot] = zoneBounds(lv.upper, lv.p, lv.depth);
     const yTop = Y(Math.max(zTop, zBot)), yBot = Y(Math.min(zTop, zBot));
-    const yAnc = Y(lv.p);
-    const xa = Math.max(0, Xbar(lv.anchorBar));           // la zona ARRANCA en el pivote ancla (como el indicador)
-    // Vivas → infinitas a la derecha. ROTAS → terminan en la barra de ruptura
-    // (no son infinitas: quedan "detrás del precio").
+    const hh = Math.abs(yBot - yTop); if (hh < 1) return;
+    const xa = Math.max(0, Xbar(lv.anchorBar));
     const xRight = muerto ? Math.min(x1, Math.max(xa + 4, Xbar(lv.breakBar != null ? lv.breakBar : lv.anchorBar))) : x1;
-    const at = muerto ? 0.4 : 1;                          // las rotas, más tenues
     if (xRight <= xa) return;
-    if (!encima) {
-      // caja EXTERIOR de la zona, del ancla a su borde derecho
-      const aOut = (0.09 + 0.16 * lv.pressure) * (0.85 + 0.3 * pulso) * at;
-      g.fillStyle = `rgba(${rgb},${aOut.toFixed(3)})`;
-      g.fillRect(xa, Math.min(yTop, yBot), xRight - xa, Math.abs(yBot - yTop));
-      // caja INTERIOR (45% de la profundidad, más opaca) — el "corazón" de la zona
-      const [iTop, iBot] = lv.upper ? [lv.p, lv.p - lv.depth * 0.45] : [lv.p + lv.depth * 0.45, lv.p];
-      const yiT = Y(Math.max(iTop, iBot)), yiB = Y(Math.min(iTop, iBot));
-      g.fillStyle = `rgba(${rgb},${(aOut * 1.7).toFixed(3)})`;
-      g.fillRect(xa, Math.min(yiT, yiB), xRight - xa, Math.abs(yiB - yiT));
-      // bordes de la zona
-      g.strokeStyle = `rgba(${rgb},${(0.5 * at).toFixed(3)})`; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(xa, yTop); g.lineTo(xRight, yTop); g.stroke();
-      g.beginPath(); g.moveTo(xa, yBot); g.lineTo(xRight, yBot); g.stroke();
-      // traza entre los dos pivotes que formaron el nivel (punteada dorada)
-      if (!muerto && lv.pairStartBar != null) {
-        const xs = Xbar(lv.pairStartBar), ys = Y(lv.pairStartPx != null ? lv.pairStartPx : lv.p);
-        g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 1; g.setLineDash([5, 4]);
-        g.beginPath(); g.moveTo(Math.max(0, xs), ys); g.lineTo(xa, yAnc); g.stroke(); g.setLineDash([]);
-      }
-      return;
-    }
-    // ── encima: línea ancla; grosor por presión ──
-    const grosor = muerto ? 1 : (lv.pressure >= 0.82 ? 4 : lv.pressure >= 0.62 ? 3 : lv.pressure >= 0.42 ? 2 : 1);
+    const yTp = Math.min(yTop, yBot), ww = xRight - xa;
+    const recency = clip01((lv.anchorBar - pri) / Math.max(1, ancho));   // 0 vieja → 1 reciente
+    const at = muerto ? 0.42 : (0.82 + 0.4 * recency);                   // las recientes, más intensas
+    // relleno morado base
+    const baseA = (0.11 + 0.17 * lv.pressure) * at;
+    g.fillStyle = `rgba(${PURP},${baseA.toFixed(3)})`; g.fillRect(xa, yTp, ww, hh);
+    // corazón de la zona, más intenso
+    const [iTop, iBot] = lv.upper ? [lv.p, lv.p - lv.depth * 0.5] : [lv.p + lv.depth * 0.5, lv.p];
+    const yiT = Y(Math.max(iTop, iBot)), yiB = Y(Math.min(iTop, iBot));
+    g.fillStyle = `rgba(${PURP},${(baseA * 1.5).toFixed(3)})`; g.fillRect(xa, Math.min(yiT, yiB), ww, Math.abs(yiB - yiT));
+    // BARRIDO de luz (solo en las vivas), añadido por encima
+    if (!muerto) { g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(xa, yTp, ww, hh); g.restore(); }
+    // bordes INTENSOS (más que el relleno), con leve resplandor en las vivas
     g.save();
-    g.strokeStyle = `rgba(${rgb},${((muerto ? 0.4 : 0.6 + 0.3 * pulso)).toFixed(3)})`; g.lineWidth = grosor;
-    if (muerto) g.setLineDash([4, 4]); else { g.shadowColor = `rgba(${rgb},.6)`; g.shadowBlur = 5 + 7 * pulso; }
-    g.beginPath(); g.moveTo(xa, yAnc); g.lineTo(xRight, yAnc); g.stroke(); g.restore(); g.setLineDash([]);
-    // SCORE en el ancla → círculo en capas con núcleo dorado
-    marcadorAnillos(g, xa, yAnc, rgb, lv.ringN || 1, muerto ? 0 : titila, false, at);
-    // TODOS los toques → diamantes en capas (por eso el chart se ve "poblado")
-    (lv.touchBars || []).forEach((tb) => {
-      const xt = Xbar(tb.bar); if (xt <= xa + 2 || xt >= xRight) return;
-      marcadorAnillos(g, xt, yAnc, rgb, touchRings(tb.rv || 1), muerto ? 0 : titila, true, at);
-    });
-    // retest de una zona rota → diamante sólido
-    if (muerto && lv.retestBar != null) {
-      const xr = Xbar(lv.retestBar);
-      if (xr > 0 && xr < x1) { g.save(); g.shadowColor = `rgba(${rgb},.6)`; g.shadowBlur = 7; g.fillStyle = `rgba(${rgb},.92)`; forma(g, xr, Y(lv.p), 6, true); g.fill(); g.restore(); }
-    }
+    g.lineWidth = muerto ? 1 : (1.5 + 1.4 * lv.pressure);
+    g.strokeStyle = `rgba(${PURP_HI},${(muerto ? 0.4 : 0.72 + 0.22 * recency).toFixed(3)})`;
+    if (muerto) g.setLineDash([4, 4]); else { g.shadowColor = `rgba(${PURP_HI},${(0.45 + 0.3 * pulso).toFixed(3)})`; g.shadowBlur = 5 + 6 * pulso; }
+    g.beginPath(); g.moveTo(xa, yTop); g.lineTo(xRight, yTop); g.stroke();
+    g.beginPath(); g.moveTo(xa, yBot); g.lineTo(xRight, yBot); g.stroke();
+    g.restore(); g.setLineDash([]);
   };
   dead.forEach((lv) => uno(lv, true));
   live.forEach((lv) => uno(lv, false));
-}
-
-/* Marcador en capas (anillos) que titila: núcleo dorado + anillos del color.
-   diamante=false → CÍRCULO (score, en el ancla); diamante=true → DIAMANTE (toque).
-   at = atenuación (zonas rotas se pintan más tenues). */
-function marcadorAnillos(g, x, y, rgb, nivel, titila, diamante, at) {
-  const t = titila == null ? 1 : titila; at = at == null ? 1 : at;
-  const base = diamante ? 9 : 10;
-  const r = base + nivel * 2.2;
-  const pulse = 0.6 + 0.4 * t;
-  g.save();
-  // halo exterior
-  g.shadowColor = `rgba(${rgb},${(0.45 * pulse * at).toFixed(3)})`; g.shadowBlur = 8 + 10 * t;
-  g.fillStyle = `rgba(${rgb},${((0.16 + 0.14 * pulse) * at).toFixed(3)})`;
-  forma(g, x, y, r * pulse, diamante); g.fill();
-  g.shadowBlur = 0;
-  // anillo del color
-  g.strokeStyle = `rgba(${rgb},${((0.6 + 0.3 * t) * at).toFixed(3)})`; g.lineWidth = 2;
-  forma(g, x, y, r * (0.8 + 0.1 * pulse), diamante); g.stroke();
-  // núcleo dorado
-  g.fillStyle = `rgba(232,184,75,${(0.85 * (0.7 + 0.3 * t) * at).toFixed(3)})`;
-  forma(g, x, y, Math.max(2.5, r * 0.34), diamante); g.fill();
-  g.restore();
-}
-function forma(g, x, y, r, diamante) {
-  g.beginPath();
-  if (diamante) { g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); }
-  else g.arc(x, y, r, 0, 6.283);
-}
-
-function dibujarTriangulos(g, Xbar, Y, titila) {
-  const tr = M.data.triangles || []; const geo = M._geo; if (!geo) return;
-  const pri = geo.pri, fin = geo.fin;
-  tr.forEach((tri) => {
-    if (tri.bar < pri - 1 || tri.bar > fin) return;
-    const x = Xbar(tri.bar), y = Y(tri.price);
-    const rojo = !tri.up ? false : true;   // ruptura de upper(rojo) hacia arriba; de lower(verde) hacia abajo
-    const rgb = tri.up ? '255,74,90' : '40,210,100';
-    const s = 7 + 3 * (titila || 0);
-    g.save(); g.shadowColor = `rgba(${rgb},.7)`; g.shadowBlur = 6 + 8 * (titila || 0);
-    g.fillStyle = `rgba(${rgb},${(0.7 + 0.3 * (titila || 0)).toFixed(3)})`;
-    g.beginPath();
-    if (tri.up) { g.moveTo(x, y - s - 6); g.lineTo(x - s, y - 4); g.lineTo(x + s, y - 4); }
-    else { g.moveTo(x, y + s + 6); g.lineTo(x - s, y + 4); g.lineTo(x + s, y + 4); }
-    g.closePath(); g.fill(); g.restore();
-  });
 }
 
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -571,7 +528,7 @@ function dibujarPosicion(g, P) {
 /* ══════════════════ GESTOS (zoom/pan) ══════════════════ */
 function engancharGestos(cv) {
   const zoom = (f) => { const maxA = Math.max(60, (M.velas.length || 700) - 2); M.ancho = Math.max(14, Math.min(maxA, Math.round((M.ancho || 100) * f))); dibujar(); };
-  let ax = 0, ay = 0, arr = false; const enEscala = (x) => x > cv.clientWidth - 70;
+  let ax = 0, ay = 0, arr = false, dragEsc = false; const enEscala = (x) => x > cv.clientWidth - 66;
   const dRz = (lx, ly, rc) => rc && lx >= rc.x - 6 && lx <= rc.x + rc.w + 6 && ly >= rc.y - 6 && ly <= rc.y + rc.h + 6;
   cv.addEventListener('wheel', (e) => { e.preventDefault(); zoom(e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
   cv.addEventListener('mousedown', (e) => {
@@ -585,7 +542,8 @@ function engancharGestos(cv) {
         if (dRz(lx, ly, P._arrR)) { P.cardPos = _ORD_RZ[(_ORD_RZ.indexOf(P.cardPos || 'izq') + 1) % 4]; dibujar(); return; }
       }
     }
-    ax = lx; ay = ly; arr = !enEscala(lx);
+    ax = lx; ay = ly; dragEsc = enEscala(lx); arr = true;
+    cv.style.cursor = dragEsc ? 'ns-resize' : 'grabbing';
   });
   window.addEventListener('mousemove', (e) => {
     const r = cv.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
@@ -596,14 +554,19 @@ function engancharGestos(cv) {
         if (P.oculto) { if (dRz(x, y, P._miniBtn)) { ptr = true; break; } }
         else if (dRz(x, y, P._hideBtn) || dRz(x, y, P._arrL) || dRz(x, y, P._arrR)) { ptr = true; break; }
       }
-      cv.style.cursor = ptr ? 'pointer' : 'crosshair';
+      cv.style.cursor = ptr ? 'pointer' : (enEscala(x) ? 'ns-resize' : 'crosshair');   // eje de precios → estirar
       if (M._geo) dibujar(); return;
+    }
+    if (dragEsc) {   // arrastre sobre el eje de precios → estira/contrae la escala vertical (como TradingView)
+      const dy = y - ay;
+      if (Math.abs(dy) > 1) { M.zoomY = Math.max(0.2, Math.min(6, (M.zoomY || 1) * (1 + dy * 0.004))); ay = y; dibujar(); }
+      return;
     }
     const paso = M._geo ? M._geo.paso : 8; const dx = x - ax, dy = y - ay;
     if (Math.abs(dx) > paso) { M.desplaz = (M.desplaz || 0) + Math.round(dx / paso); ax = x; }
     M.offsetY = (M.offsetY || 0) + dy; ay = y; dibujar();
   });
-  window.addEventListener('mouseup', () => { arr = false; });
+  window.addEventListener('mouseup', () => { arr = false; dragEsc = false; cv.style.cursor = 'crosshair'; });
   cv.addEventListener('mouseleave', () => { M._cursor = null; dibujar(); });
   cv.addEventListener('dblclick', () => { M.ancho = window.innerWidth < 760 ? 70 : 120; M.desplaz = 0; M.zoomY = 1; M.offsetY = 0; dibujar(); });
 }
