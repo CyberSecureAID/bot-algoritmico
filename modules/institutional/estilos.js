@@ -113,15 +113,19 @@ const CSS = `
 
 /* ── Chart ── */
 .it-cv{position:absolute; inset:0; min-height:0}
-.it-legend{position:absolute; top:8px; left:11px; z-index:6; font-family:var(--it-mono); font-size:11px; line-height:1.55; pointer-events:none; text-shadow:0 1px 3px rgba(0,0,0,.95)}
-.it-legend .nm{color:var(--it-gold); font-weight:800; font-size:12.5px; letter-spacing:.05em}
-.it-legend .ind{color:#9fb0c2; display:flex; align-items:center; gap:5px}
-.it-legend .o{color:var(--it-dim)}
-.it-leg-x{pointer-events:auto; cursor:pointer; margin-left:3px; width:14px; height:14px; line-height:1; border-radius:4px; border:0; background:rgba(255,255,255,.06); color:#8a94a0; font-size:9px; display:inline-grid; place-items:center}
-.it-leg-x:hover{background:rgba(255,91,110,.2); color:var(--it-down)}
+/* Leyenda ESTÁTICA (solo indicadores activos). No se reconstruye al mover el
+   cursor → la ✕ ya no "baila" y se puede pulsar. */
+.it-legend{position:absolute; top:8px; left:12px; z-index:7; display:flex; flex-direction:column; gap:3px; align-items:flex-start; font-family:var(--it-mono); font-size:11px; pointer-events:none}
+.it-legend .ind{display:flex; align-items:center; gap:6px; height:18px; padding:0 4px 0 6px; border-radius:7px; background:rgba(8,11,16,.6); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); pointer-events:auto}
+.it-legend .dot{width:8px; height:8px; border-radius:50%; flex:0 0 auto}
+.it-legend .lbl{color:#c6cdd6; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+.it-leg-x{pointer-events:auto; cursor:pointer; width:16px; height:16px; flex:0 0 auto; line-height:1; border-radius:5px; border:0; background:rgba(255,255,255,.06); color:#9aa4af; font-size:13px; display:grid; place-items:center; padding:0}
+.it-leg-x:hover{background:rgba(255,91,110,.22); color:var(--it-down)}
 /* marca de agua: SOLO logo (el logo ya es nuestra identidad), más grande y más arriba */
-.it-wm{position:absolute; left:12px; bottom:40px; z-index:5; display:flex; align-items:center; pointer-events:none; opacity:.5}
-.it-wm img{height:30px; width:auto; display:block; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+/* Marca de agua: mismo sitio/tamaño que en las demás secciones (nv-marca:
+   left:64px, bottom:40px, height:42px) → a la derecha de la barra, sobre las fechas. */
+.it-wm{position:absolute; left:64px; bottom:40px; z-index:4; display:flex; align-items:center; pointer-events:none; opacity:.82}
+.it-wm img{height:42px; width:auto; display:block; filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
 
 /* ── Popups ── */
 .it-pop{position:fixed; z-index:10045; background:#0c1016; border:1px solid var(--it-line-2); border-radius:11px; padding:7px; box-shadow:0 20px 55px rgba(0,0,0,.65); color:var(--it-ink); font-family:var(--it-mono)}
@@ -173,19 +177,43 @@ const CSS = `
 
 /* ── Heatmap (treemap: área ∝ magnitud del movimiento 24h) ── */
 #it-p-board-body{overflow:hidden}
-.it-tile{position:absolute; border-radius:6px; padding:5px 7px; display:flex; flex-direction:column; justify-content:center; gap:1px; cursor:pointer; border:1px solid rgba(0,0,0,.25); overflow:hidden}
-.it-tile b{font-family:var(--it-mono); font-weight:800; font-size:13px; color:#fff; letter-spacing:.02em; text-shadow:0 1px 2px rgba(0,0,0,.5)}
-.it-tile em{font-family:var(--it-mono); font-style:normal; font-size:11px; font-weight:800}
-.it-tile .pr{font-family:var(--it-mono); font-size:9.5px; color:rgba(255,255,255,.72)}
-.it-tile:hover{outline:2px solid var(--it-gold); outline-offset:-2px; z-index:2}
+.it-tile{position:absolute; border-radius:6px; display:flex; flex-direction:column; justify-content:center; gap:1px; cursor:pointer; border:1px solid rgba(0,0,0,.25); overflow:hidden; opacity:1; transform:scale(1);
+  transition:left .6s cubic-bezier(.4,0,.2,1), top .6s cubic-bezier(.4,0,.2,1), width .6s cubic-bezier(.4,0,.2,1), height .6s cubic-bezier(.4,0,.2,1), background .5s ease, opacity .45s ease, transform .45s ease}
+.it-tile.it-tile-in{opacity:0; transform:scale(.55); transition:none}
+.it-tile b{font-family:var(--it-mono); font-weight:800; color:#fff; letter-spacing:.02em; text-shadow:0 1px 2px rgba(0,0,0,.55); line-height:1.05}
+.it-tile em{font-family:var(--it-mono); font-style:normal; font-weight:800; line-height:1.1}
+.it-tile .pr{font-family:var(--it-mono); color:rgba(255,255,255,.72); line-height:1.1}
+.it-tile:hover{outline:2px solid var(--it-gold); outline-offset:-2px; z-index:3}
+.it-tile.on{outline:2px solid #fff; outline-offset:-2px; z-index:2}
 .it-hm-wm{position:absolute; left:8px; bottom:7px; z-index:3; pointer-events:none; opacity:.72}
 .it-hm-wm img{height:22px; width:auto; display:block; filter:drop-shadow(0 2px 6px rgba(0,0,0,.8))}
 
+/* ── SIGNALS — rating técnico (lo premium) ── */
+.it-sig-wrap{padding:13px 14px 12px; border-bottom:1px solid var(--it-line)}
+.it-sig-top{display:flex; align-items:center; justify-content:space-between}
+.it-sig-lead{font-family:var(--it-mono); font-size:9.5px; letter-spacing:.14em; color:var(--it-gold); text-transform:uppercase}
+.it-sig-tfnow{font-family:var(--it-mono); font-size:10px; font-weight:800; color:#aeb6c0; background:rgba(255,255,255,.05); border:1px solid var(--it-line-2); padding:1px 7px; border-radius:6px}
+.it-sig-verdict{font-family:var(--it-mono); font-weight:800; font-size:25px; letter-spacing:.02em; margin:7px 0 9px; line-height:1}
+.it-sig-bar{display:flex; gap:3px; margin-bottom:11px}
+.it-sig-seg{flex:1 1 0; height:7px; border-radius:3px; background:rgba(255,255,255,.08); transition:background .3s, box-shadow .3s}
+.it-sig-seg.on{background:var(--c); box-shadow:0 0 10px var(--c)}
+.it-sig-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px}
+.it-sig-box{background:rgba(255,255,255,.03); border:1px solid var(--it-line); border-radius:9px; padding:8px 10px}
+.it-sig-box .t{display:block; font-family:var(--it-mono); font-size:9px; letter-spacing:.08em; color:var(--it-dim); text-transform:uppercase; margin-bottom:5px}
+.it-sig-cnt{display:flex; gap:9px; font-family:var(--it-mono); font-weight:800; font-size:15px}
+.it-sig-cnt .up::before{content:'▲ '; font-size:9px} .it-sig-cnt .down::before{content:'▼ '; font-size:9px} .it-sig-cnt .dim::before{content:'● '; font-size:8px}
+.it-sig-conf-tit{font-family:var(--it-mono); font-size:9px; letter-spacing:.1em; color:var(--it-dim); text-transform:uppercase; margin-bottom:6px}
+.it-sig-conf{display:grid; grid-template-columns:repeat(3,1fr); gap:6px}
+.it-sig-tf{display:flex; flex-direction:column; align-items:center; gap:2px; padding:7px 4px; background:rgba(255,255,255,.03); border:1px solid var(--it-line); border-radius:9px}
+.it-sig-tf b{font-family:var(--it-mono); font-size:10px; color:#aeb6c0; letter-spacing:.05em}
+.it-sig-tf span{font-family:var(--it-mono); font-weight:800; font-size:11px; text-align:center}
+
 /* ── Macro (sin fondos gris de relleno → nada de 'área gris' al agrandar) ── */
 .it-macro{display:flex; flex-direction:column}
-.it-macro-row{display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--it-line)}
+.it-macro-tit{font-family:var(--it-mono); font-size:9px; letter-spacing:.1em; color:var(--it-dim); text-transform:uppercase; padding:10px 13px 4px}
+.it-macro-row{display:flex; align-items:center; justify-content:space-between; padding:9px 13px; border-bottom:1px solid var(--it-line)}
 .it-macro-row .k{font-family:var(--it-mono); font-size:10.5px; letter-spacing:.06em; color:var(--it-dim); text-transform:uppercase}
-.it-macro-row .v{font-family:var(--it-mono); font-size:15px; font-weight:800; color:var(--it-ink)}
+.it-macro-row .v{font-family:var(--it-mono); font-size:14px; font-weight:800; color:var(--it-ink)}
 .it-gauge{height:8px; border-radius:6px; background:linear-gradient(90deg,#ff5b6e,#E8B84B 50%,#2ee86a); position:relative; margin:4px 0 2px}
 .it-gauge .pin{position:absolute; top:-3px; width:3px; height:14px; background:#fff; border-radius:2px; box-shadow:0 0 6px rgba(0,0,0,.8); transform:translateX(-50%)}
 
@@ -234,7 +262,7 @@ const CSS = `
   display:flex;flex-direction:column;gap:3px;padding:5px;border-radius:13px;
   background:rgba(13,17,24,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
   border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 34px rgba(0,0,0,.55);
-  max-height:calc(100% - 20px);overflow-y:auto;scrollbar-width:none}
+  max-height:calc(100% - 76px);overflow-y:auto;scrollbar-width:none}   /* 76px: no toca las fechas de abajo */
 #it-overlay .nv-tools::-webkit-scrollbar{display:none}
 #it-overlay .nv-tool{width:31px;height:31px;flex:0 0 auto;border-radius:9px;border:none;padding:0;position:relative;
   background:transparent;color:#98a2ad;cursor:pointer;display:grid;place-items:center;transition:background .14s,color .14s}
@@ -252,7 +280,7 @@ const CSS = `
 #it-overlay .nv-tools.nv-oculta{transform:translate(calc(-100% - 12px),-50%);opacity:0;pointer-events:none;transition:transform .22s ease,opacity .22s ease}
 #it-overlay .nv-tools.nv-oculta.abierta,#it-overlay .nv-tools.nv-oculta.forz{transform:translate(0,-50%);opacity:1;pointer-events:auto}
 #it-overlay .nv-tools-tab{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:9496;pointer-events:none;
-  width:9px;height:66px;border-radius:0 8px 8px 0;background:linear-gradient(180deg,rgba(232,184,75,.7),rgba(201,168,75,.6));
+  width:9px;height:66px;border-radius:0 8px 8px 0;background:linear-gradient(180deg,rgba(34,211,238,.65),rgba(232,184,75,.6));
   box-shadow:2px 0 12px rgba(0,0,0,.5),inset -1px 0 0 rgba(255,255,255,.25);transition:opacity .2s}
 #it-overlay .nv-tools.abierta ~ .nv-tools-tab,#it-overlay .nv-tools.forz ~ .nv-tools-tab{opacity:0;pointer-events:none}
 #it-overlay .nv-topbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:9500;

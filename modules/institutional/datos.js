@@ -62,25 +62,30 @@ export async function tickers(simbolos) {
 /* Board de mercado: top por capitalización, con cambio 24h/7d y sparkline.
    Fuente principal CoinGecko; respaldo = tickers de Binance sobre el catálogo. */
 export async function board() {
+  // PRIMARIO: Binance 24h en TIEMPO REAL sobre todo el catálogo cripto. El heatmap
+  // dimensiona por |cambio 24h| (no por capitalización), así que esto basta y va
+  // siempre fresco (CoinGecko puede ir con retraso y dar colores desfasados).
   try {
-    const ids = PARES.filter((p) => p.cg).map((p) => p.cg).slice(0, 60).join(',');
-    const j = await traer(`${COINGECKO}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=60&page=1&sparkline=true&price_change_percentage=24h,7d`);
-    return j.map((c) => ({
-      id: c.id, simbolo: (c.symbol || '').toUpperCase(), nombre: c.name, img: c.image,
-      price: c.current_price, chg24: c.price_change_percentage_24h_in_currency ?? c.price_change_percentage_24h,
-      chg7: c.price_change_percentage_7d_in_currency, mcap: c.market_cap,
-      spark: (c.sparkline_in_7d && c.sparkline_in_7d.price) || []
-    })).filter((c) => c.price != null);
-  } catch (_) {
-    // Respaldo: construir el board desde Binance (sin mcap real ni sparkline)
-    const pares = PARES.filter((p) => p.grupo !== 'divisa' && p.grupo !== 'materia').slice(0, 40);
-    const map = {};
-    PARES.forEach((p) => { map[p.s] = p; });
+    const pares = PARES.filter((p) => p.grupo !== 'divisa' && p.grupo !== 'materia');
+    const map = {}; PARES.forEach((p) => { map[p.s] = p; });
     const ts = await tickers(pares.map((p) => p.s));
-    return ts.map((t) => {
+    const out = ts.map((t) => {
       const p = map[t.simbolo] || {};
       return { id: p.cg || t.simbolo, simbolo: p.id || t.simbolo.replace('USDT', ''), nombre: p.n || t.simbolo, img: '', price: t.last, chg24: t.chgPct, chg7: null, mcap: t.volQuote, spark: [] };
-    }).sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
+    }).filter((c) => c.price != null && isFinite(c.chg24)).sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
+    if (out.length) return out;
+    throw new Error('empty');
+  } catch (_) {
+    // RESPALDO: CoinGecko (capitalización real, pero posible retraso).
+    try {
+      const ids = PARES.filter((p) => p.cg).map((p) => p.cg).slice(0, 60).join(',');
+      const j = await traer(`${COINGECKO}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=60&page=1&price_change_percentage=24h`);
+      return j.map((c) => ({
+        id: c.id, simbolo: (c.symbol || '').toUpperCase(), nombre: c.name, img: c.image,
+        price: c.current_price, chg24: c.price_change_percentage_24h_in_currency ?? c.price_change_percentage_24h,
+        chg7: null, mcap: c.market_cap, spark: []
+      })).filter((c) => c.price != null);
+    } catch (e) { return []; }
   }
 }
 

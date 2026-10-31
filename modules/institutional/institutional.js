@@ -11,8 +11,8 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=4';
-import * as D from './datos.js?v=3';
+import { estilos } from './estilos.js?v=5';
+import * as D from './datos.js?v=4';
 import { sma, ema, wma, hma, dema, tema, vwap, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf } from './indicadores.js?v=4';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
@@ -34,7 +34,7 @@ const LOGO = 'assets/img/cco-marca.png';
 const LOGO_ALT = 'assets/img/cco-full.webp';
 const SELLO = 'assets/portada/red/disclaimer.webp';
 const DISC_KEY = 'it-disclaimer-ok';
-const LAYOUT_KEY = 'it-layout-v2';
+const LAYOUT_KEY = 'it-layout-v3';   // v3: la gráfica domina (reinicia layouts guardados antiguos)
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -98,7 +98,8 @@ function cargarLWC() {
 const S = {
   par: null, tf: '1h', ind: { EMA50: true }, velas: [], velasDib: [], chart: null, serieVela: null, serieVol: null, legendRefs: [], marks: [], marksApi: null,
   refQuote: null, refBoard: null, cargandoChart: false, onResize: null, barra: null, dibMontada: false,
-  layout: null, zTop: 10, maxed: null, hidden: {}, logos: {}, board: [], boardObs: null, ultTicker: null
+  layout: null, zTop: 10, maxed: null, hidden: {}, logos: {}, board: [], boardObs: null, ultTicker: null,
+  tileEls: {}, senal: null, senalPar: null, senalTF: {}
 };
 const PANELES = ['it-p-chart', 'it-p-quote', 'it-p-watch', 'it-p-board', 'it-p-macro'];
 const LISTA_WATCH = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK', 'LTC', 'DOT', 'TRX'];
@@ -107,6 +108,7 @@ export async function abrirInstitutional() {
   estilos();
   const prev = document.getElementById('it-overlay'); if (prev) prev.remove();
   S.par = D.PARES.find((p) => p.id === 'BTC') || D.PARES[0];
+  S.tileEls = {}; S.senalPar = null; S.senalTF = {}; S.senal = null;
   cargarLayout();
 
   const ov = document.createElement('div');
@@ -196,7 +198,7 @@ function plantilla() {
     ${panel('it-p-quote', 'QUOTE')}
     ${panel('it-p-watch', 'WATCHLIST')}
     ${panel('it-p-board', 'MARKET HEATMAP', '<div class="it-ph-r dim" style="font-family:var(--it-mono);font-size:10px;margin-left:8px">SIZE · 24H MOVE</div>')}
-    ${panel('it-p-macro', 'MACRO')}
+    ${panel('it-p-macro', 'SIGNALS')}
   </div>
   <div class="it-foot">
     <div>DecFreedom · Institutional Analysis — <a href="https://decfreedom.com" target="_blank" rel="noopener">decfreedom.com</a></div>
@@ -387,99 +389,72 @@ function pintarChart() {
   vol.setData(V.map((c) => ({ time: c.time, value: c.volume, color: c.close >= c.open ? 'rgba(46,232,106,.26)' : 'rgba(255,91,110,.26)' })));
 
   const refs = [];
-  const mapa = (pts) => { const m = {}; pts.forEach((p) => { m[p.time] = p.value; }); return m; };
   const gap = (pts) => pts.map((p) => p.value == null ? { time: p.time } : { time: p.time, value: p.value });
   const linea = (nm, k, pts, color, pane, w, opt) => {
     if (!pts || !pts.length) return null;
     const s = chart.addSeries(LC.LineSeries, Object.assign({ color, lineWidth: w || 1, priceLineVisible: false, lastValueVisible: false }, opt || {}), pane || 0);
     s.setData(gap(pts)); if (nm) refs.push({ nm, k, serie: s, color }); return s;
   };
-  const long = (t) => S.marks.push({ time: t, position: 'belowBar', color: '#2ee86a', shape: 'arrowUp', text: 'L' });
-  const short = (t) => S.marks.push({ time: t, position: 'aboveBar', color: '#ff5b6e', shape: 'arrowDown', text: 'S' });
-
-  // ── Medias móviles ──
-  if (S.ind.EMA9) linea('EMA 9', 'EMA9', ema(V, 9), '#f0b90b');
-  if (S.ind.EMA20) linea('EMA 20', 'EMA20', ema(V, 20), '#4aa3ff');
-  if (S.ind.EMA50) linea('EMA 50', 'EMA50', ema(V, 50), '#E8B84B');
-  if (S.ind.EMA100) linea('EMA 100', 'EMA100', ema(V, 100), '#c678dd');
-  if (S.ind.EMA200) linea('EMA 200', 'EMA200', ema(V, 200), '#ff5b6e', 0, 2);
-  if (S.ind.SMA) linea('SMA 20', 'SMA', sma(V, 20), '#9fb0c2');
-  if (S.ind.WMA) linea('WMA 20', 'WMA', wma(V, 20), '#38bdf8');
-  if (S.ind.HMA) linea('HMA 20', 'HMA', hma(V, 20), '#a3e635', 0, 2);
-  if (S.ind.DEMA) linea('DEMA 20', 'DEMA', dema(V, 20), '#fb7185');
-  if (S.ind.TEMA) linea('TEMA 20', 'TEMA', tema(V, 20), '#e879f9');
-
-  // ── VWAP + tachuelas (cruce de la línea morada) ──
-  if (S.ind.VWAP) {
-    const vw = vwap(V); linea('VWAP', 'VWAP', vw, '#c678dd', 0, 2);
-    const mv = mapa(vw);
-    for (let i = 1; i < V.length; i++) { const a = mv[V[i].time], pa = mv[V[i - 1].time]; if (a == null || pa == null) continue; const c = V[i].close, pc = V[i - 1].close; if (pc <= pa && c > a) short(V[i].time); else if (pc >= pa && c < a) long(V[i].time); }
-  }
-  // ── Bollinger: señal filtrada por tendencia (alcista→long, bajista→short) ──
-  if (S.ind.BOLL) {
-    const b = bollinger(V, 20, 2); linea('Bollinger', 'BOLL', b.middle, 'rgba(150,160,175,.6)'); linea(null, null, b.upper, 'rgba(120,180,255,.65)'); linea(null, null, b.lower, 'rgba(120,180,255,.65)');
-    const mm = mapa(b.middle), mu = mapa(b.upper), ml = mapa(b.lower);
-    for (let i = 1; i < V.length; i++) {
-      const mid = mm[V[i].time], pmid = mm[V[i - 1].time]; if (mid == null || pmid == null) continue;
-      const alza = mid > pmid, c = V[i].close, pc = V[i - 1].close, lo = ml[V[i].time], pl = ml[V[i - 1].time], u = mu[V[i].time], pu = mu[V[i - 1].time];
-      if (alza && lo != null && pl != null && pc >= pl && c < lo) long(V[i].time);
-      else if (!alza && u != null && pu != null && pc <= pu && c > u) short(V[i].time);
+  // Los indicadores van en try/catch: si uno fallara, las velas SIEMPRE se dibujan.
+  try {
+    // ── Medias móviles ──
+    if (S.ind.EMA9) linea('EMA 9', 'EMA9', ema(V, 9), '#f0b90b');
+    if (S.ind.EMA20) linea('EMA 20', 'EMA20', ema(V, 20), '#4aa3ff');
+    if (S.ind.EMA50) linea('EMA 50', 'EMA50', ema(V, 50), '#E8B84B');
+    if (S.ind.EMA100) linea('EMA 100', 'EMA100', ema(V, 100), '#c678dd');
+    if (S.ind.EMA200) linea('EMA 200', 'EMA200', ema(V, 200), '#ff5b6e', 0, 2);
+    if (S.ind.SMA) linea('SMA 20', 'SMA', sma(V, 20), '#9fb0c2');
+    if (S.ind.WMA) linea('WMA 20', 'WMA', wma(V, 20), '#38bdf8');
+    if (S.ind.HMA) linea('HMA 20', 'HMA', hma(V, 20), '#a3e635', 0, 2);
+    if (S.ind.DEMA) linea('DEMA 20', 'DEMA', dema(V, 20), '#fb7185');
+    if (S.ind.TEMA) linea('TEMA 20', 'TEMA', tema(V, 20), '#e879f9');
+    // ── Overlays con bandas / tendencia (coloreados; sin marcas L/S) ──
+    if (S.ind.VWAP) linea('VWAP', 'VWAP', vwap(V), '#c678dd', 0, 2);
+    if (S.ind.BOLL) { const b = bollinger(V, 20, 2); linea('Bollinger', 'BOLL', b.middle, 'rgba(150,160,175,.6)'); linea(null, null, b.upper, 'rgba(120,180,255,.65)'); linea(null, null, b.lower, 'rgba(120,180,255,.65)'); }
+    if (S.ind.DONCH) { const d = donchian(V, 20); linea('Donchian', 'DONCH', d.upper, 'rgba(232,184,75,.6)'); linea(null, null, d.lower, 'rgba(232,184,75,.6)'); }
+    if (S.ind.KELT) { const k = keltner(V, 20, 2); linea('Keltner', 'KELT', k.upper, 'rgba(198,120,221,.6)'); linea(null, null, k.middle, 'rgba(198,120,221,.3)'); linea(null, null, k.lower, 'rgba(198,120,221,.6)'); }
+    // Parabolic SAR: puntos verdes (alcista) / rojos (bajista)
+    if (S.ind.PSAR) {
+      const ps = psar(V);
+      linea('Parabolic SAR', 'PSAR', ps.map((p) => ({ time: p.time, value: p.dir === 1 ? p.value : null })), '#2ee86a', 0, 1, { pointMarkersVisible: true, lineVisible: false, pointMarkersRadius: 1.8 });
+      linea(null, null, ps.map((p) => ({ time: p.time, value: p.dir === -1 ? p.value : null })), '#ff5b6e', 0, 1, { pointMarkersVisible: true, lineVisible: false, pointMarkersRadius: 1.8 });
     }
-  }
-  if (S.ind.DONCH) { const d = donchian(V, 20); linea('Donchian', 'DONCH', d.upper, 'rgba(232,184,75,.6)'); linea(null, null, d.lower, 'rgba(232,184,75,.6)'); }
-  // ── Keltner: long al perforar la banda inferior, short al perforar la superior ──
-  if (S.ind.KELT) {
-    const k = keltner(V, 20, 2); linea('Keltner', 'KELT', k.upper, 'rgba(198,120,221,.6)'); linea(null, null, k.middle, 'rgba(198,120,221,.3)'); linea(null, null, k.lower, 'rgba(198,120,221,.6)');
-    const mu = mapa(k.upper), ml = mapa(k.lower);
-    for (let i = 1; i < V.length; i++) { const u = mu[V[i].time], lo = ml[V[i].time], pu = mu[V[i - 1].time], pl = ml[V[i - 1].time], c = V[i].close, pc = V[i - 1].close; if (lo != null && pl != null && pc >= pl && c < lo) long(V[i].time); if (u != null && pu != null && pc <= pu && c > u) short(V[i].time); }
-  }
-  // ── Parabolic SAR: puntos verdes (alcista) / rojos (bajista) + giro ──
-  if (S.ind.PSAR) {
-    const ps = psar(V);
-    linea('Parabolic SAR', 'PSAR', ps.map((p) => ({ time: p.time, value: p.dir === 1 ? p.value : null })), '#2ee86a', 0, 1, { pointMarkersVisible: true, lineVisible: false, pointMarkersRadius: 1.6 });
-    linea(null, null, ps.map((p) => ({ time: p.time, value: p.dir === -1 ? p.value : null })), '#ff5b6e', 0, 1, { pointMarkersVisible: true, lineVisible: false, pointMarkersRadius: 1.6 });
-    for (let i = 1; i < ps.length; i++) { if (ps[i].dir === 1 && ps[i - 1].dir === -1) long(ps[i].time); if (ps[i].dir === -1 && ps[i - 1].dir === 1) short(ps[i].time); }
-  }
-  // ── Supertrend: tramo verde (long) / rojo (short) + alerta en cada giro ──
-  if (S.ind.ST) {
-    const st = supertrend(V, 10, 3);
-    const sUp = linea('Supertrend', 'ST', st.map((p) => ({ time: p.time, value: p.dir === 1 ? p.value : null })), '#2ee86a', 0, 2);
-    linea(null, null, st.map((p) => ({ time: p.time, value: p.dir === -1 ? p.value : null })), '#ff5b6e', 0, 2);
-    for (let i = 1; i < st.length; i++) { if (st[i].dir === 1 && st[i - 1].dir === -1) long(st[i].time); if (st[i].dir === -1 && st[i - 1].dir === 1) short(st[i].time); }
-  }
-
-  // ── Osciladores en panel propio ──
-  let pane = 1; const abrir = () => { const p = pane; pane++; try { const ps = chart.panes(); if (ps[p]) ps[p].setHeight(76); } catch (_) {} return p; };
-  if (S.ind.RSI) linea('RSI 14', 'RSI', rsi(V, 14), '#E8B84B', abrir());
-  if (S.ind.MACD) { const p = abrir(); const m = macd(V); chart.addSeries(LC.HistogramSeries, {}, p).setData(m.histogram.map((x) => ({ time: x.time, value: x.value, color: x.value >= 0 ? 'rgba(46,232,106,.5)' : 'rgba(255,91,110,.5)' }))); linea('MACD', 'MACD', m.macd, '#E8B84B', p); linea(null, null, m.signal, '#ffffff', p); }
-  if (S.ind.STOCH) { const p = abrir(); const st = stochastic(V); linea('Stoch %K', 'STOCH', st.k, '#E8B84B', p); linea(null, null, st.d, '#4aa3ff', p); }
-  if (S.ind.ATR) linea('ATR 14', 'ATR', atr(V, 14), '#c678dd', abrir());
-  if (S.ind.CCI) linea('CCI 20', 'CCI', cci(V, 20), '#4aa3ff', abrir());
-  if (S.ind.WILL) linea('Williams %R', 'WILL', williams(V, 14), '#E8B84B', abrir());
-  if (S.ind.OBV) linea('OBV', 'OBV', obv(V), '#2ee86a', abrir());
-  if (S.ind.ROC) linea('ROC 12', 'ROC', roc(V, 12), '#ff9f43', abrir());
-  if (S.ind.ADX) { const p = abrir(); const a = adx(V, 14); linea('ADX 14', 'ADX', a.adx, '#E8B84B', p, 2); linea(null, null, a.plus, '#2ee86a', p); linea(null, null, a.minus, '#ff5b6e', p); }
-  if (S.ind.MFI) linea('MFI 14', 'MFI', mfi(V, 14), '#38bdf8', abrir());
-  if (S.ind.AO) { const p = abrir(); const ao = awesome(V); chart.addSeries(LC.HistogramSeries, {}, p).setData(ao.map((x, i) => ({ time: x.time, value: x.value, color: (i && ao[i - 1] && x.value >= ao[i - 1].value) ? 'rgba(46,232,106,.6)' : 'rgba(255,91,110,.6)' }))); refs.push({ nm: 'Awesome Osc.', k: 'AO', serie: null, color: '#9fb0c2' }); }
-  if (S.ind.MOM) linea('Momentum', 'MOM', momentum(V, 10), '#a3e635', abrir());
-  if (S.ind.STDDEV) linea('Std Deviation', 'STDDEV', stddev(V, 20), '#c678dd', abrir());
-  if (S.ind.UO) linea('Ultimate Osc.', 'UO', ultimate(V), '#E8B84B', abrir());
-  if (S.ind.CMF) linea('Chaikin MF', 'CMF', cmf(V, 20), '#38bdf8', abrir());
-
-  // marcas long/short (una sola colección, ordenada por tiempo)
-  if (S.marks.length) { S.marks.sort((a, b) => a.time - b.time); try { S.marksApi = LC.createSeriesMarkers ? LC.createSeriesMarkers(vela, S.marks) : (vela.setMarkers && vela.setMarkers(S.marks)); } catch (_) {} }
+    // Supertrend: tramo verde (alcista) / rojo (bajista)
+    if (S.ind.ST) {
+      const st = supertrend(V, 10, 3);
+      linea('Supertrend', 'ST', st.map((p) => ({ time: p.time, value: p.dir === 1 ? p.value : null })), '#2ee86a', 0, 2);
+      linea(null, null, st.map((p) => ({ time: p.time, value: p.dir === -1 ? p.value : null })), '#ff5b6e', 0, 2);
+    }
+    // ── Osciladores en panel propio ──
+    let pane = 1; const abrir = () => { const p = pane; pane++; try { const ps = chart.panes(); if (ps[p]) ps[p].setHeight(72); } catch (_) {} return p; };
+    if (S.ind.RSI) linea('RSI 14', 'RSI', rsi(V, 14), '#E8B84B', abrir());
+    if (S.ind.MACD) { const p = abrir(); const m = macd(V); chart.addSeries(LC.HistogramSeries, {}, p).setData(m.histogram.map((x) => ({ time: x.time, value: x.value, color: x.value >= 0 ? 'rgba(46,232,106,.5)' : 'rgba(255,91,110,.5)' }))); linea('MACD', 'MACD', m.macd, '#E8B84B', p); linea(null, null, m.signal, '#ffffff', p); }
+    if (S.ind.STOCH) { const p = abrir(); const st = stochastic(V); linea('Stoch %K', 'STOCH', st.k, '#E8B84B', p); linea(null, null, st.d, '#4aa3ff', p); }
+    if (S.ind.ATR) linea('ATR 14', 'ATR', atr(V, 14), '#c678dd', abrir());
+    if (S.ind.CCI) linea('CCI 20', 'CCI', cci(V, 20), '#4aa3ff', abrir());
+    if (S.ind.WILL) linea('Williams %R', 'WILL', williams(V, 14), '#E8B84B', abrir());
+    if (S.ind.OBV) linea('OBV', 'OBV', obv(V), '#2ee86a', abrir());
+    if (S.ind.ROC) linea('ROC 12', 'ROC', roc(V, 12), '#ff9f43', abrir());
+    if (S.ind.ADX) { const p = abrir(); const a = adx(V, 14); linea('ADX 14', 'ADX', a.adx, '#E8B84B', p, 2); linea(null, null, a.plus, '#2ee86a', p); linea(null, null, a.minus, '#ff5b6e', p); }
+    if (S.ind.MFI) linea('MFI 14', 'MFI', mfi(V, 14), '#38bdf8', abrir());
+    if (S.ind.AO) { const p = abrir(); const ao = awesome(V); chart.addSeries(LC.HistogramSeries, {}, p).setData(ao.map((x, i) => ({ time: x.time, value: x.value, color: (i && ao[i - 1] && x.value >= ao[i - 1].value) ? 'rgba(46,232,106,.6)' : 'rgba(255,91,110,.6)' }))); refs.push({ nm: 'Awesome Osc.', k: 'AO', serie: null, color: '#9fb0c2' }); }
+    if (S.ind.MOM) linea('Momentum', 'MOM', momentum(V, 10), '#a3e635', abrir());
+    if (S.ind.STDDEV) linea('Std Deviation', 'STDDEV', stddev(V, 20), '#c678dd', abrir());
+    if (S.ind.UO) linea('Ultimate Osc.', 'UO', ultimate(V), '#E8B84B', abrir());
+    if (S.ind.CMF) linea('Chaikin MF', 'CMF', cmf(V, 20), '#38bdf8', abrir());
+  } catch (_) {}
 
   S.legendRefs = refs;
-  // Vista por defecto LEGIBLE: ~140 velas recientes grandes, con historial a la izquierda.
+  // Vista por defecto LEGIBLE: ~120 velas recientes grandes, con historial a la izquierda.
   try {
     const ts = chart.timeScale();
-    const vis = Math.min(V.length, 140);
-    ts.setVisibleLogicalRange({ from: V.length - vis, to: V.length + 4 });
+    const vis = Math.min(V.length, 120);
+    ts.setVisibleLogicalRange({ from: V.length - vis, to: V.length + 3 });
     ts.subscribeVisibleLogicalRangeChange(() => sincronizarDib());
   } catch (_) {}
-  chart.subscribeCrosshairMove((param) => { const vd = (param && param.seriesData) ? param.seriesData.get(S.serieVela) : null; pintarLegend(vd || V[V.length - 1], param); });
-  pintarLegend(V[V.length - 1]);
+  pintarIndLegend();     // leyenda ESTÁTICA (solo indicadores activos, con ✕). Sin OHLC que salte con el cursor.
   sincronizarDib();
+  calcularSenales();     // panel SIGNALS (rating técnico)
 }
 
 /* ── Puente con la barra de dibujo (misma de Smart/Heat/Liquidity Pools) ──
@@ -536,19 +511,14 @@ async function montarDibujo() {
   } catch (_) { S.barra = null; }
 }
 
-function pintarLegend(ohlc, param) {
-  const el = document.getElementById('it-legend'); if (!el || !ohlc) return;
-  const o = ohlc.open, h = ohlc.high, l = ohlc.low, c = ohlc.close;
-  const col = c >= o ? '#2ee86a' : '#ff5b6e';
-  const tf = (D.TFS.find((t) => t.id === S.tf) || {}).n || S.tf;
-  let html = `<div class="nm">${esc(S.par.id)}USD <span style="color:var(--it-dim);font-weight:600">· ${esc(tf)}</span></div>`;
-  html += `<div><span class="o">O</span> ${fmtP(o)} <span class="o">H</span> ${fmtP(h)} <span class="o">L</span> ${fmtP(l)} <span class="o">C</span> <b style="color:${col}">${fmtP(c)}</b></div>`;
-  S.legendRefs.forEach((r) => {
-    let v = null; if (param && param.seriesData) { const d = param.seriesData.get(r.serie); if (d) v = d.value; }
-    html += `<div class="ind"><span style="color:${r.color}">●</span> ${esc(r.nm)}${v != null ? ' ' + fmtP(v) : ''}<button class="it-leg-x" data-k="${esc(r.k)}" title="Remove">✕</button></div>`;
-  });
-  el.innerHTML = html;
-  el.querySelectorAll('.it-leg-x').forEach((b) => b.onclick = (e) => { e.stopPropagation(); S.ind[b.dataset.k] = false; actualizarIndBtn(); pintarChart(); });
+/* Leyenda ESTÁTICA: solo la lista de indicadores activos, cada uno con su ✕.
+   No se reconstruye al mover el cursor (antes el OHLC cambiaba de ancho en cada
+   frame y la ✕ "bailaba", imposible de pulsar). */
+function pintarIndLegend() {
+  const el = document.getElementById('it-legend'); if (!el) return;
+  const refs = (S.legendRefs || []).filter((r) => r.nm && r.k);
+  el.innerHTML = refs.map((r) => `<div class="ind"><span class="dot" style="background:${r.color}"></span><span class="lbl">${esc(r.nm)}</span><button class="it-leg-x" data-k="${esc(r.k)}" title="Remove indicator" aria-label="Remove ${esc(r.nm)}">&times;</button></div>`).join('');
+  el.querySelectorAll('.it-leg-x').forEach((b) => b.onclick = (e) => { e.stopPropagation(); e.preventDefault(); S.ind[b.dataset.k] = false; actualizarIndBtn(); pintarChart(); });
 }
 
 function exportar() {
@@ -606,67 +576,161 @@ function treemap(items, W, H) {
   if (row.length) layout();
   return nodes;
 }
+/* Treemap con ACTUALIZACIÓN POR CLAVE: los tiles no se recrean en cada refresco,
+   se reposicionan/redimensionan con transición CSS (animación de crecer/encoger).
+   El texto se ESCALA al tamaño del tile (se reduce, no se elimina). */
 function pintarHeat() {
   const body = document.getElementById('it-p-board-body'); if (!body || !S.board.length) return;
   const W = body.clientWidth, H = body.clientHeight; if (W < 10 || H < 10) return;
-  const items = S.board.map((c) => ({ ...c, v: Math.abs(c.chg24 || 0) + 0.25 }));
+  const items = S.board.map((c) => ({ ...c, v: Math.abs(c.chg24 || 0) + 0.3 }));
   const laid = treemap(items, W, H);
-  const tinte = (ch) => { const x = Math.max(-10, Math.min(10, ch || 0)) / 10; return x >= 0 ? `rgba(46,232,106,${0.14 + x * 0.55})` : `rgba(255,91,110,${0.14 + (-x) * 0.55})`; };
-  body.innerHTML = laid.map((c) => {
+  const tinte = (ch) => { const x = Math.max(-10, Math.min(10, ch || 0)) / 10; return x >= 0 ? `rgba(46,232,106,${(0.14 + x * 0.6).toFixed(3)})` : `rgba(255,91,110,${(0.14 + (-x) * 0.6).toFixed(3)})`; };
+  S.tileEls = S.tileEls || {};
+  const vivos = {};
+  laid.forEach((c) => {
     const w = Math.max(0, c.w - 3), h = Math.max(0, c.h - 3);
-    const sym = String(c.simbolo || '');
-    // la tipografía se ESCALA con el tile: nunca desborda ni se desfasa en los pequeños
-    const base = Math.min(w, h);
-    let fSym = Math.min(base * 0.30, (w - 8) / Math.max(1, sym.length * 0.60), 22);
-    fSym = Math.max(0, fSym);
-    const muestraTexto = fSym >= 7 && w > 24 && h > 18;
-    const fPct = Math.max(7, fSym * 0.72), fPr = Math.max(7, fSym * 0.58);
-    const verPct = muestraTexto && h > 34 && w > 38;
-    const verPr = muestraTexto && h > 66 && w > 66;
-    const pad = base < 40 ? 3 : 6;
-    let inner = '';
-    if (muestraTexto) {
-      inner = `<b style="font-size:${fSym.toFixed(1)}px">${esc(sym)}</b>`
-        + (verPr ? `<div class="pr" style="font-size:${fPr.toFixed(1)}px">${fmtP(c.price)}</div>` : '')
-        + (verPct ? `<em style="font-size:${fPct.toFixed(1)}px;color:${(c.chg24 || 0) >= 0 ? '#d6ffe6' : '#ffd7dc'}">${fmtPct(c.chg24)}</em>` : '');
+    const sym = String(c.simbolo || ''); vivos[sym] = 1;
+    let el = S.tileEls[sym]; if (el && !el.isConnected) el = null;
+    const nuevo = !el;
+    if (nuevo) {
+      el = document.createElement('div'); el.className = 'it-tile it-tile-in'; el.dataset.sym = sym;
+      el.onclick = () => { const p = D.PARES.find((x) => x.cg && x.cg === el.dataset.cg) || D.PARES.find((x) => x.id === el.dataset.sym); if (p) setSimbolo(p); };
+      body.appendChild(el); S.tileEls[sym] = el;
     }
-    return `<div class="it-tile" data-cg="${esc(c.id)}" data-sym="${esc(sym)}" title="${esc(sym)} ${fmtPct(c.chg24)}" style="left:${c.x}px;top:${c.y}px;width:${w}px;height:${h}px;padding:${pad}px;background:${tinte(c.chg24)}">${inner}</div>`;
-  }).join('') + `<div class="it-hm-wm"><img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'"></div>`;
-  body.querySelectorAll('.it-tile').forEach((t) => t.onclick = () => { const p = D.PARES.find((x) => x.cg && x.cg === t.dataset.cg) || D.PARES.find((x) => x.id === t.dataset.sym); if (p) setSimbolo(p); });
+    el.dataset.cg = c.id;
+    el.style.left = c.x + 'px'; el.style.top = c.y + 'px'; el.style.width = w + 'px'; el.style.height = h + 'px';
+    el.style.background = tinte(c.chg24);
+    el.style.padding = (Math.min(w, h) < 34 ? 2 : 6) + 'px';
+    el.title = sym + '  ' + fmtPct(c.chg24);
+    el.classList.toggle('on', c.id === S.par.cg || sym === S.par.id);
+    // texto a escala
+    const base = Math.min(w, h);
+    let fSym = Math.min(base * 0.34, (w - 6) / Math.max(1, sym.length * 0.58), 26);
+    const verText = w > 14 && h > 12;
+    const verPct = verText && h > 28 && w > 30;
+    const verPr = verText && h > 62 && w > 60;
+    let inner = '';
+    if (verText) {
+      fSym = Math.max(5.5, fSym);
+      inner = `<b style="font-size:${fSym.toFixed(1)}px">${esc(sym)}</b>`;
+      if (verPr) inner += `<div class="pr" style="font-size:${Math.max(6, fSym * 0.5).toFixed(1)}px">${fmtP(c.price)}</div>`;
+      if (verPct) inner += `<em style="font-size:${Math.max(6, fSym * 0.64).toFixed(1)}px;color:${(c.chg24 || 0) >= 0 ? '#d6ffe6' : '#ffd7dc'}">${fmtPct(c.chg24)}</em>`;
+    }
+    el.innerHTML = inner;
+    if (nuevo) requestAnimationFrame(() => el.classList.remove('it-tile-in'));
+  });
+  Object.keys(S.tileEls).forEach((sym) => { if (!vivos[sym]) { try { S.tileEls[sym].remove(); } catch (_) {} delete S.tileEls[sym]; } });
+  if (!body.querySelector('.it-hm-wm')) { const wm = document.createElement('div'); wm.className = 'it-hm-wm'; wm.innerHTML = `<img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'">`; body.appendChild(wm); }
 }
 async function cargarBoard() {
   const body = document.getElementById('it-p-board-body'); if (!body) return;
-  let b; try { b = await D.board(); } catch (_) { if (body.querySelector('.it-spin')) body.innerHTML = vacio('Market board unavailable.'); return; }
-  if (!b || !b.length) { body.innerHTML = vacio('No market data.'); return; }
+  let b; try { b = await D.board(); } catch (_) { if (!Object.keys(S.tileEls || {}).length && body.querySelector('.it-spin')) body.innerHTML = vacio('Market board unavailable.'); return; }
+  if (!b || !b.length) { if (!Object.keys(S.tileEls || {}).length) body.innerHTML = vacio('No market data.'); return; }
   S.board = b;
-  if (body.classList.contains('it-pb')) body.style.overflow = 'hidden';
+  body.style.overflow = 'hidden';
+  if (body.querySelector('.it-empty')) { body.innerHTML = ''; S.tileEls = {}; }   // quita el spinner inicial antes del 1.er render
   pintarHeat();
   if (!S.boardObs && window.ResizeObserver) { S.boardObs = new ResizeObserver(() => pintarHeat()); S.boardObs.observe(body); }
 }
 
 /* ── MACRO ── */
+/* ══ SIGNALS — Rating técnico (lo "premium": resumen accionable multi-TF) ══
+   Agrega osciladores y medias en un veredicto Strong Buy … Strong Sell, igual
+   que el panel de Análisis Técnico de los terminales profesionales, y lo cruza
+   en 1h/4h/1d (confluencia). Todo del lado del cliente, sobre las mismas velas. */
+const SIG_TFS = ['1h', '4h', '1d'];
+function ratingDe(V) {
+  if (!V || V.length < 60) return null;
+  const last = V[V.length - 1].close;
+  const ult = (arr) => (arr && arr.length) ? arr[arr.length - 1].value : null;
+  let osB = 0, osS = 0, osN = 0, maB = 0, maS = 0, maN = 0;
+  const osc = (v, buy, sell) => { if (v == null) { osN++; return; } if (buy(v)) osB++; else if (sell(v)) osS++; else osN++; };
+  try {
+    osc(ult(rsi(V, 14)), (v) => v < 30, (v) => v > 70);
+    osc(ult(stochastic(V).k), (v) => v < 20, (v) => v > 80);
+    osc(ult(cci(V, 20)), (v) => v < -100, (v) => v > 100);
+    osc(ult(williams(V, 14)), (v) => v < -80, (v) => v > -20);
+    const mc = macd(V); const md = ult(mc.macd), sg = ult(mc.signal); osc(md != null && sg != null ? md - sg : null, (v) => v > 0, (v) => v < 0);
+    osc(ult(momentum(V, 10)), (v) => v > 0, (v) => v < 0);
+    osc(ult(ultimate(V)), (v) => v < 30, (v) => v > 70);
+    osc(ult(awesome(V)), (v) => v > 0, (v) => v < 0);
+    [[9, ema], [20, ema], [50, ema], [100, ema], [200, ema], [20, sma], [50, sma]].forEach(([p, fn]) => { const m = ult(fn(V, p)); if (m == null) { maN++; return; } if (last > m) maB++; else if (last < m) maS++; else maN++; });
+  } catch (_) {}
+  const total = osB + osS + osN + maB + maS + maN || 1;
+  const norm = (osB + maB - osS - maS) / total;
+  let rating, nivel;
+  if (norm >= 0.4) { rating = 'STRONG BUY'; nivel = 2; } else if (norm >= 0.12) { rating = 'BUY'; nivel = 1; }
+  else if (norm > -0.12) { rating = 'NEUTRAL'; nivel = 0; } else if (norm > -0.4) { rating = 'SELL'; nivel = -1; } else { rating = 'STRONG SELL'; nivel = -2; }
+  return { rating, nivel, norm, osB, osS, osN, maB, maS, maN };
+}
+const SIG_COL = (n) => n > 0 ? '#2ee86a' : n < 0 ? '#ff5b6e' : '#E8B84B';
+function calcularSenales() {
+  const r = ratingDe(S.velas);
+  S.senal = r;
+  if (S.senalPar !== S.par.id) {    // confluencia 1h/4h/1d: se recalcula al cambiar de moneda
+    S.senalPar = S.par.id; S.senalTF = {};
+    SIG_TFS.forEach((tf) => {
+      D.velas(S.par.s, tf, 300).then((v) => { S.senalTF[tf] = ratingDe(v); pintarSignals(); }).catch(() => {});
+    });
+  }
+  pintarSignals();
+}
+function asegurarMacro() {
+  const body = document.getElementById('it-p-macro-body'); if (!body) return null;
+  if (!document.getElementById('it-sig')) body.innerHTML = '<div id="it-sig"></div><div id="it-macro-data"></div>';
+  return body;
+}
+function pintarSignals() {
+  if (!asegurarMacro()) return;
+  const el = document.getElementById('it-sig'); if (!el) return;
+  const r = S.senal;
+  if (!r) { el.innerHTML = '<div class="it-sig-wrap"><div class="it-sig-lead">SIGNALS</div><div class="dim" style="font-family:var(--it-mono);font-size:11px;padding:4px 0">Not enough data.</div></div>'; return; }
+  const col = SIG_COL(r.nivel);
+  const segs = ['STRONG SELL', 'SELL', 'NEUTRAL', 'BUY', 'STRONG BUY'];
+  const activeIdx = r.nivel + 2;
+  const barra = segs.map((s, i) => `<span class="it-sig-seg ${i === activeIdx ? 'on' : ''}" style="--c:${SIG_COL(i - 2)}"></span>`).join('');
+  const conf = SIG_TFS.map((tf) => {
+    const rr = (S.senalTF || {})[tf];
+    const c = rr ? SIG_COL(rr.nivel) : '#4a525c';
+    const lbl = rr ? rr.rating.replace('STRONG ', 'S.') : '…';
+    return `<div class="it-sig-tf"><b>${esc(tf.toUpperCase())}</b><span style="color:${c}">${esc(lbl)}</span></div>`;
+  }).join('');
+  const cuenta = (b, n, s) => `<div class="it-sig-cnt"><span class="up">${b}</span><span class="dim">${n}</span><span class="down">${s}</span></div>`;
+  el.innerHTML = `<div class="it-sig-wrap">
+    <div class="it-sig-top"><span class="it-sig-lead">TECHNICAL RATING</span><span class="it-sig-tfnow">${esc(((D.TFS.find((t) => t.id === S.tf) || {}).n || S.tf))}</span></div>
+    <div class="it-sig-verdict" style="color:${col};text-shadow:0 0 18px ${col}66">${esc(r.rating)}</div>
+    <div class="it-sig-bar">${barra}</div>
+    <div class="it-sig-grid">
+      <div class="it-sig-box"><span class="t">Oscillators</span>${cuenta(r.osB, r.osN, r.osS)}</div>
+      <div class="it-sig-box"><span class="t">Moving avg.</span>${cuenta(r.maB, r.maN, r.maS)}</div>
+    </div>
+    <div class="it-sig-conf-tit">Multi-timeframe confluence</div>
+    <div class="it-sig-conf">${conf}</div>
+  </div>`;
+}
+
 async function cargarMacro() {
-  const body = document.getElementById('it-p-macro-body'); if (!body) return;
+  if (!asegurarMacro()) return;
+  const body = document.getElementById('it-macro-data'); if (!body) return;
   let g = null, fg = null; try { g = await D.global(); } catch (_) {} try { fg = await D.fearGreed(); } catch (_) {}
-  if (!g && !fg) { if (body.querySelector('.it-spin')) body.innerHTML = vacio('Macro feed unavailable.'); return; }
+  if (!g && !fg) { if (!body.innerHTML) body.innerHTML = ''; return; }
   const row = (k, v, c) => `<div class="it-macro-row"><span class="k">${k}</span><span class="v ${c || ''}">${v}</span></div>`;
-  let html = '';
+  let html = '<div class="it-macro-tit">Market &amp; sentiment</div>';
+  if (fg) html += `<div class="it-macro-row" style="flex-direction:column;align-items:stretch;gap:5px"><div style="display:flex;justify-content:space-between"><span class="k">Fear &amp; Greed</span><span class="v ${fg.valor >= 50 ? 'up' : 'down'}">${fg.valor} · ${esc(fg.etiqueta)}</span></div><div class="it-gauge"><div class="pin" style="left:${Math.max(0, Math.min(100, fg.valor))}%"></div></div></div>`;
   if (g) {
-    html += row('Total market cap', fmtBig(g.totalMcap), g.mcapChg >= 0 ? 'up' : 'down');
     html += row('24h cap change', fmtPct(g.mcapChg), cls(g.mcapChg));
     html += row('BTC dominance', g.btcDom != null ? g.btcDom.toFixed(1) + '%' : '—', 'gold');
-    html += row('ETH dominance', g.ethDom != null ? g.ethDom.toFixed(1) + '%' : '—');
-    html += row('24h volume', fmtBig(g.totalVol));
+    html += row('Total market cap', fmtBig(g.totalMcap), g.mcapChg >= 0 ? 'up' : 'down');
   }
-  if (fg) html += `<div class="it-macro-row" style="flex-direction:column;align-items:stretch;gap:5px"><div style="display:flex;justify-content:space-between"><span class="k">Fear &amp; Greed</span><span class="v ${fg.valor >= 50 ? 'up' : 'down'}">${fg.valor} · ${esc(fg.etiqueta)}</span></div><div class="it-gauge"><div class="pin" style="left:${Math.max(0, Math.min(100, fg.valor))}%"></div></div></div>`;
   body.innerHTML = `<div class="it-macro">${html}</div>`;
 }
 
 /* ── VENTANAS: z-index propio, traer-al-frente, maximizar, cerrar, redimensionar ── */
+// La GRÁFICA domina (70% × 70%): mucho más espacio para análisis/backtesting.
 const DEF_LAYOUT = {
-  'it-p-chart': [0.006, 0.01, 0.60, 0.605], 'it-p-quote': [0.614, 0.01, 0.38, 0.33],
-  'it-p-watch': [0.614, 0.35, 0.38, 0.265], 'it-p-board': [0.006, 0.625, 0.60, 0.365],
-  'it-p-macro': [0.614, 0.625, 0.38, 0.365]
+  'it-p-chart': [0.006, 0.01, 0.70, 0.70], 'it-p-quote': [0.712, 0.01, 0.282, 0.30],
+  'it-p-watch': [0.712, 0.315, 0.282, 0.30], 'it-p-board': [0.006, 0.715, 0.70, 0.275],
+  'it-p-macro': [0.712, 0.62, 0.282, 0.37]
 };
 function cargarLayout() { try { const j = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); if (j && typeof j === 'object') S.layout = j; } catch (_) {} }
 function guardarLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(S.layout)); } catch (_) {} }
