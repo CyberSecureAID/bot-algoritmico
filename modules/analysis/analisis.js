@@ -41,7 +41,10 @@ const HERRAMIENTAS = [
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
   { id:'inst', abre:'inst', nombre:'Institutional Analysis', cat:'analysis', img:'modules/institutional/preview.svg', activos:['Crypto'], spot:false, listo:true,
     lema:'The whole market, one desk',
-    desc:'A professional analysis terminal: pro charting with fifteen indicators, live quotes and watchlist, a market-wide heatmap and macro sentiment — the systems an institutional desk watches, wired into one screen.' }
+    desc:'A professional analysis terminal: pro charting with fifteen indicators, live quotes and watchlist, a market-wide heatmap and macro sentiment — the systems an institutional desk watches, wired into one screen.' },
+  { id:'react', abre:'react', nombre:'Reaction Zones', cat:'analysis', img:'modules/reaction/preview.svg', activos:['Crypto'], spot:true, listo:true,
+    lema:'Where price is going to react',
+    desc:'A structural engine that maps the exact levels where price is likely to react, built from repeated pivots with a live break-pressure read. Red zones above the price mark short context, green below mark long, with auto-projected positions (Single / Double) and right-click orders.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis' };
 
@@ -141,7 +144,8 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=129')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=129')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=6', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=7', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=1', import.meta.url).href)).abrirReaction();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
@@ -167,7 +171,7 @@ async function abrirTool(abre, cardEl) {
    El hash refleja qué overlay de herramienta está presente. Un único observador
    lo sincroniza (lo pone al abrir, lo quita al cerrar), independiente de modales
    o del flujo de cada herramienta. Al cargar el selector con #<tool> se reabre. */
-const OVERLAY2TOOL = { 'lq-overlay': 'pools', 'mu-overlay': 'heat', 'nv-overlay': 'levels', 'it-overlay': 'inst' };
+const OVERLAY2TOOL = { 'lq-overlay': 'pools', 'mu-overlay': 'heat', 'nv-overlay': 'levels', 'it-overlay': 'inst', 'rz-overlay': 'react' };
 function sincronizarHashTool() {
   try {
     const id = Object.keys(OVERLAY2TOOL).find((x) => document.getElementById(x));
