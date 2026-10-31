@@ -144,7 +144,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=129')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=129')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=127')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=8', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=9', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=6', import.meta.url).href)).abrirReaction();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
@@ -185,13 +185,12 @@ function iniciarHashSync() {
 }
 function restaurarDesdeHash() {
   iniciarHashSync();
-  let t = ''; try { t = (location.hash || '').replace(/^#/, '').trim(); } catch (_) { return; }
-  if (!t) return;
-  // Si el disclaimer aún NO se aceptó, no abrir la herramienta directamente: se
-  // quedaría tapando el disclaimer y éste aparecería recién al pulsar Back.
-  try { if (!localStorage.getItem(DISC_KEY)) return; } catch (_) {}
-  const h = HERRAMIENTAS.find((s) => s.abre === t || s.id === t);
-  if (h && h.abre && !Object.keys(OVERLAY2TOOL).some((x) => document.getElementById(x))) setTimeout(() => abrirTool(h.abre, null), 60);
+  // Al RECARGAR se aterriza SIEMPRE en el selector de Analysis: ya NO se reabre
+  // directamente la sección en la que estabas (antes "entraba directo adentro"
+  // saltándose el selector, que es justo lo que molestaba). Solo se limpia el
+  // hash obsoleto para quedarse limpio en el selector. iniciarHashSync sigue
+  // reflejando la sección en la URL mientras navegas dentro de la sesión.
+  try { if (location.hash) history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
 }
 
 function toast(txt) {
