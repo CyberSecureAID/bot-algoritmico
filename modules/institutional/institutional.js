@@ -16,12 +16,12 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=12';
+import { estilos } from './estilos.js?v=13';
 import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=4';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=5';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -467,7 +467,7 @@ function revisarConfluenciaViva() {
     ensureRasgos();
     const ras = S.conf.ras, lastIdx = ras.n - 1;
     for (const a of S.conf.anchors) {
-      if (a.cap && rasgosActivos(ras, a.cap) >= 2 && coincideRasgos(ras, a.cap, lastIdx)) { pingConf(); break; }   // ¡confluencia disparada en vivo!
+      if (a.cap && rasgosActivos(ras, a.cap) >= 1 && coincideRasgos(ras, a.cap, lastIdx)) { pingConf(); break; }   // ¡confluencia disparada en vivo!
     }
   } catch (_) {}
 }
@@ -650,7 +650,7 @@ function confActivas() { return Object.keys(S.ind).filter((k) => S.ind[k] && con
 
 function toggleConfluencia() {
   if (!S.conf) S.conf = { on: false, anchors: [], ras: null, hash: '', cursor: null, raf: null, marks: [], matchKey: '', lang: 'en' };
-  if (!S.conf.on && confActivas().length < 2) { instruccionesConfluencia(confActivas().length); return; }   // solo bloquea ENCENDER
+  if (!S.conf.on && confActivas().length < 1) { instruccionesConfluencia(confActivas().length); return; }   // solo bloquea ENCENDER (basta 1 indicador)
   montarConfluencia();
   S.conf.on = !S.conf.on;                       // on = modo COLOCAR (clic + carriles). Las marcas/libreta NO dependen de esto.
   refrescarConfUI();
@@ -709,7 +709,7 @@ function renderLibreta() {
     : { head: 'CONFLUENCES', long: 'LONG', short: 'SHORT', del: 'Remove this point', empty: 'No rules', rule: 'rule', rules: 'rules', inact: 'inactive · needs indicators' };
   let validas = 0;
   const bloques = anchors.map((a, idx) => {
-    const cap = a.cap || [], nAct = rasgosActivos(ras, cap), valida = nAct >= 2;
+    const cap = a.cap || [], nAct = rasgosActivos(ras, cap), valida = nAct >= 1;
     if (valida) validas++;
     const filas = cap.map((c) => {
       const st = cumpleRasgo(ras, c, lastIdx);                       // true ✓ / false ○ / null ✕ (indicador quitado)
@@ -740,10 +740,11 @@ function montarConfluencia() {
     S.conf._wired = true;
     cv.addEventListener('mousemove', (e) => { const r = cv.getBoundingClientRect(); S.conf.cursor = { x: e.clientX - r.left, y: e.clientY - r.top }; });
     cv.addEventListener('mouseleave', () => { S.conf.cursor = null; });
+    cv.addEventListener('dblclick', () => colocarConfluencia());   // COLOCAR solo con DOBLE clic (el simple navega)
   }
   if (S.chart && S.conf._clickChart !== S.chart) {   // re-suscribir el clic al chart recién creado
     S.conf._clickChart = S.chart;
-    try { S.chart.subscribeClick((p) => onConfClick(p)); } catch (_) {}
+    try { S.chart.subscribeClick((p) => recordarClic(p)); } catch (_) {}
   }
   if (S.conf.on || S.conf.anchors.length) arrancarConfLoop();
 }
@@ -780,7 +781,7 @@ function recomputarMarks() {
   const ras = S.conf.ras, TOPE = 200;   // tope de marcas por ancla (nunca floodear)
   const marks = [];
   for (const a of S.conf.anchors) {
-    if (!a.cap || rasgosActivos(ras, a.cap) < 2) continue;   // <2 indicadores activos → confluencia inválida, SIN marcas
+    if (!a.cap || rasgosActivos(ras, a.cap) < 1) continue;   // sin indicadores activos → confluencia inválida, SIN marcas
     let times = escanearRasgos(ras, a.cap);
     if (times.length > TOPE) times = times.slice(times.length - TOPE);
     const ai = ras.timeIdx.get(a.time);
@@ -790,21 +791,32 @@ function recomputarMarks() {
   S.conf.marks = marks;
   renderLibreta();
 }
-function onConfClick(param) {
-  if (!S.conf || !S.conf.on || !param || param.time == null || !param.point || !S.serieVela) return;
-  const price = S.serieVela.coordinateToPrice(param.point.y);
+/* Un clic SIMPLE no coloca: solo recuerda la vela/punto donde caería. Así puedes
+   mirar, mover y hacer zoom sin ensuciar el gráfico. */
+function recordarClic(param) {
+  if (!S.conf || !param || param.time == null || !param.point) return;
+  S.conf._lastParam = { time: param.time, point: param.point, t: (window.performance && performance.now) ? performance.now() : Date.now() };
+}
+/* COLOCAR = DOBLE clic (evento nativo del navegador → respeta el doble-clic real).
+   Resuelve "cada vez que toco la gráfica se pone otra regla": ahora hace falta un
+   doble clic deliberado. */
+function colocarConfluencia() {
+  if (!S.conf || !S.conf.on || !S.serieVela) return;
+  const lp = S.conf._lastParam, tnow = (window.performance && performance.now) ? performance.now() : Date.now();
+  if (!lp || (tnow - lp.t) > 900 || lp.time == null || !lp.point) return;   // el doble clic debe caer sobre una vela recién señalada
+  const price = S.serieVela.coordinateToPrice(lp.point.y);
   ensureRasgos();
-  const vela = S.conf.velaMap ? S.conf.velaMap.get(param.time) : null;
-  const bi = S.conf.ras.timeIdx.get(param.time);
+  const vela = S.conf.velaMap ? S.conf.velaMap.get(lp.time) : null;
+  const bi = S.conf.ras.timeIdx.get(lp.time);
   if (price == null || !vela || bi == null) return;
-  // RASGOS del clic: la geometría exacta (distancias, cruces, niveles, pendientes)
-  // de cada indicador en esa vela. Sin ≥2 indicadores con dato aquí NO se coloca.
+  // RASGOS del punto: la geometría exacta (distancias, cruces, niveles, pendientes)
+  // de cada indicador en esa vela. Sin ningún indicador con dato aquí NO se coloca.
   const cap = capturarRasgos(S.conf.ras, bi);
-  if (rasgosActivos(S.conf.ras, cap) < 2) { instruccionesConfluencia(confActivas().length); return; }
+  if (rasgosActivos(S.conf.ras, cap) < 1) { instruccionesConfluencia(confActivas().length); return; }
   const side = price > vela.close ? 'short' : 'long';   // encima del precio → SHORT; debajo → LONG
-  S.conf.anchors.push({ time: param.time, side, cap });
+  S.conf.anchors.push({ time: lp.time, side, cap });
   if (S.conf.anchors.length > MAX_ANCLAS) S.conf.anchors.shift();   // robustez
-  S.conf.matchKey = '';
+  S.conf.matchKey = ''; S.conf._lastParam = null;
   refrescarConfUI(); renderLibreta(); arrancarConfLoop(); pingConf();
 }
 function pingConf() {
@@ -832,7 +844,7 @@ function dibujarLineasAncla(g, W, H, now) {
   const ts = S.chart.timeScale(), ras = S.conf.ras;
   g.save();
   S.conf.anchors.forEach((a) => {
-    if (!a.cap || rasgosActivos(ras, a.cap) < 2) return;             // solo anclas válidas
+    if (!a.cap || rasgosActivos(ras, a.cap) < 1) return;             // solo anclas válidas
     let x; try { x = ts.timeToCoordinate(a.time); } catch (_) { x = null; }
     if (x == null || x < -6 || x > W + 6) return;
     const col = a.side === 'short' ? '255,64,96' : '38,224,138', pulso = 0.5 + 0.5 * Math.sin(now / 520);
@@ -920,15 +932,15 @@ function instruccionesConfluencia(n) {
     <div class="it-disc-box">
       <div class="it-conf-ic">${IC_CONF}</div>
       <h3>Confluence</h3>
-      <p class="it-conf-warn">You have ${n === 0 ? 'no indicators' : 'only one indicator'} active right now. Confluence needs <b>two or more indicators</b> working together. Open the <b>Indicators</b> menu, add the ones you want, and this button turns on.</p>
+      <p class="it-conf-warn">You have no indicators active right now. Confluence needs <b>at least one indicator</b>. Open the <b>Indicators</b> menu, add one or more, and this button turns on.</p>
       <div class="it-conf-how">
         <div class="it-conf-how-t">What it does</div>
-        <p>Confluence finds the exact moments when several of your indicators agree at the same time. You show it one example and it finds every other time that same setup happens.</p>
+        <p>Confluence finds the exact moments when your indicators line up the same way they do at a spot you pick. You show it one example and it finds every other time that same setup happens, back through history and live.</p>
         <div class="it-conf-how-t">How to use it</div>
-        <p>Add two or more indicators. Turn on <b>Confluence</b> and click on the chart where you like. Click <b>below the price</b> to save a <span class="cf-l">LONG</span> idea, or <b>above the price</b> for a <span class="cf-s">SHORT</span> idea.</p>
-        <p>The moment you click, it reads what each indicator is doing right there. If two lines are crossing, it remembers the cross and its direction. If the lines are apart, it remembers the exact distance between them. It does the same for every active indicator.</p>
-        <p>From then on it marks every candle in the past, and every new candle, where that same picture repeats. Adding more indicators makes the setup stricter. You can place several points and keep both long and short ideas on screen at once.</p>
-        <p>Every point gets its own card on the right. A green check means that rule is met on the latest candle, a circle means it is still waiting, and a red cross means you removed its indicator. Delete any point from its card if you placed it by mistake.</p>
+        <p>Add one or more indicators. Turn on <b>Confluence</b> and <b>double click</b> on the chart at a spot you like. Double click <b>below the price</b> to save a <span class="cf-l">LONG</span> idea, or <b>above the price</b> for a <span class="cf-s">SHORT</span> idea. A single click does nothing, so you can move and zoom the chart freely without dropping points by accident.</p>
+        <p>The moment you place a point, it reads what each indicator is doing right there. If two lines are crossing, it remembers the cross and its direction. If the lines are apart, it remembers the exact distance between them. It does the same for every active indicator.</p>
+        <p>From then on it marks every candle where that same picture repeats. With one or two indicators the match is exact. When you add many, it asks for most of them to line up, so the setup stays strong without going silent.</p>
+        <p>Every point gets its own card on the right. A green check means that rule is met on the latest candle, a circle means it is still waiting, and a red cross means you removed its indicator. Delete any point from its card with its own red cross if you placed it by mistake. Turning Confluence off keeps everything on screen.</p>
       </div>
       <button class="it-pay" id="it-confhelp-ok">Got it</button>
     </div></div>`;

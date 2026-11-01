@@ -137,17 +137,28 @@ export function rasgosActivos(ras, cap) {
   const fid = {}; for (const f of ras.feats) fid[f.id] = 1; const act = new Set();
   for (const c of cap) if (fid[c.id]) c.keys.forEach((k) => act.add(k)); return act.size;
 }
-/* ¿La vela barIdx cumple TODOS los rasgos (de indicadores activos)? ≥2 indicadores. */
+/* ¿La vela barIdx cumple la confluencia? Los CRUCES son eventos exactos y siempre
+   obligatorios; de las reglas CONTINUAS (distancia/nivel/histograma) basta con que
+   coincida el _CONF_FRAC (75%). Así, al añadir muchos indicadores el sistema NO deja
+   de encontrar confluencias (antes, exigir todas a la vez las volvía imposibles: 6
+   indicadores → 1 marca). Con 1-3 reglas sigue siendo exacto. Mínimo 1 indicador. */
+const _CONF_FRAC = 0.75;
 export function coincideRasgos(ras, cap, barIdx) {
   const fById = {}; for (const f of ras.feats) fById[f.id] = f;
-  const act = new Set(); let usados = 0;
+  const act = new Set(); let cont = 0, contOk = 0;
   for (const c of cap) {
     const f = fById[c.id]; if (!f) continue;                          // indicador quitado → no cuenta
-    if (c.mode === 'cross') { if (f.cruces[barIdx] !== c.dir) return false; }
-    else { const v = f.vals[barIdx]; if (!isFinite(v)) return false; if (Math.abs(v - c.val) > c.tol) return false; if (c.mode === 'hist' && c.dir && _pend(f.vals, barIdx) !== c.dir) return false; }
-    usados++; c.keys.forEach((k) => act.add(k));
+    c.keys.forEach((k) => act.add(k));
+    if (c.mode === 'cross') { if (f.cruces[barIdx] !== c.dir) return false; continue; }   // cruce obligatorio
+    cont++;
+    const v = f.vals[barIdx];
+    let ok = isFinite(v) && Math.abs(v - c.val) <= c.tol;
+    if (ok && c.mode === 'hist' && c.dir && _pend(f.vals, barIdx) !== c.dir) ok = false;
+    if (ok) contOk++;
   }
-  return usados >= 1 && act.size >= 2;
+  if (act.size < 1) return false;
+  const need = cont === 0 ? 0 : Math.max(1, Math.ceil(cont * _CONF_FRAC));
+  return contOk >= need;
 }
 export function escanearRasgos(ras, cap, soloInicios = true) {
   const out = []; let prev = false;

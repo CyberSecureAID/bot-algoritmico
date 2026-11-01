@@ -360,23 +360,25 @@ const CSS = `
 .cf-s{color:#ff5b6e; font-weight:800}
 .cf-l{color:#00e676; font-weight:800}
 /* Libreta de reglas de confluencia (esquina sup. derecha, efecto 3D) */
-.it-libreta{position:absolute; top:8px; right:74px; z-index:8; width:214px; max-width:46%; max-height:74%; padding:9px 10px 10px; border-radius:12px; font-family:var(--it-mono); display:flex; flex-direction:column; overflow:hidden; background:linear-gradient(180deg,rgba(18,24,32,.96),rgba(10,14,19,.97)); border:1px solid rgba(232,184,75,.38); box-shadow:0 12px 28px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,.05) inset, 0 -10px 22px rgba(0,0,0,.4); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); pointer-events:auto; transform:perspective(680px) rotateX(1.6deg)}
-.it-lib-head{display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:9.5px; font-weight:800; letter-spacing:.12em; color:var(--it-gold); text-transform:uppercase; flex:0 0 auto}
-.it-lib-right{display:flex; align-items:center; gap:6px}
+.it-libreta{position:absolute; top:8px; right:74px; z-index:8; width:226px; max-width:46%; max-height:76%; box-sizing:border-box; padding:9px 10px 10px; border-radius:12px; font-family:var(--it-mono); display:flex; flex-direction:column; overflow:hidden; background:linear-gradient(180deg,rgba(18,24,32,.96),rgba(10,14,19,.97)); border:1px solid rgba(232,184,75,.38); box-shadow:0 12px 28px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,.05) inset, 0 -10px 22px rgba(0,0,0,.4); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); pointer-events:auto; transform:perspective(680px) rotateX(1.6deg)}
+.it-libreta *{box-sizing:border-box}
+/* Cabecera (título + nº de confluencias + idioma) con separador y aire hacia las tarjetas */
+.it-lib-head{display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:9.5px; font-weight:800; letter-spacing:.12em; color:var(--it-gold); text-transform:uppercase; flex:0 0 auto; margin-bottom:9px; padding-bottom:8px; border-bottom:1px solid rgba(232,184,75,.16)}
+.it-lib-head>span{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.it-lib-right{display:flex; align-items:center; gap:6px; flex:0 0 auto}
 .it-lib-n{font-size:12.5px; color:#fff; background:rgba(232,184,75,.18); border:1px solid rgba(232,184,75,.4); border-radius:6px; min-width:18px; text-align:center; padding:0 5px; line-height:17px}
-.it-lib-lang{font-family:var(--it-mono); font-size:9.5px; font-weight:800; color:var(--it-gold); background:rgba(232,184,75,.12); border:1px solid rgba(232,184,75,.42); border-radius:6px; width:26px; height:18px; cursor:pointer; letter-spacing:.06em; display:inline-flex; align-items:center; justify-content:center; padding:0}
+.it-lib-lang{font-family:var(--it-mono); font-size:9.5px; font-weight:800; color:var(--it-gold); background:rgba(232,184,75,.12); border:1px solid rgba(232,184,75,.42); border-radius:6px; width:26px; height:18px; cursor:pointer; letter-spacing:.06em; display:inline-flex; align-items:center; justify-content:center; padding:0; flex:0 0 auto}
 .it-lib-lang:hover{background:rgba(232,184,75,.26)}
-.it-lib-sub{font-size:9px; font-weight:800; letter-spacing:.1em; margin:3px 0 8px; opacity:.92; flex:0 0 auto}
 .it-lib-short{color:#ff6b7a} .it-lib-long{color:#38e08a}
-/* Tarjeta por punto de confluencia (LONG/SHORT), con su contador y su borrar */
-.it-lib-blk{border:1px solid rgba(232,184,75,.14); border-radius:9px; background:rgba(255,255,255,.015); padding:6px 7px 7px; display:flex; flex-direction:column; gap:5px}
+/* Tarjeta por punto de confluencia (LONG/SHORT): tag + nº a la izquierda, contador + borrar a la derecha, SIN desbordar */
+.it-lib-blk{width:100%; border:1px solid rgba(232,184,75,.14); border-radius:9px; background:rgba(255,255,255,.015); padding:6px 7px 7px; display:flex; flex-direction:column; gap:5px}
 .it-lib-blk.inact{opacity:.58}
-.it-lib-bhd{display:flex; align-items:center; gap:5px; font-size:10px; font-weight:800; letter-spacing:.06em; margin:1px 0}
-.it-lib-tag{padding:1px 6px; border-radius:5px; color:#05070a; font-weight:900; font-size:9.5px; letter-spacing:.04em}
+.it-lib-bhd{display:flex; align-items:center; gap:5px; min-width:0; font-size:10px; font-weight:800; letter-spacing:.06em; margin:1px 0}
+.it-lib-tag{flex:0 0 auto; padding:1px 6px; border-radius:5px; color:#05070a; font-weight:900; font-size:9.5px; letter-spacing:.04em}
 .it-lib-bhd.it-lib-long .it-lib-tag{background:#38e08a} .it-lib-bhd.it-lib-short .it-lib-tag{background:#ff5b6e; color:#ffe8ea}
-.it-lib-nn{color:#7d8794; font-weight:800}
-.it-lib-cnt{margin-left:auto; color:#8b96a3; font-weight:600; font-size:8.5px; letter-spacing:.02em; text-transform:none; white-space:nowrap}
-.it-lib-del{flex:0 0 auto; width:17px; height:17px; border-radius:5px; border:1px solid rgba(255,91,110,.4); background:rgba(255,91,110,.1); color:#ff8a98; font-size:10px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; margin-left:5px}
+.it-lib-nn{flex:0 0 auto; color:#7d8794; font-weight:800}
+.it-lib-cnt{flex:1 1 auto; min-width:0; margin-left:auto; text-align:right; color:#8b96a3; font-weight:600; font-size:8.5px; letter-spacing:.02em; text-transform:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.it-lib-del{flex:0 0 auto; width:17px; height:17px; border-radius:5px; border:1px solid rgba(255,91,110,.4); background:rgba(255,91,110,.1); color:#ff8a98; font-size:10px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; margin-left:4px}
 .it-lib-del:hover{background:rgba(255,91,110,.32); color:#fff}
 .it-lib-rules{display:flex; flex-direction:column; gap:4px}
 .it-lib-list{display:flex; flex-direction:column; gap:8px; overflow-y:auto; overflow-x:hidden; min-height:0; margin-right:-4px; padding-right:4px; scrollbar-width:thin; scrollbar-color:rgba(232,184,75,.45) transparent}
@@ -384,9 +386,10 @@ const CSS = `
 .it-libreta .it-lib-list::-webkit-scrollbar-thumb{background:rgba(232,184,75,.45); border-radius:3px}
 .it-lib-rule{display:flex; align-items:flex-start; gap:7px; font-size:11px; color:#c6cdd6; line-height:1.3}
 .it-lib-ck{flex:0 0 auto; width:13px; text-align:center; color:#5a6570; font-weight:800}
+.it-lib-tx{min-width:0; overflow-wrap:anywhere}
 .it-lib-rule.met{color:#eef3f8} .it-lib-rule.met .it-lib-ck{color:#2ee86a}
 .it-lib-rule.gone{color:#ff5b6e; text-decoration:line-through; opacity:.72} .it-lib-rule.gone .it-lib-ck{color:#ff5b6e; text-decoration:none}
-@media(max-width:760px){ .it-libreta{right:60px; width:172px} }
+@media(max-width:760px){ .it-libreta{right:60px; width:190px; max-width:54%} }
 
 /* ── Responsive top bar ── */
 @media (max-width:1180px){ .it-coin span{display:none} .it-search{max-width:200px} .it-conf span{display:none} .it-conf{padding:0 8px} }
