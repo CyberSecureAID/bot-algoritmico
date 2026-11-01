@@ -1,5 +1,10 @@
 /* modules/institutional/institutional.js — ANÁLISIS INSTITUCIONAL (4º servicio).
 
+   ⚠️ NOMBRE EN LA WEB: esta sección se MUESTRA al usuario como "Confluence".
+   El archivo, el módulo (abrirInstitutional), las funciones y los IDs (it-*)
+   siguen llamándose "institutional" a propósito, para no romper imports ni
+   referencias. ESTE es el módulo de "Confluence" (busca aquí para trabajarlo).
+
    Terminal de mesa institucional en vanilla con la identidad de DecFreedom.
    Motor de gráficas: lightweight-charts de TradingView (Apache-2.0, vendido en
    ./vendor, con su logo desactivado y la NUESTRA en su lugar). Matemática de
@@ -243,7 +248,7 @@ function plantilla() {
     ${panel('it-p-macro', 'SIGNALS')}
   </div>
   <div class="it-foot">
-    <div>Institutional Analysis</div>
+    <div>Confluence</div>
     <div>Live technical analysis · <button class="it-disc-link" id="it-disc-link" type="button">Disclaimer</button> · not financial advice</div>
   </div>`;
 }
@@ -389,7 +394,13 @@ function menuInd() {
   if (clr) clr.onclick = () => { S.ind = {}; actualizarIndBtn(); pintarChart(); cerrarPopups(); };
   cierreFuera(m, ancla);
 }
-function actualizarIndBtn() { const btn = document.getElementById('it-in-btn'); if (!btn) return; const n = Object.values(S.ind).filter(Boolean).length; btn.childNodes[0].nodeValue = 'Indicators' + (n ? ' · ' + n : '') + ' '; }
+function actualizarIndBtn() {
+  const btn = document.getElementById('it-in-btn'); if (!btn) return;
+  const n = Object.values(S.ind).filter(Boolean).length;
+  let t = btn.childNodes[0];
+  if (!t || t.nodeType !== 3) { t = document.createTextNode(''); btn.insertBefore(t, btn.firstChild); }   // garantiza el nodo de texto → el conteo SIEMPRE se actualiza
+  t.nodeValue = 'Indicators' + (n ? ' · ' + n : '') + ' ';
+}
 
 /* ── CHART ── */
 async function cargarChart() {
@@ -843,8 +854,8 @@ function tachuela(g, x, vela, side, now) {
   const bx = x - w / 2; let by;
   if (short) { const downTip = yRef - gap; by = downTip - tip - h; } else { const upTip = yRef + gap; by = upTip + tip; }
   g.save();
-  g.shadowColor = short ? 'rgba(255,0,0,.8)' : 'rgba(0,230,118,.8)';
-  g.shadowBlur = 5 + 8 * pulse;
+  g.shadowColor = short ? 'rgba(255,0,0,.8)' : 'rgba(0,230,118,.4)';   // LONG (verde) con menos brillo
+  g.shadowBlur = short ? (5 + 8 * pulse) : (2 + 4 * pulse);
   g.fillStyle = bg; rrect(g, bx, by, w, h, 4); g.fill();
   g.beginPath();
   if (short) { g.moveTo(x - tip, by + h); g.lineTo(x + tip, by + h); g.lineTo(x, by + h + tip); } else { g.moveTo(x - tip, by); g.lineTo(x + tip, by); g.lineTo(x, by - tip); }
@@ -918,7 +929,7 @@ function exportar() {
     g.textAlign = 'left';
     g.fillStyle = '#E8B84B';
     g.font = `800 ${19 * e2}px system-ui,sans-serif`;
-    g.fillText('Institutional Analysis', x, yB + 34 * e2);
+    g.fillText('Confluence', x, yB + 34 * e2);
     g.font = `700 ${14 * e2}px ui-monospace,monospace`;
     g.fillStyle = '#C9A84B';
     g.fillText('decfreedom.com', x, yB + 56 * e2);
@@ -937,7 +948,7 @@ function exportar() {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `decfreedom-institutional-${S.par.id}-${S.tf}-${Date.now()}.png`;
+    a.href = url; a.download = `decfreedom-confluence-${S.par.id}-${S.tf}-${Date.now()}.png`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   }, 'image/png');
@@ -996,7 +1007,7 @@ function exportarHeat() {
   g.fillStyle = '#0b0e12'; g.fillRect(0, yB, W, footH);
   g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, W, 2);
   const textos = (lx) => {
-    g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = '800 18px system-ui,sans-serif'; g.fillText('Institutional Analysis', lx, yB + 33);
+    g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = '800 18px system-ui,sans-serif'; g.fillText('Confluence', lx, yB + 33);
     g.font = '700 13px ui-monospace,monospace'; g.fillStyle = '#C9A84B'; g.fillText('decfreedom.com', lx, yB + 55);
     g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = '700 13px ui-monospace,monospace'; g.fillText('Market Heatmap', W - 18, yB + 33);
     g.font = '11px ui-monospace,monospace'; g.fillStyle = '#6b7681'; g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), W - 18, yB + 55);
@@ -1385,7 +1396,7 @@ function mostrarDisclaimer(reView) {
     ${reView ? '<button class="it-modal-x" aria-label="Close">✕</button>' : ''}
     <div class="it-disc-box">
       <img class="it-disc-seal" src="${SELLO}" alt="" onerror="this.style.display='none'">
-      <h3>Institutional Analysis</h3>
+      <h3>Confluence</h3>
       <p>A professional desk for <b>technical analysis only</b>. In a fully connected environment it wires together every system we can reach: live charting, multi source news tracking, market screeners, sector heatmaps and macro feeds, so advanced analysis runs from one screen.</p>
       <p>Nothing here is financial, investment, legal or tax advice, and no result is guaranteed. Digital assets carry substantial risk and every decision is your own.</p>
       ${reView ? '' : `<label class="it-disc-chk"><input type="checkbox" id="it-disc-agree"><span>I understand this is an analysis tool only, not financial advice, and I use it at my own risk.</span></label>`}
