@@ -181,19 +181,21 @@ const IC_ULTRA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const IC_MAX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
 const IC_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const IC_CONF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg>';
-function ctrlPanel(id) {
+const IC_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.6"/></svg>';
+function ctrlPanel(id, expo) {
   return `<div class="it-ph-ctrl">
+    ${expo ? `<button class="it-pbtn it-expo-board" data-expo="${id}" title="Export image">${IC_CAM}</button>` : ''}
     <button class="it-pbtn it-ultra" data-ultra="${id}" title="Ultra screen (full browser)">${IC_ULTRA}</button>
     <button class="it-pbtn it-max" data-max="${id}" title="Fullscreen">${IC_MAX}</button>
     <button class="it-pbtn it-x" data-close="${id}" title="Close">${IC_X}</button>
   </div>`;
 }
-function panel(id, titulo, extra) {
+function panel(id, titulo, extra, opts) {
   return `<div class="it-panel" id="${id}">
     <div class="it-ph">
       <h4>${titulo}</h4>
       ${extra || ''}
-      ${ctrlPanel(id)}
+      ${ctrlPanel(id, opts && opts.expo)}
     </div>
     <div class="it-pb" id="${id}-body">${cargando()}</div>
     <span class="it-resize" data-rz></span>
@@ -237,7 +239,7 @@ function plantilla() {
     </div>
     ${panel('it-p-quote', 'QUOTE')}
     ${panel('it-p-watch', 'WATCHLIST')}
-    ${panel('it-p-board', 'MARKET HEATMAP', '<div class="it-ph-r dim" style="font-family:var(--it-mono);font-size:10px;margin-left:8px">SIZE · 24H MOVE</div>')}
+    ${panel('it-p-board', 'MARKET HEATMAP', '<div class="it-ph-r dim" style="font-family:var(--it-mono);font-size:10px;margin-left:8px">SIZE · 24H MOVE</div>', { expo: true })}
     ${panel('it-p-macro', 'SIGNALS')}
   </div>
   <div class="it-foot">
@@ -905,6 +907,59 @@ function exportar() {
   logo.src = LOGO;
 }
 
+/* Export del MARKET HEATMAP. Los tiles son DOM (no canvas), así que se dibujan a
+   mano sobre un lienzo. UNA sola marca de agua: el pie de marca (igual que el
+   chart). NO se incluye el logo superpuesto del heatmap → nada redundante. */
+function exportarHeat() {
+  const body = document.getElementById('it-p-board-body'); if (!body) return;
+  const tiles = Object.values(S.tileEls || {}).filter((el) => el && el.isConnected && (parseFloat(el.style.width) || 0) > 0);
+  if (!tiles.length) return;
+  const W = body.clientWidth, H = body.clientHeight; if (W < 10 || H < 10) return;
+  const e2 = 2, headH = 52, footH = 78;
+  const out = document.createElement('canvas');
+  out.width = Math.round(W * e2); out.height = Math.round((H + headH + footH) * e2);
+  const g = out.getContext('2d');
+  g.setTransform(e2, 0, 0, e2, 0, 0);
+  g.fillStyle = '#0a0e14'; g.fillRect(0, 0, W, H + headH + footH);
+  // cabecera
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = '#E8B84B'; g.font = '800 17px "Chakra Petch", system-ui, monospace';
+  g.fillText('MARKET HEATMAP', 16, 33);
+  g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = '700 11px ui-monospace,monospace'; g.fillText('SIZE · 24H MOVE', W - 16, 33);
+  // tiles
+  g.save(); g.translate(0, headH); g.textBaseline = 'top';
+  tiles.forEach((el) => {
+    const x = parseFloat(el.style.left) || 0, y = parseFloat(el.style.top) || 0, w = parseFloat(el.style.width) || 0, h = parseFloat(el.style.height) || 0;
+    if (w < 1 || h < 1) return;
+    g.fillStyle = el.style.background || 'rgba(40,60,80,.4)'; g.fillRect(x, y, w, h);
+    const b = el.querySelector('b'), em = el.querySelector('em');
+    if (b && b.textContent) {
+      const fs = parseFloat(b.style.fontSize) || 11, pad = Math.min(w, h) < 30 ? 2 : (Math.min(w, h) < 70 ? 4 : 7);
+      g.fillStyle = '#eef3f8'; g.font = `800 ${fs}px system-ui,sans-serif`; g.textAlign = 'left';
+      g.fillText(b.textContent, x + pad, y + pad);
+      if (em && em.textContent) { const fe = parseFloat(em.style.fontSize) || 9; g.fillStyle = em.style.color || '#cfe'; g.font = `700 ${fe}px ui-monospace,monospace`; g.fillText(em.textContent, x + pad, y + pad + fs + 2); }
+    }
+  });
+  g.restore(); g.textBaseline = 'alphabetic';
+  // pie de marca (ÚNICA marca de agua)
+  const yB = H + headH;
+  g.fillStyle = '#0b0e12'; g.fillRect(0, yB, W, footH);
+  g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, W, 2);
+  const textos = (lx) => {
+    g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = '800 18px system-ui,sans-serif'; g.fillText('Institutional Analysis', lx, yB + 33);
+    g.font = '700 13px ui-monospace,monospace'; g.fillStyle = '#C9A84B'; g.fillText('decfreedom.com', lx, yB + 55);
+    g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = '700 13px ui-monospace,monospace'; g.fillText('Market Heatmap', W - 18, yB + 33);
+    g.font = '11px ui-monospace,monospace'; g.fillStyle = '#6b7681'; g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), W - 18, yB + 55);
+    g.textAlign = 'left';
+  };
+  const bajar = () => out.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-heatmap-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
+  const logo = new Image(); let hecho = false;
+  const una = (w) => { if (hecho) return; hecho = true; textos(w ? 18 + w + 16 : 18); bajar(); };
+  logo.onload = () => { try { const alto = 50, ancho = Math.round(logo.width * (alto / logo.height)); g.drawImage(logo, 18, yB + (footH - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } };
+  logo.onerror = () => una(0);
+  setTimeout(() => una(0), 1500);
+  logo.src = LOGO;
+}
+
 /* ── QUOTE (+ cabecera superior) ── */
 async function cargarQuote() {
   const body = document.getElementById('it-p-quote-body'); const t = document.querySelector('#it-p-quote h4'); if (t) t.textContent = 'QUOTE · ' + S.par.id;
@@ -1263,6 +1318,7 @@ function montarVentanas() {
     }
     const rz = panel.querySelector('[data-rz]');
     if (rz) { rz.addEventListener('mousedown', (e) => empezar(e, panel, 'resize')); rz.addEventListener('touchstart', (e) => empezar(e, panel, 'resize'), { passive: false }); }
+    const ex = panel.querySelector('.it-expo-board'); if (ex) ex.onclick = (e) => { e.stopPropagation(); exportarHeat(); };
     const ul = panel.querySelector('.it-ultra'); if (ul) ul.onclick = (e) => { e.stopPropagation(); entrarUltra(panel.id); };
     const mx = panel.querySelector('.it-max'); if (mx) mx.onclick = (e) => { e.stopPropagation(); maximizar(panel.id); };
     const cx = panel.querySelector('.it-x'); if (cx) cx.onclick = (e) => { e.stopPropagation(); cerrarPanel(panel.id); };
