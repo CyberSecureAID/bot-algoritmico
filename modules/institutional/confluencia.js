@@ -5,7 +5,7 @@
    en un cruce capturaba "gap≈0" y disparaba donde las medias solo se ACERCABAN,
    y fallaba en cruces reales. Ahora: si clicas CERCA de un cruce real, la regla
    es el EVENTO de cruce (misma dirección); si clicas lejos de un cruce, la regla
-   es la DISTANCIA exacta (% con tolerancia ajustada). Preciso como un reloj
+   es la DISTANCIA exacta (% con tolerancia ajustada). Preciso como un reloj.
 
    Cada punto marcado captura un VECTOR DE RASGOS; una vela coincide solo si TODOS
    los rasgos (de indicadores aún activos) vuelven a darse a la vez. Solo mates:
