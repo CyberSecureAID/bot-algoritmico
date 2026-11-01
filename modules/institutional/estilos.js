@@ -359,6 +359,18 @@ const CSS = `
 .it-conf-how p{margin:0 0 9px}
 .cf-s{color:#ff5b6e; font-weight:800}
 .cf-l{color:#00e676; font-weight:800}
+/* Libreta de reglas de confluencia (esquina sup. derecha, efecto 3D) */
+.it-libreta{position:absolute; top:8px; right:74px; z-index:8; width:212px; max-width:46%; padding:9px 10px 10px; border-radius:12px; font-family:var(--it-mono); background:linear-gradient(180deg,rgba(18,24,32,.96),rgba(10,14,19,.97)); border:1px solid rgba(232,184,75,.38); box-shadow:0 12px 28px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,.05) inset, 0 -10px 22px rgba(0,0,0,.4); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); pointer-events:none; transform:perspective(680px) rotateX(1.6deg)}
+.it-lib-head{display:flex; align-items:center; justify-content:space-between; font-size:9.5px; font-weight:800; letter-spacing:.12em; color:var(--it-gold); text-transform:uppercase}
+.it-lib-n{font-size:12.5px; color:#fff; background:rgba(232,184,75,.18); border:1px solid rgba(232,184,75,.4); border-radius:6px; min-width:18px; text-align:center; padding:0 5px; line-height:17px}
+.it-lib-sub{font-size:9px; font-weight:800; letter-spacing:.1em; margin:3px 0 8px; opacity:.92}
+.it-lib-short{color:#ff6b7a} .it-lib-long{color:#38e08a}
+.it-lib-list{display:flex; flex-direction:column; gap:5px}
+.it-lib-rule{display:flex; align-items:flex-start; gap:7px; font-size:11px; color:#c6cdd6; line-height:1.3}
+.it-lib-ck{flex:0 0 auto; width:13px; text-align:center; color:#5a6570; font-weight:800}
+.it-lib-rule.met{color:#eef3f8} .it-lib-rule.met .it-lib-ck{color:#2ee86a}
+.it-lib-rule.gone{color:#ff5b6e; text-decoration:line-through; opacity:.72} .it-lib-rule.gone .it-lib-ck{color:#ff5b6e; text-decoration:none}
+@media(max-width:760px){ .it-libreta{right:60px; width:172px} }
 
 /* ── Responsive top bar ── */
 @media (max-width:1180px){ .it-coin span{display:none} .it-search{max-width:200px} .it-conf span{display:none} .it-conf{padding:0 8px} }

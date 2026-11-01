@@ -104,3 +104,74 @@ export function escanear(est, V, firmaRef, soloInicios = true) {
   }
   return out;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MATCHING POR REGLAS (confluencia anclada a un clic).
+   Cada ancla guarda sus "reglas": [{ key, char }] capturadas en el clic. Una
+   vela coincide cuando TODAS las reglas cuyo indicador SIGUE activo se cumplen
+   ahí, y quedan al menos `minActivas` reglas activas (si quitas indicadores, esa
+   regla se "tacha" y deja de contar; con menos de 2 activas no hay confluencia).
+   ══════════════════════════════════════════════════════════════════════ */
+export function coincideReglas(est, reglas, time, minActivas = 2) {
+  if (!est || !reglas || !reglas.length) return false;
+  let activas = 0;
+  for (const r of reglas) {
+    const m = est.maps[r.key];
+    if (!m) continue;                       // indicador quitado → regla tachada, no cuenta
+    activas++;
+    if (m.get(time) !== r.char) return false;
+  }
+  return activas >= minActivas;
+}
+export function escanearReglas(est, V, reglas, soloInicios = true) {
+  if (!est || !reglas || !reglas.length) return [];
+  const out = []; let prev = false;
+  for (const c of V) {
+    const m = coincideReglas(est, reglas, c.time);
+    if (m && (!soloInicios || !prev)) out.push(c.time);
+    prev = m;
+  }
+  return out;
+}
+/* Cuántas reglas del ancla siguen activas (su indicador está puesto). */
+export function reglasActivas(est, reglas) {
+  if (!est || !reglas) return 0;
+  let n = 0; for (const r of reglas) if (est.maps[r.key]) n++; return n;
+}
+
+/* Texto legible (en inglés) de una regla, para la libreta. `nm` es el nombre
+   de pantalla del indicador (p. ej. "EMA 20"). */
+const _MAS = ['EMA9', 'EMA20', 'EMA50', 'EMA100', 'EMA200', 'SMA', 'WMA', 'HMA', 'DEMA', 'TEMA', 'VWMA', 'ALMA', 'ZLEMA', 'KAMA', 'VWAP'];
+const _BANDAS = { BOLL: 1, DONCH: 1, KELT: 1, ENV: 1 };
+export function reglaLabel(key, char, nm) {
+  nm = nm || key;
+  if (_MAS.indexOf(key) !== -1) return char === 'A' ? `Price above ${nm}` : `Price below ${nm}`;
+  if (_BANDAS[key]) return char === 'U' ? `Price above ${nm} upper band` : char === 'L' ? `Price below ${nm} lower band` : `Price inside ${nm} bands`;
+  switch (key) {
+    case 'PSAR': return char === 'A' ? 'Parabolic SAR bullish' : 'Parabolic SAR bearish';
+    case 'ST': return char === 'A' ? 'Supertrend bullish' : 'Supertrend bearish';
+    case 'RSI': return char === 'L' ? 'RSI oversold (< 30)' : char === 'H' ? 'RSI overbought (> 70)' : 'RSI neutral (30–70)';
+    case 'MACD': return char === 'A' ? 'MACD above its signal' : 'MACD below its signal';
+    case 'PPO': return char === 'A' ? 'PPO above its signal' : 'PPO below its signal';
+    case 'STOCH': return char === 'L' ? 'Stochastic oversold (< 20)' : char === 'H' ? 'Stochastic overbought (> 80)' : 'Stochastic mid-range';
+    case 'STOCHRSI': return char === 'L' ? 'Stoch RSI oversold (< 20)' : char === 'H' ? 'Stoch RSI overbought (> 80)' : 'Stoch RSI mid-range';
+    case 'CCI': return char === 'L' ? 'CCI below −100' : char === 'H' ? 'CCI above +100' : 'CCI neutral';
+    case 'WILL': return char === 'L' ? 'Williams %R below −80' : char === 'H' ? 'Williams %R above −20' : 'Williams %R mid-range';
+    case 'OBV': return char === 'E' ? 'OBV rising' : 'OBV falling';
+    case 'ATR': return char === 'E' ? 'ATR expanding' : 'ATR contracting';
+    case 'STDDEV': return char === 'E' ? 'Std Dev expanding' : 'Std Dev contracting';
+    case 'ROC': return char === '+' ? 'ROC positive' : 'ROC negative';
+    case 'MOM': return char === '+' ? 'Momentum positive' : 'Momentum negative';
+    case 'AO': return char === '+' ? 'Awesome Osc. positive' : 'Awesome Osc. negative';
+    case 'CMF': return char === '+' ? 'Chaikin MF positive' : 'Chaikin MF negative';
+    case 'CMO': return char === '+' ? 'CMO positive' : 'CMO negative';
+    case 'TRIX': return char === '+' ? 'TRIX positive' : 'TRIX negative';
+    case 'MFI': return char === 'L' ? 'MFI oversold (< 20)' : char === 'H' ? 'MFI overbought (> 80)' : 'MFI mid-range';
+    case 'UO': return char === 'L' ? 'Ultimate Osc. oversold' : char === 'H' ? 'Ultimate Osc. overbought' : 'Ultimate Osc. mid-range';
+    case 'VORTEX': return char === 'A' ? 'Vortex VI+ above VI−' : 'Vortex VI− above VI+';
+    case 'AROON': return char === 'A' ? 'Aroon Up above Down' : 'Aroon Down above Up';
+    case 'FISHER': return char === 'A' ? 'Fisher above its trigger' : 'Fisher below its trigger';
+    case 'ADX': return `ADX ${char[0] === 'T' ? 'strong' : 'weak'} ${char[1] === '+' ? 'uptrend' : 'downtrend'}`;
+    default: return `${nm}: ${char}`;
+  }
+}

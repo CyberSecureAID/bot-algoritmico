@@ -11,12 +11,12 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=9';
+import { estilos } from './estilos.js?v=10';
 import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirEstados, firmaEn, escanear, soportado as confSoportado } from './confluencia.js?v=1';
+import { construirEstados, firmaEn, escanear, soportado as confSoportado, reglaLabel, coincideReglas, escanearReglas, reglasActivas } from './confluencia.js?v=2';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -456,8 +456,8 @@ function revisarConfluenciaViva() {
     ensureConfEstado();
     const lastT = S.velas[S.velas.length - 1].time;
     for (const a of S.conf.anchors) {
-      const firma = firmaEn(S.conf.estado, a.time);
-      if (firma && firmaEn(S.conf.estado, lastT) === firma) { pingConf(); break; }   // ¡confluencia disparada en vivo!
+      const reglas = a.reglas || [];
+      if (reglasActivas(S.conf.estado, reglas) >= 2 && coincideReglas(S.conf.estado, reglas, lastT)) { pingConf(); break; }   // ¡confluencia disparada en vivo!
     }
   } catch (_) {}
 }
@@ -571,7 +571,7 @@ function pintarChart() {
   pintarIndLegend();     // leyenda ESTÁTICA (solo indicadores activos, con ✕). Sin OHLC que salte con el cursor.
   sincronizarDib();
   calcularSenales();     // panel SIGNALS (rating técnico)
-  montarConfluencia(); refrescarConfUI();   // re-anexa el overlay de confluencia sobre el gráfico recién creado
+  montarConfluencia(); sincronizarConf();   // re-anexa el overlay + sincroniza la confluencia/libreta con los indicadores
 }
 
 /* ── Puente con la barra de dibujo (misma de Smart/Heat/Liquidity Pools) ──
@@ -655,6 +655,47 @@ function limpiarAnclas() {
 function refrescarConfUI() {
   const b = document.getElementById('it-conf'); if (b) b.classList.toggle('on', !!(S.conf && S.conf.on));
   const c = document.getElementById('it-conf-clear'); if (c) c.style.display = (S.conf && S.conf.anchors.length) ? 'inline-flex' : 'none';
+  renderLibreta();
+}
+
+/* Sincroniza la confluencia con el set de indicadores (lo llama pintarChart al
+   cambiar/quitar indicadores): si NO queda ningún indicador, se resetea la
+   libreta y las anclas; siempre se fuerza el recálculo con el set actual. */
+function sincronizarConf() {
+  if (!S.conf) { refrescarConfUI(); return; }
+  if (confActivas().length === 0) { S.conf.anchors = []; S.conf.marks = []; }   // quitar TODOS los indicadores → reset
+  S.conf.matchKey = '';
+  refrescarConfUI();
+}
+
+/* LIBRETA DE REGLAS (esquina superior derecha del chart). Lista las reglas del
+   último punto de confluencia marcado, con palomita al cumplirse en la vela
+   actual y tachadas en rojo si quitas su indicador. Se oculta al desactivar la
+   confluencia, al limpiar, o al quedarse sin indicadores. */
+function renderLibreta() {
+  const cont = document.getElementById('it-cv'); if (!cont) return;
+  let lib = document.getElementById('it-libreta');
+  const anchors = (S.conf && S.conf.anchors) || [];
+  const activa = anchors.length ? anchors[anchors.length - 1] : null;
+  const mostrar = !!(S.conf && S.conf.on && activa && confActivas().length >= 1);
+  if (!mostrar) { if (lib) lib.remove(); return; }
+  if (!lib) { lib = document.createElement('div'); lib.id = 'it-libreta'; lib.className = 'it-libreta'; }
+  cont.appendChild(lib);                 // re-anexar → queda sobre el gráfico recién creado
+  ensureConfEstado();
+  const est = S.conf.estado, lastT = S.velas.length ? S.velas[S.velas.length - 1].time : null;
+  const reglas = activa.reglas || [];
+  const nAct = reglasActivas(est, reglas);
+  const filas = reglas.map((r) => {
+    const viva = !!est.maps[r.key];
+    const cumple = viva && lastT != null && est.maps[r.key].get(lastT) === r.char;
+    const cl = !viva ? 'gone' : (cumple ? 'met' : '');
+    const ck = !viva ? '✕' : (cumple ? '✓' : '○');
+    return `<div class="it-lib-rule ${cl}"><span class="it-lib-ck">${ck}</span><span class="it-lib-tx">${esc(reglaLabel(r.key, r.char, r.nm))}</span></div>`;
+  }).join('');
+  const sideTxt = activa.side === 'short' ? 'SHORT' : 'LONG';
+  lib.innerHTML = `<div class="it-lib-head"><span>CONFLUENCE RULES</span><b class="it-lib-n">${nAct}</b></div>
+    <div class="it-lib-sub it-lib-${activa.side}">${sideTxt} setup${nAct < 2 ? ' · inactive' : ''}</div>
+    <div class="it-lib-list">${filas}</div>`;
 }
 
 function montarConfluencia() {
@@ -707,23 +748,33 @@ function recomputarMarks() {
   S.conf.matchKey = key;
   const marks = [];
   for (const a of S.conf.anchors) {
-    const firma = firmaEn(S.conf.estado, a.time);
-    let times = firma ? escanear(S.conf.estado, S.velas, firma) : [];
-    if (times.indexOf(a.time) === -1) times = times.concat([a.time]);   // siempre marca el punto que eligió el usuario
+    const reglas = a.reglas || [];
+    if (reglasActivas(S.conf.estado, reglas) < 2) continue;   // <2 reglas activas → confluencia inválida, SIN marcas
+    let times = escanearReglas(S.conf.estado, S.velas, reglas);
+    if (times.indexOf(a.time) === -1 && coincideReglas(S.conf.estado, reglas, a.time)) times = times.concat([a.time]);   // el punto elegido, solo si aún cumple
     for (const tm of times) marks.push({ time: tm, side: a.side });
   }
   S.conf.marks = marks;
+  renderLibreta();
 }
+function nmDe(k) { const it = INDS.find((i) => i.k === k); return (it && it.nm) || k; }
+function confValido() { return confActivas().length >= 2; }
 function onConfClick(param) {
   if (!S.conf || !S.conf.on || !param || param.time == null || !param.point || !S.serieVela) return;
   const price = S.serieVela.coordinateToPrice(param.point.y);
   ensureConfEstado();
   const vela = S.conf.velaMap ? S.conf.velaMap.get(param.time) : null;
   if (price == null || !vela) return;
+  // REGLAS del clic: estado discreto de cada indicador ACTIVO en esa vela. Sin
+  // al menos 2 reglas válidas NO se coloca nada (ni con indicadores en
+  // calentamiento): se acabó el clic-placeholder sin indicadores.
+  const reglas = confActivas().map((k) => ({ key: k, char: S.conf.estado.maps[k] ? S.conf.estado.maps[k].get(param.time) : null, nm: nmDe(k) })).filter((r) => r.char != null);
+  if (reglas.length < 2) { instruccionesConfluencia(reglas.length); return; }
   const side = price > vela.close ? 'short' : 'long';   // clic encima del precio → SHORT; debajo → LONG
-  S.conf.anchors.push({ time: param.time, side });
+  S.conf.anchors.push({ time: param.time, side, reglas });
   S.conf.matchKey = '';
   refrescarConfUI();
+  renderLibreta();
   arrancarConfLoop();
   pingConf();
 }
