@@ -16,12 +16,12 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=10';
+import { estilos } from './estilos.js?v=11';
 import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirEstados, firmaEn, escanear, soportado as confSoportado, reglaLabel, coincideReglas, escanearReglas, reglasActivas } from './confluencia.js?v=2';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=3';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -464,11 +464,10 @@ function rerenderVivo() {
 function revisarConfluenciaViva() {
   if (!S.conf || !S.conf.on || !S.conf.anchors.length) return;
   try {
-    ensureConfEstado();
-    const lastT = S.velas[S.velas.length - 1].time;
+    ensureRasgos();
+    const ras = S.conf.ras, lastIdx = ras.n - 1;
     for (const a of S.conf.anchors) {
-      const reglas = a.reglas || [];
-      if (reglasActivas(S.conf.estado, reglas) >= 2 && coincideReglas(S.conf.estado, reglas, lastT)) { pingConf(); break; }   // ¡confluencia disparada en vivo!
+      if (a.cap && rasgosActivos(ras, a.cap) >= 2 && coincideRasgos(ras, a.cap, lastIdx)) { pingConf(); break; }   // ¡confluencia disparada en vivo!
     }
   } catch (_) {}
 }
@@ -650,7 +649,7 @@ async function montarDibujo() {
 function confActivas() { return Object.keys(S.ind).filter((k) => S.ind[k] && confSoportado(k)); }
 
 function toggleConfluencia() {
-  if (!S.conf) S.conf = { on: false, anchors: [], estado: null, hash: '', cursor: null, raf: null, marks: [], matchKey: '' };
+  if (!S.conf) S.conf = { on: false, anchors: [], ras: null, hash: '', cursor: null, raf: null, marks: [], matchKey: '', lang: 'en' };
   if (confActivas().length < 2) { instruccionesConfluencia(confActivas().length); return; }
   montarConfluencia();
   S.conf.on = !S.conf.on;
@@ -692,26 +691,41 @@ function renderLibreta() {
   if (!mostrar) { if (lib) lib.remove(); return; }
   if (!lib) { lib = document.createElement('div'); lib.id = 'it-libreta'; lib.className = 'it-libreta'; }
   cont.appendChild(lib);                 // re-anexar → queda sobre el gráfico recién creado
-  ensureConfEstado();
-  const est = S.conf.estado, lastT = S.velas.length ? S.velas[S.velas.length - 1].time : null;
-  const reglas = activa.reglas || [];
-  const nAct = reglasActivas(est, reglas);
-  const filas = reglas.map((r) => {
-    const viva = !!est.maps[r.key];
-    const cumple = viva && lastT != null && est.maps[r.key].get(lastT) === r.char;
+  ensureRasgos();
+  const ras = S.conf.ras, lang = S.conf.lang || 'en', lastIdx = ras.n - 1;
+  const cap = activa.cap || [];
+  const nAct = rasgosActivos(ras, cap);
+  const fById = {}; for (const f of ras.feats) fById[f.id] = f;
+  const filas = cap.map((c) => {
+    const f = fById[c.id], viva = !!f;
+    let cumple = false;
+    if (viva) {
+      const v = f.vals[lastIdx];
+      if (isFinite(v) && Math.abs(v - c.val) <= c.tol) {
+        cumple = true;
+        if ((c.kind === 'gap' || c.kind === 'pdist' || c.kind === 'cross' || c.kind === 'hist') && c.dir) {
+          const d = (lastIdx > 0 && isFinite(f.vals[lastIdx - 1])) ? (v >= f.vals[lastIdx - 1] ? 1 : -1) : 0;
+          if (d !== c.dir) cumple = false;
+        }
+      }
+    }
     const cl = !viva ? 'gone' : (cumple ? 'met' : '');
     const ck = !viva ? '✕' : (cumple ? '✓' : '○');
-    return `<div class="it-lib-rule ${cl}"><span class="it-lib-ck">${ck}</span><span class="it-lib-tx">${esc(reglaLabel(r.key, r.char, r.nm))}</span></div>`;
+    return `<div class="it-lib-rule ${cl}"><span class="it-lib-ck">${ck}</span><span class="it-lib-tx">${esc(rasgoLabel(c, lang))}</span></div>`;
   }).join('');
   const sideTxt = activa.side === 'short' ? 'SHORT' : 'LONG';
-  lib.innerHTML = `<div class="it-lib-head"><span>CONFLUENCE RULES</span><b class="it-lib-n">${nAct}</b></div>
-    <div class="it-lib-sub it-lib-${activa.side}">${sideTxt} setup${nAct < 2 ? ' · inactive' : ''}</div>
+  const T = lang === 'es'
+    ? { head: 'REGLAS', sub: (activa.side === 'short' ? 'Config. SHORT' : 'Config. LONG'), inact: ' · inactiva' }
+    : { head: 'CONFLUENCE RULES', sub: sideTxt + ' setup', inact: ' · inactive' };
+  lib.innerHTML = `<div class="it-lib-head"><span>${T.head}</span><div class="it-lib-right"><b class="it-lib-n">${nAct}</b><button class="it-lib-lang" type="button" title="EN / ES">${lang === 'es' ? 'ES' : 'EN'}</button></div></div>
+    <div class="it-lib-sub it-lib-${activa.side}">${T.sub}${nAct < 2 ? T.inact : ''}</div>
     <div class="it-lib-list">${filas}</div>`;
+  const bl = lib.querySelector('.it-lib-lang'); if (bl) bl.onclick = (e) => { e.stopPropagation(); S.conf.lang = (S.conf.lang === 'es') ? 'en' : 'es'; renderLibreta(); };
 }
 
 function montarConfluencia() {
   const cv = document.getElementById('it-cv'); if (!cv) return;
-  if (!S.conf) S.conf = { on: false, anchors: [], estado: null, hash: '', cursor: null, raf: null, marks: [], matchKey: '' };
+  if (!S.conf) S.conf = { on: false, anchors: [], ras: null, hash: '', cursor: null, raf: null, marks: [], matchKey: '', lang: 'en' };
   let cc = document.getElementById('it-conf-cv');
   if (!cc) { cc = document.createElement('canvas'); cc.id = 'it-conf-cv'; cc.className = 'it-conf-cv'; }
   cv.appendChild(cc);                           // re-anexar → queda sobre el gráfico recién creado
@@ -743,51 +757,50 @@ function arrancarConfLoop() {
   };
   S.conf.raf = requestAnimationFrame(paso);
 }
-function ensureConfEstado() {
+function ensureRasgos() {
   const keys = confActivas().sort();
   const hash = S.par.id + '|' + S.tf + '|' + keys.join(',') + '|' + S.velas.length;   // la longitud cambia al cerrar vela → se recalcula en vivo
-  if (S.conf.hash === hash && S.conf.estado) return;
+  if (S.conf.hash === hash && S.conf.ras) return;
   S.conf.hash = hash;
-  S.conf.estado = construirEstados(keys, S.velas);
+  S.conf.ras = construirRasgos(keys, S.velas);
   S.conf.velaMap = new Map(S.velas.map((v) => [v.time, v]));
   S.conf.matchKey = '';
 }
+const MAX_ANCLAS = 12;          // tope de anclas (robustez ante multiclic)
 function recomputarMarks() {
-  ensureConfEstado();
+  ensureRasgos();
   const key = S.conf.hash + '#' + S.conf.anchors.length;
   if (S.conf.matchKey === key) return;
   S.conf.matchKey = key;
+  const ras = S.conf.ras, TOPE = 200;   // tope de marcas por ancla (nunca floodear)
   const marks = [];
   for (const a of S.conf.anchors) {
-    const reglas = a.reglas || [];
-    if (reglasActivas(S.conf.estado, reglas) < 2) continue;   // <2 reglas activas → confluencia inválida, SIN marcas
-    let times = escanearReglas(S.conf.estado, S.velas, reglas);
-    if (times.indexOf(a.time) === -1 && coincideReglas(S.conf.estado, reglas, a.time)) times = times.concat([a.time]);   // el punto elegido, solo si aún cumple
+    if (!a.cap || rasgosActivos(ras, a.cap) < 2) continue;   // <2 indicadores activos → confluencia inválida, SIN marcas
+    let times = escanearRasgos(ras, a.cap);
+    if (times.length > TOPE) times = times.slice(times.length - TOPE);
+    const ai = ras.timeIdx.get(a.time);
+    if (ai != null && times.indexOf(a.time) === -1 && coincideRasgos(ras, a.cap, ai)) times = times.concat([a.time]);
     for (const tm of times) marks.push({ time: tm, side: a.side });
   }
   S.conf.marks = marks;
   renderLibreta();
 }
-function nmDe(k) { const it = INDS.find((i) => i.k === k); return (it && it.nm) || k; }
-function confValido() { return confActivas().length >= 2; }
 function onConfClick(param) {
   if (!S.conf || !S.conf.on || !param || param.time == null || !param.point || !S.serieVela) return;
   const price = S.serieVela.coordinateToPrice(param.point.y);
-  ensureConfEstado();
+  ensureRasgos();
   const vela = S.conf.velaMap ? S.conf.velaMap.get(param.time) : null;
-  if (price == null || !vela) return;
-  // REGLAS del clic: estado discreto de cada indicador ACTIVO en esa vela. Sin
-  // al menos 2 reglas válidas NO se coloca nada (ni con indicadores en
-  // calentamiento): se acabó el clic-placeholder sin indicadores.
-  const reglas = confActivas().map((k) => ({ key: k, char: S.conf.estado.maps[k] ? S.conf.estado.maps[k].get(param.time) : null, nm: nmDe(k) })).filter((r) => r.char != null);
-  if (reglas.length < 2) { instruccionesConfluencia(reglas.length); return; }
-  const side = price > vela.close ? 'short' : 'long';   // clic encima del precio → SHORT; debajo → LONG
-  S.conf.anchors.push({ time: param.time, side, reglas });
+  const bi = S.conf.ras.timeIdx.get(param.time);
+  if (price == null || !vela || bi == null) return;
+  // RASGOS del clic: la geometría exacta (distancias, cruces, niveles, pendientes)
+  // de cada indicador en esa vela. Sin ≥2 indicadores con dato aquí NO se coloca.
+  const cap = capturarRasgos(S.conf.ras, bi);
+  if (rasgosActivos(S.conf.ras, cap) < 2) { instruccionesConfluencia(confActivas().length); return; }
+  const side = price > vela.close ? 'short' : 'long';   // encima del precio → SHORT; debajo → LONG
+  S.conf.anchors.push({ time: param.time, side, cap });
+  if (S.conf.anchors.length > MAX_ANCLAS) S.conf.anchors.shift();   // robustez
   S.conf.matchKey = '';
-  refrescarConfUI();
-  renderLibreta();
-  arrancarConfLoop();
-  pingConf();
+  refrescarConfUI(); renderLibreta(); arrancarConfLoop(); pingConf();
 }
 function pingConf() {
   try {
@@ -805,8 +818,27 @@ function dibujarConf(now) {
   const dpr = S.conf._dpr || 1; g.setTransform(dpr, 0, 0, dpr, 0, 0);
   const W = cc.width / dpr, H = cc.height / dpr;
   g.clearRect(0, 0, W, H);
+  dibujarLineasAncla(g, W, H, now);                                   // línea vertical permanente del punto marcado (atraviesa los paneles)
   if (S.conf.on && S.conf.cursor) dibujarCarriles(g, W, H, S.conf.cursor, now);
   dibujarTachuelas(g, now);
+}
+function dibujarLineasAncla(g, W, H, now) {
+  if (!S.conf.anchors.length || !S.conf.ras) return;
+  const ts = S.chart.timeScale(), ras = S.conf.ras;
+  g.save();
+  S.conf.anchors.forEach((a) => {
+    if (!a.cap || rasgosActivos(ras, a.cap) < 2) return;             // solo anclas válidas
+    let x; try { x = ts.timeToCoordinate(a.time); } catch (_) { x = null; }
+    if (x == null || x < 0 || x > W) return;
+    const col = a.side === 'short' ? '255,91,110' : '46,224,138', pulso = 0.5 + 0.5 * Math.sin(now / 900 + x * 0.05);
+    const grd = g.createLinearGradient(x, 0, x, H);
+    grd.addColorStop(0, `rgba(${col},${(0.04 + 0.05 * pulso).toFixed(3)})`);
+    grd.addColorStop(0.5, `rgba(${col},${(0.24 + 0.12 * pulso).toFixed(3)})`);
+    grd.addColorStop(1, `rgba(${col},${(0.04 + 0.05 * pulso).toFixed(3)})`);
+    g.strokeStyle = grd; g.lineWidth = 1.4; g.setLineDash([5, 4]); g.lineDashOffset = -(now / 55) % 9;
+    g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, H); g.stroke();
+  });
+  g.setLineDash([]); g.restore();
 }
 function dibujarCarriles(g, W, H, cur, now) {
   const x = cur.x, y = cur.y; if (x < 0 || y < 0 || x > W || y > H) return;

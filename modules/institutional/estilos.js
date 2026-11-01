@@ -360,12 +360,17 @@ const CSS = `
 .cf-s{color:#ff5b6e; font-weight:800}
 .cf-l{color:#00e676; font-weight:800}
 /* Libreta de reglas de confluencia (esquina sup. derecha, efecto 3D) */
-.it-libreta{position:absolute; top:8px; right:74px; z-index:8; width:212px; max-width:46%; padding:9px 10px 10px; border-radius:12px; font-family:var(--it-mono); background:linear-gradient(180deg,rgba(18,24,32,.96),rgba(10,14,19,.97)); border:1px solid rgba(232,184,75,.38); box-shadow:0 12px 28px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,.05) inset, 0 -10px 22px rgba(0,0,0,.4); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); pointer-events:none; transform:perspective(680px) rotateX(1.6deg)}
-.it-lib-head{display:flex; align-items:center; justify-content:space-between; font-size:9.5px; font-weight:800; letter-spacing:.12em; color:var(--it-gold); text-transform:uppercase}
+.it-libreta{position:absolute; top:8px; right:74px; z-index:8; width:214px; max-width:46%; max-height:74%; padding:9px 10px 10px; border-radius:12px; font-family:var(--it-mono); display:flex; flex-direction:column; overflow:hidden; background:linear-gradient(180deg,rgba(18,24,32,.96),rgba(10,14,19,.97)); border:1px solid rgba(232,184,75,.38); box-shadow:0 12px 28px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,.05) inset, 0 -10px 22px rgba(0,0,0,.4); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); pointer-events:auto; transform:perspective(680px) rotateX(1.6deg)}
+.it-lib-head{display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:9.5px; font-weight:800; letter-spacing:.12em; color:var(--it-gold); text-transform:uppercase; flex:0 0 auto}
+.it-lib-right{display:flex; align-items:center; gap:6px}
 .it-lib-n{font-size:12.5px; color:#fff; background:rgba(232,184,75,.18); border:1px solid rgba(232,184,75,.4); border-radius:6px; min-width:18px; text-align:center; padding:0 5px; line-height:17px}
-.it-lib-sub{font-size:9px; font-weight:800; letter-spacing:.1em; margin:3px 0 8px; opacity:.92}
+.it-lib-lang{font-family:var(--it-mono); font-size:9.5px; font-weight:800; color:var(--it-gold); background:rgba(232,184,75,.12); border:1px solid rgba(232,184,75,.42); border-radius:6px; width:26px; height:18px; cursor:pointer; letter-spacing:.06em; display:inline-flex; align-items:center; justify-content:center; padding:0}
+.it-lib-lang:hover{background:rgba(232,184,75,.26)}
+.it-lib-sub{font-size:9px; font-weight:800; letter-spacing:.1em; margin:3px 0 8px; opacity:.92; flex:0 0 auto}
 .it-lib-short{color:#ff6b7a} .it-lib-long{color:#38e08a}
-.it-lib-list{display:flex; flex-direction:column; gap:5px}
+.it-lib-list{display:flex; flex-direction:column; gap:5px; overflow-y:auto; overflow-x:hidden; min-height:0; margin-right:-4px; padding-right:4px; scrollbar-width:thin; scrollbar-color:rgba(232,184,75,.45) transparent}
+.it-libreta .it-lib-list::-webkit-scrollbar{width:5px!important; height:0!important; display:block!important; background:transparent!important}
+.it-libreta .it-lib-list::-webkit-scrollbar-thumb{background:rgba(232,184,75,.45); border-radius:3px}
 .it-lib-rule{display:flex; align-items:flex-start; gap:7px; font-size:11px; color:#c6cdd6; line-height:1.3}
 .it-lib-ck{flex:0 0 auto; width:13px; text-align:center; color:#5a6570; font-weight:800}
 .it-lib-rule.met{color:#eef3f8} .it-lib-rule.met .it-lib-ck{color:#2ee86a}
