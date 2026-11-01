@@ -16,12 +16,12 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=11';
+import { estilos } from './estilos.js?v=12';
 import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=3';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=4';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -462,7 +462,7 @@ function rerenderVivo() {
   if (!atEdge && vr) { try { S.chart.timeScale().setVisibleLogicalRange(vr); } catch (_) {} }
 }
 function revisarConfluenciaViva() {
-  if (!S.conf || !S.conf.on || !S.conf.anchors.length) return;
+  if (!S.conf || !S.conf.anchors.length) return;   // suena aunque el modo de colocar esté apagado
   try {
     ensureRasgos();
     const ras = S.conf.ras, lastIdx = ras.n - 1;
@@ -650,11 +650,20 @@ function confActivas() { return Object.keys(S.ind).filter((k) => S.ind[k] && con
 
 function toggleConfluencia() {
   if (!S.conf) S.conf = { on: false, anchors: [], ras: null, hash: '', cursor: null, raf: null, marks: [], matchKey: '', lang: 'en' };
-  if (confActivas().length < 2) { instruccionesConfluencia(confActivas().length); return; }
+  if (!S.conf.on && confActivas().length < 2) { instruccionesConfluencia(confActivas().length); return; }   // solo bloquea ENCENDER
   montarConfluencia();
-  S.conf.on = !S.conf.on;
+  S.conf.on = !S.conf.on;                       // on = modo COLOCAR (clic + carriles). Las marcas/libreta NO dependen de esto.
   refrescarConfUI();
-  if (S.conf.on) arrancarConfLoop();
+  arrancarConfLoop();
+}
+/* Borra UNA confluencia (la del índice idx) sin tocar las demás. Pensado para
+   cuando colocas un punto por equivocación: lo quitas desde su tarjeta. */
+function borrarAncla(idx) {
+  if (!S.conf || !S.conf.anchors[idx]) return;
+  S.conf.anchors.splice(idx, 1);
+  S.conf.matchKey = '';
+  if (!S.conf.anchors.length) { const g = S.conf.ctx, cc = S.conf.cv; if (g && cc) g.clearRect(0, 0, cc.width, cc.height); }
+  refrescarConfUI();
 }
 function limpiarAnclas() {
   if (!S.conf) return;
@@ -678,49 +687,45 @@ function sincronizarConf() {
   refrescarConfUI();
 }
 
-/* LIBRETA DE REGLAS (esquina superior derecha del chart). Lista las reglas del
-   último punto de confluencia marcado, con palomita al cumplirse en la vela
-   actual y tachadas en rojo si quitas su indicador. Se oculta al desactivar la
-   confluencia, al limpiar, o al quedarse sin indicadores. */
+/* LIBRETA DE REGLAS (esquina superior derecha). Una TARJETA por cada punto de
+   confluencia colocado (LONG y SHORT a la vez), con su lista de reglas: palomita
+   verde ✓ si la regla se cumple en la última vela, círculo ○ si está en espera,
+   y ✕ roja si quitaste su indicador. Cada tarjeta tiene su ✕ para borrar SOLO
+   ese punto (si lo pusiste por error). Se ve siempre que haya puntos colocados,
+   aunque apagues el modo de colocar; se oculta al limpiar todo o quedarte sin
+   indicadores. */
 function renderLibreta() {
   const cont = document.getElementById('it-cv'); if (!cont) return;
   let lib = document.getElementById('it-libreta');
   const anchors = (S.conf && S.conf.anchors) || [];
-  const activa = anchors.length ? anchors[anchors.length - 1] : null;
-  const mostrar = !!(S.conf && S.conf.on && activa && confActivas().length >= 1);
+  const mostrar = !!(S.conf && anchors.length && confActivas().length >= 1);
   if (!mostrar) { if (lib) lib.remove(); return; }
   if (!lib) { lib = document.createElement('div'); lib.id = 'it-libreta'; lib.className = 'it-libreta'; }
   cont.appendChild(lib);                 // re-anexar → queda sobre el gráfico recién creado
   ensureRasgos();
   const ras = S.conf.ras, lang = S.conf.lang || 'en', lastIdx = ras.n - 1;
-  const cap = activa.cap || [];
-  const nAct = rasgosActivos(ras, cap);
-  const fById = {}; for (const f of ras.feats) fById[f.id] = f;
-  const filas = cap.map((c) => {
-    const f = fById[c.id], viva = !!f;
-    let cumple = false;
-    if (viva) {
-      const v = f.vals[lastIdx];
-      if (isFinite(v) && Math.abs(v - c.val) <= c.tol) {
-        cumple = true;
-        if ((c.kind === 'gap' || c.kind === 'pdist' || c.kind === 'cross' || c.kind === 'hist') && c.dir) {
-          const d = (lastIdx > 0 && isFinite(f.vals[lastIdx - 1])) ? (v >= f.vals[lastIdx - 1] ? 1 : -1) : 0;
-          if (d !== c.dir) cumple = false;
-        }
-      }
-    }
-    const cl = !viva ? 'gone' : (cumple ? 'met' : '');
-    const ck = !viva ? '✕' : (cumple ? '✓' : '○');
-    return `<div class="it-lib-rule ${cl}"><span class="it-lib-ck">${ck}</span><span class="it-lib-tx">${esc(rasgoLabel(c, lang))}</span></div>`;
-  }).join('');
-  const sideTxt = activa.side === 'short' ? 'SHORT' : 'LONG';
   const T = lang === 'es'
-    ? { head: 'REGLAS', sub: (activa.side === 'short' ? 'Config. SHORT' : 'Config. LONG'), inact: ' · inactiva' }
-    : { head: 'CONFLUENCE RULES', sub: sideTxt + ' setup', inact: ' · inactive' };
-  lib.innerHTML = `<div class="it-lib-head"><span>${T.head}</span><div class="it-lib-right"><b class="it-lib-n">${nAct}</b><button class="it-lib-lang" type="button" title="EN / ES">${lang === 'es' ? 'ES' : 'EN'}</button></div></div>
-    <div class="it-lib-sub it-lib-${activa.side}">${T.sub}${nAct < 2 ? T.inact : ''}</div>
-    <div class="it-lib-list">${filas}</div>`;
+    ? { head: 'CONFLUENCIAS', long: 'LONG', short: 'SHORT', del: 'Quitar este punto', empty: 'Sin reglas', rule: 'regla', rules: 'reglas', inact: 'inactiva · faltan indicadores' }
+    : { head: 'CONFLUENCES', long: 'LONG', short: 'SHORT', del: 'Remove this point', empty: 'No rules', rule: 'rule', rules: 'rules', inact: 'inactive · needs indicators' };
+  let validas = 0;
+  const bloques = anchors.map((a, idx) => {
+    const cap = a.cap || [], nAct = rasgosActivos(ras, cap), valida = nAct >= 2;
+    if (valida) validas++;
+    const filas = cap.map((c) => {
+      const st = cumpleRasgo(ras, c, lastIdx);                       // true ✓ / false ○ / null ✕ (indicador quitado)
+      const cl = st === null ? 'gone' : (st ? 'met' : ''), ck = st === null ? '✕' : (st ? '✓' : '○');
+      return `<div class="it-lib-rule ${cl}"><span class="it-lib-ck">${ck}</span><span class="it-lib-tx">${esc(rasgoLabel(c, lang))}</span></div>`;
+    }).join('') || `<div class="it-lib-rule"><span class="it-lib-tx" style="opacity:.45">${T.empty}</span></div>`;
+    const sideCl = a.side === 'short' ? 'short' : 'long', sideTx = a.side === 'short' ? T.short : T.long;
+    const nr = cap.length, cnt = nr + ' ' + (nr === 1 ? T.rule : T.rules);
+    return `<div class="it-lib-blk${valida ? '' : ' inact'}">
+      <div class="it-lib-bhd it-lib-${sideCl}"><span class="it-lib-tag">${sideTx}</span><span class="it-lib-nn">#${idx + 1}</span><span class="it-lib-cnt">${valida ? cnt : T.inact}</span><button class="it-lib-del" data-i="${idx}" type="button" title="${T.del}" aria-label="${T.del}">✕</button></div>
+      <div class="it-lib-rules">${filas}</div></div>`;
+  }).join('');
+  lib.innerHTML = `<div class="it-lib-head"><span>${T.head}</span><div class="it-lib-right"><b class="it-lib-n">${validas}</b><button class="it-lib-lang" type="button" title="EN / ES">${lang === 'es' ? 'ES' : 'EN'}</button></div></div>
+    <div class="it-lib-list">${bloques}</div>`;
   const bl = lib.querySelector('.it-lib-lang'); if (bl) bl.onclick = (e) => { e.stopPropagation(); S.conf.lang = (S.conf.lang === 'es') ? 'en' : 'es'; renderLibreta(); };
+  lib.querySelectorAll('.it-lib-del').forEach((b) => b.onclick = (e) => { e.stopPropagation(); e.preventDefault(); borrarAncla(+b.dataset.i); });
 }
 
 function montarConfluencia() {
@@ -829,14 +834,23 @@ function dibujarLineasAncla(g, W, H, now) {
   S.conf.anchors.forEach((a) => {
     if (!a.cap || rasgosActivos(ras, a.cap) < 2) return;             // solo anclas válidas
     let x; try { x = ts.timeToCoordinate(a.time); } catch (_) { x = null; }
-    if (x == null || x < 0 || x > W) return;
-    const col = a.side === 'short' ? '255,91,110' : '46,224,138', pulso = 0.5 + 0.5 * Math.sin(now / 900 + x * 0.05);
-    const grd = g.createLinearGradient(x, 0, x, H);
-    grd.addColorStop(0, `rgba(${col},${(0.04 + 0.05 * pulso).toFixed(3)})`);
-    grd.addColorStop(0.5, `rgba(${col},${(0.24 + 0.12 * pulso).toFixed(3)})`);
-    grd.addColorStop(1, `rgba(${col},${(0.04 + 0.05 * pulso).toFixed(3)})`);
-    g.strokeStyle = grd; g.lineWidth = 1.4; g.setLineDash([5, 4]); g.lineDashOffset = -(now / 55) % 9;
-    g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, H); g.stroke();
+    if (x == null || x < -6 || x > W + 6) return;
+    const col = a.side === 'short' ? '255,64,96' : '38,224,138', pulso = 0.5 + 0.5 * Math.sin(now / 520);
+    // 1) columna ancha translúcida que "respira" (atraviesa todos los paneles)
+    const hb = 10 + 4 * pulso;
+    const band = g.createLinearGradient(x - hb, 0, x + hb, 0);
+    band.addColorStop(0, `rgba(${col},0)`); band.addColorStop(0.5, `rgba(${col},${(0.12 + 0.07 * pulso).toFixed(3)})`); band.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = band; g.fillRect(x - hb, 0, hb * 2, H);
+    // 2) núcleo brillante con halo + guiones en movimiento
+    const core = g.createLinearGradient(x, 0, x, H);
+    core.addColorStop(0, `rgba(${col},${(0.30 + 0.25 * pulso).toFixed(3)})`); core.addColorStop(0.5, `rgba(${col},0.95)`); core.addColorStop(1, `rgba(${col},${(0.30 + 0.25 * pulso).toFixed(3)})`);
+    g.shadowColor = `rgba(${col},${(0.55 + 0.3 * pulso).toFixed(3)})`; g.shadowBlur = 13 + 7 * pulso;
+    g.strokeStyle = core; g.lineWidth = 2; g.setLineDash([7, 5]); g.lineDashOffset = -(now / 40) % 12;
+    g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, H); g.stroke(); g.setLineDash([]);
+    // 3) remates en forma de diamante arriba y abajo
+    g.shadowBlur = 10; g.fillStyle = `rgba(${col},0.95)`;
+    const diam = (cy, r) => { g.beginPath(); g.moveTo(x, cy - r); g.lineTo(x + r, cy); g.lineTo(x, cy + r); g.lineTo(x - r, cy); g.closePath(); g.fill(); };
+    diam(6, 5); diam(H - 6, 5); g.shadowBlur = 0;
   });
   g.setLineDash([]); g.restore();
 }
@@ -906,12 +920,15 @@ function instruccionesConfluencia(n) {
     <div class="it-disc-box">
       <div class="it-conf-ic">${IC_CONF}</div>
       <h3>Confluence</h3>
-      <p class="it-conf-warn">You currently have ${n === 0 ? 'no indicators' : 'only one indicator'} active. You need to apply <b>two or more indicators</b> to define a confluence point. Open the <b>Indicators</b> menu, pick the ones you want to combine, and this button will unlock.</p>
+      <p class="it-conf-warn">You have ${n === 0 ? 'no indicators' : 'only one indicator'} active right now. Confluence needs <b>two or more indicators</b> working together. Open the <b>Indicators</b> menu, add the ones you want, and this button turns on.</p>
       <div class="it-conf-how">
-        <div class="it-conf-how-t">How it works</div>
-        <p>With two or more indicators on the chart, turn on <b>Confluence</b> and click anywhere on the chart. Click <b>above price</b> to drop a <span class="cf-s">SHORT</span> marker, <b>below price</b> for a <span class="cf-l">LONG</span> one.</p>
-        <p>At that moment we capture the exact state of every active indicator — price vs each moving average, MACD vs its signal, the RSI zone, Supertrend direction, and so on. From then on, <b>every time that same combination lines up again</b> — back through history for backtesting, and live as new candles form — a matching marker is dropped on the chart.</p>
-        <p>Add as many indicators as you like to make the combo stricter, and place as many confluence points as you need to build your own strategy combos.</p>
+        <div class="it-conf-how-t">What it does</div>
+        <p>Confluence finds the exact moments when several of your indicators agree at the same time. You show it one example and it finds every other time that same setup happens.</p>
+        <div class="it-conf-how-t">How to use it</div>
+        <p>Add two or more indicators. Turn on <b>Confluence</b> and click on the chart where you like. Click <b>below the price</b> to save a <span class="cf-l">LONG</span> idea, or <b>above the price</b> for a <span class="cf-s">SHORT</span> idea.</p>
+        <p>The moment you click, it reads what each indicator is doing right there. If two lines are crossing, it remembers the cross and its direction. If the lines are apart, it remembers the exact distance between them. It does the same for every active indicator.</p>
+        <p>From then on it marks every candle in the past, and every new candle, where that same picture repeats. Adding more indicators makes the setup stricter. You can place several points and keep both long and short ideas on screen at once.</p>
+        <p>Every point gets its own card on the right. A green check means that rule is met on the latest candle, a circle means it is still waiting, and a red cross means you removed its indicator. Delete any point from its card if you placed it by mistake.</p>
       </div>
       <button class="it-pay" id="it-confhelp-ok">Got it</button>
     </div></div>`;

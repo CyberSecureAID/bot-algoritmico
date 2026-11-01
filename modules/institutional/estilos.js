@@ -368,7 +368,18 @@ const CSS = `
 .it-lib-lang:hover{background:rgba(232,184,75,.26)}
 .it-lib-sub{font-size:9px; font-weight:800; letter-spacing:.1em; margin:3px 0 8px; opacity:.92; flex:0 0 auto}
 .it-lib-short{color:#ff6b7a} .it-lib-long{color:#38e08a}
-.it-lib-list{display:flex; flex-direction:column; gap:5px; overflow-y:auto; overflow-x:hidden; min-height:0; margin-right:-4px; padding-right:4px; scrollbar-width:thin; scrollbar-color:rgba(232,184,75,.45) transparent}
+/* Tarjeta por punto de confluencia (LONG/SHORT), con su contador y su borrar */
+.it-lib-blk{border:1px solid rgba(232,184,75,.14); border-radius:9px; background:rgba(255,255,255,.015); padding:6px 7px 7px; display:flex; flex-direction:column; gap:5px}
+.it-lib-blk.inact{opacity:.58}
+.it-lib-bhd{display:flex; align-items:center; gap:5px; font-size:10px; font-weight:800; letter-spacing:.06em; margin:1px 0}
+.it-lib-tag{padding:1px 6px; border-radius:5px; color:#05070a; font-weight:900; font-size:9.5px; letter-spacing:.04em}
+.it-lib-bhd.it-lib-long .it-lib-tag{background:#38e08a} .it-lib-bhd.it-lib-short .it-lib-tag{background:#ff5b6e; color:#ffe8ea}
+.it-lib-nn{color:#7d8794; font-weight:800}
+.it-lib-cnt{margin-left:auto; color:#8b96a3; font-weight:600; font-size:8.5px; letter-spacing:.02em; text-transform:none; white-space:nowrap}
+.it-lib-del{flex:0 0 auto; width:17px; height:17px; border-radius:5px; border:1px solid rgba(255,91,110,.4); background:rgba(255,91,110,.1); color:#ff8a98; font-size:10px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; margin-left:5px}
+.it-lib-del:hover{background:rgba(255,91,110,.32); color:#fff}
+.it-lib-rules{display:flex; flex-direction:column; gap:4px}
+.it-lib-list{display:flex; flex-direction:column; gap:8px; overflow-y:auto; overflow-x:hidden; min-height:0; margin-right:-4px; padding-right:4px; scrollbar-width:thin; scrollbar-color:rgba(232,184,75,.45) transparent}
 .it-libreta .it-lib-list::-webkit-scrollbar{width:5px!important; height:0!important; display:block!important; background:transparent!important}
 .it-libreta .it-lib-list::-webkit-scrollbar-thumb{background:rgba(232,184,75,.45); border-radius:3px}
 .it-lib-rule{display:flex; align-items:flex-start; gap:7px; font-size:11px; color:#c6cdd6; line-height:1.3}
