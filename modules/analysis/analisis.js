@@ -39,7 +39,8 @@ const HERRAMIENTAS = [
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'indicator', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Where to buy and where to sell',
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
-  { id:'inst', abre:'inst', nombre:'Institutional Analysis', cat:'analysis', img:'modules/institutional/preview.svg', activos:['Crypto'], spot:false, listo:true,
+  // "Confluence" (nombre de cara al usuario) = el módulo modules/institutional/ (archivo NO renombrado).
+  { id:'inst', abre:'inst', nombre:'Confluence', cat:'analysis', img:'modules/institutional/preview.svg', activos:['Crypto'], spot:false, listo:true,
     lema:'The whole market, one desk',
     desc:'A professional analysis terminal: pro charting with fifteen indicators, live quotes and watchlist, a market-wide heatmap and macro sentiment — the systems an institutional desk watches, wired into one screen.' },
   { id:'react', abre:'react', nombre:'Reaction Zones', cat:'analysis', img:'modules/reaction/preview.svg', activos:['Crypto'], spot:true, listo:true,
@@ -144,7 +145,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=130')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=130')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=128')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=14', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=15', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=7', import.meta.url).href)).abrirReaction();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
