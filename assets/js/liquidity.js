@@ -1304,22 +1304,16 @@ function dibujar() {
          confirmados) se colorea por su valor crudo, intacto: ni se mueve
          ni se apaga. */
       const ROJO_DESDE = 0.96;
-      /* [CORREGIDO] El promedio era de 3 columnas × 5 FILAS. Como cada nivel de
-         liquidación ocupa UNA sola fila, promediarlo con sus 4 filas vecinas
-         (vacías) lo dividía ~entre 3: un nivel naranja (0.9) caía a azul (0.3),
-         uno verde (0.6) casi desaparecía. Por eso los muros quedaban como
-         "hilitos" rojos pelados, sin su halo amarillo/verde, y el mapa perdía
-         las manchas de liquidez (sobre todo en tendencia, donde todos los
-         niveles son finos). Ahora el promedio es SOLO HORIZONTAL (misma fila,
-         5 columnas): un nivel real —que se extiende a lo largo del tiempo—
-         conserva su intensidad exacta, y una celda suelta de una sola columna
-         (el "collage" que motivó el suavizado) sigue atenuándose. */
+      const CUMULO_ROJO = 0.86;   // entorno promedio a partir del cual un cúmulo se pinta rojo
       const suave = (i, f) => {
         let s = 0, w = 0;
-        for (let di = -2; di <= 2; di++) {
+        for (let di = -1; di <= 1; di++) {
           const cc = cols[i + di]; if (!cc) continue;
-          const wt = 3 - Math.abs(di);
-          s += cc[f] * wt; w += wt;
+          for (let df = -2; df <= 2; df++) {
+            const ff = f + df; if (ff < 0 || ff >= FILAS) continue;
+            const wt = (3 - Math.abs(df)) * (di === 0 ? 2 : 1);
+            s += cc[ff] * wt; w += wt;
+          }
         }
         return w ? s / w : 0;
       };
@@ -1341,9 +1335,16 @@ function dibujar() {
           if (rel >= ROJO_DESDE) {
             relC = rel;                          // muro real: color crudo, intacto
           } else {
-            // tono intermedio: color por el promedio del entorno, sin
-            // permitir que un suavizado se cuele al rojo
-            relC = Math.min(0.95, Math.min(1, suave(i, f) / max));
+            /* Tono intermedio: color por el promedio del entorno.
+               [CORREGIDO] El tope de 0.95 impedía que un CÚMULO llegara al rojo:
+               en una zona de acumulación (muchas filas fuertes pegadas) salía
+               una sola línea roja (la fila que tocaba 0.96) en vez de una mancha.
+               Ahora, si el entorno es DENSO (sv alto = acumulación real), la celda
+               sí es roja; así el cúmulo sale rojo y grueso con sus derivados
+               (naranja, amarillo, verde, azul) montados alrededor. Una línea
+               suelta tiene entorno pobre y se queda en tonos intermedios. */
+            const sv = Math.min(1, suave(i, f) / max);
+            relC = sv >= CUMULO_ROJO ? 0.97 : Math.min(0.95, sv);
           }
           if (relC < umbral) continue;
           const rgb = calor(relC);
