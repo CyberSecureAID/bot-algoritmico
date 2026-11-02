@@ -109,8 +109,10 @@ const V = {
   mapa: null,         // el mapa ya calculado
   desde: 0,           // primera vela visible
   ancho: 150,         // cuántas velas caben
-  yMin: 0, yMax: 0,   // rango de precio visible
+  yMin: 0, yMax: 0,   // rango de precio visible (base)
   autoY: true,        // ¿la escala vertical se ajusta sola?
+  zoomY: 1,           // escala vertical del usuario (arrastrar el eje de precio, como TradingView/Institutional)
+  dragEsc: false,     // ¿se está arrastrando sobre el eje de precio?
   apal: 'todos',      // filtro de apalancamiento
   intensidad: 0.55,       // al mínimo: así se parece más a la referencia
   verPerfil: false,       // el perfil de volumen, apagado por defecto
@@ -1157,6 +1159,15 @@ function ajustarY() {
   V.yMin = Math.max(0, bajo - m);
 }
 
+/* Rango de precio EFECTIVO = base (auto-fit o desplazado) estirado por zoomY
+   alrededor de su centro. Un solo sitio: lo usan el dibujo Y EL mapeo de datos,
+   así las velas, el mapa de calor y los dibujos se estiran todos a la vez. */
+function rangoY() {
+  let yMin = V.yMin, yMax = V.yMax; const z = V.zoomY || 1;
+  if (z !== 1) { const c = (yMin + yMax) / 2, s = (yMax - yMin) / 2 * z; yMin = c - s; yMax = c + s; }
+  return { yMin, yMax };
+}
+
 function dibujar() {
   const caja = $('lq-caja');
   // Sin mapa no se dibuja nada: evita mezclar datos de dos cargas.
@@ -1216,7 +1227,7 @@ function dibujar() {
   const y1 = H - mAba;
 
   ajustarY();
-  const { yMin, yMax } = V;
+  const { yMin, yMax } = rangoY();
   const Y = (p) => y1 - y1 * ((p - yMin) / Math.max(1e-12, yMax - yMin));
   /* Se guarda para que el módulo de órdenes traduzca altura a precio. */
   V._geo = { pMin: yMin, pMax: yMax, y1 };
@@ -1956,7 +1967,7 @@ function engancharGestos(cv) {
       // Mover en vertical desactiva el ajuste automático
       V.autoY = false;
       const H = cv.clientHeight || 500;
-      const rango = V.yMax - V.yMin;
+      const rango = (V.yMax - V.yMin) * (V.zoomY || 1);   // rango EFECTIVO (con el zoom del usuario)
       const d = (dy / H) * rango;
       V.yMin += d; V.yMax += d;
     }
@@ -1982,9 +1993,10 @@ function engancharGestos(cv) {
     const paso = (x1 * 0.70) / V.ancho;
     const i = Math.max(0, Math.min(V.mapa.velas.length - 1,
       Math.round(V.desde + px / Math.max(0.5, paso))));
+    const rY = rangoY();
     return {
       t: V.mapa.velas[i].t,
-      p: V.yMin + (V.yMax - V.yMin) * ((y1 - py) / y1)
+      p: rY.yMin + (rY.yMax - rY.yMin) * ((y1 - py) / y1)
     };
   };
 
@@ -2011,7 +2023,8 @@ function engancharGestos(cv) {
     }
 
     V.arrastrando = true; V.x0 = e.clientX; V.y0 = e.clientY;
-    cv.style.cursor = 'grabbing';
+    V.dragEsc = (px > cv.clientWidth - 56);   // sobre el eje de precio (derecha) → escala vertical
+    cv.style.cursor = V.dragEsc ? 'ns-resize' : 'grabbing';
   });
   window.addEventListener('mousemove', (e) => {
     if (V.enCurso) {
@@ -2022,6 +2035,11 @@ function engancharGestos(cv) {
       return;
     }
     if (!V.arrastrando) return;
+    if (V.dragEsc) {   // arrastre sobre el eje de precio → estira/contrae la escala vertical (como TradingView)
+      const dy = e.clientY - V.y0;
+      if (Math.abs(dy) > 1) { V.zoomY = Math.max(0.2, Math.min(6, (V.zoomY || 1) * (1 + dy * 0.004))); V.y0 = e.clientY; dibujar(); }
+      return;
+    }
     mover(e.clientX - V.x0, e.clientY - V.y0);
     V.x0 = e.clientX; V.y0 = e.clientY;
   });
@@ -2036,13 +2054,14 @@ function engancharGestos(cv) {
       dibujar();
       return;
     }
-    V.arrastrando = false;
+    V.arrastrando = false; V.dragEsc = false;
     cv.style.cursor = V.herramienta ? 'crosshair' : 'grab';
   });
   // La cruz sigue al puntero. Se redibuja solo si de verdad se movió.
   cv.addEventListener('mousemove', (e) => {
     const r = cv.getBoundingClientRect();
     const nx = Math.round(e.clientX - r.left), ny = Math.round(e.clientY - r.top);
+    if (!V.arrastrando && !V.herramienta) cv.style.cursor = (nx > cv.clientWidth - 56) ? 'ns-resize' : 'grab';   // eje de precio → estirar
     if (nx === V.cruzX && ny === V.cruzY) return;
     V.cruzX = nx; V.cruzY = ny;
     if (!V.arrastrando) dibujar();
@@ -2055,8 +2074,9 @@ function engancharGestos(cv) {
     zoom(e.deltaY > 0 ? 1.14 : 0.88, e.clientX - r.left);
   }, { passive: false });
 
-  // ── Táctil: un dedo mueve, dos dedos hacen zoom ──
-  let d0 = 0;
+  // ── Táctil: un dedo mueve, dos dedos hacen zoom (horizontal si el pellizco es
+  //    ancho, vertical si es alto — como en Smart Pools) ──
+  let d0 = 0, dx0 = 0, dy0 = 0;
   cv.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
       const r = cv.getBoundingClientRect();
@@ -2065,8 +2085,9 @@ function engancharGestos(cv) {
       V.x0 = e.touches[0].clientX; V.y0 = e.touches[0].clientY;
     } else if (e.touches.length === 2) {
       V.arrastrando = false;
-      d0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
-                      e.touches[0].clientY - e.touches[1].clientY);
+      dx0 = Math.abs(e.touches[0].clientX - e.touches[1].clientX);
+      dy0 = Math.abs(e.touches[0].clientY - e.touches[1].clientY);
+      d0 = Math.hypot(dx0, dy0);
     }
   }, { passive: true });
 
@@ -2077,14 +2098,20 @@ function engancharGestos(cv) {
       V.x0 = e.touches[0].clientX; V.y0 = e.touches[0].clientY;
     } else if (e.touches.length === 2 && d0 > 0) {
       e.preventDefault();
-      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
-                           e.touches[0].clientY - e.touches[1].clientY);
-      if (Math.abs(d - d0) > 6) {
+      const dx = Math.abs(e.touches[0].clientX - e.touches[1].clientX);
+      const dy = Math.abs(e.touches[0].clientY - e.touches[1].clientY);
+      const d = Math.hypot(dx, dy);
+      if (Math.abs(dy - dy0) > Math.abs(dx - dx0) && Math.abs(dy - dy0) > 6) {
+        // pellizco VERTICAL → estira/contrae la escala de precios
+        V.zoomY = Math.max(0.2, Math.min(6, (V.zoomY || 1) * (dy0 / Math.max(1, dy))));
+        dibujar();
+      } else if (Math.abs(d - d0) > 6) {
+        // pellizco HORIZONTAL → zoom en el tiempo (comportamiento de siempre)
         const r = cv.getBoundingClientRect();
         const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
         zoom(d0 / d, cx);
-        d0 = d;
       }
+      d0 = d; dx0 = dx; dy0 = dy;
     }
   }, { passive: false });
 
@@ -2467,6 +2494,7 @@ function encuadrar() {
   V.ancho = Math.min(n, window.innerWidth < 700 ? 90 : 150);
   V.desde = Math.max(0, n - V.ancho);
   V.autoY = true;
+  V.zoomY = 1;                 // el doble clic también resetea la escala vertical
   dibujar();
 }
 
