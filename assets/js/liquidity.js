@@ -1362,10 +1362,15 @@ function dibujar() {
           if (v <= 0) continue;
           const rel = Math.min(1, v / max);
           const umbral = 0.03 + (V.intensidad - 0.55) * 0.30;
+          /* [CORREGIDO] Ya NO existe la excepción "fila cruda ≥0.96 = rojo tal
+             cual". Esa excepción pintaba en rojo cualquier fila fuerte AISLADA
+             (un solo nivel de liquidación) y era la fuente del grafilado de
+             hilitos rojos. Ahora el color de TODA celda sale de su entorno: una
+             fila sola se absorbe en el fondo azul; solo un CÚMULO denso llega al
+             rojo. El color codifica cuánta liquidez hay apilada: fino = azul,
+             medio = verde/amarillo, grueso = rojo. */
           let relC;
-          if (rel >= ROJO_DESDE) {
-            relC = rel;                          // muro real: color crudo, intacto
-          } else {
+          {
             /* Tono intermedio: color por el promedio del entorno.
                [CORREGIDO] El tope de 0.95 impedía que un CÚMULO llegara al rojo:
                en una zona de acumulación (muchas filas fuertes pegadas) salía
@@ -1397,11 +1402,11 @@ function dibujar() {
          reaccionar al llegar. Se agrupan las filas rojas contiguas en
          zonas y se guardan las más fuertes para marcarlas con tachuela. */
       const redCount = new Float32Array(FILAS);
-      for (const col of cols) {
+      cols.forEach((col, i) => {       // [CORREGIDO] cuenta CÚMULOS (entorno denso), no filas sueltas
         for (let f = fMin; f < fMax; f++) {
-          if (col[f] / max >= ROJO_DESDE) redCount[f]++;
+          if (Math.min(1, suave(i, f) / max) >= CUMULO_ROJO) redCount[f]++;
         }
-      }
+      });
       const minCols = Math.max(2, Math.floor((hasta - desde) * 0.10)); // rojo en ≥10% del tiempo
       /* Datos REALES para la tarjeta: la columna más reciente SIN refuerzo
          (= dólares estimados de liquidaciones que aún descansan en cada fila),
