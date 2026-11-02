@@ -428,84 +428,7 @@ function construirMapa(velas) {
     });
   });
 
-  /* ══════════════════════════════════════════════════════════════
-     6. ZONAS DE REACCIÓN POR TOQUES — capa ADITIVA, causal y persistente
-
-     Un nivel que el precio ha tocado y rechazado varias veces ES liquidez
-     (stops sobre los máximos, órdenes en el nivel). El refuerzo de arriba
-     solo MULTIPLICA la base de liquidaciones, y como esas caen 1–10% lejos
-     del precio (medio × (1 ± 1/x)), casi nunca hay base en el nivel exacto
-     del rebote: una resistencia tocada 5 veces salía como rayita o nada.
-
-     Esta capa aporta masa PROPIA en cada zona de toques:
-       · CAUSAL: en cada columna cuenta solo los toques ya ocurridos, así la
-         mancha crece conforme el mercado confirma el nivel (1 toque = suave,
-         4+ = rojo pleno).
-       · PERSISTE aunque se rompa: el mercado sigue mirando el nivel cuando
-         vuelve (soporte roto → resistencia al regresar).
-       · SE DESGASTA solo si el precio la atraviesa repetidamente sin nuevos
-         rechazos (×0,8 por cruce); un nuevo toque la renueva.
-     Escala: el núcleo de una zona confirmada ≈ la celda de liquidación más
-     fuerte del mapa (refLiq), así sale en rojo con su degradado natural.
-     ══════════════════════════════════════════════════════════════ */
-  const refMuestras = [];
-  for (let c = 0; c < velas.length; c += 2) {
-    for (let f = 0; f < FILAS; f += 2) { let s = 0; for (const { x } of APALANCAMIENTOS) s += niveles[x][c][f]; if (s > 0) refMuestras.push(s); }
-  }
-  refMuestras.sort((a, b) => a - b);
-  const refLiq = refMuestras.length ? (refMuestras[Math.floor(refMuestras.length * 0.985)] || refMuestras[refMuestras.length - 1]) : 1;
-
-  /* Pivotes EXIGENTES para esta capa (radio 6 = extremo dentro de 13 velas):
-     un rechazo real es un swing, no un blip de 3 velas en medio de una
-     tendencia. Con radio 3, en una bajada lenta cada mini-rebote contaba como
-     "toque" y varios en el mismo rango sumaban 3+ → bloques rojos falsos. */
-  const pivR = pivotes(velas, 6);
-  const todosPiv = pivR.altos.map((a) => ({ i: a.i, p: a.p, alto: true })).concat(pivR.bajos.map((b) => ({ i: b.i, p: b.p, alto: false }))).sort((a, b) => a.p - b.p);
-  /* Los toques se ENCADENAN: si el siguiente pivote (ordenados por precio) está
-     a ≤2,5 filas del borde superior de la zona, pertenece a ella. Así una
-     meseta con toques en 747, 749, 751, 753 y 755 es UNA zona-banda de 747 a
-     755 con 5 toques (como un rectángulo), no cinco líneas débiles. Tope de
-     12 filas por zona para no encadenar una tendencia entera. */
-  const tolR = Math.max(tol, alturaFila * 2.5), altoMax = alturaFila * 12;
-  const zonasReac = [];
-  for (const pv of todosPiv) {
-    const z = zonasReac.length ? zonasReac[zonasReac.length - 1] : null;
-    if (z && pv.p - z.pMax <= tolR && pv.p - z.pMin <= altoMax) { z.toquesIdx.push(pv.i); z.pMax = pv.p; if (pv.alto) z.altos++; }
-    else zonasReac.push({ pMin: pv.p, pMax: pv.p, toquesIdx: [pv.i], altos: pv.alto ? 1 : 0 });
-  }
-  /* Peso por nº de rechazos: un solo toque casi no pinta (sería ruido);
-     la mancha nace con la REPETICIÓN. */
-  const S_TOQUES = (n) => n >= 4 ? 1.0 : n === 3 ? 0.9 : n === 2 ? 0.45 : 0.18;
-  const estructCol = new Array(velas.length).fill(null);
-  zonasReac.forEach((z) => {
-    z.toquesIdx.sort((a, b) => a - b); z.p = (z.pMin + z.pMax) / 2; z.f = filaDe(z.p);
-    const fA = filaDe(z.pMin), fB = filaDe(z.pMax);
-    let k = 0, nT = 0, ladoPrev = 0, cruces = 0;
-    z.fuerzaFinal = 0; z.toques = z.toquesIdx.length; z.crucesFinal = 0;
-    for (let c = z.toquesIdx[0]; c < velas.length; c++) {
-      while (k < z.toquesIdx.length && z.toquesIdx[k] <= c) { k++; nT = k; cruces = 0; }      // nuevo toque → se renueva
-      // cruce = cerrar FUERA de la banda por el lado contrario (oscilar dentro no cuenta)
-      const lado = velas[c].c > z.pMax + tol ? 1 : velas[c].c < z.pMin - tol ? -1 : 0;
-      if (lado !== 0 && ladoPrev !== 0 && lado !== ladoPrev) cruces++;
-      if (lado !== 0) ladoPrev = lado;
-      /* Desgaste suave: el 1.er cruce no resta (un soporte que pasa a resistencia
-         es un giro normal y sigue siendo nivel de interés); los siguientes restan
-         poco. Solo un nivel atravesado una y otra vez sin rechazo se apaga. */
-      const fuerza = S_TOQUES(nT) * Math.pow(0.92, Math.max(0, cruces - 1));
-      if (c === velas.length - 1) { z.fuerzaFinal = fuerza; z.crucesFinal = cruces; }
-      if (fuerza < 0.08) continue;
-      let ec = estructCol[c]; if (!ec) { ec = new Float32Array(FILAS); estructCol[c] = ec; }
-      // banda a plena masa de fA−1 a fB+1, hombros a 0,5 dos filas más allá
-      const masa = fuerza * refLiq;
-      for (let f = fA - 3; f <= fB + 3; f++) {
-        if (f < 0 || f >= FILAS) continue;
-        const fuera = f < fA - 1 ? (fA - 1 - f) : f > fB + 1 ? (f - fB - 1) : 0;
-        ec[f] += masa * (fuera === 0 ? 1 : fuera === 1 ? 0.5 : 0.25);
-      }
-    }
-  });
-
-  return { niveles, velas, yMin, yMax, alturaFila, refuerzo, refuerzoCol, zonasEst, estructCol, zonasReac, refLiq };
+  return { niveles, velas, yMin, yMax, alturaFila, refuerzo, refuerzoCol, zonasEst };
 }
 
 /** Suma los niveles según el filtro de apalancamiento activo. */
@@ -532,7 +455,7 @@ function construirMapa(velas) {
    liquidación cae donde el precio rebotó varias veces, se refuerza y
    sube a rojo. El rojo sale donde debe, sin romper el dibujo.
    ══════════════════════════════════════════════════════════════ */
-function columnaDe(mapa, c, sinRefuerzo, soloLiquidaciones) {
+function columnaDe(mapa, c, sinRefuerzo) {
   const out = new Float32Array(FILAS);
   const lista = V.apal === 'todos'
     ? APALANCAMIENTOS.map((a) => a.x)
@@ -542,12 +465,6 @@ function columnaDe(mapa, c, sinRefuerzo, soloLiquidaciones) {
     if (!col) return;
     for (let f = 0; f < FILAS; f++) out[f] += col[f];
   });
-  /* Capa de REACCIÓN por toques (aditiva). `soloLiquidaciones` la excluye:
-     lo usa la tarjeta para dar dólares de liquidación puros, sin mezclar. */
-  if (!soloLiquidaciones && mapa.estructCol && mapa.estructCol[c]) {
-    const ec = mapa.estructCol[c];
-    for (let f = 0; f < FILAS; f++) out[f] += ec[f];
-  }
   /* El refuerzo por estructura se aplica AQUÍ, antes de que se calcule
      el máximo. Si se aplicaba al pintar, el máximo ya estaba fijado sin
      él y el efecto se perdía: por eso los picos no salían en rojo. */
@@ -1381,10 +1298,7 @@ function dibujar() {
     const muestras = [];
     for (let c = desde; c < hasta; c++) {
       cols.push(columnaDe(V.mapa, c));
-      /* [CORREGIDO] El techo de color sale SOLO de las liquidaciones: así la
-         capa de reacción (que puede ser grande) no sube el máximo ni apaga los
-         cúmulos de liquidación; una zona repetida simplemente satura a rojo. */
-      const base = columnaDe(V.mapa, c, true, true);
+      const base = columnaDe(V.mapa, c, true);
       for (const v of base) if (v > 0) muestras.push(v);
     }
     muestras.sort((a, b) => a - b);
@@ -1487,43 +1401,39 @@ function dibujar() {
          eso pasa hay una pared de liquidez real, y el precio suele
          reaccionar al llegar. Se agrupan las filas rojas contiguas en
          zonas y se guardan las más fuertes para marcarlas con tachuela. */
-      /* [CORREGIDO] Las zonas (tachuelas) y sus datos salen del ESTADO ACTUAL
-         del mapa (sus últimas columnas) con normalización FIJA (refLiq), no de
-         lo que hay en pantalla. Así NO cambian al contraer/expandir/mover la
-         gráfica: el volumen y la liquidez son los que son. */
-      const nMap = V.mapa.velas.length, FM = FILAS;
-      const ultCols = [nMap - 3, nMap - 2, nMap - 1].map((c) => columnaDe(V.mapa, Math.max(0, c), true));
-      const ultLiq = columnaDe(V.mapa, nMap - 1, true, true);          // liquidaciones puras (dólares)
-      const maxFijo = Math.max(1e-9, V.mapa.refLiq || max);
-      const perfil = new Float32Array(FM);                               // mismo suavizado vertical que el pintado
-      for (let f = 0; f < FM; f++) {
-        let s = 0, w = 0;
-        ultCols.forEach((cc, j) => { const wc = j === 1 ? 2 : 1; for (let df = -2; df <= 2; df++) { const ff = f + df; if (ff < 0 || ff >= FM) continue; const wt = (3 - Math.abs(df)) * wc; s += cc[ff] * wt; w += wt; } });
-        perfil[f] = w ? s / w : 0;
-      }
-      const reac = V.mapa.zonasReac || [];
-      const tolP = V.mapa.alturaFila * 2.5;
-      let f = 0;
-      while (f < FM) {
-        if (perfil[f] / maxFijo >= CUMULO_ROJO) {
+      const redCount = new Float32Array(FILAS);
+      cols.forEach((col, i) => {       // [CORREGIDO] cuenta CÚMULOS (entorno denso), no filas sueltas
+        for (let f = fMin; f < fMax; f++) {
+          if (Math.min(1, suave(i, f) / max) >= CUMULO_ROJO) redCount[f]++;
+        }
+      });
+      const minCols = Math.max(2, Math.floor((hasta - desde) * 0.10)); // rojo en ≥10% del tiempo
+      /* Datos REALES para la tarjeta: la columna más reciente SIN refuerzo
+         (= dólares estimados de liquidaciones que aún descansan en cada fila),
+         y las zonas estructurales vivas (para saber cuántas veces se defendió). */
+      const ultBase = columnaDe(V.mapa, hasta - 1, true);
+      const estVivas = (V.mapa.zonasEst || []).filter((z) => z.desde <= hasta - 1 && z.hasta > hasta - 1);
+      let f = fMin;
+      while (f < fMax) {
+        if (redCount[f] >= minCols) {
           let f0 = f, fuerza = 0, filas = 0;
-          while (f < FM && perfil[f] / maxFijo >= CUMULO_ROJO * 0.75) { fuerza += perfil[f] / maxFijo; filas++; f++; }
+          while (f < fMax && redCount[f] >= minCols * 0.6) { fuerza += redCount[f]; filas++; f++; }
           const fc = (f0 + f - 1) / 2;
           const precio = V.mapa.yMin + (fc + 0.5) * V.mapa.alturaFila;
           const pLow = V.mapa.yMin + f0 * V.mapa.alturaFila;
           const pHigh = V.mapa.yMin + f * V.mapa.alturaFila;
-          let capital = 0; for (let k = f0; k < f; k++) capital += ultLiq[k];
-          const z = reac.filter((r) => r.pMax >= pLow - tolP && r.pMin <= pHigh + tolP).sort((a, b) => b.toques - a.toques)[0] || null;
-          let volZona = 0; for (const v of V.mapa.velas) if (v.h >= pLow && v.l <= pHigh) volZona += v.v;   // todo el historial, no solo lo visible
-          zonasLiq.push({ precio, pLow, pHigh, fuerza, filas, capital, toques: z ? z.toques : 0, cruces: z ? z.crucesFinal : 0, volZona, f0, f1: f });
+          let capital = 0; for (let k = f0; k < f; k++) capital += ultBase[k];
+          const tolP = V.mapa.alturaFila * 2;
+          const est = estVivas.filter((z) => z.p >= pLow - tolP && z.p <= pHigh + tolP).sort((a, b) => (b.toques || 0) - (a.toques || 0))[0] || null;
+          zonasLiq.push({ precio, pLow, pHigh, fuerza, filas, capital, toques: est ? (est.toques || 1) : 0 });
         } else f++;
       }
-      // las más fuertes primero; pocas y separadas (en FILAS, no en píxeles → estable al zoom)
+      // las más fuertes primero; nos quedamos con unas pocas separadas
       zonasLiq.sort((a, b) => b.fuerza - a.fuerza);
       const elegidas = [];
       for (const z of zonasLiq) {
-        if (elegidas.length >= 5) break;
-        if (elegidas.every((e) => Math.abs(e.f0 - z.f0) > 6)) elegidas.push(z);
+        if (elegidas.length >= 4) break;
+        if (elegidas.every((e) => Math.abs(Y(e.precio) - Y(z.precio)) > 30)) elegidas.push(z);
       }
       zonasLiq = elegidas;
     }
@@ -1706,12 +1616,11 @@ function dibujar() {
     zonasLiq.forEach((z, idx) => {
       const yN = Y(z.precio);
       if (yN < 8 || yN > y1 - 10) return;
-      /* [CORREGIDO] Antes el volumen se partía en "compra/venta" por el color
-         de la vela y se medía solo sobre lo VISIBLE: cambiaba con el zoom y
-         decía cosas sin sentido ("compra por encima del precio"). Ahora es el
-         volumen TOTAL negociado en el nivel sobre todo el historial (z.volZona),
-         sin inventar un lado. */
-      const volT = z.volZona || 0;
+      // volumen REAL negociado dentro de la zona, partido compra/venta
+      let volC = 0, volV = 0;
+      for (const v of vis) {
+        if (v.h >= z.pLow && v.l <= z.pHigh) { if (v.c >= v.o) volC += v.v; else volV += v.v; }
+      }
 
       /* Color por posición: las de DEBAJO del precio (soportes) en VERDE,
          las de ENCIMA (resistencias) en ROJO. Colores vivos. */
@@ -1766,18 +1675,21 @@ function dibujar() {
 
       // Si está abierta, guardamos sus datos para pintarla AL FINAL (así la
       // tarjeta queda por encima de las demás tachuelas, no debajo).
-      if (abierta) carta = { z, idx, alcista, col, cRGB, volT, x, y, h };
+      if (abierta) carta = { z, idx, alcista, col, cRGB, volC, volV, x, y, h };
     });
 
     // ── TARJETA DESPLEGABLE (encima de todo) ──
     if (carta) {
-      const { z, alcista, col, cRGB, volT } = carta;
+      const { z, alcista, col, cRGB, volC, volV } = carta;
       const fmtV = fmtVol;
+      const volT = volC + volV || 1;
+      const pctC = Math.round((volC / volT) * 100);
+      const pctV = 100 - pctC;
       const dist = ((z.precio - precioAhora) / precioAhora) * 100;
       const signo = dist >= 0 ? '+' : '';
 
       const pw = Math.min(236, x1 - 12);
-      const ph = 200;   // cuerpo: hechos + volumen + liquidaciones + chip
+      const ph = 226;   // +38: capital estimado + veces defendida
       const px = Math.max(6, Math.min(x1 - pw - 6, carta.x));
       let py = carta.y + carta.h + 8;
       if (py + ph > y1 - 4) py = Math.max(4, carta.y - ph - 8);
@@ -1821,52 +1733,92 @@ function dibujar() {
       g.fillText(dtxt, dpx + dpw / 2, dpy + 12);
       g.textAlign = 'left';
 
-      // ── RANGO de la zona (izq) + TOQUES en puntos (der): cuántas veces rechazó ──
+      // ── RANGO de la zona (izq) + medidor de FUERZA en puntos (der) ──
       g.fillStyle = '#8b95a1'; g.font = '9px ui-monospace,monospace'; g.textAlign = 'left';
       const rango = (z.pLow && z.pHigh && Math.abs(z.pHigh - z.pLow) > 1e-9)
-        ? 'Zone ' + fmt(z.pLow) + '–' + fmt(z.pHigh)
+        ? 'Zone ' + fmt(z.pLow) + '\u2013' + fmt(z.pHigh)
         : 'Liquidity wall';
       g.fillText(rango, tx, py + hb + 40);
-      const nf = Math.max(0, Math.min(5, z.toques || 0));   // puntos = nº de rechazos (0..5)
+      const nf = Math.max(1, Math.min(5, z.filas || 1));   // fuerza = nº de muros (1..5)
       const dgap = 7, dr = 2.3, dyC = py + hb + 37, dxEnd = px + pw - 14;
       for (let i = 0; i < 5; i++) {
         g.beginPath(); g.arc(dxEnd - (4 - i) * dgap, dyC, dr, 0, Math.PI * 2);
         g.fillStyle = i < nf ? col : 'rgba(255,255,255,.18)'; g.fill();
       }
 
-      /* [CORREGIDO] Tarjeta con HECHOS, no frases placeholder:
-         · qué hizo el precio aquí (rechazos contados por los pivotes),
-         · volumen TOTAL negociado en el nivel sobre todo el historial (sin
-           partirlo en "compra/venta" por color de vela, que no significa eso),
-         · liquidaciones que descansan aquí con el LADO correcto (encima del
-           precio = cortos; debajo = largos), en USD estimados del mapa,
-         · chip de estado según la estructura (rechazos / roturas). */
+      // ── QUÉ ES (lógica correcta: encima=venta/oferta, debajo=compra/demanda) ──
       g.fillStyle = '#c8d0d8'; g.font = '9.5px ui-monospace,monospace';
-      const nT = z.toques || 0, nX = z.cruces || 0;
-      let l1, l2;
-      if (nT >= 3) { l1 = 'Price rejected here ' + nT + '×.'; l2 = alcista ? 'Buyers defended this floor.' : 'Sellers defended this ceiling.'; }
-      else if (nT > 0) { l1 = 'Price rejected here ' + nT + '×.'; l2 = alcista ? 'Floor under test.' : 'Ceiling under test.'; }
-      else { l1 = 'Liquidation cluster, not yet'; l2 = 'reached by price.'; }
-      g.fillText(l1, tx, py + hb + 58);
-      g.fillText(l2, tx, py + hb + 71);
+      if (alcista) {
+        g.fillText('Buying stacked BELOW price.', tx, py + hb + 58);
+        g.fillText('Floor that holds up the drops.', tx, py + hb + 71);
+      } else {
+        g.fillText('Accumulated selling ABOVE the price.', tx, py + hb + 58);
+        g.fillText('Ceiling that stops the rises.', tx, py + hb + 71);
+      }
 
+      // ── FLUJO en la zona, con % (velas verdes vs rojas que pasaron por ella).
+      //    Si la zona NO tuvo actividad (volC=volV=0) no inventamos nada: barra
+      //    neutra y aviso honesto, en vez de pintarla toda roja. ──
+      const sinFlujo = (volC + volV) <= 0;
       g.fillStyle = '#8b95a1'; g.font = '8.5px ui-monospace,monospace'; g.textAlign = 'left';
-      g.fillText('Volume traded at this level', tx, py + hb + 92);
-      g.fillStyle = '#f2f5f8'; g.font = 'bold 9.5px ui-monospace,monospace'; g.textAlign = 'right';
-      g.fillText(volT > 0 ? fmtV(volT) : '—', px + pw - 13, py + hb + 92);
+      g.fillText('Flow in the zone', tx, py + hb + 90);
+      if (!sinFlujo) { g.textAlign = 'right'; g.fillText('Total ' + fmtV(volT), px + pw - 13, py + hb + 90); g.textAlign = 'left'; }
+      const bx = tx, by = py + hb + 96, bw = pw - 26, bh = 10;
+      g.save(); redondeadoLq(g, bx, by, bw, bh, 5); g.clip();
+      if (sinFlujo) {
+        g.fillStyle = 'rgba(232,184,75,.28)'; g.fillRect(bx, by, bw, bh);
+      } else {
+        const wc = Math.max(0, Math.min(bw, bw * (volC / volT)));
+        g.fillStyle = 'rgba(46,232,106,.95)'; g.fillRect(bx, by, wc, bh);
+        g.fillStyle = 'rgba(255,70,90,.95)'; g.fillRect(bx + wc, by, bw - wc, bh);
+      }
+      g.restore();
+      g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1; redondeadoLq(g, bx, by, bw, bh, 5); g.stroke();
+      if (sinFlujo) {
+        g.fillStyle = '#8b95a1'; g.font = '8.5px ui-monospace,monospace'; g.textAlign = 'center';
+        g.fillText('Resting liquidity, not yet swept', bx + bw / 2, by + bh + 13);
+        g.textAlign = 'left';
+      } else {
+        g.font = 'bold 8.5px ui-monospace,monospace';
+        g.fillStyle = '#2ee86a'; g.textAlign = 'left';
+        g.fillText('\u25b2 ' + fmtV(volC) + '  ' + pctC + '%', bx, by + bh + 13);
+        g.fillStyle = '#ff6b7a'; g.textAlign = 'right';
+        g.fillText(pctV + '%  ' + fmtV(volV) + ' \u25bc', bx + bw, by + bh + 13);
+        g.textAlign = 'left';
+      }
 
+      /* ── LIQUIDACIONES QUE DESCANSAN AQUÍ + VECES DEFENDIDA (datos del mapa) ──
+         `capital`: suma, en la columna más reciente y sin multiplicadores, de los
+         dólares estimados de posiciones apalancadas cuyo nivel de liquidación cae
+         en esta zona (debajo del precio = largos; encima = cortos). `toques`: veces
+         que el precio tocó y rechazó este nivel según los pivotes estructurales. */
+      const yL = py + hb + 141;
       g.fillStyle = '#8b95a1'; g.font = '8.5px ui-monospace,monospace'; g.textAlign = 'left';
-      g.fillText(alcista ? 'Long liquidations resting (est.)' : 'Short liquidations resting (est.)', tx, py + hb + 110);
+      g.fillText(alcista ? 'Longs liquidate here (est.)' : 'Shorts liquidate here (est.)', tx, yL);
       g.fillStyle = '#f2f5f8'; g.font = 'bold 9.5px ui-monospace,monospace'; g.textAlign = 'right';
-      g.fillText('$' + fmtV(z.capital || 0), px + pw - 13, py + hb + 110);
-      g.textAlign = 'left'; g.fillStyle = '#6f7a86'; g.font = '8px ui-monospace,monospace';
-      g.fillText('Estimated from Binance price & volume', tx, py + hb + 123);
+      g.fillText('$' + fmtV(z.capital || 0), px + pw - 13, yL);
+      g.textAlign = 'left'; g.fillStyle = (z.toques > 0) ? col : '#8b95a1'; g.font = 'bold 8.5px ui-monospace,monospace';
+      g.fillText(z.toques > 0 ? ('Rejected ' + z.toques + '× at this level') : 'Level not tested yet', tx, yL + 13);
 
+      /* ── CHIP de lectura. Correcta para SPOT (aquí no hay cortos): en una
+         resistencia, si predominó la COMPRA es que compraron caro y el precio
+         los dejó abajo → oferta al recuperar ("atrapados arriba"). En un
+         soporte, si predominó la VENTA pero el piso aguantó → esa venta fue
+         ABSORBIDA por la demanda (no "vendedor atrapado", que en spot no
+         existe). Sin dominio claro = zona en disputa. Sin flujo = solo un
+         nivel de liquidez. Nada de frases vacías. ── */
       let dom;
-      if (nT >= 3 && nX === 0) dom = [(alcista ? 'Strong floor · ' : 'Strong ceiling · ') + nT + ' rejections', alcista ? '46,232,106' : '255,107,122'];
-      else if (nT > 0 && nX > 0) dom = ['Broken ' + nX + '× · watch the retest', '245,183,74'];
-      else if (nT > 0) dom = [alcista ? 'Floor in play' : 'Ceiling in play', '196,204,212'];
-      else dom = [alcista ? 'Untested liquidity below' : 'Untested liquidity above', '232,184,75'];
+      if (sinFlujo) {
+        dom = [alcista ? 'Liquidity floor' : 'Liquidity ceiling', '232,184,75'];
+      } else if (!alcista) {                 // RESISTENCIA (techo · oferta)
+        dom = volV > volC * 1.25 ? ['Firm supply, solid ceiling', '255,107,122']
+            : volC > volV * 1.25 ? ['Buyers trapped above', '245,183,74']
+            : ['Ceiling in play', '196,204,212'];
+      } else {                               // SOPORTE (piso · demanda)
+        dom = volC > volV * 1.25 ? ['Firm demand, solid floor', '46,232,106']
+            : volV > volC * 1.25 ? ['Selling absorbed, floor tested', '245,183,74']
+            : ['Floor in play', '196,204,212'];
+      }
       const chy = py + ph - 26, chh = 18, chx = px + 10, chw = pw - 20;
       g.fillStyle = `rgba(${dom[1]},.14)`; redondeadoLq(g, chx, chy, chw, chh, 7); g.fill();
       g.strokeStyle = `rgba(${dom[1]},.42)`; g.lineWidth = 1; redondeadoLq(g, chx, chy, chw, chh, 7); g.stroke();
