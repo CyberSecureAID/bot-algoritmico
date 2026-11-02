@@ -296,8 +296,7 @@ function construirMapa(velas) {
     let pts = toques * 2.4 + relMecha * 2.0 + relVol * 1.3;
     if (extremo) pts += 2.6;
 
-    const iPrimero = lista.reduce((m, o) => (Math.abs(o.p - piv.p) <= tol && o.i < m) ? o.i : m, piv.i);   // primer toque del nivel
-    candidatos.push({ p: piv.p, pts, f: filaDe(piv.p), i: piv.i, esAlto, toques, iPrimero });
+    candidatos.push({ p: piv.p, pts, f: filaDe(piv.p), i: piv.i, esAlto, toques });
   };
   altos.forEach((p) => puntuar(p, altos));
   bajos.forEach((p) => puntuar(p, bajos));
@@ -384,7 +383,7 @@ function construirMapa(velas) {
   elegidos.forEach((c) => {
     const rel = c.pts / ptsMax;                 // 0 a 1
     const fuerza = 1.5 + rel * 4.5;             // el mejor llega al rojo
-    zonasEst.push({ tipo: 'pivote', f: c.f, fuerza, desde: c.i, hasta: barridaEn(c.i, c.p, c.esAlto), p: c.p, esAlto: c.esAlto, toques: c.toques || 1, iPrimero: c.iPrimero != null ? c.iPrimero : c.i });
+    zonasEst.push({ tipo: 'pivote', f: c.f, fuerza, desde: c.i, hasta: barridaEn(c.i, c.p, c.esAlto), p: c.p, esAlto: c.esAlto, toques: c.toques || 1 });
   });
 
   /* Refuerzo POR COLUMNA: cada zona multiplica solo las columnas de su
@@ -1309,79 +1308,6 @@ function dibujar() {
     if (max > 0) {
       const fMin = Math.max(0, Math.floor((yMin - V.mapa.yMin) / V.mapa.alturaFila));
       const fMax = Math.min(FILAS, Math.ceil((yMax - V.mapa.yMin) / V.mapa.alturaFila));
-
-      /* ══════════════════════════════════════════════════════════
-         ESTALACTITAS DE REMANENTE (zonas donde el precio YA reaccionó)
-
-         Una resistencia tocada varias veces, o un suelo con mechas
-         grandes, deja liquidez REMANENTE. Las liquidaciones caen 1–10%
-         lejos del precio, así que en el nivel exacto del rebote casi
-         nunca hay base: el nivel salía como un pelo. Aquí se añade esa
-         masa, con tres reglas:
-           · Solo a la DERECHA de la última vela que tocó la zona, en
-             el espacio libre: nunca encima de las velas ni hacia atrás.
-           · Con forma de estalactita: nace fina junto a la vela que la
-             rechazó (ni la toca) y se ensancha e intensifica hacia el
-             borde derecho, donde el precio puede volver a reaccionar.
-           · Nunca pegada al precio actual (eso no es remanente).
-         La masa entra en la columna ANTES del mismo suavizado y con el
-         MISMO máximo que todo lo demás: sale con el degradado natural
-         (rojo→amarillo→verde→azul) y no cambia al mover la gráfica.
-         ══════════════════════════════════════════════════════════ */
-      {
-        const vM = V.mapa.velas, cLast = vM.length - 1, pxNow = vM[cLast].c, aF = V.mapa.alturaFila, y0 = V.mapa.yMin;
-        const cuna = new Array(cols.length).fill(null);   // masa de estalactita por columna visible (MÁXIMO, no suma)
-        (V.mapa.zonasEst || []).forEach((z) => {
-          /* La liquidez de una RESISTENCIA está por ENCIMA de sus máximos (stops de
-             cortos) y la de un SOPORTE por DEBAJO de sus mínimos: la banda va a ese
-             lado, así no toca las mechas que la formaron y puede existir desde el
-             primer toque. Solo si una vela entra DENTRO de la banda (rotura), se corta. */
-          const fTop = z.tipo === 'pivote' ? z.f : z.fB, fBot = z.tipo === 'pivote' ? z.f : z.fA;
-          const fA = z.esAlto ? fTop : fBot - 3, fB = z.esAlto ? fTop + 3 : fBot;
-          const pA = y0 + fA * aF, pB = y0 + (fB + 1) * aF;
-          if (Math.abs(z.p - pxNow) / pxNow < 0.004) return;                 // pegada al precio actual: no es remanente
-          /* ¿Es un soporte/resistencia de verdad o un nivel del medio del rango?
-             Un S/R tiene una RACHA LARGA de velas a un solo lado (aunque luego se
-             rompa y el precio pase al otro); un nivel de "chop" alterna de lado
-             cada pocas velas. */
-          const cIni = z.iPrimero != null ? z.iPrimero : z.desde;              // la banda nace en el PRIMER toque
-          let ladoAct = 0, racha = 0, rachaMax = 0, n = 0, ultToque = cIni;
-          for (let c = cIni; c <= cLast; c++) {
-            const v = vM[c]; n++;
-            const l = v.c > pB ? 1 : v.c < pA ? -1 : ladoAct;
-            if (l === ladoAct) racha++; else { racha = 1; ladoAct = l; }
-            if (racha > rachaMax) rachaMax = racha;
-            if (v.h >= pA + aF && v.l <= pB - aF) ultToque = c;              // la vela ENTRA en la banda (solape real; rozar no cuenta)
-          }
-          if (rachaMax / Math.max(1, n) < 0.35) return;                      // chop → no es S/R
-          if (cLast - ultToque < 25) return;                                 // el precio sigue ahí: no es remanente, no pintar junto al precio
-          const fuerza = z.tipo === 'pivote' ? Math.min(1, 0.55 + 0.15 * (z.toques || 1)) : 0.75;   // 3+ rechazos → rojo pleno
-          const med = (fA + fB) / 2, RAMPA = 40;                              // ancho pleno ~40 velas después del último toque
-          /* La banda existe desde que nace la zona. Donde una vela la toca se
-             CORTA (jamás encima de la vela) y a partir de ahí vuelve a nacer fina
-             y se ensancha: estalactita. El rojo se mantiene; lo que se afina es
-             el ANCHO. Solo lo reciente (240 velas): lo antiguo ya lo cubre la
-             liquidación. */
-          let ult = cIni;
-          for (let c = cIni; c <= cLast; c++) {
-            const v = vM[c];
-            if (v.h >= pA + aF && v.l <= pB - aF) { ult = c; continue; }     // la vela ENTRA en la banda → corte (rozar no corta)
-            if (c <= cLast - 240) continue;
-            const i = c - desde; if (i < 0 || i >= cols.length) continue;
-            const ramp = Math.min(1, (c - ult) / RAMPA);                      // 0 junto a la vela → 1 a las 40 velas
-            if (ramp <= 0) continue;
-            const semi = 1 + 1 * ramp;                                        // de ±1 a ±2 filas (banda de 4 filas + hombros)
-            const amp = max * fuerza * (0.85 + 0.15 * ramp);                  // rojo casi constante
-            let w = cuna[i]; if (!w) { w = new Float32Array(FILAS); cuna[i] = w; }
-            for (let f = Math.floor(med - semi); f <= Math.ceil(med + semi); f++) {
-              if (f < fMin || f >= fMax) continue;
-              const d = Math.abs(f - med) / semi;
-              w[f] = Math.max(w[f], amp * Math.max(0, 1 - d * d * d * d));   // perfil plano: el centro sobrevive al suavizado
-            }
-          }
-        });
-        cuna.forEach((w, i) => { if (!w) return; const col = cols[i]; for (let f = fMin; f < fMax; f++) if (w[f] > 0) col[f] += w[f]; });
-      }
 
       /* ══════════════════════════════════════════════════════════
          CELDAS, NO BARRAS
