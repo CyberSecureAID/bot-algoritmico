@@ -296,7 +296,7 @@ function construirMapa(velas) {
     let pts = toques * 2.4 + relMecha * 2.0 + relVol * 1.3;
     if (extremo) pts += 2.6;
 
-    candidatos.push({ p: piv.p, pts, f: filaDe(piv.p) });
+    candidatos.push({ p: piv.p, pts, f: filaDe(piv.p), i: piv.i, esAlto, toques });
   };
   altos.forEach((p) => puntuar(p, altos));
   bajos.forEach((p) => puntuar(p, bajos));
@@ -332,27 +332,40 @@ function construirMapa(velas) {
      2. Van directas al refuerzo, sin pasar por el filtro de niveles.
         Una mecha grande siempre es zona de liquidez: está comprobado
         que cuando el precio vuelve, reacciona. */
-  velas.forEach((v) => {
+  /* ══════════════════════════════════════════════════════════════
+     [CORREGIDO] REFUERZO CON TIEMPO (antes era eterno)
+
+     El refuerzo era un multiplicador POR FILA sin noción de tiempo: una
+     fila donde el precio rebotó brillaba en rojo a lo ancho de TODO el
+     gráfico, antes de que el rebote existiera y después de que el precio
+     ya se hubiera comido esa liquidez. Eso dejaba manchas rojas "placeholder"
+     por donde el precio ya pasó, y rayas finas sin relación con lo que
+     ocurría en cada momento.
+
+     Ahora cada zona (pivote o mecha) tiene VENTANA: nace en su vela y
+     muere cuando un cierre la ROMPE (cierre por encima de un techo, por
+     debajo de un suelo). Un simple toque con rechazo no la mata: eso es
+     una reacción, y la refuerza. Fuera de su ventana, no pinta nada.
+     ══════════════════════════════════════════════════════════════ */
+  const zonasEst = [];   // zonas estructurales con ventana de tiempo
+  const barridaEn = (i, p, esTecho) => {           // 1.ª vela que CIERRA a través del nivel
+    for (let j = i + 1; j < velas.length; j++) { const c = velas[j].c; if (esTecho ? c > p : c < p) return j; }
+    return Infinity;
+  };
+  velas.forEach((v, idx) => {
     const cuerpoAlto = Math.max(v.o, v.c), cuerpoBajo = Math.min(v.o, v.c);
 
-    [[(v.h - cuerpoAlto) / v.h, cuerpoAlto, v.h],
-     [(cuerpoBajo - v.l) / Math.max(1e-9, v.l), v.l, cuerpoBajo]
-    ].forEach(([rel, pA, pB]) => {
+    [[(v.h - cuerpoAlto) / v.h, cuerpoAlto, v.h, true],
+     [(cuerpoBajo - v.l) / Math.max(1e-9, v.l), v.l, cuerpoBajo, false]
+    ].forEach(([rel, pA, pB, esSuperior]) => {
       if (rel < UMBRAL_MECHA) return;
 
       // Fuerza según el tamaño: al 2,5% ya es máxima
       const fuerza = 0.5 + Math.min(1, rel / (UMBRAL_MECHA * 2.4)) * 1.9;
       const fA = filaDe(Math.min(pA, pB));
       const fB = filaDe(Math.max(pA, pB));
-
-      // TODA la mecha se marca, no solo su extremo
-      for (let f = fA - 1; f <= fB + 1; f++) {
-        if (f < 0 || f >= FILAS) continue;
-        // El extremo de la mecha es lo más fuerte; la base, algo menos
-        const pos = (f - fA) / Math.max(1, fB - fA);
-        const peso = 0.62 + pos * 0.38;
-        refuerzo[f] = Math.max(refuerzo[f], 1 + fuerza * peso);
-      }
+      const extremo = esSuperior ? v.h : v.l;
+      zonasEst.push({ tipo: 'mecha', fA, fB, fuerza, desde: idx, hasta: barridaEn(idx, extremo, esSuperior), p: extremo, esAlto: esSuperior, toques: 1 });
     });
   });
 
@@ -365,17 +378,31 @@ function construirMapa(velas) {
     elegidos.push(c);
   }
 
-  // Y se marcan, con fuerza proporcional a su puntuación
+  // Y se marcan, con fuerza proporcional a su puntuación (con ventana de tiempo)
   const ptsMax = elegidos.length ? elegidos[0].pts : 1;
   elegidos.forEach((c) => {
     const rel = c.pts / ptsMax;                 // 0 a 1
     const fuerza = 1.5 + rel * 4.5;             // el mejor llega al rojo
-    for (let d = -3; d <= 3; d++) {
-      const f = c.f + d;
-      if (f < 0 || f >= FILAS) continue;
-      const caida = Math.exp(-(d * d) / 3.2);
-      refuerzo[f] = Math.max(refuerzo[f], 1 + fuerza * caida);
+    zonasEst.push({ tipo: 'pivote', f: c.f, fuerza, desde: c.i, hasta: barridaEn(c.i, c.p, c.esAlto), p: c.p, esAlto: c.esAlto, toques: c.toques || 1 });
+  });
+
+  /* Refuerzo POR COLUMNA: cada zona multiplica solo las columnas de su
+     ventana [desde, hasta). Las columnas sin zona quedan en null (= ×1).
+     El pivote se extiende ±3 filas con caída gaussiana (cúmulo, no raya);
+     la mecha marca toda su extensión, más fuerte en el extremo. */
+  const refuerzoCol = new Array(velas.length).fill(null);
+  zonasEst.forEach((z) => {
+    const fin = Math.min(velas.length, z.hasta);
+    for (let c = z.desde; c < fin; c++) {
+      let rc = refuerzoCol[c]; if (!rc) { rc = new Float32Array(FILAS).fill(1); refuerzoCol[c] = rc; }
+      if (z.tipo === 'pivote') {
+        for (let d = -3; d <= 3; d++) { const f = z.f + d; if (f < 0 || f >= FILAS) continue; rc[f] = Math.max(rc[f], 1 + z.fuerza * Math.exp(-(d * d) / 3.2)); }
+      } else {
+        for (let f = z.fA - 1; f <= z.fB + 1; f++) { if (f < 0 || f >= FILAS) continue; const pos = (f - z.fA) / Math.max(1, z.fB - z.fA); rc[f] = Math.max(rc[f], 1 + z.fuerza * (0.62 + pos * 0.38)); }
+      }
     }
+    // El refuerzo plano (sin tiempo) se conserva solo como referencia/compat.
+    if (z.tipo === 'pivote') { for (let d = -3; d <= 3; d++) { const f = z.f + d; if (f >= 0 && f < FILAS) refuerzo[f] = Math.max(refuerzo[f], 1 + z.fuerza * Math.exp(-(d * d) / 3.2)); } }
   });
 
   /* ── 5. LIQUIDACIONES POR APALANCAMIENTO ── */
@@ -401,7 +428,7 @@ function construirMapa(velas) {
     });
   });
 
-  return { niveles, velas, yMin, yMax, alturaFila, refuerzo };
+  return { niveles, velas, yMin, yMax, alturaFila, refuerzo, refuerzoCol, zonasEst };
 }
 
 /** Suma los niveles según el filtro de apalancamiento activo. */
@@ -441,8 +468,12 @@ function columnaDe(mapa, c, sinRefuerzo) {
   /* El refuerzo por estructura se aplica AQUÍ, antes de que se calcule
      el máximo. Si se aplicaba al pintar, el máximo ya estaba fijado sin
      él y el efecto se perdía: por eso los picos no salían en rojo. */
-  const r = mapa.refuerzo;
-  if (r && !sinRefuerzo) for (let f = 0; f < FILAS; f++) out[f] *= r[f];
+  /* [CORREGIDO] Refuerzo de ESTA columna (con tiempo). Si la columna no
+     tiene ninguna zona viva, no se multiplica nada. */
+  if (!sinRefuerzo) {
+    const rc = mapa.refuerzoCol ? mapa.refuerzoCol[c] : mapa.refuerzo;
+    if (rc) for (let f = 0; f < FILAS; f++) out[f] *= rc[f];
+  }
   return out;
 }
 
@@ -1372,6 +1403,11 @@ function dibujar() {
         }
       }
       const minCols = Math.max(2, Math.floor((hasta - desde) * 0.10)); // rojo en ≥10% del tiempo
+      /* Datos REALES para la tarjeta: la columna más reciente SIN refuerzo
+         (= dólares estimados de liquidaciones que aún descansan en cada fila),
+         y las zonas estructurales vivas (para saber cuántas veces se defendió). */
+      const ultBase = columnaDe(V.mapa, hasta - 1, true);
+      const estVivas = (V.mapa.zonasEst || []).filter((z) => z.desde <= hasta - 1 && z.hasta > hasta - 1);
       let f = fMin;
       while (f < fMax) {
         if (redCount[f] >= minCols) {
@@ -1381,7 +1417,10 @@ function dibujar() {
           const precio = V.mapa.yMin + (fc + 0.5) * V.mapa.alturaFila;
           const pLow = V.mapa.yMin + f0 * V.mapa.alturaFila;
           const pHigh = V.mapa.yMin + f * V.mapa.alturaFila;
-          zonasLiq.push({ precio, pLow, pHigh, fuerza, filas });
+          let capital = 0; for (let k = f0; k < f; k++) capital += ultBase[k];
+          const tolP = V.mapa.alturaFila * 2;
+          const est = estVivas.filter((z) => z.p >= pLow - tolP && z.p <= pHigh + tolP).sort((a, b) => (b.toques || 0) - (a.toques || 0))[0] || null;
+          zonasLiq.push({ precio, pLow, pHigh, fuerza, filas, capital, toques: est ? (est.toques || 1) : 0 });
         } else f++;
       }
       // las más fuertes primero; nos quedamos con unas pocas separadas
@@ -1645,7 +1684,7 @@ function dibujar() {
       const signo = dist >= 0 ? '+' : '';
 
       const pw = Math.min(236, x1 - 12);
-      const ph = 188;
+      const ph = 226;   // +38: capital estimado + veces defendida
       const px = Math.max(6, Math.min(x1 - pw - 6, carta.x));
       let py = carta.y + carta.h + 8;
       if (py + ph > y1 - 4) py = Math.max(4, carta.y - ph - 8);
@@ -1742,6 +1781,19 @@ function dibujar() {
         g.fillText(pctV + '%  ' + fmtV(volV) + ' \u25bc', bx + bw, by + bh + 13);
         g.textAlign = 'left';
       }
+
+      /* ── LIQUIDACIONES QUE DESCANSAN AQUÍ + VECES DEFENDIDA (datos del mapa) ──
+         `capital`: suma, en la columna más reciente y sin multiplicadores, de los
+         dólares estimados de posiciones apalancadas cuyo nivel de liquidación cae
+         en esta zona (debajo del precio = largos; encima = cortos). `toques`: veces
+         que el precio tocó y rechazó este nivel según los pivotes estructurales. */
+      const yL = py + hb + 141;
+      g.fillStyle = '#8b95a1'; g.font = '8.5px ui-monospace,monospace'; g.textAlign = 'left';
+      g.fillText(alcista ? 'Longs liquidate here (est.)' : 'Shorts liquidate here (est.)', tx, yL);
+      g.fillStyle = '#f2f5f8'; g.font = 'bold 9.5px ui-monospace,monospace'; g.textAlign = 'right';
+      g.fillText('$' + fmtV(z.capital || 0), px + pw - 13, yL);
+      g.textAlign = 'left'; g.fillStyle = (z.toques > 0) ? col : '#8b95a1'; g.font = 'bold 8.5px ui-monospace,monospace';
+      g.fillText(z.toques > 0 ? ('Rejected ' + z.toques + '× at this level') : 'Level not tested yet', tx, yL + 13);
 
       /* ── CHIP de lectura. Correcta para SPOT (aquí no hay cortos): en una
          resistencia, si predominó la COMPRA es que compraron caro y el precio
