@@ -1304,15 +1304,22 @@ function dibujar() {
          confirmados) se colorea por su valor crudo, intacto: ni se mueve
          ni se apaga. */
       const ROJO_DESDE = 0.96;
+      /* [CORREGIDO] El promedio era de 3 columnas × 5 FILAS. Como cada nivel de
+         liquidación ocupa UNA sola fila, promediarlo con sus 4 filas vecinas
+         (vacías) lo dividía ~entre 3: un nivel naranja (0.9) caía a azul (0.3),
+         uno verde (0.6) casi desaparecía. Por eso los muros quedaban como
+         "hilitos" rojos pelados, sin su halo amarillo/verde, y el mapa perdía
+         las manchas de liquidez (sobre todo en tendencia, donde todos los
+         niveles son finos). Ahora el promedio es SOLO HORIZONTAL (misma fila,
+         5 columnas): un nivel real —que se extiende a lo largo del tiempo—
+         conserva su intensidad exacta, y una celda suelta de una sola columna
+         (el "collage" que motivó el suavizado) sigue atenuándose. */
       const suave = (i, f) => {
         let s = 0, w = 0;
-        for (let di = -1; di <= 1; di++) {
+        for (let di = -2; di <= 2; di++) {
           const cc = cols[i + di]; if (!cc) continue;
-          for (let df = -2; df <= 2; df++) {
-            const ff = f + df; if (ff < 0 || ff >= FILAS) continue;
-            const wt = (3 - Math.abs(df)) * (di === 0 ? 2 : 1);
-            s += cc[ff] * wt; w += wt;
-          }
+          const wt = 3 - Math.abs(di);
+          s += cc[f] * wt; w += wt;
         }
         return w ? s / w : 0;
       };
