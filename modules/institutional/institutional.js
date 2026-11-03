@@ -21,7 +21,7 @@ import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=6';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=7';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -763,22 +763,22 @@ function montarConfluencia() {
     S.conf._wired = true;
     cv.addEventListener('mousemove', (e) => { const r = cv.getBoundingClientRect(); S.conf.cursor = { x: e.clientX - r.left, y: e.clientY - r.top }; });
     cv.addEventListener('mouseleave', () => { S.conf.cursor = null; });
-    /* COLOCAR = doble clic DELIBERADO. Antes dependía del evento 'dblclick' sobre
-       el canvas de lightweight-charts coordinado con subscribeClick: LWC no
-       dispara subscribeClick en cada clic y el 'dblclick' se perdía, así que
-       había que multiclic. Ahora el doble clic se detecta con los clics NATIVOS
-       del DOM (que sí llegan SIEMPRE), y el tiempo/precio se leen de las
-       coordenadas con la API del chart. Un clic simple NO coloca (solo en modo
-       colocar), así que no se ensucia la gráfica al mirar/mover. */
+    /* COLOCAR = UN solo clic DELIBERADO, justo donde el usuario quiere la regla.
+       El clic NATIVO del DOM llega SIEMPRE (a diferencia de subscribeClick de
+       LWC, que no dispara en cada clic — ese era el origen del "multiclic").
+       Para no colocar al PANEAR la gráfica, se compara el punto donde se suelta
+       con el del mousedown: si el puntero se movió (arrastre/paneo), NO se
+       coloca; si fue un toque limpio, se coloca exactamente ahí. Fuera del modo
+       colocar, un clic nunca coloca. */
+    cv.addEventListener('mousedown', (e) => { if (!S.conf || !S.conf.on) return; const r = cv.getBoundingClientRect(); S.conf._down = { x: e.clientX - r.left, y: e.clientY - r.top }; });
     cv.addEventListener('click', (e) => {
       if (!S.conf || !S.conf.on) return;                 // fuera del modo colocar, un clic NO coloca
       const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-      const now = (window.performance && performance.now) ? performance.now() : Date.now();
-      const c1 = S.conf._c1;
-      if (c1 && (now - c1.t) < 450 && Math.abs(x - c1.x) < 14 && Math.abs(y - c1.y) < 40) { S.conf._c1 = null; colocarConfluenciaEn(x, y); }
-      else S.conf._c1 = { x, y, t: now };
+      const d = S.conf._down; S.conf._down = null;
+      if (d && (Math.abs(x - d.x) > 6 || Math.abs(y - d.y) > 6)) return;   // hubo arrastre → fue paneo, no coloca
+      colocarConfluenciaEn(x, y);
     });
-    cv.addEventListener('dblclick', (e) => { if (!S.conf || !S.conf.on) return; const r = cv.getBoundingClientRect(); S.conf._c1 = null; colocarConfluenciaEn(e.clientX - r.left, e.clientY - r.top); });   // respaldo si el navegador llega a emitir dblclick nativo
+    cv.addEventListener('dblclick', (e) => { if (!S.conf || !S.conf.on) return; const r = cv.getBoundingClientRect(); colocarConfluenciaEn(e.clientX - r.left, e.clientY - r.top); });   // respaldo
   }
   if (S.conf.on || S.conf.anchors.length) arrancarConfLoop();
 }
@@ -999,10 +999,21 @@ function dibujarCarriles(g, W, H, cur, now) {
   g.beginPath(); g.arc(x, y, 4.5, 0, 6.2832); g.fill();
   g.restore();
 }
+function lineaMarca(g, x, H, side) {   // línea vertical TENUE en cada alerta (para verificar que la regla cuadra)
+  const col = side === 'short' ? '255,64,96' : '38,224,138';
+  g.save();
+  g.strokeStyle = `rgba(${col},0.26)`; g.lineWidth = 1; g.setLineDash([4, 5]);
+  g.beginPath(); g.moveTo(Math.round(x) + 0.5, 0); g.lineTo(Math.round(x) + 0.5, H); g.stroke();
+  g.setLineDash([]); g.restore();
+}
 function dibujarTachuelas(g, now) {
   if (!S.conf.anchors.length) return;
   recomputarMarks();
   const ts = S.chart.timeScale();
+  const cc = S.conf.cv, H = cc.height / (S.conf._dpr || 1);
+  // posiciones de las anclas (su línea ya la pinta dibujarLineasAncla, más brillante)
+  const anchorXs = [];
+  for (const a of S.conf.anchors) { let ax; try { ax = ts.timeToCoordinate(a.time); } catch (_) { ax = null; } if (ax != null) anchorXs.push(ax); }
   const pts = [];
   for (const m of S.conf.marks) {
     let x; try { x = ts.timeToCoordinate(m.time); } catch (_) { x = null; }
@@ -1013,6 +1024,9 @@ function dibujarTachuelas(g, now) {
   pts.sort((a, b) => a.x - b.x);
   const W0 = 48, keep = [];
   for (const p of pts) { const last = keep[keep.length - 1]; if (!last || p.side !== last.side || Math.abs(p.x - last.x) >= W0 * 0.8) keep.push(p); }   // no superponer tachuelas
+  // 1) línea vertical en CADA alerta (salvo donde ya está la del ancla)
+  for (const p of keep) { if (anchorXs.some((ax) => Math.abs(ax - p.x) < 3)) continue; lineaMarca(g, p.x, H, p.side); }
+  // 2) las tachuelas encima
   for (const p of keep) tachuela(g, p.x, p.vela, p.side, now);
 }
 function tachuela(g, x, vela, side, now) {

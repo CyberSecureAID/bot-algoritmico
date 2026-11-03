@@ -1,4 +1,11 @@
-/* modules/institutional/confluencia.js — MOTOR DE CONFLUENCIA (v5, por ESTADOS).
+/* modules/institutional/confluencia.js — MOTOR DE CONFLUENCIA (v6, ESTADOS + FUERZA).
+
+   v6 sobre v5: la alerta exige TODAS las condiciones a la vez (no "la mayoría") y
+   además que cada indicador tenga una FUERZA/dinámica parecida o mayor a la del
+   punto marcado (no solo el mismo lado). Así deja de saltar cuando la regla no se
+   cumple de verdad (p.ej. donde dos líneas apenas están separadas en vez de
+   expandidas como se marcó). Ver _CONF_FRAC y _MAG_FRAC abajo.
+
 
    Problema de las versiones anteriores: capturaban el CRUCE exacto (obligatorio en
    la misma vela) y las continuas con tolerancias finas. Con varios indicadores la
@@ -126,13 +133,20 @@ export function construirRasgos(activeKeys, V) {
   return { V, n, feats, timeIdx };
 }
 
-/* Captura el VECTOR DE ESTADOS en la vela del punto marcado. */
+/* Captura el VECTOR DE ESTADOS en la vela del punto marcado. Además del LADO
+   (+1/−1) guarda la MAGNITUD (distancia al neutro): es la "fuerza" o dinámica de
+   ese indicador al marcar — p.ej. cuánto están expandidas dos líneas. Así una
+   alerta no salta solo por estar del mismo lado, sino con una dinámica parecida
+   o mayor a la marcada. */
 export function capturarRasgos(ras, barIdx) {
   const cap = [];
   for (const f of ras.feats) {
     const st = _estado(f, barIdx);
     if (st === 0) continue;                 // sin dato de ese indicador aquí → no entra
-    cap.push({ id: f.id, keys: f.keys.slice(), kind: f.kind, side: st, nm: f.nm, nm2: f.nm2, unit: f.unit });
+    const neu = f.neutral == null ? 0 : f.neutral;
+    const val = f.vals[barIdx];
+    const mag = isFinite(val) ? Math.abs(val - neu) : 0;   // fuerza/dinámica en el punto marcado
+    cap.push({ id: f.id, keys: f.keys.slice(), kind: f.kind, side: st, mag, nm: f.nm, nm2: f.nm2, unit: f.unit });
   }
   return cap;
 }
@@ -140,11 +154,23 @@ export function rasgosActivos(ras, cap) {
   const fid = {}; for (const f of ras.feats) fid[f.id] = 1; const act = new Set();
   for (const c of cap) if (fid[c.id]) c.keys.forEach((k) => act.add(k)); return act.size;
 }
-/* ¿La vela barIdx reproduce la confluencia? Coincide si la gran mayoría de los
-   estados capturados (de indicadores aún activos) se repiten. _CONF_FRAC tolera
-   que UNO parpadee (con 1-2 reglas se exige todo). Como los estados persisten,
-   juntar MUCHOS indicadores ya NO vuelve la confluencia imposible. Mínimo 1. */
-const _CONF_FRAC = 0.8;
+/* ¿La vela barIdx reproduce la confluencia? El usuario marca UNA regla (un
+   conjunto de condiciones) y quiere que la alerta salte SOLO cuando esa regla se
+   cumple ENTERA, no "casi". Por eso se exigen TODAS las condiciones a la vez
+   (_CONF_FRAC = 1). Y no basta el mismo LADO: cada indicador debe tener al menos
+   una FUERZA/dinámica parecida a la marcada (_MAG_FRAC de la magnitud), para que,
+   p.ej., "dos líneas expandidas 0.5%" no dispare donde apenas están separadas.
+   Como los estados persisten, juntar muchos indicadores sigue siendo viable. */
+const _CONF_FRAC = 1.0;    // TODAS las condiciones al mismo tiempo (antes 0.8 → saltaba sin cumplirse del todo)
+const _MAG_FRAC = 0.6;     // además, misma fuerza: ≥60% de la magnitud marcada (misma dinámica, no solo el mismo lado)
+function _cumpleEstado(f, c, barIdx) {
+  const st = _estado(f, barIdx);
+  if (st === 0 || st !== c.side) return false;                 // sin dato o lado contrario → no
+  if (c.kind === 'dir' || !(c.mag > 0)) return true;           // dirección pura (Supertrend/PSAR/OBV) → basta el lado
+  const neu = f.neutral == null ? 0 : f.neutral;
+  const v = f.vals[barIdx]; if (!isFinite(v)) return false;
+  return Math.abs(v - neu) >= _MAG_FRAC * c.mag;               // misma dinámica/expansión (igual o mayor)
+}
 export function coincideRasgos(ras, cap, barIdx) {
   const fById = {}; for (const f of ras.feats) fById[f.id] = f;
   const act = new Set(); let total = 0, ok = 0;
@@ -152,7 +178,7 @@ export function coincideRasgos(ras, cap, barIdx) {
     const f = fById[c.id]; if (!f) continue;             // indicador quitado → no cuenta
     c.keys.forEach((k) => act.add(k));
     total++;
-    if (_estado(f, barIdx) === c.side) ok++;
+    if (_cumpleEstado(f, c, barIdx)) ok++;
   }
   if (act.size < 1 || total === 0) return false;
   return ok >= Math.max(1, Math.ceil(total * _CONF_FRAC));
@@ -162,11 +188,12 @@ export function escanearRasgos(ras, cap, soloInicios = true) {
   for (let i = 0; i < ras.n; i++) { const m = coincideRasgos(ras, cap, i); if (m && (!soloInicios || !prev)) out.push(ras.V[i].time); prev = m; }
   return out;
 }
-/* ¿El estado c se cumple en la vela barIdx? (para las palomitas de la libreta) */
+/* ¿El estado c se cumple en la vela barIdx? (para las palomitas de la libreta)
+   Usa el MISMO criterio que la coincidencia (lado + fuerza), para que lo que
+   marca la libreta y lo que dispara la alerta sean lo mismo. */
 export function cumpleRasgo(ras, c, barIdx) {
   const f = ras.feats.find((x) => x.id === c.id); if (!f) return null;   // null → tachado (indicador quitado)
-  const st = _estado(f, barIdx); if (st === 0) return false;
-  return st === c.side;
+  return _cumpleEstado(f, c, barIdx);
 }
 
 /* ── Texto legible (EN/ES) de un estado ── */
