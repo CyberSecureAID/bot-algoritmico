@@ -16,7 +16,7 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=13';
+import { estilos } from './estilos.js?v=14';
 import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
@@ -283,7 +283,7 @@ function cablearTop(ov) {
   $('#it-export', ov).onclick = exportar;
   $('#it-reset', ov).onclick = resetLayout;
   $('#it-disc-link', ov).onclick = () => mostrarDisclaimer(true);
-  { const cf = $('#it-conf', ov); if (cf) cf.onclick = toggleConfluencia; const cfc = $('#it-conf-clear', ov); if (cfc) cfc.onclick = limpiarAnclas; }
+  { const cf = $('#it-conf', ov); if (cf) cf.onclick = toggleConfluencia; const cfc = $('#it-conf-clear', ov); if (cfc) cfc.onclick = confirmarLimpiar; }
   pintarCoin();
   const tfNm = (D.TFS.find((t) => t.id === S.tf) || {}).n || S.tf;
   $('#it-tf-btn', ov).childNodes[0].nodeValue = tfNm + ' ';
@@ -671,9 +671,26 @@ function limpiarAnclas() {
   refrescarConfUI();
   const g = S.conf.ctx, cc = S.conf.cv; if (g && cc) g.clearRect(0, 0, cc.width, cc.height);
 }
+/* Borrar TODAS las reglas pide DOS clics (el primero "arma" la X durante ~2.6 s,
+   el segundo confirma). Así un clic por equivocación nunca te borra lo que ya
+   colocaste: la libreta solo se vacía si de verdad lo quieres. La X individual de
+   cada tarjeta (borrarAncla) sigue borrando solo ese punto, al instante. */
+let _limpiarT = null;
+function confirmarLimpiar() {
+  const x = document.getElementById('it-conf-clear'); if (!x) return;
+  if (x.classList.contains('armado')) {                 // 2.º clic → confirmar y borrar todo
+    if (_limpiarT) { clearTimeout(_limpiarT); _limpiarT = null; }
+    x.classList.remove('armado'); x.title = 'Clear confluence points';
+    limpiarAnclas();
+    return;
+  }
+  x.classList.add('armado'); x.title = 'Click again to clear ALL rules';   // 1.er clic → armar
+  if (_limpiarT) clearTimeout(_limpiarT);
+  _limpiarT = setTimeout(() => { const b = document.getElementById('it-conf-clear'); if (b) { b.classList.remove('armado'); b.title = 'Clear confluence points'; } _limpiarT = null; }, 2600);
+}
 function refrescarConfUI() {
   const b = document.getElementById('it-conf'); if (b) b.classList.toggle('on', !!(S.conf && S.conf.on));
-  const c = document.getElementById('it-conf-clear'); if (c) c.style.display = (S.conf && S.conf.anchors.length) ? 'inline-flex' : 'none';
+  const c = document.getElementById('it-conf-clear'); if (c) { c.style.display = (S.conf && S.conf.anchors.length) ? 'inline-flex' : 'none'; if (!(S.conf && S.conf.anchors.length)) { c.classList.remove('armado'); if (_limpiarT) { clearTimeout(_limpiarT); _limpiarT = null; } } }
   renderLibreta();
 }
 
@@ -740,11 +757,22 @@ function montarConfluencia() {
     S.conf._wired = true;
     cv.addEventListener('mousemove', (e) => { const r = cv.getBoundingClientRect(); S.conf.cursor = { x: e.clientX - r.left, y: e.clientY - r.top }; });
     cv.addEventListener('mouseleave', () => { S.conf.cursor = null; });
-    cv.addEventListener('dblclick', () => colocarConfluencia());   // COLOCAR solo con DOBLE clic (el simple navega)
-  }
-  if (S.chart && S.conf._clickChart !== S.chart) {   // re-suscribir el clic al chart recién creado
-    S.conf._clickChart = S.chart;
-    try { S.chart.subscribeClick((p) => recordarClic(p)); } catch (_) {}
+    /* COLOCAR = doble clic DELIBERADO. Antes dependía del evento 'dblclick' sobre
+       el canvas de lightweight-charts coordinado con subscribeClick: LWC no
+       dispara subscribeClick en cada clic y el 'dblclick' se perdía, así que
+       había que multiclic. Ahora el doble clic se detecta con los clics NATIVOS
+       del DOM (que sí llegan SIEMPRE), y el tiempo/precio se leen de las
+       coordenadas con la API del chart. Un clic simple NO coloca (solo en modo
+       colocar), así que no se ensucia la gráfica al mirar/mover. */
+    cv.addEventListener('click', (e) => {
+      if (!S.conf || !S.conf.on) return;                 // fuera del modo colocar, un clic NO coloca
+      const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const now = (window.performance && performance.now) ? performance.now() : Date.now();
+      const c1 = S.conf._c1;
+      if (c1 && (now - c1.t) < 450 && Math.abs(x - c1.x) < 14 && Math.abs(y - c1.y) < 40) { S.conf._c1 = null; colocarConfluenciaEn(x, y); }
+      else S.conf._c1 = { x, y, t: now };
+    });
+    cv.addEventListener('dblclick', (e) => { if (!S.conf || !S.conf.on) return; const r = cv.getBoundingClientRect(); S.conf._c1 = null; colocarConfluenciaEn(e.clientX - r.left, e.clientY - r.top); });   // respaldo si el navegador llega a emitir dblclick nativo
   }
   if (S.conf.on || S.conf.anchors.length) arrancarConfLoop();
 }
@@ -791,32 +819,31 @@ function recomputarMarks() {
   S.conf.marks = marks;
   renderLibreta();
 }
-/* Un clic SIMPLE no coloca: solo recuerda la vela/punto donde caería. Así puedes
-   mirar, mover y hacer zoom sin ensuciar el gráfico. */
-function recordarClic(param) {
-  if (!S.conf || !param || param.time == null || !param.point) return;
-  S.conf._lastParam = { time: param.time, point: param.point, t: (window.performance && performance.now) ? performance.now() : Date.now() };
-}
-/* COLOCAR = DOBLE clic (evento nativo del navegador → respeta el doble-clic real).
-   Resuelve "cada vez que toco la gráfica se pone otra regla": ahora hace falta un
-   doble clic deliberado. */
-function colocarConfluencia() {
-  if (!S.conf || !S.conf.on || !S.serieVela) return;
-  const lp = S.conf._lastParam, tnow = (window.performance && performance.now) ? performance.now() : Date.now();
-  if (!lp || (tnow - lp.t) > 900 || lp.time == null || !lp.point) return;   // el doble clic debe caer sobre una vela recién señalada
-  const price = S.serieVela.coordinateToPrice(lp.point.y);
+/* COLOCAR una confluencia en las coordenadas (x,y) del doble clic. El tiempo se
+   obtiene de la escala del chart (se ajusta a la vela más cercana) y el precio de
+   la serie de velas; así no dependemos de subscribeClick (que no dispara en cada
+   clic). Encima del precio → SHORT; debajo → LONG. */
+function colocarConfluenciaEn(x, y) {
+  if (!S.conf || !S.conf.on || !S.serieVela || !S.chart) return;
+  const price = S.serieVela.coordinateToPrice(y);
+  let time = null;
+  try {
+    const lg = S.chart.timeScale().coordinateToLogical(x);
+    if (lg != null && S.velas && S.velas.length) { const idx = Math.max(0, Math.min(S.velas.length - 1, Math.round(lg))); const v = S.velas[idx]; if (v) time = v.time; }
+  } catch (_) {}
+  if (price == null || time == null) return;
   ensureRasgos();
-  const vela = S.conf.velaMap ? S.conf.velaMap.get(lp.time) : null;
-  const bi = S.conf.ras.timeIdx.get(lp.time);
-  if (price == null || !vela || bi == null) return;
+  const vela = S.conf.velaMap ? S.conf.velaMap.get(time) : null;
+  const bi = S.conf.ras.timeIdx.get(time);
+  if (!vela || bi == null) return;
   // RASGOS del punto: la geometría exacta (distancias, cruces, niveles, pendientes)
   // de cada indicador en esa vela. Sin ningún indicador con dato aquí NO se coloca.
   const cap = capturarRasgos(S.conf.ras, bi);
   if (rasgosActivos(S.conf.ras, cap) < 1) { instruccionesConfluencia(confActivas().length); return; }
   const side = price > vela.close ? 'short' : 'long';   // encima del precio → SHORT; debajo → LONG
-  S.conf.anchors.push({ time: lp.time, side, cap });
+  S.conf.anchors.push({ time, side, cap });
   if (S.conf.anchors.length > MAX_ANCLAS) S.conf.anchors.shift();   // robustez
-  S.conf.matchKey = ''; S.conf._lastParam = null;
+  S.conf.matchKey = '';
   refrescarConfUI(); renderLibreta(); arrancarConfLoop(); pingConf();
 }
 function pingConf() {
