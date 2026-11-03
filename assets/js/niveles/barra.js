@@ -20,8 +20,8 @@
    en Smart Pools: lo que trazas en una gráfica lo ves en las otras. */
 
 import { N } from './estado.js?v=1';
-import { gestos } from './interaccion.js?v=2';
-import { dibujarHerramientas, guardarDib, cargarDib, dibAxy } from './dibujo.js?v=2';
+import { gestos } from './interaccion.js?v=3';
+import { dibujarHerramientas, guardarDib, cargarDib, dibAxy } from './dibujo.js?v=3';
 import { estilos } from './estilos.js?v=1';
 
 /* Copia literal de la barra de Smart Pools (niveles.js), con clases en vez de

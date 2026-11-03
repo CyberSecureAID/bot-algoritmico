@@ -5,7 +5,7 @@
 
 import { N } from './estado.js?v=1';
 import { T } from './i18n.js?v=1';
-import { dibAxy, dibXYa, _tfMs, DIB_FIBS } from './dibujo.js?v=2';
+import { dibAxy, dibXYa, _tfMs, DIB_FIBS } from './dibujo.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 
@@ -483,7 +483,7 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
      sus marcadores. Como se registra después, pisa la manito de Marea. Este
      handler a nivel window corre DESPUÉS (fase de burbujeo) y la restablece. */
   window.addEventListener('mousemove', (e) => {
-    const cvv = $('nv-cv'); if (!cvv) return;
+    const cvv = cv; if (!cvv || !cvv.isConnected) return;   // el canvas de ESTA sección (antes fijo a nv-cv → la manita solo salía en Smart Pools)
     const p = loc(e);
     if (sobreMareaEn(p.x, p.y) || sobreBotonPos(p.x, p.y) || (N.verEstructura && N._faroBtn && dentro(p.x, p.y, N._faroBtn))) cvv.style.cursor = 'pointer';
   });
