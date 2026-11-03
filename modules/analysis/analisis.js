@@ -1,3 +1,4 @@
+try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Analysis · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que la app carga el código nuevo
 /* analisis.js. Entrada y catalogo del Analisis Profesional.
    ──────────────────────────────────────────────────────────────────────────
    FASE 1 (estetica): catalogo con la MISMA cinta superior de las secciones
@@ -143,9 +144,9 @@ async function abrirTool(abre, cardEl) {
 
   try {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=140')).abrirPools();
-    else if (abre === 'heat')   await (await import(base + 'muros.js?v=134')).abrirMuros();
-    else if (abre === 'levels') await (await import(base + 'niveles.js?v=131')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=25', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'heat')   await (await import(base + 'muros.js?v=135')).abrirMuros();
+    else if (abre === 'levels') await (await import(base + 'niveles.js?v=132')).abrirNiveles();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=26', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=11', import.meta.url).href)).abrirReaction();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
