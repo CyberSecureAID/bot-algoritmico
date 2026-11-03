@@ -27,16 +27,16 @@ import { pivotes, tendencia, detectarRango, calcularNiveles, detectarImpulso, de
 import { estilos } from './niveles/estilos.js?v=1';
 import { N } from './niveles/estado.js?v=1';
 import { PARES, TFS } from './niveles/config.js?v=1';
-import { DIB_FIBS, _tfMs, dibAxy, dibXYa, dibujarHerramientas, guardarDib, cargarDib } from './niveles/dibujo.js?v=2';
+import { DIB_FIBS, _tfMs, dibAxy, dibXYa, dibujarHerramientas, guardarDib, cargarDib } from './niveles/dibujo.js?v=3';
 import { avisoMarea, activarAlertasMarea, desactivarAlertas } from './niveles/alertas.js?v=1';
 import { guardarImagen } from './niveles/imagen.js?v=1';
 import { panelMarea } from './niveles/panel.js?v=1';
 import { T } from './niveles/i18n.js?v=1';
 import { analizar } from './niveles/asistente.js?v=1';
 import { guiaIndicador, menuAlertas, abrirWidget, registrarIndicador, ponerLogos, ayuda } from './niveles/menus.js?v=1';
-import { gestos } from './niveles/interaccion.js?v=2';
+import { gestos } from './niveles/interaccion.js?v=3';
 import { burbujas, initBurbujas } from './niveles/burbujas.js?v=1';
-import { dibujar, initRender } from './niveles/render.js?v=2';
+import { dibujar, initRender } from './niveles/render.js?v=3';
 import { esc, elegir, sembrar, hashCadena, fmt, miles, hora, fecha, _hex2rgb, redondeado } from './niveles/util.js?v=1';
 
 const $ = (id) => document.getElementById(id);

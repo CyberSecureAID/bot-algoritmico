@@ -22,7 +22,7 @@
 //     mercado. Es la señal más fuerte que existe en el libro.
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
-import { montarBarra } from './niveles/barra.js?v=2';   // la misma barra de herramientas de Smart Pools
+import { montarBarra } from './niveles/barra.js?v=3';   // la misma barra de herramientas de Smart Pools
 import { N } from './niveles/estado.js?v=1';            // estado compartido del dibujo (para aislar por sección)
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 
