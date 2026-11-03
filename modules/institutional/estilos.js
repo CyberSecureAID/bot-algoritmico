@@ -352,6 +352,7 @@ const CSS = `
 .it-conf-clear.armado{background:var(--it-down); color:#fff; border-color:var(--it-down); box-shadow:0 0 10px rgba(255,91,110,.6); animation:itClearPulse .8s ease-in-out infinite}
 @keyframes itClearPulse{0%,100%{opacity:1} 50%{opacity:.5}}
 .it-conf-cv{position:absolute; inset:0; z-index:6; pointer-events:none}
+.it-ord-cv{position:absolute; inset:0; z-index:5; pointer-events:none}
 .it-conf-card{max-width:520px}
 .it-conf-ic{width:46px; height:46px; border-radius:12px; display:grid; place-items:center; background:rgba(232,184,75,.12); border:1px solid rgba(232,184,75,.4); color:var(--it-gold); margin-bottom:12px}
 .it-conf-ic svg{width:24px; height:24px}

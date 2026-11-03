@@ -16,7 +16,7 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=14';
+import { estilos } from './estilos.js?v=15';
 import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
@@ -44,7 +44,9 @@ const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const LOGO_ALT = new URL('../../assets/img/cco-full.webp', import.meta.url).href;
 const SELLO = 'assets/portada/red/disclaimer.webp';
 const DISC_KEY = 'it-disclaimer-ok';
-const LAYOUT_KEY = 'it-layout-v4';   // v4: la gráfica domina aún más (reinicia layouts guardados antiguos)
+const LAYOUT_KEY = 'it-layout-v5';   // v5: Signals a la derecha a la altura del gráfico, Market Heatmap a lo ancho abajo, Quote y Watchlist ocultos (reinicia layouts guardados antiguos)
+/* Paneles ocultos por defecto (su código sigue intacto; solo no se muestran). */
+const OCULTOS_DEF = { 'it-p-quote': true, 'it-p-watch': true };
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -115,7 +117,7 @@ function cargarLWC() {
 const S = {
   par: null, tf: '1h', ind: { EMA50: true }, velas: [], velasDib: [], chart: null, serieVela: null, serieVol: null, legendRefs: [], marks: [], marksApi: null,
   refQuote: null, refBoard: null, cargandoChart: false, onResize: null, barra: null, dibMontada: false,
-  layout: null, zTop: 10, maxed: null, hidden: {}, logos: {}, board: [], boardObs: null, ultTicker: null,
+  layout: null, zTop: 10, maxed: null, hidden: Object.assign({}, OCULTOS_DEF), logos: {}, board: [], boardObs: null, ultTicker: null,
   tileEls: {}, senal: null, senalPar: null, senalTF: {}, oleajeRAF: null
 };
 const PANELES = ['it-p-chart', 'it-p-quote', 'it-p-watch', 'it-p-board', 'it-p-macro'];
@@ -584,6 +586,7 @@ function pintarChart() {
   sincronizarDib();
   calcularSenales();     // panel SIGNALS (rating técnico)
   montarConfluencia(); sincronizarConf();   // re-anexa el overlay + sincroniza la confluencia/libreta con los indicadores
+  conectarOrdenesChart();                   // clic derecho → menú de operar/alerta/set position (orden.js), con su overlay
 }
 
 /* ── Puente con la barra de dibujo (misma de Smart/Heat/Liquidity Pools) ──
@@ -890,6 +893,55 @@ function alertaConfluencia(a) {
     n.onclick = () => { try { window.focus(); n.close(); } catch (_) {} };
     setTimeout(() => { try { n.close(); } catch (_) {} }, 9000);
   } catch (_) {}
+}
+
+/* ── ÓRDENES DESDE EL CHART (clic derecho / toque largo) ──
+   Cablea el MISMO menú de las pools (operar spot · poner alerta · set position)
+   con todo lo de assets/js/orden.js, listo para el backend (Cloudflare). Las
+   órdenes/alertas se dibujan en un overlay propio que NO intercepta eventos ni
+   toca el chart. El precio sale de la escala de lightweight-charts. */
+let _od = null, _ordZonas = [], _ordRAF = null;
+function conectarOrdenesChart() {
+  const cv = document.getElementById('it-cv'); if (!cv) return;
+  let oc = document.getElementById('it-ord-cv');
+  if (!oc) { oc = document.createElement('canvas'); oc.id = 'it-ord-cv'; oc.className = 'it-ord-cv'; }
+  cv.appendChild(oc);                               // re-anexar → queda sobre el chart recién creado
+  arrancarOrdLoop(oc);
+  if (cv.dataset.ordChart) return;
+  cv.dataset.ordChart = '1';
+  import(new URL('../../assets/js/orden.js?v=127', import.meta.url).href).then((od) => {
+    _od = od;
+    od.conectar({
+      canvas: cv,
+      precioEn: (yy) => { try { const p = S.serieVela && S.serieVela.coordinateToPrice(yy); return (p != null && isFinite(p) && p > 0) ? p : 0; } catch (_) { return 0; } },
+      precioActual: () => { const v = S.velas; return (v && v.length) ? v[v.length - 1].close : 0; },
+      par: () => (S.par && S.par.id) || '',
+      simbolo: () => (S.par && S.par.s) || '',
+      repintar: () => {}
+    });
+    od.clicCancelar(cv, () => _ordZonas, () => {});
+  }).catch(() => {});
+}
+function arrancarOrdLoop(oc) {
+  if (_ordRAF) return;
+  const g = oc.getContext('2d');
+  const paso = () => {
+    _ordRAF = requestAnimationFrame(paso);
+    try {
+      const cv = document.getElementById('it-cv');
+      if (!cv || !_od || !S.chart || !S.serieVela) { if (g && oc.width) g.clearRect(0, 0, oc.width, oc.height); _ordZonas = []; return; }
+      const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+      if (oc.width !== Math.round(w * dpr) || oc.height !== Math.round(h * dpr)) { oc.width = Math.round(w * dpr); oc.height = Math.round(h * dpr); oc.style.width = w + 'px'; oc.style.height = h + 'px'; }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+      const pMax = S.serieVela.coordinateToPrice(0), pMin = S.serieVela.coordinateToPrice(h);
+      if (!(isFinite(pMax) && isFinite(pMin) && pMax > pMin)) { _ordZonas = []; return; }
+      const Y = (p) => { try { const y = S.serieVela.priceToCoordinate(p); if (y != null && isFinite(y)) return y; } catch (_) {} return h * (pMax - p) / (pMax - pMin); };
+      let pw = 56; try { pw = S.chart.priceScale('right').width() || 56; } catch (_) {}
+      const x1 = Math.max(40, w - pw);
+      _ordZonas = _od.pintar(g, { x1, y1: h, Y, pMin, pMax, simbolo: (S.par && S.par.s) || '' }) || [];
+    } catch (_) { _ordZonas = []; }
+  };
+  _ordRAF = requestAnimationFrame(paso);
 }
 function dibujarConf(now) {
   const cc = S.conf.cv, g = S.conf.ctx; if (!cc || !g || !S.chart || !S.serieVela) return;
@@ -1401,10 +1453,13 @@ async function cargarMacro() {
 
 /* ── VENTANAS: z-index propio, traer-al-frente, maximizar, cerrar, redimensionar ── */
 // La GRÁFICA domina (73% × 72%): máximo espacio para análisis/backtesting.
+/* Layout por defecto: GRÁFICA grande arriba-izquierda, SIGNALS como columna
+   derecha a la MISMA altura de la gráfica, y MARKET HEATMAP a todo lo ancho
+   abajo. Quote/Watchlist conservan posición pero van ocultos (OCULTOS_DEF). */
 const DEF_LAYOUT = {
-  'it-p-chart': [0.006, 0.01, 0.73, 0.72], 'it-p-quote': [0.742, 0.01, 0.252, 0.30],
-  'it-p-watch': [0.742, 0.315, 0.252, 0.30], 'it-p-board': [0.006, 0.735, 0.73, 0.255],
-  'it-p-macro': [0.742, 0.62, 0.252, 0.37]
+  'it-p-chart': [0.006, 0.01, 0.73, 0.70], 'it-p-macro': [0.742, 0.01, 0.252, 0.70],
+  'it-p-board': [0.006, 0.72, 0.988, 0.27],
+  'it-p-quote': [0.742, 0.01, 0.252, 0.30], 'it-p-watch': [0.742, 0.315, 0.252, 0.30]
 };
 function cargarLayout() { try { const j = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); if (j && typeof j === 'object') S.layout = j; } catch (_) {} }
 function guardarLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(S.layout)); } catch (_) {} }
@@ -1464,7 +1519,7 @@ function onFsChange() {
   try { aplicarLayout(); } catch (_) {}
   setTimeout(() => pintarHeat({ instant: true }), 50);
 }
-function resetLayout() { S.layout = null; S.hidden = {}; S.maxed = null; try { localStorage.removeItem(LAYOUT_KEY); } catch (_) {} PANELES.forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = ''; }); aplicarLayout(); }
+function resetLayout() { S.layout = null; S.hidden = Object.assign({}, OCULTOS_DEF); S.maxed = null; try { localStorage.removeItem(LAYOUT_KEY); } catch (_) {} PANELES.forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = ''; }); aplicarLayout(); }
 
 function montarVentanas() {
   const grid = rejilla(); if (!grid) return;
