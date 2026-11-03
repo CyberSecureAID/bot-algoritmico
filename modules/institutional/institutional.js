@@ -31,7 +31,7 @@ async function cargarBarra() {
   try {
     const base = new URL('../../assets/js/niveles/', import.meta.url).href;
     const [mb, est, dib] = await Promise.all([
-      import(base + 'barra.js?v=3'), import(base + 'estado.js?v=1'), import(base + 'dibujo.js?v=3')
+      import(base + 'barra.js?v=4'), import(base + 'estado.js?v=1'), import(base + 'dibujo.js?v=3')
     ]);
     _montarBarra = mb.montarBarra; _nivN = est.N; _cargarDib = dib.cargarDib;
   } catch (_) { _montarBarra = null; }
