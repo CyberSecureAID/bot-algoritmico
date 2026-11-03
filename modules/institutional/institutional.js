@@ -21,7 +21,7 @@ import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=5';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=6';
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
    se importa en diferido para que, si fallara, el terminal siga funcionando. */
@@ -467,7 +467,9 @@ function revisarConfluenciaViva() {
     ensureRasgos();
     const ras = S.conf.ras, lastIdx = ras.n - 1;
     for (const a of S.conf.anchors) {
-      if (a.cap && rasgosActivos(ras, a.cap) >= 1 && coincideRasgos(ras, a.cap, lastIdx)) { pingConf(); break; }   // ¡confluencia disparada en vivo!
+      const m = !!(a.cap && rasgosActivos(ras, a.cap) >= 1 && coincideRasgos(ras, a.cap, lastIdx));
+      if (m && !a._hot) alertaConfluencia(a);     // dispara SOLO al RE-ALINEARSE (fresca), no en cada vela que siga cumpliendo
+      a._hot = m;
     }
   } catch (_) {}
 }
@@ -653,6 +655,7 @@ function toggleConfluencia() {
   if (!S.conf.on && confActivas().length < 1) { instruccionesConfluencia(confActivas().length); return; }   // solo bloquea ENCENDER (basta 1 indicador)
   montarConfluencia();
   S.conf.on = !S.conf.on;                       // on = modo COLOCAR (clic + carriles). Las marcas/libreta NO dependen de esto.
+  if (S.conf.on) pedirPermisoAlertas();         // al activar, pide permiso de notificaciones (gesto del usuario)
   refrescarConfUI();
   arrancarConfLoop();
 }
@@ -846,7 +849,7 @@ function colocarConfluenciaEn(x, y) {
   S.conf.matchKey = '';
   refrescarConfUI(); renderLibreta(); arrancarConfLoop(); pingConf();
 }
-function pingConf() {
+function pingConf() {   // beep corto: feedback al COLOCAR un punto
   try {
     const ac = new (window.AudioContext || window.webkitAudioContext)();
     const o = ac.createOscillator(), g = ac.createGain();
@@ -854,6 +857,38 @@ function pingConf() {
     g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.07, ac.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.25);
     o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.27);
     setTimeout(() => { try { ac.close(); } catch (_) {} }, 500);
+  } catch (_) {}
+}
+/* ── ALERTA DE CONFLUENCIA EN VIVO: campanita + notificación del navegador ── */
+const IT_ICON = (() => { try { return new URL('../../assets/img/cco-192.png', import.meta.url).href; } catch (_) { return ''; } })();
+function parLabel() {
+  const id = (S.par && S.par.id) || '', s = (S.par && S.par.s) || '';
+  const quote = (id && s.indexOf(id) === 0) ? s.slice(id.length) : 'USDT';
+  return id + '/' + (quote || 'USDT');
+}
+function pedirPermisoAlertas() {   // se llama desde un gesto del usuario (activar Confluencia)
+  try { if ('Notification' in window && Notification.permission === 'default') { const r = Notification.requestPermission(); if (r && r.catch) r.catch(() => {}); } } catch (_) {}
+}
+function sonidoAlerta() {   // doble campanita (más presente que el beep de colocar)
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const bip = (t, f1, f2) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f1, ac.currentTime + t); o.frequency.exponentialRampToValueAtTime(f2, ac.currentTime + t + 0.12); g.gain.setValueAtTime(0.0001, ac.currentTime + t); g.gain.exponentialRampToValueAtTime(0.09, ac.currentTime + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + t + 0.26); o.connect(g); g.connect(ac.destination); o.start(ac.currentTime + t); o.stop(ac.currentTime + t + 0.28); };
+    bip(0, 740, 1180); bip(0.17, 990, 1500);
+    setTimeout(() => { try { ac.close(); } catch (_) {} }, 700);
+  } catch (_) {}
+}
+function alertaConfluencia(a) {
+  sonidoAlerta();
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const lado = a.side === 'short' ? 'SHORT' : 'LONG';
+    const ras = S.conf && S.conf.ras;
+    let reglas = '';
+    if (ras && a.cap && a.cap.length) { reglas = a.cap.slice(0, 3).map((c) => rasgoLabel(c, S.conf.lang)).join(' · ') + (a.cap.length > 3 ? ' …' : ''); }
+    const cuerpo = `${parLabel()} · ${S.tf} · ${lado}` + (reglas ? '\n' + reglas : '');
+    const n = new Notification('DecFreedom · Confluence', { body: cuerpo, icon: IT_ICON, badge: IT_ICON, tag: 'decfreedom-conf-' + parLabel() + '-' + lado, renotify: true });
+    n.onclick = () => { try { window.focus(); n.close(); } catch (_) {} };
+    setTimeout(() => { try { n.close(); } catch (_) {} }, 9000);
   } catch (_) {}
 }
 function dibujarConf(now) {

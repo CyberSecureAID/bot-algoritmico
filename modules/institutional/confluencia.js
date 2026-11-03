@@ -1,15 +1,18 @@
-/* modules/institutional/confluencia.js — MOTOR DE CONFLUENCIA (v4).
+/* modules/institutional/confluencia.js — MOTOR DE CONFLUENCIA (v5, por ESTADOS).
 
-   Diferencia CLAVE con v3: los CRUCES se detectan como EVENTO (cambio de signo
-   de la diferencia entre dos líneas), NO como "gap cerca de cero". Antes, clicar
-   en un cruce capturaba "gap≈0" y disparaba donde las medias solo se ACERCABAN,
-   y fallaba en cruces reales. Ahora: si clicas CERCA de un cruce real, la regla
-   es el EVENTO de cruce (misma dirección); si clicas lejos de un cruce, la regla
-   es la DISTANCIA exacta (% con tolerancia ajustada). Preciso como un reloj.
+   Problema de las versiones anteriores: capturaban el CRUCE exacto (obligatorio en
+   la misma vela) y las continuas con tolerancias finas. Con varios indicadores la
+   confluencia se volvía casi imposible (6 indicadores → 1 marca) y, según dónde
+   clicaras, la regla era o demasiado estricta o demasiado laxa: alertas "sin
+   sentido".
 
-   Cada punto marcado captura un VECTOR DE RASGOS; una vela coincide solo si TODOS
-   los rasgos (de indicadores aún activos) vuelven a darse a la vez. Solo mates:
-   la UI (institutional.js) lo consume. */
+   v5: cada indicador aporta un ESTADO alcista/bajista (+1/−1) según de qué lado de
+   su neutro está (medias: rápida vs lenta; osciladores: sobre/bajo su línea media;
+   histogramas: signo; Supertrend/PSAR/OBV: dirección). Un punto marcado captura el
+   VECTOR DE ESTADOS; una vela coincide si la gran mayoría de esos estados se
+   repiten. Los estados PERSISTEN, así que la combinación vuelve a darse, escala con
+   muchos indicadores y la alerta dispara cuando se RE-ALINEA. La UI
+   (institutional.js) lo consume. */
 
 import { ema, sma, wma, hma, dema, tema, vwma, alma, zlema, kama, vwapBands,
   bollinger, donchian, keltner, envelopes, psar, supertrend, rsi, macd, ppo,
@@ -32,23 +35,28 @@ function _serieMA(k, V) {
     case 'VWAP': return vwapBands(V, 2).mid; default: return [];
   }
 }
-/* σ de los últimos ~160 valores (para tolerancias ajustadas por rasgo). */
-function _sigma(vals) {
-  const xs = []; for (let i = vals.length - 1; i >= 0 && xs.length < 160; i--) if (isFinite(vals[i])) xs.push(vals[i]);
-  if (xs.length < 8) return NaN;
-  const m = xs.reduce((a, b) => a + b, 0) / xs.length;
-  return Math.sqrt(xs.reduce((a, b) => a + (b - m) * (b - m), 0) / xs.length);
+/* Mediana de los valores finitos (neutro de los niveles sin umbral natural). */
+function _median(vals) {
+  const xs = []; for (let i = 0; i < vals.length; i++) if (isFinite(vals[i])) xs.push(vals[i]);
+  if (!xs.length) return 0; xs.sort((a, b) => a - b); return xs[xs.length >> 1];
 }
-function _tolDist(vals, unit) { const s = _sigma(vals); const min = unit === 'pts' ? 2.5 : 0.08; return isFinite(s) ? Math.max(min, 0.3 * s) : (min * 3); }
-function _tolLevel(vals) { const s = _sigma(vals); return isFinite(s) ? Math.max(3, 0.4 * s) : 6; }
-function _tolHist(vals) { const s = _sigma(vals); return isFinite(s) ? Math.max(0.02, 0.4 * s) : 0.1; }
-/* Eventos de cruce: +1 si la serie cruza 0 hacia arriba en i, −1 hacia abajo. */
-function _cruces(vals) {
-  const n = vals.length, c = new Int8Array(n); let prev = NaN;
-  for (let i = 0; i < n; i++) { const v = vals[i]; if (isFinite(v) && isFinite(prev)) { if (prev <= 0 && v > 0) c[i] = 1; else if (prev >= 0 && v < 0) c[i] = -1; } if (isFinite(v)) prev = v; }
-  return c;
+/* Neutro (línea media) de cada indicador de NIVEL. Para una confluencia no
+   importa el valor exacto sino de qué LADO está: alcista vs bajista. Los que no
+   tienen umbral natural (ATR, Std Dev) usan su propia mediana. */
+const NEUTRAL = { 'lvl:RSI': 50, 'lvl:STOCH': 50, 'lvl:STOCHRSI': 50, 'lvl:CCI': 0, 'lvl:WILL': -50, 'lvl:MFI': 50, 'lvl:UO': 50, 'lvl:ROC': 0, 'lvl:CMO': 0, 'lvl:CMF': 0, 'lvl:ADX': 25, 'pctb:BOLL': 50, 'pctb:DONCH': 50, 'pctb:KELT': 50, 'pctb:ENV': 50 };
+/* ESTADO del rasgo en una vela: +1 (alcista / sobre el neutro) o −1 (bajista /
+   bajo el neutro). 0 = sin dato. Es el corazón del motor nuevo: una confluencia
+   es una COMBINACIÓN DE ESTADOS que se repite, no un valor exacto ni un cruce en
+   la misma vela (eso volvía imposible juntar varios indicadores: 6 → 1 marca).
+   Los estados PERSISTEN, así que la combinación vuelve a darse y la alerta
+   dispara al re-alinearse. */
+function _estado(f, i) {
+  const v = f.vals[i];
+  if (!isFinite(v)) return 0;
+  if (f.kind === 'dir') return v >= 0 ? 1 : -1;
+  const neu = (f.neutral == null ? 0 : f.neutral);
+  return v >= neu ? 1 : -1;
 }
-function _pend(vals, i) { if (i <= 0) return 0; const a = vals[i], b = vals[i - 1]; if (!isFinite(a) || !isFinite(b)) return 0; return a >= b ? 1 : -1; }
 
 /* Banco de rasgos de los indicadores ACTIVOS. Tipos:
    'par'   dos líneas (medias, %K/%D, MACD/señal, DI±, etc.) → cruce o distancia.
@@ -64,10 +72,10 @@ export function construirRasgos(activeKeys, V) {
   const resta = (aA, bA) => { const o = new Float64Array(n).fill(NaN); for (let i = 0; i < n; i++) if (isFinite(aA[i]) && isFinite(bA[i])) o[i] = aA[i] - bA[i]; return o; };
   const pct = (aA) => { const o = new Float64Array(n).fill(NaN); for (let i = 0; i < n; i++) if (isFinite(aA[i]) && close[i]) o[i] = aA[i] / close[i] * 100; return o; };
   const feats = [];
-  const addPar = (id, keys, vals, nm, nm2, unit) => feats.push({ id, keys, kind: 'par', vals, cruces: _cruces(vals), tol: _tolDist(vals, unit), nm, nm2, unit: unit || '%' });
-  const addLvl = (id, keys, vals, nm, unit) => feats.push({ id, keys, kind: 'level', vals, tol: _tolLevel(vals), nm, unit: unit || '' });
-  const addHist = (id, keys, vals, nm) => feats.push({ id, keys, kind: 'hist', vals, tol: _tolHist(vals), nm });
-  const addDir = (id, keys, vals, nm) => feats.push({ id, keys, kind: 'dir', vals, tol: 0.5, nm });
+  const addPar = (id, keys, vals, nm, nm2, unit) => feats.push({ id, keys, kind: 'par', vals, neutral: 0, nm, nm2, unit: unit || '%' });
+  const addLvl = (id, keys, vals, nm, unit) => feats.push({ id, keys, kind: 'level', vals, neutral: (NEUTRAL[id] != null ? NEUTRAL[id] : _median(vals)), nm, unit: unit || '' });
+  const addHist = (id, keys, vals, nm) => feats.push({ id, keys, kind: 'hist', vals, neutral: 0, nm });
+  const addDir = (id, keys, vals, nm) => feats.push({ id, keys, kind: 'dir', vals, neutral: 0, nm });
 
   // ── Medias: pares consecutivos (la rápida vs la lenta). Con 1 sola media → precio vs media ──
   const maKeys = activeKeys.filter((k) => MA_PER[k] != null).sort((a, b) => MA_PER[a] - MA_PER[b]);
@@ -118,18 +126,13 @@ export function construirRasgos(activeKeys, V) {
   return { V, n, feats, timeIdx };
 }
 
-const _VENT = 2;   // ventana (velas) para considerar que el clic cayó "en" un cruce
-/* Captura el vector de rasgos en una vela (índice). Decide cruce vs distancia. */
+/* Captura el VECTOR DE ESTADOS en la vela del punto marcado. */
 export function capturarRasgos(ras, barIdx) {
   const cap = [];
   for (const f of ras.feats) {
-    if (f.kind === 'par') {
-      let cr = 0; for (let d = 0; d <= _VENT && !cr; d++) { if (barIdx + d < f.cruces.length && f.cruces[barIdx + d]) cr = f.cruces[barIdx + d]; else if (barIdx - d >= 0 && f.cruces[barIdx - d]) cr = f.cruces[barIdx - d]; }
-      if (cr) { cap.push({ id: f.id, keys: f.keys.slice(), mode: 'cross', dir: cr, nm: f.nm, nm2: f.nm2 }); }
-      else { const v = f.vals[barIdx]; if (isFinite(v)) cap.push({ id: f.id, keys: f.keys.slice(), mode: 'dist', val: v, tol: f.tol, nm: f.nm, nm2: f.nm2, unit: f.unit }); }
-    } else if (f.kind === 'level') { const v = f.vals[barIdx]; if (isFinite(v)) cap.push({ id: f.id, keys: f.keys.slice(), mode: 'level', val: v, tol: f.tol, nm: f.nm, unit: f.unit }); }
-    else if (f.kind === 'hist') { const v = f.vals[barIdx]; if (isFinite(v)) cap.push({ id: f.id, keys: f.keys.slice(), mode: 'hist', val: v, tol: f.tol, dir: _pend(f.vals, barIdx), nm: f.nm }); }
-    else if (f.kind === 'dir') { const v = f.vals[barIdx]; if (isFinite(v)) cap.push({ id: f.id, keys: f.keys.slice(), mode: 'dir', val: v, nm: f.nm }); }
+    const st = _estado(f, barIdx);
+    if (st === 0) continue;                 // sin dato de ese indicador aquí → no entra
+    cap.push({ id: f.id, keys: f.keys.slice(), kind: f.kind, side: st, nm: f.nm, nm2: f.nm2, unit: f.unit });
   }
   return cap;
 }
@@ -137,60 +140,51 @@ export function rasgosActivos(ras, cap) {
   const fid = {}; for (const f of ras.feats) fid[f.id] = 1; const act = new Set();
   for (const c of cap) if (fid[c.id]) c.keys.forEach((k) => act.add(k)); return act.size;
 }
-/* ¿La vela barIdx cumple la confluencia? Los CRUCES son eventos exactos y siempre
-   obligatorios; de las reglas CONTINUAS (distancia/nivel/histograma) basta con que
-   coincida el _CONF_FRAC (75%). Así, al añadir muchos indicadores el sistema NO deja
-   de encontrar confluencias (antes, exigir todas a la vez las volvía imposibles: 6
-   indicadores → 1 marca). Con 1-3 reglas sigue siendo exacto. Mínimo 1 indicador. */
-const _CONF_FRAC = 0.75;
+/* ¿La vela barIdx reproduce la confluencia? Coincide si la gran mayoría de los
+   estados capturados (de indicadores aún activos) se repiten. _CONF_FRAC tolera
+   que UNO parpadee (con 1-2 reglas se exige todo). Como los estados persisten,
+   juntar MUCHOS indicadores ya NO vuelve la confluencia imposible. Mínimo 1. */
+const _CONF_FRAC = 0.8;
 export function coincideRasgos(ras, cap, barIdx) {
   const fById = {}; for (const f of ras.feats) fById[f.id] = f;
-  const act = new Set(); let cont = 0, contOk = 0;
+  const act = new Set(); let total = 0, ok = 0;
   for (const c of cap) {
-    const f = fById[c.id]; if (!f) continue;                          // indicador quitado → no cuenta
+    const f = fById[c.id]; if (!f) continue;             // indicador quitado → no cuenta
     c.keys.forEach((k) => act.add(k));
-    if (c.mode === 'cross') { if (f.cruces[barIdx] !== c.dir) return false; continue; }   // cruce obligatorio
-    cont++;
-    const v = f.vals[barIdx];
-    let ok = isFinite(v) && Math.abs(v - c.val) <= c.tol;
-    if (ok && c.mode === 'hist' && c.dir && _pend(f.vals, barIdx) !== c.dir) ok = false;
-    if (ok) contOk++;
+    total++;
+    if (_estado(f, barIdx) === c.side) ok++;
   }
-  if (act.size < 1) return false;
-  const need = cont === 0 ? 0 : Math.max(1, Math.ceil(cont * _CONF_FRAC));
-  return contOk >= need;
+  if (act.size < 1 || total === 0) return false;
+  return ok >= Math.max(1, Math.ceil(total * _CONF_FRAC));
 }
 export function escanearRasgos(ras, cap, soloInicios = true) {
   const out = []; let prev = false;
   for (let i = 0; i < ras.n; i++) { const m = coincideRasgos(ras, cap, i); if (m && (!soloInicios || !prev)) out.push(ras.V[i].time); prev = m; }
   return out;
 }
-/* ¿El rasgo c se cumple en la vela barIdx? (para las palomitas de la libreta) */
+/* ¿El estado c se cumple en la vela barIdx? (para las palomitas de la libreta) */
 export function cumpleRasgo(ras, c, barIdx) {
-  const f = (ras.feats.find((x) => x.id === c.id)); if (!f) return null;   // null → tachado (indicador quitado)
-  if (c.mode === 'cross') return f.cruces[barIdx] === c.dir;
-  const v = f.vals[barIdx]; if (!isFinite(v)) return false;
-  if (Math.abs(v - c.val) > c.tol) return false;
-  if (c.mode === 'hist' && c.dir && _pend(f.vals, barIdx) !== c.dir) return false;
-  return true;
+  const f = ras.feats.find((x) => x.id === c.id); if (!f) return null;   // null → tachado (indicador quitado)
+  const st = _estado(f, barIdx); if (st === 0) return false;
+  return st === c.side;
 }
 
-/* ── Texto legible (EN/ES) de un rasgo ── */
-function _num(v, unit) { const a = Math.abs(v); const dec = unit === 'pts' ? (a < 10 ? 1 : 0) : (a < 5 ? 2 : (a < 20 ? 1 : 0)); return v.toFixed(dec); }
+/* ── Texto legible (EN/ES) de un estado ── */
 export function rasgoLabel(c, lang) {
-  const es = lang === 'es', up = c.dir > 0, pos = c.val >= 0, u = c.unit === 'pts' ? ' pts' : c.unit === '%b' ? '% of band' : (c.unit === '%' ? '%' : '');
-  switch (c.mode) {
-    case 'cross':
-      return es ? `${c.nm} cruza ${c.nm2} hacia ${up ? 'arriba' : 'abajo'}` : `${c.nm} crossing ${c.nm2} ${up ? 'up' : 'down'}`;
-    case 'dist':
-      if (c.nm === 'Price') return es ? `Precio ${pos ? 'sobre' : 'bajo'} ${c.nm2} ${_num(Math.abs(c.val), c.unit)}${u}` : `Price ${pos ? 'above' : 'below'} ${c.nm2} by ${_num(Math.abs(c.val), c.unit)}${u}`;
-      return es ? `${c.nm} ${pos ? 'sobre' : 'bajo'} ${c.nm2} ${_num(Math.abs(c.val), c.unit)}${u}` : `${c.nm} ${pos ? 'above' : 'below'} ${c.nm2} by ${_num(Math.abs(c.val), c.unit)}${u}`;
+  const es = lang === 'es', up = c.side > 0;
+  switch (c.kind) {
+    case 'par':
+      if (c.nm === 'Price') return es ? `Precio ${up ? 'sobre' : 'bajo'} ${c.nm2}` : `Price ${up ? 'above' : 'below'} ${c.nm2}`;
+      return es ? `${c.nm} ${up ? 'sobre' : 'bajo'} ${c.nm2}` : `${c.nm} ${up ? 'above' : 'below'} ${c.nm2}`;
     case 'hist':
-      return es ? `${c.nm} ${pos ? 'positivo' : 'negativo'} (${up ? 'creciendo' : 'decreciendo'})` : `${c.nm} histogram ${pos ? 'positive' : 'negative'} (${up ? 'growing' : 'shrinking'})`;
+      return es ? `${c.nm} ${up ? 'positivo' : 'negativo'}` : `${c.nm} histogram ${up ? 'positive' : 'negative'}`;
     case 'dir':
-      return es ? `${c.nm} ${pos ? 'alcista' : 'bajista'}` : `${c.nm} ${pos ? 'bullish' : 'bearish'}`;
+      return es ? `${c.nm} ${up ? 'alcista' : 'bajista'}` : `${c.nm} ${up ? 'bullish' : 'bearish'}`;
     case 'level':
     default:
-      return es ? `${c.nm} en ${_num(c.val, c.unit)}${c.unit === '%b' ? '% del canal' : ''}` : `${c.nm} at ${_num(c.val, c.unit)}${c.unit === '%b' ? '% of band' : ''}`;
+      if (c.id === 'lvl:ADX') return es ? `ADX: tendencia ${up ? 'fuerte' : 'débil'}` : `ADX: ${up ? 'strong' : 'weak'} trend`;
+      if (c.id === 'lvl:ATR' || c.id === 'lvl:STDDEV') return es ? `${c.nm} ${up ? 'alta' : 'baja'}` : `${c.nm} ${up ? 'high' : 'low'}`;
+      if (c.unit === '%b') return es ? `${c.nm}: mitad ${up ? 'alta' : 'baja'} del canal` : `${c.nm}: ${up ? 'upper' : 'lower'} half of band`;
+      return es ? `${c.nm} ${up ? 'alcista' : 'bajista'}` : `${c.nm} ${up ? 'bullish' : 'bearish'}`;
   }
 }
