@@ -31,7 +31,7 @@ async function cargarBarra() {
   try {
     const base = new URL('../../assets/js/niveles/', import.meta.url).href;
     const [mb, est, dib] = await Promise.all([
-      import(base + 'barra.js?v=1'), import(base + 'estado.js?v=1'), import(base + 'dibujo.js?v=1')
+      import(base + 'barra.js?v=2'), import(base + 'estado.js?v=1'), import(base + 'dibujo.js?v=2')
     ]);
     _montarBarra = mb.montarBarra; _nivN = est.N; _cargarDib = dib.cargarDib;
   } catch (_) { _montarBarra = null; }
@@ -636,7 +636,7 @@ async function montarDibujo() {
     if (S.barra && S.barra._tools) S.barra._tools.classList.add('nv-oculta');   // auto-ocultable, con pestaña (no come gráfica)
     // estado.js arranca con par:'BTC' y sin 'dibujos'; si el 1.er par coincide,
     // la barra no dispara cargarDib → lo inicializamos aquí para la moneda actual.
-    try { if (_nivN && _cargarDib) { _nivN.par = S.par.id; _cargarDib(); } } catch (_) {}
+    try { if (_nivN && _cargarDib) { _nivN.seccion = 'confluence'; _nivN.par = S.par.id; _cargarDib(); } } catch (_) {}
     S.dibMontada = true;
     if (window.ResizeObserver && !S._cvObs) { S._cvObs = new ResizeObserver(() => sincronizarDib()); S._cvObs.observe(cv); }
     sincronizarDib();
