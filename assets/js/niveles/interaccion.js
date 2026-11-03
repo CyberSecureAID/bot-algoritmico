@@ -33,7 +33,8 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     N.vista.zoomY = Math.max(0.2, Math.min(5, (N.vista.zoomY || 1) * f));
     refrescar();
   };
-  const enEscala = (x) => x > cv.clientWidth - 90;
+  const enEscala = (x) => x > cv.clientWidth - 90;                               // eje de PRECIOS (derecha)
+  const enEjeX = (x, y) => y > cv.clientHeight - 24 && x < cv.clientWidth - 90;  // eje de FECHAS (abajo)
 
   /* ══ Herramientas de dibujo: barra lateral, ajustes e interacción ══ */
   const loc = (e, t) => { const r = cv.getBoundingClientRect(); const s = t || e; return { x: s.clientX - r.left, y: s.clientY - r.top }; };
@@ -466,7 +467,7 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     // manito sobre el toggle del panel Marea o sobre una tachuela de disparo (interactivos)
     if (sobreMareaEn(p.x, p.y)) { cv.style.cursor = 'pointer'; dibujar(); return; }
     // cursor: manito sobre un dibujo, editar sobre las líneas de una posición
-    if (N.herr === 'cursor' && !enEscala(p.x)) {
+    if (N.herr === 'cursor' && !enEscala(p.x) && !enEjeX(p.x, p.y)) {
       const k = dibujoEn(p.x, p.y); let cur = N.cursorTipo === 'flecha' ? 'default' : (N.cursorTipo === 'punto' ? 'none' : 'crosshair');
       if (k >= 0) {
         const d = N.dibujos[k]; cur = 'grab';
@@ -475,6 +476,7 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
       }
       cv.style.cursor = cur;
     } else if (enEscala(p.x)) { cv.style.cursor = 'ns-resize'; }   // sobre la escala: cursor visible, nunca oculto
+    else if (enEjeX(p.x, p.y)) { cv.style.cursor = 'ew-resize'; }  // sobre el eje de fechas: ↔
     dibujar();
   });
   cv.addEventListener('mouseleave', () => { N.cruz = null; cv.style.cursor = 'default'; dibujar(); });
@@ -523,9 +525,9 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     if (N.herr === 'borrar' && !enEscala(lx)) { goma = { x0: lx, y0: ly, x1: lx, y1: ly }; N.gomaBox = { x0: lx, y0: ly, x1: lx, y1: ly }; e.preventDefault(); return; }
     // Cursor → si tocas un dibujo, lo seleccionas y arrastras; si no, deseleccionas y haces pan
     if (N.herr === 'cursor' && !enEscala(lx)) { if (iniciarArrastre(lx, ly)) { e.preventDefault(); return; } }
-    modo = enEscala(lx) ? 'y' : 'libre';
+    modo = enEscala(lx) ? 'y' : (enEjeX(lx, ly) ? 'ejex' : 'libre');
     arr = true; ax = e.clientX; ay = e.clientY;
-    cv.style.cursor = modo === 'y' ? 'ns-resize' : 'grabbing';
+    cv.style.cursor = modo === 'y' ? 'ns-resize' : (modo === 'ejex' ? 'ew-resize' : 'grabbing');
   });
   window.addEventListener('mousemove', (e) => {
     if (dibujando) { const p = loc(e); moverDib(p.x, p.y); return; }
@@ -536,6 +538,11 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
       // Sobre la escala: estirar o comprimir
       const dy = e.clientY - ay;
       if (Math.abs(dy) > 2) { zoomY(1 + dy * 0.004); ay = e.clientY; }
+      return;
+    }
+    if (modo === 'ejex') {   // eje de FECHAS → estira/contrae el tiempo (↔, como TradingView)
+      const dxx = e.clientX - ax;
+      if (Math.abs(dxx) > 2) { zoomX(1 + dxx * 0.006); ax = e.clientX; }
       return;
     }
     let cambio = false;

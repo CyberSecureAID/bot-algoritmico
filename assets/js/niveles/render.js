@@ -9,7 +9,7 @@ import { T } from './i18n.js?v=1';
 import { fmt, miles, esc, redondeado, hora, fecha } from './util.js?v=1';
 import { panelMarea } from './panel.js?v=1';
 import { dibujarHerramientas, dibAxy, dibXYa, _tfMs, DIB_FIBS, guardarDib } from './dibujo.js?v=3';
-import { gestos } from './interaccion.js?v=3';
+import { gestos } from './interaccion.js?v=4';
 import { burbujas } from './burbujas.js?v=1';
 import { PARES } from './config.js?v=1';
 
