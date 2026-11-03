@@ -11,11 +11,11 @@
    nivel inferior (soporte) = VERDE = LONG. Todo con animación (puntos y
    triángulos titilando, zonas con latido). */
 
-import { montarBarra } from '../../assets/js/niveles/barra.js?v=2';
+import { montarBarra } from '../../assets/js/niveles/barra.js?v=3';
 import { PARES, pintarIcono, TFS } from '../../assets/js/niveles/config.js?v=1';
 import { detectarReaction, zoneBounds, touchRings } from './motor.js?v=2';
 import { N } from '../../assets/js/niveles/estado.js?v=1';
-import { cargarDib } from '../../assets/js/niveles/dibujo.js?v=2';
+import { cargarDib } from '../../assets/js/niveles/dibujo.js?v=3';
 
 const WEB = 'decfreedom.com';
 /* Ruta del logo resuelta contra la URL del script (no del documento): así
