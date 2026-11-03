@@ -142,11 +142,11 @@ async function abrirTool(abre, cardEl) {
   if (btn) { btn.classList.add('load'); btn.textContent = 'Loading…'; }
 
   try {
-    if (abre === 'pools')       await (await import(base + 'liquidity.js?v=137')).abrirPools();
-    else if (abre === 'heat')   await (await import(base + 'muros.js?v=130')).abrirMuros();
-    else if (abre === 'levels') await (await import(base + 'niveles.js?v=128')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=21', import.meta.url).href)).abrirInstitutional();
-    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=8', import.meta.url).href)).abrirReaction();
+    if (abre === 'pools')       await (await import(base + 'liquidity.js?v=138')).abrirPools();
+    else if (abre === 'heat')   await (await import(base + 'muros.js?v=131')).abrirMuros();
+    else if (abre === 'levels') await (await import(base + 'niveles.js?v=129')).abrirNiveles();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=22', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=9', import.meta.url).href)).abrirReaction();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
