@@ -11,7 +11,7 @@
    nivel inferior (soporte) = VERDE = LONG. Todo con animación (puntos y
    triángulos titilando, zonas con latido). */
 
-import { montarBarra } from '../../assets/js/niveles/barra.js?v=3';
+import { montarBarra } from '../../assets/js/niveles/barra.js?v=4';
 import { PARES, pintarIcono, TFS } from '../../assets/js/niveles/config.js?v=1';
 import { detectarReaction, zoneBounds, touchRings } from './motor.js?v=2';
 import { N } from '../../assets/js/niveles/estado.js?v=1';
@@ -642,7 +642,9 @@ function dibujarPosicion(g, P) {
 /* ══════════════════ GESTOS (zoom/pan) ══════════════════ */
 function engancharGestos(cv) {
   const zoom = (f) => { const maxA = Math.max(60, (M.velas.length || 700) - 2); M.ancho = Math.max(14, Math.min(maxA, Math.round((M.ancho || 100) * f))); dibujar(); };
-  let ax = 0, ay = 0, arr = false, dragEsc = false; const enEscala = (x) => x > cv.clientWidth - 66;
+  let ax = 0, ay = 0, arr = false, dragEsc = false, dragX = false;
+  const enEscala = (x) => x > cv.clientWidth - 66;              // eje de PRECIOS (derecha)
+  const enEjeX = (x, y) => y > cv.clientHeight - 24 && x < cv.clientWidth - 66;   // eje de FECHAS (abajo)
   const dRz = (lx, ly, rc) => rc && lx >= rc.x - 6 && lx <= rc.x + rc.w + 6 && ly >= rc.y - 6 && ly <= rc.y + rc.h + 6;
   cv.addEventListener('wheel', (e) => { e.preventDefault(); zoom(e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
   cv.addEventListener('mousedown', (e) => {
@@ -656,8 +658,8 @@ function engancharGestos(cv) {
         if (dRz(lx, ly, P._arrR)) { P.cardPos = _ORD_RZ[(_ORD_RZ.indexOf(P.cardPos || 'izq') + 1) % 4]; dibujar(); return; }
       }
     }
-    ax = lx; ay = ly; dragEsc = enEscala(lx); arr = true;
-    cv.style.cursor = dragEsc ? 'ns-resize' : 'grabbing';
+    ax = lx; ay = ly; dragEsc = enEscala(lx); dragX = !dragEsc && enEjeX(lx, ly); arr = true;
+    cv.style.cursor = dragX ? 'ew-resize' : (dragEsc ? 'ns-resize' : 'grabbing');
   });
   window.addEventListener('mousemove', (e) => {
     const r = cv.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
@@ -668,7 +670,7 @@ function engancharGestos(cv) {
         if (P.oculto) { if (dRz(x, y, P._miniBtn)) { ptr = true; break; } }
         else if (dRz(x, y, P._hideBtn) || dRz(x, y, P._arrL) || dRz(x, y, P._arrR)) { ptr = true; break; }
       }
-      cv.style.cursor = ptr ? 'pointer' : (enEscala(x) ? 'ns-resize' : 'crosshair');   // eje de precios → estirar
+      cv.style.cursor = ptr ? 'pointer' : (enEscala(x) ? 'ns-resize' : (enEjeX(x, y) ? 'ew-resize' : 'crosshair'));   // precios → ↕ · fechas → ↔
       if (M._geo) dibujar(); return;
     }
     if (dragEsc) {   // arrastre sobre el eje de precios → estira/contrae la escala vertical (como TradingView)
@@ -676,11 +678,16 @@ function engancharGestos(cv) {
       if (Math.abs(dy) > 1) { M.zoomY = Math.max(0.2, Math.min(6, (M.zoomY || 1) * (1 + dy * 0.004))); ay = y; dibujar(); }
       return;
     }
+    if (dragX) {   // arrastre sobre el eje de FECHAS → estira/contrae el tiempo (↔, como TradingView)
+      const dxx = x - ax;
+      if (Math.abs(dxx) > 2) { const maxA = Math.max(60, (M.velas.length || 700) - 2); M.ancho = Math.max(14, Math.min(maxA, Math.round((M.ancho || 100) * (1 + dxx * 0.006)))); ax = x; dibujar(); }
+      return;
+    }
     const paso = M._geo ? M._geo.paso : 8; const dx = x - ax, dy = y - ay;
     if (Math.abs(dx) > paso) { M.desplaz = (M.desplaz || 0) + Math.round(dx / paso); ax = x; }
     M.offsetY = (M.offsetY || 0) + dy; ay = y; dibujar();
   });
-  window.addEventListener('mouseup', () => { arr = false; dragEsc = false; cv.style.cursor = 'crosshair'; });
+  window.addEventListener('mouseup', () => { arr = false; dragEsc = false; dragX = false; cv.style.cursor = 'crosshair'; });
   cv.addEventListener('mouseleave', () => { M._cursor = null; dibujar(); });
   cv.addEventListener('dblclick', () => { M.ancho = window.innerWidth < 760 ? 70 : 120; M.desplaz = 0; M.zoomY = 1; M.offsetY = 0; dibujar(); });
 }
