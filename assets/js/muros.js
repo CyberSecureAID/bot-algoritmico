@@ -24,6 +24,7 @@
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 import { montarBarra } from './niveles/barra.js?v=4';   // la misma barra de herramientas de Smart Pools
 import { N } from './niveles/estado.js?v=1';            // estado compartido del dibujo (para aislar por sección)
+try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 
 const $ = (id) => document.getElementById(id);
