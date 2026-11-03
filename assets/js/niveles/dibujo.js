@@ -304,17 +304,21 @@ export function dibujarHerramientas(g, x1, y1) {
   g.textAlign = 'left';
 }
 
-/* Persistencia de los dibujos del usuario en localStorage, por par. */
+/* Persistencia de los dibujos del usuario en localStorage.
+   La clave es SECCIÓN + par: así los dibujos de Reaction NO aparecen en
+   Confluence/Smart/Heat (antes la clave era solo el par y las secciones
+   compartían el mismo dibujo). N.seccion lo pone cada sección al abrir. */
+function claveDib() { return (N.seccion || 'base') + '|' + (N.par || ''); }
 export function guardarDib() {
   try {
     const m = JSON.parse(localStorage.getItem('cco-dibujos') || '{}');
-    m[N.par] = N.dibujos || [];
+    m[claveDib()] = N.dibujos || [];
     localStorage.setItem('cco-dibujos', JSON.stringify(m));
   } catch (_) {}
 }
 export function cargarDib() {
   try {
     const m = JSON.parse(localStorage.getItem('cco-dibujos') || '{}');
-    N.dibujos = Array.isArray(m[N.par]) ? m[N.par] : [];
+    N.dibujos = Array.isArray(m[claveDib()]) ? m[claveDib()] : [];
   } catch (_) { N.dibujos = []; }
 }

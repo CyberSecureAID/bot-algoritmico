@@ -20,8 +20,8 @@
    en Smart Pools: lo que trazas en una gráfica lo ves en las otras. */
 
 import { N } from './estado.js?v=1';
-import { gestos } from './interaccion.js?v=1';
-import { dibujarHerramientas, guardarDib, cargarDib, dibAxy } from './dibujo.js?v=1';
+import { gestos } from './interaccion.js?v=2';
+import { dibujarHerramientas, guardarDib, cargarDib, dibAxy } from './dibujo.js?v=2';
 import { estilos } from './estilos.js?v=1';
 
 /* Copia literal de la barra de Smart Pools (niveles.js), con clases en vez de
@@ -169,8 +169,9 @@ export function montarBarra(host, opciones = {}) {
     redibujar(g2, velas, par) {
       if (!g2) return;
       geo = g2; velasRef = normalizar(velas);
-      if (par && par !== N.par) { N.par = par; cargarDib(); N.sel = -1; N.dib = null; }
-      else if (!N.par && par) { N.par = par; cargarDib(); }
+      if (par) N.par = par;
+      const kDib = (N.seccion || 'base') + '|' + (N.par || '');   // recarga al cambiar de SECCIÓN o de par
+      if (kDib !== N._dibKey) { N._dibKey = kDib; cargarDib(); N.sel = -1; N.dib = null; }
       pintar();
     },
     desmontar() { try { tools.remove(); cv.remove(); host.classList.remove('nv-host'); } catch (_) {} host._nvBarra = null; }
