@@ -12,7 +12,7 @@
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 import * as wallet from './wallet.js?v=129';
-import { montarBarra } from './niveles/barra.js?v=3';   // la misma barra de herramientas de Smart Pools
+import { montarBarra } from './niveles/barra.js?v=4';   // la misma barra de herramientas de Smart Pools
 import { N } from './niveles/estado.js?v=1';            // estado compartido del dibujo (para aislar por sección)
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 
@@ -2091,7 +2091,8 @@ function engancharGestos(cv) {
 
     V.arrastrando = true; V.x0 = e.clientX; V.y0 = e.clientY;
     V.dragEsc = (px > cv.clientWidth - 56);   // sobre el eje de precio (derecha) → escala vertical
-    cv.style.cursor = V.dragEsc ? 'ns-resize' : 'grabbing';
+    V.dragX = !V.dragEsc && (py > cv.clientHeight - 24) && (px < cv.clientWidth - 56);   // sobre el eje de fechas (abajo) → escala horizontal
+    cv.style.cursor = V.dragEsc ? 'ns-resize' : (V.dragX ? 'ew-resize' : 'grabbing');
   });
   window.addEventListener('mousemove', (e) => {
     if (V.enCurso) {
@@ -2105,6 +2106,11 @@ function engancharGestos(cv) {
     if (V.dragEsc) {   // arrastre sobre el eje de precio → estira/contrae la escala vertical (como TradingView)
       const dy = e.clientY - V.y0;
       if (Math.abs(dy) > 1) { V.zoomY = Math.max(0.2, Math.min(6, (V.zoomY || 1) * (1 + dy * 0.004))); V.y0 = e.clientY; dibujar(); }
+      return;
+    }
+    if (V.dragX) {   // arrastre sobre el eje de FECHAS → estira/contrae el tiempo (↔, como TradingView)
+      const dxx = e.clientX - V.x0;
+      if (Math.abs(dxx) > 2) { V.ancho = Math.max(25, Math.min(total(), Math.round((V.ancho || 90) * (1 + dxx * 0.006)))); V.x0 = e.clientX; dibujar(); }
       return;
     }
     mover(e.clientX - V.x0, e.clientY - V.y0);
@@ -2121,14 +2127,14 @@ function engancharGestos(cv) {
       dibujar();
       return;
     }
-    V.arrastrando = false; V.dragEsc = false;
+    V.arrastrando = false; V.dragEsc = false; V.dragX = false;
     cv.style.cursor = V.herramienta ? 'crosshair' : 'grab';
   });
   // La cruz sigue al puntero. Se redibuja solo si de verdad se movió.
   cv.addEventListener('mousemove', (e) => {
     const r = cv.getBoundingClientRect();
     const nx = Math.round(e.clientX - r.left), ny = Math.round(e.clientY - r.top);
-    if (!V.arrastrando && !V.herramienta) cv.style.cursor = (nx > cv.clientWidth - 56) ? 'ns-resize' : 'grab';   // eje de precio → estirar
+    if (!V.arrastrando && !V.herramienta) cv.style.cursor = (nx > cv.clientWidth - 56) ? 'ns-resize' : ((ny > cv.clientHeight - 24) ? 'ew-resize' : 'grab');   // precio → ↕ · fechas → ↔
     if (nx === V.cruzX && ny === V.cruzY) return;
     V.cruzX = nx; V.cruzY = ny;
     if (!V.arrastrando) dibujar();

@@ -22,7 +22,7 @@
 //     mercado. Es la señal más fuerte que existe en el libro.
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
-import { montarBarra } from './niveles/barra.js?v=3';   // la misma barra de herramientas de Smart Pools
+import { montarBarra } from './niveles/barra.js?v=4';   // la misma barra de herramientas de Smart Pools
 import { N } from './niveles/estado.js?v=1';            // estado compartido del dibujo (para aislar por sección)
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 
@@ -1524,7 +1524,16 @@ function aplicarReferencias(zonas, mercado, precio) {
 /* Extrae los MUROS reales del libro en vivo (niveles con tamaño >= 4× la
    mediana) para confirmar zonas: acumulación + muro real = alta convicción. */
 function murosDelLibro() {
-  const L = _wsLibro || _ultLibro;
+  /* El libro REST (api/v3/depth, 100 niveles por lado) es la fuente de los
+     muros: tiene profundidad suficiente para que destaquen los niveles gordos.
+     El WebSocket (@depth20) solo trae 20 niveles pegadísimos al precio, casi
+     uniformes, donde NINGÚN nivel supera 4× la mediana → 0 muros. El orden
+     anterior (`_wsLibro || _ultLibro`) hacía que, al conectar el WebSocket, el
+     libro fino TAPARA al REST y los muros desaparecieran (aparecían un instante
+     con el primer REST y se esfumaban). Preferimos el REST, como ya decía el
+     comentario del WebSocket ("se usa solo si el REST del libro no llega").
+     NO se toca el umbral de proyección (4× la mediana). */
+  const L = _ultLibro || _wsLibro;
   if (!L) return null;
   const todos = [...(L.compras || []), ...(L.ventas || [])]
     .map((o) => ({ p: o.p, d: o.p * o.q })).filter((o) => o.d > 0);
@@ -1722,6 +1731,21 @@ function arrancar() {
       const f = await traerLibro(par.s);
       if (f && f.compras && f.compras.length && f.ventas && f.ventas.length) foto = f;
     } catch (_) {}
+    /* ENTRADA EN FRÍO: si todavía no hay ningún libro cacheado, Binance suele
+       limitar la ráfaga de llamadas del arranque y el /depth falla a la primera,
+       dejando el radar "sin órdenes" hasta que conecta el WebSocket. Un par de
+       reintentos cortos bastan para que active a la primera. Es SOLO el fetch
+       de /depth; la proyección (zonas, muros del libro) no se toca. */
+    if (!foto && !_ultLibro) {
+      for (let intento = 0; intento < 2 && !foto; intento++) {
+        await new Promise((res) => setTimeout(res, 380));
+        if (!$('mu-cv')) return;
+        try {
+          const f = await traerLibro(par.s);
+          if (f && f.compras && f.compras.length && f.ventas && f.ventas.length) foto = f;
+        } catch (_) {}
+      }
+    }
     if (!foto && _wsLibro && (Date.now() - _wsLibro.t) < 6000) foto = _wsLibro;
     if (foto) procesar(foto);                       // actualiza M.precio
     if (foto) _ultLibro = foto;
@@ -2337,7 +2361,8 @@ function engancharGestos(cv) {
      despegar del borde. Ahora es igual que en Smart Levels: se
      agarra el gráfico y se lleva en los dos ejes. */
   let ax = 0, ay = 0, arr = false, modoG = 'libre';
-  const enEscalaM = (x) => x > cv.clientWidth - 95;
+  const enEscalaM = (x) => x > cv.clientWidth - 95;                                 // eje de PRECIOS (derecha)
+  const enEjeXM = (x, y) => y > cv.clientHeight - 24 && x < cv.clientWidth - 95;    // eje de FECHAS (abajo)
 
   cv.addEventListener('mousedown', (e) => {
     const r = cv.getBoundingClientRect();
@@ -2397,9 +2422,9 @@ function engancharGestos(cv) {
     if (M._tend && cercaTend(lx, ly)) { mostrarTendCfg(); return arrastrarTend(e); }
 
     cerrarPosCfg(); cerrarTendCfg();
-    modoG = enEscalaM(lx) ? 'y' : 'libre';
+    modoG = enEscalaM(lx) ? 'y' : (enEjeXM(lx, ly) ? 'x' : 'libre');
     arr = true; ax = e.clientX; ay = e.clientY;
-    cv.style.cursor = modoG === 'y' ? 'ns-resize' : 'grabbing';
+    cv.style.cursor = modoG === 'y' ? 'ns-resize' : (modoG === 'x' ? 'ew-resize' : 'grabbing');
   });
   window.addEventListener('mousemove', (e) => {
     if (!arr) return;
@@ -2410,6 +2435,15 @@ function engancharGestos(cv) {
       if (Math.abs(dy) > 2) {
         M.zoomY = Math.max(0.2, Math.min(6, (M.zoomY || 1) * (1 + dy * 0.004)));
         ay = e.clientY;
+      }
+      dibujar(); return;
+    }
+    if (modoG === 'x') {   // arrastre sobre el eje de FECHAS → estira/contrae el tiempo (↔, como TradingView)
+      const dxx = e.clientX - ax;
+      if (Math.abs(dxx) > 2) {
+        const maxA = Math.max(60, M.velas.length - 2);
+        M.ancho = Math.max(12, Math.min(maxA, Math.round((M.ancho || 70) * (1 + dxx * 0.006))));
+        ax = e.clientX;
       }
       dibujar(); return;
     }
@@ -2465,7 +2499,7 @@ function engancharGestos(cv) {
     const lx = e.clientX - r.left, ly = e.clientY - r.top;
     M._cursor = { x: lx, y: ly };
     const cur = cursorHerramienta(lx, ly);
-    cv.style.cursor = cur || (enEscalaM(lx) ? 'ns-resize' : 'crosshair');
+    cv.style.cursor = cur || (enEscalaM(lx) ? 'ns-resize' : (enEjeXM(lx, ly) ? 'ew-resize' : 'crosshair'));
     dibujar();
   });
   /* orden.js registra DESPUÉS su propio mousemove sobre el canvas y repone
