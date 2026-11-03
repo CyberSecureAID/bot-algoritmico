@@ -938,7 +938,12 @@ function estilos() {
   const s = document.createElement('style'); s.id = 'rz-css'; s.textContent = CSS; document.head.appendChild(s);
 }
 const CSS = `
-#rz-overlay{position:fixed;inset:0;z-index:10030;font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#e7ebf0;
+/* z-index a la PAR de las pools (9740): el menú de clic derecho de orden.js vive
+   en 9860, así que con 10030 el menú salía DETRÁS de la gráfica y parecía que el
+   clic derecho "no hacía nada". A 9740 el menú/ficha/alerta se ven por encima,
+   igual que en Liquidity/Heat/Smart. Los popups propios (rz-pop 10050, ayuda
+   10300) siguen por encima porque son fixed con su propio z-index. */
+#rz-overlay{position:fixed;inset:0;z-index:9740;font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#e7ebf0;
   --g:#28d26a; --r:#ff4a5a; --gold:#E8B84B; --line:#1d2630; --mono:"Chakra Petch",ui-monospace,monospace}
 #rz-overlay *{box-sizing:border-box}
 .rz-bg{position:absolute;inset:0;background:radial-gradient(1100px 560px at 80% -10%,rgba(232,184,75,.04),transparent 60%),#070b10}
