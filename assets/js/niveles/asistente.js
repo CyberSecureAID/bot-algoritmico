@@ -52,7 +52,13 @@ export function analizar(par) {
      La mayor (punteada, de fondo) solo aparece si APORTA algo distinto a la
      corta: dirección contraria (un retroceso dentro de la tendencia de fondo).
      Si ambas coinciden, basta con la corta (la línea fina). */
-  if (N.linea && N.lineaMayor && N.linea.tipo === N.lineaMayor.tipo) N.lineaMayor = null;
+  /* Al OCULTAR la línea mayor por redundancia se guarda su dirección real: el
+     análisis la necesita para no decir "sin tendencia" justo cuando fondo y corto
+     plazo COINCIDEN (la tendencia más fuerte y clara). Antes, cuanto más alineada
+     y marcada era la tendencia, más se ocultaba la mayor y el analista soltaba
+     "no hay tendencia" en plena caída/subida sostenida. */
+  if (N.linea && N.lineaMayor && N.linea.tipo === N.lineaMayor.tipo) { N._mayorOculta = N.lineaMayor; N.lineaMayor = null; }
+  else { N._mayorOculta = null; }
   N.precio = v[v.length - 1].c;
   N.dobles = detectarDobles(v, piv, N.precio);
   N.marea = marea(v, N.atr);
@@ -78,9 +84,17 @@ export function analizar(par) {
   const sCerca = soportes[0];
   const rCerca = resist[resist.length - 1];
 
-  const mayor = N.lineaMayor, corta = N.tendencia;
-  const dirM = mayor ? mayor.tipo : null;
+  const mayor = N.lineaMayor || N._mayorOculta, corta = N.tendencia;   // usa la mayor aunque esté oculta por redundancia (fondo real)
   const dirC = corta.dir;
+  /* Dirección de FONDO robusta. La línea mayor si se pudo trazar; si NO (una caída
+     o subida sostenida no siempre deja una línea "de libro" por los extremos, pero
+     sigue siendo tendencia), se toma del movimiento NETO de las últimas ~240 velas.
+     Así el análisis deja de decir "sin tendencia" en plena caída/subida sostenida,
+     que era justo lo que fallaba. */
+  const lookF = Math.max(0, v.length - 240);
+  const movFondo = (v.length > lookF && v[lookF].c) ? ((precio - v[lookF].c) / v[lookF].c) * 100 : 0;
+  let dirM = mayor ? mayor.tipo : null;
+  if (!dirM && Math.abs(movFondo) >= 3) dirM = movFondo < 0 ? 'bajista' : 'alcista';   // ≥3% neto de fondo = tendencia clara
   const alcM = dirM === 'alcista', bajM = dirM === 'bajista';
   const alcC = dirC === 'alcista', bajC = dirC === 'bajista';
 
@@ -113,8 +127,13 @@ export function analizar(par) {
                   `En las últimas ${durM.es} el precio se movió ${pc(mayor.movPct)} sobre una línea ${alcM ? 'ascendente' : 'descendente'} que toca ${mayor.pts.length} ${alcM ? 'mínimos' : 'máximos'}.`),
               dos(`The major line connects ${mayor.pts.length} ${alcM ? 'lows' : 'highs'} and has carried price ${pc(mayor.movPct)} over ${durM.en}.`,
                   `La línea mayor une ${mayor.pts.length} ${alcM ? 'mínimos' : 'máximos'} y ha llevado el precio ${pc(mayor.movPct)} en ${durM.es}.`)])
-    : elegir([dos('No major trend line fits the last weeks of pivots.', 'Ninguna línea mayor ajusta los pivotes de las últimas semanas.'),
-              dos('The longer structure has no clean direction.', 'La estructura larga no tiene dirección limpia.')]);
+    : (dirM
+       ? elegir([dos(`No single line connects the pivots cleanly, yet the last stretch is a clear ${bajM ? 'downtrend' : 'uptrend'}: net ${pc(movFondo)}.`,
+                     `Ninguna línea une los pivotes con limpieza, pero el último tramo es ${bajM ? 'bajista' : 'alcista'} claro: neto ${pc(movFondo)}.`),
+                 dos(`The background is ${bajM ? 'falling' : 'rising'} (${pc(movFondo)} over the last stretch) even without a textbook major line.`,
+                     `El fondo ${bajM ? 'cae' : 'sube'} (${pc(movFondo)} en el último tramo) aunque no haya una línea mayor de libro.`)])
+       : elegir([dos('No major trend line fits the last weeks of pivots.', 'Ninguna línea mayor ajusta los pivotes de las últimas semanas.'),
+                 dos('The longer structure has no clean direction.', 'La estructura larga no tiene dirección limpia.')]));
   const fraseCorta = elegir([
     dos(`Short term on the ${tf}: the last swings make ${alcC ? 'higher highs and higher lows' : bajC ? 'lower highs and lower lows' : 'mixed highs and lows'}; net move over the last 60 candles ${pc(corta.mov)}.`,
         `Corto plazo en ${tf}: los últimos giros hacen ${alcC ? 'máximos y mínimos crecientes' : bajC ? 'máximos y mínimos decrecientes' : 'máximos y mínimos mezclados'}; movimiento neto en las últimas 60 velas ${pc(corta.mov)}.`),
