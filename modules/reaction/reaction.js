@@ -11,11 +11,11 @@
    nivel inferior (soporte) = VERDE = LONG. Todo con animación (puntos y
    triángulos titilando, zonas con latido). */
 
-import { montarBarra } from '../../assets/js/niveles/barra.js?v=1';
+import { montarBarra } from '../../assets/js/niveles/barra.js?v=2';
 import { PARES, pintarIcono, TFS } from '../../assets/js/niveles/config.js?v=1';
 import { detectarReaction, zoneBounds, touchRings } from './motor.js?v=2';
 import { N } from '../../assets/js/niveles/estado.js?v=1';
-import { cargarDib } from '../../assets/js/niveles/dibujo.js?v=1';
+import { cargarDib } from '../../assets/js/niveles/dibujo.js?v=2';
 
 const WEB = 'decfreedom.com';
 /* Ruta del logo resuelta contra la URL del script (no del documento): así
@@ -230,7 +230,7 @@ function dibujar() {
     // N.par arranca en 'BTC' por defecto, al abrir en BTC nunca se cargaban y
     // N.dibujos quedaba undefined → al soltar un trazo, soltarDib() reventaba
     // (push sobre undefined) y la barra quedaba congelada. Lo garantizamos aquí.
-    try { N.par = _par; cargarDib(); } catch (_) { N.dibujos = N.dibujos || []; }
+    try { N.seccion = 'reaction'; N.par = _par; cargarDib(); } catch (_) { N.dibujos = N.dibujos || []; }
     import('../../assets/js/orden.js?v=126').then((od) => {
       od.conectar({
         canvas: cv,
