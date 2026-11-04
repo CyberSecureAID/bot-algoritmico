@@ -1,28 +1,24 @@
-/* modules/institutional/confluencia.js — MOTOR DE CONFLUENCIA (v8, GEOMETRIA EXACTA).
+/* modules/institutional/confluencia.js — MOTOR DE CONFLUENCIA (v9, CRUCES + GEOMETRIA).
 
-   v8 sobre v6: las lineas de PRECIO (medias moviles, las TRES bandas del VWAP y las
-   bandas de Bollinger / Donchian / Keltner / Envelopes) ya no aportan solo un
-   "lado" (encima o debajo). Ahora se captura la GEOMETRIA EXACTA del punto marcado:
-   la distancia en POR CIENTO del precio entre cada par de lineas consecutivas del
-   apilado. Una vela coincide SOLO cuando ese mismo apilado vuelve a darse dentro de
-   una tolerancia (en el pasado y en vivo). Asi la regla deja de ser "VWAP bajo
-   EMA 50" y pasa a ser "VWAP superior 0.4% sobre la central, central 0.3% sobre la
-   EMA 50 ...": la configuracion precisa que el usuario pidio.
+   v9 sobre v8: distingue CRUCE de DISTANCIA y respeta la DIRECCION.
+   - CRUCE: si en el punto marcado dos lineas de precio se estan cruzando (gap casi
+     cero y cambio de signo cerca), se guarda un CRUCE CON DIRECCION, p.ej. "EMA 9
+     cruza hacia abajo EMA 200". La alerta solo salta en cruces de ESA misma
+     direccion (un cruce alcista NO dispara una regla de cruce bajista). Eso quita el
+     ruido de v8, que con el suelo de tolerancia disparaba en cruces de los dos lados
+     y hasta cuando una linea solo se "pegaba" sin cruzar.
+   - DISTANCIA: si las lineas estan claramente separadas, se guarda la distancia en %
+     del precio pero EXIGIENDO EL MISMO LADO (la tolerancia nunca cruza el cero): si
+     se marco la rapida 2.8% POR ENCIMA de la lenta, solo coincide por encima.
+   - Se capturan TODOS los pares de lineas (no solo contiguos), para que un par
+     concreto como 9 contra 200 exista aunque haya otras medias en medio.
+   - Los OSCILADORES (RSI, estocastico, MACD, ADX...) confirman por LADO (alcista /
+     bajista), sin exigir magnitud: asi las confluencias reales si disparan en vez de
+     "colapsar" sin alertas.
 
-   Ejemplo: VWAP (banda superior, central e inferior) + EMA 50. Son cuatro lineas de
-   precio. Se ordenan por valor en la vela marcada y se guardan las distancias en %
-   entre cada par contiguo. La alerta salta cuando esas MISMAS distancias (mismo
-   orden, mismo %) se repiten dentro de la tolerancia.
-
-   Los OSCILADORES (RSI, MACD, estocastico, ADX, etc.) conservan el motor de ESTADOS
-   de v6 (lado + fuerza/magnitud): para ellos lo que importa es sobre/bajo su neutro
-   y con que dinamica, no una distancia en % del precio.
-
-   RENDIMIENTO: los mapas de busqueda (linea por id, rasgo por id) se precalculan UNA
-   vez en construirRasgos y el escaneo resuelve los arrays ANTES del bucle de velas,
-   asi el barrido es O(velas x condiciones) sin reconstruir nada por vela. Por eso ya
-   no se congela con muchos indicadores. La UI (institutional.js) lo consume igual:
-   mismas funciones exportadas. */
+   RENDIMIENTO: los mapas (linea/rasgo por id) se precalculan una vez y el escaneo
+   resuelve los arrays antes del bucle de velas. Instantaneo con muchos indicadores.
+   La UI (institutional.js) lo consume igual: mismas funciones exportadas. */
 
 import { ema, sma, wma, hma, dema, tema, vwma, alma, zlema, kama, vwapBands,
   bollinger, donchian, keltner, envelopes, psar, supertrend, rsi, macd, ppo,
@@ -35,9 +31,7 @@ const nmDe = (k) => NM[k] || k;
 const _SOP = new Set(Object.keys(NM));
 export function soportado(k) { return _SOP.has(k); }
 
-/* Lineas de precio de cada indicador de BANDA (3 lineas: superior, central,
-   inferior). El VWAP tiene sus tres medias; Bollinger/Donchian/Keltner/Envelopes
-   tambien. Se devuelven ya como {upper, middle, lower} en series {time,value}. */
+/* Bandas (3 lineas) de VWAP / Bollinger / Donchian / Keltner / Envelopes. */
 function _bandas(k, V) {
   switch (k) {
     case 'VWAP': { const b = vwapBands(V, 2); return { upper: b.up, middle: b.mid, lower: b.lo }; }
@@ -60,24 +54,22 @@ function _serieMA(k, V) {
     default: return [];
   }
 }
-/* Mediana de los valores finitos (neutro de los niveles sin umbral natural). */
 function _median(vals) {
   const xs = []; for (let i = 0; i < vals.length; i++) if (isFinite(vals[i])) xs.push(vals[i]);
   if (!xs.length) return 0; xs.sort((a, b) => a - b); return xs[xs.length >> 1];
 }
-/* Neutro (linea media) de cada indicador de NIVEL. Para una confluencia no importa
-   el valor exacto sino de que LADO esta: alcista vs bajista. Los que no tienen
-   umbral natural (ATR, Std Dev) usan su propia mediana. */
 const NEUTRAL = { 'lvl:RSI': 50, 'lvl:STOCH': 50, 'lvl:STOCHRSI': 50, 'lvl:CCI': 0, 'lvl:WILL': -50, 'lvl:MFI': 50, 'lvl:UO': 50, 'lvl:ROC': 0, 'lvl:CMO': 0, 'lvl:CMF': 0, 'lvl:ADX': 25 };
 
-/* Tolerancia de una distancia en % del precio: 30% de la distancia marcada, con un
-   suelo de 0.10% para que distancias casi cero no exijan precision imposible. */
-const _DIST_REL = 0.30;
+/* Distancia en % del precio: tolerancia 33% de la marcada, suelo 0.10%. El MISMO
+   lado se exige aparte (la tolerancia por si sola podria cruzar el cero). */
+const _DIST_REL = 0.33;
 const _DIST_ABS = 0.10;
 const _tolDist = (d0) => Math.max(_DIST_ABS, Math.abs(d0) * _DIST_REL);
+/* Un par se considera CRUCE si en el punto marcado el gap es <= _CROSS_GAP (% del
+   precio) y hay un cambio de signo a <= _CROSS_W velas. */
+const _CROSS_GAP = 0.35;
+const _CROSS_W = 5;
 
-/* ESTADO de un rasgo oscilador en una vela: +1 (alcista / sobre el neutro) o −1
-   (bajista / bajo el neutro). 0 = sin dato. */
 function _estado(f, i) {
   const v = f.vals[i];
   if (!isFinite(v)) return 0;
@@ -87,10 +79,9 @@ function _estado(f, i) {
 }
 
 /* Banco de rasgos de los indicadores ACTIVOS.
-   - LINEAS de precio (ras.lines): medias + 3 bandas de VWAP/Bollinger/etc. Entre
-     ellas se mide la GEOMETRIA (distancias en % del precio).
-   - RASGOS osciladores (ras.feats): 'par' dos lineas propias (MACD/senal, %K/%D,
-     DI±...), 'level' un nivel (RSI, CCI...), 'hist' histograma, 'dir' direccion. */
+   - ras.lines: lineas de precio (medias + 3 bandas de VWAP/Bollinger/etc.), cada una
+     con su 'rank' (periodo de la media; las bandas al final) para etiquetar cruces.
+   - ras.feats: osciladores ('par' dos lineas propias, 'level', 'hist', 'dir'). */
 export function construirRasgos(activeKeys, V) {
   const n = V.length;
   const close = new Float64Array(n); for (let i = 0; i < n; i++) close[i] = V[i].close;
@@ -102,16 +93,16 @@ export function construirRasgos(activeKeys, V) {
 
   // ── LINEAS DE PRECIO ──
   const lines = [];
-  const addLine = (id, key, nm, serie) => { lines.push({ id, key, nm, arr: alinear(serie) }); };
+  const addLine = (id, key, nm, serie, rank) => { lines.push({ id, key, nm, arr: alinear(serie), rank }); };
   for (const k of activeKeys) {
     try {
       if (_ES_BANDA(k)) {
         const b = _bandas(k, V); if (!b) continue;
-        addLine('ln:' + k + ':up', k, nmDe(k) + ' upper', b.upper);
-        addLine('ln:' + k + ':mid', k, nmDe(k) + (k === 'VWAP' ? '' : ' mid'), b.middle);
-        addLine('ln:' + k + ':lo', k, nmDe(k) + ' lower', b.lower);
+        addLine('ln:' + k + ':up', k, nmDe(k) + ' upper', b.upper, 1000);
+        addLine('ln:' + k + ':mid', k, nmDe(k) + (k === 'VWAP' ? '' : ' mid'), b.middle, 1001);
+        addLine('ln:' + k + ':lo', k, nmDe(k) + ' lower', b.lower, 1002);
       } else if (MA_PER[k] != null) {
-        addLine('ln:' + k, k, nmDe(k), _serieMA(k, V));
+        addLine('ln:' + k, k, nmDe(k), _serieMA(k, V), MA_PER[k]);
       }
     } catch (_) {}
   }
@@ -123,7 +114,7 @@ export function construirRasgos(activeKeys, V) {
   const addHist = (id, keys, vals, nm) => feats.push({ id, keys, kind: 'hist', vals, neutral: 0, nm });
   const addDir = (id, keys, vals, nm) => feats.push({ id, keys, kind: 'dir', vals, neutral: 0, nm });
   for (const k of activeKeys) {
-    if (_ES_BANDA(k) || MA_PER[k] != null) continue;   // esas ya son lineas de precio
+    if (_ES_BANDA(k) || MA_PER[k] != null) continue;
     try {
       switch (k) {
         case 'RSI': addLvl('lvl:RSI', [k], alinear(rsi(V, 14)), 'RSI'); break;
@@ -160,47 +151,86 @@ export function construirRasgos(activeKeys, V) {
   return { V, n, close, lines, feats, timeIdx, _lineById: lineById, _featById: featById };
 }
 
-/* Captura la CONFIGURACION del punto marcado:
-   - GEOMETRIA de las lineas de precio: se ordenan por valor en esa vela y se guarda
-     la distancia en % del precio entre cada par CONTIGUO (el apilado exacto). Con
-     una sola linea se guarda la distancia del PRECIO a esa linea.
-   - ESTADO de cada oscilador (lado + fuerza/magnitud), como en v6. */
+/* Distancia en % del precio entre dos lineas (null = precio) en la vela i. */
+function _dEn(aArr, bArr, close, i) {
+  if (i < 0 || !close[i]) return NaN;
+  const av = aArr ? aArr[i] : close[i], bv = bArr ? bArr[i] : close[i];
+  if (!isFinite(av) || !isFinite(bv)) return NaN;
+  return (av - bv) / close[i] * 100;
+}
+/* Cambio de signo (cruce) mas cercano a bi dentro de ±W. Devuelve {i, dir} o null.
+   dir = +1 si A pasa de debajo a encima de B (alcista), −1 si de encima a debajo. */
+function _cruceEn(aArr, bArr, close, bi, W, n) {
+  let best = null, bestDist = 1e9;
+  const lo = Math.max(1, bi - W), hi = Math.min(n - 1, bi + W);
+  for (let i = lo; i <= hi; i++) {
+    const dPrev = _dEn(aArr, bArr, close, i - 1), dCur = _dEn(aArr, bArr, close, i);
+    if (!isFinite(dPrev) || !isFinite(dCur)) continue;
+    if ((dPrev > 0 && dCur <= 0) || (dPrev < 0 && dCur >= 0)) {
+      const dd = Math.abs(i - bi);
+      if (dd < bestDist) { bestDist = dd; best = { i, dir: (dCur - dPrev) >= 0 ? 1 : -1 }; }
+    }
+  }
+  return best;
+}
+/* ¿En la vela i ocurre un cruce de la direccion pedida? (evento de una vela) */
+function _cruzaEn(aArr, bArr, close, i, dir) {
+  if (i < 1) return false;
+  const dPrev = _dEn(aArr, bArr, close, i - 1), dCur = _dEn(aArr, bArr, close, i);
+  if (!isFinite(dPrev) || !isFinite(dCur)) return false;
+  return dir < 0 ? (dPrev > 0 && dCur <= 0) : (dPrev < 0 && dCur >= 0);
+}
+function _keysDe(a, b) { const s = new Set(); if (a && a.key) s.add(a.key); if (b && b.key) s.add(b.key); return Array.from(s); }
+
+/* Decide, para un par de lineas, si en el punto marcado hay CRUCE o DISTANCIA y lo
+   mete en la regla. aId/bId null = precio. */
+function _addGeom(cap, ras, bi, p) {
+  const close = ras.close;
+  const aArr = p.aId == null ? null : (ras._lineById.get(p.aId) || {}).arr || null;
+  const bArr = p.bId == null ? null : (ras._lineById.get(p.bId) || {}).arr || null;
+  const d0 = _dEn(aArr, bArr, close, bi);
+  if (!isFinite(d0)) return;
+  const cruce = (Math.abs(d0) <= _CROSS_GAP) ? _cruceEn(aArr, bArr, close, bi, _CROSS_W, ras.n) : null;
+  if (cruce) {
+    cap.push({ id: 'x:' + (p.aId || 'price') + '|' + (p.bId || 'price'), kind: 'cross', keys: p.keys, aId: p.aId, bId: p.bId, nmA: p.nmA, nmB: p.nmB, dir: cruce.dir });
+  } else {
+    // A = la linea MAS ALTA en el punto (d0 > 0) para etiquetar "A X% sobre B".
+    let aId = p.aId, bId = p.bId, nmA = p.nmA, nmB = p.nmB, dd = d0;
+    if (d0 < 0) { aId = p.bId; bId = p.aId; nmA = p.nmB; nmB = p.nmA; dd = -d0; }
+    cap.push({ id: 'd:' + (aId || 'price') + '|' + (bId || 'price'), kind: 'dist', keys: p.keys, aId, bId, nmA, nmB, d0: dd, tol: _tolDist(dd) });
+  }
+}
+
+/* Captura la CONFIGURACION del punto marcado: geometria de TODOS los pares de
+   lineas de precio (cruce con direccion o distancia con mismo lado) + lado de cada
+   oscilador. */
 export function capturarRasgos(ras, barIdx) {
   const cap = [];
-  const close = ras.close[barIdx] || 0;
-  // ── Geometria de lineas de precio ──
-  const pres = [];
-  for (const ln of ras.lines) { const v = ln.arr[barIdx]; if (isFinite(v)) pres.push({ ln, v }); }
-  if (pres.length >= 2 && close) {
-    pres.sort((a, b) => b.v - a.v);   // de mayor a menor (apilado de arriba abajo)
-    for (let p = 0; p < pres.length - 1; p++) {
-      const A = pres[p], B = pres[p + 1];
-      const d0 = (A.v - B.v) / close * 100;
-      cap.push({ id: 'dist:' + A.ln.id + '|' + B.ln.id, kind: 'dist', keys: _keysDe(A.ln, B.ln), aId: A.ln.id, bId: B.ln.id, nmA: A.ln.nm, nmB: B.ln.nm, d0, tol: _tolDist(d0) });
+  const cl = ras.close[barIdx] || 0;
+  const P = [];
+  for (const ln of ras.lines) { if (isFinite(ln.arr[barIdx])) P.push(ln); }
+  if (cl) {
+    if (P.length === 1) {
+      _addGeom(cap, ras, barIdx, { aId: null, bId: P[0].id, nmA: 'Price', nmB: P[0].nm, keys: [P[0].key] });
+    } else {
+      for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+        const A = (P[i].rank <= P[j].rank) ? P[i] : P[j], B = (A === P[i]) ? P[j] : P[i];   // A = mas rapida
+        _addGeom(cap, ras, barIdx, { aId: A.id, bId: B.id, nmA: A.nm, nmB: B.nm, keys: _keysDe(A, B) });
+      }
     }
-  } else if (pres.length === 1 && close) {
-    const A = pres[0], d0 = (close - A.v) / close * 100;
-    cap.push({ id: 'dist:price|' + A.ln.id, kind: 'dist', keys: [A.ln.key], aId: null, bId: A.ln.id, nmA: 'Price', nmB: A.ln.nm, d0, tol: _tolDist(d0) });
   }
-  // ── Estado de osciladores ──
   for (const f of ras.feats) {
     const st = _estado(f, barIdx);
     if (st === 0) continue;
-    const neu = f.neutral == null ? 0 : f.neutral;
-    const val = f.vals[barIdx];
-    const mag = isFinite(val) ? Math.abs(val - neu) : 0;
-    cap.push({ id: f.id, keys: f.keys.slice(), kind: f.kind, side: st, mag, nm: f.nm, nm2: f.nm2, unit: f.unit });
+    cap.push({ id: f.id, keys: f.keys.slice(), kind: f.kind, side: st, nm: f.nm, nm2: f.nm2, unit: f.unit });
   }
   return cap;
 }
-function _keysDe(a, b) { const s = new Set(); if (a.key) s.add(a.key); if (b.key) s.add(b.key); return Array.from(s); }
 
-/* Cuantos indicadores DISTINTOS siguen activos dentro de una regla capturada
-   (sus lineas/rasgos aun existen en ras). <1 → regla invalida (faltan indicadores). */
 export function rasgosActivos(ras, cap) {
   const act = new Set();
   for (const c of cap) {
-    if (c.kind === 'dist') {
+    if (c.kind === 'cross' || c.kind === 'dist') {
       const okA = (c.aId == null) || ras._lineById.has(c.aId);
       const okB = (c.bId == null) || ras._lineById.has(c.bId);
       if (okA && okB) c.keys.forEach((k) => act.add(k));
@@ -211,35 +241,25 @@ export function rasgosActivos(ras, cap) {
   return act.size;
 }
 
-function _cumpleEstado(f, c, barIdx) {
-  const st = _estado(f, barIdx);
-  if (st === 0 || st !== c.side) return false;
-  if (c.kind === 'dir' || !(c.mag > 0)) return true;
-  const neu = f.neutral == null ? 0 : f.neutral;
-  const v = f.vals[barIdx]; if (!isFinite(v)) return false;
-  return Math.abs(v - neu) >= _MAG_FRAC * c.mag;
-}
-const _CONF_FRAC = 1.0;    // TODAS las condiciones a la vez
-const _MAG_FRAC = 0.6;     // osciladores: misma fuerza (≥60% de la magnitud marcada)
-
 /* ¿La condicion c se cumple en la vela barIdx?
-   true ✓ · false ○ (no se cumple) · null ✕ (indicador quitado). */
+   true ✓ · false ○ · null ✕ (indicador quitado). */
 export function cumpleRasgo(ras, c, barIdx) {
-  if (c.kind === 'dist') {
-    let av, bv;
-    if (c.aId == null) { av = ras.close[barIdx]; } else { const a = ras._lineById.get(c.aId); if (!a) return null; av = a.arr[barIdx]; }
-    if (c.bId == null) { bv = ras.close[barIdx]; } else { const b = ras._lineById.get(c.bId); if (!b) return null; bv = b.arr[barIdx]; }
-    const close = ras.close[barIdx];
-    if (!isFinite(av) || !isFinite(bv) || !close) return false;
-    const d = (av - bv) / close * 100;
+  if (c.kind === 'cross' || c.kind === 'dist') {
+    let aArr = null, bArr = null;
+    if (c.aId != null) { const a = ras._lineById.get(c.aId); if (!a) return null; aArr = a.arr; }
+    if (c.bId != null) { const b = ras._lineById.get(c.bId); if (!b) return null; bArr = b.arr; }
+    if (c.kind === 'cross') return _cruzaEn(aArr, bArr, ras.close, barIdx, c.dir);
+    const d = _dEn(aArr, bArr, ras.close, barIdx);
+    if (!isFinite(d)) return false;
+    if (c.d0 >= 0 ? d < 0 : d > 0) return false;             // mismo lado (sin cruzar el cero)
     return Math.abs(d - c.d0) <= c.tol;
   }
   const f = ras._featById.get(c.id); if (!f) return null;
-  return _cumpleEstado(f, c, barIdx);
+  const st = _estado(f, barIdx);
+  return st !== 0 && st === c.side;                          // mismo lado del oscilador
 }
 
-/* ¿La vela barIdx reproduce la confluencia ENTERA? Se exigen TODAS las condiciones
-   presentes (las de indicadores quitados no cuentan). */
+const _CONF_FRAC = 1.0;    // TODAS las condiciones a la vez
 export function coincideRasgos(ras, cap, barIdx) {
   const act = new Set(); let total = 0, ok = 0;
   for (const c of cap) {
@@ -252,20 +272,21 @@ export function coincideRasgos(ras, cap, barIdx) {
   return ok >= Math.max(1, Math.ceil(total * _CONF_FRAC));
 }
 
-/* Barrido de toda la serie. Resuelve los arrays de cada condicion UNA vez y luego
-   recorre las velas con pura aritmetica de arrays: rapido aun con muchos
-   indicadores (no reconstruye mapas por vela). */
+/* Barrido de toda la serie: resuelve arrays una vez y recorre velas con aritmetica
+   pura. Rapido aun con muchos indicadores. */
 export function escanearRasgos(ras, cap, soloInicios = true) {
   const R = [];
   for (const c of cap) {
-    if (c.kind === 'dist') {
-      let aArr = null, bArr = null;
-      if (c.aId != null) { const a = ras._lineById.get(c.aId); if (!a) continue; aArr = a.arr; }
-      if (c.bId != null) { const b = ras._lineById.get(c.bId); if (!b) continue; bArr = b.arr; }
-      R.push({ dist: true, aArr, bArr, d0: c.d0, tol: c.tol });
+    if (c.kind === 'cross' || c.kind === 'dist') {
+      let aArr = null, bArr = null, miss = false;
+      if (c.aId != null) { const a = ras._lineById.get(c.aId); if (!a) miss = true; else aArr = a.arr; }
+      if (c.bId != null) { const b = ras._lineById.get(c.bId); if (!b) miss = true; else bArr = b.arr; }
+      if (miss) continue;
+      if (c.kind === 'cross') R.push({ t: 'x', aArr, bArr, dir: c.dir });
+      else R.push({ t: 'd', aArr, bArr, d0: c.d0, tol: c.tol });
     } else {
       const f = ras._featById.get(c.id); if (!f) continue;
-      R.push({ dist: false, f, side: c.side, mag: c.mag, kind: c.kind });
+      R.push({ t: 'o', f, side: c.side });
     }
   }
   if (!R.length) return [];
@@ -274,12 +295,11 @@ export function escanearRasgos(ras, cap, soloInicios = true) {
     let ok = true;
     for (let j = 0; j < R.length; j++) {
       const r = R[j];
-      if (r.dist) {
-        const cl = close[i]; if (!cl) { ok = false; break; }
-        const av = r.aArr ? r.aArr[i] : cl, bv = r.bArr ? r.bArr[i] : cl;
-        if (!isFinite(av) || !isFinite(bv)) { ok = false; break; }
-        if (Math.abs((av - bv) / cl * 100 - r.d0) > r.tol) { ok = false; break; }
-      } else if (!_cumpleEstado(r.f, r, i)) { ok = false; break; }
+      if (r.t === 'x') { if (!_cruzaEn(r.aArr, r.bArr, close, i, r.dir)) { ok = false; break; } }
+      else if (r.t === 'd') {
+        const d = _dEn(r.aArr, r.bArr, close, i);
+        if (!isFinite(d) || (r.d0 >= 0 ? d < 0 : d > 0) || Math.abs(d - r.d0) > r.tol) { ok = false; break; }
+      } else { const st = _estado(r.f, i); if (st === 0 || st !== r.side) { ok = false; break; } }
     }
     if (ok && (!soloInicios || !prev)) out.push(ras.V[i].time);
     prev = ok;
@@ -291,6 +311,11 @@ export function escanearRasgos(ras, cap, soloInicios = true) {
 function _fmtPct(x) { const a = Math.abs(x); return (a < 1 ? a.toFixed(2) : a.toFixed(1)) + '%'; }
 export function rasgoLabel(c, lang) {
   const es = lang === 'es';
+  if (c.kind === 'cross') {
+    const abajo = c.dir < 0;
+    if (es) return `${c.nmA} cruza hacia ${abajo ? 'abajo' : 'arriba'} ${c.nmB}`;
+    return `${c.nmA} crosses ${abajo ? 'down' : 'up'} through ${c.nmB}`;
+  }
   if (c.kind === 'dist') {
     const arriba = c.d0 >= 0;
     const rel = es ? (arriba ? 'sobre' : 'bajo') : (arriba ? 'above' : 'below');
@@ -313,4 +338,4 @@ export function rasgoLabel(c, lang) {
   }
 }
 
-try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence engine · geometria v8 · 2026-11-03'); } catch (_) {}
+try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence engine · cruces v9 · 2026-11-04'); } catch (_) {}

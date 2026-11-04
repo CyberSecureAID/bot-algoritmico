@@ -21,7 +21,7 @@ import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=8';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=9';
 try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Confluence · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
@@ -819,7 +819,9 @@ function recomputarMarks() {
     let times = escanearRasgos(ras, a.cap);
     if (times.length > TOPE) times = times.slice(times.length - TOPE);
     const ai = ras.timeIdx.get(a.time);
-    if (ai != null && times.indexOf(a.time) === -1 && coincideRasgos(ras, a.cap, ai)) times = times.concat([a.time]);
+    // El punto CLICADO siempre se marca (es la referencia del usuario), aunque el
+    // cruce caiga una vela al lado del clic. El escaneo añade las demás coincidencias.
+    if (ai != null && times.indexOf(a.time) === -1) times = times.concat([a.time]);
     for (const tm of times) marks.push({ time: tm, side: a.side });
   }
   S.conf.marks = marks;
