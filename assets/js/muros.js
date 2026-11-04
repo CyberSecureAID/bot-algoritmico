@@ -24,7 +24,7 @@
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 // [DESACOPLADO] Heat Pools ya NO importa la barra de dibujo compartida (rompía el gráfico). Ver abrirMuros.
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
-try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03f (re-análisis de arranque + log)'); } catch (_) {}
+try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03h (bases lejanas del impulso)'); } catch (_) {}
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -906,7 +906,7 @@ function detectarEstructuras(velas) {
   // 2) RELEVANCIA + NO MITIGADA + CERCANÍA respecto al precio actual.
   const holgura = precio * 0.0006;
   const maxDist = Math.max(precio * 0.05, atr * 9);   // más cerca: zonas realmente operables (nada de 30-48%)
-  const validas = brutas.filter((z) => {
+  let validas = brutas.filter((z) => {
     const margen = (z.hi - z.lo) * 0.35;   // el precio puede asomar sin invalidar la zona (solo un cierre decidido la rompe)
     if (z.dir === 'demanda') {
       if (z.lo >= precio) return false;                            // quedó detrás
@@ -919,6 +919,18 @@ function detectarEstructuras(velas) {
     for (let k = z.i1 + 1; k < n; k++) if (velas[k].c > z.hi + margen) return false;    // perforada de verdad
     return true;
   });
+  /* RESPALDO cuando el filtro de CERCANÍA deja 0 zonas (p.ej. una moneda muy
+     caída: las bases del impulso quedan válidas pero lejos, arriba del precio).
+     NO se cambia la detección: se muestran las MISMAS bases ya detectadas, las
+     más cercanas por lado y SIN perforar, para que el sistema nunca salga en
+     blanco cuando sí hay bases. Si el filtro ya dio zonas, esto no se ejecuta
+     (comportamiento idéntico al de siempre). */
+  if (!validas.length && brutas.length) {
+    const vivo = (z) => { const m = (z.hi - z.lo) * 0.35; for (let k = z.i1 + 1; k < n; k++) { if (z.dir === 'oferta' ? velas[k].c > z.hi + m : velas[k].c < z.lo - m) return false; } return true; };
+    const arr = brutas.filter((z) => z.lo > precio && vivo(z)).sort((a, b) => a.lo - b.lo).slice(0, 2);
+    const aba = brutas.filter((z) => z.hi < precio && vivo(z)).sort((a, b) => b.hi - a.hi).slice(0, 2);
+    validas = arr.concat(aba);
+  }
   // 3) Plan de cada zona (entradas + R:R con la regla de la zona ancha).
   validas.forEach((z) => {
     const ancho = z.hi - z.lo, ratio = z.imp > 0 ? ancho / z.imp : 1;
@@ -1926,7 +1938,11 @@ function dibujar() {
      abre más de un 45% del rango de las velas, para no descuadrar el gráfico. */
   if (M.estructuras && M.estructuras.length) {
     const rV = (pAlto - pBajo) || 1;
-    const capHi = pAlto + rV * 0.45, capLo = pBajo - rV * 0.45;
+    /* Tope AMPLIO para que las bases del impulso, aunque queden lejos arriba del
+       precio (moneda muy caída), entren en la vista por defecto. Las bases cercanas
+       (caso normal) ya estaban dentro del 45%, así que su vista NO cambia: el tope
+       solo deja ver además las bases lejanas que antes quedaban fuera de pantalla. */
+    const capHi = pAlto + rV * 2.0, capLo = pBajo - rV * 2.0;
     M.estructuras.forEach((z) => {
       if (z.hi <= capHi && z.hi >= pBajo) pAlto = Math.max(pAlto, z.hi);
       if (z.lo >= capLo && z.lo <= pAlto) pBajo = Math.min(pBajo, z.lo);
