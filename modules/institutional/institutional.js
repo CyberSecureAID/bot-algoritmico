@@ -924,11 +924,11 @@ function conectarOrdenesChart() {
   // pintarChart lo reintenta (antes un fallo puntual lo dejaba roto para siempre).
   if (cv.dataset.ordChart || cv.dataset.ordLoading) return;
   cv.dataset.ordLoading = '1';
-  import(new URL('../../assets/js/orden.js?v=128', import.meta.url).href).then((od) => {
+  import(new URL('../../assets/js/orden.js?v=129', import.meta.url).href).then((od) => {
     _od = od;
     od.conectar({
       canvas: cv,
-      captura: true,                      // CLAVE: clic derecho en fase de captura, por encima de lightweight-charts
+      capturaDoc: true,                   // CLAVE: clic derecho en DOCUMENT (captura), por encima de lightweight-charts y de todo
       precioEn: (yy) => { try { const p = S.serieVela && S.serieVela.coordinateToPrice(yy); return (p != null && isFinite(p) && p > 0) ? p : 0; } catch (_) { return 0; } },
       precioActual: () => { const v = S.velas; return (v && v.length) ? v[v.length - 1].close : 0; },
       par: () => (S.par && S.par.id) || '',
