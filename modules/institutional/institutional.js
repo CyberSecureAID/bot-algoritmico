@@ -922,7 +922,8 @@ function conectarOrdenesChart() {
       repintar: () => {}
     });
     od.clicCancelar(cv, () => _ordZonas, () => {});
-  }).catch(() => {});
+    try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence · menú clic derecho (operar/alerta) LISTO · build 2026-11-04'); } catch (_) {}
+  }).catch((e) => { try { console.warn('DecFreedom · orden.js NO cargó (clic derecho no funcionará):', e); } catch (_) {} });
 }
 function arrancarOrdLoop(oc) {
   if (_ordRAF) return;
