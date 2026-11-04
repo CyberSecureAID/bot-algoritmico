@@ -22,10 +22,9 @@
 //     mercado. Es la señal más fuerte que existe en el libro.
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
-import { montarBarra } from './niveles/barra.js?v=4';   // la misma barra de herramientas de Smart Pools
-import { N } from './niveles/estado.js?v=1';            // estado compartido del dibujo (para aislar por sección)
-try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03b'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
+import { montarBarra } from './niveles/barra.js?v=1';   // la misma barra de herramientas de Smart Pools
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
+try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03c (revertido a la base que funcionaba)'); } catch (_) {}
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -1244,7 +1243,6 @@ function abrirNoticiasSeguro(cual) {
    ══════════════════════════════════════════════════════════════ */
 export async function abrirMuros() {
   estilos();
-  N.seccion = 'heat';   // aísla los dibujos de Heat Pools (no se mezclan con Reaction/Confluence/Smart)
   const prev = $('mu-overlay'); if (prev) prev.remove();
 
   // Estado limpio: cada apertura empieza de cero
@@ -1405,19 +1403,8 @@ export async function abrirMuros() {
   });
 
   ponerLogos();
-  cargarVelas();                 // PRIMERO las velas (de aquí sale el Heat): que no compitan con el libro por el límite de Binance en la entrada
-  setTimeout(arrancar, 700);     // el libro + stream arrancan algo después, para no saturar la ráfaga de arranque
-
-  /* ── DIAGNÓSTICO TEMPORAL en pantalla (build 2026-11-03b) ──
-     Muestra el estado REAL del Heat para ver por qué no aparece en tu entorno.
-     velas:0 → las velas no cargan (Binance te limita o bloquea la petición).
-     Se retira en cuanto confirmemos la causa. */
-  try {
-    let hud = document.getElementById('mu-hud');
-    if (!hud) { hud = document.createElement('div'); hud.id = 'mu-hud'; hud.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;background:rgba(0,0,0,.82);color:#E8B84B;font:11px/1.45 ui-monospace,monospace;padding:6px 9px;border-radius:7px;border:1px solid rgba(232,184,75,.45);pointer-events:none;white-space:pre'; document.body.appendChild(hud); }
-    clearInterval(_hudT);
-    _hudT = setInterval(() => { try { if (!$('mu-cv')) { clearInterval(_hudT); const h = document.getElementById('mu-hud'); if (h) h.remove(); return; } hud.textContent = 'HEAT diag · build 2026-11-03b\nvelas:' + (M.velas ? M.velas.length : 0) + '  zonas:' + ((M.zonas || []).length) + '  estr:' + ((M.estructuras || []).length) + '\ncargando:' + M.cargando + '  precio:' + (M.precio ? M.precio.toFixed(2) : 0) + '\nerror:' + (_ultErr || '—'); } catch (_) {} }, 500);
-  } catch (_) {}
+  arrancar();
+  cargarVelas();
   /* Pulso: redibuja suave (~8 fps) solo si hay una zona activa (retesteo/dentro),
      para que la animación sea fluida aunque el WebSocket no esté. */
   clearInterval(_relojPulso);
@@ -1441,8 +1428,6 @@ let _htfTs = 0;                        // última vez que se pidió la temporali
 let _jerTs = 0;                        // última vez que se pidió la temporalidad jerárquica
 let _delTs = 0;                        // última vez que se pidió el order-flow (aggTrades)
 let _ultLibro = null;                  // último libro bueno (REST o WS) para confirmar zonas
-let _ultErr = null;                    // último error de carga (diagnóstico en pantalla)
-let _hudT = null;                      // timer del HUD de diagnóstico temporal
 let _fallos = 0;
 let _wsL = null, _wsLibro = null, _wsPar = null;   // libro por WebSocket (respaldo)
 let _ultDibujoWS = 0;                              // throttle del redibujo en vivo
@@ -1509,10 +1494,10 @@ async function cargarVelas() {
       if (Date.now() - _delTs > 8000) { _delTs = Date.now(); traerDelta(par.s).then((d) => { if (d) M.delta = d; }); }
       /* CONTEXTO multi-símbolo (BTC/ETH), cacheado 90 s. */
       traerContexto().then((c) => { M.contexto = c; });
-      if (M.velas.length) { M.cargando = false; M.error = null; _ultErr = null; }
+      if (M.velas.length) { M.cargando = false; M.error = null; }
       pintarPanel();
       dibujar();
-    } catch (e) { _ultErr = 'velas: ' + ((e && e.message) || String(e)); }
+    } catch (_) {}
   };
   _traerMu = traer;             // referencia para que el cierre de vela (WS) dispare análisis inmediato
   await traer();
@@ -1538,16 +1523,7 @@ function aplicarReferencias(zonas, mercado, precio) {
 /* Extrae los MUROS reales del libro en vivo (niveles con tamaño >= 4× la
    mediana) para confirmar zonas: acumulación + muro real = alta convicción. */
 function murosDelLibro() {
-  /* El libro REST (api/v3/depth, 100 niveles por lado) es la fuente de los
-     muros: tiene profundidad suficiente para que destaquen los niveles gordos.
-     El WebSocket (@depth20) solo trae 20 niveles pegadísimos al precio, casi
-     uniformes, donde NINGÚN nivel supera 4× la mediana → 0 muros. El orden
-     anterior (`_wsLibro || _ultLibro`) hacía que, al conectar el WebSocket, el
-     libro fino TAPARA al REST y los muros desaparecieran (aparecían un instante
-     con el primer REST y se esfumaban). Preferimos el REST, como ya decía el
-     comentario del WebSocket ("se usa solo si el REST del libro no llega").
-     NO se toca el umbral de proyección (4× la mediana). */
-  const L = _ultLibro || _wsLibro;
+  const L = _wsLibro || _ultLibro;
   if (!L) return null;
   const todos = [...(L.compras || []), ...(L.ventas || [])]
     .map((o) => ({ p: o.p, d: o.p * o.q })).filter((o) => o.d > 0);
@@ -2360,8 +2336,7 @@ function engancharGestos(cv) {
      despegar del borde. Ahora es igual que en Smart Levels: se
      agarra el gráfico y se lleva en los dos ejes. */
   let ax = 0, ay = 0, arr = false, modoG = 'libre';
-  const enEscalaM = (x) => x > cv.clientWidth - 95;                                 // eje de PRECIOS (derecha)
-  const enEjeXM = (x, y) => y > cv.clientHeight - 24 && x < cv.clientWidth - 95;    // eje de FECHAS (abajo)
+  const enEscalaM = (x) => x > cv.clientWidth - 95;
 
   cv.addEventListener('mousedown', (e) => {
     const r = cv.getBoundingClientRect();
@@ -2421,9 +2396,9 @@ function engancharGestos(cv) {
     if (M._tend && cercaTend(lx, ly)) { mostrarTendCfg(); return arrastrarTend(e); }
 
     cerrarPosCfg(); cerrarTendCfg();
-    modoG = enEscalaM(lx) ? 'y' : (enEjeXM(lx, ly) ? 'x' : 'libre');
+    modoG = enEscalaM(lx) ? 'y' : 'libre';
     arr = true; ax = e.clientX; ay = e.clientY;
-    cv.style.cursor = modoG === 'y' ? 'ns-resize' : (modoG === 'x' ? 'ew-resize' : 'grabbing');
+    cv.style.cursor = modoG === 'y' ? 'ns-resize' : 'grabbing';
   });
   window.addEventListener('mousemove', (e) => {
     if (!arr) return;
@@ -2434,15 +2409,6 @@ function engancharGestos(cv) {
       if (Math.abs(dy) > 2) {
         M.zoomY = Math.max(0.2, Math.min(6, (M.zoomY || 1) * (1 + dy * 0.004)));
         ay = e.clientY;
-      }
-      dibujar(); return;
-    }
-    if (modoG === 'x') {   // arrastre sobre el eje de FECHAS → estira/contrae el tiempo (↔, como TradingView)
-      const dxx = e.clientX - ax;
-      if (Math.abs(dxx) > 2) {
-        const maxA = Math.max(60, M.velas.length - 2);
-        M.ancho = Math.max(12, Math.min(maxA, Math.round((M.ancho || 70) * (1 + dxx * 0.006))));
-        ax = e.clientX;
       }
       dibujar(); return;
     }
@@ -2498,7 +2464,7 @@ function engancharGestos(cv) {
     const lx = e.clientX - r.left, ly = e.clientY - r.top;
     M._cursor = { x: lx, y: ly };
     const cur = cursorHerramienta(lx, ly);
-    cv.style.cursor = cur || (enEscalaM(lx) ? 'ns-resize' : (enEjeXM(lx, ly) ? 'ew-resize' : 'crosshair'));
+    cv.style.cursor = cur || (enEscalaM(lx) ? 'ns-resize' : 'crosshair');
     dibujar();
   });
   /* orden.js registra DESPUÉS su propio mousemove sobre el canvas y repone
