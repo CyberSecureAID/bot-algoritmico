@@ -21,7 +21,7 @@ import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=9';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=10';
 try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Confluence · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
@@ -919,12 +919,16 @@ function conectarOrdenesChart() {
   if (!oc) { oc = document.createElement('canvas'); oc.id = 'it-ord-cv'; oc.className = 'it-ord-cv'; }
   cv.appendChild(oc);                               // re-anexar → queda sobre el chart recién creado
   arrancarOrdLoop(oc);
-  if (cv.dataset.ordChart) return;
-  cv.dataset.ordChart = '1';
-  import(new URL('../../assets/js/orden.js?v=127', import.meta.url).href).then((od) => {
+  // 'ordChart' se marca SOLO tras cablear con éxito; 'ordLoading' evita doble import
+  // mientras llega. Si el import fallara (red), NO queda marcado y el próximo
+  // pintarChart lo reintenta (antes un fallo puntual lo dejaba roto para siempre).
+  if (cv.dataset.ordChart || cv.dataset.ordLoading) return;
+  cv.dataset.ordLoading = '1';
+  import(new URL('../../assets/js/orden.js?v=128', import.meta.url).href).then((od) => {
     _od = od;
     od.conectar({
       canvas: cv,
+      captura: true,                      // CLAVE: clic derecho en fase de captura, por encima de lightweight-charts
       precioEn: (yy) => { try { const p = S.serieVela && S.serieVela.coordinateToPrice(yy); return (p != null && isFinite(p) && p > 0) ? p : 0; } catch (_) { return 0; } },
       precioActual: () => { const v = S.velas; return (v && v.length) ? v[v.length - 1].close : 0; },
       par: () => (S.par && S.par.id) || '',
@@ -932,8 +936,9 @@ function conectarOrdenesChart() {
       repintar: () => {}
     });
     od.clicCancelar(cv, () => _ordZonas, () => {});
-    try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence · menú clic derecho (operar/alerta) LISTO · build 2026-11-04'); } catch (_) {}
-  }).catch((e) => { try { console.warn('DecFreedom · orden.js NO cargó (clic derecho no funcionará):', e); } catch (_) {} });
+    cv.dataset.ordChart = '1'; delete cv.dataset.ordLoading;
+    try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence · menú clic derecho (operar/alerta) LISTO · build 2026-11-04b'); } catch (_) {}
+  }).catch((e) => { delete cv.dataset.ordLoading; try { console.warn('DecFreedom · orden.js NO cargó (reintentará):', e); } catch (_) {} });
 }
 function arrancarOrdLoop(oc) {
   if (_ordRAF) return;

@@ -65,10 +65,13 @@ const NEUTRAL = { 'lvl:RSI': 50, 'lvl:STOCH': 50, 'lvl:STOCHRSI': 50, 'lvl:CCI':
 const _DIST_REL = 0.33;
 const _DIST_ABS = 0.10;
 const _tolDist = (d0) => Math.max(_DIST_ABS, Math.abs(d0) * _DIST_REL);
-/* Un par se considera CRUCE si en el punto marcado el gap es <= _CROSS_GAP (% del
-   precio) y hay un cambio de signo a <= _CROSS_W velas. */
-const _CROSS_GAP = 0.35;
-const _CROSS_W = 5;
+/* Un par se considera CRUCE si hay un cambio de signo cerca del punto marcado (a
+   <= _CROSS_W velas) Y además el clic cae pegado a ese cruce: a <= 3 velas de él, o
+   con las líneas a <= _CROSS_GAP% del precio. Ventana y gap generosos para que marcar
+   "sobre el cruce" lo capture como CRUCE (con su dirección) y no como una distancia
+   (que sí dispararía en los dos lados, el bug de la incongruencia reportada). */
+const _CROSS_GAP = 1.5;
+const _CROSS_W = 8;
 
 function _estado(f, i) {
   const v = f.vals[i];
@@ -190,7 +193,8 @@ function _addGeom(cap, ras, bi, p) {
   const bArr = p.bId == null ? null : (ras._lineById.get(p.bId) || {}).arr || null;
   const d0 = _dEn(aArr, bArr, close, bi);
   if (!isFinite(d0)) return;
-  const cruce = (Math.abs(d0) <= _CROSS_GAP) ? _cruceEn(aArr, bArr, close, bi, _CROSS_W, ras.n) : null;
+  const cr = _cruceEn(aArr, bArr, close, bi, _CROSS_W, ras.n);
+  const cruce = (cr && (Math.abs(cr.i - bi) <= 3 || Math.abs(d0) <= _CROSS_GAP)) ? cr : null;
   if (cruce) {
     cap.push({ id: 'x:' + (p.aId || 'price') + '|' + (p.bId || 'price'), kind: 'cross', keys: p.keys, aId: p.aId, bId: p.bId, nmA: p.nmA, nmB: p.nmB, dir: cruce.dir });
   } else {
