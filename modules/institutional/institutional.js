@@ -21,7 +21,7 @@ import * as D from './datos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=7';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=8';
 try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Confluence · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
@@ -193,7 +193,6 @@ const IC_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 function ctrlPanel(id, expo) {
   return `<div class="it-ph-ctrl">
     ${expo ? `<button class="it-pbtn it-expo-board" data-expo="${id}" title="Export image">${IC_CAM}</button>` : ''}
-    <button class="it-pbtn it-ultra" data-ultra="${id}" title="Ultra screen (full browser)">${IC_ULTRA}</button>
     <button class="it-pbtn it-max" data-max="${id}" title="Fullscreen">${IC_MAX}</button>
     <button class="it-pbtn it-x" data-close="${id}" title="Close">${IC_X}</button>
   </div>`;
@@ -1003,7 +1002,7 @@ function dibujarCarriles(g, W, H, cur, now) {
 function lineaMarca(g, x, H, side) {   // línea vertical TENUE en cada alerta (para verificar que la regla cuadra)
   const col = side === 'short' ? '255,64,96' : '38,224,138';
   g.save();
-  g.strokeStyle = `rgba(${col},0.26)`; g.lineWidth = 1; g.setLineDash([4, 5]);
+  g.strokeStyle = `rgba(${col},0.34)`; g.lineWidth = 1; g.setLineDash([4, 5]);
   g.beginPath(); g.moveTo(Math.round(x) + 0.5, 0); g.lineTo(Math.round(x) + 0.5, H); g.stroke();
   g.setLineDash([]); g.restore();
 }
@@ -1011,24 +1010,27 @@ function dibujarTachuelas(g, now) {
   if (!S.conf.anchors.length) return;
   recomputarMarks();
   const ts = S.chart.timeScale();
-  const cc = S.conf.cv, H = cc.height / (S.conf._dpr || 1);
-  // posiciones de las anclas (su línea ya la pinta dibujarLineasAncla, más brillante)
+  const cc = S.conf.cv, W = cc.width / (S.conf._dpr || 1), H = cc.height / (S.conf._dpr || 1);
+  // El punto CLICADO (ancla) siempre se dibuja, nunca se descarta ni se tapa; su
+  // línea vertical brillante la pinta dibujarLineasAncla aparte.
+  const anchorTimes = new Set(S.conf.anchors.map((a) => a.time));
   const anchorXs = [];
   for (const a of S.conf.anchors) { let ax; try { ax = ts.timeToCoordinate(a.time); } catch (_) { ax = null; } if (ax != null) anchorXs.push(ax); }
-  const pts = [];
+  // SIN dedup por píxeles: ese borraba marcas al alejar/acercar (bug grave). El
+  // conjunto de marcas lo fija el TIEMPO de cada vela, así que el zoom solo cambia
+  // su posición, no cuáles se ven. Solo se recortan las que caen fuera de pantalla.
+  const esc = [], anc = [];
   for (const m of S.conf.marks) {
     let x; try { x = ts.timeToCoordinate(m.time); } catch (_) { x = null; }
-    if (x == null) continue;
+    if (x == null || x < -40 || x > W + 40) continue;
     const vela = S.conf.velaMap.get(m.time); if (!vela) continue;
-    pts.push({ x, side: m.side, vela });
+    (anchorTimes.has(m.time) ? anc : esc).push({ x, side: m.side, vela });
   }
-  pts.sort((a, b) => a.x - b.x);
-  const W0 = 48, keep = [];
-  for (const p of pts) { const last = keep[keep.length - 1]; if (!last || p.side !== last.side || Math.abs(p.x - last.x) >= W0 * 0.8) keep.push(p); }   // no superponer tachuelas
-  // 1) línea vertical en CADA alerta (salvo donde ya está la del ancla)
-  for (const p of keep) { if (anchorXs.some((ax) => Math.abs(ax - p.x) < 3)) continue; lineaMarca(g, p.x, H, p.side); }
-  // 2) las tachuelas encima
-  for (const p of keep) tachuela(g, p.x, p.vela, p.side, now);
+  // 1) línea vertical en CADA alerta de escaneo (la del ancla ya va, más brillante)
+  for (const p of esc) { if (anchorXs.some((ax) => Math.abs(ax - p.x) < 2)) continue; lineaMarca(g, p.x, H, p.side); }
+  // 2) tachuelas: primero las de escaneo; las anclas SIEMPRE encima (aunque se solapen)
+  for (const p of esc) tachuela(g, p.x, p.vela, p.side, now);
+  for (const p of anc) tachuela(g, p.x, p.vela, p.side, now);
 }
 function tachuela(g, x, vela, side, now) {
   const serie = S.serieVela, short = side === 'short';
@@ -1574,7 +1576,6 @@ function montarVentanas() {
     const rz = panel.querySelector('[data-rz]');
     if (rz) { rz.addEventListener('mousedown', (e) => empezar(e, panel, 'resize')); rz.addEventListener('touchstart', (e) => empezar(e, panel, 'resize'), { passive: false }); }
     const ex = panel.querySelector('.it-expo-board'); if (ex) ex.onclick = (e) => { e.stopPropagation(); exportarHeat(); };
-    const ul = panel.querySelector('.it-ultra'); if (ul) ul.onclick = (e) => { e.stopPropagation(); entrarUltra(panel.id); };
     const mx = panel.querySelector('.it-max'); if (mx) mx.onclick = (e) => { e.stopPropagation(); maximizar(panel.id); };
     const cx = panel.querySelector('.it-x'); if (cx) cx.onclick = (e) => { e.stopPropagation(); cerrarPanel(panel.id); };
   });
