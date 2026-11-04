@@ -24,7 +24,7 @@
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 // [DESACOPLADO] Heat Pools ya NO importa la barra de dibujo compartida (rompía el gráfico). Ver abrirMuros.
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
-try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03e (desacoplado + cursor de fechas)'); } catch (_) {}
+try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03f (re-análisis de arranque + log)'); } catch (_) {}
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -1405,6 +1405,12 @@ export async function abrirMuros() {
   ponerLogos();
   arrancar();
   cargarVelas();
+  /* RE-ANÁLISIS DE ARRANQUE: en la primera entrada el mapa de calor a veces no
+     sale hasta que cambias de temporalidad/moneda (lo que fuerza un re-análisis).
+     Esto dispara ese mismo re-análisis solo en la entrada, una vez que las velas
+     y el layout ya están asentados, para que el indicador salga completo de una.
+     NO toca la lógica del indicador: solo vuelve a correr el análisis existente. */
+  setTimeout(() => { try { if ($('mu-cv') && _traerMu) _traerMu(); } catch (_) {} }, 1300);
   /* Pulso: redibuja suave (~8 fps) solo si hay una zona activa (retesteo/dentro),
      para que la animación sea fluida aunque el WebSocket no esté. */
   clearInterval(_relojPulso);
@@ -1495,6 +1501,7 @@ async function cargarVelas() {
       /* CONTEXTO multi-símbolo (BTC/ETH), cacheado 90 s. */
       traerContexto().then((c) => { M.contexto = c; });
       if (M.velas.length) { M.cargando = false; M.error = null; }
+      try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat análisis ·', _par, M.tf, '· velas:' + M.velas.length, 'estructuras:' + (M.estructuras ? M.estructuras.length : 0), 'zonas:' + (M.zonas ? M.zonas.length : 0)); } catch (_) {}
       pintarPanel();
       dibujar();
     } catch (_) {}
