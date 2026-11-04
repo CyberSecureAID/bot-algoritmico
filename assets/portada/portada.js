@@ -11,7 +11,7 @@
         sale el logo de tu wallet y las cuatro últimas cifras, exactamente
         igual que dentro.
      3. Cabecera, aparición al bajar, precios reales, motas, inercia,
-        buscador y botón de instalar
+        buscador y botón de instalar.
 
    Cada bloque va en su propio try/catch: si uno falla, los demás siguen.
    Antes bastaba con que algo reventara temprano para que se cayera todo
