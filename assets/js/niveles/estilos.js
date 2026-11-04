@@ -7,13 +7,15 @@ export function estilos() {
   const s = document.createElement('style'); s.id = 'nv-css';
   s.textContent = `
   #nv-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center}
-  /* El menú de orden (clic derecho para comprar/vender) vive fuera del overlay:
-     debe quedar por ENCIMA de él (el overlay subió a 10000 para tapar el
-     disparador admin). Se sube aquí sin tocar orden.js. */
-  .od-menu,.od-ficha{z-index:10010 !important}
-  .od-confirmar-box{z-index:10015 !important}
-  #od-pasos{z-index:10016 !important}
-  .od-toast{z-index:10018 !important}
+  /* El menú de orden (clic derecho para comprar/vender) vive fuera del overlay y
+     debe quedar por ENCIMA de CUALQUIER sección que use esta barra de dibujo. El de
+     Confluence (#it-overlay) está a 10030, más alto que el de niveles (10000); por eso
+     antes el menú (10010) salía DETRÁS en Confluence y no se veía. Se sube por encima
+     de 10030 sin tocar orden.js. */
+  .od-menu,.od-ficha{z-index:10120 !important}
+  .od-confirmar-box{z-index:10125 !important}
+  #od-pasos{z-index:10126 !important}
+  .od-toast{z-index:10128 !important}
   #nv-overlay .nv-bg{position:absolute;inset:0;background:rgba(3,5,8,.95)}
   #nv-overlay .nv-c{position:relative;width:100%;height:100vh;height:100dvh;
     display:flex;flex-direction:column;background:#0b0f16}

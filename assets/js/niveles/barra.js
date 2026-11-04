@@ -22,7 +22,7 @@
 import { N } from './estado.js?v=1';
 import { gestos } from './interaccion.js?v=4';
 import { dibujarHerramientas, guardarDib, cargarDib, dibAxy } from './dibujo.js?v=3';
-import { estilos } from './estilos.js?v=1';
+import { estilos } from './estilos.js?v=2';
 
 /* Copia literal de la barra de Smart Pools (niveles.js), con clases en vez de
    ids en los dos botones de acción para no duplicar ids en la página. */
