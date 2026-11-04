@@ -24,7 +24,7 @@
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 // [DESACOPLADO] Heat Pools ya NO importa la barra de dibujo compartida (rompía el gráfico). Ver abrirMuros.
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
-try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03d (desacoplado de la barra compartida)'); } catch (_) {}
+try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03e (desacoplado + cursor de fechas)'); } catch (_) {}
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -2340,7 +2340,8 @@ function engancharGestos(cv) {
      despegar del borde. Ahora es igual que en Smart Levels: se
      agarra el gráfico y se lleva en los dos ejes. */
   let ax = 0, ay = 0, arr = false, modoG = 'libre';
-  const enEscalaM = (x) => x > cv.clientWidth - 95;
+  const enEscalaM = (x) => x > cv.clientWidth - 95;                                 // eje de PRECIOS (derecha)
+  const enEjeXM = (x, y) => y > cv.clientHeight - 24 && x < cv.clientWidth - 95;    // eje de FECHAS (abajo) → ↔
 
   cv.addEventListener('mousedown', (e) => {
     const r = cv.getBoundingClientRect();
@@ -2400,9 +2401,9 @@ function engancharGestos(cv) {
     if (M._tend && cercaTend(lx, ly)) { mostrarTendCfg(); return arrastrarTend(e); }
 
     cerrarPosCfg(); cerrarTendCfg();
-    modoG = enEscalaM(lx) ? 'y' : 'libre';
+    modoG = enEscalaM(lx) ? 'y' : (enEjeXM(lx, ly) ? 'x' : 'libre');
     arr = true; ax = e.clientX; ay = e.clientY;
-    cv.style.cursor = modoG === 'y' ? 'ns-resize' : 'grabbing';
+    cv.style.cursor = modoG === 'y' ? 'ns-resize' : (modoG === 'x' ? 'ew-resize' : 'grabbing');
   });
   window.addEventListener('mousemove', (e) => {
     if (!arr) return;
@@ -2413,6 +2414,15 @@ function engancharGestos(cv) {
       if (Math.abs(dy) > 2) {
         M.zoomY = Math.max(0.2, Math.min(6, (M.zoomY || 1) * (1 + dy * 0.004)));
         ay = e.clientY;
+      }
+      dibujar(); return;
+    }
+    if (modoG === 'x') {   // arrastre sobre el eje de FECHAS → estira/contrae el tiempo (↔): más/menos velas a la vista
+      const dxx = e.clientX - ax;
+      if (Math.abs(dxx) > 2) {
+        const maxA = Math.max(60, M.velas.length - 2);
+        M.ancho = Math.max(12, Math.min(maxA, Math.round((M.ancho || 70) * (1 + dxx * 0.006))));
+        ax = e.clientX;
       }
       dibujar(); return;
     }
@@ -2468,7 +2478,7 @@ function engancharGestos(cv) {
     const lx = e.clientX - r.left, ly = e.clientY - r.top;
     M._cursor = { x: lx, y: ly };
     const cur = cursorHerramienta(lx, ly);
-    cv.style.cursor = cur || (enEscalaM(lx) ? 'ns-resize' : 'crosshair');
+    cv.style.cursor = cur || (enEscalaM(lx) ? 'ns-resize' : (enEjeXM(lx, ly) ? 'ew-resize' : 'crosshair'));
     dibujar();
   });
   /* orden.js registra DESPUÉS su propio mousemove sobre el canvas y repone
