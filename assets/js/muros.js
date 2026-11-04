@@ -24,7 +24,7 @@
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
 import { montarBarra } from './niveles/barra.js?v=4';   // la misma barra de herramientas de Smart Pools
 import { N } from './niveles/estado.js?v=1';            // estado compartido del dibujo (para aislar por sección)
-try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
+try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03b'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 
 const $ = (id) => document.getElementById(id);
@@ -1405,8 +1405,19 @@ export async function abrirMuros() {
   });
 
   ponerLogos();
-  arrancar();
-  cargarVelas();
+  cargarVelas();                 // PRIMERO las velas (de aquí sale el Heat): que no compitan con el libro por el límite de Binance en la entrada
+  setTimeout(arrancar, 700);     // el libro + stream arrancan algo después, para no saturar la ráfaga de arranque
+
+  /* ── DIAGNÓSTICO TEMPORAL en pantalla (build 2026-11-03b) ──
+     Muestra el estado REAL del Heat para ver por qué no aparece en tu entorno.
+     velas:0 → las velas no cargan (Binance te limita o bloquea la petición).
+     Se retira en cuanto confirmemos la causa. */
+  try {
+    let hud = document.getElementById('mu-hud');
+    if (!hud) { hud = document.createElement('div'); hud.id = 'mu-hud'; hud.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;background:rgba(0,0,0,.82);color:#E8B84B;font:11px/1.45 ui-monospace,monospace;padding:6px 9px;border-radius:7px;border:1px solid rgba(232,184,75,.45);pointer-events:none;white-space:pre'; document.body.appendChild(hud); }
+    clearInterval(_hudT);
+    _hudT = setInterval(() => { try { if (!$('mu-cv')) { clearInterval(_hudT); const h = document.getElementById('mu-hud'); if (h) h.remove(); return; } hud.textContent = 'HEAT diag · build 2026-11-03b\nvelas:' + (M.velas ? M.velas.length : 0) + '  zonas:' + ((M.zonas || []).length) + '  estr:' + ((M.estructuras || []).length) + '\ncargando:' + M.cargando + '  precio:' + (M.precio ? M.precio.toFixed(2) : 0) + '\nerror:' + (_ultErr || '—'); } catch (_) {} }, 500);
+  } catch (_) {}
   /* Pulso: redibuja suave (~8 fps) solo si hay una zona activa (retesteo/dentro),
      para que la animación sea fluida aunque el WebSocket no esté. */
   clearInterval(_relojPulso);
@@ -1430,6 +1441,8 @@ let _htfTs = 0;                        // última vez que se pidió la temporali
 let _jerTs = 0;                        // última vez que se pidió la temporalidad jerárquica
 let _delTs = 0;                        // última vez que se pidió el order-flow (aggTrades)
 let _ultLibro = null;                  // último libro bueno (REST o WS) para confirmar zonas
+let _ultErr = null;                    // último error de carga (diagnóstico en pantalla)
+let _hudT = null;                      // timer del HUD de diagnóstico temporal
 let _fallos = 0;
 let _wsL = null, _wsLibro = null, _wsPar = null;   // libro por WebSocket (respaldo)
 let _ultDibujoWS = 0;                              // throttle del redibujo en vivo
@@ -1496,10 +1509,10 @@ async function cargarVelas() {
       if (Date.now() - _delTs > 8000) { _delTs = Date.now(); traerDelta(par.s).then((d) => { if (d) M.delta = d; }); }
       /* CONTEXTO multi-símbolo (BTC/ETH), cacheado 90 s. */
       traerContexto().then((c) => { M.contexto = c; });
-      if (M.velas.length) { M.cargando = false; M.error = null; }
+      if (M.velas.length) { M.cargando = false; M.error = null; _ultErr = null; }
       pintarPanel();
       dibujar();
-    } catch (_) {}
+    } catch (e) { _ultErr = 'velas: ' + ((e && e.message) || String(e)); }
   };
   _traerMu = traer;             // referencia para que el cierre de vela (WS) dispare análisis inmediato
   await traer();
@@ -1732,21 +1745,6 @@ function arrancar() {
       const f = await traerLibro(par.s);
       if (f && f.compras && f.compras.length && f.ventas && f.ventas.length) foto = f;
     } catch (_) {}
-    /* ENTRADA EN FRÍO: si todavía no hay ningún libro cacheado, Binance suele
-       limitar la ráfaga de llamadas del arranque y el /depth falla a la primera,
-       dejando el radar "sin órdenes" hasta que conecta el WebSocket. Un par de
-       reintentos cortos bastan para que active a la primera. Es SOLO el fetch
-       de /depth; la proyección (zonas, muros del libro) no se toca. */
-    if (!foto && !_ultLibro) {
-      for (let intento = 0; intento < 2 && !foto; intento++) {
-        await new Promise((res) => setTimeout(res, 380));
-        if (!$('mu-cv')) return;
-        try {
-          const f = await traerLibro(par.s);
-          if (f && f.compras && f.compras.length && f.ventas && f.ventas.length) foto = f;
-        } catch (_) {}
-      }
-    }
     if (!foto && _wsLibro && (Date.now() - _wsLibro.t) < 6000) foto = _wsLibro;
     if (foto) procesar(foto);                       // actualiza M.precio
     if (foto) _ultLibro = foto;
