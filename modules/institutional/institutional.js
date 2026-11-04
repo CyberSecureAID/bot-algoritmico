@@ -237,7 +237,7 @@ function plantilla() {
       <div class="it-ph"><h4 id="it-chart-title">CHART</h4>
         <div class="it-conf-wrap">
           <button class="it-conf" id="it-conf" title="Confluence — mark where a multi-indicator combo lines up">${IC_CONF}<span>Confluence</span></button>
-          <button class="it-conf-clear" id="it-conf-clear" title="Clear confluence points">${IC_X}</button>
+          <button class="it-conf-clear" id="it-conf-clear" title="Stop placing — the chart stops making rules on click (your alerts stay)">${IC_X}</button>
         </div>
         ${ctrlPanel('it-p-chart')}
       </div>
@@ -285,7 +285,7 @@ function cablearTop(ov) {
   $('#it-export', ov).onclick = exportar;
   $('#it-reset', ov).onclick = resetLayout;
   $('#it-disc-link', ov).onclick = () => mostrarDisclaimer(true);
-  { const cf = $('#it-conf', ov); if (cf) cf.onclick = toggleConfluencia; const cfc = $('#it-conf-clear', ov); if (cfc) cfc.onclick = confirmarLimpiar; }
+  { const cf = $('#it-conf', ov); if (cf) cf.onclick = toggleConfluencia; const cfc = $('#it-conf-clear', ov); if (cfc) cfc.onclick = pararColocar; }
   pintarCoin();
   const tfNm = (D.TFS.find((t) => t.id === S.tf) || {}).n || S.tf;
   $('#it-tf-btn', ov).childNodes[0].nodeValue = tfNm + ' ';
@@ -582,11 +582,14 @@ function pintarChart() {
     ts.setVisibleLogicalRange({ from: V.length - vis, to: V.length + 2 });
     ts.subscribeVisibleLogicalRangeChange(() => sincronizarDib());
   } catch (_) {}
-  pintarIndLegend();     // leyenda ESTÁTICA (solo indicadores activos, con ✕). Sin OHLC que salte con el cursor.
-  sincronizarDib();
-  calcularSenales();     // panel SIGNALS (rating técnico)
-  montarConfluencia(); sincronizarConf();   // re-anexa el overlay + sincroniza la confluencia/libreta con los indicadores
-  conectarOrdenesChart();                   // clic derecho → menú de operar/alerta/set position (orden.js), con su overlay
+  // Cada paso AISLADO: si uno fallara con datos reales, NO puede saltarse el
+  // siguiente. Antes, un fallo aquí dejaba el clic derecho (orden.js) sin cablear
+  // aunque la confluencia sí quedaba montada: justo el sintoma reportado.
+  try { pintarIndLegend(); } catch (_) {}   // leyenda ESTÁTICA de indicadores activos
+  try { sincronizarDib(); } catch (_) {}
+  try { calcularSenales(); } catch (_) {}   // panel SIGNALS (rating técnico)
+  try { montarConfluencia(); sincronizarConf(); } catch (_) {}   // overlay + libreta de confluencia
+  try { conectarOrdenesChart(); } catch (_) {}   // clic derecho → menú operar/alerta (orden.js). AISLADO.
 }
 
 /* ── Puente con la barra de dibujo (misma de Smart/Heat/Liquidity Pools) ──
@@ -677,26 +680,20 @@ function limpiarAnclas() {
   refrescarConfUI();
   const g = S.conf.ctx, cc = S.conf.cv; if (g && cc) g.clearRect(0, 0, cc.width, cc.height);
 }
-/* Borrar TODAS las reglas pide DOS clics (el primero "arma" la X durante ~2.6 s,
-   el segundo confirma). Así un clic por equivocación nunca te borra lo que ya
-   colocaste: la libreta solo se vacía si de verdad lo quieres. La X individual de
-   cada tarjeta (borrarAncla) sigue borrando solo ese punto, al instante. */
-let _limpiarT = null;
-function confirmarLimpiar() {
-  const x = document.getElementById('it-conf-clear'); if (!x) return;
-  if (x.classList.contains('armado')) {                 // 2.º clic → confirmar y borrar todo
-    if (_limpiarT) { clearTimeout(_limpiarT); _limpiarT = null; }
-    x.classList.remove('armado'); x.title = 'Clear confluence points';
-    limpiarAnclas();
-    return;
-  }
-  x.classList.add('armado'); x.title = 'Click again to clear ALL rules';   // 1.er clic → armar
-  if (_limpiarT) clearTimeout(_limpiarT);
-  _limpiarT = setTimeout(() => { const b = document.getElementById('it-conf-clear'); if (b) { b.classList.remove('armado'); b.title = 'Clear confluence points'; } _limpiarT = null; }, 2600);
+/* El botón X junto a "Confluence" DETIENE el modo colocar: tras marcar tus puntos,
+   un clic aquí y la gráfica deja de crear una regla nueva cada vez que tocas (las
+   alertas ya colocadas SIGUEN ahí). Para volver a colocar, pulsa "Confluence" otra
+   vez. Un solo clic, sin parpadeos ni ciclos. Para borrar un punto suelto, la ✕ de
+   su tarjeta en la libreta. */
+function pararColocar() {
+  if (!S.conf) return;
+  S.conf.on = false;           // deja de COLOCAR; las marcas/libreta no dependen de esto
+  refrescarConfUI();
 }
 function refrescarConfUI() {
   const b = document.getElementById('it-conf'); if (b) b.classList.toggle('on', !!(S.conf && S.conf.on));
-  const c = document.getElementById('it-conf-clear'); if (c) { c.style.display = (S.conf && S.conf.anchors.length) ? 'inline-flex' : 'none'; if (!(S.conf && S.conf.anchors.length)) { c.classList.remove('armado'); if (_limpiarT) { clearTimeout(_limpiarT); _limpiarT = null; } } }
+  // La X aparece SOLO mientras colocas: sirve para PARAR de colocar (no para borrar).
+  const c = document.getElementById('it-conf-clear'); if (c) c.style.display = (S.conf && S.conf.on) ? 'inline-flex' : 'none';
   renderLibreta();
 }
 
@@ -807,6 +804,18 @@ function ensureRasgos() {
   S.conf.matchKey = '';
 }
 const MAX_ANCLAS = 12;          // tope de anclas (robustez ante multiclic)
+/* Espaciado por VELAS (no por píxeles): de un grupo de coincidencias pegadas deja
+   una cada K velas. Así nunca salen 10 tachuelas amontonadas en un palmo, y como el
+   criterio es la vela (no el zoom), el conjunto de marcas NO cambia al alejar/acercar. */
+function _espaciarVelas(times, ras, K) {
+  if (!times || times.length < 2) return times || [];
+  const arr = [];
+  for (const t of times) { const i = ras.timeIdx.get(t); if (i != null) arr.push({ t, i }); }
+  arr.sort((a, b) => a.i - b.i);
+  const out = []; let lastI = -1e9;
+  for (const o of arr) { if (o.i - lastI >= K) { out.push(o.t); lastI = o.i; } }
+  return out;
+}
 function recomputarMarks() {
   ensureRasgos();
   const key = S.conf.hash + '#' + S.conf.anchors.length;
@@ -818,6 +827,7 @@ function recomputarMarks() {
     if (!a.cap || rasgosActivos(ras, a.cap) < 1) continue;   // sin indicadores activos → confluencia inválida, SIN marcas
     let times = escanearRasgos(ras, a.cap);
     if (times.length > TOPE) times = times.slice(times.length - TOPE);
+    times = _espaciarVelas(times, ras, 6);   // no amontonar: mínimo 6 velas entre marcas (estable ante zoom; mata el "10 tachuelas juntas")
     const ai = ras.timeIdx.get(a.time);
     // El punto CLICADO siempre se marca (es la referencia del usuario), aunque el
     // cruce caiga una vela al lado del clic. El escaneo añade las demás coincidencias.
