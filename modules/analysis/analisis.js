@@ -126,10 +126,12 @@ const ICO = {
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export async function abrirAnalisis(origen, wallet, ethers) {
-  let acceso = false;
-  try { acceso = await tieneAccesoAnalisis(wallet, ethers); } catch (_) {}
-  if (acceso) return abrirSelector(origen, wallet, ethers);
-  return abrirCobroAnalisis(origen, wallet, ethers, () => abrirSelector(origen, wallet, ethers));
+  // VENTANA DE COBRO ELIMINADA: acceso libre a todas las herramientas. El pago
+  // pasará a ser POR SERVICIO con un contrato nuevo (pendiente de desplegar).
+  // Entrar en Análisis va DIRECTO al selector, haya o no wallet, sea o no owner;
+  // así cualquiera puede elegir el servicio que quiera. Ya no se consulta el
+  // contrato AnalisisPro ni se muestra la pantalla de planes.
+  return abrirSelector(origen, wallet, ethers);
 }
 
 /* Abre una herramienta sin sacar al usuario de Analisis (sin pestañeo al lobby). */
