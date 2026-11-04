@@ -22,9 +22,9 @@
 //     mercado. Es la señal más fuerte que existe en el libro.
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
-import { montarBarra } from './niveles/barra.js?v=1';   // la misma barra de herramientas de Smart Pools
+// [DESACOPLADO] Heat Pools ya NO importa la barra de dibujo compartida (rompía el gráfico). Ver abrirMuros.
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
-try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03c (revertido a la base que funcionaba)'); } catch (_) {}
+try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03d (desacoplado de la barra compartida)'); } catch (_) {}
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -1821,7 +1821,11 @@ function dibujar() {
   if (!cv.dataset.listo) {
     engancharGestos(cv);
     cv.dataset.listo = '1';
-    _barra = montarBarra(zona);
+    /* [DESACOPLADO] Heat Pools NO monta la barra de dibujo compartida: inyectaba
+       un segundo sistema de gestos (overlay nv-cvh + interacción compartida)
+       sobre el gráfico de Heat y lo rompía (aparecía al mover y se iba). Heat
+       usa SOLO su propio engancharGestos, como en la versión que funcionaba.
+       La lógica de hair pulls / mapa de calor queda intacta. */
     /* Órdenes desde el gráfico: clic derecho o toque largo. */
     import('./orden.js?v=126').then((od) => {
       od.conectar({
