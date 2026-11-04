@@ -156,11 +156,13 @@ export function conectar(cfg) {
   cv.dataset.ordenLista = '1';
   estilos();
 
-  /* En escritorio: clic derecho */
+  /* En escritorio: clic derecho. cfg.captura === true → fase de CAPTURA, para que el
+     menú dispare ANTES que gráficas que se comen el evento (p.ej. lightweight-charts
+     en Confluence). Sin ese flag (pools, reaction, etc.) sigue en burbuja, idéntico. */
   cv.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     abrirMenu(e.clientX, e.clientY, cfg, e);
-  });
+  }, cfg.captura === true);
 
   /* En el móvil no hay clic derecho: se mantiene pulsado medio
      segundo. Si el dedo se mueve, se cancela — es que estaba
