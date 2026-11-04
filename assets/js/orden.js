@@ -156,13 +156,25 @@ export function conectar(cfg) {
   cv.dataset.ordenLista = '1';
   estilos();
 
-  /* En escritorio: clic derecho. cfg.captura === true → fase de CAPTURA, para que el
-     menú dispare ANTES que gráficas que se comen el evento (p.ej. lightweight-charts
-     en Confluence). Sin ese flag (pools, reaction, etc.) sigue en burbuja, idéntico. */
-  cv.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    abrirMenu(e.clientX, e.clientY, cfg, e);
-  }, cfg.captura === true);
+  /* En escritorio: clic derecho. Tres modos:
+     - cfg.capturaDoc === true → listener en DOCUMENT, fase de captura, filtrado a cv.
+       Es el más robusto: dispara ANTES que CUALQUIER cosa (lightweight-charts,
+       overlays, barra de dibujo) pase lo que pase. Lo usa Confluence, cuyo gráfico
+       es lightweight-charts y se comía el evento.
+     - cfg.captura === true → captura en el propio cv.
+     - por defecto → burbuja en cv (pools, reaction, etc.: idéntico a siempre). */
+  if (cfg.capturaDoc === true) {
+    document.addEventListener('contextmenu', (e) => {
+      if (!(cv === e.target || cv.contains(e.target))) return;   // solo dentro del gráfico
+      e.preventDefault();
+      abrirMenu(e.clientX, e.clientY, cfg, e);
+    }, true);
+  } else {
+    cv.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      abrirMenu(e.clientX, e.clientY, cfg, e);
+    }, cfg.captura === true);
+  }
 
   /* En el móvil no hay clic derecho: se mantiene pulsado medio
      segundo. Si el dedo se mueve, se cancela — es que estaba
