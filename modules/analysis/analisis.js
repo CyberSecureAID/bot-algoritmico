@@ -148,7 +148,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=140')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=135')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=132')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=30', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=31', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=11', import.meta.url).href)).abrirReaction();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
