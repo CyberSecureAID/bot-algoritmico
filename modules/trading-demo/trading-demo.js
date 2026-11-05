@@ -12,23 +12,26 @@
    compartido del resto de secciones: catálogo de monedas, sus logos y la misma
    barra de dibujo. */
 
-import { estilos } from './estilos.js?v=4';
+import { estilos } from './estilos.js?v=5';
 import * as D from './datos.js?v=2';
 import * as M from './motor.js?v=4';
-import { montarBarra } from '../../assets/js/niveles/barra.js?v=6';
+import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 
 const LIB = new URL('./vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const LOGO_ALT = new URL('../../assets/img/cco-full.webp', import.meta.url).href;
+const SELLO = new URL('../../assets/img/cco-sello.webp', import.meta.url).href;      // marca de agua grande (como futuros)
+const IMG_LONG = new URL('../../assets/portada/img/long.webp', import.meta.url).href;  // fondo tarjeta long (el de futuros)
+const IMG_SHORT = new URL('../../assets/portada/img/short.webp', import.meta.url).href; // fondo tarjeta short
 
 const S = {
-  par: null, tf: '1m', velas: [], velasDib: [], chart: null, serieVela: null, serieVol: null,
+  par: null, tf: '1m', velas: [], velasDib: [], chart: null, serieVela: null,
   mark: 0, open24: 0, high24: 0, low24: 0, vol24: 0, chgPct: 0,
-  lev: 20, tam: 200, modo: 'market', limitPx: 0,
+  lev: 10, cap: 100, tam: 1000, modo: 'market', limitPx: 0,
   stream: null, barra: null, dibMontada: false, lineaLimit: null, tab: 'pos',
   uiRAF: null, onResize: null, cvObs: null, marks: {}, logos: {},
-  drag: null, hoverH: null, ac: null
+  drag: null, hoverH: null, ac: null, expand: false
 };
 
 const $ = (id) => document.getElementById(id);
@@ -47,7 +50,10 @@ const IC = {
   reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
   cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>',
   help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2.2-2.6 4"/><path d="M12 17.5v.01"/></svg>',
-  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>'
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
+  expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
+  shrink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M16 21v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
 };
 
 export async function abrirDemo() {
@@ -58,6 +64,8 @@ export async function abrirDemo() {
   ov.innerHTML = plantilla();
   document.body.appendChild(ov);
   cablear(ov);
+  S.cap = Math.min(S.cap, M.balance()); S.tam = +(S.cap * S.lev).toFixed(2); sincronCap();
+  try { if (localStorage.getItem('td-help-seen')) { const dot = $('td-help-dot'); if (dot) dot.remove(); } } catch (_) {}
   renderTf(); cargarLogos();
   try { await cargarLib(); } catch (_) { toast('Chart engine failed to load. Reload.', 'bad'); return; }
   await cargarDatos();
@@ -80,14 +88,14 @@ function plantilla() {
       <div class="td-stat"><b>24h change</b><span id="td-chg">—</span></div>
       <div class="td-stat"><b>24h high</b><span id="td-high">—</span></div>
       <div class="td-stat"><b>24h low</b><span id="td-low">—</span></div>
-      <div class="td-stat"><b>24h volume</b><span id="td-vol">—</span></div>
     </div>
     <div class="td-wallet"><b>Equity · Demo</b><span class="eq" id="td-eq">—</span><small id="td-bal">—</small></div>
-    <button class="td-icobtn" id="td-help-btn" title="How it works">${IC.help}</button>
+    <button class="td-icobtn" id="td-expand" title="Expand chart">${IC.expand}</button>
+    <button class="td-icobtn" id="td-help-btn" title="How it works">${IC.help}<span class="td-dot" id="td-help-dot"></span></button>
     <button class="td-icobtn" id="td-export" title="Export chart image">${IC.cam}</button>
     <button class="td-icobtn" id="td-reset" title="Reset demo balance">${IC.reset}</button>
   </div>
-  <div class="td-body">
+  <div class="td-body" id="td-body">
     <div class="td-main" id="td-main">
       <div class="td-chart" id="td-chart">
         <div class="td-cv" id="td-cv"></div>
@@ -101,11 +109,19 @@ function plantilla() {
           <div class="td-fld-l"><span>Entry price</span><span>click the chart</span></div>
           <div class="td-in"><input type="number" id="td-limit" placeholder="0.00" step="any"><em>USDT</em></div>
         </div>
-        <button class="td-levbtn" id="td-levbtn"><span>Leverage</span><b id="td-levbv">20x</b></button>
-        <div class="td-fld">
-          <div class="td-fld-l"><span>Size</span><span id="td-avail">—</span></div>
-          <div class="td-in"><input type="number" id="td-size" value="200" step="any"><em>USDT</em><span class="td-step"><button data-step="1">${IC.up}</button><button data-step="-1">${IC.down}</button></span></div>
+        <div class="td-sld">
+          <div class="td-sld-top"><span class="lbl">Leverage</span><span class="val" id="td-levv">10x</span></div>
+          <input type="range" class="td-range" id="td-levr" min="1" max="125" value="10">
+          <div class="td-marks"><span data-lev="1">1x</span><span data-lev="25">25x</span><span data-lev="50">50x</span><span data-lev="75">75x</span><span data-lev="125">125x</span></div>
+        </div>
+        <div class="td-sld">
+          <div class="td-sld-top"><span class="lbl">Capital (margin)</span><span class="val" id="td-capv">—</span></div>
+          <input type="range" class="td-range" id="td-capr" min="0" max="10000" step="1" value="100">
           <div class="td-pcts"><button class="td-pct" data-pct="25">25%</button><button class="td-pct" data-pct="50">50%</button><button class="td-pct" data-pct="75">75%</button><button class="td-pct" data-pct="100">Max</button></div>
+        </div>
+        <div class="td-fld">
+          <div class="td-fld-l"><span>Order size</span><span id="td-avail">—</span></div>
+          <div class="td-in"><input type="number" id="td-size" value="1000" step="any"><em>USDT</em><span class="td-step"><button data-step="1">${IC.up}</button><button data-step="-1">${IC.down}</button></span></div>
         </div>
         <div class="td-tpsl">
           <div class="td-in"><em>TP</em><input type="number" id="td-tp" placeholder="optional" step="any"></div>
@@ -117,6 +133,7 @@ function plantilla() {
       </div>
     </div>
     <div class="td-pos">
+      <div class="td-pos-hint">${IC.down} Positions · Marked orders · History ${IC.down}</div>
       <div class="td-pos-tabs">
         <button class="td-pos-tab on" data-tab="pos">Positions <b id="td-npos">0</b></button>
         <button class="td-pos-tab" data-tab="ord">Marked orders <b id="td-nord">0</b></button>
@@ -132,19 +149,44 @@ function cablear(ov) {
   $('td-back').onclick = cerrar;
   $('td-coin').onclick = (e) => { e.stopPropagation(); menuMonedas(); };
   $('td-export').onclick = exportarChart;
+  $('td-expand').onclick = toggleExpand;
   $('td-help-btn').onclick = (e) => { e.stopPropagation(); ayuda(); };
-  $('td-reset').onclick = () => { if (confirm('Reset the demo to $10,000 and clear all positions and history?')) { M.reset(); renderTodo(); toast('Demo reset to $10,000.', 'ok'); } };
+  $('td-reset').onclick = () => { if (confirm('Reset the demo to $10,000 and clear all positions and history?')) { M.reset(); S.cap = Math.min(S.cap, M.balance()); S.tam = +(S.cap * S.lev).toFixed(2); sincronCap(); renderTodo(); toast('Demo reset to $10,000.', 'ok'); } };
   $('td-tfcur').onclick = (e) => { e.stopPropagation(); $('td-tf').classList.toggle('open'); };
   document.addEventListener('click', () => $('td-tf') && $('td-tf').classList.remove('open'));
-  const size = $('td-size'); size.oninput = () => { S.tam = Math.max(0, +size.value || 0); renderEntry(); };
-  ov.querySelectorAll('.td-step button').forEach((b) => b.onclick = () => { const paso = Math.max(10, Math.round(S.tam * 0.1)); S.tam = Math.max(0, +(S.tam + (+b.dataset.step) * paso).toFixed(2)); size.value = S.tam; renderEntry(); });
+  // Apalancamiento (barra progresiva)
+  $('td-levr').oninput = () => setLev(+$('td-levr').value);
+  ov.querySelectorAll('.td-marks span[data-lev]').forEach((s) => s.onclick = () => setLev(+s.dataset.lev));
+  // Capital / margen (barra progresiva) + atajos de porcentaje
+  $('td-capr').oninput = () => setCap(+$('td-capr').value);
+  ov.querySelectorAll('.td-pct').forEach((b) => b.onclick = () => setCap(M.balance() * (+b.dataset.pct) / 100));
+  // Tamano de la orden (editable; recalcula el capital)
+  const size = $('td-size'); size.oninput = () => setTam(+size.value || 0);
+  ov.querySelectorAll('.td-step button').forEach((b) => b.onclick = () => { const paso = Math.max(10, Math.round(S.tam * 0.1)); setTam(Math.max(0, +(S.tam + (+b.dataset.step) * paso).toFixed(2))); });
   $('td-limit').oninput = () => { S.limitPx = Math.max(0, +$('td-limit').value || 0); dibujarLimit(); renderEntry(); };
   ov.querySelectorAll('.td-mode').forEach((b) => b.onclick = () => { S.modo = b.dataset.modo; ov.querySelectorAll('.td-mode').forEach((x) => x.classList.toggle('on', x === b)); $('td-limitwrap').style.display = S.modo === 'limit' ? 'flex' : 'none'; dibujarLimit(); renderEntry(); });
-  ov.querySelectorAll('.td-pct').forEach((b) => b.onclick = () => { S.tam = Math.max(0, +(M.balance() * S.lev * (+b.dataset.pct) / 100).toFixed(2)); size.value = S.tam; renderEntry(); });
-  $('td-levbtn').onclick = (e) => { e.stopPropagation(); popLev(); };
   $('td-long').onclick = () => operar('long');
   $('td-short').onclick = () => operar('short');
   ov.querySelectorAll('.td-pos-tab').forEach((b) => b.onclick = () => { S.tab = b.dataset.tab; ov.querySelectorAll('.td-pos-tab').forEach((x) => x.classList.toggle('on', x === b)); renderPos(); });
+}
+
+/* Capital (margen) y apalancamiento como dos barras progresivas independientes.
+   Tamano de la orden = capital x apalancamiento. */
+function setLev(v) { S.lev = Math.max(1, Math.min(125, Math.round(v))); S.tam = +(S.cap * S.lev).toFixed(2); sincronCap(); renderEntry(); }
+function setCap(c) { S.cap = Math.max(0, Math.min(M.balance(), +(+c).toFixed(2))); S.tam = +(S.cap * S.lev).toFixed(2); sincronCap(); renderEntry(); }
+function setTam(t) { S.tam = Math.max(0, +(+t).toFixed(2)); S.cap = S.lev > 0 ? +(S.tam / S.lev).toFixed(2) : 0; if (S.cap > M.balance()) { S.cap = M.balance(); S.tam = +(S.cap * S.lev).toFixed(2); } sincronCap(); renderEntry(); }
+function sincronCap() {
+  const capr = $('td-capr'); if (capr) { capr.max = Math.max(1, Math.round(M.balance())); if (Math.round(+capr.value) !== Math.round(S.cap)) capr.value = Math.round(S.cap); }
+  const levr = $('td-levr'); if (levr && +levr.value !== S.lev) levr.value = S.lev;
+  const size = $('td-size'); if (size && document.activeElement !== size) size.value = S.tam;
+}
+
+function toggleExpand() {
+  S.expand = !S.expand;
+  const ov = $('td-overlay'); if (ov) ov.classList.toggle('td-expand', S.expand);
+  const b = $('td-expand'); if (b) { b.classList.toggle('on', S.expand); b.innerHTML = S.expand ? IC.shrink : IC.expand; b.title = S.expand ? 'Exit expand' : 'Expand chart'; }
+  // la grafica se reajusta sola (autoSize); sincroniza la barra de dibujo
+  setTimeout(() => { try { sincronizarDib(); } catch (_) {} }, 60);
 }
 
 function renderTf() {
@@ -182,7 +224,7 @@ function pintarChart() {
     autoSize: true, localization: { locale: 'en' },
     layout: { background: { color: 'transparent' }, textColor: '#7d8794', fontFamily: '"Chakra Petch", ui-monospace, monospace', attributionLogo: false },
     grid: { vertLines: { color: 'rgba(35,43,53,.4)' }, horzLines: { color: 'rgba(35,43,53,.4)' } },
-    rightPriceScale: { borderColor: '#232b35', scaleMargins: { top: 0.06, bottom: 0.06 } },
+    rightPriceScale: { borderColor: '#232b35', scaleMargins: { top: 0.08, bottom: 0.08 } },
     timeScale: { borderColor: '#232b35', timeVisible: true, secondsVisible: false, barSpacing: 9, rightOffset: 10, minBarSpacing: 1 },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0, vertLine: { color: '#C9A84B', width: 1, style: 3, labelBackgroundColor: '#8f6a1a' }, horzLine: { color: '#C9A84B', labelBackgroundColor: '#8f6a1a' } }
   });
@@ -190,9 +232,6 @@ function pintarChart() {
   const V = S.velas;
   const vela = chart.addSeries(LC.CandlestickSeries, { upColor: '#2ee86a', downColor: '#ff5b6e', borderVisible: false, wickUpColor: '#2ee86a', wickDownColor: '#ff5b6e' });
   vela.setData(V.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))); S.serieVela = vela;
-  const vol = chart.addSeries(LC.HistogramSeries, { priceScaleId: 'vol', priceFormat: { type: 'volume' } });
-  vol.priceScale().applyOptions({ scaleMargins: { top: 0.88, bottom: 0 } });
-  vol.setData(V.map((c) => ({ time: c.time, value: c.volume, color: c.close >= c.open ? 'rgba(46,232,106,.26)' : 'rgba(255,91,110,.26)' }))); S.serieVol = vol;
   S.velasDib = V.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
   try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 160, to: V.length + 10 }); ts.subscribeVisibleLogicalRangeChange(() => sincronizarDib()); } catch (_) {}
   try { chart.subscribeClick((p) => { if (!p || !p.point || S.modo !== 'limit' || S.drag) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (px > 0) { S.limitPx = +px.toFixed(dec(px)); $('td-limit').value = S.limitPx; dibujarLimit(); renderEntry(); } }); } catch (_) {}
@@ -217,7 +256,6 @@ function onKline(k) {
   else if (!last || c.time > last.time) { S.velas.push(c); if (S.velas.length > 1500) S.velas.shift(); }
   else return;
   try { S.serieVela.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }); } catch (_) {}
-  try { S.serieVol.update({ time: c.time, value: c.volume, color: c.close >= c.open ? 'rgba(46,232,106,.26)' : 'rgba(255,91,110,.26)' }); } catch (_) {}
   nuevoPrecio(c.close);
   if (k.x === true) { S.velasDib = S.velas.map((v) => ({ t: v.time, o: v.open, h: v.high, l: v.low, c: v.close, v: v.volume })); sincronizarDib(); }
 }
@@ -250,35 +288,17 @@ function pintarPrecio() {
   const balEl = $('td-bal'); if (balEl) balEl.textContent = 'Avail ' + fmtMoney(M.balance());
 }
 function renderEntry() {
-  const avail = $('td-avail'); if (avail) avail.textContent = 'Avail ' + fmtMoney(M.balance());
-  const margen = S.lev > 0 ? S.tam / S.lev : 0;
-  const mg = $('td-margin'); if (mg) mg.textContent = fmtMoney(margen);
-  $('td-levbv').textContent = S.lev + 'x';
+  const bal = M.balance();
+  const av = $('td-avail'); if (av) av.textContent = 'Avail ' + fmtMoney(bal);
+  const mg = $('td-margin'); if (mg) mg.textContent = fmtMoney(S.cap);
+  const lv = $('td-levv'); if (lv) lv.textContent = S.lev + 'x';
+  const cv = $('td-capv'); if (cv) cv.textContent = fmtMoney(S.cap);
+  const levr = $('td-levr'); if (levr) levr.style.setProperty('--f', ((S.lev - 1) / 124 * 100).toFixed(1) + '%');
+  const capr = $('td-capr'); if (capr) capr.style.setProperty('--f', (Math.min(1, S.cap / Math.max(1, bal)) * 100).toFixed(1) + '%');
   const px = S.modo === 'limit' && S.limitPx > 0 ? S.limitPx : S.mark;
   const lp = $('td-liqprev'); if (lp) lp.textContent = px > 0 ? (fmtP(M.liqPrecio('long', px, S.lev)) + ' / ' + fmtP(M.liqPrecio('short', px, S.lev))) : '—';
 }
 
-function popLev() {
-  cerrarPops();
-  const anc = $('td-levbtn'), r = anc.getBoundingClientRect();
-  const m = document.createElement('div'); m.className = 'td-pop'; m.id = 'td-levpop';
-  m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
-  const presets = [1, 5, 10, 25, 50, 75, 100, 125];
-  m.innerHTML = `<div class="t">Adjust leverage</div><div class="big" id="lv-big">${S.lev}x</div>
-    <input type="range" id="lv-rng" min="1" max="125" value="${S.lev}"><div class="marks"><span>1x</span><span>25x</span><span>50x</span><span>75x</span><span>125x</span></div>
-    <div class="chips">${presets.map((p) => `<button data-l="${p}" class="${p === S.lev ? 'on' : ''}">${p}x</button>`).join('')}</div>
-    <div class="nota">Max position at this leverage: <b id="lv-max">—</b><br>Higher leverage, higher liquidation risk.</div>
-    <button class="ok" id="lv-ok">Confirm</button>`;
-  document.body.appendChild(m);
-  const rng = m.querySelector('#lv-rng'), big = m.querySelector('#lv-big'), max = m.querySelector('#lv-max');
-  const upd = (v) => { S.lev = Math.max(1, Math.min(125, v | 0)); big.textContent = S.lev + 'x'; rng.value = S.lev; max.textContent = fmtMoney(M.balance() * S.lev); m.querySelectorAll('.chips button').forEach((b) => b.classList.toggle('on', +b.dataset.l === S.lev)); };
-  upd(S.lev);
-  rng.oninput = () => upd(+rng.value);
-  m.querySelectorAll('.chips button').forEach((b) => b.onclick = () => upd(+b.dataset.l));
-  m.querySelector('#lv-ok').onclick = () => { cerrarPops(); renderEntry(); };
-  m.onclick = (e) => e.stopPropagation();
-  setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 0);
-}
 
 function operar(lado) {
   if (!(S.tam > 0)) { toast('Enter a size first.', 'warn'); return; }
@@ -306,32 +326,42 @@ function renderPos() {
   const body = $('td-pos-body'); if (!body) return;
   if (S.tab === 'pos') {
     if (!pos.length) { body.innerHTML = '<div class="td-empty">No open positions. Open a Market trade, or mark a Limit entry on the chart.</div>'; return; }
-    body.innerHTML = `<table class="td-tbl"><thead><tr><th>Symbol</th><th>Size</th><th>Entry</th><th>Mark</th><th>Liq.</th><th>Margin</th><th>TP / SL</th><th>PnL (ROE)</th><th></th></tr></thead><tbody>${pos.map(filaPos).join('')}</tbody></table>`;
+    body.innerHTML = `<table class="td-tbl"><thead><tr><th>Symbol</th><th>Size</th><th>Entry</th><th>Mark</th><th>Liq.</th><th>Margin</th><th>TP</th><th>SL</th><th>PnL (ROE)</th><th></th></tr></thead><tbody>${pos.map(filaPos).join('')}</tbody></table>`;
     body.querySelectorAll('[data-cerrar]').forEach((b) => b.onclick = () => { const x = M.cerrar(b.dataset.cerrar, S.marks[b.dataset.par] || S.mark, 'manual'); if (x) { toast(`Closed ${x.pos.lado} · ${fmtMoney(x.pnl)} (fee ${fmtMoney(x.fee)})`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); } });
-    body.querySelectorAll('[data-tpsl]').forEach((b) => b.onclick = () => { const p = pos.find((x) => x.id === b.dataset.tpsl); if (p) toggleTPSL(p); });
+    body.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => editarTPSL(b.dataset.edit, b.dataset.k));
     body.querySelectorAll('[data-share]').forEach((b) => b.onclick = () => { const p = pos.find((x) => x.id === b.dataset.share); if (p) tarjetaPnL(cerradoDesde(p)); });
   } else if (S.tab === 'ord') {
     if (!ord.length) { body.innerHTML = '<div class="td-empty">No marked orders. In Limit mode, click the chart to mark where you want to enter.</div>'; return; }
-    body.innerHTML = `<table class="td-tbl"><thead><tr><th>Symbol</th><th>Side</th><th>Size</th><th>Mark-in</th><th>Current</th><th></th></tr></thead><tbody>${ord.map((o) => `<tr><td><span class="td-sym">${logoChip(o.par)} ${esc(o.par)}USDT</span></td><td><span class="td-tag ${o.lado}">${o.lado.toUpperCase()}</span></td><td>${fmtMoney(o.tam)}</td><td>${fmtP(o.precio)}</td><td>${fmtP(S.marks[o.par] || S.mark)}</td><td><button class="td-x" data-cancel="${o.id}">Cancel</button></td></tr>`).join('')}</tbody></table>`;
+    body.innerHTML = `<table class="td-tbl"><thead><tr><th>Symbol</th><th>Side</th><th>Size</th><th>Mark-in</th><th>Current</th><th>TP</th><th>SL</th><th></th></tr></thead><tbody>${ord.map(filaOrd).join('')}</tbody></table>`;
     body.querySelectorAll('[data-cancel]').forEach((b) => b.onclick = () => { if (M.cancelarOrden(b.dataset.cancel)) renderPos(); });
+    body.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => editarTPSL(b.dataset.edit, b.dataset.k));
   } else {
     const st = M.stats(30);
-    if (r) r.innerHTML = `<span class="td-stat-chip">30d PnL <b class="${cls(st.total)}">${fmtMoney(st.total)}</b></span><span class="td-stat-chip">Win rate <b>${st.winRate}%</b></span><span class="td-stat-chip">Trades <b>${st.n}</b></span>${hist.length ? `<button class="td-x" id="td-csv">Export CSV</button>` : ''}`;
-    if ($('td-csv')) $('td-csv').onclick = exportarCSV;
+    if (r) r.innerHTML = `<span class="td-stat-chip">30d PnL <b class="${cls(st.total)}">${fmtMoney(st.total)}</b></span><span class="td-stat-chip">Win rate <b>${st.winRate}%</b></span><span class="td-stat-chip">Trades <b>${st.n}</b></span>${hist.length ? `<button class="td-x" id="td-cert">Export certificate</button>` : ''}`;
+    if ($('td-cert')) $('td-cert').onclick = pedirNombreCert;
     if (!hist.length) { body.innerHTML = '<div class="td-empty">No closed trades yet. Your track record builds here as you open and close demo trades.</div>'; return; }
     body.innerHTML = `<table class="td-tbl"><thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL (ROE)</th><th></th></tr></thead><tbody>${hist.map((h) => { const c = h.pnl >= 0 ? 'up' : 'down'; const d = new Date(h.cerrado); const f = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); const mo = h.motivo === 'tp' ? ' · TP' : h.motivo === 'sl' ? ' · SL' : h.motivo === 'liq' ? ' · LIQ' : ''; return `<tr><td>${f}</td><td><span class="td-sym">${logoChip(h.par)} ${esc(h.par)}</span></td><td><span class="td-tag ${h.lado}">${h.lado.toUpperCase()}</span> <span class="td-lev-badge">${h.lev}x</span></td><td>${fmtP(h.entrada)}</td><td>${fmtP(h.salida)}</td><td class="td-pnl ${c}">${fmtMoney(h.pnl)} (${fmtPct(h.roe)})${mo}</td><td><button class="td-share" data-shareh="${h.id}" title="Export trade card">${IC.share}</button></td></tr>`; }).join('')}</tbody></table>`;
     body.querySelectorAll('[data-shareh]').forEach((b) => b.onclick = () => { const h = hist.find((x) => x.id === b.dataset.shareh); if (h) tarjetaPnL(h); });
   }
 }
+function celdaTPSL(obj, k, col) {
+  return `<span class="td-tpsl-c"><em style="color:${col}">${obj[k] ? fmtP(obj[k]) : '—'}</em><button class="td-edit" data-edit="${obj.id}" data-k="${k}" title="Edit ${k.toUpperCase()}">${IC.edit}</button></span>`;
+}
 function filaPos(p) {
   const { pnl, roe, qty } = M.pnlDe(p, S.marks[p.par] || S.mark); const c = pnl >= 0 ? 'up' : 'down';
-  const tpsl = (p.tp || p.sl) ? `${p.tp ? fmtP(p.tp) : '—'} / ${p.sl ? fmtP(p.sl) : '—'}` : 'Add';
   return `<tr><td><span class="td-sym">${logoChip(p.par)} ${esc(p.par)}USDT <span class="td-tag ${p.lado}">${p.lado.toUpperCase()}</span> <span class="td-lev-badge">${p.lev}x</span></span></td>
     <td>${qty.toFixed(4)}</td><td>${fmtP(p.entrada)}</td><td data-mark="${p.id}">${fmtP(S.marks[p.par] || S.mark)}</td>
     <td class="td-liq">${fmtP(p.liq)}</td><td>${fmtMoney(p.margen)}</td>
-    <td><button class="td-mini" data-tpsl="${p.id}">${tpsl}</button></td>
+    <td>${celdaTPSL(p, 'tp', '#2ee86a')}</td><td>${celdaTPSL(p, 'sl', '#ff5b6e')}</td>
     <td class="td-pnl ${c}" data-pnl="${p.id}">${fmtMoney(pnl)} (${fmtPct(roe)})</td>
-    <td><button class="td-share" data-share="${p.id}" title="Export trade card">${IC.share}</button> <button class="td-x" data-cerrar="${p.id}" data-par="${p.par}">Close</button></td></tr>`;
+    <td><span class="td-acts"><button class="td-share" data-share="${p.id}" title="Export trade card">${IC.share}</button><button class="td-x" data-cerrar="${p.id}" data-par="${p.par}">Close</button></span></td></tr>`;
+}
+function filaOrd(o) {
+  return `<tr><td><span class="td-sym">${logoChip(o.par)} ${esc(o.par)}USDT</span></td>
+    <td><span class="td-tag ${o.lado}">${o.lado.toUpperCase()}</span> <span class="td-lev-badge">${o.lev}x</span></td>
+    <td>${fmtMoney(o.tam)}</td><td>${fmtP(o.precio)}</td><td>${fmtP(S.marks[o.par] || S.mark)}</td>
+    <td>${celdaTPSL(o, 'tp', '#2ee86a')}</td><td>${celdaTPSL(o, 'sl', '#ff5b6e')}</td>
+    <td><button class="td-x" data-cancel="${o.id}">Cancel</button></td></tr>`;
 }
 function logoChip(parId) { const p = D.PARES.find((x) => x.id === parId); const url = p && p.cg && S.logos[p.cg]; return url ? `<i class="con" style="background-image:url(${esc(url)})"></i>` : `<i>${esc((parId || '?')[0])}</i>`; }
 function refrescarPnL() {
@@ -343,16 +373,42 @@ function refrescarPnL() {
 }
 function cerradoDesde(p) { const { pnl, roe } = M.pnlDe(p, S.marks[p.par] || S.mark); const fee = M.feeRueda(p.tam); return { par: p.par, lado: p.lado, lev: p.lev, tam: p.tam, entrada: p.entrada, salida: S.marks[p.par] || S.mark, pnl: pnl - fee, roe: roe - (fee / p.margen) * 100, cerrado: Date.now() }; }
 
-/* Crea TP/SL por defecto (si no hay) para poder arrastrarlos; si ya hay, limpia. */
-function toggleTPSL(p) {
-  if (p.tp || p.sl) { M.setTPSL(p.id, 0, 0); toast('TP/SL cleared.', 'warn'); }
-  else {
-    const tp = p.lado === 'long' ? p.entrada * 1.008 : p.entrada * 0.992;
-    const sl = p.lado === 'long' ? p.entrada * 0.996 : p.entrada * 1.004;
-    M.setTPSL(p.id, +tp.toFixed(dec(tp)), +sl.toFixed(dec(sl)));
-    toast('TP/SL added. Drag the lines on the chart to adjust.', 'ok');
-  }
-  renderPos();
+/* Editar TP o SL de una posición o de una orden marcada (como en futuros). El
+   SL no puede pasar el precio de liquidación: si lo pasa, se retira. Dejar el
+   campo vacío (0) retira ese TP/SL. */
+function editarTPSL(id, k) {
+  const p = M.posiciones().find((x) => x.id === id) || M.ordenes().find((x) => x.id === id);
+  if (!p) return;
+  const esTP = k === 'tp';
+  modalValor({
+    titulo: esTP ? 'Take Profit' : 'Stop Loss',
+    sub: `${esc(p.par)}USDT · ${p.lado === 'long' ? 'Long' : 'Short'} ${p.lev}x`,
+    valor: p[k] || '', unidad: 'USDT', tono: esTP ? 'tp' : 'sl',
+    ok: (v) => {
+      let tp = p.tp || 0, sl = p.sl || 0;
+      if (esTP) tp = v > 0 ? v : 0;
+      else {
+        sl = v > 0 ? v : 0;
+        if (sl > 0 && p.liq) { const malo = p.lado === 'long' ? (sl <= p.liq) : (sl >= p.liq); if (malo) { sl = 0; toast('SL beyond liquidation — removed.', 'warn'); } }
+      }
+      M.setTPSL(p.id, tp, sl); renderPos();
+    }
+  });
+}
+function modalValor(o) {
+  const old = $('td-sheet'); if (old) old.remove();
+  const m = document.createElement('div'); m.className = 'td-sheet'; m.id = 'td-sheet';
+  m.innerHTML = `<div class="bx"><h5>${esc(o.titulo)}</h5><div class="sub">${esc(o.sub || '')}</div>
+    <div class="fld"><input type="number" id="td-sheet-in" step="any" value="${o.valor ? o.valor : ''}" placeholder="0.00"><span class="u">${esc(o.unidad || '')}</span></div>
+    <div class="btns"><button id="td-sheet-x">Cancel</button><button class="ok ${o.tono || ''}" id="td-sheet-ok">Confirm</button></div></div>`;
+  document.body.appendChild(m);
+  const cerrarS = () => { try { m.remove(); } catch (_) {} };
+  const inp = m.querySelector('#td-sheet-in'); setTimeout(() => { try { inp.focus(); inp.select(); } catch (_) {} }, 40);
+  m.querySelector('#td-sheet-x').onclick = cerrarS;
+  m.onclick = (e) => { if (e.target === m) cerrarS(); };
+  const confirmar = () => { const v = +inp.value || 0; cerrarS(); o.ok(v); };
+  m.querySelector('#td-sheet-ok').onclick = confirmar;
+  inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') confirmar(); else if (e.key === 'Escape') cerrarS(); });
 }
 
 /* ── Línea de la orden limit en preparación ── */
@@ -362,7 +418,9 @@ function dibujarLimit() {
   if (S.modo === 'limit' && S.limitPx > 0) { try { S.lineaLimit = S.serieVela.createPriceLine({ price: S.limitPx, color: '#C9A84B', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'entry' }); } catch (_) {} }
 }
 
-/* ── Overlay de posiciones (entrada, zona PnL, TP/SL arrastrables, liq) ── */
+/* ── Overlay de posiciones: entrada + PnL, liq, y controles TP/SL estilo
+   TradingView (tiradores cuadrados junto a la tachuela, arrastrables). ── */
+function ejeAncho() { try { const tw = S.chart.timeScale().width(); const cw = $('td-cv').clientWidth; if (tw > 0 && cw > tw) return Math.max(44, Math.min(92, cw - tw)); } catch (_) {} return 66; }
 function pintarFx() {
   const fx = $('td-fx'), cv = $('td-cv'); if (!fx || !cv || !S.serieVela) return;
   const W = cv.clientWidth, H = cv.clientHeight; if (!W || !H) return;
@@ -371,52 +429,65 @@ function pintarFx() {
   const g = fx.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
   const Y = (p) => { try { const c = S.serieVela.priceToCoordinate(p); return c == null ? null : c; } catch (_) { return null; } };
   S._handles = [];
+  const plotR = W - ejeAncho();
   const markY = Y(S.mark);
   // órdenes marcadas: línea dorada pulsante
   const pulso = 0.5 + 0.5 * Math.sin(performance.now() / 320);
-  M.ordenes().filter((o) => o.par === S.par.id).forEach((o) => { const y = Y(o.precio); if (y == null) return; g.save(); g.setLineDash([6, 5]); g.strokeStyle = `rgba(232,184,75,${0.5 + 0.4 * pulso})`; g.lineWidth = 1.3; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); etiqueta(g, W, y, (o.lado === 'long' ? 'LONG' : 'SHORT') + ' mark ' + fmtP(o.precio), '#E8B84B', '#2a1d00'); g.restore(); });
+  M.ordenes().filter((o) => o.par === S.par.id).forEach((o) => { const y = Y(o.precio); if (y == null) return; g.save(); g.setLineDash([6, 5]); g.strokeStyle = `rgba(232,184,75,${0.5 + 0.4 * pulso})`; g.lineWidth = 1.3; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); etiqueta(g, plotR, y, (o.lado === 'long' ? 'LONG' : 'SHORT') + ' mark ' + fmtP(o.precio), '#E8B84B', '#2a1d00'); g.restore(); });
   // posiciones
   M.posiciones().filter((p) => p.par === S.par.id).forEach((p) => {
     const ey = Y(p.entrada), ly = Y(p.liq); if (ey == null) return;
     const { pnl, roe } = M.pnlDe(p, S.mark); const verde = pnl >= 0;
     const col = p.lado === 'long' ? '#2ee86a' : '#ff5b6e';
-    // zona entrada -> mark
     if (markY != null) { g.fillStyle = verde ? 'rgba(46,232,106,.08)' : 'rgba(255,91,110,.08)'; const a = Math.min(ey, markY), b = Math.max(ey, markY); g.fillRect(0, a, W, b - a); }
-    // línea de entrada
     g.save(); g.strokeStyle = col; g.lineWidth = 1.6; g.beginPath(); g.moveTo(0, ey); g.lineTo(W, ey); g.stroke(); g.restore();
-    etiqueta(g, W, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'} ${p.lev}x  ${fmtMoney(pnl)} (${fmtPct(roe)})`, col, '#04210f');
-    // liq
-    if (ly != null) { g.save(); g.setLineDash([2, 4]); g.strokeStyle = 'rgba(255,91,110,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); etiqueta(g, W, ly, 'LIQ ' + fmtP(p.liq), 'rgba(255,91,110,.85)', '#2a0509'); g.restore(); }
-    // TP / SL arrastrables
-    if (p.tp) { const ty = Y(p.tp); if (ty != null) { lineaTPSL(g, W, ty, '#2ee86a', 'TP ' + fmtP(p.tp)); S._handles.push({ id: p.id, cual: 'tp', y: ty }); } }
-    if (p.sl) { const sy = Y(p.sl); if (sy != null) { lineaTPSL(g, W, sy, '#ff5b6e', 'SL ' + fmtP(p.sl)); S._handles.push({ id: p.id, cual: 'sl', y: sy }); } }
+    etiqueta(g, plotR, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'} ${p.lev}x  ${fmtMoney(pnl)} (${fmtPct(roe)})`, col, '#04210f');
+    if (ly != null) { g.save(); g.setLineDash([2, 4]); g.strokeStyle = 'rgba(255,91,110,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, ly); g.lineTo(plotR, ly); g.stroke(); etiqueta(g, plotR, ly, 'LIQ ' + fmtP(p.liq), 'rgba(255,91,110,.85)', '#2a0509'); g.restore(); }
+    ctrlTPSL(g, p, 'tp', '#2ee86a', ey, plotR, H, Y);
+    ctrlTPSL(g, p, 'sl', '#ff5b6e', ey, plotR, H, Y);
   });
 }
-function lineaTPSL(g, W, y, col, txt) {
+/* Control TP o SL: si está fijado dibuja línea + etiqueta + tirador al nivel;
+   si no, un botón cuadrado junto a la entrada (TP arriba / SL abajo en un long)
+   que al arrastrar lo crea. Registra el rectángulo clicable en S._handles. */
+function ctrlTPSL(g, p, cual, col, ey, plotR, H, Y) {
+  const set = cual === 'tp' ? p.tp : p.sl;
+  const bw = 30, bh = 18, bx = plotR - bw - 2;
+  if (set) {
+    const y = Y(set); if (y == null) return;
+    g.save(); g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); g.moveTo(0, y); g.lineTo(bx - 4, y); g.stroke(); g.setLineDash([]); g.restore();
+    etiqueta(g, bx - 4, y, (cual === 'tp' ? 'TP ' : 'SL ') + fmtP(set), col, '#04210f');
+    botonCuadro(g, bx, y - bh / 2, bw, bh, col, cual.toUpperCase(), false);
+    S._handles.push({ id: p.id, cual, x0: bx - 6, x1: plotR, y0: y - 10, y1: y + 10 });
+  } else {
+    const arriba = (cual === 'tp') === (p.lado === 'long');
+    let y = ey + (arriba ? -23 : 23); y = Math.max(12, Math.min(H - 12, y));
+    botonCuadro(g, bx, y - bh / 2, bw, bh, col, cual.toUpperCase(), true);
+    S._handles.push({ id: p.id, cual, creating: true, x0: bx - 6, x1: plotR, y0: y - 11, y1: y + 11 });
+  }
+}
+function botonCuadro(g, x, y, w, h, col, txt, hueco) {
   g.save();
-  g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]);
-  const xr = W - 72;                                        // a la izquierda del eje de precios
-  etiqueta(g, xr, y, txt, col, '#04210f');
-  g.fillStyle = col; redondea(g, xr + 3, y - 8, 13, 16, 3); g.fill();                          // tirador
-  g.fillStyle = 'rgba(0,0,0,.5)'; [-3, 0, 3].forEach((o) => g.fillRect(xr + 6, y + o, 7, 1.4));  // grip
+  if (hueco) { g.fillStyle = 'rgba(10,14,20,.92)'; redondea(g, x, y, w, h, 4); g.fill(); g.strokeStyle = col; g.lineWidth = 1.3; redondea(g, x + .7, y + .7, w - 1.4, h - 1.4, 4); g.stroke(); g.fillStyle = col; }
+  else { g.fillStyle = col; redondea(g, x, y, w, h, 4); g.fill(); g.fillStyle = '#04210f'; }
+  g.font = '800 10px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(txt, x + w / 2, y + h / 2 + .5);
   g.restore();
 }
 function etiqueta(g, xRight, y, txt, bg, fg) { g.save(); g.font = '700 10.5px "IBM Plex Mono", monospace'; const w = g.measureText(txt).width + 14; const x = xRight - w - 8; g.fillStyle = bg; redondea(g, x, y - 9, w, 18, 4); g.fill(); g.fillStyle = fg; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(txt, x + 7, y + 0.5); g.restore(); }
 function redondea(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
-/* ── Arrastre de TP/SL ── */
+/* ── Arrastre y creación de TP/SL (tiradores cuadrados del overlay) ── */
 function wireDrag() {
   const host = $('td-chart'), fx = $('td-fx'); if (!host || !fx) return;
   const handleEn = (e) => {
     if (!(NIV.herr === 'cursor' || NIV.herr == null) || !S._handles || !S._handles.length) return null;
     const r = host.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
-    if (x < r.width - 190 || x > r.width - 70) return null;   // banda del tirador, a la izquierda del eje de precios
-    for (const h of S._handles) if (Math.abs(y - h.y) < 8) return h;
+    for (const h of S._handles) if (x >= h.x0 && x <= h.x1 && y >= h.y0 && y <= h.y1) return h;
     return null;
   };
-  /* La capa fx normalmente deja pasar TODO a la grafica (pan, zoom, arrastre de
-     ejes, crosshair y clic). Solo "despierta" (pointer-events:auto) cuando el
-     puntero esta sobre un tirador TP/SL, para arrastrarlo sin estorbar al resto. */
+  /* La capa fx deja pasar TODO a la gráfica (pan, zoom, arrastre de ejes,
+     crosshair y clic). Solo "despierta" (pointer-events:auto) sobre un tirador. */
   host.addEventListener('mousemove', (e) => {
     if (S.drag) return;
     const h = handleEn(e);
@@ -425,15 +496,28 @@ function wireDrag() {
   });
   fx.addEventListener('mousedown', (e) => {
     const h = handleEn(e); if (!h) return;
-    e.stopPropagation(); e.preventDefault(); S.drag = { id: h.id, cual: h.cual };
+    e.stopPropagation(); e.preventDefault();
+    const p = M.posiciones().find((x) => x.id === h.id); if (!p) return;
+    if (h.creating) {
+      const r = host.getBoundingClientRect(); let px; try { px = S.serieVela.coordinateToPrice(e.clientY - r.top); } catch (_) { px = null; }
+      if (!(px > 0)) px = p.entrada * (h.cual === 'tp' ? (p.lado === 'long' ? 1.01 : 0.99) : (p.lado === 'long' ? 0.99 : 1.01));
+      fijarTPSL(p, h.cual, px);
+    }
+    S.drag = { id: h.id, cual: h.cual };
   });
   window.addEventListener('mousemove', (e) => {
     if (!S.drag || !S.serieVela) return;
-    const r = $('td-chart').getBoundingClientRect(); const y = e.clientY - r.top;
+    const r = host.getBoundingClientRect(); const y = e.clientY - r.top;
     let px; try { px = S.serieVela.coordinateToPrice(y); } catch (_) { px = null; }
-    if (px > 0) { const p = M.posiciones().find((x) => x.id === S.drag.id); if (p) { M.setTPSL(p.id, S.drag.cual === 'tp' ? +px.toFixed(dec(px)) : (p.tp || 0), S.drag.cual === 'sl' ? +px.toFixed(dec(px)) : (p.sl || 0)); } }
+    if (px > 0) { const p = M.posiciones().find((x) => x.id === S.drag.id); if (p) fijarTPSL(p, S.drag.cual, px); }
   });
   window.addEventListener('mouseup', () => { if (S.drag) { S.drag = null; fx.style.pointerEvents = 'none'; renderPos(); } });
+}
+/* Fija TP o SL respetando la liquidación: el SL no puede pasar el precio de liq. */
+function fijarTPSL(p, cual, px) {
+  px = +(+px).toFixed(dec(px));
+  if (cual === 'sl') { const malo = p.lado === 'long' ? (px <= p.liq) : (px >= p.liq); if (malo) px = +(p.lado === 'long' ? p.liq * 1.0008 : p.liq * 0.9992).toFixed(dec(p.liq)); }
+  M.setTPSL(p.id, cual === 'tp' ? px : (p.tp || 0), cual === 'sl' ? px : (p.sl || 0));
 }
 
 /* ── Animación + sonido ── */
@@ -448,7 +532,7 @@ function snd(tipo) {
   try {
     if (!S.ac) return; const ac = S.ac; let t = ac.currentTime;
     const seqs = { open: [[660, .07, .1], [880, .09, .1]], tp: [[784, .09, .13], [988, .09, .13], [1319, .16, .13]], sl: [[320, .11, .13], [240, .16, .13]], liq: [[180, .22, .16], [130, .3, .16]] };
-    (seqs[tipo] || []).forEach(([f, d, gg]) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = tipo === 'tp' ? 'sine' : 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gg, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d); t += d * .9; });
+    (seqs[tipo] || []).forEach(([f, d, gg]) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = tipo === 'tp' ? 'sine' : 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.min(.6, gg * 2.7), t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d); t += d * .9; });
   } catch (_) {}
 }
 
@@ -487,56 +571,241 @@ async function exportarChart() {
   if (imgWm && imgWm.width) { const wmH = 30, wmW = imgWm.width * (wmH / imgWm.height); g.save(); g.globalAlpha = .8; g.drawImage(imgWm, 18, out.height - wmH - 34, wmW, wmH); g.restore(); }
   try { out.toBlob((b) => { descargar(b, `demo-${S.par.id}-${S.tf}.png`); toast('Chart image exported.', 'ok'); }); } catch (_) { toast('Could not export the chart.', 'bad'); }
 }
-function exportarCSV() { try { descargar(new Blob([M.csv()], { type: 'text/csv' }), `demo-history-${S.par.id}.csv`); toast('History exported (CSV).', 'ok'); } catch (_) { toast('Could not export the history.', 'bad'); } }
-
-function tarjetaPnL(tr) {
-  const W = 600, H = 340, dpr = 2;
-  const cv = document.createElement('canvas'); cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr);
-  const verde = tr.pnl >= 0, col = verde ? '#2ee86a' : '#ff5b6e';
-  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#121a24'); bg.addColorStop(1, '#0a0d12'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(255,255,255,.06)'; g.strokeRect(.5, .5, W - 1, H - 1);
-  g.save(); g.translate(W / 2, H / 2); g.rotate(-Math.PI / 9); g.font = '800 120px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.035)'; g.fillText('DEMO', 0, 40); g.restore();
-  g.fillStyle = '#E8B84B'; g.beginPath(); g.arc(34, 36, 6, 0, 7); g.fill();
-  g.font = '800 16px "Chakra Petch", sans-serif'; g.fillStyle = '#E8B84B'; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillText('DecFreedom', 50, 42);
-  g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#6b7580'; g.fillText('TRADING DEMO · not real', 50, 58);
-  g.font = '800 26px "Chakra Petch", sans-serif'; g.fillStyle = '#eaecef'; g.fillText(tr.par + 'USDT', 34, 112);
-  g.font = '800 14px "IBM Plex Mono", monospace'; g.fillStyle = col; g.fillText((tr.lado === 'long' ? 'LONG' : 'SHORT') + '  ·  ' + tr.lev + 'x', 34, 136);
-  g.font = '800 72px "Chakra Petch", sans-serif'; g.fillStyle = col; g.fillText((tr.roe >= 0 ? '+' : '') + tr.roe.toFixed(2) + '%', 30, 220);
-  g.font = '700 16px "IBM Plex Mono", monospace'; g.fillStyle = col; g.fillText((tr.pnl >= 0 ? '+' : '-') + '$' + Math.abs(tr.pnl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT', 34, 250);
-  g.textAlign = 'right'; g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#6b7580'; g.fillText('ENTRY', W - 160, 196); g.fillText('EXIT', W - 160, 224);
-  g.font = '700 14px "IBM Plex Mono", monospace'; g.fillStyle = '#c9d1d9'; g.fillText(fmtP(tr.entrada), W - 34, 196); g.fillText(fmtP(tr.salida), W - 34, 224);
-  g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#6b7580'; g.fillText(new Date(tr.cerrado).toLocaleString('en-US'), W - 34, H - 24);
-  g.textAlign = 'left'; g.fillText('decfreedom.com', 34, H - 24);
-  g.fillStyle = col; g.globalAlpha = .9; g.fillRect(0, H - 6, W, 6); g.globalAlpha = 1;
-  const old = $('td-modal'); if (old) old.remove();
-  const m = document.createElement('div'); m.id = 'td-modal'; m.innerHTML = `<div class="card"><button class="x">✕</button></div>`;
-  m.querySelector('.card').prepend(cv);
-  const acts = document.createElement('div'); acts.className = 'acts'; acts.innerHTML = `<button class="dl">Download image</button><button class="cl">Close</button>`;
-  m.querySelector('.card').appendChild(acts); document.body.appendChild(m);
-  const ce = () => m.remove(); m.querySelector('.x').onclick = ce; m.querySelector('.cl').onclick = ce; m.onclick = (e) => { if (e.target === m) ce(); };
-  m.querySelector('.dl').onclick = () => { try { cv.toBlob((b) => descargar(b, `demo-trade-${tr.par}-${Date.now()}.png`)); } catch (_) {} };
+function exportarCSV() {
+  try {
+    let nombre = ''; try { nombre = localStorage.getItem('td-cert-name') || ''; } catch (_) {}
+    const st = certStats();
+    const pre = [
+      'DecFreedom - Trading Demo track record (DEMO, not real money)',
+      'Trader,' + (nombre || 'Demo Trader'),
+      'Issued,' + new Date().toISOString(),
+      'Starting balance,10000',
+      'Trades,' + st.n,
+      'Win rate %,' + st.winRate,
+      'Net PnL USDT,' + st.total.toFixed(2),
+      'End balance,' + st.endBal.toFixed(2),
+      'decfreedom.com', '', M.csv()
+    ].join('\n');
+    descargar(new Blob([pre], { type: 'text/csv' }), 'DecFreedom-track-record.csv'); toast('History exported (CSV).', 'ok');
+  } catch (_) { toast('Could not export the history.', 'bad'); }
 }
 
-function renderTodo() { pintarPrecio(); renderEntry(); renderPos(); }
+/* Tarjeta de operación: MISMA dinámica que el área de futuros (fondo long/short
+   de portada/img, sello cco-sello, logo de la moneda), con la marca DEMO grande
+   encima para que no pueda reutilizarse de forma fraudulenta. */
+async function tarjetaPnL(tr) {
+  const esLong = tr.lado === 'long', gana = tr.pnl >= 0;
+  const vcol = gana ? '#16c784' : '#f6465d', col = esLong ? '#16c784' : '#f6465d';
+  const oro = '#E8B84B', blanco = '#ffffff';
+  const logoUrl = tr.par ? 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + String(tr.par).toLowerCase() + '.png' : null;
+  const [fondo, logo, sello] = await Promise.all([
+    cargarImg(esLong ? IMG_LONG : IMG_SHORT, false),
+    cargarImg(logoUrl, true),
+    cargarImg(SELLO, false)
+  ]);
+  const W = 1670, H = 941;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  if (fondo) g.drawImage(fondo, 0, 0, W, H); else { g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, H); }
+  const grad = g.createLinearGradient(0, 0, W, 0); grad.addColorStop(0, 'rgba(5,7,10,.82)'); grad.addColorStop(.5, 'rgba(5,7,10,.42)'); grad.addColorStop(1, 'rgba(5,7,10,.05)');
+  g.fillStyle = grad; g.fillRect(0, 0, W, H);
+  // marca de agua DEMO grande (anti fraude)
+  g.save(); g.translate(W * .64, H * .54); g.rotate(-Math.PI / 9); g.font = '800 240px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.07)'; g.fillText('DEMO', 0, 0); g.restore();
+  const X = 70; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  let topY = 132;
+  g.save(); g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.closePath(); g.fillStyle = 'rgba(255,255,255,.08)'; g.fill(); g.clip();
+  if (logo) g.drawImage(logo, X - 2, topY - 32, 64, 64); else { g.fillStyle = oro; g.font = '800 34px "Plus Jakarta Sans", sans-serif'; g.textAlign = 'center'; g.fillText((tr.par || '?')[0], X + 30, topY + 12); g.textAlign = 'left'; }
+  g.restore();
+  g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.stroke();
+  g.fillStyle = blanco; g.font = '800 46px "Plus Jakarta Sans", sans-serif'; g.fillText((tr.par || '') + 'USDT', X + 80, topY + 16);
+  topY += 86; g.fillStyle = col; g.font = '800 28px "IBM Plex Mono", monospace'; g.fillText((esLong ? 'LONG' : 'SHORT') + '  ' + tr.lev + '×', X, topY);
+  topY += 50; const d = new Date(tr.cerrado || Date.now()); g.fillStyle = blanco; g.font = '500 24px "IBM Plex Mono", monospace';
+  g.fillText(d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + '  ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), X, topY);
+  let cy = H * 0.42; g.fillStyle = vcol; g.font = '800 120px "IBM Plex Mono", monospace';
+  g.fillText((tr.roe >= 0 ? '+' : '') + tr.roe.toFixed(2) + '%', X, cy);
+  g.font = '800 52px "IBM Plex Mono", monospace';
+  g.fillText((tr.pnl >= 0 ? '+' : '') + tr.pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT', X + 10, cy + 70);
+  let iy = H * 0.62; g.fillStyle = oro; g.font = '700 22px "IBM Plex Mono", monospace'; g.fillText('ENTRY PRICE', X, iy); g.fillText('EXIT PRICE', X + 330, iy);
+  g.fillStyle = blanco; g.font = '800 34px "IBM Plex Mono", monospace'; g.fillText(fmtP(tr.entrada), X, iy + 42); g.fillText(fmtP(tr.salida), X + 330, iy + 42);
+  iy += 112; g.fillStyle = oro; g.font = '700 22px "IBM Plex Mono", monospace'; g.fillText('DEMO ACCOUNT · decfreedom.com', X, iy);
+  if (sello) { const lw = 280, lh = sello.height * (lw / sello.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7; g.drawImage(sello, X, H - lh - 40, lw, lh); g.restore(); }
+  mostrarTarjeta(cv, `DecFreedom-${tr.par}.png`);
+}
+function mostrarTarjeta(cv, nombre) {
+  const old = $('td-modal'); if (old) old.remove();
+  const m = document.createElement('div'); m.id = 'td-modal'; m.innerHTML = `<div class="card"></div>`;
+  m.querySelector('.card').appendChild(cv);
+  const acts = document.createElement('div'); acts.className = 'acts'; acts.innerHTML = `<button class="dl">Download image</button><button class="cl">Close</button>`;
+  m.querySelector('.card').appendChild(acts); document.body.appendChild(m);
+  const ce = () => m.remove(); m.querySelector('.cl').onclick = ce; m.onclick = (e) => { if (e.target === m) ce(); };
+  m.querySelector('.dl').onclick = () => { try { cv.toBlob((b) => descargar(b, nombre), 'image/png', 0.95); } catch (_) { toast('Could not export the image.', 'bad'); } };
+}
+
+/* ── Certificado de track record (imagen PNG, PDF sin cortes de fila, CSV) ── */
+function certStats() {
+  const histN = M.historial();                    // mas reciente primero
+  const hist = histN.slice().reverse();            // cronologico
+  const n = hist.length;
+  const wins = hist.filter((h) => h.pnl > 0).length;
+  const total = hist.reduce((a, h) => a + h.pnl, 0);
+  let eq = 10000; const curva = [10000];
+  hist.forEach((h) => { eq += h.pnl; curva.push(eq); });
+  const desde = n ? new Date(hist[0].cerrado) : null, hasta = n ? new Date(hist[n - 1].cerrado) : null;
+  return { n, wins, losses: n - wins, winRate: n ? Math.round(wins / n * 100) : 0, total, startBal: 10000, endBal: 10000 + total, curva, desde, hasta };
+}
+function wrapTexto(g, txt, x, y, maxW, lh) {
+  const ws = txt.split(' '); let linea = '', yy = y;
+  ws.forEach((p) => { const t = linea ? linea + ' ' + p : p; if (g.measureText(t).width > maxW && linea) { g.fillText(linea, x, yy); linea = p; yy += lh; } else linea = t; });
+  if (linea) g.fillText(linea, x, yy);
+}
+function pedirNombreCert() {
+  const old = $('td-sheet'); if (old) old.remove();
+  let prev = ''; try { prev = localStorage.getItem('td-cert-name') || ''; } catch (_) {}
+  const m = document.createElement('div'); m.className = 'td-sheet'; m.id = 'td-sheet';
+  m.innerHTML = `<div class="bx"><h5>Track record certificate</h5><div class="sub">Your name appears on the document. Demo account.</div>
+    <div class="fld"><input type="text" id="td-cert-in" maxlength="46" placeholder="Your name" value="${esc(prev)}"></div>
+    <div class="btns"><button id="td-cert-x">Cancel</button><button class="ok" id="td-cert-ok">Generate</button></div></div>`;
+  document.body.appendChild(m);
+  const cerrarS = () => { try { m.remove(); } catch (_) {} };
+  const inp = m.querySelector('#td-cert-in'); setTimeout(() => { try { inp.focus(); inp.select(); } catch (_) {} }, 40);
+  m.querySelector('#td-cert-x').onclick = cerrarS;
+  m.onclick = (e) => { if (e.target === m) cerrarS(); };
+  const go = () => { const nom = (inp.value || '').trim().slice(0, 46) || 'Demo Trader'; try { localStorage.setItem('td-cert-name', nom); } catch (_) {} cerrarS(); generarCert(nom); };
+  m.querySelector('#td-cert-ok').onclick = go;
+  inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); else if (e.key === 'Escape') cerrarS(); });
+}
+async function generarCert(nombre) {
+  const st = certStats();
+  const sello = await cargarImg(SELLO, false);
+  const W = 1240, H = 1754; const cvs = document.createElement('canvas'); cvs.width = W; cvs.height = H; const g = cvs.getContext('2d');
+  const oro = '#E8B84B', up = '#2ee86a', dn = '#ff5b6e', ink = '#eaecef', ink2 = '#9aa4af', ink3 = '#6b7580';
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#0b111a'); bg.addColorStop(1, '#070a0f'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = oro; g.fillRect(0, 0, W, 10);
+  g.strokeStyle = 'rgba(232,184,75,.22)'; g.lineWidth = 2; g.strokeRect(22, 22, W - 44, H - 44);
+  g.save(); g.translate(W / 2, H * .52); g.rotate(-Math.PI / 10); g.font = '800 300px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.033)'; g.fillText('DEMO', 0, 0); g.restore();
+  const M0 = 74;
+  if (sello) { const lw = 220, lh = sello.height * (lw / sello.width); g.drawImage(sello, M0, 60, lw, lh); }
+  g.textAlign = 'right'; g.fillStyle = ink3; g.font = '700 19px "IBM Plex Mono", monospace'; g.fillText('decfreedom.com', W - M0, 92);
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = ink; g.font = '800 52px "Chakra Petch", sans-serif'; g.fillText('Trading Performance', M0, 232);
+  g.fillStyle = oro; g.font = '800 52px "Chakra Petch", sans-serif'; g.fillText('Certificate', M0, 292);
+  g.fillStyle = ink3; g.font = '700 17px "IBM Plex Mono", monospace'; g.fillText('DEMO ACCOUNT · NOT REAL MONEY', M0, 324);
+  g.fillStyle = ink2; g.font = '600 19px "IBM Plex Mono", monospace'; g.fillText('Issued to', M0, 392);
+  g.fillStyle = '#fff'; g.font = '800 42px "Plus Jakarta Sans", sans-serif'; g.fillText(nombre, M0, 438);
+  g.fillStyle = '#c3cbd4'; g.font = '400 19px "Plus Jakarta Sans", sans-serif';
+  wrapTexto(g, 'DecFreedom provided a demo trading service with a starting balance of $10,000. This document certifies the track record achieved on the demo platform over the period shown.', M0, 480, W - M0 * 2, 27);
+  const periodo = st.desde ? (st.desde.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' }) + '  →  ' + st.hasta.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })) : '—';
+  const roi = st.total / st.startBal * 100;
+  const tiles = [
+    ['Trades', String(st.n), ink],
+    ['Win rate', st.winRate + '%', st.winRate >= 50 ? up : ink],
+    ['Net PnL', (st.total >= 0 ? '+' : '−') + '$' + Math.abs(st.total).toLocaleString('en-US', { maximumFractionDigits: 0 }), st.total >= 0 ? up : dn],
+    ['ROI', (roi >= 0 ? '+' : '−') + Math.abs(roi).toFixed(1) + '%', roi >= 0 ? up : dn],
+    ['Start', '$10,000', ink],
+    ['End balance', '$' + st.endBal.toLocaleString('en-US', { maximumFractionDigits: 0 }), st.endBal >= 10000 ? up : dn]
+  ];
+  const tY = 556, tW = (W - M0 * 2 - 2 * 18) / 3, tH = 112;
+  tiles.forEach((t, i) => {
+    const x = M0 + (i % 3) * (tW + 18), y = tY + ((i / 3) | 0) * (tH + 16);
+    g.fillStyle = 'rgba(255,255,255,.035)'; redondea(g, x, y, tW, tH, 12); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; redondea(g, x + .5, y + .5, tW - 1, tH - 1, 12); g.stroke();
+    g.fillStyle = ink3; g.font = '700 14px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText(t[0].toUpperCase(), x + 18, y + 33);
+    g.fillStyle = t[2]; g.font = '800 33px "Chakra Petch", sans-serif'; g.fillText(t[1], x + 18, y + 78);
+  });
+  g.fillStyle = ink2; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText('Period:  ' + periodo, M0, tY + 2 * (tH + 16) + 36);
+  const chY = 906, chH = 300, chW = W - M0 * 2;
+  g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Equity curve', M0, chY - 16);
+  dibChartLinea(g, M0, chY, chW, chH, st.curva, oro);
+  const bY = chY + chH + 78, bH = 240;
+  g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Wins vs losses', M0, bY - 16);
+  dibBarras(g, M0, bY, chW, bH, [['Wins', st.wins, up], ['Losses', st.losses, dn]]);
+  const fY = H - 150;
+  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; g.beginPath(); g.moveTo(M0, fY); g.lineTo(W - M0, fY); g.stroke();
+  g.fillStyle = ink3; g.font = '600 16px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText('Issued ' + new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · DecFreedom demo', M0, fY + 34);
+  g.textAlign = 'right'; g.fillText('Practice record. No real funds were traded.', W - M0, fY + 34); g.textAlign = 'left';
+  mostrarCert(cvs, nombre);
+}
+function dibChartLinea(g, x, y, w, h, datos, col) {
+  g.save();
+  g.fillStyle = 'rgba(255,255,255,.02)'; redondea(g, x, y, w, h, 12); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; redondea(g, x + .5, y + .5, w - 1, h - 1, 12); g.stroke();
+  if (!datos || datos.length < 2) { g.fillStyle = '#6b7580'; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.fillText('Not enough trades yet', x + w / 2, y + h / 2); g.restore(); return; }
+  const min = Math.min(...datos), max = Math.max(...datos), rng = (max - min) || 1;
+  const px = (i) => x + 16 + (w - 32) * (i / (datos.length - 1));
+  const py = (v) => y + 16 + (h - 32) * (1 - (v - min) / rng);
+  if (min <= 10000 && max >= 10000) { const yb = py(10000); g.setLineDash([4, 4]); g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + 16, yb); g.lineTo(x + w - 16, yb); g.stroke(); g.setLineDash([]); }
+  const grd = g.createLinearGradient(0, y, 0, y + h); grd.addColorStop(0, 'rgba(232,184,75,.28)'); grd.addColorStop(1, 'rgba(232,184,75,0)');
+  g.beginPath(); g.moveTo(px(0), py(datos[0])); datos.forEach((v, i) => g.lineTo(px(i), py(v))); g.lineTo(px(datos.length - 1), y + h - 16); g.lineTo(px(0), y + h - 16); g.closePath(); g.fillStyle = grd; g.fill();
+  g.beginPath(); datos.forEach((v, i) => { const X = px(i), Y = py(v); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.strokeStyle = col; g.lineWidth = 2.5; g.stroke();
+  g.restore();
+}
+function dibBarras(g, x, y, w, h, series) {
+  g.save();
+  const maxV = Math.max(1, ...series.map((s) => s[1]));
+  const bw = 160, gap = 80; let bx = x + 30;
+  series.forEach((s) => {
+    const bh = Math.max(2, (h - 60) * (s[1] / maxV)); const by = y + (h - 34) - bh;
+    g.fillStyle = s[2]; redondea(g, bx, by, bw, bh, 8); g.fill();
+    g.fillStyle = '#eaecef'; g.font = '800 28px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.fillText(String(s[1]), bx + bw / 2, by - 12);
+    g.fillStyle = '#9aa4af'; g.font = '700 16px "IBM Plex Mono", monospace'; g.fillText(s[0], bx + bw / 2, y + h - 4);
+    bx += bw + gap;
+  });
+  g.restore();
+}
+function mostrarCert(cvs, nombre) {
+  const old = $('td-modal'); if (old) old.remove();
+  const m = document.createElement('div'); m.id = 'td-modal'; m.innerHTML = `<div class="card"></div>`;
+  m.querySelector('.card').appendChild(cvs);
+  const acts = document.createElement('div'); acts.className = 'acts';
+  acts.innerHTML = `<button class="dl" id="cert-png">Image (PNG)</button><button id="cert-pdf">PDF</button><button id="cert-csv">Excel (CSV)</button><button class="cl">Close</button>`;
+  m.querySelector('.card').appendChild(acts); document.body.appendChild(m);
+  const ce = () => m.remove(); m.querySelector('.cl').onclick = ce; m.onclick = (e) => { if (e.target === m) ce(); };
+  const base = 'DecFreedom-track-record-' + String(nombre).replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+  m.querySelector('#cert-png').onclick = () => { try { cvs.toBlob((b) => descargar(b, base + '.png'), 'image/png'); } catch (_) { toast('Could not export PNG.', 'bad'); } };
+  m.querySelector('#cert-pdf').onclick = () => { try { const jpg = cvs.toDataURL('image/jpeg', 0.92); const bin = atob(jpg.split(',')[1]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); descargar(pdfDeImagen(bytes, cvs.width, cvs.height), base + '.pdf'); toast('PDF exported.', 'ok'); } catch (_) { toast('Could not export PDF.', 'bad'); } };
+  m.querySelector('#cert-csv').onclick = exportarCSV;
+}
+/* PDF de una sola página con la imagen embebida (JPEG/DCTDecode): sin librerías
+   y sin cortes de fila, porque el certificado es una imagen completa. */
+function pdfDeImagen(jpg, Wpx, Hpx) {
+  const enc = new TextEncoder(); const parts = []; let len = 0; const off = [];
+  const push = (d) => { const b = (typeof d === 'string') ? enc.encode(d) : d; parts.push(b); len += b.length; };
+  const mark = () => off.push(len);
+  const pageW = 595, pageH = Math.round(595 * Hpx / Wpx);
+  push('%PDF-1.3\n');
+  mark(); push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  mark(); push('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+  mark(); push('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
+  mark(); push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + Wpx + ' /Height ' + Hpx + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n'); push(jpg); push('\nendstream\nendobj\n');
+  const content = 'q\n' + pageW + ' 0 0 ' + pageH + ' 0 0 cm\n/Im0 Do\nQ\n';
+  mark(); push('5 0 obj\n<< /Length ' + content.length + ' >>\nstream\n' + content + 'endstream\nendobj\n');
+  const xs = len; let xref = 'xref\n0 6\n0000000000 65535 f \n';
+  for (let i = 0; i < 5; i++) xref += String(off[i]).padStart(10, '0') + ' 00000 n \n';
+  push(xref); push('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xs + '\n%%EOF');
+  return new Blob(parts, { type: 'application/pdf' });
+}
+
+function renderTodo() { sincronCap(); pintarPrecio(); renderEntry(); renderPos(); }
 
 /* ── Ayuda ── */
 function ayuda() {
   cerrarPops();
+  marcarAyudaVista();
   const old = $('td-help'); if (old) old.remove();
   const m = document.createElement('div'); m.id = 'td-help';
   m.innerHTML = `<div class="box"><button class="x" id="td-help-x" title="Close">✕</button>
     <h4>How to trade (demo)</h4>
-    <div class="st"><b>1</b><div><em>Market:</em> set leverage and size, then hit Long or Short. It fills now at the mark price.</div></div>
-    <div class="st"><b>2</b><div><em>Limit:</em> pick the Limit tab and <em>click the chart</em> where you want to enter. Set leverage and size, then Long or Short. The price decides when it fills (keep this open).</div></div>
-    <div class="st"><b>3</b><div><em>TP / SL:</em> set them before entering, or on an open position press TP/SL and <em>drag the green and red lines</em> on the chart.</div></div>
-    <div class="st"><b>4</b><div><em>Liquidation:</em> every position shows a liquidation price based on your leverage. More leverage means it sits closer to your entry. If the price reaches it, you lose that position's margin.</div></div>
-    <div class="st"><b>5</b><div>Zoom by dragging the price axis or the time axis, close with Close, export the chart, or share a trade as an image. Your track record lives in History.</div></div>
+    <div class="st"><b>1</b><div><em>Capital & leverage:</em> use the two sliders to set how much margin you commit and your leverage. Order size = capital × leverage.</div></div>
+    <div class="st"><b>2</b><div><em>Market:</em> hit Long or Short to fill now at the mark price. <em>Limit:</em> pick the Limit tab, click the chart to mark your entry, then Long or Short (the price decides when it fills).</div></div>
+    <div class="st"><b>3</b><div><em>TP / SL like TradingView:</em> on an open position, grab the small green <em>TP</em> and red <em>SL</em> squares next to the entry tag and <em>drag them</em> up or down. You can also edit them with the pencil on each row.</div></div>
+    <div class="st"><b>4</b><div><em>Liquidation:</em> every position shows a liquidation price from your leverage. More leverage sits closer to entry. If price reaches it you lose that position's margin, and SL cannot be placed past it.</div></div>
+    <div class="st"><b>5</b><div>Drag the price or time axis to zoom, use Expand for a bigger chart, scroll down for Positions, Marked orders and History, and export a trade card or your track record certificate.</div></div>
     <div class="pie">Demo only. No real orders, no real money. Fees are simulated like Binance (taker, round trip).</div></div>`;
   document.body.appendChild(m);
   const ce = () => m.remove();
   $('td-help-x').onclick = ce;
   m.onclick = (e) => { if (e.target === m) ce(); };
 }
+function marcarAyudaVista() { try { localStorage.setItem('td-help-seen', '1'); } catch (_) {} const dot = $('td-help-dot'); if (dot) dot.remove(); }
 
 /* ── Barra de dibujo compartida ── */
 function geoDib() {
@@ -583,8 +852,8 @@ function menuMonedas() {
   m.onclick = (e) => e.stopPropagation();
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 0);
 }
-function cierraPopFuera(e) { const ids = ['td-coinmenu', 'td-levpop', 'td-help']; const anc = ['td-coin', 'td-levbtn', 'td-help-btn']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
-function cerrarPops() { ['td-coinmenu', 'td-levpop', 'td-help'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
+function cierraPopFuera(e) { const ids = ['td-coinmenu']; const anc = ['td-coin']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
+function cerrarPops() { ['td-coinmenu'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
 
 function toast(msg, tipo) { const old = document.querySelector('.td-toast'); if (old) old.remove(); const t = document.createElement('div'); t.className = 'td-toast ' + (tipo || ''); t.textContent = msg; document.body.appendChild(t); setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => { try { t.remove(); } catch (_) {} }, 320); }, 2600); }
 
@@ -596,6 +865,8 @@ function cerrar() {
   try { if (S.barra && S.barra.desmontar) S.barra.desmontar(); } catch (_) {} S.barra = null; S.dibMontada = false;
   try { if (S.chart) S.chart.remove(); } catch (_) {} S.chart = null; S.serieVela = null;
   try { if (S.ac) S.ac.close(); } catch (_) {} S.ac = null;
-  cerrarPops(); const md = $('td-modal'); if (md) md.remove();
+  cerrarPops();
+  ['td-modal', 'td-sheet', 'td-help'].forEach((id) => { const el = $(id); if (el) el.remove(); });
+  S.expand = false; S.drag = null;
   const ov = $('td-overlay'); if (ov) ov.remove();
 }

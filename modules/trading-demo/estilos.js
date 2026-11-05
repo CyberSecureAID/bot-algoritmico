@@ -50,21 +50,39 @@ export function estilos() {
   .td-wallet small{font-family:var(--td-mono); font-size:10px; color:var(--td-ink2)}
   .td-icobtn{height:36px; min-width:36px; padding:0 9px; border-radius:9px; flex:0 0 auto; display:inline-grid; place-items:center; color:#8b96a3; background:rgba(255,255,255,.05); border:1px solid var(--td-line2)}
   .td-icobtn svg{width:15px; height:15px} .td-icobtn:hover{border-color:var(--td-gold-soft); color:var(--td-gold)}
+  .td-icobtn.on{border-color:var(--td-gold); color:var(--td-gold); background:rgba(232,184,75,.12)}
+  #td-help-btn{position:relative}
+  #td-help-btn .td-dot{position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:var(--td-gold); animation:tdPulse 1.8s ease-out infinite; pointer-events:none}
+  @keyframes tdPulse{0%{box-shadow:0 0 0 0 rgba(232,184,75,.65)} 70%{box-shadow:0 0 0 7px rgba(232,184,75,0)} 100%{box-shadow:0 0 0 0 rgba(232,184,75,0)}}
 
-  /* ── Cuerpo ── */
-  .td-body{flex:1 1 auto; min-height:0; display:flex; flex-direction:column}
-  .td-main{flex:1 1 auto; min-height:0; display:grid; grid-template-columns:1fr 296px}
+  /* ── Cuerpo: scroll de pagina. Primera plana = grafica + panel de operar.
+     Al bajar aparece la seccion de posiciones/ordenes/historial. ── */
+  .td-body{flex:1 1 auto; min-height:0; overflow-y:auto; position:relative}
+  .td-main{height:100%; min-height:440px; display:grid; grid-template-columns:1fr 322px}
+  #td-overlay.td-expand .td-main{grid-template-columns:1fr}
+  #td-overlay.td-expand .td-entry{display:none}
   .td-chart{position:relative; min-width:0; border-right:1px solid var(--td-line); background:var(--td-bg); overflow:hidden}
+  #td-overlay.td-expand .td-chart{border-right:none}
   .td-cv{position:absolute; inset:0}
   .td-fx{position:absolute; inset:0; z-index:4; pointer-events:none}
-  .td-wm{position:absolute; left:14px; bottom:30px; z-index:1; opacity:.8; pointer-events:none}
-  .td-wm img{height:28px; width:auto; filter:drop-shadow(0 2px 8px rgba(0,0,0,.9))}
+  .td-wm{position:absolute; left:64px; bottom:40px; z-index:1; opacity:.82; pointer-events:none}
+  .td-wm img{height:42px; width:auto; filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
   .td-ticket{position:absolute; z-index:6; pointer-events:none; left:12px; font-family:var(--td-disp); font-weight:800; font-size:12px; padding:5px 11px; border-radius:9px; transform:translateY(-50%); animation:tdTicket 2.4s ease forwards; white-space:nowrap; box-shadow:0 6px 20px rgba(0,0,0,.5)}
   .td-ticket.long{background:linear-gradient(180deg,#4dffa0,#1fc96e); color:#04210f} .td-ticket.short{background:linear-gradient(180deg,#ff8a95,#e03546); color:#2a0509} .td-ticket.gold{background:linear-gradient(180deg,#f7db8d,var(--td-gold)); color:#2a1d00}
   @keyframes tdTicket{0%{opacity:0; transform:translateY(-50%) translateX(-6px) scale(.9)} 14%{opacity:1; transform:translateY(-50%) translateX(0) scale(1)} 82%{opacity:1} 100%{opacity:0; transform:translateY(-50%) translateX(8px)}}
 
-  /* ── Panel de entrada (compacto, sin scroll) ── */
-  .td-entry{display:flex; flex-direction:column; gap:9px; min-width:0; padding:12px; background:var(--td-panel); overflow-y:auto}
+  /* ── Panel de entrada (llena la primera plana; sliders de capital y apalancamiento) ── */
+  .td-entry{display:flex; flex-direction:column; gap:12px; min-width:0; padding:14px; background:var(--td-panel); overflow-y:auto}
+  /* Slider (barra progresiva) estilo futuros */
+  .td-sld{display:flex; flex-direction:column; gap:7px}
+  .td-sld-top{display:flex; justify-content:space-between; align-items:baseline}
+  .td-sld-top .lbl{font-family:var(--td-mono); font-size:10.5px; color:var(--td-ink3); letter-spacing:.04em; text-transform:uppercase}
+  .td-sld-top .val{font-family:var(--td-disp); font-weight:800; font-size:16px; color:var(--td-gold)}
+  .td-range{-webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:4px; background:linear-gradient(90deg,var(--td-gold) 0%,var(--td-gold) var(--f,20%),#222b36 var(--f,20%),#222b36 100%); outline:none; cursor:pointer}
+  .td-range::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:50%; background:#fff; border:3px solid var(--td-gold); cursor:pointer; box-shadow:0 1px 5px rgba(0,0,0,.5)}
+  .td-range::-moz-range-thumb{width:16px; height:16px; border:3px solid var(--td-gold); border-radius:50%; background:#fff; cursor:pointer}
+  .td-marks{display:flex; justify-content:space-between; font-family:var(--td-mono); font-size:9px; color:var(--td-ink3); margin-top:-1px}
+  .td-marks span{cursor:pointer}
   .td-modes{display:flex; gap:4px}
   .td-mode{flex:1; height:32px; border-radius:8px; border:1px solid var(--td-line2); background:rgba(255,255,255,.03); color:var(--td-ink2); font-family:var(--td-mono); font-size:11.5px; font-weight:700}
   .td-mode.on{background:rgba(232,184,75,.12); border-color:var(--td-gold); color:var(--td-gold)}
@@ -88,14 +106,17 @@ export function estilos() {
   .td-tpsl .td-in em{order:-1; margin-right:2px}
   .td-cost{display:flex; justify-content:space-between; font-family:var(--td-mono); font-size:11px; color:var(--td-ink2)}
   .td-cost b{color:var(--td-ink)} .td-cost .liqv{color:var(--td-down2)}
-  .td-ops{display:flex; gap:9px; margin-top:auto; position:sticky; bottom:0; padding-top:10px; background:var(--td-panel); box-shadow:0 -14px 16px -10px var(--td-panel)}
+  .td-ops{display:flex; gap:10px; margin-top:auto; position:sticky; bottom:0; padding-top:12px; padding-bottom:2px; background:var(--td-panel)}
   .td-op{flex:1; min-height:46px; border-radius:11px; border:none; font-family:var(--td-disp); font-weight:800; font-size:16px; letter-spacing:.04em; color:#04210f}
   .td-op.long{background:linear-gradient(180deg,#4dffa0,#1fc96e); box-shadow:0 3px 0 #11813f}
   .td-op.short{background:linear-gradient(180deg,#ff8a95,#e03546); color:#2a0509; box-shadow:0 3px 0 #8f1f2a}
   .td-op:hover{filter:brightness(1.05)} .td-op:active{transform:translateY(2px); box-shadow:none}
 
-  /* ── Panel inferior ── */
-  .td-pos{flex:0 0 auto; height:120px; display:flex; flex-direction:column; border-top:1px solid var(--td-line); background:var(--td-panel2)}
+  /* ── Panel inferior: aparece al hacer scroll, alto, con lista desplazable (72+ ordenes) ── */
+  .td-pos{flex:0 0 auto; min-height:78vh; display:flex; flex-direction:column; border-top:2px solid var(--td-line2); background:var(--td-panel2)}
+  #td-overlay.td-expand .td-pos{display:none}
+  .td-pos-hint{display:flex; align-items:center; justify-content:center; gap:7px; height:30px; flex:0 0 auto; font-family:var(--td-mono); font-size:10.5px; color:var(--td-ink3); border-bottom:1px solid var(--td-line); background:rgba(255,255,255,.015)}
+  .td-pos-hint svg{width:13px; height:13px}
   .td-pos-tabs{display:flex; align-items:center; gap:2px; padding:5px 8px; border-bottom:1px solid var(--td-line); flex:0 0 auto}
   .td-pos-tab{height:28px; padding:0 12px; border-radius:7px; border:none; background:transparent; color:var(--td-ink2); font-family:var(--td-mono); font-size:11.5px; font-weight:700}
   .td-pos-tab.on{background:rgba(255,255,255,.06); color:var(--td-ink)} .td-pos-tab b{color:var(--td-gold)}
@@ -105,7 +126,12 @@ export function estilos() {
   .td-tbl{width:100%; border-collapse:collapse; font-family:var(--td-mono); font-size:11.5px}
   .td-tbl th{position:sticky; top:0; background:var(--td-panel2); text-align:right; padding:6px 13px; color:var(--td-ink3); font-weight:700; font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; border-bottom:1px solid var(--td-line); white-space:nowrap; z-index:1}
   .td-tbl th:first-child,.td-tbl td:first-child{text-align:left}
-  .td-tbl td{padding:7px 13px; text-align:right; border-bottom:1px solid rgba(27,34,44,.6); white-space:nowrap; color:var(--td-ink)}
+  .td-tbl td{padding:9px 13px; text-align:right; border-bottom:1px solid rgba(27,34,44,.6); white-space:nowrap; color:var(--td-ink); vertical-align:middle}
+  .td-acts{display:inline-flex; align-items:center; gap:6px; vertical-align:middle}
+  .td-tpsl-c{display:inline-flex; align-items:center; gap:5px; vertical-align:middle}
+  .td-tpsl-c em{font-style:normal}
+  .td-edit{width:22px; height:22px; flex:0 0 auto; display:inline-grid; place-items:center; padding:0; border-radius:6px; border:1px solid var(--td-line2); background:rgba(255,255,255,.04); color:var(--td-ink3)}
+  .td-edit svg{width:11px; height:11px} .td-edit:hover{border-color:var(--td-gold-soft); color:var(--td-gold)}
   .td-tbl tbody tr:hover{background:rgba(255,255,255,.02)}
   .td-sym{display:inline-flex; align-items:center; gap:7px}
   .td-sym i{width:18px; height:18px; border-radius:50%; flex:0 0 auto; background:#232b36 center/cover no-repeat; display:inline-grid; place-items:center; font-family:var(--td-disp); font-weight:800; font-size:8px; color:#c9d1d9}
@@ -160,27 +186,41 @@ export function estilos() {
 
   /* ── Modal tarjeta de PnL ── */
   #td-modal{position:fixed; inset:0; z-index:14000; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(3,6,10,.72); backdrop-filter:blur(4px)}
-  #td-modal .card{position:relative; max-width:440px; width:100%; background:#10151c; border:1px solid var(--td-line2); border-radius:18px; padding:16px; box-shadow:0 30px 80px rgba(0,0,0,.7)}
-  #td-modal canvas{width:100%; height:auto; border-radius:12px; display:block}
-  #td-modal .acts{display:flex; gap:9px; margin-top:13px}
-  #td-modal .acts button{flex:1; min-height:42px; border-radius:11px; border:1px solid var(--td-line2); background:rgba(255,255,255,.05); color:var(--td-ink); font-family:var(--td-disp); font-weight:800; font-size:13px}
+  #td-modal .card{position:relative; max-width:600px; width:100%; background:#10151c; border:1px solid var(--td-line2); border-radius:18px; padding:16px; box-shadow:0 30px 80px rgba(0,0,0,.7); max-height:92vh; overflow-y:auto}
+  #td-modal canvas,#td-modal img{width:100%; height:auto; border-radius:12px; display:block}
+  #td-modal .acts{display:flex; gap:9px; margin-top:13px; flex-wrap:wrap}
+  #td-modal .acts button{flex:1 1 auto; min-width:120px; min-height:42px; border-radius:11px; border:1px solid var(--td-line2); background:rgba(255,255,255,.05); color:var(--td-ink); font-family:var(--td-disp); font-weight:800; font-size:13px}
   #td-modal .acts .dl{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--td-gold) 55%,#c79426)}
   #td-modal .acts button:hover{filter:brightness(1.05)}
-  #td-modal .x{position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:9px; border:1px solid var(--td-line2); background:rgba(0,0,0,.4); color:var(--td-ink2); z-index:2}
+
+  /* ── Mini-modal generico (editar TP/SL, pedir nombre) ── */
+  .td-sheet{position:fixed; inset:0; z-index:14500; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(3,6,10,.72); backdrop-filter:blur(4px)}
+  .td-sheet .bx{position:relative; width:360px; max-width:100%; background:#141b24; border:1px solid var(--td-line2); border-radius:16px; padding:18px; box-shadow:0 30px 80px rgba(0,0,0,.7)}
+  .td-sheet h5{margin:0 0 3px; font-family:var(--td-disp); font-weight:800; font-size:16px; color:var(--td-ink)}
+  .td-sheet .sub{font-family:var(--td-mono); font-size:11.5px; color:var(--td-ink3); margin-bottom:14px}
+  .td-sheet .fld{display:flex; align-items:center; gap:8px; height:46px; padding:0 13px; border-radius:11px; background:#0b1017; border:1px solid var(--td-line2); margin-bottom:14px}
+  .td-sheet .fld:focus-within{border-color:var(--td-gold-soft)}
+  .td-sheet .fld input{flex:1; min-width:0; border:none; background:transparent; outline:none; color:var(--td-ink); font-family:var(--td-mono); font-size:16px; font-weight:700}
+  .td-sheet .fld .u{font-family:var(--td-mono); font-size:12px; color:var(--td-ink3)}
+  .td-sheet .btns{display:flex; gap:10px}
+  .td-sheet .btns button{flex:1; min-height:44px; border-radius:11px; font-family:var(--td-disp); font-weight:800; font-size:13.5px; border:1px solid var(--td-line2); background:rgba(255,255,255,.05); color:var(--td-ink)}
+  .td-sheet .btns .ok{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--td-gold) 55%,#c79426)}
+  .td-sheet .btns .ok.tp{border-color:#12b06a; background:linear-gradient(180deg,#34d98a,#12b06a); color:#04210f}
+  .td-sheet .btns .ok.sl{border-color:#e03246; background:linear-gradient(180deg,#fb5c6f,#e03246); color:#2a0509}
 
   /* ── Responsivo ── */
   @media (max-width:980px){
-    .td-body{display:block; overflow-y:auto}
-    .td-main{display:block}
-    .td-chart{height:56vh; border-right:none; border-bottom:1px solid var(--td-line)}
+    .td-main{display:block; height:auto; min-height:0}
+    #td-overlay.td-expand .td-main{display:block}
+    .td-chart{height:60vh; border-right:none; border-bottom:1px solid var(--td-line)}
     .td-stats{display:none}
-    .td-pos{height:auto; max-height:50vh}
-    .td-ops{position:static; box-shadow:none; margin-top:1px}
+    .td-pos{min-height:auto}
+    .td-ops{position:static; margin-top:12px}
   }
   @media (max-width:560px){
     .td-top{height:auto; flex-wrap:wrap; padding:8px 10px; gap:7px}
     .td-coin{order:2} .td-tf{order:3} .td-px{order:4} .td-wallet{order:5; margin-left:auto}
-    .td-chart{height:50vh} .td-ops .td-op{font-size:15px}
+    .td-chart{height:52vh} .td-ops .td-op{font-size:15px}
   }`;
   document.head.appendChild(s);
 }
