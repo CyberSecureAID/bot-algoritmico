@@ -278,6 +278,7 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     // eliges el cursor u otra herramienta.
     // El resto: una sola vez por defecto, salvo que "mantener activa" esté encendido.
     if (N.herr !== 'marca' && N.herr !== 'brush' && !N.fijar) { N.herr = 'cursor'; N.sel = idx; marcarBoton(); }
+    else if (N.herr === 'marca' || N.herr === 'brush') { N.sel = idx; }   // brush/marca siguen activos, pero selecciona el ultimo trazo para que el toolbar muestre el cestico (borrar)
     construirTopbar(); dibujar();
   };
   let inputTexto = null;   // { inp, x, y } mientras se escribe, o null
