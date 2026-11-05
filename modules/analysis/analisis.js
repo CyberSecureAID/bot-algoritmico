@@ -40,10 +40,10 @@ const HERRAMIENTAS = [
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'indicator', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Where to buy and where to sell',
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
-  // "Confluence" (nombre de cara al usuario) = el módulo modules/institutional/ (archivo NO renombrado).
-  { id:'inst', abre:'inst', nombre:'Confluence', cat:'analysis', img:'modules/institutional/preview.svg', activos:['Crypto'], spot:true, listo:true,
-    lema:'The whole market, one desk',
-    desc:'A professional analysis terminal: pro charting with fifteen indicators, live quotes and watchlist, a market-wide heatmap and macro sentiment — the systems an institutional desk watches, wired into one screen.' },
+  // "VWAP Pro" (nombre de cara al usuario) = el módulo modules/institutional/ (archivo NO renombrado).
+  { id:'inst', abre:'inst', nombre:'VWAP Pro', cat:'analysis', img:'modules/institutional/preview.svg', activos:['Crypto'], spot:true, listo:true,
+    lema:'The institutional VWAP, read live',
+    desc:'A professional VWAP desk. The institutional VWAP with its deviation bands, plus a live analyst that reads where price sits against the VWAP right now, on this coin and timeframe, and tells you the professional play. Pro charting with fifteen indicators, live quotes, a market-wide heatmap and macro sentiment, wired into one screen.' },
   { id:'react', abre:'react', nombre:'Reaction Zones', cat:'analysis', img:'modules/reaction/preview.svg', activos:['Crypto'], spot:true, listo:true,
     lema:'Where price is going to react',
     desc:'A structural engine that maps the exact levels where price is likely to react, built from repeated pivots with a live break-pressure read. Red zones above the price mark short context, green below mark long, with auto-projected positions (Single / Double) and right-click orders.' }
@@ -148,7 +148,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=141')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=136')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=133')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=35', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=36', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
