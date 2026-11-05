@@ -12,9 +12,9 @@
    compartido del resto de secciones: catálogo de monedas, sus logos y la misma
    barra de dibujo. */
 
-import { estilos } from './estilos.js?v=3';
+import { estilos } from './estilos.js?v=4';
 import * as D from './datos.js?v=2';
-import * as M from './motor.js?v=3';
+import * as M from './motor.js?v=4';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=6';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 
@@ -255,7 +255,7 @@ function renderEntry() {
   const mg = $('td-margin'); if (mg) mg.textContent = fmtMoney(margen);
   $('td-levbv').textContent = S.lev + 'x';
   const px = S.modo === 'limit' && S.limitPx > 0 ? S.limitPx : S.mark;
-  const lp = $('td-liqprev'); if (lp) lp.textContent = px > 0 ? (fmtP(px * (1 - (1 / S.lev - 0.004))) + ' / ' + fmtP(px * (1 + (1 / S.lev - 0.004)))) : '—';
+  const lp = $('td-liqprev'); if (lp) lp.textContent = px > 0 ? (fmtP(M.liqPrecio('long', px, S.lev)) + ' / ' + fmtP(M.liqPrecio('short', px, S.lev))) : '—';
 }
 
 function popLev() {
@@ -392,29 +392,48 @@ function pintarFx() {
     if (p.sl) { const sy = Y(p.sl); if (sy != null) { lineaTPSL(g, W, sy, '#ff5b6e', 'SL ' + fmtP(p.sl)); S._handles.push({ id: p.id, cual: 'sl', y: sy }); } }
   });
 }
-function lineaTPSL(g, W, y, col, txt) { g.save(); g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = col; g.fillRect(W - 7, y - 7, 7, 14); etiqueta(g, W - 7, y, txt, col, '#04210f'); g.restore(); }
+function lineaTPSL(g, W, y, col, txt) {
+  g.save();
+  g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]);
+  const xr = W - 72;                                        // a la izquierda del eje de precios
+  etiqueta(g, xr, y, txt, col, '#04210f');
+  g.fillStyle = col; redondea(g, xr + 3, y - 8, 13, 16, 3); g.fill();                          // tirador
+  g.fillStyle = 'rgba(0,0,0,.5)'; [-3, 0, 3].forEach((o) => g.fillRect(xr + 6, y + o, 7, 1.4));  // grip
+  g.restore();
+}
 function etiqueta(g, xRight, y, txt, bg, fg) { g.save(); g.font = '700 10.5px "IBM Plex Mono", monospace'; const w = g.measureText(txt).width + 14; const x = xRight - w - 8; g.fillStyle = bg; redondea(g, x, y - 9, w, 18, 4); g.fill(); g.fillStyle = fg; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(txt, x + 7, y + 0.5); g.restore(); }
 function redondea(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
 /* ── Arrastre de TP/SL ── */
 function wireDrag() {
-  const host = $('td-chart'); if (!host) return;
+  const host = $('td-chart'), fx = $('td-fx'); if (!host || !fx) return;
   const handleEn = (e) => {
     if (!(NIV.herr === 'cursor' || NIV.herr == null) || !S._handles || !S._handles.length) return null;
     const r = host.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
-    if (x < r.width - 80) return null;   // solo cerca del borde derecho (los tiradores)
-    for (const h of S._handles) if (Math.abs(y - h.y) < 7) return h;
+    if (x < r.width - 190 || x > r.width - 70) return null;   // banda del tirador, a la izquierda del eje de precios
+    for (const h of S._handles) if (Math.abs(y - h.y) < 8) return h;
     return null;
   };
-  host.addEventListener('mousemove', (e) => { if (S.drag) return; const h = handleEn(e); const fx = $('td-fx'); if (fx) fx.style.cursor = h ? 'ns-resize' : ''; });
-  host.addEventListener('mousedown', (e) => { const h = handleEn(e); if (h) { e.stopPropagation(); e.preventDefault(); S.drag = { id: h.id, cual: h.cual }; } }, true);
+  /* La capa fx normalmente deja pasar TODO a la grafica (pan, zoom, arrastre de
+     ejes, crosshair y clic). Solo "despierta" (pointer-events:auto) cuando el
+     puntero esta sobre un tirador TP/SL, para arrastrarlo sin estorbar al resto. */
+  host.addEventListener('mousemove', (e) => {
+    if (S.drag) return;
+    const h = handleEn(e);
+    fx.style.pointerEvents = h ? 'auto' : 'none';
+    fx.style.cursor = h ? 'ns-resize' : '';
+  });
+  fx.addEventListener('mousedown', (e) => {
+    const h = handleEn(e); if (!h) return;
+    e.stopPropagation(); e.preventDefault(); S.drag = { id: h.id, cual: h.cual };
+  });
   window.addEventListener('mousemove', (e) => {
     if (!S.drag || !S.serieVela) return;
     const r = $('td-chart').getBoundingClientRect(); const y = e.clientY - r.top;
     let px; try { px = S.serieVela.coordinateToPrice(y); } catch (_) { px = null; }
     if (px > 0) { const p = M.posiciones().find((x) => x.id === S.drag.id); if (p) { M.setTPSL(p.id, S.drag.cual === 'tp' ? +px.toFixed(dec(px)) : (p.tp || 0), S.drag.cual === 'sl' ? +px.toFixed(dec(px)) : (p.sl || 0)); } }
   });
-  window.addEventListener('mouseup', () => { if (S.drag) { S.drag = null; renderPos(); } });
+  window.addEventListener('mouseup', () => { if (S.drag) { S.drag = null; fx.style.pointerEvents = 'none'; renderPos(); } });
 }
 
 /* ── Animación + sonido ── */
@@ -435,20 +454,37 @@ function snd(tipo) {
 
 /* ── Exportaciones ── */
 function descargar(blob, nombre) { if (!blob) return; const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 3000); }
-function exportarChart() {
+function cargarImg(url, cross) { return new Promise((res) => { if (!url) return res(null); const im = new Image(); if (cross) im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => res(null); im.src = url; }); }
+async function exportarChart() {
   if (!S.chart) { toast('Chart is not ready yet.', 'warn'); return; }
   let ch; try { ch = S.chart.takeScreenshot(); } catch (_) { toast('Could not export the chart.', 'bad'); return; }
-  const W = ch.width, H = ch.height, top = 56;
+  const W = ch.width, H = ch.height, top = 64;
+  const coinUrl = S.par && S.par.cg && S.logos[S.par.cg];
+  const [imgCoin, wm1] = await Promise.all([cargarImg(coinUrl, true), cargarImg(LOGO, false)]);
+  const imgWm = wm1 || await cargarImg(LOGO_ALT, false);
   const out = document.createElement('canvas'); out.width = W; out.height = H + top; const g = out.getContext('2d');
   g.fillStyle = '#0a0d12'; g.fillRect(0, 0, out.width, out.height);
+  // Franja superior
   g.fillStyle = '#0e141c'; g.fillRect(0, 0, out.width, top);
-  g.fillStyle = '#E8B84B'; g.beginPath(); g.arc(24, top / 2, 6, 0, 7); g.fill();
-  g.font = '800 17px "Chakra Petch", sans-serif'; g.fillStyle = '#E8B84B'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText('DecFreedom · Trading Demo', 40, top / 2 - 7);
-  g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#6b7580'; g.fillText('DEMO · not real · criptocubaoficial.com', 40, top / 2 + 10);
-  g.textAlign = 'right'; g.font = '700 15px "IBM Plex Mono", monospace'; g.fillStyle = '#eaecef'; g.fillText(S.par.id + 'USDT · ' + fmtP(S.mark), out.width - 18, top / 2 - 7);
-  g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#6b7580'; g.fillText(S.tf + ' · ' + new Date().toLocaleString('en-US'), out.width - 18, top / 2 + 10);
+  g.fillStyle = 'rgba(232,184,75,.28)'; g.fillRect(0, top - 1, out.width, 1);
+  // Izquierda: la moneda (logo, nombre, precio) y debajo temporalidad y hora
+  const r = 15, cx = 18 + r, cy = 27;
+  if (imgCoin) { g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.closePath(); g.clip(); g.drawImage(imgCoin, cx - r, cy - r, r * 2, r * 2); g.restore(); g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); }
+  else { g.fillStyle = '#232b36'; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); g.fillStyle = '#c9d1d9'; g.font = '800 14px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText((S.par.id || '?')[0], cx, cy + 1); }
+  const tx = cx + r + 12;
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.font = '800 18px "Chakra Petch", sans-serif'; g.fillStyle = '#eaecef'; g.fillText(S.par.id + 'USDT', tx, 27);
+  const nameW = g.measureText(S.par.id + 'USDT').width;
+  g.font = '700 16px "IBM Plex Mono", monospace'; g.fillStyle = S.chgPct >= 0 ? '#3ee88a' : '#ff6b7a'; g.fillText(fmtP(S.mark), tx + nameW + 12, 27);
+  g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#8b96a3'; g.fillText(S.tf + '  ·  ' + new Date().toLocaleString('en-US'), tx, 48);
+  // Derecha: Trading Demo y nuestro dominio
+  g.textAlign = 'right';
+  g.font = '800 17px "Chakra Petch", sans-serif'; g.fillStyle = '#E8B84B'; g.fillText('Trading Demo', out.width - 16, 27);
+  g.font = '700 11.5px "IBM Plex Mono", monospace'; g.fillStyle = '#8b96a3'; g.fillText('decfreedom.com', out.width - 16, 48);
+  // Grafica
   g.drawImage(ch, 0, top);
-  g.save(); g.globalAlpha = .55; g.font = '800 18px "Chakra Petch", sans-serif'; g.fillStyle = '#E8B84B'; g.textAlign = 'left'; g.fillText('DecFreedom', 18, out.height - 16); g.restore();
+  // Marca de agua: el logo (imagen) abajo a la izquierda, por encima del eje de tiempo
+  if (imgWm && imgWm.width) { const wmH = 30, wmW = imgWm.width * (wmH / imgWm.height); g.save(); g.globalAlpha = .8; g.drawImage(imgWm, 18, out.height - wmH - 34, wmW, wmH); g.restore(); }
   try { out.toBlob((b) => { descargar(b, `demo-${S.par.id}-${S.tf}.png`); toast('Chart image exported.', 'ok'); }); } catch (_) { toast('Could not export the chart.', 'bad'); }
 }
 function exportarCSV() { try { descargar(new Blob([M.csv()], { type: 'text/csv' }), `demo-history-${S.par.id}.csv`); toast('History exported (CSV).', 'ok'); } catch (_) { toast('Could not export the history.', 'bad'); } }
@@ -470,7 +506,7 @@ function tarjetaPnL(tr) {
   g.textAlign = 'right'; g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#6b7580'; g.fillText('ENTRY', W - 160, 196); g.fillText('EXIT', W - 160, 224);
   g.font = '700 14px "IBM Plex Mono", monospace'; g.fillStyle = '#c9d1d9'; g.fillText(fmtP(tr.entrada), W - 34, 196); g.fillText(fmtP(tr.salida), W - 34, 224);
   g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#6b7580'; g.fillText(new Date(tr.cerrado).toLocaleString('en-US'), W - 34, H - 24);
-  g.textAlign = 'left'; g.fillText('criptocubaoficial.com', 34, H - 24);
+  g.textAlign = 'left'; g.fillText('decfreedom.com', 34, H - 24);
   g.fillStyle = col; g.globalAlpha = .9; g.fillRect(0, H - 6, W, 6); g.globalAlpha = 1;
   const old = $('td-modal'); if (old) old.remove();
   const m = document.createElement('div'); m.id = 'td-modal'; m.innerHTML = `<div class="card"><button class="x">✕</button></div>`;
@@ -486,17 +522,20 @@ function renderTodo() { pintarPrecio(); renderEntry(); renderPos(); }
 /* ── Ayuda ── */
 function ayuda() {
   cerrarPops();
-  const anc = $('td-help-btn'), r = anc.getBoundingClientRect();
-  const m = document.createElement('div'); m.className = 'td-pop'; m.id = 'td-help';
-  m.style.right = '12px'; m.style.top = (r.bottom + 6) + 'px';
-  m.innerHTML = `<h4>How to trade (demo)</h4>
+  const old = $('td-help'); if (old) old.remove();
+  const m = document.createElement('div'); m.id = 'td-help';
+  m.innerHTML = `<div class="box"><button class="x" id="td-help-x" title="Close">✕</button>
+    <h4>How to trade (demo)</h4>
     <div class="st"><b>1</b><div><em>Market:</em> set leverage and size, then hit Long or Short. It fills now at the mark price.</div></div>
     <div class="st"><b>2</b><div><em>Limit:</em> pick the Limit tab and <em>click the chart</em> where you want to enter. Set leverage and size, then Long or Short. The price decides when it fills (keep this open).</div></div>
     <div class="st"><b>3</b><div><em>TP / SL:</em> set them before entering, or on an open position press TP/SL and <em>drag the green and red lines</em> on the chart.</div></div>
-    <div class="st"><b>4</b><div>Close any position with Close, export the chart, or share a trade as an image. Your track record lives in History.</div></div>
-    <div class="pie">Demo only. No real orders, no real money. Fees are simulated like Binance (taker, round trip).</div>`;
-  document.body.appendChild(m); m.onclick = (e) => e.stopPropagation();
-  setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 0);
+    <div class="st"><b>4</b><div><em>Liquidation:</em> every position shows a liquidation price based on your leverage. More leverage means it sits closer to your entry. If the price reaches it, you lose that position's margin.</div></div>
+    <div class="st"><b>5</b><div>Zoom by dragging the price axis or the time axis, close with Close, export the chart, or share a trade as an image. Your track record lives in History.</div></div>
+    <div class="pie">Demo only. No real orders, no real money. Fees are simulated like Binance (taker, round trip).</div></div>`;
+  document.body.appendChild(m);
+  const ce = () => m.remove();
+  $('td-help-x').onclick = ce;
+  m.onclick = (e) => { if (e.target === m) ce(); };
 }
 
 /* ── Barra de dibujo compartida ── */

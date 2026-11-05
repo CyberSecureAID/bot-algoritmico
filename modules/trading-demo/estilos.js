@@ -56,7 +56,7 @@ export function estilos() {
   .td-main{flex:1 1 auto; min-height:0; display:grid; grid-template-columns:1fr 296px}
   .td-chart{position:relative; min-width:0; border-right:1px solid var(--td-line); background:var(--td-bg); overflow:hidden}
   .td-cv{position:absolute; inset:0}
-  .td-fx{position:absolute; inset:0; z-index:4}
+  .td-fx{position:absolute; inset:0; z-index:4; pointer-events:none}
   .td-wm{position:absolute; left:14px; bottom:30px; z-index:1; opacity:.8; pointer-events:none}
   .td-wm img{height:28px; width:auto; filter:drop-shadow(0 2px 8px rgba(0,0,0,.9))}
   .td-ticket{position:absolute; z-index:6; pointer-events:none; left:12px; font-family:var(--td-disp); font-weight:800; font-size:12px; padding:5px 11px; border-radius:9px; transform:translateY(-50%); animation:tdTicket 2.4s ease forwards; white-space:nowrap; box-shadow:0 6px 20px rgba(0,0,0,.5)}
@@ -88,14 +88,14 @@ export function estilos() {
   .td-tpsl .td-in em{order:-1; margin-right:2px}
   .td-cost{display:flex; justify-content:space-between; font-family:var(--td-mono); font-size:11px; color:var(--td-ink2)}
   .td-cost b{color:var(--td-ink)} .td-cost .liqv{color:var(--td-down2)}
-  .td-ops{display:flex; gap:9px; margin-top:1px}
+  .td-ops{display:flex; gap:9px; margin-top:auto; position:sticky; bottom:0; padding-top:10px; background:var(--td-panel); box-shadow:0 -14px 16px -10px var(--td-panel)}
   .td-op{flex:1; min-height:46px; border-radius:11px; border:none; font-family:var(--td-disp); font-weight:800; font-size:16px; letter-spacing:.04em; color:#04210f}
   .td-op.long{background:linear-gradient(180deg,#4dffa0,#1fc96e); box-shadow:0 3px 0 #11813f}
   .td-op.short{background:linear-gradient(180deg,#ff8a95,#e03546); color:#2a0509; box-shadow:0 3px 0 #8f1f2a}
   .td-op:hover{filter:brightness(1.05)} .td-op:active{transform:translateY(2px); box-shadow:none}
 
   /* ── Panel inferior ── */
-  .td-pos{flex:0 0 auto; height:150px; display:flex; flex-direction:column; border-top:1px solid var(--td-line); background:var(--td-panel2)}
+  .td-pos{flex:0 0 auto; height:120px; display:flex; flex-direction:column; border-top:1px solid var(--td-line); background:var(--td-panel2)}
   .td-pos-tabs{display:flex; align-items:center; gap:2px; padding:5px 8px; border-bottom:1px solid var(--td-line); flex:0 0 auto}
   .td-pos-tab{height:28px; padding:0 12px; border-radius:7px; border:none; background:transparent; color:var(--td-ink2); font-family:var(--td-mono); font-size:11.5px; font-weight:700}
   .td-pos-tab.on{background:rgba(255,255,255,.06); color:var(--td-ink)} .td-pos-tab b{color:var(--td-gold)}
@@ -141,11 +141,14 @@ export function estilos() {
   #td-levpop .chips button.on{background:rgba(232,184,75,.14); border-color:var(--td-gold); color:var(--td-gold)}
   #td-levpop .nota{font-family:var(--td-mono); font-size:10.5px; color:var(--td-ink2); margin-bottom:10px} #td-levpop .nota b{color:var(--td-ink)}
   #td-levpop .ok{width:100%; min-height:40px; border-radius:10px; border:1px solid #c79426; background:linear-gradient(180deg,#f7db8d,var(--td-gold) 55%,#c79426); color:#2a1d00; font-family:var(--td-disp); font-weight:800; font-size:13px}
-  #td-help{width:320px; font-family:'Plus Jakarta Sans',sans-serif}
-  #td-help h4{font-family:var(--td-disp); font-weight:800; font-size:14px; margin:0 0 9px; color:var(--td-gold)}
-  #td-help .st{display:flex; gap:9px; margin-bottom:9px} #td-help .st b{flex:0 0 auto; width:20px; height:20px; border-radius:50%; background:var(--td-gold); color:#2a1d00; font-family:var(--td-disp); font-weight:800; font-size:11px; display:grid; place-items:center}
-  #td-help .st div{font-size:12px; color:#c3cbd4; line-height:1.5} #td-help .st div em{font-style:normal; color:var(--td-ink)}
-  #td-help .pie{font-family:var(--td-mono); font-size:10px; color:var(--td-ink3); border-top:1px solid var(--td-line); padding-top:8px}
+  #td-help{position:fixed; inset:0; z-index:12000; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(3,6,10,.72); backdrop-filter:blur(4px); font-family:'Plus Jakarta Sans',sans-serif}
+  #td-help .box{position:relative; width:340px; max-width:100%; max-height:84vh; overflow-y:auto; background:#141b24; border:1px solid var(--td-line2); border-radius:16px; padding:18px; box-shadow:0 30px 80px rgba(0,0,0,.7)}
+  #td-help h4{font-family:var(--td-disp); font-weight:800; font-size:15px; margin:0 0 12px; color:var(--td-gold)}
+  #td-help .st{display:flex; gap:9px; margin-bottom:10px} #td-help .st b{flex:0 0 auto; width:20px; height:20px; border-radius:50%; background:var(--td-gold); color:#2a1d00; font-family:var(--td-disp); font-weight:800; font-size:11px; display:grid; place-items:center}
+  #td-help .st div{font-size:12.5px; color:#c3cbd4; line-height:1.52} #td-help .st div em{font-style:normal; color:var(--td-ink)}
+  #td-help .pie{font-family:var(--td-mono); font-size:10px; color:var(--td-ink3); border-top:1px solid var(--td-line); padding-top:9px; margin-top:4px}
+  #td-help .x{position:absolute; top:11px; right:11px; width:28px; height:28px; border-radius:8px; border:1px solid var(--td-line2); background:rgba(0,0,0,.4); color:var(--td-ink2)}
+  #td-help .x:hover{border-color:var(--td-down); color:var(--td-down2)}
 
   /* ── Toast / spinner ── */
   .td-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:13000; max-width:92vw; padding:12px 18px; border-radius:12px; background:#141b24; border:1px solid var(--td-line2); color:var(--td-ink); font-family:var(--td-mono); font-size:12.5px; box-shadow:0 16px 44px rgba(0,0,0,.6); animation:tdToast .25s ease}
@@ -172,6 +175,7 @@ export function estilos() {
     .td-chart{height:56vh; border-right:none; border-bottom:1px solid var(--td-line)}
     .td-stats{display:none}
     .td-pos{height:auto; max-height:50vh}
+    .td-ops{position:static; box-shadow:none; margin-top:1px}
   }
   @media (max-width:560px){
     .td-top{height:auto; flex-wrap:wrap; padding:8px 10px; gap:7px}

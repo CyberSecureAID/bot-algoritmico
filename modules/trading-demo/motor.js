@@ -14,7 +14,6 @@
 
 const LS = 'td-demo-v1';
 const BAL0 = 10000;
-const MMR = 0.004;          // margen de mantenimiento aprox. (liquidación)
 const FEE = 0.0004;         // taker por lado (Binance ~0,04%)
 
 let _id = 1;
@@ -36,7 +35,13 @@ export function historial() { return ST.hist; }
 export function reset() { ST = { balance: BAL0, pos: [], ord: [], hist: [], realizado: 0 }; guardar(); return ST; }
 export const comisionPct = () => FEE * 2 * 100;   // ida y vuelta, en %
 
-function liqDe(lado, entrada, lev) { const f = 1 / lev - MMR; return lado === 'long' ? entrada * (1 - f) : entrada * (1 + f); }
+/* Precio de liquidacion. Igual criterio que el area de futuros: umbral de ROE
+   dividido por el apalancamiento. El umbral varia con el apalancamiento: bajo
+   (<=10x) aguanta hasta ~80% de ROE en contra antes de saltar; alto (>=25x)
+   salta antes, ~75%. Al tocar ese precio la posicion se liquida y se pierde el
+   100% del margen de ESA posicion (no la cuenta entera). */
+function umbralLiq(lev) { return lev <= 10 ? 0.80 : lev >= 25 ? 0.75 : 0.80 - (lev - 10) * (0.05 / 15); }
+function liqDe(lado, entrada, lev) { const u = umbralLiq(lev); return lado === 'long' ? entrada * (1 - u / lev) : entrada * (1 + u / lev); }
 export function liqPrecio(lado, entrada, lev) { return liqDe(lado, entrada, lev); }
 
 /* PnL no realizado PURO (sin comisiones), como el de Binance. */
