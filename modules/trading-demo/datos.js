@@ -1,11 +1,10 @@
 /* modules/trading-demo/datos.js — Capa de datos del Trading Demo.
 
-   TODO del lado del cliente, sobre fuentes públicas de Binance con CORS (las
-   mismas que ya usa el resto de la plataforma). Sin servidor propio, sin
-   Cloudflare: velas por REST y, en vivo, un stream COMBINADO por WebSocket
-   (velas + libro + trades) para que la gráfica y el libro vayan de alta
-   frecuencia. El módulo es autónomo: no importa nada de otras secciones salvo
-   el catálogo de monedas y las temporalidades (compartidos a propósito). */
+   Todo del lado del cliente, sobre fuentes públicas de Binance/CoinGecko con
+   CORS (las mismas que ya usa la plataforma). Sin servidor, sin Cloudflare.
+   Velas por REST y, en vivo, el stream de velas por WebSocket (actualiza la
+   vela en formación en cada tick: movimiento en tiempo real). Logos de las
+   monedas desde CoinGecko, con la MISMA caché que el resto de secciones. */
 
 import { PARES, TFS } from '../../assets/js/niveles/config.js?v=1';
 export { PARES, TFS };
@@ -22,7 +21,6 @@ async function traer(url, ms = 8000) {
   } finally { clearTimeout(t); }
 }
 
-/* Velas OHLCV. `time` en SEGUNDOS para lightweight-charts. */
 const mapK = (k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] });
 export async function velas(simbolo, interval = '1m', limit = 500) {
   const n = Math.min(1000, limit);
@@ -30,7 +28,6 @@ export async function velas(simbolo, interval = '1m', limit = 500) {
   return j.map(mapK);
 }
 
-/* Ticker 24h: último precio, cambio %, OHLC del día, volumen. */
 export async function ticker(simbolo) {
   const t = await traer(`${BINANCE}/ticker/24hr?symbol=${encodeURIComponent(simbolo)}`);
   return {
@@ -39,31 +36,36 @@ export async function ticker(simbolo) {
   };
 }
 
-/* STREAM COMBINADO en vivo: velas (@kline), libro (@depth20@100ms) y trades
-   (@aggTrade) en una sola conexión. Reconecta solo si se cae. Devuelve { cerrar }.
-   cbs = { onKline, onDepth, onTrade }. */
-export function streamMercado(simbolo, interval, cbs) {
-  const s = String(simbolo).toLowerCase();
-  const streams = [`${s}@kline_${interval}`, `${s}@depth20@100ms`, `${s}@aggTrade`].join('/');
-  const url = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+/* Stream de velas EN VIVO (@kline): la vela en formación llega en cada tick, y
+   al cerrar con k.x === true. Reconecta solo si se cae. Devuelve { cerrar }. */
+export function streamVelas(simbolo, interval, onKline) {
+  const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${interval}`;
   let ws = null, cerrado = false, tmr = null;
   const abrir = () => {
     if (cerrado) return;
     try { ws = new WebSocket(url); } catch (_) { reintentar(); return; }
-    ws.onmessage = (ev) => {
-      let d; try { d = JSON.parse(ev.data); } catch (_) { return; }
-      const data = d && d.data; if (!data) return;
-      const str = d.stream || '';
-      try {
-        if (str.includes('@kline') && data.k) { cbs.onKline && cbs.onKline(data.k); }
-        else if (str.includes('@depth') && data.bids) { cbs.onDepth && cbs.onDepth(data); }
-        else if (str.includes('@aggTrade')) { cbs.onTrade && cbs.onTrade(data); }
-      } catch (_) {}
-    };
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onKline(d.k); } catch (_) {} };
     ws.onclose = () => { if (!cerrado) reintentar(); };
     ws.onerror = () => { try { ws.close(); } catch (_) {} };
   };
   const reintentar = () => { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); };
   abrir();
   return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
+}
+
+/* Mapa { cg-id: urlDelLogo } desde CoinGecko, con la MISMA caché de 24h que
+   usa el resto del sitio (localStorage 'aurex-logos-v2'), para no repetir
+   descargas. Si falla, devuelve {} y la UI usa la inicial de la moneda. */
+const CLAVE_LOGOS = 'aurex-logos-v2';
+let _logos = null;
+export async function logos() {
+  if (_logos) return _logos;
+  try { const g = JSON.parse(localStorage.getItem(CLAVE_LOGOS)); if (g && Date.now() - g.cuando < 86400000) { _logos = g.datos; return _logos; } } catch (_) {}
+  try {
+    const ids = PARES.filter((p) => p.cg).map((p) => p.cg).slice(0, 250).join(',');
+    const j = await traer(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&per_page=250`);
+    _logos = {}; j.forEach((x) => { _logos[x.id] = x.image; });
+    try { localStorage.setItem(CLAVE_LOGOS, JSON.stringify({ cuando: Date.now(), datos: _logos })); } catch (_) {}
+  } catch (_) { _logos = _logos || {}; }
+  return _logos;
 }
