@@ -35,9 +35,9 @@ import { T } from './niveles/i18n.js?v=1';
 import { analizar } from './niveles/asistente.js?v=2';
 try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Smart Pools · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
 import { guiaIndicador, menuAlertas, abrirWidget, registrarIndicador, ponerLogos, ayuda } from './niveles/menus.js?v=1';
-import { gestos } from './niveles/interaccion.js?v=4';
+import { gestos } from './niveles/interaccion.js?v=5';
 import { burbujas, initBurbujas } from './niveles/burbujas.js?v=1';
-import { dibujar, initRender } from './niveles/render.js?v=4';
+import { dibujar, initRender } from './niveles/render.js?v=5';
 import { esc, elegir, sembrar, hashCadena, fmt, miles, hora, fecha, _hex2rgb, redondeado } from './niveles/util.js?v=1';
 
 const $ = (id) => document.getElementById(id);

@@ -22,7 +22,8 @@
 //     mercado. Es la señal más fuerte que existe en el libro.
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=126';
-// [DESACOPLADO] Heat Pools ya NO importa la barra de dibujo compartida (rompía el gráfico). Ver abrirMuros.
+import { montarBarra } from './niveles/barra.js?v=6';   // barra de dibujo compartida (la misma de Liquidity/Smart Pools)
+import { N } from './niveles/estado.js?v=1';             // estado del dibujo: aísla por sección y guarda por moneda
 import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálogo ÚNICO de monedas (las tres secciones)
 try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Heat Pools · build 2026-11-03h (bases lejanas del impulso)'); } catch (_) {}
 
@@ -1840,11 +1841,16 @@ function dibujar() {
   if (!cv.dataset.listo) {
     engancharGestos(cv);
     cv.dataset.listo = '1';
-    /* [DESACOPLADO] Heat Pools NO monta la barra de dibujo compartida: inyectaba
-       un segundo sistema de gestos (overlay nv-cvh + interacción compartida)
-       sobre el gráfico de Heat y lo rompía (aparecía al mover y se iba). Heat
-       usa SOLO su propio engancharGestos, como en la versión que funcionaba.
-       La lógica de hair pulls / mapa de calor queda intacta. */
+    /* [RE-ACOPLADO] La barra de dibujo compartida se monta sobre el CONTENEDOR
+       (mu-graf), exactamente igual que en Liquidity Pools, que también lleva
+       mapa de calor y funciona sin problemas. Su canvas overlay (nv-cvh) vive
+       en pointer-events:none mientras el cursor está en modo normal, así los
+       gestos y el zoom del mapa de calor pasan intactos al canvas de Heat;
+       solo captura cuando hay una herramienta de dibujo activa. La geometría
+       de ESTA gráfica se le entrega al final de cada repintado (más abajo:
+       _barra.redibujar). N.seccion aísla sus dibujos de las demás secciones. */
+    N.seccion = 'heat';
+    _barra = montarBarra(zona);
     /* Órdenes desde el gráfico: clic derecho o toque largo. */
     import('./orden.js?v=126').then((od) => {
       od.conectar({
