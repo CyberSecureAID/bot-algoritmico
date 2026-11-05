@@ -116,10 +116,10 @@ const PUERTAS = {
      su motor: por eso cualquier cambio en los bots rompia el swap. Ahora se navega. */
   swap: () => { location.href = 'modules/swap/swap.html'; },
   market:  async () => (await import(J + 'market.js?v=125')).abrirMarket(),
-  liq:     async () => (await import(J + 'liquidity.js?v=129')).abrirLiquidity(),
-  pools:   async () => (await import(J + 'liquidity.js?v=129')).abrirPools(),
-  heat:    async () => (await import(J + 'muros.js?v=129')).abrirMuros(),
-  levels:  async () => (await import(J + 'niveles.js?v=127')).abrirNiveles(),
+  liq:     async () => (await import(J + 'liquidity.js?v=130')).abrirLiquidity(),
+  pools:   async () => (await import(J + 'liquidity.js?v=130')).abrirPools(),
+  heat:    async () => (await import(J + 'muros.js?v=130')).abrirMuros(),
+  levels:  async () => (await import(J + 'niveles.js?v=128')).abrirNiveles(),
   tools:   async (tid) => (await import(J + 'tools.js?v=128')).abrirTools(tid),
   academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
@@ -128,7 +128,7 @@ const PUERTAS = {
   analisis: async () => {
     const w = await wallet();
     const ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
-    const m = await import(new URL('modules/analysis/analisis.js?v=5', document.baseURI).href);
+    const m = await import(new URL('modules/analysis/analisis.js?v=6', document.baseURI).href);
     await m.abrirAnalisis('hero', w, ethers);
   }
 };
