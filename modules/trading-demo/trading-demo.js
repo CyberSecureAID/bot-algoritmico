@@ -12,9 +12,9 @@
    compartido del resto de secciones: catálogo de monedas, sus logos y la misma
    barra de dibujo. */
 
-import { estilos } from './estilos.js?v=5';
+import { estilos } from './estilos.js?v=6';
 import * as D from './datos.js?v=2';
-import * as M from './motor.js?v=4';
+import * as M from './motor.js?v=5';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 
@@ -28,7 +28,7 @@ const IMG_SHORT = new URL('../../assets/portada/img/short.webp', import.meta.url
 const S = {
   par: null, tf: '1m', velas: [], velasDib: [], chart: null, serieVela: null,
   mark: 0, open24: 0, high24: 0, low24: 0, vol24: 0, chgPct: 0,
-  lev: 10, cap: 100, tam: 1000, modo: 'market', limitPx: 0,
+  lev: 10, cap: 100, tam: 1000, modo: 'limit', limitPx: 0, histPage: 0,
   stream: null, barra: null, dibMontada: false, lineaLimit: null, tab: 'pos',
   uiRAF: null, onResize: null, cvObs: null, marks: {}, logos: {},
   drag: null, hoverH: null, ac: null, expand: false
@@ -101,11 +101,12 @@ function plantilla() {
         <div class="td-cv" id="td-cv"></div>
         <canvas class="td-fx" id="td-fx"></canvas>
         <div class="td-wm"><img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'" alt=""></div>
+        <button class="td-icobtn td-exit" id="td-exit" title="Exit full chart">${IC.shrink} Exit</button>
         <div class="td-spin" id="td-spin"><i></i></div>
       </div>
       <div class="td-entry">
-        <div class="td-modes"><button class="td-mode on" data-modo="market">Market</button><button class="td-mode" data-modo="limit">Limit (mark)</button></div>
-        <div class="td-fld" id="td-limitwrap" style="display:none">
+        <div class="td-modes"><button class="td-mode" data-modo="market">Market</button><button class="td-mode on" data-modo="limit">Limit (mark)</button></div>
+        <div class="td-fld" id="td-limitwrap">
           <div class="td-fld-l"><span>Entry price</span><span>click the chart</span></div>
           <div class="td-in"><input type="number" id="td-limit" placeholder="0.00" step="any"><em>USDT</em></div>
         </div>
@@ -129,6 +130,13 @@ function plantilla() {
         </div>
         <div class="td-cost"><span>Margin</span><b id="td-margin">—</b></div>
         <div class="td-cost"><span>Liq. (est.)</span><b class="liqv" id="td-liqprev">—</b></div>
+        <div class="td-summary" id="td-summary">
+          <div class="td-sum-h">Order summary</div>
+          <div class="td-sum-row"><span>Order value</span><b id="td-sum-val">—</b></div>
+          <div class="td-sum-row"><span>Est. fees · round trip</span><b id="td-sum-fee">—</b></div>
+          <div class="td-sum-row"><span>Breakeven</span><b id="td-sum-be">—</b></div>
+          <div class="td-sum-note">Demo balance · fees simulated like Binance. No real funds, no liquidation of your account below $0.</div>
+        </div>
         <div class="td-ops"><button class="td-op long" id="td-long">Long</button><button class="td-op short" id="td-short">Short</button></div>
       </div>
     </div>
@@ -150,6 +158,7 @@ function cablear(ov) {
   $('td-coin').onclick = (e) => { e.stopPropagation(); menuMonedas(); };
   $('td-export').onclick = exportarChart;
   $('td-expand').onclick = toggleExpand;
+  $('td-exit').onclick = toggleExpand;
   $('td-help-btn').onclick = (e) => { e.stopPropagation(); ayuda(); };
   $('td-reset').onclick = () => { if (confirm('Reset the demo to $10,000 and clear all positions and history?')) { M.reset(); S.cap = Math.min(S.cap, M.balance()); S.tam = +(S.cap * S.lev).toFixed(2); sincronCap(); renderTodo(); toast('Demo reset to $10,000.', 'ok'); } };
   $('td-tfcur').onclick = (e) => { e.stopPropagation(); $('td-tf').classList.toggle('open'); };
@@ -184,9 +193,11 @@ function sincronCap() {
 function toggleExpand() {
   S.expand = !S.expand;
   const ov = $('td-overlay'); if (ov) ov.classList.toggle('td-expand', S.expand);
-  const b = $('td-expand'); if (b) { b.classList.toggle('on', S.expand); b.innerHTML = S.expand ? IC.shrink : IC.expand; b.title = S.expand ? 'Exit expand' : 'Expand chart'; }
-  // la grafica se reajusta sola (autoSize); sincroniza la barra de dibujo
-  setTimeout(() => { try { sincronizarDib(); } catch (_) {} }, 60);
+  const b = $('td-expand'); if (b) { b.classList.toggle('on', S.expand); b.innerHTML = S.expand ? IC.shrink : IC.expand; b.title = S.expand ? 'Exit full chart' : 'Full chart'; }
+  // la grafica (autoSize) se reajusta sola; forzamos un par de sincronizaciones
+  try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+  setTimeout(() => { try { window.dispatchEvent(new Event('resize')); sincronizarDib(); } catch (_) {} }, 80);
+  setTimeout(() => { try { sincronizarDib(); } catch (_) {} }, 240);
 }
 
 function renderTf() {
@@ -297,6 +308,10 @@ function renderEntry() {
   const capr = $('td-capr'); if (capr) capr.style.setProperty('--f', (Math.min(1, S.cap / Math.max(1, bal)) * 100).toFixed(1) + '%');
   const px = S.modo === 'limit' && S.limitPx > 0 ? S.limitPx : S.mark;
   const lp = $('td-liqprev'); if (lp) lp.textContent = px > 0 ? (fmtP(M.liqPrecio('long', px, S.lev)) + ' / ' + fmtP(M.liqPrecio('short', px, S.lev))) : '—';
+  const fee = M.feeRueda(S.tam);
+  const sv = $('td-sum-val'); if (sv) sv.textContent = fmtMoney(S.tam);
+  const sf = $('td-sum-fee'); if (sf) sf.textContent = '~' + fmtMoney(fee);
+  const sb = $('td-sum-be'); if (sb) sb.textContent = (px > 0 && S.tam > 0) ? fmtP(px * (1 + fee / S.tam)) : '—';
 }
 
 
@@ -337,10 +352,15 @@ function renderPos() {
     body.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => editarTPSL(b.dataset.edit, b.dataset.k));
   } else {
     const st = M.stats(30);
-    if (r) r.innerHTML = `<span class="td-stat-chip">30d PnL <b class="${cls(st.total)}">${fmtMoney(st.total)}</b></span><span class="td-stat-chip">Win rate <b>${st.winRate}%</b></span><span class="td-stat-chip">Trades <b>${st.n}</b></span>${hist.length ? `<button class="td-x" id="td-cert">Export certificate</button>` : ''}`;
+    const PP = 60, tot = hist.length, pags = Math.max(1, Math.ceil(tot / PP));
+    if (S.histPage >= pags) S.histPage = pags - 1; if (S.histPage < 0) S.histPage = 0;
+    const pag = hist.slice(S.histPage * PP, S.histPage * PP + PP);
+    if (r) r.innerHTML = `<span class="td-stat-chip">30d PnL <b class="${cls(st.total)}">${fmtMoney(st.total)}</b></span><span class="td-stat-chip">Win rate <b>${st.winRate}%</b></span><span class="td-stat-chip">Trades <b>${st.n}</b></span>${tot > PP ? `<span class="td-pager"><button class="td-x" id="td-prev"${S.histPage === 0 ? ' disabled' : ''}>‹</button><span>${S.histPage + 1}/${pags}</span><button class="td-x" id="td-next"${S.histPage >= pags - 1 ? ' disabled' : ''}>›</button></span>` : ''}${tot ? `<button class="td-x" id="td-cert">Export certificate</button>` : ''}`;
     if ($('td-cert')) $('td-cert').onclick = pedirNombreCert;
-    if (!hist.length) { body.innerHTML = '<div class="td-empty">No closed trades yet. Your track record builds here as you open and close demo trades.</div>'; return; }
-    body.innerHTML = `<table class="td-tbl"><thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL (ROE)</th><th></th></tr></thead><tbody>${hist.map((h) => { const c = h.pnl >= 0 ? 'up' : 'down'; const d = new Date(h.cerrado); const f = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); const mo = h.motivo === 'tp' ? ' · TP' : h.motivo === 'sl' ? ' · SL' : h.motivo === 'liq' ? ' · LIQ' : ''; return `<tr><td>${f}</td><td><span class="td-sym">${logoChip(h.par)} ${esc(h.par)}</span></td><td><span class="td-tag ${h.lado}">${h.lado.toUpperCase()}</span> <span class="td-lev-badge">${h.lev}x</span></td><td>${fmtP(h.entrada)}</td><td>${fmtP(h.salida)}</td><td class="td-pnl ${c}">${fmtMoney(h.pnl)} (${fmtPct(h.roe)})${mo}</td><td><button class="td-share" data-shareh="${h.id}" title="Export trade card">${IC.share}</button></td></tr>`; }).join('')}</tbody></table>`;
+    if ($('td-prev')) $('td-prev').onclick = () => { S.histPage--; renderPos(); };
+    if ($('td-next')) $('td-next').onclick = () => { S.histPage++; renderPos(); };
+    if (!tot) { body.innerHTML = '<div class="td-empty">No closed trades yet. Your track record builds here as you open and close demo trades.</div>'; return; }
+    body.innerHTML = `<table class="td-tbl"><thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL (ROE)</th><th></th></tr></thead><tbody>${pag.map((h) => { const c = h.pnl >= 0 ? 'up' : 'down'; const d = new Date(h.cerrado); const f = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); const mo = h.motivo === 'tp' ? ' · TP' : h.motivo === 'sl' ? ' · SL' : h.motivo === 'liq' ? ' · LIQ' : ''; return `<tr><td>${f}</td><td><span class="td-sym">${logoChip(h.par)} ${esc(h.par)}</span></td><td><span class="td-tag ${h.lado}">${h.lado.toUpperCase()}</span> <span class="td-lev-badge">${h.lev}x</span></td><td>${fmtP(h.entrada)}</td><td>${fmtP(h.salida)}</td><td class="td-pnl ${c}">${fmtMoney(h.pnl)} (${fmtPct(h.roe)})${mo}</td><td><button class="td-share" data-shareh="${h.id}" title="Export trade card">${IC.share}</button></td></tr>`; }).join('')}</tbody></table>`;
     body.querySelectorAll('[data-shareh]').forEach((b) => b.onclick = () => { const h = hist.find((x) => x.id === b.dataset.shareh); if (h) tarjetaPnL(h); });
   }
 }
@@ -371,7 +391,9 @@ function refrescarPnL() {
     const pe = document.querySelector(`[data-pnl="${p.id}"]`); if (pe) { const { pnl, roe } = M.pnlDe(p, S.marks[p.par] || S.mark); pe.textContent = `${fmtMoney(pnl)} (${fmtPct(roe)})`; pe.className = 'td-pnl ' + (pnl >= 0 ? 'up' : 'down'); }
   });
 }
-function cerradoDesde(p) { const { pnl, roe } = M.pnlDe(p, S.marks[p.par] || S.mark); const fee = M.feeRueda(p.tam); return { par: p.par, lado: p.lado, lev: p.lev, tam: p.tam, entrada: p.entrada, salida: S.marks[p.par] || S.mark, pnl: pnl - fee, roe: roe - (fee / p.margen) * 100, cerrado: Date.now() }; }
+/* Tarjeta de una posición ABIERTA: usa el PnL EN VIVO (bruto), idéntico a lo que
+   muestra la posición en pantalla (no resta comisiones de cierre). */
+function cerradoDesde(p) { const mk = S.marks[p.par] || S.mark; const { pnl, roe } = M.pnlDe(p, mk); return { par: p.par, lado: p.lado, lev: p.lev, tam: p.tam, entrada: p.entrada, salida: mk, pnl, roe, cerrado: Date.now() }; }
 
 /* Editar TP o SL de una posición o de una orden marcada (como en futuros). El
    SL no puede pasar el precio de liquidación: si lo pasa, se retira. Dejar el
@@ -433,6 +455,7 @@ function pintarFx() {
   const markY = Y(S.mark);
   // órdenes marcadas: línea dorada pulsante
   const pulso = 0.5 + 0.5 * Math.sin(performance.now() / 320);
+  const gp = 0.5 + 0.5 * Math.sin(performance.now() / 600);   // iluminacion suave (glow) de las posiciones
   M.ordenes().filter((o) => o.par === S.par.id).forEach((o) => { const y = Y(o.precio); if (y == null) return; g.save(); g.setLineDash([6, 5]); g.strokeStyle = `rgba(232,184,75,${0.5 + 0.4 * pulso})`; g.lineWidth = 1.3; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); etiqueta(g, plotR, y, (o.lado === 'long' ? 'LONG' : 'SHORT') + ' mark ' + fmtP(o.precio), '#E8B84B', '#2a1d00'); g.restore(); });
   // posiciones
   M.posiciones().filter((p) => p.par === S.par.id).forEach((p) => {
@@ -440,22 +463,23 @@ function pintarFx() {
     const { pnl, roe } = M.pnlDe(p, S.mark); const verde = pnl >= 0;
     const col = p.lado === 'long' ? '#2ee86a' : '#ff5b6e';
     if (markY != null) { g.fillStyle = verde ? 'rgba(46,232,106,.08)' : 'rgba(255,91,110,.08)'; const a = Math.min(ey, markY), b = Math.max(ey, markY); g.fillRect(0, a, W, b - a); }
-    g.save(); g.strokeStyle = col; g.lineWidth = 1.6; g.beginPath(); g.moveTo(0, ey); g.lineTo(W, ey); g.stroke(); g.restore();
-    etiqueta(g, plotR, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'} ${p.lev}x  ${fmtMoney(pnl)} (${fmtPct(roe)})`, col, '#04210f');
+    // línea de entrada con iluminación suave: verde en ganancia, roja en pérdida
+    g.save(); g.strokeStyle = verde ? '#2ee86a' : '#ff5b6e'; g.lineWidth = 1.8; g.shadowColor = verde ? 'rgba(46,232,106,.95)' : 'rgba(255,91,110,.95)'; g.shadowBlur = 5 + 9 * gp; g.beginPath(); g.moveTo(0, ey); g.lineTo(W, ey); g.stroke(); g.restore();
+    etiqueta(g, plotR, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'} ${p.lev}x  ${fmtMoney(pnl)} (${fmtPct(roe)})`, verde ? '#2ee86a' : '#ff5b6e', '#04210f');
     if (ly != null) { g.save(); g.setLineDash([2, 4]); g.strokeStyle = 'rgba(255,91,110,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, ly); g.lineTo(plotR, ly); g.stroke(); etiqueta(g, plotR, ly, 'LIQ ' + fmtP(p.liq), 'rgba(255,91,110,.85)', '#2a0509'); g.restore(); }
-    ctrlTPSL(g, p, 'tp', '#2ee86a', ey, plotR, H, Y);
-    ctrlTPSL(g, p, 'sl', '#ff5b6e', ey, plotR, H, Y);
+    ctrlTPSL(g, p, 'tp', '#2ee86a', ey, plotR, H, Y, gp);
+    ctrlTPSL(g, p, 'sl', '#ff5b6e', ey, plotR, H, Y, gp);
   });
 }
 /* Control TP o SL: si está fijado dibuja línea + etiqueta + tirador al nivel;
    si no, un botón cuadrado junto a la entrada (TP arriba / SL abajo en un long)
    que al arrastrar lo crea. Registra el rectángulo clicable en S._handles. */
-function ctrlTPSL(g, p, cual, col, ey, plotR, H, Y) {
+function ctrlTPSL(g, p, cual, col, ey, plotR, H, Y, gp) {
   const set = cual === 'tp' ? p.tp : p.sl;
   const bw = 30, bh = 18, bx = plotR - bw - 2;
   if (set) {
     const y = Y(set); if (y == null) return;
-    g.save(); g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); g.moveTo(0, y); g.lineTo(bx - 4, y); g.stroke(); g.setLineDash([]); g.restore();
+    g.save(); g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.5; g.shadowColor = col; g.shadowBlur = 3 + 7 * (gp || 0); g.beginPath(); g.moveTo(0, y); g.lineTo(bx - 4, y); g.stroke(); g.setLineDash([]); g.restore();
     etiqueta(g, bx - 4, y, (cual === 'tp' ? 'TP ' : 'SL ') + fmtP(set), col, '#04210f');
     botonCuadro(g, bx, y - bh / 2, bw, bh, col, cual.toUpperCase(), false);
     S._handles.push({ id: p.id, cual, x0: bx - 6, x1: plotR, y0: y - 10, y1: y + 10 });
@@ -543,8 +567,13 @@ async function exportarChart() {
   if (!S.chart) { toast('Chart is not ready yet.', 'warn'); return; }
   let ch; try { ch = S.chart.takeScreenshot(); } catch (_) { toast('Could not export the chart.', 'bad'); return; }
   const W = ch.width, H = ch.height, top = 64;
-  const coinUrl = S.par && S.par.cg && S.logos[S.par.cg];
-  const [imgCoin, wm1] = await Promise.all([cargarImg(coinUrl, true), cargarImg(LOGO, false)]);
+  // Logo de la moneda: igual que Heat Pool (Share signal) → spothq en GitHub (con
+  // CORS), respaldo CoinGecko. Así SÍ aparece el logo en la imagen exportada.
+  const sym = ((S.par && S.par.id) || '').toLowerCase();
+  const coinRepo = sym ? 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + sym + '.png' : null;
+  const coinCg = S.par && S.par.cg && S.logos[S.par.cg];
+  const [imgRepo, wm1] = await Promise.all([cargarImg(coinRepo, true), cargarImg(LOGO, false)]);
+  const imgCoin = imgRepo || await cargarImg(coinCg, true);
   const imgWm = wm1 || await cargarImg(LOGO_ALT, false);
   const out = document.createElement('canvas'); out.width = W; out.height = H + top; const g = out.getContext('2d');
   g.fillStyle = '#0a0d12'; g.fillRect(0, 0, out.width, out.height);
@@ -567,6 +596,8 @@ async function exportarChart() {
   g.font = '700 11.5px "IBM Plex Mono", monospace'; g.fillStyle = '#8b96a3'; g.fillText('decfreedom.com', out.width - 16, 48);
   // Grafica
   g.drawImage(ch, 0, top);
+  // Posiciones activas: componer el overlay (td-fx) encima de la gráfica exportada
+  try { const fx = $('td-fx'); if (fx && fx.width) g.drawImage(fx, 0, top, W, H); } catch (_) {}
   // Marca de agua: el logo (imagen) abajo a la izquierda, por encima del eje de tiempo
   if (imgWm && imgWm.width) { const wmH = 30, wmW = imgWm.width * (wmH / imgWm.height); g.save(); g.globalAlpha = .8; g.drawImage(imgWm, 18, out.height - wmH - 34, wmW, wmH); g.restore(); }
   try { out.toBlob((b) => { descargar(b, `demo-${S.par.id}-${S.tf}.png`); toast('Chart image exported.', 'ok'); }); } catch (_) { toast('Could not export the chart.', 'bad'); }
@@ -627,7 +658,7 @@ async function tarjetaPnL(tr) {
   let iy = H * 0.62; g.fillStyle = oro; g.font = '700 22px "IBM Plex Mono", monospace'; g.fillText('ENTRY PRICE', X, iy); g.fillText('EXIT PRICE', X + 330, iy);
   g.fillStyle = blanco; g.font = '800 34px "IBM Plex Mono", monospace'; g.fillText(fmtP(tr.entrada), X, iy + 42); g.fillText(fmtP(tr.salida), X + 330, iy + 42);
   iy += 112; g.fillStyle = oro; g.font = '700 22px "IBM Plex Mono", monospace'; g.fillText('DEMO ACCOUNT · decfreedom.com', X, iy);
-  if (sello) { const lw = 280, lh = sello.height * (lw / sello.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 7; g.drawImage(sello, X, H - lh - 40, lw, lh); g.restore(); }
+  if (sello) { const lw = 150, lh = sello.height * (lw / sello.width); g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 18; g.shadowOffsetY = 5; g.drawImage(sello, X, H - lh - 44, lw, lh); g.restore(); }
   mostrarTarjeta(cv, `DecFreedom-${tr.par}.png`);
 }
 function mostrarTarjeta(cv, nombre) {

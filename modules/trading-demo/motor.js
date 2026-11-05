@@ -53,10 +53,12 @@ export function pnlDe(p, mark) {
 }
 export function feeRueda(tam) { return tam * FEE * 2; }   // comisión total estimada (ida y vuelta)
 
-/* Equity en vivo = balance + margen bloqueado + PnL no realizado puro. */
+/* Equity en vivo = balance + (margen + PnL no realizado) de cada posicion, pero
+   el aporte de una posicion nunca baja de 0: en margen aislado no puedes perder
+   mas que tu margen, asi que el equity nunca es negativo. */
 export function equity(marks) {
   let e = ST.balance;
-  ST.pos.forEach((p) => { const m = (marks && marks[p.par]) || p.entrada; e += p.margen + pnlDe(p, m).pnl; });
+  ST.pos.forEach((p) => { const m = (marks && marks[p.par]) || p.entrada; e += Math.max(0, p.margen + pnlDe(p, m).pnl); });
   return r2(e);
 }
 
@@ -88,20 +90,24 @@ export function setTPSL(id, tp, sl) {
   p.tp = (tp > 0) ? tp : null; p.sl = (sl > 0) ? sl : null; guardar(); return true;
 }
 
-function registrar(p, salida, gross, fee, motivo) {
-  const neto = r2(gross - fee), roe = p.margen > 0 ? (neto / p.margen) * 100 : 0;
+/* `neto` ya es el PnL neto (con comisión aplicada y limitado al margen). */
+function registrar(p, salida, neto, fee, motivo) {
+  neto = r2(neto); const roe = p.margen > 0 ? (neto / p.margen) * 100 : 0;
   ST.hist.unshift({ id: p.id, par: p.par, lado: p.lado, lev: p.lev, tam: p.tam, entrada: p.entrada, salida, pnl: neto, fee: r2(fee), roe, motivo, abierto: p.t, cerrado: Date.now() });
-  if (ST.hist.length > 300) ST.hist.length = 300;
+  if (ST.hist.length > 1000) ST.hist.length = 1000;   // historial largo (scroll/paginado en la UI)
 }
 
-/* Cerrar al precio `mark`. Cobra comisión ida y vuelta sobre el nominal. */
+/* Cerrar al precio `mark`. Comisión ida y vuelta sobre el nominal. La pérdida
+   NUNCA supera el margen (margen aislado): así el balance no se vuelve negativo. */
 export function cerrar(id, mark, motivo) {
   const i = ST.pos.findIndex((p) => p.id === id); if (i < 0) return null;
   const p = ST.pos[i];
-  const gross = pnlDe(p, mark).pnl, fee = feeRueda(p.tam), neto = gross - fee;
-  ST.balance = r2(ST.balance + p.margen + gross - fee);
+  const gross = pnlDe(p, mark).pnl, fee = feeRueda(p.tam);
+  let neto = gross - fee;
+  if (neto < -p.margen) neto = -p.margen;    // tope: no pierdes mas que tu margen
+  ST.balance = r2(ST.balance + p.margen + neto);
   ST.realizado = r2(ST.realizado + neto);
-  registrar(p, mark, gross, fee, motivo || 'manual');
+  registrar(p, mark, neto, fee, motivo || 'manual');
   ST.pos.splice(i, 1); guardar();
   return { pos: p, pnl: neto, gross, fee, salida: mark, motivo: motivo || 'manual' };
 }

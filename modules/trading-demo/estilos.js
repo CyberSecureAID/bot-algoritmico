@@ -62,11 +62,18 @@ export function estilos() {
   #td-overlay.td-expand .td-main{grid-template-columns:1fr}
   #td-overlay.td-expand .td-entry{display:none}
   .td-chart{position:relative; min-width:0; border-right:1px solid var(--td-line); background:var(--td-bg); overflow:hidden}
-  #td-overlay.td-expand .td-chart{border-right:none}
+  /* Gráfica completa: la gráfica cubre toda la pantalla, con botón de salir flotante */
+  #td-overlay.td-expand .td-chart{position:fixed; inset:0; z-index:11000; border:none}
+  .td-exit{display:none!important; position:absolute; top:12px; right:12px; z-index:12; width:auto!important; height:34px; padding:0 13px; gap:6px; font-family:var(--td-disp); font-weight:700; font-size:12.5px; background:rgba(14,20,28,.92)}
+  #td-overlay.td-expand .td-exit{display:inline-flex!important; align-items:center}
+  #td-overlay.td-expand .td-exit svg{width:14px; height:14px}
   .td-cv{position:absolute; inset:0}
   .td-fx{position:absolute; inset:0; z-index:4; pointer-events:none}
   .td-wm{position:absolute; left:64px; bottom:40px; z-index:1; opacity:.82; pointer-events:none}
   .td-wm img{height:42px; width:auto; filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
+  /* La barra de herramientas no debe pisar el eje de fechas (abajo) ni el de
+     precios: se limita su alto para que quede siempre dentro del área de velas. */
+  #td-chart .nv-tools{max-height:calc(100% - 88px)!important}
   .td-ticket{position:absolute; z-index:6; pointer-events:none; left:12px; font-family:var(--td-disp); font-weight:800; font-size:12px; padding:5px 11px; border-radius:9px; transform:translateY(-50%); animation:tdTicket 2.4s ease forwards; white-space:nowrap; box-shadow:0 6px 20px rgba(0,0,0,.5)}
   .td-ticket.long{background:linear-gradient(180deg,#4dffa0,#1fc96e); color:#04210f} .td-ticket.short{background:linear-gradient(180deg,#ff8a95,#e03546); color:#2a0509} .td-ticket.gold{background:linear-gradient(180deg,#f7db8d,var(--td-gold)); color:#2a1d00}
   @keyframes tdTicket{0%{opacity:0; transform:translateY(-50%) translateX(-6px) scale(.9)} 14%{opacity:1; transform:translateY(-50%) translateX(0) scale(1)} 82%{opacity:1} 100%{opacity:0; transform:translateY(-50%) translateX(8px)}}
@@ -106,6 +113,12 @@ export function estilos() {
   .td-tpsl .td-in em{order:-1; margin-right:2px}
   .td-cost{display:flex; justify-content:space-between; font-family:var(--td-mono); font-size:11px; color:var(--td-ink2)}
   .td-cost b{color:var(--td-ink)} .td-cost .liqv{color:var(--td-down2)}
+  /* Resumen de la orden: rellena el espacio entre Liq y los botones */
+  .td-summary{flex:1 1 auto; min-height:92px; display:flex; flex-direction:column; gap:7px; padding:12px 13px; border-radius:11px; border:1px solid var(--td-line2); background:rgba(255,255,255,.02)}
+  .td-summary .td-sum-h{font-family:var(--td-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--td-ink3)}
+  .td-summary .td-sum-row{display:flex; justify-content:space-between; font-family:var(--td-mono); font-size:12px; color:var(--td-ink2)}
+  .td-summary .td-sum-row b{color:var(--td-ink); font-weight:700}
+  .td-summary .td-sum-note{margin-top:auto; font-family:var(--td-mono); font-size:9.5px; line-height:1.5; color:var(--td-ink3)}
   .td-ops{display:flex; gap:10px; margin-top:auto; position:sticky; bottom:0; padding-top:12px; padding-bottom:2px; background:var(--td-panel)}
   .td-op{flex:1; min-height:46px; border-radius:11px; border:none; font-family:var(--td-disp); font-weight:800; font-size:16px; letter-spacing:.04em; color:#04210f}
   .td-op.long{background:linear-gradient(180deg,#4dffa0,#1fc96e); box-shadow:0 3px 0 #11813f}
@@ -122,6 +135,8 @@ export function estilos() {
   .td-pos-tab.on{background:rgba(255,255,255,.06); color:var(--td-ink)} .td-pos-tab b{color:var(--td-gold)}
   .td-pos-r{margin-left:auto; display:flex; gap:7px; align-items:center; padding-right:4px}
   .td-stat-chip{font-family:var(--td-mono); font-size:10.5px; color:var(--td-ink2)} .td-stat-chip b{color:var(--td-ink)} .td-stat-chip b.up{color:var(--td-up2)} .td-stat-chip b.down{color:var(--td-down2)}
+  .td-pager{display:inline-flex; align-items:center; gap:6px; font-family:var(--td-mono); font-size:11px; color:var(--td-ink2)}
+  .td-pager button{min-width:26px; padding:0 7px} .td-pager button:disabled{opacity:.4; cursor:default}
   .td-pos-body{flex:1 1 auto; min-height:0; overflow:auto}
   .td-tbl{width:100%; border-collapse:collapse; font-family:var(--td-mono); font-size:11.5px}
   .td-tbl th{position:sticky; top:0; background:var(--td-panel2); text-align:right; padding:6px 13px; color:var(--td-ink3); font-weight:700; font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; border-bottom:1px solid var(--td-line); white-space:nowrap; z-index:1}
