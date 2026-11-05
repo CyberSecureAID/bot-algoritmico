@@ -101,7 +101,7 @@ const CSS = `
 .it-grid.it-float .it-panel{position:absolute; margin:0; z-index:1}   /* ← contexto de apilamiento por ventana (fix superposición) */
 .it-panel{background:linear-gradient(180deg,#0f141b,#0b0e13); border:1px solid var(--it-line); border-radius:12px; display:flex; flex-direction:column; min-height:0; min-width:0; overflow:hidden}
 .it-panel.it-dragging{box-shadow:0 20px 60px rgba(0,0,0,.6); border-color:var(--it-gold-soft)}
-.it-ph{display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:7px 10px 7px 11px; background:linear-gradient(180deg,#161c25,#10151c); border-bottom:1px solid var(--it-line); cursor:default; user-select:none}
+.it-ph{display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:7px 10px 7px 11px; background:linear-gradient(180deg,#161c25,#10151c); border-bottom:1px solid var(--it-line); cursor:default; user-select:none; position:relative}
 .it-grid.it-float .it-ph{cursor:move}
 .it-ph h4{margin:0; font-family:var(--it-mono); font-weight:800; font-size:11px; letter-spacing:.12em; color:var(--it-gold); text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .it-ph-ctrl{display:flex; align-items:center; gap:5px; flex:0 0 auto; margin-left:auto}
@@ -393,6 +393,59 @@ const CSS = `
 .it-lib-rule.met{color:#eef3f8} .it-lib-rule.met .it-lib-ck{color:#2ee86a}
 .it-lib-rule.gone{color:#ff5b6e; text-decoration:line-through; opacity:.72} .it-lib-rule.gone .it-lib-ck{color:#ff5b6e; text-decoration:none}
 @media(max-width:760px){ .it-libreta{right:60px; width:190px; max-width:54%} }
+
+/* ── Analista VWAP (Jesús): píldora central tipo chat + capa de iluminación ── */
+.it-vwap-fx{position:absolute; inset:0; z-index:3; pointer-events:none}
+/* En el chart, Confluence queda PEGADO al bloque de control (fullscreen/cerrar):
+   su propio margin-left:auto lo manda a la derecha y el bloque de control va justo
+   detrás (sin su propio auto, que si no los separaría al centro). */
+#it-p-chart .it-ph-ctrl{margin-left:0}
+.it-analyst-wrap{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:40}
+.it-an-btn{display:inline-flex; align-items:center; gap:7px; height:30px; padding:3px 11px 3px 4px; border-radius:17px; cursor:pointer;
+  background:linear-gradient(180deg,#1c2634,#111822); border:1.5px solid var(--it-line-2); color:#e7ecf2; position:relative;
+  box-shadow:0 6px 18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08), inset 0 -3px 7px rgba(0,0,0,.4);
+  transition:transform .14s, box-shadow .2s, border-color .2s}
+.it-an-btn:hover{transform:translateY(-1px); box-shadow:0 9px 24px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.12)}
+.it-an-btn:active{transform:translateY(0)}
+.it-an-ava{width:24px; height:24px; border-radius:50%; object-fit:cover; flex:0 0 auto; border:1.5px solid rgba(232,184,75,.6); box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.it-an-tag{font-family:var(--it-mono); font-size:10.5px; font-weight:800; letter-spacing:.04em; white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis}
+.it-an-fl{font-size:10px; opacity:.65; transition:transform .2s}
+.it-analyst-wrap.abierto .it-an-fl{transform:rotate(180deg)}
+.it-an-btn.vivo{animation:itAnVivo 2.8s ease-in-out infinite}
+@keyframes itAnVivo{0%,100%{box-shadow:0 6px 18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 0 rgba(232,184,75,0)} 50%{box-shadow:0 6px 18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 4px rgba(232,184,75,.16)}}
+.it-an-btn.t-compra{border-color:rgba(46,232,106,.6)} .it-an-btn.t-compra .it-an-ava{border-color:#2ee86a}
+.it-an-btn.t-venta{border-color:rgba(255,91,110,.6)} .it-an-btn.t-venta .it-an-ava{border-color:#ff5b6e}
+.it-an-btn.t-tendencia{border-color:rgba(109,176,255,.7)} .it-an-btn.t-tendencia .it-an-ava{border-color:#6fb0ff}
+.it-an-btn.t-vigilar{border-color:rgba(232,184,75,.6)} .it-an-btn.t-aviso{border-color:rgba(232,184,75,.75)}
+.it-an-tag.c-compra{color:#3ee88a} .it-an-tag.c-venta{color:#ff6b7a} .it-an-tag.c-tendencia{color:#8ec2ff} .it-an-tag.c-vigilar,.it-an-tag.c-aviso{color:var(--it-gold)}
+.it-an-panel{display:none; position:absolute; top:calc(100% + 11px); left:50%; transform:translateX(-50%); width:min(360px,86vw);
+  padding:13px; border-radius:14px; text-align:left; z-index:60; color:#eaecef;
+  background:linear-gradient(165deg,rgba(25,32,44,.985),rgba(12,17,24,.99)); border:1px solid var(--it-line-2);
+  box-shadow:0 24px 64px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.05); max-height:min(70vh,520px); overflow-y:auto; animation:itAnDrop .2s ease both}
+.it-analyst-wrap.abierto .it-an-panel{display:block}
+@keyframes itAnDrop{from{opacity:0; transform:translateX(-50%) translateY(-7px)} to{opacity:1; transform:translateX(-50%) translateY(0)}}
+.it-an-panel::before{content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%) rotate(45deg); width:12px; height:12px;
+  background:rgba(25,32,44,.99); border-left:1px solid var(--it-line-2); border-top:1px solid var(--it-line-2)}
+.it-an-panel.t-compra{border-color:rgba(46,232,106,.45)} .it-an-panel.t-venta{border-color:rgba(255,91,110,.45)}
+.it-an-panel.t-tendencia{border-color:rgba(109,176,255,.5)} .it-an-panel.t-aviso,.it-an-panel.t-vigilar{border-color:rgba(232,184,75,.42)}
+.it-an-cab{display:flex; align-items:center; gap:9px; margin-bottom:10px}
+.it-an-ava2{width:34px; height:34px; border-radius:50%; object-fit:cover; flex:0 0 auto; border:1.5px solid rgba(232,184,75,.6)}
+.it-an-quien{flex:1; min-width:0}
+.it-an-quien b{display:block; font-family:"Chakra Petch",system-ui,sans-serif; font-weight:800; font-size:11px; color:var(--it-gold); line-height:1.1; letter-spacing:.02em}
+.it-an-quien span{display:block; font-family:"Chakra Petch",system-ui,sans-serif; font-weight:700; font-size:13px; color:#eaecef; line-height:1.25; overflow-wrap:anywhere}
+.it-an-lang{flex:0 0 auto; align-self:flex-start; width:30px; height:24px; border-radius:7px; cursor:pointer; background:rgba(255,255,255,.05); border:1px solid var(--it-line-2); color:#9aa4af; font-family:var(--it-mono); font-size:10px; font-weight:800; letter-spacing:.04em}
+.it-an-lang:hover{background:rgba(232,184,75,.14); border-color:rgba(232,184,75,.45); color:var(--it-gold)}
+.it-an-tx{min-height:30px; font-family:"Plus Jakarta Sans",system-ui,sans-serif; font-size:12.5px; color:#c3cbd4; line-height:1.55}
+.it-an-hacer{margin-top:9px; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,.4); border-left:2px solid var(--it-gold); font-family:"Plus Jakarta Sans",system-ui,sans-serif; font-size:12px; color:#e7edf3; line-height:1.5}
+.it-an-acts{display:flex; gap:6px; margin-top:9px}
+.it-an-mas{flex:1; min-height:32px; border-radius:8px; cursor:pointer; background:rgba(255,255,255,.04); border:1px solid var(--it-line-2); color:#9aa4af; font-family:var(--it-mono); font-size:9.5px; letter-spacing:.04em; padding:0 8px}
+.it-an-mas:hover{border-color:var(--it-gold-soft); color:var(--it-gold)}
+.it-an-det{display:none; margin-top:9px}
+.it-analyst-wrap.con-detalle .it-an-det{display:block}
+.it-an-li{font-family:var(--it-mono); font-size:10.5px; color:#8b95a1; line-height:1.7; padding-left:11px; position:relative}
+.it-an-li:before{content:'·'; position:absolute; left:2px; color:#5c6672}
+@media (max-width:1180px){ .it-an-tag{display:none} }
+@media (max-width:760px){ .it-an-panel{width:min(320px,90vw)} }
 
 /* ── Responsive top bar ── */
 @media (max-width:1180px){ .it-coin span{display:none} .it-search{max-width:200px} .it-conf span{display:none} .it-conf{padding:0 8px} }

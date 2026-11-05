@@ -16,8 +16,9 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=15';
+import { estilos } from './estilos.js?v=16';
 import * as D from './datos.js?v=6';
+import { leerVWAP } from './vwap-analista.js?v=1';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
@@ -43,6 +44,7 @@ async function cargarBarra() {
    agua cargue aunque la página se sirva desde /modules/analysis/. */
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const LOGO_ALT = new URL('../../assets/img/cco-full.webp', import.meta.url).href;
+const AVATAR = new URL('../../assets/img/jesus-avatar.webp', import.meta.url).href;   // el analista (Jesús), el mismo de Smart Pools
 const SELLO = 'assets/portada/red/disclaimer.webp';
 const DISC_KEY = 'it-disclaimer-ok';
 const LAYOUT_KEY = 'it-layout-v5';   // v5: Signals a la derecha a la altura del gráfico, Market Heatmap a lo ancho abajo, Quote y Watchlist ocultos (reinicia layouts guardados antiguos)
@@ -158,6 +160,9 @@ function cerrar() {
   if (S.boardObs) { try { S.boardObs.disconnect(); } catch (_) {} S.boardObs = null; }
   if (S._cvObs) { try { S._cvObs.disconnect(); } catch (_) {} S._cvObs = null; }
   if (S.oleajeRAF) { try { cancelAnimationFrame(S.oleajeRAF); } catch (_) {} S.oleajeRAF = null; }
+  if (S._vwapRAF) { try { cancelAnimationFrame(S._vwapRAF); } catch (_) {} S._vwapRAF = null; }
+  if (S._anDocClose) { try { document.removeEventListener('click', S._anDocClose); } catch (_) {} S._anDocClose = null; }
+  S.analista = null; S._vwapFx = null;
   if (S.conf) { try { if (S.conf.raf) cancelAnimationFrame(S.conf.raf); } catch (_) {} const _cc = document.getElementById('it-conf-cv'); if (_cc) _cc.remove(); S.conf = null; }
   if (_stream) { try { _stream.cerrar(); } catch (_) {} _stream = null; _streamKey = ''; }   // cierra el WebSocket de velas en vivo
   if (S.barra) { try { S.barra.desmontar(); } catch (_) {} S.barra = null; }
@@ -236,6 +241,14 @@ function plantilla() {
   <div class="it-grid" id="it-grid">
     <div class="it-panel" id="it-p-chart">
       <div class="it-ph"><h4 id="it-chart-title">CHART</h4>
+        <div class="it-analyst-wrap" id="it-analyst-wrap">
+          <button class="it-an-btn vivo" id="it-analyst-btn" type="button" title="Jesús · live VWAP read">
+            <img class="it-an-ava" src="${AVATAR}" alt="Jesús">
+            <span class="it-an-tag" id="it-an-tag">VWAP</span>
+            <span class="it-an-fl">▾</span>
+          </button>
+          <div class="it-an-panel" id="it-an-panel"></div>
+        </div>
         <div class="it-conf-wrap">
           <button class="it-conf" id="it-conf" title="Confluence — mark where a multi-indicator combo lines up">${IC_CONF}<span>Confluence</span></button>
           <button class="it-conf-clear" id="it-conf-clear" title="Stop placing — the chart stops making rules on click (your alerts stay)">${IC_X}</button>
@@ -287,6 +300,7 @@ function cablearTop(ov) {
   $('#it-reset', ov).onclick = resetLayout;
   $('#it-disc-link', ov).onclick = () => mostrarDisclaimer(true);
   { const cf = $('#it-conf', ov); if (cf) cf.onclick = toggleConfluencia; const cfc = $('#it-conf-clear', ov); if (cfc) cfc.onclick = pararColocar; }
+  try { montarAnalista(ov); } catch (_) {}   // analista VWAP (Jesús) en el centro del header del chart
   pintarCoin();
   const tfNm = (D.TFS.find((t) => t.id === S.tf) || {}).n || S.tf;
   $('#it-tf-btn', ov).childNodes[0].nodeValue = tfNm + ' ';
@@ -454,6 +468,7 @@ function pintarPrecioVivo(precio) {
   if (S.ultTicker) S.ultTicker.last = precio;
   const px = document.getElementById('it-top-px');
   if (px) { px.textContent = fmtP(precio); px.className = 'it-px ' + cls(S.ultTicker ? S.ultTicker.chgPct : 0); }
+  try { actualizarAnalista(); } catch (_) {}   // el analista lee la posición vs VWAP en cada tick
 }
 /* Re-render al cerrar vela SIN perder la vista: si el usuario estaba pegado al
    borde derecho, se sigue la última vela; si estaba estudiando historial, se
@@ -532,7 +547,7 @@ function pintarChart() {
     if (S.ind.ZLEMA) linea('ZLEMA 20', 'ZLEMA', zlema(V, 20), '#a3e635');
     if (S.ind.KAMA) linea('KAMA 10', 'KAMA', kama(V, 10), '#fb7185', 0, 2);
     // ── Overlays con bandas / tendencia (coloreados; sin marcas L/S) ──
-    if (S.ind.VWAP) { const vb = vwapBands(V, 2); linea('VWAP', 'VWAP', vb.mid, '#c678dd', 0, 2); linea(null, null, vb.up, 'rgba(198,120,221,.5)'); linea(null, null, vb.lo, 'rgba(198,120,221,.5)'); }
+    if (S.ind.VWAP) { const vb = vwapBands(V, 2); S._vwapFx = vb; linea('VWAP', 'VWAP', vb.mid, '#c678dd', 0, 2); linea(null, null, vb.up, 'rgba(198,120,221,.5)'); linea(null, null, vb.lo, 'rgba(198,120,221,.5)'); }
     if (S.ind.BOLL) { const b = bollinger(V, 20, 2); linea('Bollinger', 'BOLL', b.middle, 'rgba(150,160,175,.6)'); linea(null, null, b.upper, 'rgba(120,180,255,.65)'); linea(null, null, b.lower, 'rgba(120,180,255,.65)'); }
     if (S.ind.DONCH) { const d = donchian(V, 20); linea('Donchian', 'DONCH', d.upper, 'rgba(232,184,75,.6)'); linea(null, null, d.lower, 'rgba(232,184,75,.6)'); }
     if (S.ind.KELT) { const k = keltner(V, 20, 2); linea('Keltner', 'KELT', k.upper, 'rgba(198,120,221,.6)'); linea(null, null, k.middle, 'rgba(198,120,221,.3)'); linea(null, null, k.lower, 'rgba(198,120,221,.6)'); }
@@ -591,6 +606,8 @@ function pintarChart() {
   try { calcularSenales(); } catch (_) {}   // panel SIGNALS (rating técnico)
   try { montarConfluencia(); sincronizarConf(); } catch (_) {}   // overlay + libreta de confluencia
   try { conectarOrdenesChart(); } catch (_) {}   // clic derecho → menú operar/alerta (orden.js). AISLADO.
+  try { actualizarAnalista(); } catch (_) {}      // analista VWAP (Jesús): lectura inmediata al redibujar
+  try { animarVWAP(); } catch (_) {}              // iluminación fluida que recorre las 3 líneas del VWAP
 }
 
 /* ── Puente con la barra de dibujo (misma de Smart/Heat/Liquidity Pools) ──
@@ -645,6 +662,164 @@ async function montarDibujo() {
     if (window.ResizeObserver && !S._cvObs) { S._cvObs = new ResizeObserver(() => sincronizarDib()); S._cvObs.observe(cv); }
     sincronizarDib();
   } catch (_) { S.barra = null; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ANALISTA VWAP (Jesús) — la píldora central del chart. El motor vive en
+   vwap-analista.js (leerVWAP): dice DÓNDE está el precio respecto al VWAP y
+   sus bandas y cuál es la mejor jugada. Aquí va la UI, con la MISMA dinámica
+   que los analistas de Smart Pools: avatar + título, texto escrito letra a
+   letra, botón ES/EN y "por qué lo digo" con el detalle punto por punto. ══ */
+const AN_UI = {
+  en: { why: 'Why I say this', hide: 'Hide', live: 'live read' },
+  es: { why: 'Por qué lo digo', hide: 'Ocultar', live: 'lectura en vivo' }
+};
+const AN_TAG = {
+  sobreSup: { en: 'Above +2σ', es: 'Sobre +2σ' },
+  tocaSup: { en: 'Upper band', es: 'Banda sup.' },
+  premium: { en: 'Premium', es: 'Premium' },
+  centro: { en: 'At the VWAP', es: 'En el VWAP' },
+  descuento: { en: 'Discount', es: 'Descuento' },
+  tocaInf: { en: 'Lower band', es: 'Banda inf.' },
+  sobreInf: { en: 'Below −2σ', es: 'Bajo −2σ' }
+};
+const anL = (f, lang) => (f && typeof f === 'object') ? (f[lang] != null ? f[lang] : f.en) : (f == null ? '' : f);
+function anIdioma() { try { return (document.documentElement.lang || 'en').toLowerCase().startsWith('es') ? 'es' : 'en'; } catch (_) { return 'en'; } }
+
+function montarAnalista(ov) {
+  const root = ov || document;
+  const wrap = root.querySelector('#it-analyst-wrap');
+  const btn = root.querySelector('#it-analyst-btn');
+  if (!wrap || !btn) return;
+  if (!S.analista) S.analista = { lang: anIdioma(), abierto: false, clave: '', msg: null, det: false };
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    btn.classList.remove('vivo');
+    S.analista.abierto = !S.analista.abierto;
+    wrap.classList.toggle('abierto', S.analista.abierto);
+    if (S.analista.abierto && S.analista.msg) { renderPanelAnalista(); escribirAn(wrap.querySelector('[data-an-escribir]')); }
+  };
+  if (!S._anDocClose) {
+    S._anDocClose = (ev) => {
+      const w = document.querySelector('#it-analyst-wrap');
+      if (!w || !S.analista || !S.analista.abierto) return;
+      if (!w.contains(ev.target)) { S.analista.abierto = false; w.classList.remove('abierto'); }
+    };
+    document.addEventListener('click', S._anDocClose);
+  }
+  actualizarAnalista();
+}
+
+function actualizarAnalista() {
+  if (!S.analista) return;
+  const wrap = document.querySelector('#it-analyst-wrap'); if (!wrap) return;
+  if (!S.velas || S.velas.length < 30) return;
+  const precio = (S.ultTicker && S.ultTicker.last > 0) ? S.ultTicker.last : S.velas[S.velas.length - 1].close;
+  let m; try { m = leerVWAP(S.velas, precio, { par: S.par.id, tf: S.tf }); } catch (_) { m = null; }
+  if (!m) return;
+  const lang = S.analista.lang;
+  const btn = document.querySelector('#it-analyst-btn');
+  const tag = document.querySelector('#it-an-tag');
+  if (btn) btn.className = 'it-an-btn t-' + m.tipo + (S.analista.abierto ? '' : ' vivo');
+  if (tag) { tag.textContent = anL(AN_TAG[m.zona] || { en: 'VWAP', es: 'VWAP' }, lang); tag.className = 'it-an-tag c-' + m.tipo; }
+  const cambio = (m.clave !== S.analista.clave);
+  S.analista.msg = m; S.analista.clave = m.clave;
+  if (S.analista.abierto) {
+    if (cambio) { renderPanelAnalista(); escribirAn(wrap.querySelector('[data-an-escribir]')); }
+    else {
+      const tx = wrap.querySelector('.it-an-tx'); if (tx && tx.dataset.hecho) tx.textContent = anL(m.txt, lang);
+      const hz = wrap.querySelector('.it-an-hacer'); if (hz) hz.textContent = anL(m.hacer, lang);
+    }
+  }
+}
+
+function renderPanelAnalista() {
+  const panel = document.querySelector('#it-an-panel'), wrap = document.querySelector('#it-analyst-wrap');
+  if (!panel || !wrap || !S.analista || !S.analista.msg) return;
+  const m = S.analista.msg, lang = S.analista.lang, u = AN_UI[lang] || AN_UI.en;
+  panel.className = 'it-an-panel t-' + m.tipo;
+  wrap.classList.toggle('con-detalle', !!S.analista.det);
+  panel.innerHTML = `
+    <div class="it-an-cab">
+      <img class="it-an-ava2" src="${AVATAR}" alt="Jesús">
+      <div class="it-an-quien"><b>Jesús · ${esc(u.live)}</b><span>${esc(anL(m.titulo, lang))}</span></div>
+      <button class="it-an-lang" type="button" title="${lang === 'en' ? 'Ver en español' : 'View in English'}">${lang === 'en' ? 'ES' : 'EN'}</button>
+    </div>
+    <div class="it-an-tx" data-an-escribir="${esc(anL(m.txt, lang))}"></div>
+    <div class="it-an-hacer">${esc(anL(m.hacer, lang))}</div>
+    <div class="it-an-acts"><button class="it-an-mas" type="button">${esc(u.why)} ▾</button></div>
+    <div class="it-an-det">${(m.detalle || []).map((x) => `<div class="it-an-li">${esc(anL(x, lang))}</div>`).join('')}</div>`;
+  const lng = panel.querySelector('.it-an-lang');
+  if (lng) lng.onclick = (e) => { e.stopPropagation(); S.analista.lang = (S.analista.lang === 'es') ? 'en' : 'es'; renderPanelAnalista(); escribirAn(panel.querySelector('[data-an-escribir]')); };
+  const mas = panel.querySelector('.it-an-mas');
+  if (mas) mas.onclick = (e) => { e.stopPropagation(); S.analista.det = !S.analista.det; wrap.classList.toggle('con-detalle', S.analista.det); mas.textContent = S.analista.det ? (u.hide + ' ▴') : (u.why + ' ▾'); };
+}
+
+function escribirAn(el) {
+  if (!el || el.dataset.hecho) return;
+  const txt = el.dataset.anEscribir || ''; el.dataset.hecho = '1';
+  let n = 0; const t = setInterval(() => { n += 2; el.textContent = txt.slice(0, n); if (n >= txt.length) { el.textContent = txt; clearInterval(t); } }, 13);
+}
+
+/* ── Iluminación fluida del VWAP: una luz suave que recorre las 3 líneas como
+   un río, en una capa propia encima del chart (no toca la librería). Todo en
+   try/catch: si algo fallara, el chart sigue intacto. ── */
+function asegurarFx() {
+  const cv = document.getElementById('it-cv'); if (!cv) return null;
+  let fx = cv.querySelector('.it-vwap-fx');
+  if (!fx) { fx = document.createElement('canvas'); fx.className = 'it-vwap-fx'; fx.setAttribute('aria-hidden', 'true'); cv.appendChild(fx); }
+  return fx;
+}
+function animarVWAP() {
+  if (S._vwapRAF) return;        // ya hay un bucle vivo
+  let lastT = 0;
+  const loop = (ts) => {
+    S._vwapRAF = requestAnimationFrame(loop);
+    if (ts - lastT < 33) return; // ~30 fps: suave y barato
+    lastT = ts;
+    try { pintarVWAPFx(); } catch (_) {}
+  };
+  S._vwapRAF = requestAnimationFrame(loop);
+}
+function pintarVWAPFx() {
+  const cv = document.getElementById('it-cv'); if (!cv) return;
+  const fx = asegurarFx(); if (!fx) return;
+  const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (fx.width !== Math.round(w * dpr)) { fx.width = Math.round(w * dpr); fx.height = Math.round(h * dpr); fx.style.width = w + 'px'; fx.style.height = h + 'px'; }
+  const g = fx.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  if (!S.ind.VWAP || !S.chart || !S.serieVela || !S._vwapFx) return;
+  let ts0; try { ts0 = S.chart.timeScale(); } catch (_) { return; }
+  const now = performance.now();
+  const comet = (arr, width, glow, period, fase) => {
+    if (!arr || arr.length < 2) return;
+    const pts = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i].value == null) continue;
+      let x; try { x = ts0.timeToCoordinate(arr[i].time); } catch (_) { x = null; }
+      if (x == null || x < -30 || x > w + 30) continue;
+      let y; try { y = S.serieVela.priceToCoordinate(arr[i].value); } catch (_) { y = null; }
+      if (y == null) continue;
+      pts.push([x, y]);
+    }
+    if (pts.length < 2) return;
+    const frac = (((now + fase) % period) / period);
+    const headX = frac * (w + 240) - 120;   // entra por la izquierda, sale por la derecha
+    const tail = 150;
+    g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.shadowColor = 'rgba(221,170,255,.85)'; g.shadowBlur = glow; g.lineWidth = width;
+    for (let i = 1; i < pts.length; i++) {
+      const mx = (pts[i - 1][0] + pts[i][0]) / 2;
+      const d = Math.abs(mx - headX);
+      if (d > tail) continue;
+      const a = 1 - d / tail;
+      g.strokeStyle = 'rgba(243,214,255,' + (0.10 + 0.72 * a * a).toFixed(3) + ')';
+      g.beginPath(); g.moveTo(pts[i - 1][0], pts[i - 1][1]); g.lineTo(pts[i][0], pts[i][1]); g.stroke();
+    }
+    g.restore();
+  };
+  comet(S._vwapFx.mid, 2.6, 12, 3600, 0);
+  comet(S._vwapFx.up, 1.6, 7, 4300, 1500);
+  comet(S._vwapFx.lo, 1.6, 7, 4300, 3000);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
