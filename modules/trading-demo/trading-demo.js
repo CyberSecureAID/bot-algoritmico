@@ -12,7 +12,7 @@
    compartido del resto de secciones: catálogo de monedas, sus logos y la misma
    barra de dibujo. */
 
-import { estilos } from './estilos.js?v=7';
+import { estilos } from './estilos.js?v=8';
 import * as D from './datos.js?v=2';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
