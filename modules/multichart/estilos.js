@@ -16,19 +16,25 @@ const CSS = `
     --mc-ink:#eaecef; --mc-ink2:#a9b2bd; --mc-ink3:#6b7580; --mc-gold:#E8B84B; --mc-gold-soft:#C9A84B;
     --mc-up:#2ee86a; --mc-up2:#34d98a; --mc-down:#ff5b6e; --mc-down2:#ff8591;
     --mc-disp:'Chakra Petch','Plus Jakarta Sans',system-ui,sans-serif; --mc-mono:'IBM Plex Mono',ui-monospace,monospace;
-    position:fixed; inset:0; z-index:40; background:var(--mc-bg); color:var(--mc-ink);
+    position:fixed; inset:0; z-index:9000; background:var(--mc-bg); color:var(--mc-ink);
     font-family:'Plus Jakarta Sans',system-ui,sans-serif; display:flex; flex-direction:column; overflow:hidden}
   #mc-overlay *{box-sizing:border-box}
   #mc-overlay button{font-family:inherit; cursor:pointer}
 
   /* ── Banda superior ── */
-  .mc-top{flex:0 0 auto; height:52px; display:flex; align-items:center; gap:12px; padding:0 14px; background:var(--mc-panel); border-bottom:1px solid var(--mc-line)}
+  .mc-top{flex:0 0 auto; height:52px; display:flex; align-items:center; gap:10px; padding:0 14px; background:var(--mc-panel); border-bottom:1px solid var(--mc-line)}
   .mc-back{display:inline-flex; align-items:center; gap:7px; height:34px; padding:0 13px; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink); font-weight:700; font-size:13px}
   .mc-back:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-back svg{width:15px; height:15px}
   .mc-title{font-family:var(--mc-disp); font-weight:700; font-size:16px; letter-spacing:.02em}
   .mc-title b{color:var(--mc-gold)}
   .mc-demo{font-family:var(--mc-mono); font-size:10px; color:var(--mc-ink3); border:1px solid var(--mc-line2); border-radius:6px; padding:2px 7px}
   .mc-top-r{margin-left:auto; display:flex; align-items:center; gap:8px}
+  .mc-sep{width:1px; height:26px; background:var(--mc-line2); margin:0 2px}
+  /* herramientas que actúan sobre TODAS las gráficas a la vez */
+  .mc-tool{display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); font-weight:700; font-size:12.5px}
+  .mc-tool svg{width:16px; height:16px}
+  .mc-tool:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)}
+  .mc-tool.on{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
   .mc-icobtn{width:36px; height:36px; display:inline-grid; place-items:center; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2)}
   .mc-icobtn:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-icobtn svg{width:16px; height:16px}
   .mc-add{display:inline-flex; align-items:center; gap:7px; height:36px; width:auto; padding:0 15px; border-radius:10px; border:1px solid #c79426; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426); color:#2a1d00; font-family:var(--mc-disp); font-weight:800; font-size:13px}
@@ -40,12 +46,13 @@ const CSS = `
     display:flex; flex-direction:column; border:1px solid var(--mc-line2); border-radius:12px; overflow:hidden;
     background:var(--mc-panel2); resize:both}
   .mc-grid.mc-uno .mc-pane{width:100%; height:100%}
-  .mc-pane.mc-max{position:fixed!important; inset:0; z-index:60; width:auto!important; height:auto!important; border-radius:0; resize:none}
+  .mc-pane.mc-max{position:fixed!important; inset:0; z-index:9100; width:auto!important; height:auto!important; border-radius:0; resize:none}
+  .mc-pane.mc-focus{box-shadow:inset 0 0 0 1.5px var(--mc-gold-soft)}
   /* ventana flotante (añadida con +) */
   .mc-float{position:absolute; z-index:55; width:520px; height:360px; min-width:300px; min-height:220px;
     display:flex; flex-direction:column; border:1px solid var(--mc-gold-soft); border-radius:12px; overflow:hidden;
     background:var(--mc-panel2); resize:both; box-shadow:0 26px 70px rgba(0,0,0,.72), 0 0 0 1px rgba(232,184,75,.12)}
-  .mc-float.mc-max{position:fixed!important; inset:0; z-index:70; border-radius:0; resize:none}
+  .mc-float.mc-max{position:fixed!important; inset:0; z-index:9150; border-radius:0; resize:none}
 
   /* ── Cabecera de cada panel ── */
   .mc-head{flex:0 0 auto; height:40px; display:flex; align-items:center; gap:6px; padding:0 8px; background:var(--mc-panel); border-bottom:1px solid var(--mc-line); cursor:default}
@@ -58,22 +65,34 @@ const CSS = `
   .mc-px{font-family:var(--mc-mono); font-size:12.5px; font-weight:700; color:var(--mc-ink)}
   .mc-px small{font-size:10px; margin-left:5px} .mc-px small.up{color:var(--mc-up2)} .mc-px small.down{color:var(--mc-down2)}
   .mc-hsp{margin-left:auto}
+  /* botón de texto "Indicator" */
+  .mc-indbtn{height:28px; padding:0 11px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); font-weight:700; font-size:12px}
+  .mc-indbtn:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-indbtn.on{border-color:var(--mc-gold); color:var(--mc-gold); background:rgba(232,184,75,.1)}
+  .mc-indbtn svg{width:12px; height:12px; opacity:.8}
   .mc-hb{width:28px; height:28px; display:inline-grid; place-items:center; border-radius:8px; border:1px solid transparent; background:transparent; color:var(--mc-ink3)}
   .mc-hb:hover{border-color:var(--mc-line2); color:var(--mc-gold)} .mc-hb svg{width:15px; height:15px}
   .mc-hb.on{color:var(--mc-gold)} .mc-hb.mc-close:hover{color:var(--mc-down2); border-color:var(--mc-down)}
 
-  /* ── Cuerpo (gráfica + overlay de indicadores) ── */
+  /* ── Cuerpo (gráfica + capas) ── */
   .mc-body{flex:1 1 auto; position:relative; min-height:0; background:var(--mc-bg); overflow:hidden}
-  .mc-cv{position:absolute; inset:0}
+  .mc-cv{position:absolute; inset:0; z-index:0}
   .mc-fx{position:absolute; inset:0; z-index:3; pointer-events:none}
+  .mc-ux{position:absolute; inset:0; z-index:4; pointer-events:none}
+  .mc-cap{position:absolute; inset:0; z-index:6; pointer-events:none; cursor:crosshair}
+  .mc-cap.on{pointer-events:auto}
   .mc-wm{position:absolute; left:10px; bottom:10px; z-index:1; opacity:.5; pointer-events:none}
   .mc-wm img{height:20px; width:auto; filter:drop-shadow(0 1px 4px rgba(0,0,0,.9))}
-  .mc-grip{position:absolute; right:2px; bottom:2px; z-index:4; width:14px; height:14px; pointer-events:none; opacity:.5}
+  .mc-grip{position:absolute; right:2px; bottom:2px; z-index:7; width:14px; height:14px; pointer-events:none; opacity:.5}
   .mc-grip::before,.mc-grip::after{content:""; position:absolute; right:0; background:var(--mc-ink3)}
   .mc-grip::before{bottom:0; width:12px; height:2px} .mc-grip::after{bottom:0; right:0; width:2px; height:12px}
+  /* pista para dibujar en el panel no enfocado */
+  .mc-hint{position:absolute; left:50%; bottom:12px; transform:translateX(-50%); z-index:5; pointer-events:none;
+    font-family:var(--mc-mono); font-size:10px; color:var(--mc-ink3); background:rgba(8,11,16,.72); border:1px solid var(--mc-line2);
+    border-radius:20px; padding:4px 11px; opacity:0; transition:opacity .2s}
+  .mc-pane:hover .mc-hint{opacity:.9} .mc-pane.mc-focus .mc-hint{display:none}
 
   /* ── Popups (monedas, TF, indicadores) ── */
-  .mc-pop{position:fixed; z-index:200; background:#121922; border:1px solid var(--mc-line2); border-radius:12px; box-shadow:0 22px 60px rgba(0,0,0,.7); padding:8px; min-width:230px}
+  .mc-pop{position:fixed; z-index:9400; background:#121922; border:1px solid var(--mc-line2); border-radius:12px; box-shadow:0 22px 60px rgba(0,0,0,.7); padding:8px; min-width:230px}
   .mc-pop .mc-search{width:100%; height:36px; padding:0 11px; margin-bottom:7px; border-radius:9px; border:1px solid var(--mc-line2); background:#0b1017; color:var(--mc-ink); font-family:var(--mc-mono); font-size:13px; outline:none}
   .mc-pop .mc-search:focus{border-color:var(--mc-gold-soft)}
   .mc-list{max-height:300px; overflow-y:auto; scrollbar-width:thin}
@@ -93,26 +112,26 @@ const CSS = `
   .mc-ir .sw::after{content:""; position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%; background:#fff; transition:left .15s}
   .mc-ir.on .sw{background:var(--mc-gold)} .mc-ir.on .sw::after{left:17px}
 
-  /* ── Modal (calendario, guardar imagen) ── */
-  .mc-modal{position:fixed; inset:0; z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(3,6,10,.74); backdrop-filter:blur(4px)}
+  /* ── Modal (guardar imagen) ── */
+  .mc-modal{position:fixed; inset:0; z-index:9600; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(3,6,10,.74); backdrop-filter:blur(4px)}
   .mc-modal .bx{position:relative; width:min(960px,96vw); max-height:92vh; display:flex; flex-direction:column; background:#10151c; border:1px solid var(--mc-line2); border-radius:16px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.7)}
   .mc-modal .bxh{display:flex; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid var(--mc-line)}
   .mc-modal .bxh b{font-family:var(--mc-disp); font-weight:800; font-size:15px} .mc-modal .bxh .x{margin-left:auto}
-  .mc-modal .bxc{flex:1 1 auto; min-height:0; overflow:auto; background:#0b0f15}
-  .mc-modal iframe{width:100%; height:68vh; border:0; display:block; background:#0b0f15}
-  .mc-modal img{width:100%; height:auto; display:block}
+  .mc-modal .bxc{flex:1 1 auto; min-height:0; overflow:auto; background:#0b0f15; padding:14px}
+  .mc-modal .bxc canvas{width:100%; height:auto; display:block; border-radius:8px}
   .mc-modal .bxf{display:flex; gap:9px; padding:13px 16px; border-top:1px solid var(--mc-line)}
   .mc-modal .bxf button{flex:1; min-height:42px; border-radius:11px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.05); color:var(--mc-ink); font-family:var(--mc-disp); font-weight:800; font-size:13px}
   .mc-modal .bxf .dl{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
 
-  .mc-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:400; padding:11px 18px; border-radius:11px; background:#121922; border:1px solid var(--mc-line2); color:var(--mc-ink); font-size:13px; font-weight:600; box-shadow:0 14px 40px rgba(0,0,0,.6); opacity:0; transition:opacity .2s, transform .2s}
+  .mc-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:9700; padding:11px 18px; border-radius:11px; background:#121922; border:1px solid var(--mc-line2); color:var(--mc-ink); font-size:13px; font-weight:600; box-shadow:0 14px 40px rgba(0,0,0,.6); opacity:0; transition:opacity .2s, transform .2s}
   .mc-toast.on{opacity:1; transform:translateX(-50%) translateY(-4px)}
-  .mc-spin{position:absolute; inset:0; display:grid; place-items:center; background:var(--mc-bg); z-index:5}
+  .mc-spin{position:absolute; inset:0; display:grid; place-items:center; background:var(--mc-bg); z-index:8}
   .mc-spin i{width:26px; height:26px; border-radius:50%; border:3px solid rgba(232,184,75,.2); border-top-color:var(--mc-gold); animation:mcsp .7s linear infinite}
   @keyframes mcsp{to{transform:rotate(360deg)}}
 
   @media (max-width:820px){
     .mc-pane{width:100%; height:calc(50% - 4px); min-width:0}
-    .mc-title{display:none}
+    .mc-title,.mc-demo{display:none}
+    .mc-tool span{display:none} .mc-tool{padding:0 10px}
   }
 `;
