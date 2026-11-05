@@ -50,7 +50,11 @@ const HERRAMIENTAS = [
   // "Trading Demo" = modulo propio y aislado modules/trading-demo/ (gratis, sin contrato).
   { id:'demo', abre:'demo', nombre:'Trading Demo', cat:'trading', img:'assets/img/serv-demo.webp', activos:['Crypto'], free:true, listo:true,
     lema:'Trade freely, with no risk',
-    desc:'A professional futures-style practice desk. A high-frequency live chart with the same coins and the same drawing tools as the rest of the terminal, a live order book and trades, leverage and a demo balance. Mark your trade on the chart and let the price decide when it is taken. No real orders, no risk, completely free.' }
+    desc:'A professional futures-style practice desk. A high-frequency live chart with the same coins and the same drawing tools as the rest of the terminal, a live order book and trades, leverage and a demo balance. Mark your trade on the chart and let the price decide when it is taken. No real orders, no risk, completely free.' },
+  // "Multichart" = modulo propio y aislado modules/multichart/.
+  { id:'multi', abre:'multi', nombre:'Multichart', cat:'analysis', img:'assets/img/serv-multi.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'Many markets, one glance',
+    desc:'Four live charts at once, each with its own coin, timeframe and indicators. Opens with BTC, ETH, BNB and SOL side by side; swap any coin from the full USDT catalog, resize every chart by its corner, pop out extra floating charts and load the maximum set of indicators (moving averages, VWAP, Bollinger, RSI, MACD, Stochastic, CCI) with the same live glow as VWAP Pro. Built to watch the whole market move in real time.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
@@ -154,7 +158,8 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=133')).abrirNiveles();
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=36', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
-    else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=7', import.meta.url).href)).abrirDemo();
+    else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=8', import.meta.url).href)).abrirDemo();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=1', import.meta.url).href)).abrirMulti();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
