@@ -11,7 +11,7 @@
    nivel inferior (soporte) = VERDE = LONG. Todo con animación (puntos y
    triángulos titilando, zonas con latido). */
 
-import { montarBarra } from '../../assets/js/niveles/barra.js?v=4';
+import { montarBarra } from '../../assets/js/niveles/barra.js?v=6';
 import { PARES, pintarIcono, TFS } from '../../assets/js/niveles/config.js?v=1';
 import { detectarReaction, zoneBounds, touchRings } from './motor.js?v=2';
 import { N } from '../../assets/js/niveles/estado.js?v=1';
