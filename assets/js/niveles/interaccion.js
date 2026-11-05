@@ -273,9 +273,11 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     return e;
   };
   const finDib = (idx) => {
-    // El marcador SIEMPRE se queda activo (pones 1, 2, 3, 4… seguidos; el cesto los quita).
+    // El marcador y el pincel (brush) SIEMPRE se quedan activos: pintas varios
+    // trazos seguidos sin tener que volver a elegir la herramienta. Para parar,
+    // eliges el cursor u otra herramienta.
     // El resto: una sola vez por defecto, salvo que "mantener activa" esté encendido.
-    if (N.herr !== 'marca' && !N.fijar) { N.herr = 'cursor'; N.sel = idx; marcarBoton(); }
+    if (N.herr !== 'marca' && N.herr !== 'brush' && !N.fijar) { N.herr = 'cursor'; N.sel = idx; marcarBoton(); }
     construirTopbar(); dibujar();
   };
   let inputTexto = null;   // { inp, x, y } mientras se escribe, o null
