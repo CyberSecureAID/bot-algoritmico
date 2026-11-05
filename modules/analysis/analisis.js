@@ -46,9 +46,13 @@ const HERRAMIENTAS = [
     desc:'A professional VWAP desk. The institutional VWAP with its deviation bands, plus a live analyst that reads where price sits against the VWAP right now, on this coin and timeframe, and tells you the professional play. Pro charting with fifteen indicators, live quotes, a market-wide heatmap and macro sentiment, wired into one screen.' },
   { id:'react', abre:'react', nombre:'Reaction Zones', cat:'analysis', img:'modules/reaction/preview.svg', activos:['Crypto'], spot:true, listo:true,
     lema:'Where price is going to react',
-    desc:'A structural engine that maps the exact levels where price is likely to react, built from repeated pivots with a live break-pressure read. Red zones above the price mark short context, green below mark long, with auto-projected positions (Single / Double) and right-click orders.' }
+    desc:'A structural engine that maps the exact levels where price is likely to react, built from repeated pivots with a live break-pressure read. Red zones above the price mark short context, green below mark long, with auto-projected positions (Single / Double) and right-click orders.' },
+  // "Trading Demo" = modulo propio y aislado modules/trading-demo/ (gratis, sin contrato).
+  { id:'demo', abre:'demo', nombre:'Trading Demo', cat:'trading', img:'modules/trading-demo/preview.svg', activos:['Crypto'], free:true, listo:true,
+    lema:'Trade freely, with no risk',
+    desc:'A professional futures-style practice desk. A high-frequency live chart with the same coins and the same drawing tools as the rest of the terminal, a live order book and trades, leverage and a demo balance. Mark your trade on the chart and let the price decide when it is taken. No real orders, no risk, completely free.' }
 ];
-const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis' };
+const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
 /* PRECIOS Y DESCUENTOS.
    Base UNIFORME por servicio: $25/mes, $300/año (=12x25). Editables desde el
@@ -150,6 +154,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=133')).abrirNiveles();
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=36', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
+    else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=1', import.meta.url).href)).abrirDemo();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
@@ -175,7 +180,7 @@ async function abrirTool(abre, cardEl) {
    El hash refleja qué overlay de herramienta está presente. Un único observador
    lo sincroniza (lo pone al abrir, lo quita al cerrar), independiente de modales
    o del flujo de cada herramienta. Al cargar el selector con #<tool> se reabre. */
-const OVERLAY2TOOL = { 'lq-overlay': 'pools', 'mu-overlay': 'heat', 'nv-overlay': 'levels', 'it-overlay': 'inst', 'rz-overlay': 'react' };
+const OVERLAY2TOOL = { 'lq-overlay': 'pools', 'mu-overlay': 'heat', 'nv-overlay': 'levels', 'it-overlay': 'inst', 'rz-overlay': 'react', 'td-overlay': 'demo' };
 function sincronizarHashTool() {
   try {
     const id = Object.keys(OVERLAY2TOOL).find((x) => document.getElementById(x));
@@ -486,7 +491,7 @@ export function abrirSelector(origen, wallet, ethers) {
         <div class="an-media">
           ${medio}
           <span class="an-badge an-badge-${esc(h.cat)}">${esc(catTxt)}</span>
-          ${h.spot ? `<span class="an-spot">${ICO.spot} Spot</span>` : ''}
+          ${h.free ? `<span class="an-spot an-free">${ICO.spot} Free</span>` : (h.spot ? `<span class="an-spot">${ICO.spot} Spot</span>` : '')}
           ${h.listo ? '' : '<span class="an-soon">Coming soon</span>'}
         </div>
         <div class="an-body">
@@ -659,8 +664,11 @@ const CSS = `
 #an-sel .an-badge-indicator{color:#5ff0b0;background:rgba(46,189,133,.16);border:1px solid rgba(46,189,133,.4)}
 #an-sel .an-badge-analysis{color:#f1cf6a;background:rgba(232,184,75,.16);border:1px solid rgba(232,184,75,.42)}
 #an-sel .an-badge-strategy{color:#9cc9ff;background:rgba(74,163,255,.16);border:1px solid rgba(74,163,255,.4)}
+#an-sel .an-badge-trading{color:#ffb86b;background:rgba(255,159,67,.16);border:1px solid rgba(255,159,67,.42)}
 #an-sel .an-spot{position:absolute;top:9px;right:9px;z-index:2;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#cdd5dd;background:rgba(5,7,10,.55);border:1px solid rgba(255,255,255,.14);border-radius:100px;padding:3px 8px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #an-sel .an-spot svg{width:11px;height:11px;color:#2ebd85}
+#an-sel .an-free{color:#3ee88a;border-color:rgba(46,232,106,.45);background:rgba(46,232,106,.12)}
+#an-sel .an-free svg{color:#3ee88a}
 #an-sel .an-soon{position:absolute;top:50%;left:50%;z-index:2;transform:translate(-50%,-50%);font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#cfd6dd;background:rgba(5,7,10,.6);border:1px solid rgba(255,255,255,.16);border-radius:100px;padding:6px 14px}
 #an-sel .an-card.soon .an-img{filter:grayscale(.5) brightness(.72)}
 /* cuerpo de ALTO FIJO → todas las tarjetas igual */
