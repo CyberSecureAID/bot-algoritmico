@@ -137,6 +137,10 @@ export function estilos() {
   .td-stat-chip{font-family:var(--td-mono); font-size:10.5px; color:var(--td-ink2)} .td-stat-chip b{color:var(--td-ink)} .td-stat-chip b.up{color:var(--td-up2)} .td-stat-chip b.down{color:var(--td-down2)}
   .td-pager{display:inline-flex; align-items:center; gap:6px; font-family:var(--td-mono); font-size:11px; color:var(--td-ink2)}
   .td-pager button{min-width:26px; padding:0 7px} .td-pager button:disabled{opacity:.4; cursor:default}
+  /* Botón de certificado: protagonista, centrado y fijo arriba del History */
+  .td-cert-cta{position:sticky; top:0; z-index:3; display:flex; justify-content:center; padding:12px 10px; background:var(--td-panel2); border-bottom:1px solid var(--td-line)}
+  .td-cert-btn{display:inline-flex; align-items:center; gap:9px; min-height:46px; padding:0 28px; border-radius:12px; border:1px solid #c79426; background:linear-gradient(180deg,#f7db8d,var(--td-gold) 55%,#c79426); color:#2a1d00; font-family:var(--td-disp); font-weight:800; font-size:14px; box-shadow:0 6px 18px rgba(232,184,75,.3)}
+  .td-cert-btn svg{width:17px; height:17px} .td-cert-btn:hover{filter:brightness(1.05)}
   .td-pos-body{flex:1 1 auto; min-height:0; overflow:auto}
   .td-tbl{width:100%; border-collapse:collapse; font-family:var(--td-mono); font-size:11.5px}
   .td-tbl th{position:sticky; top:0; background:var(--td-panel2); text-align:right; padding:6px 13px; color:var(--td-ink3); font-weight:700; font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; border-bottom:1px solid var(--td-line); white-space:nowrap; z-index:1}

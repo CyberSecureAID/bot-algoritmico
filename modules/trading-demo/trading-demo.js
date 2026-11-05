@@ -12,9 +12,9 @@
    compartido del resto de secciones: catálogo de monedas, sus logos y la misma
    barra de dibujo. */
 
-import { estilos } from './estilos.js?v=6';
+import { estilos } from './estilos.js?v=7';
 import * as D from './datos.js?v=2';
-import * as M from './motor.js?v=5';
+import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 
@@ -53,7 +53,8 @@ const IC = {
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
   expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
   shrink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M16 21v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>',
-  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  cert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.2 13.5 7 22l5-3 5 3-1.2-8.5"/></svg>'
 };
 
 export async function abrirDemo() {
@@ -267,14 +268,14 @@ function onKline(k) {
   else if (!last || c.time > last.time) { S.velas.push(c); if (S.velas.length > 1500) S.velas.shift(); }
   else return;
   try { S.serieVela.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }); } catch (_) {}
-  nuevoPrecio(c.close);
+  nuevoPrecio(c.close, c.high, c.low);
   if (k.x === true) { S.velasDib = S.velas.map((v) => ({ t: v.time, o: v.open, h: v.high, l: v.low, c: v.close, v: v.volume })); sincronizarDib(); }
 }
 
-function nuevoPrecio(px) {
+function nuevoPrecio(px, hi, lo) {
   S.mark = px; S.marks[S.par.id] = px;
   if (S.open24 > 0) S.chgPct = ((px - S.open24) / S.open24) * 100;
-  const ev = M.onPrecio(S.par.id, px); let cambio = false;
+  const ev = M.onPrecio(S.par.id, px, hi, lo); let cambio = false;
   if (ev.fills.length) { ev.fills.forEach((p) => { flash(p.entrada, p.lado, (p.lado === 'long' ? 'LONG' : 'SHORT') + ' filled'); toast(`Marked ${p.lado} filled at ${fmtP(p.entrada)}`, 'ok'); snd('open'); }); cambio = true; }
   if (ev.tp.length) { ev.tp.forEach((r) => { flash(r.salida, 'long', 'TAKE PROFIT'); toast(`Take profit hit · ${fmtMoney(r.pnl)}`, 'ok'); snd('tp'); }); cambio = true; }
   if (ev.sl.length) { ev.sl.forEach((r) => { flash(r.salida, 'short', 'STOP LOSS'); toast(`Stop loss hit · ${fmtMoney(r.pnl)}`, 'bad'); snd('sl'); }); cambio = true; }
@@ -355,12 +356,13 @@ function renderPos() {
     const PP = 60, tot = hist.length, pags = Math.max(1, Math.ceil(tot / PP));
     if (S.histPage >= pags) S.histPage = pags - 1; if (S.histPage < 0) S.histPage = 0;
     const pag = hist.slice(S.histPage * PP, S.histPage * PP + PP);
-    if (r) r.innerHTML = `<span class="td-stat-chip">30d PnL <b class="${cls(st.total)}">${fmtMoney(st.total)}</b></span><span class="td-stat-chip">Win rate <b>${st.winRate}%</b></span><span class="td-stat-chip">Trades <b>${st.n}</b></span>${tot > PP ? `<span class="td-pager"><button class="td-x" id="td-prev"${S.histPage === 0 ? ' disabled' : ''}>‹</button><span>${S.histPage + 1}/${pags}</span><button class="td-x" id="td-next"${S.histPage >= pags - 1 ? ' disabled' : ''}>›</button></span>` : ''}${tot ? `<button class="td-x" id="td-cert">Export certificate</button>` : ''}`;
-    if ($('td-cert')) $('td-cert').onclick = pedirNombreCert;
+    if (r) r.innerHTML = `<span class="td-stat-chip">30d PnL <b class="${cls(st.total)}">${fmtMoney(st.total)}</b></span><span class="td-stat-chip">Win rate <b>${st.winRate}%</b></span><span class="td-stat-chip">Trades <b>${st.n}</b></span>${tot > PP ? `<span class="td-pager"><button class="td-x" id="td-prev"${S.histPage === 0 ? ' disabled' : ''}>‹</button><span>${S.histPage + 1}/${pags}</span><button class="td-x" id="td-next"${S.histPage >= pags - 1 ? ' disabled' : ''}>›</button></span>` : ''}`;
     if ($('td-prev')) $('td-prev').onclick = () => { S.histPage--; renderPos(); };
     if ($('td-next')) $('td-next').onclick = () => { S.histPage++; renderPos(); };
     if (!tot) { body.innerHTML = '<div class="td-empty">No closed trades yet. Your track record builds here as you open and close demo trades.</div>'; return; }
-    body.innerHTML = `<table class="td-tbl"><thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL (ROE)</th><th></th></tr></thead><tbody>${pag.map((h) => { const c = h.pnl >= 0 ? 'up' : 'down'; const d = new Date(h.cerrado); const f = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); const mo = h.motivo === 'tp' ? ' · TP' : h.motivo === 'sl' ? ' · SL' : h.motivo === 'liq' ? ' · LIQ' : ''; return `<tr><td>${f}</td><td><span class="td-sym">${logoChip(h.par)} ${esc(h.par)}</span></td><td><span class="td-tag ${h.lado}">${h.lado.toUpperCase()}</span> <span class="td-lev-badge">${h.lev}x</span></td><td>${fmtP(h.entrada)}</td><td>${fmtP(h.salida)}</td><td class="td-pnl ${c}">${fmtMoney(h.pnl)} (${fmtPct(h.roe)})${mo}</td><td><button class="td-share" data-shareh="${h.id}" title="Export trade card">${IC.share}</button></td></tr>`; }).join('')}</tbody></table>`;
+    const cta = `<div class="td-cert-cta"><button class="td-cert-btn" id="td-cert">${IC.cert} Export performance certificate</button></div>`;
+    body.innerHTML = cta + `<table class="td-tbl"><thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL (ROE)</th><th></th></tr></thead><tbody>${pag.map((h) => { const c = h.pnl >= 0 ? 'up' : 'down'; const d = new Date(h.cerrado); const f = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); const mo = h.motivo === 'tp' ? ' · TP' : h.motivo === 'sl' ? ' · SL' : h.motivo === 'liq' ? ' · LIQ' : ''; return `<tr><td>${f}</td><td><span class="td-sym">${logoChip(h.par)} ${esc(h.par)}</span></td><td><span class="td-tag ${h.lado}">${h.lado.toUpperCase()}</span> <span class="td-lev-badge">${h.lev}x</span></td><td>${fmtP(h.entrada)}</td><td>${fmtP(h.salida)}</td><td class="td-pnl ${c}">${fmtMoney(h.pnl)} (${fmtPct(h.roe)})${mo}</td><td><button class="td-share" data-shareh="${h.id}" title="Export trade card">${IC.share}</button></td></tr>`; }).join('')}</tbody></table>`;
+    if ($('td-cert')) $('td-cert').onclick = pedirNombreCert;
     body.querySelectorAll('[data-shareh]').forEach((b) => b.onclick = () => { const h = hist.find((x) => x.id === b.dataset.shareh); if (h) tarjetaPnL(h); });
   }
 }
@@ -714,16 +716,19 @@ async function generarCert(nombre) {
   g.strokeStyle = 'rgba(232,184,75,.22)'; g.lineWidth = 2; g.strokeRect(22, 22, W - 44, H - 44);
   g.save(); g.translate(W / 2, H * .52); g.rotate(-Math.PI / 10); g.font = '800 300px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.033)'; g.fillText('DEMO', 0, 0); g.restore();
   const M0 = 74;
-  if (sello) { const lw = 220, lh = sello.height * (lw / sello.width); g.drawImage(sello, M0, 60, lw, lh); }
-  g.textAlign = 'right'; g.fillStyle = ink3; g.font = '700 19px "IBM Plex Mono", monospace'; g.fillText('decfreedom.com', W - M0, 92);
+  // Logo (sello) arriba a la DERECHA; dominio debajo del logo.
+  let domY = 92;
+  if (sello) { const lw = 200, lh = sello.height * (lw / sello.width); g.drawImage(sello, W - M0 - lw, 54, lw, lh); domY = 54 + lh + 30; }
+  g.textAlign = 'right'; g.fillStyle = ink3; g.font = '700 18px "IBM Plex Mono", monospace'; g.fillText('decfreedom.com', W - M0, domY);
+  // Título arriba a la IZQUIERDA (ocupa el espacio que deja el logo al irse a la derecha).
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-  g.fillStyle = ink; g.font = '800 52px "Chakra Petch", sans-serif'; g.fillText('Trading Performance', M0, 232);
-  g.fillStyle = oro; g.font = '800 52px "Chakra Petch", sans-serif'; g.fillText('Certificate', M0, 292);
-  g.fillStyle = ink3; g.font = '700 17px "IBM Plex Mono", monospace'; g.fillText('DEMO ACCOUNT · NOT REAL MONEY', M0, 324);
-  g.fillStyle = ink2; g.font = '600 19px "IBM Plex Mono", monospace'; g.fillText('Issued to', M0, 392);
-  g.fillStyle = '#fff'; g.font = '800 42px "Plus Jakarta Sans", sans-serif'; g.fillText(nombre, M0, 438);
+  g.fillStyle = ink; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Trading Performance', M0, 132);
+  g.fillStyle = oro; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Certificate', M0, 196);
+  g.fillStyle = ink3; g.font = '700 17px "IBM Plex Mono", monospace'; g.fillText('DEMO ACCOUNT · NOT REAL MONEY', M0, 230);
+  g.fillStyle = ink2; g.font = '600 19px "IBM Plex Mono", monospace'; g.fillText('Issued to', M0, 306);
+  g.fillStyle = '#fff'; g.font = '800 42px "Plus Jakarta Sans", sans-serif'; g.fillText(nombre, M0, 352);
   g.fillStyle = '#c3cbd4'; g.font = '400 19px "Plus Jakarta Sans", sans-serif';
-  wrapTexto(g, 'DecFreedom provided a demo trading service with a starting balance of $10,000. This document certifies the track record achieved on the demo platform over the period shown.', M0, 480, W - M0 * 2, 27);
+  wrapTexto(g, 'DecFreedom provided a demo trading service with a starting balance of $10,000. This document certifies the track record achieved on the demo platform over the period shown.', M0, 398, W - M0 * 2, 27);
   const periodo = st.desde ? (st.desde.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' }) + '  →  ' + st.hasta.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })) : '—';
   const roi = st.total / st.startBal * 100;
   const tiles = [
@@ -734,7 +739,7 @@ async function generarCert(nombre) {
     ['Start', '$10,000', ink],
     ['End balance', '$' + st.endBal.toLocaleString('en-US', { maximumFractionDigits: 0 }), st.endBal >= 10000 ? up : dn]
   ];
-  const tY = 556, tW = (W - M0 * 2 - 2 * 18) / 3, tH = 112;
+  const tY = 480, tW = (W - M0 * 2 - 2 * 18) / 3, tH = 112;
   tiles.forEach((t, i) => {
     const x = M0 + (i % 3) * (tW + 18), y = tY + ((i / 3) | 0) * (tH + 16);
     g.fillStyle = 'rgba(255,255,255,.035)'; redondea(g, x, y, tW, tH, 12); g.fill();
@@ -743,7 +748,7 @@ async function generarCert(nombre) {
     g.fillStyle = t[2]; g.font = '800 33px "Chakra Petch", sans-serif'; g.fillText(t[1], x + 18, y + 78);
   });
   g.fillStyle = ink2; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText('Period:  ' + periodo, M0, tY + 2 * (tH + 16) + 36);
-  const chY = 906, chH = 300, chW = W - M0 * 2;
+  const chY = 820, chH = 360, chW = W - M0 * 2;
   g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Equity curve', M0, chY - 16);
   dibChartLinea(g, M0, chY, chW, chH, st.curva, oro);
   const bY = chY + chH + 78, bH = 240;
@@ -759,14 +764,24 @@ function dibChartLinea(g, x, y, w, h, datos, col) {
   g.save();
   g.fillStyle = 'rgba(255,255,255,.02)'; redondea(g, x, y, w, h, 12); g.fill();
   g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; redondea(g, x + .5, y + .5, w - 1, h - 1, 12); g.stroke();
-  if (!datos || datos.length < 2) { g.fillStyle = '#6b7580'; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.fillText('Not enough trades yet', x + w / 2, y + h / 2); g.restore(); return; }
-  const min = Math.min(...datos), max = Math.max(...datos), rng = (max - min) || 1;
-  const px = (i) => x + 16 + (w - 32) * (i / (datos.length - 1));
-  const py = (v) => y + 16 + (h - 32) * (1 - (v - min) / rng);
-  if (min <= 10000 && max >= 10000) { const yb = py(10000); g.setLineDash([4, 4]); g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + 16, yb); g.lineTo(x + w - 16, yb); g.stroke(); g.setLineDash([]); }
-  const grd = g.createLinearGradient(0, y, 0, y + h); grd.addColorStop(0, 'rgba(232,184,75,.28)'); grd.addColorStop(1, 'rgba(232,184,75,0)');
-  g.beginPath(); g.moveTo(px(0), py(datos[0])); datos.forEach((v, i) => g.lineTo(px(i), py(v))); g.lineTo(px(datos.length - 1), y + h - 16); g.lineTo(px(0), y + h - 16); g.closePath(); g.fillStyle = grd; g.fill();
-  g.beginPath(); datos.forEach((v, i) => { const X = px(i), Y = py(v); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.strokeStyle = col; g.lineWidth = 2.5; g.stroke();
+  if (!datos || datos.length < 2) { g.fillStyle = '#6b7580'; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Not enough trades yet', x + w / 2, y + h / 2); g.restore(); return; }
+  const padX = 20, padT = 24, padB = 24;
+  let min = Math.min(...datos), max = Math.max(...datos);
+  const base = (max - min) || (max * 0.02) || 1; min -= base * 0.14; max += base * 0.14; const rng = max - min;
+  const px = (i) => x + padX + (w - padX * 2) * (datos.length === 1 ? 0.5 : i / (datos.length - 1));
+  const py = (v) => y + padT + (h - padT - padB) * (1 - (v - min) / rng);
+  // rejilla + etiquetas de valor
+  g.textAlign = 'right'; g.textBaseline = 'middle'; g.font = '600 13px "IBM Plex Mono", monospace';
+  for (let k = 0; k <= 3; k++) { const v = min + rng * k / 3, yy = py(v); g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yy); g.lineTo(x + w - padX, yy); g.stroke(); g.fillStyle = '#5a636e'; g.fillText('$' + Math.round(v).toLocaleString('en-US'), x + w - 10, yy); }
+  // baseline $10,000
+  if (min <= 10000 && max >= 10000) { const yb = py(10000); g.setLineDash([5, 5]); g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yb); g.lineTo(x + w - padX, yb); g.stroke(); g.setLineDash([]); }
+  const pts = datos.map((v, i) => ({ x: px(i), y: py(v) }));
+  // trazo SUAVE (Catmull-Rom -> bezier) para que la curva fluya
+  const trazo = () => { g.beginPath(); g.moveTo(pts[0].x, pts[0].y); for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2; g.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y); } };
+  const grd = g.createLinearGradient(0, y, 0, y + h); grd.addColorStop(0, 'rgba(232,184,75,.26)'); grd.addColorStop(1, 'rgba(232,184,75,0)');
+  trazo(); g.lineTo(pts[pts.length - 1].x, y + h - padB); g.lineTo(pts[0].x, y + h - padB); g.closePath(); g.fillStyle = grd; g.fill();
+  g.save(); g.shadowColor = 'rgba(232,184,75,.45)'; g.shadowBlur = 8; trazo(); g.strokeStyle = col; g.lineWidth = 3; g.lineJoin = 'round'; g.stroke(); g.restore();
+  pts.forEach((p, i) => { const last = i === pts.length - 1; g.beginPath(); g.arc(p.x, p.y, (i === 0 || last) ? 5 : 3.5, 0, 7); g.fillStyle = last ? '#fff' : col; g.fill(); if (last) { g.strokeStyle = col; g.lineWidth = 2; g.stroke(); } });
   g.restore();
 }
 function dibBarras(g, x, y, w, h, series) {

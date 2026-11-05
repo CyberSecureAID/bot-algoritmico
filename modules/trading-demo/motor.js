@@ -112,20 +112,28 @@ export function cerrar(id, mark, motivo) {
   return { pos: p, pnl: neto, gross, fee, salida: mark, motivo: motivo || 'manual' };
 }
 
-/* Nuevo precio: fills de órdenes marcadas, TP/SL y liquidaciones. */
-export function onPrecio(par, mark) {
+/* Nuevo precio: fills de órdenes marcadas, TP/SL y liquidaciones.
+   ANTI-GAP: se dispara cuando el RANGO de la vela (high/low) TOCA el nivel, no
+   solo cuando cierra en él. Así una mecha que toca el TP/SL/liq lo ejecuta al
+   instante, sin esperar al cierre. `hi`/`lo` son el máx/mín de la vela en curso
+   (si no llegan, se usa `mark` como respaldo). El llenado es AL PRECIO DEL NIVEL. */
+export function onPrecio(par, mark, hi, lo) {
   const ev = { fills: [], tp: [], sl: [], liqs: [] };
   if (!(mark > 0)) return ev;
+  hi = (hi > 0) ? Math.max(hi, mark) : mark;
+  lo = (lo > 0) ? Math.min(lo, mark) : mark;
   for (let i = ST.ord.length - 1; i >= 0; i--) {
     const o = ST.ord[i]; if (o.par !== par) continue;
-    const toca = o.desde === 'arriba' ? mark <= o.precio : mark >= o.precio;
+    const toca = o.desde === 'arriba' ? lo <= o.precio : hi >= o.precio;   // la mecha toca el precio marcado
     if (toca) { const r = abrirMercado(par, o.lado, o.tam, o.lev, o.precio, o.tp, o.sl); ST.ord.splice(i, 1); if (r.ok) ev.fills.push(r.pos); }
   }
   for (let i = ST.pos.length - 1; i >= 0; i--) {
     const p = ST.pos[i]; if (p.par !== par) continue;
-    const liq = p.lado === 'long' ? mark <= p.liq : mark >= p.liq;
-    const slHit = p.sl && (p.lado === 'long' ? mark <= p.sl : mark >= p.sl);
-    const tpHit = p.tp && (p.lado === 'long' ? mark >= p.tp : mark <= p.tp);
+    const esL = p.lado === 'long';
+    const liq = esL ? lo <= p.liq : hi >= p.liq;
+    const slHit = p.sl && (esL ? lo <= p.sl : hi >= p.sl);
+    const tpHit = p.tp && (esL ? hi >= p.tp : lo <= p.tp);
+    // Prioridad conservadora si la misma vela toca varios: liquidación › SL › TP.
     if (liq) { registrar(p, p.liq, -p.margen, 0, 'liq'); ST.pos.splice(i, 1); ST.realizado = r2(ST.realizado - p.margen); ev.liqs.push(p); }
     else if (slHit) { const r = cerrar(p.id, p.sl, 'sl'); if (r) ev.sl.push(r); }
     else if (tpHit) { const r = cerrar(p.id, p.tp, 'tp'); if (r) ev.tp.push(r); }
