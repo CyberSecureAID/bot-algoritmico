@@ -65,13 +65,16 @@ const NEUTRAL = { 'lvl:RSI': 50, 'lvl:STOCH': 50, 'lvl:STOCHRSI': 50, 'lvl:CCI':
 const _DIST_REL = 0.33;
 const _DIST_ABS = 0.10;
 const _tolDist = (d0) => Math.max(_DIST_ABS, Math.abs(d0) * _DIST_REL);
-/* Un par se considera CRUCE si hay un cambio de signo cerca del punto marcado (a
-   <= _CROSS_W velas) Y además el clic cae pegado a ese cruce: a <= 3 velas de él, o
-   con las líneas a <= _CROSS_GAP% del precio. Ventana y gap generosos para que marcar
-   "sobre el cruce" lo capture como CRUCE (con su dirección) y no como una distancia
-   (que sí dispararía en los dos lados, el bug de la incongruencia reportada). */
-const _CROSS_GAP = 1.5;
-const _CROSS_W = 8;
+/* Un par es CRUCE SOLO si el signo de (A-B) cambia PEGADO al clic: a <= _CROSS_W
+   velas. Ventana TIGHT a propósito. Marcar justo sobre el cruce → lo captura como
+   cruce (con su dirección); marcar en expansión o lejos → NO es cruce, es distancia.
+   Eso mata el bug de "me lo cataloga como cruce igual". Sin gate de %: el único
+   criterio es que el signo cambie ahí mismo. */
+const _CROSS_W = 2;
+/* Para las DISTANCIAS: además del % y el lado, se exige la MISMA PENDIENTE (hacia
+   dónde se mueven las medias), medida sobre _SLOPE_W velas. Así una misma separación
+   NO dispara en el lado contrario de un cruce (mismo gap, moviéndose al revés). */
+const _SLOPE_W = 5;
 
 function _estado(f, i) {
   const v = f.vals[i];
@@ -184,6 +187,14 @@ function _cruzaEn(aArr, bArr, close, i, dir) {
   return dir < 0 ? (dPrev > 0 && dCur <= 0) : (dPrev < 0 && dCur >= 0);
 }
 function _keysDe(a, b) { const s = new Set(); if (a && a.key) s.add(a.key); if (b && b.key) s.add(b.key); return Array.from(s); }
+/* Signo de la pendiente de (A-B) sobre SL velas: +1 se abre, −1 se cierra, 0 plano
+   (zona muerta para no exigir pendiente donde casi no hay movimiento). */
+function _pendSigno(aArr, bArr, close, i, SL) {
+  const d1 = _dEn(aArr, bArr, close, i), d0 = _dEn(aArr, bArr, close, i - SL);
+  if (!isFinite(d1) || !isFinite(d0)) return 0;
+  const dif = d1 - d0;
+  return dif > 0.03 ? 1 : (dif < -0.03 ? -1 : 0);
+}
 
 /* Decide, para un par de lineas, si en el punto marcado hay CRUCE o DISTANCIA y lo
    mete en la regla. aId/bId null = precio. */
@@ -193,15 +204,15 @@ function _addGeom(cap, ras, bi, p) {
   const bArr = p.bId == null ? null : (ras._lineById.get(p.bId) || {}).arr || null;
   const d0 = _dEn(aArr, bArr, close, bi);
   if (!isFinite(d0)) return;
-  const cr = _cruceEn(aArr, bArr, close, bi, _CROSS_W, ras.n);
-  const cruce = (cr && (Math.abs(cr.i - bi) <= 3 || Math.abs(d0) <= _CROSS_GAP)) ? cr : null;
+  const cruce = _cruceEn(aArr, bArr, close, bi, _CROSS_W, ras.n);   // cambio de signo a <= 2 velas → CRUCE
   if (cruce) {
     cap.push({ id: 'x:' + (p.aId || 'price') + '|' + (p.bId || 'price'), kind: 'cross', keys: p.keys, aId: p.aId, bId: p.bId, nmA: p.nmA, nmB: p.nmB, dir: cruce.dir });
   } else {
     // A = la linea MAS ALTA en el punto (d0 > 0) para etiquetar "A X% sobre B".
-    let aId = p.aId, bId = p.bId, nmA = p.nmA, nmB = p.nmB, dd = d0;
-    if (d0 < 0) { aId = p.bId; bId = p.aId; nmA = p.nmB; nmB = p.nmA; dd = -d0; }
-    cap.push({ id: 'd:' + (aId || 'price') + '|' + (bId || 'price'), kind: 'dist', keys: p.keys, aId, bId, nmA, nmB, d0: dd, tol: _tolDist(dd) });
+    let aId = p.aId, bId = p.bId, nmA = p.nmA, nmB = p.nmB, dd = d0, aA = aArr, bA = bArr;
+    if (d0 < 0) { aId = p.bId; bId = p.aId; nmA = p.nmB; nmB = p.nmA; dd = -d0; aA = bArr; bA = aArr; }
+    const sd = _pendSigno(aA, bA, close, bi, _SLOPE_W);   // pendiente en la orientación final (A-B)
+    cap.push({ id: 'd:' + (aId || 'price') + '|' + (bId || 'price'), kind: 'dist', keys: p.keys, aId, bId, nmA, nmB, d0: dd, tol: _tolDist(dd), sd });
   }
 }
 
@@ -256,7 +267,9 @@ export function cumpleRasgo(ras, c, barIdx) {
     const d = _dEn(aArr, bArr, ras.close, barIdx);
     if (!isFinite(d)) return false;
     if (c.d0 >= 0 ? d < 0 : d > 0) return false;             // mismo lado (sin cruzar el cero)
-    return Math.abs(d - c.d0) <= c.tol;
+    if (Math.abs(d - c.d0) > c.tol) return false;            // mismo %
+    if (c.sd && _pendSigno(aArr, bArr, ras.close, barIdx, _SLOPE_W) !== c.sd) return false;   // misma pendiente
+    return true;
   }
   const f = ras._featById.get(c.id); if (!f) return null;
   const st = _estado(f, barIdx);
@@ -287,7 +300,7 @@ export function escanearRasgos(ras, cap, soloInicios = true) {
       if (c.bId != null) { const b = ras._lineById.get(c.bId); if (!b) miss = true; else bArr = b.arr; }
       if (miss) continue;
       if (c.kind === 'cross') R.push({ t: 'x', aArr, bArr, dir: c.dir });
-      else R.push({ t: 'd', aArr, bArr, d0: c.d0, tol: c.tol });
+      else R.push({ t: 'd', aArr, bArr, d0: c.d0, tol: c.tol, sd: c.sd });
     } else {
       const f = ras._featById.get(c.id); if (!f) continue;
       R.push({ t: 'o', f, side: c.side });
@@ -303,6 +316,7 @@ export function escanearRasgos(ras, cap, soloInicios = true) {
       else if (r.t === 'd') {
         const d = _dEn(r.aArr, r.bArr, close, i);
         if (!isFinite(d) || (r.d0 >= 0 ? d < 0 : d > 0) || Math.abs(d - r.d0) > r.tol) { ok = false; break; }
+        if (r.sd && _pendSigno(r.aArr, r.bArr, close, i, _SLOPE_W) !== r.sd) { ok = false; break; }
       } else { const st = _estado(r.f, i); if (st === 0 || st !== r.side) { ok = false; break; } }
     }
     if (ok && (!soloInicios || !prev)) out.push(ras.V[i].time);
@@ -342,4 +356,4 @@ export function rasgoLabel(c, lang) {
   }
 }
 
-try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence engine · cruces v9 · 2026-11-04'); } catch (_) {}
+try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence engine · cruces v11 (tight+pendiente) · 2026-11-04b'); } catch (_) {}
