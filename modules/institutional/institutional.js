@@ -32,7 +32,7 @@ async function cargarBarra() {
   try {
     const base = new URL('../../assets/js/niveles/', import.meta.url).href;
     const [mb, est, dib] = await Promise.all([
-      import(base + 'barra.js?v=5'), import(base + 'estado.js?v=1'), import(base + 'dibujo.js?v=3')
+      import(base + 'barra.js?v=6'), import(base + 'estado.js?v=1'), import(base + 'dibujo.js?v=3')
     ]);
     _montarBarra = mb.montarBarra; _nivN = est.N; _cargarDib = dib.cargarDib;
   } catch (_) { _montarBarra = null; }
@@ -116,7 +116,7 @@ function cargarLWC() {
 }
 
 const S = {
-  par: null, tf: '1h', ind: { EMA50: true }, velas: [], velasDib: [], chart: null, serieVela: null, serieVol: null, legendRefs: [], marks: [], marksApi: null,
+  par: null, tf: '1h', ind: { VWAP: true }, velas: [], velasDib: [], chart: null, serieVela: null, serieVol: null, legendRefs: [], marks: [], marksApi: null,
   refQuote: null, refBoard: null, cargandoChart: false, onResize: null, barra: null, dibMontada: false,
   layout: null, zTop: 10, maxed: null, hidden: Object.assign({}, OCULTOS_DEF), logos: {}, board: [], boardObs: null, ultTicker: null,
   tileEls: {}, senal: null, senalPar: null, senalTF: {}, oleajeRAF: null
@@ -190,9 +190,10 @@ const IC_MAX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 const IC_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const IC_CONF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg>';
 const IC_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.6"/></svg>';
-function ctrlPanel(id, expo) {
+function ctrlPanel(id, expo, ultra) {
   return `<div class="it-ph-ctrl">
     ${expo ? `<button class="it-pbtn it-expo-board" data-expo="${id}" title="Export image">${IC_CAM}</button>` : ''}
+    ${ultra ? `<button class="it-pbtn it-ultra" data-ultra="${id}" title="Ultra full screen">${IC_ULTRA}</button>` : ''}
     <button class="it-pbtn it-max" data-max="${id}" title="Fullscreen">${IC_MAX}</button>
     <button class="it-pbtn it-x" data-close="${id}" title="Close">${IC_X}</button>
   </div>`;
@@ -202,7 +203,7 @@ function panel(id, titulo, extra, opts) {
     <div class="it-ph">
       <h4>${titulo}</h4>
       ${extra || ''}
-      ${ctrlPanel(id, opts && opts.expo)}
+      ${ctrlPanel(id, opts && opts.expo, opts && opts.ultra)}
     </div>
     <div class="it-pb" id="${id}-body">${cargando()}</div>
     <span class="it-resize" data-rz></span>
@@ -246,7 +247,7 @@ function plantilla() {
     </div>
     ${panel('it-p-quote', 'QUOTE')}
     ${panel('it-p-watch', 'WATCHLIST')}
-    ${panel('it-p-board', 'MARKET HEATMAP', '<div class="it-ph-r dim" style="font-family:var(--it-mono);font-size:10px;margin-left:8px">SIZE · 24H MOVE</div>', { expo: true })}
+    ${panel('it-p-board', 'MARKET HEATMAP', '<div class="it-ph-r dim" style="font-family:var(--it-mono);font-size:10px;margin-left:8px">SIZE · 24H MOVE</div>', { expo: true, ultra: true })}
     ${panel('it-p-macro', 'SIGNALS')}
   </div>
   <div class="it-foot">
@@ -1594,6 +1595,7 @@ function montarVentanas() {
     const rz = panel.querySelector('[data-rz]');
     if (rz) { rz.addEventListener('mousedown', (e) => empezar(e, panel, 'resize')); rz.addEventListener('touchstart', (e) => empezar(e, panel, 'resize'), { passive: false }); }
     const ex = panel.querySelector('.it-expo-board'); if (ex) ex.onclick = (e) => { e.stopPropagation(); exportarHeat(); };
+    const ul = panel.querySelector('.it-ultra'); if (ul) ul.onclick = (e) => { e.stopPropagation(); entrarUltra(panel.id); };
     const mx = panel.querySelector('.it-max'); if (mx) mx.onclick = (e) => { e.stopPropagation(); maximizar(panel.id); };
     const cx = panel.querySelector('.it-x'); if (cx) cx.onclick = (e) => { e.stopPropagation(); cerrarPanel(panel.id); };
   });
