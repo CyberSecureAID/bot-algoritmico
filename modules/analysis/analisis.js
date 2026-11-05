@@ -154,7 +154,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=133')).abrirNiveles();
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=36', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
-    else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=4', import.meta.url).href)).abrirDemo();
+    else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=5', import.meta.url).href)).abrirDemo();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
