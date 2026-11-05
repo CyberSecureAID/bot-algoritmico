@@ -10,7 +10,7 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=2';
+import { estilos } from './estilos.js?v=3';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
@@ -63,7 +63,8 @@ const IC = {
   full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
   shrink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M16 21v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>'
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16"/><path d="M20 20v-4h-4"/></svg>'
 };
 
 function lib() { return window.LightweightCharts ? Promise.resolve(window.LightweightCharts) : new Promise((res, rej) => { const s = document.createElement('script'); s.src = LIB; s.onload = () => res(window.LightweightCharts); s.onerror = rej; document.head.appendChild(s); }); }
@@ -82,6 +83,7 @@ export async function abrirMulti() {
         <button class="mc-tool" id="mc-vline" title="Vertical line: mark the same time on every chart">${IC.vline}<span>V-line</span></button>
         <button class="mc-tool" id="mc-hline" title="Horizontal line: mark a price level">${IC.hline}<span>H-line</span></button>
         <span class="mc-sep"></span>
+        <button class="mc-icobtn" id="mc-reset" title="Reset layout (re-tidy all charts)">${IC.refresh}</button>
         <button class="mc-icobtn" id="mc-save" title="Save image of all charts">${IC.cam}</button>
         <button class="mc-add" id="mc-addbtn">${IC.plus}<span>Add chart</span></button>
       </div>
@@ -90,6 +92,7 @@ export async function abrirMulti() {
   document.body.appendChild(ov);
   $('mc-back').onclick = cerrarMulti;
   $('mc-addbtn').onclick = () => addFloat();
+  $('mc-reset').onclick = reorganizar;
   $('mc-save').onclick = guardarImagenTodas;
   $('mc-sync').onclick = () => toggleSync();
   $('mc-vline').onclick = () => toggleTool('vline');
@@ -230,7 +233,7 @@ function pintarLogoHead(pane) {
   const im = new Image(); im.onload = () => { ic.style.backgroundImage = `url(${url})`; ic.textContent = ''; }; im.onerror = () => { ic.textContent = pane.par.id[0]; }; im.src = url;
 }
 
-/* ── Indicadores: cálculo cacheado + dibujo con glow en cada frame ── */
+/* ── Indicadores: cálculo cacheado + trazo limpio con animación cometa ── */
 function recalc(pane) {
   const v = pane.velas; if (!v.length) { pane.ind = {}; return; }
   const ind = { ovl: [], boll: null, osc: null };
@@ -245,7 +248,17 @@ function recalc(pane) {
   }
   pane.ind = ind;
 }
-function arrancarRAF() { const tick = () => { if (NIV.herr !== S._lastHerr) { S._lastHerr = NIV.herr; sincronizarStrips(); } S.paneles.forEach((p) => { dibujarInds(p); dibujarUX(p); }); S.raf = requestAnimationFrame(tick); }; S.raf = requestAnimationFrame(tick); }
+function arrancarRAF() {
+  let last = 0;
+  const tick = (ts) => {
+    S.raf = requestAnimationFrame(tick);
+    if (ts - last < 33) return;            // ~30fps: suave y barato (como el VWAP Pro)
+    last = ts;
+    if (NIV.herr !== S._lastHerr) { S._lastHerr = NIV.herr; sincronizarStrips(); }
+    S.paneles.forEach((p) => { dibujarInds(p); dibujarUX(p); });
+  };
+  S.raf = requestAnimationFrame(tick);
+}
 
 function dibujarInds(pane) {
   const fx = pane.fx, body = pane.body; if (!fx || !body || !pane.serie) return;
@@ -257,18 +270,43 @@ function dibujarInds(pane) {
   const ts = pane.chart.timeScale();
   const X = (t) => { try { const c = ts.timeToCoordinate(t); return c == null ? null : c; } catch (_) { return null; } };
   const Yp = (p) => { try { const c = pane.serie.priceToCoordinate(p); return c == null ? null : c; } catch (_) { return null; } };
-  const gp = 0.5 + 0.5 * Math.sin(performance.now() / 620);
+  const now = performance.now();
   const v = pane.velas;
-  (ind.ovl || []).forEach((o) => linea(g, v, o.data, X, Yp, o.col, gp));
-  if (ind.boll) { linea(g, v, ind.boll.up, X, Yp, 'rgba(120,160,255,.85)', gp); linea(g, v, ind.boll.lo, X, Yp, 'rgba(120,160,255,.85)', gp); linea(g, v, ind.boll.ma, X, Yp, 'rgba(120,160,255,.5)', gp); }
-  if (ind.osc) oscilador(g, v, ind.osc, X, W, H, gp);
+  (ind.ovl || []).forEach((o, i) => lineaComet(g, v, o.data, X, Yp, o.col, W, now, i));
+  if (ind.boll) { lineaComet(g, v, ind.boll.up, X, Yp, '#7aa2ff', W, now, 5); lineaComet(g, v, ind.boll.lo, X, Yp, '#7aa2ff', W, now, 5); lineaComet(g, v, ind.boll.ma, X, Yp, 'rgba(120,160,255,.55)', W, now, 6); }
+  if (ind.osc) oscilador(g, v, ind.osc, X, W, H, now);
 }
-function linea(g, velas, data, X, Yp, col, gp) {
-  if (!data) return; g.save(); g.beginPath(); let on = false;
-  for (let i = 0; i < velas.length; i++) { const val = data[i]; if (val == null) { on = false; continue; } const x = X(velas[i].time); if (x == null) { on = false; continue; } const y = Yp(val); if (y == null) { on = false; continue; } if (on) g.lineTo(x, y); else { g.moveTo(x, y); on = true; } }
-  g.strokeStyle = col; g.lineWidth = 1.7; g.lineJoin = 'round'; g.shadowColor = col; g.shadowBlur = 4 + 8 * gp; g.stroke(); g.restore();
+/* Indicador: trazo LIMPIO + una luz (cometa) que lo recorre de izquierda a
+   derecha, suave y lenta, igual que el área VWAP Pro. Sin neón constante. */
+function lineaComet(g, velas, data, X, Yp, col, W, now, idx) {
+  if (!data) return;
+  const pts = [];
+  for (let i = 0; i < velas.length; i++) { const val = data[i]; if (val == null) continue; const x = X(velas[i].time); if (x == null) continue; const y = Yp(val); if (y == null) continue; pts.push([x, y, i]); }
+  if (pts.length < 2) return;
+  g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.shadowBlur = 0; g.globalAlpha = 1;
+  g.strokeStyle = col; g.lineWidth = 1.5; g.beginPath();
+  let prev = null;
+  for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); prev = p; }
+  g.stroke();
+  const period = 4600, headX = (((now + idx * 760) % period) / period) * (W + 260) - 130, tail = 130;
+  prev = null;
+  for (let k = 0; k < pts.length; k++) {
+    const p = pts[k];
+    if (prev && p[2] === prev[2] + 1) {
+      const mx = (prev[0] + p[0]) / 2, d = Math.abs(mx - headX);
+      if (d <= tail) {
+        const a = 1 - d / tail;
+        g.shadowColor = col; g.shadowBlur = 6; g.strokeStyle = col; g.lineWidth = 2; g.globalAlpha = 0.5 * a;
+        g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke();
+        g.shadowBlur = 0; g.strokeStyle = '#ffffff'; g.lineWidth = 1.1; g.globalAlpha = 0.42 * a * a;
+        g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke();
+      }
+    }
+    prev = p;
+  }
+  g.globalAlpha = 1; g.restore();
 }
-function oscilador(g, velas, osc, X, W, H, gp) {
+function oscilador(g, velas, osc, X, W, H, now) {
   const band = Math.min(150, H * 0.22), top = H - band - 24, bot = H - 24;
   const def = osc.def;
   let lo, hi;
@@ -280,10 +318,24 @@ function oscilador(g, velas, osc, X, W, H, gp) {
   g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, top - 4); g.lineTo(W, top - 4); g.stroke();
   (def.ref || []).forEach((r) => { if (r < lo || r > hi) return; const y = Y(r); g.setLineDash([3, 4]); g.strokeStyle = 'rgba(255,255,255,.16)'; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); });
   if (osc.hist) { for (let i = 0; i < velas.length; i++) { const hv = osc.hist[i]; if (hv == null) continue; const x = X(velas[i].time); if (x == null) continue; const y0 = Y(0), y1 = Y(hv); g.fillStyle = hv >= 0 ? 'rgba(46,232,106,.5)' : 'rgba(255,91,110,.5)'; g.fillRect(x - 1.5, Math.min(y0, y1), 3, Math.abs(y1 - y0)); } }
-  const dibSer = (ser, col) => { if (!ser) return; g.beginPath(); let on = false; for (let i = 0; i < velas.length; i++) { const val = ser[i]; if (val == null) { on = false; continue; } const x = X(velas[i].time); if (x == null) { on = false; continue; } const y = Y(val); if (on) g.lineTo(x, y); else { g.moveTo(x, y); on = true; } } g.strokeStyle = col; g.lineWidth = 1.7; g.lineJoin = 'round'; g.shadowColor = col; g.shadowBlur = 4 + 8 * gp; g.stroke(); };
-  dibSer(osc.serie2, osc.col2 || '#ff8fbf');
-  dibSer(osc.serie, def.col);
-  g.shadowBlur = 0; g.fillStyle = '#7b8694'; g.font = '700 10px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText(def.n, 8, top + 11);
+  const dibSer = (ser, col, cometa) => {
+    if (!ser) return;
+    const pts = [];
+    for (let i = 0; i < velas.length; i++) { const val = ser[i]; if (val == null) continue; const x = X(velas[i].time); if (x == null) continue; pts.push([x, Y(val), i]); }
+    if (pts.length < 2) return;
+    g.shadowBlur = 0; g.globalAlpha = 1; g.strokeStyle = col; g.lineWidth = 1.5; g.lineJoin = 'round'; g.beginPath();
+    let prev = null; for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); prev = p; }
+    g.stroke();
+    if (cometa) {
+      const period = 4600, headX = ((now % period) / period) * (W + 260) - 130, tail = 130;
+      prev = null;
+      for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) { const mx = (prev[0] + p[0]) / 2, d = Math.abs(mx - headX); if (d <= tail) { const a = 1 - d / tail; g.shadowColor = col; g.shadowBlur = 6; g.strokeStyle = col; g.lineWidth = 2; g.globalAlpha = 0.5 * a; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke(); } } prev = p; }
+      g.globalAlpha = 1; g.shadowBlur = 0;
+    }
+  };
+  dibSer(osc.serie2, osc.col2 || '#ff8fbf', false);
+  dibSer(osc.serie, def.col, true);
+  g.shadowBlur = 0; g.globalAlpha = 1; g.fillStyle = '#7b8694'; g.font = '700 10px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText(def.n, 8, top + 11);
   g.restore();
 }
 
@@ -296,9 +348,9 @@ function dibujarUX(pane) {
   const g = ux.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
   if (pane !== S.focus) dibujosRO(pane, g);
   const ts = pane.chart.timeScale(), now = performance.now();
-  S.vlines.forEach((vl) => { const x = safeX(pane, vl.time); if (x == null) return; const a = vl.t0 ? Math.min(1, (now - vl.t0) / 360) : 1; lineaVert(g, x, H, a, false); });
+  S.vlines.forEach((vl) => { const x = safeX(pane, vl.time); if (x == null) return; const a = vl.t0 ? Math.min(1, (now - vl.t0) / 360) : 1; lineaVert(g, x, W, H, a, false, fmtFecha(vl.time)); });
   (pane.hlines || []).forEach((hl) => { const y = safeY(pane, hl.price); if (y == null) return; const a = hl.t0 ? Math.min(1, (now - hl.t0) / 360) : 1; lineaHorz(g, y, W, a, hl.price, false); });
-  if (S.tool === 'vline' && S.preview && S.preview.time != null) { const x = safeX(pane, S.preview.time); if (x != null) lineaVert(g, x, H, 0.5, true); }
+  if (S.tool === 'vline' && S.preview && S.preview.time != null) { const x = safeX(pane, S.preview.time); if (x != null) lineaVert(g, x, W, H, 0.65, true, fmtFecha(S.preview.time)); }
   if (S.tool === 'hline' && S.preview && S.preview.pane === pane && S.preview.price != null) { const y = safeY(pane, S.preview.price); if (y != null) lineaHorz(g, y, W, 0.55, S.preview.price, true); }
 }
 function dibujosRO(pane, g) {
@@ -309,9 +361,17 @@ function dibujosRO(pane, g) {
   try { dibujarHerramientas(g, geo.x1, geo.y1); } catch (_) {}
   NIV._geo = s.geo; NIV.velas = s.velas; NIV.dibujos = s.dib; NIV.sel = s.sel; NIV.dib = s.cur; NIV.gomaBox = s.goma;
 }
-function lineaVert(g, x, H, a, preview) {
-  g.save(); g.globalAlpha = a; g.strokeStyle = '#E8B84B'; g.lineWidth = preview ? 1 : 1.6; g.shadowColor = 'rgba(232,184,75,.9)'; g.shadowBlur = preview ? 4 : 9;
-  if (preview) g.setLineDash([5, 5]); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); g.restore();
+function lineaVert(g, x, W, H, a, preview, label) {
+  g.save(); g.globalAlpha = a; g.strokeStyle = '#E8B84B'; g.lineWidth = preview ? 1 : 1.6; g.shadowColor = 'rgba(232,184,75,.9)'; g.shadowBlur = preview ? 4 : 8;
+  if (preview) g.setLineDash([5, 5]); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+  g.setLineDash([]); g.shadowBlur = 0;
+  if (label) {   // etiqueta con la FECHA/hora exacta de la línea, para poder situarla (p. ej. "28 Nov 15:00")
+    g.font = '700 10px "IBM Plex Mono", monospace';
+    const tw = g.measureText(label).width + 12; let lx = x - tw / 2; lx = Math.max(2, Math.min(lx, W - tw - 2)); const ly = H - 32;
+    g.globalAlpha = Math.min(1, a + 0.2); redondea(g, lx, ly, tw, 17, 5); g.fillStyle = 'rgba(20,16,4,.96)'; g.fill(); g.strokeStyle = '#8f6a1a'; g.lineWidth = 1; g.stroke();
+    g.fillStyle = '#E8B84B'; g.textAlign = 'left'; g.fillText(label, lx + 6, ly + 12);
+  }
+  g.restore();
 }
 function lineaHorz(g, y, W, a, price, preview) {
   g.save(); g.globalAlpha = a; g.strokeStyle = '#2ee8c6'; g.lineWidth = preview ? 1 : 1.6; g.shadowColor = 'rgba(46,232,198,.85)'; g.shadowBlur = preview ? 4 : 9;
@@ -413,10 +473,37 @@ function colocarHLine(pane, y) {
 }
 function fullPane(pane) {
   pane.max = !pane.max;
-  pane.el.classList.toggle('mc-max', pane.max);
+  const ov = $('mc-overlay');
+  if (pane.max) {
+    pane._inline = pane.el.getAttribute('style') || '';   // guarda left/top/width/height (del flotante o de un resize)
+    pane.el.removeAttribute('style');                      // si no, los estilos inline impiden que .mc-max ocupe toda la pantalla
+    pane.el.classList.add('mc-max');
+    if (ov) ov.classList.add('mc-hasmax');
+  } else {
+    pane.el.classList.remove('mc-max');
+    if (ov) ov.classList.remove('mc-hasmax');
+    if (pane._inline) pane.el.setAttribute('style', pane._inline); else pane.el.removeAttribute('style');
+  }
   pane.el.querySelector('[data-full]').innerHTML = pane.max ? IC.shrink : IC.full;
   pane.el.querySelector('[data-full]').classList.toggle('on', pane.max);
-  setTimeout(() => { try { pane.chart.applyOptions({}); } catch (_) {} if (pane === S.focus) sincronizarFocus(); }, 60);
+  // re-ajusta la gráfica al nuevo tamaño (si no, solo se veía un pedacito)
+  setTimeout(() => { try { pane.chart.timeScale().fitContent(); } catch (_) {} if (pane === S.focus) sincronizarFocus(); }, 90);
+}
+/* Reorganiza todo al 2×2 por defecto y re-ajusta las gráficas (rescate si un
+   resize manual dejó la rejilla descolocada). */
+function reorganizar() {
+  const ov = $('mc-overlay'); if (ov) ov.classList.remove('mc-hasmax');
+  S.paneles.forEach((p) => {
+    if (p.max) {
+      p.max = false; p.el.classList.remove('mc-max');
+      const fb = p.el.querySelector('[data-full]'); if (fb) { fb.innerHTML = IC.full; fb.classList.remove('on'); }
+      if (p.flotante && p._inline) p.el.setAttribute('style', p._inline);
+    }
+    if (!p.flotante) { p.el.removeAttribute('style'); p._inline = ''; }
+  });
+  ajustarGrid();
+  setTimeout(() => { S.paneles.forEach((p) => { try { p.chart.timeScale().fitContent(); } catch (_) {} }); if (S.focus) sincronizarFocus(); }, 90);
+  toast('Layout reset');
 }
 function cerrarPane(pane) {
   const docked = S.paneles.filter((p) => !p.flotante);
@@ -471,7 +558,7 @@ function pop(anc, html, w) {
   cerrarMenu();
   const m = document.createElement('div'); m.className = 'mc-pop'; m.innerHTML = html;
   if (w) m.style.width = w + 'px';
-  document.body.appendChild(m);
+  ($('mc-overlay') || document.body).appendChild(m);
   const r = anc.getBoundingClientRect();
   let left = r.left, top = r.bottom + 6;
   const mw = m.offsetWidth, mh = m.offsetHeight;
@@ -566,7 +653,7 @@ function modal(titulo, innerHTML) {
   const old = $('mc-modal'); if (old) old.remove();
   const m = document.createElement('div'); m.className = 'mc-modal'; m.id = 'mc-modal';
   m.innerHTML = `<div class="bx"><div class="bxh"><b>${esc(titulo)}</b><button class="mc-icobtn x" id="mc-mx">${IC.x}</button></div>${innerHTML}</div>`;
-  document.body.appendChild(m);
+  ($('mc-overlay') || document.body).appendChild(m);
   const ce = () => m.remove(); m.querySelector('#mc-mx').onclick = ce; m.onclick = (e) => { if (e.target === m) ce(); };
   return m;
 }
@@ -580,7 +667,9 @@ function modalImg(cv, fname, titulo) {
 /* ── Utilidades ── */
 function decimales(p) { p = Math.abs(+p || 0); if (p >= 1000) return 2; if (p >= 1) return 2; if (p >= 0.01) return 4; if (p >= 0.0001) return 6; return 8; }
 function fmtNum(p) { const d = decimales(p); return Number(p).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+const _MESES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtFecha(t) { try { const d = new Date(t * 1000); const p = (n) => (n < 10 ? '0' + n : '' + n); return p(d.getDate()) + ' ' + _MESES[d.getMonth()] + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); } catch (_) { return ''; } }
 function redondea(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 let tmrToast = null;
-function toast(msg) { let t = $('mc-toast'); if (!t) { t = document.createElement('div'); t.id = 'mc-toast'; t.className = 'mc-toast'; document.body.appendChild(t); } t.textContent = msg; requestAnimationFrame(() => t.classList.add('on')); clearTimeout(tmrToast); tmrToast = setTimeout(() => t.classList.remove('on'), 2600); }
+function toast(msg) { let t = $('mc-toast'); if (!t) { t = document.createElement('div'); t.id = 'mc-toast'; t.className = 'mc-toast'; ($('mc-overlay') || document.body).appendChild(t); } t.textContent = msg; requestAnimationFrame(() => t.classList.add('on')); clearTimeout(tmrToast); tmrToast = setTimeout(() => t.classList.remove('on'), 2600); }

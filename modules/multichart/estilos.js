@@ -10,6 +10,8 @@ export function estilos() {
   document.head.appendChild(s);
 }
 
+/* Las variables se definen también en los flotantes (pop/modal/toast) porque
+   esos se cuelgan dentro de #mc-overlay y así heredan oro, líneas, etc. */
 const CSS = `
   #mc-overlay{
     --mc-bg:#05070a; --mc-panel:#0b0f15; --mc-panel2:#0d1219; --mc-line:#1a212b; --mc-line2:#232c38;
@@ -30,7 +32,6 @@ const CSS = `
   .mc-demo{font-family:var(--mc-mono); font-size:10px; color:var(--mc-ink3); border:1px solid var(--mc-line2); border-radius:6px; padding:2px 7px}
   .mc-top-r{margin-left:auto; display:flex; align-items:center; gap:8px}
   .mc-sep{width:1px; height:26px; background:var(--mc-line2); margin:0 2px}
-  /* herramientas que actúan sobre TODAS las gráficas a la vez */
   .mc-tool{display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); font-weight:700; font-size:12.5px}
   .mc-tool svg{width:16px; height:16px}
   .mc-tool:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)}
@@ -42,17 +43,19 @@ const CSS = `
 
   /* ── Rejilla de paneles (2×2 por defecto, cada panel redimensionable) ── */
   .mc-grid{flex:1 1 auto; min-height:0; position:relative; display:flex; flex-wrap:wrap; align-content:flex-start; gap:8px; padding:8px; overflow:auto}
-  .mc-pane{position:relative; width:calc(50% - 4px); height:calc(50% - 4px); min-width:280px; min-height:180px;
+  .mc-pane{position:relative; isolation:isolate; width:calc(50% - 4px); height:calc(50% - 4px); min-width:280px; min-height:180px;
     display:flex; flex-direction:column; border:1px solid var(--mc-line2); border-radius:12px; overflow:hidden;
     background:var(--mc-panel2); resize:both}
   .mc-grid.mc-uno .mc-pane{width:100%; height:100%}
-  .mc-pane.mc-max{position:fixed!important; inset:0; z-index:9100; width:auto!important; height:auto!important; border-radius:0; resize:none}
+  .mc-pane.mc-max{position:fixed!important; inset:0!important; left:0!important; top:0!important; z-index:9100; width:auto!important; height:auto!important; border-radius:0; resize:none}
   .mc-pane.mc-focus{box-shadow:inset 0 0 0 1.5px var(--mc-gold-soft)}
   /* ventana flotante (añadida con +) */
-  .mc-float{position:absolute; z-index:55; width:520px; height:360px; min-width:300px; min-height:220px;
+  .mc-float{position:absolute; isolation:isolate; z-index:55; width:520px; height:360px; min-width:300px; min-height:220px;
     display:flex; flex-direction:column; border:1px solid var(--mc-gold-soft); border-radius:12px; overflow:hidden;
     background:var(--mc-panel2); resize:both; box-shadow:0 26px 70px rgba(0,0,0,.72), 0 0 0 1px rgba(232,184,75,.12)}
-  .mc-float.mc-max{position:fixed!important; inset:0; z-index:9150; border-radius:0; resize:none}
+  .mc-float.mc-max{position:fixed!important; inset:0!important; left:0!important; top:0!important; width:auto!important; height:auto!important; z-index:9150; border-radius:0; resize:none; box-shadow:none}
+  /* con un panel maximizado, los demás se ocultan (nada se cuela por detrás) */
+  #mc-overlay.mc-hasmax .mc-pane:not(.mc-max), #mc-overlay.mc-hasmax .mc-float:not(.mc-max){display:none!important}
 
   /* ── Cabecera de cada panel ── */
   .mc-head{flex:0 0 auto; height:40px; display:flex; align-items:center; gap:6px; padding:0 8px; background:var(--mc-panel); border-bottom:1px solid var(--mc-line); cursor:default}
@@ -65,12 +68,11 @@ const CSS = `
   .mc-px{font-family:var(--mc-mono); font-size:12.5px; font-weight:700; color:var(--mc-ink)}
   .mc-px small{font-size:10px; margin-left:5px} .mc-px small.up{color:var(--mc-up2)} .mc-px small.down{color:var(--mc-down2)}
   .mc-hsp{margin-left:auto}
-  /* botón de texto "Indicator" */
   .mc-indbtn{height:28px; padding:0 11px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); font-weight:700; font-size:12px}
   .mc-indbtn:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-indbtn.on{border-color:var(--mc-gold); color:var(--mc-gold); background:rgba(232,184,75,.1)}
   .mc-indbtn svg{width:12px; height:12px; opacity:.8}
   .mc-hb{width:28px; height:28px; display:inline-grid; place-items:center; border-radius:8px; border:1px solid transparent; background:transparent; color:var(--mc-ink3)}
-  .mc-hb:hover{border-color:var(--mc-line2); color:var(--mc-gold)} .mc-hb svg{width:15px; height:15px}
+  .mc-hb:hover{border-color:var(--mc-line2); color:var(--mc-gold); background:rgba(255,255,255,.04)} .mc-hb svg{width:15px; height:15px}
   .mc-hb.on{color:var(--mc-gold)} .mc-hb.mc-close:hover{color:var(--mc-down2); border-color:var(--mc-down)}
 
   /* ── Cuerpo (gráfica + capas) ── */
@@ -80,16 +82,25 @@ const CSS = `
   .mc-ux{position:absolute; inset:0; z-index:4; pointer-events:none}
   .mc-cap{position:absolute; inset:0; z-index:6; pointer-events:none; cursor:crosshair}
   .mc-cap.on{pointer-events:auto}
-  .mc-wm{position:absolute; left:10px; bottom:10px; z-index:1; opacity:.5; pointer-events:none}
-  .mc-wm img{height:20px; width:auto; filter:drop-shadow(0 1px 4px rgba(0,0,0,.9))}
-  .mc-grip{position:absolute; right:2px; bottom:2px; z-index:7; width:14px; height:14px; pointer-events:none; opacity:.5}
+  /* marca de agua: misma ubicación que las demás secciones (libre de barra y de las fechas) */
+  .mc-wm{position:absolute; left:60px; bottom:36px; z-index:1; opacity:.6; pointer-events:none}
+  .mc-wm img{height:21px; width:auto; filter:drop-shadow(0 2px 7px rgba(0,0,0,.95))}
+  .mc-pane.mc-max .mc-wm, .mc-float.mc-max .mc-wm{left:64px; bottom:46px}
+  .mc-pane.mc-max .mc-wm img, .mc-float.mc-max .mc-wm img{height:38px}
+  .mc-grip{position:absolute; right:3px; bottom:3px; z-index:7; width:13px; height:13px; pointer-events:none; opacity:.45}
   .mc-grip::before,.mc-grip::after{content:""; position:absolute; right:0; background:var(--mc-ink3)}
-  .mc-grip::before{bottom:0; width:12px; height:2px} .mc-grip::after{bottom:0; right:0; width:2px; height:12px}
-  /* pista para dibujar en el panel no enfocado */
+  .mc-grip::before{bottom:0; width:11px; height:2px} .mc-grip::after{bottom:0; right:0; width:2px; height:11px}
+  .mc-pane.mc-max .mc-grip, .mc-float.mc-max .mc-grip{display:none}
   .mc-hint{position:absolute; left:50%; bottom:12px; transform:translateX(-50%); z-index:5; pointer-events:none;
     font-family:var(--mc-mono); font-size:10px; color:var(--mc-ink3); background:rgba(8,11,16,.72); border:1px solid var(--mc-line2);
     border-radius:20px; padding:4px 11px; opacity:0; transition:opacity .2s}
   .mc-pane:hover .mc-hint{opacity:.9} .mc-pane.mc-focus .mc-hint{display:none}
+
+  /* barra de dibujo embebida (barra.js): contenida en el panel, sin tapar las fechas */
+  #mc-overlay .nv-tools{max-height:calc(100% - 54px); z-index:9}
+  #mc-overlay .nv-tools-tab{z-index:8}
+  #mc-overlay .nv-topbar{z-index:10}
+  #mc-overlay .nv-pop{z-index:12}
 
   /* ── Popups (monedas, TF, indicadores) ── */
   .mc-pop{position:fixed; z-index:9400; background:#121922; border:1px solid var(--mc-line2); border-radius:12px; box-shadow:0 22px 60px rgba(0,0,0,.7); padding:8px; min-width:230px}
@@ -120,8 +131,10 @@ const CSS = `
   .mc-modal .bxc{flex:1 1 auto; min-height:0; overflow:auto; background:#0b0f15; padding:14px}
   .mc-modal .bxc canvas{width:100%; height:auto; display:block; border-radius:8px}
   .mc-modal .bxf{display:flex; gap:9px; padding:13px 16px; border-top:1px solid var(--mc-line)}
-  .mc-modal .bxf button{flex:1; min-height:42px; border-radius:11px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.05); color:var(--mc-ink); font-family:var(--mc-disp); font-weight:800; font-size:13px}
+  .mc-modal .bxf button{flex:1; min-height:42px; border-radius:11px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.05); color:var(--mc-ink); font-family:var(--mc-disp); font-weight:800; font-size:13px; transition:border-color .15s, filter .15s}
+  .mc-modal .bxf button:hover{border-color:var(--mc-gold-soft)}
   .mc-modal .bxf .dl{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
+  .mc-modal .bxf .dl:hover{filter:brightness(1.06)}
 
   .mc-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:9700; padding:11px 18px; border-radius:11px; background:#121922; border:1px solid var(--mc-line2); color:var(--mc-ink); font-size:13px; font-weight:600; box-shadow:0 14px 40px rgba(0,0,0,.6); opacity:0; transition:opacity .2s, transform .2s}
   .mc-toast.on{opacity:1; transform:translateX(-50%) translateY(-4px)}
