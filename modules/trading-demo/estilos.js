@@ -243,6 +243,15 @@ export function estilos() {
   .td-sheet .btns .ok.tp{border-color:#12b06a; background:linear-gradient(180deg,#34d98a,#12b06a); color:#04210f}
   .td-sheet .btns .ok.sl{border-color:#e03246; background:linear-gradient(180deg,#fb5c6f,#e03246); color:#2a0509}
 
+  /* Menú de clic derecho en la gráfica: copiar precio / poner alerta */
+  .td-ctx{position:fixed; z-index:10020; min-width:170px; padding:8px; border-radius:12px; background:#0e141c; border:1px solid var(--td-line2); box-shadow:0 18px 44px rgba(0,0,0,.6)}
+  .td-ctx-px{font-family:var(--td-disp); font-weight:800; font-size:16px; color:var(--td-ink); padding:3px 6px 0}
+  .td-ctx-sub{font-family:var(--td-mono); font-size:10.5px; padding:0 6px 7px; color:var(--td-ink3)}
+  .td-ctx-sub.up{color:var(--td-up2)} .td-ctx-sub.down{color:var(--td-down2)}
+  .td-ctx-b{display:block; width:100%; text-align:left; height:34px; padding:0 10px; margin-top:4px; border-radius:8px; border:1px solid var(--td-line2); background:rgba(255,255,255,.03); color:var(--td-ink); font-family:var(--td-mono); font-size:12.5px; font-weight:600; cursor:pointer}
+  .td-ctx-b:hover{border-color:var(--td-gold-soft); color:var(--td-gold)}
+  .td-ctx-b.alert:hover{border-color:#5ec8e8; color:#5ec8e8}
+
   /* ── Responsivo ── */
   @media (max-width:980px){
     .td-main{display:block; height:auto; min-height:0}

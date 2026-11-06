@@ -12,7 +12,7 @@
    compartido del resto de secciones: catálogo de monedas, sus logos y la misma
    barra de dibujo. */
 
-import { estilos } from './estilos.js?v=9';
+import { estilos } from './estilos.js?v=10';
 import * as D from './datos.js?v=2';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
@@ -29,7 +29,7 @@ const S = {
   par: null, tf: '1m', velas: [], velasDib: [], chart: null, serieVela: null,
   mark: 0, open24: 0, high24: 0, low24: 0, vol24: 0, chgPct: 0,
   lev: 10, cap: 100, tam: 1000, modo: 'limit', limitPx: 0, histPage: 0,
-  tpUnit: 'px', slUnit: 'px', sumOpen: false,
+  tpUnit: 'px', slUnit: 'px', sumOpen: false, alertas: [], _alMark: 0,
   stream: null, barra: null, dibMontada: false, lineaLimit: null, tab: 'pos',
   uiRAF: null, onResize: null, cvObs: null, marks: {}, logos: {},
   drag: null, hoverH: null, ac: null, expand: false
@@ -197,6 +197,15 @@ function cablear(ov) {
   alternarUnidad('td-slunit', 'td-sl', 'slUnit');
   // Resumen de la orden plegable
   const sumT = $('td-sum-toggle'); if (sumT) sumT.onclick = () => { S.sumOpen = !S.sumOpen; const bd = $('td-sum-body'); if (bd) bd.hidden = !S.sumOpen; const cv = $('td-sum-cv'); if (cv) cv.style.transform = S.sumOpen ? 'rotate(180deg)' : ''; };
+  // Clic derecho en la gráfica: menú con Copy price / Set alert
+  const chartHost = $('td-chart');
+  if (chartHost) chartHost.addEventListener('contextmenu', (e) => {
+    if (!S.serieVela) return;
+    e.preventDefault();
+    const r = ($('td-cv') || chartHost).getBoundingClientRect();
+    let px; try { px = S.serieVela.coordinateToPrice(e.clientY - r.top); } catch (_) { px = null; }
+    if (px > 0) abrirCtxDemo(e.clientX, e.clientY, +(+px).toFixed(dec(px)));
+  });
 }
 
 /* Capital (margen) y apalancamiento como dos barras progresivas independientes.
@@ -265,7 +274,7 @@ function pintarChart() {
   vela.setData(V.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))); S.serieVela = vela;
   S.velasDib = V.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
   try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 160, to: V.length + 10 }); ts.subscribeVisibleLogicalRangeChange(() => sincronizarDib()); } catch (_) {}
-  try { chart.subscribeClick((p) => { if (!p || !p.point || S.modo !== 'limit' || S.drag) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (px > 0) { S.limitPx = +px.toFixed(dec(px)); $('td-limit').value = S.limitPx; dibujarLimit(); renderEntry(); } }); } catch (_) {}
+  try { chart.subscribeClick((p) => { if (!p || !p.point || S.drag) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('td-overlay'); if (ov) ov.querySelectorAll('.td-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('td-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('td-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
   dibujarLimit();
 }
 
@@ -305,7 +314,7 @@ function nuevoPrecio(px, hi, lo) {
 /* ── Bucle de UI (≈16 fps): precio, equity, PnL y overlay de posiciones ── */
 function arrancarUI() {
   let last = 0;
-  const loop = (ts) => { S.uiRAF = requestAnimationFrame(loop); if (ts - last < 60) return; last = ts; try { pintarPrecio(); refrescarPnL(); pintarFx(); } catch (_) {} };
+  const loop = (ts) => { S.uiRAF = requestAnimationFrame(loop); if (ts - last < 60) return; last = ts; try { pintarPrecio(); revisarAlertas(); refrescarPnL(); pintarFx(); } catch (_) {} };
   S.uiRAF = requestAnimationFrame(loop);
 }
 function pintarPrecio() {
@@ -487,7 +496,7 @@ function modalValor(o) {
 function dibujarLimit() {
   if (!S.serieVela) return;
   if (S.lineaLimit) { try { S.serieVela.removePriceLine(S.lineaLimit); } catch (_) {} S.lineaLimit = null; }
-  if (S.modo === 'limit' && S.limitPx > 0) { try { S.lineaLimit = S.serieVela.createPriceLine({ price: S.limitPx, color: '#C9A84B', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'entry' }); } catch (_) {} }
+  if (S.modo === 'limit' && S.limitPx > 0) { try { S.lineaLimit = S.serieVela.createPriceLine({ price: S.limitPx, color: '#C9A84B', lineWidth: 1, lineStyle: 3, axisLabelVisible: true }); } catch (_) {} }
 }
 
 /* ── Overlay de posiciones: entrada + PnL, liq, y controles TP/SL estilo
@@ -507,52 +516,68 @@ function pintarFx() {
   const pulso = 0.5 + 0.5 * Math.sin(performance.now() / 320);
   const gp = 0.5 + 0.5 * Math.sin(performance.now() / 600);   // iluminacion suave (glow) de las posiciones
   M.ordenes().filter((o) => o.par === S.par.id).forEach((o) => { const y = Y(o.precio); if (y == null) return; g.save(); g.setLineDash([6, 5]); g.strokeStyle = `rgba(232,184,75,${0.5 + 0.4 * pulso})`; g.lineWidth = 1.3; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); etiqueta(g, plotR, y, (o.lado === 'long' ? 'LONG' : 'SHORT') + ' mark ' + fmtP(o.precio), '#E8B84B', '#2a1d00'); g.restore(); });
-  // posiciones
+  // posiciones abiertas
   M.posiciones().filter((p) => p.par === S.par.id).forEach((p) => {
     const ey = Y(p.entrada), ly = Y(p.liq); if (ey == null) return;
     const { pnl, roe } = M.pnlDe(p, S.mark); const verde = pnl >= 0;
-    const col = p.lado === 'long' ? '#2ee86a' : '#ff5b6e';
+    const colPos = verde ? '#2ee86a' : '#ff5b6e';
     if (markY != null) { g.fillStyle = verde ? 'rgba(46,232,106,.08)' : 'rgba(255,91,110,.08)'; const a = Math.min(ey, markY), b = Math.max(ey, markY); g.fillRect(0, a, W, b - a); }
-    // línea de entrada con iluminación suave: verde en ganancia, roja en pérdida
-    g.save(); g.strokeStyle = verde ? '#2ee86a' : '#ff5b6e'; g.lineWidth = 1.8; g.shadowColor = verde ? 'rgba(46,232,106,.95)' : 'rgba(255,91,110,.95)'; g.shadowBlur = 5 + 9 * gp; g.beginPath(); g.moveTo(0, ey); g.lineTo(W, ey); g.stroke(); g.restore();
-    etiqueta(g, plotR, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'} ${p.lev}x  ${fmtMoney(pnl)} (${fmtPct(roe)})`, verde ? '#2ee86a' : '#ff5b6e', '#04210f');
+    // línea de entrada (verde en ganancia, roja en pérdida)
+    g.save(); g.strokeStyle = colPos; g.lineWidth = 1.8; g.shadowColor = verde ? 'rgba(46,232,106,.95)' : 'rgba(255,91,110,.95)'; g.shadowBlur = 5 + 9 * gp; g.beginPath(); g.moveTo(0, ey); g.lineTo(W, ey); g.stroke(); g.restore();
+    // liquidación
     if (ly != null) { g.save(); g.setLineDash([2, 4]); g.strokeStyle = 'rgba(255,91,110,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, ly); g.lineTo(plotR, ly); g.stroke(); etiqueta(g, plotR, ly, 'LIQ ' + fmtP(p.liq), 'rgba(255,91,110,.85)', '#2a0509'); g.restore(); }
-    ctrlTPSL(g, p, 'tp', '#2ee86a', ey, plotR, H, Y, gp);
-    ctrlTPSL(g, p, 'sl', '#ff5b6e', ey, plotR, H, Y, gp);
+    // X para cerrar la posición (extremo derecho, pegada al eje)
+    const xbw = 18, xbx = plotR - xbw - 2;
+    botonAspa(g, xbx, ey - 9, xbw, 18, 'rgba(255,107,122,.75)', '#ff6b7a');
+    S._handles.push({ cerrarPos: p.id, par: p.par, x0: xbx - 5, x1: plotR, y0: ey - 11, y1: ey + 11 });
+    // tachuela de la posición, a la izquierda de la X de cerrar
+    const etqLeft = etiqueta(g, xbx - 5, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'} ${p.lev}x  ${fmtMoney(pnl)} (${fmtPct(roe)})`, colPos, '#04210f');
+    // botones para crear TP/SL (solo los NO fijados), a la IZQUIERDA de la tachuela: orden TP · SL · LONG
+    let rx = etqLeft - 6;
+    if (!p.sl) { const bw = 30, bx = rx - bw; botonCuadro(g, bx, ey - 9, bw, 18, '#ff5b6e', 'SL', true); S._handles.push({ id: p.id, cual: 'sl', creating: true, x0: bx - 4, x1: bx + bw + 4, y0: ey - 11, y1: ey + 11 }); rx = bx - 6; }
+    if (!p.tp) { const bw = 30, bx = rx - bw; botonCuadro(g, bx, ey - 9, bw, 18, '#2ee86a', 'TP', true); S._handles.push({ id: p.id, cual: 'tp', creating: true, x0: bx - 4, x1: bx + bw + 4, y0: ey - 11, y1: ey + 11 }); rx = bx - 6; }
+    // TP/SL ya fijados: línea a su nivel con tirador arrastrable
+    if (p.tp) ctrlTPSLfijo(g, p, 'tp', '#2ee86a', plotR, Y, gp);
+    if (p.sl) ctrlTPSLfijo(g, p, 'sl', '#ff5b6e', plotR, Y, gp);
   });
-  // Entrada limit en preparacion: boton X (a la derecha de la linea) para cancelarla
+  // alertas de precio: línea punteada cian + etiqueta con X para quitarla
+  (S.alertas || []).forEach((al) => {
+    const y = Y(al.px); if (y == null) return;
+    g.save(); g.setLineDash([2, 3]); g.strokeStyle = 'rgba(94,200,232,.8)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(0, y); g.lineTo(plotR, y); g.stroke(); g.setLineDash([]); g.restore();
+    const aLeft = etiqueta(g, plotR, y, 'ALERT ' + fmtP(al.px), '#5ec8e8', '#042028');
+    const abw = 16, abx = aLeft - 6 - abw;
+    botonAspa(g, abx, y - 8, abw, 16, 'rgba(94,200,232,.7)', '#5ec8e8');
+    S._handles.push({ alertaX: al.id, x0: abx - 4, x1: abx + abw + 4, y0: y - 10, y1: y + 10 });
+  });
+  // Entrada limit en preparación: etiqueta "entry" + X a su izquierda; la propia línea se arrastra
   if (S.modo === 'limit' && S.limitPx > 0) {
     const ey = Y(S.limitPx);
     if (ey != null) {
-      const bw = 18, bh = 18, bx = plotR - bw - 2;
-      g.save();
-      g.fillStyle = 'rgba(10,14,20,.92)'; redondea(g, bx, ey - bh / 2, bw, bh, 4); g.fill();
-      g.strokeStyle = '#C9A84B'; g.lineWidth = 1.2; redondea(g, bx + .7, ey - bh / 2 + .7, bw - 1.4, bh - 1.4, 4); g.stroke();
-      g.strokeStyle = '#E8B84B'; g.lineWidth = 1.7; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(bx + 6, ey - 4); g.lineTo(bx + bw - 6, ey + 4); g.moveTo(bx + bw - 6, ey - 4); g.lineTo(bx + 6, ey + 4); g.stroke();
-      g.restore();
-      S._handles.push({ entryX: true, x0: bx - 6, x1: plotR, y0: ey - 11, y1: ey + 11 });
+      const etqLeft = etiqueta(g, plotR, ey, 'entry', '#E8B84B', '#2a1d00');
+      const xbw = 18, xbx = etqLeft - 6 - xbw;
+      botonAspa(g, xbx, ey - 9, xbw, 18, '#C9A84B', '#E8B84B');
+      S._handles.push({ entryX: true, x0: xbx - 4, x1: xbx + xbw + 4, y0: ey - 11, y1: ey + 11 });
+      S._handles.push({ entryLine: true, x0: 0, x1: plotR, y0: ey - 6, y1: ey + 6 });
     }
   }
 }
-/* Control TP o SL: si está fijado dibuja línea + etiqueta + tirador al nivel;
-   si no, un botón cuadrado junto a la entrada (TP arriba / SL abajo en un long)
-   que al arrastrar lo crea. Registra el rectángulo clicable en S._handles. */
-function ctrlTPSL(g, p, cual, col, ey, plotR, H, Y, gp) {
-  const set = cual === 'tp' ? p.tp : p.sl;
+/* TP o SL ya fijado: línea punteada a su nivel + etiqueta + tirador arrastrable. */
+function ctrlTPSLfijo(g, p, cual, col, plotR, Y, gp) {
+  const set = cual === 'tp' ? p.tp : p.sl; const y = Y(set); if (y == null) return;
   const bw = 30, bh = 18, bx = plotR - bw - 2;
-  if (set) {
-    const y = Y(set); if (y == null) return;
-    g.save(); g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.5; g.shadowColor = col; g.shadowBlur = 3 + 7 * (gp || 0); g.beginPath(); g.moveTo(0, y); g.lineTo(bx - 4, y); g.stroke(); g.setLineDash([]); g.restore();
-    etiqueta(g, bx - 4, y, (cual === 'tp' ? 'TP ' : 'SL ') + fmtP(set), col, '#04210f');
-    botonCuadro(g, bx, y - bh / 2, bw, bh, col, cual.toUpperCase(), false);
-    S._handles.push({ id: p.id, cual, x0: bx - 6, x1: plotR, y0: y - 10, y1: y + 10 });
-  } else {
-    const arriba = (cual === 'tp') === (p.lado === 'long');
-    let y = ey + (arriba ? -23 : 23); y = Math.max(12, Math.min(H - 12, y));
-    botonCuadro(g, bx, y - bh / 2, bw, bh, col, cual.toUpperCase(), true);
-    S._handles.push({ id: p.id, cual, creating: true, x0: bx - 6, x1: plotR, y0: y - 11, y1: y + 11 });
-  }
+  g.save(); g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.5; g.shadowColor = col; g.shadowBlur = 3 + 7 * (gp || 0); g.beginPath(); g.moveTo(0, y); g.lineTo(bx - 4, y); g.stroke(); g.setLineDash([]); g.restore();
+  etiqueta(g, bx - 4, y, (cual === 'tp' ? 'TP ' : 'SL ') + fmtP(set), col, '#04210f');
+  botonCuadro(g, bx, y - bh / 2, bw, bh, col, cual.toUpperCase(), false);
+  S._handles.push({ id: p.id, cual, x0: bx - 6, x1: plotR, y0: y - 10, y1: y + 10 });
+}
+/* Recuadro con aspa (X): cancelar la entry, cerrar una posición o quitar una alerta. */
+function botonAspa(g, x, y, w, h, colBorde, colAspa) {
+  g.save();
+  g.fillStyle = 'rgba(10,14,20,.92)'; redondea(g, x, y, w, h, 4); g.fill();
+  g.strokeStyle = colBorde; g.lineWidth = 1.2; redondea(g, x + .7, y + .7, w - 1.4, h - 1.4, 4); g.stroke();
+  g.strokeStyle = colAspa; g.lineWidth = 1.7; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(x + 6, y + 5); g.lineTo(x + w - 6, y + h - 5); g.moveTo(x + w - 6, y + 5); g.lineTo(x + 6, y + h - 5); g.stroke();
+  g.restore();
 }
 function botonCuadro(g, x, y, w, h, col, txt, hueco) {
   g.save();
@@ -562,7 +587,7 @@ function botonCuadro(g, x, y, w, h, col, txt, hueco) {
   g.fillText(txt, x + w / 2, y + h / 2 + .5);
   g.restore();
 }
-function etiqueta(g, xRight, y, txt, bg, fg) { g.save(); g.font = '700 10.5px "IBM Plex Mono", monospace'; const w = g.measureText(txt).width + 14; const x = xRight - w - 8; g.fillStyle = bg; redondea(g, x, y - 9, w, 18, 4); g.fill(); g.fillStyle = fg; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(txt, x + 7, y + 0.5); g.restore(); }
+function etiqueta(g, xRight, y, txt, bg, fg) { g.save(); g.font = '700 10.5px "IBM Plex Mono", monospace'; const w = g.measureText(txt).width + 14; const x = xRight - w - 8; g.fillStyle = bg; redondea(g, x, y - 9, w, 18, 4); g.fill(); g.fillStyle = fg; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(txt, x + 7, y + 0.5); g.restore(); return x; }
 function redondea(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
 /* ── Arrastre y creación de TP/SL (tiradores cuadrados del overlay) ── */
@@ -580,12 +605,15 @@ function wireDrag() {
     if (S.drag) return;
     const h = handleEn(e);
     fx.style.pointerEvents = h ? 'auto' : 'none';
-    fx.style.cursor = h ? (h.entryX ? 'pointer' : 'ns-resize') : '';
+    fx.style.cursor = h ? (h.entryLine ? 'grab' : (h.entryX || h.cerrarPos || h.alertaX ? 'pointer' : 'ns-resize')) : '';
   });
   fx.addEventListener('mousedown', (e) => {
     const h = handleEn(e); if (!h) return;
     e.stopPropagation(); e.preventDefault();
     if (h.entryX) { S.limitPx = 0; const li = $('td-limit'); if (li) li.value = ''; dibujarLimit(); renderEntry(); fx.style.pointerEvents = 'none'; return; }
+    if (h.cerrarPos) { const x = M.cerrar(h.cerrarPos, S.marks[h.par] || S.mark, 'manual'); if (x) { toast(`Closed ${x.pos.lado} · ${fmtMoney(x.pnl)} (fee ${fmtMoney(x.fee)})`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); } fx.style.pointerEvents = 'none'; return; }
+    if (h.alertaX) { S.alertas = (S.alertas || []).filter((a) => a.id !== h.alertaX); toast('Alert removed.', 'ok'); fx.style.pointerEvents = 'none'; return; }
+    if (h.entryLine) { S.drag = { entryLine: true }; fx.style.cursor = 'grabbing'; return; }
     const p = M.posiciones().find((x) => x.id === h.id); if (!p) return;
     if (h.creating) {
       const r = host.getBoundingClientRect(); let px; try { px = S.serieVela.coordinateToPrice(e.clientY - r.top); } catch (_) { px = null; }
@@ -598,9 +626,11 @@ function wireDrag() {
     if (!S.drag || !S.serieVela) return;
     const r = host.getBoundingClientRect(); const y = e.clientY - r.top;
     let px; try { px = S.serieVela.coordinateToPrice(y); } catch (_) { px = null; }
-    if (px > 0) { const p = M.posiciones().find((x) => x.id === S.drag.id); if (p) fijarTPSL(p, S.drag.cual, px); }
+    if (!(px > 0)) return;
+    if (S.drag.entryLine) { S.limitPx = +px.toFixed(dec(px)); const li = $('td-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); return; }
+    const p = M.posiciones().find((x) => x.id === S.drag.id); if (p) fijarTPSL(p, S.drag.cual, px);
   });
-  window.addEventListener('mouseup', () => { if (S.drag) { S.drag = null; fx.style.pointerEvents = 'none'; renderPos(); } });
+  window.addEventListener('mouseup', () => { if (S.drag) { const line = S.drag.entryLine; S.drag = null; fx.style.pointerEvents = 'none'; if (!line) renderPos(); } });
 }
 /* Fija TP o SL respetando la liquidación: el SL no puede pasar el precio de liq. */
 function fijarTPSL(p, cual, px) {
@@ -620,10 +650,64 @@ function arranqueAudio() { try { if (!S.ac) S.ac = new (window.AudioContext || w
 function snd(tipo) {
   try {
     if (!S.ac) return; const ac = S.ac; let t = ac.currentTime;
-    const seqs = { open: [[660, .07, .1], [880, .09, .1]], tp: [[784, .09, .13], [988, .09, .13], [1319, .16, .13]], sl: [[320, .11, .13], [240, .16, .13]], liq: [[180, .22, .16], [130, .3, .16]] };
-    (seqs[tipo] || []).forEach(([f, d, gg]) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = tipo === 'tp' ? 'sine' : 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.min(.6, gg * 2.7), t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d); t += d * .9; });
+    const seqs = { open: [[660, .07, .1], [880, .09, .1]], tp: [[784, .09, .13], [988, .09, .13], [1319, .16, .13]], sl: [[320, .11, .13], [240, .16, .13]], liq: [[180, .22, .16], [130, .3, .16]], alert: [[988, .12, .16], [1319, .12, .16], [988, .17, .16]] };
+    (seqs[tipo] || []).forEach(([f, d, gg]) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = (tipo === 'tp' || tipo === 'alert') ? 'sine' : 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.min(.6, gg * 2.7), t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d); t += d * .9; });
   } catch (_) {}
 }
+
+/* ── Alertas de precio (menú con clic derecho sobre la gráfica) ── */
+function crearAlertaDemo(px) {
+  if (!(px > 0) || !S.par) return;
+  arranqueAudio();   // el gesto del usuario desbloquea el sonido del navegador
+  try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {}); } catch (_) {}
+  S.alertas = S.alertas || [];
+  S.alertas.push({ id: 'al' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), px: +(+px).toFixed(dec(px)), dir: px >= S.mark ? 'up' : 'down' });
+  S._alMark = S.mark;
+  toast(`Alert set at ${fmtP(px)}. You'll hear it when price gets there.`, 'ok');
+}
+function revisarAlertas() {
+  if (!S.alertas || !S.alertas.length || !(S.mark > 0)) return;
+  const prev = S._alMark; S._alMark = S.mark;
+  if (!(prev > 0)) return;
+  for (let i = S.alertas.length - 1; i >= 0; i--) {
+    const al = S.alertas[i];
+    const cruzo = al.dir === 'up' ? (prev < al.px && S.mark >= al.px) : (prev > al.px && S.mark <= al.px);
+    if (cruzo) { dispararAlerta(al); S.alertas.splice(i, 1); }
+  }
+}
+function dispararAlerta(al) {
+  try { arranqueAudio(); snd('alert'); } catch (_) {}
+  try { toast(`Alert hit · ${S.par.id} at ${fmtP(al.px)}`, 'ok'); } catch (_) {}
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const opts = { body: `${S.par.id} reached ${fmtP(al.px)}`, tag: 'td-alert', renotify: true };
+      if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistration) {
+        navigator.serviceWorker.getRegistration().then((reg) => { try { (reg && reg.showNotification) ? reg.showNotification('Price alert', opts) : new Notification('Price alert', opts); } catch (_) {} }).catch(() => {});
+      } else { new Notification('Price alert', opts); }
+    }
+  } catch (_) {}
+}
+function abrirCtxDemo(clientX, clientY, px) {
+  cerrarCtxDemo();
+  const up = px >= S.mark; const diff = S.mark > 0 ? (px - S.mark) / S.mark * 100 : 0;
+  const el = document.createElement('div'); el.className = 'td-ctx'; el.id = 'td-ctx';
+  el.innerHTML = `<div class="td-ctx-px">${fmtP(px)}</div>` +
+    `<div class="td-ctx-sub ${up ? 'up' : 'down'}">${S.mark > 0 ? (up ? '+' : '') + diff.toFixed(2) + '% vs mark' : 'price'}</div>` +
+    `<button class="td-ctx-b" type="button" data-a="copy">Copy price</button>` +
+    `<button class="td-ctx-b alert" type="button" data-a="alert">Set alert</button>`;
+  document.body.appendChild(el);
+  const w = el.offsetWidth || 190, h = el.offsetHeight || 120;
+  let left = clientX + 6, top = clientY + 6;
+  if (left + w > window.innerWidth) left = clientX - w - 6;
+  if (top + h > window.innerHeight) top = clientY - h - 6;
+  el.style.left = Math.max(6, left) + 'px'; el.style.top = Math.max(6, top) + 'px';
+  el.querySelector('[data-a="copy"]').onclick = () => { try { navigator.clipboard && navigator.clipboard.writeText(String(px)); } catch (_) {} toast('Price copied.', 'ok'); cerrarCtxDemo(); };
+  el.querySelector('[data-a="alert"]').onclick = () => { crearAlertaDemo(px); cerrarCtxDemo(); };
+  setTimeout(() => { document.addEventListener('mousedown', ctxFueraDemo, true); document.addEventListener('keydown', ctxEscDemo, true); }, 0);
+}
+function ctxFueraDemo(e) { const el = $('td-ctx'); if (el && !el.contains(e.target)) cerrarCtxDemo(); }
+function ctxEscDemo(e) { if (e.key === 'Escape') cerrarCtxDemo(); }
+function cerrarCtxDemo() { const el = $('td-ctx'); if (el) { try { el.remove(); } catch (_) {} } document.removeEventListener('mousedown', ctxFueraDemo, true); document.removeEventListener('keydown', ctxEscDemo, true); }
 
 /* ── Exportaciones ── */
 function descargar(blob, nombre) { if (!blob) return; const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 3000); }
@@ -974,8 +1058,9 @@ function cerrar() {
   try { if (S.barra && S.barra.desmontar) S.barra.desmontar(); } catch (_) {} S.barra = null; S.dibMontada = false;
   try { if (S.chart) S.chart.remove(); } catch (_) {} S.chart = null; S.serieVela = null;
   try { if (S.ac) S.ac.close(); } catch (_) {} S.ac = null;
-  cerrarPops();
+  cerrarPops(); cerrarCtxDemo();
   ['td-modal', 'td-sheet', 'td-help'].forEach((id) => { const el = $(id); if (el) el.remove(); });
+  S.alertas = []; S._alMark = 0;
   S.expand = false; S.drag = null;
   const ov = $('td-overlay'); if (ov) ov.remove();
 }
