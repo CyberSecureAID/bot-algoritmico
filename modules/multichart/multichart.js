@@ -10,7 +10,7 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=4';
+import { estilos } from './estilos.js?v=5';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
@@ -65,7 +65,9 @@ const IC = {
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>',
   refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16"/><path d="M20 20v-4h-4"/></svg>',
-  goright: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5l7 7-7 7"/><path d="M16 5v14"/></svg>'
+  goright: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5l7 7-7 7"/><path d="M16 5v14"/></svg>',
+  layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5Z"/><path d="M3 13l9 5 9-5"/></svg>',
+  dock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M13 12h5v5.5"/><path d="M3 12h10v7.5"/></svg>'
 };
 
 function lib() { return window.LightweightCharts ? Promise.resolve(window.LightweightCharts) : new Promise((res, rej) => { const s = document.createElement('script'); s.src = LIB; s.onload = () => res(window.LightweightCharts); s.onerror = rej; document.head.appendChild(s); }); }
@@ -77,14 +79,14 @@ export async function abrirMulti() {
   ov.innerHTML = `
     <div class="mc-top">
       <button class="mc-back" id="mc-back">${IC.back} Back</button>
-      <span class="mc-title">Multi<b>chart</b></span>
-      <span class="mc-demo">LIVE · Binance</span>
+      <button class="mc-allcoin" id="mc-allcoin" title="Pick one coin for all charts at once">${IC.layers}<b>All charts</b>${IC.chev}</button>
       <div class="mc-top-r">
-        <button class="mc-tool" id="mc-sync" title="Sync all charts: crosshair, zoom and scroll move together">${IC.sync}<span>Sync</span></button>
+        <button class="mc-tool" id="mc-sync" title="Sync all charts: crosshair, zoom and scroll move together (any timeframe)">${IC.sync}<span>Sync</span></button>
+        <button class="mc-icobtn mc-off" id="mc-dock" title="Dock the floating chart into the grid">${IC.dock}</button>
         <button class="mc-tool" id="mc-vline" title="Vertical line: mark the same time on every chart">${IC.vline}<span>V-line</span></button>
         <button class="mc-tool" id="mc-hline" title="Horizontal line: mark a price level">${IC.hline}<span>H-line</span></button>
         <span class="mc-sep"></span>
-        <button class="mc-icobtn" id="mc-reset" title="Reset layout (re-tidy all charts)">${IC.refresh}</button>
+        <button class="mc-icobtn" id="mc-reset" title="Reset layout (restore the 4 default charts)">${IC.refresh}</button>
         <button class="mc-icobtn" id="mc-save" title="Save image of all charts">${IC.cam}</button>
         <button class="mc-add" id="mc-addbtn">${IC.plus}<span>Add chart</span></button>
       </div>
@@ -92,7 +94,9 @@ export async function abrirMulti() {
     <div class="mc-grid" id="mc-grid"></div>`;
   document.body.appendChild(ov);
   $('mc-back').onclick = cerrarMulti;
+  $('mc-allcoin').onclick = (e) => { e.stopPropagation(); menuMonedasMulti($('mc-allcoin')); };
   $('mc-addbtn').onclick = () => addFloat();
+  $('mc-dock').onclick = acoplar;
   $('mc-reset').onclick = reorganizar;
   $('mc-save').onclick = guardarImagenTodas;
   $('mc-sync').onclick = () => toggleSync();
@@ -128,7 +132,7 @@ async function crearPanel(parId, tf, flotante, pos) {
   const pane = {
     id, par, tf, chart: null, serie: null, velas: [], velasMs: [], stream: null,
     flotante: !!flotante, max: false, ovl: new Set(), bollOn: false, oscK: null, ind: {},
-    hlines: [], dibCache: [], barra: null
+    hlines: [], dibCache: [], barra: null, streamGen: 0, loadGen: 0
   };
   const el = document.createElement('div'); el.className = flotante ? 'mc-float' : 'mc-pane'; el.id = id;
   el.innerHTML = `
@@ -169,23 +173,27 @@ async function crearPanel(parId, tf, flotante, pos) {
     timeScale: { borderColor: '#222b35', timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 6, minBarSpacing: 0.4 },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0, vertLine: { color: '#C9A84B', width: 1, style: 3, labelBackgroundColor: '#8f6a1a' }, horzLine: { color: '#C9A84B', labelBackgroundColor: '#8f6a1a' } }
   });
-  const serie = chart.addSeries(LC.CandlestickSeries, { upColor: '#2ee86a', downColor: '#ff5b6e', borderVisible: false, wickUpColor: '#2ee86a', wickDownColor: '#ff5b6e' });
+  const serie = chart.addSeries(LC.CandlestickSeries, { upColor: '#2ee86a', downColor: '#ff5b6e', borderVisible: false, wickUpColor: '#2ee86a', wickDownColor: '#ff5b6e', priceLineVisible: true, lastValueVisible: true });
   pane.chart = chart; pane.serie = serie;
   S.paneles.push(pane);
   pintarLogoHead(pane);
   wirePane(pane);
   // barra de dibujo (la MISMA de Smart Pools / Demo), una por panel
   try { pane.barra = montarBarra(pane.body); } catch (_) { pane.barra = null; }
-  // sincroniza la cruceta / zoom / scroll entre gráficas cuando Sync está activo
+  // SYNC por TIEMPO real: funciona aunque cada gráfica tenga distinta temporalidad
+  // y moneda. (El rango lógico fallaba: alineaba por índice de vela, no por fecha.)
   try {
-    chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
-      if (S.sync && !S.syncing && r) { S.syncing = true; S.paneles.forEach((o) => { if (o !== pane) { try { o.chart.timeScale().setVisibleLogicalRange({ from: r.from, to: r.to }); } catch (_) {} } }); S.syncing = false; }
-      if (pane === S.focus) sincronizarFocus();
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => { if (pane === S.focus) sincronizarFocus(); });
+    chart.timeScale().subscribeVisibleTimeRangeChange((rango) => {
+      if (!S.sync || S.syncing || !rango) return;
+      S.syncing = true;
+      S.paneles.forEach((o) => { if (o !== pane) aplicarRango(o, rango); });
+      requestAnimationFrame(() => { S.syncing = false; });   // absorbe los ecos antes de soltar el candado
     });
     chart.subscribeCrosshairMove((param) => {
       if (!S.sync) return;
       if (!param.point || param.time == null) { S.paneles.forEach((o) => { if (o !== pane) try { o.chart.clearCrosshairPosition(); } catch (_) {} }); return; }
-      S.paneles.forEach((o) => { if (o === pane) return; const v = valorEn(o, param.time); if (v != null) { try { o.chart.setCrosshairPosition(v, param.time, o.serie); } catch (_) {} } });
+      S.paneles.forEach((o) => { if (o === pane) return; const vt = valorEnTiempo(o, param.time); if (vt) { try { o.chart.setCrosshairPosition(vt.price, vt.time, o.serie); } catch (_) {} } });
     });
   } catch (_) {}
   await cargarPanel(pane);
@@ -193,9 +201,11 @@ async function crearPanel(parId, tf, flotante, pos) {
 }
 
 async function cargarPanel(pane) {
+  const myGen = ++pane.loadGen;                 // cada carga invalida a las anteriores (cambios rápidos de moneda/TF)
   const sp = pane.el.querySelector('.mc-spin'); if (sp) sp.style.display = 'grid';
   try {
     const [v, t] = await Promise.all([D.velas(pane.par.s, pane.tf, 1000), D.ticker(pane.par.s).catch(() => null)]);
+    if (myGen !== pane.loadGen) return;         // otra carga más reciente ya ganó: no pisamos sus datos
     pane.velas = v;
     pane.velasMs = v.map((c) => ({ t: c.time * 1000, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
     pane.serie.setData(v.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
@@ -203,13 +213,15 @@ async function cargarPanel(pane) {
     if (t) pintarPx(pane, t.last, t.chgPct); else if (v.length) pintarPx(pane, v[v.length - 1].close);
     vistaDefecto(pane);
     if (pane === S.focus) sincronizarFocus();
-  } catch (_) { toast('Could not load ' + pane.par.id + '.'); }
+  } catch (_) { if (myGen === pane.loadGen) toast('Could not load ' + pane.par.id + '.'); }
+  if (myGen !== pane.loadGen) return;
   if (sp) sp.style.display = 'none';
   iniciarStream(pane);
 }
 function iniciarStream(pane) {
   try { pane.stream && pane.stream.cerrar(); } catch (_) {}
-  try { pane.stream = D.streamVelas(pane.par.s, pane.tf, (k) => onKline(pane, k)); } catch (_) { pane.stream = null; }
+  const gen = ++pane.streamGen;                 // invalida los mensajes del stream anterior (otra moneda)
+  try { pane.stream = D.streamVelas(pane.par.s, pane.tf, (k) => { if (gen === pane.streamGen) onKline(pane, k); }); } catch (_) { pane.stream = null; }
 }
 function onKline(pane, k) {
   if (!pane.serie) return;
@@ -382,13 +394,38 @@ function lineaHorz(g, y, W, a, price, preview) {
   if (price != null) { const t = fmtNum(price); g.setLineDash([]); g.shadowBlur = 0; g.font = '700 10px "IBM Plex Mono", monospace'; const tw = g.measureText(t).width + 10; g.fillStyle = 'rgba(13,30,27,.95)'; g.fillRect(W - tw - 4, y - 8, tw, 16); g.fillStyle = '#2ee8c6'; g.textAlign = 'left'; g.fillText(t, W - tw + 1, y + 3); }
   g.restore();
 }
-function safeX(pane, timeSec) { try { const c = pane.chart.timeScale().timeToCoordinate(timeSec); return c == null ? null : c; } catch (_) { return null; } }
+function safeX(pane, timeSec) {
+  try {
+    const ts = pane.chart.timeScale();
+    let c = ts.timeToCoordinate(timeSec);
+    if (c != null) return c;
+    const vt = valorEnTiempo(pane, timeSec); if (!vt) return null;   // otra temporalidad: cae en la vela más cercana
+    c = ts.timeToCoordinate(vt.time); return c == null ? null : c;
+  } catch (_) { return null; }
+}
 function safeY(pane, price) { try { const c = pane.serie.priceToCoordinate(price); return c == null ? null : c; } catch (_) { return null; } }
-function valorEn(pane, t) {
-  const v = pane.velas; if (!v.length) return null;
-  if (t <= v[0].time) return v[0].close; if (t >= v[v.length - 1].time) return v[v.length - 1].close;
-  let lo = 0, hi = v.length - 1; while (lo <= hi) { const m = (lo + hi) >> 1; if (v[m].time === t) return v[m].close; if (v[m].time < t) lo = m + 1; else hi = m - 1; }
-  const a = v[Math.max(0, hi)], b = v[Math.min(v.length - 1, lo)]; return (Math.abs(a.time - t) <= Math.abs(b.time - t) ? a : b).close;
+// vela más cercana en el TIEMPO (sirve para sincronizar entre temporalidades distintas)
+function valorEnTiempo(pane, t) {
+  const v = pane.velas; if (!v || !v.length) return null;
+  if (t <= v[0].time) return { time: v[0].time, price: v[0].close };
+  if (t >= v[v.length - 1].time) return { time: v[v.length - 1].time, price: v[v.length - 1].close };
+  let lo = 0, hi = v.length - 1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (v[m].time === t) return { time: v[m].time, price: v[m].close }; if (v[m].time < t) lo = m + 1; else hi = m - 1; }
+  const a = v[Math.max(0, hi)], b = v[Math.min(v.length - 1, lo)];
+  const pick = (Math.abs(a.time - t) <= Math.abs(b.time - t)) ? a : b;
+  return { time: pick.time, price: pick.close };
+}
+// aplica a 'o' el mismo RANGO DE TIEMPO visible, recortado a sus datos (si no solapan, no toca: evita el colapso a pocas velas)
+function aplicarRango(o, rango) {
+  try {
+    const v = o.velas; if (!v || v.length < 2) return;
+    const min = v[0].time, max = v[v.length - 1].time;
+    let from = rango.from, to = rango.to;
+    if (!(to > from) || to < min || from > max) return;
+    from = Math.max(from, min); to = Math.min(to, max);
+    if (to - from < 1) return;
+    o.chart.timeScale().setVisibleRange({ from, to });
+  } catch (_) {}
 }
 
 /* ── Geometría para la barra de dibujo (igual que el Trading Demo) ── */
@@ -498,21 +535,24 @@ function fullPane(pane) {
    no las 1000 diminutas), dejando TODO el historial disponible al arrastrar. */
 function vistaDefecto(pane) { try { const n = pane.velas.length; if (n > 3) pane.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 130), to: n + 3 }); } catch (_) {} }
 function irAlPresente(pane) { vistaDefecto(pane); if (pane === S.focus) sincronizarFocus(); }
-/* Reorganiza todo al 2×2 por defecto y re-ajusta las gráficas (rescate si un
-   resize manual dejó la rejilla descolocada). */
-function reorganizar() {
+/* Reset: restablece las 4 gráficas por defecto (BTC/ETH/BNB/SOL), recreando las
+   que se hayan cerrado y descartando flotantes. Rescate total de la distribución. */
+async function reorganizar() {
   const ov = $('mc-overlay'); if (ov) ov.classList.remove('mc-hasmax');
-  S.paneles.forEach((p) => {
-    if (p.max) {
-      p.max = false; p.el.classList.remove('mc-max');
-      const fb = p.el.querySelector('[data-full]'); if (fb) { fb.innerHTML = IC.full; fb.classList.remove('on'); }
-      if (p.flotante && p._inline) p.el.setAttribute('style', p._inline);
-    }
-    if (!p.flotante) { p.el.removeAttribute('style'); p._inline = ''; }
+  cerrarMenu();
+  S.paneles.slice().forEach((p) => {
+    try { p.stream && p.stream.cerrar(); } catch (_) {}
+    try { p.barra && p.barra.desmontar && p.barra.desmontar(); } catch (_) {}
+    try { p.chart.remove(); } catch (_) {}
+    if (p.el) p.el.remove();
   });
+  S.paneles = []; S.focus = null; S.vlines = [];
+  await Promise.all(DEF.map((id) => crearPanel(id, '1m')));
   ajustarGrid();
-  setTimeout(() => { S.paneles.forEach((p) => vistaDefecto(p)); if (S.focus) sincronizarFocus(); }, 90);
-  toast('Layout reset');
+  if (S.paneles[0]) enfocar(S.paneles[0]);
+  D.logos().then((l) => { if (l) S.logos = l; S.paneles.forEach(pintarLogoHead); });
+  actualizarDock();
+  toast('Layout reset · 4 default charts');
 }
 function cerrarPane(pane) {
   const docked = S.paneles.filter((p) => !p.flotante);
@@ -525,7 +565,24 @@ function cerrarPane(pane) {
   S.paneles = S.paneles.filter((p) => p !== pane);
   if (S.focus === pane) { S.focus = null; const n = S.paneles.find((p) => !p.flotante) || S.paneles[0]; if (n) enfocar(n); }
   ajustarGrid();
+  actualizarDock();
 }
+/* Acopla la gráfica flotante (la de Add chart) a la rejilla: rellena el hueco de
+   una que se cerró, o se añade debajo si ya están las cuatro. */
+function acoplar() {
+  const flt = S.paneles.find((p) => p.flotante);
+  if (!flt) { toast('Add a chart first, then dock it'); return; }
+  if (flt.max) fullPane(flt);
+  flt.flotante = false;
+  flt.el.classList.remove('mc-float'); flt.el.classList.add('mc-pane');
+  flt.el.removeAttribute('style'); flt._inline = '';
+  $('mc-grid').appendChild(flt.el);   // flex-wrap lo coloca en el hueco libre, o en una fila nueva si están las 4
+  ajustarGrid();
+  actualizarDock();
+  setTimeout(() => { try { flt.chart.applyOptions({}); } catch (_) {} vistaDefecto(flt); }, 80);
+  toast('Chart docked');
+}
+function actualizarDock() { const b = $('mc-dock'); if (b) b.classList.toggle('mc-off', !S.paneles.some((p) => p.flotante)); }
 function ajustarGrid() {
   const grid = $('mc-grid'); if (!grid) return;
   const n = S.paneles.filter((p) => !p.flotante).length;
@@ -534,6 +591,7 @@ function ajustarGrid() {
 function arrastrar(pane) {
   const head = pane.el.querySelector('.mc-head'); let sx, sy, ox, oy, mov = false;
   head.addEventListener('mousedown', (e) => {
+    if (!pane.flotante) return;                 // una vez acoplada a la rejilla ya no se arrastra
     if (e.target.closest('button')) return;
     mov = true; sx = e.clientX; sy = e.clientY; ox = parseInt(pane.el.style.left) || 0; oy = parseInt(pane.el.style.top) || 0;
     head.style.cursor = 'grabbing'; pane.el.style.zIndex = 58; e.preventDefault();
@@ -542,7 +600,7 @@ function arrastrar(pane) {
     window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu);
   });
 }
-function addFloat() { crearPanel('BTC', '1m', true).then((p) => { if (p) { D.logos().then(() => pintarLogoHead(p)); } }); ajustarGrid(); }
+function addFloat() { crearPanel('BTC', '1m', true).then((p) => { if (p) { D.logos().then(() => pintarLogoHead(p)); } actualizarDock(); }); ajustarGrid(); }
 
 /* ── Herramientas de la barra superior (actúan en TODAS las gráficas) ── */
 function toggleSync() {
@@ -601,6 +659,28 @@ async function cambiarMoneda(pane, id) {
   if (pane === S.focus) NIV.par = par.id;
   pane.dibCache = cargarDibDe(par.id);
   await cargarPanel(pane);
+}
+/* Selector múltiple de la barra superior: MISMO selector, pero la moneda elegida
+   se pone en TODAS las gráficas de la rejilla a la vez. No toca los selectores
+   propios de cada gráfica (esos siguen cambiando solo la suya). */
+function menuMonedasMulti(anc) {
+  const m = pop(anc, `<input class="mc-search" placeholder="Search coin · applies to ALL charts…"><div class="mc-list" id="mc-coinlist"></div>`, 280);
+  const list = m.querySelector('#mc-coinlist'), inp = m.querySelector('.mc-search');
+  const base = D.PARES.filter((p) => p.grupo !== 'divisa' && p.grupo !== 'materia');
+  const render = (f) => {
+    const t = (f || '').trim().toLowerCase();
+    const arr = base.filter((p) => !t || p.id.toLowerCase().includes(t) || (p.n || '').toLowerCase().includes(t)).slice(0, 140);
+    list.innerHTML = arr.map((p) => `<div class="mc-opt" data-id="${p.id}"><span class="ic" data-cg="${p.cg || ''}" data-id2="${p.id}">${p.id[0]}</span><b>${p.id}</b><span>${esc(p.n || '')}</span></div>`).join('') || `<div class="mc-opt" style="opacity:.6">No matches</div>`;
+    list.querySelectorAll('.mc-opt[data-id]').forEach((o) => o.onclick = () => { aplicarMonedaTodas(o.dataset.id); cerrarMenu(); });
+    list.querySelectorAll('.ic[data-cg]').forEach((ic) => { const url = (S.logos && ic.dataset.cg && S.logos[ic.dataset.cg]) || ICONO(ic.dataset.id2); const im = new Image(); im.onload = () => { ic.style.backgroundImage = `url(${url})`; ic.textContent = ''; }; im.src = url; });
+  };
+  render(''); setTimeout(() => inp.focus(), 30);
+  inp.oninput = () => render(inp.value);
+}
+function aplicarMonedaTodas(id) {
+  const par = D.PARES.find((p) => p.id === id); if (!par) return;
+  S.paneles.filter((p) => !p.flotante).forEach((p) => cambiarMoneda(p, id));
+  toast(par.id + ' on all charts');
 }
 function menuTf(pane, anc) {
   const m = pop(anc, `<div class="mc-indhead">Timeframe</div><div class="mc-tfgrid">${D.TFS.map((t) => `<button class="${t.id === pane.tf ? 'on' : ''}" data-tf="${t.id}">${t.n}</button>`).join('')}</div>`, 220);

@@ -38,6 +38,10 @@ const CSS = `
   .mc-tool.on{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
   .mc-icobtn{width:36px; height:36px; display:inline-grid; place-items:center; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2)}
   .mc-icobtn:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-icobtn svg{width:16px; height:16px}
+  .mc-icobtn.mc-off{opacity:.38; cursor:not-allowed; pointer-events:none}
+  /* selector de moneda para TODAS las gráficas (a la derecha del botón Back) */
+  .mc-allcoin{display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 13px; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink); font-family:var(--mc-disp); font-weight:800; font-size:13px}
+  .mc-allcoin:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-allcoin svg{width:16px; height:16px; opacity:.85}
   .mc-add{display:inline-flex; align-items:center; gap:7px; height:36px; width:auto; padding:0 15px; border-radius:10px; border:1px solid #c79426; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426); color:#2a1d00; font-family:var(--mc-disp); font-weight:800; font-size:13px}
   .mc-add svg{width:16px; height:16px} .mc-add:hover{filter:brightness(1.05)}
 
