@@ -11,7 +11,7 @@
         sale el logo de tu wallet y las cuatro últimas cifras, exactamente
         igual que dentro.
      3. Cabecera, aparición al bajar, precios reales, motas, inercia,
-        buscador y botón de instalar
+        buscador y botón de instalar.
 
    Cada bloque va en su propio try/catch: si uno falla, los demás siguen.
    Antes bastaba con que algo reventara temprano para que se cayera todo
@@ -128,7 +128,7 @@ const PUERTAS = {
   analisis: async () => {
     const w = await wallet();
     const ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
-    const m = await import(new URL('modules/analysis/analisis.js?v=19', document.baseURI).href);
+    const m = await import(new URL('modules/analysis/analisis.js?v=20', document.baseURI).href);
     await m.abrirAnalisis('hero', w, ethers);
   }
 };
