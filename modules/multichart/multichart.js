@@ -364,9 +364,9 @@ function dibujarUX(pane) {
   if (pane !== S.focus) dibujosRO(pane, g);
   const now = performance.now();
   S.vlines.forEach((vl) => { const x = safeX(pane, vl.time); if (x == null) return; const a = vl.t0 ? Math.min(1, (now - vl.t0) / 360) : 1; lineaVert(g, x, W, H, a, false, fmtFecha(vl.time), vl.col, vl.gr); });
-  S.hlines.forEach((hl) => { const y = safeY(pane, hl.price); if (y == null) return; const a = hl.t0 ? Math.min(1, (now - hl.t0) / 360) : 1; lineaHorz(g, y, W, a, hl.price, false, hl.col, hl.gr); });
+  S.hlines.forEach((hl) => { const y = hl.frac * H; const a = hl.t0 ? Math.min(1, (now - hl.t0) / 360) : 1; lineaHorz(g, y, W, a, priceAt(pane, y), false, hl.col, hl.gr); });
   if (S.tool === 'vline' && S.preview && S.preview.time != null) { const x = safeX(pane, S.preview.time); if (x != null) lineaVert(g, x, W, H, 0.65, true, fmtFecha(S.preview.time), '#E8B84B', 2); }
-  if (S.tool === 'hline' && S.preview && S.preview.price != null) { const y = safeY(pane, S.preview.price); if (y != null) lineaHorz(g, y, W, 0.6, S.preview.price, true, '#2ee8c6', 2); }
+  if (S.tool === 'hline' && S.preview && S.preview.frac != null) { const y = S.preview.frac * H; lineaHorz(g, y, W, 0.6, priceAt(pane, y), true, '#2ee8c6', 2); }
 }
 function dibujosRO(pane, g) {
   const lista = pane.dibCache; if (!lista || !lista.length) return;
@@ -405,7 +405,6 @@ function safeX(pane, timeSec) {
     c = ts.timeToCoordinate(vt.time); return c == null ? null : c;
   } catch (_) { return null; }
 }
-function safeY(pane, price) { try { const c = pane.serie.priceToCoordinate(price); return c == null ? null : c; } catch (_) { return null; } }
 // vela más cercana en el TIEMPO (sirve para sincronizar entre temporalidades distintas)
 function valorEnTiempo(pane, t) {
   const v = pane.velas; if (!v || !v.length) return null;
@@ -490,14 +489,16 @@ function wirePane(pane) {
   cap.addEventListener('mousemove', (e) => {
     const r = cap.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
     if (S.tool === 'vline') S.preview = { time: timeAt(pane, x) };
-    else if (S.tool === 'hline') S.preview = { price: priceAt(pane, y) };
+    else if (S.tool === 'hline') S.preview = { frac: y / ((pane.body.clientHeight) || 1) };
   });
   cap.addEventListener('mouseleave', () => { S.preview = null; });
   cap.addEventListener('click', (e) => {
     const r = cap.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
-    if (S.tool === 'vline') colocarVLine(pane, x);
-    else if (S.tool === 'hline') colocarHLine(pane, y);
-    else if (pane._hit) abrirAjustesLinea(pane, pane._hit, e.clientX, e.clientY);   // clic sobre una línea puesta → ajustes
+    // al COLOCAR una línea: se desarma la herramienta y sale la MISMA ventanita de ajustes
+    // (color, grosor, papelera) igual que en la barra de dibujo. Nada de "clic para quitar".
+    if (S.tool === 'vline') { colocarVLine(pane, x); desarmarTool(); abrirAjustesLinea(pane, { tipo: 'v', idx: S.vlines.length - 1 }, e.clientX, e.clientY); }
+    else if (S.tool === 'hline') { colocarHLine(pane, y); desarmarTool(); abrirAjustesLinea(pane, { tipo: 'h', idx: S.hlines.length - 1 }, e.clientX, e.clientY); }
+    else if (pane._hit) abrirAjustesLinea(pane, pane._hit, e.clientX, e.clientY);   // clic sobre una línea puesta → su ventanita
   });
   // sin herramienta armada: detecta el cursor sobre una línea ya colocada (manita + clic)
   pane.body.addEventListener('mousemove', (e) => {
@@ -510,21 +511,25 @@ function wirePane(pane) {
 }
 // ¿el cursor está sobre una línea V u H de esta gráfica?
 function hitLine(pane, x, y) {
+  const H = pane.body.clientHeight || 1;
   for (let i = 0; i < S.vlines.length; i++) { const lx = safeX(pane, S.vlines[i].time); if (lx != null && Math.abs(lx - x) < 6) return { tipo: 'v', idx: i }; }
-  for (let i = 0; i < S.hlines.length; i++) { const ly = safeY(pane, S.hlines[i].price); if (ly != null && Math.abs(ly - y) < 6) return { tipo: 'h', idx: i }; }
+  for (let i = 0; i < S.hlines.length; i++) { const ly = S.hlines[i].frac * H; if (Math.abs(ly - y) < 6) return { tipo: 'h', idx: i }; }
   return null;
+}
+function desarmarTool() {
+  S.tool = null; S.preview = null;
+  const bv = $('mc-vline'), bh = $('mc-hline'); if (bv) bv.classList.remove('on'); if (bh) bh.classList.remove('on');
+  S.paneles.forEach((p) => { const c = p.body.querySelector('.mc-cap'); if (c) c.classList.remove('on'); });
 }
 function timeAt(pane, x) { try { const lg = pane.chart.timeScale().coordinateToLogical(x); if (lg == null) return null; const i = Math.max(0, Math.min(pane.velas.length - 1, Math.round(lg))); const v = pane.velas[i]; return v ? v.time : null; } catch (_) { return null; } }
 function priceAt(pane, y) { try { const p = pane.serie.coordinateToPrice(y); return p == null ? null : p; } catch (_) { return null; } }
-function colocarVLine(pane, x) {
+function colocarVLine(pane, x) {   // marca un TIEMPO: sale en todas las gráficas a esa fecha
   const t = timeAt(pane, x); if (t == null) return;
-  for (let i = 0; i < S.vlines.length; i++) { const xx = safeX(pane, S.vlines[i].time); if (xx != null && Math.abs(xx - x) < 7) { S.vlines.splice(i, 1); return; } }
   S.vlines.push({ time: t, t0: performance.now(), col: '#E8B84B', gr: 2 });
 }
-function colocarHLine(pane, y) {   // GLOBAL, igual que la vertical: aparece en todas las gráficas
-  const p = priceAt(pane, y); if (p == null) return;
-  for (let i = 0; i < S.hlines.length; i++) { const yy = safeY(pane, S.hlines[i].price); if (yy != null && Math.abs(yy - y) < 7) { S.hlines.splice(i, 1); return; } }
-  S.hlines.push({ price: p, t0: performance.now(), col: '#2ee8c6', gr: 2 });
+function colocarHLine(pane, y) {   // marca una ALTURA: sale en todas las gráficas a la misma altura (se ve aunque sean monedas distintas)
+  const H = pane.body.clientHeight || 1;
+  S.hlines.push({ frac: Math.max(0, Math.min(1, y / H)), t0: performance.now(), col: '#2ee8c6', gr: 2 });
 }
 function fullPane(pane) {
   pane.max = !pane.max;
@@ -661,7 +666,7 @@ function abrirAjustesLinea(pane, hit, cx, cy) {
   el.onmousedown = (e) => e.stopPropagation();
   el.querySelector('.col').onclick = (e) => { e.stopPropagation(); abrirColorLinea(ln, el.querySelector('.col')); };
   el.querySelectorAll('[data-gr]').forEach((b) => b.onclick = () => { ln.gr = +b.dataset.gr; el.querySelectorAll('[data-gr]').forEach((x) => x.classList.toggle('on', x === b)); });
-  el.querySelector('.del').onclick = () => { arr.splice(hit.idx, 1); cerrarLineset(); };
+  el.querySelector('.del').onclick = () => { const k = arr.indexOf(ln); if (k >= 0) arr.splice(k, 1); cerrarLineset(); };
   S.lineset = el;
 }
 function abrirColorLinea(ln, anchor) {
