@@ -10,7 +10,7 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=5';
+import { estilos } from './estilos.js?v=6';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
@@ -24,7 +24,7 @@ const $ = (id) => document.getElementById(id);
 const DEF = ['BTC', 'ETH', 'BNB', 'SOL'];
 const S = {
   paneles: [], seq: 0, raf: null, logos: {}, menu: null,
-  focus: null, sync: false, tool: null, vlines: [], preview: null, syncing: false, _lastHerr: null
+  focus: null, sync: false, tool: null, vlines: [], hlines: [], preview: null, syncing: false, _lastHerr: null, lineset: null
 };
 let LC = null;
 
@@ -117,8 +117,8 @@ function cerrarMulti() {
   document.removeEventListener('mousedown', fueraMenu, true);
   window.removeEventListener('resize', onResize);
   S.paneles.forEach((p) => { try { p.stream && p.stream.cerrar(); } catch (_) {} try { p.barra && p.barra.desmontar && p.barra.desmontar(); } catch (_) {} try { p.chart.remove(); } catch (_) {} });
-  S.paneles = []; S.focus = null;
-  cerrarMenu();
+  S.paneles = []; S.focus = null; S.vlines = []; S.hlines = []; S.tool = null;   // las líneas no deben sobrevivir a salir/entrar
+  cerrarMenu(); cerrarLineset();
   const m = $('mc-modal'); if (m) m.remove();
   const ov = $('mc-overlay'); if (ov) ov.remove();
   if (window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')) { try { history.back(); } catch (_) {} }
@@ -132,7 +132,7 @@ async function crearPanel(parId, tf, flotante, pos) {
   const pane = {
     id, par, tf, chart: null, serie: null, velas: [], velasMs: [], stream: null,
     flotante: !!flotante, max: false, ovl: new Set(), bollOn: false, oscK: null, ind: {},
-    hlines: [], dibCache: [], barra: null, streamGen: 0, loadGen: 0
+    dibCache: [], barra: null, streamGen: 0, loadGen: 0, _hit: null
   };
   const el = document.createElement('div'); el.className = flotante ? 'mc-float' : 'mc-pane'; el.id = id;
   el.innerHTML = `
@@ -362,11 +362,11 @@ function dibujarUX(pane) {
   if (ux.width !== Math.round(W * dpr)) { ux.width = Math.round(W * dpr); ux.height = Math.round(H * dpr); ux.style.width = W + 'px'; ux.style.height = H + 'px'; }
   const g = ux.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
   if (pane !== S.focus) dibujosRO(pane, g);
-  const ts = pane.chart.timeScale(), now = performance.now();
-  S.vlines.forEach((vl) => { const x = safeX(pane, vl.time); if (x == null) return; const a = vl.t0 ? Math.min(1, (now - vl.t0) / 360) : 1; lineaVert(g, x, W, H, a, false, fmtFecha(vl.time)); });
-  (pane.hlines || []).forEach((hl) => { const y = safeY(pane, hl.price); if (y == null) return; const a = hl.t0 ? Math.min(1, (now - hl.t0) / 360) : 1; lineaHorz(g, y, W, a, hl.price, false); });
-  if (S.tool === 'vline' && S.preview && S.preview.time != null) { const x = safeX(pane, S.preview.time); if (x != null) lineaVert(g, x, W, H, 0.65, true, fmtFecha(S.preview.time)); }
-  if (S.tool === 'hline' && S.preview && S.preview.pane === pane && S.preview.price != null) { const y = safeY(pane, S.preview.price); if (y != null) lineaHorz(g, y, W, 0.55, S.preview.price, true); }
+  const now = performance.now();
+  S.vlines.forEach((vl) => { const x = safeX(pane, vl.time); if (x == null) return; const a = vl.t0 ? Math.min(1, (now - vl.t0) / 360) : 1; lineaVert(g, x, W, H, a, false, fmtFecha(vl.time), vl.col, vl.gr); });
+  S.hlines.forEach((hl) => { const y = safeY(pane, hl.price); if (y == null) return; const a = hl.t0 ? Math.min(1, (now - hl.t0) / 360) : 1; lineaHorz(g, y, W, a, hl.price, false, hl.col, hl.gr); });
+  if (S.tool === 'vline' && S.preview && S.preview.time != null) { const x = safeX(pane, S.preview.time); if (x != null) lineaVert(g, x, W, H, 0.65, true, fmtFecha(S.preview.time), '#E8B84B', 2); }
+  if (S.tool === 'hline' && S.preview && S.preview.price != null) { const y = safeY(pane, S.preview.price); if (y != null) lineaHorz(g, y, W, 0.6, S.preview.price, true, '#2ee8c6', 2); }
 }
 function dibujosRO(pane, g) {
   const lista = pane.dibCache; if (!lista || !lista.length) return;
@@ -376,22 +376,24 @@ function dibujosRO(pane, g) {
   try { dibujarHerramientas(g, geo.x1, geo.y1); } catch (_) {}
   NIV._geo = s.geo; NIV.velas = s.velas; NIV.dibujos = s.dib; NIV.sel = s.sel; NIV.dib = s.cur; NIV.gomaBox = s.goma;
 }
-function lineaVert(g, x, W, H, a, preview, label) {
-  g.save(); g.globalAlpha = a; g.strokeStyle = '#E8B84B'; g.lineWidth = preview ? 1 : 1.6; g.shadowColor = 'rgba(232,184,75,.9)'; g.shadowBlur = preview ? 4 : 8;
+function lineaVert(g, x, W, H, a, preview, label, col, gr) {
+  col = col || '#E8B84B';
+  g.save(); g.globalAlpha = a; g.strokeStyle = col; g.lineWidth = preview ? 1 : (gr || 2); g.shadowColor = col; g.shadowBlur = preview ? 4 : 8;
   if (preview) g.setLineDash([5, 5]); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
   g.setLineDash([]); g.shadowBlur = 0;
-  if (label) {   // etiqueta con la FECHA/hora exacta de la línea, para poder situarla (p. ej. "28 Nov 15:00")
+  if (label) {   // etiqueta con la FECHA/hora exacta (para situarla, p. ej. "28 Nov 15:00")
     g.font = '700 10px "IBM Plex Mono", monospace';
     const tw = g.measureText(label).width + 12; let lx = x - tw / 2; lx = Math.max(2, Math.min(lx, W - tw - 2)); const ly = H - 32;
-    g.globalAlpha = Math.min(1, a + 0.2); redondea(g, lx, ly, tw, 17, 5); g.fillStyle = 'rgba(20,16,4,.96)'; g.fill(); g.strokeStyle = '#8f6a1a'; g.lineWidth = 1; g.stroke();
-    g.fillStyle = '#E8B84B'; g.textAlign = 'left'; g.fillText(label, lx + 6, ly + 12);
+    g.globalAlpha = Math.min(1, a + 0.2); redondea(g, lx, ly, tw, 17, 5); g.fillStyle = 'rgba(12,14,18,.96)'; g.fill(); g.strokeStyle = col; g.lineWidth = 1; g.stroke();
+    g.fillStyle = col; g.textAlign = 'left'; g.fillText(label, lx + 6, ly + 12);
   }
   g.restore();
 }
-function lineaHorz(g, y, W, a, price, preview) {
-  g.save(); g.globalAlpha = a; g.strokeStyle = '#2ee8c6'; g.lineWidth = preview ? 1 : 1.6; g.shadowColor = 'rgba(46,232,198,.85)'; g.shadowBlur = preview ? 4 : 9;
+function lineaHorz(g, y, W, a, price, preview, col, gr) {
+  col = col || '#2ee8c6';
+  g.save(); g.globalAlpha = a; g.strokeStyle = col; g.lineWidth = preview ? 1 : (gr || 2); g.shadowColor = col; g.shadowBlur = preview ? 4 : 8;
   if (preview) g.setLineDash([5, 5]); g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
-  if (price != null) { const t = fmtNum(price); g.setLineDash([]); g.shadowBlur = 0; g.font = '700 10px "IBM Plex Mono", monospace'; const tw = g.measureText(t).width + 10; g.fillStyle = 'rgba(13,30,27,.95)'; g.fillRect(W - tw - 4, y - 8, tw, 16); g.fillStyle = '#2ee8c6'; g.textAlign = 'left'; g.fillText(t, W - tw + 1, y + 3); }
+  if (price != null) { const t = fmtNum(price); g.setLineDash([]); g.shadowBlur = 0; g.font = '700 10px "IBM Plex Mono", monospace'; const tw = g.measureText(t).width + 10; g.fillStyle = 'rgba(12,14,18,.95)'; g.fillRect(W - tw - 4, y - 8, tw, 16); g.fillStyle = col; g.textAlign = 'left'; g.fillText(t, W - tw + 1, y + 3); }
   g.restore();
 }
 function safeX(pane, timeSec) {
@@ -484,34 +486,45 @@ function wirePane(pane) {
   q('[data-close]').onclick = () => cerrarPane(pane);
   // enfocar al interactuar con el cuerpo (si no hay herramienta cruzada armada)
   pane.body.addEventListener('mousedown', () => { if (!S.tool) enfocar(pane); }, true);
-  // capa de captura para las líneas cruzadas
   const cap = pane.body.querySelector('.mc-cap');
   cap.addEventListener('mousemove', (e) => {
     const r = cap.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
     if (S.tool === 'vline') S.preview = { time: timeAt(pane, x) };
-    else if (S.tool === 'hline') S.preview = { pane, price: priceAt(pane, y) };
+    else if (S.tool === 'hline') S.preview = { price: priceAt(pane, y) };
   });
   cap.addEventListener('mouseleave', () => { S.preview = null; });
   cap.addEventListener('click', (e) => {
     const r = cap.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
     if (S.tool === 'vline') colocarVLine(pane, x);
     else if (S.tool === 'hline') colocarHLine(pane, y);
+    else if (pane._hit) abrirAjustesLinea(pane, pane._hit, e.clientX, e.clientY);   // clic sobre una línea puesta → ajustes
+  });
+  // sin herramienta armada: detecta el cursor sobre una línea ya colocada (manita + clic)
+  pane.body.addEventListener('mousemove', (e) => {
+    if (S.tool || NIV.herr !== 'cursor') { if (cap.classList.contains('hit')) cap.classList.remove('hit'); pane._hit = null; return; }
+    const r = pane.body.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+    const hit = hitLine(pane, x, y);
+    pane._hit = hit; cap.classList.toggle('hit', !!hit);
   });
   if (pane.flotante) arrastrar(pane);
+}
+// ¿el cursor está sobre una línea V u H de esta gráfica?
+function hitLine(pane, x, y) {
+  for (let i = 0; i < S.vlines.length; i++) { const lx = safeX(pane, S.vlines[i].time); if (lx != null && Math.abs(lx - x) < 6) return { tipo: 'v', idx: i }; }
+  for (let i = 0; i < S.hlines.length; i++) { const ly = safeY(pane, S.hlines[i].price); if (ly != null && Math.abs(ly - y) < 6) return { tipo: 'h', idx: i }; }
+  return null;
 }
 function timeAt(pane, x) { try { const lg = pane.chart.timeScale().coordinateToLogical(x); if (lg == null) return null; const i = Math.max(0, Math.min(pane.velas.length - 1, Math.round(lg))); const v = pane.velas[i]; return v ? v.time : null; } catch (_) { return null; } }
 function priceAt(pane, y) { try { const p = pane.serie.coordinateToPrice(y); return p == null ? null : p; } catch (_) { return null; } }
 function colocarVLine(pane, x) {
   const t = timeAt(pane, x); if (t == null) return;
-  // ¿cerca de una existente? → quitarla
   for (let i = 0; i < S.vlines.length; i++) { const xx = safeX(pane, S.vlines[i].time); if (xx != null && Math.abs(xx - x) < 7) { S.vlines.splice(i, 1); return; } }
-  S.vlines.push({ time: t, t0: performance.now() });
+  S.vlines.push({ time: t, t0: performance.now(), col: '#E8B84B', gr: 2 });
 }
-function colocarHLine(pane, y) {
+function colocarHLine(pane, y) {   // GLOBAL, igual que la vertical: aparece en todas las gráficas
   const p = priceAt(pane, y); if (p == null) return;
-  pane.hlines = pane.hlines || [];
-  for (let i = 0; i < pane.hlines.length; i++) { const yy = safeY(pane, pane.hlines[i].price); if (yy != null && Math.abs(yy - y) < 7) { pane.hlines.splice(i, 1); return; } }
-  pane.hlines.push({ price: p, t0: performance.now() });
+  for (let i = 0; i < S.hlines.length; i++) { const yy = safeY(pane, S.hlines[i].price); if (yy != null && Math.abs(yy - y) < 7) { S.hlines.splice(i, 1); return; } }
+  S.hlines.push({ price: p, t0: performance.now(), col: '#2ee8c6', gr: 2 });
 }
 function fullPane(pane) {
   pane.max = !pane.max;
@@ -621,7 +634,47 @@ function toggleTool(t) {
 
 /* ── Menús ── */
 function cerrarMenu() { if (S.menu) { S.menu.remove(); S.menu = null; } }
-function fueraMenu(e) { if (S.menu && !S.menu.contains(e.target)) cerrarMenu(); }
+function fueraMenu(e) {
+  if (S.menu && !S.menu.contains(e.target)) cerrarMenu();
+  if (S.lineset && !S.lineset.contains(e.target) && !(e.target.closest && e.target.closest('.mc-lcol'))) cerrarLineset();
+}
+/* Ventanita de ajustes de una línea V/H: misma dinámica que la de la barra de
+   dibujo (cambiar color, grosor y borrar con la papelera). */
+const LINE_COLS = ['#E8B84B', '#2ee8c6', '#49b6ff', '#ff5b6e', '#2ee86a', '#b07cff', '#ff8fbf', '#eaecef', '#ff9e3d', '#8b95a1'];
+function cerrarLineset() { if (S.lineset) { S.lineset.remove(); S.lineset = null; } const c = document.querySelector('.mc-lcol'); if (c) c.remove(); }
+function abrirAjustesLinea(pane, hit, cx, cy) {
+  cerrarLineset();
+  const arr = hit.tipo === 'v' ? S.vlines : S.hlines;
+  const ln = arr[hit.idx]; if (!ln) return;
+  const el = document.createElement('div'); el.className = 'mc-lineset';
+  el.innerHTML =
+    `<button class="b col" title="Color"><span class="sw" style="background:${ln.col}"></span></button>` +
+    `<span class="sep"></span>` +
+    [1, 2, 3, 4].map((w) => `<button class="b gr ${(ln.gr || 2) === w ? 'on' : ''}" data-gr="${w}" title="Thickness"><i style="height:${w + 1}px"></i></button>`).join('') +
+    `<span class="sep"></span>` +
+    `<button class="b del" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>`;
+  ($('mc-overlay') || document.body).appendChild(el);
+  const mw = el.offsetWidth, mh = el.offsetHeight;
+  let left = cx - mw / 2; left = Math.max(8, Math.min(left, innerWidth - mw - 8));
+  let top = cy - mh - 14; if (top < 56) top = cy + 16;
+  el.style.left = left + 'px'; el.style.top = top + 'px';
+  el.onmousedown = (e) => e.stopPropagation();
+  el.querySelector('.col').onclick = (e) => { e.stopPropagation(); abrirColorLinea(ln, el.querySelector('.col')); };
+  el.querySelectorAll('[data-gr]').forEach((b) => b.onclick = () => { ln.gr = +b.dataset.gr; el.querySelectorAll('[data-gr]').forEach((x) => x.classList.toggle('on', x === b)); });
+  el.querySelector('.del').onclick = () => { arr.splice(hit.idx, 1); cerrarLineset(); };
+  S.lineset = el;
+}
+function abrirColorLinea(ln, anchor) {
+  const old = document.querySelector('.mc-lcol'); if (old) { old.remove(); return; }
+  const pop = document.createElement('div'); pop.className = 'mc-lcol';
+  pop.innerHTML = LINE_COLS.map((c) => `<button class="c ${c === ln.col ? 'on' : ''}" style="background:${c}" data-c="${c}"></button>`).join('');
+  ($('mc-overlay') || document.body).appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  let left = r.left, top = r.bottom + 6; if (left + pop.offsetWidth > innerWidth - 8) left = innerWidth - pop.offsetWidth - 8;
+  pop.style.left = Math.max(8, left) + 'px'; pop.style.top = top + 'px';
+  pop.onmousedown = (e) => e.stopPropagation();
+  pop.querySelectorAll('[data-c]').forEach((b) => b.onclick = () => { ln.col = b.dataset.c; const sw = anchor.querySelector('.sw'); if (sw) sw.style.background = ln.col; pop.remove(); });
+}
 function pop(anc, html, w) {
   cerrarMenu();
   const m = document.createElement('div'); m.className = 'mc-pop'; m.innerHTML = html;
@@ -653,7 +706,6 @@ function menuMonedas(pane, anc) {
 async function cambiarMoneda(pane, id) {
   const par = D.PARES.find((p) => p.id === id); if (!par) return;
   pane.par = par;
-  pane.hlines = [];
   pane.el.querySelector('.mc-coin .nm').textContent = par.id;
   pintarLogoHead(pane);
   if (pane === S.focus) NIV.par = par.id;

@@ -86,6 +86,7 @@ const CSS = `
   .mc-ux{position:absolute; inset:0; z-index:4; pointer-events:none}
   .mc-cap{position:absolute; inset:0; z-index:6; pointer-events:none; cursor:crosshair}
   .mc-cap.on{pointer-events:auto}
+  .mc-cap.hit{pointer-events:auto; cursor:pointer}
   /* marca de agua: misma ubicación que las demás secciones (libre de barra y de las fechas) */
   .mc-wm{position:absolute; left:60px; bottom:36px; z-index:1; opacity:.6; pointer-events:none}
   .mc-wm img{height:21px; width:auto; filter:drop-shadow(0 2px 7px rgba(0,0,0,.95))}
@@ -152,6 +153,19 @@ const CSS = `
   .mc-modal .bxf button:hover{border-color:var(--mc-gold-soft)}
   .mc-modal .bxf .dl{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
   .mc-modal .bxf .dl:hover{filter:brightness(1.06)}
+
+  /* ventanita de ajustes de las líneas V/H (misma apariencia que la de la barra de dibujo) */
+  .mc-lineset{position:fixed; z-index:9560; display:flex; align-items:center; gap:3px; padding:6px 8px; border-radius:14px; background:linear-gradient(180deg,rgba(24,30,40,.96),rgba(14,18,26,.96)); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.12); box-shadow:0 14px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05)}
+  .mc-lineset .b{height:30px; min-width:30px; padding:0 9px; border-radius:9px; border:none; background:transparent; color:#c9d1d9; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-family:var(--mc-mono); font-size:11px; font-weight:700; line-height:1; transition:background .13s, color .13s}
+  .mc-lineset .b:hover{background:rgba(255,255,255,.09)} .mc-lineset .b.on{background:rgba(232,184,75,.2); color:var(--mc-gold); box-shadow:inset 0 0 0 1px rgba(232,184,75,.42)}
+  .mc-lineset .del:hover{background:rgba(255,59,82,.2); color:#ff6b7a}
+  .mc-lineset .col{padding:0 6px} .mc-lineset .sw{width:20px; height:20px; border-radius:6px; display:block; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35), 0 1px 3px rgba(0,0,0,.5)}
+  .mc-lineset .gr{width:32px} .mc-lineset .gr i{display:block; width:16px; background:currentColor; border-radius:2px}
+  .mc-lineset .sep{width:1px; height:20px; background:rgba(255,255,255,.14); margin:0 3px; flex:0 0 auto}
+  .mc-lineset .del svg{width:15px; height:15px}
+  .mc-lcol{position:fixed; z-index:9565; padding:8px; border-radius:12px; background:linear-gradient(180deg,rgba(24,30,40,.98),rgba(14,18,26,.98)); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.13); box-shadow:0 16px 44px rgba(0,0,0,.62); display:grid; grid-template-columns:repeat(5,1fr); gap:6px; width:160px}
+  .mc-lcol .c{width:22px; height:22px; border-radius:6px; border:2px solid transparent; cursor:pointer; padding:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+  .mc-lcol .c:hover{border-color:rgba(255,255,255,.85)} .mc-lcol .c.on{border-color:#fff}
 
   .mc-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:9700; padding:11px 18px; border-radius:11px; background:#121922; border:1px solid var(--mc-line2); color:var(--mc-ink); font-size:13px; font-weight:600; box-shadow:0 14px 40px rgba(0,0,0,.6); opacity:0; transition:opacity .2s, transform .2s}
   .mc-toast.on{opacity:1; transform:translateX(-50%) translateY(-4px)}
