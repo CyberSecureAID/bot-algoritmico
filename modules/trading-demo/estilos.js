@@ -43,11 +43,9 @@ export function estilos() {
   .td-stat b{font-family:var(--td-mono); font-size:9px; letter-spacing:.07em; text-transform:uppercase; color:var(--td-ink3); font-weight:700}
   .td-stat span{font-family:var(--td-mono); font-size:12px; color:var(--td-ink); font-weight:600}
   .td-stat span.up{color:var(--td-up2)} .td-stat span.down{color:var(--td-down2)}
-  .td-wallet{display:flex; flex-direction:column; align-items:flex-end; gap:0; flex:0 0 auto; margin-left:auto}
-  .td-wallet b{font-family:var(--td-mono); font-size:9px; letter-spacing:.07em; text-transform:uppercase; color:var(--td-ink3)}
-  .td-wallet .eq{font-family:var(--td-disp); font-weight:800; font-size:17px; color:var(--td-gold); line-height:1.15; transition:color .15s}
+  .td-wallet{display:flex; align-items:center; flex:0 0 auto; margin-left:auto}
+  .td-wallet .eq{font-family:var(--td-disp); font-weight:800; font-size:24px; letter-spacing:-.01em; color:var(--td-gold); line-height:1.1; transition:color .15s}
   .td-wallet .eq.up{color:var(--td-up2)} .td-wallet .eq.down{color:var(--td-down2)}
-  .td-wallet small{font-family:var(--td-mono); font-size:10px; color:var(--td-ink2)}
   .td-icobtn{height:36px; min-width:36px; padding:0 9px; border-radius:9px; flex:0 0 auto; display:inline-grid; place-items:center; color:#8b96a3; background:rgba(255,255,255,.05); border:1px solid var(--td-line2)}
   .td-icobtn svg{width:15px; height:15px} .td-icobtn:hover{border-color:var(--td-gold-soft); color:var(--td-gold)}
   .td-icobtn.on{border-color:var(--td-gold); color:var(--td-gold); background:rgba(232,184,75,.12)}
@@ -82,6 +80,12 @@ export function estilos() {
   .td-sld-top{display:flex; justify-content:space-between; align-items:baseline}
   .td-sld-top .lbl{font-family:var(--td-mono); font-size:10.5px; color:var(--td-ink3); letter-spacing:.04em; text-transform:uppercase}
   .td-sld-top .val{font-family:var(--td-disp); font-weight:800; font-size:16px; color:var(--td-gold)}
+  .td-capedit{display:inline-flex; align-items:baseline; gap:4px}
+  .td-capedit input{width:88px; padding:0 0 1px; border:none; border-bottom:1px dashed rgba(201,168,75,.45); background:transparent; outline:none; text-align:right; font-family:var(--td-disp); font-weight:800; font-size:16px; color:var(--td-gold)}
+  .td-capedit input:focus{border-bottom-color:var(--td-gold)}
+  .td-capedit input::-webkit-outer-spin-button,.td-capedit input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+  .td-capedit input[type=number]{-moz-appearance:textfield}
+  .td-capedit em{font-style:normal; font-family:var(--td-mono); font-size:10px; color:var(--td-ink3)}
   .td-range{-webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:4px; background:linear-gradient(90deg,var(--td-gold) 0%,var(--td-gold) var(--f,20%),#222b36 var(--f,20%),#222b36 100%); outline:none; cursor:pointer}
   .td-range::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:50%; background:#fff; border:3px solid var(--td-gold); cursor:pointer; box-shadow:0 1px 5px rgba(0,0,0,.5)}
   .td-range::-moz-range-thumb{width:16px; height:16px; border:3px solid var(--td-gold); border-radius:50%; background:#fff; cursor:pointer}
@@ -98,7 +102,7 @@ export function estilos() {
   .td-in{display:flex; align-items:center; height:38px; padding:0 4px 0 12px; border-radius:9px; background:#0b1017; border:1px solid var(--td-line2); gap:6px}
   .td-in:focus-within{border-color:var(--td-gold-soft)}
   .td-in input{flex:1; min-width:0; border:none; background:transparent; outline:none; color:var(--td-ink); font-family:var(--td-mono); font-size:14px; font-weight:600}
-  .td-in em{font-style:normal; font-family:var(--td-mono); font-size:11px; color:var(--td-ink3); flex:0 0 auto}
+  .td-in em{font-style:normal; font-family:var(--td-mono); font-size:11px; color:var(--td-ink3); flex:0 0 auto; margin-right:4px}
   .td-step{display:flex; flex-direction:column; gap:2px; flex:0 0 auto}
   .td-step button{width:22px; height:16px; border-radius:5px; border:1px solid var(--td-line2); background:rgba(255,255,255,.04); color:var(--td-ink2); display:grid; place-items:center; padding:0}
   .td-step button svg{width:9px; height:9px} .td-step button:hover{border-color:var(--td-gold-soft); color:var(--td-gold)}
@@ -108,14 +112,29 @@ export function estilos() {
   .td-tpsl{display:flex; gap:7px}
   .td-tpsl .td-in{flex:1 1 0; min-width:0; padding:0 10px}
   .td-tpsl .td-in em{order:-1; margin-right:2px}
+  .td-tpsl .td-in{padding:0 4px 0 10px}
+  .td-unit{flex:0 0 auto; width:28px; height:26px; margin-left:2px; border-radius:7px; border:1px solid var(--td-line2); background:rgba(255,255,255,.05); color:var(--td-gold); font-family:var(--td-mono); font-size:12px; font-weight:800; cursor:pointer; display:grid; place-items:center}
+  .td-unit:hover{border-color:var(--td-gold-soft)}
+  .td-proj{display:flex; gap:7px}
+  .td-proj-c{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:1px; padding:8px 11px; border-radius:10px; border:1px solid var(--td-line2); background:rgba(255,255,255,.02)}
+  .td-proj-c span{font-family:var(--td-mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--td-ink3)}
+  .td-proj-c b{font-family:var(--td-disp); font-weight:800; font-size:17px; line-height:1.1}
+  .td-proj-c i{font-style:normal; font-family:var(--td-mono); font-size:11px; font-weight:600}
+  .td-proj-c.tp{border-color:rgba(46,232,106,.32); background:rgba(46,232,106,.06)}
+  .td-proj-c.tp b,.td-proj-c.tp i{color:var(--td-up2)}
+  .td-proj-c.sl{border-color:rgba(255,91,110,.32); background:rgba(255,91,110,.06)}
+  .td-proj-c.sl b,.td-proj-c.sl i{color:var(--td-down2)}
   .td-cost{display:flex; justify-content:space-between; font-family:var(--td-mono); font-size:11px; color:var(--td-ink2)}
   .td-cost b{color:var(--td-ink)} .td-cost .liqv{color:var(--td-down2)}
   /* Resumen de la orden: rellena el espacio entre Liq y los botones */
-  .td-summary{flex:1 1 auto; min-height:92px; margin-top:7px; display:flex; flex-direction:column; gap:7px; padding:12px 13px; border-radius:11px; border:1px solid var(--td-line2); background:rgba(255,255,255,.02)}
-  .td-summary .td-sum-h{font-family:var(--td-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--td-ink3)}
+  .td-summary{margin-top:2px; display:flex; flex-direction:column; gap:9px; padding:11px 13px; border-radius:11px; border:1px solid var(--td-line2); background:rgba(255,255,255,.02)}
+  .td-summary .td-sum-h{display:flex; justify-content:space-between; align-items:center; width:100%; padding:0; border:none; background:transparent; cursor:pointer; font-family:var(--td-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--td-ink3)}
+  .td-summary .td-sum-h .cv{font-size:9px; transition:transform .2s}
+  .td-sum-body{display:flex; flex-direction:column; gap:7px}
+  .td-sum-body[hidden]{display:none}
   .td-summary .td-sum-row{display:flex; justify-content:space-between; font-family:var(--td-mono); font-size:12px; color:var(--td-ink2)}
   .td-summary .td-sum-row b{color:var(--td-ink); font-weight:700}
-  .td-summary .td-sum-note{margin-top:auto; font-family:var(--td-mono); font-size:9.5px; line-height:1.5; color:var(--td-ink3)}
+  .td-summary .td-sum-note{margin-top:2px; font-family:var(--td-mono); font-size:9.5px; line-height:1.5; color:var(--td-ink3)}
   .td-ops{display:flex; gap:10px; margin-top:auto; position:sticky; bottom:0; padding-top:12px; padding-bottom:2px; background:var(--td-panel)}
   .td-op{flex:1; min-height:46px; border-radius:11px; border:none; font-family:var(--td-disp); font-weight:800; font-size:16px; letter-spacing:.04em; color:#04210f}
   .td-op.long{background:linear-gradient(180deg,#4dffa0,#1fc96e); box-shadow:0 3px 0 #11813f}

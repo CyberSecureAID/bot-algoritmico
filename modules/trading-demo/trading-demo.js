@@ -12,7 +12,7 @@
    compartido del resto de secciones: catálogo de monedas, sus logos y la misma
    barra de dibujo. */
 
-import { estilos } from './estilos.js?v=8';
+import { estilos } from './estilos.js?v=9';
 import * as D from './datos.js?v=2';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
@@ -29,6 +29,7 @@ const S = {
   par: null, tf: '1m', velas: [], velasDib: [], chart: null, serieVela: null,
   mark: 0, open24: 0, high24: 0, low24: 0, vol24: 0, chgPct: 0,
   lev: 10, cap: 100, tam: 1000, modo: 'limit', limitPx: 0, histPage: 0,
+  tpUnit: 'px', slUnit: 'px', sumOpen: false,
   stream: null, barra: null, dibMontada: false, lineaLimit: null, tab: 'pos',
   uiRAF: null, onResize: null, cvObs: null, marks: {}, logos: {},
   drag: null, hoverH: null, ac: null, expand: false
@@ -90,7 +91,7 @@ function plantilla() {
       <div class="td-stat"><b>24h high</b><span id="td-high">—</span></div>
       <div class="td-stat"><b>24h low</b><span id="td-low">—</span></div>
     </div>
-    <div class="td-wallet"><b>Equity · Demo</b><span class="eq" id="td-eq">—</span><small id="td-bal">—</small></div>
+    <div class="td-wallet"><span class="eq" id="td-eq">—</span></div>
     <button class="td-icobtn" id="td-expand" title="Expand chart">${IC.expand}</button>
     <button class="td-icobtn" id="td-help-btn" title="How it works">${IC.help}<span class="td-dot" id="td-help-dot"></span></button>
     <button class="td-icobtn" id="td-export" title="Export chart image">${IC.cam}</button>
@@ -117,7 +118,7 @@ function plantilla() {
           <div class="td-marks"><span data-lev="1">1x</span><span data-lev="25">25x</span><span data-lev="50">50x</span><span data-lev="75">75x</span><span data-lev="125">125x</span></div>
         </div>
         <div class="td-sld">
-          <div class="td-sld-top"><span class="lbl">Capital (margin)</span><span class="val" id="td-capv">—</span></div>
+          <div class="td-sld-top"><span class="lbl">Capital (margin)</span><span class="val td-capedit"><input id="td-capv" type="number" step="any" inputmode="decimal" placeholder="0"><em>USDT</em></span></div>
           <input type="range" class="td-range" id="td-capr" min="0" max="10000" step="1" value="100">
           <div class="td-pcts"><button class="td-pct" data-pct="25">25%</button><button class="td-pct" data-pct="50">50%</button><button class="td-pct" data-pct="75">75%</button><button class="td-pct" data-pct="100">Max</button></div>
         </div>
@@ -126,17 +127,23 @@ function plantilla() {
           <div class="td-in"><input type="number" id="td-size" value="1000" step="any"><em>USDT</em><span class="td-step"><button data-step="1">${IC.up}</button><button data-step="-1">${IC.down}</button></span></div>
         </div>
         <div class="td-tpsl">
-          <div class="td-in"><em>TP</em><input type="number" id="td-tp" placeholder="optional" step="any"></div>
-          <div class="td-in"><em>SL</em><input type="number" id="td-sl" placeholder="optional" step="any"></div>
+          <div class="td-in"><em>TP</em><input type="number" id="td-tp" placeholder="price" step="any"><button type="button" class="td-unit" id="td-tpunit" title="Toggle price / percent">$</button></div>
+          <div class="td-in"><em>SL</em><input type="number" id="td-sl" placeholder="price" step="any"><button type="button" class="td-unit" id="td-slunit" title="Toggle price / percent">$</button></div>
+        </div>
+        <div class="td-proj" id="td-proj">
+          <div class="td-proj-c tp"><span>If TP hits</span><b id="td-proj-tp">—</b><i id="td-proj-tpr"></i></div>
+          <div class="td-proj-c sl"><span>If SL hits</span><b id="td-proj-sl">—</b><i id="td-proj-slr"></i></div>
         </div>
         <div class="td-cost"><span>Margin</span><b id="td-margin">—</b></div>
         <div class="td-cost"><span>Liq. (est.)</span><b class="liqv" id="td-liqprev">—</b></div>
         <div class="td-summary" id="td-summary">
-          <div class="td-sum-h">Order summary</div>
-          <div class="td-sum-row"><span>Order value</span><b id="td-sum-val">—</b></div>
-          <div class="td-sum-row"><span>Est. fees · round trip</span><b id="td-sum-fee">—</b></div>
-          <div class="td-sum-row"><span>Breakeven</span><b id="td-sum-be">—</b></div>
-          <div class="td-sum-note">Demo balance · fees simulated like Binance. No real funds, no liquidation of your account below $0.</div>
+          <button type="button" class="td-sum-h" id="td-sum-toggle">Order summary<span class="cv" id="td-sum-cv">▾</span></button>
+          <div class="td-sum-body" id="td-sum-body" hidden>
+            <div class="td-sum-row"><span>Order value</span><b id="td-sum-val">—</b></div>
+            <div class="td-sum-row"><span>Est. fees · round trip</span><b id="td-sum-fee">—</b></div>
+            <div class="td-sum-row"><span>Breakeven</span><b id="td-sum-be">—</b></div>
+            <div class="td-sum-note">Demo balance · fees simulated like Binance. No real funds, no liquidation of your account below $0.</div>
+          </div>
         </div>
         <div class="td-ops"><button class="td-op long" id="td-long">Long</button><button class="td-op short" id="td-short">Short</button></div>
       </div>
@@ -178,6 +185,18 @@ function cablear(ov) {
   $('td-long').onclick = () => operar('long');
   $('td-short').onclick = () => operar('short');
   ov.querySelectorAll('.td-pos-tab').forEach((b) => b.onclick = () => { S.tab = b.dataset.tab; ov.querySelectorAll('.td-pos-tab').forEach((x) => x.classList.toggle('on', x === b)); renderPos(); });
+  // Capital editable a mano (ademas del slider y los atajos de %)
+  const capv = $('td-capv'); if (capv) capv.oninput = () => setCap(+capv.value || 0);
+  // TP y SL por precio ($) o por porcentaje (%)
+  const alternarUnidad = (idBtn, idInp, clave) => {
+    const btn = $(idBtn), inp = $(idInp); if (!btn || !inp) return;
+    btn.onclick = () => { S[clave] = S[clave] === 'px' ? 'pct' : 'px'; btn.textContent = S[clave] === 'px' ? '$' : '%'; inp.placeholder = S[clave] === 'px' ? 'price' : '%'; renderEntry(); };
+    inp.oninput = renderEntry;
+  };
+  alternarUnidad('td-tpunit', 'td-tp', 'tpUnit');
+  alternarUnidad('td-slunit', 'td-sl', 'slUnit');
+  // Resumen de la orden plegable
+  const sumT = $('td-sum-toggle'); if (sumT) sumT.onclick = () => { S.sumOpen = !S.sumOpen; const bd = $('td-sum-body'); if (bd) bd.hidden = !S.sumOpen; const cv = $('td-sum-cv'); if (cv) cv.style.transform = S.sumOpen ? 'rotate(180deg)' : ''; };
 }
 
 /* Capital (margen) y apalancamiento como dos barras progresivas independientes.
@@ -297,14 +316,13 @@ function pintarPrecio() {
   const vo = $('td-vol'); if (vo) vo.textContent = S.vol24 >= 1e9 ? (S.vol24 / 1e9).toFixed(2) + 'B' : (S.vol24 / 1e6).toFixed(1) + 'M';
   const eq = M.equity(S.marks); const unreal = M.posiciones().reduce((a, p) => a + M.pnlDe(p, S.marks[p.par] || p.entrada).pnl, 0);
   const eqEl = $('td-eq'); if (eqEl) { eqEl.textContent = fmtMoney(eq); eqEl.className = 'eq ' + (Math.abs(unreal) < 0.005 ? '' : cls(unreal)); }
-  const balEl = $('td-bal'); if (balEl) balEl.textContent = 'Avail ' + fmtMoney(M.balance());
 }
 function renderEntry() {
   const bal = M.balance();
   const av = $('td-avail'); if (av) av.textContent = 'Avail ' + fmtMoney(bal);
   const mg = $('td-margin'); if (mg) mg.textContent = fmtMoney(S.cap);
   const lv = $('td-levv'); if (lv) lv.textContent = S.lev + 'x';
-  const cv = $('td-capv'); if (cv) cv.textContent = fmtMoney(S.cap);
+  const cv = $('td-capv'); if (cv && document.activeElement !== cv) cv.value = S.cap > 0 ? +S.cap.toFixed(2) : '';
   const levr = $('td-levr'); if (levr) levr.style.setProperty('--f', ((S.lev - 1) / 124 * 100).toFixed(1) + '%');
   const capr = $('td-capr'); if (capr) capr.style.setProperty('--f', (Math.min(1, S.cap / Math.max(1, bal)) * 100).toFixed(1) + '%');
   const px = S.modo === 'limit' && S.limitPx > 0 ? S.limitPx : S.mark;
@@ -313,13 +331,43 @@ function renderEntry() {
   const sv = $('td-sum-val'); if (sv) sv.textContent = fmtMoney(S.tam);
   const sf = $('td-sum-fee'); if (sf) sf.textContent = '~' + fmtMoney(fee);
   const sb = $('td-sum-be'); if (sb) sb.textContent = (px > 0 && S.tam > 0) ? fmtP(px * (1 + fee / S.tam)) : '—';
+  proyeccionPnL();
+}
+
+/* Precio de entrada de referencia para la proyeccion y para convertir % a precio. */
+function entradaRef() { return S.modo === 'limit' && S.limitPx > 0 ? S.limitPx : S.mark; }
+/* Fraccion de movimiento del precio hasta TP o SL (desde % o desde precio escrito). */
+function movFrac(cual) {
+  const raw = +$(cual === 'tp' ? 'td-tp' : 'td-sl').value || 0; if (!(raw > 0)) return null;
+  const unidad = cual === 'tp' ? S.tpUnit : S.slUnit;
+  if (unidad === 'pct') return raw / 100;
+  const e = entradaRef(); if (!(e > 0)) return null;
+  return Math.abs(raw - e) / e;
+}
+/* Precio real de TP o SL segun el lado, convirtiendo desde % cuando toca. */
+function tpslPrecioReal(cual, lado) {
+  const raw = +$(cual === 'tp' ? 'td-tp' : 'td-sl').value || 0; if (!(raw > 0)) return 0;
+  const unidad = cual === 'tp' ? S.tpUnit : S.slUnit;
+  if (unidad === 'px') return raw;
+  const e = entradaRef(); if (!(e > 0)) return 0;
+  const f = raw / 100;
+  if (cual === 'tp') return +(lado === 'short' ? e * (1 - f) : e * (1 + f)).toFixed(dec(e));
+  return +(lado === 'short' ? e * (1 + f) : e * (1 - f)).toFixed(dec(e));
+}
+/* Proyeccion visible: cuanto se gana en TP y cuanto se pierde en SL (dinero + ROE). */
+function proyeccionPnL() {
+  const activo = S.tam > 0 && S.cap > 0;
+  const movTp = movFrac('tp'), movSl = movFrac('sl');
+  const bTp = $('td-proj-tp'), bSl = $('td-proj-sl'), iTp = $('td-proj-tpr'), iSl = $('td-proj-slr');
+  if (bTp) { if (activo && movTp != null) { const g = S.tam * movTp; bTp.textContent = '+' + fmtMoney(g); iTp.textContent = fmtPct(g / S.cap * 100); } else { bTp.textContent = '—'; iTp.textContent = ''; } }
+  if (bSl) { if (activo && movSl != null) { const l = Math.min(S.tam * movSl, S.cap); bSl.textContent = '−' + fmtMoney(l); iSl.textContent = fmtPct(-(l / S.cap * 100)); } else { bSl.textContent = '—'; iSl.textContent = ''; } }
 }
 
 
 function operar(lado) {
   if (!(S.tam > 0)) { toast('Enter a size first.', 'warn'); return; }
   arranqueAudio();
-  const tp = +$('td-tp').value || 0, sl = +$('td-sl').value || 0;
+  const tp = tpslPrecioReal('tp', lado), sl = tpslPrecioReal('sl', lado);
   let r;
   if (S.modo === 'limit') {
     if (!(S.limitPx > 0)) { toast('Select Limit, then click the chart to mark the entry.', 'warn'); return; }
@@ -472,6 +520,20 @@ function pintarFx() {
     ctrlTPSL(g, p, 'tp', '#2ee86a', ey, plotR, H, Y, gp);
     ctrlTPSL(g, p, 'sl', '#ff5b6e', ey, plotR, H, Y, gp);
   });
+  // Entrada limit en preparacion: boton X (a la derecha de la linea) para cancelarla
+  if (S.modo === 'limit' && S.limitPx > 0) {
+    const ey = Y(S.limitPx);
+    if (ey != null) {
+      const bw = 18, bh = 18, bx = plotR - bw - 2;
+      g.save();
+      g.fillStyle = 'rgba(10,14,20,.92)'; redondea(g, bx, ey - bh / 2, bw, bh, 4); g.fill();
+      g.strokeStyle = '#C9A84B'; g.lineWidth = 1.2; redondea(g, bx + .7, ey - bh / 2 + .7, bw - 1.4, bh - 1.4, 4); g.stroke();
+      g.strokeStyle = '#E8B84B'; g.lineWidth = 1.7; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(bx + 6, ey - 4); g.lineTo(bx + bw - 6, ey + 4); g.moveTo(bx + bw - 6, ey - 4); g.lineTo(bx + 6, ey + 4); g.stroke();
+      g.restore();
+      S._handles.push({ entryX: true, x0: bx - 6, x1: plotR, y0: ey - 11, y1: ey + 11 });
+    }
+  }
 }
 /* Control TP o SL: si está fijado dibuja línea + etiqueta + tirador al nivel;
    si no, un botón cuadrado junto a la entrada (TP arriba / SL abajo en un long)
@@ -518,11 +580,12 @@ function wireDrag() {
     if (S.drag) return;
     const h = handleEn(e);
     fx.style.pointerEvents = h ? 'auto' : 'none';
-    fx.style.cursor = h ? 'ns-resize' : '';
+    fx.style.cursor = h ? (h.entryX ? 'pointer' : 'ns-resize') : '';
   });
   fx.addEventListener('mousedown', (e) => {
     const h = handleEn(e); if (!h) return;
     e.stopPropagation(); e.preventDefault();
+    if (h.entryX) { S.limitPx = 0; const li = $('td-limit'); if (li) li.value = ''; dibujarLimit(); renderEntry(); fx.style.pointerEvents = 'none'; return; }
     const p = M.posiciones().find((x) => x.id === h.id); if (!p) return;
     if (h.creating) {
       const r = host.getBoundingClientRect(); let px; try { px = S.serieVela.coordinateToPrice(e.clientY - r.top); } catch (_) { px = null; }
