@@ -10,7 +10,7 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=3';
+import { estilos } from './estilos.js?v=4';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
@@ -64,7 +64,8 @@ const IC = {
   shrink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M16 21v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>',
-  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16"/><path d="M20 20v-4h-4"/></svg>'
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16"/><path d="M20 20v-4h-4"/></svg>',
+  goright: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5l7 7-7 7"/><path d="M16 5v14"/></svg>'
 };
 
 function lib() { return window.LightweightCharts ? Promise.resolve(window.LightweightCharts) : new Promise((res, rej) => { const s = document.createElement('script'); s.src = LIB; s.onload = () => res(window.LightweightCharts); s.onerror = rej; document.head.appendChild(s); }); }
@@ -99,7 +100,7 @@ export async function abrirMulti() {
   $('mc-hline').onclick = () => toggleTool('hline');
   document.addEventListener('mousedown', fueraMenu, true);
   try { LC = await lib(); } catch (_) { toast('Could not load the chart library.'); return; }
-  for (const id of DEF) { await crearPanel(id, '1m'); }
+  await Promise.all(DEF.map((id) => crearPanel(id, '1m')));   // los 4 en paralelo (antes iban uno tras otro y tardaba)
   ajustarGrid();
   if (S.paneles[0]) enfocar(S.paneles[0]);
   D.logos().then((l) => { S.logos = l || {}; S.paneles.forEach(pintarLogoHead); });
@@ -132,6 +133,7 @@ async function crearPanel(parId, tf, flotante, pos) {
   const el = document.createElement('div'); el.className = flotante ? 'mc-float' : 'mc-pane'; el.id = id;
   el.innerHTML = `
     <div class="mc-head">
+      <button class="mc-fsback" data-fsback title="Back to all charts">${IC.back} Back</button>
       <button class="mc-coin" data-coin><span class="ic"></span><b class="nm">${par.id}</b><span class="q">/USDT</span><span class="cv">▾</span></button>
       <button class="mc-tf" data-tf>${tf}</button>
       <span class="mc-px" data-px>—</span>
@@ -147,6 +149,7 @@ async function crearPanel(parId, tf, flotante, pos) {
       <canvas class="mc-ux"></canvas>
       <div class="mc-wm"><img src="${LOGO}" alt=""></div>
       <div class="mc-cap"></div>
+      <button class="mc-goright" data-goright title="Go to current price">${IC.goright}</button>
       <div class="mc-grip"></div>
       <div class="mc-hint">Click to draw</div>
       <div class="mc-spin"><i></i></div>
@@ -198,7 +201,7 @@ async function cargarPanel(pane) {
     pane.serie.setData(v.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
     recalc(pane);
     if (t) pintarPx(pane, t.last, t.chgPct); else if (v.length) pintarPx(pane, v[v.length - 1].close);
-    try { pane.chart.timeScale().fitContent(); } catch (_) {}
+    vistaDefecto(pane);
     if (pane === S.focus) sincronizarFocus();
   } catch (_) { toast('Could not load ' + pane.par.id + '.'); }
   if (sp) sp.style.display = 'none';
@@ -439,6 +442,8 @@ function wirePane(pane) {
   q('[data-ind]').onclick = (e) => { e.stopPropagation(); menuInd(pane, q('[data-ind]')); };
   q('[data-share]').onclick = () => guardarImagenPanel(pane);
   q('[data-full]').onclick = () => fullPane(pane);
+  q('[data-fsback]').onclick = () => { if (pane.max) fullPane(pane); };   // Back solo sale en fullscreen: vuelve a la rejilla
+  q('[data-goright]').onclick = () => irAlPresente(pane);
   q('[data-close]').onclick = () => cerrarPane(pane);
   // enfocar al interactuar con el cuerpo (si no hay herramienta cruzada armada)
   pane.body.addEventListener('mousedown', () => { if (!S.tool) enfocar(pane); }, true);
@@ -486,9 +491,13 @@ function fullPane(pane) {
   }
   pane.el.querySelector('[data-full]').innerHTML = pane.max ? IC.shrink : IC.full;
   pane.el.querySelector('[data-full]').classList.toggle('on', pane.max);
-  // re-ajusta la gráfica al nuevo tamaño (si no, solo se veía un pedacito)
-  setTimeout(() => { try { pane.chart.timeScale().fitContent(); } catch (_) {} if (pane === S.focus) sincronizarFocus(); }, 90);
+  // reajusta la gráfica al nuevo tamaño con una vista cercana (si no, solo se veía un pedacito)
+  setTimeout(() => { vistaDefecto(pane); if (pane === S.focus) sincronizarFocus(); }, 90);
 }
+/* Vista por defecto: muestra las ~130 velas más recientes (velas de buen tamaño,
+   no las 1000 diminutas), dejando TODO el historial disponible al arrastrar. */
+function vistaDefecto(pane) { try { const n = pane.velas.length; if (n > 3) pane.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 130), to: n + 3 }); } catch (_) {} }
+function irAlPresente(pane) { vistaDefecto(pane); if (pane === S.focus) sincronizarFocus(); }
 /* Reorganiza todo al 2×2 por defecto y re-ajusta las gráficas (rescate si un
    resize manual dejó la rejilla descolocada). */
 function reorganizar() {
@@ -502,12 +511,13 @@ function reorganizar() {
     if (!p.flotante) { p.el.removeAttribute('style'); p._inline = ''; }
   });
   ajustarGrid();
-  setTimeout(() => { S.paneles.forEach((p) => { try { p.chart.timeScale().fitContent(); } catch (_) {} }); if (S.focus) sincronizarFocus(); }, 90);
+  setTimeout(() => { S.paneles.forEach((p) => vistaDefecto(p)); if (S.focus) sincronizarFocus(); }, 90);
   toast('Layout reset');
 }
 function cerrarPane(pane) {
   const docked = S.paneles.filter((p) => !p.flotante);
   if (!pane.flotante && docked.length <= 1) { toast('Keep at least one chart.'); return; }
+  if (pane.max) { const ov = $('mc-overlay'); if (ov) ov.classList.remove('mc-hasmax'); }   // si estaba en fullscreen, libera el modo (si no, los demás quedan ocultos)
   try { pane.stream && pane.stream.cerrar(); } catch (_) {}
   try { pane.barra && pane.barra.desmontar && pane.barra.desmontar(); } catch (_) {}
   try { pane.chart.remove(); } catch (_) {}
@@ -571,9 +581,10 @@ function pop(anc, html, w) {
 function menuMonedas(pane, anc) {
   const m = pop(anc, `<input class="mc-search" placeholder="Search coin (USDT pairs)…"><div class="mc-list" id="mc-coinlist"></div>`, 260);
   const list = m.querySelector('#mc-coinlist'), inp = m.querySelector('.mc-search');
+  const base = D.PARES.filter((p) => p.grupo !== 'divisa' && p.grupo !== 'materia');   // solo pares USDT (cripto), como el resto de la sección
   const render = (f) => {
     const t = (f || '').trim().toLowerCase();
-    const arr = D.PARES.filter((p) => !t || p.id.toLowerCase().includes(t) || (p.n || '').toLowerCase().includes(t)).slice(0, 80);
+    const arr = base.filter((p) => !t || p.id.toLowerCase().includes(t) || (p.n || '').toLowerCase().includes(t)).slice(0, 140);
     list.innerHTML = arr.map((p) => `<div class="mc-opt${p.id === pane.par.id ? ' on' : ''}" data-id="${p.id}"><span class="ic" data-cg="${p.cg || ''}" data-id2="${p.id}">${p.id[0]}</span><b>${p.id}</b><span>${esc(p.n || '')}</span></div>`).join('') || `<div class="mc-opt" style="opacity:.6">No matches</div>`;
     list.querySelectorAll('.mc-opt[data-id]').forEach((o) => o.onclick = () => { cambiarMoneda(pane, o.dataset.id); cerrarMenu(); });
     list.querySelectorAll('.ic[data-cg]').forEach((ic) => { const url = (S.logos && ic.dataset.cg && S.logos[ic.dataset.cg]) || ICONO(ic.dataset.id2); const im = new Image(); im.onload = () => { ic.style.backgroundImage = `url(${url})`; ic.textContent = ''; }; im.src = url; });

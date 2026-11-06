@@ -101,6 +101,19 @@ const CSS = `
   #mc-overlay .nv-tools-tab{z-index:8}
   #mc-overlay .nv-topbar{z-index:10}
   #mc-overlay .nv-pop{z-index:12}
+  /* menú "Borrar dibujos / indicadores" (niveles no reescala estas reglas a hosts embebidos) */
+  #mc-overlay .nv-pop-menu{display:flex; flex-direction:column; gap:2px; width:184px}
+  #mc-overlay .nv-pm{display:flex; align-items:center; gap:10px; height:36px; padding:0 12px; border-radius:8px; border:none; background:transparent; color:#d7dde4; cursor:pointer; font-family:'Plus Jakarta Sans',system-ui,sans-serif; font-size:12.5px; font-weight:600; text-align:left}
+  #mc-overlay .nv-pm:hover{background:rgba(255,255,255,.08)}
+  #mc-overlay .nv-pm svg{flex:0 0 auto; color:#9aa4b0; width:15px; height:15px}
+
+  /* botón Back visible SOLO en pantalla completa (arriba a la izquierda) */
+  .mc-fsback{display:none; align-items:center; gap:6px; height:28px; padding:0 11px; margin-right:4px; border-radius:8px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink); font-weight:700; font-size:12px}
+  .mc-fsback svg{width:14px; height:14px} .mc-fsback:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)}
+  .mc-pane.mc-max .mc-fsback, .mc-float.mc-max .mc-fsback{display:inline-flex}
+  /* botón "ir al presente" (esquina inferior derecha de cada gráfica) */
+  .mc-goright{position:absolute; right:12px; bottom:30px; z-index:7; width:30px; height:30px; display:grid; place-items:center; border-radius:50%; border:1px solid var(--mc-line2); background:rgba(11,15,21,.92); color:var(--mc-ink2); box-shadow:0 4px 14px rgba(0,0,0,.55)}
+  .mc-goright:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-goright svg{width:15px; height:15px}
 
   /* ── Popups (monedas, TF, indicadores) ── */
   .mc-pop{position:fixed; z-index:9400; background:#121922; border:1px solid var(--mc-line2); border-radius:12px; box-shadow:0 22px 60px rgba(0,0,0,.7); padding:8px; min-width:230px}
@@ -110,7 +123,7 @@ const CSS = `
   .mc-opt{display:flex; align-items:center; gap:9px; padding:8px 9px; border-radius:8px; cursor:pointer; color:var(--mc-ink)}
   .mc-opt:hover{background:rgba(255,255,255,.05)} .mc-opt.on{background:rgba(232,184,75,.12)}
   .mc-opt .ic{width:20px; height:20px; border-radius:50%; background:#232b36 center/cover no-repeat; flex:0 0 auto; display:grid; place-items:center; font-size:10px; color:#c9d1d9; overflow:hidden}
-  .mc-opt b{font-size:13px; font-weight:700} .mc-opt span{color:var(--mc-ink3); font-size:11px; margin-left:auto; font-family:var(--mc-mono)}
+  .mc-opt b{font-size:13px; font-weight:800; color:var(--mc-gold); min-width:46px} .mc-opt b + span{flex:1; min-width:0; margin-left:8px; color:var(--mc-ink3); font-size:11.5px; font-family:var(--mc-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right}
   .mc-tfgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:5px}
   .mc-tfgrid button{height:34px; border-radius:8px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); font-family:var(--mc-mono); font-size:12px; font-weight:600}
   .mc-tfgrid button.on{border-color:var(--mc-gold); color:var(--mc-gold); background:rgba(232,184,75,.12)}
