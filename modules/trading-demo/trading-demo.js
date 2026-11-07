@@ -274,7 +274,7 @@ function pintarChart() {
   vela.setData(V.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))); S.serieVela = vela;
   S.velasDib = V.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
   try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 160, to: V.length + 10 }); ts.subscribeVisibleLogicalRangeChange(() => sincronizarDib()); } catch (_) {}
-  try { chart.subscribeClick((p) => { if (!p || !p.point || S.drag) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('td-overlay'); if (ov) ov.querySelectorAll('.td-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('td-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('td-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
+  try { chart.subscribeClick((p) => { if (!p || !p.point || S.drag || !sinHerramienta()) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('td-overlay'); if (ov) ov.querySelectorAll('.td-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('td-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('td-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
   dibujarLimit();
 }
 
@@ -345,6 +345,9 @@ function renderEntry() {
 
 /* Precio de entrada de referencia para la proyeccion y para convertir % a precio. */
 function entradaRef() { return S.modo === 'limit' && S.limitPx > 0 ? S.limitPx : S.mark; }
+/* Sin herramienta de dibujo activa (modo cursor): solo entonces el clic izquierdo marca la entry.
+   Con una herramienta activa (posición larga/corta, líneas, etc.) la entry se desactiva para no estorbar. */
+function sinHerramienta() { return NIV.herr === 'cursor' || NIV.herr == null; }
 /* Fraccion de movimiento del precio hasta TP o SL (desde % o desde precio escrito). */
 function movFrac(cual) {
   const raw = +$(cual === 'tp' ? 'td-tp' : 'td-sl').value || 0; if (!(raw > 0)) return null;
@@ -496,7 +499,7 @@ function modalValor(o) {
 function dibujarLimit() {
   if (!S.serieVela) return;
   if (S.lineaLimit) { try { S.serieVela.removePriceLine(S.lineaLimit); } catch (_) {} S.lineaLimit = null; }
-  if (S.modo === 'limit' && S.limitPx > 0) { try { S.lineaLimit = S.serieVela.createPriceLine({ price: S.limitPx, color: '#C9A84B', lineWidth: 1, lineStyle: 3, axisLabelVisible: true }); } catch (_) {} }
+  if (S.modo === 'limit' && S.limitPx > 0 && sinHerramienta()) { try { S.lineaLimit = S.serieVela.createPriceLine({ price: S.limitPx, color: '#C9A84B', lineWidth: 1, lineStyle: 3, axisLabelVisible: true }); } catch (_) {} }
 }
 
 /* ── Overlay de posiciones: entrada + PnL, liq, y controles TP/SL estilo
@@ -504,6 +507,7 @@ function dibujarLimit() {
 function ejeAncho() { try { const tw = S.chart.timeScale().width(); const cw = $('td-cv').clientWidth; if (tw > 0 && cw > tw) return Math.max(44, Math.min(92, cw - tw)); } catch (_) {} return 66; }
 function pintarFx() {
   const fx = $('td-fx'), cv = $('td-cv'); if (!fx || !cv || !S.serieVela) return;
+  const _sh = sinHerramienta(); if (_sh !== S._sinHerr) { S._sinHerr = _sh; dibujarLimit(); }   // al activar/soltar una herramienta, oculta o restaura la línea entry
   const W = cv.clientWidth, H = cv.clientHeight; if (!W || !H) return;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   if (fx.width !== Math.round(W * dpr)) { fx.width = Math.round(W * dpr); fx.height = Math.round(H * dpr); fx.style.width = W + 'px'; fx.style.height = H + 'px'; }
@@ -550,7 +554,7 @@ function pintarFx() {
     S._handles.push({ alertaX: al.id, x0: abx - 4, x1: abx + abw + 4, y0: y - 10, y1: y + 10 });
   });
   // Entrada limit en preparación: etiqueta "entry" + X a su izquierda; la propia línea se arrastra
-  if (S.modo === 'limit' && S.limitPx > 0) {
+  if (S.modo === 'limit' && S.limitPx > 0 && sinHerramienta()) {
     const ey = Y(S.limitPx);
     if (ey != null) {
       const etqLeft = etiqueta(g, plotR, ey, 'entry', '#E8B84B', '#2a1d00');
