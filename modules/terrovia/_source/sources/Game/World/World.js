@@ -28,7 +28,6 @@ import { Lanterns } from './Lanterns.js'
 import { Fences } from './Fences.js'
 import { Benches } from './Benches.js'
 import { Scenery } from './Scenery.js'
-import { Concesionario } from './Concesionario.js'
 
 export class World
 {
@@ -79,10 +78,6 @@ export class World
             this.lanterns = new Lanterns()
             this.scenery = new Scenery()
             this.areas = new Areas()
-
-            // DecFreedom: concesionario de autos (aditivo, a prueba de fallos)
-            try { this.concesionario = new Concesionario() }
-            catch(error) { console.warn('[World] Concesionario no se pudo iniciar:', error) }
         }
         else if(step === 2)
         {
