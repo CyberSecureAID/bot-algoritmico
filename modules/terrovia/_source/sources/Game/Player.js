@@ -36,10 +36,14 @@ export class Player
         this.setFlip()
         this.setTimePlayed()
 
-        this.game.physicalVehicle.chassis.physical.initialState.position.x = respawn.position.x
-        this.game.physicalVehicle.chassis.physical.initialState.position.y = respawn.position.y
-        this.game.physicalVehicle.chassis.physical.initialState.position.z = respawn.position.z
-        this.game.physicalVehicle.moveTo(respawn.position, respawn.rotation)
+        // DecFreedom: el carro base aparece a la DERECHA del punto donde abre el mapa
+        // (junto al kiosco), no debajo de la matica. El reveal/intro siguen en el punto
+        // original: ahi caera el personaje cuando se elija en la pantalla de carga.
+        const carSpawn = this.getCarSpawn(respawn)
+        this.game.physicalVehicle.chassis.physical.initialState.position.x = carSpawn.position.x
+        this.game.physicalVehicle.chassis.physical.initialState.position.y = carSpawn.position.y
+        this.game.physicalVehicle.chassis.physical.initialState.position.z = carSpawn.position.z
+        this.game.physicalVehicle.moveTo(carSpawn.position, carSpawn.rotation)
 
         this.game.ticker.events.on('tick', () =>
         {
@@ -466,6 +470,20 @@ export class Player
         }, 1000)
     }
 
+    getCarSpawn(respawn)
+    {
+        // Desplaza SOLO el spawn de la matica (landing) a la derecha, junto al kiosco del
+        // mapa. Los demas respawns del mundo no se tocan.
+        if(respawn && respawn.name === 'landing')
+        {
+            return {
+                position: new THREE.Vector3(respawn.position.x + 5.5, respawn.position.y, respawn.position.z - 2.8),
+                rotation: respawn.rotation
+            }
+        }
+        return respawn
+    }
+
     respawn(respawnName = null, callback = null)
     {
         this.game.overlay.show(() =>
@@ -476,10 +494,13 @@ export class Player
             // Find respawn
             let respawn = respawnName ? this.game.respawns.getByName(respawnName) : this.game.respawns.getClosest(this.position)
 
+            // DecFreedom: el carro base se posa junto al kiosco (no en la matica)
+            const carSpawn = this.getCarSpawn(respawn)
+
             // Update physical vehicle
             this.game.physicalVehicle.moveTo(
-                respawn.position,
-                respawn.rotation
+                carSpawn.position,
+                carSpawn.rotation
             )
             
             this.state = Player.STATE_DEFAULT
