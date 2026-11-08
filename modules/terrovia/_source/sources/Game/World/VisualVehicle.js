@@ -244,6 +244,64 @@ export class VisualVehicle
         {
             this.paints.changeTo(reward.name)
         })
+
+        // DecFreedom: color del carro por jugador (potencia el sistema de pinturas existente).
+        // Cada jugador sale con un color distinto segun su id. El default ya no es siempre
+        // rojo, sino el color asignado al jugador. Las pinturas de la fuente/logros se mantienen.
+        this.setPlayerColor()
+    }
+
+    setPlayerColor()
+    {
+        // Paleta que pega con el entorno (gradiente claro -> sombra). Facil de ampliar.
+        const palette = {
+            red:     [ '#ff3a3a', '#721551' ],
+            blue:    [ '#3aa0ff', '#153a72' ],
+            yellow:  [ '#ffd23a', '#8a4f0b' ],
+            green:   [ '#5ad94e', '#176b2e' ],
+            teal:    [ '#3ad9c8', '#11636b' ],
+            purple:  [ '#a94eff', '#4a1183' ],
+            pink:    [ '#ff6ec7', '#8a1157' ],
+            orange:  [ '#ff8c1a', '#8a3a00' ],
+            lime:    [ '#b5ff3a', '#4a6b11' ],
+            cyan:    [ '#3affd2', '#116b5a' ],
+            magenta: [ '#ff3ad2', '#72155a' ],
+            indigo:  [ '#6e5aff', '#2a1a8a' ],
+            coral:   [ '#ff6a4e', '#8a2a11' ],
+            gold:    [ '#ffb83a', '#8a5a0b' ],
+            mint:    [ '#6effb5', '#178a5a' ],
+            sky:     [ '#5ac8ff', '#155a8a' ],
+            violet:  [ '#c86eff', '#5a118a' ],
+            rose:    [ '#ff4e7a', '#8a1140' ],
+            jade:    [ '#3affa0', '#116b47' ],
+            sand:    [ '#ffce8a', '#8a5a2a' ],
+        }
+        this.playerColorNames = Object.keys(palette)
+        for(const name of this.playerColorNames)
+        {
+            const key = 'player_' + name
+            if(!this.paints.choices[key])
+                this.paints.choices[key] = this.game.materials.createGradient('playerGradient_' + name, palette[name][0], palette[name][1])
+        }
+
+        // DecFreedom: el carro del PRIMER jugador (el local) queda ROJO por default.
+        // NO se le fuerza color aqui: conserva el rojo (o la pintura elegida en la fuente).
+        //
+        // La paleta queda lista para MULTIJUGADOR: cuando entra OTRO jugador a la misma
+        // escena, su carro debe salir de un color distinto al azar para diferenciarse. El
+        // sistema de red solo tiene que llamar, por cada carro ajeno:
+        //     visualVehicle.paints.changeTo( visualVehicle.colorForPlayer(id) )
+        // 'red' se reserva para el primero; el resto de colores se reparten entre los demas.
+        this.otherPlayerColorNames = this.playerColorNames.filter((n) => n !== 'red').map((n) => 'player_' + n)
+    }
+
+    // Color estable y distinto por jugador (para los carros de OTROS jugadores en multijugador).
+    colorForPlayer(id = '')
+    {
+        const str = String(id)
+        let h = 2166136261
+        for(let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) }
+        return this.otherPlayerColorNames[(h >>> 0) % this.otherPlayerColorNames.length]
     }
 
     setMainGroundTrack()
