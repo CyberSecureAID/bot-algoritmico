@@ -1,596 +1,892 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-<script src="assets/js/feed-shim.js?v=1"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DecFreedom</title>
 
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DecFreedom · Automated trading in your own wallet</title>
+    <meta name="description" content="DecFreedom">
 
-<!-- ══════════════════════════════════════════════════════════════════════
-     PORTADA · criptocubaoficial.com
+    <meta itemprop="name" content="DecFreedom">
+    <meta itemprop="description" content="DecFreedom">
+    <meta itemprop="image" content="https://bruno-simon.com/social/share-image.png?cb=a">
 
-     UN SOLO ARCHIVO. El CSS y el JS van dentro, a propósito.
-     Antes eran tres archivos y bastaba con que uno fallara, llegara tarde o
-     se quedara en caché para que la página saliera sin estilos: por eso se
-     veía gigante, con los iconos SVG a tamaño por defecto y los botones
-     partidos. Con todo dentro, eso no puede volver a pasar.
-     Ya no hace falta subir portada.css ni portada.js: puedes borrarlos.
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="DecFreedom">
+    <meta name="twitter:description" content="DecFreedom">
+    <meta name="twitter:image" content="https://bruno-simon.com/social/share-image.png?cb=a">
 
-     LA APP VIVE EN app.html · esta es la raíz.
-     MÓVIL: por debajo de 900px se salta directo a la app.
-     ══════════════════════════════════════════════════════════════════════ -->
+    <meta property="og:site_name" content="DecFreedom">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://decfreedom.com/">
+    <meta property="og:title" content="DecFreedom">
+    <meta property="og:description" content="DecFreedom">
+    <meta property="og:image" content="https://bruno-simon.com/social/share-image.png?cb=a">
 
-<meta name="description" content="Trading bots that run from your own wallet on BNB Smart Chain. Non-custodial, no KYC, revocable allowances.">
-<meta name="robots" content="index, follow, max-image-preview:large">
-<meta name="theme-color" content="#0b0e11">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="DecFreedom">
-<meta property="og:locale" content="es_ES">
-<meta property="og:url" content="https://criptocubaoficial.com/">
-<meta property="og:title" content="DecFreedom · Automated trading in your own wallet">
-<meta property="og:description" content="Bots that buy and sell for you on BNB Smart Chain. Your money never leaves your wallet.">
-<meta property="og:image" content="https://criptocubaoficial.com/assets/img/aurex-og.jpg">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="canonical" href="https://criptocubaoficial.com/">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Nunito:wght@400;700;900&display=block" rel="stylesheet">
+    
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="./favicons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="./favicons/favicon.svg" loading="lazy" />
+    <link rel="shortcut icon" href="./favicons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./favicons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DecFreedom" />
+    <link rel="manifest" href="./favicons/site.webmanifest" />
 
-<link rel="stylesheet" href="assets/portada/portada.css?v=222">
-<link rel="stylesheet" href="assets/css/asistente.css?v=125">
-<link rel="icon" type="image/png" sizes="16x16" href="assets/img/cco-16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="assets/img/cco-32.png">
-<link rel="icon" type="image/png" sizes="48x48" href="assets/img/cco-48.png">
-<link rel="icon" type="image/png" sizes="64x64" href="assets/img/favicon.png">
-<link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/styles.css">
-<link rel="stylesheet" href="assets/css/asistente.css?v=125">
-<style>
-  /* La hoja base trae el tema claro; aquí se redefine a oscuro y dorado, para
-     que las ventanas emergentes (recibe, avisos de bots) no salgan en negro. */
-  :root{
-    --panel:#10141a !important; --panel-2:#0a0e13 !important;
-    --bg:#05070a !important;    --bg-2:#0a0e13 !important;
-    --line:#232b36 !important;  --line-soft:#1a202a !important;
-    --neon:#E8B84B !important;  --neon-lit:#f4d089 !important; --neon-dim:#c79426 !important;
-    --txt:#eaecef !important;   --txt-soft:#a7b0bb !important;
-  }
-</style>
-<link rel="manifest" href="manifest-aurex.webmanifest">
+    <link rel="preload" href="./respawns/respawnsReferences-compressed.glb" as="fetch" crossorigin>
+    <link rel="preload" href="./behindTheScene/stars.ktx" as="fetch" crossorigin>
+    <link rel="preload" href="./intro/sound.ktx" as="fetch" crossorigin>
+    <link rel="preload" href="./palette.ktx" as="fetch" crossorigin>
+    
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JMSN30BQ5J"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
 
-<script>
-/* GUARDIA MÓVIL — decide antes de pintar nada.
-   Ya NO se redirige a otra dirección: la redirección podía perderse por caché o
-   por el navegador de la wallet, y entonces se cargaba la portada de escritorio.
-   Ahora esta misma página monta la interfaz móvil. */
-(function(){try{
-  if(location.search.indexOf('portada=1')!==-1)return;
-  var ancho = (window.matchMedia && window.matchMedia('(max-width:900px)').matches) ||
-              (document.documentElement.clientWidth||screen.width||0) <= 900;
-  var tactil = (navigator.maxTouchPoints||0) > 0 || 'ontouchstart' in window;
-  var grueso = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
-  var agente = /Android|iPhone|iPad|iPod|Mobile|Trust|MetaMask|WebView/i.test(navigator.userAgent||'');
-  if (ancho || (tactil && grueso) || agente) { location.replace('app.html'); }
-}catch(_){}})();
-</script>
-
-
-<script>
-/* Service worker: requisito para que la página sea instalable como app de
-   escritorio. Sin esto el navegador nunca ofrece instalar. Es el mismo
-   sw.js que usa app.html. */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw2.js').then((reg) => {
-      reg.update().catch(() => {});
-    }).catch(() => {});
-  });
-  // El service worker se actualiza solo en segundo plano. NO se recarga la
-  // página automáticamente: eso causaba un pestañeo a los segundos cuando
-  // entraba una versión nueva. Los cambios se ven en la siguiente visita.
-}
-</script>
-<script src="assets/js/mv-adaptar.js?v=5"></script>
+        gtag('config', '');
+    </script>
+  <script type="module" crossorigin src="./assets/index-DRUphs9_.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/dist-BiW6BJVu.js">
+  <link rel="stylesheet" crossorigin href="./assets/index-BM1b7eY0.css">
 </head>
-
 <body>
 
+    <div class="js-fonts-loader fonts-loader">
+        <div class="font nunito" data-font="400 20px Nunito"> </div>
+        <div class="font amatic-sc" data-font="700 20px 'Amatic SC'"> </div>
+        <div class="font pally" data-font="500 20px Pally-Medium"> </div>
+    </div>
+    
+    <div class="game">
 
-<!-- Velo negro instantáneo: si se llega para abrir el swap directo (p.ej. desde Wallet
-     Shield), tapa la portada desde el primer frame para que no se vea cargar por detrás.
-     La portada lo desvanece cuando el swap ya está montado. -->
-<div id="velo-arranque" style="display:none;position:fixed;inset:0;z-index:2147483647;background:#000"></div>
-<script>try{if(new URLSearchParams(location.search).get('abrir')==='swap'){var _v=document.getElementById('velo-arranque');if(_v)_v.style.display='block';}}catch(e){}</script>
+        <canvas class="js-canvas"></canvas>
 
-<!-- Iconos, definidos una vez. Todos llevan width y height en el propio
-     SVG: así no pueden salir a tamaño gigante bajo ninguna circunstancia. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-<g id="chev"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g>
-<g id="wal" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H16v3"/><path d="M3 6.5V16a2 2 0 0 0 2 2h12v-4"/><path d="M17 10h-3a2 2 0 0 0 0 4h3z"/></g>
-<g id="dl" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 4 4-4"/><path d="M3.5 16.5h13"/></g>
-<g id="arr" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10"/><path d="M9 4l4 4-4 4"/></g>
-<g id="mag" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"><circle cx="7.5" cy="7.5" r="4.5"/><path d="M11 11l3.5 3.5"/></g>
-<g id="bur" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"><path d="M3 6h14"/><path d="M3 11h14"/><path d="M3 16h14"/></g>
-<g id="shd" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></g>
-<g id="lck" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></g>
-<g id="cns" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7"/><path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></g>
-<g id="dev" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="13" height="9.5" rx="1.6"/><path d="M6 18h6"/><rect x="16.5" y="9" width="5" height="10" rx="1.4"/></g>
-<g id="blt" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5L5 13.5h6L10.5 21.5 19 10.5h-6z"/></g>
-<g id="glb" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z"/></g>
-<g id="bar" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20h17"/><path d="M6.5 20V9"/><path d="M11 20V4.5"/><path d="M15.5 20v-7"/><path d="M20 20v-11"/></g>
-<g id="swp" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13"/><path d="M13.5 4.5L17 8l-3.5 3.5"/><path d="M20 16H7"/><path d="M10.5 12.5L7 16l3.5 3.5"/></g>
-<g id="usr" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.4a3.5 3.5 0 0 1 0 6.7"/><path d="M17.5 13.8c2.1.7 3.5 2.4 3.5 4.7"/></g>
-<g id="bok" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2 2 0 0 1 6 3.5h5v17H6a2 2 0 0 0-2 2z"/><path d="M20 5.5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2z"/></g>
-<g id="rdr" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/></g>
-<g id="tg"><path d="M20.6 4.3L2.9 11.1c-1 .4-1 1-.2 1.2l4.5 1.4 1.7 5.2c.2.6.4.8 1 .8.5 0 .7-.2 1-.5l2.2-2.1 4.5 3.3c.8.5 1.4.2 1.6-.8l3-14c.3-1.2-.5-1.8-1.6-1.3zM7.9 13.3l9.7-6.1c.5-.3.9-.1.6.2l-8.3 7.5-.3 3.5z" fill="currentColor"/></g>
-<g id="xx"><path d="M17.3 3h3.3l-7.2 8.2L21.8 21h-6.6l-5.2-6.8L4.1 21H.8l7.7-8.8L.5 3h6.8l4.7 6.2zm-1.2 16h1.8L6.9 4.8H5z" fill="currentColor"/></g>
-<g id="yt"><path d="M22.5 7.2a2.7 2.7 0 0 0-1.9-1.9C18.9 4.8 12 4.8 12 4.8s-6.9 0-8.6.5A2.7 2.7 0 0 0 1.5 7.2C1 8.9 1 12 1 12s0 3.1.5 4.8a2.7 2.7 0 0 0 1.9 1.9c1.7.5 8.6.5 8.6.5s6.9 0 8.6-.5a2.7 2.7 0 0 0 1.9-1.9c.5-1.7.5-4.8.5-4.8s0-3.1-.5-4.8zM9.8 15.3V8.7l5.7 3.3z" fill="currentColor"/></g>
-<g id="ig"><path d="M12 2c2.7 0 3 0 4.1.1 1 0 1.7.2 2.3.4.6.2 1.1.5 1.6 1 .5.5.8 1 1 1.6.2.6.4 1.3.4 2.3.1 1.1.1 1.4.1 4.1s0 3-.1 4.1c0 1-.2 1.7-.4 2.3-.2.6-.5 1.1-1 1.6-.5.5-1 .8-1.6 1-.6.2-1.3.4-2.3.4-1.1.1-1.4.1-4.1.1s-3 0-4.1-.1c-1 0-1.7-.2-2.3-.4-.6-.2-1.1-.5-1.6-1-.5-.5-.8-1-1-1.6-.2-.6-.4-1.3-.4-2.3C2 15 2 14.7 2 12s0-3 .1-4.1c0-1 .2-1.7.4-2.3.2-.6.5-1.1 1-1.6.5-.5 1-.8 1.6-1 .6-.2 1.3-.4 2.3-.4C9 2 9.3 2 12 2zm0 1.8c-2.7 0-3 0-4 .1-.9 0-1.4.2-1.7.3-.4.2-.7.4-1 .7-.3.3-.5.6-.7 1-.1.3-.3.8-.3 1.7-.1 1-.1 1.3-.1 4s0 3 .1 4c0 .9.2 1.4.3 1.7.2.4.4.7.7 1 .3.3.6.5 1 .7.3.1.8.3 1.7.3 1 .1 1.3.1 4 .1s3 0 4-.1c.9 0 1.4-.2 1.7-.3.4-.2.7-.4 1-.7.3-.3.5-.6.7-1 .1-.3.3-.8.3-1.7.1-1 .1-1.3.1-4s0-3-.1-4c0-.9-.2-1.4-.3-1.7-.2-.4-.4-.7-.7-1-.3-.3-.6-.5-1-.7-.3-.1-.8-.3-1.7-.3-1-.1-1.3-.1-4-.1zm0 3.1a5.1 5.1 0 1 1 0 10.2 5.1 5.1 0 0 1 0-10.2zm0 1.8a3.3 3.3 0 1 0 0 6.6 3.3 3.3 0 0 0 0-6.6zm5.3-.3a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0z" fill="currentColor"/></g>
-<g id="th"><path d="M12.19 24h-.01c-3.58-.02-6.33-1.2-8.18-3.5C2.35 18.44 1.5 15.59 1.47 12.01v-.02c.03-3.58.88-6.43 2.53-8.48C5.85 1.2 8.6.02 12.18 0h.01c2.75.02 5.04.73 6.83 2.1 1.68 1.29 2.86 3.13 3.51 5.47l-2.04.57c-1.1-3.96-3.9-5.98-8.3-6.02-2.91.03-5.11.94-6.54 2.72C4.31 6.5 3.62 8.91 3.59 12c.03 3.09.72 5.5 2.06 7.16 1.43 1.78 3.63 2.7 6.54 2.72 2.62-.02 4.36-.63 5.8-2.05 1.65-1.61 1.62-3.59 1.09-4.8-.31-.71-.87-1.3-1.63-1.75-.19 1.35-.62 2.45-1.28 3.27-.89 1.1-2.14 1.71-3.73 1.79-1.2.07-2.36-.21-3.26-.8-1.06-.69-1.68-1.74-1.75-2.96-.07-1.19.41-2.29 1.33-3.08.88-.76 2.12-1.21 3.58-1.29 1.08-.06 2.09 0 3.02.14-.13-.74-.38-1.33-.75-1.76-.51-.59-1.31-.88-2.36-.89h-.03c-.84 0-1.99.23-2.72 1.32L7.73 7.85c.98-1.45 2.57-2.26 4.48-2.26h.04c3.19.02 5.1 1.98 5.29 5.39.11.05.21.09.32.14 1.49.7 2.58 1.76 3.15 3.07.8 1.82.87 4.79-1.55 7.16-1.85 1.81-4.09 2.63-7.27 2.65zm1-11.69c-.24 0-.49.01-.74.02-1.84.1-2.98.95-2.92 2.14.07 1.26 1.45 1.84 2.79 1.77 1.22-.07 2.81-.54 3.08-3.71a10.5 10.5 0 0 0-2.21-.22z" fill="currentColor"/></g>
-<g id="fb"><path d="M12 2a10 10 0 0 0-1.6 19.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.8 3.7-3.8 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.5V12h2.7l-.4 2.9h-2.3v7A10 10 0 0 0 12 2z" fill="currentColor"/></g>
-<g id="li"><path d="M20.4 2H3.6A1.6 1.6 0 0 0 2 3.6v16.8A1.6 1.6 0 0 0 3.6 22h16.8a1.6 1.6 0 0 0 1.6-1.6V3.6A1.6 1.6 0 0 0 20.4 2zM8.1 18.8H5.2V9.5h2.9v9.3zM6.6 8.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4zm12.2 10.6h-2.9v-4.5c0-1.1 0-2.5-1.5-2.5s-1.7 1.2-1.7 2.4v4.6H9.8V9.5h2.8v1.3h.1a3.1 3.1 0 0 1 2.7-1.5c2.9 0 3.5 1.9 3.5 4.4v5.1z" fill="currentColor"/></g>
-<g id="btc"><circle cx="15" cy="15" r="15" fill="#f7931a"/><path d="M21 13.4c.3-1.9-1.2-2.9-3.2-3.6l.7-2.6-1.6-.4-.6 2.5-1.3-.3.6-2.6-1.6-.4-.7 2.6-3.2-.8-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7 1l-1.7 6.8c-.1.2-.3.5-.7.4 0 0-1.1-.3-1.1-.3l-.8 1.8 3 .8-.7 2.7 1.6.4.7-2.6 1.3.3-.7 2.6 1.6.4.7-2.7c2.7.5 4.8.3 5.6-2.1.7-2-.03-3.1-1.5-3.8 1.1-.2 1.8-.9 2-2.3zm-3.6 5.1c-.5 1.9-3.8.9-4.8.6l.9-3.5c1.1.3 4.4.8 3.9 2.9zm.5-5.2c-.4 1.8-3.1.9-4 .6l.8-3.2c.9.2 3.7.6 3.2 2.6z" fill="#fff"/></g>
-<g id="eth"><circle cx="15" cy="15" r="15" fill="#627eea"/><path d="M15 5v7.4l6.2 2.8z" fill="#fff" opacity=".62"/><path d="M15 5L8.8 15.2 15 12.4z" fill="#fff"/><path d="M15 19.7V25l6.2-8.6z" fill="#fff" opacity=".62"/><path d="M15 25v-5.3l-6.2-3.3z" fill="#fff"/><path d="M15 18.5l6.2-3.3-6.2-2.8z" fill="#fff" opacity=".2"/><path d="M8.8 15.2l6.2 3.3v-6.1z" fill="#fff" opacity=".62"/></g>
-<g id="bnb"><circle cx="15" cy="15" r="15" fill="#f3ba2f"/><path d="M11.3 13.4L15 9.7l3.7 3.7 2.2-2.2L15 5.4l-6 6zM6.7 15l2.2-2.2L11.1 15l-2.2 2.2zm4.6 1.6l3.7 3.7 3.7-3.7 2.2 2.2-5.9 5.9-5.9-5.9zm7.6-1.6l2.2-2.2L23.3 15l-2.2 2.2zm-1.7 0L15 12.8 12.8 15l2.2 2.2z" fill="#fff"/></g>
-<g id="sol"><circle cx="15" cy="15" r="15" fill="#12161c"/><linearGradient id="gs" x1="6" y1="21" x2="24" y2="9" gradientUnits="userSpaceOnUse"><stop stop-color="#00ffa3"/><stop offset="1" stop-color="#dc1fff"/></linearGradient><path d="M9.4 19.1c.2-.2.4-.3.7-.3h13.1c.4 0 .6.5.3.8l-2.9 2.9c-.2.2-.4.3-.7.3H6.8c-.4 0-.6-.5-.3-.8zM9.4 7.5c.2-.2.5-.3.7-.3h13.1c.4 0 .6.5.3.8l-2.9 2.9c-.2.2-.4.3-.7.3H6.8c-.4 0-.6-.5-.3-.8zM20.9 13.3c-.2-.2-.4-.3-.7-.3H7.1c-.4 0-.6.5-.3.8l2.9 2.9c.2.2.4.3.7.3h13.1c.4 0 .6-.5.3-.8z" fill="url(#gs)"/></g>
-<g id="xrp"><circle cx="15" cy="15" r="15" fill="#23292f"/><path d="M20.6 8.4h2.7l-5.6 5.6a3.9 3.9 0 0 1-5.5 0L6.7 8.4h2.7l4.2 4.2c.8.8 2 .8 2.8 0zM9.3 21.7H6.6l5.6-5.6c1.5-1.5 4-1.5 5.5 0l5.6 5.6h-2.7l-4.2-4.2a2 2 0 0 0-2.8 0z" fill="#fff"/></g>
-</defs></svg>
-
-
-<canvas id="pt-chispas" data-n="130" aria-hidden="true"></canvas>
-
-<div id="pt">
-
-<header class="pt-hdr" id="hdr">
-  <div class="pt-hdr__in">
-    <a class="pt-logo" href="#top" aria-label="DecFreedom">
-      <img src="assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30">
-    </a>
-
-    <nav class="pt-nav" aria-label="Principal">
-
-      <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=swap" data-abrir="swap">Swap</a></div>
-      <div class="pt-nav__i"><a class="pt-nav__b" href="modules/launchpad/launchpad.html">Launchpad</a></div>
-      <div class="pt-nav__i"><a class="pt-nav__b" href="modules/terminal/terminal.html">Terminal</a></div>
-
-      <div class="pt-nav__i"><a class="pt-nav__b" href="modules/bots/bots.html">Bots</a></div>
-
-      <div class="pt-nav__i"><button class="pt-nav__b" type="button" data-abrir="analisis">Analysis</button></div>
-
-      <div class="pt-nav__i"><a class="pt-nav__b" href="futuros.html?v=14">Futures</a></div>
-      <div class="pt-nav__i"><a class="pt-nav__b" href="aportar.html">Staking</a></div>
-      <div class="pt-nav__i"><a class="pt-nav__b" href="modules/shield/shield.html">Shield</a></div>
-
-      <div class="pt-nav__i">
-        <button class="pt-nav__b" type="button">Herramientas <svg width="12" height="12" viewBox="0 0 14 14"><use href="#chev"/></svg></button>
-        <div class="pt-menu">
-          <a href="app.html?abrir=tools&tool=polvo" data-abrir="tools" data-tool="polvo"><b>Colector de polvo</b><span>Junta los restos de monedas en una sola</span></a>
-          <a href="app.html?abrir=tools&tool=alertas" data-abrir="tools" data-tool="alertas"><b>Alertas de precio</b><span>Te avisa cuando una moneda llega a tu precio</span></a>
-          <a href="app.html?abrir=tools&tool=termometro" data-abrir="tools" data-tool="termometro"><b>Miedo y codicia</b><span>El humor del mercado en un número</span></a>
-          <a href="app.html?abrir=tools&tool=tecnico" data-abrir="tools" data-tool="tecnico"><b>Análisis técnico</b><span>Comprar, vender o esperar, ahora mismo</span></a>
-          <a href="app.html?abrir=tools&tool=mapa" data-abrir="tools" data-tool="mapa"><b>Mapa del mercado</b><span>Todas las monedas por tamaño y color</span></a>
-          <a href="app.html?abrir=tools&tool=grafica" data-abrir="tools" data-tool="grafica"><b>Gráfica en directo</b><span>Velas y herramientas de dibujo</span></a>
+        <!-- Touch buttons -->
+        <div class="js-touch-buttons touch-buttons">
+            <div class="js-overlay overlay"></div>
+            <div class="list">
+                <button data-name="interact" class="js-button interact">Interact</button>
+                <button data-name="unstuck" class="js-button unstuck">Unstuck</button>
+                <button data-name="previous" class="js-button previous"></button>
+                <button data-name="next" class="js-button next"></button>
+                <button data-name="open" class="js-button open"></button>
+                <button data-name="close" class="js-button close"></button>
+            </div>
         </div>
-      </div>
-      <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=market" data-abrir="market">P2P</a></div>
-      <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=academy" data-abrir="academy">Academia</a></div>
 
-    </nav>
+        <!-- Menu trigger -->
+        <button class="js-menu-trigger menu-trigger">
+            <div class="button-inner">
+                <div class="icon-container">
+                    <div class="icon">
+                        <div class="line"></div>
+                        <div class="line"></div>
+                        <div class="line"></div>
+                    </div>
+                </div>
+            </div>
+        </button>
 
-    <div class="pt-hdr__a">
-      <span class="pt-wbox" id="wbox"></span>
-      <a href="transparency.html" style="display:inline-flex;align-items:center;height:36px;margin-left:4px;padding:0 15px;border:1px solid #E8B84B;border-radius:9px;color:#E8B84B;background:rgba(232,184,75,.08);font-family:'Chakra Petch',system-ui,sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.3px;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.9)">Contracts</a>
-      <button class="pt-burger" type="button" aria-label="Menú"><svg width="18" height="20" viewBox="0 0 20 22"><use href="#bur"/></svg></button>
-    </div>
-  </div>
-</header>
+        <!-- Map trigger -->
+        <button class="js-map-trigger map-trigger">
+            <div class="button-inner">
+                <div class="icon-container">
+                    <img class="map-icon" src="ui/map.svg" loading="lazy">
+                </div>
+            </div>
+        </button>
 
+        <!-- Menu -->
+        <div class="js-menu menu">
 
-<main id="top">
+            <div class="inner">
 
-<!-- ══ HERO ══ -->
-<section class="pt-hero">
-  <div class="pt-art" style="background-image:url('assets/portada/img/hero.webp')" aria-hidden="true"></div>
-  <div class="pt-wrap">
-    <div class="pt-hero__solo">
-      <!-- Teléfono + tarjetas orbitando. Imágenes en assets/portada/img/:
-           card-grid.webp · card-dca.webp · card-cashout.webp · card-acum.webp -->
-      <div class="pt-hero-escena" aria-hidden="true">
-        <div class="pt-hero-fono">
-          <img src="assets/portada/img/hero-phone.webp" alt="">
+                <button class="js-close close">
+                    <div class="button-inner">
+                        <div class="icon-container">
+                            <img class="icon is-default" src="ui/close.svg" loading="lazy">
+                            <span class="icon is-xbox">A</span>
+                        </div>
+                    </div>
+                </button>
+
+                <div class="js-navigation navigation">
+
+                    <!-- Intro -->
+                    <button class="js-navigation-item item" data-name="home">
+                        <div class="button-inner">
+                            <div class="icon-container">
+                                <img src="ui/home.svg" loading="lazy">
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Intro -->
+                    <button class="js-navigation-item item" data-name="options">
+                        <div class="button-inner">
+                            <div class="icon-container">
+                                <img src="ui/gear.svg" loading="lazy">
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Controls -->
+                    <button class="js-navigation-item item" data-name="controls">
+                        <div class="button-inner">
+                            <div class="icon-container">
+                                <img src="ui/controls/gamepad.svg" loading="lazy">
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Achievements -->
+                    <button class="js-navigation-item item" data-name="achievements">
+                        <div class="button-inner">
+                            <div class="icon-container">
+                                <img src="ui/medal.svg" loading="lazy">
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Circuit -->
+                    <button class="js-navigation-item item" data-name="circuit">
+                        <div class="button-inner">
+                            <div class="icon-container">
+                                <img src="ui/wheel.svg" loading="lazy">
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Whispers -->
+                    <button class="js-navigation-item item" data-name="whispers">
+                        <div class="button-inner">
+                            <div class="icon-container">
+                                <img src="ui/whispers/whisper-fill.svg" loading="lazy">
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Behind the scene -->
+                    <button class="js-navigation-item item" data-name="behindTheScene">
+                        <div class="button-inner">
+                            <div class="icon-container">
+                                <img src="ui/question.svg" loading="lazy">
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="container">
+
+                    <div class="previews js-previews">
+
+                        <!-- Intro -->
+                        <div class="js-preview preview home-preview">
+                            <img class="background" src="ui/previews/home.webp" loading="lazy" draggable="false">
+                        </div>
+
+                        <!-- Options -->
+                        <div class="js-preview preview options-preview">
+                            <img class="background" src="ui/previews/options.webp" loading="lazy" draggable="false">
+                        </div>
+
+                        <!-- Controls -->
+                        <div class="js-preview preview controls-preview">
+                            <img class="background" src="ui/previews/controls.webp" loading="lazy" draggable="false">
+                        </div>
+
+                        <!-- Achievements -->
+                        <div class="js-preview preview achievements-preview">
+                            <img class="background" src="ui/previews/achievements.webp" loading="lazy" draggable="false">
+                        </div>
+
+                        <!-- Circuit -->
+                        <div class="js-preview preview circuit-preview">
+                            <img class="background" src="ui/previews/circuit.webp" loading="lazy" draggable="false">
+                        </div>
+
+                        <!-- Whispers -->
+                        <div class="js-preview preview whispers-preview">
+                            <img class="background" src="ui/previews/whispers.webp" loading="lazy" draggable="false">
+                            <div class="js-preview-message message title"> <span class="js-text text" contenteditable="">Your message here</span><div class="js-flag flag"></div> </div>
+                        </div>
+
+                        <!-- Behind the scene -->
+                        <div class="js-preview preview behindTheScene-preview">
+                            <img class="background" src="ui/previews/behindTheScene.webp" loading="lazy" draggable="false">
+                        </div>
+
+                    </div>
+
+                    <div class="contents js-contents">
+                        <!-- Intro -->
+                        <div class="js-content content home-content">
+                            <div class="content-inner">
+                                <div class="title">Bruno's Home</div>
+                                <p class="text">Welcome!</p>
+                                <p class="text">My name is <strong>Bruno Simon</strong>, and I'm a <strong>creative developer</strong> (mostly for the web).</p>
+                                <p class="text">This is my portfolio. Please drive around to learn more about me and discover the many secrets of this world.</p>
+                                <p class="text">And don't break anything!</p>
+                            </div>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="js-content content options-content">
+                            <div class="content-inner">
+                                <div class="title">Options</div>
+                                <table class="options">
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                Audio 
+                                            </td>
+                                            <td>
+                                                <button class="js-audio-toggle audio-toggle button is-small has-tooltip">
+                                                    <div class="tooltip">Toggles sound</div>
+                                                    <img class="icon icon-audio audio-on" src="ui/audio/audioOn.svg" loading="lazy">
+                                                    <img class="icon icon-audio audio-off" src="ui/audio/audioOff.svg" loading="lazy">
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                Quality 
+                                            </td>
+                                            <td>
+                                                <button class="js-quality-toggle quality-toggle button is-small has-tooltip">
+                                                    <div class="tooltip">Toggles some effects</div>
+                                                    <span>Low</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                I'm stuck!
+                                            </td>
+                                            <td>
+                                                <button class="js-respawn button is-small has-tooltip">
+                                                    <div class="tooltip">Teleports you to the closest respawn</div>
+                                                    Respawn
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                Reset
+                                            </td>
+                                            <td>
+                                                <button class="js-reset button is-small has-tooltip">
+                                                    <div class="tooltip">Resets every object</div>
+                                                    Reset
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                Renderer
+                                            </td>
+                                            <td>
+                                                <button class="js-renderer button is-small is-disabled is-success has-tooltip">
+                                                    <div class="js-tooltip tooltip">Best for performance</div>
+                                                    <span>WebGPU</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                Server
+                                            </td>
+                                            <td>
+                                                <button class="js-server button is-small is-disabled has-tooltip">
+                                                    <div class="js-tooltip tooltip"></div>
+                                                    <span>Pending</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Controls -->
+                        <div class="js-content content controls-content">
+                            <div class="content-inner">
+                                <div class="js-tabs tabs">
+                                    <div class="js-tabs-navigation tabs-navigation">
+                                        <button class="js-tabs-navigation-item tab" data-tabs-name="mouse-keyboard">
+                                            <div class="active-background"></div>
+                                            <span class="icon-container">
+                                                <span class="icon icon-mouse-keyboard"></span>
+                                            </span>
+                                            <span class="label">Mouse Keyboard</span>
+                                        </button>
+                                        <button class="js-tabs-navigation-item tab" data-tabs-name="touch">
+                                            <div class="active-background"></div>
+                                            <span class="icon-container">
+                                                <span class="icon icon-touch"></span>
+                                            </span>
+                                            <span class="label">Mobile Tablet</span>
+                                        </button>
+                                        <button class="js-tabs-navigation-item tab" data-tabs-name="gamepad">
+                                            <div class="active-background"></div>
+                                            <span class="icon-container">
+                                                <span class="icon icon-gamepad"></span>
+                                            </span>
+                                            <span class="label">Gamepad</span>
+                                        </button>
+                                    </div>
+                                    <div class="js-tabs-content text text-small tabs-content">
+
+                                        <!-- Mouse / Keyboard -->
+                                        <div class="js-tabs-content-item tabs-content-item mouse-keyboard" data-tabs-name="mouse-keyboard" data-tabs-default>
+                                            <div class="js-tabs-content-inner list">
+                                                <table>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td><span class="key">WASD</span> or <span class="key">ARROWS</span></td>
+                                                            <td>Move around</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">SHIFT</span></td>
+                                                            <td>Boost</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">CTRL LEFT</span> or <span class="key">B</span></td>
+                                                            <td>Brake</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">SPACE</span></td>
+                                                            <td>Jump</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">ENTER</span></td>
+                                                            <td>Interact</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">M</span></td>
+                                                            <td>Map</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">L</span></td>
+                                                            <td>Mute</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">T</span></td>
+                                                            <td>Post a whisper</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">R</span></td>
+                                                            <td>Respawn</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">NUM KEYS</span>/<span class="key">NUM PAD</span></td>
+                                                            <td>Activate hydraulics</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">LEFT CLICK (DRAG)</span></td>
+                                                            <td>Move camera</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">H</span></td>
+                                                            <td>Honk</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <!-- Mobile / Tablet -->
+                                        <div class="js-tabs-content-item tabs-content-item touch" data-tabs-name="touch">
+                                            <div class="js-tabs-content-inner list">
+                                                <table>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td><span class="key">One finger</span></td>
+                                                            <td>Move the car</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">Two fingers</span></td>
+                                                            <td>Move camera / zoom</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">Tap (on the car)</span></td>
+                                                            <td>Jump</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <!-- Gamepad -->
+                                        <div class="js-tabs-content-item tabs-content-item gamepad" data-tabs-name="gamepad">
+                                            <div class="js-tabs-content-inner list">
+                                            
+                                                <table>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>
+                                                                <span class="is-gamepad-button is-xbox key">B</span>
+                                                                <span class="is-gamepad-button is-playstation is-icon circle"></span>
+                                                            </td>
+                                                            <td>Boost</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                <span class="is-gamepad-button is-xbox key">Y</span>
+                                                                <span class="is-gamepad-button is-playstation is-icon triangle"></span>
+                                                            </td>
+                                                            <td>Jump</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                <span class="is-gamepad-button is-xbox key">X</span>
+                                                                <span class="is-gamepad-button is-playstation is-icon square"></span>
+                                                            </td>
+                                                            <td>Brake</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                <span class="is-gamepad-button is-xbox key">A</span>
+                                                                <span class="is-gamepad-button is-playstation is-icon cross"></span>
+                                                            </td>
+                                                            <td>Interact / Exit</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                <span class="is-gamepad-button is-xbox key">LT</span>
+                                                                <span class="is-gamepad-button is-playstation key">L2</span>
+                                                            </td>
+                                                            <td>Accelerate</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                <span class="is-gamepad-button is-xbox key">RT</span>
+                                                                <span class="is-gamepad-button is-playstation key">R2</span>
+                                                            </td>
+                                                            <td>Backward accelerate</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                <span class="is-gamepad-button is-xbox key">LB / RB</span>
+                                                                <span class="is-gamepad-button is-playstation key">L1 / R1</span>
+                                                            </td>
+                                                            <td>Hydraulics</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">Joystick Left</span></td>
+                                                            <td>Turn wheels</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">Joystick Left (press)</span></td>
+                                                            <td>Honk</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">Joystick Right</span></td>
+                                                            <td>Move camera</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">Joystick Right (press)</span></td>
+                                                            <td>Zoom in/out</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">Select</span></td>
+                                                            <td>Reset</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><span class="key">Start</span></td>
+                                                            <td>Pause</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Achievements -->
+                        <div class="js-content content achievements-content">
+                            <div class="content-inner">
+                                <div class="title">Achievements</div>
+                                <div class="js-global-progress global-progress">
+                                    <span class="ratio"><span class="js-current current"></span> / <span class="js-total total"></span></span>
+                                    <span class="js-time time">2h 30min 15s</span>
+                                </div>
+                                <div class="rewards-container">
+                                    <div class="title">Rewards</div>
+                                    <div class="rewards">
+                                        <button class="js-reward reward has-tooltip" data-name="red" data-default>
+                                            <div class="js-tooltip tooltip">Unlock at <strong></strong></div>
+                                            <img class="picture" src="ui/achievements/rewards/red.webp" loading="lazy">
+                                            <div class="lock">
+                                                <img class="lock-icon" src="ui/lock.svg" loading="lazy">
+                                            </div>
+                                        </button>
+                                        <button class="js-reward reward has-tooltip is-locked" data-name="orange">
+                                            <div class="js-tooltip tooltip">Unlock at <strong></strong></div>
+                                            <img class="picture" src="ui/achievements/rewards/orange.webp" loading="lazy">
+                                            <div class="lock">
+                                                <img class="lock-icon" src="ui/lock.svg" loading="lazy">
+                                            </div>
+                                        </button>
+                                        <button class="js-reward reward has-tooltip is-locked" data-name="white">
+                                            <div class="js-tooltip tooltip">Unlock at <strong></strong></div>
+                                            <img class="picture" src="ui/achievements/rewards/white.webp" loading="lazy">
+                                            <div class="lock">
+                                                <img class="lock-icon" src="ui/lock.svg" loading="lazy">
+                                            </div>
+                                        </button>
+                                        <button class="js-reward reward has-tooltip is-locked" data-name="black">
+                                            <div class="js-tooltip tooltip">Unlock at <strong></strong></div>
+                                            <img class="picture" src="ui/achievements/rewards/black.webp" loading="lazy">
+                                            <div class="lock">
+                                                <img class="lock-icon" src="ui/lock.svg" loading="lazy">
+                                            </div>
+                                        </button>
+                                        <button class="js-reward reward has-tooltip is-locked" data-name="flames">
+                                            <div class="js-tooltip tooltip">Unlock at <strong></strong></div>
+                                            <img class="picture" src="ui/achievements/rewards/flames.webp" loading="lazy">
+                                            <div class="lock">
+                                                <img class="lock-icon" src="ui/lock.svg" loading="lazy">
+                                            </div>
+                                        </button>
+                                        <button class="js-reward reward has-tooltip is-locked" data-name="abyssal">
+                                            <div class="js-tooltip tooltip">Unlock at <strong></strong></div>
+                                            <img class="picture" src="ui/achievements/rewards/abyssal.webp" loading="lazy">
+                                            <div class="lock">
+                                                <img class="lock-icon" src="ui/lock.svg" loading="lazy">
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="js-items items"></div>
+
+                                <div class="horizontal-group">
+                                
+                                    <button class="js-button-reset button button-reset">
+                                        Reset achievements
+                                    </button>
+                                    
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Circuit -->
+                        <div class="js-content content circuit-content">
+                            <div class="content-inner">
+                                <div class="title">Circuit</div>
+                                
+                                <p class="offline-element text text-danger">
+                                    <img src="ui/warning.svg" loading="lazy" alt="" class="icon"> Server currently offline. Scores can't be saved.
+                                </p>
+
+                                <div class="js-leaderboard-container leaderboard-container has-no-score">
+                                    <div class="no-score">No score yet today</div>
+                                    <table class="js-leaderboard leaderboard online-element">
+                                        <tbody>
+                                        </tbody>
+                                    
+                                    </table>
+
+                                    <p class="online-element reset">
+                                        Resets in <span class="js-reset-time reset-time"></span>
+                                    </p>
+
+                                </div>
+
+                                <div class="js-racing-buttons racing-buttons horizontal-group">
+                                
+                                    <button class="js-button-restart button">
+                                        <svg class="icon icon-restart" width="20" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M17 5L10 10V6C5.58172 6 2 9.58172 2 14C2 18.4183 5.58172 22 10 22C14.4183 22 18 18.4183 18 14H20C20 19.5228 15.5228 24 10 24C4.47715 24 0 19.5228 0 14C0 8.47715 4.47715 4 10 4V0L17 5Z" fill="#ffffff"/>
+                                        </svg>
+                                        Restart
+                                    </button>
+                                
+                                    <button class="js-button-end button">
+                                        <svg class="icon icon-flag" class="none" width="23" height="20" viewBox="0 0 23 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M0.551758 1.7258C6.55166 -2.27398 11.0001 3.40978 19 1.40953L23 13.4096C15.5952 15.2611 11.6175 10.2589 6.30859 12.6762L8.44824 19.0941L6.55176 19.7269L0.551758 1.7258ZM5.26562 2.00328C4.68209 2.01685 4.07959 2.11674 3.42871 2.37242L6.16309 10.5746C7.17704 10.2014 8.1765 10.0274 9.17188 10.0043C10.8337 9.96566 12.395 10.3531 13.7764 10.7299C15.9783 11.3304 17.9741 11.9562 20.3564 11.806L17.6533 3.69664C13.9491 4.17921 11.0237 3.21654 8.72363 2.58922C7.3553 2.21603 6.29108 1.97952 5.26562 2.00328Z" fill="#ffffff"/>
+                                        </svg>
+                                        End
+                                    </button>
+                                
+                                    <button class="js-button-controls button">
+                                        <svg class="icon icon-controller" width="34" height="22" viewBox="0 0 34 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M24.9901 0C27.2187 0 29.1912 1.98468 30.0877 3.96582C30.9844 5.94795 33.3919 15.0915 33.9373 17.4551C34.4824 19.8185 30.7556 22.1815 26.5741 22.1816C24.3923 19.6363 22.2847 16.7432 19.8465 15H14.2235C11.7707 16.7432 9.6507 19.6363 7.4559 22.1816C3.24927 22.1816 -0.494655 19.8185 0.053558 17.4551C0.602246 15.0917 3.02451 5.94816 3.9266 3.96582C4.82847 1.98469 6.81257 0.000114396 9.05453 0H24.9901ZM8.85532 2.01074C8.38039 2.06286 7.8363 2.30078 7.27133 2.77344C6.62835 3.31144 6.08313 4.05636 5.74692 4.79492C5.3762 5.61 4.5895 8.20768 3.78403 11.1035C3.19639 13.2162 2.63705 15.345 2.28207 16.7588L2.0018 17.9072C1.9553 18.1081 1.96994 18.5603 2.69711 19.124C3.29365 19.5864 5.2646 20.0018 6.56332 20.1357C6.88401 19.7496 7.20912 19.3522 7.54086 18.9434C8.08227 18.2761 8.64694 17.5798 9.22153 16.9062C10.36 15.5716 11.6783 14.3885 13.1112 13.3701L13.6307 13H20.534L21.0555 13.373C22.4808 14.3921 23.7002 15.5757 24.8319 16.9102C25.4031 17.5837 25.9636 18.2811 26.5018 18.9482C26.83 19.3551 27.1523 19.7504 27.4696 20.1348C28.7512 20 30.7095 19.5872 31.2987 19.1279C32.0175 18.5673 32.0359 18.1133 31.9881 17.9053L31.7098 16.7559C31.3569 15.3419 30.8007 13.2132 30.2166 11.1006C29.4159 8.20421 28.6341 5.60492 28.2655 4.79004C27.9309 4.05089 27.3888 3.30754 26.7508 2.77051C26.1096 2.23085 25.4989 2 24.9901 2H9.05453L8.85532 2.01074ZM12.0096 7H14.0096V9H12.0096V11H10.0096V9H8.00961V7H10.0096V5H12.0096V7ZM24.0096 11H22.0096V9H24.0096V11ZM22.0096 9H20.0096V7H22.0096V9ZM26.0096 9H24.0096V7H26.0096V9ZM24.0096 7H22.0096V5H24.0096V7Z" fill="#ffffff"/>
+                                        </svg>
+                                        Controls
+                                    </button>
+                                    
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Whispers -->
+                        <div class="js-content content whispers-content">
+                            <div class="content-inner">
+                                <div class="title">Leave a whisper</div>
+                                <p class="text">Whispers are messages left by visitors.</p>
+                                <p class="text text-small text-faded">
+                                    - Everyone can see them<br />
+                                    - New whispers remove old ones (max 30)<br />
+                                    - One whisper per user<br />
+                                    - Choose a flag<br />
+                                    - No slur!<br />
+                                    - Max 30 characters
+                                </p>
+                                <p class="offline-element text text-danger">
+                                    <img src="ui/warning.svg" loading="lazy" alt="" class="icon"> Server currently offline
+                                </p>
+                                <form class="js-input-group input-group is-message" action="#">
+                                    <div class="js-input-flag input-flag">
+                                        <div class="js-flag-button flag-button">
+                                            <img class="js-flag flag" src="ui/flags/fr.webp" loading="lazy">
+                                            <svg class="none" width="23" height="20" viewBox="0 0 23 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M0.551758 1.7258C6.55166 -2.27398 11.0001 3.40978 19 1.40953L23 13.4096C15.5952 15.2611 11.6175 10.2589 6.30859 12.6762L8.44824 19.0941L6.55176 19.7269L0.551758 1.7258ZM5.26562 2.00328C4.68209 2.01685 4.07959 2.11674 3.42871 2.37242L6.16309 10.5746C7.17704 10.2014 8.1765 10.0274 9.17188 10.0043C10.8337 9.96566 12.395 10.3531 13.7764 10.7299C15.9783 11.3304 17.9741 11.9562 20.3564 11.806L17.6533 3.69664C13.9491 4.17921 11.0237 3.21654 8.72363 2.58922C7.3553 2.21603 6.29108 1.97952 5.26562 2.00328Z" fill="white"/>
+                                            </svg>
+                                        </div>
+
+                                        <div class="js-flag-select flag-select">
+                                            <div class="js-flag-close close-mini">
+                                                <img src="ui/close-mini.svg" loading="lazy">
+                                            </div>
+                                            <div class="js-flag-remove remove">
+                                                <img src="ui/remove.svg" loading="lazy">
+                                            </div>
+                                            <input type="text" class="js-flag-search search" placeholder="Search…">
+                                            <div class="js-no-result no-result">
+                                                No result
+                                            </div>
+                                            <div class="choices">
+                                                <div class="js-scroller scroller">
+                                                    
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input class="js-input js-main-focus input-text" type="text" placeholder="Your message" maxlength="30" name="message"/>
+                                    <button class="submit has-icon">
+                                        <svg width="39" height="38" viewBox="0 0 39 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M10.984 26.0434C11.087 26.0016 11.1916 25.9584 11.2975 25.914C12.9298 25.2289 14.998 24.1857 16.3708 22.8128C16.8477 22.3359 17.1994 21.573 17.4799 20.7863C17.7749 19.9587 18.0444 18.9447 18.2905 17.831C18.7834 15.6008 19.2022 12.8805 19.541 10.26C19.5427 10.2476 19.5443 10.2352 19.5459 10.2228C19.8659 12.7209 20.2775 15.3149 20.7957 17.4944C21.063 18.6186 21.3637 19.6547 21.7037 20.5201C22.0343 21.3616 22.4398 22.1422 22.963 22.6655C24.5715 24.2739 26.4382 25.3527 27.8827 26.0268C27.9024 26.036 27.922 26.0452 27.9416 26.0542C27.8074 26.1139 27.6701 26.1761 27.5304 26.2406C26.0017 26.9468 24.0681 27.9906 22.8116 29.2618C21.4879 30.6008 20.4455 32.6674 19.7513 34.3012C19.698 34.4266 19.6465 34.5502 19.5967 34.6716C19.5466 34.5489 19.4948 34.424 19.4411 34.2972C18.7484 32.6615 17.7049 30.5918 16.3708 29.2577C15.0363 27.9233 12.966 26.8799 11.3298 26.1873C11.2129 26.1378 11.0975 26.0899 10.984 26.0434Z" stroke="#FFCECA" stroke-width="2"/>
+                                            <path d="M30 17L30 9M26 13L34 13" stroke="#FFCECA" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Behind the scene -->
+                        <div class="js-content content behindTheScene-content">
+                            <div class="content-inner">
+                                <div class="title">Behind the scene</div>
+                                <p class="text">
+                                    Thank you for visiting my portfolio!
+                                    <br />If you are curious about the stack and how I built this project, here’s everything you need to know.
+                                </p>
+                                
+                                <h2 class="title">Three.js</h2>
+                                <p class="text">
+                                    <a href="https://threejs.org" target="_blank" rel="noreferrer">Three.js</a> is the library I’m using to render this 3D world.
+                                    <br />It was created by <strong>mr.doob</strong> (<a href="https://x.com/mrdoob" target="_blank" rel="noreferrer">X</a>, <a href="http://github.com/mrdoob" target="_blank" rel="noreferrer">GitHub</a>), followed by hundreds of awesome developers, one of which being Sunag (<a href="https://x.com/sea3dformat" target="_blank" rel="noreferrer">X</a>, <a href="https://github.com/sunag" target="_blank" rel="noreferrer">GitHub</a>) who added <a href="https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language" target="_blank" rel="noreferrer">TSL</a>, enabling the use of both WebGL and WebGPU, making this portfolio possible.
+                                </p>
+                                
+                                <h2 class="title">Three.js Journey</h2>
+                                <p class="text">
+                                    If you want to learn Three.js, I got you covered with this <a href="https://threejs-journey.com" target="_blank" rel="noreferrer">huge course</a>.
+                                    <br />It contains everything you need to start building awesome stuff with Three.js (and much more).
+                                </p>
+                                
+                                <h2 class="title">Devlogs</h2>
+                                <p class="text">
+                                    I’ve been making devlogs since the very start of this portfolio and you can find them all on my <a href="https://www.youtube.com/playlist?list=PL5nApUt6Z8sTZxEsEMd8x89OCKCAAfNL0" target="_blank" rel="noreferrer">Youtube channel</a>.
+                                </p>
+                                
+                                <h2 class="title">Source code</h2>
+                                <p class="text">
+                                    The code is available on <a href="https://github.com/brunosimon/folio-2025" target="_blank" rel="noreferrer">GitHub</a> under <a href="https://choosealicense.com/licenses/mit/" target="_blank" rel="noreferrer">MIT license</a>. Even the Blender files are there, so have fun!
+                                    <br />For security reasons, I’m not sharing the server code, but the portfolio works without it.
+                                </p>
+                                
+                                <h2 class="title">Musics</h2>
+                                <p class="text">
+                                    The music you hear was made especially for this portfolio by the awesome Kounine (<a href="https://linktr.ee/Kounine" target="_blank" rel="noreferrer">Linktree</a>).
+                                    <br />They are now under <a href="https://choosealicense.com/licenses/cc0-1.0/" target="_blank" rel="noreferrer">CC0 license</a>, meaning you can do whatever you want with them!
+                                    <br />Download them <a href="https://github.com/brunosimon/folio-2025/tree/main/static/sounds/musics" target="_blank" rel="noreferrer">here</a>.
+                                </p>
+
+                                <h2 class="title">Some more links</h2>
+                                <ul class="text">
+                                    <li>Physics library ⇒ <a href="https://rapier.rs" target="_blank" rel="noreferrer">Rapier</a></li>
+                                    <li>Audio library ⇒ <a href="https://howlerjs.com" target="_blank" rel="noreferrer">Howler.js</a></li>
+                                    <li>Fonts ⇒ <a href="https://fonts.google.com/specimen/Amatic+SC" target="_blank" rel="noreferrer">Amatic SC</a> & <a href="https://fonts.google.com/specimen/Nunito?query=Nunito" target="_blank" rel="noreferrer">Nunito</a></li>
+                                </ul>
+
+                                <p class="text text-faded text-align-right">
+                                    — Bruno
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
         </div>
-        <img class="pt-card pt-card--grid"    src="assets/portada/img/card-grid.webp"    alt="">
-        <img class="pt-card pt-card--dca"     src="assets/portada/img/card-dca.webp"     alt="">
-        <img class="pt-card pt-card--cashout" src="assets/portada/img/card-cashout.webp" alt="">
-        <img class="pt-card pt-card--acum"    src="assets/portada/img/card-acum.webp"    alt="">
-      </div>
-      <div class="pt-acts pt-acts-img">
-        <a class="pt-btn-img" href="app.html?abrir=swap" data-abrir="swap" aria-label="Swap">
-          <img src="assets/portada/img/boton-swap.webp" alt="Swap" loading="eager"></a>
-        <a class="pt-btn-img" href="aportar.html" aria-label="Staking">
-          <img src="assets/portada/img/boton-staking.webp" alt="Staking" loading="eager"></a>
-        <a class="pt-btn-img" href="modules/bots/bots.html" aria-label="Bots">
-          <img src="assets/portada/img/boton-bots.webp" alt="Bots" loading="eager"></a>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- ══ CONFIANZA ══ -->
-<section class="pt-trust">
-  <div class="pt-wrap"><div class="pt-trust__g">
-    <div class="pt-trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#lck"/></svg><div><b>No custodial</b><span>Tus fondos no salen de tu wallet</span></div></div>
-    <div class="pt-trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#shd"/></svg><div><b>Permiso por monto exacto</b><span>Nunca ilimitado, y lo revocas tú</span></div></div>
-    <div class="pt-trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#cns"/></svg><div><b>Sin porcentaje nuestro</b><span>Solo el gas y la comisión del DEX</span></div></div>
-    <div class="pt-trust__i"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#dev"/></svg><div><b>Sin cuenta ni KYC</b><span>Tu wallet es tu único registro</span></div></div>
-  </div></div>
-</section>
+        <!-- Modals -->
+        <div class="js-modals modals">
 
-<!-- ══ HERRAMIENTAS ══
-     Vuelve a la estructura de siempre: texto a la izquierda, capturas a la
-     derecha. Las cuatro caben ahí en una rejilla de 2x2 a escala pequeña.
-     Sacarlas a todo el ancho descolocaba el texto y estiraba el fondo.
+            <!-- Circuit end -->
+            <div class="js-modal modal circuit-end" data-name="circuit-end">
+                <div class="container">
+                    <div class="content">
+                        <button class="js-close close">
+                            <img class="icon is-default" src="ui/close.svg" loading="lazy">
+                            <span class="icon is-xbox">A</span>
+                        </button>
 
-     Fondo: assets/portada/img/analisis.webp
-     Capturas (assets/portada/img/):
-       interfaz.webp     Liquidity Pools
-       heatpools.webp    Heat Pools
-       smartlevels.webp  Smart Levels
-       estructural.webp  Lógica Estructural Avanzada -->
-<section class="pt-sec pt-bg" id="herramientas">
-  <div class="pt-art" style="background-image:url('assets/portada/img/analisis.webp')" aria-hidden="true"></div>
-  <div class="pt-wrap">
-    <div class="pt-split">
+                        <div class="your-time">
+                            Your time
+                            <br /><span class="js-time value">00:00:000</span>
+                        </div>
 
-      <div class="pt-rise">
-        <p class="pt-eye">Trading profesional</p>
-        <h2>Herramientas de alta frecuencia<br>que enseñan el mercado real.</h2>
-        <p class="pt-body">El precio no se mueve solo: lo mueve la liquidez. Nuestras herramientas leen el volumen dentro de cada bloque de órdenes y el libro en vivo para mostrar dónde hay dinero atrapado, qué órdenes grandes son reales y cuáles son humo.</p>
-        <p class="pt-body">Todo se calcula en tu navegador sobre velas y profundidad reales, sin intermediarios y sin retrasos añadidos.</p>
-        <a class="pt-lnk" href="app.html?abrir=analisis" data-abrir="analisis">Abrir Liquidity <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#arr"/></svg></a>
-      </div>
+                        <p class="offline-element text text-danger">
+                            <img src="ui/warning.svg" loading="lazy" alt="" class="icon"> Server currently offline. Scores can't be saved.
+                        </p>
 
-      <div class="pt-shots pt-rise">
-        <a class="pt-shot-link" href="app.html?abrir=analisis" data-abrir="analisis"><figure>
-          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/interfaz.webp" alt="Liquidity Pools" loading="lazy"></div></div>
-          <figcaption>Liquidity Pools</figcaption>
-        </figure></a>
-        <a class="pt-shot-link" href="app.html?abrir=analisis" data-abrir="analisis"><figure>
-          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/heatpools.webp" alt="Heat Pools" loading="lazy"></div></div>
-          <figcaption>Heat Pools</figcaption>
-        </figure></a>
-        <a class="pt-shot-link" href="app.html?abrir=analisis" data-abrir="analisis"><figure>
-          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/smartlevels.webp" alt="Smart Levels" loading="lazy"></div></div>
-          <figcaption>Smart Levels</figcaption>
-        </figure></a>
-        <a class="pt-shot-link" href="app.html?abrir=analisis" data-abrir="analisis"><figure>
-          <div class="pt-shot"><div class="pt-shot__in"><img src="assets/portada/img/estructural.webp" alt="Lógica Estructural Avanzada" loading="lazy"></div></div>
-          <figcaption>Lógica Estructural</figcaption>
-        </figure></a>
-      </div>
+                        <p class="not-top-10 text">
+                            Sorry, you didn't make it to the top 10.
+                        </p>
 
-    </div>
+                        <div class="horizontal-group">
+                        
+                            <form class="js-input-group input-group is-name-tag online-element" action="#">
+                                <div class="js-input-flag input-flag">
+                                    <div class="js-flag-button flag-button">
+                                        <img class="js-flag flag" src="ui/flags/fr.webp" loading="lazy">
+                                        <svg class="none" width="23" height="20" viewBox="0 0 23 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M0.551758 1.7258C6.55166 -2.27398 11.0001 3.40978 19 1.40953L23 13.4096C15.5952 15.2611 11.6175 10.2589 6.30859 12.6762L8.44824 19.0941L6.55176 19.7269L0.551758 1.7258ZM5.26562 2.00328C4.68209 2.01685 4.07959 2.11674 3.42871 2.37242L6.16309 10.5746C7.17704 10.2014 8.1765 10.0274 9.17188 10.0043C10.8337 9.96566 12.395 10.3531 13.7764 10.7299C15.9783 11.3304 17.9741 11.9562 20.3564 11.806L17.6533 3.69664C13.9491 4.17921 11.0237 3.21654 8.72363 2.58922C7.3553 2.21603 6.29108 1.97952 5.26562 2.00328Z" fill="white"/>
+                                        </svg>
+                                    </div>
 
-    <div class="pt-tools pt-rise">
-      <div class="pt-tool">
-        <h3>Liquidity Pools</h3>
-        <em>dónde está el dinero atrapado</em>
-        <p>El mapa de liquidaciones: los precios donde hay posiciones esperando a ser barridas. El precio va a buscarlas.</p>
-      </div>
-      <div class="pt-tool">
-        <h3>Heat Pools</h3>
-        <em>vea lo que hacen los grandes</em>
-        <p>El libro de órdenes miente: la mayoría de las órdenes grandes son falsas. Vigilamos cada una y le decimos cuáles tienen dinero real detrás.</p>
-      </div>
-      <div class="pt-tool">
-        <h3>Smart Levels</h3>
-        <em>dónde comprar y dónde vender</em>
-        <p>Analiza la estructura del mercado y dibuja los niveles exactos de entrada y salida sobre la gráfica, explicándole por qué en cada momento.</p>
-      </div>
-    </div>
+                                    <div class="js-flag-select flag-select">
+                                        <div class="js-flag-close close-mini">
+                                            <img src="ui/close-mini.svg" loading="lazy">
+                                        </div>
+                                        <div class="js-flag-remove remove">
+                                            <img src="ui/remove.svg" loading="lazy">
+                                        </div>
+                                        <input type="text" class="js-flag-search search" placeholder="Search…">
+                                        <div class="js-no-result no-result">
+                                            No result
+                                        </div>
+                                        <div class="choices">
+                                            <div class="js-scroller scroller">
+                                                
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input class="js-input js-main-focus input-text" type="text" placeholder="---" maxlength="3" />
+                                <button class="submit has-text">
+                                    Submit
+                                </button>
+                            </form>
 
-  </div>
-</section>
+                            <div class="or">
+                                or
+                            </div>
 
-<!-- ══ PILARES ══ -->
-<section class="pt-sec pt-alt">
-  <div class="pt-wrap"><div class="pt-pil pt-rise">
-    <div class="pt-pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#blt"/></svg><h3>Ejecución automática</h3><p>Un servicio vigila el precio y dispara tus órdenes aunque tengas el teléfono apagado.</p></div>
-    <div class="pt-pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#shd"/></svg><h3>Sin custodia, de verdad</h3><p>No hay depósito ni saldo en cuenta. El contrato solo mueve lo que autorizaste.</p></div>
-    <div class="pt-pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#glb"/></svg><h3>Acceso sin fronteras</h3><p>Sin registro, sin documentos y sin aprobación. Conectas tu wallet y estás dentro.</p></div>
-    <div class="pt-pil__i"><svg width="23" height="23" viewBox="0 0 24 24"><use href="#dev"/></svg><h3>Web y móvil</h3><p>La misma plataforma en el ordenador y en el teléfono, instalable como aplicación.</p></div>
-  </div></div>
-</section>
+                            <button class="js-button-restart button">
+                                <svg class="icon icon-restart" width="20" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M17 5L10 10V6C5.58172 6 2 9.58172 2 14C2 18.4183 5.58172 22 10 22C14.4183 22 18 18.4183 18 14H20C20 19.5228 15.5228 24 10 24C4.47715 24 0 19.5228 0 14C0 8.47715 4.47715 4 10 4V0L17 5Z" fill="#ffffff"/>
+                                </svg>
+                                Restart
+                            </button>
 
-<!-- ══ ACTIVOS ══ -->
-<section class="pt-sec pt-bg" id="activos">
-  <div class="pt-art" style="background-image:url('assets/portada/img/activos.webp')" aria-hidden="true"></div>
-  <div class="pt-wrap">
-    <div class="pt-rise" style="max-width:min(520px,100%)">
-      <p class="pt-eye">Activos</p>
-      <h2>Activos digitales<br>para un mundo sin fronteras.</h2>
-      <p class="pt-body">
-        Desde las principales criptomonedas hasta los tokens del ecosistema BNB Chain: 26 activos operables contra USDT y USDC, con liquidez de PancakeSwap V3.
-      </p>
-      <a class="pt-lnk" href="app.html">Ver todos los mercados <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a>
-    </div>
+                        </div>
+                    
+                    </div>
+                </div>
+            </div>
 
-    <div class="pt-coins pt-rise" id="px">
-      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#btc"/></svg><div><b>BTCB</b></div></div>
-      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#eth"/></svg><div><b>ETH</b></div></div>
-      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#bnb"/></svg><div><b>BNB</b></div></div>
-      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#sol"/></svg><div><b>SOL</b></div></div>
-      <div class="pt-coin"><svg width="26" height="26" viewBox="0 0 30 30"><use href="#xrp"/></svg><div><b>XRP</b></div></div>
-    </div>
-  </div>
-</section>
+            <!-- Discord -->
+            <div class="js-modal modal discord" data-name="discord">
+                <div class="container">
+                    <div class="content">
+                        <button class="js-close close">
+                            <img class="icon is-default" src="ui/close.svg" loading="lazy">
+                            <span class="icon is-xbox">A</span>
+                        </button>
 
-<!-- ══ ECOSISTEMA ══
-     Fondo: assets/portada/img/ecosistema.webp
-     El teléfono va a la izquierda y el texto a la derecha, con las cinco
-     funciones en dos columnas. Las dos capturas se turnan encima. -->
-<section class="pt-sec pt-bg" id="ecosistema">
-  <div class="pt-art pt-soft" style="background-image:url('assets/portada/img/ecosistema.webp')" aria-hidden="true"></div>
-  <div class="pt-wrap"><div class="pt-split">
+                        <div class="title"><img src="ui/discord.svg" loading="lazy"> Discord</div>
 
-    <div class="pt-duo pt-rise" aria-hidden="true">
-      <img src="assets/portada/img/app-cta.webp" alt="">
-    </div>
+                        <div class="items">
+                            <div class="item">
+                                <div class="title-container">
+                                    <div class="line left"></div>
+                                    <div class="title">Public server</div>
+                                    <div class="line right"></div>
+                                </div>
+                                <p>Come hang out with the community<span class="optional">, show us your projects and ask us anything</span>.</p>
+                                <div class="button-container">
+                                    <a href="https://discord.com/channels/769928116701233152/1445064878384480288" target="_blank" rel="noreferrer" class="button">
+                                        Join server
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="item">
+                                <div class="title-container">
+                                    <div class="line left"></div>
+                                    <div class="title">Private messages</div>
+                                    <div class="line right"></div>
+                                </div>
+                                <p>Contact me directly.<span class="optional"><br />I have to warn you, I try to answer everyone, but it might take a while.</span></p>
+                                <div class="button-container">
+                                    <a href="https://discord.com/users/202907325722263553" target="_blank" rel="noreferrer" class="button">
+                                        Start chating
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    
+                    </div>
+                </div>
+            </div>
 
-    <div class="pt-rise">
-      <h2>Más que bots,<br><em>es tu ecosistema cripto.</em></h2>
-      <p class="pt-lede">Opera, analiza, intercambia y aprende.<br>Todo en una sola plataforma, sin salir de tu wallet.</p>
+            <!-- Map -->
+            <div class="js-modal modal map" data-name="map">
 
-      <div class="pt-rule"></div>
+                <button class="js-close close">
+                    <div class="button-inner">
+                        <div class="icon-container">
+                            <img class="icon is-default" src="ui/close.svg" loading="lazy">
+                            <span class="icon is-xbox">A</span>
+                        </div>
+                    </div>
+                </button>
 
-      <div class="pt-feats">
-        <a class="pt-feat" href="modules/bots/bots.html">
-          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bar"/></svg></div>
-          <div><b>Bots automáticos</b><span>Smart Grid, Accumulator,<br>Cash Out y DCA</span></div>
-        </a>
-        <a class="pt-feat" href="app.html?abrir=swap" data-abrir="swap">
-          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#swp"/></svg></div>
-          <div><b>Swap integrado</b><span>Intercambia entre activos<br>sin salir de la plataforma</span></div>
-        </a>
-        <a class="pt-feat" href="app.html?abrir=market" data-abrir="market">
-          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#usr"/></svg></div>
-          <div><b>Marketplace P2P</b><span>Compra y vende con confianza,<br>tramos y disputas</span></div>
-        </a>
-        <a class="pt-feat" href="app.html?abrir=analisis" data-abrir="analisis">
-          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#rdr"/></svg></div>
-          <div><b>Herramientas de análisis</b><span>Smart Levels, Lógica Estructural<br>y Liquidity Pools</span></div>
-        </a>
-        <a class="pt-feat" href="app.html?abrir=academy" data-abrir="academy">
-          <div class="pt-feat__i"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bok"/></svg></div>
-          <div><b>Academia</b><span>Formación con acceso<br>gestionado por contrato</span></div>
-        </a>
-      </div>
+                <div class="js-map-container map-container">
+                    <img class="js-texture texture" loading="lazy">
+                    <div class="js-player player"></div>
+                </div>
+            </div>
 
-      <div class="pt-acts">
-        <a class="pt-btn-img pt-btn-img-sec" href="modules/bots/bots.html" aria-label="Bots"><img src="assets/portada/img/boton-bots.webp" alt="Bots"></a>
-        <a class="pt-btn pt-ghost" href="app.html?abrir=instalar" data-inst><svg width="16" height="16" viewBox="0 0 20 20"><use href="#dl"/></svg>Instalar app</a>
-      </div>
-    </div>
-
-  </div></div>
-</section>
-
-<!-- ══ VERIFICABLE (Transparency) ══ -->
-<style>
-  #verificable .pt-wrap{display:block}
-  #verificable .pt-eye{text-align:center}
-  .ccx{display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:center;margin:14px 0 22px}
-  .ccx .cc-scroll{max-height:360px}
-  .ccx-brain{display:flex;justify-content:center;align-items:center}
-  #ccx-net{max-width:600px}
-  .ccx-left{display:flex;flex-direction:column}
-  .ccx-actions{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:16px;flex-wrap:wrap}
-  .ccx-actions .pt-btn,.ccx-actions .cc-dep{min-width:210px}
-  @media(max-width:820px){.ccx{grid-template-columns:1fr;gap:26px}.ccx .cc-scroll{max-height:320px}}
-</style>
-<section class="pt-sec pt-bg" id="verificable">
-  <div class="pt-art pt-right" style="background-image:url('assets/portada/img/mapa.webp')" aria-hidden="true"></div>
-  <div class="pt-wrap">
-    <p class="pt-eye">Transparency</p>
-    <div class="ccx">
-      <div class="ccx-left"><div class="cc-panel"><div class="cc-scroll"><div id="ccx-list"></div></div></div><div class="ccx-actions"><a class="pt-btn" href="transparency.html">See all contracts <svg width="15" height="15" viewBox="0 0 16 16"><use href="#arr"/></svg></a><div class="cc-dep-wrap" id="ccx-commit-badge"></div></div></div>
-      <div class="ccx-brain"><canvas id="ccx-net"></canvas></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══ CIERRE ══ -->
-<section class="pt-end">
-  <div class="pt-art" style="background-image:url('assets/portada/img/cta.webp')" aria-hidden="true"></div>
-  <div class="pt-wrap">
-    <div class="pt-end__in pt-rise">
-      <p class="pt-eye">Empieza en minutos</p>
-      <h2>Conecta tu wallet y<br>mira la plataforma por dentro.</h2>
-      <p class="pt-body">No hay registro ni formulario. Conectas, lo ves todo, y decides después. Puedes desconectarte en cualquier momento.</p>
-      <div class="pt-acts">
-        <button class="pt-btn pt-big" data-conectar data-cta="wallet" type="button"><svg width="16" height="16" viewBox="0 0 20 20"><use href="#wal"/></svg>Conectar wallet</button>
-        <a class="pt-btn pt-big pt-ghost" href="app.html?abrir=instalar" data-inst><svg width="16" height="16" viewBox="0 0 20 20"><use href="#dl"/></svg>Instalar app</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-</main>
-
-
-<footer class="pt-foot">
-  <div class="pt-art" style="background-image:url('assets/portada/img/footer.webp')" aria-hidden="true"></div>
-  <div class="pt-wrap">
-    <div class="pt-foot__g">
-      <div class="pt-foot__b">
-        <div class="pt-logo"><img src="assets/img/cco-movil.webp" alt="DecFreedom" width="170" height="110"></div>
-        <p>Trading automático en tu propia wallet. Tú controlas tus activos.</p>
-        <div class="pt-soc">
-          <a href="https://t.me/DecFreedom" target="_blank" rel="noopener" aria-label="Telegram"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#tg"/></svg></a>
-          <a href="https://x.com/DecFreedom" target="_blank" rel="noopener" aria-label="X"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#xx"/></svg></a>
-          <a href="https://www.instagram.com/decfreedom" target="_blank" rel="noopener" aria-label="Instagram"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#ig"/></svg></a>
-          <a href="https://www.threads.com/@decfreedom" target="_blank" rel="noopener" aria-label="Threads"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#th"/></svg></a>
-          <a href="https://www.facebook.com/profile.php?id=61595121668424" target="_blank" rel="noopener" aria-label="Facebook"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#fb"/></svg></a>
-          <a href="https://www.facebook.com/profile.php?id=61595479222906" target="_blank" rel="noopener" aria-label="Facebook (perfil profesional)"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#fb"/></svg></a>
-          <a href="https://www.youtube.com/@DecFreedom" target="_blank" rel="noopener" aria-label="YouTube"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#yt"/></svg></a>
-          <a href="https://www.linkedin.com/in/DecFreedom" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#li"/></svg></a>
         </div>
-      </div>
 
-      <div><h4>Producto</h4><ul>
-        <li><a href="#activos">Activos</a></li>
-        <li><a href="modules/bots/bots.html">Bots</a></li>
-        <li><a href="app.html?abrir=swap" data-abrir="swap">Swap</a></li>
-        <li><a href="app.html?abrir=market" data-abrir="market">Market P2P</a></li>
-        <li><a href="app.html?abrir=analisis" data-abrir="analisis">Liquidity Pools</a></li>
-      </ul></div>
-
-      <div><h4>Plataforma</h4><ul>
-        <li><a href="app.html?abrir=academy" data-abrir="academy">Academia</a></li>
-        <li><a href="app.html?abrir=instalar" data-inst>Instalar app</a></li>
-      </ul></div>
-
-      <div class="pt-foot__j">
-        <h4>Soporte</h4>
-        <p>Dudas, incidencias y novedades en el canal de Telegram.</p>
-        <div class="pt-foot__mail">
-          <a href="mailto:support@decfreedom.com">support@decfreedom.com</a>
-          <a href="mailto:supportdecfreedom@gmail.com">supportdecfreedom@gmail.com</a>
+        <!-- Notifications -->
+        <div class="js-notifications notifications">
+            <div class="js-items items"></div>
         </div>
-        <p class="pt-foot__sec">Solo nos comunicamos por nuestros canales oficiales aquí indicados. Nadie de nuestro equipo te contactará por vías privadas o informales.</p>
-        <div class="pt-foot__acts">
-          <a class="pt-btn pt-ghost" href="https://t.me/DecFreedom" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#tg"/></svg>Abrir Telegram</a>
-          <!-- Cambio de idioma. Lo gestiona idioma.js, el módulo que ya
-               existía. Aquí solo está el botón: nada de un sistema paralelo. -->
-          <button class="pt-btn pt-ghost" id="pt-lang" type="button" aria-label="Idioma">
-            <svg width="15" height="15" viewBox="0 0 24 24"><use href="#glb"/></svg>
-            <span id="pt-lang-tx">Español</span>
-          </button>
-        </div>
-      </div>
+
     </div>
-    <p class="pt-risk">
-      Trading crypto carries risk. A bot organises and executes your trades, but it does not predict the market and guarantees no profit. You can lose part or all of what you invest. Only trade with money you can afford to lose. This platform is non-custodial: you are the sole custodian of your wallet and your keys.
-    </p>
-
-    <div class="pt-foot__bar">
-      <span>© 2026 DecFreedom</span>
-      <span>Plataforma no custodial · BNB Smart Chain</span>
-    </div>
-  </div>
-</footer>
-
-</div><!-- /#pt -->
-
-<!-- ══════════════════════════════════════════════════════════════════
-     ASISTENTE
-     El mismo de la app, con el mismo botón y la misma carga diferida:
-     pesa unos 210 KB y nadie lo necesita en el primer segundo. Se dibuja
-     el botón desde ya para que se vea que existe, y al tocarlo (o a los
-     dos segundos de estar la página lista) se carga el asistente real.
-     ══════════════════════════════════════════════════════════════════ -->
-<style>
-  #np-fab-previo{position:fixed;right:20px;bottom:20px;z-index:200;display:grid;place-items:center;
-    width:54px;height:54px;padding:0;border-radius:50%;cursor:pointer;border:1px solid #c79426;
-    background:linear-gradient(180deg,rgba(255,255,255,.3),transparent 55%),linear-gradient(180deg,#f7db8d,#E8B84B 45%,#c79426);
-    box-shadow:0 6px 20px rgba(0,0,0,.5);color:#3a2800}
-  #np-fab-previo svg{width:23px;height:23px}
-  #np-fab-previo:active{transform:translateY(2px)}
-  @media (prefers-reduced-motion:no-preference){
-    #np-fab-previo{animation:npLat 3.4s ease-in-out 1.5s infinite}
-  }
-  @keyframes npLat{0%,100%{box-shadow:0 6px 20px rgba(0,0,0,.5),0 0 0 0 rgba(232,184,75,.45)}
-    50%{box-shadow:0 6px 20px rgba(0,0,0,.5),0 0 0 12px rgba(232,184,75,0)}}
-</style>
-<button id="np-fab-previo" aria-label="Abrir el asistente" type="button">
-  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-    <path d="M20 2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4v3.2a.8.8 0 0 0 1.3.62L13.5 18H20a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-    <circle cx="8" cy="10" r="1.15" fill="currentColor"/><circle cx="12" cy="10" r="1.15" fill="currentColor"/><circle cx="16" cy="10" r="1.15" fill="currentColor"/>
-  </svg>
-</button>
-<script>
-(function () {
-  var puesto = false;
-  function cargar() {
-    if (puesto) return; puesto = true;
-    // Cargar las DOS bases (español e inglés) y luego el motor nuevo, igual
-    // que app.html. Antes la portada solo cargaba la española y el motor
-    // viejo, por eso el chatbot siempre hablaba español aquí.
-    var kbEs = document.createElement('script');
-    kbEs.src = 'assets/js/asistente/conocimiento.js?v=125';
-    kbEs.onload = function () {
-      var kbEn = document.createElement('script');
-      kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=1';
-      var arrancarMotor = function () {
-        var m = document.createElement('script');
-        m.src = 'assets/js/asistente/motor.js?v=130';
-        document.body.appendChild(m);
-      };
-      kbEn.onload = arrancarMotor;
-      kbEn.onerror = arrancarMotor;
-      document.body.appendChild(kbEn);
-    };
-    document.body.appendChild(kbEs);
-  }
-  var previo = document.getElementById('np-fab-previo');
-  previo.addEventListener('click', function () {
-    previo.style.opacity = '.5';
-    cargar();
-    var t = setInterval(function () {
-      var real = document.getElementById('npFab');
-      if (!real) return;
-      clearInterval(t); previo.remove(); real.click();
-    }, 120);
-    setTimeout(function () { clearInterval(t); previo.style.opacity = ''; }, 12000);
-  });
-  ['pointerdown','keydown','touchstart'].forEach(function (ev) {
-    window.addEventListener(ev, cargar, { once: true, passive: true });
-  });
-  window.addEventListener('load', function () { setTimeout(cargar, 2000); });
-})();
-</script>
-
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     LA APP, AQUÍ FUERA
-     Swap, Market P2P, Liquidity, Tools, Academia y Perfil se
-     abren EN ESTA PÁGINA, con los mismos módulos que ya funcionan dentro.
-     No se ha copiado ni reescrito nada: se importan tal cual.
-
-     POR QUÉ FUNCIONA
-     Ninguno de esos módulos necesita el contenedor de los bots: cada uno
-     inyecta sus propios estilos y cuelga su ventana de <body>. Lo único
-     que les faltaba aquí era la hoja base (gridbot/estilos.js), que va
-     colgada de #colmena-app; por eso a <body> se le pone ese id. Esa hoja
-     solo define variables de color y toca <input> y <select>, así que no
-     puede desordenar la portada, que además vive aislada dentro de #pt.
-
-     SI ALGO FALLA
-     Cada enlace conserva su href real a app.html?abrir=…, así que si un
-     módulo no carga el visitante acaba en la misma sección de siempre.
-     La sección de los bots no se toca: sigue viviendo en app.html.
-     ══════════════════════════════════════════════════════════════════════ -->
-<script type="module" src="assets/portada/portada.js?v=229"></script>
-<script src="assets/js/contracts-data.js?v=10"></script>
-<script src="assets/js/contracts-view.js?v=9"></script>
-<script>try{if(window.CCView){
-  var _l=document.getElementById("ccx-list"); if(_l) CCView.renderList(_l);
-  var _cb=document.getElementById("ccx-commit-badge"); if(_cb) CCView.mountCommit(_cb,"gold");
-  var _n=document.getElementById("ccx-net"), _sec=document.getElementById("verificable");
-  if(_n){
-    if(!("IntersectionObserver" in window)){ CCView.renderBrain(_n); }
-    else{ var _go=false, _io=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting&&!_go){_go=true;CCView.renderBrain(_n);_io.disconnect();}});},{threshold:0.15}); _io.observe(_sec||_n); }
-  }
-}}catch(e){console.warn("contracts view:",e);}</script>
-
-<!-- Aviso de riesgo (general), sale una vez a cada visitante -->
-<script src="assets/js/disclaimer.js?v=5"></script>
-
 
 </body>
 </html>
