@@ -16,10 +16,10 @@ export class Weapons
 
         this.cooldown = 0
         this.shootInterval = 0.32          // seg entre disparos
-        this.projectileSpeed = 28
+        this.projectileSpeed = 32
         this.projectileLife = 1.8          // seg de vuelo maximo
-        this.explodeRadius = 5
-        this.explodeStrength = 5
+        this.explodeRadius = 6
+        this.explodeStrength = 8           // potente: mueve bancos, cajas, letras y carros
         this.projectiles = []
         this._side = 1                     // alterna luz izquierda/derecha
 
@@ -36,7 +36,7 @@ export class Weapons
     {
         try {
             this.game.inputs.addActions([
-                { name: 'shoot', categories: [ 'wandering' ], keys: [ 'Keyboard.KeyE', 'Keyboard.KeyL', 'Gamepad.cross' ] },
+                { name: 'shoot', categories: [ 'wandering', 'racing' ], keys: [ 'Keyboard.KeyQ', 'Gamepad.r2' ] },
             ])
         } catch(e) {}
     }
@@ -99,7 +99,6 @@ export class Weapons
             mass: 0.4,
             linearDamping: 0,
             angularDamping: 0,
-            contactThreshold: 0.1,   // detona con cualquier contacto, no solo golpes fuertes
             colliders: [ { shape: 'ball', parameters: [ 0.26 ], category: 'object' } ],
             onCollision: () => { if(proj.arm <= 0) proj.hit = true }
         })
