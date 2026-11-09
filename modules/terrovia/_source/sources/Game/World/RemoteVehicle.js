@@ -4,12 +4,13 @@ import { Game } from '../Game.js'
 /**
  * DecFreedom - Carro de OTRO jugador (multijugador P2P).
  *
- * No tiene fisica: es visual puro, movido por los datos que llegan por la red
- * (posicion + rotacion), interpolados para que se vea fluido.
+ * Visual: clono el chasis ya montado del carro local y le cambio la pintura al color
+ * del jugador (reuso la paleta por jugador de VisualVehicle).
  *
- * Para que se vea identico al carro base, CLONO el chasis ya montado del carro local
- * (que ya tiene sus materiales), y solo le cambio la pintura al color del jugador
- * (reusando la paleta de colores por jugador que ya existe en VisualVehicle).
+ * Fisica: un cuerpo KINEMATICO (caja) que muevo a la posicion de red cada frame. Asi
+ * el carro remoto es SOLIDO en tu mundo: tus disparos le pegan y el empuja el entorno
+ * (letras, cajas) por donde pasa. No lo mueven las fuerzas (su movimiento manda desde
+ * su propio navegador), solo la red.
  */
 export class RemoteVehicle
 {
@@ -18,10 +19,10 @@ export class RemoteVehicle
         this.game = Game.getInstance()
         this.id = id
 
+        // ---- visual ----
         const vv = this.game.world.visualVehicle
         this.group = vv.parts.chassis.clone(true)
 
-        // color del jugador
         const paint = vv.paints.choices['player_' + colorName] || vv.paints.choices.player_blue || vv.paints.choices.red
         if(paint)
         {
@@ -32,10 +33,18 @@ export class RemoteVehicle
             })
         }
 
-        // arranca fuera de vista hasta el primer dato
         this.group.position.set(0, -200, 0)
         this.game.scene.add(this.group)
 
+        // ---- fisica (cuerpo kinematico) ----
+        this.obj = this.game.objects.add(null, {
+            type: 'kinematicPositionBased',
+            position: { x: 0, y: -200, z: 0 },
+            colliders: [ { shape: 'cuboid', parameters: [ 1.3, 0.55, 0.85 ], category: 'object' } ]
+        })
+        this.body = this.obj?.physical?.body || null
+
+        // ---- interpolacion ----
         this.pos = new THREE.Vector3(0, -200, 0)
         this.quat = new THREE.Quaternion()
         this.targetPos = this.pos.clone()
@@ -50,7 +59,6 @@ export class RemoteVehicle
         this.targetQuat.set(q[0], q[1], q[2], q[3])
         this.lastUpdate = this.game.ticker.elapsed
 
-        // el primer dato se aplica de golpe (sin interpolar desde fuera de vista)
         if(!this.hasTarget)
         {
             this.pos.copy(this.targetPos)
@@ -67,12 +75,23 @@ export class RemoteVehicle
         const k = Math.min(1, delta * 12)
         this.pos.lerp(this.targetPos, k)
         this.quat.slerp(this.targetQuat, k)
+
         this.group.position.copy(this.pos)
         this.group.quaternion.copy(this.quat)
+
+        if(this.body)
+        {
+            this.body.setNextKinematicTranslation({ x: this.pos.x, y: this.pos.y, z: this.pos.z })
+            this.body.setNextKinematicRotation({ x: this.quat.x, y: this.quat.y, z: this.quat.z, w: this.quat.w })
+        }
     }
 
     destroy()
     {
         this.group.removeFromParent()
+        if(this.obj)
+        {
+            try { this.game.objects.disable(this.obj) } catch(e) {}
+        }
     }
 }

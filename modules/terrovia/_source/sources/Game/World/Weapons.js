@@ -246,8 +246,38 @@ export class Weapons
         const carVel = this.game.physicalVehicle.chassis?.physical?.body?.linvel?.() || { x: 0, z: 0 }
         const vel = new THREE.Vector3(fc.dir.x * speed + carVel.x * 0.3, 0, fc.dir.z * speed + carVel.z * 0.3)
         const dir = vel.clone().normalize()
+        const finalSpeed = vel.length()
 
-        this.spawnProjectile(fc.origin, dir, vel.length(), { radius, fireRadius, explodeRadius, charged: t > 0.001 })
+        // mi disparo excluye MI carro (para no detonar sobre mi mismo)
+        const myBody = this.game.physicalVehicle?.chassis?.physical?.body
+        this.spawnProjectile(fc.origin, dir, finalSpeed, { radius, fireRadius, explodeRadius, charged: t > 0.001, excludeBody: myBody })
+
+        // avisar a los demas jugadores para que vean esta Biyudama
+        const mp = this.game.world.multiplayer
+        if(mp && mp.enabled)
+        {
+            const r2 = (n) => Math.round(n * 100) / 100
+            mp.sendShot({
+                o: [ r2(fc.origin.x), r2(fc.origin.y), r2(fc.origin.z) ],
+                d: [ r2(dir.x), r2(dir.y), r2(dir.z) ],
+                s: r2(finalSpeed), r: r2(radius), fr: r2(fireRadius), er: r2(explodeRadius), c: t > 0.001 ? 1 : 0
+            })
+        }
+    }
+
+    // disparo que llega de OTRO jugador: se recrea igual, pero excluye el carro remoto que lo tiro
+    spawnRemoteShot(data, excludeBody)
+    {
+        if(!data || !data.o || !data.d) return
+        const origin = new THREE.Vector3(data.o[0], data.o[1], data.o[2])
+        const dir = new THREE.Vector3(data.d[0], data.d[1], data.d[2])
+        this.spawnProjectile(origin, dir, data.s || this.projectileSpeed, {
+            radius: data.r || this.normal.radius,
+            fireRadius: data.fr || this.normal.fireRadius,
+            explodeRadius: data.er || this.normal.explodeRadius,
+            charged: !!data.c,
+            excludeBody
+        })
     }
 
     spawnProjectile(origin, dir, speed, opts)
@@ -279,18 +309,18 @@ export class Weapons
             fireRadius: opts.fireRadius,
             explodeRadius: opts.explodeRadius,
             charged: opts.charged,
+            excludeBody: opts.excludeBody || null,
             core,
             traveled: 0,
             group
         })
     }
 
-    castSegment(from, dir, distance)
+    castSegment(from, dir, distance, excludeBody)
     {
         const world = this.game.physics.world
-        const shooterBody = this.game.physicalVehicle?.chassis?.physical?.body
         const ray = new this.game.RAPIER.Ray({ x: from.x, y: from.y, z: from.z }, { x: dir.x, y: dir.y, z: dir.z })
-        const hit = world.castRay(ray, distance, true, undefined, undefined, undefined, shooterBody, undefined)
+        const hit = world.castRay(ray, distance, true, undefined, undefined, undefined, excludeBody || undefined, undefined)
         if(!hit) return null
         const toi = typeof hit.timeOfImpact === 'number' ? hit.timeOfImpact : hit.toi
         if(typeof toi !== 'number' || toi > distance) return null
@@ -352,7 +382,7 @@ export class Weapons
             const step = proj.speed * delta
             const reach = step + proj.radius
 
-            const toi = this.castSegment(proj.pos, proj.dir, reach)
+            const toi = this.castSegment(proj.pos, proj.dir, reach, proj.excludeBody)
             if(toi !== null)
             {
                 const at = proj.pos.clone().addScaledVector(proj.dir, Math.max(0, toi - proj.radius * 0.5))

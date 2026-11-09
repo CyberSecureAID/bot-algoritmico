@@ -52,8 +52,21 @@ export class Multiplayer
             this.room = joinRoom(config, roomName)
             this.selfId = selfId
 
+            // color consistente: me veo con MI color (derivado de mi id), el mismo con
+            // el que me ven los demas. Asi los colores coinciden en todos los navegadores.
+            try
+            {
+                const myColor = this.game.world.visualVehicle.colorForPlayer(selfId)
+                this.game.world.visualVehicle.paints.changeTo(myColor)
+            }
+            catch(e) {}
+
             this.moveAction = this.room.makeAction('mv')
             this.moveAction.onMessage = (data, ctx) => this.onRemoteMove(data, ctx && ctx.peerId)
+
+            // disparos sincronizados: todos ven las Biyudamas de todos
+            this.shotAction = this.room.makeAction('sh')
+            this.shotAction.onMessage = (data, ctx) => this.onRemoteShot(data, ctx && ctx.peerId)
 
             this.room.onPeerJoin = () => {}                       // el carro se crea al llegar su primer 'mv'
             this.room.onPeerLeave = (peerId) => this.removeRemote(peerId)
@@ -90,6 +103,25 @@ export class Multiplayer
             remote.destroy()
             this.remotes.delete(peerId)
         }
+    }
+
+    // llamado por Weapons al disparar: avisa a los demas
+    sendShot(params)
+    {
+        if(!this.enabled || !this.shotAction)
+            return
+        try { this.shotAction.send(params) } catch(e) {}
+    }
+
+    // llega un disparo de otro jugador: lo recreamos en nuestro mundo
+    onRemoteShot(data, peerId)
+    {
+        if(!data || !peerId)
+            return
+        const remote = this.remotes.get(peerId)
+        const excludeBody = remote ? remote.body : null
+        if(this.game.world.weapons)
+            this.game.world.weapons.spawnRemoteShot(data, excludeBody)
     }
 
     update()
