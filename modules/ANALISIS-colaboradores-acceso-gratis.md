@@ -14,14 +14,14 @@ Un rol llamado **colaborador**: wallets que pueden usar **todos los servicios de
 
 Son las personas que trabajan revisando la plataforma: entran a Análisis de forma constante, prueban las herramientas, buscan fallos y reportan problemas. Como es un trabajo continuo, **no se les cobra mensualidad** por los servicios mientras lo hacen. El owner es una sola persona y necesita un equipo revisando; este rol es la forma de darles acceso sin regalar el control del contrato ni tener que estar gestionándolos uno por uno.
 
-## 3. Las tres wallets por defecto
+## 3. Las 4 wallets por defecto
 
 Van **escritas en el propio código del contrato** y quedan activas **desde el primer bloque**, en el mismo momento del despliegue, sin que nadie tenga que darlas de alta a mano:
 
 ```
 0xd5612c29d030dc4E03D0C958a4Fff08102dA9445
 0x5eE98F3Efc048A653b2B5b0562A9126C0f340F8a
-0x223Df56FaACE1334F0CbC26c49005931542BDFb9
+0x223Df56FaACE1334F0CbC26c49005931542BDFb9 y 0xa232B017b19D0248cdaE37C2Ca6EDE4fd9EAdC6f
 ```
 
 ## 4. Qué puede y qué no puede un colaborador
@@ -51,7 +51,7 @@ Se añaden a AnálisisPagos tres piezas: las tres wallets fijas, un registro par
 //    no dependen de que nadie las registre a mano).
 address public constant COLAB_1 = 0xd5612c29d030dc4E03D0C958a4Fff08102dA9445;
 address public constant COLAB_2 = 0x5eE98F3Efc048A653b2B5b0562A9126C0f340F8a;
-address public constant COLAB_3 = 0x223Df56FaACE1334F0CbC26c49005931542BDFb9;
+address public constant COLAB_3 = 0x223Df56FaACE1334F0CbC26c49005931542BDFb9; y address public constant COLAB_4 = 0xa232B017b19D0248cdaE37C2Ca6EDE4fd9EAdC6f
 
 // 2) Las que el owner agregue más adelante.
 mapping(address => bool) public colaboradorExtra;
@@ -60,13 +60,13 @@ event ColaboradorCambiado(address indexed wallet, bool permitido);
 
 // 3) ¿Es colaborador? (las tres fijas o cualquiera agregada después)
 function esColaborador(address w) public view returns (bool) {
-    return w == COLAB_1 || w == COLAB_2 || w == COLAB_3 || colaboradorExtra[w];
+    return w == COLAB_1 || w == COLAB_2 || w == COLAB_3 || w == COLAB_4 || colaboradorExtra[w];
 }
 
 // 4) Agregar o quitar colaboradores. Solo owner/admin. Las tres fijas no se pueden quitar.
 function setColaborador(address w, bool permitido) external soloAdmin {
     require(w != address(0), "wallet vacia");
-    require(w != COLAB_1 && w != COLAB_2 && w != COLAB_3, "fija: no se puede quitar");
+    require(w != COLAB_1 && w != COLAB_2 && w != COLAB_3, && w != COLAB_4, "fija: no se puede quitar");
     colaboradorExtra[w] = permitido;
     emit ColaboradorCambiado(w, permitido);
 }
@@ -98,4 +98,4 @@ En el catálogo de Análisis, cuando la wallet conectada es colaboradora (se lee
 - Se integra en el contrato **AnálisisPagos**; es una capa de permisos, no un contrato nuevo.
 
 **Funciones y datos que se añaden:**
-`COLAB_1/2/3` (constantes) · `colaboradorExtra` (mapping) · `esColaborador(address) view` · `setColaborador(address,bool) soloAdmin` · evento `ColaboradorCambiado` · enganche en `tieneAcceso`.
+`COLAB_1/2/3/4` (constantes) · `colaboradorExtra` (mapping) · `esColaborador(address) view` · `setColaborador(address,bool) soloAdmin` · evento `ColaboradorCambiado` · enganche en `tieneAcceso`.
