@@ -226,7 +226,7 @@ export class Player
             { name: 'right',                 categories: [ 'wandering', 'racing', 'cinematic' ], keys: [ 'Keyboard.ArrowRight', 'Keyboard.KeyD', 'Gamepad.right' ] },
             { name: 'backward',              categories: [ 'wandering', 'racing', 'cinematic' ], keys: [ 'Keyboard.ArrowDown', 'Keyboard.KeyS', 'Gamepad.down' ] },
             { name: 'left',                  categories: [ 'wandering', 'racing', 'cinematic' ], keys: [ 'Keyboard.ArrowLeft', 'Keyboard.KeyA', 'Gamepad.left' ] },
-            { name: 'boost',                 categories: [ 'wandering', 'racing'              ], keys: [ 'Keyboard.ShiftLeft', 'Keyboard.ShiftRight', 'Gamepad.circle' ] },
+            { name: 'boost',                 categories: [ 'wandering', 'racing'              ], keys: [ 'Keyboard.KeyE', 'Keyboard.ShiftLeft', 'Keyboard.ShiftRight', 'Gamepad.circle' ] },
             { name: 'brake',                 categories: [ 'wandering', 'racing'              ], keys: [ 'Keyboard.KeyB', 'Keyboard.ControlLeft', 'Gamepad.square' ] },
             { name: 'respawn',               categories: [ 'wandering',                       ], keys: [ 'Keyboard.KeyR', 'Gamepad.select' ] },
             { name: 'suspensions',           categories: [ 'wandering', 'racing'              ], keys: [ 'Keyboard.Numpad5', 'Keyboard.Space', 'Gamepad.triangle' ] },
@@ -587,6 +587,10 @@ export class Player
         {
             this.accelerating = touch.accelerate ? 1 : (touch.throttle > 0.05 ? touch.throttle : 0)
             this.steering = Math.abs(touch.steer) > 0.05 ? - touch.steer : 0
+
+            // el acelerador movil tambien da el efecto boost + velocidad real
+            if(touch.accelerate)
+                this.boosting = 1
 
             if(this.accelerating !== 0 && !this.game.view.focusPoint.isTracking)
                 this.game.view.focusPoint.isTracking = true
