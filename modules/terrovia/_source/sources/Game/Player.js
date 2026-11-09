@@ -580,9 +580,21 @@ export class Player
             this.steering = - this.game.inputs.gamepad.joysticks.left.safeX
 
         /**
+         * Controles tactiles moviles (joystick + acelerador) - prioridad sobre el nipple
+         */
+        const touch = this.game.touchControls
+        if(touch && touch.active)
+        {
+            this.accelerating = touch.accelerate ? 1 : (touch.throttle > 0.05 ? touch.throttle : 0)
+            this.steering = Math.abs(touch.steer) > 0.05 ? - touch.steer : 0
+
+            if(this.accelerating !== 0 && !this.game.view.focusPoint.isTracking)
+                this.game.view.focusPoint.isTracking = true
+        }
+        /**
          * Nipple
          */
-        if(this.game.inputs.nipple.active && this.game.inputs.nipple.progress > 0)
+        else if(this.game.inputs.nipple.active && this.game.inputs.nipple.progress > 0)
         {
             if(!this.game.view.focusPoint.isTracking)
             {
