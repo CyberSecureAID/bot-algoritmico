@@ -80,6 +80,10 @@ export class Options
     setServer()
     {
         const element = this.element.querySelector('.js-server')
+        // DecFreedom: la opcion "Server" se quito del menu (no hay servidor).
+        // Si no existe el elemento, no hacemos nada (evita romper el arranque).
+        if(!element)
+            return
         const text = element.querySelector('span')
         const tooltip = element.querySelector('.js-tooltip')
         
