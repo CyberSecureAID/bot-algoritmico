@@ -103,17 +103,44 @@ export class Reveal
                 }
                 else
                 {
-                    // DecFreedom: pantalla de seleccion de personaje antes de abrir el mundo.
-                    // Al tocar un personaje se entra al mundo con el.
+                    // Next function
                     const next = () =>
                     {
                         this.updateStep(1)
+                        this.game.inputs.events.off('introStart', inputCallback)
+                        this.game.rayCursor.removeIntersect(intersect)
                     }
 
-                    if(this.game.world.characters)
-                        this.game.world.characters.startSelection(next)
-                    else
+                    // Input callback
+                    const inputCallback = () =>
+                    {
                         next()
+                    }
+
+                    // Intsect
+                    const position = this.position.clone()
+                    position.y = 0
+
+                    const intersect = this.game.rayCursor.addIntersect({
+                        active: true,
+                        shape: new THREE.Sphere(position, 3.5),
+                        onClick: next,
+                        onEnter: () =>
+                        {
+                            gsap.to(this, { intensityMultiplier: 1.22, duration: 0.2, overwrite: true })
+                        },
+                        onLeave: () =>
+                        {
+                            gsap.to(this, { intensityMultiplier: 1, duration: 0.2, overwrite: true })
+                        }
+                    })
+
+                    // Inputs (for gamepad and keyboard)
+                    this.game.inputs.addActions([
+                        { name: 'introStart', categories: [ 'intro' ], keys: [ 'Gamepad.cross', 'Keyboard.Enter', 'Keyboard.ArrowUp', 'Keyboard.ArrowDown', 'Keyboard.KeyW', 'Keyboard.KeyD' ] },
+                    ])
+
+                    this.game.inputs.events.on('introStart', inputCallback)
                 }
             })
         }
