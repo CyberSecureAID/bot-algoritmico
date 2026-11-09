@@ -2,12 +2,16 @@ import { Game } from '../Game.js'
 
 /**
  * DecFreedom - Zonas de velocidad INVISIBLES.
- * Cuando el carro pasa por encima de una zona, acelera un poco (turbo moderado)
- * reusando el turbo real del carro (player.boosting). NO pintan nada en el piso.
+ * Cuando el carro pasa por una zona, acelera de verdad (reusa el turbo del carro,
+ * player.boosting) y ademas sale el efecto bonito de boost. NO pintan nada en el piso.
  *
- * Estan ancladas a rectas reales del circuito (posiciones de checkpoints, siempre
- * sobre el asfalto), lejos de los obstaculos. Son faciles de mover: edita this.zones
- * (x, z en coordenadas del mundo; radius = radio de la zona).
+ * IMPORTANTE (fix): este update corre en el tick 1, DESPUES de Player.updatePrePhysics
+ * (que resetea boosting) y ANTES de PhysicsVehicle.updatePrePhysics (tick 2, que lee
+ * boosting para calcular la fuerza del motor). Antes corria en el tick 2 y llegaba
+ * tarde: se veia el efecto pero no aceleraba.
+ *
+ * Posiciones: las marcadas por el usuario en el circuito. Faciles de mover: edita
+ * this.zones (x, z del mundo; radius = radio).
  */
 export class BoostZones
 {
@@ -15,11 +19,13 @@ export class BoostZones
     {
         this.game = Game.getInstance()
 
-        this.strength = 0.5                 // turbo moderado (0 = nada, 1 = turbo completo)
+        this.strength = 0.6                  // turbo moderado pero real (0 = nada, 1 = completo)
         this.zones = [
-            { x:  37.06, z: -47.82, radius: 8 },   // recta derecha (salida de curva)
-            { x: -61.81, z: -27.47, radius: 8 },   // recta izquierda
-            { x: -56.05, z:  70.52, radius: 8 },   // recta de abajo (salida de la horquilla)
+            { x: -15.4, z: -65.7, radius: 10 },
+            { x: -38.5, z: -53.8, radius: 10 },
+            { x: -27.6, z: -27.0, radius: 10 },
+            { x: -38.5, z:  -4.2, radius: 10 },
+            { x: -39.3, z:  67.0, radius: 10 },
         ]
         for(const z of this.zones)
             z.r2 = z.radius * z.radius
@@ -27,8 +33,9 @@ export class BoostZones
         this.active = false
 
         this.update = this.update.bind(this)
-        // tick 2: despues de player.updatePrePhysics (1) y antes de la fisica (3)
-        this.game.ticker.events.on('tick', this.update, 2)
+        // tick 1: despues de Player.updatePrePhysics (resetea boosting) y antes del
+        // vehiculo (tick 2, que lo lee). Player se registra antes, asi que corre primero.
+        this.game.ticker.events.on('tick', this.update, 1)
     }
 
     update()
