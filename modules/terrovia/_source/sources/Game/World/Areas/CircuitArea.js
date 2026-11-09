@@ -1648,14 +1648,13 @@ export class CircuitArea extends Area
                     checkpoint.reach()
             }
 
-            // Obstacles
+            // Obstacles: se quedan FIJOS en su posicion por default (no oscilan).
+            // Antes se movian en Z con un seno y comprimian el carro contra las
+            // vallas de carrera (lo botaban al cielo, lo hundian o lo sacaban por
+            // un hueco y crasheaba el juego). Ahora quedan clavados en basePosition.
             for(const obstacle of this.obstacles.items)
             {
-                const newPosition = obstacle.basePosition.clone()
-                const osciliation = Math.sin(this.timer.elapsedTime * 1.25 + obstacle.osciliationOffset) * 5
-                newPosition.z += osciliation
-                
-                obstacle.object.physical.body.setNextKinematicTranslation(newPosition)
+                obstacle.object.physical.body.setNextKinematicTranslation(obstacle.basePosition)
                 obstacle.object.needsUpdate = true
             }
 
