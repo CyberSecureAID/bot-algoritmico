@@ -30,6 +30,7 @@ import { Benches } from './Benches.js'
 import { Scenery } from './Scenery.js'
 import { Weapons } from './Weapons.js'
 import { BoostZones } from './BoostZones.js'
+import { TouchControls } from './TouchControls.js'
 
 export class World
 {
@@ -82,6 +83,7 @@ export class World
             this.areas = new Areas()
             this.weapons = new Weapons()
             this.boostZones = new BoostZones()
+            this.touchControls = new TouchControls()
         }
         else if(step === 2)
         {
