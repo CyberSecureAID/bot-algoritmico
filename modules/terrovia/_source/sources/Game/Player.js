@@ -472,15 +472,7 @@ export class Player
 
     getCarSpawn(respawn)
     {
-        // Desplaza SOLO el spawn de la matica (landing) a la derecha, junto al kiosco del
-        // mapa. Los demas respawns del mundo no se tocan.
-        if(respawn && respawn.name === 'landing')
-        {
-            return {
-                position: new THREE.Vector3(respawn.position.x + 5.5, respawn.position.y, respawn.position.z - 2.8),
-                rotation: respawn.rotation
-            }
-        }
+        // El carro aparece en su punto de respawn ORIGINAL del juego base (sin desplazar).
         return respawn
     }
 
@@ -624,7 +616,7 @@ export class Player
         // Position
         this.position.copy(this.game.physicalVehicle.position)
         this.position2 = new THREE.Vector2(this.position.x, this.position.z)
-        
+
         // View > Focus point
         this.game.view.focusPoint.trackedPosition.copy(this.position)
 
