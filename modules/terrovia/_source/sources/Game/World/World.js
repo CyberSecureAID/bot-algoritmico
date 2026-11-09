@@ -29,6 +29,7 @@ import { Fences } from './Fences.js'
 import { Benches } from './Benches.js'
 import { Scenery } from './Scenery.js'
 import { Weapons } from './Weapons.js'
+import { BoostZones } from './BoostZones.js'
 
 export class World
 {
@@ -80,6 +81,7 @@ export class World
             this.scenery = new Scenery()
             this.areas = new Areas()
             this.weapons = new Weapons()
+            this.boostZones = new BoostZones()
         }
         else if(step === 2)
         {
