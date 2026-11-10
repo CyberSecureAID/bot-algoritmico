@@ -6,16 +6,20 @@ import { Game } from '../Game.js'
 /**
  * DecFreedom - Jefe (Boss) con motor de combate.
  *
- * Monstruo 1 (Warrok): aparece en el altar (pentagrama). Protege el lugar: si te acercas
- * y te ve (distancia + linea de vista; esconderte tras las rocas rompe el contacto), sale
- * y pelea; si te alejas o lo pierdes, regresa y se calma. NO te persigue por todo el mapa.
+ * Monstruo 1 (Warrok): guarda el altar (pentagrama). Es un DEMONIO magico: ataca con
+ * hechizos, biyudamas de fuego y una onda expansiva; no con balas.
  *
- * Es KINEMATICO y con correa (leash): yo controlo su posicion sobre el suelo, asi nunca se
- * mete bajo el piso ni se traba. Sus proyectiles son el MISMO fuego rojo/negro del
- * pentagrama. Al pelear, el mapa se hace de noche y caen rayos; al calmarse, vuelve el dia.
+ * Comportamiento:
+ * - En REPOSO tiene vision FRONTAL (un cono). Si te acercas por delante y te ve, despierta.
+ *   Si lo ves de espalda, el no te ve: no pasa nada y NO se hace de noche.
+ * - Si recibe DANO desde cualquier parte del mapa estando en reposo, despierta y va a
+ *   CAZAR al atacante, agresivo, siguiendolo aunque se mueva, hasta alcanzarlo.
+ * - Donde te alcanza EMPIEZA la pelea: ahi se hace de noche, caen rayos y encadena combos
+ *   aleatorios + a veces se hace el muerto. Si escapas de ese lugar, se calma y regresa,
+ *   y vuelve el dia.
  *
- * Vida: recibe tus Biyudamas (animaciones de golpe) y muere. Pensado para que ganarle
- * cueste. El combate no toca la Biyudama del jugador (Weapons) ni su fisica.
+ * Es KINEMATICO y sigue el suelo con un rayo hacia abajo: nunca se mete bajo el piso ni se
+ * traba. Sus proyectiles reusan la explosion del juego. No toca la Biyudama del jugador.
  */
 export class Boss
 {
@@ -24,8 +28,7 @@ export class Boss
         this.game = Game.getInstance()
 
         this.placed = false
-        this.state = 'guard'            // guard | emerge | fight | retreat | dead
-        this.scale = 2.2
+        this.state = 'guard'            // guard | hunt | fight | retreat | dead
         this.mixer = null
         this.actions = {}
         this.current = null
@@ -42,23 +45,29 @@ export class Boss
         this.feignTimer = 0
         this.feignCooldown = 6
 
-        // deteccion / correa
-        this.detectRadius = 24
+        // deteccion / vision / caza / correa
+        this.detectRadius = 22
+        this.visionConeCos = Math.cos(THREE.MathUtils.degToRad(70))   // cono frontal +-70 grados
+        this.huntSpeed = 10
+        this.walkSpeed = 6
+        this.fightRange = 9
         this.loseRadius = 34
-        this.emergeDist = 6
-        this.loseTimer = 0
         this.loseAfter = 3.5
-
-        // ataques
-        this.attackCooldown = 1.2
-        this.attackTimer = 1.5
+        this.loseTimer = 0
+        this.huntTimer = 0
+        this.huntGiveup = 30            // si no lo alcanza en este tiempo, se calma
+        this.homeMaxRange = 170         // si el jugador se va larguisimo, se calma
 
         // proyectiles del jefe
         this.bossProjectiles = []
         this.sphere = new THREE.SphereGeometry(1, 20, 20)
 
-        // movimiento controlado (lerp entre puntos, sin fisica)
+        // movimiento controlado (lerp entre puntos, para los pasos de combo)
         this.move = null
+
+        // onda expansiva (energia que se absorbe al centro)
+        this.chargeGroup = null
+        this.chargeParts = []
 
         // atmosfera / rayos
         this.battleOn = false
@@ -78,7 +87,6 @@ export class Boss
 
         const pos = altar.position
 
-        // visual: escalar a una altura objetivo (robusto ante las unidades del modelo)
         this.model = gltf.scene
         const box = new THREE.Box3().setFromObject(this.model)
         const size = box.getSize(new THREE.Vector3())
@@ -89,8 +97,11 @@ export class Boss
 
         this.model.scale.setScalar(s)
         this.home = new THREE.Vector3(pos.x, pos.y - box.min.y * s, pos.z)
+        this.anchor = this.home.clone()                       // punto de correa (en reposo = casa)
         this.model.position.copy(this.home)
-        this.facingOffset = 0                 // mira de FRENTE (giro de 180 respecto a lo que estaba)
+        this.facingOffset = 0                                 // mira de FRENTE
+        this.baseYaw = Math.atan2(-this.home.x, -this.home.z) // mira hacia el centro del mapa en reposo
+        this.model.rotation.y = this.baseYaw
         this.model.traverse((c) =>
         {
             if(c.isMesh || c.isSkinnedMesh)
@@ -101,13 +112,29 @@ export class Boss
         })
         this.game.scene.add(this.model)
 
-        // animaciones
+        // quitar la DERIVA HORIZONTAL de la raiz (root motion) para animar EN EL SITIO.
+        // Asi el codigo controla la posicion y no hay saltos/embestidas que "regresan".
+        // Se conserva la Y (el arco del salto / el bob), solo se anula x/z.
+        for(const clip of gltf.animations)
+            for(const track of clip.tracks)
+                if(/hips\.position$/i.test(track.name))
+                {
+                    const v = track.values
+                    for(let i = 0; i < v.length; i += 3) { v[i] = 0; v[i + 2] = 0 }
+                }
+
         this.mixer = new THREE.AnimationMixer(this.model)
         for(const clip of gltf.animations)
             this.actions[clip.name] = this.mixer.clipAction(clip)
         this.play('idle')
 
-        // fisica KINEMATICA (solido: los disparos le pegan, y la puedo mover)
+        // huesos de las manos (para que las biyudamas salgan de las manos)
+        this.handR = this.model.getObjectByName('mixamorig:RightHand') || this.model.getObjectByName('mixamorig:RightHandMiddle1')
+        this.handL = this.model.getObjectByName('mixamorig:LeftHand') || this.model.getObjectByName('mixamorig:LeftHandMiddle1')
+
+        // barra de vida flotante (feedback de que le estas dando)
+        this.buildHealthBar()
+
         const halfW = Math.max(size.x, size.z) * s * 0.3
         this.obj = this.game.objects.add(null, {
             type: 'kinematicPositionBased',
@@ -175,19 +202,49 @@ export class Boss
         if(dx * dx + dz * dz < 0.0001)
             return
         const wanted = Math.atan2(dx, dz) + this.facingOffset
-        let cur = this.model.rotation.y
+        const cur = this.model.rotation.y
         let diff = wanted - cur
         while(diff > Math.PI) diff -= Math.PI * 2
         while(diff < -Math.PI) diff += Math.PI * 2
         this.model.rotation.y = cur + diff * Math.min(1, delta * speed)
     }
 
-    distanceToPlayerFromHome()
+    // mueve al jefe hacia un punto sobre el suelo; devuelve la distancia que falta
+    moveToward(target, speed, delta)
+    {
+        const dx = target.x - this.model.position.x
+        const dz = target.z - this.model.position.z
+        const d = Math.sqrt(dx * dx + dz * dz)
+        if(d < 0.001)
+            return 0
+        const stepLen = Math.min(d, speed * delta)
+        const nx = this.model.position.x + (dx / d) * stepLen
+        const nz = this.model.position.z + (dz / d) * stepLen
+        const ny = this.groundY(nx, nz, this.model.position.y)
+        this.model.position.set(nx, ny, nz)
+        return d - stepLen
+    }
+
+    // ve al jugador solo si esta cerca Y dentro de su cono frontal (de espalda no lo ve)
+    seesPlayer()
     {
         const p = this.playerPos
-        const dx = p.x - this.home.x
-        const dz = p.z - this.home.z
-        return Math.sqrt(dx * dx + dz * dz)
+        const dx = p.x - this.model.position.x
+        const dz = p.z - this.model.position.z
+        const d = Math.sqrt(dx * dx + dz * dz)
+        if(d > this.detectRadius)
+            return false
+        if(d < 4)
+            return true                       // pegado encima: lo siente
+        const yaw = this.model.rotation.y - this.facingOffset
+        const fwdx = Math.sin(yaw), fwdz = Math.cos(yaw)
+        return (dx * fwdx + dz * fwdz) / d > this.visionConeCos
+    }
+
+    playerDistTo(point)
+    {
+        const p = this.playerPos
+        return Math.sqrt((p.x - point.x) ** 2 + (p.z - point.z) ** 2)
     }
 
     // linea de vista: si hay algo solido entre el jefe y el jugador, no lo ve
@@ -207,7 +264,7 @@ export class Boss
             if(!hit)
                 return false
             const toi = hit.timeOfImpact ?? hit.toi
-            return typeof toi === 'number' && toi < dist - 2.0   // algo solido en medio
+            return typeof toi === 'number' && toi < dist - 2.0
         }
         catch(e)
         {
@@ -222,36 +279,37 @@ export class Boss
             return
         this.state = s
 
-        if(s === 'emerge')
+        if(s === 'hunt')
         {
-            const p = this.playerPos
-            const dir = new THREE.Vector3(p.x - this.home.x, 0, p.z - this.home.z)
-            if(dir.lengthSq() < 0.001) dir.set(0, 0, 1)
-            dir.normalize()
-            const bx = this.home.x + dir.x * this.emergeDist
-            const bz = this.home.z + dir.z * this.emergeDist
-            const by = this.groundY(bx, bz, this.home.y)
-            this.battlePos = new THREE.Vector3(bx, by, bz)
-            this.startMove(this.home.clone(), this.battlePos.clone(), 1.1)
-            this.play('roll_forward', { loop: false, fade: 0.15 })
-            this.startBattle()
+            // despierta y va a cazar (de dia; la noche empieza al alcanzarte)
+            this.move = null
+            this.huntTimer = 0
+            this.play('walk', { fade: 0.15 })
         }
         else if(s === 'fight')
         {
-            this.play('idle')
+            // la pelea empieza AQUI: este punto es la correa, y aqui se hace de noche
+            this.anchor = this.model.position.clone()
+            this.move = null
             this.queue = []
             this.busy = 0
-            this.gap = 0.5
+            this.gap = 0.4
             this.feigning = false
+            this.loseTimer = 0
+            this.play('idle')
+            this.startBattle()
         }
         else if(s === 'retreat')
         {
-            this.startMove(this.model.position.clone(), this.home.clone(), 1.3)
+            this.move = null
             this.play('walk', { fade: 0.2 })
             this.endBattle()
         }
         else if(s === 'guard')
         {
+            this.anchor = this.home.clone()
+            this.move = null
+            this.endBattle()               // en reposo siempre es de dia
             this.play('idle')
         }
         else if(s === 'dead')
@@ -267,13 +325,19 @@ export class Boss
         this.move = { from, to, t: 0, duration }
     }
 
+    // despertar por dano (desde cualquier parte): ir a cazar al jugador
+    wake()
+    {
+        if(this.state === 'guard' || this.state === 'retreat')
+            this.setState('hunt')
+    }
+
     // ---------------------------------------------------------------- batalla (atmosfera)
     startBattle()
     {
         if(this.battleOn)
             return
         this.battleOn = true
-        // noche + pausar la musica normal (la musica de batalla se enchufa cuando haya pista)
         try { this.game.dayCycles.override.start({ progress: 0.47 }, 2.5) } catch(e) {}
         try { this.game.audio.playlist?.current?.sound?.pause?.() } catch(e) {}
     }
@@ -288,7 +352,6 @@ export class Boss
     }
 
     // ---------------------------------------------------------------- cerebro de ataques
-    // combos ALEATORIOS para que sea dificil predecir que hara a continuacion
     inFight()
     {
         return this.state === 'fight' && !this.feigning
@@ -318,30 +381,38 @@ export class Boss
         return pool[Math.floor(Math.random() * pool.length)].slice()
     }
 
-    // ejecuta UN paso del combo; devuelve cuanto dura (para encadenar)
     startStep(name)
     {
         const p = this.playerPos
 
-        if(name === 'throw' || name === 'throwSmall')
+        if(name === 'throw')
         {
-            const small = name === 'throwSmall'
-            this.play(small ? 'throw_combo' : 'throw_bijudama', { loop: false, fade: 0.1 })
-            gsap.delayedCall(small ? 0.45 : 0.4, () => { if(this.inFight()) this.spawnBossProjectile(small) })
-            return 1.0
+            // biyudama grande: sale cuando estira las dos manos al frente
+            this.play('throw_bijudama', { loop: false, fade: 0.1 })
+            gsap.delayedCall(0.6, () => { if(this.inFight()) this.spawnBossProjectile(false) })
+            return 1.3
+        }
+        if(name === 'throwSmall')
+        {
+            // biyudama chica: se pasa de una mano a la otra y luego la lanza
+            this.play('throw_combo', { loop: false, fade: 0.1 })
+            gsap.delayedCall(0.25, () => { if(this.inFight()) this.passBijudama() })
+            return 1.4
         }
         if(name === 'clap')
         {
+            // aplauso estilo Hulk: onda de aire hacia adelante
             this.play('clap_attack', { loop: false, fade: 0.1 })
-            gsap.delayedCall(0.5, () => { if(this.inFight()) { const f = this.frontPoint(3.2); try { this.game.world.fireballs.create(f, 3.2, 5) } catch(e) {} } })
-            return 1.1
+            gsap.delayedCall(0.85, () => { if(this.inFight()) this.clapWave() })
+            return 1.5
         }
         if(name === 'shock')
         {
+            // reune poder (energia que se absorbe) y suelta la onda perimetral
             this.play('power_shockwave', { loop: false, fade: 0.1 })
             this.spawnChargeOrb()
-            gsap.delayedCall(1.0, () => { if(this.inFight()) this.releaseShockwave() })
-            return 1.7
+            gsap.delayedCall(1.0, () => this.releaseShockwave())
+            return 2.0
         }
         if(name === 'charge' || name === 'rollTo' || name === 'walkTo')
         {
@@ -353,20 +424,20 @@ export class Boss
             const reach = name === 'charge' ? 5.5 : (name === 'rollTo' ? 5 : 3.5)
             let tx = this.model.position.x + dir.x * reach
             let tz = this.model.position.z + dir.z * reach
-            // correa: no se aleja mas de 16 del pentagrama
-            const hx = tx - this.home.x, hz = tz - this.home.z
+            // correa: no se aleja mas de 16 del punto donde empezo la pelea
+            const hx = tx - this.anchor.x, hz = tz - this.anchor.z
             const hl = Math.sqrt(hx * hx + hz * hz)
-            if(hl > 16) { tx = this.home.x + hx / hl * 16; tz = this.home.z + hz / hl * 16 }
+            if(hl > 16) { tx = this.anchor.x + hx / hl * 16; tz = this.anchor.z + hz / hl * 16 }
             const ty = this.groundY(tx, tz, this.model.position.y)
-            this.startMove(this.model.position.clone(), new THREE.Vector3(tx, ty, tz), name === 'charge' ? 0.5 : 0.8)
+            this.startMove(this.model.position.clone(), new THREE.Vector3(tx, ty, tz), name === 'charge' ? 0.55 : 0.85)
             if(name === 'charge')
                 gsap.delayedCall(0.55, () => { if(this.inFight()) { const f = this.frontPoint(2.5); try { this.game.world.fireballs.create(f, 2.5, 4) } catch(e) {} } })
-            return name === 'charge' ? 0.95 : 1.0
+            return name === 'charge' ? 1.1 : 1.2
         }
         if(name === 'search' || name === 'taunt')
         {
             this.play('search_left', { loop: false, fade: 0.1 })
-            return 0.8
+            return 0.9
         }
         return 0.6
     }
@@ -388,7 +459,7 @@ export class Boss
         this.feigning = false
         this.play('roll_forward', { loop: false, fade: 0.12 })
         this.busy = 1.0
-        this.queue = Math.random() < 0.5 ? [ 'shock' ] : [ 'charge', 'clap' ]   // sorpresa al levantarse
+        this.queue = Math.random() < 0.5 ? [ 'shock' ] : [ 'charge', 'clap' ]
         this.gap = 0
     }
 
@@ -428,59 +499,223 @@ export class Boss
         return material
     }
 
+    // posicion de la mano ('R' derecha, 'L' izquierda, 'C' centro entre ambas)
+    handPoint(which)
+    {
+        if(which === 'C' && this.handR && this.handL)
+            return this.handR.getWorldPosition(new THREE.Vector3()).add(this.handL.getWorldPosition(new THREE.Vector3())).multiplyScalar(0.5)
+        const bone = which === 'R' ? this.handR : (which === 'L' ? this.handL : null)
+        if(bone) return bone.getWorldPosition(new THREE.Vector3())
+        const fp = this.frontPoint(1.6)
+        fp.y = this.model.position.y + this.halfH * 1.1
+        return fp
+    }
+
     spawnBossProjectile(small = false)
     {
-        const from = this.frontPoint(2.2)
-        from.y = this.model.position.y + this.halfH * 1.05
+        const from = this.handPoint(small ? 'L' : 'C')
         const p = this.playerPos
-        const target = new THREE.Vector3(p.x, p.y + 0.6, p.z)
+        const target = new THREE.Vector3(p.x, p.y + 0.25, p.z)   // apuntar al carro (bajo)
         const dir = target.clone().sub(from).normalize()
 
-        const r = small ? 0.42 : 0.85
+        const r = small ? 0.42 : 0.9
         const mesh = new THREE.Mesh(this.sphere, this.fireMaterial())
         mesh.scale.setScalar(r)
         mesh.position.copy(from)
         this.game.scene.add(mesh)
 
-        this.bossProjectiles.push({ mesh, pos: from.clone(), dir, speed: small ? 30 : 26, traveled: 0, radius: r })
+        this.bossProjectiles.push({ mesh, pos: from.clone(), dir, speed: small ? 28 : 24, traveled: 0, radius: r })
     }
 
+    // reunir poder: nucleo que crece + particulas de energia que se ABSORBEN al centro
     spawnChargeOrb()
     {
-        this.chargeOrb = new THREE.Mesh(this.sphere, this.fireMaterial())
-        this.chargeOrb.scale.setScalar(0.1)
-        this.game.scene.add(this.chargeOrb)
-        gsap.to(this.chargeOrb.scale, { x: 2.2, y: 2.2, z: 2.2, duration: 0.95, ease: 'power2.in' })
+        const center = new THREE.Vector3(this.model.position.x, this.model.position.y + this.halfH, this.model.position.z)
+        this.chargeGroup = new THREE.Group()
+        this.chargeGroup.position.copy(center)
+        this.game.scene.add(this.chargeGroup)
+
+        this.chargeCore = new THREE.Mesh(this.sphere, this.fireMaterial())
+        this.chargeCore.scale.setScalar(0.15)
+        this.chargeGroup.add(this.chargeCore)
+        gsap.to(this.chargeCore.scale, { x: 2, y: 2, z: 2, duration: 0.95, ease: 'power2.in' })
+
+        if(!this.partGeo) this.partGeo = new THREE.SphereGeometry(0.13, 8, 8)
+        if(!this.partMat) this.partMat = new THREE.MeshBasicNodeMaterial({ color: new THREE.Color('#ff7a4d').multiplyScalar(3), transparent: true })
+
+        this.chargeParts = []
+        for(let i = 0; i < 18; i++)
+        {
+            const m = new THREE.Mesh(this.partGeo, this.partMat)
+            const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u)
+            m.__dir = new THREE.Vector3(r * Math.cos(a), u, r * Math.sin(a))
+            m.__dist = 2.6 + Math.random() * 2.4
+            this.chargeGroup.add(m)
+            this.chargeParts.push(m)
+        }
     }
 
+    updateChargeOrb(delta)
+    {
+        if(!this.chargeGroup)
+            return
+        const ang = delta * 3.2, cos = Math.cos(ang), sin = Math.sin(ang)
+        for(const m of this.chargeParts)
+        {
+            const d = m.__dir
+            const dx = d.x * cos - d.z * sin, dz = d.x * sin + d.z * cos
+            d.x = dx; d.z = dz
+            m.__dist = Math.max(0.12, m.__dist - delta * 3)
+            m.position.copy(d).multiplyScalar(m.__dist)
+            m.scale.setScalar(0.5 + m.__dist * 0.18)
+        }
+    }
+
+    // soltar: anillo perimetral que crece hacia afuera + empuje real (reusa la explosion)
     releaseShockwave()
     {
-        if(this.chargeOrb)
+        if(this.chargeGroup)
         {
-            this.chargeOrb.material.dispose?.()
-            this.chargeOrb.removeFromParent()
-            this.chargeOrb = null
+            this.chargeGroup.removeFromParent()
+            this.chargeGroup = null
+            this.chargeParts = []
         }
-        const center = new THREE.Vector3(this.model.position.x, this.model.position.y + 0.3, this.model.position.z)
+        const gy = this.model.position.y
+        const center = new THREE.Vector3(this.model.position.x, gy + 1.0, this.model.position.z)
 
-        // onda expansiva visible (anillo rojo que crece y se desvanece)
-        const ringMat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
-        ringMat.colorNode = color('#ff544d').mul(3)
-        const ring = new THREE.Mesh(new THREE.RingGeometry(0.6, 1.0, 48), ringMat)
-        ring.rotation.x = -Math.PI * 0.5
-        ring.position.copy(center)
+        // nucleo: fogonazo breve y brillante (el "boom"), NO un globo que lo tapa todo
+        const coreMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
+        coreMat.colorNode = color('#ffd6a0').mul(3)
+        const core = new THREE.Mesh(this.sphere, coreMat)
+        core.position.copy(center)
+        core.scale.setScalar(0.35)
+        this.game.scene.add(core)
+        gsap.to(core.scale, { x: 1.8, y: 1.8, z: 1.8, duration: 0.24, ease: 'power3.out' })
+        gsap.to(coreMat, { opacity: 0, duration: 0.3, ease: 'power1.in', onComplete: () =>
+        {
+            coreMat.dispose?.()
+            core.removeFromParent()
+        } })
+
+        // onda doble: dos anillos finos que VIAJAN por el suelo hacia afuera y se desvanecen
+        const makeRing = (delay, maxR, col) =>
+        {
+            const m = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+            m.colorNode = color(col).mul(3)
+            const ring = new THREE.Mesh(new THREE.RingGeometry(0.74, 1, 64), m)
+            ring.rotation.x = -Math.PI * 0.5
+            ring.position.set(center.x, gy + 0.22, center.z)
+            ring.scale.set(0.6, 0.6, 1)
+            this.game.scene.add(ring)
+            const s = { v: 0.6 }
+            gsap.to(s, { v: maxR, duration: 0.7, delay, ease: 'power2.out', onUpdate: () => ring.scale.set(s.v, s.v, 1) })
+            gsap.to(m, { opacity: 0, duration: 0.7, delay, ease: 'power1.in', onComplete: () =>
+            {
+                m.dispose?.()
+                ring.geometry.dispose()
+                ring.removeFromParent()
+            } })
+        }
+        makeRing(0, 13, '#ff6a3c')
+        makeRing(0.12, 9, '#ffd08a')
+
+        // empuje real (reusa la explosion) pero CONTENIDO: nada de bola gigante amarilla
+        try { this.game.world.fireballs.create(center, 2.2, 4) } catch(e) {}
+    }
+
+    // ---------------------------------------------------------------- efectos extra
+    // aplauso estilo Hulk: onda de aire que se expande HACIA ADELANTE y empuja
+    clapWave()
+    {
+        const yaw = this.model.rotation.y - this.facingOffset
+        const fwd = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))
+        const origin = new THREE.Vector3(
+            this.model.position.x + fwd.x * 1.6,
+            this.model.position.y + this.halfH,
+            this.model.position.z + fwd.z * 1.6
+        )
+        const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+        mat.colorNode = color('#ffd8c0').mul(2.2)
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.7, 40), mat)
+        ring.position.copy(origin)
+        ring.lookAt(origin.clone().add(fwd))
         this.game.scene.add(ring)
         const s = { v: 1 }
-        gsap.to(s, { v: 16, duration: 0.6, ease: 'power2.out', onUpdate: () => ring.scale.setScalar(s.v) })
-        gsap.to(ringMat, { opacity: 0, duration: 0.6, ease: 'power1.in', onComplete: () =>
+        gsap.to(s, { v: 9, duration: 0.42, ease: 'power2.out', onUpdate: () => ring.scale.set(s.v, s.v, 1) })
+        gsap.to(ring.position, { x: origin.x + fwd.x * 6, y: origin.y, z: origin.z + fwd.z * 6, duration: 0.42, ease: 'power2.out' })
+        gsap.to(mat, { opacity: 0, duration: 0.42, onComplete: () =>
         {
-            ringMat.dispose?.()
+            mat.dispose?.()
             ring.geometry.dispose()
             ring.removeFromParent()
         } })
+        try { this.game.world.fireballs.create(origin.clone().add(fwd.clone().multiplyScalar(3)), 1.5, 2.8) } catch(e) {}
+    }
 
-        // empuje real (reusa la explosion del juego)
-        try { this.game.world.fireballs.create(center, 5, 10) } catch(e) {}
+    // pasar una biyudama PEQUENA de una mano a la otra y lanzarla
+    passBijudama()
+    {
+        const orb = new THREE.Mesh(this.sphere, this.fireMaterial())
+        orb.scale.setScalar(0.38)
+        orb.position.copy(this.handPoint('R'))
+        this.game.scene.add(orb)
+        const t = { v: 0 }
+        gsap.to(t, { v: 1, duration: 0.5, ease: 'sine.inOut',
+            onUpdate: () => orb.position.lerpVectors(this.handPoint('R'), this.handPoint('L'), t.v),
+            onComplete: () =>
+            {
+                const from = this.handPoint('L')
+                const p = this.playerPos
+                const dir = new THREE.Vector3(p.x, p.y + 0.25, p.z).sub(from).normalize()
+                orb.position.copy(from)
+                this.bossProjectiles.push({ mesh: orb, pos: from.clone(), dir, speed: 28, traveled: 0, radius: 0.38 })
+            }
+        })
+    }
+
+    // chispa brillante al recibir un disparo (feedback de que le estas dando)
+    spawnHitSpark(at)
+    {
+        const mat = new THREE.MeshBasicNodeMaterial({ color: new THREE.Color('#fff1b0').multiplyScalar(5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
+        const spark = new THREE.Mesh(this.sphere, mat)
+        spark.position.set(at.x, at.y, at.z)
+        spark.scale.setScalar(0.22)
+        this.game.scene.add(spark)
+        gsap.to(spark.scale, { x: 1.1, y: 1.1, z: 1.1, duration: 0.22, ease: 'power2.out' })
+        gsap.to(mat, { opacity: 0, duration: 0.25, onComplete: () =>
+        {
+            mat.dispose?.()
+            spark.removeFromParent()
+        } })
+    }
+
+    // barra de vida flotante
+    buildHealthBar()
+    {
+        this.hpBar = new THREE.Group()
+        const bg = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.4), new THREE.MeshBasicNodeMaterial({ color: new THREE.Color('#140207'), transparent: true }))
+        this.hpFill = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.28), new THREE.MeshBasicNodeMaterial({ color: new THREE.Color('#ff2e2e').multiplyScalar(2) }))
+        this.hpFill.position.z = 0.02
+        this.hpBar.add(bg)
+        this.hpBar.add(this.hpFill)
+        this.hpBar.visible = false
+        this.game.scene.add(this.hpBar)
+    }
+
+    updateHealthBar()
+    {
+        if(!this.hpBar)
+            return
+        const show = this.state === 'fight' || this.state === 'hunt'
+        this.hpBar.visible = show
+        if(!show)
+            return
+        const topY = this.model.position.y + this.size.y * this.scale + 1.3
+        this.hpBar.position.set(this.model.position.x, topY, this.model.position.z)
+        this.hpBar.quaternion.copy(this.game.view.camera.quaternion)
+        const ratio = Math.max(0, this.hp / this.maxHp)
+        this.hpFill.scale.x = ratio
+        this.hpFill.position.x = -(3 * (1 - ratio)) / 2
     }
 
     updateBossProjectiles(delta)
@@ -540,8 +775,7 @@ export class Boss
         {
             if(proj.__bossHit)
                 continue
-            // solo los disparos del jugador (excluyen el carro del jugador)
-            if(pBody && proj.excludeBody !== pBody)
+            if(pBody && proj.excludeBody !== pBody)      // solo los disparos del jugador
                 continue
             if(proj.pos.distanceTo(center) <= this.hitRadius + proj.radius)
             {
@@ -556,16 +790,26 @@ export class Boss
         if(this.state === 'dead')
             return
         this.hp -= amount
+        this.spawnHitSpark(fromPos)        // feedback: chispa de que le estas dando
         if(this.hp <= 0)
         {
             this.hp = 0
             this.setState('dead')
             return
         }
-        if(this.state !== 'fight' || this.feigning)
+
+        // dano desde cualquier parte estando en reposo: despierta y va a cazar
+        if(this.state === 'guard' || this.state === 'retreat')
+        {
+            this.wake()
+            return
+        }
+        if(this.state === 'hunt')
             return
 
-        // de vez en cuando se hace el MUERTO (sorpresa)
+        // en pelea: a veces se hace el MUERTO (sorpresa)
+        if(this.feigning)
+            return
         if(this.feignCooldown <= 0 && this.hp > 12 && Math.random() < 0.22)
         {
             this.startFeign()
@@ -601,13 +845,14 @@ export class Boss
         const delta = this.game.ticker.delta
         if(this.mixer)
             this.mixer.update(delta)
+        this.updateChargeOrb(delta)
 
-        // movimiento controlado (lerp entre puntos)
+        // movimiento controlado por pasos de combo (lerp)
         if(this.move)
         {
             this.move.t += delta / this.move.duration
             const t = Math.min(1, this.move.t)
-            const e = t * t * (3 - 2 * t) // smoothstep
+            const e = t * t * (3 - 2 * t)
             this.model.position.lerpVectors(this.move.from, this.move.to, e)
             if(t >= 1)
                 this.move = null
@@ -616,37 +861,38 @@ export class Boss
         // el cuerpo fisico sigue al jefe (solido para los disparos)
         if(this.body)
         {
-            try
-            {
-                this.body.setNextKinematicTranslation({ x: this.model.position.x, y: this.model.position.y + this.halfH, z: this.model.position.z })
-            }
+            try { this.body.setNextKinematicTranslation({ x: this.model.position.x, y: this.model.position.y + this.halfH, z: this.model.position.z }) }
             catch(e) {}
         }
 
-        // proyectiles + recibir dano
         this.updateBossProjectiles(delta)
         if(this.state !== 'dead')
             this.takeDamageCheck()
+        this.updateHealthBar()
 
-        // mirar al jugador salvo cuando esta quieto en guardia lejos
-        if(this.state === 'fight' || this.state === 'emerge')
+        // ---- orientacion segun estado ----
+        if(this.state === 'guard')
+            this.model.rotation.y = this.baseYaw + Math.sin(this.game.ticker.elapsed * 0.5) * 0.7   // vigila (barrido)
+        else if(this.state === 'hunt' || this.state === 'fight')
             this.faceTo(this.playerPos, delta, 7)
-        else if(this.state === 'guard')
-            this.faceTo(this.playerPos, delta, 1.5)
+        else if(this.state === 'retreat')
+            this.faceTo(this.home, delta, 4)
 
-        // maquina de estados
-        const dist = this.distanceToPlayerFromHome()
-
+        // ---- maquina de estados ----
         if(this.state === 'guard')
         {
-            // detecta por cercania (confiable); esconderte rompe el contacto YA en pelea
-            if(dist < this.detectRadius)
-                this.setState('emerge')
+            if(this.seesPlayer())
+                this.setState('hunt')
         }
-        else if(this.state === 'emerge')
+        else if(this.state === 'hunt')
         {
-            if(!this.move)
-                this.setState('fight')
+            // perseguir agresivo hasta alcanzarlo
+            this.huntTimer += delta
+            const remaining = this.moveToward(this.playerPos, this.huntSpeed, delta)
+            if(remaining <= this.fightRange)
+                this.setState('fight')                 // AQUI empieza la pelea (y la noche)
+            else if(this.huntTimer > this.huntGiveup || this.distanceToHome(this.playerPos) > this.homeMaxRange)
+                this.setState('retreat')               // no lo alcanza / se fue larguisimo
         }
         else if(this.state === 'fight')
         {
@@ -654,7 +900,6 @@ export class Boss
 
             if(this.feigning)
             {
-                // tirado "muerto": se levanta de golpe si te acercas o si pasa el rato
                 this.feignTimer -= delta
                 const near = this.playerPos.distanceTo(this.model.position) < 8
                 if(this.feignTimer <= 0 || near)
@@ -662,8 +907,8 @@ export class Boss
             }
             else
             {
-                // perder al jugador: lejos o sin linea de vista por un rato
-                if(dist > this.loseRadius || this.losBlocked())
+                // perder al jugador si ESCAPA del lugar donde empezo la pelea
+                if(this.playerDistTo(this.anchor) > this.loseRadius || this.losBlocked())
                 {
                     this.loseTimer += delta
                     if(this.loseTimer > this.loseAfter)
@@ -675,7 +920,7 @@ export class Boss
                 else
                     this.loseTimer = 0
 
-                // cerebro: encadenar los pasos del combo con pausas aleatorias
+                // cerebro: encadenar combos con pausas aleatorias
                 if(this.busy > 0)
                     this.busy -= delta
                 else if(this.queue.length > 0 && !this.move)
@@ -686,7 +931,7 @@ export class Boss
                     if(this.gap <= 0 && !this.move)
                     {
                         this.queue = this.pickCombo()
-                        this.gap = 0.5 + Math.random() * 1.1
+                        this.gap = 0.9 + Math.random() * 1.3
                     }
                 }
             }
@@ -701,8 +946,16 @@ export class Boss
         }
         else if(this.state === 'retreat')
         {
-            if(!this.move)
+            const remaining = this.moveToward(this.home, this.walkSpeed, delta)
+            if(remaining < 1.5)
                 this.setState('guard')
+            else if(this.seesPlayer())          // si te metes en su cara mientras vuelve, pelea
+                this.setState('hunt')
         }
+    }
+
+    distanceToHome(point)
+    {
+        return Math.sqrt((point.x - this.home.x) ** 2 + (point.z - this.home.z) ** 2)
     }
 }
