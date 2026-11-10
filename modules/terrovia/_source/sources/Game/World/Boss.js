@@ -52,7 +52,7 @@ export class Boss
         this.huntSpeed = 9
         this.walkSpeed = 4.5
         this.fightRange = 9
-        this.loseRadius = 34
+        this.loseRadius = 42        // aguanta mas antes de rendirse (te persigue aunque te empuje lejos)
         this.loseAfter = 3.5
         this.loseTimer = 0
         this.huntTimer = 0
@@ -379,6 +379,18 @@ export class Boss
             this.play('death', { loop: false, fade: 0.1 })
             this.endBattle()
             if(this.body) { try { this.body.setEnabled(false) } catch(e) {} }
+            // CONFETI de logro desde el suelo: lo lograste!
+            try
+            {
+                const gy = this.groundYAt(this.model.position.x, this.model.position.z)
+                const c = this.game.world.confetti
+                if(c)
+                {
+                    c.pop(new THREE.Vector3(this.model.position.x, gy, this.model.position.z), 7, 9)
+                    c.pop(new THREE.Vector3(this.model.position.x + 2, gy, this.model.position.z - 2), 5, 7)
+                }
+            }
+            catch(e) {}
         }
     }
 
@@ -509,11 +521,11 @@ export class Boss
         {
             // biyudama CHICA: aparece en una mano, se ve PASAR a la otra y luego se lanza.
             const a = this.play('throw_combo', { loop: false, fade: 0.1 })
-            this.setStep(a, 3.0, [
-                { phase: 0.1, fn: () => this.spawnPassOrb() },      // aparece en la IZQUIERDA (ahi empieza)
-                { phase: 0.7, fn: () => this.launchPassOrb() },     // la DERECHA la lanza (fase del gesto real)
+            this.setStep(a, 2.6, [
+                { phase: 0.1, fn: () => this.spawnPassOrb() },      // nace en la IZQUIERDA
+                { phase: 0.74, fn: () => this.launchPassOrb() },    // la DERECHA la lanza (pico del gesto)
             ], (ph) => this.trackPassOrb(ph))
-            return this.stepDuration(a, 3.0)
+            return this.stepDuration(a, 2.6)
         }
         if(name === 'clap')
         {
@@ -660,7 +672,9 @@ export class Boss
         mesh.position.copy(from)
         this.game.scene.add(mesh)
 
-        this.bossProjectiles.push({ mesh, pos: from.clone(), dir, speed: small ? 28 : 24, traveled: 0, radius: r })
+        // boom: la biyudama GRANDE revienta como explosion pero con empuje SUAVE (no te saca del mapa)
+        this.bossProjectiles.push({ mesh, pos: from.clone(), dir, speed: small ? 28 : 24, traveled: 0, radius: r,
+            boomFire: 2.2, boomRadius: 3, boomStrength: 3 })
     }
 
     // reunir poder: nucleo que crece en las manos + energia que sube DEL PISO y se absorbe.
@@ -730,10 +744,10 @@ export class Boss
         const gy = this.groundYAt(this.model.position.x, this.model.position.z)   // SUELO real (no bajo el piso)
         const center = new THREE.Vector3(this.model.position.x, gy + 1.0, this.model.position.z)
 
-        // EMPUJE real: si el carro esta dentro del radio de la onda, lo EXPULSA (mas fuerte de cerca)
+        // EMPUJE: expulsa al carro pero SIN mandarlo lejisimo (mas suave que antes)
         const pd = this.playerDistTo(this.model.position)
         if(pd < 13)
-            this.knockPlayer(this.knockBase * (0.6 + (1 - pd / 13) * 0.9), 0.55, this.model.position)
+            this.knockPlayer(this.knockBase * (0.4 + (1 - pd / 13) * 0.5), 0.5, this.model.position)
 
         // destello breve y CHICO en el centro (apenas un pop, para no tapar el anillo)
         const coreMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
@@ -838,13 +852,18 @@ export class Boss
         this.passOrb = orb
     }
 
-    // la seguimos a las manos en vivo: IZQUIERDA -> DERECHA durante el windup (fase 0.5..0.68)
+    // sigue a las manos EN VIVO: queda en la IZQUIERDA, se transfiere a la DERECHA en el
+    // windup (cuando las manos se juntan) y se queda en la derecha hasta el lanzamiento.
     trackPassOrb(ph)
     {
         if(!this.passOrb)
             return
-        const k = THREE.MathUtils.clamp((ph - 0.5) / 0.18, 0, 1)   // cruza de izquierda a derecha en el windup
-        this.passOrb.position.lerpVectors(this.handPoint('L'), this.handPoint('R'), k)
+        if(ph < 0.46)
+            this.passOrb.position.copy(this.handPoint('L'))                 // claramente en la izquierda
+        else if(ph < 0.6)
+            this.passOrb.position.lerpVectors(this.handPoint('L'), this.handPoint('R'), (ph - 0.46) / 0.14)   // pase
+        else
+            this.passOrb.position.copy(this.handPoint('R'))                 // ya en la derecha (lista para tirar)
     }
 
     launchPassOrb()
@@ -857,7 +876,9 @@ export class Boss
         const p = this.playerPos
         const dir = new THREE.Vector3(p.x, p.y + 0.25, p.z).sub(from).normalize()
         orb.position.copy(from)
-        this.bossProjectiles.push({ mesh: orb, pos: from.clone(), dir, speed: 30, traveled: 0, radius: 0.34 })
+        // boom: la biyudama CHICA empuja aun MENOS (antes te mandaba a kilometros)
+        this.bossProjectiles.push({ mesh: orb, pos: from.clone(), dir, speed: 30, traveled: 0, radius: 0.34,
+            boomFire: 1.5, boomRadius: 2.2, boomStrength: 2.3 })
     }
 
     disposePassOrb()
@@ -938,10 +959,9 @@ export class Boss
             if(hit !== null)
             {
                 const at = pr.pos.clone().addScaledVector(pr.dir, Math.max(0, hit - pr.radius * 0.5))
-                try { this.game.world.fireballs.create(at, 2.2, 4) } catch(e) {}
-                // si revienta cerca del carro, lo empuja
-                if(this.playerDistTo(at) < 5.5)
-                    this.knockPlayer(this.knockBase * 0.8, 0.5, at)
+                // explosion con empuje SUAVE (strength bajo): te empuja pero NO te saca del mapa.
+                // Nada de knockPlayer extra: antes se sumaban los dos y te mandaba lejisimo.
+                try { this.game.world.fireballs.create(at, pr.boomFire || 2, pr.boomRadius || 3, pr.boomStrength || 3) } catch(e) {}
                 this.disposeProjectile(pr, i)
                 continue
             }
@@ -1128,7 +1148,9 @@ export class Boss
             }
             else
             {
-                // perder al jugador si ESCAPA del lugar donde empezo la pelea
+                const pdist = this.playerPos.distanceTo(this.model.position)
+
+                // perder al jugador SOLO si escapa de verdad (lejos del frente de pelea)
                 if(this.playerDistTo(this.anchor) > this.loseRadius || this.losBlocked())
                 {
                     this.loseTimer += delta
@@ -1141,18 +1163,33 @@ export class Boss
                 else
                     this.loseTimer = 0
 
-                // cerebro: encadenar combos con pausas aleatorias
-                if(this.busy > 0)
-                    this.busy -= delta
-                else if(this.queue.length > 0 && !this.move)
-                    this.busy = this.startStep(this.queue.shift())
-                else if(this.queue.length === 0)
+                // RE-ENGANCHE: si te empuja lejos o te mueves, CORRE hasta ti para seguir
+                // peleando. El frente de pelea (ancla) te sigue: no se rinde por empujarte.
+                if(!this.move && this.busy <= 0 && this.queue.length === 0 && pdist > 11)
                 {
-                    this.gap -= delta
-                    if(this.gap <= 0 && !this.move)
+                    if(this.current !== this.actions['walk'])
                     {
-                        this.queue = this.pickCombo()
-                        this.gap = 0.9 + Math.random() * 1.3
+                        const wa = this.play('walk', { fade: 0.15 })
+                        if(wa) wa.timeScale = 1.9
+                    }
+                    this.moveToward(this.playerPos, this.huntSpeed, delta)
+                    this.anchor.lerp(this.model.position, Math.min(1, delta * 2))
+                }
+                else
+                {
+                    // cerebro: encadenar combos con pausas aleatorias (cuando esta en rango)
+                    if(this.busy > 0)
+                        this.busy -= delta
+                    else if(this.queue.length > 0 && !this.move)
+                        this.busy = this.startStep(this.queue.shift())
+                    else if(this.queue.length === 0)
+                    {
+                        this.gap -= delta
+                        if(this.gap <= 0 && !this.move)
+                        {
+                            this.queue = this.pickCombo()
+                            this.gap = 0.9 + Math.random() * 1.3
+                        }
                     }
                 }
             }
