@@ -31,8 +31,16 @@ export class Boss
         this.current = null
 
         // vida
-        this.maxHp = 40
+        this.maxHp = 80
         this.hp = this.maxHp
+
+        // cerebro de combos aleatorios + hacerse el muerto
+        this.queue = []
+        this.busy = 0
+        this.gap = 0.8
+        this.feigning = false
+        this.feignTimer = 0
+        this.feignCooldown = 6
 
         // deteccion / correa
         this.detectRadius = 24
@@ -231,7 +239,10 @@ export class Boss
         else if(s === 'fight')
         {
             this.play('idle')
-            this.attackTimer = 0.6
+            this.queue = []
+            this.busy = 0
+            this.gap = 0.5
+            this.feigning = false
         }
         else if(s === 'retreat')
         {
@@ -276,70 +287,109 @@ export class Boss
         try { this.game.audio.playlist?.current?.sound?.play?.() } catch(e) {}
     }
 
-    // ---------------------------------------------------------------- ataques
-    chooseAttack()
+    // ---------------------------------------------------------------- cerebro de ataques
+    // combos ALEATORIOS para que sea dificil predecir que hara a continuacion
+    inFight()
     {
-        const dist = this.playerPos.distanceTo(this.model.position)
-        const r = Math.random()
-        if(dist < 7 && r < 0.3)
-            return 'clap'
-        if(r < 0.2)
-            return 'shockwave'
-        if(r < 0.35 && dist < 16)
-            return 'charge'
-        return 'throw'
+        return this.state === 'fight' && !this.feigning
     }
 
-    doAttack()
+    pickCombo()
     {
-        const kind = this.chooseAttack()
+        const dist = this.playerPos.distanceTo(this.model.position)
+        const pool = [
+            [ 'charge', 'clap' ],
+            [ 'rollTo', 'charge' ],
+            [ 'rollTo', 'shock' ],
+            [ 'throwSmall', 'throw' ],
+            [ 'search', 'throw' ],
+            [ 'clap', 'shock' ],
+            [ 'charge', 'clap', 'shock' ],
+            [ 'walkTo', 'clap' ],
+            [ 'throw' ],
+            [ 'throwSmall', 'throwSmall', 'throw' ],
+            [ 'shock' ],
+            [ 'rollTo', 'clap', 'throw' ],
+            [ 'taunt', 'charge' ],
+            [ 'walkTo', 'throwSmall', 'clap' ],
+        ]
+        if(dist > 15 && Math.random() < 0.6)
+            return [ 'walkTo', 'throw' ]
+        return pool[Math.floor(Math.random() * pool.length)].slice()
+    }
 
-        if(kind === 'throw')
+    // ejecuta UN paso del combo; devuelve cuanto dura (para encadenar)
+    startStep(name)
+    {
+        const p = this.playerPos
+
+        if(name === 'throw' || name === 'throwSmall')
         {
-            const anim = Math.random() < 0.5 ? 'throw_bijudama' : 'throw_combo'
-            this.play(anim, { loop: false, fade: 0.12 })
-            gsap.delayedCall(0.45, () => { if(this.state === 'fight') this.spawnBossProjectile() })
-            this.attackTimer = 1.6
+            const small = name === 'throwSmall'
+            this.play(small ? 'throw_combo' : 'throw_bijudama', { loop: false, fade: 0.1 })
+            gsap.delayedCall(small ? 0.45 : 0.4, () => { if(this.inFight()) this.spawnBossProjectile(small) })
+            return 1.0
         }
-        else if(kind === 'clap')
+        if(name === 'clap')
         {
-            this.play('clap_attack', { loop: false, fade: 0.12 })
-            gsap.delayedCall(0.5, () =>
-            {
-                if(this.state !== 'fight') return
-                const f = this.frontPoint(3)
-                try { this.game.world.fireballs.create(f, 3.5, 5) } catch(e) {}
-            })
-            this.attackTimer = 2.0
+            this.play('clap_attack', { loop: false, fade: 0.1 })
+            gsap.delayedCall(0.5, () => { if(this.inFight()) { const f = this.frontPoint(3.2); try { this.game.world.fireballs.create(f, 3.2, 5) } catch(e) {} } })
+            return 1.1
         }
-        else if(kind === 'charge')
+        if(name === 'shock')
         {
-            this.play('charge', { loop: false, fade: 0.12 })
-            const p = this.playerPos
-            const dir = new THREE.Vector3(p.x - this.model.position.x, 0, p.z - this.model.position.z).normalize()
-            const toX = this.battlePos.x + dir.x * 4
-            const toZ = this.battlePos.z + dir.z * 4
-            const toY = this.groundY(toX, toZ, this.battlePos.y)
-            const lungeTo = new THREE.Vector3(toX, toY, toZ)
-            this.startMove(this.model.position.clone(), lungeTo, 0.5)
-            gsap.delayedCall(0.55, () =>
-            {
-                if(this.state !== 'fight') return
-                this.startMove(this.model.position.clone(), this.battlePos.clone(), 0.7)
-            })
-            this.attackTimer = 2.2
-        }
-        else if(kind === 'shockwave')
-        {
-            this.play('power_shockwave', { loop: false, fade: 0.12 })
+            this.play('power_shockwave', { loop: false, fade: 0.1 })
             this.spawnChargeOrb()
-            gsap.delayedCall(1.0, () =>
-            {
-                if(this.state !== 'fight') return
-                this.releaseShockwave()
-            })
-            this.attackTimer = 2.8
+            gsap.delayedCall(1.0, () => { if(this.inFight()) this.releaseShockwave() })
+            return 1.7
         }
+        if(name === 'charge' || name === 'rollTo' || name === 'walkTo')
+        {
+            const anim = name === 'charge' ? 'charge' : (name === 'rollTo' ? 'roll_forward' : 'walk')
+            this.play(anim, { loop: false, fade: 0.1 })
+            const dir = new THREE.Vector3(p.x - this.model.position.x, 0, p.z - this.model.position.z)
+            const len = dir.length() || 1
+            dir.multiplyScalar(1 / len)
+            const reach = name === 'charge' ? 5.5 : (name === 'rollTo' ? 5 : 3.5)
+            let tx = this.model.position.x + dir.x * reach
+            let tz = this.model.position.z + dir.z * reach
+            // correa: no se aleja mas de 16 del pentagrama
+            const hx = tx - this.home.x, hz = tz - this.home.z
+            const hl = Math.sqrt(hx * hx + hz * hz)
+            if(hl > 16) { tx = this.home.x + hx / hl * 16; tz = this.home.z + hz / hl * 16 }
+            const ty = this.groundY(tx, tz, this.model.position.y)
+            this.startMove(this.model.position.clone(), new THREE.Vector3(tx, ty, tz), name === 'charge' ? 0.5 : 0.8)
+            if(name === 'charge')
+                gsap.delayedCall(0.55, () => { if(this.inFight()) { const f = this.frontPoint(2.5); try { this.game.world.fireballs.create(f, 2.5, 4) } catch(e) {} } })
+            return name === 'charge' ? 0.95 : 1.0
+        }
+        if(name === 'search' || name === 'taunt')
+        {
+            this.play('search_left', { loop: false, fade: 0.1 })
+            return 0.8
+        }
+        return 0.6
+    }
+
+    // hacerse el MUERTO: cae, y cuando te acercas (o pasa un rato) se levanta de golpe
+    startFeign()
+    {
+        this.feigning = true
+        this.queue = []
+        this.busy = 0
+        this.move = null
+        this.play('death', { loop: false, fade: 0.12 })
+        this.feignTimer = 2.2 + Math.random() * 2.3
+        this.feignCooldown = 14
+    }
+
+    reviveFeign()
+    {
+        this.feigning = false
+        this.play('roll_forward', { loop: false, fade: 0.12 })
+        this.busy = 1.0
+        this.queue = Math.random() < 0.5 ? [ 'shock' ] : [ 'charge', 'clap' ]   // sorpresa al levantarse
+        this.gap = 0
     }
 
     frontPoint(dist)
@@ -378,7 +428,7 @@ export class Boss
         return material
     }
 
-    spawnBossProjectile()
+    spawnBossProjectile(small = false)
     {
         const from = this.frontPoint(2.2)
         from.y = this.model.position.y + this.halfH * 1.05
@@ -386,12 +436,13 @@ export class Boss
         const target = new THREE.Vector3(p.x, p.y + 0.6, p.z)
         const dir = target.clone().sub(from).normalize()
 
+        const r = small ? 0.42 : 0.85
         const mesh = new THREE.Mesh(this.sphere, this.fireMaterial())
-        mesh.scale.setScalar(0.8)
+        mesh.scale.setScalar(r)
         mesh.position.copy(from)
         this.game.scene.add(mesh)
 
-        this.bossProjectiles.push({ mesh, pos: from.clone(), dir, speed: 26, traveled: 0, radius: 0.8 })
+        this.bossProjectiles.push({ mesh, pos: from.clone(), dir, speed: small ? 30 : 26, traveled: 0, radius: r })
     }
 
     spawnChargeOrb()
@@ -511,8 +562,18 @@ export class Boss
             this.setState('dead')
             return
         }
-        // animacion de golpe segun de donde viene (no interrumpe ataques largos)
-        if(this.state === 'fight' && Math.random() < 0.5)
+        if(this.state !== 'fight' || this.feigning)
+            return
+
+        // de vez en cuando se hace el MUERTO (sorpresa)
+        if(this.feignCooldown <= 0 && this.hp > 12 && Math.random() < 0.22)
+        {
+            this.startFeign()
+            return
+        }
+
+        // animacion de golpe segun de donde viene (sin interrumpir un movimiento)
+        if(!this.move && Math.random() < 0.5)
         {
             const d = new THREE.Vector3(fromPos.x - this.model.position.x, 0, fromPos.z - this.model.position.z)
             const yaw = this.model.rotation.y - this.facingOffset
@@ -521,10 +582,10 @@ export class Boss
             const dotF = d.x * fwd.x + d.z * fwd.z
             const dotR = d.x * right.x + d.z * right.z
             let anim = 'hit_front'
-            if(Math.abs(dotR) > Math.abs(dotF)) anim = dotR > 0 ? 'hit_right' : 'hit_front'
+            if(Math.abs(dotR) > Math.abs(dotF)) anim = dotR > 0 ? 'hit_right' : 'stagger_right'
             else anim = dotF > 0 ? 'hit_front' : 'hit_back'
             this.play(anim, { loop: false, fade: 0.08 })
-            this.attackTimer = Math.max(this.attackTimer, 0.5)
+            this.busy = Math.max(this.busy, 0.35)
         }
     }
 
@@ -589,29 +650,52 @@ export class Boss
         }
         else if(this.state === 'fight')
         {
-            // perder al jugador: lejos o sin linea de vista por un rato
-            if(dist > this.loseRadius || this.losBlocked())
+            this.feignCooldown -= delta
+
+            if(this.feigning)
             {
-                this.loseTimer += delta
-                if(this.loseTimer > this.loseAfter)
-                {
-                    this.loseTimer = 0
-                    this.setState('retreat')
-                }
+                // tirado "muerto": se levanta de golpe si te acercas o si pasa el rato
+                this.feignTimer -= delta
+                const near = this.playerPos.distanceTo(this.model.position) < 8
+                if(this.feignTimer <= 0 || near)
+                    this.reviveFeign()
             }
             else
-                this.loseTimer = 0
+            {
+                // perder al jugador: lejos o sin linea de vista por un rato
+                if(dist > this.loseRadius || this.losBlocked())
+                {
+                    this.loseTimer += delta
+                    if(this.loseTimer > this.loseAfter)
+                    {
+                        this.loseTimer = 0
+                        this.setState('retreat')
+                    }
+                }
+                else
+                    this.loseTimer = 0
 
-            // ciclo de ataques
-            this.attackTimer -= delta
-            if(this.attackTimer <= 0 && !this.move)
-                this.doAttack()
+                // cerebro: encadenar los pasos del combo con pausas aleatorias
+                if(this.busy > 0)
+                    this.busy -= delta
+                else if(this.queue.length > 0 && !this.move)
+                    this.busy = this.startStep(this.queue.shift())
+                else if(this.queue.length === 0)
+                {
+                    this.gap -= delta
+                    if(this.gap <= 0 && !this.move)
+                    {
+                        this.queue = this.pickCombo()
+                        this.gap = 0.5 + Math.random() * 1.1
+                    }
+                }
+            }
 
             // rayos durante la batalla
             this.lightningTimer -= delta
             if(this.lightningTimer <= 0)
             {
-                this.lightningTimer = 1.6 + Math.random() * 1.8
+                this.lightningTimer = 1.4 + Math.random() * 1.6
                 try { this.game.world.lightnings.createRandom(() => Math.random()) } catch(e) {}
             }
         }
