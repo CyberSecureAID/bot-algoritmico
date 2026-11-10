@@ -317,6 +317,21 @@ export class View
             }
         })
 
+        // pinch en movil: alejar/acercar la camara con dos dedos (ademas de la rueda en PC)
+        let pinchLast = null
+        const pinchDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+        window.addEventListener('touchmove', (event) =>
+        {
+            if(event.touches && event.touches.length === 2)
+            {
+                const d = pinchDist(event.touches)
+                if(pinchLast !== null)
+                    this.zoom.baseRatio = clamp(this.zoom.baseRatio + (d - pinchLast) * 0.004, 0, 1)
+                pinchLast = d
+            }
+        }, { passive: true })
+        window.addEventListener('touchend', () => { pinchLast = null })
+
         if(this.game.debug.active)
         {
             const zoomDebugPanel = this.debugPanel.addFolder({
@@ -336,7 +351,7 @@ export class View
         this.spherical.theta = Math.PI * 0.25
 
         this.spherical.radius = {}
-        this.spherical.radius.edges = { min: 15, max: 30 }
+        this.spherical.radius.edges = { min: 15, max: 75 }
         this.spherical.radius.current = lerp(this.spherical.radius.edges.min, this.spherical.radius.edges.max, 1 - this.zoom.smoothedRatio)
         this.spherical.radius.nonIdealRatioOffset = 9
 
