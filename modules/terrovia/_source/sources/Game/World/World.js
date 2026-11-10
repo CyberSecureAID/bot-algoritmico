@@ -32,6 +32,7 @@ import { Weapons } from './Weapons.js'
 import { BoostZones } from './BoostZones.js'
 import { TouchControls } from './TouchControls.js'
 import { Multiplayer } from './Multiplayer.js'
+import { Boss } from './Boss.js'
 
 export class World
 {
@@ -86,6 +87,7 @@ export class World
             this.boostZones = new BoostZones()
             this.touchControls = new TouchControls()
             this.multiplayer = new Multiplayer()
+            this.boss = new Boss()
         }
         else if(step === 2)
         {
