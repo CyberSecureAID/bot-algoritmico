@@ -44,12 +44,13 @@ export class Boss
         this.feigning = false
         this.feignTimer = 0
         this.feignCooldown = 6
+        this.hitReactCd = 0             // enfriamiento de la animacion de recibir golpe
 
         // deteccion / vision / caza / correa
         this.detectRadius = 22
         this.visionConeCos = Math.cos(THREE.MathUtils.degToRad(70))   // cono frontal +-70 grados
-        this.huntSpeed = 10
-        this.walkSpeed = 6
+        this.huntSpeed = 9
+        this.walkSpeed = 4.5
         this.fightRange = 9
         this.loseRadius = 34
         this.loseAfter = 3.5
@@ -61,6 +62,9 @@ export class Boss
         // proyectiles del jefe
         this.bossProjectiles = []
         this.sphere = new THREE.SphereGeometry(1, 20, 20)
+
+        // fuerza base del EMPUJE al carro (ondas, aplauso, embestida, impactos). Calibrada.
+        this.knockBase = 75
 
         // movimiento controlado (lerp entre puntos, para los pasos de combo)
         this.move = null
@@ -93,7 +97,7 @@ export class Boss
     {
         if(!this.placed || this.state === 'dead')
             return
-        this.takeDamageCheck()
+        this.takeDamageCheck(this.game.ticker.delta)
     }
 
     // ---------------------------------------------------------------- colocacion
@@ -162,9 +166,44 @@ export class Boss
             colliders: [ { shape: 'cuboid', parameters: [ halfW, this.halfH, halfW ], category: 'object' } ]
         })
         this.body = this.obj?.physical?.body || null
-        this.hitRadius = Math.max(halfW, 2.2)
+        this.hitRadius = Math.max(halfW, 3.0)   // esfera de impacto generosa (es grande)
 
         this.placed = true
+    }
+
+    // distancia minima de un punto c al segmento [p0, p0 + dir*L] (dir unitario)
+    segDist(c, p0, dir, L)
+    {
+        const wx = c.x - p0.x, wy = c.y - p0.y, wz = c.z - p0.z
+        let t = wx * dir.x + wy * dir.y + wz * dir.z
+        if(t < 0) t = 0
+        else if(t > L) t = L
+        const cx = p0.x + dir.x * t, cy = p0.y + dir.y * t, cz = p0.z + dir.z * t
+        return Math.sqrt((c.x - cx) ** 2 + (c.y - cy) ** 2 + (c.z - cz) ** 2)
+    }
+
+    // EMPUJAR al carro/jugador: impulso que lo aleja de 'from' (las ondas y golpes lo mueven)
+    knockPlayer(strength, up = 0.35, from = this.model.position)
+    {
+        const body = this.playerBody
+        if(!body)
+            return
+        const p = this.playerPos
+        let dx = p.x - from.x, dz = p.z - from.z
+        const d = Math.sqrt(dx * dx + dz * dz) || 1
+        dx /= d; dz /= d
+        try
+        {
+            body.applyImpulse({ x: dx * strength, y: Math.abs(strength) * up, z: dz * strength }, true)
+            body.wakeUp?.()
+        }
+        catch(e) {}
+    }
+
+    // altura REAL del suelo en (x,z) para poner los efectos justo encima (no bajo el piso)
+    groundYAt(x, z)
+    {
+        return this.groundY(x, z, this.model.position.y)
     }
 
     // altura del suelo en (x,z) con un rayo hacia abajo (para no meterse bajo el piso)
@@ -305,7 +344,8 @@ export class Boss
             // despierta y va a cazar (de dia; la noche empieza al alcanzarte)
             this.move = null
             this.huntTimer = 0
-            this.play('walk', { fade: 0.15 })
+            const a = this.play('walk', { fade: 0.15 })
+            if(a) a.timeScale = 1.8          // cadencia de las piernas acorde a la velocidad (no patina)
         }
         else if(s === 'fight')
         {
@@ -323,7 +363,8 @@ export class Boss
         else if(s === 'retreat')
         {
             this.move = null
-            this.play('walk', { fade: 0.2 })
+            const a = this.play('walk', { fade: 0.2 })
+            if(a) a.timeScale = 1.2          // camina de vuelta (cadencia acorde, no "jalado con soga")
             this.endBattle()
         }
         else if(s === 'guard')
@@ -469,8 +510,8 @@ export class Boss
             // biyudama CHICA: aparece en una mano, se ve PASAR a la otra y luego se lanza.
             const a = this.play('throw_combo', { loop: false, fade: 0.1 })
             this.setStep(a, 3.0, [
-                { phase: 0.18, fn: () => this.spawnPassOrb() },
-                { phase: 0.82, fn: () => this.launchPassOrb() },
+                { phase: 0.1, fn: () => this.spawnPassOrb() },      // aparece en la IZQUIERDA (ahi empieza)
+                { phase: 0.7, fn: () => this.launchPassOrb() },     // la DERECHA la lanza (fase del gesto real)
             ], (ph) => this.trackPassOrb(ph))
             return this.stepDuration(a, 3.0)
         }
@@ -496,9 +537,9 @@ export class Boss
         if(name === 'charge' || name === 'rollTo' || name === 'walkTo')
         {
             const cfg = {
-                charge: { anim: 'charge',        ts: 1.0, reach: 5.5, moveDur: 0.45 },
-                rollTo: { anim: 'roll_forward',  ts: 1.7, reach: 5.0, moveDur: 1.15 },
-                walkTo: { anim: 'walk',          ts: 1.0, reach: 3.5, moveDur: 0.75 },
+                charge: { anim: 'charge',        ts: 1.0, reach: 8.0,  moveDur: 0.5 },
+                rollTo: { anim: 'roll_forward',  ts: 1.6, reach: 10.0, moveDur: 1.25 },
+                walkTo: { anim: 'walk',          ts: 1.5, reach: 4.0,  moveDur: 0.7 },
             }[name]
             const a = this.play(cfg.anim, { loop: false, fade: 0.12 })
             const dir = new THREE.Vector3(p.x - this.model.position.x, 0, p.z - this.model.position.z)
@@ -506,15 +547,24 @@ export class Boss
             dir.multiplyScalar(1 / len)
             let tx = this.model.position.x + dir.x * cfg.reach
             let tz = this.model.position.z + dir.z * cfg.reach
-            // correa: no se aleja mas de 16 del punto donde empezo la pelea
+            // correa mas larga (22) para que la embestida/voltereta AVANCEN de verdad
             const hx = tx - this.anchor.x, hz = tz - this.anchor.z
             const hl = Math.sqrt(hx * hx + hz * hz)
-            if(hl > 16) { tx = this.anchor.x + hx / hl * 16; tz = this.anchor.z + hz / hl * 16 }
+            if(hl > 22) { tx = this.anchor.x + hx / hl * 22; tz = this.anchor.z + hz / hl * 22 }
             const ty = this.groundY(tx, tz, this.model.position.y)
             // el movimiento dura casi lo mismo que la animacion: no se traba ni "se pega atras"
             this.startMove(this.model.position.clone(), new THREE.Vector3(tx, ty, tz), cfg.moveDur)
-            const triggers = name === 'charge'
-                ? [ { phase: 0.8, fn: () => { const f = this.frontPoint(2.2); try { this.game.world.fireballs.create(f, 1.8, 3.2) } catch(e) {} } } ]
+            // embestida: al llegar, empuja y golpea al carro si lo alcanza
+            const triggers = (name === 'charge' || name === 'rollTo')
+                ? [ { phase: 0.75, fn: () =>
+                    {
+                        if(this.playerDistTo(this.model.position) < 5)
+                        {
+                            const f = this.frontPoint(2.2)
+                            try { this.game.world.fireballs.create(f, 1.6, 3) } catch(e) {}
+                            this.knockPlayer(this.knockBase * 1.1, 0.5, this.model.position)
+                        }
+                    } } ]
                 : []
             this.setStep(a, cfg.ts, triggers)
             return this.stepDuration(a, cfg.ts)
@@ -677,25 +727,30 @@ export class Boss
     releaseShockwave()
     {
         this.disposeChargeOrb()
-        const gy = this.model.position.y
-        const center = new THREE.Vector3(this.model.position.x, gy + 0.9, this.model.position.z)
+        const gy = this.groundYAt(this.model.position.x, this.model.position.z)   // SUELO real (no bajo el piso)
+        const center = new THREE.Vector3(this.model.position.x, gy + 1.0, this.model.position.z)
 
-        // destello breve en el centro (el "boom")
+        // EMPUJE real: si el carro esta dentro del radio de la onda, lo EXPULSA (mas fuerte de cerca)
+        const pd = this.playerDistTo(this.model.position)
+        if(pd < 13)
+            this.knockPlayer(this.knockBase * (0.6 + (1 - pd / 13) * 0.9), 0.55, this.model.position)
+
+        // destello breve y CHICO en el centro (apenas un pop, para no tapar el anillo)
         const coreMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
         coreMat.colorNode = color('#ffe0b0').mul(3)
         const core = new THREE.Mesh(this.sphere, coreMat)
         core.position.copy(center)
-        core.scale.setScalar(0.4)
+        core.scale.setScalar(0.25)
         this.game.scene.add(core)
-        gsap.to(core.scale, { x: 1.9, y: 1.9, z: 1.9, duration: 0.22, ease: 'power3.out' })
-        gsap.to(coreMat, { opacity: 0, duration: 0.28, ease: 'power1.in', onComplete: () => { coreMat.dispose?.(); core.removeFromParent() } })
+        gsap.to(core.scale, { x: 0.9, y: 0.9, z: 0.9, duration: 0.16, ease: 'power3.out' })
+        gsap.to(coreMat, { opacity: 0, duration: 0.24, ease: 'power1.in', onComplete: () => { coreMat.dispose?.(); core.removeFromParent() } })
 
-        // la ONDA: un anillo redondo y parejo en el suelo que crece uniforme y se desvanece
+        // la ONDA (el protagonista): anillo redondo, parejo y BRILLANTE que crece uniforme
         const ringMat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
-        ringMat.colorNode = color('#ff5a2a').mul(3.2)
-        const ring = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 96), ringMat)   // mas segmentos = perfectamente redondo
+        ringMat.colorNode = color('#ff6a34').mul(4.2)
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 96), ringMat)   // mas segmentos = perfectamente redondo
         ring.rotation.x = -Math.PI * 0.5
-        ring.position.set(center.x, gy + 0.18, center.z)
+        ring.position.set(center.x, gy + 0.4, center.z)
         ring.scale.set(0.8, 0.8, 1)
         this.game.scene.add(ring)
         const s = { v: 0.8 }
@@ -707,15 +762,15 @@ export class Boss
         ring2Mat.colorNode = color('#ffc078').mul(2.4)
         const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 96), ring2Mat)
         ring2.rotation.x = -Math.PI * 0.5
-        ring2.position.set(center.x, gy + 0.16, center.z)
+        ring2.position.set(center.x, gy + 0.38, center.z)
         ring2.scale.set(0.8, 0.8, 1)
         this.game.scene.add(ring2)
         const s2 = { v: 0.8 }
         gsap.to(s2, { v: 8.5, duration: 0.75, delay: 0.1, ease: 'power2.out', onUpdate: () => ring2.scale.set(s2.v, s2.v, 1) })
         gsap.to(ring2Mat, { opacity: 0, duration: 0.75, delay: 0.1, ease: 'power1.in', onComplete: () => { ring2Mat.dispose?.(); ring2.geometry.dispose(); ring2.removeFromParent() } })
 
-        // el empuje y el fogonazo redondo reales (la MISMA explosion del juego), contenidos
-        try { this.game.world.fireballs.create(center, 2.0, 3.8) } catch(e) {}
+        // NOTA: el empuje real lo hace knockPlayer (fisica), no la explosion. No metemos
+        // fireball aqui porque su bloom tapaba al jefe. El protagonista es el ANILLO redondo.
     }
 
     // ---------------------------------------------------------------- efectos extra
@@ -724,9 +779,23 @@ export class Boss
     {
         const yaw = this.model.rotation.y - this.facingOffset
         const fwd = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))
-        const gy = this.model.position.y
-        // centro de la onda: un poco ADELANTE del jefe, en el piso
-        const front = new THREE.Vector3(this.model.position.x + fwd.x * 2.2, gy + 0.2, this.model.position.z + fwd.z * 2.2)
+        const fxp = this.model.position.x + fwd.x * 2.2, fzp = this.model.position.z + fwd.z * 2.2
+        const gy = this.groundYAt(fxp, fzp)   // SUELO real delante del jefe (no bajo el piso)
+        // centro de la onda: un poco ADELANTE del jefe, sobre el piso
+        const front = new THREE.Vector3(fxp, gy + 0.4, fzp)
+
+        // EMPUJE real: si el carro esta en el cono de adelante y dentro de rango, lo expulsa
+        {
+            const p = this.playerPos
+            let tx = p.x - this.model.position.x, tz = p.z - this.model.position.z
+            const dist = Math.sqrt(tx * tx + tz * tz)
+            if(dist > 0.1 && dist < 11)
+            {
+                const dot = (tx / dist) * fwd.x + (tz / dist) * fwd.z
+                if(dot > 0.3)
+                    this.knockPlayer(this.knockBase * 0.95, 0.5, this.model.position)
+            }
+        }
 
         // anillo en el suelo que nace delante y se expande (se lee claro desde arriba)
         const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
@@ -747,15 +816,15 @@ export class Boss
         mat2.colorNode = color('#fff0c8').mul(2.6)
         const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.95, 72), mat2)
         ring2.rotation.x = -Math.PI * 0.5
-        ring2.position.set(front.x, gy + 0.24, front.z)
+        ring2.position.set(front.x, gy + 0.42, front.z)
         ring2.scale.set(0.6, 0.6, 1)
         this.game.scene.add(ring2)
         const s2 = { v: 0.6 }
         gsap.to(s2, { v: 5.5, duration: 0.45, delay: 0.08, ease: 'power2.out', onUpdate: () => ring2.scale.set(s2.v, s2.v, 1) })
         gsap.to(mat2, { opacity: 0, duration: 0.45, delay: 0.08, ease: 'power1.in', onComplete: () => { mat2.dispose?.(); ring2.geometry.dispose(); ring2.removeFromParent() } })
 
-        // empuje real adelante (explosion del juego), contenido
-        try { this.game.world.fireballs.create(new THREE.Vector3(this.model.position.x + fwd.x * 3.2, gy + 0.6, this.model.position.z + fwd.z * 3.2), 1.4, 2.6) } catch(e) {}
+        // fogonazo real adelante (explosion del juego), CHICO
+        try { this.game.world.fireballs.create(new THREE.Vector3(this.model.position.x + fwd.x * 3.2, gy + 0.8, this.model.position.z + fwd.z * 3.2), 1.0, 2.2) } catch(e) {}
     }
 
     // ---- biyudama chica que se PASA de una mano a la otra y luego se lanza ----
@@ -764,18 +833,18 @@ export class Boss
         this.disposePassOrb()
         const orb = new THREE.Mesh(this.sphere, this.fireMaterial())
         orb.scale.setScalar(0.34)
-        orb.position.copy(this.handPoint('R'))
+        orb.position.copy(this.handPoint('L'))   // nace en la IZQUIERDA (ahi esta activa al inicio)
         this.game.scene.add(orb)
         this.passOrb = orb
     }
 
-    // la seguimos a las manos en vivo: derecha -> izquierda segun avanza la animacion
+    // la seguimos a las manos en vivo: IZQUIERDA -> DERECHA durante el windup (fase 0.5..0.68)
     trackPassOrb(ph)
     {
         if(!this.passOrb)
             return
-        const k = THREE.MathUtils.clamp((ph - 0.45) / 0.3, 0, 1)   // 0.45..0.75 cruza de derecha a izquierda
-        this.passOrb.position.lerpVectors(this.handPoint('R'), this.handPoint('L'), k)
+        const k = THREE.MathUtils.clamp((ph - 0.5) / 0.18, 0, 1)   // cruza de izquierda a derecha en el windup
+        this.passOrb.position.lerpVectors(this.handPoint('L'), this.handPoint('R'), k)
     }
 
     launchPassOrb()
@@ -784,7 +853,7 @@ export class Boss
             return
         const orb = this.passOrb
         this.passOrb = null
-        const from = this.handPoint('L')
+        const from = this.handPoint('R')   // la DERECHA la lanza (el gesto de tiro es con la derecha)
         const p = this.playerPos
         const dir = new THREE.Vector3(p.x, p.y + 0.25, p.z).sub(from).normalize()
         orb.position.copy(from)
@@ -870,6 +939,9 @@ export class Boss
             {
                 const at = pr.pos.clone().addScaledVector(pr.dir, Math.max(0, hit - pr.radius * 0.5))
                 try { this.game.world.fireballs.create(at, 2.2, 4) } catch(e) {}
+                // si revienta cerca del carro, lo empuja
+                if(this.playerDistTo(at) < 5.5)
+                    this.knockPlayer(this.knockBase * 0.8, 0.5, at)
                 this.disposeProjectile(pr, i)
                 continue
             }
@@ -892,23 +964,31 @@ export class Boss
     }
 
     // ---------------------------------------------------------------- recibir dano
-    takeDamageCheck()
+    // Esfera BARRIDA: en vez de mirar la distancia puntual (que fallaba por un frame porque
+    // el disparo va rapido), miro el SEGMENTO que el disparo recorre este frame, igual que el
+    // raycast del arma. Cuando pega, CONSUMO el disparo yo mismo (explosion + lo quito) para
+    // garantizar que el impacto cuenta aunque el collider no lo frene.
+    takeDamageCheck(delta)
     {
         const weapons = this.game.world.weapons
-        if(!weapons || !weapons.projectiles)
+        if(!weapons || !weapons.projectiles || !this.model)
             return
         const center = new THREE.Vector3(this.model.position.x, this.model.position.y + this.halfH, this.model.position.z)
         const pBody = this.playerBody
-        for(const proj of weapons.projectiles)
+        const dt = delta || 0.016
+        for(let i = weapons.projectiles.length - 1; i >= 0; i--)
         {
+            const proj = weapons.projectiles[i]
             if(proj.__bossHit)
                 continue
-            if(pBody && proj.excludeBody !== pBody)      // solo los disparos del jugador
+            if(pBody && proj.excludeBody && proj.excludeBody !== pBody)   // ignora disparos remotos
                 continue
-            if(proj.pos.distanceTo(center) <= this.hitRadius + proj.radius)
+            const reach = proj.speed * dt + proj.radius + 0.6
+            if(this.segDist(center, proj.pos, proj.dir, reach) <= this.hitRadius + proj.radius)
             {
                 proj.__bossHit = true
-                this.hit(proj.charged ? 4 : 2, proj.pos)
+                this.hit(proj.charged ? 5 : 2.5, proj.pos.clone())
+                try { weapons.detonate(proj, proj.pos) } catch(e) {}   // explosion en el jefe + lo consume
             }
         }
     }
@@ -944,21 +1024,32 @@ export class Boss
             return
         }
 
-        // animacion de golpe segun de donde viene (sin interrumpir un movimiento)
-        if(!this.move && Math.random() < 0.5)
+        // REACCION de golpe visible y DIRECCIONAL (de frente / espalda / lados), con un
+        // pequeno enfriamiento para que se vea cada tanto sin dejarlo en stun eterno. No
+        // interrumpe una embestida/voltereta en curso (esas terminan).
+        if(!this.move && this.hitReactCd <= 0)
         {
-            const d = new THREE.Vector3(fromPos.x - this.model.position.x, 0, fromPos.z - this.model.position.z)
-            const yaw = this.model.rotation.y - this.facingOffset
-            const fwd = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))
-            const right = new THREE.Vector3(fwd.z, 0, -fwd.x)
-            const dotF = d.x * fwd.x + d.z * fwd.z
-            const dotR = d.x * right.x + d.z * right.z
-            let anim = 'hit_front'
-            if(Math.abs(dotR) > Math.abs(dotF)) anim = dotR > 0 ? 'hit_right' : 'stagger_right'
-            else anim = dotF > 0 ? 'hit_front' : 'hit_back'
-            this.play(anim, { loop: false, fade: 0.08 })
-            this.busy = Math.max(this.busy, 0.35)
+            this.step = null                 // interrumpe el hechizo en curso (lo reincorporas a golpes)
+            this.disposeChargeOrb()
+            this.disposePassOrb()
+            this.play(this.hitAnimFor(fromPos), { loop: false, fade: 0.07 })
+            this.busy = Math.max(this.busy, 0.3)
+            this.hitReactCd = 0.55
         }
+    }
+
+    // elige la animacion de golpe segun de donde viene el disparo
+    hitAnimFor(fromPos)
+    {
+        const yaw = this.model.rotation.y - this.facingOffset
+        const fwd = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))
+        const right = new THREE.Vector3(fwd.z, 0, -fwd.x)
+        const dx = fromPos.x - this.model.position.x, dz = fromPos.z - this.model.position.z
+        const dotF = dx * fwd.x + dz * fwd.z
+        const dotR = dx * right.x + dz * right.z
+        if(Math.abs(dotR) > Math.abs(dotF))
+            return dotR > 0 ? 'hit_right' : 'stagger_right'
+        return dotF > 0 ? 'hit_front' : 'hit_back'
     }
 
     // ---------------------------------------------------------------- loop
@@ -973,6 +1064,8 @@ export class Boss
         const delta = this.game.ticker.delta
         if(this.mixer)
             this.mixer.update(delta)
+        if(this.hitReactCd > 0)
+            this.hitReactCd -= delta
         this.updateChargeOrb(delta)
 
         // movimiento controlado por pasos de combo (lerp)
@@ -1000,7 +1093,7 @@ export class Boss
 
         // ---- orientacion segun estado ----
         if(this.state === 'guard')
-            this.model.rotation.y = this.baseYaw + Math.sin(this.game.ticker.elapsed * 0.5) * 0.7   // vigila (barrido)
+            this.model.rotation.y = this.baseYaw + Math.sin(this.game.ticker.elapsed * 0.35) * 0.28   // vigila de frente (barrido leve)
         else if(this.state === 'hunt' || this.state === 'fight')
             this.faceTo(this.playerPos, delta, 7)
         else if(this.state === 'retreat')
