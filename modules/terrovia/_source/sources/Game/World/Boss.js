@@ -65,6 +65,12 @@ export class Boss
         // movimiento controlado (lerp entre puntos, para los pasos de combo)
         this.move = null
 
+        // paso de ataque en curso: los efectos se disparan segun la FASE REAL de la
+        // animacion (action.time / duracion), no por temporizadores a ciegas. Asi el
+        // efecto sale cuando el movimiento de las manos llega a su punto, sincronizado.
+        this.step = null
+        this.passOrb = null
+
         // onda expansiva (energia que se absorbe al centro)
         this.chargeGroup = null
         this.chargeParts = []
@@ -75,6 +81,19 @@ export class Boss
 
         this.update = this.update.bind(this)
         this.game.ticker.events.on('tick', this.update, 8)
+
+        // El escaneo de dano corre en orden 5, ANTES que Weapons (orden 6). Si no, el disparo
+        // del jugador detona contra el collider del jefe y se BORRA del array en orden 6,
+        // antes de que lo pudieramos contar en orden 8: por eso "no bajaba vida".
+        this.damageScan = this.damageScan.bind(this)
+        this.game.ticker.events.on('tick', this.damageScan, 5)
+    }
+
+    damageScan()
+    {
+        if(!this.placed || this.state === 'dead')
+            return
+        this.takeDamageCheck()
     }
 
     // ---------------------------------------------------------------- colocacion
@@ -128,9 +147,10 @@ export class Boss
             this.actions[clip.name] = this.mixer.clipAction(clip)
         this.play('idle')
 
-        // huesos de las manos (para que las biyudamas salgan de las manos)
-        this.handR = this.model.getObjectByName('mixamorig:RightHand') || this.model.getObjectByName('mixamorig:RightHandMiddle1')
-        this.handL = this.model.getObjectByName('mixamorig:LeftHand') || this.model.getObjectByName('mixamorig:LeftHandMiddle1')
+        // huesos de las manos (para que las biyudamas salgan de las manos).
+        // OJO: en este modelo los huesos NO llevan dos puntos: son 'mixamorigRightHand'.
+        this.handR = this.model.getObjectByName('mixamorigRightHand') || this.model.getObjectByName('mixamorig:RightHand') || this.model.getObjectByName('mixamorigRightHandMiddle1')
+        this.handL = this.model.getObjectByName('mixamorigLeftHand') || this.model.getObjectByName('mixamorig:LeftHand') || this.model.getObjectByName('mixamorigLeftHandMiddle1')
 
         // barra de vida flotante (feedback de que le estas dando)
         this.buildHealthBar()
@@ -185,6 +205,7 @@ export class Boss
         if(this.current === action && loop)
             return action
         action.reset()
+        action.timeScale = 1               // los pasos de ataque le ponen su propia velocidad
         action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
         action.clampWhenFinished = !loop
         action.enabled = true
@@ -338,8 +359,10 @@ export class Boss
         if(this.battleOn)
             return
         this.battleOn = true
+        // noche + rayos (los rayos ya traen su trueno: esa es la tension de la pelea).
+        // NO se pausa la musica: antes se quedaba en SILENCIO al pelear. Para una pista de
+        // batalla dedicada hace falta un archivo (battle.mp3); mientras, sigue la musica normal.
         try { this.game.dayCycles.override.start({ progress: 0.47 }, 2.5) } catch(e) {}
-        try { this.game.audio.playlist?.current?.sound?.pause?.() } catch(e) {}
     }
 
     endBattle()
@@ -348,7 +371,6 @@ export class Boss
             return
         this.battleOn = false
         try { this.game.dayCycles.override.end(3) } catch(e) {}
-        try { this.game.audio.playlist?.current?.sound?.play?.() } catch(e) {}
     }
 
     // ---------------------------------------------------------------- cerebro de ataques
@@ -381,63 +403,127 @@ export class Boss
         return pool[Math.floor(Math.random() * pool.length)].slice()
     }
 
+    // registra el paso en curso: sus efectos se disparan por FASE de la animacion
+    setStep(action, timeScale, triggers, onTrack = null)
+    {
+        this.disposePassOrb()               // por si quedo un orbe del paso anterior
+        if(action)
+            action.timeScale = timeScale
+        const clip = action && action.getClip ? action.getClip() : null
+        this.step = {
+            action,
+            baseDur: clip ? clip.duration : 0.6,
+            triggers: triggers.map(t => ({ phase: t.phase, fn: t.fn, done: false })),
+            onTrack
+        }
+    }
+
+    // cuanto dura el paso en segundos reales (duracion del clip / velocidad)
+    stepDuration(action, timeScale)
+    {
+        const clip = action && action.getClip ? action.getClip() : null
+        return Math.max(0.4, clip ? clip.duration / timeScale : 0.6)
+    }
+
+    // procesa el paso cada frame: dispara cada efecto cuando la animacion cruza su fase
+    processStep()
+    {
+        const st = this.step
+        if(!st || !st.action)
+            return
+        if(this.state !== 'fight')   // si dejo la pelea (muerto/retirada), limpiar efectos
+        {
+            this.disposePassOrb()
+            this.disposeChargeOrb()
+            this.step = null
+            return
+        }
+        const a = st.action
+        const ph = st.baseDur > 0 ? Math.min(1, a.time / st.baseDur) : 1
+        for(const tr of st.triggers)
+            if(!tr.done && ph >= tr.phase)
+            {
+                tr.done = true
+                try { tr.fn() } catch(e) {}
+            }
+        if(st.onTrack)
+            try { st.onTrack(ph) } catch(e) {}
+        if(ph >= 1 || this.current !== a)
+            this.step = null
+    }
+
     startStep(name)
     {
         const p = this.playerPos
 
         if(name === 'throw')
         {
-            // biyudama grande: sale cuando estira las dos manos al frente
-            this.play('throw_bijudama', { loop: false, fade: 0.1 })
-            gsap.delayedCall(0.6, () => { if(this.inFight()) this.spawnBossProjectile(false) })
-            return 1.3
+            // biyudama GRANDE: sube las manos, las junta y las ESTIRA al frente (fase ~0.54).
+            // Justo ahi, desde las dos manos, sale la biyudama. Antes salia adelantada.
+            const a = this.play('throw_bijudama', { loop: false, fade: 0.1 })
+            this.setStep(a, 1.55, [ { phase: 0.54, fn: () => this.spawnBossProjectile(false) } ])
+            return this.stepDuration(a, 1.55)
         }
         if(name === 'throwSmall')
         {
-            // biyudama chica: se pasa de una mano a la otra y luego la lanza
-            this.play('throw_combo', { loop: false, fade: 0.1 })
-            gsap.delayedCall(0.25, () => { if(this.inFight()) this.passBijudama() })
-            return 1.4
+            // biyudama CHICA: aparece en una mano, se ve PASAR a la otra y luego se lanza.
+            const a = this.play('throw_combo', { loop: false, fade: 0.1 })
+            this.setStep(a, 3.0, [
+                { phase: 0.18, fn: () => this.spawnPassOrb() },
+                { phase: 0.82, fn: () => this.launchPassOrb() },
+            ], (ph) => this.trackPassOrb(ph))
+            return this.stepDuration(a, 3.0)
         }
         if(name === 'clap')
         {
-            // aplauso estilo Hulk: onda de aire hacia adelante
-            this.play('clap_attack', { loop: false, fade: 0.1 })
-            gsap.delayedCall(0.85, () => { if(this.inFight()) this.clapWave() })
-            return 1.5
+            // aplauso: la onda de aire sale EN el aplauso, cuando las manos se juntan (fase ~0.66),
+            // y va hacia ADELANTE (hacia el jugador/entrada), no de lado.
+            const a = this.play('clap_attack', { loop: false, fade: 0.1 })
+            this.setStep(a, 1.6, [ { phase: 0.66, fn: () => this.clapWave() } ])
+            return this.stepDuration(a, 1.6)
         }
         if(name === 'shock')
         {
-            // reune poder (energia que se absorbe) y suelta la onda perimetral
-            this.play('power_shockwave', { loop: false, fade: 0.1 })
-            this.spawnChargeOrb()
-            gsap.delayedCall(1.0, () => this.releaseShockwave())
-            return 2.0
+            // REUNE energia (se ve acumular del piso al centro) y SUELTA la onda redonda
+            // cuando abre los dos brazos a los lados (fase ~0.62). Antes salia antes de cargar.
+            const a = this.play('power_shockwave', { loop: false, fade: 0.1 })
+            this.setStep(a, 1.25, [
+                { phase: 0.06, fn: () => this.spawnChargeOrb(1.4) },
+                { phase: 0.62, fn: () => this.releaseShockwave() },
+            ])
+            return this.stepDuration(a, 1.25)
         }
         if(name === 'charge' || name === 'rollTo' || name === 'walkTo')
         {
-            const anim = name === 'charge' ? 'charge' : (name === 'rollTo' ? 'roll_forward' : 'walk')
-            this.play(anim, { loop: false, fade: 0.1 })
+            const cfg = {
+                charge: { anim: 'charge',        ts: 1.0, reach: 5.5, moveDur: 0.45 },
+                rollTo: { anim: 'roll_forward',  ts: 1.7, reach: 5.0, moveDur: 1.15 },
+                walkTo: { anim: 'walk',          ts: 1.0, reach: 3.5, moveDur: 0.75 },
+            }[name]
+            const a = this.play(cfg.anim, { loop: false, fade: 0.12 })
             const dir = new THREE.Vector3(p.x - this.model.position.x, 0, p.z - this.model.position.z)
             const len = dir.length() || 1
             dir.multiplyScalar(1 / len)
-            const reach = name === 'charge' ? 5.5 : (name === 'rollTo' ? 5 : 3.5)
-            let tx = this.model.position.x + dir.x * reach
-            let tz = this.model.position.z + dir.z * reach
+            let tx = this.model.position.x + dir.x * cfg.reach
+            let tz = this.model.position.z + dir.z * cfg.reach
             // correa: no se aleja mas de 16 del punto donde empezo la pelea
             const hx = tx - this.anchor.x, hz = tz - this.anchor.z
             const hl = Math.sqrt(hx * hx + hz * hz)
             if(hl > 16) { tx = this.anchor.x + hx / hl * 16; tz = this.anchor.z + hz / hl * 16 }
             const ty = this.groundY(tx, tz, this.model.position.y)
-            this.startMove(this.model.position.clone(), new THREE.Vector3(tx, ty, tz), name === 'charge' ? 0.55 : 0.85)
-            if(name === 'charge')
-                gsap.delayedCall(0.55, () => { if(this.inFight()) { const f = this.frontPoint(2.5); try { this.game.world.fireballs.create(f, 2.5, 4) } catch(e) {} } })
-            return name === 'charge' ? 1.1 : 1.2
+            // el movimiento dura casi lo mismo que la animacion: no se traba ni "se pega atras"
+            this.startMove(this.model.position.clone(), new THREE.Vector3(tx, ty, tz), cfg.moveDur)
+            const triggers = name === 'charge'
+                ? [ { phase: 0.8, fn: () => { const f = this.frontPoint(2.2); try { this.game.world.fireballs.create(f, 1.8, 3.2) } catch(e) {} } } ]
+                : []
+            this.setStep(a, cfg.ts, triggers)
+            return this.stepDuration(a, cfg.ts)
         }
         if(name === 'search' || name === 'taunt')
         {
-            this.play('search_left', { loop: false, fade: 0.1 })
-            return 0.9
+            const a = this.play('search_left', { loop: false, fade: 0.1 })
+            this.setStep(a, 1.0, [])
+            return this.stepDuration(a, 1.0)
         }
         return 0.6
     }
@@ -527,29 +613,32 @@ export class Boss
         this.bossProjectiles.push({ mesh, pos: from.clone(), dir, speed: small ? 28 : 24, traveled: 0, radius: r })
     }
 
-    // reunir poder: nucleo que crece + particulas de energia que se ABSORBEN al centro
-    spawnChargeOrb()
+    // reunir poder: nucleo que crece en las manos + energia que sube DEL PISO y se absorbe.
+    // growDur = cuanto tarda en cargar (sincronizado con la animacion que reune).
+    spawnChargeOrb(growDur = 1.2)
     {
-        const center = new THREE.Vector3(this.model.position.x, this.model.position.y + this.halfH, this.model.position.z)
+        const center = new THREE.Vector3(this.model.position.x, this.model.position.y + this.halfH * 1.05, this.model.position.z)
         this.chargeGroup = new THREE.Group()
         this.chargeGroup.position.copy(center)
+        this.chargeBaseY = this.model.position.y          // suelo del jefe (para subir del piso)
         this.game.scene.add(this.chargeGroup)
 
         this.chargeCore = new THREE.Mesh(this.sphere, this.fireMaterial())
-        this.chargeCore.scale.setScalar(0.15)
+        this.chargeCore.scale.setScalar(0.12)
         this.chargeGroup.add(this.chargeCore)
-        gsap.to(this.chargeCore.scale, { x: 2, y: 2, z: 2, duration: 0.95, ease: 'power2.in' })
+        gsap.to(this.chargeCore.scale, { x: 1.9, y: 1.9, z: 1.9, duration: growDur, ease: 'power2.in' })
 
-        if(!this.partGeo) this.partGeo = new THREE.SphereGeometry(0.13, 8, 8)
-        if(!this.partMat) this.partMat = new THREE.MeshBasicNodeMaterial({ color: new THREE.Color('#ff7a4d').multiplyScalar(3), transparent: true })
+        if(!this.partGeo) this.partGeo = new THREE.SphereGeometry(0.17, 8, 8)
+        if(!this.partMat) this.partMat = new THREE.MeshBasicNodeMaterial({ color: new THREE.Color('#ff8a4a').multiplyScalar(4), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
 
+        // particulas en un anillo alrededor, PEGADAS AL PISO, que suben en espiral al centro
         this.chargeParts = []
-        for(let i = 0; i < 18; i++)
+        for(let i = 0; i < 36; i++)
         {
             const m = new THREE.Mesh(this.partGeo, this.partMat)
-            const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u)
-            m.__dir = new THREE.Vector3(r * Math.cos(a), u, r * Math.sin(a))
-            m.__dist = 2.6 + Math.random() * 2.4
+            m.__ang = Math.random() * Math.PI * 2
+            m.__rad = 3 + Math.random() * 3
+            m.__y = (this.chargeBaseY - center.y) + Math.random() * 0.4   // arranca en el piso (relativo al centro)
             this.chargeGroup.add(m)
             this.chargeParts.push(m)
         }
@@ -559,20 +648,22 @@ export class Boss
     {
         if(!this.chargeGroup)
             return
-        const ang = delta * 3.2, cos = Math.cos(ang), sin = Math.sin(ang)
         for(const m of this.chargeParts)
         {
-            const d = m.__dir
-            const dx = d.x * cos - d.z * sin, dz = d.x * sin + d.z * cos
-            d.x = dx; d.z = dz
-            m.__dist = Math.max(0.12, m.__dist - delta * 3)
-            m.position.copy(d).multiplyScalar(m.__dist)
-            m.scale.setScalar(0.5 + m.__dist * 0.18)
+            m.__ang += delta * 3.4
+            m.__rad = Math.max(0.1, m.__rad - delta * 3.4)       // se acerca al centro
+            m.__y += (-m.__y) * Math.min(1, delta * 3.2)          // sube hasta el centro (y -> 0)
+            if(m.__rad <= 0.2)                                     // reciclar: vuelve al piso afuera
+            {
+                m.__rad = 3 + Math.random() * 3
+                m.__y = (this.chargeBaseY - this.chargeGroup.position.y)
+            }
+            m.position.set(Math.cos(m.__ang) * m.__rad, m.__y, Math.sin(m.__ang) * m.__rad)
+            m.scale.setScalar(0.55 + m.__rad * 0.18)
         }
     }
 
-    // soltar: anillo perimetral que crece hacia afuera + empuje real (reusa la explosion)
-    releaseShockwave()
+    disposeChargeOrb()
     {
         if(this.chargeGroup)
         {
@@ -580,97 +671,134 @@ export class Boss
             this.chargeGroup = null
             this.chargeParts = []
         }
-        const gy = this.model.position.y
-        const center = new THREE.Vector3(this.model.position.x, gy + 1.0, this.model.position.z)
+    }
 
-        // nucleo: fogonazo breve y brillante (el "boom"), NO un globo que lo tapa todo
+    // SOLTAR: la onda redonda y pareja (como la de las explosiones) que se expande en el suelo
+    releaseShockwave()
+    {
+        this.disposeChargeOrb()
+        const gy = this.model.position.y
+        const center = new THREE.Vector3(this.model.position.x, gy + 0.9, this.model.position.z)
+
+        // destello breve en el centro (el "boom")
         const coreMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
-        coreMat.colorNode = color('#ffd6a0').mul(3)
+        coreMat.colorNode = color('#ffe0b0').mul(3)
         const core = new THREE.Mesh(this.sphere, coreMat)
         core.position.copy(center)
-        core.scale.setScalar(0.35)
+        core.scale.setScalar(0.4)
         this.game.scene.add(core)
-        gsap.to(core.scale, { x: 1.8, y: 1.8, z: 1.8, duration: 0.24, ease: 'power3.out' })
-        gsap.to(coreMat, { opacity: 0, duration: 0.3, ease: 'power1.in', onComplete: () =>
-        {
-            coreMat.dispose?.()
-            core.removeFromParent()
-        } })
+        gsap.to(core.scale, { x: 1.9, y: 1.9, z: 1.9, duration: 0.22, ease: 'power3.out' })
+        gsap.to(coreMat, { opacity: 0, duration: 0.28, ease: 'power1.in', onComplete: () => { coreMat.dispose?.(); core.removeFromParent() } })
 
-        // onda doble: dos anillos finos que VIAJAN por el suelo hacia afuera y se desvanecen
-        const makeRing = (delay, maxR, col) =>
-        {
-            const m = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
-            m.colorNode = color(col).mul(3)
-            const ring = new THREE.Mesh(new THREE.RingGeometry(0.74, 1, 64), m)
-            ring.rotation.x = -Math.PI * 0.5
-            ring.position.set(center.x, gy + 0.22, center.z)
-            ring.scale.set(0.6, 0.6, 1)
-            this.game.scene.add(ring)
-            const s = { v: 0.6 }
-            gsap.to(s, { v: maxR, duration: 0.7, delay, ease: 'power2.out', onUpdate: () => ring.scale.set(s.v, s.v, 1) })
-            gsap.to(m, { opacity: 0, duration: 0.7, delay, ease: 'power1.in', onComplete: () =>
-            {
-                m.dispose?.()
-                ring.geometry.dispose()
-                ring.removeFromParent()
-            } })
-        }
-        makeRing(0, 13, '#ff6a3c')
-        makeRing(0.12, 9, '#ffd08a')
+        // la ONDA: un anillo redondo y parejo en el suelo que crece uniforme y se desvanece
+        const ringMat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+        ringMat.colorNode = color('#ff5a2a').mul(3.2)
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 96), ringMat)   // mas segmentos = perfectamente redondo
+        ring.rotation.x = -Math.PI * 0.5
+        ring.position.set(center.x, gy + 0.18, center.z)
+        ring.scale.set(0.8, 0.8, 1)
+        this.game.scene.add(ring)
+        const s = { v: 0.8 }
+        gsap.to(s, { v: 12, duration: 0.75, ease: 'power2.out', onUpdate: () => ring.scale.set(s.v, s.v, 1) })
+        gsap.to(ringMat, { opacity: 0, duration: 0.75, ease: 'power1.in', onComplete: () => { ringMat.dispose?.(); ring.geometry.dispose(); ring.removeFromParent() } })
 
-        // empuje real (reusa la explosion) pero CONTENIDO: nada de bola gigante amarilla
-        try { this.game.world.fireballs.create(center, 2.2, 4) } catch(e) {}
+        // segundo anillo mas tenue por detras (da sensacion de onda de choque doble)
+        const ring2Mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+        ring2Mat.colorNode = color('#ffc078').mul(2.4)
+        const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 96), ring2Mat)
+        ring2.rotation.x = -Math.PI * 0.5
+        ring2.position.set(center.x, gy + 0.16, center.z)
+        ring2.scale.set(0.8, 0.8, 1)
+        this.game.scene.add(ring2)
+        const s2 = { v: 0.8 }
+        gsap.to(s2, { v: 8.5, duration: 0.75, delay: 0.1, ease: 'power2.out', onUpdate: () => ring2.scale.set(s2.v, s2.v, 1) })
+        gsap.to(ring2Mat, { opacity: 0, duration: 0.75, delay: 0.1, ease: 'power1.in', onComplete: () => { ring2Mat.dispose?.(); ring2.geometry.dispose(); ring2.removeFromParent() } })
+
+        // el empuje y el fogonazo redondo reales (la MISMA explosion del juego), contenidos
+        try { this.game.world.fireballs.create(center, 2.0, 3.8) } catch(e) {}
     }
 
     // ---------------------------------------------------------------- efectos extra
-    // aplauso estilo Hulk: onda de aire que se expande HACIA ADELANTE y empuja
+    // aplauso estilo Hulk: al juntar las manos, estalla una onda HACIA ADELANTE (al jugador)
     clapWave()
     {
         const yaw = this.model.rotation.y - this.facingOffset
         const fwd = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))
-        const origin = new THREE.Vector3(
-            this.model.position.x + fwd.x * 1.6,
-            this.model.position.y + this.halfH,
-            this.model.position.z + fwd.z * 1.6
-        )
+        const gy = this.model.position.y
+        // centro de la onda: un poco ADELANTE del jefe, en el piso
+        const front = new THREE.Vector3(this.model.position.x + fwd.x * 2.2, gy + 0.2, this.model.position.z + fwd.z * 2.2)
+
+        // anillo en el suelo que nace delante y se expande (se lee claro desde arriba)
         const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
-        mat.colorNode = color('#ffd8c0').mul(2.2)
-        const ring = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.7, 40), mat)
-        ring.position.copy(origin)
-        ring.lookAt(origin.clone().add(fwd))
+        mat.colorNode = color('#ffd27a').mul(3)
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 1, 80), mat)
+        ring.rotation.x = -Math.PI * 0.5
+        ring.position.copy(front)
+        ring.scale.set(0.7, 0.7, 1)
         this.game.scene.add(ring)
-        const s = { v: 1 }
-        gsap.to(s, { v: 9, duration: 0.42, ease: 'power2.out', onUpdate: () => ring.scale.set(s.v, s.v, 1) })
-        gsap.to(ring.position, { x: origin.x + fwd.x * 6, y: origin.y, z: origin.z + fwd.z * 6, duration: 0.42, ease: 'power2.out' })
-        gsap.to(mat, { opacity: 0, duration: 0.42, onComplete: () =>
-        {
-            mat.dispose?.()
-            ring.geometry.dispose()
-            ring.removeFromParent()
-        } })
-        try { this.game.world.fireballs.create(origin.clone().add(fwd.clone().multiplyScalar(3)), 1.5, 2.8) } catch(e) {}
+        const s = { v: 0.7 }
+        gsap.to(s, { v: 8, duration: 0.5, ease: 'power2.out', onUpdate: () => ring.scale.set(s.v, s.v, 1) })
+        // ademas se desplaza un poco mas hacia adelante (empujon de aire)
+        gsap.to(ring.position, { x: front.x + fwd.x * 3, z: front.z + fwd.z * 3, duration: 0.5, ease: 'power2.out' })
+        gsap.to(mat, { opacity: 0, duration: 0.5, ease: 'power1.in', onComplete: () => { mat.dispose?.(); ring.geometry.dispose(); ring.removeFromParent() } })
+
+        // segundo anillo mas chico que sale un pelin despues (doble chasquido)
+        const mat2 = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+        mat2.colorNode = color('#fff0c8').mul(2.6)
+        const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.95, 72), mat2)
+        ring2.rotation.x = -Math.PI * 0.5
+        ring2.position.set(front.x, gy + 0.24, front.z)
+        ring2.scale.set(0.6, 0.6, 1)
+        this.game.scene.add(ring2)
+        const s2 = { v: 0.6 }
+        gsap.to(s2, { v: 5.5, duration: 0.45, delay: 0.08, ease: 'power2.out', onUpdate: () => ring2.scale.set(s2.v, s2.v, 1) })
+        gsap.to(mat2, { opacity: 0, duration: 0.45, delay: 0.08, ease: 'power1.in', onComplete: () => { mat2.dispose?.(); ring2.geometry.dispose(); ring2.removeFromParent() } })
+
+        // empuje real adelante (explosion del juego), contenido
+        try { this.game.world.fireballs.create(new THREE.Vector3(this.model.position.x + fwd.x * 3.2, gy + 0.6, this.model.position.z + fwd.z * 3.2), 1.4, 2.6) } catch(e) {}
     }
 
-    // pasar una biyudama PEQUENA de una mano a la otra y lanzarla
-    passBijudama()
+    // ---- biyudama chica que se PASA de una mano a la otra y luego se lanza ----
+    spawnPassOrb()
     {
+        this.disposePassOrb()
         const orb = new THREE.Mesh(this.sphere, this.fireMaterial())
-        orb.scale.setScalar(0.38)
+        orb.scale.setScalar(0.34)
         orb.position.copy(this.handPoint('R'))
         this.game.scene.add(orb)
-        const t = { v: 0 }
-        gsap.to(t, { v: 1, duration: 0.5, ease: 'sine.inOut',
-            onUpdate: () => orb.position.lerpVectors(this.handPoint('R'), this.handPoint('L'), t.v),
-            onComplete: () =>
-            {
-                const from = this.handPoint('L')
-                const p = this.playerPos
-                const dir = new THREE.Vector3(p.x, p.y + 0.25, p.z).sub(from).normalize()
-                orb.position.copy(from)
-                this.bossProjectiles.push({ mesh: orb, pos: from.clone(), dir, speed: 28, traveled: 0, radius: 0.38 })
-            }
-        })
+        this.passOrb = orb
+    }
+
+    // la seguimos a las manos en vivo: derecha -> izquierda segun avanza la animacion
+    trackPassOrb(ph)
+    {
+        if(!this.passOrb)
+            return
+        const k = THREE.MathUtils.clamp((ph - 0.45) / 0.3, 0, 1)   // 0.45..0.75 cruza de derecha a izquierda
+        this.passOrb.position.lerpVectors(this.handPoint('R'), this.handPoint('L'), k)
+    }
+
+    launchPassOrb()
+    {
+        if(!this.passOrb)
+            return
+        const orb = this.passOrb
+        this.passOrb = null
+        const from = this.handPoint('L')
+        const p = this.playerPos
+        const dir = new THREE.Vector3(p.x, p.y + 0.25, p.z).sub(from).normalize()
+        orb.position.copy(from)
+        this.bossProjectiles.push({ mesh: orb, pos: from.clone(), dir, speed: 30, traveled: 0, radius: 0.34 })
+    }
+
+    disposePassOrb()
+    {
+        if(this.passOrb)
+        {
+            this.passOrb.material?.dispose?.()
+            this.passOrb.removeFromParent()
+            this.passOrb = null
+        }
     }
 
     // chispa brillante al recibir un disparo (feedback de que le estas dando)
@@ -866,9 +994,9 @@ export class Boss
         }
 
         this.updateBossProjectiles(delta)
-        if(this.state !== 'dead')
-            this.takeDamageCheck()
+        // (el dano se escanea en orden 5, ver damageScan)
         this.updateHealthBar()
+        this.processStep(delta)
 
         // ---- orientacion segun estado ----
         if(this.state === 'guard')

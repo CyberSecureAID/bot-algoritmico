@@ -17,7 +17,11 @@ export class Grass
 
         this.surface = this.size * this.size
         this.surfaceIdeal = 2000
-        this.surfaceOverflow = Math.max(0, this.surface - this.surfaceIdeal) / this.surfaceIdeal
+        // El ancho/alto de cada hoja se dimensiona como en el alejado CLASICO (radio 30),
+        // NO con el nuevo alejado maximo de la camara. La cobertura (this.size) si usa el
+        // area completa para llenar la pantalla, pero la hoja no se agiganta al alejar.
+        this.bladeRefMax = 30
+        this.surfaceOverflow = this.computeBladeOverflow()
 
         this.setGeometry()
         this.setMaterial()
@@ -34,8 +38,8 @@ export class Grass
             const halfExtent = this.game.view.optimalArea.radius
             this.size = halfExtent * 2
             this.surface = this.size * this.size
-            this.surfaceOverflow = Math.max(0, this.surface - this.surfaceIdeal) / this.surfaceIdeal
-            
+            this.surfaceOverflow = this.computeBladeOverflow()
+
             this.sizeUniform.value = this.size
             this.bladeWidth.value = 0.1 * (1 + this.surfaceOverflow * 0.4)
             this.bladeHeight.value = 0.6 * (1 + this.surfaceOverflow * 0.4)
@@ -44,6 +48,16 @@ export class Grass
             this.setGeometry()
             this.mesh.geometry = this.geometry
         }, 2)
+    }
+
+    // Overflow usado SOLO para el tamano de la hoja: toma el area como si el alejado
+    // maximo siguiera siendo el clasico (bladeRefMax), para que no crezca con el zoom nuevo.
+    computeBladeOverflow()
+    {
+        const max = this.game.view.spherical.radius.edges.max
+        const r = Math.min(1, this.bladeRefMax / max)
+        const areaScale = r * r
+        return Math.max(0, this.surface * areaScale - this.surfaceIdeal) / this.surfaceIdeal
     }
 
     setGeometry()
