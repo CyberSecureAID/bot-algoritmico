@@ -23,30 +23,57 @@ async function onchain() {
   return _oc;
 }
 
-const BINANCE = 'https://api.binance.com/api/v3';
+/* ───────── Datos de mercado SPOT con FALLBACK por región (el fallo base de la plataforma).
+   El espejo data-api/data-stream.binance.vision NO evita de forma fiable el bloqueo
+   regional de Binance: una IP de EE. UU. recibe 451 y la gráfica sale en negro. Solución:
+   una lista de hosts; si el primero da 451/403/falla, se pasa al siguiente. Binance.US
+   (api.binance.us / stream.binance.us) SÍ es accesible en EE. UU. y sirve el MISMO formato
+   y el MISMO WebSocket en tiempo real (nada de sondeo cada 30 s). Se recuerda el host que
+   funcionó para no reintentar en cada llamada. Fuera de EE. UU. gana el espejo .vision. */
+const REST_HOSTS = ['https://data-api.binance.vision/api/v3', 'https://api.binance.us/api/v3'];
+const WS_HOSTS = ['wss://data-stream.binance.vision/ws', 'wss://stream.binance.us:9443/ws'];
+let _restI = 0;
+const BINANCE = REST_HOSTS[0];   // compat para precios directos; traer usa toda la lista
 
-async function traer(url, ms = 8000) {
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), ms);
-  try {
-    const r = await fetch(url, { signal: ctl.signal });
-    if (!r.ok) throw new Error(url + ' → ' + r.status);
-    return await r.json();
-  } finally { clearTimeout(t); }
+/* GET de Binance con cascada de hosts. path empieza por '/'. 451/403 = bloqueo regional
+   -> siguiente host. El host preferido se captura UNA vez al entrar (si no, una llamada
+   concurrente que cambie _restI a mitad de bucle haría repetir el host bloqueado). */
+async function traer(path, ms = 8000) {
+  const inicio = _restI; let err = null;
+  for (let k = 0; k < REST_HOSTS.length; k++) {
+    const i = (inicio + k) % REST_HOSTS.length;
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(REST_HOSTS[i] + path, { signal: ctl.signal });
+      clearTimeout(t);
+      if (r.status === 451 || r.status === 403) throw new Error('geo ' + r.status);
+      if (!r.ok) throw new Error(path + ' → ' + r.status);
+      _restI = i;   // recuerda el host bueno para la próxima
+      return await r.json();
+    } catch (e) { clearTimeout(t); err = e; }
+  }
+  throw err || new Error('sin datos de mercado');
 }
 
 const mapK = (k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] });
 export async function velas(simbolo, interval = '1m', limit = 500) {
   const n = Math.min(1000, limit);
-  const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${n}`);
+  const j = await traer(`/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${n}`);
   return j.map(mapK);
+}
+
+/* Varios precios en una llamada (ticker/price?symbols=[...]), con el mismo fallback. */
+export async function tickerPrecios(symbols) {
+  const q = encodeURIComponent(JSON.stringify(symbols || []));
+  const j = await traer(`/ticker/price?symbols=${q}`);
+  const out = {}; (Array.isArray(j) ? j : []).forEach((x) => { out[x.symbol] = +x.price; }); return out;
 }
 
 /* Velas MÁS ANTIGUAS que un instante dado (endTime, en ms). Sirve para ir hacia el
    pasado al hacer scroll a la izquierda: se piden lotes previos y se anteponen. */
 export async function velasAntes(simbolo, interval, endTimeMs, limit = 1000) {
   const n = Math.min(1000, limit);
-  const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&endTime=${Math.floor(endTimeMs)}&limit=${n}`);
+  const j = await traer(`/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&endTime=${Math.floor(endTimeMs)}&limit=${n}`);
   return j.map(mapK);
 }
 
@@ -111,7 +138,7 @@ async function ohlcvGT(address, interval, limit, beforeSec) {
 let _bnb = { v: 0, t: 0 };
 async function precioBNB() {
   if (_bnb.v > 0 && Date.now() - _bnb.t < 60000) return _bnb.v;
-  try { const r = await fetch(`${BINANCE}/ticker/price?symbol=BNBUSDT`); const j = await r.json(); const v = +j.price; if (v > 0) { _bnb = { v, t: Date.now() }; return v; } } catch (_) {}
+  try { const j = await traer('/ticker/price?symbol=BNBUSDT'); const v = +j.price; if (v > 0) { _bnb = { v, t: Date.now() }; return v; } } catch (_) {}
   return _bnb.v || 0;
 }
 const _resuelto = {};
@@ -213,26 +240,30 @@ export async function logoDex(address) {
 }
 
 export async function ticker(simbolo) {
-  const t = await traer(`${BINANCE}/ticker/24hr?symbol=${encodeURIComponent(simbolo)}`);
+  const t = await traer(`/ticker/24hr?symbol=${encodeURIComponent(simbolo)}`);
   return {
     simbolo, last: +t.lastPrice, open: +t.openPrice, high: +t.highPrice, low: +t.lowPrice,
     chg: +t.priceChange, chgPct: +t.priceChangePercent, volBase: +t.volume, volQuote: +t.quoteVolume
   };
 }
 
-/* Stream de velas EN VIVO (@kline): la vela en formación llega en cada tick, y
-   al cerrar con k.x === true. Reconecta solo si se cae. Devuelve { cerrar }. */
+/* Stream de velas EN VIVO (@kline) con FALLBACK por región: la vela en formación llega
+   en cada tick (tiempo real, no sondeo). Si el WS del espejo .vision no abre (bloqueo en
+   EE. UU.), cambia a Binance.US, que sí abre en EE. UU. con el mismo stream. Reconecta
+   solo si se cae; cambia de host solo si NUNCA llegó a abrir. Devuelve { cerrar }. */
 export function streamVelas(simbolo, interval, onKline) {
-  const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${interval}`;
-  let ws = null, cerrado = false, tmr = null;
+  const suf = `/${String(simbolo).toLowerCase()}@kline_${interval}`;
+  let ws = null, cerrado = false, tmr = null, hostI = 0, abierto = false;
   const abrir = () => {
     if (cerrado) return;
-    try { ws = new WebSocket(url); } catch (_) { reintentar(); return; }
+    abierto = false;
+    try { ws = new WebSocket(WS_HOSTS[hostI % WS_HOSTS.length] + suf); } catch (_) { hostI++; reintentar(600); return; }
+    ws.onopen = () => { abierto = true; };
     ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onKline(d.k); } catch (_) {} };
-    ws.onclose = () => { if (!cerrado) reintentar(); };
+    ws.onclose = () => { if (!cerrado) { if (!abierto) hostI++; reintentar(abierto ? 2500 : 600); } };   // no abrió -> probar otro host
     ws.onerror = () => { try { ws.close(); } catch (_) {} };
   };
-  const reintentar = () => { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); };
+  const reintentar = (ms) => { clearTimeout(tmr); tmr = setTimeout(abrir, ms || 2500); };
   abrir();
   return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
 }
@@ -247,8 +278,9 @@ export async function logos() {
   try { const g = JSON.parse(localStorage.getItem(CLAVE_LOGOS)); if (g && Date.now() - g.cuando < 86400000) { _logos = g.datos; return _logos; } } catch (_) {}
   try {
     const ids = PARES.filter((p) => p.cg).map((p) => p.cg).slice(0, 250).join(',');
-    const j = await traer(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&per_page=250`);
-    _logos = {}; j.forEach((x) => { _logos[x.id] = x.image; });
+    const r = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&per_page=250`);  // CoinGecko, no Binance
+    const j = await r.json();
+    _logos = {}; (Array.isArray(j) ? j : []).forEach((x) => { _logos[x.id] = x.image; });
     try { localStorage.setItem(CLAVE_LOGOS, JSON.stringify({ cuando: Date.now(), datos: _logos })); } catch (_) {}
   } catch (_) { _logos = _logos || {}; }
   return _logos;

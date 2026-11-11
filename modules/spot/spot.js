@@ -16,8 +16,8 @@
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
 import { estilos } from './estilos.js?v=15';
-import * as D from './datos.js?v=7';
-import * as M from './motor.js?v=6';
+import * as D from './datos.js?v=8';
+import * as M from './motor.js?v=7';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -69,6 +69,8 @@ const fmtCoin = (x) => { if (!isFinite(x) || x === 0) return '0'; const a = Math
 const fmtPnL = (v, denom) => (v >= 0 ? '+' : '−') + (denom === 'USDT' ? fmtMoney(Math.abs(v)) : (fmtCoin(Math.abs(v)) + ' ' + denom));
 /* Porcentaje de la posición (congruente con el movimiento del precio desde la entrada). */
 const pctTxt = (v) => (isFinite(v) ? (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%' : '—');
+/* Texto del fee: 0.2% de la ganancia (lo cobra el contrato en BNB, solo si ganas). */
+const comisionTxt = () => String(M.comisionPct()).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + '% of profit';
 
 const IC = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
@@ -163,9 +165,9 @@ function plantilla() {
           <button type="button" class="sp-sum-h" id="sp-sum-toggle">Order summary<span class="cv" id="sp-sum-cv">▾</span></button>
           <div class="sp-sum-body" id="sp-sum-body" hidden>
             <div class="sp-sum-row"><span>Order value</span><b id="sp-sum-val">—</b></div>
-            <div class="sp-sum-row"><span>Est. fees · round trip</span><b id="sp-sum-fee">—</b></div>
+            <div class="sp-sum-row"><span>Platform fee</span><b id="sp-sum-fee">—</b></div>
             <div class="sp-sum-row"><span>Breakeven</span><b id="sp-sum-be">—</b></div>
-            <div class="sp-sum-note">Spot order. Long spends USDT; short sells the coin you hold. No leverage and no liquidation. Fees are estimated like a spot taker (~0.1%).</div>
+            <div class="sp-sum-note">Spot order. Long spends USDT; short sells the coin you hold. No leverage and no liquidation. We charge <b>nothing to open</b> and <b>0.2% of your profit</b> (in BNB) only when you close a winning trade. If you do not profit, there is no platform fee.</div>
           </div>
         </div>
         <div class="sp-ops"><button class="sp-op long" id="sp-long">Long</button><button class="sp-op short" id="sp-short">Short</button></div>
@@ -433,7 +435,8 @@ function mostrarNoChart(on, coin) {
   n.style.display = on ? 'grid' : 'none';
 }
 function pintarChart() {
-  const LC = window.LightweightCharts; const cv = $('sp-cv'); if (!LC || !cv || !S.velas.length) return;
+  const LC = window.LightweightCharts; const cv = $('sp-cv'); if (!cv || !S.velas.length) return;
+  if (!LC) { clearTimeout(S._lcTmr); S._lcTmr = setTimeout(pintarChart, 120); return; }   // la librería aún cargaba: reintenta (evita gráfica en negro al entrar)
   try { if (S.chart) S.chart.remove(); } catch (_) {}
   S.chart = null; S.lineaLimit = null;
   const chart = LC.createChart(cv, {
@@ -558,10 +561,9 @@ function renderEntry() {
     if (qp) qp.textContent = coins > 0 ? (fmtCoin(coins) + ' ' + base) : '—';
   }
   S._amountUsdt = amountUsdt;
-  const fee = M.feeRueda(amountUsdt);
   const sv = $('sp-sum-val'); if (sv) sv.textContent = fmtMoney(amountUsdt);
-  const sf = $('sp-sum-fee'); if (sf) sf.textContent = '~' + fmtMoney(fee);
-  const sb = $('sp-sum-be'); if (sb) sb.textContent = (px > 0 && amountUsdt > 0) ? fmtP(px * (1 + fee / amountUsdt)) : '—';
+  const sf = $('sp-sum-fee'); if (sf) sf.textContent = comisionTxt();   // 0.2% solo de la ganancia
+  const sb = $('sp-sum-be'); if (sb) sb.textContent = px > 0 ? fmtP(px) : '—';   // sin fee de apertura: punto de equilibrio = entrada
   proyeccionPnL();
 }
 
@@ -614,9 +616,7 @@ async function preciosUSD(ids) {
   const syms = [...new Set(pedir.map((id) => BINSYM[id]))];
   if (syms.length) {
     try {
-      const q = encodeURIComponent(JSON.stringify(syms));
-      const j = await (await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${q}`)).json();
-      const map = {}; (Array.isArray(j) ? j : []).forEach((x) => { map[x.symbol] = +x.price; });
+      const map = await D.tickerPrecios(syms);   // con fallback por región (mismo que la gráfica)
       for (const [id, s] of Object.entries(BINSYM)) if (map[s] > 0) out[id] = map[s];
     } catch (_) {}
   }
@@ -738,8 +738,10 @@ function renderPos() {
     if ($('sp-prev')) $('sp-prev').onclick = () => { S.histPage--; renderPos(); };
     if ($('sp-next')) $('sp-next').onclick = () => { S.histPage++; renderPos(); };
     if (!tot) { body.innerHTML = '<div class="sp-empty">No closed trades yet. Your track record builds here as you open and close trades.</div>'; return; }
-    body.innerHTML = `<table class="sp-tbl"><thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL</th><th></th></tr></thead><tbody>${pag.map((h) => { const c = h.pnl >= 0 ? 'up' : 'down'; const d = new Date(h.cerrado); const f = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); const mo = h.motivo === 'tp' ? ' · TP' : h.motivo === 'sl' ? ' · SL' : ''; return `<tr><td>${f}</td><td><span class="sp-sym">${logoChip(h.par)} ${esc(h.par)}</span></td><td><span class="sp-tag ${h.lado}">${h.lado.toUpperCase()}</span></td><td>${fmtP(h.entrada)}</td><td>${fmtP(h.salida)}</td><td class="sp-pnl ${c}">${fmtPnL(h.pnl, h.denom || 'USDT')}${mo}</td><td><button class="sp-share" data-shareh="${h.id}" title="Export trade card">${IC.share}</button></td></tr>`; }).join('')}</tbody></table>`;
+    const cta = `<div class="sp-cert-cta"><button class="sp-cert-btn" id="sp-cert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v3a5 5 0 0 1-10 0V4z"/><path d="M5 5H3v1a3 3 0 0 0 3 3M19 5h2v1a3 3 0 0 1-3 3M12 12v4M8 20h8M10 20v-1a2 2 0 0 1 4 0v1"/></svg> Download track record</button></div>`;
+    body.innerHTML = cta + `<table class="sp-tbl"><thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL</th><th></th></tr></thead><tbody>${pag.map((h) => { const c = h.pnl >= 0 ? 'up' : 'down'; const d = new Date(h.cerrado); const f = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); const mo = h.motivo === 'tp' ? ' · TP' : h.motivo === 'sl' ? ' · SL' : ''; return `<tr><td>${f}</td><td><span class="sp-sym">${logoChip(h.par)} ${esc(h.par)}</span></td><td><span class="sp-tag ${h.lado}">${h.lado.toUpperCase()}</span></td><td>${fmtP(h.entrada)}</td><td>${fmtP(h.salida)}</td><td class="sp-pnl ${c}">${fmtPnL(h.pnl, h.denom || 'USDT')}${mo}</td><td><button class="sp-share" data-shareh="${h.id}" title="Export trade card">${IC.share}</button></td></tr>`; }).join('')}</tbody></table>`;
     body.querySelectorAll('[data-shareh]').forEach((b) => b.onclick = () => { const h = hist.find((x) => x.id === b.dataset.shareh); if (h) tarjetaPnL(h); });
+    if ($('sp-cert')) $('sp-cert').onclick = pedirNombreCert;
   }
 }
 function celdaTPSL(obj, k, col) {
@@ -926,7 +928,7 @@ function wireDrag() {
     const h = handleEn(e); if (!h) return;
     e.stopPropagation(); e.preventDefault();
     if (h.entryX) { S.limitPx = 0; const li = $('sp-limit'); if (li) li.value = ''; dibujarLimit(); renderEntry(); fx.style.pointerEvents = 'none'; return; }
-    if (h.cerrarPos) { const x = M.cerrar(h.cerrarPos, S.marks[h.par] || S.mark, 'manual'); if (x) { toast(`Closed ${x.pos.lado} · ${fmtMoney(x.pnl)} (fee ${fmtMoney(x.fee)})`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); } fx.style.pointerEvents = 'none'; return; }
+    if (h.cerrarPos) { const x = M.cerrar(h.cerrarPos, S.marks[h.par] || S.mark, 'manual'); if (x) { const fee = x.fee > 0 ? ' · fee ' + (x.denom === 'USDT' ? fmtMoney(x.fee) : fmtCoin(x.fee) + ' ' + x.denom) : ''; toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}${fee}`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); } fx.style.pointerEvents = 'none'; return; }
     if (h.alertaX) { S.alertas = (S.alertas || []).filter((a) => a.id !== h.alertaX); toast('Alert removed.', 'ok'); fx.style.pointerEvents = 'none'; return; }
     if (h.entryLine) { S.drag = { entryLine: true }; fx.style.cursor = 'grabbing'; return; }
     const p = M.posiciones().find((x) => x.id === h.id); if (!p) return;
@@ -1115,6 +1117,179 @@ function mostrarTarjeta(cv, nombre) {
   m.querySelector('.dl').onclick = () => { try { cv.toBlob((b) => descargar(b, nombre), 'image/png', 0.95); } catch (_) { toast('Could not export the image.', 'bad'); } };
 }
 
+/* ── Track record descargable (Spot) ───────────────────────────────────────
+   Imagen (PNG) / PDF / CSV del historial. Marca SPOT, sin texto ni marca de
+   agua "Demo". El total y la curva en $ agregan SOLO lo liquidado en USDT (los
+   long); un short gana en su propia moneda y no se mezcla en el total en
+   dólares, pero sí cuenta para el nº de trades y el win rate. */
+function certStats() {
+  const histN = M.historial();                     // mas reciente primero
+  const hist = histN.slice().reverse();            // cronologico (todos)
+  const usd = hist.filter((h) => (h.denom || 'USDT') === 'USDT');   // solo USDT para el $
+  const n = hist.length;
+  const wins = hist.filter((h) => h.pnl > 0).length;
+  const total = usd.reduce((a, h) => a + h.pnl, 0);
+  let eq = 10000; const curva = [10000];
+  usd.forEach((h) => { eq += h.pnl; curva.push(eq); });
+  const desde = n ? new Date(hist[0].cerrado) : null, hasta = n ? new Date(hist[n - 1].cerrado) : null;
+  return { n, wins, losses: n - wins, winRate: n ? Math.round(wins / n * 100) : 0, total, startBal: 10000, endBal: 10000 + total, curva, desde, hasta };
+}
+function wrapTexto(g, txt, x, y, maxW, lh) {
+  const ws = txt.split(' '); let linea = '', yy = y;
+  ws.forEach((p) => { const t = linea ? linea + ' ' + p : p; if (g.measureText(t).width > maxW && linea) { g.fillText(linea, x, yy); linea = p; yy += lh; } else linea = t; });
+  if (linea) g.fillText(linea, x, yy);
+}
+function pedirNombreCert() {
+  const old = $('sp-sheet'); if (old) old.remove();
+  let prev = ''; try { prev = localStorage.getItem('sp-cert-name') || ''; } catch (_) {}
+  const m = document.createElement('div'); m.className = 'sp-sheet'; m.id = 'sp-sheet';
+  m.innerHTML = `<div class="bx"><h5>Spot track record</h5><div class="sub">Your name appears on the document.</div>
+    <div class="fld"><input type="text" id="sp-cert-in" maxlength="46" placeholder="Your name" value="${esc(prev)}"></div>
+    <div class="btns"><button id="sp-cert-x">Cancel</button><button class="ok" id="sp-cert-ok">Generate</button></div></div>`;
+  document.body.appendChild(m);
+  const cerrarS = () => { try { m.remove(); } catch (_) {} };
+  const inp = m.querySelector('#sp-cert-in'); setTimeout(() => { try { inp.focus(); inp.select(); } catch (_) {} }, 40);
+  m.querySelector('#sp-cert-x').onclick = cerrarS;
+  m.onclick = (e) => { if (e.target === m) cerrarS(); };
+  const go = () => { const nom = (inp.value || '').trim().slice(0, 46) || 'Spot Trader'; try { localStorage.setItem('sp-cert-name', nom); } catch (_) {} cerrarS(); generarCert(nom); };
+  m.querySelector('#sp-cert-ok').onclick = go;
+  inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); else if (e.key === 'Escape') cerrarS(); });
+}
+async function generarCert(nombre) {
+  const st = certStats();
+  const sello = await cargarImg(SELLO, false);
+  const W = 1240, H = 1754; const cvs = document.createElement('canvas'); cvs.width = W; cvs.height = H; const g = cvs.getContext('2d');
+  const oro = '#E8B84B', up = '#2ee86a', dn = '#ff5b6e', ink = '#eaecef', ink2 = '#9aa4af', ink3 = '#6b7580';
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#0b111a'); bg.addColorStop(1, '#070a0f'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = oro; g.fillRect(0, 0, W, 10);
+  g.strokeStyle = 'rgba(232,184,75,.22)'; g.lineWidth = 2; g.strokeRect(22, 22, W - 44, H - 44);
+  g.save(); g.translate(W / 2, H * .52); g.rotate(-Math.PI / 10); g.font = '800 300px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.033)'; g.fillText('SPOT', 0, 0); g.restore();
+  const M0 = 74;
+  let domY = 92;
+  if (sello) { const lw = 200, lh = sello.height * (lw / sello.width); g.drawImage(sello, W - M0 - lw, 54, lw, lh); domY = 54 + lh + 30; }
+  g.textAlign = 'right'; g.fillStyle = ink3; g.font = '700 18px "IBM Plex Mono", monospace'; g.fillText('decfreedom.com', W - M0, domY);
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = ink; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Trading Performance', M0, 132);
+  g.fillStyle = oro; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Certificate', M0, 196);
+  g.fillStyle = ink3; g.font = '700 17px "IBM Plex Mono", monospace'; g.fillText('DECFREEDOM SPOT · TRACK RECORD', M0, 230);
+  g.fillStyle = ink2; g.font = '600 19px "IBM Plex Mono", monospace'; g.fillText('Issued to', M0, 306);
+  g.fillStyle = '#fff'; g.font = '800 42px "Plus Jakarta Sans", sans-serif'; g.fillText(nombre, M0, 352);
+  g.fillStyle = '#c3cbd4'; g.font = '400 19px "Plus Jakarta Sans", sans-serif';
+  wrapTexto(g, 'This document certifies the DecFreedom Spot track record achieved over the period shown, normalized to a $10,000 reference balance.', M0, 398, W - M0 * 2, 27);
+  const periodo = st.desde ? (st.desde.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' }) + '  →  ' + st.hasta.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })) : '—';
+  const roi = st.total / st.startBal * 100;
+  const tiles = [
+    ['Trades', String(st.n), ink],
+    ['Win rate', st.winRate + '%', st.winRate >= 50 ? up : ink],
+    ['Net PnL', (st.total >= 0 ? '+' : '−') + '$' + Math.abs(st.total).toLocaleString('en-US', { maximumFractionDigits: 0 }), st.total >= 0 ? up : dn],
+    ['ROI', (roi >= 0 ? '+' : '−') + Math.abs(roi).toFixed(1) + '%', roi >= 0 ? up : dn],
+    ['Reference', '$10,000', ink],
+    ['End balance', '$' + st.endBal.toLocaleString('en-US', { maximumFractionDigits: 0 }), st.endBal >= 10000 ? up : dn]
+  ];
+  const tY = 480, tW = (W - M0 * 2 - 2 * 18) / 3, tH = 112;
+  tiles.forEach((t, i) => {
+    const x = M0 + (i % 3) * (tW + 18), y = tY + ((i / 3) | 0) * (tH + 16);
+    g.fillStyle = 'rgba(255,255,255,.035)'; redondea(g, x, y, tW, tH, 12); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; redondea(g, x + .5, y + .5, tW - 1, tH - 1, 12); g.stroke();
+    g.fillStyle = ink3; g.font = '700 14px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText(t[0].toUpperCase(), x + 18, y + 33);
+    g.fillStyle = t[2]; g.font = '800 33px "Chakra Petch", sans-serif'; g.fillText(t[1], x + 18, y + 78);
+  });
+  g.fillStyle = ink2; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText('Period:  ' + periodo, M0, tY + 2 * (tH + 16) + 36);
+  const chY = 820, chH = 360, chW = W - M0 * 2;
+  g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Equity curve', M0, chY - 16);
+  dibChartLinea(g, M0, chY, chW, chH, st.curva, oro);
+  const bY = chY + chH + 78, bH = 240;
+  g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Wins vs losses', M0, bY - 16);
+  dibBarras(g, M0, bY, chW, bH, [['Wins', st.wins, up], ['Losses', st.losses, dn]]);
+  const fY = H - 150;
+  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; g.beginPath(); g.moveTo(M0, fY); g.lineTo(W - M0, fY); g.stroke();
+  g.fillStyle = ink3; g.font = '600 16px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText('Issued ' + new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · DecFreedom Spot', M0, fY + 34);
+  g.textAlign = 'right'; g.fillText('Record generated from your DecFreedom Spot trade history.', W - M0, fY + 34); g.textAlign = 'left';
+  mostrarCert(cvs, nombre);
+}
+function dibChartLinea(g, x, y, w, h, datos, col) {
+  g.save();
+  g.fillStyle = 'rgba(255,255,255,.02)'; redondea(g, x, y, w, h, 12); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; redondea(g, x + .5, y + .5, w - 1, h - 1, 12); g.stroke();
+  if (!datos || datos.length < 2) { g.fillStyle = '#6b7580'; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Not enough trades yet', x + w / 2, y + h / 2); g.restore(); return; }
+  const padX = 20, padT = 24, padB = 24;
+  let min = Math.min(...datos), max = Math.max(...datos);
+  const base = (max - min) || (max * 0.02) || 1; min -= base * 0.14; max += base * 0.14; const rng = max - min;
+  const px = (i) => x + padX + (w - padX * 2) * (datos.length === 1 ? 0.5 : i / (datos.length - 1));
+  const py = (v) => y + padT + (h - padT - padB) * (1 - (v - min) / rng);
+  g.textAlign = 'right'; g.textBaseline = 'middle'; g.font = '600 13px "IBM Plex Mono", monospace';
+  for (let k = 0; k <= 3; k++) { const v = min + rng * k / 3, yy = py(v); g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yy); g.lineTo(x + w - padX, yy); g.stroke(); g.fillStyle = '#5a636e'; g.fillText('$' + Math.round(v).toLocaleString('en-US'), x + w - 10, yy); }
+  if (min <= 10000 && max >= 10000) { const yb = py(10000); g.setLineDash([5, 5]); g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yb); g.lineTo(x + w - padX, yb); g.stroke(); g.setLineDash([]); }
+  const pts = datos.map((v, i) => ({ x: px(i), y: py(v) }));
+  const trazo = () => { g.beginPath(); g.moveTo(pts[0].x, pts[0].y); for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2; g.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y); } };
+  const grd = g.createLinearGradient(0, y, 0, y + h); grd.addColorStop(0, 'rgba(232,184,75,.26)'); grd.addColorStop(1, 'rgba(232,184,75,0)');
+  trazo(); g.lineTo(pts[pts.length - 1].x, y + h - padB); g.lineTo(pts[0].x, y + h - padB); g.closePath(); g.fillStyle = grd; g.fill();
+  g.save(); g.shadowColor = 'rgba(232,184,75,.45)'; g.shadowBlur = 8; trazo(); g.strokeStyle = col; g.lineWidth = 3; g.lineJoin = 'round'; g.stroke(); g.restore();
+  pts.forEach((p, i) => { const last = i === pts.length - 1; g.beginPath(); g.arc(p.x, p.y, (i === 0 || last) ? 5 : 3.5, 0, 7); g.fillStyle = last ? '#fff' : col; g.fill(); if (last) { g.strokeStyle = col; g.lineWidth = 2; g.stroke(); } });
+  g.restore();
+}
+function dibBarras(g, x, y, w, h, series) {
+  g.save();
+  const maxV = Math.max(1, ...series.map((s) => s[1]));
+  const bw = 160, gap = 80; let bx = x + 30;
+  series.forEach((s) => {
+    const bh = Math.max(2, (h - 60) * (s[1] / maxV)); const by = y + (h - 34) - bh;
+    g.fillStyle = s[2]; redondea(g, bx, by, bw, bh, 8); g.fill();
+    g.fillStyle = '#eaecef'; g.font = '800 28px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.fillText(String(s[1]), bx + bw / 2, by - 12);
+    g.fillStyle = '#9aa4af'; g.font = '700 16px "IBM Plex Mono", monospace'; g.fillText(s[0], bx + bw / 2, y + h - 4);
+    bx += bw + gap;
+  });
+  g.restore();
+}
+function mostrarCert(cvs, nombre) {
+  const old = $('sp-modal'); if (old) old.remove();
+  const m = document.createElement('div'); m.id = 'sp-modal'; m.innerHTML = `<div class="card"></div>`;
+  m.querySelector('.card').appendChild(cvs);
+  const acts = document.createElement('div'); acts.className = 'acts';
+  acts.innerHTML = `<button class="dl" id="cert-png">Image (PNG)</button><button id="cert-pdf">PDF</button><button id="cert-csv">Excel (CSV)</button><button class="cl">Close</button>`;
+  m.querySelector('.card').appendChild(acts); document.body.appendChild(m);
+  const ce = () => m.remove(); m.querySelector('.cl').onclick = ce; m.onclick = (e) => { if (e.target === m) ce(); };
+  const base = 'DecFreedom-track-record-' + String(nombre).replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+  m.querySelector('#cert-png').onclick = () => { try { cvs.toBlob((b) => descargar(b, base + '.png'), 'image/png'); } catch (_) { toast('Could not export PNG.', 'bad'); } };
+  m.querySelector('#cert-pdf').onclick = () => { try { const jpg = cvs.toDataURL('image/jpeg', 0.92); const bin = atob(jpg.split(',')[1]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); descargar(pdfDeImagen(bytes, cvs.width, cvs.height), base + '.pdf'); toast('PDF exported.', 'ok'); } catch (_) { toast('Could not export PDF.', 'bad'); } };
+  m.querySelector('#cert-csv').onclick = exportarCSV;
+}
+function pdfDeImagen(jpg, Wpx, Hpx) {
+  const enc = new TextEncoder(); const parts = []; let len = 0; const off = [];
+  const push = (d) => { const b = (typeof d === 'string') ? enc.encode(d) : d; parts.push(b); len += b.length; };
+  const mark = () => off.push(len);
+  const pageW = 595, pageH = Math.round(595 * Hpx / Wpx);
+  push('%PDF-1.3\n');
+  mark(); push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  mark(); push('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+  mark(); push('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
+  mark(); push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + Wpx + ' /Height ' + Hpx + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n'); push(jpg); push('\nendstream\nendobj\n');
+  const content = 'q\n' + pageW + ' 0 0 ' + pageH + ' 0 0 cm\n/Im0 Do\nQ\n';
+  mark(); push('5 0 obj\n<< /Length ' + content.length + ' >>\nstream\n' + content + 'endstream\nendobj\n');
+  const xs = len; let xref = 'xref\n0 6\n0000000000 65535 f \n';
+  for (let i = 0; i < 5; i++) xref += String(off[i]).padStart(10, '0') + ' 00000 n \n';
+  push(xref); push('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xs + '\n%%EOF');
+  return new Blob(parts, { type: 'application/pdf' });
+}
+function exportarCSV() {
+  try {
+    let nombre = ''; try { nombre = localStorage.getItem('sp-cert-name') || ''; } catch (_) {}
+    const st = certStats();
+    const pre = [
+      'DecFreedom - Spot track record',
+      'Trader,' + (nombre || 'Spot Trader'),
+      'Issued,' + new Date().toISOString(),
+      'Reference balance,10000',
+      'Trades,' + st.n,
+      'Win rate %,' + st.winRate,
+      'Net PnL USDT,' + st.total.toFixed(2),
+      'End balance,' + st.endBal.toFixed(2),
+      'decfreedom.com', '', M.csv()
+    ].join('\n');
+    descargar(new Blob([pre], { type: 'text/csv' }), 'DecFreedom-track-record.csv'); toast('History exported (CSV).', 'ok');
+  } catch (_) { toast('Could not export the history.', 'bad'); }
+}
+
 function renderTodo() { sincronCap(); pintarPrecio(); renderEntry(); renderPos(); }
 
 /* ── How It Works (stepper, explicado para principiantes) ── */
@@ -1168,6 +1343,11 @@ const PASOS_SP = [
     t: 'Your wallet, your coins',
     d: 'The top shows your <b>real wallet balance</b>: the total plus a box for each coin you hold. Your open positions, marked orders and full history live at the bottom. It is <b>non custodial</b>, so your coins never leave your wallet.',
     x: 'Nothing leaves your wallet. This is real spot, built to operate.'
+  },
+  {
+    t: 'What it costs: only if you win',
+    d: 'Opening a trade is <b>free</b> on our side. We charge a small <b>0.2% of your profit</b>, in <b>BNB</b>, and <b>only when you close a trade in profit</b>. If a trade closes flat or at a loss, the platform fee is <b>zero</b>. That is how the service keeps running without charging you to simply operate, so it is always in our interest that you win.',
+    x: 'Free to open. 0.2% of profit on a winning close. Nothing when you do not profit.'
   }
 ];
 let _pasoSP = 0;

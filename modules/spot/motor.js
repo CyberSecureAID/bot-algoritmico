@@ -19,7 +19,8 @@
    disparos (limit, TP, SL) con la misma lógica anti gap de onPrecio(). */
 
 const LS = 'sp-spot-v1';
-const FEE = 0.001;                 // taker spot aproximado (~0,1% por lado)
+const FEE = 0.001;                 // (compat) estimación de taker spot por lado
+const PROFIT_FEE = 0.002;          // 0.2% SOLO sobre la GANANCIA (en BNB lo cobra el contrato). Nada si pierde.
 
 let _id = 1;
 const nid = () => 'o' + (Date.now().toString(36)) + (_id++);
@@ -37,8 +38,10 @@ export function posiciones() { return ST.pos; }
 export function ordenes() { return ST.ord; }
 export function historial() { return ST.hist; }
 export function reset() { ST = { pos: [], ord: [], hist: [] }; guardar(); return ST; }
-export const comisionPct = () => FEE * 2 * 100;         // ida y vuelta, en %
-export function feeRueda(amount) { return (amount || 0) * FEE * 2; }   // comisión estimada en USDT
+export const comisionPct = () => PROFIT_FEE * 100;      // 0.2 (sobre la ganancia)
+export function feeRueda(amount) { return (amount || 0) * FEE * 2; }   // (compat) estimación por volumen
+/* Fee real del modelo: 0.2% de la GANANCIA (0 si la operación no gana). Mismo denom que el PnL. */
+export function feeGanancia(pnl) { return pnl > 0 ? pnl * PROFIT_FEE : 0; }
 
 /* Saldo disponible en USDT para dimensionar (lo fija spot.js desde la wallet real). */
 let DISP = 0;
@@ -92,7 +95,7 @@ function registrar(p, salida, pnl, denom, fee, motivo) {
 export function cerrar(id, mark, motivo) {
   const i = ST.pos.findIndex((p) => p.id === id); if (i < 0) return null;
   const p = ST.pos[i];
-  const info = pnlDe(p, mark), fee = feeRueda(p.amount);
+  const info = pnlDe(p, mark), fee = feeGanancia(info.pnl);   // 0.2% solo si cierra en ganancia
   registrar(p, mark, info.pnl, info.denom, fee, motivo || 'manual');
   ST.pos.splice(i, 1); guardar();
   return { pos: p, pnl: info.pnl, denom: info.denom, fee, salida: mark, motivo: motivo || 'manual' };
