@@ -47,6 +47,10 @@ const HERRAMIENTAS = [
   { id:'react', abre:'react', nombre:'Reaction Zones', cat:'analysis', img:'assets/img/preview.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Where price is going to react',
     desc:'A structural engine that maps the exact levels where price is likely to react, built from repeated pivots with a live break-pressure read. Red zones above the price mark short context, green below mark long, with auto-projected positions (Single / Double) and right-click orders.' },
+  // "Candle to Candle" = modulo propio y aislado modules/velaavela/.
+  { id:'vela', abre:'vela', nombre:'Candle to Candle', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'Trade the birth of each candle',
+    desc:'Turns the last decisive candle into a plan. Its body becomes a value zone split into three graded entries (shallow, optimal, deep) in the direction of the move, with the stop at its far extreme and a 1:2 target. Built to ride continuation, pullback by pullback, with projected Single / Double tickets and right-click orders.' },
   // "Trading Demo" = modulo propio y aislado modules/trading-demo/ (gratis, sin contrato).
   { id:'demo', abre:'demo', nombre:'Trading Demo', cat:'trading', img:'assets/img/serv-demo.webp', activos:['Crypto'], free:true, listo:true,
     lema:'Trade freely, with no risk',
@@ -158,6 +162,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=133')).abrirNiveles();
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=36', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
+    else if (abre === 'vela')   await (await import(new URL('../velaavela/velaavela.js?v=1', import.meta.url).href)).abrirVelaVela();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=7', import.meta.url).href)).abrirMulti();
   } catch (e) {
