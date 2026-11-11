@@ -20,7 +20,7 @@ import * as D from './datos.js?v=2';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
-import { cuentaActual, saldosTodas, alCambiar } from '../../assets/js/wallet.js?v=129';
+import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
 import { MONEDAS } from '../../assets/js/tokens.js';
 
 const LIB = new URL('./vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
@@ -31,9 +31,10 @@ const IMG_LONG = new URL('../../assets/portada/img/long.webp', import.meta.url).
 const IMG_SHORT = new URL('../../assets/portada/img/short.webp', import.meta.url).href; // fondo tarjeta short
 
 const S = {
-  par: null, tf: '1m', velas: [], velasDib: [], chart: null, serieVela: null,
+  par: null, tf: '1d', velas: [], velasDib: [], chart: null, serieVela: null,
   mark: 0, open24: 0, high24: 0, low24: 0, vol24: 0, chgPct: 0,
-  lev: 10, cap: 100, tam: 1000, modo: 'limit', limitPx: 0, histPage: 0,
+  side: null, shortCoin: null,
+  lev: 1, cap: 0, tam: 0, modo: 'market', limitPx: 0, histPage: 0,
   tpUnit: 'px', slUnit: 'px', sumOpen: false, alertas: [], _alMark: 0,
   stream: null, barra: null, dibMontada: false, lineaLimit: null, tab: 'pos',
   uiRAF: null, onResize: null, cvObs: null, marks: {}, logos: {},
@@ -76,7 +77,7 @@ export async function abrirSpot() {
   ov.innerHTML = plantilla();
   document.body.appendChild(ov);
   cablear(ov);
-  S.cap = S.cap || 100; S.tam = S.cap; sincronCap();
+  S.cap = 0; S.tam = 0; sincronCap();
   try { if (localStorage.getItem('sp-help-seen')) { const dot = $('sp-help-dot'); if (dot) dot.remove(); } } catch (_) {}
   renderTf(); cargarLogos();
   try { await cargarLib(); } catch (_) { toast('Chart engine failed to load. Reload.', 'bad'); return; }
@@ -121,20 +122,22 @@ function plantilla() {
         <div class="sp-spin" id="sp-spin"><i></i></div>
       </div>
       <div class="sp-entry">
-        <div class="sp-modes"><button class="sp-mode" data-modo="market">Market</button><button class="sp-mode on" data-modo="limit">Limit (mark)</button></div>
-        <div class="sp-fld" id="sp-limitwrap">
+        <div class="sp-side" id="sp-side">
+          <button class="sp-side-b long" data-side="long" id="sp-side-long">Long<small>buy the coin</small></button>
+          <button class="sp-side-b short" data-side="short" id="sp-side-short">Short<small>sell a coin you hold</small></button>
+        </div>
+        <div class="sp-side-hint" id="sp-side-hint">Pick <b>Long</b> or <b>Short</b> above to set up your trade.</div>
+        <div class="sp-modes"><button class="sp-mode on" data-modo="market">Market</button><button class="sp-mode" data-modo="limit">Limit (mark)</button></div>
+        <div class="sp-fld" id="sp-limitwrap" style="display:none">
           <div class="sp-fld-l"><span>Entry price</span><span>click the chart</span></div>
           <div class="sp-in"><input type="number" id="sp-limit" placeholder="0.00" step="any"><em>USDT</em></div>
         </div>
         <div class="sp-sld">
-          <div class="sp-sld-top"><span class="lbl">Amount</span><span class="val sp-capedit"><input id="sp-capv" type="number" step="any" inputmode="decimal" placeholder="0"><em>USDT</em></span></div>
-          <input type="range" class="sp-range" id="sp-capr" min="0" max="10000" step="1" value="100">
+          <div class="sp-sld-top"><span class="lbl">Amount</span><span class="val sp-capedit"><input id="sp-capv" type="number" step="any" inputmode="decimal" placeholder="0"><button type="button" class="sp-amtunit" id="sp-amtunit">USDT</button></span></div>
+          <input type="range" class="sp-range" id="sp-capr" min="0" max="100" step="1" value="0">
           <div class="sp-pcts"><button class="sp-pct" data-pct="25">25%</button><button class="sp-pct" data-pct="50">50%</button><button class="sp-pct" data-pct="75">75%</button><button class="sp-pct" data-pct="100">Max</button></div>
         </div>
-        <div class="sp-fld">
-          <div class="sp-fld-l"><span>Order size</span><span id="sp-avail">—</span></div>
-          <div class="sp-in"><input type="number" id="sp-size" value="1000" step="any"><em>USDT</em><span class="sp-step"><button data-step="1">${IC.up}</button><button data-step="-1">${IC.down}</button></span></div>
-        </div>
+        <div class="sp-fld sp-avail-row"><div class="sp-fld-l"><span id="sp-avail-l">Available</span><span id="sp-avail">—</span></div></div>
         <div class="sp-tpsl">
           <div class="sp-in"><em>TP</em><input type="number" id="sp-tp" placeholder="price" step="any"><button type="button" class="sp-unit" id="sp-tpunit" title="Toggle price / percent">$</button></div>
           <div class="sp-in"><em>SL</em><input type="number" id="sp-sl" placeholder="price" step="any"><button type="button" class="sp-unit" id="sp-slunit" title="Toggle price / percent">$</button></div>
@@ -179,16 +182,19 @@ function cablear(ov) {
   $('sp-reset').onclick = () => { if (confirm('Clear all your Spot positions, marked orders and history on this device? Your wallet is not touched.')) { M.reset(); sincronCap(); renderTodo(); toast('Spot positions and history cleared.', 'ok'); } };
   $('sp-tfcur').onclick = (e) => { e.stopPropagation(); $('sp-tf').classList.toggle('open'); };
   document.addEventListener('click', () => $('sp-tf') && $('sp-tf').classList.remove('open'));
-  // Importe (barra progresiva) + atajos de porcentaje (contra el saldo USDT de la wallet)
-  $('sp-capr').oninput = () => setCap(+$('sp-capr').value);
-  ov.querySelectorAll('.sp-pct').forEach((b) => b.onclick = () => setCap(M.balance() * (+b.dataset.pct) / 100));
-  // Tamano de la orden (editable; recalcula el capital)
-  const size = $('sp-size'); size.oninput = () => setTam(+size.value || 0);
-  ov.querySelectorAll('.sp-step button').forEach((b) => b.onclick = () => { const paso = Math.max(10, Math.round(S.tam * 0.1)); setTam(Math.max(0, +(S.tam + (+b.dataset.step) * paso).toFixed(2))); });
+  // Selector de LADO (arriba): define toda la sección (long = comprar con USDT;
+  // short = vender una moneda que tienes). Marca el botón de abajo que corresponde.
+  ov.querySelectorAll('.sp-side-b').forEach((b) => b.onclick = () => setSide(b.dataset.side));
+  // Importe (barra progresiva) + atajos de porcentaje (contra el saldo del activo del lado)
+  $('sp-capr').oninput = () => setCapPct(+$('sp-capr').value);
+  ov.querySelectorAll('.sp-pct').forEach((b) => b.onclick = () => setCapPct(+b.dataset.pct));
+  // Unidad del importe: para short abre el selector de moneda que tienes disponible.
+  $('sp-amtunit').onclick = (e) => { e.stopPropagation(); if (S.side === 'short') menuMonedasShort(); };
   $('sp-limit').oninput = () => { S.limitPx = Math.max(0, +$('sp-limit').value || 0); dibujarLimit(); renderEntry(); };
   ov.querySelectorAll('.sp-mode').forEach((b) => b.onclick = () => { S.modo = b.dataset.modo; ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x === b)); $('sp-limitwrap').style.display = S.modo === 'limit' ? 'flex' : 'none'; dibujarLimit(); renderEntry(); });
   $('sp-long').onclick = () => operar('long');
   $('sp-short').onclick = () => operar('short');
+  $('sp-long').disabled = true; $('sp-short').disabled = true;   // hasta marcar un lado arriba
   ov.querySelectorAll('.sp-pos-tab').forEach((b) => b.onclick = () => { S.tab = b.dataset.tab; ov.querySelectorAll('.sp-pos-tab').forEach((x) => x.classList.toggle('on', x === b)); renderPos(); });
   // Capital editable a mano (ademas del slider y los atajos de %)
   const capv = $('sp-capv'); if (capv) capv.oninput = () => setCap(+capv.value || 0);
@@ -213,15 +219,62 @@ function cablear(ov) {
   });
 }
 
-/* SPOT: sin apalancamiento. El importe (amount) es el valor en USDT comprometido.
-   S.cap = S.tam = amount. El límite real se valida al pulsar Long/Short según el
-   activo (USDT para long, la moneda base para short). */
-function setCap(c) { S.cap = Math.max(0, +(+c).toFixed(2)); S.tam = S.cap; sincronCap(); renderEntry(); }
-function setTam(t) { S.cap = Math.max(0, +(+t).toFixed(2)); S.tam = S.cap; sincronCap(); renderEntry(); }
+/* ── SPOT: sin apalancamiento. Importe en la unidad del lado ──
+   long = USDT a gastar; short = cantidad de la moneda que vendes. El slider es un
+   PORCENTAJE del saldo disponible, así vale igual para USDT y para monedas
+   fraccionarias. S.cap = importe absoluto; S.tam = S.cap. */
+function parIdDeToken(id) { if (!id) return null; if (id === 'BTCB') return 'BTC'; return D.PARES.some((p) => p.id === id) ? id : null; }
+function disponibleActual() { return (S.side === 'short' && S.shortCoin) ? (S.saldos[S.shortCoin] || 0) : M.balance(); }
+function unidadActual() { return (S.side === 'short' && S.shortCoin) ? (parIdDeToken(S.shortCoin) || S.shortCoin) : 'USDT'; }
+/* Monedas que el usuario TIENE y puede usar para abrir un short (saldo > 0, con par
+   operable y sin estables). */
+function monedasShort() {
+  const s = S.saldos || {};
+  return Object.keys(s).filter((id) => (s[id] || 0) > 1e-12 && !['USDT', 'USDC', 'USDTZ'].includes(id) && parIdDeToken(id));
+}
+function setCap(c) { S.cap = Math.max(0, +c || 0); S.tam = S.cap; sincronCap(); renderEntry(); }
+function setCapPct(pct) { setCap(disponibleActual() * Math.max(0, Math.min(100, +pct || 0)) / 100); }
+function setTam(t) { setCap(t); }
 function sincronCap() {
-  const capr = $('sp-capr'); if (capr) { capr.max = Math.max(1, Math.round(Math.max(M.balance(), S.cap, 100))); if (Math.round(+capr.value) !== Math.round(S.cap)) capr.value = Math.round(S.cap); }
-  const capv = $('sp-capv'); if (capv && document.activeElement !== capv) capv.value = S.cap || '';
-  const size = $('sp-size'); if (size && document.activeElement !== size) size.value = S.tam;
+  const av = disponibleActual();
+  const capr = $('sp-capr'); if (capr) { const pct = av > 0 ? Math.min(100, S.cap / av * 100) : 0; capr.value = Math.round(pct); capr.style.setProperty('--f', Math.round(pct) + '%'); }
+  const capv = $('sp-capv'); if (capv && document.activeElement !== capv) capv.value = S.cap ? +S.cap.toFixed(unidadActual() === 'USDT' ? 2 : 8) : '';
+  const au = $('sp-amtunit'); if (au) { au.textContent = unidadActual(); au.classList.toggle('pick', S.side === 'short'); }
+}
+/* El usuario marca LONG o SHORT arriba: define toda la sección (incluido qué saldos
+   puede usar y qué botón de abajo queda activo). */
+function setSide(side) {
+  S.side = side;
+  const ov = $('sp-overlay'); if (!ov) return;
+  ov.querySelectorAll('.sp-side-b').forEach((b) => b.classList.toggle('on', b.dataset.side === side));
+  const hint = $('sp-side-hint'); if (hint) hint.style.display = 'none';
+  const bl = $('sp-long'), bs = $('sp-short');
+  if (bl) bl.disabled = side !== 'long'; if (bs) bs.disabled = side !== 'short';
+  if (side === 'short') {
+    const disp = monedasShort();
+    if (!S.shortCoin || !disp.includes(S.shortCoin)) S.shortCoin = disp[0] || null;
+    if (S.shortCoin) { const par = parIdDeToken(S.shortCoin); if (par && par !== S.par.id) { cambiarPar(par); } }
+  }
+  S.cap = 0; S.tam = 0; sincronCap(); renderEntry();
+}
+/* Cambia el par de la gráfica reutilizando la carga de velas. */
+function cambiarPar(parId) {
+  const p = D.PARES.find((x) => x.id === parId); if (!p || p.id === (S.par && S.par.id)) return;
+  S.par = p; S._posAuto = null;
+  cargarDatos();
+}
+/* Menú de las monedas que tienes para abrir un short. */
+function menuMonedasShort() {
+  cerrarPops();
+  const disp = monedasShort(), ancla = $('sp-amtunit'); if (!ancla) return;
+  const m = document.createElement('div'); m.id = 'sp-shortmenu'; m.className = 'sp-shortmenu';
+  m.innerHTML = disp.length
+    ? disp.map((id) => { const mo = MONEDAS[id] || { simbolo: id }; const bal = S.saldos[id] || 0; return `<button data-coin="${esc(id)}" class="${id === S.shortCoin ? 'on' : ''}"><span class="sym">${esc(mo.simbolo || id)}</span><b>${esc(fmtCoin(bal))}</b></button>`; }).join('')
+    : '<div class="sp-cm-empty">You hold no coins that can be shorted.</div>';
+  document.body.appendChild(m);
+  const r = ancla.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+  m.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => { S.shortCoin = b.dataset.coin; const par = parIdDeToken(S.shortCoin); if (par) cambiarPar(par); S.cap = 0; S.tam = 0; sincronCap(); renderEntry(); cerrarPops(); });
+  setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 10);
 }
 
 function toggleExpand() {
@@ -278,7 +331,7 @@ function pintarChart() {
   const vela = chart.addSeries(LC.CandlestickSeries, { upColor: '#2ee86a', downColor: '#ff5b6e', borderVisible: false, wickUpColor: '#2ee86a', wickDownColor: '#ff5b6e' });
   vela.setData(V.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))); S.serieVela = vela;
   S.velasDib = V.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
-  try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 160, to: V.length + 10 }); ts.subscribeVisibleLogicalRangeChange((range) => { sincronizarDib(); if (range && range.from < 15) cargarMasVelas(); }); } catch (_) {}
+  try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 90, to: V.length + 6 }); ts.subscribeVisibleLogicalRangeChange((range) => { sincronizarDib(); if (range && range.from < 15) cargarMasVelas(); }); } catch (_) {}
   try { chart.subscribeClick((p) => { if (!p || !p.point || S.drag || !sinHerramienta()) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('sp-overlay'); if (ov) ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('sp-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('sp-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
   dibujarLimit();
 }
@@ -349,20 +402,28 @@ function pintarPrecio() {
   // El saldo total de la wallet lo pinta renderWallet() (no en cada frame).
 }
 function renderEntry() {
-  const bal = M.balance();
-  const av = $('sp-avail'); if (av) av.textContent = S.walletOn ? ('Avail ' + fmtMoney(bal) + ' USDT') : 'Not connected';
-  const cv = $('sp-capv'); if (cv && document.activeElement !== cv) cv.value = S.cap > 0 ? +S.cap.toFixed(2) : '';
-  const capr = $('sp-capr'); if (capr) capr.style.setProperty('--f', (Math.min(1, S.cap / Math.max(1, bal || S.cap || 1)) * 100).toFixed(1) + '%');
+  const unidad = unidadActual(), disp = disponibleActual();
+  const av = $('sp-avail'); if (av) av.textContent = !S.walletOn ? 'No wallet detected' : (fmtCoin(disp) + ' ' + unidad);
+  const cv = $('sp-capv'); if (cv && document.activeElement !== cv) cv.value = S.cap > 0 ? +S.cap.toFixed(unidad === 'USDT' ? 2 : 8) : '';
   const px = entradaRef();
-  // Cantidad de MONEDA que compras (long) o vendes (short) con ese importe.
   const base = S.par ? S.par.id : 'COIN';
-  const qty = px > 0 ? S.tam / px : 0;
-  const ql = $('sp-qtylbl'); if (ql) ql.textContent = 'Coins at this price';
-  const qp = $('sp-qtyprev'); if (qp) qp.textContent = qty > 0 ? (fmtCoin(qty) + ' ' + base) : '—';
-  const fee = M.feeRueda(S.tam);
-  const sv = $('sp-sum-val'); if (sv) sv.textContent = fmtMoney(S.tam);
+  const ql = $('sp-qtylbl'), qp = $('sp-qtyprev');
+  let amountUsdt;
+  if (S.side === 'short') {
+    amountUsdt = S.cap * (px || 0);            // vendes S.cap monedas; su valor en USDT
+    if (ql) ql.textContent = 'You sell, value';
+    if (qp) qp.textContent = (S.cap > 0 && px > 0) ? fmtMoney(amountUsdt) : '—';
+  } else {
+    amountUsdt = S.cap;                          // gastas S.cap USDT para comprar la moneda
+    const coins = px > 0 ? S.cap / px : 0;
+    if (ql) ql.textContent = 'You buy';
+    if (qp) qp.textContent = coins > 0 ? (fmtCoin(coins) + ' ' + base) : '—';
+  }
+  S._amountUsdt = amountUsdt;
+  const fee = M.feeRueda(amountUsdt);
+  const sv = $('sp-sum-val'); if (sv) sv.textContent = fmtMoney(amountUsdt);
   const sf = $('sp-sum-fee'); if (sf) sf.textContent = '~' + fmtMoney(fee);
-  const sb = $('sp-sum-be'); if (sb) sb.textContent = (px > 0 && S.tam > 0) ? fmtP(px * (1 + fee / S.tam)) : '—';
+  const sb = $('sp-sum-be'); if (sb) sb.textContent = (px > 0 && amountUsdt > 0) ? fmtP(px * (1 + fee / amountUsdt)) : '—';
   proyeccionPnL();
 }
 
@@ -391,21 +452,29 @@ function tpslPrecioReal(cual, lado) {
 }
 /* Proyeccion visible: cuanto se gana en TP y cuanto se pierde en SL (dinero + ROE). */
 function proyeccionPnL() {
-  const activo = S.tam > 0 && S.cap > 0;
+  const amt = S._amountUsdt || 0, activo = amt > 0;
   const movTp = movFrac('tp'), movSl = movFrac('sl');
   const bTp = $('sp-proj-tp'), bSl = $('sp-proj-sl'), iTp = $('sp-proj-tpr'), iSl = $('sp-proj-slr');
-  if (bTp) { if (activo && movTp != null) { const g = S.tam * movTp; bTp.textContent = '+' + fmtMoney(g); iTp.textContent = fmtPct(g / S.cap * 100); } else { bTp.textContent = '—'; iTp.textContent = ''; } }
-  if (bSl) { if (activo && movSl != null) { const l = Math.min(S.tam * movSl, S.cap); bSl.textContent = '−' + fmtMoney(l); iSl.textContent = fmtPct(-(l / S.cap * 100)); } else { bSl.textContent = '—'; iSl.textContent = ''; } }
+  if (bTp) { if (activo && movTp != null) { const g = amt * movTp; bTp.textContent = '+' + fmtMoney(g); iTp.textContent = fmtPct(g / amt * 100); } else { bTp.textContent = '—'; iTp.textContent = ''; } }
+  if (bSl) { if (activo && movSl != null) { const l = amt * movSl; bSl.textContent = '−' + fmtMoney(l); iSl.textContent = fmtPct(-(l / amt * 100)); } else { bSl.textContent = '—'; iSl.textContent = ''; } }
 }
 
 
 /* ── SALDO REAL de la wallet conectada (no custodial, solo lectura) ──
    Total en USD + cuadritos por activo con saldo. Reutiliza saldosTodas() y
    tokens.js del resto de la plataforma; nada se inventa aquí. */
-const BINSYM = { BNB: 'BNBUSDT', BTCB: 'BTCUSDT', ETH: 'ETHUSDT', SOL: 'SOLUSDT', ETC: 'ETCUSDT' };
-async function preciosUSD() {
+const BINSYM = {
+  BNB: 'BNBUSDT', BTCB: 'BTCUSDT', ETH: 'ETHUSDT', SOL: 'SOLUSDT', XRP: 'XRPUSDT',
+  DOGE: 'DOGEUSDT', CAKE: 'CAKEUSDT', LINK: 'LINKUSDT', ADA: 'ADAUSDT', DOT: 'DOTUSDT',
+  LTC: 'LTCUSDT', AVAX: 'AVAXUSDT', ATOM: 'ATOMUSDT', NEAR: 'NEARUSDT', FIL: 'FILUSDT',
+  BCH: 'BCHUSDT', ETC: 'ETCUSDT', EOS: 'EOSUSDT', UNI: 'UNIUSDT', AAVE: 'AAVEUSDT',
+  XVS: 'XVSUSDT', INJ: 'INJUSDT', TWT: 'TWTUSDT', SHIB: 'SHIBUSDT', MATIC: 'POLUSDT', FLOKI: 'FLOKIUSDT'
+};
+async function preciosUSD(ids) {
   const out = { USDT: 1, USDC: 1, USDTZ: 1 };
-  const syms = [...new Set(Object.values(BINSYM))];
+  const pedir = (ids && ids.length) ? ids.filter((id) => BINSYM[id]) : Object.keys(BINSYM);
+  const syms = [...new Set(pedir.map((id) => BINSYM[id]))];
+  if (!syms.length) return out;
   try {
     const q = encodeURIComponent(JSON.stringify(syms));
     const j = await (await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${q}`)).json();
@@ -416,55 +485,64 @@ async function preciosUSD() {
 }
 let _walletTimer = null;
 async function renderWallet() {
-  const cuenta = cuentaActual && cuentaActual();
+  const cuenta = (typeof window !== 'undefined' && window.__spotMockCuenta) || (cuentaActual && cuentaActual());
   const boxes = $('sp-bal-boxes'), eqEl = $('sp-eq');
-  if (!cuenta) { S.walletOn = false; S.saldos = {}; M.setDisponible(0); if (boxes) boxes.innerHTML = '<div class="sp-bal-box sp-bal-empty">Connect your wallet</div>'; if (eqEl) eqEl.textContent = '—'; try { renderEntry(); } catch (_) {} return; }
+  if (!cuenta) { S.walletOn = false; S.saldos = {}; M.setDisponible(0); if (boxes) boxes.innerHTML = '<div class="sp-bal-box sp-bal-empty">No wallet detected</div>'; if (eqEl) eqEl.textContent = '—'; try { renderEntry(); } catch (_) {} return; }
   S.walletOn = true; S.cuenta = cuenta;
-  let saldos = {}; try { saldos = await saldosTodas(cuenta); } catch (_) { saldos = {}; }
+  let saldos = {};
+  if (typeof window !== 'undefined' && window.__spotMockSaldos) saldos = window.__spotMockSaldos;
+  else { try { saldos = await saldosTodas(cuenta); } catch (_) { saldos = {}; } }
   S.saldos = saldos;
   M.setDisponible(saldos.USDT || 0);
-  const precios = await preciosUSD(); S.precios = precios;
   const ids = Object.keys(saldos).filter((id) => (saldos[id] || 0) > 1e-12);
+  const precios = await preciosUSD(ids); S.precios = precios;
   let total = 0;
   const cajas = ids.map((id) => {
     const m = MONEDAS[id] || { simbolo: id, color: '#8b95a1' };
     const bal = saldos[id] || 0, p = (precios[id] != null) ? precios[id] : (m.precioUSD || 0), usd = bal * p; total += usd;
-    return `<div class="sp-bal-box" title="${esc(m.nombre || id)}"><span class="sym" style="color:${esc(m.color || '#cdd4dc')}">${esc(m.simbolo || id)}</span><b>${esc(fmtCoin(bal))}</b><i>${usd > 0 ? ('$' + usd.toLocaleString('en-US', { maximumFractionDigits: 2 })) : ''}</i></div>`;
+    return `<div class="sp-bal-box" title="${esc(m.nombre || id)}"><div class="sp-bal-top"><span class="sym" style="color:${esc(m.color || '#cdd4dc')}">${esc(m.simbolo || id)}</span><b>${esc(fmtCoin(bal))}</b></div>${usd > 0 ? `<i>$${usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</i>` : ''}</div>`;
   }).join('');
   if (boxes) boxes.innerHTML = cajas || '<div class="sp-bal-box sp-bal-empty">No balances yet</div>';
   if (eqEl) eqEl.textContent = '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   try { renderEntry(); } catch (_) {}
 }
-function arrancarWallet() {
+async function arrancarWallet() {
+  // Reconecta la wallet que YA está autorizada en la página (igual que el resto del
+  // sitio): así el saldo aparece solo, sin que el usuario pulse "conectar".
+  try { if (reconectarSiProcede) await reconectarSiProcede(); } catch (_) {}
   try { renderWallet(); } catch (_) {}
   try { if (alCambiar) alCambiar(() => renderWallet()); } catch (_) {}
   clearInterval(_walletTimer); _walletTimer = setInterval(() => { try { renderWallet(); } catch (_) {} }, 25000);
 }
 
 function operar(lado) {
-  if (!(S.tam > 0)) { toast('Enter an amount first.', 'warn'); return; }
+  if (!S.side) { toast('Pick Long or Short above first.', 'warn'); return; }
+  if (lado !== S.side) return;   // el botón contrario está deshabilitado
+  if (!(S.cap > 0)) { toast('Enter an amount first.', 'warn'); return; }
   arranqueAudio();
   const base = S.par.id;
   const pxRef = S.modo === 'limit' ? S.limitPx : S.mark;
-  // SPOT: long gasta USDT; short vende la moneda base. Si la wallet está conectada,
-  // se valida el saldo del activo correspondiente (no custodial: nada se ejecuta en
-  // cadena todavía; el futuro smart contract hará el movimiento real).
+  if (!(pxRef > 0)) { toast('No price yet.', 'bad'); return; }
+  // SPOT: long gasta USDT (amount = S.cap USDT). short vende S.cap monedas base;
+  // su valor en USDT = S.cap · precio. Validación no custodial contra la wallet.
+  const amountUsdt = lado === 'short' ? S.cap * pxRef : S.cap;
   if (S.walletOn) {
-    if (lado === 'long' && (S.saldos.USDT || 0) + 1e-9 < S.tam) { toast('Not enough USDT in your wallet for that amount.', 'bad'); return; }
-    if (lado === 'short') { const need = pxRef > 0 ? S.tam / pxRef : Infinity; const have = S.saldos[base] || 0; if (have + 1e-9 < need) { toast(`Not enough ${base} in your wallet to sell that amount.`, 'bad'); return; } }
+    if (lado === 'long' && (S.saldos.USDT || 0) + 1e-9 < amountUsdt) { toast('Not enough USDT in your wallet for that amount.', 'bad'); return; }
+    if (lado === 'short') { const have = (S.saldos[S.shortCoin] || 0); if (have + 1e-9 < S.cap) { toast(`Not enough ${unidadActual()} in your wallet to sell that amount.`, 'bad'); return; } }
   }
   const tp = tpslPrecioReal('tp', lado), sl = tpslPrecioReal('sl', lado);
   let r;
   if (S.modo === 'limit') {
     if (!(S.limitPx > 0)) { toast('Select Limit, then click the chart to mark the entry.', 'warn'); return; }
-    r = M.colocarOrden(S.par.id, base, lado, S.tam, S.limitPx, S.mark, tp, sl);
+    r = M.colocarOrden(S.par.id, base, lado, amountUsdt, S.limitPx, S.mark, tp, sl);
     if (r.ok) { toast(`Marked ${lado} at ${fmtP(S.limitPx)}. The price decides when it fills.`, 'ok'); S.limitPx = 0; $('sp-limit').value = ''; dibujarLimit(); }
   } else {
-    r = M.abrirMercado(S.par.id, base, lado, S.tam, S.mark, tp, sl);
+    r = M.abrirMercado(S.par.id, base, lado, amountUsdt, S.mark, tp, sl);
     if (r.ok) { flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened'); toast(`${lado === 'long' ? 'Long' : 'Short'} opened at ${fmtP(r.pos.entrada)}`, 'ok'); snd('open'); }
   }
   if (!r.ok) { toast('Could not place the order.', 'bad'); return; }
   $('sp-tp').value = ''; $('sp-sl').value = '';
+  S.cap = 0; S.tam = 0; sincronCap();
   renderPos(); renderEntry();
 }
 
@@ -1055,8 +1133,18 @@ function renderTodo() { sincronCap(); pintarPrecio(); renderEntry(); renderPos()
 const PASOS_SP = [
   {
     t: 'What Spot is',
-    d: 'Spot means you trade the <b>real coin</b>, not a contract. You own what you buy. There is <b>no leverage and no liquidation</b> here, so a position is never force closed. You can profit in <b>two</b> ways, and the second is the one most people never learn.',
+    d: 'Spot means you trade the <b>real coin</b>, not a contract. You own what you buy. There is <b>no leverage and no liquidation</b> here, so a position is never force closed. You can profit in <b>two</b> ways, whether the price goes up or down, and this short guide walks you through both.',
     x: 'What you see is what you hold. It is the safest way to learn to trade.'
+  },
+  {
+    t: 'Start here: pick a direction',
+    d: 'The very <b>first thing</b> you do is choose <b>Long</b> or <b>Short</b> at the <b>top</b> of the panel. That single choice sets up everything below it. Pick <b>Long</b> if you believe the price will go <b>up</b>. Pick <b>Short</b> if you believe it will go <b>down</b>. Until you pick one, nothing else is active, on purpose.',
+    x: 'Long means buy the coin. Short means sell a coin you already hold.'
+  },
+  {
+    t: 'Why Long and Short appear twice',
+    d: 'This confuses everyone at first, so here it is plainly. The pair at the <b>top</b> is where you <b>choose</b> your direction and set the trade up. The pair at the <b>bottom</b> is the <b>button that actually opens</b> the position once your amount is ready. When you pick a side at the top, the <b>opposite</b> button at the bottom is <b>locked</b>, so you can never open the wrong way by accident.',
+    x: 'Top = decide. Bottom = the real button that fires the order.'
   },
   {
     t: 'Long: you think it goes up',
@@ -1065,22 +1153,22 @@ const PASOS_SP = [
   },
   {
     t: 'Short: you think it goes down',
-    d: 'Yes, you can go <b>short</b> on spot. You <b>sell a coin you already hold</b> (say BTC) at today&#39;s price, and the tool marks how much and at what price you sold. If the price <b>falls</b>, you <b>buy it back cheaper</b> with the same money, so you end up with <b>more of the coin</b> than you started. Your profit is measured in the <b>coin</b> itself.',
-    x: 'Sell high, buy back lower. The gain is more coins (more BTC), not USDT.'
+    d: 'Yes, you can go <b>short</b> on spot, with no contract and nothing borrowed. You <b>sell a coin you already hold</b> (say BNB) at today&#39;s price, and the tool remembers how much and at what price you sold. If the price <b>falls</b>, you <b>buy it back cheaper</b> with that same money, so you end up holding <b>more of the coin</b> than you started with. The profit is counted in the <b>coin</b> itself.',
+    x: 'The benefit: a falling market stacks you more coins instead of draining your bag.'
   },
   {
     t: 'Set your amount',
-    d: 'Type or slide the <b>Amount</b> in USDT. For a long it is the USDT you spend; for a short it is the value of the coin you sell. The panel shows <b>how many coins</b> that is at the current price, so you always know exactly what you are committing.',
-    x: 'The % buttons size it against the wallet balance shown at the top.'
+    d: 'Type or slide the <b>Amount</b>. For a long it is the <b>USDT</b> you spend. For a short it is how much of your <b>coin</b> you sell, and you choose which held coin from the unit button right next to the amount. The panel always shows exactly what you are committing before you open.',
+    x: 'The % buttons size it against the balance you truly hold in your wallet.'
   },
   {
     t: 'Market or Limit, with TP and SL',
-    d: '<b>Market</b> fills now at the mark price. <b>Limit</b> lets you click the chart to mark your entry, and it fills when price gets there. On an open position you set a <b>Take Profit</b> and a <b>Stop Loss</b> by dragging the small green and red squares, or with the pencil on each row.',
+    d: '<b>Market</b> fills now at the mark price. <b>Limit</b> lets you click the chart to mark your entry, and it fills when price reaches it. On an open position you set a <b>Take Profit</b> and a <b>Stop Loss</b> by dragging the small green and red squares, or with the pencil on each row.',
     x: 'On a short, Take Profit sits below your entry (you win when price falls) and Stop Loss above.'
   },
   {
     t: 'Your wallet, your coins',
-    d: 'The top shows your <b>real wallet balance</b>: the total plus a box for each coin (USDT, BNB and the rest). Your open positions, marked orders and full history live at the bottom, and any trade exports as a clean card. It is <b>non custodial</b>: your coins stay in your wallet.',
+    d: 'The top shows your <b>real wallet balance</b>: the total plus a box for each coin you hold. Your open positions, marked orders and full history live at the bottom. It is <b>non custodial</b>, so your coins never leave your wallet.',
     x: 'Nothing leaves your wallet. This is real spot, built to operate.'
   }
 ];
@@ -1167,8 +1255,8 @@ function menuMonedas() {
   m.onclick = (e) => e.stopPropagation();
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 0);
 }
-function cierraPopFuera(e) { const ids = ['sp-coinmenu']; const anc = ['sp-coin']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
-function cerrarPops() { ['sp-coinmenu'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
+function cierraPopFuera(e) { const ids = ['sp-coinmenu', 'sp-shortmenu']; const anc = ['sp-coin', 'sp-amtunit']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
+function cerrarPops() { ['sp-coinmenu', 'sp-shortmenu'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
 
 function toast(msg, tipo) { const old = document.querySelector('.sp-toast'); if (old) old.remove(); const t = document.createElement('div'); t.className = 'sp-toast ' + (tipo || ''); t.textContent = msg; document.body.appendChild(t); setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => { try { t.remove(); } catch (_) {} }, 320); }, 2600); }
 

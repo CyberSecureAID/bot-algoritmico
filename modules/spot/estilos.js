@@ -43,14 +43,15 @@ export function estilos() {
   .sp-stat b{font-family:var(--sp-mono); font-size:9px; letter-spacing:.07em; text-transform:uppercase; color:var(--sp-ink3); font-weight:700}
   .sp-stat span{font-family:var(--sp-mono); font-size:12px; color:var(--sp-ink); font-weight:600}
   .sp-stat span.up{color:var(--sp-up2)} .sp-stat span.down{color:var(--sp-down2)}
-  .sp-brand{font-family:var(--sp-mono); font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#ff6b78; background:rgba(255,74,90,.14); border:1px solid rgba(255,74,90,.45); border-radius:100px; padding:4px 10px; flex:0 0 auto}
+  .sp-brand{display:inline-flex; align-items:center; height:26px; font-family:var(--sp-mono); font-size:10.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#ff6b78; background:rgba(255,74,90,.14); border:1px solid rgba(255,74,90,.45); border-radius:7px; padding:0 10px; flex:0 0 auto}
   .sp-wallet{display:flex; align-items:center; gap:12px; flex:0 1 auto; margin-left:auto; min-width:0}
   .sp-bal-boxes{display:flex; gap:7px; overflow-x:auto; max-width:44vw; scrollbar-width:none} .sp-bal-boxes::-webkit-scrollbar{display:none}
-  .sp-bal-box{flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-start; gap:1px; padding:5px 10px; border-radius:9px; background:rgba(255,255,255,.035); border:1px solid var(--sp-line)}
-  .sp-bal-box .sym{font-family:var(--sp-mono); font-size:9px; font-weight:800; letter-spacing:.05em}
-  .sp-bal-box b{font-family:var(--sp-mono); font-size:12px; font-weight:800; color:var(--sp-ink)}
-  .sp-bal-box i{font-style:normal; font-family:var(--sp-mono); font-size:9px; color:var(--sp-ink3)}
-  .sp-bal-box.sp-bal-empty{justify-content:center; align-items:center; color:var(--sp-ink3); font-family:var(--sp-mono); font-size:11px; padding:9px 12px}
+  .sp-bal-box{flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; gap:1px; height:36px; padding:0 11px; border-radius:9px; background:rgba(255,255,255,.04); border:1px solid var(--sp-line)}
+  .sp-bal-top{display:flex; align-items:baseline; gap:6px}
+  .sp-bal-box .sym{font-family:var(--sp-mono); font-size:9px; font-weight:800; letter-spacing:.04em; line-height:1}
+  .sp-bal-box b{font-family:var(--sp-mono); font-size:12.5px; font-weight:800; color:var(--sp-ink); line-height:1}
+  .sp-bal-box i{font-style:normal; font-family:var(--sp-mono); font-size:8.5px; color:var(--sp-ink3); line-height:1}
+  .sp-bal-box.sp-bal-empty{justify-content:center; align-items:center; color:var(--sp-ink3); font-family:var(--sp-mono); font-size:11px; padding:0 12px}
   .sp-bal-total{display:flex; flex-direction:column; align-items:flex-end; flex:0 0 auto}
   .sp-bal-total .lbl{font-family:var(--sp-mono); font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--sp-ink3)}
   .sp-bal-total b, .sp-wallet .eq{font-family:var(--sp-disp); font-weight:800; font-size:21px; letter-spacing:-.01em; color:var(--sp-gold); line-height:1.1}
@@ -105,6 +106,32 @@ export function estilos() {
   .sp-row2{display:flex; gap:7px}
   .sp-levbtn{flex:0 0 auto; width:100%; height:40px; border-radius:9px; border:1px solid var(--sp-line2); background:#0b1017; color:var(--sp-ink); display:flex; align-items:center; justify-content:space-between; padding:0 13px; font-family:var(--sp-mono); font-weight:700; font-size:13px}
   .sp-levbtn:hover{border-color:var(--sp-gold-soft)} .sp-levbtn b{color:var(--sp-gold); font-family:var(--sp-disp); font-size:15px} .sp-levbtn span{color:var(--sp-ink3); font-size:10px}
+  /* Selector Long/Short que define la seccion (arriba de Market/Limit) */
+  .sp-side{display:grid; grid-template-columns:1fr 1fr; gap:7px}
+  .sp-side-b{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:50px; border-radius:10px; border:1px solid var(--sp-line2); background:rgba(255,255,255,.03); color:var(--sp-ink2); font-family:var(--sp-disp); font-weight:800; font-size:15px; letter-spacing:.03em; cursor:pointer; transition:border-color .15s,background .15s,color .15s}
+  .sp-side-b small{font-family:var(--sp-mono); font-weight:600; font-size:9px; letter-spacing:0; text-transform:none; color:var(--sp-ink3)}
+  .sp-side-b:hover{border-color:var(--sp-gold-soft)}
+  .sp-side-b.long.on{background:rgba(46,232,106,.12); border-color:var(--sp-up); color:var(--sp-up2)}
+  .sp-side-b.short.on{background:rgba(255,91,110,.12); border-color:var(--sp-down); color:var(--sp-down2)}
+  .sp-side-b.on small{color:inherit; opacity:.85}
+  .sp-side-hint{font-family:var(--sp-mono); font-size:10.5px; line-height:1.5; color:var(--sp-ink3); text-align:center; padding:1px 4px}
+  .sp-side-hint b{color:var(--sp-ink2)}
+  /* Unidad del Amount: USDT (long) o moneda elegible para short (clicable) */
+  .sp-amtunit{border:none; background:transparent; font-family:var(--sp-mono); font-size:11px; font-weight:700; color:var(--sp-ink3); cursor:default; padding:0}
+  .sp-amtunit.pick{cursor:pointer; display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 8px; border-radius:7px; border:1px solid var(--sp-line2); background:#141b24; color:var(--sp-gold); font-weight:800}
+  .sp-amtunit.pick::after{content:'▾'; font-size:8px; color:var(--sp-ink3)}
+  .sp-amtunit.pick:hover{border-color:var(--sp-gold-soft)}
+  .sp-avail-row{padding:1px 1px}
+  .sp-avail-row .sp-fld-l{text-transform:none; letter-spacing:0}
+  .sp-avail-row #sp-avail{color:var(--sp-ink); font-weight:700}
+  /* Menu de las monedas disponibles para short */
+  .sp-shortmenu{position:fixed; z-index:70; width:212px; max-height:50vh; overflow-y:auto; padding:6px; border-radius:13px; background:#141b24; border:1px solid var(--sp-line2); box-shadow:0 18px 44px rgba(0,0,0,.6)}
+  .sp-shortmenu button{display:flex; align-items:center; justify-content:space-between; gap:9px; width:100%; min-height:38px; padding:0 11px; border-radius:9px; border:1px solid transparent; background:transparent; color:var(--sp-ink2); font-family:var(--sp-mono); font-size:13px}
+  .sp-shortmenu button:hover{border-color:#3a424c; background:rgba(255,255,255,.04); color:var(--sp-ink)}
+  .sp-shortmenu button.on{color:var(--sp-gold)}
+  .sp-shortmenu button .sym{font-weight:800; letter-spacing:.03em}
+  .sp-shortmenu button b{color:var(--sp-ink); font-weight:700} .sp-shortmenu button.on b{color:var(--sp-gold)}
+  .sp-cm-empty{padding:12px 11px; font-family:var(--sp-mono); font-size:11px; line-height:1.5; color:var(--sp-ink3); text-align:center}
   .sp-fld{display:flex; flex-direction:column; gap:5px}
   .sp-fld-l{font-family:var(--sp-mono); font-size:10px; color:var(--sp-ink3); letter-spacing:.04em; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center}
   .sp-in{display:flex; align-items:center; height:38px; padding:0 4px 0 12px; border-radius:9px; background:#0b1017; border:1px solid var(--sp-line2); gap:6px}
@@ -148,6 +175,8 @@ export function estilos() {
   .sp-op.long{background:linear-gradient(180deg,#4dffa0,#1fc96e); box-shadow:0 3px 0 #11813f}
   .sp-op.short{background:linear-gradient(180deg,#ff8a95,#e03546); color:#2a0509; box-shadow:0 3px 0 #8f1f2a}
   .sp-op:hover{filter:brightness(1.05)} .sp-op:active{transform:translateY(2px); box-shadow:none}
+  .sp-op:disabled{opacity:.3; filter:grayscale(.6); box-shadow:none; cursor:not-allowed; transform:none}
+  .sp-op:disabled:hover{filter:grayscale(.6)}
 
   /* ── Panel inferior: aparece al hacer scroll, alto, con lista desplazable (72+ ordenes) ── */
   .sp-pos{flex:0 0 auto; min-height:78vh; display:flex; flex-direction:column; border-top:2px solid var(--sp-line2); background:var(--sp-panel2)}
