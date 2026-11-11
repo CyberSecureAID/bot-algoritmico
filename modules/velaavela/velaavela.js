@@ -1,4 +1,5 @@
-/* modules/velaavela/velaavela.js — "Candle to Candle".
+/* modules/velaavela/velaavela.js — "Footprint" (nombre de cara al usuario).
+   El archivo NO se renombra, igual que "VWAP Pro" vive en modules/institutional/.
 
    Servicio de Analysis. MISMO chrome y dinámica que Reaction/Smart/Heat/Liquidity
    Pools: barra superior idéntica (Back · moneda+lista · temporalidad · precio+máx/mín
@@ -6,16 +7,21 @@
    arrastre del eje de precios = estira vertical, arrastre del eje de tiempo = estira
    horizontal, doble clic = reset), barra de dibujo compartida (barra.js),
    órdenes/alertas con clic derecho (orden.js), catálogo único de monedas (config.js),
-   y botón Single/Double como las demás. El ÚNICO cambio es la ESTRATEGIA.
+   y botón Single/Double como las demás. El ÚNICO cambio es el MOTOR.
 
-   ESTRATEGIA "Candle to Candle": la última vela CERRADA con cuerpo relevante (no doji)
-   se toma como vela de valor. Su CUERPO se divide en 3 zonas graduadas de entrada a
-   favor de su dirección (verde = long si es alcista, rojo = short si es bajista):
-   E1 superficial (cerca del cierre), E2 media (OTE, 50% del cuerpo), E3 profunda
-   (cerca de la apertura). El stop va al EXTREMO de la vela (invalidación compartida)
-   y el take profit a 1:2 desde la media. Pensado para operar el nacimiento de la vela
-   siguiente cuando retrocede al cuerpo de la anterior. Riesgo ACOTADO: las 3 zonas son
-   una entrada en escala (fracción por zona), no 3 posiciones martingala. */
+   MOTOR "Footprint" (flujo de órdenes): lee la CINTA ejecutada midiendo, por vela, el
+   DELTA = volumen taker comprador menos taker vendedor. Las velas de Binance ya traen
+   el volumen taker comprador (índice 10) y el quote (índice 7): delta = 2·takerBuy −
+   quote, exacto para todo el histórico y en vivo por el mismo WebSocket de klines (k.Q
+   y k.q). Con eso se arma el CVD (delta acumulado) y se detectan TRES señales
+   accionables, cada una proyecta entrada/stop/objetivo a 1:2 (Single/Double, órdenes):
+     1) ABSORCIÓN: ola agresiva fuerte contra el movimiento pero el precio no cede →
+        hay un pasivo absorbiendo → giro a favor del que absorbe.
+     2) DIVERGENCIA CVD/precio: el precio hace extremo nuevo y el CVD no lo acompaña →
+        agotamiento → giro.
+     3) RUPTURA CONFIRMADA POR DELTA: el precio rompe un nivel con delta fuerte a favor
+        → continuación (filtra rupturas falsas).
+   Datos solo de Binance SPOT (regla de CLAUDE.md), sin futuros. */
 
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=6';
 import { PARES, pintarIcono, TFS } from '../../assets/js/niveles/config.js?v=1';
@@ -32,8 +38,8 @@ const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 let _par = 'BTC';
 
 const M = {
-  tf: '1h', velas: [], precio: 0, data: { live: [], dead: [], triangles: [] }, strat: null,
-  ancho: window.innerWidth < 760 ? 34 : 52, desplaz: 0, zoomY: 1, offsetY: 0,
+  tf: '1h', velas: [], precio: 0, data: { live: [], dead: [], triangles: [] }, sig: null, cvd: [],
+  ancho: window.innerWidth < 760 ? 46 : 70, desplaz: 0, zoomY: 1, offsetY: 0,
   _geo: null, _cursor: null, _modoPos: null, _posAuto: null, _posSig: null,
   cargando: true, error: null
 };
@@ -54,7 +60,13 @@ async function rzFetch(path) {
 async function traerVelas(simbolo, tf, n = 700) {
   const r = await rzFetch(`/api/v3/klines?symbol=${simbolo}&interval=${tf}&limit=${n}`);
   const j = await r.json();
-  return j.map((x) => ({ t: Math.floor(x[0] / 1000), o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: +x[7] || +x[5] || 0 }));
+  // La kline de Binance trae el volumen TAKER comprador (índice 10, quote) y el
+  // volumen quote total (índice 7). El DELTA de flujo de una vela = taker comprador
+  // menos taker vendedor = 2·takerBuy − total. Es la cinta ejecutada (los agresores).
+  return j.map((x) => {
+    const qv = +x[7] || 0, tb = +x[10] || 0;
+    return { t: Math.floor(x[0] / 1000), o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: qv || +x[5] || 0, qv, tb, d: 2 * tb - qv };
+  });
 }
 
 /* ── Velas EN VIVO por WebSocket de Binance ──
@@ -87,7 +99,11 @@ function conectarStreamRz() {
 }
 function onKlineRz(k) {
   if (!k || !M.velas || !M.velas.length) return;
-  const c = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: +k.q || +k.v || 0 };
+  // k.q = volumen quote total, k.Q = volumen taker comprador (quote). Delta vivo igual
+  // que en el histórico: 2·takerBuy − total. Así el CVD y el delta de la vela en curso
+  // se actualizan al instante con el mismo stream, sin pedir aggTrades.
+  const qv = +k.q || 0, tb = +k.Q || 0;
+  const c = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: qv || +k.v || 0, qv, tb, d: 2 * tb - qv };
   if (!(c.c > 0)) return;
   const last = M.velas[M.velas.length - 1];
   if (c.t === last.t) { M.velas[M.velas.length - 1] = c; }        // misma vela en formación
@@ -146,7 +162,7 @@ export async function abrirVelaVela() {
       </div>
       <div class="vv-graf" id="vv-graf">
         <canvas class="vv-cv" id="vv-cv"></canvas>
-        <div class="vv-esperando" id="vv-esperando"><div class="vv-spin"></div><b>Reading the candle…</b><span>Finding the value candle and projecting its entry zones.</span></div>
+        <div class="vv-esperando" id="vv-esperando"><div class="vv-spin"></div><b>Reading the order flow…</b><span>Measuring taker delta and building the cumulative volume read.</span></div>
         <img class="vv-marca" id="vv-marca" src="${LOGO}" alt="">
       </div>
     </div>`;
@@ -199,42 +215,108 @@ async function cargarVelas() {
   conectarStreamRz();          // velas EN VIVO por WebSocket (el sondeo de 15 s queda de resync)
 }
 function recalcular() {
-  M.strat = calcularEstrategia(M.velas);
-  M._posAuto = null;   // reproyecta las posiciones a la vela vigente
+  M.cvd = calcularCVD(M.velas);                 // delta acumulado (la cinta)
+  M.sig = calcularFootprint(M.velas, M.cvd);    // señal accionable vigente
+  M._posAuto = null;                            // reproyecta la posición a la señal
   refrescarCabecera();
 }
 
-/* ══════════════════ ESTRATEGIA "Candle to Candle" ══════════════════
-   Toma la última vela CERRADA con cuerpo relevante (no doji) y divide su CUERPO
-   en 3 zonas de entrada a favor de su dirección. Stop en el extremo de la vela
-   (invalidación), take profit 1:2 desde la media (OTE). */
-function mediana(a) { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y); const m = Math.floor(b.length / 2); return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; }
-function calcularEstrategia(velas) {
-  const n = velas.length;
-  if (n < 6) return null;
-  const cuerpos = [];
-  for (let k = Math.max(0, n - 22); k < n; k++) cuerpos.push(Math.abs(velas[k].c - velas[k].o));
-  const med = mediana(cuerpos) || 0;
-  for (let i = n - 2; i >= Math.max(1, n - 8); i--) {   // desde la última CERRADA hacia atrás
-    const v = velas[i];
-    const cuerpo = Math.abs(v.c - v.o), rango = (v.h - v.l) || 1e-9;
-    if (med > 0 && cuerpo < med * 0.5) continue;        // cuerpo muy chico vs lo normal
-    if (cuerpo / rango < 0.34) continue;                // mayormente mecha (doji/estrella)
-    const largo = v.c >= v.o;
-    const bodyHi = largo ? v.c : v.o, bodyLo = largo ? v.o : v.c, B = (bodyHi - bodyLo) || 1e-9;
-    const eSup = bodyHi - B / 6, eMid = (bodyHi + bodyLo) / 2, eProf = bodyLo + B / 6;   // centros de los tercios
-    const buffer = (v.h - v.l) * 0.08;
-    const sl = largo ? v.l - buffer : v.h + buffer;     // invalidación: extremo de la vela
-    const R = Math.abs(eMid - sl) || B;
-    const tp = largo ? eMid + 2 * R : eMid - 2 * R;     // 1:2 desde la media
-    return {
-      bar: i, o: v.o, c: v.c, h: v.h, l: v.l, largo,
-      bodyHi, bodyLo, B, eSup, eMid, eProf, sl, tp,
-      bandas: [[bodyHi, bodyHi - B / 3], [bodyHi - B / 3, bodyLo + B / 3], [bodyLo + B / 3, bodyLo]]
-    };
+/* ══════════════════ MOTOR "Footprint" (flujo de órdenes) ══════════════════
+   Delta por vela = taker comprador − taker vendedor (ya calculado en v.d). El CVD
+   es su suma acumulada. Sobre eso se detecta la señal accionable vigente: absorción,
+   divergencia CVD/precio o ruptura confirmada por delta. Cada una proyecta entrada,
+   stop y objetivo a 1:2 (los dibuja la herramienta de posición Single/Double). */
+function calcularCVD(velas) {
+  const out = new Array(velas.length); let s = 0;
+  for (let i = 0; i < velas.length; i++) { s += (velas[i].d || 0); out[i] = s; }
+  return out;
+}
+function calcAtr(velas, idx, p) {
+  let s = 0, c = 0;
+  for (let i = Math.max(1, idx - p + 1); i <= idx; i++) {
+    const tr = Math.max(velas[i].h - velas[i].l, Math.abs(velas[i].h - velas[i - 1].c), Math.abs(velas[i].l - velas[i - 1].c));
+    s += tr; c++;
+  }
+  return c ? s / c : 0;
+}
+/* Pivotes locales (k vecinos a cada lado): devuelve [másReciente, previo]. */
+function pivotes(velas, last, tipo) {
+  const k = 2, out = [];
+  for (let i = last - k; i >= Math.max(k, last - 44); i--) {
+    const v = velas[i]; let ok = true;
+    for (let j = 1; j <= k; j++) {
+      if (tipo === 'low') { if (!(v.l < velas[i - j].l && v.l < velas[i + j].l)) { ok = false; break; } }
+      else { if (!(v.h > velas[i - j].h && v.h > velas[i + j].h)) { ok = false; break; } }
+    }
+    if (ok) { out.push(i); if (out.length >= 2) break; }
+  }
+  return out;
+}
+/* Arma la señal: entrada, stop (invalidación del flujo) y objetivo a 1:2. */
+function armarSenal(kind, largo, bar, velas, atr, verdict, opt) {
+  opt = opt || {};
+  const v = velas[bar];
+  const entry = opt.entry != null ? opt.entry : v.c;
+  const buf = atr * 0.12;
+  const sl = opt.sl != null ? opt.sl : (largo ? Math.min(v.l, entry) - buf : Math.max(v.h, entry) + buf);
+  const R = Math.abs(entry - sl) || atr || 1e-9;
+  const tp = largo ? entry + 2 * R : entry - 2 * R;
+  const zw = Math.min(atr * 0.2, R * 0.6);
+  return { kind, largo, bar, entry, sl, tp, zoneHi: entry + zw, zoneLo: entry - zw, refHi: v.h, refLo: v.l, refBar: opt.refBar != null ? opt.refBar : null, verdict };
+}
+function detectarDivergencia(velas, cvd, last, atr) {
+  const hs = pivotes(velas, last, 'high');
+  if (hs.length >= 2) { const a = hs[0], b = hs[1];
+    if (velas[a].h > velas[b].h && cvd[a] < cvd[b])
+      return armarSenal('divergencia', false, a, velas, atr, 'Higher high, weaker delta — buying exhausted', { entry: velas[last].c, sl: velas[a].h + atr * 0.15, refBar: b });
+  }
+  const ls = pivotes(velas, last, 'low');
+  if (ls.length >= 2) { const a = ls[0], b = ls[1];
+    if (velas[a].l < velas[b].l && cvd[a] > cvd[b])
+      return armarSenal('divergencia', true, a, velas, atr, 'Lower low, stronger delta — selling exhausted', { entry: velas[last].c, sl: velas[a].l - atr * 0.15, refBar: b });
   }
   return null;
 }
+function detectarRuptura(velas, cvd, last, atr, strong) {
+  const look = 20, from = Math.max(0, last - look);
+  let hi = -Infinity, lo = Infinity;
+  for (let i = from; i <= last - 1; i++) { if (velas[i].h > hi) hi = velas[i].h; if (velas[i].l < lo) lo = velas[i].l; }
+  const v = velas[last], mom = cvd[last] - cvd[Math.max(0, last - 3)];
+  if (v.c > hi && v.d >= strong * 0.8 && mom > 0)
+    return armarSenal('ruptura', true, last, velas, atr, 'Break up, delta confirming — continuation', { entry: hi, sl: Math.min(v.l, hi - atr * 0.6) - atr * 0.05 });
+  if (v.c < lo && v.d <= -strong * 0.8 && mom < 0)
+    return armarSenal('ruptura', false, last, velas, atr, 'Break down, delta confirming — continuation', { entry: lo, sl: Math.max(v.h, lo + atr * 0.6) + atr * 0.05 });
+  return null;
+}
+function calcularFootprint(velas, cvd) {
+  const n = velas.length;
+  if (n < 30 || !cvd || !cvd.length) return null;
+  const last = n - 2;                                   // última CERRADA (la n-1 está en formación)
+  const win = 40, from = Math.max(0, last - win);
+  let sAbs = 0, cAbs = 0;
+  for (let i = from; i <= last; i++) { sAbs += Math.abs(velas[i].d || 0); cAbs++; }
+  const dAvg = cAbs ? sAbs / cAbs : 0;
+  const strong = (dAvg * 1.7) || 1;                     // umbral de flujo "fuerte"
+  const atr = calcAtr(velas, last, 14) || ((velas[last].h - velas[last].l) || 1e-9);
+
+  // 1) ABSORCIÓN — disparo más reciente entre las últimas cerradas
+  for (let i = last; i >= Math.max(3, last - 6); i--) {
+    const v = velas[i], d = v.d || 0, rng = (v.h - v.l) || 1e-9;
+    // venta agresiva fuerte pero el precio no cede → absorción compradora → LONG
+    if (d <= -strong && v.l >= Math.min(velas[i - 1].l, velas[i - 2].l) - atr * 0.05 && v.c >= v.l + rng * 0.33)
+      return armarSenal('absorcion', true, i, velas, atr, 'Sellers hitting, price holding — buyers absorbing');
+    // compra agresiva fuerte pero el precio no sube → absorción vendedora → SHORT
+    if (d >= strong && v.h <= Math.max(velas[i - 1].h, velas[i - 2].h) + atr * 0.05 && v.c <= v.h - rng * 0.33)
+      return armarSenal('absorcion', false, i, velas, atr, 'Buyers hitting, price capped — sellers absorbing');
+  }
+  // 2) DIVERGENCIA CVD/precio
+  const div = detectarDivergencia(velas, cvd, last, atr);
+  if (div) return div;
+  // 3) RUPTURA CONFIRMADA POR DELTA
+  return detectarRuptura(velas, cvd, last, atr, strong);
+}
+/* Etiqueta corta por tipo de señal (para la ficha y el chip del gráfico). */
+function etiquetaSig(s) { return !s ? '' : ({ absorcion: 'ABSORPTION', divergencia: 'DELTA DIVERGENCE', ruptura: 'DELTA BREAK' }[s.kind] || ''); }
 function refrescarCabecera() {
   const px = $('vv-px'), hi = $('vv-hi'), lo = $('vv-lo');
   if (!M.velas.length) return;
@@ -285,14 +367,18 @@ function dibujar() {
   if (esp) esp.style.display = 'none';
 
   const mDer = 66, mAba = 22;
-  const x1 = W - mDer, y1 = H - mAba, xVelas = x1;
+  // Panel inferior para el flujo (histograma de delta + línea CVD). El área de precio
+  // termina en y1; el panel va entre y1+gapP y yTime; el eje de tiempo queda abajo.
+  const panelH = Math.max(50, Math.round((H - mAba) * 0.20)), gapP = 8;
+  const yTime = H - mAba;
+  const x1 = W - mDer, y1 = yTime - panelH - gapP, xVelas = x1;
   const ancho = Math.min(M.velas.length, M.ancho || 100);
   const huecoMax = Math.floor(ancho * 0.45);
   // Con Single/Double activo se reserva hueco a la derecha para proyectar las
   // cajas de posición ADELANTADAS al precio (igual que Heat Pools).
   // Reserva espacio a la derecha para PROYECTAR las zonas de la estrategia hacia
   // adelante (el nacimiento de la vela siguiente), aunque no haya Single/Double.
-  const futNec = M._modoPos ? Math.min(huecoMax, M._modoPos === 'double' ? 32 : 16) : (M.strat ? Math.min(huecoMax, 15) : 0);
+  const futNec = M._modoPos ? Math.min(huecoMax, M._modoPos === 'double' ? 32 : 16) : (M.sig ? Math.min(huecoMax, 12) : 0);
   let desp = Math.max(-huecoMax, Math.min(M.desplaz || 0, Math.max(0, M.velas.length - ancho)));
   if (futNec && (M.desplaz || 0) <= 0 && desp > -futNec) desp = -futNec;
   M.desplaz = desp;
@@ -303,9 +389,9 @@ function dibujar() {
 
   let pAlto = Math.max(...vis.map((v) => v.h)), pBajo = Math.min(...vis.map((v) => v.l));
   if (M.precio > 0) { pAlto = Math.max(pAlto, M.precio); pBajo = Math.min(pBajo, M.precio); }
-  // abre la escala para que entren el stop y el take profit de la estrategia (tope 45%)
+  // abre la escala para que entren el stop y el take profit de la señal (tope 45%)
   const rV0 = (pAlto - pBajo) || 1, capHi = pAlto + rV0 * 0.45, capLo = pBajo - rV0 * 0.45;
-  if (M.strat) { [M.strat.sl, M.strat.tp, M.strat.bodyHi, M.strat.bodyLo].forEach((p) => { if (p <= capHi && p >= capLo) { pAlto = Math.max(pAlto, p); pBajo = Math.min(pBajo, p); } }); }
+  if (M.sig) { [M.sig.sl, M.sig.tp, M.sig.entry].forEach((p) => { if (p <= capHi && p >= capLo) { pAlto = Math.max(pAlto, p); pBajo = Math.min(pBajo, p); } }); }
   const rangoB = (pAlto - pBajo) || 1;
   const despY = ((M.offsetY || 0) / Math.max(1, y1)) * rangoB;
   const centro = (pAlto + pBajo) / 2 + despY;
@@ -331,8 +417,8 @@ function dibujar() {
   // ── VELAS ──
   dibujarVelas(g, vis, Y, paso);
 
-  // ── ESTRATEGIA: las 3 zonas del cuerpo de la vela de valor, proyectadas al frente ──
-  dibujarEstrategia(g, x1, Y, pMin, pMax, Xbar, pulso, now);
+  // ── SEÑAL FOOTPRINT: marca de la vela gatillo + zona de entrada / SL / TP ──
+  dibujarFootprint(g, x1, Y, pMin, pMax, Xbar, pulso, now);
 
   // línea del precio
   if (M.precio > 0) {
@@ -353,18 +439,21 @@ function dibujar() {
   g.fillStyle = pal().dim; g.font = '10px ui-monospace,monospace'; g.textAlign = 'left';
   for (let i = 0; i <= 5; i++) { const y = (y1 / 5) * i; const pr = pMax - (pMax - pMin) * (i / 5); g.fillText(fmt(pr), x1 + 6, y + (i === 0 ? 10 : i === 5 ? -3 : 3)); }
 
+  // ── PANEL DE FLUJO (CVD): histograma de delta + línea acumulada, debajo del precio ──
+  dibujarPanelCVD(g, vis, x1, y1 + gapP, yTime, paso);
+
   // eje de TIEMPO (abajo): fechas/horas, igual que las demás secciones
-  g.fillStyle = '#0b0e12'; g.fillRect(0, y1, W, mAba);
+  g.fillStyle = '#0b0e12'; g.fillRect(0, yTime, W, mAba);
   g.fillStyle = pal().dim; g.font = '9px ui-monospace,monospace'; g.textAlign = 'center';
   const cadaX = Math.max(1, Math.floor(vis.length / 7));
-  vis.forEach((v, i) => { if (i % cadaX !== 0) return; const x = i * paso + paso / 2; if (x > xVelas - 14) return; g.fillText(fmtFecha(v.t), x, y1 + 14); });
+  vis.forEach((v, i) => { if (i % cadaX !== 0) return; const x = i * paso + paso / 2; if (x > xVelas - 14) return; g.fillText(fmtFecha(v.t), x, yTime + 14); });
   g.textAlign = 'left';
 
   // crosshair + tachuelas de precio (der) y hora (abajo)
   if (M._cursor && M._cursor.x < x1 && M._cursor.y < y1 && M._cursor.x > 0 && M._cursor.y > 0) {
     const cx = M._cursor.x, cy = M._cursor.y, pCur = pMin + (pMax - pMin) * ((y1 - cy) / y1);
     g.save(); g.strokeStyle = 'rgba(200,210,224,.4)'; g.lineWidth = 1; g.setLineDash([4, 4]);
-    g.beginPath(); g.moveTo(cx, 0); g.lineTo(cx, y1); g.stroke();
+    g.beginPath(); g.moveTo(cx, 0); g.lineTo(cx, yTime); g.stroke();
     g.beginPath(); g.moveTo(0, cy); g.lineTo(x1, cy); g.stroke(); g.restore(); g.setLineDash([]);
     g.fillStyle = '#e8ecf2'; redondeado(g, x1 + 2, cy - 9, mDer - 4, 18, 4); g.fill();
     g.fillStyle = '#0b0e12'; g.font = 'bold 10px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(fmt(pCur), x1 + 6, cy + 3.5);
@@ -372,8 +461,8 @@ function dibujar() {
     if (idx >= 0 && idx < vis.length) {
       const ht = fmtFecha(vis[idx].t); g.font = 'bold 9px ui-monospace,monospace';
       const hw = g.measureText(ht).width + 12;
-      g.fillStyle = '#e8ecf2'; redondeado(g, Math.max(2, Math.min(x1 - hw, cx - hw / 2)), y1 + 3, hw, 15, 4); g.fill();
-      g.fillStyle = '#0b0e12'; g.textAlign = 'center'; g.fillText(ht, Math.max(2 + hw / 2, Math.min(x1 - hw / 2, cx)), y1 + 13.5); g.textAlign = 'left';
+      g.fillStyle = '#e8ecf2'; redondeado(g, Math.max(2, Math.min(x1 - hw, cx - hw / 2)), yTime + 3, hw, 15, 4); g.fill();
+      g.fillStyle = '#0b0e12'; g.textAlign = 'center'; g.fillText(ht, Math.max(2 + hw / 2, Math.min(x1 - hw / 2, cx)), yTime + 13.5); g.textAlign = 'left';
     }
   }
 
@@ -394,97 +483,137 @@ function dibujarVelas(g, vis, Y, paso) {
   }
 }
 
-/* ESTRATEGIA: la vela de valor resaltada + las 3 zonas de su cuerpo (tercios)
-   proyectadas al frente, con las entradas E1/E2/E3, el stop y el take profit.
-   Barrido de luz y latido, igual que las demás secciones. Verde = long, rojo = short. */
-function dibujarEstrategia(g, x1, Y, pMin, pMax, Xbar, pulso, now) {
-  const S = M.strat; if (!S || !M._geo) return;
-  const col = S.largo ? '46,232,106' : '255,74,90';
-  const colHi = S.largo ? '150,255,195' : '255,150,165';
-  const paso = M._geo.paso || 8;
-  const xc = Xbar(S.bar);                       // centro de la vela de valor
-  const xa = Math.max(0, xc - paso * 0.5);      // desde la vela
-  const xR = x1;                                // proyectada hasta el borde derecho
-  if (xR <= xa) return;
+/* Chip de veredicto (arriba-izquierda): tipo de señal + lectura en lenguaje claro. */
+function chipFlow(g, title, sub, rgb) {
+  g.save();
+  g.font = '800 11px system-ui,sans-serif'; const w1 = g.measureText(title).width;
+  g.font = '600 10px system-ui,sans-serif'; const w2 = sub ? g.measureText(sub).width : 0;
+  const bw = Math.max(w1, w2) + 30, bx = 10, by = 10, bh = sub ? 40 : 26;
+  g.shadowColor = `rgba(${rgb},.4)`; g.shadowBlur = 10;
+  g.fillStyle = 'rgba(10,14,20,.92)'; redondeado(g, bx, by, bw, bh, 9); g.fill(); g.shadowBlur = 0;
+  g.strokeStyle = `rgba(${rgb},.55)`; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 9); g.stroke();
+  g.fillStyle = `rgb(${rgb})`; g.beginPath(); g.arc(bx + 14, by + (sub ? 15 : bh / 2), 3.4, 0, 6.283); g.fill();
+  g.textAlign = 'left'; g.fillStyle = '#eef2f6'; g.font = '800 11px system-ui,sans-serif'; g.fillText(title, bx + 24, by + (sub ? 17 : bh / 2 + 4));
+  if (sub) { g.fillStyle = '#aab3bf'; g.font = '600 10px system-ui,sans-serif'; g.fillText(sub, bx + 24, by + 32); }
+  g.restore();
+}
+/* SEÑAL FOOTPRINT en el precio: marca de la vela gatillo + zona de entrada + EN/SL/TP,
+   proyectadas al frente. Verde = long, rojo = short. Sin señal: chip de "stand aside". */
+function dibujarFootprint(g, x1, Y, pMin, pMax, Xbar, pulso, now) {
+  const S = M.sig, geo = M._geo; if (!geo) return;
+  if (!S) { chipFlow(g, 'NO CLEAN FLOW', 'Stand aside — waiting for a read', '125,135,148'); return; }
+  const rgb = S.largo ? '46,232,106' : '255,74,90';
+  const rgbHi = S.largo ? '150,255,195' : '255,150,165';
+  const paso = geo.paso || 8;
+  const xc = Xbar(S.bar), xa = Math.max(0, xc - paso * 0.6), xR = x1;
+  if (xR <= xa) { chipFlow(g, etiquetaSig(S) + ' · ' + (S.largo ? 'LONG' : 'SHORT'), S.verdict, rgb); return; }
 
-  // 1) vela de valor resaltada (recuadro punteado)
-  const yH = Y(S.h), yL = Y(S.l), w = paso * 0.9;
-  g.save(); g.strokeStyle = `rgba(${colHi},.45)`; g.lineWidth = 1; g.setLineDash([2, 3]);
-  g.strokeRect(xc - w / 2, Math.min(yH, yL), w, Math.abs(yL - yH)); g.restore(); g.setLineDash([]);
+  // zona de entrada (banda) proyectada con barrido de luz
+  const yzT = Y(Math.max(S.zoneHi, S.zoneLo)), yzB = Y(Math.min(S.zoneHi, S.zoneLo));
+  const sweep = (now % 2600) / 2600, hh = Math.max(1, yzB - yzT);
+  g.fillStyle = `rgba(${rgb},.16)`; g.fillRect(xa, yzT, xR - xa, hh);
+  { const grd = g.createLinearGradient(xa, 0, xR, 0);
+    for (let k = 0; k <= 10; k++) { const p = k / 10, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${rgbHi},${(0.02 + 0.06 * b).toFixed(3)})`); }
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(xa, yzT, xR - xa, hh); g.restore(); }
 
-  // 2) las 3 bandas (tercios del cuerpo), la superficial más intensa, con barrido
-  const sweep = (now % 2600) / 2600;
-  const alfas = [0.26, 0.185, 0.12];
-  S.bandas.forEach((bd, i) => {
-    const yT = Y(Math.max(bd[0], bd[1])), yB = Y(Math.min(bd[0], bd[1]));
-    const hh = Math.abs(yB - yT); if (hh < 0.5) return;
-    g.fillStyle = `rgba(${col},${alfas[i]})`; g.fillRect(xa, yT, xR - xa, hh);
-    const grd = g.createLinearGradient(xa, 0, xR, 0);
-    for (let k = 0; k <= 10; k++) { const p = k / 10, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${colHi},${(0.012 + 0.055 * b).toFixed(3)})`); }
-    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(xa, yT, xR - xa, hh); g.restore();
-  });
+  // marca (triángulo) en la vela gatillo
+  { const v = M.velas[S.bar];
+    if (v) { const yy = S.largo ? Y(v.l) + 11 : Y(v.h) - 11, s = 5.5;
+      g.save(); g.fillStyle = `rgb(${rgb})`; g.shadowColor = `rgba(${rgb},.7)`; g.shadowBlur = 8; g.beginPath();
+      if (S.largo) { g.moveTo(xc, yy - s); g.lineTo(xc - s, yy + s); g.lineTo(xc + s, yy + s); }
+      else { g.moveTo(xc, yy + s); g.lineTo(xc - s, yy - s); g.lineTo(xc + s, yy - s); }
+      g.closePath(); g.fill(); g.restore(); } }
 
-  // 3) entradas E1/E2/E3 (la media, E2/OTE, resaltada) con glow y etiqueta a la izquierda
-  [['E1', S.eSup], ['E2', S.eMid], ['E3', S.eProf]].forEach(([lab, p], i) => {
-    if (p > pMax || p < pMin) return;
-    const y = Y(p);
-    g.save();
-    g.strokeStyle = `rgba(${colHi},${(0.75 + 0.2 * pulso).toFixed(3)})`; g.lineWidth = i === 1 ? 2.1 : 1.3;
-    g.shadowColor = `rgba(${col},${(0.4 + 0.3 * pulso).toFixed(3)})`; g.shadowBlur = i === 1 ? 9 : 4;
-    g.beginPath(); g.moveTo(xa, y); g.lineTo(xR, y); g.stroke(); g.restore();
-    g.fillStyle = `rgba(${col},.96)`; redondeado(g, xa + 3, y - 8, 28, 16, 4); g.fill();
-    g.fillStyle = '#06110a'; g.font = '800 9px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(lab, xa + 8, y + 3.3);
-  });
-
-  // 4) stop y take profit (punteados con etiqueta y precio)
-  const marca = (lab, p, c) => {
-    if (p > pMax || p < pMin) return;
-    const y = Y(p);
-    g.save(); g.setLineDash([5, 4]); g.strokeStyle = c; g.lineWidth = 1.4; g.globalAlpha = 0.92;
+  // entrada / stop / objetivo
+  const linea = (lab, p, c, dash, lw) => {
+    if (p > pMax || p < pMin) return; const y = Y(p);
+    g.save(); if (dash) g.setLineDash(dash); g.strokeStyle = c; g.lineWidth = lw || 1.5; g.globalAlpha = 0.95;
     g.beginPath(); g.moveTo(xa, y); g.lineTo(xR, y); g.stroke(); g.restore(); g.setLineDash([]);
-    const tw = g.measureText(lab + ' ' + fmt(p)).width; const bw = Math.max(50, tw + 14);
-    g.fillStyle = c; redondeado(g, xR - bw - 2, y - 8, bw, 16, 4); g.fill();
-    g.fillStyle = '#06110a'; g.font = '800 9px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(lab + ' ' + fmt(p), xR - bw + 4, y + 3.3);
+    g.font = '800 9px ui-monospace,monospace'; const t = lab + ' ' + fmt(p), tw = g.measureText(t).width, bw = Math.max(52, tw + 12);
+    g.fillStyle = (c[0] === 'r' ? `rgb(${rgbHi})` : c); redondeado(g, xR - bw - 2, y - 8, bw, 16, 4); g.fill();
+    g.fillStyle = '#06110a'; g.textAlign = 'left'; g.fillText(t, xR - bw + 4, y + 3.3);
   };
-  g.font = '800 9px ui-monospace,monospace';
-  marca('TP', S.tp, '#2ee86a');
-  marca('SL', S.sl, '#ff4a5a');
+  linea('EN', S.entry, `rgba(${rgbHi},${(0.8 + 0.2 * pulso).toFixed(3)})`, null, 2);
+  linea('TP', S.tp, '#2ee86a', [5, 4], 1.4);
+  linea('SL', S.sl, '#ff4a5a', [5, 4], 1.4);
   g.textAlign = 'left';
+  chipFlow(g, etiquetaSig(S) + ' · ' + (S.largo ? 'LONG' : 'SHORT'), S.verdict, rgb);
+}
+
+/* PANEL DE FLUJO: línea CVD (delta acumulado) arriba y histograma de delta por vela
+   abajo. Es la vista reconocible de order flow, limpia, debajo del precio. */
+function dibujarPanelCVD(g, vis, x1, yTop, yBot, paso) {
+  const H = yBot - yTop; if (H < 24 || !vis.length) return;
+  g.fillStyle = 'rgba(255,255,255,.015)'; g.fillRect(0, yTop, x1, H);
+  g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, yTop + 0.5); g.lineTo(x1, yTop + 0.5); g.stroke();
+
+  // franjas: CVD arriba, delta abajo
+  const hC0 = yTop + 6, hC1 = yTop + H * 0.5;
+  const hD0 = yTop + H * 0.56, hD1 = yBot - 4, zero = (hD0 + hD1) / 2, half = (hD1 - hD0) / 2 - 1;
+
+  // histograma de delta
+  const deltas = vis.map((v) => v.d || 0);
+  let maxAbs = 1e-9; for (const d of deltas) if (Math.abs(d) > maxAbs) maxAbs = Math.abs(d);
+  const w = Math.max(1, paso * 0.6);
+  for (let i = 0; i < vis.length; i++) { const d = deltas[i]; if (!d) continue; const x = i * paso + paso / 2, bh = (Math.abs(d) / maxAbs) * half;
+    g.fillStyle = d >= 0 ? 'rgba(38,212,106,.5)' : 'rgba(255,81,98,.5)';
+    if (d >= 0) g.fillRect(x - w / 2, zero - bh, w, bh); else g.fillRect(x - w / 2, zero, w, bh); }
+  g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, zero); g.lineTo(x1, zero); g.stroke();
+
+  // línea CVD (ventana visible reescalada a su propio rango)
+  const base = M._geo ? M._geo.pri : 0, cvdAll = M.cvd || [], seg = [];
+  for (let i = 0; i < vis.length; i++) { const gi = base + i; seg.push(cvdAll[gi] != null ? cvdAll[gi] : (seg.length ? seg[seg.length - 1] : 0)); }
+  let cMin = Infinity, cMax = -Infinity; for (const s of seg) { if (s < cMin) cMin = s; if (s > cMax) cMax = s; }
+  if (!(cMax - cMin > 1e-9)) { cMax = cMin + 1; } const pad = (cMax - cMin) * 0.12 || 1; cMin -= pad; cMax += pad;
+  const yC = (val) => hC1 - (hC1 - hC0) * ((val - cMin) / (cMax - cMin));
+  const rising = seg.length > 3 && seg[seg.length - 1] >= seg[seg.length - 4];
+  g.save(); g.strokeStyle = '#E8B84B'; g.lineWidth = 2; g.shadowColor = 'rgba(232,184,75,.45)'; g.shadowBlur = 6;
+  g.beginPath(); for (let i = 0; i < seg.length; i++) { const x = i * paso + paso / 2, y = yC(seg[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); g.restore();
+  // último punto
+  if (seg.length) { const x = (seg.length - 1) * paso + paso / 2, y = yC(seg[seg.length - 1]); g.fillStyle = '#E8B84B'; g.beginPath(); g.arc(x, y, 2.6, 0, 6.283); g.fill(); }
+
+  // etiquetas
+  g.textAlign = 'left'; g.fillStyle = 'rgba(232,184,75,.95)'; g.font = '800 9px ui-monospace,monospace'; g.fillText('CVD', 8, yTop + 13);
+  g.fillStyle = rising ? 'rgba(38,212,106,.9)' : 'rgba(255,81,98,.9)'; g.font = '800 8px ui-monospace,monospace'; g.fillText(rising ? '▲ buyers' : '▼ sellers', 40, yTop + 13);
+  g.fillStyle = 'rgba(170,179,191,.7)'; g.font = '700 8px ui-monospace,monospace'; g.fillText('DELTA', 8, zero - 3);
 }
 
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
 /* ══════════════════ POSICIONES (Single / Double) ══════════════════
    Misma herramienta/dibujo que Reaction (cajas proyectadas a la derecha, RR 1:2,
-   tarjeta minimizada que se expande), pero ancladas a las entradas de la ESTRATEGIA.
-   Single = la entrada MEDIA (E2 / OTE). Double = añade la entrada PROFUNDA (E3) como
-   respaldo: si el precio hunde más, una 2ª parcial entra mejor y promedia. Ambas
-   comparten el stop (extremo de la vela); el TP de cada una a 1:2 de su entrada. */
+   tarjeta minimizada que se expande), pero ancladas a la SEÑAL de flujo.
+   Single = la entrada de la señal. Double = añade un respaldo más profundo (mejor
+   precio) que COMPARTE la misma invalidación: dos parciales a un solo riesgo (~1R),
+   no dos riesgos sumados. El TP de cada una a 1:2 de su propia entrada. */
 const _ORD_RZ = ['izq', 'abajo', 'der', 'arriba'];
 function mXbar(b) { const g = M._geo; if (!g) return 0; return (b - g.pri) * g.paso + g.paso / 2; }
 function mYp(p) { const g = M._geo; if (!g) return 0; return g.y1 - g.y1 * ((p - g.pMin) / Math.max(1e-9, g.pMax - g.pMin)); }
 function _hex2rgb(hex) { const n = parseInt((hex || '#2ee86a').slice(1), 16); return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`; }
 
 function posicionesDeNiveles() {
-  const geo = M._geo, S = M.strat; if (!geo || !S) return [];
+  const geo = M._geo, S = M.sig; if (!geo || !S) return [];
   const doble = M._modoPos === 'double';
   const bLast = M.velas.length - 1;
   const W = 13, GAP = 2;                                  // caja y hueco, en velas
   const slotX = (s) => bLast + 1 + s * (W + GAP);
-  const tipo = S.largo ? 'largo' : 'corto';
-  // d = riesgo = distancia de la entrada al STOP (extremo de la vela). El stop que
-  // recalcula la caja (pe ± d) cae justo en ese extremo; el TP a 1:2.
+  const tipo = S.largo ? 'largo' : 'corto', corto = tipo === 'corto';
+  // d = riesgo = |entrada − stop de la señal|. La caja recalcula el stop con pe ± d,
+  // que cae justo en la invalidación de la señal; el TP a 1:2 de cada entrada.
   const mk = (pe, slot) => {
-    const d = Math.abs(pe - S.sl) || S.B;
-    const corto = tipo === 'corto';
+    const d = Math.abs(pe - S.sl) || (S.zoneHi - S.zoneLo) || 1e-9;
     const sl = corto ? pe + d : pe - d;
     const pT = corto ? pe - 2 * d : pe + 2 * d;          // take profit = el doble (1:2)
     const b0 = slotX(slot);
     const lineCol = slot === 0 ? '#eaecef' : '#E8B84B';  // principal blanco, respaldo dorado
     return { tipo, pe, pStop: sl, pTarget: pT, b0, b1: b0 + W, rr: 2, oculto: true, cardPos: 'izq', slot, lineCol };
   };
-  const out = [mk(S.eMid, 0)];                           // Single = entrada media (OTE)
-  if (doble) out.push(mk(S.eProf, 1));                   // Double = + entrada profunda (respaldo)
+  const out = [mk(S.entry, 0)];                          // Single = entrada de la señal
+  if (doble) {                                           // Double = respaldo más profundo, mismo stop
+    const deep = corto ? Math.max(S.zoneHi, S.entry + (S.sl - S.entry) * 0.4)
+                       : Math.min(S.zoneLo, S.entry - (S.entry - S.sl) * 0.4);
+    out.push(mk(deep, 1));
+  }
   return out;
 }
 
@@ -743,13 +872,13 @@ function guardarImagen() {
     const yB = cv.height; g.fillStyle = '#0b0e12'; g.fillRect(0, yB, out.width, barra);
     g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, out.width, 2 * e2);
     const textos = (x) => {
-      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Candle to Candle', x, yB + 34 * e2);
+      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Footprint', x, yB + 34 * e2);
       g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText(WEB, x, yB + 56 * e2);
       g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillText(`${_par} · ${M.tf}`, out.width - 20 * e2, yB + 34 * e2);
       g.font = `${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#6b7681'; g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), out.width - 20 * e2, yB + 56 * e2);
       g.textAlign = 'left';
     };
-    const bajar = () => out.toBlob((blob) => { devolver(); if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-candletocandle-${_par}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
+    const bajar = () => out.toBlob((blob) => { devolver(); if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-footprint-${_par}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
     const logo = new Image(); let hecho = false;
     const una = (w) => { if (hecho) return; hecho = true; textos(w ? 20 * e2 + w + 18 * e2 : 20 * e2); bajar(); };
     logo.onload = () => { try { const alto = 52 * e2, ancho = Math.round(logo.width * (alto / logo.height)); g.drawImage(logo, 20 * e2, yB + (barra - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } };
@@ -773,7 +902,8 @@ function compartirSenal() {
   const ents = pos.map((p) => dec(p.pe)), sls = pos.map((p) => dec(p.pStop)), tps = pos.map((p) => dec(p.pTarget));
   const n = ents.length;
   const lista = (arr) => arr.map((v, i) => `${i + 1}: ${v}`).join('\n');
-  const txt = `CANDLE TO CANDLE — SIGNAL\n\n${par.id} · ${M.tf} · ${hora} UTC · Price ${precio}\n\nENTRY\n${lista(ents)}\n\nSTOP LOSS\n${lista(sls)}\n\nTAKE PROFIT\n${lista(tps)}\n\nRISK : REWARD — 1:2\n\n${WEB} · Candle to Candle`;
+  const tipoTxt = M.sig ? `${etiquetaSig(M.sig)} · ${M.sig.largo ? 'LONG' : 'SHORT'}\n` : '';
+  const txt = `FOOTPRINT — SIGNAL\n${tipoTxt}\n${par.id} · ${M.tf} · ${hora} UTC · Price ${precio}\n\nENTRY\n${lista(ents)}\n\nSTOP LOSS\n${lista(sls)}\n\nTAKE PROFIT\n${lista(tps)}\n\nRISK : REWARD — 1:2\n\n${WEB} · Footprint`;
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => flash('Copied ✓')).catch(() => {});
 
   const chart = $('vv-cv');
@@ -807,9 +937,9 @@ function compartirSenal() {
     if (coin) { g.strokeStyle = 'rgba(232,184,75,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(lx + ls / 2, ly + ls / 2, ls / 2, 0, 6.2832); g.stroke(); }
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     const tx = lx + ls + 24;
-    g.fillStyle = '#E8B84B'; g.font = '800 40px system-ui,sans-serif'; g.fillText('Candle', tx, y0 + 56);
-    const hw = g.measureText('Candle').width;
-    g.fillStyle = '#e8ecf2'; g.font = '800 40px system-ui,sans-serif'; g.fillText(' to Candle', tx + hw, y0 + 56);
+    g.fillStyle = '#E8B84B'; g.font = '800 40px system-ui,sans-serif'; g.fillText('Foot', tx, y0 + 56);
+    const hw = g.measureText('Foot').width;
+    g.fillStyle = '#e8ecf2'; g.font = '800 40px system-ui,sans-serif'; g.fillText('print', tx + hw, y0 + 56);
     g.fillStyle = '#8b95a1'; g.font = '600 18px ui-monospace,monospace';
     g.fillText(`${par.id}    ·    ${M.tf}    ·    ${hora} UTC    ·    Price ${precio}`, tx, y0 + 88);
     const colBlock = 250;
@@ -837,48 +967,48 @@ function compartirSenal() {
     let dx = padX;
     if (marca) { const mh = 46, mw = marca.width * (mh / marca.height); g.drawImage(marca, padX, fy + (footH - mh) / 2, mw, mh); dx = padX + mw + 18; }
     g.fillStyle = '#dfe5ec'; g.font = '700 19px system-ui,sans-serif'; g.fillText(WEB, dx, fy + footH / 2 + 1);
-    g.fillStyle = '#E8B84B'; g.font = '800 19px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('Candle to Candle', W - padX, fy + footH / 2 + 1);
+    g.fillStyle = '#E8B84B'; g.font = '800 19px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('Footprint', W - padX, fy + footH / 2 + 1);
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    try { cv.toBlob((b) => { if (!b) return; const url = URL.createObjectURL(b), a = document.createElement('a'); a.href = url; a.download = `decfreedom-candletocandle-${par.id}-${M.tf}-${Date.now()}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); }, 'image/png'); } catch (e) { flash('Copied ✓'); }
+    try { cv.toBlob((b) => { if (!b) return; const url = URL.createObjectURL(b), a = document.createElement('a'); a.href = url; a.download = `decfreedom-footprint-${par.id}-${M.tf}-${Date.now()}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); }, 'image/png'); } catch (e) { flash('Copied ✓'); }
   });
 }
 
 /* ══════════════════ AYUDA (stepper experto, igual que Heat Pools) ══════════════════ */
 const PASOS_RZ = [
   {
-    t: 'What Candle to Candle is',
-    d: 'Candle to Candle turns the <b>last decisive candle</b> into a plan. When a candle closes with a <b>real body</b> (not a doji), its body becomes a <b>value zone</b>: the price range the market just accepted. The tool projects that body forward so you can trade the <b>next candle</b> as it pulls back into it, <b>in the direction of the move</b>.',
-    x: 'Dojis and tiny bodies are skipped on purpose: there is no clean value zone to work from.'
+    t: 'What Footprint is',
+    d: 'Footprint reads the <b>executed tape</b>, not the order book. For every candle it measures <b>delta</b> = aggressive <b>buy</b> volume minus aggressive <b>sell</b> volume (the takers who cross the spread). Add each delta up and you get the <b>CVD</b> (cumulative volume delta): the real, running balance of pressure that moves price. This is the read professional desks pay for.',
+    x: 'It is a different axis from structure, VWAP or the order book: it is who is actually hitting the market.'
   },
   {
-    t: 'The value candle and its direction',
-    d: 'A <b>green</b> value candle (bullish) frames a <b>long</b>; a <b>red</b> one (bearish) frames a <b>short</b>. The candle is outlined on the chart, and its body is shaded forward as the working zone. The idea rides <b>continuation</b>: when one candle after another prints the same colour, each pullback into the prior body is an entry.',
-    x: 'Trade with the sequence. A long run of same-colour candles is where this plan pays the most.'
+    t: 'The CVD panel',
+    d: 'The lower panel is the engine room. The <b>gold line</b> is the CVD; the <b>green/red bars</b> are each candle&#39;s delta. When the CVD <b>rises</b>, buyers are in control; when it <b>falls</b>, sellers are. What matters most is when the CVD and price <b>disagree</b> — that gap is the edge the chip at the top-left names for you.',
+    x: 'Price tells you where; delta tells you who. Reading them together is the whole point.'
   },
   {
-    t: 'The three entry zones',
-    d: 'The body is split into three equal zones with graded entries: <b>E1</b> shallow (near the close), <b>E2</b> the midpoint (the <b>optimal entry</b>, 50%), and <b>E3</b> deep (near the open). A shallow pullback fills E1; a deeper one reaches E2, then E3. Every zone is a valid entry <b>in the candle&#39;s direction</b>.',
-    x: 'Deeper zones give a better price and a tighter stop, but fill less often. E2 is the balanced default.'
+    t: 'Absorption',
+    d: 'A burst of <b>aggressive selling</b> hits but price <b>refuses to drop</b> — a passive buyer is soaking it all up. That is <b>absorption</b>, and it flips the move: the side that absorbs usually wins. The tool marks the candle and projects a trade <b>in the direction of the absorber</b> (long when buyers absorb, short when sellers do).',
+    x: 'Heavy volume with no price progress is the tell. The market tried and failed — fade the failure.'
   },
   {
-    t: 'Stop, target and 1:2',
-    d: 'The <b>stop</b> sits just beyond the candle&#39;s far extreme (its wick) — the level that would <b>invalidate</b> the continuation. The <b>take profit</b> is set at <b>1:2</b>: twice the risk. You can read the exact SL, entries and TP straight off the right axis.',
-    x: 'If price breaks the whole candle against you, the idea is simply wrong and the stop takes you out small.'
+    t: 'Delta divergence',
+    d: 'Price prints a <b>higher high</b> but the CVD makes a <b>lower high</b>: the push is running on fumes, buying is <b>exhausted</b> → short. The mirror (lower low in price, higher low in CVD) means selling is spent → long. Divergence is the classic order-flow <b>reversal</b> read.',
+    x: 'A new price extreme that the flow does not confirm is a trap forming, not a breakout.'
   },
   {
-    t: 'Project entries (Single / Double)',
-    d: 'Tap <b>Single</b> to project one ticket at <b>E2</b> (the optimal entry), placed ahead of price and sized to <b>1:2</b>. Tap <b>Double</b> to add a <b>deep backup at E3</b>: a second partial that fills on a deeper pullback and <b>improves your average</b>. Split your size across the two rather than doubling it.',
-    x: 'Scale in, do not martingale: the two fills share ONE risk, so a sweep of both still risks about 1R, not 3R.'
+    t: 'Delta-confirmed break',
+    d: 'A break of a level is only worth taking when the <b>flow backs it</b>. Footprint confirms a breakout only when the delta of the breaking candle is <b>strongly aligned</b> and the CVD is pushing the same way → <b>continuation</b>. Breaks without delta behind them are filtered out — those are the fakeouts that trap price traders.',
+    x: 'This single filter is why the tool exists: it separates the real break from the liquidity grab.'
   },
   {
-    t: 'Pick coin, timeframe, draw your own',
-    d: 'Choose the <b>coin</b> and <b>timeframe</b> at the top; higher timeframes give sturdier value candles, lower ones move faster with more noise. <b>Right-click</b> the chart to drop your own order or alert, and use the <b>drawing tools</b> on the left. Stretch the axes to zoom time or price; double-click to reset.',
-    x: 'Use the share button to export the chart with its entries, watermark included, for your signals.'
+    t: 'Take the trade (Single / Double)',
+    d: 'Every signal projects a full ticket: <b>EN</b> entry, <b>SL</b> at the flow&#39;s invalidation and <b>TP</b> at <b>1:2</b>. Tap <b>Single</b> for one entry; tap <b>Double</b> to add a <b>deeper backup</b> at a better price that <b>shares the same stop</b>. <b>Right-click</b> the chart for your own order or alert, and <b>Share signal</b> exports it with levels and watermark.',
+    x: 'Scale in, never martingale: both fills share ONE invalidation, so the pair still risks about 1R, not 3R.'
   },
   {
     t: 'Manage risk like a professional',
-    d: 'Risk a <b>fixed small percentage</b> per idea and let the 1:2 do the work. Once price has moved your risk in profit, in <b>futures</b> slide the stop to <b>entry</b> so the trade cannot lose; in <b>spot</b> there is no liquidation, so size properly and let it breathe. Trade <b>with</b> the trend, never against it.',
-    x: 'Analysis only: nothing here is executed for you, and no zone is a guarantee. Risk is managed, never removed.'
+    d: 'Pick the <b>coin</b> and <b>timeframe</b> up top; higher timeframes give cleaner flow, lower ones react faster with more noise. Risk a <b>fixed small percentage</b> per idea and let the 1:2 work. Trade <b>with</b> the flow, not against it — when the CVD and your idea point the same way, you are on the right side of the tape.',
+    x: 'Analysis only: nothing here is executed for you, and no signal is a guarantee. Risk is managed, never removed.'
   }
 ];
 let _pasoRZ = 0;
@@ -889,7 +1019,7 @@ function ayuda() {
   d.innerHTML = `<div class="vv-ab-bg"></div>
     <div class="vv-ab-c">
       <button class="vv-ab-x" aria-label="Close">✕</button>
-      <div class="vv-ab-eyebrow">Candle to Candle</div>
+      <div class="vv-ab-eyebrow">Footprint</div>
       <div id="vv-ab-cuerpo"></div>
     </div>`;
   document.body.appendChild(d);
