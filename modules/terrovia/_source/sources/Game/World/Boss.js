@@ -45,15 +45,19 @@ export class Boss
         this.feignTimer = 0
         this.feignCooldown = 6
         this.hitReactCd = 0             // enfriamiento de la animacion de recibir golpe
+        this.chaseTimer = 0             // cuanto lleva persiguiendote caminando (para embestir y cerrar)
 
         // deteccion / vision / caza / correa
         this.detectRadius = 22
         this.visionConeCos = Math.cos(THREE.MathUtils.degToRad(70))   // cono frontal +-70 grados
-        this.huntSpeed = 9
+        this.huntSpeed = 11
         this.walkSpeed = 4.5
         this.fightRange = 9
         this.loseRadius = 42        // aguanta mas antes de rendirse (te persigue aunque te empuje lejos)
         this.loseAfter = 3.5
+        this.reEngageDist = 10      // si estas mas lejos que esto, cierra distancia
+        this.chaseTimer = 0         // cuanto lleva persiguiendo sin alcanzarte
+        this.gapCloseCd = 0         // enfriamiento entre embestidas de cierre de hueco
         this.loseTimer = 0
         this.huntTimer = 0
         this.huntGiveup = 30            // si no lo alcanza en este tiempo, se calma
@@ -435,24 +439,17 @@ export class Boss
     pickCombo()
     {
         const dist = this.playerPos.distanceTo(this.model.position)
-        const pool = [
-            [ 'charge', 'clap' ],
-            [ 'rollTo', 'charge' ],
-            [ 'rollTo', 'shock' ],
-            [ 'throwSmall', 'throw' ],
-            [ 'search', 'throw' ],
-            [ 'clap', 'shock' ],
-            [ 'charge', 'clap', 'shock' ],
-            [ 'walkTo', 'clap' ],
-            [ 'throw' ],
-            [ 'throwSmall', 'throwSmall', 'throw' ],
-            [ 'shock' ],
-            [ 'rollTo', 'clap', 'throw' ],
-            [ 'taunt', 'charge' ],
-            [ 'walkTo', 'throwSmall', 'clap' ],
-        ]
-        if(dist > 15 && Math.random() < 0.6)
-            return [ 'walkTo', 'throw' ]
+        let pool
+        if(dist > 13)
+            // lejos: cerrar el hueco y rematar
+            pool = [ [ 'charge', 'clap' ], [ 'rollTo', 'throw' ], [ 'charge', 'shock' ], [ 'rollTo', 'clap', 'throw' ] ]
+        else if(dist < 7)
+            // pegado: cuerpo a cuerpo
+            pool = [ [ 'clap', 'shock' ], [ 'clap' ], [ 'shock' ], [ 'clap', 'throw' ], [ 'charge', 'clap' ] ]
+        else
+            // rango medio: de todo (aleatorio)
+            pool = [ [ 'throwSmall', 'throw' ], [ 'throw' ], [ 'shock' ], [ 'clap', 'shock' ],
+                     [ 'charge', 'clap' ], [ 'throwSmall', 'throwSmall', 'throw' ], [ 'rollTo', 'clap' ], [ 'throw', 'shock' ] ]
         return pool[Math.floor(Math.random() * pool.length)].slice()
     }
 
@@ -557,8 +554,10 @@ export class Boss
             const dir = new THREE.Vector3(p.x - this.model.position.x, 0, p.z - this.model.position.z)
             const len = dir.length() || 1
             dir.multiplyScalar(1 / len)
-            let tx = this.model.position.x + dir.x * cfg.reach
-            let tz = this.model.position.z + dir.z * cfg.reach
+            // avanza hacia ti pero SIN pasarse de largo (para en ti, no te atraviesa y te saca)
+            const reach = Math.min(cfg.reach, len + 1.5)
+            let tx = this.model.position.x + dir.x * reach
+            let tz = this.model.position.z + dir.z * reach
             // correa mas larga (22) para que la embestida/voltereta AVANCEN de verdad
             const hx = tx - this.anchor.x, hz = tz - this.anchor.z
             const hl = Math.sqrt(hx * hx + hz * hz)
@@ -566,15 +565,18 @@ export class Boss
             const ty = this.groundY(tx, tz, this.model.position.y)
             // el movimiento dura casi lo mismo que la animacion: no se traba ni "se pega atras"
             this.startMove(this.model.position.clone(), new THREE.Vector3(tx, ty, tz), cfg.moveDur)
-            // embestida: al llegar, empuja y golpea al carro si lo alcanza
+            // al llegar golpea si te alcanza. La EMBESTIDA empuja fuerte (te gusto asi); la
+            // VOLTERETA es solo para cerrar distancia, asi que empuja MUY suave (antes te
+            // sacaba del mapa). Nada de fuerza 8: explosion suave + impulso controlado.
+            const isCharge = name === 'charge'
             const triggers = (name === 'charge' || name === 'rollTo')
                 ? [ { phase: 0.75, fn: () =>
                     {
                         if(this.playerDistTo(this.model.position) < 5)
                         {
                             const f = this.frontPoint(2.2)
-                            try { this.game.world.fireballs.create(f, 1.6, 3) } catch(e) {}
-                            this.knockPlayer(this.knockBase * 1.1, 0.5, this.model.position)
+                            try { this.game.world.fireballs.create(f, 1.6, isCharge ? 2.5 : 1.8, isCharge ? 2 : 1) } catch(e) {}
+                            this.knockPlayer(this.knockBase * (isCharge ? 0.7 : 0.2), 0.45, this.model.position)
                         }
                     } } ]
                 : []
@@ -674,7 +676,7 @@ export class Boss
 
         // boom: la biyudama GRANDE revienta como explosion pero con empuje SUAVE (no te saca del mapa)
         this.bossProjectiles.push({ mesh, pos: from.clone(), dir, speed: small ? 28 : 24, traveled: 0, radius: r,
-            boomFire: 2.2, boomRadius: 3, boomStrength: 3 })
+            boomFire: 2.2, boomRadius: 3.2, boomStrength: 5 })
     }
 
     // reunir poder: nucleo que crece en las manos + energia que sube DEL PISO y se absorbe.
@@ -846,24 +848,29 @@ export class Boss
     {
         this.disposePassOrb()
         const orb = new THREE.Mesh(this.sphere, this.fireMaterial())
-        orb.scale.setScalar(0.34)
-        orb.position.copy(this.handPoint('L'))   // nace en la IZQUIERDA (ahi esta activa al inicio)
+        orb.scale.setScalar(0.5)                 // mas grande = se ve claro (antes parecia brazalete)
+        orb.position.copy(this.handPoint('L'))   // nace en la IZQUIERDA
         this.game.scene.add(orb)
         this.passOrb = orb
     }
 
-    // sigue a las manos EN VIVO: queda en la IZQUIERDA, se transfiere a la DERECHA en el
-    // windup (cuando las manos se juntan) y se queda en la derecha hasta el lanzamiento.
+    // El pase es muy sutil (las manos quedan a ~1.4u), asi que lo hago VISIBLE: el orbe
+    // sale de la izquierda, cruza en ARCO por el aire hasta la derecha, y de ahi se lanza.
     trackPassOrb(ph)
     {
         if(!this.passOrb)
             return
-        if(ph < 0.46)
-            this.passOrb.position.copy(this.handPoint('L'))                 // claramente en la izquierda
-        else if(ph < 0.6)
-            this.passOrb.position.lerpVectors(this.handPoint('L'), this.handPoint('R'), (ph - 0.46) / 0.14)   // pase
+        const L = this.handPoint('L'), R = this.handPoint('R')
+        if(ph < 0.44)
+            this.passOrb.position.copy(L)
+        else if(ph < 0.64)
+        {
+            const k = (ph - 0.44) / 0.2
+            this.passOrb.position.lerpVectors(L, R, k)
+            this.passOrb.position.y += Math.sin(k * Math.PI) * 1.3   // ARCO hacia arriba: se ve el pase
+        }
         else
-            this.passOrb.position.copy(this.handPoint('R'))                 // ya en la derecha (lista para tirar)
+            this.passOrb.position.copy(R)
     }
 
     launchPassOrb()
@@ -878,7 +885,7 @@ export class Boss
         orb.position.copy(from)
         // boom: la biyudama CHICA empuja aun MENOS (antes te mandaba a kilometros)
         this.bossProjectiles.push({ mesh: orb, pos: from.clone(), dir, speed: 30, traveled: 0, radius: 0.34,
-            boomFire: 1.5, boomRadius: 2.2, boomStrength: 2.3 })
+            boomFire: 1.5, boomRadius: 2.4, boomStrength: 4 })
     }
 
     disposePassOrb()
@@ -1113,7 +1120,14 @@ export class Boss
 
         // ---- orientacion segun estado ----
         if(this.state === 'guard')
-            this.model.rotation.y = this.baseYaw + Math.sin(this.game.ticker.elapsed * 0.35) * 0.28   // vigila de frente (barrido leve)
+        {
+            // Si el jugador se ACERCA (venga por donde venga), gira a ENCARARLO: asi siempre
+            // esta de frente a la entrada desde la vista del jugador. Si esta lejos, vigila.
+            if(this.playerPos.distanceTo(this.model.position) < 28)
+                this.faceTo(this.playerPos, delta, 3)
+            else
+                this.model.rotation.y = this.baseYaw + Math.sin(this.game.ticker.elapsed * 0.35) * 0.18
+        }
         else if(this.state === 'hunt' || this.state === 'fight')
             this.faceTo(this.playerPos, delta, 7)
         else if(this.state === 'retreat')
@@ -1163,32 +1177,53 @@ export class Boss
                 else
                     this.loseTimer = 0
 
-                // RE-ENGANCHE: si te empuja lejos o te mueves, CORRE hasta ti para seguir
-                // peleando. El frente de pelea (ancla) te sigue: no se rinde por empujarte.
-                if(!this.move && this.busy <= 0 && this.queue.length === 0 && pdist > 11)
+                if(this.gapCloseCd > 0)
+                    this.gapCloseCd -= delta
+
+                if(this.busy > 0)
                 {
-                    if(this.current !== this.actions['walk'])
-                    {
-                        const wa = this.play('walk', { fade: 0.15 })
-                        if(wa) wa.timeScale = 1.9
-                    }
-                    this.moveToward(this.playerPos, this.huntSpeed, delta)
-                    this.anchor.lerp(this.model.position, Math.min(1, delta * 2))
+                    this.busy -= delta
                 }
-                else
+                else if(this.queue.length > 0 && !this.move)
                 {
-                    // cerebro: encadenar combos con pausas aleatorias (cuando esta en rango)
-                    if(this.busy > 0)
-                        this.busy -= delta
-                    else if(this.queue.length > 0 && !this.move)
-                        this.busy = this.startStep(this.queue.shift())
-                    else if(this.queue.length === 0)
+                    this.busy = this.startStep(this.queue.shift())
+                }
+                else if(!this.move)
+                {
+                    if(pdist > this.reEngageDist)
                     {
+                        // CERRAR DISTANCIA: corre hacia ti. Si te mantienes lejos a proposito,
+                        // EMBISTE o SALTA para alcanzarte (no seguirte caminando como perrito).
+                        this.chaseTimer += delta
+                        if(this.chaseTimer > 0.5 && this.gapCloseCd <= 0)
+                        {
+                            // EMBISTE/SALTA para cerrar: no te sigue caminando como perrito
+                            this.queue = [ Math.random() < 0.5 ? 'charge' : 'rollTo' ]
+                            this.chaseTimer = 0
+                            this.gapCloseCd = 1.2
+                        }
+                        else
+                        {
+                            if(this.current !== this.actions['walk'])
+                            {
+                                const wa = this.play('walk', { fade: 0.15 })
+                                if(wa) wa.timeScale = 2.1
+                            }
+                            this.moveToward(this.playerPos, this.huntSpeed, delta)
+                            this.anchor.lerp(this.model.position, Math.min(1, delta * 2))
+                        }
+                    }
+                    else
+                    {
+                        // EN RANGO: atacar con combos. idle entre medias (NO caminar en el sitio ni "buscar")
+                        this.chaseTimer = 0
+                        if(this.current === this.actions['walk'])
+                            this.play('idle', { fade: 0.2 })
                         this.gap -= delta
-                        if(this.gap <= 0 && !this.move)
+                        if(this.gap <= 0)
                         {
                             this.queue = this.pickCombo()
-                            this.gap = 0.9 + Math.random() * 1.3
+                            this.gap = 0.6 + Math.random() * 0.9
                         }
                     }
                 }

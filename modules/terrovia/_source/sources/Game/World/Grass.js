@@ -10,18 +10,19 @@ export class Grass
         this.game = Game.getInstance()
 
         this.subdivisions = 280
-        const halfExtent = this.game.view.optimalArea.radius
+        // El cesped se dimensiona como el alejado CLASICO (~34), NO con el nuevo alejado
+        // maximo de camara (75). Asi los 78400 hilos cubren un area clasica = queda DENSO y
+        // nitido como el juego base. Solo deja de llenar el borde extremo al alejar al maximo,
+        // donde el detalle del cesped ya no se aprecia.
+        this.grassRefMax = 30.5
+        const halfExtent = this.grassHalfExtent()
         this.size = halfExtent * 2
         this.count = this.subdivisions * this.subdivisions
         this.fragmentSize = this.size / this.subdivisions
 
         this.surface = this.size * this.size
         this.surfaceIdeal = 2000
-        // El ancho/alto de cada hoja se dimensiona como en el alejado CLASICO (radio 30),
-        // NO con el nuevo alejado maximo de la camara. La cobertura (this.size) si usa el
-        // area completa para llenar la pantalla, pero la hoja no se agiganta al alejar.
-        this.bladeRefMax = 30
-        this.surfaceOverflow = this.computeBladeOverflow()
+        this.surfaceOverflow = Math.max(0, this.surface - this.surfaceIdeal) / this.surfaceIdeal
 
         this.setGeometry()
         this.setMaterial()
@@ -35,10 +36,10 @@ export class Grass
         // Resize
         this.game.viewport.events.on('throttleChange', () =>
         {
-            const halfExtent = this.game.view.optimalArea.radius
+            const halfExtent = this.grassHalfExtent()
             this.size = halfExtent * 2
             this.surface = this.size * this.size
-            this.surfaceOverflow = this.computeBladeOverflow()
+            this.surfaceOverflow = Math.max(0, this.surface - this.surfaceIdeal) / this.surfaceIdeal
 
             this.sizeUniform.value = this.size
             this.bladeWidth.value = 0.1 * (1 + this.surfaceOverflow * 0.4)
@@ -50,14 +51,12 @@ export class Grass
         }, 2)
     }
 
-    // Overflow usado SOLO para el tamano de la hoja: toma el area como si el alejado
-    // maximo siguiera siendo el clasico (bladeRefMax), para que no crezca con el zoom nuevo.
-    computeBladeOverflow()
+    // El cesped usa el area como si el alejado maximo siguiera siendo el clasico (grassRefMax),
+    // para quedar denso y nitido como el juego base aunque la camara pueda alejar mas.
+    grassHalfExtent()
     {
         const max = this.game.view.spherical.radius.edges.max
-        const r = Math.min(1, this.bladeRefMax / max)
-        const areaScale = r * r
-        return Math.max(0, this.surface * areaScale - this.surfaceIdeal) / this.surfaceIdeal
+        return this.game.view.optimalArea.radius * Math.min(1, this.grassRefMax / max)
     }
 
     setGeometry()
