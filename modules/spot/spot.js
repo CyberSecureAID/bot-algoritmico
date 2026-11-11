@@ -15,8 +15,8 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=13';
-import * as D from './datos.js?v=5';
+import { estilos } from './estilos.js?v=14';
+import * as D from './datos.js?v=6';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
@@ -129,6 +129,7 @@ function plantilla() {
         <div class="sp-wm"><img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'" alt=""></div>
         <button class="sp-icobtn sp-exit" id="sp-exit" title="Exit full chart">${IC.shrink} Exit</button>
         <div class="sp-spin" id="sp-spin"><i></i></div>
+        <div class="sp-nochart" id="sp-nochart" style="display:none"></div>
       </div>
       <div class="sp-entry">
         <div class="sp-side" id="sp-side">
@@ -370,6 +371,8 @@ async function cargarDatos() {
       : await Promise.all([D.velas(par.s, S.tf, 1000), D.ticker(par.s).catch(() => null)]);
     if (mi !== _cargaSeq) return;                 // una selección más nueva ya tomó el control
     S.velas = v || [];
+    if (!S.velas.length) { limpiarChart(); mostrarNoChart(true, par.coin || par.id); conectarStream(); renderTodo(); return; }
+    mostrarNoChart(false);
     if (!dex && t) { S.mark = t.last; S.open24 = t.open; S.high24 = t.high; S.low24 = t.low; S.vol24 = t.volQuote; S.chgPct = t.chgPct; }
     else if (dex && t && t.last > 0) { S.mark = t.last; }
     else if (S.velas.length) S.mark = S.velas[S.velas.length - 1].close;
@@ -378,7 +381,8 @@ async function cargarDatos() {
     pintarChart(); conectarStream(); renderTodo();
   } catch (_) {
     if (mi !== _cargaSeq) return;                 // no mostrar el error de una selección vieja
-    toast(dex ? 'Could not load this coin chart (no pool found yet).' : 'Could not load market data.', 'bad');
+    S.velas = []; limpiarChart(); mostrarNoChart(true, par.coin || par.id);   // no dejar la gráfica anterior
+    toast(dex ? 'Could not load this coin chart yet.' : 'Could not load market data.', 'bad');
   } finally {
     if (mi === _cargaSeq && spin) spin.style.display = 'none';
   }
@@ -402,6 +406,18 @@ function ajustarTira() {
   }
 }
 
+/* Quita la gráfica actual y limpia el overlay. Evita que, al fallar la carga de una
+   moneda, se quede a la vista la gráfica de la ANTERIOR (incongruencia cabecera/gráfica). */
+function limpiarChart() {
+  try { if (S.chart) S.chart.remove(); } catch (_) {}
+  S.chart = null; S.serieVela = null; S.velasDib = [];
+  try { const fx = $('sp-fx'); if (fx && fx.getContext) fx.getContext('2d').clearRect(0, 0, fx.width, fx.height); } catch (_) {}
+}
+function mostrarNoChart(on, coin) {
+  const n = $('sp-nochart'); if (!n) return;
+  n.innerHTML = on ? `No chart for <b>${esc(coin || '')}</b> yet. It has no indexed pool and no readable PancakeSwap pair.` : '';
+  n.style.display = on ? 'grid' : 'none';
+}
 function pintarChart() {
   const LC = window.LightweightCharts; const cv = $('sp-cv'); if (!LC || !cv || !S.velas.length) return;
   try { if (S.chart) S.chart.remove(); } catch (_) {}
@@ -459,7 +475,9 @@ function conectarStream() {
     const addr = S.par.addr, tf = S.tf;
     S.poll = setInterval(async () => {
       if (!esDex(S.par) || S.par.addr !== addr || S.tf !== tf) return;
-      try { const rec = await D.velasDex(addr, tf, 3); for (const c of (rec || [])) empujarVela(c, true); } catch (_) {}
+      try { const t = await D.tickerDex(addr); const px = t && t.last; const last = S.velas[S.velas.length - 1];
+        if (px > 0 && last) empujarVela({ time: last.time, open: last.open, high: Math.max(last.high, px), low: Math.min(last.low, px), close: px, volume: last.volume }, false);
+      } catch (_) {}
     }, 22000);
   } else {
     try { S.stream = D.streamVelas(S.par.s, S.tf, (k) => onKline(k)); } catch (_) { S.stream = null; }

@@ -8,6 +8,20 @@
 
 import { PARES, TFS } from '../../assets/js/niveles/config.js?v=1';
 export { PARES, TFS };
+/* Respaldo ON-CHAIN: reutiliza los módulos SELLADOS y probados de Terminal (resuelve el
+   par real en PancakeSwap y arma velas desde los eventos Sync del par). Sirve para tokens
+   que NINGÚN indexador (GeckoTerminal, DexScreener) lista, como EXT. Red BSC por RPC, sin
+   geobloqueo. No se tocan los archivos de Terminal. Se cargan de forma PEREZOSA (solo
+   cuando un token realmente necesita esta vía) para no pesar ethers en el arranque. */
+let _oc = null;
+async function onchain() {
+  if (_oc) return _oc;
+  const [res, graf, cfg] = await Promise.all([
+    import('../terminal/resolver.js'), import('../terminal/grafico.js'), import('../terminal/config.js')
+  ]);
+  _oc = { resolverContrato: res.resolverContrato, velasDeToken: graf.velasDeToken, precioActual: graf.precioActual, USDT: cfg.USDT };
+  return _oc;
+}
 
 const BINANCE = 'https://api.binance.com/api/v3';
 
@@ -93,10 +107,52 @@ async function ohlcvGT(address, interval, limit, beforeSec) {
   const list = (((j || {}).data || {}).attributes || {}).ohlcv_list || [];
   return list.map(mapGT).filter((c) => c.close > 0).sort((a, b) => a.time - b.time);
 }
-/* Velas de un token DEX (más reciente al final), mismo shape que velas(). */
-export async function velasDex(address, interval = '1d', limit = 1000) { return ohlcvGT(address, interval, limit, 0); }
-/* Velas MÁS VIEJAS de un token DEX (scroll al pasado). */
-export async function velasDexAntes(address, interval, endSec, limit = 1000) { return ohlcvGT(address, interval, limit, endSec); }
+/* ── Respaldo on-chain (PancakeSwap V2 por RPC) para tokens sin indexar ── */
+let _bnb = { v: 0, t: 0 };
+async function precioBNB() {
+  if (_bnb.v > 0 && Date.now() - _bnb.t < 60000) return _bnb.v;
+  try { const r = await fetch(`${BINANCE}/ticker/price?symbol=BNBUSDT`); const j = await r.json(); const v = +j.price; if (v > 0) { _bnb = { v, t: Date.now() }; return v; } } catch (_) {}
+  return _bnb.v || 0;
+}
+const _resuelto = {};
+async function resolver(address) {
+  const k = String(address || '').toLowerCase(); if (!k) return null;
+  if (k in _resuelto) return _resuelto[k];
+  let r = null; try { const oc = await onchain(); r = await oc.resolverContrato(address); } catch (_) {}
+  _resuelto[k] = r; return r;
+}
+/* Velas on-chain de un token por su contrato (eventos Sync del par V2). */
+export async function velasOnChain(address) {
+  const oc = await onchain();
+  const r = await resolver(address);
+  if (!r || !r.graficable || !r.par) throw new Error('token sin par graficable en PancakeSwap');
+  const quoteEsUSDT = r.quote && String(r.quote).toLowerCase() === String(oc.USDT).toLowerCase();
+  const bnbUsd = quoteEsUSDT ? 0 : await precioBNB();
+  const v = await oc.velasDeToken({ par: r.par, token: address, decToken: r.decimales || 18, decQuote: 18, bnbUsd, quoteEsUSDT });
+  return (v || []).map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: 0 }));
+}
+/* Precio USD on-chain (reservas vivas del par). */
+export async function precioOnChain(address) {
+  const oc = await onchain();
+  const r = await resolver(address);
+  if (!r || !r.par) return 0;
+  const quoteEsUSDT = r.quote && String(r.quote).toLowerCase() === String(oc.USDT).toLowerCase();
+  const bnbUsd = quoteEsUSDT ? 0 : await precioBNB();
+  try { return (await oc.precioActual({ par: r.par, token: address, decToken: r.decimales || 18, decQuote: 18, bnbUsd, quoteEsUSDT })) || 0; } catch (_) { return 0; }
+}
+
+/* Velas de un token DEX (más reciente al final), mismo shape que velas(). Cascada:
+   GeckoTerminal -> on-chain (para tokens que GeckoTerminal no indexa, como EXT). */
+export async function velasDex(address, interval = '1d', limit = 1000) {
+  try { const v = await ohlcvGT(address, interval, limit, 0); if (v && v.length) return v; } catch (_) {}
+  return velasOnChain(address);
+}
+/* Velas MÁS VIEJAS de un token DEX (scroll al pasado). On-chain ya trae el historial
+   reciente disponible en la carga inicial, así que no pagina hacia atrás. */
+export async function velasDexAntes(address, interval, endSec, limit = 1000) {
+  try { const v = await ohlcvGT(address, interval, limit, endSec); if (v && v.length) return v; } catch (_) {}
+  return [];
+}
 
 /* Precio USD por contrato desde DexScreener (par de MÁS liquidez, cualquier DEX de BSC:
    Pancake o Uniswap). Respaldo independiente de GeckoTerminal. */
@@ -132,6 +188,7 @@ export async function preciosDex(addresses) {
 export async function tickerDex(address) {
   try { const p = await preciosDex([address]); const px = p[String(address).toLowerCase()]; if (px > 0) return { last: px }; } catch (_) {}
   try { const px = await precioDexScreener(address); if (px > 0) return { last: px }; } catch (_) {}
+  try { const px = await precioOnChain(address); if (px > 0) return { last: px }; } catch (_) {}
   try { const v = await velasDex(address, '1d', 2); const c = v[v.length - 1]; return { last: c ? c.close : 0 }; } catch (_) { return { last: 0 }; }
 }
 

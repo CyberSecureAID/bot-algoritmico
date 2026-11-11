@@ -274,6 +274,8 @@ export function estilos() {
   .sp-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:13000; max-width:92vw; padding:12px 18px; border-radius:12px; background:#141b24; border:1px solid var(--sp-line2); color:var(--sp-ink); font-family:var(--sp-mono); font-size:12.5px; box-shadow:0 16px 44px rgba(0,0,0,.6); animation:tdToast .25s ease}
   .sp-toast.ok{border-color:rgba(46,232,106,.5)} .sp-toast.bad{border-color:rgba(255,91,110,.5)} .sp-toast.warn{border-color:rgba(232,184,75,.5)}
   @keyframes tdToast{from{opacity:0; transform:translateX(-50%) translateY(8px)} to{opacity:1; transform:translateX(-50%) translateY(0)}}
+  .sp-nochart{position:absolute; inset:0; z-index:3; place-items:center; text-align:center; padding:0 12%; font-family:var(--sp-mono); font-size:13px; line-height:1.6; color:var(--sp-ink3); pointer-events:none}
+  .sp-nochart b{color:var(--sp-ink2)}
   .sp-spin{position:absolute; inset:0; display:grid; place-items:center; background:var(--sp-bg); z-index:7}
   .sp-spin i{width:34px; height:34px; border-radius:50%; border:3px solid rgba(232,184,75,.2); border-top-color:var(--sp-gold); animation:tdGira .7s linear infinite}
   @keyframes tdGira{to{transform:rotate(360deg)}}
