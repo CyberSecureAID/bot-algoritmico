@@ -21,7 +21,11 @@ export class Lighting
         this.intensityUniform = uniform(1)
         this.count = 1
         this.mapSize = this.game.quality.level === 0 ? 2048 : 512
-        this.shadowAmplitude = this.game.view.optimalArea.radius
+        // La sombra se dimensiona como el alejado CLASICO (~32), NO con el nuevo alejado
+        // maximo de camara (75). Si no, el mapa de sombra fijo cubre 2.5x el area y se ve
+        // borroso. Asi la sombra queda nitida como el juego base, aunque la camara aleje mas.
+        this.shadowRefMax = 30.5
+        this.shadowAmplitude = this.game.view.optimalArea.radius * Math.min(1, this.shadowRefMax / this.game.view.spherical.radius.edges.max)
         this.depth = this.game.view.optimalArea.radius * 2
         this.shadowBias = -0.001
         this.shadowNormalBias = 0.1
@@ -48,7 +52,7 @@ export class Lighting
         this.game.viewport.events.on('throttleChange', () =>
         {
             this.spherical.radius = this.game.view.optimalArea.radius
-            this.shadowAmplitude = this.game.view.optimalArea.radius
+            this.shadowAmplitude = this.game.view.optimalArea.radius * Math.min(1, this.shadowRefMax / this.game.view.spherical.radius.edges.max)
             this.updateShadow()
         }, 3)
 
