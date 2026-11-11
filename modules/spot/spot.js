@@ -15,13 +15,14 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=11';
-import * as D from './datos.js?v=4';
+import { estilos } from './estilos.js?v=12';
+import * as D from './datos.js?v=5';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
 import { MONEDAS } from '../../assets/js/tokens.js';
+import { LOGOS_SPOT } from './logos.js?v=1';
 
 const LIB = new URL('./vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -45,7 +46,20 @@ const S = {
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const dec = (x) => { const a = Math.abs(x); if (!(a > 0)) return 2; if (a >= 1) return 2; if (a >= 0.1) return 3; if (a >= 0.001) return 5; if (a >= 1e-6) return 8; const ceros = Math.floor(-Math.log10(a)); return Math.min(18, ceros + 4); };
-const fmtP = (x) => (isFinite(x) && x > 0) ? x.toLocaleString('en-US', { minimumFractionDigits: dec(x), maximumFractionDigits: dec(x) }) : '—';
+const SUBS = '₀₁₂₃₄₅₆₇₈₉';
+/* Notación compacta para precios con muchos ceros, estilo DexScreener: 0.0₉2954 (el
+   subíndice dice cuántos ceros hay tras el punto antes de la primera cifra). null si no aplica. */
+function fmtSub(x) {
+  const a = Math.abs(x); if (!(a > 0)) return null;
+  const e = Math.floor(Math.log10(a)); const ceros = -e - 1;
+  if (ceros < 4) return null;
+  const sig = (a / Math.pow(10, e)).toFixed(3).replace('.', '');
+  const sub = String(ceros).replace(/\d/g, (d) => SUBS[+d]);
+  return (x < 0 ? '−' : '') + '0.0' + sub + sig;
+}
+const fmtP = (x) => { if (!(isFinite(x) && x > 0)) return '—'; const s = fmtSub(x); return s != null ? s : x.toLocaleString('en-US', { minimumFractionDigits: dec(x), maximumFractionDigits: dec(x) }); };
+/* Igual que fmtP pero para el eje de la gráfica (nunca devuelve guión). */
+function fmtPChart(p) { const n = Number(p); if (!isFinite(n) || n <= 0) return '0'; const s = fmtSub(n); if (s != null) return s; const d = dec(n); return n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function fmtMoney(x) { if (!isFinite(x)) x = 0; const n = Math.round(x * 100) / 100; const ent = Number.isInteger(n); return (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: ent ? 0 : 2, maximumFractionDigits: 2 }); }
 const fmtPct = (x) => (x >= 0 ? '+' : '') + (isFinite(x) ? x : 0).toFixed(2) + '%';
 const cls = (x) => x > 0 ? 'up' : x < 0 ? 'down' : '';
@@ -116,7 +130,6 @@ function plantilla() {
         <div class="sp-wm"><img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'" alt=""></div>
         <button class="sp-icobtn sp-exit" id="sp-exit" title="Exit full chart">${IC.shrink} Exit</button>
         <div class="sp-spin" id="sp-spin"><i></i></div>
-        <div class="sp-attrib" id="sp-attrib" style="display:none"></div>
       </div>
       <div class="sp-entry">
         <div class="sp-side" id="sp-side">
@@ -319,7 +332,26 @@ function renderTf() {
 }
 
 async function cargarLogos() { try { S.logos = await D.logos() || {}; aplicarLogo($('sp-coin-ico'), S.par); } catch (_) {} }
-function aplicarLogo(el, par) { if (!el || !par) return; const url = par.cg && S.logos[par.cg]; if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; } else { el.style.backgroundImage = ''; el.classList.remove('con'); el.textContent = (par.id || '?')[0]; } }
+function aplicarLogo(el, par) {
+  if (!el || !par) return;
+  const id = par.coin || par.id;
+  const url = (par.cg && S.logos[par.cg]) || LOGOS_SPOT[id] || (S._logoDex && S._logoDex[id]) || '';
+  if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; return; }
+  el.style.backgroundImage = ''; el.classList.remove('con');
+  const ic = MONEDAS[id] && MONEDAS[id].icono;                 // emoji como respaldo mientras carga
+  el.textContent = (ic && !/^[A-Za-z0-9]$/.test(ic)) ? ic : (id || '?')[0];
+  if (esDex(par)) cargarLogoDex(par);
+}
+/* Busca el logo REAL de un token DEX (local embebido o por contrato) y lo aplica al icono. */
+async function cargarLogoDex(par) {
+  const id = par && (par.coin || par.id); if (!id) return;
+  if (LOGOS_SPOT[id]) return;                                   // ya lo pinta aplicarLogo
+  S._logoDex = S._logoDex || {};
+  if (S._logoDex[id] != null) return;                          // ya intentado
+  let u = ''; try { u = await D.logoDex(par.addr) || ''; } catch (_) {}
+  S._logoDex[id] = u;
+  if (u && S.par && (S.par.coin || S.par.id) === id) { const el = $('sp-coin-ico'); if (el) { el.style.backgroundImage = `url(${u})`; el.classList.add('con'); el.textContent = ''; } }
+}
 
 function cargarLib() { return new Promise((res, rej) => { if (window.LightweightCharts) return res(); let sc = $('sp-lwc'); if (sc) { sc.addEventListener('load', () => res()); sc.addEventListener('error', () => rej(new Error('lib'))); return; } sc = document.createElement('script'); sc.id = 'sp-lwc'; sc.src = LIB; sc.onload = () => res(); sc.onerror = () => rej(new Error('lib')); document.head.appendChild(sc); }); }
 
@@ -327,7 +359,6 @@ async function cargarDatos() {
   const spin = $('sp-spin'); if (spin) spin.style.display = 'grid';
   const dex = esDex(S.par);
   $('sp-coin-id').textContent = S.par.coin || S.par.id; $('sp-pair').textContent = dex ? (S.par.disp || S.par.id) : S.par.s; aplicarLogo($('sp-coin-ico'), S.par);
-  marcarFuente(dex);
   try {
     const [v, t] = dex
       ? await Promise.all([D.velasDex(S.par.addr, S.tf, 1000), D.tickerDex(S.par.addr).catch(() => null)])
@@ -343,18 +374,12 @@ async function cargarDatos() {
   if (spin) spin.style.display = 'none';
 }
 
-/* Nota de atribución bajo la gráfica: GeckoTerminal la exige para tokens DEX. */
-function marcarFuente(dex) {
-  const a = $('sp-attrib'); if (!a) return;
-  a.textContent = dex ? 'DEX price · data via GeckoTerminal & DexScreener' : '';
-  a.style.display = dex ? 'block' : 'none';
-}
 function pintarChart() {
   const LC = window.LightweightCharts; const cv = $('sp-cv'); if (!LC || !cv || !S.velas.length) return;
   try { if (S.chart) S.chart.remove(); } catch (_) {}
   S.chart = null; S.lineaLimit = null;
   const chart = LC.createChart(cv, {
-    autoSize: true, localization: { locale: 'en' },
+    autoSize: true, localization: { locale: 'en', priceFormatter: fmtPChart },
     layout: { background: { color: 'transparent' }, textColor: '#7d8794', fontFamily: '"Chakra Petch", ui-monospace, monospace', attributionLogo: false },
     grid: { vertLines: { color: 'rgba(35,43,53,.4)' }, horzLines: { color: 'rgba(35,43,53,.4)' } },
     rightPriceScale: { borderColor: '#232b35', scaleMargins: { top: 0.08, bottom: 0.08 } },

@@ -70,8 +70,6 @@ export function estilos() {
   .sp-walletmenu button .am{display:flex; flex-direction:column; align-items:flex-end; line-height:1.15}
   .sp-walletmenu button .am b{font-size:12.5px; color:var(--sp-ink); font-weight:800}
   .sp-walletmenu button .am i{font-style:normal; font-size:9px; color:var(--sp-ink3)}
-  /* Atribución obligatoria de datos para tokens DEX */
-  .sp-attrib{position:absolute; left:10px; bottom:8px; z-index:4; padding:3px 8px; border-radius:7px; background:rgba(12,16,21,.72); border:1px solid var(--sp-line); font-family:var(--sp-mono); font-size:9.5px; color:var(--sp-ink3); pointer-events:none}
   .sp-icobtn{height:36px; min-width:36px; padding:0 9px; border-radius:9px; flex:0 0 auto; display:inline-grid; place-items:center; color:#8b96a3; background:rgba(255,255,255,.05); border:1px solid var(--sp-line2)}
   .sp-icobtn svg{width:15px; height:15px} .sp-icobtn:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
   .sp-icobtn.on{border-color:var(--sp-gold); color:var(--sp-gold); background:rgba(232,184,75,.12)}

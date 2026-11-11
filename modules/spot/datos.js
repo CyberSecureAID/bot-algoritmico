@@ -135,6 +135,18 @@ export async function tickerDex(address) {
   try { const v = await velasDex(address, '1d', 2); const c = v[v.length - 1]; return { last: c ? c.close : 0 }; } catch (_) { return { last: 0 }; }
 }
 
+/* Logo REAL de un token DEX por contrato: GeckoTerminal /info (image_url) y, si no,
+   la imagen del par en DexScreener. '' si ninguna lo tiene. Se cachea por sesión. */
+const _logoCache = {};
+export async function logoDex(address) {
+  const k = String(address || '').toLowerCase(); if (!k) return '';
+  if (k in _logoCache) return _logoCache[k];
+  let url = '';
+  try { const j = await jgetGT(`/networks/${RED_GT}/tokens/${k}/info`); const a = j && j.data && j.data.attributes; const im = a && a.image_url; if (im && !/missing/i.test(im)) url = im; } catch (_) {}
+  if (!url) { try { const r = await fetch(DEXSCREENER_TOK + k); const j = await r.json(); for (const p of ((j && j.pairs) || [])) { const im = p && p.info && p.info.imageUrl; if (im) { url = im; break; } } } catch (_) {} }
+  _logoCache[k] = url; return url;
+}
+
 export async function ticker(simbolo) {
   const t = await traer(`${BINANCE}/ticker/24hr?symbol=${encodeURIComponent(simbolo)}`);
   return {
