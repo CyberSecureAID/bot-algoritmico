@@ -40,7 +40,7 @@ export function estilos() {
   .sp-px-sub{font-family:var(--sp-mono); font-size:10px; color:var(--sp-ink3)}
   .sp-brand{display:inline-flex; align-items:center; height:26px; font-family:var(--sp-mono); font-size:10.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#ff6b78; background:rgba(255,74,90,.14); border:1px solid rgba(255,74,90,.45); border-radius:7px; padding:0 10px; flex:0 0 auto}
   .sp-wallet{display:flex; align-items:center; gap:10px; flex:1 1 auto; margin-left:16px; min-width:0}
-  .sp-bal-boxes{display:flex; gap:7px; overflow-x:auto; flex:1 1 auto; min-width:0; scrollbar-width:none} .sp-bal-boxes::-webkit-scrollbar{display:none}
+  .sp-bal-boxes{display:flex; gap:7px; overflow:hidden; flex:1 1 auto; min-width:0}
   .sp-bal-box{flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; gap:1px; height:36px; padding:0 11px; border-radius:9px; background:rgba(255,255,255,.04); border:1px solid var(--sp-line)}
   .sp-bal-box.op{cursor:pointer; transition:border-color .15s,background .15s}
   .sp-bal-box.op:hover{border-color:var(--sp-gold-soft); background:rgba(255,255,255,.07)}

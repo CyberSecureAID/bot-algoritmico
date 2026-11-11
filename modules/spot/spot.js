@@ -15,7 +15,7 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=12';
+import { estilos } from './estilos.js?v=13';
 import * as D from './datos.js?v=5';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
@@ -92,13 +92,12 @@ export async function abrirSpot() {
   document.body.appendChild(ov);
   cablear(ov);
   S.cap = 0; S.tam = 0; sincronCap();
-  try { if (localStorage.getItem('sp-help-seen')) { const dot = $('sp-help-dot'); if (dot) dot.remove(); } } catch (_) {}
   renderTf(); cargarLogos();
   try { await cargarLib(); } catch (_) { toast('Chart engine failed to load. Reload.', 'bad'); return; }
   await cargarDatos();
   montarBarraDemo();
   wireDrag();
-  S.onResize = () => sincronizarDib();
+  S.onResize = () => { sincronizarDib(); ajustarTira(); };
   window.addEventListener('resize', S.onResize);
   arrancarUI();
   arrancarWallet();
@@ -355,23 +354,52 @@ async function cargarLogoDex(par) {
 
 function cargarLib() { return new Promise((res, rej) => { if (window.LightweightCharts) return res(); let sc = $('sp-lwc'); if (sc) { sc.addEventListener('load', () => res()); sc.addEventListener('error', () => rej(new Error('lib'))); return; } sc = document.createElement('script'); sc.id = 'sp-lwc'; sc.src = LIB; sc.onload = () => res(); sc.onerror = () => rej(new Error('lib')); document.head.appendChild(sc); }); }
 
+/* Token de secuencia: solo la ÚLTIMA selección aplica sus datos. Sin esto, una carga
+   lenta (token DEX, red) resuelve tarde y pisa la gráfica de una selección más nueva,
+   dejando cabecera y gráfica en monedas distintas. Causa raíz de la incongruencia. */
+let _cargaSeq = 0;
 async function cargarDatos() {
+  const mi = ++_cargaSeq;
   const spin = $('sp-spin'); if (spin) spin.style.display = 'grid';
-  const dex = esDex(S.par);
-  $('sp-coin-id').textContent = S.par.coin || S.par.id; $('sp-pair').textContent = dex ? (S.par.disp || S.par.id) : S.par.s; aplicarLogo($('sp-coin-ico'), S.par);
+  const dex = esDex(S.par), par = S.par;
+  $('sp-coin-id').textContent = par.coin || par.id; $('sp-pair').textContent = dex ? (par.disp || par.id) : par.s; aplicarLogo($('sp-coin-ico'), par);
+  sincronActiva();
   try {
     const [v, t] = dex
-      ? await Promise.all([D.velasDex(S.par.addr, S.tf, 1000), D.tickerDex(S.par.addr).catch(() => null)])
-      : await Promise.all([D.velas(S.par.s, S.tf, 1000), D.ticker(S.par.s).catch(() => null)]);
+      ? await Promise.all([D.velasDex(par.addr, S.tf, 1000), D.tickerDex(par.addr).catch(() => null)])
+      : await Promise.all([D.velas(par.s, S.tf, 1000), D.ticker(par.s).catch(() => null)]);
+    if (mi !== _cargaSeq) return;                 // una selección más nueva ya tomó el control
     S.velas = v || [];
     if (!dex && t) { S.mark = t.last; S.open24 = t.open; S.high24 = t.high; S.low24 = t.low; S.vol24 = t.volQuote; S.chgPct = t.chgPct; }
     else if (dex && t && t.last > 0) { S.mark = t.last; }
     else if (S.velas.length) S.mark = S.velas[S.velas.length - 1].close;
     if (dex) { const lc = S.velas[S.velas.length - 1]; if (lc) { S.chgPct = lc.open > 0 ? (S.mark - lc.open) / lc.open * 100 : 0; S.high24 = lc.high; S.low24 = lc.low; S.vol24 = 0; } else { S.chgPct = 0; } }
-    S.marks[S.par.id] = S.mark;
+    S.marks[par.id] = S.mark;
     pintarChart(); conectarStream(); renderTodo();
-  } catch (_) { toast(dex ? 'Could not load this coin chart (no PancakeSwap pool found).' : 'Could not load market data.', 'bad'); }
-  if (spin) spin.style.display = 'none';
+  } catch (_) {
+    if (mi !== _cargaSeq) return;                 // no mostrar el error de una selección vieja
+    toast(dex ? 'Could not load this coin chart (no pool found yet).' : 'Could not load market data.', 'bad');
+  } finally {
+    if (mi === _cargaSeq && spin) spin.style.display = 'none';
+  }
+}
+/* Marca como activa, en la tira de saldos, la moneda que se está graficando. */
+function sincronActiva() {
+  const cur = S.par && (S.par.coin || S.par.id), c = $('sp-bal-boxes');
+  if (c) c.querySelectorAll('.sp-bal-box').forEach((b) => b.classList.toggle('on', b.dataset.coin === cur));
+}
+/* Muestra en la tira SOLO las monedas que caben enteras (nunca una cortada ni por
+   detrás del botón); el resto queda en el botón "All your coins". */
+function ajustarTira() {
+  const c = $('sp-bal-boxes'); if (!c) return;
+  const hijos = [...c.children]; if (!hijos.length) return;
+  hijos.forEach((b) => { b.style.display = ''; });
+  const cr = c.getBoundingClientRect(); let corte = false;
+  for (const b of hijos) {                     // mide posiciones REALES ya renderizadas
+    if (corte) { b.style.display = 'none'; continue; }
+    const r = b.getBoundingClientRect();
+    if (r.right > cr.right + 0.5) { b.style.display = 'none'; corte = true; }
+  }
 }
 
 function pintarChart() {
@@ -594,7 +622,7 @@ async function renderWallet() {
     return { id, m, bal, usd, op: tokenOperable(id) && !ESTABLES.includes(id) };
   }).sort((a, b) => b.usd - a.usd);
   S._filasWallet = filas;
-  if (boxes) { boxes.innerHTML = filas.length ? filas.map(cajaSaldo).join('') : '<div class="sp-bal-box sp-bal-empty">No balances yet</div>'; boxes.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => seleccionarMoneda(b.dataset.coin)); }
+  if (boxes) { boxes.innerHTML = filas.length ? filas.map(cajaSaldo).join('') : '<div class="sp-bal-box sp-bal-empty">No balances yet</div>'; boxes.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => seleccionarMoneda(b.dataset.coin)); ajustarTira(); requestAnimationFrame(ajustarTira); }
   if (cn) cn.textContent = String(filas.length);
   if (eqEl) eqEl.textContent = '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   try { renderEntry(); } catch (_) {}
@@ -1258,9 +1286,19 @@ const PASOS_SP = [
     x: 'Buy low, sell higher. The gain is money (USDT).'
   },
   {
-    t: 'Short: you think it goes down',
-    d: 'Yes, you can go <b>short</b> on spot, with no contract and nothing borrowed. You <b>sell a coin you already hold</b> (say BNB) at today&#39;s price, and the tool remembers how much and at what price you sold. If the price <b>falls</b>, you <b>buy it back cheaper</b> with that same money, so you end up holding <b>more of the coin</b> than you started with. The profit is counted in the <b>coin</b> itself.',
-    x: 'The benefit: a falling market stacks you more coins instead of draining your bag.'
+    t: 'Short: sell high, buy back cheaper',
+    d: 'This is the part no other exchange teaches on spot, and it is our favorite. Say you hold <b>1,000 BNB</b> and you think the price will drop. You <b>sell</b> them now and receive USDT. The tool <b>marks your sell point</b> on the chart and remembers the exact USDT you got. If the price <b>falls</b> and you buy back with that same USDT, you get <b>more than 1,000 BNB</b>. Those extra coins are your profit, no contract and nothing borrowed.',
+    x: 'In plain words: sell 1,000 coins high, buy back 1,100 coins low. You gained 100 coins.'
+  },
+  {
+    t: 'Watch your short, live',
+    d: 'Once the short is open, the chart shows your <b>sell line</b> and the panel shows, second by second, <b>how much more coin</b> you would gain if you closed right now, and the <b>USDT</b> that sale gave you. If the price drops, your position turns <b>green and grows</b>, measured in coins. If it rises, it turns red. You never guess: you see your exact result before you act. We built this on purpose, it is the heart of Spot.',
+    x: 'Your profit shows in the coin itself (for example +83 BNB), not in dollars.'
+  },
+  {
+    t: 'Closing a short is just buying',
+    d: 'To <b>close</b> a short you simply <b>buy the coin back</b> with the USDT you received when you sold. You do not feel it as buying, you feel it as <b>closing your position</b>, even if your wallet asks you to sign a step or two. Changed your mind and do not want to buy back? <b>Cancel</b> the position with the <b>X</b> or the <b>Close</b> button and nothing else happens.',
+    x: 'Close = buy back with that same USDT. Cancel = walk away, no buy back.'
   },
   {
     t: 'Set your amount',
@@ -1314,7 +1352,9 @@ function pintarPasoSP() {
   const bk = $('sp-hlp-back'); if (bk) bk.onclick = () => { _pasoSP = Math.max(0, _pasoSP - 1); pintarPasoSP(); };
   c.querySelectorAll('[data-paso]').forEach((b) => b.onclick = () => { _pasoSP = Number(b.dataset.paso); pintarPasoSP(); });
 }
-function marcarAyudaVista() { try { localStorage.setItem('sp-help-seen', '1'); } catch (_) {} const dot = $('sp-help-dot'); if (dot) dot.remove(); }
+/* El punto rojo queda SIEMPRE: la operación short en spot es lo novedoso de la sección
+   y queremos que todos abran la explicación. */
+function marcarAyudaVista() {}
 
 /* ── Barra de dibujo compartida ── */
 function geoDib() {
