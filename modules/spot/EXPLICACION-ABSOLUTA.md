@@ -123,18 +123,59 @@ Cuando llegue el momento, el contrato (no custodial, el usuario firma) debe:
    TP/SL y **anti gap** (si el precio salta la mecha, cerrar al mejor precio posible).
 5. Ser **no custodial**: nada se queda en ningún sitio; entrega directa a la wallet.
 
-## 9. Multichain (futuro)
+## 9. Multichain: la ruta (Solana, Tron, Ethereum)
 
-- **Hoy:** BSC (Pancake/Uniswap). 
-- **Después:** **Tron**, **Solana** y **Ethereum**. Para Tron ya hay API key de
-  TronScan; los contratos se desplegarían con Remix. Cada red con su vía propia, pero
-  con la **misma experiencia** para el usuario.
+El modelo es **un contrato por red** y un **botón de red** en la cabecera de Spot. Al
+cambiar de red, el usuario cambia la red de su wallet y la sección usa el contrato y la
+fuente de datos de esa red. La **experiencia es la misma** (long, short, cerrar,
+cancelar); solo cambian las piezas de abajo:
 
-## 10. Comisiones
+| Red | DEX para operar | Gráfica (velas) | Precio/holders/seguridad | Contrato |
+|---|---|---|---|---|
+| **BSC** (hoy) | PancakeSwap V2/V3, Uniswap | GeckoTerminal → on-chain (Sync) | reservas V2 + DexScreener | Remix (Solidity), ya hay base en Terminal |
+| **Ethereum** | Uniswap V2/V3 | GeckoTerminal (red `eth`) → on-chain | DexScreener + **Etherscan API** (misma que BscScan) | Remix (Solidity), casi igual que BSC |
+| **Tron** | SunSwap | GeckoTerminal (red `tron`, ya lo soporta `gecko.js`) | **TronScan API** (ya hay key) | TronBox/Remix Tron (TVM); el usuario pasa fondos a Tron |
+| **Solana** | Jupiter (agregador) / Raydium | GeckoTerminal (red `solana`) | DexScreener/Birdeye | **programa** en Rust/Anchor (no es EVM); otra wallet (Phantom) |
 
-- Por ahora el objetivo es que **al usuario le sea rentable operar aquí**, así que la
-  comisión será **nula o muy baja** (sin decidir aún). Es un servicio para **atraer
-  clientes** a la plataforma, no un centro de costos para ellos.
+Pasos concretos:
+1. **Botón de red** en la cabecera (BSC / ETH / Tron / Solana). Cambia la red de la
+   wallet (en EVM, `wallet_switchEthereumChain`; en Solana, otra conexión de wallet).
+2. **Datos por red:** la gráfica ya es multired en el espejo on-chain (GeckoTerminal
+   acepta `eth`, `tron`, `solana`), y los escáneres (TronScan, Etherscan) dan holders y
+   seguridad, como ya hace Terminal.
+3. **Ejecución por red:** cada red su contrato. BSC y Ethereum comparten casi el mismo
+   Solidity (solo cambian direcciones de router/factory). Tron es TVM (Solidity con
+   matices). Solana es un programa Rust/Anchor aparte.
+4. **Orden sugerido:** Ethereum primero (reutiliza casi todo lo de BSC), luego Tron
+   (lectura ya está en `tron.js`), y Solana al final (es la más distinta).
+
+> Nota honesta: Solana y Tron **no** son EVM, así que su contrato no se copia de BSC; se
+> escribe para su máquina. La **lectura** (gráfica, precio, seguridad) sí está casi lista
+> para las tres gracias a GeckoTerminal, TronScan y Etherscan.
+
+## 10. Comisiones: la recomendación
+
+El problema: PancakeSwap ya cobra lo suyo (0.25% por swap), y la sección por sí sola no
+genera ingresos. Cobrar por operar la haría poco rentable para el usuario.
+
+**Recomendación: comisión SOLO sobre la ganancia (success fee), nunca sobre el capital.**
+
+- Se cobra **únicamente al cerrar en ganancia**, un **10% a 15% de la ganancia** (no del
+  capital), en **BNB** (o la moneda de gas de la red). Si la operación cierra en pérdida
+  o en cero, **no se cobra nada**.
+- Ejemplo: abres un long con 1,000 USDT, cierras con +200 USDT de ganancia. Comisión =
+  12% de 200 = **24 USDT equivalentes en BNB**. Te quedas con 176 de ganancia neta. Si
+  cerraras en pérdida, comisión = 0.
+- Por qué así: el usuario solo paga cuando **gana**, así que siempre le conviene operar
+  aquí. Alinea nuestro ingreso con su éxito. Es el modelo que usan las plataformas de
+  copytrading y los vaults serios.
+- El cobro lo hace el **contrato** en el cierre (descuenta el fee del excedente antes de
+  entregar), de forma no custodial y transparente. Sin ganancia, sin fee.
+- Un **mínimo de gas**: si la ganancia es minúscula, el fee no debería ser menor que el
+  gas que cuesta cobrarlo; en ese caso, fee = 0 (no vale la pena).
+
+Rango final a decidir por ti: **10%, 12% o 15% de la ganancia**. Nada sobre el capital,
+nada en operaciones perdedoras.
 
 ## 11. Estado actual (hecho y verificado) vs. pendiente
 
@@ -147,9 +188,15 @@ Cuando llegue el momento, el contrato (no custodial, el usuario firma) debe:
   DexScreener de respaldo) para tokens que no están en Binance.
 - **Short** marcando el nivel de venta y siguiendo la posición **en la moneda**; cierre
   por compra; cancelar por la X/Close. USDT.z tratado como token con precio propio.
+- **Gráfica on-chain** (eventos Sync de PancakeSwap) para tokens que ningún indexador
+  lista, como EXT. **Búsqueda por contrato** en el selector (pega un `0x…` y lo carga).
+- **PnL en vivo con porcentaje** en cada posición, **congruente** con el movimiento del
+  precio desde la entrada (long: % del alza; short: % de la caída). Verificado con
+  pruebas de cálculo y en navegador.
+- **Sin marca demo** en las fotos exportadas (gráfica y tarjeta de operación); se borró
+  el código muerto del certificado que aún decía "DEMO".
 
 **Pendiente (siguiente fase):**
 - El **smart contract** del punto 8 (ejecución on-chain real, enrutado multidex por
-  mejor liquidez, triggers y anti gap).
-- Extensión **multichain** (Tron, Solana, Ethereum) del punto 9.
-- Decisión final de **comisión** (punto 10).
+  mejor liquidez, triggers y anti gap) con el **success fee** del punto 10.
+- Extensión **multichain** (Ethereum, Tron, Solana) del punto 9.

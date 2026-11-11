@@ -15,8 +15,8 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=14';
-import * as D from './datos.js?v=6';
+import { estilos } from './estilos.js?v=15';
+import * as D from './datos.js?v=7';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
@@ -67,6 +67,8 @@ const cls = (x) => x > 0 ? 'up' : x < 0 ? 'down' : '';
 const fmtCoin = (x) => { if (!isFinite(x) || x === 0) return '0'; const a = Math.abs(x); const d = a >= 1000 ? 2 : a >= 1 ? 4 : a >= 0.01 ? 6 : 8; return x.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: d }); };
 /* PnL con su moneda: USDT se muestra como dinero; una moneda base, como cantidad. */
 const fmtPnL = (v, denom) => (v >= 0 ? '+' : '−') + (denom === 'USDT' ? fmtMoney(Math.abs(v)) : (fmtCoin(Math.abs(v)) + ' ' + denom));
+/* Porcentaje de la posición (congruente con el movimiento del precio desde la entrada). */
+const pctTxt = (v) => (isFinite(v) ? (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%' : '—');
 
 const IC = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
@@ -299,6 +301,18 @@ async function seleccionarMoneda(coinId) {
 }
 /* Alias histórico: acepta un id de par (Binance) o de moneda (wallet/DEX). */
 function cambiarPar(parId) { return seleccionarMoneda(parId); }
+/* Carga CUALQUIER token por su contrato (como el buscador de Terminal): lo resuelve en
+   cadena y lo grafica (GeckoTerminal o, si no, on-chain por los eventos Sync del par). */
+async function cargarContrato(addr) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(String(addr || '').trim())) return;
+  cerrarPops();
+  const spin = $('sp-spin'); if (spin) spin.style.display = 'grid';
+  let info = null; try { info = await D.resolverToken(addr); } catch (_) {}
+  if (!info || !info.address) { if (spin) spin.style.display = 'none'; toast('Token not found or without a pool to chart.', 'bad'); return; }
+  S.par = { id: info.address, coin: info.address, s: null, addr: info.address, fuente: 'dex', n: info.nombre, cg: null, simbolo: info.simbolo, disp: (info.simbolo || 'Token') + '/USD' };
+  S._posAuto = null;
+  await cargarDatos();
+}
 /* Menú de las monedas que tienes para abrir un short. */
 function menuMonedasShort() {
   cerrarPops();
@@ -363,7 +377,7 @@ async function cargarDatos() {
   const mi = ++_cargaSeq;
   const spin = $('sp-spin'); if (spin) spin.style.display = 'grid';
   const dex = esDex(S.par), par = S.par;
-  $('sp-coin-id').textContent = par.coin || par.id; $('sp-pair').textContent = dex ? (par.disp || par.id) : par.s; aplicarLogo($('sp-coin-ico'), par);
+  $('sp-coin-id').textContent = dex ? (par.simbolo || par.coin || par.id) : (par.coin || par.id); $('sp-pair').textContent = dex ? (par.disp || par.id) : par.s; aplicarLogo($('sp-coin-ico'), par);
   sincronActiva();
   try {
     const [v, t] = dex
@@ -725,7 +739,6 @@ function renderPos() {
     if ($('sp-next')) $('sp-next').onclick = () => { S.histPage++; renderPos(); };
     if (!tot) { body.innerHTML = '<div class="sp-empty">No closed trades yet. Your track record builds here as you open and close trades.</div>'; return; }
     body.innerHTML = `<table class="sp-tbl"><thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL</th><th></th></tr></thead><tbody>${pag.map((h) => { const c = h.pnl >= 0 ? 'up' : 'down'; const d = new Date(h.cerrado); const f = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); const mo = h.motivo === 'tp' ? ' · TP' : h.motivo === 'sl' ? ' · SL' : ''; return `<tr><td>${f}</td><td><span class="sp-sym">${logoChip(h.par)} ${esc(h.par)}</span></td><td><span class="sp-tag ${h.lado}">${h.lado.toUpperCase()}</span></td><td>${fmtP(h.entrada)}</td><td>${fmtP(h.salida)}</td><td class="sp-pnl ${c}">${fmtPnL(h.pnl, h.denom || 'USDT')}${mo}</td><td><button class="sp-share" data-shareh="${h.id}" title="Export trade card">${IC.share}</button></td></tr>`; }).join('')}</tbody></table>`;
-    if ($('sp-cert')) $('sp-cert').onclick = pedirNombreCert;
     body.querySelectorAll('[data-shareh]').forEach((b) => b.onclick = () => { const h = hist.find((x) => x.id === b.dataset.shareh); if (h) tarjetaPnL(h); });
   }
 }
@@ -739,7 +752,7 @@ function filaPos(p) {
     <td>${fmtCoin(qty)} ${esc(p.base || p.par)}</td><td>${fmtP(p.entrada)}</td><td data-mark="${p.id}">${fmtP(S.marks[p.par] || S.mark)}</td>
     <td>${fmtMoney(p.amount)}</td>
     <td>${celdaTPSL(p, 'tp', '#2ee86a')}</td><td>${celdaTPSL(p, 'sl', '#ff5b6e')}</td>
-    <td class="sp-pnl ${c}" data-pnl="${p.id}">${fmtPnL(info.pnl, info.denom)}</td>
+    <td class="sp-pnl ${c}" data-pnl="${p.id}">${fmtPnL(info.pnl, info.denom)}<span class="sp-pct">${pctTxt(info.pct)}</span></td>
     <td><span class="sp-acts"><button class="sp-share" data-share="${p.id}" title="Export trade card">${IC.share}</button><button class="sp-x" data-cerrar="${p.id}" data-par="${p.par}">Close</button></span></td></tr>`;
 }
 function filaOrd(o) {
@@ -754,7 +767,7 @@ function refrescarPnL() {
   if (S.tab !== 'pos') return;
   M.posiciones().forEach((p) => {
     const mk = document.querySelector(`[data-mark="${p.id}"]`); if (mk) mk.textContent = fmtP(S.marks[p.par] || S.mark);
-    const pe = document.querySelector(`[data-pnl="${p.id}"]`); if (pe) { const info = M.pnlDe(p, S.marks[p.par] || S.mark); pe.textContent = fmtPnL(info.pnl, info.denom); pe.className = 'sp-pnl ' + (info.pnl >= 0 ? 'up' : 'down'); }
+    const pe = document.querySelector(`[data-pnl="${p.id}"]`); if (pe) { const info = M.pnlDe(p, S.marks[p.par] || S.mark); pe.innerHTML = fmtPnL(info.pnl, info.denom) + `<span class="sp-pct">${pctTxt(info.pct)}</span>`; pe.className = 'sp-pnl ' + (info.pnl >= 0 ? 'up' : 'down'); }
   });
 }
 /* Tarjeta de una posición ABIERTA: usa el PnL EN VIVO (bruto), idéntico a lo que
@@ -1040,7 +1053,7 @@ async function exportarChart() {
   const nameW = g.measureText(etqPar(S.par.id)).width;
   g.font = '700 16px "IBM Plex Mono", monospace'; g.fillStyle = S.chgPct >= 0 ? '#3ee88a' : '#ff6b7a'; g.fillText(fmtP(S.mark), tx + nameW + 12, 27);
   g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#8b96a3'; g.fillText(S.tf + '  ·  ' + new Date().toLocaleString('en-US'), tx, 48);
-  // Derecha: Trading Demo y nuestro dominio
+  // Derecha: rótulo Spot y nuestro dominio
   g.textAlign = 'right';
   g.font = '800 17px "Chakra Petch", sans-serif'; g.fillStyle = '#E8B84B'; g.fillText('Spot', out.width - 16, 27);
   g.font = '700 11.5px "IBM Plex Mono", monospace'; g.fillStyle = '#8b96a3'; g.fillText('decfreedom.com', out.width - 16, 48);
@@ -1052,28 +1065,8 @@ async function exportarChart() {
   if (imgWm && imgWm.width) { const wmH = 30, wmW = imgWm.width * (wmH / imgWm.height); g.save(); g.globalAlpha = .8; g.drawImage(imgWm, 18, out.height - wmH - 34, wmW, wmH); g.restore(); }
   try { out.toBlob((b) => { descargar(b, `spot-${S.par.id}-${S.tf}.png`); toast('Chart image exported.', 'ok'); }); } catch (_) { toast('Could not export the chart.', 'bad'); }
 }
-function exportarCSV() {
-  try {
-    let nombre = ''; try { nombre = localStorage.getItem('sp-cert-name') || ''; } catch (_) {}
-    const st = certStats();
-    const pre = [
-      'DecFreedom - Trading Demo track record (DEMO, not real money)',
-      'Trader,' + (nombre || 'Demo Trader'),
-      'Issued,' + new Date().toISOString(),
-      'Starting balance,10000',
-      'Trades,' + st.n,
-      'Win rate %,' + st.winRate,
-      'Net PnL USDT,' + st.total.toFixed(2),
-      'End balance,' + st.endBal.toFixed(2),
-      'decfreedom.com', '', M.csv()
-    ].join('\n');
-    descargar(new Blob([pre], { type: 'text/csv' }), 'DecFreedom-track-record.csv'); toast('History exported (CSV).', 'ok');
-  } catch (_) { toast('Could not export the history.', 'bad'); }
-}
-
 /* Tarjeta de operación: MISMA dinámica que el área de futuros (fondo long/short
-   de portada/img, sello cco-sello, logo de la moneda), con la marca DEMO grande
-   encima para que no pueda reutilizarse de forma fraudulenta. */
+   de portada/img, sello cco-sello, logo de la moneda). Spot real: SIN marca demo. */
 async function tarjetaPnL(tr) {
   const esLong = tr.lado === 'long', gana = tr.pnl >= 0;
   const vcol = gana ? '#16c784' : '#f6465d', col = esLong ? '#16c784' : '#f6465d';
@@ -1120,163 +1113,6 @@ function mostrarTarjeta(cv, nombre) {
   m.querySelector('.card').appendChild(acts); document.body.appendChild(m);
   const ce = () => m.remove(); m.querySelector('.cl').onclick = ce; m.onclick = (e) => { if (e.target === m) ce(); };
   m.querySelector('.dl').onclick = () => { try { cv.toBlob((b) => descargar(b, nombre), 'image/png', 0.95); } catch (_) { toast('Could not export the image.', 'bad'); } };
-}
-
-/* ── Certificado de track record (imagen PNG, PDF sin cortes de fila, CSV) ── */
-function certStats() {
-  const histN = M.historial();                    // mas reciente primero
-  const hist = histN.slice().reverse();            // cronologico
-  const n = hist.length;
-  const wins = hist.filter((h) => h.pnl > 0).length;
-  const total = hist.reduce((a, h) => a + h.pnl, 0);
-  let eq = 10000; const curva = [10000];
-  hist.forEach((h) => { eq += h.pnl; curva.push(eq); });
-  const desde = n ? new Date(hist[0].cerrado) : null, hasta = n ? new Date(hist[n - 1].cerrado) : null;
-  return { n, wins, losses: n - wins, winRate: n ? Math.round(wins / n * 100) : 0, total, startBal: 10000, endBal: 10000 + total, curva, desde, hasta };
-}
-function wrapTexto(g, txt, x, y, maxW, lh) {
-  const ws = txt.split(' '); let linea = '', yy = y;
-  ws.forEach((p) => { const t = linea ? linea + ' ' + p : p; if (g.measureText(t).width > maxW && linea) { g.fillText(linea, x, yy); linea = p; yy += lh; } else linea = t; });
-  if (linea) g.fillText(linea, x, yy);
-}
-function pedirNombreCert() {
-  const old = $('sp-sheet'); if (old) old.remove();
-  let prev = ''; try { prev = localStorage.getItem('sp-cert-name') || ''; } catch (_) {}
-  const m = document.createElement('div'); m.className = 'sp-sheet'; m.id = 'sp-sheet';
-  m.innerHTML = `<div class="bx"><h5>Track record certificate</h5><div class="sub">Your name appears on the document. Demo account.</div>
-    <div class="fld"><input type="text" id="sp-cert-in" maxlength="46" placeholder="Your name" value="${esc(prev)}"></div>
-    <div class="btns"><button id="sp-cert-x">Cancel</button><button class="ok" id="sp-cert-ok">Generate</button></div></div>`;
-  document.body.appendChild(m);
-  const cerrarS = () => { try { m.remove(); } catch (_) {} };
-  const inp = m.querySelector('#sp-cert-in'); setTimeout(() => { try { inp.focus(); inp.select(); } catch (_) {} }, 40);
-  m.querySelector('#sp-cert-x').onclick = cerrarS;
-  m.onclick = (e) => { if (e.target === m) cerrarS(); };
-  const go = () => { const nom = (inp.value || '').trim().slice(0, 46) || 'Demo Trader'; try { localStorage.setItem('sp-cert-name', nom); } catch (_) {} cerrarS(); generarCert(nom); };
-  m.querySelector('#sp-cert-ok').onclick = go;
-  inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); else if (e.key === 'Escape') cerrarS(); });
-}
-async function generarCert(nombre) {
-  const st = certStats();
-  const sello = await cargarImg(SELLO, false);
-  const W = 1240, H = 1754; const cvs = document.createElement('canvas'); cvs.width = W; cvs.height = H; const g = cvs.getContext('2d');
-  const oro = '#E8B84B', up = '#2ee86a', dn = '#ff5b6e', ink = '#eaecef', ink2 = '#9aa4af', ink3 = '#6b7580';
-  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#0b111a'); bg.addColorStop(1, '#070a0f'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  g.fillStyle = oro; g.fillRect(0, 0, W, 10);
-  g.strokeStyle = 'rgba(232,184,75,.22)'; g.lineWidth = 2; g.strokeRect(22, 22, W - 44, H - 44);
-  g.save(); g.translate(W / 2, H * .52); g.rotate(-Math.PI / 10); g.font = '800 300px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.033)'; g.fillText('DEMO', 0, 0); g.restore();
-  const M0 = 74;
-  // Logo (sello) arriba a la DERECHA; dominio debajo del logo.
-  let domY = 92;
-  if (sello) { const lw = 200, lh = sello.height * (lw / sello.width); g.drawImage(sello, W - M0 - lw, 54, lw, lh); domY = 54 + lh + 30; }
-  g.textAlign = 'right'; g.fillStyle = ink3; g.font = '700 18px "IBM Plex Mono", monospace'; g.fillText('decfreedom.com', W - M0, domY);
-  // Título arriba a la IZQUIERDA (ocupa el espacio que deja el logo al irse a la derecha).
-  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-  g.fillStyle = ink; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Trading Performance', M0, 132);
-  g.fillStyle = oro; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Certificate', M0, 196);
-  g.fillStyle = ink3; g.font = '700 17px "IBM Plex Mono", monospace'; g.fillText('DEMO ACCOUNT · NOT REAL MONEY', M0, 230);
-  g.fillStyle = ink2; g.font = '600 19px "IBM Plex Mono", monospace'; g.fillText('Issued to', M0, 306);
-  g.fillStyle = '#fff'; g.font = '800 42px "Plus Jakarta Sans", sans-serif'; g.fillText(nombre, M0, 352);
-  g.fillStyle = '#c3cbd4'; g.font = '400 19px "Plus Jakarta Sans", sans-serif';
-  wrapTexto(g, 'DecFreedom provided a demo trading service with a starting balance of $10,000. This document certifies the track record achieved on the demo platform over the period shown.', M0, 398, W - M0 * 2, 27);
-  const periodo = st.desde ? (st.desde.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' }) + '  →  ' + st.hasta.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })) : '—';
-  const roi = st.total / st.startBal * 100;
-  const tiles = [
-    ['Trades', String(st.n), ink],
-    ['Win rate', st.winRate + '%', st.winRate >= 50 ? up : ink],
-    ['Net PnL', (st.total >= 0 ? '+' : '−') + '$' + Math.abs(st.total).toLocaleString('en-US', { maximumFractionDigits: 0 }), st.total >= 0 ? up : dn],
-    ['ROI', (roi >= 0 ? '+' : '−') + Math.abs(roi).toFixed(1) + '%', roi >= 0 ? up : dn],
-    ['Start', '$10,000', ink],
-    ['End balance', '$' + st.endBal.toLocaleString('en-US', { maximumFractionDigits: 0 }), st.endBal >= 10000 ? up : dn]
-  ];
-  const tY = 480, tW = (W - M0 * 2 - 2 * 18) / 3, tH = 112;
-  tiles.forEach((t, i) => {
-    const x = M0 + (i % 3) * (tW + 18), y = tY + ((i / 3) | 0) * (tH + 16);
-    g.fillStyle = 'rgba(255,255,255,.035)'; redondea(g, x, y, tW, tH, 12); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; redondea(g, x + .5, y + .5, tW - 1, tH - 1, 12); g.stroke();
-    g.fillStyle = ink3; g.font = '700 14px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText(t[0].toUpperCase(), x + 18, y + 33);
-    g.fillStyle = t[2]; g.font = '800 33px "Chakra Petch", sans-serif'; g.fillText(t[1], x + 18, y + 78);
-  });
-  g.fillStyle = ink2; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText('Period:  ' + periodo, M0, tY + 2 * (tH + 16) + 36);
-  const chY = 820, chH = 360, chW = W - M0 * 2;
-  g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Equity curve', M0, chY - 16);
-  dibChartLinea(g, M0, chY, chW, chH, st.curva, oro);
-  const bY = chY + chH + 78, bH = 240;
-  g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Wins vs losses', M0, bY - 16);
-  dibBarras(g, M0, bY, chW, bH, [['Wins', st.wins, up], ['Losses', st.losses, dn]]);
-  const fY = H - 150;
-  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; g.beginPath(); g.moveTo(M0, fY); g.lineTo(W - M0, fY); g.stroke();
-  g.fillStyle = ink3; g.font = '600 16px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText('Issued ' + new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · DecFreedom demo', M0, fY + 34);
-  g.textAlign = 'right'; g.fillText('Practice record. No real funds were traded.', W - M0, fY + 34); g.textAlign = 'left';
-  mostrarCert(cvs, nombre);
-}
-function dibChartLinea(g, x, y, w, h, datos, col) {
-  g.save();
-  g.fillStyle = 'rgba(255,255,255,.02)'; redondea(g, x, y, w, h, 12); g.fill();
-  g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; redondea(g, x + .5, y + .5, w - 1, h - 1, 12); g.stroke();
-  if (!datos || datos.length < 2) { g.fillStyle = '#6b7580'; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Not enough trades yet', x + w / 2, y + h / 2); g.restore(); return; }
-  const padX = 20, padT = 24, padB = 24;
-  let min = Math.min(...datos), max = Math.max(...datos);
-  const base = (max - min) || (max * 0.02) || 1; min -= base * 0.14; max += base * 0.14; const rng = max - min;
-  const px = (i) => x + padX + (w - padX * 2) * (datos.length === 1 ? 0.5 : i / (datos.length - 1));
-  const py = (v) => y + padT + (h - padT - padB) * (1 - (v - min) / rng);
-  // rejilla + etiquetas de valor
-  g.textAlign = 'right'; g.textBaseline = 'middle'; g.font = '600 13px "IBM Plex Mono", monospace';
-  for (let k = 0; k <= 3; k++) { const v = min + rng * k / 3, yy = py(v); g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yy); g.lineTo(x + w - padX, yy); g.stroke(); g.fillStyle = '#5a636e'; g.fillText('$' + Math.round(v).toLocaleString('en-US'), x + w - 10, yy); }
-  // baseline $10,000
-  if (min <= 10000 && max >= 10000) { const yb = py(10000); g.setLineDash([5, 5]); g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yb); g.lineTo(x + w - padX, yb); g.stroke(); g.setLineDash([]); }
-  const pts = datos.map((v, i) => ({ x: px(i), y: py(v) }));
-  // trazo SUAVE (Catmull-Rom -> bezier) para que la curva fluya
-  const trazo = () => { g.beginPath(); g.moveTo(pts[0].x, pts[0].y); for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2; g.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y); } };
-  const grd = g.createLinearGradient(0, y, 0, y + h); grd.addColorStop(0, 'rgba(232,184,75,.26)'); grd.addColorStop(1, 'rgba(232,184,75,0)');
-  trazo(); g.lineTo(pts[pts.length - 1].x, y + h - padB); g.lineTo(pts[0].x, y + h - padB); g.closePath(); g.fillStyle = grd; g.fill();
-  g.save(); g.shadowColor = 'rgba(232,184,75,.45)'; g.shadowBlur = 8; trazo(); g.strokeStyle = col; g.lineWidth = 3; g.lineJoin = 'round'; g.stroke(); g.restore();
-  pts.forEach((p, i) => { const last = i === pts.length - 1; g.beginPath(); g.arc(p.x, p.y, (i === 0 || last) ? 5 : 3.5, 0, 7); g.fillStyle = last ? '#fff' : col; g.fill(); if (last) { g.strokeStyle = col; g.lineWidth = 2; g.stroke(); } });
-  g.restore();
-}
-function dibBarras(g, x, y, w, h, series) {
-  g.save();
-  const maxV = Math.max(1, ...series.map((s) => s[1]));
-  const bw = 160, gap = 80; let bx = x + 30;
-  series.forEach((s) => {
-    const bh = Math.max(2, (h - 60) * (s[1] / maxV)); const by = y + (h - 34) - bh;
-    g.fillStyle = s[2]; redondea(g, bx, by, bw, bh, 8); g.fill();
-    g.fillStyle = '#eaecef'; g.font = '800 28px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.fillText(String(s[1]), bx + bw / 2, by - 12);
-    g.fillStyle = '#9aa4af'; g.font = '700 16px "IBM Plex Mono", monospace'; g.fillText(s[0], bx + bw / 2, y + h - 4);
-    bx += bw + gap;
-  });
-  g.restore();
-}
-function mostrarCert(cvs, nombre) {
-  const old = $('sp-modal'); if (old) old.remove();
-  const m = document.createElement('div'); m.id = 'sp-modal'; m.innerHTML = `<div class="card"></div>`;
-  m.querySelector('.card').appendChild(cvs);
-  const acts = document.createElement('div'); acts.className = 'acts';
-  acts.innerHTML = `<button class="dl" id="cert-png">Image (PNG)</button><button id="cert-pdf">PDF</button><button id="cert-csv">Excel (CSV)</button><button class="cl">Close</button>`;
-  m.querySelector('.card').appendChild(acts); document.body.appendChild(m);
-  const ce = () => m.remove(); m.querySelector('.cl').onclick = ce; m.onclick = (e) => { if (e.target === m) ce(); };
-  const base = 'DecFreedom-track-record-' + String(nombre).replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
-  m.querySelector('#cert-png').onclick = () => { try { cvs.toBlob((b) => descargar(b, base + '.png'), 'image/png'); } catch (_) { toast('Could not export PNG.', 'bad'); } };
-  m.querySelector('#cert-pdf').onclick = () => { try { const jpg = cvs.toDataURL('image/jpeg', 0.92); const bin = atob(jpg.split(',')[1]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); descargar(pdfDeImagen(bytes, cvs.width, cvs.height), base + '.pdf'); toast('PDF exported.', 'ok'); } catch (_) { toast('Could not export PDF.', 'bad'); } };
-  m.querySelector('#cert-csv').onclick = exportarCSV;
-}
-/* PDF de una sola página con la imagen embebida (JPEG/DCTDecode): sin librerías
-   y sin cortes de fila, porque el certificado es una imagen completa. */
-function pdfDeImagen(jpg, Wpx, Hpx) {
-  const enc = new TextEncoder(); const parts = []; let len = 0; const off = [];
-  const push = (d) => { const b = (typeof d === 'string') ? enc.encode(d) : d; parts.push(b); len += b.length; };
-  const mark = () => off.push(len);
-  const pageW = 595, pageH = Math.round(595 * Hpx / Wpx);
-  push('%PDF-1.3\n');
-  mark(); push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
-  mark(); push('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
-  mark(); push('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
-  mark(); push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + Wpx + ' /Height ' + Hpx + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n'); push(jpg); push('\nendstream\nendobj\n');
-  const content = 'q\n' + pageW + ' 0 0 ' + pageH + ' 0 0 cm\n/Im0 Do\nQ\n';
-  mark(); push('5 0 obj\n<< /Length ' + content.length + ' >>\nstream\n' + content + 'endstream\nendobj\n');
-  const xs = len; let xref = 'xref\n0 6\n0000000000 65535 f \n';
-  for (let i = 0; i < 5; i++) xref += String(off[i]).padStart(10, '0') + ' 00000 n \n';
-  push(xref); push('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xs + '\n%%EOF');
-  return new Blob(parts, { type: 'application/pdf' });
 }
 
 function renderTodo() { sincronCap(); pintarPrecio(); renderEntry(); renderPos(); }
@@ -1408,14 +1244,23 @@ function menuMonedas() {
   const m = document.createElement('div'); m.className = 'sp-pop'; m.id = 'sp-coinmenu';
   m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   const lista = D.PARES.filter((p) => p.grupo !== 'divisa' && p.grupo !== 'materia');
+  const esCT = (s) => /^0x[0-9a-fA-F]{40}$/.test(String(s || '').trim());
   const pintar = (q) => {
+    const lst = m.querySelector('.sp-lst');
+    if (esCT(q)) {   // pegó un contrato: ofrecer abrirlo (como en Terminal)
+      lst.innerHTML = `<button class="it it-ct" data-ct="${esc(q)}"><i>⤵</i><b>Open contract</b><span>${esc(q.slice(0, 6))}…${esc(q.slice(-4))}</span></button>`;
+      const b = lst.querySelector('[data-ct]'); if (b) b.onclick = () => cargarContrato(q);
+      return;
+    }
     const f = !q ? lista : lista.filter((p) => (p.id + ' ' + (p.n || '')).toLowerCase().includes(q.toLowerCase()));
-    m.querySelector('.sp-lst').innerHTML = f.slice(0, 60).map((p) => { const url = p.cg && S.logos[p.cg]; return `<button class="it ${p.id === S.par.id ? 'on' : ''}" data-id="${esc(p.id)}">${url ? `<i class="con" style="background-image:url(${esc(url)})"></i>` : `<i>${esc(p.id[0])}</i>`}<b>${esc(p.id)}</b><span>${esc(p.n || '')}</span></button>`; }).join('');
-    m.querySelectorAll('.it').forEach((b) => b.onclick = async () => { await seleccionarMoneda(b.dataset.id); montarBarraDemo(); });
+    lst.innerHTML = f.slice(0, 60).map((p) => { const url = p.cg && S.logos[p.cg]; return `<button class="it ${p.id === S.par.id ? 'on' : ''}" data-id="${esc(p.id)}">${url ? `<i class="con" style="background-image:url(${esc(url)})"></i>` : `<i>${esc(p.id[0])}</i>`}<b>${esc(p.id)}</b><span>${esc(p.n || '')}</span></button>`; }).join('');
+    lst.querySelectorAll('.it').forEach((b) => b.onclick = async () => { await seleccionarMoneda(b.dataset.id); montarBarraDemo(); });
   };
-  m.innerHTML = `<input type="text" placeholder="Search symbol" id="sp-cm-q"><div class="sp-lst"></div>`;
+  m.innerHTML = `<input type="text" placeholder="Paste contract or search symbol" id="sp-cm-q"><div class="sp-lst"></div>`;
   document.body.appendChild(m); pintar('');
-  const inp = m.querySelector('#sp-cm-q'); inp.oninput = () => pintar(inp.value.trim()); setTimeout(() => inp.focus(), 0);
+  const inp = m.querySelector('#sp-cm-q'); inp.oninput = () => pintar(inp.value.trim());
+  inp.onkeydown = (e) => { if (e.key === 'Enter' && esCT(inp.value.trim())) cargarContrato(inp.value.trim()); };
+  setTimeout(() => inp.focus(), 0);
   m.onclick = (e) => e.stopPropagation();
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 0);
 }

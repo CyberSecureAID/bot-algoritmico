@@ -131,6 +131,14 @@ export async function velasOnChain(address) {
   const v = await oc.velasDeToken({ par: r.par, token: address, decToken: r.decimales || 18, decQuote: 18, bnbUsd, quoteEsUSDT });
   return (v || []).map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: 0 }));
 }
+/* Resuelve un CONTRATO a su ficha mínima (símbolo, nombre, decimales, si es graficable),
+   como en Terminal. Para el buscador por contrato del selector de monedas. */
+export async function resolverToken(address) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(String(address || '').trim())) return null;
+  const r = await resolver(address);
+  if (!r) return null;
+  return { address, simbolo: r.simbolo || '?', nombre: r.nombre || r.simbolo || 'Token', decimales: r.decimales || 18, graficable: !!r.graficable, precioUsd: r.precioUsd || 0 };
+}
 /* Precio USD on-chain (reservas vivas del par). */
 export async function precioOnChain(address) {
   const oc = await onchain();

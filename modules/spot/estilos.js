@@ -227,6 +227,8 @@ export function estilos() {
   .sp-tag.long{color:var(--sp-up2); background:rgba(46,232,106,.14)} .sp-tag.short{color:var(--sp-down2); background:rgba(255,91,110,.14)}
   .sp-lev-badge{font-family:var(--sp-mono); font-size:9.5px; color:var(--sp-gold); background:rgba(232,184,75,.12); padding:2px 6px; border-radius:4px}
   .sp-pnl.up{color:var(--sp-up2)} .sp-pnl.down{color:var(--sp-down2)} .sp-liq{color:var(--sp-down2)}
+  .sp-pnl .sp-pct{display:block; font-size:9.5px; font-weight:700; opacity:.82; margin-top:1px; letter-spacing:.02em}
+  .sp-pop .it-ct i{color:var(--sp-gold)} .sp-pop .it-ct b{color:var(--sp-ink)}
   .sp-mini{height:24px; padding:0 8px; border-radius:6px; border:1px solid var(--sp-line2); background:rgba(255,255,255,.04); color:var(--sp-ink2); font-family:var(--sp-mono); font-size:10px; font-weight:700}
   .sp-mini:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
   .sp-x{height:26px; padding:0 11px; border-radius:7px; border:1px solid var(--sp-line2); background:rgba(255,255,255,.04); color:var(--sp-ink2); font-family:var(--sp-mono); font-size:10.5px; font-weight:700}
