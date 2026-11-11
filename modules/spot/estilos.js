@@ -38,23 +38,40 @@ export function estilos() {
   .sp-px-big{font-family:var(--sp-disp); font-weight:800; font-size:20px; line-height:1.05; letter-spacing:.3px; transition:color .15s}
   .sp-px-big.up{color:var(--sp-up2)} .sp-px-big.down{color:var(--sp-down2)}
   .sp-px-sub{font-family:var(--sp-mono); font-size:10px; color:var(--sp-ink3)}
-  .sp-stats{display:flex; gap:15px; flex:1 1 auto; overflow:hidden; min-width:0}
-  .sp-stat{display:flex; flex-direction:column; gap:1px; flex:0 0 auto}
-  .sp-stat b{font-family:var(--sp-mono); font-size:9px; letter-spacing:.07em; text-transform:uppercase; color:var(--sp-ink3); font-weight:700}
-  .sp-stat span{font-family:var(--sp-mono); font-size:12px; color:var(--sp-ink); font-weight:600}
-  .sp-stat span.up{color:var(--sp-up2)} .sp-stat span.down{color:var(--sp-down2)}
   .sp-brand{display:inline-flex; align-items:center; height:26px; font-family:var(--sp-mono); font-size:10.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#ff6b78; background:rgba(255,74,90,.14); border:1px solid rgba(255,74,90,.45); border-radius:7px; padding:0 10px; flex:0 0 auto}
-  .sp-wallet{display:flex; align-items:center; gap:12px; flex:0 1 auto; margin-left:auto; min-width:0}
-  .sp-bal-boxes{display:flex; gap:7px; overflow-x:auto; max-width:44vw; scrollbar-width:none} .sp-bal-boxes::-webkit-scrollbar{display:none}
+  .sp-wallet{display:flex; align-items:center; gap:10px; flex:1 1 auto; margin-left:16px; min-width:0}
+  .sp-bal-boxes{display:flex; gap:7px; overflow-x:auto; flex:1 1 auto; min-width:0; scrollbar-width:none} .sp-bal-boxes::-webkit-scrollbar{display:none}
   .sp-bal-box{flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; gap:1px; height:36px; padding:0 11px; border-radius:9px; background:rgba(255,255,255,.04); border:1px solid var(--sp-line)}
+  .sp-bal-box.op{cursor:pointer; transition:border-color .15s,background .15s}
+  .sp-bal-box.op:hover{border-color:var(--sp-gold-soft); background:rgba(255,255,255,.07)}
+  .sp-bal-box.on{border-color:var(--sp-gold); background:rgba(201,168,75,.13)}
   .sp-bal-top{display:flex; align-items:baseline; gap:6px}
   .sp-bal-box .sym{font-family:var(--sp-mono); font-size:9px; font-weight:800; letter-spacing:.04em; line-height:1}
   .sp-bal-box b{font-family:var(--sp-mono); font-size:12.5px; font-weight:800; color:var(--sp-ink); line-height:1}
   .sp-bal-box i{font-style:normal; font-family:var(--sp-mono); font-size:8.5px; color:var(--sp-ink3); line-height:1}
   .sp-bal-box.sp-bal-empty{justify-content:center; align-items:center; color:var(--sp-ink3); font-family:var(--sp-mono); font-size:11px; padding:0 12px}
+  /* Botón cuadrado (bordes redondeados) que abre TODAS tus monedas */
+  .sp-coinsbtn{display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 10px; flex:0 0 auto; border-radius:9px; background:#141b24; border:1px solid var(--sp-line2); color:var(--sp-ink2); cursor:pointer; transition:border-color .15s,color .15s}
+  .sp-coinsbtn:hover{border-color:var(--sp-gold-soft); color:var(--sp-ink)}
+  .sp-coinsbtn svg{opacity:.85}
+  .sp-coinsbtn b{font-family:var(--sp-mono); font-size:12px; font-weight:800; color:var(--sp-ink)}
+  .sp-coinsbtn .cv{font-size:9px; color:var(--sp-ink3)}
   .sp-bal-total{display:flex; flex-direction:column; align-items:flex-end; flex:0 0 auto}
   .sp-bal-total .lbl{font-family:var(--sp-mono); font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--sp-ink3)}
   .sp-bal-total b, .sp-wallet .eq{font-family:var(--sp-disp); font-weight:800; font-size:21px; letter-spacing:-.01em; color:var(--sp-gold); line-height:1.1}
+  /* Popup con todas las monedas de la wallet */
+  .sp-walletmenu{position:fixed; z-index:12050; width:250px; max-height:62vh; overflow-y:auto; padding:6px; border-radius:13px; background:#141b24; border:1px solid var(--sp-line2); box-shadow:0 18px 44px rgba(0,0,0,.6)}
+  .sp-walletmenu .sp-wm-h{padding:6px 9px 8px; font-family:var(--sp-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--sp-ink3)}
+  .sp-walletmenu button{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:40px; padding:0 11px; border-radius:9px; border:1px solid transparent; background:transparent; color:var(--sp-ink2); font-family:var(--sp-mono); cursor:pointer}
+  .sp-walletmenu button:hover{border-color:#3a424c; background:rgba(255,255,255,.04)}
+  .sp-walletmenu button.on{border-color:var(--sp-gold-soft)}
+  .sp-walletmenu button.nop{opacity:.5; cursor:default}
+  .sp-walletmenu button .sym{font-weight:800; font-size:13px; letter-spacing:.03em}
+  .sp-walletmenu button .am{display:flex; flex-direction:column; align-items:flex-end; line-height:1.15}
+  .sp-walletmenu button .am b{font-size:12.5px; color:var(--sp-ink); font-weight:800}
+  .sp-walletmenu button .am i{font-style:normal; font-size:9px; color:var(--sp-ink3)}
+  /* Atribución obligatoria de datos para tokens DEX */
+  .sp-attrib{position:absolute; left:10px; bottom:8px; z-index:4; padding:3px 8px; border-radius:7px; background:rgba(12,16,21,.72); border:1px solid var(--sp-line); font-family:var(--sp-mono); font-size:9.5px; color:var(--sp-ink3); pointer-events:none}
   .sp-icobtn{height:36px; min-width:36px; padding:0 9px; border-radius:9px; flex:0 0 auto; display:inline-grid; place-items:center; color:#8b96a3; background:rgba(255,255,255,.05); border:1px solid var(--sp-line2)}
   .sp-icobtn svg{width:15px; height:15px} .sp-icobtn:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
   .sp-icobtn.on{border-color:var(--sp-gold); color:var(--sp-gold); background:rgba(232,184,75,.12)}
@@ -125,7 +142,7 @@ export function estilos() {
   .sp-avail-row .sp-fld-l{text-transform:none; letter-spacing:0}
   .sp-avail-row #sp-avail{color:var(--sp-ink); font-weight:700}
   /* Menu de las monedas disponibles para short */
-  .sp-shortmenu{position:fixed; z-index:70; width:212px; max-height:50vh; overflow-y:auto; padding:6px; border-radius:13px; background:#141b24; border:1px solid var(--sp-line2); box-shadow:0 18px 44px rgba(0,0,0,.6)}
+  .sp-shortmenu{position:fixed; z-index:12050; width:212px; max-height:50vh; overflow-y:auto; padding:6px; border-radius:13px; background:#141b24; border:1px solid var(--sp-line2); box-shadow:0 18px 44px rgba(0,0,0,.6)}
   .sp-shortmenu button{display:flex; align-items:center; justify-content:space-between; gap:9px; width:100%; min-height:38px; padding:0 11px; border-radius:9px; border:1px solid transparent; background:transparent; color:var(--sp-ink2); font-family:var(--sp-mono); font-size:13px}
   .sp-shortmenu button:hover{border-color:#3a424c; background:rgba(255,255,255,.04); color:var(--sp-ink)}
   .sp-shortmenu button.on{color:var(--sp-gold)}
@@ -301,7 +318,6 @@ export function estilos() {
     .sp-main{display:block; height:auto; min-height:0}
     #sp-overlay.sp-expand .sp-main{display:block}
     .sp-chart{height:60vh; border-right:none; border-bottom:1px solid var(--sp-line)}
-    .sp-stats{display:none}
     .sp-pos{min-height:auto}
     .sp-ops{position:static; margin-top:12px}
   }

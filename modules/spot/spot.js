@@ -15,8 +15,8 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=10';
-import * as D from './datos.js?v=2';
+import { estilos } from './estilos.js?v=11';
+import * as D from './datos.js?v=3';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
@@ -44,7 +44,7 @@ const S = {
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const dec = (x) => { const a = Math.abs(x); return a >= 1000 ? 2 : a >= 1 ? 2 : a >= 0.1 ? 3 : a >= 0.001 ? 5 : 7; };
+const dec = (x) => { const a = Math.abs(x); if (!(a > 0)) return 2; if (a >= 1) return 2; if (a >= 0.1) return 3; if (a >= 0.001) return 5; if (a >= 1e-6) return 8; const ceros = Math.floor(-Math.log10(a)); return Math.min(18, ceros + 4); };
 const fmtP = (x) => (isFinite(x) && x > 0) ? x.toLocaleString('en-US', { minimumFractionDigits: dec(x), maximumFractionDigits: dec(x) }) : '—';
 function fmtMoney(x) { if (!isFinite(x)) x = 0; const n = Math.round(x * 100) / 100; const ent = Number.isInteger(n); return (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: ent ? 0 : 2, maximumFractionDigits: 2 }); }
 const fmtPct = (x) => (x >= 0 ? '+' : '') + (isFinite(x) ? x : 0).toFixed(2) + '%';
@@ -98,13 +98,9 @@ function plantilla() {
     <button class="sp-coin" id="sp-coin"><i id="sp-coin-ico">B</i><b id="sp-coin-id">BTC</b>${IC.chev}</button>
     <div class="sp-tf" id="sp-tf"><button class="cur" id="sp-tfcur">1m <span class="cv">▾</span></button><div class="menu" id="sp-tfmenu"></div></div>
     <div class="sp-px"><div class="sp-px-big" id="sp-mark">—</div><div class="sp-px-sub">Mark · <span id="sp-pair">BTCUSDT</span></div></div>
-    <div class="sp-stats">
-      <div class="sp-stat"><b>24h change</b><span id="sp-chg">—</span></div>
-      <div class="sp-stat"><b>24h high</b><span id="sp-high">—</span></div>
-      <div class="sp-stat"><b>24h low</b><span id="sp-low">—</span></div>
-    </div>
     <div class="sp-wallet" id="sp-wallet">
       <div class="sp-bal-boxes" id="sp-bal-boxes"></div>
+      <button class="sp-coinsbtn" id="sp-coinsbtn" title="All your coins"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><b id="sp-coinsn">0</b><span class="cv">▾</span></button>
       <div class="sp-bal-total"><span class="lbl">Total balance</span><b id="sp-eq">—</b></div>
     </div>
     <button class="sp-icobtn" id="sp-expand" title="Expand chart">${IC.expand}</button>
@@ -120,6 +116,7 @@ function plantilla() {
         <div class="sp-wm"><img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'" alt=""></div>
         <button class="sp-icobtn sp-exit" id="sp-exit" title="Exit full chart">${IC.shrink} Exit</button>
         <div class="sp-spin" id="sp-spin"><i></i></div>
+        <div class="sp-attrib" id="sp-attrib" style="display:none"></div>
       </div>
       <div class="sp-entry">
         <div class="sp-side" id="sp-side">
@@ -175,6 +172,7 @@ function plantilla() {
 function cablear(ov) {
   $('sp-back').onclick = cerrar;
   $('sp-coin').onclick = (e) => { e.stopPropagation(); menuMonedas(); };
+  { const cb = $('sp-coinsbtn'); if (cb) cb.onclick = (e) => { e.stopPropagation(); menuMonedasWallet(); }; }
   $('sp-export').onclick = exportarChart;
   $('sp-expand').onclick = toggleExpand;
   $('sp-exit').onclick = toggleExpand;
@@ -224,13 +222,30 @@ function cablear(ov) {
    PORCENTAJE del saldo disponible, así vale igual para USDT y para monedas
    fraccionarias. S.cap = importe absoluto; S.tam = S.cap. */
 function parIdDeToken(id) { if (!id) return null; if (id === 'BTCB') return 'BTC'; return D.PARES.some((p) => p.id === id) ? id : null; }
+/* Estables de $1 reales (USDT.z NO lo es: es un token con precio propio, va por DEX). */
+const ESTABLES = ['USDT', 'USDC'];
+/* Un token es operable si tiene gráfica en Binance (par) o, si no, un contrato en BSC
+   del que sacarla de PancakeSwap vía GeckoTerminal. */
+function tokenOperable(id) { return !!(parIdDeToken(id) || (MONEDAS[id] && MONEDAS[id].address)); }
+function esDex(p) { return !!(p && p.fuente === 'dex'); }
+/* Objeto de par para CUALQUIER moneda: Binance si existe el par, si no DEX por contrato. */
+function parDeMoneda(coinId) {
+  if (!coinId) return null;
+  const pid = parIdDeToken(coinId);
+  if (pid) { const p = D.PARES.find((x) => x.id === pid); if (p) return Object.assign({}, p, { fuente: 'binance', coin: coinId }); }
+  const m = MONEDAS[coinId];
+  if (m && m.address) return { id: coinId, coin: coinId, s: null, addr: m.address, fuente: 'dex', n: m.nombre || coinId, cg: null, simbolo: m.simbolo || coinId, disp: (m.simbolo || coinId) + '/USD' };
+  return null;
+}
+/* Etiqueta del par para exportar/mostrar: XXXUSDT en Binance, Símbolo/USD en DEX. */
+function etqPar(id) { const m = MONEDAS[id]; if (m && m.address && !parIdDeToken(id)) return (m.simbolo || id) + '/USD'; return (id || '') + 'USDT'; }
 function disponibleActual() { return (S.side === 'short' && S.shortCoin) ? (S.saldos[S.shortCoin] || 0) : M.balance(); }
-function unidadActual() { return (S.side === 'short' && S.shortCoin) ? (parIdDeToken(S.shortCoin) || S.shortCoin) : 'USDT'; }
-/* Monedas que el usuario TIENE y puede usar para abrir un short (saldo > 0, con par
-   operable y sin estables). */
+function unidadActual() { if (S.side === 'short' && S.shortCoin) { const m = MONEDAS[S.shortCoin]; return (m && m.simbolo) || parIdDeToken(S.shortCoin) || S.shortCoin; } return 'USDT'; }
+/* Monedas que el usuario TIENE y puede usar para abrir un short (saldo > 0, operable y
+   sin estables de $1). Incluye tokens DEX como BabyDoge, USDT.z o EXT. */
 function monedasShort() {
   const s = S.saldos || {};
-  return Object.keys(s).filter((id) => (s[id] || 0) > 1e-12 && !['USDT', 'USDC', 'USDTZ'].includes(id) && parIdDeToken(id));
+  return Object.keys(s).filter((id) => (s[id] || 0) > 1e-12 && !ESTABLES.includes(id) && tokenOperable(id));
 }
 function setCap(c) { S.cap = Math.max(0, +c || 0); S.tam = S.cap; sincronCap(); renderEntry(); }
 function setCapPct(pct) { setCap(disponibleActual() * Math.max(0, Math.min(100, +pct || 0)) / 100); }
@@ -253,16 +268,24 @@ function setSide(side) {
   if (side === 'short') {
     const disp = monedasShort();
     if (!S.shortCoin || !disp.includes(S.shortCoin)) S.shortCoin = disp[0] || null;
-    if (S.shortCoin) { const par = parIdDeToken(S.shortCoin); if (par && par !== S.par.id) { cambiarPar(par); } }
+    if (S.shortCoin && S.shortCoin !== (S.par && S.par.coin)) { seleccionarMoneda(S.shortCoin); }
   }
   S.cap = 0; S.tam = 0; sincronCap(); renderEntry();
 }
-/* Cambia el par de la gráfica reutilizando la carga de velas. */
-function cambiarPar(parId) {
-  const p = D.PARES.find((x) => x.id === parId); if (!p || p.id === (S.par && S.par.id)) return;
+/* Carga CUALQUIER moneda en la gráfica y el panel (Binance o DEX), reutilizando la
+   carga de velas. Punto ÚNICO por el que pasan el selector de pares, las tarjetas de
+   saldo de la wallet y la elección de moneda para short. */
+async function seleccionarMoneda(coinId) {
+  const p = parDeMoneda(coinId);
+  if (!p) { toast('No chart available for this coin yet.', 'bad'); return; }
+  if (S.par && p.id === S.par.id && (p.addr || '') === (S.par.addr || '')) { cerrarPops(); return; }
   S.par = p; S._posAuto = null;
-  cargarDatos();
+  if (S.side === 'short') S.shortCoin = coinId;
+  cerrarPops();
+  await cargarDatos();
 }
+/* Alias histórico: acepta un id de par (Binance) o de moneda (wallet/DEX). */
+function cambiarPar(parId) { return seleccionarMoneda(parId); }
 /* Menú de las monedas que tienes para abrir un short. */
 function menuMonedasShort() {
   cerrarPops();
@@ -273,7 +296,7 @@ function menuMonedasShort() {
     : '<div class="sp-cm-empty">You hold no coins that can be shorted.</div>';
   document.body.appendChild(m);
   const r = ancla.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
-  m.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => { S.shortCoin = b.dataset.coin; const par = parIdDeToken(S.shortCoin); if (par) cambiarPar(par); S.cap = 0; S.tam = 0; sincronCap(); renderEntry(); cerrarPops(); });
+  m.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => { S.shortCoin = b.dataset.coin; seleccionarMoneda(S.shortCoin); S.cap = 0; S.tam = 0; sincronCap(); renderEntry(); cerrarPops(); });
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 10);
 }
 
@@ -302,18 +325,30 @@ function cargarLib() { return new Promise((res, rej) => { if (window.Lightweight
 
 async function cargarDatos() {
   const spin = $('sp-spin'); if (spin) spin.style.display = 'grid';
-  $('sp-coin-id').textContent = S.par.id; $('sp-pair').textContent = S.par.s; aplicarLogo($('sp-coin-ico'), S.par);
+  const dex = esDex(S.par);
+  $('sp-coin-id').textContent = S.par.coin || S.par.id; $('sp-pair').textContent = dex ? (S.par.disp || S.par.id) : S.par.s; aplicarLogo($('sp-coin-ico'), S.par);
+  marcarFuente(dex);
   try {
-    const [v, t] = await Promise.all([D.velas(S.par.s, S.tf, 1000), D.ticker(S.par.s).catch(() => null)]);
+    const [v, t] = dex
+      ? await Promise.all([D.velasDex(S.par.addr, S.tf, 1000), D.tickerDex(S.par.addr).catch(() => null)])
+      : await Promise.all([D.velas(S.par.s, S.tf, 1000), D.ticker(S.par.s).catch(() => null)]);
     S.velas = v || [];
-    if (t) { S.mark = t.last; S.open24 = t.open; S.high24 = t.high; S.low24 = t.low; S.vol24 = t.volQuote; S.chgPct = t.chgPct; }
+    if (!dex && t) { S.mark = t.last; S.open24 = t.open; S.high24 = t.high; S.low24 = t.low; S.vol24 = t.volQuote; S.chgPct = t.chgPct; }
+    else if (dex && t && t.last > 0) { S.mark = t.last; }
     else if (S.velas.length) S.mark = S.velas[S.velas.length - 1].close;
+    if (dex) { const lc = S.velas[S.velas.length - 1]; if (lc) { S.chgPct = lc.open > 0 ? (S.mark - lc.open) / lc.open * 100 : 0; S.high24 = lc.high; S.low24 = lc.low; S.vol24 = 0; } else { S.chgPct = 0; } }
     S.marks[S.par.id] = S.mark;
     pintarChart(); conectarStream(); renderTodo();
-  } catch (_) { toast('Could not load market data.', 'bad'); }
+  } catch (_) { toast(dex ? 'Could not load this coin chart (no PancakeSwap pool found).' : 'Could not load market data.', 'bad'); }
   if (spin) spin.style.display = 'none';
 }
 
+/* Nota de atribución bajo la gráfica: GeckoTerminal la exige para tokens DEX. */
+function marcarFuente(dex) {
+  const a = $('sp-attrib'); if (!a) return;
+  a.textContent = dex ? 'DEX price · PancakeSwap data via GeckoTerminal' : '';
+  a.style.display = dex ? 'block' : 'none';
+}
 function pintarChart() {
   const LC = window.LightweightCharts; const cv = $('sp-cv'); if (!LC || !cv || !S.velas.length) return;
   try { if (S.chart) S.chart.remove(); } catch (_) {}
@@ -328,7 +363,8 @@ function pintarChart() {
   });
   S.chart = chart;
   const V = S.velas;
-  const vela = chart.addSeries(LC.CandlestickSeries, { upColor: '#2ee86a', downColor: '#ff5b6e', borderVisible: false, wickUpColor: '#2ee86a', wickDownColor: '#ff5b6e' });
+  const pRef = (V[V.length - 1] || {}).close || S.mark || 1; const pd = dec(pRef);
+  const vela = chart.addSeries(LC.CandlestickSeries, { upColor: '#2ee86a', downColor: '#ff5b6e', borderVisible: false, wickUpColor: '#2ee86a', wickDownColor: '#ff5b6e', priceFormat: { type: 'price', precision: pd, minMove: Math.pow(10, -pd) } });
   vela.setData(V.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))); S.serieVela = vela;
   S.velasDib = V.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
   try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 90, to: V.length + 6 }); ts.subscribeVisibleLogicalRangeChange((range) => { sincronizarDib(); if (range && range.from < 15) cargarMasVelas(); }); } catch (_) {}
@@ -343,7 +379,9 @@ async function cargarMasVelas() {
   _cargandoMas = true;
   try {
     const first = S.velas[0].time;
-    const older = await D.velasAntes(S.par.s, S.tf, first * 1000 - 1, 1000);
+    const older = esDex(S.par)
+      ? await D.velasDexAntes(S.par.addr, S.tf, first - 1, 1000)
+      : await D.velasAntes(S.par.s, S.tf, first * 1000 - 1, 1000);
     const nuevos = (older || []).filter((c) => c.time < first);
     if (nuevos.length) {
       S.velas = nuevos.concat(S.velas);
@@ -356,25 +394,44 @@ async function cargarMasVelas() {
 }
 
 let _streamKey = '';
+/* En vivo: Binance por WebSocket; tokens DEX por sondeo a GeckoTerminal (no hay WS),
+   cada ~22s, suficiente para el precio y dentro del límite público. */
 function conectarStream() {
-  const key = S.par.s + '|' + S.tf;
-  if (S.stream && _streamKey === key) return;
-  if (S.stream) { try { S.stream.cerrar(); } catch (_) {} S.stream = null; }
+  const dex = esDex(S.par);
+  const key = (dex ? S.par.addr : S.par.s) + '|' + S.tf + '|' + (dex ? 'dex' : 'bin');
+  if (_streamKey === key && (S.stream || S.poll)) return;
+  pararStream();
   _streamKey = key;
-  try { S.stream = D.streamVelas(S.par.s, S.tf, (k) => onKline(k)); } catch (_) { S.stream = null; }
+  if (dex) {
+    const addr = S.par.addr, tf = S.tf;
+    S.poll = setInterval(async () => {
+      if (!esDex(S.par) || S.par.addr !== addr || S.tf !== tf) return;
+      try { const rec = await D.velasDex(addr, tf, 3); for (const c of (rec || [])) empujarVela(c, true); } catch (_) {}
+    }, 22000);
+  } else {
+    try { S.stream = D.streamVelas(S.par.s, S.tf, (k) => onKline(k)); } catch (_) { S.stream = null; }
+  }
+}
+function pararStream() {
+  if (S.stream) { try { S.stream.cerrar(); } catch (_) {} S.stream = null; }
+  if (S.poll) { try { clearInterval(S.poll); } catch (_) {} S.poll = null; }
 }
 
-function onKline(k) {
-  if (!S.serieVela) return;
-  const c = { time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v };
-  if (!(c.close > 0)) return;
+/* Mete una vela (en formación o cerrada) en el estado y la gráfica, y dispara el motor
+   (fills de limit, TP y SL). La usan el WebSocket (Binance) y el sondeo (DEX). */
+function empujarVela(c, cerrada) {
+  if (!S.serieVela || !(c.close > 0)) return;
   const last = S.velas[S.velas.length - 1];
   if (last && c.time === last.time) S.velas[S.velas.length - 1] = c;
   else if (!last || c.time > last.time) { S.velas.push(c); if (S.velas.length > 1500) S.velas.shift(); }
   else return;
   try { S.serieVela.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }); } catch (_) {}
   nuevoPrecio(c.close, c.high, c.low);
-  if (k.x === true) { S.velasDib = S.velas.map((v) => ({ t: v.time, o: v.open, h: v.high, l: v.low, c: v.close, v: v.volume })); sincronizarDib(); }
+  if (cerrada) { S.velasDib = S.velas.map((v) => ({ t: v.time, o: v.open, h: v.high, l: v.low, c: v.close, v: v.volume })); sincronizarDib(); }
+}
+function onKline(k) {
+  const c = { time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v };
+  empujarVela(c, k.x === true);
 }
 
 function nuevoPrecio(px, hi, lo) {
@@ -395,10 +452,6 @@ function arrancarUI() {
 }
 function pintarPrecio() {
   const m = $('sp-mark'); if (m) { m.textContent = fmtP(S.mark); m.className = 'sp-px-big ' + cls(S.chgPct); }
-  const chg = $('sp-chg'); if (chg) { chg.textContent = fmtPct(S.chgPct); chg.className = cls(S.chgPct); }
-  const hi = $('sp-high'); if (hi) hi.textContent = fmtP(S.high24);
-  const lo = $('sp-low'); if (lo) lo.textContent = fmtP(S.low24);
-  const vo = $('sp-vol'); if (vo) vo.textContent = S.vol24 >= 1e9 ? (S.vol24 / 1e9).toFixed(2) + 'B' : (S.vol24 / 1e6).toFixed(1) + 'M';
   // El saldo total de la wallet lo pinta renderWallet() (no en cada frame).
 }
 function renderEntry() {
@@ -471,23 +524,36 @@ const BINSYM = {
   XVS: 'XVSUSDT', INJ: 'INJUSDT', TWT: 'TWTUSDT', SHIB: 'SHIBUSDT', MATIC: 'POLUSDT', FLOKI: 'FLOKIUSDT'
 };
 async function preciosUSD(ids) {
-  const out = { USDT: 1, USDC: 1, USDTZ: 1 };
+  const out = { USDT: 1, USDC: 1 };
   const pedir = (ids && ids.length) ? ids.filter((id) => BINSYM[id]) : Object.keys(BINSYM);
   const syms = [...new Set(pedir.map((id) => BINSYM[id]))];
-  if (!syms.length) return out;
-  try {
-    const q = encodeURIComponent(JSON.stringify(syms));
-    const j = await (await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${q}`)).json();
-    const map = {}; (Array.isArray(j) ? j : []).forEach((x) => { map[x.symbol] = +x.price; });
-    for (const [id, s] of Object.entries(BINSYM)) if (map[s] > 0) out[id] = map[s];
-  } catch (_) {}
+  if (syms.length) {
+    try {
+      const q = encodeURIComponent(JSON.stringify(syms));
+      const j = await (await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${q}`)).json();
+      const map = {}; (Array.isArray(j) ? j : []).forEach((x) => { map[x.symbol] = +x.price; });
+      for (const [id, s] of Object.entries(BINSYM)) if (map[s] > 0) out[id] = map[s];
+    } catch (_) {}
+  }
+  // Tokens DEX que el usuario tiene (BabyDoge, USDT.z, EXT…): precio USD por contrato.
+  const dexIds = (ids || []).filter((id) => !BINSYM[id] && !ESTABLES.includes(id) && MONEDAS[id] && MONEDAS[id].address);
+  if (dexIds.length) {
+    try {
+      const mapa = await D.preciosDex(dexIds.map((id) => MONEDAS[id].address));
+      dexIds.forEach((id) => { const v = mapa[String(MONEDAS[id].address).toLowerCase()]; if (v > 0) out[id] = v; });
+    } catch (_) {}
+  }
   return out;
+}
+/* Una tarjeta de saldo (clicable si la moneda se puede graficar/operar). */
+function cajaSaldo(f) {
+  return `<div class="sp-bal-box${f.op ? ' op' : ''}${f.id === (S.par && S.par.coin) ? ' on' : ''}"${f.op ? ` data-coin="${esc(f.id)}"` : ''} title="${esc(f.m.nombre || f.id)}${f.op ? ' · tap to trade' : ''}"><div class="sp-bal-top"><span class="sym" style="color:${esc(f.m.color || '#cdd4dc')}">${esc(f.m.simbolo || f.id)}</span><b>${esc(fmtCoin(f.bal))}</b></div>${f.usd > 0 ? `<i>$${f.usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</i>` : ''}</div>`;
 }
 let _walletTimer = null;
 async function renderWallet() {
   const cuenta = (typeof window !== 'undefined' && window.__spotMockCuenta) || (cuentaActual && cuentaActual());
-  const boxes = $('sp-bal-boxes'), eqEl = $('sp-eq');
-  if (!cuenta) { S.walletOn = false; S.saldos = {}; M.setDisponible(0); if (boxes) boxes.innerHTML = '<div class="sp-bal-box sp-bal-empty">No wallet detected</div>'; if (eqEl) eqEl.textContent = '—'; try { renderEntry(); } catch (_) {} return; }
+  const boxes = $('sp-bal-boxes'), eqEl = $('sp-eq'), cn = $('sp-coinsn');
+  if (!cuenta) { S.walletOn = false; S.saldos = {}; S._filasWallet = []; M.setDisponible(0); if (boxes) boxes.innerHTML = '<div class="sp-bal-box sp-bal-empty">No wallet detected</div>'; if (eqEl) eqEl.textContent = '—'; if (cn) cn.textContent = '0'; try { renderEntry(); } catch (_) {} return; }
   S.walletOn = true; S.cuenta = cuenta;
   let saldos = {};
   if (typeof window !== 'undefined' && window.__spotMockSaldos) saldos = window.__spotMockSaldos;
@@ -497,14 +563,29 @@ async function renderWallet() {
   const ids = Object.keys(saldos).filter((id) => (saldos[id] || 0) > 1e-12);
   const precios = await preciosUSD(ids); S.precios = precios;
   let total = 0;
-  const cajas = ids.map((id) => {
+  const filas = ids.map((id) => {
     const m = MONEDAS[id] || { simbolo: id, color: '#8b95a1' };
     const bal = saldos[id] || 0, p = (precios[id] != null) ? precios[id] : (m.precioUSD || 0), usd = bal * p; total += usd;
-    return `<div class="sp-bal-box" title="${esc(m.nombre || id)}"><div class="sp-bal-top"><span class="sym" style="color:${esc(m.color || '#cdd4dc')}">${esc(m.simbolo || id)}</span><b>${esc(fmtCoin(bal))}</b></div>${usd > 0 ? `<i>$${usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</i>` : ''}</div>`;
-  }).join('');
-  if (boxes) boxes.innerHTML = cajas || '<div class="sp-bal-box sp-bal-empty">No balances yet</div>';
+    return { id, m, bal, usd, op: tokenOperable(id) && !ESTABLES.includes(id) };
+  }).sort((a, b) => b.usd - a.usd);
+  S._filasWallet = filas;
+  if (boxes) { boxes.innerHTML = filas.length ? filas.map(cajaSaldo).join('') : '<div class="sp-bal-box sp-bal-empty">No balances yet</div>'; boxes.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => seleccionarMoneda(b.dataset.coin)); }
+  if (cn) cn.textContent = String(filas.length);
   if (eqEl) eqEl.textContent = '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   try { renderEntry(); } catch (_) {}
+}
+/* Popup con TODAS las monedas de la wallet (botón junto a Total balance). */
+function menuMonedasWallet() {
+  cerrarPops();
+  const filas = S._filasWallet || [], ancla = $('sp-coinsbtn'); if (!ancla) return;
+  const m = document.createElement('div'); m.id = 'sp-walletmenu'; m.className = 'sp-walletmenu';
+  m.innerHTML = filas.length
+    ? '<div class="sp-wm-h">Your coins · tap one to trade it</div>' + filas.map((f) => `<button ${f.op ? `data-coin="${esc(f.id)}"` : 'disabled'} class="${f.id === (S.par && S.par.coin) ? 'on' : ''}${f.op ? '' : ' nop'}" title="${esc(f.m.nombre || f.id)}"><span class="sym" style="color:${esc(f.m.color || '#cdd4dc')}">${esc(f.m.simbolo || f.id)}</span><span class="am"><b>${esc(fmtCoin(f.bal))}</b>${f.usd > 0 ? `<i>$${f.usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</i>` : ''}</span></button>`).join('')
+    : '<div class="sp-cm-empty">No coins in your wallet yet.</div>';
+  document.body.appendChild(m);
+  const r = ancla.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+  m.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => { seleccionarMoneda(b.dataset.coin); cerrarPops(); });
+  setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 10);
 }
 async function arrancarWallet() {
   // Reconecta la wallet que YA está autorizada en la página (igual que el resto del
@@ -583,7 +664,7 @@ function celdaTPSL(obj, k, col) {
 function filaPos(p) {
   const info = M.pnlDe(p, S.marks[p.par] || S.mark); const c = info.pnl >= 0 ? 'up' : 'down';
   const qty = p.qty != null ? p.qty : (p.entrada > 0 ? p.amount / p.entrada : 0);
-  return `<tr><td><span class="sp-sym">${logoChip(p.par)} ${esc(p.par)}USDT <span class="sp-tag ${p.lado}">${p.lado.toUpperCase()}</span></span></td>
+  return `<tr><td><span class="sp-sym">${logoChip(p.par)} ${esc(etqPar(p.par))} <span class="sp-tag ${p.lado}">${p.lado.toUpperCase()}</span></span></td>
     <td>${fmtCoin(qty)} ${esc(p.base || p.par)}</td><td>${fmtP(p.entrada)}</td><td data-mark="${p.id}">${fmtP(S.marks[p.par] || S.mark)}</td>
     <td>${fmtMoney(p.amount)}</td>
     <td>${celdaTPSL(p, 'tp', '#2ee86a')}</td><td>${celdaTPSL(p, 'sl', '#ff5b6e')}</td>
@@ -591,7 +672,7 @@ function filaPos(p) {
     <td><span class="sp-acts"><button class="sp-share" data-share="${p.id}" title="Export trade card">${IC.share}</button><button class="sp-x" data-cerrar="${p.id}" data-par="${p.par}">Close</button></span></td></tr>`;
 }
 function filaOrd(o) {
-  return `<tr><td><span class="sp-sym">${logoChip(o.par)} ${esc(o.par)}USDT</span></td>
+  return `<tr><td><span class="sp-sym">${logoChip(o.par)} ${esc(etqPar(o.par))}</span></td>
     <td><span class="sp-tag ${o.lado}">${o.lado.toUpperCase()}</span></td>
     <td>${fmtMoney(o.amount)}</td><td>${fmtP(o.precio)}</td><td>${fmtP(S.marks[o.par] || S.mark)}</td>
     <td>${celdaTPSL(o, 'tp', '#2ee86a')}</td><td>${celdaTPSL(o, 'sl', '#ff5b6e')}</td>
@@ -618,7 +699,7 @@ function editarTPSL(id, k) {
   const esTP = k === 'tp';
   modalValor({
     titulo: esTP ? 'Take Profit' : 'Stop Loss',
-    sub: `${esc(p.par)}USDT · ${p.lado === 'long' ? 'Long' : 'Short'}`,
+    sub: `${esc(etqPar(p.par))} · ${p.lado === 'long' ? 'Long' : 'Short'}`,
     valor: p[k] || '', unidad: 'USDT', tono: esTP ? 'tp' : 'sl',
     ok: (v) => {
       let tp = p.tp || 0, sl = p.sl || 0;
@@ -884,8 +965,8 @@ async function exportarChart() {
   else { g.fillStyle = '#232b36'; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); g.fillStyle = '#c9d1d9'; g.font = '800 14px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText((S.par.id || '?')[0], cx, cy + 1); }
   const tx = cx + r + 12;
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-  g.font = '800 18px "Chakra Petch", sans-serif'; g.fillStyle = '#eaecef'; g.fillText(S.par.id + 'USDT', tx, 27);
-  const nameW = g.measureText(S.par.id + 'USDT').width;
+  g.font = '800 18px "Chakra Petch", sans-serif'; g.fillStyle = '#eaecef'; g.fillText(etqPar(S.par.id), tx, 27);
+  const nameW = g.measureText(etqPar(S.par.id)).width;
   g.font = '700 16px "IBM Plex Mono", monospace'; g.fillStyle = S.chgPct >= 0 ? '#3ee88a' : '#ff6b7a'; g.fillText(fmtP(S.mark), tx + nameW + 12, 27);
   g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#8b96a3'; g.fillText(S.tf + '  ·  ' + new Date().toLocaleString('en-US'), tx, 48);
   // Derecha: Trading Demo y nuestro dominio
@@ -944,7 +1025,7 @@ async function tarjetaPnL(tr) {
   if (logo) g.drawImage(logo, X - 2, topY - 32, 64, 64); else { g.fillStyle = oro; g.font = '800 34px "Plus Jakarta Sans", sans-serif'; g.textAlign = 'center'; g.fillText((tr.par || '?')[0], X + 30, topY + 12); g.textAlign = 'left'; }
   g.restore();
   g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(X + 30, topY, 32, 0, 6.28); g.stroke();
-  g.fillStyle = blanco; g.font = '800 46px "Plus Jakarta Sans", sans-serif'; g.fillText((tr.par || '') + 'USDT', X + 80, topY + 16);
+  g.fillStyle = blanco; g.font = '800 46px "Plus Jakarta Sans", sans-serif'; g.fillText(etqPar(tr.par || ''), X + 80, topY + 16);
   topY += 86; g.fillStyle = col; g.font = '800 28px "IBM Plex Mono", monospace'; g.fillText((esLong ? 'LONG' : 'SHORT') + '  ·  SPOT', X, topY);
   topY += 50; const d = new Date(tr.cerrado || Date.now()); g.fillStyle = blanco; g.font = '500 24px "IBM Plex Mono", monospace';
   g.fillText(d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + '  ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), X, topY);
@@ -1247,7 +1328,7 @@ function menuMonedas() {
   const pintar = (q) => {
     const f = !q ? lista : lista.filter((p) => (p.id + ' ' + (p.n || '')).toLowerCase().includes(q.toLowerCase()));
     m.querySelector('.sp-lst').innerHTML = f.slice(0, 60).map((p) => { const url = p.cg && S.logos[p.cg]; return `<button class="it ${p.id === S.par.id ? 'on' : ''}" data-id="${esc(p.id)}">${url ? `<i class="con" style="background-image:url(${esc(url)})"></i>` : `<i>${esc(p.id[0])}</i>`}<b>${esc(p.id)}</b><span>${esc(p.n || '')}</span></button>`; }).join('');
-    m.querySelectorAll('.it').forEach((b) => b.onclick = async () => { const p = D.PARES.find((x) => x.id === b.dataset.id); if (p) { S.par = p; cerrarPops(); await cargarDatos(); montarBarraDemo(); } });
+    m.querySelectorAll('.it').forEach((b) => b.onclick = async () => { await seleccionarMoneda(b.dataset.id); montarBarraDemo(); });
   };
   m.innerHTML = `<input type="text" placeholder="Search symbol" id="sp-cm-q"><div class="sp-lst"></div>`;
   document.body.appendChild(m); pintar('');
@@ -1255,15 +1336,15 @@ function menuMonedas() {
   m.onclick = (e) => e.stopPropagation();
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 0);
 }
-function cierraPopFuera(e) { const ids = ['sp-coinmenu', 'sp-shortmenu']; const anc = ['sp-coin', 'sp-amtunit']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
-function cerrarPops() { ['sp-coinmenu', 'sp-shortmenu'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
+function cierraPopFuera(e) { const ids = ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu']; const anc = ['sp-coin', 'sp-amtunit', 'sp-coinsbtn']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
+function cerrarPops() { ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
 
 function toast(msg, tipo) { const old = document.querySelector('.sp-toast'); if (old) old.remove(); const t = document.createElement('div'); t.className = 'sp-toast ' + (tipo || ''); t.textContent = msg; document.body.appendChild(t); setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => { try { t.remove(); } catch (_) {} }, 320); }, 2600); }
 
 function cerrar() {
   try { clearInterval(_walletTimer); } catch (_) {} _walletTimer = null;
   try { if (S.uiRAF) cancelAnimationFrame(S.uiRAF); } catch (_) {} S.uiRAF = null;
-  try { if (S.stream) S.stream.cerrar(); } catch (_) {} S.stream = null; _streamKey = '';
+  try { pararStream(); } catch (_) {} _streamKey = '';
   try { if (S.cvObs) S.cvObs.disconnect(); } catch (_) {} S.cvObs = null;
   if (S.onResize) { window.removeEventListener('resize', S.onResize); S.onResize = null; }
   try { if (S.barra && S.barra.desmontar) S.barra.desmontar(); } catch (_) {} S.barra = null; S.dibMontada = false;

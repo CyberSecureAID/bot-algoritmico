@@ -29,7 +29,7 @@
 <div id="sp-boot">Loading Spot…</div>
 <script type="module">
   try {
-    const m = await import('./spot.js?v=1');
+    const m = await import('./spot.js?v=2');
     await m.abrirSpot();
     const boot = document.getElementById('sp-boot'); if (boot) boot.remove();
     // En su propia página, el botón Back vuelve al inicio (no deja la página en blanco).
