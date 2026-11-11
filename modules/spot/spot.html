@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- feed-shim PRIMERO (regla de CLAUDE.md): reescribe Binance al espejo de datos
+     data-api/data-stream.binance.vision para que la gráfica no se bloquee por región. -->
+<script src="../../assets/js/feed-shim.js?v=1"></script>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e12">
+<title>Spot · DecFreedom</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../assets/img/cco-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="../../assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;min-height:100%;background:#05070a;color:#eaecef;
+    font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    -webkit-text-size-adjust:100%;overscroll-behavior:none}
+  *{box-sizing:border-box}
+  ::-webkit-scrollbar{width:0;height:0;display:none} html,body{scrollbar-width:none}
+  #sp-boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#7d8794;font-size:13px}
+</style>
+</head>
+<body>
+<div id="sp-boot">Loading Spot…</div>
+<script type="module">
+  try {
+    const m = await import('./spot.js?v=1');
+    await m.abrirSpot();
+    const boot = document.getElementById('sp-boot'); if (boot) boot.remove();
+    // En su propia página, el botón Back vuelve al inicio (no deja la página en blanco).
+    const back = document.getElementById('sp-back');
+    if (back) back.onclick = () => { location.href = '../../index.html'; };
+  } catch (e) {
+    const boot = document.getElementById('sp-boot');
+    if (boot) boot.textContent = 'Could not load Spot: ' + (e && e.message ? e.message : e);
+    console.error('[spot] boot:', e);
+  }
+</script>
+</body>
+</html>
