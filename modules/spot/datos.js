@@ -36,29 +36,49 @@ export async function velasAntes(simbolo, interval, endTimeMs, limit = 1000) {
   return j.map(mapK);
 }
 
-/* ───────── Fuente ALTERNA para tokens de PancakeSwap/BSC que NO están en Binance
-   (BabyDoge, USDT.z, EXT y cualquier token con pool en PancakeSwap/Uniswap). Usa la
-   API pública y SIN llave de GeckoTerminal (CoinGecko on-chain). A diferencia de
-   Binance, GeckoTerminal NO geobloquea EE. UU., así que sirve de respaldo para la
-   gráfica de tokens que la fuente tradicional no lista. Devuelve velas en el MISMO
-   formato que velas() de arriba, por lo que la gráfica no distingue el origen.
-   La API pide atribución a GeckoTerminal (se muestra bajo la gráfica en estos tokens).
-   Red BSC = 'bsc'. Verificado contra la documentación oficial de CoinGecko on-chain. */
-const GECKO = 'https://api.geckoterminal.com/api/v2';
+/* ───────── Fuente ALTERNA para tokens de PancakeSwap/Uniswap/BSC que NO están en
+   Binance (BabyDoge, USDT.z, EXT y cualquier token con pool en una DEX). A diferencia
+   de Binance, estas fuentes NO geobloquean EE. UU. Devuelven velas en el MISMO formato
+   que velas() de arriba, por lo que la gráfica no distingue el origen.
+
+   RESPALDO EN CASCADA (si una fuente limita por ritmo o cae, la siguiente cubre), el
+   mismo patrón ya probado en modules/terminal/gecko.js y terminal/precio.js:
+     1) GeckoTerminal  (api.geckoterminal.com)         velas + precio
+     2) CoinGecko on-chain (api.coingecko.com/.../onchain)  MISMO dataset, otro CDN
+     3) DexScreener    (api.dexscreener.com)           precio del par de MÁS liquidez
+        (elige solo la DEX con mejor liquidez: Pancake o Uniswap)
+   GeckoTerminal pide atribución (se muestra bajo la gráfica en estos tokens). Red BSC. */
+const GT_BASES = ['https://api.geckoterminal.com/api/v2', 'https://api.coingecko.com/api/v3/onchain'];
+const DEXSCREENER_TOK = 'https://api.dexscreener.com/latest/dex/tokens/';
 const RED_GT = 'bsc';
 /* temporalidad del sitio -> [timeframe, aggregate] de GeckoTerminal */
 const TF_GT = { '1m': ['minute', 1], '5m': ['minute', 5], '15m': ['minute', 15], '1h': ['hour', 1], '4h': ['hour', 4], '1d': ['day', 1] };
 const _poolCache = {};
 
+/* Pide la MISMA ruta a los dos orígenes on-chain en cascada: el primero que responda
+   OK gana (si GeckoTerminal limita por ritmo o cae, cubre el espejo de CoinGecko).
+   path empieza por '/'. */
+async function jgetGT(path, ms = 10000) {
+  let err = null;
+  for (const base of GT_BASES) {
+    const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+    try { const r = await fetch(base + path, { signal: c.signal, headers: { accept: 'application/json' } }); clearTimeout(t); if (r.ok) return await r.json(); err = new Error('HTTP ' + r.status); }
+    catch (e) { clearTimeout(t); err = e; }
+  }
+  throw err || new Error('gecko');
+}
+
 /* Mejor pool (más liquidez) de un token por su contrato. Se cachea por sesión. */
 export async function poolDe(address) {
   const k = String(address || '').toLowerCase(); if (!k) return null;
   if (_poolCache[k]) return _poolCache[k];
-  const j = await traer(`${GECKO}/networks/${RED_GT}/tokens/${k}/pools?page=1`);
-  const arr = (j && j.data) || [];
-  let best = null, mejor = -1;
-  for (const p of arr) { const liq = +(((p.attributes || {}).reserve_in_usd) || 0); if (liq > mejor) { mejor = liq; best = p; } }
-  const pool = best && best.attributes && best.attributes.address;
+  let pool = null;
+  try {
+    const j = await jgetGT(`/networks/${RED_GT}/tokens/${k}/pools?page=1`);
+    const arr = (j && j.data) || []; let best = null, mejor = -1;
+    for (const p of arr) { const liq = +(((p.attributes || {}).reserve_in_usd) || 0); if (liq > mejor) { mejor = liq; best = p; } }
+    pool = best && best.attributes && best.attributes.address;
+  } catch (_) {}
   if (pool) _poolCache[k] = pool;
   return pool || null;
 }
@@ -67,9 +87,9 @@ const mapGT = (r) => ({ time: Math.floor(+r[0]), open: +r[1], high: +r[2], low: 
 async function ohlcvGT(address, interval, limit, beforeSec) {
   const pool = await poolDe(address); if (!pool) throw new Error('sin pool DEX para ' + address);
   const [tf, agg] = TF_GT[interval] || TF_GT['1d'];
-  let u = `${GECKO}/networks/${RED_GT}/pools/${pool}/ohlcv/${tf}?aggregate=${agg}&limit=${Math.min(1000, limit)}&currency=usd&token=base`;
-  if (beforeSec) u += `&before_timestamp=${Math.floor(beforeSec)}`;
-  const j = await traer(u, 10000);
+  let p = `/networks/${RED_GT}/pools/${pool}/ohlcv/${tf}?aggregate=${agg}&limit=${Math.min(1000, limit)}&currency=usd&token=base`;
+  if (beforeSec) p += `&before_timestamp=${Math.floor(beforeSec)}`;
+  const j = await jgetGT(p);
   const list = (((j || {}).data || {}).attributes || {}).ohlcv_list || [];
   return list.map(mapGT).filter((c) => c.close > 0).sort((a, b) => a.time - b.time);
 }
@@ -78,18 +98,41 @@ export async function velasDex(address, interval = '1d', limit = 1000) { return 
 /* Velas MÁS VIEJAS de un token DEX (scroll al pasado). */
 export async function velasDexAntes(address, interval, endSec, limit = 1000) { return ohlcvGT(address, interval, limit, endSec); }
 
-/* Precio USD actual de uno o varios tokens por contrato, en UNA sola llamada. */
+/* Precio USD por contrato desde DexScreener (par de MÁS liquidez, cualquier DEX de BSC:
+   Pancake o Uniswap). Respaldo independiente de GeckoTerminal. */
+export async function precioDexScreener(address) {
+  try {
+    const low = (s) => String(s || '').toLowerCase();
+    const r = await fetch(DEXSCREENER_TOK + address); const j = await r.json();
+    const ps = ((j && j.pairs) || []).filter((p) => p && p.chainId === 'bsc' && p.baseToken && low(p.baseToken.address) === low(address));
+    if (!ps.length) return 0;
+    ps.sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0));
+    return Number(ps[0].priceUsd) || 0;
+  } catch (_) { return 0; }
+}
+
+/* Precio USD de uno o varios tokens por contrato (GeckoTerminal en una sola llamada);
+   lo que falte se completa con DexScreener. */
 export async function preciosDex(addresses) {
   const lista = [...new Set((addresses || []).map((a) => String(a || '').toLowerCase()).filter(Boolean))];
   if (!lista.length) return {};
-  const j = await traer(`${GECKO}/simple/networks/${RED_GT}/token_price/${lista.join(',')}`);
-  const mapa = (((j || {}).data || {}).attributes || {}).token_prices || {};
-  const out = {}; for (const a of lista) { const v = +mapa[a]; if (v > 0) out[a] = v; } return out;
+  const out = {};
+  try {
+    const j = await jgetGT(`/simple/networks/${RED_GT}/token_price/${lista.join(',')}`);
+    const mapa = (((j || {}).data || {}).attributes || {}).token_prices || {};
+    for (const a of lista) { const v = +mapa[a]; if (v > 0) out[a] = v; }
+  } catch (_) {}
+  const faltan = lista.filter((a) => !(out[a] > 0));
+  if (faltan.length) { const res = await Promise.all(faltan.map((a) => precioDexScreener(a))); faltan.forEach((a, i) => { if (res[i] > 0) out[a] = res[i]; }); }
+  return out;
 }
-/* Ticker mínimo (solo precio) de un token DEX. */
+
+/* Ticker mínimo (solo precio) de un token DEX, con respaldo en cascada:
+   GeckoTerminal -> DexScreener -> último cierre de velas. */
 export async function tickerDex(address) {
   try { const p = await preciosDex([address]); const px = p[String(address).toLowerCase()]; if (px > 0) return { last: px }; } catch (_) {}
-  const v = await velasDex(address, '1d', 2); const c = v[v.length - 1]; return { last: c ? c.close : 0 };
+  try { const px = await precioDexScreener(address); if (px > 0) return { last: px }; } catch (_) {}
+  try { const v = await velasDex(address, '1d', 2); const c = v[v.length - 1]; return { last: c ? c.close : 0 }; } catch (_) { return { last: 0 }; }
 }
 
 export async function ticker(simbolo) {

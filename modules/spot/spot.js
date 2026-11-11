@@ -16,7 +16,7 @@
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
 import { estilos } from './estilos.js?v=11';
-import * as D from './datos.js?v=3';
+import * as D from './datos.js?v=4';
 import * as M from './motor.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
@@ -346,7 +346,7 @@ async function cargarDatos() {
 /* Nota de atribución bajo la gráfica: GeckoTerminal la exige para tokens DEX. */
 function marcarFuente(dex) {
   const a = $('sp-attrib'); if (!a) return;
-  a.textContent = dex ? 'DEX price · PancakeSwap data via GeckoTerminal' : '';
+  a.textContent = dex ? 'DEX price · data via GeckoTerminal & DexScreener' : '';
   a.style.display = dex ? 'block' : 'none';
 }
 function pintarChart() {
