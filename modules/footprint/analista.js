@@ -54,7 +54,7 @@ export function leerFootprint(agg, meta) {
   ].filter((x) => x.en || x.es);
 
   // ── 1) ABSORCIÓN en la última vela (lo más accionable) ──────────────
-  const absU = (agg.absorciones || []).filter((a) => a.t === ult.t);
+  const absU = (agg.absorciones || []).filter((a) => a.t === ult.t && (a.strength || 0) >= 0.45);   // solo absorciones claras, no cualquier ruido
   if (absU.length) {
     const a = absU[0];
     if (a.side === 'sell') {   // venta agresiva absorbida, el precio no bajó → comprador grande

@@ -93,6 +93,20 @@ export async function aggTradesHist(simbolo, paginas = 6) {
   return out;
 }
 
+/* Sub velas: una temporalidad MÁS FINA que la de pantalla. Sirven para
+   reconstruir el volumen por precio de las velas que no tienen ticks (TFs
+   altos, historia). Es dato REAL de Binance, solo que más granular; el motor
+   reparte el volumen de cada sub vela por su rango de precio. */
+const SUB = { '1m': '1s', '3m': '1m', '5m': '1m', '15m': '1m', '30m': '5m', '1h': '5m', '2h': '15m', '4h': '15m', '6h': '30m', '8h': '30m', '12h': '1h', '1d': '1h', '3d': '4h', '1w': '1d', '1M': '1d' };
+export function subTF(tf) { return SUB[tf] || '1m'; }
+export async function subVelas(simbolo, displayTF, limit = 1000) {
+  const s = subTF(displayTF);
+  try {
+    const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${s}&limit=${Math.min(1000, limit)}`);
+    return j.map((k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5], tb: +k[9] }));
+  } catch (_) { return []; }
+}
+
 /* Stream de trades EN VIVO (navegador → Binance, sin servidor). Emite cada
    trade ya clasificado. Reconecta solo si la conexión se cae. Devuelve {cerrar}. */
 export function streamTrades(simbolo, onTrade) {

@@ -29,7 +29,14 @@ export function crearRender(host, opts = {}) {
   host.appendChild(cv);
   const ctx = cv.getContext('2d');
 
-  const st = { agg: null, meta: null, mode: 'bidask', colW: 92, leftF: 0, anclaDer: true,
+  // Imágenes: logo de marca (como en VWAP Pro) y marcadores de absorción.
+  const imgs = { logo: null, bull: null, bear: null };
+  function cargarImg(url) { if (!url) return null; const i = new Image(); i.onload = () => render(); i.src = url; return i; }
+  if (opts.logo) imgs.logo = cargarImg(opts.logo);
+  if (opts.imgBull) imgs.bull = cargarImg(opts.imgBull);
+  if (opts.imgBear) imgs.bear = cargarImg(opts.imgBear);
+
+  const st = { agg: null, meta: null, mode: 'bidask', colW: 92, leftF: 0, anclaDer: true, yZoom: 1,
     pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null,
     live: null, liveT: null, disp: new Map(), dispC: 0, dispH: 0, dispL: 0, flash: new Map() };
   let _rafId = null;
@@ -104,7 +111,9 @@ export function crearRender(host, opts = {}) {
     for (const { c } of vis) { if (c.lo < lo) lo = c.lo; if (c.hi > hi) hi = c.hi; }
     if (st.meta && st.meta.last > 0) { if (st.meta.last < lo) lo = st.meta.last; if (st.meta.last > hi) hi = st.meta.last; }
     if (!isFinite(lo) || !isFinite(hi) || hi <= lo) { lo = 0; hi = 1; }
-    const pad = (hi - lo) * 0.07 || 1; st.pMin = lo - pad; st.pMax = hi + pad;
+    const pad = (hi - lo) * 0.07 || 1; let a = lo - pad, b = hi + pad;
+    const cen = (a + b) / 2, half = ((b - a) / 2) / (st.yZoom || 1);   // zoom de precio (arrastre del eje derecho)
+    st.pMin = cen - half; st.pMax = cen + half;
   }
   const yP = (p, A) => A.y + (st.pMax - p) / (st.pMax - st.pMin) * A.h;
   const pY = (y, A) => st.pMax - (y - A.y) / A.h * (st.pMax - st.pMin);
@@ -123,7 +132,7 @@ export function crearRender(host, opts = {}) {
     ctx.clearRect(0, 0, st.W, st.H); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, st.W, st.H);
     if (!st.agg || !st.agg.candles || !st.agg.candles.length) { ctx.fillStyle = C.dim; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('Waiting for order flow…', st.W / 2, st.H / 2); ctx.textAlign = 'left'; return; }
     const vis = visibles(L); rango(vis);
-    ejeP(L); cols(L, vis); absorcion(L, vis);
+    ejeP(L); cols(L, vis); absorcion(L, vis); marcaLogo(L);
     statFooter(L, vis); cvdPanel(L, vis); ejeT(L, vis); if (st.hover) cruz(L);
   }
 
@@ -215,8 +224,26 @@ export function crearRender(host, opts = {}) {
     ctx.strokeStyle = 'rgba(232,184,75,.5)'; ctx.setLineDash([2, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(vis[vis.length - 1].x, y); ctx.lineTo(A.w, y); ctx.stroke(); ctx.setLineDash([]);
   }
 
+  // Marcas de absorción ENCIMA de la vela (no sobre los números). venta agresiva
+  // absorbida → comprador manda → alcista; compra absorbida → vendedor → bajista.
   function absorcion(L, vis) {
-    const A = L.main; for (const a of (st.agg.absorciones || [])) { const v = vis.find((x) => x.c.t === a.t); if (!v || a.price == null) continue; const x = v.x + st.colW / 2, y = yP(a.price, A); ctx.fillStyle = a.side === 'buy' ? C.sell : C.buy; ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#0a0e14'; ctx.lineWidth = 1.5; ctx.stroke(); } }
+    const A = L.main;
+    for (const a of (st.agg.absorciones || [])) {
+      const v = vis.find((x) => x.c.t === a.t); if (!v) continue;
+      const x = v.x + st.colW / 2, yTop = yP(v.c.hi, A) - 12, bull = a.side === 'sell';
+      const im = bull ? imgs.bull : imgs.bear;
+      if (im && im.complete && im.naturalWidth) { const h = 18, w = im.naturalWidth * (h / im.naturalHeight); ctx.drawImage(im, x - w / 2, yTop - h, w, h); continue; }
+      ctx.fillStyle = bull ? C.buy : C.sell; ctx.beginPath();
+      if (bull) { ctx.moveTo(x, yTop - 8); ctx.lineTo(x - 5, yTop); ctx.lineTo(x + 5, yTop); } else { ctx.moveTo(x, yTop); ctx.lineTo(x - 5, yTop - 8); ctx.lineTo(x + 5, yTop - 8); }
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  function marcaLogo(L) {
+    const im = imgs.logo; if (!im || !im.complete || !im.naturalWidth) return;
+    const h = 22, w = im.naturalWidth * (h / im.naturalHeight);
+    ctx.save(); ctx.globalAlpha = .5; ctx.drawImage(im, 12, L.main.h - h - 10, w, h); ctx.restore();
+  }
 
   // TABLA POR VELA: delta coloreado + volumen + flecha de quién gana la vela
   function statFooter(L, vis) {
@@ -256,7 +283,7 @@ export function crearRender(host, opts = {}) {
     const pts = raw.map((p) => ({ x: p.x, v: p.v - base0, t: p.t }));
     let lo = Infinity, hi = -Infinity; for (const p of pts) { if (p.v < lo) lo = p.v; if (p.v > hi) hi = p.v; } if (!isFinite(lo) || hi === lo) { lo -= 1; hi += 1; }
     const yv = (v) => A.y + 14 + (hi - v) / (hi - lo) * (A.h - 20);
-    ctx.strokeStyle = C.cvd; ctx.lineWidth = 1.6; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke();
+    ctx.save(); ctx.shadowColor = 'rgba(142,162,255,.85)'; ctx.shadowBlur = 7; ctx.strokeStyle = C.cvd; ctx.lineWidth = 1.9; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke(); ctx.restore();   // glow (como el VWAP de VWAP Pro)
     ctx.lineTo(pts[pts.length - 1].x, A.y + A.h); ctx.lineTo(pts[0].x, A.y + A.h); ctx.closePath(); ctx.fillStyle = 'rgba(142,162,255,.08)'; ctx.fill();
     if (0 >= lo && 0 <= hi) { const yz = yv(0); ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(0, yz + .5); ctx.lineTo(A.w, yz + .5); ctx.stroke(); ctx.setLineDash([]); }
     const cur = pts[pts.length - 1]; if (cur) { ctx.fillStyle = cur.v >= 0 ? C.buy : C.sell; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText('CVD ' + sfv(cur.v), A.w - 6, A.y + 11); ctx.textAlign = 'left'; }
@@ -282,13 +309,18 @@ export function crearRender(host, opts = {}) {
 
   cv.addEventListener('mousemove', (e) => {
     const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; st.hover = { x: mx, y: my };
-    if (st.drag) { const dx = mx - st.drag.mx; const cs = st.agg ? st.agg.candles.length : 0; const n = Math.max(1, Math.floor((st.W - GUT) / st.colW)); const maxLeft = Math.max(0, cs - n); st.leftF = Math.max(0, Math.min(maxLeft, st.drag.left - dx / st.colW)); st.anclaDer = (st.leftF >= maxLeft - 0.001); }
+    if (st.drag) {
+      if (st.drag.modo === 'y') st.yZoom = Math.max(0.25, Math.min(6, st.drag.yZoom * Math.exp(-(my - st.drag.my) / 170)));      // eje de precio (derecha): estira/comprime precio
+      else if (st.drag.modo === 'x') st.colW = Math.max(26, Math.min(260, st.drag.colW * Math.exp((mx - st.drag.mx) / 170)));   // eje de tiempo (abajo): estira/comprime tiempo
+      else { const dx = mx - st.drag.mx; const cs = st.agg ? st.agg.candles.length : 0; const n = Math.max(1, Math.floor((st.W - GUT) / st.colW)); const maxLeft = Math.max(0, cs - n); st.leftF = Math.max(0, Math.min(maxLeft, st.drag.left - dx / st.colW)); st.anclaDer = (st.leftF >= maxLeft - 0.001); }
+    }
+    cv.style.cursor = st.drag ? (st.drag.modo === 'y' ? 'ns-resize' : st.drag.modo === 'x' ? 'ew-resize' : 'grabbing') : (mx >= st.W - GUT ? 'ns-resize' : my >= st.H - 18 ? 'ew-resize' : 'crosshair');
     onHover(hit(mx, my), e.clientX, e.clientY); render();
   });
   cv.addEventListener('mouseleave', () => { st.hover = null; onHover(null); render(); });
-  cv.addEventListener('mousedown', (e) => { const r = cv.getBoundingClientRect(); st.drag = { mx: e.clientX - r.left, left: st.leftF }; });
+  cv.addEventListener('mousedown', (e) => { const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; const modo = mx >= st.W - GUT ? 'y' : my >= st.H - 18 ? 'x' : 'pan'; st.drag = { mx, my, left: st.leftF, yZoom: st.yZoom, colW: st.colW, modo }; });
   window.addEventListener('mouseup', () => { st.drag = null; });
-  cv.addEventListener('wheel', (e) => { e.preventDefault(); st.colW = Math.max(26, Math.min(260, st.colW * (e.deltaY < 0 ? 1.15 : 0.87))); render(); }, { passive: false });
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, f = e.deltaY < 0 ? 1.15 : 0.87; if (mx >= st.W - GUT) st.yZoom = Math.max(0.25, Math.min(6, st.yZoom * f)); else st.colW = Math.max(26, Math.min(260, st.colW * f)); render(); }, { passive: false });
 
   function setData(agg, meta) {
     st.agg = agg; if (meta) st.meta = meta;
@@ -298,7 +330,7 @@ export function crearRender(host, opts = {}) {
   function setMeta(meta) { st.meta = Object.assign(st.meta || {}, meta); render(); }
   function setMode(m) { st.mode = m; render(); }
   function getMode() { return st.mode; }
-  function resetView() { st.anclaDer = true; st.colW = 92; render(); }
+  function resetView() { st.anclaDer = true; st.colW = 92; st.yZoom = 1; render(); }
   function snapshot() { return cv; }
   function destroy() { try { host.removeChild(cv); } catch (_) {} }
 

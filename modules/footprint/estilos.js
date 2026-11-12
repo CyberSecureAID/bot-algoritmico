@@ -86,7 +86,10 @@ export function estilosFootprint() {
   @keyframes fpIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 
   /* ── Analista en la barra superior (dictamen en vivo, centrado) ── */
-  #fp-overlay .fp-an{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;margin-left:auto;margin-right:6px;min-height:38px;padding:0 10px;
+  #fp-overlay .fp-timer{flex:0 0 auto;margin-left:auto;min-width:54px;padding:0 11px;min-height:34px;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:9px;background:#0b0e12;border:1px solid #2b3139;color:#eaecef;font-family:var(--mono,'IBM Plex Mono',monospace);font-weight:700;font-size:15px;letter-spacing:.5px}
+  #fp-overlay .fp-timer.urge{color:var(--rojo,#f6465d);border-color:rgba(246,70,93,.5)}
+  #fp-overlay .fp-an{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;margin-left:8px;margin-right:6px;min-height:38px;padding:0 10px;
     border-radius:11px;cursor:pointer;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid #3a424c;color:#eaecef;overflow:hidden;transition:border-color .15s ease}
   #fp-overlay .fp-an:hover{border-color:var(--gold-soft,#C9A84B)}
   #fp-overlay .fp-an.vivo{animation:fpLatido 1.8s ease-in-out infinite}
@@ -120,6 +123,7 @@ export function estilosFootprint() {
   #fp-overlay .fp-an-det{display:none;padding:0 13px 12px}
   #fp-overlay .fp-an-panel.con-detalle .fp-an-det{display:block}
   #fp-overlay .fp-an-li{font-family:var(--mono,'IBM Plex Mono',monospace);font-size:11px;color:#8b96a3;line-height:1.5;padding:4px 0;border-top:1px solid rgba(255,255,255,.05)}
+  #fp-overlay .fp-an-disc{padding:8px 13px 11px;font-size:10px;color:#6b7681;font-style:italic;border-top:1px solid rgba(255,255,255,.05)}
 
   /* ── Iconos SVG centrados + logos SVG de divisas (EUR/GBP) ── */
   #fp-overlay .fp-ico svg,#fp-overlay .fp-back svg{display:block}
@@ -143,6 +147,19 @@ export function estilosFootprint() {
   #fp-overlay .fp-h-tx span{display:block;font-size:12px;line-height:1.55;color:#8b96a3}
   #fp-overlay .fp-help-note{margin-top:14px;padding:12px 14px;border-radius:11px;background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);font-size:12px;line-height:1.55;color:#b7bdc6}
   #fp-overlay .fp-help-note b{color:var(--gold,#E8B84B)}
+  #fp-overlay .fp-help-disc{margin:0 0 14px;padding:10px 13px;border-radius:10px;background:rgba(246,70,93,.08);border:1px solid rgba(246,70,93,.25);font-size:12px;line-height:1.5;color:#d8b0b6}
+  #fp-overlay .fp-help-disc b{color:#f6465d}
+  #fp-overlay .fp-tip-won{margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--display,'Chakra Petch',system-ui);font-weight:700;font-size:12px;text-align:center}
+  #fp-overlay .fp-tip-won.up{color:#26c281}#fp-overlay .fp-tip-won.down{color:#e8445d}
+
+  /* ── Disclaimer de entrada (una vez) ── */
+  .fp-disc{position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;padding:20px}
+  .fp-disc-bg{position:absolute;inset:0;background:rgba(4,6,10,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .fp-disc-c{position:relative;width:100%;max-width:440px;border-radius:18px;padding:24px 22px;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);box-shadow:0 24px 60px rgba(0,0,0,.7);text-align:center}
+  .fp-disc-c h4{margin:0 0 10px;font-family:var(--display,'Chakra Petch',system-ui);font-size:19px;color:var(--gold,#E8B84B)}
+  .fp-disc-c p{font-size:13.5px;line-height:1.6;color:#b7bdc6;margin:0 0 18px}
+  .fp-disc-c p b{color:#eaecef}
+  .fp-disc-ok{min-height:46px;padding:0 28px;border-radius:11px;border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,var(--gold,#E8B84B) 45%,#c79426);color:#3a2800;font-family:var(--display,'Chakra Petch',system-ui);font-weight:800;font-size:14px;cursor:pointer}
 
   /* ── Menús (moneda / temporalidad) ── */
   .fp-menu{position:fixed;z-index:9650;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid var(--gold-soft,#C9A84B);

@@ -67,6 +67,28 @@ function construir(msg) {
     if (tr.p < c.l) c.l = tr.p;
   }
 
+  /* Volumen por precio de las velas SIN ticks, desde sub velas finas (dato REAL
+     de Binance, solo más granular). Solo rellena velas que NO tienen trades;
+     donde hay ticks, mandan los ticks. Se reparte el volumen de cada sub vela
+     por su rango [low, high], y la compra/venta por el taker buy real. Así TODA
+     vela muestra su footprint en cualquier temporalidad. */
+  const subs = msg.subklines || [];
+  if (subs.length) {
+    const conTicks = new Set();
+    for (const [t, c] of porT) if (c.niveles.size > 0) conTicks.add(t);
+    for (const sk of subs) {
+      if (sk.t < base) continue;
+      const ot = openDe(sk.t); if (conTicks.has(ot)) continue;
+      let c = porT.get(ot); if (!c) c = nueva(ot, null);
+      const tb = sk.tb, ts = Math.max(0, sk.v - sk.tb);
+      const kl = binIdx(sk.l, bin), kh = binIdx(sk.h, bin), nb = Math.max(1, kh - kl + 1);
+      const vb = tb / nb, vs = ts / nb;
+      for (let kk = kl; kk <= kh; kk++) { let lv = c.niveles.get(kk); if (!lv) { lv = { buy: 0, sell: 0 }; c.niveles.set(kk, lv); } lv.buy += vb; lv.sell += vs; }
+      c.buyTot += tb; c.sellTot += ts;
+      if (c.o == null) c.o = sk.o; c.c = sk.c; if (sk.h > c.h) c.h = sk.h; if (sk.l < c.l) c.l = sk.l;
+    }
+  }
+
   orden.sort((a, b) => a - b);
 
   // Construcción final por vela + métricas
