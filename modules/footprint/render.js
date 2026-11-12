@@ -30,10 +30,39 @@ export function crearRender(host, opts = {}) {
   const ctx = cv.getContext('2d');
 
   const st = { agg: null, meta: null, mode: 'bidask', colW: 92, leftF: 0, anclaDer: true,
-    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null, pulse: 0, prevLastTotal: -1, _pulseT: 0 };
+    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null,
+    live: null, liveT: null, disp: new Map(), dispC: 0, dispH: 0, dispL: 0, flash: new Map() };
   let _rafId = null;
-  function _anim() { _rafId = requestAnimationFrame(() => { const now = (window.performance ? performance.now() : Date.now()); st.pulse = Math.max(0, (st._pulseT - now) / 450); render(); if (st.pulse > 0) _anim(); else _rafId = null; }); }
-  function pulsar() { st._pulseT = (window.performance ? performance.now() : Date.now()) + 450; if (!_rafId) _anim(); }
+  /* Animación de la vela EN FORMACIÓN: el cuerpo sigue al precio en vivo y las
+     celdas de volumen CRECEN suavemente hacia su valor real según entra el
+     flujo (la lucha compra/venta). Nada de parpadeos: easing + un realce que
+     se apaga en la celda donde acaba de entrar volumen. */
+  function _ease() {
+    _rafId = requestAnimationFrame(() => {
+      let moved = false; const L = st.live;
+      if (L) {
+        const k = 0.2, rango = Math.max(1e-9, st.pMax - st.pMin);
+        st.dispC += (L.c - st.dispC) * k; st.dispH += (L.h - st.dispH) * k; st.dispL += (L.l - st.dispL) * k;
+        if ((Math.abs(L.c - st.dispC) + Math.abs(L.h - st.dispH) + Math.abs(L.l - st.dispL)) / rango > 1e-4) moved = true;
+        const bin = (st.agg && st.agg.binSize) || 1;
+        for (const lv of L.niveles) {
+          const key = Math.round(lv.price / bin); let d = st.disp.get(key);
+          if (!d) { d = { price: lv.price, buy: 0, sell: 0 }; st.disp.set(key, d); }
+          if ((lv.buy - d.buy) > 1e-4 || (lv.sell - d.sell) > 1e-4) st.flash.set(key, 1);
+          d.buy += (lv.buy - d.buy) * k; d.sell += (lv.sell - d.sell) * k;
+          if (Math.abs(lv.buy - d.buy) + Math.abs(lv.sell - d.sell) > 1e-3) moved = true;
+        }
+        st.flash.forEach((v, key) => { const nv = v - 0.07; if (nv <= 0) st.flash.delete(key); else { st.flash.set(key, nv); moved = true; } });
+      }
+      render();
+      if (moved) _ease(); else _rafId = null;
+    });
+  }
+  function setLive(candle) {
+    if (!candle) return;
+    if (candle.t !== st.liveT) { st.liveT = candle.t; st.disp = new Map(); st.flash = new Map(); const o = candle.o != null ? candle.o : candle.c; st.dispC = o; st.dispH = o; st.dispL = o; }
+    st.live = candle; if (!_rafId) _ease();
+  }
 
   function resize() {
     const r = host.getBoundingClientRect();
@@ -111,45 +140,44 @@ export function crearRender(host, opts = {}) {
     const rowH = Math.max(0.6, (bin / (st.pMax - st.pMin)) * A.h);
     const maxV = st.agg.maxCellVol || 1;
     const texto = st.colW >= 70 && rowH >= 9;
-    const lastT = st.agg.candles[st.agg.candles.length - 1].t;
     ctx.textBaseline = 'middle';
     for (const { c, x } of vis) {
-      const cx = x + st.colW / 2, bin2 = bin;
-      let cMax = 1; for (const l of c.niveles) { if (l.buy > cMax) cMax = l.buy; if (l.sell > cMax) cMax = l.sell; }
-      if (c.t === lastT) {
-        ctx.save(); ctx.globalAlpha = .05 + st.pulse * .09; ctx.fillStyle = C.poc; ctx.fillRect(x, A.y, st.colW, A.h); ctx.restore();
-        if (st.pulse > 0 && st.meta && st.meta.last > 0) { const py = yP(st.meta.last, A), rr = 5 + (1 - st.pulse) * 16; ctx.save(); ctx.globalAlpha = st.pulse * .55; ctx.strokeStyle = C.poc; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, py, rr, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
-      }
-      const imb = new Set((c.imbalances || []).map((i) => Math.round(i.price / bin2) + i.side));
-      // Value area (sombra)
+      const cx = x + st.colW / 2;
+      const esLive = (c.t === st.liveT && st.live);
+      // En la vela en formación, las celdas se dibujan con los valores EASED
+      // (st.disp), que crecen hacia los reales según entra volumen.
+      const nivs = esLive ? [...st.disp.values()].sort((a, b) => a.price - b.price) : c.niveles;
+      let cMax = 1; for (const l of nivs) { if (l.buy > cMax) cMax = l.buy; if (l.sell > cMax) cMax = l.sell; }
+      if (esLive) { ctx.save(); ctx.globalAlpha = .035; ctx.fillStyle = C.poc; ctx.fillRect(x, A.y, st.colW, A.h); ctx.restore(); }
+      const imb = new Set((c.imbalances || []).map((i) => Math.round(i.price / bin) + i.side));
       const va = valueArea(c);
       if (va && isFinite(va.lo)) { const y1 = yP(va.hi, A) - rowH / 2, y2 = yP(va.lo, A) + rowH / 2; ctx.fillStyle = C.va; ctx.fillRect(x + 1, y1, st.colW - 2, Math.max(1, y2 - y1)); }
 
-      // ── celdas ──
-      for (const lv of c.niveles) {
-        const y = yP(lv.price, A) - rowH / 2, k = Math.round(lv.price / bin2);
+      for (const lv of nivs) {
+        const y = yP(lv.price, A) - rowH / 2, k = Math.round(lv.price / bin);
+        const fl = esLive ? (st.flash.get(k) || 0) : 0;   // realce al entrar volumen (se apaga solo)
         if (st.mode === 'delta') {
           const d = lv.buy - lv.sell, inten = Math.min(1, Math.abs(d) / maxV);
-          ctx.fillStyle = d >= 0 ? `rgba(38,194,129,${0.1 + inten * 0.62})` : `rgba(232,68,93,${0.1 + inten * 0.62})`;
+          ctx.fillStyle = d >= 0 ? `rgba(38,194,129,${0.1 + inten * 0.62 + fl * 0.25})` : `rgba(232,68,93,${0.1 + inten * 0.62 + fl * 0.25})`;
           ctx.fillRect(x + 2, y, st.colW - 4, Math.max(1, rowH - 1));
           if (texto && rowH >= 11) { ctx.fillStyle = inten > 0.5 ? '#07130c' : C.txt; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(sfv(d), cx, y + rowH / 2); }
         } else if (st.mode === 'profile') {
           const wB = (lv.buy / cMax) * (st.colW / 2 - 5), wS = (lv.sell / cMax) * (st.colW / 2 - 5);
-          ctx.fillStyle = 'rgba(232,68,93,.62)'; ctx.fillRect(cx - wS, y, Math.max(0, wS), Math.max(1.5, rowH - 1));
-          ctx.fillStyle = 'rgba(38,194,129,.62)'; ctx.fillRect(cx, y, Math.max(0, wB), Math.max(1.5, rowH - 1));
+          ctx.fillStyle = `rgba(232,68,93,${0.55 + fl * 0.35})`; ctx.fillRect(cx - wS, y, Math.max(0, wS), Math.max(1.5, rowH - 1));
+          ctx.fillStyle = `rgba(38,194,129,${0.55 + fl * 0.35})`; ctx.fillRect(cx, y, Math.max(0, wB), Math.max(1.5, rowH - 1));
         } else {
           const iS = Math.min(1, lv.sell / maxV), iB = Math.min(1, lv.buy / maxV);
-          ctx.fillStyle = `rgba(232,68,93,${0.08 + iS * 0.5})`; ctx.fillRect(x + 2, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
-          ctx.fillStyle = `rgba(38,194,129,${0.08 + iB * 0.5})`; ctx.fillRect(cx, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
+          ctx.fillStyle = `rgba(232,68,93,${0.08 + iS * 0.5 + fl * 0.3})`; ctx.fillRect(x + 2, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
+          ctx.fillStyle = `rgba(38,194,129,${0.08 + iB * 0.5 + fl * 0.3})`; ctx.fillRect(cx, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
           if (imb.has(k + 'buy')) { ctx.strokeStyle = C.imbBuy; ctx.lineWidth = 1.5; ctx.strokeRect(cx + .5, y + .5, st.colW / 2 - 3, Math.max(1, rowH - 2)); }
           if (imb.has(k + 'sell')) { ctx.strokeStyle = C.imbSell; ctx.lineWidth = 1.5; ctx.strokeRect(x + 2.5, y + .5, st.colW / 2 - 3, Math.max(1, rowH - 2)); }
           if (texto) { ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.sellTx; ctx.textAlign = 'right'; ctx.fillText(fv(lv.sell), cx - 4, y + rowH / 2); ctx.fillStyle = C.buyTx; ctx.textAlign = 'left'; ctx.fillText(fv(lv.buy), cx + 4, y + rowH / 2); }
         }
       }
-      // ── POC (celda marcada) ──
       if (c.poc != null) { const yp = yP(c.poc, A) - rowH / 2; ctx.strokeStyle = C.poc; ctx.lineWidth = 1.6; ctx.strokeRect(x + 1.5, yp - .5, st.colW - 3, Math.max(2, rowH)); }
-      // ── cuerpo OHLC de la vela, fino en el centro ──
-      dibujarVela(c, cx, A);
+      // cuerpo OHLC: en la vela viva usa el precio EASED → sigue al precio en vivo
+      const oc = esLive ? { o: c.o, c: st.dispC, h: Math.max(st.dispH, st.dispC, c.o), l: Math.min(st.dispL, st.dispC, c.o) } : c;
+      dibujarVela(oc, cx, A);
       ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + st.colW - .5, A.y); ctx.lineTo(x + st.colW - .5, A.y + A.h); ctx.stroke();
     }
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
@@ -218,10 +246,14 @@ export function crearRender(host, opts = {}) {
   function cvdPanel(L, vis) {
     const A = L.cvd;
     ctx.fillStyle = 'rgba(255,255,255,.02)'; ctx.fillRect(A.x, A.y, A.w, A.h);
-    ctx.fillStyle = C.dim; ctx.font = '8px ui-monospace,monospace'; ctx.fillText('CVD · cumulative delta', 5, A.y + 10);
+    ctx.fillStyle = C.dim; ctx.font = '8px ui-monospace,monospace'; ctx.fillText('CVD · net buying vs selling (since left)', 5, A.y + 10);
     if (!vis.length) return;
     const map = new Map((st.agg.cvd || []).map((p) => [p.t, p.v]));
-    const pts = vis.map(({ c, x }) => ({ x: x + st.colW / 2, v: map.has(c.t) ? map.get(c.t) : 0, t: c.t }));
+    // Rebase a 0 en el borde izquierdo: muestra el NETO de compra/venta de lo
+    // que estás viendo, así siempre tiene sentido y no arrastra un offset viejo.
+    const raw = vis.map(({ c, x }) => ({ x: x + st.colW / 2, v: map.has(c.t) ? map.get(c.t) : 0, t: c.t }));
+    const base0 = raw.length ? raw[0].v : 0;
+    const pts = raw.map((p) => ({ x: p.x, v: p.v - base0, t: p.t }));
     let lo = Infinity, hi = -Infinity; for (const p of pts) { if (p.v < lo) lo = p.v; if (p.v > hi) hi = p.v; } if (!isFinite(lo) || hi === lo) { lo -= 1; hi += 1; }
     const yv = (v) => A.y + 14 + (hi - v) / (hi - lo) * (A.h - 20);
     ctx.strokeStyle = C.cvd; ctx.lineWidth = 1.6; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke();
@@ -260,9 +292,8 @@ export function crearRender(host, opts = {}) {
 
   function setData(agg, meta) {
     st.agg = agg; if (meta) st.meta = meta;
-    const cs = agg && agg.candles; const lt = cs && cs.length ? cs[cs.length - 1].total : 0;
-    if (st.prevLastTotal >= 0 && lt > st.prevLastTotal + 1e-9) pulsar();   // llegó volumen → pulso en vivo
-    st.prevLastTotal = lt; render();
+    const cs = agg && agg.candles; if (cs && cs.length) setLive(cs[cs.length - 1]);
+    render();
   }
   function setMeta(meta) { st.meta = Object.assign(st.meta || {}, meta); render(); }
   function setMode(m) { st.mode = m; render(); }
@@ -271,5 +302,5 @@ export function crearRender(host, opts = {}) {
   function snapshot() { return cv; }
   function destroy() { try { host.removeChild(cv); } catch (_) {} }
 
-  return { setData, setMeta, setMode, getMode, resetView, resize, render, snapshot, destroy };
+  return { setData, setLive, setMeta, setMode, getMode, resetView, resize, render, snapshot, destroy };
 }

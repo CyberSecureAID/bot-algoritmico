@@ -109,7 +109,7 @@ export function leerFootprint(agg, meta) {
     const s = stkU[stkU.length - 1];
     if (s.side === 'buy') return {
       clave: 'stk-buy-' + s.fromT + '-' + Math.round(s.yLo), tipo: 'tendencia',
-      titulo: dos(`Stacked buy imbalances ${fmtN(s.yLo)}–${fmtN(s.yHi)}`, `Imbalances de compra apilados ${fmtN(s.yLo)}–${fmtN(s.yHi)}`),
+      titulo: dos(`Stacked buy imbalances ${fmtN(s.yLo)} to ${fmtN(s.yHi)}`, `Imbalances de compra apilados ${fmtN(s.yLo)} a ${fmtN(s.yHi)}`),
       txt: dos(`Three or more stacked buy imbalances: a wall of aggressive buying ran through ${fmtN(s.yLo)} to ${fmtN(s.yHi)}. Those levels work as support from here, and the line extends right as a reference.`,
         `Tres o más imbalances de compra apilados: una pared de compra agresiva pasó por ${fmtN(s.yLo)} a ${fmtN(s.yHi)}. Esos niveles funcionan como soporte desde aquí, y la línea se extiende a la derecha como referencia.`),
       hacer: dos(`Favor longs while ${fmtN(s.yLo)} holds; losing the zone flips it to resistance.`,
@@ -118,7 +118,7 @@ export function leerFootprint(agg, meta) {
     };
     return {
       clave: 'stk-sell-' + s.fromT + '-' + Math.round(s.yHi), tipo: 'venta',
-      titulo: dos(`Stacked sell imbalances ${fmtN(s.yLo)}–${fmtN(s.yHi)}`, `Imbalances de venta apilados ${fmtN(s.yLo)}–${fmtN(s.yHi)}`),
+      titulo: dos(`Stacked sell imbalances ${fmtN(s.yLo)} to ${fmtN(s.yHi)}`, `Imbalances de venta apilados ${fmtN(s.yLo)} a ${fmtN(s.yHi)}`),
       txt: dos(`Three or more stacked sell imbalances: a wall of aggressive selling ran through ${fmtN(s.yLo)} to ${fmtN(s.yHi)}. Those levels work as resistance from here, extended right as a reference.`,
         `Tres o más imbalances de venta apilados: una pared de venta agresiva pasó por ${fmtN(s.yLo)} a ${fmtN(s.yHi)}. Esos niveles funcionan como resistencia desde aquí, extendidos a la derecha como referencia.`),
       hacer: dos(`Favor shorts while ${fmtN(s.yHi)} caps; reclaiming the zone flips it to support.`,

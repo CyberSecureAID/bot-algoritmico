@@ -35,7 +35,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const S = {
-  par: PARES[0], tf: '1m', trades: [], velas: [], agg: null, meta: {},
+  par: PARES[0], tf: '1m', trades: [], velas: [], agg: null, meta: {}, live: null,
   render: null, worker: null, stream: null, logos: {}, tick: 0, binSize: 0, imb: 300,
   reqId: 0, rebuildT: null, velasT: null, an: null, alertadas: new Set(), modo: 'bidask'
 };
@@ -74,7 +74,6 @@ function plantilla() {
       <button class="fp-an vivo" id="fp-an-btn" type="button" title="Jesús · live order flow read">
         <img class="fp-an-ava" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
         <span class="fp-an-tag" id="fp-an-tag">FLOW</span>
-        <span class="fp-an-head" id="fp-an-head">Reading the flow…</span>
         <em class="fp-chev">▾</em>
       </button>
 
@@ -116,24 +115,28 @@ function loader() { return '<div class="fp-empty"><div class="fp-spin"></div><sp
 /* Guía de uso (How it works). Diagramas propios (SVG), nada de imágenes de
    terceros. Aquí vive también la nota de la fuente de datos. */
 function helpHTML() {
-  const dCelda = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="2" y="2" width="56" height="50" rx="3" fill="rgba(232,68,93,.18)" stroke="#e8445d"/><rect x="62" y="2" width="56" height="50" rx="3" fill="rgba(38,194,129,.18)" stroke="#26c281"/><text x="30" y="31" fill="#ff8a9a" font-family="monospace" font-size="15" text-anchor="middle">1.2</text><text x="90" y="31" fill="#7ff0b0" font-family="monospace" font-size="15" text-anchor="middle">3.4</text></svg>`;
-  const dFooter = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="2" y="2" width="116" height="50" rx="3" fill="rgba(38,194,129,.1)"/><text x="60" y="20" fill="#26c281" font-family="system-ui" font-size="13" text-anchor="middle">▲ +9.3</text><text x="60" y="40" fill="#8b96a3" font-family="monospace" font-size="12" text-anchor="middle">VOL 21  +49%</text></svg>`;
-  const dImb = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="62" y="4" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><rect x="62" y="20" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><rect x="62" y="36" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><text x="30" y="31" fill="#7d8794" font-family="monospace" font-size="11" text-anchor="middle">stack</text></svg>`;
-  const fila = (svg, t, d) => `<div class="fp-h-row">${svg ? `<div class="fp-h-ic">${svg}</div>` : '<div class="fp-h-ic"></div>'}<div class="fp-h-tx"><b>${t}</b><span>${d}</span></div></div>`;
+  const dCelda = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="2" y="2" width="56" height="50" rx="3" fill="rgba(232,68,93,.18)" stroke="#e8445d"/><rect x="62" y="2" width="56" height="50" rx="3" fill="rgba(38,194,129,.18)" stroke="#26c281"/><text x="30" y="24" fill="#ff8a9a" font-family="monospace" font-size="14" text-anchor="middle">1.2</text><text x="90" y="24" fill="#7ff0b0" font-family="monospace" font-size="14" text-anchor="middle">3.4</text><text x="30" y="44" fill="#ff8a9a" font-family="monospace" font-size="9" text-anchor="middle">sold</text><text x="90" y="44" fill="#7ff0b0" font-family="monospace" font-size="9" text-anchor="middle">bought</text></svg>`;
+  const dFooter = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="2" y="2" width="116" height="50" rx="3" fill="rgba(38,194,129,.1)"/><text x="60" y="22" fill="#26c281" font-family="system-ui" font-size="15" text-anchor="middle">▲ +9.3</text><text x="60" y="40" fill="#8b96a3" font-family="monospace" font-size="11" text-anchor="middle">VOL 21  +49%</text></svg>`;
+  const dPOC = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="34" y="6" width="52" height="42" fill="rgba(232,184,75,.08)"/><rect x="40" y="10" width="40" height="7" fill="rgba(255,255,255,.06)"/><rect x="40" y="33" width="40" height="7" fill="rgba(255,255,255,.06)"/><rect x="30" y="21" width="60" height="10" fill="rgba(232,184,75,.16)" stroke="#E8B84B" stroke-width="2"/><text x="100" y="29" fill="#E8B84B" font-family="monospace" font-size="9">POC</text></svg>`;
+  const dImb = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="60" y="4" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><rect x="60" y="20" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><rect x="60" y="36" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><text x="26" y="31" fill="#7d8794" font-family="monospace" font-size="10" text-anchor="middle">3+ in<tspan x="26" dy="12">a row</tspan></text></svg>`;
+  const dCVD = `<svg viewBox="0 0 120 54" class="fp-h-svg"><line x1="2" y1="46" x2="118" y2="46" stroke="rgba(255,255,255,.12)" stroke-dasharray="3 3"/><polyline points="4,46 30,40 54,42 78,24 116,10" fill="none" stroke="#8ea2ff" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+  const dAn = `<svg viewBox="0 0 120 54" class="fp-h-svg"><circle cx="30" cy="27" r="15" fill="#1b2027" stroke="#C9A84B" stroke-width="1.5"/><path d="M30 20a5 5 0 1 1 0 10a5 5 0 1 1 0-10M20 40a10 9 0 0 1 20 0" fill="#8b96a3"/><rect x="56" y="19" width="48" height="17" rx="8" fill="rgba(38,194,129,.2)"/><text x="80" y="31" fill="#26c281" font-family="monospace" font-size="11" text-anchor="middle" font-weight="700">BUY</text></svg>`;
+  const dViews = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="4" y="14" width="34" height="26" rx="3" fill="rgba(255,255,255,.05)"/><text x="21" y="31" fill="#b7bdc6" font-size="11" text-anchor="middle" font-family="monospace">1 × 2</text><rect x="43" y="14" width="34" height="26" rx="3" fill="rgba(38,194,129,.12)"/><text x="60" y="32" fill="#26c281" font-size="13" text-anchor="middle" font-family="monospace">Δ</text><rect x="82" y="14" width="34" height="26" rx="3" fill="rgba(255,255,255,.05)"/><rect x="87" y="20" width="12" height="4" fill="#26c281"/><rect x="87" y="27" width="22" height="4" fill="#e8445d"/><rect x="87" y="34" width="8" height="4" fill="#26c281"/></svg>`;
+  const fila = (svg, t, d) => `<div class="fp-h-row"><div class="fp-h-ic">${svg}</div><div class="fp-h-tx"><b>${t}</b><span>${d}</span></div></div>`;
   return `
   <div class="fp-help" id="fp-help-ov" style="display:none">
     <div class="fp-help-bg" id="fp-help-bg"></div>
     <div class="fp-help-c">
       <div class="fp-help-cab"><h3>How Footprint Pro works</h3><button class="fp-help-x" id="fp-help-x" aria-label="Close">✕</button></div>
-      <p class="fp-help-lead">A footprint shows the real buying and selling <b>inside every candle</b>, price by price. It is how order flow traders see who is actually in control, not just where price closed.</p>
-      ${fila(dCelda, 'The cells · Bid × Ask', 'Each price row shows two numbers: left (red) is aggressive selling that hit the bid; right (green) is aggressive buying that lifted the ask. Darker background = more volume.')}
-      ${fila(dFooter, 'Who is winning each candle', 'Under every candle: the arrow (▲ buyers / ▼ sellers), the net Delta (buy − sell), the total Volume and the Delta %. That row is your quick read of who won the auction in that bar.')}
-      ${fila('', 'POC and Value Area', 'The gold box is the Point of Control: the price with the most volume in the candle. The shaded band is the Value Area, where 70% of the volume traded. The dashed gold line extends the current control level to the right.')}
-      ${fila(dImb, 'Imbalances and stacked zones', 'A cell outlined in teal (buy) or red (sell) is a strong diagonal imbalance. Three or more stacked become a support/resistance zone that extends to the right until price trades back into it.')}
-      ${fila('', 'CVD · cumulative delta', 'The bottom panel adds up delta over time. When price makes a new high but the CVD does not, that is a divergence: the move has no aggression behind it. Arrows mark it.')}
-      ${fila('', 'The analyst (top bar)', 'Jesús reads the footprint live and tells you, in plain English or Spanish, who is in control and the play. Click it to expand; switch ES/EN inside.')}
-      ${fila('', 'Views', 'Bid×Ask shows the two numbers per cell. Delta shows the net per cell. Profile shows volume bars per candle. Scroll to zoom, drag to move back in time.')}
-      <div class="fp-help-note"><b>Data source.</b> Order flow comes from Binance spot (served for the US region). It is a large slice of the crypto market but not every venue, so read the volume as flow context, not an absolute market total.</div>
+      <p class="fp-help-lead">A normal candle only tells you where price opened and closed. A footprint shows something no candle can: <b>exactly how much was bought and sold at each price</b> inside that candle. So you can see WHO pushed the price, the buyers or the sellers.</p>
+      ${fila(dCelda, 'The two numbers in each box', 'Each candle is a stack of price rows. Every row has two numbers: the left one (red) is how much was SOLD at that price, the right one (green) is how much was BOUGHT. Brighter color = more trading there.')}
+      ${fila(dFooter, 'Who won the candle', 'Right under each candle there is an arrow and a number. Green ▲ = buyers won that candle, red ▼ = sellers won. The number is how much more was bought than sold. This is the fastest way to read the fight.')}
+      ${fila(dPOC, 'The price everyone agreed on', 'The gold box marks the price where the MOST was traded in that candle, the level the market cared about most. The faint band around it is where 70% of the trading happened, the "fair" zone.')}
+      ${fila(dImb, 'When one side overpowers the other', 'If buyers (or sellers) are much stronger than the other side at a price, that box gets a bright outline. When three or more stack up, it marks a strong zone that often becomes a floor or a ceiling later.')}
+      ${fila(dCVD, 'The pressure line (CVD)', 'The line at the bottom adds up the fight over time. It goes UP when buyers are winning overall and DOWN when sellers are. If price climbs but this line falls, nobody is really buying the move, it is weak.')}
+      ${fila(dAn, 'Your analyst (top bar)', 'You do not need to read all of this yourself. Jesús, up top, reads it live and says it in plain words, like "buyers are in control" or "a big seller is blocking here". Tap it for the full read and to switch English / Spanish.')}
+      ${fila(dViews, 'The three views and moving around', 'Bid×Ask shows the two numbers. Delta shows only the net (who won each price). Profile shows it as bars. Roll the mouse wheel to zoom in, drag the chart to look back in time.')}
+      <div class="fp-help-note"><b>Where the numbers come from.</b> The order flow is live from Binance, the biggest crypto exchange. It is a large part of the market but not every exchange on earth, so use the volume to read the pressure, not as the total of the whole market.</div>
     </div>
   </div>`;
 }
@@ -197,11 +200,31 @@ async function refrescarVelas() {
   try { const v = await velas(S.par.s, S.tf, 80); if (v && v.length) { S.velas = v; rebuild(false); } } catch (_) {}
 }
 
+/* Copia de la vela EN FORMACIÓN (la última del worker) que iremos actualizando
+   trade a trade, sin esperar al worker, para que siga al precio en vivo. */
+function snapLast(agg) {
+  if (!agg || !agg.candles || !agg.candles.length) return null;
+  const c = agg.candles[agg.candles.length - 1], bin = agg.binSize || 1;
+  const niveles = (c.niveles || []).map((n) => ({ price: n.price, buy: n.buy, sell: n.sell }));
+  const map = new Map(niveles.map((n) => [Math.round(n.price / bin), n]));
+  return { t: c.t, o: c.o, h: c.h, l: c.l, c: c.c, niveles, map, poc: c.poc, total: c.total, delta: c.delta, bin };
+}
+
 function onTrade(tr) {
   S.trades.push(tr);
   if (S.trades.length > MAX_TRADES) S.trades.splice(0, S.trades.length - MAX_TRADES);
   S.meta.last = tr.p;
-  if (S.render) S.render.setMeta({ last: tr.p });
+  if (S.live) {
+    const paso = tfMs(S.tf);
+    while (tr.t >= S.live.t + paso) S.live = { t: S.live.t + paso, o: tr.p, h: tr.p, l: tr.p, c: tr.p, niveles: [], map: new Map(), poc: null, total: 0, delta: 0, bin: S.live.bin };
+    const bin = S.live.bin || 1, k = Math.round(tr.p / bin);
+    let lv = S.live.map.get(k);
+    if (!lv) { lv = { price: k * bin, buy: 0, sell: 0 }; S.live.map.set(k, lv); S.live.niveles.push(lv); }
+    if (tr.buy) lv.buy += tr.q; else lv.sell += tr.q;
+    if (S.live.o == null) S.live.o = tr.p;
+    S.live.c = tr.p; if (tr.p > S.live.h) S.live.h = tr.p; if (tr.p < S.live.l) S.live.l = tr.p;
+    if (S.render) S.render.setLive(S.live);
+  } else if (S.render) S.render.setMeta({ last: tr.p });
   if (!S.rebuildT) S.rebuildT = setTimeout(() => { S.rebuildT = null; rebuild(false); }, 500);
 }
 
@@ -214,7 +237,8 @@ function arrancarWorker() {
       if (r.reqId !== S.reqId) return;      // descarta resultados viejos
       S.agg = r;
       S.meta.binSize = r.binSize;
-      if (S.render) S.render.setData(r, S.meta);
+      S.live = snapLast(r);                 // reinicia la vela viva con lo del worker; onTrade sigue sumando encima
+      if (S.render) { S.render.setData(r, S.meta); if (S.live) S.render.setLive(S.live); }
       actualizarAnalista();
       revisarAlertas(r);
     };
@@ -338,10 +362,9 @@ function actualizarAnalista() {
   if (!S.an || !S.agg) return;
   let m; try { m = leerFootprint(S.agg, S.meta); } catch (_) { m = null; }
   if (!m) return;
-  const btn = $('fp-an-btn'), tag = $('fp-an-tag'), head = $('fp-an-head');
+  const btn = $('fp-an-btn'), tag = $('fp-an-tag');
   if (btn) btn.className = 'fp-an t-' + m.tipo + (S.an.abierto ? '' : ' vivo');
   if (tag) { tag.textContent = anL(TAG[m.tipo] || { en: 'FLOW', es: 'FLUJO' }, S.an.lang); tag.className = 'fp-an-tag c-' + m.tipo; }
-  if (head) head.textContent = anL(m.titulo, S.an.lang);     // dictamen en vivo, siempre visible en la barra
   const cambio = m.clave !== S.an.clave; S.an.msg = m; S.an.clave = m.clave;
   if (S.an.abierto) {
     if (cambio) { renderPanel(); escribir($('fp-an-panel').querySelector('[data-esc]')); }

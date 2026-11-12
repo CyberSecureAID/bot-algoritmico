@@ -15,8 +15,9 @@ export function estilosFootprint() {
   #fp-overlay .fp-top{display:flex;align-items:center;gap:8px;flex:0 0 auto;padding:8px 10px;
     background:linear-gradient(180deg,#141922,#0d1117);border-bottom:1px solid #2b3139;overflow-x:auto;scrollbar-width:none}
   #fp-overlay .fp-top::-webkit-scrollbar{display:none}
-  #fp-overlay .fp-back{flex:0 0 auto;min-height:36px;padding:0 12px;border-radius:9px;border:1px solid #2b3139;
+  #fp-overlay .fp-back{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:36px;padding:0 13px 0 10px;border-radius:9px;border:1px solid #2b3139;
     background:rgba(255,255,255,.04);color:#b7bdc6;cursor:pointer;font-family:var(--display,'Chakra Petch',system-ui);font-weight:700;font-size:13px}
+  #fp-overlay .fp-back svg{width:14px;height:14px}
   #fp-overlay .fp-back:hover{border-color:var(--gold-soft,#C9A84B);color:#eaecef}
   #fp-overlay .fp-sep{width:1px;height:24px;background:#2b3139;flex:0 0 auto}
   #fp-overlay .fp-coin{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;min-height:38px;padding:0 12px;border-radius:10px;
@@ -35,7 +36,7 @@ export function estilosFootprint() {
   #fp-overlay .fp-px{font-family:var(--mono,'IBM Plex Mono',monospace);font-size:15px;font-weight:700;line-height:1.1}
   #fp-overlay .fp-chg{font-family:var(--mono,'IBM Plex Mono',monospace);font-size:11px}
   #fp-overlay .fp-chg.up{color:#2ee86a}#fp-overlay .fp-chg.down{color:#f6465d}
-  #fp-overlay .fp-modes{display:flex;gap:3px;flex:0 0 auto;margin-left:auto;background:#0b0e12;border:1px solid #2b3139;border-radius:10px;padding:3px}
+  #fp-overlay .fp-modes{display:flex;gap:3px;flex:0 0 auto;background:#0b0e12;border:1px solid #2b3139;border-radius:10px;padding:3px}
   #fp-overlay .fp-modes button{min-height:30px;padding:0 12px;border-radius:7px;border:none;background:transparent;color:#8b96a3;
     cursor:pointer;font-family:var(--display,'Chakra Petch',system-ui);font-weight:700;font-size:12px;white-space:nowrap}
   #fp-overlay .fp-modes button.on{background:linear-gradient(180deg,#f7db8d,var(--gold,#E8B84B) 55%,#c79426);color:#3a2800}
@@ -85,7 +86,7 @@ export function estilosFootprint() {
   @keyframes fpIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 
   /* ── Analista en la barra superior (dictamen en vivo, centrado) ── */
-  #fp-overlay .fp-an{display:inline-flex;align-items:center;gap:8px;flex:1 1 auto;min-width:120px;max-width:440px;margin:0 6px;min-height:38px;padding:0 11px;
+  #fp-overlay .fp-an{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;margin-left:auto;margin-right:6px;min-height:38px;padding:0 10px;
     border-radius:11px;cursor:pointer;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid #3a424c;color:#eaecef;overflow:hidden;transition:border-color .15s ease}
   #fp-overlay .fp-an:hover{border-color:var(--gold-soft,#C9A84B)}
   #fp-overlay .fp-an.vivo{animation:fpLatido 1.8s ease-in-out infinite}
@@ -122,7 +123,6 @@ export function estilosFootprint() {
 
   /* ── Iconos SVG centrados + logos SVG de divisas (EUR/GBP) ── */
   #fp-overlay .fp-ico svg,#fp-overlay .fp-back svg{display:block}
-  #fp-overlay .fp-back svg{margin-right:2px}
   #fp-overlay .fp-coin-lg svg,.fp-mi-lg svg{width:100%;height:100%;display:block}
   #fp-overlay .fp-coin-lg.con-svg,.fp-mi-lg.con-svg{background:none;border-color:transparent;overflow:hidden}
 
