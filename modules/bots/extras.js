@@ -486,7 +486,7 @@ export function descargarHistorial(d) {
       ${bloqueDCA}
 
       <tr><td colspan="6" style="height:18px"></td></tr>
-      <tr><td colspan="6" style="color:#8b96a3;font-size:9pt;padding:8px 10px;border-top:1px solid #d5d9de">Data read directly from the blockchain (BNB Smart Chain). DecFreedom does not custody funds.<br>criptocubaoficial.com</td></tr>
+      <tr><td colspan="6" style="color:#8b96a3;font-size:9pt;padding:8px 10px;border-top:1px solid #d5d9de">Data read directly from the blockchain (BNB Smart Chain). DecFreedom does not custody funds.<br>decfreedom.com</td></tr>
     </table></body></html>`;
 
   const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
