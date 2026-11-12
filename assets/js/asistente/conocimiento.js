@@ -289,7 +289,7 @@ window.NP_BOT_KB = {
          Para Cuba: 'https://wa.me/5351234567'
          Mientras esté vacío, el botón sencillamente no aparece. */
       whatsapp:   'https://wa.me/5358648458',
-      grupo:      'https://t.me/CriptoCubaOficial',
+      grupo:      'https://t.me/DecFreedom',
       grupoTx:    'Cripto Cuba Oficial'
     }
   },
