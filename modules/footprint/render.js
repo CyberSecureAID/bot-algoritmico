@@ -29,17 +29,24 @@ export function crearRender(host, opts = {}) {
   host.appendChild(cv);
   const ctx = cv.getContext('2d');
 
-  // Imágenes: logo de marca (como en VWAP Pro) y marcadores de absorción.
-  const imgs = { logo: null, bull: null, bear: null };
+  // Marcadores de absorción (opcionales). El logo de marca NO se dibuja en el
+  // canvas: va como capa DOM .fp-wm, réplica exacta de las demás secciones.
+  const imgs = { bull: null, bear: null };
   function cargarImg(url) { if (!url) return null; const i = new Image(); i.onload = () => render(); i.src = url; return i; }
-  if (opts.logo) imgs.logo = cargarImg(opts.logo);
   if (opts.imgBull) imgs.bull = cargarImg(opts.imgBull);
   if (opts.imgBear) imgs.bear = cargarImg(opts.imgBear);
 
-  const st = { agg: null, meta: null, mode: 'bidask', colW: 92, leftF: 0, anclaDer: true, yZoom: 1,
-    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null,
+  // Capa FX propia para el CVD: una luz que lo recorre (comet), igual que la
+  // iluminación del VWAP en VWAP Pro. Va encima, sin tocar el dibujo principal.
+  const fx = document.createElement('canvas');
+  fx.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+  host.appendChild(fx);
+  const fctx = fx.getContext('2d');
+
+  const st = { agg: null, meta: null, mode: 'bidask', colW: 92, leftF: 0, anclaDer: true, yZoom: 1, yPan: 0,
+    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null, _cvdPts: null,
     live: null, liveT: null, disp: new Map(), dispC: 0, dispH: 0, dispL: 0, flash: new Map() };
-  let _rafId = null;
+  let _rafId = null, _animId = null, _lastFx = 0;
   /* Animación de la vela EN FORMACIÓN: el cuerpo sigue al precio en vivo y las
      celdas de volumen CRECEN suavemente hacia su valor real según entra el
      flujo (la lucha compra/venta). Nada de parpadeos: easing + un realce que
@@ -78,6 +85,8 @@ export function crearRender(host, opts = {}) {
     cv.width = Math.floor(st.W * st.dpr); cv.height = Math.floor(st.H * st.dpr);
     cv.style.width = st.W + 'px'; cv.style.height = st.H + 'px';
     ctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0);
+    fx.width = cv.width; fx.height = cv.height; fx.style.width = st.W + 'px'; fx.style.height = st.H + 'px';
+    fctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0);
     st.anclaDer = true; st.colW = 92; render();
   }
 
@@ -91,6 +100,7 @@ export function crearRender(host, opts = {}) {
     return { w, h, main, foot, cvd };
   }
 
+  function redondo(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
   function dec() { const b = (st.agg && st.agg.binSize) || 1; return Math.max(0, Math.min(8, Math.ceil(-Math.log10(b)))); }
   function fp(p) { return Number(p).toLocaleString('en-US', { minimumFractionDigits: dec(), maximumFractionDigits: dec() }); }
   function fv(v) { const a = Math.abs(v); if (a >= 1e6) return (v / 1e6).toFixed(2) + 'M'; if (a >= 1e3) return (v / 1e3).toFixed(1) + 'K'; if (a >= 100) return v.toFixed(0); if (a >= 1) return v.toFixed(1); return v.toFixed(2); }
@@ -113,7 +123,7 @@ export function crearRender(host, opts = {}) {
     if (!isFinite(lo) || !isFinite(hi) || hi <= lo) { lo = 0; hi = 1; }
     const pad = (hi - lo) * 0.07 || 1; let a = lo - pad, b = hi + pad;
     const cen = (a + b) / 2, half = ((b - a) / 2) / (st.yZoom || 1);   // zoom de precio (arrastre del eje derecho)
-    st.pMin = cen - half; st.pMax = cen + half;
+    st.pMin = cen - half + st.yPan; st.pMax = cen + half + st.yPan;    // yPan: la gráfica se despega del eje y se mueve en vertical
   }
   const yP = (p, A) => A.y + (st.pMax - p) / (st.pMax - st.pMin) * A.h;
   const pY = (y, A) => st.pMax - (y - A.y) / A.h * (st.pMax - st.pMin);
@@ -132,7 +142,7 @@ export function crearRender(host, opts = {}) {
     ctx.clearRect(0, 0, st.W, st.H); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, st.W, st.H);
     if (!st.agg || !st.agg.candles || !st.agg.candles.length) { ctx.fillStyle = C.dim; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('Waiting for order flow…', st.W / 2, st.H / 2); ctx.textAlign = 'left'; return; }
     const vis = visibles(L); rango(vis);
-    ejeP(L); cols(L, vis); absorcion(L, vis); marcaLogo(L);
+    ejeP(L); cols(L, vis); absorcion(L, vis);
     statFooter(L, vis); cvdPanel(L, vis); ejeT(L, vis); if (st.hover) cruz(L);
   }
 
@@ -150,6 +160,7 @@ export function crearRender(host, opts = {}) {
     const maxV = st.agg.maxCellVol || 1;
     const texto = st.colW >= 70 && rowH >= 9;
     ctx.textBaseline = 'middle';
+    ctx.save(); ctx.beginPath(); ctx.rect(A.x, A.y, A.w, A.h); ctx.clip();   // la vela y las celdas NO invaden delta/CVD
     for (const { c, x } of vis) {
       const cx = x + st.colW / 2;
       const esLive = (c.t === st.liveT && st.live);
@@ -189,6 +200,7 @@ export function crearRender(host, opts = {}) {
       dibujarVela(oc, cx, A);
       ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + st.colW - .5, A.y); ctx.lineTo(x + st.colW - .5, A.y + A.h); ctx.stroke();
     }
+    ctx.restore();
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   }
 
@@ -239,12 +251,6 @@ export function crearRender(host, opts = {}) {
     }
   }
 
-  function marcaLogo(L) {
-    const im = imgs.logo; if (!im || !im.complete || !im.naturalWidth) return;
-    const h = 22, w = im.naturalWidth * (h / im.naturalHeight);
-    ctx.save(); ctx.globalAlpha = .5; ctx.drawImage(im, 12, L.main.h - h - 10, w, h); ctx.restore();
-  }
-
   // TABLA POR VELA: delta coloreado + volumen + flecha de quién gana la vela
   function statFooter(L, vis) {
     const A = L.foot;
@@ -256,16 +262,20 @@ export function crearRender(host, opts = {}) {
     const texto = st.colW >= 60;
     for (const { c, x } of vis) {
       const gana = c.delta >= 0, col = gana ? C.up : C.down, cx = x + st.colW / 2;
-      // barra de fondo tenue segun quien gana
-      ctx.fillStyle = gana ? 'rgba(38,194,129,.09)' : 'rgba(232,68,93,.09)'; ctx.fillRect(x + 1, A.y + 2, st.colW - 2, A.h - 4);
-      // flecha
+      const base = gana ? '38,194,129' : '232,68,93', inten = Math.min(1, Math.abs(c.delta) / maxD);
+      // Tile con iluminación interior: misma estética que el Heatmap de VWAP Pro
+      const bx = x + 1.5, by = A.y + 2, bw = st.colW - 3, bh = A.h - 4, rr = 5;
+      const grad = ctx.createLinearGradient(0, by, 0, by + bh);
+      grad.addColorStop(0, `rgba(${base},${(0.14 + inten * 0.5).toFixed(3)})`); grad.addColorStop(1, `rgba(${base},${(0.05 + inten * 0.2).toFixed(3)})`);
+      ctx.save(); redondo(bx, by, bw, bh, rr); ctx.shadowColor = `rgba(${base},${(0.2 + inten * 0.35).toFixed(3)})`; ctx.shadowBlur = 5 + inten * 7; ctx.fillStyle = grad; ctx.fill(); ctx.restore();
+      ctx.save(); redondo(bx, by, bw, bh, rr); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(bx, by, bw, 2); ctx.restore();   // brillo superior interior
+      redondo(bx, by, bw, bh, rr); ctx.strokeStyle = `rgba(${base},${(0.3 + inten * 0.4).toFixed(3)})`; ctx.lineWidth = 1; ctx.stroke();
       ctx.fillStyle = col; ctx.font = '700 11px system-ui'; ctx.textAlign = 'center'; ctx.fillText(gana ? '▲' : '▼', cx, A.y + 13);
       if (texto) {
         const pct = c.total > 0 ? (c.delta / c.total) * 100 : 0;
         ctx.font = '700 10px ui-monospace,monospace'; ctx.fillStyle = col; ctx.fillText(sfv(c.delta), cx, A.y + 27);
         ctx.font = '9px ui-monospace,monospace'; ctx.fillStyle = C.dim; ctx.fillText(fv(c.total) + '  ' + (pct >= 0 ? '+' : '−') + Math.abs(pct).toFixed(0) + '%', cx, A.y + A.h - 7);
-      } else { const hh = (Math.abs(c.delta) / maxD) * (A.h - 16); ctx.fillStyle = col; ctx.fillRect(x + 3, A.y + A.h - 4 - hh, st.colW - 6, hh); }
-      ctx.strokeStyle = 'rgba(255,255,255,.04)'; ctx.beginPath(); ctx.moveTo(x + st.colW - .5, A.y); ctx.lineTo(x + st.colW - .5, A.y + A.h); ctx.stroke();
+      }
     }
     ctx.textAlign = 'left';
   }
@@ -283,7 +293,8 @@ export function crearRender(host, opts = {}) {
     const pts = raw.map((p) => ({ x: p.x, v: p.v - base0, t: p.t }));
     let lo = Infinity, hi = -Infinity; for (const p of pts) { if (p.v < lo) lo = p.v; if (p.v > hi) hi = p.v; } if (!isFinite(lo) || hi === lo) { lo -= 1; hi += 1; }
     const yv = (v) => A.y + 14 + (hi - v) / (hi - lo) * (A.h - 20);
-    ctx.save(); ctx.shadowColor = 'rgba(142,162,255,.85)'; ctx.shadowBlur = 7; ctx.strokeStyle = C.cvd; ctx.lineWidth = 1.9; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke(); ctx.restore();   // glow (como el VWAP de VWAP Pro)
+    st._cvdPts = pts.map((p) => ({ x: p.x, y: yv(p.v) }));   // para el comet de la capa FX (animación como VWAP Pro)
+    ctx.save(); ctx.shadowColor = 'rgba(142,162,255,.85)'; ctx.shadowBlur = 7; ctx.strokeStyle = C.cvd; ctx.lineWidth = 1.9; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke(); ctx.restore();   // glow base
     ctx.lineTo(pts[pts.length - 1].x, A.y + A.h); ctx.lineTo(pts[0].x, A.y + A.h); ctx.closePath(); ctx.fillStyle = 'rgba(142,162,255,.08)'; ctx.fill();
     if (0 >= lo && 0 <= hi) { const yz = yv(0); ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(0, yz + .5); ctx.lineTo(A.w, yz + .5); ctx.stroke(); ctx.setLineDash([]); }
     const cur = pts[pts.length - 1]; if (cur) { ctx.fillStyle = cur.v >= 0 ? C.buy : C.sell; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText('CVD ' + sfv(cur.v), A.w - 6, A.y + 11); ctx.textAlign = 'left'; }
@@ -312,13 +323,13 @@ export function crearRender(host, opts = {}) {
     if (st.drag) {
       if (st.drag.modo === 'y') st.yZoom = Math.max(0.25, Math.min(6, st.drag.yZoom * Math.exp(-(my - st.drag.my) / 170)));      // eje de precio (derecha): estira/comprime precio
       else if (st.drag.modo === 'x') st.colW = Math.max(26, Math.min(260, st.drag.colW * Math.exp((mx - st.drag.mx) / 170)));   // eje de tiempo (abajo): estira/comprime tiempo
-      else { const dx = mx - st.drag.mx; const cs = st.agg ? st.agg.candles.length : 0; const n = Math.max(1, Math.floor((st.W - GUT) / st.colW)); const maxLeft = Math.max(0, cs - n); st.leftF = Math.max(0, Math.min(maxLeft, st.drag.left - dx / st.colW)); st.anclaDer = (st.leftF >= maxLeft - 0.001); }
+      else { const dx = mx - st.drag.mx, dy = my - st.drag.my; const cs = st.agg ? st.agg.candles.length : 0; const n = Math.max(1, Math.floor((st.W - GUT) / st.colW)); const maxLeft = Math.max(0, cs - n); st.leftF = Math.max(0, Math.min(maxLeft, st.drag.left - dx / st.colW)); st.anclaDer = (st.leftF >= maxLeft - 0.001); st.yPan = st.drag.yPan0 + dy * st.drag.ppp; }   // arrastre: tiempo (x) + precio (y)
     }
     cv.style.cursor = st.drag ? (st.drag.modo === 'y' ? 'ns-resize' : st.drag.modo === 'x' ? 'ew-resize' : 'grabbing') : (mx >= st.W - GUT ? 'ns-resize' : my >= st.H - 18 ? 'ew-resize' : 'crosshair');
     onHover(hit(mx, my), e.clientX, e.clientY); render();
   });
   cv.addEventListener('mouseleave', () => { st.hover = null; onHover(null); render(); });
-  cv.addEventListener('mousedown', (e) => { const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; const modo = mx >= st.W - GUT ? 'y' : my >= st.H - 18 ? 'x' : 'pan'; st.drag = { mx, my, left: st.leftF, yZoom: st.yZoom, colW: st.colW, modo }; });
+  cv.addEventListener('mousedown', (e) => { const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; const L = layout(); const modo = mx >= st.W - GUT ? 'y' : my >= st.H - 18 ? 'x' : 'pan'; const ppp = (st.pMax - st.pMin) / Math.max(1, L.main.h); st.drag = { mx, my, left: st.leftF, yZoom: st.yZoom, colW: st.colW, yPan0: st.yPan, ppp, modo }; });
   window.addEventListener('mouseup', () => { st.drag = null; });
   cv.addEventListener('wheel', (e) => { e.preventDefault(); const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, f = e.deltaY < 0 ? 1.15 : 0.87; if (mx >= st.W - GUT) st.yZoom = Math.max(0.25, Math.min(6, st.yZoom * f)); else st.colW = Math.max(26, Math.min(260, st.colW * f)); render(); }, { passive: false });
 
@@ -330,9 +341,23 @@ export function crearRender(host, opts = {}) {
   function setMeta(meta) { st.meta = Object.assign(st.meta || {}, meta); render(); }
   function setMode(m) { st.mode = m; render(); }
   function getMode() { return st.mode; }
-  function resetView() { st.anclaDer = true; st.colW = 92; st.yZoom = 1; render(); }
+  function resetView() { st.anclaDer = true; st.colW = 92; st.yZoom = 1; st.yPan = 0; render(); }
   function snapshot() { return cv; }
-  function destroy() { try { host.removeChild(cv); } catch (_) {} }
+  function destroy() { try { cancelAnimationFrame(_animId); } catch (_) {} try { cancelAnimationFrame(_rafId); } catch (_) {} try { host.removeChild(cv); } catch (_) {} try { host.removeChild(fx); } catch (_) {} }
+
+  // Animación continua SOLO de la capa FX (comet del CVD): barata, a ~30fps, no
+  // repinta el gráfico principal. La luz recorre la línea del CVD de izq a der.
+  function animFx(ts) {
+    _animId = requestAnimationFrame(animFx);
+    if (ts - _lastFx < 33) return; _lastFx = ts;
+    if (!fctx) return; fctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0); fctx.clearRect(0, 0, st.W, st.H);
+    const pts = st._cvdPts; if (!pts || pts.length < 2) return;
+    const now = performance.now(), w = st.W, period = 3200, frac = (now % period) / period, headX = frac * (w + 240) - 120, tail = 150;
+    fctx.save(); fctx.lineJoin = 'round'; fctx.lineCap = 'round'; fctx.shadowColor = 'rgba(142,162,255,.9)'; fctx.shadowBlur = 12; fctx.lineWidth = 2.4;
+    for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1].x + pts[i].x) / 2, d = Math.abs(mx - headX); if (d > tail) continue; const a = 1 - d / tail; fctx.strokeStyle = 'rgba(190,205,255,' + (0.10 + 0.72 * a * a).toFixed(3) + ')'; fctx.beginPath(); fctx.moveTo(pts[i - 1].x, pts[i - 1].y); fctx.lineTo(pts[i].x, pts[i].y); fctx.stroke(); }
+    fctx.restore();
+  }
+  _animId = requestAnimationFrame(animFx);
 
   return { setData, setLive, setMeta, setMode, getMode, resetView, resize, render, snapshot, destroy };
 }

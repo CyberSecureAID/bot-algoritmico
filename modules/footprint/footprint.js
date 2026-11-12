@@ -12,10 +12,10 @@
    NUEVO: motor de footprint (worker), render en canvas, 3 modos, imbalances
    apilados como S/R, CVD con divergencias, absorción y su analista propio. */
 
-import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js';
-import { crearRender } from './render.js';
-import { leerFootprint } from './analista.js';
-import { estilosFootprint } from './estilos.js';
+import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=2';
+import { crearRender } from './render.js?v=2';
+import { leerFootprint } from './analista.js?v=2';
+import { estilosFootprint } from './estilos.js?v=2';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -25,7 +25,7 @@ const AVATAR = new URL('../../assets/img/jesus-avatar.webp', import.meta.url).hr
    de la vela; si no existen, se dibuja un triángulo. Súbelas a assets/img/. */
 const IMG_BULL = new URL('../../assets/img/fp-alcista.webp', import.meta.url).href;
 const IMG_BEAR = new URL('../../assets/img/fp-bajista.webp', import.meta.url).href;
-const OPTS_RENDER = () => ({ onHover: tooltip, logo: LOGO, imgBull: IMG_BULL, imgBear: IMG_BEAR });
+const OPTS_RENDER = () => ({ onHover: tooltip, imgBull: IMG_BULL, imgBear: IMG_BEAR });
 
 /* Iconos SVG propios, centrados (nada de glifos sueltos descuadrados). */
 const IC = {
@@ -107,12 +107,6 @@ function plantilla() {
 
       <div class="fp-timer" id="fp-timer" title="Time left in this candle">—</div>
 
-      <button class="fp-an vivo" id="fp-an-btn" type="button" title="Jesús · live order flow read">
-        <img class="fp-an-ava" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
-        <span class="fp-an-tag" id="fp-an-tag">FLOW</span>
-        <em class="fp-chev">▾</em>
-      </button>
-
       <div class="fp-modes" id="fp-modes">
         <button data-mode="bidask" class="on" title="Buy x Sell in every cell">Bid×Ask</button>
         <button data-mode="delta" title="Net delta in every cell">Delta</button>
@@ -128,11 +122,13 @@ function plantilla() {
 
     <div class="fp-stage">
       <div class="fp-cvwrap">
-        <div class="fp-cv" id="fp-cv">${loader()}</div>
-        <div class="fp-an-panel" id="fp-an-panel"></div>
+        <div class="fp-cv" id="fp-cv"></div>
+        <div class="fp-wm"><img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'" alt=""></div>
         <div class="fp-alerts" id="fp-alerts"></div>
         <div class="fp-tip" id="fp-tip" style="display:none"></div>
+        <div class="fp-loading" id="fp-loading">${loader()}</div>
       </div>
+      <aside class="fp-an-col" id="fp-an-col"></aside>
     </div>
   </div>
 
@@ -146,7 +142,14 @@ function plantilla() {
   ${helpHTML()}`;
 }
 
-function loader() { return '<div class="fp-empty"><div class="fp-spin"></div><span>Loading order flow…</span></div>'; }
+function loader() {
+  return `<div class="fp-load-c">
+    <img class="fp-load-logo" src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'" alt="">
+    <div class="fp-load-ring"></div>
+    <div class="fp-load-tx">Loading order flow</div>
+  </div>`;
+}
+function mostrarCarga(b) { const el = $('fp-loading'); if (el) el.classList.toggle('hide', !b); }
 
 /* Guía de uso (How it works). Diagramas propios (SVG), nada de imágenes de
    terceros. Aquí vive también la nota de la fuente de datos. */
@@ -172,8 +175,8 @@ function helpHTML() {
       ${fila(dPOC, 'The price everyone agreed on', 'The gold box marks the price where the MOST was traded in that candle, the level the market cared about most. The faint band around it is where 70% of the trading happened, the "fair" zone.')}
       ${fila(dImb, 'When one side overpowers the other', 'If buyers (or sellers) are much stronger than the other side at a price, that box gets a bright outline. When three or more stack up, it marks a strong zone that often becomes a floor or a ceiling later.')}
       ${fila(dCVD, 'The pressure line (CVD)', 'The line at the bottom adds up the fight over time. It goes UP when buyers are winning overall and DOWN when sellers are. If price climbs but this line falls, nobody is really buying the move, it is weak.')}
-      ${fila(dAn, 'Your analyst (top bar)', 'You do not need to read all of this yourself. Jesús, up top, reads it live and says it in plain words, like "buyers are in control" or "a big seller is blocking here". Tap it for the full read and to switch English / Spanish.')}
-      ${fila(dViews, 'The three views and moving around', 'Bid×Ask shows the two numbers. Delta shows only the net (who won each price). Profile shows it as bars. Roll the mouse wheel over the chart to zoom time, drag the price scale on the right to stretch price, drag the chart to look back in time.')}
+      ${fila(dAn, 'Your analyst (right side)', 'You do not need to read all of this yourself. Jesús, in the column on the right, reads it live and says it in plain words, like "buyers are in control" or "a big seller is blocking here". He stays on the whole time with the live buy and sell numbers, and you switch English / Spanish there.')}
+      ${fila(dViews, 'The three views and moving around', 'Bid×Ask shows the two numbers. Delta shows only the net (who won each price). Profile shows it as bars. Roll the mouse wheel over the chart to zoom time, drag the price scale on the right to stretch price, and drag the chart itself to move around, back in time or up and down.')}
       ${fila(dSet, 'Settings (the ⚙ button)', 'Bin size is how tall each price box is: a bigger bin groups more prices into one box (cleaner), a smaller one shows finer detail. Imbalance % is how much stronger one side must be to light up a box (300% = three times the other side). Leave bin on "auto" and 300% until you want to fine tune.')}
       <div class="fp-help-note"><b>Where the numbers come from.</b> The order flow is live from Binance, the biggest crypto exchange. It is a large part of the market but not every exchange on earth, so use the volume to read the pressure, not as the total of the whole market.</div>
     </div>
@@ -204,7 +207,7 @@ function wire(ov) {
   $('fp-help').onclick = (e) => { e.stopPropagation(); abrirHelp(); };
   const hx = $('fp-help-x'); if (hx) hx.onclick = cerrarHelp;
   const hb = $('fp-help-bg'); if (hb) hb.onclick = cerrarHelp;
-  montarAnalista();
+  renderAnalistaCol();
 }
 
 // ── Datos ────────────────────────────────────────────────────────────
@@ -212,7 +215,7 @@ async function cargar() {
   if (S.stream) { try { S.stream.cerrar(); } catch (_) {} S.stream = null; }
   if (S.velasT) { clearInterval(S.velasT); S.velasT = null; }
   S.trades = []; S.alertadas = new Set(); S.agg = null;
-  const cvHost = $('fp-cv'); if (cvHost && !cvHost.querySelector('canvas')) cvHost.innerHTML = loader();
+  mostrarCarga(true);
 
   const sym = S.par.s;
   let tk = 0, tkr = null, vls = [], hist = [], subk = [];
@@ -269,13 +272,14 @@ function onTrade(tr) {
     if (S.live.o == null) S.live.o = tr.p;
     S.live.c = tr.p; if (tr.p > S.live.h) S.live.h = tr.p; if (tr.p < S.live.l) S.live.l = tr.p;
     if (S.render) S.render.setLive(S.live);
+    actualizarLiveStats();
   } else if (S.render) S.render.setMeta({ last: tr.p });
   if (!S.rebuildT) S.rebuildT = setTimeout(() => { S.rebuildT = null; rebuild(false); }, 500);
 }
 
 function arrancarWorker() {
   try {
-    S.worker = new Worker(new URL('./motor.worker.js', import.meta.url));
+    S.worker = new Worker(new URL('./motor.worker.js?v=2', import.meta.url));
     S.worker.onmessage = (ev) => {
       const r = ev.data || {};
       if (!r.ok) return;
@@ -283,8 +287,10 @@ function arrancarWorker() {
       S.agg = r;
       S.meta.binSize = r.binSize;
       S.live = snapLast(r);                 // reinicia la vela viva con lo del worker; onTrade sigue sumando encima
+      if (r.candles && r.candles.length) mostrarCarga(false);
       if (S.render) { S.render.setData(r, S.meta); if (S.live) S.render.setLive(S.live); }
       actualizarAnalista();
+      actualizarLiveStats();
       revisarAlertas(r);
     };
     S.worker.onerror = () => {};
@@ -400,41 +406,64 @@ const TAG = { compra: { en: 'BUY', es: 'COMPRA' }, venta: { en: 'SELL', es: 'VEN
 function idiomaIni() { return 'en'; }   // la plataforma es inglés por defecto; el usuario puede cambiar a ES en la píldora
 const anL = (o, l) => (o && (o[l] != null ? o[l] : o.en)) || '';
 
-function montarAnalista() {
-  const btn = $('fp-an-btn'); if (!btn) return;
-  btn.onclick = (e) => { e.stopPropagation(); btn.classList.remove('vivo'); S.an.abierto = !S.an.abierto; const p = $('fp-an-panel'); if (S.an.abierto && S.an.msg) { renderPanel(); escribir(p.querySelector('[data-esc]')); } else if (p) p.classList.remove('abierto'); };
-  document.addEventListener('click', (ev) => { if (!S.an || !S.an.abierto) return; const p = $('fp-an-panel'), b = $('fp-an-btn'); if (p && !p.contains(ev.target) && b && !b.contains(ev.target)) { S.an.abierto = false; p.classList.remove('abierto'); } });
+/* El analista vive en una COLUMNA vertical a la derecha de la gráfica, activo en
+   vivo: reescribe su lectura según cambia el flujo y muestra las cifras del
+   momento (compra / venta / delta / CVD de la vela actual). */
+function renderAnalistaCol() {
+  const col = $('fp-an-col'); if (!col) return;
+  const lang = S.an.lang, m = S.an.msg;
+  if (!m) {
+    col.className = 'fp-an-col';
+    col.innerHTML = `
+      <div class="fp-anc-head"><img class="fp-anc-ava" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
+        <div class="fp-anc-id"><b>Jesús</b><span>${lang === 'es' ? 'Analista de flujo' : 'Order flow analyst'}</span></div></div>
+      <div class="fp-anc-wait"><i class="fp-anc-dot"></i>${lang === 'es' ? 'Leyendo el flujo de órdenes…' : 'Reading the order flow…'}</div>`;
+    return;
+  }
+  col.className = 'fp-an-col t-' + m.tipo;
+  col.innerHTML = `
+    <div class="fp-anc-head">
+      <img class="fp-anc-ava" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
+      <div class="fp-anc-id"><b>Jesús</b><span>${lang === 'es' ? 'Analista de flujo' : 'Order flow analyst'}</span></div>
+      <button class="fp-anc-lang" type="button">${lang === 'en' ? 'ES' : 'EN'}</button>
+    </div>
+    <div class="fp-anc-live"><i class="fp-anc-dot"></i><span>${lang === 'es' ? 'EN VIVO' : 'LIVE'}</span><em class="fp-anc-tag c-${m.tipo}">${esc(anL(TAG[m.tipo] || { en: 'FLOW', es: 'FLUJO' }, lang))}</em></div>
+    <div class="fp-anc-stats" id="fp-anc-stats"></div>
+    <div class="fp-anc-title">${esc(anL(m.titulo, lang))}</div>
+    <div class="fp-anc-tx" data-esc="${esc(anL(m.txt, lang))}"></div>
+    <div class="fp-anc-do"><span>${lang === 'es' ? 'Qué vigilar' : 'What to watch'}</span>${esc(anL(m.hacer, lang))}</div>
+    <div class="fp-anc-why">${(m.detalle || []).map((x) => `<div class="fp-anc-li">${esc(anL(x, lang))}</div>`).join('')}</div>
+    <div class="fp-anc-disc">${lang === 'es' ? 'Lectura en vivo de Jesús · no es consejo financiero' : "Jesús's live read · not financial advice"}</div>`;
+  const lng = col.querySelector('.fp-anc-lang'); if (lng) lng.onclick = (e) => { e.stopPropagation(); S.an.lang = S.an.lang === 'es' ? 'en' : 'es'; renderAnalistaCol(); };
+  escribir(col.querySelector('[data-esc]'));
+  actualizarLiveStats();
 }
 function actualizarAnalista() {
   if (!S.an || !S.agg) return;
   let m; try { m = leerFootprint(S.agg, S.meta); } catch (_) { m = null; }
   if (!m) return;
-  const btn = $('fp-an-btn'), tag = $('fp-an-tag');
-  if (btn) btn.className = 'fp-an t-' + m.tipo + (S.an.abierto ? '' : ' vivo');
-  if (tag) { tag.textContent = anL(TAG[m.tipo] || { en: 'FLOW', es: 'FLUJO' }, S.an.lang); tag.className = 'fp-an-tag c-' + m.tipo; }
   const cambio = m.clave !== S.an.clave; S.an.msg = m; S.an.clave = m.clave;
-  if (S.an.abierto) {
-    if (cambio) { renderPanel(); escribir($('fp-an-panel').querySelector('[data-esc]')); }
-    else { const tx = document.querySelector('.fp-an-tx'); if (tx && tx.dataset.hecho) tx.textContent = anL(m.txt, S.an.lang); const hz = document.querySelector('.fp-an-hacer'); if (hz) hz.textContent = anL(m.hacer, S.an.lang); }
+  if (cambio) renderAnalistaCol();
+  else {
+    const tx = document.querySelector('.fp-anc-tx'); if (tx && tx.dataset.hecho) tx.textContent = anL(m.txt, S.an.lang);
+    const hz = document.querySelector('.fp-anc-do'); if (hz) hz.innerHTML = `<span>${S.an.lang === 'es' ? 'Qué vigilar' : 'What to watch'}</span>${esc(anL(m.hacer, S.an.lang))}`;
   }
 }
-function renderPanel() {
-  const panel = $('fp-an-panel'); if (!panel || !S.an.msg) return;
-  const m = S.an.msg, lang = S.an.lang, u = AN_UI[lang] || AN_UI.en;
-  panel.className = 'fp-an-panel abierto t-' + m.tipo + (S.an.det ? ' con-detalle' : '');
-  panel.innerHTML = `
-    <div class="fp-an-cab">
-      <img class="fp-an-ava2" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
-      <div class="fp-an-quien"><b>Jesús · ${esc(u.live)}</b><span>${esc(anL(m.titulo, lang))}</span></div>
-      <button class="fp-an-lang" type="button">${lang === 'en' ? 'ES' : 'EN'}</button>
-    </div>
-    <div class="fp-an-tx" data-esc="${esc(anL(m.txt, lang))}"></div>
-    <div class="fp-an-hacer">${esc(anL(m.hacer, lang))}</div>
-    <div class="fp-an-acts"><button class="fp-an-mas" type="button">${esc(u.why)} ▾</button></div>
-    <div class="fp-an-det">${(m.detalle || []).map((x) => `<div class="fp-an-li">${esc(anL(x, lang))}</div>`).join('')}</div>
-    <div class="fp-an-disc">${lang === 'es' ? 'Lectura en vivo de Jesús · no es consejo financiero' : "Jesús's live read · not financial advice"}</div>`;
-  const lng = panel.querySelector('.fp-an-lang'); if (lng) lng.onclick = (e) => { e.stopPropagation(); S.an.lang = S.an.lang === 'es' ? 'en' : 'es'; renderPanel(); escribir(panel.querySelector('[data-esc]')); };
-  const mas = panel.querySelector('.fp-an-mas'); if (mas) mas.onclick = (e) => { e.stopPropagation(); S.an.det = !S.an.det; panel.classList.toggle('con-detalle', S.an.det); mas.textContent = S.an.det ? (u.hide + ' ▴') : (u.why + ' ▾'); };
+/* Cifras del momento (vela en formación): compra vs venta, delta y CVD. Datos
+   reales, se actualizan trade a trade: el analista "habla" en tiempo real. */
+function actualizarLiveStats() {
+  const el = $('fp-anc-stats'); if (!el) return;
+  const live = S.live; let b = 0, s = 0;
+  if (live && live.niveles) for (const n of live.niveles) { b += n.buy; s += n.sell; }
+  const delta = b - s;
+  const cvd = (S.agg && S.agg.cvd) || []; const cvdNow = cvd.length ? cvd[cvd.length - 1].v : 0;
+  const lang = S.an ? S.an.lang : 'en';
+  const cell = (k, v, cls) => `<div class="fp-anc-st"><span>${k}</span><b class="${cls || ''}">${v}</b></div>`;
+  el.innerHTML =
+    cell(lang === 'es' ? 'Compra' : 'Buyers', fmt(b), 'up') +
+    cell(lang === 'es' ? 'Venta' : 'Sellers', fmt(s), 'down') +
+    cell('Delta', (delta >= 0 ? '+' : '−') + fmt(Math.abs(delta)), delta >= 0 ? 'up' : 'down') +
+    cell('CVD', (cvdNow >= 0 ? '+' : '−') + fmt(Math.abs(cvdNow)), cvdNow >= 0 ? 'up' : 'down');
 }
 function escribir(el) { if (!el || el.dataset.hecho) return; const txt = el.dataset.esc || ''; el.dataset.hecho = '1'; let n = 0; const t = setInterval(() => { n += 2; el.textContent = txt.slice(0, n); if (n >= txt.length) { el.textContent = txt; clearInterval(t); } }, 12); }
 

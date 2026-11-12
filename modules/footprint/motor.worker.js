@@ -134,7 +134,13 @@ function construir(msg) {
     // (recientes/en vivo); estas quedan sin detalle de celda, nada inventado.
     let bTot = c.buyTot, sTot = c.sellTot, sinTicks = false;
     if (niveles.length === 0 && c.vol > 0) { bTot = c.tb; sTot = Math.max(0, c.vol - c.tb); delta = bTot - sTot; total = c.vol; sinTicks = true; }
-    candles.push({ t, o: c.o, h: c.h === -Infinity ? hi : c.h, l: c.l === Infinity ? lo : c.l, c: c.c,
+    // La mecha dibujada cubre justo el bloque de celdas: donde hay footprint, el
+    // high/low es la extensión REAL de los niveles con datos (nada de mecha vacía
+    // sin información). Sin celdas, se usa el rango de la kline / sub velas.
+    const hasT = niveles.length > 0;
+    const H = hasT ? hi + bin / 2 : (c.h === -Infinity ? hi : c.h);
+    const Lo = hasT ? lo - bin / 2 : (c.l === Infinity ? lo : c.l);
+    candles.push({ t, o: c.o, h: H, l: Lo, c: c.c,
       niveles, poc, delta, total, buyTot: bTot, sellTot: sTot, hi, lo, imbalances, sinTicks });
   }
 

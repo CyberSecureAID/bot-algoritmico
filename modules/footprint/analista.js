@@ -127,30 +127,43 @@ export function leerFootprint(agg, meta) {
     };
   }
 
-  // ── 4) POR DEFECTO: quién manda por delta/CVD ───────────────────────
-  if (subeCVD && deltaS > 0) return {
-    clave: 'ctrl-buy', tipo: 'tendencia',
-    titulo: dos('Buyers in control', 'Manda el comprador'),
-    txt: dos(`The cumulative delta is rising and aggressive buying dominates the session (${signo(deltaS)}). The flow is on the buy side: pullbacks are being bought.`,
-      `El delta acumulado sube y la compra agresiva domina la sesión (${signo(deltaS)}). El flujo está del lado comprador: las caídas se están comprando.`),
-    hacer: dos(`Favor the long side and buy dips toward the last POC${ult.poc != null ? ' ' + fmtN(ult.poc) : ''}; stand aside if the CVD rolls over.`,
-      `Favorece el lado largo y compra retrocesos hacia el último POC${ult.poc != null ? ' ' + fmtN(ult.poc) : ''}; hazte a un lado si el CVD se da vuelta.`),
-    detalle: detalleBase()
-  };
-  if (bajaCVD && deltaS < 0) return {
-    clave: 'ctrl-sell', tipo: 'venta',
-    titulo: dos('Sellers in control', 'Manda el vendedor'),
-    txt: dos(`The cumulative delta is falling and aggressive selling dominates the session (${signo(deltaS)}). The flow is on the sell side: bounces are being sold.`,
-      `El delta acumulado baja y la venta agresiva domina la sesión (${signo(deltaS)}). El flujo está del lado vendedor: los rebotes se están vendiendo.`),
-    hacer: dos(`Favor the short side and sell bounces toward the last POC${ult.poc != null ? ' ' + fmtN(ult.poc) : ''}; stand aside if the CVD turns up.`,
-      `Favorece el lado corto y vende rebotes hacia el último POC${ult.poc != null ? ' ' + fmtN(ult.poc) : ''}; hazte a un lado si el CVD gira al alza.`),
-    detalle: detalleBase()
-  };
+  // ── 4) POR DEFECTO: quién manda (acuerdo de 3 señales = más certeza) ──
+  // Consistencia: para declarar control se exige que coincidan al menos dos de
+  // {delta de sesión, pendiente del CVD, delta de la última vela}. Así la
+  // lectura no se voltea con cada tick; con las tres de acuerdo, es "con fuerza".
+  const lastWin = Math.sign(ult.delta), sesWin = Math.sign(deltaS), cvdWin = subeCVD ? 1 : bajaCVD ? -1 : 0;
+  const acBuy = (sesWin > 0) + (cvdWin > 0) + (lastWin > 0);
+  const acSell = (sesWin < 0) + (cvdWin < 0) + (lastWin < 0);
+  const buyPct = (buyS + sellS) > 0 ? Math.round((buyS / (buyS + sellS)) * 100) : 50;
+  if (acBuy >= 2 && acBuy > acSell) {
+    const fuerte = acBuy === 3;
+    return {
+      clave: 'ctrl-buy-' + (fuerte ? 'hi' : 'lo'), tipo: 'tendencia',
+      titulo: dos(fuerte ? 'Buyers firmly in control' : 'Buyers leaning in', fuerte ? 'El comprador manda con fuerza' : 'El comprador se inclina al mando'),
+      txt: dos(`Buyers are the aggressors: ${buyPct}% of the volume is lifting the ask, session delta is ${signo(deltaS)} and the CVD ${subeCVD ? 'is rising' : 'is holding up'}. ${fuerte ? 'All three signals point the same way, so the push is real, not noise.' : 'The pressure leans up while this holds.'} Pullbacks are being bought.`,
+        `El comprador es el agresor: el ${buyPct}% del volumen levanta la oferta, el delta de sesión es ${signo(deltaS)} y el CVD ${subeCVD ? 'sube' : 'aguanta'}. ${fuerte ? 'Las tres señales apuntan igual, así que el empuje es real, no ruido.' : 'La presión se inclina al alza mientras esto se mantenga.'} Las caídas se están comprando.`),
+      hacer: dos(`Favor longs and buy dips toward the last POC${ult.poc != null ? ' ' + fmtN(ult.poc) : ''}; step aside if the CVD rolls over or delta flips negative.`,
+        `Favorece largos y compra retrocesos hacia el último POC${ult.poc != null ? ' ' + fmtN(ult.poc) : ''}; hazte a un lado si el CVD se da vuelta o el delta se pone negativo.`),
+      detalle: detalleBase()
+    };
+  }
+  if (acSell >= 2 && acSell > acBuy) {
+    const fuerte = acSell === 3;
+    return {
+      clave: 'ctrl-sell-' + (fuerte ? 'hi' : 'lo'), tipo: 'venta',
+      titulo: dos(fuerte ? 'Sellers firmly in control' : 'Sellers leaning in', fuerte ? 'El vendedor manda con fuerza' : 'El vendedor se inclina al mando'),
+      txt: dos(`Sellers are the aggressors: ${100 - buyPct}% of the volume is hitting the bid, session delta is ${signo(deltaS)} and the CVD ${bajaCVD ? 'is falling' : 'is heavy'}. ${fuerte ? 'All three signals point the same way, so the pressure is real, not noise.' : 'The pressure leans down while this holds.'} Bounces are being sold.`,
+        `El vendedor es el agresor: el ${100 - buyPct}% del volumen golpea la demanda, el delta de sesión es ${signo(deltaS)} y el CVD ${bajaCVD ? 'baja' : 'pesa'}. ${fuerte ? 'Las tres señales apuntan igual, así que la presión es real, no ruido.' : 'La presión se inclina a la baja mientras esto se mantenga.'} Los rebotes se están vendiendo.`),
+      hacer: dos(`Favor shorts and sell bounces toward the last POC${ult.poc != null ? ' ' + fmtN(ult.poc) : ''}; step aside if the CVD turns up or delta flips positive.`,
+        `Favorece cortos y vende rebotes hacia el último POC${ult.poc != null ? ' ' + fmtN(ult.poc) : ''}; hazte a un lado si el CVD gira al alza o el delta se pone positivo.`),
+      detalle: detalleBase()
+    };
+  }
   return {
     clave: 'ctrl-bal', tipo: 'vigilar',
     titulo: dos('Balanced flow', 'Flujo equilibrado'),
-    txt: dos(`Buy and sell aggression are roughly matched and the CVD is flat: no one is in control. This is rotation around value, not a trend.`,
-      `La compra y la venta agresivas están parejas y el CVD está plano: nadie manda. Esto es rotación alrededor del valor, no una tendencia.`),
+    txt: dos(`Buy and sell aggression are close (${buyPct}% buy) and the signals disagree: no one is in clear control. This is rotation around value, not a trend.`,
+      `La compra y la venta están parejas (${buyPct}% compra) y las señales no concuerdan: nadie manda claro. Esto es rotación alrededor del valor, no una tendencia.`),
     hacer: dos(`Trade the edges, not the middle: buy absorption at the lows, sell absorption at the highs. Wait for a delta or absorption signal before committing.`,
       `Opera los extremos, no el medio: compra la absorción en los mínimos, vende la absorción en los máximos. Espera una señal de delta o absorción antes de comprometerte.`),
     detalle: detalleBase()
