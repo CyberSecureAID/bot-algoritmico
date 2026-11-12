@@ -68,7 +68,10 @@
   (async () => {
     let W = null, ethers = null;
     try { W = await import(J + 'wallet.js?v=129'); } catch (_) {}
-    try { if (W && W.reconectarSiProcede) await W.reconectarSiProcede(); } catch (_) {}
+    // La reconexion de la wallet corre EN PARALELO, sin bloquear la grafica: los
+    // datos de mercado son publicos y no dependen de la wallet (igual que en Spot).
+    // window.__walletLista avisa a la pildora de suscripcion cuando termina.
+    try { if (W && W.reconectarSiProcede) W.reconectarSiProcede().catch(() => {}); } catch (_) {}
     try { ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126'); } catch (_) {}
     // Estilo base (variables de color y contexto para los modales de wallet/cobro).
     try {
@@ -84,7 +87,7 @@
     } catch (_) {}
     // La seccion. abrirAnalisis revisa el acceso de pago igual que desde la portada.
     try {
-      const m = await import('./analisis.js?v=74');
+      const m = await import('./analisis.js?v=75');
       await m.abrirAnalisis('hero', W, ethers);
     } catch (e) {
       console.warn('analisis:', e);

@@ -465,6 +465,9 @@ export function abrirSelector(origen, wallet, ethers) {
   // Un SOLO boton: ultimos 4 de la wallet + dias de suscripcion, u "Owner".
   (async () => {
     try {
+      // Esperar (sin bloquear la grafica) a que la reconexion automatica de la
+      // wallet termine. reconectarSiProcede marca window.__walletLista al acabar.
+      for (let i = 0; i < 120 && !window.__walletLista; i++) { await new Promise((r) => setTimeout(r, 100)); }
       let cuenta = ''; try { cuenta = (wallet && wallet.cuentaActual && wallet.cuentaActual()) || ''; } catch (_) {}
       if (!cuenta) return;
       const last4 = String(cuenta).slice(-4);
