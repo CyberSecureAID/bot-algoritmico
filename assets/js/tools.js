@@ -1215,14 +1215,14 @@ function estilos() {
 
   /* ── Barra superior compacta ── */
   #w-overlay .w-barra{display:flex;align-items:center;gap:10px;flex:0 0 auto;position:relative;
-    padding:8px 92px 8px 12px;margin-bottom:10px;background:#0b0e12;
+    padding:8px 76px 8px 12px;margin-bottom:10px;background:#0b0e12;
     border:1px solid #2b3139;border-radius:12px;overflow-x:auto;scrollbar-width:none}
   #w-overlay .w-barra::-webkit-scrollbar{display:none}
   #w-overlay .w-tit{flex:0 0 auto;font-family:var(--display,sans-serif);font-weight:800;
     font-size:14px;color:#eaecef;white-space:nowrap}
   #w-overlay .w-der{position:absolute;right:8px;top:50%;transform:translateY(-50%);
     display:flex;gap:5px;z-index:6;background:#0b0e12;padding-left:8px}
-  #w-overlay .w-ico{width:36px;height:36px;min-height:36px;flex:0 0 auto;border-radius:9px;
+  #w-overlay .w-ico{width:28px;height:28px;min-height:28px;flex:0 0 auto;border-radius:8px;
     display:grid;place-items:center;padding:0;cursor:pointer;
     background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#8b96a3;
     font-family:var(--display,sans-serif);font-size:14px;font-weight:800;font-style:italic}
