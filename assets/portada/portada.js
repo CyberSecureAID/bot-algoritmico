@@ -120,15 +120,15 @@ const PUERTAS = {
   pools:   async () => (await import(J + 'liquidity.js?v=130')).abrirPools(),
   heat:    async () => (await import(J + 'muros.js?v=130')).abrirMuros(),
   levels:  async () => (await import(J + 'niveles.js?v=128')).abrirNiveles(),
-  tools:   async (tid) => (await import(J + 'tools.js?v=128')).abrirTools(tid),
-  academy: async () => (await import(J + 'academy.js?v=127')).abrirAcademy(),
+  tools:   async (tid) => (await import(J + 'tools.js?v=129')).abrirTools(tid),
+  academy: async () => (await import(J + 'academy.js?v=128')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
   aportar: async () => (await import(J + 'aportar.js?v=15')).abrirAportar(),
   perfil:  async () => (await import(J + 'perfil.js?v=130')).abrirPerfil(),
   analisis: async () => {
     const w = await wallet();
     const ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
-    const m = await import(new URL('modules/analysis/analisis.js?v=30', document.baseURI).href);
+    const m = await import(new URL('modules/analysis/analisis.js?v=31', document.baseURI).href);
     await m.abrirAnalisis('hero', w, ethers);
   }
 };
