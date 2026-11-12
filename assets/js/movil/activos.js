@@ -177,7 +177,7 @@ async function compartirBalance(api) {
   x.fillStyle = '#5b6572'; x.font = '400 30px system-ui, sans-serif';
   x.fillText('Exchange no custodial · BNB Smart Chain', 120, H - 320 + 40);
   x.fillStyle = '#E8B84B'; x.font = '700 32px system-ui, sans-serif';
-  x.fillText('criptocubaoficial.com', 120, H - 200);
+  x.fillText('decfreedom.com', 120, H - 200);
 
   cv.toBlob(async (blob) => {
     if (!blob) return;

@@ -2133,7 +2133,7 @@ function guardarImagen() {
 
       g.font = `700 ${14 * esc2}px ui-monospace,monospace`;
       g.fillStyle = '#C9A84B';
-      g.fillText('CriptoCubaOficial.com', xTexto, yB + 56 * esc2);
+      g.fillText('DecFreedom.com', xTexto, yB + 56 * esc2);
 
       // A la derecha, el par y la fecha
       g.textAlign = 'right';
