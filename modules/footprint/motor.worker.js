@@ -45,7 +45,7 @@ function construir(msg) {
   const porT = new Map();
   const orden = [];
   const nueva = (t, seed) => {
-    const c = { t, o: seed ? seed.o : null, h: seed ? seed.h : -Infinity, l: seed ? seed.l : Infinity, c: seed ? seed.c : null, niveles: new Map(), buyTot: 0, sellTot: 0 };
+    const c = { t, o: seed ? seed.o : null, h: seed ? seed.h : -Infinity, l: seed ? seed.l : Infinity, c: seed ? seed.c : null, niveles: new Map(), buyTot: 0, sellTot: 0, vol: seed ? (seed.v || 0) : 0, tb: seed ? (seed.tb || 0) : 0 };
     porT.set(t, c); orden.push(t); return c;
   };
   for (const v of velas) nueva(v.t, v);
@@ -106,8 +106,14 @@ function construir(msg) {
       else if (n.sell > 0 && (!ar || ar.buy === 0)) { /* borde: no forzamos venta por defecto */ }
     }
 
+    // Velas sin trades (TFs altos o historia): delta/volumen REALES desde el
+    // taker buy de la kline de Binance, para que TODA vela tenga su lectura y
+    // el CVD sea continuo. Las celdas por precio solo existen con ticks
+    // (recientes/en vivo); estas quedan sin detalle de celda, nada inventado.
+    let bTot = c.buyTot, sTot = c.sellTot, sinTicks = false;
+    if (niveles.length === 0 && c.vol > 0) { bTot = c.tb; sTot = Math.max(0, c.vol - c.tb); delta = bTot - sTot; total = c.vol; sinTicks = true; }
     candles.push({ t, o: c.o, h: c.h === -Infinity ? hi : c.h, l: c.l === Infinity ? lo : c.l, c: c.c,
-      niveles, poc, delta, total, buyTot: c.buyTot, sellTot: c.sellTot, hi, lo, imbalances });
+      niveles, poc, delta, total, buyTot: bTot, sellTot: sTot, hi, lo, imbalances, sinTicks });
   }
 
   // ── CVD (delta acumulado) ───────────────────────────────────────────

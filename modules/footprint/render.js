@@ -29,8 +29,11 @@ export function crearRender(host, opts = {}) {
   host.appendChild(cv);
   const ctx = cv.getContext('2d');
 
-  const st = { agg: null, meta: null, mode: 'bidask', colW: 92, offset: 0, anclaDer: true,
-    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null };
+  const st = { agg: null, meta: null, mode: 'bidask', colW: 92, leftF: 0, anclaDer: true,
+    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null, pulse: 0, prevLastTotal: -1, _pulseT: 0 };
+  let _rafId = null;
+  function _anim() { _rafId = requestAnimationFrame(() => { const now = (window.performance ? performance.now() : Date.now()); st.pulse = Math.max(0, (st._pulseT - now) / 450); render(); if (st.pulse > 0) _anim(); else _rafId = null; }); }
+  function pulsar() { st._pulseT = (window.performance ? performance.now() : Date.now()) + 450; if (!_rafId) _anim(); }
 
   function resize() {
     const r = host.getBoundingClientRect();
@@ -60,9 +63,12 @@ export function crearRender(host, opts = {}) {
   function visibles(L) {
     const cs = (st.agg && st.agg.candles) || []; if (!cs.length) return [];
     const n = Math.max(1, Math.floor(L.main.w / st.colW));
-    let end = st.anclaDer ? cs.length : Math.min(cs.length, st.offset + n);
-    const start = Math.max(0, end - n); st.offset = start;
-    return cs.slice(start, end).map((c, k) => ({ c, x: L.main.x + k * st.colW }));
+    const maxLeft = Math.max(0, cs.length - n);
+    if (st.anclaDer) st.leftF = maxLeft;
+    st.leftF = Math.max(0, Math.min(maxLeft, st.leftF));
+    const out = [];
+    for (let i = Math.floor(st.leftF); i < cs.length; i++) { const x = L.main.x + (i - st.leftF) * st.colW; if (x > L.main.w) break; out.push({ c: cs[i], x, i }); }
+    return out;
   }
   function rango(vis) {
     let lo = Infinity, hi = -Infinity;
@@ -88,15 +94,15 @@ export function crearRender(host, opts = {}) {
     ctx.clearRect(0, 0, st.W, st.H); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, st.W, st.H);
     if (!st.agg || !st.agg.candles || !st.agg.candles.length) { ctx.fillStyle = C.dim; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('Waiting for order flow…', st.W / 2, st.H / 2); ctx.textAlign = 'left'; return; }
     const vis = visibles(L); rango(vis);
-    ejeP(L); cols(L, vis); apiladas(L, vis); pocExtendido(L, vis); absorcion(L, vis);
-    statFooter(L, vis); cvdPanel(L, vis); ejeT(L, vis); watermark(L); if (st.hover) cruz(L);
+    ejeP(L); cols(L, vis); absorcion(L, vis);
+    statFooter(L, vis); cvdPanel(L, vis); ejeT(L, vis); if (st.hover) cruz(L);
   }
 
   function ejeP(L) {
     ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(L.main.w + .5, 0); ctx.lineTo(L.main.w + .5, L.cvd.y + L.cvd.h); ctx.stroke();
     ctx.fillStyle = C.eje; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'left';
-    for (let i = 0; i <= 8; i++) { const p = st.pMin + (st.pMax - st.pMin) * (i / 8), y = yP(p, L.main); if (y < 2 || y > L.main.y + L.main.h) continue; ctx.fillText(fp(p), L.main.w + 6, y + 3); ctx.strokeStyle = 'rgba(255,255,255,.028)'; ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(L.main.w, y + .5); ctx.stroke(); }
+    for (let i = 0; i <= 8; i++) { const p = st.pMin + (st.pMax - st.pMin) * (i / 8), y = yP(p, L.main); if (y < 2 || y > L.main.y + L.main.h) continue; ctx.fillText(fp(p), L.main.w + 6, y + 3); }
     if (st.meta && st.meta.last > 0) { const y = yP(st.meta.last, L.main); if (y > 0 && y < L.main.h) { ctx.strokeStyle = C.poc; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(L.main.w, y + .5); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.poc; ctx.fillRect(L.main.w, y - 7, GUT, 14); ctx.fillStyle = '#20160a'; ctx.font = '700 10px ui-monospace,monospace'; ctx.fillText(fp(st.meta.last), L.main.w + 5, y + 3); } }
   }
 
@@ -105,9 +111,15 @@ export function crearRender(host, opts = {}) {
     const rowH = Math.max(0.6, (bin / (st.pMax - st.pMin)) * A.h);
     const maxV = st.agg.maxCellVol || 1;
     const texto = st.colW >= 70 && rowH >= 9;
+    const lastT = st.agg.candles[st.agg.candles.length - 1].t;
     ctx.textBaseline = 'middle';
     for (const { c, x } of vis) {
       const cx = x + st.colW / 2, bin2 = bin;
+      let cMax = 1; for (const l of c.niveles) { if (l.buy > cMax) cMax = l.buy; if (l.sell > cMax) cMax = l.sell; }
+      if (c.t === lastT) {
+        ctx.save(); ctx.globalAlpha = .05 + st.pulse * .09; ctx.fillStyle = C.poc; ctx.fillRect(x, A.y, st.colW, A.h); ctx.restore();
+        if (st.pulse > 0 && st.meta && st.meta.last > 0) { const py = yP(st.meta.last, A), rr = 5 + (1 - st.pulse) * 16; ctx.save(); ctx.globalAlpha = st.pulse * .55; ctx.strokeStyle = C.poc; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, py, rr, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      }
       const imb = new Set((c.imbalances || []).map((i) => Math.round(i.price / bin2) + i.side));
       // Value area (sombra)
       const va = valueArea(c);
@@ -122,9 +134,9 @@ export function crearRender(host, opts = {}) {
           ctx.fillRect(x + 2, y, st.colW - 4, Math.max(1, rowH - 1));
           if (texto && rowH >= 11) { ctx.fillStyle = inten > 0.5 ? '#07130c' : C.txt; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(sfv(d), cx, y + rowH / 2); }
         } else if (st.mode === 'profile') {
-          const wB = (lv.buy / maxV) * (st.colW / 2 - 3), wS = (lv.sell / maxV) * (st.colW / 2 - 3);
-          ctx.fillStyle = 'rgba(232,68,93,.5)'; ctx.fillRect(cx - wS, y, wS, Math.max(1, rowH - 1));
-          ctx.fillStyle = 'rgba(38,194,129,.5)'; ctx.fillRect(cx, y, wB, Math.max(1, rowH - 1));
+          const wB = (lv.buy / cMax) * (st.colW / 2 - 5), wS = (lv.sell / cMax) * (st.colW / 2 - 5);
+          ctx.fillStyle = 'rgba(232,68,93,.62)'; ctx.fillRect(cx - wS, y, Math.max(0, wS), Math.max(1.5, rowH - 1));
+          ctx.fillStyle = 'rgba(38,194,129,.62)'; ctx.fillRect(cx, y, Math.max(0, wB), Math.max(1.5, rowH - 1));
         } else {
           const iS = Math.min(1, lv.sell / maxV), iB = Math.min(1, lv.buy / maxV);
           ctx.fillStyle = `rgba(232,68,93,${0.08 + iS * 0.5})`; ctx.fillRect(x + 2, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
@@ -214,6 +226,8 @@ export function crearRender(host, opts = {}) {
     const yv = (v) => A.y + 14 + (hi - v) / (hi - lo) * (A.h - 20);
     ctx.strokeStyle = C.cvd; ctx.lineWidth = 1.6; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke();
     ctx.lineTo(pts[pts.length - 1].x, A.y + A.h); ctx.lineTo(pts[0].x, A.y + A.h); ctx.closePath(); ctx.fillStyle = 'rgba(142,162,255,.08)'; ctx.fill();
+    if (0 >= lo && 0 <= hi) { const yz = yv(0); ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(0, yz + .5); ctx.lineTo(A.w, yz + .5); ctx.stroke(); ctx.setLineDash([]); }
+    const cur = pts[pts.length - 1]; if (cur) { ctx.fillStyle = cur.v >= 0 ? C.buy : C.sell; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText('CVD ' + sfv(cur.v), A.w - 6, A.y + 11); ctx.textAlign = 'left'; }
     for (const d of (st.agg.divergences || [])) { const p = pts.find((q) => q.t === d.t); if (!p) continue; const y = yv(p.v); ctx.fillStyle = d.kind === 'bull' ? C.buy : C.sell; ctx.font = '700 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(d.kind === 'bull' ? '▲' : '▼', p.x, y + (d.kind === 'bull' ? 15 : -5)); ctx.textAlign = 'left'; }
   }
 
@@ -223,8 +237,6 @@ export function crearRender(host, opts = {}) {
     vis.forEach(({ c, x }, i) => { if (i % paso) return; const d = new Date(c.t); ctx.fillText(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'), x + st.colW / 2, y + 11); });
     ctx.textAlign = 'left';
   }
-
-  function watermark(L) { ctx.save(); ctx.globalAlpha = .5; ctx.fillStyle = C.wm; ctx.font = '700 10px "Chakra Petch",system-ui'; ctx.textAlign = 'right'; ctx.fillText('decfreedom.com', L.main.w - 8, L.main.h - 7); ctx.restore(); ctx.textAlign = 'left'; }
 
   function cruz(L) { const { x, y } = st.hover, A = L.main; ctx.strokeStyle = 'rgba(255,255,255,.13)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, L.cvd.y + L.cvd.h); ctx.stroke(); if (y < A.h) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(A.w, y + .5); ctx.stroke(); } ctx.setLineDash([]); }
 
@@ -238,15 +250,20 @@ export function crearRender(host, opts = {}) {
 
   cv.addEventListener('mousemove', (e) => {
     const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; st.hover = { x: mx, y: my };
-    if (st.drag) { const dx = mx - st.drag.mx, paso = Math.round(-dx / st.colW); if (paso !== 0) { st.anclaDer = false; st.offset = Math.max(0, st.drag.off + paso); st.drag.mx = mx; st.drag.off = st.offset; const cs = st.agg ? st.agg.candles.length : 0, n = Math.floor((st.W - GUT) / st.colW); if (st.offset + n >= cs) st.anclaDer = true; } }
+    if (st.drag) { const dx = mx - st.drag.mx; const cs = st.agg ? st.agg.candles.length : 0; const n = Math.max(1, Math.floor((st.W - GUT) / st.colW)); const maxLeft = Math.max(0, cs - n); st.leftF = Math.max(0, Math.min(maxLeft, st.drag.left - dx / st.colW)); st.anclaDer = (st.leftF >= maxLeft - 0.001); }
     onHover(hit(mx, my), e.clientX, e.clientY); render();
   });
   cv.addEventListener('mouseleave', () => { st.hover = null; onHover(null); render(); });
-  cv.addEventListener('mousedown', (e) => { const r = cv.getBoundingClientRect(); st.drag = { mx: e.clientX - r.left, off: st.offset }; });
+  cv.addEventListener('mousedown', (e) => { const r = cv.getBoundingClientRect(); st.drag = { mx: e.clientX - r.left, left: st.leftF }; });
   window.addEventListener('mouseup', () => { st.drag = null; });
   cv.addEventListener('wheel', (e) => { e.preventDefault(); st.colW = Math.max(26, Math.min(260, st.colW * (e.deltaY < 0 ? 1.15 : 0.87))); render(); }, { passive: false });
 
-  function setData(agg, meta) { st.agg = agg; if (meta) st.meta = meta; render(); }
+  function setData(agg, meta) {
+    st.agg = agg; if (meta) st.meta = meta;
+    const cs = agg && agg.candles; const lt = cs && cs.length ? cs[cs.length - 1].total : 0;
+    if (st.prevLastTotal >= 0 && lt > st.prevLastTotal + 1e-9) pulsar();   // llegó volumen → pulso en vivo
+    st.prevLastTotal = lt; render();
+  }
   function setMeta(meta) { st.meta = Object.assign(st.meta || {}, meta); render(); }
   function setMode(m) { st.mode = m; render(); }
   function getMode() { return st.mode; }

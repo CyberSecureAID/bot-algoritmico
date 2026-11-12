@@ -16,10 +16,20 @@ import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos
 import { crearRender } from './render.js';
 import { leerFootprint } from './analista.js';
 import { estilosFootprint } from './estilos.js';
+import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const LOGO_ALT = new URL('../../assets/img/cco-full.webp', import.meta.url).href;
 const AVATAR = new URL('../../assets/img/jesus-avatar.webp', import.meta.url).href;
+
+/* Iconos SVG propios, centrados (nada de glifos sueltos descuadrados). */
+const IC = {
+  back: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  help: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.3"/><path d="M9.3 9.2a2.7 2.7 0 1 1 3.9 2.6c-.9.5-1.2 1-1.2 1.9"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>',
+  reset: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>',
+  set: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="10" cy="8" r="2.4" fill="#12161c"/><circle cx="15" cy="16" r="2.4" fill="#12161c"/></svg>',
+  exp: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>'
+};
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -55,44 +65,39 @@ function plantilla() {
   <div class="fp-bg"></div>
   <div class="fp-wrap">
     <div class="fp-top">
-      <button class="fp-back" id="fp-back" aria-label="Back">‹ Back</button>
+      <button class="fp-back" id="fp-back" aria-label="Back">${IC.back}Back</button>
       <div class="fp-sep"></div>
       <button class="fp-coin" id="fp-coin"><i class="fp-coin-lg" id="fp-coin-lg"></i><b id="fp-coin-id">BTC</b><span id="fp-coin-nm">Bitcoin</span><em class="fp-chev">▾</em></button>
       <button class="fp-chip" id="fp-tf">1m <em class="fp-chev">▾</em></button>
       <div class="fp-pxbox"><b class="fp-px" id="fp-px">—</b><span class="fp-chg" id="fp-chg">—</span></div>
+
+      <button class="fp-an vivo" id="fp-an-btn" type="button" title="Jesús · live order flow read">
+        <img class="fp-an-ava" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
+        <span class="fp-an-tag" id="fp-an-tag">FLOW</span>
+        <span class="fp-an-head" id="fp-an-head">Reading the flow…</span>
+        <em class="fp-chev">▾</em>
+      </button>
+
       <div class="fp-modes" id="fp-modes">
-        <button data-mode="bidask" class="on" title="Buy x Sell per cell">Bid×Ask</button>
-        <button data-mode="delta" title="Delta only">Delta</button>
-        <button data-mode="profile" title="Volume profile">Profile</button>
+        <button data-mode="bidask" class="on" title="Buy x Sell in every cell">Bid×Ask</button>
+        <button data-mode="delta" title="Net delta in every cell">Delta</button>
+        <button data-mode="profile" title="Volume bars per candle">Profile</button>
       </div>
       <div class="fp-top-r">
-        <button class="fp-ico" id="fp-reset" title="Reset zoom">⟲</button>
-        <button class="fp-ico" id="fp-settings" title="Bin size and imbalance">⚙</button>
-        <button class="fp-ico" id="fp-export" title="Export image">⤓</button>
+        <button class="fp-ico" id="fp-help" title="How it works">${IC.help}</button>
+        <button class="fp-ico" id="fp-reset" title="Reset view">${IC.reset}</button>
+        <button class="fp-ico" id="fp-settings" title="Bin size and imbalance">${IC.set}</button>
+        <button class="fp-ico" id="fp-export" title="Export image">${IC.exp}</button>
       </div>
     </div>
 
     <div class="fp-stage">
       <div class="fp-cvwrap">
         <div class="fp-cv" id="fp-cv">${loader()}</div>
-
-        <div class="fp-an-wrap" id="fp-an-wrap">
-          <button class="fp-an-btn vivo" id="fp-an-btn" type="button" title="Jesús · live footprint read">
-            <img class="fp-an-ava" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
-            <span class="fp-an-tag" id="fp-an-tag">FLOW</span><em>▾</em>
-          </button>
-          <div class="fp-an-panel" id="fp-an-panel"></div>
-        </div>
-
+        <div class="fp-an-panel" id="fp-an-panel"></div>
         <div class="fp-alerts" id="fp-alerts"></div>
         <div class="fp-tip" id="fp-tip" style="display:none"></div>
-        <div class="fp-src" id="fp-src">Data: Binance spot (US region). Volume shown is a portion of the total market.</div>
       </div>
-    </div>
-
-    <div class="fp-foot">
-      <span><b>Footprint Pro</b> · institutional order flow</span>
-      <span>Live order flow · not financial advice</span>
     </div>
   </div>
 
@@ -101,10 +106,39 @@ function plantilla() {
     <div class="fp-pop-row"><label>Imbalance %</label><input id="fp-imb" type="text" inputmode="numeric" value="300"></div>
     <button class="fp-pop-apply" id="fp-apply">Apply</button>
     <div class="fp-pop-note">Bin empty = automatic. Imbalance = diagonal buy vs sell ratio to flag a cell.</div>
-  </div>`;
+  </div>
+
+  ${helpHTML()}`;
 }
 
 function loader() { return '<div class="fp-empty"><div class="fp-spin"></div><span>Loading order flow…</span></div>'; }
+
+/* Guía de uso (How it works). Diagramas propios (SVG), nada de imágenes de
+   terceros. Aquí vive también la nota de la fuente de datos. */
+function helpHTML() {
+  const dCelda = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="2" y="2" width="56" height="50" rx="3" fill="rgba(232,68,93,.18)" stroke="#e8445d"/><rect x="62" y="2" width="56" height="50" rx="3" fill="rgba(38,194,129,.18)" stroke="#26c281"/><text x="30" y="31" fill="#ff8a9a" font-family="monospace" font-size="15" text-anchor="middle">1.2</text><text x="90" y="31" fill="#7ff0b0" font-family="monospace" font-size="15" text-anchor="middle">3.4</text></svg>`;
+  const dFooter = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="2" y="2" width="116" height="50" rx="3" fill="rgba(38,194,129,.1)"/><text x="60" y="20" fill="#26c281" font-family="system-ui" font-size="13" text-anchor="middle">▲ +9.3</text><text x="60" y="40" fill="#8b96a3" font-family="monospace" font-size="12" text-anchor="middle">VOL 21  +49%</text></svg>`;
+  const dImb = `<svg viewBox="0 0 120 54" class="fp-h-svg"><rect x="62" y="4" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><rect x="62" y="20" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><rect x="62" y="36" width="54" height="14" rx="2" fill="rgba(47,240,192,.15)" stroke="#2ff0c0" stroke-width="1.5"/><text x="30" y="31" fill="#7d8794" font-family="monospace" font-size="11" text-anchor="middle">stack</text></svg>`;
+  const fila = (svg, t, d) => `<div class="fp-h-row">${svg ? `<div class="fp-h-ic">${svg}</div>` : '<div class="fp-h-ic"></div>'}<div class="fp-h-tx"><b>${t}</b><span>${d}</span></div></div>`;
+  return `
+  <div class="fp-help" id="fp-help-ov" style="display:none">
+    <div class="fp-help-bg" id="fp-help-bg"></div>
+    <div class="fp-help-c">
+      <div class="fp-help-cab"><h3>How Footprint Pro works</h3><button class="fp-help-x" id="fp-help-x" aria-label="Close">✕</button></div>
+      <p class="fp-help-lead">A footprint shows the real buying and selling <b>inside every candle</b>, price by price. It is how order flow traders see who is actually in control, not just where price closed.</p>
+      ${fila(dCelda, 'The cells · Bid × Ask', 'Each price row shows two numbers: left (red) is aggressive selling that hit the bid; right (green) is aggressive buying that lifted the ask. Darker background = more volume.')}
+      ${fila(dFooter, 'Who is winning each candle', 'Under every candle: the arrow (▲ buyers / ▼ sellers), the net Delta (buy − sell), the total Volume and the Delta %. That row is your quick read of who won the auction in that bar.')}
+      ${fila('', 'POC and Value Area', 'The gold box is the Point of Control: the price with the most volume in the candle. The shaded band is the Value Area, where 70% of the volume traded. The dashed gold line extends the current control level to the right.')}
+      ${fila(dImb, 'Imbalances and stacked zones', 'A cell outlined in teal (buy) or red (sell) is a strong diagonal imbalance. Three or more stacked become a support/resistance zone that extends to the right until price trades back into it.')}
+      ${fila('', 'CVD · cumulative delta', 'The bottom panel adds up delta over time. When price makes a new high but the CVD does not, that is a divergence: the move has no aggression behind it. Arrows mark it.')}
+      ${fila('', 'The analyst (top bar)', 'Jesús reads the footprint live and tells you, in plain English or Spanish, who is in control and the play. Click it to expand; switch ES/EN inside.')}
+      ${fila('', 'Views', 'Bid×Ask shows the two numbers per cell. Delta shows the net per cell. Profile shows volume bars per candle. Scroll to zoom, drag to move back in time.')}
+      <div class="fp-help-note"><b>Data source.</b> Order flow comes from Binance spot (served for the US region). It is a large slice of the crypto market but not every venue, so read the volume as flow context, not an absolute market total.</div>
+    </div>
+  </div>`;
+}
+function abrirHelp() { const o = $('fp-help-ov'); if (o) o.style.display = 'flex'; }
+function cerrarHelp() { const o = $('fp-help-ov'); if (o) o.style.display = 'none'; }
 
 // ── Cableado ─────────────────────────────────────────────────────────
 function wire(ov) {
@@ -125,6 +159,9 @@ function wire(ov) {
     if (S.render) S.render.setMode(S.modo);
   });
   $('fp-reset').onclick = () => { if (S.render) S.render.resetView(); };
+  $('fp-help').onclick = (e) => { e.stopPropagation(); abrirHelp(); };
+  const hx = $('fp-help-x'); if (hx) hx.onclick = cerrarHelp;
+  const hb = $('fp-help-bg'); if (hb) hb.onclick = cerrarHelp;
   montarAnalista();
 }
 
@@ -203,7 +240,18 @@ function decPar() { const b = S.binSize || S.tick || 0; if (b > 0) return Math.m
 function pintarCoin() {
   const lg = $('fp-coin-lg'), id = $('fp-coin-id'), nm = $('fp-coin-nm'); if (!id) return;
   id.textContent = S.par.id; if (nm) nm.textContent = S.par.n || '';
-  if (lg) { const u = S.par.cg && S.logos[S.par.cg]; if (u) { lg.style.backgroundImage = `url(${u})`; lg.classList.add('con'); } else { lg.style.backgroundImage = ''; lg.classList.remove('con'); lg.textContent = (S.par.id || '?')[0]; } }
+  if (lg) pintarLogo(lg, S.par);
+}
+/* Logo de un par, igual que en Liquidity Pools: imagen de CoinGecko (cripto y
+   oro), o la moneda SVG de ICONOS para EUR/GBP, o la inicial como último respaldo.
+   Nada inventado: misma fuente que el resto del sitio. */
+function pintarLogo(el, p) {
+  const u = p.cg && S.logos[p.cg];
+  if (u) { el.style.backgroundImage = `url(${u})`; el.classList.add('con'); el.classList.remove('con-svg'); el.innerHTML = ''; return; }
+  el.style.backgroundImage = ''; el.classList.remove('con');
+  const svg = ICONOS[p.ico || ''];
+  if (svg) { el.innerHTML = svg; el.classList.add('con-svg'); return; }
+  el.classList.remove('con-svg'); el.textContent = (p.ico || p.id || '?')[0];
 }
 
 // ── Menús moneda / temporalidad ─────────────────────────────────────
@@ -213,7 +261,12 @@ function posPop(m, ancla) { const r = ancla.getBoundingClientRect(); m.style.lef
 function menuCoin(ancla) {
   cerrarPops();
   const m = document.createElement('div'); m.className = 'fp-menu fp-coinmenu';
-  const li = (p) => { const u = p.cg && S.logos[p.cg]; return `<button class="fp-mi ${p.id === S.par.id ? 'on' : ''}" data-id="${esc(p.id)}" data-b="${esc((p.id + ' ' + (p.n || '')).toLowerCase())}"><i class="fp-mi-lg ${u ? 'con' : ''}" style="${u ? `background-image:url(${u})` : ''}">${u ? '' : esc((p.id || '?')[0])}</i><b>${esc(p.id)}</b><span>${esc(p.n || '')}</span></button>`; };
+  const li = (p) => {
+    const u = p.cg && S.logos[p.cg];
+    const svg = !u ? ICONOS[p.ico || ''] : null;
+    const inner = u ? '' : (svg || esc((p.ico || p.id || '?')[0]));
+    return `<button class="fp-mi ${p.id === S.par.id ? 'on' : ''}" data-id="${esc(p.id)}" data-b="${esc((p.id + ' ' + (p.n || '')).toLowerCase())}"><i class="fp-mi-lg ${u ? 'con' : ''} ${svg ? 'con-svg' : ''}" style="${u ? `background-image:url(${u})` : ''}">${inner}</i><b>${esc(p.id)}</b><span>${esc(p.n || '')}</span></button>`;
+  };
   m.innerHTML = `<input class="fp-mbuscar" id="fp-mbuscar" placeholder="Search symbol" autocomplete="off"><div class="fp-mlista" id="fp-mlista">${PARES.map(li).join('')}</div>`;
   document.body.appendChild(m); posPop(m, ancla);
   const q = $('fp-mbuscar'); if (q) { q.focus(); q.oninput = () => { const t = q.value.toLowerCase().trim(); m.querySelectorAll('.fp-mi').forEach((b) => b.style.display = !t || b.dataset.b.includes(t) ? '' : 'none'); }; }
@@ -273,32 +326,32 @@ function toast(tipo, titulo, sub) {
 // ── Analista (píldora, mismo patrón que VWAP Pro) ───────────────────
 const AN_UI = { en: { live: 'live footprint', why: 'Why', hide: 'Hide', flow: 'FLOW' }, es: { live: 'footprint en vivo', why: 'Por qué', hide: 'Ocultar', flow: 'FLUJO' } };
 const TAG = { compra: { en: 'BUY', es: 'COMPRA' }, venta: { en: 'SELL', es: 'VENTA' }, tendencia: { en: 'TREND', es: 'TENDENCIA' }, vigilar: { en: 'WATCH', es: 'VIGILAR' }, aviso: { en: 'CAUTION', es: 'AVISO' } };
-function idiomaIni() { try { return (navigator.language || 'en').slice(0, 2) === 'es' ? 'es' : 'en'; } catch (_) { return 'en'; } }
+function idiomaIni() { return 'en'; }   // la plataforma es inglés por defecto; el usuario puede cambiar a ES en la píldora
 const anL = (o, l) => (o && (o[l] != null ? o[l] : o.en)) || '';
 
 function montarAnalista() {
-  const wrap = $('fp-an-wrap'), btn = $('fp-an-btn'); if (!wrap || !btn) return;
-  btn.onclick = (e) => { e.stopPropagation(); btn.classList.remove('vivo'); S.an.abierto = !S.an.abierto; wrap.classList.toggle('abierto', S.an.abierto); if (S.an.abierto && S.an.msg) { renderPanel(); escribir(wrap.querySelector('[data-esc]')); } };
-  document.addEventListener('click', (ev) => { const w = $('fp-an-wrap'); if (!w || !S.an || !S.an.abierto) return; if (!w.contains(ev.target)) { S.an.abierto = false; w.classList.remove('abierto'); } });
+  const btn = $('fp-an-btn'); if (!btn) return;
+  btn.onclick = (e) => { e.stopPropagation(); btn.classList.remove('vivo'); S.an.abierto = !S.an.abierto; const p = $('fp-an-panel'); if (S.an.abierto && S.an.msg) { renderPanel(); escribir(p.querySelector('[data-esc]')); } else if (p) p.classList.remove('abierto'); };
+  document.addEventListener('click', (ev) => { if (!S.an || !S.an.abierto) return; const p = $('fp-an-panel'), b = $('fp-an-btn'); if (p && !p.contains(ev.target) && b && !b.contains(ev.target)) { S.an.abierto = false; p.classList.remove('abierto'); } });
 }
 function actualizarAnalista() {
   if (!S.an || !S.agg) return;
   let m; try { m = leerFootprint(S.agg, S.meta); } catch (_) { m = null; }
   if (!m) return;
-  const btn = $('fp-an-btn'), tag = $('fp-an-tag');
-  if (btn) btn.className = 'fp-an-btn t-' + m.tipo + (S.an.abierto ? '' : ' vivo');
+  const btn = $('fp-an-btn'), tag = $('fp-an-tag'), head = $('fp-an-head');
+  if (btn) btn.className = 'fp-an t-' + m.tipo + (S.an.abierto ? '' : ' vivo');
   if (tag) { tag.textContent = anL(TAG[m.tipo] || { en: 'FLOW', es: 'FLUJO' }, S.an.lang); tag.className = 'fp-an-tag c-' + m.tipo; }
+  if (head) head.textContent = anL(m.titulo, S.an.lang);     // dictamen en vivo, siempre visible en la barra
   const cambio = m.clave !== S.an.clave; S.an.msg = m; S.an.clave = m.clave;
   if (S.an.abierto) {
-    if (cambio) { renderPanel(); escribir($('fp-an-wrap').querySelector('[data-esc]')); }
+    if (cambio) { renderPanel(); escribir($('fp-an-panel').querySelector('[data-esc]')); }
     else { const tx = document.querySelector('.fp-an-tx'); if (tx && tx.dataset.hecho) tx.textContent = anL(m.txt, S.an.lang); const hz = document.querySelector('.fp-an-hacer'); if (hz) hz.textContent = anL(m.hacer, S.an.lang); }
   }
 }
 function renderPanel() {
-  const panel = $('fp-an-panel'), wrap = $('fp-an-wrap'); if (!panel || !wrap || !S.an.msg) return;
+  const panel = $('fp-an-panel'); if (!panel || !S.an.msg) return;
   const m = S.an.msg, lang = S.an.lang, u = AN_UI[lang] || AN_UI.en;
-  panel.className = 'fp-an-panel t-' + m.tipo;
-  wrap.classList.toggle('con-detalle', !!S.an.det);
+  panel.className = 'fp-an-panel abierto t-' + m.tipo + (S.an.det ? ' con-detalle' : '');
   panel.innerHTML = `
     <div class="fp-an-cab">
       <img class="fp-an-ava2" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
@@ -310,7 +363,7 @@ function renderPanel() {
     <div class="fp-an-acts"><button class="fp-an-mas" type="button">${esc(u.why)} ▾</button></div>
     <div class="fp-an-det">${(m.detalle || []).map((x) => `<div class="fp-an-li">${esc(anL(x, lang))}</div>`).join('')}</div>`;
   const lng = panel.querySelector('.fp-an-lang'); if (lng) lng.onclick = (e) => { e.stopPropagation(); S.an.lang = S.an.lang === 'es' ? 'en' : 'es'; renderPanel(); escribir(panel.querySelector('[data-esc]')); };
-  const mas = panel.querySelector('.fp-an-mas'); if (mas) mas.onclick = (e) => { e.stopPropagation(); S.an.det = !S.an.det; wrap.classList.toggle('con-detalle', S.an.det); mas.textContent = S.an.det ? (u.hide + ' ▴') : (u.why + ' ▾'); };
+  const mas = panel.querySelector('.fp-an-mas'); if (mas) mas.onclick = (e) => { e.stopPropagation(); S.an.det = !S.an.det; panel.classList.toggle('con-detalle', S.an.det); mas.textContent = S.an.det ? (u.hide + ' ▴') : (u.why + ' ▾'); };
 }
 function escribir(el) { if (!el || el.dataset.hecho) return; const txt = el.dataset.esc || ''; el.dataset.hecho = '1'; let n = 0; const t = setInterval(() => { n += 2; el.textContent = txt.slice(0, n); if (n >= txt.length) { el.textContent = txt; clearInterval(t); } }, 12); }
 

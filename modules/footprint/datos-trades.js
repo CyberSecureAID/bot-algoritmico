@@ -41,7 +41,7 @@ export function tfMs(interval) {
 
 /* Velas OHLCV para el esqueleto de columnas (tiempo y máximos/mínimos). `time`
    en MILISEGUNDOS de apertura, que es como alinea Binance los trades. */
-const mapK = (k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5], tc: k[6] });
+const mapK = (k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5], tc: k[6], tb: +k[9] });
 export async function velas(simbolo, interval = '1m', limit = 60) {
   const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${limit}`);
   return j.map(mapK);

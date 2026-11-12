@@ -84,26 +84,26 @@ export function estilosFootprint() {
   #fp-overlay .fp-toast.t-down{border-left:3px solid #f6465d}#fp-overlay .fp-toast.t-down b{color:#f6465d}
   @keyframes fpIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 
-  /* ── Analista (misma píldora que VWAP Pro) ── */
-  #fp-overlay .fp-an-wrap{position:absolute;top:12px;right:12px;z-index:18;width:40px;transition:width .15s ease}
-  #fp-overlay .fp-an-wrap.abierto{width:min(360px,calc(100vw - 80px))}
-  #fp-overlay .fp-an-btn{display:flex;align-items:center;gap:6px;width:100%;min-height:40px;padding:0 8px;border-radius:12px;cursor:pointer;
-    background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid #3a424c;color:#eaecef;overflow:hidden}
-  #fp-overlay .fp-an-wrap:not(.abierto) .fp-an-btn{width:40px;padding:0;justify-content:center}
-  #fp-overlay .fp-an-wrap:not(.abierto) .fp-an-tag,#fp-overlay .fp-an-wrap:not(.abierto) .fp-an-btn em{display:none}
-  #fp-overlay .fp-an-ava{width:26px;height:26px;border-radius:50%;flex:0 0 auto;object-fit:cover;border:1px solid var(--gold-soft,#C9A84B)}
-  #fp-overlay .fp-an-tag{font-family:var(--mono,'IBM Plex Mono',monospace);font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06)}
-  #fp-overlay .fp-an-btn em{font-style:normal;color:#6b7681;font-size:10px;margin-left:auto}
-  #fp-overlay .fp-an-btn.vivo{animation:fpLatido 1.8s ease-in-out infinite}
+  /* ── Analista en la barra superior (dictamen en vivo, centrado) ── */
+  #fp-overlay .fp-an{display:inline-flex;align-items:center;gap:8px;flex:1 1 auto;min-width:120px;max-width:440px;margin:0 6px;min-height:38px;padding:0 11px;
+    border-radius:11px;cursor:pointer;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid #3a424c;color:#eaecef;overflow:hidden;transition:border-color .15s ease}
+  #fp-overlay .fp-an:hover{border-color:var(--gold-soft,#C9A84B)}
+  #fp-overlay .fp-an.vivo{animation:fpLatido 1.8s ease-in-out infinite}
   @keyframes fpLatido{0%,100%{box-shadow:0 0 0 0 rgba(232,184,75,.35)}50%{box-shadow:0 0 0 5px rgba(232,184,75,0)}}
-  #fp-overlay .fp-an-tag.c-compra,#fp-overlay .fp-an-tag.c-tendencia{background:rgba(46,232,106,.16);color:#2ee86a}
-  #fp-overlay .fp-an-tag.c-venta,#fp-overlay .fp-an-tag.c-aviso{background:rgba(246,70,93,.16);color:#f6465d}
+  #fp-overlay .fp-an-ava{width:26px;height:26px;border-radius:50%;flex:0 0 auto;object-fit:cover;border:1px solid var(--gold-soft,#C9A84B)}
+  #fp-overlay .fp-an-tag{flex:0 0 auto;font-family:var(--mono,'IBM Plex Mono',monospace);font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06)}
+  #fp-overlay .fp-an-head{flex:1;min-width:0;font-family:var(--display,'Chakra Petch',system-ui);font-weight:700;font-size:12.5px;color:#eaecef;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #fp-overlay .fp-an .fp-chev{flex:0 0 auto}
+  #fp-overlay .fp-an-tag.c-compra,#fp-overlay .fp-an-tag.c-tendencia{background:rgba(38,194,129,.16);color:#26c281}
+  #fp-overlay .fp-an-tag.c-venta,#fp-overlay .fp-an-tag.c-aviso{background:rgba(232,68,93,.16);color:#e8445d}
   #fp-overlay .fp-an-tag.c-vigilar{background:rgba(232,184,75,.16);color:var(--gold,#E8B84B)}
-  #fp-overlay .fp-an-panel{display:none;margin-top:8px;border-radius:14px;overflow:hidden;
-    background:linear-gradient(180deg,#141922,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);box-shadow:0 18px 44px rgba(0,0,0,.6)}
-  #fp-overlay .fp-an-wrap.abierto .fp-an-panel{display:block}
-  #fp-overlay .fp-an-panel.t-compra,#fp-overlay .fp-an-panel.t-tendencia{border-color:rgba(46,232,106,.5)}
-  #fp-overlay .fp-an-panel.t-venta,#fp-overlay .fp-an-panel.t-aviso{border-color:rgba(246,70,93,.5)}
+
+  /* panel desplegable, centrado arriba del escenario */
+  #fp-overlay .fp-an-panel{display:none;position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:30;width:min(380px,calc(100vw - 32px));
+    border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#141922,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);box-shadow:0 22px 50px rgba(0,0,0,.7)}
+  #fp-overlay .fp-an-panel.abierto{display:block}
+  #fp-overlay .fp-an-panel.t-compra,#fp-overlay .fp-an-panel.t-tendencia{border-color:rgba(38,194,129,.55)}
+  #fp-overlay .fp-an-panel.t-venta,#fp-overlay .fp-an-panel.t-aviso{border-color:rgba(232,68,93,.55)}
   #fp-overlay .fp-an-cab{display:flex;align-items:center;gap:10px;padding:12px 13px;border-bottom:1px solid rgba(255,255,255,.07)}
   #fp-overlay .fp-an-ava2{width:34px;height:34px;border-radius:50%;flex:0 0 auto;object-fit:cover;border:1px solid var(--gold-soft,#C9A84B)}
   #fp-overlay .fp-an-quien{flex:1;min-width:0}
@@ -117,13 +117,32 @@ export function estilosFootprint() {
   #fp-overlay .fp-an-mas{background:none;border:none;color:#8b96a3;cursor:pointer;font-family:var(--mono,monospace);font-size:11px;padding:4px 0}
   #fp-overlay .fp-an-mas:hover{color:var(--gold,#E8B84B)}
   #fp-overlay .fp-an-det{display:none;padding:0 13px 12px}
-  #fp-overlay .fp-an-wrap.con-detalle .fp-an-det{display:block}
+  #fp-overlay .fp-an-panel.con-detalle .fp-an-det{display:block}
   #fp-overlay .fp-an-li{font-family:var(--mono,'IBM Plex Mono',monospace);font-size:11px;color:#8b96a3;line-height:1.5;padding:4px 0;border-top:1px solid rgba(255,255,255,.05)}
 
-  /* ── Pie ── */
-  #fp-overlay .fp-foot{flex:0 0 auto;display:flex;justify-content:space-between;gap:12px;padding:7px 14px;
-    background:#0b0e12;border-top:1px solid #2b3139;font-family:var(--mono,'IBM Plex Mono',monospace);font-size:10.5px;color:#6b7681}
-  #fp-overlay .fp-foot b{color:var(--gold,#E8B84B)}
+  /* ── Iconos SVG centrados + logos SVG de divisas (EUR/GBP) ── */
+  #fp-overlay .fp-ico svg,#fp-overlay .fp-back svg{display:block}
+  #fp-overlay .fp-back svg{margin-right:2px}
+  #fp-overlay .fp-coin-lg svg,.fp-mi-lg svg{width:100%;height:100%;display:block}
+  #fp-overlay .fp-coin-lg.con-svg,.fp-mi-lg.con-svg{background:none;border-color:transparent;overflow:hidden}
+
+  /* ── Ayuda (How it works) ── */
+  #fp-overlay .fp-help{position:absolute;inset:0;z-index:9690;display:flex;align-items:center;justify-content:center;padding:18px}
+  #fp-overlay .fp-help-bg{position:absolute;inset:0;background:rgba(4,6,10,.82);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+  #fp-overlay .fp-help-c{position:relative;width:100%;max-width:560px;max-height:calc(100vh - 56px);overflow-y:auto;border-radius:18px;padding:20px 22px;
+    background:linear-gradient(180deg,#141922,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);box-shadow:0 24px 60px rgba(0,0,0,.7)}
+  #fp-overlay .fp-help-cab{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  #fp-overlay .fp-help-cab h3{margin:0;font-family:var(--display,'Chakra Petch',system-ui);font-size:19px;color:var(--gold,#E8B84B)}
+  #fp-overlay .fp-help-x{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid #3a424c;color:#b7bdc6;font-size:14px}
+  #fp-overlay .fp-help-lead{font-size:13px;line-height:1.6;color:#b7bdc6;margin:0 0 14px}
+  #fp-overlay .fp-help-lead b{color:#eaecef}
+  #fp-overlay .fp-h-row{display:flex;gap:13px;align-items:center;padding:11px 0;border-top:1px solid rgba(255,255,255,.06)}
+  #fp-overlay .fp-h-ic{flex:0 0 auto;width:78px}
+  #fp-overlay .fp-h-svg{width:78px;height:auto;border-radius:6px;background:#0b0e12;display:block}
+  #fp-overlay .fp-h-tx b{display:block;font-family:var(--display,'Chakra Petch',system-ui);font-size:13.5px;color:#eaecef;margin-bottom:3px}
+  #fp-overlay .fp-h-tx span{display:block;font-size:12px;line-height:1.55;color:#8b96a3}
+  #fp-overlay .fp-help-note{margin-top:14px;padding:12px 14px;border-radius:11px;background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);font-size:12px;line-height:1.55;color:#b7bdc6}
+  #fp-overlay .fp-help-note b{color:var(--gold,#E8B84B)}
 
   /* ── Menús (moneda / temporalidad) ── */
   .fp-menu{position:fixed;z-index:9650;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid var(--gold-soft,#C9A84B);
@@ -154,10 +173,10 @@ export function estilosFootprint() {
   #fp-overlay .fp-pop-note{margin-top:9px;font-size:10.5px;color:#6b7681;line-height:1.5}
 
   @media(max-width:720px){
-    #fp-overlay .fp-modes{margin-left:0}
     #fp-overlay .fp-coin span{display:none}
-    #fp-overlay .fp-tools{width:40px}
-    #fp-overlay .fp-an-wrap.abierto{width:calc(100vw - 64px)}
+    #fp-overlay .fp-an-head{display:none}
+    #fp-overlay .fp-an{min-width:auto;flex:0 0 auto}
+    #fp-overlay .fp-an-panel{width:calc(100vw - 24px)}
   }`;
   document.head.appendChild(s);
 }
