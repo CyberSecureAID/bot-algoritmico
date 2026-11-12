@@ -19,6 +19,50 @@ investigar de cero.
 
 ---
 
+## REGIÓN / GEOBLOQUEO · Las gráficas no cargan desde EE. UU. (RESUELTO)
+
+### Síntoma
+Un usuario en EE. UU. (sin VPN) veía las gráficas en negro / "no permiso": en
+Análisis no cargaba ninguna, y antes tampoco en Spot. El resto (swap, launchpad,
+terminal, on chain) funcionaba.
+
+### Causa raíz (confirmada, nov 2026)
+1. **Geobloqueo real:** Binance responde **451** en `api.binance.com` /
+   `stream.binance.com` desde IP de EE. UU. El espejo `data-api/data-stream.binance.vision`
+   **también queda bloqueado desde una IP residencial de EE. UU.** (verificado desde
+   dos estados distintos, en incógnito y con caché borrada). Confiar solo en `.vision`
+   NO resolvía el problema. Lo que sí responde desde EE. UU. es **Binance.US**
+   (`api.binance.us` / `stream.binance.us:9443`), mismo formato de API.
+2. **Análisis se quedaba colgado por la wallet:** `analisis.html` esperaba
+   `await reconectarSiProcede()` antes de montar la gráfica (6471 ms → 425 ms al
+   desacoplar). La gráfica pública no debe depender de la wallet.
+3. **`index.html` (portada) no cargaba el shim** y abre Análisis en overlay (mismo
+   documento), así que esas gráficas no tenían ni reescritura.
+
+### Solución (RESUELTO y verificado en navegador)
+- **Failover a Binance.US centralizado en `assets/js/feed-shim.js` (v2):** para los
+  hosts `*.binance.com`, REST prueba `.vision` y si da 451/403 salta a `api.binance.us`
+  (y lo recuerda en `sessionStorage`); WS conmuta a `stream.binance.us:9443` al fallar
+  `.vision` (los módulos reconectan solos). Formación de velas en tiempo real intacta.
+- **`analisis.html`:** la reconexión de wallet corre en paralelo (no bloquea la gráfica);
+  la píldora de suscripción espera `window.__walletLista`.
+- **`index.html`:** se le añadió `feed-shim.js` como primer `<script>`.
+- Alcance quirúrgico: solo `*.binance.com`. Spot (hosts `.vision`/`.us` directos con su
+  propio failover) y lo on chain quedan intactos. Swap/Launchpad/Terminal no usan Binance.
+- Páginas con el shim (v2): index, portada, app, futuros, movil, shield, spot, analisis,
+  bots, terminal/alertas, shield(módulo).
+
+### Archivos
+`assets/js/feed-shim.js`, las 11 páginas que lo cargan, `modules/analysis/analisis.html`,
+`modules/analysis/analisis.js`. **Detalle completo en `RESOLUCION-region-graficas.md`.**
+
+### Caveat
+Binance.US no da cuentas en algunos estados (NY, TX...), pero su API pública de datos
+suele responder. Pares principales (BTC, ETH, BNB...) están en `.us`; los tokens exóticos
+grafican por la vía on chain (DEX), que no pasa por Binance.
+
+---
+
 ## MÓDULO: BOTS
 
 ### Bots no se abren: sale "límite de bots" aunque no tengas ninguno
