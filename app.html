@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <script src="assets/js/feed-shim.js?v=2"></script>
-<!-- Analisis tiene pagina propia (modules/analysis/analisis.html). Si se llega
-     a app.html pidiendo Analisis, se redirige ANTES de pintar nada, para no ver
-     los Bots ni su aviso un instante. location.replace: el Back no cae aqui. -->
-<script>try{if(new URLSearchParams(location.search).get('abrir')==='analisis'){location.replace('modules/analysis/analisis.html'+location.hash);}}catch(e){}</script>
+<!-- Analisis y Swap tienen pagina propia (modules/analysis/analisis.html y
+     modules/swap/swap.html). Si se llega a app.html pidiendo cualquiera de los
+     dos, se redirige ANTES de pintar nada, para no ver los Bots ni su aviso un
+     instante. location.replace: el Back no cae aqui. -->
+<script>try{var _ab=new URLSearchParams(location.search).get('abrir');if(_ab==='analisis'){location.replace('modules/analysis/analisis.html'+location.hash);}else if(_ab==='swap'){location.replace('modules/swap/swap.html'+location.hash);}}catch(e){}</script>
 <style id="ocultar-particulas-movil">@media(max-width:900px){#cco-fx,#cco-bg,#cco-top,#cco-velo{display:none!important}html,body{background:#0B0E11!important}}</style>
 
   <meta charset="utf-8">
