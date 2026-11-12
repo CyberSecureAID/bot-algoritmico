@@ -16,7 +16,7 @@
    redimensionan, se maximizan a pantalla completa, se cierran, y se restauran.
 */
 
-import { estilos } from './estilos.js?v=16';
+import { estilos } from './estilos.js?v=17';
 import * as D from './datos.js?v=6';
 import { leerVWAP } from './vwap-analista.js?v=1';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
@@ -195,8 +195,10 @@ const IC_MAX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 const IC_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const IC_CONF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg>';
 const IC_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.6"/></svg>';
-function ctrlPanel(id, expo, ultra) {
+const IC_MCAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg>';
+function ctrlPanel(id, expo, ultra, mcap) {
   return `<div class="it-ph-ctrl">
+    ${mcap ? `<button class="it-pbtn it-mcap" data-mcap="${id}" title="Market cap heatmap (TradingView)">${IC_MCAP}</button>` : ''}
     ${expo ? `<button class="it-pbtn it-expo-board" data-expo="${id}" title="Export image">${IC_CAM}</button>` : ''}
     ${ultra ? `<button class="it-pbtn it-ultra" data-ultra="${id}" title="Ultra full screen">${IC_ULTRA}</button>` : ''}
     <button class="it-pbtn it-max" data-max="${id}" title="Fullscreen">${IC_MAX}</button>
@@ -208,7 +210,7 @@ function panel(id, titulo, extra, opts) {
     <div class="it-ph">
       <h4>${titulo}</h4>
       ${extra || ''}
-      ${ctrlPanel(id, opts && opts.expo, opts && opts.ultra)}
+      ${ctrlPanel(id, opts && opts.expo, opts && opts.ultra, opts && opts.mcap)}
     </div>
     <div class="it-pb" id="${id}-body">${cargando()}</div>
     <span class="it-resize" data-rz></span>
@@ -260,7 +262,7 @@ function plantilla() {
     </div>
     ${panel('it-p-quote', 'QUOTE')}
     ${panel('it-p-watch', 'WATCHLIST')}
-    ${panel('it-p-board', 'MARKET HEATMAP', '<div class="it-ph-r dim" style="font-family:var(--it-mono);font-size:10px;margin-left:8px">SIZE · 24H MOVE</div>', { expo: true, ultra: true })}
+    ${panel('it-p-board', 'MARKET HEATMAP', '<div class="it-ph-r dim" style="font-family:var(--it-mono);font-size:10px;margin-left:8px">SIZE · 24H MOVE</div>', { expo: true, ultra: true, mcap: true })}
     ${panel('it-p-macro', 'SIGNALS')}
   </div>
   <div class="it-foot">
@@ -1468,6 +1470,44 @@ function treemap(items, W, H) {
 /* Treemap con ACTUALIZACIÓN POR CLAVE: los tiles no se recrean en cada refresco,
    se reposicionan/redimensionan con transición CSS (animación de crecer/encoger).
    El texto se ESCALA al tamaño del tile (se reduce, no se elimina). */
+/* Market Cap (OPCIONAL): capa con el heatmap de market cap de TradingView SOBRE el
+   treemap propio, sin destruirlo. Por defecto manda el NUESTRO; el usuario activa
+   este por su cuenta con el boton y puede volver. Se mantiene la atribucion de
+   TradingView (es su widget). */
+function montarMarketCapTV(cont) {
+  cont.innerHTML = `<div class="tradingview-widget-container" style="height:100%;width:100%">
+    <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div></div>`;
+  const c = cont.querySelector('.tradingview-widget-container');
+  const sc = document.createElement('script');
+  sc.type = 'text/javascript'; sc.async = true;
+  sc.src = 'https://s3.tradingview.com/external-embedding/embed-widget-crypto-coins-heatmap.js';
+  sc.innerHTML = JSON.stringify({
+    dataSource: 'Crypto', blockSize: 'market_cap_calc', blockColor: 'change', locale: 'en',
+    symbolUrl: '', colorTheme: 'dark', hasTopBar: false, isDataSetEnabled: false,
+    isZoomEnabled: true, hasSymbolTooltip: true, isMonoSize: false, width: '100%', height: '100%'
+  });
+  sc.onerror = () => { cont.innerHTML = '<div class="it-mcap-err">Could not load the market cap heatmap. Check your connection and try again.</div>'; };
+  c.appendChild(sc);
+}
+function toggleMarketCap(id) {
+  const pan = document.getElementById(id); if (!pan) return;
+  const body = pan.querySelector('.it-pb'); if (!body) return;
+  const btn = pan.querySelector('.it-mcap');
+  let ov = body.querySelector('.it-mcap-ov');
+  if (ov && ov.style.display !== 'none') {                 // visible -> volver al treemap NUESTRO
+    ov.style.display = 'none';
+    if (btn) btn.classList.remove('on');
+    setTimeout(() => { try { pintarHeat({ instant: true }); } catch (_) {} }, 30);
+    return;
+  }
+  if (!ov) {
+    ov = document.createElement('div'); ov.className = 'it-mcap-ov';
+    body.appendChild(ov);
+    montarMarketCapTV(ov);
+  }
+  ov.style.display = 'block';
+  if (btn) btn.classList.add('on');
+}
 function pintarHeat(opts) {
   const body = document.getElementById('it-p-board-body'); if (!body || !S.board.length) return;
   const W = body.clientWidth, H = body.clientHeight; if (W < 10 || H < 10) return;
@@ -1769,6 +1809,7 @@ function montarVentanas() {
     }
     const rz = panel.querySelector('[data-rz]');
     if (rz) { rz.addEventListener('mousedown', (e) => empezar(e, panel, 'resize')); rz.addEventListener('touchstart', (e) => empezar(e, panel, 'resize'), { passive: false }); }
+    const mc = panel.querySelector('.it-mcap'); if (mc) mc.onclick = (e) => { e.stopPropagation(); toggleMarketCap(panel.id); };
     const ex = panel.querySelector('.it-expo-board'); if (ex) ex.onclick = (e) => { e.stopPropagation(); exportarHeat(); };
     const ul = panel.querySelector('.it-ultra'); if (ul) ul.onclick = (e) => { e.stopPropagation(); entrarUltra(panel.id); };
     const mx = panel.querySelector('.it-max'); if (mx) mx.onclick = (e) => { e.stopPropagation(); maximizar(panel.id); };
