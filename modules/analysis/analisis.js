@@ -54,7 +54,11 @@ const HERRAMIENTAS = [
   // "Multichart" = modulo propio y aislado modules/multichart/.
   { id:'multi', abre:'multi', nombre:'Multichart', cat:'analysis', img:'assets/img/serv-multi.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Many markets, one glance',
-    desc:'Four live charts at once, each with its own coin, timeframe and indicators. Opens with BTC, ETH, BNB and SOL side by side; swap any coin from the full USDT catalog, resize every chart by its corner, pop out extra floating charts and load the maximum set of indicators (moving averages, VWAP, Bollinger, RSI, MACD, Stochastic, CCI) with the same live glow as VWAP Pro. Built to watch the whole market move in real time.' }
+    desc:'Four live charts at once, each with its own coin, timeframe and indicators. Opens with BTC, ETH, BNB and SOL side by side; swap any coin from the full USDT catalog, resize every chart by its corner, pop out extra floating charts and load the maximum set of indicators (moving averages, VWAP, Bollinger, RSI, MACD, Stochastic, CCI) with the same live glow as VWAP Pro. Built to watch the whole market move in real time.' },
+  // "Footprint Pro" = modulo propio modules/footprint/ (flujo de órdenes).
+  { id:'foot', abre:'foot', nombre:'Footprint Pro', cat:'analysis', img:'assets/img/preview.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'Order flow, candle by candle',
+    desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
@@ -101,7 +105,7 @@ function actualizarCart() { const n = document.querySelector('#an-sel .an-cartn'
 
 /* Cinta: mismos items y orden que el lobby, con Analysis ENTRE Bots y Futures. */
 const NAV = [
-  ['Swap', 'app.html?abrir=swap'],
+  ['Swap', 'modules/swap/swap.html'],
   ['Launchpad', 'modules/launchpad/launchpad.html'],
   ['Terminal', 'modules/terminal/terminal.html'],
   ['Bots', 'modules/bots/bots.html'],
@@ -153,6 +157,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=7', import.meta.url).href)).abrirMulti();
+    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=1', import.meta.url).href)).abrirFootprint();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
