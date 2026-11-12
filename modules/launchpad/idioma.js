@@ -104,7 +104,7 @@ const DIC = {
     'Escribe cuánto BNB quieres poner.': 'Type how much BNB you want to put in.',
     'Recargando… confirma en tu wallet.': 'Topping up… confirm in your wallet.',
     '¿cuánto ganaría con X?': 'how much would I earn with X?',
-    'CRIPTOCUBAOFICIAL.COM   ·   SIN CUSTODIA   ·   SIN KYC': 'CRIPTOCUBAOFICIAL.COM   ·   NON-CUSTODIAL   ·   NO KYC',
+    'DECFREEDOM.COM   ·   SIN CUSTODIA   ·   SIN KYC': 'DECFREEDOM.COM   ·   NON-CUSTODIAL   ·   NO KYC',
     'Activando tu bot (firma el pago en tu wallet)…': 'Activating your bot (sign the payment in your wallet)…',
     'Activar tu bot (30 días)': 'Activate your bot (30 days)',
     'Ampliar el rango': 'Widen the range',
