@@ -1,35 +1,31 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   feed-shim.js  (v2 — failover a Binance.US)
+   feed-shim.js  (v3 — failover a Binance.US SOLO ante geobloqueo real, con auto cura)
 
-   PROBLEMA: Binance bloquea por región las IP de EE. UU. y responde HTTP 451 en
-   api.binance.com y stream.binance.com. El espejo público data-api/
-   data-stream.binance.vision resuelve MUCHOS casos... pero se ha CONFIRMADO en
-   producción (dos IP residenciales de EE. UU., dos estados distintos, en
-   incógnito y con caché borrada) que desde una IP residencial de EE. UU. el
-   espejo .vision TAMBIÉN puede quedar bloqueado. Lo que SÍ responde desde EE. UU.
-   es Binance.US (api.binance.us / stream.binance.us:9443), que sirve el MISMO
-   formato de API para los pares principales. (Spot ya lo demostró: con ese
-   respaldo, Spot funciona perfecto desde EE. UU.)
+   PROBLEMA: Binance responde HTTP 451 por región en api.binance.com y
+   stream.binance.com desde EE. UU. El espejo público data-api/
+   data-stream.binance.vision resuelve muchos casos pero puede quedar bloqueado
+   desde una IP residencial de EE. UU. El respaldo que SÍ responde desde EE. UU.
+   es Binance.US (api/stream.binance.us).
 
-   SOLUCIÓN: este shim intercepta fetch / WebSocket / XMLHttpRequest y, SOLO para
-   las llamadas de datos de Binance (hosts *.binance.com), aplica un FAILOVER en
-   cascada:
-       1) data-api / data-stream . binance.vision   (espejo público, lo normal)
-       2) api / stream . binance.us                 (respaldo que funciona en EE. UU.)
-   Si el paso 1 da 451/403 o no conecta, salta al paso 2 y RECUERDA la preferencia
-   en sessionStorage para el resto de la sesión (así no se reintenta el espejo en
-   cada llamada). El formato es idéntico, así que NINGÚN módulo ni parser cambia.
+   OJO (corregido en v3): Binance.US está pensado para EE. UU. y puede NO servir
+   a usuarios de otros países (o no listar ciertos símbolos). Por eso saltar a
+   Binance.US "a la primera" era un error: un simple hipo del WebSocket o un error
+   de red transitorio hacía saltar a Binance.US a un usuario que NO está en EE. UU.
+   y le rompía TODAS las gráficas (y quedaba pegado en sessionStorage).
 
-   IMPORTANTE — alcance quirúrgico:
-   · Solo se tocan los hosts *.binance.com (REST api.binance.com y WS
-     stream.binance.com). Todo lo demás pasa intacto: blockchain/RPC, CoinGecko,
-     WalletConnect, y los módulos que YA usan hosts .vision/.us directos (como
-     modules/spot/datos.js, que trae su propio failover). A esos no se los toca.
-   · Los FUTUROS (fapi/fstream.binance.com) no se enrutan aquí (no tienen espejo
-     ni equivalente en .us). El patrón de host evita tocarlos.
+   REGLA v3:
+   · Solo se salta a Binance.US cuando .vision devuelve 451/403 (geobloqueo REAL,
+     que en la práctica solo ve EE. UU.). Un error de red o un cierre de WebSocket
+     NUNCA cambian de host.
+   · AUTO CURA: si por lo que sea la preferencia quedó en Binance.US y una llamada
+     a .us falla (porque el usuario no está en EE. UU.), se borra la preferencia y
+     se vuelve a .vision. Así una sesión mal marcada se recupera sola.
+   · El WebSocket solo SIGUE la preferencia que fijó el REST; no la cambia por su
+     cuenta.
 
-   Se carga como primer <script> de cada página, antes que los módulos, para que
-   el parcheo ya esté puesto cuando pidan datos.
+   Alcance quirúrgico: solo hosts *.binance.com. RPC/blockchain, CoinGecko,
+   WalletConnect y los módulos con hosts .vision/.us directos (Spot) pasan intactos.
+   Futuros (fapi/fstream) no se enrutan aquí.
    ══════════════════════════════════════════════════════════════════════════ */
 (function () {
   try {
@@ -38,6 +34,7 @@
     try { _us = sessionStorage.getItem(KEY) === 'us'; } catch (e) {}
     function prefUS() { try { return sessionStorage.getItem(KEY) === 'us'; } catch (e) { return _us; } }
     function setUS() { _us = true; try { sessionStorage.setItem(KEY, 'us'); } catch (e) {} }
+    function clearUS() { _us = false; try { sessionStorage.removeItem(KEY); } catch (e) {} }
 
     /* ── REST: ¿es datos de Binance spot (solo *.binance.com)? ── */
     var reCom = /^(?:https?:)?\/\/(?:api|api1|api2|api3|api-gcp)\.binance\.com(\/.*)?$/i;
@@ -53,53 +50,49 @@
     function toVisionWs(u) { return 'wss://data-stream.binance.vision' + wsPath(u); }
     function toUSWs(u) { return 'wss://stream.binance.us:9443' + wsPath(u); }
 
-    /* 1) fetch con failover TRANSPARENTE (.vision -> .us en 451/403 o fallo de red) */
+    /* 1) fetch con failover PRUDENTE (.vision <-> .us) */
     if (typeof window.fetch === 'function') {
       var _fetch = window.fetch.bind(window);
       window.fetch = function (input, init) {
         try {
           var url = (typeof input === 'string') ? input : (input && input.url);
           if (url && esRest(url)) {
-            if (prefUS()) return _fetch(toUS(url), init);
+            if (prefUS()) {
+              /* Preferimos Binance.US (hubo 451 de .vision antes). Pero si .us
+                 falla —p. ej. el usuario NO está en EE. UU. y .us lo bloquea o no
+                 tiene el símbolo— se REVIERTE a .vision para no romper nada. */
+              return _fetch(toUS(url), init).then(function (r) {
+                if (r && (r.status === 451 || r.status === 403 || r.status === 400 || r.status === 404 || r.status >= 500)) { clearUS(); return _fetch(toVision(url), init); }
+                return r;
+              }, function () { clearUS(); return _fetch(toVision(url), init); });
+            }
+            /* Normal: .vision. SOLO si da 451/403 (geobloqueo REAL, EE. UU.) se
+               salta a .us. Un error de red transitorio NO cambia de host. */
             return _fetch(toVision(url), init).then(function (r) {
               if (r && (r.status === 451 || r.status === 403)) { setUS(); return _fetch(toUS(url), init); }
               return r;
-            }, function () { setUS(); return _fetch(toUS(url), init); });
+            });
           }
         } catch (e) {}
         return _fetch(input, init);
       };
     }
 
-    /* 2) WebSocket: host según preferencia + detector de fallo del espejo.
-       No se proxyean los handlers del módulo; se añade un detector propio con
-       addEventListener. Si el socket al espejo .vision se cierra/da error ANTES
-       de abrir, se marca la preferencia a Binance.US. Como TODOS los módulos de
-       gráfica reconectan en onclose, su siguiente intento ya sale por .us. */
+    /* 2) WebSocket: SOLO sigue la preferencia que fijó el REST. No la cambia por
+       su cuenta (un hipo del WS ya no rompe nada ni manda a Binance.US). */
     if (typeof window.WebSocket === 'function') {
       var _WS = window.WebSocket;
       var WS = function (url, protocols) {
         var target = url;
         try { if (esWs(url)) target = prefUS() ? toUSWs(url) : toVisionWs(url); } catch (e) {}
-        var sock = (protocols === undefined) ? new _WS(target) : new _WS(target, protocols);
-        try {
-          if (esWs(url) && !prefUS()) {
-            var abierto = false;
-            sock.addEventListener('open', function () { abierto = true; });
-            var fallo = function () { if (!abierto) setUS(); };   // el módulo reconecta solo -> saldrá por .us
-            sock.addEventListener('error', fallo);
-            sock.addEventListener('close', fallo);
-          }
-        } catch (e) {}
-        return sock;
+        return (protocols === undefined) ? new _WS(target) : new _WS(target, protocols);
       };
       WS.prototype = _WS.prototype;
       WS.CONNECTING = _WS.CONNECTING; WS.OPEN = _WS.OPEN; WS.CLOSING = _WS.CLOSING; WS.CLOSED = _WS.CLOSED;
       try { window.WebSocket = WS; } catch (e) {}
     }
 
-    /* 3) XMLHttpRequest (por si algún módulo no usa fetch): enruta al host
-       preferido. Best effort, sin reintento (los módulos de datos usan fetch). */
+    /* 3) XMLHttpRequest: enruta al host preferido (best effort). */
     if (window.XMLHttpRequest && XMLHttpRequest.prototype && XMLHttpRequest.prototype.open) {
       var _open = XMLHttpRequest.prototype.open;
       XMLHttpRequest.prototype.open = function (method, url) {
@@ -107,5 +100,5 @@
         return _open.apply(this, arguments);
       };
     }
-  } catch (e) { /* si algo falla, no rompe la página: sigue el comportamiento normal */ }
+  } catch (e) { /* si algo falla, no rompe la página */ }
 })();
