@@ -106,17 +106,10 @@ const NAV = [
   ['Terminal', 'modules/terminal/terminal.html'],
   ['Bots', 'modules/bots/bots.html'],
   ['Analysis', null],
+  ['Spot', 'modules/spot/spot.html'],
   ['Futures', 'futuros.html?v=14'],
   ['Staking', 'aportar.html'],
   ['Shield', 'modules/shield/shield.html']
-];
-const NAV_TOOLS = [
-  ['Dust collector', 'app.html?abrir=tools&tool=polvo'],
-  ['Price alerts', 'app.html?abrir=tools&tool=alertas'],
-  ['Fear and greed', 'app.html?abrir=tools&tool=termometro'],
-  ['Technical analysis', 'app.html?abrir=tools&tool=tecnico'],
-  ['Market map', 'app.html?abrir=tools&tool=mapa'],
-  ['Live chart', 'app.html?abrir=tools&tool=grafica']
 ];
 
 const ICO = {
@@ -408,10 +401,6 @@ export function abrirSelector(origen, wallet, ethers) {
     if (href === null) return `<div class="pt-nav__i"><a class="pt-nav__b lp-on" aria-current="page">${esc(txt)}</a></div>`;
     return `<div class="pt-nav__i"><a class="pt-nav__b" href="${esc(href)}">${esc(txt)}</a></div>`;
   }).join('');
-  const toolsHTML = `<div class="pt-nav__i">
-      <button class="pt-nav__b" type="button">Tools ${ICO.chev}</button>
-      <div class="pt-menu">${NAV_TOOLS.map(([t, h]) => `<a href="${esc(h)}"><b>${esc(t)}</b></a>`).join('')}</div>
-    </div>`;
   const colaHTML = `<div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=market">P2P</a></div>
     <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=academy">Academy</a></div>`;
 
@@ -420,7 +409,7 @@ export function abrirSelector(origen, wallet, ethers) {
       <div class="pt-hdr__in">
         <a class="sw-back" id="an-back" href="index.html" aria-label="Back">${ICO.back}Back</a>
         <a class="pt-logo" href="index.html" aria-label="DecFreedom"><img src="${LOGO}" alt="DecFreedom" width="150" height="30"></a>
-        <nav class="pt-nav" aria-label="Main">${navHTML}${toolsHTML}${colaHTML}</nav>
+        <nav class="pt-nav" aria-label="Main">${navHTML}${colaHTML}</nav>
         <div class="pt-hdr__a">
           <span class="an-wpill" id="an-wpill" hidden></span>
           <a class="c-contratos" href="transparency.html">Contracts</a>
