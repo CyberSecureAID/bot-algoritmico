@@ -1,4 +1,4 @@
-# CriptoCuba Oficial
+# decfreedom.com
 
 **Plataforma de bots de trading no custodial en BNB Smart Chain.**
 El dinero del usuario **nunca sale de su wallet**. Los contratos solo tienen
