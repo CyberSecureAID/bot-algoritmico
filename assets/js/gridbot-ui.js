@@ -489,9 +489,9 @@ function wireHeader() {
      Permite que el bot de Telegram (o cualquier enlace compartido)
      abra la sección concreta en vez de la portada:
 
-       criptocubaoficial.com/#academia
-       criptocubaoficial.com/#liquidity
-       criptocubaoficial.com/#market
+       decfreedom.com/#academia
+       decfreedom.com/#liquidity
+       decfreedom.com/#market
 
      Se espera un momento a que la wallet se conecte, porque algunas
      secciones la necesitan para pintarse bien.
