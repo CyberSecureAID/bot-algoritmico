@@ -165,6 +165,14 @@ function construir(msg) {
       niveles, poc, delta: rDelta, total: rTotal, buyTot: rBuy, sellTot: rSell, hi, lo, imbalances, sinTicks });
   }
 
+  // CONTINUIDAD: cada vela abre EXACTAMENTE donde cerró la anterior (mercado 24/7,
+  // sin huecos). Así la vela nueva nace pegada al cierre de la anterior y no
+  // "corrida" a la mitad de su cuerpo. Se extiende la mecha para contener el open.
+  for (let i = 1; i < candles.length; i++) {
+    const prev = candles[i - 1], c = candles[i];
+    if (prev.c != null) { c.o = prev.c; if (c.o > c.h) c.h = c.o; if (c.o < c.l) c.l = c.o; }
+  }
+
   // ── CVD (delta acumulado) ───────────────────────────────────────────
   const cvd = [];
   let acc = 0;

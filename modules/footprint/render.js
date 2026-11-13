@@ -168,8 +168,10 @@ export function crearRender(host, opts = {}) {
     st._absMarks = marks;
     for (const { c, x } of vis) {
       if (c.t === st.liveT) continue;                 // la viva lleva las dos flechas titilando, no la del ganador
-      const buyWin = c.delta >= 0, cx = x + st.colW / 2;
-      const y = buyWin ? Math.min(A.h - 5, yP(c.l, A) + 11) : Math.max(11, yP(c.h, A) - 11);
+      const o = c.o != null ? c.o : c.c;
+      const buyWin = c.c >= o, cx = x + st.colW / 2;   // GANADOR por color de la vela (cierre vs apertura), no por delta
+      // Separada del bloque: verde BAJO el mínimo, roja SOBRE el máximo, con aire.
+      const y = buyWin ? Math.min(A.h - 6, yP(c.l, A) + 16) : Math.max(12, yP(c.h, A) - 16);
       if (y < -20 || y > A.h + 20) continue;
       wins.push({ x: cx, y, buyWin });
     }
@@ -177,9 +179,10 @@ export function crearRender(host, opts = {}) {
     const lv = vis.find((x) => x.c.t === st.liveT);
     if (lv && st.live) {
       let b = 0, s = 0; for (const n of (st.live.niveles || [])) { b += n.buy; s += n.sell; }
-      const yTop = Math.max(12, yP(Math.max(st.dispH, st.dispC), A) - 15);
-      const yBot = Math.min(A.h - 6, yP(Math.min(st.dispL, st.dispC), A) + 15);
-      st._warPos = { x: lv.x + st.colW / 2, yTop, yBot, b, s };
+      const o = lv.c.o != null ? lv.c.o : st.dispC;
+      const yTop = Math.max(12, yP(Math.max(st.dispH, st.dispC), A) - 18);
+      const yBot = Math.min(A.h - 6, yP(Math.min(st.dispL, st.dispC), A) + 18);
+      st._warPos = { x: lv.x + st.colW / 2, yTop, yBot, b, s, up: st.dispC >= o };   // ganando = precio sobre la apertura (color de la vela)
     } else st._warPos = null;
   }
 
@@ -436,7 +439,7 @@ export function crearRender(host, opts = {}) {
     const wp = st._warPos;
     if (wp) {
       const delta = wp.b - wp.s, tot = wp.b + wp.s, lead = tot > 0 ? Math.min(1, Math.abs(delta) / tot) : 0;
-      const pulse = 0.5 + 0.5 * Math.sin(now / 150), buyWin = delta >= 0;
+      const pulse = 0.5 + 0.5 * Math.sin(now / 150), buyWin = wp.up;   // el que va ganando = color de la vela (precio vs apertura)
       fxImg(imgs.warUp, wp.x, wp.yBot, 16, buyWin ? (0.5 + 0.5 * pulse * (0.5 + 0.5 * lead)) : 0.2, C.buy, 'up');     // compradores (verde, abajo)
       fxImg(imgs.warDown, wp.x, wp.yTop, 16, !buyWin ? (0.5 + 0.5 * pulse * (0.5 + 0.5 * lead)) : 0.2, C.sell, 'down'); // vendedores (rojo, arriba)
     }

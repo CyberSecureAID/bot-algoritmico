@@ -12,10 +12,10 @@
    NUEVO: motor de footprint (worker), render en canvas, 3 modos, imbalances
    apilados como S/R, CVD con divergencias, absorción y su analista propio. */
 
-import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=4';
-import { crearRender } from './render.js?v=4';
-import { leerFootprint } from './analista.js?v=4';
-import { estilosFootprint } from './estilos.js?v=4';
+import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=5';
+import { crearRender } from './render.js?v=5';
+import { leerFootprint } from './analista.js?v=5';
+import { estilosFootprint } from './estilos.js?v=5';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -321,7 +321,7 @@ function onTrade(tr) {
 
 function arrancarWorker() {
   try {
-    S.worker = new Worker(new URL('./motor.worker.js?v=4', import.meta.url));
+    S.worker = new Worker(new URL('./motor.worker.js?v=5', import.meta.url));
     S.worker.onmessage = (ev) => {
       const r = ev.data || {};
       if (!r.ok) return;
