@@ -59,9 +59,9 @@ const HERRAMIENTAS = [
   { id:'foot', abre:'foot', nombre:'Footprint Pro', cat:'analysis', img:'assets/img/serv-footprint.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Order flow, candle by candle',
     desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' },
-  { id:'scalp', abre:'scalp', nombre:'Super Scalper', cat:'strategy', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
-    lema:'1 second RSI 2 + EMA 50 scalping',
-    desc:'A mechanical scalping strategy drawn live on a 1 second chart. An EMA 50 sets the trend, above it only longs and below it only shorts, and a fast RSI 2 times the entry when its bright yellow line tags the 9 or 99 band in the direction of the trend. Each valid setup draws a position with the entry, a stop on the far side of the EMA and a 1:1.5 target, with a live status, and the trades that reach target stay on the chart as a record. Coin selector, shared drawing toolbar and a draggable, stretchable chart. Built for surgical scalp entries at the candle open or close.' }
+  { id:'scalp', abre:'scalp', nombre:'Whale Trades', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'Live whale orders on a 1 second chart',
+    desc:'Whale Trades draws the live executed tape straight onto a 1 second chart. Every big market order becomes a bubble at the exact price and second it printed: green for aggressive buys that lift the offer, red for aggressive sells that hit the bid, and the bigger the trade in US dollars the bigger the bubble, with the largest one on screen pulsing so you never miss it. The size is scaled to each market, so every coin shows its own whales. Coin selector, timeframes from 1 second up to 1 day, shared drawing toolbar and a draggable, stretchable chart. See the real money moving the market, in real time, at the tick.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
@@ -161,7 +161,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=7', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=9', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=2', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=3', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
