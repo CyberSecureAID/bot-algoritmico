@@ -7,16 +7,17 @@
    moneda, temporalidades, barra de dibujo lateral, órdenes por clic derecho, export con
    marca de agua y ayuda). La vista es una gráfica de VELAS con el indicador encima.
 
-   INDICADOR: Volume-Weighted Order Block Zones (concepto de BigBeluga, TradingView).
-   Implementación propia en JavaScript a partir de la especificación funcional (no se copia
-   el Pine original). Combina tres capas, como el sistema de referencia:
-     1) Estructura: pivotes high/low (swLen) confirmados varias velas después.
-     2) Volumen: intensidad del volumen del pivote frente a su media (filtro minVol).
-     3) Desplazamiento: ATR(100) · displacement para exigir una expansión real del precio.
-   Resultado: zonas de Order Block alcistas (demanda) y bajistas (oferta) ponderadas por
-   volumen, con etiquetas PH/PL, líneas de desplazamiento, retests B/S, y gestión de
-   mitigación/invalidación. Son zonas INFERIDAS del precio y el volumen, no órdenes
-   institucionales verificadas. Es información, no consejo ni garantía.
+   INDICADOR: dos capas sobre la gráfica de velas.
+     A) Ribbon de medias GMMA (Daryl Guppy): 12 EMAs (6 cortas + 6 largas) que convergen en
+        lateral y se abren en tendencia. El color sigue la tendencia actual y emite señal
+        LONG/SHORT solo en el giro confirmado (banda de histéresis sobre ATR contra el ruido),
+        en tiempo real al cierre, nunca pintada hacia atrás.
+     B) Zonas de Order Block (concepto de BigBeluga): cajas de demanda (verde) y oferta
+        (roja) a partir de pivotes con volumen y desplazamiento ATR(100); se extienden a la
+        derecha y se retiran al invalidarse. Implementación propia en JavaScript desde la
+        especificación funcional (no se copia el Pine original).
+   Las zonas y señales son INFERENCIAS del precio y el volumen, no órdenes institucionales
+   verificadas ni garantía de resultado. Es información, no consejo.
 
    Datos: solo Binance SPOT (klines OHLCV + stream), regla de CLAUDE.md. Default 1H. */
 
@@ -34,14 +35,15 @@ let _par = 'BTC';
 
 const M = {
   tf: '1h', velas: [], precio: 0, dispC: null,        // DEFAULT 1H; dispC = cierre suavizado (easing)
-  ob: { zonas: [], phpl: [], lineas: [], marcas: [] },// modelo de Order Blocks calculado
+  ob: { zonas: [], phpl: [], lineas: [], marcas: [] },// zonas (cajas) de Order Block
+  ribbon: { emas: [], fast: [], slow: [], trend: [], sig: [], periods: [], nc: 6 }, // ribbon de medias GMMA + tendencia + señales
   ancho: window.innerWidth < 760 ? 70 : 120, desplaz: 0, zoomY: 1, offsetY: 0,
   _geo: null, _cursor: null, cargando: true, error: null
 };
 // Parámetros del indicador (defaults documentados; ATR 100 es del sistema de referencia,
 // el resto son una adaptación razonable para 1H y se explican en la ayuda).
 const CFG = { swLen: 5, atrLen: 100, disp: 1.6, minVol: 10, volSma: 20, maxZ: 8 };
-const COL = { bull: '46,200,120', bear: '255,82,100' };   // verde demanda / rojo oferta (comercial, legible)
+const COL = { bull: '46,200,120', bear: '255,82,100', neu: '150,160,175' };   // verde alcista / rojo bajista / gris neutro (comercial, legible)
 // Temporalidades (las normales); el indicador se calcula sobre la elegida. Default 1H.
 const SS_TFS = [
   { id: '1s', n: '1s', sec: 1 }, { id: '5s', n: '5s', sec: 5 }, { id: '15s', n: '15s', sec: 15 }, { id: '30s', n: '30s', sec: 30 },
@@ -192,7 +194,41 @@ function calcularOB(velas, cfg) {
   model.marcas = model.marcas.slice(-cfg.maxZ * 2);
   return model;
 }
-function recalcOB() { try { M.ob = calcularOB(M.velas, CFG); } catch (_) { M.ob = { zonas: [], phpl: [], lineas: [], marcas: [] }; } }
+function recalcOB() {
+  try { M.ob = calcularOB(M.velas, CFG); } catch (_) { M.ob = { zonas: [], phpl: [], lineas: [], marcas: [] }; }
+  recalcRibbon();
+}
+/* ── Ribbon de medias (GMMA de Daryl Guppy): 6 EMAs cortas (3,5,8,10,12,15) + 6 largas
+   (30,35,40,45,50,60). Convergen en un punto en lateral y se abren en tendencia. El color
+   del ribbon sigue la tendencia ACTUAL. La señal LONG/SHORT salta SOLO cuando la tendencia
+   confirma su giro, en el instante del cierre (tiempo real, nunca pintada hacia atrás). Una
+   banda de histéresis sobre ATR ignora los cruces pequeños del lateral: mata el ruido. ── */
+const RIB = { corto: [3, 5, 8, 10, 12, 15], largo: [30, 35, 40, 45, 50, 60] };
+function calcRibbon(velas) {
+  const n = velas.length, periods = [...RIB.corto, ...RIB.largo], K = periods.length, nc = RIB.corto.length;
+  const model = { emas: [], fast: [], slow: [], trend: [], sig: [], periods, nc };
+  if (n < periods[K - 1] + 6) return model;
+  const emas = periods.map(() => new Array(n));
+  for (let k = 0; k < K; k++) { const a = 2 / (periods[k] + 1); let e = velas[0].c; for (let i = 0; i < n; i++) { e = i ? e + a * (velas[i].c - e) : velas[i].c; emas[k][i] = e; } }
+  const fast = new Array(n), slow = new Array(n);
+  for (let i = 0; i < n; i++) { let fs = 0; for (let k = 0; k < nc; k++) fs += emas[k][i]; let sl = 0; for (let k = nc; k < K; k++) sl += emas[k][i]; fast[i] = fs / nc; slow[i] = sl / (K - nc); }
+  const atr = calcATR(velas, 14), trend = new Array(n).fill(0), sig = []; let cur = 0;
+  for (let i = 0; i < n; i++) {
+    const sep = fast[i] - slow[i], band = (atr[i] || velas[i].c * 0.001) * 0.35;   // histéresis: fuera de la banda define, dentro mantiene (mayor = menos ruido)
+    let t = cur; if (sep > band) t = 1; else if (sep < -band) t = -1;
+    if (t !== cur && cur !== 0 && i > periods[K - 1]) sig.push({ i, dir: t > 0 ? 'long' : 'short', p: t > 0 ? velas[i].l : velas[i].h });
+    cur = t; trend[i] = t;
+  }
+  model.emas = emas; model.fast = fast; model.slow = slow; model.trend = trend; model.sig = sig.slice(-20);
+  return model;
+}
+function recalcRibbon() { try { M.ribbon = calcRibbon(M.velas); } catch (_) { M.ribbon = { emas: [], fast: [], slow: [], trend: [], sig: [], periods: [], nc: 6 }; } }
+function moverRibbon(precio) {   // mueve solo la punta del ribbon con el precio suavizado (fluidez entre cierres)
+  const r = M.ribbon; if (!r || !r.emas || !r.emas.length) return; const i = M.velas.length - 1; if (i < 1 || i >= r.emas[0].length) return;
+  for (let k = 0; k < r.periods.length; k++) { const a = 2 / (r.periods[k] + 1); r.emas[k][i] = r.emas[k][i - 1] + a * (precio - r.emas[k][i - 1]); }
+  let fs = 0; for (let k = 0; k < r.nc; k++) fs += r.emas[k][i]; let sl = 0; for (let k = r.nc; k < r.periods.length; k++) sl += r.emas[k][i];
+  r.fast[i] = fs / r.nc; r.slow[i] = sl / (r.periods.length - r.nc);
+}
 
 /* ══════════════════ APERTURA ══════════════════ */
 export async function abrirSuperScalper() {
@@ -234,7 +270,7 @@ export async function abrirSuperScalper() {
   clearInterval(_pulso);
   _pulso = setInterval(() => {
     if (!$('ss-cv')) return;
-    if (M.precio > 0) { if (M.dispC == null) M.dispC = M.precio; else M.dispC += (M.precio - M.dispC) * 0.22; }   // easing fluido
+    if (M.precio > 0) { if (M.dispC == null) M.dispC = M.precio; else M.dispC += (M.precio - M.dispC) * 0.22; moverRibbon(M.dispC); }   // easing fluido + punta del ribbon
     dibujar();
   }, 33);
   let _t = null; M._onResize = () => { clearTimeout(_t); _t = setTimeout(() => { if ($('ss-cv')) dibujar(); }, 200); };
@@ -347,9 +383,10 @@ function dibujar() {
   g.strokeStyle = P.rejilla; g.lineWidth = 1;
   for (let i = 1; i < 6; i++) { const y = (y1 / 6) * i; g.beginPath(); g.moveTo(0, y); g.lineTo(x1, y); g.stroke(); }
 
-  dibujarOB(g, Y, Xbar, xVelas, y1, pri, fin);          // ← Order Blocks DEBAJO de las velas
+  dibujarOB(g, Y, Xbar, xVelas, y1, pri, fin);          // zonas (cajas) de fondo
   dibujarVelas(g, vis, Y, paso);
-  dibujarMarcas(g, Y, Xbar, pri, fin);                   // PH/PL y B/S por ENCIMA
+  dibujarRibbon(g, Y, Xbar, pri, fin);                  // ribbon GMMA por encima de las velas
+  dibujarSenales(g, Y, Xbar, pri, fin);                 // LONG/SHORT en los giros de tendencia
 
   if (pc > 0) {
     const yp = Y(pc); g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 1; g.setLineDash([3, 3]);
@@ -387,63 +424,89 @@ function dibujarVelas(g, vis, Y, paso) {
   }
 }
 
-/* Zonas de Order Block: rectángulo desde la vela de origen hasta el borde derecho, verde
-   (demanda) o rojo (oferta), opacidad según intensidad de volumen; con su % y la línea de
-   desplazamiento discontinua. Debajo de las velas para no taparlas. */
+/* Zonas (cajas) de Order Block: caja redondeada con degradado, borde y acento lateral con
+   brillo; demanda (verde) u oferta (roja). Se extiende a la derecha mientras siga válida.
+   Etiqueta limpia LONG / SHORT junto al precio. Sin texto de volumen, sin líneas sueltas. */
 function dibujarOB(g, Y, Xbar, xVelas, y1, pri, fin) {
-  const vis0 = pri, vis1 = fin;
-  // líneas de desplazamiento (discontinuas)
-  for (const ln of (M.ob.lineas || [])) {
-    if (ln.iFin < vis0 - 2) continue;
-    const rgb = ln.dir === 'bull' ? COL.bull : COL.bear, x0 = Math.max(0, Xbar(ln.i0)), xf = Math.min(xVelas, ln.pend ? xVelas : Xbar(ln.iFin)), y = Y(ln.nivel);
-    if (y < 0 || y > y1) continue;
-    g.save(); g.setLineDash([5, 4]); g.strokeStyle = `rgba(${rgb},${ln.pend ? 0.45 : 0.6})`; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(x0, y); g.lineTo(xf, y); g.stroke(); g.restore();
-  }
-  // zonas activas
   for (const z of (M.ob.zonas || [])) {
-    const x0 = Math.max(0, Xbar(z.i0)); if (Xbar(z.i0) > xVelas) continue;
-    const yTop = Y(z.top), yBot = Y(z.bottom); if (yBot < 0 || yTop > y1) continue;
-    const rgb = z.dir === 'bull' ? COL.bull : COL.bear;
-    const inten = Math.max(0, Math.min(1, z.volPct / 120));       // intensidad de volumen → opacidad
-    const alpha = 0.08 + inten * 0.16;
-    g.fillStyle = `rgba(${rgb},${alpha.toFixed(3)})`; g.fillRect(x0, yTop, xVelas - x0, yBot - yTop);
-    g.strokeStyle = `rgba(${rgb},.5)`; g.lineWidth = 1; g.strokeRect(x0 + 0.5, yTop + 0.5, xVelas - x0 - 1, yBot - yTop - 1);
-    g.fillStyle = `rgba(${rgb},.9)`; g.fillRect(x0, yTop, 2.5, yBot - yTop);   // acento en el borde izquierdo
-    // etiqueta de volumen
-    const h = yBot - yTop;
-    if (h > 14) { g.fillStyle = `rgba(${rgb},.95)`; g.font = '800 10px ui-monospace,monospace'; g.textAlign = 'left';
-      g.fillText(`${z.volPct >= 0 ? '+' : ''}${z.volPct.toFixed(0)}% vol`, x0 + 7, (yTop + yBot) / 2 + 3.5); g.textAlign = 'left'; }
+    const xo = Xbar(z.i0); if (xo > xVelas) continue; const x0 = Math.max(0, xo);
+    let yTop = Y(z.top), yBot = Y(z.bottom); if (yBot < 0 || yTop > y1) continue;
+    if (yTop < -40) yTop = -40; if (yBot > y1 + 40) yBot = y1 + 40;
+    const rgb = z.dir === 'bull' ? COL.bull : COL.bear, w = xVelas - x0, h = yBot - yTop; if (h < 1 || w < 1) continue;
+    const rad = Math.min(9, h / 2, w / 2);
+    const grad = g.createLinearGradient(0, yTop, 0, yBot);
+    grad.addColorStop(0, `rgba(${rgb},0.05)`); grad.addColorStop(0.5, `rgba(${rgb},0.17)`); grad.addColorStop(1, `rgba(${rgb},0.05)`);
+    g.save(); redondeado(g, x0, yTop, w, h, rad); g.fillStyle = grad; g.fill();
+    g.strokeStyle = `rgba(${rgb},0.42)`; g.lineWidth = 1.1; g.stroke(); g.restore();
+    g.save(); g.shadowColor = `rgba(${rgb},.55)`; g.shadowBlur = 9; g.fillStyle = `rgb(${rgb})`; g.fillRect(x0, yTop + 1, 3, h - 2); g.restore();
+    if (h > 19) {                                   // etiqueta LONG / SHORT junto al precio
+      const txt = z.dir === 'bull' ? 'LONG' : 'SHORT'; g.font = '800 10px system-ui,sans-serif';
+      const tw = g.measureText(txt).width, pw = tw + 22, ph = 16, px = xVelas - pw - 8, py = (yTop + yBot) / 2 - ph / 2;
+      g.fillStyle = `rgba(${rgb},0.95)`; redondeado(g, px, py, pw, ph, 8); g.fill();
+      g.fillStyle = '#07120b'; g.beginPath();
+      if (z.dir === 'bull') { g.moveTo(px + 8, py + 11); g.lineTo(px + 11, py + 5); g.lineTo(px + 14, py + 11); } else { g.moveTo(px + 8, py + 5); g.lineTo(px + 11, py + 11); g.lineTo(px + 14, py + 5); }
+      g.closePath(); g.fill(); g.textAlign = 'left'; g.fillText(txt, px + 17, py + 11.5); g.textAlign = 'left';
+    }
   }
 }
-/* Etiquetas PH/PL (origen de estructura) y B/S (reacciones en retest). */
-function dibujarMarcas(g, Y, Xbar, pri, fin) {
-  g.textAlign = 'center';
-  for (const p of (M.ob.phpl || [])) {
-    if (p.i < pri - 1 || p.i > fin) continue; const x = Xbar(p.i); if (x < 0 || x > (M._geo ? M._geo.xVelas : 1e9)) continue;
-    const arriba = p.tipo === 'PH', y = Y(p.p) + (arriba ? -8 : 14);
-    g.fillStyle = 'rgba(160,172,186,.85)'; g.font = '800 9px ui-monospace,monospace'; g.fillText(p.tipo, x, y);
+/* Ribbon GMMA: 12 medias finas coloreadas por la tendencia actual, con una banda sutil entre
+   el grupo rápido y el lento. Convergen en lateral y se abren en tendencia. */
+function dibujarRibbon(g, Y, Xbar, pri, fin) {
+  const r = M.ribbon; if (!r || !r.fast || !r.fast.length) return;
+  const a = Math.max(1, pri), b = Math.min(fin, r.fast.length); if (b - a < 2) return;
+  const colOf = (t) => t > 0 ? COL.bull : t < 0 ? COL.bear : COL.neu;
+  g.save();
+  let s = a;                                             // pinta por TRAMOS de tendencia constante (color por tramo)
+  while (s < b) {
+    const t = r.trend[s] || 0; let e = s + 1; while (e < b && (r.trend[e] || 0) === t) e++;
+    const last = Math.min(e, b - 1), rgb = colOf(t);     // conecta con el primer bar del tramo siguiente
+    g.beginPath(); g.moveTo(Xbar(s), Y(r.fast[s]));      // banda entre medias rápidas y lentas
+    for (let i = s + 1; i <= last; i++) g.lineTo(Xbar(i), Y(r.fast[i]));
+    for (let i = last; i >= s; i--) g.lineTo(Xbar(i), Y(r.slow[i]));
+    g.closePath(); g.fillStyle = `rgba(${rgb},0.08)`; g.fill();
+    for (let k = 0; k < r.periods.length; k++) {         // las 12 medias del tramo
+      const corta = k < r.nc; g.beginPath(); g.moveTo(Xbar(s), Y(r.emas[k][s]));
+      for (let i = s + 1; i <= last; i++) g.lineTo(Xbar(i), Y(r.emas[k][i]));
+      g.strokeStyle = `rgba(${rgb},${corta ? 0.55 : 0.26})`; g.lineWidth = corta ? 1 : 0.9; g.stroke();
+    }
+    s = e;
   }
-  for (const m of (M.ob.marcas || [])) {
-    if (m.i < pri - 1 || m.i > fin) continue; const x = Xbar(m.i); if (x < 0 || x > (M._geo ? M._geo.xVelas : 1e9)) continue;
-    const buy = m.tipo === 'B', rgb = buy ? COL.bull : COL.bear, y = Y(m.p) + (buy ? 15 : -9);
-    g.save(); g.fillStyle = `rgb(${rgb})`; g.font = '900 11px system-ui,sans-serif'; g.shadowColor = `rgba(${rgb},.6)`; g.shadowBlur = 5;
-    g.beginPath(); g.arc(x, y - 3.5, 8, 0, 6.2832); g.fill(); g.shadowBlur = 0; g.fillStyle = '#06110a'; g.fillText(m.tipo, x, y); g.restore();
-  }
-  g.textAlign = 'left';
+  g.restore();
 }
-/* Leyenda discreta (arriba-izquierda): qué es verde / rojo. */
+/* Señales LONG / SHORT: solo en los giros de tendencia confirmados (pocas y limpias). */
+function dibujarSenales(g, Y, Xbar, pri, fin) {
+  const r = M.ribbon; if (!r || !r.sig) return; const xMax = M._geo ? M._geo.xVelas : 1e9;
+  g.save();
+  for (const s of r.sig) {
+    if (s.i < pri - 1 || s.i > fin) continue; const x = Xbar(s.i); if (x < 0 || x > xMax) continue;
+    const long = s.dir === 'long', rgb = long ? COL.bull : COL.bear, txt = long ? 'LONG' : 'SHORT';
+    g.font = '900 10px system-ui,sans-serif'; const tw = g.measureText(txt).width, pw = tw + 24, ph = 18;
+    const px = Math.max(2, Math.min(x - pw / 2, xMax - pw)), py = long ? Y(s.p) + 10 : Y(s.p) - ph - 10;
+    g.shadowColor = `rgba(${rgb},.55)`; g.shadowBlur = 8; g.fillStyle = `rgb(${rgb})`; redondeado(g, px, py, pw, ph, 9); g.fill(); g.shadowBlur = 0;
+    g.fillStyle = '#07120b'; g.beginPath();
+    if (long) { g.moveTo(px + 8, py + 12); g.lineTo(px + 12, py + 5); g.lineTo(px + 16, py + 12); } else { g.moveTo(px + 8, py + 6); g.lineTo(px + 12, py + 13); g.lineTo(px + 16, py + 6); }
+    g.closePath(); g.fill(); g.textAlign = 'left'; g.fillText(txt, px + 19, py + 13);
+  }
+  g.restore(); g.textAlign = 'left';
+}
+/* Leyenda (arriba-izquierda): estado del ribbon en vivo + demanda / oferta. */
 function dibujarLeyenda(g) {
-  const bx = 12, by = 12, bw = 210, bh = 40;
+  const r = M.ribbon, fin = M._geo ? M._geo.fin : (r && r.trend ? r.trend.length : 0);
+  const tNow = r && r.trend && r.trend.length ? (r.trend[Math.min(r.trend.length - 1, fin - 1)] || 0) : 0;
+  const rgb = tNow > 0 ? COL.bull : tNow < 0 ? COL.bear : COL.neu, estado = tNow > 0 ? 'UPTREND' : tNow < 0 ? 'DOWNTREND' : 'NEUTRAL';
+  const bx = 12, by = 12, bw = 236, bh = 48;
   g.save(); g.textAlign = 'left';
-  g.fillStyle = 'rgba(13,17,24,.82)'; redondeado(g, bx, by, bw, bh, 10); g.fill();
-  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 10); g.stroke();
-  g.fillStyle = '#E8B84B'; g.font = '900 11px system-ui,sans-serif'; g.fillText('ORDER BLOCKS', bx + 12, by + 17);
-  g.fillStyle = `rgb(${COL.bull})`; g.beginPath(); g.arc(bx + 16, by + 30, 4, 0, 6.2832); g.fill();
-  g.fillStyle = '#c3cbd4'; g.font = '700 10px system-ui,sans-serif'; g.fillText('Demand', bx + 26, by + 33);
-  g.fillStyle = `rgb(${COL.bear})`; g.beginPath(); g.arc(bx + 92, by + 30, 4, 0, 6.2832); g.fill();
-  g.fillStyle = '#c3cbd4'; g.fillText('Supply', bx + 102, by + 33);
-  g.fillStyle = '#7d8794'; g.font = '600 9px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('vol weighted', bx + bw - 12, by + 17);
+  g.fillStyle = 'rgba(13,17,24,.84)'; redondeado(g, bx, by, bw, bh, 11); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 11); g.stroke();
+  g.fillStyle = '#E8B84B'; g.font = '900 11px system-ui,sans-serif'; g.fillText('ORDER BLOCKS', bx + 12, by + 18);
+  g.font = '800 9px system-ui,sans-serif'; const tw = g.measureText(estado).width, pw = tw + 16;
+  g.fillStyle = `rgba(${rgb},.92)`; redondeado(g, bx + bw - pw - 10, by + 7, pw, 15, 7); g.fill();
+  g.fillStyle = '#07120b'; g.fillText(estado, bx + bw - pw - 2, by + 18);
+  g.fillStyle = `rgb(${COL.bull})`; g.beginPath(); g.arc(bx + 16, by + 34, 4, 0, 6.2832); g.fill();
+  g.fillStyle = '#c3cbd4'; g.font = '700 10px system-ui,sans-serif'; g.fillText('Demand', bx + 26, by + 37);
+  g.fillStyle = `rgb(${COL.bear})`; g.beginPath(); g.arc(bx + 92, by + 34, 4, 0, 6.2832); g.fill();
+  g.fillStyle = '#c3cbd4'; g.fillText('Supply', bx + 102, by + 37);
+  g.fillStyle = '#8b93a0'; g.font = '600 9px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('GMMA ribbon', bx + bw - 12, by + 37);
   g.restore(); g.textAlign = 'left';
 }
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -541,14 +604,14 @@ function guardarImagen() {
 
 /* ══════════════════ AYUDA (guía interactiva, 8 componentes reales) ══════════════════ */
 const PASOS_RZ = [
-  { t: 'Market Structure', d: 'Everything starts with <b>structure</b>. The tool finds <b>pivot highs</b> and <b>pivot lows</b>: a candle whose high (or low) stands above (or below) the candles around it, by a configurable length. A pivot needs several candles <b>after</b> it to be confirmed, so a zone only appears once the structure is real, never guessed in advance.', x: 'A pivot marks where price turned. It is the raw structural event the rest of the system is built on.' },
-  { t: 'Volume Strength', d: 'Not every pivot matters. Each one is weighted by <b>volume</b>: the volume on the pivot candle is compared to its recent average, and the result is a <b>relative strength</b> shown as a percentage on the zone. Pivots that do not clear a minimum strength are filtered out, so the chart keeps only the zones where real participation showed up.', x: 'The percentage is volume relative to average, not a probability. More volume means more activity, nothing more.' },
-  { t: 'Displacement Confirmation', d: 'A real order block is followed by a <b>strong move away</b> from it. The tool measures volatility with <b>ATR (100)</b> and requires price to travel a multiple of the ATR (the displacement) away from the zone before confirming it. A dashed line marks that required level. Small wobbles around a pivot never qualify.', x: 'ATR sets the distance, not the direction. It separates a true structural shift from ordinary noise.' },
-  { t: 'Bullish Order Blocks', d: 'A <b>demand zone</b> (green) forms at a confirmed pivot low with enough volume, once price displaces up through the required level. It is drawn as a rectangle from its origin candle and extends to the right while it stays valid. The idea is that price <b>may find buying interest</b> if it returns there, not a promise that it will.', x: 'Green is where buyers showed up with size. Watch how price behaves when it comes back, do not assume a bounce.' },
-  { t: 'Bearish Order Blocks', d: 'A <b>supply zone</b> (red) forms at a confirmed pivot high with enough volume, once price displaces down through the required level. It also extends to the right while valid. The reading is that price <b>may find selling pressure</b> on a return to that region.', x: 'Red is where sellers showed up with size. It is a zone of interest, not a guaranteed rejection.' },
-  { t: 'Retest Signals (B / S)', d: 'When price comes back into a valid zone and <b>reacts</b> in its direction, a label appears: <b>B</b> for a bullish reaction inside a demand zone, <b>S</b> for a bearish reaction inside a supply zone. They do not fire just because price touches a rectangle, and they are not buy or sell orders, they mark that a reaction happened at a zone that matters.', x: 'A B or S is a reaction at a level, confirmation that the zone is alive. The decision is still yours.' },
-  { t: 'Mitigation and Invalidation', d: 'Zones do not live forever. A zone is <b>mitigated</b> when price interacts with it, and <b>invalidated</b> when price closes through its opposite edge, breaking the structure that created it. Invalidated zones are removed so the chart stays clean and only shows levels that are still in play.', x: 'A zone disappearing is information: that level stopped holding. Approaching a zone is not the same as breaking it.' },
-  { t: 'Interpreting Entries', d: 'A possible read: find a zone, check its <b>volume strength</b>, confirm the <b>displacement</b> happened, wait for price to <b>return</b> to the zone, and look for a reaction (a B or an S) before deciding anything, always in the context of the wider trend. Avoid chasing price into a zone, and avoid treating a single touch as a signal.', x: 'The tool helps you locate and qualify zones. It does not guarantee a trade will work. Risk only what you can lose.' }
+  { t: 'The Moving Average Ribbon', d: 'The core of the tool is a <b>ribbon of twelve moving averages</b> (the Guppy GMMA set): six short EMAs and six long ones, drawn together. In a sideways market they <b>squeeze into a single point</b>; when a trend takes hold they <b>fan out</b> and separate. You read the market from the shape of the whole band, not from one line.', x: 'One average can whip around. Twelve, read as a band, show the real balance between short and long term.' },
+  { t: 'Trend by Colour', d: 'The whole ribbon is <b>coloured by the current trend</b>: green when the short averages hold above the long ones (buyers in control), red when they sit below (sellers in control). The colour is the quick read, you do not have to measure anything, the band tells you who controls price right now.', x: 'Green ribbon: buyers in control. Red ribbon: sellers in control. The colour is the trend, live.' },
+  { t: 'Compression and Expansion', d: 'When the twelve averages <b>compress</b> into a knot, the trend is weak or turning and the market is undecided. When they <b>expand</b> and run parallel, the trend is strong and healthy. Compression after a long run often warns that momentum is fading before price itself turns.', x: 'A tight ribbon is a market holding its breath. A wide ribbon is a market committed to a direction.' },
+  { t: 'Long and Short Signals', d: 'A <b>LONG</b> or <b>SHORT</b> label prints only when the trend <b>actually flips</b>, the moment the short group crosses and holds past the long group. It fires on the close of that candle, <b>in real time</b>, not painted back onto the past once the move is obvious. These are the structural turns, not every wiggle.', x: 'A signal marks a confirmed change of control. It is timing context, never an order to buy or sell.' },
+  { t: 'Noise Filter', d: 'To kill the chop of sideways markets, a flip is only accepted once the ribbon separates <b>beyond a volatility band</b> (based on ATR). Small crosses inside that band are ignored, so you do not get a stream of false LONG and SHORT flips while price goes nowhere. One clean signal per real turn.', x: 'Most false signals come from flat markets. The band refuses to call a trend that is not there.' },
+  { t: 'Demand Zones', d: 'Green boxes are <b>demand zones</b>: areas where buyers previously stepped in with size and price pushed away. They extend to the right while they stay valid and carry a <b>LONG</b> tag. Price returning to a green box with the ribbon still green is the kind of pullback some traders look to buy, not a guarantee of a bounce.', x: 'A demand zone is a place to watch, not a reason to buy blindly. Let price and the ribbon agree first.' },
+  { t: 'Supply Zones', d: 'Red boxes are <b>supply zones</b>, tagged <b>SHORT</b>: areas where sellers previously took control. A return into a red box while the ribbon is red is where some traders look for continuation down. A box is removed once price closes clean through it, so only levels still in play remain on the chart.', x: 'A supply zone marks interest, not a guaranteed rejection. The ribbon colour tells you if the context agrees.' },
+  { t: 'Putting It Together', d: 'The strongest reads are <b>confluence</b>: the ribbon trend and the zones pointing the same way. A LONG flip with price on a green demand zone, or a SHORT flip into a red supply zone, is far cleaner than either alone. Always act in the direction the ribbon confirms, and size with your own risk.', x: 'The tool frames the trend and the levels. It does not promise a winning trade. Risk only what you can lose.' }
 ];
 let _pasoRZ = 0;
 function ayuda() {
