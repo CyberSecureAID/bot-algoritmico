@@ -152,8 +152,8 @@ async function abrirTool(abre, cardEl) {
   try {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=141')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=136')).abrirMuros();
-    else if (abre === 'levels') await (await import(base + 'niveles.js?v=133')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=37', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'levels') await (await import(base + 'niveles.js?v=134')).abrirNiveles();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=38', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=7', import.meta.url).href)).abrirMulti();
