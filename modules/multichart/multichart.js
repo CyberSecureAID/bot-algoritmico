@@ -242,6 +242,7 @@ async function cargarPanel(pane) {
     pane.velas = v;
     pane.velasMs = v.map((c) => ({ t: c.time * 1000, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
     pane.serie.setData(v.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
+    pane.formT = null; pane.formReal = null; pane.realC = null; pane.dispC = null;   // reinicia el easing de la vela en formación
     recalc(pane);
     if (t) pintarPx(pane, t.last, t.chgPct); else if (v.length) pintarPx(pane, v[v.length - 1].close);
     vistaDefecto(pane);
@@ -263,9 +264,19 @@ function onKline(pane, k) {
   const last = pane.velas[pane.velas.length - 1];
   const cm = { t: c.time * 1000, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume };
   if (last && c.time === last.time) { pane.velas[pane.velas.length - 1] = c; pane.velasMs[pane.velasMs.length - 1] = cm; }
-  else if (!last || c.time > last.time) { pane.velas.push(c); pane.velasMs.push(cm); if (pane.velas.length > 1200) { pane.velas.shift(); pane.velasMs.shift(); } }
-  else return;
-  try { pane.serie.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }); } catch (_) {}
+  else if (!last || c.time > last.time) {
+    // cierra la vela anterior en su precio REAL (no la deja a medio camino del easing)
+    if (pane.formT != null && pane.formReal) { try { pane.serie.update({ time: pane.formT, open: pane.formReal.open, high: pane.formReal.high, low: pane.formReal.low, close: pane.formReal.close }); } catch (_) {} }
+    pane.velas.push(c); pane.velasMs.push(cm);
+    if (pane.velas.length > 1200) { pane.velas.shift(); pane.velasMs.shift(); }
+    pane.dispC = c.open;   // la vela nueva nace en su apertura y se mueve desde ahí
+    try { pane.serie.update({ time: c.time, open: c.open, high: c.open, low: c.open, close: c.open }); } catch (_) {}
+  } else return;
+  // estado de la vela en formación: el bucle a 30fps mueve el cierre MOSTRADO hacia el real
+  pane.formT = c.time;
+  pane.formReal = { open: c.open, high: c.high, low: c.low, close: c.close };
+  pane.realC = c.close;
+  if (pane.dispC == null) pane.dispC = c.close;
   recalc(pane);
   pintarPx(pane, c.close);
   if (pane === S.focus) sincronizarFocus();
@@ -303,9 +314,20 @@ function arrancarRAF() {
     if (ts - last < 33) return;            // ~30fps: suave y barato (como el VWAP Pro)
     last = ts;
     if (NIV.herr !== S._lastHerr) { S._lastHerr = NIV.herr; sincronizarStrips(); }
-    S.paneles.forEach((p) => { dibujarInds(p); dibujarUX(p); });
+    S.paneles.forEach((p) => { mover(p); dibujarInds(p); dibujarUX(p); });
   };
   S.raf = requestAnimationFrame(tick);
+}
+/* Movimiento FLUIDO de la vela en formación (igual que Footprint): el cierre MOSTRADO
+   persigue al precio real con easing y se repinta cada frame, en vez de saltar por mensaje.
+   La vela sube y baja de forma orgánica mientras está vigente; al cerrar queda en su real. */
+function mover(p) {
+  if (!p.serie || p.formT == null || p.realC == null || !p.formReal) return;
+  if (p.dispC == null) p.dispC = p.realC;
+  p.dispC += (p.realC - p.dispC) * 0.22;
+  if (Math.abs(p.realC - p.dispC) < Math.max(1e-8, Math.abs(p.realC) * 2e-6)) p.dispC = p.realC;
+  const hi = Math.max(p.formReal.high, p.dispC), lo = Math.min(p.formReal.low, p.dispC);
+  try { p.serie.update({ time: p.formT, open: p.formReal.open, high: hi, low: lo, close: p.dispC }); } catch (_) {}
 }
 
 function dibujarInds(pane) {
