@@ -40,13 +40,39 @@ const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 let _par = 'BTC';
 
 const M = {
-  tf: '1s', velas: [], precio: 0, data: { live: [], dead: [], triangles: [] }, sig: null, cvd: [],
-  ema: [], rsi: [], cerradas: [],            // EMA50, RSI(2) y operaciones ganadas que quedan de registro
+  tf: '1s', velas: [], precio: 0, dispC: null,        // dispC = cierre en formación SUAVIZADO (easing)
+  pos: null, cerradas: [],                            // posición ACTIVA (congelada) y operaciones cerradas (TP/SL) de registro
+  ema: {}, rsi: [], stoch: null,                      // EMAs por periodo, RSI(2) y estocástico (opcional)
+  ind: { ema9: false, ema20: false, ema50: true, ema100: false, ema200: false, stoch: false },   // EMA 50 fija (estrategia); el resto opcional
   ancho: window.innerWidth < 760 ? 46 : 70, desplaz: 0, zoomY: 1, offsetY: 0,
-  _geo: null, _cursor: null, _modoPos: null, _posAuto: null, _posSig: null,
+  _geo: null, _cursor: null,
   cargando: true, error: null
 };
 const EMA_LEN = 50, RSI_LEN = 2, RSI_HI = 99, RSI_LO = 9, RR = 1.5;   // parámetros EXACTOS de la estrategia
+const EMA_COLS = { 9: '#38bdf8', 20: '#f472b6', 50: '#c678dd', 100: '#f59e0b', 200: '#22d3ee' };   // color por media
+// Temporalidades: 1s y segundos AGREGADOS desde klines de 1s (Binance solo da 1s nativo
+// por debajo del minuto), más las nativas hasta diario.
+const SS_TFS = [
+  { id: '1s', n: '1s', sec: 1 }, { id: '2s', n: '2s', sec: 2 }, { id: '5s', n: '5s', sec: 5 },
+  { id: '10s', n: '10s', sec: 10 }, { id: '30s', n: '30s', sec: 30 },
+  { id: '1m', n: '1m' }, { id: '5m', n: '5m' }, { id: '15m', n: '15m' },
+  { id: '1h', n: '1H' }, { id: '4h', n: '4H' }, { id: '1d', n: '1D' }
+];
+const tfDef = (id) => SS_TFS.find((t) => t.id === id) || SS_TFS[0];
+// Agrega velas de 1s en cubos de `sec` segundos (para 2s..30s).
+function agregar(velas, sec) {
+  const out = []; let cur = null;
+  for (const v of velas) { const bt = Math.floor(v.t / sec) * sec;
+    if (!cur || cur.t !== bt) { if (cur) out.push(cur); cur = { t: bt, o: v.o, h: v.h, l: v.l, c: v.c, v: v.v, tb: v.tb, qv: v.qv, d: v.d }; }
+    else { if (v.h > cur.h) cur.h = v.h; if (v.l < cur.l) cur.l = v.l; cur.c = v.c; cur.v += v.v; cur.tb += v.tb; cur.qv += v.qv; cur.d += v.d; } }
+  if (cur) out.push(cur); return out;
+}
+async function traerVelasTF(simbolo, tf) {
+  const d = tfDef(tf);
+  if (d.sec && d.sec > 1) { const base = await traerVelas(simbolo, '1s', 1000); return agregar(base, d.sec); }
+  return traerVelas(simbolo, tf, 700);
+}
+const streamTF = () => { const d = tfDef(M.tf); return (d.sec && d.sec > 1) ? '1s' : M.tf; };
 let _barra = null, _od = null, _zonasOd = null, _reloj = null, _pulso = null;
 
 /* ── Datos (Binance klines con respaldo de hosts, igual que las pools) ── */
@@ -95,26 +121,31 @@ function streamVelasRz(simbolo, tf, onK) {
 function conectarStreamRz() {
   const p = PARES.find((x) => x.id === _par) || {};
   if (!p.s) return;
-  const key = p.s + '|' + M.tf;
+  const stf = streamTF(), key = p.s + '|' + stf;
   if (_ssStreamKey === key && _ssStream) return;
   if (_ssStream) { try { _ssStream.cerrar(); } catch (_) {} _ssStream = null; }
   _ssStreamKey = key;
-  try { _ssStream = streamVelasRz(p.s, M.tf, onKlineRz); } catch (_) { _ssStream = null; }
+  try { _ssStream = streamVelasRz(p.s, stf, onKlineRz); } catch (_) { _ssStream = null; }
 }
 function onKlineRz(k) {
   if (!k || !M.velas || !M.velas.length) return;
-  // k.q = volumen quote total, k.Q = volumen taker comprador (quote). Delta vivo igual
-  // que en el histórico: 2·takerBuy − total. Así el CVD y el delta de la vela en curso
-  // se actualizan al instante con el mismo stream, sin pedir aggTrades.
   const qv = +k.q || 0, tb = +k.Q || 0;
-  const c = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: qv || +k.v || 0, qv, tb, d: 2 * tb - qv };
-  if (!(c.c > 0)) return;
+  const raw = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: qv || +k.v || 0, qv, tb, d: 2 * tb - qv };
+  if (!(raw.c > 0)) return;
+  const d = tfDef(M.tf), sec = (d.sec && d.sec > 1) ? d.sec : 0;
   const last = M.velas[M.velas.length - 1];
-  if (c.t === last.t) { M.velas[M.velas.length - 1] = c; }        // misma vela en formación
-  else if (c.t > last.t) { M.velas.push(c); }                      // nueva vela
-  else return;                                                     // vieja → ignorar
-  M.precio = c.c;                                                  // el bucle de 90 ms repinta solo
-  if (k.x === true) { try { recalcular(); } catch (_) {} }         // al CERRAR: recalcular zonas de reacción
+  if (sec) {   // sub-minuto: agrega el kline de 1s en su cubeta de `sec` segundos
+    const bt = Math.floor(raw.t / sec) * sec;
+    if (last && last.t === bt) { if (raw.h > last.h) last.h = raw.h; if (raw.l < last.l) last.l = raw.l; last.c = raw.c; M.precio = raw.c; return; }
+    if (!last || bt > last.t) { M.velas.push({ t: bt, o: raw.o, h: raw.h, l: raw.l, c: raw.c, v: raw.v, qv: raw.qv, tb: raw.tb, d: raw.d }); M.precio = raw.c; try { recalcular(); } catch (_) {} }
+    return;
+  }
+  // nativo (1s, 1m, …): la vela en formación se repinta suave desde el bucle
+  if (raw.t === last.t) M.velas[M.velas.length - 1] = raw;
+  else if (raw.t > last.t) M.velas.push(raw);
+  else return;
+  M.precio = raw.c;
+  if (k.x === true) { try { recalcular(); } catch (_) {} }         // al CERRAR: buscar señal
 }
 
 const fmt = (p) => {
@@ -128,7 +159,7 @@ const fmt = (p) => {
 /* Etiqueta del eje de tiempo: en 1 segundo, hora con SEGUNDOS. */
 function fmtFecha(tsSec) {
   const d = new Date(tsSec * 1000);
-  if (M.tf === '1s') return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  if (tfDef(M.tf).sec) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });   // todas las de segundos muestran HH:MM:SS
   const intradia = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h'].includes(M.tf);
   return intradia
     ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
@@ -151,11 +182,12 @@ export async function abrirSuperScalper() {
       <div class="ss-barra">
         <button class="ss-back" id="ss-back" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button>
         <button class="ss-sel" id="ss-sel"><i class="ss-logo" id="ss-logo" data-cg="${esc(p0.cg || '')}" data-ico="${esc(p0.ico || '')}"></i><b id="ss-par">${esc(_par)}</b><span id="ss-nm">${esc(p0.n || '')}</span>${chev}</button>
-        <button class="ss-tfchip" id="ss-tfchip" type="button" title="Timeframe"><b id="ss-tfchip-t">1s</b></button>
+        <button class="ss-tfchip" id="ss-tfchip" type="button" title="Timeframe"><b id="ss-tfchip-t">${esc(tfDef(M.tf).n)}</b>${chev}</button>
         <div class="ss-px"><div class="ss-px-v" id="ss-px">·</div><div class="ss-hl"><span>H <b id="ss-hi">·</b></span><span>L <b id="ss-lo">·</b></span></div></div>
         <span id="ss-estado" class="ss-estado"></span>
         <div class="ss-der">
           <button class="ss-share" id="ss-share" title="Share signal">Share signal</button>
+          <button class="ss-ico" id="ss-ind" title="Indicators"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></button>
           <button class="ss-ico" id="ss-foto" title="Share image"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
           <button class="ss-ico" id="ss-ayuda" title="How it works">?</button>
         </div>
@@ -174,12 +206,18 @@ export async function abrirSuperScalper() {
   $('ss-ayuda').onclick = ayuda;
   $('ss-foto').onclick = guardarImagen;
   $('ss-share').onclick = () => compartirSenal();
-  // La temporalidad está fija en 1 segundo (la estrategia es de 1s). El chip solo informa.
+  $('ss-tfchip').onclick = (e) => { e.stopPropagation(); menuTf(); };
+  $('ss-ind').onclick = (e) => { e.stopPropagation(); panelIndicadores(); };
 
   ponerLogos();
   cargarVelas();
   clearInterval(_pulso);
-  _pulso = setInterval(() => { if ($('ss-cv')) { cerrarGanadoras(); dibujar(); } }, 90);   // ~11fps: movimiento fluido + chequeo de objetivo/stop en vivo
+  _pulso = setInterval(() => {
+    if (!$('ss-cv')) return;
+    if (M.precio > 0) { if (M.dispC == null) M.dispC = M.precio; else M.dispC += (M.precio - M.dispC) * 0.22; }   // easing: la vela en formación se MUEVE suave, no a saltos
+    gestionarPos();                                   // chequea objetivo/stop en vivo (la posición está congelada)
+    dibujar();
+  }, 33);   // ~30fps
   let _t = null; M._onResize = () => { clearTimeout(_t); _t = setTimeout(() => { if ($('ss-cv')) dibujar(); }, 200); };
   window.addEventListener('resize', M._onResize);
   discScalper(false);   // disclaimer oficial de entrada (sello + aceptación obligatoria)
@@ -226,11 +264,11 @@ function cerrar() {
 
 async function cargarVelas() {
   M.cargando = true;
-  M.cerradas = []; _resueltos = new Set();   // moneda/temporalidad nueva: limpia el registro de operaciones
+  M.cerradas = []; M.pos = null; M.dispC = null; _resueltos = new Set();   // moneda/temporalidad nueva: limpia posición y registro
   if (_ssStream) { try { _ssStream.cerrar(); } catch (_) {} _ssStream = null; _ssStreamKey = ''; }   // corta el stream anterior antes de recargar otra moneda/temporalidad
   const p = PARES.find((x) => x.id === _par) || {};
   try {
-    M.velas = await traerVelas(p.s, M.tf, 700);
+    M.velas = await traerVelasTF(p.s, M.tf);
     M.cargando = false;
     if (M.velas.length) { M.precio = M.velas[M.velas.length - 1].c; recalcular(); }
     const est = $('ss-estado'); if (est) est.textContent = '';
@@ -238,17 +276,22 @@ async function cargarVelas() {
   dibujar();
   clearInterval(_reloj);
   _reloj = setInterval(async () => {
-    try { const v = await traerVelas(p.s, M.tf, 700); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; recalcular(); dibujar(); } catch (_) {}
+    try { const v = await traerVelasTF(p.s, M.tf); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; recalcular(); dibujar(); } catch (_) {}
   }, 15000);
   conectarStreamRz();          // velas EN VIVO por WebSocket (el sondeo de 15 s queda de resync)
 }
 function recalcular() {
   const cl = M.velas.map((v) => v.c);
-  M.ema = ema(cl, EMA_LEN);                       // EMA 50 (filtro de tendencia)
-  M.rsi = rsi(cl, RSI_LEN);                       // RSI longitud 2 (oscila fuerte)
-  M.sig = calcularScalp(M.velas, M.ema, M.rsi);   // señal de la estrategia vigente
-  cerrarGanadoras();                              // las que pegaron objetivo quedan de registro
-  M._posAuto = null;
+  M.ema = {};                                      // EMAs activas (la 50 SIEMPRE; el resto, opcional)
+  const periodos = new Set([EMA_LEN]);
+  [9, 20, 100, 200].forEach((p) => { if (M.ind['ema' + p]) periodos.add(p); });
+  periodos.forEach((p) => { M.ema[p] = ema(cl, p); });
+  M.rsi = rsi(cl, RSI_LEN);                        // RSI longitud 2 (oscila fuerte)
+  M.stoch = M.ind.stoch ? estocastico(M.velas, 14, 3, 3) : null;
+  // Solo se BUSCA una señal nueva si NO hay posición activa. Una vez disparada, la
+  // posición queda CONGELADA (no se recalcula) hasta que toque objetivo o stop.
+  if (!M.pos) { const s = buscarSenal(M.velas, M.ema[EMA_LEN], M.rsi); if (s) { M.pos = s; _resueltos.add(s.tTrig); } }
+  if (_resueltos.size > 400) { const vivos = new Set(M.velas.slice(-300).map((v) => v.t)); _resueltos = new Set([..._resueltos].filter((t) => vivos.has(t))); }   // higiene
   refrescarCabecera();
 }
 
@@ -304,50 +347,47 @@ function pivotes(velas, last, tipo) {
 }
 /* Arma la señal: entrada, stop (invalidación del flujo) y objetivo a 1:2. */
 let _resueltos = new Set();   // tiempos de velas gatillo ya resueltas (ganada/invalidada): no se re-arman
-function armarSenal(largo, bar, velas, verdict, opt) {
-  opt = opt || {};
-  const v = velas[bar];
-  const entry = opt.entry != null ? opt.entry : v.c;
-  const sl = opt.sl;                                    // SIEMPRE por debajo/encima de la EMA (lo pone calcularScalp)
-  const R = Math.abs(entry - sl) || 1e-9;
-  const tp = largo ? entry + RR * R : entry - RR * R;   // objetivo a 1:1.5
-  return { largo, bar, entry, sl, tp, ema: opt.ema, refHi: v.h, refLo: v.l, verdict, t: v.t };
-}
-/* Estrategia: filtro de tendencia por EMA 50 + gatillo por toque del RSI(2) en su
-   banda del lado de la tendencia. Mira la última CERRADA y hasta 6 atrás para no
-   perder un toque de un pestañeo. El stop va SIEMPRE al otro lado de la EMA. */
-function calcularScalp(velas, emaArr, rsiArr) {
+/* Busca una señal NUEVA y la CONGELA: entrada = cierre de la última vela cerrada en el
+   momento del disparo, stop al otro lado de la EMA y objetivo a 1:1.5. Lo que devuelve
+   NO se vuelve a tocar: entrada, stop y objetivo quedan fijos. */
+function buscarSenal(velas, emaArr, rsiArr) {
   const n = velas.length;
-  if (n < EMA_LEN + 4) return null;
+  if (!emaArr || n < EMA_LEN + 4) return null;
   const last = n - 2;                                   // última CERRADA (la n-1 está en formación)
   const atr = calcAtr(velas, last, 14) || ((velas[last].h - velas[last].l) || 1e-9);
   for (let i = last; i >= Math.max(EMA_LEN, last - 6); i--) {
-    if (_resueltos.has(velas[i].t)) continue;           // ya se resolvió: no re-armar
+    if (_resueltos.has(velas[i].t)) continue;           // gatillo ya usado: no re-armar
     const e = emaArr[i], r = rsiArr[i]; if (e == null || r == null) continue;
-    const v = velas[i], buf = Math.max(atr * 0.35, e * 0.0004);   // deja el stop al otro lado de la EMA, sin tocarla
-    // LARGO: precio SOBRE la EMA (tendencia alcista) y el RSI toca la banda baja (verde)
-    if (v.c > e && r <= RSI_LO)
-      return armarSenal(true, i, velas, 'Price is above the EMA 50 (uptrend) and the RSI 2 tagged the lower band. A pullback long with the trend.', { entry: velas[last].c, sl: e - buf, ema: e });
-    // CORTO: precio BAJO la EMA (tendencia bajista) y el RSI toca la banda alta (roja)
-    if (v.c < e && r >= RSI_HI)
-      return armarSenal(false, i, velas, 'Price is below the EMA 50 (downtrend) and the RSI 2 tagged the upper band. A pullback short with the trend.', { entry: velas[last].c, sl: e + buf, ema: e });
+    const v = velas[i], buf = Math.max(atr * 0.35, e * 0.0004);   // stop al otro lado de la EMA, sin tocarla
+    const entry = velas[last].c, tFire = velas[last].t;
+    if (v.c > e && r <= RSI_LO) { const sl = e - buf, R = Math.abs(entry - sl) || 1e-9;   // LARGO
+      return { largo: true, entry, sl, tp: entry + RR * R, ema: e, tTrig: velas[i].t, tFire, verdict: 'Price is above the EMA 50 (uptrend) and the RSI 2 tagged the lower band. A pullback long with the trend.' };
+    }
+    if (v.c < e && r >= RSI_HI) { const sl = e + buf, R = Math.abs(entry - sl) || 1e-9;   // CORTO
+      return { largo: false, entry, sl, tp: entry - RR * R, ema: e, tTrig: velas[i].t, tFire, verdict: 'Price is below the EMA 50 (downtrend) and the RSI 2 tagged the upper band. A pullback short with the trend.' };
+    }
   }
   return null;
 }
-/* Cuando la señal pega su objetivo, se guarda como GANADA y queda dibujada de
-   registro (la vigencia del éxito). Si toca el stop, se descarta. En ambos casos su
-   vela gatillo pasa a "resueltas" para que no se vuelva a armar. */
-function cerrarGanadoras() {
-  const S = M.sig; if (!S || !(M.precio > 0)) return;
-  const hit = S.largo ? M.precio >= S.tp : M.precio <= S.tp;
-  const dead = S.largo ? M.precio <= S.sl : M.precio >= S.sl;
-  if (hit) {
-    if (!M.cerradas.some((c) => c.t === S.t)) {
-      M.cerradas.push({ largo: S.largo, entry: S.entry, sl: S.sl, tp: S.tp, bar: S.bar, t: S.t, tEnd: M.velas.length ? M.velas[M.velas.length - 1].t : 0 });
-      if (M.cerradas.length > 14) M.cerradas.shift();
-    }
-    _resueltos.add(S.t); M.sig = null;
-  } else if (dead) { _resueltos.add(S.t); M.sig = null; }
+/* Gestiona la posición ACTIVA contra el precio en vivo. Si pega objetivo queda marcada
+   verde (TP); si pega stop, roja (SL). En ambos casos deja de estar activa y pasa a
+   registro. NUNCA cambia entrada/stop/objetivo: están congelados desde el disparo. */
+function gestionarPos() {
+  const S = M.pos; if (!S || !(M.precio > 0)) return;
+  const tp = S.largo ? M.precio >= S.tp : M.precio <= S.tp;
+  const sl = S.largo ? M.precio <= S.sl : M.precio >= S.sl;
+  if (tp || sl) {
+    M.cerradas.push({ largo: S.largo, entry: S.entry, sl: S.sl, tp: S.tp, tFire: S.tFire, result: tp ? 'tp' : 'sl', tEnd: M.velas.length ? M.velas[M.velas.length - 1].t : 0 });
+    if (M.cerradas.length > 16) M.cerradas.shift();
+    M.pos = null;
+  }
+}
+/* Estocástico clásico %K/%D (opcional). */
+function estocastico(velas, kLen, kSmooth, dLen) {
+  const n = velas.length, kraw = new Array(n).fill(null);
+  for (let i = kLen - 1; i < n; i++) { let hi = -Infinity, lo = Infinity; for (let j = i - kLen + 1; j <= i; j++) { if (velas[j].h > hi) hi = velas[j].h; if (velas[j].l < lo) lo = velas[j].l; } kraw[i] = hi > lo ? ((velas[i].c - lo) / (hi - lo)) * 100 : 50; }
+  const sma = (arr, len) => { const o = new Array(arr.length).fill(null); for (let i = 0; i < arr.length; i++) { if (arr[i] == null) continue; let s = 0, c = 0; for (let j = Math.max(0, i - len + 1); j <= i; j++) { if (arr[j] != null) { s += arr[j]; c++; } } o[i] = c ? s / c : null; } return o; };
+  const k = sma(kraw, kSmooth); return { k, d: sma(k, dLen) };
 }
 /* Etiqueta corta de la señal (dirección). */
 function etiquetaSig(s) { return !s ? '' : (s.largo ? 'RSI 2 · LONG' : 'RSI 2 · SHORT'); }
@@ -377,7 +417,7 @@ function refrescarCabecera() {
   if (px) { px.textContent = fmt(M.precio); px.className = 'ss-px-v ' + (u.c >= u.o ? 'up' : 'down'); }
   if (hi) hi.textContent = fmt(dH); if (lo) lo.textContent = fmt(dL);
 }
-function tfPorDia(tf) { const m = { '1s': 700, '1m': 1440, '3m': 480, '5m': 288, '15m': 96, '30m': 48, '1h': 24, '2h': 12, '4h': 6, '6h': 4, '12h': 2, '1d': 1, '1w': 1 }; return m[tf] || 24; }
+function tfPorDia(tf) { if (tfDef(tf).sec) return 700; const m = { '1m': 1440, '5m': 288, '15m': 96, '1h': 24, '4h': 6, '1d': 1 }; return m[tf] || 120; }
 
 /* ══════════════════ RENDER ══════════════════ */
 function pal() { return { fondo: '#0a0e14', rejilla: 'rgba(255,255,255,.04)', ink: '#e7ebf0', dim: '#7d8794' }; }
@@ -426,20 +466,21 @@ function dibujar() {
   const huecoMax = Math.floor(ancho * 0.45);
   // Reserva hueco a la derecha para PROYECTAR las zonas de la operación (ganancia
   // y riesgo) adelantadas al precio cuando hay señal.
-  const futNec = M.sig ? Math.min(huecoMax, 18) : 0;
+  const futNec = M.pos ? Math.min(huecoMax, 18) : 0;
   let desp = Math.max(-huecoMax, Math.min(M.desplaz || 0, Math.max(0, M.velas.length - ancho)));
   if (futNec && (M.desplaz || 0) <= 0 && desp > -futNec) desp = -futNec;
   M.desplaz = desp;
   const fin = M.velas.length - desp;
   const vis = M.velas.slice(Math.max(0, fin - ancho), Math.min(M.velas.length, fin));
   if (!vis.length) return;
-  if (desp <= 0 && M.precio > 0) { const u = vis[vis.length - 1]; u.c = M.precio; if (M.precio > u.h) u.h = M.precio; if (M.precio < u.l) u.l = M.precio; }
+  const pc = (M.dispC != null && M.dispC > 0) ? M.dispC : M.precio;   // precio MOSTRADO, suavizado (easing)
+  if (desp <= 0 && pc > 0) { const u = vis[vis.length - 1]; u.c = pc; if (pc > u.h) u.h = pc; if (pc < u.l) u.l = pc; }
 
   let pAlto = Math.max(...vis.map((v) => v.h)), pBajo = Math.min(...vis.map((v) => v.l));
-  if (M.precio > 0) { pAlto = Math.max(pAlto, M.precio); pBajo = Math.min(pBajo, M.precio); }
-  // abre la escala para que entren el stop y el take profit de la señal (tope 45%)
+  if (pc > 0) { pAlto = Math.max(pAlto, pc); pBajo = Math.min(pBajo, pc); }
+  // abre la escala para que entren el stop y el take profit de la posición (tope 45%)
   const rV0 = (pAlto - pBajo) || 1, capHi = pAlto + rV0 * 0.45, capLo = pBajo - rV0 * 0.45;
-  if (M.sig) { [M.sig.sl, M.sig.tp, M.sig.entry].forEach((p) => { if (p <= capHi && p >= capLo) { pAlto = Math.max(pAlto, p); pBajo = Math.min(pBajo, p); } }); }
+  if (M.pos) { [M.pos.sl, M.pos.tp, M.pos.entry].forEach((p) => { if (p <= capHi && p >= capLo) { pAlto = Math.max(pAlto, p); pBajo = Math.min(pBajo, p); } }); }
   const rangoB = (pAlto - pBajo) || 1;
   const despY = ((M.offsetY || 0) / Math.max(1, y1)) * rangoB;
   const centro = (pAlto + pBajo) / 2 + despY;
@@ -451,6 +492,9 @@ function dibujar() {
   const pri = fin - ancho;
   const Xbar = (barIdx) => (barIdx - pri) * paso + paso / 2;   // índice de vela → x
   M._geo = { pMin, pMax, y1, xVelas, n: vis.length, vis, paso, pri, fin, ancho, tfMs: (M.velas.length > 1 ? (M.velas[1].t - M.velas[0].t) * 1000 : 3600000), t0: M.velas[0].t };
+
+  // marca de agua: esquina inferior IZQUIERDA del panel de PRECIO (por encima del RSI)
+  const _wm = $('ss-marca'); if (_wm) { const wb = Math.round(H - y1 + 6); if (_wm._wb !== wb) { _wm._wb = wb; _wm.style.bottom = wb + 'px'; } }
 
   // órdenes/alertas del usuario (mismo estilo que las pools)
   if (_od) _zonasOd = _od.pintar(g, { x1, Y, pMin, pMax, simbolo: (PARES.find((p) => p.id === _par) || {}).s || '' });
@@ -468,19 +512,19 @@ function dibujar() {
   // ── OPERACIONES GANADAS: quedan dibujadas de registro (vigencia del éxito) ──
   dibujarGanadoras(g, Y, paso);
 
-  // ── EMA 50 (filtro de tendencia) con glow iluminado, como el VWAP de VWAP Pro ──
-  dibujarEMA(g, Y, paso, now);
+  // ── MEDIAS MÓVILES (EMA 50 fija + opcionales) con glow iluminado como el VWAP Pro ──
+  dibujarEMAs(g, Y, paso, now);
 
-  // ── SEÑAL: vela gatillo + zona de entrada / SL / TP + ficha ──
-  dibujarFootprint(g, x1, Y, pMin, pMax, Xbar, pulso, now);
+  // ── POSICIÓN (congelada): zona de entrada / SL / TP + ficha ──
+  dibujarPosicion(g, x1, Y, pMin, pMax, Xbar, pulso, now);
 
-  // línea del precio
-  if (M.precio > 0) {
-    const yp = Y(M.precio); g.strokeStyle = 'rgba(232,184,75,.55)'; g.lineWidth = 1; g.setLineDash([3, 3]);
+  // línea del precio (suavizada)
+  if (pc > 0) {
+    const yp = Y(pc); g.strokeStyle = 'rgba(232,184,75,.55)'; g.lineWidth = 1; g.setLineDash([3, 3]);
     g.beginPath(); g.moveTo(0, yp); g.lineTo(x1, yp); g.stroke(); g.setLineDash([]);
-    const u = M.velas[M.velas.length - 1]; const col = u.c >= u.o ? '#2ee86a' : '#ff5b6e';
+    const u = M.velas[M.velas.length - 1]; const col = pc >= u.o ? '#2ee86a' : '#ff5b6e';
     g.fillStyle = col; redondeado(g, x1 + 2, yp - 9, mDer - 4, 18, 4); g.fill();
-    g.fillStyle = '#071018'; g.font = 'bold 10px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(fmt(M.precio), x1 + 6, yp + 3.5);
+    g.fillStyle = '#071018'; g.font = 'bold 10px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(fmt(pc), x1 + 6, yp + 3.5);
   }
 
   // La operación de la señal (zonas, niveles y ficha) ya la dibuja dibujarFootprint.
@@ -547,7 +591,7 @@ function dibujarFicha(g, S, precio) {
   const bx = 12, by = 12, bw = 224;
   g.save(); g.textAlign = 'left';
   if (!S) {
-    const n = M.velas.length, e = n ? M.ema[n - 1] : null, px = M.precio || (n ? M.velas[n - 1].c : 0);
+    const n = M.velas.length, e50 = M.ema[EMA_LEN], e = (e50 && n) ? e50[n - 1] : null, px = M.precio || (n ? M.velas[n - 1].c : 0);
     const up = e != null ? px >= e : true;              // tendencia por la EMA 50
     const r = M.rsi.length ? M.rsi[M.rsi.length - 2] : null;
     const bh = 78;
@@ -564,7 +608,7 @@ function dibujarFicha(g, S, precio) {
   const largo = S.largo, rgb = largo ? '46,232,106' : '255,74,90';
   const st = estadoSig(S, precio);
   const crgb = _hex2rgb(st.c);
-  const ago = Math.max(0, (M.velas.length - 2) - S.bar), fresh = ago === 0 ? 'new' : (ago === 1 ? '1 bar ago' : ago + ' bars ago');
+  const fi = M.velas.findIndex((v) => v.t === S.tFire), ago = fi >= 0 ? Math.max(0, (M.velas.length - 1) - fi) : 0, fresh = ago <= 1 ? 'live' : ago + ' bars ago';
   const lins = envolver(g, S.verdict, bw - 30, 2);
   const dy = by + 74 + lins.length * 14 + 2;   // divisoria (debajo de la lectura)
   const bh = (dy - by) + 88;                     // la caja llega hasta debajo del R:R
@@ -598,32 +642,54 @@ function dibujarFicha(g, S, precio) {
   g.fillStyle = '#E8B84B'; g.font = '900 12px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('1 : 1.5', bx + bw - 16, dy + 79); g.textAlign = 'left';
   g.restore();
 }
-/* SEÑAL FOOTPRINT en el precio: zonas R:R rellenas (ganancia/riesgo) proyectadas al
-   frente, EN/SL/TP con etiqueta, triángulo en la vela gatillo, y la ficha. */
-function dibujarFootprint(g, x1, Y, pMin, pMax, Xbar, pulso, now) {
-  const S = M.sig, geo = M._geo; if (!geo) return;
+/* Etiqueta de disparo estilo SuperTrend: pastilla "Buy"/"Sell" con pico hacia la vela y
+   flote suave (sube y baja + glow latiendo). Verde para largos (debajo de la vela), roja
+   para cortos (encima de la vela). */
+function etiquetaSenal(g, x, yv, largo, now) {
+  const txt = largo ? 'Buy' : 'Sell', rgb = largo ? '46,232,106' : '255,74,90';
+  const bob = Math.sin(now / 300) * 2.6;                      // flote vertical
+  const glow = 6 + 4 * (0.5 + 0.5 * Math.sin(now / 260));     // latido del glow
+  const gap = 13 + (largo ? bob : -bob);                      // separación de la vela (respira)
+  g.save();
+  g.font = '900 11px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const padX = 9, tw = g.measureText(txt).width, bw = tw + padX * 2, bh = 18, pico = 5, r = 7;
+  const xe = M._geo ? M._geo.xVelas : x + 100;
+  const cx = Math.max(bw / 2 + 2, Math.min(xe - bw / 2 - 2, x));
+  const yTop = largo ? (yv + gap + pico) : (yv - gap - pico - bh);
+  g.shadowColor = `rgba(${rgb},.95)`; g.shadowBlur = glow; g.fillStyle = `rgb(${rgb})`;
+  redondeado(g, cx - bw / 2, yTop, bw, bh, r); g.fill();      // cuerpo redondeado
+  g.beginPath();                                              // pico hacia la vela
+  if (largo) { g.moveTo(cx, yTop - pico); g.lineTo(cx - pico, yTop + 1); g.lineTo(cx + pico, yTop + 1); }
+  else { g.moveTo(cx, yTop + bh + pico); g.lineTo(cx - pico, yTop + bh - 1); g.lineTo(cx + pico, yTop + bh - 1); }
+  g.closePath(); g.fill();
+  g.shadowBlur = 0; g.fillStyle = '#06110a'; g.fillText(txt, cx, yTop + bh / 2 + 0.5);
+  g.restore(); g.textBaseline = 'alphabetic';
+}
+/* POSICIÓN CONGELADA en el precio: zonas R:R (ganancia/riesgo) desde la ENTRADA hacia
+   la DERECHA (sin líneas sobresaliendo a la izquierda), EN/SL/TP con etiqueta, la etiqueta
+   SuperTrend en la vela gatillo, y la ficha. Entrada/stop/objetivo NO cambian. */
+function dibujarPosicion(g, x1, Y, pMin, pMax, Xbar, pulso, now) {
+  const S = M.pos, geo = M._geo; if (!geo) return;
   if (!S) { dibujarFicha(g, null, M.precio); return; }
   const rgbHi = S.largo ? '150,255,195' : '255,150,165';
   const paso = geo.paso || 8;
-  const xc = Xbar(S.bar), xa = Math.max(0, xc - paso * 0.6), xR = x1;
+  const fi = M.velas.findIndex((v) => v.t === S.tFire), ti = M.velas.findIndex((v) => v.t === S.tTrig);
+  const xEntrada = fi >= 0 ? Xbar(fi) : Xbar(M.velas.length - 2);   // x de la vela de ENTRADA
+  const xa = Math.max(0, xEntrada), xR = x1;                        // las líneas empiezan en la entrada y van a la DERECHA
   const yE = Y(S.entry), yS = Y(S.sl), yT = Y(S.tp);
-  // zonas de ganancia (verde) y de riesgo (roja) proyectadas desde el precio
-  const xBox = Math.min(xR - 2, Xbar(M.velas.length - 1) + paso * 0.5);
-  if (xR > xBox) {
-    g.fillStyle = 'rgba(46,232,106,.13)'; g.fillRect(xBox, Math.min(yE, yT), xR - xBox, Math.abs(yT - yE));
-    g.fillStyle = 'rgba(255,74,90,.14)'; g.fillRect(xBox, Math.min(yE, yS), xR - xBox, Math.abs(yS - yE));
-    const sweep = (now % 2600) / 2600, grd = g.createLinearGradient(xBox, 0, xR, 0);
-    for (let k = 0; k <= 10; k++) { const p = k / 10, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${rgbHi},${(0.015 + 0.05 * b).toFixed(3)})`); }
-    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(xBox, Math.min(yE, yT), xR - xBox, Math.abs(yT - yE)); g.restore();
+  // zonas de ganancia (verde) y de riesgo (roja) desde la entrada hacia el frente
+  if (xR > xa) {
+    g.fillStyle = 'rgba(46,232,106,.12)'; g.fillRect(xa, Math.min(yE, yT), xR - xa, Math.abs(yT - yE));
+    g.fillStyle = 'rgba(255,74,90,.13)'; g.fillRect(xa, Math.min(yE, yS), xR - xa, Math.abs(yS - yE));
+    const sweep = (now % 2600) / 2600, grd = g.createLinearGradient(xa, 0, xR, 0);
+    for (let k = 0; k <= 10; k++) { const p = k / 10, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${rgbHi},${(0.012 + 0.045 * b).toFixed(3)})`); }
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(xa, Math.min(yE, yT), xR - xa, Math.abs(yT - yE)); g.restore();
   }
-  // triángulo en la vela gatillo
-  { const v = M.velas[S.bar];
-    if (v) { const yy = S.largo ? Y(v.l) + 12 : Y(v.h) - 12, s = 6, rgb = S.largo ? '46,232,106' : '255,74,90';
-      g.save(); g.fillStyle = `rgb(${rgb})`; g.beginPath();
-      if (S.largo) { g.moveTo(xc, yy - s); g.lineTo(xc - s, yy + s); g.lineTo(xc + s, yy + s); }
-      else { g.moveTo(xc, yy + s); g.lineTo(xc - s, yy - s); g.lineTo(xc + s, yy - s); }
-      g.closePath(); g.fill(); g.restore(); } }
-  // niveles entrada / stop / objetivo
+  // etiqueta estilo SuperTrend en la vela gatillo: "Buy" (verde, debajo) o "Sell" (rojo,
+  // encima), con pico hacia la vela y flote suave. Marca dónde el RSI tocó la banda.
+  { const v = ti >= 0 ? M.velas[ti] : null, xt = ti >= 0 ? Xbar(ti) : xEntrada;
+    if (v) etiquetaSenal(g, xt, S.largo ? Y(v.l) : Y(v.h), S.largo, now); }
+  // niveles entrada / stop / objetivo (de la entrada a la derecha)
   const linea = (lab, p, c, dash, lw) => {
     if (p > pMax || p < pMin) return; const y = Y(p);
     g.save(); if (dash) g.setLineDash(dash); g.strokeStyle = c; g.lineWidth = lw || 1.5; g.globalAlpha = 0.95;
@@ -639,38 +705,52 @@ function dibujarFootprint(g, x1, Y, pMin, pMax, Xbar, pulso, now) {
   dibujarFicha(g, S, M.precio);
 }
 
-/* EMA 50 sobre el precio, con el mismo efecto iluminado del VWAP de VWAP Pro:
-   línea morada con glow + un cometa que la recorre a ~11 fps. */
-function dibujarEMA(g, Y, paso, now) {
-  const geo = M._geo; if (!geo || !M.ema.length) return;
-  const pri = geo.pri, vis = geo.vis, pts = [];
-  for (let i = 0; i < vis.length; i++) { const e = M.ema[pri + i]; if (e == null) continue; pts.push([i * paso + paso / 2, Y(e)]); }
-  if (pts.length < 2) return;
-  g.save();
-  g.strokeStyle = 'rgba(198,120,221,.92)'; g.lineWidth = 2; g.shadowColor = 'rgba(198,120,221,.85)'; g.shadowBlur = 12;
-  g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
-  g.globalCompositeOperation = 'lighter'; g.shadowBlur = 16;
-  const L = pts.length, head = (now / 22) % L, span = Math.max(6, L * 0.16);
-  for (let i = 1; i < L; i++) { let dd = i - head; if (dd < 0) dd += L; const a = dd < span ? 1 - dd / span : 0; if (a <= 0.03) continue;
-    g.strokeStyle = `rgba(242,214,255,${(a * 0.9).toFixed(3)})`; g.lineWidth = 2.6;
-    g.beginPath(); g.moveTo(pts[i - 1][0], pts[i - 1][1]); g.lineTo(pts[i][0], pts[i][1]); g.stroke(); }
-  g.restore();
-  const last = pts[pts.length - 1];
-  g.fillStyle = 'rgba(198,120,221,.95)'; g.font = '800 9px ui-monospace,monospace'; g.textAlign = 'right';
-  g.fillText('EMA 50', Math.max(66, last[0]), last[1] - 6); g.textAlign = 'left';
+/* MEDIAS MÓVILES: la EMA 50 (fija) con glow + cometa como el VWAP Pro, y las opcionales
+   con el mismo efecto más sutil. El glow va en UNA sola pasada por media (no por segmento),
+   así no frena el redibujo (esa era la causa de las velas a saltos y la cruceta retrasada). */
+function dibujarEMAs(g, Y, paso, now) {
+  const geo = M._geo; if (!geo) return;
+  const pri = geo.pri, vis = geo.vis;
+  const periodos = Object.keys(M.ema).map(Number).sort((a, b) => a - b);
+  g.save(); g.beginPath(); g.rect(0, 0, geo.xVelas, geo.y1); g.clip();   // recorta las medias al panel de PRECIO (no invaden el RSI)
+  for (const per of periodos) {
+    const arr = M.ema[per]; if (!arr) continue;
+    const col = EMA_COLS[per] || '#c678dd', rgb = _hex2rgb(col), esBase = per === EMA_LEN, pts = [];
+    for (let i = 0; i < vis.length; i++) { const e = arr[pri + i]; if (e == null) continue; pts.push([i * paso + paso / 2, Y(e)]); }
+    if (pts.length < 2) continue;
+    g.save();
+    g.strokeStyle = col; g.lineWidth = esBase ? 2 : 1.6; g.shadowColor = `rgba(${rgb},.8)`; g.shadowBlur = esBase ? 11 : 7;
+    g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
+    g.restore();
+    if (esBase) {   // cometa iluminado, SIN shadow por segmento (barato)
+      g.save(); g.globalCompositeOperation = 'lighter';
+      const L = pts.length, head = (now / 20) % L, span = Math.max(6, L * 0.16);
+      for (let i = 1; i < L; i++) { let dd = i - head; if (dd < 0) dd += L; const a = dd < span ? 1 - dd / span : 0; if (a <= 0.05) continue;
+        g.strokeStyle = `rgba(245,225,255,${(a * 0.85).toFixed(3)})`; g.lineWidth = 2.4;
+        g.beginPath(); g.moveTo(pts[i - 1][0], pts[i - 1][1]); g.lineTo(pts[i][0], pts[i][1]); g.stroke(); }
+      g.restore();
+    }
+    const last = pts[pts.length - 1];
+    g.fillStyle = col; g.font = '800 9px ui-monospace,monospace'; g.textAlign = 'right';
+    g.fillText('EMA ' + per, Math.max(66, last[0]), last[1] - 6); g.textAlign = 'left';
+  }
+  g.restore();   // cierra el clip del panel de precio (si no, se oculta el RSI de abajo)
 }
-/* Operaciones GANADAS: quedan dibujadas como registro, una zona verde tenue de la
-   entrada al objetivo con un check en la vela gatillo. Se mapean por tiempo. */
+/* Operaciones CERRADAS de registro: las que pegaron objetivo quedan en verde (TP) y las
+   que pegaron stop en rojo (SL), con su zona y etiqueta. Se mapean por el tiempo de la
+   vela de entrada, así quedan ancladas donde ocurrieron. */
 function dibujarGanadoras(g, Y, paso) {
   const geo = M._geo; if (!geo || !M.cerradas.length) return;
   const vis = geo.vis;
   for (const c of M.cerradas) {
-    const idx = vis.findIndex((v) => v.t === c.t); if (idx < 0) continue;
-    const x = idx * paso + paso / 2, yE = Y(c.entry), yT = Y(c.tp), w = Math.max(10, paso * 1.5);
+    const idx = vis.findIndex((v) => v.t === c.tFire); if (idx < 0) continue;
+    const win = c.result === 'tp', col = win ? '46,232,106' : '255,74,90';
+    const x = idx * paso + paso / 2, yE = Y(c.entry), yEnd = Y(win ? c.tp : c.sl), w = Math.max(10, paso * 1.6);
     g.save();
-    g.fillStyle = 'rgba(46,232,106,.07)'; g.fillRect(x, Math.min(yE, yT), w, Math.abs(yT - yE));
-    g.strokeStyle = 'rgba(46,232,106,.5)'; g.setLineDash([3, 3]); g.lineWidth = 1; g.beginPath(); g.moveTo(x, yT); g.lineTo(x + w, yT); g.stroke(); g.setLineDash([]);
-    g.fillStyle = '#2ee86a'; g.font = '800 10px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText('✓', x, c.largo ? yE + 12 : yE - 5);
+    g.fillStyle = `rgba(${col},.08)`; g.fillRect(x, Math.min(yE, yEnd), w, Math.abs(yEnd - yE));
+    g.strokeStyle = `rgba(${col},.55)`; g.setLineDash([3, 3]); g.lineWidth = 1; g.beginPath(); g.moveTo(x, yEnd); g.lineTo(x + w, yEnd); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = `rgba(${col},.4)`; g.beginPath(); g.moveTo(x, yE); g.lineTo(x + w, yE); g.stroke();
+    g.fillStyle = `rgb(${col})`; g.font = '800 9px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(win ? 'TP' : 'SL', x + 2, yEnd + (yEnd < yE ? -3 : 11));
     g.restore();
   }
   g.textAlign = 'left';
@@ -696,9 +776,15 @@ function dibujarPanelRSI(g, x1, yTop, yBot, paso) {
     g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke(); g.restore();
     const last = pts[pts.length - 1]; g.fillStyle = '#ffe11a'; g.beginPath(); g.arc(last[0], last[1], 3, 0, 6.283); g.fill();
   }
+  // Estocástico opcional (%K azul, %D naranja), misma escala 0-100
+  if (M.stoch) {
+    const lin = (arr, col) => { const ps = []; for (let i = 0; i < vis.length; i++) { const vv = arr[pri + i]; if (vv == null) continue; ps.push([i * paso + paso / 2, yR(vv)]); } if (ps.length > 1) { g.save(); g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); ps.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke(); g.restore(); } };
+    lin(M.stoch.k, 'rgba(56,189,248,.9)'); lin(M.stoch.d, 'rgba(245,158,11,.95)');
+  }
   g.textAlign = 'left'; g.fillStyle = '#ffe11a'; g.font = '900 10px system-ui,sans-serif'; g.fillText('RSI 2', 10, yTop + 14);
   const rNow = M.rsi.length ? M.rsi[M.rsi.length - 2] : null;
   if (rNow != null) { g.fillStyle = '#8b95a1'; g.font = '800 10px ui-monospace,monospace'; g.fillText(rNow.toFixed(0), 52, yTop + 14); }
+  if (M.stoch) { g.fillStyle = 'rgba(56,189,248,.9)'; g.font = '800 9px ui-monospace,monospace'; g.fillText('STOCH', 86, yTop + 14); }
 }
 
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -709,7 +795,7 @@ function _hex2rgb(hex) { const n = parseInt((hex || '#2ee86a').slice(1), 16); re
 /* La operación de la señal, para el export (Share). Una sola entrada con su stop y
    su objetivo a 1:2. */
 function posicionesDeNiveles() {
-  const S = M.sig; if (!S) return [];
+  const S = M.pos; if (!S) return [];
   const tipo = S.largo ? 'largo' : 'corto';
   return [{ tipo, pe: S.entry, pStop: S.sl, pTarget: S.tp, rr: 1.5 }];
 }
@@ -731,7 +817,7 @@ function engancharGestos(cv) {
     M._cursor = { x, y };
     if (!arr) {
       cv.style.cursor = enEscala(x) ? 'ns-resize' : (enEjeX(x, y) ? 'ew-resize' : 'crosshair');   // precios: estira vertical; fechas: estira horizontal
-      if (M._geo) dibujar(); return;
+      return;   // la cruceta la pinta el bucle de 30fps con M._cursor: sigue el cursor sin atascarse
     }
     if (dragEsc) {   // arrastre sobre el eje de precios → estira/contrae la escala vertical (como TradingView)
       const dy = y - ay;
@@ -772,11 +858,32 @@ function menuPares() {
 function menuTf() {
   if ($('ss-tfmenu')) { $('ss-tfmenu').remove(); return; }
   const ancla = $('ss-tfchip'); const m = document.createElement('div'); m.id = 'ss-tfmenu'; m.className = 'ss-pop ss-tfpop';
-  m.innerHTML = TFS.map((t) => `<button class="ss-tf-it ${t.id === M.tf ? 'on' : ''}" data-tf="${t.id}">${esc(t.n)}</button>`).join('');
+  m.innerHTML = SS_TFS.map((t) => `<button class="ss-tf-it ${t.id === M.tf ? 'on' : ''}" data-tf="${t.id}">${esc(t.n)}</button>`).join('');
   document.body.appendChild(m);
   const r = ancla.getBoundingClientRect(); const w = m.offsetWidth || 210;
   m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
-  m.querySelectorAll('.ss-tf-it').forEach((b) => b.onclick = () => { M.tf = b.dataset.tf; $('ss-tfchip-t').textContent = (TFS.find((t) => t.id === M.tf) || {}).n || M.tf; m.remove(); M._posAuto = null; cargarVelas(); });
+  m.querySelectorAll('.ss-tf-it').forEach((b) => b.onclick = () => { M.tf = b.dataset.tf; $('ss-tfchip-t').textContent = (SS_TFS.find((t) => t.id === M.tf) || {}).n || M.tf; m.remove(); cargarVelas(); });
+  const fuera = (ev) => { if (!m.contains(ev.target) && !ancla.contains(ev.target)) { m.remove(); document.removeEventListener('mousedown', fuera); } };
+  setTimeout(() => document.addEventListener('mousedown', fuera), 10);
+}
+/* Panel de indicadores (como el de VWAP Pro): la EMA 50 y el RSI 2 son de la estrategia
+   (fijos); se pueden AÑADIR más medias (9, 20, 100, 200) con el mismo glow y el
+   estocástico clásico, apagado por default. */
+function panelIndicadores() {
+  if ($('ss-indmenu')) { $('ss-indmenu').remove(); return; }
+  const ancla = $('ss-ind'); const m = document.createElement('div'); m.id = 'ss-indmenu'; m.className = 'ss-pop ss-indpop';
+  const fila = (per) => `<label class="ss-ind-it"><span><i class="ss-ind-dot" style="background:${EMA_COLS[per]}"></i>EMA ${per}</span><input type="checkbox" data-ema="${per}"${M.ind['ema' + per] ? ' checked' : ''}></label>`;
+  m.innerHTML = `<div class="ss-ind-h">Moving averages</div>
+    <label class="ss-ind-it"><span><i class="ss-ind-dot" style="background:${EMA_COLS[50]}"></i>EMA 50</span><em>strategy</em></label>
+    ${fila(9)}${fila(20)}${fila(100)}${fila(200)}
+    <div class="ss-ind-h">Oscillators</div>
+    <label class="ss-ind-it"><span><i class="ss-ind-dot" style="background:#ffe11a"></i>RSI 2</span><em>strategy</em></label>
+    <label class="ss-ind-it"><span><i class="ss-ind-dot" style="background:#38bdf8"></i>Stochastic</span><input type="checkbox" data-stoch${M.ind.stoch ? ' checked' : ''}></label>`;
+  document.body.appendChild(m);
+  const r = ancla.getBoundingClientRect(), w = m.offsetWidth || 230;
+  m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + 'px';
+  m.querySelectorAll('[data-ema]').forEach((b) => b.onchange = () => { M.ind['ema' + b.dataset.ema] = b.checked; recalcular(); dibujar(); });
+  const st = m.querySelector('[data-stoch]'); if (st) st.onchange = () => { M.ind.stoch = st.checked; recalcular(); dibujar(); };
   const fuera = (ev) => { if (!m.contains(ev.target) && !ancla.contains(ev.target)) { m.remove(); document.removeEventListener('mousedown', fuera); } };
   setTimeout(() => document.addEventListener('mousedown', fuera), 10);
 }
@@ -854,7 +961,7 @@ function compartirSenal() {
   const ents = pos.map((p) => dec(p.pe)), sls = pos.map((p) => dec(p.pStop)), tps = pos.map((p) => dec(p.pTarget));
   const n = ents.length;
   const lista = (arr) => arr.map((v, i) => `${i + 1}: ${v}`).join('\n');
-  const tipoTxt = M.sig ? `${etiquetaSig(M.sig)} · ${M.sig.largo ? 'LONG' : 'SHORT'}\n` : '';
+  const tipoTxt = M.pos ? `${etiquetaSig(M.pos)} · ${M.pos.largo ? 'LONG' : 'SHORT'}\n` : '';
   const txt = `SUPER SCALPER SIGNAL\n${tipoTxt}\n${par.id} · ${M.tf} · ${hora} UTC · Price ${precio}\n\nENTRY\n${lista(ents)}\n\nSTOP LOSS\n${lista(sls)}\n\nTAKE PROFIT\n${lista(tps)}\n\nRISK : REWARD   1:1.5\n\n${WEB} · Super Scalper`;
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => flash('Copied ✓')).catch(() => {});
 
@@ -1050,7 +1157,8 @@ const CSS = `
 .ss-ico:hover{border-color:var(--gold);color:var(--gold)}
 .ss-graf{flex:1 1 auto;min-height:0;position:relative;background:#0a0e14}
 .ss-cv{display:block;position:absolute;inset:0}
-.ss-marca{position:absolute;left:64px;bottom:40px;height:42px;width:auto;opacity:.8;pointer-events:none;filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
+.ss-marca{position:absolute;left:14px;bottom:120px;height:22px;width:auto;opacity:.55;pointer-events:none;filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
+@media(max-width:620px){ .ss-marca{left:10px;height:18px} }
 .ss-esperando{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:30px;background:rgba(10,14,20,.6);z-index:2}
 .ss-esperando b{font-family:var(--mono);font-size:14px;color:#cbd3dc}
 .ss-esperando span{font-size:12px;color:#7d8794;max-width:280px}
@@ -1072,6 +1180,18 @@ const CSS = `
 .ss-tf-it{min-height:42px;border-radius:10px;border:1px solid transparent;background:rgba(255,255,255,.04);color:#c7cdd6;cursor:pointer;font-family:var(--mono);font-size:13px;font-weight:700}
 .ss-tf-it:hover{border-color:#3a424c;color:#eaecef}
 .ss-tf-it.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;border-color:var(--gold)}
+.ss-indpop{min-width:232px;padding:8px;background:#12161c;border-color:#2b3139;border-radius:14px}
+.ss-ind-h{font-size:9px;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;padding:9px 8px 5px}
+.ss-ind-it{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;padding:0 10px;border-radius:9px;cursor:pointer;font-size:12.5px;color:#e7ebf0}
+.ss-ind-it:hover{background:rgba(255,255,255,.04)}
+.ss-ind-it span{display:flex;align-items:center;gap:9px}
+.ss-ind-it em{font-style:normal;font-size:10px;color:#6b7681}
+.ss-ind-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.ss-ind-it input{appearance:none;-webkit-appearance:none;margin:0;position:relative;width:34px;height:19px;border-radius:19px;background:#2b3139;border:1px solid #3a424c;cursor:pointer;flex:0 0 auto;transition:background .18s,border-color .18s}
+.ss-ind-it input::before{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#8b96a3;transition:transform .18s,background .18s}
+.ss-ind-it input:checked{background:rgba(201,168,75,.92);border-color:var(--gold)}
+.ss-ind-it input:checked::before{transform:translateX(15px);background:#0b0e12}
+.ss-ind-it input:hover{border-color:var(--gold)}
 /* ── Ayuda: stepper experto (igual que Heat Pools) ── */
 #ss-ayuda-box{position:fixed;inset:0;z-index:10300;display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Plus Jakarta Sans",system-ui,sans-serif}
 .ss-ab-bg{position:absolute;inset:0;background:rgba(3,5,8,.93)}
