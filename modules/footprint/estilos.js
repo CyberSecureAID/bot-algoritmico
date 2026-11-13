@@ -159,12 +159,28 @@ export function estilosFootprint() {
 
   /* ── Disclaimer de entrada (una vez) ── */
   .fp-disc{position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;padding:20px}
-  .fp-disc-bg{position:absolute;inset:0;background:rgba(4,6,10,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-  .fp-disc-c{position:relative;width:100%;max-width:440px;border-radius:18px;padding:24px 22px;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);box-shadow:0 24px 60px rgba(0,0,0,.7);text-align:center}
-  .fp-disc-c h4{margin:0 0 10px;font-family:var(--display,'Chakra Petch',system-ui);font-size:19px;color:var(--gold,#E8B84B)}
-  .fp-disc-c p{font-size:13.5px;line-height:1.6;color:#b7bdc6;margin:0 0 18px}
+  .fp-disc-bg{position:absolute;inset:0;background:rgba(4,6,10,.9);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .fp-disc-c{position:relative;width:100%;max-width:560px;border-radius:18px;padding:24px 26px 22px;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid var(--gold-soft,#C9A84B);box-shadow:0 24px 60px rgba(0,0,0,.7);text-align:left;display:flow-root;max-height:88vh;overflow:auto}
+  .fp-disc-sello{float:right;width:116px;height:116px;margin:0 0 10px 18px;shape-outside:margin-box;filter:drop-shadow(0 8px 18px rgba(0,0,0,.5))}
+  .fp-disc-c h4{margin:2px 0 12px;font-family:var(--display,'Chakra Petch',system-ui);font-size:20px;color:var(--gold,#E8B84B)}
+  .fp-disc-c p{font-size:12.8px;line-height:1.65;color:#c4ccd4;margin:0 0 12px}
   .fp-disc-c p b{color:#eaecef}
-  .fp-disc-ok{min-height:46px;padding:0 28px;border-radius:11px;border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,var(--gold,#E8B84B) 45%,#c79426);color:#3a2800;font-family:var(--display,'Chakra Petch',system-ui);font-weight:800;font-size:14px;cursor:pointer}
+  .fp-disc-chk{display:flex;align-items:flex-start;gap:10px;clear:both;margin:6px 0 16px;cursor:pointer;font-size:12.5px;line-height:1.5;color:#d4dae1}
+  .fp-disc-chk input{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:var(--gold,#E8B84B);cursor:pointer}
+  .fp-disc-chk b{color:#e9eef3}
+  .fp-disc-ok{clear:both;width:100%;min-height:46px;padding:0 28px;border-radius:11px;border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,var(--gold,#E8B84B) 45%,#c79426);color:#3a2800;font-family:var(--display,'Chakra Petch',system-ui);font-weight:800;font-size:14px;cursor:pointer}
+  .fp-disc-ok[disabled]{opacity:.45;cursor:not-allowed}
+  .fp-disc-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:9px;border:1px solid var(--line,#232b36);background:rgba(255,255,255,.05);color:#c7ccd4;font-size:13px;cursor:pointer;z-index:2}
+  @media(max-width:560px){ .fp-disc-sello{float:none;display:block;width:92px;height:92px;margin:0 auto 10px} .fp-disc-c{text-align:center} .fp-disc-c p,.fp-disc-chk{text-align:left} }
+  /* Ayuda: pasos de uso para principiantes + enlace al disclaimer */
+  .fp-help-steps{margin:0 0 14px;padding:13px 15px;border-radius:12px;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.22)}
+  .fp-help-steps>b{display:block;margin:0 0 7px;color:var(--gold,#E8B84B);font-size:13px}
+  .fp-help-steps ol{margin:0;padding:0 0 0 20px;display:flex;flex-direction:column;gap:6px}
+  .fp-help-steps li{font-size:12.6px;line-height:1.55;color:#c2cad3}
+  .fp-help-steps li b{color:#e9eef3}
+  .fp-help-legal{margin-top:14px;text-align:center}
+  .fp-disc-link{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 18px;border-radius:9px;border:1px solid var(--line2,#232b36);background:rgba(255,255,255,.03);color:var(--gold-soft,#C9A84B);font-size:12px;font-weight:700;cursor:pointer}
+  .fp-disc-link:hover{color:var(--gold-hi,#f4d089);border-color:var(--gold-lo,rgba(232,184,75,.5))}
 
   /* ── Menús (moneda / temporalidad) ── */
   .fp-menu{position:fixed;z-index:9650;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid var(--gold-soft,#C9A84B);

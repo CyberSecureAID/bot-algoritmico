@@ -15,7 +15,7 @@
 import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=6';
 import { crearRender } from './render.js?v=7';
 import { leerFootprint } from './analista.js?v=7';
-import { estilosFootprint } from './estilos.js?v=7';
+import { estilosFootprint } from './estilos.js?v=8';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -270,6 +270,12 @@ function cerrarHelp() { const o = $('fp-help-ov'); if (o) o.style.display = 'non
 function wire(ov) {
   $('fp-back').onclick = cerrar;
   ov.querySelector('.fp-bg').onclick = cerrar;
+  // Botón "atrás" del NAVEGADOR: cierra Footprint y vuelve al selector de Análisis, en
+  // vez de saltar a Spot. Empuja un estado al abrir y lo consume al cerrar por botón.
+  if (!S._pushed) { try { history.pushState({ fp: 1 }, ''); S._pushed = true; } catch (_) { S._pushed = false; } }
+  if (S._onPop) window.removeEventListener('popstate', S._onPop);
+  S._onPop = () => { S._pushed = false; cerrar(); };
+  window.addEventListener('popstate', S._onPop);
   $('fp-coin').onclick = (e) => { e.stopPropagation(); menuCoin($('fp-coin')); };
   $('fp-tf').onclick = (e) => { e.stopPropagation(); menuTF($('fp-tf')); };
   $('fp-export').onclick = exportar;
@@ -624,7 +630,11 @@ function cerrar() {
   try { if (S.worker) S.worker.terminate(); } catch (_) {}
   if (S.rebuildT) clearTimeout(S.rebuildT); if (S.velasT) clearInterval(S.velasT); if (S.timerT) clearInterval(S.timerT);
   window.removeEventListener('resize', onResize);
+  if (S._onPop) { window.removeEventListener('popstate', S._onPop); S._onPop = null; }
   cerrarPops();
+  const dsc = document.querySelector('.fp-disc'); if (dsc) dsc.remove();   // quita el disclaimer si quedó abierto (no deja la pantalla trabada)
   const ov = $('fp-overlay'); if (ov) ov.remove();
+  const sel = document.getElementById('an-sel'); if (sel) sel.style.display = '';   // vuelve al selector de Análisis, NO a Spot
+  if (S._pushed) { S._pushed = false; try { history.back(); } catch (_) {} }   // consume el estado empujado (cierre por botón propio)
   S.worker = null; S.stream = null; S.render = null; S.agg = null; S.trades = [];
 }
