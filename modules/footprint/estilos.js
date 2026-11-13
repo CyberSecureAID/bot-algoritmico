@@ -45,6 +45,7 @@ export function estilosFootprint() {
   #fp-overlay .fp-ico{width:38px;height:38px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;cursor:pointer;
     background:rgba(255,255,255,.05);border:1px solid #2b3139;color:#b7bdc6;font-size:16px}
   #fp-overlay .fp-ico:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+  #fp-overlay .fp-snd.on{border-color:var(--gold,#E8B84B);color:var(--gold,#E8B84B);background:rgba(232,184,75,.12)}
 
   /* ── Escenario: gráfica (1fr) + columna del analista a la derecha ── */
   #fp-overlay .fp-stage{flex:1;min-height:0;display:grid;grid-template-columns:1fr 304px}
@@ -56,18 +57,13 @@ export function estilosFootprint() {
   #fp-overlay .fp-wm{position:absolute;left:64px;bottom:40px;z-index:4;display:flex;align-items:center;pointer-events:none;opacity:.82}
   #fp-overlay .fp-wm img{height:42px;width:auto;display:block;filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
 
-  /* ── Pantalla de carga (una sola, limpia y con marca) ── */
-  #fp-overlay .fp-loading{position:absolute;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;
-    background:radial-gradient(900px 500px at 50% 35%,rgba(232,184,75,.05),transparent 60%),#0a0e14;transition:opacity .45s ease}
+  /* ── Carga: MISMO patrón que el resto de Análisis (spinner simple, sin logo) ── */
+  #fp-overlay .fp-loading{position:absolute;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;background:#0a0e14;transition:opacity .35s ease}
   #fp-overlay .fp-loading.hide{opacity:0;pointer-events:none}
-  #fp-overlay .fp-load-c{display:flex;flex-direction:column;align-items:center;gap:16px}
-  #fp-overlay .fp-load-logo{height:40px;width:auto;opacity:.95;filter:drop-shadow(0 2px 10px rgba(0,0,0,.9))}
-  #fp-overlay .fp-load-ring{width:30px;height:30px;border-radius:50%;border:2.5px solid rgba(232,184,75,.18);border-top-color:var(--gold,#E8B84B);animation:fpGira .8s linear infinite}
-  #fp-overlay .fp-load-tx{font-family:var(--mono,'IBM Plex Mono',monospace);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8b96a3;
-    background:linear-gradient(90deg,#5a626c,#eaecef,#5a626c);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:fpShim 1.6s linear infinite}
+  #fp-overlay .fp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;font-family:var(--mono,'IBM Plex Mono',monospace);font-size:12px;color:#7d8794}
+  #fp-overlay .fp-spin{width:24px;height:24px;border-radius:50%;border:2.5px solid #2a333f;border-top-color:var(--gold,#E8B84B);animation:fpGira .7s linear infinite}
   @keyframes fpGira{to{transform:rotate(360deg)}}
-  @keyframes fpShim{to{background-position:-200% 0}}
-  @media(prefers-reduced-motion:reduce){#fp-overlay .fp-load-ring,#fp-overlay .fp-load-tx{animation:none}}
+  @media(prefers-reduced-motion:reduce){#fp-overlay .fp-spin{animation:none}}
 
   /* ── Etiqueta de fuente de datos ── */
   #fp-overlay .fp-src{position:absolute;left:10px;bottom:8px;z-index:5;font-family:var(--mono,'IBM Plex Mono',monospace);

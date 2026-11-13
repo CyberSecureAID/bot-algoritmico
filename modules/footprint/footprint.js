@@ -12,10 +12,10 @@
    NUEVO: motor de footprint (worker), render en canvas, 3 modos, imbalances
    apilados como S/R, CVD con divergencias, absorción y su analista propio. */
 
-import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=2';
-import { crearRender } from './render.js?v=2';
-import { leerFootprint } from './analista.js?v=2';
-import { estilosFootprint } from './estilos.js?v=2';
+import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=3';
+import { crearRender } from './render.js?v=3';
+import { leerFootprint } from './analista.js?v=3';
+import { estilosFootprint } from './estilos.js?v=3';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -25,7 +25,9 @@ const AVATAR = new URL('../../assets/img/jesus-avatar.webp', import.meta.url).hr
    de la vela; si no existen, se dibuja un triángulo. Súbelas a assets/img/. */
 const IMG_BULL = new URL('../../assets/img/fp-alcista.webp', import.meta.url).href;
 const IMG_BEAR = new URL('../../assets/img/fp-bajista.webp', import.meta.url).href;
-const OPTS_RENDER = () => ({ onHover: tooltip, imgBull: IMG_BULL, imgBear: IMG_BEAR });
+const IMG_WARUP = new URL('../../assets/img/fp-flecha-verde.webp', import.meta.url).href;   // compradores (verde, abajo)
+const IMG_WARDN = new URL('../../assets/img/fp-flecha-roja.webp', import.meta.url).href;    // vendedores (rojo, arriba)
+const OPTS_RENDER = () => ({ onHover: tooltip, imgBull: IMG_BULL, imgBear: IMG_BEAR, imgWarUp: IMG_WARUP, imgWarDown: IMG_WARDN });
 
 /* Iconos SVG propios, centrados (nada de glifos sueltos descuadrados). */
 const IC = {
@@ -33,7 +35,9 @@ const IC = {
   help: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.3"/><path d="M9.3 9.2a2.7 2.7 0 1 1 3.9 2.6c-.9.5-1.2 1-1.2 1.9"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>',
   reset: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>',
   set: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="10" cy="8" r="2.4" fill="#12161c"/><circle cx="15" cy="16" r="2.4" fill="#12161c"/></svg>',
-  exp: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>'
+  exp: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>',
+  sndOff: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
+  sndOn: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.6a5 5 0 0 1 0 6.8"/><path d="M18.6 5.5a9 9 0 0 1 0 13"/></svg>'
 };
 
 const $ = (id) => document.getElementById(id);
@@ -42,8 +46,30 @@ const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const S = {
   par: PARES[0], tf: '1m', trades: [], velas: [], subk: [], agg: null, meta: {}, live: null,
   render: null, worker: null, stream: null, logos: {}, tick: 0, binSize: 0, imb: 300,
-  reqId: 0, rebuildT: null, velasT: null, timerT: null, an: null, alertadas: new Set(), modo: 'bidask'
+  reqId: 0, rebuildT: null, velasT: null, timerT: null, an: null, alertadas: new Set(), modo: 'bidask',
+  sound: false, audioCtx: null
 };
+
+/* Sonido de alerta (cling corto, generado, sin assets). Solo si está activado;
+   por defecto apagado. El botón vive junto al temporizador. */
+function ping() {
+  if (!S.sound) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    if (!S.audioCtx) S.audioCtx = new AC();
+    const ac = S.audioCtx; if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(880, t); o.frequency.exponentialRampToValueAtTime(1320, t + 0.08);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.36);
+  } catch (_) {}
+}
+function toggleSound() {
+  S.sound = !S.sound;
+  try { localStorage.setItem('fp-sound', S.sound ? '1' : '0'); } catch (_) {}
+  const b = $('fp-sound'); if (b) { b.innerHTML = S.sound ? IC.sndOn : IC.sndOff; b.title = 'Alert sound (' + (S.sound ? 'on' : 'off') + ')'; b.classList.toggle('on', S.sound); }
+  if (S.sound) ping();   // confirma al activar y desbloquea el audio del navegador
+}
 
 /* Temporizador de la vela ACTUAL: cuenta regresiva según la temporalidad,
    alineada al nacimiento de la vela (openTime + duración). Al llegar a 0 nace
@@ -86,11 +112,12 @@ export async function abrirFootprint() {
   S.timerT = setInterval(tickTimer, 1000); tickTimer();
   disclaimerUnaVez();
   S.an = { lang: idiomaIni(), abierto: false, clave: '', msg: null, det: false };
+  try { S.sound = localStorage.getItem('fp-sound') === '1'; } catch (_) {}
 
   wire(ov);
   arrancarWorker();
   logos().then((m) => { S.logos = m || {}; pintarCoin(); }).catch(() => {});
-  requestAnimationFrame(() => { try { S.render.resize(); } catch (_) {} });
+  requestAnimationFrame(() => { try { S.render.resize(); posMarca(); } catch (_) {} });
   cargar();
 }
 
@@ -106,6 +133,7 @@ function plantilla() {
       <div class="fp-pxbox"><b class="fp-px" id="fp-px">—</b><span class="fp-chg" id="fp-chg">—</span></div>
 
       <div class="fp-timer" id="fp-timer" title="Time left in this candle">—</div>
+      <button class="fp-ico fp-snd" id="fp-sound" title="Alert sound (off)">${IC.sndOff}</button>
 
       <div class="fp-modes" id="fp-modes">
         <button data-mode="bidask" class="on" title="Buy x Sell in every cell">Bid×Ask</button>
@@ -142,14 +170,16 @@ function plantilla() {
   ${helpHTML()}`;
 }
 
-function loader() {
-  return `<div class="fp-load-c">
-    <img class="fp-load-logo" src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'" alt="">
-    <div class="fp-load-ring"></div>
-    <div class="fp-load-tx">Loading order flow</div>
-  </div>`;
-}
+/* Carga UNIFORME con el resto de Análisis: un spinner simple centrado, sin logo
+   ni inventos (mismo patrón que it-empty / it-spin de VWAP Pro). */
+function loader() { return '<div class="fp-empty"><div class="fp-spin"></div><span>Loading…</span></div>'; }
 function mostrarCarga(b) { const el = $('fp-loading'); if (el) el.classList.toggle('hide', !b); }
+/* Coloca la marca de agua en la esquina inferior IZQUIERDA de la gráfica, por
+   ENCIMA de los paneles de delta y CVD (nunca sobre ellos). */
+function posMarca() {
+  const wm = document.querySelector('#fp-overlay .fp-wm');
+  if (wm && S.render && S.render.panelBottomPx) { try { wm.style.bottom = (S.render.panelBottomPx() + 8) + 'px'; } catch (_) {} }
+}
 
 /* Guía de uso (How it works). Diagramas propios (SVG), nada de imágenes de
    terceros. Aquí vive también la nota de la fuente de datos. */
@@ -204,6 +234,7 @@ function wire(ov) {
     if (S.render) S.render.setMode(S.modo);
   });
   $('fp-reset').onclick = () => { if (S.render) S.render.resetView(); };
+  const sb = $('fp-sound'); if (sb) { sb.onclick = toggleSound; sb.innerHTML = S.sound ? IC.sndOn : IC.sndOff; sb.classList.toggle('on', S.sound); sb.title = 'Alert sound (' + (S.sound ? 'on' : 'off') + ')'; }
   $('fp-help').onclick = (e) => { e.stopPropagation(); abrirHelp(); };
   const hx = $('fp-help-x'); if (hx) hx.onclick = cerrarHelp;
   const hb = $('fp-help-bg'); if (hb) hb.onclick = cerrarHelp;
@@ -232,7 +263,7 @@ async function cargar() {
   S.meta = { par: S.par.id, tf: S.tf, last: tkr ? tkr.last : (vls.length ? vls[vls.length - 1].c : 0), binSize: S.binSize };
   if (tkr) pintarPrecio(tkr);
   // recrea el canvas limpio
-  const host = $('fp-cv'); if (host) { host.innerHTML = ''; S.render = crearRender(host, OPTS_RENDER()); S.render.setMode(S.modo); requestAnimationFrame(() => S.render.resize()); }
+  const host = $('fp-cv'); if (host) { host.innerHTML = ''; S.render = crearRender(host, OPTS_RENDER()); S.render.setMode(S.modo); requestAnimationFrame(() => { S.render.resize(); posMarca(); }); }
 
   rebuild(true);
   S.stream = streamTrades(sym, onTrade);
@@ -263,8 +294,9 @@ function onTrade(tr) {
   S.meta.last = tr.p;
   const pxEl = document.getElementById('fp-px'); if (pxEl) pxEl.textContent = Number(tr.p).toLocaleString('en-US', { minimumFractionDigits: decPar(), maximumFractionDigits: decPar() });
   if (S.live) {
-    const paso = tfMs(S.tf);
-    while (tr.t >= S.live.t + paso) S.live = { t: S.live.t + paso, o: tr.p, h: tr.p, l: tr.p, c: tr.p, niveles: [], map: new Map(), poc: null, total: 0, delta: 0, bin: S.live.bin };
+    const paso = tfMs(S.tf); let nacio = false;
+    while (tr.t >= S.live.t + paso) { S.live = { t: S.live.t + paso, o: tr.p, h: tr.p, l: tr.p, c: tr.p, niveles: [], map: new Map(), poc: null, total: 0, delta: 0, bin: S.live.bin }; nacio = true; }
+    if (nacio) { if (S.rebuildT) { clearTimeout(S.rebuildT); S.rebuildT = null; } rebuild(false); }   // vela nueva: reconstruye YA para verla nacer (no detrás del eje)
     const bin = S.live.bin || 1, k = Math.round(tr.p / bin);
     let lv = S.live.map.get(k);
     if (!lv) { lv = { price: k * bin, buy: 0, sell: 0 }; S.live.map.set(k, lv); S.live.niveles.push(lv); }
@@ -279,7 +311,7 @@ function onTrade(tr) {
 
 function arrancarWorker() {
   try {
-    S.worker = new Worker(new URL('./motor.worker.js?v=2', import.meta.url));
+    S.worker = new Worker(new URL('./motor.worker.js?v=3', import.meta.url));
     S.worker.onmessage = (ev) => {
       const r = ev.data || {};
       if (!r.ok) return;
@@ -380,15 +412,19 @@ function fmt(v) { const a = Math.abs(v); if (a >= 1e6) return (v / 1e6).toFixed(
 // ── Alertas (divergencia / absorción nuevas) ────────────────────────
 function revisarAlertas(agg) {
   if (!agg.candles || !agg.candles.length) return;
-  const ult = agg.candles[agg.candles.length - 1];
-  (agg.divergences || []).filter((d) => d.t === ult.t).forEach((d) => {
+  const recientes = new Set(agg.candles.slice(-3).map((c) => c.t));   // la absorción es de velas cerradas: avisa cuando acaba de salir
+  let sono = false;
+  (agg.divergences || []).filter((d) => recientes.has(d.t)).forEach((d) => {
     const k = 'div' + d.kind + d.t; if (S.alertadas.has(k)) return; S.alertadas.add(k);
     toast(d.kind === 'bull' ? 'up' : 'down', d.kind === 'bull' ? 'Bullish divergence' : 'Bearish divergence', `${S.par.id} · CVD vs price ${S.tf}`);
+    if (!sono) { ping(); sono = true; }
   });
-  (agg.absorciones || []).filter((a) => a.t === ult.t).forEach((a) => {
+  (agg.absorciones || []).filter((a) => recientes.has(a.t)).forEach((a) => {
     const k = 'abs' + a.side + a.t; if (S.alertadas.has(k)) return; S.alertadas.add(k);
     const comprador = a.side === 'sell';
-    toast(comprador ? 'up' : 'down', comprador ? 'Buyer absorption' : 'Seller absorption', `${S.par.id} · ${a.price != null ? a.price : ''}`);
+    const pStr = a.price != null ? Number(a.price).toLocaleString('en-US', { minimumFractionDigits: decPar(), maximumFractionDigits: decPar() }) : '';
+    toast(comprador ? 'up' : 'down', comprador ? 'Buyer absorption' : 'Seller absorption', `${S.par.id} · ${pStr}`);
+    if (!sono) { ping(); sono = true; }
   });
 }
 function toast(tipo, titulo, sub) {
@@ -416,7 +452,7 @@ function renderAnalistaCol() {
     col.className = 'fp-an-col';
     col.innerHTML = `
       <div class="fp-anc-head"><img class="fp-anc-ava" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
-        <div class="fp-anc-id"><b>Jesús</b><span>${lang === 'es' ? 'Analista de flujo' : 'Order flow analyst'}</span></div></div>
+        <div class="fp-anc-id"><b>Jesús</b><span>${lang === 'es' ? 'No es consejo financiero' : 'Not financial advice'}</span></div></div>
       <div class="fp-anc-wait"><i class="fp-anc-dot"></i>${lang === 'es' ? 'Leyendo el flujo de órdenes…' : 'Reading the order flow…'}</div>`;
     return;
   }
@@ -424,7 +460,7 @@ function renderAnalistaCol() {
   col.innerHTML = `
     <div class="fp-anc-head">
       <img class="fp-anc-ava" src="${AVATAR}" alt="Jesús" onerror="this.style.display='none'">
-      <div class="fp-anc-id"><b>Jesús</b><span>${lang === 'es' ? 'Analista de flujo' : 'Order flow analyst'}</span></div>
+      <div class="fp-anc-id"><b>Jesús</b><span>${lang === 'es' ? 'No es consejo financiero' : 'Not financial advice'}</span></div>
       <button class="fp-anc-lang" type="button">${lang === 'en' ? 'ES' : 'EN'}</button>
     </div>
     <div class="fp-anc-live"><i class="fp-anc-dot"></i><span>${lang === 'es' ? 'EN VIVO' : 'LIVE'}</span><em class="fp-anc-tag c-${m.tipo}">${esc(anL(TAG[m.tipo] || { en: 'FLOW', es: 'FLUJO' }, lang))}</em></div>
@@ -433,7 +469,7 @@ function renderAnalistaCol() {
     <div class="fp-anc-tx" data-esc="${esc(anL(m.txt, lang))}"></div>
     <div class="fp-anc-do"><span>${lang === 'es' ? 'Qué vigilar' : 'What to watch'}</span>${esc(anL(m.hacer, lang))}</div>
     <div class="fp-anc-why">${(m.detalle || []).map((x) => `<div class="fp-anc-li">${esc(anL(x, lang))}</div>`).join('')}</div>
-    <div class="fp-anc-disc">${lang === 'es' ? 'Lectura en vivo de Jesús · no es consejo financiero' : "Jesús's live read · not financial advice"}</div>`;
+    <div class="fp-anc-disc">${lang === 'es' ? 'Flujo de órdenes de Binance en vivo' : 'Live Binance order flow'}</div>`;
   const lng = col.querySelector('.fp-anc-lang'); if (lng) lng.onclick = (e) => { e.stopPropagation(); S.an.lang = S.an.lang === 'es' ? 'en' : 'es'; renderAnalistaCol(); };
   escribir(col.querySelector('[data-esc]'));
   actualizarLiveStats();
@@ -503,7 +539,7 @@ function exportar() {
 }
 
 // ── Ciclo de vida ────────────────────────────────────────────────────
-function onResize() { if (S.render) try { S.render.resize(); } catch (_) {} }
+function onResize() { if (S.render) try { S.render.resize(); posMarca(); } catch (_) {} }
 function cerrar() {
   try { if (S.stream) S.stream.cerrar(); } catch (_) {}
   try { if (S.worker) S.worker.terminate(); } catch (_) {}

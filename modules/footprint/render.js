@@ -29,12 +29,15 @@ export function crearRender(host, opts = {}) {
   host.appendChild(cv);
   const ctx = cv.getContext('2d');
 
-  // Marcadores de absorción (opcionales). El logo de marca NO se dibuja en el
-  // canvas: va como capa DOM .fp-wm, réplica exacta de las demás secciones.
-  const imgs = { bull: null, bear: null };
+  // Marcadores (opcionales): absorción (bull/bear) y flechas de guerra en vivo
+  // (warUp = compradores/verde abajo, warDown = vendedores/rojo arriba). El logo
+  // de marca NO se dibuja en el canvas: va como capa DOM .fp-wm.
+  const imgs = { bull: null, bear: null, warUp: null, warDown: null };
   function cargarImg(url) { if (!url) return null; const i = new Image(); i.onload = () => render(); i.src = url; return i; }
   if (opts.imgBull) imgs.bull = cargarImg(opts.imgBull);
   if (opts.imgBear) imgs.bear = cargarImg(opts.imgBear);
+  if (opts.imgWarUp) imgs.warUp = cargarImg(opts.imgWarUp);
+  if (opts.imgWarDown) imgs.warDown = cargarImg(opts.imgWarDown);
 
   // Capa FX propia para el CVD: una luz que lo recorre (comet), igual que la
   // iluminación del VWAP en VWAP Pro. Va encima, sin tocar el dibujo principal.
@@ -43,8 +46,8 @@ export function crearRender(host, opts = {}) {
   host.appendChild(fx);
   const fctx = fx.getContext('2d');
 
-  const st = { agg: null, meta: null, mode: 'bidask', colW: 92, leftF: 0, anclaDer: true, yZoom: 1, yPan: 0,
-    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null, _cvdPts: null,
+  const st = { agg: null, meta: null, mode: 'bidask', colW: 72, leftF: 0, anclaDer: true, yZoom: 1, yPan: 0,
+    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null, _cvdPts: null, _absMarks: null, _warPos: null,
     live: null, liveT: null, disp: new Map(), dispC: 0, dispH: 0, dispL: 0, flash: new Map() };
   let _rafId = null, _animId = null, _lastFx = 0;
   /* Animación de la vela EN FORMACIÓN: el cuerpo sigue al precio en vivo y las
@@ -87,8 +90,12 @@ export function crearRender(host, opts = {}) {
     ctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0);
     fx.width = cv.width; fx.height = cv.height; fx.style.width = st.W + 'px'; fx.style.height = st.H + 'px';
     fctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0);
-    st.anclaDer = true; st.colW = 92; render();
+    st.anclaDer = true; st.yPan = 0; st.yZoom = 1; st.colW = anchoInicial(); render();
   }
+  // Ancho de columna inicial: ~16 velas. Suficientes columnas para leer los
+  // números de cada celda (compra x venta) sin que se vea ni muy de lejos ni muy
+  // de cerca. El footprint se lee por sus números, así que no se encoge de más.
+  function anchoInicial() { return Math.max(58, Math.min(104, Math.round((st.W - GUT) / 16))); }
 
   const GUT = 68, HFOOT = 50;
   function layout() {
@@ -106,14 +113,15 @@ export function crearRender(host, opts = {}) {
   function fv(v) { const a = Math.abs(v); if (a >= 1e6) return (v / 1e6).toFixed(2) + 'M'; if (a >= 1e3) return (v / 1e3).toFixed(1) + 'K'; if (a >= 100) return v.toFixed(0); if (a >= 1) return v.toFixed(1); return v.toFixed(2); }
   function sfv(v) { return (v >= 0 ? '+' : '−') + fv(Math.abs(v)); }
 
+  function RPAD() { return Math.min(46, st.colW * 0.7); }   // aire entre la vela nueva y el eje de precio: que NUNCA quede detrás
+  function nVis(L) { return Math.max(1, Math.floor((L.main.w - RPAD()) / st.colW)); }
   function visibles(L) {
     const cs = (st.agg && st.agg.candles) || []; if (!cs.length) return [];
-    const n = Math.max(1, Math.floor(L.main.w / st.colW));
-    const maxLeft = Math.max(0, cs.length - n);
+    const maxLeft = Math.max(0, cs.length - nVis(L));
     if (st.anclaDer) st.leftF = maxLeft;
     st.leftF = Math.max(0, Math.min(maxLeft, st.leftF));
     const out = [];
-    for (let i = Math.floor(st.leftF); i < cs.length; i++) { const x = L.main.x + (i - st.leftF) * st.colW; if (x > L.main.w) break; out.push({ c: cs[i], x, i }); }
+    for (let i = Math.floor(st.leftF); i < cs.length; i++) { const x = L.main.x + (i - st.leftF) * st.colW; if (x > L.main.w - 2) break; out.push({ c: cs[i], x, i }); }
     return out;
   }
   function rango(vis) {
@@ -140,10 +148,29 @@ export function crearRender(host, opts = {}) {
   function render() {
     const L = layout();
     ctx.clearRect(0, 0, st.W, st.H); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, st.W, st.H);
-    if (!st.agg || !st.agg.candles || !st.agg.candles.length) { ctx.fillStyle = C.dim; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('Waiting for order flow…', st.W / 2, st.H / 2); ctx.textAlign = 'left'; return; }
+    if (!st.agg || !st.agg.candles || !st.agg.candles.length) { st._cvdPts = null; st._absMarks = null; st._warPos = null; return; }   // el loader DOM cubre la espera (sin texto en el canvas)
     const vis = visibles(L); rango(vis);
-    ejeP(L); cols(L, vis); absorcion(L, vis);
+    ejeP(L); cols(L, vis); marcasFx(L, vis);
     statFooter(L, vis); cvdPanel(L, vis); ejeT(L, vis); if (st.hover) cruz(L);
+  }
+
+  // Calcula (no dibuja) las marcas que van en la capa FX: absorción flotando
+  // encima de su vela y la "guerra" en vivo de la vela en formación.
+  function marcasFx(L, vis) {
+    const A = L.main, marks = [];
+    for (const a of (st.agg.absorciones || [])) {
+      const v = vis.find((x) => x.c.t === a.t); if (!v) continue;
+      const y = yP(v.c.hi, A); if (y < -24 || y > A.h) continue;
+      marks.push({ x: v.x + st.colW / 2, y, bull: a.side === 'sell' });
+    }
+    st._absMarks = marks;
+    const lv = vis.find((x) => x.c.t === st.liveT);
+    if (lv && st.live) {
+      let b = 0, s = 0; for (const n of (st.live.niveles || [])) { b += n.buy; s += n.sell; }
+      const yTop = Math.max(12, yP(Math.max(st.dispH, st.dispC), A) - 15);
+      const yBot = Math.min(A.h - 6, yP(Math.min(st.dispL, st.dispC), A) + 15);
+      st._warPos = { x: lv.x + st.colW / 2, yTop, yBot, b, s };
+    } else st._warPos = null;
   }
 
   function ejeP(L) {
@@ -158,7 +185,7 @@ export function crearRender(host, opts = {}) {
     const A = L.main, bin = st.agg.binSize || 1;
     const rowH = Math.max(0.6, (bin / (st.pMax - st.pMin)) * A.h);
     const maxV = st.agg.maxCellVol || 1;
-    const texto = st.colW >= 70 && rowH >= 9;
+    const texto = st.colW >= 58 && rowH >= 9;
     ctx.textBaseline = 'middle';
     ctx.save(); ctx.beginPath(); ctx.rect(A.x, A.y, A.w, A.h); ctx.clip();   // la vela y las celdas NO invaden delta/CVD
     for (const { c, x } of vis) {
@@ -236,19 +263,13 @@ export function crearRender(host, opts = {}) {
     ctx.strokeStyle = 'rgba(232,184,75,.5)'; ctx.setLineDash([2, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(vis[vis.length - 1].x, y); ctx.lineTo(A.w, y); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // Marcas de absorción ENCIMA de la vela (no sobre los números). venta agresiva
-  // absorbida → comprador manda → alcista; compra absorbida → vendedor → bajista.
-  function absorcion(L, vis) {
-    const A = L.main;
-    for (const a of (st.agg.absorciones || [])) {
-      const v = vis.find((x) => x.c.t === a.t); if (!v) continue;
-      const x = v.x + st.colW / 2, yTop = yP(v.c.hi, A) - 12, bull = a.side === 'sell';
-      const im = bull ? imgs.bull : imgs.bear;
-      if (im && im.complete && im.naturalWidth) { const h = 18, w = im.naturalWidth * (h / im.naturalHeight); ctx.drawImage(im, x - w / 2, yTop - h, w, h); continue; }
-      ctx.fillStyle = bull ? C.buy : C.sell; ctx.beginPath();
-      if (bull) { ctx.moveTo(x, yTop - 8); ctx.lineTo(x - 5, yTop); ctx.lineTo(x + 5, yTop); } else { ctx.moveTo(x, yTop); ctx.lineTo(x - 5, yTop - 8); ctx.lineTo(x + 5, yTop - 8); }
-      ctx.closePath(); ctx.fill();
-    }
+  // Imagen (o triángulo de respaldo) en el canvas PRINCIPAL, con sombra suave,
+  // sin movimiento. Para las flechas de delta y de divergencia del CVD.
+  function marca(cx, cy, h, im, color, dir) {
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1.5;
+    if (im && im.complete && im.naturalWidth) { const w = im.naturalWidth * (h / im.naturalHeight); ctx.drawImage(im, cx - w / 2, cy - h / 2, w, h); }
+    else { const s = h * 0.46; ctx.fillStyle = color; ctx.beginPath(); if (dir === 'up') { ctx.moveTo(cx, cy - s); ctx.lineTo(cx - s, cy + s); ctx.lineTo(cx + s, cy + s); } else { ctx.moveTo(cx, cy + s); ctx.lineTo(cx - s, cy - s); ctx.lineTo(cx + s, cy - s); } ctx.closePath(); ctx.fill(); }
+    ctx.restore();
   }
 
   // TABLA POR VELA: delta coloreado + volumen + flecha de quién gana la vela
@@ -259,7 +280,7 @@ export function crearRender(host, opts = {}) {
     ctx.fillStyle = C.dim; ctx.font = '8px ui-monospace,monospace'; ctx.textAlign = 'left';
     ctx.fillText('Δ DELTA', 5, A.y + 10); ctx.fillText('VOL', 5, A.y + A.h - 6);
     let maxD = 1; for (const { c } of vis) maxD = Math.max(maxD, Math.abs(c.delta));
-    const texto = st.colW >= 60;
+    const texto = st.colW >= 52;
     for (const { c, x } of vis) {
       const gana = c.delta >= 0, col = gana ? C.up : C.down, cx = x + st.colW / 2;
       const base = gana ? '38,194,129' : '232,68,93', inten = Math.min(1, Math.abs(c.delta) / maxD);
@@ -270,7 +291,7 @@ export function crearRender(host, opts = {}) {
       ctx.save(); redondo(bx, by, bw, bh, rr); ctx.shadowColor = `rgba(${base},${(0.2 + inten * 0.35).toFixed(3)})`; ctx.shadowBlur = 5 + inten * 7; ctx.fillStyle = grad; ctx.fill(); ctx.restore();
       ctx.save(); redondo(bx, by, bw, bh, rr); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(bx, by, bw, 2); ctx.restore();   // brillo superior interior
       redondo(bx, by, bw, bh, rr); ctx.strokeStyle = `rgba(${base},${(0.3 + inten * 0.4).toFixed(3)})`; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = col; ctx.font = '700 11px system-ui'; ctx.textAlign = 'center'; ctx.fillText(gana ? '▲' : '▼', cx, A.y + 13);
+      marca(cx, A.y + 13, 14, gana ? imgs.bull : imgs.bear, col, gana ? 'up' : 'down');   // ganador de la vela: imagen pequeña con sombra (sin movimiento)
       if (texto) {
         const pct = c.total > 0 ? (c.delta / c.total) * 100 : 0;
         ctx.font = '700 10px ui-monospace,monospace'; ctx.fillStyle = col; ctx.fillText(sfv(c.delta), cx, A.y + 27);
@@ -283,22 +304,30 @@ export function crearRender(host, opts = {}) {
   function cvdPanel(L, vis) {
     const A = L.cvd;
     ctx.fillStyle = 'rgba(255,255,255,.02)'; ctx.fillRect(A.x, A.y, A.w, A.h);
-    ctx.fillStyle = C.dim; ctx.font = '8px ui-monospace,monospace'; ctx.fillText('CVD · net buying vs selling (since left)', 5, A.y + 10);
-    if (!vis.length) return;
+    ctx.fillStyle = C.dim; ctx.font = '8px ui-monospace,monospace'; ctx.textAlign = 'left'; ctx.fillText('CVD · cumulative volume delta', 5, A.y + 10);
+    if (!vis.length) { st._cvdPts = null; return; }
+    // CVD REAL y CONTINUO: delta acumulado verdadero del motor (origen fijo en la
+    // primera vela cargada), NO rebaseado por lo que ves. Así la línea no cambia
+    // de forma al desplazar: solo ves otra ventana de la MISMA curva, como en una
+    // terminal profesional. La escala vertical se ajusta al tramo visible.
     const map = new Map((st.agg.cvd || []).map((p) => [p.t, p.v]));
-    // Rebase a 0 en el borde izquierdo: muestra el NETO de compra/venta de lo
-    // que estás viendo, así siempre tiene sentido y no arrastra un offset viejo.
-    const raw = vis.map(({ c, x }) => ({ x: x + st.colW / 2, v: map.has(c.t) ? map.get(c.t) : 0, t: c.t }));
-    const base0 = raw.length ? raw[0].v : 0;
-    const pts = raw.map((p) => ({ x: p.x, v: p.v - base0, t: p.t }));
-    let lo = Infinity, hi = -Infinity; for (const p of pts) { if (p.v < lo) lo = p.v; if (p.v > hi) hi = p.v; } if (!isFinite(lo) || hi === lo) { lo -= 1; hi += 1; }
+    let prev = 0;
+    const pts = vis.map(({ c, x }) => { const v = map.has(c.t) ? map.get(c.t) : prev; prev = v; return { x: x + st.colW / 2, v, t: c.t }; });
+    let lo = Infinity, hi = -Infinity; for (const p of pts) { if (p.v < lo) lo = p.v; if (p.v > hi) hi = p.v; }
+    if (!isFinite(lo) || hi === lo) { lo -= 1; hi += 1; }
+    const pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
     const yv = (v) => A.y + 14 + (hi - v) / (hi - lo) * (A.h - 20);
-    st._cvdPts = pts.map((p) => ({ x: p.x, y: yv(p.v) }));   // para el comet de la capa FX (animación como VWAP Pro)
-    ctx.save(); ctx.shadowColor = 'rgba(142,162,255,.85)'; ctx.shadowBlur = 7; ctx.strokeStyle = C.cvd; ctx.lineWidth = 1.9; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke(); ctx.restore();   // glow base
-    ctx.lineTo(pts[pts.length - 1].x, A.y + A.h); ctx.lineTo(pts[0].x, A.y + A.h); ctx.closePath(); ctx.fillStyle = 'rgba(142,162,255,.08)'; ctx.fill();
-    if (0 >= lo && 0 <= hi) { const yz = yv(0); ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(0, yz + .5); ctx.lineTo(A.w, yz + .5); ctx.stroke(); ctx.setLineDash([]); }
-    const cur = pts[pts.length - 1]; if (cur) { ctx.fillStyle = cur.v >= 0 ? C.buy : C.sell; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText('CVD ' + sfv(cur.v), A.w - 6, A.y + 11); ctx.textAlign = 'left'; }
-    for (const d of (st.agg.divergences || [])) { const p = pts.find((q) => q.t === d.t); if (!p) continue; const y = yv(p.v); ctx.fillStyle = d.kind === 'bull' ? C.buy : C.sell; ctx.font = '700 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(d.kind === 'bull' ? '▲' : '▼', p.x, y + (d.kind === 'bull' ? 15 : -5)); ctx.textAlign = 'left'; }
+    const subiendo = pts.length > 1 && pts[pts.length - 1].v >= pts[0].v;
+    const col = subiendo ? '38,194,129' : '232,68,93';
+    st._cvdPts = pts.map((p) => ({ x: p.x, y: yv(p.v) })); st._cvdCol = col;   // para el comet de la capa FX
+    // área bajo la curva (degradado) + línea con glow (igual que el VWAP)
+    ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); });
+    ctx.lineTo(pts[pts.length - 1].x, A.y + A.h); ctx.lineTo(pts[0].x, A.y + A.h); ctx.closePath();
+    const g = ctx.createLinearGradient(0, A.y, 0, A.y + A.h); g.addColorStop(0, `rgba(${col},.22)`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fill();
+    ctx.save(); ctx.shadowColor = `rgba(${col},.85)`; ctx.shadowBlur = 7; ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 1.9; ctx.lineJoin = 'round'; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke(); ctx.restore();
+    if (0 >= lo && 0 <= hi) { const yz = yv(0); ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(0, yz + .5); ctx.lineTo(A.w, yz + .5); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.dim; ctx.font = '8px ui-monospace,monospace'; ctx.fillText('0', A.w - 12, yz - 2); }
+    const cur = pts[pts.length - 1]; if (cur) { ctx.fillStyle = `rgb(${col})`; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText('CVD ' + sfv(cur.v), A.w - 6, A.y + 11); ctx.textAlign = 'left'; }
+    for (const d of (st.agg.divergences || [])) { const p = pts.find((q) => q.t === d.t); if (!p) continue; const y = yv(p.v); marca(p.x, y + (d.kind === 'bull' ? 13 : -13), 13, d.kind === 'bull' ? imgs.bull : imgs.bear, d.kind === 'bull' ? C.buy : C.sell, d.kind === 'bull' ? 'up' : 'down'); }
   }
 
   function ejeT(L, vis) {
@@ -323,7 +352,7 @@ export function crearRender(host, opts = {}) {
     if (st.drag) {
       if (st.drag.modo === 'y') st.yZoom = Math.max(0.25, Math.min(6, st.drag.yZoom * Math.exp(-(my - st.drag.my) / 170)));      // eje de precio (derecha): estira/comprime precio
       else if (st.drag.modo === 'x') st.colW = Math.max(26, Math.min(260, st.drag.colW * Math.exp((mx - st.drag.mx) / 170)));   // eje de tiempo (abajo): estira/comprime tiempo
-      else { const dx = mx - st.drag.mx, dy = my - st.drag.my; const cs = st.agg ? st.agg.candles.length : 0; const n = Math.max(1, Math.floor((st.W - GUT) / st.colW)); const maxLeft = Math.max(0, cs - n); st.leftF = Math.max(0, Math.min(maxLeft, st.drag.left - dx / st.colW)); st.anclaDer = (st.leftF >= maxLeft - 0.001); st.yPan = st.drag.yPan0 + dy * st.drag.ppp; }   // arrastre: tiempo (x) + precio (y)
+      else { const dx = mx - st.drag.mx, dy = my - st.drag.my; const cs = st.agg ? st.agg.candles.length : 0; const maxLeft = Math.max(0, cs - nVis(layout())); st.leftF = Math.max(0, Math.min(maxLeft, st.drag.left - dx / st.colW)); st.anclaDer = (st.leftF >= maxLeft - 0.001); st.yPan = st.drag.yPan0 + dy * st.drag.ppp; }   // arrastre: tiempo (x) + precio (y)
     }
     cv.style.cursor = st.drag ? (st.drag.modo === 'y' ? 'ns-resize' : st.drag.modo === 'x' ? 'ew-resize' : 'grabbing') : (mx >= st.W - GUT ? 'ns-resize' : my >= st.H - 18 ? 'ew-resize' : 'crosshair');
     onHover(hit(mx, my), e.clientX, e.clientY); render();
@@ -341,23 +370,52 @@ export function crearRender(host, opts = {}) {
   function setMeta(meta) { st.meta = Object.assign(st.meta || {}, meta); render(); }
   function setMode(m) { st.mode = m; render(); }
   function getMode() { return st.mode; }
-  function resetView() { st.anclaDer = true; st.colW = 92; st.yZoom = 1; st.yPan = 0; render(); }
+  function resetView() { st.anclaDer = true; st.colW = anchoInicial(); st.yZoom = 1; st.yPan = 0; render(); }
   function snapshot() { return cv; }
+  // Distancia (px) desde el borde inferior del lienzo hasta el borde inferior del
+  // área de VELAS. La marca de agua se coloca por encima de esto → nunca sobre
+  // delta ni CVD. La usa footprint.js para posicionar .fp-wm.
+  function panelBottomPx() { const L = layout(); return st.H - L.main.h; }
   function destroy() { try { cancelAnimationFrame(_animId); } catch (_) {} try { cancelAnimationFrame(_rafId); } catch (_) {} try { host.removeChild(cv); } catch (_) {} try { host.removeChild(fx); } catch (_) {} }
 
-  // Animación continua SOLO de la capa FX (comet del CVD): barata, a ~30fps, no
-  // repinta el gráfico principal. La luz recorre la línea del CVD de izq a der.
+  // Imagen (o triángulo) en la capa FX, centrada, con sombra suave.
+  function fxImg(im, x, y, h, alpha, color, dir) {
+    fctx.save(); fctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    fctx.shadowColor = 'rgba(0,0,0,.5)'; fctx.shadowBlur = 5; fctx.shadowOffsetY = 1.5;
+    if (im && im.complete && im.naturalWidth) { const w = im.naturalWidth * (h / im.naturalHeight); fctx.drawImage(im, x - w / 2, y - h / 2, w, h); }
+    else { const s = h * 0.46; fctx.fillStyle = color; fctx.beginPath(); if (dir === 'up') { fctx.moveTo(x, y - s); fctx.lineTo(x - s, y + s); fctx.lineTo(x + s, y + s); } else { fctx.moveTo(x, y + s); fctx.lineTo(x - s, y - s); fctx.lineTo(x + s, y - s); } fctx.closePath(); fctx.fill(); }
+    fctx.restore();
+  }
+
+  // Capa FX a ~30fps (barata, no repinta el gráfico): comet del CVD + marcas de
+  // absorción FLOTANDO sobre su vela + las flechas de GUERRA en vivo.
   function animFx(ts) {
     _animId = requestAnimationFrame(animFx);
     if (ts - _lastFx < 33) return; _lastFx = ts;
     if (!fctx) return; fctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0); fctx.clearRect(0, 0, st.W, st.H);
-    const pts = st._cvdPts; if (!pts || pts.length < 2) return;
-    const now = performance.now(), w = st.W, period = 3200, frac = (now % period) / period, headX = frac * (w + 240) - 120, tail = 150;
-    fctx.save(); fctx.lineJoin = 'round'; fctx.lineCap = 'round'; fctx.shadowColor = 'rgba(142,162,255,.9)'; fctx.shadowBlur = 12; fctx.lineWidth = 2.4;
-    for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1].x + pts[i].x) / 2, d = Math.abs(mx - headX); if (d > tail) continue; const a = 1 - d / tail; fctx.strokeStyle = 'rgba(190,205,255,' + (0.10 + 0.72 * a * a).toFixed(3) + ')'; fctx.beginPath(); fctx.moveTo(pts[i - 1].x, pts[i - 1].y); fctx.lineTo(pts[i].x, pts[i].y); fctx.stroke(); }
-    fctx.restore();
+    const now = performance.now();
+    // 1) Comet del CVD
+    const pts = st._cvdPts;
+    if (pts && pts.length >= 2) {
+      const w = st.W, period = 3200, frac = (now % period) / period, headX = frac * (w + 240) - 120, tail = 150, col = st._cvdCol || '142,162,255';
+      fctx.save(); fctx.lineJoin = 'round'; fctx.lineCap = 'round'; fctx.shadowColor = `rgba(${col},.9)`; fctx.shadowBlur = 12; fctx.lineWidth = 2.4;
+      for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1].x + pts[i].x) / 2, d = Math.abs(mx - headX); if (d > tail) continue; const a = 1 - d / tail; fctx.strokeStyle = `rgba(${col},` + (0.12 + 0.66 * a * a).toFixed(3) + ')'; fctx.beginPath(); fctx.moveTo(pts[i - 1].x, pts[i - 1].y); fctx.lineTo(pts[i].x, pts[i].y); fctx.stroke(); }
+      fctx.restore();
+    }
+    // 2) Absorción: imagen pequeña FLOTANDO en el lugar (sube/baja suave) + sombra
+    for (const m of (st._absMarks || [])) { const bob = Math.sin(now / 640 + m.x * 0.05) * 2.4; fxImg(m.bull ? imgs.bull : imgs.bear, m.x, m.y - 14 + bob, 15, 0.96, m.bull ? C.buy : C.sell, m.bull ? 'up' : 'down'); }
+    // 3) Guerra en vivo: roja (vendedores) arriba, verde (compradores) abajo. La
+    //    del lado que va ganando PARPADEA; la otra queda tenue. Lee el estado en
+    //    vivo cada frame → seguro en movimientos rápidos.
+    const wp = st._warPos;
+    if (wp) {
+      const delta = wp.b - wp.s, tot = wp.b + wp.s, lead = tot > 0 ? Math.min(1, Math.abs(delta) / tot) : 0;
+      const pulse = 0.5 + 0.5 * Math.sin(now / 150), buyWin = delta >= 0;
+      fxImg(imgs.warUp, wp.x, wp.yBot, 16, buyWin ? (0.5 + 0.5 * pulse * (0.5 + 0.5 * lead)) : 0.2, C.buy, 'up');     // compradores (verde, abajo)
+      fxImg(imgs.warDown, wp.x, wp.yTop, 16, !buyWin ? (0.5 + 0.5 * pulse * (0.5 + 0.5 * lead)) : 0.2, C.sell, 'down'); // vendedores (rojo, arriba)
+    }
   }
   _animId = requestAnimationFrame(animFx);
 
-  return { setData, setLive, setMeta, setMode, getMode, resetView, resize, render, snapshot, destroy };
+  return { setData, setLive, setMeta, setMode, getMode, resetView, resize, render, snapshot, destroy, panelBottomPx };
 }

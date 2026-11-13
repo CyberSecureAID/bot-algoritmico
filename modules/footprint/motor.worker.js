@@ -15,7 +15,7 @@ function binIdx(p, bin) { return Math.round(p / bin); }
 /* Elige un tamaño de bin "bonito" a partir del rango y el tick real del par. */
 function autoBin(lo, hi, tick) {
   const rango = Math.max(1e-9, hi - lo);
-  let b = rango / 100;                       // ~100 niveles visibles de salida
+  let b = rango / 62;                        // ~60 niveles: filas más altas → se leen los números de cada celda por defecto
   if (tick > 0) b = Math.max(b, tick);       // nunca por debajo del tick real
   // redondear a 1/2/5 x 10^n
   const e = Math.pow(10, Math.floor(Math.log10(b)));
@@ -90,6 +90,7 @@ function construir(msg) {
   }
 
   orden.sort((a, b) => a - b);
+  const ultT = orden.length ? orden[orden.length - 1] : null;   // vela en formación (la última)
 
   // Construcción final por vela + métricas
   let maxCellVol = 0;
@@ -128,20 +129,26 @@ function construir(msg) {
       else if (n.sell > 0 && (!ar || ar.buy === 0)) { /* borde: no forzamos venta por defecto */ }
     }
 
-    // Velas sin trades (TFs altos o historia): delta/volumen REALES desde el
-    // taker buy de la kline de Binance, para que TODA vela tenga su lectura y
-    // el CVD sea continuo. Las celdas por precio solo existen con ticks
-    // (recientes/en vivo); estas quedan sin detalle de celda, nada inventado.
-    let bTot = c.buyTot, sTot = c.sellTot, sinTicks = false;
-    if (niveles.length === 0 && c.vol > 0) { bTot = c.tb; sTot = Math.max(0, c.vol - c.tb); delta = bTot - sTot; total = c.vol; sinTicks = true; }
+    // DELTA REAL y COMPLETO (para footer, CVD y analista): de la kline de Binance
+    // (taker buy = compra agresiva real sobre TODO el volumen) en las velas
+    // cerradas; de los ticks en vivo en la vela en formación. Así el delta y el
+    // CVD son continuos y reales como en una terminal profesional, sin mezclar
+    // muestras con velas completas. Las CELDAS (compra x venta por precio) siguen
+    // saliendo de los ticks / sub velas: son el detalle, no cambian.
+    const sinTicks = niveles.length === 0;
+    const esForming = (t === ultT);
+    let rBuy, rSell;
+    if (c.vol > 0 && !esForming) { rBuy = c.tb; rSell = Math.max(0, c.vol - c.tb); }
+    else { rBuy = c.buyTot; rSell = c.sellTot; }
+    const rDelta = rBuy - rSell, rTotal = rBuy + rSell;
     // La mecha dibujada cubre justo el bloque de celdas: donde hay footprint, el
     // high/low es la extensión REAL de los niveles con datos (nada de mecha vacía
     // sin información). Sin celdas, se usa el rango de la kline / sub velas.
-    const hasT = niveles.length > 0;
+    const hasT = !sinTicks;
     const H = hasT ? hi + bin / 2 : (c.h === -Infinity ? hi : c.h);
     const Lo = hasT ? lo - bin / 2 : (c.l === Infinity ? lo : c.l);
     candles.push({ t, o: c.o, h: H, l: Lo, c: c.c,
-      niveles, poc, delta, total, buyTot: bTot, sellTot: sTot, hi, lo, imbalances, sinTicks });
+      niveles, poc, delta: rDelta, total: rTotal, buyTot: rBuy, sellTot: rSell, hi, lo, imbalances, sinTicks });
   }
 
   // ── CVD (delta acumulado) ───────────────────────────────────────────
@@ -195,20 +202,24 @@ function construir(msg) {
     }
   }
 
-  // ── Absorción: mucho volumen de un lado y el precio NO avanza ────────
-  // (gran delta de un lado pero el cierre no se mueve a favor → lo absorbieron)
+  // ── Absorción con SIGNIFICADO (señal de posible giro) ───────────────
+  // Marca una vela SOLO cuando se juntan las tres cosas: (1) volumen entre los
+  // más altos (top ~15%), (2) un lado fue claramente agresivo (|delta| ≥ 50%
+  // del volumen) y (3) el precio NO le dio la razón: cerró CONTRA los agresores
+  // (rechazo). Compra agresiva absorbida y cierre abajo → manda el vendedor →
+  // BAJISTA. Venta agresiva absorbida y cierre arriba → manda el comprador →
+  // ALCISTA. Solo velas CERRADAS (nada de parpadeo en la que se está formando).
   const absorciones = [];
-  if (candles.length) {
+  if (candles.length > 3) {
     const tots = candles.map((c) => c.total).filter((x) => x > 0).sort((a, b) => a - b);
-    const q3 = tots.length ? tots[Math.floor(tots.length * 0.75)] : 0;
+    const qHi = tots.length ? tots[Math.floor(tots.length * 0.85)] : 0;
     for (const c of candles) {
-      if (c.total < q3 || c.total <= 0) continue;
+      if (c.t === ultT || c.total < qHi || c.total <= 0) continue;
       const rango = Math.max(1e-9, c.h - c.l);
-      const cuerpo = Math.abs((c.c || 0) - (c.o || 0));
-      const estancado = cuerpo <= rango * 0.35;                 // apenas se movió
+      const cierreRel = ((c.c != null ? c.c : c.o) - c.l) / rango;   // 0 = cerró en el mínimo, 1 = en el máximo
       const dRel = c.delta / Math.max(1e-9, c.total);
-      if (estancado && dRel >= 0.33) absorciones.push({ t: c.t, price: c.poc, side: 'buy', strength: Math.abs(dRel) });
-      else if (estancado && dRel <= -0.33) absorciones.push({ t: c.t, price: c.poc, side: 'sell', strength: Math.abs(dRel) });
+      if (dRel >= 0.5 && cierreRel <= 0.45) absorciones.push({ t: c.t, price: c.poc != null ? c.poc : c.c, side: 'buy', strength: Math.min(1, Math.abs(dRel)) });
+      else if (dRel <= -0.5 && cierreRel >= 0.55) absorciones.push({ t: c.t, price: c.poc != null ? c.poc : c.c, side: 'sell', strength: Math.min(1, Math.abs(dRel)) });
     }
   }
 
