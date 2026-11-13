@@ -15,7 +15,7 @@
 import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=6';
 import { crearRender } from './render.js?v=7';
 import { leerFootprint } from './analista.js?v=7';
-import { estilosFootprint } from './estilos.js?v=6';
+import { estilosFootprint } from './estilos.js?v=7';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -27,6 +27,7 @@ const IMG_BULL = new URL('../../assets/img/fp-alcista.webp', import.meta.url).hr
 const IMG_BEAR = new URL('../../assets/img/fp-bajista.webp', import.meta.url).href;
 const IMG_WARUP = new URL('../../assets/img/fp-flecha-verde.webp', import.meta.url).href;   // compradores (verde, abajo)
 const IMG_WARDN = new URL('../../assets/img/fp-flecha-roja.webp', import.meta.url).href;    // vendedores (rojo, arriba)
+const DISC_IMG = new URL('../../assets/portada/red/disclaimer.webp', import.meta.url).href; // sello del disclaimer, el mismo de toda la plataforma
 const OPTS_RENDER = () => ({ onHover: tooltip, imgBull: IMG_BULL, imgBear: IMG_BEAR, imgWarUp: IMG_WARUP, imgWarDown: IMG_WARDN });
 
 /* Iconos SVG propios, centrados (nada de glifos sueltos descuadrados). */
@@ -94,18 +95,51 @@ function tickTimer() {
   el.classList.toggle('urge', restante < 10000);
 }
 
-/* Disclaimer una sola vez por navegador: el analista no da consejo financiero. */
-function disclaimerUnaVez() {
-  try { if (localStorage.getItem('fp-disclaimer') === '1') return; } catch (_) {}
-  const d = document.createElement('div'); d.className = 'fp-disc';
+/* Disclaimer de entrada, con el MISMO patrón del resto de la plataforma (sección de
+   Análisis): sello en la esquina, texto que nos exonera por completo, aclaración de
+   que el analista es SOPORTE y no asesoría, y ACEPTACIÓN OBLIGATORIA: sin marcar la
+   casilla y pulsar Accept no se cierra, y tocar fuera no lo cierra. reView = reabierto
+   desde el enlace "Disclaimer" (ya aceptado): ahí sí se puede cerrar. */
+function discFootprint(reView) {
+  if (!reView) { try { if (localStorage.getItem('fp-disc-v2') === '1') return; } catch (_) {} }   // clave nueva: fuerza reaceptar la versión exonerante completa
+  const vieja = document.querySelector('.fp-disc'); if (vieja) vieja.remove();
+  const es = (S.an && S.an.lang) ? S.an.lang === 'es' : (idiomaIni() === 'es');
+  const T = es ? {
+    h: 'Antes de empezar',
+    p1: 'Footprint Pro es una herramienta de análisis de flujo de órdenes con fines informativos y educativos. Nada de lo que ves aquí es asesoría financiera, de inversión, legal ni fiscal, y no garantizamos ningún resultado, beneficio ni rendimiento. Operar activos digitales conlleva un riesgo alto y puedes perder parte o todo tu capital. Cada decisión es tuya y eres el único responsable de ella.',
+    p2: 'El analista (Jesús) es un SOPORTE para tu propio análisis profesional: lee el flujo en vivo y te lo explica en palabras simples. No es un asesor y no te dice qué comprar ni vender. Las herramientas se entregan "tal cual", sin garantía de ningún tipo, y parte de los datos proviene de terceros. En la máxima medida permitida por la ley, DecFreedom, sus dueños y afiliados no asumen responsabilidad por ninguna pérdida o daño derivado del uso de esta sección. Al continuar, aceptas este aviso y nuestros Términos y Condiciones.',
+    chk: 'He leído y acepto este aviso y los Términos y Condiciones. Entiendo que esto es soporte, no asesoría financiera, que no garantiza ningún resultado y que lo uso bajo mi propio riesgo.',
+    ok: 'Acepto', close: 'Cerrar'
+  } : {
+    h: 'Before you start',
+    p1: 'Footprint Pro is an order flow analysis tool provided for informational and educational purposes only. Nothing here is financial, investment, legal or tax advice, and we do not guarantee any result, profit or performance. Trading digital assets carries substantial risk and you may lose part or all of your capital. Every decision is your own and you are solely responsible for it.',
+    p2: 'The analyst (Jesús) is SUPPORT for your own professional analysis: it reads the live order flow and explains it in plain words. It is not an advisor and it does not tell you what to buy or sell. All tools are provided as is, without warranty of any kind, and part of the data comes from third parties. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.',
+    chk: 'I have read and I accept this notice and the Terms and Conditions. I understand this is support, not financial advice, that it guarantees no result, and that I use it entirely at my own risk.',
+    ok: 'Accept', close: 'Close'
+  };
+  const d = document.createElement('div'); d.className = 'fp-disc' + (reView ? ' fp-disc-rev' : '');
   d.innerHTML = `<div class="fp-disc-bg"></div><div class="fp-disc-c">
-    <h4>Before you start</h4>
-    <p>Footprint Pro shows the live order flow and <b>Jesús, the analyst, shares his personal read of what the market is doing right now</b>. It is a live picture and an opinion, <b>not financial advice</b> and not a recommendation to buy or sell. You decide your own trades.</p>
-    <button class="fp-disc-ok" id="fp-disc-ok">I understand</button></div>`;
+    ${reView ? `<button class="fp-disc-x" id="fp-disc-x" aria-label="${T.close}">✕</button>` : ''}
+    <img class="fp-disc-sello" src="${DISC_IMG}" alt="">
+    <h4>${T.h}</h4>
+    <p>${T.p1}</p>
+    <p>${T.p2}</p>
+    ${reView ? '' : `<label class="fp-disc-chk"><input type="checkbox" id="fp-disc-agree"><span>${T.chk}</span></label>`}
+    <button class="fp-disc-ok" id="fp-disc-ok"${reView ? '' : ' disabled'}>${reView ? T.close : T.ok}</button></div>`;
   document.body.appendChild(d);
-  const cerrarD = () => { try { localStorage.setItem('fp-disclaimer', '1'); } catch (_) {} d.remove(); };
-  d.querySelector('#fp-disc-ok').onclick = cerrarD;
-  d.querySelector('.fp-disc-bg').onclick = cerrarD;
+  const cerrar = () => { d.remove(); };
+  if (reView) {
+    d.querySelector('#fp-disc-x').onclick = cerrar;
+    d.querySelector('.fp-disc-bg').onclick = cerrar;
+  } else {
+    d.querySelector('.fp-disc-bg').onclick = (e) => { e.preventDefault(); e.stopPropagation(); };   // bloqueante: tocar fuera NO cierra
+    const chk = d.querySelector('#fp-disc-agree'), ok = d.querySelector('#fp-disc-ok');
+    chk.addEventListener('change', () => { if (chk.checked) ok.removeAttribute('disabled'); else ok.setAttribute('disabled', ''); });
+  }
+  d.querySelector('#fp-disc-ok').onclick = () => {
+    if (!reView) { const chk = d.querySelector('#fp-disc-agree'); if (!chk || !chk.checked) return; try { localStorage.setItem('fp-disc-v2', '1'); } catch (_) {} }
+    cerrar();
+  };
 }
 const MAX_TRADES = 30000;
 
@@ -120,8 +154,8 @@ export async function abrirFootprint() {
   S.render = crearRender($('fp-cv'), OPTS_RENDER());
   window.addEventListener('resize', onResize);
   S.timerT = setInterval(tickTimer, 1000); tickTimer();
-  disclaimerUnaVez();
   S.an = { lang: idiomaIni(), abierto: false, clave: '', msg: null, det: false };
+  discFootprint(false);
   try { S.sound = localStorage.getItem('fp-sound') === '1'; } catch (_) {}
 
   wire(ov);
@@ -208,8 +242,14 @@ function helpHTML() {
     <div class="fp-help-bg" id="fp-help-bg"></div>
     <div class="fp-help-c">
       <div class="fp-help-cab"><h3>How Footprint Pro works</h3><button class="fp-help-x" id="fp-help-x" aria-label="Close">✕</button></div>
-      <p class="fp-help-lead">A normal candle only tells you where price opened and closed. A footprint shows something no candle can: <b>exactly how much was bought and sold at each price</b> inside that candle. So you can see WHO pushed the price, the buyers or the sellers.</p>
-      <div class="fp-help-disc"><b>Not financial advice.</b> The analyst gives a live read and a personal opinion of the order flow, never a recommendation to buy or sell. You decide your own trades.</div>
+      <p class="fp-help-lead">A normal candle only tells you where price opened and closed. A footprint shows something no candle can: <b>exactly how much was bought and sold at each price</b> inside that candle. So you can see WHO pushed the price, the buyers or the sellers, and time your entry instead of guessing.</p>
+      <div class="fp-help-steps"><b>New here? Use it in four steps</b><ol>
+        <li>Read <b>Jesús</b> on the right. He tells you in plain words who is in control and the exact price level that matters right now.</li>
+        <li>Check the <b>pressure line (CVD)</b> at the bottom: rising means buyers are winning, falling means sellers are. If it disagrees with price, the move is weak.</li>
+        <li>Wait for price to reach the <b>level he names</b> (or the gold box). The middle of the range is where accounts get bled, do not chase there.</li>
+        <li>Act only when the <b>number under the candle agrees</b>: green ▲ to buy, red ▼ to sell. Step out if it flips against you.</li>
+      </ol></div>
+      <div class="fp-help-disc"><b>Support, not financial advice.</b> The analyst is here to SUPPORT your own analysis with a live read of the order flow. It is not an advisor, it never guarantees a result or a profit, and it never tells you what to buy or sell. You decide your own trades, at your own risk.</div>
       ${fila(dCelda, 'The two numbers in each box', 'Each candle is a stack of price rows. Every row has two numbers: the left one (red) is how much was SOLD at that price, the right one (green) is how much was BOUGHT. Brighter color = more trading there.')}
       ${fila(dFooter, 'Who won the candle', 'Right under each candle there is an arrow and a number. Green ▲ = buyers won that candle, red ▼ = sellers won. The number is how much more was bought than sold. This is the fastest way to read the fight.')}
       ${fila(dPOC, 'The price everyone agreed on', 'The gold box marks the price where the MOST was traded in that candle, the level the market cared about most. The faint band around it is where 70% of the trading happened, the "fair" zone.')}
@@ -219,6 +259,7 @@ function helpHTML() {
       ${fila(dViews, 'The three views and moving around', 'Bid×Ask shows the two numbers. Delta shows only the net (who won each price). Profile shows it as bars. Roll the mouse wheel over the chart to zoom time, drag the price scale on the right to stretch price, and drag the chart itself to move around, back in time or up and down.')}
       ${fila(dSet, 'Settings (the ⚙ button)', 'Bin size is how tall each price box is: a bigger bin groups more prices into one box (cleaner), a smaller one shows finer detail. Imbalance % is how much stronger one side must be to light up a box (300% = three times the other side). Leave bin on "auto" and 300% until you want to fine tune.')}
       <div class="fp-help-note"><b>Where the numbers come from.</b> The order flow is live from Binance, the biggest crypto exchange. It is a large part of the market but not every exchange on earth, so use the volume to read the pressure, not as the total of the whole market.</div>
+      <div class="fp-help-legal"><button class="fp-disc-link" id="fp-disc-link" type="button">Disclaimer</button></div>
     </div>
   </div>`;
 }
@@ -248,6 +289,7 @@ function wire(ov) {
   $('fp-help').onclick = (e) => { e.stopPropagation(); abrirHelp(); };
   const hx = $('fp-help-x'); if (hx) hx.onclick = cerrarHelp;
   const hb = $('fp-help-bg'); if (hb) hb.onclick = cerrarHelp;
+  const dl = $('fp-disc-link'); if (dl) dl.onclick = () => discFootprint(true);
   renderAnalistaCol();
 }
 
@@ -527,14 +569,18 @@ function exportar() {
   const g = out.getContext('2d');
   g.fillStyle = '#0a0e14'; g.fillRect(0, 0, out.width, out.height);
   const tf = (TFS.find((t) => t.id === S.tf) || {}).n || S.tf;
-  g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${18 * e2}px "Chakra Petch",system-ui,monospace`;
-  g.fillText(S.par.id + 'USD · ' + tf + ' · Footprint', 16 * e2, 30 * e2);
-  g.textAlign = 'right'; g.fillStyle = '#eaecef'; g.font = `700 ${15 * e2}px ui-monospace,monospace`;
-  g.fillText(($('fp-px') ? $('fp-px').textContent : ''), out.width - 16 * e2, 30 * e2);
   g.drawImage(src, 0, Hh, src.width, src.height);
   const yB = Hh + src.height;
   g.fillStyle = '#0b0e12'; g.fillRect(0, yB, out.width, barra);
   g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, out.width, 2 * e2);
+  // Cabecera: logo de la MONEDA arriba a la izquierda + titulo a su derecha + precio a la derecha.
+  const dibujarCab = (cx) => {
+    g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${18 * e2}px "Chakra Petch",system-ui,monospace`;
+    g.fillText(S.par.id + 'USD · ' + tf + ' · Footprint', cx, 30 * e2);
+    g.textAlign = 'right'; g.fillStyle = '#eaecef'; g.font = `700 ${15 * e2}px ui-monospace,monospace`;
+    g.fillText(($('fp-px') ? $('fp-px').textContent : ''), out.width - 16 * e2, 30 * e2);
+    g.textAlign = 'left';
+  };
   const textos = (x) => {
     // Pie: SOLO nuestra marca (logo + dominio) a la izquierda; a la derecha par·tf + fecha. Sin texto de fuente.
     g.textAlign = 'left'; g.fillStyle = '#C9A84B'; g.font = `700 ${15 * e2}px ui-monospace,monospace`; g.fillText('decfreedom.com', x, yB + 48 * e2);
@@ -543,13 +589,32 @@ function exportar() {
     g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), out.width - 20 * e2, yB + 56 * e2);
     g.textAlign = 'left';
   };
-  const bajar = () => out.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-footprint-${S.par.id}-${S.tf}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
-  const logo = new Image(); let hecho = false;
-  const una = (w) => { if (hecho) return; hecho = true; textos(w ? 20 * e2 + w + 18 * e2 : 20 * e2); bajar(); };
-  logo.onload = () => { try { const alto = 52 * e2, ancho = Math.round(logo.width * (alto / logo.height)); g.drawImage(logo, 20 * e2, yB + (barra - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } };
-  logo.onerror = () => { const l2 = new Image(); l2.onload = () => { try { const alto = 46 * e2, ancho = Math.round(l2.width * (alto / l2.height)); g.drawImage(l2, 20 * e2, yB + (barra - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } }; l2.onerror = () => una(0); l2.src = LOGO_ALT; };
-  setTimeout(() => una(0), 1800);
-  logo.src = LOGO;
+  const bajar = () => { try { out.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-footprint-${S.par.id}-${S.tf}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png'); } catch (_) {} };
+  // Nuestra marca en el pie (logo + dominio) y, al terminar, descarga.
+  const conPie = () => {
+    const logo = new Image(); let hecho = false;
+    const una = (w) => { if (hecho) return; hecho = true; textos(w ? 20 * e2 + w + 18 * e2 : 20 * e2); bajar(); };
+    logo.onload = () => { try { const alto = 52 * e2, ancho = Math.round(logo.width * (alto / logo.height)); g.drawImage(logo, 20 * e2, yB + (barra - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } };
+    logo.onerror = () => { const l2 = new Image(); l2.onload = () => { try { const alto = 46 * e2, ancho = Math.round(l2.width * (alto / l2.height)); g.drawImage(l2, 20 * e2, yB + (barra - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } }; l2.onerror = () => una(0); l2.src = LOGO_ALT; };
+    setTimeout(() => una(0), 1800);
+    logo.src = LOGO;
+  };
+  // Logo de la moneda (CORS seguro: spothq primero, CoinGecko de respaldo). Si no carga,
+  // se dibuja el titulo sin logo. No se contamina el canvas (crossOrigin anonymous).
+  const sym = (S.par.id || '').toLowerCase();
+  const fuentes = [`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${sym}.png`];
+  if (S.par.cg && S.logos[S.par.cg]) fuentes.push(S.logos[S.par.cg]);
+  let fi = 0, listo = false;
+  const conMoneda = (im) => { if (listo) return; listo = true;
+    const d = 30 * e2, cxx = 16 * e2, cyy = Math.round((Hh - d) / 2);
+    g.save(); g.beginPath(); g.arc(cxx + d / 2, cyy + d / 2, d / 2, 0, 6.2832); g.closePath(); g.fillStyle = '#fff'; g.fill(); g.clip();
+    try { g.drawImage(im, cxx, cyy, d, d); } catch (_) {} g.restore();
+    dibujarCab(cxx + d + 10 * e2); conPie();
+  };
+  const sinMoneda = () => { if (listo) return; listo = true; dibujarCab(16 * e2); conPie(); };
+  const probar = () => { if (fi >= fuentes.length) return sinMoneda(); const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => conMoneda(im); im.onerror = () => { fi++; probar(); }; im.src = fuentes[fi]; };
+  setTimeout(() => { if (!listo) sinMoneda(); }, 1600);
+  probar();
 }
 
 // ── Ciclo de vida ────────────────────────────────────────────────────
