@@ -1,4 +1,4 @@
-/* modules/superscalper/superscalper.js — "Order Blocks" (nombre de cara al usuario).
+/* modules/superscalper/superscalper.js — "Multiverse" (nombre de cara al usuario).
    El archivo NO se renombra (la carpeta queda como superscalper), igual que "VWAP Pro"
    vive en modules/institutional/ y "Footprint" en modules/footprint/.
 
@@ -35,15 +35,12 @@ let _par = 'BTC';
 
 const M = {
   tf: '1h', velas: [], precio: 0, dispC: null,        // DEFAULT 1H; dispC = cierre suavizado (easing)
-  ob: { zonas: [], phpl: [], lineas: [], marcas: [] },// zonas (cajas) de Order Block
-  ribbon: { emas: [], fast: [], slow: [], trend: [], sig: [], periods: [], nc: 6 }, // ribbon de medias GMMA + tendencia + señales
-  ancho: window.innerWidth < 760 ? 70 : 120, desplaz: 0, zoomY: 1, offsetY: 0,
+  arbol: null, estado: null, arbolAlpha: 0,           // árbol de realidades + estado del mercado
+  ancho: window.innerWidth < 760 ? 56 : 84, desplaz: 0, zoomY: 1, offsetY: 0,
   _geo: null, _cursor: null, cargando: true, error: null
 };
-// Parámetros del indicador (defaults documentados; ATR 100 es del sistema de referencia,
-// el resto son una adaptación razonable para 1H y se explican en la ayuda).
-const CFG = { swLen: 5, atrLen: 100, disp: 1.6, minVol: 10, volSma: 20, maxZ: 8 };
-const COL = { bull: '46,200,120', bear: '255,82,100', neu: '150,160,175' };   // verde alcista / rojo bajista / gris neutro (comercial, legible)
+const FUT = 0.42;                                     // fracción derecha del gráfico reservada a la proyección futura
+const COL = { bull: '58,214,128', bear: '255,90,104', gold: '232,184,75' };   // verde / rojo de las velas fantasma + dorado de marca
 // Temporalidades (las normales); el indicador se calcula sobre la elegida. Default 1H.
 const SS_TFS = [
   { id: '1s', n: '1s', sec: 1 }, { id: '5s', n: '5s', sec: 5 }, { id: '15s', n: '15s', sec: 15 }, { id: '30s', n: '30s', sec: 30 },
@@ -124,7 +121,7 @@ function onKlineRz(k) {
     else return;
     M.precio = raw.c;
   }
-  if (nueva) { if (M.velas.length > 1500) M.velas.shift(); recalcOB(); }   // recalcula el modelo al CERRAR una vela
+  if (nueva) { if (M.velas.length > 1500) M.velas.shift(); recalcArbol(); }   // recalcula el modelo al CERRAR una vela
 }
 
 const fmt = (p) => {
@@ -142,99 +139,135 @@ function fmtFecha(tsSec) {
   return intradia ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 }
 
-/* ══════════════════ MOTOR: Volume-Weighted Order Block Zones ══════════════════ */
+/* ══════════════════ MOTOR: Sistema de Probabilidad (árbol de realidades) ══════════════════ */
 function smaEn(arr, n, i) { if (i < n - 1) return null; let s = 0; for (let j = i - n + 1; j <= i; j++) s += arr[j]; return s / n; }
-function calcATR(velas, n) {   // ATR(n) de Wilder (RMA del True Range), como ta.atr
+function calcATR(velas, n) {   // ATR(n) de Wilder (RMA del True Range)
   const tr = [], atr = new Array(velas.length).fill(null);
   for (let i = 0; i < velas.length; i++) { const h = velas[i].h, l = velas[i].l, pc = i ? velas[i - 1].c : velas[i].o; tr.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc))); }
   let prev = null;
   for (let i = 0; i < velas.length; i++) { if (i < n - 1) continue; if (i === n - 1) { let s = 0; for (let j = 0; j < n; j++) s += tr[j]; prev = s / n; } else prev = (prev * (n - 1) + tr[i]) / n; atr[i] = prev; }
   return atr;
 }
-/* Calcula el modelo completo de Order Blocks a partir de las velas.
-   Estructura (pivotes) + volumen (intensidad vs media) + desplazamiento (ATR·disp). */
-function calcularOB(velas, cfg) {
-  const n = velas.length; const model = { zonas: [], phpl: [], lineas: [], marcas: [] };
-  if (n < cfg.atrLen + cfg.swLen + 5) return model;
-  const atr = calcATR(velas, cfg.atrLen);
-  const vol = velas.map((v) => v.v);
-  const sw = cfg.swLen, obs = [];
-  for (let i = sw; i < n - sw; i++) {                 // pivote en i, CONFIRMADO en i+sw
-    let ph = true, pl = true;
-    for (let j = i - sw; j <= i + sw; j++) { if (j === i) continue; if (velas[j].h >= velas[i].h) ph = false; if (velas[j].l <= velas[i].l) pl = false; }
-    if (!ph && !pl) continue;
-    const vs = smaEn(vol, cfg.volSma, i); if (!(vs > 0)) continue;
-    const volPct = (vol[i] / vs - 1) * 100;            // intensidad: % por encima de la media
-    const a = atr[i]; if (!(a > 0)) continue;
-    const top = velas[i].h, bottom = velas[i].l;
-    if (ph) { model.phpl.push({ tipo: 'PH', i, p: top, débil: volPct < cfg.minVol });
-      if (volPct >= cfg.minVol) { const nivel = top - a * cfg.disp; let iConf = -1; for (let k = i + 1; k < n; k++) if (velas[k].l <= nivel) { iConf = k; break; }
-        if (iConf >= 0) obs.push({ dir: 'bear', top, bottom, i0: i, nivel, iConf, volPct, a }); else model.lineas.push({ dir: 'bear', nivel, i0: i, iFin: n - 1, pend: true }); } }
-    if (pl) { model.phpl.push({ tipo: 'PL', i, p: bottom, débil: volPct < cfg.minVol });
-      if (volPct >= cfg.minVol) { const nivel = bottom + a * cfg.disp; let iConf = -1; for (let k = i + 1; k < n; k++) if (velas[k].h >= nivel) { iConf = k; break; }
-        if (iConf >= 0) obs.push({ dir: 'bull', top, bottom, i0: i, nivel, iConf, volPct, a }); else model.lineas.push({ dir: 'bull', nivel, i0: i, iFin: n - 1, pend: true }); } }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+function rng(seed) { let s = (seed >>> 0) || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function hashId(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function regPend(cl, L) {   // pendiente de regresión lineal (precio por vela) sobre las últimas L
+  const n = Math.min(L, cl.length); if (n < 3) return 0; const a = cl.slice(-n);
+  let sx = 0, sy = 0, sxy = 0, sxx = 0; for (let i = 0; i < n; i++) { sx += i; sy += a[i]; sxy += i * a[i]; sxx += i * i; }
+  const d = n * sxx - sx * sx; return d ? (n * sxy - sx * sy) / d : 0;
+}
+function rsiEn(velas, n) {   // RSI(n) clásico
+  const L = velas.length; if (L < n + 1) return 50; let g = 0, p = 0;
+  for (let i = L - n; i < L; i++) { const d = velas[i].c - velas[i - 1].c; if (d >= 0) g += d; else p -= d; }
+  const rs = p === 0 ? 100 : g / p; return 100 - 100 / (1 + rs);
+}
+function nivelesEn(velas, atr) {   // ANALIZADOR 4: soportes/resistencias (pivotes agrupados)
+  const n = velas.length, sw = 3, piv = [];
+  for (let i = sw; i < n - sw; i++) { let hi = true, lo = true;
+    for (let j = i - sw; j <= i + sw; j++) { if (j === i) continue; if (velas[j].h >= velas[i].h) hi = false; if (velas[j].l <= velas[i].l) lo = false; }
+    if (hi) piv.push({ p: velas[i].h, i }); if (lo) piv.push({ p: velas[i].l, i }); }
+  const a = atr[n - 1] || velas[n - 1].c * 0.004; piv.sort((x, y) => x.p - y.p); const cl = [];
+  for (const pv of piv) { const last = cl[cl.length - 1]; if (last && Math.abs(pv.p - last.p) < a * 0.6) { last.p = (last.p * last.w + pv.p) / (last.w + 1); last.w++; last.i = Math.max(last.i, pv.i); } else cl.push({ p: pv.p, w: 1, i: pv.i }); }
+  return cl;
+}
+function ultimoImpulso(velas) {   // ANALIZADOR 5: último tramo (swing a swing)
+  const n = velas.length, look = Math.min(n, 60); let hi = -Infinity, lo = Infinity, hiI = n - 1, loI = n - 1;
+  for (let i = n - look; i < n; i++) { if (velas[i].h > hi) { hi = velas[i].h; hiI = i; } if (velas[i].l < lo) { lo = velas[i].l; loI = i; } }
+  const dir = hiI >= loI ? 1 : -1; return { dir, hi, lo, magAbs: Math.abs(hi - lo) || velas[n - 1].c * 0.01 };
+}
+/* Reúne los 5 analizadores en un estado medible del mercado. */
+function analizarMercado(velas) {
+  const n = velas.length, px = velas[n - 1].c, atr = calcATR(velas, 14), a = atr[n - 1] || px * 0.004, cl = velas.map((v) => v.c);
+  const s1 = regPend(cl, 50), s2 = regPend(cl, 150);                       // 1) tendencia
+  const trend = clamp((s1 * 0.6 + s2 * 0.4) / (a * 0.12), -1, 1);
+  const roc = n > 12 ? (px - cl[n - 12]) / a : 0, mom = clamp(roc / 6, -1, 1);  // 2) impulso/agotamiento
+  const r = rsiEn(velas, 14), exUp = clamp((r - 55) / 35, 0, 1), exDn = clamp((45 - r) / 35, 0, 1);
+  const vols = velas.map((v) => v.v), vMean = smaEn(vols, 20, n - 1) || vols[n - 1] || 1, volRel = vMean > 0 ? vols[n - 1] / vMean : 1; // 3) volumen/rango
+  let aMean = 0, cnt = 0; for (let i = Math.max(0, n - 50); i < n; i++) if (atr[i]) { aMean += atr[i]; cnt++; } aMean = cnt ? aMean / cnt : a;
+  const rango = clamp(1 - a / (aMean * 1.1), 0, 1), volBreak = clamp((volRel - 1) / 1.5, 0, 1) * (0.4 + 0.6 * rango);
+  const nv = nivelesEn(velas, atr);                                        // 4) niveles
+  const resis = nv.filter((l) => l.p > px + a * 0.2).sort((x, y) => x.p - y.p), sopor = nv.filter((l) => l.p < px - a * 0.2).sort((x, y) => y.p - x.p);
+  const resNext = resis[0] ? resis[0].p : px + a * 3, supNext = sopor[0] ? sopor[0].p : px - a * 3;
+  const imp = ultimoImpulso(velas);                                        // 5) estructura
+  return { px, a, trend, mom, exUp, exDn, r, volRel, rango, volBreak, resNext, supNext, niveles: nv, imp, n };
+}
+
+/* ── El árbol de realidades. En cada nodo, los analizadores definen la probabilidad
+   condicional de 5 arquetipos; cada uno proyecta un tramo de velas fantasma hacia su
+   objetivo. Se ramifica varias generaciones; la probabilidad de ruta es el producto. ── */
+const ARB = { gen: 3, seg: 7, pMin: 0.05, maxNodos: 30 };
+const ARQ = { cont: 'cont', pull: 'pull', rev: 'rev', rango: 'rango', ruptura: 'ruptura' };
+function ramas(E, ctx, pFin) {
+  const d = ctx.dir, px = pFin, a = E.a, paso = a * (2.2 - 0.2 * ctx.prof);   // el avance se acorta al profundizar (la tendencia pierde fuelle)
+  const alin = d > 0 ? clamp(E.trend, 0, 1) : clamp(-E.trend, 0, 1);
+  const exHacia = d > 0 ? E.exUp : E.exDn, exContra = d > 0 ? E.exDn : E.exUp;
+  const lvlDir = d > 0 ? E.resNext : E.supNext, distLvl = Math.abs(lvlDir - px);
+  const retro = Math.min(E.imp.magAbs * 0.5, a * 2.4);
+  const targCont = distLvl < paso * 1.25 ? lvlDir : px + d * paso;         // continúa hasta la próxima barrera
+  const targPull = px + d * paso * 0.28, targRev = px - d * paso * 0.95, targRange = px + d * paso * 0.05, targBreak = px + d * paso * 1.25;
+  let w = {
+    cont: (0.26 + 0.42 * alin) * (1 - 0.6 * exHacia) * (ctx.enNivel ? 0.24 : 1),
+    pull: (0.18 + 0.45 * exHacia + 0.25 * Math.abs(E.mom)) * (ctx.faseRetro ? 0.4 : 1),
+    rev: (0.16 + 0.55 * exHacia + 0.30 * exContra) * (ctx.enNivel ? 1.7 : 0.85),   // suelo alto: el lado contrario siempre tiene presencia
+    rango: (0.12 + 0.7 * E.rango) * (1 - 0.4 * Math.abs(E.trend)),
+    ruptura: (0.08 + 0.8 * E.volBreak) * (ctx.enNivel ? 1.9 : 0.5)
+  };
+  const tot = w.cont + w.pull + w.rev + w.rango + w.ruptura || 1;
+  let outs = [
+    { arq: ARQ.cont, dir: d, cond: w.cont / tot, target: targCont, enNivel: distLvl < paso * 1.25, retro },
+    { arq: ARQ.pull, dir: d, cond: w.pull / tot, target: targPull, enNivel: false, retro },
+    { arq: ARQ.rev, dir: -d, cond: w.rev / tot, target: targRev, enNivel: false, retro },
+    { arq: ARQ.rango, dir: d, cond: w.rango / tot, target: targRange, enNivel: ctx.enNivel, retro },
+    { arq: ARQ.ruptura, dir: d, cond: w.ruptura / tot, target: targBreak, enNivel: false, retro }
+  ].sort((x, y) => y.cond - x.cond);
+  const keep = ctx.prof < 1 ? 3 : 2;                                       // gen 0: 3 ramas; luego 2 (abanico limpio)
+  outs = outs.slice(0, keep); const s = outs.reduce((z, o) => z + o.cond, 0) || 1; outs.forEach((o) => o.cond /= s);
+  return outs;
+}
+function velasFantasma(p0, target, n, arq, seed, a, retro, dir) {
+  const R = rng(seed), pts = [p0], d = dir || (Math.sign(target - p0) || 1);
+  for (let i = 1; i <= n; i++) { const t = i / n; let base;
+    if (arq === ARQ.pull) { const dip = p0 - d * retro; base = t < 0.45 ? p0 + (dip - p0) * ease(t / 0.45) : dip + (target - dip) * ease((t - 0.45) / 0.55); }
+    else if (arq === ARQ.rango) base = p0 + Math.sin(t * Math.PI * 2.2) * a * 0.9 + (target - p0) * t;
+    else if (arq === ARQ.ruptura) { const lvl = p0 + (target - p0) * 0.62; base = t < 0.55 ? p0 + (lvl - p0) * ease(t / 0.55) : t < 0.75 ? lvl - d * a * 0.7 * Math.sin((t - 0.55) / 0.2 * Math.PI) : lvl + (target - lvl) * ease((t - 0.75) / 0.25); }
+    else base = p0 + (target - p0) * ease(t);                             // cont / rev
+    pts.push(base + (R() - 0.5) * a * 0.45);
   }
-  for (const ob of obs) {                              // invalidación + retests desde la confirmación
-    ob.estado = 'active'; ob.iInval = -1; const mid = (ob.top + ob.bottom) / 2, tol = (ob.top - ob.bottom) * 0.1;
-    for (let k = ob.iConf + 1; k < n; k++) { const v = velas[k];
-      if (ob.dir === 'bull') {
-        if (v.c < ob.bottom) { ob.iInval = k; ob.estado = 'inval'; break; }
-        if (!ob._b && v.l <= ob.top && v.l >= ob.bottom - tol && v.c > v.o && v.c > mid) { model.marcas.push({ tipo: 'B', i: k, p: v.l }); ob._b = true; }
-      } else {
-        if (v.c > ob.top) { ob.iInval = k; ob.estado = 'inval'; break; }
-        if (!ob._s && v.h >= ob.bottom && v.h <= ob.top + tol && v.c < v.o && v.c < mid) { model.marcas.push({ tipo: 'S', i: k, p: v.h }); ob._s = true; }
-      }
+  const vel = [];
+  for (let i = 0; i < n; i++) { const o = pts[i], c = pts[i + 1], wick = a * (0.22 + R() * 0.5), hi = Math.max(o, c) + wick * R(), lo = Math.min(o, c) - wick * R(); vel.push({ o, h: hi, l: lo, c }); }
+  return vel;
+}
+function construirArbol(E) {
+  const raiz = { id: 'r', cumP: 1, bar0: E.n, pFin: E.px, velas: [], hijos: [], prof: 0 };
+  const nodos = []; let total = 0; let lo = E.px, hi = E.px;
+  const expandir = (nodo, ctx) => {
+    if (ctx.prof >= ARB.gen || total > ARB.maxNodos) return;
+    for (const o of ramas(E, ctx, nodo.pFin)) {
+      const cumP = nodo.cumP * o.cond; if (cumP < ARB.pMin) continue; total++;
+      const vel = velasFantasma(nodo.pFin, o.target, ARB.seg, o.arq, hashId(nodo.id + o.arq + total), E.a, o.retro, o.dir);
+      for (const v of vel) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
+      const hijo = { id: nodo.id + '-' + total, arq: o.arq, dir: o.dir, cond: o.cond, cumP, bar0: nodo.bar0 + nodo.velas.length, pFin: o.target, pIni: nodo.pFin, velas: vel, prof: ctx.prof + 1 };
+      nodos.push(hijo); nodo.esPadre = true;
+      expandir(hijo, { dir: o.dir, enNivel: o.enNivel, faseRetro: o.arq === ARQ.pull, prof: ctx.prof + 1 });
     }
-    model.lineas.push({ dir: ob.dir, nivel: ob.nivel, i0: ob.i0, iFin: ob.iConf });   // línea de desplazamiento origen→confirmación
-  }
-  const activas = obs.filter((o) => o.estado === 'active').sort((a, b) => a.i0 - b.i0);
-  model.zonas = activas.slice(-cfg.maxZ);
-  model.phpl = model.phpl.filter((p) => !p.débil).slice(-cfg.maxZ * 2);
-  model.lineas = model.lineas.slice(-cfg.maxZ * 2);
-  model.marcas = model.marcas.slice(-cfg.maxZ * 2);
-  return model;
+  };
+  expandir(raiz, { dir: E.trend >= 0 ? 1 : -1, enNivel: false, faseRetro: false, prof: 0 });
+  nodos.sort((x, y) => x.cumP - y.cumP);   // dibuja primero las improbables (debajo)
+  let loP = E.px, hiP = E.px;              // envolvente de las ramas probables, para encuadrar la vista
+  for (const nd of nodos) if (nd.cumP > 0.12) for (const v of nd.velas) { if (v.h > hiP) hiP = v.h; if (v.l < loP) loP = v.l; }
+  return { raiz, nodos, px: E.px, lo, hi, loP, hiP };
 }
-function recalcOB() {
-  try { M.ob = calcularOB(M.velas, CFG); } catch (_) { M.ob = { zonas: [], phpl: [], lineas: [], marcas: [] }; }
-  recalcRibbon();
-}
-/* ── Ribbon de medias (GMMA de Daryl Guppy): 6 EMAs cortas (3,5,8,10,12,15) + 6 largas
-   (30,35,40,45,50,60). Convergen en un punto en lateral y se abren en tendencia. El color
-   del ribbon sigue la tendencia ACTUAL. La señal LONG/SHORT salta SOLO cuando la tendencia
-   confirma su giro, en el instante del cierre (tiempo real, nunca pintada hacia atrás). Una
-   banda de histéresis sobre ATR ignora los cruces pequeños del lateral: mata el ruido. ── */
-const RIB = { corto: [3, 5, 8, 10, 12, 15], largo: [30, 35, 40, 45, 50, 60] };
-function calcRibbon(velas) {
-  const n = velas.length, periods = [...RIB.corto, ...RIB.largo], K = periods.length, nc = RIB.corto.length;
-  const model = { emas: [], fast: [], slow: [], trend: [], sig: [], periods, nc };
-  if (n < periods[K - 1] + 6) return model;
-  const emas = periods.map(() => new Array(n));
-  for (let k = 0; k < K; k++) { const a = 2 / (periods[k] + 1); let e = velas[0].c; for (let i = 0; i < n; i++) { e = i ? e + a * (velas[i].c - e) : velas[i].c; emas[k][i] = e; } }
-  const fast = new Array(n), slow = new Array(n);
-  for (let i = 0; i < n; i++) { let fs = 0; for (let k = 0; k < nc; k++) fs += emas[k][i]; let sl = 0; for (let k = nc; k < K; k++) sl += emas[k][i]; fast[i] = fs / nc; slow[i] = sl / (K - nc); }
-  const atr = calcATR(velas, 14), trend = new Array(n).fill(0), sig = []; let cur = 0;
-  for (let i = 0; i < n; i++) {
-    const sep = fast[i] - slow[i], band = (atr[i] || velas[i].c * 0.001) * 0.35;   // histéresis: fuera de la banda define, dentro mantiene (mayor = menos ruido)
-    let t = cur; if (sep > band) t = 1; else if (sep < -band) t = -1;
-    if (t !== cur && cur !== 0 && i > periods[K - 1]) sig.push({ i, dir: t > 0 ? 'long' : 'short', p: t > 0 ? velas[i].l : velas[i].h });
-    cur = t; trend[i] = t;
-  }
-  model.emas = emas; model.fast = fast; model.slow = slow; model.trend = trend; model.sig = sig.slice(-20);
-  return model;
-}
-function recalcRibbon() { try { M.ribbon = calcRibbon(M.velas); } catch (_) { M.ribbon = { emas: [], fast: [], slow: [], trend: [], sig: [], periods: [], nc: 6 }; } }
-function moverRibbon(precio) {   // mueve solo la punta del ribbon con el precio suavizado (fluidez entre cierres)
-  const r = M.ribbon; if (!r || !r.emas || !r.emas.length) return; const i = M.velas.length - 1; if (i < 1 || i >= r.emas[0].length) return;
-  for (let k = 0; k < r.periods.length; k++) { const a = 2 / (r.periods[k] + 1); r.emas[k][i] = r.emas[k][i - 1] + a * (precio - r.emas[k][i - 1]); }
-  let fs = 0; for (let k = 0; k < r.nc; k++) fs += r.emas[k][i]; let sl = 0; for (let k = r.nc; k < r.periods.length; k++) sl += r.emas[k][i];
-  r.fast[i] = fs / r.nc; r.slow[i] = sl / (r.periods.length - r.nc);
+function recalcArbol() {
+  try { const E = analizarMercado(M.velas); M.estado = E; M.arbol = construirArbol(E); M.arbolAlpha = 0; }
+  catch (_) { M.arbol = null; M.estado = null; }
 }
 
 /* ══════════════════ APERTURA ══════════════════ */
 export async function abrirSuperScalper() {
   estilos();
   const prev = $('ss-overlay'); if (prev) prev.remove();
-  M.velas = []; M.ob = { zonas: [], phpl: [], lineas: [], marcas: [] }; M.cargando = true; M.error = null; M.dispC = null;
+  M.velas = []; M.arbol = null; M.estado = null; M.arbolAlpha = 0; M.cargando = true; M.error = null; M.dispC = null;
   const p0 = PARES.find((p) => p.id === _par) || PARES[0]; _par = p0.id;
   const chev = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
   const d = document.createElement('div');
@@ -254,7 +287,7 @@ export async function abrirSuperScalper() {
       </div>
       <div class="ss-graf" id="ss-graf">
         <canvas class="ss-cv" id="ss-cv"></canvas>
-        <div class="ss-esperando" id="ss-esperando"><div class="ss-spin"></div><b>Loading Order Blocks…</b><span>Finding volume weighted order block zones on the ${esc(tfDef(M.tf).n)} chart.</span></div>
+        <div class="ss-esperando" id="ss-esperando"><div class="ss-spin"></div><b>Building the multiverse…</b><span>Mapping the probable paths of price on the ${esc(tfDef(M.tf).n)} chart.</span></div>
         <img class="ss-marca" id="ss-marca" src="${LOGO}" alt="">
       </div>
     </div>`;
@@ -270,7 +303,8 @@ export async function abrirSuperScalper() {
   clearInterval(_pulso);
   _pulso = setInterval(() => {
     if (!$('ss-cv')) return;
-    if (M.precio > 0) { if (M.dispC == null) M.dispC = M.precio; else M.dispC += (M.precio - M.dispC) * 0.22; moverRibbon(M.dispC); }   // easing fluido + punta del ribbon
+    if (M.precio > 0) { if (M.dispC == null) M.dispC = M.precio; else M.dispC += (M.precio - M.dispC) * 0.22; }   // easing fluido del precio
+    if (M.arbolAlpha < 1) M.arbolAlpha = Math.min(1, M.arbolAlpha + 0.06);   // el árbol aparece suave al recalcularse
     dibujar();
   }, 33);
   let _t = null; M._onResize = () => { clearTimeout(_t); _t = setTimeout(() => { if ($('ss-cv')) dibujar(); }, 200); };
@@ -280,23 +314,23 @@ export async function abrirSuperScalper() {
 
 /* Disclaimer oficial (sello + aceptación obligatoria). Herramienta de análisis, no consejo. */
 function discOB(reView) {
-  if (!reView) { try { if (localStorage.getItem('ss-disc-ob1') === '1') return; } catch (_) {} }
+  if (!reView) { try { if (localStorage.getItem('ss-disc-mv1') === '1') return; } catch (_) {} }
   const vieja = $('ss-disc'); if (vieja) vieja.remove();
   const d = document.createElement('div'); d.id = 'ss-disc'; d.className = 'ss-disc' + (reView ? ' rev' : '');
   d.innerHTML = `<div class="ss-disc-bg"></div><div class="ss-disc-c">
     ${reView ? '<button class="ss-disc-x" id="ss-disc-x" aria-label="Close">✕</button>' : ''}
     <img class="ss-disc-sello" src="${DISC_IMG}" alt="">
     <h4>Before you start</h4>
-    <p>Order Blocks is an <b>analytical tool</b> that highlights price zones where volume concentrated and price then displaced, for informational and educational purposes only. The zones are <b>inferred from past price and volume</b>: they are not verified institutional orders, and they are not direct evidence of bank or fund activity. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance. The volume strength shown is relative, not a probability of success.</p>
+    <p>Multiverse is a <b>probability tool</b>, for information and education only. It reads the current structure, trend, momentum, volume and levels, and draws the paths price <b>could</b> take next as ghost candles, each with an estimated probability. These are <b>statistical projections, not predictions of the future</b>: the ghost candles are not real price, the percentages are modelled estimates that will not always be right, and no path is a promise. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance.</p>
     <p>Every entry, exit and the size of every trade are your own decision and your sole responsibility. The tools are provided as is, without warranty of any kind, and the data comes from third parties (Binance) and may be delayed or incomplete. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.</p>
-    ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand these zones are inferred from price and volume for information only, not financial advice, that nothing here is guaranteed, and that I trade entirely at my own risk.</span></label>'}
+    ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand these are modelled probabilities, not predictions, that the ghost candles are projections and not real price, that nothing here is guaranteed, and that I trade entirely at my own risk.</span></label>'}
     <button class="ss-disc-ok" id="ss-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'Accept'}</button></div>`;
   document.body.appendChild(d);
   const cerrarD = () => d.remove();
   if (reView) { $('ss-disc-x').onclick = cerrarD; d.querySelector('.ss-disc-bg').onclick = cerrarD; }
   else { d.querySelector('.ss-disc-bg').onclick = (e) => { e.preventDefault(); e.stopPropagation(); };
     const chk = $('ss-disc-agree'), ok = $('ss-disc-ok'); chk.addEventListener('change', () => { if (chk.checked) ok.removeAttribute('disabled'); else ok.setAttribute('disabled', ''); }); }
-  $('ss-disc-ok').onclick = () => { if (!reView) { const chk = $('ss-disc-agree'); if (!chk || !chk.checked) return; try { localStorage.setItem('ss-disc-ob1', '1'); } catch (_) {} } cerrarD(); };
+  $('ss-disc-ok').onclick = () => { if (!reView) { const chk = $('ss-disc-agree'); if (!chk || !chk.checked) return; try { localStorage.setItem('ss-disc-mv1', '1'); } catch (_) {} } cerrarD(); };
 }
 
 function cerrar() {
@@ -317,12 +351,12 @@ async function cargarVelas() {
     M.velas = await traerVelasTF(p.s, M.tf);
     M.cargando = false;
     if (M.velas.length) M.precio = M.velas[M.velas.length - 1].c;
-    recalcOB();
+    recalcArbol();
     const est = $('ss-estado'); if (est) est.textContent = '';
   } catch (e) { M.cargando = false; M.error = 'feed'; const est = $('ss-estado'); if (est) est.textContent = 'Market data unavailable.'; }
   dibujar();
   clearInterval(_reloj);
-  _reloj = setInterval(async () => { try { const v = await traerVelasTF(p.s, M.tf); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; recalcOB(); dibujar(); } catch (_) {} }, 20000);
+  _reloj = setInterval(async () => { try { const v = await traerVelasTF(p.s, M.tf); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; recalcArbol(); dibujar(); } catch (_) {} }, 20000);
   conectarStreamRz();
 }
 
@@ -359,7 +393,7 @@ function dibujar() {
   if (esp) esp.style.display = 'none';
 
   const mDer = 66, mAba = 22, yTime = H - mAba;
-  const x1 = W - mDer, y1 = yTime, xVelas = x1;
+  const x1 = W - mDer, y1 = yTime, xVelas = Math.round(x1 * (1 - FUT));   // velas reales a la izquierda; derecha = proyección futura
   const ancho = Math.min(M.velas.length, M.ancho || 120);
   const huecoMax = Math.floor(ancho * 0.5);
   let desp = Math.max(-huecoMax, Math.min(M.desplaz || 0, Math.max(0, M.velas.length - ancho))); M.desplaz = desp;
@@ -368,25 +402,26 @@ function dibujar() {
   const pc = (M.dispC != null && M.dispC > 0) ? M.dispC : M.precio;
   if (desp <= 0 && pc > 0) { const u = vis[vis.length - 1]; u.c = pc; if (pc > u.h) u.h = pc; if (pc < u.l) u.l = pc; }
   let pAlto = Math.max(...vis.map((v) => v.h)), pBajo = Math.min(...vis.map((v) => v.l));
-  // incluye en el rango vertical las zonas OB visibles para que se vean completas
-  M.ob.zonas.forEach((z) => { if (z.i0 >= fin - ancho - 2) { pAlto = Math.max(pAlto, z.top); pBajo = Math.min(pBajo, z.bottom); } });
   if (pc > 0) { pAlto = Math.max(pAlto, pc); pBajo = Math.min(pBajo, pc); }
+  // incluye el árbol en el rango vertical, acotado a ±3.2 ATR para que no aplane la vista
+  if (M.arbol && M.estado && desp <= 0) { const a = M.estado.a || (pAlto - pBajo) * 0.1, th = M.arbol.hiP != null ? M.arbol.hiP : M.arbol.hi, tl = M.arbol.loP != null ? M.arbol.loP : M.arbol.lo;
+    pAlto = Math.max(pAlto, Math.min(th, pc + a * 4)); pBajo = Math.min(pBajo, Math.max(tl, pc - a * 4)); }
   const rangoB = (pAlto - pBajo) || 1, despY = ((M.offsetY || 0) / Math.max(1, y1)) * rangoB;
-  const centro = (pAlto + pBajo) / 2 + despY, semi = (rangoB / 2) * (M.zoomY || 1), pad = semi * 0.12 || 1;
+  const centro = (pAlto + pBajo) / 2 + despY, semi = (rangoB / 2) * (M.zoomY || 1), pad = semi * 0.14 || 1;
   const pMax = centro + semi + pad, pMin = centro - semi - pad;
   const Y = (p) => y1 - y1 * ((p - pMin) / Math.max(1e-12, pMax - pMin));
   const paso = xVelas / (ancho || vis.length), pri = fin - ancho;
   const Xbar = (barIdx) => (barIdx - pri) * paso + paso / 2;
-  M._geo = { pMin, pMax, y1, xVelas, n: vis.length, vis, paso, pri, fin, ancho };
+  M._geo = { pMin, pMax, y1, xVelas, x1, n: vis.length, vis, paso, pri, fin, ancho };
 
   if (_od) _zonasOd = _od.pintar(g, { x1, Y, pMin, pMax, simbolo: (PARES.find((p) => p.id === _par) || {}).s || '' });
   g.strokeStyle = P.rejilla; g.lineWidth = 1;
   for (let i = 1; i < 6; i++) { const y = (y1 / 6) * i; g.beginPath(); g.moveTo(0, y); g.lineTo(x1, y); g.stroke(); }
 
-  dibujarOB(g, Y, Xbar, xVelas, y1, pri, fin);          // zonas (cajas) de fondo
   dibujarVelas(g, vis, Y, paso);
-  dibujarRibbon(g, Y, Xbar, pri, fin);                  // ribbon GMMA por encima de las velas
-  dibujarSenales(g, Y, Xbar, pri, fin);                 // LONG/SHORT en los giros de tendencia
+  g.save(); g.strokeStyle = 'rgba(232,184,75,.26)'; g.lineWidth = 1; g.setLineDash([2, 4]);   // divisoria "ahora"
+  g.beginPath(); g.moveTo(xVelas, 0); g.lineTo(xVelas, y1); g.stroke(); g.restore(); g.setLineDash([]);
+  dibujarArbol(g, Y, Xbar, xVelas, x1, y1, pc);          // árbol de realidades en velas fantasma
 
   if (pc > 0) {
     const yp = Y(pc); g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 1; g.setLineDash([3, 3]);
@@ -402,7 +437,7 @@ function dibujar() {
   const cadaX = Math.max(1, Math.floor(vis.length / 7));
   vis.forEach((v, i) => { if (i % cadaX !== 0) return; const x = i * paso + paso / 2; if (x > xVelas - 14) return; g.fillText(fmtFecha(v.t), x, yTime + 14); });
   g.textAlign = 'left';
-  dibujarLeyenda(g);
+  dibujarPanel(g);
 
   if (M._cursor && M._cursor.x < x1 && M._cursor.y < y1 && M._cursor.x > 0 && M._cursor.y > 0) {
     const cx = M._cursor.x, cy = M._cursor.y, pCur = pMin + (pMax - pMin) * ((y1 - cy) / y1);
@@ -424,89 +459,78 @@ function dibujarVelas(g, vis, Y, paso) {
   }
 }
 
-/* Zonas (cajas) de Order Block: caja redondeada con degradado, borde y acento lateral con
-   brillo; demanda (verde) u oferta (roja). Se extiende a la derecha mientras siga válida.
-   Etiqueta limpia LONG / SHORT junto al precio. Sin texto de volumen, sin líneas sueltas. */
-function dibujarOB(g, Y, Xbar, xVelas, y1, pri, fin) {
-  for (const z of (M.ob.zonas || [])) {
-    const xo = Xbar(z.i0); if (xo > xVelas) continue; const x0 = Math.max(0, xo);
-    let yTop = Y(z.top), yBot = Y(z.bottom); if (yBot < 0 || yTop > y1) continue;
-    if (yTop < -40) yTop = -40; if (yBot > y1 + 40) yBot = y1 + 40;
-    const rgb = z.dir === 'bull' ? COL.bull : COL.bear, w = xVelas - x0, h = yBot - yTop; if (h < 1 || w < 1) continue;
-    const rad = Math.min(9, h / 2, w / 2);
-    const grad = g.createLinearGradient(0, yTop, 0, yBot);
-    grad.addColorStop(0, `rgba(${rgb},0.05)`); grad.addColorStop(0.5, `rgba(${rgb},0.17)`); grad.addColorStop(1, `rgba(${rgb},0.05)`);
-    g.save(); redondeado(g, x0, yTop, w, h, rad); g.fillStyle = grad; g.fill();
-    g.strokeStyle = `rgba(${rgb},0.42)`; g.lineWidth = 1.1; g.stroke(); g.restore();
-    g.save(); g.shadowColor = `rgba(${rgb},.55)`; g.shadowBlur = 9; g.fillStyle = `rgb(${rgb})`; g.fillRect(x0, yTop + 1, 3, h - 2); g.restore();
-    if (h > 19) {                                   // etiqueta LONG / SHORT junto al precio
-      const txt = z.dir === 'bull' ? 'LONG' : 'SHORT'; g.font = '800 10px system-ui,sans-serif';
-      const tw = g.measureText(txt).width, pw = tw + 22, ph = 16, px = xVelas - pw - 8, py = (yTop + yBot) / 2 - ph / 2;
-      g.fillStyle = `rgba(${rgb},0.95)`; redondeado(g, px, py, pw, ph, 8); g.fill();
-      g.fillStyle = '#07120b'; g.beginPath();
-      if (z.dir === 'bull') { g.moveTo(px + 8, py + 11); g.lineTo(px + 11, py + 5); g.lineTo(px + 14, py + 11); } else { g.moveTo(px + 8, py + 5); g.lineTo(px + 11, py + 11); g.lineTo(px + 14, py + 5); }
-      g.closePath(); g.fill(); g.textAlign = 'left'; g.fillText(txt, px + 17, py + 11.5); g.textAlign = 'left';
-    }
+/* ══ Árbol de realidades: velas fantasma proyectadas al futuro, con el flujo de iluminación
+   de Huehua Pro por dentro. Ramas probables = más brillantes y gruesas; improbables, tenues. ══ */
+function velaFantasma(g, x, w, v, Y, rgb, hi, alpha, lw, aF, now) {
+  const yO = Y(v.o), yC = Y(v.c), top = Math.min(yO, yC), hB = Math.max(1.6, Math.abs(yC - yO));
+  g.strokeStyle = `rgba(${rgb},${(alpha * 0.9).toFixed(3)})`; g.lineWidth = lw;
+  g.beginPath(); g.moveTo(x, Y(v.h)); g.lineTo(x, Y(v.l)); g.stroke();                       // mecha
+  g.fillStyle = `rgba(${rgb},${(0.05 * alpha + 0.02).toFixed(3)})`; g.fillRect(x - w / 2, top, w, hB); // cuerpo hueco translúcido
+  g.strokeRect(x - w / 2, top, w, hB);                                                        // contorno
+  if (aF > 0.12) {                                                                            // flujo de iluminación (Huehua Pro)
+    const sweep = (now % 2600) / 2600, grd = g.createLinearGradient(0, top, 0, top + hB);
+    for (let k = 0; k <= 6; k++) { const p = k / 6, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${hi},${(0.02 + 0.10 * b * aF).toFixed(3)})`); }
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(x - w / 2, top, w, hB); g.restore();
   }
 }
-/* Ribbon GMMA: 12 medias finas coloreadas por la tendencia actual, con una banda sutil entre
-   el grupo rápido y el lento. Convergen en lateral y se abren en tendencia. */
-function dibujarRibbon(g, Y, Xbar, pri, fin) {
-  const r = M.ribbon; if (!r || !r.fast || !r.fast.length) return;
-  const a = Math.max(1, pri), b = Math.min(fin, r.fast.length); if (b - a < 2) return;
-  const colOf = (t) => t > 0 ? COL.bull : t < 0 ? COL.bear : COL.neu;
-  g.save();
-  let s = a;                                             // pinta por TRAMOS de tendencia constante (color por tramo)
-  while (s < b) {
-    const t = r.trend[s] || 0; let e = s + 1; while (e < b && (r.trend[e] || 0) === t) e++;
-    const last = Math.min(e, b - 1), rgb = colOf(t);     // conecta con el primer bar del tramo siguiente
-    g.beginPath(); g.moveTo(Xbar(s), Y(r.fast[s]));      // banda entre medias rápidas y lentas
-    for (let i = s + 1; i <= last; i++) g.lineTo(Xbar(i), Y(r.fast[i]));
-    for (let i = last; i >= s; i--) g.lineTo(Xbar(i), Y(r.slow[i]));
-    g.closePath(); g.fillStyle = `rgba(${rgb},0.08)`; g.fill();
-    for (let k = 0; k < r.periods.length; k++) {         // las 12 medias del tramo
-      const corta = k < r.nc; g.beginPath(); g.moveTo(Xbar(s), Y(r.emas[k][s]));
-      for (let i = s + 1; i <= last; i++) g.lineTo(Xbar(i), Y(r.emas[k][i]));
-      g.strokeStyle = `rgba(${rgb},${corta ? 0.55 : 0.26})`; g.lineWidth = corta ? 1 : 0.9; g.stroke();
+function dibujarArbol(g, Y, Xbar, xVelas, x1, y1) {
+  const A = M.arbol, geo = M._geo; if (!A || !geo || !A.raiz) return;
+  const now = Date.now(), paso = geo.paso || 8, gA = M.arbolAlpha, futW = x1 - xVelas;
+  const pasoF = clamp(futW * 0.82 / (ARB.gen * ARB.seg), paso * 1.15, paso * 2.8), w = Math.max(2, pasoF * 0.5);
+  const raiz = A.raiz.bar0, xF = (bar) => xVelas + (bar - raiz + 0.5) * pasoF;                // paso propio de la proyección (más ancho, separa las ramas)
+  g.save(); g.beginPath(); g.rect(xVelas - 1, 0, x1 - xVelas + 2, y1); g.clip();              // dibuja solo en la zona futura
+  for (const nodo of A.nodos) {                                                               // esqueleto: línea close a close de cada rama (hace legible el árbol)
+    const aF = clamp(nodo.cumP, 0, 1), al = (0.10 + 0.6 * Math.sqrt(aF)) * gA; if (al < 0.04) continue;
+    const sube = nodo.pFin >= nodo.pIni, rgb = sube ? COL.bull : COL.bear;
+    g.beginPath(); g.moveTo(xF(nodo.bar0) - pasoF / 2, Y(nodo.pIni));
+    for (let j = 0; j < nodo.velas.length; j++) g.lineTo(xF(nodo.bar0 + j), Y(nodo.velas[j].c));
+    g.strokeStyle = `rgba(${rgb},${(al * 0.5).toFixed(3)})`; g.lineWidth = 1 + 1.8 * aF; g.stroke();
+  }
+  for (const nodo of A.nodos) {                                                               // velas fantasma: de improbable a probable (brillantes encima)
+    const aF = clamp(nodo.cumP, 0, 1), alpha = (0.14 + 0.72 * Math.sqrt(aF)) * gA; if (alpha < 0.04) continue;
+    const lw = 1 + 1.5 * aF;
+    for (let j = 0; j < nodo.velas.length; j++) {
+      const x = xF(nodo.bar0 + j); if (x < xVelas - 2 || x > x1 + 2) continue;
+      const v = nodo.velas[j], sube = v.c >= v.o, rgb = sube ? COL.bull : COL.bear, hi = sube ? '150,255,195' : '255,150,170';
+      velaFantasma(g, x, w, v, Y, rgb, hi, alpha, lw, aF, now);
     }
-    s = e;
   }
   g.restore();
-}
-/* Señales LONG / SHORT: solo en los giros de tendencia confirmados (pocas y limpias). */
-function dibujarSenales(g, Y, Xbar, pri, fin) {
-  const r = M.ribbon; if (!r || !r.sig) return; const xMax = M._geo ? M._geo.xVelas : 1e9;
-  g.save();
-  for (const s of r.sig) {
-    if (s.i < pri - 1 || s.i > fin) continue; const x = Xbar(s.i); if (x < 0 || x > xMax) continue;
-    const long = s.dir === 'long', rgb = long ? COL.bull : COL.bear, txt = long ? 'LONG' : 'SHORT';
-    g.font = '900 10px system-ui,sans-serif'; const tw = g.measureText(txt).width, pw = tw + 24, ph = 18;
-    const px = Math.max(2, Math.min(x - pw / 2, xMax - pw)), py = long ? Y(s.p) + 10 : Y(s.p) - ph - 10;
-    g.shadowColor = `rgba(${rgb},.55)`; g.shadowBlur = 8; g.fillStyle = `rgb(${rgb})`; redondeado(g, px, py, pw, ph, 9); g.fill(); g.shadowBlur = 0;
-    g.fillStyle = '#07120b'; g.beginPath();
-    if (long) { g.moveTo(px + 8, py + 12); g.lineTo(px + 12, py + 5); g.lineTo(px + 16, py + 12); } else { g.moveTo(px + 8, py + 6); g.lineTo(px + 12, py + 13); g.lineTo(px + 16, py + 6); }
-    g.closePath(); g.fill(); g.textAlign = 'left'; g.fillText(txt, px + 19, py + 13);
+  g.save(); g.textAlign = 'left';                                                             // % de los escenarios y acumulado de rutas
+  for (const n of A.nodos) { if (n.prof !== 1) continue;
+    const sube = n.pFin >= n.pIni, rgb = sube ? COL.bull : COL.bear, x = xF(n.bar0 + Math.floor(n.velas.length / 2)), y = Y(n.pFin) + (sube ? -10 : 18);
+    etqProb(g, x, y, Math.round(n.cond * 100) + '%', rgb, 0.92 * gA, true);
+  }
+  const hojas = A.nodos.filter((n) => !n.esPadre && n.cumP > 0.05).sort((a, b) => b.cumP - a.cumP).slice(0, 7);
+  for (const n of hojas) {
+    const sube = n.pFin >= A.px, rgb = sube ? COL.bull : COL.bear, x = Math.min(x1 - 24, xF(n.bar0 + n.velas.length - 1) + 5), y = Y(n.pFin);
+    etqProb(g, x, y, Math.round(n.cumP * 100) + '%', rgb, (0.4 + 0.6 * clamp(n.cumP, 0, 1)) * gA, false);
   }
   g.restore(); g.textAlign = 'left';
 }
-/* Leyenda (arriba-izquierda): estado del ribbon en vivo + demanda / oferta. */
-function dibujarLeyenda(g) {
-  const r = M.ribbon, fin = M._geo ? M._geo.fin : (r && r.trend ? r.trend.length : 0);
-  const tNow = r && r.trend && r.trend.length ? (r.trend[Math.min(r.trend.length - 1, fin - 1)] || 0) : 0;
-  const rgb = tNow > 0 ? COL.bull : tNow < 0 ? COL.bear : COL.neu, estado = tNow > 0 ? 'UPTREND' : tNow < 0 ? 'DOWNTREND' : 'NEUTRAL';
-  const bx = 12, by = 12, bw = 236, bh = 48;
+function etqProb(g, x, y, txt, rgb, alpha, fuerte) {
+  if (alpha < 0.05) return; g.globalAlpha = Math.min(1, alpha);
+  g.font = (fuerte ? '900 11px ' : '800 10px ') + 'system-ui,sans-serif'; const tw = g.measureText(txt).width, pw = tw + 12, ph = fuerte ? 17 : 15, yy = y - ph + 3;
+  g.fillStyle = 'rgba(10,14,20,.78)'; redondeado(g, x - 2, yy, pw, ph, 6); g.fill();
+  g.strokeStyle = `rgba(${rgb},${fuerte ? 0.8 : 0.5})`; g.lineWidth = 1; redondeado(g, x - 2, yy, pw, ph, 6); g.stroke();
+  g.fillStyle = `rgb(${rgb})`; g.fillText(txt, x + 4, yy + ph - 4.5); g.globalAlpha = 1;
+}
+/* Panel (arriba-izquierda): identidad + sesgo de probabilidad al alza/baja + aviso. */
+function dibujarPanel(g) {
+  const A = M.arbol; const bx = 12, by = 12, bw = 252, bh = 66;
   g.save(); g.textAlign = 'left';
-  g.fillStyle = 'rgba(13,17,24,.84)'; redondeado(g, bx, by, bw, bh, 11); g.fill();
-  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 11); g.stroke();
-  g.fillStyle = '#E8B84B'; g.font = '900 11px system-ui,sans-serif'; g.fillText('ORDER BLOCKS', bx + 12, by + 18);
-  g.font = '800 9px system-ui,sans-serif'; const tw = g.measureText(estado).width, pw = tw + 16;
-  g.fillStyle = `rgba(${rgb},.92)`; redondeado(g, bx + bw - pw - 10, by + 7, pw, 15, 7); g.fill();
-  g.fillStyle = '#07120b'; g.fillText(estado, bx + bw - pw - 2, by + 18);
-  g.fillStyle = `rgb(${COL.bull})`; g.beginPath(); g.arc(bx + 16, by + 34, 4, 0, 6.2832); g.fill();
-  g.fillStyle = '#c3cbd4'; g.font = '700 10px system-ui,sans-serif'; g.fillText('Demand', bx + 26, by + 37);
-  g.fillStyle = `rgb(${COL.bear})`; g.beginPath(); g.arc(bx + 92, by + 34, 4, 0, 6.2832); g.fill();
-  g.fillStyle = '#c3cbd4'; g.fillText('Supply', bx + 102, by + 37);
-  g.fillStyle = '#8b93a0'; g.font = '600 9px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('GMMA ribbon', bx + bw - 12, by + 37);
+  g.fillStyle = 'rgba(12,16,23,.86)'; redondeado(g, bx, by, bw, bh, 12); g.fill();
+  g.strokeStyle = 'rgba(232,184,75,.22)'; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 12); g.stroke();
+  g.fillStyle = `rgb(${COL.gold})`; g.font = '900 13px system-ui,sans-serif'; g.fillText('MULTIVERSE', bx + 13, by + 22);
+  g.fillStyle = '#7d8794'; g.font = '600 9px system-ui,sans-serif'; g.fillText('probability tree', bx + 104, by + 21);
+  let netW = 0, mass = 0; if (A) for (const n of A.nodos) if (!n.esPadre) { mass += n.cumP; netW += n.cumP * (n.pFin >= A.px ? 1 : -1); }
+  const lean = mass > 0 ? netW / mass : 0, upP = clamp(0.5 + 0.5 * lean, 0.08, 0.92), dnP = 1 - upP;
+  const bxx = bx + 13, bww = bw - 26, byy = by + 32, bhh = 11;
+  g.fillStyle = `rgba(${COL.bear},.9)`; redondeado(g, bxx, byy, bww, bhh, 5); g.fill();
+  if (upP > 0.01) { g.fillStyle = `rgba(${COL.bull},.95)`; redondeado(g, bxx, byy, Math.max(bhh, bww * upP), bhh, 5); g.fill(); }
+  g.fillStyle = '#eef2f6'; g.font = '800 9px system-ui,sans-serif'; g.fillText('UP ' + Math.round(upP * 100) + '%', bxx + 5, byy + 9);
+  g.textAlign = 'right'; g.fillText(Math.round(dnP * 100) + '% DOWN', bxx + bww - 5, byy + 9); g.textAlign = 'left';
+  g.fillStyle = '#6b7681'; g.font = '600 9px system-ui,sans-serif'; g.fillText('Modelled odds, not a prediction', bx + 13, by + 58);
   g.restore(); g.textAlign = 'left';
 }
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -529,7 +553,7 @@ function engancharGestos(cv) {
   });
   window.addEventListener('mouseup', () => { arr = false; dragEsc = false; dragX = false; cv.style.cursor = 'crosshair'; });
   cv.addEventListener('mouseleave', () => { M._cursor = null; dibujar(); });
-  cv.addEventListener('dblclick', () => { M.ancho = window.innerWidth < 760 ? 70 : 120; M.desplaz = 0; M.zoomY = 1; M.offsetY = 0; dibujar(); });
+  cv.addEventListener('dblclick', () => { M.ancho = window.innerWidth < 760 ? 56 : 84; M.desplaz = 0; M.zoomY = 1; M.offsetY = 0; dibujar(); });
 }
 
 /* ══════════════════ SELECTORES ══════════════════ */
@@ -588,13 +612,13 @@ function guardarImagen() {
     const g = out.getContext('2d'); g.fillStyle = '#0a0e14'; g.fillRect(0, 0, out.width, out.height); g.drawImage(cv, 0, 0);
     const yB = cv.height; g.fillStyle = '#0b0e12'; g.fillRect(0, yB, out.width, barra); g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, out.width, 2 * e2);
     const textos = (x) => {
-      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Order Blocks', x, yB + 34 * e2);
+      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Multiverse', x, yB + 34 * e2);
       g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText(WEB, x, yB + 56 * e2);
       g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillText(`${_par} · ${M.tf}`, out.width - 20 * e2, yB + 34 * e2);
       g.font = `${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#6b7681'; g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), out.width - 20 * e2, yB + 56 * e2);
       g.textAlign = 'left';
     };
-    const bajar = () => out.toBlob((blob) => { devolver(); if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-orderblocks-${_par}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
+    const bajar = () => out.toBlob((blob) => { devolver(); if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-multiverse-${_par}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
     const logo = new Image(); let hecho = false;
     const una = (w) => { if (hecho) return; hecho = true; textos(w ? 20 * e2 + w + 18 * e2 : 20 * e2); bajar(); };
     logo.onload = () => { try { const alto = 52 * e2, ancho = Math.round(logo.width * (alto / logo.height)); g.drawImage(logo, 20 * e2, yB + (barra - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } };
@@ -604,21 +628,21 @@ function guardarImagen() {
 
 /* ══════════════════ AYUDA (guía interactiva, 8 componentes reales) ══════════════════ */
 const PASOS_RZ = [
-  { t: 'The Moving Average Ribbon', d: 'The core of the tool is a <b>ribbon of twelve moving averages</b> (the Guppy GMMA set): six short EMAs and six long ones, drawn together. In a sideways market they <b>squeeze into a single point</b>; when a trend takes hold they <b>fan out</b> and separate. You read the market from the shape of the whole band, not from one line.', x: 'One average can whip around. Twelve, read as a band, show the real balance between short and long term.' },
-  { t: 'Trend by Colour', d: 'The whole ribbon is <b>coloured by the current trend</b>: green when the short averages hold above the long ones (buyers in control), red when they sit below (sellers in control). The colour is the quick read, you do not have to measure anything, the band tells you who controls price right now.', x: 'Green ribbon: buyers in control. Red ribbon: sellers in control. The colour is the trend, live.' },
-  { t: 'Compression and Expansion', d: 'When the twelve averages <b>compress</b> into a knot, the trend is weak or turning and the market is undecided. When they <b>expand</b> and run parallel, the trend is strong and healthy. Compression after a long run often warns that momentum is fading before price itself turns.', x: 'A tight ribbon is a market holding its breath. A wide ribbon is a market committed to a direction.' },
-  { t: 'Long and Short Signals', d: 'A <b>LONG</b> or <b>SHORT</b> label prints only when the trend <b>actually flips</b>, the moment the short group crosses and holds past the long group. It fires on the close of that candle, <b>in real time</b>, not painted back onto the past once the move is obvious. These are the structural turns, not every wiggle.', x: 'A signal marks a confirmed change of control. It is timing context, never an order to buy or sell.' },
-  { t: 'Noise Filter', d: 'To kill the chop of sideways markets, a flip is only accepted once the ribbon separates <b>beyond a volatility band</b> (based on ATR). Small crosses inside that band are ignored, so you do not get a stream of false LONG and SHORT flips while price goes nowhere. One clean signal per real turn.', x: 'Most false signals come from flat markets. The band refuses to call a trend that is not there.' },
-  { t: 'Demand Zones', d: 'Green boxes are <b>demand zones</b>: areas where buyers previously stepped in with size and price pushed away. They extend to the right while they stay valid and carry a <b>LONG</b> tag. Price returning to a green box with the ribbon still green is the kind of pullback some traders look to buy, not a guarantee of a bounce.', x: 'A demand zone is a place to watch, not a reason to buy blindly. Let price and the ribbon agree first.' },
-  { t: 'Supply Zones', d: 'Red boxes are <b>supply zones</b>, tagged <b>SHORT</b>: areas where sellers previously took control. A return into a red box while the ribbon is red is where some traders look for continuation down. A box is removed once price closes clean through it, so only levels still in play remain on the chart.', x: 'A supply zone marks interest, not a guaranteed rejection. The ribbon colour tells you if the context agrees.' },
-  { t: 'Putting It Together', d: 'The strongest reads are <b>confluence</b>: the ribbon trend and the zones pointing the same way. A LONG flip with price on a green demand zone, or a SHORT flip into a red supply zone, is far cleaner than either alone. Always act in the direction the ribbon confirms, and size with your own risk.', x: 'The tool frames the trend and the levels. It does not promise a winning trade. Risk only what you can lose.' }
+  { t: 'Fractal Cycles', d: 'Price moves in <b>cycles</b>, and those cycles are <b>fractal</b>: the same shapes, impulses, pullbacks, ranges and turns, repeat on every timeframe. Multiverse reads the structure of the current cycle and projects where price could go next. Because it works on structure, it runs the same on 1 second or 1 day, just change the timeframe.', x: 'The tool does not predict the future. It maps what tends to happen next when the chart looks like it does now.' },
+  { t: 'Five Analyzers', d: 'Five measurable readings drive everything: <b>trend</b> (the bias of the last 50 to 200 candles), <b>momentum and exhaustion</b> (how stretched the move is), <b>volume and range</b> (whether fuel is entering a quiet market), <b>levels</b> (supports and resistances), and <b>market structure</b> (impulses, pullbacks and ranges). You never see them directly, they set the odds.', x: 'Every percentage on the chart comes from these five, measured live, not from an opinion.' },
+  { t: 'Ghost Candles', d: 'The possible futures are drawn as <b>ghost candles</b>: hollow, translucent candles with a flowing inner light. They are deliberately not solid, so you never confuse a projection with real price. The lit flow and brightness show how alive and how probable a path is.', x: 'Ghost candles are a drawing of a scenario, not a quote. Nothing to their right has happened yet.' },
+  { t: 'The Tree of Realities', d: 'From the current price the tool branches into scenarios, and <b>each scenario branches again</b>, generation after generation, like a multiverse. A move can continue, pull back and continue, reverse, range, or break a level and retest it. The result is a fan of possible paths over the same future time.', x: 'It is not three fixed scenarios. It is a living tree of what could unfold, step by step.' },
+  { t: 'Reading the Probabilities', d: 'Every branch carries a <b>probability</b>, and every full route carries an <b>accumulated probability</b> (the product along the path). The <b>brighter and thicker</b> a branch, the more likely it is; faint branches are long shots. The panel sums it all into a simple <b>upside vs downside</b> lean.', x: 'A 70% branch is not a promise. It means that, on this structure, roughly seven times in ten price tends this way.' },
+  { t: 'Branching Rules', d: 'The branches follow real market logic. After an impulse up, price may <b>range and continue</b> or <b>pull back to support and continue</b>. It rises until the <b>next resistance</b>, where it either rejects and falls or <b>breaks and retests</b>. A pullback can reach 30%, 50% or a support, and from there hold the trend or flip, depending on <b>volume</b>. The same applies inverted to the downside.', x: 'The tool is encoding how price usually behaves around structure, not guessing at random.' },
+  { t: 'Living and Real Time', d: 'The tree is <b>not fixed</b>. On every new candle it recomputes from fresh structure, volume and levels, so paths that stop making sense <b>fade</b> and new ones appear. Zoom, drag and zoom out to see the whole scheme. The inner light keeps flowing so you can feel which paths are active now.', x: 'What you see is the current best map. A minute later, with new data, the map can change.' },
+  { t: 'How to Use It', d: 'Read the <b>dominant lean</b> and the <b>brightest routes</b>, then make your own decision with your own risk. Treat a high probability as an edge over many trades, not a certainty on the next one, and always plan for the paths that did not light up. This is a <b>probability tool</b>, not a promise of any result.', x: 'The map improves your odds of deciding well. It never removes the risk. Risk only what you can lose.' }
 ];
 let _pasoRZ = 0;
 function ayuda() {
   if ($('ss-ayuda-box')) { $('ss-ayuda-box').remove(); return; }
   _pasoRZ = 0;
   const d = document.createElement('div'); d.id = 'ss-ayuda-box';
-  d.innerHTML = `<div class="ss-ab-bg"></div><div class="ss-ab-c"><button class="ss-ab-x" aria-label="Close">✕</button><div class="ss-ab-eyebrow">Order Blocks · How it works</div><div id="ss-ab-cuerpo"></div><div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div></div>`;
+  d.innerHTML = `<div class="ss-ab-bg"></div><div class="ss-ab-c"><button class="ss-ab-x" aria-label="Close">✕</button><div class="ss-ab-eyebrow">Multiverse · How it works</div><div id="ss-ab-cuerpo"></div><div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div></div>`;
   document.body.appendChild(d);
   const q = () => d.remove(); d.querySelector('.ss-ab-bg').onclick = q; d.querySelector('.ss-ab-x').onclick = q; $('ss-disc-link').onclick = () => discOB(true);
   pintarPasoRZ();
