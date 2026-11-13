@@ -12,10 +12,10 @@
    NUEVO: motor de footprint (worker), render en canvas, 3 modos, imbalances
    apilados como S/R, CVD con divergencias, absorción y su analista propio. */
 
-import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=3';
-import { crearRender } from './render.js?v=3';
-import { leerFootprint } from './analista.js?v=3';
-import { estilosFootprint } from './estilos.js?v=3';
+import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=4';
+import { crearRender } from './render.js?v=4';
+import { leerFootprint } from './analista.js?v=4';
+import { estilosFootprint } from './estilos.js?v=4';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -77,8 +77,18 @@ function toggleSound() {
 function tickTimer() {
   const el = document.getElementById('fp-timer'); if (!el) return;
   if (!S.live) { el.textContent = '—'; el.classList.remove('urge'); return; }
-  const fin = S.live.t + tfMs(S.tf);
-  const restante = Math.max(0, fin - Date.now());
+  const paso = tfMs(S.tf), ahora = Date.now();
+  // ── ROLLOVER POR TIEMPO: si el reloj ya cruzó el borde, la vela nueva nace YA
+  //    (sin esperar a que llegue un trade). Esto elimina el retraso del segundero
+  //    quedándose en 0 y la vela saliendo tarde. ──
+  if (ahora >= S.live.t + paso) {
+    const px = (S.meta && S.meta.last) || S.live.c;
+    while (ahora >= S.live.t + paso) S.live = { t: S.live.t + paso, o: px, h: px, l: px, c: px, niveles: [], map: new Map(), poc: null, total: 0, delta: 0, bin: S.live.bin };
+    if (S.render) S.render.setLive(S.live);
+    if (S.rebuildT) { clearTimeout(S.rebuildT); S.rebuildT = null; }
+    rebuild(false);
+  }
+  const restante = Math.max(0, S.live.t + paso - ahora);
   let s = Math.round(restante / 1000); const m = Math.floor(s / 60); s = s % 60;
   el.textContent = m > 0 ? (m + ':' + String(s).padStart(2, '0')) : (s + 's');
   el.classList.toggle('urge', restante < 10000);
@@ -311,14 +321,15 @@ function onTrade(tr) {
 
 function arrancarWorker() {
   try {
-    S.worker = new Worker(new URL('./motor.worker.js?v=3', import.meta.url));
+    S.worker = new Worker(new URL('./motor.worker.js?v=4', import.meta.url));
     S.worker.onmessage = (ev) => {
       const r = ev.data || {};
       if (!r.ok) return;
       if (r.reqId !== S.reqId) return;      // descarta resultados viejos
       S.agg = r;
       S.meta.binSize = r.binSize;
-      S.live = snapLast(r);                 // reinicia la vela viva con lo del worker; onTrade sigue sumando encima
+      const nv = snapLast(r);               // vela viva del worker; onTrade sigue sumando encima
+      if (nv && (!S.live || nv.t >= S.live.t)) S.live = nv;   // nunca retrocede la vela viva (evita saltos atrás)
       if (r.candles && r.candles.length) mostrarCarga(false);
       if (S.render) { S.render.setData(r, S.meta); if (S.live) S.render.setLive(S.live); }
       actualizarAnalista();
@@ -332,7 +343,7 @@ function arrancarWorker() {
 function rebuild(force) {
   if (!S.worker) return;
   S.reqId++;
-  S.worker.postMessage({ type: 'build', reqId: S.reqId, trades: S.trades, velas: S.velas, subklines: S.subk, tfMs: tfMs(S.tf), binSize: S.binSize, imbThreshold: S.imb, tick: S.tick });
+  S.worker.postMessage({ type: 'build', reqId: S.reqId, trades: S.trades, velas: S.velas, subklines: S.subk, tfMs: tfMs(S.tf), binSize: S.binSize, imbThreshold: S.imb, tick: S.tick, nowT: Date.now() });
 }
 
 // ── Precio / moneda en la barra ─────────────────────────────────────

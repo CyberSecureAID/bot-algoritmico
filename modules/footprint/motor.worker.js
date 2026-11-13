@@ -67,25 +67,39 @@ function construir(msg) {
     if (tr.p < c.l) c.l = tr.p;
   }
 
-  /* Volumen por precio de las velas SIN ticks, desde sub velas finas (dato REAL
-     de Binance, solo más granular). Solo rellena velas que NO tienen trades;
-     donde hay ticks, mandan los ticks. Se reparte el volumen de cada sub vela
-     por su rango [low, high], y la compra/venta por el taker buy real. Así TODA
-     vela muestra su footprint en cualquier temporalidad. */
+  /* Relleno de celdas desde SUB VELAS finas (dato REAL de Binance, más granular):
+     cubre TODO el rango [low, high] de cada vela en los bins donde los ticks no
+     dejaron nada, para que NUNCA quede media vela vacía. Es SOLO textura de
+     volumen por precio: NO toca el OHLC real (la kline manda su open/high/low/
+     close) ni el delta/CVD (esos salen del taker real). Los bins de ticks no se
+     tocan: el tick siempre manda sobre la sub vela. */
   const subs = msg.subklines || [];
-  if (subs.length) {
-    const conTicks = new Set();
-    for (const [t, c] of porT) if (c.niveles.size > 0) conTicks.add(t);
-    for (const sk of subs) {
-      if (sk.t < base) continue;
-      const ot = openDe(sk.t); if (conTicks.has(ot)) continue;
-      let c = porT.get(ot); if (!c) c = nueva(ot, null);
-      const tb = sk.tb, ts = Math.max(0, sk.v - sk.tb);
-      const kl = binIdx(sk.l, bin), kh = binIdx(sk.h, bin), nb = Math.max(1, kh - kl + 1);
-      const vb = tb / nb, vs = ts / nb;
-      for (let kk = kl; kk <= kh; kk++) { let lv = c.niveles.get(kk); if (!lv) { lv = { buy: 0, sell: 0 }; c.niveles.set(kk, lv); } lv.buy += vb; lv.sell += vs; }
-      c.buyTot += tb; c.sellTot += ts;
-      if (c.o == null) c.o = sk.o; c.c = sk.c; if (sk.h > c.h) c.h = sk.h; if (sk.l < c.l) c.l = sk.l;
+  for (const sk of subs) {
+    if (sk.t < base) continue;
+    const ot = openDe(sk.t);
+    let c = porT.get(ot); if (!c) { c = nueva(ot, null); }
+    const tb = sk.tb, ts = Math.max(0, sk.v - sk.tb);
+    const kl = binIdx(sk.l, bin), kh = binIdx(sk.h, bin), nb = Math.max(1, kh - kl + 1);
+    const vb = tb / nb, vs = ts / nb;
+    for (let kk = kl; kk <= kh; kk++) {
+      let lv = c.niveles.get(kk);
+      if (!lv) { lv = { buy: vb, sell: vs, sub: true }; c.niveles.set(kk, lv); }   // bin vacío → relleno de sub vela
+      else if (lv.sub) { lv.buy += vb; lv.sell += vs; }                            // bin de sub vela → acumula (el de ticks NO se toca)
+    }
+    // OHLC: solo para velas SIN kline propia (creadas por sub velas). La kline manda.
+    if (c.vol === 0) { if (c.o == null) c.o = sk.o; c.c = sk.c; if (c.h === -Infinity || sk.h > c.h) c.h = sk.h; if (c.l === Infinity || sk.l < c.l) c.l = sk.l; }
+  }
+
+  // Garantiza la vela EN FORMACIÓN por TIEMPO (aunque no haya llegado ningún
+  // trade todavía): así nace puntual al cruzar el borde, sin retraso.
+  const nowT = msg.nowT || 0;
+  if (nowT) {
+    const fo = openDe(nowT);
+    if (!porT.has(fo)) {
+      let maxT = -Infinity; for (const t of orden) if (t > maxT) maxT = t;
+      const prevC = maxT > -Infinity ? porT.get(maxT) : null;
+      const seedP = prevC && prevC.c != null ? prevC.c : (velas.length ? velas[velas.length - 1].c : 0);
+      const c = nueva(fo, null); c.o = seedP; c.c = seedP; c.h = seedP; c.l = seedP;
     }
   }
 
@@ -141,13 +155,13 @@ function construir(msg) {
     if (c.vol > 0 && !esForming) { rBuy = c.tb; rSell = Math.max(0, c.vol - c.tb); }
     else { rBuy = c.buyTot; rSell = c.sellTot; }
     const rDelta = rBuy - rSell, rTotal = rBuy + rSell;
-    // La mecha dibujada cubre justo el bloque de celdas: donde hay footprint, el
-    // high/low es la extensión REAL de los niveles con datos (nada de mecha vacía
-    // sin información). Sin celdas, se usa el rango de la kline / sub velas.
-    const hasT = !sinTicks;
-    const H = hasT ? hi + bin / 2 : (c.h === -Infinity ? hi : c.h);
-    const Lo = hasT ? lo - bin / 2 : (c.l === Infinity ? lo : c.l);
-    candles.push({ t, o: c.o, h: H, l: Lo, c: c.c,
+    // OHLC REAL de la vela (la kline + extremos de los trades). Las celdas cubren
+    // todo [l, h] por el relleno de sub velas, así que el cuerpo y la mecha son
+    // los verdaderos y nunca quedan fuera del footprint ni medio vacíos.
+    const cl = c.c != null ? c.c : c.o;
+    const H = c.h === -Infinity ? (niveles.length ? hi : cl) : c.h;
+    const Lo = c.l === Infinity ? (niveles.length ? lo : cl) : c.l;
+    candles.push({ t, o: c.o != null ? c.o : cl, h: H, l: Lo, c: cl,
       niveles, poc, delta: rDelta, total: rTotal, buyTot: rBuy, sellTot: rSell, hi, lo, imbalances, sinTicks });
   }
 

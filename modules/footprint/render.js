@@ -47,7 +47,7 @@ export function crearRender(host, opts = {}) {
   const fctx = fx.getContext('2d');
 
   const st = { agg: null, meta: null, mode: 'bidask', colW: 72, leftF: 0, anclaDer: true, yZoom: 1, yPan: 0,
-    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null, _cvdPts: null, _absMarks: null, _warPos: null,
+    pMin: 0, pMax: 1, W: 0, H: 0, dpr: 1, hover: null, drag: null, _cvdPts: null, _absMarks: null, _warPos: null, _winMarks: null, _deltaTiles: null,
     live: null, liveT: null, disp: new Map(), dispC: 0, dispH: 0, dispL: 0, flash: new Map() };
   let _rafId = null, _animId = null, _lastFx = 0;
   /* Animación de la vela EN FORMACIÓN: el cuerpo sigue al precio en vivo y las
@@ -126,7 +126,7 @@ export function crearRender(host, opts = {}) {
   }
   function rango(vis) {
     let lo = Infinity, hi = -Infinity;
-    for (const { c } of vis) { if (c.lo < lo) lo = c.lo; if (c.hi > hi) hi = c.hi; }
+    for (const { c } of vis) { const cl = Math.min(c.l, c.lo), ch = Math.max(c.h, c.hi); if (cl < lo) lo = cl; if (ch > hi) hi = ch; }   // rango REAL de la vela (cuerpo+mecha), no solo celdas
     if (st.meta && st.meta.last > 0) { if (st.meta.last < lo) lo = st.meta.last; if (st.meta.last > hi) hi = st.meta.last; }
     if (!isFinite(lo) || !isFinite(hi) || hi <= lo) { lo = 0; hi = 1; }
     const pad = (hi - lo) * 0.07 || 1; let a = lo - pad, b = hi + pad;
@@ -148,22 +148,32 @@ export function crearRender(host, opts = {}) {
   function render() {
     const L = layout();
     ctx.clearRect(0, 0, st.W, st.H); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, st.W, st.H);
-    if (!st.agg || !st.agg.candles || !st.agg.candles.length) { st._cvdPts = null; st._absMarks = null; st._warPos = null; return; }   // el loader DOM cubre la espera (sin texto en el canvas)
+    if (!st.agg || !st.agg.candles || !st.agg.candles.length) { st._cvdPts = null; st._absMarks = null; st._warPos = null; st._winMarks = null; st._deltaTiles = null; return; }   // el loader DOM cubre la espera (sin texto en el canvas)
     const vis = visibles(L); rango(vis);
     ejeP(L); cols(L, vis); marcasFx(L, vis);
     statFooter(L, vis); cvdPanel(L, vis); ejeT(L, vis); if (st.hover) cruz(L);
   }
 
-  // Calcula (no dibuja) las marcas que van en la capa FX: absorción flotando
-  // encima de su vela y la "guerra" en vivo de la vela en formación.
+  // Calcula (no dibuja) lo que va en la capa FX: absorción flotando sobre su
+  // vela, la "guerra" en vivo de la vela en formación, y la flecha del GANADOR
+  // que se queda en cada vela YA cerrada (verde abajo si ganaron los toros,
+  // roja arriba si ganaron los osos).
   function marcasFx(L, vis) {
-    const A = L.main, marks = [];
+    const A = L.main, marks = [], wins = [];
     for (const a of (st.agg.absorciones || [])) {
       const v = vis.find((x) => x.c.t === a.t); if (!v) continue;
       const y = yP(v.c.hi, A); if (y < -24 || y > A.h) continue;
       marks.push({ x: v.x + st.colW / 2, y, bull: a.side === 'sell' });
     }
     st._absMarks = marks;
+    for (const { c, x } of vis) {
+      if (c.t === st.liveT) continue;                 // la viva lleva las dos flechas titilando, no la del ganador
+      const buyWin = c.delta >= 0, cx = x + st.colW / 2;
+      const y = buyWin ? Math.min(A.h - 5, yP(c.l, A) + 11) : Math.max(11, yP(c.h, A) - 11);
+      if (y < -20 || y > A.h + 20) continue;
+      wins.push({ x: cx, y, buyWin });
+    }
+    st._winMarks = wins;
     const lv = vis.find((x) => x.c.t === st.liveT);
     if (lv && st.live) {
       let b = 0, s = 0; for (const n of (st.live.niveles || [])) { b += n.buy; s += n.sell; }
@@ -235,10 +245,10 @@ export function crearRender(host, opts = {}) {
     const o = c.o != null ? c.o : c.c, cl = c.c != null ? c.c : o;
     const sube = cl >= o, col = sube ? C.up : C.down;
     const yH = yP(c.h, A), yL = yP(c.l, A), yO = yP(o, A), yC = yP(cl, A);
-    const bw = Math.max(2, Math.min(9, st.colW * 0.1));
-    ctx.strokeStyle = col; ctx.globalAlpha = .55; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(cx, yH); ctx.lineTo(cx, yL); ctx.stroke();            // mecha
-    ctx.globalAlpha = .5; ctx.fillStyle = col;
+    const bw = Math.max(3, Math.min(10, st.colW * 0.12));
+    ctx.strokeStyle = col; ctx.globalAlpha = .8; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(cx, yH); ctx.lineTo(cx, yL); ctx.stroke();            // mecha (visible, conecta la vela)
+    ctx.globalAlpha = .72; ctx.fillStyle = col;
     const top = Math.min(yO, yC), hh = Math.max(1.5, Math.abs(yC - yO));
     ctx.fillRect(cx - bw / 2, top, bw, hh);                                            // cuerpo
     ctx.globalAlpha = 1;
@@ -277,27 +287,31 @@ export function crearRender(host, opts = {}) {
     const A = L.foot;
     ctx.fillStyle = 'rgba(255,255,255,.015)'; ctx.fillRect(A.x, A.y, A.w, A.h);
     ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(0, A.y + .5); ctx.lineTo(A.w, A.y + .5); ctx.stroke();
-    ctx.fillStyle = C.dim; ctx.font = '8px ui-monospace,monospace'; ctx.textAlign = 'left';
-    ctx.fillText('Δ DELTA', 5, A.y + 10); ctx.fillText('VOL', 5, A.y + A.h - 6);
     let maxD = 1; for (const { c } of vis) maxD = Math.max(maxD, Math.abs(c.delta));
     const texto = st.colW >= 52;
+    const tiles = [];
     for (const { c, x } of vis) {
       const gana = c.delta >= 0, col = gana ? C.up : C.down, cx = x + st.colW / 2;
       const base = gana ? '38,194,129' : '232,68,93', inten = Math.min(1, Math.abs(c.delta) / maxD);
-      // Tile con iluminación interior: misma estética que el Heatmap de VWAP Pro
       const bx = x + 1.5, by = A.y + 2, bw = st.colW - 3, bh = A.h - 4, rr = 5;
       const grad = ctx.createLinearGradient(0, by, 0, by + bh);
-      grad.addColorStop(0, `rgba(${base},${(0.14 + inten * 0.5).toFixed(3)})`); grad.addColorStop(1, `rgba(${base},${(0.05 + inten * 0.2).toFixed(3)})`);
-      ctx.save(); redondo(bx, by, bw, bh, rr); ctx.shadowColor = `rgba(${base},${(0.2 + inten * 0.35).toFixed(3)})`; ctx.shadowBlur = 5 + inten * 7; ctx.fillStyle = grad; ctx.fill(); ctx.restore();
-      ctx.save(); redondo(bx, by, bw, bh, rr); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(bx, by, bw, 2); ctx.restore();   // brillo superior interior
-      redondo(bx, by, bw, bh, rr); ctx.strokeStyle = `rgba(${base},${(0.3 + inten * 0.4).toFixed(3)})`; ctx.lineWidth = 1; ctx.stroke();
-      marca(cx, A.y + 13, 14, gana ? imgs.bull : imgs.bear, col, gana ? 'up' : 'down');   // ganador de la vela: imagen pequeña con sombra (sin movimiento)
+      grad.addColorStop(0, `rgba(${base},${(0.12 + inten * 0.44).toFixed(3)})`); grad.addColorStop(1, `rgba(${base},${(0.04 + inten * 0.16).toFixed(3)})`);
+      ctx.save(); redondo(bx, by, bw, bh, rr); ctx.shadowColor = `rgba(${base},${(0.16 + inten * 0.28).toFixed(3)})`; ctx.shadowBlur = 4 + inten * 6; ctx.fillStyle = grad; ctx.fill(); ctx.restore();
+      // TODO el contenido va recortado al recuadro → nunca se sale (fix del desfase)
+      ctx.save(); redondo(bx, by, bw, bh, rr); ctx.clip();
+      ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(bx, by, bw, 2);
+      ctx.globalAlpha = 0.5; marca(cx, A.y + 9, 8, gana ? imgs.bull : imgs.bear, col, gana ? 'up' : 'down'); ctx.globalAlpha = 1;   // flecha diminuta y tenue
       if (texto) {
-        const pct = c.total > 0 ? (c.delta / c.total) * 100 : 0;
-        ctx.font = '700 10px ui-monospace,monospace'; ctx.fillStyle = col; ctx.fillText(sfv(c.delta), cx, A.y + 27);
-        ctx.font = '9px ui-monospace,monospace'; ctx.fillStyle = C.dim; ctx.fillText(fv(c.total) + '  ' + (pct >= 0 ? '+' : '−') + Math.abs(pct).toFixed(0) + '%', cx, A.y + A.h - 7);
+        const pct = c.total > 0 ? Math.round((c.delta / c.total) * 100) : 0;
+        ctx.textAlign = 'center';
+        ctx.font = '700 10.5px ui-monospace,monospace'; ctx.fillStyle = col; ctx.fillText(sfv(c.delta), cx, A.y + 25);
+        ctx.font = '8px ui-monospace,monospace'; ctx.fillStyle = C.dim; ctx.fillText(fv(c.total) + ' ' + (pct >= 0 ? '+' : '−') + Math.abs(pct) + '%', cx, A.y + A.h - 7);
       }
+      ctx.restore();
+      redondo(bx, by, bw, bh, rr); ctx.strokeStyle = `rgba(${base},${(0.26 + inten * 0.34).toFixed(3)})`; ctx.lineWidth = 1; ctx.stroke();
+      tiles.push({ bx, by, bw, bh, rr, base, inten });
     }
+    st._deltaTiles = tiles;
     ctx.textAlign = 'left';
   }
 
@@ -323,8 +337,9 @@ export function crearRender(host, opts = {}) {
     // área bajo la curva (degradado) + línea con glow (igual que el VWAP)
     ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); });
     ctx.lineTo(pts[pts.length - 1].x, A.y + A.h); ctx.lineTo(pts[0].x, A.y + A.h); ctx.closePath();
-    const g = ctx.createLinearGradient(0, A.y, 0, A.y + A.h); g.addColorStop(0, `rgba(${col},.22)`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fill();
-    ctx.save(); ctx.shadowColor = `rgba(${col},.85)`; ctx.shadowBlur = 7; ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 1.9; ctx.lineJoin = 'round'; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke(); ctx.restore();
+    const g = ctx.createLinearGradient(0, A.y, 0, A.y + A.h); g.addColorStop(0, `rgba(${col},.28)`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fill();
+    ctx.save(); ctx.shadowColor = `rgba(${col},.95)`; ctx.shadowBlur = 9; ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 2.6; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath(); pts.forEach((p, i) => { const y = yv(p.v); i ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke(); ctx.restore();
+    const lastp = pts[pts.length - 1]; if (lastp) { ctx.save(); ctx.shadowColor = `rgba(${col},1)`; ctx.shadowBlur = 10; ctx.fillStyle = `rgb(${col})`; ctx.beginPath(); ctx.arc(lastp.x, yv(lastp.v), 3, 0, 7); ctx.fill(); ctx.restore(); }   // punto vivo del CVD
     if (0 >= lo && 0 <= hi) { const yz = yv(0); ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(0, yz + .5); ctx.lineTo(A.w, yz + .5); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.dim; ctx.font = '8px ui-monospace,monospace'; ctx.fillText('0', A.w - 12, yz - 2); }
     const cur = pts[pts.length - 1]; if (cur) { ctx.fillStyle = `rgb(${col})`; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText('CVD ' + sfv(cur.v), A.w - 6, A.y + 11); ctx.textAlign = 'left'; }
     for (const d of (st.agg.divergences || [])) { const p = pts.find((q) => q.t === d.t); if (!p) continue; const y = yv(p.v); marca(p.x, y + (d.kind === 'bull' ? 13 : -13), 13, d.kind === 'bull' ? imgs.bull : imgs.bear, d.kind === 'bull' ? C.buy : C.sell, d.kind === 'bull' ? 'up' : 'down'); }
@@ -397,12 +412,23 @@ export function crearRender(host, opts = {}) {
     // 1) Comet del CVD
     const pts = st._cvdPts;
     if (pts && pts.length >= 2) {
-      const w = st.W, period = 3200, frac = (now % period) / period, headX = frac * (w + 240) - 120, tail = 150, col = st._cvdCol || '142,162,255';
-      fctx.save(); fctx.lineJoin = 'round'; fctx.lineCap = 'round'; fctx.shadowColor = `rgba(${col},.9)`; fctx.shadowBlur = 12; fctx.lineWidth = 2.4;
-      for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1].x + pts[i].x) / 2, d = Math.abs(mx - headX); if (d > tail) continue; const a = 1 - d / tail; fctx.strokeStyle = `rgba(${col},` + (0.12 + 0.66 * a * a).toFixed(3) + ')'; fctx.beginPath(); fctx.moveTo(pts[i - 1].x, pts[i - 1].y); fctx.lineTo(pts[i].x, pts[i].y); fctx.stroke(); }
+      const w = st.W, period = 2600, frac = (now % period) / period, headX = frac * (w + 260) - 130, tail = 170, col = st._cvdCol || '142,162,255';
+      fctx.save(); fctx.lineJoin = 'round'; fctx.lineCap = 'round'; fctx.shadowColor = `rgba(${col},1)`; fctx.shadowBlur = 15; fctx.lineWidth = 3.2;
+      for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1].x + pts[i].x) / 2, d = Math.abs(mx - headX); if (d > tail) continue; const a = 1 - d / tail; fctx.strokeStyle = `rgba(255,255,255,` + (0.15 + 0.8 * a * a).toFixed(3) + ')'; fctx.beginPath(); fctx.moveTo(pts[i - 1].x, pts[i - 1].y); fctx.lineTo(pts[i].x, pts[i].y); fctx.stroke(); }
       fctx.restore();
     }
-    // 2) Absorción: imagen pequeña FLOTANDO en el lugar (sube/baja suave) + sombra
+    // 1b) DELTA: iluminación que respira sobre cada tile (como el Heatmap de VWAP
+    //     Pro). Suave, no exagerada. Va en la capa FX → se anima sin repintar todo.
+    for (const t of (st._deltaTiles || [])) {
+      const a = (0.05 + 0.1 * t.inten) * (0.45 + 0.55 * (0.5 + 0.5 * Math.sin(now / 820 + t.bx * 0.04)));
+      fctx.save(); fctx.beginPath(); const r = t.rr, x = t.bx, y = t.by, w = t.bw, h = t.bh;
+      fctx.moveTo(x + r, y); fctx.arcTo(x + w, y, x + w, y + h, r); fctx.arcTo(x + w, y + h, x, y + h, r); fctx.arcTo(x, y + h, x, y, r); fctx.arcTo(x, y, x + w, y, r); fctx.closePath();
+      fctx.clip(); const gg = fctx.createLinearGradient(0, y, 0, y + h); gg.addColorStop(0, `rgba(${t.base},${a.toFixed(3)})`); gg.addColorStop(1, `rgba(${t.base},0)`); fctx.fillStyle = gg; fctx.fillRect(x, y, w, h); fctx.restore();
+    }
+    // 2) Flecha del GANADOR que se queda en cada vela cerrada (verde abajo = toros,
+    //    roja arriba = osos). Estática, con sombra.
+    for (const m of (st._winMarks || [])) { fxImg(m.buyWin ? imgs.warUp : imgs.warDown, m.x, m.y, 13, 0.88, m.buyWin ? C.buy : C.sell, m.buyWin ? 'up' : 'down'); }
+    // 3) Absorción: imagen pequeña FLOTANDO en el lugar (sube/baja suave) + sombra
     for (const m of (st._absMarks || [])) { const bob = Math.sin(now / 640 + m.x * 0.05) * 2.4; fxImg(m.bull ? imgs.bull : imgs.bear, m.x, m.y - 14 + bob, 15, 0.96, m.bull ? C.buy : C.sell, m.bull ? 'up' : 'down'); }
     // 3) Guerra en vivo: roja (vendedores) arriba, verde (compradores) abajo. La
     //    del lado que va ganando PARPADEA; la otra queda tenue. Lee el estado en
