@@ -59,9 +59,9 @@ const HERRAMIENTAS = [
   { id:'foot', abre:'foot', nombre:'Footprint Pro', cat:'analysis', img:'assets/img/serv-footprint.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Order flow, candle by candle',
     desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' },
-  { id:'scalp', abre:'scalp', nombre:'Whale Trades', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
-    lema:'Live whale orders on a 1 second chart',
-    desc:'Whale Trades draws the live executed tape straight onto a 1 second chart. Every big market order becomes a bubble at the exact price and second it printed: green for aggressive buys that lift the offer, red for aggressive sells that hit the bid, and the bigger the trade in US dollars the bigger the bubble, with the largest one on screen pulsing so you never miss it. The size is scaled to each market, so every coin shows its own whales. Coin selector, timeframes from 1 second up to 1 day, shared drawing toolbar and a draggable, stretchable chart. See the real money moving the market, in real time, at the tick.' }
+  { id:'scalp', abre:'scalp', nombre:'Relative Rotation', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'The RRG rotation map, strength vs BTC',
+    desc:'The Relative Rotation Graph (RRG), the rotation map used on Bloomberg, Refinitiv and StockCharts and invented by Julius de Kempenaer. Instead of one price it shows the whole market at once: every coin is a dot placed by its relative strength versus a benchmark and by whether that strength is accelerating, and it drags a tail showing its recent rotation. Four quadrants, Leading, Weakening, Lagging and Improving, tell you at a glance which coins are gaining ground and which are fading. Pick the benchmark (BTC by default) and the timeframe, and hover any coin for its exact values. A professional rotation view you will not find sitting in most charting tools.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
@@ -159,9 +159,9 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=38', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
-    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=7', import.meta.url).href)).abrirMulti();
-    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=9', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=3', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=8', import.meta.url).href)).abrirMulti();
+    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=10', import.meta.url).href)).abrirFootprint();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=4', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
