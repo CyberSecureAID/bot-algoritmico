@@ -60,8 +60,8 @@ const HERRAMIENTAS = [
     lema:'Order flow, candle by candle',
     desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' },
   { id:'scalp', abre:'scalp', nombre:'Order Blocks', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
-    lema:'Volume weighted order block zones',
-    desc:'Volume weighted order block zones, the method popularised by BigBeluga on TradingView, on a live candle chart. It reads market structure (confirmed swing highs and lows), weights each pivot by how its volume compares to the recent average, and only keeps a zone once price displaces away from it by a multiple of ATR (100). The result is a clean map of demand (green) and supply (red) zones, drawn as rectangles that extend to the right while they stay valid, each tagged with its volume strength, with PH and PL structure labels, dashed displacement levels and B/S retest reactions. A zone is removed once price closes through it, so the chart only shows levels still in play. Default timeframe 1H, fully changeable. The zones are inferred from price and volume for analysis and education, not verified institutional orders, and the volume strength is relative, not a probability.' }
+    lema:'Trend ribbon and order block zones',
+    desc:'A live candle chart with two layers working together. First, a twelve line moving average ribbon (the Guppy GMMA): the averages squeeze into a point in a sideways market and fan out in a trend, the whole band is coloured by the current trend, green for buyers in control and red for sellers, and a clean LONG or SHORT label prints the moment the trend actually flips, in real time on the candle close, filtered by a volatility band so flat markets do not spam false signals. Second, order block zones in the style popularised by BigBeluga: green demand and red supply boxes built from pivots with real volume and an ATR (100) displacement, extended to the right while valid and removed once price closes through them. Read them as confluence, a LONG flip on a green zone or a SHORT flip into a red one. Default timeframe 1H, fully changeable. Everything is inferred from price and volume for analysis and education, not verified institutional orders, and no signal is a guarantee.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
@@ -161,7 +161,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=9', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=10', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=5', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=6', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
