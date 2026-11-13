@@ -455,6 +455,8 @@ export function estilos() {
   #nv-overlay .nv-pm-li{font-family:var(--mono,monospace);font-size:10.5px;color:#8b96a3;
     line-height:1.7;padding-left:11px;position:relative}
   #nv-overlay .nv-pm-li:before{content:'·';position:absolute;left:2px;color:#5c6672}
+  #nv-overlay .nv-pm-disc{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07);
+    font-size:10px;line-height:1.4;color:#79828d;letter-spacing:.2px}
 
   /* ── Panel de herramientas ── */
   #nv-overlay .nv-herr-btn.activa{border-color:var(--gold,#E8B84B);color:var(--gold,#E8B84B)}
