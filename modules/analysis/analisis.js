@@ -157,7 +157,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=7', import.meta.url).href)).abrirMulti();
-    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=7', import.meta.url).href)).abrirFootprint();
+    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=8', import.meta.url).href)).abrirFootprint();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
@@ -361,6 +361,7 @@ function mostrarDisclaimer(reView) {
         <img class="an-disc-top" src="${DISCLAIMER_IMG}" alt="">
         <img class="an-disc-fl" src="${DISCLAIMER_IMG}" alt="">
         <p>DecFreedom provides analytical tools, indicators and strategies for informational and educational purposes only. Nothing here is financial, investment, legal or tax advice, and we do not guarantee any result, profit or performance. Trading digital assets carries substantial risk and you may lose part or all of your capital. Every decision is your own and you are solely responsible for it.</p>
+        <p>Some tools include an <b>analyst</b>. The analyst is there only to <b>support your own professional analysis</b> with a live read of the market, in plain words. It is not a financial advisor, it does not guarantee any profit or result, and it never tells you what to buy or sell. Treat it as support, never as a recommendation.</p>
         <p>All tools are provided as is, without warranty of any kind, and part of the data may come from third parties. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this platform. By continuing you accept this notice and our Terms and Conditions.</p>
         ${reView ? '' : `<label class="an-disc-chk" style="display:flex;align-items:flex-start;gap:10px;margin:2px 0 14px;cursor:pointer;font-size:12.5px;line-height:1.5;color:#d4dae1">
           <input type="checkbox" id="an-disc-agree" style="flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:#E8B84B;cursor:pointer">
