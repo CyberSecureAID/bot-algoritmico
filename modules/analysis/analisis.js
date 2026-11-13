@@ -157,7 +157,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=7', import.meta.url).href)).abrirMulti();
-    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=5', import.meta.url).href)).abrirFootprint();
+    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=6', import.meta.url).href)).abrirFootprint();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
