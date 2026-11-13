@@ -59,9 +59,9 @@ const HERRAMIENTAS = [
   { id:'foot', abre:'foot', nombre:'Footprint Pro', cat:'analysis', img:'assets/img/serv-footprint.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Order flow, candle by candle',
     desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' },
-  { id:'scalp', abre:'scalp', nombre:'Relative Rotation', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
-    lema:'The RRG rotation map, strength vs BTC',
-    desc:'The Relative Rotation Graph (RRG), the rotation map used on Bloomberg, Refinitiv and StockCharts and invented by Julius de Kempenaer. Instead of one price it shows the whole market at once: every coin is a dot placed by its relative strength versus a benchmark and by whether that strength is accelerating, and it drags a tail showing its recent rotation. Four quadrants, Leading, Weakening, Lagging and Improving, tell you at a glance which coins are gaining ground and which are fading. Pick the benchmark (BTC by default) and the timeframe, and hover any coin for its exact values. A professional rotation view you will not find sitting in most charting tools.' }
+  { id:'scalp', abre:'scalp', nombre:'Order Blocks', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'Volume weighted order block zones',
+    desc:'Volume weighted order block zones, the method popularised by BigBeluga on TradingView, on a live candle chart. It reads market structure (confirmed swing highs and lows), weights each pivot by how its volume compares to the recent average, and only keeps a zone once price displaces away from it by a multiple of ATR (100). The result is a clean map of demand (green) and supply (red) zones, drawn as rectangles that extend to the right while they stay valid, each tagged with its volume strength, with PH and PL structure labels, dashed displacement levels and B/S retest reactions. A zone is removed once price closes through it, so the chart only shows levels still in play. Default timeframe 1H, fully changeable. The zones are inferred from price and volume for analysis and education, not verified institutional orders, and the volume strength is relative, not a probability.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
@@ -161,7 +161,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=9', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=10', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=4', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=5', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
