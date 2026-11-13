@@ -1,28 +1,20 @@
-/* modules/velaavela/velaavela.js — "Footprint" (nombre de cara al usuario).
-   El archivo NO se renombra, igual que "VWAP Pro" vive en modules/institutional/.
+/* modules/superscalper/superscalper.js — "Whale Trades" (nombre de cara al usuario).
+   El archivo NO se renombra (la carpeta queda como superscalper), igual que "VWAP Pro"
+   vive en modules/institutional/ y "Footprint" en modules/footprint/.
 
-   Servicio de Analysis. MISMO chrome y dinámica que Reaction/Smart/Heat/Liquidity
-   Pools: barra superior idéntica (Back · moneda+lista · temporalidad · precio+máx/mín
-   · export con marca de agua · ayuda), gráfica de canvas propia con zoom/pan (rueda,
-   arrastre del eje de precios = estira vertical, arrastre del eje de tiempo = estira
-   horizontal, doble clic = reset), barra de dibujo compartida (barra.js),
-   órdenes/alertas con clic derecho (orden.js) y catálogo único de monedas (config.js).
-   La señal se muestra sola con su ficha (no hay Single/Double). Cambia el MOTOR y la
-   presentación: una ficha que dice qué hacer y un panel de flujo grande y legible.
+   Servicio de Analysis. MISMO chrome y dinámica que Footprint / VWAP Pro / las pools:
+   barra superior idéntica (Back · moneda+lista · temporalidad · precio+máx/mín · export
+   con marca de agua · ayuda), gráfica de canvas propia con zoom/pan (rueda, arrastre del
+   eje de precios = estira vertical, arrastre del eje de tiempo = estira horizontal, doble
+   clic = reset), barra de dibujo compartida (barra.js), órdenes/alertas con clic derecho
+   (orden.js) y catálogo único de monedas (config.js).
 
-   MOTOR "Footprint" (flujo de órdenes): lee la CINTA ejecutada midiendo, por vela, el
-   DELTA = volumen taker comprador menos taker vendedor. Las velas de Binance ya traen
-   el volumen taker comprador (índice 10) y el quote (índice 7): delta = 2·takerBuy −
-   quote, exacto para todo el histórico y en vivo por el mismo WebSocket de klines (k.Q
-   y k.q). Con eso se arma el CVD (delta acumulado) y se detectan TRES señales
-   accionables, cada una proyecta entrada/stop/objetivo a 1:2 (ficha con estado, órdenes):
-     1) ABSORCIÓN: ola agresiva fuerte contra el movimiento pero el precio no cede →
-        hay un pasivo absorbiendo → giro a favor del que absorbe.
-     2) DIVERGENCIA CVD/precio: el precio hace extremo nuevo y el CVD no lo acompaña →
-        agotamiento → giro.
-     3) RUPTURA CONFIRMADA POR DELTA: el precio rompe un nivel con delta fuerte a favor
-        → continuación (filtra rupturas falsas).
-   Datos solo de Binance SPOT (regla de CLAUDE.md), sin futuros. */
+   La gráfica es a secas: velas (desde 1 segundo hasta 1 día, 2H incluido) SIN indicadores.
+   Lo único que se pinta encima es WHALE TRADES: cada orden de mercado grande es una
+   burbuja en su precio y su tiempo. Verde = compra agresiva (barre la oferta), roja =
+   venta agresiva (barre la demanda), tamaño = valor en USD. El umbral es dinámico para que
+   toda moneda muestre sus ballenas. Datos: operaciones reales de Binance SPOT (aggTrades)
+   y velas (klines), en vivo por WebSocket. Sin futuros (regla de CLAUDE.md). */
 
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=6';
 import { PARES, pintarIcono, TFS } from '../../assets/js/niveles/config.js?v=1';
@@ -32,7 +24,7 @@ import { cargarDib } from '../../assets/js/niveles/dibujo.js?v=3';
 const WEB = 'decfreedom.com';
 /* Ruta del logo resuelta contra la URL del script (no del documento): así
    /assets/img/cco-marca.png carga igual aunque la página se sirva desde
-   /modules/analysis/. Es la marca de agua del export y del lienzo. */
+   /modules/analysis/. Es la marca de agua del lienzo y del export. */
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const DISC_IMG = new URL('../../assets/portada/red/disclaimer.webp', import.meta.url).href;   // sello del disclaimer, el mismo de toda la plataforma
 const $ = (id) => document.getElementById(id);
@@ -41,30 +33,28 @@ let _par = 'BTC';
 
 const M = {
   tf: '1s', velas: [], precio: 0, dispC: null,        // dispC = cierre en formación SUAVIZADO (easing)
-  pos: null, cerradas: [],                            // posición ACTIVA (congelada) y operaciones cerradas (TP/SL) de registro
-  ema: {}, rsi: [], stoch: null,                      // EMAs por periodo, RSI(2) y estocástico (opcional)
-  ind: { ema9: false, ema20: false, ema50: true, ema100: false, ema200: false, stoch: false },   // EMA 50 fija (estrategia); el resto opcional
+  trades: [],                                         // buffer de operaciones individuales (whale trades)
   ancho: window.innerWidth < 760 ? 46 : 70, desplaz: 0, zoomY: 1, offsetY: 0,
   _geo: null, _cursor: null,
   cargando: true, error: null
 };
-const EMA_LEN = 50, RSI_LEN = 2, RSI_HI = 99, RSI_LO = 9, RR = 1.5;   // parámetros EXACTOS de la estrategia
-const EMA_COLS = { 9: '#38bdf8', 20: '#f472b6', 50: '#c678dd', 100: '#f59e0b', 200: '#22d3ee' };   // color por media
+const WH_CAP = 3000;                 // tope del buffer de operaciones (higiene de memoria)
+const WH_RMIN = 5, WH_RMAX = 42;     // radio de burbuja en px (mín/máx)
 // Temporalidades: 1s y segundos AGREGADOS desde klines de 1s (Binance solo da 1s nativo
-// por debajo del minuto), más las nativas hasta diario.
+// por debajo del minuto), más las nativas hasta diario (2H incluida).
 const SS_TFS = [
   { id: '1s', n: '1s', sec: 1 }, { id: '2s', n: '2s', sec: 2 }, { id: '5s', n: '5s', sec: 5 },
   { id: '10s', n: '10s', sec: 10 }, { id: '30s', n: '30s', sec: 30 },
   { id: '1m', n: '1m' }, { id: '5m', n: '5m' }, { id: '15m', n: '15m' },
-  { id: '1h', n: '1H' }, { id: '4h', n: '4H' }, { id: '1d', n: '1D' }
+  { id: '1h', n: '1H' }, { id: '2h', n: '2H' }, { id: '4h', n: '4H' }, { id: '1d', n: '1D' }
 ];
 const tfDef = (id) => SS_TFS.find((t) => t.id === id) || SS_TFS[0];
 // Agrega velas de 1s en cubos de `sec` segundos (para 2s..30s).
 function agregar(velas, sec) {
   const out = []; let cur = null;
   for (const v of velas) { const bt = Math.floor(v.t / sec) * sec;
-    if (!cur || cur.t !== bt) { if (cur) out.push(cur); cur = { t: bt, o: v.o, h: v.h, l: v.l, c: v.c, v: v.v, tb: v.tb, qv: v.qv, d: v.d }; }
-    else { if (v.h > cur.h) cur.h = v.h; if (v.l < cur.l) cur.l = v.l; cur.c = v.c; cur.v += v.v; cur.tb += v.tb; cur.qv += v.qv; cur.d += v.d; } }
+    if (!cur || cur.t !== bt) { if (cur) out.push(cur); cur = { t: bt, o: v.o, h: v.h, l: v.l, c: v.c, v: v.v }; }
+    else { if (v.h > cur.h) cur.h = v.h; if (v.l < cur.l) cur.l = v.l; cur.c = v.c; cur.v += v.v; } }
   if (cur) out.push(cur); return out;
 }
 async function traerVelasTF(simbolo, tf) {
@@ -90,20 +80,12 @@ async function rzFetch(path) {
 async function traerVelas(simbolo, tf, n = 700) {
   const r = await rzFetch(`/api/v3/klines?symbol=${simbolo}&interval=${tf}&limit=${n}`);
   const j = await r.json();
-  // La kline de Binance trae el volumen TAKER comprador (índice 10, quote) y el
-  // volumen quote total (índice 7). El DELTA de flujo de una vela = taker comprador
-  // menos taker vendedor = 2·takerBuy − total. Es la cinta ejecutada (los agresores).
-  return j.map((x) => {
-    const qv = +x[7] || 0, tb = +x[10] || 0;
-    return { t: Math.floor(x[0] / 1000), o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: qv || +x[5] || 0, qv, tb, d: 2 * tb - qv };
-  });
+  return j.map((x) => ({ t: Math.floor(x[0] / 1000), o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: (+x[7] || +x[5] || 0) }));
 }
 
 /* ── Velas EN VIVO por WebSocket de Binance ──
-   La vela en formación se ve al instante (el bucle de 90 ms ya repinta); al
-   cerrar se recalculan las zonas. El sondeo de 15 s sigue como resync/respaldo,
-   así que se conserva el fallback de hosts si stream.binance.com estuviera
-   bloqueado. `t` en SEGUNDOS y `v` en volumen quote, igual que traerVelas. ── */
+   La vela en formación se ve al instante (el bucle de 33 ms ya repinta). `t` en SEGUNDOS
+   y `v` en volumen quote, igual que traerVelas. El sondeo de 15 s sigue como resync. ── */
 let _ssStream = null, _ssStreamKey = '';
 function streamVelasRz(simbolo, tf, onK) {
   const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${tf}`;
@@ -129,23 +111,58 @@ function conectarStreamRz() {
 }
 function onKlineRz(k) {
   if (!k || !M.velas || !M.velas.length) return;
-  const qv = +k.q || 0, tb = +k.Q || 0;
-  const raw = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: qv || +k.v || 0, qv, tb, d: 2 * tb - qv };
+  const raw = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: (+k.q || +k.v || 0) };
   if (!(raw.c > 0)) return;
   const d = tfDef(M.tf), sec = (d.sec && d.sec > 1) ? d.sec : 0;
   const last = M.velas[M.velas.length - 1];
   if (sec) {   // sub-minuto: agrega el kline de 1s en su cubeta de `sec` segundos
     const bt = Math.floor(raw.t / sec) * sec;
     if (last && last.t === bt) { if (raw.h > last.h) last.h = raw.h; if (raw.l < last.l) last.l = raw.l; last.c = raw.c; M.precio = raw.c; return; }
-    if (!last || bt > last.t) { M.velas.push({ t: bt, o: raw.o, h: raw.h, l: raw.l, c: raw.c, v: raw.v, qv: raw.qv, tb: raw.tb, d: raw.d }); M.precio = raw.c; try { recalcular(); } catch (_) {} }
+    if (!last || bt > last.t) { M.velas.push({ t: bt, o: raw.o, h: raw.h, l: raw.l, c: raw.c, v: raw.v }); M.precio = raw.c; }
     return;
   }
-  // nativo (1s, 1m, …): la vela en formación se repinta suave desde el bucle
   if (raw.t === last.t) M.velas[M.velas.length - 1] = raw;
   else if (raw.t > last.t) M.velas.push(raw);
   else return;
   M.precio = raw.c;
-  if (k.x === true) { try { recalcular(); } catch (_) {} }         // al CERRAR: buscar señal
+}
+
+/* ── WHALE TRADES: operaciones individuales (aggTrades), semilla REST + vivo por WS ──
+   Cada trade: precio p, cantidad q, tiempo t (ms), lado agresor (buy) y valor usd = p·q.
+   buy === true  → el agresor compra (barre la oferta); buy === false → el agresor vende.
+   Se escribe api.binance.com / stream.binance.com y el feed-shim enruta al espejo. */
+async function traerTrades(simbolo, n = 1000) {
+  const r = await rzFetch(`/api/v3/aggTrades?symbol=${simbolo}&limit=${n}`);
+  const j = await r.json();
+  return j.map((a) => ({ t: a.T, p: +a.p, q: +a.q, buy: a.m === false, usd: (+a.p) * (+a.q) }));
+}
+let _whStream = null, _whKey = '';
+function streamTradesRz(simbolo, onT) {
+  const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@aggTrade`;
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket(url); } catch (_) { tmr = setTimeout(abrir, 2500); return; }
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.p) onT({ t: d.T, p: +d.p, q: +d.q, buy: d.m === false, usd: (+d.p) * (+d.q) }); } catch (_) {} };
+    ws.onclose = () => { if (!cerrado) { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); } };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} } };
+}
+function conectarWhales() {
+  const p = PARES.find((x) => x.id === _par) || {};
+  if (!p.s) return;
+  if (_whKey === p.s && _whStream) return;
+  if (_whStream) { try { _whStream.cerrar(); } catch (_) {} _whStream = null; }
+  _whKey = p.s;
+  try {
+    _whStream = streamTradesRz(p.s, (t) => {
+      M.trades.push(t);
+      if (M.trades.length > WH_CAP) M.trades.splice(0, M.trades.length - WH_CAP);
+      if (t.p > 0) M.precio = t.p;   // el tape da precio más fino que el cierre de la vela
+    });
+  } catch (_) { _whStream = null; }
 }
 
 const fmt = (p) => {
@@ -156,10 +173,17 @@ const fmt = (p) => {
   if (p >= 0.01) return p.toFixed(5);
   return p.toFixed(8);
 };
-/* Etiqueta del eje de tiempo: en 1 segundo, hora con SEGUNDOS. */
+/* Valor en USD compacto para las etiquetas de burbuja. */
+function fmtUsd(u) {
+  if (u >= 1e9) return '$' + (u / 1e9).toFixed(2) + 'B';
+  if (u >= 1e6) return '$' + (u / 1e6).toFixed(2) + 'M';
+  if (u >= 1e3) return '$' + (u / 1e3).toFixed(u >= 1e5 ? 0 : 1) + 'K';
+  return '$' + Math.round(u);
+}
+/* Etiqueta del eje de tiempo: en segundos, hora con SEGUNDOS. */
 function fmtFecha(tsSec) {
   const d = new Date(tsSec * 1000);
-  if (tfDef(M.tf).sec) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });   // todas las de segundos muestran HH:MM:SS
+  if (tfDef(M.tf).sec) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const intradia = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h'].includes(M.tf);
   return intradia
     ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
@@ -170,8 +194,7 @@ function fmtFecha(tsSec) {
 export async function abrirSuperScalper() {
   estilos();
   const prev = $('ss-overlay'); if (prev) prev.remove();
-  M.velas = []; M.data = { live: [], dead: [], triangles: [] }; M.cargando = true; M.error = null;
-  M._modoPos = null; M._posAuto = null;
+  M.velas = []; M.trades = []; M.cargando = true; M.error = null;
 
   const p0 = PARES.find((p) => p.id === _par) || PARES[0]; _par = p0.id;
   const chev = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
@@ -186,15 +209,13 @@ export async function abrirSuperScalper() {
         <div class="ss-px"><div class="ss-px-v" id="ss-px">·</div><div class="ss-hl"><span>H <b id="ss-hi">·</b></span><span>L <b id="ss-lo">·</b></span></div></div>
         <span id="ss-estado" class="ss-estado"></span>
         <div class="ss-der">
-          <button class="ss-share" id="ss-share" title="Share signal">Share signal</button>
-          <button class="ss-ico" id="ss-ind" title="Indicators"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></button>
           <button class="ss-ico" id="ss-foto" title="Share image"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
           <button class="ss-ico" id="ss-ayuda" title="How it works">?</button>
         </div>
       </div>
       <div class="ss-graf" id="ss-graf">
         <canvas class="ss-cv" id="ss-cv"></canvas>
-        <div class="ss-esperando" id="ss-esperando"><div class="ss-spin"></div><b>Loading the 1 second chart…</b><span>Streaming live candles, EMA 50 and the RSI 2 trigger.</span></div>
+        <div class="ss-esperando" id="ss-esperando"><div class="ss-spin"></div><b>Loading the 1 second chart…</b><span>Streaming the live tape. Big market orders appear as bubbles.</span></div>
         <img class="ss-marca" id="ss-marca" src="${LOGO}" alt="">
       </div>
     </div>`;
@@ -205,9 +226,7 @@ export async function abrirSuperScalper() {
   $('ss-sel').onclick = (e) => { e.stopPropagation(); menuPares(); };
   $('ss-ayuda').onclick = ayuda;
   $('ss-foto').onclick = guardarImagen;
-  $('ss-share').onclick = () => compartirSenal();
   $('ss-tfchip').onclick = (e) => { e.stopPropagation(); menuTf(); };
-  $('ss-ind').onclick = (e) => { e.stopPropagation(); panelIndicadores(); };
 
   ponerLogos();
   cargarVelas();
@@ -215,28 +234,27 @@ export async function abrirSuperScalper() {
   _pulso = setInterval(() => {
     if (!$('ss-cv')) return;
     if (M.precio > 0) { if (M.dispC == null) M.dispC = M.precio; else M.dispC += (M.precio - M.dispC) * 0.22; }   // easing: la vela en formación se MUEVE suave, no a saltos
-    gestionarPos();                                   // chequea objetivo/stop en vivo (la posición está congelada)
     dibujar();
   }, 33);   // ~30fps
   let _t = null; M._onResize = () => { clearTimeout(_t); _t = setTimeout(() => { if ($('ss-cv')) dibujar(); }, 200); };
   window.addEventListener('resize', M._onResize);
-  discScalper(false);   // disclaimer oficial de entrada (sello + aceptación obligatoria)
+  discWhales(false);   // disclaimer oficial de entrada (sello + aceptación obligatoria)
 }
 
-/* Disclaimer de entrada, con el MISMO patrón del resto de la plataforma: sello en la
-   esquina, exoneración total, y ACEPTACIÓN OBLIGATORIA (casilla + botón, tocar fuera
-   no cierra). Es una ESTRATEGIA, no consejo de inversión. reView: reabierto desde la ayuda. */
-function discScalper(reView) {
-  if (!reView) { try { if (localStorage.getItem('ss-disc-v1') === '1') return; } catch (_) {} }
+/* Disclaimer de entrada, MISMO patrón del resto de la plataforma: sello en la esquina,
+   exoneración total, y ACEPTACIÓN OBLIGATORIA (casilla + botón, tocar fuera no cierra).
+   Es una herramienta de DATOS de mercado, no consejo. reView: reabierto desde la ayuda. */
+function discWhales(reView) {
+  if (!reView) { try { if (localStorage.getItem('ss-disc-wh1') === '1') return; } catch (_) {} }
   const vieja = $('ss-disc'); if (vieja) vieja.remove();
   const d = document.createElement('div'); d.id = 'ss-disc'; d.className = 'ss-disc' + (reView ? ' rev' : '');
   d.innerHTML = `<div class="ss-disc-bg"></div><div class="ss-disc-c">
     ${reView ? '<button class="ss-disc-x" id="ss-disc-x" aria-label="Close">✕</button>' : ''}
     <img class="ss-disc-sello" src="${DISC_IMG}" alt="">
     <h4>Before you start</h4>
-    <p>Super Scalper is a <b>mechanical strategy</b> drawn on a live 1 second chart, for informational and educational purposes only. Nothing here is financial, investment, legal or tax advice, and we do not guarantee any result, profit or performance. The signals are the output of a fixed rule set, not a recommendation to buy or sell. Trading digital assets, and scalping in particular, carries a very high risk and you can lose part or all of your capital fast.</p>
-    <p>Every entry, exit and the size of every trade are your own decision and your sole responsibility. The tools are provided as is, without warranty of any kind, and part of the data comes from third parties. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.</p>
-    ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand this is a strategy and support only, not financial advice, that it guarantees no result, and that I trade entirely at my own risk.</span></label>'}
+    <p>Whale Trades is a <b>market data tool</b> that draws the live executed tape of a market on a 1 second chart, for informational and educational purposes only. It shows trades that already happened. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance. A large trade is not a prediction of where price goes next. Trading digital assets carries a very high risk and you can lose part or all of your capital fast.</p>
+    <p>Every entry, exit and the size of every trade are your own decision and your sole responsibility. The tools are provided as is, without warranty of any kind, and the data comes from third parties (Binance) and may be delayed or incomplete. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.</p>
+    ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand this is a market data tool for information only, not financial advice, that it guarantees no result, and that I trade entirely at my own risk.</span></label>'}
     <button class="ss-disc-ok" id="ss-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'Accept'}</button></div>`;
   document.body.appendChild(d);
   const cerrarD = () => d.remove();
@@ -247,14 +265,15 @@ function discScalper(reView) {
     chk.addEventListener('change', () => { if (chk.checked) ok.removeAttribute('disabled'); else ok.setAttribute('disabled', ''); });
   }
   $('ss-disc-ok').onclick = () => {
-    if (!reView) { const chk = $('ss-disc-agree'); if (!chk || !chk.checked) return; try { localStorage.setItem('ss-disc-v1', '1'); } catch (_) {} }
+    if (!reView) { const chk = $('ss-disc-agree'); if (!chk || !chk.checked) return; try { localStorage.setItem('ss-disc-wh1', '1'); } catch (_) {} }
     cerrarD();
   };
 }
 
 function cerrar() {
   clearInterval(_reloj); clearInterval(_pulso);
-  if (_ssStream) { try { _ssStream.cerrar(); } catch (_) {} _ssStream = null; _ssStreamKey = ''; }   // cierra el WebSocket de velas en vivo
+  if (_ssStream) { try { _ssStream.cerrar(); } catch (_) {} _ssStream = null; _ssStreamKey = ''; }   // cierra el WebSocket de velas
+  if (_whStream) { try { _whStream.cerrar(); } catch (_) {} _whStream = null; _whKey = ''; }         // cierra el WebSocket del tape
   if (M._onResize) window.removeEventListener('resize', M._onResize);
   if (_barra) { try { _barra.desmontar(); } catch (_) {} _barra = null; }
   document.querySelectorAll('#ss-picker, #ss-tfmenu, #ss-ayuda-box, #ss-disc').forEach((x) => x.remove());
@@ -264,160 +283,37 @@ function cerrar() {
 
 async function cargarVelas() {
   M.cargando = true;
-  M.cerradas = []; M.pos = null; M.dispC = null; _resueltos = new Set();   // moneda/temporalidad nueva: limpia posición y registro
-  if (_ssStream) { try { _ssStream.cerrar(); } catch (_) {} _ssStream = null; _ssStreamKey = ''; }   // corta el stream anterior antes de recargar otra moneda/temporalidad
+  M.dispC = null; M.trades = [];                               // moneda/temporalidad nueva: limpia el tape
+  if (_ssStream) { try { _ssStream.cerrar(); } catch (_) {} _ssStream = null; _ssStreamKey = ''; }
+  if (_whStream) { try { _whStream.cerrar(); } catch (_) {} _whStream = null; _whKey = ''; }
   const p = PARES.find((x) => x.id === _par) || {};
   try {
     M.velas = await traerVelasTF(p.s, M.tf);
     M.cargando = false;
-    if (M.velas.length) { M.precio = M.velas[M.velas.length - 1].c; recalcular(); }
+    if (M.velas.length) M.precio = M.velas[M.velas.length - 1].c;
     const est = $('ss-estado'); if (est) est.textContent = '';
   } catch (e) { M.cargando = false; M.error = 'feed'; const est = $('ss-estado'); if (est) est.textContent = 'Market data unavailable.'; }
+  // semilla del tape (últimas operaciones) + stream en vivo
+  try { traerTrades(p.s).then((ts) => { M.trades = ts; }).catch(() => {}); } catch (_) {}
   dibujar();
   clearInterval(_reloj);
   _reloj = setInterval(async () => {
-    try { const v = await traerVelasTF(p.s, M.tf); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; recalcular(); dibujar(); } catch (_) {}
+    try { const v = await traerVelasTF(p.s, M.tf); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; dibujar(); } catch (_) {}
   }, 15000);
   conectarStreamRz();          // velas EN VIVO por WebSocket (el sondeo de 15 s queda de resync)
-}
-function recalcular() {
-  const cl = M.velas.map((v) => v.c);
-  M.ema = {};                                      // EMAs activas (la 50 SIEMPRE; el resto, opcional)
-  const periodos = new Set([EMA_LEN]);
-  [9, 20, 100, 200].forEach((p) => { if (M.ind['ema' + p]) periodos.add(p); });
-  periodos.forEach((p) => { M.ema[p] = ema(cl, p); });
-  M.rsi = rsi(cl, RSI_LEN);                        // RSI longitud 2 (oscila fuerte)
-  M.stoch = M.ind.stoch ? estocastico(M.velas, 14, 3, 3) : null;
-  // Solo se BUSCA una señal nueva si NO hay posición activa. Una vez disparada, la
-  // posición queda CONGELADA (no se recalcula) hasta que toque objetivo o stop.
-  if (!M.pos) { const s = buscarSenal(M.velas, M.ema[EMA_LEN], M.rsi); if (s) { M.pos = s; _resueltos.add(s.tTrig); } }
-  if (_resueltos.size > 400) { const vivos = new Set(M.velas.slice(-300).map((v) => v.t)); _resueltos = new Set([..._resueltos].filter((t) => vivos.has(t))); }   // higiene
-  refrescarCabecera();
+  conectarWhales();            // tape EN VIVO (aggTrades) para las burbujas
 }
 
-/* ══════════════════ MOTOR — Estrategia RSI(2) + EMA(50) ══════════════════
-   Reglas EXACTAS en 1 segundo:
-     · EMA 50 sobre el cierre = filtro de tendencia. Precio POR ENCIMA = solo largos;
-       precio POR DEBAJO = solo cortos.
-     · RSI longitud 2, banda baja 9 (verde) y banda alta 99 (roja).
-     · LARGO: precio sobre la EMA y el RSI TOCA la banda baja (<= 9).
-     · CORTO: precio bajo la EMA y el RSI TOCA la banda alta (>= 99).
-     · Nada en contra de la tendencia (sobre la EMA tocando la banda alta = no operar).
-   Cada señal arma entrada, stop por DEBAJO/encima de la EMA (sin tocarla) y objetivo
-   a 1:1.5. Las que pegan objetivo quedan como registro (cerrarGanadoras). */
-function ema(vals, len) {
-  const out = new Array(vals.length).fill(null); if (!vals.length) return out;
-  const k = 2 / (len + 1); let e = vals[0];
-  for (let i = 0; i < vals.length; i++) { e = i ? vals[i] * k + e * (1 - k) : vals[0]; out[i] = i >= len - 1 ? e : null; }
-  return out;
-}
-function rsi(vals, len) {
-  const out = new Array(vals.length).fill(null); if (vals.length <= len) return out;
-  let ag = 0, al = 0;
-  for (let i = 1; i <= len; i++) { const d = vals[i] - vals[i - 1]; if (d >= 0) ag += d; else al -= d; }
-  ag /= len; al /= len;
-  out[len] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
-  for (let i = len + 1; i < vals.length; i++) {
-    const d = vals[i] - vals[i - 1], g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
-    ag = (ag * (len - 1) + g) / len; al = (al * (len - 1) + l) / len;
-    out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
-  }
-  return out;
-}
-function calcAtr(velas, idx, p) {
-  let s = 0, c = 0;
-  for (let i = Math.max(1, idx - p + 1); i <= idx; i++) {
-    const tr = Math.max(velas[i].h - velas[i].l, Math.abs(velas[i].h - velas[i - 1].c), Math.abs(velas[i].l - velas[i - 1].c));
-    s += tr; c++;
-  }
-  return c ? s / c : 0;
-}
-/* Pivotes locales (k vecinos a cada lado): devuelve [másReciente, previo]. */
-function pivotes(velas, last, tipo) {
-  const k = 2, out = [];
-  for (let i = last - k; i >= Math.max(k, last - 44); i--) {
-    const v = velas[i]; let ok = true;
-    for (let j = 1; j <= k; j++) {
-      if (tipo === 'low') { if (!(v.l < velas[i - j].l && v.l < velas[i + j].l)) { ok = false; break; } }
-      else { if (!(v.h > velas[i - j].h && v.h > velas[i + j].h)) { ok = false; break; } }
-    }
-    if (ok) { out.push(i); if (out.length >= 2) break; }
-  }
-  return out;
-}
-/* Arma la señal: entrada, stop (invalidación del flujo) y objetivo a 1:2. */
-let _resueltos = new Set();   // tiempos de velas gatillo ya resueltas (ganada/invalidada): no se re-arman
-/* Busca una señal NUEVA y la CONGELA: entrada = cierre de la última vela cerrada en el
-   momento del disparo, stop al otro lado de la EMA y objetivo a 1:1.5. Lo que devuelve
-   NO se vuelve a tocar: entrada, stop y objetivo quedan fijos. */
-function buscarSenal(velas, emaArr, rsiArr) {
-  const n = velas.length;
-  if (!emaArr || n < EMA_LEN + 4) return null;
-  const last = n - 2;                                   // última CERRADA (la n-1 está en formación)
-  const atr = calcAtr(velas, last, 14) || ((velas[last].h - velas[last].l) || 1e-9);
-  for (let i = last; i >= Math.max(EMA_LEN, last - 6); i--) {
-    if (_resueltos.has(velas[i].t)) continue;           // gatillo ya usado: no re-armar
-    const e = emaArr[i], r = rsiArr[i]; if (e == null || r == null) continue;
-    const v = velas[i], buf = Math.max(atr * 0.35, e * 0.0004);   // stop al otro lado de la EMA, sin tocarla
-    const entry = velas[last].c, tFire = velas[last].t;
-    if (v.c > e && r <= RSI_LO) { const sl = e - buf, R = Math.abs(entry - sl) || 1e-9;   // LARGO
-      return { largo: true, entry, sl, tp: entry + RR * R, ema: e, tTrig: velas[i].t, tFire, verdict: 'Price is above the EMA 50 (uptrend) and the RSI 2 tagged the lower band. A pullback long with the trend.' };
-    }
-    if (v.c < e && r >= RSI_HI) { const sl = e + buf, R = Math.abs(entry - sl) || 1e-9;   // CORTO
-      return { largo: false, entry, sl, tp: entry - RR * R, ema: e, tTrig: velas[i].t, tFire, verdict: 'Price is below the EMA 50 (downtrend) and the RSI 2 tagged the upper band. A pullback short with the trend.' };
-    }
-  }
-  return null;
-}
-/* Gestiona la posición ACTIVA contra el precio en vivo. Si pega objetivo queda marcada
-   verde (TP); si pega stop, roja (SL). En ambos casos deja de estar activa y pasa a
-   registro. NUNCA cambia entrada/stop/objetivo: están congelados desde el disparo. */
-function gestionarPos() {
-  const S = M.pos; if (!S || !(M.precio > 0)) return;
-  const tp = S.largo ? M.precio >= S.tp : M.precio <= S.tp;
-  const sl = S.largo ? M.precio <= S.sl : M.precio >= S.sl;
-  if (tp || sl) {
-    M.cerradas.push({ largo: S.largo, entry: S.entry, sl: S.sl, tp: S.tp, tFire: S.tFire, result: tp ? 'tp' : 'sl', tEnd: M.velas.length ? M.velas[M.velas.length - 1].t : 0 });
-    if (M.cerradas.length > 16) M.cerradas.shift();
-    M.pos = null;
-  }
-}
-/* Estocástico clásico %K/%D (opcional). */
-function estocastico(velas, kLen, kSmooth, dLen) {
-  const n = velas.length, kraw = new Array(n).fill(null);
-  for (let i = kLen - 1; i < n; i++) { let hi = -Infinity, lo = Infinity; for (let j = i - kLen + 1; j <= i; j++) { if (velas[j].h > hi) hi = velas[j].h; if (velas[j].l < lo) lo = velas[j].l; } kraw[i] = hi > lo ? ((velas[i].c - lo) / (hi - lo)) * 100 : 50; }
-  const sma = (arr, len) => { const o = new Array(arr.length).fill(null); for (let i = 0; i < arr.length; i++) { if (arr[i] == null) continue; let s = 0, c = 0; for (let j = Math.max(0, i - len + 1); j <= i; j++) { if (arr[j] != null) { s += arr[j]; c++; } } o[i] = c ? s / c : null; } return o; };
-  const k = sma(kraw, kSmooth); return { k, d: sma(k, dLen) };
-}
-/* Etiqueta corta de la señal (dirección). */
-function etiquetaSig(s) { return !s ? '' : (s.largo ? 'RSI 2 · LONG' : 'RSI 2 · SHORT'); }
-/* Estado operativo de la señal según dónde está el precio ahora mismo: dice si la
-   entrada sigue siendo tomable, si ya corrió, si pegó objetivo o si se invalidó. */
-function estadoSig(S, precio) {
-  if (!S || !(precio > 0)) return { t: 'WATCHING', c: '#9aa4b0' };
-  const R = Math.abs(S.entry - S.sl) || 1e-9;
-  if (S.largo) {
-    if (precio <= S.sl) return { t: 'INVALIDATED', c: '#ff5162' };
-    if (precio >= S.tp) return { t: 'TARGET HIT', c: '#2ee86a' };
-    if (precio <= S.entry + R * 0.3) return { t: 'ENTRY VALID NOW', c: '#2ee86a' };
-    return { t: 'ALREADY RUNNING', c: '#E8B84B' };
-  }
-  if (precio >= S.sl) return { t: 'INVALIDATED', c: '#ff5162' };
-  if (precio <= S.tp) return { t: 'TARGET HIT', c: '#2ee86a' };
-  if (precio >= S.entry - R * 0.3) return { t: 'ENTRY VALID NOW', c: '#2ee86a' };
-  return { t: 'ALREADY RUNNING', c: '#E8B84B' };
-}
 function refrescarCabecera() {
   const px = $('ss-px'), hi = $('ss-hi'), lo = $('ss-lo');
   if (!M.velas.length) return;
   const u = M.velas[M.velas.length - 1];
-  // máx/mín del día (24h): últimas ~24h según TF
   let dH = u.h, dL = u.l; const back = Math.min(M.velas.length, tfPorDia(M.tf));
   for (let k = M.velas.length - back; k < M.velas.length; k++) { if (M.velas[k].h > dH) dH = M.velas[k].h; if (M.velas[k].l < dL) dL = M.velas[k].l; }
   if (px) { px.textContent = fmt(M.precio); px.className = 'ss-px-v ' + (u.c >= u.o ? 'up' : 'down'); }
   if (hi) hi.textContent = fmt(dH); if (lo) lo.textContent = fmt(dL);
 }
-function tfPorDia(tf) { if (tfDef(tf).sec) return 700; const m = { '1m': 1440, '5m': 288, '15m': 96, '1h': 24, '4h': 6, '1d': 1 }; return m[tf] || 120; }
+function tfPorDia(tf) { if (tfDef(tf).sec) return 700; const m = { '1m': 1440, '5m': 288, '15m': 96, '1h': 24, '2h': 12, '4h': 6, '1d': 1 }; return m[tf] || 120; }
 
 /* ══════════════════ RENDER ══════════════════ */
 function pal() { return { fondo: '#0a0e14', rejilla: 'rgba(255,255,255,.04)', ink: '#e7ebf0', dim: '#7d8794' }; }
@@ -430,10 +326,6 @@ function dibujar() {
     engancharGestos(cv);
     cv.dataset.listo = '1';
     _barra = montarBarra(zona);
-    // barra.js solo carga los dibujos cuando el par CAMBIA (par !== N.par). Como
-    // N.par arranca en 'BTC' por defecto, al abrir en BTC nunca se cargaban y
-    // N.dibujos quedaba undefined → al soltar un trazo, soltarDib() reventaba
-    // (push sobre undefined) y la barra quedaba congelada. Lo garantizamos aquí.
     try { N.seccion = 'superscalper'; N.par = _par; cargarDib(); } catch (_) { N.dibujos = N.dibujos || []; }
     import('../../assets/js/orden.js?v=126').then((od) => {
       od.conectar({
@@ -457,18 +349,11 @@ function dibujar() {
   if (esp) esp.style.display = 'none';
 
   const mDer = 66, mAba = 22;
-  // Panel inferior para el flujo (histograma de delta + línea CVD). El área de precio
-  // termina en y1; el panel va entre y1+gapP y yTime; el eje de tiempo queda abajo.
-  const panelH = Math.max(78, Math.round((H - mAba) * 0.26)), gapP = 8;
   const yTime = H - mAba;
-  const x1 = W - mDer, y1 = yTime - panelH - gapP, xVelas = x1;
+  const x1 = W - mDer, y1 = yTime, xVelas = x1;         // el precio ocupa todo el alto (gráfica a secas, sin panel inferior)
   const ancho = Math.min(M.velas.length, M.ancho || 100);
   const huecoMax = Math.floor(ancho * 0.45);
-  // Reserva hueco a la derecha para PROYECTAR las zonas de la operación (ganancia
-  // y riesgo) adelantadas al precio cuando hay señal.
-  const futNec = M.pos ? Math.min(huecoMax, 18) : 0;
   let desp = Math.max(-huecoMax, Math.min(M.desplaz || 0, Math.max(0, M.velas.length - ancho)));
-  if (futNec && (M.desplaz || 0) <= 0 && desp > -futNec) desp = -futNec;
   M.desplaz = desp;
   const fin = M.velas.length - desp;
   const vis = M.velas.slice(Math.max(0, fin - ancho), Math.min(M.velas.length, fin));
@@ -478,9 +363,6 @@ function dibujar() {
 
   let pAlto = Math.max(...vis.map((v) => v.h)), pBajo = Math.min(...vis.map((v) => v.l));
   if (pc > 0) { pAlto = Math.max(pAlto, pc); pBajo = Math.min(pBajo, pc); }
-  // abre la escala para que entren el stop y el take profit de la posición (tope 45%)
-  const rV0 = (pAlto - pBajo) || 1, capHi = pAlto + rV0 * 0.45, capLo = pBajo - rV0 * 0.45;
-  if (M.pos) { [M.pos.sl, M.pos.tp, M.pos.entry].forEach((p) => { if (p <= capHi && p >= capLo) { pAlto = Math.max(pAlto, p); pBajo = Math.min(pBajo, p); } }); }
   const rangoB = (pAlto - pBajo) || 1;
   const despY = ((M.offsetY || 0) / Math.max(1, y1)) * rangoB;
   const centro = (pAlto + pBajo) / 2 + despY;
@@ -490,11 +372,9 @@ function dibujar() {
   const Y = (p) => y1 - y1 * ((p - pMin) / Math.max(1e-12, pMax - pMin));
   const paso = xVelas / (ancho || vis.length);
   const pri = fin - ancho;
-  const Xbar = (barIdx) => (barIdx - pri) * paso + paso / 2;   // índice de vela → x
-  M._geo = { pMin, pMax, y1, xVelas, n: vis.length, vis, paso, pri, fin, ancho, tfMs: (M.velas.length > 1 ? (M.velas[1].t - M.velas[0].t) * 1000 : 3600000), t0: M.velas[0].t };
-
-  // marca de agua: esquina inferior IZQUIERDA del panel de PRECIO (por encima del RSI)
-  const _wm = $('ss-marca'); if (_wm) { const wb = Math.round(H - y1 + 6); if (_wm._wb !== wb) { _wm._wb = wb; _wm.style.bottom = wb + 'px'; } }
+  const Xbar = (barIdx) => (barIdx - pri) * paso + paso / 2;
+  const tfMs = (M.velas.length > 1 ? (M.velas[1].t - M.velas[0].t) * 1000 : 1000);
+  M._geo = { pMin, pMax, y1, xVelas, n: vis.length, vis, paso, pri, fin, ancho, tfMs, t0: M.velas[0].t };
 
   // órdenes/alertas del usuario (mismo estilo que las pools)
   if (_od) _zonasOd = _od.pintar(g, { x1, Y, pMin, pMax, simbolo: (PARES.find((p) => p.id === _par) || {}).s || '' });
@@ -504,19 +384,12 @@ function dibujar() {
   for (let i = 1; i < 6; i++) { const y = (y1 / 6) * i; g.beginPath(); g.moveTo(0, y); g.lineTo(x1, y); g.stroke(); }
 
   const now = Date.now();
-  const pulso = 0.5 + 0.5 * Math.sin(now / 420);          // latido lento de zonas
 
   // ── VELAS ──
   dibujarVelas(g, vis, Y, paso);
 
-  // ── OPERACIONES GANADAS: quedan dibujadas de registro (vigencia del éxito) ──
-  dibujarGanadoras(g, Y, paso);
-
-  // ── MEDIAS MÓVILES (EMA 50 fija + opcionales) con glow iluminado como el VWAP Pro ──
-  dibujarEMAs(g, Y, paso, now);
-
-  // ── POSICIÓN (congelada): zona de entrada / SL / TP + ficha ──
-  dibujarPosicion(g, x1, Y, pMin, pMax, Xbar, pulso, now);
+  // ── WHALE TRADES: burbujas de órdenes grandes sobre el precio ──
+  dibujarWhales(g, Y, M._geo, now);
 
   // línea del precio (suavizada)
   if (pc > 0) {
@@ -527,22 +400,19 @@ function dibujar() {
     g.fillStyle = '#071018'; g.font = 'bold 10px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(fmt(pc), x1 + 6, yp + 3.5);
   }
 
-  // La operación de la señal (zonas, niveles y ficha) ya la dibuja dibujarFootprint.
-  M._posAuto = null;
-
   // eje de precios (marcas)
   g.fillStyle = pal().dim; g.font = '10px ui-monospace,monospace'; g.textAlign = 'left';
   for (let i = 0; i <= 5; i++) { const y = (y1 / 5) * i; const pr = pMax - (pMax - pMin) * (i / 5); g.fillText(fmt(pr), x1 + 6, y + (i === 0 ? 10 : i === 5 ? -3 : 3)); }
 
-  // ── PANEL RSI(2): oscilador con bandas 9 (verde) y 99 (roja) y línea amarilla ──
-  dibujarPanelRSI(g, x1, y1 + gapP, yTime, paso);
-
-  // eje de TIEMPO (abajo): fechas/horas, igual que las demás secciones
+  // eje de TIEMPO (abajo)
   g.fillStyle = '#0b0e12'; g.fillRect(0, yTime, W, mAba);
   g.fillStyle = pal().dim; g.font = '9px ui-monospace,monospace'; g.textAlign = 'center';
   const cadaX = Math.max(1, Math.floor(vis.length / 7));
   vis.forEach((v, i) => { if (i % cadaX !== 0) return; const x = i * paso + paso / 2; if (x > xVelas - 14) return; g.fillText(fmtFecha(v.t), x, yTime + 14); });
   g.textAlign = 'left';
+
+  // leyenda del servicio (arriba-izquierda), discreta
+  dibujarLeyenda(g);
 
   // crosshair + tachuelas de precio (der) y hora (abajo)
   if (M._cursor && M._cursor.x < x1 && M._cursor.y < y1 && M._cursor.x > 0 && M._cursor.y > 0) {
@@ -561,6 +431,8 @@ function dibujar() {
     }
   }
 
+  refrescarCabecera();
+
   // barra de dibujo compartida
   if (_barra && M._geo) _barra.redibujar({ W, H, x1: xVelas, y1, pMin, pMax, Y, ancho, paso, fin }, M.velas, _par);
 }
@@ -578,227 +450,65 @@ function dibujarVelas(g, vis, Y, paso) {
   }
 }
 
-/* Parte un texto en varias líneas que caben en maxW (para la lectura de la ficha). */
-function envolver(g, text, maxW, max) {
-  const words = String(text).split(' '); const lines = []; let cur = '';
-  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
-  if (cur) lines.push(cur); return lines.slice(0, max || 3);
-}
-/* FICHA DE OPERACIÓN (arriba-izquierda): dice qué hacer. Con señal: tipo, dirección,
-   estado (si la entrada es tomable ahora), lectura en claro y los tres niveles con
-   R:R 1:2. Sin señal: escaneando + quién manda el flujo. Sin sombra, sin guiones. */
-function dibujarFicha(g, S, precio) {
-  const bx = 12, by = 12, bw = 224;
-  g.save(); g.textAlign = 'left';
-  if (!S) {
-    const n = M.velas.length, e50 = M.ema[EMA_LEN], e = (e50 && n) ? e50[n - 1] : null, px = M.precio || (n ? M.velas[n - 1].c : 0);
-    const up = e != null ? px >= e : true;              // tendencia por la EMA 50
-    const r = M.rsi.length ? M.rsi[M.rsi.length - 2] : null;
-    const bh = 78;
-    g.fillStyle = 'rgba(13,17,24,.92)'; redondeado(g, bx, by, bw, bh, 12); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.1)'; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 12); g.stroke();
-    g.fillStyle = '#E8B84B'; g.beginPath(); g.arc(bx + 18, by + 22, 3.4, 0, 6.283); g.fill();
-    g.fillStyle = '#e7ebf0'; g.font = '900 13px system-ui,sans-serif'; g.fillText('SCANNING', bx + 28, by + 26);
-    const c = up ? '#2ee86a' : '#ff5162';
-    g.fillStyle = c; g.beginPath(); g.arc(bx + 18, by + 46, 3.2, 0, 6.283); g.fill();
-    g.fillStyle = '#c3cbd4'; g.font = '700 11px system-ui,sans-serif'; g.fillText(up ? 'Above EMA 50 — looking for longs' : 'Below EMA 50 — looking for shorts', bx + 28, by + 49);
-    g.fillStyle = '#7d8794'; g.font = '600 10px system-ui,sans-serif'; g.fillText(r != null ? `Waiting for RSI 2 to tag ${up ? '9' : '99'} · now ${r.toFixed(0)}` : 'Waiting for the RSI tag.', bx + 16, by + 68);
-    g.restore(); return;
+/* WHALE TRADES: cada orden de mercado grande es un círculo en su precio y su tiempo.
+   Verde = compra agresiva, roja = venta agresiva, radio ∝ valor en USD. El umbral es
+   DINÁMICO (relativo a la mayor del tramo visible) para que toda moneda muestre sus
+   ballenas sin saturar. La mayor del tramo lleva un anillo que late (viva). */
+function dibujarWhales(g, Y, geo, now) {
+  if (!geo || !M.trades.length) return;
+  const { paso, vis, xVelas, y1, tfMs } = geo;
+  if (!vis.length || !(tfMs > 0)) return;
+  const t0ms = vis[0].t * 1000;
+  const tEndms = t0ms + vis.length * tfMs;
+  const xForT = (ms) => ((ms - t0ms) / tfMs) * paso;
+  // ventana visible + mayor operación del tramo (para el umbral dinámico)
+  let mx = 0; const win = [];
+  for (let i = M.trades.length - 1; i >= 0; i--) {
+    const tr = M.trades[i]; if (tr.t < t0ms) break;      // buffer ordenado por tiempo ascendente
+    if (tr.t > tEndms) continue;
+    win.push(tr); if (tr.usd > mx) mx = tr.usd;
   }
-  const largo = S.largo, rgb = largo ? '46,232,106' : '255,74,90';
-  const st = estadoSig(S, precio);
-  const crgb = _hex2rgb(st.c);
-  const fi = M.velas.findIndex((v) => v.t === S.tFire), ago = fi >= 0 ? Math.max(0, (M.velas.length - 1) - fi) : 0, fresh = ago <= 1 ? 'live' : ago + ' bars ago';
-  const lins = envolver(g, S.verdict, bw - 30, 2);
-  const dy = by + 74 + lins.length * 14 + 2;   // divisoria (debajo de la lectura)
-  const bh = (dy - by) + 88;                     // la caja llega hasta debajo del R:R
-  g.fillStyle = 'rgba(13,17,24,.95)'; redondeado(g, bx, by, bw, bh, 13); g.fill();
-  g.strokeStyle = `rgba(${rgb},.5)`; g.lineWidth = 1.2; redondeado(g, bx, by, bw, bh, 13); g.stroke();
-  g.fillStyle = `rgb(${rgb})`; redondeado(g, bx, by + 12, 3, bh - 24, 2); g.fill();
-  // dirección + tipo + frescura
-  g.fillStyle = `rgb(${rgb})`; g.font = '900 17px system-ui,sans-serif'; g.fillText(largo ? 'LONG' : 'SHORT', bx + 16, by + 28);
-  const dw = g.measureText(largo ? 'LONG' : 'SHORT').width;
-  g.fillStyle = '#8b95a1'; g.font = '700 9px ui-monospace,monospace'; g.fillText(etiquetaSig(S), bx + 22 + dw, by + 27);
-  g.textAlign = 'right'; g.fillStyle = '#6b7681'; g.font = '600 9px ui-monospace,monospace'; g.fillText(fresh, bx + bw - 14, by + 27); g.textAlign = 'left';
-  // estado (pastilla)
-  g.font = '800 10px system-ui,sans-serif'; const sw = g.measureText(st.t).width + 18;
-  g.fillStyle = `rgba(${crgb},.16)`; redondeado(g, bx + 16, by + 38, sw, 19, 7); g.fill();
-  g.strokeStyle = `rgba(${crgb},.55)`; g.lineWidth = 1; redondeado(g, bx + 16, by + 38, sw, 19, 7); g.stroke();
-  g.fillStyle = st.c; g.fillText(st.t, bx + 25, by + 51);
-  // lectura en claro
-  g.fillStyle = '#aab3bf'; g.font = '600 11px system-ui,sans-serif';
-  let ly = by + 74; lins.forEach((l) => { g.fillText(l, bx + 16, ly); ly += 14; });
-  // divisoria (dy ya calculado arriba para dimensionar la caja)
-  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; g.beginPath(); g.moveTo(bx + 16, dy); g.lineTo(bx + bw - 16, dy); g.stroke();
-  // niveles
-  const row = (lab, val, c, yy) => {
-    g.fillStyle = '#7d8794'; g.font = '700 10px system-ui,sans-serif'; g.textAlign = 'left'; g.fillText(lab, bx + 16, yy);
-    g.fillStyle = c; g.font = '800 12px ui-monospace,monospace'; g.textAlign = 'right'; g.fillText(fmt(val), bx + bw - 16, yy); g.textAlign = 'left';
-  };
-  row('Entry', S.entry, '#eef2f6', dy + 20);
-  row('Stop', S.sl, '#ff6b78', dy + 39);
-  row('Target', S.tp, '#38d46a', dy + 58);
-  g.fillStyle = '#7d8794'; g.font = '700 10px system-ui,sans-serif'; g.fillText('Risk : Reward', bx + 16, dy + 79);
-  g.fillStyle = '#E8B84B'; g.font = '900 12px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('1 : 1.5', bx + bw - 16, dy + 79); g.textAlign = 'left';
-  g.restore();
-}
-/* Etiqueta de disparo estilo SuperTrend: pastilla "Buy"/"Sell" con pico hacia la vela y
-   flote suave (sube y baja + glow latiendo). Verde para largos (debajo de la vela), roja
-   para cortos (encima de la vela). */
-function etiquetaSenal(g, x, yv, largo, now) {
-  const txt = largo ? 'Buy' : 'Sell', rgb = largo ? '46,232,106' : '255,74,90';
-  const bob = Math.sin(now / 300) * 2.6;                      // flote vertical
-  const glow = 6 + 4 * (0.5 + 0.5 * Math.sin(now / 260));     // latido del glow
-  const gap = 13 + (largo ? bob : -bob);                      // separación de la vela (respira)
+  if (!(mx > 0)) return;
+  const thr = mx * 0.10, span = Math.max(1e-9, mx - thr);
+  let big = null;
   g.save();
-  g.font = '900 11px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  const padX = 9, tw = g.measureText(txt).width, bw = tw + padX * 2, bh = 18, pico = 5, r = 7;
-  const xe = M._geo ? M._geo.xVelas : x + 100;
-  const cx = Math.max(bw / 2 + 2, Math.min(xe - bw / 2 - 2, x));
-  const yTop = largo ? (yv + gap + pico) : (yv - gap - pico - bh);
-  g.shadowColor = `rgba(${rgb},.95)`; g.shadowBlur = glow; g.fillStyle = `rgb(${rgb})`;
-  redondeado(g, cx - bw / 2, yTop, bw, bh, r); g.fill();      // cuerpo redondeado
-  g.beginPath();                                              // pico hacia la vela
-  if (largo) { g.moveTo(cx, yTop - pico); g.lineTo(cx - pico, yTop + 1); g.lineTo(cx + pico, yTop + 1); }
-  else { g.moveTo(cx, yTop + bh + pico); g.lineTo(cx - pico, yTop + bh - 1); g.lineTo(cx + pico, yTop + bh - 1); }
-  g.closePath(); g.fill();
-  g.shadowBlur = 0; g.fillStyle = '#06110a'; g.fillText(txt, cx, yTop + bh / 2 + 0.5);
-  g.restore(); g.textBaseline = 'alphabetic';
-}
-/* POSICIÓN CONGELADA en el precio: zonas R:R (ganancia/riesgo) desde la ENTRADA hacia
-   la DERECHA (sin líneas sobresaliendo a la izquierda), EN/SL/TP con etiqueta, la etiqueta
-   SuperTrend en la vela gatillo, y la ficha. Entrada/stop/objetivo NO cambian. */
-function dibujarPosicion(g, x1, Y, pMin, pMax, Xbar, pulso, now) {
-  const S = M.pos, geo = M._geo; if (!geo) return;
-  if (!S) { dibujarFicha(g, null, M.precio); return; }
-  const rgbHi = S.largo ? '150,255,195' : '255,150,165';
-  const paso = geo.paso || 8;
-  const fi = M.velas.findIndex((v) => v.t === S.tFire), ti = M.velas.findIndex((v) => v.t === S.tTrig);
-  const xEntrada = fi >= 0 ? Xbar(fi) : Xbar(M.velas.length - 2);   // x de la vela de ENTRADA
-  const xa = Math.max(0, xEntrada), xR = x1;                        // las líneas empiezan en la entrada y van a la DERECHA
-  const yE = Y(S.entry), yS = Y(S.sl), yT = Y(S.tp);
-  // zonas de ganancia (verde) y de riesgo (roja) desde la entrada hacia el frente
-  if (xR > xa) {
-    g.fillStyle = 'rgba(46,232,106,.12)'; g.fillRect(xa, Math.min(yE, yT), xR - xa, Math.abs(yT - yE));
-    g.fillStyle = 'rgba(255,74,90,.13)'; g.fillRect(xa, Math.min(yE, yS), xR - xa, Math.abs(yS - yE));
-    const sweep = (now % 2600) / 2600, grd = g.createLinearGradient(xa, 0, xR, 0);
-    for (let k = 0; k <= 10; k++) { const p = k / 10, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${rgbHi},${(0.012 + 0.045 * b).toFixed(3)})`); }
-    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(xa, Math.min(yE, yT), xR - xa, Math.abs(yT - yE)); g.restore();
+  g.beginPath(); g.rect(0, 0, xVelas, y1); g.clip();         // las burbujas viven dentro del panel de precio
+  for (const tr of win) {
+    if (tr.usd < thr) continue;
+    const x = xForT(tr.t); if (x < -WH_RMAX || x > xVelas + WH_RMAX) continue;
+    const y = Y(tr.p);
+    const f = Math.sqrt((tr.usd - thr) / span);             // 0..1
+    const r = WH_RMIN + (WH_RMAX - WH_RMIN) * f;
+    const rgb = tr.buy ? '46,232,106' : '255,74,90';
+    g.beginPath(); g.arc(x, y, r, 0, 6.2832);
+    g.fillStyle = `rgba(${rgb},${(0.12 + 0.22 * f).toFixed(3)})`; g.fill();
+    g.save(); g.lineWidth = 1.4; g.strokeStyle = `rgba(${rgb},${(0.5 + 0.4 * f).toFixed(3)})`;
+    g.shadowColor = `rgba(${rgb},.9)`; g.shadowBlur = 6 + 14 * f; g.stroke(); g.restore();
+    if (f > 0.55) { g.fillStyle = `rgb(${rgb})`; g.font = '800 10px ui-monospace,monospace'; g.textAlign = 'center'; g.fillText(fmtUsd(tr.usd), x, y - r - 4); }
+    if (!big || tr.usd > big.usd) big = { x, y, r, rgb, usd: tr.usd };
   }
-  // etiqueta estilo SuperTrend en la vela gatillo: "Buy" (verde, debajo) o "Sell" (rojo,
-  // encima), con pico hacia la vela y flote suave. Marca dónde el RSI tocó la banda.
-  { const v = ti >= 0 ? M.velas[ti] : null, xt = ti >= 0 ? Xbar(ti) : xEntrada;
-    if (v) etiquetaSenal(g, xt, S.largo ? Y(v.l) : Y(v.h), S.largo, now); }
-  // niveles entrada / stop / objetivo (de la entrada a la derecha)
-  const linea = (lab, p, c, dash, lw) => {
-    if (p > pMax || p < pMin) return; const y = Y(p);
-    g.save(); if (dash) g.setLineDash(dash); g.strokeStyle = c; g.lineWidth = lw || 1.5; g.globalAlpha = 0.95;
-    g.beginPath(); g.moveTo(xa, y); g.lineTo(xR, y); g.stroke(); g.restore(); g.setLineDash([]);
-    g.font = '800 9px ui-monospace,monospace'; const t = lab + ' ' + fmt(p), tw = g.measureText(t).width, bw = Math.max(54, tw + 12);
-    g.fillStyle = c; redondeado(g, xR - bw - 2, y - 8, bw, 16, 4); g.fill();
-    g.fillStyle = '#06110a'; g.textAlign = 'left'; g.fillText(t, xR - bw + 4, y + 3.3);
-  };
-  linea('TP', S.tp, '#2ee86a', [5, 4], 1.4);
-  linea('EN', S.entry, `rgb(${rgbHi})`, null, 2);
-  linea('SL', S.sl, '#ff5162', [5, 4], 1.4);
+  // anillo pulsante en la mayor ballena del tramo
+  if (big) { const p = (now % 1400) / 1400; const rr = big.r + 4 + p * 16; g.save(); g.globalAlpha = (1 - p) * 0.6; g.lineWidth = 2; g.strokeStyle = `rgb(${big.rgb})`; g.beginPath(); g.arc(big.x, big.y, rr, 0, 6.2832); g.stroke(); g.restore(); }
+  g.restore();
   g.textAlign = 'left';
-  dibujarFicha(g, S, M.precio);
 }
 
-/* MEDIAS MÓVILES: la EMA 50 (fija) con glow + cometa como el VWAP Pro, y las opcionales
-   con el mismo efecto más sutil. El glow va en UNA sola pasada por media (no por segmento),
-   así no frena el redibujo (esa era la causa de las velas a saltos y la cruceta retrasada). */
-function dibujarEMAs(g, Y, paso, now) {
-  const geo = M._geo; if (!geo) return;
-  const pri = geo.pri, vis = geo.vis;
-  const periodos = Object.keys(M.ema).map(Number).sort((a, b) => a - b);
-  g.save(); g.beginPath(); g.rect(0, 0, geo.xVelas, geo.y1); g.clip();   // recorta las medias al panel de PRECIO (no invaden el RSI)
-  for (const per of periodos) {
-    const arr = M.ema[per]; if (!arr) continue;
-    const col = EMA_COLS[per] || '#c678dd', rgb = _hex2rgb(col), esBase = per === EMA_LEN, pts = [];
-    for (let i = 0; i < vis.length; i++) { const e = arr[pri + i]; if (e == null) continue; pts.push([i * paso + paso / 2, Y(e)]); }
-    if (pts.length < 2) continue;
-    g.save();
-    g.strokeStyle = col; g.lineWidth = esBase ? 2 : 1.6; g.shadowColor = `rgba(${rgb},.8)`; g.shadowBlur = esBase ? 11 : 7;
-    g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
-    g.restore();
-    if (esBase) {   // cometa iluminado, SIN shadow por segmento (barato)
-      g.save(); g.globalCompositeOperation = 'lighter';
-      const L = pts.length, head = (now / 20) % L, span = Math.max(6, L * 0.16);
-      for (let i = 1; i < L; i++) { let dd = i - head; if (dd < 0) dd += L; const a = dd < span ? 1 - dd / span : 0; if (a <= 0.05) continue;
-        g.strokeStyle = `rgba(245,225,255,${(a * 0.85).toFixed(3)})`; g.lineWidth = 2.4;
-        g.beginPath(); g.moveTo(pts[i - 1][0], pts[i - 1][1]); g.lineTo(pts[i][0], pts[i][1]); g.stroke(); }
-      g.restore();
-    }
-    const last = pts[pts.length - 1];
-    g.fillStyle = col; g.font = '800 9px ui-monospace,monospace'; g.textAlign = 'right';
-    g.fillText('EMA ' + per, Math.max(66, last[0]), last[1] - 6); g.textAlign = 'left';
-  }
-  g.restore();   // cierra el clip del panel de precio (si no, se oculta el RSI de abajo)
-}
-/* Operaciones CERRADAS de registro: las que pegaron objetivo quedan en verde (TP) y las
-   que pegaron stop en rojo (SL), con su zona y etiqueta. Se mapean por el tiempo de la
-   vela de entrada, así quedan ancladas donde ocurrieron. */
-function dibujarGanadoras(g, Y, paso) {
-  const geo = M._geo; if (!geo || !M.cerradas.length) return;
-  const vis = geo.vis;
-  for (const c of M.cerradas) {
-    const idx = vis.findIndex((v) => v.t === c.tFire); if (idx < 0) continue;
-    const win = c.result === 'tp', col = win ? '46,232,106' : '255,74,90';
-    const x = idx * paso + paso / 2, yE = Y(c.entry), yEnd = Y(win ? c.tp : c.sl), w = Math.max(10, paso * 1.6);
-    g.save();
-    g.fillStyle = `rgba(${col},.08)`; g.fillRect(x, Math.min(yE, yEnd), w, Math.abs(yEnd - yE));
-    g.strokeStyle = `rgba(${col},.55)`; g.setLineDash([3, 3]); g.lineWidth = 1; g.beginPath(); g.moveTo(x, yEnd); g.lineTo(x + w, yEnd); g.stroke(); g.setLineDash([]);
-    g.strokeStyle = `rgba(${col},.4)`; g.beginPath(); g.moveTo(x, yE); g.lineTo(x + w, yE); g.stroke();
-    g.fillStyle = `rgb(${col})`; g.font = '800 9px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(win ? 'TP' : 'SL', x + 2, yEnd + (yEnd < yE ? -3 : 11));
-    g.restore();
-  }
-  g.textAlign = 'left';
-}
-/* PANEL RSI(2): oscilador 0-100 con la banda baja 9 (verde), la banda alta 99 (roja)
-   y la guía 50. La línea del RSI va en amarillo brillante. Es el gatillo de la estrategia. */
-function dibujarPanelRSI(g, x1, yTop, yBot, paso) {
-  const geo = M._geo, H = yBot - yTop; if (!geo || H < 36) return;
-  const vis = geo.vis, pri = geo.pri;
-  g.fillStyle = 'rgba(255,255,255,.02)'; g.fillRect(0, yTop, x1, H);
-  g.strokeStyle = 'rgba(232,184,75,.18)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, yTop + 0.5); g.lineTo(x1, yTop + 0.5); g.stroke();
-  const h0 = yTop + 20, h1 = yBot - 8;
-  const yR = (v) => h1 - (h1 - h0) * (Math.max(0, Math.min(100, v)) / 100);
-  g.save(); g.strokeStyle = 'rgba(255,255,255,.08)'; g.setLineDash([3, 3]); const y50 = yR(50); g.beginPath(); g.moveTo(0, y50); g.lineTo(x1, y50); g.stroke(); g.restore();
-  const banda = (v, col) => { const y = yR(v); g.save(); g.strokeStyle = col; g.lineWidth = 1.2; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(0, y); g.lineTo(x1, y); g.stroke(); g.restore();
-    g.fillStyle = col; g.font = '800 9px ui-monospace,monospace'; g.textAlign = 'right'; g.fillText(String(v), x1 - 4, y - 2); g.textAlign = 'left'; };
-  banda(RSI_HI, '#ff5162');   // 99 roja
-  banda(RSI_LO, '#26d46a');   // 9 verde
-  const pts = [];
-  for (let i = 0; i < vis.length; i++) { const r = M.rsi[pri + i]; if (r == null) continue; pts.push([i * paso + paso / 2, yR(r)]); }
-  if (pts.length > 1) {
-    g.save(); g.strokeStyle = '#ffe11a'; g.lineWidth = 2; g.shadowColor = 'rgba(255,225,26,.55)'; g.shadowBlur = 6;
-    g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke(); g.restore();
-    const last = pts[pts.length - 1]; g.fillStyle = '#ffe11a'; g.beginPath(); g.arc(last[0], last[1], 3, 0, 6.283); g.fill();
-  }
-  // Estocástico opcional (%K azul, %D naranja), misma escala 0-100
-  if (M.stoch) {
-    const lin = (arr, col) => { const ps = []; for (let i = 0; i < vis.length; i++) { const vv = arr[pri + i]; if (vv == null) continue; ps.push([i * paso + paso / 2, yR(vv)]); } if (ps.length > 1) { g.save(); g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); ps.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke(); g.restore(); } };
-    lin(M.stoch.k, 'rgba(56,189,248,.9)'); lin(M.stoch.d, 'rgba(245,158,11,.95)');
-  }
-  g.textAlign = 'left'; g.fillStyle = '#ffe11a'; g.font = '900 10px system-ui,sans-serif'; g.fillText('RSI 2', 10, yTop + 14);
-  const rNow = M.rsi.length ? M.rsi[M.rsi.length - 2] : null;
-  if (rNow != null) { g.fillStyle = '#8b95a1'; g.font = '800 10px ui-monospace,monospace'; g.fillText(rNow.toFixed(0), 52, yTop + 14); }
-  if (M.stoch) { g.fillStyle = 'rgba(56,189,248,.9)'; g.font = '800 9px ui-monospace,monospace'; g.fillText('STOCH', 86, yTop + 14); }
+/* Leyenda discreta (arriba-izquierda): qué es cada burbuja. */
+function dibujarLeyenda(g) {
+  const bx = 12, by = 12, bw = 186, bh = 56;
+  g.save(); g.textAlign = 'left';
+  g.fillStyle = 'rgba(13,17,24,.9)'; redondeado(g, bx, by, bw, bh, 11); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 11); g.stroke();
+  g.fillStyle = '#E8B84B'; g.font = '900 11px system-ui,sans-serif'; g.fillText('WHALE TRADES', bx + 12, by + 19);
+  g.fillStyle = '#2ee86a'; g.beginPath(); g.arc(bx + 16, by + 34, 4, 0, 6.2832); g.fill();
+  g.fillStyle = '#c3cbd4'; g.font = '700 10px system-ui,sans-serif'; g.fillText('Aggressive buy', bx + 26, by + 37);
+  g.fillStyle = '#ff5162'; g.beginPath(); g.arc(bx + 16, by + 48, 4, 0, 6.2832); g.fill();
+  g.fillStyle = '#c3cbd4'; g.fillText('Aggressive sell', bx + 26, by + 51);
+  g.fillStyle = '#7d8794'; g.font = '600 9px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('size = USD', bx + bw - 12, by + 19);
+  g.restore(); g.textAlign = 'left';
 }
 
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
-
-/* ══════════════════ OPERACIÓN DE LA SEÑAL (para el export) ══════════════════ */
-function _hex2rgb(hex) { const n = parseInt((hex || '#2ee86a').slice(1), 16); return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`; }
-
-/* La operación de la señal, para el export (Share). Una sola entrada con su stop y
-   su objetivo a 1:2. */
-function posicionesDeNiveles() {
-  const S = M.pos; if (!S) return [];
-  const tipo = S.largo ? 'largo' : 'corto';
-  return [{ tipo, pe: S.entry, pStop: S.sl, pTarget: S.tp, rr: 1.5 }];
-}
 
 /* ══════════════════ GESTOS (zoom/pan) ══════════════════ */
 function engancharGestos(cv) {
@@ -816,15 +526,15 @@ function engancharGestos(cv) {
     const r = cv.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
     M._cursor = { x, y };
     if (!arr) {
-      cv.style.cursor = enEscala(x) ? 'ns-resize' : (enEjeX(x, y) ? 'ew-resize' : 'crosshair');   // precios: estira vertical; fechas: estira horizontal
-      return;   // la cruceta la pinta el bucle de 30fps con M._cursor: sigue el cursor sin atascarse
+      cv.style.cursor = enEscala(x) ? 'ns-resize' : (enEjeX(x, y) ? 'ew-resize' : 'crosshair');
+      return;
     }
-    if (dragEsc) {   // arrastre sobre el eje de precios → estira/contrae la escala vertical (como TradingView)
+    if (dragEsc) {
       const dy = y - ay;
       if (Math.abs(dy) > 1) { M.zoomY = Math.max(0.2, Math.min(6, (M.zoomY || 1) * (1 + dy * 0.004))); ay = y; dibujar(); }
       return;
     }
-    if (dragX) {   // arrastre sobre el eje de FECHAS → estira/contrae el tiempo (↔, como TradingView)
+    if (dragX) {
       const dxx = x - ax;
       if (Math.abs(dxx) > 2) { const maxA = Math.max(60, (M.velas.length || 700) - 2); M.ancho = Math.max(14, Math.min(maxA, Math.round((M.ancho || 100) * (1 + dxx * 0.006)))); ax = x; dibujar(); }
       return;
@@ -849,7 +559,7 @@ function menuPares() {
   html += '</div>'; m.innerHTML = html; document.body.appendChild(m);
   const r = ancla.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, r.left) + 'px';
   ponerLogos(m);
-  m.querySelectorAll('.ss-cm-it').forEach((b) => b.onclick = () => { const id = b.dataset.id; m.remove(); if (id !== _par) { _par = id; const p = PARES.find((x) => x.id === id) || {}; const lg = $('ss-logo'); if (lg) { lg.dataset.cg = p.cg || ''; lg.dataset.ico = p.ico || ''; } $('ss-par').textContent = id; $('ss-nm').textContent = p.n || ''; ponerLogos(); M._posAuto = null; cargarVelas(); } });
+  m.querySelectorAll('.ss-cm-it').forEach((b) => b.onclick = () => { const id = b.dataset.id; m.remove(); if (id !== _par) { _par = id; const p = PARES.find((x) => x.id === id) || {}; const lg = $('ss-logo'); if (lg) { lg.dataset.cg = p.cg || ''; lg.dataset.ico = p.ico || ''; } $('ss-par').textContent = id; $('ss-nm').textContent = p.n || ''; ponerLogos(); cargarVelas(); } });
   const q = m.querySelector('#ss-cm-q'); q.addEventListener('input', () => { const v = q.value.trim().toLowerCase(); m.querySelectorAll('.ss-cm-it').forEach((b) => b.style.display = (!v || b.dataset.b.includes(v)) ? '' : 'none'); });
   setTimeout(() => q.focus(), 30);
   const fuera = (ev) => { if (!m.contains(ev.target) && !ancla.contains(ev.target)) { m.remove(); document.removeEventListener('mousedown', fuera); } };
@@ -866,42 +576,17 @@ function menuTf() {
   const fuera = (ev) => { if (!m.contains(ev.target) && !ancla.contains(ev.target)) { m.remove(); document.removeEventListener('mousedown', fuera); } };
   setTimeout(() => document.addEventListener('mousedown', fuera), 10);
 }
-/* Panel de indicadores (como el de VWAP Pro): la EMA 50 y el RSI 2 son de la estrategia
-   (fijos); se pueden AÑADIR más medias (9, 20, 100, 200) con el mismo glow y el
-   estocástico clásico, apagado por default. */
-function panelIndicadores() {
-  if ($('ss-indmenu')) { $('ss-indmenu').remove(); return; }
-  const ancla = $('ss-ind'); const m = document.createElement('div'); m.id = 'ss-indmenu'; m.className = 'ss-pop ss-indpop';
-  const fila = (per) => `<label class="ss-ind-it"><span><i class="ss-ind-dot" style="background:${EMA_COLS[per]}"></i>EMA ${per}</span><input type="checkbox" data-ema="${per}"${M.ind['ema' + per] ? ' checked' : ''}></label>`;
-  m.innerHTML = `<div class="ss-ind-h">Moving averages</div>
-    <label class="ss-ind-it"><span><i class="ss-ind-dot" style="background:${EMA_COLS[50]}"></i>EMA 50</span><em>strategy</em></label>
-    ${fila(9)}${fila(20)}${fila(100)}${fila(200)}
-    <div class="ss-ind-h">Oscillators</div>
-    <label class="ss-ind-it"><span><i class="ss-ind-dot" style="background:#ffe11a"></i>RSI 2</span><em>strategy</em></label>
-    <label class="ss-ind-it"><span><i class="ss-ind-dot" style="background:#38bdf8"></i>Stochastic</span><input type="checkbox" data-stoch${M.ind.stoch ? ' checked' : ''}></label>`;
-  document.body.appendChild(m);
-  const r = ancla.getBoundingClientRect(), w = m.offsetWidth || 230;
-  m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + 'px';
-  m.querySelectorAll('[data-ema]').forEach((b) => b.onchange = () => { M.ind['ema' + b.dataset.ema] = b.checked; recalcular(); dibujar(); });
-  const st = m.querySelector('[data-stoch]'); if (st) st.onchange = () => { M.ind.stoch = st.checked; recalcular(); dibujar(); };
-  const fuera = (ev) => { if (!m.contains(ev.target) && !ancla.contains(ev.target)) { m.remove(); document.removeEventListener('mousedown', fuera); } };
-  setTimeout(() => document.addEventListener('mousedown', fuera), 10);
-}
 function ponerLogos(root) {
   (root || document).querySelectorAll('.ss-logo, .ss-mini').forEach((el) => {
     const cg = el.dataset.cg, ico = el.dataset.ico;
     el.style.backgroundImage = '';
-    if (ico) { pintarIcono(el); return; }   // divisas (EUR €, GBP £) → moneda SVG
+    if (ico) { pintarIcono(el); return; }
     if (cg && window.__aurexLogos && window.__aurexLogos[cg]) { el.style.backgroundImage = `url(${window.__aurexLogos[cg]})`; el.classList.add('con'); el.textContent = ''; return; }
     el.textContent = (el.closest('[data-id]')?.dataset.id || _par || '?')[0];
   });
   cargarLogosCache(root);
 }
 let _logosFetch = null;
-/* Garantiza que window.__aurexLogos esté cargado (caché local o CoinGecko) y
-   DEVUELVE una promesa esperable. Lo usan tanto los logos de la interfaz como
-   el export de señal: así, igual que Heat Pools espera a ponerLogos() antes de
-   dibujar, aquí se espera a tener el logo antes de pintarlo en la imagen. */
 function asegurarLogos() {
   if (window.__aurexLogos && Object.keys(window.__aurexLogos).length) return Promise.resolve();
   try { const g = JSON.parse(localStorage.getItem('aurex-logos') || 'null'); if (g && g.datos && Object.keys(g.datos).length) { window.__aurexLogos = g.datos; return Promise.resolve(); } } catch (_) {}
@@ -931,13 +616,13 @@ function guardarImagen() {
     const yB = cv.height; g.fillStyle = '#0b0e12'; g.fillRect(0, yB, out.width, barra);
     g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, out.width, 2 * e2);
     const textos = (x) => {
-      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Super Scalper', x, yB + 34 * e2);
+      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Whale Trades', x, yB + 34 * e2);
       g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText(WEB, x, yB + 56 * e2);
       g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillText(`${_par} · ${M.tf}`, out.width - 20 * e2, yB + 34 * e2);
       g.font = `${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#6b7681'; g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), out.width - 20 * e2, yB + 56 * e2);
       g.textAlign = 'left';
     };
-    const bajar = () => out.toBlob((blob) => { devolver(); if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-superscalper-${_par}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
+    const bajar = () => out.toBlob((blob) => { devolver(); if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-whaletrades-${_par}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
     const logo = new Image(); let hecho = false;
     const una = (w) => { if (hecho) return; hecho = true; textos(w ? 20 * e2 + w + 18 * e2 : 20 * e2); bajar(); };
     logo.onload = () => { try { const alto = 52 * e2, ancho = Math.round(logo.width * (alto / logo.height)); g.drawImage(logo, 20 * e2, yB + (barra - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } };
@@ -945,129 +630,37 @@ function guardarImagen() {
   } catch (_) { devolver(); }
 }
 
-/* ══════════════════ SHARE SIGNAL (misma dinámica que Heat Pools, adaptada) ══════════
-   Copia un texto y genera una IMAGEN: gráfico + columnas ENTRY/STOP/TARGET de las
-   posiciones (single/double), R:R 1:2, logo de la moneda, sección, fecha, precio y
-   temporalidad. Usa la señal vigente. */
-function compartirSenal() {
-  const pos = M._posAuto || posicionesDeNiveles();
-  const sh = $('ss-share');
-  const flash = (m) => { if (sh) { const t = sh.dataset.base || sh.textContent; sh.dataset.base = t; sh.textContent = m; setTimeout(() => { sh.textContent = t; }, 1500); } };
-  if (!pos.length) { flash('No signals'); return; }
-  const par = PARES.find((p) => p.id === _par) || { id: _par };
-  const dec = (v) => { const a = Math.abs(v); return a >= 1000 ? v.toFixed(1) : a >= 1 ? v.toFixed(3) : v.toFixed(5); };
-  const hora = new Date().toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
-  const precio = M.precio ? dec(M.precio) : '·';
-  const ents = pos.map((p) => dec(p.pe)), sls = pos.map((p) => dec(p.pStop)), tps = pos.map((p) => dec(p.pTarget));
-  const n = ents.length;
-  const lista = (arr) => arr.map((v, i) => `${i + 1}: ${v}`).join('\n');
-  const tipoTxt = M.pos ? `${etiquetaSig(M.pos)} · ${M.pos.largo ? 'LONG' : 'SHORT'}\n` : '';
-  const txt = `SUPER SCALPER SIGNAL\n${tipoTxt}\n${par.id} · ${M.tf} · ${hora} UTC · Price ${precio}\n\nENTRY\n${lista(ents)}\n\nSTOP LOSS\n${lista(sls)}\n\nTAKE PROFIT\n${lista(tps)}\n\nRISK : REWARD   1:1.5\n\n${WEB} · Super Scalper`;
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => flash('Copied ✓')).catch(() => {});
-
-  const chart = $('ss-cv');
-  const W = 1180, BG = '#0a0d12';
-  const chartH = chart && chart.width ? Math.round(W * (chart.height / chart.width)) : 0;
-  const padX = 54, headH = 156, rowH = 56, rrH = 92, footH = 84;
-  const H = chartH + headH + n * rowH + rrH + footH;
-  const cv = document.createElement('canvas'), g = cv.getContext('2d'); cv.width = W; cv.height = H;
-  const cargar = (src, cors) => new Promise((res) => { if (!src) return res(null); const im = new Image(); if (cors) im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
-  const prep = (async () => {
-    const sym = par.id.toLowerCase();
-    let coin = await cargar(`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${sym}.png`, true);
-    if (!coin && par.cg) {                                   // spothq no tiene monedas nuevas (p.ej. JUP) → respaldo CoinGecko
-      if (!(window.__aurexLogos && window.__aurexLogos[par.cg])) { try { await asegurarLogos(); } catch (_) {} }
-      if (window.__aurexLogos && window.__aurexLogos[par.cg]) coin = await cargar(window.__aurexLogos[par.cg], true);
-    }
-    const marca = await cargar(LOGO, false);
-    return [coin, marca];
-  })();
-  prep.then(([coin, marca]) => {
-    g.fillStyle = BG; g.fillRect(0, 0, W, H);
-    if (chart && chart.width) g.drawImage(chart, 0, 0, W, chartH);
-    const y0 = chartH;
-    g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, y0 + 0.5); g.lineTo(W, y0 + 0.5); g.stroke();
-    const ls = 72, lx = padX, ly = y0 + 30;
-    g.save(); g.beginPath(); g.arc(lx + ls / 2, ly + ls / 2, ls / 2, 0, 6.2832); g.closePath();
-    g.fillStyle = coin ? '#ffffff' : '#141b25'; g.fill();
-    if (coin) { g.clip(); g.drawImage(coin, lx, ly, ls, ls); }
-    else { g.fillStyle = '#E8B84B'; g.font = '800 24px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(par.id.slice(0, 4), lx + ls / 2, ly + ls / 2 + 1); }
-    g.restore();
-    if (coin) { g.strokeStyle = 'rgba(232,184,75,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(lx + ls / 2, ly + ls / 2, ls / 2, 0, 6.2832); g.stroke(); }
-    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    const tx = lx + ls + 24;
-    g.fillStyle = '#E8B84B'; g.font = '800 40px system-ui,sans-serif'; g.fillText('Super', tx, y0 + 56);
-    const hw = g.measureText('Super').width;
-    g.fillStyle = '#e8ecf2'; g.font = '800 40px system-ui,sans-serif'; g.fillText(' Scalper', tx + hw, y0 + 56);
-    g.fillStyle = '#8b95a1'; g.font = '600 18px ui-monospace,monospace';
-    g.fillText(`${par.id}    ·    ${M.tf}    ·    ${hora} UTC    ·    Price ${precio}`, tx, y0 + 88);
-    const colBlock = 250;
-    const xs = [padX, Math.round(W / 2 - colBlock / 2), W - padX - colBlock];
-    const cols = [['ENTRY', ents, '#e8ecf2'], ['STOP LOSS', sls, '#ff5b6e'], ['TARGET', tps, '#2ee86a']];
-    const colY = y0 + headH;
-    cols.forEach((c, ci) => {
-      const cx = xs[ci]; g.textAlign = 'left';
-      g.fillStyle = c[2]; g.font = '800 20px system-ui,sans-serif'; g.fillText(c[0], cx, colY);
-      g.strokeStyle = c[2]; g.globalAlpha = .3; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx, colY + 13); g.lineTo(cx + colBlock, colY + 13); g.stroke(); g.globalAlpha = 1;
-      c[1].forEach((v, i) => {
-        const ry = colY + 46 + i * rowH;
-        g.fillStyle = '#5a6570'; g.font = '700 17px ui-monospace,monospace'; g.fillText(String(i + 1), cx, ry);
-        g.fillStyle = '#eef2f6'; g.font = '800 27px ui-monospace,monospace'; g.fillText(v, cx + 32, ry + 2);
-      });
-    });
-    const rry = colY + 46 + n * rowH + 40;
-    g.textAlign = 'center';
-    g.fillStyle = '#8b95a1'; g.font = '700 18px system-ui,sans-serif'; g.fillText('RISK : REWARD', W / 2 - 60, rry);
-    g.fillStyle = '#E8B84B'; g.font = '800 26px system-ui,sans-serif'; g.fillText('1 : 1.5', W / 2 + 90, rry + 1);
-    const fy = H - footH;
-    g.fillStyle = 'rgba(255,255,255,.03)'; g.fillRect(0, fy, W, footH);
-    g.strokeStyle = 'rgba(232,184,75,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, fy + 0.5); g.lineTo(W, fy + 0.5); g.stroke();
-    g.textAlign = 'left'; g.textBaseline = 'middle';
-    let dx = padX;
-    if (marca) { const mh = 46, mw = marca.width * (mh / marca.height); g.drawImage(marca, padX, fy + (footH - mh) / 2, mw, mh); dx = padX + mw + 18; }
-    g.fillStyle = '#dfe5ec'; g.font = '700 19px system-ui,sans-serif'; g.fillText(WEB, dx, fy + footH / 2 + 1);
-    g.fillStyle = '#E8B84B'; g.font = '800 19px system-ui,sans-serif'; g.textAlign = 'right'; g.fillText('Super Scalper', W - padX, fy + footH / 2 + 1);
-    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    try { cv.toBlob((b) => { if (!b) return; const url = URL.createObjectURL(b), a = document.createElement('a'); a.href = url; a.download = `decfreedom-superscalper-${par.id}-${M.tf}-${Date.now()}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); }, 'image/png'); } catch (e) { flash('Copied ✓'); }
-  });
-}
-
-/* ══════════════════ AYUDA (stepper experto, igual que Heat Pools) ══════════════════ */
+/* ══════════════════ AYUDA (stepper experto, igual que Footprint / Heat Pools) ══════════════════ */
 const PASOS_RZ = [
   {
-    t: 'What Super Scalper is',
-    d: 'Super Scalper is a <b>mechanical scalping strategy</b> drawn live on a <b>1 second</b> chart. It is not an opinion and there is no analyst: it is a fixed rule set built from two tools, an <b>EMA 50</b> that defines the trend and an <b>RSI 2</b> that times the entry. You watch the 1 second candles form and act only when both rules line up. Built for surgical entries at the open or close of the candle.',
-    x: 'The 1 second chart is a cockpit for timing. You read it to click at the exact instant, not to stare at it.'
+    t: 'What Whale Trades is',
+    d: 'Whale Trades draws the <b>live executed tape</b> of the market straight onto a 1 second chart. Every <b>big market order</b> that prints becomes a <b>bubble</b> at the exact price and second it happened. It is not an opinion and there is no analyst: it is the real flow of money, the trades that actually went through, so you can see the <b>size</b> moving the market instead of guessing.',
+    x: 'A normal candle hides who did the work. A bubble shows you the single order that pushed the price.'
   },
   {
-    t: 'The EMA 50 is the trend filter',
-    d: 'The <b>glowing purple line</b> on the price is the <b>EMA 50</b> (a 50 period exponential moving average). It is the only thing that decides the side you are allowed to take. When price is <b>above</b> the EMA the trend is up, so you <b>only look for longs</b>. When price is <b>below</b> the EMA the trend is down, so you <b>only look for shorts</b>. You never trade against this line.',
-    x: 'Above the line you ignore every short signal. Below the line you ignore every long signal. No exceptions.'
+    t: 'Green is buying, red is selling',
+    d: 'A <b>green bubble</b> is an <b>aggressive buy</b>: someone crossed the spread and lifted the offer, paying up to get filled now. A <b>red bubble</b> is an <b>aggressive sell</b>: someone hit the bid to get out now. The colour tells you which side was <b>impatient</b>, and the impatient side is usually the one moving price.',
+    x: 'Passive limit orders do not show here. Only market orders, the ones that actually move the tape, become bubbles.'
   },
   {
-    t: 'The RSI 2 is the trigger',
-    d: 'The panel under the price is the <b>RSI with length 2</b>. Length 2 is the whole point: it is so fast it swings all the way to the <b>extremes</b>, which is what gives you the entry. The <b>green band at 9</b> is the lower band and the <b>red band at 99</b> is the upper band. The <b>bright yellow line</b> is the RSI itself. The trade is armed only when that yellow line <b>tags</b> a band, a real touch, not almost.',
-    x: 'A normal RSI sits at length 14 and barely reaches 30 or 70. At length 2 it slams into 9 and 99, and that is the signal.'
+    t: 'Size is the whole point',
+    d: 'The <b>bigger the bubble, the bigger the trade</b> in US dollars. The size is scaled to each market, so even smaller coins show their own whales, and the <b>largest trade on screen</b> gets a soft ring that pulses so it is impossible to miss. The dollar value is printed on the biggest ones.',
+    x: 'One giant lone bubble is a single player stepping in. A cluster of them is a crowd, a program, or a liquidation cascade.'
   },
   {
-    t: 'The long setup',
-    d: 'Two things must be true at the same time: price is <b>above the EMA 50</b> (uptrend) and the yellow RSI line <b>tags the green 9 band</b>. That is a pullback inside an uptrend, the pocket where you buy. The tool fires a <b>LONG</b>: it draws the entry, puts the <b>stop below the EMA</b> (below the line, never on it) and the <b>target at 1:1.5</b> above the entry.',
-    x: 'If price is above the EMA and the RSI tags the top 99 band instead, you do nothing. That is a short signal and you never short an uptrend.'
+    t: 'Read the flow',
+    d: 'Watch where the big bubbles land. A stack of <b>green</b> into a level that holds is <b>aggressive buying being absorbed</b>, often fuel for a move up. A stack of <b>red</b> that fails to break a level is selling getting eaten. A sudden <b>burst</b> of one colour is momentum or a liquidation. You are reading intent, in real time, at the tick.',
+    x: 'Context matters more than any single bubble. Ask who is being aggressive and whether price is actually moving for them.'
   },
   {
-    t: 'The short setup',
-    d: 'The mirror: price is <b>below the EMA 50</b> (downtrend) and the yellow RSI line <b>tags the red 99 band</b>. That is a pullback inside a downtrend, where you sell. The tool fires a <b>SHORT</b>: entry drawn, <b>stop above the EMA</b> (above the line, not touching it) and <b>target at 1:1.5</b> below the entry. Below the EMA you only ever take shorts, so a tag of the green 9 band down there is ignored.',
-    x: 'The stop living on the far side of the EMA is deliberate: if the trend flips through the line, the idea is already wrong.'
+    t: 'The 1 second edge and the timeframes',
+    d: 'On the <b>1 second</b> chart you see the exact instant size hits, which is impossible on a 1 minute candle. When you want the bigger picture, switch the timeframe chip: <b>2s to 30s</b> for fast scalps, up to <b>1m, 5m, 15m, 1H, 2H, 4H, 1D</b> for context. Use the <b>drawing tools</b> on the left to mark your levels and right click to set an order or alert.',
+    x: 'Whales matter most up close. The low timeframes are where the tape tells you something a candle never could.'
   },
   {
-    t: 'The position and the record',
-    d: 'When a setup fires, the <b>position tool</b> appears next to the pin with the three levels and a <b>status</b>: <b>ENTRY VALID NOW</b> means take it, <b>ALREADY RUNNING</b> means price left without you, and <b>TARGET HIT</b> or <b>INVALIDATED</b> once it is over. A trade that reaches its target <b>stays drawn</b> as a green record, so you can see the setups that worked. With no setup the ticket shows <b>SCANNING</b> and which side the EMA allows.',
-    x: 'You never guess the timing. The status answers whether the entry is still takeable right now.'
-  },
-  {
-    t: 'Manage your own risk',
-    d: 'The target here is drawn at <b>1:1.5</b> (risk 10 to make 15), a balanced default. You are free to close earlier at <b>1:1</b> if you want it safer, or let it run to <b>1:2</b> if you are managing for bigger moves. That choice is yours and depends on how you manage your capital. Risk a <b>small fixed percentage</b> per trade and only take the side the EMA allows.',
-    x: 'This is a strategy and support only, not financial advice, and it guarantees no result. You decide every trade and you carry the risk.'
+    t: 'This is data, not a signal',
+    d: 'Whale Trades shows what already happened: it is <b>market data for information and education</b>, not a buy or sell signal and not financial advice. A big trade is not a promise of direction, price can keep going the other way, and the feed can be delayed. Decide every trade yourself, risk only a <b>small fixed percentage</b>, and carry your own risk.',
+    x: 'It guarantees no result. The tape is a lens on who is active, nothing more. You own every decision you make with it.'
   }
 ];
 let _pasoRZ = 0;
@@ -1078,14 +671,14 @@ function ayuda() {
   d.innerHTML = `<div class="ss-ab-bg"></div>
     <div class="ss-ab-c">
       <button class="ss-ab-x" aria-label="Close">✕</button>
-      <div class="ss-ab-eyebrow">Super Scalper</div>
+      <div class="ss-ab-eyebrow">Whale Trades</div>
       <div id="ss-ab-cuerpo"></div>
       <div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div>
     </div>`;
   document.body.appendChild(d);
   const q = () => d.remove();
   d.querySelector('.ss-ab-bg').onclick = q; d.querySelector('.ss-ab-x').onclick = q;
-  $('ss-disc-link').onclick = () => discScalper(true);
+  $('ss-disc-link').onclick = () => discWhales(true);
   pintarPasoRZ();
 }
 function pintarPasoRZ() {
@@ -1115,11 +708,6 @@ function estilos() {
   const s = document.createElement('style'); s.id = 'ss-css'; s.textContent = CSS; document.head.appendChild(s);
 }
 const CSS = `
-/* z-index a la PAR de las pools (9740): el menú de clic derecho de orden.js vive
-   en 9860, así que con 10030 el menú salía DETRÁS de la gráfica y parecía que el
-   clic derecho "no hacía nada". A 9740 el menú/ficha/alerta se ven por encima,
-   igual que en Liquidity/Heat/Smart. Los popups propios (ss-pop 10050, ayuda
-   10300) siguen por encima porque son fixed con su propio z-index. */
 #ss-overlay{position:fixed;inset:0;z-index:9740;font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#e7ebf0;
   --g:#28d26a; --r:#ff4a5a; --gold:#E8B84B; --line:#1d2630; --mono:"Chakra Petch",ui-monospace,monospace}
 #ss-overlay *{box-sizing:border-box}
@@ -1150,22 +738,20 @@ const CSS = `
 .ss-hl b{font-weight:800} .ss-hl span:first-child b{color:var(--g)} .ss-hl span:last-child b{color:var(--r)}
 .ss-estado{font-family:var(--mono);font-size:11px;color:var(--r)}
 .ss-der{display:flex;align-items:center;gap:9px;margin-left:auto}
-.ss-share{height:36px;border-radius:9px;border:1px solid rgba(46,232,106,.55);background:rgba(46,232,106,.08);color:#39e07a;font:700 12px system-ui,sans-serif;padding:0 14px;cursor:pointer;white-space:nowrap;transition:filter .15s,opacity .15s}
-.ss-share:hover{filter:brightness(1.15)}
-.ss-share:disabled{opacity:.4;cursor:not-allowed;filter:none}
 .ss-ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid #2a333f;color:#9aa4af;font-weight:800}
 .ss-ico:hover{border-color:var(--gold);color:var(--gold)}
 .ss-graf{flex:1 1 auto;min-height:0;position:relative;background:#0a0e14}
 .ss-cv{display:block;position:absolute;inset:0}
-.ss-marca{position:absolute;left:14px;bottom:120px;height:22px;width:auto;opacity:.55;pointer-events:none;filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
-@media(max-width:620px){ .ss-marca{left:10px;height:18px} }
+/* Marca de agua: MISMA ubicación/tamaño/iluminación que VWAP Pro (.it-wm). left:64px la
+   deja a la DERECHA de la barra de dibujo (no la tapa), bottom:40px, 42px, opacity .82. */
+.ss-marca{position:absolute;left:64px;bottom:40px;z-index:4;height:42px;width:auto;opacity:.82;pointer-events:none;display:flex;align-items:center;filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
+@media(max-width:620px){ .ss-marca{left:58px;bottom:30px;height:32px} }
 .ss-esperando{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:30px;background:rgba(10,14,20,.6);z-index:2}
 .ss-esperando b{font-family:var(--mono);font-size:14px;color:#cbd3dc}
 .ss-esperando span{font-size:12px;color:#7d8794;max-width:280px}
 .ss-spin{width:30px;height:30px;border:2.5px solid rgba(232,184,75,.2);border-top-color:var(--gold);border-radius:50%;animation:ss-sp .8s linear infinite}
 @keyframes ss-sp{to{transform:rotate(360deg)}}
 .ss-pop{position:fixed;z-index:10050;background:#0c1016;border:1px solid #2a333f;border-radius:12px;box-shadow:0 20px 55px rgba(0,0,0,.65);font-family:var(--mono);color:#e7ebf0}
-.ss-picker,.ss-pop.ss-tfpop{}
 #ss-picker{width:300px;max-height:70vh;display:flex;flex-direction:column;overflow:hidden}
 .ss-cm-top{padding:8px;border-bottom:1px solid var(--line)}
 .ss-cm-top input{width:100%;height:32px;border-radius:8px;border:1px solid #2a333f;background:#0a0d12;color:#e7ebf0;padding:0 11px;font-size:12.5px;font-family:var(--mono);outline:none}
@@ -1180,19 +766,7 @@ const CSS = `
 .ss-tf-it{min-height:42px;border-radius:10px;border:1px solid transparent;background:rgba(255,255,255,.04);color:#c7cdd6;cursor:pointer;font-family:var(--mono);font-size:13px;font-weight:700}
 .ss-tf-it:hover{border-color:#3a424c;color:#eaecef}
 .ss-tf-it.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;border-color:var(--gold)}
-.ss-indpop{min-width:232px;padding:8px;background:#12161c;border-color:#2b3139;border-radius:14px}
-.ss-ind-h{font-size:9px;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;padding:9px 8px 5px}
-.ss-ind-it{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;padding:0 10px;border-radius:9px;cursor:pointer;font-size:12.5px;color:#e7ebf0}
-.ss-ind-it:hover{background:rgba(255,255,255,.04)}
-.ss-ind-it span{display:flex;align-items:center;gap:9px}
-.ss-ind-it em{font-style:normal;font-size:10px;color:#6b7681}
-.ss-ind-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
-.ss-ind-it input{appearance:none;-webkit-appearance:none;margin:0;position:relative;width:34px;height:19px;border-radius:19px;background:#2b3139;border:1px solid #3a424c;cursor:pointer;flex:0 0 auto;transition:background .18s,border-color .18s}
-.ss-ind-it input::before{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#8b96a3;transition:transform .18s,background .18s}
-.ss-ind-it input:checked{background:rgba(201,168,75,.92);border-color:var(--gold)}
-.ss-ind-it input:checked::before{transform:translateX(15px);background:#0b0e12}
-.ss-ind-it input:hover{border-color:var(--gold)}
-/* ── Ayuda: stepper experto (igual que Heat Pools) ── */
+/* ── Ayuda: stepper experto (igual que Footprint / Heat Pools) ── */
 #ss-ayuda-box{position:fixed;inset:0;z-index:10300;display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Plus Jakarta Sans",system-ui,sans-serif}
 .ss-ab-bg{position:absolute;inset:0;background:rgba(3,5,8,.93)}
 .ss-ab-c{position:relative;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #C9A84B;border-radius:20px;padding:24px 20px}
