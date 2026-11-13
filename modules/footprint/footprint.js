@@ -13,8 +13,8 @@
    apilados como S/R, CVD con divergencias, absorción y su analista propio. */
 
 import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=6';
-import { crearRender } from './render.js?v=6';
-import { leerFootprint } from './analista.js?v=6';
+import { crearRender } from './render.js?v=7';
+import { leerFootprint } from './analista.js?v=7';
 import { estilosFootprint } from './estilos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 

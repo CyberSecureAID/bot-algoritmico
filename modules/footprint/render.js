@@ -166,16 +166,10 @@ export function crearRender(host, opts = {}) {
     const rowH = Math.max(0.6, (bin / (st.pMax - st.pMin)) * A.h);
     const GAP = rowH / 2 + 13;                         // SIEMPRE por fuera del bloque de celdas (cuenta la altura de la celda)
     const clampY = (y) => Math.max(9, Math.min(A.h - 6, y));
-    for (const a of (st.agg.absorciones || [])) {
-      const v = vis.find((x) => x.c.t === a.t); if (!v) continue;
-      const y = yP(v.c.hi, A) - GAP; if (y < -24 || y > A.h) continue;
-      marks.push({ x: v.x + st.colW / 2, y: clampY(y), bull: a.side === 'sell' });
-    }
-    st._absMarks = marks;
+    st._absMarks = marks;   // sin marcadores de absorción flotantes (confundían): la absorción vive en el analista y la alerta
     for (const { c, x } of vis) {
       if (c.t === st.liveT) continue;                 // la viva lleva las dos flechas titilando, no la del ganador
-      const o = c.o != null ? c.o : c.c;
-      const buyWin = c.c >= o, cx = x + st.colW / 2;   // GANADOR por color de la vela (cierre vs apertura), no por delta
+      const buyWin = c.delta >= 0, cx = x + st.colW / 2;   // GANADOR = el delta de la vela (igual que el número del footer: congruente)
       // Verde BAJO el mínimo, roja SOBRE el máximo, con aire real (fuera de las celdas).
       const y = clampY(buyWin ? yP(c.l, A) + GAP : yP(c.h, A) - GAP);
       wins.push({ x: cx, y, buyWin });
@@ -184,10 +178,9 @@ export function crearRender(host, opts = {}) {
     const lv = vis.find((x) => x.c.t === st.liveT);
     if (lv && st.live) {
       let b = 0, s = 0; for (const n of (st.live.niveles || [])) { b += n.buy; s += n.sell; }
-      const o = lv.c.o != null ? lv.c.o : st.dispC;
       const yTop = clampY(yP(Math.max(st.dispH, st.dispC), A) - GAP);
       const yBot = clampY(yP(Math.min(st.dispL, st.dispC), A) + GAP);
-      st._warPos = { x: lv.x + st.colW / 2, yTop, yBot, b, s, up: st.dispC >= o };   // ganando = precio sobre la apertura (color de la vela)
+      st._warPos = { x: lv.x + st.colW / 2, yTop, yBot, b, s, up: b >= s };   // ganando = quién lleva más volumen (delta), congruente con el footer
     } else st._warPos = null;
   }
 
@@ -205,6 +198,8 @@ export function crearRender(host, opts = {}) {
     const maxV = st.agg.maxCellVol || 1;
     const texto = st.colW >= 56 && rowH >= 8;
     const cellFont = (rowH >= 12 ? 10 : 9) + 'px ui-monospace,monospace';
+    const gut = Math.max(12, Math.min(20, st.colW * 0.2));     // Bid×Ask: canal central para la vela (separa venta/compra)
+    const laneW = Math.max(12, Math.min(20, st.colW * 0.18));  // Delta: carril de la vela, a la izquierda
     ctx.textBaseline = 'middle';
     ctx.save(); ctx.beginPath(); ctx.rect(A.x, A.y, A.w, A.h); ctx.clip();   // la vela y las celdas NO invaden delta/CVD
     for (const { c, x } of vis) {
@@ -213,7 +208,7 @@ export function crearRender(host, opts = {}) {
       // En la vela en formación, las celdas se dibujan con los valores EASED
       // (st.disp), que crecen hacia los reales según entra volumen.
       const nivs = esLive ? [...st.disp.values()].sort((a, b) => a.price - b.price) : c.niveles;
-      let cMax = 1; for (const l of nivs) { if (l.buy > cMax) cMax = l.buy; if (l.sell > cMax) cMax = l.sell; }
+      let cMax = 1, cMaxTot = 1; for (const l of nivs) { if (l.buy > cMax) cMax = l.buy; if (l.sell > cMax) cMax = l.sell; const tt = l.buy + l.sell; if (tt > cMaxTot) cMaxTot = tt; }
       if (esLive) { ctx.save(); ctx.globalAlpha = .035; ctx.fillStyle = C.poc; ctx.fillRect(x, A.y, st.colW, A.h); ctx.restore(); }
       const imb = new Set((c.imbalances || []).map((i) => Math.round(i.price / bin) + i.side));
       const va = valueArea(c);
@@ -223,45 +218,61 @@ export function crearRender(host, opts = {}) {
         const y = yP(lv.price, A) - rowH / 2, k = Math.round(lv.price / bin);
         const fl = esLive ? (st.flash.get(k) || 0) : 0;   // realce al entrar volumen (se apaga solo)
         if (st.mode === 'delta') {
+          // Delta: UN numero por nivel, centrado en la banda a la DERECHA. La vela va
+          // en el carril izquierdo, asi el numero tiene su espacio y nunca la tapa.
           const d = lv.buy - lv.sell, inten = Math.min(1, Math.abs(d) / maxV);
-          ctx.fillStyle = d >= 0 ? `rgba(38,194,129,${0.1 + inten * 0.62 + fl * 0.25})` : `rgba(232,68,93,${0.1 + inten * 0.62 + fl * 0.25})`;
-          ctx.fillRect(x + 2, y, st.colW - 4, Math.max(1, rowH - 1));
-          if (texto) { ctx.fillStyle = inten > 0.55 ? '#07130c' : C.txt; ctx.font = cellFont; ctx.textAlign = 'center'; ctx.fillText(sfv(d), cx, y + rowH / 2); }
+          const bx = x + laneW, bw = st.colW - laneW - 2;
+          ctx.fillStyle = d >= 0 ? `rgba(38,194,129,${0.10 + inten * 0.42 + fl * 0.2})` : `rgba(232,68,93,${0.10 + inten * 0.42 + fl * 0.2})`;
+          ctx.fillRect(bx, y, bw, Math.max(1, rowH - 1));
+          if (texto && Math.abs(d) >= 1e-9) { ctx.font = cellFont; ctx.fillStyle = d >= 0 ? C.buyTx : C.sellTx; ctx.textAlign = 'center'; ctx.fillText(sfv(d), bx + bw / 2, y + rowH / 2); }
         } else if (st.mode === 'profile') {
-          const wB = (lv.buy / cMax) * (st.colW / 2 - 4), wS = (lv.sell / cMax) * (st.colW / 2 - 4), h2 = Math.max(1.5, rowH - 1);
-          // Barras con DEGRADADO (intensas en el centro, se apagan hacia fuera) + realce al entrar volumen → profundidad, no color plano.
-          if (wS > 0.4) { const gS = ctx.createLinearGradient(cx - wS, 0, cx, 0); gS.addColorStop(0, `rgba(255,120,138,${0.18 + fl * 0.3})`); gS.addColorStop(1, `rgba(232,68,93,${0.9})`); ctx.fillStyle = gS; ctx.fillRect(cx - wS, y, wS, h2); ctx.fillStyle = `rgba(255,170,182,${0.5 + fl * 0.4})`; ctx.fillRect(cx - wS, y, 1.5, h2); }
-          if (wB > 0.4) { const gB = ctx.createLinearGradient(cx, 0, cx + wB, 0); gB.addColorStop(0, `rgba(38,194,129,${0.9})`); gB.addColorStop(1, `rgba(120,240,176,${0.18 + fl * 0.3})`); ctx.fillStyle = gB; ctx.fillRect(cx, y, wB, h2); ctx.fillStyle = `rgba(150,245,195,${0.5 + fl * 0.4})`; ctx.fillRect(cx + wB - 1.5, y, 1.5, h2); }
+          // Perfil de volumen por vela: UNA barra por nivel desde la izquierda, larga
+          // segun el volumen total, verde si manda la compra, roja si manda la venta.
+          // La vela va en el carril derecho. Limpio, sin barras partidas.
+          const tot = lv.buy + lv.sell, inten = Math.min(1, tot / cMaxTot);
+          const w = inten * (st.colW - laneW - 4), h2 = Math.max(1.5, rowH - 1), buyDom = lv.buy >= lv.sell;
+          ctx.fillStyle = buyDom ? `rgba(38,194,129,${0.28 + inten * 0.52 + fl * 0.2})` : `rgba(232,68,93,${0.28 + inten * 0.52 + fl * 0.2})`;
+          ctx.fillRect(x + 2, y, Math.max(1, w), h2);
         } else {
+          // Bid×Ask: venta (rojo) IZQUIERDA, compra (verde) DERECHA, con un CANAL en el
+          // medio donde va la vela. Columnas separadas; la vela no tapa ningun numero.
           const iS = Math.min(1, lv.sell / maxV), iB = Math.min(1, lv.buy / maxV);
-          ctx.fillStyle = `rgba(232,68,93,${0.08 + iS * 0.5 + fl * 0.3})`; ctx.fillRect(x + 2, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
-          ctx.fillStyle = `rgba(38,194,129,${0.08 + iB * 0.5 + fl * 0.3})`; ctx.fillRect(cx, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
-          if (imb.has(k + 'buy')) { ctx.strokeStyle = C.imbBuy; ctx.lineWidth = 1.5; ctx.strokeRect(cx + .5, y + .5, st.colW / 2 - 3, Math.max(1, rowH - 2)); }
-          if (imb.has(k + 'sell')) { ctx.strokeStyle = C.imbSell; ctx.lineWidth = 1.5; ctx.strokeRect(x + 2.5, y + .5, st.colW / 2 - 3, Math.max(1, rowH - 2)); }
-          if (texto) { ctx.font = cellFont; ctx.fillStyle = C.sellTx; ctx.textAlign = 'right'; ctx.fillText(fv(lv.sell), cx - 4, y + rowH / 2); ctx.fillStyle = C.buyTx; ctx.textAlign = 'left'; ctx.fillText(fv(lv.buy), cx + 4, y + rowH / 2); }
+          const sL = x + 2, sR = cx - gut / 2, bL = cx + gut / 2, bR = x + st.colW - 2;
+          const sW = Math.max(0, sR - sL), bW = Math.max(0, bR - bL), hh = Math.max(1, rowH - 1);
+          ctx.fillStyle = `rgba(232,68,93,${0.08 + iS * 0.5 + fl * 0.3})`; ctx.fillRect(sL, y, sW, hh);
+          ctx.fillStyle = `rgba(38,194,129,${0.08 + iB * 0.5 + fl * 0.3})`; ctx.fillRect(bL, y, bW, hh);
+          if (imb.has(k + 'sell')) { ctx.strokeStyle = C.imbSell; ctx.lineWidth = 1.5; ctx.strokeRect(sL + .5, y + .5, Math.max(1, sW - 1), Math.max(1, rowH - 2)); }
+          if (imb.has(k + 'buy')) { ctx.strokeStyle = C.imbBuy; ctx.lineWidth = 1.5; ctx.strokeRect(bL + .5, y + .5, Math.max(1, bW - 1), Math.max(1, rowH - 2)); }
+          if (texto) { ctx.font = cellFont; ctx.fillStyle = C.sellTx; ctx.textAlign = 'right'; ctx.fillText(fv(lv.sell), sR - 3, y + rowH / 2); ctx.fillStyle = C.buyTx; ctx.textAlign = 'left'; ctx.fillText(fv(lv.buy), bL + 3, y + rowH / 2); }
         }
       }
       if (c.poc != null) { const yp = yP(c.poc, A) - rowH / 2; ctx.strokeStyle = C.poc; ctx.lineWidth = 1.6; ctx.strokeRect(x + 1.5, yp - .5, st.colW - 3, Math.max(2, rowH)); }
-      const oc = esLive ? { o: c.o, c: st.dispC } : c;
-      dibujarVela(oc, x, A);
+      // La VELA segun el modo: Bid×Ask -> canal central; Delta -> carril izquierdo;
+      // Profile -> centro. Siempre en su sitio, sin tapar numeros.
+      const oc = esLive ? { o: c.o, c: st.dispC, h: Math.max(st.dispH, st.dispC, c.o), l: Math.min(st.dispL, st.dispC, c.o) } : c;
+      let velaCx = cx, velaBw = Math.max(3, Math.min(7, gut * 0.5));
+      if (st.mode === 'delta') { velaCx = x + laneW / 2; velaBw = Math.max(3, Math.min(7, laneW * 0.42)); }
+      else if (st.mode === 'profile') { velaCx = x + st.colW - laneW / 2; velaBw = Math.max(3, Math.min(7, laneW * 0.42)); }
+      dibujarVela(oc, velaCx, A, velaBw);
       ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + st.colW - .5, A.y); ctx.lineTo(x + st.colW - .5, A.y + A.h); ctx.stroke();
     }
     ctx.restore();
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   }
 
-  // Apertura y cierre como TICKS en los bordes de la columna (apertura a la
-  // izquierda, cierre a la derecha). SIN mecha vertical por el centro: así jamás
-  // parte los números de las celdas (ni en Delta). El rango (high/low) lo muestra
-  // el propio bloque de celdas, y la continuidad va por el cierre = apertura de
-  // la siguiente. El cierre va más marcado (es lo que importa para la próxima vela).
-  function dibujarVela(c, x, A) {
+  // VELA: mecha (high-low) + cuerpo (open-close). Se dibuja en la posicion (cx) y el
+  // ancho (bw) que le pasa cada modo: canal central en Bid×Ask, carril en Delta,
+  // centro en Profile. Nunca encima de los numeros: su sitio queda libre para ella.
+  function dibujarVela(c, cx, A, bw) {
     const o = c.o != null ? c.o : c.c, cl = c.c != null ? c.c : o;
-    const col = cl >= o ? C.up : C.down;
-    const yO = yP(o, A), yC = yP(cl, A), w = Math.min(st.colW * 0.3, 15);
-    ctx.save(); ctx.lineCap = 'round';
-    ctx.strokeStyle = col; ctx.globalAlpha = .55; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 2, yO); ctx.lineTo(x + 2 + w, yO); ctx.stroke();                       // apertura (izquierda, tenue)
-    ctx.globalAlpha = .95; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(x + st.colW - 2 - w, yC); ctx.lineTo(x + st.colW - 2, yC); ctx.stroke();                        // cierre (derecha, marcado)
+    const sube = cl >= o, col = sube ? C.up : C.down;
+    const yH = yP(c.h, A), yL = yP(c.l, A), yO = yP(o, A), yC = yP(cl, A);
+    const w = bw || Math.max(3, Math.min(9, st.colW * 0.11));
+    ctx.save(); ctx.strokeStyle = col; ctx.globalAlpha = .9; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx, yH); ctx.lineTo(cx, yL); ctx.stroke();            // mecha
+    ctx.globalAlpha = .9; ctx.fillStyle = col;
+    const top = Math.min(yO, yC), hh = Math.max(1.6, Math.abs(yC - yO));
+    ctx.fillRect(cx - w / 2, top, w, hh);                                              // cuerpo
     ctx.restore();
   }
 
