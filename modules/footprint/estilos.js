@@ -199,6 +199,7 @@ export function estilosFootprint() {
     #fp-overlay .fp-cvwrap{border-right:none;border-bottom:1px solid #2b3139}
     #fp-overlay .fp-an-col{max-height:42vh}
     #fp-overlay .fp-anc-why{display:none}
+    #fp-overlay .fp-wm{display:none}
   }
   @media(max-width:720px){
     #fp-overlay .fp-coin span{display:none}

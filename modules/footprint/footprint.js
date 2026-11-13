@@ -12,10 +12,10 @@
    NUEVO: motor de footprint (worker), render en canvas, 3 modos, imbalances
    apilados como S/R, CVD con divergencias, absorción y su analista propio. */
 
-import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=5';
-import { crearRender } from './render.js?v=5';
-import { leerFootprint } from './analista.js?v=5';
-import { estilosFootprint } from './estilos.js?v=5';
+import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=6';
+import { crearRender } from './render.js?v=6';
+import { leerFootprint } from './analista.js?v=6';
+import { estilosFootprint } from './estilos.js?v=6';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -321,7 +321,7 @@ function onTrade(tr) {
 
 function arrancarWorker() {
   try {
-    S.worker = new Worker(new URL('./motor.worker.js?v=5', import.meta.url));
+    S.worker = new Worker(new URL('./motor.worker.js?v=6', import.meta.url));
     S.worker.onmessage = (ev) => {
       const r = ev.data || {};
       if (!r.ok) return;
@@ -479,21 +479,24 @@ function renderAnalistaCol() {
     <div class="fp-anc-title">${esc(anL(m.titulo, lang))}</div>
     <div class="fp-anc-tx" data-esc="${esc(anL(m.txt, lang))}"></div>
     <div class="fp-anc-do"><span>${lang === 'es' ? 'Qué vigilar' : 'What to watch'}</span>${esc(anL(m.hacer, lang))}</div>
-    <div class="fp-anc-why">${(m.detalle || []).map((x) => `<div class="fp-anc-li">${esc(anL(x, lang))}</div>`).join('')}</div>
-    <div class="fp-anc-disc">${lang === 'es' ? 'Flujo de órdenes de Binance en vivo' : 'Live Binance order flow'}</div>`;
+    <div class="fp-anc-why">${(m.detalle || []).map((x) => `<div class="fp-anc-li">${esc(anL(x, lang))}</div>`).join('')}</div>`;
   const lng = col.querySelector('.fp-anc-lang'); if (lng) lng.onclick = (e) => { e.stopPropagation(); S.an.lang = S.an.lang === 'es' ? 'en' : 'es'; renderAnalistaCol(); };
   escribir(col.querySelector('[data-esc]'));
   actualizarLiveStats();
 }
+/* ESTABILIDAD: una lectura se mantiene al menos 8 s para que dé tiempo a leerla y
+   a operar con ella. Solo se cambia antes de ese mínimo si llega un evento
+   accionable (absorción / divergencia / ruptura). Nada de parpadear cada medio
+   segundo: las cifras en vivo van en la fila de stats, que sí se actualiza sola. */
+const AN_MIN_MS = 8000;
 function actualizarAnalista() {
   if (!S.an || !S.agg) return;
   let m; try { m = leerFootprint(S.agg, S.meta); } catch (_) { m = null; }
   if (!m) return;
-  const cambio = m.clave !== S.an.clave; S.an.msg = m; S.an.clave = m.clave;
-  if (cambio) renderAnalistaCol();
-  else {
-    const tx = document.querySelector('.fp-anc-tx'); if (tx && tx.dataset.hecho) tx.textContent = anL(m.txt, S.an.lang);
-    const hz = document.querySelector('.fp-anc-do'); if (hz) hz.innerHTML = `<span>${S.an.lang === 'es' ? 'Qué vigilar' : 'What to watch'}</span>${esc(anL(m.hacer, S.an.lang))}`;
+  const ahora = Date.now();
+  const urgente = /^(abs|div|brk)/.test(m.clave);
+  if (m.clave !== S.an.clave && (urgente || !S.an.clave || (ahora - (S.an.lastSwitch || 0)) >= AN_MIN_MS)) {
+    S.an.msg = m; S.an.clave = m.clave; S.an.lastSwitch = ahora; renderAnalistaCol();
   }
 }
 /* Cifras del momento (vela en formación): compra vs venta, delta y CVD. Datos

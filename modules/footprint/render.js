@@ -129,7 +129,9 @@ export function crearRender(host, opts = {}) {
     for (const { c } of vis) { const cl = Math.min(c.l, c.lo), ch = Math.max(c.h, c.hi); if (cl < lo) lo = cl; if (ch > hi) hi = ch; }   // rango REAL de la vela (cuerpo+mecha), no solo celdas
     if (st.meta && st.meta.last > 0) { if (st.meta.last < lo) lo = st.meta.last; if (st.meta.last > hi) hi = st.meta.last; }
     if (!isFinite(lo) || !isFinite(hi) || hi <= lo) { lo = 0; hi = 1; }
-    const pad = (hi - lo) * 0.07 || 1; let a = lo - pad, b = hi + pad;
+    const bin = (st.agg && st.agg.binSize) || 0;
+    const pad = Math.max((hi - lo) * 0.12, bin * 3) || 1;   // aire arriba y abajo para que las flechas quepan fuera de las velas
+    let a = lo - pad, b = hi + pad;
     const cen = (a + b) / 2, half = ((b - a) / 2) / (st.yZoom || 1);   // zoom de precio (arrastre del eje derecho)
     st.pMin = cen - half + st.yPan; st.pMax = cen + half + st.yPan;    // yPan: la gráfica se despega del eje y se mueve en vertical
   }
@@ -160,19 +162,22 @@ export function crearRender(host, opts = {}) {
   // roja arriba si ganaron los osos).
   function marcasFx(L, vis) {
     const A = L.main, marks = [], wins = [];
+    const bin = (st.agg && st.agg.binSize) || 1;
+    const rowH = Math.max(0.6, (bin / (st.pMax - st.pMin)) * A.h);
+    const GAP = rowH / 2 + 13;                         // SIEMPRE por fuera del bloque de celdas (cuenta la altura de la celda)
+    const clampY = (y) => Math.max(9, Math.min(A.h - 6, y));
     for (const a of (st.agg.absorciones || [])) {
       const v = vis.find((x) => x.c.t === a.t); if (!v) continue;
-      const y = yP(v.c.hi, A); if (y < -24 || y > A.h) continue;
-      marks.push({ x: v.x + st.colW / 2, y, bull: a.side === 'sell' });
+      const y = yP(v.c.hi, A) - GAP; if (y < -24 || y > A.h) continue;
+      marks.push({ x: v.x + st.colW / 2, y: clampY(y), bull: a.side === 'sell' });
     }
     st._absMarks = marks;
     for (const { c, x } of vis) {
       if (c.t === st.liveT) continue;                 // la viva lleva las dos flechas titilando, no la del ganador
       const o = c.o != null ? c.o : c.c;
       const buyWin = c.c >= o, cx = x + st.colW / 2;   // GANADOR por color de la vela (cierre vs apertura), no por delta
-      // Separada del bloque: verde BAJO el mínimo, roja SOBRE el máximo, con aire.
-      const y = buyWin ? Math.min(A.h - 6, yP(c.l, A) + 16) : Math.max(12, yP(c.h, A) - 16);
-      if (y < -20 || y > A.h + 20) continue;
+      // Verde BAJO el mínimo, roja SOBRE el máximo, con aire real (fuera de las celdas).
+      const y = clampY(buyWin ? yP(c.l, A) + GAP : yP(c.h, A) - GAP);
       wins.push({ x: cx, y, buyWin });
     }
     st._winMarks = wins;
@@ -180,8 +185,8 @@ export function crearRender(host, opts = {}) {
     if (lv && st.live) {
       let b = 0, s = 0; for (const n of (st.live.niveles || [])) { b += n.buy; s += n.sell; }
       const o = lv.c.o != null ? lv.c.o : st.dispC;
-      const yTop = Math.max(12, yP(Math.max(st.dispH, st.dispC), A) - 18);
-      const yBot = Math.min(A.h - 6, yP(Math.min(st.dispL, st.dispC), A) + 18);
+      const yTop = clampY(yP(Math.max(st.dispH, st.dispC), A) - GAP);
+      const yBot = clampY(yP(Math.min(st.dispL, st.dispC), A) + GAP);
       st._warPos = { x: lv.x + st.colW / 2, yTop, yBot, b, s, up: st.dispC >= o };   // ganando = precio sobre la apertura (color de la vela)
     } else st._warPos = null;
   }
@@ -198,7 +203,8 @@ export function crearRender(host, opts = {}) {
     const A = L.main, bin = st.agg.binSize || 1;
     const rowH = Math.max(0.6, (bin / (st.pMax - st.pMin)) * A.h);
     const maxV = st.agg.maxCellVol || 1;
-    const texto = st.colW >= 58 && rowH >= 9;
+    const texto = st.colW >= 56 && rowH >= 8;
+    const cellFont = (rowH >= 12 ? 10 : 9) + 'px ui-monospace,monospace';
     ctx.textBaseline = 'middle';
     ctx.save(); ctx.beginPath(); ctx.rect(A.x, A.y, A.w, A.h); ctx.clip();   // la vela y las celdas NO invaden delta/CVD
     for (const { c, x } of vis) {
@@ -220,41 +226,43 @@ export function crearRender(host, opts = {}) {
           const d = lv.buy - lv.sell, inten = Math.min(1, Math.abs(d) / maxV);
           ctx.fillStyle = d >= 0 ? `rgba(38,194,129,${0.1 + inten * 0.62 + fl * 0.25})` : `rgba(232,68,93,${0.1 + inten * 0.62 + fl * 0.25})`;
           ctx.fillRect(x + 2, y, st.colW - 4, Math.max(1, rowH - 1));
-          if (texto && rowH >= 11) { ctx.fillStyle = inten > 0.5 ? '#07130c' : C.txt; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(sfv(d), cx, y + rowH / 2); }
+          if (texto) { ctx.fillStyle = inten > 0.55 ? '#07130c' : C.txt; ctx.font = cellFont; ctx.textAlign = 'center'; ctx.fillText(sfv(d), cx, y + rowH / 2); }
         } else if (st.mode === 'profile') {
-          const wB = (lv.buy / cMax) * (st.colW / 2 - 5), wS = (lv.sell / cMax) * (st.colW / 2 - 5);
-          ctx.fillStyle = `rgba(232,68,93,${0.55 + fl * 0.35})`; ctx.fillRect(cx - wS, y, Math.max(0, wS), Math.max(1.5, rowH - 1));
-          ctx.fillStyle = `rgba(38,194,129,${0.55 + fl * 0.35})`; ctx.fillRect(cx, y, Math.max(0, wB), Math.max(1.5, rowH - 1));
+          const wB = (lv.buy / cMax) * (st.colW / 2 - 4), wS = (lv.sell / cMax) * (st.colW / 2 - 4), h2 = Math.max(1.5, rowH - 1);
+          // Barras con DEGRADADO (intensas en el centro, se apagan hacia fuera) + realce al entrar volumen → profundidad, no color plano.
+          if (wS > 0.4) { const gS = ctx.createLinearGradient(cx - wS, 0, cx, 0); gS.addColorStop(0, `rgba(255,120,138,${0.18 + fl * 0.3})`); gS.addColorStop(1, `rgba(232,68,93,${0.9})`); ctx.fillStyle = gS; ctx.fillRect(cx - wS, y, wS, h2); ctx.fillStyle = `rgba(255,170,182,${0.5 + fl * 0.4})`; ctx.fillRect(cx - wS, y, 1.5, h2); }
+          if (wB > 0.4) { const gB = ctx.createLinearGradient(cx, 0, cx + wB, 0); gB.addColorStop(0, `rgba(38,194,129,${0.9})`); gB.addColorStop(1, `rgba(120,240,176,${0.18 + fl * 0.3})`); ctx.fillStyle = gB; ctx.fillRect(cx, y, wB, h2); ctx.fillStyle = `rgba(150,245,195,${0.5 + fl * 0.4})`; ctx.fillRect(cx + wB - 1.5, y, 1.5, h2); }
         } else {
           const iS = Math.min(1, lv.sell / maxV), iB = Math.min(1, lv.buy / maxV);
           ctx.fillStyle = `rgba(232,68,93,${0.08 + iS * 0.5 + fl * 0.3})`; ctx.fillRect(x + 2, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
           ctx.fillStyle = `rgba(38,194,129,${0.08 + iB * 0.5 + fl * 0.3})`; ctx.fillRect(cx, y, st.colW / 2 - 2, Math.max(1, rowH - 1));
           if (imb.has(k + 'buy')) { ctx.strokeStyle = C.imbBuy; ctx.lineWidth = 1.5; ctx.strokeRect(cx + .5, y + .5, st.colW / 2 - 3, Math.max(1, rowH - 2)); }
           if (imb.has(k + 'sell')) { ctx.strokeStyle = C.imbSell; ctx.lineWidth = 1.5; ctx.strokeRect(x + 2.5, y + .5, st.colW / 2 - 3, Math.max(1, rowH - 2)); }
-          if (texto) { ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.sellTx; ctx.textAlign = 'right'; ctx.fillText(fv(lv.sell), cx - 4, y + rowH / 2); ctx.fillStyle = C.buyTx; ctx.textAlign = 'left'; ctx.fillText(fv(lv.buy), cx + 4, y + rowH / 2); }
+          if (texto) { ctx.font = cellFont; ctx.fillStyle = C.sellTx; ctx.textAlign = 'right'; ctx.fillText(fv(lv.sell), cx - 4, y + rowH / 2); ctx.fillStyle = C.buyTx; ctx.textAlign = 'left'; ctx.fillText(fv(lv.buy), cx + 4, y + rowH / 2); }
         }
       }
       if (c.poc != null) { const yp = yP(c.poc, A) - rowH / 2; ctx.strokeStyle = C.poc; ctx.lineWidth = 1.6; ctx.strokeRect(x + 1.5, yp - .5, st.colW - 3, Math.max(2, rowH)); }
-      // cuerpo OHLC: en la vela viva usa el precio EASED → sigue al precio en vivo
-      const oc = esLive ? { o: c.o, c: st.dispC, h: Math.max(st.dispH, st.dispC, c.o), l: Math.min(st.dispL, st.dispC, c.o) } : c;
-      dibujarVela(oc, cx, A);
+      const oc = esLive ? { o: c.o, c: st.dispC } : c;
+      dibujarVela(oc, x, A);
       ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + st.colW - .5, A.y); ctx.lineTo(x + st.colW - .5, A.y + A.h); ctx.stroke();
     }
     ctx.restore();
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   }
 
-  function dibujarVela(c, cx, A) {
+  // Apertura y cierre como TICKS en los bordes de la columna (apertura a la
+  // izquierda, cierre a la derecha). SIN mecha vertical por el centro: así jamás
+  // parte los números de las celdas (ni en Delta). El rango (high/low) lo muestra
+  // el propio bloque de celdas, y la continuidad va por el cierre = apertura de
+  // la siguiente. El cierre va más marcado (es lo que importa para la próxima vela).
+  function dibujarVela(c, x, A) {
     const o = c.o != null ? c.o : c.c, cl = c.c != null ? c.c : o;
-    const sube = cl >= o, col = sube ? C.up : C.down;
-    const yH = yP(c.h, A), yL = yP(c.l, A), yO = yP(o, A), yC = yP(cl, A);
-    const bw = Math.max(3, Math.min(10, st.colW * 0.12));
-    ctx.strokeStyle = col; ctx.globalAlpha = .8; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(cx, yH); ctx.lineTo(cx, yL); ctx.stroke();            // mecha (visible, conecta la vela)
-    ctx.globalAlpha = .72; ctx.fillStyle = col;
-    const top = Math.min(yO, yC), hh = Math.max(1.5, Math.abs(yC - yO));
-    ctx.fillRect(cx - bw / 2, top, bw, hh);                                            // cuerpo
-    ctx.globalAlpha = 1;
+    const col = cl >= o ? C.up : C.down;
+    const yO = yP(o, A), yC = yP(cl, A), w = Math.min(st.colW * 0.3, 15);
+    ctx.save(); ctx.lineCap = 'round';
+    ctx.strokeStyle = col; ctx.globalAlpha = .55; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 2, yO); ctx.lineTo(x + 2 + w, yO); ctx.stroke();                       // apertura (izquierda, tenue)
+    ctx.globalAlpha = .95; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(x + st.colW - 2 - w, yC); ctx.lineTo(x + st.colW - 2, yC); ctx.stroke();                        // cierre (derecha, marcado)
+    ctx.restore();
   }
 
   function apiladas(L, vis) {

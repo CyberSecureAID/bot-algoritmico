@@ -15,7 +15,7 @@ function binIdx(p, bin) { return Math.round(p / bin); }
 /* Elige un tamaño de bin "bonito" a partir del rango y el tick real del par. */
 function autoBin(lo, hi, tick) {
   const rango = Math.max(1e-9, hi - lo);
-  let b = rango / 62;                        // ~60 niveles: filas más altas → se leen los números de cada celda por defecto
+  let b = rango / 48;                        // ~48 niveles: filas más altas → se leen los números de cada celda por defecto
   if (tick > 0) b = Math.max(b, tick);       // nunca por debajo del tick real
   // redondear a 1/2/5 x 10^n
   const e = Math.pow(10, Math.floor(Math.log10(b)));
