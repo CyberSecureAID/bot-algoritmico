@@ -1829,7 +1829,8 @@ function mostrarDisclaimer(reView) {
       <h3>Confluence</h3>
       <p>A professional desk for <b>technical analysis only</b>. In a fully connected environment it wires together every system we can reach: live charting, multi source news tracking, market screeners, sector heatmaps and macro feeds, so advanced analysis runs from one screen.</p>
       <p>Nothing here is financial, investment, legal or tax advice, and no result is guaranteed. Digital assets carry substantial risk and every decision is your own.</p>
-      ${reView ? '' : `<label class="it-disc-chk"><input type="checkbox" id="it-disc-agree"><span>I understand this is an analysis tool only, not financial advice, and I use it at my own risk.</span></label>`}
+      <p>The analyst reads the live market and explains it in plain words only to <b>support your own analysis</b>. It is not a financial advisor, it does not guarantee any profit or result, and it never tells you what to buy or sell.</p>
+      ${reView ? '' : `<label class="it-disc-chk"><input type="checkbox" id="it-disc-agree"><span>I understand this is an analysis tool and support only, not financial advice, and I use it at my own risk.</span></label>`}
       <button class="it-pay" id="it-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'Accept'}</button>
     </div></div>`;
   document.body.appendChild(m);
