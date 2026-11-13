@@ -28,6 +28,39 @@ const S = {
 };
 let LC = null;
 
+/* ── Temporalidades: las normales (D.TFS) + SEGUNDOS agregados desde 1s ──
+   Binance solo da 1s nativo por debajo del minuto; 2s/5s/10s/30s se arman agregando
+   klines de 1s. El default de cada panel SIGUE siendo 1m. Todo contenido aquí (no toca
+   datos.js) para no afectar a Trading Demo. */
+const MC_SEG = [{ id: '1s', n: '1s', sec: 1 }, { id: '2s', n: '2s', sec: 2 }, { id: '5s', n: '5s', sec: 5 }, { id: '10s', n: '10s', sec: 10 }, { id: '30s', n: '30s', sec: 30 }];
+const MC_TFS = [...MC_SEG, ...D.TFS.filter((t) => !MC_SEG.some((s) => s.id === t.id))];
+const tfSeg = (id) => { const d = MC_SEG.find((t) => t.id === id); return d && d.sec > 1 ? d.sec : 0; };   // >0 = hay que agregar desde 1s
+function agregarVelas(base, sec) {
+  const out = []; let cur = null;
+  for (const v of base) { const bt = Math.floor(v.time / sec) * sec;
+    if (!cur || cur.time !== bt) { if (cur) out.push(cur); cur = { time: bt, open: v.open, high: v.high, low: v.low, close: v.close, volume: v.volume }; }
+    else { if (v.high > cur.high) cur.high = v.high; if (v.low < cur.low) cur.low = v.low; cur.close = v.close; cur.volume += v.volume; } }
+  if (cur) out.push(cur); return out;
+}
+async function mcVelas(simbolo, tf, limit) {
+  const sec = tfSeg(tf);
+  if (sec) { const base = await D.velas(simbolo, '1s', 1000); return agregarVelas(base, sec); }
+  return D.velas(simbolo, tf, limit);
+}
+function mcStream(simbolo, tf, onKline) {
+  const sec = tfSeg(tf);
+  if (!sec) return D.streamVelas(simbolo, tf, onKline);
+  let buck = null;   // vela agregada en formación; el volumen se suma solo al CERRAR cada 1s (sin doble conteo)
+  return D.streamVelas(simbolo, '1s', (k) => {
+    const bt = Math.floor(Math.floor(k.t / 1000) / sec) * sec, btMs = bt * 1000;
+    const o = +k.o, h = +k.h, l = +k.l, c = +k.c, v = +k.v;
+    if (!buck || buck.t !== btMs) buck = { t: btMs, o, h, l, c, v: 0 };
+    else { if (h > buck.h) buck.h = h; if (l < buck.l) buck.l = l; buck.c = c; }
+    if (k.x === true) buck.v += v;
+    onKline({ t: buck.t, o: buck.o, h: buck.h, l: buck.l, c: buck.c, v: buck.v, x: false });
+  });
+}
+
 /* ── Indicadores ── */
 const cls = (v) => v.map((c) => c.close);
 function sma(a, n) { const o = Array(a.length).fill(null); let s = 0; for (let i = 0; i < a.length; i++) { s += a[i]; if (i >= n) s -= a[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
@@ -204,7 +237,7 @@ async function cargarPanel(pane) {
   const myGen = ++pane.loadGen;                 // cada carga invalida a las anteriores (cambios rápidos de moneda/TF)
   const sp = pane.el.querySelector('.mc-spin'); if (sp) sp.style.display = 'grid';
   try {
-    const [v, t] = await Promise.all([D.velas(pane.par.s, pane.tf, 1000), D.ticker(pane.par.s).catch(() => null)]);
+    const [v, t] = await Promise.all([mcVelas(pane.par.s, pane.tf, 1000), D.ticker(pane.par.s).catch(() => null)]);
     if (myGen !== pane.loadGen) return;         // otra carga más reciente ya ganó: no pisamos sus datos
     pane.velas = v;
     pane.velasMs = v.map((c) => ({ t: c.time * 1000, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
@@ -221,7 +254,7 @@ async function cargarPanel(pane) {
 function iniciarStream(pane) {
   try { pane.stream && pane.stream.cerrar(); } catch (_) {}
   const gen = ++pane.streamGen;                 // invalida los mensajes del stream anterior (otra moneda)
-  try { pane.stream = D.streamVelas(pane.par.s, pane.tf, (k) => { if (gen === pane.streamGen) onKline(pane, k); }); } catch (_) { pane.stream = null; }
+  try { pane.stream = mcStream(pane.par.s, pane.tf, (k) => { if (gen === pane.streamGen) onKline(pane, k); }); } catch (_) { pane.stream = null; }
 }
 function onKline(pane, k) {
   if (!pane.serie) return;
@@ -740,7 +773,7 @@ function aplicarMonedaTodas(id) {
   toast(par.id + ' on all charts');
 }
 function menuTf(pane, anc) {
-  const m = pop(anc, `<div class="mc-indhead">Timeframe</div><div class="mc-tfgrid">${D.TFS.map((t) => `<button class="${t.id === pane.tf ? 'on' : ''}" data-tf="${t.id}">${t.n}</button>`).join('')}</div>`, 220);
+  const m = pop(anc, `<div class="mc-indhead">Timeframe</div><div class="mc-tfgrid">${MC_TFS.map((t) => `<button class="${t.id === pane.tf ? 'on' : ''}" data-tf="${t.id}">${t.n}</button>`).join('')}</div>`, 220);
   m.querySelectorAll('[data-tf]').forEach((b) => b.onclick = async () => { pane.tf = b.dataset.tf; pane.el.querySelector('[data-tf]').textContent = pane.tf; cerrarMenu(); await cargarPanel(pane); });
 }
 function menuInd(pane, anc) {
