@@ -460,23 +460,23 @@ export async function abrirSuperScalper() {
 
 /* Disclaimer oficial (sello + aceptación obligatoria). Herramienta de análisis, no consejo. */
 function discOB(reView) {
-  if (!reView) { try { if (localStorage.getItem('ss-disc-mv1') === '1') return; } catch (_) {} }
+  if (!reView) { try { if (localStorage.getItem('ss-disc-mv2') === '1') return; } catch (_) {} }
   const vieja = $('ss-disc'); if (vieja) vieja.remove();
   const d = document.createElement('div'); d.id = 'ss-disc'; d.className = 'ss-disc' + (reView ? ' rev' : '');
   d.innerHTML = `<div class="ss-disc-bg"></div><div class="ss-disc-c">
     ${reView ? '<button class="ss-disc-x" id="ss-disc-x" aria-label="Close">✕</button>' : ''}
     <img class="ss-disc-sello" src="${DISC_IMG}" alt="">
     <h4>Before you start</h4>
-    <p>Prediction is a <b>probability tool</b>, for information and education only. It reads the current structure, trend, momentum, volume and past levels, and for the scenario you pick (bullish, bearish or range) it draws the <b>single most logical path</b> price could take next, as candles that flow from the current price, with an estimated probability; the All button shows the three together. These are <b>structural projections, not predictions of the future</b>: the projected candles are not real price, the percentages are modelled estimates that will not always be right, and no path is a promise. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance.</p>
-    <p>Every entry, exit and the size of every trade are your own decision and your sole responsibility. The tools are provided as is, without warranty of any kind, and the data comes from third parties (Binance) and may be delayed or incomplete. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.</p>
-    ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand these are modelled probabilities, not predictions, that the ghost candles are projections and not real price, that nothing here is guaranteed, and that I trade entirely at my own risk.</span></label>'}
+    <p>What you are about to see is a <b>projection based on the structural logic of the chart</b>, not a statement of what will actually happen. In real time it reads the continuity of the market structure — where price bounced, where it ranged, where impulses were born, together with the current trend, momentum and volume — and, for the scenario you choose (bullish, bearish or range), it draws the <b>single most logical path</b> that structure could continue into, as candles that flow from the current price, each with an estimated probability; the All button overlays the three. The projected candles are <b>not real price</b>, the percentages are modelled estimates that will often be wrong, and no path, level or probability is a promise of any future movement.</p>
+    <p>Nothing in this section is financial, investment, legal or tax advice, and it is not a recommendation to buy, sell or hold anything. <b>We do not guarantee any result, profit, benefit or performance</b> from the use of this system, and no past or projected behaviour ever guarantees a future outcome. Every entry, exit and the size of every trade are your own decision and your sole responsibility. The tools are provided <b>as is</b>, without warranty of any kind, and the market data comes from third parties (Binance) and may be delayed, incomplete or inaccurate. To the maximum extent permitted by law, DecFreedom, its owners, team and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.</p>
+    ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand this is a projection based on structural logic, not a prediction of what will happen, that the projected candles are not real price, that no result, profit or benefit is guaranteed, and that I use this tool and trade entirely at my own risk.</span></label>'}
     <button class="ss-disc-ok" id="ss-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'Accept'}</button></div>`;
   document.body.appendChild(d);
   const cerrarD = () => d.remove();
   if (reView) { $('ss-disc-x').onclick = cerrarD; d.querySelector('.ss-disc-bg').onclick = cerrarD; }
   else { d.querySelector('.ss-disc-bg').onclick = (e) => { e.preventDefault(); e.stopPropagation(); };
     const chk = $('ss-disc-agree'), ok = $('ss-disc-ok'); chk.addEventListener('change', () => { if (chk.checked) ok.removeAttribute('disabled'); else ok.setAttribute('disabled', ''); }); }
-  $('ss-disc-ok').onclick = () => { if (!reView) { const chk = $('ss-disc-agree'); if (!chk || !chk.checked) return; try { localStorage.setItem('ss-disc-mv1', '1'); } catch (_) {} } cerrarD(); };
+  $('ss-disc-ok').onclick = () => { if (!reView) { const chk = $('ss-disc-agree'); if (!chk || !chk.checked) return; try { localStorage.setItem('ss-disc-mv2', '1'); } catch (_) {} } cerrarD(); };
 }
 
 function cerrar() {
