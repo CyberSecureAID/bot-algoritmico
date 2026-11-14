@@ -37,7 +37,7 @@ try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Smart Pools Â
 import { guiaIndicador, menuAlertas, abrirWidget, registrarIndicador, ponerLogos, ayuda } from './niveles/menus.js?v=1';
 import { gestos } from './niveles/interaccion.js?v=5';
 import { burbujas, initBurbujas } from './niveles/burbujas.js?v=2';
-import { dibujar, initRender } from './niveles/render.js?v=6';
+import { dibujar, initRender } from './niveles/render.js?v=7';
 import { esc, elegir, sembrar, hashCadena, fmt, miles, hora, fecha, _hex2rgb, redondeado } from './niveles/util.js?v=1';
 
 const $ = (id) => document.getElementById(id);

@@ -81,6 +81,23 @@ const fmt = (p) => {
 };
 
 /* ══════════════════════════════════════════════════════════════
+   LEDGER COMPARTIDO CON SPOT
+
+   Las operaciones a mercado desde el area de analisis se registran en el MISMO
+   almacen que Spot (localStorage sp-spot-v1) usando su motor. Asi aparecen en
+   Spot › Positions con su PnL en vivo, sin duplicar logica ni tocar el motor.
+   Misma URL ?v que spot.js para compartir la instancia del modulo.
+   ══════════════════════════════════════════════════════════════ */
+let _spot = null;
+try { import(new URL('../../modules/spot/motor.js?v=7', import.meta.url).href).then((m) => { _spot = m; }).catch(() => {}); } catch (_) {}
+
+/* Posiciones cuya visualizacion el usuario OCULTO en la grafica (tocando la X).
+   Ocultar no vende: la posicion sigue viva en Spot › Positions. */
+const CLAVE_POS_OCULTAS = 'cco-pos-ocultas';
+function posOcultas() { try { return JSON.parse(localStorage.getItem(CLAVE_POS_OCULTAS) || '[]'); } catch (_) { return []; } }
+function ocultarPos(id) { try { const l = posOcultas(); if (!l.includes(id)) { l.push(id); localStorage.setItem(CLAVE_POS_OCULTAS, JSON.stringify(l.slice(-200))); } } catch (_) {} }
+
+/* ══════════════════════════════════════════════════════════════
    ENGANCHAR UN GRÁFICO
 
    Se llama desde cada herramienta pasándole su lienzo y una
@@ -296,35 +313,31 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
   const d = document.createElement('div');
   d.className = 'od-ficha ' + (vender ? 'vender' : 'comprar');
   d.innerHTML = `
-    <button class="od-x" type="button" aria-label="Cerrar">✕</button>
+    <button class="od-x" type="button" aria-label="Close">✕</button>
 
     <div class="od-cab">
       <span class="od-ic">${vender ? '▼' : '▲'}</span>
       <div class="od-tit">
-        <b>${esc(T(vender ? 'Orden de venta' : 'Orden de compra'))}</b>
+        <b>${vender ? 'Sell order' : 'Buy order'}</b>
         <span>${esc(par)} · ${fmt(precio)}</span>
       </div>
-
-      <!-- El porcentaje es el dato que decide: va grande y en verde,
-           porque tanto el descuento al comprar como la ganancia al
-           vender son buenas noticias. -->
+      <!-- El porcentaje es el dato que el usuario busca: se conserva, grande. -->
       <div class="od-pct-grande">
         <b>${dist >= 0 ? '+' : ''}${dist.toFixed(1)}%</b>
-        <span>${esc(T(vender ? 'De ganancia' : 'De descuento'))}</span>
+        <span>${vender ? 'profit' : 'discount'}</span>
       </div>
     </div>
 
-    <div class="od-dist">
-      ${esc(T('Precio ahora'))}: ${fmt(actual)}
-      <span class="od-saldo">${esc(T('Leyendo tu saldo…'))}</span>
+    <!-- Lado, como en Spot: Long compra con USDT, Short vende una moneda que tienes. Solo a mercado. -->
+    <div class="od-side">
+      <button class="od-side-b long ${vender ? '' : 'on'}" type="button" data-lado="long">Long<small>buy</small></button>
+      <button class="od-side-b short ${vender ? 'on' : ''}" type="button" data-lado="short">Short<small>sell</small></button>
     </div>
 
-    <!-- A MERCADO: entra al precio de ahora, no al nivel marcado. El nivel solo elige el lado. -->
-    <div class="od-mkt-nota"><b>Market order.</b> This opens now at the market price (≈ ${fmt(actual)}), not at the level you clicked (${fmt(precio)}). The level only sets the side: buy below the price, sell above it.</div>
+    <div class="od-mkt-nota"><b>Market.</b> Opens now at ≈ ${fmt(actual)}, not at the level you clicked.</div>
 
-    <!-- Cuánto -->
     <div class="od-campo od-cantidad">
-      <label>${esc(T(vender ? 'Cantidad a vender' : 'Cantidad a comprar'))}</label>
+      <label>Amount</label>
       <div class="od-inp-fila">
         <input class="od-inp" id="od-cant" type="text" inputmode="decimal"
                placeholder="0.00" autocomplete="off">
@@ -332,41 +345,10 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       </div>
       <input class="od-rango" id="od-rango" type="range" min="0" max="100" value="0" step="1">
       <div class="od-pcts">
-        ${[25, 50, 75, 100].map((p) => `<button class="od-pct" type="button" data-pct="${p}">${p}%</button>`).join('')}
+        ${[25, 50, 75, 100].map((p) => `<button class="od-pct" type="button" data-pct="${p}">${p === 100 ? 'Max' : p + '%'}</button>`).join('')}
       </div>
+      <div class="od-saldo">${esc(T('Leyendo tu saldo…'))}</div>
     </div>
-
-    <!-- Cómo se ejecuta -->
-    <div class="od-campo">
-      <label>${esc(T('Cómo quieres que funcione'))}</label>
-      <div class="od-modos">
-        <button class="od-modo on" type="button" data-modo="real">
-          <b>Market order</b>
-          <span>Opens now at the market price, not at the clicked level.</span>
-        </button>
-        <button class="od-modo" type="button" data-modo="aviso">
-          <b>${esc(T('Solo avisarme'))}</b>
-          <span>${esc(T('Te avisa y confirmas tú. No cuesta gas.'))}</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Protección: solo tiene sentido al comprar. Si vendes, ya
-         estás saliendo: no hay nada que proteger. -->
-    ${!vender ? `<div class="od-campo od-opcional">
-      <button class="od-toggle" id="od-sl-t" type="button">
-        <span>${esc(T('Añadir stop'))} <em>(${esc(T('opcional'))})</em></span>
-        <i class="od-fl">▾</i>
-      </button>
-      <div class="od-sl" id="od-sl">
-        <div class="od-inp-fila">
-          <input class="od-inp" id="od-slp" type="text" inputmode="decimal"
-                 placeholder="${fmt(vender ? precio * 1.03 : precio * 0.97)}" autocomplete="off">
-          <span class="od-unidad">USDT</span>
-        </div>
-        <div class="od-nota">${esc(T('Opcional. Si tras comprar el precio cae hasta aquí, se vende para limitar la pérdida.'))}</div>
-      </div>
-    </div>` : ''}
 
     <div class="od-resumen" id="od-res"></div>
 
@@ -398,7 +380,6 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     if (x >= 0.0001) return x.toFixed(6);
     return x.toFixed(8);
   }
-  let modo = 'real';
   let saldo = 0;
   let _tokens = null;
 
@@ -482,37 +463,25 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
   })();
 
   /** Cuando no hay con qué operar, se dice y se bloquea. */
+  /* Sin saldo real (o wallet sin conectar) NO se bloquea: la posicion se registra
+     igual como visualizacion/registro hasta que exista el contrato de spot. Solo
+     se informa. La ejecucion real on-chain validara al firmar cuando se conecte. */
   function sinSaldo(motivo) {
     const et = d.querySelector('.od-saldo');
     if (et) { et.className = 'od-saldo alerta'; et.textContent = motivo; }
-    ok.disabled = true;
-    ok.classList.add('bloqueado');
   }
 
   const refrescar = () => {
     let cant = parseFloat(String(inp.value).replace(',', '.')) || 0;
-    /* Nunca por encima de lo que hay: evita firmas que van a fallar */
+    /* Nunca por encima de lo que hay (si se pudo leer el saldo). */
     if (saldo > 0 && cant > saldo) { cant = saldo; inp.value = recorta(saldo); }
-    /* Un aviso no mueve dinero: no hace falta saldo ni cantidad. */
-    /* Bloqueado solo si de verdad no hay saldo (0 confirmado), no
-       cuando simplemente no se ha podido leer. */
-    ok.disabled = modo === 'aviso' ? false : (!(cant > 0) || ok.classList.contains('bloqueado'));
-    if (modo === 'aviso') {
-      res.innerHTML = `
-        <div class="od-r-fila"><span>${esc(T('Te avisaremos cuando'))} ${esc(par)}</span><b>${
-          esc(T(vender ? 'suba a' : 'baje a'))} ${fmt(precio)}</b></div>
-        <div class="od-r-fila"><span>${esc(T('Desde el precio actual'))}</span><b>${
-          dist >= 0 ? '+' : ''}${dist.toFixed(2)}%</b></div>`;
-      res.classList.add('lleno');
-      return;
-    }
+    ok.disabled = !(cant > 0);
     if (cant > 0) {
-      const total = vender ? cant * actual : cant / actual;   // a mercado: se calcula sobre el precio de AHORA, no sobre el nivel marcado
+      const total = vender ? cant * actual : cant / actual;   // a mercado: sobre el precio de AHORA
       res.innerHTML = `
         <div class="od-r-fila"><span>Opens at market</span><b>≈ ${fmt(actual)}</b></div>
-        <div class="od-r-fila"><span>${esc(T(vender ? 'Recibirás' : 'Comprarás'))}</span><b>${
-          vender ? fmt(total) + ' USDT' : total.toFixed(6) + ' ' + esc(par)}</b></div>
-        <div class="od-r-fila"><span>Execution</span><b>At market price</b></div>`;
+        <div class="od-r-fila"><span>${vender ? 'You receive' : 'You buy'}</span><b>${
+          vender ? fmt(total) + ' USDT' : total.toFixed(6) + ' ' + esc(par)}</b></div>`;
       res.classList.add('lleno');
     } else { res.innerHTML = ''; res.classList.remove('lleno'); }
   };
@@ -533,28 +502,14 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     else { /* Sin saldo leído, el porcentaje no puede calcularse */ }
     d.querySelectorAll('[data-pct]').forEach((x) => x.classList.toggle('on', x === b));
   });
-  d.querySelectorAll('[data-modo]').forEach((b) => b.onclick = () => {
-    modo = b.dataset.modo;
-    d.querySelectorAll('[data-modo]').forEach((x) => x.classList.toggle('on', x === b));
-    /* El botón dice lo que va a pasar: no es lo mismo poner una
-       orden que activar un aviso. */
-    ok.textContent = modo === 'aviso'
-      ? T('Activar aviso')
-      : (vender ? 'Sell at market' : 'Buy at market');
-    ok.classList.toggle('aviso', modo === 'aviso');
-    /* Un aviso no mueve dinero: sobra la cantidad y el stop. La
-       ficha se encoge y deja solo lo que importa. */
-    d.classList.toggle('solo-aviso', modo === 'aviso');
-    refrescar();
+  /* Lado (Long/Short) estilo Spot. A mercado el lado solo cambia la unidad y las
+     etiquetas; reabrimos la ficha para el otro lado y asi el saldo se relee solo. */
+  d.querySelectorAll('[data-lado]').forEach((b) => b.onclick = () => {
+    const quiereVender = b.dataset.lado === 'short';
+    if (quiereVender === vender) return;
+    d.remove();
+    abrirFicha(cx, cy, cfg, precio, quiereVender);
   });
-  /* [CORREGIDO] En las ventas no hay bloque de stop, así que esta
-     línea lanzaba un error que dejaba la X sin enganchar. Por eso
-     la X funcionaba al comprar y no al vender. */
-  const slT = $('od-sl-t');
-  if (slT) slT.onclick = () => {
-    const c = d.querySelector('.od-opcional');
-    if (c) c.classList.toggle('abierto');
-  };
   /* [CORREGIDO] La X no cerraba porque el clic se paraba antes de
      llegar. Ahora cierra su propia ficha directamente. */
   const cerrarEsta = (ev) => {
@@ -571,29 +526,27 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
 
   ok.onclick = async () => {
     const cant = parseFloat(String(inp.value).replace(',', '.')) || 0;
-    if (modo !== 'aviso' && !(cant > 0)) return;
+    if (!(cant > 0)) return;
     ok.disabled = true;
     try {
-      if (modo === 'aviso') {
-        guardarAviso({
-          par, simbolo: cfg.simbolo ? cfg.simbolo() : '', precio,
-          cant: cant || 0, vender, sl: 0, cuando: Date.now()
-        });
-        if (cfg.repintar) cfg.repintar();
-        exito(d, T('Aviso puesto'), T('Te avisaremos cuando el precio llegue a') + ' ' + fmt(precio));
-        if (cfg.alPoner) cfg.alPoner({ precio, cant, vender, modo });
-        return;
-      }
-      /* A MERCADO: NO usa rejilla ni keeper (contrato/Cloudflare). Es una
-         entrada manual a precio de mercado. La ejecución real se conectará
-         con el contrato de spot que crearemos después; aquí la interfaz
-         queda lista, sin órdenes limit y sin depender de Cloudflare. */
-      exito(d, vender ? 'Market sell ready' : 'Market buy ready',
-        'This opens at the market price now, not at the level you clicked. Manual market trading connects with our upcoming spot contract.');
-      if (cfg.alPoner) cfg.alPoner({ precio, cant, vender, modo: 'market' });
+      /* A MERCADO: se registra la posicion en el MISMO ledger que Spot
+         (sp-spot-v1) via su motor. Aparece en Spot › Positions con su PnL en
+         vivo, y en la grafica de analisis como una linea limpia de tu entrada.
+         No usa rejilla, keeper ni Cloudflare: la ejecucion real on-chain se
+         conectara con el contrato de spot que crearemos despues. */
+      const lado = vender ? 'short' : 'long';
+      const mark = (cfg.precioActual ? cfg.precioActual() : 0) || precio;
+      const amountUsdt = vender ? cant * mark : cant;   // long: USDT; short: cantidad de moneda · precio
+      let pos = null;
+      try { if (_spot && _spot.abrirMercado) { const r = _spot.abrirMercado(par, par, lado, amountUsdt, mark); if (r && r.ok) pos = r.pos; } } catch (_) {}
+      notificarPosicion(lado, par, mark, cant, vender);
+      if (cfg.repintar) cfg.repintar();
+      if (cfg.alPoner) cfg.alPoner({ precio: mark, cant, vender, modo: 'market', lado, pos });
+      exito(d, vender ? 'Short opened' : 'Long opened',
+        `Opened at market ≈ ${fmt(mark)}. Follow it live in Spot › Positions.`);
     } catch (er) {
       ok.disabled = false;
-      ok.textContent = modo === 'aviso' ? T('Activar aviso') : (vender ? 'Sell at market' : 'Buy at market');
+      ok.textContent = vender ? 'Sell at market' : 'Buy at market';
       const m = String((er && (er.reason || er.shortMessage || er.message)) || er);
       console.warn('[CCO] orden:', er);
       fallo(d, m.slice(0, 160));
@@ -1002,6 +955,27 @@ function toastAlerta(vender, precio) {
   setTimeout(() => { if (t.parentNode) t.remove(); }, 6000);
 }
 
+/* Notificacion al EJECUTAR una posicion desde analisis: sonido + aviso del
+   sistema (si hay permiso) + toast visible. La posicion queda en Spot › Positions. */
+function notificarPosicion(lado, par, precio, cant, vender) {
+  try { sonarHecho(); } catch (_) {}
+  const titulo = (lado === 'long' ? 'Long' : 'Short') + ' opened · ' + (par || '');
+  const cuerpo = cant + ' ' + (vender ? par : 'USDT') + ' at ' + fmt(precio) + ' · see it in Spot › Positions';
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(titulo, { body: cuerpo, icon: 'assets/img/aurex-192.png' });
+    }
+  } catch (_) {}
+  const t = document.createElement('div');
+  t.className = 'od-toast ' + (vender ? 'vender' : 'comprar');
+  t.innerHTML = `<span class="od-t-ic">${vender ? '▼' : '▲'}</span>
+    <div><b>${esc(titulo)}</b><span>${esc(cuerpo)}</span></div>
+    <button type="button" class="od-t-x">✕</button>`;
+  document.body.appendChild(t);
+  t.querySelector('.od-t-x').onclick = () => t.remove();
+  setTimeout(() => { if (t.parentNode) t.remove(); }, 9000);
+}
+
 /* ══════════════════════════════════════════════════════════════
    PINTAR LAS ÓRDENES SOBRE EL GRÁFICO
 
@@ -1015,7 +989,9 @@ export function pintar(g, opciones) {
   const { x1, y1, Y, pMin, pMax, simbolo } = opciones;
   const lista = ordenesPuestas().filter((o) => !simbolo || o.simbolo === simbolo);
   const zonas = [];
-  if (!lista.length) return zonas;
+  /* Antes aquí había un "if (!lista.length) return": saltaba el dibujado cuando no
+     había órdenes/alertas, y las POSICIONES (que no son órdenes) nunca se pintaban.
+     Se quitó para que el bloque de posiciones de abajo corra siempre. */
 
   const H = y1 || 600;
   let usadosArriba = 0, usadosAbajo = 0;
@@ -1105,6 +1081,39 @@ export function pintar(g, opciones) {
     zonas.push({ x: xB, y: y - 13, w: 26, h: 26, orden: o });
   });
 
+  /* ── Posiciones abiertas (ledger compartido con Spot) ──
+     Linea limpia de la entrada, sin atiborrar: el PnL en vivo y el cierre real
+     estan en Spot › Positions. La X solo OCULTA la visualizacion aqui; no vende. */
+  try {
+    const parAct = String(simbolo || '').replace(/USDT$/i, '');
+    const ocultas = posOcultas();
+    const posis = (_spot && _spot.posiciones) ? _spot.posiciones() : [];
+    posis.filter((p) => p && p.par === parAct && parAct && !ocultas.includes(p.id)).forEach((p) => {
+      if (!(p.entrada >= pMin && p.entrada <= pMax)) return;   // fuera de vista: vive en Spot
+      const col = p.lado === 'long' ? '#2ee86a' : '#ff5b6e';
+      const yy = Y(p.entrada);
+      g.save();
+      g.strokeStyle = col; g.lineWidth = 1.8;
+      g.beginPath(); g.moveTo(0, yy); g.lineTo(x1, yy); g.stroke();
+      g.restore();
+      const et = `${p.lado === 'long' ? 'LONG' : 'SHORT'}  ${fmt(p.entrada)}`;
+      g.font = 'bold 10.5px ui-monospace,monospace';
+      const wl = g.measureText(et).width + 24;
+      const xE = x1 - wl - 34;
+      g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 7; g.shadowOffsetY = 2;
+      g.fillStyle = col; redondeadoOd(g, xE, yy - 12, wl, 24, 7); g.fill(); g.restore();
+      g.fillStyle = p.lado === 'long' ? '#04210f' : '#2a0509';
+      g.textAlign = 'left'; g.fillText(et, xE + 11, yy + 4);
+      const xB = x1 - 30;
+      g.fillStyle = 'rgba(11,15,22,.92)'; redondeadoOd(g, xB, yy - 12, 24, 24, 7); g.fill();
+      g.strokeStyle = col + 'aa'; g.lineWidth = 1.3; redondeadoOd(g, xB, yy - 12, 24, 24, 7); g.stroke();
+      g.strokeStyle = col; g.lineWidth = 1.7; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(xB + 8, yy - 4); g.lineTo(xB + 16, yy + 4); g.moveTo(xB + 16, yy - 4); g.lineTo(xB + 8, yy + 4); g.stroke();
+      g.lineCap = 'butt';
+      zonas.push({ x: xB, y: yy - 12, w: 24, h: 24, ocultarPos: p.id });
+    });
+  } catch (_) {}
+
   return zonas;
 }
 
@@ -1139,7 +1148,11 @@ export function clicCancelar(cv, dameZonas, repintar) {
     const x = cx - r.left, y = cy - r.top;
     const z = (dameZonas() || []).find((q) =>
       x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
-    if (z) { pedirCancelar(z.orden, repintar); return true; }
+    if (z) {
+      if (z.ocultarPos) { ocultarPos(z.ocultarPos); if (repintar) repintar(); }   // solo oculta la visualizacion, no vende
+      else pedirCancelar(z.orden, repintar);
+      return true;
+    }
     return false;
   };
   cv.addEventListener('click', (e) => { if (mirar(e.clientX, e.clientY)) { e.stopPropagation(); } }, true);
@@ -1401,6 +1414,17 @@ function estilos() {
     background:rgba(255,255,255,.04);border:1px solid #2b3139;color:#8b96a3;
     font-family:var(--mono,monospace);font-size:10px;font-weight:700}
   .od-pct.on,.od-pct:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+
+  /* Lado Long/Short, estilo Spot (solo a mercado) */
+  .od-side{display:flex;gap:7px;margin-bottom:12px}
+  .od-side-b{flex:1;min-height:46px;border-radius:10px;cursor:pointer;border:1px solid #2b3139;
+    background:rgba(255,255,255,.03);color:#9aa4b0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1px;line-height:1.1;
+    font-family:var(--display,sans-serif);font-weight:800;font-size:13px}
+  .od-side-b small{font-weight:600;font-size:9.5px;color:#6b7580;letter-spacing:.3px}
+  .od-side-b.long.on{background:rgba(46,232,106,.14);border-color:#2ee86a;color:#4dffa0}
+  .od-side-b.short.on{background:rgba(255,91,110,.14);border-color:#ff5b6e;color:#ff8a95}
+  .od-side-b.on small{color:inherit;opacity:.85}
 
   .od-modos{display:flex;flex-direction:column;gap:6px}
   .od-modo{text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;
