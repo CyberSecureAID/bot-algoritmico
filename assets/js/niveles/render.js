@@ -28,7 +28,7 @@ export function dibujar() {
     gestos(cv, dibujar, burbujas, guardarDib);
     cv.dataset.listo = '1';
     /* Órdenes desde el gráfico: clic derecho o toque largo. */
-    import('../orden.js?v=130').then((od) => {
+    import('../orden.js?v=131').then((od) => {
       od.conectar({
         canvas: cv,
         precioEn: (y) => {
