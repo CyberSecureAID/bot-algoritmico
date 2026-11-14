@@ -59,9 +59,9 @@ const HERRAMIENTAS = [
   { id:'foot', abre:'foot', nombre:'Footprint Pro', cat:'analysis', img:'assets/img/serv-footprint.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Order flow, candle by candle',
     desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' },
-  { id:'scalp', abre:'scalp', nombre:'Order Blocks', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
-    lema:'Trend ribbon and order block zones',
-    desc:'A live candle chart with two layers working together. First, a twelve line moving average ribbon (the Guppy GMMA): the averages squeeze into a point in a sideways market and fan out in a trend, the whole band is coloured by the current trend, green for buyers in control and red for sellers, and a clean LONG or SHORT label prints the moment the trend actually flips, in real time on the candle close, filtered by a volatility band so flat markets do not spam false signals. Second, order block zones in the style popularised by BigBeluga: green demand and red supply boxes built from pivots with real volume and an ATR (100) displacement, extended to the right while valid and removed once price closes through them. Read them as confluence, a LONG flip on a green zone or a SHORT flip into a red one. Default timeframe 1H, fully changeable. Everything is inferred from price and volume for analysis and education, not verified institutional orders, and no signal is a guarantee.' }
+  { id:'scalp', abre:'scalp', nombre:'Multiverse', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'The probability tree of what price could do',
+    desc:'A probability and prediction system, built from scratch. On a live candle chart it reads five measurable analyzers, trend, momentum and exhaustion, volume and range, support and resistance levels, and market structure, and projects the paths price could take next as a branching tree of realities. The possible futures are drawn as ghost candles: hollow, translucent candles with a flowing inner light, so a projection is never confused with real price. Each branch carries its probability and each route an accumulated probability; the most likely paths glow brighter and thicker, the long shots fade. Since cycles are fractal it works on any timeframe, and the whole tree recomputes on every candle, so discarded paths fade and new ones appear in real time. Zoom, drag and zoom out to read the full scheme. It is a probability tool, not a promise of any result, and that is written into the interface.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
@@ -161,7 +161,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=9', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=10', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=6', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=7', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
