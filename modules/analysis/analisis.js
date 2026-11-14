@@ -174,15 +174,15 @@ async function abrirTool(abre, cardEl) {
   if (btn) { btn.classList.add('load'); btn.textContent = 'Loading…'; }
 
   try {
-    if (abre === 'pools')       await (await import(base + 'liquidity.js?v=141')).abrirPools();
-    else if (abre === 'heat')   await (await import(base + 'muros.js?v=136')).abrirMuros();
-    else if (abre === 'levels') await (await import(base + 'niveles.js?v=135')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=39', import.meta.url).href)).abrirInstitutional();
-    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
+    if (abre === 'pools')       await (await import(base + 'liquidity.js?v=142')).abrirPools();
+    else if (abre === 'heat')   await (await import(base + 'muros.js?v=137')).abrirMuros();
+    else if (abre === 'levels') await (await import(base + 'niveles.js?v=136')).abrirNiveles();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=40', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=13', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
-    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=9', import.meta.url).href)).abrirMulti();
-    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=10', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=14', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=10', import.meta.url).href)).abrirMulti();
+    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=11', import.meta.url).href)).abrirFootprint();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=15', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
