@@ -231,7 +231,7 @@ function dibujar() {
     // N.dibujos quedaba undefined → al soltar un trazo, soltarDib() reventaba
     // (push sobre undefined) y la barra quedaba congelada. Lo garantizamos aquí.
     try { N.seccion = 'reaction'; N.par = _par; cargarDib(); } catch (_) { N.dibujos = N.dibujos || []; }
-    import('../../assets/js/orden.js?v=126').then((od) => {
+    import('../../assets/js/orden.js?v=130').then((od) => {
       od.conectar({
         canvas: cv,
         precioEn: (y) => { if (!M._geo) return 0; const { pMin, pMax, y1 } = M._geo; return pMin + (pMax - pMin) * ((y1 - y) / y1); },
