@@ -28,7 +28,7 @@ export function dibujar() {
     gestos(cv, dibujar, burbujas, guardarDib);
     cv.dataset.listo = '1';
     /* Órdenes desde el gráfico: clic derecho o toque largo. */
-    import('../orden.js?v=126').then((od) => {
+    import('../orden.js?v=130').then((od) => {
       od.conectar({
         canvas: cv,
         precioEn: (y) => {
@@ -208,12 +208,19 @@ export function dibujar() {
      fuertes llevan etiqueta con CUÁNTA liquidez hay. Se enciende/apaga con el
      botón de perfil de la barra superior. Reutiliza las velas, no pide datos. */
   if (!N.limpia && N.verPerfil && vis.length > 5) {
-    const BINS = 46;
+    /* ESTABLE: se calcula sobre TODO el histórico cargado y con las franjas
+       ancladas a PRECIO (no al viewport). Así una pool relevante no desaparece ni
+       salta al hacer zoom; solo se ve más cerca o más lejos. Antes se recalculaba
+       sobre lo visible y el POC cambiaba con cada zoom. */
+    const todas = (N.velas && N.velas.length > vis.length) ? N.velas : vis;
+    let _lo = Infinity, _hi = -Infinity;
+    for (const v of todas) { if (v.l < _lo) _lo = v.l; if (v.h > _hi) _hi = v.h; }
+    const rangoTot = (_hi - _lo) || 1;
+    const BINS = 200;
     const vol = new Array(BINS).fill(0);
-    const rango = (pMax - pMin) || 1;
-    vis.forEach((v) => {
-      const b0 = Math.max(0, Math.min(BINS - 1, Math.floor((v.l - pMin) / rango * BINS)));
-      const b1 = Math.max(0, Math.min(BINS - 1, Math.floor((v.h - pMin) / rango * BINS)));
+    const binDe = (p) => Math.max(0, Math.min(BINS - 1, Math.floor((p - _lo) / rangoTot * BINS)));
+    todas.forEach((v) => {
+      const b0 = binDe(v.l), b1 = binDe(v.h);
       const reparto = v.v / ((b1 - b0 + 1) || 1);
       for (let b = b0; b <= b1; b++) vol[b] += reparto;
     });
@@ -221,51 +228,55 @@ export function dibujar() {
     for (let b = 0; b < BINS; b++) if (vol[b] > maxV) { maxV = vol[b]; poc = b; }
     if (maxV > 0) {
       const anchoMax = Math.min(96, x1 * 0.18);
-      const hBin = y1 / BINS;
-      const alto = Math.max(1.5, hBin - 1.8);
+      const precioDe = (b) => _lo + (b + 0.5) / BINS * rangoTot;
+      const altoBarra = Math.max(1.5, (y1 * (rangoTot / BINS) / Math.max(1e-9, pMax - pMin)) - 0.4);
       g.save();
 
       /* Barras horizontales: largo y brillo proporcionales a la liquidez. */
       for (let b = 0; b < BINS; b++) {
         if (vol[b] <= 0) continue;
+        const p = precioDe(b);
+        if (p < pMin || p > pMax) continue;        // solo las franjas dentro de la ventana visible
         const r = vol[b] / maxV;
         const w = Math.max(2, r * anchoMax);
-        const yb = y1 - (b + 1) * hBin;
+        const yb = Y(p) - altoBarra / 2;
         const esPoc = b === poc;
         const grad = g.createLinearGradient(x1 - w, 0, x1, 0);
         grad.addColorStop(0, 'rgba(34,211,238,0)');
         grad.addColorStop(1, esPoc ? 'rgba(103,232,249,.5)' : `rgba(34,211,238,${(0.12 + r * 0.24).toFixed(3)})`);
         g.fillStyle = grad;
-        g.fillRect(x1 - w, yb + 0.9, w, alto);
+        g.fillRect(x1 - w, yb, w, altoBarra);
       }
 
-      /* Resalte de la POOL principal (point of control) con glow suave. */
-      {
-        const yb = y1 - (poc + 1) * hBin;
-        g.save();
-        g.shadowColor = 'rgba(34,211,238,.75)'; g.shadowBlur = 8;
-        g.fillStyle = 'rgba(103,232,249,.22)';
-        g.fillRect(x1 - anchoMax, yb + 0.9, anchoMax, alto);
-        g.restore();
+      /* Resalte de la POOL principal (point of control) con glow, solo si está a la vista. */
+      { const pPoc = precioDe(poc);
+        if (pPoc >= pMin && pPoc <= pMax) {
+          const yb = Y(pPoc) - altoBarra / 2;
+          g.save();
+          g.shadowColor = 'rgba(34,211,238,.75)'; g.shadowBlur = 8;
+          g.fillStyle = 'rgba(103,232,249,.22)';
+          g.fillRect(x1 - anchoMax, yb, anchoMax, altoBarra);
+          g.restore();
+        }
       }
 
       /* Etiquetas: en las 3 franjas más fuertes, CUÁNTA liquidez hay (volumen).
          La principal lleva además su precio. Se evita amontonar etiquetas. */
       const orden = [];
-      for (let b = 0; b < BINS; b++) if (vol[b] > 0) orden.push(b);
+      for (let b = 0; b < BINS; b++) { if (vol[b] <= 0) continue; const p = precioDe(b); if (p >= pMin && p <= pMax) orden.push(b); }
       orden.sort((a, c) => vol[c] - vol[a]);
       const marcar = [];
       for (const b of orden) {
         if (marcar.length >= 3) break;
-        if (marcar.some((m) => Math.abs(m - b) < 3)) continue;
+        if (marcar.some((m) => Math.abs(m - b) < 4)) continue;
         marcar.push(b);
       }
       g.textBaseline = 'middle';
       marcar.forEach((b) => {
         const esPoc = b === poc;
-        const y = y1 - (b + 0.5) * hBin;
+        const y = Y(precioDe(b));
         const w = (vol[b] / maxV) * anchoMax;
-        const txt = esPoc ? (fmt(pMin + (b + 0.5) / BINS * rango) + '  ·  ' + miles(vol[b])) : miles(vol[b]);
+        const txt = esPoc ? (fmt(precioDe(b)) + '  ·  ' + miles(vol[b])) : miles(vol[b]);
         g.font = esPoc ? '800 8.5px ui-monospace,monospace' : '600 8px ui-monospace,monospace';
         const pad = 6, bw = g.measureText(txt).width + pad * 2, bh = esPoc ? 15 : 13;
         const bx = Math.max(3, x1 - w - 5 - bw), by = Math.max(13, Math.min(y1 - bh - 2, y - bh / 2));

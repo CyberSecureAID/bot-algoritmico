@@ -19,7 +19,7 @@
 
 import { N } from './estado.js?v=1';
 import { elegir, fmt } from './util.js?v=1';
-import { pivotes, swings, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, calcularTendenciaMayor, detectarDobles, marea, calcularATR, construirPlan } from './motor.js?v=1';
+import { pivotes, swings, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, calcularTendenciaMayor, detectarDobles, marea, calcularATR, construirPlan } from './motor.js?v=2';
 
 const dos = (en, es) => ({ en, es });
 const pc = (x, d = 1) => (x >= 0 ? '+' : '') + x.toFixed(d) + '%';
@@ -106,7 +106,7 @@ export function analizar(par) {
     hacerC = elegir([dos('Everything lines up for longs. Shorting here is fighting both horizons at once.', 'Todo alinea para largos. Ponerse corto aquí es pelear contra los dos horizontes a la vez.'),
                      dos('Buy pullbacks, not breakouts: the trend gives you cheaper entries if you wait.', 'Compra retrocesos, no rupturas: la tendencia te da entradas más baratas si esperas.')]);
   } else if (alcM && !alcC) {
-    tituloC = elegir([dos('Pullback inside a larger uptrend', 'Retroceso dentro de una tendencia mayor alcista'), dos('Short term dips, the big trend still rises', 'El corto plazo cae, la de fondo sigue subiendo'), dos('Correction, not a reversal (so far)', 'Corrección, no giro (por ahora)')]);
+    tituloC = elegir([dos('Pullback inside a larger uptrend', 'Retroceso dentro de una tendencia mayor alcista'), dos('Short term dips, the big trend still rises', 'El corto plazo cae, la de fondo sigue subiendo'), dos('A correction, not a reversal', 'Una corrección, no un giro')]);
     hacerC = elegir([dos('Treat this as a discount inside the trend unless the major line breaks with a close. Look for the floor, not the exit.', 'Trátalo como descuento dentro de la tendencia mientras la línea mayor no se pierda con un cierre. Busca el suelo, no la salida.'),
                      dos('Do not short a dip inside an uptrend. Wait for the short-term structure to turn up again and buy that.', 'No vendas en corto una caída dentro de una tendencia alcista. Espera a que la estructura corta vuelva a girar arriba y compra eso.')]);
   } else if (bajM && bajC) {
@@ -114,7 +114,7 @@ export function analizar(par) {
     hacerC = elegir([dos('Everything lines up for shorts. Catching the bottom here means fighting both horizons.', 'Todo alinea para cortos. Buscar el suelo aquí es pelear contra los dos horizontes.'),
                      dos('Sell bounces into resistance, not breakdowns: the trend gives you better prices if you wait.', 'Vende rebotes contra resistencia, no rupturas: la tendencia te da mejores precios si esperas.')]);
   } else if (bajM && !bajC) {
-    tituloC = elegir([dos('Bounce inside a larger downtrend', 'Rebote dentro de una tendencia mayor bajista'), dos('Short term rises, the big trend still falls', 'El corto plazo sube, la de fondo sigue cayendo'), dos('Relief rally, not a reversal (so far)', 'Rebote de alivio, no giro (por ahora)')]);
+    tituloC = elegir([dos('Bounce inside a larger downtrend', 'Rebote dentro de una tendencia mayor bajista'), dos('Short term rises, the big trend still falls', 'El corto plazo sube, la de fondo sigue cayendo'), dos('A relief rally, not a reversal', 'Un rebote de alivio, no un giro')]);
     hacerC = elegir([dos('Bounces inside a downtrend are selling opportunities until the major line is reclaimed with a close.', 'Los rebotes dentro de una tendencia bajista son oportunidades de venta hasta que la línea mayor se recupere con un cierre.'),
                      dos('Do not chase this bounce long. If you buy, it is a quick trade against the trend, with a tight stop.', 'No persigas este rebote en largo. Si compras, es un trade rápido contra tendencia, con stop ajustado.')]);
   } else {
@@ -367,27 +367,40 @@ export function analizar(par) {
       ]
     };
   } else {
-    /* NO HAY VENTAJA: decir por qué y qué la crearía, con precios. */
-    const descartados = candidatos.length;
-    const gatilloL = sCerca ? dos(`a pullback to ${fmt(sCerca.p)} that holds`, `un retroceso a ${fmt(sCerca.p)} que aguante`) : dos(`a tested floor (none within 12% now)`, `un suelo probado (no hay a menos de 12%)`);
-    const gatilloS = rCerca ? dos(`a rejection at ${fmt(rCerca.p)}`, `un rechazo en ${fmt(rCerca.p)}`) : dos(`a tested ceiling (none within 12% now)`, `un techo probado (no hay a menos de 12%)`);
-    const motivo = descartados
-      ? dos(`${descartados} candidate${descartados > 1 ? 's' : ''} found but none reaches 1.5:1 reward/risk, so none is worth the risk.`, `${descartados} candidato${descartados > 1 ? 's' : ''} encontrado${descartados > 1 ? 's' : ''} pero ninguno llega a 1,5:1 de beneficio/riesgo, así que ninguno vale el riesgo.`)
-      : (sesgo ? dos(`Price is ${sCerca || rCerca ? 'between levels' : 'away from any tested level'}: the trend is ${sesgo === 'alcista' ? 'up' : 'down'} but there is no cheap place to join it right now.`, `El precio está ${sCerca || rCerca ? 'entre niveles' : 'lejos de cualquier nivel probado'}: la tendencia es ${sesgo === 'alcista' ? 'alcista' : 'bajista'} pero no hay un sitio barato para sumarse ahora.`)
-               : dos(`No trend on either horizon and no level being tested: there is nothing to lean on.`, `Sin tendencia en ningún horizonte y sin nivel en prueba: no hay dónde apoyarse.`));
+    /* SIN setup de 1.5:1, pero CON criterio propio: el analista se compromete con
+       la DIRECCIÓN que manda la estructura y dice el sitio exacto donde actuar, en
+       vez de un "no hay nada" ambiguo. Disciplina sí, miedo no. */
+    const floorTxt = dos(sCerca ? fmt(sCerca.p) : fmt(l24), sCerca ? fmt(sCerca.p) : fmt(l24));
+    const ceilTxt = dos(rCerca ? fmt(rCerca.p) : fmt(h24), rCerca ? fmt(rCerca.p) : fmt(h24));
     const estrTxt = estrRec
       ? dos(` Latest structure event: ${estrRec.tipo === 'bos' ? 'break of structure' : 'change of character'} ${estrRec.dir === 'alcista' ? 'up' : 'down'} at ${fmt(estrRec.nivel)}.`, ` Último evento de estructura: ${estrRec.tipo === 'bos' ? 'ruptura de estructura' : 'cambio de carácter'} ${estrRec.dir === 'alcista' ? 'al alza' : 'a la baja'} en ${fmt(estrRec.nivel)}.`)
       : dos('', '');
+    let titF, txtF, hacerF;
+    if (sesgo === 'alcista') {
+      titF = elegir([dos('Longs only, and only at the level', 'Solo largos, y solo en el nivel'), dos('Uptrend: buy the discount, not the middle', 'Tendencia alcista: compra el descuento, no el medio')]);
+      txtF = dos(`This is a market to buy, not to short: the structure is up. Price sits ${sCerca ? 'above its support' : 'in open air'} right now, which is the low probability spot. The long with the edge is at ${sCerca ? fmt(sCerca.p) : 'the next tested floor'}, ${sCerca ? apc(dS, 2) + ' below' : 'once one forms within 12%'}.${estrTxt.en}`,
+                 `Este es un mercado para comprar, no para ponerse corto: la estructura es alcista. El precio está ${sCerca ? 'por encima de su soporte' : 'en el aire'} ahora, que es el sitio de baja probabilidad. El largo con ventaja está en ${sCerca ? fmt(sCerca.p) : 'el próximo suelo probado'}, ${sCerca ? 'a ' + apc(dS, 2) + ' abajo' : 'cuando se forme uno a menos de 12%'}.${estrTxt.es}`);
+      hacerF = dos(`Go long at ${sCerca ? fmt(sCerca.p) : 'the floor'} with the stop just below it, target ${rCerca ? fmt(rCerca.p) : fmt(h24)}. Buying here in the middle is the low probability trade, and shorting an uptrend is the wrong side. Put an alert at ${sCerca ? fmt(sCerca.p) : floorTxt.en} and take it there.`,
+                   `Ponte largo en ${sCerca ? fmt(sCerca.p) : 'el suelo'} con stop justo debajo, objetivo ${rCerca ? fmt(rCerca.p) : fmt(h24)}. Comprar aquí en el medio es el trade de baja probabilidad, y vender una tendencia alcista es el lado equivocado. Pon una alerta en ${sCerca ? fmt(sCerca.p) : floorTxt.es} y tómalo ahí.`);
+    } else if (sesgo === 'bajista') {
+      titF = elegir([dos('Shorts only, and only at the level', 'Solo cortos, y solo en el nivel'), dos('Downtrend: sell the bounce, not the middle', 'Tendencia bajista: vende el rebote, no el medio')]);
+      txtF = dos(`This is a market to sell, not to catch: the structure is down. Price sits ${rCerca ? 'below its resistance' : 'in open air'} right now, the low probability spot. The short with the edge is at ${rCerca ? fmt(rCerca.p) : 'the next tested ceiling'}, ${rCerca ? apc(dR, 2) + ' above' : 'once one forms within 12%'}.${estrTxt.en}`,
+                 `Este es un mercado para vender, no para atrapar: la estructura es bajista. El precio está ${rCerca ? 'por debajo de su resistencia' : 'en el aire'} ahora, el sitio de baja probabilidad. El corto con ventaja está en ${rCerca ? fmt(rCerca.p) : 'el próximo techo probado'}, ${rCerca ? 'a ' + apc(dR, 2) + ' arriba' : 'cuando se forme uno a menos de 12%'}.${estrTxt.es}`);
+      hacerF = dos(`Short at ${rCerca ? fmt(rCerca.p) : 'the ceiling'} with the stop just above it, target ${sCerca ? fmt(sCerca.p) : fmt(l24)}. Selling here in the middle is the low probability trade, and buying a downtrend is the wrong side. Put an alert at ${rCerca ? fmt(rCerca.p) : ceilTxt.en} and take the rejection there.`,
+                   `Ponte corto en ${rCerca ? fmt(rCerca.p) : 'el techo'} con stop justo encima, objetivo ${sCerca ? fmt(sCerca.p) : fmt(l24)}. Vender aquí en el medio es el trade de baja probabilidad, y comprar una tendencia bajista es el lado equivocado. Pon una alerta en ${rCerca ? fmt(rCerca.p) : ceilTxt.es} y toma el rechazo ahí.`);
+    } else {
+      titF = elegir([dos('Range: trade the edges, not the middle', 'Rango: opera los extremos, no el medio'), dos('No trend: the edge is at the extremes', 'Sin tendencia: la ventaja está en los extremos')]);
+      txtF = dos(`No trend on either horizon: this is a range, so the plan is fixed. Buy the floor at ${floorTxt.en}, sell the ceiling at ${ceilTxt.en}. The middle, where price is now, is a coin flip and not a trade.${estrTxt.en}`,
+                 `Sin tendencia en ningún horizonte: esto es un rango, así que el plan es fijo. Compra el suelo en ${floorTxt.es}, vende el techo en ${ceilTxt.es}. El medio, donde está el precio ahora, es cara o cruz y no es un trade.${estrTxt.es}`);
+      hacerF = dos(`Buy ${floorTxt.en} with a stop below it, sell ${ceilTxt.en} with a stop above it, and keep targets short. Do not trade the middle: wait for an edge.`,
+                   `Compra ${floorTxt.es} con stop debajo, vende ${ceilTxt.es} con stop encima, y objetivos cortos. No operes el medio: espera un extremo.`);
+    }
+    const tipoF = sesgo === 'alcista' ? 'compra' : sesgo === 'bajista' ? 'venta' : 'vigilar';   // la píldora toma lado: decidido, no un "WAIT" ambiguo
     setup = {
-      tipo: 'aviso', p: sCerca ? sCerca.p : (rCerca ? rCerca.p : precio), prioridad: 10, esPlan: true, marca: estrRec || null,
-      titulo: elegir([dos('No edge right now', 'Sin ventaja ahora mismo'), dos('Nothing worth the risk here', 'Nada que valga el riesgo aquí'), dos('Wait: the trade is not here yet', 'Espera: el trade todavía no está')]),
-      txt: dos(`${motivo.en}${estrTxt.en}`, `${motivo.es}${estrTxt.es}`),
-      hacer: elegir([
-        dos(`What would create an edge: for a long, ${gatilloL.en}; for a short, ${gatilloS.en}. Until one of those happens, do nothing: sitting out is a position too.`,
-            `Qué crearía una ventaja: para un largo, ${gatilloL.es}; para un corto, ${gatilloS.es}. Hasta que pase una de esas dos cosas, no hagas nada: quedarse fuera también es una posición.`),
-        dos(`Set alerts, not orders: ${sCerca ? fmt(sCerca.p) : fmt(l24)} below and ${rCerca ? fmt(rCerca.p) : fmt(h24)} above. The decision happens there.`,
-            `Pon alertas, no órdenes: ${sCerca ? fmt(sCerca.p) : fmt(l24)} abajo y ${rCerca ? fmt(rCerca.p) : fmt(h24)} arriba. La decisión ocurre ahí.`)
-      ]),
+      tipo: tipoF, p: sCerca ? sCerca.p : (rCerca ? rCerca.p : precio), prioridad: 10, esPlan: false, marca: estrRec || null,
+      titulo: titF,
+      txt: txtF,
+      hacer: hacerF,
       detalle: [
         dos(`Candidates evaluated: ${candidatos.length} · with reward/risk ≥ 1.5: 0`, `Candidatos evaluados: ${candidatos.length} · con beneficio/riesgo ≥ 1,5: 0`),
         ...candidatos.map((c) => dos(`${c.clave} ${c.largo ? 'long' : 'short'}: ${c.plan.rr.toFixed(1)}:1 (target ${fmt(c.plan.objetivo)}, stop ${fmt(c.plan.stop)})`, `${c.clave} ${c.largo ? 'largo' : 'corto'}: ${c.plan.rr.toFixed(1)}:1 (objetivo ${fmt(c.plan.objetivo)}, stop ${fmt(c.plan.stop)})`)),
