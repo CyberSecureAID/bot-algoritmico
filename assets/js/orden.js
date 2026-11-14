@@ -89,13 +89,51 @@ const fmt = (p) => {
    Misma URL ?v que spot.js para compartir la instancia del modulo.
    ══════════════════════════════════════════════════════════════ */
 let _spot = null;
-try { import(new URL('../../modules/spot/motor.js?v=7', import.meta.url).href).then((m) => { _spot = m; }).catch(() => {}); } catch (_) {}
+try { import(new URL('../../modules/spot/motor.js?v=7', import.meta.url).href).then((m) => { _spot = m; if (_marcadorTick) { try { _marcadorTick(); } catch (_) {} } }).catch(() => {}); } catch (_) {}
 
 /* Posiciones cuya visualizacion el usuario OCULTO en la grafica (tocando la X).
    Ocultar no vende: la posicion sigue viva en Spot › Positions. */
 const CLAVE_POS_OCULTAS = 'cco-pos-ocultas';
 function posOcultas() { try { return JSON.parse(localStorage.getItem(CLAVE_POS_OCULTAS) || '[]'); } catch (_) { return []; } }
 function ocultarPos(id) { try { const l = posOcultas(); if (!l.includes(id)) { l.push(id); localStorage.setItem(CLAVE_POS_OCULTAS, JSON.stringify(l.slice(-200))); } } catch (_) {} }
+
+/* ── Marcas de precio en vivo para el PnL de las posiciones del grafico ──
+   Se piden a ticker/price (via shim, espejo de datos) SOLO de los simbolos
+   que tienen posicion abierta. pintar() lee este cache para el PnL en vivo.
+   Vive aqui entero: no se toca ninguno de los 8 modulos de analisis. */
+const _marks = {};
+let _vigMarcas = null;
+let _marcadorTick = null;   // referencia al tick, para dispararlo en cuanto _spot cargue
+function arrancarMarcador() {
+  if (_vigMarcas) return;
+  const tick = async () => {
+    try {
+      const posis = (_spot && _spot.posiciones) ? _spot.posiciones() : [];
+      if (!posis.length) return;
+      const simbolos = [...new Set(posis.map((p) => String(p.par || '').toUpperCase() + 'USDT').filter((s) => s.length > 5))];
+      for (const s of simbolos) {
+        try {
+          const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${s}`);
+          if (!r.ok) continue;
+          const j = await r.json();
+          const v = Number(j.price);
+          if (isFinite(v) && v > 0) _marks[s] = v;
+        } catch (_) {}
+      }
+    } catch (_) {}
+  };
+  _marcadorTick = tick;
+  tick();                               // ya, por si _spot esta listo
+  setTimeout(tick, 800);                // red de seguridad para la carga de _spot
+  _vigMarcas = setInterval(tick, 7000);
+}
+/* Cantidad de moneda con decimales utiles, sin ceros de cola (PnL del short). */
+function fmtMoneda(x) {
+  if (!isFinite(x)) return '0';
+  const a = Math.abs(x);
+  const d = a >= 1 ? 4 : (a >= 0.01 ? 6 : 8);
+  return String(+x.toFixed(d));
+}
 
 /* ══════════════════════════════════════════════════════════════
    ENGANCHAR UN GRÁFICO
@@ -223,6 +261,7 @@ export function conectar(cfg) {
   arrancarVigilante();
   if (cfg.repintar) _repintarOrd = cfg.repintar;   // para refrescar el gráfico al completarse una orden
   arrancarVigilanteOrdenes();
+  arrancarMarcador();   // precios en vivo para el PnL de las posiciones en la grafica
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -318,29 +357,25 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       <span class="od-ic">${vender ? '▼' : '▲'}</span>
       <div class="od-tit">
         <b>${vender ? 'Short' : 'Long'}</b>
-        <span>${esc(par)} · market</span>
+        <span>${esc(par)} · <span class="od-sub-px">${fmt(actual)}</span></span>
       </div>
-      <!-- A mercado el dato util es cuanto tienes para operar: la moneda de la
-           grafica al vender (short), USDT al comprar (long). Grande y en verde. -->
-      <div class="od-pct-grande">
+      <!-- Cuanto tienes para operar: la moneda de la grafica al vender (short), USDT
+           al comprar (long). Si no tienes, aqui aparece el boton de Swap. -->
+      <div class="od-pct-grande" id="od-disp">
         <b class="od-disp-val">—</b>
         <span>${esc(vender ? par : 'USDT')} available</span>
       </div>
     </div>
 
-    <!-- Lado, como en Spot: Long compra con USDT, Short vende una moneda que tienes. Solo a mercado. -->
     <div class="od-side">
       <button class="od-side-b long ${vender ? '' : 'on'}" type="button" data-lado="long">Long<small>buy</small></button>
       <button class="od-side-b short ${vender ? 'on' : ''}" type="button" data-lado="short">Short<small>sell</small></button>
     </div>
 
-    <div class="od-mkt-nota"><b>Market.</b> Opens now at ≈ <span class="od-mkt-px">${fmt(actual)}</span>, not at the level you clicked.</div>
-
     <div class="od-campo od-cantidad">
       <label>Amount</label>
       <div class="od-inp-fila">
-        <input class="od-inp" id="od-cant" type="text" inputmode="decimal"
-               placeholder="0.00" autocomplete="off">
+        <input class="od-inp" id="od-cant" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
         <span class="od-unidad">${esc(vender ? par : 'USDT')}</span>
       </div>
       <input class="od-rango" id="od-rango" type="range" min="0" max="100" value="0" step="1">
@@ -352,10 +387,8 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
 
     <div class="od-resumen" id="od-res"></div>
 
-    <button class="od-confirmar" id="od-ok" type="button" disabled>
-      ${vender ? 'Sell at market' : 'Buy at market'}
-    </button>
-    <div class="od-aviso">You trade manually and at your own risk. This is not financial advice.</div>`;
+    <button class="od-confirmar" id="od-ok" type="button" disabled>${vender ? 'Sell' : 'Buy'}</button>
+    <div class="od-aviso">Manual trade, at your own risk. Not financial advice.</div>`;
 
   document.body.appendChild(d);
   colocar(d, cx, cy, true);
@@ -395,84 +428,58 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     const el = d.querySelector('.od-disp-val');
     if (el) el.textContent = fmtCant(saldo);
   }
+  /* ── INTERPRETACION DE FONDOS (sistema avanzado) ──
+     No se mira solo el saldo de la moneda de la grafica. Se leen TODOS los fondos del
+     usuario (BNB, USDT y la moneda) y se convierten EN VIVO al poder de compra en la
+     unidad que toca: la moneda de la grafica si es short, USDT si es long. Asi el
+     usuario nunca ve "no tienes X": ve cuanto puede operar, aunque solo tenga BNB. La
+     conversion real (BNB -> USDT / moneda) ocurre al abrir, via el contrato de spot. */
+  let _bal = null;   // saldos crudos, para recomputar el poder cuando cambia el precio
+  async function leerPoder() {
+    const tk = await import('./tokens.js?v=125');
+    const gb = await import('./gridbot.js?v=125');
+    const w = await import('./wallet.js?v=125');
+    let cuenta = (w.cuentaActual && w.cuentaActual()) || null;
+    if (!cuenta && window.ethereum) { try { const cs = await window.ethereum.request({ method: 'eth_accounts' }); if (cs && cs.length) cuenta = cs[0]; } catch (_) {} }
+    if (!cuenta) return { conectado: false };
+    const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+    const leer = async (simb) => {
+      const mon = buscarMoneda(tk.MONEDAS, simb); if (!mon) return 0;
+      try { const bruto = await gb.saldoParaMostrar(mon.address || WBNB, cuenta); const v = Number(bruto) / Math.pow(10, mon.decimals ?? 18); return isFinite(v) ? v : 0; } catch (_) { return 0; }
+    };
+    const [bnb, usdt, moneda] = await Promise.all([leer('BNB'), leer('USDT'), leer(par)]);
+    let bnbPx = (par === 'BNB') ? ((cfg.precioActual && cfg.precioActual()) || actual || 0) : 0;
+    if (!bnbPx) { try { const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT'); const j = await r.json(); bnbPx = Number(j.price) || 0; } catch (_) {} }
+    _bal = { bnb, usdt, moneda, bnbPx };
+    return { conectado: true };
+  }
+  /* Poder de compra en la unidad actual, recalculado con el precio en vivo. */
+  function recomputarPoder() {
+    if (!_bal) return;
+    const coinPx = (cfg.precioActual && cfg.precioActual()) || actual || 0;
+    const bnbUtil = Math.max(0, _bal.bnb - 0.0015);                    // se reserva algo de BNB para el gas
+    const usd = bnbUtil * _bal.bnbPx + _bal.usdt + (par === 'USDT' ? _bal.moneda : _bal.moneda * coinPx);
+    saldo = vender ? (coinPx > 0 ? usd / coinPx : 0) : usd;
+    if (!isFinite(saldo) || saldo < 0) saldo = 0;
+    pintarDisponible();
+  }
 
-  /* ══════════════════════════════════════════════════════════
-     EL SALDO REAL
-
-     Se lee de la wallet a través de `tokens.js`, que ya tiene el
-     mapa de direcciones y decimales de las 31 monedas.
-
-     Para vender hace falta la moneda; para comprar, USDT. Si no
-     hay saldo, se dice claramente en vez de dejar la ficha muerta.
-     ══════════════════════════════════════════════════════════ */
+  /* Lee los fondos una vez y pinta el poder de compra convertido a la unidad actual. */
   (async () => {
     try {
-      const tk = await import('./tokens.js?v=125');
-      const gb = await import('./gridbot.js?v=125');
-      const w = await import('./wallet.js?v=125');
-      /* [CORREGIDO] Se llamaba a `w.cuenta()`, que no existe: la
-         función es `cuentaActual()`. Por eso siempre decía que la
-         wallet estaba desconectada aunque estuviera conectada. */
-      /* Primero el estado del módulo; si aún no se ha poblado, se
-         pregunta directamente al proveedor. Así no se dice "conecta
-         tu wallet" a alguien que la tiene conectada. */
-      let cuenta = (w.cuentaActual && w.cuentaActual()) || null;
-      if (!cuenta && window.ethereum) {
-        try {
-          const cs = await window.ethereum.request({ method: 'eth_accounts' });
-          if (cs && cs.length) cuenta = cs[0];
-        } catch (_) {}
-      }
-
-      const simb = vender ? par : 'USDT';
-      const mon = buscarMoneda(tk.MONEDAS, simb);
-      _tokens = { mon, monQuote: tk.MONEDAS.USDT };
-
-      if (!cuenta) { sinSaldo(T('Conecta tu wallet para poder operar.')); return; }
-      /* [CORREGIDO] BNB tiene `address: null` porque es la moneda
-         NATIVA de la red, no un token. Exigir dirección hacía que
-         fallara justo con la moneda principal. `saldoParaMostrar`
-         ya distingue entre nativa y token. */
-      if (!mon) {
-        sinSaldo(T('Esta moneda no se puede operar todavía desde aquí.'));
-        return;
-      }
-
-      /* [CORREGIDO] Dos fallos aquí:
-         1. `esBNB()` compara con la dirección de WBNB, así que
-            pasarle null hacía que intentara leer un token
-            inexistente y reventaba.
-         2. El saldo viene en wei (BigInt). Hacer Number() directo
-            daba cifras astronómicas con decimales infinitos.
-         Ahora se pasa WBNB para la nativa y se convierte bien. */
-      const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
-      const dir = mon.address || WBNB;
-      const bruto = await gb.saldoParaMostrar(dir, cuenta);
-      const dec = mon.decimals ?? 18;
-      saldo = Number(bruto) / Math.pow(10, dec);
-      if (!isFinite(saldo)) saldo = 0;
-
-      if (!(saldo > 0)) {
-        sinSaldo(vender
-          ? `${T('No tienes')} ${par} ${T('en tu wallet, así que no hay nada que vender. Primero tendrías que comprarlo.')}`
-          : `${T('No tienes USDT en BNB Chain. Necesitas USDT para poder comprar.')}`);
-        return;
-      }
-
-      pintarDisponible();                         // disponible arriba, grande y verde
+      const r = await leerPoder();
       const et = d.querySelector('.od-saldo');
-      if (et) { et.className = 'od-saldo'; et.textContent = ''; }   // ya no se duplica abajo
+      if (!r.conectado) {
+        saldo = 0; pintarDisponible();
+        if (et) { et.className = 'od-saldo'; et.textContent = T('Conecta tu wallet para operar.'); }
+        return;
+      }
+      recomputarPoder();
+      if (et) { et.className = 'od-saldo'; et.textContent = ''; }
     } catch (er) {
-      /* [CORREGIDO] Si falla la LECTURA del saldo se bloqueaba el
-         botón para siempre, aunque el usuario tuviera fondos de
-         sobra. No poder leer no es lo mismo que no tener: se avisa
-         pero se deja continuar. El contrato validará al firmar. */
       const et = d.querySelector('.od-saldo');
-      if (et) {
-        et.className = 'od-saldo alerta';
-        et.textContent = T('No hemos podido leer tu saldo ahora mismo. Puedes continuar: se comprobará al firmar.');
-      }
-      console.warn('[CCO] saldo:', er);
+      if (et) { et.className = 'od-saldo alerta'; et.textContent = T('No hemos podido leer tu saldo ahora mismo. Puedes continuar: se comprobará al firmar.'); }
+      console.warn('[CCO] poder:', er);
     }
   })();
 
@@ -576,9 +583,10 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     const p = cfg.precioActual ? cfg.precioActual() : 0;
     if (p > 0 && p !== actual) {
       actual = p;
-      const px = d.querySelector('.od-mkt-px');
+      const px = d.querySelector('.od-sub-px');
       if (px) px.textContent = fmt(p);
       refrescar();
+      recomputarPoder();   // el poder de compra convertido sigue vivo con el precio
     }
   }, 1000);
 
@@ -1111,29 +1119,58 @@ export function pintar(g, opciones) {
   });
 
   /* ── Posiciones abiertas (ledger compartido con Spot) ──
-     Linea limpia de la entrada, sin atiborrar: el PnL en vivo y el cierre real
-     estan en Spot › Positions. La X solo OCULTA la visualizacion aqui; no vende. */
+     Linea de la entrada + PnL EN VIVO sobre la grafica: short en la moneda que
+     vendio (lo que esta ganando en BTC/BNB/etc.), long en %. El cierre real es
+     manual, en Spot › Positions. La X solo OCULTA la visualizacion; no vende. */
   try {
     const parAct = String(simbolo || '').replace(/USDT$/i, '');
     const ocultas = posOcultas();
     const posis = (_spot && _spot.posiciones) ? _spot.posiciones() : [];
     posis.filter((p) => p && p.par === parAct && parAct && !ocultas.includes(p.id)).forEach((p) => {
       if (!(p.entrada >= pMin && p.entrada <= pMax)) return;   // fuera de vista: vive en Spot
-      const col = p.lado === 'long' ? '#2ee86a' : '#ff5b6e';
+      const esL = p.lado === 'long';
+      const col = esL ? '#2ee86a' : '#ff5b6e';
       const yy = Y(p.entrada);
       g.save();
       g.strokeStyle = col; g.lineWidth = 1.8;
       g.beginPath(); g.moveTo(0, yy); g.lineTo(x1, yy); g.stroke();
       g.restore();
-      const et = `${p.lado === 'long' ? 'LONG' : 'SHORT'}  ${fmt(p.entrada)}`;
+
+      /* PnL en vivo (misma formula que Spot › Positions). */
+      const mark = _marks[parAct.toUpperCase() + 'USDT'] || 0;
+      let pnlTxt = '', pnlPos = true;
+      if (mark > 0 && _spot && _spot.pnlDe) {
+        try {
+          const info = _spot.pnlDe(p, mark);
+          if (esL) { pnlPos = info.pct >= 0; pnlTxt = (pnlPos ? '+' : '') + info.pct.toFixed(2) + '%'; }
+          else { pnlPos = info.pnl >= 0; pnlTxt = (pnlPos ? '+' : '') + fmtMoneda(info.pnl) + ' ' + (p.base || parAct); }
+        } catch (_) {}
+      }
+
+      const et = `${esL ? 'LONG' : 'SHORT'}  ${fmt(p.entrada)}`;
       g.font = 'bold 10.5px ui-monospace,monospace';
-      const wl = g.measureText(et).width + 24;
-      const xE = x1 - wl - 34;
+      const wl = g.measureText(et).width + 22;
+      const xB = x1 - 30;                 // boton X (ocultar)
+      const xE = xB - wl - 6;             // etiqueta de entrada
+      let xP = xE;                        // pildora de PnL, a la izquierda
+
+      if (pnlTxt) {
+        g.font = 'bold 10.5px ui-monospace,monospace';
+        const wp = g.measureText(pnlTxt).width + 18;
+        xP = xE - wp - 6;
+        const colP = pnlPos ? '#2ee86a' : '#ff5b6e';
+        g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+        g.fillStyle = 'rgba(9,13,20,.94)'; redondeadoOd(g, xP, yy - 12, wp, 24, 7); g.fill(); g.restore();
+        g.strokeStyle = colP; g.lineWidth = 1.4; redondeadoOd(g, xP, yy - 12, wp, 24, 7); g.stroke();
+        g.fillStyle = colP; g.textAlign = 'left'; g.fillText(pnlTxt, xP + 9, yy + 4);
+      }
+
+      g.font = 'bold 10.5px ui-monospace,monospace';
       g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 7; g.shadowOffsetY = 2;
       g.fillStyle = col; redondeadoOd(g, xE, yy - 12, wl, 24, 7); g.fill(); g.restore();
-      g.fillStyle = p.lado === 'long' ? '#04210f' : '#2a0509';
-      g.textAlign = 'left'; g.fillText(et, xE + 11, yy + 4);
-      const xB = x1 - 30;
+      g.fillStyle = esL ? '#04210f' : '#2a0509';
+      g.textAlign = 'left'; g.fillText(et, xE + 10, yy + 4);
+
       g.fillStyle = 'rgba(11,15,22,.92)'; redondeadoOd(g, xB, yy - 12, 24, 24, 7); g.fill();
       g.strokeStyle = col + 'aa'; g.lineWidth = 1.3; redondeadoOd(g, xB, yy - 12, 24, 24, 7); g.stroke();
       g.strokeStyle = col; g.lineWidth = 1.7; g.lineCap = 'round';
