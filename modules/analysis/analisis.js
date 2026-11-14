@@ -59,9 +59,9 @@ const HERRAMIENTAS = [
   { id:'foot', abre:'foot', nombre:'Footprint Pro', cat:'analysis', img:'assets/img/serv-footprint.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Order flow, candle by candle',
     desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' },
-  { id:'scalp', abre:'scalp', nombre:'Multiverse', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
-    lema:'The probability tree of what price could do',
-    desc:'A probability and prediction system, built from scratch. On a live candle chart it reads five measurable analyzers, trend, momentum and exhaustion, volume and range, support and resistance levels, and market structure, and projects the paths price could take next as a branching tree of realities. The possible futures are drawn as ghost candles: hollow, translucent candles with a flowing inner light, so a projection is never confused with real price. Each branch carries its probability and each route an accumulated probability; the most likely paths glow brighter and thicker, the long shots fade. Since cycles are fractal it works on any timeframe, and the whole tree recomputes on every candle, so discarded paths fade and new ones appear in real time. Zoom, drag and zoom out to read the full scheme. It is a probability tool, not a promise of any result, and that is written into the interface.' }
+  { id:'scalp', abre:'scalp', nombre:'Prediction Algo', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'The most logical path price could take next',
+    desc:'An advanced prediction algorithm, built from scratch on structural logic. It reads the structure of the past, where price bounced, where it ranged, where impulses were born, plus the dominant trend, and projects the single most logical path price could take next, drawn as solid real candles with the Huehua Pro illumination, never noise. You choose the scenario with on chart buttons, Bullish, Bearish, Range or Reversal, and see one clean path at a time, each with its probability, opening on the most probable for the current structure. Every path respects the levels on the left: it bounces where price bounced, reacts at the origin of past impulses but moderately (remnant fuel), ranges organically on weekends, and on a reversal breaks a level and retests it before the new trend. Works on any timeframe since cycles are fractal, and recomputes live. It is a probability tool, not a promise of any result.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
@@ -161,7 +161,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=9', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=10', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=7', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=8', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
