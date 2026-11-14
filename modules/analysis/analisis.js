@@ -176,7 +176,7 @@ async function abrirTool(abre, cardEl) {
   try {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=141')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=136')).abrirMuros();
-    else if (abre === 'levels') await (await import(base + 'niveles.js?v=134')).abrirNiveles();
+    else if (abre === 'levels') await (await import(base + 'niveles.js?v=135')).abrirNiveles();
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=39', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
@@ -540,7 +540,7 @@ export function abrirSelector(origen, wallet, ethers) {
       ? `<div class="an-img" data-img="${esc(h.img)}"></div>`
       : `<div class="an-img ph ph-${esc(h.cat)}"><span class="an-ph-ini">${esc(h.nombre[0])}</span></div>`;
     return `
-      <button class="an-card${h.listo ? '' : ' soon'}" type="button" data-tilt data-id="${esc(h.id)}" data-abre="${esc(h.abre || '')}" data-listo="${h.listo ? '1' : '0'}" title="${esc(h.desc)}">
+      <button class="an-card${h.listo ? '' : ' soon'}" type="button" data-tilt data-id="${esc(h.id)}" data-abre="${esc(h.abre || '')}" data-listo="${h.listo ? '1' : '0'}" title="${esc(h.pitch || h.lema || '')}">
         <div class="an-media">
           ${medio}
           <span class="an-spot an-premium">${ICO.premium} Premium</span>
