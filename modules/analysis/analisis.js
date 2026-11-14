@@ -43,7 +43,7 @@ const HERRAMIENTAS = [
   // "VWAP Pro" (nombre de cara al usuario) = el módulo modules/institutional/ (archivo NO renombrado).
   { id:'inst', abre:'inst', nombre:'VWAP Pro', cat:'analysis', img:'assets/img/serv-vwap.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'The institutional VWAP, read live',
-    desc:'A professional VWAP desk. The institutional VWAP with its deviation bands, plus a live analyst that reads where price sits against the VWAP right now, on this coin and timeframe, and tells you the professional play. Pro charting with fifteen indicators, live quotes, a market-wide heatmap and macro sentiment, wired into one screen.' },
+    desc:'A professional VWAP desk. The institutional VWAP with its deviation bands, plus a live analyst that reads where price sits against the VWAP right now, on this coin and timeframe, and explains the professional play as a guide to your own analysis. Pro charting, live quotes, a market-wide heatmap and macro sentiment, wired into one screen.' },
   { id:'react', abre:'react', nombre:'Reaction Zones', cat:'analysis', img:'assets/img/preview.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Where price is going to react',
     desc:'A structural engine that maps the exact levels where price is likely to react, built from repeated pivots with a live break-pressure read. Red zones above the price mark short context, green below mark long, with auto-projected positions (Single / Double) and right-click orders.' },
@@ -156,7 +156,7 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=141')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=136')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=134')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=38', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=39', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=12', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=9', import.meta.url).href)).abrirMulti();
