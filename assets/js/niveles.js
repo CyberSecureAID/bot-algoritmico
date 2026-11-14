@@ -23,21 +23,21 @@
 // nada claro, el asistente lo dice: "ahora mismo no hay entrada".
 // Preferimos callar que inventar una señal.
 
-import { pivotes, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, detectarDobles, marea, calcularATR, construirPlan, traerVelas } from './niveles/motor.js?v=1';
+import { pivotes, tendencia, detectarRango, calcularNiveles, detectarImpulso, detectarEstructuras, calcularTendencia, detectarDobles, marea, calcularATR, construirPlan, traerVelas } from './niveles/motor.js?v=2';
 import { estilos } from './niveles/estilos.js?v=2';
 import { N } from './niveles/estado.js?v=1';
 import { PARES, TFS } from './niveles/config.js?v=1';
 import { DIB_FIBS, _tfMs, dibAxy, dibXYa, dibujarHerramientas, guardarDib, cargarDib } from './niveles/dibujo.js?v=3';
-import { avisoMarea, activarAlertasMarea, desactivarAlertas } from './niveles/alertas.js?v=1';
+import { avisoMarea, activarAlertasMarea, desactivarAlertas } from './niveles/alertas.js?v=2';
 import { guardarImagen } from './niveles/imagen.js?v=1';
 import { panelMarea } from './niveles/panel.js?v=1';
 import { T } from './niveles/i18n.js?v=1';
-import { analizar } from './niveles/asistente.js?v=2';
+import { analizar } from './niveles/asistente.js?v=3';
 try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Smart Pools · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
 import { guiaIndicador, menuAlertas, abrirWidget, registrarIndicador, ponerLogos, ayuda } from './niveles/menus.js?v=1';
 import { gestos } from './niveles/interaccion.js?v=5';
 import { burbujas, initBurbujas } from './niveles/burbujas.js?v=2';
-import { dibujar, initRender } from './niveles/render.js?v=5';
+import { dibujar, initRender } from './niveles/render.js?v=6';
 import { esc, elegir, sembrar, hashCadena, fmt, miles, hora, fecha, _hex2rgb, redondeado } from './niveles/util.js?v=1';
 
 const $ = (id) => document.getElementById(id);

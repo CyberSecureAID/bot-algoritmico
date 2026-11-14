@@ -68,7 +68,7 @@ function buscarMoneda(MONEDAS, simb) {
 }
 
 let _tr = null;
-try { import('./idioma.js?v=127').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
+try { import('./idioma.js?v=128').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
 const T = (t) => { try { return _tr ? _tr.t(t) : t; } catch (_) { return t; } };
 
 const fmt = (p) => {
@@ -319,6 +319,9 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       <span class="od-saldo">${esc(T('Leyendo tu saldo…'))}</span>
     </div>
 
+    <!-- A MERCADO: entra al precio de ahora, no al nivel marcado. El nivel solo elige el lado. -->
+    <div class="od-mkt-nota"><b>Market order.</b> This opens now at the market price (≈ ${fmt(actual)}), not at the level you clicked (${fmt(precio)}). The level only sets the side: buy below the price, sell above it.</div>
+
     <!-- Cuánto -->
     <div class="od-campo od-cantidad">
       <label>${esc(T(vender ? 'Cantidad a vender' : 'Cantidad a comprar'))}</label>
@@ -338,8 +341,8 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       <label>${esc(T('Cómo quieres que funcione'))}</label>
       <div class="od-modos">
         <button class="od-modo on" type="button" data-modo="real">
-          <b>${esc(T('Orden automática'))}</b>
-          <span>${esc(T('Se ejecuta sola al llegar el precio. Consume gas.'))}</span>
+          <b>Market order</b>
+          <span>Opens now at the market price, not at the clicked level.</span>
         </button>
         <button class="od-modo" type="button" data-modo="aviso">
           <b>${esc(T('Solo avisarme'))}</b>
@@ -368,9 +371,9 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     <div class="od-resumen" id="od-res"></div>
 
     <button class="od-confirmar" id="od-ok" type="button" disabled>
-      ${esc(T(vender ? 'Poner orden de venta' : 'Poner orden de compra'))}
+      ${vender ? 'Sell at market' : 'Buy at market'}
     </button>
-    <div class="od-aviso">${esc(T('Opera bajo tu propio riesgo. Nada garantiza que el precio llegue.'))}</div>`;
+    <div class="od-aviso">You trade manually and at your own risk. This is not financial advice.</div>`;
 
   document.body.appendChild(d);
   colocar(d, cx, cy, true);
@@ -504,13 +507,12 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       return;
     }
     if (cant > 0) {
-      const total = vender ? cant * precio : cant / precio;
+      const total = vender ? cant * actual : cant / actual;   // a mercado: se calcula sobre el precio de AHORA, no sobre el nivel marcado
       res.innerHTML = `
-        <div class="od-r-fila"><span>${esc(T('Precio de la orden'))}</span><b>${fmt(precio)}</b></div>
+        <div class="od-r-fila"><span>Opens at market</span><b>≈ ${fmt(actual)}</b></div>
         <div class="od-r-fila"><span>${esc(T(vender ? 'Recibirás' : 'Comprarás'))}</span><b>${
           vender ? fmt(total) + ' USDT' : total.toFixed(6) + ' ' + esc(par)}</b></div>
-        <div class="od-r-fila"><span>${esc(T('Se ejecuta'))}</span><b>${
-          esc(T(modo === 'real' ? 'automáticamente' : 'con tu confirmación'))}</b></div>`;
+        <div class="od-r-fila"><span>Execution</span><b>At market price</b></div>`;
       res.classList.add('lleno');
     } else { res.innerHTML = ''; res.classList.remove('lleno'); }
   };
@@ -538,7 +540,7 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
        orden que activar un aviso. */
     ok.textContent = modo === 'aviso'
       ? T('Activar aviso')
-      : T(vender ? 'Poner orden de venta' : 'Poner orden de compra');
+      : (vender ? 'Sell at market' : 'Buy at market');
     ok.classList.toggle('aviso', modo === 'aviso');
     /* Un aviso no mueve dinero: sobra la cantidad y el stop. La
        ficha se encoge y deja solo lo que importa. */
@@ -570,67 +572,31 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
   ok.onclick = async () => {
     const cant = parseFloat(String(inp.value).replace(',', '.')) || 0;
     if (modo !== 'aviso' && !(cant > 0)) return;
-    const elSl = $('od-slp');
-    const sl = elSl ? (parseFloat(String(elSl.value).replace(',', '.')) || 0) : 0;
     ok.disabled = true;
     try {
       if (modo === 'aviso') {
-        const id = guardarAviso({
+        guardarAviso({
           par, simbolo: cfg.simbolo ? cfg.simbolo() : '', precio,
           cant: cant || 0, vender, sl: 0, cuando: Date.now()
         });
         if (cfg.repintar) cfg.repintar();
         exito(d, T('Aviso puesto'), T('Te avisaremos cuando el precio llegue a') + ' ' + fmt(precio));
-      } else {
-        /* [CORREGIDO] Los pasos se escribían dentro del botón y lo
-           estiraban hasta deformar la ficha. Ahora van en su propia
-           ventana, que además explica qué está pasando. */
-        abrirPasos(vender);
-        await ponerOrdenReal({
-          cfg, precio, cant, vender, sl,
-          alPaso: (t) => pintarPaso(t)
-        });
-        cerrarPasos();
-        exito(d, T('Orden puesta'), T('Se ejecutará sola cuando el precio llegue a') + ' ' + fmt(precio));
+        if (cfg.alPoner) cfg.alPoner({ precio, cant, vender, modo });
+        return;
       }
-      /* Se guarda para pintarla en el gráfico con su propia marca,
-         distinta de las señales del asistente. */
-      const registro = {
-        precio, cant, vender, modo,
-        par, simbolo: cfg.simbolo ? cfg.simbolo() : '',
-        botId: _ultimoBotId,          // para poder cancelarla en el contrato
-        base: _ultimoPar.base, quote: _ultimoPar.quote,
-        id: 'ord-' + _ultimoBotId,
-        cuando: Date.now()
-      };
-      _puestas.push(registro);
-      /* Las órdenes REALES (no los avisos) se persisten para que la marca
-         no desaparezca al cambiar de moneda o recargar. El bot ya vive en
-         el contrato; esto solo recuerda dónde pintarla. */
-      if (modo !== 'aviso') guardarOrdenGrafico(registro);
-      if (cfg.alPoner) cfg.alPoner({ precio, cant, vender, modo });
-      if (cfg.repintar) cfg.repintar();
+      /* A MERCADO: NO usa rejilla ni keeper (contrato/Cloudflare). Es una
+         entrada manual a precio de mercado. La ejecución real se conectará
+         con el contrato de spot que crearemos después; aquí la interfaz
+         queda lista, sin órdenes limit y sin depender de Cloudflare. */
+      exito(d, vender ? 'Market sell ready' : 'Market buy ready',
+        'This opens at the market price now, not at the level you clicked. Manual market trading connects with our upcoming spot contract.');
+      if (cfg.alPoner) cfg.alPoner({ precio, cant, vender, modo: 'market' });
     } catch (er) {
-      cerrarPasos();
       ok.disabled = false;
-      ok.textContent = modo === 'aviso' ? T('Activar aviso')
-        : T(vender ? 'Poner orden de venta' : 'Poner orden de compra');
-      /* [CORREGIDO] Antes se tragaba el error real y salía siempre
-         "no se puede poner la orden", que no dice nada. Ahora se
-         traduce a lenguaje claro y, si no se reconoce, se muestra
-         tal cual: es la única forma de saber qué pasa. */
+      ok.textContent = modo === 'aviso' ? T('Activar aviso') : (vender ? 'Sell at market' : 'Buy at market');
       const m = String((er && (er.reason || er.shortMessage || er.message)) || er);
       console.warn('[CCO] orden:', er);
-      let txt;
-      if (/user rejected|denied|4001/i.test(m)) txt = T('Cancelaste la firma.');
-      else if (/suscrip/i.test(m)) txt = m;
-      else if (/pool/i.test(m)) txt = T('Esta moneda no tiene mercado en PancakeSwap. Prueba con otra.');
-      else if (/insufficient|saldo|balance/i.test(m)) txt = T('No tienes saldo suficiente para esta orden.');
-      else if (/objetivo|target/i.test(m)) txt = m;
-      else if (/precio del par|no se pudo leer/i.test(m)) txt = T('No se pudo leer el precio de este par ahora mismo.');
-      else if (/gas/i.test(m)) txt = T('Te falta gas. Añade BNB desde tu perfil.');
-      else txt = m.slice(0, 160);
-      fallo(d, txt);
+      fallo(d, m.slice(0, 160));
     }
   };
 
@@ -1402,6 +1368,8 @@ function estilos() {
   .od-dist{font-family:var(--mono,monospace);font-size:10px;color:#7d8794;margin-bottom:13px}
   .od-saldo{display:block;margin-top:5px;font-family:var(--mono,monospace);font-size:10.5px;color:#8b96a3}
   .od-saldo b{color:#eaecef}
+  .od-mkt-nota{margin:0 0 13px;padding:9px 11px;border-radius:9px;font-family:var(--sans,sans-serif);font-size:11px;line-height:1.5;color:#c4ccd4;background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.28)}
+  .od-mkt-nota b{color:var(--gold,#E8B84B)}
   .od-saldo.alerta{padding:8px 10px;margin-top:7px;border-radius:8px;
     background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);
     font-family:var(--sans,sans-serif);font-size:11px;color:var(--gold,#E8B84B);line-height:1.45}

@@ -1229,7 +1229,7 @@ function dibujar() {
   /* Órdenes desde el gráfico: clic derecho o toque largo. */
   if (!cv.dataset.ordenOk) {
     cv.dataset.ordenOk = '1';
-    import('./orden.js?v=127').then((od) => {
+    import('./orden.js?v=130').then((od) => {
       od.conectar({
         canvas: cv,
         precioEn: (yy) => {

@@ -1852,7 +1852,7 @@ function dibujar() {
     N.seccion = 'heat';
     _barra = montarBarra(zona);
     /* Órdenes desde el gráfico: clic derecho o toque largo. */
-    import('./orden.js?v=126').then((od) => {
+    import('./orden.js?v=130').then((od) => {
       od.conectar({
         canvas: cv,
         precioEn: (y) => {
