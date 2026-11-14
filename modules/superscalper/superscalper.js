@@ -78,7 +78,9 @@ async function rzFetch(path) {
 async function traerVelas(simbolo, tf, n = 800) {
   const r = await rzFetch(`/api/v3/klines?symbol=${simbolo}&interval=${tf}&limit=${n}`);
   const j = await r.json();
-  return j.map((x) => ({ t: Math.floor(x[0] / 1000), o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: (+x[7] || +x[5] || 0) }));
+  return j.map((x) => { const o = +x[1], c = +x[4]; let h = +x[2], l = +x[3]; const base = c || o || 1;   // sanea datos corruptos: ninguna mecha absurda entra al histórico
+    if (!(h > 0) || h > base * 3) h = Math.max(o, c); if (!(l > 0) || l < base / 3) l = Math.min(o, c);
+    return { t: Math.floor(x[0] / 1000), o, h, l, c, v: (+x[7] || +x[5] || 0) }; });
 }
 let _ssStream = null, _ssStreamKey = '';
 function streamVelasRz(simbolo, tf, onK) {
@@ -87,7 +89,7 @@ function streamVelasRz(simbolo, tf, onK) {
   const abrir = () => {
     if (cerrado) return;
     try { ws = new WebSocket(url); } catch (_) { tmr = setTimeout(abrir, 2500); return; }
-    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onK(d.k); } catch (_) {} };
+    ws.onmessage = (ev) => { if (cerrado) return; try { const d = JSON.parse(ev.data); if (d && d.k) onK(d.k); } catch (_) {} };   // ignora frames rezagados tras cerrar
     ws.onclose = () => { if (!cerrado) { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); } };
     ws.onerror = () => { try { ws.close(); } catch (_) {} };
   };
@@ -105,10 +107,16 @@ function conectarStreamRz() {
 }
 function onKlineRz(k) {
   if (!k || !M.velas || !M.velas.length) return;
+  const curS = (PARES.find((x) => x.id === _par) || {}).s;                  // ignora ticks rezagados de OTRA moneda (causa de la vela gigante al cambiar de par)
+  if (k.s && curS && String(k.s).toUpperCase() !== String(curS).toUpperCase()) return;
   const raw = { t: Math.floor(k.t / 1000), o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: (+k.q || +k.v || 0) };
   if (!(raw.c > 0)) return;
   const d = tfDef(M.tf), sec = (d.sec && d.sec > 1) ? d.sec : 0;
   const last = M.velas[M.velas.length - 1];
+  const ref = last ? last.c : raw.c;                                        // descarta un tick absurdo (dato corrupto / fuga de otra moneda): nunca aplasta la escala
+  if (ref > 0 && (raw.c > ref * 3 || raw.c < ref / 3)) return;
+  if (raw.h > raw.c * 2.5) raw.h = Math.max(raw.o, raw.c);
+  if (raw.l > 0 && raw.l < raw.c / 2.5) raw.l = Math.min(raw.o, raw.c);
   let nueva = false;
   if (sec) {
     const bt = Math.floor(raw.t / sec) * sec;
@@ -308,13 +316,16 @@ function nivelesArr(E) {
 function construirLegs(E, tipo, R) {
   const px = E.px, a = E.a, { res, sup } = nivelesArr(E), legs = [], H = 46; let budget = H;
   const ri = (lo, hi) => lo + Math.floor(R() * (hi - lo + 1));
-  if (tipo === 'range') {                                   // lateral: oscila dentro de la caja real (de A a B); tramos de distinta duración, cada uno con ventana real distinta (sin copy pega)
+  if (tipo === 'range') {                                   // lateral NATURAL: swings de alcance VARIABLE dentro de la caja, con ventanas reales direccionales (no oscilación de caja completa, nada de alfiletero)
     let ir = 0, is = 0, hi = res[ir], lo = sup[is];
     while (hi != null && hi - px < 1.3 * a && ir + 1 < res.length) hi = res[++ir];
     while (lo != null && px - lo < 1.3 * a && is + 1 < sup.length) lo = sup[++is];
-    if (hi == null || hi - px < 1.3 * a) hi = px + (1.9 + R() * 1.0) * a;
-    if (lo == null || px - lo < 1.3 * a) lo = px - (1.9 + R() * 1.0) * a;
-    let b = H; while (b > 6) { const nn = Math.min(ri(6, 11), b); legs.push({ tipo: 'osc', lo, hi, n: nn }); b -= nn; }
+    if (hi == null || hi - px < 1.3 * a) hi = px + (1.5 + R() * 0.8) * a;
+    if (lo == null || px - lo < 1.3 * a) lo = px - (1.5 + R() * 0.8) * a;
+    const mid = (lo + hi) / 2, half = (hi - lo) / 2; let side = px >= mid ? -1 : 1, b = H;
+    while (b > 5) { const nn = ri(7, 13), reach = 0.45 + R() * 0.5;   // cada swing llega a una fracción distinta (0.45..0.95) del semirango: respira como el precio, no golpea el borde cada vez
+      let to = clamp(mid + side * half * reach, lo + 0.1 * a, hi - 0.1 * a);
+      legs.push({ tipo: 'imp', to, n: Math.min(nn, b) }); b -= nn; side = -side; }
     return legs;
   }
   const up = tipo === 'bull', dir = up ? 1 : -1, niv = up ? res : sup;
@@ -322,7 +333,7 @@ function construirLegs(E, tipo, R) {
   let cur = px + dir * 0.2 * a, idx = 0;
   while (budget > 9) {
     const target = idx < niv.length ? niv[idx] : cur + dir * (1.5 + R() * 1.2) * a;      // próxima barrera o sintetizada
-    const impN = clamp(Math.round(Math.abs(target - cur) / (a * 0.8)), 4, 11);
+    const impN = clamp(Math.round(Math.abs(target - cur) / (a * 0.7)), 4, 14);   // más velas por impulso en TF alto: progresión real, no una vela larga ni escalera
     legs.push({ tipo: 'imp', to: target - dir * 0.1 * a, n: impN }); budget -= impN; cur = target - dir * 0.1 * a; if (budget <= 6) break;
     const extra = reaccionEn(target, E.niv, a) > a * 4 ? 0.5 : 0, amp = (0.5 + R() * 0.6 + extra) * a, oscN = ri(4, 8);   // lateraliza en la barrera (más fuerte si reaccionó fuerte)
     legs.push({ tipo: 'osc', lo: up ? target - amp : target - 0.1 * a, hi: up ? target + 0.1 * a : target + amp, n: oscN }); budget -= oscN; if (budget <= 6) break;
@@ -334,16 +345,20 @@ function construirLegs(E, tipo, R) {
 function ocupada(usadas, s, n) { if (!usadas) return false; for (let k = s - 2; k < s + n + 2; k++) if (usadas.has(k)) return true; return false; }   // evita reutilizar (ni solapar) una ventana ya usada
 function marcar(usadas, s, n) { if (!usadas) return; for (let k = s; k < s + n; k++) usadas.add(k); }
 function ventanaImp(velas, n, dir, mag, a, R, usadas) {
-  const L = velas.length, c = [];
-  for (let s = 5; s <= L - n - 2; s++) { if (ocupada(usadas, s, n)) continue; const net = velas[s + n - 1].c - velas[s].o; if (net === 0) continue;
-    const mis = Math.sign(net) !== dir ? 0.7 : 0;   // también admite ventanas en dirección opuesta (se remapean en espejo, textura real) pero priorizando la correcta
-    c.push({ s, sc: -Math.abs(Math.abs(net) - mag) / a - mis + (s / L) * 0.1 }); }
-  if (!c.length) return -1; c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(8, c.length)); const pick = top[Math.floor(R() * top.length)].s; marcar(usadas, pick, n); return pick;
+  const L = velas.length; if (L < n + 8) return -1;
+  for (let pase = 0; pase < 2; pase++) { const chk = pase === 0 ? usadas : null, c = [];   // pase 2: ignora las ya usadas antes que caer al relleno sintético (escalera)
+    for (let s = 5; s <= L - n - 2; s++) { if (ocupada(chk, s, n)) continue; const net = velas[s + n - 1].c - velas[s].o; if (net === 0) continue;
+      const mis = Math.sign(net) !== dir ? 0.7 : 0;   // admite ventanas en dirección opuesta (se remapean en espejo, textura real) pero priorizando la correcta
+      c.push({ s, sc: -Math.abs(Math.abs(net) - mag) / a - mis + (s / L) * 0.1 }); }
+    if (c.length) { c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(8, c.length)); const pick = top[Math.floor(R() * top.length)].s; marcar(usadas, pick, n); return pick; } }
+  return -1;
 }
 function ventanaOsc(velas, n, a, R, usadas) {
-  const L = velas.length, c = [];
-  for (let s = 5; s <= L - n - 2; s++) { if (ocupada(usadas, s, n)) continue; const net = Math.abs(velas[s + n - 1].c - velas[s].o); let hi = -1e18, lo = 1e18; for (let k = s; k < s + n; k++) { if (velas[k].h > hi) hi = velas[k].h; if (velas[k].l < lo) lo = velas[k].l; } const span = hi - lo; if (span <= 0) continue; c.push({ s, sc: (span / a) * 0.25 - (net / a) * 1.2 }); }
-  if (!c.length) return -1; c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(8, c.length)); const pick = top[Math.floor(R() * top.length)].s; marcar(usadas, pick, n); return pick;
+  const L = velas.length; if (L < n + 8) return -1;
+  for (let pase = 0; pase < 2; pase++) { const chk = pase === 0 ? usadas : null, c = [];
+    for (let s = 5; s <= L - n - 2; s++) { if (ocupada(chk, s, n)) continue; const net = Math.abs(velas[s + n - 1].c - velas[s].o); let hi = -1e18, lo = 1e18; for (let k = s; k < s + n; k++) { if (velas[k].h > hi) hi = velas[k].h; if (velas[k].l < lo) lo = velas[k].l; } const span = hi - lo; if (span <= 0) continue; c.push({ s, sc: (span / a) * 0.25 - (net / a) * 1.2 }); }
+    if (c.length) { c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(8, c.length)); const pick = top[Math.floor(R() * top.length)].s; marcar(usadas, pick, n); return pick; } }
+  return -1;
 }
 function remapImp(velas, s, n, p0, p1) {
   const w0 = velas[s].o, net = (velas[s + n - 1].c - w0) || (p1 - p0) || 1;
@@ -369,7 +384,7 @@ function rutaEstructural(E, velas, tipo) {
     else { const s = ventanaOsc(velas, leg.n, a, R, usadas); seg = s >= 0 ? remapOsc(velas, s, leg.n, leg.lo, leg.hi) : oscil(leg.lo, leg.hi, leg.n, R); prevTo = seg[seg.length - 1].c; }
     for (const v of seg) seq.push({ dc: v.c - v.o, uw: Math.max(0, v.h - Math.max(v.o, v.c)), lw: Math.max(0, Math.min(v.o, v.c) - v.l) });
   }
-  const out = []; let prevC = E.px, capV = a * 4.5;           // encadena las aperturas al cierre anterior: continuidad orgánica pegada al precio; cuerpo y mechas acotados por si una ventana trae un salto extremo
+  const out = []; let prevC = E.px, capV = a * 3.2;           // encadena las aperturas al cierre anterior: continuidad orgánica pegada al precio; cuerpo y mechas acotados por si una ventana trae un salto extremo
   for (const q of seq) { const o = prevC, c = o + clamp(q.dc, -capV, capV); out.push({ o, h: Math.max(o, c) + Math.min(q.uw, capV * 0.6), l: Math.min(o, c) - Math.min(q.lw, capV * 0.6), c }); prevC = c; }
   if (out.length) out[0].o = E.px;
   let lo = Infinity, hi = -Infinity; for (const v of out) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
@@ -475,7 +490,7 @@ function cerrar() {
 }
 
 async function cargarVelas() {
-  M.cargando = true; M.dispC = null;
+  M.cargando = true; M.dispC = null; M.precio = 0; M.pred = null; M.estr = null;   // limpia estado del par anterior: nada de precio viejo ni proyección vieja mientras carga
   if (_ssStream) { try { _ssStream.cerrar(); } catch (_) {} _ssStream = null; _ssStreamKey = ''; }
   const p = PARES.find((x) => x.id === _par) || {};
   try {
@@ -493,8 +508,8 @@ async function cargarVelas() {
 
 function refrescarCabecera() {
   const px = $('ss-px'), hi = $('ss-hi'), lo = $('ss-lo'); if (!M.velas.length) return;
-  const u = M.velas[M.velas.length - 1]; let dH = u.h, dL = u.l; const back = Math.min(M.velas.length, tfPorDia(M.tf));
-  for (let k = M.velas.length - back; k < M.velas.length; k++) { if (M.velas[k].h > dH) dH = M.velas[k].h; if (M.velas[k].l < dL) dL = M.velas[k].l; }
+  const u = M.velas[M.velas.length - 1]; const ref = u.c || u.o || 1; let dH = u.h, dL = u.l; const back = Math.min(M.velas.length, tfPorDia(M.tf));
+  for (let k = M.velas.length - back; k < M.velas.length; k++) { const v = M.velas[k]; if (v.h < ref * 4 && v.h > dH) dH = v.h; if (v.l > ref / 4 && v.l < dL) dL = v.l; }   // ignora velas atípicas (dato corrupto transitorio)
   if (px) { px.textContent = fmt(M.precio); px.className = 'ss-px-v ' + (u.c >= u.o ? 'up' : 'down'); }
   if (hi) hi.textContent = fmt(dH); if (lo) lo.textContent = fmt(dL);
 }
@@ -536,20 +551,24 @@ function dibujar() {
   const futVis = Math.min(Hfut, Math.round(FUT * ancho));           // por defecto se ve ~FUT del ancho en futuro
   const derBase = (Nv - 1) + futVis;                               // barra del borde derecho en la vista por defecto
   let der = Math.round(derBase - (M.desplaz || 0));
-  der = Math.max(ancho - 1, Math.min(der, (Nv - 1) + Hfut + 1));   // pan: del pasado (izq) hasta el final del futuro (der)
+  const margenDer = Math.round(ancho * 0.4);                       // margen a la derecha: permite ARRASTRAR la gráfica para despegarla de la barra de precios
+  der = Math.max(ancho - 1, Math.min(der, (Nv - 1) + Hfut + margenDer));   // pan: del pasado (izq) hasta el futuro + margen (der)
   M.desplaz = derBase - der;
   const Xc = (barIdx) => x1 - paso / 2 - (der - barIdx) * paso;     // centro de la barra (reales y futuras, mismo sistema)
 
   const pri = Math.max(0, der - (ancho - 1)), finR = Math.min(Nv - 1, der);
   const vis = finR >= pri ? M.velas.slice(pri, finR + 1) : [];
-  if (pc > 0 && finR === Nv - 1 && vis.length) { const u = vis[vis.length - 1]; u.c = pc; if (pc > u.h) u.h = pc; if (pc < u.l) u.l = pc; }   // precio en vivo en la última real, solo si está a la vista
+  if (pc > 0 && finR === Nv - 1 && vis.length) { const u = vis[vis.length - 1]; const refU = u.o || pc; if (pc < refU * 3 && pc > refU / 3) { u.c = pc; if (pc > u.h) u.h = pc; if (pc < u.l) u.l = pc; } }   // precio en vivo en la última real (con guarda anti dato absurdo)
   const futDraw = [];                                               // velas de futuro realmente visibles (para rango vertical y dibujo)
   if (Hfut && der >= Nv) { for (const t of tiposV) { const vl = M.pred.rutas[t].velas;
     for (let j = 0; j < vl.length; j++) { const bi = Nv + j; if (bi > der) break; if (Xc(bi) < -paso) continue; futDraw.push(vl[j]); } } }
 
+  // escala vertical ROBUSTA: una sola vela atípica (dato corrupto transitorio) no puede aplastar todo el gráfico
+  const refC = (vis.length ? vis[vis.length - 1].c : 0) || M.velas[Nv - 1].c || 1;
   let pAlto = -Infinity, pBajo = Infinity;
-  for (const v of vis) { if (v.h > pAlto) pAlto = v.h; if (v.l < pBajo) pBajo = v.l; }
-  if (pc > 0) { pAlto = Math.max(pAlto, pc); pBajo = Math.min(pBajo, pc); }
+  for (const v of vis) { if (v.h < refC * 4 && v.h > pAlto) pAlto = v.h; if (v.l > refC / 4 && v.l < pBajo) pBajo = v.l; }
+  if (!isFinite(pAlto)) pAlto = refC; if (!isFinite(pBajo)) pBajo = refC;
+  if (pc > 0 && pc < refC * 4 && pc > refC / 4) { pAlto = Math.max(pAlto, pc); pBajo = Math.min(pBajo, pc); }
   if (futDraw.length) { const a = M.estr.a || (pAlto - pBajo) * 0.1 || 1; let flo = Infinity, fhi = -Infinity;
     for (const v of futDraw) { if (v.h > fhi) fhi = v.h; if (v.l < flo) flo = v.l; }
     pAlto = Math.max(pAlto, Math.min(fhi, (pc || pAlto) + a * 7)); pBajo = Math.min(pBajo, Math.max(flo, (pc || pBajo) - a * 7)); }   // acota a ±7 ATR
@@ -566,8 +585,9 @@ function dibujar() {
   for (let i = 1; i < 6; i++) { const y = (y1 / 6) * i; g.beginPath(); g.moveTo(0, y); g.lineTo(x1, y); g.stroke(); }
 
   dibujarVelas(g, vis, Y, paso, Xc, pri);
-  if (xNow > 2 && xNow < x1) { g.save(); g.strokeStyle = 'rgba(232,184,75,.26)'; g.lineWidth = 1; g.setLineDash([2, 4]);   // divisoria "ahora"
-    g.beginPath(); g.moveTo(xNow, 0); g.lineTo(xNow, y1); g.stroke(); g.restore(); g.setLineDash([]); }
+  if (xNow > 2 && xNow < x1 + 1) { g.save(); g.strokeStyle = 'rgba(232,184,75,.55)'; g.lineWidth = 1.5; g.setLineDash([5, 4]);   // divisoria "ahora": separa lo real de la proyección, más visible
+    g.beginPath(); g.moveTo(xNow, 0); g.lineTo(xNow, y1); g.stroke(); g.restore(); g.setLineDash([]);
+    g.save(); g.fillStyle = 'rgba(232,184,75,.9)'; g.font = '9px ui-monospace,monospace'; g.textAlign = 'center'; g.fillText('NOW', xNow, 11); g.restore(); }
   dibujarPrediccion(g, Y, Xc, x1, y1, Nv, w);               // la predicción, pegada a la última real, en el mismo eje
 
   if (pc > 0) {
