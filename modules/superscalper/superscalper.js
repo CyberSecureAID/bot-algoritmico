@@ -523,7 +523,7 @@ function dibujar() {
   if (!cv.dataset.listo) {
     engancharGestos(cv); cv.dataset.listo = '1'; _barra = montarBarra(zona);
     try { N.seccion = 'superscalper'; N.par = _par; cargarDib(); } catch (_) { N.dibujos = N.dibujos || []; }
-    import('../../assets/js/orden.js?v=130').then((od) => {
+    import('../../assets/js/orden.js?v=131').then((od) => {
       od.conectar({ canvas: cv, precioEn: (y) => { if (!M._geo) return 0; const { pMin, pMax, y1 } = M._geo; return pMin + (pMax - pMin) * ((y1 - y) / y1); },
         precioActual: () => M.precio > 0 ? M.precio : (M.velas.length ? M.velas[M.velas.length - 1].c : 0), par: () => _par,
         simbolo: () => (PARES.find((p) => p.id === _par) || {}).s || '', repintar: () => dibujar() });
