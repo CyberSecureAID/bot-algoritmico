@@ -1,4 +1,4 @@
-/* modules/superscalper/superscalper.js — "Prediction Algo" (nombre de cara al usuario).
+/* modules/superscalper/superscalper.js — "Prediction Engine" (nombre de cara al usuario).
    El archivo NO se renombra (la carpeta queda como superscalper), igual que "VWAP Pro"
    vive en modules/institutional/ y "Footprint" en modules/footprint/.
 
@@ -39,7 +39,7 @@ const M = {
   ancho: window.innerWidth < 760 ? 56 : 84, desplaz: 0, zoomY: 1, offsetY: 0,
   _geo: null, _cursor: null, cargando: true, error: null
 };
-const FUT = 0.42;                                     // fracción derecha del gráfico reservada a la proyección futura
+const FUT = 0.38;                                     // fracción derecha del gráfico reservada a la proyección futura
 const COL = { bull: '58,214,128', bear: '255,90,104', gold: '232,184,75' };   // verde / rojo de las velas fantasma + dorado de marca
 // Temporalidades (las normales); el indicador se calcula sobre la elegida. Default 1H.
 const SS_TFS = [
@@ -203,7 +203,10 @@ function analizarEstructura(velas) {
   let imp = { from: px, to: px, mag: a * 4, dir: trend >= 0 ? 1 : -1 };
   if (piv.length >= 2) { const b = piv[piv.length - 1], aa = piv[piv.length - 2]; imp = { from: aa.p, to: b.p, mag: Math.abs(b.p - aa.p) || a * 4, dir: b.p >= aa.p ? 1 : -1 }; }
   const dow = new Date(velas[n - 1].t * 1000).getUTCDay();
-  return { px, a, trend, r, exUp, exDn, volRel, rango, niv, imp, sup0: nivelBajo(px, niv, a), res0: nivelAlto(px, niv, a), dow, finde: dow === 6 || dow === 0, n };
+  // textura real de las velas, para que la proyección tenga el MISMO tamaño y carácter
+  let mv = 0, mb = 0, mw = 0, cc = 0; for (let i = Math.max(1, n - 40); i < n; i++) { const v = velas[i]; mv += Math.abs(v.c - velas[i - 1].c); mb += Math.abs(v.c - v.o); mw += Math.max(0, (v.h - v.l) - Math.abs(v.c - v.o)); cc++; }
+  const paso1 = cc ? mv / cc : a * 0.5, cuerpo1 = cc ? mb / cc : a * 0.5, mecha1 = cc ? mw / cc : a * 0.3;
+  return { px, a, trend, r, exUp, exDn, volRel, rango, niv, imp, sup0: nivelBajo(px, niv, a), res0: nivelAlto(px, niv, a), dow, finde: dow === 6 || dow === 0, paso1, cuerpo1, mecha1, n };
 }
 
 /* ── RUTAS PREDICHAS. Un escenario = waypoints con lógica estructural + velas sólidas
@@ -240,30 +243,36 @@ function waypointsEscena(E, tipo) {
   }
   return wp;
 }
-function velasRuta(wp, a, seed) {
-  const R = rng(seed), vel = [], H = 42; let tot = 0; const d = [];
-  for (let k = 0; k < wp.length - 1; k++) { const dd = Math.abs(wp[k + 1].p - wp[k].p); d.push(dd); tot += dd; } tot = tot || 1;
-  let prevC = wp[0].p;
-  for (let k = 0; k < wp.length - 1; k++) { const p0 = prevC, p1 = wp[k + 1].p, nc = clamp(Math.round(H * d[k] / tot), 2, 12);
-    for (let i = 1; i <= nc; i++) { const t = i / nc, osc = Math.sin(t * Math.PI * (1.6 + (seed % 3) * 0.3)) * a * 0.3 * (1 - t * 0.4);
-      let c = p0 + (p1 - p0) * ease(t) + osc + (R() - 0.5) * a * 0.3; if (i === nc) c = p1 + (R() - 0.5) * a * 0.12;
-      const o = prevC; vel.push({ o, h: Math.max(o, c) + a * (0.18 + R() * 0.45), l: Math.min(o, c) - a * (0.18 + R() * 0.45), c }); prevC = c; } }
+function velasRuta(wp, E, seed) {
+  const R = rng(seed), vel = [], a = E.a, paso1 = Math.max(E.paso1 || a * 0.5, a * 0.2), mecha1 = Math.max(E.mecha1 || a * 0.3, a * 0.1), H = 46;
+  let tot = 0; const d = []; for (let k = 0; k < wp.length - 1; k++) { const dd = Math.abs(wp[k + 1].p - wp[k].p); d.push(dd); tot += dd; } tot = tot || 1;
+  let prevC = wp[0].p, dirPrev = 1;
+  for (let k = 0; k < wp.length - 1; k++) { const p1 = wp[k + 1].p, legDir = Math.sign(p1 - prevC) || 1, nc = clamp(Math.round(H * d[k] / tot), 3, 15), ultimoLeg = k === wp.length - 2;
+    for (let i = 1; i <= nc; i++) {
+      const rem = p1 - prevC, pull = rem / (nc - i + 1);
+      const mom = dirPrev * paso1 * 0.3 * (R() < 0.68 ? 1 : -0.5);                       // momento: persiste la dirección, con retrocesos
+      let step = i === nc ? rem : pull * (0.7 + R() * 0.7) + mom + (R() - 0.5) * paso1 * 0.95;   // caminata orgánica, ruido del tamaño real
+      step = clamp(step, -paso1 * 3.5, paso1 * 3.5);
+      const o = prevC, c = o + step; dirPrev = Math.sign(c - o) || dirPrev;
+      const base = Math.max(o, c), bot = Math.min(o, c);
+      let up = mecha1 * (0.35 + R() * 0.9), dn = mecha1 * (0.35 + R() * 0.9);
+      if (i === nc && !ultimoLeg) { if (legDir > 0) up += mecha1 * (1.2 + R() * 1.6); else dn += mecha1 * (1.2 + R() * 1.6); }   // mecha de rechazo en el giro
+      vel.push({ o, h: base + up, l: bot - dn, c }); prevC = c;
+    } }
   let lo = Infinity, hi = -Infinity; for (const v of vel) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
   return { velas: vel, lo, hi, fin: prevC };
 }
 function probsEscenas(E) {
   const up = clamp(E.trend, 0, 1), dn = clamp(-E.trend, 0, 1);
-  const w = { bull: 0.12 + 0.6 * up + 0.12 * E.exDn, bear: 0.12 + 0.6 * dn + 0.12 * E.exUp,
-    range: 0.10 + 0.6 * E.rango + (E.finde ? 0.22 : 0) + 0.1 * (1 - Math.abs(E.trend)),
-    rev: 0.08 + 0.4 * (E.trend >= 0 ? E.exUp : E.exDn) + 0.15 * Math.abs(E.trend) };
-  const s = w.bull + w.bear + w.range + w.rev || 1; return { bull: w.bull / s, bear: w.bear / s, range: w.range / s, rev: w.rev / s };
+  const w = { bull: 0.14 + 0.6 * up + 0.12 * E.exDn, bear: 0.14 + 0.6 * dn + 0.12 * E.exUp, range: 0.12 + 0.6 * E.rango + (E.finde ? 0.22 : 0) + 0.12 * (1 - Math.abs(E.trend)) };
+  const s = w.bull + w.bear + w.range || 1; return { bull: w.bull / s, bear: w.bear / s, range: w.range / s };
 }
 function recalcPred() {
   try {
     const E = analizarEstructura(M.velas); M.estr = E; const probs = probsEscenas(E), rutas = {};
-    for (const tipo of ['bull', 'bear', 'range', 'rev']) { const wp = waypointsEscena(E, tipo), r = velasRuta(wp, E.a, hashId(tipo + E.n)); rutas[tipo] = { wp, velas: r.velas, lo: r.lo, hi: r.hi, fin: r.fin, prob: probs[tipo] }; }
-    M.pred = { rutas, probs, px: E.px, bar0: E.n };
-    if (!M.escena || !rutas[M.escena]) M.escena = Object.keys(probs).sort((x, y) => probs[y] - probs[x])[0];   // arranca en el más probable
+    for (const tipo of ['bull', 'bear', 'range']) { const wp = waypointsEscena(E, tipo), r = velasRuta(wp, E, hashId(tipo + E.n + Math.round(E.px))); rutas[tipo] = { velas: r.velas, lo: r.lo, hi: r.hi, fin: r.fin, prob: probs[tipo] }; }
+    M.pred = { rutas, probs, px: E.px };
+    if (!M.escena) M.escena = Object.keys(probs).sort((x, y) => probs[y] - probs[x])[0];   // arranca en el más probable
     M.predAlpha = 0; actualizarBotones();
   } catch (_) { M.pred = null; M.estr = null; }
 }
@@ -296,7 +305,7 @@ export async function abrirSuperScalper() {
           <button data-e="bull" type="button"><span>Bullish</span> <b>·</b></button>
           <button data-e="bear" type="button"><span>Bearish</span> <b>·</b></button>
           <button data-e="range" type="button"><span>Range</span> <b>·</b></button>
-          <button data-e="rev" type="button"><span>Reversal</span> <b>·</b></button>
+          <button data-e="all" type="button" title="All scenarios at once"><span>All</span></button>
         </div>
         <div class="ss-esperando" id="ss-esperando"><div class="ss-spin"></div><b>Reading the structure…</b><span>Projecting the most probable path of price on the ${esc(tfDef(M.tf).n)} chart.</span></div>
         <img class="ss-marca" id="ss-marca" src="${LOGO}" alt="">
@@ -333,7 +342,7 @@ function discOB(reView) {
     ${reView ? '<button class="ss-disc-x" id="ss-disc-x" aria-label="Close">✕</button>' : ''}
     <img class="ss-disc-sello" src="${DISC_IMG}" alt="">
     <h4>Before you start</h4>
-    <p>Prediction Algo is a <b>probability tool</b>, for information and education only. It reads the current structure, trend, momentum, volume and past levels, and for the scenario you pick (bullish, bearish, range or reversal) it draws the <b>single most logical path</b> price could take next, as candles, with an estimated probability. These are <b>structural projections, not predictions of the future</b>: the projected candles are not real price, the percentages are modelled estimates that will not always be right, and no path is a promise. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance.</p>
+    <p>Prediction Engine is a <b>probability tool</b>, for information and education only. It reads the current structure, trend, momentum, volume and past levels, and for the scenario you pick (bullish, bearish or range) it draws the <b>single most logical path</b> price could take next, as candles that flow from the current price, with an estimated probability; the All button shows the three together. These are <b>structural projections, not predictions of the future</b>: the projected candles are not real price, the percentages are modelled estimates that will not always be right, and no path is a promise. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance.</p>
     <p>Every entry, exit and the size of every trade are your own decision and your sole responsibility. The tools are provided as is, without warranty of any kind, and the data comes from third parties (Binance) and may be delayed or incomplete. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.</p>
     ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand these are modelled probabilities, not predictions, that the ghost candles are projections and not real price, that nothing here is guaranteed, and that I trade entirely at my own risk.</span></label>'}
     <button class="ss-disc-ok" id="ss-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'Accept'}</button></div>`;
@@ -415,9 +424,10 @@ function dibujar() {
   if (desp <= 0 && pc > 0) { const u = vis[vis.length - 1]; u.c = pc; if (pc > u.h) u.h = pc; if (pc < u.l) u.l = pc; }
   let pAlto = Math.max(...vis.map((v) => v.h)), pBajo = Math.min(...vis.map((v) => v.l));
   if (pc > 0) { pAlto = Math.max(pAlto, pc); pBajo = Math.min(pBajo, pc); }
-  // incluye el árbol en el rango vertical, acotado a ±3.2 ATR para que no aplane la vista
-  if (M.pred && M.estr && desp <= 0 && M.pred.rutas[M.escena]) { const a = M.estr.a || (pAlto - pBajo) * 0.1, R = M.pred.rutas[M.escena];
-    pAlto = Math.max(pAlto, Math.min(R.hi, pc + a * 7)); pBajo = Math.min(pBajo, Math.max(R.lo, pc - a * 7)); }
+  // incluye la(s) ruta(s) de la predicción en el rango vertical, acotado a ±7 ATR
+  if (M.pred && M.estr && desp <= 0) { const a = M.estr.a || (pAlto - pBajo) * 0.1; let rlo = Infinity, rhi = -Infinity;
+    const tt = M.escena === 'all' ? ['bull', 'bear', 'range'] : [M.escena]; for (const t of tt) { const R = M.pred.rutas[t]; if (R) { rlo = Math.min(rlo, R.lo); rhi = Math.max(rhi, R.hi); } }
+    if (rhi > -Infinity) { pAlto = Math.max(pAlto, Math.min(rhi, pc + a * 7)); pBajo = Math.min(pBajo, Math.max(rlo, pc - a * 7)); } }
   const rangoB = (pAlto - pBajo) || 1, despY = ((M.offsetY || 0) / Math.max(1, y1)) * rangoB;
   const centro = (pAlto + pBajo) / 2 + despY, semi = (rangoB / 2) * (M.zoomY || 1), pad = semi * 0.14 || 1;
   const pMax = centro + semi + pad, pMin = centro - semi - pad;
@@ -449,7 +459,6 @@ function dibujar() {
   const cadaX = Math.max(1, Math.floor(vis.length / 7));
   vis.forEach((v, i) => { if (i % cadaX !== 0) return; const x = i * paso + paso / 2; if (x > xVelas - 14) return; g.fillText(fmtFecha(v.t), x, yTime + 14); });
   g.textAlign = 'left';
-  dibujarPanel(g);
 
   if (M._cursor && M._cursor.x < x1 && M._cursor.y < y1 && M._cursor.x > 0 && M._cursor.y > 0) {
     const cx = M._cursor.x, cy = M._cursor.y, pCur = pMin + (pMax - pMin) * ((y1 - cy) / y1);
@@ -471,50 +480,51 @@ function dibujarVelas(g, vis, Y, paso) {
   }
 }
 
-/* ══ Predicción del escenario activo: UNA sola ruta, en velas SÓLIDAS reales, con el latido e
-   iluminación de Huehua Pro por dentro. Nada translúcido, nada de todas a la vez. ══ */
-function velaPred(g, x, w, v, Y, rgb, hi, now, gA) {
-  const yO = Y(v.o), yC = Y(v.c), top = Math.min(yO, yC), hB = Math.max(1.8, Math.abs(yC - yO));
-  g.globalAlpha = gA;
-  g.strokeStyle = `rgb(${rgb})`; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, Y(v.h)); g.lineTo(x, Y(v.l)); g.stroke();   // mecha
-  g.fillStyle = `rgb(${rgb})`; g.fillRect(x - w / 2, top, w, hB);                                                          // cuerpo SÓLIDO
-  const sweep = (now % 2600) / 2600, grd = g.createLinearGradient(0, top, 0, top + hB);                                    // latido / iluminación Huehua Pro
-  for (let k = 0; k <= 6; k++) { const p = k / 6, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${hi},${(0.05 + 0.26 * b).toFixed(3)})`); }
-  g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(x - w / 2, top, w, hB); g.restore();
-  g.globalAlpha = 1;
+/* ══ Predicción: velas SÓLIDAS del mismo tamaño que el gráfico, pegadas a la última real, con una
+   LUZ que recorre la trayectoria de A a B mostrando la dirección. El botón "All" monta los tres
+   escenarios a la vez, en capas con sombra. Sin etiqueta en la esquina. ══ */
+function dibujarRuta(g, Y, xF, ruta, w, now, gA, conSombra, px, x1) {
+  const vel = ruta.velas; if (!vel.length) return;
+  g.save();
+  if (conSombra) { g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 9; g.shadowOffsetY = 4; g.globalAlpha = 0.92 * gA; } else g.globalAlpha = gA;
+  for (let j = 0; j < vel.length; j++) { const x = xF(j); if (x > x1 + 2) break;
+    const v = vel[j], col = v.c >= v.o ? COL.bull : COL.bear;
+    g.strokeStyle = `rgb(${col})`; g.lineWidth = 1; g.beginPath(); g.moveTo(x, Y(v.h)); g.lineTo(x, Y(v.l)); g.stroke();
+    const yO = Y(v.o), yC = Y(v.c); g.fillStyle = `rgb(${col})`; g.fillRect(x - w / 2, Math.min(yO, yC), w, Math.max(1, Math.abs(yC - yO))); }
+  g.restore();
+  const col = ruta.fin >= px ? COL.bull : COL.bear, pts = [[xF(-0.5), Y(px)]];
+  for (let j = 0; j < vel.length; j++) { const x = xF(j); if (x > x1 + 2) break; pts.push([x, Y(vel[j].c)]); }
+  luzTrayectoria(g, pts, col, now, gA);
 }
-function dibujarPrediccion(g, Y, xVelas, x1, y1) {
-  const P = M.pred, geo = M._geo; if (!P || !geo || !P.rutas[M.escena]) return;
-  const vel = P.rutas[M.escena].velas; if (!vel.length) return;
-  const now = Date.now(), gA = M.predAlpha, futW = x1 - xVelas;
-  const pasoF = clamp(futW / (vel.length + 1.5), 4, (geo.paso || 8) * 2.4), w = Math.max(2.5, pasoF * 0.62);
-  const xF = (i) => xVelas + (i + 0.7) * pasoF;
-  g.save(); g.beginPath(); g.rect(xVelas - 1, 0, x1 - xVelas + 2, y1); g.clip();
-  g.globalAlpha = 0.5 * gA; g.strokeStyle = 'rgba(232,184,75,.4)'; g.setLineDash([3, 3]); g.beginPath();   // hilo de continuidad desde "ahora"
-  g.moveTo(xVelas, Y(P.px)); for (let i = 0; i < vel.length; i++) g.lineTo(xF(i), Y(vel[i].c)); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
-  for (let i = 0; i < vel.length; i++) { const x = xF(i); if (x > x1 + 2) break;
-    const v = vel[i], sube = v.c >= v.o, rgb = sube ? COL.bull : COL.bear, hi = sube ? '150,255,195' : '255,150,170';
-    velaPred(g, x, w, v, Y, rgb, hi, now, gA); }
+function luzTrayectoria(g, pts, col, now, gA) {   // cometa de luz que viaja A→B por la ruta (continuidad y dirección)
+  if (pts.length < 2) return; const segs = []; let total = 0;
+  for (let i = 1; i < pts.length; i++) { const L = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(L); total += L; }
+  if (total < 3) return;
+  const en = (dist) => { dist = clamp(dist, 0, total); let acc = 0; for (let i = 0; i < segs.length; i++) { if (acc + segs[i] >= dist) { const t = segs[i] ? (dist - acc) / segs[i] : 0; return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t]; } acc += segs[i]; } return pts[pts.length - 1]; };
+  g.save(); g.lineCap = 'round';
+  g.globalAlpha = gA; g.strokeStyle = `rgba(${col},.2)`; g.lineWidth = 1.4;   // trazo base tenue
+  g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.stroke();
+  const head = ((now % 1700) / 1700) * (total + 60) - 30, trail = 64, pasos = 16;
+  g.shadowColor = `rgba(${col},.95)`;
+  for (let s = 0; s < pasos; s++) { const d1 = head - trail * s / pasos, d0 = head - trail * (s + 1) / pasos; if (d1 < 0 || d0 > total) continue;
+    const a = 1 - s / pasos, p0 = en(Math.max(0, d0)), p1 = en(d1); g.globalAlpha = gA * a; g.strokeStyle = `rgba(${col},${(0.95 * a).toFixed(3)})`; g.lineWidth = 1 + 2.6 * a; g.shadowBlur = 11 * a;
+    g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke(); }
   g.restore();
 }
-const ESC_NOM = { bull: 'Bullish', bear: 'Bearish', range: 'Range', rev: 'Reversal' };
-/* Panel (arriba-izquierda): identidad del algoritmo + escenario activo + aviso. */
-function dibujarPanel(g) {
-  const P = M.pred; const bx = 12, by = 12, bw = 236, bh = 60;
-  g.save(); g.textAlign = 'left';
-  g.fillStyle = 'rgba(12,16,23,.86)'; redondeado(g, bx, by, bw, bh, 12); g.fill();
-  g.strokeStyle = 'rgba(232,184,75,.22)'; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 12); g.stroke();
-  g.fillStyle = `rgb(${COL.gold})`; g.font = '900 13px system-ui,sans-serif'; g.fillText('PREDICTION ALGO', bx + 13, by + 23);
-  if (P && P.rutas[M.escena]) { const esc = M.escena, rgb = esc === 'bear' ? COL.bear : esc === 'bull' ? COL.bull : COL.gold, pr = Math.round(P.rutas[esc].prob * 100);
-    g.fillStyle = `rgb(${rgb})`; g.font = '800 11px system-ui,sans-serif'; g.fillText(ESC_NOM[esc] + ' scenario · ' + pr + '%', bx + 13, by + 41); }
-  g.fillStyle = '#6b7681'; g.font = '600 9px system-ui,sans-serif'; g.fillText('Structural probability, not a promise', bx + 13, by + 53);
-  g.restore(); g.textAlign = 'left';
+function dibujarPrediccion(g, Y, xVelas, x1, y1) {
+  const P = M.pred, geo = M._geo; if (!P || !geo) return;
+  const paso = geo.paso || 8, w = Math.max(1, paso * 0.62), now = Date.now(), gA = M.predAlpha;
+  const xF = (j) => xVelas + (j + 0.5) * paso;                                  // mismo paso que las velas reales, pegado a "ahora"
+  g.save(); g.beginPath(); g.rect(xVelas - 1, 0, x1 - xVelas + 2, y1 + 2); g.clip();
+  const tipos = M.escena === 'all' ? ['bull', 'bear', 'range'].sort((x, y) => (P.probs[x] || 0) - (P.probs[y] || 0)) : [M.escena];   // all: el más probable encima
+  for (const t of tipos) { const ruta = P.rutas[t]; if (ruta) dibujarRuta(g, Y, xF, ruta, w, now, gA, M.escena === 'all', P.px, x1); }
+  g.restore();
 }
-/* Actualiza los botones de escenario (HTML) con su probabilidad y marca el activo. */
+/* Actualiza los botones (HTML): % en los tres escenarios, "All" sin %. */
 function actualizarBotones() {
   const cont = $('ss-esc'); if (!cont || !M.pred) return;
-  cont.querySelectorAll('[data-e]').forEach((b) => { const e = b.dataset.e, pr = M.pred.probs[e] != null ? Math.round(M.pred.probs[e] * 100) : 0;
-    const bb = b.querySelector('b'); if (bb) bb.textContent = pr + '%'; b.classList.toggle('on', e === M.escena); });
+  cont.querySelectorAll('[data-e]').forEach((b) => { const e = b.dataset.e, bb = b.querySelector('b');
+    if (bb) bb.textContent = e === 'all' ? '' : (Math.round((M.pred.probs[e] || 0) * 100) + '%'); b.classList.toggle('on', e === M.escena); });
 }
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
@@ -595,7 +605,7 @@ function guardarImagen() {
     const g = out.getContext('2d'); g.fillStyle = '#0a0e14'; g.fillRect(0, 0, out.width, out.height); g.drawImage(cv, 0, 0);
     const yB = cv.height; g.fillStyle = '#0b0e12'; g.fillRect(0, yB, out.width, barra); g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, out.width, 2 * e2);
     const textos = (x) => {
-      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Prediction Algo', x, yB + 34 * e2);
+      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Prediction Engine', x, yB + 34 * e2);
       g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText(WEB, x, yB + 56 * e2);
       g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillText(`${_par} · ${M.tf}`, out.width - 20 * e2, yB + 34 * e2);
       g.font = `${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#6b7681'; g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), out.width - 20 * e2, yB + 56 * e2);
@@ -612,11 +622,11 @@ function guardarImagen() {
 /* ══════════════════ AYUDA (guía interactiva, 8 componentes reales) ══════════════════ */
 const PASOS_RZ = [
   { t: 'Structural Logic', d: 'The algorithm reads the <b>structure of the past</b>: where price bounced, where it ranged, where impulses were born, and the dominant trend. The projected future <b>respects that history</b>, it does not fall like a stone into the void or rise forever, it moves from level to level the way price actually tends to. Cycles are fractal, so it works on any timeframe, just change it.', x: 'The past tells the future where to bounce, where to stall and how far to go. The tool just follows that logic.' },
-  { t: 'The Scenario Buttons', d: 'Instead of one noisy chart of everything at once, you pick a scenario with the <b>buttons</b>: Bullish, Bearish, Range or Reversal. Only <b>one path</b> is drawn at a time, cleanly, and each button shows its <b>probability</b>. It opens on the most probable one for the current structure.', x: 'One scenario, one clear path. Switch buttons to compare how each case would most logically unfold.' },
+  { t: 'The Scenario Buttons', d: 'Instead of one noisy chart of everything at once, you pick a scenario with the <b>buttons</b>: Bullish, Bearish or Range, each with its <b>probability</b>. Only <b>one clean path</b> is drawn at a time, opening on the most probable for the current structure. The <b>All</b> button overlays the three together, layered with depth so they stay readable.', x: 'One scenario, one clear path. Use All to compare how each case would most logically unfold side by side.' },
   { t: 'Bullish', d: 'In the bullish case price moves up in <b>impulses and pullbacks</b>. Each pullback reaches about <b>50% of its impulse</b> or the oscillation plateau it came from, then price pushes to the <b>next resistance</b>, makes higher highs and higher lows, and climbs level by level, not in a straight line.', x: 'Up does not mean vertical. It means a staircase of impulses and healthy retracements.' },
   { t: 'Bearish', d: 'In the bearish case price falls to the <b>next support</b>, then <b>bounces</b>, but the bounce respects the zones on the left and is <b>moderate, decaying each time</b> (remnant fuel), making lower highs and lower lows. It is a staircase down, with real reactions at old levels, never a free fall.', x: 'Even a drop reacts at the levels where price reacted before. The path shows those bounces, smaller each time.' },
   { t: 'Range', d: 'The range case oscillates <b>organically between support and resistance</b>, in small swings that respect both edges, not a mechanical candle beside candle. Markets do this most on <b>weekends</b>, so on Saturday and Sunday the range scenario is weighted a little higher.', x: 'A range is price breathing between two walls, touching each and turning, not standing still.' },
-  { t: 'Reversal', d: 'The reversal case shows the <b>current trend breaking</b>. Price breaks the last structural level, comes back to <b>retest it</b> (a broken floor becomes a ceiling, a broken ceiling becomes a floor), and then moves in the <b>new direction</b>, level by level. It is what you watch for when a trend may be ending.', x: 'A break is rarely clean. The retest is where the old level proves whether the reversal is real.' },
+  { t: 'Organic and Attached', d: 'The projected candles are <b>solid, the same size as the real ones, and start from the last candle</b>, so the path reads as a natural continuation of the chart, not a pasted shape. Each candle is an <b>organic step</b> with its own body and wicks, with rejection wicks at the turns, and a <b>light travels along the path</b> from the current price toward its target to show the direction.', x: 'It should feel like the chart kept moving, with a flowing light pointing where the scenario is headed.' },
   { t: 'Respecting the Past', d: 'Every path is built from the <b>levels on the left</b>: it bounces where price bounced, stalls where it ranged, and reaches to the next barrier. When it revisits the birthplace of a strong impulse it reacts again, but <b>moderately</b>, not with the same force. The scenario that matches the <b>dominant trend</b> always carries more probability.', x: 'The tool is encoding how price behaves around its own history, not drawing shapes at random.' },
   { t: 'How to Use It', d: 'Pick the scenario that fits your read, follow its clean path, and weigh it by its <b>probability</b>. Treat a high number as an edge over many trades, not a certainty on the next one, and decide with your own risk. This is a <b>probability tool built on structural logic</b>, not a promise of any result.', x: 'It sharpens how you think about what comes next. It never removes the risk. Risk only what you can lose.' }
 ];
@@ -625,7 +635,7 @@ function ayuda() {
   if ($('ss-ayuda-box')) { $('ss-ayuda-box').remove(); return; }
   _pasoRZ = 0;
   const d = document.createElement('div'); d.id = 'ss-ayuda-box';
-  d.innerHTML = `<div class="ss-ab-bg"></div><div class="ss-ab-c"><button class="ss-ab-x" aria-label="Close">✕</button><div class="ss-ab-eyebrow">Prediction Algo · How it works</div><div id="ss-ab-cuerpo"></div><div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div></div>`;
+  d.innerHTML = `<div class="ss-ab-bg"></div><div class="ss-ab-c"><button class="ss-ab-x" aria-label="Close">✕</button><div class="ss-ab-eyebrow">Prediction Engine · How it works</div><div id="ss-ab-cuerpo"></div><div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div></div>`;
   document.body.appendChild(d);
   const q = () => d.remove(); d.querySelector('.ss-ab-bg').onclick = q; d.querySelector('.ss-ab-x').onclick = q; $('ss-disc-link').onclick = () => discOB(true);
   pintarPasoRZ();
