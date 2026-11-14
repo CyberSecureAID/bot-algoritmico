@@ -27,6 +27,10 @@ const S = {
   focus: null, sync: false, tool: null, vlines: [], hlines: [], preview: null, syncing: false, _lastHerr: null, lineset: null
 };
 let LC = null;
+let _od = null;
+/* Operar desde la grafica: clic derecho → Set Position / Alerta (mismo orden.js
+   del resto del area de analisis). Las posiciones se registran en el ledger de Spot. */
+try { import(new URL('../../assets/js/orden.js?v=131', import.meta.url).href).then((m) => { _od = m; }).catch(() => {}); } catch (_) {}
 
 /* ── Temporalidades: las normales (D.TFS) + SEGUNDOS agregados desde 1s ──
    Binance solo da 1s nativo por debajo del minuto; 2s/5s/10s/30s se arman agregando
@@ -422,6 +426,8 @@ function dibujarUX(pane) {
   S.hlines.forEach((hl) => { const y = hl.frac * H; const a = hl.t0 ? Math.min(1, (now - hl.t0) / 360) : 1; lineaHorz(g, y, W, a, priceAt(pane, y), false, hl.col, hl.gr); });
   if (S.tool === 'vline' && S.preview && S.preview.time != null) { const x = safeX(pane, S.preview.time); if (x != null) lineaVert(g, x, W, H, 0.65, true, fmtFecha(S.preview.time), '#E8B84B', 2); }
   if (S.tool === 'hline' && S.preview && S.preview.frac != null) { const y = S.preview.frac * H; lineaHorz(g, y, W, 0.6, priceAt(pane, y), true, '#2ee8c6', 2); }
+  // Ordenes/alertas/posiciones del usuario sobre esta gráfica (mismo estilo que el resto del área)
+  if (_od) { const gd = geoDibPane(pane); if (gd) { try { pane._zonasOd = _od.pintar(g, { x1: gd.x1, y1: gd.y1, Y: gd.Y, pMin: gd.pMin, pMax: gd.pMax, simbolo: (pane.par.s || pane.par.id + 'USDT') }) || []; } catch (_) { pane._zonasOd = []; } } else pane._zonasOd = []; }
 }
 function dibujosRO(pane, g) {
   const lista = pane.dibCache; if (!lista || !lista.length) return;
@@ -563,6 +569,24 @@ function wirePane(pane) {
     pane._hit = hit; cap.classList.toggle('hit', !!hit);
   });
   if (pane.flotante) arrastrar(pane);
+  cablearOrdenPane(pane);
+}
+/* Clic derecho sobre la gráfica del panel: Set Position / Alerta. Si orden.js aún
+   no cargó, reintenta. conectar marca el body para no cablear dos veces. */
+function cablearOrdenPane(pane) {
+  if (!pane || !pane.body) return;
+  if (!_od) { setTimeout(() => cablearOrdenPane(pane), 200); return; }
+  if (pane.body.dataset.ordenLista) return;
+  _od.conectar({
+    canvas: pane.body,
+    capturaDoc: true,
+    precioEn: (y) => { const p = priceAt(pane, y); return (p != null && p > 0) ? p : 0; },
+    precioActual: () => (pane.velas && pane.velas.length) ? pane.velas[pane.velas.length - 1].close : 0,
+    par: () => pane.par.id,
+    simbolo: () => pane.par.s || (pane.par.id + 'USDT'),
+    repintar: () => {}
+  });
+  _od.clicCancelar(pane.body, () => pane._zonasOd || [], () => {});
 }
 // ¿el cursor está sobre una línea V u H de esta gráfica?
 function hitLine(pane, x, y) {
