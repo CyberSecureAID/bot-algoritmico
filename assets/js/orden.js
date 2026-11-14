@@ -307,8 +307,7 @@ function abrirMenu(cx, cy, cfg, ev) {
 function abrirFicha(cx, cy, cfg, precio, vender) {
   cerrarTodo();
   const par = cfg.par ? cfg.par() : '';
-  const actual = cfg.precioActual();
-  const dist = ((precio - actual) / actual) * 100;
+  let actual = (cfg.precioActual && cfg.precioActual()) || precio;
 
   const d = document.createElement('div');
   d.className = 'od-ficha ' + (vender ? 'vender' : 'comprar');
@@ -318,13 +317,14 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     <div class="od-cab">
       <span class="od-ic">${vender ? '▼' : '▲'}</span>
       <div class="od-tit">
-        <b>${vender ? 'Sell order' : 'Buy order'}</b>
-        <span>${esc(par)} · ${fmt(precio)}</span>
+        <b>${vender ? 'Short' : 'Long'}</b>
+        <span>${esc(par)} · market</span>
       </div>
-      <!-- El porcentaje es el dato que el usuario busca: se conserva, grande. -->
+      <!-- A mercado el dato util es cuanto tienes para operar: la moneda de la
+           grafica al vender (short), USDT al comprar (long). Grande y en verde. -->
       <div class="od-pct-grande">
-        <b>${dist >= 0 ? '+' : ''}${dist.toFixed(1)}%</b>
-        <span>${vender ? 'profit' : 'discount'}</span>
+        <b class="od-disp-val">—</b>
+        <span>${esc(vender ? par : 'USDT')} available</span>
       </div>
     </div>
 
@@ -334,7 +334,7 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       <button class="od-side-b short ${vender ? 'on' : ''}" type="button" data-lado="short">Short<small>sell</small></button>
     </div>
 
-    <div class="od-mkt-nota"><b>Market.</b> Opens now at ≈ ${fmt(actual)}, not at the level you clicked.</div>
+    <div class="od-mkt-nota"><b>Market.</b> Opens now at ≈ <span class="od-mkt-px">${fmt(actual)}</span>, not at the level you clicked.</div>
 
     <div class="od-campo od-cantidad">
       <label>Amount</label>
@@ -382,6 +382,19 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
   }
   let saldo = 0;
   let _tokens = null;
+
+  /* Cantidad legible y sin ceros de relleno para el disponible de arriba. */
+  const fmtCant = (x) => {
+    if (!(x > 0)) return '0';
+    const s = x >= 1000 ? x.toFixed(2) : x >= 1 ? x.toFixed(4) : x.toFixed(6);
+    return s.replace(/\.?0+$/, '');
+  };
+  /* El disponible va grande y en verde arriba a la derecha: la moneda de la
+     grafica si es short, USDT si es long. Es lo que puedes meter en la posicion. */
+  function pintarDisponible() {
+    const el = d.querySelector('.od-disp-val');
+    if (el) el.textContent = fmtCant(saldo);
+  }
 
   /* ══════════════════════════════════════════════════════════
      EL SALDO REAL
@@ -446,8 +459,9 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
         return;
       }
 
+      pintarDisponible();                         // disponible arriba, grande y verde
       const et = d.querySelector('.od-saldo');
-      if (et) et.innerHTML = `${esc(T('Disponible'))}: <b>${recorta(saldo)} ${esc(simb)}</b>`;
+      if (et) { et.className = 'od-saldo'; et.textContent = ''; }   // ya no se duplica abajo
     } catch (er) {
       /* [CORREGIDO] Si falla la LECTURA del saldo se bloqueaba el
          botón para siempre, aunque el usuario tuviera fondos de
@@ -552,6 +566,21 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       fallo(d, m.slice(0, 160));
     }
   };
+
+  /* El precio de mercado tiene que coincidir con el de la grafica en todo momento:
+     antes se congelaba al abrir la ficha y quedaba desfasado (588 cuando el precio
+     ya era 587.9). Se refresca en vivo y se recalcula el resumen. Se corta solo
+     cuando la ficha se cierra. */
+  const _pxInt = setInterval(() => {
+    if (!document.body.contains(d)) { clearInterval(_pxInt); return; }
+    const p = cfg.precioActual ? cfg.precioActual() : 0;
+    if (p > 0 && p !== actual) {
+      actual = p;
+      const px = d.querySelector('.od-mkt-px');
+      if (px) px.textContent = fmt(p);
+      refrescar();
+    }
+  }, 1000);
 
   setTimeout(() => { try { inp.focus(); } catch (_) {} }, 80);
 }
@@ -1378,6 +1407,8 @@ function estilos() {
     font-size:25px;line-height:1;color:#2ee86a !important}
   .od-pct-grande span{display:block;font-family:var(--sans,sans-serif);font-size:10px;
     color:#3ee88a;margin-top:2px}
+  .od-pct-grande .od-disp-val{font-size:22px;font-variant-numeric:tabular-nums;
+    white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}
   .od-dist{font-family:var(--mono,monospace);font-size:10px;color:#7d8794;margin-bottom:13px}
   .od-saldo{display:block;margin-top:5px;font-family:var(--mono,monospace);font-size:10.5px;color:#8b96a3}
   .od-saldo b{color:#eaecef}
