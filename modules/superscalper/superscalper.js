@@ -296,10 +296,82 @@ function rutaFractal(E, velas, tipo) {
   let lo = Infinity, hi = -Infinity; for (const v of vel) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
   return { velas: vel, lo, hi, fin: vel[vel.length - 1].c };
 }
+/* ── PROYECCIÓN ESTRUCTURAL: el camino se arma en tramos (legs) según los NIVELES reales de
+   esta gráfica (oscila, va a la próxima barrera, lateraliza, rompe, retrocede = techo a suelo,
+   sigue a la siguiente), con duraciones variables (no copy pega); y cada tramo se RELLENA con
+   una ventana REAL del histórico remapeada a su sitio, para que la vela sea orgánica. ── */
+function nivelesArr(E) {
+  const px = E.px, a = E.a;
+  return { res: E.niv.filter((l) => l.p > px + 0.3 * a).sort((x, y) => x.p - y.p).map((l) => l.p),
+    sup: E.niv.filter((l) => l.p < px - 0.3 * a).sort((x, y) => y.p - x.p).map((l) => l.p) };
+}
+function construirLegs(E, tipo, R) {
+  const px = E.px, a = E.a, { res, sup } = nivelesArr(E), legs = [], H = 46; let budget = H;
+  const ri = (lo, hi) => lo + Math.floor(R() * (hi - lo + 1));
+  if (tipo === 'range') {                                   // lateral: oscila dentro de la caja real (de A a B) con amplitud suficiente
+    let ir = 0, is = 0, hi = res[ir], lo = sup[is];
+    while (hi != null && hi - px < 1.3 * a && ir + 1 < res.length) hi = res[++ir];
+    while (lo != null && px - lo < 1.3 * a && is + 1 < sup.length) lo = sup[++is];
+    if (hi == null || hi - px < 1.3 * a) hi = px + (1.9 + R() * 1.0) * a;
+    if (lo == null || px - lo < 1.3 * a) lo = px - (1.9 + R() * 1.0) * a;
+    for (let i = 0; i < 3; i++) legs.push({ tipo: 'osc', lo, hi, n: Math.round(H / 3) });
+    return legs;
+  }
+  const up = tipo === 'bull', dir = up ? 1 : -1, niv = up ? res : sup;
+  const accN = ri(3, 6); legs.push({ tipo: 'osc', lo: px - (up ? 0.45 : 0.55) * a, hi: px + (up ? 0.55 : 0.45) * a, n: accN }); budget -= accN;
+  let cur = px + dir * 0.2 * a, idx = 0;
+  while (budget > 9) {
+    const target = idx < niv.length ? niv[idx] : cur + dir * (1.5 + R() * 1.2) * a;      // próxima barrera o sintetizada
+    const impN = clamp(Math.round(Math.abs(target - cur) / (a * 0.8)), 4, 11);
+    legs.push({ tipo: 'imp', to: target - dir * 0.1 * a, n: impN }); budget -= impN; cur = target - dir * 0.1 * a; if (budget <= 6) break;
+    const extra = reaccionEn(target, E.niv, a) > a * 4 ? 0.5 : 0, amp = (0.5 + R() * 0.6 + extra) * a, oscN = ri(4, 8);   // lateraliza en la barrera (más fuerte si reaccionó fuerte)
+    legs.push({ tipo: 'osc', lo: up ? target - amp : target - 0.1 * a, hi: up ? target + 0.1 * a : target + amp, n: oscN }); budget -= oscN; if (budget <= 6) break;
+    const brkN = ri(2, 4); legs.push({ tipo: 'imp', to: target + dir * (0.4 + R() * 0.6) * a, n: brkN }); budget -= brkN; cur = target + dir * (0.5) * a; if (budget <= 6) break;   // rompe la barrera
+    const reN = ri(3, 6); legs.push({ tipo: 'imp', to: target + dir * (0.05 + R() * 0.25) * a, n: reN }); budget -= reN; cur = target + dir * 0.15 * a; idx++;   // retrocede: barrera rota pasa a soporte/techo
+  }
+  return legs;
+}
+function ventanaImp(velas, n, dir, mag, a, R) {
+  const L = velas.length, c = [];
+  for (let s = 5; s <= L - n - 2; s++) { const net = velas[s + n - 1].c - velas[s].o; if (net === 0 || Math.sign(net) !== dir) continue; c.push({ s, sc: -Math.abs(Math.abs(net) - mag) / a + (s / L) * 0.1 }); }
+  if (!c.length) return -1; c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(6, c.length)); return top[Math.floor(R() * top.length)].s;
+}
+function ventanaOsc(velas, n, a, R) {
+  const L = velas.length, c = [];
+  for (let s = 5; s <= L - n - 2; s++) { const net = Math.abs(velas[s + n - 1].c - velas[s].o); let hi = -1e18, lo = 1e18; for (let k = s; k < s + n; k++) { if (velas[k].h > hi) hi = velas[k].h; if (velas[k].l < lo) lo = velas[k].l; } const span = hi - lo; if (span <= 0) continue; c.push({ s, sc: (span / a) * 0.25 - (net / a) * 1.2 }); }
+  if (!c.length) return -1; c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(6, c.length)); return top[Math.floor(R() * top.length)].s;
+}
+function remapImp(velas, s, n, p0, p1) {
+  const w0 = velas[s].o, k = (p1 - p0) / ((velas[s + n - 1].c - w0) || 1), out = [];
+  for (let i = 0; i < n; i++) { const r = velas[s + i]; out.push({ o: p0 + (r.o - w0) * k, h: p0 + (r.h - w0) * k, l: p0 + (r.l - w0) * k, c: p0 + (r.c - w0) * k }); } return out;
+}
+function remapOsc(velas, s, n, lo, hi) {
+  let wlo = 1e18, whi = -1e18; for (let k = s; k < s + n; k++) { if (velas[k].h > whi) whi = velas[k].h; if (velas[k].l < wlo) wlo = velas[k].l; }
+  const sc = (hi - lo) / ((whi - wlo) || 1), out = []; for (let i = 0; i < n; i++) { const r = velas[s + i]; out.push({ o: lo + (r.o - wlo) * sc, h: lo + (r.h - wlo) * sc, l: lo + (r.l - wlo) * sc, c: lo + (r.c - wlo) * sc }); } return out;
+}
+function rutaEstructural(E, velas, tipo) {
+  if (velas.length < 70) return null;
+  const R = rng(hashId('E' + tipo + E.n + Math.round(E.px))), legs = construirLegs(E, tipo, R); if (!legs.length) return null;
+  const a = E.a, seq = []; let prevTo = E.px;
+  for (const leg of legs) {
+    let seg;
+    if (leg.tipo === 'imp') { const p0 = prevTo, p1 = leg.to, dir = Math.sign(p1 - p0) || 1, s = ventanaImp(velas, leg.n, dir, Math.abs(p1 - p0), a, R);
+      seg = s >= 0 ? remapImp(velas, s, leg.n, p0, p1) : lineal(p0, p1, leg.n, a, R); prevTo = p1; }
+    else { const s = ventanaOsc(velas, leg.n, a, R); seg = s >= 0 ? remapOsc(velas, s, leg.n, leg.lo, leg.hi) : oscil(leg.lo, leg.hi, leg.n, R); prevTo = seg[seg.length - 1].c; }
+    for (const v of seg) seq.push({ c: v.c, uw: Math.max(0, v.h - Math.max(v.o, v.c)), lw: Math.max(0, Math.min(v.o, v.c) - v.l) });
+  }
+  const out = []; let prevC = E.px;                          // encadena las aperturas al cierre anterior: continuidad orgánica pegada al precio
+  for (const q of seq) { const o = prevC, c = q.c; out.push({ o, h: Math.max(o, c) + q.uw, l: Math.min(o, c) - q.lw, c }); prevC = c; }
+  if (out.length) out[0].o = E.px;
+  let lo = Infinity, hi = -Infinity; for (const v of out) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
+  return { velas: out, lo, hi, fin: prevC };
+}
+function lineal(p0, p1, n, a, R) { const out = []; let c = p0; for (let i = 1; i <= n; i++) { const cc = p0 + (p1 - p0) * (i / n) + (R() - 0.5) * a * 0.3, o = c; out.push({ o, h: Math.max(o, cc) + a * 0.2 * R(), l: Math.min(o, cc) - a * 0.2 * R(), c: cc }); c = cc; } return out; }
+function oscil(lo, hi, n, R) { const out = [], mid = (lo + hi) / 2, amp = (hi - lo) / 2; let c = mid; for (let i = 0; i < n; i++) { const cc = mid + Math.sin(i / n * Math.PI * 2 + R() * 6) * amp * (0.6 + R() * 0.4), o = c; out.push({ o, h: Math.max(o, cc) + amp * 0.15, l: Math.min(o, cc) - amp * 0.15, c: cc }); c = cc; } return out; }
 function recalcPred() {
   try {
     const E = analizarEstructura(M.velas); M.estr = E; const probs = probsEscenas(E), rutas = {};
-    for (const tipo of ['bull', 'bear', 'range']) { let r = rutaFractal(E, M.velas, tipo); if (!r) { const wp = waypointsEscena(E, tipo); r = velasRuta(wp, E, hashId(tipo + E.n + Math.round(E.px))); } rutas[tipo] = { velas: r.velas, lo: r.lo, hi: r.hi, fin: r.fin, prob: probs[tipo] }; }
+    for (const tipo of ['bull', 'bear', 'range']) { let r = rutaEstructural(E, M.velas, tipo) || rutaFractal(E, M.velas, tipo); if (!r) { const wp = waypointsEscena(E, tipo); r = velasRuta(wp, E, hashId(tipo + E.n)); } rutas[tipo] = { velas: r.velas, lo: r.lo, hi: r.hi, fin: r.fin, prob: probs[tipo] }; }
     M.pred = { rutas, probs, px: E.px };
     if (!M.escena) M.escena = Object.keys(probs).sort((x, y) => probs[y] - probs[x])[0];   // arranca en el más probable
     M.predAlpha = 0; actualizarBotones();
@@ -717,6 +789,28 @@ const CSS = `
 .ss-esc button.on{background:rgba(232,184,75,.15);border-color:var(--gold);color:var(--gold)}
 .ss-esc button.on b{color:var(--gold)}
 @media(max-width:640px){.ss-esc{gap:3px;padding:3px;top:8px;max-width:calc(100% - 20px)}.ss-esc button{height:30px;padding:0 9px;font-size:11px;gap:4px}.ss-esc button b{font-size:10px}}
+/* Estilo de los popups de la barra de dibujo dentro de este módulo (el estilos.js compartido
+   no duplica .nv-pm fuera de #nv-overlay; aquí quedan bien sin tocar archivos compartidos). */
+#ss-overlay .nv-pop{position:absolute;z-index:10001;padding:8px;border-radius:12px;background:linear-gradient(180deg,rgba(24,30,40,.97),rgba(14,18,26,.97));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.13);box-shadow:0 16px 44px rgba(0,0,0,.62)}
+#ss-overlay .nv-pop-col{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;width:184px}
+#ss-overlay .nv-pc{width:22px;height:22px;border-radius:6px;border:2px solid transparent;cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+#ss-overlay .nv-pc:hover{border-color:rgba(255,255,255,.85)}
+#ss-overlay .nv-pop-fib{width:210px}
+#ss-overlay .nv-pop-t{font-family:var(--mono,monospace);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8b95a1;margin:0 2px 7px}
+#ss-overlay .nv-pf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+#ss-overlay .nv-pf{height:26px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:#98a2ad;cursor:pointer;font-family:var(--mono,monospace);font-size:10px;font-weight:700;padding:0}
+#ss-overlay .nv-pf:hover{border-color:rgba(255,255,255,.3);color:#eaecef}
+#ss-overlay .nv-pf.on{background:rgba(34,211,238,.18);border-color:rgba(34,211,238,.5);color:#22d3ee}
+#ss-overlay .nv-pop-fly{display:flex;flex-direction:column;gap:2px;width:158px}
+#ss-overlay .nv-pop-menu{display:flex;flex-direction:column;gap:2px;width:180px}
+#ss-overlay .nv-pm{display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;border-radius:8px;border:none;background:transparent;color:#d7dde4;cursor:pointer;font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:12.5px;font-weight:600;text-align:left}
+#ss-overlay .nv-pm:hover{background:rgba(255,255,255,.08)}
+#ss-overlay .nv-pm svg{flex:0 0 auto;color:#9aa4b0;width:16px;height:16px}
+#ss-overlay .nv-fl{display:flex;align-items:center;gap:9px;height:34px;padding:0 10px;border-radius:8px;border:none;background:transparent;color:#c9d1d9;cursor:pointer;font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:12.5px;font-weight:600}
+#ss-overlay .nv-fl:hover{background:rgba(255,255,255,.08)}
+#ss-overlay .nv-fl.on{background:rgba(34,211,238,.16);color:#22d3ee}
+#ss-overlay .nv-tool-fly{position:relative}
+#ss-overlay .nv-fly-mark{position:absolute;right:2px;bottom:2px;width:0;height:0;border-left:5px solid transparent;border-bottom:5px solid currentColor;opacity:.7}
 .ss-cv{display:block;position:absolute;inset:0}
 .ss-marca{position:absolute;left:64px;bottom:40px;z-index:4;height:42px;width:auto;opacity:.82;pointer-events:none;display:flex;align-items:center;filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
 @media(max-width:620px){.ss-marca{left:58px;bottom:30px;height:32px}}
