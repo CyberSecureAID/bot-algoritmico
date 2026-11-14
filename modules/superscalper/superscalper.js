@@ -1,4 +1,4 @@
-/* modules/superscalper/superscalper.js — "Prediction Engine" (nombre de cara al usuario).
+/* modules/superscalper/superscalper.js — "Prediction" (nombre de cara al usuario).
    El archivo NO se renombra (la carpeta queda como superscalper), igual que "VWAP Pro"
    vive en modules/institutional/ y "Footprint" en modules/footprint/.
 
@@ -308,13 +308,13 @@ function nivelesArr(E) {
 function construirLegs(E, tipo, R) {
   const px = E.px, a = E.a, { res, sup } = nivelesArr(E), legs = [], H = 46; let budget = H;
   const ri = (lo, hi) => lo + Math.floor(R() * (hi - lo + 1));
-  if (tipo === 'range') {                                   // lateral: oscila dentro de la caja real (de A a B) con amplitud suficiente
+  if (tipo === 'range') {                                   // lateral: oscila dentro de la caja real (de A a B); tramos de distinta duración, cada uno con ventana real distinta (sin copy pega)
     let ir = 0, is = 0, hi = res[ir], lo = sup[is];
     while (hi != null && hi - px < 1.3 * a && ir + 1 < res.length) hi = res[++ir];
     while (lo != null && px - lo < 1.3 * a && is + 1 < sup.length) lo = sup[++is];
     if (hi == null || hi - px < 1.3 * a) hi = px + (1.9 + R() * 1.0) * a;
     if (lo == null || px - lo < 1.3 * a) lo = px - (1.9 + R() * 1.0) * a;
-    for (let i = 0; i < 3; i++) legs.push({ tipo: 'osc', lo, hi, n: Math.round(H / 3) });
+    let b = H; while (b > 6) { const nn = Math.min(ri(6, 11), b); legs.push({ tipo: 'osc', lo, hi, n: nn }); b -= nn; }
     return legs;
   }
   const up = tipo === 'bull', dir = up ? 1 : -1, niv = up ? res : sup;
@@ -331,37 +331,46 @@ function construirLegs(E, tipo, R) {
   }
   return legs;
 }
-function ventanaImp(velas, n, dir, mag, a, R) {
+function ocupada(usadas, s, n) { if (!usadas) return false; for (let k = s - 2; k < s + n + 2; k++) if (usadas.has(k)) return true; return false; }   // evita reutilizar (ni solapar) una ventana ya usada
+function marcar(usadas, s, n) { if (!usadas) return; for (let k = s; k < s + n; k++) usadas.add(k); }
+function ventanaImp(velas, n, dir, mag, a, R, usadas) {
   const L = velas.length, c = [];
-  for (let s = 5; s <= L - n - 2; s++) { const net = velas[s + n - 1].c - velas[s].o; if (net === 0 || Math.sign(net) !== dir) continue; c.push({ s, sc: -Math.abs(Math.abs(net) - mag) / a + (s / L) * 0.1 }); }
-  if (!c.length) return -1; c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(6, c.length)); return top[Math.floor(R() * top.length)].s;
+  for (let s = 5; s <= L - n - 2; s++) { if (ocupada(usadas, s, n)) continue; const net = velas[s + n - 1].c - velas[s].o; if (net === 0) continue;
+    const mis = Math.sign(net) !== dir ? 0.7 : 0;   // también admite ventanas en dirección opuesta (se remapean en espejo, textura real) pero priorizando la correcta
+    c.push({ s, sc: -Math.abs(Math.abs(net) - mag) / a - mis + (s / L) * 0.1 }); }
+  if (!c.length) return -1; c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(8, c.length)); const pick = top[Math.floor(R() * top.length)].s; marcar(usadas, pick, n); return pick;
 }
-function ventanaOsc(velas, n, a, R) {
+function ventanaOsc(velas, n, a, R, usadas) {
   const L = velas.length, c = [];
-  for (let s = 5; s <= L - n - 2; s++) { const net = Math.abs(velas[s + n - 1].c - velas[s].o); let hi = -1e18, lo = 1e18; for (let k = s; k < s + n; k++) { if (velas[k].h > hi) hi = velas[k].h; if (velas[k].l < lo) lo = velas[k].l; } const span = hi - lo; if (span <= 0) continue; c.push({ s, sc: (span / a) * 0.25 - (net / a) * 1.2 }); }
-  if (!c.length) return -1; c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(6, c.length)); return top[Math.floor(R() * top.length)].s;
+  for (let s = 5; s <= L - n - 2; s++) { if (ocupada(usadas, s, n)) continue; const net = Math.abs(velas[s + n - 1].c - velas[s].o); let hi = -1e18, lo = 1e18; for (let k = s; k < s + n; k++) { if (velas[k].h > hi) hi = velas[k].h; if (velas[k].l < lo) lo = velas[k].l; } const span = hi - lo; if (span <= 0) continue; c.push({ s, sc: (span / a) * 0.25 - (net / a) * 1.2 }); }
+  if (!c.length) return -1; c.sort((x, y) => y.sc - x.sc); const top = c.slice(0, Math.min(8, c.length)); const pick = top[Math.floor(R() * top.length)].s; marcar(usadas, pick, n); return pick;
 }
 function remapImp(velas, s, n, p0, p1) {
-  const w0 = velas[s].o, k = (p1 - p0) / ((velas[s + n - 1].c - w0) || 1), out = [];
-  for (let i = 0; i < n; i++) { const r = velas[s + i]; out.push({ o: p0 + (r.o - w0) * k, h: p0 + (r.h - w0) * k, l: p0 + (r.l - w0) * k, c: p0 + (r.c - w0) * k }); } return out;
+  const w0 = velas[s].o, net = (velas[s + n - 1].c - w0) || (p1 - p0) || 1;
+  let k = (p1 - p0) / net; const ak = Math.abs(k) || 1; if (ak < 0.12) k *= 0.12 / ak; else if (ak > 3.2) k *= 3.2 / ak;   // escala acotada: remapear no puede inventar una vela gigante
+  const out = [];
+  for (let i = 0; i < n; i++) { const r = velas[s + i], o = p0 + (r.o - w0) * k, c = p0 + (r.c - w0) * k, h = p0 + (r.h - w0) * k, l = p0 + (r.l - w0) * k; out.push({ o, c, h: Math.max(o, c, h, l), l: Math.min(o, c, h, l) }); }
+  return out;
 }
 function remapOsc(velas, s, n, lo, hi) {
   let wlo = 1e18, whi = -1e18; for (let k = s; k < s + n; k++) { if (velas[k].h > whi) whi = velas[k].h; if (velas[k].l < wlo) wlo = velas[k].l; }
-  const sc = (hi - lo) / ((whi - wlo) || 1), out = []; for (let i = 0; i < n; i++) { const r = velas[s + i]; out.push({ o: lo + (r.o - wlo) * sc, h: lo + (r.h - wlo) * sc, l: lo + (r.l - wlo) * sc, c: lo + (r.c - wlo) * sc }); } return out;
+  let sc = (hi - lo) / ((whi - wlo) || 1); if (sc < 0.2) sc = 0.2; else if (sc > 3) sc = 3;   // escala acotada
+  const out = []; for (let i = 0; i < n; i++) { const r = velas[s + i], o = lo + (r.o - wlo) * sc, c = lo + (r.c - wlo) * sc, h = lo + (r.h - wlo) * sc, l = lo + (r.l - wlo) * sc; out.push({ o, c, h: Math.max(o, c, h, l), l: Math.min(o, c, h, l) }); }
+  return out;
 }
 function rutaEstructural(E, velas, tipo) {
   if (velas.length < 70) return null;
   const R = rng(hashId('E' + tipo + E.n + Math.round(E.px))), legs = construirLegs(E, tipo, R); if (!legs.length) return null;
-  const a = E.a, seq = []; let prevTo = E.px;
+  const a = E.a, seq = [], usadas = new Set(); let prevTo = E.px;   // cada tramo toma una ventana REAL distinta: ningún escenario repite el mismo conjunto de velas
   for (const leg of legs) {
     let seg;
-    if (leg.tipo === 'imp') { const p0 = prevTo, p1 = leg.to, dir = Math.sign(p1 - p0) || 1, s = ventanaImp(velas, leg.n, dir, Math.abs(p1 - p0), a, R);
+    if (leg.tipo === 'imp') { const p0 = prevTo, p1 = leg.to, dir = Math.sign(p1 - p0) || 1, s = ventanaImp(velas, leg.n, dir, Math.abs(p1 - p0), a, R, usadas);
       seg = s >= 0 ? remapImp(velas, s, leg.n, p0, p1) : lineal(p0, p1, leg.n, a, R); prevTo = p1; }
-    else { const s = ventanaOsc(velas, leg.n, a, R); seg = s >= 0 ? remapOsc(velas, s, leg.n, leg.lo, leg.hi) : oscil(leg.lo, leg.hi, leg.n, R); prevTo = seg[seg.length - 1].c; }
-    for (const v of seg) seq.push({ c: v.c, uw: Math.max(0, v.h - Math.max(v.o, v.c)), lw: Math.max(0, Math.min(v.o, v.c) - v.l) });
+    else { const s = ventanaOsc(velas, leg.n, a, R, usadas); seg = s >= 0 ? remapOsc(velas, s, leg.n, leg.lo, leg.hi) : oscil(leg.lo, leg.hi, leg.n, R); prevTo = seg[seg.length - 1].c; }
+    for (const v of seg) seq.push({ dc: v.c - v.o, uw: Math.max(0, v.h - Math.max(v.o, v.c)), lw: Math.max(0, Math.min(v.o, v.c) - v.l) });
   }
-  const out = []; let prevC = E.px;                          // encadena las aperturas al cierre anterior: continuidad orgánica pegada al precio
-  for (const q of seq) { const o = prevC, c = q.c; out.push({ o, h: Math.max(o, c) + q.uw, l: Math.min(o, c) - q.lw, c }); prevC = c; }
+  const out = []; let prevC = E.px, capV = a * 4.5;           // encadena las aperturas al cierre anterior: continuidad orgánica pegada al precio; cuerpo y mechas acotados por si una ventana trae un salto extremo
+  for (const q of seq) { const o = prevC, c = o + clamp(q.dc, -capV, capV); out.push({ o, h: Math.max(o, c) + Math.min(q.uw, capV * 0.6), l: Math.min(o, c) - Math.min(q.lw, capV * 0.6), c }); prevC = c; }
   if (out.length) out[0].o = E.px;
   let lo = Infinity, hi = -Infinity; for (const v of out) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
   return { velas: out, lo, hi, fin: prevC };
@@ -443,7 +452,7 @@ function discOB(reView) {
     ${reView ? '<button class="ss-disc-x" id="ss-disc-x" aria-label="Close">✕</button>' : ''}
     <img class="ss-disc-sello" src="${DISC_IMG}" alt="">
     <h4>Before you start</h4>
-    <p>Prediction Engine is a <b>probability tool</b>, for information and education only. It reads the current structure, trend, momentum, volume and past levels, and for the scenario you pick (bullish, bearish or range) it draws the <b>single most logical path</b> price could take next, as candles that flow from the current price, with an estimated probability; the All button shows the three together. These are <b>structural projections, not predictions of the future</b>: the projected candles are not real price, the percentages are modelled estimates that will not always be right, and no path is a promise. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance.</p>
+    <p>Prediction is a <b>probability tool</b>, for information and education only. It reads the current structure, trend, momentum, volume and past levels, and for the scenario you pick (bullish, bearish or range) it draws the <b>single most logical path</b> price could take next, as candles that flow from the current price, with an estimated probability; the All button shows the three together. These are <b>structural projections, not predictions of the future</b>: the projected candles are not real price, the percentages are modelled estimates that will not always be right, and no path is a promise. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance.</p>
     <p>Every entry, exit and the size of every trade are your own decision and your sole responsibility. The tools are provided as is, without warranty of any kind, and the data comes from third parties (Binance) and may be delayed or incomplete. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.</p>
     ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand these are modelled probabilities, not predictions, that the ghost candles are projections and not real price, that nothing here is guaranteed, and that I trade entirely at my own risk.</span></label>'}
     <button class="ss-disc-ok" id="ss-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'Accept'}</button></div>`;
@@ -515,36 +524,51 @@ function dibujar() {
   if (esp) esp.style.display = 'none';
 
   const mDer = 66, mAba = 22, yTime = H - mAba;
-  const x1 = W - mDer, y1 = yTime, xVelas = Math.round(x1 * (1 - FUT));   // velas reales a la izquierda; derecha = proyección futura
-  const ancho = Math.min(M.velas.length, M.ancho || 120);
-  const huecoMax = Math.floor(ancho * 0.5);
-  let desp = Math.max(-huecoMax, Math.min(M.desplaz || 0, Math.max(0, M.velas.length - ancho))); M.desplaz = desp;
-  const fin = M.velas.length - desp, vis = M.velas.slice(Math.max(0, fin - ancho), Math.min(M.velas.length, fin));
-  if (!vis.length) return;
+  const x1 = W - mDer, y1 = yTime, Nv = M.velas.length;
+  // La proyección NO es una zona aparte: es una EXTENSIÓN del mismo gráfico. Barras reales 0..Nv-1 y
+  // barras de futuro Nv..Nv+Hfut-1 comparten UN eje, UN paso y UN pan. Paneas y haces zoom sobre todo igual.
+  const ancho = Math.min(Nv, M.ancho || 120);
+  const paso = x1 / (ancho || 1), w = Math.max(1, paso * 0.62);
   const pc = (M.dispC != null && M.dispC > 0) ? M.dispC : M.precio;
-  if (desp <= 0 && pc > 0) { const u = vis[vis.length - 1]; u.c = pc; if (pc > u.h) u.h = pc; if (pc < u.l) u.l = pc; }
-  let pAlto = Math.max(...vis.map((v) => v.h)), pBajo = Math.min(...vis.map((v) => v.l));
+  let Hfut = 0; const tiposV = [];
+  if (M.pred && M.estr) { const tt = M.escena === 'all' ? ['bull', 'bear', 'range'] : [M.escena];
+    for (const t of tt) { const R = M.pred.rutas[t]; if (R && R.velas && R.velas.length) { Hfut = Math.max(Hfut, R.velas.length); tiposV.push(t); } } }
+  const futVis = Math.min(Hfut, Math.round(FUT * ancho));           // por defecto se ve ~FUT del ancho en futuro
+  const derBase = (Nv - 1) + futVis;                               // barra del borde derecho en la vista por defecto
+  let der = Math.round(derBase - (M.desplaz || 0));
+  der = Math.max(ancho - 1, Math.min(der, (Nv - 1) + Hfut + 1));   // pan: del pasado (izq) hasta el final del futuro (der)
+  M.desplaz = derBase - der;
+  const Xc = (barIdx) => x1 - paso / 2 - (der - barIdx) * paso;     // centro de la barra (reales y futuras, mismo sistema)
+
+  const pri = Math.max(0, der - (ancho - 1)), finR = Math.min(Nv - 1, der);
+  const vis = finR >= pri ? M.velas.slice(pri, finR + 1) : [];
+  if (pc > 0 && finR === Nv - 1 && vis.length) { const u = vis[vis.length - 1]; u.c = pc; if (pc > u.h) u.h = pc; if (pc < u.l) u.l = pc; }   // precio en vivo en la última real, solo si está a la vista
+  const futDraw = [];                                               // velas de futuro realmente visibles (para rango vertical y dibujo)
+  if (Hfut && der >= Nv) { for (const t of tiposV) { const vl = M.pred.rutas[t].velas;
+    for (let j = 0; j < vl.length; j++) { const bi = Nv + j; if (bi > der) break; if (Xc(bi) < -paso) continue; futDraw.push(vl[j]); } } }
+
+  let pAlto = -Infinity, pBajo = Infinity;
+  for (const v of vis) { if (v.h > pAlto) pAlto = v.h; if (v.l < pBajo) pBajo = v.l; }
   if (pc > 0) { pAlto = Math.max(pAlto, pc); pBajo = Math.min(pBajo, pc); }
-  // incluye la(s) ruta(s) de la predicción en el rango vertical, acotado a ±7 ATR
-  if (M.pred && M.estr && desp <= 0) { const a = M.estr.a || (pAlto - pBajo) * 0.1; let rlo = Infinity, rhi = -Infinity;
-    const tt = M.escena === 'all' ? ['bull', 'bear', 'range'] : [M.escena]; for (const t of tt) { const R = M.pred.rutas[t]; if (R) { rlo = Math.min(rlo, R.lo); rhi = Math.max(rhi, R.hi); } }
-    if (rhi > -Infinity) { pAlto = Math.max(pAlto, Math.min(rhi, pc + a * 7)); pBajo = Math.min(pBajo, Math.max(rlo, pc - a * 7)); } }
+  if (futDraw.length) { const a = M.estr.a || (pAlto - pBajo) * 0.1 || 1; let flo = Infinity, fhi = -Infinity;
+    for (const v of futDraw) { if (v.h > fhi) fhi = v.h; if (v.l < flo) flo = v.l; }
+    pAlto = Math.max(pAlto, Math.min(fhi, (pc || pAlto) + a * 7)); pBajo = Math.min(pBajo, Math.max(flo, (pc || pBajo) - a * 7)); }   // acota a ±7 ATR
+  if (!isFinite(pAlto) || !isFinite(pBajo)) return;
   const rangoB = (pAlto - pBajo) || 1, despY = ((M.offsetY || 0) / Math.max(1, y1)) * rangoB;
   const centro = (pAlto + pBajo) / 2 + despY, semi = (rangoB / 2) * (M.zoomY || 1), pad = semi * 0.14 || 1;
   const pMax = centro + semi + pad, pMin = centro - semi - pad;
   const Y = (p) => y1 - y1 * ((p - pMin) / Math.max(1e-12, pMax - pMin));
-  const paso = xVelas / (ancho || vis.length), pri = fin - ancho;
-  const Xbar = (barIdx) => (barIdx - pri) * paso + paso / 2;
-  M._geo = { pMin, pMax, y1, xVelas, x1, n: vis.length, vis, paso, pri, fin, ancho };
+  const xNow = Xc(Nv - 1) + paso / 2;                              // divisoria "ahora": borde derecho de la última vela real
+  M._geo = { pMin, pMax, y1, xVelas: xNow, x1, n: vis.length, vis, paso, pri, fin: der + 1, ancho, Xc, der, Nv };
 
   if (_od) _zonasOd = _od.pintar(g, { x1, Y, pMin, pMax, simbolo: (PARES.find((p) => p.id === _par) || {}).s || '' });
   g.strokeStyle = P.rejilla; g.lineWidth = 1;
   for (let i = 1; i < 6; i++) { const y = (y1 / 6) * i; g.beginPath(); g.moveTo(0, y); g.lineTo(x1, y); g.stroke(); }
 
-  dibujarVelas(g, vis, Y, paso);
-  g.save(); g.strokeStyle = 'rgba(232,184,75,.26)'; g.lineWidth = 1; g.setLineDash([2, 4]);   // divisoria "ahora"
-  g.beginPath(); g.moveTo(xVelas, 0); g.lineTo(xVelas, y1); g.stroke(); g.restore(); g.setLineDash([]);
-  dibujarPrediccion(g, Y, xVelas, x1, y1);               // la predicción del escenario activo, en velas sólidas
+  dibujarVelas(g, vis, Y, paso, Xc, pri);
+  if (xNow > 2 && xNow < x1) { g.save(); g.strokeStyle = 'rgba(232,184,75,.26)'; g.lineWidth = 1; g.setLineDash([2, 4]);   // divisoria "ahora"
+    g.beginPath(); g.moveTo(xNow, 0); g.lineTo(xNow, y1); g.stroke(); g.restore(); g.setLineDash([]); }
+  dibujarPrediccion(g, Y, Xc, x1, y1, Nv, w);               // la predicción, pegada a la última real, en el mismo eje
 
   if (pc > 0) {
     const yp = Y(pc); g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 1; g.setLineDash([3, 3]);
@@ -558,7 +582,7 @@ function dibujar() {
   g.fillStyle = '#0b0e12'; g.fillRect(0, yTime, W, mAba);
   g.fillStyle = pal().dim; g.font = '9px ui-monospace,monospace'; g.textAlign = 'center';
   const cadaX = Math.max(1, Math.floor(vis.length / 7));
-  vis.forEach((v, i) => { if (i % cadaX !== 0) return; const x = i * paso + paso / 2; if (x > xVelas - 14) return; g.fillText(fmtFecha(v.t), x, yTime + 14); });
+  vis.forEach((v, i) => { if (i % cadaX !== 0) return; const x = Xc(pri + i); if (x < 2 || x > x1 - 8) return; g.fillText(fmtFecha(v.t), x, yTime + 14); });
   g.textAlign = 'left';
 
   if (M._cursor && M._cursor.x < x1 && M._cursor.y < y1 && M._cursor.x > 0 && M._cursor.y > 0) {
@@ -569,13 +593,14 @@ function dibujar() {
     g.fillStyle = '#0b0e12'; g.font = 'bold 10px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(fmt(pCur), x1 + 6, cy + 3.5);
   }
   refrescarCabecera();
-  if (_barra && M._geo) _barra.redibujar({ W, H, x1: xVelas, y1, pMin, pMax, Y, ancho, paso, fin }, M.velas, _par);
+  if (_barra && M._geo) _barra.redibujar({ W, H, x1, y1, pMin, pMax, Y, ancho, paso, fin: der + 1 }, M.velas, _par);
 }
 
-function dibujarVelas(g, vis, Y, paso) {
+function dibujarVelas(g, vis, Y, paso, Xc, pri) {
   const w = Math.max(1, paso * 0.62);
   for (let i = 0; i < vis.length; i++) {
-    const c = vis[i], x = i * paso + paso / 2, sube = c.c >= c.o, col = sube ? '#26d46a' : '#ff5162';
+    const c = vis[i], x = Xc(pri + i); if (x < -paso || x > 1e5) continue;
+    const sube = c.c >= c.o, col = sube ? '#26d46a' : '#ff5162';
     g.strokeStyle = col; g.lineWidth = 1; g.beginPath(); g.moveTo(x, Y(c.h)); g.lineTo(x, Y(c.l)); g.stroke();
     const yO = Y(c.o), yC = Y(c.c); g.fillStyle = col; g.fillRect(x - w / 2, Math.min(yO, yC), w, Math.max(1, Math.abs(yC - yO)));
   }
@@ -588,7 +613,7 @@ function dibujarRuta(g, Y, xF, ruta, w, now, gA, conSombra, px, x1) {
   const vel = ruta.velas; if (!vel.length) return;
   g.save();
   if (conSombra) { g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 9; g.shadowOffsetY = 4; g.globalAlpha = 0.92 * gA; } else g.globalAlpha = gA;
-  for (let j = 0; j < vel.length; j++) { const x = xF(j); if (x > x1 + 2) break;
+  for (let j = 0; j < vel.length; j++) { const x = xF(j); if (x > x1 + 2) break; if (x < -w) continue;
     const v = vel[j], col = v.c >= v.o ? COL.bull : COL.bear;
     g.strokeStyle = `rgb(${col})`; g.lineWidth = 1; g.beginPath(); g.moveTo(x, Y(v.h)); g.lineTo(x, Y(v.l)); g.stroke();
     const yO = Y(v.o), yC = Y(v.c); g.fillStyle = `rgb(${col})`; g.fillRect(x - w / 2, Math.min(yO, yC), w, Math.max(1, Math.abs(yC - yO))); }
@@ -612,11 +637,11 @@ function luzTrayectoria(g, pts, col, now, gA) {   // cometa de luz que viaja A�
     g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke(); }
   g.restore();
 }
-function dibujarPrediccion(g, Y, xVelas, x1, y1) {
+function dibujarPrediccion(g, Y, Xc, x1, y1, N, w) {
   const P = M.pred, geo = M._geo; if (!P || !geo) return;
-  const paso = geo.paso || 8, w = Math.max(1, paso * 0.62), now = Date.now(), gA = M.predAlpha;
-  const xF = (j) => xVelas + (j + 0.5) * paso;                                  // mismo paso que las velas reales, pegado a "ahora"
-  g.save(); g.beginPath(); g.rect(xVelas - 1, 0, x1 - xVelas + 2, y1 + 2); g.clip();
+  const now = Date.now(), gA = M.predAlpha, paso = geo.paso || 8, xNow = geo.xVelas;
+  const xF = (j) => Xc(N + j);                                                  // las barras de futuro siguen el MISMO eje: N, N+1, N+2…
+  const cl = Math.max(0, xNow - 1); g.save(); g.beginPath(); g.rect(cl, 0, x1 - cl + 2, y1 + 2); g.clip();   // la proyección vive a la derecha de "ahora"
   const tipos = M.escena === 'all' ? ['bull', 'bear', 'range'].sort((x, y) => (P.probs[x] || 0) - (P.probs[y] || 0)) : [M.escena];   // all: el más probable encima
   for (const t of tipos) { const ruta = P.rutas[t]; if (ruta) dibujarRuta(g, Y, xF, ruta, w, now, gA, M.escena === 'all', P.px, x1); }
   g.restore();
@@ -706,7 +731,7 @@ function guardarImagen() {
     const g = out.getContext('2d'); g.fillStyle = '#0a0e14'; g.fillRect(0, 0, out.width, out.height); g.drawImage(cv, 0, 0);
     const yB = cv.height; g.fillStyle = '#0b0e12'; g.fillRect(0, yB, out.width, barra); g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, out.width, 2 * e2);
     const textos = (x) => {
-      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Prediction Engine', x, yB + 34 * e2);
+      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Prediction', x, yB + 34 * e2);
       g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText(WEB, x, yB + 56 * e2);
       g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillText(`${_par} · ${M.tf}`, out.width - 20 * e2, yB + 34 * e2);
       g.font = `${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#6b7681'; g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), out.width - 20 * e2, yB + 56 * e2);
@@ -736,7 +761,7 @@ function ayuda() {
   if ($('ss-ayuda-box')) { $('ss-ayuda-box').remove(); return; }
   _pasoRZ = 0;
   const d = document.createElement('div'); d.id = 'ss-ayuda-box';
-  d.innerHTML = `<div class="ss-ab-bg"></div><div class="ss-ab-c"><button class="ss-ab-x" aria-label="Close">✕</button><div class="ss-ab-eyebrow">Prediction Engine · How it works</div><div id="ss-ab-cuerpo"></div><div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div></div>`;
+  d.innerHTML = `<div class="ss-ab-bg"></div><div class="ss-ab-c"><button class="ss-ab-x" aria-label="Close">✕</button><div class="ss-ab-eyebrow">Prediction · How it works</div><div id="ss-ab-cuerpo"></div><div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div></div>`;
   document.body.appendChild(d);
   const q = () => d.remove(); d.querySelector('.ss-ab-bg').onclick = q; d.querySelector('.ss-ab-x').onclick = q; $('ss-disc-link').onclick = () => discOB(true);
   pintarPasoRZ();
