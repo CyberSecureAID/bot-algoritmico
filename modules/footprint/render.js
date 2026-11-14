@@ -462,8 +462,14 @@ export function crearRender(host, opts = {}) {
       fxImg(imgs.warUp, wp.x, wp.yBot, 16, buyWin ? (0.5 + 0.5 * pulse * (0.5 + 0.5 * lead)) : 0.2, C.buy, 'up');     // compradores (verde, abajo)
       fxImg(imgs.warDown, wp.x, wp.yTop, 16, !buyWin ? (0.5 + 0.5 * pulse * (0.5 + 0.5 * lead)) : 0.2, C.sell, 'down'); // vendedores (rojo, arriba)
     }
+    // Ordenes/alertas/posiciones del usuario (mismo orden.js del area): se dibujan en la capa FX.
+    if (opts.dibujarOverlay) { try { opts.dibujarOverlay(fctx, geoFx()); } catch (_) {} }
   }
   _animId = requestAnimationFrame(animFx);
 
-  return { setData, setLive, setMeta, setMode, getMode, resetView, resize, render, snapshot, destroy, panelBottomPx };
+  /* Geometria de solo lectura para operar desde la grafica (orden.js): borde
+     derecho del area de velas, alto, rango de precio y las conversiones precio↔y. */
+  function geoFx() { const L = layout(); return { x1: L.main.x + L.main.w, y1: L.main.y + L.main.h, pMin: st.pMin, pMax: st.pMax, Y: (p) => yP(p, L.main), yToPrice: (y) => pY(y, L.main) }; }
+
+  return { setData, setLive, setMeta, setMode, getMode, resetView, resize, render, snapshot, destroy, panelBottomPx, geo: geoFx };
 }

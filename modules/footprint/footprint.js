@@ -13,10 +13,14 @@
    apilados como S/R, CVD con divergencias, absorción y su analista propio. */
 
 import { PARES, TFS, velas, ticker, tickSize, aggTradesHist, streamTrades, logos, tfMs, subVelas } from './datos-trades.js?v=6';
-import { crearRender } from './render.js?v=7';
+import { crearRender } from './render.js?v=8';
 import { leerFootprint } from './analista.js?v=7';
 import { estilosFootprint } from './estilos.js?v=8';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG de EUR/GBP, mismas que Liquidity Pools
+
+let _od = null, _fpZonas = [];
+/* Operar desde la grafica: clic derecho → Set Position / Alerta. Posiciones en Spot. */
+try { import(new URL('../../assets/js/orden.js?v=131', import.meta.url).href).then((m) => { _od = m; }).catch(() => {}); } catch (_) {}
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const LOGO_ALT = new URL('../../assets/img/cco-full.webp', import.meta.url).href;
@@ -28,7 +32,25 @@ const IMG_BEAR = new URL('../../assets/img/fp-bajista.webp', import.meta.url).hr
 const IMG_WARUP = new URL('../../assets/img/fp-flecha-verde.webp', import.meta.url).href;   // compradores (verde, abajo)
 const IMG_WARDN = new URL('../../assets/img/fp-flecha-roja.webp', import.meta.url).href;    // vendedores (rojo, arriba)
 const DISC_IMG = new URL('../../assets/portada/red/disclaimer.webp', import.meta.url).href; // sello del disclaimer, el mismo de toda la plataforma
-const OPTS_RENDER = () => ({ onHover: tooltip, imgBull: IMG_BULL, imgBear: IMG_BEAR, imgWarUp: IMG_WARUP, imgWarDown: IMG_WARDN });
+const OPTS_RENDER = () => ({ onHover: tooltip, imgBull: IMG_BULL, imgBear: IMG_BEAR, imgWarUp: IMG_WARUP, imgWarDown: IMG_WARDN, dibujarOverlay: (g, geo) => { if (_od && geo) { try { _fpZonas = _od.pintar(g, { x1: geo.x1, y1: geo.y1, Y: geo.Y, pMin: geo.pMin, pMax: geo.pMax, simbolo: S.par.s }) || []; } catch (_) {} } } });
+/* Clic derecho sobre la grafica de Footprint: Set Position / Alerta. El host #fp-cv
+   es estable (solo se recrean sus canvas al cambiar de moneda), asi que cablear una
+   vez basta; precioEn y las zonas leen el render vigente. */
+function cablearOrdenFp() {
+  const host = document.getElementById('fp-cv'); if (!host) return;
+  if (!_od) { setTimeout(cablearOrdenFp, 200); return; }
+  if (host.dataset.ordenLista) return;
+  _od.conectar({
+    canvas: host,
+    capturaDoc: true,
+    precioEn: (y) => { try { const gm = S.render && S.render.geo && S.render.geo(); return gm ? (gm.yToPrice(y) || 0) : 0; } catch (_) { return 0; } },
+    precioActual: () => (S.meta && S.meta.last) || (S.live ? S.live.c : 0),
+    par: () => S.par.id,
+    simbolo: () => S.par.s,
+    repintar: () => {}
+  });
+  _od.clicCancelar(host, () => _fpZonas || [], () => {});
+}
 
 /* Iconos SVG propios, centrados (nada de glifos sueltos descuadrados). */
 const IC = {
@@ -152,6 +174,7 @@ export async function abrirFootprint() {
   document.body.appendChild(ov);
 
   S.render = crearRender($('fp-cv'), OPTS_RENDER());
+  cablearOrdenFp();
   window.addEventListener('resize', onResize);
   S.timerT = setInterval(tickTimer, 1000); tickTimer();
   S.an = { lang: idiomaIni(), abierto: false, clave: '', msg: null, det: false };
