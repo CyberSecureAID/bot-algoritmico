@@ -18,11 +18,11 @@
 
 import { estilos } from './estilos.js?v=17';
 import * as D from './datos.js?v=6';
-import { leerVWAP } from './vwap-analista.js?v=1';
+import { leerVWAP } from './vwap-analista.js?v=2';
 import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG para divisas (EUR €, GBP £)
 import { sma, ema, wma, hma, dema, tema, vwap, vwapBands, rsi, macd, bollinger, stochastic, atr, cci, williams, obv, roc, donchian, keltner, supertrend, psar, adx, mfi, awesome, momentum, stddev, ultimate, cmf,
   vwma, alma, zlema, kama, envelopes, stochRsi, ppo, trix, vortex, aroon, fisher, cmo } from './indicadores.js?v=6';
-import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=11';
+import { construirRasgos, capturarRasgos, coincideRasgos, escanearRasgos, cumpleRasgo, rasgoLabel, rasgosActivos, soportado as confSoportado } from './confluencia.js?v=12';
 try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Confluence · build 2026-11-03a'); } catch (_) {}   // marca de versión: confirma en consola que carga el código nuevo
 
 /* La MISMA barra de dibujo de las otras secciones (Smart/Heat/Liquidity Pools):
@@ -46,7 +46,7 @@ const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const LOGO_ALT = new URL('../../assets/img/cco-full.webp', import.meta.url).href;
 const AVATAR = new URL('../../assets/img/jesus-avatar.webp', import.meta.url).href;   // el analista (Jesús), el mismo de Smart Pools
 const SELLO = 'assets/portada/red/disclaimer.webp';
-const DISC_KEY = 'it-disclaimer-ok';
+const DISC_KEY = 'it-disclaimer-ok2';   // clave nueva: el disclaimer reescrito (VWAP Pro) se vuelve a mostrar una vez
 const LAYOUT_KEY = 'it-layout-v5';   // v5: Signals a la derecha a la altura del gráfico, Market Heatmap a lo ancho abajo, Quote y Watchlist ocultos (reinicia layouts guardados antiguos)
 /* Paneles ocultos por defecto (su código sigue intacto; solo no se muestran). */
 const OCULTOS_DEF = { 'it-p-quote': true, 'it-p-watch': true };
@@ -235,7 +235,6 @@ function plantilla() {
     </div>
     <div class="it-search">${icoSearch}<input id="it-q" type="text" autocomplete="off" placeholder="Search symbol"><div class="it-sug" id="it-sug" style="display:none"></div></div>
     <div class="it-top-r">
-      <button class="it-chip it-drop" id="it-in-btn">Indicators ${chev}</button>
       <button class="it-ico" id="it-export" title="Export image">${expo}</button>
       <button class="it-ico" id="it-reset" title="Reset layout">${reset}</button>
     </div>
@@ -266,7 +265,7 @@ function plantilla() {
     ${panel('it-p-macro', 'SIGNALS')}
   </div>
   <div class="it-foot">
-    <div>Confluence</div>
+    <div>VWAP Pro</div>
     <div>Live technical analysis · <button class="it-disc-link" id="it-disc-link" type="button">Disclaimer</button> · not financial advice</div>
   </div>`;
 }
@@ -297,7 +296,7 @@ function cablearTop(ov) {
   $('#it-back', ov).onclick = backInteligente;
   $('#it-coin', ov).onclick = (e) => { e.stopPropagation(); menuMonedas(); };
   $('#it-tf-btn', ov).onclick = (e) => { e.stopPropagation(); menuTf(); };
-  $('#it-in-btn', ov).onclick = (e) => { e.stopPropagation(); menuInd(); };
+  { const ib = $('#it-in-btn', ov); if (ib) ib.onclick = (e) => { e.stopPropagation(); menuInd(); }; }   // botón de indicadores retirado (no funcionaba); VWAP queda siempre activo
   $('#it-export', ov).onclick = exportar;
   $('#it-reset', ov).onclick = resetLayout;
   $('#it-disc-link', ov).onclick = () => mostrarDisclaimer(true);
@@ -549,7 +548,7 @@ function pintarChart() {
     if (S.ind.ZLEMA) linea('ZLEMA 20', 'ZLEMA', zlema(V, 20), '#a3e635');
     if (S.ind.KAMA) linea('KAMA 10', 'KAMA', kama(V, 10), '#fb7185', 0, 2);
     // ── Overlays con bandas / tendencia (coloreados; sin marcas L/S) ──
-    if (S.ind.VWAP) { const vb = vwapBands(V, 2); S._vwapFx = vb; linea('VWAP', 'VWAP', vb.mid, '#c678dd', 0, 2); linea(null, null, vb.up, 'rgba(198,120,221,.5)'); linea(null, null, vb.lo, 'rgba(198,120,221,.5)'); }
+    if (S.ind.VWAP) { const vb = vwapBands(V, 2); S._vwapFx = vb; linea('VWAP', 'VWAP', vb.mid, '#c678dd', 0, 2, { lastValueVisible: true, title: 'VWAP' }); linea(null, null, vb.up, 'rgba(198,120,221,.5)'); linea(null, null, vb.lo, 'rgba(198,120,221,.5)'); }   // tag "VWAP" morado en la línea central (no toca la iluminación)
     if (S.ind.BOLL) { const b = bollinger(V, 20, 2); linea('Bollinger', 'BOLL', b.middle, 'rgba(150,160,175,.6)'); linea(null, null, b.upper, 'rgba(120,180,255,.65)'); linea(null, null, b.lower, 'rgba(120,180,255,.65)'); }
     if (S.ind.DONCH) { const d = donchian(V, 20); linea('Donchian', 'DONCH', d.upper, 'rgba(232,184,75,.6)'); linea(null, null, d.lower, 'rgba(232,184,75,.6)'); }
     if (S.ind.KELT) { const k = keltner(V, 20, 2); linea('Keltner', 'KELT', k.upper, 'rgba(198,120,221,.6)'); linea(null, null, k.middle, 'rgba(198,120,221,.3)'); linea(null, null, k.lower, 'rgba(198,120,221,.6)'); }
@@ -673,8 +672,8 @@ async function montarDibujo() {
    que los analistas de Smart Pools: avatar + título, texto escrito letra a
    letra, botón ES/EN y "por qué lo digo" con el detalle punto por punto. ══ */
 const AN_UI = {
-  en: { why: 'Why I say this', hide: 'Hide', live: 'live read' },
-  es: { why: 'Por qué lo digo', hide: 'Ocultar', live: 'lectura en vivo' }
+  en: { why: 'Why I say this', hide: 'Hide', live: 'live read', nota: 'This is a reading of the VWAP to guide your own analysis — not financial advice.' },
+  es: { why: 'Por qué lo digo', hide: 'Ocultar', live: 'lectura en vivo', nota: 'Esto es una lectura del VWAP para guiar tu propio análisis. No es consejo financiero.' }
 };
 const AN_TAG = {
   sobreSup: { en: 'Above +2σ', es: 'Sobre +2σ' },
@@ -750,7 +749,8 @@ function renderPanelAnalista() {
     <div class="it-an-tx" data-an-escribir="${esc(anL(m.txt, lang))}"></div>
     <div class="it-an-hacer">${esc(anL(m.hacer, lang))}</div>
     <div class="it-an-acts"><button class="it-an-mas" type="button">${esc(u.why)} ▾</button></div>
-    <div class="it-an-det">${(m.detalle || []).map((x) => `<div class="it-an-li">${esc(anL(x, lang))}</div>`).join('')}</div>`;
+    <div class="it-an-det">${(m.detalle || []).map((x) => `<div class="it-an-li">${esc(anL(x, lang))}</div>`).join('')}</div>
+    <div class="it-an-nota" style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);font-size:10px;line-height:1.45;opacity:.6">${esc(u.nota)}</div>`;
   const lng = panel.querySelector('.it-an-lang');
   if (lng) lng.onclick = (e) => { e.stopPropagation(); S.analista.lang = (S.analista.lang === 'es') ? 'en' : 'es'; renderPanelAnalista(); escribirAn(panel.querySelector('[data-an-escribir]')); };
   const mas = panel.querySelector('.it-an-mas');
@@ -1283,7 +1283,7 @@ function instruccionesConfluencia(n) {
 function pintarIndLegend() {
   const el = document.getElementById('it-legend'); if (!el) return;
   const refs = (S.legendRefs || []).filter((r) => r.nm && r.k);
-  el.innerHTML = refs.map((r) => `<div class="ind"><span class="dot" style="background:${r.color}"></span><span class="lbl">${esc(r.nm)}</span><button class="it-leg-x" data-k="${esc(r.k)}" title="Remove indicator" aria-label="Remove ${esc(r.nm)}">&times;</button></div>`).join('');
+  el.innerHTML = refs.map((r) => `<div class="ind"><span class="dot" style="background:${r.color}"></span><span class="lbl">${esc(r.nm)}</span>${r.k === 'VWAP' ? '' : `<button class="it-leg-x" data-k="${esc(r.k)}" title="Remove indicator" aria-label="Remove ${esc(r.nm)}">&times;</button>`}</div>`).join('');   // el VWAP es el indicador base: no se puede quitar (no hay botón para volver a añadirlo)
   el.querySelectorAll('.it-leg-x').forEach((b) => b.onclick = (e) => { e.stopPropagation(); e.preventDefault(); S.ind[b.dataset.k] = false; actualizarIndBtn(); pintarChart(); });
 }
 
@@ -1826,11 +1826,11 @@ function mostrarDisclaimer(reView) {
     ${reView ? '<button class="it-modal-x" aria-label="Close">✕</button>' : ''}
     <div class="it-disc-box">
       <img class="it-disc-seal" src="${SELLO}" alt="" onerror="this.style.display='none'">
-      <h3>Confluence</h3>
-      <p>A professional desk for <b>technical analysis only</b>. In a fully connected environment it wires together every system we can reach: live charting, multi source news tracking, market screeners, sector heatmaps and macro feeds, so advanced analysis runs from one screen.</p>
-      <p>Nothing here is financial, investment, legal or tax advice, and no result is guaranteed. Digital assets carry substantial risk and every decision is your own.</p>
-      <p>The analyst reads the live market and explains it in plain words only to <b>support your own analysis</b>. It is not a financial advisor, it does not guarantee any profit or result, and it never tells you what to buy or sell.</p>
-      ${reView ? '' : `<label class="it-disc-chk"><input type="checkbox" id="it-disc-agree"><span>I understand this is an analysis tool and support only, not financial advice, and I use it at my own risk.</span></label>`}
+      <h3>VWAP Pro</h3>
+      <p>A professional desk for reading the <b>institutional VWAP</b> and its deviation bands in real time. It shows where price sits against fair value and includes a live analyst that explains that position in plain words, plus pro charting, live quotes, a market heatmap and macro signals, all on one screen. This is a tool for <b>technical analysis only</b>.</p>
+      <p>The analyst is a <b>guide to interpreting the VWAP</b>, nothing more. It reads where price is relative to the VWAP right now and explains what that reading means, only to <b>support your own analysis</b>. It is not a financial advisor, it gives no financial advice, it never tells you what to buy or sell, and it does not guarantee any result, profit or benefit.</p>
+      <p>Nothing in this section is financial, investment, legal or tax advice, and no result is guaranteed. Digital assets carry substantial risk, every entry and exit is your own decision and your sole responsibility, and you use this tool entirely at your own risk.</p>
+      ${reView ? '' : `<label class="it-disc-chk"><input type="checkbox" id="it-disc-agree"><span>I understand this is a VWAP analysis tool and the analyst is a guide to interpreting the VWAP, not financial advice, and I use it at my own risk.</span></label>`}
       <button class="it-pay" id="it-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'Accept'}</button>
     </div></div>`;
   document.body.appendChild(m);

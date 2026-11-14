@@ -34,26 +34,26 @@ function fmtN(x) {
    Qué significa que el precio esté en esa zona respecto al VWAP. */
 const NUCLEO = {
   sobreSup: dos(
-    'Price is trading ABOVE the +2σ band, stretched well beyond fair value. This is the premium extreme: the zone where profit taking and mean reversion sellers show up. Chasing longs here is the worst reward to risk of the whole map.',
-    'El precio cotiza POR ENCIMA de la banda +2σ, muy estirado sobre el valor justo. Es el extremo premium: la zona donde aparecen la toma de ganancias y los vendedores de reversión. Perseguir largos aquí es el peor beneficio por riesgo de todo el mapa.'),
+    'According to the VWAP, price is stretched ABOVE the +2σ band, far beyond fair value. This is the premium extreme, where profit taking and mean reversion sellers take over. Chasing longs here is the worst reward to risk on the whole map.',
+    'Según el VWAP, el precio está estirado POR ENCIMA de la banda +2σ, muy lejos del valor justo. Es el extremo premium, donde toman el control la toma de ganancias y los vendedores de reversión. Perseguir largos aquí es el peor beneficio por riesgo de todo el mapa.'),
   tocaSup: dos(
-    'Price is testing the upper deviation band (+2σ). This is a reaction zone: either it gets rejected and reverts toward the VWAP, or it is accepted and the move continues. The next candle decides which.',
-    'El precio está probando la banda superior de desviación (+2σ). Es zona de reacción: o lo rechazan y revierte hacia el VWAP, o lo aceptan y el movimiento continúa. La próxima vela decide cuál.'),
+    'According to the VWAP, price is at the upper deviation band (+2σ), a reaction zone. From here it either gets rejected back toward the VWAP, or it is accepted and runs. Lean on the reaction, this is not a place to chase up.',
+    'Según el VWAP, el precio está en la banda superior de desviación (+2σ), una zona de reacción. Desde aquí o lo rechazan de vuelta al VWAP, o lo aceptan y corre. Apóyate en la reacción, no es sitio para perseguir arriba.'),
   premium: dos(
-    'Price sits on the premium side, above the VWAP but not yet extended. Buyers are in control and in profit on the session. Here value is above you: the clean long is a pullback to the VWAP, not a chase up here.',
-    'El precio está en el lado premium, por encima del VWAP pero aún sin estirarse. El comprador tiene el control y va en ganancia en la sesión. Aquí el valor queda por debajo: el largo limpio es un retroceso al VWAP, no perseguir arriba.'),
+    'According to the VWAP, price is on the premium side, above fair value but not yet stretched. Buyers are in control and in profit on the session. The clean long is a pullback into the VWAP, not a chase up here.',
+    'Según el VWAP, el precio está en el lado premium, por encima del valor justo pero aún sin estirarse. El comprador tiene el control y va en ganancia en la sesión. El largo limpio es un retroceso al VWAP, no perseguir aquí arriba.'),
   centro: dos(
-    'Price is sitting right on the VWAP, the institutional line of decision. This is fair value: above it the session is bullish, below it bearish. The highest probability entries of the day happen here, where the big desks benchmark their fills.',
-    'El precio está justo sobre el VWAP, la línea de decisión institucional. Esto es valor justo: por encima la sesión es alcista, por debajo bajista. Las entradas de mayor probabilidad del día ocurren aquí, donde las grandes mesas referencian sus ejecuciones.'),
+    'According to the VWAP, price is sitting right on fair value, the institutional line of decision. Above it the session is bullish, below it bearish. The highest probability entries of the day happen right here.',
+    'Según el VWAP, el precio está justo en el valor justo, la línea de decisión institucional. Por encima la sesión es alcista, por debajo bajista. Las entradas de mayor probabilidad del día ocurren justo aquí.'),
   descuento: dos(
-    'Price sits on the discount side, below the VWAP but not yet extended. Sellers are in control and buyers are underwater on the session. Value is above you: the clean short is a bounce back to the VWAP, not a chase down here.',
-    'El precio está en el lado descuento, por debajo del VWAP pero aún sin estirarse. El vendedor tiene el control y el comprador va en pérdida en la sesión. El valor queda por encima: el corto limpio es un rebote de vuelta al VWAP, no perseguir abajo.'),
+    'According to the VWAP, price is on the discount side, below fair value but not yet stretched. Sellers are in control and buyers are underwater on the session. The clean short is a bounce back to the VWAP, not a chase down here.',
+    'Según el VWAP, el precio está en el lado descuento, por debajo del valor justo pero aún sin estirarse. El vendedor tiene el control y el comprador va en pérdida en la sesión. El corto limpio es un rebote de vuelta al VWAP, no perseguir aquí abajo.'),
   tocaInf: dos(
-    'Price is testing the lower deviation band (−2σ). This is a reaction zone: either it gets rejected and bounces toward the VWAP, or it is accepted and the drop continues. The next candle decides which.',
-    'El precio está probando la banda inferior de desviación (−2σ). Es zona de reacción: o lo rechazan y rebota hacia el VWAP, o lo aceptan y la caída continúa. La próxima vela decide cuál.'),
+    'According to the VWAP, price is at the lower deviation band (−2σ), a reaction zone. From here it either bounces back toward the VWAP, or it is accepted and the drop continues. Lean on the reaction, this is not a place to chase down.',
+    'Según el VWAP, el precio está en la banda inferior de desviación (−2σ), una zona de reacción. Desde aquí o rebota de vuelta al VWAP, o lo aceptan y la caída sigue. Apóyate en la reacción, no es sitio para perseguir abajo.'),
   sobreInf: dos(
-    'Price is trading BELOW the −2σ band, stretched well beyond fair value. This is the discount extreme: the zone where bargain buyers and mean reversion show up. Chasing shorts here is the worst reward to risk of the whole map.',
-    'El precio cotiza POR DEBAJO de la banda −2σ, muy estirado bajo el valor justo. Es el extremo descuento: la zona donde aparecen los compradores de oportunidad y la reversión. Perseguir cortos aquí es el peor beneficio por riesgo de todo el mapa.')
+    'According to the VWAP, price is stretched BELOW the −2σ band, far beyond fair value. This is the discount extreme, where bargain buyers and mean reversion take over. Chasing shorts here is the worst reward to risk on the whole map.',
+    'Según el VWAP, el precio está estirado POR DEBAJO de la banda −2σ, muy lejos del valor justo. Es el extremo descuento, donde toman el control los compradores de oportunidad y la reversión. Perseguir cortos aquí es el peor beneficio por riesgo de todo el mapa.')
 };
 
 /* Frase de PENDIENTE (sesgo del VWAP). */
@@ -80,62 +80,62 @@ function recomendar(zona, pend, ancho, px) {
   switch (zona) {
     case 'centro':
       if (alza) return dos(
-        `Highest probability long zone of the day: price is at the VWAP (${vwap}) with a bullish bias. If the VWAP holds as support (a bullish rejection candle), enter long here with the stop just below it; first target the upper band at ${sup}. This is the entry professionals wait for.`,
-        `Zona de largo de mayor probabilidad del día: el precio está en el VWAP (${vwap}) con sesgo alcista. Si el VWAP aguanta como soporte (una vela de rechazo al alza), entra en largo aquí con el stop justo por debajo; primer objetivo la banda superior en ${sup}. Esta es la entrada que esperan los profesionales.`);
+        `By the VWAP, this is the highest probability long of the day. Price is on fair value (${vwap}) with the VWAP rising under it: the bias is up. Long the hold of the VWAP (wait for a bullish rejection candle), stop just below it, first target the upper band at ${sup}. This is the entry the desks wait for.`,
+        `Por el VWAP, este es el largo de mayor probabilidad del día. El precio está en el valor justo (${vwap}) con el VWAP subiendo por debajo: el sesgo es alcista. Entra largo al aguante del VWAP (espera una vela de rechazo al alza), stop justo debajo, primer objetivo la banda superior en ${sup}. Esta es la entrada que esperan las mesas.`);
       if (baja) return dos(
-        `Highest probability short zone of the day: price is at the VWAP (${vwap}) with a bearish bias. If the VWAP caps as resistance (a bearish rejection candle), enter short here with the stop just above it; first target the lower band at ${inf}.`,
-        `Zona de corto de mayor probabilidad del día: el precio está en el VWAP (${vwap}) con sesgo bajista. Si el VWAP tapa como resistencia (una vela de rechazo a la baja), entra en corto aquí con el stop justo por encima; primer objetivo la banda inferior en ${inf}.`);
+        `By the VWAP, this is the highest probability short of the day. Price is on fair value (${vwap}) with the VWAP falling over it: the bias is down. Short the rejection of the VWAP (wait for a bearish candle), stop just above it, first target the lower band at ${inf}.`,
+        `Por el VWAP, este es el corto de mayor probabilidad del día. El precio está en el valor justo (${vwap}) con el VWAP bajando por encima: el sesgo es bajista. Entra corto al rechazo del VWAP (espera una vela bajista), stop justo encima, primer objetivo la banda inferior en ${inf}.`);
       return dos(
-        `No clear side at the VWAP (${vwap}): trade the edges, not the middle. Buy near the lower band ${inf} and sell near the upper band ${sup}, using the VWAP as the pivot. Wait for a reaction at a band, do not force it here.`,
-        `Sin lado claro en el VWAP (${vwap}): opera los extremos, no el medio. Compra cerca de la banda inferior ${inf} y vende cerca de la superior ${sup}, usando el VWAP como pivote. Espera la reacción en una banda, no lo fuerces aquí.`);
+        `By the VWAP there is no clear side at fair value (${vwap}): work the edges, not the middle. Buy the reaction at the lower band ${inf}, sell the reaction at the upper band ${sup}, with the VWAP as the pivot. Do not force a trade in the middle.`,
+        `Por el VWAP no hay lado claro en el valor justo (${vwap}): trabaja los extremos, no el medio. Compra la reacción en la banda inferior ${inf}, vende la reacción en la banda superior ${sup}, con el VWAP como pivote. No fuerces una entrada en el medio.`);
     case 'premium':
       if (alza) return dos(
-        `Do not chase up here. With price in premium and a rising VWAP, the clean long is a pullback into the VWAP at ${vwap}; set an alert there. Only ride higher if the bands are opening and you already hold a position.`,
-        `No persigas aquí arriba. Con el precio en premium y el VWAP subiendo, el largo limpio es un retroceso al VWAP en ${vwap}; pon una alerta ahí. Solo acompaña más arriba si las bandas se abren y ya tienes posición.`);
+        `By the VWAP, do not chase up here. Price is in premium over a rising VWAP: the edge is to wait for the pullback into the VWAP at ${vwap} and go long there. Set your alert at the VWAP. Only ride higher if the bands are opening and you already hold the long.`,
+        `Por el VWAP, no persigas aquí arriba. El precio está en premium sobre un VWAP que sube: la ventaja es esperar el retroceso al VWAP en ${vwap} y entrar largo ahí. Pon tu alerta en el VWAP. Solo acompaña más arriba si las bandas se abren y ya tienes el largo.`);
       if (baja) return dos(
-        `Price is above a falling VWAP: this is a bounce into resistance, not strength. Favor fading toward the VWAP at ${vwap}; a rejection here is a short back to value. Do not buy a bounce against a falling VWAP.`,
-        `El precio está por encima de un VWAP que baja: esto es un rebote contra resistencia, no fuerza. Favorece ir hacia el VWAP en ${vwap}; un rechazo aquí es un corto de vuelta al valor. No compres un rebote contra un VWAP que baja.`);
+        `By the VWAP this is a bounce into resistance, not strength: price is above a falling VWAP. Favor the fade toward the VWAP at ${vwap}; a rejection here is a short back to value. Do not buy a bounce against a falling VWAP.`,
+        `Por el VWAP esto es un rebote contra resistencia, no fuerza: el precio está sobre un VWAP que baja. Favorece la reversión hacia el VWAP en ${vwap}; un rechazo aquí es un corto de vuelta al valor. No compres un rebote contra un VWAP que baja.`);
       return dos(
-        `Premium side with a flat VWAP: price is rich. The edge is a reversion toward the VWAP at ${vwap} or a tag of the upper band ${sup} to fade. Buying here, in the middle, pays the worst price.`,
-        `Lado premium con VWAP plano: el precio está caro. La ventaja es una reversión hacia el VWAP en ${vwap} o un toque de la banda superior ${sup} para desvanecer. Comprar aquí, en el medio, paga el peor precio.`);
+        `By the VWAP price is rich on a flat VWAP: the edge is a reversion toward the VWAP at ${vwap}, or a tag of the upper band ${sup} to fade. Buying here, in the middle, pays the worst price.`,
+        `Por el VWAP el precio está caro con un VWAP plano: la ventaja es una reversión hacia el VWAP en ${vwap}, o un toque de la banda superior ${sup} para desvanecer. Comprar aquí, en el medio, paga el peor precio.`);
     case 'tocaSup':
       if (alza && ancho === 'abre') return dos(
-        `Trend day: price is riding the upper band with opening bands and a rising VWAP. Do not short this. Either hold a long you already have, or buy the next pullback to the VWAP at ${vwap}; the band is a magnet, not a ceiling, while it keeps expanding.`,
-        `Día de tendencia: el precio cabalga la banda superior con bandas que se abren y VWAP al alza. No pongas corto a esto. O mantienes un largo que ya tengas, o compras el próximo retroceso al VWAP en ${vwap}; la banda es un imán, no un techo, mientras siga expandiendo.`);
+        `By the VWAP this is a trend day: price is riding the upper band with opening bands and a rising VWAP. Do not short it. Hold the long you have, or buy the next pullback to the VWAP at ${vwap}; while the bands keep opening the band is a magnet, not a ceiling.`,
+        `Por el VWAP esto es un día de tendencia: el precio cabalga la banda superior con bandas que se abren y VWAP al alza. No le pongas corto. Mantén el largo que tengas, o compra el próximo retroceso al VWAP en ${vwap}; mientras las bandas sigan abriendo la banda es un imán, no un techo.`);
       return dos(
-        `Price is at the upper band (${sup}): reaction zone. The high reward play is the reversion: a clear rejection candle here is a short back toward the VWAP at ${vwap}, stop above the band. Only flip bullish if a candle closes and holds above the band.`,
-        `El precio está en la banda superior (${sup}): zona de reacción. La jugada de buen beneficio es la reversión: una vela de rechazo clara aquí es un corto de vuelta al VWAP en ${vwap}, stop por encima de la banda. Solo cambia a alcista si una vela cierra y aguanta por encima de la banda.`);
+        `By the VWAP, price is at the upper band (${sup}): the high reward play is the reversion. A clear rejection candle here is a short back toward the VWAP at ${vwap}, stop above the band. Only turn bullish if a candle closes and holds above the band.`,
+        `Por el VWAP, el precio está en la banda superior (${sup}): la jugada de buen beneficio es la reversión. Una vela de rechazo clara aquí es un corto de vuelta al VWAP en ${vwap}, stop por encima de la banda. Solo cambia a alcista si una vela cierra y aguanta por encima de la banda.`);
     case 'sobreSup':
       if (alza && ancho === 'abre') return dos(
-        `Price broke above the +2σ band in a strong, expanding uptrend: this is strength, not a signal to short. Do not fade it blindly. Wait for price to lose the upper band ${sup} and close back inside before fading toward the VWAP at ${vwap}.`,
-        `El precio rompió por encima de la banda +2σ en una tendencia alcista fuerte y en expansión: esto es fuerza, no una señal para vender. No lo desvanezcas a ciegas. Espera a que el precio pierda la banda superior ${sup} y cierre de vuelta dentro antes de buscar la reversión hacia el VWAP en ${vwap}.`);
+        `By the VWAP this is strength, not a short: price broke above the +2σ band in a strong, expanding uptrend. Do not fade it blindly. Wait for price to lose the upper band ${sup} and close back inside before fading toward the VWAP at ${vwap}.`,
+        `Por el VWAP esto es fuerza, no un corto: el precio rompió por encima de la banda +2σ en una tendencia alcista fuerte y en expansión. No lo desvanezcas a ciegas. Espera a que el precio pierda la banda superior ${sup} y cierre de vuelta dentro antes de buscar la reversión hacia el VWAP en ${vwap}.`);
       return dos(
-        `Price is stretched beyond the +2σ band and the trend is not expanding to justify it: this is overextension. Favor the reversion: a close back inside the band is a short toward the VWAP at ${vwap}. Take profit on longs here; do not add.`,
-        `El precio está estirado más allá de la banda +2σ y la tendencia no se expande para justificarlo: esto es sobreextensión. Favorece la reversión: un cierre de vuelta dentro de la banda es un corto hacia el VWAP en ${vwap}. Toma ganancias de los largos aquí; no sumes.`);
+        `By the VWAP this is overextension: price is beyond the +2σ band and the trend is not expanding to justify it. Favor the reversion, a close back inside the band is a short toward the VWAP at ${vwap}. Take profit on longs here; do not add.`,
+        `Por el VWAP esto es sobreextensión: el precio está más allá de la banda +2σ y la tendencia no se expande para justificarlo. Favorece la reversión, un cierre de vuelta dentro de la banda es un corto hacia el VWAP en ${vwap}. Toma ganancias de los largos aquí; no sumes.`);
     case 'descuento':
       if (baja) return dos(
-        `Do not chase down here. With price at a discount and a falling VWAP, the clean short is a bounce into the VWAP at ${vwap}; set an alert there. Only ride lower if the bands are opening and you already hold a short.`,
-        `No persigas aquí abajo. Con el precio en descuento y el VWAP bajando, el corto limpio es un rebote hacia el VWAP en ${vwap}; pon una alerta ahí. Solo acompaña más abajo si las bandas se abren y ya tienes un corto.`);
+        `By the VWAP, do not chase down here. Price is at a discount under a falling VWAP: the edge is to wait for the bounce into the VWAP at ${vwap} and short there. Set your alert at the VWAP. Only ride lower if the bands are opening and you already hold the short.`,
+        `Por el VWAP, no persigas aquí abajo. El precio está en descuento bajo un VWAP que baja: la ventaja es esperar el rebote al VWAP en ${vwap} y entrar corto ahí. Pon tu alerta en el VWAP. Solo acompaña más abajo si las bandas se abren y ya tienes el corto.`);
       if (alza) return dos(
-        `Price is below a rising VWAP: this is a discount inside an uptrend, an accumulation zone. The play is a long as price reclaims the VWAP at ${vwap}, not a short. Buying the dip toward the lower band ${inf} with a tight stop is the aggressive version.`,
-        `El precio está por debajo de un VWAP que sube: esto es un descuento dentro de una tendencia alcista, una zona de acumulación. La jugada es un largo cuando el precio recupere el VWAP en ${vwap}, no un corto. Comprar la caída hacia la banda inferior ${inf} con stop ajustado es la versión agresiva.`);
+        `By the VWAP this is a discount inside an uptrend, an accumulation zone: price is below a rising VWAP. The play is a long as price reclaims the VWAP at ${vwap}, not a short. Buying the dip toward the lower band ${inf} with a tight stop is the aggressive version.`,
+        `Por el VWAP esto es un descuento dentro de una tendencia alcista, una zona de acumulación: el precio está bajo un VWAP que sube. La jugada es un largo cuando el precio recupere el VWAP en ${vwap}, no un corto. Comprar la caída hacia la banda inferior ${inf} con stop ajustado es la versión agresiva.`);
       return dos(
-        `Discount side with a flat VWAP: price is cheap. The edge is a reversion toward the VWAP at ${vwap} or a tag of the lower band ${inf} to buy. Selling here, in the middle, pays the worst price.`,
-        `Lado descuento con VWAP plano: el precio está barato. La ventaja es una reversión hacia el VWAP en ${vwap} o un toque de la banda inferior ${inf} para comprar. Vender aquí, en el medio, paga el peor precio.`);
+        `By the VWAP price is cheap on a flat VWAP: the edge is a reversion toward the VWAP at ${vwap}, or a tag of the lower band ${inf} to buy. Selling here, in the middle, pays the worst price.`,
+        `Por el VWAP el precio está barato con un VWAP plano: la ventaja es una reversión hacia el VWAP en ${vwap}, o un toque de la banda inferior ${inf} para comprar. Vender aquí, en el medio, paga el peor precio.`);
     case 'tocaInf':
       if (baja && ancho === 'abre') return dos(
-        `Trend day down: price is riding the lower band with opening bands and a falling VWAP. Do not buy this. Either hold a short you already have, or sell the next bounce to the VWAP at ${vwap}; the band is a magnet, not a floor, while it keeps expanding.`,
-        `Día de tendencia bajista: el precio cabalga la banda inferior con bandas que se abren y VWAP a la baja. No compres esto. O mantienes un corto que ya tengas, o vendes el próximo rebote al VWAP en ${vwap}; la banda es un imán, no un suelo, mientras siga expandiendo.`);
+        `By the VWAP this is a trend day down: price is riding the lower band with opening bands and a falling VWAP. Do not buy it. Hold the short you have, or sell the next bounce to the VWAP at ${vwap}; while the bands keep opening the band is a magnet, not a floor.`,
+        `Por el VWAP esto es un día de tendencia bajista: el precio cabalga la banda inferior con bandas que se abren y VWAP a la baja. No lo compres. Mantén el corto que tengas, o vende el próximo rebote al VWAP en ${vwap}; mientras las bandas sigan abriendo la banda es un imán, no un suelo.`);
       return dos(
-        `Price is at the lower band (${inf}): reaction zone. The high reward play is the bounce: a clear rejection candle here (a hammer) is a long back toward the VWAP at ${vwap}, stop below the band. Only stay bearish if a candle closes and holds below the band.`,
-        `El precio está en la banda inferior (${inf}): zona de reacción. La jugada de buen beneficio es el rebote: una vela de rechazo clara aquí (un martillo) es un largo de vuelta al VWAP en ${vwap}, stop por debajo de la banda. Solo sigue bajista si una vela cierra y aguanta por debajo de la banda.`);
+        `By the VWAP, price is at the lower band (${inf}): the high reward play is the bounce. A clear rejection candle here (a hammer) is a long back toward the VWAP at ${vwap}, stop below the band. Only stay bearish if a candle closes and holds below the band.`,
+        `Por el VWAP, el precio está en la banda inferior (${inf}): la jugada de buen beneficio es el rebote. Una vela de rechazo clara aquí (un martillo) es un largo de vuelta al VWAP en ${vwap}, stop por debajo de la banda. Solo sigue bajista si una vela cierra y aguanta por debajo de la banda.`);
     case 'sobreInf':
       if (baja && ancho === 'abre') return dos(
-        `Price broke below the −2σ band in a strong, expanding downtrend: this is weakness, not a signal to buy. Do not catch it blindly. Wait for price to reclaim the lower band ${inf} and close back inside before playing the bounce toward the VWAP at ${vwap}.`,
-        `El precio rompió por debajo de la banda −2σ en una tendencia bajista fuerte y en expansión: esto es debilidad, no una señal para comprar. No lo atrapes a ciegas. Espera a que el precio recupere la banda inferior ${inf} y cierre de vuelta dentro antes de jugar el rebote hacia el VWAP en ${vwap}.`);
+        `By the VWAP this is weakness, not a buy: price broke below the −2σ band in a strong, expanding downtrend. Do not catch it blindly. Wait for price to reclaim the lower band ${inf} and close back inside before playing the bounce toward the VWAP at ${vwap}.`,
+        `Por el VWAP esto es debilidad, no una compra: el precio rompió por debajo de la banda −2σ en una tendencia bajista fuerte y en expansión. No lo atrapes a ciegas. Espera a que el precio recupere la banda inferior ${inf} y cierre de vuelta dentro antes de jugar el rebote hacia el VWAP en ${vwap}.`);
       return dos(
-        `Price is stretched beyond the −2σ band and the trend is not expanding to justify it: this is overextension down. Favor the bounce: a close back inside the band is a long toward the VWAP at ${vwap}. Take profit on shorts here; do not add.`,
-        `El precio está estirado más allá de la banda −2σ y la tendencia no se expande para justificarlo: esto es sobreextensión a la baja. Favorece el rebote: un cierre de vuelta dentro de la banda es un largo hacia el VWAP en ${vwap}. Toma ganancias de los cortos aquí; no sumes.`);
+        `By the VWAP this is overextension down: price is beyond the −2σ band and the trend is not expanding to justify it. Favor the bounce, a close back inside the band is a long toward the VWAP at ${vwap}. Take profit on shorts here; do not add.`,
+        `Por el VWAP esto es sobreextensión a la baja: el precio está más allá de la banda −2σ y la tendencia no se expande para justificarlo. Favorece el rebote, un cierre de vuelta dentro de la banda es un largo hacia el VWAP en ${vwap}. Toma ganancias de los cortos aquí; no sumes.`);
   }
   return dos('', '');
 }
