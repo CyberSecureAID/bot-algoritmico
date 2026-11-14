@@ -33,34 +33,43 @@ const FONDO  = new URL('./img/fondo-analisis.webp', import.meta.url).href;   // 
 const HERRAMIENTAS = [
   { id:'pools', abre:'pools', nombre:'Liquidity Pools', cat:'indicator', img:'assets/img/serv-pools.webp', activos:['Crypto'], spot:true,  listo:true,
     lema:'Where the money is trapped',
+    pitch:'A live liquidation map. See the exact price zones where leveraged positions are stacked and waiting to be swept.',
     desc:'A real time liquidation map. We reconstruct the volume resting inside every block of orders and project the exact price zones where leveraged positions are waiting to be swept.' },
   { id:'hair', abre:'heat', nombre:'Heat Pools', cat:'indicator', img:'assets/img/serv-libro.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'See what the big players do',
+    pitch:'A live order book heatmap. Watch the real resting walls build and pull in real time, and tell committed capital from theater.',
     desc:'The order book lies. We watch every wall over time and separate the real committed capital from the theater, so you know which levels truly hold.' },
   { id:'smart', abre:'levels', nombre:'Smart Pools', cat:'indicator', img:'assets/img/serv-tres.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Where to buy and where to sell',
+    pitch:'Automatic support and resistance from live market structure, so you see where to buy and where to sell at a glance.',
     desc:'Market structure, read and drawn for you. The engine maps the precise levels of entry and exit from live structure and explains, at each moment, why.' },
   // "VWAP Pro" (nombre de cara al usuario) = el módulo modules/institutional/ (archivo NO renombrado).
   { id:'inst', abre:'inst', nombre:'VWAP Pro', cat:'analysis', img:'assets/img/serv-vwap.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'The institutional VWAP, read live',
+    pitch:'The institutional VWAP with its deviation bands and a live analyst that reads where price sits against fair value right now.',
     desc:'A professional VWAP desk. The institutional VWAP with its deviation bands, plus a live analyst that reads where price sits against the VWAP right now, on this coin and timeframe, and explains the professional play as a guide to your own analysis. Pro charting, live quotes, a market-wide heatmap and macro sentiment, wired into one screen.' },
   { id:'react', abre:'react', nombre:'Reaction Zones', cat:'analysis', img:'assets/img/preview.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Where price is going to react',
+    pitch:'Maps the exact levels where price is likely to react, with a live break pressure read and auto projected long and short positions.',
     desc:'A structural engine that maps the exact levels where price is likely to react, built from repeated pivots with a live break-pressure read. Red zones above the price mark short context, green below mark long, with auto-projected positions (Single / Double) and right-click orders.' },
   // "Trading Demo" = modulo propio y aislado modules/trading-demo/ (gratis, sin contrato).
   { id:'demo', abre:'demo', nombre:'Trading Demo', cat:'trading', img:'assets/img/serv-demo.webp', activos:['Crypto'], free:true, listo:true,
     lema:'Trade freely, with no risk',
+    pitch:'A risk free, futures style practice desk. Mark your trade on a live chart and let real price decide the outcome.',
     desc:'A professional futures-style practice desk. A high-frequency live chart with the same coins and the same drawing tools as the rest of the terminal, a live order book and trades, leverage and a demo balance. Mark your trade on the chart and let the price decide when it is taken. No real orders, no risk, completely free.' },
   // "Multichart" = modulo propio y aislado modules/multichart/.
   { id:'multi', abre:'multi', nombre:'Multichart', cat:'analysis', img:'assets/img/serv-multi.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Many markets, one glance',
+    pitch:'Four live charts at once, each with its own coin, timeframe and indicators, to watch the whole market move together.',
     desc:'Four live charts at once, each with its own coin, timeframe and indicators. Opens with BTC, ETH, BNB and SOL side by side; swap any coin from the full USDT catalog, resize every chart by its corner, pop out extra floating charts and load the maximum set of indicators (moving averages, VWAP, Bollinger, RSI, MACD, Stochastic, CCI) with the same live glow as VWAP Pro. Built to watch the whole market move in real time.' },
   // "Footprint Pro" = modulo propio modules/footprint/ (flujo de órdenes).
   { id:'foot', abre:'foot', nombre:'Footprint Pro', cat:'analysis', img:'assets/img/serv-footprint.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Order flow, candle by candle',
+    pitch:'A professional footprint chart from live trades: buy vs sell at every price, imbalances, delta and a live flow analyst.',
     desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' },
   { id:'scalp', abre:'scalp', nombre:'Prediction', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'The most logical path price could take next',
+    pitch:'Reads the market structure and projects the most logical path price could take next, as organic candles flowing from the current price.',
     desc:'A real time prediction built on the structural logic of the chart, not a statement of what will happen. It reads the continuity of the market structure, where price bounced, where it ranged, where impulses were born, plus the dominant trend, and projects the most logical path that structure could continue into, as solid candles the same size as the chart, flowing from the last real candle so it reads as a natural continuation, with a light that travels along the path to show its direction. You choose the scenario with on chart buttons, Bullish, Bearish or Range, each with its probability, and see one clean path at a time, or press All to overlay the three in layers with depth. Every path is organic and respects the levels on the left: it bounces where price bounced, reacts at the origin of past impulses but moderately, and ranges organically. Works on any timeframe since cycles are fractal, and recomputes live. It is a probability tool, not financial advice and not a promise of any result, profit or benefit.' }
 ];
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
@@ -74,8 +83,8 @@ const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analy
    ⚠ IMPORTANTE: el descuento DEFINITIVO lo calcula y valida el CONTRATO, no el
    front-end, para que nadie pueda forzar un descuento del 100%. Esto de aqui es
    solo la vista; el contrato tendra la misma tabla. */
-const MES_BASE = 25;     // USD/mes por servicio
-const ANIO_BASE = 300;   // USD/año por servicio
+const MES_BASE = 10;     // USD/mes · UN pago desbloquea TODA la sección
+const ANIO_BASE = 100;   // USD/año · UN pago desbloquea TODA la sección
 const DESC_MES  = [0, 0.15, 0.30];     // 1,2,3 servicios (tope 30% con las 3)
 const DESC_ANIO = [0, 0.25, 0.50];     // 1,2,3 servicios (tope 50% con las 3)
 const descPorCantidad = (tabla, n) => tabla[Math.min(Math.max(n, 1), tabla.length) - 1];
@@ -91,6 +100,16 @@ async function leerBNB(wallet, ethers) {
     const c = new (ethers.Contract)(ORACULO, ['function precioUSD(address) view returns (uint256)'], prov);
     const raw = await c.precioUSD('0x0000000000000000000000000000000000000000');
     const v = Number(raw) / 1e18;
+    if (v > 0) { BNB_USD = v; ['#an-srv', '#an-cart'].forEach((s) => { const m = document.querySelector(s); if (m) pintarBNB(m); }); }
+  } catch (_) {}
+}
+/* BNB/USD EN VIVO desde Binance (spot). El feed-shim enruta al espejo de datos.
+   Fuente rápida para el equivalente en pantalla; el oráculo on-chain (leerBNB) es
+   el respaldo. Repinta los modales abiertos cada vez que llega un precio nuevo. */
+async function leerBNBvivo() {
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT', { cache: 'no-store' });
+    const j = await r.json(); const v = Number(j && j.price);
     if (v > 0) { BNB_USD = v; ['#an-srv', '#an-cart'].forEach((s) => { const m = document.querySelector(s); if (m) pintarBNB(m); }); }
   } catch (_) {}
 }
@@ -124,8 +143,10 @@ const ICO = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
   search: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>',
   spot: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>',
+  premium: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M3 8l4.6 3.2L12 4.6l4.4 6.6L21 8l-1.7 10.4H4.7L3 8z"/></svg>',
   x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   cart: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3.5h2.2l2.2 11a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.2L20.5 7H6.3"/></svg>',
+  help: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.3 9.2a2.7 2.7 0 0 1 5.2 1c0 1.8-2.7 2.3-2.7 4"/><path d="M12 17.3h.01"/></svg>',
   colab: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3"/><circle cx="16.5" cy="8.5" r="2.6"/><path d="M2.5 19c.5-3 2.6-4.6 6-4.6 1.9 0 3.5.5 4.6 1.5M14 18.8c.3-2.6 2-4 4.6-4 2 0 3.5.9 4.2 2.7"/></svg>',
   copy: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>'
@@ -236,17 +257,16 @@ function abrirServicio(h, card) {
       <div class="an-srv-grid">
         <div class="an-srv-info">
           <h2 class="an-srv-nom">${esc(h.nombre)}</h2>
-          <p class="an-srv-desc">${esc(h.desc)}</p>
+          <p class="an-srv-desc">${esc(h.pitch || h.lema || '')}</p>
           <div class="an-srv-precio">
             <div class="an-pp"><span>Monthly</span><b>$${mes}</b><i data-bnb="${mes}"></i></div>
-            <div class="an-pp"><span>Annual</span><b>$${anio}</b><i data-bnb="${anio}"></i></div>
+            <div class="an-pp best"><span class="an-pp-tag">Most popular</span><span>Annual</span><b>$${anio}</b><i data-bnb="${anio}"></i></div>
           </div>
           <div class="an-srv-acts">
-            <button class="an-pay" data-plan="mes">Pay monthly</button>
-            <button class="an-pay gold" data-plan="anio">Pay annual</button>
-            <button class="an-cart-add${enCarrito(h.id) ? ' on' : ''}">${enCarrito(h.id) ? 'In cart' : 'Add to cart'}</button>
+            <button class="an-pay" data-plan="mes">Pay monthly · $${mes}</button>
+            <button class="an-pay gold" data-plan="anio">Pay annual · $${anio}</button>
           </div>
-          <div class="an-srv-hint">Priced in USD, charged in BNB. Bundle in the cart for up to 30% off monthly or 50% off annual.</div>
+          <div class="an-srv-hint"><b>One payment unlocks everything.</b> Pay for this tool and every tool in the Analysis section unlocks for your whole subscription, 30 days on monthly or a full year on annual. Priced in USD, charged live in BNB.</div>
           ${h.listo ? '<button class="an-srv-open">Open now</button>' : '<div class="an-srv-soon">Coming soon</div>'}
         </div>
         <div class="an-srv-media">${media}</div>
@@ -257,12 +277,12 @@ function abrirServicio(h, card) {
   pintarBNB(m);
   const im = m.querySelector('.an-srv-img[data-img]');
   if (im) { const i = new Image(); i.onload = () => { im.style.backgroundImage = `url(${im.dataset.img})`; im.classList.add('con'); }; i.src = im.dataset.img; }
-  const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
+  leerBNBvivo();                                   // BNB en vivo al abrir + refresco mientras el modal esté abierto
+  const bnbTmr = setInterval(leerBNBvivo, 10000);
+  const cerrar = () => { clearInterval(bnbTmr); m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
   m.querySelector('.an-modal-x').onclick = cerrar;
   m.querySelector('.an-modal-bg').onclick = cerrar;
   m.querySelectorAll('.an-pay').forEach((b) => b.onclick = () => toast('El pago por servicio se conecta en la ultima fase (contrato).'));
-  const add = m.querySelector('.an-cart-add');
-  add.onclick = () => { toggleCarrito(h.id); add.classList.toggle('on', enCarrito(h.id)); add.textContent = enCarrito(h.id) ? 'In cart' : 'Add to cart'; };
   const open = m.querySelector('.an-srv-open');
   if (open) open.onclick = () => { cerrar(); if (h.abre) abrirTool(h.abre, card); };
 }
@@ -330,7 +350,7 @@ function abrirColaboracion() {
         <li>Risk and reward ratio.</li>
         <li>How it works, and on which markets and timeframes.</li>
         <li>A way for us to verify it, such as a public backtest.</li>
-        <li>The price you would propose. We work with monthly and annual plans and quantity discounts, so the final price is agreed together.</li>
+        <li>The price you would propose. We work with monthly and annual plans, so the final price is agreed together.</li>
       </ul>
       <a class="an-pay gold an-colab-mail" href="mailto:${COLAB_EMAIL}?subject=${encodeURIComponent('Collaboration proposal')}">Email us</a>
     </div>`;
@@ -341,6 +361,32 @@ function abrirColaboracion() {
   m.querySelector('.an-modal-bg').onclick = cerrar;
   const cp = m.querySelector('#cf-copy');
   if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(COLAB_EMAIL); } catch (_) {} cp.classList.add('ok'); cp.innerHTML = ICO.check; setTimeout(() => { cp.classList.remove('ok'); cp.innerHTML = ICO.copy; }, 1500); };
+}
+
+/* "How it works": explica qué es la sección de Analysis y cómo crece, con acceso
+   directo a Colaboración. Es la ventana del botón ? (antes el carrito). Responsiva. */
+function abrirComoFunciona() {
+  const sel = document.getElementById('an-sel'); if (!sel) return;
+  const old = sel.querySelector('#an-how-m'); if (old) old.remove();
+  const m = document.createElement('div');
+  m.className = 'an-modal'; m.id = 'an-how-m';
+  m.innerHTML = `
+    <div class="an-modal-bg"></div>
+    <div class="an-modal-card an-how-card">
+      <button class="an-modal-x" aria-label="Close">${ICO.x}</button>
+      <div class="an-how-ic">${ICO.premium}</div>
+      <h2 class="an-how-h">The Analysis desk</h2>
+      <p class="an-how-p">A section built for professional traders: high frequency, professional grade analysis, the best of the best and nothing filler. One subscription unlocks every tool in here, and the desk keeps growing, with new tools arriving over time.</p>
+      <p class="an-how-p">Already run a tool that works? If you can prove it is profitable, with a public backtest and the numbers to back it, we want it here. Reach us through Collaboration to show it and add it to the platform.</p>
+      <button class="an-pay gold an-how-colab" type="button">${ICO.colab}<span>Open Collaboration</span></button>
+    </div>`;
+  sel.appendChild(m);
+  requestAnimationFrame(() => m.classList.add('on'));
+  const cerrar = () => { m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
+  m.querySelector('.an-modal-x').onclick = cerrar;
+  m.querySelector('.an-modal-bg').onclick = cerrar;
+  const cb = m.querySelector('.an-how-colab');
+  if (cb) cb.onclick = () => { cerrar(); setTimeout(abrirColaboracion, 170); };
 }
 
 /* Disclaimer corporativo (reutiliza el sello del sitio). Sale una vez por
@@ -432,7 +478,7 @@ export function abrirSelector(origen, wallet, ethers) {
     <div class="an-cat-hd">
       <button class="an-colab" id="an-colab" type="button">${ICO.colab}<span>Collaboration</span></button>
       <label class="an-search">${ICO.search}<input id="an-q" type="search" autocomplete="off" placeholder="Search for a tool, indicator or strategy..."></label>
-      <button class="an-cartbtn" id="an-cartbtn" type="button" aria-label="Cart">${ICO.cart}<span class="an-cartn">0</span></button>
+      <button class="an-cartbtn" id="an-cartbtn" type="button" aria-label="How it works" title="How it works">${ICO.help}</button>
     </div>`;
 
   ov.innerHTML = `
@@ -497,8 +543,7 @@ export function abrirSelector(origen, wallet, ethers) {
       <button class="an-card${h.listo ? '' : ' soon'}" type="button" data-tilt data-id="${esc(h.id)}" data-abre="${esc(h.abre || '')}" data-listo="${h.listo ? '1' : '0'}" title="${esc(h.desc)}">
         <div class="an-media">
           ${medio}
-          <span class="an-badge an-badge-${esc(h.cat)}">${esc(catTxt)}</span>
-          ${h.free ? `<span class="an-spot an-free">${ICO.spot} Free</span>` : (h.spot ? `<span class="an-spot">${ICO.spot} Spot</span>` : '')}
+          <span class="an-spot an-premium">${ICO.premium} Premium</span>
           ${h.listo ? '' : '<span class="an-soon">Coming soon</span>'}
         </div>
         <div class="an-body">
@@ -571,8 +616,7 @@ export function abrirSelector(origen, wallet, ethers) {
   });
 
   const cartBtn = $('#an-cartbtn');
-  if (cartBtn) cartBtn.onclick = abrirCarrito;
-  actualizarCart();
+  if (cartBtn) cartBtn.onclick = abrirComoFunciona;
 
   const colabBtn = $('#an-colab');
   if (colabBtn) colabBtn.onclick = abrirColaboracion;
@@ -676,6 +720,10 @@ const CSS = `
 #an-sel .an-spot svg{width:11px;height:11px;color:#2ebd85}
 #an-sel .an-free{color:#3ee88a;border-color:rgba(46,232,106,.45);background:rgba(46,232,106,.12)}
 #an-sel .an-free svg{color:#3ee88a}
+#an-sel .an-premium{color:#2a1d02;border:1px solid rgba(255,255,255,.5);backdrop-filter:none;-webkit-backdrop-filter:none;background:linear-gradient(115deg,#f6d98f 0%,#f0b2de 18%,#bfa6f2 36%,#8ec8ff 54%,#7af0d2 70%,#f6d98f 90%);background-size:260% 100%;animation:an-torna 7s linear infinite;box-shadow:0 2px 12px rgba(150,130,230,.32),0 1px 0 rgba(255,255,255,.55) inset;text-shadow:0 1px 0 rgba(255,255,255,.3)}
+#an-sel .an-premium svg{color:#2a1d02}
+@keyframes an-torna{0%{background-position:0% 50%}100%{background-position:260% 50%}}
+@media (prefers-reduced-motion:reduce){#an-sel .an-premium{animation:none}}
 #an-sel .an-soon{position:absolute;top:50%;left:50%;z-index:2;transform:translate(-50%,-50%);font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#cfd6dd;background:rgba(5,7,10,.6);border:1px solid rgba(255,255,255,.16);border-radius:100px;padding:6px 14px}
 #an-sel .an-card.soon .an-img{filter:grayscale(.5) brightness(.72)}
 /* cuerpo de ALTO FIJO → todas las tarjetas igual */
@@ -797,6 +845,15 @@ const CSS = `
 #an-sel .an-pp span{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8b96a3;margin-bottom:4px}
 #an-sel .an-pp b{display:block;font-size:22px;font-weight:900;color:#eaecef;line-height:1.1}
 #an-sel .an-pp i{display:block;font-style:normal;font-family:var(--mono);font-size:11px;color:var(--gold);margin-top:3px}
+#an-sel .an-pp.best{position:relative;border-color:rgba(232,184,75,.55);background:rgba(232,184,75,.08)}
+#an-sel .an-pp.best b{color:var(--gold-hi,#f4d089)}
+#an-sel .an-pp-tag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:8.5px!important;font-weight:800!important;letter-spacing:.06em!important;color:#241900!important;background:linear-gradient(180deg,#f4d089,#E8B84B 60%,#cf9f2e);border-radius:100px;padding:2px 8px!important;margin:0!important}
+#an-sel .an-how-card{max-width:440px;padding:28px 26px 26px;text-align:center}
+#an-sel .an-how-ic{width:48px;height:48px;margin:0 auto 12px;display:grid;place-items:center;border-radius:14px;color:var(--gold);background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.4)}
+#an-sel .an-how-ic svg{width:24px;height:24px}
+#an-sel .an-how-h{margin:0 0 12px;font-size:20px;font-weight:800;color:#eaecef}
+#an-sel .an-how-p{margin:0 0 14px;font-size:13px;line-height:1.6;color:#c4ccd4;text-align:left}
+#an-sel .an-how-colab{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
 #an-sel .an-cart-bnb{text-align:right;font-family:var(--mono);font-size:11px;color:var(--gold);margin:-6px 0 12px}
 #an-sel .an-pay.off{opacity:.5;cursor:not-allowed}
 /* footer disclaimer */
