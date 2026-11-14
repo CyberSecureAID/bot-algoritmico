@@ -161,7 +161,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=9', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=10', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=12', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=13', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
