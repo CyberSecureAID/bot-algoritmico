@@ -1,4 +1,4 @@
-/* modules/superscalper/superscalper.js — "Multiverse" (nombre de cara al usuario).
+/* modules/superscalper/superscalper.js — "Prediction Algo" (nombre de cara al usuario).
    El archivo NO se renombra (la carpeta queda como superscalper), igual que "VWAP Pro"
    vive en modules/institutional/ y "Footprint" en modules/footprint/.
 
@@ -35,7 +35,7 @@ let _par = 'BTC';
 
 const M = {
   tf: '1h', velas: [], precio: 0, dispC: null,        // DEFAULT 1H; dispC = cierre suavizado (easing)
-  arbol: null, estado: null, arbolAlpha: 0,           // árbol de realidades + estado del mercado
+  pred: null, estr: null, escena: null, predAlpha: 0, // predicciones por escenario + estructura + escenario activo
   ancho: window.innerWidth < 760 ? 56 : 84, desplaz: 0, zoomY: 1, offsetY: 0,
   _geo: null, _cursor: null, cargando: true, error: null
 };
@@ -121,7 +121,7 @@ function onKlineRz(k) {
     else return;
     M.precio = raw.c;
   }
-  if (nueva) { if (M.velas.length > 1500) M.velas.shift(); recalcArbol(); }   // recalcula el modelo al CERRAR una vela
+  if (nueva) { if (M.velas.length > 1500) M.velas.shift(); recalcPred(); }   // recalcula el modelo al CERRAR una vela
 }
 
 const fmt = (p) => {
@@ -177,97 +177,102 @@ function ultimoImpulso(velas) {   // ANALIZADOR 5: último tramo (swing a swing)
   const dir = hiI >= loI ? 1 : -1; return { dir, hi, lo, magAbs: Math.abs(hi - lo) || velas[n - 1].c * 0.01 };
 }
 /* Reúne los 5 analizadores en un estado medible del mercado. */
-function analizarMercado(velas) {
+/* ── ANÁLISIS ESTRUCTURAL: pivotes, niveles con memoria de reacción (cuánto reaccionó el
+   precio ahí = combustible), tendencia, último impulso, rango actual y día de la semana.
+   Es la base de las rutas: NO se dibujan soportes/resistencias, se usan como lógica. ── */
+function nivelAlto(p, niv, a) { for (const L of niv) if (L.p > p + a * 0.4) return L; return null; }       // menor nivel por encima
+function nivelBajo(p, niv, a) { for (let i = niv.length - 1; i >= 0; i--) if (niv[i].p < p - a * 0.4) return niv[i]; return null; }  // mayor nivel por debajo
+function reaccionEn(p, niv, a) { let best = 0; for (const L of niv) if (Math.abs(L.p - p) < a * 0.9) best = Math.max(best, L.react); return best; }
+function snap(p, niv, a) { for (const L of niv) if (Math.abs(L.p - p) < a * 0.7) return L.p; return p; }     // ajusta a un nivel cercano del pasado
+function analizarEstructura(velas) {
   const n = velas.length, px = velas[n - 1].c, atr = calcATR(velas, 14), a = atr[n - 1] || px * 0.004, cl = velas.map((v) => v.c);
-  const s1 = regPend(cl, 50), s2 = regPend(cl, 150);                       // 1) tendencia
-  const trend = clamp((s1 * 0.6 + s2 * 0.4) / (a * 0.12), -1, 1);
-  const roc = n > 12 ? (px - cl[n - 12]) / a : 0, mom = clamp(roc / 6, -1, 1);  // 2) impulso/agotamiento
+  const trend = clamp((regPend(cl, 50) * 0.6 + regPend(cl, 150) * 0.4) / (a * 0.12), -1, 1);
   const r = rsiEn(velas, 14), exUp = clamp((r - 55) / 35, 0, 1), exDn = clamp((45 - r) / 35, 0, 1);
-  const vols = velas.map((v) => v.v), vMean = smaEn(vols, 20, n - 1) || vols[n - 1] || 1, volRel = vMean > 0 ? vols[n - 1] / vMean : 1; // 3) volumen/rango
+  const vols = velas.map((v) => v.v), vMean = smaEn(vols, 20, n - 1) || vols[n - 1] || 1, volRel = vMean > 0 ? vols[n - 1] / vMean : 1;
   let aMean = 0, cnt = 0; for (let i = Math.max(0, n - 50); i < n; i++) if (atr[i]) { aMean += atr[i]; cnt++; } aMean = cnt ? aMean / cnt : a;
-  const rango = clamp(1 - a / (aMean * 1.1), 0, 1), volBreak = clamp((volRel - 1) / 1.5, 0, 1) * (0.4 + 0.6 * rango);
-  const nv = nivelesEn(velas, atr);                                        // 4) niveles
-  const resis = nv.filter((l) => l.p > px + a * 0.2).sort((x, y) => x.p - y.p), sopor = nv.filter((l) => l.p < px - a * 0.2).sort((x, y) => y.p - x.p);
-  const resNext = resis[0] ? resis[0].p : px + a * 3, supNext = sopor[0] ? sopor[0].p : px - a * 3;
-  const imp = ultimoImpulso(velas);                                        // 5) estructura
-  return { px, a, trend, mom, exUp, exDn, r, volRel, rango, volBreak, resNext, supNext, niveles: nv, imp, n };
+  const rango = clamp(1 - a / (aMean * 1.1), 0, 1);
+  const look = Math.min(n, 170), sw = 3, piv = [];                          // pivotes (swings) del histórico reciente
+  for (let i = n - look + sw; i < n - sw; i++) { let hi = true, lo = true;
+    for (let j = i - sw; j <= i + sw; j++) { if (j === i) continue; if (velas[j].h >= velas[i].h) hi = false; if (velas[j].l <= velas[i].l) lo = false; }
+    if (hi) piv.push({ i, p: velas[i].h, t: 'H' }); if (lo) piv.push({ i, p: velas[i].l, t: 'L' }); }
+  piv.sort((x, y) => x.i - y.i);
+  for (let k = 0; k < piv.length; k++) { let nx = null; for (let j = k + 1; j < piv.length; j++) if (piv[j].t !== piv[k].t) { nx = piv[j]; break; } piv[k].react = nx ? Math.abs(nx.p - piv[k].p) : a * 2; }
+  const niv = []; for (const pv of piv.slice().sort((x, y) => x.p - y.p)) { const L = niv[niv.length - 1];  // agrupa niveles cercanos, guarda la reacción máxima
+    if (L && Math.abs(pv.p - L.p) < a * 0.6) { L.p = (L.p * L.w + pv.p) / (L.w + 1); L.w++; L.react = Math.max(L.react, pv.react); } else niv.push({ p: pv.p, w: 1, react: pv.react }); }
+  niv.sort((x, y) => x.p - y.p);
+  let imp = { from: px, to: px, mag: a * 4, dir: trend >= 0 ? 1 : -1 };
+  if (piv.length >= 2) { const b = piv[piv.length - 1], aa = piv[piv.length - 2]; imp = { from: aa.p, to: b.p, mag: Math.abs(b.p - aa.p) || a * 4, dir: b.p >= aa.p ? 1 : -1 }; }
+  const dow = new Date(velas[n - 1].t * 1000).getUTCDay();
+  return { px, a, trend, r, exUp, exDn, volRel, rango, niv, imp, sup0: nivelBajo(px, niv, a), res0: nivelAlto(px, niv, a), dow, finde: dow === 6 || dow === 0, n };
 }
 
-/* ── El árbol de realidades. En cada nodo, los analizadores definen la probabilidad
-   condicional de 5 arquetipos; cada uno proyecta un tramo de velas fantasma hacia su
-   objetivo. Se ramifica varias generaciones; la probabilidad de ruta es el producto. ── */
-const ARB = { gen: 3, seg: 7, pMin: 0.05, maxNodos: 30 };
-const ARQ = { cont: 'cont', pull: 'pull', rev: 'rev', rango: 'rango', ruptura: 'ruptura' };
-function ramas(E, ctx, pFin) {
-  const d = ctx.dir, px = pFin, a = E.a, paso = a * (2.2 - 0.2 * ctx.prof);   // el avance se acorta al profundizar (la tendencia pierde fuelle)
-  const alin = d > 0 ? clamp(E.trend, 0, 1) : clamp(-E.trend, 0, 1);
-  const exHacia = d > 0 ? E.exUp : E.exDn, exContra = d > 0 ? E.exDn : E.exUp;
-  const lvlDir = d > 0 ? E.resNext : E.supNext, distLvl = Math.abs(lvlDir - px);
-  const retro = Math.min(E.imp.magAbs * 0.5, a * 2.4);
-  const targCont = distLvl < paso * 1.25 ? lvlDir : px + d * paso;         // continúa hasta la próxima barrera
-  const targPull = px + d * paso * 0.28, targRev = px - d * paso * 0.95, targRange = px + d * paso * 0.05, targBreak = px + d * paso * 1.25;
-  let w = {
-    cont: (0.26 + 0.42 * alin) * (1 - 0.6 * exHacia) * (ctx.enNivel ? 0.24 : 1),
-    pull: (0.18 + 0.45 * exHacia + 0.25 * Math.abs(E.mom)) * (ctx.faseRetro ? 0.4 : 1),
-    rev: (0.16 + 0.55 * exHacia + 0.30 * exContra) * (ctx.enNivel ? 1.7 : 0.85),   // suelo alto: el lado contrario siempre tiene presencia
-    rango: (0.12 + 0.7 * E.rango) * (1 - 0.4 * Math.abs(E.trend)),
-    ruptura: (0.08 + 0.8 * E.volBreak) * (ctx.enNivel ? 1.9 : 0.5)
-  };
-  const tot = w.cont + w.pull + w.rev + w.rango + w.ruptura || 1;
-  let outs = [
-    { arq: ARQ.cont, dir: d, cond: w.cont / tot, target: targCont, enNivel: distLvl < paso * 1.25, retro },
-    { arq: ARQ.pull, dir: d, cond: w.pull / tot, target: targPull, enNivel: false, retro },
-    { arq: ARQ.rev, dir: -d, cond: w.rev / tot, target: targRev, enNivel: false, retro },
-    { arq: ARQ.rango, dir: d, cond: w.rango / tot, target: targRange, enNivel: ctx.enNivel, retro },
-    { arq: ARQ.ruptura, dir: d, cond: w.ruptura / tot, target: targBreak, enNivel: false, retro }
-  ].sort((x, y) => y.cond - x.cond);
-  const keep = ctx.prof < 1 ? 3 : 2;                                       // gen 0: 3 ramas; luego 2 (abanico limpio)
-  outs = outs.slice(0, keep); const s = outs.reduce((z, o) => z + o.cond, 0) || 1; outs.forEach((o) => o.cond /= s);
-  return outs;
-}
-function velasFantasma(p0, target, n, arq, seed, a, retro, dir) {
-  const R = rng(seed), pts = [p0], d = dir || (Math.sign(target - p0) || 1);
-  for (let i = 1; i <= n; i++) { const t = i / n; let base;
-    if (arq === ARQ.pull) { const dip = p0 - d * retro; base = t < 0.45 ? p0 + (dip - p0) * ease(t / 0.45) : dip + (target - dip) * ease((t - 0.45) / 0.55); }
-    else if (arq === ARQ.rango) base = p0 + Math.sin(t * Math.PI * 2.2) * a * 0.9 + (target - p0) * t;
-    else if (arq === ARQ.ruptura) { const lvl = p0 + (target - p0) * 0.62; base = t < 0.55 ? p0 + (lvl - p0) * ease(t / 0.55) : t < 0.75 ? lvl - d * a * 0.7 * Math.sin((t - 0.55) / 0.2 * Math.PI) : lvl + (target - lvl) * ease((t - 0.75) / 0.25); }
-    else base = p0 + (target - p0) * ease(t);                             // cont / rev
-    pts.push(base + (R() - 0.5) * a * 0.45);
+/* ── RUTAS PREDICHAS. Un escenario = waypoints con lógica estructural + velas sólidas
+   orgánicas. Combustible remanente: al revisitar una zona de reacción fuerte, rebota pero
+   MODERADO (la mitad), no idéntico. Respeta la próxima barrera y los niveles de la izquierda. ── */
+function waypointsEscena(E, tipo) {
+  const a = E.a, px = E.px, niv = E.niv, wp = [{ p: px, k: 'ini' }]; let cur = px;
+  const impBase = clamp(E.imp.mag, a * 3, a * 9);
+  const topNext = (p) => { const L = nivelAlto(p, niv, a); return L ? L.p : p + impBase * 0.7; };
+  const botNext = (p) => { const L = nivelBajo(p, niv, a); return L ? L.p : p - impBase * 0.7; };
+  if (tipo === 'bull') {                                  // alcista: impulso y retroceso ~50%, máximos y mínimos crecientes
+    for (let leg = 0; leg < 6; leg++) {
+      let res = topNext(cur); if (res - cur < a * 1.2) res = cur + impBase * (0.82 - 0.08 * leg);
+      wp.push({ p: res, k: 'imp' });
+      let retr = Math.max(snap(res - 0.5 * (res - cur), niv, a), cur + 0.14 * (res - cur));
+      wp.push({ p: retr, k: 'retr' }); cur = retr; if (res > px + impBase * 2.6) break; }
+  } else if (tipo === 'bear') {                           // bajista: caídas con rebotes decrecientes (combustible remanente)
+    for (let leg = 0; leg < 6; leg++) {
+      let sup = botNext(cur); if (cur - sup < a * 1.2) sup = cur - impBase * (0.82 - 0.08 * leg);
+      wp.push({ p: sup, k: 'imp' });
+      const imp = cur - sup, react = reaccionEn(sup, niv, a), bounce = Math.min(react ? react * 0.5 : imp * 0.5, imp * 0.6);
+      let bt = Math.min(snap(sup + bounce, niv, a), cur - 0.14 * imp);
+      wp.push({ p: bt, k: 'bounce' }); cur = bt; if (sup < px - impBase * 2.6) break; }
+  } else if (tipo === 'range') {                          // lateral: oscilación orgánica entre soporte y resistencia
+    const hi = E.res0 ? E.res0.p : px + a * 2.2, lo = E.sup0 ? E.sup0.p : px - a * 2.2; let up = px < (hi + lo) / 2;
+    for (let leg = 0; leg < 7; leg++) { wp.push({ p: up ? hi : lo, k: 'osc' }); up = !up; }
+  } else {                                                // reversal: ruptura + retesteo (suelo pasa a techo) + nueva tendencia
+    if (E.trend >= 0) { const brk = E.sup0 ? E.sup0.p : px - impBase * 0.6;
+      wp.push({ p: brk - a * 1.6, k: 'break' }); wp.push({ p: brk - a * 0.2, k: 'retest' }); cur = brk - a * 0.2;
+      for (let leg = 0; leg < 4; leg++) { let sup = botNext(cur); if (cur - sup < a * 1.2) sup = cur - impBase * (0.7 - 0.08 * leg); wp.push({ p: sup, k: 'imp' }); const imp = cur - sup; const bt = Math.min(snap(sup + imp * 0.45, niv, a), cur - 0.14 * imp); wp.push({ p: bt, k: 'bounce' }); cur = bt; } }
+    else { const brk = E.res0 ? E.res0.p : px + impBase * 0.6;
+      wp.push({ p: brk + a * 1.6, k: 'break' }); wp.push({ p: brk + a * 0.2, k: 'retest' }); cur = brk + a * 0.2;
+      for (let leg = 0; leg < 4; leg++) { let res = topNext(cur); if (res - cur < a * 1.2) res = cur + impBase * (0.7 - 0.08 * leg); wp.push({ p: res, k: 'imp' }); const imp = res - cur; const rt = Math.max(snap(res - imp * 0.45, niv, a), cur + 0.14 * imp); wp.push({ p: rt, k: 'retr' }); cur = rt; } }
   }
-  const vel = [];
-  for (let i = 0; i < n; i++) { const o = pts[i], c = pts[i + 1], wick = a * (0.22 + R() * 0.5), hi = Math.max(o, c) + wick * R(), lo = Math.min(o, c) - wick * R(); vel.push({ o, h: hi, l: lo, c }); }
-  return vel;
+  return wp;
 }
-function construirArbol(E) {
-  const raiz = { id: 'r', cumP: 1, bar0: E.n, pFin: E.px, velas: [], hijos: [], prof: 0 };
-  const nodos = []; let total = 0; let lo = E.px, hi = E.px;
-  const expandir = (nodo, ctx) => {
-    if (ctx.prof >= ARB.gen || total > ARB.maxNodos) return;
-    for (const o of ramas(E, ctx, nodo.pFin)) {
-      const cumP = nodo.cumP * o.cond; if (cumP < ARB.pMin) continue; total++;
-      const vel = velasFantasma(nodo.pFin, o.target, ARB.seg, o.arq, hashId(nodo.id + o.arq + total), E.a, o.retro, o.dir);
-      for (const v of vel) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
-      const hijo = { id: nodo.id + '-' + total, arq: o.arq, dir: o.dir, cond: o.cond, cumP, bar0: nodo.bar0 + nodo.velas.length, pFin: o.target, pIni: nodo.pFin, velas: vel, prof: ctx.prof + 1 };
-      nodos.push(hijo); nodo.esPadre = true;
-      expandir(hijo, { dir: o.dir, enNivel: o.enNivel, faseRetro: o.arq === ARQ.pull, prof: ctx.prof + 1 });
-    }
-  };
-  expandir(raiz, { dir: E.trend >= 0 ? 1 : -1, enNivel: false, faseRetro: false, prof: 0 });
-  nodos.sort((x, y) => x.cumP - y.cumP);   // dibuja primero las improbables (debajo)
-  let loP = E.px, hiP = E.px;              // envolvente de las ramas probables, para encuadrar la vista
-  for (const nd of nodos) if (nd.cumP > 0.12) for (const v of nd.velas) { if (v.h > hiP) hiP = v.h; if (v.l < loP) loP = v.l; }
-  return { raiz, nodos, px: E.px, lo, hi, loP, hiP };
+function velasRuta(wp, a, seed) {
+  const R = rng(seed), vel = [], H = 42; let tot = 0; const d = [];
+  for (let k = 0; k < wp.length - 1; k++) { const dd = Math.abs(wp[k + 1].p - wp[k].p); d.push(dd); tot += dd; } tot = tot || 1;
+  let prevC = wp[0].p;
+  for (let k = 0; k < wp.length - 1; k++) { const p0 = prevC, p1 = wp[k + 1].p, nc = clamp(Math.round(H * d[k] / tot), 2, 12);
+    for (let i = 1; i <= nc; i++) { const t = i / nc, osc = Math.sin(t * Math.PI * (1.6 + (seed % 3) * 0.3)) * a * 0.3 * (1 - t * 0.4);
+      let c = p0 + (p1 - p0) * ease(t) + osc + (R() - 0.5) * a * 0.3; if (i === nc) c = p1 + (R() - 0.5) * a * 0.12;
+      const o = prevC; vel.push({ o, h: Math.max(o, c) + a * (0.18 + R() * 0.45), l: Math.min(o, c) - a * (0.18 + R() * 0.45), c }); prevC = c; } }
+  let lo = Infinity, hi = -Infinity; for (const v of vel) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
+  return { velas: vel, lo, hi, fin: prevC };
 }
-function recalcArbol() {
-  try { const E = analizarMercado(M.velas); M.estado = E; M.arbol = construirArbol(E); M.arbolAlpha = 0; }
-  catch (_) { M.arbol = null; M.estado = null; }
+function probsEscenas(E) {
+  const up = clamp(E.trend, 0, 1), dn = clamp(-E.trend, 0, 1);
+  const w = { bull: 0.12 + 0.6 * up + 0.12 * E.exDn, bear: 0.12 + 0.6 * dn + 0.12 * E.exUp,
+    range: 0.10 + 0.6 * E.rango + (E.finde ? 0.22 : 0) + 0.1 * (1 - Math.abs(E.trend)),
+    rev: 0.08 + 0.4 * (E.trend >= 0 ? E.exUp : E.exDn) + 0.15 * Math.abs(E.trend) };
+  const s = w.bull + w.bear + w.range + w.rev || 1; return { bull: w.bull / s, bear: w.bear / s, range: w.range / s, rev: w.rev / s };
+}
+function recalcPred() {
+  try {
+    const E = analizarEstructura(M.velas); M.estr = E; const probs = probsEscenas(E), rutas = {};
+    for (const tipo of ['bull', 'bear', 'range', 'rev']) { const wp = waypointsEscena(E, tipo), r = velasRuta(wp, E.a, hashId(tipo + E.n)); rutas[tipo] = { wp, velas: r.velas, lo: r.lo, hi: r.hi, fin: r.fin, prob: probs[tipo] }; }
+    M.pred = { rutas, probs, px: E.px, bar0: E.n };
+    if (!M.escena || !rutas[M.escena]) M.escena = Object.keys(probs).sort((x, y) => probs[y] - probs[x])[0];   // arranca en el más probable
+    M.predAlpha = 0; actualizarBotones();
+  } catch (_) { M.pred = null; M.estr = null; }
 }
 
 /* ══════════════════ APERTURA ══════════════════ */
 export async function abrirSuperScalper() {
   estilos();
   const prev = $('ss-overlay'); if (prev) prev.remove();
-  M.velas = []; M.arbol = null; M.estado = null; M.arbolAlpha = 0; M.cargando = true; M.error = null; M.dispC = null;
+  M.velas = []; M.pred = null; M.estr = null; M.escena = null; M.predAlpha = 0; M.cargando = true; M.error = null; M.dispC = null;
   const p0 = PARES.find((p) => p.id === _par) || PARES[0]; _par = p0.id;
   const chev = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
   const d = document.createElement('div');
@@ -287,7 +292,13 @@ export async function abrirSuperScalper() {
       </div>
       <div class="ss-graf" id="ss-graf">
         <canvas class="ss-cv" id="ss-cv"></canvas>
-        <div class="ss-esperando" id="ss-esperando"><div class="ss-spin"></div><b>Building the multiverse…</b><span>Mapping the probable paths of price on the ${esc(tfDef(M.tf).n)} chart.</span></div>
+        <div class="ss-esc" id="ss-esc">
+          <button data-e="bull" type="button"><span>Bullish</span> <b>·</b></button>
+          <button data-e="bear" type="button"><span>Bearish</span> <b>·</b></button>
+          <button data-e="range" type="button"><span>Range</span> <b>·</b></button>
+          <button data-e="rev" type="button"><span>Reversal</span> <b>·</b></button>
+        </div>
+        <div class="ss-esperando" id="ss-esperando"><div class="ss-spin"></div><b>Reading the structure…</b><span>Projecting the most probable path of price on the ${esc(tfDef(M.tf).n)} chart.</span></div>
         <img class="ss-marca" id="ss-marca" src="${LOGO}" alt="">
       </div>
     </div>`;
@@ -298,13 +309,14 @@ export async function abrirSuperScalper() {
   $('ss-ayuda').onclick = ayuda;
   $('ss-foto').onclick = guardarImagen;
   $('ss-tfchip').onclick = (e) => { e.stopPropagation(); menuTf(); };
+  $('ss-esc').querySelectorAll('[data-e]').forEach((b) => b.onclick = () => { M.escena = b.dataset.e; M.predAlpha = 0; actualizarBotones(); dibujar(); });
   ponerLogos();
   cargarVelas();
   clearInterval(_pulso);
   _pulso = setInterval(() => {
     if (!$('ss-cv')) return;
     if (M.precio > 0) { if (M.dispC == null) M.dispC = M.precio; else M.dispC += (M.precio - M.dispC) * 0.22; }   // easing fluido del precio
-    if (M.arbolAlpha < 1) M.arbolAlpha = Math.min(1, M.arbolAlpha + 0.06);   // el árbol aparece suave al recalcularse
+    if (M.predAlpha < 1) M.predAlpha = Math.min(1, M.predAlpha + 0.06);   // el árbol aparece suave al recalcularse
     dibujar();
   }, 33);
   let _t = null; M._onResize = () => { clearTimeout(_t); _t = setTimeout(() => { if ($('ss-cv')) dibujar(); }, 200); };
@@ -321,7 +333,7 @@ function discOB(reView) {
     ${reView ? '<button class="ss-disc-x" id="ss-disc-x" aria-label="Close">✕</button>' : ''}
     <img class="ss-disc-sello" src="${DISC_IMG}" alt="">
     <h4>Before you start</h4>
-    <p>Multiverse is a <b>probability tool</b>, for information and education only. It reads the current structure, trend, momentum, volume and levels, and draws the paths price <b>could</b> take next as ghost candles, each with an estimated probability. These are <b>statistical projections, not predictions of the future</b>: the ghost candles are not real price, the percentages are modelled estimates that will not always be right, and no path is a promise. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance.</p>
+    <p>Prediction Algo is a <b>probability tool</b>, for information and education only. It reads the current structure, trend, momentum, volume and past levels, and for the scenario you pick (bullish, bearish, range or reversal) it draws the <b>single most logical path</b> price could take next, as candles, with an estimated probability. These are <b>structural projections, not predictions of the future</b>: the projected candles are not real price, the percentages are modelled estimates that will not always be right, and no path is a promise. Nothing here is financial, investment, legal or tax advice, we make no recommendation to buy or sell, and we do not guarantee any result, profit or performance.</p>
     <p>Every entry, exit and the size of every trade are your own decision and your sole responsibility. The tools are provided as is, without warranty of any kind, and the data comes from third parties (Binance) and may be delayed or incomplete. To the maximum extent permitted by law, DecFreedom, its owners and affiliates accept no liability for any loss or damage arising from the use of this section. By continuing you accept this notice and our Terms and Conditions.</p>
     ${reView ? '' : '<label class="ss-disc-chk"><input type="checkbox" id="ss-disc-agree"><span>I have read and I accept this notice and the Terms and Conditions. I understand these are modelled probabilities, not predictions, that the ghost candles are projections and not real price, that nothing here is guaranteed, and that I trade entirely at my own risk.</span></label>'}
     <button class="ss-disc-ok" id="ss-disc-ok"${reView ? '' : ' disabled'}>${reView ? 'Close' : 'Accept'}</button></div>`;
@@ -351,12 +363,12 @@ async function cargarVelas() {
     M.velas = await traerVelasTF(p.s, M.tf);
     M.cargando = false;
     if (M.velas.length) M.precio = M.velas[M.velas.length - 1].c;
-    recalcArbol();
+    recalcPred();
     const est = $('ss-estado'); if (est) est.textContent = '';
   } catch (e) { M.cargando = false; M.error = 'feed'; const est = $('ss-estado'); if (est) est.textContent = 'Market data unavailable.'; }
   dibujar();
   clearInterval(_reloj);
-  _reloj = setInterval(async () => { try { const v = await traerVelasTF(p.s, M.tf); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; recalcArbol(); dibujar(); } catch (_) {} }, 20000);
+  _reloj = setInterval(async () => { try { const v = await traerVelasTF(p.s, M.tf); M.velas = v; if (v.length) M.precio = v[v.length - 1].c; recalcPred(); dibujar(); } catch (_) {} }, 20000);
   conectarStreamRz();
 }
 
@@ -404,8 +416,8 @@ function dibujar() {
   let pAlto = Math.max(...vis.map((v) => v.h)), pBajo = Math.min(...vis.map((v) => v.l));
   if (pc > 0) { pAlto = Math.max(pAlto, pc); pBajo = Math.min(pBajo, pc); }
   // incluye el árbol en el rango vertical, acotado a ±3.2 ATR para que no aplane la vista
-  if (M.arbol && M.estado && desp <= 0) { const a = M.estado.a || (pAlto - pBajo) * 0.1, th = M.arbol.hiP != null ? M.arbol.hiP : M.arbol.hi, tl = M.arbol.loP != null ? M.arbol.loP : M.arbol.lo;
-    pAlto = Math.max(pAlto, Math.min(th, pc + a * 4)); pBajo = Math.min(pBajo, Math.max(tl, pc - a * 4)); }
+  if (M.pred && M.estr && desp <= 0 && M.pred.rutas[M.escena]) { const a = M.estr.a || (pAlto - pBajo) * 0.1, R = M.pred.rutas[M.escena];
+    pAlto = Math.max(pAlto, Math.min(R.hi, pc + a * 7)); pBajo = Math.min(pBajo, Math.max(R.lo, pc - a * 7)); }
   const rangoB = (pAlto - pBajo) || 1, despY = ((M.offsetY || 0) / Math.max(1, y1)) * rangoB;
   const centro = (pAlto + pBajo) / 2 + despY, semi = (rangoB / 2) * (M.zoomY || 1), pad = semi * 0.14 || 1;
   const pMax = centro + semi + pad, pMin = centro - semi - pad;
@@ -421,7 +433,7 @@ function dibujar() {
   dibujarVelas(g, vis, Y, paso);
   g.save(); g.strokeStyle = 'rgba(232,184,75,.26)'; g.lineWidth = 1; g.setLineDash([2, 4]);   // divisoria "ahora"
   g.beginPath(); g.moveTo(xVelas, 0); g.lineTo(xVelas, y1); g.stroke(); g.restore(); g.setLineDash([]);
-  dibujarArbol(g, Y, Xbar, xVelas, x1, y1, pc);          // árbol de realidades en velas fantasma
+  dibujarPrediccion(g, Y, xVelas, x1, y1);               // la predicción del escenario activo, en velas sólidas
 
   if (pc > 0) {
     const yp = Y(pc); g.strokeStyle = 'rgba(232,184,75,.5)'; g.lineWidth = 1; g.setLineDash([3, 3]);
@@ -459,79 +471,50 @@ function dibujarVelas(g, vis, Y, paso) {
   }
 }
 
-/* ══ Árbol de realidades: velas fantasma proyectadas al futuro, con el flujo de iluminación
-   de Huehua Pro por dentro. Ramas probables = más brillantes y gruesas; improbables, tenues. ══ */
-function velaFantasma(g, x, w, v, Y, rgb, hi, alpha, lw, aF, now) {
-  const yO = Y(v.o), yC = Y(v.c), top = Math.min(yO, yC), hB = Math.max(1.6, Math.abs(yC - yO));
-  g.strokeStyle = `rgba(${rgb},${(alpha * 0.9).toFixed(3)})`; g.lineWidth = lw;
-  g.beginPath(); g.moveTo(x, Y(v.h)); g.lineTo(x, Y(v.l)); g.stroke();                       // mecha
-  g.fillStyle = `rgba(${rgb},${(0.05 * alpha + 0.02).toFixed(3)})`; g.fillRect(x - w / 2, top, w, hB); // cuerpo hueco translúcido
-  g.strokeRect(x - w / 2, top, w, hB);                                                        // contorno
-  if (aF > 0.12) {                                                                            // flujo de iluminación (Huehua Pro)
-    const sweep = (now % 2600) / 2600, grd = g.createLinearGradient(0, top, 0, top + hB);
-    for (let k = 0; k <= 6; k++) { const p = k / 6, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${hi},${(0.02 + 0.10 * b * aF).toFixed(3)})`); }
-    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(x - w / 2, top, w, hB); g.restore();
-  }
+/* ══ Predicción del escenario activo: UNA sola ruta, en velas SÓLIDAS reales, con el latido e
+   iluminación de Huehua Pro por dentro. Nada translúcido, nada de todas a la vez. ══ */
+function velaPred(g, x, w, v, Y, rgb, hi, now, gA) {
+  const yO = Y(v.o), yC = Y(v.c), top = Math.min(yO, yC), hB = Math.max(1.8, Math.abs(yC - yO));
+  g.globalAlpha = gA;
+  g.strokeStyle = `rgb(${rgb})`; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, Y(v.h)); g.lineTo(x, Y(v.l)); g.stroke();   // mecha
+  g.fillStyle = `rgb(${rgb})`; g.fillRect(x - w / 2, top, w, hB);                                                          // cuerpo SÓLIDO
+  const sweep = (now % 2600) / 2600, grd = g.createLinearGradient(0, top, 0, top + hB);                                    // latido / iluminación Huehua Pro
+  for (let k = 0; k <= 6; k++) { const p = k / 6, b = 0.5 + 0.5 * Math.cos((p - sweep) * Math.PI * 4); grd.addColorStop(p, `rgba(${hi},${(0.05 + 0.26 * b).toFixed(3)})`); }
+  g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = grd; g.fillRect(x - w / 2, top, w, hB); g.restore();
+  g.globalAlpha = 1;
 }
-function dibujarArbol(g, Y, Xbar, xVelas, x1, y1) {
-  const A = M.arbol, geo = M._geo; if (!A || !geo || !A.raiz) return;
-  const now = Date.now(), paso = geo.paso || 8, gA = M.arbolAlpha, futW = x1 - xVelas;
-  const pasoF = clamp(futW * 0.82 / (ARB.gen * ARB.seg), paso * 1.15, paso * 2.8), w = Math.max(2, pasoF * 0.5);
-  const raiz = A.raiz.bar0, xF = (bar) => xVelas + (bar - raiz + 0.5) * pasoF;                // paso propio de la proyección (más ancho, separa las ramas)
-  g.save(); g.beginPath(); g.rect(xVelas - 1, 0, x1 - xVelas + 2, y1); g.clip();              // dibuja solo en la zona futura
-  for (const nodo of A.nodos) {                                                               // esqueleto: línea close a close de cada rama (hace legible el árbol)
-    const aF = clamp(nodo.cumP, 0, 1), al = (0.10 + 0.6 * Math.sqrt(aF)) * gA; if (al < 0.04) continue;
-    const sube = nodo.pFin >= nodo.pIni, rgb = sube ? COL.bull : COL.bear;
-    g.beginPath(); g.moveTo(xF(nodo.bar0) - pasoF / 2, Y(nodo.pIni));
-    for (let j = 0; j < nodo.velas.length; j++) g.lineTo(xF(nodo.bar0 + j), Y(nodo.velas[j].c));
-    g.strokeStyle = `rgba(${rgb},${(al * 0.5).toFixed(3)})`; g.lineWidth = 1 + 1.8 * aF; g.stroke();
-  }
-  for (const nodo of A.nodos) {                                                               // velas fantasma: de improbable a probable (brillantes encima)
-    const aF = clamp(nodo.cumP, 0, 1), alpha = (0.14 + 0.72 * Math.sqrt(aF)) * gA; if (alpha < 0.04) continue;
-    const lw = 1 + 1.5 * aF;
-    for (let j = 0; j < nodo.velas.length; j++) {
-      const x = xF(nodo.bar0 + j); if (x < xVelas - 2 || x > x1 + 2) continue;
-      const v = nodo.velas[j], sube = v.c >= v.o, rgb = sube ? COL.bull : COL.bear, hi = sube ? '150,255,195' : '255,150,170';
-      velaFantasma(g, x, w, v, Y, rgb, hi, alpha, lw, aF, now);
-    }
-  }
+function dibujarPrediccion(g, Y, xVelas, x1, y1) {
+  const P = M.pred, geo = M._geo; if (!P || !geo || !P.rutas[M.escena]) return;
+  const vel = P.rutas[M.escena].velas; if (!vel.length) return;
+  const now = Date.now(), gA = M.predAlpha, futW = x1 - xVelas;
+  const pasoF = clamp(futW / (vel.length + 1.5), 4, (geo.paso || 8) * 2.4), w = Math.max(2.5, pasoF * 0.62);
+  const xF = (i) => xVelas + (i + 0.7) * pasoF;
+  g.save(); g.beginPath(); g.rect(xVelas - 1, 0, x1 - xVelas + 2, y1); g.clip();
+  g.globalAlpha = 0.5 * gA; g.strokeStyle = 'rgba(232,184,75,.4)'; g.setLineDash([3, 3]); g.beginPath();   // hilo de continuidad desde "ahora"
+  g.moveTo(xVelas, Y(P.px)); for (let i = 0; i < vel.length; i++) g.lineTo(xF(i), Y(vel[i].c)); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+  for (let i = 0; i < vel.length; i++) { const x = xF(i); if (x > x1 + 2) break;
+    const v = vel[i], sube = v.c >= v.o, rgb = sube ? COL.bull : COL.bear, hi = sube ? '150,255,195' : '255,150,170';
+    velaPred(g, x, w, v, Y, rgb, hi, now, gA); }
   g.restore();
-  g.save(); g.textAlign = 'left';                                                             // % de los escenarios y acumulado de rutas
-  for (const n of A.nodos) { if (n.prof !== 1) continue;
-    const sube = n.pFin >= n.pIni, rgb = sube ? COL.bull : COL.bear, x = xF(n.bar0 + Math.floor(n.velas.length / 2)), y = Y(n.pFin) + (sube ? -10 : 18);
-    etqProb(g, x, y, Math.round(n.cond * 100) + '%', rgb, 0.92 * gA, true);
-  }
-  const hojas = A.nodos.filter((n) => !n.esPadre && n.cumP > 0.05).sort((a, b) => b.cumP - a.cumP).slice(0, 7);
-  for (const n of hojas) {
-    const sube = n.pFin >= A.px, rgb = sube ? COL.bull : COL.bear, x = Math.min(x1 - 24, xF(n.bar0 + n.velas.length - 1) + 5), y = Y(n.pFin);
-    etqProb(g, x, y, Math.round(n.cumP * 100) + '%', rgb, (0.4 + 0.6 * clamp(n.cumP, 0, 1)) * gA, false);
-  }
-  g.restore(); g.textAlign = 'left';
 }
-function etqProb(g, x, y, txt, rgb, alpha, fuerte) {
-  if (alpha < 0.05) return; g.globalAlpha = Math.min(1, alpha);
-  g.font = (fuerte ? '900 11px ' : '800 10px ') + 'system-ui,sans-serif'; const tw = g.measureText(txt).width, pw = tw + 12, ph = fuerte ? 17 : 15, yy = y - ph + 3;
-  g.fillStyle = 'rgba(10,14,20,.78)'; redondeado(g, x - 2, yy, pw, ph, 6); g.fill();
-  g.strokeStyle = `rgba(${rgb},${fuerte ? 0.8 : 0.5})`; g.lineWidth = 1; redondeado(g, x - 2, yy, pw, ph, 6); g.stroke();
-  g.fillStyle = `rgb(${rgb})`; g.fillText(txt, x + 4, yy + ph - 4.5); g.globalAlpha = 1;
-}
-/* Panel (arriba-izquierda): identidad + sesgo de probabilidad al alza/baja + aviso. */
+const ESC_NOM = { bull: 'Bullish', bear: 'Bearish', range: 'Range', rev: 'Reversal' };
+/* Panel (arriba-izquierda): identidad del algoritmo + escenario activo + aviso. */
 function dibujarPanel(g) {
-  const A = M.arbol; const bx = 12, by = 12, bw = 252, bh = 66;
+  const P = M.pred; const bx = 12, by = 12, bw = 236, bh = 60;
   g.save(); g.textAlign = 'left';
   g.fillStyle = 'rgba(12,16,23,.86)'; redondeado(g, bx, by, bw, bh, 12); g.fill();
   g.strokeStyle = 'rgba(232,184,75,.22)'; g.lineWidth = 1; redondeado(g, bx, by, bw, bh, 12); g.stroke();
-  g.fillStyle = `rgb(${COL.gold})`; g.font = '900 13px system-ui,sans-serif'; g.fillText('MULTIVERSE', bx + 13, by + 22);
-  g.fillStyle = '#7d8794'; g.font = '600 9px system-ui,sans-serif'; g.fillText('probability tree', bx + 104, by + 21);
-  let netW = 0, mass = 0; if (A) for (const n of A.nodos) if (!n.esPadre) { mass += n.cumP; netW += n.cumP * (n.pFin >= A.px ? 1 : -1); }
-  const lean = mass > 0 ? netW / mass : 0, upP = clamp(0.5 + 0.5 * lean, 0.08, 0.92), dnP = 1 - upP;
-  const bxx = bx + 13, bww = bw - 26, byy = by + 32, bhh = 11;
-  g.fillStyle = `rgba(${COL.bear},.9)`; redondeado(g, bxx, byy, bww, bhh, 5); g.fill();
-  if (upP > 0.01) { g.fillStyle = `rgba(${COL.bull},.95)`; redondeado(g, bxx, byy, Math.max(bhh, bww * upP), bhh, 5); g.fill(); }
-  g.fillStyle = '#eef2f6'; g.font = '800 9px system-ui,sans-serif'; g.fillText('UP ' + Math.round(upP * 100) + '%', bxx + 5, byy + 9);
-  g.textAlign = 'right'; g.fillText(Math.round(dnP * 100) + '% DOWN', bxx + bww - 5, byy + 9); g.textAlign = 'left';
-  g.fillStyle = '#6b7681'; g.font = '600 9px system-ui,sans-serif'; g.fillText('Modelled odds, not a prediction', bx + 13, by + 58);
+  g.fillStyle = `rgb(${COL.gold})`; g.font = '900 13px system-ui,sans-serif'; g.fillText('PREDICTION ALGO', bx + 13, by + 23);
+  if (P && P.rutas[M.escena]) { const esc = M.escena, rgb = esc === 'bear' ? COL.bear : esc === 'bull' ? COL.bull : COL.gold, pr = Math.round(P.rutas[esc].prob * 100);
+    g.fillStyle = `rgb(${rgb})`; g.font = '800 11px system-ui,sans-serif'; g.fillText(ESC_NOM[esc] + ' scenario · ' + pr + '%', bx + 13, by + 41); }
+  g.fillStyle = '#6b7681'; g.font = '600 9px system-ui,sans-serif'; g.fillText('Structural probability, not a promise', bx + 13, by + 53);
   g.restore(); g.textAlign = 'left';
+}
+/* Actualiza los botones de escenario (HTML) con su probabilidad y marca el activo. */
+function actualizarBotones() {
+  const cont = $('ss-esc'); if (!cont || !M.pred) return;
+  cont.querySelectorAll('[data-e]').forEach((b) => { const e = b.dataset.e, pr = M.pred.probs[e] != null ? Math.round(M.pred.probs[e] * 100) : 0;
+    const bb = b.querySelector('b'); if (bb) bb.textContent = pr + '%'; b.classList.toggle('on', e === M.escena); });
 }
 function redondeado(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
@@ -612,13 +595,13 @@ function guardarImagen() {
     const g = out.getContext('2d'); g.fillStyle = '#0a0e14'; g.fillRect(0, 0, out.width, out.height); g.drawImage(cv, 0, 0);
     const yB = cv.height; g.fillStyle = '#0b0e12'; g.fillRect(0, yB, out.width, barra); g.fillStyle = 'rgba(232,184,75,.35)'; g.fillRect(0, yB, out.width, 2 * e2);
     const textos = (x) => {
-      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Multiverse', x, yB + 34 * e2);
+      g.textAlign = 'left'; g.fillStyle = '#E8B84B'; g.font = `800 ${19 * e2}px system-ui,sans-serif`; g.fillText('Prediction Algo', x, yB + 34 * e2);
       g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillStyle = '#C9A84B'; g.fillText(WEB, x, yB + 56 * e2);
       g.textAlign = 'right'; g.fillStyle = '#8b96a3'; g.font = `700 ${14 * e2}px ui-monospace,monospace`; g.fillText(`${_par} · ${M.tf}`, out.width - 20 * e2, yB + 34 * e2);
       g.font = `${11 * e2}px ui-monospace,monospace`; g.fillStyle = '#6b7681'; g.fillText(new Date().toLocaleString('en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), out.width - 20 * e2, yB + 56 * e2);
       g.textAlign = 'left';
     };
-    const bajar = () => out.toBlob((blob) => { devolver(); if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-multiverse-${_par}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
+    const bajar = () => out.toBlob((blob) => { devolver(); if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `decfreedom-prediction-${_par}-${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }, 'image/png');
     const logo = new Image(); let hecho = false;
     const una = (w) => { if (hecho) return; hecho = true; textos(w ? 20 * e2 + w + 18 * e2 : 20 * e2); bajar(); };
     logo.onload = () => { try { const alto = 52 * e2, ancho = Math.round(logo.width * (alto / logo.height)); g.drawImage(logo, 20 * e2, yB + (barra - alto) / 2, ancho, alto); una(ancho); } catch (_) { una(0); } };
@@ -628,21 +611,21 @@ function guardarImagen() {
 
 /* ══════════════════ AYUDA (guía interactiva, 8 componentes reales) ══════════════════ */
 const PASOS_RZ = [
-  { t: 'Fractal Cycles', d: 'Price moves in <b>cycles</b>, and those cycles are <b>fractal</b>: the same shapes, impulses, pullbacks, ranges and turns, repeat on every timeframe. Multiverse reads the structure of the current cycle and projects where price could go next. Because it works on structure, it runs the same on 1 second or 1 day, just change the timeframe.', x: 'The tool does not predict the future. It maps what tends to happen next when the chart looks like it does now.' },
-  { t: 'Five Analyzers', d: 'Five measurable readings drive everything: <b>trend</b> (the bias of the last 50 to 200 candles), <b>momentum and exhaustion</b> (how stretched the move is), <b>volume and range</b> (whether fuel is entering a quiet market), <b>levels</b> (supports and resistances), and <b>market structure</b> (impulses, pullbacks and ranges). You never see them directly, they set the odds.', x: 'Every percentage on the chart comes from these five, measured live, not from an opinion.' },
-  { t: 'Ghost Candles', d: 'The possible futures are drawn as <b>ghost candles</b>: hollow, translucent candles with a flowing inner light. They are deliberately not solid, so you never confuse a projection with real price. The lit flow and brightness show how alive and how probable a path is.', x: 'Ghost candles are a drawing of a scenario, not a quote. Nothing to their right has happened yet.' },
-  { t: 'The Tree of Realities', d: 'From the current price the tool branches into scenarios, and <b>each scenario branches again</b>, generation after generation, like a multiverse. A move can continue, pull back and continue, reverse, range, or break a level and retest it. The result is a fan of possible paths over the same future time.', x: 'It is not three fixed scenarios. It is a living tree of what could unfold, step by step.' },
-  { t: 'Reading the Probabilities', d: 'Every branch carries a <b>probability</b>, and every full route carries an <b>accumulated probability</b> (the product along the path). The <b>brighter and thicker</b> a branch, the more likely it is; faint branches are long shots. The panel sums it all into a simple <b>upside vs downside</b> lean.', x: 'A 70% branch is not a promise. It means that, on this structure, roughly seven times in ten price tends this way.' },
-  { t: 'Branching Rules', d: 'The branches follow real market logic. After an impulse up, price may <b>range and continue</b> or <b>pull back to support and continue</b>. It rises until the <b>next resistance</b>, where it either rejects and falls or <b>breaks and retests</b>. A pullback can reach 30%, 50% or a support, and from there hold the trend or flip, depending on <b>volume</b>. The same applies inverted to the downside.', x: 'The tool is encoding how price usually behaves around structure, not guessing at random.' },
-  { t: 'Living and Real Time', d: 'The tree is <b>not fixed</b>. On every new candle it recomputes from fresh structure, volume and levels, so paths that stop making sense <b>fade</b> and new ones appear. Zoom, drag and zoom out to see the whole scheme. The inner light keeps flowing so you can feel which paths are active now.', x: 'What you see is the current best map. A minute later, with new data, the map can change.' },
-  { t: 'How to Use It', d: 'Read the <b>dominant lean</b> and the <b>brightest routes</b>, then make your own decision with your own risk. Treat a high probability as an edge over many trades, not a certainty on the next one, and always plan for the paths that did not light up. This is a <b>probability tool</b>, not a promise of any result.', x: 'The map improves your odds of deciding well. It never removes the risk. Risk only what you can lose.' }
+  { t: 'Structural Logic', d: 'The algorithm reads the <b>structure of the past</b>: where price bounced, where it ranged, where impulses were born, and the dominant trend. The projected future <b>respects that history</b>, it does not fall like a stone into the void or rise forever, it moves from level to level the way price actually tends to. Cycles are fractal, so it works on any timeframe, just change it.', x: 'The past tells the future where to bounce, where to stall and how far to go. The tool just follows that logic.' },
+  { t: 'The Scenario Buttons', d: 'Instead of one noisy chart of everything at once, you pick a scenario with the <b>buttons</b>: Bullish, Bearish, Range or Reversal. Only <b>one path</b> is drawn at a time, cleanly, and each button shows its <b>probability</b>. It opens on the most probable one for the current structure.', x: 'One scenario, one clear path. Switch buttons to compare how each case would most logically unfold.' },
+  { t: 'Bullish', d: 'In the bullish case price moves up in <b>impulses and pullbacks</b>. Each pullback reaches about <b>50% of its impulse</b> or the oscillation plateau it came from, then price pushes to the <b>next resistance</b>, makes higher highs and higher lows, and climbs level by level, not in a straight line.', x: 'Up does not mean vertical. It means a staircase of impulses and healthy retracements.' },
+  { t: 'Bearish', d: 'In the bearish case price falls to the <b>next support</b>, then <b>bounces</b>, but the bounce respects the zones on the left and is <b>moderate, decaying each time</b> (remnant fuel), making lower highs and lower lows. It is a staircase down, with real reactions at old levels, never a free fall.', x: 'Even a drop reacts at the levels where price reacted before. The path shows those bounces, smaller each time.' },
+  { t: 'Range', d: 'The range case oscillates <b>organically between support and resistance</b>, in small swings that respect both edges, not a mechanical candle beside candle. Markets do this most on <b>weekends</b>, so on Saturday and Sunday the range scenario is weighted a little higher.', x: 'A range is price breathing between two walls, touching each and turning, not standing still.' },
+  { t: 'Reversal', d: 'The reversal case shows the <b>current trend breaking</b>. Price breaks the last structural level, comes back to <b>retest it</b> (a broken floor becomes a ceiling, a broken ceiling becomes a floor), and then moves in the <b>new direction</b>, level by level. It is what you watch for when a trend may be ending.', x: 'A break is rarely clean. The retest is where the old level proves whether the reversal is real.' },
+  { t: 'Respecting the Past', d: 'Every path is built from the <b>levels on the left</b>: it bounces where price bounced, stalls where it ranged, and reaches to the next barrier. When it revisits the birthplace of a strong impulse it reacts again, but <b>moderately</b>, not with the same force. The scenario that matches the <b>dominant trend</b> always carries more probability.', x: 'The tool is encoding how price behaves around its own history, not drawing shapes at random.' },
+  { t: 'How to Use It', d: 'Pick the scenario that fits your read, follow its clean path, and weigh it by its <b>probability</b>. Treat a high number as an edge over many trades, not a certainty on the next one, and decide with your own risk. This is a <b>probability tool built on structural logic</b>, not a promise of any result.', x: 'It sharpens how you think about what comes next. It never removes the risk. Risk only what you can lose.' }
 ];
 let _pasoRZ = 0;
 function ayuda() {
   if ($('ss-ayuda-box')) { $('ss-ayuda-box').remove(); return; }
   _pasoRZ = 0;
   const d = document.createElement('div'); d.id = 'ss-ayuda-box';
-  d.innerHTML = `<div class="ss-ab-bg"></div><div class="ss-ab-c"><button class="ss-ab-x" aria-label="Close">✕</button><div class="ss-ab-eyebrow">Multiverse · How it works</div><div id="ss-ab-cuerpo"></div><div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div></div>`;
+  d.innerHTML = `<div class="ss-ab-bg"></div><div class="ss-ab-c"><button class="ss-ab-x" aria-label="Close">✕</button><div class="ss-ab-eyebrow">Prediction Algo · How it works</div><div id="ss-ab-cuerpo"></div><div class="ss-ab-legal"><button class="ss-disc-link" id="ss-disc-link" type="button">Disclaimer</button></div></div>`;
   document.body.appendChild(d);
   const q = () => d.remove(); d.querySelector('.ss-ab-bg').onclick = q; d.querySelector('.ss-ab-x').onclick = q; $('ss-disc-link').onclick = () => discOB(true);
   pintarPasoRZ();
@@ -688,6 +671,13 @@ const CSS = `
 .ss-ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid #2a333f;color:#9aa4af;font-weight:800}
 .ss-ico:hover{border-color:var(--gold);color:var(--gold)}
 .ss-graf{flex:1 1 auto;min-height:0;position:relative;background:#0a0e14}
+.ss-esc{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:5;display:flex;gap:6px;padding:5px;border-radius:13px;background:rgba(12,16,23,.82);border:1px solid #2a333f;box-shadow:0 10px 30px rgba(0,0,0,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ss-esc button{display:flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:9px;border:1px solid transparent;background:transparent;color:#aeb6c0;cursor:pointer;font-family:var(--mono);font-weight:700;font-size:12.5px;transition:background .15s,color .15s,border-color .15s}
+.ss-esc button b{font-family:var(--mono);font-weight:800;font-size:11px;color:#6b7681}
+.ss-esc button:hover{color:#eaecef;background:rgba(255,255,255,.05)}
+.ss-esc button.on{background:rgba(232,184,75,.15);border-color:var(--gold);color:var(--gold)}
+.ss-esc button.on b{color:var(--gold)}
+@media(max-width:640px){.ss-esc{gap:3px;padding:3px;top:8px;max-width:calc(100% - 20px)}.ss-esc button{height:30px;padding:0 9px;font-size:11px;gap:4px}.ss-esc button b{font-size:10px}}
 .ss-cv{display:block;position:absolute;inset:0}
 .ss-marca{position:absolute;left:64px;bottom:40px;z-index:4;height:42px;width:auto;opacity:.82;pointer-events:none;display:flex;align-items:center;filter:drop-shadow(0 2px 9px rgba(0,0,0,.95))}
 @media(max-width:620px){.ss-marca{left:58px;bottom:30px;height:32px}}
