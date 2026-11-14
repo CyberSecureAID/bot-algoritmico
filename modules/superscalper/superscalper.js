@@ -267,10 +267,39 @@ function probsEscenas(E) {
   const w = { bull: 0.14 + 0.6 * up + 0.12 * E.exDn, bear: 0.14 + 0.6 * dn + 0.12 * E.exUp, range: 0.12 + 0.6 * E.rango + (E.finde ? 0.22 : 0) + 0.12 * (1 - Math.abs(E.trend)) };
   const s = w.bull + w.bear + w.range || 1; return { bull: w.bull / s, bear: w.bear / s, range: w.range / s };
 }
+/* ── PROYECCIÓN FRACTAL: en vez de inventar velas, se busca en el histórico del propio activo
+   un tramo REAL que encaje con el escenario (sube, baja o lateral) y se proyecta desde el precio
+   actual, escalado a la volatilidad de ahora. El movimiento es orgánico porque es real. ── */
+function mejorSegmento(velas, tipo, H) {
+  const L = velas.length; if (L < H + 30) return -1;
+  let best = -1, bestSc = -Infinity;
+  for (let s = 8; s <= L - H - 3; s++) {
+    const o0 = velas[s].o, net = velas[s + H - 1].c - o0; let path = 0, mx = -Infinity, mn = Infinity;
+    for (let k = s; k < s + H; k++) { if (k > s) path += Math.abs(velas[k].c - velas[k - 1].c); if (velas[k].h > mx) mx = velas[k].h; if (velas[k].l < mn) mn = velas[k].l; }
+    const span = (mx - mn) || 1, ef = net / (path || 1);                        // eficiencia: tendencia limpia vs ruido
+    let sc;
+    if (tipo === 'bull') sc = (net / span) + ef * 0.6;                          // net arriba y direccional
+    else if (tipo === 'bear') sc = (-net / span) + (-ef) * 0.6;
+    else sc = (path / span) * 0.5 - Math.abs(net) / span * 1.6;                 // oscila mucho, net casi cero
+    sc += (s / L) * 0.05;                                                       // leve preferencia por lo más reciente
+    if (sc > bestSc) { bestSc = sc; best = s; }
+  }
+  return best;
+}
+function rutaFractal(E, velas, tipo) {
+  const H = 42, s = mejorSegmento(velas, tipo, H); if (s < 0) return null;
+  const o0 = velas[s].o, px = E.px; let segR = 0; for (let k = s; k < s + H; k++) segR += (velas[k].h - velas[k].l); segR = (segR / H) || E.a;
+  const scale = clamp(E.a / segR, 0.55, 2.2);                                   // ajusta la amplitud a la volatilidad actual
+  const vel = []; for (let k = 0; k < H; k++) { const r = velas[s + k];
+    vel.push({ o: px + (r.o - o0) * scale, h: px + (r.h - o0) * scale, l: px + (r.l - o0) * scale, c: px + (r.c - o0) * scale }); }
+  vel[0].o = px;                                                               // pegada exacta al precio actual
+  let lo = Infinity, hi = -Infinity; for (const v of vel) { if (v.h > hi) hi = v.h; if (v.l < lo) lo = v.l; }
+  return { velas: vel, lo, hi, fin: vel[vel.length - 1].c };
+}
 function recalcPred() {
   try {
     const E = analizarEstructura(M.velas); M.estr = E; const probs = probsEscenas(E), rutas = {};
-    for (const tipo of ['bull', 'bear', 'range']) { const wp = waypointsEscena(E, tipo), r = velasRuta(wp, E, hashId(tipo + E.n + Math.round(E.px))); rutas[tipo] = { velas: r.velas, lo: r.lo, hi: r.hi, fin: r.fin, prob: probs[tipo] }; }
+    for (const tipo of ['bull', 'bear', 'range']) { let r = rutaFractal(E, M.velas, tipo); if (!r) { const wp = waypointsEscena(E, tipo); r = velasRuta(wp, E, hashId(tipo + E.n + Math.round(E.px))); } rutas[tipo] = { velas: r.velas, lo: r.lo, hi: r.hi, fin: r.fin, prob: probs[tipo] }; }
     M.pred = { rutas, probs, px: E.px };
     if (!M.escena) M.escena = Object.keys(probs).sort((x, y) => probs[y] - probs[x])[0];   // arranca en el más probable
     M.predAlpha = 0; actualizarBotones();
