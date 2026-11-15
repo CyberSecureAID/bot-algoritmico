@@ -81,8 +81,10 @@ const CSS = `
 
   /* ── Cuerpo (gráfica + capas) ── */
   .mc-body{flex:1 1 auto; position:relative; min-height:0; background:var(--mc-bg); overflow:hidden}
+  /* cruceta SOLO en el area del grafico: se hereda al canvas del plot, pero la
+     libreria pone su propio cursor (ns-resize / ew-resize) en los ejes, asi que
+     ahi se respeta y se puede estirar/contraer como en TradingView. */
   .mc-cv{position:absolute; inset:0; z-index:0; cursor:crosshair}
-  .mc-cv canvas, .mc-cv table, .mc-cv tr, .mc-cv td{cursor:crosshair}
   .mc-fx{position:absolute; inset:0; z-index:3; pointer-events:none}
   .mc-ux{position:absolute; inset:0; z-index:4; pointer-events:none}
   .mc-cap{position:absolute; inset:0; z-index:6; pointer-events:none; cursor:crosshair}
@@ -159,6 +161,41 @@ const CSS = `
   .mc-modal .bxf button:hover{border-color:var(--mc-gold-soft)}
   .mc-modal .bxf .dl{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
   .mc-modal .bxf .dl:hover{filter:brightness(1.06)}
+
+  /* ── Menu de indicadores (ventana centrada, por grupos, con buscador) ── */
+  .mc-isearch-wrap{padding:12px 16px 0}
+  .mc-isearch{width:100%; height:40px; padding:0 13px; border-radius:10px; border:1px solid var(--mc-line2); background:#0b1017; color:var(--mc-ink); font-family:var(--mc-mono); font-size:13px; outline:none}
+  .mc-isearch:focus{border-color:var(--mc-gold-soft)}
+  .mc-ibody{max-height:70vh}
+  .mc-ig{margin-bottom:15px}
+  .mc-ig-h{font-family:var(--mc-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--mc-ink3); margin:2px 2px 9px}
+  .mc-ig-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(188px,1fr)); gap:8px}
+  .mc-icard{display:flex; align-items:center; gap:9px; padding:11px 12px; border-radius:11px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.02); color:var(--mc-ink); cursor:pointer; text-align:left; font-family:var(--mc-disp); transition:border-color .13s, background .13s}
+  .mc-icard:hover{border-color:var(--mc-gold-soft); background:rgba(255,255,255,.05)}
+  .mc-icard .dot{width:12px; height:12px; border-radius:3px; flex:0 0 auto}
+  .mc-icard .nm{flex:1; font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .mc-icard .ck{opacity:0; color:var(--mc-gold); font-weight:900; flex:0 0 auto}
+  .mc-icard.on{border-color:var(--mc-gold); background:rgba(232,184,75,.12)} .mc-icard.on .ck{opacity:1}
+
+  /* ── Leyenda: boton +N y ventanita para gestionar/eliminar indicadores ── */
+  .mc-chip-mas{color:var(--mc-ink2)!important; font-weight:800; padding:2px 10px; border:none}
+  .mc-chip-mas:hover{color:var(--mc-ink)!important}
+  .mc-legpop{position:absolute; z-index:9; min-width:184px; max-width:244px; background:linear-gradient(180deg,rgba(24,30,40,.97),rgba(14,18,26,.97)); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.13); border-radius:12px; box-shadow:0 16px 44px rgba(0,0,0,.62); padding:7px; pointer-events:auto}
+  .mc-legpop-h{font-family:var(--mc-mono); font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--mc-ink3); padding:3px 5px 7px}
+  .mc-legpop-list{max-height:220px; overflow-y:auto}
+  .mc-legrow{display:flex; align-items:center; gap:8px; padding:6px; border-radius:8px}
+  .mc-legrow:hover{background:rgba(255,255,255,.05)}
+  .mc-legrow i{width:10px; height:10px; border-radius:3px; flex:0 0 auto}
+  .mc-legrow .nm{flex:1; font-family:var(--mc-mono); font-size:12px; color:var(--mc-ink); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .mc-legdel{flex:0 0 auto; width:24px; height:24px; display:grid; place-items:center; border:none; background:transparent; color:var(--mc-ink3); cursor:pointer; border-radius:6px}
+  .mc-legdel:hover{background:rgba(255,91,110,.2); color:#ff6b7a} .mc-legdel svg{width:13px; height:13px}
+
+  /* ── Barras de scroll con estilo (selector de criptos, modales, rejilla) ── */
+  .mc-list, .mc-ibody, .mc-legpop-list, .mc-modal .bxc, .mc-grid{scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.22) transparent}
+  .mc-list::-webkit-scrollbar, .mc-ibody::-webkit-scrollbar, .mc-legpop-list::-webkit-scrollbar, .mc-modal .bxc::-webkit-scrollbar, .mc-grid::-webkit-scrollbar{width:10px; height:10px}
+  .mc-list::-webkit-scrollbar-track, .mc-ibody::-webkit-scrollbar-track, .mc-legpop-list::-webkit-scrollbar-track, .mc-modal .bxc::-webkit-scrollbar-track, .mc-grid::-webkit-scrollbar-track{background:transparent}
+  .mc-list::-webkit-scrollbar-thumb, .mc-ibody::-webkit-scrollbar-thumb, .mc-legpop-list::-webkit-scrollbar-thumb, .mc-modal .bxc::-webkit-scrollbar-thumb, .mc-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16); border-radius:8px; border:2px solid transparent; background-clip:content-box}
+  .mc-list::-webkit-scrollbar-thumb:hover, .mc-ibody::-webkit-scrollbar-thumb:hover, .mc-legpop-list::-webkit-scrollbar-thumb:hover, .mc-modal .bxc::-webkit-scrollbar-thumb:hover, .mc-grid::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.3); background-clip:content-box}
 
   /* ventanita de ajustes de las líneas V/H (misma apariencia que la de la barra de dibujo) */
   .mc-lineset{position:fixed; z-index:9560; display:flex; align-items:center; gap:3px; padding:6px 8px; border-radius:14px; background:linear-gradient(180deg,rgba(24,30,40,.96),rgba(14,18,26,.96)); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.12); box-shadow:0 14px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05)}

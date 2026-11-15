@@ -10,7 +10,7 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=9';
+import { estilos } from './estilos.js?v=10';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
@@ -170,7 +170,7 @@ function cerrarMulti() {
   cerrarMenu(); cerrarLineset();
   const m = $('mc-modal'); if (m) m.remove();
   const ov = $('mc-overlay'); if (ov) ov.remove();
-  if (window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')) { try { history.back(); } catch (_) {} }
+  if (window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')) { try { location.href = new URL('../../index.html', import.meta.url).href; } catch (_) {} }
 }
 function onResize() { S.paneles.forEach((p) => { try { p.chart.applyOptions({}); } catch (_) {} }); if (S.focus) sincronizarFocus(); }
 
@@ -391,8 +391,13 @@ function dibujarInds(pane) {
   const Yp = (p) => { try { const c = pane.serie.priceToCoordinate(p); return c == null ? null : c; } catch (_) { return null; } };
   const now = performance.now();
   const v = pane.velas;
+  // Recorta al area de ploteo: el indicador NUNCA se dibuja sobre el eje de precios (derecha).
+  let psW = 0; try { psW = pane.chart.priceScale('right').width() || 0; } catch (_) {}
+  const plotW = Math.max(10, W - psW);
+  g.save(); g.beginPath(); g.rect(0, 0, plotW, H); g.clip();
   (ind.ovl || []).forEach((o, i) => lineaComet(g, v, o.data, X, Yp, o.col, W, now, i, o.gr, o.dash, o.a));
   etiquetaOsc(g, pane);
+  g.restore();
 }
 /* Indicador: trazo LIMPIO + una luz (cometa) que lo recorre de izquierda a
    derecha, suave y lenta, igual que el área VWAP Pro. Sin neón constante. */
@@ -568,7 +573,7 @@ function wirePane(pane) {
   const q = (s) => pane.el.querySelector(s);
   q('[data-coin]').onclick = (e) => { e.stopPropagation(); alternarMenu(q('[data-coin]'), () => menuMonedas(pane, q('[data-coin]'))); };
   q('[data-tf]').onclick = (e) => { e.stopPropagation(); alternarMenu(q('[data-tf]'), () => menuTf(pane, q('[data-tf]'))); };
-  q('[data-ind]').onclick = (e) => { e.stopPropagation(); alternarMenu(q('[data-ind]'), () => menuInd(pane, q('[data-ind]'))); };
+  q('[data-ind]').onclick = (e) => { e.stopPropagation(); menuInd(pane); };
   q('[data-share]').onclick = () => guardarImagenPanel(pane);
   q('[data-full]').onclick = () => fullPane(pane);
   q('[data-fsback]').onclick = () => { if (pane.max) fullPane(pane); };   // Back solo sale en fullscreen: vuelve a la rejilla
@@ -890,46 +895,83 @@ function menuTf(pane, anc) {
 /* Lista para anadir indicadores: por grupos, se toca para encender o apagar.
    Varios overlays a la vez (Set); un solo oscilador (oscK). Al encender uno,
    sale su barra de herramientas pegada a la etiqueta. */
-function menuInd(pane, anc) {
+/* Menu de indicadores: ventana CENTRADA, con buscador y por grupos (como
+   TradingView, pero sin tanta informacion). Scrollea; nada de columna vertical. */
+const GRUPO_NOM = { Trend: 'Medias / Tendencia', Volume: 'Volumen', Volatility: 'Volatilidad', Momentum: 'Osciladores / Momentum' };
+function menuInd(pane) {
+  cerrarMenu();
   const activo = (d) => d.tipo === 'ovl' ? pane.ovl.has(d.id) : pane.oscK === d.id;
   const grupos = [];
   INDICADORES.forEach((d) => { let g = grupos.find((x) => x.g === d.grupo); if (!g) { g = { g: d.grupo, items: [] }; grupos.push(g); } g.items.push(d); });
-  const html = grupos.map((gr) =>
-    `<div class="mc-indhead">${gr.g}</div>` + gr.items.map((d) => {
+  const cuerpo = grupos.map((gr) =>
+    `<div class="mc-ig"><div class="mc-ig-h">${GRUPO_NOM[gr.g] || gr.g}</div><div class="mc-ig-grid">` + gr.items.map((d) => {
       const c = pane.cfg[d.id] || d.estilo;
-      return `<div class="mc-ir${activo(d) ? ' on' : ''}" data-id="${d.id}" data-tipo="${d.tipo}"><span><i class="dot" style="background:${c.col}"></i>${d.nom}</span><span class="sw"></span></div>`;
-    }).join('')
+      return `<button class="mc-icard${activo(d) ? ' on' : ''}" data-id="${d.id}" data-tipo="${d.tipo}"><i class="dot" style="background:${c.col}"></i><span class="nm">${d.nom}</span><span class="ck">✓</span></button>`;
+    }).join('') + `</div></div>`
   ).join('');
-  const m = pop(anc, html, 240);
-  m.querySelectorAll('.mc-ir').forEach((row) => row.onclick = () => {
-    const id = row.dataset.id, def = buscarInd(id); if (!def) return;
+  const m = modal('Indicadores', `<div class="mc-isearch-wrap"><input class="mc-isearch" placeholder="Buscar indicador..."></div><div class="bxc mc-ibody">${cuerpo}</div>`);
+  const body = m.querySelector('.mc-ibody'), search = m.querySelector('.mc-isearch');
+  const filtrar = () => {
+    const q = search.value.trim().toLowerCase();
+    body.querySelectorAll('.mc-icard').forEach((b) => { const def = buscarInd(b.dataset.id); b.style.display = (!q || (def && def.nom.toLowerCase().indexOf(q) >= 0)) ? '' : 'none'; });
+    body.querySelectorAll('.mc-ig').forEach((gp) => { gp.style.display = [...gp.querySelectorAll('.mc-icard')].some((b) => b.style.display !== 'none') ? '' : 'none'; });
+  };
+  search.oninput = filtrar; setTimeout(() => { try { search.focus(); } catch (_) {} }, 40);
+  body.querySelectorAll('.mc-icard').forEach((card) => card.onclick = () => {
+    const id = card.dataset.id, def = buscarInd(id); if (!def) return;
     let encendido;
-    if (def.tipo === 'ovl') {
-      if (pane.ovl.has(id)) { pane.ovl.delete(id); encendido = false; } else { pane.ovl.add(id); encendido = true; }
-      row.classList.toggle('on', encendido);
-    } else {
-      encendido = pane.oscK !== id; pane.oscK = encendido ? id : null;
-      m.querySelectorAll('.mc-ir[data-tipo="osc"]').forEach((x) => x.classList.toggle('on', x.dataset.id === pane.oscK));
-    }
+    if (def.tipo === 'ovl') { if (pane.ovl.has(id)) { pane.ovl.delete(id); encendido = false; } else { pane.ovl.add(id); encendido = true; } card.classList.toggle('on', encendido); }
+    else { encendido = pane.oscK !== id; pane.oscK = encendido ? id : null; body.querySelectorAll('.mc-icard[data-tipo="osc"]').forEach((x) => x.classList.toggle('on', x.dataset.id === pane.oscK)); }
     recalc(pane); marcarBtnInd(pane);
-    if (encendido) { cerrarMenu(); setTimeout(() => abrirBarraDe(pane, id), 20); }
+    if (encendido) { m.remove(); setTimeout(() => abrirBarraDe(pane, id), 30); }
   });
 }
 /* El boton Indicator se enciende si hay al menos un indicador activo. */
 function marcarBtnInd(pane) { const b = pane.el.querySelector('[data-ind]'); if (b) b.classList.toggle('on', indActivo(pane)); }
 /* Etiquetas tocables sobre la grafica (una por indicador activo, en su color).
    Al tocar una, reaparece su barra de herramientas anclada a ella. */
+function indsActivos(pane) {
+  const items = [];
+  pane.ovl.forEach((id) => { const def = buscarInd(id); if (def) items.push(def); });
+  if (pane.oscK) { const def = buscarInd(pane.oscK); if (def) items.push(def); }
+  return items;
+}
 function actualizarLeyenda(pane) {
   if (!pane.body) return;
   let leg = pane.body.querySelector('.mc-leg');
   if (!leg) { leg = document.createElement('div'); leg.className = 'mc-leg'; pane.body.appendChild(leg); }
-  const items = [];
-  pane.ovl.forEach((id) => { const def = buscarInd(id); if (def) items.push(def); });
-  if (pane.oscK) { const def = buscarInd(pane.oscK); if (def) items.push(def); }
-  if (!items.length) { leg.innerHTML = ''; return; }
-  leg.innerHTML = items.map((def) => { const c = cfgDe(pane, def); return `<span class="mc-chip" data-id="${def.id}" style="color:${c.col}"><i style="background:${c.col}"></i>${nomInd(def, c)}</span>`; }).join('');
-  leg.querySelectorAll('.mc-chip').forEach((ch) => ch.onclick = (e) => { e.stopPropagation(); abrirBarraDe(pane, ch.dataset.id); });
+  const items = indsActivos(pane);
+  if (!items.length) { leg.innerHTML = ''; cerrarLegPop(pane); return; }
+  const MAXVIS = 2;                                   // mas de dos -> se colapsa en un boton +N
+  const vis = items.slice(0, MAXVIS), resto = items.length - vis.length;
+  let html = vis.map((def) => { const c = cfgDe(pane, def); return `<span class="mc-chip" data-id="${def.id}" style="color:${c.col}"><i style="background:${c.col}"></i>${nomInd(def, c)}</span>`; }).join('');
+  if (resto > 0) html += `<button class="mc-chip mc-chip-mas" data-mas="1" title="Ver indicadores">+${resto}</button>`;
+  leg.innerHTML = html;
+  leg.querySelectorAll('.mc-chip[data-id]').forEach((ch) => ch.onclick = (e) => { e.stopPropagation(); abrirBarraDe(pane, ch.dataset.id); });
+  const mas = leg.querySelector('[data-mas]'); if (mas) mas.onclick = (e) => { e.stopPropagation(); abrirGestorLeyenda(pane, mas); };
 }
+/* Ventanita para gestionar TODOS los indicadores activos: lista con scroll y
+   papelera para eliminar cada uno. Tocar el nombre abre su barra. */
+function abrirGestorLeyenda(pane, anc) {
+  cerrarLegPop(pane);
+  const pop = document.createElement('div'); pop.className = 'mc-legpop';
+  pop.innerHTML = `<div class="mc-legpop-h">Indicadores</div><div class="mc-legpop-list"></div>`;
+  pane.body.appendChild(pop);
+  const rb = pane.body.getBoundingClientRect(), ra = anc.getBoundingClientRect();
+  pop.style.left = Math.max(6, ra.left - rb.left) + 'px'; pop.style.top = (ra.bottom - rb.top + 6) + 'px';
+  llenarGestor(pane, pop);
+  pane._legPopDoc = (ev) => { if (!pop.contains(ev.target) && ev.target !== anc) cerrarLegPop(pane); };
+  setTimeout(() => document.addEventListener('mousedown', pane._legPopDoc, true), 0);
+}
+function llenarGestor(pane, pop) {
+  const list = pop.querySelector('.mc-legpop-list'); if (!list) return;
+  const items = indsActivos(pane);
+  if (!items.length) { cerrarLegPop(pane); return; }
+  list.innerHTML = items.map((def) => { const c = cfgDe(pane, def); return `<div class="mc-legrow" data-id="${def.id}"><i style="background:${c.col}"></i><span class="nm">${nomInd(def, c)}</span><button class="mc-legdel" data-del="${def.id}" title="Eliminar">${IC.x}</button></div>`; }).join('');
+  list.querySelectorAll('.mc-legrow .nm').forEach((n) => n.onclick = () => { const id = n.parentElement.dataset.id; cerrarLegPop(pane); abrirBarraDe(pane, id); });
+  list.querySelectorAll('.mc-legdel').forEach((btn) => btn.onclick = (e) => { e.stopPropagation(); quitarInd(pane, btn.dataset.del); llenarGestor(pane, pop); });
+}
+function cerrarLegPop(pane) { const p = pane.body && pane.body.querySelector('.mc-legpop'); if (p) p.remove(); if (pane._legPopDoc) { document.removeEventListener('mousedown', pane._legPopDoc, true); pane._legPopDoc = null; } }
 /* Abre la barra de herramientas de un indicador, anclada a su etiqueta. */
 function abrirBarraDe(pane, id) {
   const def = buscarInd(id); if (!def) return;
