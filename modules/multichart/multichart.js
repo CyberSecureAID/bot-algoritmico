@@ -19,11 +19,15 @@ import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 const LIB = new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const ICONO = (s) => 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/' + String(s).toLowerCase() + '.png';
+/* Carga una imagen para dibujarla en el canvas de export. Con cross=true usa
+   CORS (los logos spothq/CoinGecko lo sirven), asi el canvas no se "contamina"
+   y toBlob sigue funcionando. Si falla, devuelve null y se omite ese logo. */
+function cargarImg(url, cross) { return new Promise((res) => { if (!url) return res(null); const im = new Image(); if (cross) im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => res(null); im.src = url; }); }
 
 const $ = (id) => document.getElementById(id);
 const DEF = ['BTC', 'ETH', 'BNB', 'SOL'];
 const S = {
-  paneles: [], seq: 0, raf: null, logos: {}, menu: null,
+  paneles: [], seq: 0, raf: null, logos: {}, menu: null, menuAnc: null,
   focus: null, sync: false, tool: null, vlines: [], hlines: [], preview: null, syncing: false, _lastHerr: null, lineset: null
 };
 let LC = null;
@@ -37,8 +41,31 @@ try { import(new URL('../../assets/js/orden.js?v=134', import.meta.url).href).th
    klines de 1s. El default de cada panel SIGUE siendo 1m. Todo contenido aquí (no toca
    datos.js) para no afectar a Trading Demo. */
 const MC_SEG = [{ id: '1s', n: '1s', sec: 1 }, { id: '2s', n: '2s', sec: 2 }, { id: '5s', n: '5s', sec: 5 }, { id: '10s', n: '10s', sec: 10 }, { id: '30s', n: '30s', sec: 30 }];
-const MC_TFS = [...MC_SEG, ...D.TFS.filter((t) => !MC_SEG.some((s) => s.id === t.id))];
-const tfSeg = (id) => { const d = MC_SEG.find((t) => t.id === id); return d && d.sec > 1 ? d.sec : 0; };   // >0 = hay que agregar desde 1s
+/* Temporalidades que Binance NO sirve nativas: se arman agrupando una base nativa.
+   8H SI es nativa en Binance (interval=8h), asi que esa se pide directo, sin agregar. */
+const MC_AGREG = [
+  { id: '3h',  n: '3H',  base: '1h', sec: 3 * 3600 },
+  { id: '48h', n: '48H', base: '1d', sec: 48 * 3600 }
+];
+const MC_NAT_EXTRA = [{ id: '8h', n: '8H' }];
+/* Lista final del selector, en orden: primero los segundos, luego las estandar
+   con 3H tras 2H, 8H tras 6H y 48H tras 1D intercaladas. */
+const MC_TFS = (() => {
+  const out = [...MC_SEG];
+  D.TFS.filter((t) => !MC_SEG.some((s) => s.id === t.id)).forEach((t) => {
+    out.push(t);
+    if (t.id === '2h') out.push(MC_AGREG[0]);       // 3H
+    if (t.id === '6h') out.push(MC_NAT_EXTRA[0]);   // 8H (nativa)
+    if (t.id === '1d') out.push(MC_AGREG[1]);       // 48H
+  });
+  return out;
+})();
+/* Si la TF hay que agregarla, devuelve { base, sec }; si es nativa, null. */
+function aggDe(tf) {
+  const s = MC_SEG.find((t) => t.id === tf); if (s && s.sec > 1) return { base: '1s', sec: s.sec };
+  const a = MC_AGREG.find((t) => t.id === tf); if (a) return { base: a.base, sec: a.sec };
+  return null;
+}
 function agregarVelas(base, sec) {
   const out = []; let cur = null;
   for (const v of base) { const bt = Math.floor(v.time / sec) * sec;
@@ -47,15 +74,16 @@ function agregarVelas(base, sec) {
   if (cur) out.push(cur); return out;
 }
 async function mcVelas(simbolo, tf, limit) {
-  const sec = tfSeg(tf);
-  if (sec) { const base = await D.velas(simbolo, '1s', 1000); return agregarVelas(base, sec); }
+  const a = aggDe(tf);
+  if (a) { const base = await D.velas(simbolo, a.base, 1000); return agregarVelas(base, a.sec); }
   return D.velas(simbolo, tf, limit);
 }
 function mcStream(simbolo, tf, onKline) {
-  const sec = tfSeg(tf);
-  if (!sec) return D.streamVelas(simbolo, tf, onKline);
-  let buck = null;   // vela agregada en formación; el volumen se suma solo al CERRAR cada 1s (sin doble conteo)
-  return D.streamVelas(simbolo, '1s', (k) => {
+  const a = aggDe(tf);
+  if (!a) return D.streamVelas(simbolo, tf, onKline);
+  const sec = a.sec;
+  let buck = null;   // vela agregada en formación; el volumen se suma solo al CERRAR de cada vela base (sin doble conteo)
+  return D.streamVelas(simbolo, a.base, (k) => {
     const bt = Math.floor(Math.floor(k.t / 1000) / sec) * sec, btMs = bt * 1000;
     const o = +k.o, h = +k.h, l = +k.l, c = +k.c, v = +k.v;
     if (!buck || buck.t !== btMs) buck = { t: btMs, o, h, l, c, v: 0 };
@@ -131,7 +159,7 @@ export async function abrirMulti() {
     <div class="mc-grid" id="mc-grid"></div>`;
   document.body.appendChild(ov);
   $('mc-back').onclick = cerrarMulti;
-  $('mc-allcoin').onclick = (e) => { e.stopPropagation(); menuMonedasMulti($('mc-allcoin')); };
+  $('mc-allcoin').onclick = (e) => { e.stopPropagation(); alternarMenu($('mc-allcoin'), () => menuMonedasMulti($('mc-allcoin'))); };
   $('mc-addbtn').onclick = () => addFloat();
   $('mc-dock').onclick = acoplar;
   $('mc-reset').onclick = reorganizar;
@@ -536,9 +564,9 @@ function cargarDibDe(coin) { try { const m = JSON.parse(localStorage.getItem('cc
 /* ── Controles del panel ── */
 function wirePane(pane) {
   const q = (s) => pane.el.querySelector(s);
-  q('[data-coin]').onclick = (e) => { e.stopPropagation(); menuMonedas(pane, q('[data-coin]')); };
-  q('[data-tf]').onclick = (e) => { e.stopPropagation(); menuTf(pane, q('[data-tf]')); };
-  q('[data-ind]').onclick = (e) => { e.stopPropagation(); menuInd(pane, q('[data-ind]')); };
+  q('[data-coin]').onclick = (e) => { e.stopPropagation(); alternarMenu(q('[data-coin]'), () => menuMonedas(pane, q('[data-coin]'))); };
+  q('[data-tf]').onclick = (e) => { e.stopPropagation(); alternarMenu(q('[data-tf]'), () => menuTf(pane, q('[data-tf]'))); };
+  q('[data-ind]').onclick = (e) => { e.stopPropagation(); alternarMenu(q('[data-ind]'), () => menuInd(pane, q('[data-ind]'))); };
   q('[data-share]').onclick = () => guardarImagenPanel(pane);
   q('[data-full]').onclick = () => fullPane(pane);
   q('[data-fsback]').onclick = () => { if (pane.max) fullPane(pane); };   // Back solo sale en fullscreen: vuelve a la rejilla
@@ -717,9 +745,11 @@ function toggleTool(t) {
 }
 
 /* ── Menús ── */
-function cerrarMenu() { if (S.menu) { S.menu.remove(); S.menu = null; } }
+function cerrarMenu() { if (S.menu) { S.menu.remove(); S.menu = null; } S.menuAnc = null; }
 function fueraMenu(e) {
-  if (S.menu && !S.menu.contains(e.target)) cerrarMenu();
+  // No cerrar si el mousedown cae sobre el propio boton que abrio el menu:
+  // asi su onclick puede ALTERNAR (cerrarlo) en vez de que esto lo cierre y el click lo reabra.
+  if (S.menu && !S.menu.contains(e.target) && !(S.menuAnc && S.menuAnc.contains(e.target))) cerrarMenu();
   if (S.lineset && !S.lineset.contains(e.target) && !(e.target.closest && e.target.closest('.mc-lcol'))) cerrarLineset();
 }
 /* Ventanita de ajustes de una línea V/H: misma dinámica que la de la barra de
@@ -771,8 +801,10 @@ function pop(anc, html, w) {
   if (top + mh > innerHeight - 8) top = Math.max(8, r.top - mh - 6);
   m.style.left = Math.max(8, left) + 'px'; m.style.top = top + 'px';
   m.onmousedown = (e) => e.stopPropagation();
-  S.menu = m; return m;
+  S.menu = m; S.menuAnc = anc; return m;
 }
+/* Alterna un menu: si ya esta abierto DESDE este mismo boton, lo cierra; si no, lo abre. */
+function alternarMenu(anc, abrir) { if (S.menu && S.menuAnc === anc) cerrarMenu(); else abrir(); }
 function menuMonedas(pane, anc) {
   const m = pop(anc, `<input class="mc-search" placeholder="Search coin (USDT pairs)…"><div class="mc-list" id="mc-coinlist"></div>`, 260);
   const list = m.querySelector('#mc-coinlist'), inp = m.querySelector('.mc-search');
@@ -836,26 +868,48 @@ function indActivo(pane) { return pane.ovl.size > 0 || pane.bollOn || !!pane.osc
 
 /* ── Guardar imagen ── */
 async function guardarImagenPanel(pane) {
-  const cv = componerPanel(pane, 1040, 620); if (!cv) return;
+  let shot; try { shot = pane.chart.takeScreenshot(); } catch (_) { toast('Could not export ' + pane.par.id + '.'); return; }
+  // Logo de la moneda: spothq en GitHub (con CORS), respaldo CoinGecko. Asi SI
+  // aparece el logo arriba y el canvas queda limpio para descargar.
+  const coinRepo = pane.par.id ? ICONO(pane.par.id) : null;
+  const coinCg = pane.par.cg && S.logos && S.logos[pane.par.cg];
+  const [imgRepo, imgWm] = await Promise.all([cargarImg(coinRepo, true), cargarImg(LOGO, false)]);
+  const imgCoin = imgRepo || await cargarImg(coinCg, true);
+  const cv = componerPanel(pane, shot, imgCoin, imgWm); if (!cv) return;
   modalImg(cv, 'DecFreedom-' + pane.par.id + '-' + pane.tf + '.png', pane.par.id + 'USDT · ' + pane.tf);
 }
-function componerPanel(pane, cw, ch) {
-  const out = document.createElement('canvas'); out.width = cw; out.height = ch; const g = out.getContext('2d');
-  g.fillStyle = '#05070a'; g.fillRect(0, 0, cw, ch);
-  g.fillStyle = '#E8B84B'; g.fillRect(0, 0, cw, 4);
-  const top = 46;
-  g.fillStyle = '#eaecef'; g.font = '800 18px "Chakra Petch", sans-serif'; g.textAlign = 'left'; g.fillText(pane.par.id + 'USDT', 16, 30);
-  g.fillStyle = '#6b7580'; g.font = '700 12px "IBM Plex Mono", monospace'; g.fillText(pane.tf, 20 + g.measureText(pane.par.id + 'USDT').width, 29);
-  g.textAlign = 'right'; g.fillText('decfreedom.com', cw - 16, 29);
+/* Compone la imagen de export a RESOLUCION NATIVA del chart (sin estirar = nitida),
+   con el logo de la moneda arriba y la marca de agua por ENCIMA del eje de tiempo. */
+function componerPanel(pane, ch, imgCoin, imgWm) {
+  if (!ch || !ch.width) return null;
+  const W = ch.width, H = ch.height, top = 60;
+  const out = document.createElement('canvas'); out.width = W; out.height = H + top; const g = out.getContext('2d');
+  g.fillStyle = '#05070a'; g.fillRect(0, 0, W, H + top);
+  g.fillStyle = '#0b1118'; g.fillRect(0, 0, W, top);
+  g.fillStyle = '#E8B84B'; g.fillRect(0, 0, W, 3);
+  g.fillStyle = 'rgba(232,184,75,.22)'; g.fillRect(0, top - 1, W, 1);
+  // logo de la moneda (circulo), o la inicial si no cargo
+  const r = 15, cx = 20 + r, cy = 30;
+  if (imgCoin && imgCoin.width) { g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.closePath(); g.clip(); g.drawImage(imgCoin, cx - r, cy - r, r * 2, r * 2); g.restore(); g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); }
+  else { g.fillStyle = '#232b36'; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); g.fillStyle = '#c9d1d9'; g.font = '800 14px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText((pane.par.id || '?')[0], cx, cy + 1); g.textBaseline = 'alphabetic'; }
+  const tx = cx + r + 12;
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.font = '800 18px "Chakra Petch", sans-serif'; g.fillStyle = '#eaecef'; g.fillText(pane.par.id + 'USDT', tx, 27);
+  const nameW = g.measureText(pane.par.id + 'USDT').width;
+  const px = (pane.velas && pane.velas.length) ? pane.velas[pane.velas.length - 1].close : null;
+  if (px != null) { const d = decimales(px); g.font = '700 15px "IBM Plex Mono", monospace'; g.fillStyle = '#cfd6de'; g.fillText(Number(px).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }), tx + nameW + 12, 27); }
+  g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#8b96a3'; g.fillText(pane.tf + '  ·  ' + new Date().toLocaleString('en-US'), tx, 47);
+  g.textAlign = 'right'; g.font = '800 15px "Chakra Petch", sans-serif'; g.fillStyle = '#E8B84B'; g.fillText('Multichart', W - 18, 27);
+  g.font = '700 11px "IBM Plex Mono", monospace'; g.fillStyle = '#8b96a3'; g.fillText('decfreedom.com', W - 18, 47);
+  // la grafica, a su resolucion nativa
   try {
-    const shot = pane.chart.takeScreenshot();
-    g.drawImage(shot, 0, top, cw, ch - top);
-    if (pane.fx && pane.fx.width) g.drawImage(pane.fx, 0, top, cw, ch - top);
-    if (pane.ux && pane.ux.width) g.drawImage(pane.ux, 0, top, cw, ch - top);
-    const cvh = pane.body.querySelector('.nv-cvh'); if (cvh && cvh.width) g.drawImage(cvh, 0, top, cw, ch - top);
+    g.drawImage(ch, 0, top);
+    if (pane.fx && pane.fx.width) g.drawImage(pane.fx, 0, top, W, H);
+    if (pane.ux && pane.ux.width) g.drawImage(pane.ux, 0, top, W, H);
+    const cvh = pane.body.querySelector('.nv-cvh'); if (cvh && cvh.width) g.drawImage(cvh, 0, top, W, H);
   } catch (_) {}
-  // marca de agua abajo a la izquierda
-  try { const wm = pane.el.querySelector('.mc-wm img'); if (wm && wm.complete && wm.naturalWidth) { const h = 26, w = h * (wm.naturalWidth / wm.naturalHeight); g.globalAlpha = 0.72; g.drawImage(wm, 16, ch - h - 14, w, h); g.globalAlpha = 1; } } catch (_) {}
+  // marca de agua abajo a la izquierda, POR ENCIMA del eje de tiempo
+  if (imgWm && imgWm.width) { const wmH = 26, wmW = imgWm.width * (wmH / imgWm.height); g.save(); g.globalAlpha = .8; g.drawImage(imgWm, 18, out.height - wmH - 34, wmW, wmH); g.restore(); }
   return out;
 }
 async function guardarImagenTodas() {
