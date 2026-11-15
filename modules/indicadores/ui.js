@@ -61,7 +61,12 @@ function inyectarCSS() {
   .indtb-step button{width:24px; height:24px; border-radius:7px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:#eaecef; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0}
   .indtb-step button:hover{border-color:rgba(34,211,238,.5); color:#22d3ee}
   .indtb-val{width:50px; height:24px; text-align:center; border-radius:7px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.25); color:#eaecef; font-size:12px; outline:none; font-family:inherit}
-  .indtb-val:focus{border-color:rgba(34,211,238,.6)}`;
+  .indtb-val:focus{border-color:rgba(34,211,238,.6)}
+  .indtb-slider{-webkit-appearance:none; appearance:none; display:block; width:calc(100% - 4px); height:4px; margin:1px 2px 10px; border-radius:3px; background:rgba(255,255,255,.14); outline:none; cursor:pointer}
+  .indtb-slider::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:15px; height:15px; border-radius:50%; background:#22d3ee; border:2px solid #0b1017; cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  .indtb-slider::-webkit-slider-thumb:active{cursor:grabbing}
+  .indtb-slider::-moz-range-thumb{width:15px; height:15px; border-radius:50%; background:#22d3ee; border:2px solid #0b1017; cursor:grab}
+  .indtb-slider::-moz-range-track{height:4px; border-radius:3px; background:rgba(255,255,255,.14)}`;
   document.head.appendChild(s);
 }
 
@@ -83,7 +88,7 @@ export function hayBarraInd() { return !!_bar; }
 function colocar(el, cx, cy) {
   const mw = el.offsetWidth, mh = el.offsetHeight;
   let left = cx - mw / 2; left = Math.max(8, Math.min(innerWidth - mw - 8, left));
-  let top = cy - mh - 14; if (top < 8) top = cy + 16;
+  let top = cy; if (top + mh > innerHeight - 8) top = innerHeight - mh - 8; if (top < 8) top = 8;   // barra pegada ARRIBA (centro), no por encima del ancla
   el.style.left = left + 'px'; el.style.top = top + 'px';
 }
 
@@ -123,7 +128,7 @@ export function abrirBarraInd(opts) {
   });
   window.addEventListener('mouseup', () => { if (drag) { drag = null; document.body.style.userSelect = ''; } });
 
-  const cambiar = () => onCambio();
+  const cambiar = () => { onCambio(); if (opts.nombreDe) { try { const el = bar.querySelector('.indtb-nm'); if (el) el.textContent = opts.nombreDe(); } catch (_) {} } };
   bar.querySelector('[data-col]').onclick = (e) => { e.stopPropagation(); popColor(cfg, e.currentTarget, cambiar); };
   bar.querySelectorAll('[data-gr]').forEach((b) => b.onclick = () => { cfg.gr = +b.dataset.gr; bar.querySelectorAll('[data-gr]').forEach((x) => x.classList.toggle('on', x === b)); cerrarPop(); cambiar(); });
   bar.querySelector('[data-dash]').onclick = (e) => { cfg.dash = !cfg.dash; e.currentTarget.classList.toggle('on', cfg.dash); cerrarPop(); cambiar(); };
@@ -154,15 +159,20 @@ function popColor(cfg, anchor, cambiar) {
 function popAjustes(cfg, params, nombre, anchor, cambiar) {
   if (_pop && _pop.dataset.k === 'cfg') { cerrarPop(); return; }
   cerrarPop();
-  const filas = params.map((p) => { const step = p.step || 1; return `<div class="indtb-row"><span>${p.lbl || p.k}</span><div class="indtb-step"><button type="button" data-dec="${p.k}" data-step="${step}">−</button><input class="indtb-val" data-val="${p.k}" value="${cfg[p.k]}" inputmode="decimal"><button type="button" data-inc="${p.k}" data-step="${step}">+</button></div></div>`; }).join('');
+  const filas = params.map((p) => {
+    const step = p.step || 1, lo = p.min != null ? p.min : 1, hi = p.max != null ? p.max : 100;
+    return `<div class="indtb-row"><span>${p.lbl || p.k}</span><div class="indtb-step"><button type="button" data-dec="${p.k}" data-step="${step}">−</button><input class="indtb-val" data-val="${p.k}" value="${cfg[p.k]}" inputmode="decimal"><button type="button" data-inc="${p.k}" data-step="${step}">+</button></div></div>` +
+      `<input class="indtb-slider" type="range" data-slider="${p.k}" min="${lo}" max="${hi}" step="${step}" value="${cfg[p.k]}">`;
+  }).join('');
   const pop = document.createElement('div'); pop.className = 'indtb-pop indtb-pop-cfg'; pop.dataset.k = 'cfg';
   pop.innerHTML = `<div class="indtb-pop-t">${nombre} settings</div>${filas}`;
   document.body.appendChild(pop); _pop = pop;
   ubicarPop(pop, anchor);
-  const setVal = (pk, val) => { const p = params.find((x) => x.k === pk); if (!p) return; const lo = p.min != null ? p.min : 1, hi = p.max != null ? p.max : 1e9; let nv = Math.max(lo, Math.min(hi, val)); const step = p.step || 1; nv = step >= 1 ? Math.round(nv) : Math.round(nv / step) * step; cfg[pk] = nv; const inp = pop.querySelector('[data-val="' + pk + '"]'); if (inp) inp.value = nv; cambiar(); };
+  const setVal = (pk, val) => { const p = params.find((x) => x.k === pk); if (!p) return; const lo = p.min != null ? p.min : 1, hi = p.max != null ? p.max : 1e9; let nv = Math.max(lo, Math.min(hi, val)); const step = p.step || 1; nv = step >= 1 ? Math.round(nv) : Math.round(nv / step) * step; cfg[pk] = nv; const inp = pop.querySelector('[data-val="' + pk + '"]'); if (inp) inp.value = nv; const sl = pop.querySelector('[data-slider="' + pk + '"]'); if (sl && +sl.value !== nv) sl.value = nv; cambiar(); };
   pop.querySelectorAll('[data-dec]').forEach((b) => b.onclick = () => setVal(b.dataset.dec, (+cfg[b.dataset.dec]) - (+b.dataset.step)));
   pop.querySelectorAll('[data-inc]').forEach((b) => b.onclick = () => setVal(b.dataset.inc, (+cfg[b.dataset.inc]) + (+b.dataset.step)));
   pop.querySelectorAll('.indtb-val').forEach((inp) => inp.onchange = () => { const nv = parseFloat(inp.value); if (isFinite(nv)) setVal(inp.dataset.val, nv); else inp.value = cfg[inp.dataset.val]; });
+  pop.querySelectorAll('.indtb-slider').forEach((sl) => sl.oninput = () => setVal(sl.dataset.slider, parseFloat(sl.value)));
 }
 function ubicarPop(pop, anchor) {
   const r = anchor.getBoundingClientRect();
