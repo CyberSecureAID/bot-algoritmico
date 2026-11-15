@@ -6,7 +6,7 @@
 
    Export: abrirOrderBlock()
 */
-import * as D from './datos.js?v=8';
+import * as D from './datos.js?v=9';
 /* Reutilizamos la infraestructura YA probada de la plataforma: caché compartida de
    logos (misma que Multichart/VWAP Pro), velas y stream en vivo, y el catálogo PARES/TFS. */
 import { logos as sharedLogos, PARES as SP, TFS, velas as velasReal, streamVelas } from '../trading-demo/datos.js?v=2';
@@ -25,6 +25,10 @@ const COLN=[6,5,4,3];
 const LIB=new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 function lib(){ return window.LightweightCharts?Promise.resolve(window.LightweightCharts):new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=LIB; s.onload=()=>res(window.LightweightCharts); s.onerror=rej; document.head.appendChild(s); }); }
 let LC=null, mChart=null, mSeries=null, mTF='1d', mCoin=null, mKl=[], mVP=null, mRO=null, mRAF=0, mStream=null, mMenuDoc=null, mSR=[];
+let mDepthStream=null, mHeat=[], mHeatMax=1, mMode='vp';   // heatmap de profundidad tipo Bookmap (modal)
+function onModalDepth(d){ if(!d||!d.bids.length||!d.asks.length)return;
+  mHeat.push({bids:d.bids.slice(0,20),asks:d.asks.slice(0,20)}); if(mHeat.length>70)mHeat.shift();
+  for(const b of d.bids)if(b[1]>mHeatMax)mHeatMax=b[1]; for(const a of d.asks)if(a[1]>mHeatMax)mHeatMax=a[1]; mHeatMax*=0.999; }
 
 /* ===== estado del modulo ===== */
 let ov=null, cv=null, ctx=null, GL=null, glx=null, SB=null, sbx=null, RAF=0, stream=null, booted=false;
@@ -39,6 +43,9 @@ function tapePush(cls,label,coin,size,extra){ const t=document.getElementById('o
   t.insertBefore(el,t.firstChild); while(t.children.length>9)t.removeChild(t.lastChild); }
 function onChainWhale(m){ if(!m||!(m.amount>0))return; const now=performance.now(); if(now-_chainCool<1500)return; _chainCool=now;
   const sh=a=>a?(a.slice(0,5)+'…'+a.slice(-4)):'unknown'; tapePush('chain','ON-CHAIN','BTC',m.amount.toFixed(1)+' BTC',sh(m.from)+' → '+sh(m.to)); }
+let liqStream=null, _liqCool=0;
+function onLiq(l){ if(!l||!(l.usd>=30000))return; const now=performance.now(); if(now-_liqCool<800)return; _liqCool=now;
+  tapePush('liq', l.longLiq?'LIQ LONG':'LIQ SHORT', l.symbol.replace('USDT',''), '$'+fmtVol(l.usd)); }
 async function refrescarPulso(){ const p=document.getElementById('ob-pulse'); if(!p)return;
   let fng=null,gl=null; try{ fng=await D.fearGreed(); }catch(_){} try{ gl=await D.globalMkt(); }catch(_){}
   const fcol=v=>v>=75?'#2BF59E':v>=55?'#9fe06a':v>=45?'#E8B84B':v>=25?'#ff9f43':'#FF4D6E'; let html='';
@@ -624,6 +631,7 @@ function estilos(){
   .ob-wp.buy{color:#9effc9} .ob-wp.buy .dot{background:#2BF59E;box-shadow:0 0 7px #2BF59E}
   .ob-wp.sell{color:#ffb3c0} .ob-wp.sell .dot{background:#FF4D6E;box-shadow:0 0 7px #FF4D6E}
   .ob-wp.chain{color:#bfe0ff} .ob-wp.chain .dot{background:#2191D9;box-shadow:0 0 7px #2191D9}
+  .ob-wp.liq{color:#ffd98a} .ob-wp.liq .dot{background:#E8B84B;box-shadow:0 0 7px #E8B84B}
   .ob-wp .sz{color:#eef4fb} .ob-wp b{font-weight:800}
   .ob-pulse{flex:0 0 auto;display:flex;align-items:center;gap:14px;font:700 11px 'IBM Plex Mono',monospace;color:#9aa6b2}
   .ob-pulse .k{color:#6b7784;font:800 9px 'Saira Condensed',sans-serif;letter-spacing:.1em;margin-right:4px}
@@ -792,6 +800,7 @@ export async function abrirOrderBlock(){
   try{ tradeStream=D.streamTrades(COINS.slice(0,18).map(c=>c.symbol), onTrade); }catch(_){}   // ballenas + flujo real
   try{ depthStream=D.streamDepth('BTCUSDT', onDepth); }catch(_){}   // libro de órdenes real (referencia del mercado)
   try{ chainStream=D.streamChainWhales(onChainWhale, 50); }catch(_){}   // ballenas on-chain de BTC (origen -> destino)
+  try{ liqStream=D.streamLiquidations(COINS.slice(0,15).map(c=>c.symbol), onLiq); }catch(_){}   // liquidaciones en vivo (Bybit)
   refrescarPulso(); Z._pulsoTimer=setInterval(refrescarPulso, 90000);   // Fear & Greed + mercado global
   refrescarNiveles(); precargarMinis();
   Z._nivTimer=setInterval(refrescarNiveles, 70000);
@@ -816,6 +825,7 @@ function onClick(e){ const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my
 function cerrarDetalle(){ try{ if(mRO)mRO.disconnect(); }catch(_){} mRO=null;
   if(mRAF){ cancelAnimationFrame(mRAF); mRAF=0; }
   try{ if(mStream)mStream.cerrar(); }catch(_){} mStream=null;
+  try{ if(mDepthStream)mDepthStream.cerrar(); }catch(_){} mDepthStream=null; mHeat=[]; mMode='vp';
   if(mMenuDoc){ document.removeEventListener('click',mMenuDoc); mMenuDoc=null; }
   try{ if(mChart)mChart.remove(); }catch(_){} mChart=mSeries=null; mVP=null; mKl=[]; mCoin=null; mSR=[];
   const w=document.getElementById('ob-mwrap'); if(w)w.remove();
@@ -833,6 +843,7 @@ async function abrirDetalle(c){
       <span class="pc" id="ob-mpc" style="color:${colc}"></span>
       <span class="pr" id="ob-mpr"></span>
       <div class="ob-tfwrap"><button class="ob-chip" id="ob-tfchip"></button><div class="ob-tfmenu" id="ob-tfmenu"></div></div>
+      <button class="ob-chip" id="ob-heat" title="Toggle depth heatmap (Bookmap)">VP ▦</button>
       <div class="ob-msp"></div>
       <button class="ob-mx" id="ob-mfs" title="Fullscreen">${IC.full}</button>
       <button class="ob-mx" id="ob-mx" title="Close">${IC.x}</button>
@@ -863,6 +874,9 @@ async function abrirDetalle(c){
   mMenuDoc=()=>menu.classList.remove('open'); document.addEventListener('click',mMenuDoc);
   menu.querySelectorAll('button').forEach(b=>b.onclick=()=>{ mTF=b.dataset.tf;
     menu.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); pintarChip(); menu.classList.remove('open'); cargarChart(); });
+  // alternar perfil de volumen <-> heatmap de profundidad (Bookmap)
+  mMode='vp'; mHeat=[]; const heatBtn=document.getElementById('ob-heat');
+  heatBtn.onclick=()=>{ mMode=(mMode==='vp')?'heat':'vp'; heatBtn.textContent=(mMode==='heat')?'HEAT ▦':'VP ▦'; heatBtn.classList.toggle('on',mMode==='heat'); };
   try{ LC=await lib(); }catch(_){ const h=document.getElementById('ob-mchart'); if(h)h.innerHTML='<div style="display:grid;place-items:center;height:100%;color:#7d8794;font-family:sans-serif">No se pudo cargar el grafico.</div>'; return; }
   crearChart(); cargarChart();
 }
@@ -892,6 +906,8 @@ async function cargarChart(){ if(!mSeries||!mCoin)return;
   try{ mStream=streamVelas(sym,tf,k=>{ if(!mSeries||mTF!==tf||!mCoin||mCoin.symbol!==sym)return;
     try{ mSeries.update({ time:Math.floor(k.t/1000), open:+k.o, high:+k.h, low:+k.l, close:+k.c }); }catch(_){}
     const pr=document.getElementById('ob-mpr'); if(pr)pr.textContent='$'+fmtP(+k.c); }); }catch(_){}
+  // profundidad de ESTA moneda para el heatmap tipo Bookmap (una vez por modal)
+  if(!mDepthStream){ try{ mDepthStream=D.streamDepth(sym, onModalDepth); }catch(_){} }
 }
 // Paleta de calor por escalones (misma lógica que el mapa de Liquidity Pools):
 // azul = poco volumen, verde = medio, amarillo = alto, naranja/rojo = los muros de liquidez.
@@ -904,7 +920,18 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
   const x=cv2.getContext('2d'); x.setTransform(d,0,0,d,0,0); x.clearRect(0,0,w,h);
   let axisW=58; try{ axisW=mChart.priceScale('right').width()||58; }catch(_){}
   const plotR=w-axisW-2, T2=performance.now()*0.001, {lo,hi,N,bins,poc,mx}=mVP;
-  if(hi>lo){
+  // HEATMAP de profundidad tipo Bookmap: cada columna es una foto del libro en el tiempo
+  // (recientes a la derecha), cada celda coloreada por la liquidez en reposo a ese precio.
+  if(hi>lo && mMode==='heat' && mHeat.length>1){
+    let yTop=null,yBot=null; try{ yTop=mSeries.priceToCoordinate(hi); yBot=mSeries.priceToCoordinate(lo); }catch(_){}
+    if(yTop!=null&&yBot!=null){ const heatW=plotR*0.5, x0h=plotR-heatW, cw=heatW/70, rng=hi-lo;
+      const yAt=p=>yTop+(hi-p)/rng*(yBot-yTop), mxh=mHeatMax||1;
+      for(let c=0;c<mHeat.length;c++){ const snap=mHeat[c], cx=x0h+c*cw;
+        for(const b of snap.bids){ const y=yAt(b[0]); if(y<-4||y>h+4)continue; const a=clamp(b[1]/mxh,0.05,0.92); x.fillStyle=`rgba(43,245,158,${a.toFixed(2)})`; x.fillRect(cx,y-1.3,Math.max(1,cw-0.3),2.6); }
+        for(const a2 of snap.asks){ const y=yAt(a2[0]); if(y<-4||y>h+4)continue; const al=clamp(a2[1]/mxh,0.05,0.92); x.fillStyle=`rgba(255,77,110,${al.toFixed(2)})`; x.fillRect(cx,y-1.3,Math.max(1,cw-0.3),2.6); } }
+      x.font='800 9px "IBM Plex Mono",monospace'; x.fillStyle='rgba(150,165,180,.85)'; x.textAlign='left'; x.textBaseline='top'; x.fillText('DEPTH HEATMAP · '+mCoin.symbol.replace('USDT','')+' · LIVE',x0h,4); x.textBaseline='alphabetic'; }
+  }
+  if(hi>lo && mMode!=='heat'){
     // PERFIL DE VOLUMEN profesional: longitud de barra = volumen real en ese nivel, con
     // contraste alto -> los HVN (mucha liquidez) sobresalen y los LVN (poca) casi no se ven.
     // Value Area 70% en caja, POC/VAH/VAL con líneas de referencia. Estructura, no brocha.
@@ -1033,6 +1060,7 @@ function cerrar(){
   try{ if(tradeStream)tradeStream.cerrar(); }catch(_){} tradeStream=null;
   try{ if(depthStream)depthStream.cerrar(); }catch(_){} depthStream=null;
   try{ if(chainStream)chainStream.cerrar(); }catch(_){} chainStream=null;
+  try{ if(liqStream)liqStream.cerrar(); }catch(_){} liqStream=null;
   if(Z._pulsoTimer){ clearInterval(Z._pulsoTimer); Z._pulsoTimer=null; }
   window.removeEventListener('resize',onResize);
   document.removeEventListener('visibilitychange',onVis); paused=false;

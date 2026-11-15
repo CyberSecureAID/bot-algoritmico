@@ -111,6 +111,29 @@ export function streamTrades(symbols, onTrade) {
   return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
 }
 
+/* ---- Liquidaciones en vivo (Bybit, público y sin key; US puede usar su WS de datos) ----
+   Bybit hizo públicas sus liquidaciones. Topic allLiquidation.<symbol>. onLiq entrega
+   { symbol, side, qty, price, usd, longLiq }. longLiq=true -> se liquidó un LARGO. */
+export function streamLiquidations(symbols, onLiq) {
+  const syms = (symbols || ['BTCUSDT']).slice(0, 15);
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket('wss://stream.bybit.com/v5/public/linear'); } catch (_) { reintentar(); return; }
+    ws.onopen = () => { try { ws.send(JSON.stringify({ op: 'subscribe', args: syms.map((s) => 'allLiquidation.' + s) })); } catch (_) {} };
+    ws.onmessage = (ev) => {
+      try { const m = JSON.parse(ev.data); if (!m.topic || m.topic.indexOf('allLiquidation') < 0 || !m.data) return;
+        (Array.isArray(m.data) ? m.data : [m.data]).forEach((d) => { const p = +d.p, v = +d.v; if (!(p > 0) || !(v > 0)) return;
+          onLiq({ symbol: d.s, side: d.S, qty: v, price: p, usd: p * v, longLiq: d.S === 'Sell' }); }); } catch (_) {}
+    };
+    ws.onclose = () => { if (!cerrado) reintentar(); };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  const reintentar = () => { clearTimeout(tmr); tmr = setTimeout(abrir, 3000); };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
+}
+
 /* ---- Índice Fear & Greed (alternative.me, gratis, sin key, con CORS) ---- */
 let _fng = null, _fngT = 0;
 export async function fearGreed() {
