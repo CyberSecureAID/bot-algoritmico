@@ -133,12 +133,24 @@ export async function logosPorSimbolo() {
   if (_logos) return _logos;
   try { const g = JSON.parse(localStorage.getItem(CLAVE_LOGOS)); if (g && Date.now() - g.cuando < 86400000) { _logos = g.datos; return _logos; } } catch (_) {}
   try {
-    const j = await traer('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1');
+    const base = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250';
+    const [p1, p2] = await Promise.all([traer(base + '&page=1'), traer(base + '&page=2').catch(() => [])]);
     _logos = {};
-    j.forEach((x) => { if (x.symbol) _logos[String(x.symbol).toUpperCase()] = x.image; });
+    [p1, p2].forEach((arr) => { if (Array.isArray(arr)) arr.forEach((x) => { const s = x.symbol && String(x.symbol).toUpperCase(); if (s && !_logos[s]) _logos[s] = x.image; }); });
     try { localStorage.setItem(CLAVE_LOGOS, JSON.stringify({ cuando: Date.now(), datos: _logos })); } catch (_) {}
   } catch (_) { _logos = _logos || {}; }
   return _logos;
+}
+
+/* ---- volumen 24h REAL por exchange (CoinGecko) para el panel de fuentes ---- */
+let _ex=null;
+export async function exchanges() {
+  if (_ex) return _ex;
+  try {
+    const j = await traer('https://api.coingecko.com/api/v3/exchanges?per_page=100&page=1');
+    _ex = (j || []).map((x) => ({ id: x.id, name: x.name || '', volBtc: +x.trade_volume_24h_btc || 0, image: x.image || '' }));
+  } catch (_) { _ex = []; }
+  return _ex;
 }
 
 /* ---- mapa de sector por moneda (editable) ---- */
