@@ -6,7 +6,7 @@
 
    Export: abrirOrderBlock()
 */
-import * as D from './datos.js?v=3';
+import * as D from './datos.js?v=4';
 /* Reutilizamos la infraestructura YA probada de la plataforma: caché compartida de
    logos (misma que Multichart/VWAP Pro), velas y stream en vivo, y el catálogo PARES/TFS. */
 import { logos as sharedLogos, PARES as SP, TFS, velas as velasReal, streamVelas } from '../trading-demo/datos.js?v=2';
@@ -30,7 +30,15 @@ let LC=null, mChart=null, mSeries=null, mTF='1d', mCoin=null, mKl=[], mVP=null, 
 let ov=null, cv=null, ctx=null, GL=null, glx=null, SB=null, sbx=null, RAF=0, stream=null, booted=false;
 let W=0,H=0,DPR=1,PW=0,PH=0,SBW=1,SBH=1, DM=null, split=0.5, T=0, last=0, paused=false;
 let COINS=[], green=[], red=[], strands=[], strandsFaint=[], hist=[];
-const Z={}, mouse={x:-1,y:-1,on:false}, LOGO={}, EXVOL={}, EXIMG={};
+const Z={}, mouse={x:-1,y:-1,on:false}, LOGO={}, EXVOL={}, EXIMG={}, EXMETA={};
+/* Iconos de moneda: spothq en GitHub (POR TICKER, con CORS -> no ensucia el canvas y SÍ carga),
+   igual que Multichart/Heat Pool. Respaldo a la URL de CoinGecko (sin CORS: se pinta igual,
+   el export ya excluye logos). Esta es la razón por la que ahora sí aparecen. */
+const SPOT='https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/';
+function imgLogo(ticker, cgUrl){ const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous';
+  im.onerror=function(){ if(im._fb){ im.onerror=null; return; } im._fb=1; if(cgUrl){ im.crossOrigin=null; im.src=cgUrl; } else { im.onerror=null; } };
+  im.src=SPOT+String(ticker||'').toLowerCase()+'.png'; return im; }
+function imgPlain(url){ const im=new Image(); im.referrerPolicy='no-referrer'; im.src=url; return im; }
 let EXREADY=false, _exporting=false;
 const fmtVol=v=>v>=1e9?(v/1e9).toFixed(1)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v.toFixed(0);
 
@@ -250,6 +258,8 @@ function exchangeCards(g){ const order=Z.exchOrder||[], n=order.length, gap=5, t
   const col=net>=0?VERDE:ROSA;                 // color por direccion real del mercado
   order.forEach((ei,i)=>{ const e=EXCH[ei], x=Z.secX, y=Z.y0+i*(ch+gap), w=Z.secW;
     rr(g,x,y,w,ch,6); g.fillStyle='rgba(11,18,26,.85)'; g.fill(); g.strokeStyle=hexA(col,.26); g.lineWidth=1; g.stroke();
+    const ez=(Z.exZoom&&Z.exZoom[ei])||0;
+    if(ez>0.01){ g.save(); g.shadowColor=hexA(col,.5); g.shadowBlur=14*ez; rr(g,x,y,w,ch,6); g.strokeStyle=hexA(col,0.5+0.45*ez); g.lineWidth=1+1.6*ez; g.stroke(); g.restore(); }
     const chip=Math.min(22,ch*0.52), cyh=y+(ch-chip)/2; logoExch(g,ei,x+8,cyh,chip);
     const tx=x+8+chip+9;
     g.fillStyle='#eaf0f6'; g.font='700 14px "Saira Condensed",sans-serif'; g.textAlign='left'; g.fillText(e[0],tx,y+ch*0.44);
@@ -258,6 +268,22 @@ function exchangeCards(g){ const order=Z.exchOrder||[], n=order.length, gap=5, t
     const frac=maxv?vol/maxv:0, bw2=w-(tx-x)-9, cy=y+ch-10, chh=Math.min(7,ch*0.2);
     g.fillStyle='rgba(255,255,255,.07)'; rr(g,tx,cy,bw2,chh,1.5); g.fill();
     g.fillStyle=col; g.globalAlpha=.9; rr(g,tx,cy,Math.max(2,bw2*frac),chh,1.5); g.fill(); g.globalAlpha=1; }); }
+/* tarjeta emergente del exchange al pasar el cursor: datos REALES (CoinGecko) útiles para un trader */
+function exchPopup(g){ const ei=Z.exHover; if(ei==null||ei<0)return; const order=Z.exchOrder||[], idx=order.indexOf(ei); if(idx<0)return;
+  const e=EXCH[ei], m=EXMETA[ei]||{}, gap=5, tot=Z.y1-Z.y0, n=order.length, ch=(tot-gap*Math.max(0,n-1))/Math.max(1,n);
+  const ry=Z.y0+idx*(ch+gap);
+  const pw=218, ph=152, px=Z.secX+Z.secW+12, py=clamp(ry-8,Z.y0,Math.max(Z.y0,H-ph-8));
+  g.save(); g.shadowColor='rgba(0,0,0,.6)'; g.shadowBlur=24; rr(g,px,py,pw,ph,12); g.fillStyle='rgba(12,18,26,.985)'; g.fill(); g.restore();
+  rr(g,px,py,pw,ph,12); g.strokeStyle=hexA(AZUL,.5); g.lineWidth=1.2; g.stroke();
+  cornerMarks(g,px,py,pw,ph,12,hexA(AZUL,.6),1.4);
+  const chip=30, cyh=py+14; logoExch(g,ei,px+14,cyh,chip);
+  g.textBaseline='alphabetic'; g.textAlign='left';
+  g.fillStyle='#eef4fb'; g.font='800 17px "Saira Condensed",sans-serif'; g.fillText(e[0],px+14+chip+10,py+26);
+  g.fillStyle='rgba(125,135,148,.9)'; g.font='600 9px "Saira Condensed",sans-serif'; g.fillText('EXCHANGE · 24H DATA',px+14+chip+10,py+39);
+  const rows=[['24h Volume', m.volUsd? '$'+fmtVol(m.volUsd):'—'], ['Trust rank', m.rank? '#'+m.rank:'—'], ['Trust score', m.trust? m.trust+' / 10':'—'], ['Established', m.year? String(m.year):'—'], ['Country', m.country||'—']];
+  let yy=py+62; rows.forEach(([k,v])=>{ g.strokeStyle='rgba(255,255,255,.05)'; g.lineWidth=1; g.beginPath(); g.moveTo(px+14,yy+5); g.lineTo(px+pw-14,yy+5); g.stroke();
+    g.fillStyle='rgba(150,162,175,.92)'; g.font='600 12px "Saira Condensed",sans-serif'; g.textAlign='left'; g.fillText(k,px+14,yy);
+    g.fillStyle='#e6edf4'; g.font='600 12px "IBM Plex Mono",monospace'; g.textAlign='right'; g.fillText(v,px+pw-14,yy); yy+=18; }); g.textAlign='left'; }
 
 /* ===== tarjeta ===== */
 function logoChip(g,c,x,y,chip,col,hi){
@@ -288,39 +314,26 @@ function card(g,c){ const up=c._up, col=up?VERDE:ROSA, hi=up?VHI:RHI, hl=c._hl||
   const chip=clamp(h*0.2,14,24); logoChip(g,c,x+pad,y+pad,chip,col,hi);
   const tx=x+pad+chip+8, fs=clamp(h*0.14,12,ci>=2?20:15);
   g.fillStyle='#eef5fb'; g.font=`700 ${fs}px "Saira Condensed",sans-serif`; g.fillText(c.sym||'—',tx,y+pad+fs*0.82);
-  g.fillStyle=col; g.font=`600 ${fs*0.76}px "IBM Plex Mono",monospace`; g.fillText((c.disp>=0?'+':'')+c.disp.toFixed(2)+'%',tx,y+pad+fs*0.82+fs*0.82);
-  const headB=y+pad+chip+6, vx=x+pad, vy=headB, vw=w-pad*2, vh=y+h-pad-7-vy;
-  if(vh>16){
-    // etiqueta de nivel a una Y absoluta (precio real), ▼ resistencia / ▲ soporte
-    const tag=(price,ly,tg,tcol)=>{ if(!(price>0))return;
-      g.strokeStyle=tg?hexA(tcol,.9):'rgba(255,255,255,.9)'; g.setLineDash(tg?[]:[3,3]); g.lineWidth=tg?1.5:1.1;
-      g.beginPath(); g.moveTo(vx,ly); g.lineTo(vx+vw,ly); g.stroke(); g.setLineDash([]);
-      const t=fmtP(price); g.font='600 10px "IBM Plex Mono",monospace'; const pw=g.measureText(t).width+(tg?18:11);
-      rr(g,vx+vw-pw,ly-7,pw,14,3); g.fillStyle='rgba(236,243,249,.96)'; g.fill();
-      if(tg){ g.fillStyle=tcol; g.font='800 9px "Saira Condensed",sans-serif'; g.textBaseline='middle'; g.fillText(tg,vx+vw-pw+4,ly); }
-      g.fillStyle='#0a1510'; g.font='600 10px "IBM Plex Mono",monospace'; g.textAlign='right'; g.textBaseline='middle'; g.fillText(t,vx+vw-4,ly); g.textAlign='left'; g.textBaseline='alphabetic'; };
-    const showMini = z>0.35 && c._mini && c._mini.length>=2;
-    if(showMini){
-      // mini gráfica diaria con velas REALES dentro del zoom del hover
-      const data=c._mini.slice(-46); let mlo=Infinity,mhi=-Infinity;
-      data.forEach(k=>{ if(k.low<mlo)mlo=k.low; if(k.high>mhi)mhi=k.high; });
-      if(mhi>mlo){ const n=data.length, cw=vw/n, bw=Math.max(1,cw*0.6), yOf=p=>vy+vh-((p-mlo)/(mhi-mlo))*vh;
-        for(let i=0;i<n;i++){ const k=data[i], u2=k.close>=k.open, cc=u2?VERDE:ROSA, cx2=vx+i*cw+cw/2;
-          g.strokeStyle=cc; g.globalAlpha=.85; g.lineWidth=1; g.beginPath(); g.moveTo(cx2,yOf(k.high)); g.lineTo(cx2,yOf(k.low)); g.stroke();
-          const oy=yOf(k.open),cyy=yOf(k.close),bt=Math.min(oy,cyy),bh2=Math.max(1,Math.abs(cyy-oy)); g.fillStyle=cc; g.globalAlpha=u2?.9:.82; g.fillRect(cx2-bw/2,bt,bw,bh2); }
-        g.globalAlpha=1;
-        const cy=p=>yOf(clamp(p,mlo,mhi));
-        if(c.res>0) tag(c.res,cy(c.res),'▼',ROSA);
-        if(c.sup>0) tag(c.sup,cy(c.sup),'▲',VERDE);
-      }
-    } else if(c.vp && c.vp.length){
-      const rows=clamp(Math.round(vh/2.4),12,64), rh=vh/rows, M=c.vp.length, maxv=Math.max.apply(null,c.vp)||1;
-      let poc=0,pm=-1; for(let i=0;i<rows;i++){ const vv=c.vp[Math.min(M-1,(i/rows*M)|0)]; if(vv>pm){pm=vv;poc=i;} }
-      for(let i=0;i<rows;i++){ const vv=c.vp[Math.min(M-1,(i/rows*M)|0)], ob=Math.abs(i-poc)<=2, len=(vv/maxv)*vw;
-        g.fillStyle=ob?hi:col; g.globalAlpha=ob?0.85:0.28; g.fillRect(vx,vy+i*rh,Math.max(1.2,len),Math.max(1,rh*0.5)); } g.globalAlpha=1;
-      // resistencia = liquidez bajista (▼ rojo); soporte = liquidez alcista (▲ verde); precio actual al centro
-      if(vh>=46 || z>0.5){ tag(c.res,vy+0.15*vh,'▼',ROSA); tag(c.cur,vy+0.5*vh,null,null); tag(c.sup,vy+0.85*vh,'▲',VERDE); }
-      else { tag(c.cur,vy+0.5*vh,null,null); }
+  g.fillStyle=col; g.font=`600 ${fs*0.76}px "IBM Plex Mono",monospace`; g.textAlign='left'; g.fillText((c.disp>=0?'+':'')+c.disp.toFixed(2)+'%',tx,y+pad+fs*0.82+fs*0.82);
+  // precio actual a la derecha del encabezado
+  const pr=c.price||c.cur||0; if(pr>0){ g.fillStyle='#cdd7e2'; g.font=`600 ${clamp(fs*0.72,10,14)}px "IBM Plex Mono",monospace`; g.textAlign='right'; g.fillText('$'+fmtP(pr),x+w-pad,y+pad+fs*0.82); g.textAlign='left'; }
+  // cuerpo: SOLO la mini gráfica diaria cuando hay zoom (precargada -> sin el parpadeo del perfil).
+  // En reposo la tarjeta queda limpia: logo, nombre, precio y %.
+  const vx=x+pad, vy=y+pad+chip+8, vw=w-pad*2, vh=y+h-pad-7-vy;
+  if(z>0.35 && vh>16 && c._mini && c._mini.length>=2){
+    const data=c._mini.slice(-46); let mlo=Infinity,mhi=-Infinity;
+    data.forEach(k=>{ if(k.low<mlo)mlo=k.low; if(k.high>mhi)mhi=k.high; });
+    if(mhi>mlo){ const n=data.length, cw=vw/n, bw=Math.max(1,cw*0.6), yOf=p=>vy+vh-((p-mlo)/(mhi-mlo))*vh;
+      for(let i=0;i<n;i++){ const k=data[i], u2=k.close>=k.open, cc=u2?VERDE:ROSA, cx2=vx+i*cw+cw/2;
+        g.strokeStyle=cc; g.globalAlpha=.85; g.lineWidth=1; g.beginPath(); g.moveTo(cx2,yOf(k.high)); g.lineTo(cx2,yOf(k.low)); g.stroke();
+        const oy=yOf(k.open),cyy=yOf(k.close),bt=Math.min(oy,cyy),bh2=Math.max(1,Math.abs(cyy-oy)); g.fillStyle=cc; g.globalAlpha=u2?.9:.82; g.fillRect(cx2-bw/2,bt,bw,bh2); }
+      g.globalAlpha=1;
+      const mlvl=(price,tcol,tg)=>{ if(!(price>0)||price<mlo||price>mhi)return; const ly=yOf(price);
+        g.strokeStyle=hexA(tcol,.85); g.setLineDash([3,3]); g.lineWidth=1; g.beginPath(); g.moveTo(vx,ly); g.lineTo(vx+vw,ly); g.stroke(); g.setLineDash([]);
+        const t=fmtP(price); g.font='600 10px "IBM Plex Mono",monospace'; const pw=g.measureText(t).width+16; rr(g,vx+vw-pw,ly-7,pw,14,3); g.fillStyle='rgba(236,243,249,.96)'; g.fill();
+        g.fillStyle=tcol; g.font='800 9px "Saira Condensed",sans-serif'; g.textBaseline='middle'; g.fillText(tg,vx+vw-pw+3,ly);
+        g.fillStyle='#0a1510'; g.font='600 10px "IBM Plex Mono",monospace'; g.textAlign='right'; g.fillText(t,vx+vw-4,ly); g.textAlign='left'; g.textBaseline='alphabetic'; };
+      if(c.res>0) mlvl(c.res,ROSA,'▼'); if(c.sup>0) mlvl(c.sup,VERDE,'▲');
     }
   }
 }
@@ -346,6 +359,11 @@ function hover(){ strands.forEach(s=>s.hl=Math.max(0,s.hl-0.08)); COINS.forEach(
   if(tgt){ tgt._hl=1;
     if(!tgt._mini && !tgt._miniBusy){ tgt._miniBusy=true;      // velas diarias REALES para la mini gráfica del hover
       D.velas(tgt.symbol,'1d',46).then(k=>{ tgt._mini=(k&&k.length)?k:[]; }).catch(()=>{ tgt._mini=[]; }); } }
+  // hover sobre el panel de exchanges (zoom de la fila + tarjeta de info real)
+  Z.exZoom=Z.exZoom||{}; Z.exHover=-1;
+  { const order=Z.exchOrder||[], nn=order.length, gp=5, tt=Z.y1-Z.y0, chh=(tt-gp*Math.max(0,nn-1))/Math.max(1,nn);
+    if(mouse.on && mouse.x>=Z.secX && mouse.x<=Z.secX+Z.secW){ for(let i=0;i<nn;i++){ const yy=Z.y0+i*(chh+gp); if(mouse.y>=yy&&mouse.y<=yy+chh){ Z.exHover=order[i]; break; } } }
+    order.forEach(ei=>{ const to=(ei===Z.exHover)?1:0; Z.exZoom[ei]=(Z.exZoom[ei]||0)+(to-(Z.exZoom[ei]||0))*0.2; if(Z.exZoom[ei]<0.001)Z.exZoom[ei]=0; }); }
   if(!mouse.on)return;
   if(mouse.x>Z.funX0-20&&mouse.x<Z.barX0+30){ let best=null,bd=1e9;
     strands.forEach(s=>{ const pts=strandPath(s); for(let i=0;i<pts.length;i+=4){ const dx=pts[i][0]-mouse.x,dy=pts[i][1]-mouse.y,d=dx*dx+dy*dy; if(d<bd){bd=d;best=s;} } });
@@ -364,7 +382,7 @@ function renderOnce(){
   sbx.setTransform(1,0,0,1,0,0); sbx.clearRect(0,0,SBW,SBH); sbx.imageSmoothingEnabled=true; sbx.drawImage(GL,0,0,PW,PH,0,0,SBW,SBH);
   ctx.save(); ctx.filter='blur(2px)'; ctx.globalAlpha=0.6; ctx.imageSmoothingEnabled=true; ctx.drawImage(SB,0,0,SBW,SBH,0,0,PW,PH); ctx.restore();
   ctx.globalAlpha=1; ctx.drawImage(GL,0,0); ctx.setTransform(DPR,0,0,DPR,0,0);
-  thermo(ctx); exchangeCards(ctx); drawCards(ctx); header(ctx);
+  thermo(ctx); exchangeCards(ctx); drawCards(ctx); header(ctx); exchPopup(ctx);
 }
 function frame(now){ const dt=Math.min(0.05,(now-last)/1000||0.016); last=now; tick(dt); hover(); renderOnce(); RAF=requestAnimationFrame(frame); }
 
@@ -386,26 +404,30 @@ async function refrescarNiveles(){ if(_nivBusy)return; _nivBusy=true;
       await new Promise(r=>setTimeout(r,60)); }      // escalonado, no satura la API
   } finally{ _nivBusy=false; }
 }
-function cargarImg(url){ const im=new Image(); im.crossOrigin='anonymous'; im.referrerPolicy='no-referrer'; im.src=url; return im; }
+let _miniBusy=false;
+// precarga las velas diarias de las tarjetas visibles para que la mini gráfica del hover
+// aparezca al instante (sin el parpadeo del perfil de volumen).
+async function precargarMinis(){ if(_miniBusy)return; _miniBusy=true;
+  try{ const vis=tarjetasVisibles();
+    for(const c of vis){ if(c._mini)continue; try{ const k=await D.velas(c.symbol,'1d',46); c._mini=(k&&k.length)?k:[]; }catch(_){ c._mini=c._mini||[]; }
+      await new Promise(r=>setTimeout(r,45)); }
+  } finally{ _miniBusy=false; }
+}
 async function cargarLogos(){
-  // 1) caché COMPARTIDA de la plataforma (misma que Multichart/VWAP Pro, ya poblada,
-  //    sin volver a pegarle a CoinGecko -> por eso ahora sí aparecen). 2) respaldo propio.
   let cg={}, m={};
   try{ cg=await sharedLogos(); }catch(_){ cg={}; }
   try{ m=await D.logosPorSimbolo(); }catch(_){ m={}; }
   COINS.forEach(c=>{ if(!_symUrl[c.sym]){ const u=(PARMAP[c.sym]&&cg[PARMAP[c.sym]])||m[c.sym]; if(u)_symUrl[c.sym]=u; } });
   Object.values(EXTOKEN).forEach(sym=>{ if(!_symUrl[sym]){ const u=(PARMAP[sym]&&cg[PARMAP[sym]])||m[sym]; if(u)_symUrl[sym]=u; } });
-  COINS.forEach(c=>{ const u=_symUrl[c.sym]; if(u && !LOGO[c.sym]) LOGO[c.sym]=cargarImg(u); });
-  // DEX (Uniswap, PancakeSwap, Curve, Raydium) no tienen logo de exchange -> usamos el
-  // logo de su token. Rellena solo los que cargarExchanges dejó sin imagen.
-  EXCH.forEach((e,i)=>{ if(EXIMG[i])return; const tk=EXTOKEN[e[0]], u=tk&&_symUrl[tk]; if(u) EXIMG[i]=cargarImg(u); }); }
+  COINS.forEach(c=>{ if(!LOGO[c.sym]) LOGO[c.sym]=imgLogo(c.sym,_symUrl[c.sym]); });   // spothq por ticker + respaldo CoinGecko
+  EXCH.forEach((e,i)=>{ if(EXIMG[i])return; const tk=EXTOKEN[e[0]]; if(tk) EXIMG[i]=imgLogo(tk,_symUrl[tk]); }); }  // DEX -> icono del token
 async function cargarExchanges(){ let list=[]; try{ list=await D.exchanges(); }catch(_){ list=[]; }
   const btc=((COINS.find(c=>c.sym==='BTC')||{}).price)||0;
   EXCH.forEach((e,i)=>{ const first=e[0].toLowerCase().split(' ')[0];
     let best=null; for(const x of list){ const xn=(x.name||'').toLowerCase(); if(xn.indexOf(first)>=0){ if(!best||x.volBtc>best.volBtc)best=x; } }
-    if(best) EXVOL[i]=best.volBtc*(btc||1);
-    if(!EXIMG[i]){ let src=(best&&best.image)||''; if(!src){ const tk=EXTOKEN[e[0]]; if(tk&&_symUrl[tk])src=_symUrl[tk]; } // DEX -> logo de su token
-      if(src) EXIMG[i]=cargarImg(src); } });
+    if(best){ EXVOL[i]=best.volBtc*(btc||1); EXMETA[i]={rank:best.rank,trust:best.trust,year:best.year,country:best.country,volUsd:EXVOL[i]}; }
+    if(!EXIMG[i]){ if(best&&best.image){ EXIMG[i]=imgPlain(best.image); }      // marca del exchange (sin CORS: se pinta, el export excluye logos)
+      else { const tk=EXTOKEN[e[0]]; if(tk) EXIMG[i]=imgLogo(tk,_symUrl[tk]); } } });  // DEX -> icono del token
   EXREADY=true; if(cv) buildStrands(); }
 
 /* ===== estilos + overlay ===== */
@@ -537,11 +559,11 @@ export async function abrirOrderBlock(){
   booted=false; boot();
   cargarLogos(); cargarExchanges();
   try{ stream=D.streamMini(aplicarTick); }catch(_){}
-  refrescarNiveles();
+  refrescarNiveles(); precargarMinis();
   Z._nivTimer=setInterval(refrescarNiveles, 70000);
   // el mercado se mira en vivo: cada poco re-selecciona qué monedas entran en la cascada,
   // así afloran oportunidades nuevas (no se queda rígido). Respeta hover y modal abiertos.
-  Z._cardTimer=setInterval(()=>{ if(!ov||!cv)return; if(document.getElementById('ob-mwrap'))return; if(mouse.on)return; buildCards(); placeCards(); }, 12000);
+  Z._cardTimer=setInterval(()=>{ if(!ov||!cv)return; if(document.getElementById('ob-mwrap'))return; if(mouse.on)return; buildCards(); placeCards(); precargarMinis(); }, 9000);
   document.addEventListener('visibilitychange',onVis);
 }
 function onVis(){ if(document.hidden){ paused=true; if(RAF)cancelAnimationFrame(RAF); RAF=0; }
@@ -640,16 +662,19 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
     const len=(bins[i]/mx)*(plotR*0.32)*(0.88+0.12*Math.sin(T2*2+i*0.5)), ob=Math.abs(i-poc)<=1, rgb=ob?'196,255,226':'43,245,158';
     const grd=x.createLinearGradient(plotR-len,0,plotR,0); grd.addColorStop(0,`rgba(${rgb},0)`); grd.addColorStop(1,`rgba(${rgb},${ob?.62:.26})`);
     x.fillStyle=grd; x.fillRect(plotR-len,yy-1.8,len,3.4); } }
-  // ZONAS de soporte/resistencia reales: banda sombreada (rango real de la zona) +
-  // línea central + etiqueta con el nº de toques. Lo que un trader dibujaría a mano.
+  // ZONAS de soporte/resistencia reales. Relleno SUAVE delimitado EXACTO al rango real de
+  // la zona, y TRES líneas punteadas: borde superior + central (el nivel) + borde inferior.
+  // Las dos de los bordes marcan la amplitud/veracidad de la zona. Etiqueta con nº de toques.
   const pulse=0.5+0.5*Math.sin(T2*2.2);
   (mSR||[]).forEach(z=>{ let yH,yL,yC; try{ yH=mSeries.priceToCoordinate(z.hi); yL=mSeries.priceToCoordinate(z.lo); yC=mSeries.priceToCoordinate(z.c); }catch(_){ return; }
     if(yH==null||yL==null||yC==null)return;
     const rgb=z.kind==='res'?'255,77,110':'43,245,158';
-    const top=Math.min(yH,yL)-2, bh=Math.max(6,Math.abs(yL-yH)+4);
-    const g2=x.createLinearGradient(0,top,0,top+bh); g2.addColorStop(0,`rgba(${rgb},0.03)`); g2.addColorStop(.5,`rgba(${rgb},${.16+.08*pulse})`); g2.addColorStop(1,`rgba(${rgb},0.03)`);
+    const top=Math.min(yH,yL), bot=Math.max(yH,yL), bh=Math.max(1.5,bot-top);
+    const g2=x.createLinearGradient(0,top,0,bot); g2.addColorStop(0,`rgba(${rgb},0.02)`); g2.addColorStop(.5,`rgba(${rgb},${.07+.03*pulse})`); g2.addColorStop(1,`rgba(${rgb},0.02)`);
     x.fillStyle=g2; x.fillRect(0,top,plotR,bh);
-    x.save(); x.setLineDash([9,7]); x.lineDashOffset=-((T2*30)%16); x.strokeStyle=`rgba(${rgb},${.78+.2*pulse})`; x.lineWidth=1.8; x.beginPath(); x.moveTo(0,yC); x.lineTo(plotR,yC); x.stroke(); x.restore();
+    x.save(); x.setLineDash([7,6]); x.lineDashOffset=-((T2*24)%13);
+    x.strokeStyle=`rgba(${rgb},0.32)`; x.lineWidth=1; x.beginPath(); x.moveTo(0,top); x.lineTo(plotR,top); x.moveTo(0,bot); x.lineTo(plotR,bot); x.stroke();
+    x.strokeStyle=`rgba(${rgb},${.7+.14*pulse})`; x.lineWidth=1.6; x.beginPath(); x.moveTo(0,yC); x.lineTo(plotR,yC); x.stroke(); x.restore();
     const lab=`${z.tag||''}  ${fmtP(z.c)}  ·  ${z.touches} ${z.touches>1?'touches':'touch'}`;
     x.font='800 10px "Saira Condensed",sans-serif'; const tw=x.measureText(lab).width+16;
     x.fillStyle=`rgba(${rgb},.96)`; rr(x,8,yC-9,tw,18,4); x.fill();
