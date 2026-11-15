@@ -10,7 +10,7 @@ import * as D from './datos.js?v=5';
 /* Reutilizamos la infraestructura YA probada de la plataforma: caché compartida de
    logos (misma que Multichart/VWAP Pro), velas y stream en vivo, y el catálogo PARES/TFS. */
 import { logos as sharedLogos, PARES as SP, TFS, velas as velasReal, streamVelas } from '../trading-demo/datos.js?v=2';
-const PARMAP={}; try{ SP.forEach(p=>{ if(p.cg)PARMAP[p.id]=p.cg; }); }catch(_){}
+const PARMAP={}, NAME={}; try{ SP.forEach(p=>{ if(p.cg)PARMAP[p.id]=p.cg; NAME[p.id]=p.n||p.id; }); }catch(_){}
 const EXTOKEN={ Uniswap:'UNI', PancakeSwap:'CAKE', Curve:'CRV', Raydium:'RAY', KuCoin:'KCS', OKX:'OKB', Bitget:'BGB', Binance:'BNB' };
 const _symUrl={};
 
@@ -29,21 +29,24 @@ let LC=null, mChart=null, mSeries=null, mTF='1d', mCoin=null, mKl=[], mVP=null, 
 /* ===== estado del modulo ===== */
 let ov=null, cv=null, ctx=null, GL=null, glx=null, SB=null, sbx=null, RAF=0, stream=null, booted=false;
 let W=0,H=0,DPR=1,PW=0,PH=0,SBW=1,SBH=1, DM=null, split=0.5, T=0, last=0, paused=false;
+let flowLive=0.5; const _prevPx={};   // flujo direccional en vivo (mueve la línea blanca de forma orgánica y REAL)
 let COINS=[], green=[], red=[], strands=[], strandsFaint=[], hist=[];
 const Z={}, mouse={x:-1,y:-1,on:false}, LOGO={}, EXVOL={}, EXIMG={}, EXMETA={};
 /* Iconos de moneda: spothq en GitHub (POR TICKER, con CORS -> no ensucia el canvas y SÍ carga),
    igual que Multichart/Heat Pool. Respaldo a la URL de CoinGecko (sin CORS: se pinta igual,
    el export ya excluye logos). Esta es la razón por la que ahora sí aparecen. */
 const SPOT='https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/';
-// SIEMPRE con CORS (spothq y CoinGecko lo sirven) -> el logo se dibuja también en la foto
-// exportada sin contaminar el canvas, igual que Multichart.
-function imgLogo(ticker, cgUrl){ const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous';
-  im.onerror=function(){ if(im._fb){ im.onerror=null; return; } im._fb=1; if(cgUrl){ im.src=cgUrl; } else { im.onerror=null; } };
-  im.src=SPOT+String(ticker||'').toLowerCase()+'.png'; return im; }
-// logo de exchange: marca real (CoinGecko) y, si falla, el icono de su token (spothq). Ambos con CORS.
-function imgExch(ei, brandUrl){ const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous';
-  im.onerror=function(){ if(im._fb){ im.onerror=null; return; } im._fb=1; const tk=EXTOKEN[EXCH[ei][0]]; if(tk){ im.src=SPOT+tk.toLowerCase()+'.png'; } else { im.onerror=null; } };
-  im.src=brandUrl; return im; }
+// logo POR DEFECTO de la plataforma: lo usan las monedas/exchanges que no tengan icono propio
+const DEF_URL=new URL('../../assets/img/cco-logo.png', import.meta.url).href;
+// Cadena de respaldos con CORS. im._alt = lista de URLs a probar en orden si la actual falla.
+// Siempre termina en el logo por defecto, así ninguna moneda queda sin logo.
+function imgChain(first, alt){ const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous'; im._alt=alt||[]; im._i=0;
+  im.onerror=function(){ if(im._i>=im._alt.length){ im.onerror=null; return; } im.src=im._alt[im._i++]; };
+  im.src=first; return im; }
+// moneda: spothq (por ticker) -> CoinGecko (respaldo) -> logo por defecto
+function imgLogo(ticker, cgUrl){ const alt=[]; if(cgUrl)alt.push(cgUrl); alt.push(DEF_URL); return imgChain(SPOT+String(ticker||'').toLowerCase()+'.png', alt); }
+// exchange: marca real (CoinGecko) -> icono de su token (spothq) -> logo por defecto
+function imgExch(ei, brandUrl){ const tk=EXTOKEN[EXCH[ei][0]], alt=[]; if(tk)alt.push(SPOT+tk.toLowerCase()+'.png'); alt.push(DEF_URL); return imgChain(brandUrl||DEF_URL, alt); }
 let EXREADY=false, _exporting=false;
 // logo de la página para la marca del export (mismo que usa Multichart)
 const BRAND_URL=new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -96,7 +99,10 @@ function layout(){
 const PMIN=-4,PMAX=5.4, Y=p=>Z.y1-((p-PMIN)/(PMAX-PMIN))*(Z.y1-Z.y0);
 // fracción de PRESIÓN COMPRADORA real (volumen que sube / volumen total). Sin sesgo:
 // mercado equilibrado -> línea al centro; que suba o baje según el flujo real.
-function splitTarget(){ let up=0,w=0; COINS.forEach(c=>{ w+=c.vol; if(c.disp>=0)up+=c.vol; }); return w?clamp(up/w,0.18,0.82):0.5; }
+function splitTarget(){ let up=0,w=0; COINS.forEach(c=>{ w+=c.vol; if(c.disp>=0)up+=c.vol; });
+  const breadth=w?clamp(up/w,0.12,0.88):0.5;
+  // ancla en la amplitud real + flujo direccional en vivo: la línea respira orgánicamente
+  return clamp(breadth*0.6+flowLive*0.4,0.18,0.82); }
 
 function placeCards(){
   const ropeY=(Z.y0+Z.y1)/2, gap=8, colGap=Math.round(W*0.011);
@@ -348,9 +354,17 @@ function card(g,c){ const up=c._up, col=up?VERDE:ROSA, hi=up?VHI:RHI, hl=c._hl||
   g.fillStyle=col; g.font=`600 ${fs*0.76}px "IBM Plex Mono",monospace`; g.textAlign='left'; g.fillText((c.disp>=0?'+':'')+c.disp.toFixed(2)+'%',tx,y+pad+fs*0.82+fs*0.82);
   // precio actual a la derecha del encabezado
   const pr=c.price||c.cur||0; if(pr>0){ g.fillStyle='#cdd7e2'; g.font=`600 ${clamp(fs*0.72,10,14)}px "IBM Plex Mono",monospace`; g.textAlign='right'; g.fillText('$'+fmtP(pr),x+w-pad,y+pad+fs*0.82); g.textAlign='left'; }
-  // cuerpo: SOLO la mini gráfica diaria cuando hay zoom (precargada -> sin el parpadeo del perfil).
-  // En reposo la tarjeta queda limpia: logo, nombre, precio y %.
   const vx=x+pad, vy=y+pad+chip+8, vw=w-pad*2, vh=y+h-pad-7-vy;
+  // etiqueta de OPORTUNIDAD (dato real): rompe resistencia, recupera soporte o momentum fuerte.
+  const zoomed=(z>0.35 && c._mini && c._mini.length>=2);
+  if(!zoomed && vh>14){ let bdg=null;
+    if(c.res>0 && c.price>c.res) bdg=['BREAKOUT','43,245,158'];
+    else if(c.sup>0 && c.price>0 && c.price<=c.sup*1.012 && c.disp>=0) bdg=['RECLAIM','33,145,217'];
+    else if(c.disp>=8) bdg=['MOMENTUM','196,255,226'];
+    if(bdg){ g.font='800 9px "Saira Condensed",sans-serif'; const bw=g.measureText(bdg[0]).width+15;
+      g.fillStyle=`rgba(${bdg[1]},.15)`; rr(g,vx,vy,bw,15,4); g.fill(); g.strokeStyle=`rgba(${bdg[1]},.6)`; g.lineWidth=1; rr(g,vx,vy,bw,15,4); g.stroke();
+      g.fillStyle=`rgba(${bdg[1]},1)`; g.textBaseline='middle'; g.textAlign='left'; g.fillText(bdg[0],vx+7,vy+8); g.textBaseline='alphabetic'; } }
+  // cuerpo: la mini gráfica diaria cuando hay zoom (precargada -> sin parpadeo). En reposo, limpio.
   if(z>0.35 && vh>16 && c._mini && c._mini.length>=2){
     const data=c._mini.slice(-46); let mlo=Infinity,mhi=-Infinity;
     data.forEach(k=>{ if(k.low<mlo)mlo=k.low; if(k.high>mhi)mhi=k.high; });
@@ -377,9 +391,7 @@ function drawCards(g){ const all=[]; [green,red].forEach(cols=>cols.forEach(col=
 
 /* ===== header ===== */
 function header(g){ g.textBaseline='alphabetic'; g.textAlign='left';
-  g.fillStyle='rgba(86,103,122,.8)'; g.font='500 12px "IBM Plex Mono",monospace';
-  [[5,'+5'],[3,'+3'],[2,'+2'],[1,'+1'],[0,'0'],[-2,'−2']].forEach(([p,t])=>{ const y=Y(p); g.fillText(t,14,y+4);
-    g.strokeStyle='rgba(51,66,79,.7)'; g.lineWidth=1; g.beginPath(); g.moveTo(32,y); g.lineTo(40,y); g.stroke(); });
+  // (los números de escala +5/+3/… se quitaron: chocaban con el rótulo del termómetro)
   const d=new Date(),p2=x=>String(x).padStart(2,'0');
   g.textAlign='right'; g.fillStyle='rgba(83,103,122,.65)'; g.font='400 11px "IBM Plex Mono",monospace'; g.fillText(`${d.getUTCFullYear()}-${p2(d.getUTCMonth()+1)}-${p2(d.getUTCDate())} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())} UTC`,W-18,H-14); g.textAlign='left'; }
 
@@ -430,7 +442,12 @@ async function cargarUniverso(){
     res:x.price*1.05, sup:x.price*0.95, vp:synthVP(x.chgPct), vpHi:0, vpLo:0, ini:Math.random()*6.28 }));
   COINS.slice().sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).forEach((c,i)=>c.rank=i+1);
 }
-function aplicarTick(map){ for(const c of COINS){ const t=map[c.symbol]; if(t){ c.pct=t.chgPct; c.price=t.price; if(t.volQuote>0)c.vol=t.volQuote; } } }
+function aplicarTick(map){ let upW=0,dnW=0;
+  for(const c of COINS){ const t=map[c.symbol]; if(t){
+    const prev=_prevPx[c.symbol]; if(prev!=null){ const w=c.vol||1; if(t.price>prev)upW+=w; else if(t.price<prev)dnW+=w; }
+    _prevPx[c.symbol]=t.price;
+    c.pct=t.chgPct; c.price=t.price; if(t.volQuote>0)c.vol=t.volQuote; } }
+  const tw=upW+dnW; if(tw>0){ flowLive+=((upW/tw)-flowLive)*0.25; } }  // flujo real tick a tick
 let _nivBusy=false;
 async function refrescarNiveles(){ if(_nivBusy)return; _nivBusy=true;
   try{ const vis=tarjetasVisibles();
@@ -470,7 +487,9 @@ const IC={
   back:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
   exp:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>',
   x:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
-  full:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>'
+  full:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
+  search:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  info:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r="0.6" fill="currentColor"/></svg>'
 };
 function estilos(){
   if(!document.getElementById('obliq-font')){ const l=document.createElement('link'); l.id='obliq-font'; l.rel='stylesheet';
@@ -493,6 +512,28 @@ function estilos(){
   .ob-ico{width:38px;height:36px;border-radius:9px;display:grid;place-items:center;cursor:pointer;border:1px solid #2b3139;background:rgba(255,255,255,.04);color:#b7bdc6}
   .ob-ico svg{display:block}
   .ob-ico:hover{border-color:#C9A84B;color:#E8B84B}
+  .ob-search{position:relative;display:flex;align-items:center;gap:7px;height:36px;padding:0 12px;border-radius:9px;border:1px solid #2b3139;background:rgba(255,255,255,.04);color:#7d8794;min-width:210px;max-width:320px;flex:0 1 300px}
+  .ob-search:focus-within{border-color:#C9A84B;color:#E8B84B}
+  .ob-search svg{flex:0 0 auto}
+  .ob-search input{flex:1 1 auto;min-width:0;background:transparent;border:0;outline:0;color:#eaf0f6;font:600 13px 'IBM Plex Mono',monospace}
+  .ob-search input::placeholder{color:#5c6773;font-weight:500}
+  .ob-sug{position:absolute;top:42px;left:0;right:0;z-index:50;display:none;max-height:320px;overflow:auto;border-radius:11px;border:1px solid #2b3139;background:#0d1117;box-shadow:0 22px 50px rgba(0,0,0,.6)}
+  .ob-sug.open{display:block}
+  .ob-sugi{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04)}
+  .ob-sugi:hover,.ob-sugi.on{background:rgba(232,184,75,.1)}
+  .ob-sugi .ic{width:22px;height:22px;border-radius:50%;background-size:cover;background-position:center;flex:0 0 auto;background-color:#1a2230}
+  .ob-sugi .sy{color:#eaf0f6;font:700 13px 'Saira Condensed',sans-serif}
+  .ob-sugi .nm{color:#7d8794;font:500 12px 'Saira Condensed',sans-serif;flex:1 1 auto;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .ob-sugi .pc{font:600 12px 'IBM Plex Mono',monospace}
+  .ob-info-ov{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;background:rgba(3,5,10,.74);backdrop-filter:blur(3px);animation:obfade .2s}
+  .ob-info-card{width:min(92vw,560px);max-height:88vh;overflow:auto;border-radius:18px;border:1px solid #2b3139;background:linear-gradient(180deg,#0c1119,#070b12);box-shadow:0 30px 90px rgba(0,0,0,.6);padding:26px 26px 22px}
+  .ob-info-card h2{margin:0;font:800 23px 'Saira Condensed',sans-serif;letter-spacing:.01em;color:#eef4fb}
+  .ob-info-card .tag{display:inline-block;margin:10px 0 14px;padding:4px 10px;border-radius:999px;border:1px solid rgba(232,184,75,.4);color:#E8B84B;font:700 10.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase}
+  .ob-info-card p{margin:0 0 13px;color:#b9c4d0;font-size:13.5px;line-height:1.6}
+  .ob-info-card .feat{display:flex;gap:10px;margin:0 0 10px;color:#cdd7e2;font-size:13px;line-height:1.5}
+  .ob-info-card .feat b{color:#2BF59E;font-weight:700}
+  .ob-info-x{float:right;margin:-6px -6px 0 0;width:34px;height:34px;border-radius:9px;border:1px solid #2b3139;background:rgba(255,255,255,.04);color:#b7bdc6;cursor:pointer;display:grid;place-items:center}
+  .ob-info-x:hover{border-color:#FF4D6E;color:#fff}
   .ob-stage{position:relative;flex:1 1 auto;min-height:0}
   #ob-overlay canvas#ob-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   #ob-load{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:#05080f}
@@ -541,6 +582,45 @@ function estilos(){
   document.head.appendChild(s);
 }
 
+/* ===== búsqueda: abrir CUALQUIER moneda (esté o no en la cascada) ===== */
+function wireBuscador(){
+  const inp=document.getElementById('ob-q'), sug=document.getElementById('ob-sug'); if(!inp||!sug)return;
+  let items=[], sel=-1;
+  const build=qr=>{ const q=qr.trim().toUpperCase(); if(!q){ sug.classList.remove('open'); sug.innerHTML=''; items=[]; return; }
+    const seen={}, out=[];
+    COINS.forEach(c=>{ if(seen[c.sym])return; const nm=(NAME[c.sym]||'').toUpperCase(); if(c.sym.indexOf(q)>=0||nm.indexOf(q)>=0){ seen[c.sym]=1; out.push({sym:c.sym,symbol:c.symbol,nm:NAME[c.sym]||c.sym,coin:c}); } });
+    try{ SP.forEach(p=>{ if(seen[p.id])return; const nm=(p.n||'').toUpperCase(); if(p.id.indexOf(q)>=0||nm.indexOf(q)>=0){ seen[p.id]=1; out.push({sym:p.id,symbol:p.s||(p.id+'USDT'),nm:p.n||p.id,coin:null}); } }); }catch(_){}
+    items=out.slice(0,10); sel=-1;
+    sug.innerHTML=items.map((it,i)=>{ const u=_symUrl[it.sym]||(SPOT+it.sym.toLowerCase()+'.png'); const pc=it.coin?((it.coin.disp>=0?'+':'')+(it.coin.disp||0).toFixed(1)+'%'):''; const pcc=(it.coin&&it.coin.disp<0)?'#FF4D6E':'#2BF59E';
+      return `<div class="ob-sugi" data-i="${i}"><i class="ic" style="background-image:url(${u})"></i><span class="sy">${it.sym}</span><span class="nm">${it.nm}</span><span class="pc" style="color:${pcc}">${pc}</span></div>`; }).join('');
+    sug.classList.add('open'); };
+  const abrir=it=>{ if(!it)return; sug.classList.remove('open'); inp.value=''; inp.blur();
+    const c=it.coin||{sym:it.sym,symbol:it.symbol,price:0,cur:0,disp:0,_up:true,res:0,sup:0}; abrirDetalle(c); };
+  inp.oninput=()=>build(inp.value);
+  inp.onkeydown=e=>{ if(e.key==='ArrowDown')sel=Math.min(items.length-1,sel+1); else if(e.key==='ArrowUp')sel=Math.max(0,sel-1);
+    else if(e.key==='Enter'){ abrir(items[sel<0?0:sel]); return; } else if(e.key==='Escape'){ sug.classList.remove('open'); return; } else return;
+    sug.querySelectorAll('.ob-sugi').forEach((el,i)=>el.classList.toggle('on',i===sel)); e.preventDefault(); };
+  sug.onclick=e=>{ const d=e.target.closest('.ob-sugi'); if(d)abrir(items[+d.dataset.i]); };
+  document.addEventListener('click',e=>{ if(!e.target.closest('.ob-search'))sug.classList.remove('open'); });
+}
+/* ===== panel "qué es esto": lectura corporativa de alta frecuencia ===== */
+function abrirInfo(){ if(document.getElementById('ob-info-ov'))return;
+  const o2=document.createElement('div'); o2.className='ob-info-ov'; o2.id='ob-info-ov';
+  o2.innerHTML=`<div class="ob-info-card">
+    <button class="ob-info-x" id="ob-info-x">${IC.x}</button>
+    <span class="tag">High-Frequency Liquidity Radar</span>
+    <h2>Order Block Liquidity</h2>
+    <p>A corporate-grade, high-frequency system that reads the crypto market in real time. It tracks where liquidity enters across the top exchanges and DEXs and routes it, live, into the assets moving right now, so you see order flow forming as it happens.</p>
+    <div class="feat"><b>›</b><span>Live tick-by-tick order flow and market breadth from Binance spot.</span></div>
+    <div class="feat"><b>›</b><span>Real support and resistance zones from swing pivots, scored by how many times price tested each level.</span></div>
+    <div class="feat"><b>›</b><span>Institutional volume profile on every asset: POC, value area and liquidity nodes.</span></div>
+    <div class="feat"><b>›</b><span>24h exchange and DEX volume, plus a full momentum and structure read on any coin.</span></div>
+    <p style="opacity:.6;font-size:12px;margin-top:4px">Search any coin in the top bar to open its real-time read. For information only, not financial advice.</p>
+  </div>`;
+  (document.getElementById('ob-stage')||document.body).appendChild(o2);
+  o2.addEventListener('mousedown',e=>{ if(e.target===o2)o2.remove(); });
+  document.getElementById('ob-info-x').onclick=()=>o2.remove();
+}
 // Compone la foto. sinLogos=false dibuja los logos (CORS); si algo contaminara el lienzo,
 // toDataURL lanza y se reintenta con sinLogos=true (letras). La marca es el logo de la página.
 function componerExport(sinLogos){
@@ -577,7 +657,9 @@ export async function abrirOrderBlock(){
   ov.innerHTML=`
     <div class="ob-top">
       <button class="ob-back" id="ob-back">${IC.back}Back</button>
+      <div class="ob-search">${IC.search}<input id="ob-q" type="text" placeholder="Search any coin to analyze…" autocomplete="off" spellcheck="false"><div class="ob-sug" id="ob-sug"></div></div>
       <div class="ob-sp"></div>
+      <button class="ob-ico" id="ob-info" title="What is this">${IC.info}</button>
       <button class="ob-ico" id="ob-cam" title="Export image">${IC.exp}</button>
     </div>
     <div class="ob-stage" id="ob-stage">
@@ -590,6 +672,8 @@ export async function abrirOrderBlock(){
   SB=document.createElement('canvas'); sbx=SB.getContext('2d');
   document.getElementById('ob-back').onclick=cerrar;
   document.getElementById('ob-cam').onclick=exportar;
+  document.getElementById('ob-info').onclick=abrirInfo;
+  wireBuscador();
   cv.addEventListener('mousemove',e=>{ const r=cv.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; mouse.on=true; });
   cv.addEventListener('mouseleave',()=>mouse.on=false);
   cv.addEventListener('click',onClick);
@@ -712,22 +796,30 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
   let axisW=58; try{ axisW=mChart.priceScale('right').width()||58; }catch(_){}
   const plotR=w-axisW-2, T2=performance.now()*0.001, {lo,hi,N,bins,poc,mx}=mVP;
   if(hi>lo){
-    // Perfil de volumen en MAPA DE CALOR (como Liquidity Pools): cada nivel de precio se
-    // colorea por su volumen relativo (azul=poco → verde → amarillo → rojo=muro). Barra con
-    // degradado: punta translúcida, base sólida. Estrecho, para no invadir la gráfica.
+    // PERFIL DE VOLUMEN profesional: longitud de barra = volumen real en ese nivel, con
+    // contraste alto -> los HVN (mucha liquidez) sobresalen y los LVN (poca) casi no se ven.
+    // Value Area 70% en caja, POC/VAH/VAL con líneas de referencia. Estructura, no brocha.
     const yLo=mSeries.priceToCoordinate(lo), yHi=mSeries.priceToCoordinate(hi);
-    const barH=(yLo!=null&&yHi!=null)?Math.max(1.8,(yLo-yHi)/N):3;
-    const maxW=plotR*0.26;
-    for(let i=0;i<N;i++){ const price=lo+(i+0.5)/N*(hi-lo); let yy; try{ yy=mSeries.priceToCoordinate(price); }catch(_){ yy=null; } if(yy==null)continue;
-      const v=Math.pow(bins[i]/mx,0.55); if(v<=0.01)continue; const rgb=heatC(v), len=Math.max(1.5,v*maxW);
-      const grd=x.createLinearGradient(plotR-len,0,plotR,0);
-      grd.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.10)`);   // punta: cristal translúcido
-      grd.addColorStop(1,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.95)`);   // base: sólido
-      x.fillStyle=grd; x.fillRect(plotR-len,yy-barH/2,len,Math.max(1,barH-0.5)); }
-    // POC: el muro principal (mayor volumen). Línea fina + etiqueta.
-    try{ const yp=mSeries.priceToCoordinate(lo+(poc+0.5)/N*(hi-lo)); if(yp!=null){
-      x.save(); x.setLineDash([2,3]); x.strokeStyle='rgba(255,170,60,.85)'; x.lineWidth=1; x.beginPath(); x.moveTo(plotR-maxW,yp); x.lineTo(plotR,yp); x.stroke(); x.restore();
-      x.font='800 9px "IBM Plex Mono",monospace'; x.fillStyle='rgba(255,180,70,.95)'; x.textAlign='right'; x.textBaseline='middle'; x.fillText('POC',plotR-4,yp-7); x.textAlign='left'; x.textBaseline='alphabetic'; } }catch(_){}
+    const barH=(yLo!=null&&yHi!=null)?Math.max(2,(yLo-yHi)/N):3;
+    const maxW=plotR*0.30;
+    const pAt=i=>lo+(i+0.5)/N*(hi-lo);
+    // Value Area: se expande desde el POC sumando el vecino de mayor volumen hasta el 70%
+    let tot=0; for(let i=0;i<N;i++)tot+=bins[i]; tot=tot||1;
+    let lv=poc, hv=poc, acc=bins[poc]||0, guard=0;
+    while(acc<tot*0.7 && (lv>0||hv<N-1) && guard++<N*2){ const bel=lv>0?bins[lv-1]:-1, abo=hv<N-1?bins[hv+1]:-1; if(abo>=bel){ hv++; acc+=bins[hv]; } else { lv--; acc+=bins[lv]; } }
+    let yVAL=null,yVAH=null,yPOC=null; try{ yVAL=mSeries.priceToCoordinate(pAt(lv)); yVAH=mSeries.priceToCoordinate(pAt(hv)); yPOC=mSeries.priceToCoordinate(pAt(poc)); }catch(_){}
+    if(yVAL!=null&&yVAH!=null){ x.fillStyle='rgba(232,184,75,.055)'; x.fillRect(plotR-maxW-3,Math.min(yVAL,yVAH),maxW+3,Math.abs(yVAL-yVAH)); }
+    for(let i=0;i<N;i++){ let yy; try{ yy=mSeries.priceToCoordinate(pAt(i)); }catch(_){ yy=null; } if(yy==null)continue;
+      const v=bins[i]/mx; if(v<=0.004)continue; const len=Math.max(1.5,Math.pow(v,0.82)*maxW);
+      const isPoc=(i===poc), inVA=(i>=lv&&i<=hv);
+      const r=isPoc?255:inVA?43:72, gg=isPoc?190:inVA?245:104, bb=isPoc?70:inVA?158:148, al=isPoc?0.98:inVA?0.72:0.3;
+      const grd=x.createLinearGradient(plotR-len,0,plotR,0); grd.addColorStop(0,`rgba(${r},${gg},${bb},0.05)`); grd.addColorStop(1,`rgba(${r},${gg},${bb},${al})`);
+      x.fillStyle=grd; x.fillRect(plotR-len,yy-barH/2,len,Math.max(1.2,barH-0.5)); }
+    const refLine=(yv,txt,colr,solid)=>{ if(yv==null)return; x.save(); x.setLineDash(solid?[]:[3,3]); x.strokeStyle=colr; x.lineWidth=solid?1.5:1; x.beginPath(); x.moveTo(plotR-maxW-3,yv); x.lineTo(plotR,yv); x.stroke(); x.restore();
+      x.font='800 9px "IBM Plex Mono",monospace'; x.fillStyle=colr; x.textAlign='left'; x.textBaseline='middle'; x.fillText(txt,plotR-maxW-1,yv-6); x.textBaseline='alphabetic'; };
+    refLine(yVAH,'VAH','rgba(130,200,255,.75)',false);
+    refLine(yVAL,'VAL','rgba(130,200,255,.75)',false);
+    refLine(yPOC,'POC','rgba(255,190,70,.98)',true);
   }
   // ZONAS de soporte/resistencia reales. Relleno SUAVE delimitado EXACTO al rango real de
   // la zona, y TRES líneas punteadas: borde superior + central (el nivel) + borde inferior.
