@@ -21,10 +21,14 @@ try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Analysis · b
 import { brasas } from './chispas.js';
 import { abrirCobroAnalisis, tieneAccesoAnalisis, segundosAnalisis, esOwnerAnalisis } from './analisis-pro.js?v=6';
 
-/* Rutas RELATIVAS A LA RAIZ (overlay montado sobre index.html / app.html /
-   futuros.html). Logo y foto de cinta: los mismos del sitio. Fondo: en el modulo. */
-const LOGO   = 'assets/img/cco-full.webp';
-const BANNER = 'assets/portada/img/header.webp';
+/* Rutas de imagen RESUELTAS DESDE EL MODULO (import.meta.url), no desde el
+   documento: asi funcionan tanto si Analisis se monta como overlay sobre la
+   raiz (index/app/futuros) como si se abre su pagina propia
+   modules/analysis/analisis.html (a la que redirige app.html?abrir=analisis).
+   Antes eran relativas al documento y en la pagina propia daban 404. */
+const RAIZ   = new URL('../../', import.meta.url).href;
+const LOGO   = RAIZ + 'assets/img/cco-full.webp';
+const BANNER = RAIZ + 'assets/portada/img/header.webp';
 const FONDO  = new URL('./img/fondo-analisis.webp', import.meta.url).href;   // SUBIR a modules/analysis/img/fondo-analisis.webp
 
 /* ── CATALOGO (data-driven; agregar herramienta = una linea) ──────────────────
@@ -72,6 +76,9 @@ const HERRAMIENTAS = [
     pitch:'Reads the market structure and projects the most logical path price could take next, as organic candles flowing from the current price.',
     desc:'A real time prediction built on the structural logic of the chart, not a statement of what will happen. It reads the continuity of the market structure, where price bounced, where it ranged, where impulses were born, plus the dominant trend, and projects the most logical path that structure could continue into, as solid candles the same size as the chart, flowing from the last real candle so it reads as a natural continuation, with a light that travels along the path to show its direction. You choose the scenario with on chart buttons, Bullish, Bearish or Range, each with its probability, and see one clean path at a time, or press All to overlay the three in layers with depth. Every path is organic and respects the levels on the left: it bounces where price bounced, reacts at the origin of past impulses but moderately, and ranges organically. Works on any timeframe since cycles are fractal, and recomputes live. It is a probability tool, not financial advice and not a promise of any result, profit or benefit.' }
 ];
+/* Las imagenes del catalogo tambien se resuelven desde la raiz del sitio, para
+   que no se rompan en la pagina propia de Analisis (ver nota en LOGO/RAIZ). */
+HERRAMIENTAS.forEach((s) => { if (s.img && s.img.indexOf('assets/') === 0) s.img = RAIZ + s.img; });
 const CAT_NOMBRE = { strategy:'Strategy', indicator:'Indicator', analysis:'Analysis', trading:'Trading' };
 
 /* PRECIOS Y DESCUENTOS.
@@ -180,7 +187,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=42', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=15', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
-    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=14', import.meta.url).href)).abrirMulti();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=16', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=13', import.meta.url).href)).abrirFootprint();
     else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=17', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
