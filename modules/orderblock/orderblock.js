@@ -6,7 +6,7 @@
 
    Export: abrirOrderBlock()
 */
-import * as D from './datos.js?v=5';
+import * as D from './datos.js?v=6';
 /* Reutilizamos la infraestructura YA probada de la plataforma: caché compartida de
    logos (misma que Multichart/VWAP Pro), velas y stream en vivo, y el catálogo PARES/TFS. */
 import { logos as sharedLogos, PARES as SP, TFS, velas as velasReal, streamVelas } from '../trading-demo/datos.js?v=2';
@@ -30,6 +30,7 @@ let LC=null, mChart=null, mSeries=null, mTF='1d', mCoin=null, mKl=[], mVP=null, 
 let ov=null, cv=null, ctx=null, GL=null, glx=null, SB=null, sbx=null, RAF=0, stream=null, booted=false;
 let W=0,H=0,DPR=1,PW=0,PH=0,SBW=1,SBH=1, DM=null, split=0.5, T=0, last=0, paused=false;
 let flowLive=0.5; const _prevPx={};   // flujo direccional en vivo (mueve la línea blanca de forma orgánica y REAL)
+let tradeStream=null, _takBuy=0, _takSell=0;   // aggTrades: pulsos de ballenas + presión real compra/venta
 let COINS=[], green=[], red=[], strands=[], strandsFaint=[], hist=[];
 const Z={}, mouse={x:-1,y:-1,on:false}, LOGO={}, EXVOL={}, EXIMG={}, EXMETA={};
 /* Iconos de moneda: spothq en GitHub (POR TICKER, con CORS -> no ensucia el canvas y SÍ carga),
@@ -133,7 +134,7 @@ function buildStrands(){
   // arranque SIEMPRE pegado a la fila de su exchange y dentro del panel (sin líneas sueltas)
   COINS.forEach(c=>{ const up=c.disp>=0, oy=clamp((exchY[c.exch]!=null?exchY[c.exch]:mid)+rnd(-ch*0.3,ch*0.3),Z.y0+5,Z.y1-5);
     strands.push({ coin:c, y0:oy, up, exch:c.exch, sec:c.sec, phase:rnd(0,6.28), amp:rnd(4,13), hl:0,
-      col:up?VERDE:ROSA, hero:(c.major||c.rank<=24), r:Math.random() }); });
+      col:up?VERDE:ROSA, hero:(c.major||c.rank<=24), r:Math.random(), _wp:-1, _wcool:0 }); });
   // líneas tenues: su proporción verde/rojo sigue la presión real del mercado (no 55% fijo)
   if(Z.exchOrder.length) for(let k=0;k<40;k++){ const ei=pick(Z.exchOrder), up=Math.random()<split;
     const oy=clamp((exchY[ei]!=null?exchY[ei]:mid)+rnd(-ch*0.4,ch*0.4),Z.y0+5,Z.y1-5);
@@ -155,7 +156,10 @@ function tick(dt){ T+=dt; split+=(splitTarget()-split)*0.045;   // responde al f
   // El % mostrado SOLO sigue al % real (c.pct lo actualiza el ticker en vivo). Sin
   // oscilacion inventada: si el mercado no se mueve, la tarjeta no se mueve.
   const f=1-Math.pow(0.86,dt*60);
-  COINS.forEach(c=>{ c.disp+=(c.pct-c.disp)*f; if(Math.abs(c.pct-c.disp)<0.001)c.disp=c.pct; }); }
+  COINS.forEach(c=>{ c.disp+=(c.pct-c.disp)*f; if(Math.abs(c.pct-c.disp)<0.001)c.disp=c.pct; });
+  // presión de TAKER real (aggTrades): ventana rodante (~3s) -> alimenta la línea blanca
+  const dec=Math.pow(0.5,dt/3); _takBuy*=dec; _takSell*=dec;
+  const tt=_takBuy+_takSell; if(tt>500){ flowLive+=((_takBuy/tt)-flowLive)*(1-Math.pow(0.5,dt/0.8)); } }
 
 /* ===== substrato ===== */
 function dotMatrix(){ DM=document.createElement('canvas'); DM.width=PW; DM.height=PH;
@@ -209,7 +213,12 @@ function drawStrands(g){
       g.strokeStyle=s.col; g.globalAlpha=0.26+0.35*s.hl; g.lineWidth=1.1+s.hl; g.lineCap='round'; g.stroke(); }
     if(!faint){ const pp=((T*0.17+s.phase*0.12)%1+1)%1, fp=pp*(pts.length-1), i0=fp|0, fr=fp-i0, a=pts[i0], bb=pts[Math.min(pts.length-1,i0+1)];
       const qx=a[0]+(bb[0]-a[0])*fr, qy=a[1]+(bb[1]-a[1])*fr;      // interpolado = fluido (no por fotograma)
-      g.globalAlpha=0.9*(0.6+0.4*s.hl); g.fillStyle=s.col; g.beginPath(); g.arc(qx,qy,s.hero?2.1:1.6,0,7); g.fill(); } };
+      g.globalAlpha=0.9*(0.6+0.4*s.hl); g.fillStyle=s.col; g.beginPath(); g.arc(qx,qy,s.hero?2.1:1.6,0,7); g.fill(); }
+    // PULSO DE BALLENA: una operación grande real viaja por el hilo de su moneda
+    if(!faint && s._wp>=0){ s._wp+=0.026; if(s._wp>1){ s._wp=-1; }
+      else { const fp=s._wp*(pts.length-1), i0=fp|0, fr=fp-i0, a=pts[i0], bb=pts[Math.min(pts.length-1,i0+1)];
+        const wx=a[0]+(bb[0]-a[0])*fr, wy=a[1]+(bb[1]-a[1])*fr, wc=s._wbuy?'43,245,158':'255,77,110', rad=3+3.4*(s._wmag||1);
+        g.save(); g.globalAlpha=0.95; g.shadowColor=`rgba(${wc},0.95)`; g.shadowBlur=16; g.fillStyle=`rgba(${wc},1)`; g.beginPath(); g.arc(wx,wy,rad,0,7); g.fill(); g.restore(); } } };
   strandsFaint.forEach(s=>paint(s,true)); strands.forEach(s=>paint(s,false)); g.globalAlpha=1; }
 
 /* ===== filtro central ===== */
@@ -238,7 +247,14 @@ function filterBar(g){
   Z.gateG={x:x0,y:gY,w:bw,h:gH}; Z.gateR={x:x0,y:rY,w:bw,h:rH};
   cornerMarks(g,x0-7,y0-7,bw+14,h+14,18,hexA(VERDE,.55),1.6);
   g.font='600 13px "IBM Plex Mono",monospace'; g.fillStyle='rgba(220,235,245,.8)'; g.textAlign='center';
-  g.fillText(String(COINS.length||0),(x0+x1)/2,y1+17); g.textAlign='left';
+  g.fillText(String(COINS.length||0),(x0+x1)/2,y1+17);
+  // presión de TAKER en vivo (compra agresiva vs venta agresiva), dato real del order flow
+  const cx=(x0+x1)/2, bp=Math.round(clamp(flowLive,0,1)*100);
+  g.font='800 10px "Saira Condensed",sans-serif';
+  g.textAlign='right'; g.fillStyle=VERDE; g.fillText('BUY '+bp+'%', cx-4, y1+33);
+  g.fillStyle='rgba(120,135,150,.7)'; g.textAlign='center'; g.fillText('·', cx, y1+33);
+  g.textAlign='left'; g.fillStyle=ROSA; g.fillText('SELL '+(100-bp)+'%', cx+4, y1+33);
+  g.textAlign='left';
   Z.divY=divY;
 }
 function gate(g,x,y,w,h,hi){
@@ -316,7 +332,7 @@ function exchPopup(g){ const ei=Z.exHover; if(ei==null||ei<0)return; const order
   const chip=30, cyh=py+14; logoExch(g,ei,px+14,cyh,chip);
   g.textBaseline='alphabetic'; g.textAlign='left';
   g.fillStyle='#eef4fb'; g.font='800 17px "Saira Condensed",sans-serif'; g.fillText(e[0],px+14+chip+10,py+26);
-  g.fillStyle='rgba(125,135,148,.9)'; g.font='600 9px "Saira Condensed",sans-serif'; g.fillText('EXCHANGE · 24H DATA',px+14+chip+10,py+39);
+  g.fillStyle='rgba(125,135,148,.9)'; g.font='600 9px "Saira Condensed",sans-serif'; g.fillText(m.src?('DEX · 24H VOLUME · '+String(m.src).toUpperCase()):'EXCHANGE · 24H DATA',px+14+chip+10,py+39);
   const rows=[['24h Volume', m.volUsd? '$'+fmtVol(m.volUsd):'—'], ['Trust rank', m.rank? '#'+m.rank:'—'], ['Trust score', m.trust? m.trust+' / 10':'—'], ['Established', m.year? String(m.year):'—'], ['Country', m.country||'—']];
   let yy=py+62; rows.forEach(([k,v])=>{ g.strokeStyle='rgba(255,255,255,.05)'; g.lineWidth=1; g.beginPath(); g.moveTo(px+14,yy+5); g.lineTo(px+pw-14,yy+5); g.stroke();
     g.fillStyle='rgba(150,162,175,.92)'; g.font='600 12px "Saira Condensed",sans-serif'; g.textAlign='left'; g.fillText(k,px+14,yy);
@@ -447,7 +463,12 @@ function aplicarTick(map){ let upW=0,dnW=0;
     const prev=_prevPx[c.symbol]; if(prev!=null){ const w=c.vol||1; if(t.price>prev)upW+=w; else if(t.price<prev)dnW+=w; }
     _prevPx[c.symbol]=t.price;
     c.pct=t.chgPct; c.price=t.price; if(t.volQuote>0)c.vol=t.volQuote; } }
-  const tw=upW+dnW; if(tw>0){ flowLive+=((upW/tw)-flowLive)*0.25; } }  // flujo real tick a tick
+  const tw=upW+dnW; if(tw>0){ flowLive+=((upW/tw)-flowLive)*0.25; } }  // flujo direccional de respaldo
+// aggTrade: suma presión de taker (compra/venta real) y dispara un PULSO cuando entra una ballena
+const UMBRAL_BALLENA=60000;   // una operación agresiva de ~$60k o más
+function onTrade(t){ if(!t)return; if(t.buy)_takBuy+=t.quote; else _takSell+=t.quote;
+  if(t.quote>=UMBRAL_BALLENA){ const now=performance.now();
+    for(const s of strands){ if(s.coin&&s.coin.symbol===t.symbol){ if(now-(s._wcool||0)<450)break; s._wcool=now; s._wp=0; s.hl=1; s._wbuy=t.buy; s._wmag=clamp(t.quote/250000,0.5,1.8); break; } } } }
 let _nivBusy=false;
 async function refrescarNiveles(){ if(_nivBusy)return; _nivBusy=true;
   try{ const vis=tarjetasVisibles();
@@ -479,7 +500,10 @@ async function cargarExchanges(){ let list=[]; try{ list=await D.exchanges(); }c
     if(best){ EXVOL[i]=best.volBtc*(btc||1); EXMETA[i]={rank:best.rank,trust:best.trust,year:best.year,country:best.country,volUsd:EXVOL[i]}; }
     if(!EXIMG[i]){ if(best&&best.image){ EXIMG[i]=imgExch(i,best.image); }        // marca real del exchange (CORS)
       else { const tk=EXTOKEN[e[0]]; if(tk) EXIMG[i]=imgLogo(tk,_symUrl[tk]); } } });  // DEX -> icono de su token
-
+  // Volumen 24h REAL de los DEX desde DefiLlama (más fiel que CoinGecko). Respaldo: CoinGecko.
+  try{ const dv=await D.dexVol(); if(dv&&Object.keys(dv).length){ EXCH.forEach((e,i)=>{ const first=e[0].toLowerCase().split(' ')[0];
+    let best=0; for(const k in dv){ if(k.indexOf(first)>=0 && dv[k]>best)best=dv[k]; }
+    if(best>0){ EXVOL[i]=best; EXMETA[i]=EXMETA[i]||{}; EXMETA[i].volUsd=best; EXMETA[i].src='DefiLlama'; } }); } }catch(_){}
   EXREADY=true; if(cv) buildStrands(); }
 
 /* ===== estilos + overlay ===== */
@@ -534,6 +558,14 @@ function estilos(){
   .ob-info-card .feat b{color:#2BF59E;font-weight:700}
   .ob-info-x{float:right;margin:-6px -6px 0 0;width:34px;height:34px;border-radius:9px;border:1px solid #2b3139;background:rgba(255,255,255,.04);color:#b7bdc6;cursor:pointer;display:grid;place-items:center}
   .ob-info-x:hover{border-color:#FF4D6E;color:#fff}
+  @media(max-width:620px){
+    .ob-top{gap:6px;padding:7px 9px}
+    .ob-search{min-width:0;flex:1 1 auto;padding:0 9px;gap:6px}
+    .ob-search input{font-size:12px}
+    .ob-back{padding:0 10px;font-size:0}
+    .ob-back svg{width:17px;height:17px}
+    .ob-info-card{padding:20px 18px 18px}
+  }
   .ob-stage{position:relative;flex:1 1 auto;min-height:0}
   #ob-overlay canvas#ob-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   #ob-load{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:#05080f}
@@ -687,6 +719,7 @@ export async function abrirOrderBlock(){
   booted=false; boot();
   cargarLogos(); cargarExchanges();
   try{ stream=D.streamMini(aplicarTick); }catch(_){}
+  try{ tradeStream=D.streamTrades(COINS.slice(0,18).map(c=>c.symbol), onTrade); }catch(_){}   // ballenas + flujo real
   refrescarNiveles(); precargarMinis();
   Z._nivTimer=setInterval(refrescarNiveles, 70000);
   // el mercado se mira en vivo: cada poco re-selecciona qué monedas entran en la cascada,
@@ -702,7 +735,10 @@ function boot(){ if(booted)return; booted=true; layout(); last=performance.now()
 function onResize(){ if(cv) layout(); }
 function onClick(e){ const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
   const vis=tarjetasVisibles();
-  for(const c of vis){ if(mx>=c._x&&mx<=c._x+c._w&&my>=c._y&&my<=c._y+c._h){ abrirDetalle(c); return; } } }
+  for(const c of vis){ if(mx>=c._x&&mx<=c._x+c._w&&my>=c._y&&my<=c._y+c._h){
+    // ilumina la RUTA real del hilo (su exchange -> su tarjeta) y lanza un pulso, luego abre
+    const ex=c.exch; strands.forEach(s=>{ if(s.coin===c){ s.hl=1; s._wp=0; s._wbuy=c.disp>=0; s._wmag=1.3; } else if(s.exch===ex){ s.hl=Math.max(s.hl,0.6); } });
+    setTimeout(()=>abrirDetalle(c), 230); return; } } }
 /* ===== modal de detalle (click en tarjeta): grafico real + perfil de volumen + niveles + tendencia ===== */
 function cerrarDetalle(){ try{ if(mRO)mRO.disconnect(); }catch(_){} mRO=null;
   if(mRAF){ cancelAnimationFrame(mRAF); mRAF=0; }
@@ -921,6 +957,7 @@ function cerrar(){
   if(Z._nivTimer){ clearInterval(Z._nivTimer); Z._nivTimer=null; }
   if(Z._cardTimer){ clearInterval(Z._cardTimer); Z._cardTimer=null; }
   try{ if(stream)stream.cerrar(); }catch(_){} stream=null;
+  try{ if(tradeStream)tradeStream.cerrar(); }catch(_){} tradeStream=null;
   window.removeEventListener('resize',onResize);
   document.removeEventListener('visibilitychange',onVis); paused=false;
   const o=document.getElementById('ob-overlay'); if(o)o.remove();

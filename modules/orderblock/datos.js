@@ -82,6 +82,50 @@ export function streamMini(onTick) {
   return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
 }
 
+/* ---- trades en vivo (aggTrade combinado) para pulsos de ballenas + flujo real ----
+   Un solo WebSocket con los streams <symbol>@aggTrade de las monedas que pida el motor.
+   d.m = true  -> el comprador era maker (el agresor VENDIÓ)
+   d.m = false -> el agresor COMPRÓ. quote = precio * cantidad (tamaño en USDT). */
+export function streamTrades(symbols, onTrade) {
+  const syms = (symbols || []).slice(0, 24).map((s) => String(s).toLowerCase());
+  if (!syms.length) return { cerrar() {} };
+  const url = 'wss://stream.binance.com:9443/stream?streams=' + syms.map((s) => s + '@aggTrade').join('/');
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket(url); } catch (_) { reintentar(); return; }
+    ws.onmessage = (ev) => {
+      try {
+        const o = JSON.parse(ev.data); const d = o.data || o;
+        if (!d || d.e !== 'aggTrade' || !d.s) return;
+        const p = +d.p, q = +d.q;
+        if (!(p > 0) || !(q > 0)) return;
+        onTrade({ symbol: d.s, price: p, qty: q, quote: p * q, buy: d.m === false });
+      } catch (_) {}
+    };
+    ws.onclose = () => { if (!cerrado) reintentar(); };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  const reintentar = () => { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
+}
+
+/* ---- volumen 24h REAL de DEX (DefiLlama, gratis, sin key, con CORS) ----
+   Devuelve { nombreProtocoloEnMinusculas: volumen24hUSD }. Si falla, {} y el motor
+   se queda con el respaldo de CoinGecko. */
+let _dex = null;
+export async function dexVol() {
+  if (_dex) return _dex;
+  try {
+    const j = await traer('https://api.llama.fi/overview/dexs?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true', 9000);
+    const out = {};
+    ((j && j.protocols) || []).forEach((p) => { if (p && p.name) out[String(p.name).toLowerCase()] = +p.total24h || 0; });
+    _dex = out;
+  } catch (_) { _dex = {}; }
+  return _dex;
+}
+
 /* ---- velas (klines) para el grafico de detalle ---- */
 export async function velas(symbol, interval = '1h', limit = 240) {
   const n = Math.min(1000, limit);
