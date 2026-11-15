@@ -104,6 +104,9 @@ function ocultarPos(id) { try { const l = posOcultas(); if (!l.includes(id)) { l
 const _marks = {};
 let _vigMarcas = null;
 let _marcadorTick = null;   // referencia al tick, para dispararlo en cuanto _spot cargue
+/* cfg por lienzo: en conectar() se registra para poder convertir y->precio al
+   arrastrar un TP/SL (cada modulo trae su propio precioEn, log o lineal). */
+const _cfgPorCanvas = new WeakMap();
 function arrancarMarcador() {
   if (_vigMarcas) return;
   const tick = async () => {
@@ -120,12 +123,75 @@ function arrancarMarcador() {
           if (isFinite(v) && v > 0) _marks[s] = v;
         } catch (_) {}
       }
+      revisarTPSL(posis);   // suena la alerta si el precio llego a un TP o SL
     } catch (_) {}
   };
   _marcadorTick = tick;
   tick();                               // ya, por si _spot esta listo
   setTimeout(tick, 800);                // red de seguridad para la carga de _spot
   _vigMarcas = setInterval(tick, 7000);
+}
+/* ¿El precio actual ya alcanzo el TP o el SL de esta posicion? (modelo manual:
+   NO cerramos; solo suena la alerta y se retira ese nivel). Direccion:
+   long TP arriba / long SL abajo ; short TP abajo / short SL arriba. */
+function cruzaTPSL(p, cual, mark) {
+  const nivel = cual === 'tp' ? p.tp : p.sl;
+  if (!(nivel > 0) || !(mark > 0)) return false;
+  if (p.lado === 'long') return cual === 'tp' ? (mark >= nivel) : (mark <= nivel);
+  return cual === 'tp' ? (mark <= nivel) : (mark >= nivel);
+}
+let _arrastrandoTPSL = false;   // mientras se arrastra un TP/SL no se dispara la alerta
+function revisarTPSL(posis) {
+  if (!_spot || !_spot.setTPSL || _arrastrandoTPSL) return;
+  posis.forEach((p) => {
+    const mark = _marks[String(p.par || '').toUpperCase() + 'USDT'] || 0;
+    if (!(mark > 0)) return;
+    ['tp', 'sl'].forEach((cual) => {
+      if (cruzaTPSL(p, cual, mark)) {
+        try { sonar({ par: p.par, precio: cual === 'tp' ? p.tp : p.sl, vender: cual === 'sl', tipo: cual }, mark); } catch (_) {}
+        try { _spot.setTPSL(p.id, cual === 'tp' ? 0 : (p.tp || 0), cual === 'sl' ? 0 : (p.sl || 0)); } catch (_) {}   // retira el nivel que sono
+      }
+    });
+  });
+}
+/* Aviso de esquina, UNA sola vez: TP/SL son alertas de sonido, cierre manual. */
+function avisoTPSLUnaVez() {
+  try { if (localStorage.getItem('cco-tpsl-aviso')) return; localStorage.setItem('cco-tpsl-aviso', '1'); } catch (_) {}
+  const t = document.createElement('div');
+  t.className = 'od-toast';
+  t.innerHTML = `<span class="od-t-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+    <div><b>TP and SL are sound alerts</b><span>Drag them where you want. Keep the volume up and this tab open in the background; we sound an alert when price hits your level, and you close the trade yourself.</span></div>
+    <button type="button" class="od-t-x">✕</button>`;
+  document.body.appendChild(t);
+  t.querySelector('.od-t-x').onclick = () => t.remove();
+  setTimeout(() => { if (t.parentNode) t.remove(); }, 13000);
+}
+/* Nivel por defecto de un TP/SL nuevo (±1.5%/1% segun lado). */
+function defNivelTPSL(p, cual) {
+  const e = p.entrada || 0;
+  if (p.lado === 'long') return cual === 'tp' ? e * 1.015 : e * 0.99;
+  return cual === 'tp' ? e * 0.985 : e * 1.01;
+}
+function posDe(id) { const l = (_spot && _spot.posiciones) ? _spot.posiciones() : []; return l.find((x) => x.id === id) || null; }
+/* Fija TP o SL en la posicion (ledger compartido con Spot). */
+function aplicarTPSL(p, cual, px) {
+  if (!_spot || !_spot.setTPSL || !(px > 0)) return;
+  px = +px;
+  try { _spot.setTPSL(p.id, cual === 'tp' ? px : (p.tp || 0), cual === 'sl' ? px : (p.sl || 0)); } catch (_) {}
+}
+/* Quita (pone a 0) un TP o SL de la posicion. */
+function quitarNivelTPSL(posId, cual) {
+  const p = posDe(posId); if (!p || !_spot || !_spot.setTPSL) return;
+  try { _spot.setTPSL(p.id, cual === 'tp' ? 0 : (p.tp || 0), cual === 'sl' ? 0 : (p.sl || 0)); } catch (_) {}
+}
+/* Boton/recuadro cuadrado del overlay (hueco para crear, solido para el tirador). */
+function botonCuadroOd(g, x, y, w, h, col, txt, hueco) {
+  g.save();
+  if (hueco) { g.fillStyle = 'rgba(10,14,20,.92)'; redondeadoOd(g, x, y, w, h, 5); g.fill(); g.strokeStyle = col; g.lineWidth = 1.3; redondeadoOd(g, x + .7, y + .7, w - 1.4, h - 1.4, 5); g.stroke(); g.fillStyle = col; }
+  else { g.fillStyle = col; redondeadoOd(g, x, y, w, h, 5); g.fill(); g.fillStyle = '#04210f'; }
+  g.font = '800 10px ui-monospace,monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(txt, x + w / 2, y + h / 2 + .5);
+  g.textBaseline = 'alphabetic'; g.restore();
 }
 /* Cantidad de moneda con decimales utiles, sin ceros de cola (PnL del short). */
 function fmtMoneda(x) {
@@ -207,6 +273,7 @@ export function cerrarFichas() { cerrarTodo(); }
 export function conectar(cfg) {
   if (!cfg || !cfg.canvas) return;
   const cv = cfg.canvas;
+  try { _cfgPorCanvas.set(cv, cfg); } catch (_) {}   // para y->precio al arrastrar TP/SL
   if (cv.dataset.ordenLista) return;
   cv.dataset.ordenLista = '1';
   estilos();
@@ -1177,6 +1244,56 @@ export function pintar(g, opciones) {
       g.beginPath(); g.moveTo(xB + 8, yy - 4); g.lineTo(xB + 16, yy + 4); g.moveTo(xB + 16, yy - 4); g.lineTo(xB + 8, yy + 4); g.stroke();
       g.lineCap = 'butt';
       zonas.push({ x: xB, y: yy - 12, w: 24, h: 24, ocultarPos: p.id });
+
+      /* ── TP / SL estilo TradingView: cuadrados arrastrables, SIN escribir ──
+         Los no fijados salen como botones a la izquierda de la tachuela; los
+         fijados, como linea punteada con tirador que se arrastra. */
+      let rx = (pnlTxt ? xP : xE) - 6;
+      if (!p.sl) {
+        const bw = 30, bx = rx - bw;
+        botonCuadroOd(g, bx, yy - 9, bw, 18, '#ff5b6e', 'SL', true);
+        zonas.push({ x: bx - 3, y: yy - 11, w: bw + 6, h: 22, tpslCrear: { posId: p.id, cual: 'sl' } });
+        rx = bx - 6;
+      }
+      if (!p.tp) {
+        const bw = 30, bx = rx - bw;
+        botonCuadroOd(g, bx, yy - 9, bw, 18, '#2ee86a', 'TP', true);
+        zonas.push({ x: bx - 3, y: yy - 11, w: bw + 6, h: 22, tpslCrear: { posId: p.id, cual: 'tp' } });
+        rx = bx - 6;
+      }
+      const pintarNivel = (cual) => {
+        const nivel = cual === 'tp' ? p.tp : p.sl;
+        if (!(nivel > 0) || !(nivel >= pMin && nivel <= pMax)) return;
+        const esTP = cual === 'tp';
+        const c2 = esTP ? '#2ee86a' : '#ff5b6e';
+        const ya = Y(nivel);
+        const bw = 30, bh = 20, xw = 18;
+        const xX = x1 - xw - 2;                 // X (quitar) al borde DERECHO
+        const lt = (esTP ? 'TP ' : 'SL ') + fmt(nivel);
+        g.font = 'bold 10px ui-monospace,monospace';
+        const w2 = g.measureText(lt).width + 16;
+        const xLab = xX - 6 - w2;               // etiqueta, a la izquierda de la X
+        const xH = xLab - 6 - bw;               // tirador (icono TP/SL) a la IZQUIERDA
+        // linea punteada hasta el tirador
+        g.save(); g.setLineDash([7, 4]); g.strokeStyle = c2; g.lineWidth = 1.4;
+        g.beginPath(); g.moveTo(0, ya); g.lineTo(xH - 4, ya); g.stroke(); g.restore();
+        // tirador cuadrado arrastrable (IZQUIERDA)
+        botonCuadroOd(g, xH, ya - bh / 2, bw, bh, c2, cual.toUpperCase(), false);
+        zonas.push({ x: xH - 4, y: ya - 11, w: bw + 8, h: 22, tpslDrag: { posId: p.id, cual } });
+        // etiqueta (CENTRO)
+        g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 5; g.shadowOffsetY = 1;
+        g.fillStyle = c2; redondeadoOd(g, xLab, ya - 10, w2, 20, 6); g.fill(); g.restore();
+        g.fillStyle = esTP ? '#04210f' : '#2a0509'; g.textAlign = 'left'; g.fillText(lt, xLab + 8, ya + 4);
+        // X para quitar (DERECHA)
+        g.fillStyle = 'rgba(11,15,22,.92)'; redondeadoOd(g, xX, ya - 9, xw, 18, 5); g.fill();
+        g.strokeStyle = c2 + 'aa'; g.lineWidth = 1.1; redondeadoOd(g, xX, ya - 9, xw, 18, 5); g.stroke();
+        g.strokeStyle = c2; g.lineWidth = 1.4; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(xX + 6, ya - 3); g.lineTo(xX + 12, ya + 3); g.moveTo(xX + 12, ya - 3); g.lineTo(xX + 6, ya + 3); g.stroke();
+        g.lineCap = 'butt';
+        zonas.push({ x: xX, y: ya - 9, w: xw, h: 18, tpslQuitar: { posId: p.id, cual } });
+      };
+      if (p.tp) pintarNivel('tp');
+      if (p.sl) pintarNivel('sl');
     });
   } catch (_) {}
 
@@ -1193,29 +1310,72 @@ function redondeadoOd(g, x, y, w, h, r) {
   g.closePath();
 }
 
-/** Engancha el clic de cancelar en un lienzo. */
+/** Engancha el clic de cancelar (y el arrastre de TP/SL) en un lienzo. */
 export function clicCancelar(cv, dameZonas, repintar) {
   if (cv.dataset.odCancel) return;
   cv.dataset.odCancel = '1';
 
-  /* La manita al pasar por encima de la X: si no cambia el cursor,
-     nadie sabe que ahí se puede pulsar. */
-  cv.addEventListener('mousemove', (e) => {
-    const r = cv.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    const encima = (dameZonas() || []).some((q) =>
-      x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
-    if (encima) cv.style.cursor = 'pointer';
-    else if (cv.style.cursor === 'pointer') cv.style.cursor = 'crosshair';
-  });
+  let arrastre = null;   // { posId, cual } mientras se arrastra un TP/SL
 
-  const mirar = (cx, cy) => {
+  const zonaEn = (cx, cy) => {
     const r = cv.getBoundingClientRect();
     const x = cx - r.left, y = cy - r.top;
-    const z = (dameZonas() || []).find((q) =>
-      x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
+    return (dameZonas() || []).find((q) =>
+      x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h) || null;
+  };
+  /* y -> precio con el precioEn del propio lienzo (lineal o log, cada modulo trae el suyo). */
+  const precioDe = (cy) => {
+    const cfg = _cfgPorCanvas.get(cv);
+    if (!cfg || !cfg.precioEn) return 0;
+    const r = cv.getBoundingClientRect();
+    const p = cfg.precioEn(cy - r.top);
+    return (p > 0) ? p : 0;
+  };
+
+  /* Cursor: mano en las X, doble flecha vertical en lo arrastrable (TP/SL). */
+  cv.addEventListener('mousemove', (e) => {
+    if (arrastre) return;
+    const z = zonaEn(e.clientX, e.clientY);
+    const mover = z && (z.tpslDrag || z.tpslCrear);
+    if (mover) cv.style.cursor = 'ns-resize';
+    else if (z) cv.style.cursor = 'pointer';
+    else if (cv.style.cursor === 'pointer' || cv.style.cursor === 'ns-resize') cv.style.cursor = 'crosshair';
+  });
+
+  /* Empezar a arrastrar (o crear) un TP/SL. */
+  cv.addEventListener('mousedown', (e) => {
+    const z = zonaEn(e.clientX, e.clientY);
+    if (!z || !(z.tpslDrag || z.tpslCrear)) return;
+    e.stopPropagation(); e.preventDefault();
+    const info = z.tpslDrag || z.tpslCrear;
+    const p = posDe(info.posId); if (!p) return;
+    if (z.tpslCrear) {
+      let px = precioDe(e.clientY);
+      if (!(px > 0)) px = defNivelTPSL(p, info.cual);
+      aplicarTPSL(p, info.cual, px);
+      avisoTPSLUnaVez();
+    }
+    arrastre = { posId: info.posId, cual: info.cual };
+    _arrastrandoTPSL = true;
+    cv.style.cursor = 'ns-resize';
+    if (repintar) repintar();
+  }, true);
+
+  window.addEventListener('mousemove', (e) => {
+    if (!arrastre) return;
+    const px = precioDe(e.clientY); if (!(px > 0)) return;
+    const p = posDe(arrastre.posId); if (!p) { arrastre = null; _arrastrandoTPSL = false; return; }
+    aplicarTPSL(p, arrastre.cual, px);
+    if (repintar) repintar();
+  });
+  window.addEventListener('mouseup', () => { if (arrastre) { arrastre = null; _arrastrandoTPSL = false; if (repintar) repintar(); } });
+
+  const mirar = (cx, cy) => {
+    const z = zonaEn(cx, cy);
     if (z) {
       if (z.ocultarPos) { ocultarPos(z.ocultarPos); if (repintar) repintar(); }   // solo oculta la visualizacion, no vende
+      else if (z.tpslQuitar) { quitarNivelTPSL(z.tpslQuitar.posId, z.tpslQuitar.cual); if (repintar) repintar(); }
+      else if (z.tpslDrag || z.tpslCrear) { /* lo maneja mousedown/arrastre */ }
       else pedirCancelar(z.orden, repintar);
       return true;
     }
