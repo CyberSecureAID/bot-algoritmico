@@ -10,12 +10,12 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=10';
+import { estilos } from './estilos.js?v=11';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
-import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=3';
+import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=4';
 import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=2';
 
 const LIB = new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
@@ -311,11 +311,12 @@ function pintarLogoHead(pane) {
 /* ── Indicadores: cálculo cacheado + trazo limpio con animación cometa ── */
 function recalc(pane) {
   const v = pane.velas;
-  const ind = { ovl: [] };
+  const ind = { ovl: [], nubes: [] };
   if (v.length) pane.ovl.forEach((id) => {
     const def = buscarInd(id); if (!def || def.tipo !== 'ovl') return;
     const c = cfgDe(pane, def); const r = calcular(def, v, c);
-    (r.lineas || []).forEach((ln) => ind.ovl.push({ id, col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, a: ln.a != null ? ln.a : 1, data: ln.data }));
+    (r.lineas || []).forEach((ln) => ind.ovl.push({ id, col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, a: ln.a != null ? ln.a : 1, data: ln.data, shift: ln.shift || 0, dots: !!ln.dots, dir: ln.dir || null }));
+    (r.nubes || []).forEach((nb) => ind.nubes.push(nb));
   });
   pane.ind = ind;
   // Oscilador: PANEL NATIVO de la libreria (como TradingView), nunca una banda encima.
@@ -356,10 +357,11 @@ function sincronizarOsc(pane, def, c, r) {
   if (S2.main && r.serie) { try { S2.main.applyOptions({ color: c.col, lineWidth: c.gr || 2 }); S2.main.setData(serieOsc(pane, r.serie)); } catch (_) {} }
   let last = null; const src = r.serie || r.hist; if (src) for (let i = src.length - 1; i >= 0; i--) { if (src[i] != null) { last = src[i]; break; } }
   pane._oscLast = last;
+  pane._oscData = { serie: r.serie || null, serie2: r.serie2 || null, serie3: r.serie3 || null };
 }
 function desmontarOsc(pane) {
   if (pane.oscSeries) { Object.keys(pane.oscSeries).forEach((k) => { try { pane.chart.removeSeries(pane.oscSeries[k]); } catch (_) {} }); pane.oscSeries = null; }
-  pane.oscRefs = []; pane._oscMounted = null; pane._oscLast = null;
+  pane.oscRefs = []; pane._oscMounted = null; pane._oscLast = null; pane._oscData = null;
 }
 function arrancarRAF() {
   let last = 0;
@@ -399,17 +401,24 @@ function dibujarInds(pane) {
   // Recorta al area de ploteo: el indicador NUNCA se dibuja sobre el eje de precios (derecha).
   let psW = 0; try { psW = pane.chart.priceScale('right').width() || 0; } catch (_) {}
   const plotW = Math.max(10, W - psW);
+  // Posicion por INDICE logico: sirve para lineas desplazadas y para la nube adelantada al futuro.
+  const XL = (idx) => { try { const c = ts.logicalToCoordinate(idx); return c == null ? null : c; } catch (_) { return null; } };
   g.save(); g.beginPath(); g.rect(0, 0, plotW, H); g.clip();
-  (ind.ovl || []).forEach((o, i) => lineaComet(g, v, o.data, X, Yp, o.col, W, now, i, o.gr, o.dash, o.a));
+  (ind.nubes || []).forEach((nb) => dibujarNube(g, v, nb, XL, Yp));
+  (ind.ovl || []).forEach((o, i) => {
+    if (o.dots) dibujarDots(g, v, o, XL, Yp);
+    else if (o.dir) lineaSeg(g, v, o, XL, Yp);
+    else lineaComet(g, v, o.data, XL, Yp, o.col, W, now, i, o.gr, o.dash, o.a, o.shift);
+  });
   etiquetaOsc(g, pane);
   g.restore();
 }
 /* Indicador: trazo LIMPIO + una luz (cometa) que lo recorre de izquierda a
    derecha, suave y lenta, igual que el área VWAP Pro. Sin neón constante. */
-function lineaComet(g, velas, data, X, Yp, col, W, now, idx, gr, dash, alpha) {
+function lineaComet(g, velas, data, XL, Yp, col, W, now, idx, gr, dash, alpha, shift) {
   if (!data) return;
-  const pts = [];
-  for (let i = 0; i < velas.length; i++) { const val = data[i]; if (val == null) continue; const x = X(velas[i].time); if (x == null) continue; const y = Yp(val); if (y == null) continue; pts.push([x, y, i]); }
+  const sh = shift || 0, pts = [];
+  for (let i = 0; i < velas.length; i++) { const val = data[i]; if (val == null) continue; const x = XL(i + sh); if (x == null) continue; const y = Yp(val); if (y == null) continue; pts.push([x, y, i]); }
   if (pts.length < 2) return;
   const base = alpha != null ? alpha : 1;
   g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.shadowBlur = 0; g.globalAlpha = base;
@@ -436,6 +445,51 @@ function lineaComet(g, velas, data, X, Yp, col, W, now, idx, gr, dash, alpha) {
     prev = p;
   }
   g.globalAlpha = 1; g.restore();
+}
+/* Linea con color por TRAMO segun la direccion (SuperTrend, PSAR): verde en
+   tendencia alcista, rojo en bajista. Sin cometa. */
+function lineaSeg(g, velas, o, XL, Yp) {
+  const data = o.data, dir = o.dir || [], sh = o.shift || 0, up = '#2ee86a', dn = '#ff5b6e';
+  g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.lineWidth = o.gr || 2; g.globalAlpha = o.a != null ? o.a : 1;
+  let px = null, py = null, pi = -2;
+  for (let i = 0; i < velas.length; i++) {
+    const val = data[i]; if (val == null) { px = null; continue; }
+    const x = XL(i + sh); if (x == null) { px = null; continue; }
+    const y = Yp(val); if (y == null) { px = null; continue; }
+    if (px != null && i === pi + 1) { g.strokeStyle = (dir[i] >= 0 ? up : dn); g.beginPath(); g.moveTo(px, py); g.lineTo(x, y); g.stroke(); }
+    px = x; py = y; pi = i;
+  }
+  g.restore();
+}
+/* Puntos (Parabolic SAR): un punto por vela, coloreado por tendencia si hay dir. */
+function dibujarDots(g, velas, o, XL, Yp) {
+  const data = o.data, dir = o.dir, sh = o.shift || 0, r = Math.max(1.4, (o.gr || 2) * 0.9), up = '#2ee86a', dn = '#ff5b6e';
+  g.save(); g.globalAlpha = o.a != null ? o.a : 1;
+  for (let i = 0; i < velas.length; i++) {
+    const val = data[i]; if (val == null) continue; const x = XL(i + sh); if (x == null) continue; const y = Yp(val); if (y == null) continue;
+    g.fillStyle = dir ? (dir[i] >= 0 ? up : dn) : o.col;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+}
+/* Nube (Ichimoku): relleno entre dos lineas (A y B), verde si A>=B, rojo si A<B,
+   por tramos. Puede ir desplazada al futuro con shift. */
+function dibujarNube(g, velas, nb, XL, Yp) {
+  const a = nb.a, b = nb.b, sh = nb.shift || 0, cu = nb.colUp || 'rgba(46,232,106,.13)', cd = nb.colDn || 'rgba(255,91,110,.13)';
+  g.save();
+  let seg = [], signo = null;
+  const flush = () => { if (seg.length >= 2) { g.beginPath(); g.moveTo(seg[0].x, seg[0].ya); for (let k = 1; k < seg.length; k++) g.lineTo(seg[k].x, seg[k].ya); for (let k = seg.length - 1; k >= 0; k--) g.lineTo(seg[k].x, seg[k].yb); g.closePath(); g.fillStyle = seg[0].av >= seg[0].bv ? cu : cd; g.fill(); } seg = []; };
+  for (let i = 0; i < velas.length; i++) {
+    const av = a[i], bv = b[i]; if (av == null || bv == null) { flush(); signo = null; continue; }
+    const x = XL(i + sh); if (x == null) { flush(); signo = null; continue; }
+    const ya = Yp(av), yb = Yp(bv); if (ya == null || yb == null) { flush(); signo = null; continue; }
+    const s = av >= bv ? 1 : -1;
+    const punto = { x, ya, yb, av, bv };
+    if (signo != null && s !== signo) { seg.push(punto); flush(); }
+    seg.push(punto); signo = s;
+  }
+  flush();
+  g.restore();
 }
 /* Etiqueta del oscilador (nombre + ultimo valor), arriba a la izquierda de SU
    panel nativo, como en TradingView. Con sombra para que lea sobre la linea. */
@@ -647,20 +701,35 @@ function distSeg(px, py, x1, y1, x2, y2) {
 function hitInd(pane, x, y) {
   const ind = pane.ind; if (!ind) return null;
   const H = pane.body.clientHeight || 1, v = pane.velas;
-  // oscilador: todo su panel (abajo) es tocable → su barra
-  if (pane.oscK && pane._oscMounted) { let h0 = null; try { h0 = pane.chart.panes()[0].getHeight(); } catch (_) {} if (h0 && y >= h0) return pane.oscK; }
+  // oscilador: SOLO su linea es tocable (manito), no todo el panel; asi sus ejes
+  // conservan los cursores de resize (ns-resize / ew-resize) de la libreria.
+  if (pane.oscK && pane._oscMounted && pane.oscSeries && pane._oscData) {
+    let h0 = null; try { h0 = pane.chart.panes()[0].getHeight(); } catch (_) {}
+    if (h0 != null && y >= h0) {
+      const ts2 = pane.chart.timeScale();
+      const XL2 = (idx) => { try { const cc = ts2.logicalToCoordinate(idx); return cc == null ? null : cc; } catch (_) { return null; } };
+      const pares = [[pane._oscData.serie, pane.oscSeries.main], [pane._oscData.serie2, pane.oscSeries.s2], [pane._oscData.serie3, pane.oscSeries.s3]];
+      for (const par of pares) {
+        const arr = par[0], ser = par[1]; if (!arr || !ser) continue;
+        let px = null, py = null;
+        for (let i = 0; i < v.length; i++) { const val = arr[i]; if (val == null) { px = null; continue; } const cx = XL2(i); if (cx == null) { px = null; continue; } let cy; try { cy = ser.priceToCoordinate(val); } catch (_) { cy = null; } if (cy == null) { px = null; continue; } cy += h0; if (px != null) { const a = Math.min(px, cx) - 3, b = Math.max(px, cx) + 3; if (x >= a && x <= b && distSeg(x, y, px, py, cx, cy) < 5) return pane.oscK; } px = cx; py = cy; }
+      }
+      return null;
+    }
+  }
   // overlays: cerca de alguna de sus polilineas
   const ts = pane.chart.timeScale();
-  const Xp = (t) => { try { const c = ts.timeToCoordinate(t); return c == null ? null : c; } catch (_) { return null; } };
+  const XL = (idx) => { try { const c = ts.logicalToCoordinate(idx); return c == null ? null : c; } catch (_) { return null; } };
   const Yp = (p) => { try { const c = pane.serie.priceToCoordinate(p); return c == null ? null : c; } catch (_) { return null; } };
   for (const o of (ind.ovl || [])) {
     if (!o.data) continue;
-    let px = null, py = null;
+    const sh = o.shift || 0; let px = null, py = null;
     for (let i = 0; i < v.length; i++) {
       const val = o.data[i]; if (val == null) { px = null; continue; }
-      const cx = Xp(v[i].time); if (cx == null) { px = null; continue; }
+      const cx = XL(i + sh); if (cx == null) { px = null; continue; }
       const cy = Yp(val); if (cy == null) { px = null; continue; }
-      if (px != null) { const a = Math.min(px, cx) - 3, b = Math.max(px, cx) + 3; if (x >= a && x <= b && distSeg(x, y, px, py, cx, cy) < 5) return o.id; }
+      if (o.dots) { if (Math.hypot(x - cx, y - cy) < 6) return o.id; }
+      else if (px != null) { const a = Math.min(px, cx) - 3, b = Math.max(px, cx) + 3; if (x >= a && x <= b && distSeg(x, y, px, py, cx, cy) < 5) return o.id; }
       px = cx; py = cy;
     }
   }
@@ -902,31 +971,27 @@ function menuTf(pane, anc) {
    sale su barra de herramientas pegada a la etiqueta. */
 /* Menu de indicadores: ventana CENTRADA, con buscador y por grupos (como
    TradingView, pero sin tanta informacion). Scrollea; nada de columna vertical. */
-const GRUPO_NOM = { Trend: 'Medias / Tendencia', Volume: 'Volumen', Volatility: 'Volatilidad', Momentum: 'Osciladores / Momentum' };
+const CATS_IND = [['all', 'Todos'], ['Trend', 'Medias / Tendencia'], ['Volume', 'Volumen'], ['Volatility', 'Volatilidad'], ['Momentum', 'Osciladores']];
 function menuInd(pane) {
   cerrarMenu();
   const activo = (d) => d.tipo === 'ovl' ? pane.ovl.has(d.id) : pane.oscK === d.id;
-  const grupos = [];
-  INDICADORES.forEach((d) => { let g = grupos.find((x) => x.g === d.grupo); if (!g) { g = { g: d.grupo, items: [] }; grupos.push(g); } g.items.push(d); });
-  const cuerpo = grupos.map((gr) =>
-    `<div class="mc-ig"><div class="mc-ig-h">${GRUPO_NOM[gr.g] || gr.g}</div><div class="mc-ig-grid">` + gr.items.map((d) => {
-      const c = pane.cfg[d.id] || d.estilo;
-      return `<button class="mc-icard${activo(d) ? ' on' : ''}" data-id="${d.id}" data-tipo="${d.tipo}"><i class="dot" style="background:${c.col}"></i><span class="nm">${d.nom}</span><span class="ck">✓</span></button>`;
-    }).join('') + `</div></div>`
-  ).join('');
-  const m = modal('Indicadores', `<div class="mc-isearch-wrap"><input class="mc-isearch" placeholder="Buscar indicador..."></div><div class="bxc mc-ibody">${cuerpo}</div>`);
-  const body = m.querySelector('.mc-ibody'), search = m.querySelector('.mc-isearch');
+  const rows = INDICADORES.map((d) => { const c = pane.cfg[d.id] || d.estilo; return `<button class="mc-irow${activo(d) ? ' on' : ''}" data-id="${d.id}" data-tipo="${d.tipo}" data-grp="${d.grupo}"><i class="dot" style="background:${c.col}"></i><span class="nm">${d.nom}</span><span class="tag">${d.tipo === 'ovl' ? 'Precio' : 'Panel'}</span><span class="ck">✓</span></button>`; }).join('');
+  const sidebar = CATS_IND.map(([k, lbl], i) => `<button class="mc-cat${i === 0 ? ' on' : ''}" data-cat="${k}">${lbl}</button>`).join('');
+  const m = modal('Indicadores', `<div class="mc-isearch-wrap"><input class="mc-isearch" placeholder="Buscar indicador..."><span class="mc-icount"></span></div><div class="mc-ind-wrap"><div class="mc-ind-cats">${sidebar}</div><div class="bxc mc-ibody">${rows}</div></div>`);
+  const body = m.querySelector('.mc-ibody'), search = m.querySelector('.mc-isearch'), count = m.querySelector('.mc-icount');
+  let cat = 'all';
   const filtrar = () => {
-    const q = search.value.trim().toLowerCase();
-    body.querySelectorAll('.mc-icard').forEach((b) => { const def = buscarInd(b.dataset.id); b.style.display = (!q || (def && def.nom.toLowerCase().indexOf(q) >= 0)) ? '' : 'none'; });
-    body.querySelectorAll('.mc-ig').forEach((gp) => { gp.style.display = [...gp.querySelectorAll('.mc-icard')].some((b) => b.style.display !== 'none') ? '' : 'none'; });
+    const q = search.value.trim().toLowerCase(); let n = 0;
+    body.querySelectorAll('.mc-irow').forEach((b) => { const def = buscarInd(b.dataset.id); const okc = cat === 'all' || b.dataset.grp === cat; const okq = !q || (def && def.nom.toLowerCase().indexOf(q) >= 0); const show = okc && okq; b.style.display = show ? '' : 'none'; if (show) n++; });
+    if (count) count.textContent = n + ' indicadores';
   };
-  search.oninput = filtrar; setTimeout(() => { try { search.focus(); } catch (_) {} }, 40);
-  body.querySelectorAll('.mc-icard').forEach((card) => card.onclick = () => {
-    const id = card.dataset.id, def = buscarInd(id); if (!def) return;
+  m.querySelectorAll('.mc-cat').forEach((btn) => btn.onclick = () => { cat = btn.dataset.cat; m.querySelectorAll('.mc-cat').forEach((x) => x.classList.toggle('on', x === btn)); filtrar(); });
+  search.oninput = filtrar; filtrar(); setTimeout(() => { try { search.focus(); } catch (_) {} }, 40);
+  body.querySelectorAll('.mc-irow').forEach((row) => row.onclick = () => {
+    const id = row.dataset.id, def = buscarInd(id); if (!def) return;
     let encendido;
-    if (def.tipo === 'ovl') { if (pane.ovl.has(id)) { pane.ovl.delete(id); encendido = false; } else { pane.ovl.add(id); encendido = true; } card.classList.toggle('on', encendido); }
-    else { encendido = pane.oscK !== id; pane.oscK = encendido ? id : null; body.querySelectorAll('.mc-icard[data-tipo="osc"]').forEach((x) => x.classList.toggle('on', x.dataset.id === pane.oscK)); }
+    if (def.tipo === 'ovl') { if (pane.ovl.has(id)) { pane.ovl.delete(id); encendido = false; } else { pane.ovl.add(id); encendido = true; } row.classList.toggle('on', encendido); }
+    else { encendido = pane.oscK !== id; pane.oscK = encendido ? id : null; body.querySelectorAll('.mc-irow[data-tipo="osc"]').forEach((x) => x.classList.toggle('on', x.dataset.id === pane.oscK)); }
     recalc(pane); marcarBtnInd(pane);
     if (encendido) { m.remove(); setTimeout(() => abrirBarraDe(pane, id), 30); }
   });

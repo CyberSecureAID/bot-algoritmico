@@ -162,20 +162,25 @@ const CSS = `
   .mc-modal .bxf .dl{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
   .mc-modal .bxf .dl:hover{filter:brightness(1.06)}
 
-  /* ── Menu de indicadores (ventana centrada, por grupos, con buscador) ── */
-  .mc-isearch-wrap{padding:12px 16px 0}
-  .mc-isearch{width:100%; height:40px; padding:0 13px; border-radius:10px; border:1px solid var(--mc-line2); background:#0b1017; color:var(--mc-ink); font-family:var(--mc-mono); font-size:13px; outline:none}
+  /* ── Menu de indicadores: ventana centrada, categorias a un lado + lista ── */
+  .mc-isearch-wrap{display:flex; align-items:center; gap:12px; padding:14px 16px 4px}
+  .mc-isearch{flex:1; height:40px; padding:0 13px; border-radius:10px; border:1px solid var(--mc-line2); background:#0b1017; color:var(--mc-ink); font-family:var(--mc-mono); font-size:13px; outline:none}
   .mc-isearch:focus{border-color:var(--mc-gold-soft)}
-  .mc-ibody{max-height:70vh}
-  .mc-ig{margin-bottom:15px}
-  .mc-ig-h{font-family:var(--mc-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--mc-ink3); margin:2px 2px 9px}
-  .mc-ig-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(188px,1fr)); gap:8px}
-  .mc-icard{display:flex; align-items:center; gap:9px; padding:11px 12px; border-radius:11px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.02); color:var(--mc-ink); cursor:pointer; text-align:left; font-family:var(--mc-disp); transition:border-color .13s, background .13s}
-  .mc-icard:hover{border-color:var(--mc-gold-soft); background:rgba(255,255,255,.05)}
-  .mc-icard .dot{width:12px; height:12px; border-radius:3px; flex:0 0 auto}
-  .mc-icard .nm{flex:1; font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .mc-icard .ck{opacity:0; color:var(--mc-gold); font-weight:900; flex:0 0 auto}
-  .mc-icard.on{border-color:var(--mc-gold); background:rgba(232,184,75,.12)} .mc-icard.on .ck{opacity:1}
+  .mc-icount{font-family:var(--mc-mono); font-size:11px; color:var(--mc-ink3); white-space:nowrap}
+  .mc-ind-wrap{flex:1 1 auto; min-height:0; display:flex}
+  .mc-ind-cats{flex:0 0 196px; display:flex; flex-direction:column; gap:3px; padding:12px 10px 14px 16px; border-right:1px solid var(--mc-line)}
+  .mc-cat{text-align:left; padding:10px 12px; border-radius:9px; border:1px solid transparent; background:transparent; color:var(--mc-ink2); font-family:var(--mc-disp); font-size:13px; font-weight:600; cursor:pointer; transition:background .13s, color .13s, border-color .13s}
+  .mc-cat:hover{background:rgba(255,255,255,.04); color:var(--mc-ink)}
+  .mc-cat.on{background:rgba(232,184,75,.12); border-color:rgba(232,184,75,.4); color:var(--mc-gold)}
+  .mc-ibody{flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px; display:grid; grid-template-columns:repeat(auto-fill,minmax(172px,1fr)); gap:7px; align-content:start}
+  .mc-irow{display:flex; align-items:center; gap:10px; padding:10px 11px; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.015); color:var(--mc-ink); cursor:pointer; text-align:left; font-family:var(--mc-disp); transition:border-color .12s, background .12s}
+  .mc-irow:hover{border-color:var(--mc-gold-soft); background:rgba(255,255,255,.05)}
+  .mc-irow .dot{width:11px; height:11px; border-radius:3px; flex:0 0 auto; box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+  .mc-irow .nm{flex:1; font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .mc-irow .tag{font-family:var(--mc-mono); font-size:8.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--mc-ink3); padding:2px 6px; border-radius:5px; background:rgba(255,255,255,.05); flex:0 0 auto}
+  .mc-irow .ck{opacity:0; color:var(--mc-gold); font-weight:900; font-size:12px; flex:0 0 auto}
+  .mc-irow.on{border-color:var(--mc-gold); background:rgba(232,184,75,.1)} .mc-irow.on .ck{opacity:1} .mc-irow.on .tag{color:var(--mc-gold); background:rgba(232,184,75,.14)}
+  @media (max-width:640px){ .mc-ind-wrap{flex-direction:column} .mc-ind-cats{flex:0 0 auto; flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--mc-line); padding:10px 12px; gap:6px} .mc-cat{white-space:nowrap} .mc-ibody{grid-template-columns:1fr} }
 
   /* ── Leyenda: boton +N y ventanita para gestionar/eliminar indicadores ── */
   .mc-chip-mas{color:var(--mc-ink2)!important; font-weight:800; padding:2px 10px; border:none}
