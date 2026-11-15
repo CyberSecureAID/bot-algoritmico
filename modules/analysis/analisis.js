@@ -174,15 +174,15 @@ async function abrirTool(abre, cardEl) {
   if (btn) { btn.classList.add('load'); btn.textContent = 'Loading…'; }
 
   try {
-    if (abre === 'pools')       await (await import(base + 'liquidity.js?v=143')).abrirPools();
-    else if (abre === 'heat')   await (await import(base + 'muros.js?v=138')).abrirMuros();
-    else if (abre === 'levels') await (await import(base + 'niveles.js?v=137')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=41', import.meta.url).href)).abrirInstitutional();
-    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=14', import.meta.url).href)).abrirReaction();
+    if (abre === 'pools')       await (await import(base + 'liquidity.js?v=144')).abrirPools();
+    else if (abre === 'heat')   await (await import(base + 'muros.js?v=139')).abrirMuros();
+    else if (abre === 'levels') await (await import(base + 'niveles.js?v=138')).abrirNiveles();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=42', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=15', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
-    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=11', import.meta.url).href)).abrirMulti();
-    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=12', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=16', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=12', import.meta.url).href)).abrirMulti();
+    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=13', import.meta.url).href)).abrirFootprint();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=17', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
@@ -377,7 +377,7 @@ function abrirComoFunciona() {
       <div class="an-how-ic">${ICO.premium}</div>
       <h2 class="an-how-h">The Analysis desk</h2>
       <p class="an-how-p">A section built for professional traders: high frequency, professional grade analysis, the best of the best and nothing filler. One subscription unlocks every tool in here, and the desk keeps growing, with new tools arriving over time.</p>
-      <p class="an-how-p">Trade right from any chart. Open a long or a short at market in one tap, and the desk reads whatever you hold and shows your buying power already converted, live, into the coin you are looking at. No wallet juggling and no leaving to swap: if you only hold BNB you still see what you can open in that coin, and the conversion happens the moment you open. Once you are in, your live profit shows right on the chart, measured in the coin you sold on a short and in percent on a long, so you always close on your own terms.</p>
+      <p class="an-how-p">Trade right from any chart. Open a long or a short at market in one tap, and the desk reads whatever you hold and shows your buying power already converted, live, into the coin you are looking at. No wallet juggling and no leaving to swap: if you only hold BNB you still see what you can open in that coin, and the conversion happens the moment you open. Once you are in, your live profit shows right on the chart, measured in the coin you sold on a short and in percent on a long. Drag a take profit and a stop loss straight onto the chart and we sound an alert the moment price hits them, so you always close on your own terms.</p>
       <p class="an-how-p">Already run a tool that works? If you can prove it is profitable, with a public backtest and the numbers to back it, we want it here. Reach us through Collaboration to show it and add it to the platform.</p>
       <button class="an-pay gold an-how-colab" type="button">${ICO.colab}<span>Open Collaboration</span></button>
     </div>`;
