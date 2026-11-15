@@ -195,7 +195,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=21', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=13', import.meta.url).href)).abrirFootprint();
     else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=17', import.meta.url).href)).abrirSuperScalper();
-    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=8', import.meta.url).href)).abrirOrderBlock();
+    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=9', import.meta.url).href)).abrirOrderBlock();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
