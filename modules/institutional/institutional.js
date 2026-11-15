@@ -1102,7 +1102,7 @@ function conectarOrdenesChart() {
   // pintarChart lo reintenta (antes un fallo puntual lo dejaba roto para siempre).
   if (cv.dataset.ordChart || cv.dataset.ordLoading) return;
   cv.dataset.ordLoading = '1';
-  import(new URL('../../assets/js/orden.js?v=133', import.meta.url).href).then((od) => {
+  import(new URL('../../assets/js/orden.js?v=134', import.meta.url).href).then((od) => {
     _od = od;
     od.conectar({
       canvas: cv,
