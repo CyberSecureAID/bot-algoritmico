@@ -74,7 +74,12 @@ const HERRAMIENTAS = [
   { id:'scalp', abre:'scalp', nombre:'Prediction', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'The most logical path price could take next',
     pitch:'Reads the market structure and projects the most logical path price could take next, as organic candles flowing from the current price.',
-    desc:'A real time prediction built on the structural logic of the chart, not a statement of what will happen. It reads the continuity of the market structure, where price bounced, where it ranged, where impulses were born, plus the dominant trend, and projects the most logical path that structure could continue into, as solid candles the same size as the chart, flowing from the last real candle so it reads as a natural continuation, with a light that travels along the path to show its direction. You choose the scenario with on chart buttons, Bullish, Bearish or Range, each with its probability, and see one clean path at a time, or press All to overlay the three in layers with depth. Every path is organic and respects the levels on the left: it bounces where price bounced, reacts at the origin of past impulses but moderately, and ranges organically. Works on any timeframe since cycles are fractal, and recomputes live. It is a probability tool, not financial advice and not a promise of any result, profit or benefit.' }
+    desc:'A real time prediction built on the structural logic of the chart, not a statement of what will happen. It reads the continuity of the market structure, where price bounced, where it ranged, where impulses were born, plus the dominant trend, and projects the most logical path that structure could continue into, as solid candles the same size as the chart, flowing from the last real candle so it reads as a natural continuation, with a light that travels along the path to show its direction. You choose the scenario with on chart buttons, Bullish, Bearish or Range, each with its probability, and see one clean path at a time, or press All to overlay the three in layers with depth. Every path is organic and respects the levels on the left: it bounces where price bounced, reacts at the origin of past impulses but moderately, and ranges organically. Works on any timeframe since cycles are fractal, and recomputes live. It is a probability tool, not financial advice and not a promise of any result, profit or benefit.' },
+  // "Order Block Liquidity" = modulo propio y aislado modules/orderblock/.
+  { id:'obliq', abre:'obliq', nombre:'Order Block Liquidity', cat:'analysis', img:'assets/img/preview.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'Where liquidity is flowing, live',
+    pitch:'A live money-flow radar of the whole crypto market: see where liquidity enters, which coins it pushes and the key levels where price reacts.',
+    desc:'A cinematic, market-wide liquidity radar. Real time flow from the main exchanges and DEXs runs through a central filter that splits the market into buying and selling pressure and into the coins moving the most right now. Every card carries the live price plus the strongest support (SELL) and resistance (BUY) read from the 4h/daily volume profile, with a fine internal profile and a neural web of connections you can trace on hover. Built to read the whole market at a glance, and made to be shared.' }
 ];
 /* Las imagenes del catalogo tambien se resuelven desde la raiz del sitio, para
    que no se rompan en la pagina propia de Analisis (ver nota en LOGO/RAIZ). */
@@ -190,6 +195,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=21', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=13', import.meta.url).href)).abrirFootprint();
     else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=17', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=1', import.meta.url).href)).abrirOrderBlock();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
