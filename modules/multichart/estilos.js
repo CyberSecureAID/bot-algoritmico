@@ -81,15 +81,16 @@ const CSS = `
 
   /* ── Cuerpo (gráfica + capas) ── */
   .mc-body{flex:1 1 auto; position:relative; min-height:0; background:var(--mc-bg); overflow:hidden}
-  .mc-cv{position:absolute; inset:0; z-index:0}
+  .mc-cv{position:absolute; inset:0; z-index:0; cursor:crosshair}
+  .mc-cv canvas, .mc-cv table, .mc-cv tr, .mc-cv td{cursor:crosshair}
   .mc-fx{position:absolute; inset:0; z-index:3; pointer-events:none}
   .mc-ux{position:absolute; inset:0; z-index:4; pointer-events:none}
   .mc-cap{position:absolute; inset:0; z-index:6; pointer-events:none; cursor:crosshair}
   .mc-cap.on{pointer-events:auto}
   .mc-cap.hit{pointer-events:auto; cursor:pointer}
   /* marca de agua: misma ubicación que las demás secciones (libre de barra y de las fechas) */
-  .mc-wm{position:absolute; left:60px; bottom:36px; z-index:1; opacity:.6; pointer-events:none}
-  .mc-wm img{height:21px; width:auto; filter:drop-shadow(0 2px 7px rgba(0,0,0,.95))}
+  .mc-wm{position:absolute; left:60px; bottom:36px; z-index:7; opacity:.72; pointer-events:none}
+  .mc-wm img{height:21px; width:auto; filter:drop-shadow(0 2px 8px rgba(0,0,0,.98))}
   .mc-pane.mc-max .mc-wm, .mc-float.mc-max .mc-wm{left:64px; bottom:46px}
   .mc-pane.mc-max .mc-wm img, .mc-float.mc-max .mc-wm img{height:38px}
   .mc-grip{position:absolute; right:3px; bottom:3px; z-index:7; width:13px; height:13px; pointer-events:none; opacity:.45}

@@ -10,13 +10,13 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=8';
+import { estilos } from './estilos.js?v=9';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=2';
-import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=1';
+import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=2';
 
 const LIB = new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -180,7 +180,7 @@ async function crearPanel(parId, tf, flotante, pos) {
   const id = 'mcp' + (++S.seq);
   const pane = {
     id, par, tf, chart: null, serie: null, velas: [], velasMs: [], stream: null,
-    flotante: !!flotante, max: false, ovl: new Set(), oscK: null, cfg: {}, ind: {},
+    flotante: !!flotante, max: false, ovl: new Set(), oscK: null, oscSeries: null, oscRefs: [], cfg: {}, ind: {},
     dibCache: [], barra: null, streamGen: 0, loadGen: 0, _hit: null
   };
   const el = document.createElement('div'); el.className = flotante ? 'mc-float' : 'mc-pane'; el.id = id;
@@ -218,7 +218,7 @@ async function crearPanel(parId, tf, flotante, pos) {
     autoSize: true, localization: { locale: 'en' },
     layout: { background: { type: 'solid', color: '#05070a' }, textColor: '#8b95a1', fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, attributionLogo: false },
     grid: { vertLines: { color: 'rgba(255,255,255,.028)' }, horzLines: { color: 'rgba(255,255,255,.028)' } },
-    rightPriceScale: { borderColor: '#222b35', scaleMargins: { top: 0.06, bottom: 0.28 } },
+    rightPriceScale: { borderColor: '#222b35', scaleMargins: { top: 0.08, bottom: 0.08 } },
     timeScale: { borderColor: '#222b35', timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 6, minBarSpacing: 0.4 },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0, vertLine: { color: '#C9A84B', width: 1, style: 3, labelBackgroundColor: '#8f6a1a' }, horzLine: { color: '#C9A84B', labelBackgroundColor: '#8f6a1a' } }
   });
@@ -310,19 +310,51 @@ function pintarLogoHead(pane) {
 
 /* ── Indicadores: cálculo cacheado + trazo limpio con animación cometa ── */
 function recalc(pane) {
-  const v = pane.velas; if (!v.length) { pane.ind = {}; actualizarLeyenda(pane); return; }
-  const ind = { ovl: [], osc: null };
-  pane.ovl.forEach((id) => {
+  const v = pane.velas;
+  const ind = { ovl: [] };
+  if (v.length) pane.ovl.forEach((id) => {
     const def = buscarInd(id); if (!def || def.tipo !== 'ovl') return;
     const c = cfgDe(pane, def); const r = calcular(def, v, c);
-    (r.lineas || []).forEach((ln) => ind.ovl.push({ col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, a: ln.a != null ? ln.a : 1, data: ln.data }));
+    (r.lineas || []).forEach((ln) => ind.ovl.push({ id, col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, a: ln.a != null ? ln.a : 1, data: ln.data }));
   });
-  if (pane.oscK) {
-    const def = buscarInd(pane.oscK);
-    if (def && def.tipo === 'osc') { const c = cfgDe(pane, def); ind.osc = Object.assign({ def: Object.assign({}, def, { n: nomInd(def, c), col: c.col }), gr: c.gr }, calcular(def, v, c)); }
-  }
   pane.ind = ind;
+  // Oscilador: PANEL NATIVO de la libreria (como TradingView), nunca una banda encima.
+  if (v.length && pane.oscK) {
+    const def = buscarInd(pane.oscK);
+    if (def && def.tipo === 'osc') { const c = cfgDe(pane, def); sincronizarOsc(pane, def, c, calcular(def, v, c)); }
+    else desmontarOsc(pane);
+  } else desmontarOsc(pane);
   actualizarLeyenda(pane);
+}
+/* ── Oscilador en su PROPIO panel nativo (LightweightCharts v5 panes).
+   Es un panel de verdad: con su eje de precios a la derecha y su separador
+   arrastrable (agranda o achica como TradingView). Es OPACO, no deja ver las
+   velas ni la rejilla detras, y no es una banda pegada encima del grafico. ── */
+function serieOsc(pane, arr) { const v = pane.velas, o = []; for (let i = 0; i < arr.length; i++) { if (arr[i] == null) continue; const t = v[i] && v[i].time; if (t == null) continue; o.push({ time: t, value: arr[i] }); } return o; }
+function crearOsc(pane, def, c, r) {
+  const chart = pane.chart, S2 = {};
+  if (r.hist) S2.hist = chart.addSeries(LC.HistogramSeries, { priceLineVisible: false, lastValueVisible: false, base: 0 }, 1);
+  if (r.serie3 != null) S2.s3 = chart.addSeries(LC.LineSeries, { color: r.col3 || '#49b6ff', lineWidth: 2, priceLineVisible: false, lastValueVisible: false }, 1);
+  if (r.serie2 != null) S2.s2 = chart.addSeries(LC.LineSeries, { color: r.col2 || '#ff8fbf', lineWidth: 2, priceLineVisible: false, lastValueVisible: false }, 1);
+  S2.main = chart.addSeries(LC.LineSeries, { color: c.col, lineWidth: c.gr || 2, priceLineVisible: false, lastValueVisible: true }, 1);
+  if (def.rango) { try { S2.main.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: def.rango[0], maxValue: def.rango[1] } }) }); } catch (_) {} }
+  pane.oscSeries = S2; pane.oscRefs = [];
+  (def.ref || []).forEach((rv) => { try { pane.oscRefs.push(S2.main.createPriceLine({ price: rv, color: 'rgba(255,255,255,.22)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true })); } catch (_) {} });
+  try { const ps = chart.panes(); if (ps[1]) ps[1].setHeight(Math.max(90, Math.round((pane.body.clientHeight || 300) * 0.28))); } catch (_) {}
+}
+function sincronizarOsc(pane, def, c, r) {
+  if (pane._oscMounted !== def.id) { desmontarOsc(pane); crearOsc(pane, def, c, r); pane._oscMounted = def.id; }
+  const S2 = pane.oscSeries; if (!S2) return;
+  if (S2.hist && r.hist) { const v = pane.velas, h = []; for (let i = 0; i < r.hist.length; i++) { if (r.hist[i] == null) continue; const t = v[i] && v[i].time; if (t == null) continue; h.push({ time: t, value: r.hist[i], color: r.hist[i] >= 0 ? 'rgba(46,232,106,.55)' : 'rgba(255,91,110,.55)' }); } try { S2.hist.setData(h); } catch (_) {} }
+  if (S2.s3 && r.serie3) { try { S2.s3.applyOptions({ color: r.col3 || '#49b6ff' }); S2.s3.setData(serieOsc(pane, r.serie3)); } catch (_) {} }
+  if (S2.s2 && r.serie2) { try { S2.s2.applyOptions({ color: r.col2 || '#ff8fbf' }); S2.s2.setData(serieOsc(pane, r.serie2)); } catch (_) {} }
+  if (S2.main && r.serie) { try { S2.main.applyOptions({ color: c.col, lineWidth: c.gr || 2 }); S2.main.setData(serieOsc(pane, r.serie)); } catch (_) {} }
+  let last = null; if (r.serie) for (let i = r.serie.length - 1; i >= 0; i--) { if (r.serie[i] != null) { last = r.serie[i]; break; } }
+  pane._oscLast = last;
+}
+function desmontarOsc(pane) {
+  if (pane.oscSeries) { Object.keys(pane.oscSeries).forEach((k) => { try { pane.chart.removeSeries(pane.oscSeries[k]); } catch (_) {} }); pane.oscSeries = null; }
+  pane.oscRefs = []; pane._oscMounted = null; pane._oscLast = null;
 }
 function arrancarRAF() {
   let last = 0;
@@ -360,7 +392,7 @@ function dibujarInds(pane) {
   const now = performance.now();
   const v = pane.velas;
   (ind.ovl || []).forEach((o, i) => lineaComet(g, v, o.data, X, Yp, o.col, W, now, i, o.gr, o.dash, o.a));
-  if (ind.osc) oscilador(g, v, ind.osc, X, W, H, now);
+  etiquetaOsc(g, pane);
 }
 /* Indicador: trazo LIMPIO + una luz (cometa) que lo recorre de izquierda a
    derecha, suave y lenta, igual que el área VWAP Pro. Sin neón constante. */
@@ -395,37 +427,19 @@ function lineaComet(g, velas, data, X, Yp, col, W, now, idx, gr, dash, alpha) {
   }
   g.globalAlpha = 1; g.restore();
 }
-function oscilador(g, velas, osc, X, W, H, now) {
-  const band = Math.min(150, H * 0.22), top = H - band - 24, bot = H - 24;
-  const def = osc.def;
-  let lo, hi;
-  if (def.rango) { lo = def.rango[0]; hi = def.rango[1]; }
-  else { lo = 1e18; hi = -1e18; const all = [osc.serie, osc.serie2, osc.serie3, osc.hist].filter(Boolean); all.forEach((ser) => ser.forEach((x) => { if (x != null) { lo = Math.min(lo, x); hi = Math.max(hi, x); } })); if (!(hi > lo)) { hi = 1; lo = -1; } const pad = (hi - lo) * 0.12; lo -= pad; hi += pad; }
-  const Y = (val) => bot - (val - lo) / (hi - lo) * (bot - top);
+/* Etiqueta del oscilador (nombre + ultimo valor), arriba a la izquierda de SU
+   panel nativo, como en TradingView. Con sombra para que lea sobre la linea. */
+function fmtOsc(v) { const a = Math.abs(v); return a >= 1000 ? v.toFixed(0) : a >= 1 ? v.toFixed(2) : v.toFixed(4); }
+function etiquetaOsc(g, pane) {
+  if (!pane.oscK || !pane._oscMounted) return;
+  let h0; try { h0 = pane.chart.panes()[0].getHeight(); } catch (_) { return; }
+  if (!h0) return;
+  const def = buscarInd(pane.oscK); if (!def) return;
+  const c = cfgDe(pane, def), val = pane._oscLast;
   g.save();
-  g.fillStyle = 'rgba(8,11,16,.55)'; g.fillRect(0, top - 4, W, band + 8);
-  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, top - 4); g.lineTo(W, top - 4); g.stroke();
-  (def.ref || []).forEach((r) => { if (r < lo || r > hi) return; const y = Y(r); g.setLineDash([3, 4]); g.strokeStyle = 'rgba(255,255,255,.16)'; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); });
-  if (osc.hist) { for (let i = 0; i < velas.length; i++) { const hv = osc.hist[i]; if (hv == null) continue; const x = X(velas[i].time); if (x == null) continue; const y0 = Y(0), y1 = Y(hv); g.fillStyle = hv >= 0 ? 'rgba(46,232,106,.5)' : 'rgba(255,91,110,.5)'; g.fillRect(x - 1.5, Math.min(y0, y1), 3, Math.abs(y1 - y0)); } }
-  const dibSer = (ser, col, cometa) => {
-    if (!ser) return;
-    const pts = [];
-    for (let i = 0; i < velas.length; i++) { const val = ser[i]; if (val == null) continue; const x = X(velas[i].time); if (x == null) continue; pts.push([x, Y(val), i]); }
-    if (pts.length < 2) return;
-    g.shadowBlur = 0; g.globalAlpha = 1; g.strokeStyle = col; g.lineWidth = osc.gr || 1.5; g.lineJoin = 'round'; g.beginPath();
-    let prev = null; for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); prev = p; }
-    g.stroke();
-    if (cometa) {
-      const period = 4600, headX = ((now % period) / period) * (W + 260) - 130, tail = 130;
-      prev = null;
-      for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) { const mx = (prev[0] + p[0]) / 2, d = Math.abs(mx - headX); if (d <= tail) { const a = 1 - d / tail; g.shadowColor = col; g.shadowBlur = 6; g.strokeStyle = col; g.lineWidth = 2; g.globalAlpha = 0.5 * a; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke(); } } prev = p; }
-      g.globalAlpha = 1; g.shadowBlur = 0;
-    }
-  };
-  dibSer(osc.serie3, osc.col3 || '#49b6ff', false);
-  dibSer(osc.serie2, osc.col2 || '#ff8fbf', false);
-  dibSer(osc.serie, def.col, true);
-  g.shadowBlur = 0; g.globalAlpha = 1; g.fillStyle = '#7b8694'; g.font = '700 10px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText(def.n, 8, top + 11);
+  g.font = '700 10px "IBM Plex Mono", monospace'; g.textAlign = 'left';
+  g.shadowColor = 'rgba(0,0,0,.9)'; g.shadowBlur = 3;
+  g.fillStyle = c.col; g.fillText(nomInd(def, c) + (val != null ? '  ' + fmtOsc(val) : ''), 8, h0 + 15);
   g.restore();
 }
 
@@ -559,7 +573,7 @@ function wirePane(pane) {
   q('[data-full]').onclick = () => fullPane(pane);
   q('[data-fsback]').onclick = () => { if (pane.max) fullPane(pane); };   // Back solo sale en fullscreen: vuelve a la rejilla
   q('[data-goright]').onclick = () => irAlPresente(pane);
-  q('[data-close]').onclick = () => cerrarPane(pane);
+  q('[data-close]').onclick = () => { if (pane.max) fullPane(pane); else cerrarPane(pane); };   // en full screen la X vuelve al tamano pequeno; solo elimina estando chico
   // enfocar al interactuar con el cuerpo (si no hay herramienta cruzada armada)
   pane.body.addEventListener('mousedown', () => { if (!S.tool) enfocar(pane); }, true);
   const cap = pane.body.querySelector('.mc-cap');
@@ -576,13 +590,16 @@ function wirePane(pane) {
     if (S.tool === 'vline') { colocarVLine(pane, x); desarmarTool(); abrirAjustesLinea(pane, { tipo: 'v', idx: S.vlines.length - 1 }, e.clientX, e.clientY); }
     else if (S.tool === 'hline') { colocarHLine(pane, y); desarmarTool(); abrirAjustesLinea(pane, { tipo: 'h', idx: S.hlines.length - 1 }, e.clientX, e.clientY); }
     else if (pane._hit) abrirAjustesLinea(pane, pane._hit, e.clientX, e.clientY);   // clic sobre una línea puesta → su ventanita
+    else if (pane._hitInd) abrirBarraDe(pane, pane._hitInd);                        // clic sobre la linea de un indicador → su barra
   });
   // sin herramienta armada: detecta el cursor sobre una línea ya colocada (manita + clic)
   pane.body.addEventListener('mousemove', (e) => {
-    if (S.tool || NIV.herr !== 'cursor') { if (cap.classList.contains('hit')) cap.classList.remove('hit'); pane._hit = null; return; }
+    if (S.tool || NIV.herr !== 'cursor') { if (cap.classList.contains('hit')) cap.classList.remove('hit'); pane._hit = null; pane._hitInd = null; return; }
     const r = pane.body.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
     const hit = hitLine(pane, x, y);
-    pane._hit = hit; cap.classList.toggle('hit', !!hit);
+    pane._hit = hit;
+    pane._hitInd = hit ? null : hitInd(pane, x, y);          // manita tambien sobre la propia linea del indicador
+    cap.classList.toggle('hit', !!(hit || pane._hitInd));
   });
   if (pane.flotante) arrastrar(pane);
   cablearOrdenPane(pane);
@@ -609,6 +626,34 @@ function hitLine(pane, x, y) {
   const H = pane.body.clientHeight || 1;
   for (let i = 0; i < S.vlines.length; i++) { const lx = safeX(pane, S.vlines[i].time); if (lx != null && Math.abs(lx - x) < 6) return { tipo: 'v', idx: i }; }
   for (let i = 0; i < S.hlines.length; i++) { const ly = S.hlines[i].frac * H; if (Math.abs(ly - y) < 6) return { tipo: 'h', idx: i }; }
+  return null;
+}
+/* ¿el cursor está sobre la LÍNEA de un indicador? Devuelve su id (para abrir su barra). */
+function distSeg(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy; if (!l2) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / l2; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+function hitInd(pane, x, y) {
+  const ind = pane.ind; if (!ind) return null;
+  const H = pane.body.clientHeight || 1, v = pane.velas;
+  // oscilador: todo su panel (abajo) es tocable → su barra
+  if (pane.oscK && pane._oscMounted) { let h0 = null; try { h0 = pane.chart.panes()[0].getHeight(); } catch (_) {} if (h0 && y >= h0) return pane.oscK; }
+  // overlays: cerca de alguna de sus polilineas
+  const ts = pane.chart.timeScale();
+  const Xp = (t) => { try { const c = ts.timeToCoordinate(t); return c == null ? null : c; } catch (_) { return null; } };
+  const Yp = (p) => { try { const c = pane.serie.priceToCoordinate(p); return c == null ? null : c; } catch (_) { return null; } };
+  for (const o of (ind.ovl || [])) {
+    if (!o.data) continue;
+    let px = null, py = null;
+    for (let i = 0; i < v.length; i++) {
+      const val = o.data[i]; if (val == null) { px = null; continue; }
+      const cx = Xp(v[i].time); if (cx == null) { px = null; continue; }
+      const cy = Yp(val); if (cy == null) { px = null; continue; }
+      if (px != null) { const a = Math.min(px, cx) - 3, b = Math.max(px, cx) + 3; if (x >= a && x <= b && distSeg(x, y, px, py, cx, cy) < 5) return o.id; }
+      px = cx; py = cy;
+    }
+  }
   return null;
 }
 function desarmarTool() {
@@ -889,12 +934,10 @@ function actualizarLeyenda(pane) {
 function abrirBarraDe(pane, id) {
   const def = buscarInd(id); if (!def) return;
   const c = cfgDe(pane, def);
-  const chip = pane.body && pane.body.querySelector('.mc-chip[data-id="' + id + '"]');
-  let cx, cy;
-  if (chip) { const r = chip.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.bottom + 14; }
-  else { const r = pane.body.getBoundingClientRect(); cx = r.left + 90; cy = r.top + 46; }
+  const r = pane.body.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + 8;   // SIEMPRE centrada arriba de la grafica, para que no moleste
   abrirBarraInd({
-    cfg: c, params: def.params || [], nombre: nomInd(def, c), cx, cy,
+    cfg: c, params: def.params || [], nombre: nomInd(def, c), nombreDe: () => nomInd(def, c), cx, cy,
     onCambio: () => recalc(pane),
     onEliminar: () => quitarInd(pane, id)
   });
