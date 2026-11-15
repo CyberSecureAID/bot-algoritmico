@@ -156,7 +156,9 @@ let _ex=null;
 export async function exchanges() {
   if (_ex) return _ex;
   try {
-    const j = await traer('https://api.coingecko.com/api/v3/exchanges?per_page=100&page=1');
+    // per_page 250: CoinGecko ordena /exchanges por confianza y los DEX (Uniswap, PancakeSwap,
+    // Curve, Raydium) quedan fuera del top 100; con 250 sí entran y traen su volumen 24h real.
+    const j = await traer('https://api.coingecko.com/api/v3/exchanges?per_page=250&page=1');
     _ex = (j || []).map((x) => ({ id: x.id, name: x.name || '', volBtc: +x.trade_volume_24h_btc || 0, image: x.image || '',
       rank: +x.trust_score_rank || 0, trust: +x.trust_score || 0, year: +x.year_established || 0, country: x.country || '' }));
   } catch (_) { _ex = []; }

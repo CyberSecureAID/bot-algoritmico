@@ -6,7 +6,7 @@
 
    Export: abrirOrderBlock()
 */
-import * as D from './datos.js?v=4';
+import * as D from './datos.js?v=5';
 /* Reutilizamos la infraestructura YA probada de la plataforma: caché compartida de
    logos (misma que Multichart/VWAP Pro), velas y stream en vivo, y el catálogo PARES/TFS. */
 import { logos as sharedLogos, PARES as SP, TFS, velas as velasReal, streamVelas } from '../trading-demo/datos.js?v=2';
@@ -35,11 +35,19 @@ const Z={}, mouse={x:-1,y:-1,on:false}, LOGO={}, EXVOL={}, EXIMG={}, EXMETA={};
    igual que Multichart/Heat Pool. Respaldo a la URL de CoinGecko (sin CORS: se pinta igual,
    el export ya excluye logos). Esta es la razón por la que ahora sí aparecen. */
 const SPOT='https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/';
+// SIEMPRE con CORS (spothq y CoinGecko lo sirven) -> el logo se dibuja también en la foto
+// exportada sin contaminar el canvas, igual que Multichart.
 function imgLogo(ticker, cgUrl){ const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous';
-  im.onerror=function(){ if(im._fb){ im.onerror=null; return; } im._fb=1; if(cgUrl){ im.crossOrigin=null; im.src=cgUrl; } else { im.onerror=null; } };
+  im.onerror=function(){ if(im._fb){ im.onerror=null; return; } im._fb=1; if(cgUrl){ im.src=cgUrl; } else { im.onerror=null; } };
   im.src=SPOT+String(ticker||'').toLowerCase()+'.png'; return im; }
-function imgPlain(url){ const im=new Image(); im.referrerPolicy='no-referrer'; im.src=url; return im; }
+// logo de exchange: marca real (CoinGecko) y, si falla, el icono de su token (spothq). Ambos con CORS.
+function imgExch(ei, brandUrl){ const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous';
+  im.onerror=function(){ if(im._fb){ im.onerror=null; return; } im._fb=1; const tk=EXTOKEN[EXCH[ei][0]]; if(tk){ im.src=SPOT+tk.toLowerCase()+'.png'; } else { im.onerror=null; } };
+  im.src=brandUrl; return im; }
 let EXREADY=false, _exporting=false;
+// logo de la página para la marca del export (mismo que usa Multichart)
+const BRAND_URL=new URL('../../assets/img/cco-marca.png', import.meta.url).href;
+let BRAND_IMG=null; (function(){ const im=new Image(); im.onload=()=>{ BRAND_IMG=im; }; im.src=BRAND_URL; })();
 const fmtVol=v=>v>=1e9?(v/1e9).toFixed(1)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v.toFixed(0);
 
 /* ===== utilidades ===== */
@@ -62,11 +70,14 @@ function aggExchanges(){ const a=[]; for(let i=0;i<EXCH.length;i++){ const o=liv
 
 /* ===== cascada de tarjetas ===== */
 function buildCards(){
+  const prev=new Set(tarjetasVisibles().map(c=>c.sym));   // quiénes se ven AHORA (antes de rebarajar)
   const named=COINS.filter(c=>c.sym);
   const pr=(arr,asc)=>arr.sort((a,b)=>((b.major?1:0)-(a.major?1:0))||(asc?a.disp-b.disp:b.disp-a.disp));
   const g=pr(named.filter(c=>c.disp>0),false), r=pr(named.filter(c=>c.disp<0),true);
   const take=arr=>{ let i=0; return COLN.map(n=>{ const s=arr.slice(i,i+n); i+=n; return s; }); };
   green=take(g); red=take(r);
+  // las monedas que ENTRAN nuevas (oportunidades que afloran del flujo) aparecen con fundido
+  tarjetasVisibles().forEach(c=>{ if(!prev.has(c.sym)) c._appear=0; else if(c._appear==null) c._appear=1; });
 }
 function tarjetasVisibles(){ const out=[]; [green,red].forEach(cols=>cols.forEach(col=>col.forEach(c=>out.push(c)))); return out; }
 
@@ -83,7 +94,9 @@ function layout(){
   DM=null; buildCards(); placeCards(); buildStrands();
 }
 const PMIN=-4,PMAX=5.4, Y=p=>Z.y1-((p-PMIN)/(PMAX-PMIN))*(Z.y1-Z.y0);
-function splitTarget(){ let up=0,w=0; COINS.forEach(c=>{ w+=c.vol; if(c.disp>=0)up+=c.vol; }); return w?clamp(up/w*1.08,0.32,0.8):0.5; }
+// fracción de PRESIÓN COMPRADORA real (volumen que sube / volumen total). Sin sesgo:
+// mercado equilibrado -> línea al centro; que suba o baje según el flujo real.
+function splitTarget(){ let up=0,w=0; COINS.forEach(c=>{ w+=c.vol; if(c.disp>=0)up+=c.vol; }); return w?clamp(up/w,0.18,0.82):0.5; }
 
 function placeCards(){
   const ropeY=(Z.y0+Z.y1)/2, gap=8, colGap=Math.round(W*0.011);
@@ -111,16 +124,18 @@ function buildStrands(){
   const exchY={}; order.forEach((ei,i)=>exchY[ei]=Z.y0+i*(ch+gap)+ch/2);
   Z.exchY=exchY; Z.exchCH=ch; Z.exchOrder=order;
   const mid=(Z.y0+Z.y1)/2;
-  COINS.forEach(c=>{ const up=c.disp>=0, oy=(exchY[c.exch]!=null?exchY[c.exch]:mid)+rnd(-ch*0.34,ch*0.34);
+  // arranque SIEMPRE pegado a la fila de su exchange y dentro del panel (sin líneas sueltas)
+  COINS.forEach(c=>{ const up=c.disp>=0, oy=clamp((exchY[c.exch]!=null?exchY[c.exch]:mid)+rnd(-ch*0.3,ch*0.3),Z.y0+5,Z.y1-5);
     strands.push({ coin:c, y0:oy, up, exch:c.exch, sec:c.sec, phase:rnd(0,6.28), amp:rnd(4,13), hl:0,
       col:up?VERDE:ROSA, hero:(c.major||c.rank<=24), r:Math.random() }); });
-  if(Z.exchOrder.length) for(let k=0;k<48;k++){ const ei=pick(Z.exchOrder), up=Math.random()<0.55;
-    const oy=(exchY[ei]!=null?exchY[ei]:mid)+rnd(-ch*0.9,ch*0.9);
+  // líneas tenues: su proporción verde/rojo sigue la presión real del mercado (no 55% fijo)
+  if(Z.exchOrder.length) for(let k=0;k<40;k++){ const ei=pick(Z.exchOrder), up=Math.random()<split;
+    const oy=clamp((exchY[ei]!=null?exchY[ei]:mid)+rnd(-ch*0.4,ch*0.4),Z.y0+5,Z.y1-5);
     strandsFaint.push({ y0:oy, up, exch:ei, phase:rnd(0,6.28), amp:rnd(5,15), hl:0, col:up?VERDE:ROSA, hero:false, r:Math.random() }); }
 }
 function strandPath(s){
   const x0=Z.funX0, x1=Z.barX0, N=28, pts=[];
-  const divY=Z.y0+(1-split)*(Z.y1-Z.y0);
+  const divY=Z.y0+split*(Z.y1-Z.y0);
   const yEnd = s.up ? Z.y0+10 + s.r*(divY-Z.y0-20) : divY+10 + s.r*(Z.y1-divY-20);
   for(let k=0;k<=N;k++){ const t=k/N, x=x0+t*(x1-x0);
     const bulge=Math.sin(t*Math.PI), conv=Math.pow(t,1.6);
@@ -130,7 +145,7 @@ function strandPath(s){
 }
 
 /* ===== animacion ===== */
-function tick(dt){ T+=dt; split+=(splitTarget()-split)*0.02;
+function tick(dt){ T+=dt; split+=(splitTarget()-split)*0.045;   // responde al flujo real, visible pero suave
   // El % mostrado SOLO sigue al % real (c.pct lo actualiza el ticker en vivo). Sin
   // oscilacion inventada: si el mercado no se mueve, la tarjeta no se mueve.
   const f=1-Math.pow(0.86,dt*60);
@@ -150,14 +165,20 @@ function substrate(){ ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,PW,PH);
     ctx.strokeStyle=g; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(Z.funX0,y); ctx.lineTo(Z.clX0,y); ctx.stroke(); }); }
 
 /* ===== termometro ===== */
+// Termómetro = AMPLITUD DE MERCADO real: fracción de monedas subiendo. Dato útil (riesgo on/off).
 function thermo(g){ const x=Z.railX,w=9,y0=Z.y0,y1=Z.y1,h=y1-y0,r=w/2;
   let up=0; COINS.forEach(c=>{ if(c.disp>=0.3)up++; }); const lvl=COINS.length?up/COINS.length:0.5;
   g.save(); rr(g,x,y0,w,h,r); g.clip();
   const gr=g.createLinearGradient(0,y1,0,y0); gr.addColorStop(0,ROSA); gr.addColorStop(.5,'#d8b23a'); gr.addColorStop(.62,'#8fe07a'); gr.addColorStop(1,VERDE);
   g.fillStyle=gr; g.fillRect(x,y0,w,h);
-  g.fillStyle='rgba(4,8,12,.6)'; g.fillRect(x,y0,w,(1-lvl)*h); g.restore();
+  g.fillStyle='rgba(4,8,12,.62)'; g.fillRect(x,y0,w,(1-lvl)*h); g.restore();
   rr(g,x,y0,w,h,r); g.strokeStyle='rgba(180,210,230,.22)'; g.lineWidth=1; g.stroke();
-  const ly=y1-lvl*h; g.fillStyle='#fff'; g.beginPath(); g.arc(x+w/2,ly,3,0,7); g.fill(); }
+  [0.25,0.5,0.75].forEach(f=>{ const yy=y1-f*h; g.strokeStyle='rgba(200,215,230,.22)'; g.lineWidth=1; g.beginPath(); g.moveTo(x-3,yy); g.lineTo(x,yy); g.stroke(); });
+  const ly=y1-lvl*h; g.fillStyle='#fff'; g.beginPath(); g.arc(x+w/2,ly,3.4,0,7); g.fill();
+  // rótulo vertical: dice qué es y su valor real, para que no parezca relleno
+  g.save(); g.translate(x-6,y0+h/2); g.rotate(-Math.PI/2); g.textAlign='center'; g.textBaseline='middle';
+    g.fillStyle='#cfdae7'; g.font='800 12px "IBM Plex Mono",monospace'; g.fillText(Math.round(lvl*100)+'%   MARKET BREADTH   '+up+'/'+(COINS.length||0)+' UP',0,0);
+  g.restore(); g.textAlign='left'; g.textBaseline='alphabetic'; }
 
 /* ===== hilos (cinta con cuerpo + pulsos) ===== */
 function ribbon(g,pts,wExit,wEntry,col,alpha){
@@ -188,7 +209,9 @@ function drawStrands(g){
 /* ===== filtro central ===== */
 function filterBar(g){
   const x0=Z.barX0,x1=Z.barX1,y0=Z.y0,y1=Z.y1,h=y1-y0,bw=x1-x0;
-  const divY=y0+(1-split)*h;
+  // verde arriba = presión compradora (su alto = fracción real de compra). Antes estaba
+  // invertido, por eso el verde salía perpetuo. Ahora la línea sube/baja con el flujo real.
+  const divY=y0+split*h;
   g.fillStyle=hexA(VERDE,0.14); g.fillRect(x0,y0,bw,divY-y0);
   g.fillStyle=hexA(ROSA,0.14); g.fillRect(x0,divY,bw,y1-divY);
   const sorted=COINS.slice().sort((a,b)=>b.disp-a.disp), n=sorted.length||1, lh=h/n;
@@ -201,9 +224,10 @@ function filterBar(g){
   g.globalAlpha=1;
   g.strokeStyle='rgba(255,255,255,.92)'; g.lineWidth=2; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
   g.beginPath(); g.moveTo(x0,divY); g.lineTo(x1+4,divY); g.stroke();
-  const gH=Math.min(60,(divY-y0)*0.42), rH=Math.min(60,(y1-divY)*0.5);
-  const gY=y0+12+(0.5+0.4*Math.sin(T*0.5))*Math.max(0,(divY-y0)-gH-24);
-  const rY=divY+12+(0.5+0.4*Math.sin(T*0.5+2))*Math.max(0,(y1-divY)-rH-24);
+  // cuadrados que respetan SIEMPRE ≥18px con la línea blanca divisoria (nunca la cruzan)
+  const gH=Math.min(52,(divY-y0)*0.38), rH=Math.min(52,(y1-divY)*0.38);
+  const gY=y0+16+(0.5+0.4*Math.sin(T*0.5))*Math.max(0,(divY-y0)-gH-34);
+  const rY=divY+18+(0.5+0.4*Math.sin(T*0.5+2))*Math.max(0,(y1-divY)-rH-34);
   gate(g,x0,gY,bw,gH,VHI); gate(g,x0,rY,bw,rH,RHI);
   Z.gateG={x:x0,y:gY,w:bw,h:gH}; Z.gateR={x:x0,y:rY,w:bw,h:rH};
   cornerMarks(g,x0-7,y0-7,bw+14,h+14,18,hexA(VERDE,.55),1.6);
@@ -256,6 +280,8 @@ function exchangeCards(g){ const order=Z.exchOrder||[], n=order.length, gap=5, t
   let net=0,wv=0,maxv=0; COINS.forEach(c=>{ net+=c.disp*c.vol; wv+=c.vol; }); net=wv?net/wv:0;
   order.forEach(ei=>{ if((EXVOL[ei]||0)>maxv)maxv=EXVOL[ei]||0; });
   const col=net>=0?VERDE:ROSA;                 // color por direccion real del mercado
+  g.fillStyle='rgba(140,155,170,.85)'; g.font='700 10px "Saira Condensed",sans-serif'; g.textAlign='left'; g.textBaseline='alphabetic';
+  g.fillText('LIQUIDITY SOURCES · 24H VOLUME', Z.secX, Z.y0-7);   // rótulo claro: son volúmenes 24h
   order.forEach((ei,i)=>{ const e=EXCH[ei], x=Z.secX, y=Z.y0+i*(ch+gap), w=Z.secW;
     rr(g,x,y,w,ch,6); g.fillStyle='rgba(11,18,26,.85)'; g.fill(); g.strokeStyle=hexA(col,.26); g.lineWidth=1; g.stroke();
     const ez=(Z.exZoom&&Z.exZoom[ei])||0;
@@ -263,11 +289,16 @@ function exchangeCards(g){ const order=Z.exchOrder||[], n=order.length, gap=5, t
     const chip=Math.min(22,ch*0.52), cyh=y+(ch-chip)/2; logoExch(g,ei,x+8,cyh,chip);
     const tx=x+8+chip+9;
     g.fillStyle='#eaf0f6'; g.font='700 14px "Saira Condensed",sans-serif'; g.textAlign='left'; g.fillText(e[0],tx,y+ch*0.44);
-    const vol=EXVOL[ei]||0;
-    g.fillStyle='rgba(176,187,200,.92)'; g.font='600 11px "IBM Plex Mono",monospace'; g.textAlign='right'; g.fillText(vol?('$'+fmtVol(vol)):'LIVE',x+w-9,y+ch*0.44); g.textAlign='left';
-    const frac=maxv?vol/maxv:0, bw2=w-(tx-x)-9, cy=y+ch-10, chh=Math.min(7,ch*0.2);
+    const vol=EXVOL[ei]||0, vtxt=vol?('$'+fmtVol(vol)):'—';
+    g.font='600 11px "IBM Plex Mono",monospace'; g.textAlign='right'; g.fillStyle='rgba(188,199,212,.95)'; g.fillText(vtxt,x+w-9,y+ch*0.44);
+    const vw=g.measureText(vtxt).width; g.font='600 9px "Saira Condensed",sans-serif'; g.fillStyle='rgba(118,132,146,.85)'; g.fillText('24h',x+w-9-vw-6,y+ch*0.44); g.textAlign='left';
+    const frac=maxv?vol/maxv:0, bw2=w-(tx-x)-9, cy=y+ch-10, chh=Math.min(7,ch*0.2), fbw=Math.max(2,bw2*frac);
     g.fillStyle='rgba(255,255,255,.07)'; rr(g,tx,cy,bw2,chh,1.5); g.fill();
-    g.fillStyle=col; g.globalAlpha=.9; rr(g,tx,cy,Math.max(2,bw2*frac),chh,1.5); g.fill(); g.globalAlpha=1; }); }
+    g.fillStyle=col; g.globalAlpha=.85; rr(g,tx,cy,fbw,chh,1.5); g.fill(); g.globalAlpha=1;
+    // brillo que fluye por la barra: señala actividad en vivo sin falsear el valor (24h real)
+    g.save(); rr(g,tx,cy,fbw,chh,1.5); g.clip(); const sx=tx+((T*55+ei*37)%(fbw+46))-23;
+    const sg=g.createLinearGradient(sx-14,0,sx+14,0); sg.addColorStop(0,'rgba(255,255,255,0)'); sg.addColorStop(.5,'rgba(255,255,255,.38)'); sg.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=sg; g.fillRect(tx,cy,fbw,chh); g.restore(); }); }
 /* tarjeta emergente del exchange al pasar el cursor: datos REALES (CoinGecko) útiles para un trader */
 function exchPopup(g){ const ei=Z.exHover; if(ei==null||ei<0)return; const order=Z.exchOrder||[], idx=order.indexOf(ei); if(idx<0)return;
   const e=EXCH[ei], m=EXMETA[ei]||{}, gap=5, tot=Z.y1-Z.y0, n=order.length, ch=(tot-gap*Math.max(0,n-1))/Math.max(1,n);
@@ -336,6 +367,8 @@ function card(g,c){ const up=c._up, col=up?VERDE:ROSA, hi=up?VHI:RHI, hl=c._hl||
       if(c.res>0) mlvl(c.res,ROSA,'▼'); if(c.sup>0) mlvl(c.sup,VERDE,'▲');
     }
   }
+  // fundido de entrada: la moneda nueva emerge del fondo en vez de aparecer de golpe
+  const ap=(c._appear==null?1:c._appear); if(ap<1){ g.fillStyle=`rgba(5,7,11,${(1-ap).toFixed(3)})`; rr(g,x,y,w,h,rad); g.fill(); }
 }
 function drawCards(g){ const all=[]; [green,red].forEach(cols=>cols.forEach(col=>col.forEach(c=>all.push(c))));
   let hov=null; for(const c of all){ if((c._z||0)>0.5 && (!hov||c._z>hov._z)) hov=c; }
@@ -354,6 +387,7 @@ function header(g){ g.textBaseline='alphabetic'; g.textAlign='left';
 function hover(){ strands.forEach(s=>s.hl=Math.max(0,s.hl-0.08)); COINS.forEach(c=>c._hl=Math.max(0,(c._hl||0)-0.08));
   // zoom de tarjetas (siempre corre: decae aunque no haya cursor)
   const vis=tarjetasVisibles(); let tgt=null;
+  vis.forEach(c=>{ if(c._appear==null)c._appear=1; else if(c._appear<1)c._appear=Math.min(1,c._appear+0.035); });   // fundido de entrada
   if(mouse.on){ for(const c of vis){ if(mouse.x>=c._x&&mouse.x<=c._x+c._w&&mouse.y>=c._y&&mouse.y<=c._y+c._h){ tgt=c; break; } } }
   vis.forEach(c=>{ const to=(c===tgt)?1:0; c._z=(c._z||0)+(to-(c._z||0))*0.2; if(c._z<0.001)c._z=0; });
   if(tgt){ tgt._hl=1;
@@ -426,15 +460,17 @@ async function cargarExchanges(){ let list=[]; try{ list=await D.exchanges(); }c
   EXCH.forEach((e,i)=>{ const first=e[0].toLowerCase().split(' ')[0];
     let best=null; for(const x of list){ const xn=(x.name||'').toLowerCase(); if(xn.indexOf(first)>=0){ if(!best||x.volBtc>best.volBtc)best=x; } }
     if(best){ EXVOL[i]=best.volBtc*(btc||1); EXMETA[i]={rank:best.rank,trust:best.trust,year:best.year,country:best.country,volUsd:EXVOL[i]}; }
-    if(!EXIMG[i]){ if(best&&best.image){ EXIMG[i]=imgPlain(best.image); }      // marca del exchange (sin CORS: se pinta, el export excluye logos)
-      else { const tk=EXTOKEN[e[0]]; if(tk) EXIMG[i]=imgLogo(tk,_symUrl[tk]); } } });  // DEX -> icono del token
+    if(!EXIMG[i]){ if(best&&best.image){ EXIMG[i]=imgExch(i,best.image); }        // marca real del exchange (CORS)
+      else { const tk=EXTOKEN[e[0]]; if(tk) EXIMG[i]=imgLogo(tk,_symUrl[tk]); } } });  // DEX -> icono de su token
+
   EXREADY=true; if(cv) buildStrands(); }
 
 /* ===== estilos + overlay ===== */
 const IC={
   back:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
   exp:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>',
-  x:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+  x:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  full:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>'
 };
 function estilos(){
   if(!document.getElementById('obliq-font')){ const l=document.createElement('link'); l.id='obliq-font'; l.rel='stylesheet';
@@ -467,6 +503,8 @@ function estilos(){
   @keyframes obfade{from{opacity:0}to{opacity:1}}
   #ob-mwrap .ob-modal{width:min(96vw,1180px);height:min(90vh,720px);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;
     background:linear-gradient(180deg,#0b1119,#070b12);border:1px solid #2b3139;box-shadow:0 30px 90px rgba(0,0,0,.6),0 0 0 1px rgba(43,245,158,.14);animation:obpop .22s cubic-bezier(.2,1.1,.3,1)}
+  #ob-mwrap .ob-modal:fullscreen{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}
+  #ob-mwrap .ob-modal:-webkit-full-screen{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}
   @keyframes obpop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
   .ob-mhead{display:flex;align-items:center;gap:9px;padding:10px 13px;border-bottom:1px solid #1d242d;flex:0 0 auto}
   .ob-mlg{width:28px;height:28px;border-radius:50%;background:#131a22 center/cover no-repeat;flex:0 0 auto;display:grid;place-items:center;font:800 11px 'Saira Condensed',sans-serif;color:#9fe9c6;border:1px solid #2b3139}
@@ -493,6 +531,9 @@ function estilos(){
   .ob-tfi.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;border-color:#c79426}
   .ob-mside{flex:0 0 auto;width:236px;border-left:1px solid #1d242d;padding:12px 13px 16px;overflow:auto;color:#cdd7e2}
   .ob-verdict{font-weight:800;font-size:26px;letter-spacing:.02em;line-height:1}
+  .ob-convbar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin:7px 0 11px;overflow:hidden}
+  .ob-convbar i{display:block;height:100%;border-radius:3px;transition:width .4s ease}
+  .ob-read{font-size:12.5px;line-height:1.5;color:#b9c4d0;font-weight:500;margin:0 0 13px;border-left:2px solid rgba(255,255,255,.12);padding-left:9px}
   .ob-sub{color:#7d8794;font-size:11px;letter-spacing:.13em;text-transform:uppercase;margin:12px 0 6px}
   .ob-sig{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #141b22;font-size:13px}
   .ob-sig b{font-family:'IBM Plex Mono',monospace;font-weight:600}
@@ -500,29 +541,32 @@ function estilos(){
   document.head.appendChild(s);
 }
 
-function exportar(){
-  // re-render a un lienzo limpio (sin logos cross-origin) para poder exportar, con fondo y marca.
+// Compone la foto. sinLogos=false dibuja los logos (CORS); si algo contaminara el lienzo,
+// toDataURL lanza y se reintenta con sinLogos=true (letras). La marca es el logo de la página.
+function componerExport(sinLogos){
   const oc=ctx,oG=GL,og=glx,oS=SB,os=sbx,oDM=DM;
   const tmp=document.createElement('canvas'); tmp.width=PW; tmp.height=PH;
   const tG=document.createElement('canvas'); tG.width=PW; tG.height=PH;
   const tS=document.createElement('canvas'); tS.width=SBW; tS.height=SBH;
   ctx=tmp.getContext('2d'); GL=tG; glx=tG.getContext('2d'); SB=tS; sbx=tS.getContext('2d'); DM=null;
-  _exporting=true; try{ renderOnce(); }catch(_){} _exporting=false;
+  _exporting=sinLogos; try{ renderOnce(); }catch(_){} _exporting=false;
   ctx=oc; GL=oG; glx=og; SB=oS; sbx=os; DM=oDM;
-  let url=null;
   try{
     const out=document.createElement('canvas'); out.width=PW; out.height=PH; const o2=out.getContext('2d');
     const bg=o2.createLinearGradient(0,0,0,PH); bg.addColorStop(0,'#05080f'); bg.addColorStop(.55,'#04060c'); bg.addColorStop(1,'#03050a');
     o2.fillStyle=bg; o2.fillRect(0,0,PW,PH); o2.drawImage(tmp,0,0);
     o2.setTransform(DPR,0,0,DPR,0,0);
-    o2.fillStyle='rgba(4,7,13,.55)'; o2.fillRect(0,H-38,W,38);
-    const by=H-19; o2.textBaseline='middle';
-    o2.fillStyle='#2BF59E'; o2.font='700 15px "Saira Condensed",sans-serif'; o2.textAlign='left'; o2.fillText('● DECFREEDOM',16,by);
-    o2.fillStyle='rgba(176,187,200,.9)'; o2.font='600 12px "IBM Plex Mono",monospace'; o2.fillText('decfreedom.com · Order Block Liquidity',150,by);
+    o2.fillStyle='rgba(4,7,13,.55)'; o2.fillRect(0,H-40,W,40);
+    const by=H-20; o2.textBaseline='middle';
+    if(BRAND_IMG && BRAND_IMG.complete && BRAND_IMG.naturalWidth){ const bh=22, bw=bh*(BRAND_IMG.naturalWidth/BRAND_IMG.naturalHeight); o2.drawImage(BRAND_IMG,16,by-bh/2,bw,bh); }
+    else { o2.fillStyle='#E8B84B'; o2.font='800 16px "Saira Condensed",sans-serif'; o2.textAlign='left'; o2.fillText('DECFREEDOM',16,by); }
     const d=new Date(),p2=x=>String(x).padStart(2,'0');
-    o2.textAlign='right'; o2.fillStyle='rgba(120,135,150,.9)'; o2.fillText(`${d.getUTCFullYear()}-${p2(d.getUTCMonth()+1)}-${p2(d.getUTCDate())} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())} UTC`,W-16,by);
-    url=out.toDataURL('image/png');
-  }catch(_){}
+    o2.textAlign='right'; o2.fillStyle='rgba(120,135,150,.9)'; o2.font='600 12px "IBM Plex Mono",monospace'; o2.fillText(`${d.getUTCFullYear()}-${p2(d.getUTCMonth()+1)}-${p2(d.getUTCDate())} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())} UTC`,W-16,by);
+    return out.toDataURL('image/png');
+  }catch(_){ return null; }
+}
+function exportar(){
+  const url=componerExport(false) || componerExport(true);   // con logos; respaldo con letras si algo contamina
   if(url){ const a=document.createElement('a'); a.download='order-block-liquidity.png'; a.href=url; a.click(); }
 }
 
@@ -597,6 +641,7 @@ async function abrirDetalle(c){
       <span class="pr" id="ob-mpr"></span>
       <div class="ob-tfwrap"><button class="ob-chip" id="ob-tfchip"></button><div class="ob-tfmenu" id="ob-tfmenu"></div></div>
       <div class="ob-msp"></div>
+      <button class="ob-mx" id="ob-mfs" title="Fullscreen">${IC.full}</button>
       <button class="ob-mx" id="ob-mx" title="Close">${IC.x}</button>
     </div>
     <div class="ob-mbody">
@@ -607,6 +652,10 @@ async function abrirDetalle(c){
   (document.getElementById('ob-stage')||ov).appendChild(wrap);
   wrap.addEventListener('mousedown',e=>{ if(e.target===wrap)cerrarDetalle(); });
   document.getElementById('ob-mx').onclick=cerrarDetalle;
+  // pantalla completa de la ventana emergente (mismo gesto que VWAP Pro / Multichart)
+  const modalEl=wrap.querySelector('.ob-modal'), fsBtn=document.getElementById('ob-mfs');
+  fsBtn.onclick=()=>{ try{ if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+    else { (modalEl.requestFullscreen||modalEl.webkitRequestFullscreen).call(modalEl); } }catch(_){} };
   const lg=document.getElementById('ob-mlg'), im=LOGO[c.sym]; if(im&&im.src){ lg.style.backgroundImage=`url(${im.src})`; lg.textContent=''; }
   document.getElementById('ob-mpc').textContent=(c.disp>=0?'+':'')+(c.disp||0).toFixed(2)+'%';
   document.getElementById('ob-mpr').textContent='$'+fmtP(c.price||c.cur||0);
@@ -651,6 +700,10 @@ async function cargarChart(){ if(!mSeries||!mCoin)return;
     try{ mSeries.update({ time:Math.floor(k.t/1000), open:+k.o, high:+k.h, low:+k.l, close:+k.c }); }catch(_){}
     const pr=document.getElementById('ob-mpr'); if(pr)pr.textContent='$'+fmtP(+k.c); }); }catch(_){}
 }
+// Paleta de calor por escalones (misma lógica que el mapa de Liquidity Pools):
+// azul = poco volumen, verde = medio, amarillo = alto, naranja/rojo = los muros de liquidez.
+const VP_HEAT=[[0.20,[12,44,104]],[0.40,[30,74,168]],[0.58,[56,130,220]],[0.76,[8,190,12]],[0.89,[228,229,5]],[0.96,[255,132,0]],[1.01,[255,40,40]]];
+function heatC(v){ v=clamp(v,0,1); for(const e of VP_HEAT) if(v<=e[0]) return e[1]; return [255,40,40]; }
 function modalLoop(){ if(!document.getElementById('ob-mwrap')){ mRAF=0; return; } try{ dibujarOverlay(); }catch(_){} mRAF=requestAnimationFrame(modalLoop); }
 function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=document.getElementById('ob-mchart'); if(!cv2||!host||!mSeries||!mVP)return;
   const d=Math.min(2,window.devicePixelRatio||1), w=host.clientWidth, h=host.clientHeight; if(w<10||h<10)return;
@@ -658,10 +711,24 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
   const x=cv2.getContext('2d'); x.setTransform(d,0,0,d,0,0); x.clearRect(0,0,w,h);
   let axisW=58; try{ axisW=mChart.priceScale('right').width()||58; }catch(_){}
   const plotR=w-axisW-2, T2=performance.now()*0.001, {lo,hi,N,bins,poc,mx}=mVP;
-  if(hi>lo){ for(let i=0;i<N;i++){ const price=lo+(i+0.5)/N*(hi-lo); let yy; try{ yy=mSeries.priceToCoordinate(price); }catch(_){ yy=null; } if(yy==null)continue;
-    const len=(bins[i]/mx)*(plotR*0.32)*(0.88+0.12*Math.sin(T2*2+i*0.5)), ob=Math.abs(i-poc)<=1, rgb=ob?'196,255,226':'43,245,158';
-    const grd=x.createLinearGradient(plotR-len,0,plotR,0); grd.addColorStop(0,`rgba(${rgb},0)`); grd.addColorStop(1,`rgba(${rgb},${ob?.62:.26})`);
-    x.fillStyle=grd; x.fillRect(plotR-len,yy-1.8,len,3.4); } }
+  if(hi>lo){
+    // Perfil de volumen en MAPA DE CALOR (como Liquidity Pools): cada nivel de precio se
+    // colorea por su volumen relativo (azul=poco → verde → amarillo → rojo=muro). Barra con
+    // degradado: punta translúcida, base sólida. Estrecho, para no invadir la gráfica.
+    const yLo=mSeries.priceToCoordinate(lo), yHi=mSeries.priceToCoordinate(hi);
+    const barH=(yLo!=null&&yHi!=null)?Math.max(1.8,(yLo-yHi)/N):3;
+    const maxW=plotR*0.26;
+    for(let i=0;i<N;i++){ const price=lo+(i+0.5)/N*(hi-lo); let yy; try{ yy=mSeries.priceToCoordinate(price); }catch(_){ yy=null; } if(yy==null)continue;
+      const v=Math.pow(bins[i]/mx,0.55); if(v<=0.01)continue; const rgb=heatC(v), len=Math.max(1.5,v*maxW);
+      const grd=x.createLinearGradient(plotR-len,0,plotR,0);
+      grd.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.10)`);   // punta: cristal translúcido
+      grd.addColorStop(1,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.95)`);   // base: sólido
+      x.fillStyle=grd; x.fillRect(plotR-len,yy-barH/2,len,Math.max(1,barH-0.5)); }
+    // POC: el muro principal (mayor volumen). Línea fina + etiqueta.
+    try{ const yp=mSeries.priceToCoordinate(lo+(poc+0.5)/N*(hi-lo)); if(yp!=null){
+      x.save(); x.setLineDash([2,3]); x.strokeStyle='rgba(255,170,60,.85)'; x.lineWidth=1; x.beginPath(); x.moveTo(plotR-maxW,yp); x.lineTo(plotR,yp); x.stroke(); x.restore();
+      x.font='800 9px "IBM Plex Mono",monospace'; x.fillStyle='rgba(255,180,70,.95)'; x.textAlign='right'; x.textBaseline='middle'; x.fillText('POC',plotR-4,yp-7); x.textAlign='left'; x.textBaseline='alphabetic'; } }catch(_){}
+  }
   // ZONAS de soporte/resistencia reales. Relleno SUAVE delimitado EXACTO al rango real de
   // la zona, y TRES líneas punteadas: borde superior + central (el nivel) + borde inferior.
   // Las dos de los bordes marcan la amplitud/veracidad de la zona. Etiqueta con nº de toques.
@@ -675,10 +742,11 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
     x.save(); x.setLineDash([7,6]); x.lineDashOffset=-((T2*24)%13);
     x.strokeStyle=`rgba(${rgb},0.32)`; x.lineWidth=1; x.beginPath(); x.moveTo(0,top); x.lineTo(plotR,top); x.moveTo(0,bot); x.lineTo(plotR,bot); x.stroke();
     x.strokeStyle=`rgba(${rgb},${.7+.14*pulse})`; x.lineWidth=1.6; x.beginPath(); x.moveTo(0,yC); x.lineTo(plotR,yC); x.stroke(); x.restore();
-    const lab=`${z.tag||''}  ${fmtP(z.c)}  ·  ${z.touches} ${z.touches>1?'touches':'touch'}`;
-    x.font='800 10px "Saira Condensed",sans-serif'; const tw=x.measureText(lab).width+16;
-    x.fillStyle=`rgba(${rgb},.96)`; rr(x,8,yC-9,tw,18,4); x.fill();
-    x.fillStyle='#08110c'; x.textBaseline='middle'; x.textAlign='left'; x.fillText(lab,15,yC+1); x.textBaseline='alphabetic'; });
+    // etiqueta legible: tag, precio y nº de toques, en mono, con sombra para separar del fondo
+    const lab=`${z.tag||''}  ${fmtP(z.c)}  ·  ${z.touches} touches`;
+    x.font='700 11px "IBM Plex Mono",monospace'; const tw=x.measureText(lab).width+20;
+    x.save(); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=6; x.fillStyle=`rgba(${rgb},.97)`; rr(x,8,yC-10,tw,21,6); x.fill(); x.restore();
+    x.fillStyle='#0a1510'; x.textBaseline='middle'; x.textAlign='left'; x.fillText(lab,18,yC+1); x.textBaseline='alphabetic'; });
 }
 /* ===== Soporte / Resistencia REAL (no líneas al azar) =====
    Detecta pivotes de swing (máximos/mínimos locales donde el precio reaccionó),
@@ -729,14 +797,26 @@ function sentimiento(kl){ const side=document.getElementById('ob-mside'); if(!si
   const supZ=(mSR||[]).filter(z=>z.kind==='sup').sort((a,b)=>b.c-a.c);
   const lvlRow=z=>{ const cc=z.kind==='res'?'#FF4D6E':'#2BF59E'; return `<div class="ob-sig"><span>${z.tag} · ${z.touches} ${z.touches>1?'touches':'touch'}</span><b style="color:${cc}">$${fmtP(z.c)} <small style="color:#7d8794;font-weight:500">${z.dist.toFixed(1)}%</small></b></div>`; };
   const nivHTML=(mSR&&mSR.length)?(resZ.map(lvlRow).join('')+`<div class="ob-sig"><span>Price now</span><b style="color:#eef4fb">$${fmtP(last)}</b></div>`+supZ.map(lvlRow).join('')):`<div class="ob-sig"><span>Building zones…</span><b style="color:#7d8794">—</b></div>`;
+  // resumen en lenguaje claro: qué dice el conjunto, fácil de seguir para un trader
+  const nearRes=resZ[0], nearSup=supZ[0];
+  const dir=verd[0]==='BULLISH'?'Buyers in control':verd[0]==='BEARISH'?'Sellers in control':'Balanced tape';
+  const momo=r>=70?' Momentum overbought,':r<=30?' Momentum oversold,':'';
+  const watch=(verd[0]==='BEARISH'&&nearSup)?`watch support ${fmtP(nearSup.c)} (${nearSup.touches}× touched).`
+            :(verd[0]==='BULLISH'&&nearRes)?`watch resistance ${fmtP(nearRes.c)} (${nearRes.touches}× touched).`
+            :(nearRes&&nearSup)?`range ${fmtP(nearSup.c)} to ${fmtP(nearRes.c)}.`:'';
+  const resumen=`${dir}, price ${aboveV?'above':'below'} VWAP.${momo} ${watch}`.replace(/\s+/g,' ').trim();
   side.innerHTML=`<div class="ob-verdict" style="color:${verd[1]}">${verd[0]}</div>
     <div class="ob-sub">Conviction ${conv}% · ${mTF}</div>
+    <div class="ob-convbar"><i style="width:${conv}%;background:${verd[1]}"></i></div>
+    <div class="ob-read">${resumen}</div>
+    <div class="ob-sub">Momentum</div>
     ${row('Trend EMA 9/21/50', strongUp?'Strong up':trendUp?'Up':'Down', sc2(trendUp))}
     ${row('RSI 14', r.toFixed(0), r>=55?'#2BF59E':r<=45?'#FF4D6E':'#d8b23a')}
     ${row('MACD', mh>=0?'Bullish':'Bearish', sc2(mh>=0))}
     ${row('Stochastic', stoch.toFixed(0), stoch>=55?'#2BF59E':stoch<=45?'#FF4D6E':'#d8b23a')}
-    ${row('Bollinger %', bb.toFixed(0), bb>=55?'#2BF59E':bb<=45?'#FF4D6E':'#d8b23a')}
+    <div class="ob-sub">Structure</div>
     ${row('vs VWAP', aboveV?'Above':'Below', sc2(aboveV))}
+    ${row('Bollinger %', bb.toFixed(0), bb>=55?'#2BF59E':bb<=45?'#FF4D6E':'#d8b23a')}
     ${row('Volatility ATR', atr.toFixed(2)+'%', '#cdd7e2')}
     ${row('Volume', volUp?'Rising':'Falling', sc2(volUp))}
     <div class="ob-sub">Key liquidity levels</div>
