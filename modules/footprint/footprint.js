@@ -20,7 +20,7 @@ import { ICONOS } from '../../assets/js/niveles/config.js?v=1';   // monedas SVG
 
 let _od = null, _fpZonas = [];
 /* Operar desde la grafica: clic derecho → Set Position / Alerta. Posiciones en Spot. */
-try { import(new URL('../../assets/js/orden.js?v=133', import.meta.url).href).then((m) => { _od = m; }).catch(() => {}); } catch (_) {}
+try { import(new URL('../../assets/js/orden.js?v=134', import.meta.url).href).then((m) => { _od = m; }).catch(() => {}); } catch (_) {}
 
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
 const LOGO_ALT = new URL('../../assets/img/cco-full.webp', import.meta.url).href;
