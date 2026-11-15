@@ -6,7 +6,7 @@
 
    Export: abrirOrderBlock()
 */
-import * as D from './datos.js?v=6';
+import * as D from './datos.js?v=7';
 /* Reutilizamos la infraestructura YA probada de la plataforma: caché compartida de
    logos (misma que Multichart/VWAP Pro), velas y stream en vivo, y el catálogo PARES/TFS. */
 import { logos as sharedLogos, PARES as SP, TFS, velas as velasReal, streamVelas } from '../trading-demo/datos.js?v=2';
@@ -31,6 +31,9 @@ let ov=null, cv=null, ctx=null, GL=null, glx=null, SB=null, sbx=null, RAF=0, str
 let W=0,H=0,DPR=1,PW=0,PH=0,SBW=1,SBH=1, DM=null, split=0.5, T=0, last=0, paused=false;
 let flowLive=0.5; const _prevPx={};   // flujo direccional en vivo (mueve la línea blanca de forma orgánica y REAL)
 let tradeStream=null, _takBuy=0, _takSell=0;   // aggTrades: pulsos de ballenas + presión real compra/venta
+let depthStream=null; const book={bids:[],asks:[],bidVol:0,askVol:0,mid:0};   // libro de órdenes REAL de BTC
+function onDepth(d){ if(!d||!d.bids.length||!d.asks.length)return; book.bids=d.bids; book.asks=d.asks;
+  let bv=0,av=0; for(const b of d.bids)bv+=b[0]*b[1]; for(const a of d.asks)av+=a[0]*a[1]; book.bidVol=bv; book.askVol=av; book.mid=(d.bids[0][0]+d.asks[0][0])/2; }
 let COINS=[], green=[], red=[], strands=[], strandsFaint=[], hist=[];
 const Z={}, mouse={x:-1,y:-1,on:false}, LOGO={}, EXVOL={}, EXIMG={}, EXMETA={};
 /* Iconos de moneda: spothq en GitHub (POR TICKER, con CORS -> no ensucia el canvas y SÍ carga),
@@ -102,7 +105,10 @@ const PMIN=-4,PMAX=5.4, Y=p=>Z.y1-((p-PMIN)/(PMAX-PMIN))*(Z.y1-Z.y0);
 // mercado equilibrado -> línea al centro; que suba o baje según el flujo real.
 function splitTarget(){ let up=0,w=0; COINS.forEach(c=>{ w+=c.vol; if(c.disp>=0)up+=c.vol; });
   const breadth=w?clamp(up/w,0.12,0.88):0.5;
-  // ancla en la amplitud real + flujo direccional en vivo: la línea respira orgánicamente
+  // la línea blanca combina TRES señales reales: amplitud de mercado, flujo de taker en vivo
+  // y el desbalance del libro de órdenes (liquidez en reposo). Se mueve orgánicamente.
+  const tv=book.bidVol+book.askVol;
+  if(tv>0){ const bi=clamp(book.bidVol/tv,0.1,0.9); return clamp(breadth*0.38+flowLive*0.34+bi*0.28,0.18,0.82); }
   return clamp(breadth*0.6+flowLive*0.4,0.18,0.82); }
 
 function placeCards(){
@@ -229,11 +235,26 @@ function filterBar(g){
   const divY=y0+split*h;
   g.fillStyle=hexA(VERDE,0.14); g.fillRect(x0,y0,bw,divY-y0);
   g.fillStyle=hexA(ROSA,0.14); g.fillRect(x0,divY,bw,y1-divY);
-  const sorted=COINS.slice().sort((a,b)=>b.disp-a.disp), n=sorted.length||1, lh=h/n;
-  for(let i=0;i<sorted.length;i++){ const c=sorted[i], y=y0+i*lh, up=(y<divY);
-    const len=bw*clamp(0.72+0.26*Math.sin(c.ini*5+i*0.7),0.42,1);
-    g.fillStyle=up?VERDE:ROSA; g.globalAlpha=up?0.55:0.5; g.fillRect(x0,y,len,Math.max(0.8,lh*0.66)); }
-  g.globalAlpha=1;
+  const haveBook=book.bids.length>=3 && book.asks.length>=3;
+  if(haveBook){
+    // LIBRO DE ÓRDENES REAL (BTC): bids = zona verde (arriba), asks = zona roja (abajo).
+    // Longitud = cantidad real en ese nivel; más brillo cerca del precio medio (la línea blanca).
+    let mq=0; for(const b of book.bids)if(b[1]>mq)mq=b[1]; for(const a of book.asks)if(a[1]>mq)mq=a[1]; mq=mq||1;
+    const gzone=divY-y0, rzone=y1-divY;
+    const nb=Math.min(book.bids.length,Math.max(6,Math.floor(gzone/5))), na=Math.min(book.asks.length,Math.max(6,Math.floor(rzone/5)));
+    const bh=Math.max(1.2,gzone/nb*0.72), ah=Math.max(1.2,rzone/na*0.72);
+    for(let i=0;i<nb;i++){ const q=book.bids[i][1], y=divY-(i+0.6)/nb*gzone, len=bw*clamp(Math.pow(q/mq,0.85),0.05,1);
+      g.fillStyle=VERDE; g.globalAlpha=0.28+0.55*(1-i/nb); g.fillRect(x0,y-bh/2,len,bh); }
+    for(let i=0;i<na;i++){ const q=book.asks[i][1], y=divY+(i+0.6)/na*rzone, len=bw*clamp(Math.pow(q/mq,0.85),0.05,1);
+      g.fillStyle=ROSA; g.globalAlpha=0.28+0.55*(1-i/na); g.fillRect(x0,y-ah/2,len,ah); }
+    g.globalAlpha=1;
+  } else {
+    const sorted=COINS.slice().sort((a,b)=>b.disp-a.disp), n=sorted.length||1, lh=h/n;
+    for(let i=0;i<sorted.length;i++){ const c=sorted[i], y=y0+i*lh, up=(y<divY);
+      const len=bw*clamp(0.72+0.26*Math.sin(c.ini*5+i*0.7),0.42,1);
+      g.fillStyle=up?VERDE:ROSA; g.globalAlpha=up?0.55:0.5; g.fillRect(x0,y,len,Math.max(0.8,lh*0.66)); }
+    g.globalAlpha=1;
+  }
   g.fillStyle='rgba(255,255,255,.5)';
   for(let k=0;k<6;k++){ const yy=y0+((k*53+(T*8))%h); g.globalAlpha=.22+.18*Math.sin(T+k); g.beginPath(); g.arc(x0+bw*(0.3+0.5*((k*0.37)%1)),yy,1.1,0,7); g.fill(); }
   g.globalAlpha=1;
@@ -246,6 +267,7 @@ function filterBar(g){
   gate(g,x0,gY,bw,gH,VHI); gate(g,x0,rY,bw,rH,RHI);
   Z.gateG={x:x0,y:gY,w:bw,h:gH}; Z.gateR={x:x0,y:rY,w:bw,h:rH};
   cornerMarks(g,x0-7,y0-7,bw+14,h+14,18,hexA(VERDE,.55),1.6);
+  if(haveBook){ g.font='700 9px "Saira Condensed",sans-serif'; g.fillStyle='rgba(150,165,180,.85)'; g.textAlign='center'; g.textBaseline='alphabetic'; g.fillText('LIVE ORDER BOOK · BTC '+(book.mid?('$'+fmtP(book.mid)):''),(x0+x1)/2,y0-12); }
   g.font='600 13px "IBM Plex Mono",monospace'; g.fillStyle='rgba(220,235,245,.8)'; g.textAlign='center';
   g.fillText(String(COINS.length||0),(x0+x1)/2,y1+17);
   // presión de TAKER en vivo (compra agresiva vs venta agresiva), dato real del order flow
@@ -254,6 +276,10 @@ function filterBar(g){
   g.textAlign='right'; g.fillStyle=VERDE; g.fillText('BUY '+bp+'%', cx-4, y1+33);
   g.fillStyle='rgba(120,135,150,.7)'; g.textAlign='center'; g.fillText('·', cx, y1+33);
   g.textAlign='left'; g.fillStyle=ROSA; g.fillText('SELL '+(100-bp)+'%', cx+4, y1+33);
+  // desbalance real del LIBRO (liquidez en reposo): cuánta compra vs venta espera en el libro
+  if(haveBook){ const tvv=book.bidVol+book.askVol, bidp=tvv?Math.round(book.bidVol/tvv*100):50;
+    g.font='700 9px "Saira Condensed",sans-serif'; g.textAlign='center'; g.fillStyle='rgba(130,145,160,.8)';
+    g.fillText('BOOK  BID '+bidp+'%  ·  ASK '+(100-bidp)+'%',cx,y1+46); }
   g.textAlign='left';
   Z.divY=divY;
 }
@@ -720,6 +746,7 @@ export async function abrirOrderBlock(){
   cargarLogos(); cargarExchanges();
   try{ stream=D.streamMini(aplicarTick); }catch(_){}
   try{ tradeStream=D.streamTrades(COINS.slice(0,18).map(c=>c.symbol), onTrade); }catch(_){}   // ballenas + flujo real
+  try{ depthStream=D.streamDepth('BTCUSDT', onDepth); }catch(_){}   // libro de órdenes real (referencia del mercado)
   refrescarNiveles(); precargarMinis();
   Z._nivTimer=setInterval(refrescarNiveles, 70000);
   // el mercado se mira en vivo: cada poco re-selecciona qué monedas entran en la cascada,
@@ -958,6 +985,7 @@ function cerrar(){
   if(Z._cardTimer){ clearInterval(Z._cardTimer); Z._cardTimer=null; }
   try{ if(stream)stream.cerrar(); }catch(_){} stream=null;
   try{ if(tradeStream)tradeStream.cerrar(); }catch(_){} tradeStream=null;
+  try{ if(depthStream)depthStream.cerrar(); }catch(_){} depthStream=null;
   window.removeEventListener('resize',onResize);
   document.removeEventListener('visibilitychange',onVis); paused=false;
   const o=document.getElementById('ob-overlay'); if(o)o.remove();

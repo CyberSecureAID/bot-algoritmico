@@ -111,6 +111,32 @@ export function streamTrades(symbols, onTrade) {
   return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
 }
 
+/* ---- libro de órdenes REAL en vivo (profundidad) de una moneda de referencia ----
+   Stream <symbol>@depth20@100ms: 20 mejores niveles de compra (bids) y venta (asks)
+   cada 100ms. onDepth({bids,asks}) con [precio, cantidad] ya numéricos. */
+export function streamDepth(symbol, onDepth) {
+  const s = String(symbol || 'BTCUSDT').toLowerCase();
+  const url = 'wss://stream.binance.com:9443/ws/' + s + '@depth20@100ms';
+  let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket(url); } catch (_) { reintentar(); return; }
+    ws.onmessage = (ev) => {
+      try {
+        const d = JSON.parse(ev.data);
+        const bids = (d.bids || []).map((x) => [+x[0], +x[1]]).filter((x) => x[1] > 0);
+        const asks = (d.asks || []).map((x) => [+x[0], +x[1]]).filter((x) => x[1] > 0);
+        if (bids.length && asks.length) onDepth({ bids, asks });
+      } catch (_) {}
+    };
+    ws.onclose = () => { if (!cerrado) reintentar(); };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  const reintentar = () => { clearTimeout(tmr); tmr = setTimeout(abrir, 2500); };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
+}
+
 /* ---- volumen 24h REAL de DEX (DefiLlama, gratis, sin key, con CORS) ----
    Devuelve { nombreProtocoloEnMinusculas: volumen24hUSD }. Si falla, {} y el motor
    se queda con el respaldo de CoinGecko. */
