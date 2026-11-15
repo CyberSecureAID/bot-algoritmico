@@ -15,7 +15,7 @@ import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
-import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=1';
+import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=2';
 import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=1';
 
 const LIB = new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
@@ -315,7 +315,7 @@ function recalc(pane) {
   pane.ovl.forEach((id) => {
     const def = buscarInd(id); if (!def || def.tipo !== 'ovl') return;
     const c = cfgDe(pane, def); const r = calcular(def, v, c);
-    (r.lineas || []).forEach((ln) => ind.ovl.push({ col: c.col, gr: c.gr, dash: c.dash, a: ln.a != null ? ln.a : 1, data: ln.data }));
+    (r.lineas || []).forEach((ln) => ind.ovl.push({ col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, a: ln.a != null ? ln.a : 1, data: ln.data }));
   });
   if (pane.oscK) {
     const def = buscarInd(pane.oscK);
@@ -400,7 +400,7 @@ function oscilador(g, velas, osc, X, W, H, now) {
   const def = osc.def;
   let lo, hi;
   if (def.rango) { lo = def.rango[0]; hi = def.rango[1]; }
-  else { lo = 1e18; hi = -1e18; const all = [osc.serie, osc.serie2, osc.hist].filter(Boolean); all.forEach((ser) => ser.forEach((x) => { if (x != null) { lo = Math.min(lo, x); hi = Math.max(hi, x); } })); if (!(hi > lo)) { hi = 1; lo = -1; } const pad = (hi - lo) * 0.12; lo -= pad; hi += pad; }
+  else { lo = 1e18; hi = -1e18; const all = [osc.serie, osc.serie2, osc.serie3, osc.hist].filter(Boolean); all.forEach((ser) => ser.forEach((x) => { if (x != null) { lo = Math.min(lo, x); hi = Math.max(hi, x); } })); if (!(hi > lo)) { hi = 1; lo = -1; } const pad = (hi - lo) * 0.12; lo -= pad; hi += pad; }
   const Y = (val) => bot - (val - lo) / (hi - lo) * (bot - top);
   g.save();
   g.fillStyle = 'rgba(8,11,16,.55)'; g.fillRect(0, top - 4, W, band + 8);
@@ -422,6 +422,7 @@ function oscilador(g, velas, osc, X, W, H, now) {
       g.globalAlpha = 1; g.shadowBlur = 0;
     }
   };
+  dibSer(osc.serie3, osc.col3 || '#49b6ff', false);
   dibSer(osc.serie2, osc.col2 || '#ff8fbf', false);
   dibSer(osc.serie, def.col, true);
   g.shadowBlur = 0; g.globalAlpha = 1; g.fillStyle = '#7b8694'; g.font = '700 10px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText(def.n, 8, top + 11);
