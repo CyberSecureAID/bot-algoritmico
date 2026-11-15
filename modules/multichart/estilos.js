@@ -140,6 +140,11 @@ const CSS = `
   .mc-ir .sw{width:34px; height:19px; border-radius:11px; background:#2a333f; position:relative; flex:0 0 auto; transition:background .15s}
   .mc-ir .sw::after{content:""; position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%; background:#fff; transition:left .15s}
   .mc-ir.on .sw{background:var(--mc-gold)} .mc-ir.on .sw::after{left:17px}
+  /* Etiquetas de indicadores sobre la grafica (tocables para abrir su barra) */
+  .mc-leg{position:absolute; top:7px; left:10px; z-index:7; display:flex; flex-wrap:wrap; gap:5px; max-width:72%; pointer-events:none}
+  .mc-chip{pointer-events:auto; display:inline-flex; align-items:center; gap:5px; padding:2px 8px 2px 6px; border-radius:7px; font-family:var(--mc-mono); font-size:11px; line-height:1.55; background:rgba(8,12,18,.72); border:1px solid rgba(255,255,255,.1); cursor:pointer; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); white-space:nowrap}
+  .mc-chip:hover{border-color:rgba(255,255,255,.28); background:rgba(14,19,27,.86)}
+  .mc-chip i{width:9px; height:9px; border-radius:2.5px; flex:0 0 auto}
 
   /* ── Modal (guardar imagen) ── */
   .mc-modal{position:fixed; inset:0; z-index:9600; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(3,6,10,.74); backdrop-filter:blur(4px)}

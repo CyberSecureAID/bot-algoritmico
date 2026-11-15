@@ -10,11 +10,13 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=6';
+import { estilos } from './estilos.js?v=8';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
+import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=1';
+import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=1';
 
 const LIB = new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -93,30 +95,12 @@ function mcStream(simbolo, tf, onKline) {
   });
 }
 
-/* ── Indicadores ── */
-const cls = (v) => v.map((c) => c.close);
-function sma(a, n) { const o = Array(a.length).fill(null); let s = 0; for (let i = 0; i < a.length; i++) { s += a[i]; if (i >= n) s -= a[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
-function ema(a, n) { const o = Array(a.length).fill(null); const k = 2 / (n + 1); let p = null; for (let i = 0; i < a.length; i++) { p = p == null ? a[i] : a[i] * k + p * (1 - k); if (i >= n - 1) o[i] = p; } return o; }
-function rsi(c, n = 14) { const o = Array(c.length).fill(null); let g = 0, l = 0; for (let i = 1; i < c.length; i++) { const d = c[i] - c[i - 1], up = Math.max(0, d), dn = Math.max(0, -d); if (i <= n) { g += up; l += dn; if (i === n) { g /= n; l /= n; o[i] = 100 - 100 / (1 + (l === 0 ? 100 : g / l)); } } else { g = (g * (n - 1) + up) / n; l = (l * (n - 1) + dn) / n; o[i] = 100 - 100 / (1 + (l === 0 ? 100 : g / l)); } } return o; }
-function macd(c) { const e12 = ema(c, 12), e26 = ema(c, 26); const line = c.map((_, i) => (e12[i] != null && e26[i] != null) ? e12[i] - e26[i] : null); const base = line.map((v) => v == null ? 0 : v); const sig = ema(base, 9).map((v, i) => line[i] == null ? null : v); const hist = line.map((v, i) => (v != null && sig[i] != null) ? v - sig[i] : null); return { line, sig, hist }; }
-function stoch(v, n = 14, d = 3) { const k = Array(v.length).fill(null); for (let i = 0; i < v.length; i++) { if (i < n - 1) continue; let hi = -1e18, lo = 1e18; for (let j = i - n + 1; j <= i; j++) { hi = Math.max(hi, v[j].high); lo = Math.min(lo, v[j].low); } k[i] = hi === lo ? 50 : (v[i].close - lo) / (hi - lo) * 100; } const dd = sma(k.map((x) => x == null ? 0 : x), d).map((x, i) => k[i] == null ? null : x); return { k, d: dd }; }
-function cci(v, n = 20) { const o = Array(v.length).fill(null); const tp = v.map((x) => (x.high + x.low + x.close) / 3); const ma = sma(tp, n); for (let i = 0; i < v.length; i++) { if (ma[i] == null) continue; let md = 0; for (let j = i - n + 1; j <= i; j++) md += Math.abs(tp[j] - ma[i]); md /= n; o[i] = md === 0 ? 0 : (tp[i] - ma[i]) / (0.015 * md); } return o; }
-function vwap(v) { const o = Array(v.length).fill(null); let pv = 0, vv = 0; for (let i = 0; i < v.length; i++) { const tp = (v[i].high + v[i].low + v[i].close) / 3, vol = v[i].volume || 1; pv += tp * vol; vv += vol; o[i] = pv / vv; } return o; }
-function boll(c, n = 20, k = 2) { const ma = sma(c, n), up = Array(c.length).fill(null), lo = Array(c.length).fill(null); for (let i = 0; i < c.length; i++) { if (ma[i] == null) continue; let s = 0; for (let j = i - n + 1; j <= i; j++) s += (c[j] - ma[i]) ** 2; const sd = Math.sqrt(s / n); up[i] = ma[i] + k * sd; lo[i] = ma[i] - k * sd; } return { ma, up, lo }; }
-
-const OVL = [
-  { k: 'ema9', n: 'EMA 9', col: '#49b6ff', f: (v) => ema(cls(v), 9) },
-  { k: 'ema21', n: 'EMA 21', col: '#E8B84B', f: (v) => ema(cls(v), 21) },
-  { k: 'ema50', n: 'EMA 50', col: '#b07cff', f: (v) => ema(cls(v), 50) },
-  { k: 'sma200', n: 'SMA 200', col: '#ff8fbf', f: (v) => sma(cls(v), 200) },
-  { k: 'vwap', n: 'VWAP', col: '#2ee8c6', f: (v) => vwap(v) }
-];
-const OSC = [
-  { k: 'rsi', n: 'RSI 14', col: '#E8B84B', rango: [0, 100], ref: [30, 70] },
-  { k: 'macd', n: 'MACD', col: '#49b6ff', ref: [0] },
-  { k: 'stoch', n: 'Stochastic', col: '#2ee8c6', rango: [0, 100], ref: [20, 80] },
-  { k: 'cci', n: 'CCI 20', col: '#b07cff', ref: [-100, 100] }
-];
+/* ── Indicadores ──
+   La libreria (formulas + catalogo) y la barra de config viven en
+   modules/indicadores/. Aqui solo se guarda la config por panel, se calcula
+   con la libreria y se dibuja. Overlays activos: pane.ovl (Set de ids).
+   Oscilador: pane.oscK (uno a la vez). Estilo y parametros: pane.cfg[id]. */
+function cfgDe(pane, def) { if (!pane.cfg) pane.cfg = {}; if (!pane.cfg[def.id]) pane.cfg[def.id] = cfgInicial(def); return pane.cfg[def.id]; }
 
 const IC = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
@@ -196,7 +180,7 @@ async function crearPanel(parId, tf, flotante, pos) {
   const id = 'mcp' + (++S.seq);
   const pane = {
     id, par, tf, chart: null, serie: null, velas: [], velasMs: [], stream: null,
-    flotante: !!flotante, max: false, ovl: new Set(), bollOn: false, oscK: null, ind: {},
+    flotante: !!flotante, max: false, ovl: new Set(), oscK: null, cfg: {}, ind: {},
     dibCache: [], barra: null, streamGen: 0, loadGen: 0, _hit: null
   };
   const el = document.createElement('div'); el.className = flotante ? 'mc-float' : 'mc-pane'; el.id = id;
@@ -326,18 +310,19 @@ function pintarLogoHead(pane) {
 
 /* ── Indicadores: cálculo cacheado + trazo limpio con animación cometa ── */
 function recalc(pane) {
-  const v = pane.velas; if (!v.length) { pane.ind = {}; return; }
-  const ind = { ovl: [], boll: null, osc: null };
-  OVL.forEach((o) => { if (pane.ovl.has(o.k)) ind.ovl.push({ col: o.col, data: o.f(v) }); });
-  if (pane.bollOn) ind.boll = boll(cls(v), 20, 2);
+  const v = pane.velas; if (!v.length) { pane.ind = {}; actualizarLeyenda(pane); return; }
+  const ind = { ovl: [], osc: null };
+  pane.ovl.forEach((id) => {
+    const def = buscarInd(id); if (!def || def.tipo !== 'ovl') return;
+    const c = cfgDe(pane, def); const r = calcular(def, v, c);
+    (r.lineas || []).forEach((ln) => ind.ovl.push({ col: c.col, gr: c.gr, dash: c.dash, a: ln.a != null ? ln.a : 1, data: ln.data }));
+  });
   if (pane.oscK) {
-    const def = OSC.find((o) => o.k === pane.oscK);
-    if (pane.oscK === 'rsi') ind.osc = { def, serie: rsi(cls(v)) };
-    else if (pane.oscK === 'stoch') { const s = stoch(v); ind.osc = { def, serie: s.k, serie2: s.d, col2: '#ff8fbf' }; }
-    else if (pane.oscK === 'cci') ind.osc = { def, serie: cci(v) };
-    else if (pane.oscK === 'macd') { const m = macd(cls(v)); ind.osc = { def, serie: m.line, serie2: m.sig, col2: '#ff8fbf', hist: m.hist }; }
+    const def = buscarInd(pane.oscK);
+    if (def && def.tipo === 'osc') { const c = cfgDe(pane, def); ind.osc = Object.assign({ def: Object.assign({}, def, { n: nomInd(def, c), col: c.col }), gr: c.gr }, calcular(def, v, c)); }
   }
   pane.ind = ind;
+  actualizarLeyenda(pane);
 }
 function arrancarRAF() {
   let last = 0;
@@ -374,22 +359,24 @@ function dibujarInds(pane) {
   const Yp = (p) => { try { const c = pane.serie.priceToCoordinate(p); return c == null ? null : c; } catch (_) { return null; } };
   const now = performance.now();
   const v = pane.velas;
-  (ind.ovl || []).forEach((o, i) => lineaComet(g, v, o.data, X, Yp, o.col, W, now, i));
-  if (ind.boll) { lineaComet(g, v, ind.boll.up, X, Yp, '#7aa2ff', W, now, 5); lineaComet(g, v, ind.boll.lo, X, Yp, '#7aa2ff', W, now, 5); lineaComet(g, v, ind.boll.ma, X, Yp, 'rgba(120,160,255,.55)', W, now, 6); }
+  (ind.ovl || []).forEach((o, i) => lineaComet(g, v, o.data, X, Yp, o.col, W, now, i, o.gr, o.dash, o.a));
   if (ind.osc) oscilador(g, v, ind.osc, X, W, H, now);
 }
 /* Indicador: trazo LIMPIO + una luz (cometa) que lo recorre de izquierda a
    derecha, suave y lenta, igual que el área VWAP Pro. Sin neón constante. */
-function lineaComet(g, velas, data, X, Yp, col, W, now, idx) {
+function lineaComet(g, velas, data, X, Yp, col, W, now, idx, gr, dash, alpha) {
   if (!data) return;
   const pts = [];
   for (let i = 0; i < velas.length; i++) { const val = data[i]; if (val == null) continue; const x = X(velas[i].time); if (x == null) continue; const y = Yp(val); if (y == null) continue; pts.push([x, y, i]); }
   if (pts.length < 2) return;
-  g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.shadowBlur = 0; g.globalAlpha = 1;
-  g.strokeStyle = col; g.lineWidth = 1.5; g.beginPath();
+  const base = alpha != null ? alpha : 1;
+  g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.shadowBlur = 0; g.globalAlpha = base;
+  if (dash) g.setLineDash([6, 5]);
+  g.strokeStyle = col; g.lineWidth = gr || 1.5; g.beginPath();
   let prev = null;
   for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); prev = p; }
   g.stroke();
+  g.setLineDash([]);
   const period = 4600, headX = (((now + idx * 760) % period) / period) * (W + 260) - 130, tail = 130;
   prev = null;
   for (let k = 0; k < pts.length; k++) {
@@ -425,7 +412,7 @@ function oscilador(g, velas, osc, X, W, H, now) {
     const pts = [];
     for (let i = 0; i < velas.length; i++) { const val = ser[i]; if (val == null) continue; const x = X(velas[i].time); if (x == null) continue; pts.push([x, Y(val), i]); }
     if (pts.length < 2) return;
-    g.shadowBlur = 0; g.globalAlpha = 1; g.strokeStyle = col; g.lineWidth = 1.5; g.lineJoin = 'round'; g.beginPath();
+    g.shadowBlur = 0; g.globalAlpha = 1; g.strokeStyle = col; g.lineWidth = osc.gr || 1.5; g.lineJoin = 'round'; g.beginPath();
     let prev = null; for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); prev = p; }
     g.stroke();
     if (cometa) {
@@ -854,17 +841,70 @@ function menuTf(pane, anc) {
   const m = pop(anc, `<div class="mc-indhead">Timeframe</div><div class="mc-tfgrid">${MC_TFS.map((t) => `<button class="${t.id === pane.tf ? 'on' : ''}" data-tf="${t.id}">${t.n}</button>`).join('')}</div>`, 220);
   m.querySelectorAll('[data-tf]').forEach((b) => b.onclick = async () => { pane.tf = b.dataset.tf; pane.el.querySelector('[data-tf]').textContent = pane.tf; cerrarMenu(); await cargarPanel(pane); });
 }
+/* Lista para anadir indicadores: por grupos, se toca para encender o apagar.
+   Varios overlays a la vez (Set); un solo oscilador (oscK). Al encender uno,
+   sale su barra de herramientas pegada a la etiqueta. */
 function menuInd(pane, anc) {
-  const ovl = OVL.map((o) => `<div class="mc-ir${pane.ovl.has(o.k) ? ' on' : ''}" data-ovl="${o.k}"><span><i class="dot" style="background:${o.col}"></i>${o.n}</span><span class="sw"></span></div>`).join('');
-  const bollR = `<div class="mc-ir${pane.bollOn ? ' on' : ''}" data-boll><span><i class="dot" style="background:#78a0ff"></i>Bollinger</span><span class="sw"></span></div>`;
-  const osc = OSC.map((o) => `<div class="mc-ir${pane.oscK === o.k ? ' on' : ''}" data-osc="${o.k}"><span><i class="dot" style="background:${o.col}"></i>${o.n}</span><span class="sw"></span></div>`).join('');
-  const m = pop(anc, `<div class="mc-indhead">Overlays</div>${ovl}${bollR}<div class="mc-indhead">Oscillator</div>${osc}`, 248);
-  const marca = () => pane.el.querySelector('[data-ind]').classList.toggle('on', indActivo(pane));
-  m.querySelectorAll('[data-ovl]').forEach((r) => r.onclick = () => { const k = r.dataset.ovl; pane.ovl.has(k) ? pane.ovl.delete(k) : pane.ovl.add(k); r.classList.toggle('on'); recalc(pane); marca(); });
-  m.querySelector('[data-boll]').onclick = (e) => { pane.bollOn = !pane.bollOn; e.currentTarget.classList.toggle('on'); recalc(pane); marca(); };
-  m.querySelectorAll('[data-osc]').forEach((r) => r.onclick = () => { pane.oscK = (pane.oscK === r.dataset.osc) ? null : r.dataset.osc; m.querySelectorAll('[data-osc]').forEach((x) => x.classList.toggle('on', x.dataset.osc === pane.oscK)); recalc(pane); marca(); });
+  const activo = (d) => d.tipo === 'ovl' ? pane.ovl.has(d.id) : pane.oscK === d.id;
+  const grupos = [];
+  INDICADORES.forEach((d) => { let g = grupos.find((x) => x.g === d.grupo); if (!g) { g = { g: d.grupo, items: [] }; grupos.push(g); } g.items.push(d); });
+  const html = grupos.map((gr) =>
+    `<div class="mc-indhead">${gr.g}</div>` + gr.items.map((d) => {
+      const c = pane.cfg[d.id] || d.estilo;
+      return `<div class="mc-ir${activo(d) ? ' on' : ''}" data-id="${d.id}" data-tipo="${d.tipo}"><span><i class="dot" style="background:${c.col}"></i>${d.nom}</span><span class="sw"></span></div>`;
+    }).join('')
+  ).join('');
+  const m = pop(anc, html, 240);
+  m.querySelectorAll('.mc-ir').forEach((row) => row.onclick = () => {
+    const id = row.dataset.id, def = buscarInd(id); if (!def) return;
+    let encendido;
+    if (def.tipo === 'ovl') {
+      if (pane.ovl.has(id)) { pane.ovl.delete(id); encendido = false; } else { pane.ovl.add(id); encendido = true; }
+      row.classList.toggle('on', encendido);
+    } else {
+      encendido = pane.oscK !== id; pane.oscK = encendido ? id : null;
+      m.querySelectorAll('.mc-ir[data-tipo="osc"]').forEach((x) => x.classList.toggle('on', x.dataset.id === pane.oscK));
+    }
+    recalc(pane); marcarBtnInd(pane);
+    if (encendido) { cerrarMenu(); setTimeout(() => abrirBarraDe(pane, id), 20); }
+  });
 }
-function indActivo(pane) { return pane.ovl.size > 0 || pane.bollOn || !!pane.oscK; }
+/* El boton Indicator se enciende si hay al menos un indicador activo. */
+function marcarBtnInd(pane) { const b = pane.el.querySelector('[data-ind]'); if (b) b.classList.toggle('on', indActivo(pane)); }
+/* Etiquetas tocables sobre la grafica (una por indicador activo, en su color).
+   Al tocar una, reaparece su barra de herramientas anclada a ella. */
+function actualizarLeyenda(pane) {
+  if (!pane.body) return;
+  let leg = pane.body.querySelector('.mc-leg');
+  if (!leg) { leg = document.createElement('div'); leg.className = 'mc-leg'; pane.body.appendChild(leg); }
+  const items = [];
+  pane.ovl.forEach((id) => { const def = buscarInd(id); if (def) items.push(def); });
+  if (pane.oscK) { const def = buscarInd(pane.oscK); if (def) items.push(def); }
+  if (!items.length) { leg.innerHTML = ''; return; }
+  leg.innerHTML = items.map((def) => { const c = cfgDe(pane, def); return `<span class="mc-chip" data-id="${def.id}" style="color:${c.col}"><i style="background:${c.col}"></i>${nomInd(def, c)}</span>`; }).join('');
+  leg.querySelectorAll('.mc-chip').forEach((ch) => ch.onclick = (e) => { e.stopPropagation(); abrirBarraDe(pane, ch.dataset.id); });
+}
+/* Abre la barra de herramientas de un indicador, anclada a su etiqueta. */
+function abrirBarraDe(pane, id) {
+  const def = buscarInd(id); if (!def) return;
+  const c = cfgDe(pane, def);
+  const chip = pane.body && pane.body.querySelector('.mc-chip[data-id="' + id + '"]');
+  let cx, cy;
+  if (chip) { const r = chip.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.bottom + 14; }
+  else { const r = pane.body.getBoundingClientRect(); cx = r.left + 90; cy = r.top + 46; }
+  abrirBarraInd({
+    cfg: c, params: def.params || [], nombre: nomInd(def, c), cx, cy,
+    onCambio: () => recalc(pane),
+    onEliminar: () => quitarInd(pane, id)
+  });
+}
+/* Quita un indicador (desde la papelera de su barra). */
+function quitarInd(pane, id) {
+  pane.ovl.delete(id);
+  if (pane.oscK === id) pane.oscK = null;
+  recalc(pane); marcarBtnInd(pane);
+}
+function indActivo(pane) { return pane.ovl.size > 0 || !!pane.oscK; }
 
 /* ── Guardar imagen ── */
 async function guardarImagenPanel(pane) {
