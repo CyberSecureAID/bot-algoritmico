@@ -187,7 +187,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=42', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=15', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
-    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=18', import.meta.url).href)).abrirMulti();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=19', import.meta.url).href)).abrirMulti();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=13', import.meta.url).href)).abrirFootprint();
     else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=17', import.meta.url).href)).abrirSuperScalper();
   } catch (e) {
@@ -599,9 +599,8 @@ export function abrirSelector(origen, wallet, ethers) {
   const back = $('#an-back');
   back.onclick = (e) => {
     e.preventDefault();
-    if (window.__ANALISIS_PAGINA__) {   // pagina propia: salimos de verdad, no dejamos nada debajo (ni los bots)
-      if (history.length > 1) history.back();
-      else location.href = new URL('../../index.html', import.meta.url).href;
+    if (window.__ANALISIS_PAGINA__) {   // pagina propia: Back SIEMPRE va al inicio (como las demas secciones),
+      location.href = new URL('../../index.html', import.meta.url).href;   // no history.back (si venias de Terminal te devolvia alli)
       return;
     }
     cerrar();   // overlay (portada): volvemos a donde estaba el usuario (no recarga)
