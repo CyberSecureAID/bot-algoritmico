@@ -37,15 +37,15 @@ let flowLive=0.5; const _prevPx={};   // flujo direccional en vivo (mueve la lí
 let tradeStream=null, _takBuy=0, _takSell=0;   // aggTrades: pulsos de ballenas + presión real compra/venta
 let depthStream=null; const book={bids:[],asks:[],bidVol:0,askVol:0,mid:0};   // libro de órdenes REAL de BTC
 let chainStream=null, _tapeCool=0, _chainCool=0;   // cinta de ballenas (trades + on-chain) y su ritmo
-function tapePush(cls,label,coin,size,extra){ const t=document.getElementById('ob-tape'); if(!t)return;
-  const el=document.createElement('span'); el.className='ob-wp '+cls;
-  el.innerHTML=`<i class="dot"></i><b>${label}</b> · ${coin} · <span class="sz">${size}</span>`+(extra?` · ${extra}`:'');
-  t.insertBefore(el,t.firstChild); while(t.children.length>9)t.removeChild(t.lastChild); }
+let flowItems=[];   // eventos del rectángulo de FLUJO (ballenas, liquidaciones, on-chain)
 function onChainWhale(m){ if(!m||!(m.amount>0))return; const now=performance.now(); if(now-_chainCool<1500)return; _chainCool=now;
-  const sh=a=>a?(a.slice(0,5)+'…'+a.slice(-4)):'unknown'; tapePush('chain','ON-CHAIN','BTC',m.amount.toFixed(1)+' BTC',sh(m.from)+' → '+sh(m.to)); }
+  // on-chain: solo los últimos 4 caracteres de la dirección destino, con copiar + ver en la cadena
+  const dst=m.to||m.from||'', last4=dst?dst.slice(-4):'----';
+  flowPush({cls:'chain',label:'ON-CHAIN',coin:'BTC',size:m.amount.toFixed(1)+' BTC',addr:last4,fullAddr:dst,up:true,col:'33,145,217'}); }
 let liqStream=null, _liqCool=0;
 function onLiq(l){ if(!l||!(l.usd>=30000))return; const now=performance.now(); if(now-_liqCool<800)return; _liqCool=now;
-  tapePush('liq', l.longLiq?'LIQ LONG':'LIQ SHORT', l.symbol.replace('USDT',''), '$'+fmtVol(l.usd)); }
+  // LONG liquidada = venta forzada (bajista -> SELL FLOW); SHORT = compra forzada (alcista -> BUY FLOW)
+  flowPush({cls:'liq',label:l.longLiq?'LIQ LONG':'LIQ SHORT',coin:l.symbol.replace('USDT',''),size:'$'+fmtVol(l.usd),up:!l.longLiq,col:'232,184,75'}); }
 async function refrescarPulso(){ const p=document.getElementById('ob-pulse'); if(!p)return;
   let fng=null,gl=null; try{ fng=await D.fearGreed(); }catch(_){} try{ gl=await D.globalMkt(); }catch(_){}
   const fcol=v=>v>=75?'#2BF59E':v>=55?'#9fe06a':v>=45?'#E8B84B':v>=25?'#ff9f43':'#FF4D6E'; let html='';
@@ -116,9 +116,12 @@ function layout(){
   Z.y0=Math.round(H*0.075); Z.y1=Math.round(H*0.93);
   Z.railX=44; Z.secX=70; Z.secW=Math.round(clamp(W*0.125,210,300));
   Z.funX0=Z.secX+Z.secW;
-  Z.barX0=Math.round(W*0.315); Z.barW=Math.max(44,Math.round(W*0.032)); Z.barX1=Z.barX0+Z.barW;
-  Z.vpLeftW=Math.round(W*0.06); Z.clX0=Z.barX1+Math.round(W*0.05);
-  DM=null; buildCards(); placeCards(); buildStrands();
+  // RECTÁNGULO DE FLUJO (clon del central) a la izquierda del libro de órdenes, un poco más ancho.
+  Z.flowW=Math.max(118,Math.round(W*0.076)); Z.flowX0=Z.funX0+Math.round(W*0.075); Z.flowX1=Z.flowX0+Z.flowW;
+  // Libro de órdenes: corrido a la derecha para dejar el hueco del rectángulo de flujo.
+  Z.barX0=Z.flowX1+Math.round(W*0.072); Z.barW=Math.max(44,Math.round(W*0.032)); Z.barX1=Z.barX0+Z.barW;
+  Z.vpLeftW=Math.round(W*0.05); Z.clX0=Z.barX1+Math.round(W*0.042);
+  DM=null; buildCards(); placeCards(); buildStrands(); colocarFlow();
 }
 const PMIN=-4,PMAX=5.4, Y=p=>Z.y1-((p-PMIN)/(PMAX-PMIN))*(Z.y1-Z.y0);
 // fracción de PRESIÓN COMPRADORA real (volumen que sube / volumen total). Sin sesgo:
@@ -132,9 +135,10 @@ function splitTarget(){ let up=0,w=0; COINS.forEach(c=>{ w+=c.vol; if(c.disp>=0)
   return clamp(breadth*0.6+flowLive*0.4,0.18,0.82); }
 
 function placeCards(){
-  const ropeY=(Z.y0+Z.y1)/2, gap=8, colGap=Math.round(W*0.011);
-  const widths=[Math.round(W*0.10),Math.round(W*0.12),Math.round(W*0.14),Math.round(W*0.165)];
-  Z.cardTW=Math.max(210,widths[3]); Z.cardTH=180;   // tamano objetivo del zoom (parejo para todas)
+  const ropeY=(Z.y0+Z.y1)/2, gap=8, colGap=Math.round(W*0.0105);
+  // tarjetas ~20% más cortas (dejan sitio al rectángulo de flujo) y corridas a la derecha
+  const widths=[Math.round(W*0.084),Math.round(W*0.101),Math.round(W*0.118),Math.round(W*0.139)];
+  Z.cardTW=Math.max(196,widths[3]); Z.cardTH=180;   // tamano objetivo del zoom (parejo para todas)
   let x=Z.clX0;
   for(let ci=0;ci<4;ci++){ const w=widths[ci], col=green[ci]||[], n=col.length;
     const bottom=ropeY-16, top=Z.y0+4, ch=Math.min((bottom-top-(n-1)*gap)/Math.max(1,n), ci>=2?180:138);
@@ -167,7 +171,7 @@ function buildStrands(){
     strandsFaint.push({ y0:oy, up, exch:ei, phase:rnd(0,6.28), amp:rnd(5,15), hl:0, col:up?VERDE:ROSA, hero:false, r:Math.random() }); }
 }
 function strandPath(s){
-  const x0=Z.funX0, x1=Z.barX0, N=28, pts=[];
+  const x0=Z.funX0, x1=Z.flowX0, N=28, pts=[];
   const divY=Z.y0+split*(Z.y1-Z.y0);
   const yEnd = s.up ? Z.y0+10 + s.r*(divY-Z.y0-20) : divY+10 + s.r*(Z.y1-divY-20);
   for(let k=0;k<=N;k++){ const t=k/N, x=x0+t*(x1-x0);
@@ -312,6 +316,66 @@ function gate(g,x,y,w,h,hi){
   for(let r=0;r<rows;r++){ const yy=y+2+r*(h-4)/rows, len=w*(0.55+0.45*Math.abs(Math.sin(T*2+r*0.8)));
     g.fillStyle=hi; g.globalAlpha=0.5+0.45*Math.abs(Math.sin(T*2+r*0.6)); g.fillRect(x+1,yy,len,Math.max(1.4,(h-4)/rows-1.4)); }
   g.globalAlpha=1; cornerMarks(g,x-5,y-5,w+10,h+10,13,'#ffffff',1.8);
+}
+
+/* ===== rectángulo de FLUJO (clon del central, a su izquierda) ===== */
+function flowBar(g){
+  const x0=Z.flowX0,x1=Z.flowX1,y0=Z.y0,y1=Z.y1,h=y1-y0,bw=x1-x0;
+  const divY=y0+split*h;
+  // zonas sutiles (verde = presión compradora arriba, roja abajo); el detalle va en el feed DOM encima
+  g.fillStyle=hexA(VERDE,0.10); g.fillRect(x0,y0,bw,divY-y0);
+  g.fillStyle=hexA(ROSA,0.10); g.fillRect(x0,divY,bw,y1-divY);
+  // borde blanco izquierdo + MISMA línea blanca divisoria que sube/baja con el flujo real
+  g.strokeStyle='rgba(255,255,255,.9)'; g.lineWidth=2; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
+  g.save(); g.globalAlpha=0.55; g.lineWidth=1.6; g.beginPath(); g.moveTo(x0,divY); g.lineTo(x1,divY); g.stroke(); g.restore();
+  // dos cuadrados: BUY FLOW (arriba) y SELL FLOW (abajo). Brillan al marcar un evento real (no neón).
+  const sqH=Math.min(50,h*0.14), inx=x0+6, sw=bw-12;
+  const gY=y0+12, rY=y1-12-sqH;
+  flowGate(g,inx,gY,sw,sqH,VHI,VERDE,Z.flowShineG,'BUY FLOW');
+  flowGate(g,inx,rY,sw,sqH,RHI,ROSA,Z.flowShineR,'SELL FLOW');
+  Z.flowGateG={x:inx,y:gY,w:sw,h:sqH}; Z.flowGateR={x:inx,y:rY,w:sw,h:sqH};
+  cornerMarks(g,x0-7,y0-7,bw+14,h+14,18,hexA(VERDE,.5),1.6);
+  // título arriba del rectángulo (antes vivía en la franja superior que se quitó)
+  g.font='800 10px "Saira Condensed",sans-serif'; g.fillStyle='rgba(150,165,180,.9)'; g.textAlign='center'; g.textBaseline='alphabetic';
+  g.fillText('WHALE FLOW',(x0+x1)/2,y0-12); g.textAlign='left';
+  Z.flowDivY=divY;
+}
+function flowGate(g,x,y,w,h,hi,base,shineT,label){
+  rr(g,x,y,w,h,5); g.fillStyle='rgba(8,13,20,.5)'; g.fill();
+  const dt=shineT?(performance.now()-shineT):1e9;
+  if(dt<950){ const k=1-dt/950; g.save(); g.shadowColor=hexA(base,.9); g.shadowBlur=24*k;
+    rr(g,x,y,w,h,5); g.strokeStyle=hexA(hi,0.35+0.6*k); g.lineWidth=1.3+1.7*k; g.stroke();
+    rr(g,x,y,w,h,5); g.clip(); const sx=x+((performance.now()*0.45)%(w+44))-22;
+    const sg=g.createLinearGradient(sx-20,0,sx+20,0); sg.addColorStop(0,hexA(hi,0)); sg.addColorStop(.5,hexA(hi,.3*k)); sg.addColorStop(1,hexA(hi,0));
+    g.fillStyle=sg; g.fillRect(x,y,w,h); g.restore(); }
+  cornerMarks(g,x-4,y-4,w+8,h+8,12,'#ffffff',1.6);
+  g.font='800 8.5px "Saira Condensed",sans-serif'; g.fillStyle=hexA(hi,.85); g.textAlign='center'; g.textBaseline='middle';
+  g.fillText(label,x+w/2,y+h/2); g.textAlign='left'; g.textBaseline='alphabetic';
+}
+/* ===== enlaces cuadrado -> cuadrado (flujo -> libro): ensanchan y vuelven a cerrar ===== */
+function linkRects(g){
+  Z.linkPulses=Z.linkPulses||[];
+  const pairs=[[Z.flowGateG,Z.gateG,VERDE],[Z.flowGateR,Z.gateR,ROSA]];
+  pairs.forEach(([a,b,col])=>{ if(!a||!b)return;
+    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, N=30, pts=[];
+    for(let k=0;k<=N;k++){ const t=k/N; pts.push([ax+t*(bx-ax), ay+(by-ay)*t]); }
+    const wMid=Math.min(15,a.h*0.42), wEnd=3, top=[],bot=[];
+    for(let i=0;i<=N;i++){ const t=i/N, ww=wEnd+(wMid-wEnd)*Math.sin(t*Math.PI);
+      const p=pts[i], pa=pts[Math.max(0,i-1)], pb=pts[Math.min(N,i+1)]; let dx=pb[0]-pa[0],dy=pb[1]-pa[1]; const L=Math.hypot(dx,dy)||1, nx=-dy/L, ny=dx/L;
+      top.push([p[0]+nx*ww,p[1]+ny*ww]); bot.push([p[0]-nx*ww,p[1]-ny*ww]); }
+    g.beginPath(); g.moveTo(top[0][0],top[0][1]); for(let i=1;i<=N;i++)g.lineTo(top[i][0],top[i][1]); for(let i=N;i>=0;i--)g.lineTo(bot[i][0],bot[i][1]); g.closePath();
+    g.fillStyle=col; g.globalAlpha=0.15; g.fill(); g.globalAlpha=1;
+    g.strokeStyle=hexA(col,.5); g.lineWidth=1; g.beginPath(); g.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<=N;i++)g.lineTo(pts[i][0],pts[i][1]); g.stroke();
+    const tp=((T*0.33)%1+1)%1, fp=tp*N, i0=fp|0, fr=fp-i0, pA=pts[i0], pB=pts[Math.min(N,i0+1)];
+    g.globalAlpha=0.8; g.fillStyle=col; g.beginPath(); g.arc(pA[0]+(pB[0]-pA[0])*fr,pA[1]+(pB[1]-pA[1])*fr,1.9,0,7); g.fill(); g.globalAlpha=1;
+  });
+  // continuidad de la línea blanca entre los dos rectángulos (cruza el hueco)
+  if(Z.flowDivY!=null){ g.save(); g.strokeStyle='rgba(255,255,255,.2)'; g.lineWidth=1; g.beginPath(); g.moveTo(Z.flowX1,Z.flowDivY); g.lineTo(Z.barX0,Z.flowDivY); g.stroke(); g.restore(); }
+  // pulsos de EVENTO reales: viajan flujo -> libro por el cuadrado que corresponde
+  for(let i=Z.linkPulses.length-1;i>=0;i--){ const pu=Z.linkPulses[i]; pu.t+=0.03; if(pu.t>1){ Z.linkPulses.splice(i,1); continue; }
+    const a=pu.up?Z.flowGateG:Z.flowGateR, b=pu.up?Z.gateG:Z.gateR; if(!a||!b)continue;
+    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, x=ax+(bx-ax)*pu.t, y=ay+(by-ay)*pu.t;
+    g.save(); g.globalAlpha=0.95; g.shadowColor=`rgba(${pu.col},.95)`; g.shadowBlur=15; g.fillStyle=`rgba(${pu.col},1)`; g.beginPath(); g.arc(x,y,3.3,0,7); g.fill(); g.restore(); }
 }
 
 /* ===== cuerda blanca ===== */
@@ -481,7 +545,7 @@ function hover(){ strands.forEach(s=>s.hl=Math.max(0,s.hl-0.08)); COINS.forEach(
     if(mouse.on && mouse.x>=Z.secX && mouse.x<=Z.secX+Z.secW){ for(let i=0;i<nn;i++){ const yy=Z.y0+i*(chh+gp); if(mouse.y>=yy&&mouse.y<=yy+chh){ Z.exHover=order[i]; break; } } }
     order.forEach(ei=>{ const to=(ei===Z.exHover)?1:0; Z.exZoom[ei]=(Z.exZoom[ei]||0)+(to-(Z.exZoom[ei]||0))*0.2; if(Z.exZoom[ei]<0.001)Z.exZoom[ei]=0; }); }
   if(!mouse.on)return;
-  if(mouse.x>Z.funX0-20&&mouse.x<Z.barX0+30){ let best=null,bd=1e9;
+  if(mouse.x>Z.funX0-20&&mouse.x<Z.flowX0+30){ let best=null,bd=1e9;
     strands.forEach(s=>{ const pts=strandPath(s); for(let i=0;i<pts.length;i+=4){ const dx=pts[i][0]-mouse.x,dy=pts[i][1]-mouse.y,d=dx*dx+dy*dy; if(d<bd){bd=d;best=s;} } });
     if(best&&bd<1100){ best.hl=1; const ex=best.exch;
       strands.forEach(s=>{ if(s.exch===ex)s.hl=Math.max(s.hl,0.7); });
@@ -492,7 +556,7 @@ function hover(){ strands.forEach(s=>s.hl=Math.max(0,s.hl-0.08)); COINS.forEach(
 function renderOnce(){
   substrate();
   glx.setTransform(1,0,0,1,0,0); glx.clearRect(0,0,PW,PH); glx.setTransform(DPR,0,0,DPR,0,0);
-  drawStrands(glx); filterBar(glx); clusterThreads(glx); rope(glx);
+  drawStrands(glx); flowBar(glx); linkRects(glx); filterBar(glx); clusterThreads(glx); rope(glx);
   ctx.setTransform(1,0,0,1,0,0);
   // glow barato: reduce a la mitad, desenfoque chico y lo re-escala (mucho mas ligero que blur a resolucion completa)
   sbx.setTransform(1,0,0,1,0,0); sbx.clearRect(0,0,SBW,SBH); sbx.imageSmoothingEnabled=true; sbx.drawImage(GL,0,0,PW,PH,0,0,SBW,SBH);
@@ -523,7 +587,7 @@ const UMBRAL_BALLENA=60000;   // una operación agresiva de ~$60k o más
 function onTrade(t){ if(!t)return; if(t.buy)_takBuy+=t.quote; else _takSell+=t.quote;
   if(t.quote>=UMBRAL_BALLENA){ const now=performance.now();
     for(const s of strands){ if(s.coin&&s.coin.symbol===t.symbol){ if(now-(s._wcool||0)<450)break; s._wcool=now; s._wp=0; s.hl=1; s._wbuy=t.buy; s._wmag=clamp(t.quote/250000,0.5,1.8); break; } } }
-  if(t.quote>=150000){ const nw=performance.now(); if(nw-_tapeCool>700){ _tapeCool=nw; tapePush(t.buy?'buy':'sell',t.buy?'BIG BUY':'BIG SELL',t.symbol.replace('USDT',''),'$'+fmtVol(t.quote)); } } }
+  if(t.quote>=150000){ const nw=performance.now(); if(nw-_tapeCool>700){ _tapeCool=nw; flowPush({cls:t.buy?'buy':'sell',label:t.buy?'BIG BUY':'BIG SELL',coin:t.symbol.replace('USDT',''),size:'$'+fmtVol(t.quote),up:!!t.buy,col:t.buy?'43,245,158':'255,77,110'}); } } }
 let _nivBusy=false;
 async function refrescarNiveles(){ if(_nivBusy)return; _nivBusy=true;
   try{ const vis=tarjetasVisibles();
@@ -621,25 +685,33 @@ function estilos(){
     .ob-back svg{width:17px;height:17px}
     .ob-info-card{padding:20px 18px 18px}
   }
-  .ob-strip{display:flex;align-items:center;gap:12px;flex:0 0 auto;height:34px;padding:0 12px;background:linear-gradient(180deg,#0b0f16,#080b11);border-bottom:1px solid #1a2029;overflow:hidden}
-  .ob-tapewrap{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0;overflow:hidden}
-  .ob-tapelbl{flex:0 0 auto;font:800 9.5px 'Saira Condensed',sans-serif;letter-spacing:.14em;color:#6b7784;padding:3px 7px;border:1px solid #232b36;border-radius:5px}
-  .ob-tape{display:flex;align-items:center;gap:7px;flex:1 1 auto;min-width:0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 3%,#000 94%,transparent)}
-  .ob-wp{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:6px;background:rgba(255,255,255,.03);border:1px solid #232b36;font:700 11px 'IBM Plex Mono',monospace;white-space:nowrap;animation:obwp .4s ease}
-  @keyframes obwp{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
-  .ob-wp .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
-  .ob-wp.buy{color:#9effc9} .ob-wp.buy .dot{background:#2BF59E;box-shadow:0 0 7px #2BF59E}
-  .ob-wp.sell{color:#ffb3c0} .ob-wp.sell .dot{background:#FF4D6E;box-shadow:0 0 7px #FF4D6E}
-  .ob-wp.chain{color:#bfe0ff} .ob-wp.chain .dot{background:#2191D9;box-shadow:0 0 7px #2191D9}
-  .ob-wp.liq{color:#ffd98a} .ob-wp.liq .dot{background:#E8B84B;box-shadow:0 0 7px #E8B84B}
-  .ob-wp .sz{color:#eef4fb} .ob-wp b{font-weight:800}
-  .ob-pulse{flex:0 0 auto;display:flex;align-items:center;gap:14px;font:700 11px 'IBM Plex Mono',monospace;color:#9aa6b2}
+  /* pulso de mercado, ahora en la barra superior (Fear&Greed / MCAP / BTC.D) */
+  .ob-pulse{flex:0 0 auto;display:flex;align-items:center;gap:13px;font:700 11px 'IBM Plex Mono',monospace;color:#9aa6b2;margin-right:2px}
   .ob-pulse .k{color:#6b7784;font:800 9px 'Saira Condensed',sans-serif;letter-spacing:.1em;margin-right:4px}
   .ob-pulse .v{color:#eef4fb}
   .ob-fng{display:inline-flex;align-items:center;gap:6px}
   .ob-fngdot{width:9px;height:9px;border-radius:50%}
-  @media(max-width:860px){ .ob-pulse .mcap,.ob-pulse .dom{display:none} }
-  @media(max-width:620px){ .ob-strip{height:30px;gap:7px;padding:0 8px} .ob-tapelbl{display:none} }
+  @media(max-width:1040px){ .ob-pulse .mcap,.ob-pulse .dom{display:none} }
+  @media(max-width:780px){ .ob-pulse{display:none} }
+  /* ===== feed de FLUJO dentro del rectángulo (ballenas / liquidaciones / on-chain) ===== */
+  .ob-flow{position:absolute;z-index:4;pointer-events:none;display:flex;flex-direction:column}
+  .ob-flowlist{display:flex;flex-direction:column;gap:5px;width:100%;height:100%;overflow:hidden;
+    mask-image:linear-gradient(180deg,#000 0,#000 88%,transparent);-webkit-mask-image:linear-gradient(180deg,#000 0,#000 88%,transparent)}
+  .ob-fl{pointer-events:none;flex:0 0 auto;border-left:2px solid #2b3139;background:rgba(8,13,20,.74);border-radius:5px;padding:4px 7px;backdrop-filter:blur(2px);animation:obflin .34s ease}
+  @keyframes obflin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  .ob-fl .fl-top{display:flex;align-items:center;gap:5px;font:800 9.5px 'Saira Condensed',sans-serif;letter-spacing:.04em;white-space:nowrap}
+  .ob-fl .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+  .ob-fl .cn{color:#8a97a4;font-weight:700;margin-left:auto}
+  .ob-fl .fl-sz{font:600 11px 'IBM Plex Mono',monospace;color:#eef4fb;margin-top:1px;line-height:1.15}
+  .ob-fl .fl-adr{display:flex;align-items:center;gap:4px;margin-top:3px;font:600 9px 'IBM Plex Mono',monospace;color:#9fb6c8}
+  .ob-fl .fl-adr span{opacity:.9}
+  .ob-fl .fl-b{pointer-events:auto;cursor:pointer;width:17px;height:16px;line-height:1;display:grid;place-items:center;border:1px solid #2b3139;border-radius:4px;background:rgba(255,255,255,.05);color:#aeb9c6;font-size:10px;padding:0}
+  .ob-fl .fl-b:hover{border-color:#C9A84B;color:#E8B84B}
+  .ob-fl.buy{border-left-color:#2BF59E} .ob-fl.buy .dot{background:#2BF59E;box-shadow:0 0 6px #2BF59E} .ob-fl.buy b{color:#9effc9}
+  .ob-fl.sell{border-left-color:#FF4D6E} .ob-fl.sell .dot{background:#FF4D6E;box-shadow:0 0 6px #FF4D6E} .ob-fl.sell b{color:#ffb3c0}
+  .ob-fl.liq{border-left-color:#E8B84B} .ob-fl.liq .dot{background:#E8B84B;box-shadow:0 0 6px #E8B84B} .ob-fl.liq b{color:#ffd98a}
+  .ob-fl.chain{border-left-color:#2191D9} .ob-fl.chain .dot{background:#2191D9;box-shadow:0 0 6px #2191D9} .ob-fl.chain b{color:#bfe0ff}
+  .ob-fl.fresh{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 6px 16px rgba(0,0,0,.4)}
   .ob-stage{position:relative;flex:1 1 auto;min-height:0}
   #ob-overlay canvas#ob-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   #ob-load{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:#05080f}
@@ -688,6 +760,21 @@ function estilos(){
   document.head.appendChild(s);
 }
 
+/* ===== FEED de flujo: coloca el DOM encima del rectángulo y pinta los eventos ===== */
+function colocarFlow(){ const el=document.getElementById('ob-flow'); if(!el||Z.flowX0==null)return;
+  const sqH=Math.min(50,(Z.y1-Z.y0)*0.14), top=Z.y0+12+sqH+15, bottom=Z.y1-12-sqH-10;
+  el.style.left=(Z.flowX0+7)+'px'; el.style.top=top+'px'; el.style.width=(Z.flowW-14)+'px'; el.style.height=Math.max(40,bottom-top)+'px'; }
+function flowPush(ev){ flowItems.unshift(ev); if(flowItems.length>11)flowItems.pop(); renderFlowList();
+  if(ev.up)Z.flowShineG=performance.now(); else Z.flowShineR=performance.now();
+  (Z.linkPulses=Z.linkPulses||[]).push({t:0,up:!!ev.up,col:ev.col||'43,245,158'}); if(Z.linkPulses.length>26)Z.linkPulses.shift(); }
+function renderFlowList(){ const L=document.getElementById('ob-flowlist'); if(!L)return;
+  L.innerHTML=flowItems.map((e,i)=>{ const fresh=i===0?' fresh':'';
+    const adr=e.fullAddr?`<div class="fl-adr"><span>…${e.addr}</span><button class="fl-b" data-copy="${e.fullAddr}" title="Copiar dirección">⧉</button><button class="fl-b" data-exp="${e.fullAddr}" title="Ver en la cadena de bloques">↗</button></div>`:'';
+    return `<div class="ob-fl ${e.cls}${fresh}"><div class="fl-top"><i class="dot"></i><b>${e.label}</b><span class="cn">${e.coin}</span></div><div class="fl-sz">${e.size}</div>${adr}</div>`; }).join(''); }
+function wireFlow(){ const L=document.getElementById('ob-flowlist'); if(!L)return;
+  L.addEventListener('click',e=>{ const cb=e.target.closest('[data-copy]');
+    if(cb){ try{ navigator.clipboard.writeText(cb.dataset.copy); cb.textContent='✓'; setTimeout(()=>{ cb.textContent='⧉'; },1200); }catch(_){} return; }
+    const xb=e.target.closest('[data-exp]'); if(xb){ try{ window.open('https://www.blockchain.com/explorer/addresses/btc/'+encodeURIComponent(xb.dataset.exp),'_blank','noopener'); }catch(_){} } }); }
 /* ===== búsqueda: abrir CUALQUIER moneda (esté o no en la cascada) ===== */
 function wireBuscador(){
   const inp=document.getElementById('ob-q'), sug=document.getElementById('ob-sug'); if(!inp||!sug)return;
@@ -765,15 +852,13 @@ export async function abrirOrderBlock(){
       <button class="ob-back" id="ob-back">${IC.back}Back</button>
       <div class="ob-search">${IC.search}<input id="ob-q" type="text" placeholder="Search any coin to analyze…" autocomplete="off" spellcheck="false"><div class="ob-sug" id="ob-sug"></div></div>
       <div class="ob-sp"></div>
+      <div class="ob-pulse" id="ob-pulse"></div>
       <button class="ob-ico" id="ob-info" title="What is this">${IC.info}</button>
       <button class="ob-ico" id="ob-cam" title="Export image">${IC.exp}</button>
     </div>
-    <div class="ob-strip">
-      <div class="ob-tapewrap"><span class="ob-tapelbl">WHALE FLOW</span><div class="ob-tape" id="ob-tape"></div></div>
-      <div class="ob-pulse" id="ob-pulse"></div>
-    </div>
     <div class="ob-stage" id="ob-stage">
       <canvas id="ob-cv"></canvas>
+      <div class="ob-flow" id="ob-flow"><div class="ob-flowlist" id="ob-flowlist"></div></div>
       <div id="ob-load"><div class="sp"></div><b>LOADING LIQUIDITY…</b></div>
     </div>`;
   document.body.appendChild(ov);
@@ -783,7 +868,7 @@ export async function abrirOrderBlock(){
   document.getElementById('ob-back').onclick=cerrar;
   document.getElementById('ob-cam').onclick=exportar;
   document.getElementById('ob-info').onclick=abrirInfo;
-  wireBuscador();
+  wireBuscador(); wireFlow();
   cv.addEventListener('mousemove',e=>{ const r=cv.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; mouse.on=true; });
   cv.addEventListener('mouseleave',()=>mouse.on=false);
   cv.addEventListener('click',onClick);
@@ -843,7 +928,6 @@ async function abrirDetalle(c){
       <span class="pc" id="ob-mpc" style="color:${colc}"></span>
       <span class="pr" id="ob-mpr"></span>
       <div class="ob-tfwrap"><button class="ob-chip" id="ob-tfchip"></button><div class="ob-tfmenu" id="ob-tfmenu"></div></div>
-      <button class="ob-chip" id="ob-heat" title="Toggle depth heatmap (Bookmap)">VP ▦</button>
       <div class="ob-msp"></div>
       <button class="ob-mx" id="ob-mfs" title="Fullscreen">${IC.full}</button>
       <button class="ob-mx" id="ob-mx" title="Close">${IC.x}</button>
@@ -874,9 +958,6 @@ async function abrirDetalle(c){
   mMenuDoc=()=>menu.classList.remove('open'); document.addEventListener('click',mMenuDoc);
   menu.querySelectorAll('button').forEach(b=>b.onclick=()=>{ mTF=b.dataset.tf;
     menu.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); pintarChip(); menu.classList.remove('open'); cargarChart(); });
-  // alternar perfil de volumen <-> heatmap de profundidad (Bookmap)
-  mMode='vp'; mHeat=[]; const heatBtn=document.getElementById('ob-heat');
-  heatBtn.onclick=()=>{ mMode=(mMode==='vp')?'heat':'vp'; heatBtn.textContent=(mMode==='heat')?'HEAT ▦':'VP ▦'; heatBtn.classList.toggle('on',mMode==='heat'); };
   try{ LC=await lib(); }catch(_){ const h=document.getElementById('ob-mchart'); if(h)h.innerHTML='<div style="display:grid;place-items:center;height:100%;color:#7d8794;font-family:sans-serif">No se pudo cargar el grafico.</div>'; return; }
   crearChart(); cargarChart();
 }
@@ -906,8 +987,6 @@ async function cargarChart(){ if(!mSeries||!mCoin)return;
   try{ mStream=streamVelas(sym,tf,k=>{ if(!mSeries||mTF!==tf||!mCoin||mCoin.symbol!==sym)return;
     try{ mSeries.update({ time:Math.floor(k.t/1000), open:+k.o, high:+k.h, low:+k.l, close:+k.c }); }catch(_){}
     const pr=document.getElementById('ob-mpr'); if(pr)pr.textContent='$'+fmtP(+k.c); }); }catch(_){}
-  // profundidad de ESTA moneda para el heatmap tipo Bookmap (una vez por modal)
-  if(!mDepthStream){ try{ mDepthStream=D.streamDepth(sym, onModalDepth); }catch(_){} }
 }
 // Paleta de calor por escalones (misma lógica que el mapa de Liquidity Pools):
 // azul = poco volumen, verde = medio, amarillo = alto, naranja/rojo = los muros de liquidez.
@@ -920,18 +999,7 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
   const x=cv2.getContext('2d'); x.setTransform(d,0,0,d,0,0); x.clearRect(0,0,w,h);
   let axisW=58; try{ axisW=mChart.priceScale('right').width()||58; }catch(_){}
   const plotR=w-axisW-2, T2=performance.now()*0.001, {lo,hi,N,bins,poc,mx}=mVP;
-  // HEATMAP de profundidad tipo Bookmap: cada columna es una foto del libro en el tiempo
-  // (recientes a la derecha), cada celda coloreada por la liquidez en reposo a ese precio.
-  if(hi>lo && mMode==='heat' && mHeat.length>1){
-    let yTop=null,yBot=null; try{ yTop=mSeries.priceToCoordinate(hi); yBot=mSeries.priceToCoordinate(lo); }catch(_){}
-    if(yTop!=null&&yBot!=null){ const heatW=plotR*0.5, x0h=plotR-heatW, cw=heatW/70, rng=hi-lo;
-      const yAt=p=>yTop+(hi-p)/rng*(yBot-yTop), mxh=mHeatMax||1;
-      for(let c=0;c<mHeat.length;c++){ const snap=mHeat[c], cx=x0h+c*cw;
-        for(const b of snap.bids){ const y=yAt(b[0]); if(y<-4||y>h+4)continue; const a=clamp(b[1]/mxh,0.05,0.92); x.fillStyle=`rgba(43,245,158,${a.toFixed(2)})`; x.fillRect(cx,y-1.3,Math.max(1,cw-0.3),2.6); }
-        for(const a2 of snap.asks){ const y=yAt(a2[0]); if(y<-4||y>h+4)continue; const al=clamp(a2[1]/mxh,0.05,0.92); x.fillStyle=`rgba(255,77,110,${al.toFixed(2)})`; x.fillRect(cx,y-1.3,Math.max(1,cw-0.3),2.6); } }
-      x.font='800 9px "IBM Plex Mono",monospace'; x.fillStyle='rgba(150,165,180,.85)'; x.textAlign='left'; x.textBaseline='top'; x.fillText('DEPTH HEATMAP · '+mCoin.symbol.replace('USDT','')+' · LIVE',x0h,4); x.textBaseline='alphabetic'; }
-  }
-  if(hi>lo && mMode!=='heat'){
+  if(hi>lo){
     // PERFIL DE VOLUMEN profesional: longitud de barra = volumen real en ese nivel, con
     // contraste alto -> los HVN (mucha liquidez) sobresalen y los LVN (poca) casi no se ven.
     // Value Area 70% en caja, POC/VAH/VAL con líneas de referencia. Estructura, no brocha.
