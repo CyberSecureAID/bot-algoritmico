@@ -15,7 +15,7 @@ import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
-import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=2';
+import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=3';
 import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=2';
 
 const LIB = new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
@@ -333,23 +333,28 @@ function recalc(pane) {
 function serieOsc(pane, arr) { const v = pane.velas, o = []; for (let i = 0; i < arr.length; i++) { if (arr[i] == null) continue; const t = v[i] && v[i].time; if (t == null) continue; o.push({ time: t, value: arr[i] }); } return o; }
 function crearOsc(pane, def, c, r) {
   const chart = pane.chart, S2 = {};
-  if (r.hist) S2.hist = chart.addSeries(LC.HistogramSeries, { priceLineVisible: false, lastValueVisible: false, base: 0 }, 1);
+  if (r.hist) S2.hist = chart.addSeries(LC.HistogramSeries, { priceLineVisible: false, lastValueVisible: r.serie == null, base: 0 }, 1);
   if (r.serie3 != null) S2.s3 = chart.addSeries(LC.LineSeries, { color: r.col3 || '#49b6ff', lineWidth: 2, priceLineVisible: false, lastValueVisible: false }, 1);
   if (r.serie2 != null) S2.s2 = chart.addSeries(LC.LineSeries, { color: r.col2 || '#ff8fbf', lineWidth: 2, priceLineVisible: false, lastValueVisible: false }, 1);
-  S2.main = chart.addSeries(LC.LineSeries, { color: c.col, lineWidth: c.gr || 2, priceLineVisible: false, lastValueVisible: true }, 1);
-  if (def.rango) { try { S2.main.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: def.rango[0], maxValue: def.rango[1] } }) }); } catch (_) {} }
+  if (r.serie != null) S2.main = chart.addSeries(LC.LineSeries, { color: c.col, lineWidth: c.gr || 2, priceLineVisible: false, lastValueVisible: true }, 1);
+  const ref = S2.main || S2.hist;   // los indicadores de solo histograma (AO) cuelgan de la serie del histograma
+  if (def.rango && ref) { try { ref.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: def.rango[0], maxValue: def.rango[1] } }) }); } catch (_) {} }
   pane.oscSeries = S2; pane.oscRefs = [];
-  (def.ref || []).forEach((rv) => { try { pane.oscRefs.push(S2.main.createPriceLine({ price: rv, color: 'rgba(255,255,255,.22)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true })); } catch (_) {} });
+  if (ref) (def.ref || []).forEach((rv) => { try { pane.oscRefs.push(ref.createPriceLine({ price: rv, color: 'rgba(255,255,255,.22)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true })); } catch (_) {} });
   try { const ps = chart.panes(); if (ps[1]) ps[1].setHeight(Math.max(90, Math.round((pane.body.clientHeight || 300) * 0.28))); } catch (_) {}
 }
 function sincronizarOsc(pane, def, c, r) {
   if (pane._oscMounted !== def.id) { desmontarOsc(pane); crearOsc(pane, def, c, r); pane._oscMounted = def.id; }
   const S2 = pane.oscSeries; if (!S2) return;
-  if (S2.hist && r.hist) { const v = pane.velas, h = []; for (let i = 0; i < r.hist.length; i++) { if (r.hist[i] == null) continue; const t = v[i] && v[i].time; if (t == null) continue; h.push({ time: t, value: r.hist[i], color: r.hist[i] >= 0 ? 'rgba(46,232,106,.55)' : 'rgba(255,91,110,.55)' }); } try { S2.hist.setData(h); } catch (_) {} }
+  if (S2.hist && r.hist) {
+    const v = pane.velas, h = []; let prev = null;
+    for (let i = 0; i < r.hist.length; i++) { const hv = r.hist[i]; if (hv == null) continue; const t = v[i] && v[i].time; if (t == null) continue; const col = r.histMom ? ((prev == null || hv >= prev) ? 'rgba(46,232,106,.62)' : 'rgba(255,91,110,.62)') : (hv >= 0 ? 'rgba(46,232,106,.55)' : 'rgba(255,91,110,.55)'); prev = hv; h.push({ time: t, value: hv, color: col }); }
+    try { S2.hist.setData(h); } catch (_) {}
+  }
   if (S2.s3 && r.serie3) { try { S2.s3.applyOptions({ color: r.col3 || '#49b6ff' }); S2.s3.setData(serieOsc(pane, r.serie3)); } catch (_) {} }
   if (S2.s2 && r.serie2) { try { S2.s2.applyOptions({ color: r.col2 || '#ff8fbf' }); S2.s2.setData(serieOsc(pane, r.serie2)); } catch (_) {} }
   if (S2.main && r.serie) { try { S2.main.applyOptions({ color: c.col, lineWidth: c.gr || 2 }); S2.main.setData(serieOsc(pane, r.serie)); } catch (_) {} }
-  let last = null; if (r.serie) for (let i = r.serie.length - 1; i >= 0; i--) { if (r.serie[i] != null) { last = r.serie[i]; break; } }
+  let last = null; const src = r.serie || r.hist; if (src) for (let i = src.length - 1; i >= 0; i--) { if (src[i] != null) { last = src[i]; break; } }
   pane._oscLast = last;
 }
 function desmontarOsc(pane) {
