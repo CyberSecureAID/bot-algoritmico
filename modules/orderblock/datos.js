@@ -82,6 +82,15 @@ export function streamMini(onTick) {
   return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
 }
 
+/* ---- velas (klines) para el grafico de detalle ---- */
+export async function velas(symbol, interval = '1h', limit = 240) {
+  const n = Math.min(1000, limit);
+  try {
+    const j = await traer(`${BINANCE}/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${n}`);
+    return (j || []).map((k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] }));
+  } catch (_) { return []; }
+}
+
 /* ---- niveles REALES por perfil de volumen (velas 4h ~ 30 días) ----
    POC = precio de mayor volumen; soporte = HVN más fuerte por debajo del precio;
    resistencia = HVN más fuerte por encima. vp[] = perfil para dibujar la tarjeta.
