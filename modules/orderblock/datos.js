@@ -111,6 +111,47 @@ export function streamTrades(symbols, onTrade) {
   return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
 }
 
+/* ---- Índice Fear & Greed (alternative.me, gratis, sin key, con CORS) ---- */
+let _fng = null, _fngT = 0;
+export async function fearGreed() {
+  const now = Date.now(); if (_fng && now - _fngT < 120000) return _fng;
+  try { const j = await traer('https://api.alternative.me/fng/?limit=1', 8000); const d = (j && j.data && j.data[0]) || null;
+    if (d) { _fng = { value: +d.value, label: d.value_classification || '' }; _fngT = now; } } catch (_) {}
+  return _fng;
+}
+
+/* ---- Datos globales del mercado (CoinGecko /global): capitalización, cambio 24h, dominancia BTC ---- */
+let _glob = null, _globT = 0;
+export async function globalMkt() {
+  const now = Date.now(); if (_glob && now - _globT < 120000) return _glob;
+  try { const j = await traer('https://api.coingecko.com/api/v3/global', 8000); const d = (j && j.data) || null;
+    if (d) { _glob = { mcap: (d.total_market_cap && d.total_market_cap.usd) || 0, chg: d.market_cap_change_percentage_24h_usd || 0, btcDom: (d.market_cap_percentage && d.market_cap_percentage.btc) || 0 }; _globT = now; } } catch (_) {}
+  return _glob;
+}
+
+/* ---- Ballenas ON-CHAIN de BTC en vivo (Blockchain.com WS, gratis, sin key) ----
+   Transacciones BTC sin confirmar; filtra las grandes (>= minBtc) y entrega
+   { coin, amount, from, to } con las direcciones de origen y destino. */
+export function streamChainWhales(onMove, minBtc) {
+  const min = minBtc || 50; let ws = null, cerrado = false, tmr = null;
+  const abrir = () => {
+    if (cerrado) return;
+    try { ws = new WebSocket('wss://ws.blockchain.info/inv'); } catch (_) { reintentar(); return; }
+    ws.onopen = () => { try { ws.send(JSON.stringify({ op: 'unconfirmed_sub' })); } catch (_) {} };
+    ws.onmessage = (ev) => {
+      try { const m = JSON.parse(ev.data); if (m.op !== 'utx' || !m.x) return;
+        const tx = m.x; let val = 0; (tx.out || []).forEach((o) => { val += (o.value || 0); }); val /= 1e8;
+        if (val >= min) { const from = (tx.inputs && tx.inputs[0] && tx.inputs[0].prev_out && tx.inputs[0].prev_out.addr) || '', to = (tx.out && tx.out[0] && tx.out[0].addr) || '';
+          onMove({ coin: 'BTC', amount: val, from, to }); } } catch (_) {}
+    };
+    ws.onclose = () => { if (!cerrado) reintentar(); };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  const reintentar = () => { clearTimeout(tmr); tmr = setTimeout(abrir, 4000); };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
+}
+
 /* ---- libro de órdenes REAL en vivo (profundidad) de una moneda de referencia ----
    Stream <symbol>@depth20@100ms: 20 mejores niveles de compra (bids) y venta (asks)
    cada 100ms. onDepth({bids,asks}) con [precio, cantidad] ya numéricos. */

@@ -6,7 +6,7 @@
 
    Export: abrirOrderBlock()
 */
-import * as D from './datos.js?v=7';
+import * as D from './datos.js?v=8';
 /* Reutilizamos la infraestructura YA probada de la plataforma: caché compartida de
    logos (misma que Multichart/VWAP Pro), velas y stream en vivo, y el catálogo PARES/TFS. */
 import { logos as sharedLogos, PARES as SP, TFS, velas as velasReal, streamVelas } from '../trading-demo/datos.js?v=2';
@@ -32,6 +32,19 @@ let W=0,H=0,DPR=1,PW=0,PH=0,SBW=1,SBH=1, DM=null, split=0.5, T=0, last=0, paused
 let flowLive=0.5; const _prevPx={};   // flujo direccional en vivo (mueve la línea blanca de forma orgánica y REAL)
 let tradeStream=null, _takBuy=0, _takSell=0;   // aggTrades: pulsos de ballenas + presión real compra/venta
 let depthStream=null; const book={bids:[],asks:[],bidVol:0,askVol:0,mid:0};   // libro de órdenes REAL de BTC
+let chainStream=null, _tapeCool=0, _chainCool=0;   // cinta de ballenas (trades + on-chain) y su ritmo
+function tapePush(cls,label,coin,size,extra){ const t=document.getElementById('ob-tape'); if(!t)return;
+  const el=document.createElement('span'); el.className='ob-wp '+cls;
+  el.innerHTML=`<i class="dot"></i><b>${label}</b> · ${coin} · <span class="sz">${size}</span>`+(extra?` · ${extra}`:'');
+  t.insertBefore(el,t.firstChild); while(t.children.length>9)t.removeChild(t.lastChild); }
+function onChainWhale(m){ if(!m||!(m.amount>0))return; const now=performance.now(); if(now-_chainCool<1500)return; _chainCool=now;
+  const sh=a=>a?(a.slice(0,5)+'…'+a.slice(-4)):'unknown'; tapePush('chain','ON-CHAIN','BTC',m.amount.toFixed(1)+' BTC',sh(m.from)+' → '+sh(m.to)); }
+async function refrescarPulso(){ const p=document.getElementById('ob-pulse'); if(!p)return;
+  let fng=null,gl=null; try{ fng=await D.fearGreed(); }catch(_){} try{ gl=await D.globalMkt(); }catch(_){}
+  const fcol=v=>v>=75?'#2BF59E':v>=55?'#9fe06a':v>=45?'#E8B84B':v>=25?'#ff9f43':'#FF4D6E'; let html='';
+  if(fng)html+=`<span class="ob-fng"><span class="k">FEAR / GREED</span><span class="ob-fngdot" style="background:${fcol(fng.value)}"></span><span class="v">${fng.value}</span> ${fng.label}</span>`;
+  if(gl){ const c=gl.chg>=0?'#2BF59E':'#FF4D6E'; html+=`<span class="mcap"><span class="k">MCAP</span><span class="v">$${fmtVol(gl.mcap)}</span> <span style="color:${c}">${gl.chg>=0?'+':''}${gl.chg.toFixed(1)}%</span></span><span class="dom"><span class="k">BTC.D</span><span class="v">${gl.btcDom.toFixed(1)}%</span></span>`; }
+  if(html)p.innerHTML=html; }
 function onDepth(d){ if(!d||!d.bids.length||!d.asks.length)return; book.bids=d.bids; book.asks=d.asks;
   let bv=0,av=0; for(const b of d.bids)bv+=b[0]*b[1]; for(const a of d.asks)av+=a[0]*a[1]; book.bidVol=bv; book.askVol=av; book.mid=(d.bids[0][0]+d.asks[0][0])/2; }
 let COINS=[], green=[], red=[], strands=[], strandsFaint=[], hist=[];
@@ -502,7 +515,8 @@ function aplicarTick(map){ let upW=0,dnW=0;
 const UMBRAL_BALLENA=60000;   // una operación agresiva de ~$60k o más
 function onTrade(t){ if(!t)return; if(t.buy)_takBuy+=t.quote; else _takSell+=t.quote;
   if(t.quote>=UMBRAL_BALLENA){ const now=performance.now();
-    for(const s of strands){ if(s.coin&&s.coin.symbol===t.symbol){ if(now-(s._wcool||0)<450)break; s._wcool=now; s._wp=0; s.hl=1; s._wbuy=t.buy; s._wmag=clamp(t.quote/250000,0.5,1.8); break; } } } }
+    for(const s of strands){ if(s.coin&&s.coin.symbol===t.symbol){ if(now-(s._wcool||0)<450)break; s._wcool=now; s._wp=0; s.hl=1; s._wbuy=t.buy; s._wmag=clamp(t.quote/250000,0.5,1.8); break; } } }
+  if(t.quote>=150000){ const nw=performance.now(); if(nw-_tapeCool>700){ _tapeCool=nw; tapePush(t.buy?'buy':'sell',t.buy?'BIG BUY':'BIG SELL',t.symbol.replace('USDT',''),'$'+fmtVol(t.quote)); } } }
 let _nivBusy=false;
 async function refrescarNiveles(){ if(_nivBusy)return; _nivBusy=true;
   try{ const vis=tarjetasVisibles();
@@ -600,6 +614,24 @@ function estilos(){
     .ob-back svg{width:17px;height:17px}
     .ob-info-card{padding:20px 18px 18px}
   }
+  .ob-strip{display:flex;align-items:center;gap:12px;flex:0 0 auto;height:34px;padding:0 12px;background:linear-gradient(180deg,#0b0f16,#080b11);border-bottom:1px solid #1a2029;overflow:hidden}
+  .ob-tapewrap{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0;overflow:hidden}
+  .ob-tapelbl{flex:0 0 auto;font:800 9.5px 'Saira Condensed',sans-serif;letter-spacing:.14em;color:#6b7784;padding:3px 7px;border:1px solid #232b36;border-radius:5px}
+  .ob-tape{display:flex;align-items:center;gap:7px;flex:1 1 auto;min-width:0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 3%,#000 94%,transparent)}
+  .ob-wp{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:6px;background:rgba(255,255,255,.03);border:1px solid #232b36;font:700 11px 'IBM Plex Mono',monospace;white-space:nowrap;animation:obwp .4s ease}
+  @keyframes obwp{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+  .ob-wp .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+  .ob-wp.buy{color:#9effc9} .ob-wp.buy .dot{background:#2BF59E;box-shadow:0 0 7px #2BF59E}
+  .ob-wp.sell{color:#ffb3c0} .ob-wp.sell .dot{background:#FF4D6E;box-shadow:0 0 7px #FF4D6E}
+  .ob-wp.chain{color:#bfe0ff} .ob-wp.chain .dot{background:#2191D9;box-shadow:0 0 7px #2191D9}
+  .ob-wp .sz{color:#eef4fb} .ob-wp b{font-weight:800}
+  .ob-pulse{flex:0 0 auto;display:flex;align-items:center;gap:14px;font:700 11px 'IBM Plex Mono',monospace;color:#9aa6b2}
+  .ob-pulse .k{color:#6b7784;font:800 9px 'Saira Condensed',sans-serif;letter-spacing:.1em;margin-right:4px}
+  .ob-pulse .v{color:#eef4fb}
+  .ob-fng{display:inline-flex;align-items:center;gap:6px}
+  .ob-fngdot{width:9px;height:9px;border-radius:50%}
+  @media(max-width:860px){ .ob-pulse .mcap,.ob-pulse .dom{display:none} }
+  @media(max-width:620px){ .ob-strip{height:30px;gap:7px;padding:0 8px} .ob-tapelbl{display:none} }
   .ob-stage{position:relative;flex:1 1 auto;min-height:0}
   #ob-overlay canvas#ob-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   #ob-load{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:#05080f}
@@ -728,6 +760,10 @@ export async function abrirOrderBlock(){
       <button class="ob-ico" id="ob-info" title="What is this">${IC.info}</button>
       <button class="ob-ico" id="ob-cam" title="Export image">${IC.exp}</button>
     </div>
+    <div class="ob-strip">
+      <div class="ob-tapewrap"><span class="ob-tapelbl">WHALE FLOW</span><div class="ob-tape" id="ob-tape"></div></div>
+      <div class="ob-pulse" id="ob-pulse"></div>
+    </div>
     <div class="ob-stage" id="ob-stage">
       <canvas id="ob-cv"></canvas>
       <div id="ob-load"><div class="sp"></div><b>LOADING LIQUIDITY…</b></div>
@@ -755,6 +791,8 @@ export async function abrirOrderBlock(){
   try{ stream=D.streamMini(aplicarTick); }catch(_){}
   try{ tradeStream=D.streamTrades(COINS.slice(0,18).map(c=>c.symbol), onTrade); }catch(_){}   // ballenas + flujo real
   try{ depthStream=D.streamDepth('BTCUSDT', onDepth); }catch(_){}   // libro de órdenes real (referencia del mercado)
+  try{ chainStream=D.streamChainWhales(onChainWhale, 50); }catch(_){}   // ballenas on-chain de BTC (origen -> destino)
+  refrescarPulso(); Z._pulsoTimer=setInterval(refrescarPulso, 90000);   // Fear & Greed + mercado global
   refrescarNiveles(); precargarMinis();
   Z._nivTimer=setInterval(refrescarNiveles, 70000);
   // el mercado se mira en vivo: cada poco re-selecciona qué monedas entran en la cascada,
@@ -994,6 +1032,8 @@ function cerrar(){
   try{ if(stream)stream.cerrar(); }catch(_){} stream=null;
   try{ if(tradeStream)tradeStream.cerrar(); }catch(_){} tradeStream=null;
   try{ if(depthStream)depthStream.cerrar(); }catch(_){} depthStream=null;
+  try{ if(chainStream)chainStream.cerrar(); }catch(_){} chainStream=null;
+  if(Z._pulsoTimer){ clearInterval(Z._pulsoTimer); Z._pulsoTimer=null; }
   window.removeEventListener('resize',onResize);
   document.removeEventListener('visibilitychange',onVis); paused=false;
   const o=document.getElementById('ob-overlay'); if(o)o.remove();
