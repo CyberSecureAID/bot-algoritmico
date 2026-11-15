@@ -40,8 +40,8 @@ const Z={}, mouse={x:-1,y:-1,on:false}, LOGO={}, EXVOL={}, EXIMG={}, EXMETA={};
    igual que Multichart/Heat Pool. Respaldo a la URL de CoinGecko (sin CORS: se pinta igual,
    el export ya excluye logos). Esta es la razón por la que ahora sí aparecen. */
 const SPOT='https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/';
-// logo POR DEFECTO de la plataforma: lo usan las monedas/exchanges que no tengan icono propio
-const DEF_URL=new URL('../../assets/img/cco-logo.png', import.meta.url).href;
+// logo POR DEFECTO: la MISMA imagen ejemplarizante que usa el Terminal para los tokens sin logo
+const DEF_URL=new URL('../terminal/img/token-fallback.webp', import.meta.url).href;
 // Cadena de respaldos con CORS. im._alt = lista de URLs a probar en orden si la actual falla.
 // Siempre termina en el logo por defecto, así ninguna moneda queda sin logo.
 function imgChain(first, alt){ const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous'; im._alt=alt||[]; im._i=0;
@@ -238,16 +238,20 @@ function filterBar(g){
   const haveBook=book.bids.length>=3 && book.asks.length>=3;
   if(haveBook){
     // LIBRO DE ÓRDENES REAL (BTC): bids = zona verde (arriba), asks = zona roja (abajo).
-    // Longitud = cantidad real en ese nivel; más brillo cerca del precio medio (la línea blanca).
+    // Barras GRANDES y legibles con la CANTIDAD real escrita dentro, en tiempo real.
     let mq=0; for(const b of book.bids)if(b[1]>mq)mq=b[1]; for(const a of book.asks)if(a[1]>mq)mq=a[1]; mq=mq||1;
     const gzone=divY-y0, rzone=y1-divY;
-    const nb=Math.min(book.bids.length,Math.max(6,Math.floor(gzone/5))), na=Math.min(book.asks.length,Math.max(6,Math.floor(rzone/5)));
-    const bh=Math.max(1.2,gzone/nb*0.72), ah=Math.max(1.2,rzone/na*0.72);
-    for(let i=0;i<nb;i++){ const q=book.bids[i][1], y=divY-(i+0.6)/nb*gzone, len=bw*clamp(Math.pow(q/mq,0.85),0.05,1);
-      g.fillStyle=VERDE; g.globalAlpha=0.28+0.55*(1-i/nb); g.fillRect(x0,y-bh/2,len,bh); }
-    for(let i=0;i<na;i++){ const q=book.asks[i][1], y=divY+(i+0.6)/na*rzone, len=bw*clamp(Math.pow(q/mq,0.85),0.05,1);
-      g.fillStyle=ROSA; g.globalAlpha=0.28+0.55*(1-i/na); g.fillRect(x0,y-ah/2,len,ah); }
-    g.globalAlpha=1;
+    const nb=Math.max(3,Math.min(book.bids.length,Math.floor(gzone/17)));
+    const na=Math.max(3,Math.min(book.asks.length,Math.floor(rzone/17)));
+    const bh=gzone/nb, ah=rzone/na, showN=Math.min(bh,ah)>=12.5;
+    g.textBaseline='middle'; g.font='700 11px "IBM Plex Mono",monospace';
+    for(let i=0;i<nb;i++){ const q=book.bids[i][1], y=divY-(i+1)*bh, len=Math.max(bw*0.22,bw*clamp(Math.pow(q/mq,0.78),0.1,1)), nr=1-i/nb;
+      g.fillStyle=VERDE; g.globalAlpha=0.24+0.42*nr; g.fillRect(x0,y+1,len,bh-2); g.globalAlpha=1;
+      if(showN){ g.fillStyle=`rgba(238,255,247,${(0.62+0.38*nr).toFixed(2)})`; g.textAlign='left'; g.fillText(q.toFixed(2),x0+5,y+bh/2); } }
+    for(let i=0;i<na;i++){ const q=book.asks[i][1], y=divY+i*ah, len=Math.max(bw*0.22,bw*clamp(Math.pow(q/mq,0.78),0.1,1)), nr=1-i/na;
+      g.fillStyle=ROSA; g.globalAlpha=0.24+0.42*nr; g.fillRect(x0,y+1,len,ah-2); g.globalAlpha=1;
+      if(showN){ g.fillStyle=`rgba(255,118,140,${(0.72+0.28*nr).toFixed(2)})`; g.textAlign='left'; g.fillText(q.toFixed(2),x0+5,y+ah/2); } }
+    g.textBaseline='alphabetic'; g.textAlign='left';
   } else {
     const sorted=COINS.slice().sort((a,b)=>b.disp-a.disp), n=sorted.length||1, lh=h/n;
     for(let i=0;i<sorted.length;i++){ const c=sorted[i], y=y0+i*lh, up=(y<divY);
@@ -346,7 +350,11 @@ function exchangeCards(g){ const order=Z.exchOrder||[], n=order.length, gap=5, t
     // brillo que fluye por la barra: señala actividad en vivo sin falsear el valor (24h real)
     g.save(); rr(g,tx,cy,fbw,chh,1.5); g.clip(); const sx=tx+((T*55+ei*37)%(fbw+46))-23;
     const sg=g.createLinearGradient(sx-14,0,sx+14,0); sg.addColorStop(0,'rgba(255,255,255,0)'); sg.addColorStop(.5,'rgba(255,255,255,.38)'); sg.addColorStop(1,'rgba(255,255,255,0)');
-    g.fillStyle=sg; g.fillRect(tx,cy,fbw,chh); g.restore(); }); }
+    g.fillStyle=sg; g.fillRect(tx,cy,fbw,chh); g.restore();
+    // actividad en vivo: partículas de liquidez fluyendo por la fila (siempre en movimiento)
+    const span=w-18; for(let d=0;d<3;d++){ const fx=x+9+((T*30+ei*41+d*(span/3))%span), aa=0.12+0.16*Math.sin(T*2.4+d*2+ei);
+      if(aa>0){ g.fillStyle=hexA(col,aa); g.beginPath(); g.arc(fx,y+ch*0.5,1.5,0,7); g.fill(); } }
+    g.globalAlpha=1; }); }
 /* tarjeta emergente del exchange al pasar el cursor: datos REALES (CoinGecko) útiles para un trader */
 function exchPopup(g){ const ei=Z.exHover; if(ei==null||ei<0)return; const order=Z.exchOrder||[], idx=order.indexOf(ei); if(idx<0)return;
   const e=EXCH[ei], m=EXMETA[ei]||{}, gap=5, tot=Z.y1-Z.y0, n=order.length, ch=(tot-gap*Math.max(0,n-1))/Math.max(1,n);
@@ -403,9 +411,9 @@ function card(g,c){ const up=c._up, col=up?VERDE:ROSA, hi=up?VHI:RHI, hl=c._hl||
     if(c.res>0 && c.price>c.res) bdg=['BREAKOUT','43,245,158'];
     else if(c.sup>0 && c.price>0 && c.price<=c.sup*1.012 && c.disp>=0) bdg=['RECLAIM','33,145,217'];
     else if(c.disp>=8) bdg=['MOMENTUM','196,255,226'];
-    if(bdg){ g.font='800 9px "Saira Condensed",sans-serif'; const bw=g.measureText(bdg[0]).width+15;
-      g.fillStyle=`rgba(${bdg[1]},.15)`; rr(g,vx,vy,bw,15,4); g.fill(); g.strokeStyle=`rgba(${bdg[1]},.6)`; g.lineWidth=1; rr(g,vx,vy,bw,15,4); g.stroke();
-      g.fillStyle=`rgba(${bdg[1]},1)`; g.textBaseline='middle'; g.textAlign='left'; g.fillText(bdg[0],vx+7,vy+8); g.textBaseline='alphabetic'; } }
+    if(bdg){ g.font='800 11px "Saira Condensed",sans-serif'; const tw=g.measureText(bdg[0]).width, pw=tw+18, ph=19;
+      g.fillStyle=`rgba(${bdg[1]},.18)`; rr(g,vx,vy,pw,ph,6); g.fill(); g.strokeStyle=`rgba(${bdg[1]},.7)`; g.lineWidth=1; rr(g,vx,vy,pw,ph,6); g.stroke();
+      g.fillStyle=`rgba(${bdg[1]},1)`; g.textAlign='center'; g.textBaseline='middle'; g.fillText(bdg[0],vx+pw/2,vy+ph/2+0.5); g.textAlign='left'; g.textBaseline='alphabetic'; } }
   // cuerpo: la mini gráfica diaria cuando hay zoom (precargada -> sin parpadeo). En reposo, limpio.
   if(z>0.35 && vh>16 && c._mini && c._mini.length>=2){
     const data=c._mini.slice(-46); let mlo=Infinity,mhi=-Infinity;
