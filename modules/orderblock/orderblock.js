@@ -37,7 +37,9 @@ let flowLive=0.5; const _prevPx={};   // flujo direccional en vivo (mueve la lí
 let tradeStream=null, _takBuy=0, _takSell=0;   // aggTrades: pulsos de ballenas + presión real compra/venta
 let depthStream=null; const book={bids:[],asks:[],bidVol:0,askVol:0,mid:0};   // libro de órdenes REAL de BTC
 let chainStream=null, _tapeCool=0, _chainCool=0;   // cinta de ballenas (trades + on-chain) y su ritmo
-let flowItems=[];   // eventos del rectángulo de FLUJO (ballenas, liquidaciones, on-chain)
+let flowItems=[];   // historial del rectángulo de FLUJO (lo que ya salió de los dos slots)
+let buyLatest=null, sellLatest=null;   // alerta más nueva encasillada en cada cuadrado (compra / venta)
+let _soundOn=false;   // sonido de alerta: DESACTIVADO por defecto
 function onChainWhale(m){ if(!m||!(m.amount>0))return; const now=performance.now(); if(now-_chainCool<1500)return; _chainCool=now;
   const f=m.from||'', t2=m.to||'', dst=t2||f;    // guardo from y to completos: la ficha muestra ...4 + copiar + explorador
   flowPush({cls:'chain',label:'ON-CHAIN',coin:'BTC',sym:'BTC',size:m.amount.toFixed(1)+' BTC',usd:(book.mid?m.amount*book.mid:0),src:'On-chain BTC',
@@ -323,50 +325,36 @@ function gate(g,x,y,w,h,hi){
 /* ===== rectángulo de FLUJO (clon del central, a su izquierda) ===== */
 function flowBar(g){
   const x0=Z.flowX0,x1=Z.flowX1,y0=Z.y0,y1=Z.y1,h=y1-y0,bw=x1-x0;
-  const divY=y0+split*h;
+  const divY=y0+split*h, fg=flowGeom();
   // zonas base
   g.fillStyle=hexA(VERDE,0.07); g.fillRect(x0,y0,bw,divY-y0);
   g.fillStyle=hexA(ROSA,0.07); g.fillRect(x0,divY,bw,y1-divY);
-  // VOLUMEN de fondo (segundo plano transparente): barras en movimiento, verde arriba / rojo abajo,
-  // a baja intensidad para que NO tape las tarjetas; + haz de escaneo que recorre las tarjetas.
+  // VOLUMEN de fondo (segundo plano transparente), muy bajo para NO tapar las tarjetas
   g.save(); rr(g,x0,y0,bw,h,10); g.clip();
-  const rows=Math.floor(h/13);
-  for(let r=0;r<rows;r++){ const yy=y0+r*13, upz=(yy<divY), col=upz?VERDE:ROSA;
-    const len=bw*(0.28+0.5*Math.abs(Math.sin(T*1.05+r*0.55)));
-    g.fillStyle=hexA(col,0.05); g.fillRect(x0,yy+1,len,11); }
-  const scanY=y0+(0.5+0.5*Math.sin(T*0.5))*h, sg2=g.createLinearGradient(0,scanY-28,0,scanY+28);
-  sg2.addColorStop(0,'rgba(255,255,255,0)'); sg2.addColorStop(.5,'rgba(195,214,232,.08)'); sg2.addColorStop(1,'rgba(255,255,255,0)');
-  g.fillStyle=sg2; g.fillRect(x0,scanY-28,bw,56); g.restore();
-  // borde blanco izquierdo + MISMA línea blanca divisoria que sube/baja con el flujo real
-  g.strokeStyle='rgba(255,255,255,.9)'; g.lineWidth=2; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
-  g.save(); g.globalAlpha=0.5; g.lineWidth=1.6; g.beginPath(); g.moveTo(x0,divY); g.lineTo(x1,divY); g.stroke(); g.restore();
-  // dos cuadrados que ESCANEAN (se mueven suave) con volumen dentro + brillo al entrar un evento real
-  const sqH=Math.min(FLOW_SQH,h*0.13), inx=x0+6, sw=bw-12;
-  const gY=y0+14+(0.5+0.42*Math.sin(T*0.45))*FLOW_TR;
-  const rY=y1-14-sqH-(0.5+0.42*Math.sin(T*0.45+2.1))*FLOW_TR;
-  flowGate(g,inx,gY,sw,sqH,VHI,VERDE,Z.flowShineG,'BUY');
-  flowGate(g,inx,rY,sw,sqH,RHI,ROSA,Z.flowShineR,'SELL');
-  Z.flowGateG={x:inx,y:gY,w:sw,h:sqH}; Z.flowGateR={x:inx,y:rY,w:sw,h:sqH};
+  const rows=Math.floor(h/14);
+  for(let r=0;r<rows;r++){ const yy=y0+r*14, upz=(yy<divY), col=upz?VERDE:ROSA;
+    const len=bw*(0.26+0.46*Math.abs(Math.sin(T*1.0+r*0.5)));
+    g.fillStyle=hexA(col,0.045); g.fillRect(x0,yy+1,len,12); }
+  g.restore();
+  // borde blanco izquierdo + línea blanca divisoria GRUESA (igual que el Live Order Book)
+  g.strokeStyle='rgba(255,255,255,.92)'; g.lineWidth=2; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
+  g.beginPath(); g.moveTo(x0,divY); g.lineTo(x1,divY); g.stroke();
+  // dos cuadrados FIJOS: solo marco (esquinas) + brillo al entrar alerta. La tarjeta va DENTRO (DOM).
+  flowGate(g,fg.x-3,fg.buyY,fg.w+6,fg.sqH,VERDE,Z.flowShineG);
+  flowGate(g,fg.x-3,fg.sellY,fg.w+6,fg.sqH,ROSA,Z.flowShineR);
+  Z.flowGateG={x:fg.x-3,y:fg.buyY,w:fg.w+6,h:fg.sqH}; Z.flowGateR={x:fg.x-3,y:fg.sellY,w:fg.w+6,h:fg.sqH};
   cornerMarks(g,x0-7,y0-7,bw+14,h+14,18,hexA(VERDE,.5),1.6);
   // título arriba del rectángulo (antes vivía en la franja superior que se quitó)
   g.font='800 10px "Saira Condensed",sans-serif'; g.fillStyle='rgba(150,165,180,.9)'; g.textAlign='center'; g.textBaseline='alphabetic';
   g.fillText('WHALE FLOW',(x0+x1)/2,y0-12); g.textAlign='left';
   Z.flowDivY=divY;
 }
-function flowGate(g,x,y,w,h,hi,base,shineT,label){
-  rr(g,x,y,w,h,5); g.fillStyle='rgba(8,13,20,.42)'; g.fill();
-  // volumen interno en movimiento (como los cuadrados del libro de órdenes)
-  g.save(); rr(g,x,y,w,h,5); g.clip();
-  const rows=Math.max(4,Math.round(h/6));
-  for(let r=0;r<rows;r++){ const yy=y+2+r*(h-4)/rows, len=w*(0.42+0.5*Math.abs(Math.sin(T*2+r*0.8)));
-    g.fillStyle=hexA(hi,0.16+0.22*Math.abs(Math.sin(T*2+r*0.6))); g.fillRect(x+1,yy,len,Math.max(1.2,(h-4)/rows-1.4)); }
-  g.restore();
+function flowGate(g,x,y,w,h,base,shineT){
+  // SOLO marco de esquinas + brillo al entrar una alerta. Sin volumen dentro (ahí va la tarjeta en DOM).
   const dt=shineT?(performance.now()-shineT):1e9;
-  if(dt<900){ const k=1-dt/900; g.save(); g.shadowColor=hexA(base,.9); g.shadowBlur=22*k;
-    rr(g,x,y,w,h,5); g.strokeStyle=hexA(hi,0.4+0.6*k); g.lineWidth=1.3+1.7*k; g.stroke(); g.restore(); }
-  cornerMarks(g,x-4,y-4,w+8,h+8,12,'#ffffff',1.6);
-  g.font='800 9px "Saira Condensed",sans-serif'; g.fillStyle=hexA(hi,.92); g.textAlign='center'; g.textBaseline='middle';
-  g.fillText(label,x+w/2,y+h/2); g.textAlign='left'; g.textBaseline='alphabetic';
+  if(dt<950){ const k=1-dt/950; g.save(); g.shadowColor=hexA(base,.9); g.shadowBlur=22*k;
+    rr(g,x,y,w,h,6); g.strokeStyle=hexA(base,0.3+0.5*k); g.lineWidth=1.1+1.8*k; g.stroke(); g.restore(); }
+  cornerMarks(g,x-4,y-4,w+8,h+8,13,'#ffffff',1.7);
 }
 /* ===== enlaces cuadrado -> cuadrado (flujo -> libro): ensanchan y vuelven a cerrar ===== */
 function linkRects(g){
@@ -375,15 +363,15 @@ function linkRects(g){
   // se ensanchan y se vuelven a cerrar hasta morir en la boca del cuadrado del libro.
   const pairs=[[Z.flowGateG,Z.gateG,VERDE],[Z.flowGateR,Z.gateR,ROSA]];
   pairs.forEach(([a,b,col])=>{ if(!a||!b)return;
-    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, mx=ax+(bx-ax)*0.5, K=7;
-    for(let j=0;j<K;j++){ const sp=j-(K-1)/2;
-      const y0=ay+sp*(a.h*0.11), y1=by+sp*(b.h*0.11);           // reparte por la boca (bocas estrechas)
-      const bow=sp*8 + (j%2?5:-5);                               // controles empujados -> ensancha en el medio
-      g.strokeStyle=hexA(col,0.26+0.1*(1-Math.abs(sp)/3)); g.lineWidth=1.05; g.lineCap='round';
+    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, mx=ax+(bx-ax)*0.5, K=18, half=(K-1)/2;
+    for(let j=0;j<K;j++){ const sp=j-half;
+      const y0=ay+sp*(a.h*0.052), y1=by+sp*(b.h*0.052);          // cableado DENSO que llena la boca del cuadrado
+      const bow=sp*3.4 + (j%2?4:-4);                              // controles empujados -> ensancha en el medio y cierra
+      g.strokeStyle=hexA(col,0.15+0.13*(1-Math.abs(sp)/half)); g.lineWidth=0.8; g.lineCap='round';
       g.beginPath(); g.moveTo(ax,y0); g.bezierCurveTo(mx,y0+bow,mx,y1+bow,bx,y1); g.stroke();
-      const t=((T*0.3+j*0.15)%1+1)%1, it=1-t;
-      const px=it*it*it*ax+3*it*it*t*mx+3*it*t*t*mx+t*t*t*bx, py=it*it*it*y0+3*it*it*t*(y0+bow)+3*it*t*t*(y1+bow)+t*t*t*y1;
-      g.globalAlpha=0.7; g.fillStyle=col; g.beginPath(); g.arc(px,py,1.5,0,7); g.fill(); g.globalAlpha=1; }
+      if(j%3===0){ const t=((T*0.3+j*0.12)%1+1)%1, it=1-t;
+        const px=it*it*it*ax+3*it*it*t*mx+3*it*t*t*mx+t*t*t*bx, py=it*it*it*y0+3*it*it*t*(y0+bow)+3*it*t*t*(y1+bow)+t*t*t*y1;
+        g.globalAlpha=0.6; g.fillStyle=col; g.beginPath(); g.arc(px,py,1.3,0,7); g.fill(); g.globalAlpha=1; } }
   });
   // continuidad de la línea blanca entre rectángulos: MISMO grosor + un punto en cada boca
   if(Z.flowDivY!=null){ const yd=Z.flowDivY; g.save(); g.strokeStyle='rgba(255,255,255,.85)'; g.lineWidth=2; g.lineCap='round';
@@ -655,7 +643,9 @@ const IC={
   x:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
   full:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
   search:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
-  info:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r="0.6" fill="currentColor"/></svg>'
+  info:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r="0.6" fill="currentColor"/></svg>',
+  sndOff:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l4 4M21 9l-4 4"/></svg>',
+  sndOn:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19.5 6a9 9 0 0 1 0 12"/></svg>'
 };
 function estilos(){
   if(!document.getElementById('obliq-font')){ const l=document.createElement('link'); l.id='obliq-font'; l.rel='stylesheet';
@@ -760,6 +750,28 @@ function estilos(){
   .ob-expop .xp-s{font:700 9px 'Saira Condensed',sans-serif;letter-spacing:.07em;color:#7d8794}
   .ob-expop .xp-r{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid rgba(255,255,255,.05);font:600 12px 'Saira Condensed',sans-serif;color:#9aa6b2}
   .ob-expop .xp-r b{color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px}
+  /* slots: cuadrado de arriba (compra) y de abajo (venta) que encasillan la alerta más nueva */
+  .ob-slot{position:absolute;z-index:5;pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:7px;overflow:hidden;
+    background:rgba(9,14,21,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);transition:box-shadow .2s ease}
+  .ob-slot.empty{justify-content:center;background:rgba(9,14,21,.38)}
+  .ob-slot .sl-empty{font:800 8.5px 'Saira Condensed',sans-serif;letter-spacing:.2em;color:#55606c;text-transform:uppercase}
+  .ob-slot .sl-logo{width:28px;height:28px;border-radius:50%;flex:0 0 auto;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font:800 10px 'Saira Condensed',sans-serif;color:#cdd7e2}
+  .ob-slot .sl-b{min-width:0;flex:1 1 auto;overflow:hidden}
+  .ob-slot .sl-l{display:flex;align-items:center;gap:5px;font:800 10px 'Saira Condensed',sans-serif;letter-spacing:.03em;white-space:nowrap}
+  .ob-slot .sl-l span{color:#8a97a4;margin-left:auto}
+  .ob-slot .sl-a{font:700 13px 'IBM Plex Mono',monospace;color:#fff;line-height:1.1;white-space:nowrap}
+  .ob-slot.buy{box-shadow:inset 0 0 0 1px rgba(43,245,158,.3)} .ob-slot.buy .sl-l b{color:#9effc9}
+  .ob-slot.sell{box-shadow:inset 0 0 0 1px rgba(255,77,110,.3)} .ob-slot.sell .sl-l b{color:#ffb3c0}
+  .ob-slot.buy.lit{animation:litbuy .8s ease} .ob-slot.sell.lit{animation:litsell .8s ease}
+  @keyframes litbuy{0%{box-shadow:inset 0 0 0 1px rgba(43,245,158,.95),0 0 26px rgba(43,245,158,.55)}100%{box-shadow:inset 0 0 0 1px rgba(43,245,158,.3)}}
+  @keyframes litsell{0%{box-shadow:inset 0 0 0 1px rgba(255,77,110,.95),0 0 26px rgba(255,77,110,.55)}100%{box-shadow:inset 0 0 0 1px rgba(255,77,110,.3)}}
+  /* ficha automática al llegar alerta (arriba=compra, abajo=venta) + badge de lado */
+  .ob-af{z-index:9}
+  .ob-flowcard .fc-ht{min-width:0}
+  .ob-flowcard .fc-side{margin-left:auto;flex:0 0 auto;font:800 9px 'Saira Condensed',sans-serif;letter-spacing:.06em;padding:2px 7px;border-radius:5px}
+  .ob-flowcard .fc-side.u{color:#04130c;background:#2BF59E} .ob-flowcard .fc-side.d{color:#1a0509;background:#FF4D6E}
+  /* botón de sonido (al lado de la búsqueda), apagado por defecto */
+  .ob-snd.on{color:#E8B84B;border-color:rgba(232,184,75,.5)}
   .ob-stage{position:relative;flex:1 1 auto;min-height:0}
   #ob-overlay canvas#ob-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   #ob-load{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:#05080f}
@@ -809,46 +821,91 @@ function estilos(){
 }
 
 /* ===== FEED de flujo: DOM encima del rectángulo; chip compacto + ficha técnica al hover ===== */
-const FLOW_SQH=46, FLOW_TR=44;                           // alto de cuadrado y recorrido del escaneo (igual que flowBar)
-function colocarFlow(){ const el=document.getElementById('ob-flow'); if(!el||Z.flowX0==null)return;
-  const sqH=Math.min(FLOW_SQH,(Z.y1-Z.y0)*0.13), band=0.92*FLOW_TR;   // deja libre el recorrido de los cuadrados
-  const top=Z.y0+14+band+sqH+8, bottom=Z.y1-14-band-sqH-8;
-  el.style.left=(Z.flowX0+7)+'px'; el.style.top=top+'px'; el.style.width=(Z.flowW-14)+'px'; el.style.height=Math.max(60,bottom-top)+'px'; }
-let _flowId=0;
-function flowPush(ev){ ev.id=++_flowId; ev.t=ev.t||Date.now(); flowItems.unshift(ev); if(flowItems.length>40)flowItems.pop(); renderFlowList();
-  if(ev.up)Z.flowShineG=performance.now(); else Z.flowShineR=performance.now();
-  (Z.linkPulses=Z.linkPulses||[]).push({t:0,up:!!ev.up,col:ev.col||'43,245,158'}); if(Z.linkPulses.length>30)Z.linkPulses.shift(); }
+/* ===== FEED de flujo: dos slots (compra/venta) encasillan la alerta más nueva; feed = historial ===== */
+function flowGeom(){ const y0=Z.y0,y1=Z.y1,h=y1-y0, sqH=clamp(h*0.11,46,60);
+  return { sqH, buyY:y0+16, sellY:y1-16-sqH, x:Z.flowX0+9, w:Z.flowW-18 }; }
+function colocarFlow(){ if(Z.flowX0==null)return; const fg=flowGeom();
+  const sb=document.getElementById('ob-slotbuy'), ss=document.getElementById('ob-slotsell'), fl=document.getElementById('ob-flow');
+  if(sb){ sb.style.left=fg.x+'px'; sb.style.top=fg.buyY+'px'; sb.style.width=fg.w+'px'; sb.style.height=fg.sqH+'px'; }
+  if(ss){ ss.style.left=fg.x+'px'; ss.style.top=fg.sellY+'px'; ss.style.width=fg.w+'px'; ss.style.height=fg.sqH+'px'; }
+  if(fl){ const top=fg.buyY+fg.sqH+10, bot=fg.sellY-10; fl.style.left=(Z.flowX0+7)+'px'; fl.style.top=top+'px'; fl.style.width=(Z.flowW-14)+'px'; fl.style.height=Math.max(50,bot-top)+'px'; } }
+let _flowId=0, _sndCool=0;
+function flowPush(ev){ ev.id=++_flowId; ev.t=ev.t||Date.now();
+  const co=COINS.find(c=>c.sym===ev.coin); if(co){ if(!ev.price)ev.price=co.price; ev.vol24h=co.vol; }
+  if(ev.cls==='chain'&&!ev.usd&&book.mid) ev.usd=(parseFloat(ev.size)||0)*book.mid;
+  ev.big = ev.cls==='chain' ? (ev.usd>=1.0e7) : ev.cls==='liq' ? (ev.usd>=150000) : (ev.usd>=400000);
+  // el cuadrado de su lado ENCASILLA la alerta nueva; la anterior BAJA al historial (feed)
+  if(ev.up){ if(buyLatest)flowItems.unshift(buyLatest); buyLatest=ev; Z.flowShineG=performance.now(); }
+  else{ if(sellLatest)flowItems.unshift(sellLatest); sellLatest=ev; Z.flowShineR=performance.now(); }
+  if(flowItems.length>40)flowItems.pop();
+  renderSlots(); renderFlowList();
+  (Z.linkPulses=Z.linkPulses||[]).push({t:0,up:!!ev.up,col:ev.col||'43,245,158'}); if(Z.linkPulses.length>40)Z.linkPulses.shift();
+  // al llegar una alerta sensacional: su ficha técnica sale al lado unos segundos (y suena si está activado)
+  if(ev.big){ autoFicha(ev); const now=performance.now(); if(_soundOn && now-_sndCool>700){ _sndCool=now; beep(ev.up); } }
+}
+function slotHTML(e){ if(!e)return `<div class="sl-empty">· waiting ·</div>`;
+  const im=LOGO[e.sym]; const logo=(im&&im.src)?`<span class="sl-logo" style="background-image:url('${im.src}')"></span>`:`<span class="sl-logo sl-ph">${(e.coin||'·').slice(0,3)}</span>`;
+  return `${logo}<div class="sl-b"><div class="sl-l"><b>${e.label}</b><span>${e.coin}</span></div><div class="sl-a">${e.size}</div></div>`; }
+function renderSlots(){ const b=document.getElementById('ob-slotbuy'), s=document.getElementById('ob-slotsell');
+  if(b){ b.className='ob-slot buy'+(buyLatest?'':' empty'); b.innerHTML=slotHTML(buyLatest); if(buyLatest){ b.dataset.fid=buyLatest.id; b.classList.remove('lit'); void b.offsetWidth; b.classList.add('lit'); } }
+  if(s){ s.className='ob-slot sell'+(sellLatest?'':' empty'); s.innerHTML=slotHTML(sellLatest); if(sellLatest){ s.dataset.fid=sellLatest.id; s.classList.remove('lit'); void s.offsetWidth; s.classList.add('lit'); } } }
 function renderFlowList(){ const L=document.getElementById('ob-flowlist'); if(!L)return;
   L.innerHTML=flowItems.map((e,i)=>`<div class="ob-fl ${e.cls}${i===0?' fresh':''}" data-fid="${e.id}"><div class="fl-top"><i class="dot"></i><b>${e.label}</b><span class="cn">${e.coin}</span></div><div class="fl-sz">${e.size}</div></div>`).join(''); }
+function beep(up){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; const ac=beep._ac||(beep._ac=new AC());
+  const o=ac.createOscillator(), g=ac.createGain(); o.connect(g); g.connect(ac.destination); o.type='sine';
+  const t=ac.currentTime, f=up?770:560; o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*1.5,t+0.07);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.11,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);
+  o.start(t); o.stop(t+0.22); }catch(_){} }
 function fichaHTML(e){ const im=LOGO[e.sym]||null;
   const logo=(im&&im.src)?`<span class="fc-logo" style="background-image:url('${im.src}')"></span>`:`<span class="fc-logo fc-ph">${(e.coin||'·').slice(0,3)}</span>`;
   let tm=''; try{ tm=new Date(e.t||Date.now()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }catch(_){}
-  const usd=(e.cls==='chain'&&e.usd)?(' · ≈ $'+fmtVol(e.usd)):'';   // el equivalente en $ solo aporta en on-chain (monto en BTC)
-  let body, side;
-  if(e.cls==='liq') side=(e.label==='LIQ LONG')?['Long liquidated','d']:['Short liquidated','u'];
-  else side=e.up?['Buy · aggressive','u']:['Sell · aggressive','d'];
-  if(e.cls==='chain'){ body=`<div class="fc-adr"><span class="fc-k">From</span><code>…${e.fromShort||'----'}</code><button class="fc-b" data-copy="${e.fullFrom||''}" title="Copiar">⧉</button></div>`+
-    `<div class="fc-adr"><span class="fc-k">To</span><code>…${e.toShort||'----'}</code><button class="fc-b" data-copy="${e.fullTo||''}" title="Copiar">⧉</button><button class="fc-b" data-exp="${e.fullTo||e.fullFrom||''}" title="Ver en la cadena de bloques">↗</button></div>`;
-  } else { body=`<div class="fc-row"><span class="fc-k">Flow</span><b class="${side[1]}">${side[0]}</b></div>`; }
-  return `<div class="fc-head">${logo}<div><div class="fc-coin">${e.coin}</div><div class="fc-type ${e.cls}">${e.label}${tm?(' · '+tm):''}</div></div></div>`+
-    `<div class="fc-amt">${e.size}<span>${usd}</span></div>`+
-    `<div class="fc-row"><span class="fc-k">Source</span><b>${e.src||'—'}</b></div>`+body;
+  const px=e.price?('$'+fmtP(e.price)):null, impact=(e.usd&&e.vol24h)?(e.usd/e.vol24h*100):null;
+  const imp=impact!=null?((impact<0.1?'<0.1':impact.toFixed(impact<1?2:1))+'% of 24h vol'):null;
+  const R=[];
+  if(e.cls==='chain'){
+    R.push(['Value', e.usd?('$'+fmtVol(e.usd)):'—']);
+    R.push(['From', `<code>…${e.fromShort||'----'}</code><button class="fc-b" data-copy="${e.fullFrom||''}" title="Copiar">⧉</button>`, 1]);
+    R.push(['To', `<code>…${e.toShort||'----'}</code><button class="fc-b" data-copy="${e.fullTo||''}" title="Copiar">⧉</button><button class="fc-b" data-exp="${e.fullTo||e.fullFrom||''}" title="Ver en la cadena">↗</button>`, 1]);
+    R.push(['Reading', 'Large transfer · watch exchange flow']);
+  } else if(e.cls==='liq'){
+    if(px)R.push(['Price', px]);
+    R.push(['Event', e.label==='LIQ LONG'?'Long liquidated':'Short liquidated']);
+    if(imp)R.push(['Impact', imp]);
+    R.push(['Reading', e.label==='LIQ LONG'?'Forced selling · cascade risk':'Forced buying · short squeeze']);
+  } else {
+    if(px)R.push(['Price', px]);
+    if(imp)R.push(['Impact', imp]);
+    R.push(['Venue', e.src||'—']);
+    R.push(['Reading', e.up?'Aggressive buy · lifting offers':'Aggressive sell · hitting bids']);
+  }
+  const rows=R.map(r=> r[2]? `<div class="fc-adr"><span class="fc-k">${r[0]}</span>${r[1]}</div>` : `<div class="fc-row"><span class="fc-k">${r[0]}</span><b>${r[1]}</b></div>`).join('');
+  return `<div class="fc-head">${logo}<div class="fc-ht"><div class="fc-coin">${e.coin}</div><div class="fc-type ${e.cls}">${e.label}${tm?(' · '+tm):''}</div></div><span class="fc-side ${e.up?'u':'d'}">${e.up?'BUY':'SELL'}</span></div>`+
+    `<div class="fc-amt">${e.size}</div>`+rows;
 }
+function fichaEvent(fid){ if(buyLatest&&String(buyLatest.id)===String(fid))return buyLatest; if(sellLatest&&String(sellLatest.id)===String(fid))return sellLatest; return flowItems.find(x=>String(x.id)===String(fid)); }
+function autoFicha(ev){ const el=document.getElementById(ev.up?'ob-afbuy':'ob-afsell'); if(!el)return; const fg=flowGeom();
+  el.innerHTML=fichaHTML(ev); el.style.left=(Z.flowX1+16)+'px'; el.style.opacity='1'; el.style.pointerEvents='auto';
+  requestAnimationFrame(()=>{ const hh=el.offsetHeight||150, st=document.getElementById('ob-stage'), sw=st?st.getBoundingClientRect().width:W;
+    if(Z.flowX1+16+el.offsetWidth>sw-8) el.style.left=Math.max(8,Z.flowX0-el.offsetWidth-14)+'px';
+    el.style.top=(ev.up?Math.max(8,fg.buyY):Math.max(8,fg.sellY+fg.sqH-hh))+'px'; });
+  clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity='0'; el.style.pointerEvents='none'; }, 3200); }
 function wireFlow(){ const L=document.getElementById('ob-flowlist'), card=document.getElementById('ob-flowcard'), stage=document.getElementById('ob-stage'); if(!L||!card||!stage)return;
   let hideT=null; const hide=()=>{ card.style.opacity='0'; card.style.pointerEvents='none'; };
-  const show=(fid,chip)=>{ const e=flowItems.find(x=>String(x.id)===String(fid)); if(!e)return; card.innerHTML=fichaHTML(e);
+  const show=(fid,chip)=>{ const e=fichaEvent(fid); if(!e)return; card.innerHTML=fichaHTML(e);
     const cr=chip.getBoundingClientRect(), sr=stage.getBoundingClientRect(); card.style.opacity='1'; card.style.pointerEvents='auto';
     let left=cr.right-sr.left+8, top=cr.top-sr.top-4; card.style.left=left+'px'; card.style.top=top+'px';
     requestAnimationFrame(()=>{ const cw=card.offsetWidth, ch=card.offsetHeight;
-      if(left+cw>sr.width-8){ const alt=(cr.left-sr.left)-cw-8; card.style.left=Math.max(8,alt)+'px'; }
+      if(left+cw>sr.width-8) card.style.left=Math.max(8,(cr.left-sr.left)-cw-8)+'px';
       if(top+ch>sr.height-8) card.style.top=Math.max(8,sr.height-ch-8)+'px'; }); };
-  L.addEventListener('mouseover',e=>{ const chip=e.target.closest('.ob-fl'); if(!chip)return; if(hideT){clearTimeout(hideT);hideT=null;} show(chip.dataset.fid,chip); });
-  L.addEventListener('mouseout',e=>{ const to=e.relatedTarget; if(to&&to.closest&&(to.closest('#ob-flowcard')||to.closest('.ob-fl')))return; hideT=setTimeout(hide,240); });
-  card.addEventListener('mouseenter',()=>{ if(hideT){clearTimeout(hideT);hideT=null;} });
-  card.addEventListener('mouseleave',hide);
-  card.addEventListener('click',e=>{ const cb=e.target.closest('[data-copy]');
+  const over=e=>{ const chip=e.target.closest('.ob-fl')||e.target.closest('.ob-slot'); if(!chip||!chip.dataset.fid)return; if(hideT){clearTimeout(hideT);hideT=null;} show(chip.dataset.fid,chip); };
+  const out=e=>{ const to=e.relatedTarget; if(to&&to.closest&&(to.closest('#ob-flowcard')||to.closest('.ob-fl')||to.closest('.ob-slot')))return; hideT=setTimeout(hide,240); };
+  L.addEventListener('mouseover',over); L.addEventListener('mouseout',out);
+  ['ob-slotbuy','ob-slotsell'].forEach(id=>{ const s=document.getElementById(id); if(s){ s.addEventListener('mouseover',over); s.addEventListener('mouseout',out); } });
+  card.addEventListener('mouseenter',()=>{ if(hideT){clearTimeout(hideT);hideT=null;} }); card.addEventListener('mouseleave',hide);
+  const copyExp=e=>{ const cb=e.target.closest('[data-copy]');
     if(cb){ try{ if(cb.dataset.copy){ navigator.clipboard.writeText(cb.dataset.copy); cb.textContent='✓'; setTimeout(()=>{ cb.textContent='⧉'; },1200); } }catch(_){} return; }
-    const xb=e.target.closest('[data-exp]'); if(xb&&xb.dataset.exp){ try{ window.open('https://www.blockchain.com/explorer/addresses/btc/'+encodeURIComponent(xb.dataset.exp),'_blank','noopener'); }catch(_){} } }); }
+    const xb=e.target.closest('[data-exp]'); if(xb&&xb.dataset.exp){ try{ window.open('https://www.blockchain.com/explorer/addresses/btc/'+encodeURIComponent(xb.dataset.exp),'_blank','noopener'); }catch(_){} } };
+  [card,document.getElementById('ob-afbuy'),document.getElementById('ob-afsell')].forEach(el=>{ if(el)el.addEventListener('click',copyExp); }); }
 /* popup de exchange en DOM (sale POR DELANTE del feed, con sombra) */
 function syncExPopup(){ const el=document.getElementById('ob-expop'); if(!el)return; const ei=Z.exHover;
   if(ei==null||ei<0){ if(el._on){ el._on=false; el.style.opacity='0'; } el._ei=-2; return; }
@@ -936,6 +993,7 @@ export async function abrirOrderBlock(){
     <div class="ob-top">
       <button class="ob-back" id="ob-back">${IC.back}Back</button>
       <div class="ob-search">${IC.search}<input id="ob-q" type="text" placeholder="Search any coin to analyze…" autocomplete="off" spellcheck="false"><div class="ob-sug" id="ob-sug"></div></div>
+      <button class="ob-ico ob-snd" id="ob-snd" title="Alert sound: off">${IC.sndOff}</button>
       <div class="ob-sp"></div>
       <div class="ob-pulse" id="ob-pulse"></div>
       <button class="ob-ico" id="ob-info" title="What is this">${IC.info}</button>
@@ -944,6 +1002,10 @@ export async function abrirOrderBlock(){
     <div class="ob-stage" id="ob-stage">
       <canvas id="ob-cv"></canvas>
       <div class="ob-flow" id="ob-flow"><div class="ob-flowlist" id="ob-flowlist"></div></div>
+      <div class="ob-slot buy empty" id="ob-slotbuy"></div>
+      <div class="ob-slot sell empty" id="ob-slotsell"></div>
+      <div class="ob-flowcard ob-af" id="ob-afbuy"></div>
+      <div class="ob-flowcard ob-af" id="ob-afsell"></div>
       <div class="ob-flowcard" id="ob-flowcard"></div>
       <div class="ob-expop" id="ob-expop"></div>
       <div id="ob-load"><div class="sp"></div><b>LOADING LIQUIDITY…</b></div>
@@ -956,6 +1018,9 @@ export async function abrirOrderBlock(){
   document.getElementById('ob-cam').onclick=exportar;
   document.getElementById('ob-info').onclick=abrirInfo;
   wireBuscador(); wireFlow();
+  const sndBtn=document.getElementById('ob-snd');
+  if(sndBtn) sndBtn.onclick=()=>{ _soundOn=!_soundOn; sndBtn.classList.toggle('on',_soundOn); sndBtn.innerHTML=_soundOn?IC.sndOn:IC.sndOff; sndBtn.title='Alert sound: '+(_soundOn?'on':'off');
+    if(_soundOn){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(AC){ if(!beep._ac)beep._ac=new AC(); if(beep._ac.resume)beep._ac.resume(); } beep(true); }catch(_){} } };
   cv.addEventListener('mousemove',e=>{ const r=cv.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; mouse.on=true; });
   cv.addEventListener('mouseleave',()=>mouse.on=false);
   cv.addEventListener('click',onClick);
