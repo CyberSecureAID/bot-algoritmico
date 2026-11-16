@@ -363,15 +363,15 @@ function linkRects(g){
   // se ensanchan y se vuelven a cerrar hasta morir en la boca del cuadrado del libro.
   const pairs=[[Z.flowGateG,Z.gateG,VERDE],[Z.flowGateR,Z.gateR,ROSA]];
   pairs.forEach(([a,b,col])=>{ if(!a||!b)return;
-    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, mx=ax+(bx-ax)*0.5, K=18, half=(K-1)/2;
+    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, mx=ax+(bx-ax)*0.5, K=24, half=(K-1)/2;
     for(let j=0;j<K;j++){ const sp=j-half;
-      const y0=ay+sp*(a.h*0.052), y1=by+sp*(b.h*0.052);          // cableado DENSO que llena la boca del cuadrado
-      const bow=sp*3.4 + (j%2?4:-4);                              // controles empujados -> ensancha en el medio y cierra
-      g.strokeStyle=hexA(col,0.15+0.13*(1-Math.abs(sp)/half)); g.lineWidth=0.8; g.lineCap='round';
-      g.beginPath(); g.moveTo(ax,y0); g.bezierCurveTo(mx,y0+bow,mx,y1+bow,bx,y1); g.stroke();
-      if(j%3===0){ const t=((T*0.3+j*0.12)%1+1)%1, it=1-t;
-        const px=it*it*it*ax+3*it*it*t*mx+3*it*t*t*mx+t*t*t*bx, py=it*it*it*y0+3*it*it*t*(y0+bow)+3*it*t*t*(y1+bow)+t*t*t*y1;
-        g.globalAlpha=0.6; g.fillStyle=col; g.beginPath(); g.arc(px,py,1.3,0,7); g.fill(); g.globalAlpha=1; } }
+      const y0=ay+sp*1.25, y1=by+sp*1.25;                         // SALE y LLEGA fina (convergida en la boca del cuadrado)
+      const cy=(y0+y1)/2 + sp*4.6;                                 // se ABRE ancha en el medio y se vuelve a CERRAR
+      g.strokeStyle=hexA(col,0.1+0.1*(1-Math.abs(sp)/half)); g.lineWidth=0.6; g.lineCap='round';
+      g.beginPath(); g.moveTo(ax,y0); g.bezierCurveTo(mx,cy,mx,cy,bx,y1); g.stroke();
+      if(j%4===0){ const t=((T*0.3+j*0.1)%1+1)%1, it=1-t;
+        const px=it*it*it*ax+3*it*it*t*mx+3*it*t*t*mx+t*t*t*bx, py=it*it*it*y0+3*it*it*t*cy+3*it*t*t*cy+t*t*t*y1;
+        g.globalAlpha=0.55; g.fillStyle=col; g.beginPath(); g.arc(px,py,1.2,0,7); g.fill(); g.globalAlpha=1; } }
   });
   // continuidad de la línea blanca entre rectángulos: MISMO grosor + un punto en cada boca
   if(Z.flowDivY!=null){ const yd=Z.flowDivY; g.save(); g.strokeStyle='rgba(255,255,255,.85)'; g.lineWidth=2; g.lineCap='round';
@@ -731,16 +731,18 @@ function estilos(){
   .ob-flowcard .fc-coin{font:800 18px 'Saira Condensed',sans-serif;color:#eef4fb;letter-spacing:.02em}
   .ob-flowcard .fc-type{font:700 9.5px 'Saira Condensed',sans-serif;letter-spacing:.09em;color:#8a97a4}
   .ob-flowcard .fc-type.buy{color:#9effc9} .ob-flowcard .fc-type.sell{color:#ffb3c0} .ob-flowcard .fc-type.liq{color:#ffd98a} .ob-flowcard .fc-type.chain{color:#bfe0ff}
-  .ob-flowcard .fc-amt{font:700 16px 'IBM Plex Mono',monospace;color:#fff;margin-bottom:8px}
-  .ob-flowcard .fc-amt span{font-size:11px;color:#8a97a4;font-weight:600}
-  .ob-flowcard .fc-row,.ob-flowcard .fc-adr{display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid rgba(255,255,255,.055);font:600 12px 'Saira Condensed',sans-serif}
-  .ob-flowcard .fc-k{color:#8a97a4;flex:0 0 42px}
-  .ob-flowcard .fc-row b{margin-left:auto;color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px}
-  .ob-flowcard .fc-row b.u{color:#2BF59E} .ob-flowcard .fc-row b.d{color:#FF4D6E}
-  .ob-flowcard .fc-adr code{color:#cfe0ee;font:600 12px 'IBM Plex Mono',monospace}
-  .ob-flowcard .fc-b{margin-left:auto;cursor:pointer;width:22px;height:20px;display:grid;place-items:center;border:1px solid #2b3139;border-radius:5px;background:rgba(255,255,255,.05);color:#aeb9c6;font-size:11px;flex:0 0 auto}
+  .ob-flowcard .fc-amt{font:700 16px 'IBM Plex Mono',monospace;color:#fff;margin-bottom:6px}
+  .ob-flowcard .fc-rows{display:flex;flex-direction:column}
+  .ob-flowcard .fc-row,.ob-flowcard .fc-adr{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid rgba(255,255,255,.055);font:600 11.5px 'Saira Condensed',sans-serif}
+  .ob-flowcard .fc-row>span,.ob-flowcard .fc-adr>span{color:#8a97a4;flex:0 0 auto;white-space:nowrap}
+  .ob-flowcard .fc-row>b{margin-left:auto;color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;white-space:nowrap;text-align:right}
+  .ob-flowcard .fc-adr code{color:#cfe0ee;font:600 11.5px 'IBM Plex Mono',monospace;margin-right:auto;white-space:nowrap}
+  .ob-flowcard .fc-b{cursor:pointer;width:22px;height:20px;display:grid;place-items:center;border:1px solid #2b3139;border-radius:5px;background:rgba(255,255,255,.05);color:#aeb9c6;font-size:11px;flex:0 0 auto}
   .ob-flowcard .fc-adr .fc-b+.fc-b{margin-left:5px}
   .ob-flowcard .fc-b:hover{border-color:#C9A84B;color:#E8B84B}
+  .ob-flowcard .fc-read{margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.08)}
+  .ob-flowcard .fc-read>span{display:block;font:800 8px 'Saira Condensed',sans-serif;letter-spacing:.16em;color:#6b7784;margin-bottom:3px;text-transform:uppercase}
+  .ob-flowcard .fc-read>p{margin:0;font:600 11.5px 'Saira Condensed',sans-serif;color:#c7d2de;line-height:1.32}
   /* popup de exchange (DOM, POR DELANTE del feed, con sombra) */
   .ob-expop{position:absolute;z-index:7;opacity:0;pointer-events:none;width:220px;padding:12px 13px;border-radius:12px;
     background:rgba(12,18,26,.985);border:1px solid rgba(33,145,217,.5);box-shadow:0 16px 42px rgba(0,0,0,.62);transition:opacity .12s ease}
@@ -751,17 +753,17 @@ function estilos(){
   .ob-expop .xp-r{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid rgba(255,255,255,.05);font:600 12px 'Saira Condensed',sans-serif;color:#9aa6b2}
   .ob-expop .xp-r b{color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px}
   /* slots: cuadrado de arriba (compra) y de abajo (venta) que encasillan la alerta más nueva */
-  .ob-slot{position:absolute;z-index:5;pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:7px;overflow:hidden;
+  .ob-slot{position:absolute;z-index:5;pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 9px;border-radius:7px;overflow:hidden;
     background:rgba(9,14,21,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);transition:box-shadow .2s ease}
-  .ob-slot.empty{justify-content:center;background:rgba(9,14,21,.38)}
+  .ob-slot.empty{background:rgba(9,14,21,.38)}
   .ob-slot .sl-empty{font:800 8.5px 'Saira Condensed',sans-serif;letter-spacing:.2em;color:#55606c;text-transform:uppercase}
-  .ob-slot .sl-logo{width:28px;height:28px;border-radius:50%;flex:0 0 auto;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font:800 10px 'Saira Condensed',sans-serif;color:#cdd7e2}
-  .ob-slot .sl-b{min-width:0;flex:1 1 auto;overflow:hidden}
-  .ob-slot .sl-l{display:flex;align-items:center;gap:5px;font:800 10px 'Saira Condensed',sans-serif;letter-spacing:.03em;white-space:nowrap}
-  .ob-slot .sl-l span{color:#8a97a4;margin-left:auto}
-  .ob-slot .sl-a{font:700 13px 'IBM Plex Mono',monospace;color:#fff;line-height:1.1;white-space:nowrap}
-  .ob-slot.buy{box-shadow:inset 0 0 0 1px rgba(43,245,158,.3)} .ob-slot.buy .sl-l b{color:#9effc9}
-  .ob-slot.sell{box-shadow:inset 0 0 0 1px rgba(255,77,110,.3)} .ob-slot.sell .sl-l b{color:#ffb3c0}
+  .ob-slot .sl-logo{width:24px;height:24px;border-radius:50%;flex:0 0 auto;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font:800 9px 'Saira Condensed',sans-serif;color:#cdd7e2}
+  .ob-slot .sl-mid{flex:0 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.12;overflow:hidden}
+  .ob-slot .sl-lbl{font:800 9.5px 'Saira Condensed',sans-serif;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ob-slot .sl-tk{font:700 8.5px 'Saira Condensed',sans-serif;color:#8a97a4;white-space:nowrap}
+  .ob-slot .sl-a{flex:0 0 auto;font:700 12px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+  .ob-slot.buy{box-shadow:inset 0 0 0 1px rgba(43,245,158,.3)} .ob-slot.buy .sl-lbl{color:#9effc9}
+  .ob-slot.sell{box-shadow:inset 0 0 0 1px rgba(255,77,110,.3)} .ob-slot.sell .sl-lbl{color:#ffb3c0}
   .ob-slot.buy.lit{animation:litbuy .8s ease} .ob-slot.sell.lit{animation:litsell .8s ease}
   @keyframes litbuy{0%{box-shadow:inset 0 0 0 1px rgba(43,245,158,.95),0 0 26px rgba(43,245,158,.55)}100%{box-shadow:inset 0 0 0 1px rgba(43,245,158,.3)}}
   @keyframes litsell{0%{box-shadow:inset 0 0 0 1px rgba(255,77,110,.95),0 0 26px rgba(255,77,110,.55)}100%{box-shadow:inset 0 0 0 1px rgba(255,77,110,.3)}}
@@ -822,8 +824,9 @@ function estilos(){
 
 /* ===== FEED de flujo: DOM encima del rectángulo; chip compacto + ficha técnica al hover ===== */
 /* ===== FEED de flujo: dos slots (compra/venta) encasillan la alerta más nueva; feed = historial ===== */
-function flowGeom(){ const y0=Z.y0,y1=Z.y1,h=y1-y0, sqH=clamp(h*0.11,46,60);
-  return { sqH, buyY:y0+16, sellY:y1-16-sqH, x:Z.flowX0+9, w:Z.flowW-18 }; }
+function flowGeom(){ const y0=Z.y0,y1=Z.y1,h=y1-y0, sqH=clamp(h*0.11,46,58), ext=7;
+  // los cuadrados SOBRESALEN del rectángulo (como los del Live Order Book) para ganar espacio
+  return { sqH, buyY:y0+15, sellY:y1-15-sqH, x:Z.flowX0-ext, w:Z.flowW+2*ext }; }
 function colocarFlow(){ if(Z.flowX0==null)return; const fg=flowGeom();
   const sb=document.getElementById('ob-slotbuy'), ss=document.getElementById('ob-slotsell'), fl=document.getElementById('ob-flow');
   if(sb){ sb.style.left=fg.x+'px'; sb.style.top=fg.buyY+'px'; sb.style.width=fg.w+'px'; sb.style.height=fg.sqH+'px'; }
@@ -845,7 +848,7 @@ function flowPush(ev){ ev.id=++_flowId; ev.t=ev.t||Date.now();
 }
 function slotHTML(e){ if(!e)return `<div class="sl-empty">· waiting ·</div>`;
   const im=LOGO[e.sym]; const logo=(im&&im.src)?`<span class="sl-logo" style="background-image:url('${im.src}')"></span>`:`<span class="sl-logo sl-ph">${(e.coin||'·').slice(0,3)}</span>`;
-  return `${logo}<div class="sl-b"><div class="sl-l"><b>${e.label}</b><span>${e.coin}</span></div><div class="sl-a">${e.size}</div></div>`; }
+  return `${logo}<div class="sl-mid"><b class="sl-lbl">${e.label}</b><span class="sl-tk">${e.coin}</span></div><div class="sl-a">${e.size}</div>`; }
 function renderSlots(){ const b=document.getElementById('ob-slotbuy'), s=document.getElementById('ob-slotsell');
   if(b){ b.className='ob-slot buy'+(buyLatest?'':' empty'); b.innerHTML=slotHTML(buyLatest); if(buyLatest){ b.dataset.fid=buyLatest.id; b.classList.remove('lit'); void b.offsetWidth; b.classList.add('lit'); } }
   if(s){ s.className='ob-slot sell'+(sellLatest?'':' empty'); s.innerHTML=slotHTML(sellLatest); if(sellLatest){ s.dataset.fid=sellLatest.id; s.classList.remove('lit'); void s.offsetWidth; s.classList.add('lit'); } } }
@@ -860,27 +863,28 @@ function fichaHTML(e){ const im=LOGO[e.sym]||null;
   const logo=(im&&im.src)?`<span class="fc-logo" style="background-image:url('${im.src}')"></span>`:`<span class="fc-logo fc-ph">${(e.coin||'·').slice(0,3)}</span>`;
   let tm=''; try{ tm=new Date(e.t||Date.now()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }catch(_){}
   const px=e.price?('$'+fmtP(e.price)):null, impact=(e.usd&&e.vol24h)?(e.usd/e.vol24h*100):null;
-  const imp=impact!=null?((impact<0.1?'<0.1':impact.toFixed(impact<1?2:1))+'% of 24h vol'):null;
-  const R=[];
+  const imp=impact!=null?((impact<0.1?'<0.1':impact>99?'>99':impact.toFixed(impact<1?2:1))+'% · 24h'):null;
+  const R=[]; let reading;
   if(e.cls==='chain'){
     R.push(['Value', e.usd?('$'+fmtVol(e.usd)):'—']);
     R.push(['From', `<code>…${e.fromShort||'----'}</code><button class="fc-b" data-copy="${e.fullFrom||''}" title="Copiar">⧉</button>`, 1]);
     R.push(['To', `<code>…${e.toShort||'----'}</code><button class="fc-b" data-copy="${e.fullTo||''}" title="Copiar">⧉</button><button class="fc-b" data-exp="${e.fullTo||e.fullFrom||''}" title="Ver en la cadena">↗</button>`, 1]);
-    R.push(['Reading', 'Large transfer · watch exchange flow']);
+    reading='Large on-chain transfer · watch exchange inflow or accumulation';
   } else if(e.cls==='liq'){
     if(px)R.push(['Price', px]);
     R.push(['Event', e.label==='LIQ LONG'?'Long liquidated':'Short liquidated']);
     if(imp)R.push(['Impact', imp]);
-    R.push(['Reading', e.label==='LIQ LONG'?'Forced selling · cascade risk':'Forced buying · short squeeze']);
+    reading=e.label==='LIQ LONG'?'Forced selling · downside cascade risk':'Forced buying · potential short squeeze';
   } else {
     if(px)R.push(['Price', px]);
     if(imp)R.push(['Impact', imp]);
     R.push(['Venue', e.src||'—']);
-    R.push(['Reading', e.up?'Aggressive buy · lifting offers':'Aggressive sell · hitting bids']);
+    reading=e.up?'Aggressive buy · lifting the offers':'Aggressive sell · hitting the bids';
   }
-  const rows=R.map(r=> r[2]? `<div class="fc-adr"><span class="fc-k">${r[0]}</span>${r[1]}</div>` : `<div class="fc-row"><span class="fc-k">${r[0]}</span><b>${r[1]}</b></div>`).join('');
+  const rows=R.map(r=> r[2]? `<div class="fc-adr"><span>${r[0]}</span>${r[1]}</div>` : `<div class="fc-row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
   return `<div class="fc-head">${logo}<div class="fc-ht"><div class="fc-coin">${e.coin}</div><div class="fc-type ${e.cls}">${e.label}${tm?(' · '+tm):''}</div></div><span class="fc-side ${e.up?'u':'d'}">${e.up?'BUY':'SELL'}</span></div>`+
-    `<div class="fc-amt">${e.size}</div>`+rows;
+    `<div class="fc-amt">${e.size}</div><div class="fc-rows">${rows}</div>`+
+    `<div class="fc-read"><span>Reading</span><p>${reading}</p></div>`;
 }
 function fichaEvent(fid){ if(buyLatest&&String(buyLatest.id)===String(fid))return buyLatest; if(sellLatest&&String(sellLatest.id)===String(fid))return sellLatest; return flowItems.find(x=>String(x.id)===String(fid)); }
 function autoFicha(ev){ const el=document.getElementById(ev.up?'ob-afbuy':'ob-afsell'); if(!el)return; const fg=flowGeom();
@@ -888,7 +892,7 @@ function autoFicha(ev){ const el=document.getElementById(ev.up?'ob-afbuy':'ob-af
   requestAnimationFrame(()=>{ const hh=el.offsetHeight||150, st=document.getElementById('ob-stage'), sw=st?st.getBoundingClientRect().width:W;
     if(Z.flowX1+16+el.offsetWidth>sw-8) el.style.left=Math.max(8,Z.flowX0-el.offsetWidth-14)+'px';
     el.style.top=(ev.up?Math.max(8,fg.buyY):Math.max(8,fg.sellY+fg.sqH-hh))+'px'; });
-  clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity='0'; el.style.pointerEvents='none'; }, 3200); }
+  clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity='0'; el.style.pointerEvents='none'; }, 1100); }
 function wireFlow(){ const L=document.getElementById('ob-flowlist'), card=document.getElementById('ob-flowcard'), stage=document.getElementById('ob-stage'); if(!L||!card||!stage)return;
   let hideT=null; const hide=()=>{ card.style.opacity='0'; card.style.pointerEvents='none'; };
   const show=(fid,chip)=>{ const e=fichaEvent(fid); if(!e)return; card.innerHTML=fichaHTML(e);
