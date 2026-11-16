@@ -10,6 +10,7 @@ import * as D from './datos.js?v=9';
 /* Reutilizamos la infraestructura YA probada de la plataforma: caché compartida de
    logos (misma que Multichart/VWAP Pro), velas y stream en vivo, y el catálogo PARES/TFS. */
 import { logos as sharedLogos, PARES as SP, TFS, velas as velasReal, streamVelas } from '../trading-demo/datos.js?v=2';
+import { pintarIcono } from '../../assets/js/niveles/config.js?v=1';   // icono € £ para Forex y logo del oro, igual que Liquidity Pools
 const PARMAP={}, NAME={}; try{ SP.forEach(p=>{ if(p.cg)PARMAP[p.id]=p.cg; NAME[p.id]=p.n||p.id; }); }catch(_){}
 const EXTOKEN={ Uniswap:'UNI', PancakeSwap:'CAKE', Curve:'CRV', Raydium:'RAY', KuCoin:'KCS', OKX:'OKB', Bitget:'BGB', Binance:'BNB' };
 const _symUrl={};
@@ -872,7 +873,28 @@ function estilos(){
   #ob-mwrap .ob-modal:-webkit-full-screen{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}
   @keyframes obpop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
   .ob-mhead{display:flex;align-items:center;gap:9px;padding:10px 13px;border-bottom:1px solid #1d242d;flex:0 0 auto}
-  .ob-mlg{width:28px;height:28px;border-radius:50%;background:#131a22 center/cover no-repeat;flex:0 0 auto;display:grid;place-items:center;font:800 11px 'Saira Condensed',sans-serif;color:#9fe9c6;border:1px solid #2b3139}
+  /* selector de moneda del modal: MISMO que Liquidity Pools (agrupado, buscador, logos) */
+  .ob-msel{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 10px;border-radius:9px;border:1px solid #2b3139;background:#12161c;color:#eef4fb;cursor:pointer;flex:0 0 auto}
+  .ob-msel:hover{border-color:#C9A84B}
+  .ob-msel svg{width:13px;height:13px;opacity:.55;flex:0 0 auto}
+  .ob-logo{width:22px;height:22px;border-radius:50%;flex:0 0 auto;background:rgba(255,255,255,.06) center/cover no-repeat;border:1px solid #2b3139}
+  .ob-logo.ob-mlg{width:24px;height:24px}
+  .ob-logo.con-ico{background:#1c2127;color:#e8ecf2;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
+  .ob-logo.con{background-size:cover;background-position:center;background-color:transparent;border-color:transparent}
+  .ob-logo.con-svg{background:none;border-color:transparent;overflow:hidden;padding:0}
+  .ob-logo.con-svg svg{width:100%;height:100%;display:block}
+  .ob-menu{position:fixed;z-index:10060;min-width:234px;max-height:360px;overflow:hidden;display:flex;flex-direction:column;background:linear-gradient(180deg,#1b2027,#0d1117);border:1px solid #C9A84B;border-radius:13px;padding:6px;box-shadow:0 16px 44px rgba(0,0,0,.7)}
+  .ob-menu-lista{overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+  .ob-buscar{width:100%;box-sizing:border-box;padding:9px 11px;margin-bottom:6px;border-radius:9px;border:1px solid #2b3139;background:#0b0e12;color:#eaecef;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:13px;min-height:38px}
+  .ob-buscar:focus{outline:none;border-color:#C9A84B}
+  .ob-cat{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:#E8B84B;text-transform:uppercase;letter-spacing:1.3px;padding:9px 11px 4px}
+  .ob-op{display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border-radius:9px;background:transparent;border:none;color:#b7bdc6;cursor:pointer;text-align:left;min-height:40px}
+  .ob-op:hover{background:rgba(255,255,255,.05)}
+  .ob-op.on{background:rgba(232,184,75,.1);color:#E8B84B}
+  .ob-op b{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;min-width:48px}
+  .ob-op span{flex:1;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:12px;color:#7d8794;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ob-op.on span{color:#b7bdc6}
+  .ob-op svg{width:14px;height:14px;flex:0 0 auto;color:#E8B84B}
   .ob-mhead .nm{font-weight:800;font-size:20px;letter-spacing:.02em;color:#eef4fb}
   .ob-mhead .pc,.ob-mhead .pr{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px}
   .ob-mhead .pr{color:#cdd7e2}
@@ -1216,6 +1238,7 @@ async function exportarChart(){
 }
 /* ===== modal de detalle (click en tarjeta): grafico real + perfil de volumen + niveles + tendencia ===== */
 function cerrarDetalle(){ try{ if(mRO)mRO.disconnect(); }catch(_){} mRO=null;
+  cerrarMenuOB();
   if(mRAF){ cancelAnimationFrame(mRAF); mRAF=0; }
   try{ if(mStream)mStream.cerrar(); }catch(_){} mStream=null;
   try{ if(mDepthStream)mDepthStream.cerrar(); }catch(_){} mDepthStream=null; mHeat=[]; mMode='vp';
@@ -1223,6 +1246,48 @@ function cerrarDetalle(){ try{ if(mRO)mRO.disconnect(); }catch(_){} mRO=null;
   try{ if(mChart)mChart.remove(); }catch(_){} mChart=mSeries=null; mVP=null; mKl=[]; mCoin=null; mSR=[];
   const w=document.getElementById('ob-mwrap'); if(w)w.remove();
   if(ov&&cv&&!RAF&&!paused){ last=performance.now(); RAF=requestAnimationFrame(frame); } }   // reanuda el radar al cerrar el modal
+/* ===== Selector de moneda del modal: MISMO que Liquidity Pools =====
+   Catalogo unico (SP = PARES): Crypto + Forex (EUR, GBP) + Commodities (oro).
+   Agrupado, con buscador y logos (CoinGecko por cg; € £ por icono). Al elegir,
+   recarga la grafica con la misma dinamica de Order Block Liquidity. */
+let _obLogos=null;
+async function ponerLogosOB(){
+  if(!_obLogos){ try{ const g=JSON.parse(localStorage.getItem('aurex-logos')||'null'); if(g&&Date.now()-g.cuando<86400000)_obLogos=g.datos; }catch(_){} }
+  if(!_obLogos){ try{ const ids=SP.map(p=>p.cg).filter(Boolean).join(','); const r=await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&per_page=250`); const j=await r.json(); _obLogos={}; (j||[]).forEach(x=>{_obLogos[x.id]=x.image;}); try{ localStorage.setItem('aurex-logos',JSON.stringify({cuando:Date.now(),datos:_obLogos})); }catch(_){} }catch(_){ _obLogos={}; } }
+  document.querySelectorAll('.ob-logo').forEach(el=>{ const url=_obLogos&&el.dataset.cg&&_obLogos[el.dataset.cg];
+    if(url){ el.style.backgroundImage=`url(${url})`; el.classList.add('con'); el.textContent=''; el.classList.remove('con-ico','con-svg'); }
+    else if(el.dataset.ico){ el.style.backgroundImage=''; el.classList.remove('con'); pintarIcono(el); }
+    else { el.textContent=''; el.classList.remove('con-ico','con-svg'); } });
+}
+function cerrarMenuOB(){ document.querySelectorAll('#ob-menu').forEach(x=>x.remove()); }
+function menuMonedas(){ const btn=document.getElementById('ob-msel'); if(!btn)return; cerrarMenuOB();
+  const cur=(mCoin&&mCoin.sym)||'', chk='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m20 6-11 11-5-5"/></svg>';
+  const html=['cripto','divisa','materia'].map(gr=>{ const lista=SP.filter(p=>(p.grupo||'cripto')===gr); if(!lista.length)return '';
+    const tit={cripto:'Crypto',divisa:'Forex',materia:'Commodities'}[gr];
+    return `<div class="ob-cat">${tit}</div>`+lista.map(p=>`<button data-val="${p.id}" data-busca="${(p.id+' '+p.n).toLowerCase()}" class="ob-op ${p.id===cur?'on':''}"><i class="ob-logo" data-cg="${p.cg||''}" data-ico="${p.ico||''}"></i><b>${p.id}</b><span>${p.n}</span>${p.id===cur?chk:''}</button>`).join('');
+  }).join('');
+  const m=document.createElement('div'); m.className='ob-menu'; m.id='ob-menu';
+  m.innerHTML=`<input class="ob-buscar" id="ob-buscar" placeholder="Search…" autocomplete="off" spellcheck="false"><div class="ob-menu-lista">${html}</div>`;
+  document.body.appendChild(m);
+  const r=btn.getBoundingClientRect(), ancho=m.offsetWidth||220;
+  m.style.left=Math.max(8,Math.min(window.innerWidth-ancho-8,r.left))+'px'; m.style.top=(r.bottom+6)+'px';
+  const alto=m.offsetHeight; if(r.bottom+6+alto>window.innerHeight-8)m.style.maxHeight=(window.innerHeight-r.bottom-18)+'px';
+  m.addEventListener('click',e=>e.stopPropagation());
+  m.querySelectorAll('[data-val]').forEach(b=>b.onclick=()=>{ seleccionarMoneda(b.dataset.val); cerrarMenuOB(); });
+  const bus=m.querySelector('#ob-buscar'); bus.oninput=()=>{ const q=bus.value.toLowerCase().trim(); m.querySelectorAll('[data-val]').forEach(x=>{ x.style.display=(!q||x.dataset.busca.includes(q))?'':'none'; }); };
+  setTimeout(()=>{ try{ bus.focus(); }catch(_){} },60);
+  setTimeout(()=>document.addEventListener('click',cerrarMenuOB,{once:true}),10);
+  setTimeout(ponerLogosOB,40);
+}
+function seleccionarMoneda(id){ const p=SP.find(x=>x.id===id); if(!p)return;
+  mCoin={ sym:p.id, symbol:p.s, disp:0, price:0, cur:0, _up:true };
+  const nm=document.getElementById('ob-mnm'); if(nm)nm.textContent=p.id;
+  const lg=document.getElementById('ob-mlg'); if(lg){ lg.dataset.cg=p.cg||''; lg.dataset.ico=p.ico||''; lg.style.backgroundImage=''; lg.className='ob-logo ob-mlg'; lg.textContent=''; }
+  ponerLogosOB();
+  const pc=document.getElementById('ob-mpc'); if(pc)pc.textContent='';
+  const pr=document.getElementById('ob-mpr'); if(pr)pr.textContent='$—';
+  mSR=[]; cargarChart();   // misma dinamica: velas en vivo + zonas Order Block Liquidity + lectura
+}
 async function abrirDetalle(c){
   if(document.getElementById('ob-mwrap'))return;
   if(RAF){ cancelAnimationFrame(RAF); RAF=0; }   // congela el radar detrás del modal: toda la CPU va al gráfico (fluido, sin lag)
@@ -1232,8 +1297,11 @@ async function abrirDetalle(c){
   wrap.innerHTML=`<canvas class="ob-mnet" id="ob-mnet"></canvas>
     <div class="ob-modal">
     <div class="ob-mhead">
-      <div class="ob-mlg" id="ob-mlg">${(c.sym||'·').slice(0,3)}</div>
-      <span class="nm">${c.sym||''}</span>
+      <button class="ob-msel" id="ob-msel" type="button" title="Change coin">
+        <i class="ob-logo ob-mlg" id="ob-mlg" data-cg="" data-ico=""></i>
+        <b class="nm" id="ob-mnm">${c.sym||''}</b>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
       <span class="pc" id="ob-mpc" style="color:${colc}"></span>
       <span class="pr" id="ob-mpr"></span>
       <div class="ob-tfwrap"><button class="ob-chip" id="ob-tfchip"></button><div class="ob-tfmenu" id="ob-tfmenu"></div></div>
@@ -1261,7 +1329,10 @@ async function abrirDetalle(c){
   vpBtn.onclick=()=>{ mVPon=!mVPon; vpBtn.classList.toggle('on',mVPon); };
   // exportar la grafica del modal con branding DecFreedom (igual que Multichart)
   document.getElementById('ob-mexp').onclick=exportarChart;
-  const lg=document.getElementById('ob-mlg'), lu=domLogo(c.sym); if(lu){ lg.style.backgroundImage=`url(${lu})`; lg.textContent=''; }
+  // logo de la moneda en el header: mismo sistema que el selector (cg/ico del catalogo)
+  { const lg=document.getElementById('ob-mlg'), pp=SP.find(p=>p.id===c.sym); if(lg){ lg.dataset.cg=(pp&&pp.cg)||''; lg.dataset.ico=(pp&&pp.ico)||''; } ponerLogosOB(); }
+  // selector de moneda (estilo Liquidity Pools): abre el menu agrupado con buscador
+  document.getElementById('ob-msel').onclick=(e)=>{ e.stopPropagation(); menuMonedas(); };
   document.getElementById('ob-mpc').textContent=(c.disp>=0?'+':'')+(c.disp||0).toFixed(2)+'%';
   document.getElementById('ob-mpr').textContent='$'+fmtP(c.price||c.cur||0);
   // temporalidades a la IZQUIERDA, estilo plataforma (chip + menú), igual que el resto de herramientas
@@ -1291,6 +1362,12 @@ function crearChart(){ const host=document.getElementById('ob-mchart'); if(!host
 }
 async function cargarChart(){ if(!mSeries||!mCoin)return;
   const kl=await D.velas(mCoin.symbol,mTF,240); if(!kl.length||!mSeries)return; mKl=kl; mSeries.setData(kl);
+  // cambio 24h real (independiente de la temporalidad) para el header, al abrir o cambiar de moneda
+  try{ const hrs={'1m':1/60,'3m':.05,'5m':1/12,'15m':.25,'30m':.5,'1h':1,'2h':2,'4h':4,'6h':6,'12h':12,'1d':24,'1w':168}[mTF]||4;
+    const back=Math.max(1,Math.round(24/hrs)), ref=kl[Math.max(0,kl.length-1-back)], lastc=kl[kl.length-1].close;
+    const pct=(ref&&ref.open)?((lastc/ref.open-1)*100):0; if(mCoin)mCoin.disp=pct;
+    const pc=document.getElementById('ob-mpc'); if(pc){ pc.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%'; pc.style.color=pct>=0?'#2BF59E':'#FF4D6E'; }
+    const pr=document.getElementById('ob-mpr'); if(pr)pr.textContent='$'+fmtP(lastc); }catch(_){}
   let lo=Infinity,hi=-Infinity; kl.forEach(k=>{ if(k.low<lo)lo=k.low; if(k.high>hi)hi=k.high; });
   const N=54,bins=new Array(N).fill(0); if(hi>lo) kl.forEach(k=>{ const tp=(k.high+k.low+k.close)/3; let b=((tp-lo)/(hi-lo)*N)|0; b=b<0?0:b>=N?N-1:b; bins[b]+=k.volume; });
   let poc=0,pm=-1; bins.forEach((v,i)=>{ if(v>pm){pm=v;poc=i;} });
