@@ -74,6 +74,9 @@ function imgChain(first, alt){ if(_imgCache[first])return _imgCache[first];     
   im.src=first; _imgCache[first]=im; return im; }
 // moneda: spothq (por ticker) -> CoinGecko (respaldo) -> logo por defecto
 function imgLogo(ticker, cgUrl){ const alt=[]; if(cgUrl)alt.push(cgUrl); alt.push(DEF_URL); return imgChain(SPOT+String(ticker||'').toLowerCase()+'.png', alt); }
+// Logo para elementos DOM (slot, ficha, popup): usa la URL de CoinGecko (oficial, la MISMA que el resto
+// de la plataforma; sin CORS porque va de background). Así SOL no sale con el verde del icono de spothq.
+function domLogo(sym){ try{ if(_symUrl[sym]) return _symUrl[sym]; const im=LOGO[sym]; if(im&&im.src) return im.src; }catch(_){} return ''; }
 // exchange: marca real (CoinGecko) -> icono de su token (spothq) -> logo por defecto
 function imgExch(ei, brandUrl){ const tk=EXTOKEN[EXCH[ei][0]], alt=[]; if(tk)alt.push(SPOT+tk.toLowerCase()+'.png'); alt.push(DEF_URL); return imgChain(brandUrl||DEF_URL, alt); }
 let EXREADY=false, _exporting=false;
@@ -158,6 +161,17 @@ function placeCards(){
 }
 
 /* ===== hilos ===== */
+// Trazado FIJO del hilo (bezier cúbico con controles a media x). No depende de split ni del tiempo:
+// las líneas quedan TIESAS; lo único que se mueve dentro de ellas son los pulsos. El reparto
+// arriba/abajo usa un punto medio fijo, no la línea blanca (que es la que las hacía moverse).
+function calcStrandPts(y0src, up, r){
+  const x0=Z.funX0, x1=Z.flowX0, N=28, pts=[], mid=(Z.y0+Z.y1)/2;
+  const yEnd = up ? Z.y0+12 + r*(mid-Z.y0-24) : mid+12 + r*(Z.y1-mid-24);
+  for(let k=0;k<=N;k++){ const t=k/N, it=1-t, x=x0+t*(x1-x0);
+    const y = it*it*it*y0src + 3*it*it*t*y0src + 3*it*t*t*yEnd + t*t*t*yEnd;
+    pts.push([x,y]); }
+  return pts;
+}
 function buildStrands(){
   strands=[]; strandsFaint=[];
   const idxs=EXCH.map((_,i)=>i);
@@ -168,26 +182,16 @@ function buildStrands(){
   const mid=(Z.y0+Z.y1)/2;
   // arranque SIEMPRE pegado a la fila de su exchange y dentro del panel (sin líneas sueltas)
   COINS.forEach(c=>{ const up=c.disp>=0, oy=clamp((exchY[c.exch]!=null?exchY[c.exch]:mid)+rnd(-ch*0.3,ch*0.3),Z.y0+5,Z.y1-5);
-    strands.push({ coin:c, y0:oy, up, exch:c.exch, sec:c.sec, phase:rnd(0,6.28), amp:rnd(4,13), hl:0,
-      col:up?VERDE:ROSA, hero:(c.major||c.rank<=24), r:Math.random(), _wp:-1, _wcool:0 }); });
-  // líneas tenues: su proporción verde/rojo sigue la presión real del mercado (no 55% fijo)
-  if(Z.exchOrder.length) for(let k=0;k<40;k++){ const ei=pick(Z.exchOrder), up=Math.random()<split;
+    const s={ coin:c, y0:oy, up, exch:c.exch, sec:c.sec, phase:rnd(0,6.28), amp:rnd(4,13), hl:0,
+      col:up?VERDE:ROSA, hero:(c.major||c.rank<=24), r:Math.random(), _wp:-1, _wcool:0 };
+    s.pts=calcStrandPts(oy,up,s.r); strands.push(s); });
+  // líneas tenues: reparto 50/50 FIJO (no sigue split, para que no se muevan)
+  if(Z.exchOrder.length) for(let k=0;k<40;k++){ const ei=pick(Z.exchOrder), up=Math.random()<0.5;
     const oy=clamp((exchY[ei]!=null?exchY[ei]:mid)+rnd(-ch*0.4,ch*0.4),Z.y0+5,Z.y1-5);
-    strandsFaint.push({ y0:oy, up, exch:ei, phase:rnd(0,6.28), amp:rnd(5,15), hl:0, col:up?VERDE:ROSA, hero:false, r:Math.random() }); }
+    const s={ y0:oy, up, exch:ei, phase:rnd(0,6.28), amp:rnd(5,15), hl:0, col:up?VERDE:ROSA, hero:false, r:Math.random() };
+    s.pts=calcStrandPts(oy,up,s.r); strandsFaint.push(s); }
 }
-function strandPath(s){
-  // Curva bezier cúbica con controles a media x (misma dinámica NATURAL que el lado derecho,
-  // rectángulo -> tarjetas). Antes usaba una convergencia potencia + seno que deformaba las
-  // líneas al pegarse a la cara blanca (efecto "transformación libre"). Esto lo elimina.
-  const x0=Z.funX0, x1=Z.flowX0, N=28, pts=[], mx=x0+(x1-x0)*0.5;
-  const divY=Z.y0+split*(Z.y1-Z.y0);
-  const yEnd = s.up ? Z.y0+12 + s.r*(divY-Z.y0-24) : divY+12 + s.r*(Z.y1-divY-24);
-  const drift=Math.sin(T*0.5+s.phase)*2.0;            // leve vida, nunca deforma (cero en los extremos)
-  for(let k=0;k<=N;k++){ const t=k/N, it=1-t, x=x0+t*(x1-x0);
-    const y = it*it*it*s.y0 + 3*it*it*t*s.y0 + 3*it*t*t*yEnd + t*t*t*yEnd + drift*Math.sin(t*Math.PI);
-    pts.push([x,y]); }
-  return pts;
-}
+function strandPath(s){ return s.pts || (s.pts=calcStrandPts(s.y0,s.up,s.r!=null?s.r:0.5)); }
 
 /* ===== animacion ===== */
 function tick(dt){ T+=dt; split+=(splitTarget()-split)*0.045;   // responde al flujo real, visible pero suave
@@ -249,7 +253,7 @@ function drawStrands(g){
       const qx=a[0]+(bb[0]-a[0])*fr, qy=a[1]+(bb[1]-a[1])*fr;      // interpolado = fluido (no por fotograma)
       g.globalAlpha=0.9*(0.6+0.4*s.hl); g.fillStyle=s.col; g.beginPath(); g.arc(qx,qy,s.hero?2.1:1.6,0,7); g.fill(); }
     // PULSO DE BALLENA: una operación grande real viaja por el hilo de su moneda
-    if(!faint && s._wp>=0){ s._wp+=0.026; if(s._wp>1){ s._wp=-1; }
+    if(!faint && s._wp>=0){ s._wp+=0.026; if(s._wp>1){ s._wp=-1; if(s._wpEvent){ flowPush(s._wpEvent); s._wpEvent=null; } }   // la bola LLEGÓ -> nace la tarjeta
       else { const fp=s._wp*(pts.length-1), i0=fp|0, fr=fp-i0, a=pts[i0], bb=pts[Math.min(pts.length-1,i0+1)];
         const wx=a[0]+(bb[0]-a[0])*fr, wy=a[1]+(bb[1]-a[1])*fr, wc=s._wbuy?'43,245,158':'255,77,110', rad=3+3.4*(s._wmag||1);
         g.save(); g.globalAlpha=0.95; g.shadowColor=`rgba(${wc},0.95)`; g.shadowBlur=16; g.fillStyle=`rgba(${wc},1)`; g.beginPath(); g.arc(wx,wy,rad,0,7); g.fill(); g.restore(); } } };
@@ -329,12 +333,15 @@ function flowBar(g){
   // zonas base
   g.fillStyle=hexA(VERDE,0.07); g.fillRect(x0,y0,bw,divY-y0);
   g.fillStyle=hexA(ROSA,0.07); g.fillRect(x0,divY,bw,y1-divY);
-  // VOLUMEN de fondo (segundo plano transparente), muy bajo para NO tapar las tarjetas
+  // VOLUMEN de fondo con NÚMEROS tenues (como un libro de órdenes en segundo plano). Va detrás de
+  // las tarjetas (el canvas está debajo del DOM), así que nunca las tapa.
   g.save(); rr(g,x0,y0,bw,h,10); g.clip();
-  const rows=Math.floor(h/14);
-  for(let r=0;r<rows;r++){ const yy=y0+r*14, upz=(yy<divY), col=upz?VERDE:ROSA;
-    const len=bw*(0.26+0.46*Math.abs(Math.sin(T*1.0+r*0.5)));
-    g.fillStyle=hexA(col,0.045); g.fillRect(x0,yy+1,len,12); }
+  const rows=Math.floor(h/15); g.textAlign='left'; g.textBaseline='alphabetic'; g.font='600 9px "IBM Plex Mono",monospace';
+  for(let r=0;r<rows;r++){ const yy=y0+r*15, upz=(yy<divY), col=upz?VERDE:ROSA;
+    const len=bw*(0.24+0.44*Math.abs(Math.sin(T*0.9+r*0.5)));
+    g.fillStyle=hexA(col,0.04); g.fillRect(x0,yy+2,len,12);
+    const num=(0.6+3.4*Math.abs(Math.sin(r*1.7+T*0.12))).toFixed(2);     // número tenue que cambia despacio
+    g.fillStyle=hexA(col,0.13); g.fillText(num,x0+6,yy+11); }
   g.restore();
   // borde blanco izquierdo + línea blanca divisoria GRUESA (igual que el Live Order Book)
   g.strokeStyle='rgba(255,255,255,.92)'; g.lineWidth=2; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
@@ -356,23 +363,23 @@ function flowGate(g,x,y,w,h,base,shineT){
     rr(g,x,y,w,h,6); g.strokeStyle=hexA(base,0.3+0.5*k); g.lineWidth=1.1+1.8*k; g.stroke(); g.restore(); }
   cornerMarks(g,x-4,y-4,w+8,h+8,13,'#ffffff',1.7);
 }
-/* ===== enlaces cuadrado -> cuadrado (flujo -> libro): ensanchan y vuelven a cerrar ===== */
+/* ===== enlaces cuadrado -> cuadrado (flujo -> libro): MISMO estilo que las líneas del libro -> tarjetas ===== */
 function linkRects(g){
   Z.linkPulses=Z.linkPulses||[];
-  // MUCHAS ramificaciones (no una sola cinta): salen de la boca del cuadrado del flujo,
-  // se ensanchan y se vuelven a cerrar hasta morir en la boca del cuadrado del libro.
-  const pairs=[[Z.flowGateG,Z.gateG,VERDE],[Z.flowGateR,Z.gateR,ROSA]];
-  pairs.forEach(([a,b,col])=>{ if(!a||!b)return;
-    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, mx=ax+(bx-ax)*0.5, K=24, half=(K-1)/2;
-    for(let j=0;j<K;j++){ const sp=j-half;
-      const y0=ay+sp*1.25, y1=by+sp*1.25;                         // SALE y LLEGA fina (convergida en la boca del cuadrado)
-      const cy=(y0+y1)/2 + sp*4.6;                                 // se ABRE ancha en el medio y se vuelve a CERRAR
-      g.strokeStyle=hexA(col,0.1+0.1*(1-Math.abs(sp)/half)); g.lineWidth=0.6; g.lineCap='round';
-      g.beginPath(); g.moveTo(ax,y0); g.bezierCurveTo(mx,cy,mx,cy,bx,y1); g.stroke();
-      if(j%4===0){ const t=((T*0.3+j*0.1)%1+1)%1, it=1-t;
-        const px=it*it*it*ax+3*it*it*t*mx+3*it*t*t*mx+t*t*t*bx, py=it*it*it*y0+3*it*it*t*cy+3*it*t*t*cy+t*t*t*y1;
-        g.globalAlpha=0.55; g.fillStyle=col; g.beginPath(); g.arc(px,py,1.2,0,7); g.fill(); g.globalAlpha=1; } }
-  });
+  let glow=0; for(const s of strands) if(s.hl>glow)glow=s.hl;   // al pasar el cursor por los hilos, estos enlaces también iluminan
+  const bez=(ax,ay,bx,by,col,a,lw,ph)=>{ const mx=ax+(bx-ax)*0.5;   // controles a media x = tangente horizontal (líneas naturales)
+    g.strokeStyle=col; g.globalAlpha=a; g.lineWidth=lw; g.lineCap='round';
+    g.beginPath(); g.moveTo(ax,ay); g.bezierCurveTo(mx,ay,mx,by,bx,by); g.stroke();
+    const t=((T*0.3+ph)%1+1)%1, it=1-t;
+    const px=it*it*it*ax+3*it*it*t*mx+3*it*t*t*mx+t*t*t*bx, py=it*it*it*ay+3*it*it*t*ay+3*it*t*t*by+t*t*t*by;
+    g.globalAlpha=0.9*(0.55+0.45*glow); g.fillStyle=col; g.beginPath(); g.arc(px,py,1.9,0,7); g.fill(); };
+  const pairs=[[Z.flowGateG,Z.gateG,VERDE,0],[Z.flowGateR,Z.gateR,ROSA,0.5]];
+  pairs.forEach(([a,b,col,po])=>{ if(!a||!b)return;
+    const ax=a.x+a.w, bx=b.x, K=10;
+    for(let j=0;j<K;j++){ const f=K>1?j/(K-1):0.5, edge=Math.abs(f-0.5)*2;
+      const ay=a.y+(0.14+0.72*f)*a.h, by=b.y+(0.14+0.72*f)*b.h;
+      bez(ax,ay,bx,by,col, 0.3+0.42*glow+0.05*(1-edge), 1.3+1.5*glow, j*0.13+po); } });
+  g.globalAlpha=1;
   // continuidad de la línea blanca entre rectángulos: MISMO grosor + un punto en cada boca
   if(Z.flowDivY!=null){ const yd=Z.flowDivY; g.save(); g.strokeStyle='rgba(255,255,255,.85)'; g.lineWidth=2; g.lineCap='round';
     g.beginPath(); g.moveTo(Z.flowX1,yd); g.lineTo(Z.barX0,yd); g.stroke();
@@ -439,12 +446,15 @@ function exchangeCards(g){ const order=Z.exchOrder||[], n=order.length, gap=5, t
     g.fillStyle='rgba(255,255,255,.07)'; rr(g,tx,cy,bw2,chh,1.5); g.fill();
     g.fillStyle=col; g.globalAlpha=.85; rr(g,tx,cy,fbw,chh,1.5); g.fill(); g.globalAlpha=1;
     // brillo que fluye por la barra: señala actividad en vivo sin falsear el valor (24h real)
-    g.save(); rr(g,tx,cy,fbw,chh,1.5); g.clip(); const sx=tx+((T*55+ei*37)%(fbw+46))-23;
-    const sg=g.createLinearGradient(sx-14,0,sx+14,0); sg.addColorStop(0,'rgba(255,255,255,0)'); sg.addColorStop(.5,'rgba(255,255,255,.38)'); sg.addColorStop(1,'rgba(255,255,255,0)');
-    g.fillStyle=sg; g.fillRect(tx,cy,fbw,chh); g.restore();
+    g.save(); rr(g,tx,cy,fbw,chh,1.5); g.clip();
+    const sx=tx+((T*95+ei*37)%(fbw+46))-23;                        // barrido más rápido (más vivo)
+    const sg=g.createLinearGradient(sx-16,0,sx+16,0); sg.addColorStop(0,'rgba(255,255,255,0)'); sg.addColorStop(.5,'rgba(255,255,255,.5)'); sg.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=sg; g.fillRect(tx,cy,fbw,chh);
+    const pulse=0.5+0.5*Math.sin(T*3.2+ei*1.3); g.fillStyle=hexA(col,0.28+0.4*pulse);   // pulso en la punta (respira, no falsea el 24h)
+    g.fillRect(tx+fbw-Math.min(11,fbw),cy,Math.min(11,fbw),chh); g.restore();
     // actividad en vivo: partículas de liquidez fluyendo por la fila (siempre en movimiento)
-    const span=w-18; for(let d=0;d<3;d++){ const fx=x+9+((T*30+ei*41+d*(span/3))%span), aa=0.12+0.16*Math.sin(T*2.4+d*2+ei);
-      if(aa>0){ g.fillStyle=hexA(col,aa); g.beginPath(); g.arc(fx,y+ch*0.5,1.5,0,7); g.fill(); } }
+    const span=w-18; for(let d=0;d<4;d++){ const fx=x+9+((T*48+ei*41+d*(span/4))%span), aa=0.12+0.18*Math.sin(T*3+d*2+ei);
+      if(aa>0){ g.fillStyle=hexA(col,aa); g.beginPath(); g.arc(fx,y+ch*0.5,1.6,0,7); g.fill(); } }
     g.globalAlpha=1; }); }
 /* tarjeta emergente del exchange al pasar el cursor: datos REALES (CoinGecko) útiles para un trader */
 function exchPopup(g){ const ei=Z.exHover; if(ei==null||ei<0)return; const order=Z.exchOrder||[], idx=order.indexOf(ei); if(idx<0)return;
@@ -596,8 +606,9 @@ const UMBRAL_BALLENA=60000;   // una operación agresiva de ~$60k o más
 function onTrade(t){ if(!t)return; if(t.buy)_takBuy+=t.quote; else _takSell+=t.quote;
   if(t.quote>=UMBRAL_BALLENA){ const now=performance.now();
     for(const s of strands){ if(s.coin&&s.coin.symbol===t.symbol){ if(now-(s._wcool||0)<450)break; s._wcool=now; s._wp=0; s.hl=1; s._wbuy=t.buy; s._wmag=clamp(t.quote/250000,0.5,1.8);
-      // la MISMA ballena que viaja por el hilo SE REGISTRA en el WHALE FLOW (historial tocable, ya no se pierde)
-      if(t.quote>=120000){ const sym=t.symbol.replace('USDT',''); flowPush({cls:t.buy?'buy':'sell',label:t.buy?'BIG BUY':'BIG SELL',coin:sym,sym:sym,size:'$'+fmtVol(t.quote),usd:t.quote,src:'Binance Spot',up:!!t.buy,col:t.buy?'43,245,158':'255,77,110'}); }
+      // la tarjeta se CREA cuando la bola LLEGA al rectángulo (drawStrands la dispara), no al instante
+      if(t.quote>=120000){ const sym=t.symbol.replace('USDT',''); s._wpEvent={cls:t.buy?'buy':'sell',label:t.buy?'BIG BUY':'BIG SELL',coin:sym,sym:sym,size:'$'+fmtVol(t.quote),usd:t.quote,src:'Binance Spot',up:!!t.buy,col:t.buy?'43,245,158':'255,77,110'}; }
+      else s._wpEvent=null;
       break; } } } }
 let _nivBusy=false;
 async function refrescarNiveles(){ if(_nivBusy)return; _nivBusy=true;
@@ -682,12 +693,20 @@ function estilos(){
   .ob-sugi .nm{color:#7d8794;font:500 12px 'Saira Condensed',sans-serif;flex:1 1 auto;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   .ob-sugi .pc{font:600 12px 'IBM Plex Mono',monospace}
   .ob-info-ov{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;background:rgba(3,5,10,.74);backdrop-filter:blur(3px);animation:obfade .2s}
-  .ob-info-card{width:min(92vw,560px);max-height:88vh;overflow:auto;border-radius:18px;border:1px solid #2b3139;background:linear-gradient(180deg,#0c1119,#070b12);box-shadow:0 30px 90px rgba(0,0,0,.6);padding:26px 26px 22px}
-  .ob-info-card h2{margin:0;font:800 23px 'Saira Condensed',sans-serif;letter-spacing:.01em;color:#eef4fb}
-  .ob-info-card .tag{display:inline-block;margin:10px 0 14px;padding:4px 10px;border-radius:999px;border:1px solid rgba(232,184,75,.4);color:#E8B84B;font:700 10.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase}
-  .ob-info-card p{margin:0 0 13px;color:#b9c4d0;font-size:13.5px;line-height:1.6}
-  .ob-info-card .feat{display:flex;gap:10px;margin:0 0 10px;color:#cdd7e2;font-size:13px;line-height:1.5}
-  .ob-info-card .feat b{color:#2BF59E;font-weight:700}
+  .ob-info-card{width:min(94vw,620px);max-height:88vh;overflow:auto;border-radius:18px;border:1px solid #2b3139;background:linear-gradient(180deg,#0c1119,#070b12);box-shadow:0 30px 90px rgba(0,0,0,.6);padding:30px 30px 24px;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  .ob-info-card .ob-info-ey{display:inline-flex;align-items:center;gap:8px;font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#E8B84B;margin-bottom:14px}
+  .ob-info-card .ob-info-ey i{width:7px;height:7px;border-radius:50%;background:#2BF59E;box-shadow:0 0 8px #2BF59E;animation:obpulse 1.6s ease-in-out infinite}
+  @keyframes obpulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .ob-info-card h2{margin:0 0 11px;font:800 30px 'Chakra Petch','Plus Jakarta Sans',sans-serif;letter-spacing:.005em;color:#fff;line-height:1.04}
+  .ob-info-card .lead{margin:0 0 20px;color:#c3cdd8;font-size:15px;line-height:1.62;font-weight:400}
+  .ob-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ob-info-f{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:13px 14px}
+  .ob-info-f .fh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ob-info-f .fh span{font:700 11px 'IBM Plex Mono',monospace;color:#E8B84B;opacity:.85}
+  .ob-info-f .fh b{font:700 13.5px 'Plus Jakarta Sans',sans-serif;color:#eef4fb;letter-spacing:.01em}
+  .ob-info-f p{margin:0;font-size:12.5px;line-height:1.5;color:#9aa6b2}
+  .ob-info-card .foot{margin:18px 0 0;font-size:12px;color:#6b7784;line-height:1.5}
+  @media(max-width:560px){ .ob-info-grid{grid-template-columns:1fr} .ob-info-card h2{font-size:25px} }
   .ob-info-x{float:right;margin:-6px -6px 0 0;width:34px;height:34px;border-radius:9px;border:1px solid #2b3139;background:rgba(255,255,255,.04);color:#b7bdc6;cursor:pointer;display:grid;place-items:center}
   .ob-info-x:hover{border-color:#FF4D6E;color:#fff}
   @media(max-width:620px){
@@ -729,14 +748,15 @@ function estilos(){
   .ob-flowcard .fc-head{display:flex;align-items:center;gap:10px;margin-bottom:9px}
   .ob-flowcard .fc-logo{width:34px;height:34px;border-radius:50%;flex:0 0 auto;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;font:800 12px 'Saira Condensed',sans-serif;color:#cdd7e2}
   .ob-flowcard .fc-coin{font:800 18px 'Saira Condensed',sans-serif;color:#eef4fb;letter-spacing:.02em}
-  .ob-flowcard .fc-type{font:700 9.5px 'Saira Condensed',sans-serif;letter-spacing:.09em;color:#8a97a4}
+  .ob-flowcard .fc-type{font:700 10.5px 'Saira Condensed',sans-serif;letter-spacing:.08em;color:#9aa6b2}
   .ob-flowcard .fc-type.buy{color:#9effc9} .ob-flowcard .fc-type.sell{color:#ffb3c0} .ob-flowcard .fc-type.liq{color:#ffd98a} .ob-flowcard .fc-type.chain{color:#bfe0ff}
-  .ob-flowcard .fc-amt{font:700 16px 'IBM Plex Mono',monospace;color:#fff;margin-bottom:6px}
-  .ob-flowcard .fc-rows{display:flex;flex-direction:column}
+  .ob-flowcard .fc-amt{font:700 21px 'IBM Plex Mono',monospace;color:#fff;line-height:1.05;letter-spacing:-.01em}
+  .ob-flowcard .fc-sub{font:600 12.5px 'IBM Plex Mono',monospace;color:#9aa6b2;margin-top:2px}
+  .ob-flowcard .fc-rows{display:flex;flex-direction:column;margin-top:8px}
   .ob-flowcard .fc-row,.ob-flowcard .fc-adr{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid rgba(255,255,255,.055);font:600 11.5px 'Saira Condensed',sans-serif}
   .ob-flowcard .fc-row>span,.ob-flowcard .fc-adr>span{color:#8a97a4;flex:0 0 auto;white-space:nowrap}
   .ob-flowcard .fc-row>b{margin-left:auto;color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;white-space:nowrap;text-align:right}
-  .ob-flowcard .fc-adr code{color:#cfe0ee;font:600 11.5px 'IBM Plex Mono',monospace;margin-right:auto;white-space:nowrap}
+  .ob-flowcard .fc-adr code{color:#cfe0ee;font:600 12px 'IBM Plex Mono',monospace;margin-right:auto;white-space:nowrap;letter-spacing:.01em}
   .ob-flowcard .fc-b{cursor:pointer;width:22px;height:20px;display:grid;place-items:center;border:1px solid #2b3139;border-radius:5px;background:rgba(255,255,255,.05);color:#aeb9c6;font-size:11px;flex:0 0 auto}
   .ob-flowcard .fc-adr .fc-b+.fc-b{margin-left:5px}
   .ob-flowcard .fc-b:hover{border-color:#C9A84B;color:#E8B84B}
@@ -753,15 +773,15 @@ function estilos(){
   .ob-expop .xp-r{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid rgba(255,255,255,.05);font:600 12px 'Saira Condensed',sans-serif;color:#9aa6b2}
   .ob-expop .xp-r b{color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px}
   /* slots: cuadrado de arriba (compra) y de abajo (venta) que encasillan la alerta más nueva */
-  .ob-slot{position:absolute;z-index:5;pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 9px;border-radius:7px;overflow:hidden;
+  .ob-slot{position:absolute;z-index:5;pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:0 9px;border-radius:7px;overflow:hidden;
     background:rgba(9,14,21,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);transition:box-shadow .2s ease}
-  .ob-slot.empty{background:rgba(9,14,21,.38)}
+  .ob-slot.empty{justify-content:center;background:rgba(9,14,21,.38)}
   .ob-slot .sl-empty{font:800 8.5px 'Saira Condensed',sans-serif;letter-spacing:.2em;color:#55606c;text-transform:uppercase}
-  .ob-slot .sl-logo{width:24px;height:24px;border-radius:50%;flex:0 0 auto;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font:800 9px 'Saira Condensed',sans-serif;color:#cdd7e2}
-  .ob-slot .sl-mid{flex:0 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.12;overflow:hidden}
-  .ob-slot .sl-lbl{font:800 9.5px 'Saira Condensed',sans-serif;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ob-slot .sl-tk{font:700 8.5px 'Saira Condensed',sans-serif;color:#8a97a4;white-space:nowrap}
-  .ob-slot .sl-a{flex:0 0 auto;font:700 12px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+  .ob-slot .sl-logo{width:26px;height:26px;border-radius:50%;flex:0 0 auto;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font:800 9px 'Saira Condensed',sans-serif;color:#cdd7e2}
+  .ob-slot .sl-mid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px;overflow:hidden}
+  .ob-slot .sl-lbl{font:800 9px 'Saira Condensed',sans-serif;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ob-slot .sl-a{font:700 13.5px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap;line-height:1.05}
+  .ob-slot .sl-tk{flex:0 0 auto;font:800 9px 'Saira Condensed',sans-serif;color:#9aa6b2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:3px 6px;letter-spacing:.03em}
   .ob-slot.buy{box-shadow:inset 0 0 0 1px rgba(43,245,158,.3)} .ob-slot.buy .sl-lbl{color:#9effc9}
   .ob-slot.sell{box-shadow:inset 0 0 0 1px rgba(255,77,110,.3)} .ob-slot.sell .sl-lbl{color:#ffb3c0}
   .ob-slot.buy.lit{animation:litbuy .8s ease} .ob-slot.sell.lit{animation:litsell .8s ease}
@@ -847,8 +867,9 @@ function flowPush(ev){ ev.id=++_flowId; ev.t=ev.t||Date.now();
   if(ev.big){ autoFicha(ev); const now=performance.now(); if(_soundOn && now-_sndCool>700){ _sndCool=now; beep(ev.up); } }
 }
 function slotHTML(e){ if(!e)return `<div class="sl-empty">· waiting ·</div>`;
-  const im=LOGO[e.sym]; const logo=(im&&im.src)?`<span class="sl-logo" style="background-image:url('${im.src}')"></span>`:`<span class="sl-logo sl-ph">${(e.coin||'·').slice(0,3)}</span>`;
-  return `${logo}<div class="sl-mid"><b class="sl-lbl">${e.label}</b><span class="sl-tk">${e.coin}</span></div><div class="sl-a">${e.size}</div>`; }
+  const url=domLogo(e.sym); const logo=url?`<span class="sl-logo" style="background-image:url('${url}')"></span>`:`<span class="sl-logo sl-ph">${(e.coin||'·').slice(0,3)}</span>`;
+  const amt=(e.cls==='chain'&&e.usd)?('$'+fmtVol(e.usd)):e.size;   // on-chain: el valor en $ (compacto); el ticker ya va en el badge
+  return `${logo}<div class="sl-mid"><span class="sl-lbl">${e.label}</span><span class="sl-a">${amt}</span></div><span class="sl-tk">${e.coin}</span>`; }
 function renderSlots(){ const b=document.getElementById('ob-slotbuy'), s=document.getElementById('ob-slotsell');
   if(b){ b.className='ob-slot buy'+(buyLatest?'':' empty'); b.innerHTML=slotHTML(buyLatest); if(buyLatest){ b.dataset.fid=buyLatest.id; b.classList.remove('lit'); void b.offsetWidth; b.classList.add('lit'); } }
   if(s){ s.className='ob-slot sell'+(sellLatest?'':' empty'); s.innerHTML=slotHTML(sellLatest); if(sellLatest){ s.dataset.fid=sellLatest.id; s.classList.remove('lit'); void s.offsetWidth; s.classList.add('lit'); } } }
@@ -859,16 +880,17 @@ function beep(up){ try{ const AC=window.AudioContext||window.webkitAudioContext;
   const t=ac.currentTime, f=up?770:560; o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*1.5,t+0.07);
   g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.11,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);
   o.start(t); o.stop(t+0.22); }catch(_){} }
-function fichaHTML(e){ const im=LOGO[e.sym]||null;
-  const logo=(im&&im.src)?`<span class="fc-logo" style="background-image:url('${im.src}')"></span>`:`<span class="fc-logo fc-ph">${(e.coin||'·').slice(0,3)}</span>`;
+function fichaHTML(e){ const url=domLogo(e.sym);
+  const logo=url?`<span class="fc-logo" style="background-image:url('${url}')"></span>`:`<span class="fc-logo fc-ph">${(e.coin||'·').slice(0,3)}</span>`;
   let tm=''; try{ tm=new Date(e.t||Date.now()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }catch(_){}
   const px=e.price?('$'+fmtP(e.price)):null, impact=(e.usd&&e.vol24h)?(e.usd/e.vol24h*100):null;
   const imp=impact!=null?((impact<0.1?'<0.1':impact>99?'>99':impact.toFixed(impact<1?2:1))+'% · 24h'):null;
-  const R=[]; let reading;
+  const mid=a=>{ a=a||''; return a.length>10?(a.slice(0,5)+'…'+a.slice(-4)):(a||'----'); };
+  const R=[]; let reading, hero=e.size, sub='';
   if(e.cls==='chain'){
-    R.push(['Value', e.usd?('$'+fmtVol(e.usd)):'—']);
-    R.push(['From', `<code>…${e.fromShort||'----'}</code><button class="fc-b" data-copy="${e.fullFrom||''}" title="Copiar">⧉</button>`, 1]);
-    R.push(['To', `<code>…${e.toShort||'----'}</code><button class="fc-b" data-copy="${e.fullTo||''}" title="Copiar">⧉</button><button class="fc-b" data-exp="${e.fullTo||e.fullFrom||''}" title="Ver en la cadena">↗</button>`, 1]);
+    hero = e.usd?('$'+fmtVol(e.usd)):e.size; sub = e.usd? e.size : '';   // el VALOR en $ como número grande; el monto en BTC debajo
+    R.push(['From', `<code>${mid(e.fullFrom)}</code><button class="fc-b" data-copy="${e.fullFrom||''}" title="Copy address">⧉</button><button class="fc-b" data-exp="${e.fullFrom||''}" title="View on explorer">↗</button>`, 1]);
+    R.push(['To', `<code>${mid(e.fullTo)}</code><button class="fc-b" data-copy="${e.fullTo||''}" title="Copy address">⧉</button><button class="fc-b" data-exp="${e.fullTo||''}" title="View on explorer">↗</button>`, 1]);
     reading='Large on-chain transfer · watch exchange inflow or accumulation';
   } else if(e.cls==='liq'){
     if(px)R.push(['Price', px]);
@@ -883,7 +905,7 @@ function fichaHTML(e){ const im=LOGO[e.sym]||null;
   }
   const rows=R.map(r=> r[2]? `<div class="fc-adr"><span>${r[0]}</span>${r[1]}</div>` : `<div class="fc-row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
   return `<div class="fc-head">${logo}<div class="fc-ht"><div class="fc-coin">${e.coin}</div><div class="fc-type ${e.cls}">${e.label}${tm?(' · '+tm):''}</div></div><span class="fc-side ${e.up?'u':'d'}">${e.up?'BUY':'SELL'}</span></div>`+
-    `<div class="fc-amt">${e.size}</div><div class="fc-rows">${rows}</div>`+
+    `<div class="fc-amt">${hero}</div>${sub?`<div class="fc-sub">${sub}</div>`:''}<div class="fc-rows">${rows}</div>`+
     `<div class="fc-read"><span>Reading</span><p>${reading}</p></div>`;
 }
 function fichaEvent(fid){ if(buyLatest&&String(buyLatest.id)===String(fid))return buyLatest; if(sellLatest&&String(sellLatest.id)===String(fid))return sellLatest; return flowItems.find(x=>String(x.id)===String(fid)); }
@@ -914,8 +936,9 @@ function wireFlow(){ const L=document.getElementById('ob-flowlist'), card=docume
 function syncExPopup(){ const el=document.getElementById('ob-expop'); if(!el)return; const ei=Z.exHover;
   if(ei==null||ei<0){ if(el._on){ el._on=false; el.style.opacity='0'; } el._ei=-2; return; }
   const order=Z.exchOrder||[], idx=order.indexOf(ei); if(idx<0){ el.style.opacity='0'; return; }
-  if(el._ei!==ei){ el._ei=ei; const e=EXCH[ei], m=EXMETA[ei]||{}, img=EXIMG[ei];
-    const logo=(img&&img.src)?`<span class="xp-logo" style="background-image:url('${img.src}')"></span>`:`<span class="xp-logo xp-ph">${e[1]}</span>`;
+  if(el._ei!==ei){ el._ei=ei; const e=EXCH[ei], m=EXMETA[ei]||{};
+    const url=domLogo(EXTOKEN[e[0]])||((EXIMG[ei]&&EXIMG[ei].src)||'');   // CoinGecko oficial (PancakeSwap recupera su logo)
+    const logo=url?`<span class="xp-logo" style="background-image:url('${url}')"></span>`:`<span class="xp-logo xp-ph">${e[1]}</span>`;
     const rows=[['24h Volume', m.volUsd?'$'+fmtVol(m.volUsd):'—'],['Trust rank',m.rank?'#'+m.rank:'—'],['Trust score',m.trust?m.trust+' / 10':'—'],['Established',m.year?String(m.year):'—'],['Country',m.country||'—']];
     el.innerHTML=`<div class="xp-h">${logo}<div><div class="xp-n">${e[0]}</div><div class="xp-s">${m.src?('DEX · '+String(m.src).toUpperCase()):'EXCHANGE · 24H DATA'}</div></div></div>`+rows.map(r=>`<div class="xp-r"><span>${r[0]}</span><b>${r[1]}</b></div>`).join(''); }
   const gap=5, tot=Z.y1-Z.y0, n=order.length, ch=(tot-gap*Math.max(0,n-1))/Math.max(1,n), ry=Z.y0+idx*(ch+gap);
@@ -947,14 +970,16 @@ function abrirInfo(){ if(document.getElementById('ob-info-ov'))return;
   const o2=document.createElement('div'); o2.className='ob-info-ov'; o2.id='ob-info-ov';
   o2.innerHTML=`<div class="ob-info-card">
     <button class="ob-info-x" id="ob-info-x">${IC.x}</button>
-    <span class="tag">High-Frequency Liquidity Radar</span>
+    <div class="ob-info-ey"><i></i> REAL-TIME LIQUIDITY INTELLIGENCE</div>
     <h2>Order Block Liquidity</h2>
-    <p>A corporate-grade, high-frequency system that reads the crypto market in real time. It tracks where liquidity enters across the top exchanges and DEXs and routes it, live, into the assets moving right now, so you see order flow forming as it happens.</p>
-    <div class="feat"><b>›</b><span>Live tick-by-tick order flow and market breadth from Binance spot.</span></div>
-    <div class="feat"><b>›</b><span>Real support and resistance zones from swing pivots, scored by how many times price tested each level.</span></div>
-    <div class="feat"><b>›</b><span>Institutional volume profile on every asset: POC, value area and liquidity nodes.</span></div>
-    <div class="feat"><b>›</b><span>24h exchange and DEX volume, plus a full momentum and structure read on any coin.</span></div>
-    <p style="opacity:.6;font-size:12px;margin-top:4px">Search any coin in the top bar to open its real-time read. For information only, not financial advice.</p>
+    <p class="lead">A high-frequency intelligence engine that reads the entire crypto market the way an institutional desk does — every tick, every whale, every liquidation — and fuses it into one live picture of where capital is actually moving, as it moves.</p>
+    <div class="ob-info-grid">
+      <div class="ob-info-f"><div class="fh"><span>01</span><b>Tick-by-tick order flow</b></div><p>Live taker pressure, market breadth and the real bid/ask book from Binance spot, recomputed on every print.</p></div>
+      <div class="ob-info-f"><div class="fh"><span>02</span><b>Whale &amp; on-chain radar</b></div><p>Large market orders, forced liquidations and multi-million on-chain transfers, caught the instant they fire — with the wallet and a one-click explorer link.</p></div>
+      <div class="ob-info-f"><div class="fh"><span>03</span><b>Institutional chart engine</b></div><p>Swing-pivot support and resistance scored by touches, full volume profile (POC, value area, HVN/LVN) and a structure read on any asset.</p></div>
+      <div class="ob-info-f"><div class="fh"><span>04</span><b>Exchange liquidity map</b></div><p>24h volume and trust across the top centralized exchanges and DEXs, ranked live.</p></div>
+    </div>
+    <p class="foot">Search any coin in the top bar to open its real-time read. Built for monitoring — not financial advice.</p>
   </div>`;
   (document.getElementById('ob-stage')||document.body).appendChild(o2);
   o2.addEventListener('mousedown',e=>{ if(e.target===o2)o2.remove(); });
@@ -1100,7 +1125,7 @@ async function abrirDetalle(c){
   const modalEl=wrap.querySelector('.ob-modal'), fsBtn=document.getElementById('ob-mfs');
   fsBtn.onclick=()=>{ try{ if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
     else { (modalEl.requestFullscreen||modalEl.webkitRequestFullscreen).call(modalEl); } }catch(_){} };
-  const lg=document.getElementById('ob-mlg'), im=LOGO[c.sym]; if(im&&im.src){ lg.style.backgroundImage=`url(${im.src})`; lg.textContent=''; }
+  const lg=document.getElementById('ob-mlg'), lu=domLogo(c.sym); if(lu){ lg.style.backgroundImage=`url(${lu})`; lg.textContent=''; }
   document.getElementById('ob-mpc').textContent=(c.disp>=0?'+':'')+(c.disp||0).toFixed(2)+'%';
   document.getElementById('ob-mpr').textContent='$'+fmtP(c.price||c.cur||0);
   // temporalidades a la IZQUIERDA, estilo plataforma (chip + menú), igual que el resto de herramientas
