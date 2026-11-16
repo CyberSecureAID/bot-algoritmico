@@ -194,11 +194,8 @@ function popAjustes(cfg, params, nombre, anchor, cambiar, tipo, opc = []) {
   // Opciones PROPIAS del indicador (distintas en cada uno): lo que lo hace unico.
   if (opc && opc.length) html += `<div class="indtb-pop-t">Options</div>` + opc.map(filaOpc).join('');
   html += `<div class="indtb-pop-t">Style</div>` + OPC_UNIV.filter((o) => esOvl || !o.ovl).map((o) => o.kind === 'toggle' ? filaTgl(o) : o.kind === 'style' ? filaLs(o) : filaNum(o)).join('');
-  // Transformacion Libre: esculpe la linea sobre la grafica. Se guarda y se sigue
-  // aplicando en vivo. Novedad que no esta en TradingView.
-  html += `<div class="indtb-pop-t">Free transform</div>`
-    + `<div class="indtb-row indtb-rowt"><span>Sculpt on chart ✋</span><button type="button" class="indtb-tgl ${cfg.ft ? 'on' : ''}" data-tgl="ft"><i></i></button></div>`
-    + `<div class="indtb-row"><span>Molded shape</span><button type="button" class="indtb-ftreset">Reset</button></div>`;
+  // La Transformacion Libre ya NO vive en la config de cada indicador: ahora es un
+  // sistema global de Multichart (boton dorado "Free Transform" con su propio menu).
   const pop = document.createElement('div'); pop.className = 'indtb-pop indtb-pop-cfg'; pop.dataset.k = 'cfg';
   pop.innerHTML = html;
   document.body.appendChild(pop); _pop = pop;
@@ -210,7 +207,6 @@ function popAjustes(cfg, params, nombre, anchor, cambiar, tipo, opc = []) {
   pop.querySelectorAll('.indtb-val').forEach((inp) => inp.onchange = () => { const nv = parseFloat(inp.value); if (isFinite(nv)) setVal(inp.dataset.val, nv); else inp.value = cfg[inp.dataset.val]; });
   pop.querySelectorAll('.indtb-slider').forEach((sl) => sl.oninput = () => setVal(sl.dataset.slider, parseFloat(sl.value)));
   pop.querySelectorAll('[data-tgl]').forEach((b) => b.onclick = () => { const k = b.dataset.tgl; cfg[k] = !cfg[k]; b.classList.toggle('on', cfg[k]); cambiar(); });
-  { const rb = pop.querySelector('.indtb-ftreset'); if (rb) rb.onclick = () => { cfg.warp = null; cambiar(); }; }
   pop.querySelectorAll('[data-ls]').forEach((b) => b.onclick = () => { cfg.ls = b.dataset.ls; cfg.dash = cfg.ls === 'dashed'; pop.querySelectorAll('[data-ls]').forEach((x) => x.classList.toggle('on', x === b)); cambiar(); });
   pop.querySelectorAll('[data-sel]').forEach((s) => s.onchange = () => { cfg[s.dataset.sel] = s.value; cambiar(); });
 }
