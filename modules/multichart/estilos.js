@@ -75,6 +75,21 @@ const CSS = `
   .mc-indbtn{height:28px; padding:0 11px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); font-weight:700; font-size:12px}
   .mc-indbtn:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-indbtn.on{border-color:var(--mc-gold); color:var(--mc-gold); background:rgba(232,184,75,.1)}
   .mc-indbtn svg{width:12px; height:12px; opacity:.8}
+  .mc-ftbtn{height:28px; padding:0 11px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; border:1px solid var(--mc-gold-soft); background:linear-gradient(180deg,rgba(232,184,75,.16),rgba(232,184,75,.05)); color:var(--mc-gold); font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap; flex:0 0 auto}
+  .mc-ftbtn:hover{border-color:var(--mc-gold); background:linear-gradient(180deg,rgba(232,184,75,.26),rgba(232,184,75,.1))}
+  .mc-ftbtn.on{border-color:var(--mc-gold); background:rgba(232,184,75,.22); box-shadow:inset 0 0 0 1px var(--mc-gold)}
+  .mc-ftbtn svg{width:14px; height:14px}
+  .mc-ftmenu{position:fixed; z-index:10050; min-width:214px; padding:7px; border-radius:13px; background:linear-gradient(180deg,rgba(24,30,40,.97),rgba(14,18,26,.97)); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.13); box-shadow:0 16px 44px rgba(0,0,0,.62); font-family:var(--mc-mono); animation:mcftin .13s ease both}
+  @keyframes mcftin{from{opacity:0; transform:translateY(-5px)} to{opacity:1; transform:none}}
+  .mc-ftmenu-h{font-size:9px; letter-spacing:1px; text-transform:uppercase; color:#8b95a1; margin:3px 6px 8px}
+  .mc-ftrow{display:flex; align-items:center; gap:11px; width:100%; padding:9px 10px; border-radius:9px; border:none; background:transparent; color:#d7dde4; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:600; text-align:left; margin:1px 0}
+  .mc-ftrow:hover{background:rgba(255,255,255,.07)}
+  .mc-ftrow.on{background:rgba(232,184,75,.16); color:var(--mc-gold); box-shadow:inset 0 0 0 1px rgba(232,184,75,.4)}
+  .mc-ftrow svg{width:19px; height:19px; flex:0 0 auto; opacity:.92}
+  .mc-ftrow .tx{flex:1; line-height:1.25}
+  .mc-ftrow .sub{display:block; font-size:10px; font-weight:500; color:#8b95a1; margin-top:2px}
+  .mc-ftrow.on .sub{color:rgba(232,184,75,.7)}
+  .mc-ftrow.danger:hover{background:rgba(255,91,110,.14); color:#ff6b7a}
   .mc-hb{width:28px; height:28px; display:inline-grid; place-items:center; border-radius:8px; border:1px solid transparent; background:transparent; color:var(--mc-ink3)}
   .mc-hb:hover{border-color:var(--mc-line2); color:var(--mc-gold); background:rgba(255,255,255,.04)} .mc-hb svg{width:15px; height:15px}
   .mc-hb.on{color:var(--mc-gold)} .mc-hb.mc-close:hover{color:var(--mc-down2); border-color:var(--mc-down)}
@@ -150,6 +165,9 @@ const CSS = `
   .mc-chip{pointer-events:auto; display:inline-flex; align-items:center; gap:5px; padding:2px 8px 2px 6px; border-radius:7px; font-family:var(--mc-mono); font-size:11px; line-height:1.55; background:rgba(8,12,18,.72); border:1px solid rgba(255,255,255,.1); cursor:pointer; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); white-space:nowrap}
   .mc-chip:hover{border-color:rgba(255,255,255,.28); background:rgba(14,19,27,.86)}
   .mc-chip i{width:9px; height:9px; border-radius:2.5px; flex:0 0 auto}
+  .mc-chipx{margin-left:3px; width:15px; height:15px; border-radius:4px; border:none; background:transparent; color:currentColor; opacity:.5; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; flex:0 0 auto}
+  .mc-chipx:hover{opacity:1; background:rgba(255,91,110,.22); color:#ff6b7a}
+  .mc-chipx svg{width:9px; height:9px}
 
   /* ── Modal (guardar imagen) ── */
   .mc-modal{position:fixed; inset:0; z-index:9600; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(3,6,10,.74); backdrop-filter:blur(4px)}
