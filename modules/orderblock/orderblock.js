@@ -39,13 +39,14 @@ let depthStream=null; const book={bids:[],asks:[],bidVol:0,askVol:0,mid:0};   //
 let chainStream=null, _tapeCool=0, _chainCool=0;   // cinta de ballenas (trades + on-chain) y su ritmo
 let flowItems=[];   // eventos del rectángulo de FLUJO (ballenas, liquidaciones, on-chain)
 function onChainWhale(m){ if(!m||!(m.amount>0))return; const now=performance.now(); if(now-_chainCool<1500)return; _chainCool=now;
-  // on-chain: solo los últimos 4 caracteres de la dirección destino, con copiar + ver en la cadena
-  const dst=m.to||m.from||'', last4=dst?dst.slice(-4):'----';
-  flowPush({cls:'chain',label:'ON-CHAIN',coin:'BTC',size:m.amount.toFixed(1)+' BTC',addr:last4,fullAddr:dst,up:true,col:'33,145,217'}); }
+  const f=m.from||'', t2=m.to||'', dst=t2||f;    // guardo from y to completos: la ficha muestra ...4 + copiar + explorador
+  flowPush({cls:'chain',label:'ON-CHAIN',coin:'BTC',sym:'BTC',size:m.amount.toFixed(1)+' BTC',usd:(book.mid?m.amount*book.mid:0),src:'On-chain BTC',
+    from:f,fromShort:f?f.slice(-4):'----',to:t2,toShort:t2?t2.slice(-4):'----',fullFrom:f,fullTo:t2,addr:dst?dst.slice(-4):'----',fullAddr:dst,up:true,col:'33,145,217'}); }
 let liqStream=null, _liqCool=0;
 function onLiq(l){ if(!l||!(l.usd>=30000))return; const now=performance.now(); if(now-_liqCool<800)return; _liqCool=now;
   // LONG liquidada = venta forzada (bajista -> SELL FLOW); SHORT = compra forzada (alcista -> BUY FLOW)
-  flowPush({cls:'liq',label:l.longLiq?'LIQ LONG':'LIQ SHORT',coin:l.symbol.replace('USDT',''),size:'$'+fmtVol(l.usd),up:!l.longLiq,col:'232,184,75'}); }
+  const sym=l.symbol.replace('USDT','');
+  flowPush({cls:'liq',label:l.longLiq?'LIQ LONG':'LIQ SHORT',coin:sym,sym:sym,size:'$'+fmtVol(l.usd),usd:l.usd,src:'Bybit Perps',up:!l.longLiq,col:'232,184,75'}); }
 async function refrescarPulso(){ const p=document.getElementById('ob-pulse'); if(!p)return;
   let fng=null,gl=null; try{ fng=await D.fearGreed(); }catch(_){} try{ gl=await D.globalMkt(); }catch(_){}
   const fcol=v=>v>=75?'#2BF59E':v>=55?'#9fe06a':v>=45?'#E8B84B':v>=25?'#ff9f43':'#FF4D6E'; let html='';
@@ -64,9 +65,11 @@ const SPOT='https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master
 const DEF_URL=new URL('../terminal/img/token-fallback.webp', import.meta.url).href;
 // Cadena de respaldos con CORS. im._alt = lista de URLs a probar en orden si la actual falla.
 // Siempre termina en el logo por defecto, así ninguna moneda queda sin logo.
-function imgChain(first, alt){ const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous'; im._alt=alt||[]; im._i=0;
+const _imgCache={};
+function imgChain(first, alt){ if(_imgCache[first])return _imgCache[first];     // misma imagen reutilizada: sin parpadeo
+  const im=new Image(); im.referrerPolicy='no-referrer'; im.crossOrigin='anonymous'; im._alt=alt||[]; im._i=0;
   im.onerror=function(){ if(im._i>=im._alt.length){ im.onerror=null; return; } im.src=im._alt[im._i++]; };
-  im.src=first; return im; }
+  im.src=first; _imgCache[first]=im; return im; }
 // moneda: spothq (por ticker) -> CoinGecko (respaldo) -> logo por defecto
 function imgLogo(ticker, cgUrl){ const alt=[]; if(cgUrl)alt.push(cgUrl); alt.push(DEF_URL); return imgChain(SPOT+String(ticker||'').toLowerCase()+'.png', alt); }
 // exchange: marca real (CoinGecko) -> icono de su token (spothq) -> logo por defecto
@@ -171,12 +174,15 @@ function buildStrands(){
     strandsFaint.push({ y0:oy, up, exch:ei, phase:rnd(0,6.28), amp:rnd(5,15), hl:0, col:up?VERDE:ROSA, hero:false, r:Math.random() }); }
 }
 function strandPath(s){
-  const x0=Z.funX0, x1=Z.flowX0, N=28, pts=[];
+  // Curva bezier cúbica con controles a media x (misma dinámica NATURAL que el lado derecho,
+  // rectángulo -> tarjetas). Antes usaba una convergencia potencia + seno que deformaba las
+  // líneas al pegarse a la cara blanca (efecto "transformación libre"). Esto lo elimina.
+  const x0=Z.funX0, x1=Z.flowX0, N=28, pts=[], mx=x0+(x1-x0)*0.5;
   const divY=Z.y0+split*(Z.y1-Z.y0);
-  const yEnd = s.up ? Z.y0+10 + s.r*(divY-Z.y0-20) : divY+10 + s.r*(Z.y1-divY-20);
-  for(let k=0;k<=N;k++){ const t=k/N, x=x0+t*(x1-x0);
-    const bulge=Math.sin(t*Math.PI), conv=Math.pow(t,1.6);
-    const y = s.y0 + (yEnd-s.y0)*conv + Math.sin(t*4.5+s.phase)*s.amp*bulge;
+  const yEnd = s.up ? Z.y0+12 + s.r*(divY-Z.y0-24) : divY+12 + s.r*(Z.y1-divY-24);
+  const drift=Math.sin(T*0.5+s.phase)*2.0;            // leve vida, nunca deforma (cero en los extremos)
+  for(let k=0;k<=N;k++){ const t=k/N, it=1-t, x=x0+t*(x1-x0);
+    const y = it*it*it*s.y0 + 3*it*it*t*s.y0 + 3*it*t*t*yEnd + t*t*t*yEnd + drift*Math.sin(t*Math.PI);
     pts.push([x,y]); }
   return pts;
 }
@@ -198,11 +204,7 @@ function dotMatrix(){ DM=document.createElement('canvas'); DM.width=PW; DM.heigh
   for(let y=y0;y<=y1;y+=st)for(let x=x0;x<=x1;x+=st){ const tr=(x-x0)/(x1-x0);
     d.fillStyle=`rgba(70,135,115,${(0.03+0.045*Math.sin(x*0.03)+0.05*tr).toFixed(3)})`; d.fillRect(x,y,1.5,1.5); } }
 function substrate(){ ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,PW,PH);
-  if(!DM)dotMatrix(); ctx.drawImage(DM,0,0); ctx.setTransform(DPR,0,0,DPR,0,0);
-  [[2,.4],[1,.32],[-1,.3]].forEach(([p,a])=>{ const y=Y(p);
-    const g=ctx.createLinearGradient(Z.funX0,0,Z.clX0,0);
-    g.addColorStop(0,hexA(AZUL,0)); g.addColorStop(.12,hexA(AZUL,a)); g.addColorStop(.82,hexA(AZUL,a*.6)); g.addColorStop(1,hexA(AZUL,0));
-    ctx.strokeStyle=g; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(Z.funX0,y); ctx.lineTo(Z.clX0,y); ctx.stroke(); }); }
+  if(!DM)dotMatrix(); ctx.drawImage(DM,0,0); ctx.setTransform(DPR,0,0,DPR,0,0); }
 
 /* ===== termometro ===== */
 // Termómetro = AMPLITUD DE MERCADO real: fracción de monedas subiendo. Dato útil (riesgo on/off).
@@ -295,7 +297,11 @@ function filterBar(g){
   gate(g,x0,gY,bw,gH,VHI); gate(g,x0,rY,bw,rH,RHI);
   Z.gateG={x:x0,y:gY,w:bw,h:gH}; Z.gateR={x:x0,y:rY,w:bw,h:rH};
   cornerMarks(g,x0-7,y0-7,bw+14,h+14,18,hexA(VERDE,.55),1.6);
-  if(haveBook){ g.font='700 9px "Saira Condensed",sans-serif'; g.fillStyle='rgba(150,165,180,.85)'; g.textAlign='center'; g.textBaseline='alphabetic'; g.fillText('LIVE ORDER BOOK · BTC '+(book.mid?('$'+fmtP(book.mid)):''),(x0+x1)/2,y0-12); }
+  if(haveBook){ g.textAlign='center'; g.textBaseline='alphabetic';
+    g.font='700 9px "Saira Condensed",sans-serif'; g.fillStyle='rgba(150,165,180,.85)'; g.fillText('LIVE ORDER BOOK · BTC '+(book.mid?('$'+fmtP(book.mid)):''),(x0+x1)/2,y0-12);
+    // desbalance del LIBRO movido ARRIBA (antes abajo, se cortaba en el navegador)
+    const tvv=book.bidVol+book.askVol, bidp=tvv?Math.round(book.bidVol/tvv*100):50;
+    g.font='700 8.5px "Saira Condensed",sans-serif'; g.fillStyle='rgba(130,145,160,.8)'; g.fillText('BID '+bidp+'%  ·  ASK '+(100-bidp)+'%',(x0+x1)/2,y0-25); g.textAlign='left'; }
   g.font='600 13px "IBM Plex Mono",monospace'; g.fillStyle='rgba(220,235,245,.8)'; g.textAlign='center';
   g.fillText(String(COINS.length||0),(x0+x1)/2,y1+17);
   // presión de TAKER en vivo (compra agresiva vs venta agresiva), dato real del order flow
@@ -304,10 +310,6 @@ function filterBar(g){
   g.textAlign='right'; g.fillStyle=VERDE; g.fillText('BUY '+bp+'%', cx-4, y1+33);
   g.fillStyle='rgba(120,135,150,.7)'; g.textAlign='center'; g.fillText('·', cx, y1+33);
   g.textAlign='left'; g.fillStyle=ROSA; g.fillText('SELL '+(100-bp)+'%', cx+4, y1+33);
-  // desbalance real del LIBRO (liquidez en reposo): cuánta compra vs venta espera en el libro
-  if(haveBook){ const tvv=book.bidVol+book.askVol, bidp=tvv?Math.round(book.bidVol/tvv*100):50;
-    g.font='700 9px "Saira Condensed",sans-serif'; g.textAlign='center'; g.fillStyle='rgba(130,145,160,.8)';
-    g.fillText('BOOK  BID '+bidp+'%  ·  ASK '+(100-bidp)+'%',cx,y1+46); }
   g.textAlign='left';
   Z.divY=divY;
 }
@@ -322,17 +324,28 @@ function gate(g,x,y,w,h,hi){
 function flowBar(g){
   const x0=Z.flowX0,x1=Z.flowX1,y0=Z.y0,y1=Z.y1,h=y1-y0,bw=x1-x0;
   const divY=y0+split*h;
-  // zonas sutiles (verde = presión compradora arriba, roja abajo); el detalle va en el feed DOM encima
-  g.fillStyle=hexA(VERDE,0.10); g.fillRect(x0,y0,bw,divY-y0);
-  g.fillStyle=hexA(ROSA,0.10); g.fillRect(x0,divY,bw,y1-divY);
+  // zonas base
+  g.fillStyle=hexA(VERDE,0.07); g.fillRect(x0,y0,bw,divY-y0);
+  g.fillStyle=hexA(ROSA,0.07); g.fillRect(x0,divY,bw,y1-divY);
+  // VOLUMEN de fondo (segundo plano transparente): barras en movimiento, verde arriba / rojo abajo,
+  // a baja intensidad para que NO tape las tarjetas; + haz de escaneo que recorre las tarjetas.
+  g.save(); rr(g,x0,y0,bw,h,10); g.clip();
+  const rows=Math.floor(h/13);
+  for(let r=0;r<rows;r++){ const yy=y0+r*13, upz=(yy<divY), col=upz?VERDE:ROSA;
+    const len=bw*(0.28+0.5*Math.abs(Math.sin(T*1.05+r*0.55)));
+    g.fillStyle=hexA(col,0.05); g.fillRect(x0,yy+1,len,11); }
+  const scanY=y0+(0.5+0.5*Math.sin(T*0.5))*h, sg2=g.createLinearGradient(0,scanY-28,0,scanY+28);
+  sg2.addColorStop(0,'rgba(255,255,255,0)'); sg2.addColorStop(.5,'rgba(195,214,232,.08)'); sg2.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=sg2; g.fillRect(x0,scanY-28,bw,56); g.restore();
   // borde blanco izquierdo + MISMA línea blanca divisoria que sube/baja con el flujo real
   g.strokeStyle='rgba(255,255,255,.9)'; g.lineWidth=2; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
-  g.save(); g.globalAlpha=0.55; g.lineWidth=1.6; g.beginPath(); g.moveTo(x0,divY); g.lineTo(x1,divY); g.stroke(); g.restore();
-  // dos cuadrados: BUY FLOW (arriba) y SELL FLOW (abajo). Brillan al marcar un evento real (no neón).
-  const sqH=Math.min(50,h*0.14), inx=x0+6, sw=bw-12;
-  const gY=y0+12, rY=y1-12-sqH;
-  flowGate(g,inx,gY,sw,sqH,VHI,VERDE,Z.flowShineG,'BUY FLOW');
-  flowGate(g,inx,rY,sw,sqH,RHI,ROSA,Z.flowShineR,'SELL FLOW');
+  g.save(); g.globalAlpha=0.5; g.lineWidth=1.6; g.beginPath(); g.moveTo(x0,divY); g.lineTo(x1,divY); g.stroke(); g.restore();
+  // dos cuadrados que ESCANEAN (se mueven suave) con volumen dentro + brillo al entrar un evento real
+  const sqH=Math.min(FLOW_SQH,h*0.13), inx=x0+6, sw=bw-12;
+  const gY=y0+14+(0.5+0.42*Math.sin(T*0.45))*FLOW_TR;
+  const rY=y1-14-sqH-(0.5+0.42*Math.sin(T*0.45+2.1))*FLOW_TR;
+  flowGate(g,inx,gY,sw,sqH,VHI,VERDE,Z.flowShineG,'BUY');
+  flowGate(g,inx,rY,sw,sqH,RHI,ROSA,Z.flowShineR,'SELL');
   Z.flowGateG={x:inx,y:gY,w:sw,h:sqH}; Z.flowGateR={x:inx,y:rY,w:sw,h:sqH};
   cornerMarks(g,x0-7,y0-7,bw+14,h+14,18,hexA(VERDE,.5),1.6);
   // título arriba del rectángulo (antes vivía en la franja superior que se quitó)
@@ -341,40 +354,46 @@ function flowBar(g){
   Z.flowDivY=divY;
 }
 function flowGate(g,x,y,w,h,hi,base,shineT,label){
-  rr(g,x,y,w,h,5); g.fillStyle='rgba(8,13,20,.5)'; g.fill();
+  rr(g,x,y,w,h,5); g.fillStyle='rgba(8,13,20,.42)'; g.fill();
+  // volumen interno en movimiento (como los cuadrados del libro de órdenes)
+  g.save(); rr(g,x,y,w,h,5); g.clip();
+  const rows=Math.max(4,Math.round(h/6));
+  for(let r=0;r<rows;r++){ const yy=y+2+r*(h-4)/rows, len=w*(0.42+0.5*Math.abs(Math.sin(T*2+r*0.8)));
+    g.fillStyle=hexA(hi,0.16+0.22*Math.abs(Math.sin(T*2+r*0.6))); g.fillRect(x+1,yy,len,Math.max(1.2,(h-4)/rows-1.4)); }
+  g.restore();
   const dt=shineT?(performance.now()-shineT):1e9;
-  if(dt<950){ const k=1-dt/950; g.save(); g.shadowColor=hexA(base,.9); g.shadowBlur=24*k;
-    rr(g,x,y,w,h,5); g.strokeStyle=hexA(hi,0.35+0.6*k); g.lineWidth=1.3+1.7*k; g.stroke();
-    rr(g,x,y,w,h,5); g.clip(); const sx=x+((performance.now()*0.45)%(w+44))-22;
-    const sg=g.createLinearGradient(sx-20,0,sx+20,0); sg.addColorStop(0,hexA(hi,0)); sg.addColorStop(.5,hexA(hi,.3*k)); sg.addColorStop(1,hexA(hi,0));
-    g.fillStyle=sg; g.fillRect(x,y,w,h); g.restore(); }
+  if(dt<900){ const k=1-dt/900; g.save(); g.shadowColor=hexA(base,.9); g.shadowBlur=22*k;
+    rr(g,x,y,w,h,5); g.strokeStyle=hexA(hi,0.4+0.6*k); g.lineWidth=1.3+1.7*k; g.stroke(); g.restore(); }
   cornerMarks(g,x-4,y-4,w+8,h+8,12,'#ffffff',1.6);
-  g.font='800 8.5px "Saira Condensed",sans-serif'; g.fillStyle=hexA(hi,.85); g.textAlign='center'; g.textBaseline='middle';
+  g.font='800 9px "Saira Condensed",sans-serif'; g.fillStyle=hexA(hi,.92); g.textAlign='center'; g.textBaseline='middle';
   g.fillText(label,x+w/2,y+h/2); g.textAlign='left'; g.textBaseline='alphabetic';
 }
 /* ===== enlaces cuadrado -> cuadrado (flujo -> libro): ensanchan y vuelven a cerrar ===== */
 function linkRects(g){
   Z.linkPulses=Z.linkPulses||[];
+  // MUCHAS ramificaciones (no una sola cinta): salen de la boca del cuadrado del flujo,
+  // se ensanchan y se vuelven a cerrar hasta morir en la boca del cuadrado del libro.
   const pairs=[[Z.flowGateG,Z.gateG,VERDE],[Z.flowGateR,Z.gateR,ROSA]];
   pairs.forEach(([a,b,col])=>{ if(!a||!b)return;
-    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, N=30, pts=[];
-    for(let k=0;k<=N;k++){ const t=k/N; pts.push([ax+t*(bx-ax), ay+(by-ay)*t]); }
-    const wMid=Math.min(15,a.h*0.42), wEnd=3, top=[],bot=[];
-    for(let i=0;i<=N;i++){ const t=i/N, ww=wEnd+(wMid-wEnd)*Math.sin(t*Math.PI);
-      const p=pts[i], pa=pts[Math.max(0,i-1)], pb=pts[Math.min(N,i+1)]; let dx=pb[0]-pa[0],dy=pb[1]-pa[1]; const L=Math.hypot(dx,dy)||1, nx=-dy/L, ny=dx/L;
-      top.push([p[0]+nx*ww,p[1]+ny*ww]); bot.push([p[0]-nx*ww,p[1]-ny*ww]); }
-    g.beginPath(); g.moveTo(top[0][0],top[0][1]); for(let i=1;i<=N;i++)g.lineTo(top[i][0],top[i][1]); for(let i=N;i>=0;i--)g.lineTo(bot[i][0],bot[i][1]); g.closePath();
-    g.fillStyle=col; g.globalAlpha=0.15; g.fill(); g.globalAlpha=1;
-    g.strokeStyle=hexA(col,.5); g.lineWidth=1; g.beginPath(); g.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<=N;i++)g.lineTo(pts[i][0],pts[i][1]); g.stroke();
-    const tp=((T*0.33)%1+1)%1, fp=tp*N, i0=fp|0, fr=fp-i0, pA=pts[i0], pB=pts[Math.min(N,i0+1)];
-    g.globalAlpha=0.8; g.fillStyle=col; g.beginPath(); g.arc(pA[0]+(pB[0]-pA[0])*fr,pA[1]+(pB[1]-pA[1])*fr,1.9,0,7); g.fill(); g.globalAlpha=1;
+    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, mx=ax+(bx-ax)*0.5, K=7;
+    for(let j=0;j<K;j++){ const sp=j-(K-1)/2;
+      const y0=ay+sp*(a.h*0.11), y1=by+sp*(b.h*0.11);           // reparte por la boca (bocas estrechas)
+      const bow=sp*8 + (j%2?5:-5);                               // controles empujados -> ensancha en el medio
+      g.strokeStyle=hexA(col,0.26+0.1*(1-Math.abs(sp)/3)); g.lineWidth=1.05; g.lineCap='round';
+      g.beginPath(); g.moveTo(ax,y0); g.bezierCurveTo(mx,y0+bow,mx,y1+bow,bx,y1); g.stroke();
+      const t=((T*0.3+j*0.15)%1+1)%1, it=1-t;
+      const px=it*it*it*ax+3*it*it*t*mx+3*it*t*t*mx+t*t*t*bx, py=it*it*it*y0+3*it*it*t*(y0+bow)+3*it*t*t*(y1+bow)+t*t*t*y1;
+      g.globalAlpha=0.7; g.fillStyle=col; g.beginPath(); g.arc(px,py,1.5,0,7); g.fill(); g.globalAlpha=1; }
   });
-  // continuidad de la línea blanca entre los dos rectángulos (cruza el hueco)
-  if(Z.flowDivY!=null){ g.save(); g.strokeStyle='rgba(255,255,255,.2)'; g.lineWidth=1; g.beginPath(); g.moveTo(Z.flowX1,Z.flowDivY); g.lineTo(Z.barX0,Z.flowDivY); g.stroke(); g.restore(); }
-  // pulsos de EVENTO reales: viajan flujo -> libro por el cuadrado que corresponde
+  // continuidad de la línea blanca entre rectángulos: MISMO grosor + un punto en cada boca
+  if(Z.flowDivY!=null){ const yd=Z.flowDivY; g.save(); g.strokeStyle='rgba(255,255,255,.85)'; g.lineWidth=2; g.lineCap='round';
+    g.beginPath(); g.moveTo(Z.flowX1,yd); g.lineTo(Z.barX0,yd); g.stroke();
+    g.fillStyle='#fff'; g.beginPath(); g.arc(Z.flowX1,yd,3,0,7); g.fill(); g.beginPath(); g.arc(Z.barX0,yd,3,0,7); g.fill(); g.restore(); }
+  // pulsos de EVENTO reales (ballenas/liq/on-chain): viajan flujo -> libro por el cuadrado que corresponde
   for(let i=Z.linkPulses.length-1;i>=0;i--){ const pu=Z.linkPulses[i]; pu.t+=0.03; if(pu.t>1){ Z.linkPulses.splice(i,1); continue; }
     const a=pu.up?Z.flowGateG:Z.flowGateR, b=pu.up?Z.gateG:Z.gateR; if(!a||!b)continue;
-    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, x=ax+(bx-ax)*pu.t, y=ay+(by-ay)*pu.t;
+    const ax=a.x+a.w, ay=a.y+a.h/2, bx=b.x, by=b.y+b.h/2, mx=ax+(bx-ax)*0.5, t=pu.t, it=1-t;
+    const x=it*it*it*ax+3*it*it*t*mx+3*it*t*t*mx+t*t*t*bx, y=it*it*it*ay+3*it*it*t*ay+3*it*t*t*by+t*t*t*by;
     g.save(); g.globalAlpha=0.95; g.shadowColor=`rgba(${pu.col},.95)`; g.shadowBlur=15; g.fillStyle=`rgba(${pu.col},1)`; g.beginPath(); g.arc(x,y,3.3,0,7); g.fill(); g.restore(); }
 }
 
@@ -462,9 +481,11 @@ function logoChip(g,c,x,y,chip,col,hi){
   if(!_exporting && img && img.complete && img.naturalWidth){ g.save(); g.beginPath(); g.arc(cx,cy,r,0,7); g.closePath(); g.clip();
     g.fillStyle='#0b1118'; g.beginPath(); g.arc(cx,cy,r,0,7); g.fill(); try{ g.drawImage(img,x,y,chip,chip); }catch(_){}
     g.restore(); g.strokeStyle=hexA(col,.5); g.lineWidth=1; g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke(); return; }
-  const lg=g.createLinearGradient(x,y,x+chip,y+chip); lg.addColorStop(0,hi); lg.addColorStop(1,col);
+  // placeholder NEUTRAL (nunca verde/rojo): un logo que aún no carga no debe teñirse del color de la tarjeta
+  const lg=g.createLinearGradient(x,y,x+chip,y+chip); lg.addColorStop(0,'#2a3340'); lg.addColorStop(1,'#141a22');
   g.fillStyle=lg; g.beginPath(); g.arc(cx,cy,r,0,7); g.fill();
-  g.fillStyle='#04130c'; g.font=`800 ${chip*0.42}px "Saira Condensed",sans-serif`; g.textAlign='center'; g.textBaseline='middle';
+  g.strokeStyle='rgba(255,255,255,.14)'; g.lineWidth=1; g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke();
+  g.fillStyle='rgba(205,215,228,.82)'; g.font=`800 ${chip*0.4}px "Saira Condensed",sans-serif`; g.textAlign='center'; g.textBaseline='middle';
   g.fillText((c.sym||'··').slice(0,3),cx,cy+0.5); g.textAlign='left'; g.textBaseline='alphabetic';
 }
 function card(g,c){ const up=c._up, col=up?VERDE:ROSA, hi=up?VHI:RHI, hl=c._hl||0, ci=c._ci, rad=ci>=2?10:5, z=c._z||0;
@@ -562,7 +583,7 @@ function renderOnce(){
   sbx.setTransform(1,0,0,1,0,0); sbx.clearRect(0,0,SBW,SBH); sbx.imageSmoothingEnabled=true; sbx.drawImage(GL,0,0,PW,PH,0,0,SBW,SBH);
   ctx.save(); ctx.filter='blur(2px)'; ctx.globalAlpha=0.6; ctx.imageSmoothingEnabled=true; ctx.drawImage(SB,0,0,SBW,SBH,0,0,PW,PH); ctx.restore();
   ctx.globalAlpha=1; ctx.drawImage(GL,0,0); ctx.setTransform(DPR,0,0,DPR,0,0);
-  thermo(ctx); exchangeCards(ctx); drawCards(ctx); header(ctx); exchPopup(ctx);
+  thermo(ctx); exchangeCards(ctx); drawCards(ctx); header(ctx); syncExPopup();
 }
 function frame(now){ const dt=Math.min(0.05,(now-last)/1000||0.016); last=now; tick(dt); hover(); renderOnce(); RAF=requestAnimationFrame(frame); }
 
@@ -586,8 +607,10 @@ function aplicarTick(map){ let upW=0,dnW=0;
 const UMBRAL_BALLENA=60000;   // una operación agresiva de ~$60k o más
 function onTrade(t){ if(!t)return; if(t.buy)_takBuy+=t.quote; else _takSell+=t.quote;
   if(t.quote>=UMBRAL_BALLENA){ const now=performance.now();
-    for(const s of strands){ if(s.coin&&s.coin.symbol===t.symbol){ if(now-(s._wcool||0)<450)break; s._wcool=now; s._wp=0; s.hl=1; s._wbuy=t.buy; s._wmag=clamp(t.quote/250000,0.5,1.8); break; } } }
-  if(t.quote>=150000){ const nw=performance.now(); if(nw-_tapeCool>700){ _tapeCool=nw; flowPush({cls:t.buy?'buy':'sell',label:t.buy?'BIG BUY':'BIG SELL',coin:t.symbol.replace('USDT',''),size:'$'+fmtVol(t.quote),up:!!t.buy,col:t.buy?'43,245,158':'255,77,110'}); } } }
+    for(const s of strands){ if(s.coin&&s.coin.symbol===t.symbol){ if(now-(s._wcool||0)<450)break; s._wcool=now; s._wp=0; s.hl=1; s._wbuy=t.buy; s._wmag=clamp(t.quote/250000,0.5,1.8);
+      // la MISMA ballena que viaja por el hilo SE REGISTRA en el WHALE FLOW (historial tocable, ya no se pierde)
+      if(t.quote>=120000){ const sym=t.symbol.replace('USDT',''); flowPush({cls:t.buy?'buy':'sell',label:t.buy?'BIG BUY':'BIG SELL',coin:sym,sym:sym,size:'$'+fmtVol(t.quote),usd:t.quote,src:'Binance Spot',up:!!t.buy,col:t.buy?'43,245,158':'255,77,110'}); }
+      break; } } } }
 let _nivBusy=false;
 async function refrescarNiveles(){ if(_nivBusy)return; _nivBusy=true;
   try{ const vis=tarjetasVisibles();
@@ -695,23 +718,48 @@ function estilos(){
   @media(max-width:780px){ .ob-pulse{display:none} }
   /* ===== feed de FLUJO dentro del rectángulo (ballenas / liquidaciones / on-chain) ===== */
   .ob-flow{position:absolute;z-index:4;pointer-events:none;display:flex;flex-direction:column}
-  .ob-flowlist{display:flex;flex-direction:column;gap:5px;width:100%;height:100%;overflow:hidden;
-    mask-image:linear-gradient(180deg,#000 0,#000 88%,transparent);-webkit-mask-image:linear-gradient(180deg,#000 0,#000 88%,transparent)}
-  .ob-fl{pointer-events:none;flex:0 0 auto;border-left:2px solid #2b3139;background:rgba(8,13,20,.74);border-radius:5px;padding:4px 7px;backdrop-filter:blur(2px);animation:obflin .34s ease}
+  .ob-flowlist{display:flex;flex-direction:column;gap:5px;width:100%;height:100%;overflow-y:auto;overflow-x:hidden;pointer-events:auto;
+    mask-image:linear-gradient(180deg,#000 0,#000 90%,transparent);-webkit-mask-image:linear-gradient(180deg,#000 0,#000 90%,transparent)}
+  .ob-fl{pointer-events:auto;cursor:pointer;flex:0 0 auto;border-left:2px solid #2b3139;background:rgba(9,14,21,.6);border-radius:5px;padding:4px 7px;
+    box-shadow:0 3px 11px rgba(0,0,0,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:obflin .34s ease;transition:transform .12s ease,border-color .12s ease}
+  .ob-fl:hover{transform:translateX(2px);border-color:rgba(232,184,75,.65)}
   @keyframes obflin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
   .ob-fl .fl-top{display:flex;align-items:center;gap:5px;font:800 9.5px 'Saira Condensed',sans-serif;letter-spacing:.04em;white-space:nowrap}
   .ob-fl .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
   .ob-fl .cn{color:#8a97a4;font-weight:700;margin-left:auto}
   .ob-fl .fl-sz{font:600 11px 'IBM Plex Mono',monospace;color:#eef4fb;margin-top:1px;line-height:1.15}
-  .ob-fl .fl-adr{display:flex;align-items:center;gap:4px;margin-top:3px;font:600 9px 'IBM Plex Mono',monospace;color:#9fb6c8}
-  .ob-fl .fl-adr span{opacity:.9}
-  .ob-fl .fl-b{pointer-events:auto;cursor:pointer;width:17px;height:16px;line-height:1;display:grid;place-items:center;border:1px solid #2b3139;border-radius:4px;background:rgba(255,255,255,.05);color:#aeb9c6;font-size:10px;padding:0}
-  .ob-fl .fl-b:hover{border-color:#C9A84B;color:#E8B84B}
   .ob-fl.buy{border-left-color:#2BF59E} .ob-fl.buy .dot{background:#2BF59E;box-shadow:0 0 6px #2BF59E} .ob-fl.buy b{color:#9effc9}
   .ob-fl.sell{border-left-color:#FF4D6E} .ob-fl.sell .dot{background:#FF4D6E;box-shadow:0 0 6px #FF4D6E} .ob-fl.sell b{color:#ffb3c0}
   .ob-fl.liq{border-left-color:#E8B84B} .ob-fl.liq .dot{background:#E8B84B;box-shadow:0 0 6px #E8B84B} .ob-fl.liq b{color:#ffd98a}
   .ob-fl.chain{border-left-color:#2191D9} .ob-fl.chain .dot{background:#2191D9;box-shadow:0 0 6px #2191D9} .ob-fl.chain b{color:#bfe0ff}
-  .ob-fl.fresh{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 6px 16px rgba(0,0,0,.4)}
+  .ob-fl.fresh{box-shadow:0 0 0 1px rgba(255,255,255,.16),0 7px 18px rgba(0,0,0,.5)}
+  /* ficha técnica al pasar el cursor (logo, from->to, cantidad, origen, copiar, explorador) */
+  .ob-flowcard{position:absolute;z-index:8;opacity:0;pointer-events:none;width:236px;padding:12px 13px;border-radius:12px;
+    background:rgba(12,18,26,.985);border:1px solid #243041;box-shadow:0 18px 46px rgba(0,0,0,.62);transition:opacity .14s ease}
+  .ob-flowcard .fc-head{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .ob-flowcard .fc-logo{width:34px;height:34px;border-radius:50%;flex:0 0 auto;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;font:800 12px 'Saira Condensed',sans-serif;color:#cdd7e2}
+  .ob-flowcard .fc-coin{font:800 18px 'Saira Condensed',sans-serif;color:#eef4fb;letter-spacing:.02em}
+  .ob-flowcard .fc-type{font:700 9.5px 'Saira Condensed',sans-serif;letter-spacing:.09em;color:#8a97a4}
+  .ob-flowcard .fc-type.buy{color:#9effc9} .ob-flowcard .fc-type.sell{color:#ffb3c0} .ob-flowcard .fc-type.liq{color:#ffd98a} .ob-flowcard .fc-type.chain{color:#bfe0ff}
+  .ob-flowcard .fc-amt{font:700 16px 'IBM Plex Mono',monospace;color:#fff;margin-bottom:8px}
+  .ob-flowcard .fc-amt span{font-size:11px;color:#8a97a4;font-weight:600}
+  .ob-flowcard .fc-row,.ob-flowcard .fc-adr{display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid rgba(255,255,255,.055);font:600 12px 'Saira Condensed',sans-serif}
+  .ob-flowcard .fc-k{color:#8a97a4;flex:0 0 42px}
+  .ob-flowcard .fc-row b{margin-left:auto;color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px}
+  .ob-flowcard .fc-row b.u{color:#2BF59E} .ob-flowcard .fc-row b.d{color:#FF4D6E}
+  .ob-flowcard .fc-adr code{color:#cfe0ee;font:600 12px 'IBM Plex Mono',monospace}
+  .ob-flowcard .fc-b{margin-left:auto;cursor:pointer;width:22px;height:20px;display:grid;place-items:center;border:1px solid #2b3139;border-radius:5px;background:rgba(255,255,255,.05);color:#aeb9c6;font-size:11px;flex:0 0 auto}
+  .ob-flowcard .fc-adr .fc-b+.fc-b{margin-left:5px}
+  .ob-flowcard .fc-b:hover{border-color:#C9A84B;color:#E8B84B}
+  /* popup de exchange (DOM, POR DELANTE del feed, con sombra) */
+  .ob-expop{position:absolute;z-index:7;opacity:0;pointer-events:none;width:220px;padding:12px 13px;border-radius:12px;
+    background:rgba(12,18,26,.985);border:1px solid rgba(33,145,217,.5);box-shadow:0 16px 42px rgba(0,0,0,.62);transition:opacity .12s ease}
+  .ob-expop .xp-h{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .ob-expop .xp-logo{width:30px;height:30px;border-radius:50%;flex:0 0 auto;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;font:800 11px 'Saira Condensed',sans-serif;color:#cdd7e2}
+  .ob-expop .xp-n{font:800 17px 'Saira Condensed',sans-serif;color:#eef4fb}
+  .ob-expop .xp-s{font:700 9px 'Saira Condensed',sans-serif;letter-spacing:.07em;color:#7d8794}
+  .ob-expop .xp-r{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid rgba(255,255,255,.05);font:600 12px 'Saira Condensed',sans-serif;color:#9aa6b2}
+  .ob-expop .xp-r b{color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px}
   .ob-stage{position:relative;flex:1 1 auto;min-height:0}
   #ob-overlay canvas#ob-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   #ob-load{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:#05080f}
@@ -760,21 +808,58 @@ function estilos(){
   document.head.appendChild(s);
 }
 
-/* ===== FEED de flujo: coloca el DOM encima del rectángulo y pinta los eventos ===== */
+/* ===== FEED de flujo: DOM encima del rectángulo; chip compacto + ficha técnica al hover ===== */
+const FLOW_SQH=46, FLOW_TR=44;                           // alto de cuadrado y recorrido del escaneo (igual que flowBar)
 function colocarFlow(){ const el=document.getElementById('ob-flow'); if(!el||Z.flowX0==null)return;
-  const sqH=Math.min(50,(Z.y1-Z.y0)*0.14), top=Z.y0+12+sqH+15, bottom=Z.y1-12-sqH-10;
-  el.style.left=(Z.flowX0+7)+'px'; el.style.top=top+'px'; el.style.width=(Z.flowW-14)+'px'; el.style.height=Math.max(40,bottom-top)+'px'; }
-function flowPush(ev){ flowItems.unshift(ev); if(flowItems.length>11)flowItems.pop(); renderFlowList();
+  const sqH=Math.min(FLOW_SQH,(Z.y1-Z.y0)*0.13), band=0.92*FLOW_TR;   // deja libre el recorrido de los cuadrados
+  const top=Z.y0+14+band+sqH+8, bottom=Z.y1-14-band-sqH-8;
+  el.style.left=(Z.flowX0+7)+'px'; el.style.top=top+'px'; el.style.width=(Z.flowW-14)+'px'; el.style.height=Math.max(60,bottom-top)+'px'; }
+let _flowId=0;
+function flowPush(ev){ ev.id=++_flowId; ev.t=ev.t||Date.now(); flowItems.unshift(ev); if(flowItems.length>40)flowItems.pop(); renderFlowList();
   if(ev.up)Z.flowShineG=performance.now(); else Z.flowShineR=performance.now();
-  (Z.linkPulses=Z.linkPulses||[]).push({t:0,up:!!ev.up,col:ev.col||'43,245,158'}); if(Z.linkPulses.length>26)Z.linkPulses.shift(); }
+  (Z.linkPulses=Z.linkPulses||[]).push({t:0,up:!!ev.up,col:ev.col||'43,245,158'}); if(Z.linkPulses.length>30)Z.linkPulses.shift(); }
 function renderFlowList(){ const L=document.getElementById('ob-flowlist'); if(!L)return;
-  L.innerHTML=flowItems.map((e,i)=>{ const fresh=i===0?' fresh':'';
-    const adr=e.fullAddr?`<div class="fl-adr"><span>…${e.addr}</span><button class="fl-b" data-copy="${e.fullAddr}" title="Copiar dirección">⧉</button><button class="fl-b" data-exp="${e.fullAddr}" title="Ver en la cadena de bloques">↗</button></div>`:'';
-    return `<div class="ob-fl ${e.cls}${fresh}"><div class="fl-top"><i class="dot"></i><b>${e.label}</b><span class="cn">${e.coin}</span></div><div class="fl-sz">${e.size}</div>${adr}</div>`; }).join(''); }
-function wireFlow(){ const L=document.getElementById('ob-flowlist'); if(!L)return;
-  L.addEventListener('click',e=>{ const cb=e.target.closest('[data-copy]');
-    if(cb){ try{ navigator.clipboard.writeText(cb.dataset.copy); cb.textContent='✓'; setTimeout(()=>{ cb.textContent='⧉'; },1200); }catch(_){} return; }
-    const xb=e.target.closest('[data-exp]'); if(xb){ try{ window.open('https://www.blockchain.com/explorer/addresses/btc/'+encodeURIComponent(xb.dataset.exp),'_blank','noopener'); }catch(_){} } }); }
+  L.innerHTML=flowItems.map((e,i)=>`<div class="ob-fl ${e.cls}${i===0?' fresh':''}" data-fid="${e.id}"><div class="fl-top"><i class="dot"></i><b>${e.label}</b><span class="cn">${e.coin}</span></div><div class="fl-sz">${e.size}</div></div>`).join(''); }
+function fichaHTML(e){ const im=LOGO[e.sym]||null;
+  const logo=(im&&im.src)?`<span class="fc-logo" style="background-image:url('${im.src}')"></span>`:`<span class="fc-logo fc-ph">${(e.coin||'·').slice(0,3)}</span>`;
+  let tm=''; try{ tm=new Date(e.t||Date.now()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }catch(_){}
+  const usd=(e.cls==='chain'&&e.usd)?(' · ≈ $'+fmtVol(e.usd)):'';   // el equivalente en $ solo aporta en on-chain (monto en BTC)
+  let body, side;
+  if(e.cls==='liq') side=(e.label==='LIQ LONG')?['Long liquidated','d']:['Short liquidated','u'];
+  else side=e.up?['Buy · aggressive','u']:['Sell · aggressive','d'];
+  if(e.cls==='chain'){ body=`<div class="fc-adr"><span class="fc-k">From</span><code>…${e.fromShort||'----'}</code><button class="fc-b" data-copy="${e.fullFrom||''}" title="Copiar">⧉</button></div>`+
+    `<div class="fc-adr"><span class="fc-k">To</span><code>…${e.toShort||'----'}</code><button class="fc-b" data-copy="${e.fullTo||''}" title="Copiar">⧉</button><button class="fc-b" data-exp="${e.fullTo||e.fullFrom||''}" title="Ver en la cadena de bloques">↗</button></div>`;
+  } else { body=`<div class="fc-row"><span class="fc-k">Flow</span><b class="${side[1]}">${side[0]}</b></div>`; }
+  return `<div class="fc-head">${logo}<div><div class="fc-coin">${e.coin}</div><div class="fc-type ${e.cls}">${e.label}${tm?(' · '+tm):''}</div></div></div>`+
+    `<div class="fc-amt">${e.size}<span>${usd}</span></div>`+
+    `<div class="fc-row"><span class="fc-k">Source</span><b>${e.src||'—'}</b></div>`+body;
+}
+function wireFlow(){ const L=document.getElementById('ob-flowlist'), card=document.getElementById('ob-flowcard'), stage=document.getElementById('ob-stage'); if(!L||!card||!stage)return;
+  let hideT=null; const hide=()=>{ card.style.opacity='0'; card.style.pointerEvents='none'; };
+  const show=(fid,chip)=>{ const e=flowItems.find(x=>String(x.id)===String(fid)); if(!e)return; card.innerHTML=fichaHTML(e);
+    const cr=chip.getBoundingClientRect(), sr=stage.getBoundingClientRect(); card.style.opacity='1'; card.style.pointerEvents='auto';
+    let left=cr.right-sr.left+8, top=cr.top-sr.top-4; card.style.left=left+'px'; card.style.top=top+'px';
+    requestAnimationFrame(()=>{ const cw=card.offsetWidth, ch=card.offsetHeight;
+      if(left+cw>sr.width-8){ const alt=(cr.left-sr.left)-cw-8; card.style.left=Math.max(8,alt)+'px'; }
+      if(top+ch>sr.height-8) card.style.top=Math.max(8,sr.height-ch-8)+'px'; }); };
+  L.addEventListener('mouseover',e=>{ const chip=e.target.closest('.ob-fl'); if(!chip)return; if(hideT){clearTimeout(hideT);hideT=null;} show(chip.dataset.fid,chip); });
+  L.addEventListener('mouseout',e=>{ const to=e.relatedTarget; if(to&&to.closest&&(to.closest('#ob-flowcard')||to.closest('.ob-fl')))return; hideT=setTimeout(hide,240); });
+  card.addEventListener('mouseenter',()=>{ if(hideT){clearTimeout(hideT);hideT=null;} });
+  card.addEventListener('mouseleave',hide);
+  card.addEventListener('click',e=>{ const cb=e.target.closest('[data-copy]');
+    if(cb){ try{ if(cb.dataset.copy){ navigator.clipboard.writeText(cb.dataset.copy); cb.textContent='✓'; setTimeout(()=>{ cb.textContent='⧉'; },1200); } }catch(_){} return; }
+    const xb=e.target.closest('[data-exp]'); if(xb&&xb.dataset.exp){ try{ window.open('https://www.blockchain.com/explorer/addresses/btc/'+encodeURIComponent(xb.dataset.exp),'_blank','noopener'); }catch(_){} } }); }
+/* popup de exchange en DOM (sale POR DELANTE del feed, con sombra) */
+function syncExPopup(){ const el=document.getElementById('ob-expop'); if(!el)return; const ei=Z.exHover;
+  if(ei==null||ei<0){ if(el._on){ el._on=false; el.style.opacity='0'; } el._ei=-2; return; }
+  const order=Z.exchOrder||[], idx=order.indexOf(ei); if(idx<0){ el.style.opacity='0'; return; }
+  if(el._ei!==ei){ el._ei=ei; const e=EXCH[ei], m=EXMETA[ei]||{}, img=EXIMG[ei];
+    const logo=(img&&img.src)?`<span class="xp-logo" style="background-image:url('${img.src}')"></span>`:`<span class="xp-logo xp-ph">${e[1]}</span>`;
+    const rows=[['24h Volume', m.volUsd?'$'+fmtVol(m.volUsd):'—'],['Trust rank',m.rank?'#'+m.rank:'—'],['Trust score',m.trust?m.trust+' / 10':'—'],['Established',m.year?String(m.year):'—'],['Country',m.country||'—']];
+    el.innerHTML=`<div class="xp-h">${logo}<div><div class="xp-n">${e[0]}</div><div class="xp-s">${m.src?('DEX · '+String(m.src).toUpperCase()):'EXCHANGE · 24H DATA'}</div></div></div>`+rows.map(r=>`<div class="xp-r"><span>${r[0]}</span><b>${r[1]}</b></div>`).join(''); }
+  const gap=5, tot=Z.y1-Z.y0, n=order.length, ch=(tot-gap*Math.max(0,n-1))/Math.max(1,n), ry=Z.y0+idx*(ch+gap);
+  const ph=el.offsetHeight||150, py=clamp(ry-8,Z.y0,Math.max(Z.y0,H-ph-8));
+  el.style.left=(Z.secX+Z.secW+12)+'px'; el.style.top=py+'px'; el.style.opacity='1'; el._on=true; }
 /* ===== búsqueda: abrir CUALQUIER moneda (esté o no en la cascada) ===== */
 function wireBuscador(){
   const inp=document.getElementById('ob-q'), sug=document.getElementById('ob-sug'); if(!inp||!sug)return;
@@ -859,6 +944,8 @@ export async function abrirOrderBlock(){
     <div class="ob-stage" id="ob-stage">
       <canvas id="ob-cv"></canvas>
       <div class="ob-flow" id="ob-flow"><div class="ob-flowlist" id="ob-flowlist"></div></div>
+      <div class="ob-flowcard" id="ob-flowcard"></div>
+      <div class="ob-expop" id="ob-expop"></div>
       <div id="ob-load"><div class="sp"></div><b>LOADING LIQUIDITY…</b></div>
     </div>`;
   document.body.appendChild(ov);
