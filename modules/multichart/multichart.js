@@ -15,8 +15,8 @@ import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
-import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd, transformar } from '../indicadores/libreria.js?v=6';
-import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=4';
+import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd, transformar } from '../indicadores/libreria.js?v=7';
+import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=5';
 /* Instancias: la clave puede ser 'ema' o 'ema#2' (duplicados). baseId saca el id real. */
 const baseId = (k) => String(k).split('#')[0];
 const instN = (k) => { const m = String(k).split('#')[1]; return m ? +m : 1; };
@@ -325,7 +325,7 @@ function recalc(pane) {
     const c = cfgDe(pane, key); const r = calcular(def, v, c);
     const op = (c.op != null ? c.op : 100) / 100;
     (r.lineas || []).forEach((ln, li) => { let data = transformar(ln.data, c); if (c.warp && c.warp[li]) data = aplicarWarp(data, c.warp[li]);
-      ind.ovl.push({ id: key, li, col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, ls: c.ls || (c.dash ? 'dashed' : 'solid'), a: (ln.a != null ? ln.a : 1) * op, glow: c.glow || 0, dyn: !!c.dyn, fill: c.fill || 0, tag: !!c.tag, data, shift: (ln.shift || 0) + (c.desp || 0), dots: !!ln.dots, dir: ln.dir || null }); });
+      ind.ovl.push({ id: key, li, col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, ls: c.ls || (c.dash ? 'dashed' : 'solid'), a: (ln.a != null ? ln.a : 1) * op, glow: c.glow || 0, dyn: !!c.dyn, fill: c.fill || 0, tag: !!c.tag, data, shift: (ln.shift || 0) + (c.desp || 0), dots: !!ln.dots, dir: ln.dir || null, pins: c.pins, tam: c.tam }); });
     (r.nubes || []).forEach((nb) => ind.nubes.push(nb));
   });
   pane.ind = ind;
@@ -365,7 +365,11 @@ function crearOsc(pane, def, c, r) {
   try { const ps = chart.panes(); if (ps[1]) ps[1].setHeight(Math.max(90, Math.round((pane.body.clientHeight || 300) * 0.28))); } catch (_) {}
 }
 function sincronizarOsc(pane, def, c, r) {
-  if (pane._oscMounted !== def.id) { desmontarOsc(pane); crearOsc(pane, def, c, r); pane._oscMounted = def.id; }
+  // La FORMA del oscilador (cuantas series/histograma) puede cambiar con las
+  // opciones propias (media de senal, ±DI de ADX, modo de AO, Aroon oscilador):
+  // si cambia, se remonta el panel para crear o quitar las series que toquen.
+  const forma = def.id + ':' + (r.serie != null ? '1' : '0') + (r.serie2 != null ? '2' : '0') + (r.serie3 != null ? '3' : '0') + (r.hist ? 'h' : '0');
+  if (pane._oscMounted !== forma) { desmontarOsc(pane); crearOsc(pane, def, c, r); pane._oscMounted = forma; }
   const S2 = pane.oscSeries; if (!S2) return;
   const op = (c.op != null ? c.op : 100) / 100, lsN = c.ls === 'dotted' ? 1 : c.ls === 'dashed' ? 2 : 0;
   if (S2.hist && r.hist) {
@@ -430,7 +434,7 @@ function dibujarInds(pane) {
   (ind.nubes || []).forEach((nb) => dibujarNube(g, v, nb, XL, Yp));
   (ind.ovl || []).forEach((o, i) => {
     if (o.dots) dibujarDots(g, v, o, XL, Yp);
-    else if (o.dir) { lineaSeg(g, v, o, XL, Yp); if (baseId(o.id) === 'supertrend') tachuelasST(g, v, o, XL, Yp); }
+    else if (o.dir) { lineaSeg(g, v, o, XL, Yp); if (baseId(o.id) === 'supertrend' && o.pins !== false) tachuelasST(g, v, o, XL, Yp); }
     else lineaComet(g, v, o, XL, Yp, W, H, now, i);
   });
   etiquetaOsc(g, pane);
@@ -518,7 +522,7 @@ function lineaSeg(g, velas, o, XL, Yp) {
 }
 /* Puntos (Parabolic SAR): un punto por vela, coloreado por tendencia si hay dir. */
 function dibujarDots(g, velas, o, XL, Yp) {
-  const data = o.data, dir = o.dir, sh = o.shift || 0, r = Math.max(1.4, (o.gr || 2) * 0.9), up = '#2ee86a', dn = '#ff5b6e';
+  const data = o.data, dir = o.dir, sh = o.shift || 0, r = Math.max(1.4, o.tam != null ? o.tam : (o.gr || 2) * 0.9), up = '#2ee86a', dn = '#ff5b6e';
   g.save(); g.globalAlpha = o.a != null ? o.a : 1;
   for (let i = 0; i < velas.length; i++) {
     const val = data[i]; if (val == null) continue; const x = XL(i + sh); if (x == null) continue; const y = Yp(val); if (y == null) continue;
@@ -1163,7 +1167,7 @@ function abrirBarraDe(pane, id) {   // id es una clave de instancia ('ema' o 'em
   const r = pane.body.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + 8;   // SIEMPRE centrada arriba de la grafica, para que no moleste
   abrirBarraInd({
-    cfg: c, params: def.params || [], tipo: def.tipo, nombre: nombreInst(def, c, id), nombreDe: () => nombreInst(def, c, id), cx, cy,
+    cfg: c, params: def.params || [], opc: def.op || [], tipo: def.tipo, nombre: nombreInst(def, c, id), nombreDe: () => nombreInst(def, c, id), cx, cy,
     onCambio: () => recalc(pane),
     onEliminar: () => quitarInd(pane, id),
     onDuplicar: def.tipo === 'ovl' ? () => duplicarInd(pane, id) : null   // duplicar (dos medias, etc.) solo en overlays
