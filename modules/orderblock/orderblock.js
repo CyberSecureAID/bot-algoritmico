@@ -845,7 +845,8 @@ function estilos(){
   @keyframes obspin{to{transform:rotate(360deg)}}
   #ob-mwrap{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:rgba(2,5,10,.62);backdrop-filter:blur(3px);animation:obfade .16s ease}
   @keyframes obfade{from{opacity:0}to{opacity:1}}
-  #ob-mwrap .ob-modal{width:min(96vw,1180px);height:min(90vh,720px);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;
+  #ob-mwrap .ob-mnet{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+  #ob-mwrap .ob-modal{position:relative;z-index:1;width:min(96vw,1180px);height:min(90vh,720px);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;
     background:linear-gradient(180deg,#0b1119,#070b12);border:1px solid #2b3139;box-shadow:0 30px 90px rgba(0,0,0,.6),0 0 0 1px rgba(43,245,158,.14);animation:obpop .22s cubic-bezier(.2,1.1,.3,1)}
   #ob-mwrap .ob-modal:fullscreen{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}
   #ob-mwrap .ob-modal:-webkit-full-screen{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}
@@ -863,6 +864,7 @@ function estilos(){
   .ob-mx:hover{color:#fff;border-color:#FF4D6E}
   .ob-mx.on{color:#05070a;background:#E8B84B;border-color:#E8B84B}
   .ob-mx.on:hover{color:#05070a;border-color:#f4d089}
+  .ob-mbrand{width:62px;height:17px;margin-left:10px;background:center/contain no-repeat;opacity:.92;flex:0 0 auto}
   .ob-mbody{flex:1 1 auto;display:flex;min-height:0}
   .ob-mchart{position:relative;flex:1 1 auto;min-width:0;cursor:crosshair}
   .ob-mvp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
@@ -1145,7 +1147,9 @@ async function exportarChart(){
   let shot; try{ shot=mChart.takeScreenshot(); }catch(_){ return; }
   if(!shot||!shot.width)return;
   const W=shot.width, H=shot.height, top=Math.max(56,Math.round(H*0.085)), sym=mCoin.sym||'';
-  const imgCoin=await cargarImgCORS(SPOT+String(sym).toLowerCase()+'.png');
+  // logo de la moneda con CORS (asi toBlob no se contamina): spothq y, si no, CoinGecko (como Multichart)
+  let imgCoin=await cargarImgCORS(SPOT+String(sym).toLowerCase()+'.png');
+  if(!imgCoin){ const cg=domLogo(sym); if(cg) imgCoin=await cargarImgCORS(cg); }
   const imgWm=(BRAND_IMG&&BRAND_IMG.complete&&BRAND_IMG.naturalWidth)?BRAND_IMG:null;
   const out=document.createElement('canvas'); out.width=W; out.height=H+top; const g=out.getContext('2d');
   g.fillStyle='#05070a'; g.fillRect(0,0,W,H+top);
@@ -1183,13 +1187,15 @@ async function abrirDetalle(c){
   mCoin=c; mTF='4h';
   const wrap=document.createElement('div'); wrap.id='ob-mwrap';
   const colc=c._up?'#2BF59E':'#FF4D6E';
-  wrap.innerHTML=`<div class="ob-modal">
+  wrap.innerHTML=`<canvas class="ob-mnet" id="ob-mnet"></canvas>
+    <div class="ob-modal">
     <div class="ob-mhead">
       <div class="ob-mlg" id="ob-mlg">${(c.sym||'·').slice(0,3)}</div>
       <span class="nm">${c.sym||''}</span>
       <span class="pc" id="ob-mpc" style="color:${colc}"></span>
       <span class="pr" id="ob-mpr"></span>
       <div class="ob-tfwrap"><button class="ob-chip" id="ob-tfchip"></button><div class="ob-tfmenu" id="ob-tfmenu"></div></div>
+      <div class="ob-mbrand" style="background-image:url('${BRAND_URL}')" title="DecFreedom"></div>
       <div class="ob-msp"></div>
       <button class="ob-mx" id="ob-mvpb" title="Volume profile">${IC.vp}</button>
       <button class="ob-mx" id="ob-mexp" title="Export image">${IC.exp}</button>
@@ -1262,7 +1268,49 @@ async function cargarChart(){ if(!mSeries||!mCoin)return;
 // azul = poco volumen, verde = medio, amarillo = alto, naranja/rojo = los muros de liquidez.
 const VP_HEAT=[[0.20,[12,44,104]],[0.40,[30,74,168]],[0.58,[56,130,220]],[0.76,[8,190,12]],[0.89,[228,229,5]],[0.96,[255,132,0]],[1.01,[255,40,40]]];
 function heatC(v){ v=clamp(v,0,1); for(const e of VP_HEAT) if(v<=e[0]) return e[1]; return [255,40,40]; }
-function modalLoop(){ if(!document.getElementById('ob-mwrap')){ mRAF=0; return; } try{ dibujarOverlay(); }catch(_){} mRAF=requestAnimationFrame(modalLoop); }
+function modalLoop(){ if(!document.getElementById('ob-mwrap')){ mRAF=0; return; } try{ dibujarRed(); }catch(_){} try{ dibujarOverlay(); }catch(_){} mRAF=requestAnimationFrame(modalLoop); }
+/* Trazo organico de un cable: cubica (0,y0)->(x1,y1) con tangentes horizontales en
+   ambos extremos (entra plano, como los strands del radar) + una ondulacion suave que
+   vale 0 en las puntas, para que ondee vivo sin despegarse del origen ni del bloque. */
+function netPath(y0,y1,x1,amp,phase,N){
+  const pts=[], c1x=x1*0.40, c2x=x1*0.78;
+  for(let i=0;i<=N;i++){ const t=i/N, it=1-t;
+    const bx=3*it*it*t*c1x+3*it*t*t*c2x+t*t*t*x1;
+    let by=it*it*it*y0+3*it*it*t*y0+3*it*t*t*y1+t*t*t*y1;
+    by+=Math.sin(t*Math.PI)*amp*Math.sin(phase);
+    pts.push([bx,by]); }
+  return pts;
+}
+/* RED DE INTERCONEXIONES (fuera de la ventana): desde el borde izquierdo salen CABLES
+   gruesos (ribbon conico con glow, igual que los strands del radar), que ondean y se
+   conectan a cada order block. No pinchan a un punto (sus finales van esparcidos), por
+   eso se ven organicos y no como peineta. Rojos a resistencias, verdes a soportes. */
+function dibujarRed(){
+  const cvn=document.getElementById('ob-mnet'), wrap=document.getElementById('ob-mwrap'), host=document.getElementById('ob-mchart');
+  const modalEl=wrap&&wrap.querySelector('.ob-modal');
+  if(!cvn||!wrap||!host||!modalEl||!mSeries||!mSR||!mSR.length)return;
+  const d=Math.min(2,window.devicePixelRatio||1), W=wrap.clientWidth, H=wrap.clientHeight; if(W<10||H<10)return;
+  if(cvn.width!==((W*d)|0)||cvn.height!==((H*d)|0)){ cvn.width=W*d; cvn.height=H*d; }
+  const g=cvn.getContext('2d'); g.setTransform(d,0,0,d,0,0); g.clearRect(0,0,W,H); g.lineJoin='round';
+  const wr=wrap.getBoundingClientRect(), mr=modalEl.getBoundingClientRect(), hr=host.getBoundingClientRect();
+  const mlx=mr.left-wr.left, hoff=hr.top-wr.top; if(mlx<24)return;    // sin margen: nada que dibujar
+  const T2=performance.now()*0.001;
+  mSR.forEach((z,zi)=>{ let yc; try{ yc=mSeries.priceToCoordinate(z.c); }catch(_){ return; } if(yc==null)return;
+    const by=hoff+yc; if(by<hoff-20||by>hoff+hr.height+20)return;
+    const rgb=z.kind==='res'?'255,77,110':'43,245,158';
+    const K=5, spreadO=Math.min(150,H*0.22);
+    for(let k=0;k<K;k++){ const f=(k+0.5)/K;
+      const y0=clamp(by+(f-0.5)*2*spreadO,8,H-8);         // origen bien esparcido en el borde
+      const y1=by+(f-0.5)*24;                             // final esparcido (+-12): NO pincha a un punto
+      const amp=9+7*Math.sin(k*1.7+zi), phase=T2*0.7+k*0.95+zi*1.3;
+      const pts=netPath(y0,y1,mlx,amp,phase,26);
+      g.save(); g.shadowColor=`rgba(${rgb},0.6)`; g.shadowBlur=9;
+      ribbon(g,pts,5.2-0.5*k*0.3,3.0,`rgb(${rgb})`,0.42+0.12*Math.sin(T2*1.4+k)); g.restore(); g.globalAlpha=1;
+      const t=((T2*0.4+k*0.17+zi*0.23)%1), fp=t*(pts.length-1), i0=fp|0, a=pts[i0], b=pts[Math.min(pts.length-1,i0+1)], fr=fp-i0;
+      const qx=a[0]+(b[0]-a[0])*fr, qy=a[1]+(b[1]-a[1])*fr;   // particula de flujo entrando
+      g.globalAlpha=0.35+0.5*t; g.fillStyle=`rgb(${rgb})`; g.beginPath(); g.arc(qx,qy,2.0,0,7); g.fill(); g.globalAlpha=1; }
+  });
+}
 function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=document.getElementById('ob-mchart'); if(!cv2||!host||!mSeries||!mVP)return;
   const d=Math.min(2,window.devicePixelRatio||1), w=host.clientWidth, h=host.clientHeight; if(w<10||h<10)return;
   if(cv2.width!==((w*d)|0)||cv2.height!==((h*d)|0)){ cv2.width=w*d; cv2.height=h*d; }
@@ -1295,22 +1343,21 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
     refLine(yVAL,'VAL','rgba(130,200,255,.75)',false);
     refLine(yPOC,'POC','rgba(255,190,70,.98)',true);
   }
-  // ORDER BLOCKS: cada zona es un bloque con amplitud (parte superior e inferior).
-  // Relleno suave + TRES líneas: borde superior, nivel central y borde inferior.
-  // Si la zona es una sola línea (sin amplitud), se fuerza una banda mínima para que
-  // SIEMPRE salgan las dos líneas externas formando el alto/bajo del Order Block.
+  // ORDER BLOCKS: limpios. Banda MUY tenue (la zona) + la linea del nivel (donde el precio
+  // rebota) + dos bordes muy sutiles marcando alto/bajo. Sin cajas ni lineas recargadas.
   const pulse=0.5+0.5*Math.sin(T2*2.2), MINBAND=16;
   (mSR||[]).forEach(z=>{ let yH,yL,yC; try{ yH=mSeries.priceToCoordinate(z.hi); yL=mSeries.priceToCoordinate(z.lo); yC=mSeries.priceToCoordinate(z.c); }catch(_){ return; }
     if(yH==null||yL==null||yC==null)return;
     const rgb=z.kind==='res'?'255,77,110':'43,245,158';
     let top=Math.min(yH,yL), bot=Math.max(yH,yL);
-    if(bot-top<MINBAND){ top=yC-MINBAND/2; bot=yC+MINBAND/2; }   // banda mínima: fuerza las dos líneas externas
+    if(bot-top<MINBAND){ top=yC-MINBAND/2; bot=yC+MINBAND/2; }   // banda mínima: marca alto/bajo del bloque
     const bh=bot-top;
-    const g2=x.createLinearGradient(0,top,0,bot); g2.addColorStop(0,`rgba(${rgb},0.03)`); g2.addColorStop(.5,`rgba(${rgb},${.09+.04*pulse})`); g2.addColorStop(1,`rgba(${rgb},0.03)`);
+    const g2=x.createLinearGradient(0,top,0,bot); g2.addColorStop(0,`rgba(${rgb},0.015)`); g2.addColorStop(.5,`rgba(${rgb},${.05+.025*pulse})`); g2.addColorStop(1,`rgba(${rgb},0.015)`);
     x.fillStyle=g2; x.fillRect(0,top,plotR,bh);
-    x.save(); x.setLineDash([7,6]); x.lineDashOffset=-((T2*24)%13);
-    x.strokeStyle=`rgba(${rgb},0.4)`; x.lineWidth=1; x.beginPath(); x.moveTo(0,top); x.lineTo(plotR,top); x.moveTo(0,bot); x.lineTo(plotR,bot); x.stroke();
-    x.strokeStyle=`rgba(${rgb},${.72+.14*pulse})`; x.lineWidth=1.6; x.beginPath(); x.moveTo(0,yC); x.lineTo(plotR,yC); x.stroke(); x.restore();
+    x.save();
+    x.strokeStyle=`rgba(${rgb},0.18)`; x.lineWidth=1; x.beginPath(); x.moveTo(0,top); x.lineTo(plotR,top); x.moveTo(0,bot); x.lineTo(plotR,bot); x.stroke();   // bordes sutiles (amplitud)
+    x.setLineDash([7,6]); x.lineDashOffset=-((T2*20)%13); x.strokeStyle=`rgba(${rgb},${.62+.12*pulse})`; x.lineWidth=1.3;   // la linea del nivel, limpia
+    x.beginPath(); x.moveTo(0,yC); x.lineTo(plotR,yC); x.stroke(); x.restore();
     // TARJETA Order Block Liquidity: glass oscuro, acento de color y el precio donde se forma.
     const eyebrow='ORDER BLOCK LIQUIDITY', priceTxt='$'+fmtP(z.c);
     x.textAlign='left'; x.textBaseline='alphabetic';
@@ -1330,9 +1377,9 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
    precio rebotó varias veces. Devuelve las zonas más fuertes arriba y abajo. */
 function calcSR(kl){
   const n=kl.length; if(n<24)return [];
-  const K=clamp(Math.round(n/48),2,4);                 // ventana de pivote adaptativa (un poco mas sensible: capta mas swings)
+  const K=clamp(Math.round(n/40),3,6);                 // ventana de pivote: swings reales, no ruido
   let atr=0; for(let i=1;i<n;i++)atr+=Math.abs(kl[i].high-kl[i].low); atr/=Math.max(1,n-1);
-  const last=kl[n-1].close, tol=Math.max(atr*0.75,last*0.005);   // dos pivotes son el mismo nivel si están a < tol
+  const last=kl[n-1].close, tol=Math.max(atr*1.0,last*0.007);   // tolerancia mayor: pivotes cercanos se consolidan en UN order block
   const piv=[];
   for(let i=K;i<n-K;i++){ let ph=true,pl=true;
     for(let j=i-K;j<=i+K;j++){ if(j===i)continue; if(kl[j].high>kl[i].high)ph=false; if(kl[j].low<kl[i].low)pl=false; }
@@ -1342,11 +1389,14 @@ function calcSR(kl){
   piv.sort((a,b)=>a.p-b.p);
   const zonas=[];
   piv.forEach(pv=>{ let z=null; for(const zz of zonas){ if(Math.abs(zz.c-pv.p)<=tol){ z=zz; break; } }
-    if(!z){ z={c:pv.p,lo:pv.p,hi:pv.p,touches:0,last:0,sump:0,vol:0}; zonas.push(z); }
-    z.touches++; z.lo=Math.min(z.lo,pv.p); z.hi=Math.max(z.hi,pv.p); z.last=Math.max(z.last,pv.i); z.sump+=pv.p; z.vol+=pv.v; z.c=z.sump/z.touches; });
+    if(!z){ z={c:pv.p,lo:pv.p,hi:pv.p,touches:0,last:0,first:pv.i,sump:0,vol:0}; zonas.push(z); }
+    z.touches++; z.lo=Math.min(z.lo,pv.p); z.hi=Math.max(z.hi,pv.p); z.last=Math.max(z.last,pv.i); z.first=Math.min(z.first,pv.i); z.sump+=pv.p; z.vol+=pv.v; z.c=z.sump/z.touches; });
   zonas.forEach(z=>{ z.score=z.touches*3 + (z.last/n)*2.5; z.kind=(z.c>=last)?'res':'sup'; z.dist=Math.abs(z.c-last)/last*100; });
-  const res=zonas.filter(z=>z.kind==='res'&&z.touches>=1).sort((a,b)=>b.score-a.score).slice(0,3);
-  const sup=zonas.filter(z=>z.kind==='sup'&&z.touches>=1).sort((a,b)=>b.score-a.score).slice(0,3);
+  // SOLO order blocks certeros: el precio reaccionó ahí 2+ veces (no líneas sueltas al azar).
+  // Si no hay suficientes con 2 toques, se completa con el más fuerte de 1 toque para no dejar vacío.
+  const fuerte=k=>{ let a=zonas.filter(z=>z.kind===k&&z.touches>=2).sort((x,y)=>y.score-x.score).slice(0,3);
+    if(!a.length){ a=zonas.filter(z=>z.kind===k&&z.touches>=1).sort((x,y)=>y.score-x.score).slice(0,1); } return a; };
+  const res=fuerte('res'), sup=fuerte('sup');
   // etiqueta por cercanía (R1 el más cercano al precio, R2 el siguiente; igual S1/S2)
   res.sort((a,b)=>a.c-b.c).forEach((z,i)=>z.tag='R'+(i+1));
   sup.sort((a,b)=>b.c-a.c).forEach((z,i)=>z.tag='S'+(i+1));
