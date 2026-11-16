@@ -24,7 +24,7 @@ const COLN=[6,5,4,3];
 /* libreria de velas (la misma vendida que usan Multichart / Footprint) para el modal de detalle */
 const LIB=new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 function lib(){ return window.LightweightCharts?Promise.resolve(window.LightweightCharts):new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=LIB; s.onload=()=>res(window.LightweightCharts); s.onerror=rej; document.head.appendChild(s); }); }
-let LC=null, mChart=null, mSeries=null, mTF='1d', mCoin=null, mKl=[], mVP=null, mRO=null, mRAF=0, mStream=null, mMenuDoc=null, mSR=[];
+let LC=null, mChart=null, mSeries=null, mTF='4h', mCoin=null, mKl=[], mVP=null, mRO=null, mRAF=0, mStream=null, mMenuDoc=null, mSR=[], mVPon=false;
 let mDepthStream=null, mHeat=[], mHeatMax=1, mMode='vp';   // heatmap de profundidad tipo Bookmap (modal)
 function onModalDepth(d){ if(!d||!d.bids.length||!d.asks.length)return;
   mHeat.push({bids:d.bids.slice(0,20),asks:d.asks.slice(0,20)}); if(mHeat.length>70)mHeat.shift();
@@ -692,6 +692,7 @@ const IC={
   full:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
   search:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
   info:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r="0.6" fill="currentColor"/></svg>',
+  vp:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h13M4 12h17M4 18h9"/></svg>',
   sndOff:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l4 4M21 9l-4 4"/></svg>',
   sndOn:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19.5 6a9 9 0 0 1 0 12"/></svg>'
 };
@@ -860,6 +861,8 @@ function estilos(){
   .ob-tf button.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;border-color:#c79426}
   .ob-mx{width:32px;height:30px;border-radius:7px;border:1px solid #2b3139;background:#12161c;color:#aeb9c6;cursor:pointer;display:grid;place-items:center}
   .ob-mx:hover{color:#fff;border-color:#FF4D6E}
+  .ob-mx.on{color:#05070a;background:#E8B84B;border-color:#E8B84B}
+  .ob-mx.on:hover{color:#05070a;border-color:#f4d089}
   .ob-mbody{flex:1 1 auto;display:flex;min-height:0}
   .ob-mchart{position:relative;flex:1 1 auto;min-width:0;cursor:crosshair}
   .ob-mvp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
@@ -1131,6 +1134,40 @@ function onClick(e){ const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my
     // ilumina la RUTA real del hilo (su exchange -> su tarjeta) y lanza un pulso, luego abre
     const ex=c.exch; strands.forEach(s=>{ if(s.coin===c){ s.hl=1; s._wp=0; s._wbuy=c.disp>=0; s._wmag=1.3; } else if(s.exch===ex){ s.hl=Math.max(s.hl,0.6); } });
     setTimeout(()=>abrirDetalle(c), 230); return; } } }
+/* Exporta la grafica del modal con el MISMO acabado que Multichart: cabecera con
+   el logo de la moneda, par y precio, temporalidad y fecha, el nombre de la
+   seccion a la derecha con decfreedom.com, la grafica (velas + order blocks) y la
+   marca de agua abajo. Logo de la moneda por spothq (CORS) para que toBlob no se
+   contamine; respaldo a la inicial. */
+function cargarImgCORS(url){ return new Promise(res=>{ if(!url)return res(null); const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>res(im); im.onerror=()=>res(null); im.src=url; }); }
+async function exportarChart(){
+  const host=document.getElementById('ob-mchart'); if(!mChart||!mCoin||!host)return;
+  let shot; try{ shot=mChart.takeScreenshot(); }catch(_){ return; }
+  if(!shot||!shot.width)return;
+  const W=shot.width, H=shot.height, top=Math.max(56,Math.round(H*0.085)), sym=mCoin.sym||'';
+  const imgCoin=await cargarImgCORS(SPOT+String(sym).toLowerCase()+'.png');
+  const imgWm=(BRAND_IMG&&BRAND_IMG.complete&&BRAND_IMG.naturalWidth)?BRAND_IMG:null;
+  const out=document.createElement('canvas'); out.width=W; out.height=H+top; const g=out.getContext('2d');
+  g.fillStyle='#05070a'; g.fillRect(0,0,W,H+top);
+  g.fillStyle='#0b1118'; g.fillRect(0,0,W,top);
+  g.fillStyle='#E8B84B'; g.fillRect(0,0,W,3);
+  g.fillStyle='rgba(232,184,75,.22)'; g.fillRect(0,top-1,W,1);
+  const r=15, cx=20+r, cy=Math.round(top*0.47);
+  if(imgCoin&&imgCoin.width){ g.save(); g.beginPath(); g.arc(cx,cy,r,0,7); g.closePath(); g.clip(); g.fillStyle='#0b1118'; g.fill(); try{g.drawImage(imgCoin,cx-r,cy-r,r*2,r*2);}catch(_){} g.restore(); g.strokeStyle='rgba(255,255,255,.14)'; g.lineWidth=1; g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke(); }
+  else { g.fillStyle='#232b36'; g.beginPath(); g.arc(cx,cy,r,0,7); g.fill(); g.fillStyle='#c9d1d9'; g.font='800 14px "Chakra Petch",sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText((sym||'?')[0],cx,cy+1); g.textBaseline='alphabetic'; }
+  const tx=cx+r+12; g.textAlign='left'; g.textBaseline='alphabetic';
+  g.font='800 18px "Chakra Petch",sans-serif'; g.fillStyle='#eaecef'; g.fillText(sym+'USDT',tx,cy-3);
+  const nameW=g.measureText(sym+'USDT').width;
+  const px=(mKl&&mKl.length)?mKl[mKl.length-1].close:(mCoin.price||mCoin.cur||0);
+  g.font='700 15px "IBM Plex Mono",monospace'; g.fillStyle='#cfd6de'; g.fillText('$'+fmtP(px),tx+nameW+12,cy-3);
+  g.font='700 11px "IBM Plex Mono",monospace'; g.fillStyle='#8b96a3'; g.fillText(String(mTF).toUpperCase()+'  ·  '+new Date().toLocaleString('en-US'),tx,cy+16);
+  g.textAlign='right'; g.font='800 15px "Chakra Petch",sans-serif'; g.fillStyle='#E8B84B'; g.fillText('Order Block Liquidity',W-18,cy-3);
+  g.font='700 11px "IBM Plex Mono",monospace'; g.fillStyle='#8b96a3'; g.fillText('decfreedom.com',W-18,cy+16);
+  try{ g.drawImage(shot,0,top); }catch(_){}
+  const ov2=document.getElementById('ob-mvp'); if(ov2&&ov2.width){ try{ g.drawImage(ov2,0,top,W,H); }catch(_){} }
+  if(imgWm){ const wmH=24, wmW=imgWm.naturalWidth*(wmH/imgWm.naturalHeight); g.save(); g.globalAlpha=.82; g.drawImage(imgWm,18,out.height-wmH-30,wmW,wmH); g.restore(); }
+  try{ const a=document.createElement('a'); a.download='DecFreedom-OrderBlock-'+sym+'-'+mTF+'.png'; a.href=out.toDataURL('image/png'); a.click(); }catch(_){}
+}
 /* ===== modal de detalle (click en tarjeta): grafico real + perfil de volumen + niveles + tendencia ===== */
 function cerrarDetalle(){ try{ if(mRO)mRO.disconnect(); }catch(_){} mRO=null;
   if(mRAF){ cancelAnimationFrame(mRAF); mRAF=0; }
@@ -1143,7 +1180,7 @@ function cerrarDetalle(){ try{ if(mRO)mRO.disconnect(); }catch(_){} mRO=null;
 async function abrirDetalle(c){
   if(document.getElementById('ob-mwrap'))return;
   if(RAF){ cancelAnimationFrame(RAF); RAF=0; }   // congela el radar detrás del modal: toda la CPU va al gráfico (fluido, sin lag)
-  mCoin=c; mTF='1d';
+  mCoin=c; mTF='4h';
   const wrap=document.createElement('div'); wrap.id='ob-mwrap';
   const colc=c._up?'#2BF59E':'#FF4D6E';
   wrap.innerHTML=`<div class="ob-modal">
@@ -1154,6 +1191,8 @@ async function abrirDetalle(c){
       <span class="pr" id="ob-mpr"></span>
       <div class="ob-tfwrap"><button class="ob-chip" id="ob-tfchip"></button><div class="ob-tfmenu" id="ob-tfmenu"></div></div>
       <div class="ob-msp"></div>
+      <button class="ob-mx" id="ob-mvpb" title="Volume profile">${IC.vp}</button>
+      <button class="ob-mx" id="ob-mexp" title="Export image">${IC.exp}</button>
       <button class="ob-mx" id="ob-mfs" title="Fullscreen">${IC.full}</button>
       <button class="ob-mx" id="ob-mx" title="Close">${IC.x}</button>
     </div>
@@ -1169,11 +1208,17 @@ async function abrirDetalle(c){
   const modalEl=wrap.querySelector('.ob-modal'), fsBtn=document.getElementById('ob-mfs');
   fsBtn.onclick=()=>{ try{ if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
     else { (modalEl.requestFullscreen||modalEl.webkitRequestFullscreen).call(modalEl); } }catch(_){} };
+  // perfil de volumen: boton toggle, APAGADO por default (estilo Liquidity Pools). Solo dibuja el VP cuando esta activo.
+  const vpBtn=document.getElementById('ob-mvpb'); mVPon=false; vpBtn.classList.remove('on');
+  vpBtn.onclick=()=>{ mVPon=!mVPon; vpBtn.classList.toggle('on',mVPon); };
+  // exportar la grafica del modal con branding DecFreedom (igual que Multichart)
+  document.getElementById('ob-mexp').onclick=exportarChart;
   const lg=document.getElementById('ob-mlg'), lu=domLogo(c.sym); if(lu){ lg.style.backgroundImage=`url(${lu})`; lg.textContent=''; }
   document.getElementById('ob-mpc').textContent=(c.disp>=0?'+':'')+(c.disp||0).toFixed(2)+'%';
   document.getElementById('ob-mpr').textContent='$'+fmtP(c.price||c.cur||0);
   // temporalidades a la IZQUIERDA, estilo plataforma (chip + menú), igual que el resto de herramientas
-  const OBTFS=[['15m','15M'],['30m','30M'],['1h','1H'],['4h','4H'],['1d','1D'],['1w','1W']];
+  // mismas temporalidades que Multichart/Footprint (catalogo unico TFS), no solo 6
+  const OBTFS=(TFS&&TFS.length?TFS:[{id:'4h',n:'4H'}]).map(t=>[t.id,t.n]);
   const chip=document.getElementById('ob-tfchip'), menu=document.getElementById('ob-tfmenu');
   const lblOf=id=>(OBTFS.find(t=>t[0]===id)||['','1D'])[1];
   const pintarChip=()=>{ chip.innerHTML=lblOf(mTF)+' <em class="ob-chev">▾</em>'; };
@@ -1224,7 +1269,7 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
   const x=cv2.getContext('2d'); x.setTransform(d,0,0,d,0,0); x.clearRect(0,0,w,h);
   let axisW=58; try{ axisW=mChart.priceScale('right').width()||58; }catch(_){}
   const plotR=w-axisW-2, T2=performance.now()*0.001, {lo,hi,N,bins,poc,mx}=mVP;
-  if(hi>lo){
+  if(mVPon&&hi>lo){
     // PERFIL DE VOLUMEN profesional: longitud de barra = volumen real en ese nivel, con
     // contraste alto -> los HVN (mucha liquidez) sobresalen y los LVN (poca) casi no se ven.
     // Value Area 70% en caja, POC/VAH/VAL con líneas de referencia. Estructura, no brocha.
@@ -1250,24 +1295,33 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
     refLine(yVAL,'VAL','rgba(130,200,255,.75)',false);
     refLine(yPOC,'POC','rgba(255,190,70,.98)',true);
   }
-  // ZONAS de soporte/resistencia reales. Relleno SUAVE delimitado EXACTO al rango real de
-  // la zona, y TRES líneas punteadas: borde superior + central (el nivel) + borde inferior.
-  // Las dos de los bordes marcan la amplitud/veracidad de la zona. Etiqueta con nº de toques.
-  const pulse=0.5+0.5*Math.sin(T2*2.2);
+  // ORDER BLOCKS: cada zona es un bloque con amplitud (parte superior e inferior).
+  // Relleno suave + TRES líneas: borde superior, nivel central y borde inferior.
+  // Si la zona es una sola línea (sin amplitud), se fuerza una banda mínima para que
+  // SIEMPRE salgan las dos líneas externas formando el alto/bajo del Order Block.
+  const pulse=0.5+0.5*Math.sin(T2*2.2), MINBAND=16;
   (mSR||[]).forEach(z=>{ let yH,yL,yC; try{ yH=mSeries.priceToCoordinate(z.hi); yL=mSeries.priceToCoordinate(z.lo); yC=mSeries.priceToCoordinate(z.c); }catch(_){ return; }
     if(yH==null||yL==null||yC==null)return;
     const rgb=z.kind==='res'?'255,77,110':'43,245,158';
-    const top=Math.min(yH,yL), bot=Math.max(yH,yL), bh=Math.max(1.5,bot-top);
-    const g2=x.createLinearGradient(0,top,0,bot); g2.addColorStop(0,`rgba(${rgb},0.02)`); g2.addColorStop(.5,`rgba(${rgb},${.07+.03*pulse})`); g2.addColorStop(1,`rgba(${rgb},0.02)`);
+    let top=Math.min(yH,yL), bot=Math.max(yH,yL);
+    if(bot-top<MINBAND){ top=yC-MINBAND/2; bot=yC+MINBAND/2; }   // banda mínima: fuerza las dos líneas externas
+    const bh=bot-top;
+    const g2=x.createLinearGradient(0,top,0,bot); g2.addColorStop(0,`rgba(${rgb},0.03)`); g2.addColorStop(.5,`rgba(${rgb},${.09+.04*pulse})`); g2.addColorStop(1,`rgba(${rgb},0.03)`);
     x.fillStyle=g2; x.fillRect(0,top,plotR,bh);
     x.save(); x.setLineDash([7,6]); x.lineDashOffset=-((T2*24)%13);
-    x.strokeStyle=`rgba(${rgb},0.32)`; x.lineWidth=1; x.beginPath(); x.moveTo(0,top); x.lineTo(plotR,top); x.moveTo(0,bot); x.lineTo(plotR,bot); x.stroke();
-    x.strokeStyle=`rgba(${rgb},${.7+.14*pulse})`; x.lineWidth=1.6; x.beginPath(); x.moveTo(0,yC); x.lineTo(plotR,yC); x.stroke(); x.restore();
-    // etiqueta legible: tag, precio y nº de toques, en mono, con sombra para separar del fondo
-    const lab=`${z.tag||''}  ${fmtP(z.c)}  ·  ${z.touches} touches`;
-    x.font='700 11px "IBM Plex Mono",monospace'; const tw=x.measureText(lab).width+20;
-    x.save(); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=6; x.fillStyle=`rgba(${rgb},.97)`; rr(x,8,yC-10,tw,21,6); x.fill(); x.restore();
-    x.fillStyle='#0a1510'; x.textBaseline='middle'; x.textAlign='left'; x.fillText(lab,18,yC+1); x.textBaseline='alphabetic'; });
+    x.strokeStyle=`rgba(${rgb},0.4)`; x.lineWidth=1; x.beginPath(); x.moveTo(0,top); x.lineTo(plotR,top); x.moveTo(0,bot); x.lineTo(plotR,bot); x.stroke();
+    x.strokeStyle=`rgba(${rgb},${.72+.14*pulse})`; x.lineWidth=1.6; x.beginPath(); x.moveTo(0,yC); x.lineTo(plotR,yC); x.stroke(); x.restore();
+    // TARJETA Order Block Liquidity: glass oscuro, acento de color y el precio donde se forma.
+    const eyebrow='ORDER BLOCK LIQUIDITY', priceTxt='$'+fmtP(z.c);
+    x.textAlign='left'; x.textBaseline='alphabetic';
+    x.font='800 7.5px "Saira Condensed",sans-serif'; const ew=x.measureText(eyebrow).width;
+    x.font='800 12px "IBM Plex Mono",monospace'; const pw=x.measureText(priceTxt).width;
+    const cw=Math.max(ew,pw)+22, cardH=30, cx0=10, cy0=Math.round(yC-cardH/2);
+    x.save(); x.shadowColor='rgba(0,0,0,.5)'; x.shadowBlur=7; rr(x,cx0,cy0,cw,cardH,7); x.fillStyle='rgba(9,15,22,.93)'; x.fill(); x.restore();
+    rr(x,cx0,cy0,cw,cardH,7); x.strokeStyle=`rgba(${rgb},.6)`; x.lineWidth=1; x.stroke();
+    x.fillStyle=`rgba(${rgb},.95)`; rr(x,cx0+4,cy0+5,3,cardH-10,2); x.fill();   // acento lateral
+    x.fillStyle='rgba(175,190,205,.92)'; x.font='800 7.5px "Saira Condensed",sans-serif'; x.fillText(eyebrow,cx0+13,cy0+12);
+    x.fillStyle=`rgb(${rgb})`; x.font='800 12px "IBM Plex Mono",monospace'; x.fillText(priceTxt,cx0+13,cy0+24); });
 }
 /* ===== Soporte / Resistencia REAL (no líneas al azar) =====
    Detecta pivotes de swing (máximos/mínimos locales donde el precio reaccionó),
@@ -1276,7 +1330,7 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
    precio rebotó varias veces. Devuelve las zonas más fuertes arriba y abajo. */
 function calcSR(kl){
   const n=kl.length; if(n<24)return [];
-  const K=clamp(Math.round(n/40),2,6);                 // ventana de pivote adaptativa
+  const K=clamp(Math.round(n/48),2,4);                 // ventana de pivote adaptativa (un poco mas sensible: capta mas swings)
   let atr=0; for(let i=1;i<n;i++)atr+=Math.abs(kl[i].high-kl[i].low); atr/=Math.max(1,n-1);
   const last=kl[n-1].close, tol=Math.max(atr*0.75,last*0.005);   // dos pivotes son el mismo nivel si están a < tol
   const piv=[];
@@ -1291,8 +1345,8 @@ function calcSR(kl){
     if(!z){ z={c:pv.p,lo:pv.p,hi:pv.p,touches:0,last:0,sump:0,vol:0}; zonas.push(z); }
     z.touches++; z.lo=Math.min(z.lo,pv.p); z.hi=Math.max(z.hi,pv.p); z.last=Math.max(z.last,pv.i); z.sump+=pv.p; z.vol+=pv.v; z.c=z.sump/z.touches; });
   zonas.forEach(z=>{ z.score=z.touches*3 + (z.last/n)*2.5; z.kind=(z.c>=last)?'res':'sup'; z.dist=Math.abs(z.c-last)/last*100; });
-  const res=zonas.filter(z=>z.kind==='res'&&z.touches>=1).sort((a,b)=>b.score-a.score).slice(0,2);
-  const sup=zonas.filter(z=>z.kind==='sup'&&z.touches>=1).sort((a,b)=>b.score-a.score).slice(0,2);
+  const res=zonas.filter(z=>z.kind==='res'&&z.touches>=1).sort((a,b)=>b.score-a.score).slice(0,3);
+  const sup=zonas.filter(z=>z.kind==='sup'&&z.touches>=1).sort((a,b)=>b.score-a.score).slice(0,3);
   // etiqueta por cercanía (R1 el más cercano al precio, R2 el siguiente; igual S1/S2)
   res.sort((a,b)=>a.c-b.c).forEach((z,i)=>z.tag='R'+(i+1));
   sup.sort((a,b)=>b.c-a.c).forEach((z,i)=>z.tag='S'+(i+1));
@@ -1316,8 +1370,8 @@ function sentimiento(kl){ const side=document.getElementById('ob-mside'); if(!si
   const row=(k,val,c)=>`<div class="ob-sig"><span>${k}</span><b style="color:${c||'#cdd7e2'}">${val}</b></div>`, sc2=b=>b?'#2BF59E':'#FF4D6E';
   const resZ=(mSR||[]).filter(z=>z.kind==='res').sort((a,b)=>a.c-b.c);
   const supZ=(mSR||[]).filter(z=>z.kind==='sup').sort((a,b)=>b.c-a.c);
-  const lvlRow=z=>{ const cc=z.kind==='res'?'#FF4D6E':'#2BF59E'; return `<div class="ob-sig"><span>${z.tag} · ${z.touches} ${z.touches>1?'touches':'touch'}</span><b style="color:${cc}">$${fmtP(z.c)} <small style="color:#7d8794;font-weight:500">${z.dist.toFixed(1)}%</small></b></div>`; };
-  const nivHTML=(mSR&&mSR.length)?(resZ.map(lvlRow).join('')+`<div class="ob-sig"><span>Price now</span><b style="color:#eef4fb">$${fmtP(last)}</b></div>`+supZ.map(lvlRow).join('')):`<div class="ob-sig"><span>Building zones…</span><b style="color:#7d8794">—</b></div>`;
+  const lvlRow=z=>{ const cc=z.kind==='res'?'#FF4D6E':'#2BF59E'; return `<div class="ob-sig"><span>Order block</span><b style="color:${cc}">$${fmtP(z.c)} <small style="color:#7d8794;font-weight:500">${z.dist.toFixed(1)}%</small></b></div>`; };
+  const nivHTML=(mSR&&mSR.length)?(resZ.map(lvlRow).join('')+`<div class="ob-sig"><span>Price now</span><b style="color:#eef4fb">$${fmtP(last)}</b></div>`+supZ.map(lvlRow).join('')):`<div class="ob-sig"><span>Building order blocks…</span><b style="color:#7d8794">—</b></div>`;
   // resumen en lenguaje claro: qué dice el conjunto, fácil de seguir para un trader
   const nearRes=resZ[0], nearSup=supZ[0];
   const dir=verd[0]==='BULLISH'?'Buyers in control':verd[0]==='BEARISH'?'Sellers in control':'Balanced tape';
@@ -1340,9 +1394,9 @@ function sentimiento(kl){ const side=document.getElementById('ob-mside'); if(!si
     ${row('Bollinger %', bb.toFixed(0), bb>=55?'#2BF59E':bb<=45?'#FF4D6E':'#d8b23a')}
     ${row('Volatility ATR', atr.toFixed(2)+'%', '#cdd7e2')}
     ${row('Volume', volUp?'Rising':'Falling', sc2(volUp))}
-    <div class="ob-sub">Key liquidity levels</div>
+    <div class="ob-sub">Order block levels</div>
     ${nivHTML}
-    <div class="ob-sub" style="opacity:.55">Swing pivot zones · ${mTF} · not financial advice</div>`;
+    <div class="ob-sub" style="opacity:.55">Order block zones · ${mTF} · not financial advice</div>`;
 }
 function cerrar(){
   cerrarDetalle();
