@@ -10,7 +10,7 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=14';
+import { estilos } from './estilos.js?v=15';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
@@ -108,7 +108,7 @@ function mcStream(simbolo, tf, onKline) {
    con la libreria y se dibuja. Overlays activos: pane.ovl (Set de ids).
    Oscilador: pane.oscK (uno a la vez). Estilo y parametros: pane.cfg[id]. */
 /* Acepta un def o una clave de instancia ('ema', 'ema#2'). La config se guarda por INSTANCIA. */
-function cfgDe(pane, x) { const key = (typeof x === 'string') ? x : x.id; const def = buscarInd(baseId(key)); if (!pane.cfg) pane.cfg = {}; if (!pane.cfg[key]) pane.cfg[key] = cfgInicial(def); return pane.cfg[key]; }
+function cfgDe(pane, x) { const key = (typeof x === 'string') ? x : x.id; const def = defDe(pane, key); if (!pane.cfg) pane.cfg = {}; if (!pane.cfg[key] && def) pane.cfg[key] = cfgInicial(def); return pane.cfg[key]; }
 
 const IC = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
@@ -326,7 +326,7 @@ function recalc(pane) {
   const v = pane.velas;
   const ind = { ovl: [], nubes: [] };
   if (v.length) pane.ovl.forEach((key) => {
-    const def = buscarInd(baseId(key)); if (!def || def.tipo !== 'ovl') return;
+    const def = defDe(pane, key); if (!def || def.tipo !== 'ovl') return;
     const c = cfgDe(pane, key); const r = calcular(def, v, c);
     const op = (c.op != null ? c.op : 100) / 100;
     (r.lineas || []).forEach((ln, li) => { let data = transformar(ln.data, c); if (c.warp && c.warp[li]) data = aplicarWarp(data, c.warp[li]);
@@ -354,7 +354,7 @@ function sincronizarFT(pane) {
    Es un panel de verdad: con su eje de precios a la derecha y su separador
    arrastrable (agranda o achica como TradingView). Es OPACO, no deja ver las
    velas ni la rejilla detras, y no es una banda pegada encima del grafico. ── */
-function serieOsc(pane, arr) { const v = pane.velas, o = []; for (let i = 0; i < arr.length; i++) { if (arr[i] == null) continue; const t = v[i] && v[i].time; if (t == null) continue; o.push({ time: t, value: arr[i] }); } return o; }
+function serieOsc(pane, arr, shift) { shift = shift || 0; const v = pane.velas, o = []; for (let i = 0; i < arr.length; i++) { if (arr[i] == null) continue; const j = i + shift; const t = v[j] && v[j].time; if (t == null) continue; o.push({ time: t, value: arr[i] }); } return o; }
 function crearOsc(pane, def, c, r) {
   const chart = pane.chart, S2 = {};
   if (r.hist) S2.hist = chart.addSeries(LC.HistogramSeries, { priceLineVisible: false, lastValueVisible: r.serie == null, base: 0 }, 1);
@@ -377,13 +377,14 @@ function sincronizarOsc(pane, def, c, r) {
   const op = (c.op != null ? c.op : 100) / 100, lsN = c.ls === 'dotted' ? 1 : c.ls === 'dashed' ? 2 : 0;
   if (S2.hist && r.hist) {
     const v = pane.velas, h = []; let prev = null;
-    for (let i = 0; i < r.hist.length; i++) { const hv = r.hist[i]; if (hv == null) continue; const t = v[i] && v[i].time; if (t == null) continue; const col = r.histMom ? ((prev == null || hv >= prev) ? 'rgba(46,232,106,.62)' : 'rgba(255,91,110,.62)') : (hv >= 0 ? 'rgba(46,232,106,.55)' : 'rgba(255,91,110,.55)'); prev = hv; h.push({ time: t, value: hv, color: col }); }
+    for (let i = 0; i < r.hist.length; i++) { const hv = r.hist[i]; if (hv == null) continue; const j = i + (c.desp || 0); const t = v[j] && v[j].time; if (t == null) continue; const col = r.histMom ? ((prev == null || hv >= prev) ? 'rgba(46,232,106,.62)' : 'rgba(255,91,110,.62)') : (hv >= 0 ? 'rgba(46,232,106,.55)' : 'rgba(255,91,110,.55)'); prev = hv; h.push({ time: t, value: hv, color: col }); }
     try { S2.hist.setData(h); } catch (_) {}
   }
   const wrp = (s, li) => { let d = transformar(s, c); if (c.warp && c.warp[li]) d = aplicarWarp(d, c.warp[li]); return d; };
-  if (S2.s3 && r.serie3) { try { S2.s3.applyOptions({ color: hexA(r.col3 || '#49b6ff', op), lineWidth: c.gr || 2, lineStyle: lsN }); S2.s3.setData(serieOsc(pane, wrp(r.serie3, 2))); } catch (_) {} }
-  if (S2.s2 && r.serie2) { try { S2.s2.applyOptions({ color: hexA(r.col2 || '#ff8fbf', op), lineWidth: c.gr || 2, lineStyle: lsN }); S2.s2.setData(serieOsc(pane, wrp(r.serie2, 1))); } catch (_) {} }
-  if (S2.main && r.serie) { try { S2.main.applyOptions({ color: hexA(c.col, op), lineWidth: c.gr || 2, lineStyle: lsN }); S2.main.setData(serieOsc(pane, wrp(r.serie, 0))); } catch (_) {} }
+  const dsp = c.desp || 0;
+  if (S2.s3 && r.serie3) { try { S2.s3.applyOptions({ color: hexA(r.col3 || '#49b6ff', op), lineWidth: c.gr || 2, lineStyle: lsN }); S2.s3.setData(serieOsc(pane, wrp(r.serie3, 2), dsp)); } catch (_) {} }
+  if (S2.s2 && r.serie2) { try { S2.s2.applyOptions({ color: hexA(r.col2 || '#ff8fbf', op), lineWidth: c.gr || 2, lineStyle: lsN }); S2.s2.setData(serieOsc(pane, wrp(r.serie2, 1), dsp)); } catch (_) {} }
+  if (S2.main && r.serie) { try { S2.main.applyOptions({ color: hexA(c.col, op), lineWidth: c.gr || 2, lineStyle: lsN, priceLineVisible: !!c.tag }); S2.main.setData(serieOsc(pane, wrp(r.serie, 0), dsp)); } catch (_) {} }
   // guardo las series YA transformadas (con warp) para el hit-test y el arrastre de la Transformacion Libre
   pane._oscData = { serie: r.serie ? wrp(r.serie, 0) : null, serie2: r.serie2 ? wrp(r.serie2, 1) : null, serie3: r.serie3 ? wrp(r.serie3, 2) : null };
   let last = null; const src = r.serie || r.hist; if (src) for (let i = src.length - 1; i >= 0; i--) { if (src[i] != null) { last = src[i]; break; } }
@@ -722,7 +723,7 @@ function wirePane(pane) {
   q('[data-coin]').onclick = (e) => { e.stopPropagation(); alternarMenu(q('[data-coin]'), () => menuMonedas(pane, q('[data-coin]'))); };
   q('[data-tf]').onclick = (e) => { e.stopPropagation(); alternarMenu(q('[data-tf]'), () => menuTf(pane, q('[data-tf]'))); };
   q('[data-ind]').onclick = (e) => { e.stopPropagation(); menuInd(pane); };
-  q('[data-ft]').onclick = (e) => { e.stopPropagation(); menuFT(pane, q('[data-ft]')); };
+  const ftBtn = q('[data-ft]'); pane._ftBtn = ftBtn; ftBtn.onclick = (e) => { e.stopPropagation(); menuFT(pane, ftBtn); };
   q('[data-share]').onclick = () => guardarImagenPanel(pane);
   q('[data-full]').onclick = () => fullPane(pane);
   q('[data-fsback]').onclick = () => { if (pane.max) fullPane(pane); };   // Back solo sale en fullscreen: vuelve a la rejilla
@@ -779,15 +780,13 @@ function wirePane(pane) {
     if (pane._draw) {
       const last = pane._draw.pts[pane._draw.pts.length - 1];
       if (!last || Math.hypot(x - last.x, y - last.y) >= 2) pane._draw.pts.push({ x, y });
-      const now = performance.now();
-      if (now - pane._draw._t > 90 && pane._draw.pts.length > 4) { pane._draw._t = now; try { const rec = reconocerTrazo(pane, pane._draw.pts); pane._draw.badge = rec ? etiquetaRec(rec) : null; } catch (_) {} }
       return;
     }
     if (!ftDrag) return;
     aplicarReshape(pane, ftDrag, x, y); recalc(pane);
   });
   window.addEventListener('mouseup', () => {
-    if (pane._draw) { const pts = pane._draw.pts; pane._draw = null; cap.classList.remove('ftgrab'); if (pts.length > 4) { try { montarReconocido(pane, reconocerTrazo(pane, pts)); } catch (_) {} } return; }
+    if (pane._draw) { const pts = pane._draw.pts; pane._draw = null; cap.classList.remove('ftgrab'); if (pts.length > 4) { try { montarTrazo(pane, pts); } catch (_) {} } return; }
     if (ftDrag) { ftDrag = null; cap.classList.remove('ftgrab'); }
   });
   if (pane.flotante) arrastrar(pane);
@@ -950,18 +949,39 @@ function ajustarParametro(pane, def, c, li, osc, idx, target) {
   return true;
 }
 function aplicarReshape(pane, d, x, y) {
-  const c = cfgDe(pane, d.key), def = buscarInd(baseId(d.key)); if (!def) return;
+  const c = cfgDe(pane, d.key), def = defDe(pane, d.key); if (!def) return;
   if (d.tool === 'smooth') {
     let s = (d.suave0 || 0) + (d.gy - y) * 0.14; s = Math.max(0, Math.min(50, s)); c.suave = Math.round(s); return;
   }
-  // RESHAPE = escultura LIBRE: un pincel lleva la linea a donde este el cursor, en
-  // cualquier direccion. Se guarda como warp y PERSISTE (recalc lo reaplica cada
-  // frame, incluidas las velas nuevas). Ademas, cada pocas pasadas se reajusta el
-  // periodo base para que la etiqueta refleje el cambio, SIN alterar lo esculpido.
+  // RESHAPE = escultura LIBRE 2D: la linea es JALADA hacia donde este el cursor, en
+  // CUALQUIER direccion (arriba, abajo, adelante, atras). Al mover el cursor por las
+  // barras, cada una se lleva hacia su altura -> puedes moldear como plastilina. Se
+  // guarda como warp y PERSISTE (recalc lo reaplica, incluidas las velas nuevas).
   const bar = ftBarIdx(pane, x), curP = ftPrecio(pane, d.osc, y);
   if (bar == null || curP == null) return;
-  if (d.lastP != null) ftBrush(pane, { key: d.key }, d.li, bar, curP - d.lastP);
-  d.lastP = curP;
+  esculpir(pane, d, bar, curP);
+}
+/* Jala la linea agarrada hacia (bar, target). Usa el valor VISIBLE actual (con su
+   warp ya aplicado) para saber cuanto falta, y reparte el tiron con una campana
+   suave alrededor de la barra. Acumulativo: moviendo el cursor esculpes la forma. */
+function esculpir(pane, d, bar, target) {
+  const c = cfgDe(pane, d.key); const n = pane.velas.length; if (!n) return;
+  let cur = null, dataIdx = bar, shift = 0;
+  if (!d.osc) {
+    const o = ((pane.ind && pane.ind.ovl) || []).find((z) => z.id === d.key && (z.li || 0) === d.li);
+    if (o && o.data) { shift = o.shift || 0; dataIdx = bar - shift; if (dataIdx >= 0 && dataIdx < o.data.length) cur = o.data[dataIdx]; }
+  } else {
+    const od = pane._oscData, arr = od ? (d.li === 0 ? od.serie : d.li === 1 ? od.serie2 : od.serie3) : null;
+    if (arr && bar >= 0 && bar < arr.length) cur = arr[bar];
+  }
+  if (cur == null) return;
+  const delta = target - cur;
+  if (!c.warp) c.warp = {};
+  let w = c.warp[d.li];
+  if (!w || w.length < n) { const nw = new Array(n).fill(0); if (w) for (let i = 0; i < w.length; i++) nw[i] = w[i]; w = nw; c.warp[d.li] = w; }
+  const R = Math.max(2, Math.round(n * 0.03));
+  const lo = Math.max(0, dataIdx - R * 3), hi = Math.min(n - 1, dataIdx + R * 3);
+  for (let j = lo; j <= hi; j++) { const t = (j - dataIdx) / R; w[j] += delta * Math.exp(-t * t * 0.5); }
 }
 /* Reparte la forma esculpida entre el periodo base (para que la etiqueta cambie) y
    un warp residual (para que lo que ves NO se altere). Asi recuperamos la libertad
@@ -1061,6 +1081,35 @@ function reconocerTrazo(pane, pts) {
   const v = ajustarOverlay(pane, m); return v ? { tipo: 'ovl', id: v.id, periodo: v.periodo } : null;
 }
 function etiquetaRec(rec) { const def = buscarInd(rec.id); if (!def) return null; return def.nom + (rec.periodo ? ' ' + rec.periodo : ''); }
+/* def de un indicador: real (libreria) o DIBUJADO (creado con el lapiz). */
+function defDe(pane, key) { return (pane.drawDefs && pane.drawDefs[baseId(key)]) || buscarInd(baseId(key)); }
+/* def sintetico de un indicador dibujado: su calc DEVUELVE el trazo guardado y lo
+   continua hacia el futuro (hold last), asi es un indicador de verdad que persiste
+   y se sigue formando con las velas, manteniendo la estructura que dibujaste. */
+function defDibujado(key, nom, estilo) {
+  return { id: key, nom, grupo: 'Drawn', tipo: 'ovl', estilo, params: [], op: [], _drawn: true,
+    calc: (v, c) => { const d = c.drawn || []; const out = d.slice(0, v.length); const last = out.length ? out[out.length - 1] : null; for (let i = out.length; i < v.length; i++) out.push(last); return { lineas: [{ data: out }] }; } };
+}
+/* El LAPIZ: convierte tu trazo en un indicador DIBUJADO real (no un best fit). Lo
+   que dibujaste queda tal cual, anclado a sus velas, y continua hacia adelante. */
+function montarTrazo(pane, pts) {
+  const m = trazoPorBarra(pane, pts); if (!m) { try { toast('Draw a longer line on the chart.'); } catch (_) {} return; }
+  const n = pane.velas.length, drawn = new Array(n).fill(null);
+  const bFirst = m.bars[0], bLast = m.bars[m.bars.length - 1];
+  for (let k = 0; k < m.bars.length; k++) { const b = m.bars[k], price = priceAt(pane, m.ys[k]); if (b >= 0 && b < n && price != null) drawn[b] = price; }
+  let lastV = null, lastI = -1;                       // interpola huecos internos
+  for (let i = bFirst; i <= bLast; i++) { if (drawn[i] != null) { if (lastI >= 0 && i - lastI > 1) for (let j = lastI + 1; j < i; j++) { const t = (j - lastI) / (i - lastI); drawn[j] = lastV + (drawn[i] - lastV) * t; } lastV = drawn[i]; lastI = i; } }
+  const vLast = drawn[bLast]; for (let i = bLast + 1; i < n; i++) drawn[i] = vLast;   // continua hacia el borde
+  if (!pane.drawDefs) pane.drawDefs = {};
+  let num = 1; while (pane.ovl.has('draw' + num)) num++;
+  const key = 'draw' + num;
+  pane.drawDefs[key] = defDibujado(key, 'Drawn ' + num, { col: '#E8B84B', gr: 2, dash: false });
+  if (!pane.cfg) pane.cfg = {};
+  const c = cfgInicial(pane.drawDefs[key]); c.drawn = drawn; pane.cfg[key] = c;
+  pane.ovl.add(key);
+  recalc(pane); marcarBtnInd(pane);
+  try { toast('Drawn indicator added. It stays and keeps forming.'); } catch (_) {}
+}
 function montarReconocido(pane, rec) {
   if (!rec) { try { toast('Draw a clearer shape to recognise an indicator.'); } catch (_) {} return; }
   const def = buscarInd(rec.id); if (!def) return;
@@ -1085,6 +1134,20 @@ function dibujarTrazo(g, draw) {
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
   }
   g.restore();
+}
+/* Pildora flotante que muestra la herramienta activa con una X para APAGARLA sin
+   tener que volver a abrir el menu Free Transform. */
+function actualizarPildoraFT(pane) {
+  let pill = pane.ftPill;
+  if (!pane.ftTool) { if (pill) { pill.remove(); pane.ftPill = null; } return; }
+  const btn = pane._ftBtn; if (!btn) return;
+  const info = { draw: [IC.pencil, 'Draw'], reshape: [IC.hand, 'Reshape'], smooth: [IC.wave, 'Smooth'] }[pane.ftTool] || ['', 'Tool'];
+  if (!pill) { pill = document.createElement('div'); pill.className = 'mc-ftpill'; document.body.appendChild(pill); pane.ftPill = pill; }
+  pill.innerHTML = `<span class="mc-ftpill-ic">${info[0]}</span><b>${info[1]}</b><span class="mc-ftpill-t">on</span><button class="mc-ftpill-x" title="Turn off">${IC.x}</button>`;
+  pill.querySelector('.mc-ftpill-x').onclick = () => { pane.ftTool = null; btn.classList.remove('on'); sincronizarFT(pane); actualizarPildoraFT(pane); };
+  const r = btn.getBoundingClientRect();
+  pill.style.left = Math.max(8, Math.min(innerWidth - 150, r.left)) + 'px';
+  pill.style.top = (r.bottom + 7) + 'px';
 }
 /* Menu del boton dorado Free Transform (mismo estilo visual que la config). */
 function menuFT(pane, anchor) {
@@ -1111,7 +1174,7 @@ function menuFT(pane, anchor) {
     if (t === 'reset') { resetShapes(pane); cerrar(); return; }
     pane.ftTool = (pane.ftTool === t) ? null : t;
     anchor.classList.toggle('on', !!pane.ftTool);
-    sincronizarFT(pane); cerrar();
+    sincronizarFT(pane); actualizarPildoraFT(pane); cerrar();
   });
 }
 function desarmarTool() {
@@ -1384,7 +1447,7 @@ function marcarBtnInd(pane) { const b = pane.el.querySelector('[data-ind]'); if 
 function nombreInst(def, c, key) { return nomInd(def, c) + (instN(key) > 1 ? ' (' + instN(key) + ')' : ''); }
 function indsActivos(pane) {
   const items = [];
-  pane.ovl.forEach((key) => { const def = buscarInd(baseId(key)); if (def) items.push({ key, def }); });
+  pane.ovl.forEach((key) => { const def = defDe(pane, key); if (def) items.push({ key, def }); });
   if (pane.oscK) { const def = buscarInd(baseId(pane.oscK)); if (def) items.push({ key: pane.oscK, def }); }
   return items;
 }
@@ -1427,7 +1490,7 @@ function llenarGestor(pane, pop) {
 function cerrarLegPop(pane) { const p = pane.body && pane.body.querySelector('.mc-legpop'); if (p) p.remove(); if (pane._legPopDoc) { document.removeEventListener('mousedown', pane._legPopDoc, true); pane._legPopDoc = null; } }
 /* Abre la barra de herramientas de un indicador, anclada a su etiqueta. */
 function abrirBarraDe(pane, id) {   // id es una clave de instancia ('ema' o 'ema#2')
-  const def = buscarInd(baseId(id)); if (!def) return;
+  const def = defDe(pane, id); if (!def) return;
   const c = cfgDe(pane, id);
   const r = pane.body.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + 8;   // SIEMPRE centrada arriba de la grafica, para que no moleste
@@ -1450,6 +1513,7 @@ function quitarInd(pane, id) {
   pane.ovl.delete(id);
   if (pane.oscK === id || baseId(pane.oscK || '') === baseId(id)) pane.oscK = null;
   if (pane.cfg) delete pane.cfg[id];
+  if (pane.drawDefs) delete pane.drawDefs[id];     // limpia el def sintetico del dibujado
   recalc(pane); marcarBtnInd(pane);
 }
 function indActivo(pane) { return pane.ovl.size > 0 || !!pane.oscK; }

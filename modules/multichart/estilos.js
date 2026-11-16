@@ -90,6 +90,13 @@ const CSS = `
   .mc-ftrow .sub{display:block; font-size:10px; font-weight:500; color:#8b95a1; margin-top:2px}
   .mc-ftrow.on .sub{color:rgba(232,184,75,.7)}
   .mc-ftrow.danger:hover{background:rgba(255,91,110,.14); color:#ff6b7a}
+  .mc-ftpill{position:fixed; z-index:10040; display:flex; align-items:center; gap:7px; padding:5px 6px 5px 9px; border-radius:9px; background:linear-gradient(180deg,rgba(232,184,75,.22),rgba(232,184,75,.08)); border:1px solid var(--mc-gold-soft); color:var(--mc-gold); font-family:var(--mc-mono); font-size:11.5px; font-weight:700; box-shadow:0 8px 22px rgba(0,0,0,.42); animation:mcftin .13s ease both}
+  .mc-ftpill b{font-weight:800}
+  .mc-ftpill-t{opacity:.7; font-weight:600}
+  .mc-ftpill-ic{display:inline-flex} .mc-ftpill-ic svg{width:14px; height:14px}
+  .mc-ftpill-x{display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; border:none; border-radius:6px; background:rgba(0,0,0,.28); color:var(--mc-gold); cursor:pointer; padding:0; flex:0 0 auto}
+  .mc-ftpill-x:hover{background:rgba(255,91,110,.32); color:#fff}
+  .mc-ftpill-x svg{width:9px; height:9px}
   .mc-hb{width:28px; height:28px; display:inline-grid; place-items:center; border-radius:8px; border:1px solid transparent; background:transparent; color:var(--mc-ink3)}
   .mc-hb:hover{border-color:var(--mc-line2); color:var(--mc-gold); background:rgba(255,255,255,.04)} .mc-hb svg{width:15px; height:15px}
   .mc-hb.on{color:var(--mc-gold)} .mc-hb.mc-close:hover{color:var(--mc-down2); border-color:var(--mc-down)}
