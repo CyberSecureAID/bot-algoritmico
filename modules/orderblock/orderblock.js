@@ -129,7 +129,7 @@ function layout(){
   // Libro de órdenes: corrido a la derecha para dejar el hueco del rectángulo de flujo.
   Z.barX0=Z.flowX1+Math.round(W*0.072); Z.barW=Math.max(44,Math.round(W*0.032)); Z.barX1=Z.barX0+Z.barW;
   Z.vpLeftW=Math.round(W*0.05); Z.clX0=Z.barX1+Math.round(W*0.042);
-  DM=null; buildCards(); placeCards(); buildStrands(); colocarFlow();
+  DM=null; buildCards(); placeCards(); buildStrands(); colocarFlow(); colocarExLogos();
 }
 const PMIN=-4,PMAX=5.4, Y=p=>Z.y1-((p-PMIN)/(PMAX-PMIN))*(Z.y1-Z.y0);
 // fracción de PRESIÓN COMPRADORA real (volumen que sube / volumen total). Sin sesgo:
@@ -164,9 +164,9 @@ function placeCards(){
 // Trazado FIJO del hilo (bezier cúbico con controles a media x). No depende de split ni del tiempo:
 // las líneas quedan TIESAS; lo único que se mueve dentro de ellas son los pulsos. El reparto
 // arriba/abajo usa un punto medio fijo, no la línea blanca (que es la que las hacía moverse).
-function calcStrandPts(y0src, up, r){
-  const x0=Z.funX0, x1=Z.flowX0, N=28, pts=[], mid=(Z.y0+Z.y1)/2;
-  const yEnd = up ? Z.y0+12 + r*(mid-Z.y0-24) : mid+12 + r*(Z.y1-mid-24);
+function calcStrandYEnd(up,r){ const mid=(Z.y0+Z.y1)/2; return up ? Z.y0+12 + r*(mid-Z.y0-24) : mid+12 + r*(Z.y1-mid-24); }
+function calcStrandPts(y0src, yEnd){
+  const x0=Z.funX0, x1=Z.flowX0, N=28, pts=[];
   for(let k=0;k<=N;k++){ const t=k/N, it=1-t, x=x0+t*(x1-x0);
     const y = it*it*it*y0src + 3*it*it*t*y0src + 3*it*t*t*yEnd + t*t*t*yEnd;
     pts.push([x,y]); }
@@ -184,14 +184,14 @@ function buildStrands(){
   COINS.forEach(c=>{ const up=c.disp>=0, oy=clamp((exchY[c.exch]!=null?exchY[c.exch]:mid)+rnd(-ch*0.3,ch*0.3),Z.y0+5,Z.y1-5);
     const s={ coin:c, y0:oy, up, exch:c.exch, sec:c.sec, phase:rnd(0,6.28), amp:rnd(4,13), hl:0,
       col:up?VERDE:ROSA, hero:(c.major||c.rank<=24), r:Math.random(), _wp:-1, _wcool:0 };
-    s.pts=calcStrandPts(oy,up,s.r); strands.push(s); });
+    s.yEnd=calcStrandYEnd(up,s.r); s.pts=calcStrandPts(oy,s.yEnd); strands.push(s); });
   // líneas tenues: reparto 50/50 FIJO (no sigue split, para que no se muevan)
   if(Z.exchOrder.length) for(let k=0;k<40;k++){ const ei=pick(Z.exchOrder), up=Math.random()<0.5;
     const oy=clamp((exchY[ei]!=null?exchY[ei]:mid)+rnd(-ch*0.4,ch*0.4),Z.y0+5,Z.y1-5);
     const s={ y0:oy, up, exch:ei, phase:rnd(0,6.28), amp:rnd(5,15), hl:0, col:up?VERDE:ROSA, hero:false, r:Math.random() };
-    s.pts=calcStrandPts(oy,up,s.r); strandsFaint.push(s); }
+    s.yEnd=calcStrandYEnd(up,s.r); s.pts=calcStrandPts(oy,s.yEnd); strandsFaint.push(s); }
 }
-function strandPath(s){ return s.pts || (s.pts=calcStrandPts(s.y0,s.up,s.r!=null?s.r:0.5)); }
+function strandPath(s){ return s.pts || (s.pts=calcStrandPts(s.y0, s.yEnd!=null?s.yEnd:(s.yEnd=calcStrandYEnd(s.up,s.r!=null?s.r:0.5)))); }
 
 /* ===== animacion ===== */
 function tick(dt){ T+=dt; split+=(splitTarget()-split)*0.045;   // responde al flujo real, visible pero suave
@@ -344,8 +344,14 @@ function flowBar(g){
     g.fillStyle=hexA(col,0.13); g.fillText(num,x0+6,yy+11); }
   g.restore();
   // borde blanco izquierdo + línea blanca divisoria GRUESA (igual que el Live Order Book)
-  g.strokeStyle='rgba(255,255,255,.92)'; g.lineWidth=2; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
-  g.beginPath(); g.moveTo(x0,divY); g.lineTo(x1,divY); g.stroke();
+  g.strokeStyle='rgba(255,255,255,.92)'; g.lineWidth=2; g.lineCap='round';
+  g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
+  // la divisoria BORDEA la tarjeta del feed que está tocando (deja el hueco; el borde blanco de la tarjeta lo cierra)
+  const sc=Z.scanChip; g.beginPath();
+  if(sc && divY>=sc.top-1 && divY<=sc.bottom+1 && sc.left>x0 && sc.right<x1+3){ g.moveTo(x0,divY); g.lineTo(Math.max(x0,sc.left-1),divY); g.moveTo(Math.min(x1,sc.right+1),divY); g.lineTo(x1,divY); }
+  else { g.moveTo(x0,divY); g.lineTo(x1,divY); }
+  g.stroke();
+  g.fillStyle='#fff'; g.beginPath(); g.arc(x0,divY,3,0,7); g.fill();   // PUNTO donde conecta con las interconexiones
   // dos cuadrados FIJOS: solo marco (esquinas) + brillo al entrar alerta. La tarjeta va DENTRO (DOM).
   flowGate(g,fg.x-3,fg.buyY,fg.w+6,fg.sqH,VERDE,Z.flowShineG);
   flowGate(g,fg.x-3,fg.sellY,fg.w+6,fg.sqH,ROSA,Z.flowShineR);
@@ -571,6 +577,36 @@ function hover(){ strands.forEach(s=>s.hl=Math.max(0,s.hl-0.08)); COINS.forEach(
       [green,red].forEach(cols=>cols.forEach(col=>col.forEach(c=>{ if(c.exch===ex)c._hl=1; }))); } }
 }
 
+/* ===== escaneo de la LÍNEA BLANCA: al subir/bajar ilumina los hilos y sus tarjetas, y bordea la tarjeta del feed ===== */
+function sweep(){ if(Z.flowX0==null)return; const divY=Z.y0+split*(Z.y1-Z.y0);
+  // 1) los hilos cuyo punto de conexión (en la cara del Wallet Flow) toca la línea blanca se iluminan
+  const band=16, exSet={};
+  strands.forEach(s=>{ if(s.yEnd!=null){ const d=Math.abs(s.yEnd-divY); if(d<band){ const k=0.9*(1-d/band); if(k>s.hl)s.hl=k; if((exSet[s.exch]||0)<k)exSet[s.exch]=k; } } });
+  if(Object.keys(exSet).length){                                  // y con ellos, toda su interconexión: hilos + tarjetas de esa exchange
+    strands.forEach(s=>{ const k=exSet[s.exch]; if(k!=null && s.hl<k*0.7)s.hl=k*0.7; });
+    [green,red].forEach(cols=>cols.forEach(col=>col.forEach(c=>{ const k=exSet[c.exch]; if(k!=null && (c._hl||0)<k)c._hl=k; }))); }
+  updateChipScan(divY);
+}
+let _chipT=0;
+function updateChipScan(divY){ const list=document.getElementById('ob-flowlist'), stage=document.getElementById('ob-stage');
+  if(!list||!stage){ Z.scanChip=null; return; }
+  const now=performance.now();
+  if(now-_chipT>120 || !Z._chipRects){ _chipT=now; const sr=stage.getBoundingClientRect(), kids=list.children, arr=[];
+    for(let i=0;i<kids.length;i++){ const r=kids[i].getBoundingClientRect(); if(r.height<2)continue;
+      arr.push({el:kids[i], top:r.top-sr.top, bottom:r.bottom-sr.top, left:r.left-sr.left, right:r.right-sr.left}); }
+    Z._chipRects=arr; }
+  let active=null; for(const c of (Z._chipRects||[])){ if(divY>=c.top && divY<=c.bottom){ active=c; break; } }
+  if(Z._scanEl && (!active || Z._scanEl!==active.el)){ Z._scanEl.classList.remove('scan'); Z._scanEl=null; }
+  if(active){ if(Z._scanEl!==active.el){ active.el.classList.add('scan'); Z._scanEl=active.el; } Z.scanChip={top:active.top,bottom:active.bottom,left:active.left,right:active.right}; }
+  else Z.scanChip=null;
+}
+// logos de exchanges como overlay DOM (CoinGecko oficial, sin CORS): así PancakeSwap, Curve, Raydium y Bitget
+// muestran su logo también en la tarjeta del panel, no solo en el popup.
+function colocarExLogos(){ const box=document.getElementById('ob-exlogos'); if(!box||!Z.exchOrder||Z.y0==null)return;
+  const order=Z.exchOrder, n=order.length, gap=5, tot=Z.y1-Z.y0, ch=(tot-gap*Math.max(0,n-1))/Math.max(1,n), chip=Math.min(22,ch*0.52);
+  box.innerHTML=order.map((ei,i)=>{ const url=domLogo(EXTOKEN[EXCH[ei][0]])||((EXIMG[ei]&&EXIMG[ei].src)||''); if(!url)return'';   // misma URL que usa el popup; sin URL dejo ver el logo del canvas
+    const y=Z.y0+i*(ch+gap)+(ch-chip)/2;
+    return `<span class="ob-exlogo" style="left:${Z.secX+8}px;top:${Math.round(y)}px;width:${Math.round(chip)}px;height:${Math.round(chip)}px;background-image:url('${url}')"></span>`; }).join(''); }
 /* ===== loop ===== */
 function renderOnce(){
   substrate();
@@ -583,7 +619,7 @@ function renderOnce(){
   ctx.globalAlpha=1; ctx.drawImage(GL,0,0); ctx.setTransform(DPR,0,0,DPR,0,0);
   thermo(ctx); exchangeCards(ctx); drawCards(ctx); header(ctx); syncExPopup();
 }
-function frame(now){ const dt=Math.min(0.05,(now-last)/1000||0.016); last=now; tick(dt); hover(); renderOnce(); RAF=requestAnimationFrame(frame); }
+function frame(now){ const dt=Math.min(0.05,(now-last)/1000||0.016); last=now; tick(dt); hover(); sweep(); renderOnce(); RAF=requestAnimationFrame(frame); }
 
 /* ===== datos reales ===== */
 function synthVP(pct){ const M=24, v=[], cen=M*(0.5-clamp(pct,-8,8)/26);
@@ -633,7 +669,8 @@ async function cargarLogos(){
   COINS.forEach(c=>{ if(!_symUrl[c.sym]){ const u=(PARMAP[c.sym]&&cg[PARMAP[c.sym]])||m[c.sym]; if(u)_symUrl[c.sym]=u; } });
   Object.values(EXTOKEN).forEach(sym=>{ if(!_symUrl[sym]){ const u=(PARMAP[sym]&&cg[PARMAP[sym]])||m[sym]; if(u)_symUrl[sym]=u; } });
   COINS.forEach(c=>{ if(!LOGO[c.sym]) LOGO[c.sym]=imgLogo(c.sym,_symUrl[c.sym]); });   // spothq por ticker + respaldo CoinGecko
-  EXCH.forEach((e,i)=>{ if(EXIMG[i])return; const tk=EXTOKEN[e[0]]; if(tk) EXIMG[i]=imgLogo(tk,_symUrl[tk]); }); }  // DEX -> icono del token
+  EXCH.forEach((e,i)=>{ if(EXIMG[i])return; const tk=EXTOKEN[e[0]]; if(tk) EXIMG[i]=imgLogo(tk,_symUrl[tk]); });   // DEX -> icono del token
+  colocarExLogos(); }   // ya con las URLs de CoinGecko: logos reales en las tarjetas de exchange
 async function cargarExchanges(){ let list=[]; try{ list=await D.exchanges(); }catch(_){ list=[]; }
   const btc=((COINS.find(c=>c.sym==='BTC')||{}).price)||0;
   EXCH.forEach((e,i)=>{ const first=e[0].toLowerCase().split(' ')[0];
@@ -645,7 +682,7 @@ async function cargarExchanges(){ let list=[]; try{ list=await D.exchanges(); }c
   try{ const dv=await D.dexVol(); if(dv&&Object.keys(dv).length){ EXCH.forEach((e,i)=>{ const first=e[0].toLowerCase().split(' ')[0];
     let best=0; for(const k in dv){ if(k.indexOf(first)>=0 && dv[k]>best)best=dv[k]; }
     if(best>0){ EXVOL[i]=best; EXMETA[i]=EXMETA[i]||{}; EXMETA[i].volUsd=best; EXMETA[i].src='DefiLlama'; } }); } }catch(_){}
-  EXREADY=true; if(cv) buildStrands(); }
+  EXREADY=true; if(cv){ buildStrands(); colocarExLogos(); } }   // reordenado por volumen: re coloco los logos DOM en su tarjeta real
 
 /* ===== estilos + overlay ===== */
 const IC={
@@ -742,6 +779,8 @@ function estilos(){
   .ob-fl.liq{border-left-color:#E8B84B} .ob-fl.liq .dot{background:#E8B84B;box-shadow:0 0 6px #E8B84B} .ob-fl.liq b{color:#ffd98a}
   .ob-fl.chain{border-left-color:#2191D9} .ob-fl.chain .dot{background:#2191D9;box-shadow:0 0 6px #2191D9} .ob-fl.chain b{color:#bfe0ff}
   .ob-fl.fresh{box-shadow:0 0 0 1px rgba(255,255,255,.16),0 7px 18px rgba(0,0,0,.5)}
+  /* la tarjeta que la línea blanca está tocando: seleccionada con borde blanco arriba y abajo (escaneo) */
+  .ob-fl.scan{box-shadow:0 -1.7px 0 rgba(255,255,255,.95),0 1.7px 0 rgba(255,255,255,.95),0 4px 14px rgba(0,0,0,.55);background:rgba(16,23,32,.84)}
   /* ficha técnica al pasar el cursor (logo, from->to, cantidad, origen, copiar, explorador) */
   .ob-flowcard{position:absolute;z-index:8;opacity:0;pointer-events:none;width:236px;padding:12px 13px;border-radius:12px;
     background:rgba(12,18,26,.985);border:1px solid #243041;box-shadow:0 18px 46px rgba(0,0,0,.62);transition:opacity .14s ease}
@@ -772,6 +811,9 @@ function estilos(){
   .ob-expop .xp-s{font:700 9px 'Saira Condensed',sans-serif;letter-spacing:.07em;color:#7d8794}
   .ob-expop .xp-r{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid rgba(255,255,255,.05);font:600 12px 'Saira Condensed',sans-serif;color:#9aa6b2}
   .ob-expop .xp-r b{color:#e6edf4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px}
+  /* logos de exchanges como overlay DOM (CoinGecko), para que siempre se vean (PancakeSwap, Curve, Raydium, Bitget) */
+  .ob-exlogos{position:absolute;inset:0;z-index:3;pointer-events:none}
+  .ob-exlogo{position:absolute;border-radius:50%;background:#0b1118 center/cover no-repeat;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;font:800 8px 'Saira Condensed',sans-serif;color:#cdd7e2;overflow:hidden}
   /* slots: cuadrado de arriba (compra) y de abajo (venta) que encasillan la alerta más nueva */
   .ob-slot{position:absolute;z-index:5;pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:0 9px;border-radius:7px;overflow:hidden;
     background:rgba(9,14,21,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);transition:box-shadow .2s ease}
@@ -874,7 +916,8 @@ function renderSlots(){ const b=document.getElementById('ob-slotbuy'), s=documen
   if(b){ b.className='ob-slot buy'+(buyLatest?'':' empty'); b.innerHTML=slotHTML(buyLatest); if(buyLatest){ b.dataset.fid=buyLatest.id; b.classList.remove('lit'); void b.offsetWidth; b.classList.add('lit'); } }
   if(s){ s.className='ob-slot sell'+(sellLatest?'':' empty'); s.innerHTML=slotHTML(sellLatest); if(sellLatest){ s.dataset.fid=sellLatest.id; s.classList.remove('lit'); void s.offsetWidth; s.classList.add('lit'); } } }
 function renderFlowList(){ const L=document.getElementById('ob-flowlist'); if(!L)return;
-  L.innerHTML=flowItems.map((e,i)=>`<div class="ob-fl ${e.cls}${i===0?' fresh':''}" data-fid="${e.id}"><div class="fl-top"><i class="dot"></i><b>${e.label}</b><span class="cn">${e.coin}</span></div><div class="fl-sz">${e.size}</div></div>`).join(''); }
+  L.innerHTML=flowItems.map((e,i)=>`<div class="ob-fl ${e.cls}${i===0?' fresh':''}" data-fid="${e.id}"><div class="fl-top"><i class="dot"></i><b>${e.label}</b><span class="cn">${e.coin}</span></div><div class="fl-sz">${e.size}</div></div>`).join('');
+  Z._chipRects=null; Z._scanEl=null; }   // el escaneo recalcula posiciones tras reconstruir el feed
 function beep(up){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; const ac=beep._ac||(beep._ac=new AC());
   const o=ac.createOscillator(), g=ac.createGain(); o.connect(g); g.connect(ac.destination); o.type='sine';
   const t=ac.currentTime, f=up?770:560; o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*1.5,t+0.07);
@@ -1030,6 +1073,7 @@ export async function abrirOrderBlock(){
     </div>
     <div class="ob-stage" id="ob-stage">
       <canvas id="ob-cv"></canvas>
+      <div class="ob-exlogos" id="ob-exlogos"></div>
       <div class="ob-flow" id="ob-flow"><div class="ob-flowlist" id="ob-flowlist"></div></div>
       <div class="ob-slot buy empty" id="ob-slotbuy"></div>
       <div class="ob-slot sell empty" id="ob-slotsell"></div>
