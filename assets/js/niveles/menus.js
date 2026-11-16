@@ -253,12 +253,12 @@ const PASOS_NV = [
   },
   {
     t: 'Buy and sell from the chart',
-    d: '<b>Right-click</b> (or long-press on mobile) on the price and choose <b>Buy here</b> or <b>Sell here</b> at the zone you want. You see the profit % and the risk % before confirming.',
-    x: 'Non-custodial: you trade from your own wallet, no account, no middlemen.'
+    d: '<b>Right click</b> (or long press on mobile) on the price and choose <b>Buy here</b> or <b>Sell here</b> at the zone you want. You see the profit % and the risk % before confirming.',
+    x: 'Non custodial: you trade from your own wallet, no account, no middlemen.'
   },
   {
     t: 'Price alerts',
-    d: 'Drop <b>alerts</b> on the levels that matter and get notified — with a sound — when price reaches them, without watching the screen.',
+    d: 'Drop <b>alerts</b> on the levels that matter and get a sound notification when price reaches them, without watching the screen.',
     x: 'Pair them with the levels so you never miss an entry.'
   },
   {
@@ -268,7 +268,7 @@ const PASOS_NV = [
   },
   {
     t: 'The Faro indicator',
-    d: 'Smart Pools reads the market with <b>Faro</b>, our own indicator, on by default: it marks the <b>range top and floor</b>, the key <b>buy and sell</b> levels, and — when it has a clear read — the current <b>trend</b>.',
+    d: 'Smart Pools reads the market with <b>Faro</b>, our own indicator, on by default: it marks the <b>range top and floor</b>, the key <b>buy and sell</b> levels, and, when it has a clear read, the current <b>trend</b>.',
     x: 'Everything on the chart comes from live price action, not guesses.'
   },
   {
@@ -278,7 +278,7 @@ const PASOS_NV = [
   },
   {
     t: 'Switch coin and timeframe',
-    d: 'Top-left you switch <b>coin</b> and pick the <b>timeframe</b>. Drag to move through time and scroll to zoom in.',
+    d: 'Top left you switch <b>coin</b> and pick the <b>timeframe</b>. Drag to move through time and scroll to zoom in.',
     x: 'This is analysis, not a promise. Always use a stop and never risk more than you can lose.'
   }
 ];
