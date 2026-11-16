@@ -145,7 +145,7 @@ export const OPC_UNIV = [
 ];
 /* ── Helpers para quien la use ── */
 export function buscarInd(id) { return INDICADORES.find((d) => d.id === id) || null; }
-export function cfgInicial(def) { const c = Object.assign({ col: def.estilo.col, gr: def.estilo.gr, dash: !!def.estilo.dash }, {}); (def.params || []).forEach((p) => { c[p.k] = p.def; }); OPC_UNIV.forEach((o) => { if (c[o.k] === undefined) c[o.k] = o.def; }); if (c.ls === 'solid' && c.dash) c.ls = 'dashed'; return c; }
+export function cfgInicial(def) { const c = Object.assign({ col: def.estilo.col, gr: def.estilo.gr, dash: !!def.estilo.dash }, {}); (def.params || []).forEach((p) => { c[p.k] = p.def; }); OPC_UNIV.forEach((o) => { if (c[o.k] === undefined) c[o.k] = o.def; }); if (c.ls === 'solid' && c.dash) c.ls = 'dashed'; c.ft = false; c.warp = null; return c; }
 /* Aplica suavizado y sesgo vertical a una serie (el offset se maneja en el trazo). */
 export function transformar(data, c) { if (!data || !c) return data; let d = data; if (c.suave && c.suave > 1) d = ema(d, Math.round(c.suave)); if (c.sesgo) { const f = 1 + c.sesgo / 100; d = d.map((x) => x == null ? null : x * f); } return d; }
 export function nombreInd(def, c) { if (!def.params || !def.params.length) return def.nom; const p0 = def.params.find((p) => p.k === 'periodo'); return p0 ? def.nom + ' ' + c[p0.k] : def.nom; }

@@ -10,7 +10,7 @@
    colgados. Generica: recibe la config de la instancia + callbacks.
    ────────────────────────────────────────────────────────────────────────── */
 
-import { OPC_UNIV } from './libreria.js?v=5';
+import { OPC_UNIV } from './libreria.js?v=6';
 /* Misma paleta que la barra de herramientas (niveles). */
 const PALETA = ['#22d3ee', '#38bdf8', '#2ee86a', '#a3e635', '#ffd400', '#E8B84B', '#f59e0b', '#ff3b52', '#fb7185', '#a78bfa', '#e879f9', '#94a3b8', '#ffffff'];
 let _bar = null, _pop = null, _docCerra = null;
@@ -67,6 +67,8 @@ function inyectarCSS() {
   .indtb-ls button{height:24px; padding:0 8px; border-radius:7px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:#b7bdc6; cursor:pointer; font-family:inherit; font-size:10px; font-weight:700}
   .indtb-ls button:hover{border-color:rgba(34,211,238,.5)}
   .indtb-ls button.on{background:rgba(34,211,238,.2); border-color:rgba(34,211,238,.5); color:#22d3ee}
+  .indtb-ftreset{height:24px; padding:0 12px; border-radius:7px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:#b7bdc6; cursor:pointer; font-family:inherit; font-size:11px; font-weight:700}
+  .indtb-ftreset:hover{border-color:#ff6b7a; color:#ff6b7a}
   .indtb-pop-t{font-size:9px; letter-spacing:1px; text-transform:uppercase; color:#8b95a1; margin:0 2px 8px}
   .indtb-row{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:7px 2px}
   .indtb-row>span{font-size:11px; color:#b7bdc6}
@@ -87,7 +89,8 @@ const SVG = {
   grip: '<svg viewBox="0 0 12 20" width="11" height="18" aria-hidden="true"><circle cx="3.5" cy="4" r="1.3" fill="currentColor"/><circle cx="8.5" cy="4" r="1.3" fill="currentColor"/><circle cx="3.5" cy="10" r="1.3" fill="currentColor"/><circle cx="8.5" cy="10" r="1.3" fill="currentColor"/><circle cx="3.5" cy="16" r="1.3" fill="currentColor"/><circle cx="8.5" cy="16" r="1.3" fill="currentColor"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l-1 7 3 3v2H7v-2l3-3z"/><path d="M12 16v4"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>'
+  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
+  dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>'
 };
 
 function cerrarPop() { if (_pop) { _pop.remove(); _pop = null; } }
@@ -122,6 +125,7 @@ export function abrirBarraInd(opts) {
     `<span class="indtb-sep"></span>${grBtns}` +
     `<button class="indtb-b indtb-dash ${cfg.dash ? 'on' : ''}" data-dash title="Dashed"><i></i></button>` +
     `<span class="indtb-sep"></span><button class="indtb-b indtb-gear" data-gear title="Settings">${SVG.gear}</button>` +
+    (opts.onDuplicar ? `<button class="indtb-b indtb-dup" data-dup title="Duplicate indicator">${SVG.dup}</button>` : '') +
     `<span class="indtb-sep"></span><button class="indtb-b indtb-del" data-del title="Delete">${SVG.del}</button>`;
   document.body.appendChild(bar);
   colocar(bar, opts.cx, opts.cy);
@@ -148,6 +152,7 @@ export function abrirBarraInd(opts) {
   const gearBtn = bar.querySelector('[data-gear]'); if (gearBtn) gearBtn.onclick = (e) => { e.stopPropagation(); popAjustes(cfg, params, nombre, gearBtn, cambiar, opts.tipo); };
   bar.querySelector('[data-pin]').onclick = (e) => { fijado = !fijado; e.currentTarget.classList.toggle('on', fijado); };
   bar.querySelector('[data-del]').onclick = () => { onEliminar(); cerrarBarraInd(); };
+  { const db = bar.querySelector('[data-dup]'); if (db) db.onclick = () => { if (opts.onDuplicar) opts.onDuplicar(); cerrarBarraInd(); }; }
 
   /* Clic AFUERA: se quita la barra y sus popups (como TradingView). Si esta
      fijada (pin), se queda. */
@@ -182,6 +187,11 @@ function popAjustes(cfg, params, nombre, anchor, cambiar, tipo) {
   let html = '';
   if (params && params.length) html += `<div class="indtb-pop-t">${nombre} parameters</div>` + params.map(filaNum).join('');
   html += `<div class="indtb-pop-t">Style</div>` + OPC_UNIV.filter((o) => esOvl || !o.ovl).map((o) => o.kind === 'toggle' ? filaTgl(o) : o.kind === 'style' ? filaLs(o) : filaNum(o)).join('');
+  // Transformacion Libre: esculpe la linea sobre la grafica. Se guarda y se sigue
+  // aplicando en vivo. Novedad que no esta en TradingView.
+  html += `<div class="indtb-pop-t">Free transform</div>`
+    + `<div class="indtb-row indtb-rowt"><span>Sculpt on chart ✋</span><button type="button" class="indtb-tgl ${cfg.ft ? 'on' : ''}" data-tgl="ft"><i></i></button></div>`
+    + `<div class="indtb-row"><span>Molded shape</span><button type="button" class="indtb-ftreset">Reset</button></div>`;
   const pop = document.createElement('div'); pop.className = 'indtb-pop indtb-pop-cfg'; pop.dataset.k = 'cfg';
   pop.innerHTML = html;
   document.body.appendChild(pop); _pop = pop;
@@ -193,6 +203,7 @@ function popAjustes(cfg, params, nombre, anchor, cambiar, tipo) {
   pop.querySelectorAll('.indtb-val').forEach((inp) => inp.onchange = () => { const nv = parseFloat(inp.value); if (isFinite(nv)) setVal(inp.dataset.val, nv); else inp.value = cfg[inp.dataset.val]; });
   pop.querySelectorAll('.indtb-slider').forEach((sl) => sl.oninput = () => setVal(sl.dataset.slider, parseFloat(sl.value)));
   pop.querySelectorAll('[data-tgl]').forEach((b) => b.onclick = () => { const k = b.dataset.tgl; cfg[k] = !cfg[k]; b.classList.toggle('on', cfg[k]); cambiar(); });
+  { const rb = pop.querySelector('.indtb-ftreset'); if (rb) rb.onclick = () => { cfg.warp = null; cambiar(); }; }
   pop.querySelectorAll('[data-ls]').forEach((b) => b.onclick = () => { cfg.ls = b.dataset.ls; cfg.dash = cfg.ls === 'dashed'; pop.querySelectorAll('[data-ls]').forEach((x) => x.classList.toggle('on', x === b)); cambiar(); });
 }
 function ubicarPop(pop, anchor) {
