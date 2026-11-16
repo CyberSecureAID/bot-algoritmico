@@ -747,6 +747,26 @@ function estilos(){
   @media(max-width:560px){ .ob-info-grid{grid-template-columns:1fr} .ob-info-card h2{font-size:25px} }
   .ob-info-x{float:right;margin:-6px -6px 0 0;width:34px;height:34px;border-radius:9px;border:1px solid #2b3139;background:rgba(255,255,255,.04);color:#b7bdc6;cursor:pointer;display:grid;place-items:center}
   .ob-info-x:hover{border-color:#FF4D6E;color:#fff}
+  /* "How it works": mismo walkthrough por pasos que Smart Pools */
+  #ob-ayuda-box{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:16px}
+  #ob-ayuda-box .oba-bg{position:absolute;inset:0;background:rgba(3,5,8,.93);backdrop-filter:blur(3px)}
+  #ob-ayuda-box .oba-c{position:relative;width:100%;max-width:540px;max-height:calc(100vh - 32px);overflow-y:auto;background:linear-gradient(180deg,#161b22,#0b0e12);border:1px solid #C9A84B;border-radius:20px;padding:24px 20px;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  #ob-ayuda-box .oba-x{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;padding:0;cursor:pointer;z-index:5;background:rgba(255,255,255,.06);border:1px solid #3a424c;color:#b7bdc6}
+  #ob-ayuda-box .oba-x:hover{border-color:#FF4D6E;color:#fff}
+  #ob-ayuda-box .oba-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#E8B84B;text-transform:uppercase;letter-spacing:2px;text-align:center;margin-bottom:18px}
+  #ob-ayuda-box .oba-card{padding:24px 20px;border-radius:16px;text-align:center;margin-bottom:18px;background:linear-gradient(165deg,rgba(232,184,75,.08),rgba(255,255,255,.015));border:1px solid rgba(232,184,75,.26)}
+  #ob-ayuda-box .oba-n{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#E8B84B;font-weight:700;margin-bottom:10px}
+  #ob-ayuda-box .oba-n em{font-style:normal;color:#5c6672;font-weight:400}
+  #ob-ayuda-box .oba-t{font-family:'Chakra Petch',system-ui,sans-serif;font-weight:800;font-size:21px;color:#eaecef;margin-bottom:12px;line-height:1.25}
+  #ob-ayuda-box .oba-d{font-size:14px;color:#b7bdc6;line-height:1.7;margin-bottom:14px}
+  #ob-ayuda-box .oba-d b{color:#E8B84B;font-weight:700}
+  #ob-ayuda-box .oba-x2{padding:12px 14px;border-radius:11px;background:rgba(255,255,255,.035);border-left:2px solid #C9A84B;font-size:12.5px;color:#8b96a3;line-height:1.55;text-align:left}
+  #ob-ayuda-box .oba-puntos{display:flex;gap:5px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
+  #ob-ayuda-box .oba-puntos i{width:7px;height:7px;border-radius:50%;background:#2b3139;cursor:pointer}
+  #ob-ayuda-box .oba-puntos i.on{background:#E8B84B;transform:scale(1.35)}
+  #ob-ayuda-box .oba-acts{display:flex;gap:9px}
+  #ob-ayuda-box .oba-atras{flex:0 0 auto;min-height:48px;padding:0 20px;border-radius:12px;background:transparent;border:1px solid #2b3139;color:#8b96a3;cursor:pointer;font-family:'Chakra Petch',system-ui,sans-serif;font-weight:700;font-size:13px}
+  #ob-ayuda-box .oba-b{flex:1;min-height:48px;border-radius:12px;border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,#E8B84B 45%,#c79426);color:#3a2800;font-family:'Chakra Petch',system-ui,sans-serif;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 4px 0 #8f6a1a}
   @media(max-width:620px){
     .ob-top{gap:6px;padding:7px 9px}
     .ob-search{min-width:0;flex:1 1 auto;padding:0 9px;gap:6px}
@@ -1014,24 +1034,46 @@ function wireBuscador(){
   document.addEventListener('click',e=>{ if(!e.target.closest('.ob-search'))sug.classList.remove('open'); });
 }
 /* ===== panel "qué es esto": lectura corporativa de alta frecuencia ===== */
-function abrirInfo(){ if(document.getElementById('ob-info-ov'))return;
-  const o2=document.createElement('div'); o2.className='ob-info-ov'; o2.id='ob-info-ov';
-  o2.innerHTML=`<div class="ob-info-card">
-    <button class="ob-info-x" id="ob-info-x">${IC.x}</button>
-    <div class="ob-info-ey"><i></i> REAL-TIME LIQUIDITY INTELLIGENCE</div>
-    <h2>Order Block Liquidity</h2>
-    <p class="lead">A high-frequency intelligence engine that reads the entire crypto market the way an institutional desk does — every tick, every whale, every liquidation — and fuses it into one live picture of where capital is actually moving, as it moves.</p>
-    <div class="ob-info-grid">
-      <div class="ob-info-f"><div class="fh"><span>01</span><b>Tick-by-tick order flow</b></div><p>Live taker pressure, market breadth and the real bid/ask book from Binance spot, recomputed on every print.</p></div>
-      <div class="ob-info-f"><div class="fh"><span>02</span><b>Whale &amp; on-chain radar</b></div><p>Large market orders, forced liquidations and multi-million on-chain transfers, caught the instant they fire — with the wallet and a one-click explorer link.</p></div>
-      <div class="ob-info-f"><div class="fh"><span>03</span><b>Institutional chart engine</b></div><p>Swing-pivot support and resistance scored by touches, full volume profile (POC, value area, HVN/LVN) and a structure read on any asset.</p></div>
-      <div class="ob-info-f"><div class="fh"><span>04</span><b>Exchange liquidity map</b></div><p>24h volume and trust across the top centralized exchanges and DEXs, ranked live.</p></div>
+/* "How it works": walkthrough por pasos, misma dinamica que Smart Pools. Presenta la
+   herramienta como algo de alto nivel institucional. Las zonas se llaman SIEMPRE
+   Order Block Liquidity (nunca soporte ni resistencia). Sin guiones en el texto. */
+const OB_PASOS=[
+  { t:'Wired into the whole market', d:'Order Block Liquidity reads the <b>entire crypto market</b> in real time the way an <b>institutional desk</b> does: every tick, every whale order, every liquidation, fused into one live picture of where capital is actually moving.', x:'Built for high level traders who follow real flow instead of lagging indicators.' },
+  { t:'The Order Block Liquidity zones', d:'The engine marks the price zones where <b>institutional capital</b> has stepped in again and again, the <b>Order Block Liquidity</b> zones, scored by how many times price reacted there. These are the levels where real money defends its positions.', x:'Every zone shows its exact price and how strong it is, refreshed live.' },
+  { t:'The live interconnection network', d:'Thick live <b>interconnections</b> flow from the global liquidity sources straight into each Order Block Liquidity zone. You are plugged into the market network, watching capital <b>route into the zones</b> the moment it happens.', x:'The more flow a zone attracts, the brighter it lights up.' },
+  { t:'Whale and on chain radar', d:'Large market orders, <b>forced liquidations</b> and multi million <b>on chain transfers</b> are caught the instant they fire, with the wallet and a one tap explorer link.', x:'You see the big money the moment it moves, not minutes later.' },
+  { t:'Tick by tick order flow', d:'Live <b>taker pressure</b>, market breadth and the <b>real order book</b> from Binance spot, recomputed on every single print. Green is buying, red is selling.', x:'This is the raw tape that institutions pay fortunes to watch.' },
+  { t:'Open any asset', d:'Click any card or <b>search any coin</b> to open its live chart with its <b>Order Block Liquidity</b> zones, volume profile and a full structure read, on the timeframe you pick.', x:'Advanced monitoring, not financial advice. Always manage your own risk.' }
+];
+let _obPaso=0;
+function abrirInfo(){ if(document.getElementById('ob-ayuda-box'))return; _obPaso=0;
+  const d=document.createElement('div'); d.id='ob-ayuda-box';
+  d.innerHTML=`<div class="oba-bg"></div>
+    <div class="oba-c">
+      <button class="oba-x" id="oba-x" aria-label="Close">${IC.x}</button>
+      <div class="oba-eyebrow">Order Block Liquidity</div>
+      <div id="oba-cuerpo"></div>
+    </div>`;
+  (document.getElementById('ob-stage')||document.body).appendChild(d);
+  const q=()=>d.remove(); d.querySelector('.oba-bg').onclick=q; document.getElementById('oba-x').onclick=q;
+  obPaso();
+}
+function obPaso(){ const c=document.getElementById('oba-cuerpo'); if(!c)return;
+  const p=OB_PASOS[_obPaso], ultimo=_obPaso===OB_PASOS.length-1;
+  c.innerHTML=`<div class="oba-card">
+      <div class="oba-n">${_obPaso+1} <em>of ${OB_PASOS.length}</em></div>
+      <div class="oba-t">${p.t}</div>
+      <div class="oba-d">${p.d}</div>
+      <div class="oba-x2">${p.x}</div>
     </div>
-    <p class="foot">Search any coin in the top bar to open its real-time read. Built for monitoring — not financial advice.</p>
-  </div>`;
-  (document.getElementById('ob-stage')||document.body).appendChild(o2);
-  o2.addEventListener('mousedown',e=>{ if(e.target===o2)o2.remove(); });
-  document.getElementById('ob-info-x').onclick=()=>o2.remove();
+    <div class="oba-puntos">${OB_PASOS.map((_,i)=>`<i class="${i===_obPaso?'on':''}" data-opn="${i}"></i>`).join('')}</div>
+    <div class="oba-acts">
+      ${_obPaso>0?'<button class="oba-atras" id="oba-atras">Back</button>':''}
+      <button class="oba-b" id="oba-sig">${ultimo?'Got it':'Learn more'}</button>
+    </div>`;
+  document.getElementById('oba-sig').onclick=()=>{ if(ultimo){ document.getElementById('ob-ayuda-box')?.remove(); return; } _obPaso++; obPaso(); };
+  const at=document.getElementById('oba-atras'); if(at)at.onclick=()=>{ _obPaso=Math.max(0,_obPaso-1); obPaso(); };
+  c.querySelectorAll('[data-opn]').forEach(b=>b.onclick=()=>{ _obPaso=Number(b.dataset.opn); obPaso(); });
 }
 // Compone la foto. sinLogos=false dibuja los logos (CORS); si algo contaminara el lienzo,
 // toDataURL lanza y se reintenta con sinLogos=true (letras). La marca es el logo de la página.
