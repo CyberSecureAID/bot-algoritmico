@@ -15,8 +15,8 @@ import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
-import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd } from '../indicadores/libreria.js?v=4';
-import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=2';
+import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd, transformar } from '../indicadores/libreria.js?v=5';
+import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=3';
 
 const LIB = new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;
@@ -315,7 +315,8 @@ function recalc(pane) {
   if (v.length) pane.ovl.forEach((id) => {
     const def = buscarInd(id); if (!def || def.tipo !== 'ovl') return;
     const c = cfgDe(pane, def); const r = calcular(def, v, c);
-    (r.lineas || []).forEach((ln) => ind.ovl.push({ id, col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, a: ln.a != null ? ln.a : 1, data: ln.data, shift: ln.shift || 0, dots: !!ln.dots, dir: ln.dir || null }));
+    const op = (c.op != null ? c.op : 100) / 100;
+    (r.lineas || []).forEach((ln) => ind.ovl.push({ id, col: ln.col || c.col, gr: ln.gr || c.gr, dash: ln.dash != null ? ln.dash : c.dash, ls: c.ls || (c.dash ? 'dashed' : 'solid'), a: (ln.a != null ? ln.a : 1) * op, glow: c.glow || 0, dyn: !!c.dyn, fill: c.fill || 0, tag: !!c.tag, data: transformar(ln.data, c), shift: (ln.shift || 0) + (c.desp || 0), dots: !!ln.dots, dir: ln.dir || null }));
     (r.nubes || []).forEach((nb) => ind.nubes.push(nb));
   });
   pane.ind = ind;
@@ -347,14 +348,15 @@ function crearOsc(pane, def, c, r) {
 function sincronizarOsc(pane, def, c, r) {
   if (pane._oscMounted !== def.id) { desmontarOsc(pane); crearOsc(pane, def, c, r); pane._oscMounted = def.id; }
   const S2 = pane.oscSeries; if (!S2) return;
+  const op = (c.op != null ? c.op : 100) / 100, lsN = c.ls === 'dotted' ? 1 : c.ls === 'dashed' ? 2 : 0;
   if (S2.hist && r.hist) {
     const v = pane.velas, h = []; let prev = null;
     for (let i = 0; i < r.hist.length; i++) { const hv = r.hist[i]; if (hv == null) continue; const t = v[i] && v[i].time; if (t == null) continue; const col = r.histMom ? ((prev == null || hv >= prev) ? 'rgba(46,232,106,.62)' : 'rgba(255,91,110,.62)') : (hv >= 0 ? 'rgba(46,232,106,.55)' : 'rgba(255,91,110,.55)'); prev = hv; h.push({ time: t, value: hv, color: col }); }
     try { S2.hist.setData(h); } catch (_) {}
   }
-  if (S2.s3 && r.serie3) { try { S2.s3.applyOptions({ color: r.col3 || '#49b6ff' }); S2.s3.setData(serieOsc(pane, r.serie3)); } catch (_) {} }
-  if (S2.s2 && r.serie2) { try { S2.s2.applyOptions({ color: r.col2 || '#ff8fbf' }); S2.s2.setData(serieOsc(pane, r.serie2)); } catch (_) {} }
-  if (S2.main && r.serie) { try { S2.main.applyOptions({ color: c.col, lineWidth: c.gr || 2 }); S2.main.setData(serieOsc(pane, r.serie)); } catch (_) {} }
+  if (S2.s3 && r.serie3) { try { S2.s3.applyOptions({ color: hexA(r.col3 || '#49b6ff', op), lineWidth: c.gr || 2, lineStyle: lsN }); S2.s3.setData(serieOsc(pane, transformar(r.serie3, c))); } catch (_) {} }
+  if (S2.s2 && r.serie2) { try { S2.s2.applyOptions({ color: hexA(r.col2 || '#ff8fbf', op), lineWidth: c.gr || 2, lineStyle: lsN }); S2.s2.setData(serieOsc(pane, transformar(r.serie2, c))); } catch (_) {} }
+  if (S2.main && r.serie) { try { S2.main.applyOptions({ color: hexA(c.col, op), lineWidth: c.gr || 2, lineStyle: lsN }); S2.main.setData(serieOsc(pane, transformar(r.serie, c))); } catch (_) {} }
   let last = null; const src = r.serie || r.hist; if (src) for (let i = src.length - 1; i >= 0; i--) { if (src[i] != null) { last = src[i]; break; } }
   pane._oscLast = last;
   pane._oscData = { serie: r.serie || null, serie2: r.serie2 || null, serie3: r.serie3 || null };
@@ -407,44 +409,76 @@ function dibujarInds(pane) {
   (ind.nubes || []).forEach((nb) => dibujarNube(g, v, nb, XL, Yp));
   (ind.ovl || []).forEach((o, i) => {
     if (o.dots) dibujarDots(g, v, o, XL, Yp);
-    else if (o.dir) lineaSeg(g, v, o, XL, Yp);
-    else lineaComet(g, v, o.data, XL, Yp, o.col, W, now, i, o.gr, o.dash, o.a, o.shift);
+    else if (o.dir) { lineaSeg(g, v, o, XL, Yp); if (o.id === 'supertrend') tachuelasST(g, v, o, XL, Yp); }
+    else lineaComet(g, v, o, XL, Yp, W, H, now, i);
   });
   etiquetaOsc(g, pane);
   g.restore();
 }
-/* Indicador: trazo LIMPIO + una luz (cometa) que lo recorre de izquierda a
-   derecha, suave y lenta, igual que el área VWAP Pro. Sin neón constante. */
-function lineaComet(g, velas, data, XL, Yp, col, W, now, idx, gr, dash, alpha, shift) {
-  if (!data) return;
-  const sh = shift || 0, pts = [];
+/* Convierte #rrggbb a rgba con alpha (para rellenos con gradiente). */
+function hexA(h, a) { if (!h || h[0] !== '#') return h; h = h.slice(1); if (h.length === 3) h = h.split('').map((c) => c + c).join(''); const n = parseInt(h, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; }
+/* Traza una polilinea respetando los cortes (saltos de indice). */
+function trazaRun(g, pts) { g.beginPath(); let prev = null; for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); prev = p; } g.stroke(); }
+/* Etiqueta de precio en vivo al final de la linea. */
+function etiquetaPrecio(g, x, y, val, col) { if (val == null) return; const txt = Number(val).toFixed(decimales(val)); g.save(); g.setLineDash([]); g.font = '700 10px "IBM Plex Mono",monospace'; const tw = g.measureText(txt).width + 12; g.globalAlpha = 1; redondea(g, x + 6, y - 9, tw, 18, 5); g.fillStyle = col; g.fill(); g.fillStyle = '#06100b'; g.textBaseline = 'middle'; g.textAlign = 'left'; g.fillText(txt, x + 12, y + 0.5); g.textBaseline = 'alphabetic'; g.restore(); }
+/* Indicador: trazo LIMPIO con opciones (opacidad, estilo, glow, color dinamico,
+   relleno, etiqueta) + una luz (cometa) que lo recorre, igual que VWAP Pro. */
+function lineaComet(g, velas, o, XL, Yp, W, H, now, idx) {
+  const data = o.data; if (!data) return;
+  const col = o.col, gr = o.gr || 1.5, ls = o.ls || 'solid', base = o.a != null ? o.a : 1, sh = o.shift || 0, glow = o.glow || 0, dyn = !!o.dyn, fill = o.fill || 0, tag = !!o.tag;
+  const UP = '#2ee86a', DN = '#ff5b6e';
+  const pts = [];
   for (let i = 0; i < velas.length; i++) { const val = data[i]; if (val == null) continue; const x = XL(i + sh); if (x == null) continue; const y = Yp(val); if (y == null) continue; pts.push([x, y, i]); }
   if (pts.length < 2) return;
-  const base = alpha != null ? alpha : 1;
+  const dashPat = ls === 'dashed' ? [6, 5] : ls === 'dotted' ? [2, 4] : [];
   g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.shadowBlur = 0; g.globalAlpha = base;
-  if (dash) g.setLineDash([6, 5]);
-  g.strokeStyle = col; g.lineWidth = gr || 1.5; g.beginPath();
-  let prev = null;
-  for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); prev = p; }
-  g.stroke();
-  g.setLineDash([]);
-  const period = 4600, headX = (((now + idx * 760) % period) / period) * (W + 260) - 130, tail = 130;
-  prev = null;
-  for (let k = 0; k < pts.length; k++) {
-    const p = pts[k];
-    if (prev && p[2] === prev[2] + 1) {
-      const mx = (prev[0] + p[0]) / 2, d = Math.abs(mx - headX);
-      if (d <= tail) {
-        const a = 1 - d / tail;
-        g.shadowColor = col; g.shadowBlur = 6; g.strokeStyle = col; g.lineWidth = 2; g.globalAlpha = 0.5 * a;
-        g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke();
-        g.shadowBlur = 0; g.strokeStyle = '#ffffff'; g.lineWidth = 1.1; g.globalAlpha = 0.42 * a * a;
-        g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke();
-      }
-    }
-    prev = p;
+  // relleno hacia la base (gradiente que se desvanece)
+  if (fill > 0) {
+    g.save(); g.setLineDash([]); g.globalAlpha = base * (fill / 100);
+    const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, hexA(col, 0.5)); grd.addColorStop(1, hexA(col, 0)); g.fillStyle = grd;
+    let prev = null, run0 = null;
+    const cerrar = (last) => { if (run0 && last) { g.lineTo(last[0], H); g.lineTo(run0[0], H); g.closePath(); g.fill(); } };
+    for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) g.lineTo(p[0], p[1]); else { cerrar(prev); g.beginPath(); g.moveTo(p[0], H); g.lineTo(p[0], p[1]); run0 = p; } prev = p; }
+    cerrar(prev); g.restore();
   }
+  // glow opcional (neon alrededor de la linea)
+  if (glow > 0) { g.save(); g.setLineDash(dashPat); g.shadowColor = col; g.shadowBlur = glow / 100 * 18; g.strokeStyle = col; g.lineWidth = gr + 1; g.globalAlpha = base * 0.9; trazaRun(g, pts); g.restore(); }
+  // linea base (color unico o dinamico por pendiente)
+  g.setLineDash(dashPat); g.lineWidth = gr;
+  if (dyn) { let prev = null; for (let k = 0; k < pts.length; k++) { const p = pts[k]; if (prev && p[2] === prev[2] + 1) { g.strokeStyle = (p[1] <= prev[1] ? UP : DN); g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke(); } prev = p; } }
+  else { g.strokeStyle = col; trazaRun(g, pts); }
+  g.setLineDash([]);
+  // cometa (luz que recorre), cuando el color no es dinamico
+  if (!dyn) {
+    const period = 4600, headX = (((now + idx * 760) % period) / period) * (W + 260) - 130, tail = 130; let prev = null;
+    for (let k = 0; k < pts.length; k++) { const p = pts[k];
+      if (prev && p[2] === prev[2] + 1) { const mx = (prev[0] + p[0]) / 2, d = Math.abs(mx - headX);
+        if (d <= tail) { const a = 1 - d / tail;
+          g.shadowColor = col; g.shadowBlur = 6; g.strokeStyle = col; g.lineWidth = 2; g.globalAlpha = base * 0.5 * a; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke();
+          g.shadowBlur = 0; g.strokeStyle = '#ffffff'; g.lineWidth = 1.1; g.globalAlpha = base * 0.42 * a * a; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(p[0], p[1]); g.stroke(); } }
+      prev = p; }
+  }
+  g.globalAlpha = base; if (tag) { const lp = pts[pts.length - 1]; etiquetaPrecio(g, lp[0], lp[1], data[lp[2]], col); }
   g.globalAlpha = 1; g.restore();
+}
+/* SUPERTREND: tachuela LONG donde la media pasa a verde (alcista) y tachuela
+   SHORT donde pasa a rojo (bajista). Una por cada cambio de color. */
+function tachuelasST(g, velas, o, XL, Yp) {
+  const dir = o.dir || [], sh = o.shift || 0, up = '#2ee86a', dn = '#ff5b6e';
+  for (let i = 1; i < velas.length; i++) {
+    const d = dir[i], pd = dir[i - 1]; if (d == null || pd == null) continue;
+    const alc = d >= 0, antes = pd >= 0; if (alc === antes) continue;
+    const x = XL(i + sh); if (x == null) continue;
+    const y = Yp(alc ? velas[i].low : velas[i].high); if (y == null) continue;
+    pinST(g, x, alc ? y + 6 : y - 6, alc, alc ? up : dn);
+  }
+}
+function pinST(g, x, y, abajo, col) {
+  const s = abajo ? 1 : -1; g.save();
+  g.strokeStyle = col; g.lineWidth = 1.6; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + s * 12); g.stroke();
+  g.shadowColor = col; g.shadowBlur = 7; g.fillStyle = col; g.beginPath(); g.arc(x, y + s * 19, 8, 0, 7); g.fill(); g.shadowBlur = 0;
+  g.fillStyle = '#06100b'; g.font = '800 10px "IBM Plex Mono",monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(abajo ? 'L' : 'S', x, y + s * 19 + 0.5);
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.restore();
 }
 /* Linea con color por TRAMO segun la direccion (SuperTrend, PSAR): verde en
    tendencia alcista, rojo en bajista. Sin cometa. */
@@ -1049,7 +1083,7 @@ function abrirBarraDe(pane, id) {
   const r = pane.body.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + 8;   // SIEMPRE centrada arriba de la grafica, para que no moleste
   abrirBarraInd({
-    cfg: c, params: def.params || [], nombre: nomInd(def, c), nombreDe: () => nomInd(def, c), cx, cy,
+    cfg: c, params: def.params || [], tipo: def.tipo, nombre: nomInd(def, c), nombreDe: () => nomInd(def, c), cx, cy,
     onCambio: () => recalc(pane),
     onEliminar: () => quitarInd(pane, id)
   });
