@@ -90,6 +90,8 @@ const CSS = `
   .mc-cap{position:absolute; inset:0; z-index:6; pointer-events:none; cursor:crosshair}
   .mc-cap.on{pointer-events:auto}
   .mc-cap.hit{pointer-events:auto; cursor:pointer}
+  .mc-cap.ftover{pointer-events:auto; cursor:grab}
+  .mc-cap.ftgrab{pointer-events:auto; cursor:grabbing}
   /* marca de agua: misma ubicación que las demás secciones (libre de barra y de las fechas) */
   .mc-wm{position:absolute; left:60px; bottom:36px; z-index:7; opacity:.72; pointer-events:none}
   .mc-wm img{height:21px; width:auto; filter:drop-shadow(0 2px 8px rgba(0,0,0,.98))}
