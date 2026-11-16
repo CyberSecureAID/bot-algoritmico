@@ -10,6 +10,7 @@
    colgados. Generica: recibe la config de la instancia + callbacks.
    ────────────────────────────────────────────────────────────────────────── */
 
+import { OPC_UNIV } from './libreria.js?v=5';
 /* Misma paleta que la barra de herramientas (niveles). */
 const PALETA = ['#22d3ee', '#38bdf8', '#2ee86a', '#a3e635', '#ffd400', '#E8B84B', '#f59e0b', '#ff3b52', '#fb7185', '#a78bfa', '#e879f9', '#94a3b8', '#ffffff'];
 let _bar = null, _pop = null, _docCerra = null;
@@ -53,7 +54,19 @@ function inyectarCSS() {
   .indtb-pc{width:22px; height:22px; border-radius:6px; border:2px solid transparent; cursor:pointer; padding:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
   .indtb-pc:hover{border-color:rgba(255,255,255,.85)}
   .indtb-pc.on{border-color:#fff}
-  .indtb-pop-cfg{width:210px}
+  .indtb-pop-cfg{width:226px; max-height:min(70vh,448px); overflow-y:auto; overflow-x:hidden; scrollbar-width:thin}
+  .indtb-pop-cfg::-webkit-scrollbar{width:7px}
+  .indtb-pop-cfg::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16); border-radius:4px}
+  .indtb-suf{font-size:10px; color:#8b95a1; margin:0 1px}
+  .indtb-rowt{margin:9px 2px}
+  .indtb-tgl{width:38px; height:22px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); cursor:pointer; position:relative; padding:0; flex:0 0 auto}
+  .indtb-tgl i{position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#8b95a1; transition:left .14s,background .14s}
+  .indtb-tgl.on{background:rgba(34,211,238,.25); border-color:rgba(34,211,238,.5)}
+  .indtb-tgl.on i{left:18px; background:#22d3ee}
+  .indtb-ls{display:inline-flex; gap:4px}
+  .indtb-ls button{height:24px; padding:0 8px; border-radius:7px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:#b7bdc6; cursor:pointer; font-family:inherit; font-size:10px; font-weight:700}
+  .indtb-ls button:hover{border-color:rgba(34,211,238,.5)}
+  .indtb-ls button.on{background:rgba(34,211,238,.2); border-color:rgba(34,211,238,.5); color:#22d3ee}
   .indtb-pop-t{font-size:9px; letter-spacing:1px; text-transform:uppercase; color:#8b95a1; margin:0 2px 8px}
   .indtb-row{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:7px 2px}
   .indtb-row>span{font-size:11px; color:#b7bdc6}
@@ -108,7 +121,7 @@ export function abrirBarraInd(opts) {
     `<button class="indtb-b indtb-color" data-col title="Color"><span class="indtb-swatch" style="background:${cfg.col}"></span></button>` +
     `<span class="indtb-sep"></span>${grBtns}` +
     `<button class="indtb-b indtb-dash ${cfg.dash ? 'on' : ''}" data-dash title="Dashed"><i></i></button>` +
-    (params.length ? `<span class="indtb-sep"></span><button class="indtb-b indtb-gear" data-gear title="Settings">${SVG.gear}</button>` : '') +
+    `<span class="indtb-sep"></span><button class="indtb-b indtb-gear" data-gear title="Settings">${SVG.gear}</button>` +
     `<span class="indtb-sep"></span><button class="indtb-b indtb-del" data-del title="Delete">${SVG.del}</button>`;
   document.body.appendChild(bar);
   colocar(bar, opts.cx, opts.cy);
@@ -131,8 +144,8 @@ export function abrirBarraInd(opts) {
   const cambiar = () => { onCambio(); if (opts.nombreDe) { try { const el = bar.querySelector('.indtb-nm'); if (el) el.textContent = opts.nombreDe(); } catch (_) {} } };
   bar.querySelector('[data-col]').onclick = (e) => { e.stopPropagation(); popColor(cfg, e.currentTarget, cambiar); };
   bar.querySelectorAll('[data-gr]').forEach((b) => b.onclick = () => { cfg.gr = +b.dataset.gr; bar.querySelectorAll('[data-gr]').forEach((x) => x.classList.toggle('on', x === b)); cerrarPop(); cambiar(); });
-  bar.querySelector('[data-dash]').onclick = (e) => { cfg.dash = !cfg.dash; e.currentTarget.classList.toggle('on', cfg.dash); cerrarPop(); cambiar(); };
-  const gearBtn = bar.querySelector('[data-gear]'); if (gearBtn) gearBtn.onclick = (e) => { e.stopPropagation(); popAjustes(cfg, params, nombre, gearBtn, cambiar); };
+  bar.querySelector('[data-dash]').onclick = (e) => { cfg.dash = !cfg.dash; cfg.ls = cfg.dash ? 'dashed' : 'solid'; e.currentTarget.classList.toggle('on', cfg.dash); cerrarPop(); cambiar(); };
+  const gearBtn = bar.querySelector('[data-gear]'); if (gearBtn) gearBtn.onclick = (e) => { e.stopPropagation(); popAjustes(cfg, params, nombre, gearBtn, cambiar, opts.tipo); };
   bar.querySelector('[data-pin]').onclick = (e) => { fijado = !fijado; e.currentTarget.classList.toggle('on', fijado); };
   bar.querySelector('[data-del]').onclick = () => { onEliminar(); cerrarBarraInd(); };
 
@@ -156,29 +169,46 @@ function popColor(cfg, anchor, cambiar) {
   ubicarPop(pop, anchor);
   pop.onclick = (e) => { const b = e.target.closest('[data-c]'); if (!b) return; cfg.col = b.dataset.c; const sw = anchor.querySelector('.indtb-swatch'); if (sw) sw.style.background = cfg.col; cambiar(); cerrarPop(); };
 }
-function popAjustes(cfg, params, nombre, anchor, cambiar) {
+function popAjustes(cfg, params, nombre, anchor, cambiar, tipo) {
   if (_pop && _pop.dataset.k === 'cfg') { cerrarPop(); return; }
   cerrarPop();
-  const filas = params.map((p) => {
-    const step = p.step || 1, lo = p.min != null ? p.min : 1, hi = p.max != null ? p.max : 100;
-    return `<div class="indtb-row"><span>${p.lbl || p.k}</span><div class="indtb-step"><button type="button" data-dec="${p.k}" data-step="${step}">−</button><input class="indtb-val" data-val="${p.k}" value="${cfg[p.k]}" inputmode="decimal"><button type="button" data-inc="${p.k}" data-step="${step}">+</button></div></div>` +
-      `<input class="indtb-slider" type="range" data-slider="${p.k}" min="${lo}" max="${hi}" step="${step}" value="${cfg[p.k]}">`;
-  }).join('');
+  const esOvl = tipo !== 'osc';
+  const filaNum = (p) => { const step = p.step || 1, lo = p.min != null ? p.min : 1, hi = p.max != null ? p.max : 100;
+    return `<div class="indtb-row"><span>${p.lbl || p.k}</span><div class="indtb-step"><button type="button" data-dec="${p.k}" data-step="${step}">−</button><input class="indtb-val" data-val="${p.k}" value="${cfg[p.k]}" inputmode="decimal">${p.suf ? `<em class="indtb-suf">${p.suf}</em>` : ''}<button type="button" data-inc="${p.k}" data-step="${step}">+</button></div></div>` +
+      `<input class="indtb-slider" type="range" data-slider="${p.k}" min="${lo}" max="${hi}" step="${step}" value="${cfg[p.k]}">`; };
+  const filaTgl = (p) => `<div class="indtb-row indtb-rowt"><span>${p.lbl}</span><button type="button" class="indtb-tgl ${cfg[p.k] ? 'on' : ''}" data-tgl="${p.k}"><i></i></button></div>`;
+  const LSV = [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']];
+  const filaLs = (p) => `<div class="indtb-row"><span>${p.lbl}</span><div class="indtb-ls">${LSV.map(([val, lb]) => `<button type="button" class="${((cfg.ls || 'solid') === val) ? 'on' : ''}" data-ls="${val}">${lb}</button>`).join('')}</div></div>`;
+  let html = '';
+  if (params && params.length) html += `<div class="indtb-pop-t">${nombre} parameters</div>` + params.map(filaNum).join('');
+  html += `<div class="indtb-pop-t">Style</div>` + OPC_UNIV.filter((o) => esOvl || !o.ovl).map((o) => o.kind === 'toggle' ? filaTgl(o) : o.kind === 'style' ? filaLs(o) : filaNum(o)).join('');
   const pop = document.createElement('div'); pop.className = 'indtb-pop indtb-pop-cfg'; pop.dataset.k = 'cfg';
-  pop.innerHTML = `<div class="indtb-pop-t">${nombre} settings</div>${filas}`;
+  pop.innerHTML = html;
   document.body.appendChild(pop); _pop = pop;
   ubicarPop(pop, anchor);
-  const setVal = (pk, val) => { const p = params.find((x) => x.k === pk); if (!p) return; const lo = p.min != null ? p.min : 1, hi = p.max != null ? p.max : 1e9; let nv = Math.max(lo, Math.min(hi, val)); const step = p.step || 1; nv = step >= 1 ? Math.round(nv) : Math.round(nv / step) * step; cfg[pk] = nv; const inp = pop.querySelector('[data-val="' + pk + '"]'); if (inp) inp.value = nv; const sl = pop.querySelector('[data-slider="' + pk + '"]'); if (sl && +sl.value !== nv) sl.value = nv; cambiar(); };
+  const descr = (pk) => (params || []).find((x) => x.k === pk) || OPC_UNIV.find((x) => x.k === pk) || {};
+  const setVal = (pk, val) => { const p = descr(pk); const lo = p.min != null ? p.min : 0, hi = p.max != null ? p.max : 1e9; let nv = Math.max(lo, Math.min(hi, val)); const step = p.step || 1; nv = step >= 1 ? Math.round(nv) : Math.round(nv / step * (1 / 1)) * step; nv = Math.round(nv * 1000) / 1000; cfg[pk] = nv; const inp = pop.querySelector('[data-val="' + pk + '"]'); if (inp) inp.value = nv; const sl = pop.querySelector('[data-slider="' + pk + '"]'); if (sl && +sl.value !== nv) sl.value = nv; cambiar(); };
   pop.querySelectorAll('[data-dec]').forEach((b) => b.onclick = () => setVal(b.dataset.dec, (+cfg[b.dataset.dec]) - (+b.dataset.step)));
   pop.querySelectorAll('[data-inc]').forEach((b) => b.onclick = () => setVal(b.dataset.inc, (+cfg[b.dataset.inc]) + (+b.dataset.step)));
   pop.querySelectorAll('.indtb-val').forEach((inp) => inp.onchange = () => { const nv = parseFloat(inp.value); if (isFinite(nv)) setVal(inp.dataset.val, nv); else inp.value = cfg[inp.dataset.val]; });
   pop.querySelectorAll('.indtb-slider').forEach((sl) => sl.oninput = () => setVal(sl.dataset.slider, parseFloat(sl.value)));
+  pop.querySelectorAll('[data-tgl]').forEach((b) => b.onclick = () => { const k = b.dataset.tgl; cfg[k] = !cfg[k]; b.classList.toggle('on', cfg[k]); cambiar(); });
+  pop.querySelectorAll('[data-ls]').forEach((b) => b.onclick = () => { cfg.ls = b.dataset.ls; cfg.dash = cfg.ls === 'dashed'; pop.querySelectorAll('[data-ls]').forEach((x) => x.classList.toggle('on', x === b)); cambiar(); });
 }
 function ubicarPop(pop, anchor) {
   const r = anchor.getBoundingClientRect();
-  let left = r.left, top = r.bottom + 7;
+  let left = r.left;
   if (left + pop.offsetWidth > innerWidth - 8) left = innerWidth - pop.offsetWidth - 8;
-  if (top + pop.offsetHeight > innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 7);
-  pop.style.left = Math.max(8, left) + 'px'; pop.style.top = top + 'px';
+  left = Math.max(8, left);
+  // Nunca se desborda por abajo: se cuelga abajo o arriba segun el espacio, y limita
+  // su alto al hueco disponible (con scroll interno). Asi la ventana no se rompe.
+  const abajo = innerHeight - r.bottom - 15, arriba = r.top - 15; let top;
+  if (pop.offsetHeight <= abajo || abajo >= arriba) {
+    top = r.bottom + 7; const maxh = innerHeight - top - 8; if (pop.offsetHeight > maxh) pop.style.maxHeight = maxh + 'px';
+  } else {
+    const maxh = r.top - 15; if (pop.offsetHeight > maxh) pop.style.maxHeight = maxh + 'px';
+    top = Math.max(8, r.top - Math.min(pop.offsetHeight, maxh) - 7);
+  }
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
   pop.onmousedown = (e) => e.stopPropagation();
 }

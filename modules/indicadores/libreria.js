@@ -127,8 +127,26 @@ export const INDICADORES = [
   { id: 'fisher', nom: 'Fisher', grupo: 'Momentum', tipo: 'osc', ref: [0], estilo: { col: '#E8B84B', gr: 2, dash: false }, params: [{ k: 'periodo', lbl: 'Length', def: 9, min: 2, max: 100 }], calc: (v, c) => { const x = fisher(v, c.periodo); return { serie: x.fish, serie2: x.trigger, col2: '#ff8fbf' }; } }
 ];
 
+/* ── Opciones de estilo UNIVERSALES (valen para TODOS los indicadores) ──
+   Cada una sale con su barra deslizante en vivo. 'ovl' = solo para los que van
+   sobre el precio. kind: 'slider' | 'toggle' | 'style'. Los defaults dejan el
+   indicador EXACTAMENTE igual que antes (retrocompatible). */
+export const OPC_UNIV = [
+  { k: 'op',    lbl: 'Opacity',       kind: 'slider', min: 5,   max: 100, step: 1,   def: 100, suf: '%' },
+  { k: 'gr',    lbl: 'Thickness',     kind: 'slider', min: 0.5, max: 8,   step: 0.5, def: 2 },
+  { k: 'ls',    lbl: 'Line style',    kind: 'style',  def: 'solid' },
+  { k: 'suave', lbl: 'Smoothing',     kind: 'slider', min: 0,   max: 50,  step: 1,   def: 0 },
+  { k: 'desp',  lbl: 'Offset (bars)', kind: 'slider', min: -50, max: 50,  step: 1,   def: 0 },
+  { k: 'sesgo', lbl: 'Vertical bias', kind: 'slider', min: -5,  max: 5,   step: 0.1, def: 0, suf: '%' },
+  { k: 'glow',  lbl: 'Glow',          kind: 'slider', min: 0,   max: 100, step: 1,   def: 0,   suf: '%', ovl: true },
+  { k: 'dyn',   lbl: 'Dynamic color', kind: 'toggle', def: false, ovl: true },
+  { k: 'fill',  lbl: 'Fill to base',  kind: 'slider', min: 0,   max: 100, step: 1,   def: 0,   suf: '%', ovl: true },
+  { k: 'tag',   lbl: 'Price label',   kind: 'toggle', def: false }
+];
 /* ── Helpers para quien la use ── */
 export function buscarInd(id) { return INDICADORES.find((d) => d.id === id) || null; }
-export function cfgInicial(def) { const c = Object.assign({ col: def.estilo.col, gr: def.estilo.gr, dash: !!def.estilo.dash }, {}); (def.params || []).forEach((p) => { c[p.k] = p.def; }); return c; }
+export function cfgInicial(def) { const c = Object.assign({ col: def.estilo.col, gr: def.estilo.gr, dash: !!def.estilo.dash }, {}); (def.params || []).forEach((p) => { c[p.k] = p.def; }); OPC_UNIV.forEach((o) => { if (c[o.k] === undefined) c[o.k] = o.def; }); if (c.ls === 'solid' && c.dash) c.ls = 'dashed'; return c; }
+/* Aplica suavizado y sesgo vertical a una serie (el offset se maneja en el trazo). */
+export function transformar(data, c) { if (!data || !c) return data; let d = data; if (c.suave && c.suave > 1) d = ema(d, Math.round(c.suave)); if (c.sesgo) { const f = 1 + c.sesgo / 100; d = d.map((x) => x == null ? null : x * f); } return d; }
 export function nombreInd(def, c) { if (!def.params || !def.params.length) return def.nom; const p0 = def.params.find((p) => p.k === 'periodo'); return p0 ? def.nom + ' ' + c[p0.k] : def.nom; }
 export function calcular(def, velas, c) { try { return def.calc(velas, c); } catch (_) { return def.tipo === 'ovl' ? { lineas: [] } : {}; } }
