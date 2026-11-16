@@ -107,6 +107,7 @@ const CSS = `
   .mc-cap.hit{pointer-events:auto; cursor:pointer}
   .mc-cap.ftover{pointer-events:auto; cursor:grab}
   .mc-cap.ftgrab{pointer-events:auto; cursor:grabbing}
+  .mc-cap.ftdraw{pointer-events:auto; cursor:crosshair}
   /* marca de agua: misma ubicación que las demás secciones (libre de barra y de las fechas) */
   .mc-wm{position:absolute; left:60px; bottom:36px; z-index:7; opacity:.72; pointer-events:none}
   .mc-wm img{height:21px; width:auto; filter:drop-shadow(0 2px 8px rgba(0,0,0,.98))}
@@ -168,6 +169,9 @@ const CSS = `
   .mc-chipx{margin-left:3px; width:15px; height:15px; border-radius:4px; border:none; background:transparent; color:currentColor; opacity:.5; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; flex:0 0 auto}
   .mc-chipx:hover{opacity:1; background:rgba(255,91,110,.22); color:#ff6b7a}
   .mc-chipx svg{width:9px; height:9px}
+  .mc-oscleg{position:absolute; z-index:7; pointer-events:auto}
+  .mc-oscnm{font-weight:700}
+  .mc-oscval{opacity:.85}
 
   /* ── Modal (guardar imagen) ── */
   .mc-modal{position:fixed; inset:0; z-index:9600; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(3,6,10,.74); backdrop-filter:blur(4px)}

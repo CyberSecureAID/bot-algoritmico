@@ -10,7 +10,7 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=13';
+import { estilos } from './estilos.js?v=14';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
@@ -127,6 +127,7 @@ const IC = {
   hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V6.2a1.4 1.4 0 0 1 2.8 0V11m0-.8V5a1.4 1.4 0 0 1 2.8 0v5.6m0-.6V6.4a1.4 1.4 0 0 1 2.8 0V13c0 3.5-2.3 6-5.6 6-2 0-3.3-.8-4.4-2.2l-2.1-2.8c-.6-.8-.3-1.7.5-2.2.7-.4 1.4-.2 1.9.3L8 13"/></svg>',
   wave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c2-4.5 4-4.5 6 0s4 4.5 6 0 4-4.5 6 0"/></svg>',
   reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1M3 4.5V9h4.5"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4M4 20l4.6-1.1 9.9-9.9a1.8 1.8 0 0 0 0-2.5l-1.5-1.5a1.8 1.8 0 0 0-2.5 0L4.5 15.4 4 20z"/></svg>',
   dock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M13 12h5v5.5"/><path d="M3 12h10v7.5"/></svg>'
 };
 
@@ -390,7 +391,8 @@ function sincronizarOsc(pane, def, c, r) {
 }
 function desmontarOsc(pane) {
   if (pane.oscSeries) { Object.keys(pane.oscSeries).forEach((k) => { try { pane.chart.removeSeries(pane.oscSeries[k]); } catch (_) {} }); pane.oscSeries = null; }
-  pane.oscRefs = []; pane._oscMounted = null; pane._oscLast = null; pane._oscData = null; pane._oscXbox = null;
+  pane.oscRefs = []; pane._oscMounted = null; pane._oscLast = null; pane._oscData = null;
+  if (pane.oscLeg) { pane.oscLeg.style.display = 'none'; pane.oscLeg._nom = null; }
 }
 function arrancarRAF() {
   let last = 0;
@@ -439,7 +441,6 @@ function dibujarInds(pane) {
     else if (o.dir) { lineaSeg(g, v, o, XL, Yp); if (baseId(o.id) === 'supertrend' && o.pins !== false) tachuelasST(g, v, o, XL, Yp); }
     else lineaComet(g, v, o, XL, Yp, W, H, now, i);
   });
-  etiquetaOsc(g, pane);
   g.restore();
 }
 /* Convierte #rrggbb a rgba con alpha (para rellenos con gradiente). */
@@ -571,25 +572,26 @@ function dibujarNube(g, velas, nb, XL, Yp) {
 /* Etiqueta del oscilador (nombre + ultimo valor), arriba a la izquierda de SU
    panel nativo, como en TradingView. Con sombra para que lea sobre la linea. */
 function fmtOsc(v) { const a = Math.abs(v); return a >= 1000 ? v.toFixed(0) : a >= 1 ? v.toFixed(2) : v.toFixed(4); }
-function etiquetaOsc(g, pane) {
-  if (!pane.oscK || !pane._oscMounted) { pane._oscXbox = null; return; }
-  let h0; try { h0 = pane.chart.panes()[0].getHeight(); } catch (_) { return; }
-  if (!h0) { pane._oscXbox = null; return; }
-  const def = buscarInd(pane.oscK); if (!def) return;
-  const c = cfgDe(pane, def), val = pane._oscLast;
-  const txt = nomInd(def, c) + (val != null ? '  ' + fmtOsc(val) : '');
-  g.save();
-  g.font = '700 10px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-  g.shadowColor = 'rgba(0,0,0,.9)'; g.shadowBlur = 3;
-  g.fillStyle = c.col; g.fillText(txt, 8, h0 + 15);
-  const w = g.measureText(txt).width; g.shadowBlur = 0;
-  // X para cerrar el oscilador desde SU panel (abajo), aparte de la de arriba. En
-  // TradingView se cierra abajo; aqui se puede arriba y abajo.
-  const cxx = 8 + w + 11, cyy = h0 + 11, s = 4;
-  g.strokeStyle = 'rgba(220,226,232,.62)'; g.lineWidth = 1.5; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(cxx - s, cyy - s); g.lineTo(cxx + s, cyy + s); g.moveTo(cxx + s, cyy - s); g.lineTo(cxx - s, cyy + s); g.stroke();
-  pane._oscXbox = { x: cxx - 9, y: cyy - 9, w: 18, h: 18 };
-  g.restore();
+/* Etiqueta del oscilador en SU panel (abajo): ahora es un chip DOM con el MISMO
+   estilo que los de arriba (incluida su X bien alineada), no texto pintado a mano.
+   Se posiciona en la cabecera del sub panel y se cierra desde ahi tambien. */
+function actualizarOscLeg(pane) {
+  if (!pane.body) return;
+  let el = pane.oscLeg;
+  if (!pane.oscK || !pane._oscMounted) { if (el) el.style.display = 'none'; return; }
+  let h0 = null; try { h0 = pane.chart.panes()[0].getHeight(); } catch (_) {}
+  if (h0 == null) { if (el) el.style.display = 'none'; return; }
+  const def = buscarInd(pane.oscK); if (!def) { if (el) el.style.display = 'none'; return; }
+  const c = cfgDe(pane, pane.oscK), nom = nomInd(def, c);
+  if (!el) { el = document.createElement('div'); el.className = 'mc-chip mc-oscleg'; pane.body.appendChild(el); pane.oscLeg = el; }
+  if (el._nom !== nom) {
+    el._nom = nom; el.style.color = c.col;
+    el.innerHTML = `<i style="background:${c.col}"></i><span class="mc-oscnm">${nom}</span><span class="mc-oscval"></span><button class="mc-chipx" title="Quitar indicador">${IC.x}</button>`;
+    const bx = el.querySelector('.mc-chipx'); if (bx) bx.onclick = (e) => { e.stopPropagation(); quitarInd(pane, pane.oscK); };
+    el.onclick = (e) => { if (e.target.closest('.mc-chipx')) return; abrirBarraDe(pane, pane.oscK); };
+  }
+  const vspan = el.querySelector('.mc-oscval'); if (vspan) vspan.textContent = (pane._oscLast != null ? '  ' + fmtOsc(pane._oscLast) : '');
+  el.style.left = '8px'; el.style.top = (h0 + 6) + 'px'; el.style.display = '';
 }
 
 /* ── Capa UX: trazos (solo lectura en no enfocados) + líneas cruzadas ── */
@@ -607,6 +609,8 @@ function dibujarUX(pane) {
   if (S.tool === 'hline' && S.preview && S.preview.frac != null) { const y = S.preview.frac * H; lineaHorz(g, y, W, 0.6, priceAt(pane, y), true, '#2ee8c6', 2); }
   // Ordenes/alertas/posiciones del usuario sobre esta gráfica (mismo estilo que el resto del área)
   if (_od) { const gd = geoDibPane(pane); if (gd) { try { pane._zonasOd = _od.pintar(g, { x1: gd.x1, y1: gd.y1, Y: gd.Y, pMin: gd.pMin, pMax: gd.pMax, simbolo: (pane.par.s || pane.par.id + 'USDT') }) || []; } catch (_) { pane._zonasOd = []; } } else pane._zonasOd = []; }
+  if (pane._draw) dibujarTrazo(g, pane._draw);     // trazo del lapiz en curso
+  actualizarOscLeg(pane);                          // etiqueta (chip) del oscilador abajo, con su X
 }
 function dibujosRO(pane, g) {
   const lista = pane.dibCache; if (!lista || !lista.length) return;
@@ -744,8 +748,10 @@ function wirePane(pane) {
   });
   // sin herramienta armada: detecta el cursor sobre una línea ya colocada (manita + clic)
   pane.body.addEventListener('mousemove', (e) => {
-    if (S.tool || NIV.herr !== 'cursor') { if (cap.classList.contains('hit')) cap.classList.remove('hit'); cap.classList.remove('ftover'); pane._hit = null; pane._hitInd = null; return; }
+    if (S.tool || NIV.herr !== 'cursor') { cap.classList.remove('hit', 'ftover', 'ftdraw'); pane._hit = null; pane._hitInd = null; return; }
     const r = pane.body.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+    if (pane.ftTool === 'draw') { cap.classList.add('ftdraw'); cap.classList.remove('ftover', 'hit'); pane._hit = null; pane._hitInd = null; return; }
+    cap.classList.remove('ftdraw');
     if (pane.ftTool) { const g = hitReshape(pane, x, y); cap.classList.toggle('ftover', !!g); cap.classList.remove('hit'); pane._hit = null; pane._hitInd = null; return; }
     cap.classList.remove('ftover');
     const hit = hitLine(pane, x, y);
@@ -753,31 +759,36 @@ function wirePane(pane) {
     pane._hitInd = hit ? null : hitInd(pane, x, y);          // manita tambien sobre la propia linea del indicador
     cap.classList.toggle('hit', !!(hit || pane._hitInd));
   });
-  // Free Transform (herramienta global): agarrar un indicador y remodelarlo.
-  // 'reshape' = ajusta sus PARAMETROS reales (vertical -> periodo, horizontal ->
-  // desplazamiento) y persiste con las velas; 'smooth' = ajusta su suavizado.
+  // Free Transform (herramienta global). 'draw' = dibujas y se monta el indicador
+  // real mas parecido. 'reshape' = escultura LIBRE: agarras la linea y la llevas a
+  // donde quieras (en cualquier direccion); la forma persiste con las velas y el
+  // numero (periodo) se reajusta en vivo. 'smooth' = ajusta el suavizado.
   let ftDrag = null;
   pane.body.addEventListener('mousedown', (e) => {
     if (!pane.ftTool || S.tool) return;
     const r = pane.body.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+    if (pane.ftTool === 'draw') { e.preventDefault(); e.stopPropagation(); pane._draw = { pts: [{ x, y }], badge: null, _t: 0 }; cap.classList.add('ftgrab'); return; }
     const grab = hitReshape(pane, x, y); if (!grab) return;
     e.preventDefault(); e.stopPropagation();
     const c0 = cfgDe(pane, grab.key);
-    ftDrag = { key: grab.key, li: grab.li, osc: grab.osc, tool: pane.ftTool, gx: x, gy: y, gBar: ftBarIdx(pane, x), desp0: (c0.desp || 0), suave0: (c0.suave || 0) };
+    ftDrag = { key: grab.key, li: grab.li, osc: grab.osc, tool: pane.ftTool, gy: y, suave0: (c0.suave || 0), lastP: ftPrecio(pane, grab.osc, y), _reb: 0 };
     cap.classList.add('ftgrab');
   }, true);
   window.addEventListener('mousemove', (e) => {
-    if (!ftDrag) return;
     const r = pane.body.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+    if (pane._draw) {
+      const last = pane._draw.pts[pane._draw.pts.length - 1];
+      if (!last || Math.hypot(x - last.x, y - last.y) >= 2) pane._draw.pts.push({ x, y });
+      const now = performance.now();
+      if (now - pane._draw._t > 90 && pane._draw.pts.length > 4) { pane._draw._t = now; try { const rec = reconocerTrazo(pane, pane._draw.pts); pane._draw.badge = rec ? etiquetaRec(rec) : null; } catch (_) {} }
+      return;
+    }
+    if (!ftDrag) return;
     aplicarReshape(pane, ftDrag, x, y); recalc(pane);
   });
-  window.addEventListener('mouseup', () => { if (ftDrag) { ftDrag = null; cap.classList.remove('ftgrab'); } });
-  // X del oscilador en SU panel (abajo): cerrarlo tambien desde ahi, como pidio el usuario.
-  pane.body.addEventListener('click', (e) => {
-    if (pane.ftTool || S.tool || !pane.oscK || !pane._oscXbox) return;
-    const r = pane.body.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
-    const bx = pane._oscXbox;
-    if (x >= bx.x && x <= bx.x + bx.w && y >= bx.y && y <= bx.y + bx.h) { e.stopPropagation(); quitarInd(pane, pane.oscK); }
+  window.addEventListener('mouseup', () => {
+    if (pane._draw) { const pts = pane._draw.pts; pane._draw = null; cap.classList.remove('ftgrab'); if (pts.length > 4) { try { montarReconocido(pane, reconocerTrazo(pane, pts)); } catch (_) {} } return; }
+    if (ftDrag) { ftDrag = null; cap.classList.remove('ftgrab'); }
   });
   if (pane.flotante) arrastrar(pane);
   cablearOrdenPane(pane);
@@ -943,24 +954,144 @@ function aplicarReshape(pane, d, x, y) {
   if (d.tool === 'smooth') {
     let s = (d.suave0 || 0) + (d.gy - y) * 0.14; s = Math.max(0, Math.min(50, s)); c.suave = Math.round(s); return;
   }
-  // horizontal -> desplazamiento (offset en barras)
-  const barNow = ftBarIdx(pane, x);
-  if (barNow != null && d.gBar != null) c.desp = Math.max(-200, Math.min(200, (d.desp0 || 0) + (barNow - d.gBar)));
-  // vertical -> periodo real (ajuste para que la linea pase por el cursor)
-  const target = ftPrecio(pane, d.osc, y); if (target == null) return;
-  let idx = (barNow == null ? pane.velas.length - 1 : barNow) - (d.osc ? 0 : (c.desp || 0));
-  idx = Math.max(0, Math.min(pane.velas.length - 1, idx));
-  ajustarParametro(pane, def, c, d.li, d.osc, idx, target);
+  // RESHAPE = escultura LIBRE: un pincel lleva la linea a donde este el cursor, en
+  // cualquier direccion. Se guarda como warp y PERSISTE (recalc lo reaplica cada
+  // frame, incluidas las velas nuevas). Ademas, cada pocas pasadas se reajusta el
+  // periodo base para que la etiqueta refleje el cambio, SIN alterar lo esculpido.
+  const bar = ftBarIdx(pane, x), curP = ftPrecio(pane, d.osc, y);
+  if (bar == null || curP == null) return;
+  if (d.lastP != null) ftBrush(pane, { key: d.key }, d.li, bar, curP - d.lastP);
+  d.lastP = curP;
+}
+/* Reparte la forma esculpida entre el periodo base (para que la etiqueta cambie) y
+   un warp residual (para que lo que ves NO se altere). Asi recuperamos la libertad
+   total de antes y, de paso, el numero se mueve segun la compresion. */
+function rebalancear(pane, key, def, li, osc) {
+  const pd = paramPrincipal(def); if (!pd) return;
+  const c = cfgDe(pane, key), w = c.warp && c.warp[li]; if (!w) return;
+  let r; try { r = def.calc(pane.velas, c); } catch (_) { return; }
+  const base = osc ? (li === 0 ? r.serie : li === 1 ? r.serie2 : r.serie3) : (r.lineas && r.lineas[li] && r.lineas[li].data);
+  if (!base) return;
+  const L = w.length;
+  const total = base.map((v, i) => v == null ? null : v + (i < L ? (w[i] || 0) : (w[L - 1] || 0)));
+  const idxs = []; for (let i = 0; i < L; i++) if (Math.abs(w[i]) > 1e-9) idxs.push(i);
+  if (idxs.length < 3) return;
+  const lo = pd.min != null ? pd.min : 1, hi = pd.max != null ? pd.max : 400, step = pd.step || 1;
+  const cc = Object.assign({}, c); cc.warp = null;
+  const valP = (p) => { cc[pd.k] = p; let rr; try { rr = def.calc(pane.velas, cc); } catch (_) { return null; } return osc ? (li === 0 ? rr.serie : li === 1 ? rr.serie2 : rr.serie3) : (rr.lineas && rr.lineas[li] && rr.lineas[li].data); };
+  let best = c[pd.k], bestErr = Infinity;
+  const probar = (p) => { if (p < lo || p > hi) return; const bd = valP(p); if (!bd) return; let e = 0, n = 0; for (const i of idxs) { const a = bd[i], t = total[i]; if (a == null || t == null) continue; const dd = (a - t) / (Math.abs(t) || 1); e += dd * dd; n++; } if (n < 3) return; e /= n; if (e < bestErr) { bestErr = e; best = p; } };
+  const coarse = Math.max(step, (hi - lo) / 40);
+  for (let p = lo; p <= hi; p += coarse) probar(p);
+  for (let p = best - coarse; p <= best + coarse; p += step) probar(p);
+  const np = step >= 1 ? Math.round(best) : Math.round(best / step) * step;
+  if (np === c[pd.k]) return;
+  const nb = valP(np); if (!nb) return;
+  const nw = new Array(L).fill(0);
+  for (let i = 0; i < L; i++) { const t = total[i], b = nb[i]; nw[i] = (t == null || b == null) ? 0 : (t - b); }
+  c[pd.k] = np; c.warp[li] = nw;
 }
 function resetShapes(pane) {
   if (pane.cfg) Object.keys(pane.cfg).forEach((k) => { const c = pane.cfg[k]; if (c) { c.desp = 0; c.suave = 0; c.warp = null; } });
   recalc(pane);
+}
+/* ── LAPIZ: dibujas un trazo y el sistema monta el indicador REAL mas parecido ──
+   No "adivina a ciegas": mide el error de tu trazo contra indicadores reales y
+   escoge el que mejor encaja (con su periodo). El resultado es un indicador de
+   verdad (persiste, se forma con las velas y al clicarlo abre su config). */
+function trazoPorBarra(pane, pts) {
+  const ts = pane.chart.timeScale();
+  const cb = pts.map((p) => { let lg; try { lg = ts.coordinateToLogical(p.x); } catch (_) { lg = null; } return { b: lg, y: p.y }; }).filter((o) => o.b != null);
+  if (cb.length < 2) return null;
+  cb.sort((a, b) => a.b - b.b);
+  const b0 = Math.ceil(cb[0].b), b1 = Math.floor(cb[cb.length - 1].b);
+  if (b1 - b0 < 2) return null;
+  const bars = [], ys = [];
+  for (let b = b0; b <= b1; b++) {
+    if (b < 0 || b >= pane.velas.length) continue;
+    let y; if (b <= cb[0].b) y = cb[0].y; else if (b >= cb[cb.length - 1].b) y = cb[cb.length - 1].y;
+    else { let k = 0; while (k < cb.length - 1 && cb[k + 1].b < b) k++; const a = cb[k], c = cb[k + 1]; const t = (b - a.b) / ((c.b - a.b) || 1); y = a.y + (c.y - a.y) * t; }
+    bars.push(b); ys.push(y);
+  }
+  return bars.length >= 3 ? { bars, ys } : null;
+}
+function esZonaOsc(pane, pts) {
+  let h0 = null; try { h0 = pane.chart.panes()[0].getHeight(); } catch (_) {}
+  const ys = pts.map((p) => p.y), yMin = Math.min(...ys), yAvg = ys.reduce((a, b) => a + b, 0) / ys.length;
+  if (h0 != null && pane.oscK && yAvg >= h0) return true;                 // dibujado dentro del sub panel existente
+  try { let yLow = -1; for (const v of pane.velas) { const yy = pane.serie.priceToCoordinate(v.low); if (yy != null && yy > yLow) yLow = yy; } if (yLow > 0 && yMin > yLow + 8) return true; } catch (_) {}
+  return false;                                                          // por defecto, overlay (sobre el precio)
+}
+function normaliza(arr) { let mn = Infinity, mx = -Infinity; for (const v of arr) { if (v == null) continue; if (v < mn) mn = v; if (v > mx) mx = v; } const rg = (mx - mn) || 1; return arr.map((v) => v == null ? null : (v - mn) / rg); }
+function ajustarOverlay(pane, m) {
+  const cands = ['ema', 'sma', 'wma', 'hma'];
+  const obj = m.ys.map((y) => priceAt(pane, y));
+  let best = null;
+  for (const id of cands) {
+    const def = buscarInd(id); if (!def) continue; const base = cfgInicial(def);
+    for (let per = 4; per <= 300; per += (per < 40 ? 3 : 8)) {
+      const c = Object.assign({}, base, { periodo: per }); let r; try { r = def.calc(pane.velas, c); } catch (_) { continue; }
+      const data = r.lineas && r.lineas[0] && r.lineas[0].data; if (!data) continue;
+      let e = 0, n = 0; for (let k = 0; k < m.bars.length; k++) { const val = data[m.bars[k]], o = obj[k]; if (val == null || o == null) continue; const d = (val - o) / (Math.abs(o) || 1); e += d * d; n++; }
+      if (n < 3) continue; e = Math.sqrt(e / n); if (!best || e < best.err) best = { id, periodo: per, err: e };
+    }
+  }
+  return best;
+}
+function ajustarOsc(pane, m) {
+  const trazoN = normaliza(m.ys.map((y) => -y));                         // y grande = valor bajo
+  const cands = ['rsi', 'cci', 'willr', 'cmo', 'mfi', 'stochrsi', 'roc', 'mom'];
+  let best = null;
+  for (const id of cands) {
+    const def = buscarInd(id); if (!def) continue; const base = cfgInicial(def);
+    const pd = (def.params || []).find((p) => p.k === 'periodo'); const pers = pd ? [7, 10, 14, 20, 30] : [null];
+    for (const per of pers) {
+      const c = Object.assign({}, base); if (per != null) c.periodo = per; let r; try { r = def.calc(pane.velas, c); } catch (_) { continue; }
+      const serie = r.serie; if (!serie) continue;
+      const sN = normaliza(m.bars.map((b) => serie[b]));
+      let e = 0, n = 0; for (let k = 0; k < trazoN.length; k++) { const a = trazoN[k], b = sN[k]; if (a == null || b == null) continue; const d = a - b; e += d * d; n++; }
+      if (n < 3) continue; e = Math.sqrt(e / n); if (!best || e < best.err) best = { id, periodo: (per != null ? per : (base.periodo || 14)), err: e };
+    }
+  }
+  return best;
+}
+function reconocerTrazo(pane, pts) {
+  const m = trazoPorBarra(pane, pts); if (!m) return null;
+  if (esZonaOsc(pane, pts)) { const o = ajustarOsc(pane, m); return o ? { tipo: 'osc', id: o.id, periodo: o.periodo } : null; }
+  const v = ajustarOverlay(pane, m); return v ? { tipo: 'ovl', id: v.id, periodo: v.periodo } : null;
+}
+function etiquetaRec(rec) { const def = buscarInd(rec.id); if (!def) return null; return def.nom + (rec.periodo ? ' ' + rec.periodo : ''); }
+function montarReconocido(pane, rec) {
+  if (!rec) { try { toast('Draw a clearer shape to recognise an indicator.'); } catch (_) {} return; }
+  const def = buscarInd(rec.id); if (!def) return;
+  if (rec.tipo === 'ovl') {
+    let key = rec.id; if (pane.ovl.has(key)) { let n = 2; while (pane.ovl.has(rec.id + '#' + n)) n++; key = rec.id + '#' + n; }
+    pane.ovl.add(key); const c = cfgDe(pane, key); if (rec.periodo) c.periodo = rec.periodo;
+    recalc(pane); marcarBtnInd(pane); try { toast('Mounted ' + nombreInst(def, c, key)); } catch (_) {}
+  } else {
+    pane.oscK = rec.id; const c = cfgDe(pane, pane.oscK); if (rec.periodo) c.periodo = rec.periodo;
+    recalc(pane); marcarBtnInd(pane); try { toast('Mounted ' + nomInd(def, c)); } catch (_) {}
+  }
+}
+function dibujarTrazo(g, draw) {
+  const pts = draw.pts; if (!pts || pts.length < 2) return;
+  g.save(); g.strokeStyle = 'rgba(232,184,75,.95)'; g.lineWidth = 2.2; g.lineJoin = 'round'; g.lineCap = 'round'; g.shadowColor = 'rgba(232,184,75,.55)'; g.shadowBlur = 7;
+  g.beginPath(); g.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y); g.stroke(); g.shadowBlur = 0;
+  if (draw.badge) { const last = pts[pts.length - 1], tx = last.x + 12, ty = last.y - 12;
+    g.font = '800 11px "IBM Plex Mono", monospace'; const w = g.measureText(draw.badge).width + 16;
+    g.fillStyle = 'rgba(16,21,28,.96)'; g.strokeStyle = 'rgba(232,184,75,.6)'; g.lineWidth = 1;
+    g.beginPath(); roundRectPath(g, tx, ty - 11, w, 22, 6); g.fill(); g.stroke();
+    g.fillStyle = '#E8B84B'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(draw.badge, tx + 8, ty + 0.5);
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  }
+  g.restore();
 }
 /* Menu del boton dorado Free Transform (mismo estilo visual que la config). */
 function menuFT(pane, anchor) {
   const prev = document.querySelector('.mc-ftmenu'); if (prev) { prev.remove(); if (prev._anchor === anchor) return; }
   try { cerrarMenu(); } catch (_) {}
   const rows = [
+    { t: 'draw', ic: IC.pencil, nom: 'Draw indicator', sub: 'Sketch a shape on the chart; it mounts the closest real indicator.' },
     { t: 'reshape', ic: IC.hand, nom: 'Reshape', sub: 'Grab a line and mold it. Its real settings change and stay.' },
     { t: 'smooth', ic: IC.wave, nom: 'Smooth', sub: 'Drag over a line to soften or sharpen it.' }
   ];
