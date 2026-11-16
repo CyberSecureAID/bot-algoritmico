@@ -1257,6 +1257,7 @@ async function ponerLogosOB(){
   document.querySelectorAll('.ob-logo').forEach(el=>{ const url=_obLogos&&el.dataset.cg&&_obLogos[el.dataset.cg];
     if(url){ el.style.backgroundImage=`url(${url})`; el.classList.add('con'); el.textContent=''; el.classList.remove('con-ico','con-svg'); }
     else if(el.dataset.ico){ el.style.backgroundImage=''; el.classList.remove('con'); pintarIcono(el); }
+    else if(el.dataset.fb){ el.style.backgroundImage=`url(${el.dataset.fb})`; el.classList.add('con'); el.textContent=''; el.classList.remove('con-ico','con-svg'); }   // respaldo: logo de terminal
     else { el.textContent=''; el.classList.remove('con-ico','con-svg'); } });
 }
 function cerrarMenuOB(){ document.querySelectorAll('#ob-menu').forEach(x=>x.remove()); }
@@ -1282,7 +1283,7 @@ function menuMonedas(){ const btn=document.getElementById('ob-msel'); if(!btn)re
 function seleccionarMoneda(id){ const p=SP.find(x=>x.id===id); if(!p)return;
   mCoin={ sym:p.id, symbol:p.s, disp:0, price:0, cur:0, _up:true };
   const nm=document.getElementById('ob-mnm'); if(nm)nm.textContent=p.id;
-  const lg=document.getElementById('ob-mlg'); if(lg){ lg.dataset.cg=p.cg||''; lg.dataset.ico=p.ico||''; lg.style.backgroundImage=''; lg.className='ob-logo ob-mlg'; lg.textContent=''; }
+  const lg=document.getElementById('ob-mlg'); if(lg){ lg.dataset.cg=p.cg||''; lg.dataset.ico=p.ico||''; lg.dataset.fb=domLogo(p.id)||''; lg.style.backgroundImage=''; lg.className='ob-logo ob-mlg'; lg.textContent=''; }
   ponerLogosOB();
   const pc=document.getElementById('ob-mpc'); if(pc)pc.textContent='';
   const pr=document.getElementById('ob-mpr'); if(pr)pr.textContent='$—';
@@ -1329,8 +1330,9 @@ async function abrirDetalle(c){
   vpBtn.onclick=()=>{ mVPon=!mVPon; vpBtn.classList.toggle('on',mVPon); };
   // exportar la grafica del modal con branding DecFreedom (igual que Multichart)
   document.getElementById('ob-mexp').onclick=exportarChart;
-  // logo de la moneda en el header: mismo sistema que el selector (cg/ico del catalogo)
-  { const lg=document.getElementById('ob-mlg'), pp=SP.find(p=>p.id===c.sym); if(lg){ lg.dataset.cg=(pp&&pp.cg)||''; lg.dataset.ico=(pp&&pp.ico)||''; } ponerLogosOB(); }
+  // logo de la moneda en el header: cg/ico del catalogo y, si no, el logo de respaldo de
+  // terminal (el mismo que muestran las tarjetas para monedas sin logo propio)
+  { const lg=document.getElementById('ob-mlg'), pp=SP.find(p=>p.id===c.sym); if(lg){ lg.dataset.cg=(pp&&pp.cg)||''; lg.dataset.ico=(pp&&pp.ico)||''; lg.dataset.fb=domLogo(c.sym)||''; } ponerLogosOB(); }
   // selector de moneda (estilo Liquidity Pools): abre el menu agrupado con buscador
   document.getElementById('ob-msel').onclick=(e)=>{ e.stopPropagation(); menuMonedas(); };
   document.getElementById('ob-mpc').textContent=(c.disp>=0?'+':'')+(c.disp||0).toFixed(2)+'%';
