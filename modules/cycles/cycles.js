@@ -77,11 +77,10 @@ const RB_ZONAS = [
   { c: '#e23b3b', en: 'Maximum Bubble Territory', es: 'Zona de burbuja máxima' }
 ];
 function configRainbow() {
-  if (_par === 'BTC') {
-    C.rb = { a: RB_A, b: RB_B, orig: RB_ORIG, off: RB_OFF.slice(), ini: Date.UTC(2013, 0, 7) / 1000, fin: Date.UTC(2029, 11, 31) / 1000, btc: true };
-    return;
-  }
-  const v = C.velas; if (!v || v.length < 24) { C.rb = null; return; }
+  const v = C.velas; if (!v || !v.length) { C.rb = null; return; }
+  const fin = v[v.length - 1].time + 820 * 86400;                 // ~2.3 años de proyeccion
+  if (_par === 'BTC') { C.rb = { a: RB_A, b: RB_B, orig: RB_ORIG, off: RB_OFF.slice(), ini: v[0].time, fin, btc: true }; return; }
+  if (v.length < 24) { C.rb = null; return; }
   const orig = v[0].time - 180 * 86400;
   let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
   for (const c of v) { if (!(c.close > 0)) continue; const d = Math.max(1, (c.time - orig) / 86400); const x = Math.log(d), y = Math.log10(c.close); n++; sx += x; sy += y; sxx += x * x; sxy += x * y; }
@@ -112,6 +111,40 @@ async function traerVelas(simbolo, tf, n = 1000) {
   const r = await cyFetch(`/api/v3/klines?symbol=${simbolo}&interval=${tf}&limit=${n}`);
   const j = await r.json();
   return j.map((x) => ({ time: Math.floor(x[0] / 1000), open: +x[1], high: +x[2], low: +x[3], close: +x[4] }));
+}
+/* ── Historia de Bitcoin recreada (2010 → inicio de Binance) ──
+   Binance solo da datos desde ~2017. Para que el analisis de ciclos muestre TODA
+   la historia, generamos velas sinteticas desde 2010 a partir de anclas de precio
+   REALES (cierres mensuales aproximados), con volatilidad determinista para que se
+   vean como velas de verdad. La parte reciente (2017+) sigue siendo Binance en vivo;
+   solo la parte antigua, que ya no se mueve, se recrea. */
+const BTC_ANCLAS = [
+  [2010, 6, 15, 0.08], [2010, 9, 15, 0.12], [2011, 1, 15, 0.30], [2011, 5, 15, 8], [2011, 6, 8, 31], [2011, 11, 15, 2.5],
+  [2012, 5, 15, 5], [2012, 12, 15, 13.5], [2013, 3, 15, 80], [2013, 4, 9, 230], [2013, 7, 5, 68], [2013, 11, 30, 1150], [2013, 12, 18, 540],
+  [2014, 6, 15, 600], [2014, 12, 15, 320], [2015, 1, 14, 180], [2015, 8, 15, 230], [2015, 12, 15, 430],
+  [2016, 6, 15, 670], [2016, 12, 15, 960], [2017, 6, 15, 2500], [2017, 8, 10, 3400],
+  [2017, 12, 17, 19000], [2018, 2, 5, 7000], [2018, 12, 15, 3700], [2019, 6, 26, 13000], [2019, 12, 18, 7200],
+  [2020, 3, 13, 5000], [2020, 12, 27, 28000], [2021, 4, 14, 63000], [2021, 7, 20, 30000], [2021, 11, 8, 67000],
+  [2022, 6, 18, 18000], [2022, 11, 21, 16000], [2023, 10, 22, 30000], [2024, 3, 13, 71000], [2024, 11, 10, 88000], [2025, 1, 20, 102000]
+].map(([y, m, d, p]) => [Math.floor(Date.UTC(y, m - 1, d) / 1000), p]);
+function stepSeg(tf) { return tf === '1M' ? 2629800 : tf === '1w' ? 604800 : 86400; }
+function precioAncla(ts) {
+  const a = BTC_ANCLAS; if (ts <= a[0][0]) return a[0][1];
+  for (let i = 1; i < a.length; i++) { if (ts <= a[i][0]) { const [t0, p0] = a[i - 1], [t1, p1] = a[i]; const f = (ts - t0) / (t1 - t0 || 1); return Math.pow(10, Math.log10(p0) + (Math.log10(p1) - Math.log10(p0)) * f); } }
+  return a[a.length - 1][1];
+}
+function historialBTC(tf, hastaTs) {
+  const paso = stepSeg(tf), ini = BTC_ANCLAS[0][0]; if (hastaTs <= ini) return [];
+  const out = []; let seed = 20100703;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  for (let ts = ini; ts < hastaTs - paso * 0.5; ts += paso) {
+    const base = precioAncla(ts), next = precioAncla(ts + paso);
+    const o = base * (1 + (rnd() - 0.5) * 0.05), c = next * (1 + (rnd() - 0.5) * 0.05);
+    const amp = Math.max(o, c) * (0.03 + rnd() * 0.09);
+    const hi = Math.max(o, c) + amp * rnd(), lo = Math.max(0.01, Math.min(o, c) - amp * rnd());
+    out.push({ time: ts, open: +o.toFixed(4), high: +hi.toFixed(4), low: +lo.toFixed(4), close: +c.toFixed(4) });
+  }
+  return out;
 }
 function streamVelas(simbolo, tf, onK) {
   const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${tf}`;
@@ -173,7 +206,6 @@ export async function abrirCycles() {
         <button class="cy-sel" id="cy-sel"><i class="cy-logo" id="cy-logo" data-cg="${esc(p0.cg || '')}" data-ico="${esc(p0.ico || '')}"></i><b id="cy-par">${esc(_par)}</b><span id="cy-nm">${esc(p0.n || '')}</span>${chev}</button>
         <button class="cy-tfchip" id="cy-tfchip" type="button"><b id="cy-tf-t">${esc(tfNom(_tf))}</b>${chev}</button>
         <div class="cy-px"><div class="cy-px-v" id="cy-px">—</div><div class="cy-sub" id="cy-sub">—</div></div>
-        <span class="cy-badge">${esc(t('analysis'))}</span><span class="cy-badge cy-spot">${esc(t('spot'))}</span>
         <div class="cy-switch" id="cy-switch">
           <button class="cy-tab on" data-ind="rainbow">${esc(t('indRainbow'))}</button>
           <button class="cy-tab" data-ind="cycles">${esc(t('indCycles'))}</button>
@@ -230,7 +262,7 @@ function montarChart() {
     layout: { background: { type: 'solid', color: 'rgba(0,0,0,0)' }, textColor: '#8b95a1', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11, attributionLogo: false },
     grid: { vertLines: { color: 'rgba(255,255,255,.035)' }, horzLines: { color: 'rgba(255,255,255,.035)' } },
     rightPriceScale: { borderColor: '#222b35', mode: (LC.PriceScaleMode ? LC.PriceScaleMode.Logarithmic : 1), scaleMargins: { top: 0.06, bottom: 0.06 }, entireTextOnly: true },
-    timeScale: { borderColor: '#222b35', timeVisible: false, secondsVisible: false, rightOffset: 6, barSpacing: 7 },
+    timeScale: { borderColor: '#222b35', timeVisible: false, secondsVisible: false, rightOffset: 6, barSpacing: 7, minBarSpacing: 0.04 },
     crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0, vertLine: { color: '#C9A84B', width: 1, style: 3, labelBackgroundColor: '#8f6a1a' }, horzLine: { color: '#C9A84B', labelBackgroundColor: '#8f6a1a' } }
   });
   C.chart = chart;
@@ -241,11 +273,18 @@ function montarChart() {
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => dibujarFx());
 }
 function construirAndamio() {
-  const r = C.rb; if (!r) { C.tiempos = []; try { C.scaffT.setData([]); C.scaffB.setData([]); } catch (_) {} return; }
-  const semana = 7 * 86400, top = [], bot = [], tiempos = [];
-  for (let ts = Math.floor(r.ini); ts <= r.fin; ts += semana) { top.push({ time: ts, value: rbBanda(ts, r.off.length - 1) }); bot.push({ time: ts, value: rbBanda(ts, 0) }); tiempos.push(ts); }
-  C.tiempos = tiempos;
-  try { C.scaffT.setData(top); C.scaffB.setData(bot); } catch (_) {}
+  const r = C.rb, v = C.velas; if (!r || !v || !v.length) { C.tiempos = []; try { C.scaffT.setData([]); C.scaffB.setData([]); } catch (_) {} return; }
+  const paso = stepSeg(_tf);
+  // Tiempos de muestreo de bandas: velas submuestreadas (barras validas) + futuro.
+  // El andamio (transparente) fija el rango del eje a TODO el rainbow y extiende el
+  // tiempo al futuro. Mismo paso que las velas → nada se rompe en 1D/1W/1M.
+  const sub = Math.max(1, Math.floor(v.length / 440));
+  const times = [];
+  for (let i = 0; i < v.length; i += sub) times.push(v[i].time);
+  const ultv = v[v.length - 1].time; if (times[times.length - 1] !== ultv) times.push(ultv);
+  for (let ts = ultv + paso; ts <= r.fin; ts += paso) times.push(ts);
+  C.tiempos = times;
+  try { C.scaffT.setData(times.map((ts) => ({ time: ts, value: rbBanda(ts, r.off.length - 1) }))); C.scaffB.setData(times.map((ts) => ({ time: ts, value: rbBanda(ts, 0) }))); } catch (_) {}
 }
 
 async function cargarVelas() {
@@ -256,9 +295,12 @@ async function cargarVelas() {
     const v = await traerVelas(p.s, _tf, 1000);
     if (gen !== C._gen) return;                   // llego una peticion vieja: ignorar
     if (!v.length) throw new Error('vacio');
-    C.velas = v; C.precio = v[v.length - 1].close;
+    // Historia completa: para BTC, antepone la historia recreada (2010 → Binance).
+    let full = v;
+    if (_par === 'BTC') { const hist = historialBTC(_tf, v[0].time); if (hist.length) full = hist.concat(v); }
+    C.velas = full; C.precio = full[full.length - 1].close;
     configRainbow(); construirAndamio();
-    C.serie.setData(v);
+    C.serie.setData(full);
     C.chart.timeScale().fitContent();
     C.cargando = false; mostrarEspera(false);
     pintarPrecio(); dibujarFx();
@@ -324,7 +366,7 @@ function dibujarRainbow(g, W, H) {
     g.beginPath(); let ab = false;
     for (let i = 0; i < cols.length; i++) { const c = cols[i]; if (!c || c.ys[z] == null) { ab = false; continue; } if (!ab) { g.moveTo(c.x, c.ys[z]); ab = true; } else g.lineTo(c.x, c.ys[z]); }
     for (let i = cols.length - 1; i >= 0; i--) { const c = cols[i]; if (!c || c.ys[z + 1] == null) continue; g.lineTo(c.x, c.ys[z + 1]); }
-    g.closePath(); g.fillStyle = hexA(RB_ZONAS[z].c, 0.62); g.fill();
+    g.closePath(); g.fillStyle = hexA(RB_ZONAS[z].c, 0.4); g.fill();
   }
   pintarLeyenda(true);
 }
@@ -450,7 +492,6 @@ function cambiarIdioma() {
   const lb = $('cy-lang'); if (lb) { lb.textContent = _lang === 'en' ? 'ES' : 'EN'; lb.title = t('langTitle'); }
   const bk = $('cy-back'); if (bk) { const s = bk.querySelector('span'); if (s) s.textContent = t('back'); bk.setAttribute('aria-label', t('back')); }
   const how = $('cy-how'); if (how) how.title = t('how');
-  const badges = document.querySelectorAll('#cy-overlay .cy-badge'); if (badges[0]) badges[0].textContent = t('analysis'); if (badges[1]) badges[1].textContent = t('spot');
   const tabs = { rainbow: 'indRainbow', cycles: 'indCycles', roadmap: 'indRoadmap' };
   document.querySelectorAll('#cy-switch .cy-tab').forEach((b) => { b.textContent = t(tabs[b.dataset.ind]); });
   const esp = $('cy-esperando-t'); if (esp && C.cargando) esp.textContent = t('loading');
