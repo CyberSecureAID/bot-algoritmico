@@ -79,7 +79,12 @@ const HERRAMIENTAS = [
   { id:'obliq', abre:'obliq', nombre:'Order Block Liquidity', cat:'analysis', img:'assets/img/serv-orderblock.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'Where liquidity is flowing, live',
     pitch:'A live money-flow radar of the whole crypto market: see where liquidity enters, which coins it pushes and the key levels where price reacts.',
-    desc:'A cinematic, market-wide liquidity radar. Real time flow from the main exchanges and DEXs runs through a central filter that splits the market into buying and selling pressure and into the coins moving the most right now. Every card carries the live price plus the strongest support (SELL) and resistance (BUY) read from the 4h/daily volume profile, with a fine internal profile and a neural web of connections you can trace on hover. Built to read the whole market at a glance, and made to be shared.' }
+    desc:'A cinematic, market-wide liquidity radar. Real time flow from the main exchanges and DEXs runs through a central filter that splits the market into buying and selling pressure and into the coins moving the most right now. Every card carries the live price plus the strongest support (SELL) and resistance (BUY) read from the 4h/daily volume profile, with a fine internal profile and a neural web of connections you can trace on hover. Built to read the whole market at a glance, and made to be shared.' },
+  // "Cycles" = modulo propio y aislado modules/cycles/ (analisis de ciclos de Bitcoin).
+  { id:'cycles', abre:'cycles', nombre:'Cycles', cat:'analysis', img:'assets/img/serv-multi.webp', activos:['Crypto'], spot:true, listo:true,
+    lema:'Where Bitcoin sits in its cycle',
+    pitch:'Bitcoin’s big-picture cycle tools on one live chart: a logarithmic Rainbow now, halvings and a macro roadmap next.',
+    desc:'A home for Bitcoin’s market-cycle tools, all on one live chart with real data that keeps updating. The Rainbow is a logarithmic regression over Bitcoin’s whole history, with colored bands from deep value at the bottom to bubble territory at the top that rise on their own with time, so it never freezes into an old picture. Switch indicators from the top, read where price sits versus fair value, flip the whole interface between English and Spanish, and save a clean image. Halving cycles and a clean macro roadmap with projection are on the way.' }
 ];
 /* Las imagenes del catalogo tambien se resuelven desde la raiz del sitio, para
    que no se rompan en la pagina propia de Analisis (ver nota en LOGO/RAIZ). */
@@ -193,6 +198,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=15', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
     else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=32', import.meta.url).href)).abrirMulti();
+    else if (abre === 'cycles') await (await import(new URL('../cycles/cycles.js?v=1', import.meta.url).href)).abrirCycles();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=13', import.meta.url).href)).abrirFootprint();
     else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=17', import.meta.url).href)).abrirSuperScalper();
     else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=25', import.meta.url).href)).abrirOrderBlock();
