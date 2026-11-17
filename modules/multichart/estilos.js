@@ -106,26 +106,30 @@ const CSS = `
   .mc-ftpill-x{display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; border:none; border-radius:6px; background:rgba(0,0,0,.28); color:var(--mc-gold); cursor:pointer; padding:0; flex:0 0 auto}
   .mc-ftpill-x:hover{background:rgba(255,91,110,.32); color:#fff}
   .mc-ftpill-x svg{width:9px; height:9px}
-  #mc-hw-box{position:fixed; inset:0; z-index:10300; font-family:var(--mc-disp); color:var(--mc-ink)}
-  .mc-hw-bg{position:absolute; inset:0; background:rgba(3,6,10,.72); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
-  .mc-hw-c{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(440px,92vw); background:linear-gradient(180deg,#0e141b,#0a0e14); border:1px solid var(--mc-line2); border-radius:18px; padding:22px 22px 18px; box-shadow:0 30px 80px rgba(0,0,0,.6); animation:mcftin .16s ease both}
-  .mc-hw-x{position:absolute; top:14px; right:14px; width:30px; height:30px; display:grid; place-items:center; border-radius:9px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); cursor:pointer}
+  /* El modal se cuelga de document.body (FUERA de #mc-overlay), asi que NO puede
+     usar las variables --mc-*; van colores literales, igual que el de Reaction
+     Zones. Se centra con flex (nunca con transform, que la animacion pisaria) y
+     tiene max-height con scroll para que no se corte en pantallas bajas. */
+  #mc-hw-box{position:fixed; inset:0; z-index:10300; display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Chakra Petch','Plus Jakarta Sans',system-ui,sans-serif; color:#eaecef}
+  .mc-hw-bg{position:absolute; inset:0; background:rgba(3,6,10,.8); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
+  .mc-hw-c{position:relative; width:100%; max-width:440px; max-height:88vh; overflow-y:auto; background:linear-gradient(180deg,#0e141b,#0a0e14); border:1px solid #232c38; border-radius:18px; padding:22px 22px 18px; box-shadow:0 30px 80px rgba(0,0,0,.6); animation:mcftin .16s ease both}
+  .mc-hw-x{position:absolute; top:14px; right:14px; width:30px; height:30px; display:grid; place-items:center; border-radius:9px; border:1px solid #232c38; background:rgba(255,255,255,.03); color:#a9b2bd; cursor:pointer}
   .mc-hw-x:hover{border-color:#ff5b6e; color:#ff6b7a} .mc-hw-x svg{width:12px; height:12px}
-  .mc-hw-eyebrow{font-family:var(--mc-mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--mc-gold); font-weight:800; margin-bottom:14px}
+  .mc-hw-eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#E8B84B; font-weight:800; margin-bottom:14px}
   .mc-hw-card{min-height:196px}
-  .mc-hw-n{font-family:var(--mc-mono); font-size:11px; color:var(--mc-ink3); font-weight:700; margin-bottom:8px}
+  .mc-hw-n{font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11px; color:#6b7580; font-weight:700; margin-bottom:8px}
   .mc-hw-n em{font-style:normal; opacity:.6}
-  .mc-hw-t{font-size:20px; font-weight:800; line-height:1.2; margin-bottom:10px; letter-spacing:-.01em}
-  .mc-hw-d{font-size:13.5px; line-height:1.6; color:var(--mc-ink2)}
-  .mc-hw-d b{color:var(--mc-ink); font-weight:700}
-  .mc-hw-x2{margin-top:12px; padding:10px 12px; border-radius:10px; background:rgba(232,184,75,.07); border:1px solid rgba(232,184,75,.18); font-size:12px; line-height:1.5; color:var(--mc-gold)}
+  .mc-hw-t{font-size:20px; font-weight:800; line-height:1.2; margin-bottom:10px; letter-spacing:-.01em; color:#eaecef}
+  .mc-hw-d{font-size:13.5px; line-height:1.6; color:#a9b2bd}
+  .mc-hw-d b{color:#eaecef; font-weight:700}
+  .mc-hw-x2{margin-top:12px; padding:10px 12px; border-radius:10px; background:rgba(232,184,75,.07); border:1px solid rgba(232,184,75,.18); font-size:12px; line-height:1.5; color:#E8B84B}
   .mc-hw-dots{display:flex; gap:6px; justify-content:center; margin:18px 0 14px}
-  .mc-hw-dots i{width:7px; height:7px; border-radius:50%; background:var(--mc-line2); cursor:pointer; transition:background .15s,width .15s}
-  .mc-hw-dots i.on{background:var(--mc-gold); width:18px; border-radius:4px}
+  .mc-hw-dots i{width:7px; height:7px; border-radius:50%; background:#232c38; cursor:pointer; transition:background .15s,width .15s}
+  .mc-hw-dots i.on{background:#E8B84B; width:18px; border-radius:4px}
   .mc-hw-acts{display:flex; gap:9px; justify-content:flex-end}
-  .mc-hw-back{height:38px; padding:0 16px; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); font-weight:700; font-size:13px; cursor:pointer}
-  .mc-hw-back:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)}
-  .mc-hw-next{height:38px; padding:0 18px; border-radius:10px; border:1px solid #c79426; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426); color:#2a1d00; font-weight:800; font-size:13px; cursor:pointer}
+  .mc-hw-back{height:38px; padding:0 16px; border-radius:10px; border:1px solid #232c38; background:rgba(255,255,255,.03); color:#a9b2bd; font-weight:700; font-size:13px; cursor:pointer}
+  .mc-hw-back:hover{border-color:#C9A84B; color:#E8B84B}
+  .mc-hw-next{height:38px; padding:0 18px; border-radius:10px; border:1px solid #c79426; background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426); color:#2a1d00; font-weight:800; font-size:13px; cursor:pointer}
   .mc-hw-next:hover{filter:brightness(1.05)}
   .mc-hb{width:28px; height:28px; display:inline-grid; place-items:center; border-radius:8px; border:1px solid transparent; background:transparent; color:var(--mc-ink3)}
   .mc-hb:hover{border-color:var(--mc-line2); color:var(--mc-gold); background:rgba(255,255,255,.04)} .mc-hb svg{width:15px; height:15px}

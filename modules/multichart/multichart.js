@@ -10,7 +10,7 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=18';
+import { estilos } from './estilos.js?v=19';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=8';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=4';
@@ -968,28 +968,39 @@ function aplicarReshape(pane, d, x, y) {
   if (d.tool === 'smooth') {
     let s = (d.suave0 || 0) + (d.gy - y) * 0.14; s = Math.max(0, Math.min(50, s)); c.suave = Math.round(s); return;
   }
-  // RESHAPE = plastilina 2D: agarras una MASA de la linea y la llevas a donde quieras,
-  // en cualquier direccion (arriba, abajo, adelante, atras). El bulto sigue al cursor
-  // en horizontal y vertical. Se guarda como warp y PERSISTE (no se pasa del precio
-  // actual porque el indice queda acotado a la ultima vela).
+  // RESHAPE = plastilina LOCAL. Una brocha pequeña lleva la linea a DONDE pones el
+  // cursor, en cualquier direccion (arriba, abajo, adelante, atras). Solo mueve la
+  // parte que tocas y se ACUMULA al barrer, asi moldeas la forma que quieras. Queda
+  // guardado como warp (config del indicador) y PERSISTE hacia adelante.
   const bar = ftBarIdx(pane, x), curP = ftPrecio(pane, d.osc, y);
   if (bar == null || curP == null) return;
-  moverLump(pane, d, bar, curP);
+  const pb = (d.lastBar == null) ? bar : d.lastBar;
+  const pp = (d.lastP == null) ? curP : d.lastP;
+  const pasos = Math.max(1, Math.min(80, Math.round(Math.abs(bar - pb))));   // rellena el barrido rapido
+  for (let s = 1; s <= pasos; s++) { const f = s / pasos; esculpirBrocha(pane, d, pb + (bar - pb) * f, pp + (curP - pp) * f); }
+  d.lastBar = bar; d.lastP = curP;
 }
-/* Reconstruye el warp como la base capturada + UN bulto gaussiano centrado en la
-   barra del cursor con la altura justa para que la curva pase por el. Al mover el
-   cursor, el bulto se desplaza en 2D (el sitio anterior vuelve a su base). */
-function moverLump(pane, d, bar, target) {
-  const c = cfgDe(pane, d.key), n = pane.velas.length; if (!n || !d.ref || !d.base) return;
-  const idx = Math.max(0, Math.min(n - 1, bar - (d.osc ? 0 : (d.shift || 0))));
-  const refV = d.ref[idx]; if (refV == null) return;
-  const A = target - (refV + (d.base[idx] || 0));
-  const R = Math.max(2, Math.round(n * 0.028));
-  const w = new Array(n); for (let j = 0; j < n; j++) w[j] = d.base[j] || 0;
-  const lo = Math.max(0, Math.round(idx - R * 3.2)), hi = Math.min(n - 1, Math.round(idx + R * 3.2));
-  for (let j = lo; j <= hi; j++) { const t = (j - idx) / R; w[j] += A * Math.exp(-t * t * 0.5); }
+/* Brocha local: en la barra del cursor y su pequeña vecindad acerca el warp al precio
+   del cursor, con caida gaussiana (1 en el centro, 0 en el borde). Radio PEQUEÑO atado
+   al zoom visible = solo mueve lo que tocas. Trabaja sobre d.ref (la curva SIN warp,
+   fija desde que agarraste) y escribe el warp absoluto, que persiste. */
+function esculpirBrocha(pane, d, barF, target) {
+  const c = cfgDe(pane, d.key), n = pane.velas.length; if (!n || !d.ref) return;
   if (!c.warp) c.warp = {};
-  c.warp[d.li] = w;
+  let w = c.warp[d.li];
+  if (!w || w.length !== n) { w = new Array(n); for (let j = 0; j < n; j++) w[j] = (d.base && d.base[j]) || 0; c.warp[d.li] = w; }
+  const idx = Math.max(0, Math.min(n - 1, Math.round(barF) - (d.osc ? 0 : (d.shift || 0))));
+  if (d.ref[idx] == null) return;
+  let vis = 130; try { const lr = pane.chart.timeScale().getVisibleLogicalRange(); if (lr) vis = Math.max(24, lr.to - lr.from); } catch (_) {}
+  const R = Math.max(1.6, Math.min(10, vis * 0.022));          // ~2% del ancho visible: local
+  const reach = Math.max(2, Math.round(R * 2.6));
+  const lo = Math.max(0, idx - reach), hi = Math.min(n - 1, idx + reach);
+  for (let j = lo; j <= hi; j++) {
+    if (d.ref[j] == null) continue;
+    const t = (j - idx) / R, k = Math.exp(-t * t * 0.5);
+    const wantJ = target - d.ref[j];                          // warp para que la barra j quede en el cursor
+    w[j] = w[j] + (wantJ - w[j]) * k;                         // mezcla hacia el cursor, con caida
+  }
 }
 /* Reparte la forma esculpida entre el periodo base (para que la etiqueta cambie) y
    un warp residual (para que lo que ves NO se altere). Asi recuperamos la libertad
