@@ -54,7 +54,7 @@ function inyectarCSS() {
   .indtb-pc{width:22px; height:22px; border-radius:6px; border:2px solid transparent; cursor:pointer; padding:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
   .indtb-pc:hover{border-color:rgba(255,255,255,.85)}
   .indtb-pc.on{border-color:#fff}
-  .indtb-pop-cfg{width:226px; max-height:min(70vh,448px); overflow-y:auto; overflow-x:hidden; scrollbar-width:thin}
+  .indtb-pop-cfg{width:242px; max-height:min(70vh,448px); overflow-y:auto; overflow-x:hidden; scrollbar-width:thin}
   .indtb-pop-cfg::-webkit-scrollbar{width:7px}
   .indtb-pop-cfg::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16); border-radius:4px}
   .indtb-suf{font-size:10px; color:#8b95a1; margin:0 1px}
@@ -63,8 +63,9 @@ function inyectarCSS() {
   .indtb-tgl i{position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#8b95a1; transition:left .14s,background .14s}
   .indtb-tgl.on{background:rgba(34,211,238,.25); border-color:rgba(34,211,238,.5)}
   .indtb-tgl.on i{left:18px; background:#22d3ee}
-  .indtb-ls{display:inline-flex; gap:4px}
-  .indtb-ls button{height:24px; padding:0 8px; border-radius:7px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:#b7bdc6; cursor:pointer; font-family:inherit; font-size:10px; font-weight:700}
+  .indtb-rowls{display:flex; flex-direction:column; gap:7px; margin:9px 2px}
+  .indtb-ls{display:flex; gap:5px; width:100%}
+  .indtb-ls button{flex:1 1 0; min-width:0; height:26px; padding:0 4px; border-radius:7px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:#b7bdc6; cursor:pointer; font-family:inherit; font-size:10.5px; font-weight:700}
   .indtb-ls button:hover{border-color:rgba(34,211,238,.5)}
   .indtb-ls button.on{background:rgba(34,211,238,.2); border-color:rgba(34,211,238,.5); color:#22d3ee}
   .indtb-sel{height:26px; max-width:130px; border-radius:7px; border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.3); color:#eaecef; font-family:inherit; font-size:11px; font-weight:600; padding:0 6px; outline:none; cursor:pointer}
@@ -186,7 +187,7 @@ function popAjustes(cfg, params, nombre, anchor, cambiar, tipo, opc = []) {
       `<input class="indtb-slider" type="range" data-slider="${p.k}" min="${lo}" max="${hi}" step="${step}" value="${cfg[p.k]}">`; };
   const filaTgl = (p) => `<div class="indtb-row indtb-rowt"><span>${p.lbl}</span><button type="button" class="indtb-tgl ${cfg[p.k] ? 'on' : ''}" data-tgl="${p.k}"><i></i></button></div>`;
   const LSV = [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']];
-  const filaLs = (p) => `<div class="indtb-row"><span>${p.lbl}</span><div class="indtb-ls">${LSV.map(([val, lb]) => `<button type="button" class="${((cfg.ls || 'solid') === val) ? 'on' : ''}" data-ls="${val}">${lb}</button>`).join('')}</div></div>`;
+  const filaLs = (p) => `<div class="indtb-rowls"><span>${p.lbl}</span><div class="indtb-ls">${LSV.map(([val, lb]) => `<button type="button" class="${((cfg.ls || 'solid') === val) ? 'on' : ''}" data-ls="${val}">${lb}</button>`).join('')}</div></div>`;
   const filaCho = (p) => `<div class="indtb-row"><span>${p.lbl}</span><select class="indtb-sel" data-sel="${p.k}">${(p.opts || []).map(([val, lb]) => `<option value="${val}" ${cfg[p.k] === val ? 'selected' : ''}>${lb}</option>`).join('')}</select></div>`;
   const filaOpc = (o) => o.kind === 'toggle' ? filaTgl(o) : o.kind === 'choice' ? filaCho(o) : o.kind === 'style' ? filaLs(o) : filaNum(o);
   let html = '';
