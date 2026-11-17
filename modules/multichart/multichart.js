@@ -10,13 +10,13 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=15';
+import { estilos } from './estilos.js?v=16';
 import * as D from '../trading-demo/datos.js?v=2';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd, transformar } from '../indicadores/libreria.js?v=7';
-import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=6';
+import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=7';
 /* Instancias: la clave puede ser 'ema' o 'ema#2' (duplicados). baseId saca el id real. */
 const baseId = (k) => String(k).split('#')[0];
 const instN = (k) => { const m = String(k).split('#')[1]; return m ? +m : 1; };
@@ -1086,12 +1086,43 @@ function defDe(pane, key) { return (pane.drawDefs && pane.drawDefs[baseId(key)])
 /* def sintetico de un indicador dibujado: su calc DEVUELVE el trazo guardado y lo
    continua hacia el futuro (hold last), asi es un indicador de verdad que persiste
    y se sigue formando con las velas, manteniendo la estructura que dibujaste. */
+function emaArr(src, p) { const out = new Array(src.length).fill(null); const k = 2 / (p + 1); let e = null; for (let i = 0; i < src.length; i++) { const x = src[i]; if (x == null) continue; e = (e == null) ? x : x * k + e * (1 - k); out[i] = e; } return out; }
+function emaCierre(v, p) { return emaArr(v.map((k) => k.close), p); }
+/* Indicador DIBUJADO: el pasado es tu trazo EXACTO; hacia adelante CONTINUA con la
+   logica que dibujaste. Se ancla a la media del precio que mejor encaja con tu trazo
+   y le suma el 'offset' que dibujaste encima; si ese offset es ciclico, repite el
+   ciclo. Asi mantiene la distancia con las velas y sigue detectando los ciclos. */
 function defDibujado(key, nom, estilo) {
   return { id: key, nom, grupo: 'Drawn', tipo: 'ovl', estilo, params: [], op: [], _drawn: true,
-    calc: (v, c) => { const d = c.drawn || []; const out = d.slice(0, v.length); const last = out.length ? out[out.length - 1] : null; for (let i = out.length; i < v.length; i++) out.push(last); return { lineas: [{ data: out }] }; } };
+    calc: (v, c) => {
+      const n = v.length, dr = c.drawn || [], out = new Array(n).fill(null);
+      const bFirst = c.drawFirst || 0, bLast = (c.drawLast != null ? c.drawLast : dr.length - 1);
+      for (let i = bFirst; i <= bLast && i < n; i++) out[i] = (i < dr.length ? dr[i] : null);
+      if (c.drawBase != null && n > bLast + 1) {
+        const em = emaCierre(v, c.drawBase), w = c.drawW || 0, c1 = c.drawC1 || 0, c2 = c.drawC2 || 0, K = c.drawK || 0;
+        const dL = dr[bLast], slope = (dL != null && dr[bLast - 3] != null) ? (dL - dr[bLast - 3]) / 3 : 0;
+        const blendT = Math.min(16, Math.max(4, Math.round((w ? (2 * Math.PI / w) : 10) / 2)));
+        for (let i = bLast + 1; i < n; i++) {
+          const base = em[i]; if (base == null) { out[i] = dL; continue; }
+          const model = base + K + (w ? (c1 * Math.cos(w * i) + c2 * Math.sin(w * i)) : 0), k = i - bLast;
+          out[i] = (k <= blendT && dL != null) ? ((dL + slope * k) * (1 - k / blendT) + model * (k / blendT)) : model;   // crossfade tangente en la union
+        }
+      } else { const last = dr[bLast]; for (let i = bLast + 1; i < n; i++) out[i] = last; }
+      return { lineas: [{ data: out }] };
+    } };
 }
-/* El LAPIZ: convierte tu trazo en un indicador DIBUJADO real (no un best fit). Lo
-   que dibujaste queda tal cual, anclado a sus velas, y continua hacia adelante. */
+/* Detecta el periodo del CICLO de un segmento (autocorrelacion tras quitar su tendencia). */
+function periodoCicloSeg(seg) {
+  const L = seg.length; if (L < 14) return 0;
+  const tr = emaArr(seg, Math.max(8, Math.round(L / 4)));
+  const a = seg.map((v, i) => (v != null && tr[i] != null) ? v - tr[i] : 0);
+  let den = 0; for (const x of a) den += x * x; if (den < 1e-9) return 0;
+  let best = 0, bestC = 0; const maxLag = Math.floor(L / 2);
+  for (let lag = 4; lag <= maxLag; lag++) { let num = 0; for (let i = 0; i + lag < L; i++) num += a[i] * a[i + lag]; const c = num / den; if (c > bestC) { bestC = c; best = lag; } }
+  return bestC > 0.3 ? best : 0;
+}
+/* El LAPIZ: tu trazo se vuelve un indicador real que ademas APRENDE su logica para
+   seguir hacia adelante (ancla al precio + offset + ciclo). */
 function montarTrazo(pane, pts) {
   const m = trazoPorBarra(pane, pts); if (!m) { try { toast('Draw a longer line on the chart.'); } catch (_) {} return; }
   const n = pane.velas.length, drawn = new Array(n).fill(null);
@@ -1099,16 +1130,27 @@ function montarTrazo(pane, pts) {
   for (let k = 0; k < m.bars.length; k++) { const b = m.bars[k], price = priceAt(pane, m.ys[k]); if (b >= 0 && b < n && price != null) drawn[b] = price; }
   let lastV = null, lastI = -1;                       // interpola huecos internos
   for (let i = bFirst; i <= bLast; i++) { if (drawn[i] != null) { if (lastI >= 0 && i - lastI > 1) for (let j = lastI + 1; j < i; j++) { const t = (j - lastI) / (i - lastI); drawn[j] = lastV + (drawn[i] - lastV) * t; } lastV = drawn[i]; lastI = i; } }
-  const vLast = drawn[bLast]; for (let i = bLast + 1; i < n; i++) drawn[i] = vLast;   // continua hacia el borde
+  // aprende la logica para continuar: tendencia suave de la linea + ciclo (sinusoide) + anclaje al precio
+  const Loff = bLast - bFirst + 1, seg = [];
+  for (let i = bFirst; i <= bLast; i++) seg.push(drawn[i]);
+  const per = periodoCicloSeg(seg);
+  const trend = emaArr(seg, Math.max(8, Math.round((per || 16) * 1.4)));
+  const offs = seg.map((v, i) => (v != null && trend[i] != null) ? v - trend[i] : 0);
+  let w = 0, c1 = 0, c2 = 0;
+  if (per >= 2) { w = 2 * Math.PI / per; let Scc = 0, Sss = 0, Scs = 0, Syc = 0, Sys = 0; for (let k = 0; k < Loff; k++) { const i = bFirst + k, ci = Math.cos(w * i), si = Math.sin(w * i); Scc += ci * ci; Sss += si * si; Scs += ci * si; Syc += offs[k] * ci; Sys += offs[k] * si; } const det = Scc * Sss - Scs * Scs; if (Math.abs(det) > 1e-9) { c1 = (Syc * Sss - Sys * Scs) / det; c2 = (Scc * Sys - Scs * Syc) / det; } }
+  const baseP = Math.min(120, Math.max(16, Math.round((per || 16) * 1.6)));
+  const emaC = emaCierre(pane.velas, baseP);
+  const K = (trend[Loff - 1] != null && emaC[bLast] != null) ? trend[Loff - 1] - emaC[bLast] : 0;
   if (!pane.drawDefs) pane.drawDefs = {};
   let num = 1; while (pane.ovl.has('draw' + num)) num++;
   const key = 'draw' + num;
   pane.drawDefs[key] = defDibujado(key, 'Drawn ' + num, { col: '#E8B84B', gr: 2, dash: false });
   if (!pane.cfg) pane.cfg = {};
-  const c = cfgInicial(pane.drawDefs[key]); c.drawn = drawn; pane.cfg[key] = c;
-  pane.ovl.add(key);
+  const c = cfgInicial(pane.drawDefs[key]);
+  c.drawn = drawn; c.drawFirst = bFirst; c.drawLast = bLast; c.drawBase = baseP; c.drawK = K; c.drawW = w; c.drawC1 = c1; c.drawC2 = c2;
+  pane.cfg[key] = c; pane.ovl.add(key);
   recalc(pane); marcarBtnInd(pane);
-  try { toast('Drawn indicator added. It stays and keeps forming.'); } catch (_) {}
+  try { toast(per ? ('Drawn indicator · cycle ~' + per + ' bars, keeps going') : 'Drawn indicator · follows the price forward'); } catch (_) {}
 }
 function montarReconocido(pane, rec) {
   if (!rec) { try { toast('Draw a clearer shape to recognise an indicator.'); } catch (_) {} return; }
@@ -1148,6 +1190,13 @@ function actualizarPildoraFT(pane) {
   const r = btn.getBoundingClientRect();
   pill.style.left = Math.max(8, Math.min(innerWidth - 150, r.left)) + 'px';
   pill.style.top = (r.bottom + 7) + 'px';
+}
+/* Apaga toda herramienta de Free Transform del panel y quita su pildora. */
+function desactivarFT(pane) {
+  if (!pane) return;
+  pane.ftTool = null; pane._draw = null;
+  if (pane._ftBtn) pane._ftBtn.classList.remove('on');
+  sincronizarFT(pane); actualizarPildoraFT(pane);
 }
 /* Menu del boton dorado Free Transform (mismo estilo visual que la config). */
 function menuFT(pane, anchor) {
@@ -1193,6 +1242,7 @@ function colocarHLine(pane, y) {   // marca una ALTURA: sale en todas las gráfi
   S.hlines.push({ frac: Math.max(0, Math.min(1, y / H)), t0: performance.now(), col: '#2ee8c6', gr: 2 });
 }
 function fullPane(pane) {
+  desactivarFT(pane);                 // al entrar o salir de fullscreen se apagan las herramientas de Free Transform (no dejar pildoras colgadas)
   pane.max = !pane.max;
   const ov = $('mc-overlay');
   if (pane.max) {
@@ -1236,6 +1286,7 @@ async function reorganizar() {
 function cerrarPane(pane) {
   const docked = S.paneles.filter((p) => !p.flotante);
   if (!pane.flotante && docked.length <= 1) { toast('Keep at least one chart.'); return; }
+  desactivarFT(pane);                 // quita herramientas y pildora de Free Transform de este panel
   if (pane.max) { const ov = $('mc-overlay'); if (ov) ov.classList.remove('mc-hasmax'); }   // si estaba en fullscreen, libera el modo (si no, los demás quedan ocultos)
   try { pane.stream && pane.stream.cerrar(); } catch (_) {}
   try { pane.barra && pane.barra.desmontar && pane.barra.desmontar(); } catch (_) {}
@@ -1498,7 +1549,7 @@ function abrirBarraDe(pane, id) {   // id es una clave de instancia ('ema' o 'em
     cfg: c, params: def.params || [], opc: def.op || [], tipo: def.tipo, nombre: nombreInst(def, c, id), nombreDe: () => nombreInst(def, c, id), cx, cy,
     onCambio: () => recalc(pane),
     onEliminar: () => quitarInd(pane, id),
-    onDuplicar: def.tipo === 'ovl' ? () => duplicarInd(pane, id) : null   // duplicar (dos medias, etc.) solo en overlays
+    onDuplicar: (def.tipo === 'ovl' && !def._drawn) ? () => duplicarInd(pane, id) : null   // duplicar solo en overlays reales (no dibujados)
   });
 }
 /* Duplica un indicador overlay: nueva instancia con su propio numero y su propia config. */
