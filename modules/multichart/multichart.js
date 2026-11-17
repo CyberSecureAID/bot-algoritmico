@@ -10,10 +10,10 @@
    librería de velas (lightweight-charts) y la MISMA barra de dibujo de Smart
    Pools / Trading Demo (barra.js). Nada de widgets externos. */
 
-import { estilos } from './estilos.js?v=16';
+import { estilos } from './estilos.js?v=18';
 import * as D from '../trading-demo/datos.js?v=2';
-import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
-import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=3';
+import { montarBarra } from '../../assets/js/niveles/barra.js?v=8';
+import { dibujarHerramientas } from '../../assets/js/niveles/dibujo.js?v=4';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { INDICADORES, calcular, nombreInd as nomInd, cfgInicial, buscarInd, transformar } from '../indicadores/libreria.js?v=7';
 import { abrirBarraInd, cerrarBarraInd } from '../indicadores/ui.js?v=7';
@@ -112,9 +112,11 @@ function cfgDe(pane, x) { const key = (typeof x === 'string') ? x : x.id; const 
 
 const IC = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  signal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 16.1a10 10 0 0 1 0-8.2M19.1 7.9a10 10 0 0 1 0 8.2M7.9 13.2a6 6 0 0 1 0-2.4M16.1 10.8a6 6 0 0 1 0 2.4"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg>',
   sync: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a8 8 0 0 1 13-2.5L20 7"/><path d="M20 17a8 8 0 0 1-13 2.5L4 17"/><path d="M20 3v4h-4M4 21v-4h4"/></svg>',
+  help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.3 9.2a2.7 2.7 0 0 1 5.2 1c0 1.8-2.7 2.3-2.7 4"/><path d="M12 17.3v.01"/></svg>',
   vline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 3v18"/><circle cx="12" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>',
   hline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 12h18"/><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>',
   full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>',
@@ -142,6 +144,7 @@ export async function abrirMulti() {
       <button class="mc-back" id="mc-back">${IC.back} Back</button>
       <button class="mc-allcoin" id="mc-allcoin" title="Pick one coin for all charts at once">${IC.layers}<b>All charts</b>${IC.chev}</button>
       <div class="mc-top-r">
+        <button class="mc-hw" id="mc-hw" title="How it works">${IC.help}<span>How it works</span></button>
         <button class="mc-tool" id="mc-sync" title="Sync all charts: crosshair, zoom and scroll move together (any timeframe)">${IC.sync}<span>Sync</span></button>
         <button class="mc-icobtn mc-off" id="mc-dock" title="Dock the floating chart into the grid">${IC.dock}</button>
         <button class="mc-tool" id="mc-vline" title="Vertical line: mark the same time on every chart">${IC.vline}<span>V-line</span></button>
@@ -160,6 +163,7 @@ export async function abrirMulti() {
   $('mc-dock').onclick = acoplar;
   $('mc-reset').onclick = reorganizar;
   $('mc-save').onclick = guardarImagenTodas;
+  $('mc-hw').onclick = ayudaMC;
   $('mc-sync').onclick = () => toggleSync();
   $('mc-vline').onclick = () => toggleTool('vline');
   $('mc-hline').onclick = () => toggleTool('hline');
@@ -171,12 +175,14 @@ export async function abrirMulti() {
   D.logos().then((l) => { S.logos = l || {}; S.paneles.forEach(pintarLogoHead); });
   arrancarRAF();
   window.addEventListener('resize', onResize);
+  window.addEventListener('mouseup', onUpSig);   // al soltar un dibujo: actualiza el boton Share Signal
 }
 
 function cerrarMulti() {
   if (S.raf) cancelAnimationFrame(S.raf);
   document.removeEventListener('mousedown', fueraMenu, true);
   window.removeEventListener('resize', onResize);
+  window.removeEventListener('mouseup', onUpSig);
   S.paneles.forEach((p) => { try { p.stream && p.stream.cerrar(); } catch (_) {} try { p.barra && p.barra.desmontar && p.barra.desmontar(); } catch (_) {} try { p.chart.remove(); } catch (_) {} });
   S.paneles = []; S.focus = null; S.vlines = []; S.hlines = []; S.tool = null;   // las líneas no deben sobrevivir a salir/entrar
   cerrarMenu(); cerrarLineset();
@@ -185,6 +191,7 @@ function cerrarMulti() {
   if (window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')) { try { location.href = new URL('../../index.html', import.meta.url).href; } catch (_) {} }
 }
 function onResize() { S.paneles.forEach((p) => { try { p.chart.applyOptions({}); } catch (_) {} }); if (S.focus) sincronizarFocus(); }
+function onUpSig() { setTimeout(refrescarShareSigTodas, 0); }   // tras soltar/borrar un dibujo, revisa si hay posicion
 
 /* ── Panel ── */
 async function crearPanel(parId, tf, flotante, pos) {
@@ -205,6 +212,7 @@ async function crearPanel(parId, tf, flotante, pos) {
       <span class="mc-hsp"></span>
       <button class="mc-indbtn" data-ind title="Indicators">Indicator ${IC.chev}</button>
       <button class="mc-ftbtn" data-ft title="Free Transform: sculpt your indicators right on the chart">${IC.hand}Free Transform</button>
+      <button class="mc-sharesig" data-sharesig title="Share Signal: export this position as a clean card (coin logo, entry, stop, target)" disabled>${IC.signal}Share Signal</button>
       <button class="mc-hb" data-share title="Share image">${IC.cam}</button>
       <button class="mc-hb" data-full title="Fullscreen">${IC.full}</button>
       <button class="mc-hb mc-close" data-close title="Close">${IC.x}</button>
@@ -699,7 +707,7 @@ let _focusPend = false;
 function sincronizarFocus() {
   if (!S.focus || !S.focus.barra) return;
   if (_focusPend) return; _focusPend = true;
-  requestAnimationFrame(() => { _focusPend = false; const p = S.focus; if (!p || !p.barra) return; const g = geoDibPane(p); if (g) { try { p.barra.redibujar(g, p.velas.map((v) => ({ t: v.time, o: v.open, h: v.high, l: v.low, c: v.close, v: v.volume })), p.par.id); } catch (_) {} } });
+  requestAnimationFrame(() => { _focusPend = false; refrescarShareSigTodas(); const p = S.focus; if (!p || !p.barra) return; const g = geoDibPane(p); if (g) { try { p.barra.redibujar(g, p.velas.map((v) => ({ t: v.time, o: v.open, h: v.high, l: v.low, c: v.close, v: v.volume })), p.par.id); } catch (_) {} } });
 }
 function sincronizarStrips() {
   S.paneles.forEach((p) => { const st = p.body.querySelector('.nv-tools'); if (st) st.querySelectorAll('.nv-tool[data-h]').forEach((o) => o.classList.toggle('on', o.dataset.h === NIV.herr)); });
@@ -725,6 +733,8 @@ function wirePane(pane) {
   q('[data-ind]').onclick = (e) => { e.stopPropagation(); menuInd(pane); };
   const ftBtn = q('[data-ft]'); pane._ftBtn = ftBtn; ftBtn.onclick = (e) => { e.stopPropagation(); menuFT(pane, ftBtn); };
   q('[data-share]').onclick = () => guardarImagenPanel(pane);
+  const shBtn = q('[data-sharesig]'); pane._shareSigBtn = shBtn || null;
+  if (shBtn) shBtn.onclick = (e) => { e.stopPropagation(); compartirSenalMC(pane); };
   q('[data-full]').onclick = () => fullPane(pane);
   q('[data-fsback]').onclick = () => { if (pane.max) fullPane(pane); };   // Back solo sale en fullscreen: vuelve a la rejilla
   q('[data-goright]').onclick = () => irAlPresente(pane);
@@ -772,7 +782,12 @@ function wirePane(pane) {
     const grab = hitReshape(pane, x, y); if (!grab) return;
     e.preventDefault(); e.stopPropagation();
     const c0 = cfgDe(pane, grab.key);
-    ftDrag = { key: grab.key, li: grab.li, osc: grab.osc, tool: pane.ftTool, gy: y, suave0: (c0.suave || 0), lastP: ftPrecio(pane, grab.osc, y), _reb: 0 };
+    // Capturo la curva SIN el warp actual (ref) y el warp ya existente (base). Asi,
+    // al arrastrar, muevo un BULTO de masa en 2D sobre esa base (plastilina).
+    let ref = null, base = null, shift = 0;
+    if (!grab.osc) { const o = ((pane.ind && pane.ind.ovl) || []).find((z) => z.id === grab.key && (z.li || 0) === grab.li); if (o && o.data) { shift = o.shift || 0; const bw = (c0.warp && c0.warp[grab.li]) || []; ref = o.data.map((v, i) => v == null ? null : v - (bw[i] || 0)); base = o.data.map((_, i) => bw[i] || 0); } }
+    else { const od = pane._oscData, arr = od ? (grab.li === 0 ? od.serie : grab.li === 1 ? od.serie2 : od.serie3) : null; if (arr) { const bw = (c0.warp && c0.warp[grab.li]) || []; ref = arr.map((v, i) => v == null ? null : v - (bw[i] || 0)); base = arr.map((_, i) => bw[i] || 0); } }
+    ftDrag = { key: grab.key, li: grab.li, osc: grab.osc, tool: pane.ftTool, gy: y, suave0: (c0.suave || 0), ref, base, shift };
     cap.classList.add('ftgrab');
   }, true);
   window.addEventListener('mousemove', (e) => {
@@ -953,35 +968,28 @@ function aplicarReshape(pane, d, x, y) {
   if (d.tool === 'smooth') {
     let s = (d.suave0 || 0) + (d.gy - y) * 0.14; s = Math.max(0, Math.min(50, s)); c.suave = Math.round(s); return;
   }
-  // RESHAPE = escultura LIBRE 2D: la linea es JALADA hacia donde este el cursor, en
-  // CUALQUIER direccion (arriba, abajo, adelante, atras). Al mover el cursor por las
-  // barras, cada una se lleva hacia su altura -> puedes moldear como plastilina. Se
-  // guarda como warp y PERSISTE (recalc lo reaplica, incluidas las velas nuevas).
+  // RESHAPE = plastilina 2D: agarras una MASA de la linea y la llevas a donde quieras,
+  // en cualquier direccion (arriba, abajo, adelante, atras). El bulto sigue al cursor
+  // en horizontal y vertical. Se guarda como warp y PERSISTE (no se pasa del precio
+  // actual porque el indice queda acotado a la ultima vela).
   const bar = ftBarIdx(pane, x), curP = ftPrecio(pane, d.osc, y);
   if (bar == null || curP == null) return;
-  esculpir(pane, d, bar, curP);
+  moverLump(pane, d, bar, curP);
 }
-/* Jala la linea agarrada hacia (bar, target). Usa el valor VISIBLE actual (con su
-   warp ya aplicado) para saber cuanto falta, y reparte el tiron con una campana
-   suave alrededor de la barra. Acumulativo: moviendo el cursor esculpes la forma. */
-function esculpir(pane, d, bar, target) {
-  const c = cfgDe(pane, d.key); const n = pane.velas.length; if (!n) return;
-  let cur = null, dataIdx = bar, shift = 0;
-  if (!d.osc) {
-    const o = ((pane.ind && pane.ind.ovl) || []).find((z) => z.id === d.key && (z.li || 0) === d.li);
-    if (o && o.data) { shift = o.shift || 0; dataIdx = bar - shift; if (dataIdx >= 0 && dataIdx < o.data.length) cur = o.data[dataIdx]; }
-  } else {
-    const od = pane._oscData, arr = od ? (d.li === 0 ? od.serie : d.li === 1 ? od.serie2 : od.serie3) : null;
-    if (arr && bar >= 0 && bar < arr.length) cur = arr[bar];
-  }
-  if (cur == null) return;
-  const delta = target - cur;
+/* Reconstruye el warp como la base capturada + UN bulto gaussiano centrado en la
+   barra del cursor con la altura justa para que la curva pase por el. Al mover el
+   cursor, el bulto se desplaza en 2D (el sitio anterior vuelve a su base). */
+function moverLump(pane, d, bar, target) {
+  const c = cfgDe(pane, d.key), n = pane.velas.length; if (!n || !d.ref || !d.base) return;
+  const idx = Math.max(0, Math.min(n - 1, bar - (d.osc ? 0 : (d.shift || 0))));
+  const refV = d.ref[idx]; if (refV == null) return;
+  const A = target - (refV + (d.base[idx] || 0));
+  const R = Math.max(2, Math.round(n * 0.028));
+  const w = new Array(n); for (let j = 0; j < n; j++) w[j] = d.base[j] || 0;
+  const lo = Math.max(0, Math.round(idx - R * 3.2)), hi = Math.min(n - 1, Math.round(idx + R * 3.2));
+  for (let j = lo; j <= hi; j++) { const t = (j - idx) / R; w[j] += A * Math.exp(-t * t * 0.5); }
   if (!c.warp) c.warp = {};
-  let w = c.warp[d.li];
-  if (!w || w.length < n) { const nw = new Array(n).fill(0); if (w) for (let i = 0; i < w.length; i++) nw[i] = w[i]; w = nw; c.warp[d.li] = w; }
-  const R = Math.max(2, Math.round(n * 0.03));
-  const lo = Math.max(0, dataIdx - R * 3), hi = Math.min(n - 1, dataIdx + R * 3);
-  for (let j = lo; j <= hi; j++) { const t = (j - dataIdx) / R; w[j] += delta * Math.exp(-t * t * 0.5); }
+  c.warp[d.li] = w;
 }
 /* Reparte la forma esculpida entre el periodo base (para que la etiqueta cambie) y
    un warp residual (para que lo que ves NO se altere). Asi recuperamos la libertad
@@ -1190,6 +1198,79 @@ function actualizarPildoraFT(pane) {
   const r = btn.getBoundingClientRect();
   pill.style.left = Math.max(8, Math.min(innerWidth - 150, r.left)) + 'px';
   pill.style.top = (r.bottom + 7) + 'px';
+}
+/* ── "How it works": presentacion de lo que hace poderosa a Multichart ── */
+const PASOS_MC = [
+  {
+    t: 'Infinite charts on one screen',
+    d: 'Add as many charts as you want with <b>Add chart</b>. As many screens as you have, that many charts you get. Every chart is independent, with its own coin, timeframe, indicators and tools, all live at the same time.',
+    x: 'Build a full trading desk in one view instead of flipping between tabs.'
+  },
+  {
+    t: 'One coin, every timeframe at once',
+    d: '<b>All charts</b> drops a single coin onto every chart in one tap. Then set a different timeframe on each, so you read the same asset from one second to two days in a single glance. The real multi timeframe picture, with nothing to switch.',
+    x: 'Line up 1m, 15m, 1h and 4h of the same coin to see where trend and noise disagree.'
+  },
+  {
+    t: 'Twenty timeframes, from one second',
+    d: 'We ship <b>20 timeframes</b>: 1s, 2s, 5s, 10s, 30s and all the way up to 48h. Second level charts that most platforms lock behind paid plans are open here for everyone, scalper or swing trader alike.',
+    x: 'Second charts time an entry to the tick; the 48h chart keeps the big structure in frame.'
+  },
+  {
+    t: 'Move every chart together',
+    d: '<b>Sync all charts</b> ties crosshair, zoom and scroll across every chart, so dragging or zooming one moves them all. <b>Global vertical line</b> marks the same moment on every chart, <b>global horizontal line</b> drops the same price across all of them, and <b>Reset layout</b> brings the clean grid back whenever you need it.',
+    x: 'Mark one event with the vertical line and watch how each timeframe reacted to it.'
+  },
+  {
+    t: 'Around fifty indicators, and growing',
+    d: 'About <b>50 indicators</b> are ready to drop on any chart, each with deep styling. And it stays open: if you need a specific or special indicator that is not here yet, just ask and we add it for you.',
+    x: 'Your toolkit is never frozen. The list grows with what traders actually need.'
+  },
+  {
+    t: 'Free Transform, your own indicator',
+    d: 'This one is ours alone. <b>Draw Indicator</b> lets you draw the indicator you want straight on the candles; it keeps the exact structure you gave it and <b>keeps forming forward</b>, holding its distance and rhythm against price for as long as you keep it. <b>Reshape</b> molds any indicator like clay, in any direction, and it holds that shape. <b>Smooth</b> turns a rough drawing into a clean line.',
+    x: 'Draw a line today, come back a week later and it still respects the same logic against price. Your own indicator, no code.'
+  },
+  {
+    t: 'Pro tools and one tap sharing',
+    d: 'A right side toolbar gives you a <b>ruler</b> that reads a price move as a percentage the clear way, and <b>long and short position</b> tools with risk and reward laid out. <b>Full screen</b> opens one chart edge to edge, <b>Save image</b> exports all charts at once, and <b>Share Signal</b> turns your position into a clean card with the coin logo, entry, stop and target, ready to post.',
+    x: 'Everything you mark can leave as a clean image, watermark and coin logo included.'
+  }
+];
+let _pasoMC = 0;
+function ayudaMC() {
+  if ($('mc-hw-box')) { $('mc-hw-box').remove(); return; }
+  _pasoMC = 0;
+  const d = document.createElement('div'); d.id = 'mc-hw-box';
+  d.innerHTML = `<div class="mc-hw-bg"></div>
+    <div class="mc-hw-c">
+      <button class="mc-hw-x" aria-label="Close">${IC.x}</button>
+      <div class="mc-hw-eyebrow">Multichart</div>
+      <div id="mc-hw-cuerpo"></div>
+    </div>`;
+  document.body.appendChild(d);
+  const q = () => d.remove();
+  d.querySelector('.mc-hw-bg').onclick = q; d.querySelector('.mc-hw-x').onclick = q;
+  pintarPasoMC();
+}
+function pintarPasoMC() {
+  const c = $('mc-hw-cuerpo'); if (!c) return;
+  const p = PASOS_MC[_pasoMC], ultimo = _pasoMC === PASOS_MC.length - 1;
+  c.innerHTML = `
+    <div class="mc-hw-card">
+      <div class="mc-hw-n">${_pasoMC + 1} <em>of ${PASOS_MC.length}</em></div>
+      <div class="mc-hw-t">${p.t}</div>
+      <div class="mc-hw-d">${p.d}</div>
+      <div class="mc-hw-x2">${p.x}</div>
+    </div>
+    <div class="mc-hw-dots">${PASOS_MC.map((_, i) => `<i class="${i === _pasoMC ? 'on' : ''}" data-paso="${i}"></i>`).join('')}</div>
+    <div class="mc-hw-acts">
+      ${_pasoMC > 0 ? '<button class="mc-hw-back" id="mc-hw-back">Back</button>' : ''}
+      <button class="mc-hw-next" id="mc-hw-next">${ultimo ? 'Got it' : 'Learn more'}</button>
+    </div>`;
+  $('mc-hw-next').onclick = () => { if (_pasoMC >= PASOS_MC.length - 1) { const b = $('mc-hw-box'); if (b) b.remove(); return; } _pasoMC++; pintarPasoMC(); };
+  const at = $('mc-hw-back'); if (at) at.onclick = () => { _pasoMC = Math.max(0, _pasoMC - 1); pintarPasoMC(); };
+  c.querySelectorAll('[data-paso]').forEach((b) => b.onclick = () => { _pasoMC = Number(b.dataset.paso); pintarPasoMC(); });
 }
 /* Apaga toda herramienta de Free Transform del panel y quita su pildora. */
 function desactivarFT(pane) {
@@ -1570,6 +1651,137 @@ function quitarInd(pane, id) {
 function indActivo(pane) { return pane.ovl.size > 0 || !!pane.oscK; }
 
 /* ── Guardar imagen ── */
+/* ── Share Signal ─────────────────────────────────────────────────────────
+   Detecta la posicion (larga/corta) dibujada en el panel y exporta una tarjeta
+   limpia, al estilo de Reaction Zones: logo de la moneda SIEMPRE, el grafico, el
+   nombre de la seccion "Multichart", entrada / stop loss / objetivo, y nuestro
+   logo + dominio. El boton solo esta activo cuando hay una posicion puesta. */
+function posDePane(pane) {
+  const lista = (pane === S.focus) ? NIV.dibujos : pane.dibCache;
+  return (lista || []).filter((d) => d && (d.tipo === 'poslarga' || d.tipo === 'poscorta') && d.pts && d.pts[0]);
+}
+function refrescarShareSig(pane) {
+  const b = pane && pane._shareSigBtn; if (!b) return;
+  const hay = posDePane(pane).length > 0;
+  b.disabled = !hay; b.classList.toggle('lista', hay);
+}
+function refrescarShareSigTodas() { try { S.paneles.forEach(refrescarShareSig); } catch (_) {} }
+
+/* El grafico + sus capas (indicadores, overlay, dibujos) en un solo lienzo, a
+   resolucion nativa: asi la posicion dibujada sale dentro de la imagen. */
+function _chartComposite(pane) {
+  let shot; try { shot = pane.chart.takeScreenshot(); } catch (_) { return null; }
+  if (!shot || !shot.width) return null;
+  const W = shot.width, H = shot.height;
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.drawImage(shot, 0, 0);
+  try {
+    if (pane.fx && pane.fx.width) g.drawImage(pane.fx, 0, 0, W, H);
+    if (pane.ux && pane.ux.width) g.drawImage(pane.ux, 0, 0, W, H);
+    const cvh = pane.body.querySelector('.nv-cvh'); if (cvh && cvh.width) g.drawImage(cvh, 0, 0, W, H);
+  } catch (_) {}
+  return c;
+}
+async function compartirSenalMC(pane) {
+  const pos = posDePane(pane);
+  if (!pos.length) { try { toast('Place a long or short position first.'); } catch (_) {} return; }
+  const chart = _chartComposite(pane);
+  if (!chart) { try { toast('Could not capture the chart.'); } catch (_) {} return; }
+  const par = pane.par || {}, tf = pane.tf || '', WEB = 'decfreedom.com';
+
+  const datos = pos.map((d) => {
+    const largo = d.tipo === 'poslarga', pe = d.pts[0].p;
+    const pT = (d.pTarget != null) ? d.pTarget : pe * (largo ? 1.01 : 0.99);
+    const pS = (d.pStop != null) ? d.pStop : pe - (pT - pe) * 0.5;
+    const rr = Math.abs(pe - pS) > 0 ? Math.abs((pT - pe) / (pe - pS)) : 0;
+    return { largo, pe, pS, pT, rr };
+  });
+  const n = datos.length;
+  const dc = (v) => { const d = decimales(v); return Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+  const px = (pane.velas && pane.velas.length) ? pane.velas[pane.velas.length - 1].close : null;
+  const hora = new Date().toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+
+  // Texto al portapapeles, por si lo quiere pegar en un chat
+  const lineas = (f) => datos.map((d, i) => `${i + 1}: ${f(d)}`).join('\n');
+  const txt = `MULTICHART — SIGNAL\n\n${par.id || ''} · ${tf} · ${hora} UTC${px != null ? ' · Price ' + dc(px) : ''}\n${datos.map((d) => d.largo ? 'LONG' : 'SHORT').join(' / ')}\n\nENTRY\n${lineas((d) => dc(d.pe))}\n\nSTOP LOSS\n${lineas((d) => dc(d.pS))}\n\nTARGET\n${lineas((d) => dc(d.pT))}\n\n${WEB} · Multichart`;
+  try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).catch(() => {}); } catch (_) {}
+
+  // Logo de la moneda SIEMPRE: spothq (GitHub, CORS) y respaldo CoinGecko; si no, iniciales.
+  const coinRepo = par.id ? ICONO(par.id) : null;
+  const coinCg = par.cg && S.logos && S.logos[par.cg];
+  const [imgRepo, imgWm] = await Promise.all([cargarImg(coinRepo, true), cargarImg(LOGO, false)]);
+  const coin = imgRepo || (coinCg ? await cargarImg(coinCg, true) : null);
+
+  const W = 1180, BG = '#0a0d12';
+  const chartH = Math.round(W * (chart.height / chart.width));
+  const padX = 54, headH = 150, rowH = 54, rrH = 86, footH = 84;
+  const H = chartH + headH + n * rowH + rrH + footH;
+  const cv = document.createElement('canvas'), g = cv.getContext('2d'); cv.width = W; cv.height = H;
+  g.fillStyle = BG; g.fillRect(0, 0, W, H);
+  g.drawImage(chart, 0, 0, W, chartH);
+  const y0 = chartH;
+  g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, y0 + 0.5); g.lineTo(W, y0 + 0.5); g.stroke();
+
+  // Logo moneda (circulo) + "Multichart" + chip LONG/SHORT + meta
+  const ls = 70, lx = padX, ly = y0 + 26;
+  g.save(); g.beginPath(); g.arc(lx + ls / 2, ly + ls / 2, ls / 2, 0, 6.2832); g.closePath();
+  g.fillStyle = coin ? '#ffffff' : '#141b25'; g.fill();
+  if (coin) { g.clip(); g.drawImage(coin, lx, ly, ls, ls); }
+  else { g.fillStyle = '#E8B84B'; g.font = '800 24px "Chakra Petch", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(par.id || '?').slice(0, 4), lx + ls / 2, ly + ls / 2 + 1); }
+  g.restore();
+  g.strokeStyle = 'rgba(232,184,75,.55)'; g.lineWidth = 2; g.beginPath(); g.arc(lx + ls / 2, ly + ls / 2, ls / 2, 0, 6.2832); g.stroke();
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  const tx = lx + ls + 24;
+  g.fillStyle = '#E8B84B'; g.font = '800 38px "Chakra Petch", system-ui, sans-serif'; g.fillText('Multichart', tx, y0 + 52);
+  const twM = g.measureText('Multichart').width;
+  const side = datos.every((d) => d.largo) ? 'LONG' : datos.every((d) => !d.largo) ? 'SHORT' : 'LONG / SHORT';
+  const sCol = side === 'LONG' ? '#2ee86a' : side === 'SHORT' ? '#ff5b6e' : '#E8B84B';
+  g.font = '800 15px "Chakra Petch", system-ui, sans-serif';
+  const pw = g.measureText(side).width + 24, ph = 26, ppx = tx + twM + 16, ppy = y0 + 52 - 20;
+  g.save(); g.globalAlpha = .16; g.fillStyle = sCol; redondea(g, ppx, ppy, pw, ph, 7); g.fill(); g.restore();
+  g.strokeStyle = sCol; g.globalAlpha = .5; g.lineWidth = 1; redondea(g, ppx, ppy, pw, ph, 7); g.stroke(); g.globalAlpha = 1;
+  g.fillStyle = sCol; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(side, ppx + pw / 2, ppy + ph / 2 + 1);
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = '#8b95a1'; g.font = '600 17px "IBM Plex Mono", ui-monospace, monospace';
+  g.fillText(`${par.id || ''}    ·    ${tf}    ·    ${hora} UTC${px != null ? '    ·    Price ' + dc(px) : ''}`, tx, y0 + 82);
+
+  // Columnas ENTRY / STOP LOSS / TARGET
+  const colBlock = 250;
+  const xs = [padX, Math.round(W / 2 - colBlock / 2), W - padX - colBlock];
+  const cols = [['ENTRY', datos.map((d) => dc(d.pe)), '#e8ecf2'], ['STOP LOSS', datos.map((d) => dc(d.pS)), '#ff5b6e'], ['TARGET', datos.map((d) => dc(d.pT)), '#2ee86a']];
+  const colY = y0 + headH;
+  cols.forEach((c, ci) => {
+    const cx = xs[ci]; g.textAlign = 'left';
+    g.fillStyle = c[2]; g.font = '800 20px system-ui, sans-serif'; g.fillText(c[0], cx, colY);
+    g.strokeStyle = c[2]; g.globalAlpha = .3; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx, colY + 13); g.lineTo(cx + colBlock, colY + 13); g.stroke(); g.globalAlpha = 1;
+    c[1].forEach((v, i) => {
+      const ry = colY + 44 + i * rowH;
+      g.fillStyle = '#5a6570'; g.font = '700 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(String(i + 1), cx, ry);
+      g.fillStyle = '#eef2f6'; g.font = '800 26px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(v, cx + 30, ry + 2);
+    });
+  });
+
+  // RISK : REWARD
+  const rry = colY + 44 + n * rowH + 38;
+  const rrTxt = (n === 1) ? ('1 : ' + datos[0].rr.toFixed(1)) : '1 : 2';
+  g.textAlign = 'center';
+  g.fillStyle = '#8b95a1'; g.font = '700 18px system-ui, sans-serif'; g.fillText('RISK : REWARD', W / 2 - 72, rry);
+  g.fillStyle = '#E8B84B'; g.font = '800 26px system-ui, sans-serif'; g.fillText(rrTxt, W / 2 + 98, rry + 1);
+
+  // Footer: logo + dominio + Multichart
+  const fy = H - footH;
+  g.fillStyle = 'rgba(255,255,255,.03)'; g.fillRect(0, fy, W, footH);
+  g.strokeStyle = 'rgba(232,184,75,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, fy + 0.5); g.lineTo(W, fy + 0.5); g.stroke();
+  g.textAlign = 'left'; g.textBaseline = 'middle';
+  let dx = padX;
+  if (imgWm && imgWm.width) { const mh = 44, mw = imgWm.width * (mh / imgWm.height); g.drawImage(imgWm, padX, fy + (footH - mh) / 2, mw, mh); dx = padX + mw + 18; }
+  g.fillStyle = '#dfe5ec'; g.font = '700 19px system-ui, sans-serif'; g.fillText(WEB, dx, fy + footH / 2 + 1);
+  g.fillStyle = '#E8B84B'; g.font = '800 19px system-ui, sans-serif'; g.textAlign = 'right'; g.fillText('Multichart', W - padX, fy + footH / 2 + 1);
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+
+  try { modalImg(cv, `decfreedom-multichart-${par.id || 'signal'}-${tf}-${Date.now()}.png`, (par.id || '') + 'USDT · ' + tf + ' · Signal'); } catch (_) {}
+}
+
 async function guardarImagenPanel(pane) {
   let shot; try { shot = pane.chart.takeScreenshot(); } catch (_) { toast('Could not export ' + pane.par.id + '.'); return; }
   // Logo de la moneda: spothq en GitHub (con CORS), respaldo CoinGecko. Asi SI
