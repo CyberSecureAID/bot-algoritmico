@@ -35,10 +35,18 @@ let _stream = null, _streamKey = '', _pulso = null;
 const T = {
   en: { analysis: 'ANALYSIS', spot: 'SPOT', back: 'Back', how: 'How it works', langTitle: 'Español', loading: 'Loading market data…', fail: 'Could not load. Try again.',
         indRainbow: 'Rainbow', indCycles: 'Cycles', indRoadmap: 'Roadmap', fair: 'fair value', since: 'day', ofCycle: 'into the cycle', halving: 'Halving',
-        top: 'Cycle top', bottom: 'Cycle bottom', center: 'Fair value', upper: 'Upper band', lower: 'Lower band', etf: 'Spot ETF', election: 'US election', covid: 'COVID crash', projTop: 'Projected top', filter: 'Filter…', got: 'Got it', learn: 'Learn more' },
+        top: 'Cycle top', bottom: 'Cycle bottom', center: 'Fair value', upper: 'Upper band', lower: 'Lower band', etf: 'Spot ETF', election: 'US election', covid: 'COVID crash', projTop: 'Projected top', filter: 'Filter…', got: 'Got it', learn: 'Learn more',
+        indDom: 'Dominance', domEye: 'BTC DOMINANCE', domLive: 'Live', domBtc: 'BTC', domDom: 'Dominance', domAlt: 'Altcoins', dUp: 'Rising', dDown: 'Falling', dFlat: 'Flat', domBtcSeason: 'Bitcoin season', domAltSeason: 'Alt season',
+        cAltDown: 'Alts ↓', cAccum: 'Accumulate', cDoom: 'Crash', cAltSeason: 'Alt season', cAltUp: 'Alts ↑', cAltFlat: 'Alts →',
+        vAltBleed: 'Altcoins bleeding', vAccum: 'Altcoin accumulation', vDoom: 'Doom · alts crashing', vAltSeason: 'Alt season', vAltUp: 'Altcoins rising', vAltFlat: 'Altcoins ranging',
+        nAltBleed: 'BTC up and dominance up: capital favors Bitcoin over altcoins.', nAccum: 'BTC flat and dominance up: a quiet accumulation phase for alts.', nDoom: 'BTC down and dominance up: capital flees altcoins the hardest.', nAltSeason: 'BTC up and dominance down: capital rotates into altcoins.', nAltUp: 'BTC flat and dominance down: alts outperform a calm Bitcoin.', nAltFlat: 'BTC down and dominance down: alts drift with a weak Bitcoin.' },
   es: { analysis: 'ANÁLISIS', spot: 'SPOT', back: 'Atrás', how: 'Cómo funciona', langTitle: 'English', loading: 'Cargando datos de mercado…', fail: 'No se pudo cargar. Reintenta.',
         indRainbow: 'Rainbow', indCycles: 'Ciclos', indRoadmap: 'Hoja de ruta', fair: 'valor justo', since: 'día', ofCycle: 'del ciclo', halving: 'Halving',
-        top: 'Techo de ciclo', bottom: 'Suelo de ciclo', center: 'Valor justo', upper: 'Banda superior', lower: 'Banda inferior', etf: 'ETF al contado', election: 'Elecciones EE. UU.', covid: 'Caída COVID', projTop: 'Techo proyectado', filter: 'Filtrar…', got: 'Entendido', learn: 'Siguiente' }
+        top: 'Techo de ciclo', bottom: 'Suelo de ciclo', center: 'Valor justo', upper: 'Banda superior', lower: 'Banda inferior', etf: 'ETF al contado', election: 'Elecciones EE. UU.', covid: 'Caída COVID', projTop: 'Techo proyectado', filter: 'Filtrar…', got: 'Entendido', learn: 'Siguiente',
+        indDom: 'Dominancia', domEye: 'DOMINANCIA BTC', domLive: 'En vivo', domBtc: 'BTC', domDom: 'Dominancia', domAlt: 'Altcoins', dUp: 'Subiendo', dDown: 'Bajando', dFlat: 'Plana', domBtcSeason: 'Temporada Bitcoin', domAltSeason: 'Alt season',
+        cAltDown: 'Alts ↓', cAccum: 'Acumular', cDoom: 'Desplome', cAltSeason: 'Alt season', cAltUp: 'Alts ↑', cAltFlat: 'Alts →',
+        vAltBleed: 'Altcoins sangrando', vAccum: 'Acumulación de altcoins', vDoom: 'Doom · altcoins desplomándose', vAltSeason: 'Alt season', vAltUp: 'Altcoins subiendo', vAltFlat: 'Altcoins lateralizando',
+        nAltBleed: 'BTC sube y la dominancia sube: el capital prefiere Bitcoin antes que las altcoins.', nAccum: 'BTC lateral y dominancia arriba: fase de acumulación tranquila en alts.', nDoom: 'BTC baja y la dominancia sube: el capital huye de las altcoins con más fuerza.', nAltSeason: 'BTC sube y la dominancia baja: el capital rota hacia las altcoins.', nAltUp: 'BTC lateral y dominancia abajo: las alts rinden más que un Bitcoin en calma.', nAltFlat: 'BTC baja y la dominancia baja: las alts derivan con un Bitcoin débil.' }
 };
 const t = (k) => (T[_lang] && T[_lang][k]) || T.en[k] || k;
 
@@ -146,6 +154,42 @@ function historialBTC(tf, hastaTs) {
   }
   return out;
 }
+/* Historial REAL de Bitcoin desde CryptoCompare (publico, CORS abierto, sin clave),
+   con todo el registro desde 2010. Se cachea en localStorage una semana. Si falla,
+   el llamador usa el generador sintetico como respaldo. Devuelve velas DIARIAS. */
+async function historialReal() {
+  try { const c = JSON.parse(localStorage.getItem('cy-btc-hist') || 'null'); if (c && c.t && (Date.now() - c.t) < 7 * 864e5 && c.d && c.d.length > 1000) return c.d; } catch (_) {}
+  let all = [], toTs = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < 4; i++) {
+    try {
+      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 6000);
+      const r = await fetch(`https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=2000&toTs=${toTs}`, { signal: ctl.signal });
+      clearTimeout(to); const j = await r.json();
+      const d = (j && j.Data && j.Data.Data) ? j.Data.Data : [];
+      if (!d.length) break;
+      all = d.concat(all); toTs = d[0].time - 86400;
+      if (d[0].time < Date.UTC(2010, 6, 1) / 1000) break;
+    } catch (_) { break; }
+  }
+  all = all.filter((x) => x.close > 0).map((x) => ({ time: x.time, open: +x.open, high: +x.high, low: +x.low, close: +x.close }));
+  if (all.length > 1000) { try { localStorage.setItem('cy-btc-hist', JSON.stringify({ t: Date.now(), d: all })); } catch (_) {} }
+  return all;
+}
+/* Agrupa velas DIARIAS en la temporalidad pedida (semanal alineada a lunes, mensual
+   por mes de calendario). Para 1d devuelve las diarias tal cual. */
+function agregarTf(diarias, tf) {
+  if (tf === '1d' || !diarias.length) return diarias.slice();
+  const out = []; let cur = null;
+  for (const c of diarias) {
+    let key;
+    if (tf === '1M') { const d = new Date(c.time * 1000); key = d.getUTCFullYear() * 12 + d.getUTCMonth(); }
+    else key = Math.floor((c.time - 345600) / 604800);   // semana alineada a lunes
+    if (!cur || cur.k !== key) { if (cur) out.push(cur.v); cur = { k: key, v: { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close } }; }
+    else { cur.v.high = Math.max(cur.v.high, c.high); cur.v.low = Math.min(cur.v.low, c.low); cur.v.close = c.close; }
+  }
+  if (cur) out.push(cur.v);
+  return out;
+}
 function streamVelas(simbolo, tf, onK) {
   const url = `wss://stream.binance.com:9443/ws/${String(simbolo).toLowerCase()}@kline_${tf}`;
   let ws = null, cerrado = false, tmr = null;
@@ -210,6 +254,7 @@ export async function abrirCycles() {
           <button class="cy-tab on" data-ind="rainbow">${esc(t('indRainbow'))}</button>
           <button class="cy-tab" data-ind="cycles">${esc(t('indCycles'))}</button>
           <button class="cy-tab" data-ind="roadmap">${esc(t('indRoadmap'))}</button>
+          <button class="cy-tab" data-ind="dominance">${esc(t('indDom'))}</button>
         </div>
         <div class="cy-der">
           <button class="cy-lang" id="cy-lang" title="${esc(t('langTitle'))}">${_lang === 'en' ? 'ES' : 'EN'}</button>
@@ -245,7 +290,7 @@ export async function abrirCycles() {
 }
 
 function cerrar() {
-  clearInterval(_pulso);
+  clearInterval(_pulso); clearInterval(_domTimer); _domTimer = null; _dom = null;
   try { if (_stream) _stream.cerrar(); } catch (_) {} _stream = null; _streamKey = '';
   window.removeEventListener('resize', onResize);
   try { if (C.chart) C.chart.remove(); } catch (_) {} C.chart = null; C.serie = null;
@@ -263,7 +308,7 @@ function montarChart() {
     grid: { vertLines: { color: 'rgba(255,255,255,.035)' }, horzLines: { color: 'rgba(255,255,255,.035)' } },
     rightPriceScale: { borderColor: '#222b35', mode: (LC.PriceScaleMode ? LC.PriceScaleMode.Logarithmic : 1), scaleMargins: { top: 0.06, bottom: 0.06 }, entireTextOnly: true },
     timeScale: { borderColor: '#222b35', timeVisible: false, secondsVisible: false, rightOffset: 6, barSpacing: 7, minBarSpacing: 0.04 },
-    crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0, vertLine: { color: '#C9A84B', width: 1, style: 3, labelBackgroundColor: '#8f6a1a' }, horzLine: { color: '#C9A84B', labelBackgroundColor: '#8f6a1a' } }
+    crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Magnet : 1, vertLine: { color: 'rgba(232,184,75,.7)', width: 1, style: 2, labelBackgroundColor: '#8f6a1a' }, horzLine: { color: 'rgba(232,184,75,.7)', width: 1, style: 2, labelBackgroundColor: '#8f6a1a' } }
   });
   C.chart = chart;
   C.scaffT = chart.addSeries(LC.LineSeries, { color: 'rgba(0,0,0,0)', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
@@ -273,18 +318,31 @@ function montarChart() {
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => dibujarFx());
 }
 function construirAndamio() {
-  const r = C.rb, v = C.velas; if (!r || !v || !v.length) { C.tiempos = []; try { C.scaffT.setData([]); C.scaffB.setData([]); } catch (_) {} return; }
-  const paso = stepSeg(_tf);
-  // Tiempos de muestreo de bandas: velas submuestreadas (barras validas) + futuro.
-  // El andamio (transparente) fija el rango del eje a TODO el rainbow y extiende el
-  // tiempo al futuro. Mismo paso que las velas → nada se rompe en 1D/1W/1M.
-  const sub = Math.max(1, Math.floor(v.length / 440));
-  const times = [];
-  for (let i = 0; i < v.length; i += sub) times.push(v[i].time);
-  const ultv = v[v.length - 1].time; if (times[times.length - 1] !== ultv) times.push(ultv);
-  for (let ts = ultv + paso; ts <= r.fin; ts += paso) times.push(ts);
-  C.tiempos = times;
-  try { C.scaffT.setData(times.map((ts) => ({ time: ts, value: rbBanda(ts, r.off.length - 1) }))); C.scaffB.setData(times.map((ts) => ({ time: ts, value: rbBanda(ts, 0) }))); } catch (_) {}
+  const r = C.rb, v = C.velas; if (!r || !v || !v.length) { C.barras = []; try { C.scaffT.setData([]); C.scaffB.setData([]); } catch (_) {} return; }
+  const paso = stepSeg(_tf), ultv = v[v.length - 1].time;
+  // TODAS las barras: velas reales + futuro (proyeccion). El andamio transparente se
+  // pone en TODAS, asi cada tiempo es una barra valida (timeToCoordinate nunca falla)
+  // y fija el rango del eje a todo el rainbow. El dibujo muestrea segun el zoom.
+  const barras = v.map((c) => c.time);
+  for (let ts = ultv + paso; ts <= r.fin; ts += paso) barras.push(ts);
+  C.barras = barras;
+  try { C.scaffT.setData(barras.map((ts) => ({ time: ts, value: rbBanda(ts, r.off.length - 1) }))); C.scaffB.setData(barras.map((ts) => ({ time: ts, value: rbBanda(ts, 0) }))); } catch (_) {}
+}
+/* Muestras de tiempo DENSAS dentro de lo visible (se recalcula en cada dibujo): asi
+   las bandas se ven suaves y alineadas a cualquier nivel de zoom, sin desajustarse. */
+function muestrasVisibles() {
+  const arr = C.barras; if (!arr || !arr.length) return [];
+  let from = arr[0], to = arr[arr.length - 1];
+  try { const vr = C.chart.timeScale().getVisibleRange(); if (vr && vr.from != null) { from = vr.from; to = vr.to; } } catch (_) {}
+  const pad = (to - from) * 0.18; from -= pad; to += pad;
+  let i0 = 0, i1 = arr.length - 1;
+  while (i0 < arr.length - 1 && arr[i0] < from) i0++;
+  while (i1 > 0 && arr[i1] > to) i1--;
+  i0 = Math.max(0, i0 - 1); i1 = Math.min(arr.length - 1, i1 + 1);
+  const n = i1 - i0 + 1, sub = Math.max(1, Math.floor(n / 560));
+  const out = []; for (let i = i0; i <= i1; i += sub) out.push(arr[i]);
+  if (out.length && out[out.length - 1] !== arr[i1]) out.push(arr[i1]);
+  return out;
 }
 
 async function cargarVelas() {
@@ -295,9 +353,15 @@ async function cargarVelas() {
     const v = await traerVelas(p.s, _tf, 1000);
     if (gen !== C._gen) return;                   // llego una peticion vieja: ignorar
     if (!v.length) throw new Error('vacio');
-    // Historia completa: para BTC, antepone la historia recreada (2010 → Binance).
+    // Historia completa: para BTC, antepone TODO el historial real (CryptoCompare,
+    // desde 2010). Si la API falla, usa el generador sintetico como respaldo.
     let full = v;
-    if (_par === 'BTC') { const hist = historialBTC(_tf, v[0].time); if (hist.length) full = hist.concat(v); }
+    if (_par === 'BTC') {
+      let hist = null;
+      try { const diarias = await historialReal(); if (gen !== C._gen) return; if (diarias && diarias.length) hist = agregarTf(diarias, _tf).filter((c) => c.time < v[0].time); } catch (_) {}
+      if (!hist || !hist.length) hist = historialBTC(_tf, v[0].time);
+      if (hist && hist.length) full = hist.concat(v);
+    }
     C.velas = full; C.precio = full[full.length - 1].close;
     configRainbow(); construirAndamio();
     C.serie.setData(full);
@@ -328,6 +392,9 @@ function pintarPrecio() {
   } else if (_ind === 'roadmap') {
     const rel = C.precio / rbCentro(now);
     sub.innerHTML = `<i style="background:#E8B84B"></i>${rel >= 1 ? '+' : ''}${((rel - 1) * 100).toFixed(0)}% ${esc(t('fair'))}`;
+  } else if (_ind === 'dominance') {
+    if (_dom && _dom.fase && _dom.dom != null) sub.innerHTML = `<i style="background:${_dom.fase.col}"></i>${esc(t('domDom'))} ${_dom.dom.toFixed(1)}% · ${esc(t('v' + _dom.fase.k))}`;
+    else sub.textContent = '';
   } else sub.textContent = '';
 }
 
@@ -339,8 +406,10 @@ function dibujarFx() {
   if (fx.width !== Math.round(W * dpr) || fx.height !== Math.round(H * dpr)) { fx.width = Math.round(W * dpr); fx.height = Math.round(H * dpr); }
   fx.style.width = W + 'px'; fx.style.height = H + 'px';
   const g = fx.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  if (_ind === 'dominance') { pintarLeyenda(false); const dp = $('cy-dompanel'); if (dp) dp.style.display = ''; else renderDom(); return; }
   if (C.cargando || !C.rb) { pintarLeyenda(false); return; }
   const Wp = Math.max(10, W - ejeAncho());             // area de ploteo (sin el eje)
+  C._mu = muestrasVisibles();                           // muestras densas segun el zoom
   g.save(); g.beginPath(); g.rect(0, 0, Wp, H); g.clip();
   if (_ind === 'rainbow') dibujarRainbow(g, Wp, H);
   else if (_ind === 'cycles') dibujarCycles(g, Wp, H);
@@ -353,7 +422,7 @@ const Tc = (tsec) => { try { const c = C.chart.timeScale().timeToCoordinate(tsec
    timeToCoordinate devuelve null: ajustamos a la semana mas cercana del andamio. */
 function TcNear(tsec) {
   const x = Tc(tsec); if (x != null) return x;
-  const ta = C.tiempos; if (!ta || !ta.length) return null;
+  const ta = C.barras; if (!ta || !ta.length) return null;
   let best = ta[0], bd = Infinity; for (const tt of ta) { const dd = Math.abs(tt - tsec); if (dd < bd) { bd = dd; best = tt; } }
   return Tc(best);
 }
@@ -361,7 +430,7 @@ function hexA(hex, a) { const h = hex.replace('#', ''); return `rgba(${parseInt(
 
 function dibujarRainbow(g, W, H) {
   const cols = [];
-  for (let i = 0; i < C.tiempos.length; i++) { const ts = C.tiempos[i], x = Tc(ts); if (x == null || x < -40 || x > W + 40) continue; const ys = []; for (let k = 0; k < C.rb.off.length; k++) ys.push(Yp(rbBanda(ts, k))); cols.push({ x, ys }); }
+  const mu = C._mu || []; for (let i = 0; i < mu.length; i++) { const ts = mu[i], x = Tc(ts); if (x == null || x < -40 || x > W + 40) continue; const ys = []; for (let k = 0; k < C.rb.off.length; k++) ys.push(Yp(rbBanda(ts, k))); cols.push({ x, ys }); }
   for (let z = 0; z < RB_ZONAS.length; z++) {
     g.beginPath(); let ab = false;
     for (let i = 0; i < cols.length; i++) { const c = cols[i]; if (!c || c.ys[z] == null) { ab = false; continue; } if (!ab) { g.moveTo(c.x, c.ys[z]); ab = true; } else g.lineTo(c.x, c.ys[z]); }
@@ -448,12 +517,12 @@ function dibujarRoadmap(g, W, H) {
 function lineaTiempo(g, W, f, col, lw, dash) {
   g.save(); g.strokeStyle = col; g.lineWidth = lw; if (dash && dash.length) g.setLineDash(dash); else g.setLineDash([]);
   g.beginPath(); let ab = false;
-  for (let i = 0; i < C.tiempos.length; i++) { const ts = C.tiempos[i], x = Tc(ts); if (x == null || x < -40 || x > W + 40) { ab = false; continue; } const y = Yp(f(ts)); if (y == null) { ab = false; continue; } if (!ab) { g.moveTo(x, y); ab = true; } else g.lineTo(x, y); }
+  const mu = C._mu || []; for (let i = 0; i < mu.length; i++) { const ts = mu[i], x = Tc(ts); if (x == null || x < -40 || x > W + 40) { ab = false; continue; } const y = Yp(f(ts)); if (y == null) { ab = false; continue; } if (!ab) { g.moveTo(x, y); ab = true; } else g.lineTo(x, y); }
   g.stroke(); g.restore();
 }
 function rellenoCanal(g, W, kLo, kUp) {
   const pts = [];
-  for (let i = 0; i < C.tiempos.length; i++) { const ts = C.tiempos[i], x = Tc(ts); if (x == null || x < -40 || x > W + 40) continue; pts.push({ x, yU: Yp(rbBanda(ts, kUp)), yL: Yp(rbBanda(ts, kLo)) }); }
+  const mu = C._mu || []; for (let i = 0; i < mu.length; i++) { const ts = mu[i], x = Tc(ts); if (x == null || x < -40 || x > W + 40) continue; pts.push({ x, yU: Yp(rbBanda(ts, kUp)), yL: Yp(rbBanda(ts, kLo)) }); }
   g.beginPath(); let ab = false;
   for (const p of pts) { if (p.yU == null) { ab = false; continue; } if (!ab) { g.moveTo(p.x, p.yU); ab = true; } else g.lineTo(p.x, p.yU); }
   for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; if (p.yL == null) continue; g.lineTo(p.x, p.yL); }
@@ -480,9 +549,138 @@ function pintarLeyenda(show) {
   l.innerHTML = RB_ZONAS.slice().reverse().map((z) => `<span class="cy-lz"><i style="background:${z.c}"></i>${esc(z[_lang] || z.en)}</span>`).join('');
 }
 
+/* ══════════════════ DOMINANCIA (4º indicador) ══════════════════
+   Dominancia REAL de Bitcoin (CoinGecko /global) + su TENDENCIA deducida de una
+   canasta de pares alt/BTC de Binance (si la canasta cae, la dominancia sube). Se
+   cruza con la tendencia de BTC y se sitúa el mercado en una de las 6 fases de
+   altcoins. Todo en vivo: el panel se refresca solo. */
+const DOM_PARES = ['ETHBTC', 'BNBBTC', 'SOLBTC', 'XRPBTC'];
+const FASES = {
+  'up|up':     { k: 'AltBleed',  col: '#ff8a4b', s: 28 },
+  'up|flat':   { k: 'Accum',     col: '#8fa4ff', s: 44 },
+  'up|down':   { k: 'Doom',      col: '#e23b3b', s: 12 },
+  'down|up':   { k: 'AltSeason', col: '#2ee86a', s: 88 },
+  'down|flat': { k: 'AltUp',     col: '#51c457', s: 66 },
+  'down|down': { k: 'AltFlat',   col: '#b7bdc6', s: 36 }
+};
+let _dom = null, _domTimer = null, _domGen = 0;
+
+function dir3(arr, w, band) {
+  if (!arr || arr.length < 3) return { d: 'flat', p: 0 };
+  w = Math.min(w, arr.length - 1);
+  const last = arr[arr.length - 1], ref = arr[arr.length - 1 - w];
+  if (!(ref > 0)) return { d: 'flat', p: 0 };
+  const p = (last - ref) / ref * 100;
+  return { d: p > band ? 'up' : p < -band ? 'down' : 'flat', p };
+}
+function clasificar(domD, btcD) { return FASES[(domD === 'down' ? 'down' : 'up') + '|' + btcD] || FASES['up|flat']; }
+
+async function domData() {
+  const out = { dom: null, domDir: 'up', domPct: 0, btcDir: 'flat', btcPct: 0, serie: [], fase: null };
+  // 1) dominancia real actual (CoinGecko global)
+  try {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 6000);
+    const r = await fetch('https://api.coingecko.com/api/v3/global', { signal: ctl.signal }); clearTimeout(to);
+    const j = await r.json(); const d = j && j.data && j.data.market_cap_percentage && j.data.market_cap_percentage.btc;
+    if (d > 0) out.dom = d;
+  } catch (_) {}
+  // 2) tendencia de dominancia por canasta alt/BTC (Binance via espejo)
+  try {
+    const datos = await Promise.all(DOM_PARES.map((s) => traerVelas(s, '1d', 180).catch(() => [])));
+    const val = datos.filter((d) => d.length > 30);
+    if (val.length) {
+      const n = Math.min.apply(null, val.map((d) => d.length));
+      const basket = [];
+      for (let i = 0; i < n; i++) {
+        let s = 0, c = 0;
+        val.forEach((d) => { const a = d[d.length - n + i], b0 = d[d.length - n]; if (a && a.close > 0 && b0 && b0.close > 0) { s += a.close / b0.close; c++; } });
+        if (c) basket.push(s / c);
+      }
+      out.serie = basket.map((b) => (b > 0 ? 1 / b : 1));           // proxy: sube cuando las alts caen vs BTC
+    }
+  } catch (_) {}
+  const dd = dir3(out.serie, 20, 0.6); out.domDir = dd.p >= 0 ? 'up' : 'down'; out.domPct = dd.p;
+  // 3) tendencia de BTC (velas diarias reales, independiente de la moneda elegida)
+  let btc = [];
+  try { btc = await traerVelas('BTCUSDT', '1d', 90); } catch (_) {}
+  if ((!btc || btc.length < 10) && _par === 'BTC' && C.velas.length) btc = C.velas.slice(-90);
+  const bd = dir3(btc.map((c) => c.close), 20, 4); out.btcDir = bd.d; out.btcPct = bd.p;
+  out.fase = clasificar(out.domDir, out.btcDir);
+  return out;
+}
+async function cargarDom() {
+  const gen = (_domGen = _domGen + 1);
+  renderDom();                                   // estado de carga si aún no hay datos
+  let d; try { d = await domData(); } catch (_) { d = null; }
+  if (gen !== _domGen || _ind !== 'dominance') return;
+  if (d) _dom = d;
+  renderDom(); pintarPrecio();
+}
+function flecha(d) { return d === 'up' ? '▲' : d === 'down' ? '▼' : '▬'; }
+function panelDom() {
+  const host = $('cy-graf'); if (!host) return null;
+  let el = $('cy-dompanel');
+  if (!el) { el = document.createElement('div'); el.id = 'cy-dompanel'; host.appendChild(el); }
+  return el;
+}
+function renderDom() {
+  const el = panelDom(); if (!el) return;
+  if (_ind !== 'dominance') { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const d = _dom;
+  if (!d || !d.fase) { el.innerHTML = `<div class="cy-dp-load"><span class="cy-dp-dot"></span>${esc(t('loading'))}</div>`; return; }
+  const f = d.fase, K = f.k;
+  const domTxt = d.dom != null ? d.dom.toFixed(1) + '%' : '—';
+  const curKey = (d.domDir === 'down' ? 'down' : 'up') + '|' + d.btcDir;
+  const cellLbl = { 'up|up': 'cAltDown', 'up|flat': 'cAccum', 'up|down': 'cDoom', 'down|up': 'cAltSeason', 'down|flat': 'cAltUp', 'down|down': 'cAltFlat' };
+  const head = `<div class="cy-dp-hc"></div><div class="cy-dp-hc">${esc(t('domBtc'))} ▲</div><div class="cy-dp-hc">${esc(t('domBtc'))} ▬</div><div class="cy-dp-hc">${esc(t('domBtc'))} ▼</div>`;
+  const rows = [['up', 'DOM ▲'], ['down', 'DOM ▼']].map(([dr, lab]) => {
+    const cols = ['up', 'flat', 'down'].map((bc) => {
+      const key = dr + '|' + bc, on = key === curKey, ph = FASES[key];
+      return `<div class="cy-dp-cell${on ? ' on' : ''}"${on ? ` style="--c:${ph.col}"` : ''}>${esc(t(cellLbl[key]))}</div>`;
+    }).join('');
+    return `<div class="cy-dp-rl">${lab}</div>${cols}`;
+  }).join('');
+  const sPos = Math.max(4, Math.min(96, f.s));
+  const btcL = d.btcDir === 'up' ? 'dUp' : d.btcDir === 'down' ? 'dDown' : 'dFlat';
+  el.innerHTML = `
+    <div class="cy-dp-head"><span class="cy-dp-eye">${esc(t('domEye'))}</span><span class="cy-dp-live"><span class="cy-dp-dot"></span>${esc(t('domLive'))}</span></div>
+    <div class="cy-dp-big"><b>${domTxt}</b><i class="cy-dp-ar ${d.domDir}">${flecha(d.domDir)}</i></div>
+    <div class="cy-dp-chips">
+      <span class="cy-dp-chip"><em>${esc(t('domBtc'))}</em><u class="${d.btcDir}">${flecha(d.btcDir)} ${esc(t(btcL))}</u></span>
+      <span class="cy-dp-chip"><em>${esc(t('domDom'))}</em><u class="${d.domDir}">${flecha(d.domDir)} ${esc(t(d.domDir === 'up' ? 'dUp' : 'dDown'))}</u></span>
+    </div>
+    <canvas class="cy-dp-spark" id="cy-dp-spark"></canvas>
+    <div class="cy-dp-mtx">${head}${rows}</div>
+    <div class="cy-dp-verdict" style="--c:${f.col}"><b>${esc(t('v' + K))}</b></div>
+    <div class="cy-dp-note">${esc(t('n' + K))}</div>
+    <div class="cy-dp-meter"><span class="cy-dp-m-l">${esc(t('domBtcSeason'))}</span><span class="cy-dp-m-r">${esc(t('domAltSeason'))}</span><i class="cy-dp-m-f" style="width:${sPos}%;background:${f.col}"></i><b class="cy-dp-m-k" style="left:${sPos}%;background:${f.col}"></b></div>`;
+  dibujarSpark();
+}
+function dibujarSpark() {
+  const cv = $('cy-dp-spark'); if (!cv || !_dom) return;
+  const serie = _dom.serie || [], W = cv.clientWidth || 300, H = 44, dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  if (serie.length < 4) return;
+  let mn = Infinity, mx = -Infinity; serie.forEach((v) => { if (v < mn) mn = v; if (v > mx) mx = v; }); if (mx <= mn) mx = mn + 1;
+  const X = (i) => i / (serie.length - 1) * (W - 2) + 1, Y = (v) => H - 4 - ((v - mn) / (mx - mn)) * (H - 8);
+  const col = _dom.fase.col;
+  g.beginPath(); serie.forEach((v, i) => { const x = X(i), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.lineTo(X(serie.length - 1), H); g.lineTo(X(0), H); g.closePath(); g.fillStyle = hexA(col, 0.12); g.fill();
+  g.beginPath(); serie.forEach((v, i) => { const x = X(i), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.strokeStyle = col; g.lineWidth = 1.8; g.lineJoin = 'round'; g.stroke();
+  const lx = X(serie.length - 1), ly = Y(serie[serie.length - 1]);
+  g.fillStyle = col; g.beginPath(); g.arc(lx, ly, 2.8, 0, 7); g.fill();
+}
+
 function setInd(ind) {
   if (_ind === ind) return; _ind = ind;
   $('cy-switch').querySelectorAll('.cy-tab').forEach((b) => b.classList.toggle('on', b.dataset.ind === ind));
+  if (ind === 'dominance') {
+    clearInterval(_domTimer); _domTimer = setInterval(() => { if (_ind === 'dominance') cargarDom(); }, 60000);
+    cargarDom();
+  } else { clearInterval(_domTimer); _domTimer = null; const dp = $('cy-dompanel'); if (dp) dp.style.display = 'none'; }
   pintarPrecio(); dibujarFx();
 }
 function onResize() { if (C.chart) { try { C.chart.applyOptions({}); } catch (_) {} } dibujarFx(); }
@@ -492,10 +690,11 @@ function cambiarIdioma() {
   const lb = $('cy-lang'); if (lb) { lb.textContent = _lang === 'en' ? 'ES' : 'EN'; lb.title = t('langTitle'); }
   const bk = $('cy-back'); if (bk) { const s = bk.querySelector('span'); if (s) s.textContent = t('back'); bk.setAttribute('aria-label', t('back')); }
   const how = $('cy-how'); if (how) how.title = t('how');
-  const tabs = { rainbow: 'indRainbow', cycles: 'indCycles', roadmap: 'indRoadmap' };
+  const tabs = { rainbow: 'indRainbow', cycles: 'indCycles', roadmap: 'indRoadmap', dominance: 'indDom' };
   document.querySelectorAll('#cy-switch .cy-tab').forEach((b) => { b.textContent = t(tabs[b.dataset.ind]); });
   const esp = $('cy-esperando-t'); if (esp && C.cargando) esp.textContent = t('loading');
   pintarPrecio();
+  if (_ind === 'dominance') renderDom();
   const l = $('cy-leyenda'); if (l) l.dataset.lang = ''; dibujarFx();
   if ($('cy-hw-box')) { $('cy-hw-box').remove(); ayuda(); }
 }
@@ -558,13 +757,15 @@ const PASOS = {
     { t: 'What Cycles is', d: 'A home for the big-picture <b>market cycle</b> tools, all on one live chart. Pick a coin, pick an indicator, and read where price sits in its cycle. Everything is computed from real data and keeps updating, candle by candle.', x: 'For Bitcoin, the tools use its real history and halvings. For every other coin they adapt to that coin’s own data.' },
     { t: 'Rainbow', d: 'A <b>logarithmic regression</b> over the whole price history. The colored bands run from deep value at the bottom to bubble territory at the top. Because the bands are a function of time, they rise on their own, so the chart never freezes into an old picture.', x: 'Read the badge: it tells you the band price sits in and how far it is from fair value.' },
     { t: 'Cycles', d: 'Marks the <b>halvings</b> and shades each four year cycle, then reads the real <b>top and bottom</b> of every cycle straight from the candles and counts the days elapsed. It also projects the window where the next top has historically landed.', x: 'The fair value line is the center of the regression. Tops print red, bottoms print green.' },
-    { t: 'Roadmap', d: 'A clean <b>macro channel</b>: resistance, fair value and support as one envelope, with the halvings, the key macro events (spot ETF, elections, the COVID crash) and a <b>projection</b> for where the channel points next.', x: 'Built from the same regression, so the projection moves with time instead of being a fixed drawing.' }
+    { t: 'Roadmap', d: 'A clean <b>macro channel</b>: resistance, fair value and support as one envelope, with the halvings, the key macro events (spot ETF, elections, the COVID crash) and a <b>projection</b> for where the channel points next.', x: 'Built from the same regression, so the projection moves with time instead of being a fixed drawing.' },
+    { t: 'Dominance', d: 'Reads <b>BTC dominance</b> live and its trend from a basket of alt/BTC pairs, then crosses it with Bitcoin’s own trend to place the market in one of <b>six altcoin phases</b> — from alt season to the doom phase.', x: 'The matrix lights the current phase. Falling dominance with a rising BTC is classic alt season; rising dominance with a falling BTC is the doom phase.' }
   ],
   es: [
     { t: 'Qué es Cycles', d: 'Un hogar para las herramientas de <b>ciclo de mercado</b>, todas sobre una misma gráfica en vivo. Eliges moneda, eliges indicador, y lees en qué punto del ciclo está el precio. Todo se calcula con datos reales y se actualiza vela a vela.', x: 'Para Bitcoin, las herramientas usan su historia real y sus halvings. Para cualquier otra moneda se adaptan a los datos de esa moneda.' },
     { t: 'Rainbow', d: 'Una <b>regresión logarítmica</b> sobre toda la historia del precio. Las bandas de color van del valor profundo abajo a la zona de burbuja arriba. Como dependen del tiempo, suben solas, así que la gráfica nunca se queda en una foto vieja.', x: 'Lee la etiqueta: te dice en qué banda está el precio y a qué distancia del valor justo.' },
     { t: 'Ciclos', d: 'Marca los <b>halvings</b> y sombrea cada ciclo de cuatro años, luego lee el <b>techo y el suelo</b> reales de cada ciclo directo de las velas y cuenta los días transcurridos. Además proyecta la ventana donde el próximo techo ha caído históricamente.', x: 'La línea de valor justo es el centro de la regresión. Los techos salen en rojo, los suelos en verde.' },
-    { t: 'Hoja de ruta', d: 'Un <b>canal macro</b> limpio: resistencia, valor justo y soporte como una sola envolvente, con los halvings, los eventos macro clave (ETF al contado, elecciones, la caída del COVID) y una <b>proyección</b> de hacia dónde apunta el canal.', x: 'Construido con la misma regresión, así que la proyección se mueve con el tiempo en vez de ser un dibujo fijo.' }
+    { t: 'Hoja de ruta', d: 'Un <b>canal macro</b> limpio: resistencia, valor justo y soporte como una sola envolvente, con los halvings, los eventos macro clave (ETF al contado, elecciones, la caída del COVID) y una <b>proyección</b> de hacia dónde apunta el canal.', x: 'Construido con la misma regresión, así que la proyección se mueve con el tiempo en vez de ser un dibujo fijo.' },
+    { t: 'Dominancia', d: 'Lee la <b>dominancia de BTC</b> en vivo y su tendencia desde una canasta de pares alt/BTC, y la cruza con la tendencia del propio Bitcoin para situar el mercado en una de <b>seis fases de altcoins</b>, de la alt season a la fase doom.', x: 'La matriz enciende la fase actual. Dominancia bajando con BTC subiendo es la alt season clásica; dominancia subiendo con BTC bajando es la fase doom.' }
   ]
 };
 let _paso = 0;
@@ -723,5 +924,34 @@ const CSS = `
   .cy-img-acts{display:flex;gap:10px;justify-content:flex-end}
   .cy-img-dl{height:40px;padding:0 18px;border-radius:10px;border:0;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#3a2800;font-weight:800;cursor:pointer}
   .cy-img-cl{height:40px;width:44px;border-radius:10px;border:1px solid #2a333f;background:rgba(255,255,255,.04);color:#c3cbd4;cursor:pointer}
-  @media (max-width:820px){ .cy-switch{order:9;margin:0} .cy-sub{display:none} .cy-leyenda{max-width:100%;font-size:10px} }
+  #cy-dompanel{position:absolute;left:16px;top:14px;z-index:5;width:342px;max-width:calc(100% - 32px);padding:14px 15px 13px;border-radius:16px;background:linear-gradient(180deg,rgba(14,19,26,.95),rgba(8,11,16,.93));border:1px solid #26303c;box-shadow:0 18px 50px rgba(0,0,0,.6);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);pointer-events:none}
+  .cy-dp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+  .cy-dp-eye{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--gold);font-weight:700}
+  .cy-dp-live{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:#8b95a1;text-transform:uppercase}
+  .cy-dp-dot{width:7px;height:7px;border-radius:50%;background:#2ee86a;box-shadow:0 0 0 0 rgba(46,232,106,.55);animation:cydp 1.7s infinite}
+  @keyframes cydp{0%{box-shadow:0 0 0 0 rgba(46,232,106,.5)}70%{box-shadow:0 0 0 7px rgba(46,232,106,0)}100%{box-shadow:0 0 0 0 rgba(46,232,106,0)}}
+  .cy-dp-big{display:flex;align-items:baseline;gap:9px;margin:3px 0 11px}
+  .cy-dp-big b{font-family:var(--mono);font-weight:800;font-size:38px;line-height:1;color:#f2f5f8;letter-spacing:-.5px}
+  .cy-dp-ar{font-size:16px;font-style:normal}
+  .cy-dp-ar.up{color:#2ee86a} .cy-dp-ar.down{color:#ff5b6e} .cy-dp-ar.flat{color:#8b95a1}
+  .cy-dp-chips{display:flex;gap:8px;margin-bottom:10px}
+  .cy-dp-chip{flex:1;display:flex;flex-direction:column;gap:3px;padding:7px 9px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid #232c37}
+  .cy-dp-chip em{font-style:normal;font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:#7d8794;text-transform:uppercase}
+  .cy-dp-chip u{text-decoration:none;font-weight:800;font-size:12.5px;color:#c9d0d9;display:flex;align-items:center;gap:5px}
+  .cy-dp-chip u.up{color:#2ee86a} .cy-dp-chip u.down{color:#ff5b6e} .cy-dp-chip u.flat{color:#9aa4af}
+  .cy-dp-spark{width:100%;height:44px;display:block;margin-bottom:11px}
+  .cy-dp-mtx{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:4px;margin-bottom:11px}
+  .cy-dp-hc{font-family:var(--mono);font-size:8.5px;letter-spacing:.03em;color:#7d8794;text-align:center;padding:2px 0 3px;font-weight:700}
+  .cy-dp-rl{font-family:var(--mono);font-size:8.5px;color:#7d8794;font-weight:700;display:flex;align-items:center;padding-right:5px;white-space:nowrap}
+  .cy-dp-cell{font-size:10px;font-weight:700;color:#9aa4af;text-align:center;padding:8px 3px;border-radius:8px;background:rgba(255,255,255,.028);border:1px solid #1f2731;line-height:1.1;display:flex;align-items:center;justify-content:center}
+  .cy-dp-cell.on{color:#06080c;background:var(--c);border-color:var(--c);box-shadow:0 3px 13px rgba(0,0,0,.45)}
+  .cy-dp-verdict{display:flex;align-items:center;padding:9px 12px;border-radius:11px;background:rgba(255,255,255,.03);border:1px solid #26303c;border-left:3px solid var(--c);margin-bottom:8px}
+  .cy-dp-verdict b{font-size:14.5px;font-weight:800;color:#f2f5f8}
+  .cy-dp-note{font-size:11px;line-height:1.5;color:#9aa4af;margin-bottom:11px}
+  .cy-dp-meter{position:relative;height:30px;border-radius:9px;background:linear-gradient(90deg,rgba(247,147,26,.16),rgba(255,255,255,.025),rgba(46,232,106,.16));border:1px solid #232c37;display:flex;align-items:center;justify-content:space-between;padding:0 10px;overflow:hidden}
+  .cy-dp-m-l,.cy-dp-m-r{font-family:var(--mono);font-size:8px;letter-spacing:.05em;color:#9aa4af;text-transform:uppercase;z-index:2;position:relative;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+  .cy-dp-m-f{position:absolute;left:0;top:0;bottom:0;border-radius:9px 0 0 9px;opacity:.2}
+  .cy-dp-m-k{position:absolute;top:4px;width:9px;height:9px;border-radius:50%;transform:translateX(-50%);box-shadow:0 0 0 2px rgba(6,8,12,.9),0 2px 7px rgba(0,0,0,.6);z-index:4}
+  .cy-dp-load{display:flex;align-items:center;gap:8px;font-size:12px;color:#9aa4af;font-weight:600;padding:8px 2px}
+  @media (max-width:820px){ .cy-switch{order:9;margin:0} .cy-sub{display:none} .cy-leyenda{max-width:100%;font-size:10px} #cy-dompanel{left:10px;right:10px;top:10px;width:auto;max-width:none;padding:12px 13px} .cy-dp-big b{font-size:32px} }
 `;
