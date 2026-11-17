@@ -34,6 +34,22 @@ export function dibXYa(x, y, iman) {
   return { t: N.velas[0].t + iF * _tfMs(), p: g.pMin + (g.pMax - g.pMin) * ((g.y1 - y) / g.y1) };
 }
 
+/* Etiqueta de precio pegada al borde IZQUIERDO de una linea de la posicion,
+   al estilo de Reaction Zones. Solo se usa en Multichart (N.seccion==='multi'). */
+function _tagPrecio(g, xBorde, y, precio, col) {
+  if (precio == null || !isFinite(precio)) return;
+  const txt = fmt(precio);
+  g.save();
+  g.font = '700 10px "IBM Plex Mono", ui-monospace, monospace';
+  const tw = g.measureText(txt).width, pad = 6, w = tw + pad * 2, h = 15;
+  const x = Math.max(2, xBorde - w - 3);
+  g.fillStyle = col; redondeado(g, x, y - h / 2, w, h, 4); g.fill();
+  g.fillStyle = '#0b0f16'; g.textAlign = 'left'; g.textBaseline = 'middle';
+  g.fillText(txt, x + pad, y + 0.5);
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.restore();
+}
+
 function dibujarUno(g, d, x1, y1, sel) {
   const col = d.color || '#22d3ee';
   const rgb = d.rgb || '34,211,238';
@@ -162,10 +178,12 @@ function dibujarUno(g, d, x1, y1, sel) {
     // zonas de ganancia/riesgo (intensidad ajustable)
     g.fillStyle = `rgba(${rgbT},${(0.16 * inten).toFixed(3)})`; g.fillRect(x, Math.min(ye, yt), w, Math.abs(yt - ye));
     g.fillStyle = `rgba(${rgbS},${(0.16 * inten).toFixed(3)})`; g.fillRect(x, Math.min(ye, ys), w, Math.abs(ys - ye));
-    // 3 líneas: objetivo, entrada, stop (color y grosor propios)
-    [[cT, yt], [cE, ye], [cS, ys]].forEach((r) => {
+    // 3 líneas: objetivo, entrada, stop (color y grosor propios). En Multichart,
+    // cada una lleva su etiqueta de precio a la izquierda, como en Reaction Zones.
+    [[cT, yt, pT], [cE, ye, pe], [cS, ys, pS]].forEach((r) => {
       g.strokeStyle = r[0]; g.lineWidth = sel ? gr + 0.6 : gr; g.beginPath(); g.moveTo(x, r[1]); g.lineTo(x + w, r[1]); g.stroke();
       if (sel) { g.fillStyle = '#fff'; g.strokeStyle = r[0]; g.lineWidth = 2; [x, x + w].forEach((xx) => { g.beginPath(); g.arc(xx, r[1], 4, 0, 6.283); g.fill(); g.stroke(); }); }
+      if (N.seccion === 'multi') _tagPrecio(g, x, r[1], r[2], r[0]);
     });
     d._pos = { x, w, yt, ye, ys };   // referencia para editar bordes (arrastre horizontal)
     const gPct = ((pT - pe) / pe) * 100, rPct = ((pS - pe) / pe) * 100;

@@ -325,7 +325,14 @@ export function gestos(cv, dibujar, burbujas, guardarDib) {
     if (d.tipo === 'brush' && d.pts.length < 2) { construirTopbar(); dibujar(); return; }
     if (d.tipo === 'poslarga' || d.tipo === 'poscorta') {
       const largo = d.tipo === 'poslarga', pe = d.pts[0].p; let pT = d.pts[1].p;
-      if (Math.abs((pT - pe) / pe) < 0.0015) pT = pe * (largo ? 1.01 : 0.99);  // proyección de ejemplo
+      if (Math.abs((pT - pe) / pe) < 0.0015) {
+        // Default acorde al RANGO VISIBLE (cada temporalidad tiene su propia escala): asi la
+        // posicion queda de un tamano util, no se sale de pantalla por arriba ni por abajo y
+        // se puede ajustar y llegar al SL/TP. Solo en Multichart; el resto no cambia.
+        const g = N._geo;
+        if (N.seccion === 'multi' && g && g.pMax > g.pMin) { const d0 = (g.pMax - g.pMin) * 0.25; pT = largo ? pe + d0 : pe - d0; }
+        else pT = pe * (largo ? 1.01 : 0.99);  // proyección de ejemplo
+      }
       d.pTarget = pT; d.pStop = pe - (pT - pe) * 0.5;
       const tf = _tfMs();
       let tW = d.pts[1].t; if (Math.abs(tW - d.pts[0].t) < tf * 6) tW = d.pts[0].t + tf * 34;  // ancho mínimo visible
