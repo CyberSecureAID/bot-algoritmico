@@ -15,9 +15,9 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=16';
+import { estilos } from './estilos.js?v=17';
 import * as D from './datos.js?v=8';
-import * as M from './motor.js?v=7';
+import * as M from './motor.js?v=8';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -69,7 +69,7 @@ const fmtCoin = (x) => { if (!isFinite(x) || x === 0) return '0'; const a = Math
 const fmtPnL = (v, denom) => (v >= 0 ? '+' : '−') + (denom === 'USDT' ? fmtMoney(Math.abs(v)) : (fmtCoin(Math.abs(v)) + ' ' + denom));
 /* Porcentaje de la posición (congruente con el movimiento del precio desde la entrada). */
 const pctTxt = (v) => (isFinite(v) ? (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%' : '—');
-/* Texto del fee: 0.2% de la ganancia (lo cobra el contrato en BNB, solo si ganas). */
+/* Texto del fee: 1% de la ganancia (lo cobra el contrato en BNB, solo si ganas). */
 const comisionTxt = () => String(M.comisionPct()).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + '% of profit';
 
 const IC = {
@@ -110,7 +110,7 @@ export async function abrirSpot() {
 function plantilla() {
   return `
   <div class="sp-top">
-    <button class="sp-back" id="sp-back">${IC.back} Back</button>
+    <button class="sp-back" id="sp-back" aria-label="Back">${IC.back}Back</button>
     <button class="sp-coin" id="sp-coin"><i id="sp-coin-ico">B</i><b id="sp-coin-id">BTC</b>${IC.chev}</button>
     <div class="sp-tf" id="sp-tf"><button class="cur" id="sp-tfcur">1m <span class="cv">▾</span></button><div class="menu" id="sp-tfmenu"></div></div>
     <div class="sp-px"><div class="sp-px-big" id="sp-mark">—</div><div class="sp-px-sub">Mark · <span id="sp-pair">BTCUSDT</span></div></div>
@@ -119,7 +119,6 @@ function plantilla() {
       <button class="sp-coinsbtn" id="sp-coinsbtn" title="All your coins"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><b id="sp-coinsn">0</b><span class="cv">▾</span></button>
       <div class="sp-bal-total"><span class="lbl">Total balance</span><b id="sp-eq">—</b></div>
     </div>
-    <button class="sp-icobtn" id="sp-expand" title="Expand chart">${IC.expand}</button>
     <button class="sp-icobtn" id="sp-help-btn" title="How it works">${IC.help}<span class="sp-dot" id="sp-help-dot"></span></button>
     <button class="sp-icobtn" id="sp-export" title="Export chart image">${IC.cam}</button>
     <button class="sp-icobtn" id="sp-reset" title="Clear positions and history">${IC.reset}</button>
@@ -130,7 +129,6 @@ function plantilla() {
         <div class="sp-cv" id="sp-cv"></div>
         <canvas class="sp-fx" id="sp-fx"></canvas>
         <div class="sp-wm"><img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_ALT}'" alt=""></div>
-        <button class="sp-icobtn sp-exit" id="sp-exit" title="Exit full chart">${IC.shrink} Exit</button>
         <div class="sp-spin" id="sp-spin"><i></i></div>
         <div class="sp-nochart" id="sp-nochart" style="display:none"></div>
       </div>
@@ -166,7 +164,7 @@ function plantilla() {
             <div class="sp-sum-row"><span>Order value</span><b id="sp-sum-val">—</b></div>
             <div class="sp-sum-row"><span>Platform fee</span><b id="sp-sum-fee">—</b></div>
             <div class="sp-sum-row"><span>Breakeven</span><b id="sp-sum-be">—</b></div>
-            <div class="sp-sum-note">Spot order. Long spends USDT; short sells the coin you hold. No leverage and no liquidation. We charge <b>nothing to open</b> and <b>0.2% of your profit</b> (in BNB) only when you close a winning trade. If you do not profit, there is no platform fee.</div>
+            <div class="sp-sum-note">Spot order. Long spends USDT; short sells the coin you hold. No leverage and no liquidation. We charge <b>nothing to open</b> and <b>1% of your profit</b> (in BNB) only when you close a winning trade. If you do not profit, there is no platform fee.</div>
           </div>
         </div>
         <div class="sp-ops"><button class="sp-op long" id="sp-long">Long</button><button class="sp-op short" id="sp-short">Short</button></div>
@@ -190,8 +188,6 @@ function cablear(ov) {
   $('sp-coin').onclick = (e) => { e.stopPropagation(); menuMonedas(); };
   { const cb = $('sp-coinsbtn'); if (cb) cb.onclick = (e) => { e.stopPropagation(); menuMonedasWallet(); }; }
   $('sp-export').onclick = exportarChart;
-  $('sp-expand').onclick = toggleExpand;
-  $('sp-exit').onclick = toggleExpand;
   $('sp-help-btn').onclick = (e) => { e.stopPropagation(); ayuda(); };
   $('sp-reset').onclick = () => { if (confirm('Clear all your Spot positions, marked orders and history on this device? Your wallet is not touched.')) { M.reset(); sincronCap(); renderTodo(); toast('Spot positions and history cleared.', 'ok'); } };
   $('sp-tfcur').onclick = (e) => { e.stopPropagation(); $('sp-tf').classList.toggle('open'); };
@@ -326,16 +322,6 @@ function menuMonedasShort() {
   const r = ancla.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
   m.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => { S.shortCoin = b.dataset.coin; seleccionarMoneda(S.shortCoin); S.cap = 0; S.tam = 0; sincronCap(); renderEntry(); cerrarPops(); });
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 10);
-}
-
-function toggleExpand() {
-  S.expand = !S.expand;
-  const ov = $('sp-overlay'); if (ov) ov.classList.toggle('sp-expand', S.expand);
-  const b = $('sp-expand'); if (b) { b.classList.toggle('on', S.expand); b.innerHTML = S.expand ? IC.shrink : IC.expand; b.title = S.expand ? 'Exit full chart' : 'Full chart'; }
-  // la grafica (autoSize) se reajusta sola; forzamos un par de sincronizaciones
-  try { window.dispatchEvent(new Event('resize')); } catch (_) {}
-  setTimeout(() => { try { window.dispatchEvent(new Event('resize')); sincronizarDib(); } catch (_) {} }, 80);
-  setTimeout(() => { try { sincronizarDib(); } catch (_) {} }, 240);
 }
 
 function renderTf() {
@@ -1029,7 +1015,7 @@ function abrirCtxDemo(clientX, clientY, px) {
 let _odSpot = null;
 async function abrirSetPosDemo(px, cx, cy) {
   try {
-    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=138', import.meta.url).href);
+    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=139', import.meta.url).href);
     const cfg = {
       canvas: $('sp-cv'),
       par: () => (S.par && (S.par.coin || S.par.id)) || '',
@@ -1394,11 +1380,13 @@ function ayuda() {
   const m = document.createElement('div'); m.id = 'sp-help';
   m.innerHTML = `<div class="sp-hlp-bg"></div>
     <div class="sp-hlp-c">
-      <div class="sp-hlp-top">
-        <button class="sp-hlp-lang" id="sp-hlp-lang" type="button" title="Audio language">${_spLang.toUpperCase()}</button>
-        <button class="sp-hlp-x" id="sp-help-x" type="button" aria-label="Close">✕</button>
+      <div class="sp-hlp-head">
+        <div class="sp-hlp-eyebrow">Spot</div>
+        <div class="sp-hlp-top">
+          <button class="sp-hlp-lang" id="sp-hlp-lang" type="button" title="Audio language">${_spLang.toUpperCase()}</button>
+          <button class="sp-hlp-x" id="sp-help-x" type="button" aria-label="Close">✕</button>
+        </div>
       </div>
-      <div class="sp-hlp-eyebrow">Spot</div>
       <div id="sp-hlp-body"></div>
     </div>`;
   document.body.appendChild(m);

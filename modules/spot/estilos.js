@@ -18,7 +18,8 @@ export function estilos() {
 
   /* ── Barra superior ── */
   .sp-top{display:flex; align-items:center; gap:10px; flex:0 0 auto; height:52px; padding:0 12px; background:linear-gradient(180deg,#0e141c,#0a0e14); border-bottom:1px solid var(--sp-line); position:relative; z-index:20}
-  .sp-back{display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 11px 0 8px; border-radius:9px; flex:0 0 auto; font-family:var(--sp-disp); font-weight:700; font-size:12.5px; color:#8b96a3; background:rgba(255,255,255,.05); border:1px solid var(--sp-line2)}
+  /* Replica EXACTA del back de Liquidity Pulse (.lq-back), que es el que se ve bien alineado. */
+  .sp-back{display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; height:36px; padding:0 12px 0 9px; border-radius:9px; font-family:var(--sp-disp); font-weight:600; font-size:13px; color:#8b96a3; background:rgba(255,255,255,.05); border:1px solid var(--sp-line2); text-shadow:0 1px 4px rgba(0,0,0,.9); white-space:nowrap; cursor:pointer}
   .sp-back svg{width:12px; height:12px} .sp-back:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
   .sp-demo{font-family:var(--sp-mono); font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#3ee88a; background:rgba(46,232,106,.14); border:1px solid rgba(46,232,106,.45); border-radius:100px; padding:4px 10px; flex:0 0 auto}
   .sp-coin{display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 12px 0 6px; border-radius:10px; flex:0 0 auto; background:#141b24; border:1px solid var(--sp-line2); color:var(--sp-ink); font-family:var(--sp-mono); font-weight:700; font-size:14px}
@@ -259,7 +260,9 @@ export function estilos() {
   #sp-help{position:fixed; inset:0; z-index:12000; display:flex; align-items:center; justify-content:center; padding:18px; font-family:'Plus Jakarta Sans',sans-serif}
   .sp-hlp-bg{position:absolute; inset:0; background:rgba(3,6,10,.74); backdrop-filter:blur(5px)}
   .sp-hlp-c{position:relative; width:430px; max-width:100%; max-height:92vh; overflow-y:auto; background:#10151d; border:1px solid rgba(232,184,75,.4); border-radius:18px; padding:22px 20px 18px; box-shadow:0 36px 90px rgba(0,0,0,.72)}
-  .sp-hlp-top{position:absolute; top:12px; right:12px; display:flex; align-items:center; gap:8px; z-index:4}
+  /* Banda superior propia: Spot centrado y los botones a la derecha, SIN tocar el recuadro de abajo. */
+  .sp-hlp-head{position:relative; display:flex; align-items:center; justify-content:center; min-height:32px; margin-bottom:16px}
+  .sp-hlp-top{position:absolute; right:0; top:50%; transform:translateY(-50%); display:flex; align-items:center; gap:8px; z-index:4}
   .sp-hlp-x{width:30px; height:30px; border-radius:9px; border:1px solid var(--sp-line2); background:rgba(0,0,0,.4); color:var(--sp-ink2); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px}
   .sp-hlp-x:hover{border-color:var(--sp-down); color:var(--sp-down2)}
   .sp-hlp-lang{min-width:34px; height:30px; padding:0 8px; border-radius:9px; border:1px solid var(--sp-line2); background:rgba(0,0,0,.4); color:var(--sp-ink2); font-family:var(--sp-mono); font-weight:800; font-size:11px; letter-spacing:.08em; cursor:pointer}
@@ -271,7 +274,7 @@ export function estilos() {
   .sp-hlp-audio-tx{display:flex; flex-direction:column; gap:3px; text-align:left; min-width:0}
   .sp-hlp-audio-tx b{font-family:var(--sp-disp); font-weight:800; font-size:15px; color:var(--sp-ink); line-height:1.1}
   .sp-hlp-audio-tx span{font-family:var(--sp-mono); font-size:11px; color:var(--sp-ink3)}
-  .sp-hlp-eyebrow{text-align:center; font-family:var(--sp-mono); font-size:10px; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--sp-ink3); margin-bottom:6px}
+  .sp-hlp-eyebrow{text-align:center; font-family:var(--sp-mono); font-size:10px; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--sp-ink3); margin:0}
   .sp-hlp-card{background:linear-gradient(180deg,rgba(232,184,75,.05),transparent 60%); border:1px solid var(--sp-line); border-radius:14px; padding:18px}
   .sp-hlp-n{text-align:center; font-family:var(--sp-mono); font-size:11px; color:var(--sp-ink3); margin-bottom:8px} .sp-hlp-n em{font-style:normal; color:var(--sp-ink2)}
   .sp-hlp-t{text-align:center; font-family:var(--sp-disp); font-weight:800; font-size:20px; color:var(--sp-ink); margin-bottom:12px}

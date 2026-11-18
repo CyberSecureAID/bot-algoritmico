@@ -20,7 +20,7 @@
 
 const LS = 'sp-spot-v1';
 const FEE = 0.001;                 // (compat) estimación de taker spot por lado
-const PROFIT_FEE = 0.002;          // 0.2% SOLO sobre la GANANCIA (en BNB lo cobra el contrato). Nada si pierde.
+const PROFIT_FEE = 0.01;           // 1% SOLO sobre la GANANCIA (en BNB lo cobra el contrato). Nada si pierde.
 
 let _id = 1;
 const nid = () => 'o' + (Date.now().toString(36)) + (_id++);
@@ -38,9 +38,9 @@ export function posiciones() { return ST.pos; }
 export function ordenes() { return ST.ord; }
 export function historial() { return ST.hist; }
 export function reset() { ST = { pos: [], ord: [], hist: [] }; guardar(); return ST; }
-export const comisionPct = () => PROFIT_FEE * 100;      // 0.2 (sobre la ganancia)
+export const comisionPct = () => PROFIT_FEE * 100;      // 1 (sobre la ganancia)
 export function feeRueda(amount) { return (amount || 0) * FEE * 2; }   // (compat) estimación por volumen
-/* Fee real del modelo: 0.2% de la GANANCIA (0 si la operación no gana). Mismo denom que el PnL. */
+/* Fee real del modelo: 1% de la GANANCIA (0 si la operación no gana). Mismo denom que el PnL. */
 export function feeGanancia(pnl) { return pnl > 0 ? pnl * PROFIT_FEE : 0; }
 
 /* Saldo disponible en USDT para dimensionar (lo fija spot.js desde la wallet real). */
