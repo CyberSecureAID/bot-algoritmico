@@ -256,21 +256,34 @@ export async function ticker(simbolo) {
    · variacion minima (alta volatilidad).
    Orden tipo exchange: el que mas sube primero, bajando hasta el que mas cae.
    Devuelve [{ sym, base, price, chgPct, volQuote }]. */
-const _ESTABLE_USDT = ['USDCUSDT', 'FDUSDUSDT', 'TUSDUSDT', 'BUSDUSDT', 'USDPUSDT', 'DAIUSDT', 'EURUSDT', 'GBPUSDT', 'USD1USDT', 'AEURUSDT', 'EURIUSDT', 'XUSDUSDT'];
-export async function movers24h({ minPct = 10, minVol = 1e6, max = 120 } = {}) {
+const _ESTABLE_USDT = ['USDCUSDT', 'FDUSDUSDT', 'TUSDUSDT', 'BUSDUSDT', 'USDPUSDT', 'DAIUSDT', 'EURUSDT', 'GBPUSDT', 'USD1USDT', 'AEURUSDT', 'EURIUSDT', 'XUSDUSDT', 'JPYUSDT'];
+/* Volatilidad REAL del dia = amplitud intradia (maximo - minimo) respecto al precio
+   medio ponderado, en %. No es el cambio neto 24h (una moneda que subio una vez y se
+   quedo quieta tiene cambio alto pero amplitud baja: no es volatil). Asi distinguimos
+   las que de verdad se mueven de las que tuvieron un pico suelto. */
+function _amplitud(t) {
+  const hi = +t.highPrice, lo = +t.lowPrice, wa = +t.weightedAvgPrice || +t.lastPrice;
+  if (!(hi > 0) || !(lo > 0) || !(wa > 0) || hi < lo) return 0;
+  return (hi - lo) / wa * 100;
+}
+export async function movers24h({ minVol = 15e6, minAmp = 8, factorBTC = 2, max = 60 } = {}) {
   const j = await traer('/ticker/24hr');
   if (!Array.isArray(j)) return [];
   const apalancado = (s) => /(UP|DOWN|BULL|BEAR)USDT$/.test(s);
+  // BTC como vara de medir: solo entran las que se mueven MAS que Bitcoin.
+  const btc = j.find((t) => t && t.symbol === 'BTCUSDT');
+  const umbral = Math.max(minAmp, (btc ? _amplitud(btc) : 0) * factorBTC);
   const out = [];
   for (const t of j) {
-    const s = t.symbol || '';
+    const s = (t && t.symbol) || '';
     if (!s.endsWith('USDT') || apalancado(s) || _ESTABLE_USDT.includes(s)) continue;
-    const pct = +t.priceChangePercent, vol = +t.quoteVolume, price = +t.lastPrice;
-    if (!isFinite(pct) || !isFinite(price) || price <= 0) continue;
-    if (Math.abs(pct) < minPct || !(vol >= minVol)) continue;
-    out.push({ sym: s, base: s.slice(0, -4), price, chgPct: pct, volQuote: vol });
+    const price = +t.lastPrice, vol = +t.quoteVolume, pct = +t.priceChangePercent, amp = _amplitud(t);
+    if (!isFinite(price) || price <= 0 || !isFinite(pct)) continue;
+    if (!(vol >= minVol)) continue;           // liquidez real: se puede comprar y vender
+    if (!(amp >= umbral)) continue;           // volatilidad real: se mueve mas que BTC
+    out.push({ sym: s, base: s.slice(0, -4), price, chgPct: pct, amp, volQuote: vol });
   }
-  out.sort((a, b) => b.chgPct - a.chgPct);          // mas sube arriba, mas cae abajo
+  out.sort((a, b) => b.chgPct - a.chgPct);     // entre las volatiles: mas sube arriba, mas cae abajo
   if (out.length > max) { const h = Math.ceil(max / 2); return out.slice(0, h).concat(out.slice(-h)); }
   return out;
 }

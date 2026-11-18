@@ -15,9 +15,9 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=18';
-import * as D from './datos.js?v=10';
-import * as M from './motor.js?v=8';
+import { estilos } from './estilos.js?v=19';
+import * as D from './datos.js?v=11';
+import * as M from './motor.js?v=9';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -114,7 +114,7 @@ function plantilla() {
     <button class="sp-coin" id="sp-coin"><i id="sp-coin-ico">B</i><b id="sp-coin-id">BTC</b>${IC.chev}</button>
     <div class="sp-tf" id="sp-tf"><button class="cur" id="sp-tfcur">1m <span class="cv">▾</span></button><div class="menu" id="sp-tfmenu"></div></div>
     <div class="sp-px"><div class="sp-px-big" id="sp-mark">—</div><div class="sp-px-sub">Mark · <span id="sp-pair">BTCUSDT</span></div></div>
-    <button class="sp-vol" id="sp-vol" title="High volatility movers (24h)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg><b>Movers</b></button>
+    <button class="sp-vol" id="sp-vol" title="High volatility movers (24h)"><b>Movers</b><span class="sp-vol-cv">▾</span></button>
     <div class="sp-wallet" id="sp-wallet">
       <div class="sp-bal-boxes" id="sp-bal-boxes"></div>
       <button class="sp-coinsbtn" id="sp-coinsbtn" title="All your coins"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><b id="sp-coinsn">0</b><span class="cv">▾</span></button>
@@ -187,7 +187,8 @@ function plantilla() {
 function cablear(ov) {
   $('sp-back').onclick = cerrar;
   $('sp-coin').onclick = (e) => { e.stopPropagation(); menuMonedas(); };
-  { const v = $('sp-vol'); if (v) v.onclick = (e) => { e.stopPropagation(); menuMovers(); }; }
+  { const v = $('sp-vol'); if (v) { v.onclick = (e) => { e.stopPropagation(); menuMovers(); }; v.addEventListener('mouseenter', precargarMovers, { once: true }); } }
+  setTimeout(precargarMovers, 1800);   // precarga en segundo plano tras montar la UI
   { const cb = $('sp-coinsbtn'); if (cb) cb.onclick = (e) => { e.stopPropagation(); menuMonedasWallet(); }; }
   $('sp-export').onclick = exportarChart;
   $('sp-help-btn').onclick = (e) => { e.stopPropagation(); ayuda(); };
@@ -261,7 +262,14 @@ function monedasShort() {
   const s = S.saldos || {};
   return Object.keys(s).filter((id) => (s[id] || 0) > 1e-12 && !ESTABLES.includes(id) && tokenOperable(id));
 }
-function setCap(c) { S.cap = Math.max(0, +c || 0); S.tam = S.cap; sincronCap(); renderEntry(); }
+function setCap(c) {
+  /* Blindaje de monto: nada de NaN, negativos ni numeros infinitos (ej. 1e999 -> Infinity).
+     Y nunca por encima de lo que el usuario tiene de verdad. */
+  let v = +c; if (!isFinite(v) || v < 0) v = 0;
+  const av = disponibleActual();
+  if (av > 0 && v > av) v = av;
+  S.cap = v; S.tam = S.cap; sincronCap(); renderEntry();
+}
 function setCapPct(pct) { setCap(disponibleActual() * Math.max(0, Math.min(100, +pct || 0)) / 100); }
 function setTam(t) { setCap(t); }
 function sincronCap() {
@@ -742,7 +750,7 @@ function filaPos(p) {
     <td>${fmtMoney(p.amount)}</td>
     <td>${celdaTPSL(p, 'tp', '#2ee86a')}</td><td>${celdaTPSL(p, 'sl', '#ff5b6e')}</td>
     <td class="sp-pnl ${c}" data-pnl="${p.id}">${fmtPnL(info.pnl, info.denom)}<span class="sp-pct">${pctTxt(info.pct)}</span></td>
-    <td><span class="sp-acts"><button class="sp-share" data-share="${p.id}" title="Export trade card">${IC.share}</button><button class="sp-x" data-cerrar="${p.id}" data-par="${p.par}">Close</button></span></td></tr>`;
+    <td><span class="sp-acts"><button class="sp-share" data-share="${p.id}" title="Export trade card">${IC.share}</button><button class="sp-x" data-cerrar="${esc(p.id)}" data-par="${esc(p.par)}">Close</button></span></td></tr>`;
 }
 function filaOrd(o) {
   return `<tr><td><span class="sp-sym">${logoChip(o.par)} ${esc(etqPar(o.par))}</span></td>
@@ -1540,7 +1548,21 @@ function cargarParBinance(base) {
 }
 /* Selector de ALTA VOLATILIDAD: los que mas se mueven hoy (Binance 24h), con liquidez,
    para operar porcentajes grandes. Reusa el pop; cada fila: logo+nombre | precio | %. */
-let _moversCache = null, _moversT = 0;
+/* Logo de la moneda por CDN (por simbolo), con letra de respaldo si no existe. */
+function logoMoverUrl(base) { return 'https://assets.coincap.io/assets/icons/' + String(base || '').toLowerCase() + '@2x.png'; }
+let _moversCache = null, _moversT = 0, _moversProm = null;
+/* Una sola fuente de datos con cache de 60s y sin pedir dos veces a la vez. */
+function traerMovers() {
+  const now = Date.now();
+  if (_moversCache && (now - _moversT) < 60000) return Promise.resolve(_moversCache);
+  if (_moversProm) return _moversProm;
+  _moversProm = D.movers24h().then((r) => { _moversCache = Array.isArray(r) ? r : []; _moversT = Date.now(); _moversProm = null; return _moversCache; })
+    .catch((e) => { _moversProm = null; throw e; });
+  return _moversProm;
+}
+/* Precarga en segundo plano: al abrir Spot se va trayendo, asi el selector abre al
+   instante en vez de dejar la ventana vacia esperando. */
+function precargarMovers() { try { traerMovers().catch(() => {}); } catch (_) {} }
 async function menuMovers() {
   cerrarPops();
   const anc = $('sp-vol') || $('sp-coin'); const r = anc.getBoundingClientRect();
@@ -1564,7 +1586,7 @@ async function menuMovers() {
     lst.innerHTML = f.map((d) => {
       const up = d.chgPct >= 0;
       return `<button class="mv${(S.par && S.par.id === d.base) ? ' on' : ''}" data-base="${esc(d.base)}">
-        <span class="mv-l"><i>${esc((d.base[0] || '?'))}</i><b>${esc(d.base)}</b><small>USDT</small></span>
+        <span class="mv-l"><i class="mv-ic">${esc((d.base[0] || '?'))}<img src="${esc(logoMoverUrl(d.base))}" alt="" loading="lazy" onerror="this.remove()"></i><b>${esc(d.base)}</b><small>USDT</small></span>
         <span class="mv-p">${esc(fmtPrecioMv(d.price))}</span>
         <span class="mv-c ${up ? 'up' : 'dn'}">${up ? '+' : ''}${d.chgPct.toFixed(2)}%</span>
       </button>`;
@@ -1574,13 +1596,12 @@ async function menuMovers() {
   q.oninput = pintar;
   q.onkeydown = (e) => e.stopPropagation();
   setTimeout(() => { try { q.focus(); } catch (_) {} }, 0);
+  if (_moversCache) { datos = _moversCache; pintar(); }   // si ya estaba precargado, instantaneo
   try {
-    const now = Date.now();
-    if (_moversCache && (now - _moversT) < 45000) datos = _moversCache;
-    else { datos = await D.movers24h(); _moversCache = datos; _moversT = now; }
+    datos = await traerMovers();
     if ($('sp-movermenu')) pintar();
   } catch (_) {
-    const lst = $('sp-mv-lst'); if (lst) lst.innerHTML = `<div class="sp-mv-msg">Could not load movers. Try again.</div>`;
+    const lst = $('sp-mv-lst'); if (lst && !datos.length) lst.innerHTML = `<div class="sp-mv-msg">Could not load movers. Try again.</div>`;
   }
 }
 function cierraPopFuera(e) { const ids = ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu', 'sp-movermenu']; const anc = ['sp-coin', 'sp-amtunit', 'sp-coinsbtn', 'sp-vol']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }

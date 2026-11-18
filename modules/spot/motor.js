@@ -26,8 +26,48 @@ let _id = 1;
 const nid = () => 'o' + (Date.now().toString(36)) + (_id++);
 const r2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
 
+/* ── Saneo de estado (anti corrupcion / inyeccion) ──
+   Lo que viene de localStorage es texto que alguien pudo tocar. Antes de usarlo como
+   dinero o pintarlo en pantalla se fuerza: numeros finitos (nada de NaN/Infinity),
+   lado solo 'long'/'short' (no texto que se cuele en el HTML) y cadenas recortadas.
+   Una entrada invalida se descarta, no rompe la seccion. */
+const _fin = (x, d = 0) => { const n = +x; return isFinite(n) ? n : d; };
+const _lado = (l) => (l === 'short' ? 'short' : 'long');
+const _str = (s, n = 48) => String(s == null ? '' : s).slice(0, n);
+function _limpiaPos(p) {
+  if (!p || typeof p !== 'object') return null;
+  const entrada = _fin(p.entrada), amount = _fin(p.amount);
+  if (!(entrada > 0) || !(amount > 0)) return null;
+  return { id: _str(p.id || nid(), 40), par: _str(p.par), base: _str(p.base), lado: _lado(p.lado),
+    entrada, amount, qty: _fin(p.qty, amount / entrada),
+    tp: p.tp == null ? null : (_fin(p.tp) || null), sl: p.sl == null ? null : (_fin(p.sl) || null), t: _fin(p.t, Date.now()) };
+}
+function _limpiaOrd(o) {
+  if (!o || typeof o !== 'object') return null;
+  const amount = _fin(o.amount), precio = _fin(o.precio);
+  if (!(amount > 0) || !(precio > 0)) return null;
+  return { id: _str(o.id || nid(), 40), par: _str(o.par), base: _str(o.base), lado: _lado(o.lado),
+    amount, precio, desde: _str(o.desde, 8) || 'abajo',
+    tp: o.tp == null ? null : (_fin(o.tp) || null), sl: o.sl == null ? null : (_fin(o.sl) || null), t: _fin(o.t, Date.now()) };
+}
+function _limpiaHist(h) {
+  if (!h || typeof h !== 'object') return null;
+  return { id: _str(h.id || nid(), 40), par: _str(h.par), base: _str(h.base), lado: _lado(h.lado),
+    amount: _fin(h.amount), qty: _fin(h.qty), entrada: _fin(h.entrada), salida: _fin(h.salida),
+    pnl: _fin(h.pnl), denom: _str(h.denom || 'USDT', 12), fee: _fin(h.fee), motivo: _str(h.motivo, 16),
+    abierto: _fin(h.abierto, Date.now()), cerrado: _fin(h.cerrado, Date.now()) };
+}
 function cargar() {
-  try { const s = JSON.parse(localStorage.getItem(LS)); if (s && Array.isArray(s.pos)) { s.ord = s.ord || []; s.hist = s.hist || []; return s; } } catch (_) {}
+  try {
+    const s = JSON.parse(localStorage.getItem(LS));
+    if (s && typeof s === 'object') {
+      return {
+        pos: (Array.isArray(s.pos) ? s.pos : []).map(_limpiaPos).filter(Boolean),
+        ord: (Array.isArray(s.ord) ? s.ord : []).map(_limpiaOrd).filter(Boolean),
+        hist: (Array.isArray(s.hist) ? s.hist : []).map(_limpiaHist).filter(Boolean)
+      };
+    }
+  } catch (_) {}
   return { pos: [], ord: [], hist: [] };
 }
 let ST = cargar();
@@ -63,14 +103,14 @@ export function pnlDe(p, mark) {
 }
 
 export function abrirMercado(par, base, lado, amount, mark, tp, sl) {
-  if (!(mark > 0) || !(amount > 0)) return { ok: false, motivo: 'precio' };
+  if (!(mark > 0) || !(amount > 0) || !isFinite(mark) || !isFinite(amount)) return { ok: false, motivo: 'monto' };
   const pos = { id: nid(), par, base, lado, entrada: mark, amount, qty: amount / mark, tp: tp || null, sl: sl || null, t: Date.now() };
   ST.pos.push(pos); guardar();
   return { ok: true, pos };
 }
 
 export function colocarOrden(par, base, lado, amount, precio, mark, tp, sl) {
-  if (!(precio > 0) || !(amount > 0)) return { ok: false, motivo: 'precio' };
+  if (!(precio > 0) || !(amount > 0) || !isFinite(precio) || !isFinite(amount)) return { ok: false, motivo: 'monto' };
   const desde = mark >= precio ? 'arriba' : 'abajo';
   const ord = { id: nid(), par, base, lado, amount, precio, desde, tp: tp || null, sl: sl || null, t: Date.now() };
   ST.ord.push(ord); guardar();
