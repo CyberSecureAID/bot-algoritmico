@@ -441,7 +441,8 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       <span class="od-ic"><img class="od-ic-img" src="${vender ? IMG_FLECHA_DN : IMG_FLECHA_UP}" alt="" draggable="false"></span>
       <div class="od-tit">
         <b>${vender ? 'Short' : 'Long'}</b>
-        <span>${esc(par)} · <span class="od-sub-px">${fmt(actual)}</span></span>
+        <span class="od-coin">${esc(par)}</span>
+        <span class="od-sub-px">Market</span>
       </div>
       <!-- Cuanto tienes para operar: la moneda de la grafica al vender (short), USDT
            al comprar (long). Si no tienes, aqui aparece el boton de Swap. -->
@@ -607,6 +608,8 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     if (saldo > 0 && cant > saldo) { cant = saldo; inp.value = recorta(saldo); }
     ok.disabled = !(cant > 0);
     ok.textContent = modo === 'limit' ? (vender ? 'Place limit sell' : 'Place limit buy') : (vender ? 'Sell' : 'Buy');
+    // Encabezado: Market no muestra precio (abre a precio actual); Limit muestra el nivel marcado.
+    const sub = d.querySelector('.od-sub-px'); if (sub) sub.textContent = modo === 'limit' ? fmt(entryPx()) : 'Market';
     if (cant > 0) {
       const px = entryPx();
       const total = vender ? cant * px : cant / px;
@@ -716,9 +719,7 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     const p = cfg.precioActual ? cfg.precioActual() : 0;
     if (p > 0 && p !== actual) {
       actual = p;
-      const px = d.querySelector('.od-sub-px');
-      if (px) px.textContent = fmt(p);
-      refrescar();
+      refrescar();         // refrescar pone el encabezado (Market o el precio limit) y el resumen
       recomputarPoder();   // el poder de compra convertido sigue vivo con el precio
     }
   }, 1000);
@@ -1656,17 +1657,21 @@ function estilos() {
     display:grid;place-items:center;padding:0;cursor:pointer;font-size:13px;z-index:20;
     background:rgba(255,255,255,.08);border:1px solid #3a424c;color:#b7bdc6}
   .od-x:hover{background:rgba(255,255,255,.14);color:#eaecef}
-  .od-cab{display:flex;align-items:center;gap:10px;margin-bottom:6px;padding-right:44px}
-  .od-ic{font-size:17px;display:flex;align-items:center}
+  .od-cab{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;padding-right:44px}
+  .od-ic{font-size:17px;display:flex;align-items:center;margin-top:1px}
   .od-ic-img{width:19px;height:19px;display:block;object-fit:contain}
   .od-ficha.comprar .od-ic{color:#2ee86a}
   .od-ficha.vender .od-ic{color:#f6465d}
   .od-tit b{display:block;font-family:var(--display,sans-serif);font-weight:800;
-    font-size:15px;color:#eaecef;line-height:1.2}
-  .od-tit span{display:block;font-family:var(--mono,monospace);font-size:13px;
-    color:var(--gold,#E8B84B);font-weight:700;margin-top:1px}
+    font-size:15px;line-height:1.1;letter-spacing:.2px;color:#eaecef}
+  /* Long/Short del mismo color que la flecha de la esquina */
+  .od-ficha.comprar .od-tit b{color:#2ee86a}
+  .od-ficha.vender  .od-tit b{color:#f6465d}
+  .od-tit span{display:block;font-family:var(--mono,monospace);font-weight:700}
+  .od-tit .od-coin{font-size:14px;color:#eaecef;margin-top:4px;letter-spacing:.4px}
+  .od-tit .od-sub-px{font-size:12.5px;color:var(--ink2,#a9b2bd);margin-top:2px}
   /* El porcentaje: el dato que decide, bien visible */
-  .od-pct-grande{margin-left:auto;text-align:right;flex:0 0 auto;margin-top:22px}
+  .od-pct-grande{margin-left:auto;text-align:right;flex:0 0 auto;margin-top:1px}
   .od-pct-grande b{display:block;font-family:var(--display,sans-serif);font-weight:800;
     font-size:25px;line-height:1;color:#2ee86a !important}
   .od-pct-grande span{display:block;font-family:var(--sans,sans-serif);font-size:10px;
