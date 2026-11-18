@@ -27,6 +27,7 @@ const LIB=new URL('../trading-demo/vendor/lightweight-charts.standalone.producti
 function lib(){ return window.LightweightCharts?Promise.resolve(window.LightweightCharts):new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=LIB; s.onload=()=>res(window.LightweightCharts); s.onerror=rej; document.head.appendChild(s); }); }
 let LC=null, mChart=null, mSeries=null, mTF='4h', mCoin=null, mKl=[], mVP=null, mRO=null, mRAF=0, mStream=null, mMenuDoc=null, mSR=[], mVPon=false;
 let mDepthStream=null, mHeat=[], mHeatMax=1, mMode='vp';   // heatmap de profundidad tipo Bookmap (modal)
+let _od=null, _ordZonas=[];   // nucleo compartido de Set Position / alertas (clic derecho), igual que los demas servicios de analisis
 function onModalDepth(d){ if(!d||!d.bids.length||!d.asks.length)return;
   mHeat.push({bids:d.bids.slice(0,20),asks:d.asks.slice(0,20)}); if(mHeat.length>70)mHeat.shift();
   for(const b of d.bids)if(b[1]>mHeatMax)mHeatMax=b[1]; for(const a of d.asks)if(a[1]>mHeatMax)mHeatMax=a[1]; mHeatMax*=0.999; }
@@ -1243,7 +1244,7 @@ function cerrarDetalle(){ try{ if(mRO)mRO.disconnect(); }catch(_){} mRO=null;
   try{ if(mStream)mStream.cerrar(); }catch(_){} mStream=null;
   try{ if(mDepthStream)mDepthStream.cerrar(); }catch(_){} mDepthStream=null; mHeat=[]; mMode='vp';
   if(mMenuDoc){ document.removeEventListener('click',mMenuDoc); mMenuDoc=null; }
-  try{ if(mChart)mChart.remove(); }catch(_){} mChart=mSeries=null; mVP=null; mKl=[]; mCoin=null; mSR=[];
+  try{ if(mChart)mChart.remove(); }catch(_){} mChart=mSeries=null; mVP=null; mKl=[]; mCoin=null; mSR=[]; _ordZonas=[];
   const w=document.getElementById('ob-mwrap'); if(w)w.remove();
   if(ov&&cv&&!RAF&&!paused){ last=performance.now(); RAF=requestAnimationFrame(frame); } }   // reanuda el radar al cerrar el modal
 /* ===== Selector de moneda del modal: MISMO que Liquidity Pools =====
@@ -1359,8 +1360,28 @@ function crearChart(){ const host=document.getElementById('ob-mchart'); if(!host
     width:host.clientWidth, height:host.clientHeight });
   const opt={ upColor:'#2BF59E',downColor:'#FF4D6E',borderVisible:false,wickUpColor:'#2BF59E',wickDownColor:'#FF4D6E' };
   mSeries = mChart.addCandlestickSeries ? mChart.addCandlestickSeries(opt) : mChart.addSeries(LC.CandlestickSeries,opt);
+  cablearOrden(host);
   mRO=new ResizeObserver(()=>{ if(mChart&&host)mChart.applyOptions({width:host.clientWidth,height:host.clientHeight}); }); mRO.observe(host);
   if(!mRAF) mRAF=requestAnimationFrame(modalLoop);
+}
+/* Clic derecho (Set Position / Alerta) en la grafica emergente, reusando el nucleo
+   compartido orden.js, EXACTAMENTE como los demas servicios (Confluence, etc.). Solo
+   vive mientras el modal esta abierto; la posicion se registra en el mismo ledger que Spot. */
+function cablearOrden(host){
+  if(!host)return;
+  const wire=(od)=>{ _od=od; try{
+    od.conectar({
+      canvas:host, capturaDoc:true,
+      precioEn:(yy)=>{ try{ const p=mSeries&&mSeries.coordinateToPrice(yy); return (p!=null&&isFinite(p)&&p>0)?p:0; }catch(_){ return 0; } },
+      precioActual:()=>(mKl&&mKl.length)?mKl[mKl.length-1].close:0,
+      par:()=>mCoin?String(mCoin.sym||String(mCoin.symbol||'').replace(/USDT$/,'')).toUpperCase():'',
+      simbolo:()=>mCoin?String(mCoin.symbol||''):'',
+      repintar:()=>{}
+    });
+    od.clicCancelar(host,()=>_ordZonas,()=>{});
+  }catch(_){} };
+  if(_od){ wire(_od); return; }
+  import(new URL('../../assets/js/orden.js?v=136', import.meta.url).href).then(wire).catch(()=>{});
 }
 async function cargarChart(){ if(!mSeries||!mCoin)return;
   const kl=await D.velas(mCoin.symbol,mTF,240); if(!kl.length||!mSeries)return; mKl=kl; mSeries.setData(kl);
@@ -1490,6 +1511,10 @@ function dibujarOverlay(){ const cv2=document.getElementById('ob-mvp'), host=doc
     x.fillStyle=`rgba(${rgb},.95)`; rr(x,cx0+4,cy0+5,3,cardH-10,2); x.fill();   // acento lateral
     x.fillStyle='rgba(175,190,205,.92)'; x.font='800 7.5px "Saira Condensed",sans-serif'; x.fillText(eyebrow,cx0+13,cy0+12);
     x.fillStyle=`rgb(${rgb})`; x.font='800 12px "IBM Plex Mono",monospace'; x.fillText(priceTxt,cx0+13,cy0+24); });
+  // posiciones y alertas de Set Position: mismo nucleo compartido que el resto de analisis
+  if(_od){ try{ const pMax=mSeries.coordinateToPrice(0), pMin=mSeries.coordinateToPrice(h);
+    if(isFinite(pMax)&&isFinite(pMin)&&pMax>pMin){ const Y=(p)=>{ try{ const yv=mSeries.priceToCoordinate(p); if(yv!=null&&isFinite(yv))return yv; }catch(_){} return h*(pMax-p)/(pMax-pMin); };
+      _ordZonas=_od.pintar(x,{ x1:plotR, y1:h, Y, pMin, pMax, simbolo:(mCoin?String(mCoin.symbol||''):'') })||[]; } }catch(_){ _ordZonas=[]; } }
 }
 /* ===== Soporte / Resistencia REAL (no líneas al azar) =====
    Detecta pivotes de swing (máximos/mínimos locales donde el precio reaccionó),
