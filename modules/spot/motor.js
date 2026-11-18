@@ -50,6 +50,7 @@ function _limpiaPos(p) {
   if (!(entrada > 0) || !(amount > 0)) return null;
   return { id: _str(p.id || nid(), 40), par: _str(p.par), base: _str(p.base), lado: _lado(p.lado),
     entrada, amount, qty: _fin(p.qty, amount / entrada),
+    chainId: (p.chainId != null && isFinite(+p.chainId) && +p.chainId >= 0) ? Math.floor(+p.chainId) : null,
     tp: p.tp == null ? null : (_fin(p.tp) || null), sl: p.sl == null ? null : (_fin(p.sl) || null), t: _fin(p.t, Date.now()) };
 }
 function _limpiaOrd(o) {
@@ -119,12 +120,13 @@ export function pnlDe(p, mark) {
   return { pnl, denom: p.base || 'COIN', qty, pct };
 }
 
-export function abrirMercado(par, base, lado, amount, mark, tp, sl) {
+export function abrirMercado(par, base, lado, amount, mark, tp, sl, chainId) {
   if (!(mark > 0) || !(amount > 0) || !isFinite(mark) || !isFinite(amount)) return { ok: false, motivo: 'monto' };
   if (ST.pos.length >= MAX_POS) return { ok: false, motivo: 'limite' };
   const esLong = _lado(lado) !== 'short';
+  const cid = (chainId != null && isFinite(+chainId) && +chainId >= 0) ? Math.floor(+chainId) : null;
   const pos = { id: nid(), par: _str(par), base: _str(base), lado: _lado(lado), entrada: mark, amount, qty: amount / mark,
-    tp: _tpsl(tp, mark, esLong, true), sl: _tpsl(sl, mark, esLong, false), t: Date.now() };
+    chainId: cid, tp: _tpsl(tp, mark, esLong, true), sl: _tpsl(sl, mark, esLong, false), t: Date.now() };
   ST.pos.push(pos); guardar();
   return { ok: true, pos };
 }

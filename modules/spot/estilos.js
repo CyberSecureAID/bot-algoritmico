@@ -90,7 +90,8 @@ export function estilos() {
   .sp-main{height:100%; min-height:440px; display:grid; grid-template-columns:1fr 322px}
   #sp-overlay.sp-expand .sp-main{grid-template-columns:1fr}
   #sp-overlay.sp-expand .sp-entry{display:none}
-  .sp-chart{position:relative; min-width:0; border-right:1px solid var(--sp-line); background:var(--sp-bg); overflow:hidden}
+  .sp-chart{position:relative; min-width:0; border-right:1px solid var(--sp-line); background:var(--sp-bg); overflow:hidden; cursor:crosshair}
+  .sp-chart canvas, .sp-chart table, .sp-chart td{cursor:inherit}
   /* Gráfica completa: la gráfica cubre toda la pantalla, con botón de salir flotante */
   #sp-overlay.sp-expand .sp-chart{position:fixed; inset:0; z-index:11000; border:none}
   .sp-exit{display:none!important; position:absolute; top:12px; right:12px; z-index:12; width:auto!important; height:34px; padding:0 13px; gap:6px; font-family:var(--sp-disp); font-weight:700; font-size:12.5px; background:rgba(14,20,28,.92)}
@@ -164,8 +165,8 @@ export function estilos() {
   .sp-step button{width:22px; height:16px; border-radius:5px; border:1px solid var(--sp-line2); background:rgba(255,255,255,.04); color:var(--sp-ink2); display:grid; place-items:center; padding:0}
   .sp-step button svg{width:9px; height:9px} .sp-step button:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
   .sp-pcts{display:flex; gap:5px}
-  .sp-pct{flex:1; height:25px; border-radius:7px; border:1px solid var(--sp-line2); background:rgba(255,255,255,.03); color:var(--sp-ink2); font-family:var(--sp-mono); font-size:10.5px; font-weight:700}
-  .sp-pct:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
+  .sp-pcts .sp-pct{flex:1; height:25px; border-radius:7px; border:1px solid var(--sp-line2); background:rgba(255,255,255,.03); color:var(--sp-ink2); font-family:var(--sp-mono); font-size:10.5px; font-weight:700}
+  .sp-pcts .sp-pct:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
   .sp-tpsl{display:flex; gap:7px}
   .sp-tpsl .sp-in{flex:1 1 0; min-width:0; padding:0 10px}
   .sp-tpsl .sp-in em{order:-1; margin-right:2px}

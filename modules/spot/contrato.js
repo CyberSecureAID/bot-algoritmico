@@ -26,7 +26,8 @@ const ABI_SPOT = [
   'function cerrar(uint256 id, address[] ruta, uint256 minOut, uint256 deadline)',
   'function posicionInfo(uint256 id) view returns (tuple(address user, address coin, bool esShort, uint256 qty, uint256 costo, uint256 refQty, uint256 floorOut, uint40 t, bool abierta))',
   'function posicionesDe(address w) view returns (uint256[])',
-  'function setFloor(uint256 id, uint256 floorOut)'
+  'function setFloor(uint256 id, uint256 floorOut)',
+  'event Abierta(uint256 indexed id, address indexed user, address indexed coin, bool esShort, uint256 costoUsdt, uint256 qty, uint256 refQty)'
 ];
 const ABI_ROUTER = ['function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[])'];
 const ABI_ERC20 = [
@@ -82,40 +83,63 @@ async function _aprobarSiHace(ethers, tokenAddr, monto, cuenta, signer) {
   if (act < monto) { const tx = await t.approve(SPOT_ADDR, monto); await tx.wait(); }
 }
 
-/* ── Abrir a mercado (long o short). capUsdt: USDT que se compromete (long = lo que gastas;
-   short = el valor en USDT de lo que shorteas). Paga en USDT. Devuelve el hash. ── */
-export async function abrirMercadoSpot({ par, lado, capUsdt, slippageBps = 100, floorOut = 0, deadlineSeg = 300 }) {
+/* ── Abrir a mercado (long o short) sobre el par EN PANTALLA. No cambia de moneda.
+   pagar: con que fondeas, 'USDT' o 'BNB' (ambos soportados por el contrato: USDT por
+   approve+transferFrom; BNB nativo por msg.value, el contrato lo convierte a USDT).
+   monto: cantidad en esa moneda. Devuelve { hash, id, costoUsdt }. El id es el de la
+   posicion on chain (del evento Abierta): hace falta para poder cerrarla luego. ── */
+export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slippageBps = 100, floorOut = 0, deadlineSeg = 300 }) {
   const ethers = await E();
   const cuenta = cuentaActual && cuentaActual();
   if (!cuenta) throw new Error('Connect your wallet first.');
   const tok = resolverToken(par);
   if (!tok) throw new Error('This coin is not tradeable on-chain yet.');
-  if (!(capUsdt > 0)) throw new Error('Enter an amount first.');
+  if (!(monto > 0)) throw new Error('Enter an amount first.');
   const signer = await _signer();
   const router = new ethers.Contract(ROUTER, ABI_ROUTER, signer);
   const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);
-
-  const pagarWei = ethers.parseUnits(Number(capUsdt).toFixed(8), 18);    // USDT 18 dec en BSC
-  await _aprobarSiHace(ethers, USDT, pagarWei, cuenta, signer);
-
-  // Ruta USDT -> coin (para comprar en long, o para cotizar la referencia en short).
-  const r = await mejorRuta(router, USDT, tok.address, pagarWei);
-  if (!r) throw new Error('No liquidity route for this coin.');
-  const minCoin = conSlippage(r.out, slippageBps);
   const dl = BigInt(Math.floor(Date.now() / 1000) + Math.max(60, deadlineSeg));
   const floorWei = floorOut > 0 ? ethers.parseUnits(Number(floorOut).toFixed(8), lado === 'short' ? tok.decimals : 18) : 0n;
 
-  const q = {
-    coin: tok.address, input: USDT, pagar: pagarWei,
-    rutaAUsdt: [],                 // input ya es USDT: el contrato no rutea
-    minUsdt: pagarWei,             // recibe exactamente ese USDT
-    rutaCoin: r.path,              // long: swap real USDT->coin. short: solo cotiza la referencia
-    minCoin: lado === 'short' ? 0n : minCoin,
-    floorOut: floorWei, deadline: dl
-  };
-  const tx = lado === 'short' ? await spot.abrirShort(q) : await spot.abrirLong(q);
+  let q, overrides = {}, enUsdtEst;
+  if (pagar === 'BNB') {
+    // BNB nativo: input = address(0), el contrato swapea BNB -> USDT con rutaAUsdt y msg.value.
+    const valueWei = ethers.parseUnits(Number(monto).toFixed(18), 18);
+    let outUsdt = 0n; try { const a = await router.getAmountsOut(valueWei, [WBNB, USDT]); outUsdt = a[a.length - 1]; } catch (_) {}
+    if (!(outUsdt > 0n)) throw new Error('No BNB to USDT route right now.');
+    enUsdtEst = outUsdt;
+    const r = await mejorRuta(router, USDT, tok.address, outUsdt);
+    if (!r) throw new Error('No liquidity route for this coin.');
+    q = {
+      coin: tok.address, input: ethers.ZeroAddress, pagar: 0n,
+      rutaAUsdt: [WBNB, USDT], minUsdt: conSlippage(outUsdt, slippageBps),
+      rutaCoin: r.path, minCoin: lado === 'short' ? 0n : conSlippage(r.out, slippageBps),
+      floorOut: floorWei, deadline: dl
+    };
+    overrides = { value: valueWei };
+  } else {
+    // USDT: approve una vez + transferFrom. input = USDT, sin ruta de entrada.
+    const pagarWei = ethers.parseUnits(Number(monto).toFixed(8), 18);     // USDT 18 dec en BSC
+    await _aprobarSiHace(ethers, USDT, pagarWei, cuenta, signer);
+    const r = await mejorRuta(router, USDT, tok.address, pagarWei);
+    if (!r) throw new Error('No liquidity route for this coin.');
+    enUsdtEst = pagarWei;
+    q = {
+      coin: tok.address, input: USDT, pagar: pagarWei,
+      rutaAUsdt: [], minUsdt: pagarWei,
+      rutaCoin: r.path, minCoin: lado === 'short' ? 0n : conSlippage(r.out, slippageBps),
+      floorOut: floorWei, deadline: dl
+    };
+  }
+
+  const tx = lado === 'short' ? await spot.abrirShort(q, overrides) : await spot.abrirLong(q, overrides);
   const rec = await tx.wait();
-  return { hash: rec.hash };
+  let id = null;
+  try {
+    const iface = new ethers.Interface(ABI_SPOT);
+    for (const lg of rec.logs) { try { const pl = iface.parseLog(lg); if (pl && pl.name === 'Abierta') { id = Number(pl.args.id); break; } } catch (_) {} }
+  } catch (_) {}
+  return { hash: rec.hash, id, costoUsdt: Number(ethers.formatUnits(enUsdtEst, 18)) };
 }
 
 /* ── Cerrar a mercado una posicion on chain (la firma el usuario). Lee la posicion,

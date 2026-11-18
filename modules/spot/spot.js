@@ -15,9 +15,9 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=20';
+import { estilos } from './estilos.js?v=21';
 import * as D from './datos.js?v=12';
-import * as M from './motor.js?v=10';
+import * as M from './motor.js?v=11';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -34,7 +34,7 @@ const IMG_SHORT = new URL('../../assets/portada/img/short.webp', import.meta.url
 const S = {
   par: null, tf: '1d', velas: [], velasDib: [], chart: null, serieVela: null,
   mark: 0, open24: 0, high24: 0, low24: 0, vol24: 0, chgPct: 0,
-  side: null, shortCoin: null,
+  side: null, pagar: 'USDT',
   lev: 1, cap: 0, tam: 0, modo: 'market', limitPx: 0, histPage: 0,
   tpUnit: 'px', slUnit: 'px', sumOpen: false, alertas: [], _alMark: 0,
   stream: null, barra: null, dibMontada: false, lineaLimit: null, tab: 'pos',
@@ -140,7 +140,7 @@ function plantilla() {
       <div class="sp-entry">
         <div class="sp-side" id="sp-side">
           <button class="sp-side-b long" data-side="long" id="sp-side-long">Long<small>buy the coin</small></button>
-          <button class="sp-side-b short" data-side="short" id="sp-side-short">Short<small>sell a coin you hold</small></button>
+          <button class="sp-side-b short" data-side="short" id="sp-side-short">Short<small>profit if it drops</small></button>
         </div>
         <div class="sp-side-hint" id="sp-side-hint">Pick <b>Long</b> or <b>Short</b> above to set up your trade.</div>
         <div class="sp-modes"><button class="sp-mode on" data-modo="market">Market</button><button class="sp-mode" data-modo="limit">Limit (mark)</button></div>
@@ -206,7 +206,7 @@ function cablear(ov) {
   $('sp-capr').oninput = () => setCapPct(+$('sp-capr').value);
   ov.querySelectorAll('.sp-pct').forEach((b) => b.onclick = () => setCapPct(+b.dataset.pct));
   // Unidad del importe: para short abre el selector de moneda que tienes disponible.
-  $('sp-amtunit').onclick = (e) => { e.stopPropagation(); if (S.side === 'short') menuMonedasShort(); };
+  $('sp-amtunit').onclick = (e) => { e.stopPropagation(); menuPagar(); };
   $('sp-limit').oninput = () => { S.limitPx = Math.max(0, +$('sp-limit').value || 0); dibujarLimit(); renderEntry(); };
   ov.querySelectorAll('.sp-mode').forEach((b) => b.onclick = () => { S.modo = b.dataset.modo; ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x === b)); $('sp-limitwrap').style.display = S.modo === 'limit' ? 'flex' : 'none'; dibujarLimit(); renderEntry(); });
   $('sp-long').onclick = () => operar('long');
@@ -258,14 +258,13 @@ function parDeMoneda(coinId) {
 }
 /* Etiqueta del par para exportar/mostrar: XXXUSDT en Binance, Símbolo/USD en DEX. */
 function etqPar(id) { const m = MONEDAS[id]; if (m && m.address && !parIdDeToken(id)) return (m.simbolo || id) + '/USD'; return (id || '') + 'USDT'; }
-function disponibleActual() { return (S.side === 'short' && S.shortCoin) ? (S.saldos[S.shortCoin] || 0) : M.balance(); }
-function unidadActual() { if (S.side === 'short' && S.shortCoin) { const m = MONEDAS[S.shortCoin]; return (m && m.simbolo) || parIdDeToken(S.shortCoin) || S.shortCoin; } return 'USDT'; }
-/* Monedas que el usuario TIENE y puede usar para abrir un short (saldo > 0, operable y
-   sin estables de $1). Incluye tokens DEX como BabyDoge, USDT.z o EXT. */
-function monedasShort() {
-  const s = S.saldos || {};
-  return Object.keys(s).filter((id) => (s[id] || 0) > 1e-12 && !ESTABLES.includes(id) && tokenOperable(id));
-}
+/* Con que fondeas la operacion (USDT o BNB): disponible y unidad siguen esa eleccion.
+   El short ya NO vende "una moneda que tienes": shorteas la moneda EN PANTALLA usando
+   USDT o BNB como colateral (el contrato convierte), igual que el long. */
+function disponibleActual() { return (S.pagar === 'BNB') ? (S.saldos.BNB || 0) : (S.saldos.USDT != null ? S.saldos.USDT : M.balance()); }
+function unidadActual() { return S.pagar === 'BNB' ? 'BNB' : 'USDT'; }
+/* Monedas con las que se puede fondear (solo las que el usuario pueda tener para pagar). */
+const PAGABLES = ['USDT', 'BNB'];
 function setCap(c) {
   /* Blindaje de monto: nada de NaN, negativos ni numeros infinitos (ej. 1e999 -> Infinity).
      Y nunca por encima de lo que el usuario tiene de verdad. */
@@ -280,7 +279,7 @@ function sincronCap() {
   const av = disponibleActual();
   const capr = $('sp-capr'); if (capr) { const pct = av > 0 ? Math.min(100, S.cap / av * 100) : 0; capr.value = Math.round(pct); capr.style.setProperty('--f', Math.round(pct) + '%'); }
   const capv = $('sp-capv'); if (capv && document.activeElement !== capv) capv.value = S.cap ? +S.cap.toFixed(unidadActual() === 'USDT' ? 2 : 8) : '';
-  const au = $('sp-amtunit'); if (au) { au.textContent = unidadActual(); au.classList.toggle('pick', S.side === 'short'); }
+  const au = $('sp-amtunit'); if (au) { au.textContent = unidadActual(); au.classList.add('pick'); }
 }
 /* El usuario marca LONG o SHORT arriba: define toda la sección (incluido qué saldos
    puede usar y qué botón de abajo queda activo). */
@@ -291,11 +290,7 @@ function setSide(side) {
   const hint = $('sp-side-hint'); if (hint) hint.style.display = 'none';
   const bl = $('sp-long'), bs = $('sp-short');
   if (bl) bl.disabled = side !== 'long'; if (bs) bs.disabled = side !== 'short';
-  if (side === 'short') {
-    const disp = monedasShort();
-    if (!S.shortCoin || !disp.includes(S.shortCoin)) S.shortCoin = disp[0] || null;
-    if (S.shortCoin && S.shortCoin !== (S.par && S.par.coin)) { seleccionarMoneda(S.shortCoin); }
-  }
+  // Long y Short operan la moneda EN PANTALLA. No se cambia de gráfica.
   S.cap = 0; S.tam = 0; sincronCap(); renderEntry();
 }
 /* Carga CUALQUIER moneda en la gráfica y el panel (Binance o DEX), reutilizando la
@@ -306,7 +301,6 @@ async function seleccionarMoneda(coinId) {
   if (!p) { toast('No chart available for this coin yet.', 'bad'); return; }
   if (S.par && p.id === S.par.id && (p.addr || '') === (S.par.addr || '')) { cerrarPops(); return; }
   S.par = p; S._posAuto = null;
-  if (S.side === 'short') S.shortCoin = coinId;
   cerrarPops();
   await cargarDatos();
 }
@@ -324,17 +318,15 @@ async function cargarContrato(addr) {
   S._posAuto = null;
   await cargarDatos();
 }
-/* Menú de las monedas que tienes para abrir un short. */
-function menuMonedasShort() {
+/* Menú para elegir con qué pagas la operación: USDT o BNB. Vale para long y short. */
+function menuPagar() {
   cerrarPops();
-  const disp = monedasShort(), ancla = $('sp-amtunit'); if (!ancla) return;
+  const ancla = $('sp-amtunit'); if (!ancla) return;
   const m = document.createElement('div'); m.id = 'sp-shortmenu'; m.className = 'sp-shortmenu';
-  m.innerHTML = disp.length
-    ? disp.map((id) => { const mo = MONEDAS[id] || { simbolo: id }; const bal = S.saldos[id] || 0; return `<button data-coin="${esc(id)}" class="${id === S.shortCoin ? 'on' : ''}"><span class="sym">${esc(mo.simbolo || id)}</span><b>${esc(fmtCoin(bal))}</b></button>`; }).join('')
-    : '<div class="sp-cm-empty">You hold no coins that can be shorted.</div>';
+  m.innerHTML = PAGABLES.map((id) => { const bal = S.saldos[id] || 0; return `<button data-pay="${esc(id)}" class="${id === S.pagar ? 'on' : ''}"><span class="sym">${esc(id)}</span><b>${esc(fmtCoin(bal))}</b></button>`; }).join('');
   document.body.appendChild(m);
   const r = ancla.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
-  m.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => { S.shortCoin = b.dataset.coin; seleccionarMoneda(S.shortCoin); S.cap = 0; S.tam = 0; sincronCap(); renderEntry(); cerrarPops(); });
+  m.querySelectorAll('[data-pay]').forEach((b) => b.onclick = () => { S.pagar = b.dataset.pay; S.cap = 0; S.tam = 0; sincronCap(); renderEntry(); cerrarPops(); });
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 10);
 }
 
@@ -550,17 +542,13 @@ function renderEntry() {
   const px = entradaRef();
   const base = S.par ? S.par.id : 'COIN';
   const ql = $('sp-qtylbl'), qp = $('sp-qtyprev');
-  let amountUsdt;
-  if (S.side === 'short') {
-    amountUsdt = S.cap * (px || 0);            // vendes S.cap monedas; su valor en USDT
-    if (ql) ql.textContent = 'You sell, value';
-    if (qp) qp.textContent = (S.cap > 0 && px > 0) ? fmtMoney(amountUsdt) : '—';
-  } else {
-    amountUsdt = S.cap;                          // gastas S.cap USDT para comprar la moneda
-    const coins = px > 0 ? S.cap / px : 0;
-    if (ql) ql.textContent = 'You buy';
-    if (qp) qp.textContent = coins > 0 ? (fmtCoin(coins) + ' ' + base) : '—';
-  }
+  // El importe va en la moneda con la que pagas (USDT o BNB). El valor comprometido en USDT
+  // y la cantidad de moneda que abres salen de ahí; el contrato hace la conversión solo.
+  const bnbPx = (S.precios && S.precios.BNB) ? S.precios.BNB : 0;
+  const amountUsdt = S.pagar === 'BNB' ? S.cap * bnbPx : S.cap;
+  const coins = px > 0 ? amountUsdt / px : 0;
+  if (ql) ql.textContent = S.side === 'short' ? 'You short' : 'You buy';
+  if (qp) qp.textContent = coins > 0 ? (fmtCoin(coins) + ' ' + base) : '—';
   S._amountUsdt = amountUsdt;
   const sv = $('sp-sum-val'); if (sv) sv.textContent = fmtMoney(amountUsdt);
   const sf = $('sp-sum-fee'); if (sf) sf.textContent = comisionTxt();   // 0.2% solo de la ganancia
@@ -684,7 +672,7 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=1'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=2'); return _spC; }
 function _errSpot(e) {
   const m = String((e && (e.reason || e.shortMessage || e.message)) || e);
   if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.';
@@ -700,15 +688,17 @@ async function operar(lado) {
   const base = S.par.id;
   const pxRef = S.modo === 'limit' ? S.limitPx : S.mark;
   if (!(pxRef > 0)) { toast('No price yet.', 'bad'); return; }
-  // SPOT: long gasta USDT (amount = S.cap USDT). short vende S.cap monedas base;
-  // su valor en USDT = S.cap · precio.
-  const amountUsdt = lado === 'short' ? S.cap * pxRef : S.cap;
+  // SPOT (long y short) sobre la moneda EN PANTALLA. El capital se compromete en USDT;
+  // si fondeas con BNB, se valora con el precio de BNB. El contrato convierte solo.
+  const bnbPx = (S.precios && S.precios.BNB) ? S.precios.BNB : 0;
+  const capUsdt = S.pagar === 'BNB' ? S.cap * bnbPx : S.cap;
+  if (!(capUsdt > 0)) { toast(S.pagar === 'BNB' ? 'No BNB price yet to value the order.' : 'Enter an amount first.', 'warn'); return; }
   const tp = tpslPrecioReal('tp', lado), sl = tpslPrecioReal('sl', lado);
 
   // ── LIMIT: por ahora queda marcada en el registro; se disparará cuando conectemos el keeper. ──
   if (S.modo === 'limit') {
     if (!(S.limitPx > 0)) { toast('Select Limit, then click the chart to mark the entry.', 'warn'); return; }
-    const r = M.colocarOrden(S.par.id, base, lado, amountUsdt, S.limitPx, S.mark, tp, sl);
+    const r = M.colocarOrden(S.par.id, base, lado, capUsdt, S.limitPx, S.mark, tp, sl);
     if (!r.ok) { toast('Could not mark the order.', 'bad'); return; }
     toast(`Marked ${lado} at ${fmtP(S.limitPx)}. It will fire once the automatic executor is connected.`, 'ok');
     S.limitPx = 0; $('sp-limit').value = ''; dibujarLimit();
@@ -726,9 +716,9 @@ async function operar(lado) {
     toast('Confirm the transaction in your wallet…', 'warn');
     try {
       const C = await _contratoSpot();
-      const res = await C.abrirMercadoSpot({ par: S.par, lado, capUsdt: amountUsdt, slippageBps: 100, floorOut: 0 });
-      // Se registra en el panel para seguirla en Positions (el PnL en vivo sale igual).
-      const r = M.abrirMercado(S.par.id, base, lado, amountUsdt, S.mark, tp, sl);
+      const res = await C.abrirMercadoSpot({ par: S.par, lado, pagar: S.pagar, monto: S.cap, slippageBps: 100, floorOut: 0 });
+      // Se registra en el panel para seguirla en Positions, con el id on chain para poder cerrarla.
+      const r = M.abrirMercado(S.par.id, base, lado, (res.costoUsdt > 0 ? res.costoUsdt : capUsdt), S.mark, tp, sl, res.id);
       if (r.ok) flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened');
       toast(`${lado === 'long' ? 'Long' : 'Short'} opened on-chain · ${res.hash.slice(0, 10)}…`, 'ok'); snd('open');
     } catch (e) {
@@ -738,7 +728,7 @@ async function operar(lado) {
     }
   } else {
     // Sin wallet (vista previa) o moneda aún no operable on chain: queda en el registro local.
-    const r = M.abrirMercado(S.par.id, base, lado, amountUsdt, S.mark, tp, sl);
+    const r = M.abrirMercado(S.par.id, base, lado, capUsdt, S.mark, tp, sl);
     if (!r.ok) { toast('Could not open the position.', 'bad'); return; }
     flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened');
     toast(S.walletOn ? `${lado} opened (this coin is not on-chain yet; tracked locally).` : `${lado} opened at ${fmtP(r.pos.entrada)} (preview · connect your wallet to trade for real).`, S.walletOn ? 'warn' : 'ok');
@@ -747,6 +737,23 @@ async function operar(lado) {
   $('sp-tp').value = ''; $('sp-sl').value = '';
   S.cap = 0; S.tam = 0; sincronCap();
   renderPos(); renderEntry();
+}
+
+/* Cerrar una posición. Si se abrió on chain (tiene chainId) y hay wallet conectada, el
+   cierre TAMBIÉN es on chain: pide firma, hace el swap y devuelve el resultado a tu wallet
+   (1% de comisión solo si cierra en ganancia). Si es local (vista previa o moneda no
+   operable), cierra solo en el registro. */
+async function cerrarPosicion(id, btn) {
+  const p = M.posiciones().find((x) => x.id === id); if (!p) return;
+  const mk = S.marks[p.par] || S.mark;
+  if (p.chainId != null && S.walletOn) {
+    if (btn) btn.disabled = true;
+    toast('Confirm the close in your wallet…', 'warn');
+    try { const C = await _contratoSpot(); const res = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100 }); toast(`Close sent on-chain · ${res.hash.slice(0, 10)}…`, 'ok'); }
+    catch (e) { toast(_errSpot(e), 'bad'); if (btn) btn.disabled = false; return; }
+  }
+  const x = M.cerrar(id, mk, 'manual');
+  if (x) { const fee = x.fee > 0 ? ' · fee ' + (x.denom === 'USDT' ? fmtMoney(x.fee) : fmtCoin(x.fee) + ' ' + x.denom) : ''; toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}${fee}`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); }
 }
 
 /* ── Panel inferior ── */
@@ -758,7 +765,7 @@ function renderPos() {
   if (S.tab === 'pos') {
     if (!pos.length) { body.innerHTML = '<div class="sp-empty">No open positions. Open a Market trade, or mark a Limit entry on the chart.</div>'; return; }
     body.innerHTML = `<table class="sp-tbl"><thead><tr><th>Symbol</th><th>Coins</th><th>Entry</th><th>Mark</th><th>Amount</th><th>TP</th><th>SL</th><th>PnL</th><th></th></tr></thead><tbody>${pos.map(filaPos).join('')}</tbody></table>`;
-    body.querySelectorAll('[data-cerrar]').forEach((b) => b.onclick = () => { const x = M.cerrar(b.dataset.cerrar, S.marks[b.dataset.par] || S.mark, 'manual'); if (x) { toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); } });
+    body.querySelectorAll('[data-cerrar]').forEach((b) => b.onclick = () => cerrarPosicion(b.dataset.cerrar, b));
     body.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => editarTPSL(b.dataset.edit, b.dataset.k));
     body.querySelectorAll('[data-share]').forEach((b) => b.onclick = () => { const p = pos.find((x) => x.id === b.dataset.share); if (p) tarjetaPnL(cerradoDesde(p)); });
   } else if (S.tab === 'ord') {
@@ -965,7 +972,7 @@ function wireDrag() {
     const h = handleEn(e); if (!h) return;
     e.stopPropagation(); e.preventDefault();
     if (h.entryX) { S.limitPx = 0; const li = $('sp-limit'); if (li) li.value = ''; dibujarLimit(); renderEntry(); fx.style.pointerEvents = 'none'; return; }
-    if (h.cerrarPos) { const x = M.cerrar(h.cerrarPos, S.marks[h.par] || S.mark, 'manual'); if (x) { const fee = x.fee > 0 ? ' · fee ' + (x.denom === 'USDT' ? fmtMoney(x.fee) : fmtCoin(x.fee) + ' ' + x.denom) : ''; toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}${fee}`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); } fx.style.pointerEvents = 'none'; return; }
+    if (h.cerrarPos) { cerrarPosicion(h.cerrarPos); fx.style.pointerEvents = 'none'; return; }
     if (h.alertaX) { S.alertas = (S.alertas || []).filter((a) => a.id !== h.alertaX); toast('Alert removed.', 'ok'); fx.style.pointerEvents = 'none'; return; }
     if (h.entryLine) { S.drag = { entryLine: true }; fx.style.cursor = 'grabbing'; return; }
     const p = M.posiciones().find((x) => x.id === h.id); if (!p) return;
@@ -1371,7 +1378,7 @@ const PASOS_SP = [
   {
     t: 'Start here: pick a direction',
     d: 'The very <b>first thing</b> you do is choose <b>Long</b> or <b>Short</b> at the <b>top</b> of the panel. That single choice sets up everything below it. Pick <b>Long</b> if you believe the price will go <b>up</b>. Pick <b>Short</b> if you believe it will go <b>down</b>. Until you pick one, nothing else is active, on purpose.',
-    x: 'Long means buy the coin. Short means sell a coin you already hold.'
+    x: 'Long means buy the coin. Short means bet it drops, funded with your USDT or BNB.'
   },
   {
     t: 'Why Long and Short appear twice',
@@ -1400,8 +1407,8 @@ const PASOS_SP = [
   },
   {
     t: 'Set your amount',
-    d: 'Type or slide the <b>Amount</b>. For a long it is the <b>USDT</b> you spend. For a short it is how much of your <b>coin</b> you sell, and you choose which held coin from the unit button right next to the amount. The panel always shows exactly what you are committing before you open.',
-    x: 'The % buttons size it against the balance you truly hold in your wallet.'
+    d: 'Type or slide the <b>Amount</b>. You commit it in <b>USDT</b> or <b>BNB</b> — pick which from the unit button right next to the amount, for both long and short. The panel always shows exactly what you are committing, and how much of the coin on the chart that opens, before you fire.',
+    x: 'The % buttons size it against your USDT or BNB balance.'
   },
   {
     t: 'Market or Limit, with TP and SL',
