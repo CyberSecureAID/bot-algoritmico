@@ -1381,7 +1381,7 @@ function cablearOrden(host){
     od.clicCancelar(host,()=>_ordZonas,()=>{});
   }catch(_){} };
   if(_od){ wire(_od); return; }
-  import(new URL('../../assets/js/orden.js?v=136', import.meta.url).href).then(wire).catch(()=>{});
+  import(new URL('../../assets/js/orden.js?v=137', import.meta.url).href).then(wire).catch(()=>{});
 }
 async function cargarChart(){ if(!mSeries||!mCoin)return;
   const kl=await D.velas(mCoin.symbol,mTF,240); if(!kl.length||!mSeries)return; mKl=kl; mSeries.setData(kl);
