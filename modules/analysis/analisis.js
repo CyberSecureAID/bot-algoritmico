@@ -194,14 +194,14 @@ async function abrirTool(abre, cardEl) {
     if (abre === 'pools')       await (await import(base + 'liquidity.js?v=147')).abrirPools();
     else if (abre === 'heat')   await (await import(base + 'muros.js?v=142')).abrirMuros();
     else if (abre === 'levels') await (await import(base + 'niveles.js?v=142')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=45', import.meta.url).href)).abrirInstitutional();
-    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=18', import.meta.url).href)).abrirReaction();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=46', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=19', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
-    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=35', import.meta.url).href)).abrirMulti();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=36', import.meta.url).href)).abrirMulti();
     else if (abre === 'cycles') await (await import(new URL('../cycles/cycles.js?v=4', import.meta.url).href)).abrirCycles();
-    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=16', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=20', import.meta.url).href)).abrirSuperScalper();
-    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=27', import.meta.url).href)).abrirOrderBlock();
+    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=17', import.meta.url).href)).abrirFootprint();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=21', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=28', import.meta.url).href)).abrirOrderBlock();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
