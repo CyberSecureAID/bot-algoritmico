@@ -331,6 +331,20 @@ export function conectar(cfg) {
   arrancarMarcador();   // precios en vivo para el PnL de las posiciones en la grafica
 }
 
+/* Abre la ficha de Set Position directamente, sin pasar por el menu verde/rojo.
+   Lo usa Spot: conserva SU menu de clic derecho (Copy price / Set alert / Set
+   position) y, al tocar Set position, llama aqui con su propio cfg. Asi la ficha
+   (y toda la logica multimoneda) es la MISMA que en analisis. */
+export function establecerPosicion(cfg, precio, vender, cx, cy) {
+  if (!cfg) return;
+  estilos();                       // Spot no pasa por conectar(): hay que inyectar el CSS de la ficha aqui
+  const act = (cfg.precioActual && cfg.precioActual()) || 0;
+  const px = (precio > 0) ? precio : act;
+  if (!(px > 0)) return;
+  const v = (typeof vender === 'boolean') ? vender : (px > act);
+  abrirFicha(cx != null ? cx : (window.innerWidth / 2), cy != null ? cy : (window.innerHeight / 2), cfg, px, v);
+}
+
 /* ══════════════════════════════════════════════════════════════
    EL MENÚ — primer paso
    ══════════════════════════════════════════════════════════════ */
@@ -525,12 +539,22 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     if (!_bal) return;
     const coinPx = (cfg.precioActual && cfg.precioActual()) || actual || 0;
     const bnbUtil = Math.max(0, _bal.bnb - 0.0015);                    // se reserva algo de BNB para el gas
-    // El poder total es BNB util + USDT + el valor de la moneda de la grafica.
-    // Pero si la grafica YA es BNB o USDT, esa moneda ya esta contada arriba: no
-    // se vuelve a sumar (si no, se duplicaba el saldo, p.ej. 143 en vez de 97).
-    const extraMoneda = (par === 'BNB' || par === 'USDT') ? 0 : _bal.moneda * coinPx;
-    const usd = bnbUtil * _bal.bnbPx + _bal.usdt + extraMoneda;
-    saldo = vender ? (coinPx > 0 ? usd / coinPx : 0) : usd;
+    const bnbUsd = bnbUtil * _bal.bnbPx;
+    // Valor total operable en USD, SIN duplicar: si la grafica es BNB o USDT, esa
+    // moneda ya esta contada en bnbUsd / usdt y no se vuelve a sumar.
+    const totalUsd = bnbUsd + _bal.usdt + ((par === 'BNB' || par === 'USDT') ? 0 : _bal.moneda * coinPx);
+    // Lo que YA tienes en la propia moneda de la grafica (en USD).
+    const yaEnMoneda = (par === 'BNB') ? bnbUsd : (par === 'USDT') ? _bal.usdt : _bal.moneda * coinPx;
+    if (vender) {
+      // SHORT: vendes la moneda de la grafica. Puedes convertir TODO tu portafolio a
+      // esa moneda y venderlo (incluido lo que ya tienes en ella). Disponible = total / precio.
+      saldo = coinPx > 0 ? totalUsd / coinPx : 0;
+    } else {
+      // LONG: compras la moneda de la grafica. NO tiene sentido comprarla con lo que YA
+      // tienes en esa misma moneda (seria convertirla a si misma). Disponible = total menos
+      // lo que ya tienes en ella. Ej.: 50 en BNB + 50 en USDT, comprar BNB -> 50, no 100.
+      saldo = Math.max(0, totalUsd - yaEnMoneda);
+    }
     if (!isFinite(saldo) || saldo < 0) saldo = 0;
     pintarDisponible();
   }
