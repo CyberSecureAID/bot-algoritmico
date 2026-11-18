@@ -43,7 +43,7 @@ let LC = null;
 let _od = null;
 /* Operar desde la grafica: clic derecho → Set Position / Alerta (mismo orden.js
    del resto del area de analisis). Las posiciones se registran en el ledger de Spot. */
-try { import(new URL('../../assets/js/orden.js?v=135', import.meta.url).href).then((m) => { _od = m; }).catch(() => {}); } catch (_) {}
+try { import(new URL('../../assets/js/orden.js?v=136', import.meta.url).href).then((m) => { _od = m; }).catch(() => {}); } catch (_) {}
 
 /* ── Temporalidades: las normales (D.TFS) + SEGUNDOS agregados desde 1s ──
    Binance solo da 1s nativo por debajo del minuto; 2s/5s/10s/30s se arman agregando
