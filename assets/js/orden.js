@@ -90,6 +90,9 @@ const fmt = (p) => {
    ══════════════════════════════════════════════════════════════ */
 let _spot = null;
 try { import(new URL('../../modules/spot/motor.js?v=7', import.meta.url).href).then((m) => { _spot = m; if (_marcadorTick) { try { _marcadorTick(); } catch (_) {} } }).catch(() => {}); } catch (_) {}
+/* Flechas de Footprint Pro (verde = comprador/long, roja = vendedor/short) para el icono de la ficha. */
+const IMG_FLECHA_UP = new URL('../img/fp-flecha-verde.webp', import.meta.url).href;
+const IMG_FLECHA_DN = new URL('../img/fp-flecha-roja.webp', import.meta.url).href;
 
 /* Posiciones cuya visualizacion el usuario OCULTO en la grafica (tocando la X).
    Ocultar no vende: la posicion sigue viva en Spot › Positions. */
@@ -435,7 +438,7 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     <button class="od-x" type="button" aria-label="Close">✕</button>
 
     <div class="od-cab">
-      <span class="od-ic">${vender ? '▼' : '▲'}</span>
+      <span class="od-ic"><img class="od-ic-img" src="${vender ? IMG_FLECHA_DN : IMG_FLECHA_UP}" alt="" draggable="false"></span>
       <div class="od-tit">
         <b>${vender ? 'Short' : 'Long'}</b>
         <span>${esc(par)} · <span class="od-sub-px">${fmt(actual)}</span></span>
@@ -451,6 +454,14 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     <div class="od-side">
       <button class="od-side-b long ${vender ? '' : 'on'}" type="button" data-lado="long">Long<small>buy</small></button>
       <button class="od-side-b short ${vender ? 'on' : ''}" type="button" data-lado="short">Short<small>sell</small></button>
+    </div>
+
+    <!-- Market debajo de Long, Limit debajo de Short. Market = a mercado (ahora).
+         Limit = orden pendiente en el precio marcado (se dibuja en la grafica; se
+         ejecutara con el contrato de spot). -->
+    <div class="od-modo">
+      <button class="od-modo-b on" type="button" data-modo="market">Market</button>
+      <button class="od-modo-b" type="button" data-modo="limit">Limit</button>
     </div>
 
     <div class="od-campo od-cantidad">
@@ -587,15 +598,22 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     if (et) { et.className = 'od-saldo alerta'; et.textContent = motivo; }
   }
 
+  let modo = 'market';
+  // Precio de entrada: a mercado usa el precio de AHORA; limit usa el nivel marcado.
+  const entryPx = () => (modo === 'limit' && precio > 0) ? precio : actual;
   const refrescar = () => {
     let cant = parseFloat(String(inp.value).replace(',', '.')) || 0;
     /* Nunca por encima de lo que hay (si se pudo leer el saldo). */
     if (saldo > 0 && cant > saldo) { cant = saldo; inp.value = recorta(saldo); }
     ok.disabled = !(cant > 0);
+    ok.textContent = modo === 'limit' ? (vender ? 'Place limit sell' : 'Place limit buy') : (vender ? 'Sell' : 'Buy');
     if (cant > 0) {
-      const total = vender ? cant * actual : cant / actual;   // a mercado: sobre el precio de AHORA
-      res.innerHTML = `
-        <div class="od-r-fila"><span>Opens at market</span><b>≈ ${fmt(actual)}</b></div>
+      const px = entryPx();
+      const total = vender ? cant * px : cant / px;
+      const l1 = modo === 'limit'
+        ? `<div class="od-r-fila"><span>Limit · opens at</span><b>${fmt(px)}</b></div>`
+        : `<div class="od-r-fila"><span>Opens at market</span><b>≈ ${fmt(px)}</b></div>`;
+      res.innerHTML = l1 + `
         <div class="od-r-fila"><span>${vender ? 'You receive' : 'You buy'}</span><b>${
           vender ? fmt(total) + ' USDT' : total.toFixed(6) + ' ' + esc(par)}</b></div>`;
       res.classList.add('lleno');
@@ -626,6 +644,13 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     d.remove();
     abrirFicha(cx, cy, cfg, precio, quiereVender);
   });
+  /* Market / Limit. Market: a mercado (precio de ahora). Limit: orden pendiente en el
+     nivel marcado al hacer clic derecho. Solo cambia el precio de entrada y el registro. */
+  d.querySelectorAll('[data-modo]').forEach((b) => b.onclick = () => {
+    modo = b.dataset.modo;
+    d.querySelectorAll('[data-modo]').forEach((x) => x.classList.toggle('on', x === b));
+    refrescar();
+  });
   /* [CORREGIDO] La X no cerraba porque el clic se paraba antes de
      llegar. Ahora cierra su propia ficha directamente. */
   const cerrarEsta = (ev) => {
@@ -645,6 +670,19 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     if (!(cant > 0)) return;
     ok.disabled = true;
     try {
+      if (modo === 'limit') {
+        // ORDEN LIMIT: pendiente en el precio marcado. Se guarda SIN botId, asi el
+        // vigilante on-chain la IGNORA (sincronizarOrdenes salta las que no tienen
+        // botId) y solo se dibuja en la grafica. La ejecucion al tocar el precio se
+        // conectara con el contrato de spot. Cero accion on-chain por ahora.
+        const simb = cfg.simbolo ? cfg.simbolo() : '';
+        guardarOrdenGrafico({ id: 'sp-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), par, simbolo: simb, precio, cant, vender, modo: 'limit', fuente: 'spot', cuando: Date.now() });
+        if (cfg.repintar) cfg.repintar();
+        if (cfg.alPoner) cfg.alPoner({ precio, cant, vender, modo: 'limit', lado: vender ? 'short' : 'long' });
+        exito(d, vender ? 'Limit sell placed' : 'Limit buy placed',
+          `Pending at ${fmt(precio)}. It opens when the price reaches it.`);
+        return;
+      }
       /* A MERCADO: se registra la posicion en el MISMO ledger que Spot
          (sp-spot-v1) via su motor. Aparece en Spot › Positions con su PnL en
          vivo, y en la grafica de analisis como una linea limpia de tu entrada.
@@ -1619,7 +1657,8 @@ function estilos() {
     background:rgba(255,255,255,.08);border:1px solid #3a424c;color:#b7bdc6}
   .od-x:hover{background:rgba(255,255,255,.14);color:#eaecef}
   .od-cab{display:flex;align-items:center;gap:10px;margin-bottom:6px;padding-right:44px}
-  .od-ic{font-size:17px}
+  .od-ic{font-size:17px;display:flex;align-items:center}
+  .od-ic-img{width:19px;height:19px;display:block;object-fit:contain}
   .od-ficha.comprar .od-ic{color:#2ee86a}
   .od-ficha.vender .od-ic{color:#f6465d}
   .od-tit b{display:block;font-family:var(--display,sans-serif);font-weight:800;
@@ -1681,6 +1720,9 @@ function estilos() {
   .od-side-b.long.on{background:rgba(46,232,106,.14);border-color:#2ee86a;color:#4dffa0}
   .od-side-b.short.on{background:rgba(255,91,110,.14);border-color:#ff5b6e;color:#ff8a95}
   .od-side-b.on small{color:inherit;opacity:.85}
+  .od-modo{display:flex;gap:7px;margin:-6px 0 12px}
+  .od-modo-b{flex:1;min-height:34px;border-radius:9px;cursor:pointer;border:1px solid #2b3139;background:rgba(255,255,255,.03);color:#9aa4af;font-weight:700;font-size:12.5px;letter-spacing:.2px}
+  .od-modo-b.on{background:rgba(232,184,75,.14);border-color:#E8B84B;color:#f4d089}
 
   .od-modos{display:flex;flex-direction:column;gap:6px}
   .od-modo{text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;
