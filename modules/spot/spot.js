@@ -454,7 +454,7 @@ function pintarChart() {
   vela.setData(V.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))); S.serieVela = vela;
   S.velasDib = V.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
   try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 90, to: V.length + 6 }); ts.subscribeVisibleLogicalRangeChange((range) => { sincronizarDib(); if (range && range.from < 15) cargarMasVelas(); }); } catch (_) {}
-  try { chart.subscribeClick((p) => { if (!p || !p.point || S.drag || !sinHerramienta()) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('sp-overlay'); if (ov) ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('sp-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('sp-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
+  try { chart.subscribeClick((p) => { if (S._ctxCerradoEn && Date.now() - S._ctxCerradoEn < 400) return; if (!p || !p.point || S.drag || !sinHerramienta()) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('sp-overlay'); if (ov) ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('sp-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('sp-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
   dibujarLimit();
 }
 
@@ -1030,7 +1030,7 @@ function abrirCtxDemo(clientX, clientY, px) {
 let _odSpot = null;
 async function abrirSetPosDemo(px, cx, cy) {
   try {
-    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=136', import.meta.url).href);
+    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=137', import.meta.url).href);
     const cfg = {
       canvas: $('sp-cv'),
       par: () => (S.par && (S.par.coin || S.par.id)) || '',
@@ -1046,7 +1046,7 @@ async function abrirSetPosDemo(px, cx, cy) {
 }
 function ctxFueraDemo(e) { const el = $('sp-ctx'); if (el && !el.contains(e.target)) cerrarCtxDemo(); }
 function ctxEscDemo(e) { if (e.key === 'Escape') cerrarCtxDemo(); }
-function cerrarCtxDemo() { const el = $('sp-ctx'); if (el) { try { el.remove(); } catch (_) {} } document.removeEventListener('mousedown', ctxFueraDemo, true); document.removeEventListener('keydown', ctxEscDemo, true); }
+function cerrarCtxDemo() { S._ctxCerradoEn = Date.now(); const el = $('sp-ctx'); if (el) { try { el.remove(); } catch (_) {} } document.removeEventListener('mousedown', ctxFueraDemo, true); document.removeEventListener('keydown', ctxEscDemo, true); }
 
 /* ── Exportaciones ── */
 function descargar(blob, nombre) { if (!blob) return; const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 3000); }
