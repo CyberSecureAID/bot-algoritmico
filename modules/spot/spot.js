@@ -1010,6 +1010,7 @@ function abrirCtxDemo(clientX, clientY, px) {
   el.innerHTML = `<div class="sp-ctx-px">${fmtP(px)}</div>` +
     `<div class="sp-ctx-sub ${up ? 'up' : 'down'}">${S.mark > 0 ? (up ? '+' : '') + diff.toFixed(2) + '% vs mark' : 'price'}</div>` +
     `<button class="sp-ctx-b" type="button" data-a="copy">Copy price</button>` +
+    `<button class="sp-ctx-b" type="button" data-a="setpos">Set position</button>` +
     `<button class="sp-ctx-b alert" type="button" data-a="alert">Set alert</button>`;
   document.body.appendChild(el);
   const w = el.offsetWidth || 190, h = el.offsetHeight || 120;
@@ -1019,7 +1020,29 @@ function abrirCtxDemo(clientX, clientY, px) {
   el.style.left = Math.max(6, left) + 'px'; el.style.top = Math.max(6, top) + 'px';
   el.querySelector('[data-a="copy"]').onclick = () => { try { navigator.clipboard && navigator.clipboard.writeText(String(px)); } catch (_) {} toast('Price copied.', 'ok'); cerrarCtxDemo(); };
   el.querySelector('[data-a="alert"]').onclick = () => { crearAlertaDemo(px); cerrarCtxDemo(); };
+  el.querySelector('[data-a="setpos"]').onclick = () => { abrirSetPosDemo(px, clientX, clientY); cerrarCtxDemo(); };
   setTimeout(() => { document.addEventListener('mousedown', ctxFueraDemo, true); document.addEventListener('keydown', ctxEscDemo, true); }, 0);
+}
+/* Set position en Spot: conserva ESTE menu propio (Copy price / Set position / Set
+   alert) y, al tocar Set position, abre la MISMA ficha de orden.js que analisis, con
+   el cfg de la grafica de Spot. Asi hereda toda la logica multimoneda: comprar o
+   vender cualquier moneda con lo que ya tienes (BNB/USDT), sin duplicar lo ya tenido. */
+let _odSpot = null;
+async function abrirSetPosDemo(px, cx, cy) {
+  try {
+    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=136', import.meta.url).href);
+    const cfg = {
+      canvas: $('sp-cv'),
+      par: () => (S.par && (S.par.coin || S.par.id)) || '',
+      simbolo: () => (S.par && S.par.s) || '',
+      precioActual: () => S.mark || ((S.velas && S.velas.length) ? S.velas[S.velas.length - 1].close : 0),
+      precioEn: () => px,
+      repintar: () => { try { renderTodo(); } catch (_) {} }
+    };
+    const act = cfg.precioActual();
+    const vender = px >= (act || px);     // por encima del precio actual = vender (short)
+    _odSpot.establecerPosicion(cfg, px, vender, cx, cy);
+  } catch (_) { toast('Could not open Set position.', 'bad'); }
 }
 function ctxFueraDemo(e) { const el = $('sp-ctx'); if (el && !el.contains(e.target)) cerrarCtxDemo(); }
 function ctxEscDemo(e) { if (e.key === 'Escape') cerrarCtxDemo(); }
