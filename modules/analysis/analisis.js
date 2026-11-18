@@ -191,17 +191,17 @@ async function abrirTool(abre, cardEl) {
   if (btn) { btn.classList.add('load'); btn.textContent = 'Loading…'; }
 
   try {
-    if (abre === 'pools')       await (await import(base + 'liquidity.js?v=145')).abrirPools();
-    else if (abre === 'heat')   await (await import(base + 'muros.js?v=140')).abrirMuros();
-    else if (abre === 'levels') await (await import(base + 'niveles.js?v=140')).abrirNiveles();
-    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=43', import.meta.url).href)).abrirInstitutional();
-    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=16', import.meta.url).href)).abrirReaction();
+    if (abre === 'pools')       await (await import(base + 'liquidity.js?v=146')).abrirPools();
+    else if (abre === 'heat')   await (await import(base + 'muros.js?v=141')).abrirMuros();
+    else if (abre === 'levels') await (await import(base + 'niveles.js?v=141')).abrirNiveles();
+    else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=44', import.meta.url).href)).abrirInstitutional();
+    else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=17', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
-    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=33', import.meta.url).href)).abrirMulti();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=34', import.meta.url).href)).abrirMulti();
     else if (abre === 'cycles') await (await import(new URL('../cycles/cycles.js?v=4', import.meta.url).href)).abrirCycles();
-    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=14', import.meta.url).href)).abrirFootprint();
-    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=18', import.meta.url).href)).abrirSuperScalper();
-    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=25', import.meta.url).href)).abrirOrderBlock();
+    else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=15', import.meta.url).href)).abrirFootprint();
+    else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=19', import.meta.url).href)).abrirSuperScalper();
+    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=26', import.meta.url).href)).abrirOrderBlock();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
