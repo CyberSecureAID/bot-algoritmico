@@ -259,8 +259,18 @@ export function estilos() {
   #sp-help{position:fixed; inset:0; z-index:12000; display:flex; align-items:center; justify-content:center; padding:18px; font-family:'Plus Jakarta Sans',sans-serif}
   .sp-hlp-bg{position:absolute; inset:0; background:rgba(3,6,10,.74); backdrop-filter:blur(5px)}
   .sp-hlp-c{position:relative; width:430px; max-width:100%; max-height:92vh; overflow-y:auto; background:#10151d; border:1px solid rgba(232,184,75,.4); border-radius:18px; padding:22px 20px 18px; box-shadow:0 36px 90px rgba(0,0,0,.72)}
-  .sp-hlp-x{position:absolute; top:12px; right:12px; width:30px; height:30px; border-radius:9px; border:1px solid var(--sp-line2); background:rgba(0,0,0,.4); color:var(--sp-ink2); cursor:pointer}
+  .sp-hlp-top{position:absolute; top:12px; right:12px; display:flex; align-items:center; gap:8px; z-index:4}
+  .sp-hlp-x{width:30px; height:30px; border-radius:9px; border:1px solid var(--sp-line2); background:rgba(0,0,0,.4); color:var(--sp-ink2); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px}
   .sp-hlp-x:hover{border-color:var(--sp-down); color:var(--sp-down2)}
+  .sp-hlp-lang{min-width:34px; height:30px; padding:0 8px; border-radius:9px; border:1px solid var(--sp-line2); background:rgba(0,0,0,.4); color:var(--sp-ink2); font-family:var(--sp-mono); font-weight:800; font-size:11px; letter-spacing:.08em; cursor:pointer}
+  .sp-hlp-lang:hover{border-color:var(--sp-gold); color:var(--sp-gold)}
+  .sp-hlp-audio{display:flex; align-items:center; gap:14px; margin-bottom:14px; padding:13px 14px; border:1px solid var(--sp-line); border-radius:12px; background:linear-gradient(180deg,rgba(232,184,75,.07),rgba(232,184,75,.01))}
+  .sp-hlp-play{flex:0 0 auto; width:50px; height:50px; border-radius:50%; border:0; cursor:pointer; background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426); color:#3a2800; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 22px rgba(232,184,75,.28); transition:transform .15s}
+  .sp-hlp-play:hover{transform:scale(1.05)}
+  .sp-hlp-play.on{box-shadow:0 0 0 4px rgba(232,184,75,.18),0 8px 22px rgba(232,184,75,.28)}
+  .sp-hlp-audio-tx{display:flex; flex-direction:column; gap:3px; text-align:left; min-width:0}
+  .sp-hlp-audio-tx b{font-family:var(--sp-disp); font-weight:800; font-size:15px; color:var(--sp-ink); line-height:1.1}
+  .sp-hlp-audio-tx span{font-family:var(--sp-mono); font-size:11px; color:var(--sp-ink3)}
   .sp-hlp-eyebrow{text-align:center; font-family:var(--sp-mono); font-size:10px; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--sp-ink3); margin-bottom:6px}
   .sp-hlp-card{background:linear-gradient(180deg,rgba(232,184,75,.05),transparent 60%); border:1px solid var(--sp-line); border-radius:14px; padding:18px}
   .sp-hlp-n{text-align:center; font-family:var(--sp-mono); font-size:11px; color:var(--sp-ink3); margin-bottom:8px} .sp-hlp-n em{font-style:normal; color:var(--sp-ink2)}

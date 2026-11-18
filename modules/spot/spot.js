@@ -15,7 +15,7 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=15';
+import { estilos } from './estilos.js?v=16';
 import * as D from './datos.js?v=8';
 import * as M from './motor.js?v=7';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
@@ -111,7 +111,6 @@ function plantilla() {
   return `
   <div class="sp-top">
     <button class="sp-back" id="sp-back">${IC.back} Back</button>
-    <span class="sp-brand">Spot</span>
     <button class="sp-coin" id="sp-coin"><i id="sp-coin-ico">B</i><b id="sp-coin-id">BTC</b>${IC.chev}</button>
     <div class="sp-tf" id="sp-tf"><button class="cur" id="sp-tfcur">1m <span class="cv">▾</span></button><div class="menu" id="sp-tfmenu"></div></div>
     <div class="sp-px"><div class="sp-px-big" id="sp-mark">—</div><div class="sp-px-sub">Mark · <span id="sp-pair">BTCUSDT</span></div></div>
@@ -1030,7 +1029,7 @@ function abrirCtxDemo(clientX, clientY, px) {
 let _odSpot = null;
 async function abrirSetPosDemo(px, cx, cy) {
   try {
-    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=137', import.meta.url).href);
+    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=138', import.meta.url).href);
     const cfg = {
       canvas: $('sp-cv'),
       par: () => (S.par && (S.par.coin || S.par.id)) || '',
@@ -1318,6 +1317,15 @@ function renderTodo() { sincronCap(); pintarPrecio(); renderEntry(); renderPos()
 /* ── How It Works (stepper, explicado para principiantes) ── */
 const PASOS_SP = [
   {
+    audio: true,
+    t: 'Listen first',
+    tEs: 'Escúchalo primero',
+    d: 'In this short audio we explain all the benefits you can get inside the DecFreedom <b>Spot</b> section. Press play and let it walk you through it before you read the steps.',
+    dEs: 'En este audio te explicamos todos los beneficios que puedes tener dentro de nuestra sección de <b>Spot</b> de DecFreedom. Dale a reproducir y deja que te lo cuente antes de leer los pasos.',
+    x: 'Prefer to read? Use the arrows below to go through the guide step by step.',
+    xEs: '¿Prefieres leer? Usa las flechas de abajo para recorrer la guía paso a paso.'
+  },
+  {
     t: 'What Spot is',
     d: 'Spot means you trade the <b>real coin</b>, not a contract. You own what you buy. There is <b>no leverage and no liquidation</b> here, so a position is never force closed. You can profit in <b>two</b> ways, whether the price goes up or down, and this short guide walks you through both.',
     x: 'What you see is what you hold. It is the safest way to learn to trade.'
@@ -1359,8 +1367,8 @@ const PASOS_SP = [
   },
   {
     t: 'Market or Limit, with TP and SL',
-    d: '<b>Market</b> fills now at the mark price. <b>Limit</b> lets you click the chart to mark your entry, and it fills when price reaches it. On an open position you set a <b>Take Profit</b> and a <b>Stop Loss</b> by dragging the small green and red squares, or with the pencil on each row.',
-    x: 'On a short, Take Profit sits below your entry (you win when price falls) and Stop Loss above.'
+    d: '<b>Market</b> fills now at the mark price. <b>Limit</b> lets you mark your entry at any price. The fastest way: <b>right click the chart</b> and choose <b>Set position</b> to open the panel already pointed at that price, or pick a coin and set it by hand. A limit order fills when price reaches your mark. On an open position you set a <b>Take Profit</b> and a <b>Stop Loss</b> by dragging the small green and red squares, or with the pencil on each row.',
+    x: 'Right click the chart → Set position to trade at the exact price you want.'
   },
   {
     t: 'Your wallet, your coins',
@@ -1369,11 +1377,16 @@ const PASOS_SP = [
   },
   {
     t: 'What it costs: only if you win',
-    d: 'Opening a trade is <b>free</b> on our side. We charge a small <b>0.2% of your profit</b>, in <b>BNB</b>, and <b>only when you close a trade in profit</b>. If a trade closes flat or at a loss, the platform fee is <b>zero</b>. That is how the service keeps running without charging you to simply operate, so it is always in our interest that you win.',
-    x: 'Free to open. 0.2% of profit on a winning close. Nothing when you do not profit.'
+    d: 'Opening a trade is <b>free</b> on our side. We charge a small <b>1% of your profit</b>, in <b>BNB</b>, and <b>only when you close a trade in profit</b>. If a trade closes flat or at a loss, the platform fee is <b>zero</b>. That is how the service keeps running without charging you to simply operate, so it is always in our interest that you win.',
+    x: 'Free to open. 1% of profit on a winning close. Nothing when you do not profit.'
   }
 ];
 let _pasoSP = 0;
+let _spLang = 'en';   // idioma del audio de la guia (en por defecto, es si el usuario lo cambia)
+const AUDIO_SP = {
+  en: new URL('../audio/spot/spot-en.MP3', import.meta.url).href,
+  es: new URL('../audio/spot/spot-es.MP3', import.meta.url).href
+};
 function ayuda() {
   cerrarPops(); marcarAyudaVista();
   const old = $('sp-help'); if (old) old.remove();
@@ -1381,30 +1394,77 @@ function ayuda() {
   const m = document.createElement('div'); m.id = 'sp-help';
   m.innerHTML = `<div class="sp-hlp-bg"></div>
     <div class="sp-hlp-c">
-      <button class="sp-hlp-x" id="sp-help-x" aria-label="Close">✕</button>
+      <div class="sp-hlp-top">
+        <button class="sp-hlp-lang" id="sp-hlp-lang" type="button" title="Audio language">${_spLang.toUpperCase()}</button>
+        <button class="sp-hlp-x" id="sp-help-x" type="button" aria-label="Close">✕</button>
+      </div>
       <div class="sp-hlp-eyebrow">Spot</div>
       <div id="sp-hlp-body"></div>
     </div>`;
   document.body.appendChild(m);
   const ce = () => m.remove();
   m.querySelector('.sp-hlp-bg').onclick = ce; $('sp-help-x').onclick = ce;
+  $('sp-hlp-lang').onclick = () => {
+    _spLang = _spLang === 'en' ? 'es' : 'en';
+    $('sp-hlp-lang').textContent = _spLang.toUpperCase();
+    pintarPasoSP();   // si estamos en el paso de audio, recarga pista e idioma del texto
+  };
   pintarPasoSP();
 }
 function pintarPasoSP() {
   const c = $('sp-hlp-body'); if (!c) return;
   const p = PASOS_SP[_pasoSP], ultimo = _pasoSP === PASOS_SP.length - 1;
+  const es = _spLang === 'es';
+  const tit = (es && p.tEs) ? p.tEs : p.t;
+  const des = (es && p.dEs) ? p.dEs : p.d;
+  const xtr = (es && p.xEs) ? p.xEs : p.x;
+  const cuerpo = p.audio
+    ? `<div class="sp-hlp-audio">
+         <button class="sp-hlp-play" id="sp-hlp-play" type="button" aria-label="Play audio"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+         <div class="sp-hlp-audio-tx">
+           <b>${es ? 'Guía en audio' : 'Audio guide'}</b>
+           <span id="sp-hlp-audio-sub">${(es ? 'Español' : 'English')} · ${es ? 'toca para reproducir' : 'tap to play'}</span>
+         </div>
+         <audio id="sp-hlp-audio-el" preload="none" src="${es ? AUDIO_SP.es : AUDIO_SP.en}"></audio>
+       </div>
+       <div class="sp-hlp-d">${des}</div>`
+    : `<div class="sp-hlp-d">${des}</div>`;
   c.innerHTML = `
     <div class="sp-hlp-card">
       <div class="sp-hlp-n">${_pasoSP + 1} <em>of ${PASOS_SP.length}</em></div>
-      <div class="sp-hlp-t">${p.t}</div>
-      <div class="sp-hlp-d">${p.d}</div>
-      <div class="sp-hlp-x2">${p.x}</div>
+      <div class="sp-hlp-t">${tit}</div>
+      ${cuerpo}
+      <div class="sp-hlp-x2">${xtr}</div>
     </div>
     <div class="sp-hlp-dots">${PASOS_SP.map((_, i) => `<i class="${i === _pasoSP ? 'on' : ''}" data-paso="${i}"></i>`).join('')}</div>
     <div class="sp-hlp-acts">
-      ${_pasoSP > 0 ? '<button class="sp-hlp-back" id="sp-hlp-back">Back</button>' : ''}
-      <button class="sp-hlp-next" id="sp-hlp-next">${ultimo ? 'Got it' : 'Learn more'}</button>
+      ${_pasoSP > 0 ? `<button class="sp-hlp-back" id="sp-hlp-back">${es ? 'Atrás' : 'Back'}</button>` : ''}
+      <button class="sp-hlp-next" id="sp-hlp-next">${ultimo ? (es ? 'Listo' : 'Got it') : (es ? 'Ver más' : 'Learn more')}</button>
     </div>`;
+  const play = $('sp-hlp-play');
+  if (play) {
+    const el = $('sp-hlp-audio-el'), sub = $('sp-hlp-audio-sub');
+    play.onclick = () => {
+      if (!el) return;
+      if (el.paused) {
+        el.play().then(() => {
+          play.classList.add('on');
+          play.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+          if (sub) sub.textContent = es ? 'Reproduciendo…' : 'Playing…';
+        }).catch(() => { if (sub) sub.textContent = es ? 'Audio no disponible' : 'Audio unavailable'; });
+      } else {
+        el.pause();
+        play.classList.remove('on');
+        play.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+        if (sub) sub.textContent = (es ? 'Español' : 'English') + ' · ' + (es ? 'toca para reproducir' : 'tap to play');
+      }
+    };
+    el.onended = () => {
+      play.classList.remove('on');
+      play.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+      if (sub) sub.textContent = (es ? 'Español' : 'English') + ' · ' + (es ? 'toca para reproducir' : 'tap to play');
+    };
+  }
   $('sp-hlp-next').onclick = () => { if (_pasoSP >= PASOS_SP.length - 1) { const h = $('sp-help'); if (h) h.remove(); return; } _pasoSP++; pintarPasoSP(); };
   const bk = $('sp-hlp-back'); if (bk) bk.onclick = () => { _pasoSP = Math.max(0, _pasoSP - 1); pintarPasoSP(); };
   c.querySelectorAll('[data-paso]').forEach((b) => b.onclick = () => { _pasoSP = Number(b.dataset.paso); pintarPasoSP(); });
