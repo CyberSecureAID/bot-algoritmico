@@ -34,6 +34,16 @@ const r2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
 const _fin = (x, d = 0) => { const n = +x; return isFinite(n) ? n : d; };
 const _lado = (l) => (l === 'short' ? 'short' : 'long');
 const _str = (s, n = 48) => String(s == null ? '' : s).slice(0, n);
+const MAX_POS = 200, MAX_ORD = 200;     // tope duro: ni spam ni llenar el almacenamiento
+/* Valida un TP o SL: finito, positivo y DEL LADO CORRECTO respecto a la entrada (si no,
+   se dispararia al instante). TP long por encima y SL long por debajo; en short al reves.
+   Lo que no cumple se descarta (null). */
+function _tpsl(val, ref, esLong, esTP) {
+  const v = _fin(val); if (!(v > 0)) return null;
+  if (!(ref > 0)) return v;
+  const arriba = esTP ? esLong : !esLong;
+  return arriba ? (v > ref ? v : null) : (v < ref ? v : null);
+}
 function _limpiaPos(p) {
   if (!p || typeof p !== 'object') return null;
   const entrada = _fin(p.entrada), amount = _fin(p.amount);
@@ -62,16 +72,23 @@ function cargar() {
     const s = JSON.parse(localStorage.getItem(LS));
     if (s && typeof s === 'object') {
       return {
-        pos: (Array.isArray(s.pos) ? s.pos : []).map(_limpiaPos).filter(Boolean),
-        ord: (Array.isArray(s.ord) ? s.ord : []).map(_limpiaOrd).filter(Boolean),
-        hist: (Array.isArray(s.hist) ? s.hist : []).map(_limpiaHist).filter(Boolean)
+        pos: (Array.isArray(s.pos) ? s.pos : []).map(_limpiaPos).filter(Boolean).slice(0, MAX_POS),
+        ord: (Array.isArray(s.ord) ? s.ord : []).map(_limpiaOrd).filter(Boolean).slice(0, MAX_ORD),
+        hist: (Array.isArray(s.hist) ? s.hist : []).map(_limpiaHist).filter(Boolean).slice(0, 1000)
       };
     }
   } catch (_) {}
   return { pos: [], ord: [], hist: [] };
 }
 let ST = cargar();
-function guardar() { try { localStorage.setItem(LS, JSON.stringify(ST)); } catch (_) {} }
+function guardar() {
+  try { localStorage.setItem(LS, JSON.stringify(ST)); }
+  catch (_) {
+    /* Almacenamiento lleno: recorta el historial y reintenta, para no perder las
+       posiciones y ordenes vivas por culpa del historial viejo. */
+    try { if (ST.hist.length > 100) { ST.hist.length = 100; localStorage.setItem(LS, JSON.stringify(ST)); } } catch (__) {}
+  }
+}
 
 export function estado() { return ST; }
 export function posiciones() { return ST.pos; }
@@ -104,15 +121,21 @@ export function pnlDe(p, mark) {
 
 export function abrirMercado(par, base, lado, amount, mark, tp, sl) {
   if (!(mark > 0) || !(amount > 0) || !isFinite(mark) || !isFinite(amount)) return { ok: false, motivo: 'monto' };
-  const pos = { id: nid(), par, base, lado, entrada: mark, amount, qty: amount / mark, tp: tp || null, sl: sl || null, t: Date.now() };
+  if (ST.pos.length >= MAX_POS) return { ok: false, motivo: 'limite' };
+  const esLong = _lado(lado) !== 'short';
+  const pos = { id: nid(), par: _str(par), base: _str(base), lado: _lado(lado), entrada: mark, amount, qty: amount / mark,
+    tp: _tpsl(tp, mark, esLong, true), sl: _tpsl(sl, mark, esLong, false), t: Date.now() };
   ST.pos.push(pos); guardar();
   return { ok: true, pos };
 }
 
 export function colocarOrden(par, base, lado, amount, precio, mark, tp, sl) {
   if (!(precio > 0) || !(amount > 0) || !isFinite(precio) || !isFinite(amount)) return { ok: false, motivo: 'monto' };
+  if (ST.ord.length >= MAX_ORD) return { ok: false, motivo: 'limite' };
+  const esLong = _lado(lado) !== 'short';
   const desde = mark >= precio ? 'arriba' : 'abajo';
-  const ord = { id: nid(), par, base, lado, amount, precio, desde, tp: tp || null, sl: sl || null, t: Date.now() };
+  const ord = { id: nid(), par: _str(par), base: _str(base), lado: _lado(lado), amount, precio, desde,
+    tp: _tpsl(tp, precio, esLong, true), sl: _tpsl(sl, precio, esLong, false), t: Date.now() };
   ST.ord.push(ord); guardar();
   return { ok: true, ord };
 }
@@ -122,7 +145,9 @@ export function cancelarOrden(id) { const i = ST.ord.findIndex((o) => o.id === i
 export function setTPSL(id, tp, sl) {
   const p = ST.pos.find((x) => x.id === id) || ST.ord.find((x) => x.id === id);
   if (!p) return false;
-  p.tp = (tp > 0) ? tp : null; p.sl = (sl > 0) ? sl : null; guardar(); return true;
+  const ref = _fin(p.entrada) || _fin(p.precio);
+  const esLong = _lado(p.lado) !== 'short';
+  p.tp = _tpsl(tp, ref, esLong, true); p.sl = _tpsl(sl, ref, esLong, false); guardar(); return true;
 }
 
 function registrar(p, salida, pnl, denom, fee, motivo) {

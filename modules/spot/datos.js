@@ -266,26 +266,62 @@ function _amplitud(t) {
   if (!(hi > 0) || !(lo > 0) || !(wa > 0) || hi < lo) return 0;
   return (hi - lo) / wa * 100;
 }
-export async function movers24h({ minVol = 15e6, minAmp = 8, factorBTC = 2, max = 60 } = {}) {
-  const j = await traer('/ticker/24hr');
+/* Lista de tokens de BNB Smart Chain (los que se pueden comprar/vender en PancakeSwap),
+   por simbolo -> { address, logo, name }. De aqui salen los logos REALES y la garantia
+   de que la moneda se puede operar en nuestra dinamica. Se cachea 1h (cambia poco).
+   Esta llamada NO es de Binance: va directa a la lista publica, con CORS. */
+let _bscCache = null, _bscT = 0;
+export async function listaBSC() {
+  const now = Date.now();
+  if (_bscCache && (now - _bscT) < 3600000) return _bscCache;
+  const map = {};
+  const fuentes = [
+    'https://tokens.coingecko.com/binance-smart-chain/all.json',
+    'https://tokens.pancakeswap.finance/pancakeswap-extended.json'
+  ];
+  for (const url of fuentes) {
+    try {
+      const r = await fetch(url, { headers: { accept: 'application/json' } });
+      if (!r.ok) continue;
+      const j = await r.json();
+      const toks = (j && Array.isArray(j.tokens)) ? j.tokens : [];
+      for (const t of toks) {
+        if (!t || (t.chainId && t.chainId !== 56) || !t.symbol || !t.address) continue;
+        const k = String(t.symbol).toUpperCase();
+        if (!map[k]) map[k] = { address: String(t.address), logo: t.logoURI || '', name: t.name || t.symbol };
+      }
+      if (Object.keys(map).length) break;      // con una fuente buena basta
+    } catch (_) { /* probar la siguiente */ }
+  }
+  _bscCache = map; _bscT = now; return map;
+}
+
+/* Movers de ALTA VOLATILIDAD que ademas se operan en PancakeSwap/BSC, con logo real.
+   Volatilidad = amplitud intradia (no el cambio neto). Se exige moverse mas que BTC y
+   tener volumen de verdad. Orden: la MAS volatil primero. Si la lista BSC no carga, se
+   degrada a movers de Binance (sin el filtro de PancakeSwap) para no quedar en blanco. */
+export async function movers24h({ minVol = 5e6, minAmp = 7, factorBTC = 1.5, max = 50 } = {}) {
+  const [j, bsc] = await Promise.all([traer('/ticker/24hr'), listaBSC().catch(() => ({}))]);
   if (!Array.isArray(j)) return [];
+  const usarBSC = bsc && Object.keys(bsc).length > 20;     // solo filtrar por BSC si la lista llego bien
   const apalancado = (s) => /(UP|DOWN|BULL|BEAR)USDT$/.test(s);
-  // BTC como vara de medir: solo entran las que se mueven MAS que Bitcoin.
   const btc = j.find((t) => t && t.symbol === 'BTCUSDT');
   const umbral = Math.max(minAmp, (btc ? _amplitud(btc) : 0) * factorBTC);
   const out = [];
   for (const t of j) {
     const s = (t && t.symbol) || '';
     if (!s.endsWith('USDT') || apalancado(s) || _ESTABLE_USDT.includes(s)) continue;
+    const base = s.slice(0, -4);
+    const info = usarBSC ? bsc[base] : null;
+    if (usarBSC && !info) continue;             // solo lo que se opera en PancakeSwap
     const price = +t.lastPrice, vol = +t.quoteVolume, pct = +t.priceChangePercent, amp = _amplitud(t);
     if (!isFinite(price) || price <= 0 || !isFinite(pct)) continue;
-    if (!(vol >= minVol)) continue;           // liquidez real: se puede comprar y vender
-    if (!(amp >= umbral)) continue;           // volatilidad real: se mueve mas que BTC
-    out.push({ sym: s, base: s.slice(0, -4), price, chgPct: pct, amp, volQuote: vol });
+    if (!(vol >= minVol) || !(amp >= umbral)) continue;
+    out.push({ sym: s, base, price, chgPct: pct, amp, volQuote: vol,
+      address: info ? info.address : '', logo: info ? info.logo : '', name: info ? info.name : base });
   }
-  out.sort((a, b) => b.chgPct - a.chgPct);     // entre las volatiles: mas sube arriba, mas cae abajo
-  if (out.length > max) { const h = Math.ceil(max / 2); return out.slice(0, h).concat(out.slice(-h)); }
-  return out;
+  out.sort((a, b) => b.amp - a.amp);            // la mas volatil, arriba
+  return out.slice(0, max);
 }
 
 /* Stream de velas EN VIVO (@kline) con FALLBACK por región: la vela en formación llega

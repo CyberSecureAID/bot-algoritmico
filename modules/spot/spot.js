@@ -15,9 +15,9 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=19';
-import * as D from './datos.js?v=11';
-import * as M from './motor.js?v=9';
+import { estilos } from './estilos.js?v=20';
+import * as D from './datos.js?v=12';
+import * as M from './motor.js?v=10';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -45,6 +45,10 @@ const S = {
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+/* URL segura para un CSS url(): solo http(s) y sin caracteres que rompan el parentesis
+   (comillas, parentesis, espacios, backslash, <>). Evita inyeccion de CSS por logos de
+   tokens que vienen de fuera (lista BSC de PancakeSwap o GeckoTerminal). */
+const urlCssSeguro = (u) => { u = String(u || ''); return (/^https?:\/\//i.test(u) && !/["'()\\\s<>]/.test(u)) ? u : ''; };
 const dec = (x) => { const a = Math.abs(x); if (!(a > 0)) return 2; if (a >= 1) return 2; if (a >= 0.1) return 3; if (a >= 0.001) return 5; if (a >= 1e-6) return 8; const ceros = Math.floor(-Math.log10(a)); return Math.min(18, ceros + 4); };
 const SUBS = '₀₁₂₃₄₅₆₇₈₉';
 /* Notación compacta para precios con muchos ceros, estilo DexScreener: 0.0₉2954 (el
@@ -114,7 +118,7 @@ function plantilla() {
     <button class="sp-coin" id="sp-coin"><i id="sp-coin-ico">B</i><b id="sp-coin-id">BTC</b>${IC.chev}</button>
     <div class="sp-tf" id="sp-tf"><button class="cur" id="sp-tfcur">1m <span class="cv">▾</span></button><div class="menu" id="sp-tfmenu"></div></div>
     <div class="sp-px"><div class="sp-px-big" id="sp-mark">—</div><div class="sp-px-sub">Mark · <span id="sp-pair">BTCUSDT</span></div></div>
-    <button class="sp-vol" id="sp-vol" title="High volatility movers (24h)"><b>Movers</b><span class="sp-vol-cv">▾</span></button>
+    <button class="sp-vol" id="sp-vol" title="High volatility movers (24h)"><svg class="sp-vol-f" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg><b>Movers</b><span class="sp-vol-cv">▾</span></button>
     <div class="sp-wallet" id="sp-wallet">
       <div class="sp-bal-boxes" id="sp-bal-boxes"></div>
       <button class="sp-coinsbtn" id="sp-coinsbtn" title="All your coins"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><b id="sp-coinsn">0</b><span class="cv">▾</span></button>
@@ -346,8 +350,9 @@ async function cargarLogos() { try { S.logos = await D.logos() || {}; aplicarLog
 function aplicarLogo(el, par) {
   if (!el || !par) return;
   const id = par.coin || par.id;
-  const url = (par.cg && S.logos[par.cg]) || LOGOS_SPOT[id] || (S._logoDex && S._logoDex[id]) || '';
-  if (url) { el.style.backgroundImage = `url(${url})`; el.classList.add('con'); el.textContent = ''; return; }
+  const url = par.logo || (par.cg && S.logos[par.cg]) || LOGOS_SPOT[id] || (S._logoDex && S._logoDex[id]) || '';
+  const safe = urlCssSeguro(url);
+  if (safe) { el.style.backgroundImage = `url("${safe}")`; el.classList.add('con'); el.textContent = ''; return; }
   el.style.backgroundImage = ''; el.classList.remove('con');
   const ic = MONEDAS[id] && MONEDAS[id].icono;                 // emoji como respaldo mientras carga
   el.textContent = (ic && !/^[A-Za-z0-9]$/.test(ic)) ? ic : (id || '?')[0];
@@ -361,7 +366,8 @@ async function cargarLogoDex(par) {
   if (S._logoDex[id] != null) return;                          // ya intentado
   let u = ''; try { u = await D.logoDex(par.addr) || ''; } catch (_) {}
   S._logoDex[id] = u;
-  if (u && S.par && (S.par.coin || S.par.id) === id) { const el = $('sp-coin-ico'); if (el) { el.style.backgroundImage = `url(${u})`; el.classList.add('con'); el.textContent = ''; } }
+  const safe = urlCssSeguro(u);
+  if (safe && S.par && (S.par.coin || S.par.id) === id) { const el = $('sp-coin-ico'); if (el) { el.style.backgroundImage = `url("${safe}")`; el.classList.add('con'); el.textContent = ''; } }
 }
 
 function cargarLib() { return new Promise((res, rej) => { if (window.LightweightCharts) return res(); let sc = $('sp-lwc'); if (sc) { sc.addEventListener('load', () => res()); sc.addEventListener('error', () => rej(new Error('lib'))); return; } sc = document.createElement('script'); sc.id = 'sp-lwc'; sc.src = LIB; sc.onload = () => res(); sc.onerror = () => rej(new Error('lib')); document.head.appendChild(sc); }); }
@@ -759,7 +765,7 @@ function filaOrd(o) {
     <td>${celdaTPSL(o, 'tp', '#2ee86a')}</td><td>${celdaTPSL(o, 'sl', '#ff5b6e')}</td>
     <td><button class="sp-x" data-cancel="${o.id}">Cancel</button></td></tr>`;
 }
-function logoChip(parId) { const p = D.PARES.find((x) => x.id === parId); const url = p && p.cg && S.logos[p.cg]; return url ? `<i class="con" style="background-image:url(${esc(url)})"></i>` : `<i>${esc((parId || '?')[0])}</i>`; }
+function logoChip(parId) { const p = D.PARES.find((x) => x.id === parId); const url = urlCssSeguro(p && p.cg && S.logos[p.cg]); return url ? `<i class="con" style="background-image:url(${esc(url)})"></i>` : `<i>${esc((parId || '?')[0])}</i>`; }
 function refrescarPnL() {
   if (S.tab !== 'pos') return;
   M.posiciones().forEach((p) => {
@@ -1514,7 +1520,7 @@ function menuMonedas() {
       return;
     }
     const f = !q ? lista : lista.filter((p) => (p.id + ' ' + (p.n || '')).toLowerCase().includes(q.toLowerCase()));
-    lst.innerHTML = f.slice(0, 60).map((p) => { const url = p.cg && S.logos[p.cg]; return `<button class="it ${p.id === S.par.id ? 'on' : ''}" data-id="${esc(p.id)}">${url ? `<i class="con" style="background-image:url(${esc(url)})"></i>` : `<i>${esc(p.id[0])}</i>`}<b>${esc(p.id)}</b><span>${esc(p.n || '')}</span></button>`; }).join('');
+    lst.innerHTML = f.slice(0, 60).map((p) => { const url = urlCssSeguro(p.cg && S.logos[p.cg]); return `<button class="it ${p.id === S.par.id ? 'on' : ''}" data-id="${esc(p.id)}">${url ? `<i class="con" style="background-image:url(${esc(url)})"></i>` : `<i>${esc(p.id[0])}</i>`}<b>${esc(p.id)}</b><span>${esc(p.n || '')}</span></button>`; }).join('');
     lst.querySelectorAll('.it').forEach((b) => b.onclick = async () => { await seleccionarMoneda(b.dataset.id); montarBarraDemo(); });
   };
   m.innerHTML = `<input type="text" placeholder="Paste contract or search symbol" id="sp-cm-q"><div class="sp-lst"></div>`;
@@ -1538,9 +1544,9 @@ function fmtPrecioMv(p) {
 /* Carga en la grafica CUALQUIER par USDT de Binance (los movers no estan en D.PARES).
    Son pares reales de Binance, asi que la gráfica, el ticker y el stream funcionan por
    par.s = BASE+USDT, igual que una moneda normal. */
-function cargarParBinance(base) {
+function cargarParBinance(base, logo) {
   if (!base) return;
-  const p = { id: base, coin: base, s: base + 'USDT', fuente: 'binance', n: base, cg: null, simbolo: base, disp: base + '/USDT' };
+  const p = { id: base, coin: base, s: base + 'USDT', fuente: 'binance', n: base, cg: null, simbolo: base, disp: base + '/USDT', logo: logo || '' };
   cerrarPops();
   if (S.par && S.par.id === p.id && S.par.fuente === 'binance') return;
   S.par = p; S._posAuto = null;
@@ -1548,8 +1554,6 @@ function cargarParBinance(base) {
 }
 /* Selector de ALTA VOLATILIDAD: los que mas se mueven hoy (Binance 24h), con liquidez,
    para operar porcentajes grandes. Reusa el pop; cada fila: logo+nombre | precio | %. */
-/* Logo de la moneda por CDN (por simbolo), con letra de respaldo si no existe. */
-function logoMoverUrl(base) { return 'https://assets.coincap.io/assets/icons/' + String(base || '').toLowerCase() + '@2x.png'; }
 let _moversCache = null, _moversT = 0, _moversProm = null;
 /* Una sola fuente de datos con cache de 60s y sin pedir dos veces a la vez. */
 function traerMovers() {
@@ -1585,13 +1589,14 @@ async function menuMovers() {
     if (!f.length) { lst.innerHTML = `<div class="sp-mv-msg">${datos.length ? 'No match.' : 'No high volatility movers right now.'}</div>`; return; }
     lst.innerHTML = f.map((d) => {
       const up = d.chgPct >= 0;
-      return `<button class="mv${(S.par && S.par.id === d.base) ? ' on' : ''}" data-base="${esc(d.base)}">
-        <span class="mv-l"><i class="mv-ic">${esc((d.base[0] || '?'))}<img src="${esc(logoMoverUrl(d.base))}" alt="" loading="lazy" onerror="this.remove()"></i><b>${esc(d.base)}</b><small>USDT</small></span>
+      const img = d.logo ? `<img src="${esc(d.logo)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+      return `<button class="mv${(S.par && S.par.id === d.base) ? ' on' : ''}" data-base="${esc(d.base)}" data-logo="${esc(d.logo || '')}">
+        <span class="mv-l"><i class="mv-ic">${esc((d.base[0] || '?'))}${img}</i><b>${esc(d.base)}</b><small>USDT</small></span>
         <span class="mv-p">${esc(fmtPrecioMv(d.price))}</span>
         <span class="mv-c ${up ? 'up' : 'dn'}">${up ? '+' : ''}${d.chgPct.toFixed(2)}%</span>
       </button>`;
     }).join('');
-    lst.querySelectorAll('.mv').forEach((b) => b.onclick = () => cargarParBinance(b.dataset.base));
+    lst.querySelectorAll('.mv').forEach((b) => b.onclick = () => cargarParBinance(b.dataset.base, b.dataset.logo));
   };
   q.oninput = pintar;
   q.onkeydown = (e) => e.stopPropagation();

@@ -28,7 +28,8 @@ export function estilos() {
   .sp-coin i.con{color:transparent; border-color:transparent}
   .sp-coin svg{width:12px; height:12px; opacity:.6}
   /* Boton del selector de alta volatilidad (en el hueco al lado del precio). */
-  .sp-vol{display:inline-flex; align-items:center; gap:8px; flex:0 0 auto; height:36px; padding:0 12px; border-radius:10px; background:#141b24; border:1px solid var(--sp-line2); color:var(--sp-ink2); font-family:var(--sp-disp); font-weight:700; font-size:12.5px; cursor:pointer}
+  .sp-vol{display:inline-flex; align-items:center; gap:7px; flex:0 0 auto; height:36px; padding:0 11px; border-radius:10px; background:#141b24; border:1px solid var(--sp-line2); color:var(--sp-ink2); font-family:var(--sp-disp); font-weight:700; font-size:12.5px; cursor:pointer}
+  .sp-vol-f{width:14px; height:15px; flex:0 0 auto; fill:#ff9f43}        /* fueguito dibujado, no emoji */
   .sp-vol b{color:var(--sp-ink); font-weight:700}
   .sp-vol-cv{font-size:10px; color:var(--sp-ink3); opacity:.85}
   .sp-vol:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
