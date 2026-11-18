@@ -89,7 +89,7 @@ const fmt = (p) => {
    Misma URL ?v que spot.js para compartir la instancia del modulo.
    ══════════════════════════════════════════════════════════════ */
 let _spot = null;
-try { import(new URL('../../modules/spot/motor.js?v=7', import.meta.url).href).then((m) => { _spot = m; if (_marcadorTick) { try { _marcadorTick(); } catch (_) {} } }).catch(() => {}); } catch (_) {}
+try { import(new URL('../../modules/spot/motor.js?v=8', import.meta.url).href).then((m) => { _spot = m; if (_marcadorTick) { try { _marcadorTick(); } catch (_) {} } }).catch(() => {}); } catch (_) {}
 /* Flechas de Footprint Pro (verde = comprador/long, roja = vendedor/short) para el icono de la ficha. */
 const IMG_FLECHA_UP = new URL('../img/fp-flecha-verde.webp', import.meta.url).href;
 const IMG_FLECHA_DN = new URL('../img/fp-flecha-roja.webp', import.meta.url).href;
@@ -432,6 +432,12 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
   const par = cfg.par ? cfg.par() : '';
   let actual = (cfg.precioActual && cfg.precioActual()) || precio;
 
+  /* Modo por defecto segun DONDE se hizo clic derecho:
+     - Clic en un precio ALEJADO del actual  -> LIMIT en ese precio (el usuario marco un nivel).
+     - Clic en el precio actual (o muy cerca) -> MARKET (abre a precio de ahora).
+     Umbral relativo (0.15%) para que valga igual en monedas caras y baratas. */
+  const modoInicial = (precio > 0 && actual > 0 && Math.abs(precio - actual) / actual > 0.0015) ? 'limit' : 'market';
+
   const d = document.createElement('div');
   d.className = 'od-ficha ' + (vender ? 'vender' : 'comprar');
   d.innerHTML = `
@@ -487,10 +493,14 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
   colocar(d, cx, cy, true);
   d.addEventListener('click', (e) => e.stopPropagation());
 
+  /* Si el usuario la arrastra, se respeta su posicion y no se recoloca sola. */
+  let movida = false;
+
   /* Si la ficha crece (al escribir aparece el resumen), se recoloca
-     para que el botón nunca quede fuera de la pantalla. */
+     para que el botón nunca quede fuera de la pantalla. Salvo que el
+     usuario ya la haya movido a mano. */
   try {
-    const vigilante = new ResizeObserver(() => colocar(d, cx, cy, true));
+    const vigilante = new ResizeObserver(() => { if (!movida) colocar(d, cx, cy, true); });
     vigilante.observe(d);
     d._obs = vigilante;
   } catch (_) {}
@@ -599,7 +609,7 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     if (et) { et.className = 'od-saldo alerta'; et.textContent = motivo; }
   }
 
-  let modo = 'market';
+  let modo = modoInicial;
   // Precio de entrada: a mercado usa el precio de AHORA; limit usa el nivel marcado.
   const entryPx = () => (modo === 'limit' && precio > 0) ? precio : actual;
   const refrescar = () => {
@@ -723,6 +733,47 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
       recomputarPoder();   // el poder de compra convertido sigue vivo con el precio
     }
   }, 1000);
+
+  /* Estado inicial del modo: si abrio en Limit (clic en un nivel), marca el toggle
+     y sincroniza encabezado/boton/resumen. En Market el template ya es coherente. */
+  if (modo === 'limit') {
+    d.querySelectorAll('[data-modo]').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit'));
+  }
+  refrescar();
+
+  /* ── Arrastrar la ficha ──
+     Se agarra por el encabezado (zona limpia, sin botones ni campos) y se mueve a gusto,
+     para ponerla donde no tape lo que el usuario quiere ver. Al moverla se desactiva la
+     recolocacion automatica. Funciona con raton y con el dedo (pointer events). */
+  const cab = d.querySelector('.od-cab');
+  if (cab) {
+    cab.addEventListener('pointerdown', (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      if (e.target.closest('button, input, a, select, .od-x')) return;   // no robar el clic a un control
+      const r = d.getBoundingClientRect();
+      const ox = e.clientX - r.left, oy = e.clientY - r.top;
+      const x0 = e.clientX, y0 = e.clientY;
+      let arrastrando = false;
+      const mover = (ev) => {
+        if (!arrastrando && (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0)) < 3) return;
+        arrastrando = true; movida = true;
+        if (ev.cancelable) ev.preventDefault();
+        const w = d.offsetWidth, h = d.offsetHeight, m = 6;
+        let nx = ev.clientX - ox, ny = ev.clientY - oy;
+        nx = Math.max(m, Math.min(nx, window.innerWidth - w - m));
+        ny = Math.max(m, Math.min(ny, window.innerHeight - h - m));
+        d.style.left = nx + 'px'; d.style.top = ny + 'px';
+      };
+      const soltar = () => {
+        document.removeEventListener('pointermove', mover);
+        document.removeEventListener('pointerup', soltar);
+        document.removeEventListener('pointercancel', soltar);
+      };
+      document.addEventListener('pointermove', mover);
+      document.addEventListener('pointerup', soltar);
+      document.addEventListener('pointercancel', soltar);
+    });
+  }
 
   setTimeout(() => { try { inp.focus(); } catch (_) {} }, 80);
 }
@@ -1657,7 +1708,7 @@ function estilos() {
     display:grid;place-items:center;padding:0;cursor:pointer;font-size:13px;z-index:20;
     background:rgba(255,255,255,.08);border:1px solid #3a424c;color:#b7bdc6}
   .od-x:hover{background:rgba(255,255,255,.14);color:#eaecef}
-  .od-cab{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;padding-right:44px}
+  .od-cab{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;padding-right:44px;cursor:move;user-select:none;-webkit-user-select:none;touch-action:none}
   .od-ic{font-size:17px;display:flex;align-items:center;margin-top:1px}
   .od-ic-img{width:19px;height:19px;display:block;object-fit:contain}
   .od-ficha.comprar .od-ic{color:#2ee86a}
