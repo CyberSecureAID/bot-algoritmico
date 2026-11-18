@@ -682,7 +682,17 @@ async function arrancarWallet() {
   clearInterval(_walletTimer); _walletTimer = setInterval(() => { try { renderWallet(); } catch (_) {} }, 25000);
 }
 
-function operar(lado) {
+/* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
+let _spC = null;
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=1'); return _spC; }
+function _errSpot(e) {
+  const m = String((e && (e.reason || e.shortMessage || e.message)) || e);
+  if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.';
+  if (/insufficient/i.test(m)) return 'Not enough balance or allowance for that amount.';
+  return m.slice(0, 140);
+}
+
+async function operar(lado) {
   if (!S.side) { toast('Pick Long or Short above first.', 'warn'); return; }
   if (lado !== S.side) return;   // el botón contrario está deshabilitado
   if (!(S.cap > 0)) { toast('Enter an amount first.', 'warn'); return; }
@@ -691,23 +701,49 @@ function operar(lado) {
   const pxRef = S.modo === 'limit' ? S.limitPx : S.mark;
   if (!(pxRef > 0)) { toast('No price yet.', 'bad'); return; }
   // SPOT: long gasta USDT (amount = S.cap USDT). short vende S.cap monedas base;
-  // su valor en USDT = S.cap · precio. Validación no custodial contra la wallet.
+  // su valor en USDT = S.cap · precio.
   const amountUsdt = lado === 'short' ? S.cap * pxRef : S.cap;
-  if (S.walletOn) {
-    if (lado === 'long' && (S.saldos.USDT || 0) + 1e-9 < amountUsdt) { toast('Not enough USDT in your wallet for that amount.', 'bad'); return; }
-    if (lado === 'short') { const have = (S.saldos[S.shortCoin] || 0); if (have + 1e-9 < S.cap) { toast(`Not enough ${unidadActual()} in your wallet to sell that amount.`, 'bad'); return; } }
-  }
   const tp = tpslPrecioReal('tp', lado), sl = tpslPrecioReal('sl', lado);
-  let r;
+
+  // ── LIMIT: por ahora queda marcada en el registro; se disparará cuando conectemos el keeper. ──
   if (S.modo === 'limit') {
     if (!(S.limitPx > 0)) { toast('Select Limit, then click the chart to mark the entry.', 'warn'); return; }
-    r = M.colocarOrden(S.par.id, base, lado, amountUsdt, S.limitPx, S.mark, tp, sl);
-    if (r.ok) { toast(`Marked ${lado} at ${fmtP(S.limitPx)}. The price decides when it fills.`, 'ok'); S.limitPx = 0; $('sp-limit').value = ''; dibujarLimit(); }
-  } else {
-    r = M.abrirMercado(S.par.id, base, lado, amountUsdt, S.mark, tp, sl);
-    if (r.ok) { flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened'); toast(`${lado === 'long' ? 'Long' : 'Short'} opened at ${fmtP(r.pos.entrada)}`, 'ok'); snd('open'); }
+    const r = M.colocarOrden(S.par.id, base, lado, amountUsdt, S.limitPx, S.mark, tp, sl);
+    if (!r.ok) { toast('Could not mark the order.', 'bad'); return; }
+    toast(`Marked ${lado} at ${fmtP(S.limitPx)}. It will fire once the automatic executor is connected.`, 'ok');
+    S.limitPx = 0; $('sp-limit').value = ''; dibujarLimit();
+    $('sp-tp').value = ''; $('sp-sl').value = ''; S.cap = 0; S.tam = 0; sincronCap(); renderPos(); renderEntry();
+    return;
   }
-  if (!r.ok) { toast('Could not place the order.', 'bad'); return; }
+
+  // ── MARKET ── Con wallet conectada y moneda operable en BSC: transacción real (no custodial).
+  let operable = false;
+  try { const C = await _contratoSpot(); operable = C.operableOnchain(S.par); } catch (_) {}
+
+  if (S.walletOn && operable) {
+    const btnL = $('sp-long'), btnS = $('sp-short');
+    if (btnL) btnL.disabled = true; if (btnS) btnS.disabled = true;
+    toast('Confirm the transaction in your wallet…', 'warn');
+    try {
+      const C = await _contratoSpot();
+      const res = await C.abrirMercadoSpot({ par: S.par, lado, capUsdt: amountUsdt, slippageBps: 100, floorOut: 0 });
+      // Se registra en el panel para seguirla en Positions (el PnL en vivo sale igual).
+      const r = M.abrirMercado(S.par.id, base, lado, amountUsdt, S.mark, tp, sl);
+      if (r.ok) flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened');
+      toast(`${lado === 'long' ? 'Long' : 'Short'} opened on-chain · ${res.hash.slice(0, 10)}…`, 'ok'); snd('open');
+    } catch (e) {
+      toast(_errSpot(e), 'bad');
+      setSide(S.side);   // rehabilita los botones
+      return;
+    }
+  } else {
+    // Sin wallet (vista previa) o moneda aún no operable on chain: queda en el registro local.
+    const r = M.abrirMercado(S.par.id, base, lado, amountUsdt, S.mark, tp, sl);
+    if (!r.ok) { toast('Could not open the position.', 'bad'); return; }
+    flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened');
+    toast(S.walletOn ? `${lado} opened (this coin is not on-chain yet; tracked locally).` : `${lado} opened at ${fmtP(r.pos.entrada)} (preview · connect your wallet to trade for real).`, S.walletOn ? 'warn' : 'ok');
+    snd('open');
+  }
   $('sp-tp').value = ''; $('sp-sl').value = '';
   S.cap = 0; S.tam = 0; sincronCap();
   renderPos(); renderEntry();
@@ -1544,9 +1580,9 @@ function fmtPrecioMv(p) {
 /* Carga en la grafica CUALQUIER par USDT de Binance (los movers no estan en D.PARES).
    Son pares reales de Binance, asi que la gráfica, el ticker y el stream funcionan por
    par.s = BASE+USDT, igual que una moneda normal. */
-function cargarParBinance(base, logo) {
+function cargarParBinance(base, logo, addr) {
   if (!base) return;
-  const p = { id: base, coin: base, s: base + 'USDT', fuente: 'binance', n: base, cg: null, simbolo: base, disp: base + '/USDT', logo: logo || '' };
+  const p = { id: base, coin: base, s: base + 'USDT', fuente: 'binance', n: base, cg: null, simbolo: base, disp: base + '/USDT', logo: logo || '', address: (typeof addr === 'string' && /^0x[0-9a-fA-F]{40}$/.test(addr)) ? addr : '' };
   cerrarPops();
   if (S.par && S.par.id === p.id && S.par.fuente === 'binance') return;
   S.par = p; S._posAuto = null;
@@ -1590,13 +1626,13 @@ async function menuMovers() {
     lst.innerHTML = f.map((d) => {
       const up = d.chgPct >= 0;
       const img = d.logo ? `<img src="${esc(d.logo)}" alt="" loading="lazy" onerror="this.remove()">` : '';
-      return `<button class="mv${(S.par && S.par.id === d.base) ? ' on' : ''}" data-base="${esc(d.base)}" data-logo="${esc(d.logo || '')}">
+      return `<button class="mv${(S.par && S.par.id === d.base) ? ' on' : ''}" data-base="${esc(d.base)}" data-logo="${esc(d.logo || '')}" data-addr="${esc(d.address || '')}">
         <span class="mv-l"><i class="mv-ic">${esc((d.base[0] || '?'))}${img}</i><b>${esc(d.base)}</b><small>USDT</small></span>
         <span class="mv-p">${esc(fmtPrecioMv(d.price))}</span>
         <span class="mv-c ${up ? 'up' : 'dn'}">${up ? '+' : ''}${d.chgPct.toFixed(2)}%</span>
       </button>`;
     }).join('');
-    lst.querySelectorAll('.mv').forEach((b) => b.onclick = () => cargarParBinance(b.dataset.base, b.dataset.logo));
+    lst.querySelectorAll('.mv').forEach((b) => b.onclick = () => cargarParBinance(b.dataset.base, b.dataset.logo, b.dataset.addr));
   };
   q.oninput = pintar;
   q.onkeydown = (e) => e.stopPropagation();
