@@ -27,6 +27,11 @@ export function estilos() {
   .sp-coin i{width:24px; height:24px; border-radius:50%; flex:0 0 auto; background:#232b36 center/cover no-repeat; display:grid; place-items:center; font-family:var(--sp-disp); font-weight:800; font-size:11px; color:#c9d1d9; border:1px solid rgba(255,255,255,.08)}
   .sp-coin i.con{color:transparent; border-color:transparent}
   .sp-coin svg{width:12px; height:12px; opacity:.6}
+  /* Boton del selector de alta volatilidad (en el hueco al lado del precio). */
+  .sp-vol{display:inline-flex; align-items:center; gap:7px; flex:0 0 auto; height:36px; padding:0 13px 0 10px; border-radius:10px; background:#141b24; border:1px solid var(--sp-line2); color:var(--sp-ink2); font-family:var(--sp-disp); font-weight:700; font-size:12.5px; cursor:pointer}
+  .sp-vol svg{width:15px; height:15px; color:var(--sp-gold)}
+  .sp-vol b{color:var(--sp-ink); font-weight:700}
+  .sp-vol:hover{border-color:var(--sp-gold-soft); color:var(--sp-gold)}
   /* Temporalidad: dropdown, como el resto de secciones */
   .sp-tf{position:relative; flex:0 0 auto}
   .sp-tf .cur{display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 11px; border-radius:9px; background:#141b24; border:1px solid var(--sp-line2); color:var(--sp-ink); font-family:var(--sp-mono); font-weight:700; font-size:12.5px}
@@ -247,6 +252,25 @@ export function estilos() {
   #sp-coinmenu .it i{width:22px; height:22px; border-radius:50%; flex:0 0 auto; background:#232b36 center/cover no-repeat; display:grid; place-items:center; font-family:var(--sp-disp); font-weight:800; font-size:9px; color:#c9d1d9}
   #sp-coinmenu .it i.con{color:transparent}
   #sp-coinmenu .it b{min-width:50px; color:var(--sp-ink); font-weight:700} #sp-coinmenu .it.on b{color:var(--sp-gold)} #sp-coinmenu .it span{flex:1; color:var(--sp-ink3); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  /* Selector de alta volatilidad: logo+nombre | precio | %, estilo exchange. */
+  .sp-pop-mv{width:344px; max-width:calc(100vw - 16px); padding:10px}
+  .sp-mv-head{display:flex; align-items:baseline; justify-content:space-between; padding:2px 6px 9px}
+  .sp-mv-head b{font-family:var(--sp-disp); font-weight:800; font-size:14px; color:var(--sp-ink)}
+  .sp-mv-head span{font-family:var(--sp-mono); font-size:10px; letter-spacing:.04em; color:var(--sp-ink3)}
+  .sp-mv-q{width:100%; height:34px; margin-bottom:8px; border-radius:9px; border:1px solid var(--sp-line2); background:#0d131b; color:var(--sp-ink); font-family:var(--sp-mono); font-size:12.5px; padding:0 11px; outline:none}
+  .sp-mv-q:focus{border-color:var(--sp-gold-soft)}
+  .sp-mv-lst{max-height:min(60vh,380px); overflow-y:auto; display:flex; flex-direction:column; gap:2px}
+  .sp-mv-msg{padding:24px 10px; text-align:center; color:var(--sp-ink3); font-family:var(--sp-mono); font-size:12px}
+  #sp-movermenu .mv{display:grid; grid-template-columns:1fr auto 66px; align-items:center; gap:10px; width:100%; min-height:42px; padding:0 10px; border-radius:9px; border:none; background:transparent; cursor:pointer; text-align:left}
+  #sp-movermenu .mv:hover{background:rgba(255,255,255,.05)} #sp-movermenu .mv.on{background:rgba(232,184,75,.1)}
+  #sp-movermenu .mv-l{display:flex; align-items:center; gap:9px; min-width:0}
+  #sp-movermenu .mv-l i{width:24px; height:24px; border-radius:50%; flex:0 0 auto; background:#232b36; display:grid; place-items:center; font-family:var(--sp-disp); font-weight:800; font-size:10px; color:#c9d1d9}
+  #sp-movermenu .mv-l b{color:var(--sp-ink); font-family:var(--sp-mono); font-weight:700; font-size:13px}
+  #sp-movermenu .mv-l small{color:var(--sp-ink3); font-size:10px; font-family:var(--sp-mono)}
+  #sp-movermenu .mv.on .mv-l b{color:var(--sp-gold)}
+  #sp-movermenu .mv-p{font-family:var(--sp-mono); font-size:12.5px; color:var(--sp-ink2); text-align:right; white-space:nowrap}
+  #sp-movermenu .mv-c{font-family:var(--sp-mono); font-weight:700; font-size:12.5px; text-align:right; white-space:nowrap}
+  #sp-movermenu .mv-c.up{color:var(--sp-up)} #sp-movermenu .mv-c.dn{color:var(--sp-down)}
   #sp-levpop{width:300px}
   #sp-levpop .t{font-family:var(--sp-disp); font-weight:800; font-size:14px; margin-bottom:4px}
   #sp-levpop .big{font-family:var(--sp-disp); font-weight:800; font-size:30px; color:var(--sp-gold); text-align:center; margin:4px 0}

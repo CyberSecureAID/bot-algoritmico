@@ -15,8 +15,8 @@
    Autónomo: datos, motor y gráfica propios en modules/spot/. Reutiliza sin
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
-import { estilos } from './estilos.js?v=17';
-import * as D from './datos.js?v=8';
+import { estilos } from './estilos.js?v=18';
+import * as D from './datos.js?v=10';
 import * as M from './motor.js?v=8';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
@@ -114,6 +114,7 @@ function plantilla() {
     <button class="sp-coin" id="sp-coin"><i id="sp-coin-ico">B</i><b id="sp-coin-id">BTC</b>${IC.chev}</button>
     <div class="sp-tf" id="sp-tf"><button class="cur" id="sp-tfcur">1m <span class="cv">▾</span></button><div class="menu" id="sp-tfmenu"></div></div>
     <div class="sp-px"><div class="sp-px-big" id="sp-mark">—</div><div class="sp-px-sub">Mark · <span id="sp-pair">BTCUSDT</span></div></div>
+    <button class="sp-vol" id="sp-vol" title="High volatility movers (24h)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg><b>Movers</b></button>
     <div class="sp-wallet" id="sp-wallet">
       <div class="sp-bal-boxes" id="sp-bal-boxes"></div>
       <button class="sp-coinsbtn" id="sp-coinsbtn" title="All your coins"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><b id="sp-coinsn">0</b><span class="cv">▾</span></button>
@@ -186,6 +187,7 @@ function plantilla() {
 function cablear(ov) {
   $('sp-back').onclick = cerrar;
   $('sp-coin').onclick = (e) => { e.stopPropagation(); menuMonedas(); };
+  { const v = $('sp-vol'); if (v) v.onclick = (e) => { e.stopPropagation(); menuMovers(); }; }
   { const cb = $('sp-coinsbtn'); if (cb) cb.onclick = (e) => { e.stopPropagation(); menuMonedasWallet(); }; }
   $('sp-export').onclick = exportarChart;
   $('sp-help-btn').onclick = (e) => { e.stopPropagation(); ayuda(); };
@@ -1515,8 +1517,74 @@ function menuMonedas() {
   m.onclick = (e) => e.stopPropagation();
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 0);
 }
-function cierraPopFuera(e) { const ids = ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu']; const anc = ['sp-coin', 'sp-amtunit', 'sp-coinsbtn']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
-function cerrarPops() { ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
+/* Precio legible para la lista de movers: caras con 2 decimales, baratas con los
+   decimales que hagan falta (ej. PEPE 0.0000123). */
+function fmtPrecioMv(p) {
+  if (!(p > 0)) return '—';
+  if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (p >= 1) return p.toFixed(2);
+  if (p >= 0.01) return p.toFixed(4);
+  if (p >= 0.0001) return p.toFixed(6);
+  return p.toPrecision(2);
+}
+/* Carga en la grafica CUALQUIER par USDT de Binance (los movers no estan en D.PARES).
+   Son pares reales de Binance, asi que la gráfica, el ticker y el stream funcionan por
+   par.s = BASE+USDT, igual que una moneda normal. */
+function cargarParBinance(base) {
+  if (!base) return;
+  const p = { id: base, coin: base, s: base + 'USDT', fuente: 'binance', n: base, cg: null, simbolo: base, disp: base + '/USDT' };
+  cerrarPops();
+  if (S.par && S.par.id === p.id && S.par.fuente === 'binance') return;
+  S.par = p; S._posAuto = null;
+  cargarDatos();
+}
+/* Selector de ALTA VOLATILIDAD: los que mas se mueven hoy (Binance 24h), con liquidez,
+   para operar porcentajes grandes. Reusa el pop; cada fila: logo+nombre | precio | %. */
+let _moversCache = null, _moversT = 0;
+async function menuMovers() {
+  cerrarPops();
+  const anc = $('sp-vol') || $('sp-coin'); const r = anc.getBoundingClientRect();
+  const m = document.createElement('div'); m.className = 'sp-pop sp-pop-mv'; m.id = 'sp-movermenu';
+  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 348)) + 'px';
+  m.style.top = (r.bottom + 6) + 'px';
+  m.innerHTML = `
+    <div class="sp-mv-head"><b>Top movers</b><span>24h · high volatility</span></div>
+    <input type="text" class="sp-mv-q" id="sp-mv-q" placeholder="Filter by symbol" autocomplete="off">
+    <div class="sp-lst sp-mv-lst" id="sp-mv-lst"><div class="sp-mv-msg">Loading movers…</div></div>`;
+  document.body.appendChild(m);
+  m.onclick = (e) => e.stopPropagation();
+  setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 0);
+  const q = m.querySelector('#sp-mv-q');
+  let datos = [];
+  const pintar = () => {
+    const lst = $('sp-mv-lst'); if (!lst) return;
+    const txt = (q.value || '').trim().toUpperCase();
+    const f = txt ? datos.filter((d) => d.base.includes(txt)) : datos;
+    if (!f.length) { lst.innerHTML = `<div class="sp-mv-msg">${datos.length ? 'No match.' : 'No high volatility movers right now.'}</div>`; return; }
+    lst.innerHTML = f.map((d) => {
+      const up = d.chgPct >= 0;
+      return `<button class="mv${(S.par && S.par.id === d.base) ? ' on' : ''}" data-base="${esc(d.base)}">
+        <span class="mv-l"><i>${esc((d.base[0] || '?'))}</i><b>${esc(d.base)}</b><small>USDT</small></span>
+        <span class="mv-p">${esc(fmtPrecioMv(d.price))}</span>
+        <span class="mv-c ${up ? 'up' : 'dn'}">${up ? '+' : ''}${d.chgPct.toFixed(2)}%</span>
+      </button>`;
+    }).join('');
+    lst.querySelectorAll('.mv').forEach((b) => b.onclick = () => cargarParBinance(b.dataset.base));
+  };
+  q.oninput = pintar;
+  q.onkeydown = (e) => e.stopPropagation();
+  setTimeout(() => { try { q.focus(); } catch (_) {} }, 0);
+  try {
+    const now = Date.now();
+    if (_moversCache && (now - _moversT) < 45000) datos = _moversCache;
+    else { datos = await D.movers24h(); _moversCache = datos; _moversT = now; }
+    if ($('sp-movermenu')) pintar();
+  } catch (_) {
+    const lst = $('sp-mv-lst'); if (lst) lst.innerHTML = `<div class="sp-mv-msg">Could not load movers. Try again.</div>`;
+  }
+}
+function cierraPopFuera(e) { const ids = ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu', 'sp-movermenu']; const anc = ['sp-coin', 'sp-amtunit', 'sp-coinsbtn', 'sp-vol']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
+function cerrarPops() { ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu', 'sp-movermenu'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
 
 function toast(msg, tipo) { const old = document.querySelector('.sp-toast'); if (old) old.remove(); const t = document.createElement('div'); t.className = 'sp-toast ' + (tipo || ''); t.textContent = msg; document.body.appendChild(t); setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => { try { t.remove(); } catch (_) {} }, 320); }, 2600); }
 

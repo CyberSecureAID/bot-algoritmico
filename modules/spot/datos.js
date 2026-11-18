@@ -247,6 +247,34 @@ export async function ticker(simbolo) {
   };
 }
 
+/* ───────── TOP MOVERS 24h (selector de alta volatilidad) ─────────
+   Trae el 24hr de TODOS los pares de Binance SPOT (una sola llamada, mismo espejo y
+   fallback regional que el resto) y deja SOLO pares reales, liquidos y muy volatiles:
+   · solo contra USDT (lo que opera Spot),
+   · fuera los apalancados (UP/DOWN/BULL/BEAR) y las estables de $1,
+   · volumen 24h minimo (liquidez de verdad, para que se puedan comprar y vender),
+   · variacion minima (alta volatilidad).
+   Orden tipo exchange: el que mas sube primero, bajando hasta el que mas cae.
+   Devuelve [{ sym, base, price, chgPct, volQuote }]. */
+const _ESTABLE_USDT = ['USDCUSDT', 'FDUSDUSDT', 'TUSDUSDT', 'BUSDUSDT', 'USDPUSDT', 'DAIUSDT', 'EURUSDT', 'GBPUSDT', 'USD1USDT', 'AEURUSDT', 'EURIUSDT', 'XUSDUSDT'];
+export async function movers24h({ minPct = 10, minVol = 1e6, max = 120 } = {}) {
+  const j = await traer('/ticker/24hr');
+  if (!Array.isArray(j)) return [];
+  const apalancado = (s) => /(UP|DOWN|BULL|BEAR)USDT$/.test(s);
+  const out = [];
+  for (const t of j) {
+    const s = t.symbol || '';
+    if (!s.endsWith('USDT') || apalancado(s) || _ESTABLE_USDT.includes(s)) continue;
+    const pct = +t.priceChangePercent, vol = +t.quoteVolume, price = +t.lastPrice;
+    if (!isFinite(pct) || !isFinite(price) || price <= 0) continue;
+    if (Math.abs(pct) < minPct || !(vol >= minVol)) continue;
+    out.push({ sym: s, base: s.slice(0, -4), price, chgPct: pct, volQuote: vol });
+  }
+  out.sort((a, b) => b.chgPct - a.chgPct);          // mas sube arriba, mas cae abajo
+  if (out.length > max) { const h = Math.ceil(max / 2); return out.slice(0, h).concat(out.slice(-h)); }
+  return out;
+}
+
 /* Stream de velas EN VIVO (@kline) con FALLBACK por región: la vela en formación llega
    en cada tick (tiempo real, no sondeo). Si el WS del espejo .vision no abre (bloqueo en
    EE. UU.), cambia a Binance.US, que sí abre en EE. UU. con el mismo stream. Reconecta
