@@ -51,6 +51,7 @@ function _limpiaPos(p) {
   return { id: _str(p.id || nid(), 40), par: _str(p.par), base: _str(p.base), lado: _lado(p.lado),
     entrada, amount, qty: _fin(p.qty, amount / entrada),
     chainId: (p.chainId != null && isFinite(+p.chainId) && +p.chainId >= 0) ? Math.floor(+p.chainId) : null,
+    pend: !!p.pend, cerrando: !!p.cerrando,
     tp: p.tp == null ? null : (_fin(p.tp) || null), sl: p.sl == null ? null : (_fin(p.sl) || null), t: _fin(p.t, Date.now()) };
 }
 function _limpiaOrd(o) {
@@ -120,15 +121,31 @@ export function pnlDe(p, mark) {
   return { pnl, denom: p.base || 'COIN', qty, pct };
 }
 
-export function abrirMercado(par, base, lado, amount, mark, tp, sl, chainId) {
+export function abrirMercado(par, base, lado, amount, mark, tp, sl, chainId, pend) {
   if (!(mark > 0) || !(amount > 0) || !isFinite(mark) || !isFinite(amount)) return { ok: false, motivo: 'monto' };
   if (ST.pos.length >= MAX_POS) return { ok: false, motivo: 'limite' };
   const esLong = _lado(lado) !== 'short';
   const cid = (chainId != null && isFinite(+chainId) && +chainId >= 0) ? Math.floor(+chainId) : null;
   const pos = { id: nid(), par: _str(par), base: _str(base), lado: _lado(lado), entrada: mark, amount, qty: amount / mark,
-    chainId: cid, tp: _tpsl(tp, mark, esLong, true), sl: _tpsl(sl, mark, esLong, false), t: Date.now() };
+    chainId: cid, pend: !!pend, cerrando: false, tp: _tpsl(tp, mark, esLong, true), sl: _tpsl(sl, mark, esLong, false), t: Date.now() };
   ST.pos.push(pos); guardar();
   return { ok: true, pos };
+}
+/* Tras minar la apertura on chain: fija el id de la posicion y la marca como confirmada. */
+export function setChainId(id, chainId) {
+  const p = ST.pos.find((x) => x.id === id); if (!p) return false;
+  p.chainId = (chainId != null && isFinite(+chainId) && +chainId >= 0) ? Math.floor(+chainId) : p.chainId;
+  p.pend = false; guardar(); return true;
+}
+/* Marca (o desmarca) una posicion como "cerrando" mientras su tx de cierre mina. */
+export function marcarCerrando(id, v) {
+  const p = ST.pos.find((x) => x.id === id); if (!p) return false;
+  p.cerrando = !!v; guardar(); return true;
+}
+/* Quita una posicion SIN registrarla en el historial (p.ej. su apertura revirtio on chain). */
+export function eliminar(id) {
+  const i = ST.pos.findIndex((p) => p.id === id); if (i < 0) return false;
+  ST.pos.splice(i, 1); guardar(); return true;
 }
 
 export function colocarOrden(par, base, lado, amount, precio, mark, tp, sl) {

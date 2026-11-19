@@ -17,7 +17,7 @@
 
 import { estilos } from './estilos.js?v=21';
 import * as D from './datos.js?v=12';
-import * as M from './motor.js?v=11';
+import * as M from './motor.js?v=12';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -692,7 +692,7 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=4'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=5'); return _spC; }
 function _errSpot(e) {
   const m = String((e && (e.reason || e.shortMessage || e.message)) || e);
   if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.';
@@ -737,12 +737,29 @@ async function operar(lado) {
     toast('Confirm the transaction in your wallet…', 'warn');
     try {
       const C = await _contratoSpot();
-      const res = await C.abrirMercadoSpot({ par: S.par, lado, pagar: S.pagar, monto: S.cap, slippageBps: 100, floorOut: 0 });
-      // Se registra en el panel para seguirla en Positions, con el id on chain para poder cerrarla.
-      // La entrada se graba al precio del CLIC (markClic), no al de después de minar.
-      const r = M.abrirMercado(S.par.id, base, lado, (res.costoUsdt > 0 ? res.costoUsdt : capUsdt), markClic, tp, sl, res.id);
-      if (r.ok) flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened');
-      toast(`${lado === 'long' ? 'Long' : 'Short'} opened on-chain · ${res.hash.slice(0, 10)}…`, 'ok'); snd('open');
+      const env = await C.abrirMercadoSpot({ par: S.par, lado, pagar: S.pagar, monto: S.cap, slippageBps: 100, floorOut: 0 });
+      // La tx YA SE ENVIÓ. No esperamos a minar: registramos la posición al INSTANTE como
+      // pendiente, liberamos la interfaz y confirmamos el minado en segundo plano. La entrada
+      // se graba al precio del CLIC (markClic).
+      const r = M.abrirMercado(S.par.id, base, lado, (env.costoUsdt > 0 ? env.costoUsdt : capUsdt), markClic, tp, sl, null, true);
+      if (r.ok) flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' sent');
+      toast(`${lado === 'long' ? 'Long' : 'Short'} sent · confirming on-chain…`, 'ok'); snd('open');
+      setSide(S.side);   // libera los botones YA, sin esperar al minado
+      $('sp-tp').value = ''; $('sp-sl').value = ''; S.cap = 0; S.tam = 0; sincronCap(); renderPos(); renderEntry();
+      const posId = r.ok ? r.pos.id : null;
+      (async () => {
+        try {
+          const rec = await env.tx.wait();
+          if (rec && Number(rec.status) === 0) throw new Error('reverted');
+          let cid = null; try { cid = await (await _contratoSpot()).idDeRecibo(rec); } catch (_) {}
+          if (posId) M.setChainId(posId, cid);
+          toast(`${lado === 'long' ? 'Long' : 'Short'} confirmed on-chain`, 'ok'); renderPos();
+        } catch (err) {
+          if (posId) M.eliminar(posId);
+          toast('The on-chain transaction failed; the position was removed.', 'bad'); renderPos();
+        }
+      })();
+      return;
     } catch (e) {
       if (e && e.message === 'NO_POOL') {
         // La moneda no tiene pool en PancakeSwap: no se puede operar on chain. Abrir vista previa local.
@@ -775,15 +792,32 @@ async function operar(lado) {
    operable), cierra solo en el registro. */
 async function cerrarPosicion(id, btn) {
   const p = M.posiciones().find((x) => x.id === id); if (!p) return;
+  if (p.pend) { toast('Still confirming the open on-chain; try again in a moment.', 'warn'); return; }
+  if (p.cerrando) { toast('Already closing on-chain…', 'warn'); return; }
   const mk = S.marks[p.par] || S.mark;
+  const feeTxt = (x) => x.fee > 0 ? ' · fee ' + (x.denom === 'USDT' ? fmtMoney(x.fee) : fmtCoin(x.fee) + ' ' + x.denom) : '';
   if (p.chainId != null && S.walletOn) {
     if (btn) btn.disabled = true;
     toast('Confirm the close in your wallet…', 'warn');
-    try { const C = await _contratoSpot(); const res = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100 }); toast(`Close sent on-chain · ${res.hash.slice(0, 10)}…`, 'ok'); }
+    let env;
+    try { const C = await _contratoSpot(); env = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100 }); }
     catch (e) { toast(_errSpot(e), 'bad'); if (btn) btn.disabled = false; return; }
+    // Tx de cierre ENVIADA: marcamos "cerrando", liberamos la interfaz, y al minar cerramos en el registro.
+    M.marcarCerrando(id, true); toast('Close sent · confirming on-chain…', 'ok'); renderPos();
+    (async () => {
+      try {
+        const rec = await env.tx.wait();
+        if (rec && Number(rec.status) === 0) throw new Error('reverted');
+        const x = M.cerrar(id, S.marks[p.par] || S.mark, 'manual');
+        if (x) toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}${feeTxt(x)}`, x.pnl >= 0 ? 'ok' : 'bad');
+        renderPos();
+      } catch (err) { M.marcarCerrando(id, false); toast('The close failed on-chain; the position stays open.', 'bad'); renderPos(); }
+    })();
+    return;
   }
+  // Local (vista previa o moneda no operable): cierre inmediato en el registro.
   const x = M.cerrar(id, mk, 'manual');
-  if (x) { const fee = x.fee > 0 ? ' · fee ' + (x.denom === 'USDT' ? fmtMoney(x.fee) : fmtCoin(x.fee) + ' ' + x.denom) : ''; toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}${fee}`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); }
+  if (x) { toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}${feeTxt(x)}`, x.pnl >= 0 ? 'ok' : 'bad'); renderPos(); }
 }
 
 /* ── Panel inferior ── */
@@ -824,12 +858,16 @@ function celdaTPSL(obj, k, col) {
 function filaPos(p) {
   const info = M.pnlDe(p, S.marks[p.par] || S.mark); const c = info.pnl >= 0 ? 'up' : 'down';
   const qty = p.qty != null ? p.qty : (p.entrada > 0 ? p.amount / p.entrada : 0);
-  return `<tr><td><span class="sp-sym">${logoChip(p.par)} ${esc(etqPar(p.par))} <span class="sp-tag ${p.lado}">${p.lado.toUpperCase()}</span></span></td>
+  const est = (p.pend || p.cerrando) ? `<span style="color:#E8B84B;font-size:10px;font-weight:700;margin-left:5px;letter-spacing:.03em">${p.cerrando ? 'closing…' : 'confirming…'}</span>` : '';
+  const btnCerrar = (p.pend || p.cerrando)
+    ? `<button class="sp-x" disabled style="opacity:.55;cursor:default">${p.cerrando ? 'Closing…' : 'Confirming…'}</button>`
+    : `<button class="sp-x" data-cerrar="${esc(p.id)}" data-par="${esc(p.par)}">Close</button>`;
+  return `<tr><td><span class="sp-sym">${logoChip(p.par)} ${esc(etqPar(p.par))} <span class="sp-tag ${p.lado}">${p.lado.toUpperCase()}</span>${est}</span></td>
     <td>${fmtCoin(qty)} ${esc(p.base || p.par)}</td><td>${fmtP(p.entrada)}</td><td data-mark="${p.id}">${fmtP(S.marks[p.par] || S.mark)}</td>
     <td>${fmtMoney(p.amount)}</td>
     <td>${celdaTPSL(p, 'tp', '#2ee86a')}</td><td>${celdaTPSL(p, 'sl', '#ff5b6e')}</td>
     <td class="sp-pnl ${c}" data-pnl="${p.id}">${fmtPnL(info.pnl, info.denom)}<span class="sp-pct">${pctTxt(info.pct)}</span></td>
-    <td><span class="sp-acts"><button class="sp-share" data-share="${p.id}" title="Export trade card">${IC.share}</button><button class="sp-x" data-cerrar="${esc(p.id)}" data-par="${esc(p.par)}">Close</button></span></td></tr>`;
+    <td><span class="sp-acts"><button class="sp-share" data-share="${p.id}" title="Export trade card">${IC.share}</button>${btnCerrar}</span></td></tr>`;
 }
 function filaOrd(o) {
   return `<tr><td><span class="sp-sym">${logoChip(o.par)} ${esc(etqPar(o.par))}</span></td>
@@ -924,7 +962,8 @@ function pintarFx() {
     botonAspa(g, xbx, ey - 9, xbw, 18, 'rgba(255,107,122,.75)', '#ff6b7a');
     S._handles.push({ cerrarPos: p.id, par: p.par, x0: xbx - 5, x1: plotR, y0: ey - 11, y1: ey + 11 });
     // tachuela de la posición, con el PnL y su PORCENTAJE, a la izquierda de la X de cerrar
-    const etqLeft = etiqueta(g, xbx - 5, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'}  ${fmtPnL(pnl, info.denom)}  ${pctTxt(info.pct)}`, colPos, '#04210f');
+    const estTxt = p.pend ? '  · confirming…' : (p.cerrando ? '  · closing…' : '');
+    const etqLeft = etiqueta(g, xbx - 5, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'}  ${fmtPnL(pnl, info.denom)}  ${pctTxt(info.pct)}${estTxt}`, colPos, '#04210f');
     // botones para crear TP/SL (solo los NO fijados), a la IZQUIERDA de la tachuela: orden TP · SL · LONG
     let rx = etqLeft - 6;
     if (!p.sl) { const bw = 30, bx = rx - bw; botonCuadro(g, bx, ey - 9, bw, 18, '#ff5b6e', 'SL', true); S._handles.push({ id: p.id, cual: 'sl', creating: true, x0: bx - 4, x1: bx + bw + 4, y0: ey - 11, y1: ey + 11 }); rx = bx - 6; }

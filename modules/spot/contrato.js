@@ -153,14 +153,20 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
   }
 
   const tx = lado === 'short' ? await spot.abrirShort(q, overrides) : await spot.abrirLong(q, overrides);
-  const rec = await tx.wait();
-  let id = null, qtyReal = 0, refReal = 0;
-  try {
-    const iface = new ethers.Interface(ABI_SPOT);
-    for (const lg of rec.logs) { try { const pl = iface.parseLog(lg); if (pl && pl.name === 'Abierta') { id = Number(pl.args.id); qtyReal = Number(ethers.formatUnits(pl.args.qty, tok.decimals)); refReal = Number(ethers.formatUnits(pl.args.refQty, tok.decimals)); break; } } catch (_) {} }
-  } catch (_) {}
+  // Se devuelve EN CUANTO la tx se ENVIA (no se espera a minar): la UI registra la posicion al
+  // instante y el minado se confirma en segundo plano con env.tx.wait() + idDeRecibo().
   try { registrarTokenVisto(tok.address, par && (par.simbolo || par.coin || par.id), tok.decimals); } catch (_) {}
-  return { hash: rec.hash, id, costoUsdt: Number(ethers.formatUnits(enUsdtEst, 18)), coin: tok.address, decimals: tok.decimals, qty: qtyReal, refQty: refReal };
+  return { hash: tx.hash, tx, costoUsdt: Number(ethers.formatUnits(enUsdtEst, 18)), coin: tok.address, decimals: tok.decimals };
+}
+
+/* Tras minar la apertura, saca el id de posicion on chain del recibo (evento Abierta). */
+export async function idDeRecibo(rec) {
+  try {
+    const ethers = await E();
+    const iface = new ethers.Interface(ABI_SPOT);
+    for (const lg of (rec.logs || [])) { try { const pl = iface.parseLog(lg); if (pl && pl.name === 'Abierta') return Number(pl.args.id); } catch (_) {} }
+  } catch (_) {}
+  return null;
 }
 
 /* ── Cerrar a mercado una posicion on chain (la firma el usuario). Lee por el lector,
@@ -191,8 +197,8 @@ export async function cerrarMercadoSpot({ id, slippageBps = 100, deadlineSeg = 3
     ruta = r.path; minOut = conSlippage(r.out, slippageBps);
   }
   const tx = await spot.cerrar(id, ruta, minOut, dl);
-  const rec = await tx.wait();
-  return { hash: rec.hash };
+  // Se devuelve al ENVIAR la tx; el minado se confirma en segundo plano con env.tx.wait().
+  return { hash: tx.hash, tx };
 }
 
 /* Posiciones on chain del usuario (ids). Lectura por el lector. */
