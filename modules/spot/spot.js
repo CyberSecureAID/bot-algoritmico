@@ -694,7 +694,7 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=6'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=7'); return _spC; }
 
 /* Indicadores (botón "Indicators" en la gráfica). Módulo aparte, carga perezosa. */
 let _indMod = null, _indInit = false;
@@ -752,7 +752,7 @@ async function operar(lado) {
     toast('Confirm the transaction in your wallet…', 'warn');
     try {
       const C = await _contratoSpot();
-      const env = await C.abrirMercadoSpot({ par: S.par, lado, pagar: S.pagar, monto: S.cap, slippageBps: 100, floorOut: 0 });
+      const env = await C.abrirMercadoSpot({ par: S.par, lado, pagar: S.pagar, monto: S.cap, slippageBps: 100, floorOut: 0, refPrice: markClic });
       // La tx YA SE ENVIÓ. No esperamos a minar: registramos la posición al INSTANTE como
       // pendiente, liberamos la interfaz y confirmamos el minado en segundo plano. La entrada
       // se graba al precio del CLIC (markClic).
@@ -776,6 +776,13 @@ async function operar(lado) {
       })();
       return;
     } catch (e) {
+      if (e && e.message === 'POOL_MALO') {
+        // El pool on chain está mal valorado respecto al precio real: se BLOQUEA para no perder dinero.
+        const px = e.pxOnchain > 0 ? fmtP(e.pxOnchain) : '?', ref = e.pxRef > 0 ? fmtP(e.pxRef) : '?';
+        toast(`Blocked: ${esc(S.par.simbolo || base)} has an illiquid/mispriced on-chain pool (${px} vs ${ref} market). Trading it would lose you money.`, 'bad');
+        setSide(S.side);
+        return;
+      }
       if (e && e.message === 'NO_POOL') {
         // La moneda no tiene pool en PancakeSwap: no se puede operar on chain. Abrir vista previa local.
         const r = M.abrirMercado(S.par.id, base, lado, capUsdt, markClic, tp, sl);

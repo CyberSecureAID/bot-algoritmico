@@ -94,6 +94,19 @@ async function mejorRuta(router, from, to, amountIn) {
 }
 const conSlippage = (out, bps) => out - (out * BigInt(Math.max(0, Math.min(5000, bps | 0))) / 10000n);
 
+/* Guardia de precio: compara el precio del POOL on chain (lo que de verdad te daría el swap)
+   contra el precio REAL del gráfico (refPrice). Si se alejan demasiado, el pool está ilíquido
+   o manipulado y la operación te clavaría (como pasó con ZKC): se BLOQUEA. La anti slippage
+   normal no basta porque mide contra el propio pool podrido. */
+const DESV_MAX = 0.15;   // 15%: las monedas líquidas quedan < 1%; un pool podrido se dispara.
+function _guardPrecio(ethers, r, usdtWei, refPrice, coinDec) {
+  if (!(refPrice > 0) || !r) return;
+  const coinOut = Number(ethers.formatUnits(r.out, coinDec)); if (!(coinOut > 0)) return;
+  const pxOnchain = Number(ethers.formatUnits(usdtWei, 18)) / coinOut;   // USD por moneda según el pool
+  const dev = Math.abs(pxOnchain - refPrice) / refPrice;
+  if (dev > DESV_MAX) { const e = new Error('POOL_MALO'); e.pxOnchain = pxOnchain; e.pxRef = refPrice; throw e; }
+}
+
 /* Error claro cuando una moneda no tiene pool en PancakeSwap (para distinguirlo y abrir
    vista previa en vez de bloquear). */
 export const SIN_POOL = 'NO_POOL';
@@ -109,7 +122,7 @@ async function _aprobarSiHace(ethers, tokenAddr, monto, cuenta, signer, prov) {
 /* ── Abrir a mercado (long o short) sobre el par EN PANTALLA. No cambia de moneda.
    pagar: 'USDT' o 'BNB'. monto: cantidad en esa moneda.
    Devuelve { hash, id, costoUsdt, coin, decimals, qty, refQty }. ── */
-export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slippageBps = 100, floorOut = 0, deadlineSeg = 300 }) {
+export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slippageBps = 100, floorOut = 0, deadlineSeg = 300, refPrice = 0 }) {
   const ethers = await E();
   const cuenta = cuentaActual && cuentaActual();
   if (!cuenta) throw new Error('Connect your wallet first.');
@@ -131,6 +144,7 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
     enUsdtEst = outUsdt;
     const r = await mejorRuta(routerR, USDT, tok.address, outUsdt);
     if (!r) throw new Error(SIN_POOL);
+    _guardPrecio(ethers, r, outUsdt, refPrice, tok.decimals);   // bloquea si el pool está mal valorado
     q = {
       coin: tok.address, input: ethers.ZeroAddress, pagar: 0n,
       rutaAUsdt: [WBNB, USDT], minUsdt: conSlippage(outUsdt, slippageBps),
@@ -142,6 +156,7 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
     const pagarWei = ethers.parseUnits(Number(monto).toFixed(8), 18);     // USDT 18 dec en BSC
     const r = await mejorRuta(routerR, USDT, tok.address, pagarWei);       // cotiza ANTES de approve
     if (!r) throw new Error(SIN_POOL);
+    _guardPrecio(ethers, r, pagarWei, refPrice, tok.decimals);             // bloquea si el pool está mal valorado
     await _aprobarSiHace(ethers, USDT, pagarWei, cuenta, signer, prov);
     enUsdtEst = pagarWei;
     q = {
