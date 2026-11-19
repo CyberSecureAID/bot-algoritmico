@@ -645,7 +645,7 @@ async function renderWallet() {
   const filas = ids.map((id) => {
     const m = MONEDAS[id] || { simbolo: id, color: '#8b95a1' };
     const bal = saldos[id] || 0, p = (precios[id] != null) ? precios[id] : (m.precioUSD || 0), usd = bal * p; total += usd;
-    return { id, m, bal, usd, op: tokenOperable(id) && !ESTABLES.includes(id) };
+    return { id, m, bal, usd, op: tokenOperable(id) && !ESTABLES.includes(id), addr: (m.address || null), nativo: (m.address === null) };
   });
   // Monedas recién compradas on chain (ej. ZKC) que NO están en la lista fija: se consultan
   // por su contrato con el lector y se añaden al balance y a "All your coins".
@@ -658,7 +658,7 @@ async function renderWallet() {
       if (!(t.bal > 1e-12) || vistos.has(sU)) return;
       vistos.add(sU);
       S.saldos[t.sim] = t.bal; precios[t.sim] = t.px || 0;
-      filas.push({ id: t.sim, m: { simbolo: t.sim, color: '#c3a0ff' }, bal: t.bal, usd: t.usd || 0, op: false });
+      filas.push({ id: t.sim, m: { simbolo: t.sim, color: '#c3a0ff' }, bal: t.bal, usd: t.usd || 0, op: false, addr: t.addr || null, nativo: false });
       total += t.usd || 0;
     });
   } catch (_) {}
@@ -670,18 +670,131 @@ async function renderWallet() {
   if (eqEl) eqEl.textContent = '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   try { renderEntry(); } catch (_) {}
 }
+/* ── Colector de polvo (Dust collector) dentro del popup "All your coins" ── */
+let _dustOn = false, _dustSel = new Set(), _dustDest = 'USDT', _dustBusy = false, _dustMod = null;
+async function _dustSpot() { if (!_dustMod) _dustMod = await import('./dust.js?v=1'); return _dustMod; }
+/* Monedas que se pueden recolectar: BNB nativo o con direccion on chain, y con saldo. */
+function _filasDust() { return (S._filasWallet || []).filter((f) => (f.nativo || f.addr) && f.bal > 1e-12); }
+function _usdSel() { let n = 0, usd = 0; const by = {}; (S._filasWallet || []).forEach((f) => by[f.id] = f); _dustSel.forEach((id) => { const f = by[id]; if (f) { n++; usd += f.usd || 0; } }); return { n, usd }; }
+
 /* Popup con TODAS las monedas de la wallet (botón junto a Total balance). */
 function menuMonedasWallet() {
-  cerrarPops();
-  const filas = S._filasWallet || [], ancla = $('sp-coinsbtn'); if (!ancla) return;
+  cerrarPops(); _dustCSS();
+  const ancla = $('sp-coinsbtn'); if (!ancla) return;
+  _dustOn = false; _dustBusy = false; _dustSel = new Set(); _dustDest = 'USDT';
   const m = document.createElement('div'); m.id = 'sp-walletmenu'; m.className = 'sp-walletmenu';
-  m.innerHTML = filas.length
-    ? '<div class="sp-wm-h">Your coins · tap one to trade it</div>' + filas.map((f) => `<button ${f.op ? `data-coin="${esc(f.id)}"` : 'disabled'} class="${f.id === (S.par && S.par.coin) ? 'on' : ''}${f.op ? '' : ' nop'}" title="${esc(f.m.nombre || f.id)}"><span class="sym" style="color:${esc(f.m.color || '#cdd4dc')}">${esc(f.m.simbolo || f.id)}</span><span class="am"><b>${esc(fmtCoin(f.bal))}</b>${f.usd > 0 ? `<i>$${f.usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</i>` : ''}</span></button>`).join('')
-    : '<div class="sp-cm-empty">No coins in your wallet yet.</div>';
   document.body.appendChild(m);
   const r = ancla.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
-  m.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => { seleccionarMoneda(b.dataset.coin); cerrarPops(); });
+  _pintarWallet();
   setTimeout(() => document.addEventListener('mousedown', cierraPopFuera), 10);
+}
+function _entrarDust() {
+  _dustOn = true;
+  const dust = _filasDust();
+  _dustSel = new Set(dust.filter((f) => f.id !== _dustDest && f.id !== 'BNB').map((f) => f.id));   // BNB fuera por defecto
+  _pintarWallet();
+}
+function _salirDust() { if (_dustBusy) return; _dustOn = false; _pintarWallet(); }
+function _pintarWallet() {
+  const m = $('sp-walletmenu'); if (!m) return;
+  m.classList.toggle('dustmode', _dustOn);
+  const filas = S._filasWallet || [];
+  const dust = _filasDust();
+  const puede = dust.length >= 2;
+  const btnDust = puede ? `<button class="sp-wm-dust${_dustOn ? ' on' : ''}" id="sp-wm-dust">${_dustOn ? 'Done' : 'Dust'}</button>` : '';
+  if (!_dustOn) {
+    m.innerHTML = `<div class="sp-wm-h"><span>Your coins · tap one to trade it</span>${btnDust}</div>` + (filas.length
+      ? filas.map((f) => `<button ${f.op ? `data-coin="${esc(f.id)}"` : 'disabled'} class="${f.id === (S.par && S.par.coin) ? 'on' : ''}${f.op ? '' : ' nop'}" title="${esc(f.m.nombre || f.id)}"><span class="sym" style="color:${esc(f.m.color || '#cdd4dc')}">${esc(f.m.simbolo || f.id)}</span><span class="am"><b>${esc(fmtCoin(f.bal))}</b>${f.usd > 0 ? `<i>$${f.usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</i>` : ''}</span></button>`).join('')
+      : '<div class="sp-cm-empty">No coins in your wallet yet.</div>');
+    m.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => { seleccionarMoneda(b.dataset.coin); cerrarPops(); });
+    const bd = $('sp-wm-dust'); if (bd) bd.onclick = (e) => { e.stopPropagation(); _entrarDust(); };
+    return;
+  }
+  // ── modo Dust ──
+  const dests = ['USDT', 'BNB'].map((d) => `<button class="sp-dd${_dustDest === d ? ' on' : ''}" data-dest="${d}" ${_dustBusy ? 'disabled' : ''}>${d}</button>`).join('');
+  const rows = dust.map((f) => {
+    const esDest = f.id === _dustDest, sel = _dustSel.has(f.id);
+    return `<label class="sp-dust-row${esDest ? ' dest' : ''}"><input type="checkbox" data-id="${esc(f.id)}" ${esDest || _dustBusy ? 'disabled' : ''} ${sel && !esDest ? 'checked' : ''}><span class="sym" style="color:${esc(f.m.color || '#cdd4dc')}">${esc(f.m.simbolo || f.id)}</span><span class="am"><b>${esc(fmtCoin(f.bal))}</b>${f.usd > 0 ? `<i>$${f.usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</i>` : ''}</span></label>`;
+  }).join('');
+  m.innerHTML = `<div class="sp-wm-h"><span>Dust collector · merge into one coin</span>${btnDust}</div>
+    <div class="sp-dust-dest"><span>Send everything to</span><div class="sp-dd-opts">${dests}</div></div>
+    <div class="sp-dust-list">${rows}</div>
+    <div class="sp-dust-foot">
+      <div class="sp-dust-sum" id="sp-dust-sum"></div>
+      <button class="sp-dust-go" id="sp-dust-go">Collect to ${esc(_dustDest)}</button>
+      <div class="sp-dust-gas">We always keep about $1 in BNB for gas.</div>
+      <div class="sp-dust-msg" id="sp-dust-msg"></div>
+    </div>`;
+  const bd = $('sp-wm-dust'); if (bd) bd.onclick = (e) => { e.stopPropagation(); _salirDust(); };
+  m.querySelectorAll('.sp-dd[data-dest]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); if (_dustBusy) return; _dustDest = b.dataset.dest; _dustSel.delete(_dustDest); _pintarWallet(); });
+  m.querySelectorAll('.sp-dust-row input[data-id]').forEach((c) => c.onchange = () => { if (c.checked) _dustSel.add(c.dataset.id); else _dustSel.delete(c.dataset.id); _sumDust(); });
+  $('sp-dust-go').onclick = (e) => { e.stopPropagation(); _recolectarDust(); };
+  _sumDust();
+}
+function _sumDust() {
+  const { n, usd } = _usdSel(); const s = $('sp-dust-sum'), go = $('sp-dust-go');
+  if (s) s.innerHTML = n ? `Merging <b>${n}</b> coin${n > 1 ? 's' : ''} · about <b>$${usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</b>` : '<span class="vac">Pick at least one coin</span>';
+  if (go) go.disabled = !n || _dustBusy;
+}
+async function _recolectarDust() {
+  if (_dustBusy) return;
+  const sel = [..._dustSel]; if (!sel.length) return;
+  const setMsg = (t, c) => { const e = $('sp-dust-msg'); if (e) { e.className = 'sp-dust-msg ' + (c || ''); e.innerHTML = t; } };
+  _dustBusy = true; _pintarWallet(); setMsg('Checking gas…', 'info');
+  try {
+    const D2 = await _dustSpot();
+    const cuenta = S.cuenta || (typeof window !== 'undefined' && window.__spotMockCuenta) || (cuentaActual && cuentaActual());
+    const gas = await D2.revisarGas(cuenta);
+    if (!gas.ok) { setMsg('You need a little BNB first to pay gas.', 'mal'); _dustBusy = false; _sumDust(); return; }
+    const by = {}; (S._filasWallet || []).forEach((f) => by[f.id] = f);
+    const fuentes = sel.map((id) => by[id]).filter(Boolean).map((f) => ({ addr: f.addr, nativo: f.nativo, sim: f.m.simbolo || f.id }));
+    const destino = _dustDest === 'BNB' ? { nativo: true, sim: 'BNB' } : { addr: (MONEDAS.USDT && MONEDAS.USDT.address) || null, nativo: false, sim: 'USDT' };
+    const r = await D2.recolectar({ fuentes, destino, cuenta, onPaso: (ev) => { if (ev.fase === 'swap') setMsg(`Swapping <b>${esc(ev.sim)}</b> (${ev.i}/${ev.n})… sign in your wallet`, 'info'); } });
+    let s = `Done: <b>${r.hechos}</b> coin${r.hechos !== 1 ? 's' : ''} moved to ${esc(_dustDest)}.`;
+    if (r.fallos.length) s += ` Could not: ${r.fallos.map((x) => esc(x.sim)).join(', ')} (no market).`;
+    if (r.saltadas.some((x) => x.motivo === 'reserva de gas')) s += ` Kept your BNB for gas.`;
+    if (r.cancelado) s += ` You cancelled; what is done stays.`;
+    setMsg(s, r.fallos.length ? 'mal' : 'ok');
+  } catch (e) {
+    setMsg('Could not collect: ' + esc(String((e && (e.shortMessage || e.message)) || e)).slice(0, 80), 'mal');
+  }
+  _dustBusy = false;
+  setTimeout(() => { try { renderWallet().then(() => { if ($('sp-walletmenu') && _dustOn) { _dustSel = new Set(); _pintarWallet(); } }); } catch (_) {} }, 2500);
+}
+function _dustCSS() {
+  if (document.getElementById('sp-dust-css')) return;
+  const st = document.createElement('style'); st.id = 'sp-dust-css';
+  st.textContent = `
+  .sp-walletmenu .sp-wm-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .sp-walletmenu.dustmode{display:flex;flex-direction:column;overflow:hidden}
+  .sp-walletmenu.dustmode .sp-wm-h,.sp-walletmenu.dustmode .sp-dust-dest{flex:none}
+  .sp-wm-dust{flex:none;min-height:0!important;width:auto!important;padding:3px 9px!important;border-radius:7px!important;border:1px solid var(--sp-gold-soft,#C9A84B)!important;background:rgba(232,184,75,.08)!important;color:var(--sp-gold,#E8B84B)!important;font-family:var(--sp-mono);font-size:9.5px!important;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+  .sp-wm-dust.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426)!important;border-color:#c79426!important;color:#3a2800!important}
+  .sp-dust-dest{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 9px;margin:2px 2px 6px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--sp-line2,#2b3139)}
+  .sp-dust-dest>span{font-family:var(--sp-mono);font-size:10.5px;color:var(--sp-ink3,#8b96a3)}
+  .sp-dd-opts{display:flex;gap:5px}
+  .sp-dd{min-height:0!important;width:auto!important;padding:6px 13px!important;border-radius:8px!important;border:1px solid #3a424c!important;background:transparent!important;color:var(--sp-ink2,#b7bdc6)!important;font-family:var(--sp-mono);font-weight:800;font-size:11px!important;cursor:pointer}
+  .sp-dd.on{background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426)!important;border-color:#c79426!important;color:#3a2800!important}
+  .sp-dd:disabled{opacity:.5;cursor:default}
+  .sp-dust-list{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;overflow-y:auto}
+  .sp-dust-row{display:flex!important;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 11px;border-radius:9px;border:1px solid transparent;background:rgba(255,255,255,.02);cursor:pointer}
+  .sp-dust-row:hover{border-color:#3a424c;background:rgba(255,255,255,.045)}
+  .sp-dust-row.dest{opacity:.45;cursor:default}
+  .sp-dust-row input{width:17px;height:17px;flex:none;accent-color:var(--sp-gold,#E8B84B);cursor:pointer}
+  .sp-dust-row input:disabled{cursor:default}
+  .sp-dust-row .sym{flex:none;font-weight:800;font-size:13px;letter-spacing:.03em}
+  .sp-dust-row .am{flex:1;display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+  .sp-dust-row .am b{font-size:12px;color:var(--sp-ink,#eaecef);font-weight:800}
+  .sp-dust-row .am i{font-style:normal;font-size:9px;color:var(--sp-ink3,#8b96a3)}
+  .sp-dust-foot{flex:none;margin-top:6px;padding:9px 2px 2px;background:#141b24;border-top:1px solid var(--sp-line2,#2b3139)}
+  .sp-dust-sum{text-align:center;font-family:var(--sp-mono);font-size:11px;color:var(--sp-ink2,#b7bdc6);margin-bottom:7px}
+  .sp-dust-sum b{color:var(--sp-gold,#E8B84B)} .sp-dust-sum .vac{color:var(--sp-ink3,#8b96a3)}
+  .sp-walletmenu .sp-dust-go{display:block;width:100%;min-height:42px!important;padding:11px!important;border-radius:11px!important;border:1px solid #c79426!important;background:linear-gradient(180deg,#f7db8d,#E8B84B 45%,#c79426)!important;color:#3a2800!important;font-family:var(--sp-display,inherit);font-weight:800;font-size:13px!important;cursor:pointer}
+  .sp-walletmenu .sp-dust-go:disabled{opacity:.4;cursor:default}
+  .sp-dust-gas{text-align:center;font-family:var(--sp-mono);font-size:9.5px;color:var(--sp-ink3,#8b96a3);margin-top:7px;line-height:1.5}
+  .sp-dust-msg{text-align:center;font-family:var(--sp-mono);font-size:10.5px;line-height:1.5;margin-top:6px;min-height:14px}
+  .sp-dust-msg.info{color:var(--sp-gold,#E8B84B)} .sp-dust-msg.ok{color:#2ee86a} .sp-dust-msg.mal{color:#f6465d}`;
+  document.head.appendChild(st);
 }
 async function arrancarWallet() {
   // Reconecta la wallet que YA está autorizada en la página (igual que el resto del
@@ -1773,7 +1886,7 @@ async function menuMovers() {
     const lst = $('sp-mv-lst'); if (lst && !datos.length) lst.innerHTML = `<div class="sp-mv-msg">Could not load movers. Try again.</div>`;
   }
 }
-function cierraPopFuera(e) { const ids = ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu', 'sp-movermenu']; const anc = ['sp-coin', 'sp-amtunit', 'sp-coinsbtn', 'sp-vol']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
+function cierraPopFuera(e) { if (_dustBusy) return; const ids = ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu', 'sp-movermenu']; const anc = ['sp-coin', 'sp-amtunit', 'sp-coinsbtn', 'sp-vol']; const hit = ids.some((id) => { const m = $(id); return m && m.contains(e.target); }) || anc.some((id) => { const a = $(id); return a && a.contains(e.target); }); if (!hit) cerrarPops(); }
 function cerrarPops() { ['sp-coinmenu', 'sp-shortmenu', 'sp-walletmenu', 'sp-movermenu'].forEach((id) => { const m = $(id); if (m) m.remove(); }); document.removeEventListener('mousedown', cierraPopFuera); }
 
 function toast(msg, tipo) { const old = document.querySelector('.sp-toast'); if (old) old.remove(); const t = document.createElement('div'); t.className = 'sp-toast ' + (tipo || ''); t.textContent = msg; document.body.appendChild(t); setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => { try { t.remove(); } catch (_) {} }, 320); }, 2600); }
