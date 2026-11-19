@@ -132,14 +132,39 @@ function barraDe(key) {
 
 /* ── Leyenda: chips de los indicadores activos (tocar = configurar, X = quitar) ── */
 function activos() { const items = []; ST.ovl.forEach((k) => { const d = buscarInd(baseId(k)); if (d) items.push({ key: k, def: d }); }); if (ST.oscK) { const d = buscarInd(baseId(ST.oscK)); if (d) items.push({ key: ST.oscK, def: d }); } return items; }
+const MAXVIS = 2;   // como multichart: 2 chips visibles + "+N" que abre el gestor
 function pintarLeyenda() {
   const host = ctx.host(); if (!host) return;
   let leg = host.querySelector('#sp-ind-leg'); if (!leg) { leg = document.createElement('div'); leg.id = 'sp-ind-leg'; leg.className = 'sp-ind-leg'; host.appendChild(leg); }
   const items = activos();
-  leg.innerHTML = items.map(({ key, def }) => { const c = cfgDe(key); return `<span class="sp-ind-chip" data-id="${key}" style="color:${c.col}"><i style="background:${c.col}"></i>${nombreInd(def, c)}<button class="sp-ind-chipx" data-x="${key}" title="Remove">✕</button></span>`; }).join('');
-  leg.querySelectorAll('.sp-ind-chip[data-id]').forEach((ch) => ch.onclick = (e) => { if (e.target.closest('.sp-ind-chipx')) return; e.stopPropagation(); barraDe(ch.dataset.id); });
+  const vis = items.slice(0, MAXVIS), resto = items.length - vis.length;
+  let html = vis.map(({ key, def }) => { const c = cfgDe(key); return `<span class="sp-ind-chip" data-id="${key}" style="color:${c.col}"><i style="background:${c.col}"></i>${nombreInd(def, c)}<button class="sp-ind-chipx" data-x="${key}" title="Remove">✕</button></span>`; }).join('');
+  if (resto > 0) html += `<button class="sp-ind-chip sp-ind-mas" data-mas="1" title="All indicators">+${resto}</button>`;
+  leg.innerHTML = html;
+  leg.querySelectorAll('.sp-ind-chip[data-id]').forEach((ch) => ch.onclick = (e) => { if (e.target.closest('.sp-ind-chipx')) return; e.stopPropagation(); cerrarGest(); barraDe(ch.dataset.id); });
   leg.querySelectorAll('.sp-ind-chipx').forEach((b) => b.onclick = (e) => { e.stopPropagation(); quitar(b.dataset.x); });
+  const mas = leg.querySelector('[data-mas]'); if (mas) mas.onclick = (e) => { e.stopPropagation(); abrirGest(mas); };
   const btn = host.querySelector('#sp-ind-btn'); if (btn) btn.classList.toggle('on', items.length > 0);
+}
+/* Gestor de TODOS los indicadores activos (lo abre el "+N"): lista con config y papelera. */
+let _gest = null;
+function cerrarGest() { if (_gest) { try { _gest.remove(); } catch (_) {} _gest = null; document.removeEventListener('mousedown', _gestDoc, true); } }
+function _gestDoc(e) { if (_gest && !_gest.contains(e.target) && !e.target.closest('[data-mas]')) cerrarGest(); }
+function abrirGest(anc) {
+  cerrarGest(); const host = ctx.host(); if (!host) return;
+  const pop = document.createElement('div'); pop.className = 'sp-ind-gest'; _gest = pop;
+  pop.innerHTML = `<div class="sp-ind-gest-h">Indicators</div><div class="sp-ind-gest-list"></div>`;
+  host.appendChild(pop);
+  const rh = host.getBoundingClientRect(), ra = anc.getBoundingClientRect();
+  pop.style.left = Math.max(6, ra.left - rh.left) + 'px'; pop.style.top = (ra.bottom - rh.top + 6) + 'px';
+  llenarGest(pop); setTimeout(() => document.addEventListener('mousedown', _gestDoc, true), 0);
+}
+function llenarGest(pop) {
+  const list = pop.querySelector('.sp-ind-gest-list'); if (!list) return;
+  const items = activos(); if (!items.length) { cerrarGest(); return; }
+  list.innerHTML = items.map(({ key, def }) => { const c = cfgDe(key); return `<div class="sp-ind-grow" data-id="${key}"><i style="background:${c.col}"></i><span class="nm" style="color:${c.col}">${nombreInd(def, c)}</span><button class="sp-ind-gdel" data-del="${key}" title="Remove">✕</button></div>`; }).join('');
+  list.querySelectorAll('.sp-ind-grow .nm').forEach((n) => n.onclick = () => { cerrarGest(); barraDe(n.parentElement.dataset.id); });
+  list.querySelectorAll('.sp-ind-gdel').forEach((b) => b.onclick = (e) => { e.stopPropagation(); quitar(b.dataset.del); llenarGest(pop); });
 }
 
 /* ── Selector de indicadores (popup con categorías y búsqueda) ── */
@@ -204,9 +229,59 @@ function inyectarCSS() {
   .sp-irow .tag{font:600 10px "IBM Plex Mono",monospace;color:#6b7580;border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:2px 6px}
   .sp-irow .ck{opacity:0;color:#2ee86a;font-weight:800}.sp-irow.on{background:rgba(46,232,106,.08)}.sp-irow.on .ck{opacity:1}
   @media(max-width:560px){.sp-ind-cats{width:112px}}
+  /* Scrollbars con estilo (copiado de multichart): track transparente + pulgar redondeado.
+     Incluye la ventana de ajustes compartida de ui.js (.indtb-pop-cfg), que en Spot salía
+     con la barra blanca/gris por defecto. */
+  .sp-ind-list, .sp-ind-cats, .indtb-pop-cfg, .sp-ind-gest-list{scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.22) transparent}
+  .sp-ind-list::-webkit-scrollbar, .sp-ind-cats::-webkit-scrollbar, .indtb-pop-cfg::-webkit-scrollbar, .sp-ind-gest-list::-webkit-scrollbar{width:10px; height:10px}
+  .sp-ind-list::-webkit-scrollbar-track, .sp-ind-cats::-webkit-scrollbar-track, .indtb-pop-cfg::-webkit-scrollbar-track, .sp-ind-gest-list::-webkit-scrollbar-track{background:transparent}
+  .sp-ind-list::-webkit-scrollbar-thumb, .sp-ind-cats::-webkit-scrollbar-thumb, .indtb-pop-cfg::-webkit-scrollbar-thumb, .sp-ind-gest-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18); border-radius:8px; border:2px solid transparent; background-clip:content-box}
+  .sp-ind-list::-webkit-scrollbar-thumb:hover, .sp-ind-cats::-webkit-scrollbar-thumb:hover, .indtb-pop-cfg::-webkit-scrollbar-thumb:hover, .sp-ind-gest-list::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.32); background-clip:content-box}
+  /* Gestor de la leyenda (lista de indicadores activos con +N). */
+  .sp-ind-gest{position:absolute;z-index:7;min-width:190px;max-width:260px;background:#0e1319;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 14px 40px rgba(0,0,0,.5);overflow:hidden}
+  .sp-ind-gest-h{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.08);color:#eaf0f6;font:800 12px "Chakra Petch",sans-serif}
+  .sp-ind-gest-list{max-height:240px;overflow:auto;padding:5px}
+  .sp-ind-grow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;cursor:pointer}
+  .sp-ind-grow:hover{background:rgba(255,255,255,.05)}
+  .sp-ind-grow i{width:8px;height:8px;border-radius:50%;flex:none}.sp-ind-grow .nm{flex:1;color:#cfd8e3;font:600 12px system-ui}
+  .sp-ind-gdel{border:0;background:none;color:#8b95a1;cursor:pointer;font-size:12px;padding:0 2px}.sp-ind-gdel:hover{color:#ff6b7a}
   `;
   document.head.appendChild(st);
 }
+
+/* ── Hover sobre un overlay: cursor de manito + clic abre su config (NO marca entry). ── */
+let _bajo = null, _hoverWired = false;
+function cvEl() { const h = ctx && ctx.host(); return h ? h.querySelector('#sp-cv') : null; }
+function hitOverlay(clientX, clientY) {
+  if (!ctx || !ST.ovl.size) return null;
+  const chart = ctx.chart(), serie = ctx.serie && ctx.serie(), velas = ctx.velas(), cv = cvEl();
+  if (!chart || !serie || !velas.length || !cv) return null;
+  const r = cv.getBoundingClientRect(); const x = clientX - r.left, y = clientY - r.top;
+  if (x < 0 || y < 0 || x > r.width || y > r.height) return null;
+  let logical = null; try { logical = chart.timeScale().coordinateToLogical(x); } catch (_) {}
+  if (logical == null) return null;
+  const idx = Math.round(logical); let best = null, bestD = 7;
+  ST.ovl.forEach((key) => {
+    const def = buscarInd(baseId(key)); if (!def) return; const c = cfgDe(key);
+    const rr = calcular(def, velas, c) || {};
+    (rr.lineas || []).forEach((ln) => {
+      const di = idx - ((ln.shift || 0) + (c.desp || 0)); const val = transformar(ln.data, c)[di]; if (val == null) return;
+      let yc = null; try { yc = serie.priceToCoordinate(val); } catch (_) {}
+      if (yc == null) return; const d = Math.abs(yc - y); if (d < bestD) { bestD = d; best = key; }
+    });
+  });
+  return best;
+}
+function onHoverMove(e) { const key = hitOverlay(e.clientX, e.clientY); _bajo = key; const cv = cvEl(); if (cv) cv.style.cursor = key ? 'pointer' : ''; }
+function onHoverClick(e) { const key = hitOverlay(e.clientX, e.clientY); if (key) { e.stopPropagation(); cerrarGest(); barraDe(key); } }
+function wireHover() {
+  if (_hoverWired) return; const cv = cvEl(); if (!cv) return;
+  cv.addEventListener('mousemove', onHoverMove);
+  cv.addEventListener('mouseleave', () => { _bajo = null; cv.style.cursor = ''; });
+  cv.addEventListener('click', onHoverClick, true);
+  _hoverWired = true;
+}
+export function bajoCursor() { return _bajo; }   // spot.js lo consulta para no marcar entry sobre un indicador
 
 /* ── API pública ── */
 export function initIndSpot(opts) {
@@ -218,6 +293,7 @@ export function reaplicarInd() {
   const host = ctx.host(); if (!host) return;
   let btn = host.querySelector('#sp-ind-btn');
   if (!btn) { btn = document.createElement('button'); btn.id = 'sp-ind-btn'; btn.className = 'sp-ind-btn'; btn.textContent = 'Indicators'; host.appendChild(btn); btn.onclick = (e) => { e.stopPropagation(); abrirSelector(); }; }
+  wireHover();
   try { reconstruirTodo(); } catch (_) {}
 }
 /* Llamar cuando llega una vela nueva: refresca los datos (limitado, para no recargar). */

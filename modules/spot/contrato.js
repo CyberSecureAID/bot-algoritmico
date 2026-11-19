@@ -232,11 +232,14 @@ export async function saldosVistos(cuenta) {
   try {
     if (!cuenta) return [];
     let l = []; try { l = JSON.parse(localStorage.getItem(LS_TOK) || '[]'); } catch (_) {}
-    if (!Array.isArray(l) || !l.length) return [];
+    if (!Array.isArray(l)) l = [];
+    // WBNB SIEMPRE se consulta: el usuario puede tener saldo (residuo de swaps) y la wallet lo
+    // muestra aparte del BNB nativo; si no lo contamos, el balance no cuadra con MetaMask.
+    const lista = [{ addr: WBNB, sim: 'WBNB', dec: 18 }].concat(l);
     const ethers = await E(); const prov = await lector();
     const routerR = new ethers.Contract(ROUTER, ABI_ROUTER, prov);
     const out = [];
-    await Promise.all(l.map(async (t) => {
+    await Promise.all(lista.map(async (t) => {
       try {
         const erc = new ethers.Contract(t.addr, ABI_ERC20, prov);
         const raw = await erc.balanceOf(cuenta);

@@ -447,7 +447,7 @@ function pintarChart() {
   vela.setData(V.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))); S.serieVela = vela;
   S.velasDib = V.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
   try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 90, to: V.length + 6 }); ts.subscribeVisibleLogicalRangeChange((range) => { sincronizarDib(); if (range && range.from < 15) cargarMasVelas(); }); } catch (_) {}
-  try { chart.subscribeClick((p) => { if (S._ctxCerradoEn && Date.now() - S._ctxCerradoEn < 400) return; if (!p || !p.point || S.drag || !sinHerramienta()) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('sp-overlay'); if (ov) ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('sp-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('sp-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
+  try { chart.subscribeClick((p) => { if (S._ctxCerradoEn && Date.now() - S._ctxCerradoEn < 400) return; if (!p || !p.point || S.drag || !sinHerramienta() || _indBajoCursor()) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('sp-overlay'); if (ov) ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('sp-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('sp-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
   dibujarLimit();
   cargarIndicadores();   // botón "Indicators" + redibuja los indicadores activos sobre la gráfica nueva
 }
@@ -694,18 +694,20 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=5'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=6'); return _spC; }
 
 /* Indicadores (botón "Indicators" en la gráfica). Módulo aparte, carga perezosa. */
 let _indMod = null, _indInit = false;
 async function cargarIndicadores() {
   try {
-    if (!_indMod) _indMod = await import('./indicadores-spot.js?v=1');
-    if (!_indInit) { _indMod.initIndSpot({ chart: () => S.chart, velas: () => S.velas, lc: () => window.LightweightCharts, host: () => $('sp-chart') }); _indInit = true; }
+    if (!_indMod) _indMod = await import('./indicadores-spot.js?v=2');
+    if (!_indInit) { _indMod.initIndSpot({ chart: () => S.chart, velas: () => S.velas, lc: () => window.LightweightCharts, host: () => $('sp-chart'), serie: () => S.serieVela }); _indInit = true; }
     _indMod.reaplicarInd();
   } catch (_) {}
 }
 function refrescarIndicadores() { try { if (_indMod && _indInit) _indMod.refrescarInd(); } catch (_) {} }
+/* ¿El cursor está sobre un indicador? Si sí, el clic en la gráfica abre su config, no marca entry. */
+function _indBajoCursor() { try { return _indMod && _indMod.bajoCursor && _indMod.bajoCursor(); } catch (_) { return null; } }
 function _errSpot(e) {
   const m = String((e && (e.reason || e.shortMessage || e.message)) || e);
   if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.';
