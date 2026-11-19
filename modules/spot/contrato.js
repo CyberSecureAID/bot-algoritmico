@@ -3,14 +3,15 @@
    NO custodial: los fondos salen de la wallet del usuario y vuelven a su wallet en la
    misma transaccion. El usuario aprueba (approve) el token una vez; con eso abre/cierra.
 
+   VELOCIDAD: todas las LECTURAS (cotizaciones de ruta, allowance, posicionInfo, balance)
+   van por un RPC publico de BSC propio (lector), NO por el provider inyectado de MetaMask,
+   que es lento. Solo FIRMAR (approve/abrir/cerrar) pasa por MetaMask. Asi la wallet salta
+   casi al instante al tocar el boton, en vez de esperar varias lecturas lentas antes.
+
    Seguridad de este front: el contrato SpotDF valida minOut (anti slippage) y los
    extremos de cada ruta, asi que un ruteo mal calculado aqui hace REVERTIR la tx, no
-   pierde fondos. El unico riesgo real seria operar una direccion de token equivocada,
-   por eso resolverToken() SOLO usa direcciones verificadas (MONEDAS o la lista BSC de
-   los movers) y devuelve null cuando no puede resolverla (ahi el on chain se deshabilita).
-
-   Fase actual: abrir y cerrar a MERCADO (long y short), firmado por el usuario. Las
-   ordenes limit y los TP/SL automaticos se activan cuando conectemos el keeper. */
+   pierde fondos. resolverToken() SOLO usa direcciones verificadas y devuelve null cuando
+   no puede resolverla (ahi el on chain se deshabilita y se opera en vista previa local). */
 
 import { MONEDAS } from '../../assets/js/tokens.js';
 import { cuentaActual, proveedorActivo } from '../../assets/js/wallet.js?v=129';
@@ -19,6 +20,8 @@ export const SPOT_ADDR = '0xfC3c9516665Ab36D8E56e0797F4392FbFc073c11';   // prox
 const USDT = '0x55d398326f99059fF775485246999027B3197955';              // USDT BSC (18 dec)
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const ROUTER = '0x10ED43C718714eb63d5aA57B78B54704E256024E';            // PancakeSwap V2
+// RPC publicos de BSC (no Binance CEX, no geobloqueados en EE. UU.). Solo lectura.
+const RPC = 'https://bsc-rpc.publicnode.com';
 
 const ABI_SPOT = [
   'function abrirLong(tuple(address coin, address input, uint256 pagar, address[] rutaAUsdt, uint256 minUsdt, address[] rutaCoin, uint256 minCoin, uint256 floorOut, uint256 deadline) q) payable returns (uint256)',
@@ -42,16 +45,23 @@ async function E() {
   if (!_ethers) _ethers = await import('../../assets/js/vendor/ethers-6.13.4.min.js?v=126');
   return _ethers;
 }
-/* Provider y signer FRESCOS en cada operación (ligados a la cuenta y la red del momento:
-   nunca quedan viejos si cambias de cuenta o de cadena). */
+/* Lector: provider SOLO lectura por RPC publico de BSC (no pasa por MetaMask). staticNetwork
+   evita el viaje de deteccion de red. Es lo que hace rapidas las cotizaciones y lecturas. */
+let _lector = null;
+async function lector() {
+  const ethers = await E();
+  if (!_lector) _lector = new ethers.JsonRpcProvider(RPC, 56, { staticNetwork: true });
+  return _lector;
+}
+/* Signer FRESCO en cada operacion (ligado a la cuenta y la red del momento: nunca viejo). */
 async function _signer() {
   const ethers = await E();
   const prov = new ethers.BrowserProvider(proveedorActivo ? (proveedorActivo() || window.ethereum) : window.ethereum);
   return prov.getSigner();
 }
-/* Precalentar: adelanta la carga de ethers (el archivo pesado) al conectar la wallet, que es
-   lo que antes tardaba segundos al tocar Long/Short. Así la firma salta casi al instante. */
-export async function precalentar() { try { await E(); } catch (_) {} }
+/* Precalentar al conectar la wallet: adelanta la carga de ethers (archivo pesado) y abre el
+   lector, que es lo que antes tardaba segundos al tocar Long/Short. */
+export async function precalentar() { try { await E(); await lector(); } catch (_) {} }
 
 /* coin de la grafica -> { address, decimals } en BSC, SOLO si es una direccion verificada. */
 export function resolverToken(par) {
@@ -68,13 +78,13 @@ export function resolverToken(par) {
 }
 export function operableOnchain(par) { return !!resolverToken(par); }
 
-/* Mejor ruta entre dos tokens (directa, via USDT o via WBNB) y su salida estimada. */
+/* Mejor ruta entre dos tokens (directa, via USDT o via WBNB) y su salida estimada.
+   Las candidatas se cotizan EN PARALELO (antes en serie). Devuelve null si no hay pool. */
 async function mejorRuta(router, from, to, amountIn) {
   if (from.toLowerCase() === to.toLowerCase()) return null;
   const cand = [[from, to]];
   if (![from, to].map(a => a.toLowerCase()).includes(USDT.toLowerCase())) cand.push([from, USDT, to]);
   if (![from, to].map(a => a.toLowerCase()).includes(WBNB.toLowerCase())) cand.push([from, WBNB, to]);
-  // Las rutas candidatas se cotizan EN PARALELO (antes era en serie: 3 viajes de red → 1).
   const res = await Promise.all(cand.map(async (path) => {
     try { const a = await router.getAmountsOut(amountIn, path); return { path, out: a[a.length - 1] }; } catch (_) { return null; }
   }));
@@ -84,20 +94,21 @@ async function mejorRuta(router, from, to, amountIn) {
 }
 const conSlippage = (out, bps) => out - (out * BigInt(Math.max(0, Math.min(5000, bps | 0))) / 10000n);
 
-/* Approve por monto MÁXIMO la primera vez que haga falta: así las siguientes operaciones
-   con esa misma moneda ya NO piden approve (una sola firma de antelación, como se pidió).
-   Es el contrato propio y no custodial; el estándar de los dapps (Pancake, Uniswap). */
-async function _aprobarSiHace(ethers, tokenAddr, monto, cuenta, signer) {
-  const t = new ethers.Contract(tokenAddr, ABI_ERC20, signer);
-  const act = await t.allowance(cuenta, SPOT_ADDR);
-  if (act < monto) { const tx = await t.approve(SPOT_ADDR, ethers.MaxUint256); await tx.wait(); }
+/* Error claro cuando una moneda no tiene pool en PancakeSwap (para distinguirlo y abrir
+   vista previa en vez de bloquear). */
+export const SIN_POOL = 'NO_POOL';
+
+/* allowance se LEE por el lector (rapido); el approve (si hace falta) se FIRMA por MetaMask.
+   Approve por monto maximo: la 1a vez pide approve, las siguientes con esa moneda ya no. */
+async function _aprobarSiHace(ethers, tokenAddr, monto, cuenta, signer, prov) {
+  const read = new ethers.Contract(tokenAddr, ABI_ERC20, prov);
+  const act = await read.allowance(cuenta, SPOT_ADDR);
+  if (act < monto) { const w = new ethers.Contract(tokenAddr, ABI_ERC20, signer); const tx = await w.approve(SPOT_ADDR, ethers.MaxUint256); await tx.wait(); }
 }
 
 /* ── Abrir a mercado (long o short) sobre el par EN PANTALLA. No cambia de moneda.
-   pagar: con que fondeas, 'USDT' o 'BNB' (ambos soportados por el contrato: USDT por
-   approve+transferFrom; BNB nativo por msg.value, el contrato lo convierte a USDT).
-   monto: cantidad en esa moneda. Devuelve { hash, id, costoUsdt }. El id es el de la
-   posicion on chain (del evento Abierta): hace falta para poder cerrarla luego. ── */
+   pagar: 'USDT' o 'BNB'. monto: cantidad en esa moneda.
+   Devuelve { hash, id, costoUsdt, coin, decimals, qty, refQty }. ── */
 export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slippageBps = 100, floorOut = 0, deadlineSeg = 300 }) {
   const ethers = await E();
   const cuenta = cuentaActual && cuentaActual();
@@ -105,21 +116,21 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
   const tok = resolverToken(par);
   if (!tok) throw new Error('This coin is not tradeable on-chain yet.');
   if (!(monto > 0)) throw new Error('Enter an amount first.');
+  const prov = await lector();
+  const routerR = new ethers.Contract(ROUTER, ABI_ROUTER, prov);     // cotizaciones por lector (rapido)
   const signer = await _signer();
-  const router = new ethers.Contract(ROUTER, ABI_ROUTER, signer);
-  const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);
+  const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);     // firma por MetaMask
   const dl = BigInt(Math.floor(Date.now() / 1000) + Math.max(60, deadlineSeg));
   const floorWei = floorOut > 0 ? ethers.parseUnits(Number(floorOut).toFixed(8), lado === 'short' ? tok.decimals : 18) : 0n;
 
   let q, overrides = {}, enUsdtEst;
   if (pagar === 'BNB') {
-    // BNB nativo: input = address(0), el contrato swapea BNB -> USDT con rutaAUsdt y msg.value.
     const valueWei = ethers.parseUnits(Number(monto).toFixed(18), 18);
-    let outUsdt = 0n; try { const a = await router.getAmountsOut(valueWei, [WBNB, USDT]); outUsdt = a[a.length - 1]; } catch (_) {}
+    let outUsdt = 0n; try { const a = await routerR.getAmountsOut(valueWei, [WBNB, USDT]); outUsdt = a[a.length - 1]; } catch (_) {}
     if (!(outUsdt > 0n)) throw new Error('No BNB to USDT route right now.');
     enUsdtEst = outUsdt;
-    const r = await mejorRuta(router, USDT, tok.address, outUsdt);
-    if (!r) throw new Error('No liquidity route for this coin.');
+    const r = await mejorRuta(routerR, USDT, tok.address, outUsdt);
+    if (!r) throw new Error(SIN_POOL);
     q = {
       coin: tok.address, input: ethers.ZeroAddress, pagar: 0n,
       rutaAUsdt: [WBNB, USDT], minUsdt: conSlippage(outUsdt, slippageBps),
@@ -128,11 +139,10 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
     };
     overrides = { value: valueWei };
   } else {
-    // USDT: approve una vez + transferFrom. input = USDT, sin ruta de entrada.
     const pagarWei = ethers.parseUnits(Number(monto).toFixed(8), 18);     // USDT 18 dec en BSC
-    await _aprobarSiHace(ethers, USDT, pagarWei, cuenta, signer);
-    const r = await mejorRuta(router, USDT, tok.address, pagarWei);
-    if (!r) throw new Error('No liquidity route for this coin.');
+    const r = await mejorRuta(routerR, USDT, tok.address, pagarWei);       // cotiza ANTES de approve
+    if (!r) throw new Error(SIN_POOL);
+    await _aprobarSiHace(ethers, USDT, pagarWei, cuenta, signer, prov);
     enUsdtEst = pagarWei;
     q = {
       coin: tok.address, input: USDT, pagar: pagarWei,
@@ -144,39 +154,40 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
 
   const tx = lado === 'short' ? await spot.abrirShort(q, overrides) : await spot.abrirLong(q, overrides);
   const rec = await tx.wait();
-  let id = null;
+  let id = null, qtyReal = 0, refReal = 0;
   try {
     const iface = new ethers.Interface(ABI_SPOT);
-    for (const lg of rec.logs) { try { const pl = iface.parseLog(lg); if (pl && pl.name === 'Abierta') { id = Number(pl.args.id); break; } } catch (_) {} }
+    for (const lg of rec.logs) { try { const pl = iface.parseLog(lg); if (pl && pl.name === 'Abierta') { id = Number(pl.args.id); qtyReal = Number(ethers.formatUnits(pl.args.qty, tok.decimals)); refReal = Number(ethers.formatUnits(pl.args.refQty, tok.decimals)); break; } } catch (_) {} }
   } catch (_) {}
-  return { hash: rec.hash, id, costoUsdt: Number(ethers.formatUnits(enUsdtEst, 18)) };
+  try { registrarTokenVisto(tok.address, par && (par.simbolo || par.coin || par.id), tok.decimals); } catch (_) {}
+  return { hash: rec.hash, id, costoUsdt: Number(ethers.formatUnits(enUsdtEst, 18)), coin: tok.address, decimals: tok.decimals, qty: qtyReal, refQty: refReal };
 }
 
-/* ── Cerrar a mercado una posicion on chain (la firma el usuario). Lee la posicion,
-   aprueba el activo que hay que entregar y llama a cerrar con minOut anti slippage. ── */
+/* ── Cerrar a mercado una posicion on chain (la firma el usuario). Lee por el lector,
+   aprueba el activo a entregar y llama a cerrar con minOut anti slippage. ── */
 export async function cerrarMercadoSpot({ id, slippageBps = 100, deadlineSeg = 300 }) {
   const ethers = await E();
   const cuenta = cuentaActual && cuentaActual();
   if (!cuenta) throw new Error('Connect your wallet first.');
+  const prov = await lector();
+  const routerR = new ethers.Contract(ROUTER, ABI_ROUTER, prov);
+  const spotR = new ethers.Contract(SPOT_ADDR, ABI_SPOT, prov);       // posicionInfo por lector
   const signer = await _signer();
-  const router = new ethers.Contract(ROUTER, ABI_ROUTER, signer);
-  const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);
-  const p = await spot.posicionInfo(id);
+  const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);      // cerrar por firma
+  const p = await spotR.posicionInfo(id);
   if (!p.abierta) throw new Error('Position already closed.');
 
   const dl = BigInt(Math.floor(Date.now() / 1000) + Math.max(60, deadlineSeg));
   let ruta, minOut;
   if (!p.esShort) {
-    // Long: entregar la moneda, recibir USDT. Aprobar la moneda.
-    await _aprobarSiHace(ethers, p.coin, p.qty, cuenta, signer);
-    const r = await mejorRuta(router, p.coin, USDT, p.qty);
+    const r = await mejorRuta(routerR, p.coin, USDT, p.qty);
     if (!r) throw new Error('No liquidity route to close.');
+    await _aprobarSiHace(ethers, p.coin, p.qty, cuenta, signer, prov);
     ruta = r.path; minOut = conSlippage(r.out, slippageBps);
   } else {
-    // Short: entregar el USDT colateral, recibir la moneda. Aprobar USDT.
-    await _aprobarSiHace(ethers, USDT, p.costo, cuenta, signer);
-    const r = await mejorRuta(router, USDT, p.coin, p.costo);
+    const r = await mejorRuta(routerR, USDT, p.coin, p.costo);
     if (!r) throw new Error('No liquidity route to close.');
+    await _aprobarSiHace(ethers, USDT, p.costo, cuenta, signer, prov);
     ruta = r.path; minOut = conSlippage(r.out, slippageBps);
   }
   const tx = await spot.cerrar(id, ruta, minOut, dl);
@@ -184,14 +195,51 @@ export async function cerrarMercadoSpot({ id, slippageBps = 100, deadlineSeg = 3
   return { hash: rec.hash };
 }
 
-/* Posiciones on chain del usuario (ids). */
+/* Posiciones on chain del usuario (ids). Lectura por el lector. */
 export async function misPosicionesSpot() {
   try {
     const ethers = await E();
     const cuenta = cuentaActual && cuentaActual();
     if (!cuenta) return [];
-    const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, await _signer());
+    const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, await lector());
     const ids = await spot.posicionesDe(cuenta);
     return ids.map((x) => Number(x));
+  } catch (_) { return []; }
+}
+
+/* ── Tokens vistos (operados): para que el balance reconozca monedas recien compradas que
+   no estan en la lista fija (ej. ZKC). Se guardan al abrir y se consultan por el lector. ── */
+const LS_TOK = 'sp-tokens-vistos';
+export function registrarTokenVisto(addr, simbolo, decimals) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(String(addr || ''))) return;
+  const a = String(addr).toLowerCase();
+  if (a === USDT.toLowerCase() || a === WBNB.toLowerCase()) return;      // ya los cuenta el balance base
+  try {
+    const l = JSON.parse(localStorage.getItem(LS_TOK) || '[]');
+    if (!Array.isArray(l) || !l.some((t) => String(t.addr || '').toLowerCase() === a)) {
+      const nl = (Array.isArray(l) ? l : []).concat([{ addr, sim: String(simbolo || 'TOKEN').slice(0, 10), dec: +decimals || 18 }]);
+      localStorage.setItem(LS_TOK, JSON.stringify(nl.slice(-40)));
+    }
+  } catch (_) {}
+}
+export async function saldosVistos(cuenta) {
+  try {
+    if (!cuenta) return [];
+    let l = []; try { l = JSON.parse(localStorage.getItem(LS_TOK) || '[]'); } catch (_) {}
+    if (!Array.isArray(l) || !l.length) return [];
+    const ethers = await E(); const prov = await lector();
+    const routerR = new ethers.Contract(ROUTER, ABI_ROUTER, prov);
+    const out = [];
+    await Promise.all(l.map(async (t) => {
+      try {
+        const erc = new ethers.Contract(t.addr, ABI_ERC20, prov);
+        const raw = await erc.balanceOf(cuenta);
+        if (!(raw > 0n)) return;
+        const bal = Number(ethers.formatUnits(raw, t.dec || 18));
+        let px = 0; try { const r = await mejorRuta(routerR, t.addr, USDT, ethers.parseUnits('1', t.dec || 18)); if (r) px = Number(ethers.formatUnits(r.out, 18)); } catch (_) {}
+        out.push({ sim: t.sim || 'TOKEN', addr: t.addr, bal, usd: bal * px, px });
+      } catch (_) {}
+    }));
+    return out;
   } catch (_) { return []; }
 }

@@ -644,10 +644,27 @@ async function renderWallet() {
     const m = MONEDAS[id] || { simbolo: id, color: '#8b95a1' };
     const bal = saldos[id] || 0, p = (precios[id] != null) ? precios[id] : (m.precioUSD || 0), usd = bal * p; total += usd;
     return { id, m, bal, usd, op: tokenOperable(id) && !ESTABLES.includes(id) };
-  }).sort((a, b) => b.usd - a.usd);
+  });
+  // Monedas recién compradas on chain (ej. ZKC) que NO están en la lista fija: se consultan
+  // por su contrato con el lector y se añaden al balance y a "All your coins".
+  try {
+    const C = await _contratoSpot();
+    const extra = await C.saldosVistos(cuenta);
+    const vistos = new Set(ids.map((x) => String(x).toUpperCase()));
+    extra.forEach((t) => {
+      const sU = String(t.sim || '').toUpperCase();
+      if (!(t.bal > 1e-12) || vistos.has(sU)) return;
+      vistos.add(sU);
+      S.saldos[t.sim] = t.bal; precios[t.sim] = t.px || 0;
+      filas.push({ id: t.sim, m: { simbolo: t.sim, color: '#c3a0ff' }, bal: t.bal, usd: t.usd || 0, op: false });
+      total += t.usd || 0;
+    });
+  } catch (_) {}
+  filas.sort((a, b) => b.usd - a.usd);
   S._filasWallet = filas;
   if (boxes) { boxes.innerHTML = filas.length ? filas.map(cajaSaldo).join('') : '<div class="sp-bal-box sp-bal-empty">No balances yet</div>'; boxes.querySelectorAll('[data-coin]').forEach((b) => b.onclick = () => seleccionarMoneda(b.dataset.coin)); ajustarTira(); requestAnimationFrame(ajustarTira); }
   if (cn) cn.textContent = String(filas.length);
+  S.balanceUsd = total;   // saldo real de la cuenta (para el certificado)
   if (eqEl) eqEl.textContent = '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   try { renderEntry(); } catch (_) {}
 }
@@ -675,7 +692,7 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=3'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=4'); return _spC; }
 function _errSpot(e) {
   const m = String((e && (e.reason || e.shortMessage || e.message)) || e);
   if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.';
@@ -696,6 +713,7 @@ async function operar(lado) {
   const bnbPx = (S.precios && S.precios.BNB) ? S.precios.BNB : 0;
   const capUsdt = S.pagar === 'BNB' ? S.cap * bnbPx : S.cap;
   if (!(capUsdt > 0)) { toast(S.pagar === 'BNB' ? 'No BNB price yet to value the order.' : 'Enter an amount first.', 'warn'); return; }
+  const markClic = S.mark;   // precio EN EL MOMENTO DEL CLIC: la entrada se graba aquí, no tras minar (minutos después el precio ya se movió).
   const tp = tpslPrecioReal('tp', lado), sl = tpslPrecioReal('sl', lado);
 
   // ── LIMIT: por ahora queda marcada en el registro; se disparará cuando conectemos el keeper. ──
@@ -721,17 +739,26 @@ async function operar(lado) {
       const C = await _contratoSpot();
       const res = await C.abrirMercadoSpot({ par: S.par, lado, pagar: S.pagar, monto: S.cap, slippageBps: 100, floorOut: 0 });
       // Se registra en el panel para seguirla en Positions, con el id on chain para poder cerrarla.
-      const r = M.abrirMercado(S.par.id, base, lado, (res.costoUsdt > 0 ? res.costoUsdt : capUsdt), S.mark, tp, sl, res.id);
+      // La entrada se graba al precio del CLIC (markClic), no al de después de minar.
+      const r = M.abrirMercado(S.par.id, base, lado, (res.costoUsdt > 0 ? res.costoUsdt : capUsdt), markClic, tp, sl, res.id);
       if (r.ok) flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened');
       toast(`${lado === 'long' ? 'Long' : 'Short'} opened on-chain · ${res.hash.slice(0, 10)}…`, 'ok'); snd('open');
     } catch (e) {
+      if (e && e.message === 'NO_POOL') {
+        // La moneda no tiene pool en PancakeSwap: no se puede operar on chain. Abrir vista previa local.
+        const r = M.abrirMercado(S.par.id, base, lado, capUsdt, markClic, tp, sl);
+        if (r.ok) { flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened'); toast(`${esc(S.par.simbolo || base)} has no PancakeSwap pool; opened as a local preview only.`, 'warn'); snd('open'); }
+        else toast('This coin has no on-chain pool to trade.', 'bad');
+        setSide(S.side); $('sp-tp').value = ''; $('sp-sl').value = ''; S.cap = 0; S.tam = 0; sincronCap(); renderPos(); renderEntry();
+        return;
+      }
       toast(_errSpot(e), 'bad');
       setSide(S.side);   // rehabilita los botones
       return;
     }
   } else {
     // Sin wallet (vista previa) o moneda aún no operable on chain: queda en el registro local.
-    const r = M.abrirMercado(S.par.id, base, lado, capUsdt, S.mark, tp, sl);
+    const r = M.abrirMercado(S.par.id, base, lado, capUsdt, markClic, tp, sl);
     if (!r.ok) { toast('Could not open the position.', 'bad'); return; }
     flash(r.pos.entrada, lado, (lado === 'long' ? 'LONG' : 'SHORT') + ' opened');
     toast(S.walletOn ? `${lado} opened (this coin is not on-chain yet; tracked locally).` : `${lado} opened at ${fmtP(r.pos.entrada)} (preview · connect your wallet to trade for real).`, S.walletOn ? 'warn' : 'ok');
@@ -890,12 +917,14 @@ function pintarFx() {
     if (markY != null) { g.fillStyle = verde ? 'rgba(46,232,106,.08)' : 'rgba(255,91,110,.08)'; const a = Math.min(ey, markY), b = Math.max(ey, markY); g.fillRect(0, a, W, b - a); }
     // línea de entrada (verde en ganancia, roja en pérdida). En spot no hay liquidación.
     g.save(); g.strokeStyle = colPos; g.lineWidth = 1.8; g.shadowColor = verde ? 'rgba(46,232,106,.95)' : 'rgba(255,91,110,.95)'; g.shadowBlur = 5 + 9 * gp; g.beginPath(); g.moveTo(0, ey); g.lineTo(W, ey); g.stroke(); g.restore();
+    // PRECIO DE ENTRADA en el eje derecho (para verlo siempre, como el precio actual)
+    etiquetaEje(g, plotR, W, ey, fmtP(p.entrada), colPos, '#04210f');
     // X para cerrar la posición (extremo derecho, pegada al eje)
     const xbw = 18, xbx = plotR - xbw - 2;
     botonAspa(g, xbx, ey - 9, xbw, 18, 'rgba(255,107,122,.75)', '#ff6b7a');
     S._handles.push({ cerrarPos: p.id, par: p.par, x0: xbx - 5, x1: plotR, y0: ey - 11, y1: ey + 11 });
-    // tachuela de la posición, a la izquierda de la X de cerrar
-    const etqLeft = etiqueta(g, xbx - 5, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'}  ${fmtPnL(pnl, info.denom)}`, colPos, '#04210f');
+    // tachuela de la posición, con el PnL y su PORCENTAJE, a la izquierda de la X de cerrar
+    const etqLeft = etiqueta(g, xbx - 5, ey, `${p.lado === 'long' ? 'LONG' : 'SHORT'}  ${fmtPnL(pnl, info.denom)}  ${pctTxt(info.pct)}`, colPos, '#04210f');
     // botones para crear TP/SL (solo los NO fijados), a la IZQUIERDA de la tachuela: orden TP · SL · LONG
     let rx = etqLeft - 6;
     if (!p.sl) { const bw = 30, bx = rx - bw; botonCuadro(g, bx, ey - 9, bw, 18, '#ff5b6e', 'SL', true); S._handles.push({ id: p.id, cual: 'sl', creating: true, x0: bx - 4, x1: bx + bw + 4, y0: ey - 11, y1: ey + 11 }); rx = bx - 6; }
@@ -930,8 +959,14 @@ function ctrlTPSLfijo(g, p, cual, col, plotR, Y, gp) {
   const set = cual === 'tp' ? p.tp : p.sl; const y = Y(set); if (y == null) return;
   const bw = 30, bh = 18, bx = plotR - bw - 2;
   g.save(); g.setLineDash([7, 4]); g.strokeStyle = col; g.lineWidth = 1.5; g.shadowColor = col; g.shadowBlur = 3 + 7 * (gp || 0); g.beginPath(); g.moveTo(0, y); g.lineTo(bx - 4, y); g.stroke(); g.setLineDash([]); g.restore();
-  etiqueta(g, bx - 4, y, (cual === 'tp' ? 'TP ' : 'SL ') + fmtP(set), col, '#04210f');
   botonCuadro(g, bx, y - bh / 2, bw, bh, col, cual.toUpperCase(), false);
+  const etqLeft = etiqueta(g, bx - 4, y, (cual === 'tp' ? 'TP ' : 'SL ') + fmtP(set), col, '#04210f');
+  // X para QUITAR el TP/SL (a la izquierda de la etiqueta)
+  const xbw = 16, xbx = etqLeft - 6 - xbw;
+  botonAspa(g, xbx, y - 8, xbw, 16, 'rgba(255,107,122,.7)', '#ff6b7a');
+  S._handles.push({ quitarTPSL: p.id, cual, x0: xbx - 4, x1: xbx + xbw + 4, y0: y - 10, y1: y + 10 });
+  // Arrastre: toda la línea a la IZQUIERDA de la X, más el botón de la derecha (reubicable).
+  S._handles.push({ id: p.id, cual, x0: 0, x1: xbx - 6, y0: y - 8, y1: y + 8 });
   S._handles.push({ id: p.id, cual, x0: bx - 6, x1: plotR, y0: y - 10, y1: y + 10 });
 }
 /* Recuadro con aspa (X): cancelar la entry, cerrar una posición o quitar una alerta. */
@@ -952,6 +987,15 @@ function botonCuadro(g, x, y, w, h, col, txt, hueco) {
   g.restore();
 }
 function etiqueta(g, xRight, y, txt, bg, fg) { g.save(); g.font = '700 10.5px "IBM Plex Mono", monospace'; const w = g.measureText(txt).width + 14; const x = xRight - w - 8; g.fillStyle = bg; redondea(g, x, y - 9, w, 18, 4); g.fill(); g.fillStyle = fg; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(txt, x + 7, y + 0.5); g.restore(); return x; }
+/* Etiqueta del PRECIO en el eje derecho (gutter), a la altura de una línea. Así el precio de
+   entrada se ve siempre en el eje, igual que el precio actual de la moneda. */
+function etiquetaEje(g, plotR, W, y, txt, bg, fg) {
+  g.save(); g.font = '700 10px "IBM Plex Mono", monospace';
+  const x = plotR + 1, w = Math.max(30, W - plotR - 2), h = 16;
+  g.fillStyle = bg; redondea(g, x, y - h / 2, w, h, 3); g.fill();
+  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x + w / 2, y + 0.5);
+  g.restore();
+}
 function redondea(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
 /* ── Arrastre y creación de TP/SL (tiradores cuadrados del overlay) ── */
@@ -969,13 +1013,14 @@ function wireDrag() {
     if (S.drag) return;
     const h = handleEn(e);
     fx.style.pointerEvents = h ? 'auto' : 'none';
-    fx.style.cursor = h ? (h.entryLine ? 'grab' : (h.entryX || h.cerrarPos || h.alertaX ? 'pointer' : 'ns-resize')) : '';
+    fx.style.cursor = h ? (h.entryLine ? 'grab' : (h.entryX || h.cerrarPos || h.alertaX || h.quitarTPSL ? 'pointer' : 'ns-resize')) : '';
   });
   fx.addEventListener('mousedown', (e) => {
     const h = handleEn(e); if (!h) return;
     e.stopPropagation(); e.preventDefault();
     if (h.entryX) { S.limitPx = 0; const li = $('sp-limit'); if (li) li.value = ''; dibujarLimit(); renderEntry(); fx.style.pointerEvents = 'none'; return; }
     if (h.cerrarPos) { cerrarPosicion(h.cerrarPos); fx.style.pointerEvents = 'none'; return; }
+    if (h.quitarTPSL) { const p = M.posiciones().find((x) => x.id === h.quitarTPSL); if (p) { M.setTPSL(p.id, h.cual === 'tp' ? 0 : (p.tp || 0), h.cual === 'sl' ? 0 : (p.sl || 0)); toast(`${h.cual.toUpperCase()} removed.`, 'ok'); renderPos(); } fx.style.pointerEvents = 'none'; return; }
     if (h.alertaX) { S.alertas = (S.alertas || []).filter((a) => a.id !== h.alertaX); toast('Alert removed.', 'ok'); fx.style.pointerEvents = 'none'; return; }
     if (h.entryLine) { S.drag = { entryLine: true }; fx.style.cursor = 'grabbing'; return; }
     const p = M.posiciones().find((x) => x.id === h.id); if (!p) return;
@@ -1195,15 +1240,18 @@ function mostrarTarjeta(cv, nombre) {
 function certStats() {
   const histN = M.historial();                     // mas reciente primero
   const hist = histN.slice().reverse();            // cronologico (todos)
-  const usd = hist.filter((h) => (h.denom || 'USDT') === 'USDT');   // solo USDT para el $
   const n = hist.length;
   const wins = hist.filter((h) => h.pnl > 0).length;
-  const total = usd.reduce((a, h) => a + h.pnl, 0);
-  let eq = 0; const curva = [0];                    // curva de PnL ACUMULADO real (desde 0, sin balance inventado)
-  usd.forEach((h) => { eq += h.pnl; curva.push(eq); });
-  const best = usd.length ? Math.max(...usd.map((h) => h.pnl)) : 0;
+  // PnL EN USD de cada cierre: los long ya están en USDT; los short están en la moneda,
+  // así que se valoran con el precio de salida (coins · precio = USD). No se pierde ninguno.
+  const pnlUsd = (h) => (h.denom || 'USDT') === 'USDT' ? (+h.pnl || 0) : ((+h.pnl || 0) * (+h.salida || 0));
+  const total = hist.reduce((a, h) => a + pnlUsd(h), 0);
+  let eq = 0; const curva = [0];                    // curva de PnL ACUMULADO real en USD (desde 0)
+  hist.forEach((h) => { eq += pnlUsd(h); curva.push(eq); });
+  const best = hist.length ? Math.max(0, ...hist.map(pnlUsd)) : 0;
+  const saldo = (typeof S !== 'undefined' && S.balanceUsd > 0) ? S.balanceUsd : 0;   // saldo real de la cuenta
   const desde = n ? new Date(hist[0].cerrado) : null, hasta = n ? new Date(hist[n - 1].cerrado) : null;
-  return { n, wins, losses: n - wins, winRate: n ? Math.round(wins / n * 100) : 0, total, best, curva, desde, hasta };
+  return { n, wins, losses: n - wins, winRate: n ? Math.round(wins / n * 100) : 0, total, best, saldo, curva, desde, hasta };
 }
 function wrapTexto(g, txt, x, y, maxW, lh) {
   const ws = txt.split(' '); let linea = '', yy = y;
@@ -1253,7 +1301,7 @@ async function generarCert(nombre) {
     ['Net PnL', (st.total >= 0 ? '+' : '−') + '$' + Math.abs(st.total).toLocaleString('en-US', { maximumFractionDigits: 0 }), st.total >= 0 ? up : dn],
     ['Wins', String(st.wins), up],
     ['Losses', String(st.losses), dn],
-    ['Best trade', (st.best >= 0 ? '+' : '−') + '$' + Math.abs(st.best).toLocaleString('en-US', { maximumFractionDigits: 0 }), st.best >= 0 ? up : dn]
+    ['Account balance', st.saldo > 0 ? '$' + st.saldo.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—', ink]
   ];
   const tY = 480, tW = (W - M0 * 2 - 2 * 18) / 3, tH = 112;
   tiles.forEach((t, i) => {
@@ -1352,8 +1400,8 @@ function exportarCSV() {
       'Wins,' + st.wins,
       'Losses,' + st.losses,
       'Win rate %,' + st.winRate,
-      'Net PnL USDT,' + st.total.toFixed(2),
-      'Best trade USDT,' + st.best.toFixed(2),
+      'Net PnL USD,' + st.total.toFixed(2),
+      'Account balance USD,' + (st.saldo || 0).toFixed(2),
       'decfreedom.com', '', M.csv()
     ].join('\n');
     descargar(new Blob([pre], { type: 'text/csv' }), 'DecFreedom-track-record.csv'); toast('History exported (CSV).', 'ok');
