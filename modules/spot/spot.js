@@ -1837,7 +1837,11 @@ function traerMovers() {
   const now = Date.now();
   if (_moversCache && (now - _moversT) < 60000) return Promise.resolve(_moversCache);
   if (_moversProm) return _moversProm;
-  _moversProm = D.movers24h().then((r) => { _moversCache = Array.isArray(r) ? r.filter((d) => d && MOVERS_OK.has(d.base)) : []; _moversT = Date.now(); _moversProm = null; return _moversCache; })
+  // Sin reja de volatilidad: la lista blanca MOVERS_OK es el unico filtro (las monedas
+  // liquidas rara vez pasan el 7% de amplitud, y las que lo pasan son las trampa). Tope
+  // alto para que el corte interno no deje fuera a ninguna. Vienen ordenadas por amplitud
+  // (la que mas se mueve hoy, arriba).
+  _moversProm = D.movers24h({ minAmp: 0, factorBTC: 0, minVol: 5e5, max: 1000 }).then((r) => { _moversCache = Array.isArray(r) ? r.filter((d) => d && MOVERS_OK.has(d.base)) : []; _moversT = Date.now(); _moversProm = null; return _moversCache; })
     .catch((e) => { _moversProm = null; throw e; });
   return _moversProm;
 }
