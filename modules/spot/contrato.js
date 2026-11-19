@@ -42,11 +42,16 @@ async function E() {
   if (!_ethers) _ethers = await import('../../assets/js/vendor/ethers-6.13.4.min.js?v=126');
   return _ethers;
 }
+/* Provider y signer FRESCOS en cada operación (ligados a la cuenta y la red del momento:
+   nunca quedan viejos si cambias de cuenta o de cadena). */
 async function _signer() {
   const ethers = await E();
   const prov = new ethers.BrowserProvider(proveedorActivo ? (proveedorActivo() || window.ethereum) : window.ethereum);
   return prov.getSigner();
 }
+/* Precalentar: adelanta la carga de ethers (el archivo pesado) al conectar la wallet, que es
+   lo que antes tardaba segundos al tocar Long/Short. Así la firma salta casi al instante. */
+export async function precalentar() { try { await E(); } catch (_) {} }
 
 /* coin de la grafica -> { address, decimals } en BSC, SOLO si es una direccion verificada. */
 export function resolverToken(par) {
@@ -69,18 +74,23 @@ async function mejorRuta(router, from, to, amountIn) {
   const cand = [[from, to]];
   if (![from, to].map(a => a.toLowerCase()).includes(USDT.toLowerCase())) cand.push([from, USDT, to]);
   if (![from, to].map(a => a.toLowerCase()).includes(WBNB.toLowerCase())) cand.push([from, WBNB, to]);
+  // Las rutas candidatas se cotizan EN PARALELO (antes era en serie: 3 viajes de red → 1).
+  const res = await Promise.all(cand.map(async (path) => {
+    try { const a = await router.getAmountsOut(amountIn, path); return { path, out: a[a.length - 1] }; } catch (_) { return null; }
+  }));
   let best = null;
-  for (const path of cand) {
-    try { const a = await router.getAmountsOut(amountIn, path); const out = a[a.length - 1]; if (!best || out > best.out) best = { path, out }; } catch (_) {}
-  }
+  for (const r of res) if (r && (!best || r.out > best.out)) best = r;
   return best;
 }
 const conSlippage = (out, bps) => out - (out * BigInt(Math.max(0, Math.min(5000, bps | 0))) / 10000n);
 
+/* Approve por monto MÁXIMO la primera vez que haga falta: así las siguientes operaciones
+   con esa misma moneda ya NO piden approve (una sola firma de antelación, como se pidió).
+   Es el contrato propio y no custodial; el estándar de los dapps (Pancake, Uniswap). */
 async function _aprobarSiHace(ethers, tokenAddr, monto, cuenta, signer) {
   const t = new ethers.Contract(tokenAddr, ABI_ERC20, signer);
   const act = await t.allowance(cuenta, SPOT_ADDR);
-  if (act < monto) { const tx = await t.approve(SPOT_ADDR, monto); await tx.wait(); }
+  if (act < monto) { const tx = await t.approve(SPOT_ADDR, ethers.MaxUint256); await tx.wait(); }
 }
 
 /* ── Abrir a mercado (long o short) sobre el par EN PANTALLA. No cambia de moneda.

@@ -629,6 +629,9 @@ async function renderWallet() {
   const boxes = $('sp-bal-boxes'), eqEl = $('sp-eq'), cn = $('sp-coinsn');
   if (!cuenta) { S.walletOn = false; S.saldos = {}; S._filasWallet = []; M.setDisponible(0); if (boxes) boxes.innerHTML = '<div class="sp-bal-box sp-bal-empty">No wallet detected</div>'; if (eqEl) eqEl.textContent = '—'; if (cn) cn.textContent = '0'; try { renderEntry(); } catch (_) {} return; }
   S.walletOn = true; S.cuenta = cuenta;
+  // Precalienta el cableado on chain (ethers + provider) al conectar, para que al tocar
+  // Long/Short la wallet salte casi al instante en vez de cargar todo en ese momento.
+  try { _contratoSpot().then((C) => C.precalentar && C.precalentar()).catch(() => {}); } catch (_) {}
   let saldos = {};
   if (typeof window !== 'undefined' && window.__spotMockSaldos) saldos = window.__spotMockSaldos;
   else { try { saldos = await saldosTodas(cuenta); } catch (_) { saldos = {}; } }
@@ -672,7 +675,7 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=2'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=3'); return _spC; }
 function _errSpot(e) {
   const m = String((e && (e.reason || e.shortMessage || e.message)) || e);
   if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.';
@@ -1196,10 +1199,11 @@ function certStats() {
   const n = hist.length;
   const wins = hist.filter((h) => h.pnl > 0).length;
   const total = usd.reduce((a, h) => a + h.pnl, 0);
-  let eq = 10000; const curva = [10000];
+  let eq = 0; const curva = [0];                    // curva de PnL ACUMULADO real (desde 0, sin balance inventado)
   usd.forEach((h) => { eq += h.pnl; curva.push(eq); });
+  const best = usd.length ? Math.max(...usd.map((h) => h.pnl)) : 0;
   const desde = n ? new Date(hist[0].cerrado) : null, hasta = n ? new Date(hist[n - 1].cerrado) : null;
-  return { n, wins, losses: n - wins, winRate: n ? Math.round(wins / n * 100) : 0, total, startBal: 10000, endBal: 10000 + total, curva, desde, hasta };
+  return { n, wins, losses: n - wins, winRate: n ? Math.round(wins / n * 100) : 0, total, best, curva, desde, hasta };
 }
 function wrapTexto(g, txt, x, y, maxW, lh) {
   const ws = txt.split(' '); let linea = '', yy = y;
@@ -1230,28 +1234,26 @@ async function generarCert(nombre) {
   const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#0b111a'); bg.addColorStop(1, '#070a0f'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
   g.fillStyle = oro; g.fillRect(0, 0, W, 10);
   g.strokeStyle = 'rgba(232,184,75,.22)'; g.lineWidth = 2; g.strokeRect(22, 22, W - 44, H - 44);
-  g.save(); g.translate(W / 2, H * .52); g.rotate(-Math.PI / 10); g.font = '800 300px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.033)'; g.fillText('SPOT', 0, 0); g.restore();
   const M0 = 74;
   let domY = 92;
   if (sello) { const lw = 200, lh = sello.height * (lw / sello.width); g.drawImage(sello, W - M0 - lw, 54, lw, lh); domY = 54 + lh + 30; }
   g.textAlign = 'right'; g.fillStyle = ink3; g.font = '700 18px "IBM Plex Mono", monospace'; g.fillText('decfreedom.com', W - M0, domY);
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-  g.fillStyle = ink; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Trading Performance', M0, 132);
+  g.fillStyle = ink; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Trading', M0, 132);
   g.fillStyle = oro; g.font = '800 54px "Chakra Petch", sans-serif'; g.fillText('Certificate', M0, 196);
   g.fillStyle = ink3; g.font = '700 17px "IBM Plex Mono", monospace'; g.fillText('DECFREEDOM SPOT · TRACK RECORD', M0, 230);
   g.fillStyle = ink2; g.font = '600 19px "IBM Plex Mono", monospace'; g.fillText('Issued to', M0, 306);
   g.fillStyle = '#fff'; g.font = '800 42px "Plus Jakarta Sans", sans-serif'; g.fillText(nombre, M0, 352);
   g.fillStyle = '#c3cbd4'; g.font = '400 19px "Plus Jakarta Sans", sans-serif';
-  wrapTexto(g, 'This document certifies the DecFreedom Spot track record achieved over the period shown, normalized to a $10,000 reference balance.', M0, 398, W - M0 * 2, 27);
+  wrapTexto(g, 'This document certifies the DecFreedom Spot track record of the closed trades over the period shown.', M0, 398, W - M0 * 2, 27);
   const periodo = st.desde ? (st.desde.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' }) + '  →  ' + st.hasta.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })) : '—';
-  const roi = st.total / st.startBal * 100;
   const tiles = [
     ['Trades', String(st.n), ink],
     ['Win rate', st.winRate + '%', st.winRate >= 50 ? up : ink],
     ['Net PnL', (st.total >= 0 ? '+' : '−') + '$' + Math.abs(st.total).toLocaleString('en-US', { maximumFractionDigits: 0 }), st.total >= 0 ? up : dn],
-    ['ROI', (roi >= 0 ? '+' : '−') + Math.abs(roi).toFixed(1) + '%', roi >= 0 ? up : dn],
-    ['Reference', '$10,000', ink],
-    ['End balance', '$' + st.endBal.toLocaleString('en-US', { maximumFractionDigits: 0 }), st.endBal >= 10000 ? up : dn]
+    ['Wins', String(st.wins), up],
+    ['Losses', String(st.losses), dn],
+    ['Best trade', (st.best >= 0 ? '+' : '−') + '$' + Math.abs(st.best).toLocaleString('en-US', { maximumFractionDigits: 0 }), st.best >= 0 ? up : dn]
   ];
   const tY = 480, tW = (W - M0 * 2 - 2 * 18) / 3, tH = 112;
   tiles.forEach((t, i) => {
@@ -1263,7 +1265,7 @@ async function generarCert(nombre) {
   });
   g.fillStyle = ink2; g.font = '600 18px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.fillText('Period:  ' + periodo, M0, tY + 2 * (tH + 16) + 36);
   const chY = 820, chH = 360, chW = W - M0 * 2;
-  g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Equity curve', M0, chY - 16);
+  g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Cumulative PnL', M0, chY - 16);
   dibChartLinea(g, M0, chY, chW, chH, st.curva, oro);
   const bY = chY + chH + 78, bH = 240;
   g.fillStyle = ink; g.font = '800 24px "Chakra Petch", sans-serif'; g.fillText('Wins vs losses', M0, bY - 16);
@@ -1286,7 +1288,7 @@ function dibChartLinea(g, x, y, w, h, datos, col) {
   const py = (v) => y + padT + (h - padT - padB) * (1 - (v - min) / rng);
   g.textAlign = 'right'; g.textBaseline = 'middle'; g.font = '600 13px "IBM Plex Mono", monospace';
   for (let k = 0; k <= 3; k++) { const v = min + rng * k / 3, yy = py(v); g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yy); g.lineTo(x + w - padX, yy); g.stroke(); g.fillStyle = '#5a636e'; g.fillText('$' + Math.round(v).toLocaleString('en-US'), x + w - 10, yy); }
-  if (min <= 10000 && max >= 10000) { const yb = py(10000); g.setLineDash([5, 5]); g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yb); g.lineTo(x + w - padX, yb); g.stroke(); g.setLineDash([]); }
+  if (min <= 0 && max >= 0) { const yb = py(0); g.setLineDash([5, 5]); g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + padX, yb); g.lineTo(x + w - padX, yb); g.stroke(); g.setLineDash([]); }
   const pts = datos.map((v, i) => ({ x: px(i), y: py(v) }));
   const trazo = () => { g.beginPath(); g.moveTo(pts[0].x, pts[0].y); for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2; g.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y); } };
   const grd = g.createLinearGradient(0, y, 0, y + h); grd.addColorStop(0, 'rgba(232,184,75,.26)'); grd.addColorStop(1, 'rgba(232,184,75,0)');
@@ -1346,11 +1348,12 @@ function exportarCSV() {
       'DecFreedom - Spot track record',
       'Trader,' + (nombre || 'Spot Trader'),
       'Issued,' + new Date().toISOString(),
-      'Reference balance,10000',
       'Trades,' + st.n,
+      'Wins,' + st.wins,
+      'Losses,' + st.losses,
       'Win rate %,' + st.winRate,
       'Net PnL USDT,' + st.total.toFixed(2),
-      'End balance,' + st.endBal.toFixed(2),
+      'Best trade USDT,' + st.best.toFixed(2),
       'decfreedom.com', '', M.csv()
     ].join('\n');
     descargar(new Blob([pre], { type: 'text/csv' }), 'DecFreedom-track-record.csv'); toast('History exported (CSV).', 'ok');
@@ -1378,7 +1381,7 @@ const PASOS_SP = [
   {
     t: 'Start here: pick a direction',
     d: 'The very <b>first thing</b> you do is choose <b>Long</b> or <b>Short</b> at the <b>top</b> of the panel. That single choice sets up everything below it. Pick <b>Long</b> if you believe the price will go <b>up</b>. Pick <b>Short</b> if you believe it will go <b>down</b>. Until you pick one, nothing else is active, on purpose.',
-    x: 'Long means buy the coin. Short means bet it drops, funded with your USDT or BNB.'
+    x: 'Long means buy the coin. Short means sell a coin you already hold.'
   },
   {
     t: 'Why Long and Short appear twice',
@@ -1407,8 +1410,8 @@ const PASOS_SP = [
   },
   {
     t: 'Set your amount',
-    d: 'Type or slide the <b>Amount</b>. You commit it in <b>USDT</b> or <b>BNB</b> — pick which from the unit button right next to the amount, for both long and short. The panel always shows exactly what you are committing, and how much of the coin on the chart that opens, before you fire.',
-    x: 'The % buttons size it against your USDT or BNB balance.'
+    d: 'Type or slide the <b>Amount</b>. For a long it is the <b>USDT</b> you spend. For a short it is how much of your <b>coin</b> you sell, and you choose which held coin from the unit button right next to the amount. The panel always shows exactly what you are committing before you open.',
+    x: 'The % buttons size it against the balance you truly hold in your wallet.'
   },
   {
     t: 'Market or Limit, with TP and SL',
