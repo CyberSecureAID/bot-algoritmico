@@ -132,7 +132,7 @@ function barraDe(key) {
 
 /* ── Leyenda: chips de los indicadores activos (tocar = configurar, X = quitar) ── */
 function activos() { const items = []; ST.ovl.forEach((k) => { const d = buscarInd(baseId(k)); if (d) items.push({ key: k, def: d }); }); if (ST.oscK) { const d = buscarInd(baseId(ST.oscK)); if (d) items.push({ key: ST.oscK, def: d }); } return items; }
-const MAXVIS = 2;   // como multichart: 2 chips visibles + "+N" que abre el gestor
+const MAXVIS = 3;   // 3 chips visibles + "+N" (el 4to y siguientes se colapsan)
 function pintarLeyenda() {
   const host = ctx.host(); if (!host) return;
   let leg = host.querySelector('#sp-ind-leg'); if (!leg) { leg = document.createElement('div'); leg.id = 'sp-ind-leg'; leg.className = 'sp-ind-leg'; host.appendChild(leg); }
@@ -143,12 +143,23 @@ function pintarLeyenda() {
   leg.innerHTML = html;
   leg.querySelectorAll('.sp-ind-chip[data-id]').forEach((ch) => ch.onclick = (e) => { if (e.target.closest('.sp-ind-chipx')) return; e.stopPropagation(); cerrarGest(); barraDe(ch.dataset.id); });
   leg.querySelectorAll('.sp-ind-chipx').forEach((b) => b.onclick = (e) => { e.stopPropagation(); quitar(b.dataset.x); });
-  const mas = leg.querySelector('[data-mas]'); if (mas) mas.onclick = (e) => { e.stopPropagation(); abrirGest(mas); };
-  const btn = host.querySelector('#sp-ind-btn'); if (btn) btn.classList.toggle('on', items.length > 0);
+  const mas = leg.querySelector('[data-mas]');
+  if (mas) {
+    mas.onclick = (e) => { e.stopPropagation(); abrirGest(mas); };
+    mas.onmouseenter = () => { clearTimeout(_gestTmr); abrirGest(mas); };   // se abre al acercar el cursor
+    mas.onmouseleave = () => { _gestTmr = setTimeout(cerrarGest, 220); };
+  }
+  const btn = host.querySelector('#sp-ind-btn');
+  if (btn) {
+    btn.classList.toggle('on', items.length > 0);
+    // leyenda a la DERECHA del boton, en su misma fila (como multichart)
+    leg.style.left = (btn.offsetLeft + btn.offsetWidth + 8) + 'px';
+    leg.style.top = (btn.offsetTop + (btn.offsetHeight - 21) / 2) + 'px';
+  }
 }
 /* Gestor de TODOS los indicadores activos (lo abre el "+N"): lista con config y papelera. */
-let _gest = null;
-function cerrarGest() { if (_gest) { try { _gest.remove(); } catch (_) {} _gest = null; document.removeEventListener('mousedown', _gestDoc, true); } }
+let _gest = null, _gestTmr = null;
+function cerrarGest() { clearTimeout(_gestTmr); if (_gest) { try { _gest.remove(); } catch (_) {} _gest = null; document.removeEventListener('mousedown', _gestDoc, true); } }
 function _gestDoc(e) { if (_gest && !_gest.contains(e.target) && !e.target.closest('[data-mas]')) cerrarGest(); }
 function abrirGest(anc) {
   cerrarGest(); const host = ctx.host(); if (!host) return;
@@ -157,6 +168,8 @@ function abrirGest(anc) {
   host.appendChild(pop);
   const rh = host.getBoundingClientRect(), ra = anc.getBoundingClientRect();
   pop.style.left = Math.max(6, ra.left - rh.left) + 'px'; pop.style.top = (ra.bottom - rh.top + 6) + 'px';
+  pop.onmouseenter = () => clearTimeout(_gestTmr);               // mantener abierto al pasar al popup
+  pop.onmouseleave = () => { _gestTmr = setTimeout(cerrarGest, 220); };
   llenarGest(pop); setTimeout(() => document.addEventListener('mousedown', _gestDoc, true), 0);
 }
 function llenarGest(pop) {
@@ -206,7 +219,7 @@ function inyectarCSS() {
   .sp-ind-btn{position:absolute;top:8px;left:8px;z-index:6;height:26px;padding:0 10px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(17,22,28,.82);color:#cfd8e3;font:700 11.5px/1 "Chakra Petch",system-ui,sans-serif;letter-spacing:.02em;cursor:pointer;backdrop-filter:blur(4px)}
   .sp-ind-btn:hover{border-color:rgba(232,184,75,.6);color:#E8B84B}
   .sp-ind-btn.on{border-color:rgba(232,184,75,.55);color:#E8B84B}
-  .sp-ind-leg{position:absolute;top:40px;left:8px;z-index:6;display:flex;flex-wrap:wrap;gap:5px;max-width:70%;pointer-events:none}
+  .sp-ind-leg{position:absolute;top:10px;left:98px;z-index:6;display:flex;flex-wrap:nowrap;align-items:center;gap:5px;max-width:calc(100% - 110px);pointer-events:none}
   .sp-ind-chip{pointer-events:auto;display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 5px 0 7px;border-radius:6px;background:rgba(17,22,28,.82);border:1px solid rgba(255,255,255,.1);font:700 10.5px/1 "IBM Plex Mono",monospace;cursor:pointer;backdrop-filter:blur(4px)}
   .sp-ind-chip i{width:7px;height:7px;border-radius:50%;flex:none}
   .sp-ind-chipx{border:0;background:none;color:inherit;opacity:.6;cursor:pointer;font-size:10px;padding:0 1px;line-height:1}

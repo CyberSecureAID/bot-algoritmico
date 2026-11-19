@@ -700,7 +700,7 @@ async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v
 let _indMod = null, _indInit = false;
 async function cargarIndicadores() {
   try {
-    if (!_indMod) _indMod = await import('./indicadores-spot.js?v=2');
+    if (!_indMod) _indMod = await import('./indicadores-spot.js?v=3');
     if (!_indInit) { _indMod.initIndSpot({ chart: () => S.chart, velas: () => S.velas, lc: () => window.LightweightCharts, host: () => $('sp-chart'), serie: () => S.serieVela }); _indInit = true; }
     _indMod.reaplicarInd();
   } catch (_) {}
@@ -1710,12 +1710,21 @@ function cargarParBinance(base, logo, addr) {
 /* Selector de ALTA VOLATILIDAD: los que mas se mueven hoy (Binance 24h), con liquidez,
    para operar porcentajes grandes. Reusa el pop; cada fila: logo+nombre | precio | %. */
 let _moversCache = null, _moversT = 0, _moversProm = null;
+/* Lista blanca de monedas LIQUIDAS de verdad en PancakeSwap/BSC: Binance-Peg con pool
+   profunda que sigue el precio de Binance, o nativas de BSC. Evita que se cuelen pools
+   trampa (tipo ZKC) que tienen volatilidad y volumen en Binance pero pool mala en BSC,
+   donde el swap sale robado. Solo RESTRINGE: una moneda solo aparece si ya venia con
+   direccion de la lista BSC. El guardia de precio (contrato.js) es el respaldo. */
+const MOVERS_OK = new Set([
+  'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'LINK', 'DOT', 'LTC', 'AVAX', 'UNI', 'AAVE', 'CAKE', 'TWT',
+  'SHIB', 'FLOKI', 'PEPE'
+]);
 /* Una sola fuente de datos con cache de 60s y sin pedir dos veces a la vez. */
 function traerMovers() {
   const now = Date.now();
   if (_moversCache && (now - _moversT) < 60000) return Promise.resolve(_moversCache);
   if (_moversProm) return _moversProm;
-  _moversProm = D.movers24h().then((r) => { _moversCache = Array.isArray(r) ? r : []; _moversT = Date.now(); _moversProm = null; return _moversCache; })
+  _moversProm = D.movers24h().then((r) => { _moversCache = Array.isArray(r) ? r.filter((d) => d && MOVERS_OK.has(d.base)) : []; _moversT = Date.now(); _moversProm = null; return _moversCache; })
     .catch((e) => { _moversProm = null; throw e; });
   return _moversProm;
 }
