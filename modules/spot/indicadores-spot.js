@@ -185,10 +185,18 @@ const CATS = [['all', 'All'], ['Trend', 'Trend'], ['Volume', 'Volume'], ['Volati
 let _modal = null;
 function cerrarModal() { if (_modal) { try { _modal.remove(); } catch (_) {} _modal = null; } document.removeEventListener('keydown', escCerrar, true); }
 function escCerrar(e) { if (e.key === 'Escape') cerrarModal(); }
+/* Cuantas instancias activas hay de un overlay (ema, ema#2 ...). */
+function nInst(id) { let n = 0; ST.ovl.forEach((k) => { if (baseId(k) === id) n++; }); return n; }
 function abrirSelector() {
   cerrarModal();
   const ov = document.createElement('div'); ov.className = 'sp-ind-ov'; _modal = ov;
-  const rows = INDICADORES.map((d) => { const c = (ST.cfg[d.id]) || d.estilo; return `<button class="sp-irow${activo(d) ? ' on' : ''}" data-id="${d.id}" data-grp="${d.grupo}"><i class="dot" style="background:${c.col}"></i><span class="nm">${d.nom}</span><span class="tag">${d.tipo === 'ovl' ? 'Price' : 'Panel'}</span><span class="ck">✓</span></button>`; }).join('');
+  const rows = INDICADORES.map((d) => {
+    const c = (ST.cfg[d.id]) || d.estilo;
+    const n = d.tipo === 'ovl' ? nInst(d.id) : 0;
+    // overlays: boton "+" para agregar OTRA instancia (EMA 9 y EMA 200, por ejemplo) y contador si hay 2+
+    const extra = d.tipo === 'ovl' ? `${n >= 2 ? `<span class="sp-icnt">×${n}</span>` : ''}<span class="sp-idup" data-dup="${d.id}" title="Add another ${d.nom}">+</span>` : '';
+    return `<button class="sp-irow${activo(d) ? ' on' : ''}" data-id="${d.id}" data-grp="${d.grupo}"><i class="dot" style="background:${c.col}"></i><span class="nm">${d.nom}</span><span class="tag">${d.tipo === 'ovl' ? 'Price' : 'Panel'}</span><span class="ck">✓</span>${extra}</button>`;
+  }).join('');
   const cats = CATS.map(([k, lbl], i) => `<button class="sp-icat${i === 0 ? ' on' : ''}" data-cat="${k}">${lbl}</button>`).join('');
   ov.innerHTML = `<div class="sp-ind-modal"><div class="sp-ind-head"><b>Indicators</b><button class="sp-ind-close" title="Close">✕</button></div>
     <div class="sp-ind-search"><input placeholder="Search indicator…"><span class="cnt"></span></div>
@@ -206,6 +214,7 @@ function abrirSelector() {
     else list.querySelectorAll('.sp-irow').forEach((x) => { const dd = buscarInd(x.dataset.id); if (dd && dd.tipo === 'osc') x.classList.toggle('on', ST.oscK && baseId(ST.oscK) === x.dataset.id); });
     if (enc) { cerrarModal(); setTimeout(() => barraDe(id), 30); }
   });
+  list.querySelectorAll('.sp-idup').forEach((p) => p.onclick = (e) => { e.stopPropagation(); cerrarModal(); duplicar(p.dataset.dup); });   // "+" = agregar otra instancia y abrir sus ajustes
   ov.querySelector('.sp-ind-close').onclick = cerrarModal;
   ov.addEventListener('mousedown', (e) => { if (e.target === ov) cerrarModal(); });
   document.addEventListener('keydown', escCerrar, true);
@@ -241,6 +250,10 @@ function inyectarCSS() {
   .sp-irow .dot{width:9px;height:9px;border-radius:50%;flex:none}.sp-irow .nm{flex:1}
   .sp-irow .tag{font:600 10px "IBM Plex Mono",monospace;color:#6b7580;border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:2px 6px}
   .sp-irow .ck{opacity:0;color:#2ee86a;font-weight:800}.sp-irow.on{background:rgba(46,232,106,.08)}.sp-irow.on .ck{opacity:1}
+  .sp-icnt{font:800 10px "IBM Plex Mono",monospace;color:#E8B84B}
+  .sp-idup{display:none;align-items:center;justify-content:center;width:22px;height:22px;flex:none;border-radius:6px;border:1px solid #C9A84B;background:rgba(232,184,75,.12);color:#E8B84B;font-size:15px;font-weight:800;line-height:1;cursor:pointer}
+  .sp-irow.on .sp-idup{display:inline-flex}
+  .sp-idup:hover{background:rgba(232,184,75,.26)}
   @media(max-width:560px){.sp-ind-cats{width:112px}}
   /* Scrollbars con estilo (copiado de multichart): track transparente + pulgar redondeado.
      Incluye la ventana de ajustes compartida de ui.js (.indtb-pop-cfg), que en Spot salía
