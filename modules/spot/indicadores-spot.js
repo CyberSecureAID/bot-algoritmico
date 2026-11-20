@@ -10,11 +10,43 @@
      reaplicarInd()    cuando la gráfica se reconstruye (recrea las series).
      refrescarInd()    cuando llega una vela nueva (actualiza los datos).            */
 
-import { INDICADORES, calcular, cfgInicial, buscarInd, transformar, nombreInd } from '../indicadores/libreria.js?v=7';
+import { INDICADORES, calcular as _calcular, cfgInicial as _cfgInicial, buscarInd as _buscarInd, transformar, nombreInd as _nombreInd } from '../indicadores/libreria.js?v=7';
 import { abrirBarraInd } from '../indicadores/ui.js?v=7';
 
 const LS = 'sp-indicadores';
 const baseId = (k) => String(k).split('#')[0];
+
+/* ── MultiMA: un solo indicador con 5 medias (EMA) configurables por separado.
+   Es LOCAL de Spot (no va en la libreria compartida, para no tocar multichart). El
+   motor de overlays ya dibuja varias lineas con color y grosor por linea, asi que
+   MultiMA solo devuelve 5 lineas. buscarInd/calcular/cfgInicial/nombreInd se envuelven
+   para atender 'multima' sin cambiar el resto. ── */
+function emaCalc(src, n) {
+  n = Math.max(1, Math.round(n || 1)); const out = new Array(src.length).fill(null);
+  if (src.length < n) return out; const k = 2 / (n + 1); let prev = null, suma = 0;
+  for (let i = 0; i < src.length; i++) { const v = src[i]; if (v == null) { out[i] = prev; continue; } if (i < n - 1) { suma += v; continue; } if (i === n - 1) { suma += v; prev = suma / n; out[i] = prev; continue; } prev = v * k + prev * (1 - k); out[i] = prev; }
+  return out;
+}
+const MM_DEF = [
+  { periodo: 9, col: '#f5d13b', gr: 2 },    // amarillo
+  { periodo: 20, col: '#49b6ff', gr: 2 },   // azul
+  { periodo: 50, col: '#ff5b6e', gr: 2 },   // rojo
+  { periodo: 100, col: '#2ee86a', gr: 2 },  // verde
+  { periodo: 200, col: '#ffffff', gr: 2 }   // blanco
+];
+const MULTIMA = { id: 'multima', nom: 'MultiMA', grupo: 'Trend', tipo: 'ovl', estilo: { col: '#f5d13b', gr: 2 } };
+const CATALOGO = INDICADORES.concat([MULTIMA]);   // catalogo del selector (51)
+function buscarInd(id) { return id === 'multima' ? MULTIMA : _buscarInd(id); }
+function cfgInicial(def) { return (def && def.id === 'multima') ? { col: MM_DEF[0].col, lineas: MM_DEF.map((l) => Object.assign({}, l)) } : _cfgInicial(def); }
+function nombreInd(def, c) { return (def && def.id === 'multima') ? 'MultiMA' : _nombreInd(def, c); }
+function calcular(def, velas, c) {
+  if (def && def.id === 'multima') {
+    const cls = velas.map((v) => v.close);
+    const lns = (c && c.lineas && c.lineas.length) ? c.lineas : MM_DEF;
+    return { lineas: lns.map((l) => ({ data: emaCalc(cls, l.periodo), col: l.col, gr: l.gr })) };
+  }
+  return _calcular(def, velas, c);
+}
 
 let ctx = null;                 // { chart(), velas(), lc(), host() }
 const ST = { ovl: new Set(), cfg: {}, oscK: null };   // estado persistente
@@ -112,13 +144,14 @@ function quitar(key) {
   else if (ST.oscK === key || baseId(ST.oscK || '') === baseId(key)) { ST.oscK = null; desmontarOsc(); delete ST.cfg[key]; }
   guardar(); pintarLeyenda();
 }
-function duplicar(id) { const base = baseId(id); let n = 2; while (ST.ovl.has(base + '#' + n)) n++; const key = base + '#' + n; ST.ovl.add(key); ST.cfg[key] = Object.assign({}, cfgDe(id)); construirOverlay(key); guardar(); pintarLeyenda(); setTimeout(() => barraDe(key), 30); }
+function duplicar(id) { const base = baseId(id); let n = 2; while (ST.ovl.has(base + '#' + n)) n++; const key = base + '#' + n; ST.ovl.add(key); try { ST.cfg[key] = JSON.parse(JSON.stringify(cfgDe(id))); } catch (_) { ST.cfg[key] = Object.assign({}, cfgDe(id)); } construirOverlay(key); guardar(); pintarLeyenda(); setTimeout(() => barraDe(key), 30); }
 
 function guardar() { try { localStorage.setItem(LS, JSON.stringify({ ovl: [...ST.ovl], cfg: ST.cfg, oscK: ST.oscK })); } catch (_) {} }
 function cargar() { try { const s = JSON.parse(localStorage.getItem(LS) || '{}'); if (s && typeof s === 'object') { ST.ovl = new Set(Array.isArray(s.ovl) ? s.ovl : []); ST.cfg = s.cfg && typeof s.cfg === 'object' ? s.cfg : {}; ST.oscK = s.oscK || null; } } catch (_) {} }
 
 /* ── Barra de configuración de un indicador puesto (la MISMA de multichart) ── */
 function barraDe(key) {
+  if (baseId(key) === 'multima') { panelMultiMA(key); return; }   // MultiMA tiene su panel compacto propio
   const def = buscarInd(baseId(key)); if (!def) return; const c = cfgDe(key);
   const host = ctx.host(); const r = host ? host.getBoundingClientRect() : { left: 0, width: innerWidth, top: 0 };
   abrirBarraInd({
@@ -128,6 +161,42 @@ function barraDe(key) {
     onEliminar: () => quitar(key),
     onDuplicar: def.tipo === 'ovl' ? () => duplicar(key) : null
   });
+}
+
+/* ── Panel compacto de MultiMA: color, periodo y grosor por cada media.
+   Angosto (sirve en movil), con scroll interno y posicion acotada para que
+   NUNCA se salga por abajo ni por los lados. ── */
+let _mmPanel = null;
+function cerrarMMPanel() { if (_mmPanel) { try { _mmPanel.remove(); } catch (_) {} _mmPanel = null; document.removeEventListener('mousedown', _mmDoc, true); } }
+function _mmDoc(e) { if (_mmPanel && !_mmPanel.contains(e.target) && !e.target.closest('.sp-ind-chip')) cerrarMMPanel(); }
+function panelMultiMA(key) {
+  cerrarGest(); cerrarMMPanel();
+  const c = cfgDe(key); if (!c.lineas || !c.lineas.length) c.lineas = MM_DEF.map((l) => Object.assign({}, l));
+  const host = ctx.host(); if (!host) return;
+  const pop = document.createElement('div'); pop.className = 'sp-mm'; _mmPanel = pop;
+  const rows = c.lineas.map((l, i) => `<div class="sp-mm-row">
+    <input type="color" class="sp-mm-c" data-i="${i}" value="${l.col}" title="Color">
+    <input type="number" class="sp-mm-p" data-i="${i}" value="${Math.round(l.periodo)}" min="1" max="400" inputmode="numeric" title="Length">
+    <select class="sp-mm-g" data-i="${i}" title="Width">${[1, 2, 3, 4].map((g) => `<option value="${g}"${Math.round(l.gr || 2) === g ? ' selected' : ''}>${g}px</option>`).join('')}</select>
+  </div>`).join('');
+  pop.innerHTML = `<div class="sp-mm-h"><b>MultiMA</b><span class="sp-mm-sub">5 moving averages (EMA)</span><button class="sp-mm-x" title="Close">✕</button></div>
+    <div class="sp-mm-cols"><span>Color</span><span>Length</span><span>Width</span></div>
+    <div class="sp-mm-list">${rows}</div>
+    <button class="sp-mm-del">Remove indicator</button>`;
+  host.appendChild(pop);
+  // posicion acotada dentro del host (ni por abajo ni por los lados)
+  const btn = host.querySelector('#sp-ind-btn'); const hr = host.getBoundingClientRect();
+  const bl = btn ? (btn.offsetLeft) : 8, bb = btn ? (btn.offsetTop + btn.offsetHeight) : 40;
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = Math.max(6, Math.min(bl, host.clientWidth - pw - 6)) + 'px';
+  let top = bb + 6; const maxTop = host.clientHeight - ph - 6; if (top > maxTop) top = Math.max(6, maxTop); pop.style.top = top + 'px';
+  const aplica = () => { actualizarOverlay(key); guardar(); pintarLeyenda(); };
+  pop.querySelectorAll('.sp-mm-c').forEach((inp) => inp.oninput = () => { const i = +inp.dataset.i; c.lineas[i].col = inp.value; if (i === 0) c.col = inp.value; aplica(); });
+  pop.querySelectorAll('.sp-mm-p').forEach((inp) => inp.onchange = () => { const n = Math.max(1, Math.min(400, Math.round(+inp.value || 1))); inp.value = n; c.lineas[+inp.dataset.i].periodo = n; aplica(); });
+  pop.querySelectorAll('.sp-mm-g').forEach((sel) => sel.onchange = () => { c.lineas[+sel.dataset.i].gr = +sel.value; aplica(); });
+  pop.querySelector('.sp-mm-x').onclick = cerrarMMPanel;
+  pop.querySelector('.sp-mm-del').onclick = () => { cerrarMMPanel(); quitar(key); };
+  setTimeout(() => document.addEventListener('mousedown', _mmDoc, true), 0);
 }
 
 /* ── Leyenda: chips de los indicadores activos (tocar = configurar, X = quitar) ── */
@@ -190,7 +259,7 @@ function nInst(id) { let n = 0; ST.ovl.forEach((k) => { if (baseId(k) === id) n+
 function abrirSelector() {
   cerrarModal();
   const ov = document.createElement('div'); ov.className = 'sp-ind-ov'; _modal = ov;
-  const rows = INDICADORES.map((d) => {
+  const rows = CATALOGO.map((d) => {
     const c = (ST.cfg[d.id]) || d.estilo;
     const n = d.tipo === 'ovl' ? nInst(d.id) : 0;
     // overlays: boton "+" para agregar OTRA instancia (EMA 9 y EMA 200, por ejemplo) y contador si hay 2+
@@ -231,6 +300,22 @@ function inyectarCSS() {
   .sp-ind-leg{position:absolute;top:10px;left:98px;z-index:6;display:flex;flex-wrap:nowrap;align-items:center;gap:5px;max-width:calc(100% - 110px);pointer-events:none}
   .sp-ind-chip{pointer-events:auto;display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 5px 0 7px;border-radius:6px;background:rgba(17,22,28,.82);border:1px solid rgba(255,255,255,.1);font:700 10.5px/1 "IBM Plex Mono",monospace;cursor:pointer;backdrop-filter:blur(4px)}
   .sp-ind-chip i{width:7px;height:7px;border-radius:50%;flex:none}
+  .sp-ind-mas{color:#E8B84B!important;font-weight:800;border-color:rgba(232,184,75,.45)!important;background:rgba(232,184,75,.12)!important}
+  .sp-mm{position:absolute;z-index:8;width:206px;max-height:calc(100% - 14px);display:flex;flex-direction:column;background:#141b24;border:1px solid #2b3139;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);font-family:"IBM Plex Mono",monospace;overflow:hidden}
+  .sp-mm-h{display:flex;align-items:center;gap:6px;padding:9px 10px 7px;border-bottom:1px solid #222a33}
+  .sp-mm-h b{font:800 12px system-ui;color:#eaecef}
+  .sp-mm-sub{flex:1;font-size:8.5px;color:#8b96a3;line-height:1.1}
+  .sp-mm-x{flex:none;width:20px;height:20px;border:0;background:rgba(255,255,255,.06);border-radius:6px;color:#b7bdc6;cursor:pointer;font-size:11px;line-height:1}
+  .sp-mm-cols{display:flex;gap:6px;padding:7px 10px 3px;font-size:8px;letter-spacing:.04em;text-transform:uppercase;color:#6b7580}
+  .sp-mm-cols span:nth-child(1){width:26px}.sp-mm-cols span:nth-child(2){width:56px}.sp-mm-cols span:nth-child(3){flex:1}
+  .sp-mm-list{display:flex;flex-direction:column;gap:5px;padding:4px 10px 8px;overflow-y:auto}
+  .sp-mm-row{display:flex;align-items:center;gap:6px}
+  .sp-mm-c{width:26px;height:26px;flex:none;padding:0;border:1px solid #3a424c;border-radius:6px;background:none;cursor:pointer}
+  .sp-mm-c::-webkit-color-swatch-wrapper{padding:0}.sp-mm-c::-webkit-color-swatch{border:none;border-radius:5px}.sp-mm-c::-moz-color-swatch{border:none;border-radius:5px}
+  .sp-mm-p{width:56px;height:28px;flex:none;background:#0e141b;border:1px solid #2b3139;border-radius:7px;color:#eaecef;font:700 12px "IBM Plex Mono",monospace;text-align:center}
+  .sp-mm-g{flex:1;height:28px;background:#0e141b;border:1px solid #2b3139;border-radius:7px;color:#eaecef;font:700 11px "IBM Plex Mono",monospace;padding:0 6px;cursor:pointer}
+  .sp-mm-del{margin:2px 10px 10px;padding:8px;border:1px solid rgba(246,70,93,.4);background:rgba(246,70,93,.08);color:#ff6b7d;border-radius:8px;font:700 10.5px "IBM Plex Mono",monospace;cursor:pointer}
+  .sp-mm-del:hover{background:rgba(246,70,93,.16)}
   .sp-ind-chipx{border:0;background:none;color:inherit;opacity:.6;cursor:pointer;font-size:10px;padding:0 1px;line-height:1}
   .sp-ind-chipx:hover{opacity:1;color:#ff6b7a}
   .sp-ind-ov{position:fixed;inset:0;z-index:99999;background:rgba(4,8,12,.62);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}

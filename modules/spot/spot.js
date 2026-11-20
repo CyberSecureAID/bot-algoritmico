@@ -813,7 +813,7 @@ async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v
 let _indMod = null, _indInit = false;
 async function cargarIndicadores() {
   try {
-    if (!_indMod) _indMod = await import('./indicadores-spot.js?v=4');
+    if (!_indMod) _indMod = await import('./indicadores-spot.js?v=5');
     if (!_indInit) { _indMod.initIndSpot({ chart: () => S.chart, velas: () => S.velas, lc: () => window.LightweightCharts, host: () => $('sp-chart'), serie: () => S.serieVela }); _indInit = true; }
     _indMod.reaplicarInd();
   } catch (_) {}
