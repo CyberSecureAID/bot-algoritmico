@@ -196,9 +196,44 @@ export async function idDeRecibo(rec) {
   return null;
 }
 
+/* Decimales reales del token on chain (p.coin viene de posicionInfo como direccion). */
+async function _decimalsToken(ethers, prov, addr) {
+  try { const erc = new ethers.Contract(addr, ABI_ERC20, prov); return Number(await erc.decimals()) || 18; } catch (_) { return 18; }
+}
+/* ── Guarda de SALIDA (la que faltaba, y es la causa del desastre tipo ZKC) ──
+   Al ABRIR ya se bloquea un pool mal valorado (_guardPrecio). Al CERRAR tambien hay que mirar:
+   el minOut de cierre sale del PROPIO pool, asi que si el pool esta podrido/iliquido, la venta
+   NO revierte y te clava un precio pesimo. Aqui se compara el precio IMPLICITO que da el pool al
+   cerrar contra el precio REAL de mercado (refPrice). Si el pool paga mucho menos (long) o cobra
+   mucho mas (short) que el mercado, NO se cierra en silencio: se lanza POOL_MALO_SALIDA para que
+   el front AVISE y deje decidir. Con forzar=true (el usuario confirmo) se salta, para NUNCA
+   atrapar a quien de verdad necesita salir aunque la moneda se haya desplomado. */
+const TOL_SALIDA = 0.12;   // 12% peor que el mercado dispara el aviso
+function _guardSalida(ethers, esShort, r, p, refPrice, coinDec, forzar) {
+  if (forzar || !(refPrice > 0) || !r) return;
+  if (!esShort) {
+    const coinQty = Number(ethers.formatUnits(p.qty, coinDec)); if (!(coinQty > 0)) return;
+    const usdtOut = Number(ethers.formatUnits(r.out, 18));
+    const poolPx = usdtOut / coinQty;                       // USDT por moneda que te paga el pool
+    if (poolPx < refPrice * (1 - TOL_SALIDA)) _lanzaSalida(poolPx, refPrice);
+  } else {
+    const usdtIn = Number(ethers.formatUnits(p.costo, 18));
+    const coinOut = Number(ethers.formatUnits(r.out, coinDec)); if (!(coinOut > 0)) return;
+    const poolPx = usdtIn / coinOut;                        // USDT por moneda que te cobra el pool al recomprar
+    if (poolPx > refPrice * (1 + TOL_SALIDA)) _lanzaSalida(poolPx, refPrice);
+  }
+}
+function _lanzaSalida(poolPx, mercado) {
+  const e = new Error('POOL_MALO_SALIDA');
+  e.recibes = poolPx; e.mercado = mercado;
+  e.desvPct = mercado > 0 ? Math.abs(poolPx - mercado) / mercado * 100 : 0;
+  throw e;
+}
+
 /* ── Cerrar a mercado una posicion on chain (la firma el usuario). Lee por el lector,
-   aprueba el activo a entregar y llama a cerrar con minOut anti slippage. ── */
-export async function cerrarMercadoSpot({ id, slippageBps = 100, deadlineSeg = 300 }) {
+   aprueba el activo a entregar y llama a cerrar con minOut anti slippage. refPrice = precio real
+   de mercado para la guarda de salida; forzar salta la guarda si el usuario ya confirmo. ── */
+export async function cerrarMercadoSpot({ id, slippageBps = 100, deadlineSeg = 300, refPrice = 0, forzar = false }) {
   const ethers = await E();
   const cuenta = cuentaActual && cuentaActual();
   if (!cuenta) throw new Error('Connect your wallet first.');
@@ -209,17 +244,20 @@ export async function cerrarMercadoSpot({ id, slippageBps = 100, deadlineSeg = 3
   const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);      // cerrar por firma
   const p = await spotR.posicionInfo(id);
   if (!p.abierta) throw new Error('Position already closed.');
+  const coinDec = await _decimalsToken(ethers, prov, p.coin);
 
   const dl = BigInt(Math.floor(Date.now() / 1000) + Math.max(60, deadlineSeg));
   let ruta, minOut;
   if (!p.esShort) {
     const r = await mejorRuta(routerR, p.coin, USDT, p.qty);
     if (!r) throw new Error('No liquidity route to close.');
+    _guardSalida(ethers, false, r, p, refPrice, coinDec, forzar);     // avisa si el pool paga mucho menos que el mercado
     await _aprobarSiHace(ethers, p.coin, p.qty, cuenta, signer, prov);
     ruta = r.path; minOut = conSlippage(r.out, slippageBps);
   } else {
     const r = await mejorRuta(routerR, USDT, p.coin, p.costo);
     if (!r) throw new Error('No liquidity route to close.');
+    _guardSalida(ethers, true, r, p, refPrice, coinDec, forzar);      // avisa si el pool cobra mucho mas que el mercado
     await _aprobarSiHace(ethers, USDT, p.costo, cuenta, signer, prov);
     ruta = r.path; minOut = conSlippage(r.out, slippageBps);
   }

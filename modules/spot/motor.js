@@ -118,7 +118,9 @@ export function pnlDe(p, mark) {
     return { pnl, denom: 'USDT', qty, pct };
   }
   const pnl = (mark > 0 && p.entrada > 0) ? (p.amount / mark - p.amount / p.entrada) : 0;   // en la moneda base
-  const pct = p.entrada > 0 ? ((p.entrada - mark) / p.entrada) * 100 : 0;
+  // El % del short se mide en la MONEDA (que es donde se gana), no como movimiento de precio:
+  // rendimiento = pnl/refQty = (entrada - mark)/mark. Asi el % cuadra con el PnL mostrado.
+  const pct = (mark > 0 && p.entrada > 0) ? ((p.entrada - mark) / mark) * 100 : 0;
   return { pnl, denom: p.base || 'COIN', qty, pct };
 }
 
@@ -213,7 +215,9 @@ export function onPrecio(par, mark, hi, lo) {
     const p = ST.pos[i]; if (p.par !== par) continue;
     // Las posiciones REALES (con id on chain) las cierra el KEEPER del lado del servidor,
     // aunque no haya pestana abierta. Aqui NO se simulan, para no dar un cierre falso.
-    if (p.chainId != null) continue;
+    // TAMPOCO las que tienen la apertura ENVIADA y aun minando (pend): durante esos segundos
+    // el chainId aun no esta puesto, y simularlas cerraria en falso una posicion real on chain.
+    if (p.chainId != null || p.pend) continue;
     const esL = p.lado === 'long';
     const slHit = p.sl && (esL ? lo <= p.sl : hi >= p.sl);
     const tpHit = p.tp && (esL ? hi >= p.tp : lo <= p.tp);

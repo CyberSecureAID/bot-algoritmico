@@ -16,7 +16,7 @@
    lo AUTORIZA el dueno con su firma (gratis, sin gas); el keeper la verifica contra
    el dueno real de la posicion on chain. */
 
-import { SPOT_ADDR, firmarMensaje, cuentaFirmante } from './contrato.js?v=8';
+import { SPOT_ADDR, firmarMensaje, cuentaFirmante } from './contrato.js?v=9';
 
 /* Direccion FIJA del keeper (Worker de Cloudflare). Vive aparte del repo: tocar el
    repo no la cambia. El front solo la LLAMA. */
@@ -90,12 +90,15 @@ export async function armarOrden(pos) {
   return await postJSON('/orden', { ...o, ts, firma });
 }
 
-/* Cancela la orden automatica de una posicion (cuando se cierra a mano o se quita el TP/SL). */
+/* Cancela la orden automatica de una posicion (cuando se cierra a mano o se quita el TP/SL).
+   PROPAGA el fallo: quien la llama decide si avisar (quitar un SL que sigue activo es peligroso)
+   o tragarselo (al cerrar a mano, si la cancelacion falla no pasa nada: el keeper vera la
+   posicion cerrada y no hara nada). */
 export async function cancelarOrden(chainId) {
   if (chainId == null) return;
   const ts = ahora();
   const firma = await firmarMensaje(mensajeCancelar(Number(chainId), ts));
-  try { await postJSON('/cancelar', { id: Number(chainId), ts, firma }); } catch (_) {}
+  await postJSON('/cancelar', { id: Number(chainId), ts, firma });
 }
 
 /* Estado de las ordenes del usuario en el keeper (para pintar "armada / disparada" y

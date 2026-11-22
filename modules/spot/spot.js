@@ -17,7 +17,7 @@
 
 import { estilos } from './estilos.js?v=21';
 import * as D from './datos.js?v=12';
-import * as M from './motor.js?v=14';
+import * as M from './motor.js?v=15';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -807,19 +807,31 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=8'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=9'); return _spC; }
 
 /* ── Puente al KEEPER (Worker de Cloudflare) para TP/SL/limite automaticos ── */
 let _spK = null;
-async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=2'); return _spK; }
+async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=3'); return _spK; }
 /* Registra (o actualiza/cancela) el TP/SL de una posicion REAL en el keeper. Firma del
    dueno, sin gas. Si ya no hay ni TP ni SL, cancela la orden automatica. */
+/* La salida automatica (keeper) vigila el precio en Binance, asi que SOLO funciona con pares
+   listados en Binance. Los 86 de la lista lo estan; un token DEX pegado por contrato no. */
+function _tieneBinance(par) { try { return !!(D.PARES && D.PARES.find((x) => x.id === par && x.s)); } catch (_) { return false; } }
 async function _armarKeeper(id) {
   try {
     const p = M.posiciones().find((x) => x.id === id);
     if (!p || p.chainId == null) return;                 // solo posiciones reales
     const K = await _keeperSpot();
-    if (p.tp == null && p.sl == null && !(p.trailing && p.trailing.pct > 0)) { await K.cancelarOrden(p.chainId); return; }
+    // Si ya no hay TP ni SL ni trailing, se CANCELA la orden del keeper. Esto NO puede fallar en
+    // silencio: quitar un stop que en realidad sigue activo es peligroso.
+    if (p.tp == null && p.sl == null && !(p.trailing && p.trailing.pct > 0)) {
+      try { await K.cancelarOrden(p.chainId); toast('Automatic order cancelled.', 'ok'); }
+      catch (_) { toast('Could not cancel the automatic order; it may still be active. Try again.', 'bad'); }
+      return;
+    }
+    // Par fuera de Binance: NO se puede vigilar su precio. En vez de dar un error, se avisa claro
+    // (la proteccion no debe estorbar: simplemente no hay salida automatica para esa moneda).
+    if (!_tieneBinance(p.par)) { toast('Automatic TP/SL runs on Binance-listed coins only; for this coin, close it manually.', 'warn'); return; }
     toast('Sign to arm your auto order (no gas)…', 'warn');
     await K.armarOrden(p);
     toast('Auto TP/SL armed. The keeper will fire it even with the app closed.', 'ok');
@@ -927,11 +939,26 @@ async function operar(lado) {
           const rec = await env.tx.wait();
           if (rec && Number(rec.status) === 0) throw new Error('reverted');
           let cid = null; try { cid = await (await _contratoSpot()).idDeRecibo(rec); } catch (_) {}
-          if (posId) { M.setChainId(posId, cid); _armarKeeper(posId); }   // registra TP/SL en el keeper
-          toast(`${lado === 'long' ? 'Long' : 'Short'} confirmed on-chain`, 'ok'); renderPos();
+          if (posId) {
+            if (cid != null) {
+              M.setChainId(posId, cid); _armarKeeper(posId);   // confirma y arma el TP/SL en el keeper
+              toast(`${lado === 'long' ? 'Long' : 'Short'} confirmed on-chain`, 'ok');
+            } else {
+              // Mino, pero no se pudo leer el id on chain. NO se confirma (se queda 'pend' para que
+              // onPrecio no la simule ni la cierre en falso) y se avisa que la salida automatica no
+              // quedo armada. Al reabrir Spot se podra reconciliar contra la cadena.
+              toast('Opened on-chain, but its id could not be read to arm automatic TP/SL. Reopen Spot to sync.', 'warn');
+            }
+          }
+          renderPos();
         } catch (err) {
-          if (posId) M.eliminar(posId);
-          toast('The on-chain transaction failed; the position was removed.', 'bad'); renderPos();
+          // Solo se BORRA si de verdad revirtio. Un fallo de red al confirmar NO significa que la
+          // apertura fallara: borrarla dejaria una posicion real huerfana on chain. Se deja 'pend'.
+          if (posId) {
+            if (err && err.message === 'reverted') { M.eliminar(posId); toast('The on-chain open reverted; the position was removed.', 'bad'); }
+            else { toast('Could not confirm the open on-chain; it stays pending and will sync. Your funds are safe.', 'warn'); }
+          }
+          renderPos();
         }
       })();
       return;
@@ -972,28 +999,55 @@ async function operar(lado) {
    cierre TAMBIÉN es on chain: pide firma, hace el swap y devuelve el resultado a tu wallet
    (1% de comisión solo si cierra en ganancia). Si es local (vista previa o moneda no
    operable), cierra solo en el registro. */
-async function cerrarPosicion(id, btn) {
+async function cerrarPosicion(id, btn, forzar) {
   const p = M.posiciones().find((x) => x.id === id); if (!p) return;
   if (p.pend) { toast('Still confirming the open on-chain; try again in a moment.', 'warn'); return; }
   if (p.cerrando) { toast('Already closing on-chain…', 'warn'); return; }
   const mk = S.marks[p.par] || S.mark;
   const feeTxt = (x) => x.fee > 0 ? ' · fee ' + (x.denom === 'USDT' ? fmtMoney(x.fee) : fmtCoin(x.fee) + ' ' + x.denom) : '';
-  if (p.chainId != null && S.walletOn) {
-    if (btn) btn.disabled = true;
+  if (p.chainId != null) {
+    // Posicion REAL: SOLO se cierra on chain. Sin wallet NO se cierra en local, porque eso la
+    // sacaria de la pantalla mientras sigue ABIERTA on chain (fondos atrapados).
+    if (!S.walletOn) { toast('Reconnect your wallet to close this on-chain position.', 'warn'); return; }
+    // Seguro SINCRONO contra doble cierre (Close en la tabla + la X del grafico casi a la vez):
+    // se marca "cerrando" ANTES de cualquier await; se revierte si el envio no llega a salir.
+    M.marcarCerrando(id, true); if (btn) btn.disabled = true; renderPos();
     toast('Confirm the close in your wallet…', 'warn');
     let env;
-    try { const C = await _contratoSpot(); env = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100 }); }
-    catch (e) { toast(_errSpot(e), 'bad'); if (btn) btn.disabled = false; return; }
-    // Tx de cierre ENVIADA: marcamos "cerrando", liberamos la interfaz, y al minar cerramos en el registro.
-    M.marcarCerrando(id, true); _cancelarKeeper(p.chainId); toast('Close sent · confirming on-chain…', 'ok'); renderPos();
+    try { const C = await _contratoSpot(); env = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100, refPrice: mk, forzar: !!forzar }); }
+    catch (e) {
+      M.marcarCerrando(id, false); if (btn) btn.disabled = false;
+      const msg = String((e && (e.reason || e.shortMessage || e.message)) || e);
+      if (/already closed|no esta abierta|not open/i.test(msg)) {
+        // Ya estaba cerrada on chain (p.ej. el keeper gano la carrera): finalizar aqui tambien,
+        // en vez de dejar la posicion fantasma en pantalla.
+        const x = M.cerrar(id, mk, 'auto'); if (x) toast('This position was already closed on-chain.', 'ok'); renderPos(); return;
+      }
+      if (e && e.message === 'POOL_MALO_SALIDA') {
+        // Salida a mal precio por pool iliquido/podrido: NO cerrar en silencio. Avisar con las
+        // cifras y dejar que el usuario decida (nunca atrapar a quien de verdad necesita salir).
+        const pct = (e.desvPct != null) ? Math.round(e.desvPct) : '?';
+        confirmarSheet({ titulo: 'Bad exit price', tono: 'sl', okLabel: 'Close anyway',
+          sub: `This coin's on-chain pool looks illiquid: it would close about ${pct}% worse than the real market price. Close anyway?`,
+          ok: () => cerrarPosicion(id, null, true) });
+        renderPos(); return;
+      }
+      toast(_errSpot(e), 'bad'); renderPos(); return;
+    }
+    toast('Close sent · confirming on-chain…', 'ok'); renderPos();
     (async () => {
       try {
         const rec = await env.tx.wait();
         if (rec && Number(rec.status) === 0) throw new Error('reverted');
+        _cancelarKeeper(p.chainId);   // cancelar el keeper SOLO con el cierre ya CONFIRMADO (si revierte, su TP/SL debe seguir)
         const x = M.cerrar(id, S.marks[p.par] || S.mark, 'manual');
         if (x) toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}${feeTxt(x)}`, x.pnl >= 0 ? 'ok' : 'bad');
         renderPos();
-      } catch (err) { M.marcarCerrando(id, false); toast('The close failed on-chain; the position stays open.', 'bad'); renderPos(); }
+      } catch (err) {
+        // No se confirmo. Sigue abierta y el keeper NO se cancelo, asi que su TP/SL sigue protegiendo.
+        M.marcarCerrando(id, false);
+        toast('The close did not confirm; the position stays open and still protected.', 'warn'); renderPos();
+      }
     })();
     return;
   }
@@ -1042,6 +1096,9 @@ function filaPos(p) {
   const info = M.pnlDe(p, S.marks[p.par] || S.mark); const c = info.pnl >= 0 ? 'up' : 'down';
   const qty = p.qty != null ? p.qty : (p.entrada > 0 ? p.amount / p.entrada : 0);
   const est = (p.pend || p.cerrando) ? `<span style="color:#E8B84B;font-size:10px;font-weight:700;margin-left:5px;letter-spacing:.03em">${p.cerrando ? 'closing…' : 'confirming…'}</span>` : '';
+  // Posicion LOCAL (vista previa): no se abrio on chain, no mueve fondos. Se marca claro para que
+  // no se confunda con una real (no tiene salida automatica ni cierre on chain).
+  const badgePrev = (p.chainId == null && !p.pend) ? `<span title="Local preview: not opened on-chain, no real funds" style="color:#8aa0b5;font-size:9px;font-weight:700;margin-left:5px;letter-spacing:.04em;border:1px solid #2a3542;border-radius:4px;padding:0 4px">PREVIEW</span>` : '';
   const btnCerrar = (p.pend || p.cerrando)
     ? `<button class="sp-x" disabled style="opacity:.55;cursor:default">${p.cerrando ? 'Closing…' : 'Confirming…'}</button>`
     : `<button class="sp-x" data-cerrar="${esc(p.id)}" data-par="${esc(p.par)}">Close</button>`;
@@ -1049,7 +1106,7 @@ function filaPos(p) {
   const btnTrail = (p.chainId != null && !p.pend && !p.cerrando)
     ? `<button class="sp-x" data-trail="${esc(p.id)}" title="Trailing stop (automatico)" style="${p.trailing ? 'background:linear-gradient(180deg,#f0a93a,#c9781a);border-color:#ffcf7a;color:#241503' : ''}">${p.trailing ? 'Trail ' + p.trailing.pct + '%' : 'Trail'}</button>`
     : '';
-  return `<tr><td><span class="sp-sym">${logoChip(p.par)} ${esc(etqPar(p.par))} <span class="sp-tag ${p.lado}">${p.lado.toUpperCase()}</span>${est}</span></td>
+  return `<tr><td><span class="sp-sym">${logoChip(p.par)} ${esc(etqPar(p.par))} <span class="sp-tag ${p.lado}">${p.lado.toUpperCase()}</span>${est}${badgePrev}</span></td>
     <td>${fmtCoin(qty)} ${esc(p.base || p.par)}</td><td>${fmtP(p.entrada)}</td><td data-mark="${p.id}">${fmtP(S.marks[p.par] || S.mark)}</td>
     <td>${fmtMoney(p.amount)}</td>
     <td>${celdaTPSL(p, 'tp', '#2ee86a')}</td><td>${celdaTPSL(p, 'sl', '#ff5b6e')}</td>
@@ -1105,6 +1162,18 @@ function editarTrailing(id) {
     valor: p.trailing ? p.trailing.pct : '', unidad: '%', tono: 'sl',
     ok: (v) => { M.setTrailing(p.id, v > 0 ? v : 0); renderPos(); _armarKeeper(p.id); }
   });
+}
+/* Confirmacion simple (si/no). Reutiliza el estilo de la hoja de modalValor, sin campo. */
+function confirmarSheet(o) {
+  const old = $('sp-sheet'); if (old) old.remove();
+  const m = document.createElement('div'); m.className = 'sp-sheet'; m.id = 'sp-sheet';
+  m.innerHTML = `<div class="bx"><h5>${esc(o.titulo || '')}</h5><div class="sub">${esc(o.sub || '')}</div>
+    <div class="btns"><button id="sp-sheet-x">Cancel</button><button class="ok ${o.tono || ''}" id="sp-sheet-ok">${esc(o.okLabel || 'Confirm')}</button></div></div>`;
+  document.body.appendChild(m);
+  const cerrarS = () => { try { m.remove(); } catch (_) {} };
+  m.querySelector('#sp-sheet-x').onclick = cerrarS;
+  m.onclick = (e) => { if (e.target === m) cerrarS(); };
+  m.querySelector('#sp-sheet-ok').onclick = () => { cerrarS(); try { o.ok && o.ok(); } catch (_) {} };
 }
 function modalValor(o) {
   const old = $('sp-sheet'); if (old) old.remove();
