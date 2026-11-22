@@ -1273,9 +1273,9 @@ function ctrlTPSLfijo(g, p, cual, col, plotR, Y, gp) {
   const xbw = 16, xbx = etqLeft - 6 - xbw;
   botonAspa(g, xbx, y - 8, xbw, 16, 'rgba(255,107,122,.7)', '#ff6b7a');
   S._handles.push({ quitarTPSL: p.id, cual, x0: xbx - 4, x1: xbx + xbw + 4, y0: y - 10, y1: y + 10 });
-  // Arrastre: toda la línea a la IZQUIERDA de la X, más el botón de la derecha (reubicable).
-  S._handles.push({ id: p.id, cual, x0: 0, x1: xbx - 6, y0: y - 8, y1: y + 8 });
-  S._handles.push({ id: p.id, cual, x0: bx - 6, x1: plotR, y0: y - 10, y1: y + 10 });
+  // Un TP/SL YA fijado NO se re-arrastra (eso obligaba a re-armar el keeper y era fuente de
+  // errores). Se arrastra UNA sola vez al crearlo; para cambiarlo, se quita con la X y se vuelve
+  // a arrastrar desde cero. Por eso aqui ya no se registra ninguna zona de arrastre, solo la X.
 }
 /* Recuadro con aspa (X): cancelar la entry, cerrar una posición o quitar una alerta. */
 function botonAspa(g, x, y, w, h, colBorde, colAspa) {
@@ -1328,7 +1328,7 @@ function wireDrag() {
     e.stopPropagation(); e.preventDefault();
     if (h.entryX) { S.limitPx = 0; const li = $('sp-limit'); if (li) li.value = ''; dibujarLimit(); renderEntry(); fx.style.pointerEvents = 'none'; return; }
     if (h.cerrarPos) { cerrarPosicion(h.cerrarPos); fx.style.pointerEvents = 'none'; return; }
-    if (h.quitarTPSL) { const p = M.posiciones().find((x) => x.id === h.quitarTPSL); if (p) { M.setTPSL(p.id, h.cual === 'tp' ? 0 : (p.tp || 0), h.cual === 'sl' ? 0 : (p.sl || 0)); toast(`${h.cual.toUpperCase()} removed.`, 'ok'); renderPos(); } fx.style.pointerEvents = 'none'; return; }
+    if (h.quitarTPSL) { const p = M.posiciones().find((x) => x.id === h.quitarTPSL); if (p) { M.setTPSL(p.id, h.cual === 'tp' ? 0 : (p.tp || 0), h.cual === 'sl' ? 0 : (p.sl || 0)); toast(`${h.cual.toUpperCase()} removed.`, 'ok'); renderPos(); _armarKeeper(p.id); } fx.style.pointerEvents = 'none'; return; }
     if (h.alertaX) { S.alertas = (S.alertas || []).filter((a) => a.id !== h.alertaX); toast('Alert removed.', 'ok'); fx.style.pointerEvents = 'none'; return; }
     if (h.entryLine) { S.drag = { entryLine: true }; fx.style.cursor = 'grabbing'; return; }
     const p = M.posiciones().find((x) => x.id === h.id); if (!p) return;
@@ -1347,12 +1347,20 @@ function wireDrag() {
     if (S.drag.entryLine) { S.limitPx = +px.toFixed(dec(px)); const li = $('sp-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); return; }
     const p = M.posiciones().find((x) => x.id === S.drag.id); if (p) fijarTPSL(p, S.drag.cual, px);
   });
-  window.addEventListener('mouseup', () => { if (S.drag) { const line = S.drag.entryLine; S.drag = null; fx.style.pointerEvents = 'none'; if (!line) renderPos(); } });
+  window.addEventListener('mouseup', () => {
+    if (!S.drag) return;
+    const line = S.drag.entryLine; const did = S.drag.id;
+    S.drag = null; fx.style.pointerEvents = 'none';
+    // Re-armar el keeper UNA sola vez, al SOLTAR (no en cada movimiento del arrastre, que pediria
+    // una firma por pixel). Durante el arrastre solo se actualiza el nivel local para la linea.
+    if (!line) { renderPos(); if (did != null) _armarKeeper(did); }
+  });
 }
-/* Fija TP o SL al precio arrastrado. En spot no hay liquidación que respetar. */
+/* Fija TP o SL al precio arrastrado (solo registro local; el keeper se re-arma al soltar).
+   En spot no hay liquidación que respetar. */
 function fijarTPSL(p, cual, px) {
   px = +(+px).toFixed(dec(px));
-  M.setTPSL(p.id, cual === 'tp' ? px : (p.tp || 0), cual === 'sl' ? px : (p.sl || 0)); _armarKeeper(p.id);
+  M.setTPSL(p.id, cual === 'tp' ? px : (p.tp || 0), cual === 'sl' ? px : (p.sl || 0));
 }
 
 /* ── Animación + sonido ── */
