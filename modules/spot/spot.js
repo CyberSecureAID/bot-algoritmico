@@ -17,7 +17,7 @@
 
 import { estilos } from './estilos.js?v=21';
 import * as D from './datos.js?v=12';
-import * as M from './motor.js?v=13';
+import * as M from './motor.js?v=14';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -811,7 +811,7 @@ async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v
 
 /* ── Puente al KEEPER (Worker de Cloudflare) para TP/SL/limite automaticos ── */
 let _spK = null;
-async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=1'); return _spK; }
+async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=2'); return _spK; }
 /* Registra (o actualiza/cancela) el TP/SL de una posicion REAL en el keeper. Firma del
    dueno, sin gas. Si ya no hay ni TP ni SL, cancela la orden automatica. */
 async function _armarKeeper(id) {
@@ -819,8 +819,8 @@ async function _armarKeeper(id) {
     const p = M.posiciones().find((x) => x.id === id);
     if (!p || p.chainId == null) return;                 // solo posiciones reales
     const K = await _keeperSpot();
-    if (p.tp == null && p.sl == null) { await K.cancelarOrden(p.chainId); return; }
-    toast('Sign to arm your auto TP/SL (no gas)…', 'warn');
+    if (p.tp == null && p.sl == null && !(p.trailing && p.trailing.pct > 0)) { await K.cancelarOrden(p.chainId); return; }
+    toast('Sign to arm your auto order (no gas)…', 'warn');
     await K.armarOrden(p);
     toast('Auto TP/SL armed. The keeper will fire it even with the app closed.', 'ok');
   } catch (e) { toast('Could not arm the auto order: ' + _errSpot(e), 'bad'); }
@@ -1011,6 +1011,7 @@ function renderPos() {
     if (!pos.length) { body.innerHTML = '<div class="sp-empty">No open positions. Open a Market trade, or mark a Limit entry on the chart.</div>'; return; }
     body.innerHTML = `<table class="sp-tbl"><thead><tr><th>Symbol</th><th>Coins</th><th>Entry</th><th>Mark</th><th>Amount</th><th>TP</th><th>SL</th><th>PnL</th><th></th></tr></thead><tbody>${pos.map(filaPos).join('')}</tbody></table>`;
     body.querySelectorAll('[data-cerrar]').forEach((b) => b.onclick = () => cerrarPosicion(b.dataset.cerrar, b));
+    body.querySelectorAll('[data-trail]').forEach((b) => b.onclick = () => editarTrailing(b.dataset.trail));
     body.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => editarTPSL(b.dataset.edit, b.dataset.k));
     body.querySelectorAll('[data-share]').forEach((b) => b.onclick = () => { const p = pos.find((x) => x.id === b.dataset.share); if (p) tarjetaPnL(cerradoDesde(p)); });
   } else if (S.tab === 'ord') {
@@ -1043,12 +1044,16 @@ function filaPos(p) {
   const btnCerrar = (p.pend || p.cerrando)
     ? `<button class="sp-x" disabled style="opacity:.55;cursor:default">${p.cerrando ? 'Closing…' : 'Confirming…'}</button>`
     : `<button class="sp-x" data-cerrar="${esc(p.id)}" data-par="${esc(p.par)}">Close</button>`;
+  // Trailing stop (stop movil): solo en posiciones REALES (las dispara el keeper).
+  const btnTrail = (p.chainId != null && !p.pend && !p.cerrando)
+    ? `<button class="sp-x" data-trail="${esc(p.id)}" title="Trailing stop (automatico)" style="${p.trailing ? 'background:linear-gradient(180deg,#f0a93a,#c9781a);border-color:#ffcf7a;color:#241503' : ''}">${p.trailing ? 'Trail ' + p.trailing.pct + '%' : 'Trail'}</button>`
+    : '';
   return `<tr><td><span class="sp-sym">${logoChip(p.par)} ${esc(etqPar(p.par))} <span class="sp-tag ${p.lado}">${p.lado.toUpperCase()}</span>${est}</span></td>
     <td>${fmtCoin(qty)} ${esc(p.base || p.par)}</td><td>${fmtP(p.entrada)}</td><td data-mark="${p.id}">${fmtP(S.marks[p.par] || S.mark)}</td>
     <td>${fmtMoney(p.amount)}</td>
     <td>${celdaTPSL(p, 'tp', '#2ee86a')}</td><td>${celdaTPSL(p, 'sl', '#ff5b6e')}</td>
     <td class="sp-pnl ${c}" data-pnl="${p.id}">${fmtPnL(info.pnl, info.denom)}<span class="sp-pct">${pctTxt(info.pct)}</span></td>
-    <td><span class="sp-acts"><button class="sp-share" data-share="${p.id}" title="Export trade card">${IC.share}</button>${btnCerrar}</span></td></tr>`;
+    <td><span class="sp-acts"><button class="sp-share" data-share="${p.id}" title="Export trade card">${IC.share}</button>${btnTrail}${btnCerrar}</span></td></tr>`;
 }
 function filaOrd(o) {
   return `<tr><td><span class="sp-sym">${logoChip(o.par)} ${esc(etqPar(o.par))}</span></td>
@@ -1085,6 +1090,19 @@ function editarTPSL(id, k) {
       if (esTP) tp = v > 0 ? v : 0; else sl = v > 0 ? v : 0;
       M.setTPSL(p.id, tp, sl); renderPos(); _armarKeeper(p.id);   // propaga el TP/SL al keeper
     }
+  });
+}
+/* Trailing stop: el usuario fija un porcentaje; el keeper hace que el stop siga al mejor
+   precio sin retroceder. Solo en posiciones reales (las dispara el keeper). */
+function editarTrailing(id) {
+  const p = M.posiciones().find((x) => x.id === id);
+  if (!p) return;
+  if (p.chainId == null) { toast('Confirm the position on-chain first.', 'warn'); return; }
+  modalValor({
+    titulo: 'Trailing stop',
+    sub: `${esc(etqPar(p.par))} · ${p.lado === 'long' ? 'Long' : 'Short'} · % from the best price`,
+    valor: p.trailing ? p.trailing.pct : '', unidad: '%', tono: 'sl',
+    ok: (v) => { M.setTrailing(p.id, v > 0 ? v : 0); renderPos(); _armarKeeper(p.id); }
   });
 }
 function modalValor(o) {

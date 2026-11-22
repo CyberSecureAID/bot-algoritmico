@@ -27,7 +27,10 @@ const ahora = () => Math.floor(Date.now() / 1000);
 /* Simbolo de Binance para vigilar el precio (ej. BTC -> BTCUSDT). El keeper lee el
    precio del espejo de Binance con este simbolo. */
 export function simboloBinance(par) {
-  const c = String((par && (par.simbolo || par.coin || par.id)) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Una posicion del motor trae la MONEDA en `par.par` (ej. 'BTC'); un objeto de par la
+  // trae en .simbolo/.coin/.id. OJO: nunca usar el id interno de la posicion (p.id = 'o...').
+  const raw = (par && typeof par === 'object') ? (par.par || par.simbolo || par.coin || par.id) : par;
+  const c = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!c) return '';
   return c.endsWith('USDT') ? c : c + 'USDT';
 }
@@ -43,6 +46,7 @@ function mensajeOrden(o, ts) {
     `lado: ${o.lado}`,
     `tp: ${o.tp == null ? '' : o.tp}`,
     `sl: ${o.sl == null ? '' : o.sl}`,
+    `trail: ${o.trailing && o.trailing.pct ? o.trailing.pct : ''}`,
     `ts: ${ts}`,
   ].join('\n');
 }
@@ -65,7 +69,8 @@ export async function armarOrden(pos) {
   if (!pos || pos.chainId == null) throw new Error('La posicion aun no esta confirmada on chain.');
   const simbolo = simboloBinance(pos);
   if (!simbolo) throw new Error('No se pudo determinar el simbolo del par.');
-  if (pos.tp == null && pos.sl == null) throw new Error('Pon al menos un TP o un SL.');
+  const hayTrail = !!(pos.trailing && Number(pos.trailing.pct) > 0);
+  if (pos.tp == null && pos.sl == null && !hayTrail) throw new Error('Pon al menos un TP, un SL o un trailing.');
   const esShort = String(pos.lado) === 'short';
 
   // Orden firmada por el dueno (gratis, sin gas) y enviada al keeper. El keeper cierra
@@ -77,6 +82,7 @@ export async function armarOrden(pos) {
     lado: esShort ? 'short' : 'long',
     tp: pos.tp != null ? Number(pos.tp) : null,
     sl: pos.sl != null ? Number(pos.sl) : null,
+    trailing: hayTrail ? { pct: Number(pos.trailing.pct) } : null,
     slippageBps: 100, deadlineSeg: 300, dueno: String(cuenta).toLowerCase(),
   };
   const ts = ahora();

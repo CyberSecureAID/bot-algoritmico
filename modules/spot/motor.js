@@ -52,7 +52,8 @@ function _limpiaPos(p) {
     entrada, amount, qty: _fin(p.qty, amount / entrada),
     chainId: (p.chainId != null && isFinite(+p.chainId) && +p.chainId >= 0) ? Math.floor(+p.chainId) : null,
     pend: !!p.pend, cerrando: !!p.cerrando,
-    tp: p.tp == null ? null : (_fin(p.tp) || null), sl: p.sl == null ? null : (_fin(p.sl) || null), t: _fin(p.t, Date.now()) };
+    tp: p.tp == null ? null : (_fin(p.tp) || null), sl: p.sl == null ? null : (_fin(p.sl) || null),
+    trailing: (p.trailing && _fin(p.trailing.pct) > 0) ? { pct: _fin(p.trailing.pct) } : null, t: _fin(p.t, Date.now()) };
 }
 function _limpiaOrd(o) {
   if (!o || typeof o !== 'object') return null;
@@ -127,7 +128,7 @@ export function abrirMercado(par, base, lado, amount, mark, tp, sl, chainId, pen
   const esLong = _lado(lado) !== 'short';
   const cid = (chainId != null && isFinite(+chainId) && +chainId >= 0) ? Math.floor(+chainId) : null;
   const pos = { id: nid(), par: _str(par), base: _str(base), lado: _lado(lado), entrada: mark, amount, qty: amount / mark,
-    chainId: cid, pend: !!pend, cerrando: false, tp: _tpsl(tp, mark, esLong, true), sl: _tpsl(sl, mark, esLong, false), t: Date.now() };
+    chainId: cid, pend: !!pend, cerrando: false, tp: _tpsl(tp, mark, esLong, true), sl: _tpsl(sl, mark, esLong, false), trailing: null, t: Date.now() };
   ST.pos.push(pos); guardar();
   return { ok: true, pos };
 }
@@ -167,6 +168,15 @@ export function setTPSL(id, tp, sl) {
   const ref = _fin(p.entrada) || _fin(p.precio);
   const esLong = _lado(p.lado) !== 'short';
   p.tp = _tpsl(tp, ref, esLong, true); p.sl = _tpsl(sl, ref, esLong, false); guardar(); return true;
+}
+
+/* Trailing stop (stop movil): el usuario fija un porcentaje; el keeper hace que el stop
+   siga al mejor precio manteniendo ese margen, sin retroceder. pct en 0 lo quita. */
+export function setTrailing(id, pct) {
+  const p = ST.pos.find((x) => x.id === id); if (!p) return false;
+  const v = _fin(pct);
+  p.trailing = (v > 0) ? { pct: Math.max(0.1, Math.min(90, v)) } : null;
+  guardar(); return true;
 }
 
 function registrar(p, salida, pnl, denom, fee, motivo) {
