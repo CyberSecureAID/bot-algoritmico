@@ -829,10 +829,11 @@ async function _cancelarKeeper(chainId) {
   if (chainId == null) return;
   try { const K = await _keeperSpot(); await K.cancelarOrden(chainId); } catch (_) {}
 }
-/* Reconcilia el registro local con el keeper: si el keeper ya cerro una posicion real
-   (orden 'disparada'), la cierra tambien aqui para que la vista no quede desfasada. El
-   resultado real esta on chain; el nivel mostrado es el del disparo. No es un bucle: se
-   llama con throttle solo mientras la vista esta abierta. */
+/* Reconcilia el registro local con el keeper: cierra aqui una posicion real SOLO cuando el
+   keeper la marca 'cerrada' (ya CONFIRMADA cerrada on chain), no con solo 'disparada' (la tx
+   pudo revertir): asi la vista nunca se desfasa mostrando cerrada una que sigue abierta. El
+   nivel mostrado es aproximado; el resultado real esta on chain. No es un bucle: se llama con
+   throttle solo mientras la vista esta abierta. */
 let _reconKT = 0;
 function _reconKeeperThrottle() { if (Date.now() - _reconKT < 30000) return; _reconKT = Date.now(); _reconciliarKeeper(); }
 async function _reconciliarKeeper() {
@@ -845,7 +846,7 @@ async function _reconciliarKeeper() {
     if (!est || !Array.isArray(est.ordenes)) return;
     let cambio = false;
     for (const o of est.ordenes) {
-      if (o.estado !== 'disparada') continue;
+      if (o.estado !== 'cerrada') continue;
       const p = M.posiciones().find((x) => x.chainId != null && Number(x.chainId) === Number(o.id));
       if (!p) continue;
       const nivel = (p.tp && p.sl) ? (S.marks[p.par] || S.mark) : (p.tp || p.sl || S.marks[p.par] || S.mark);
