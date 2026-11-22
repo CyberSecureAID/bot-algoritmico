@@ -17,7 +17,7 @@
 
 import { estilos } from './estilos.js?v=21';
 import * as D from './datos.js?v=12';
-import * as M from './motor.js?v=12';
+import * as M from './motor.js?v=13';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
@@ -520,7 +520,7 @@ function onKline(k) {
 function nuevoPrecio(px, hi, lo) {
   S.mark = px; S.marks[S.par.id] = px;
   if (S.open24 > 0) S.chgPct = ((px - S.open24) / S.open24) * 100;
-  const ev = M.onPrecio(S.par.id, px, hi, lo); let cambio = false;
+  const ev = M.onPrecio(S.par.id, px, hi, lo); let cambio = false; _reconKeeperThrottle();
   if (ev.fills.length) { ev.fills.forEach((p) => { flash(p.entrada, p.lado, (p.lado === 'long' ? 'LONG' : 'SHORT') + ' filled'); toast(`Marked ${p.lado} filled at ${fmtP(p.entrada)}`, 'ok'); snd('open'); }); cambio = true; }
   if (ev.tp.length) { ev.tp.forEach((r) => { flash(r.salida, r.pos.lado, 'TAKE PROFIT'); toast(`Take profit hit · ${fmtPnL(r.pnl, r.denom)}`, 'ok'); snd('tp'); }); cambio = true; }
   if (ev.sl.length) { ev.sl.forEach((r) => { flash(r.salida, r.pos.lado, 'STOP LOSS'); toast(`Stop loss hit · ${fmtPnL(r.pnl, r.denom)}`, 'bad'); snd('sl'); }); cambio = true; }
@@ -807,7 +807,53 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=7'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=8'); return _spC; }
+
+/* ── Puente al KEEPER (Worker de Cloudflare) para TP/SL/limite automaticos ── */
+let _spK = null;
+async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=1'); return _spK; }
+/* Registra (o actualiza/cancela) el TP/SL de una posicion REAL en el keeper. Firma del
+   dueno, sin gas. Si ya no hay ni TP ni SL, cancela la orden automatica. */
+async function _armarKeeper(id) {
+  try {
+    const p = M.posiciones().find((x) => x.id === id);
+    if (!p || p.chainId == null) return;                 // solo posiciones reales
+    const K = await _keeperSpot();
+    if (p.tp == null && p.sl == null) { await K.cancelarOrden(p.chainId); return; }
+    toast('Sign to arm your auto TP/SL (no gas)…', 'warn');
+    await K.armarOrden(p);
+    toast('Auto TP/SL armed. The keeper will fire it even with the app closed.', 'ok');
+  } catch (e) { toast('Could not arm the auto order: ' + _errSpot(e), 'bad'); }
+}
+async function _cancelarKeeper(chainId) {
+  if (chainId == null) return;
+  try { const K = await _keeperSpot(); await K.cancelarOrden(chainId); } catch (_) {}
+}
+/* Reconcilia el registro local con el keeper: si el keeper ya cerro una posicion real
+   (orden 'disparada'), la cierra tambien aqui para que la vista no quede desfasada. El
+   resultado real esta on chain; el nivel mostrado es el del disparo. No es un bucle: se
+   llama con throttle solo mientras la vista esta abierta. */
+let _reconKT = 0;
+function _reconKeeperThrottle() { if (Date.now() - _reconKT < 30000) return; _reconKT = Date.now(); _reconciliarKeeper(); }
+async function _reconciliarKeeper() {
+  try {
+    if (!S.walletOn) return;
+    const cuenta = S.cuenta || (cuentaActual && cuentaActual());
+    if (!cuenta) return;
+    const K = await _keeperSpot();
+    const est = await K.estadoKeeper(cuenta);
+    if (!est || !Array.isArray(est.ordenes)) return;
+    let cambio = false;
+    for (const o of est.ordenes) {
+      if (o.estado !== 'disparada') continue;
+      const p = M.posiciones().find((x) => x.chainId != null && Number(x.chainId) === Number(o.id));
+      if (!p) continue;
+      const nivel = (p.tp && p.sl) ? (S.marks[p.par] || S.mark) : (p.tp || p.sl || S.marks[p.par] || S.mark);
+      M.cerrar(p.id, nivel, 'auto'); cambio = true;
+    }
+    if (cambio) renderPos();
+  } catch (_) {}
+}
 
 /* Indicadores (botón "Indicators" en la gráfica). Módulo aparte, carga perezosa. */
 let _indMod = null, _indInit = false;
@@ -880,7 +926,7 @@ async function operar(lado) {
           const rec = await env.tx.wait();
           if (rec && Number(rec.status) === 0) throw new Error('reverted');
           let cid = null; try { cid = await (await _contratoSpot()).idDeRecibo(rec); } catch (_) {}
-          if (posId) M.setChainId(posId, cid);
+          if (posId) { M.setChainId(posId, cid); _armarKeeper(posId); }   // registra TP/SL en el keeper
           toast(`${lado === 'long' ? 'Long' : 'Short'} confirmed on-chain`, 'ok'); renderPos();
         } catch (err) {
           if (posId) M.eliminar(posId);
@@ -938,7 +984,7 @@ async function cerrarPosicion(id, btn) {
     try { const C = await _contratoSpot(); env = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100 }); }
     catch (e) { toast(_errSpot(e), 'bad'); if (btn) btn.disabled = false; return; }
     // Tx de cierre ENVIADA: marcamos "cerrando", liberamos la interfaz, y al minar cerramos en el registro.
-    M.marcarCerrando(id, true); toast('Close sent · confirming on-chain…', 'ok'); renderPos();
+    M.marcarCerrando(id, true); _cancelarKeeper(p.chainId); toast('Close sent · confirming on-chain…', 'ok'); renderPos();
     (async () => {
       try {
         const rec = await env.tx.wait();
@@ -1037,7 +1083,7 @@ function editarTPSL(id, k) {
     ok: (v) => {
       let tp = p.tp || 0, sl = p.sl || 0;
       if (esTP) tp = v > 0 ? v : 0; else sl = v > 0 ? v : 0;
-      M.setTPSL(p.id, tp, sl); renderPos();
+      M.setTPSL(p.id, tp, sl); renderPos(); _armarKeeper(p.id);   // propaga el TP/SL al keeper
     }
   });
 }
@@ -1218,7 +1264,7 @@ function wireDrag() {
 /* Fija TP o SL al precio arrastrado. En spot no hay liquidación que respetar. */
 function fijarTPSL(p, cual, px) {
   px = +(+px).toFixed(dec(px));
-  M.setTPSL(p.id, cual === 'tp' ? px : (p.tp || 0), cual === 'sl' ? px : (p.sl || 0));
+  M.setTPSL(p.id, cual === 'tp' ? px : (p.tp || 0), cual === 'sl' ? px : (p.sl || 0)); _armarKeeper(p.id);
 }
 
 /* ── Animación + sonido ── */

@@ -63,6 +63,18 @@ async function _signer() {
    lector, que es lo que antes tardaba segundos al tocar Long/Short. */
 export async function precalentar() { try { await E(); await lector(); } catch (_) {} }
 
+/* ── Firma para el KEEPER (autorizar ordenes TP/SL/limite sin gas) ──
+   El usuario firma un mensaje con su wallet; el keeper verifica que la firma sea del
+   dueno real de la posicion on chain antes de aceptar la orden. No mueve fondos. */
+export async function firmarMensaje(mensaje) {
+  const s = await _signer();
+  return s.signMessage(mensaje);
+}
+export async function cuentaFirmante() {
+  const s = await _signer();
+  return s.getAddress();
+}
+
 /* coin de la grafica -> { address, decimals } en BSC, SOLO si es una direccion verificada. */
 export function resolverToken(par) {
   if (!par) return null;

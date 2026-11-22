@@ -201,6 +201,9 @@ export function onPrecio(par, mark, hi, lo) {
   }
   for (let i = ST.pos.length - 1; i >= 0; i--) {
     const p = ST.pos[i]; if (p.par !== par) continue;
+    // Las posiciones REALES (con id on chain) las cierra el KEEPER del lado del servidor,
+    // aunque no haya pestana abierta. Aqui NO se simulan, para no dar un cierre falso.
+    if (p.chainId != null) continue;
     const esL = p.lado === 'long';
     const slHit = p.sl && (esL ? lo <= p.sl : hi >= p.sl);
     const tpHit = p.tp && (esL ? hi >= p.tp : lo <= p.tp);
