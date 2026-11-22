@@ -16,7 +16,7 @@
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
 import { estilos } from './estilos.js?v=21';
-import * as D from './datos.js?v=12';
+import * as D from './datos.js?v=13';
 import * as M from './motor.js?v=15';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';

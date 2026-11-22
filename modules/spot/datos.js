@@ -164,7 +164,18 @@ export async function resolverToken(address) {
   if (!/^0x[0-9a-fA-F]{40}$/.test(String(address || '').trim())) return null;
   const r = await resolver(address);
   if (!r) return null;
-  return { address, simbolo: r.simbolo || '?', nombre: r.nombre || r.simbolo || 'Token', decimales: r.decimales || 18, graficable: !!r.graficable, precioUsd: r.precioUsd || 0 };
+  // Acotar lo que trae un token (un contrato malicioso controla su nombre/simbolo/decimales):
+  // simbolo y nombre a un largo sano (no inflar almacenamiento ni romper el layout; el XSS ya lo
+  // corta esc() al pintar) y decimales a un rango real (fuera de [0,36] no es un ERC20 normal).
+  const dec = Number(r.decimales);
+  return {
+    address,
+    simbolo: String(r.simbolo || '?').slice(0, 24),
+    nombre: String(r.nombre || r.simbolo || 'Token').slice(0, 48),
+    decimales: (Number.isInteger(dec) && dec >= 0 && dec <= 36) ? dec : 18,
+    graficable: !!r.graficable,
+    precioUsd: r.precioUsd || 0
+  };
 }
 /* Precio USD on-chain (reservas vivas del par). */
 export async function precioOnChain(address) {
