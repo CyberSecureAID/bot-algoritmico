@@ -1438,7 +1438,7 @@ function abrirCtxDemo(clientX, clientY, px) {
 let _odSpot = null;
 async function abrirSetPosDemo(px, cx, cy) {
   try {
-    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=139', import.meta.url).href);
+    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=140', import.meta.url).href);
     const cfg = {
       canvas: $('sp-cv'),
       par: () => (S.par && (S.par.coin || S.par.id)) || '',
