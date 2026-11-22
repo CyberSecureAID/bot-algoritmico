@@ -89,7 +89,7 @@ const fmt = (p) => {
    Misma URL ?v que spot.js para compartir la instancia del modulo.
    ══════════════════════════════════════════════════════════════ */
 let _spot = null;
-try { import(new URL('../../modules/spot/motor.js?v=9', import.meta.url).href).then((m) => { _spot = m; if (_marcadorTick) { try { _marcadorTick(); } catch (_) {} } }).catch(() => {}); } catch (_) {}
+try { import(new URL('../../modules/spot/motor.js?v=15', import.meta.url).href).then((m) => { _spot = m; if (_marcadorTick) { try { _marcadorTick(); } catch (_) {} } }).catch(() => {}); } catch (_) {}
 /* Flechas de Footprint Pro (verde = comprador/long, roja = vendedor/short) para el icono de la ficha. */
 const IMG_FLECHA_UP = new URL('../img/fp-flecha-verde.webp', import.meta.url).href;
 const IMG_FLECHA_DN = new URL('../img/fp-flecha-roja.webp', import.meta.url).href;
