@@ -520,7 +520,7 @@ function onKline(k) {
 function nuevoPrecio(px, hi, lo) {
   S.mark = px; S.marks[S.par.id] = px;
   if (S.open24 > 0) S.chgPct = ((px - S.open24) / S.open24) * 100;
-  const ev = M.onPrecio(S.par.id, px, hi, lo); let cambio = false; _reconKeeperThrottle();
+  const ev = M.onPrecio(S.par.id, px, hi, lo); let cambio = false; _reconKeeperThrottle(); _preciosPos();
   if (ev.fills.length) { ev.fills.forEach((p) => { flash(p.entrada, p.lado, (p.lado === 'long' ? 'LONG' : 'SHORT') + ' filled'); toast(`Marked ${p.lado} filled at ${fmtP(p.entrada)}`, 'ok'); snd('open'); }); cambio = true; }
   if (ev.tp.length) { ev.tp.forEach((r) => { flash(r.salida, r.pos.lado, 'TAKE PROFIT'); toast(`Take profit hit · ${fmtPnL(r.pnl, r.denom)}`, 'ok'); snd('tp'); }); cambio = true; }
   if (ev.sl.length) { ev.sl.forEach((r) => { flash(r.salida, r.pos.lado, 'STOP LOSS'); toast(`Stop loss hit · ${fmtPnL(r.pnl, r.denom)}`, 'bad'); snd('sl'); }); cambio = true; }
@@ -852,6 +852,27 @@ function _reconKeeperThrottle() { if (Date.now() - _reconKT < 30000) return; _re
    keeper al disparar una orden limite, o abiertas desde otro dispositivo). Aditiva y sin
    duplicados; la logica compartida vive en keeper-spot. */
 async function _sincronizarPos() { try { const K = await _keeperSpot(); if (await K.sincronizarPosiciones(M)) renderPos(); } catch (_) {} }
+/* Precio en vivo de CADA par con posicion/orden abierta, no solo el del grafico abierto. SIN esto,
+   una posicion de otra moneda se valoraba con el precio del grafico actual (un short de BNB con el
+   precio de BTC) y mostraba un PnL absurdo (-99%, -10452%). Guarda el precio por par en
+   S.marks[parId] y refresca el PnL. Throttle propio (~7s) para no saturar. */
+let _preKT = 0;
+async function _preciosPos() {
+  try {
+    if (Date.now() - _preKT < 7000) return; _preKT = Date.now();
+    const cur = S.par && S.par.id;   // el grafico abierto ya actualiza su propio precio en vivo
+    const pares = new Set();
+    M.posiciones().forEach((p) => { if (p.par && p.par !== cur) pares.add(p.par); });
+    M.ordenes().forEach((o) => { if (o.par && o.par !== cur) pares.add(o.par); });
+    (S.limites || []).forEach((l) => { if (l.par && l.par !== cur) pares.add(l.par); });
+    const syms = [...pares].map((id) => { const pc = D.PARES.find((x) => x.id === id); return (pc && pc.s) ? { id, s: pc.s } : null; }).filter(Boolean);
+    if (!syms.length) return;
+    const map = await D.tickerPrecios(syms.map((x) => x.s));
+    let cambio = false;
+    syms.forEach((x) => { if (map[x.s] > 0) { S.marks[x.id] = map[x.s]; cambio = true; } });
+    if (cambio) refrescarPnL();
+  } catch (_) {}
+}
 async function _reconciliarKeeper() {
   try {
     if (!S.walletOn) return;
@@ -865,7 +886,7 @@ async function _reconciliarKeeper() {
       if (o.estado !== 'cerrada') continue;
       const p = M.posiciones().find((x) => x.chainId != null && Number(x.chainId) === Number(o.id));
       if (!p) continue;
-      const nivel = (p.tp && p.sl) ? (S.marks[p.par] || S.mark) : (p.tp || p.sl || S.marks[p.par] || S.mark);
+      const nivel = (p.tp && p.sl) ? (S.marks[p.par] || p.entrada) : (p.tp || p.sl || S.marks[p.par] || p.entrada);
       M.cerrar(p.id, nivel, 'auto'); cambio = true;
     }
     if (cambio) renderPos();
@@ -1041,7 +1062,7 @@ async function cerrarPosicion(id, btn, forzar) {
   const p = M.posiciones().find((x) => x.id === id); if (!p) return;
   if (p.pend) { toast('Still confirming the open on-chain; try again in a moment.', 'warn'); return; }
   if (p.cerrando) { toast('Already closing on-chain…', 'warn'); return; }
-  const mk = S.marks[p.par] || S.mark;
+  const mk = S.marks[p.par] || p.entrada;
   const feeTxt = (x) => x.fee > 0 ? ' · fee ' + (x.denom === 'USDT' ? fmtMoney(x.fee) : fmtCoin(x.fee) + ' ' + x.denom) : '';
   if (p.chainId != null) {
     // Posicion REAL: SOLO se cierra on chain. Sin wallet NO se cierra en local, porque eso la
@@ -1070,6 +1091,16 @@ async function cerrarPosicion(id, btn, forzar) {
           ok: () => cerrarPosicion(id, null, true) });
         renderPos(); return;
       }
+      // Causa frecuente al cerrar un SHORT: para recomprar la moneda hace falta el USDT del
+      // colateral en la wallet; si ya no esta, la tx revierte. Se avisa claro con la cifra en vez
+      // de un error cripto. Solo cuando el saldo ES insuficiente (o el error lo indica); si no,
+      // se muestra el motivo real.
+      if (p.lado === 'short') {
+        const need = +p.amount || 0, have = (S.saldos && S.saldos.USDT) || 0;
+        if (need > 0 && (have < need * 0.999 || /transfer|balance|insufficient|allowance|exceeds/i.test(msg))) {
+          toast(`To close this short you need about ${fmtMoney(need)} USDT in your wallet (the collateral to buy back ${esc(etqPar(p.par))}). You have ${fmtMoney(have)}.`, 'bad'); renderPos(); return;
+        }
+      }
       toast(_errSpot(e), 'bad'); renderPos(); return;
     }
     toast('Close sent · confirming on-chain…', 'ok'); renderPos();
@@ -1078,7 +1109,7 @@ async function cerrarPosicion(id, btn, forzar) {
         const rec = await env.tx.wait();
         if (rec && Number(rec.status) === 0) throw new Error('reverted');
         _cancelarKeeper(p.chainId);   // cancelar el keeper SOLO con el cierre ya CONFIRMADO (si revierte, su TP/SL debe seguir)
-        const x = M.cerrar(id, S.marks[p.par] || S.mark, 'manual');
+        const x = M.cerrar(id, S.marks[p.par] || p.entrada, 'manual');
         if (x) toast(`Closed ${x.pos.lado} · ${fmtPnL(x.pnl, x.denom)}${feeTxt(x)}`, x.pnl >= 0 ? 'ok' : 'bad');
         renderPos();
       } catch (err) {
@@ -1096,6 +1127,7 @@ async function cerrarPosicion(id, btn, forzar) {
 
 /* ── Panel inferior ── */
 function renderPos() {
+  _preciosPos();   // precio por par de posiciones/ordenes de OTRA moneda (no el del grafico abierto)
   const pos = M.posiciones(), ord = M.ordenes(), hist = M.historial();
   $('sp-npos').textContent = pos.length; $('sp-nord').textContent = ord.length + (S.limites || []).length; $('sp-nhist').textContent = hist.length;
   const r = $('sp-pos-r'); if (r) r.innerHTML = '';
@@ -1135,7 +1167,7 @@ function celdaTPSL(obj, k, col) {
   return `<span class="sp-tpsl-c"><em style="color:${col}">${obj[k] ? fmtP(obj[k]) : '—'}</em><button class="sp-edit" data-edit="${obj.id}" data-k="${k}" title="Edit ${k.toUpperCase()}">${IC.edit}</button></span>`;
 }
 function filaPos(p) {
-  const info = M.pnlDe(p, S.marks[p.par] || S.mark); const c = info.pnl >= 0 ? 'up' : 'down';
+  const info = M.pnlDe(p, S.marks[p.par] || p.entrada); const c = info.pnl >= 0 ? 'up' : 'down';
   const qty = p.qty != null ? p.qty : (p.entrada > 0 ? p.amount / p.entrada : 0);
   const est = (p.pend || p.cerrando) ? `<span style="color:#E8B84B;font-size:10px;font-weight:700;margin-left:5px;letter-spacing:.03em">${p.cerrando ? 'closing…' : 'confirming…'}</span>` : '';
   // Posicion LOCAL (vista previa): no se abrio on chain, no mueve fondos. Se marca claro para que
@@ -1149,7 +1181,7 @@ function filaPos(p) {
     ? `<button class="sp-x" data-trail="${esc(p.id)}" title="Trailing stop (automatico)" style="${p.trailing ? 'background:linear-gradient(180deg,#f0a93a,#c9781a);border-color:#ffcf7a;color:#241503' : ''}">${p.trailing ? 'Trail ' + p.trailing.pct + '%' : 'Trail'}</button>`
     : '';
   return `<tr><td><span class="sp-sym">${logoChip(p.par)} ${esc(etqPar(p.par))} <span class="sp-tag ${p.lado}">${p.lado.toUpperCase()}</span>${est}${badgePrev}</span></td>
-    <td>${fmtCoin(qty)} ${esc(p.base || p.par)}</td><td>${fmtP(p.entrada)}</td><td data-mark="${p.id}">${fmtP(S.marks[p.par] || S.mark)}</td>
+    <td>${fmtCoin(qty)} ${esc(p.base || p.par)}</td><td>${fmtP(p.entrada)}</td><td data-mark="${p.id}">${fmtP(S.marks[p.par] || p.entrada)}</td>
     <td>${fmtMoney(p.amount)}</td>
     <td>${celdaTPSL(p, 'tp', '#2ee86a')}</td><td>${celdaTPSL(p, 'sl', '#ff5b6e')}</td>
     <td class="sp-pnl ${c}" data-pnl="${p.id}">${fmtPnL(info.pnl, info.denom)}<span class="sp-pct">${pctTxt(info.pct)}</span></td>
@@ -1158,7 +1190,7 @@ function filaPos(p) {
 function filaOrd(o) {
   return `<tr><td><span class="sp-sym">${logoChip(o.par)} ${esc(etqPar(o.par))}</span></td>
     <td><span class="sp-tag ${o.lado}">${o.lado.toUpperCase()}</span></td>
-    <td>${fmtMoney(o.amount)}</td><td>${fmtP(o.precio)}</td><td>${fmtP(S.marks[o.par] || S.mark)}</td>
+    <td>${fmtMoney(o.amount)}</td><td>${fmtP(o.precio)}</td><td>${fmtP(S.marks[o.par] || o.precio)}</td>
     <td>${celdaTPSL(o, 'tp', '#2ee86a')}</td><td>${celdaTPSL(o, 'sl', '#ff5b6e')}</td>
     <td><button class="sp-x" data-cancel="${o.id}">Cancel</button></td></tr>`;
 }
@@ -1166,13 +1198,13 @@ function logoChip(parId) { const p = D.PARES.find((x) => x.id === parId); const 
 function refrescarPnL() {
   if (S.tab !== 'pos') return;
   M.posiciones().forEach((p) => {
-    const mk = document.querySelector(`[data-mark="${p.id}"]`); if (mk) mk.textContent = fmtP(S.marks[p.par] || S.mark);
-    const pe = document.querySelector(`[data-pnl="${p.id}"]`); if (pe) { const info = M.pnlDe(p, S.marks[p.par] || S.mark); pe.innerHTML = fmtPnL(info.pnl, info.denom) + `<span class="sp-pct">${pctTxt(info.pct)}</span>`; pe.className = 'sp-pnl ' + (info.pnl >= 0 ? 'up' : 'down'); }
+    const mk = document.querySelector(`[data-mark="${p.id}"]`); if (mk) mk.textContent = fmtP(S.marks[p.par] || p.entrada);
+    const pe = document.querySelector(`[data-pnl="${p.id}"]`); if (pe) { const info = M.pnlDe(p, S.marks[p.par] || p.entrada); pe.innerHTML = fmtPnL(info.pnl, info.denom) + `<span class="sp-pct">${pctTxt(info.pct)}</span>`; pe.className = 'sp-pnl ' + (info.pnl >= 0 ? 'up' : 'down'); }
   });
 }
 /* Tarjeta de una posición ABIERTA: usa el PnL EN VIVO (bruto), idéntico a lo que
    muestra la posición en pantalla (no resta comisiones de cierre). */
-function cerradoDesde(p) { const mk = S.marks[p.par] || S.mark; const info = M.pnlDe(p, mk); return { par: p.par, base: p.base, lado: p.lado, amount: p.amount, qty: p.qty, entrada: p.entrada, salida: mk, pnl: info.pnl, denom: info.denom, cerrado: Date.now() }; }
+function cerradoDesde(p) { const mk = S.marks[p.par] || p.entrada; const info = M.pnlDe(p, mk); return { par: p.par, base: p.base, lado: p.lado, amount: p.amount, qty: p.qty, entrada: p.entrada, salida: mk, pnl: info.pnl, denom: info.denom, cerrado: Date.now() }; }
 
 /* Editar TP o SL de una posición o de una orden marcada (como en futuros). El
    SL no puede pasar el precio de liquidación: si lo pasa, se retira. Dejar el
@@ -1568,7 +1600,9 @@ async function tarjetaPnL(tr) {
   topY += 86; g.fillStyle = col; g.font = '800 28px "IBM Plex Mono", monospace'; g.fillText((esLong ? 'LONG' : 'SHORT') + '  ·  SPOT', X, topY);
   topY += 50; const d = new Date(tr.cerrado || Date.now()); g.fillStyle = blanco; g.font = '500 24px "IBM Plex Mono", monospace';
   g.fillText(d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + '  ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), X, topY);
-  const pct = tr.entrada > 0 ? (esLong ? ((tr.salida - tr.entrada) / tr.entrada) : ((tr.entrada - tr.salida) / tr.entrada)) * 100 : 0;
+  // El % del short se mide sobre el precio de SALIDA (igual que motor.pnlDe), no sobre la entrada:
+  // asi coincide con la tabla. Antes usaba /entrada y daba cifras disparatadas (-10452%).
+  const pct = (tr.entrada > 0 && tr.salida > 0) ? (esLong ? ((tr.salida - tr.entrada) / tr.entrada) : ((tr.entrada - tr.salida) / tr.salida)) * 100 : 0;
   let cy = H * 0.42; g.fillStyle = vcol; g.font = '800 120px "IBM Plex Mono", monospace';
   g.fillText((pct >= 0 ? '+' : '') + pct.toFixed(2) + '%', X, cy);
   g.font = '800 52px "IBM Plex Mono", monospace';
