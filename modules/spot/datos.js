@@ -356,6 +356,26 @@ export function streamVelas(simbolo, interval, onKline) {
   return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
 }
 
+/* Stream de TRADES en vivo (@aggTrade): cada operacion (muchas por segundo), para mover la vela en
+   formacion de forma FLUIDA entre los ticks de @kline (que solo llegan ~1/seg). Es lo que hace que
+   Footprint Pro se vea fluido. Mismo fallback de host que streamVelas. onTrade recibe el precio. */
+export function streamTrades(simbolo, onTrade) {
+  const suf = `/${String(simbolo).toLowerCase()}@aggTrade`;
+  let ws = null, cerrado = false, tmr = null, hostI = 0, abierto = false;
+  const abrir = () => {
+    if (cerrado) return;
+    abierto = false;
+    try { ws = new WebSocket(WS_HOSTS[hostI % WS_HOSTS.length] + suf); } catch (_) { hostI++; reintentar(600); return; }
+    ws.onopen = () => { abierto = true; };
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); const p = d && +d.p; if (p > 0) onTrade(p); } catch (_) {} };
+    ws.onclose = () => { if (!cerrado) { if (!abierto) hostI++; reintentar(abierto ? 2500 : 600); } };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  const reintentar = (ms) => { clearTimeout(tmr); tmr = setTimeout(abrir, ms || 2500); };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
+}
+
 /* Mapa { cg-id: urlDelLogo } desde CoinGecko, con la MISMA caché de 24h que
    usa el resto del sitio (localStorage 'aurex-logos-v2'), para no repetir
    descargas. Si falla, devuelve {} y la UI usa la inicial de la moneda. */
