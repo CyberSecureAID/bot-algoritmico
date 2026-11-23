@@ -16,7 +16,7 @@
    lo AUTORIZA el dueno con su firma (gratis, sin gas); el keeper la verifica contra
    el dueno real de la posicion on chain. */
 
-import { SPOT_ADDR, firmarMensaje, cuentaFirmante, crearLimiteSpot, cancelarLimiteSpot, ordenLimiteInfo } from './contrato.js?v=11';
+import { SPOT_ADDR, firmarMensaje, cuentaFirmante, crearLimiteSpot, cancelarLimiteSpot, ordenLimiteInfo } from './contrato.js?v=12';
 
 /* Direccion FIJA del keeper (Worker de Cloudflare). Vive aparte del repo: tocar el
    repo no la cambia. El front solo la LLAMA. */
@@ -188,7 +188,7 @@ export async function sincronizarPosiciones(M) {
     const locales = M.posiciones();
     if (locales.some((p) => p.pend)) return false;              // apertura en vuelo: esperar a que confirme
     const yaChain = new Set(locales.filter((p) => p.chainId != null).map((p) => Number(p.chainId)));
-    const C = await import('./contrato.js?v=11');
+    const C = await import('./contrato.js?v=12');
     const det = await C.posicionesAbiertasDetalle();
     let cambio = false;
     for (const d of det) {

@@ -22,6 +22,10 @@ const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const ROUTER = '0x10ED43C718714eb63d5aA57B78B54704E256024E';            // PancakeSwap V2
 // RPC publicos de BSC (no Binance CEX, no geobloqueados en EE. UU.). Solo lectura.
 const RPC = 'https://bsc-rpc.publicnode.com';
+// Permiso (approve) ACOTADO: en vez de ilimitado (MaxUint256), se aprueba el capital de la
+// operacion MAS este margen. Asi MetaMask no muestra el aviso de "fondos ilimitados" y el permiso
+// cubre la operacion con holgura (slippage/redondeo). Ajustable, en puntos base: 2500 = 25%.
+const APPROVE_MARGEN_BPS = 2500n;
 
 const ABI_SPOT = [
   'function abrirLong(tuple(address coin, address input, uint256 pagar, address[] rutaAUsdt, uint256 minUsdt, address[] rutaCoin, uint256 minCoin, uint256 floorOut, uint256 deadline) q) payable returns (uint256)',
@@ -148,7 +152,11 @@ export const SIN_POOL = 'NO_POOL';
 async function _aprobarSiHace(ethers, tokenAddr, monto, cuenta, signer, prov) {
   const read = new ethers.Contract(tokenAddr, ABI_ERC20, prov);
   const act = await read.allowance(cuenta, SPOT_ADDR);
-  if (act < monto) { const w = new ethers.Contract(tokenAddr, ABI_ERC20, signer); const tx = await w.approve(SPOT_ADDR, ethers.MaxUint256); await tx.wait(); }
+  if (act < monto) {
+    const w = new ethers.Contract(tokenAddr, ABI_ERC20, signer);
+    const permiso = monto + (monto * APPROVE_MARGEN_BPS / 10000n);   // capital + margen, NO ilimitado
+    const tx = await w.approve(SPOT_ADDR, permiso); await tx.wait();
+  }
 }
 
 /* ── Abrir a mercado (long o short) sobre el par EN PANTALLA. No cambia de moneda.
