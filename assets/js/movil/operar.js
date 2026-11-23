@@ -31,8 +31,8 @@ let _api = null;
 /* ── Lógica de Spot COMPARTIDA con la web (contrato SpotDF + keeper). Carga perezosa.
    El móvil usa la MISMA lógica que Spot web; solo cambia cómo se ve. ── */
 let _spC = null, _spK = null;
-async function _spotContrato() { if (!_spC) _spC = await import('../../../modules/spot/contrato.js?v=10'); return _spC; }
-async function _spotKeeper() { if (!_spK) _spK = await import('../../../modules/spot/keeper-spot.js?v=5'); return _spK; }
+async function _spotContrato() { if (!_spC) _spC = await import('../../../modules/spot/contrato.js?v=11'); return _spC; }
+async function _spotKeeper() { if (!_spK) _spK = await import('../../../modules/spot/keeper-spot.js?v=6'); return _spK; }
 let _spM = null;
 async function _spotMotor() { if (!_spM) _spM = await import('../../../modules/spot/motor.js?v=15'); return _spM; }   // MISMO motor que Spot web (posiciones compartidas)
 function _errMovil(e) { const m = String((e && (e.reason || e.shortMessage || e.message)) || e); if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.'; if (/insufficient/i.test(m)) return 'Not enough balance or allowance.'; return m.slice(0, 120); }
@@ -284,10 +284,15 @@ async function pintarPanel(t) {
   // Posición: posiciones REALES de SpotDF (el MISMO motor que Spot web). Cerrar = on chain.
   if (!con) { el.innerHTML = `<div class="op-empty">Conecta tu wallet para ver tu posición.</div>`; return; }
   let MM = null; try { MM = await _spotMotor(); } catch (_) {}
+  // Importa las posiciones REALES on chain que falten (p.ej. las que abre el keeper al disparar una
+  // orden límite, o abiertas desde otro dispositivo), con la MISMA lógica compartida que la web.
+  // Aditiva y sin duplicados. Sin esto, una posición de un límite disparado quedaba invisible.
+  try { if (MM) { const K = await _spotKeeper(); await K.sincronizarPosiciones(MM); } } catch (_) {}
   const pos = MM ? MM.posiciones() : [];
   if (!pos.length) { el.innerHTML = `<div class="op-empty">No positions. When you open at market from here, your entry shows up with its live profit.</div>`; return; }
+  const _precios = await _preciosDePosiciones(pos);   // precio en vivo por par (no solo el mostrado)
   el.innerHTML = pos.map((p) => {
-    const actual = (p.par === _par.id && _libro.precio) ? _libro.precio : p.entrada;
+    const actual = _precios[p.par] || ((p.par === _par.id && _libro.precio) ? _libro.precio : p.entrada);
     const info = MM.pnlDe(p, actual);
     const cls = info.pnl >= 0 ? 'up' : 'dn';
     const estado = p.cerrando ? `<em style="color:var(--mv-gold);font-size:9.5px;margin-left:4px">closing…</em>` : (p.pend ? `<em style="color:var(--mv-gold);font-size:9.5px;margin-left:4px">confirming…</em>` : '');
@@ -307,7 +312,7 @@ async function pintarPanel(t) {
 
 /* Cierra una posición de SpotDF desde el móvil: on chain (la firma el usuario), con tu diseño.
    Una posición de vista previa (sin id on chain) solo limpia el registro, no mueve fondos. */
-async function _cerrarMovil(id, btn) {
+async function _cerrarMovil(id, btn, forzar) {
   let M;
   try {
     M = await _spotMotor();
@@ -316,7 +321,9 @@ async function _cerrarMovil(id, btn) {
     if (btn) btn.disabled = true; M.marcarCerrando(id, true); pintarPanel('pos');
     const C = await _spotContrato();
     mensaje('Close', 'Confirm the close in your wallet…');
-    const env = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100, refPrice: _libro.precio || 0, forzar: false });
+    let refMk = (p.par === _par.id && _libro.precio) ? _libro.precio : 0;   // precio real del par para la guarda de salida
+    if (!(refMk > 0)) { try { const mp = await _preciosDePosiciones([p]); refMk = mp[p.par] || 0; } catch (_) {} }
+    const env = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100, refPrice: refMk, forzar: !!forzar });
     (async () => {
       try {
         const rec = await env.tx.wait();
@@ -327,8 +334,22 @@ async function _cerrarMovil(id, btn) {
     })();
   } catch (e) {
     try { if (M) { M.marcarCerrando(id, false); pintarPanel('pos'); } } catch (_) {}
-    const msg = (e && e.message === 'POOL_MALO_SALIDA') ? 'The on-chain pool is paying far below market right now; try again in a moment.' : _errMovil(e);
-    mensaje('Close', msg);
+    const em = String((e && (e.reason || e.shortMessage || e.message)) || e);
+    if (/already closed|not open|no esta abierta/i.test(em)) {
+      // Ya estaba cerrada on chain (el keeper ganó la carrera): finaliza también aquí para que no
+      // quede una posición fantasma en pantalla.
+      try { if (M) { M.cerrar(id, _libro.precio || 0, 'auto'); pintarPanel('pos'); } } catch (_) {}
+      mensaje('Close', 'This position was already closed on-chain.');
+      return;
+    }
+    if (e && e.message === 'POOL_MALO_SALIDA') {
+      // Salida a mal precio por pool ilíquido/podrido: NO cerrar en silencio. Avisar y dejar que el
+      // usuario decida (igual que la web). Nunca atrapar a quien de verdad necesita salir.
+      const pct = (e.desvPct != null) ? Math.round(e.desvPct) : '?';
+      _confirmar('Bad exit price', `This coin's on-chain pool looks illiquid: closing now would be about ${pct}% worse than the real market price. Close anyway?`, 'Close anyway', () => _cerrarMovil(id, null, true));
+      return;
+    }
+    mensaje('Close', _errMovil(e));
   }
 }
 
@@ -565,6 +586,50 @@ function mensaje(t, s) {
   d.innerHTML = `<b>${esc(t)}</b><br><span>${esc(s)}</span>`;
   d.classList.add('show');
   clearTimeout(d._t); d._t = setTimeout(() => d.classList.remove('show'), 3200);
+}
+
+/* Confirmación simple (dos botones). Para decisiones como forzar un cierre cuando el pool está
+   ilíquido: nunca atrapar a quien necesita salir, pero avisar antes del mal precio. */
+function _confirmar(titulo, sub, okLabel, onOk) {
+  document.getElementById('mv-confirm')?.remove();
+  const d = document.createElement('div'); d.id = 'mv-confirm';
+  d.style.cssText = 'position:fixed;inset:0;z-index:10400;display:flex;align-items:flex-end;justify-content:center';
+  d.innerHTML = `<div class="mvc-bg" style="position:absolute;inset:0;background:rgba(0,0,0,.6)"></div>
+    <div style="position:relative;width:100%;max-width:460px;background:linear-gradient(180deg,#12161c,#0b0e12);border-top:1px solid #2b3139;border-radius:18px 18px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px));animation:mhUp .2s ease both">
+      <b style="display:block;font-size:16px;color:var(--mv-gold,#E8B84B);margin-bottom:6px">${esc(titulo)}</b>
+      <span style="display:block;font-size:13px;color:#b7c0cb;line-height:1.5;margin-bottom:16px">${esc(sub)}</span>
+      <div style="display:flex;gap:10px">
+        <button class="mvc-no" style="flex:1;padding:12px;border-radius:11px;border:1px solid var(--mv-line,#2b3139);background:transparent;color:#c7ced6;font-weight:700;font-size:14px">Cancel</button>
+        <button class="mvc-yes" style="flex:1;padding:12px;border-radius:11px;border:0;background:var(--mv-down,#f6465d);color:#fff;font-weight:800;font-size:14px">${esc(okLabel || 'OK')}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(d);
+  const cerrar = () => d.remove();
+  d.querySelector('.mvc-bg').onclick = cerrar;
+  d.querySelector('.mvc-no').onclick = cerrar;
+  d.querySelector('.mvc-yes').onclick = () => { cerrar(); try { onOk && onOk(); } catch (_) {} };
+}
+
+/* Precio en vivo por par para las posiciones (no solo el par mostrado): así el PnL de una
+   posición en otra moneda no se queda clavado en la entrada. Usa el ticker de Binance (reescrito
+   al espejo por el feed-shim) en una sola llamada por lote. Falla en silencio. */
+async function _preciosDePosiciones(pos) {
+  const out = {};
+  try {
+    if (_par && _libro.precio > 0) out[_par.id] = _libro.precio;
+    const syms = [...new Set((pos || []).map((p) => p.par))]
+      .map((id) => { const pc = _pares.find((x) => x.id === id); return (pc && pc.s && !(out[id] > 0)) ? { id, s: pc.s } : null; })
+      .filter(Boolean);
+    if (!syms.length) return out;
+    const lista = JSON.stringify(syms.map((x) => x.s));
+    const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(lista)}`);
+    if (r.ok) {
+      const arr = await r.json(); const bySym = {};
+      (Array.isArray(arr) ? arr : []).forEach((t) => { bySym[t.symbol] = +t.price; });
+      syms.forEach((x) => { if (bySym[x.s] > 0) out[x.id] = bySym[x.s]; });
+    }
+  } catch (_) {}
+  return out;
 }
 
 /* Llegada desde Smart Levels: fija la moneda y el lado antes de mostrar Operar. */
