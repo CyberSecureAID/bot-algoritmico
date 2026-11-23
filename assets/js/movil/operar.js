@@ -28,6 +28,13 @@ let _ws = null;
 let _wsPar = null;                 // par al que está conectado el WS (para reutilizar)
 let _api = null;
 
+/* ── Lógica de Spot COMPARTIDA con la web (contrato SpotDF + keeper). Carga perezosa.
+   El móvil usa la MISMA lógica que Spot web; solo cambia cómo se ve. ── */
+let _spC = null, _spK = null;
+async function _spotContrato() { if (!_spC) _spC = await import('../../../modules/spot/contrato.js?v=10'); return _spC; }
+async function _spotKeeper() { if (!_spK) _spK = await import('../../../modules/spot/keeper-spot.js?v=5'); return _spK; }
+function _errMovil(e) { const m = String((e && (e.reason || e.shortMessage || e.message)) || e); if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.'; if (/insufficient/i.test(m)) return 'Not enough balance or allowance.'; return m.slice(0, 120); }
+
 export async function pintarOperar(host, api) {
   _api = api;
   if (!_pares.length) { try { const c = await import('../niveles/config.js?v=1'); _pares = (c.PARES || []).slice(); } catch (_) { _pares = []; } }
@@ -192,20 +199,42 @@ async function pintarPanel(t) {
   restaurarBotCard();
   if (t === 'ord') {
     if (!con) { el.innerHTML = `<div class="op-empty">Conecta tu wallet para ver tus órdenes.</div>`; return; }
+    inyectarSpotOrdCss();
+    // 1) Órdenes límite REALES de SpotDF (nuevas; las dispara el keeper). Misma lógica que Spot web.
+    let lims = [];
+    try { const K = await _spotKeeper(); lims = await K.reconciliarLimites(); } catch (_) {}
+    // 2) Órdenes de gridbot (1 nivel) que ya tuvieras: se siguen mostrando hasta que se llenen/cancelen.
     let ordenes = [];
     try {
       const o = await import('../orden.js?v=126');
       const w = await import('../wallet.js?v=129');
       const cuenta = w.cuentaActual && w.cuentaActual();
-      if (o.sincronizarOrdenes && cuenta) await o.sincronizarOrdenes(cuenta);   // limpia las ya llenadas
+      if (o.sincronizarOrdenes && cuenta) await o.sincronizarOrdenes(cuenta);
       if (o.ordenesPuestas) ordenes = (o.ordenesPuestas() || []).filter((x) => x.modo !== 'aviso' && x.botId != null);
     } catch (_) {}
-    if (!ordenes.length) { el.innerHTML = `<div class="op-empty">You have no open limit orders.<br><span style="font-size:12px">Place one from the Limit tab.</span></div>`; return; }
+    if (!lims.length && !ordenes.length) { el.innerHTML = `<div class="op-empty">You have no open limit orders.<br><span style="font-size:12px">Place one from the Limit tab.</span></div>`; return; }
     const cache = (() => { try { const c = JSON.parse(localStorage.getItem('mv-cg') || 'null'); return (c && c.d) || {}; } catch (_) { return {}; } })();
-    inyectarSpotOrdCss();
-    el.innerHTML = ordenes.map((o, i) => {
-      // la moneda base del par (BTCUSDT -> BTC) para buscar su logo. Antes se
-      // pasaba el par completo y logoDe no lo encontraba (por eso no salía logo).
+    // Tarjeta SpotDF: reusa EXACTAMENTE tu mismo diseño .spot-ord del móvil.
+    const cardSpot = (l) => {
+      const base = l.par || ''; const logo = logoDe(base, null, cache); const esVenta = l.lado === 'short';
+      return `<div class="spot-ord ${esVenta ? 'v' : 'c'}">
+        <div class="spot-ord-top">
+          <span class="spot-ord-coin">
+            <span class="spot-ord-ci" style="${logo ? `background-image:url(${logo});background-size:cover` : ''}">${logo ? '' : esc(String(base).slice(0, 3))}</span>
+            <b class="spot-ord-par">${esc(l.simbolo || base)}</b>
+            <span class="spot-ord-lado ${esVenta ? 'v' : 'c'}">${esVenta ? 'SELL' : 'BUY'}</span>
+          </span>
+          <span class="spot-ord-tag">SPOT · LIMIT</span>
+        </div>
+        <div class="spot-ord-grid">
+          <div><label>Precio</label><b>${fmtP(l.objetivo)}</b></div>
+          <div><label>Monto</label><b>${cantidad(l.amount)} USDT</b></div>
+          <div><label>Estado</label><b style="color:var(--mv-gold)">armed</b></div>
+        </div>
+        <button class="spot-ord-x" data-lim="${esc(String(l.id))}">Cancelar</button>
+      </div>`;
+    };
+    el.innerHTML = lims.map(cardSpot).join('') + ordenes.map((o, i) => {
       const base = o.base || String(o.par || '').replace(/USDT$|USDC$|BUSD$|USD$|FDUSD$/i, '');
       const logo = logoDe(base, o.cg || null, cache);
       const esVenta = !!o.vender;
@@ -227,7 +256,7 @@ async function pintarPanel(t) {
         <button class="spot-ord-x" data-i="${i}">Cancelar</button>
       </div>`;
     }).join('');
-    // % descuento/ganancia con el precio actual (una llamada por par)
+    // Distancia % con el precio actual (solo gridbot)
     el.querySelectorAll('.spot-ord-pct').forEach(async (span) => {
       const par = span.getAttribute('data-par'), precio = +span.getAttribute('data-precio'), vender = span.getAttribute('data-vender') === '1';
       try {
@@ -240,7 +269,13 @@ async function pintarPanel(t) {
         span.className = 'spot-ord-pct ' + (vender ? 'up' : 'dn');
       } catch (_) {}
     });
-    el.querySelectorAll('.spot-ord-x').forEach((b) => b.onclick = () => cancelarOrden(ordenes[+b.getAttribute('data-i')], el));
+    // Cancelar: SpotDF (on chain + keeper) por data-lim; gridbot por data-i.
+    el.querySelectorAll('.spot-ord-x[data-lim]').forEach((b) => b.onclick = async () => {
+      const id = b.getAttribute('data-lim'); el.innerHTML = `<div class="op-loading"><span class="op-spin"></span>Cancelling…</div>`;
+      try { const K = await _spotKeeper(); await K.cancelarLimiteSpotFull(id); } catch (e) { mensaje('Error', _errMovil(e)); }
+      pintarPanel('ord');
+    });
+    el.querySelectorAll('.spot-ord-x[data-i]').forEach((b) => b.onclick = () => cancelarOrden(ordenes[+b.getAttribute('data-i')], el));
     return;
   }
   // Posición: compras hechas desde aquí (entrada + P/L). Eliminar = vender.
@@ -430,7 +465,28 @@ async function operar(lado) {
     }
     _api.abrir('swap');
   } else {
-    _api.abrirGrafica('niveles', _par);
+    // LIMIT: orden REAL on chain por SpotDF (misma lógica que Spot web) + armada en el worker.
+    // Se mantiene el diseño móvil; solo cambia lo que hace el botón (antes iba a Smart Levels).
+    if (!(_api.estaConectado && _api.estaConectado())) { mensaje('Wallet', 'Connect your wallet first.'); return; }
+    if (_quote !== 'USDT') { mensaje('Limit', 'Las órdenes límite se fondean en USDT. Cambia la moneda de pago a USDT.'); return; }
+    const amt = parseFloat(($('op-in-amt') || {}).value) || 0;
+    const precio = parseFloat(($('op-in-price') || {}).value) || 0;
+    if (!(amt > 0)) { mensaje(t('Monto'), 'Enter an amount first.'); return; }
+    if (!(precio > 0)) { mensaje('Limit', 'Enter a target price.'); return; }
+    const parObj = { id: _par.id, simbolo: _par.s, coin: _par.id };
+    const bb = $('op-buy'), ss = $('op-sell');
+    try {
+      const C = await _spotContrato();
+      if (!C.operableOnchain(parObj)) { mensaje('Only for analysis', `${_par.id} cannot be traded on-chain yet.`); return; }
+      if (bb) bb.disabled = true; if (ss) ss.disabled = true;
+      mensaje('Limit', 'Confirm in your wallet (approve + create + arm)…');
+      const K = await _spotKeeper();
+      await K.ponerLimiteSpot({ par: parObj, lado: lado === 'sell' ? 'short' : 'long', montoUsdt: amt, objetivo: precio, markActual: _libro.precio || 0, slippageBps: 100 });
+      mensaje(lado === 'buy' ? 'Limit buy armed' : 'Limit sell armed', 'The keeper opens it when price hits.');
+      const inA = $('op-in-amt'), inP = $('op-in-price'); if (inA) inA.value = ''; if (inP) inP.value = '';
+      pintarPanel('ord');
+    } catch (e) { mensaje('Error', _errMovil(e)); }
+    finally { if (bb) bb.disabled = false; if (ss) ss.disabled = false; }
   }
 }
 
