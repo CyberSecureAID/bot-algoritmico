@@ -807,11 +807,11 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=10'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=11'); return _spC; }
 
 /* ── Puente al KEEPER (Worker de Cloudflare) para TP/SL/limite automaticos ── */
 let _spK = null;
-async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=5'); return _spK; }
+async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=6'); return _spK; }
 /* Registra (o actualiza/cancela) el TP/SL de una posicion REAL en el keeper. Firma del
    dueno, sin gas. Si ya no hay ni TP ni SL, cancela la orden automatica. */
 /* La salida automatica (keeper) vigila el precio en Binance, asi que SOLO funciona con pares
@@ -847,7 +847,11 @@ async function _cancelarKeeper(chainId) {
    nivel mostrado es aproximado; el resultado real esta on chain. No es un bucle: se llama con
    throttle solo mientras la vista esta abierta. */
 let _reconKT = 0;
-function _reconKeeperThrottle() { if (Date.now() - _reconKT < 30000) return; _reconKT = Date.now(); _reconciliarKeeper(); _cargarLimites(); }
+function _reconKeeperThrottle() { if (Date.now() - _reconKT < 30000) return; _reconKT = Date.now(); _reconciliarKeeper(); _cargarLimites(); _sincronizarPos(); }
+/* Importa a la vista las posiciones REALES abiertas on chain que falten (p.ej. las que abrio el
+   keeper al disparar una orden limite, o abiertas desde otro dispositivo). Aditiva y sin
+   duplicados; la logica compartida vive en keeper-spot. */
+async function _sincronizarPos() { try { const K = await _keeperSpot(); if (await K.sincronizarPosiciones(M)) renderPos(); } catch (_) {} }
 async function _reconciliarKeeper() {
   try {
     if (!S.walletOn) return;

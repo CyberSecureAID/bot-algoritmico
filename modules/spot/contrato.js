@@ -416,3 +416,60 @@ export async function saldosVistos(cuenta) {
     return out;
   } catch (_) { return []; }
 }
+
+/* ── Sincronizacion de posiciones ABIERTAS on chain -> vista local ──
+   Las posiciones que abre el KEEPER al disparar una orden limite (ejecutarLimite) existen on
+   chain pero NO en el motor local, asi que no se veian en pantalla. Esto las lee de la cadena para
+   que el front las anada al motor con su chainId (posicion REAL, no vista previa). Tambien recupera
+   posiciones abiertas desde otro dispositivo. Solo LECTURA (por el lector rapido). */
+function _resolverSimbolo(coin) {
+  const a = String(coin || '').toLowerCase();
+  if (a === WBNB.toLowerCase()) return { simbolo: 'BNB', parId: 'BNB' };
+  try {
+    for (const k of Object.keys(MONEDAS)) {
+      const m = MONEDAS[k];
+      if (m && m.address && String(m.address).toLowerCase() === a) {
+        const parId = (k === 'BTCB') ? 'BTC' : (k === 'WBNB' ? 'BNB' : k);
+        return { simbolo: parId, parId };
+      }
+    }
+  } catch (_) {}
+  try {
+    const l = JSON.parse(localStorage.getItem(LS_TOK) || '[]');
+    const t = Array.isArray(l) && l.find((x) => String(x.addr || '').toLowerCase() === a);
+    if (t && t.sim) { const s = String(t.sim).slice(0, 10); return { simbolo: s, parId: s }; }
+  } catch (_) {}
+  const s = a.slice(0, 6); return { simbolo: s, parId: s };
+}
+
+/* Detalle de UNA posicion on chain listo para el motor (entrada, monto, lado, simbolo). Devuelve
+   null si esta cerrada o no se puede leer. entrada se deriva de costo/qty (long) o costo/refQty
+   (short), con los decimales reales de la moneda. */
+export async function posicionDetalle(id) {
+  try {
+    const ethers = await E();
+    const prov = await lector();
+    const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, prov);
+    const p = await spot.posicionInfo(id);
+    if (!p || !p.abierta) return null;
+    const dec = await _decimalsToken(ethers, prov, p.coin);
+    const costo = Number(ethers.formatUnits(p.costo, 18));              // USDT 18 dec
+    const esShort = !!p.esShort;
+    let entrada = 0, qty = 0;
+    if (!esShort) { qty = Number(ethers.formatUnits(p.qty, dec)); entrada = qty > 0 ? costo / qty : 0; }
+    else { const ref = Number(ethers.formatUnits(p.refQty, dec)); entrada = ref > 0 ? costo / ref : 0; qty = ref; }
+    if (!(entrada > 0) || !(costo > 0)) return null;
+    const s = _resolverSimbolo(p.coin);
+    return { chainId: Number(id), coin: p.coin, lado: esShort ? 'short' : 'long', amount: costo, entrada, qty, parId: s.parId, simbolo: s.simbolo };
+  } catch (_) { return null; }
+}
+
+/* Todas las posiciones ABIERTAS del usuario on chain, con su detalle (para reconciliar la vista). */
+export async function posicionesAbiertasDetalle() {
+  try {
+    const ids = await misPosicionesSpot();
+    if (!ids.length) return [];
+    const out = await Promise.all(ids.map((id) => posicionDetalle(id)));
+    return out.filter(Boolean);
+  } catch (_) { return []; }
+}

@@ -16,7 +16,7 @@
    lo AUTORIZA el dueno con su firma (gratis, sin gas); el keeper la verifica contra
    el dueno real de la posicion on chain. */
 
-import { SPOT_ADDR, firmarMensaje, cuentaFirmante, crearLimiteSpot, cancelarLimiteSpot, ordenLimiteInfo } from './contrato.js?v=10';
+import { SPOT_ADDR, firmarMensaje, cuentaFirmante, crearLimiteSpot, cancelarLimiteSpot, ordenLimiteInfo } from './contrato.js?v=11';
 
 /* Direccion FIJA del keeper (Worker de Cloudflare). Vive aparte del repo: tocar el
    repo no la cambia. El front solo la LLAMA. */
@@ -175,6 +175,31 @@ export async function cancelarLimiteSpotFull(id) {
 
 /* Lista el registro local de ordenes limite (rapido, para pintar). */
 export function listarLimites() { return _leerLim(); }
+
+/* ── Sincroniza las posiciones ABIERTAS on chain con el motor local (COMPARTIDA web/movil) ──
+   Anade al motor las posiciones REALES que faltan: las que abre el keeper al disparar una orden
+   limite (ejecutarLimite), o abiertas desde otro dispositivo. Asi dejan de ser invisibles y se
+   pueden cerrar. Es ADITIVA y a prueba de duplicados (dedupe por chainId). NO corre si hay una
+   apertura local en vuelo (pend), para no duplicar una posicion que esta por confirmar. Devuelve
+   true si anadio algo. M = motor (la MISMA instancia que usa el front). */
+export async function sincronizarPosiciones(M) {
+  try {
+    if (!M || !M.posiciones || !M.abrirMercado) return false;
+    const locales = M.posiciones();
+    if (locales.some((p) => p.pend)) return false;              // apertura en vuelo: esperar a que confirme
+    const yaChain = new Set(locales.filter((p) => p.chainId != null).map((p) => Number(p.chainId)));
+    const C = await import('./contrato.js?v=11');
+    const det = await C.posicionesAbiertasDetalle();
+    let cambio = false;
+    for (const d of det) {
+      if (!d || yaChain.has(Number(d.chainId))) continue;
+      if (!(d.entrada > 0) || !(d.amount > 0)) continue;
+      const r = M.abrirMercado(d.parId, d.simbolo, d.lado, d.amount, d.entrada, null, null, d.chainId, false);
+      if (r && r.ok) { yaChain.add(Number(d.chainId)); cambio = true; }
+    }
+    return cambio;
+  } catch (_) { return false; }
+}
 
 /* Reconcilia el registro local contra la cadena: quita las que ya NO estan activas (ejecutadas o
    canceladas). Devuelve la lista viva. Se llama al abrir la vista y con throttle, no en bucle. */
