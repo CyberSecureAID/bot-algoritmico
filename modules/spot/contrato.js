@@ -30,7 +30,15 @@ const ABI_SPOT = [
   'function posicionInfo(uint256 id) view returns (tuple(address user, address coin, bool esShort, uint256 qty, uint256 costo, uint256 refQty, uint256 floorOut, uint40 t, bool abierta))',
   'function posicionesDe(address w) view returns (uint256[])',
   'function setFloor(uint256 id, uint256 floorOut)',
-  'event Abierta(uint256 indexed id, address indexed user, address indexed coin, bool esShort, uint256 costoUsdt, uint256 qty, uint256 refQty)'
+  'function feeAperturaWei() view returns (uint256)',
+  'function walletKeeper() view returns (address)',
+  // Fase B: ordenes limite on chain
+  'function crearLimite(address coin, uint256 pagarUsdt, bool esShort, uint256 minSalida, uint256 floorOut, uint40 expira) payable returns (uint256)',
+  'function cancelarLimite(uint256 id)',
+  'function ordenLimInfo(uint256 id) view returns (tuple(address user, address coin, address input, uint256 pagar, bool esShort, uint256 minSalida, uint256 floorOut, uint40 expira, bool activa))',
+  'function ordenesLimiteDe(address w) view returns (uint256[])',
+  'event Abierta(uint256 indexed id, address indexed user, address indexed coin, bool esShort, uint256 costoUsdt, uint256 qty, uint256 refQty)',
+  'event LimiteCreado(uint256 indexed id, address indexed user, address indexed coin, bool esShort, uint256 pagarUsdt)'
 ];
 const ABI_ROUTER = ['function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[])'];
 const ABI_ERC20 = [
@@ -106,6 +114,18 @@ async function mejorRuta(router, from, to, amountIn) {
 }
 const conSlippage = (out, bps) => out - (out * BigInt(Math.max(0, Math.min(5000, bps | 0))) / 10000n);
 
+/* Comision de gas por apertura, leida del contrato (0 si walletKeeper no esta fijada o el monto
+   es 0 = apagada). Es el BNB que la apertura envia y el contrato manda a la wallet keeper, para
+   que esta pague sus propios cierres automaticos. Se lee por el lector (rapido). Con la comision
+   apagada devuelve 0 y la apertura se comporta EXACTAMENTE igual que antes. */
+async function _feeAperturaWei(ethers, prov) {
+  try {
+    const c = new ethers.Contract(SPOT_ADDR, ABI_SPOT, prov);
+    const [wk, fee] = await Promise.all([c.walletKeeper(), c.feeAperturaWei()]);
+    return (wk && wk.toLowerCase() !== ethers.ZeroAddress.toLowerCase()) ? BigInt(fee) : 0n;
+  } catch (_) { return 0n; }
+}
+
 /* Guardia de precio: compara el precio del POOL on chain (lo que de verdad te daría el swap)
    contra el precio REAL del gráfico (refPrice). Si se alejan demasiado, el pool está ilíquido
    o manipulado y la operación te clavaría (como pasó con ZKC): se BLOQUEA. La anti slippage
@@ -147,6 +167,7 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
   const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);     // firma por MetaMask
   const dl = BigInt(Math.floor(Date.now() / 1000) + Math.max(60, deadlineSeg));
   const floorWei = floorOut > 0 ? ethers.parseUnits(Number(floorOut).toFixed(8), lado === 'short' ? tok.decimals : 18) : 0n;
+  const feeWei = await _feeAperturaWei(ethers, prov);   // comision de gas (0 si esta apagada en el contrato)
 
   let q, overrides = {}, enUsdtEst;
   if (pagar === 'BNB') {
@@ -163,7 +184,7 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
       rutaCoin: r.path, minCoin: lado === 'short' ? 0n : conSlippage(r.out, slippageBps),
       floorOut: floorWei, deadline: dl
     };
-    overrides = { value: valueWei };
+    overrides = { value: valueWei + feeWei };   // capital + comision (el contrato separa la comision y la manda a la keeper)
   } else {
     const pagarWei = ethers.parseUnits(Number(monto).toFixed(8), 18);     // USDT 18 dec en BSC
     const r = await mejorRuta(routerR, USDT, tok.address, pagarWei);       // cotiza ANTES de approve
@@ -177,6 +198,7 @@ export async function abrirMercadoSpot({ par, lado, pagar = 'USDT', monto, slipp
       rutaCoin: r.path, minCoin: lado === 'short' ? 0n : conSlippage(r.out, slippageBps),
       floorOut: floorWei, deadline: dl
     };
+    overrides = feeWei > 0n ? { value: feeWei } : {};   // pagando con USDT, el BNB enviado es SOLO la comision
   }
 
   const tx = lado === 'short' ? await spot.abrirShort(q, overrides) : await spot.abrirLong(q, overrides);
@@ -194,6 +216,83 @@ export async function idDeRecibo(rec) {
     for (const lg of (rec.logs || [])) { try { const pl = iface.parseLog(lg); if (pl && pl.name === 'Abierta') return Number(pl.args.id); } catch (_) {} }
   } catch (_) {}
   return null;
+}
+
+/* ── FASE B · Crear una orden LIMITE on chain. Deposita la orden (coin, USDT a usar, lado, piso
+   minSalida, vencimiento) y paga la comision de gas. Los fondos NO se mueven aun: el usuario
+   aprueba el USDT y, cuando el precio llega al objetivo, el keeper ejecuta tirando ese USDT. Se
+   espera el recibo para devolver el id on chain (el worker lo necesita para vigilarla). ── */
+export async function crearLimiteSpot({ par, lado, montoUsdt, objetivo, slippageBps = 100, floorOut = 0, expiraSeg = 30 * 24 * 3600 }) {
+  const ethers = await E();
+  const cuenta = cuentaActual && cuentaActual();
+  if (!cuenta) throw new Error('Connect your wallet first.');
+  const tok = resolverToken(par);
+  if (!tok) throw new Error('This coin is not tradeable on-chain yet.');
+  if (!(montoUsdt > 0)) throw new Error('Enter an amount first.');
+  if (!(objetivo > 0)) throw new Error('Set a target price.');
+  const prov = await lector();
+  const signer = await _signer();
+  const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);
+
+  const pagarWei = ethers.parseUnits(Number(montoUsdt).toFixed(8), 18);     // USDT 18 dec en BSC
+  // Piso del usuario (minSalida): al precio objetivo, cuanta moneda saldria, menos el slippage.
+  // El contrato EXIGE la salida >= minSalida, asi el keeper NO puede abrir a peor precio que el
+  // objetivo. long = coins a recibir; short = refQty de referencia (mismo calculo).
+  const coinsAlObjetivo = Number(montoUsdt) / Number(objetivo);
+  const minSalidaNum = coinsAlObjetivo * (1 - Math.max(0, Math.min(5000, slippageBps | 0)) / 10000);
+  const minSalida = ethers.parseUnits(minSalidaNum.toFixed(Math.min(18, tok.decimals)), tok.decimals);
+  const floorWei = floorOut > 0 ? ethers.parseUnits(Number(floorOut).toFixed(8), lado === 'short' ? tok.decimals : 18) : 0n;
+  const expira = Math.floor(Date.now() / 1000) + Math.max(3600, expiraSeg | 0);
+
+  await _aprobarSiHace(ethers, USDT, pagarWei, cuenta, signer, prov);        // aprueba el USDT por adelantado
+  const feeWei = await _feeAperturaWei(ethers, prov);
+  const overrides = feeWei > 0n ? { value: feeWei } : {};                    // la comision de gas (si esta encendida)
+
+  const tx = await spot.crearLimite(tok.address, pagarWei, lado === 'short', minSalida, floorWei, expira, overrides);
+  let id = null; try { const rec = await tx.wait(); id = await idLimiteDeRecibo(rec); } catch (_) {}
+  try { registrarTokenVisto(tok.address, par && (par.simbolo || par.coin || par.id), tok.decimals); } catch (_) {}
+  return { hash: tx.hash, tx, id, coin: tok.address, decimals: tok.decimals, expira };
+}
+
+/* id de la orden limite recien creada (evento LimiteCreado del recibo). */
+async function idLimiteDeRecibo(rec) {
+  try {
+    const ethers = await E();
+    const iface = new ethers.Interface(ABI_SPOT);
+    for (const lg of (rec.logs || [])) { try { const pl = iface.parseLog(lg); if (pl && pl.name === 'LimiteCreado') return Number(pl.args.id); } catch (_) {} }
+  } catch (_) {}
+  return null;
+}
+
+/* Cancelar una orden limite on chain (la firma el dueno). Libera la autorizacion. */
+export async function cancelarLimiteSpot(id) {
+  const ethers = await E();
+  const signer = await _signer();
+  const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, signer);
+  const tx = await spot.cancelarLimite(Number(id));
+  return { hash: tx.hash, tx };
+}
+
+/* Lee una orden limite on chain (para reconciliar: activa / ejecutada / cancelada). */
+export async function ordenLimiteInfo(id) {
+  try {
+    const ethers = await E();
+    const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, await lector());
+    const o = await spot.ordenLimInfo(Number(id));
+    return { user: o.user, coin: o.coin, pagar: o.pagar, esShort: o.esShort, expira: Number(o.expira), activa: o.activa };
+  } catch (_) { return null; }
+}
+
+/* ids de las ordenes limite on chain del usuario (para reconciliar la vista). */
+export async function misLimitesSpot() {
+  try {
+    const ethers = await E();
+    const cuenta = cuentaActual && cuentaActual();
+    if (!cuenta) return [];
+    const spot = new ethers.Contract(SPOT_ADDR, ABI_SPOT, await lector());
+    const ids = await spot.ordenesLimiteDe(cuenta);
+    return ids.map((x) => Number(x));
+  } catch (_) { return []; }
 }
 
 /* Decimales reales del token on chain (p.coin viene de posicionInfo como direccion). */

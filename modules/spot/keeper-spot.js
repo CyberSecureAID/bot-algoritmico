@@ -16,7 +16,7 @@
    lo AUTORIZA el dueno con su firma (gratis, sin gas); el keeper la verifica contra
    el dueno real de la posicion on chain. */
 
-import { SPOT_ADDR, firmarMensaje, cuentaFirmante } from './contrato.js?v=9';
+import { SPOT_ADDR, firmarMensaje, cuentaFirmante } from './contrato.js?v=10';
 
 /* Direccion FIJA del keeper (Worker de Cloudflare). Vive aparte del repo: tocar el
    repo no la cambia. El front solo la LLAMA. */
