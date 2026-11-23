@@ -75,6 +75,14 @@ function cercaDeDibujo(x, y) {
   return false;
 }
 
+/* Formato de precio para la etiqueta de la cruz (estilo TradingView): más
+   decimales cuanto más pequeño es el precio (DOGE 0.05577, BNB 600.000). */
+function fmtPrecio(p) {
+  const a = Math.abs(p);
+  const d = a >= 1000 ? 2 : a >= 1 ? 3 : a >= 0.01 ? 5 : 7;
+  return p.toFixed(d);
+}
+
 /**
  * Monta la barra sobre `host` (un contenedor position:relative que ya
  * contiene el canvas de la gráfica anfitriona). Devuelve { redibujar }.
@@ -124,6 +132,35 @@ export function montarBarra(host, opciones = {}) {
     g.clearRect(0, 0, W, H);
     N._geo = geo; N.velas = velasRef;
     dibujarHerramientas(g, geo.x1, geo.y1);
+
+    /* ══ LA CRUZ DEL CURSOR ══
+       En modo 'cursor' el canvas deja pasar el ratón y la gráfica anfitriona
+       pinta SU cruz nativa; al activar una herramienta el canvas captura el
+       ratón y esa cruz desaparece. Aquí la reponemos: cruz punteada + el
+       precio a la derecha, para ver dónde caerá la línea antes de soltar. */
+    if (N.cruz && N.herr && N.herr !== 'cursor' &&
+        N.cruz.x >= 0 && N.cruz.x <= geo.x1 && N.cruz.y >= 0 && N.cruz.y <= geo.y1) {
+      const cx = N.cruz.x, cy = N.cruz.y, tipoC = N.cursorTipo || 'cruz';
+      g.save();
+      if (tipoC === 'punto') {
+        g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(cx, cy, 3.5, 0, 6.283); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,.4)'; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, 7, 0, 6.283); g.stroke();
+      } else if (tipoC !== 'flecha') {
+        g.strokeStyle = 'rgba(255,255,255,.22)'; g.setLineDash([4, 4]); g.lineWidth = 1;
+        g.beginPath(); g.moveTo(cx, 0); g.lineTo(cx, geo.y1); g.stroke();
+        g.beginPath(); g.moveTo(0, cy); g.lineTo(geo.x1, cy); g.stroke();
+        g.setLineDash([]);
+      }
+      if (tipoC !== 'flecha' && (geo.W - geo.x1) > 24) {
+        const pC = geo.pMin + (geo.pMax - geo.pMin) * ((geo.y1 - cy) / geo.y1);
+        if (isFinite(pC)) {
+          g.fillStyle = '#2b3139'; g.fillRect(geo.x1 + 2, cy - 10, (geo.W - geo.x1) - 5, 20);
+          g.fillStyle = '#eaecef'; g.font = 'bold 11px ui-monospace,monospace'; g.textAlign = 'left';
+          g.fillText(fmtPrecio(pC), geo.x1 + 7, cy + 4);
+        }
+      }
+      g.restore();
+    }
   }
 
   /* El canvas solo captura cuando hace falta. */
@@ -145,7 +182,9 @@ export function montarBarra(host, opciones = {}) {
     if (N._geo === geo) aplicarCaptura(x, y);
   });
   host.addEventListener('click', () => setTimeout(() => aplicarCaptura(), 0), true);
-  tools.addEventListener('click', () => setTimeout(() => aplicarCaptura(), 0));
+  /* Repinta tras tocar un botón: al volver a 'cursor' borra la cruz que quedó
+     de la herramienta anterior (seleccionar() no repinta por sí solo). */
+  tools.addEventListener('click', () => setTimeout(() => { aplicarCaptura(); pintar(); }, 0));
 
   /* Los gestos y menús: los MISMOS de Smart Pools, sobre nuestro canvas. */
   gestos(cv, () => { pintar(); aplicarCaptura(); }, () => {}, guardarDib);

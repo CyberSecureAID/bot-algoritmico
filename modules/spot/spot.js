@@ -18,7 +18,7 @@
 import { estilos } from './estilos.js?v=21';
 import * as D from './datos.js?v=14';
 import * as M from './motor.js?v=15';
-import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
+import { montarBarra } from '../../assets/js/niveles/barra.js?v=8';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 import { cuentaActual, saldosTodas, alCambiar, reconectarSiProcede } from '../../assets/js/wallet.js?v=129';
 import { MONEDAS } from '../../assets/js/tokens.js';
