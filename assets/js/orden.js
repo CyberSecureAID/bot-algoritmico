@@ -68,7 +68,7 @@ function buscarMoneda(MONEDAS, simb) {
 }
 
 let _tr = null;
-try { import('./idioma.js?v=127').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
+try { import('./idioma.js?v=128').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
 const T = (t) => { try { return _tr ? _tr.t(t) : t; } catch (_) { return t; } };
 
 const fmt = (p) => {
@@ -79,6 +79,130 @@ const fmt = (p) => {
   if (p >= 0.01) return p.toFixed(6);
   return p.toFixed(8);
 };
+
+/* ══════════════════════════════════════════════════════════════
+   LEDGER COMPARTIDO CON SPOT
+
+   Las operaciones a mercado desde el area de analisis se registran en el MISMO
+   almacen que Spot (localStorage sp-spot-v1) usando su motor. Asi aparecen en
+   Spot › Positions con su PnL en vivo, sin duplicar logica ni tocar el motor.
+   Misma URL ?v que spot.js para compartir la instancia del modulo.
+   ══════════════════════════════════════════════════════════════ */
+let _spot = null;
+try { import(new URL('../../modules/spot/motor.js?v=15', import.meta.url).href).then((m) => { _spot = m; if (_marcadorTick) { try { _marcadorTick(); } catch (_) {} } }).catch(() => {}); } catch (_) {}
+/* Flechas de Footprint Pro (verde = comprador/long, roja = vendedor/short) para el icono de la ficha. */
+const IMG_FLECHA_UP = new URL('../img/fp-flecha-verde.webp', import.meta.url).href;
+const IMG_FLECHA_DN = new URL('../img/fp-flecha-roja.webp', import.meta.url).href;
+
+/* Posiciones cuya visualizacion el usuario OCULTO en la grafica (tocando la X).
+   Ocultar no vende: la posicion sigue viva en Spot › Positions. */
+const CLAVE_POS_OCULTAS = 'cco-pos-ocultas';
+function posOcultas() { try { return JSON.parse(localStorage.getItem(CLAVE_POS_OCULTAS) || '[]'); } catch (_) { return []; } }
+function ocultarPos(id) { try { const l = posOcultas(); if (!l.includes(id)) { l.push(id); localStorage.setItem(CLAVE_POS_OCULTAS, JSON.stringify(l.slice(-200))); } } catch (_) {} }
+
+/* ── Marcas de precio en vivo para el PnL de las posiciones del grafico ──
+   Se piden a ticker/price (via shim, espejo de datos) SOLO de los simbolos
+   que tienen posicion abierta. pintar() lee este cache para el PnL en vivo.
+   Vive aqui entero: no se toca ninguno de los 8 modulos de analisis. */
+const _marks = {};
+let _vigMarcas = null;
+let _marcadorTick = null;   // referencia al tick, para dispararlo en cuanto _spot cargue
+/* cfg por lienzo: en conectar() se registra para poder convertir y->precio al
+   arrastrar un TP/SL (cada modulo trae su propio precioEn, log o lineal). */
+const _cfgPorCanvas = new WeakMap();
+function arrancarMarcador() {
+  if (_vigMarcas) return;
+  const tick = async () => {
+    try {
+      const posis = (_spot && _spot.posiciones) ? _spot.posiciones() : [];
+      if (!posis.length) return;
+      const simbolos = [...new Set(posis.map((p) => String(p.par || '').toUpperCase() + 'USDT').filter((s) => s.length > 5))];
+      for (const s of simbolos) {
+        try {
+          const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${s}`);
+          if (!r.ok) continue;
+          const j = await r.json();
+          const v = Number(j.price);
+          if (isFinite(v) && v > 0) _marks[s] = v;
+        } catch (_) {}
+      }
+      revisarTPSL(posis);   // suena la alerta si el precio llego a un TP o SL
+    } catch (_) {}
+  };
+  _marcadorTick = tick;
+  tick();                               // ya, por si _spot esta listo
+  setTimeout(tick, 800);                // red de seguridad para la carga de _spot
+  _vigMarcas = setInterval(tick, 7000);
+}
+/* ¿El precio actual ya alcanzo el TP o el SL de esta posicion? (modelo manual:
+   NO cerramos; solo suena la alerta y se retira ese nivel). Direccion:
+   long TP arriba / long SL abajo ; short TP abajo / short SL arriba. */
+function cruzaTPSL(p, cual, mark) {
+  const nivel = cual === 'tp' ? p.tp : p.sl;
+  if (!(nivel > 0) || !(mark > 0)) return false;
+  if (p.lado === 'long') return cual === 'tp' ? (mark >= nivel) : (mark <= nivel);
+  return cual === 'tp' ? (mark <= nivel) : (mark >= nivel);
+}
+let _arrastrandoTPSL = false;   // mientras se arrastra un TP/SL no se dispara la alerta
+function revisarTPSL(posis) {
+  if (!_spot || !_spot.setTPSL || _arrastrandoTPSL) return;
+  posis.forEach((p) => {
+    const mark = _marks[String(p.par || '').toUpperCase() + 'USDT'] || 0;
+    if (!(mark > 0)) return;
+    ['tp', 'sl'].forEach((cual) => {
+      if (cruzaTPSL(p, cual, mark)) {
+        try { sonar({ par: p.par, precio: cual === 'tp' ? p.tp : p.sl, vender: cual === 'sl', tipo: cual }, mark); } catch (_) {}
+        try { _spot.setTPSL(p.id, cual === 'tp' ? 0 : (p.tp || 0), cual === 'sl' ? 0 : (p.sl || 0)); } catch (_) {}   // retira el nivel que sono
+      }
+    });
+  });
+}
+/* Aviso de esquina, UNA sola vez: TP/SL son alertas de sonido, cierre manual. */
+function avisoTPSLUnaVez() {
+  try { if (localStorage.getItem('cco-tpsl-aviso')) return; localStorage.setItem('cco-tpsl-aviso', '1'); } catch (_) {}
+  const t = document.createElement('div');
+  t.className = 'od-toast';
+  t.innerHTML = `<span class="od-t-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+    <div><b>TP and SL are sound alerts</b><span>Drag them where you want. Keep the volume up and this tab open in the background; we sound an alert when price hits your level, and you close the trade yourself.</span></div>
+    <button type="button" class="od-t-x">✕</button>`;
+  document.body.appendChild(t);
+  t.querySelector('.od-t-x').onclick = () => t.remove();
+  setTimeout(() => { if (t.parentNode) t.remove(); }, 13000);
+}
+/* Nivel por defecto de un TP/SL nuevo (±1.5%/1% segun lado). */
+function defNivelTPSL(p, cual) {
+  const e = p.entrada || 0;
+  if (p.lado === 'long') return cual === 'tp' ? e * 1.015 : e * 0.99;
+  return cual === 'tp' ? e * 0.985 : e * 1.01;
+}
+function posDe(id) { const l = (_spot && _spot.posiciones) ? _spot.posiciones() : []; return l.find((x) => x.id === id) || null; }
+/* Fija TP o SL en la posicion (ledger compartido con Spot). */
+function aplicarTPSL(p, cual, px) {
+  if (!_spot || !_spot.setTPSL || !(px > 0)) return;
+  px = +px;
+  try { _spot.setTPSL(p.id, cual === 'tp' ? px : (p.tp || 0), cual === 'sl' ? px : (p.sl || 0)); } catch (_) {}
+}
+/* Quita (pone a 0) un TP o SL de la posicion. */
+function quitarNivelTPSL(posId, cual) {
+  const p = posDe(posId); if (!p || !_spot || !_spot.setTPSL) return;
+  try { _spot.setTPSL(p.id, cual === 'tp' ? 0 : (p.tp || 0), cual === 'sl' ? 0 : (p.sl || 0)); } catch (_) {}
+}
+/* Boton/recuadro cuadrado del overlay (hueco para crear, solido para el tirador). */
+function botonCuadroOd(g, x, y, w, h, col, txt, hueco) {
+  g.save();
+  if (hueco) { g.fillStyle = 'rgba(10,14,20,.92)'; redondeadoOd(g, x, y, w, h, 5); g.fill(); g.strokeStyle = col; g.lineWidth = 1.3; redondeadoOd(g, x + .7, y + .7, w - 1.4, h - 1.4, 5); g.stroke(); g.fillStyle = col; }
+  else { g.fillStyle = col; redondeadoOd(g, x, y, w, h, 5); g.fill(); g.fillStyle = '#04210f'; }
+  g.font = '800 10px ui-monospace,monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(txt, x + w / 2, y + h / 2 + .5);
+  g.textBaseline = 'alphabetic'; g.restore();
+}
+/* Cantidad de moneda con decimales utiles, sin ceros de cola (PnL del short). */
+function fmtMoneda(x) {
+  if (!isFinite(x)) return '0';
+  const a = Math.abs(x);
+  const d = a >= 1 ? 4 : (a >= 0.01 ? 6 : 8);
+  return String(+x.toFixed(d));
+}
 
 /* ══════════════════════════════════════════════════════════════
    ENGANCHAR UN GRÁFICO
@@ -152,6 +276,7 @@ export function cerrarFichas() { cerrarTodo(); }
 export function conectar(cfg) {
   if (!cfg || !cfg.canvas) return;
   const cv = cfg.canvas;
+  try { _cfgPorCanvas.set(cv, cfg); } catch (_) {}   // para y->precio al arrastrar TP/SL
   if (cv.dataset.ordenLista) return;
   cv.dataset.ordenLista = '1';
   estilos();
@@ -206,6 +331,21 @@ export function conectar(cfg) {
   arrancarVigilante();
   if (cfg.repintar) _repintarOrd = cfg.repintar;   // para refrescar el gráfico al completarse una orden
   arrancarVigilanteOrdenes();
+  arrancarMarcador();   // precios en vivo para el PnL de las posiciones en la grafica
+}
+
+/* Abre la ficha de Set Position directamente, sin pasar por el menu verde/rojo.
+   Lo usa Spot: conserva SU menu de clic derecho (Copy price / Set alert / Set
+   position) y, al tocar Set position, llama aqui con su propio cfg. Asi la ficha
+   (y toda la logica multimoneda) es la MISMA que en analisis. */
+export function establecerPosicion(cfg, precio, vender, cx, cy) {
+  if (!cfg) return;
+  estilos();                       // Spot no pasa por conectar(): hay que inyectar el CSS de la ficha aqui
+  const act = (cfg.precioActual && cfg.precioActual()) || 0;
+  const px = (precio > 0) ? precio : act;
+  if (!(px > 0)) return;
+  const v = (typeof vender === 'boolean') ? vender : (px > act);
+  abrirFicha(cx != null ? cx : (window.innerWidth / 2), cy != null ? cy : (window.innerHeight / 2), cfg, px, v);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -290,96 +430,77 @@ function abrirMenu(cx, cy, cfg, ev) {
 function abrirFicha(cx, cy, cfg, precio, vender) {
   cerrarTodo();
   const par = cfg.par ? cfg.par() : '';
-  const actual = cfg.precioActual();
-  const dist = ((precio - actual) / actual) * 100;
+  let actual = (cfg.precioActual && cfg.precioActual()) || precio;
+
+  /* Modo por defecto segun DONDE se hizo clic derecho:
+     - Clic en un precio ALEJADO del actual  -> LIMIT en ese precio (el usuario marco un nivel).
+     - Clic en el precio actual (o muy cerca) -> MARKET (abre a precio de ahora).
+     Umbral relativo (0.15%) para que valga igual en monedas caras y baratas. */
+  const modoInicial = (precio > 0 && actual > 0 && Math.abs(precio - actual) / actual > 0.0015) ? 'limit' : 'market';
 
   const d = document.createElement('div');
   d.className = 'od-ficha ' + (vender ? 'vender' : 'comprar');
   d.innerHTML = `
-    <button class="od-x" type="button" aria-label="Cerrar">✕</button>
+    <button class="od-x" type="button" aria-label="Close">✕</button>
 
     <div class="od-cab">
-      <span class="od-ic">${vender ? '▼' : '▲'}</span>
+      <span class="od-ic"><img class="od-ic-img" src="${vender ? IMG_FLECHA_DN : IMG_FLECHA_UP}" alt="" draggable="false"></span>
       <div class="od-tit">
-        <b>${esc(T(vender ? 'Orden de venta' : 'Orden de compra'))}</b>
-        <span>${esc(par)} · ${fmt(precio)}</span>
+        <b>${vender ? 'Short' : 'Long'}</b>
+        <span class="od-coin">${esc(par)}</span>
+        <span class="od-sub-px">Market</span>
       </div>
-
-      <!-- El porcentaje es el dato que decide: va grande y en verde,
-           porque tanto el descuento al comprar como la ganancia al
-           vender son buenas noticias. -->
-      <div class="od-pct-grande">
-        <b>${dist >= 0 ? '+' : ''}${dist.toFixed(1)}%</b>
-        <span>${esc(T(vender ? 'De ganancia' : 'De descuento'))}</span>
+      <!-- Cuanto tienes para operar: la moneda de la grafica al vender (short), USDT
+           al comprar (long). Si no tienes, aqui aparece el boton de Swap. -->
+      <div class="od-pct-grande" id="od-disp">
+        <b class="od-disp-val">—</b>
+        <span>${esc(vender ? par : 'USDT')} available</span>
       </div>
     </div>
 
-    <div class="od-dist">
-      ${esc(T('Precio ahora'))}: ${fmt(actual)}
-      <span class="od-saldo">${esc(T('Leyendo tu saldo…'))}</span>
+    <div class="od-side">
+      <button class="od-side-b long ${vender ? '' : 'on'}" type="button" data-lado="long">Long<small>buy</small></button>
+      <button class="od-side-b short ${vender ? 'on' : ''}" type="button" data-lado="short">Short<small>sell</small></button>
     </div>
 
-    <!-- Cuánto -->
+    <!-- Market debajo de Long, Limit debajo de Short. Market = a mercado (ahora).
+         Limit = orden pendiente en el precio marcado (se dibuja en la grafica; se
+         ejecutara con el contrato de spot). -->
+    <div class="od-modo">
+      <button class="od-modo-b on" type="button" data-modo="market">Market</button>
+      <button class="od-modo-b" type="button" data-modo="limit">Limit</button>
+    </div>
+
     <div class="od-campo od-cantidad">
-      <label>${esc(T(vender ? 'Cantidad a vender' : 'Cantidad a comprar'))}</label>
+      <label>Amount</label>
       <div class="od-inp-fila">
-        <input class="od-inp" id="od-cant" type="text" inputmode="decimal"
-               placeholder="0.00" autocomplete="off">
+        <input class="od-inp" id="od-cant" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
         <span class="od-unidad">${esc(vender ? par : 'USDT')}</span>
       </div>
       <input class="od-rango" id="od-rango" type="range" min="0" max="100" value="0" step="1">
       <div class="od-pcts">
-        ${[25, 50, 75, 100].map((p) => `<button class="od-pct" type="button" data-pct="${p}">${p}%</button>`).join('')}
+        ${[25, 50, 75, 100].map((p) => `<button class="od-pct" type="button" data-pct="${p}">${p === 100 ? 'Max' : p + '%'}</button>`).join('')}
       </div>
+      <div class="od-saldo">${esc(T('Leyendo tu saldo…'))}</div>
     </div>
-
-    <!-- Cómo se ejecuta -->
-    <div class="od-campo">
-      <label>${esc(T('Cómo quieres que funcione'))}</label>
-      <div class="od-modos">
-        <button class="od-modo on" type="button" data-modo="real">
-          <b>${esc(T('Orden automática'))}</b>
-          <span>${esc(T('Se ejecuta sola al llegar el precio. Consume gas.'))}</span>
-        </button>
-        <button class="od-modo" type="button" data-modo="aviso">
-          <b>${esc(T('Solo avisarme'))}</b>
-          <span>${esc(T('Te avisa y confirmas tú. No cuesta gas.'))}</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Protección: solo tiene sentido al comprar. Si vendes, ya
-         estás saliendo: no hay nada que proteger. -->
-    ${!vender ? `<div class="od-campo od-opcional">
-      <button class="od-toggle" id="od-sl-t" type="button">
-        <span>${esc(T('Añadir stop'))} <em>(${esc(T('opcional'))})</em></span>
-        <i class="od-fl">▾</i>
-      </button>
-      <div class="od-sl" id="od-sl">
-        <div class="od-inp-fila">
-          <input class="od-inp" id="od-slp" type="text" inputmode="decimal"
-                 placeholder="${fmt(vender ? precio * 1.03 : precio * 0.97)}" autocomplete="off">
-          <span class="od-unidad">USDT</span>
-        </div>
-        <div class="od-nota">${esc(T('Opcional. Si tras comprar el precio cae hasta aquí, se vende para limitar la pérdida.'))}</div>
-      </div>
-    </div>` : ''}
 
     <div class="od-resumen" id="od-res"></div>
 
-    <button class="od-confirmar" id="od-ok" type="button" disabled>
-      ${esc(T(vender ? 'Poner orden de venta' : 'Poner orden de compra'))}
-    </button>
-    <div class="od-aviso">${esc(T('Opera bajo tu propio riesgo. Nada garantiza que el precio llegue.'))}</div>`;
+    <button class="od-confirmar" id="od-ok" type="button" disabled>${vender ? 'Sell' : 'Buy'}</button>
+    <div class="od-aviso">Manual trade, at your own risk. Not financial advice.</div>`;
 
   document.body.appendChild(d);
   colocar(d, cx, cy, true);
   d.addEventListener('click', (e) => e.stopPropagation());
 
+  /* Si el usuario la arrastra, se respeta su posicion y no se recoloca sola. */
+  let movida = false;
+
   /* Si la ficha crece (al escribir aparece el resumen), se recoloca
-     para que el botón nunca quede fuera de la pantalla. */
+     para que el botón nunca quede fuera de la pantalla. Salvo que el
+     usuario ya la haya movido a mano. */
   try {
-    const vigilante = new ResizeObserver(() => colocar(d, cx, cy, true));
+    const vigilante = new ResizeObserver(() => { if (!movida) colocar(d, cx, cy, true); });
     vigilante.observe(d);
     d._obs = vigilante;
   } catch (_) {}
@@ -395,122 +516,119 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     if (x >= 0.0001) return x.toFixed(6);
     return x.toFixed(8);
   }
-  let modo = 'real';
   let saldo = 0;
   let _tokens = null;
 
-  /* ══════════════════════════════════════════════════════════
-     EL SALDO REAL
+  /* Cantidad legible y sin ceros de relleno para el disponible de arriba. */
+  const fmtCant = (x) => {
+    if (!(x > 0)) return '0';
+    const s = x >= 1000 ? x.toFixed(2) : x >= 1 ? x.toFixed(4) : x.toFixed(6);
+    return s.replace(/\.?0+$/, '');
+  };
+  /* El disponible va grande y en verde arriba a la derecha: la moneda de la
+     grafica si es short, USDT si es long. Es lo que puedes meter en la posicion. */
+  function pintarDisponible() {
+    const el = d.querySelector('.od-disp-val');
+    if (el) el.textContent = fmtCant(saldo);
+  }
+  /* ── INTERPRETACION DE FONDOS (sistema avanzado) ──
+     No se mira solo el saldo de la moneda de la grafica. Se leen TODOS los fondos del
+     usuario (BNB, USDT y la moneda) y se convierten EN VIVO al poder de compra en la
+     unidad que toca: la moneda de la grafica si es short, USDT si es long. Asi el
+     usuario nunca ve "no tienes X": ve cuanto puede operar, aunque solo tenga BNB. La
+     conversion real (BNB -> USDT / moneda) ocurre al abrir, via el contrato de spot. */
+  let _bal = null;   // saldos crudos, para recomputar el poder cuando cambia el precio
+  async function leerPoder() {
+    const tk = await import('./tokens.js?v=125');
+    const gb = await import('./gridbot.js?v=125');
+    const w = await import('./wallet.js?v=125');
+    let cuenta = (w.cuentaActual && w.cuentaActual()) || null;
+    if (!cuenta && window.ethereum) { try { const cs = await window.ethereum.request({ method: 'eth_accounts' }); if (cs && cs.length) cuenta = cs[0]; } catch (_) {} }
+    if (!cuenta) return { conectado: false };
+    const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+    const leer = async (simb) => {
+      const mon = buscarMoneda(tk.MONEDAS, simb); if (!mon) return 0;
+      try { const bruto = await gb.saldoParaMostrar(mon.address || WBNB, cuenta); const v = Number(bruto) / Math.pow(10, mon.decimals ?? 18); return isFinite(v) ? v : 0; } catch (_) { return 0; }
+    };
+    const [bnb, usdt, moneda] = await Promise.all([leer('BNB'), leer('USDT'), leer(par)]);
+    let bnbPx = (par === 'BNB') ? ((cfg.precioActual && cfg.precioActual()) || actual || 0) : 0;
+    if (!bnbPx) { try { const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT'); const j = await r.json(); bnbPx = Number(j.price) || 0; } catch (_) {} }
+    _bal = { bnb, usdt, moneda, bnbPx };
+    return { conectado: true };
+  }
+  /* Poder de compra en la unidad actual, recalculado con el precio en vivo. */
+  function recomputarPoder() {
+    if (!_bal) return;
+    const coinPx = (cfg.precioActual && cfg.precioActual()) || actual || 0;
+    const bnbUtil = Math.max(0, _bal.bnb - 0.0015);                    // se reserva algo de BNB para el gas
+    const bnbUsd = bnbUtil * _bal.bnbPx;
+    // Valor total operable en USD, SIN duplicar: si la grafica es BNB o USDT, esa
+    // moneda ya esta contada en bnbUsd / usdt y no se vuelve a sumar.
+    const totalUsd = bnbUsd + _bal.usdt + ((par === 'BNB' || par === 'USDT') ? 0 : _bal.moneda * coinPx);
+    // Lo que YA tienes en la propia moneda de la grafica (en USD).
+    const yaEnMoneda = (par === 'BNB') ? bnbUsd : (par === 'USDT') ? _bal.usdt : _bal.moneda * coinPx;
+    if (vender) {
+      // SHORT: vendes la moneda de la grafica. Puedes convertir TODO tu portafolio a
+      // esa moneda y venderlo (incluido lo que ya tienes en ella). Disponible = total / precio.
+      saldo = coinPx > 0 ? totalUsd / coinPx : 0;
+    } else {
+      // LONG: compras la moneda de la grafica. NO tiene sentido comprarla con lo que YA
+      // tienes en esa misma moneda (seria convertirla a si misma). Disponible = total menos
+      // lo que ya tienes en ella. Ej.: 50 en BNB + 50 en USDT, comprar BNB -> 50, no 100.
+      saldo = Math.max(0, totalUsd - yaEnMoneda);
+    }
+    if (!isFinite(saldo) || saldo < 0) saldo = 0;
+    pintarDisponible();
+  }
 
-     Se lee de la wallet a través de `tokens.js`, que ya tiene el
-     mapa de direcciones y decimales de las 31 monedas.
-
-     Para vender hace falta la moneda; para comprar, USDT. Si no
-     hay saldo, se dice claramente en vez de dejar la ficha muerta.
-     ══════════════════════════════════════════════════════════ */
+  /* Lee los fondos una vez y pinta el poder de compra convertido a la unidad actual. */
   (async () => {
     try {
-      const tk = await import('./tokens.js?v=125');
-      const gb = await import('./gridbot.js?v=125');
-      const w = await import('./wallet.js?v=125');
-      /* [CORREGIDO] Se llamaba a `w.cuenta()`, que no existe: la
-         función es `cuentaActual()`. Por eso siempre decía que la
-         wallet estaba desconectada aunque estuviera conectada. */
-      /* Primero el estado del módulo; si aún no se ha poblado, se
-         pregunta directamente al proveedor. Así no se dice "conecta
-         tu wallet" a alguien que la tiene conectada. */
-      let cuenta = (w.cuentaActual && w.cuentaActual()) || null;
-      if (!cuenta && window.ethereum) {
-        try {
-          const cs = await window.ethereum.request({ method: 'eth_accounts' });
-          if (cs && cs.length) cuenta = cs[0];
-        } catch (_) {}
-      }
-
-      const simb = vender ? par : 'USDT';
-      const mon = buscarMoneda(tk.MONEDAS, simb);
-      _tokens = { mon, monQuote: tk.MONEDAS.USDT };
-
-      if (!cuenta) { sinSaldo(T('Conecta tu wallet para poder operar.')); return; }
-      /* [CORREGIDO] BNB tiene `address: null` porque es la moneda
-         NATIVA de la red, no un token. Exigir dirección hacía que
-         fallara justo con la moneda principal. `saldoParaMostrar`
-         ya distingue entre nativa y token. */
-      if (!mon) {
-        sinSaldo(T('Esta moneda no se puede operar todavía desde aquí.'));
-        return;
-      }
-
-      /* [CORREGIDO] Dos fallos aquí:
-         1. `esBNB()` compara con la dirección de WBNB, así que
-            pasarle null hacía que intentara leer un token
-            inexistente y reventaba.
-         2. El saldo viene en wei (BigInt). Hacer Number() directo
-            daba cifras astronómicas con decimales infinitos.
-         Ahora se pasa WBNB para la nativa y se convierte bien. */
-      const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
-      const dir = mon.address || WBNB;
-      const bruto = await gb.saldoParaMostrar(dir, cuenta);
-      const dec = mon.decimals ?? 18;
-      saldo = Number(bruto) / Math.pow(10, dec);
-      if (!isFinite(saldo)) saldo = 0;
-
-      if (!(saldo > 0)) {
-        sinSaldo(vender
-          ? `${T('No tienes')} ${par} ${T('en tu wallet, así que no hay nada que vender. Primero tendrías que comprarlo.')}`
-          : `${T('No tienes USDT en BNB Chain. Necesitas USDT para poder comprar.')}`);
-        return;
-      }
-
+      const r = await leerPoder();
       const et = d.querySelector('.od-saldo');
-      if (et) et.innerHTML = `${esc(T('Disponible'))}: <b>${recorta(saldo)} ${esc(simb)}</b>`;
+      if (!r.conectado) {
+        saldo = 0; pintarDisponible();
+        if (et) { et.className = 'od-saldo'; et.textContent = T('Conecta tu wallet para operar.'); }
+        return;
+      }
+      recomputarPoder();
+      if (et) { et.className = 'od-saldo'; et.textContent = ''; }
     } catch (er) {
-      /* [CORREGIDO] Si falla la LECTURA del saldo se bloqueaba el
-         botón para siempre, aunque el usuario tuviera fondos de
-         sobra. No poder leer no es lo mismo que no tener: se avisa
-         pero se deja continuar. El contrato validará al firmar. */
       const et = d.querySelector('.od-saldo');
-      if (et) {
-        et.className = 'od-saldo alerta';
-        et.textContent = T('No hemos podido leer tu saldo ahora mismo. Puedes continuar: se comprobará al firmar.');
-      }
-      console.warn('[CCO] saldo:', er);
+      if (et) { et.className = 'od-saldo alerta'; et.textContent = T('No hemos podido leer tu saldo ahora mismo. Puedes continuar: se comprobará al firmar.'); }
+      console.warn('[CCO] poder:', er);
     }
   })();
 
   /** Cuando no hay con qué operar, se dice y se bloquea. */
+  /* Sin saldo real (o wallet sin conectar) NO se bloquea: la posicion se registra
+     igual como visualizacion/registro hasta que exista el contrato de spot. Solo
+     se informa. La ejecucion real on-chain validara al firmar cuando se conecte. */
   function sinSaldo(motivo) {
     const et = d.querySelector('.od-saldo');
     if (et) { et.className = 'od-saldo alerta'; et.textContent = motivo; }
-    ok.disabled = true;
-    ok.classList.add('bloqueado');
   }
 
+  let modo = modoInicial;
+  // Precio de entrada: a mercado usa el precio de AHORA; limit usa el nivel marcado.
+  const entryPx = () => (modo === 'limit' && precio > 0) ? precio : actual;
   const refrescar = () => {
     let cant = parseFloat(String(inp.value).replace(',', '.')) || 0;
-    /* Nunca por encima de lo que hay: evita firmas que van a fallar */
+    /* Nunca por encima de lo que hay (si se pudo leer el saldo). */
     if (saldo > 0 && cant > saldo) { cant = saldo; inp.value = recorta(saldo); }
-    /* Un aviso no mueve dinero: no hace falta saldo ni cantidad. */
-    /* Bloqueado solo si de verdad no hay saldo (0 confirmado), no
-       cuando simplemente no se ha podido leer. */
-    ok.disabled = modo === 'aviso' ? false : (!(cant > 0) || ok.classList.contains('bloqueado'));
-    if (modo === 'aviso') {
-      res.innerHTML = `
-        <div class="od-r-fila"><span>${esc(T('Te avisaremos cuando'))} ${esc(par)}</span><b>${
-          esc(T(vender ? 'suba a' : 'baje a'))} ${fmt(precio)}</b></div>
-        <div class="od-r-fila"><span>${esc(T('Desde el precio actual'))}</span><b>${
-          dist >= 0 ? '+' : ''}${dist.toFixed(2)}%</b></div>`;
-      res.classList.add('lleno');
-      return;
-    }
+    ok.disabled = !(cant > 0);
+    ok.textContent = modo === 'limit' ? (vender ? 'Place limit sell' : 'Place limit buy') : (vender ? 'Sell' : 'Buy');
+    // Encabezado: Market no muestra precio (abre a precio actual); Limit muestra el nivel marcado.
+    const sub = d.querySelector('.od-sub-px'); if (sub) sub.textContent = modo === 'limit' ? fmt(entryPx()) : 'Market';
     if (cant > 0) {
-      const total = vender ? cant * precio : cant / precio;
-      res.innerHTML = `
-        <div class="od-r-fila"><span>${esc(T('Precio de la orden'))}</span><b>${fmt(precio)}</b></div>
-        <div class="od-r-fila"><span>${esc(T(vender ? 'Recibirás' : 'Comprarás'))}</span><b>${
-          vender ? fmt(total) + ' USDT' : total.toFixed(6) + ' ' + esc(par)}</b></div>
-        <div class="od-r-fila"><span>${esc(T('Se ejecuta'))}</span><b>${
-          esc(T(modo === 'real' ? 'automáticamente' : 'con tu confirmación'))}</b></div>`;
+      const px = entryPx();
+      const total = vender ? cant * px : cant / px;
+      const l1 = modo === 'limit'
+        ? `<div class="od-r-fila"><span>Limit · opens at</span><b>${fmt(px)}</b></div>`
+        : `<div class="od-r-fila"><span>Opens at market</span><b>≈ ${fmt(px)}</b></div>`;
+      res.innerHTML = l1 + `
+        <div class="od-r-fila"><span>${vender ? 'You receive' : 'You buy'}</span><b>${
+          vender ? fmt(total) + ' USDT' : total.toFixed(6) + ' ' + esc(par)}</b></div>`;
       res.classList.add('lleno');
     } else { res.innerHTML = ''; res.classList.remove('lleno'); }
   };
@@ -531,28 +649,21 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     else { /* Sin saldo leído, el porcentaje no puede calcularse */ }
     d.querySelectorAll('[data-pct]').forEach((x) => x.classList.toggle('on', x === b));
   });
+  /* Lado (Long/Short) estilo Spot. A mercado el lado solo cambia la unidad y las
+     etiquetas; reabrimos la ficha para el otro lado y asi el saldo se relee solo. */
+  d.querySelectorAll('[data-lado]').forEach((b) => b.onclick = () => {
+    const quiereVender = b.dataset.lado === 'short';
+    if (quiereVender === vender) return;
+    d.remove();
+    abrirFicha(cx, cy, cfg, precio, quiereVender);
+  });
+  /* Market / Limit. Market: a mercado (precio de ahora). Limit: orden pendiente en el
+     nivel marcado al hacer clic derecho. Solo cambia el precio de entrada y el registro. */
   d.querySelectorAll('[data-modo]').forEach((b) => b.onclick = () => {
     modo = b.dataset.modo;
     d.querySelectorAll('[data-modo]').forEach((x) => x.classList.toggle('on', x === b));
-    /* El botón dice lo que va a pasar: no es lo mismo poner una
-       orden que activar un aviso. */
-    ok.textContent = modo === 'aviso'
-      ? T('Activar aviso')
-      : T(vender ? 'Poner orden de venta' : 'Poner orden de compra');
-    ok.classList.toggle('aviso', modo === 'aviso');
-    /* Un aviso no mueve dinero: sobra la cantidad y el stop. La
-       ficha se encoge y deja solo lo que importa. */
-    d.classList.toggle('solo-aviso', modo === 'aviso');
     refrescar();
   });
-  /* [CORREGIDO] En las ventas no hay bloque de stop, así que esta
-     línea lanzaba un error que dejaba la X sin enganchar. Por eso
-     la X funcionaba al comprar y no al vender. */
-  const slT = $('od-sl-t');
-  if (slT) slT.onclick = () => {
-    const c = d.querySelector('.od-opcional');
-    if (c) c.classList.toggle('abierto');
-  };
   /* [CORREGIDO] La X no cerraba porque el clic se paraba antes de
      llegar. Ahora cierra su propia ficha directamente. */
   const cerrarEsta = (ev) => {
@@ -569,70 +680,100 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
 
   ok.onclick = async () => {
     const cant = parseFloat(String(inp.value).replace(',', '.')) || 0;
-    if (modo !== 'aviso' && !(cant > 0)) return;
-    const elSl = $('od-slp');
-    const sl = elSl ? (parseFloat(String(elSl.value).replace(',', '.')) || 0) : 0;
+    if (!(cant > 0)) return;
     ok.disabled = true;
     try {
-      if (modo === 'aviso') {
-        const id = guardarAviso({
-          par, simbolo: cfg.simbolo ? cfg.simbolo() : '', precio,
-          cant: cant || 0, vender, sl: 0, cuando: Date.now()
-        });
+      if (modo === 'limit') {
+        // ORDEN LIMIT: pendiente en el precio marcado. Se guarda SIN botId, asi el
+        // vigilante on-chain la IGNORA (sincronizarOrdenes salta las que no tienen
+        // botId) y solo se dibuja en la grafica. La ejecucion al tocar el precio se
+        // conectara con el contrato de spot. Cero accion on-chain por ahora.
+        const simb = cfg.simbolo ? cfg.simbolo() : '';
+        guardarOrdenGrafico({ id: 'sp-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), par, simbolo: simb, precio, cant, vender, modo: 'limit', fuente: 'spot', cuando: Date.now() });
         if (cfg.repintar) cfg.repintar();
-        exito(d, T('Aviso puesto'), T('Te avisaremos cuando el precio llegue a') + ' ' + fmt(precio));
-      } else {
-        /* [CORREGIDO] Los pasos se escribían dentro del botón y lo
-           estiraban hasta deformar la ficha. Ahora van en su propia
-           ventana, que además explica qué está pasando. */
-        abrirPasos(vender);
-        await ponerOrdenReal({
-          cfg, precio, cant, vender, sl,
-          alPaso: (t) => pintarPaso(t)
-        });
-        cerrarPasos();
-        exito(d, T('Orden puesta'), T('Se ejecutará sola cuando el precio llegue a') + ' ' + fmt(precio));
+        if (cfg.alPoner) cfg.alPoner({ precio, cant, vender, modo: 'limit', lado: vender ? 'short' : 'long' });
+        exito(d, vender ? 'Limit sell placed' : 'Limit buy placed',
+          `Pending at ${fmt(precio)}. It opens when the price reaches it.`);
+        return;
       }
-      /* Se guarda para pintarla en el gráfico con su propia marca,
-         distinta de las señales del asistente. */
-      const registro = {
-        precio, cant, vender, modo,
-        par, simbolo: cfg.simbolo ? cfg.simbolo() : '',
-        botId: _ultimoBotId,          // para poder cancelarla en el contrato
-        base: _ultimoPar.base, quote: _ultimoPar.quote,
-        id: 'ord-' + _ultimoBotId,
-        cuando: Date.now()
-      };
-      _puestas.push(registro);
-      /* Las órdenes REALES (no los avisos) se persisten para que la marca
-         no desaparezca al cambiar de moneda o recargar. El bot ya vive en
-         el contrato; esto solo recuerda dónde pintarla. */
-      if (modo !== 'aviso') guardarOrdenGrafico(registro);
-      if (cfg.alPoner) cfg.alPoner({ precio, cant, vender, modo });
+      /* A MERCADO: se registra la posicion en el MISMO ledger que Spot
+         (sp-spot-v1) via su motor. Aparece en Spot › Positions con su PnL en
+         vivo, y en la grafica de analisis como una linea limpia de tu entrada.
+         No usa rejilla, keeper ni Cloudflare: la ejecucion real on-chain se
+         conectara con el contrato de spot que crearemos despues. */
+      const lado = vender ? 'short' : 'long';
+      const mark = (cfg.precioActual ? cfg.precioActual() : 0) || precio;
+      const amountUsdt = vender ? cant * mark : cant;   // long: USDT; short: cantidad de moneda · precio
+      let pos = null;
+      try { if (_spot && _spot.abrirMercado) { const r = _spot.abrirMercado(par, par, lado, amountUsdt, mark); if (r && r.ok) pos = r.pos; } } catch (_) {}
+      notificarPosicion(lado, par, mark, cant, vender);
       if (cfg.repintar) cfg.repintar();
+      if (cfg.alPoner) cfg.alPoner({ precio: mark, cant, vender, modo: 'market', lado, pos });
+      exito(d, vender ? 'Short opened' : 'Long opened',
+        `Opened at market ≈ ${fmt(mark)}. Follow it live in Spot › Positions.`);
     } catch (er) {
-      cerrarPasos();
       ok.disabled = false;
-      ok.textContent = modo === 'aviso' ? T('Activar aviso')
-        : T(vender ? 'Poner orden de venta' : 'Poner orden de compra');
-      /* [CORREGIDO] Antes se tragaba el error real y salía siempre
-         "no se puede poner la orden", que no dice nada. Ahora se
-         traduce a lenguaje claro y, si no se reconoce, se muestra
-         tal cual: es la única forma de saber qué pasa. */
+      ok.textContent = vender ? 'Sell at market' : 'Buy at market';
       const m = String((er && (er.reason || er.shortMessage || er.message)) || er);
       console.warn('[CCO] orden:', er);
-      let txt;
-      if (/user rejected|denied|4001/i.test(m)) txt = T('Cancelaste la firma.');
-      else if (/suscrip/i.test(m)) txt = m;
-      else if (/pool/i.test(m)) txt = T('Esta moneda no tiene mercado en PancakeSwap. Prueba con otra.');
-      else if (/insufficient|saldo|balance/i.test(m)) txt = T('No tienes saldo suficiente para esta orden.');
-      else if (/objetivo|target/i.test(m)) txt = m;
-      else if (/precio del par|no se pudo leer/i.test(m)) txt = T('No se pudo leer el precio de este par ahora mismo.');
-      else if (/gas/i.test(m)) txt = T('Te falta gas. Añade BNB desde tu perfil.');
-      else txt = m.slice(0, 160);
-      fallo(d, txt);
+      fallo(d, m.slice(0, 160));
     }
   };
+
+  /* El precio de mercado tiene que coincidir con el de la grafica en todo momento:
+     antes se congelaba al abrir la ficha y quedaba desfasado (588 cuando el precio
+     ya era 587.9). Se refresca en vivo y se recalcula el resumen. Se corta solo
+     cuando la ficha se cierra. */
+  const _pxInt = setInterval(() => {
+    if (!document.body.contains(d)) { clearInterval(_pxInt); return; }
+    const p = cfg.precioActual ? cfg.precioActual() : 0;
+    if (p > 0 && p !== actual) {
+      actual = p;
+      refrescar();         // refrescar pone el encabezado (Market o el precio limit) y el resumen
+      recomputarPoder();   // el poder de compra convertido sigue vivo con el precio
+    }
+  }, 1000);
+
+  /* Estado inicial del modo: si abrio en Limit (clic en un nivel), marca el toggle
+     y sincroniza encabezado/boton/resumen. En Market el template ya es coherente. */
+  if (modo === 'limit') {
+    d.querySelectorAll('[data-modo]').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit'));
+  }
+  refrescar();
+
+  /* ── Arrastrar la ficha ──
+     Se agarra por el encabezado (zona limpia, sin botones ni campos) y se mueve a gusto,
+     para ponerla donde no tape lo que el usuario quiere ver. Al moverla se desactiva la
+     recolocacion automatica. Funciona con raton y con el dedo (pointer events). */
+  const cab = d.querySelector('.od-cab');
+  if (cab) {
+    cab.addEventListener('pointerdown', (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      if (e.target.closest('button, input, a, select, .od-x')) return;   // no robar el clic a un control
+      const r = d.getBoundingClientRect();
+      const ox = e.clientX - r.left, oy = e.clientY - r.top;
+      const x0 = e.clientX, y0 = e.clientY;
+      let arrastrando = false;
+      const mover = (ev) => {
+        if (!arrastrando && (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0)) < 3) return;
+        arrastrando = true; movida = true;
+        if (ev.cancelable) ev.preventDefault();
+        const w = d.offsetWidth, h = d.offsetHeight, m = 6;
+        let nx = ev.clientX - ox, ny = ev.clientY - oy;
+        nx = Math.max(m, Math.min(nx, window.innerWidth - w - m));
+        ny = Math.max(m, Math.min(ny, window.innerHeight - h - m));
+        d.style.left = nx + 'px'; d.style.top = ny + 'px';
+      };
+      const soltar = () => {
+        document.removeEventListener('pointermove', mover);
+        document.removeEventListener('pointerup', soltar);
+        document.removeEventListener('pointercancel', soltar);
+      };
+      document.addEventListener('pointermove', mover);
+      document.addEventListener('pointerup', soltar);
+      document.addEventListener('pointercancel', soltar);
+    });
+  }
 
   setTimeout(() => { try { inp.focus(); } catch (_) {} }, 80);
 }
@@ -1036,6 +1177,27 @@ function toastAlerta(vender, precio) {
   setTimeout(() => { if (t.parentNode) t.remove(); }, 6000);
 }
 
+/* Notificacion al EJECUTAR una posicion desde analisis: sonido + aviso del
+   sistema (si hay permiso) + toast visible. La posicion queda en Spot › Positions. */
+function notificarPosicion(lado, par, precio, cant, vender) {
+  try { sonarHecho(); } catch (_) {}
+  const titulo = (lado === 'long' ? 'Long' : 'Short') + ' opened · ' + (par || '');
+  const cuerpo = cant + ' ' + (vender ? par : 'USDT') + ' at ' + fmt(precio) + ' · see it in Spot › Positions';
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(titulo, { body: cuerpo, icon: 'assets/img/aurex-192.png' });
+    }
+  } catch (_) {}
+  const t = document.createElement('div');
+  t.className = 'od-toast ' + (vender ? 'vender' : 'comprar');
+  t.innerHTML = `<span class="od-t-ic">${vender ? '▼' : '▲'}</span>
+    <div><b>${esc(titulo)}</b><span>${esc(cuerpo)}</span></div>
+    <button type="button" class="od-t-x">✕</button>`;
+  document.body.appendChild(t);
+  t.querySelector('.od-t-x').onclick = () => t.remove();
+  setTimeout(() => { if (t.parentNode) t.remove(); }, 9000);
+}
+
 /* ══════════════════════════════════════════════════════════════
    PINTAR LAS ÓRDENES SOBRE EL GRÁFICO
 
@@ -1049,7 +1211,9 @@ export function pintar(g, opciones) {
   const { x1, y1, Y, pMin, pMax, simbolo } = opciones;
   const lista = ordenesPuestas().filter((o) => !simbolo || o.simbolo === simbolo);
   const zonas = [];
-  if (!lista.length) return zonas;
+  /* Antes aquí había un "if (!lista.length) return": saltaba el dibujado cuando no
+     había órdenes/alertas, y las POSICIONES (que no son órdenes) nunca se pintaban.
+     Se quitó para que el bloque de posiciones de abajo corra siempre. */
 
   const H = y1 || 600;
   let usadosArriba = 0, usadosAbajo = 0;
@@ -1139,6 +1303,118 @@ export function pintar(g, opciones) {
     zonas.push({ x: xB, y: y - 13, w: 26, h: 26, orden: o });
   });
 
+  /* ── Posiciones abiertas (ledger compartido con Spot) ──
+     Linea de la entrada + PnL EN VIVO sobre la grafica: short en la moneda que
+     vendio (lo que esta ganando en BTC/BNB/etc.), long en %. El cierre real es
+     manual, en Spot › Positions. La X solo OCULTA la visualizacion; no vende. */
+  try {
+    const parAct = String(simbolo || '').replace(/USDT$/i, '');
+    const ocultas = posOcultas();
+    const posis = (_spot && _spot.posiciones) ? _spot.posiciones() : [];
+    posis.filter((p) => p && p.par === parAct && parAct && !ocultas.includes(p.id)).forEach((p) => {
+      if (!(p.entrada >= pMin && p.entrada <= pMax)) return;   // fuera de vista: vive en Spot
+      const esL = p.lado === 'long';
+      const col = esL ? '#2ee86a' : '#ff5b6e';
+      const yy = Y(p.entrada);
+      g.save();
+      g.strokeStyle = col; g.lineWidth = 1.8;
+      g.beginPath(); g.moveTo(0, yy); g.lineTo(x1, yy); g.stroke();
+      g.restore();
+
+      /* PnL en vivo (misma formula que Spot › Positions). */
+      const mark = _marks[parAct.toUpperCase() + 'USDT'] || 0;
+      let pnlTxt = '', pnlPos = true;
+      if (mark > 0 && _spot && _spot.pnlDe) {
+        try {
+          const info = _spot.pnlDe(p, mark);
+          if (esL) { pnlPos = info.pct >= 0; pnlTxt = (pnlPos ? '+' : '') + info.pct.toFixed(2) + '%'; }
+          else { pnlPos = info.pnl >= 0; pnlTxt = (pnlPos ? '+' : '') + fmtMoneda(info.pnl) + ' ' + (p.base || parAct); }
+        } catch (_) {}
+      }
+
+      const et = `${esL ? 'LONG' : 'SHORT'}  ${fmt(p.entrada)}`;
+      g.font = 'bold 10.5px ui-monospace,monospace';
+      const wl = g.measureText(et).width + 22;
+      const xB = x1 - 30;                 // boton X (ocultar)
+      const xE = xB - wl - 6;             // etiqueta de entrada
+      let xP = xE;                        // pildora de PnL, a la izquierda
+
+      if (pnlTxt) {
+        g.font = 'bold 10.5px ui-monospace,monospace';
+        const wp = g.measureText(pnlTxt).width + 18;
+        xP = xE - wp - 6;
+        const colP = pnlPos ? '#2ee86a' : '#ff5b6e';
+        g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+        g.fillStyle = 'rgba(9,13,20,.94)'; redondeadoOd(g, xP, yy - 12, wp, 24, 7); g.fill(); g.restore();
+        g.strokeStyle = colP; g.lineWidth = 1.4; redondeadoOd(g, xP, yy - 12, wp, 24, 7); g.stroke();
+        g.fillStyle = colP; g.textAlign = 'left'; g.fillText(pnlTxt, xP + 9, yy + 4);
+      }
+
+      g.font = 'bold 10.5px ui-monospace,monospace';
+      g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 7; g.shadowOffsetY = 2;
+      g.fillStyle = col; redondeadoOd(g, xE, yy - 12, wl, 24, 7); g.fill(); g.restore();
+      g.fillStyle = esL ? '#04210f' : '#2a0509';
+      g.textAlign = 'left'; g.fillText(et, xE + 10, yy + 4);
+
+      g.fillStyle = 'rgba(11,15,22,.92)'; redondeadoOd(g, xB, yy - 12, 24, 24, 7); g.fill();
+      g.strokeStyle = col + 'aa'; g.lineWidth = 1.3; redondeadoOd(g, xB, yy - 12, 24, 24, 7); g.stroke();
+      g.strokeStyle = col; g.lineWidth = 1.7; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(xB + 8, yy - 4); g.lineTo(xB + 16, yy + 4); g.moveTo(xB + 16, yy - 4); g.lineTo(xB + 8, yy + 4); g.stroke();
+      g.lineCap = 'butt';
+      zonas.push({ x: xB, y: yy - 12, w: 24, h: 24, ocultarPos: p.id });
+
+      /* ── TP / SL estilo TradingView: cuadrados arrastrables, SIN escribir ──
+         Los no fijados salen como botones a la izquierda de la tachuela; los
+         fijados, como linea punteada con tirador que se arrastra. */
+      let rx = (pnlTxt ? xP : xE) - 6;
+      if (!p.sl) {
+        const bw = 30, bx = rx - bw;
+        botonCuadroOd(g, bx, yy - 9, bw, 18, '#ff5b6e', 'SL', true);
+        zonas.push({ x: bx - 3, y: yy - 11, w: bw + 6, h: 22, tpslCrear: { posId: p.id, cual: 'sl' } });
+        rx = bx - 6;
+      }
+      if (!p.tp) {
+        const bw = 30, bx = rx - bw;
+        botonCuadroOd(g, bx, yy - 9, bw, 18, '#2ee86a', 'TP', true);
+        zonas.push({ x: bx - 3, y: yy - 11, w: bw + 6, h: 22, tpslCrear: { posId: p.id, cual: 'tp' } });
+        rx = bx - 6;
+      }
+      const pintarNivel = (cual) => {
+        const nivel = cual === 'tp' ? p.tp : p.sl;
+        if (!(nivel > 0) || !(nivel >= pMin && nivel <= pMax)) return;
+        const esTP = cual === 'tp';
+        const c2 = esTP ? '#2ee86a' : '#ff5b6e';
+        const ya = Y(nivel);
+        const bw = 30, bh = 20, xw = 18;
+        const xX = x1 - xw - 2;                 // X (quitar) al borde DERECHO
+        const lt = (esTP ? 'TP ' : 'SL ') + fmt(nivel);
+        g.font = 'bold 10px ui-monospace,monospace';
+        const w2 = g.measureText(lt).width + 16;
+        const xLab = xX - 6 - w2;               // etiqueta, a la izquierda de la X
+        const xH = xLab - 6 - bw;               // tirador (icono TP/SL) a la IZQUIERDA
+        // linea punteada hasta el tirador
+        g.save(); g.setLineDash([7, 4]); g.strokeStyle = c2; g.lineWidth = 1.4;
+        g.beginPath(); g.moveTo(0, ya); g.lineTo(xH - 4, ya); g.stroke(); g.restore();
+        // tirador cuadrado arrastrable (IZQUIERDA)
+        botonCuadroOd(g, xH, ya - bh / 2, bw, bh, c2, cual.toUpperCase(), false);
+        zonas.push({ x: xH - 4, y: ya - 11, w: bw + 8, h: 22, tpslDrag: { posId: p.id, cual } });
+        // etiqueta (CENTRO)
+        g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 5; g.shadowOffsetY = 1;
+        g.fillStyle = c2; redondeadoOd(g, xLab, ya - 10, w2, 20, 6); g.fill(); g.restore();
+        g.fillStyle = esTP ? '#04210f' : '#2a0509'; g.textAlign = 'left'; g.fillText(lt, xLab + 8, ya + 4);
+        // X para quitar (DERECHA)
+        g.fillStyle = 'rgba(11,15,22,.92)'; redondeadoOd(g, xX, ya - 9, xw, 18, 5); g.fill();
+        g.strokeStyle = c2 + 'aa'; g.lineWidth = 1.1; redondeadoOd(g, xX, ya - 9, xw, 18, 5); g.stroke();
+        g.strokeStyle = c2; g.lineWidth = 1.4; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(xX + 6, ya - 3); g.lineTo(xX + 12, ya + 3); g.moveTo(xX + 12, ya - 3); g.lineTo(xX + 6, ya + 3); g.stroke();
+        g.lineCap = 'butt';
+        zonas.push({ x: xX, y: ya - 9, w: xw, h: 18, tpslQuitar: { posId: p.id, cual } });
+      };
+      if (p.tp) pintarNivel('tp');
+      if (p.sl) pintarNivel('sl');
+    });
+  } catch (_) {}
+
   return zonas;
 }
 
@@ -1152,28 +1428,75 @@ function redondeadoOd(g, x, y, w, h, r) {
   g.closePath();
 }
 
-/** Engancha el clic de cancelar en un lienzo. */
+/** Engancha el clic de cancelar (y el arrastre de TP/SL) en un lienzo. */
 export function clicCancelar(cv, dameZonas, repintar) {
   if (cv.dataset.odCancel) return;
   cv.dataset.odCancel = '1';
 
-  /* La manita al pasar por encima de la X: si no cambia el cursor,
-     nadie sabe que ahí se puede pulsar. */
-  cv.addEventListener('mousemove', (e) => {
-    const r = cv.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    const encima = (dameZonas() || []).some((q) =>
-      x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
-    if (encima) cv.style.cursor = 'pointer';
-    else if (cv.style.cursor === 'pointer') cv.style.cursor = 'crosshair';
-  });
+  let arrastre = null;   // { posId, cual } mientras se arrastra un TP/SL
 
-  const mirar = (cx, cy) => {
+  const zonaEn = (cx, cy) => {
     const r = cv.getBoundingClientRect();
     const x = cx - r.left, y = cy - r.top;
-    const z = (dameZonas() || []).find((q) =>
-      x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
-    if (z) { pedirCancelar(z.orden, repintar); return true; }
+    return (dameZonas() || []).find((q) =>
+      x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h) || null;
+  };
+  /* y -> precio con el precioEn del propio lienzo (lineal o log, cada modulo trae el suyo). */
+  const precioDe = (cy) => {
+    const cfg = _cfgPorCanvas.get(cv);
+    if (!cfg || !cfg.precioEn) return 0;
+    const r = cv.getBoundingClientRect();
+    const p = cfg.precioEn(cy - r.top);
+    return (p > 0) ? p : 0;
+  };
+
+  /* Cursor: mano en las X, doble flecha vertical en lo arrastrable (TP/SL). */
+  cv.addEventListener('mousemove', (e) => {
+    if (arrastre) return;
+    const z = zonaEn(e.clientX, e.clientY);
+    const mover = z && (z.tpslDrag || z.tpslCrear);
+    if (mover) cv.style.cursor = 'ns-resize';
+    else if (z) cv.style.cursor = 'pointer';
+    else if (cv.style.cursor === 'pointer' || cv.style.cursor === 'ns-resize') cv.style.cursor = 'crosshair';
+  });
+
+  /* Empezar a arrastrar (o crear) un TP/SL. */
+  cv.addEventListener('mousedown', (e) => {
+    const z = zonaEn(e.clientX, e.clientY);
+    if (!z || !(z.tpslDrag || z.tpslCrear)) return;
+    e.stopPropagation(); e.preventDefault();
+    const info = z.tpslDrag || z.tpslCrear;
+    const p = posDe(info.posId); if (!p) return;
+    if (z.tpslCrear) {
+      let px = precioDe(e.clientY);
+      if (!(px > 0)) px = defNivelTPSL(p, info.cual);
+      aplicarTPSL(p, info.cual, px);
+      avisoTPSLUnaVez();
+    }
+    arrastre = { posId: info.posId, cual: info.cual };
+    _arrastrandoTPSL = true;
+    cv.style.cursor = 'ns-resize';
+    if (repintar) repintar();
+  }, true);
+
+  window.addEventListener('mousemove', (e) => {
+    if (!arrastre) return;
+    const px = precioDe(e.clientY); if (!(px > 0)) return;
+    const p = posDe(arrastre.posId); if (!p) { arrastre = null; _arrastrandoTPSL = false; return; }
+    aplicarTPSL(p, arrastre.cual, px);
+    if (repintar) repintar();
+  });
+  window.addEventListener('mouseup', () => { if (arrastre) { arrastre = null; _arrastrandoTPSL = false; if (repintar) repintar(); } });
+
+  const mirar = (cx, cy) => {
+    const z = zonaEn(cx, cy);
+    if (z) {
+      if (z.ocultarPos) { ocultarPos(z.ocultarPos); if (repintar) repintar(); }   // solo oculta la visualizacion, no vende
+      else if (z.tpslQuitar) { quitarNivelTPSL(z.tpslQuitar.posId, z.tpslQuitar.cual); if (repintar) repintar(); }
+      else if (z.tpslDrag || z.tpslCrear) { /* lo maneja mousedown/arrastre */ }
+      else pedirCancelar(z.orden, repintar);
+      return true;
+    }
     return false;
   };
   cv.addEventListener('click', (e) => { if (mirar(e.clientX, e.clientY)) { e.stopPropagation(); } }, true);
@@ -1385,23 +1708,32 @@ function estilos() {
     display:grid;place-items:center;padding:0;cursor:pointer;font-size:13px;z-index:20;
     background:rgba(255,255,255,.08);border:1px solid #3a424c;color:#b7bdc6}
   .od-x:hover{background:rgba(255,255,255,.14);color:#eaecef}
-  .od-cab{display:flex;align-items:center;gap:10px;margin-bottom:6px;padding-right:44px}
-  .od-ic{font-size:17px}
+  .od-cab{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;padding-right:44px;cursor:move;user-select:none;-webkit-user-select:none;touch-action:none}
+  .od-ic{font-size:17px;display:flex;align-items:center;margin-top:1px}
+  .od-ic-img{width:19px;height:19px;display:block;object-fit:contain}
   .od-ficha.comprar .od-ic{color:#2ee86a}
   .od-ficha.vender .od-ic{color:#f6465d}
   .od-tit b{display:block;font-family:var(--display,sans-serif);font-weight:800;
-    font-size:15px;color:#eaecef;line-height:1.2}
-  .od-tit span{display:block;font-family:var(--mono,monospace);font-size:13px;
-    color:var(--gold,#E8B84B);font-weight:700;margin-top:1px}
+    font-size:15px;line-height:1.1;letter-spacing:.2px;color:#eaecef}
+  /* Long/Short del mismo color que la flecha de la esquina */
+  .od-ficha.comprar .od-tit b{color:#2ee86a}
+  .od-ficha.vender  .od-tit b{color:#f6465d}
+  .od-tit span{display:block;font-family:var(--mono,monospace);font-weight:700}
+  .od-tit .od-coin{font-size:14px;color:#eaecef;margin-top:4px;letter-spacing:.4px}
+  .od-tit .od-sub-px{font-size:12.5px;color:var(--ink2,#a9b2bd);margin-top:2px}
   /* El porcentaje: el dato que decide, bien visible */
-  .od-pct-grande{margin-left:auto;text-align:right;flex:0 0 auto;margin-top:22px}
+  .od-pct-grande{margin-left:auto;text-align:right;flex:0 0 auto;margin-top:1px}
   .od-pct-grande b{display:block;font-family:var(--display,sans-serif);font-weight:800;
     font-size:25px;line-height:1;color:#2ee86a !important}
   .od-pct-grande span{display:block;font-family:var(--sans,sans-serif);font-size:10px;
     color:#3ee88a;margin-top:2px}
+  .od-pct-grande .od-disp-val{font-size:22px;font-variant-numeric:tabular-nums;
+    white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}
   .od-dist{font-family:var(--mono,monospace);font-size:10px;color:#7d8794;margin-bottom:13px}
   .od-saldo{display:block;margin-top:5px;font-family:var(--mono,monospace);font-size:10.5px;color:#8b96a3}
   .od-saldo b{color:#eaecef}
+  .od-mkt-nota{margin:0 0 13px;padding:9px 11px;border-radius:9px;font-family:var(--sans,sans-serif);font-size:11px;line-height:1.5;color:#c4ccd4;background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.28)}
+  .od-mkt-nota b{color:var(--gold,#E8B84B)}
   .od-saldo.alerta{padding:8px 10px;margin-top:7px;border-radius:8px;
     background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);
     font-family:var(--sans,sans-serif);font-size:11px;color:var(--gold,#E8B84B);line-height:1.45}
@@ -1433,6 +1765,20 @@ function estilos() {
     background:rgba(255,255,255,.04);border:1px solid #2b3139;color:#8b96a3;
     font-family:var(--mono,monospace);font-size:10px;font-weight:700}
   .od-pct.on,.od-pct:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+
+  /* Lado Long/Short, estilo Spot (solo a mercado) */
+  .od-side{display:flex;gap:7px;margin-bottom:12px}
+  .od-side-b{flex:1;min-height:46px;border-radius:10px;cursor:pointer;border:1px solid #2b3139;
+    background:rgba(255,255,255,.03);color:#9aa4b0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1px;line-height:1.1;
+    font-family:var(--display,sans-serif);font-weight:800;font-size:13px}
+  .od-side-b small{font-weight:600;font-size:9.5px;color:#6b7580;letter-spacing:.3px}
+  .od-side-b.long.on{background:rgba(46,232,106,.14);border-color:#2ee86a;color:#4dffa0}
+  .od-side-b.short.on{background:rgba(255,91,110,.14);border-color:#ff5b6e;color:#ff8a95}
+  .od-side-b.on small{color:inherit;opacity:.85}
+  .od-modo{display:flex;gap:7px;margin:-6px 0 12px}
+  .od-modo-b{flex:1;min-height:34px;border-radius:9px;cursor:pointer;border:1px solid #2b3139;background:rgba(255,255,255,.03);color:#9aa4af;font-weight:700;font-size:12.5px;letter-spacing:.2px}
+  .od-modo-b.on{background:rgba(232,184,75,.14);border-color:#E8B84B;color:#f4d089}
 
   .od-modos{display:flex;flex-direction:column;gap:6px}
   .od-modo{text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;

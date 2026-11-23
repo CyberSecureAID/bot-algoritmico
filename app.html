@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="assets/js/feed-shim.js?v=1"></script>
-<!-- Analisis tiene pagina propia (modules/analysis/analisis.html). Si se llega
-     a app.html pidiendo Analisis, se redirige ANTES de pintar nada, para no ver
-     los Bots ni su aviso un instante. location.replace: el Back no cae aqui. -->
-<script>try{if(new URLSearchParams(location.search).get('abrir')==='analisis'){location.replace('modules/analysis/analisis.html'+location.hash);}}catch(e){}</script>
+<script src="assets/js/feed-shim.js?v=2"></script>
+<!-- Analisis y Swap tienen pagina propia (modules/analysis/analisis.html y
+     modules/swap/swap.html). Si se llega a app.html pidiendo cualquiera de los
+     dos, se redirige ANTES de pintar nada, para no ver los Bots ni su aviso un
+     instante. location.replace: el Back no cae aqui. -->
+<script>try{var _ab=new URLSearchParams(location.search).get('abrir');if(_ab==='analisis'){location.replace('modules/analysis/analisis.html'+location.hash);}else if(_ab==='swap'){location.replace('modules/swap/swap.html'+location.hash);}}catch(e){}</script>
 <style id="ocultar-particulas-movil">@media(max-width:900px){#cco-fx,#cco-bg,#cco-top,#cco-velo{display:none!important}html,body{background:#0B0E11!important}}</style>
 
   <meta charset="utf-8">
@@ -299,7 +300,7 @@
   <canvas id="cco-fx" data-n="260" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
-  <script type="module" src="assets/js/gridbot-ui.js?v=274"></script>
+  <script type="module" src="assets/js/gridbot-ui.js?v=276"></script>
   <script>
   /* Protección contra "clickjacking": si alguien mete CriptoCuba dentro de un
      marco en su propia web, podría poner botones falsos encima para que
@@ -410,7 +411,7 @@
       // Se cargan las DOS bases de conocimiento (español e inglés) y luego
       // el motor, que elige una u otra según el idioma de la página.
       var kbEs = document.createElement('script');
-      kbEs.src = 'assets/js/asistente/conocimiento.js?v=125';
+      kbEs.src = 'assets/js/asistente/conocimiento.js?v=126';
       kbEs.onload = function () {
         var kbEn = document.createElement('script');
         kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=2';

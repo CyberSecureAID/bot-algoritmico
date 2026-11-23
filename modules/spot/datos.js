@@ -1,0 +1,375 @@
+/* modules/trading-demo/datos.js — Capa de datos del Trading Demo.
+
+   Todo del lado del cliente, sobre fuentes públicas de Binance/CoinGecko con
+   CORS (las mismas que ya usa la plataforma). Sin servidor, sin Cloudflare.
+   Velas por REST y, en vivo, el stream de velas por WebSocket (actualiza la
+   vela en formación en cada tick: movimiento en tiempo real). Logos de las
+   monedas desde CoinGecko, con la MISMA caché que el resto de secciones. */
+
+import { PARES, TFS } from '../../assets/js/niveles/config.js?v=1';
+export { PARES, TFS };
+/* Respaldo ON-CHAIN: reutiliza los módulos SELLADOS y probados de Terminal (resuelve el
+   par real en PancakeSwap y arma velas desde los eventos Sync del par). Sirve para tokens
+   que NINGÚN indexador (GeckoTerminal, DexScreener) lista, como EXT. Red BSC por RPC, sin
+   geobloqueo. No se tocan los archivos de Terminal. Se cargan de forma PEREZOSA (solo
+   cuando un token realmente necesita esta vía) para no pesar ethers en el arranque. */
+let _oc = null;
+async function onchain() {
+  if (_oc) return _oc;
+  const [res, graf, cfg] = await Promise.all([
+    import('../terminal/resolver.js'), import('../terminal/grafico.js'), import('../terminal/config.js')
+  ]);
+  _oc = { resolverContrato: res.resolverContrato, velasDeToken: graf.velasDeToken, precioActual: graf.precioActual, USDT: cfg.USDT };
+  return _oc;
+}
+
+/* ───────── Datos de mercado SPOT con FALLBACK por región (el fallo base de la plataforma).
+   El espejo data-api/data-stream.binance.vision NO evita de forma fiable el bloqueo
+   regional de Binance: una IP de EE. UU. recibe 451 y la gráfica sale en negro. Solución:
+   una lista de hosts; si el primero da 451/403/falla, se pasa al siguiente. Binance.US
+   (api.binance.us / stream.binance.us) SÍ es accesible en EE. UU. y sirve el MISMO formato
+   y el MISMO WebSocket en tiempo real (nada de sondeo cada 30 s). Se recuerda el host que
+   funcionó para no reintentar en cada llamada. Fuera de EE. UU. gana el espejo .vision. */
+const REST_HOSTS = ['https://data-api.binance.vision/api/v3', 'https://api.binance.us/api/v3'];
+const WS_HOSTS = ['wss://data-stream.binance.vision/ws', 'wss://stream.binance.us:9443/ws'];
+let _restI = 0;
+const BINANCE = REST_HOSTS[0];   // compat para precios directos; traer usa toda la lista
+
+/* GET de Binance con cascada de hosts. path empieza por '/'. 451/403 = bloqueo regional
+   -> siguiente host. El host preferido se captura UNA vez al entrar (si no, una llamada
+   concurrente que cambie _restI a mitad de bucle haría repetir el host bloqueado). */
+async function traer(path, ms = 8000) {
+  const inicio = _restI; let err = null;
+  for (let k = 0; k < REST_HOSTS.length; k++) {
+    const i = (inicio + k) % REST_HOSTS.length;
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(REST_HOSTS[i] + path, { signal: ctl.signal });
+      clearTimeout(t);
+      if (r.status === 451 || r.status === 403) throw new Error('geo ' + r.status);
+      if (!r.ok) throw new Error(path + ' → ' + r.status);
+      _restI = i;   // recuerda el host bueno para la próxima
+      return await r.json();
+    } catch (e) { clearTimeout(t); err = e; }
+  }
+  throw err || new Error('sin datos de mercado');
+}
+
+const mapK = (k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] });
+export async function velas(simbolo, interval = '1m', limit = 500) {
+  const n = Math.min(1000, limit);
+  const j = await traer(`/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&limit=${n}`);
+  return j.map(mapK);
+}
+
+/* Varios precios en una llamada (ticker/price?symbols=[...]), con el mismo fallback. */
+export async function tickerPrecios(symbols) {
+  const q = encodeURIComponent(JSON.stringify(symbols || []));
+  const j = await traer(`/ticker/price?symbols=${q}`);
+  const out = {}; (Array.isArray(j) ? j : []).forEach((x) => { out[x.symbol] = +x.price; }); return out;
+}
+
+/* Velas MÁS ANTIGUAS que un instante dado (endTime, en ms). Sirve para ir hacia el
+   pasado al hacer scroll a la izquierda: se piden lotes previos y se anteponen. */
+export async function velasAntes(simbolo, interval, endTimeMs, limit = 1000) {
+  const n = Math.min(1000, limit);
+  const j = await traer(`/klines?symbol=${encodeURIComponent(simbolo)}&interval=${interval}&endTime=${Math.floor(endTimeMs)}&limit=${n}`);
+  return j.map(mapK);
+}
+
+/* ───────── Fuente ALTERNA para tokens de PancakeSwap/Uniswap/BSC que NO están en
+   Binance (BabyDoge, USDT.z, EXT y cualquier token con pool en una DEX). A diferencia
+   de Binance, estas fuentes NO geobloquean EE. UU. Devuelven velas en el MISMO formato
+   que velas() de arriba, por lo que la gráfica no distingue el origen.
+
+   RESPALDO EN CASCADA (si una fuente limita por ritmo o cae, la siguiente cubre), el
+   mismo patrón ya probado en modules/terminal/gecko.js y terminal/precio.js:
+     1) GeckoTerminal  (api.geckoterminal.com)         velas + precio
+     2) CoinGecko on-chain (api.coingecko.com/.../onchain)  MISMO dataset, otro CDN
+     3) DexScreener    (api.dexscreener.com)           precio del par de MÁS liquidez
+        (elige solo la DEX con mejor liquidez: Pancake o Uniswap)
+   GeckoTerminal pide atribución (se muestra bajo la gráfica en estos tokens). Red BSC. */
+const GT_BASES = ['https://api.geckoterminal.com/api/v2', 'https://api.coingecko.com/api/v3/onchain'];
+const DEXSCREENER_TOK = 'https://api.dexscreener.com/latest/dex/tokens/';
+const RED_GT = 'bsc';
+/* temporalidad del sitio -> [timeframe, aggregate] de GeckoTerminal */
+const TF_GT = { '1m': ['minute', 1], '5m': ['minute', 5], '15m': ['minute', 15], '1h': ['hour', 1], '4h': ['hour', 4], '1d': ['day', 1] };
+const _poolCache = {};
+
+/* Pide la MISMA ruta a los dos orígenes on-chain en cascada: el primero que responda
+   OK gana (si GeckoTerminal limita por ritmo o cae, cubre el espejo de CoinGecko).
+   path empieza por '/'. */
+async function jgetGT(path, ms = 10000) {
+  let err = null;
+  for (const base of GT_BASES) {
+    const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+    try { const r = await fetch(base + path, { signal: c.signal, headers: { accept: 'application/json' } }); clearTimeout(t); if (r.ok) return await r.json(); err = new Error('HTTP ' + r.status); }
+    catch (e) { clearTimeout(t); err = e; }
+  }
+  throw err || new Error('gecko');
+}
+
+/* Mejor pool (más liquidez) de un token por su contrato. Se cachea por sesión. */
+export async function poolDe(address) {
+  const k = String(address || '').toLowerCase(); if (!k) return null;
+  if (_poolCache[k]) return _poolCache[k];
+  let pool = null;
+  try {
+    const j = await jgetGT(`/networks/${RED_GT}/tokens/${k}/pools?page=1`);
+    const arr = (j && j.data) || []; let best = null, mejor = -1;
+    for (const p of arr) { const liq = +(((p.attributes || {}).reserve_in_usd) || 0); if (liq > mejor) { mejor = liq; best = p; } }
+    pool = best && best.attributes && best.attributes.address;
+  } catch (_) {}
+  if (pool) _poolCache[k] = pool;
+  return pool || null;
+}
+
+const mapGT = (r) => ({ time: Math.floor(+r[0]), open: +r[1], high: +r[2], low: +r[3], close: +r[4], volume: +r[5] });
+async function ohlcvGT(address, interval, limit, beforeSec) {
+  const pool = await poolDe(address); if (!pool) throw new Error('sin pool DEX para ' + address);
+  const [tf, agg] = TF_GT[interval] || TF_GT['1d'];
+  let p = `/networks/${RED_GT}/pools/${pool}/ohlcv/${tf}?aggregate=${agg}&limit=${Math.min(1000, limit)}&currency=usd&token=base`;
+  if (beforeSec) p += `&before_timestamp=${Math.floor(beforeSec)}`;
+  const j = await jgetGT(p);
+  const list = (((j || {}).data || {}).attributes || {}).ohlcv_list || [];
+  return list.map(mapGT).filter((c) => c.close > 0).sort((a, b) => a.time - b.time);
+}
+/* ── Respaldo on-chain (PancakeSwap V2 por RPC) para tokens sin indexar ── */
+let _bnb = { v: 0, t: 0 };
+async function precioBNB() {
+  if (_bnb.v > 0 && Date.now() - _bnb.t < 60000) return _bnb.v;
+  try { const j = await traer('/ticker/price?symbol=BNBUSDT'); const v = +j.price; if (v > 0) { _bnb = { v, t: Date.now() }; return v; } } catch (_) {}
+  return _bnb.v || 0;
+}
+const _resuelto = {};
+async function resolver(address) {
+  const k = String(address || '').toLowerCase(); if (!k) return null;
+  if (k in _resuelto) return _resuelto[k];
+  let r = null; try { const oc = await onchain(); r = await oc.resolverContrato(address); } catch (_) {}
+  _resuelto[k] = r; return r;
+}
+/* Velas on-chain de un token por su contrato (eventos Sync del par V2). */
+export async function velasOnChain(address) {
+  const oc = await onchain();
+  const r = await resolver(address);
+  if (!r || !r.graficable || !r.par) throw new Error('token sin par graficable en PancakeSwap');
+  const quoteEsUSDT = r.quote && String(r.quote).toLowerCase() === String(oc.USDT).toLowerCase();
+  const bnbUsd = quoteEsUSDT ? 0 : await precioBNB();
+  const v = await oc.velasDeToken({ par: r.par, token: address, decToken: r.decimales || 18, decQuote: 18, bnbUsd, quoteEsUSDT });
+  return (v || []).map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: 0 }));
+}
+/* Resuelve un CONTRATO a su ficha mínima (símbolo, nombre, decimales, si es graficable),
+   como en Terminal. Para el buscador por contrato del selector de monedas. */
+export async function resolverToken(address) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(String(address || '').trim())) return null;
+  const r = await resolver(address);
+  if (!r) return null;
+  // Acotar lo que trae un token (un contrato malicioso controla su nombre/simbolo/decimales):
+  // simbolo y nombre a un largo sano (no inflar almacenamiento ni romper el layout; el XSS ya lo
+  // corta esc() al pintar) y decimales a un rango real (fuera de [0,36] no es un ERC20 normal).
+  const dec = Number(r.decimales);
+  return {
+    address,
+    simbolo: String(r.simbolo || '?').slice(0, 24),
+    nombre: String(r.nombre || r.simbolo || 'Token').slice(0, 48),
+    decimales: (Number.isInteger(dec) && dec >= 0 && dec <= 36) ? dec : 18,
+    graficable: !!r.graficable,
+    precioUsd: r.precioUsd || 0
+  };
+}
+/* Precio USD on-chain (reservas vivas del par). */
+export async function precioOnChain(address) {
+  const oc = await onchain();
+  const r = await resolver(address);
+  if (!r || !r.par) return 0;
+  const quoteEsUSDT = r.quote && String(r.quote).toLowerCase() === String(oc.USDT).toLowerCase();
+  const bnbUsd = quoteEsUSDT ? 0 : await precioBNB();
+  try { return (await oc.precioActual({ par: r.par, token: address, decToken: r.decimales || 18, decQuote: 18, bnbUsd, quoteEsUSDT })) || 0; } catch (_) { return 0; }
+}
+
+/* Velas de un token DEX (más reciente al final), mismo shape que velas(). Cascada:
+   GeckoTerminal -> on-chain (para tokens que GeckoTerminal no indexa, como EXT). */
+export async function velasDex(address, interval = '1d', limit = 1000) {
+  try { const v = await ohlcvGT(address, interval, limit, 0); if (v && v.length) return v; } catch (_) {}
+  return velasOnChain(address);
+}
+/* Velas MÁS VIEJAS de un token DEX (scroll al pasado). On-chain ya trae el historial
+   reciente disponible en la carga inicial, así que no pagina hacia atrás. */
+export async function velasDexAntes(address, interval, endSec, limit = 1000) {
+  try { const v = await ohlcvGT(address, interval, limit, endSec); if (v && v.length) return v; } catch (_) {}
+  return [];
+}
+
+/* Precio USD por contrato desde DexScreener (par de MÁS liquidez, cualquier DEX de BSC:
+   Pancake o Uniswap). Respaldo independiente de GeckoTerminal. */
+export async function precioDexScreener(address) {
+  try {
+    const low = (s) => String(s || '').toLowerCase();
+    const r = await fetch(DEXSCREENER_TOK + address); const j = await r.json();
+    const ps = ((j && j.pairs) || []).filter((p) => p && p.chainId === 'bsc' && p.baseToken && low(p.baseToken.address) === low(address));
+    if (!ps.length) return 0;
+    ps.sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0));
+    return Number(ps[0].priceUsd) || 0;
+  } catch (_) { return 0; }
+}
+
+/* Precio USD de uno o varios tokens por contrato (GeckoTerminal en una sola llamada);
+   lo que falte se completa con DexScreener. */
+export async function preciosDex(addresses) {
+  const lista = [...new Set((addresses || []).map((a) => String(a || '').toLowerCase()).filter(Boolean))];
+  if (!lista.length) return {};
+  const out = {};
+  try {
+    const j = await jgetGT(`/simple/networks/${RED_GT}/token_price/${lista.join(',')}`);
+    const mapa = (((j || {}).data || {}).attributes || {}).token_prices || {};
+    for (const a of lista) { const v = +mapa[a]; if (v > 0) out[a] = v; }
+  } catch (_) {}
+  const faltan = lista.filter((a) => !(out[a] > 0));
+  if (faltan.length) { const res = await Promise.all(faltan.map((a) => precioDexScreener(a))); faltan.forEach((a, i) => { if (res[i] > 0) out[a] = res[i]; }); }
+  return out;
+}
+
+/* Ticker mínimo (solo precio) de un token DEX, con respaldo en cascada:
+   GeckoTerminal -> DexScreener -> último cierre de velas. */
+export async function tickerDex(address) {
+  try { const p = await preciosDex([address]); const px = p[String(address).toLowerCase()]; if (px > 0) return { last: px }; } catch (_) {}
+  try { const px = await precioDexScreener(address); if (px > 0) return { last: px }; } catch (_) {}
+  try { const px = await precioOnChain(address); if (px > 0) return { last: px }; } catch (_) {}
+  try { const v = await velasDex(address, '1d', 2); const c = v[v.length - 1]; return { last: c ? c.close : 0 }; } catch (_) { return { last: 0 }; }
+}
+
+/* Logo REAL de un token DEX por contrato: GeckoTerminal /info (image_url) y, si no,
+   la imagen del par en DexScreener. '' si ninguna lo tiene. Se cachea por sesión. */
+const _logoCache = {};
+export async function logoDex(address) {
+  const k = String(address || '').toLowerCase(); if (!k) return '';
+  if (k in _logoCache) return _logoCache[k];
+  let url = '';
+  try { const j = await jgetGT(`/networks/${RED_GT}/tokens/${k}/info`); const a = j && j.data && j.data.attributes; const im = a && a.image_url; if (im && !/missing/i.test(im)) url = im; } catch (_) {}
+  if (!url) { try { const r = await fetch(DEXSCREENER_TOK + k); const j = await r.json(); for (const p of ((j && j.pairs) || [])) { const im = p && p.info && p.info.imageUrl; if (im) { url = im; break; } } } catch (_) {} }
+  _logoCache[k] = url; return url;
+}
+
+export async function ticker(simbolo) {
+  const t = await traer(`/ticker/24hr?symbol=${encodeURIComponent(simbolo)}`);
+  return {
+    simbolo, last: +t.lastPrice, open: +t.openPrice, high: +t.highPrice, low: +t.lowPrice,
+    chg: +t.priceChange, chgPct: +t.priceChangePercent, volBase: +t.volume, volQuote: +t.quoteVolume
+  };
+}
+
+/* ───────── TOP MOVERS 24h (selector de alta volatilidad) ─────────
+   Trae el 24hr de TODOS los pares de Binance SPOT (una sola llamada, mismo espejo y
+   fallback regional que el resto) y deja SOLO pares reales, liquidos y muy volatiles:
+   · solo contra USDT (lo que opera Spot),
+   · fuera los apalancados (UP/DOWN/BULL/BEAR) y las estables de $1,
+   · volumen 24h minimo (liquidez de verdad, para que se puedan comprar y vender),
+   · variacion minima (alta volatilidad).
+   Orden tipo exchange: el que mas sube primero, bajando hasta el que mas cae.
+   Devuelve [{ sym, base, price, chgPct, volQuote }]. */
+const _ESTABLE_USDT = ['USDCUSDT', 'FDUSDUSDT', 'TUSDUSDT', 'BUSDUSDT', 'USDPUSDT', 'DAIUSDT', 'EURUSDT', 'GBPUSDT', 'USD1USDT', 'AEURUSDT', 'EURIUSDT', 'XUSDUSDT', 'JPYUSDT'];
+/* Volatilidad REAL del dia = amplitud intradia (maximo - minimo) respecto al precio
+   medio ponderado, en %. No es el cambio neto 24h (una moneda que subio una vez y se
+   quedo quieta tiene cambio alto pero amplitud baja: no es volatil). Asi distinguimos
+   las que de verdad se mueven de las que tuvieron un pico suelto. */
+function _amplitud(t) {
+  const hi = +t.highPrice, lo = +t.lowPrice, wa = +t.weightedAvgPrice || +t.lastPrice;
+  if (!(hi > 0) || !(lo > 0) || !(wa > 0) || hi < lo) return 0;
+  return (hi - lo) / wa * 100;
+}
+/* Lista de tokens de BNB Smart Chain (los que se pueden comprar/vender en PancakeSwap),
+   por simbolo -> { address, logo, name }. De aqui salen los logos REALES y la garantia
+   de que la moneda se puede operar en nuestra dinamica. Se cachea 1h (cambia poco).
+   Esta llamada NO es de Binance: va directa a la lista publica, con CORS. */
+let _bscCache = null, _bscT = 0;
+export async function listaBSC() {
+  const now = Date.now();
+  if (_bscCache && (now - _bscT) < 3600000) return _bscCache;
+  const map = {};
+  const fuentes = [
+    'https://tokens.coingecko.com/binance-smart-chain/all.json',
+    'https://tokens.pancakeswap.finance/pancakeswap-extended.json'
+  ];
+  for (const url of fuentes) {
+    try {
+      const r = await fetch(url, { headers: { accept: 'application/json' } });
+      if (!r.ok) continue;
+      const j = await r.json();
+      const toks = (j && Array.isArray(j.tokens)) ? j.tokens : [];
+      for (const t of toks) {
+        if (!t || (t.chainId && t.chainId !== 56) || !t.symbol || !t.address) continue;
+        const k = String(t.symbol).toUpperCase();
+        if (!map[k]) map[k] = { address: String(t.address), logo: t.logoURI || '', name: t.name || t.symbol };
+      }
+      if (Object.keys(map).length) break;      // con una fuente buena basta
+    } catch (_) { /* probar la siguiente */ }
+  }
+  _bscCache = map; _bscT = now; return map;
+}
+
+/* Movers de ALTA VOLATILIDAD que ademas se operan en PancakeSwap/BSC, con logo real.
+   Volatilidad = amplitud intradia (no el cambio neto). Se exige moverse mas que BTC y
+   tener volumen de verdad. Orden: la MAS volatil primero. Si la lista BSC no carga, se
+   degrada a movers de Binance (sin el filtro de PancakeSwap) para no quedar en blanco. */
+export async function movers24h({ minVol = 5e6, minAmp = 7, factorBTC = 1.5, max = 50 } = {}) {
+  const [j, bsc] = await Promise.all([traer('/ticker/24hr'), listaBSC().catch(() => ({}))]);
+  if (!Array.isArray(j)) return [];
+  const usarBSC = bsc && Object.keys(bsc).length > 20;     // solo filtrar por BSC si la lista llego bien
+  const apalancado = (s) => /(UP|DOWN|BULL|BEAR)USDT$/.test(s);
+  const btc = j.find((t) => t && t.symbol === 'BTCUSDT');
+  const umbral = Math.max(minAmp, (btc ? _amplitud(btc) : 0) * factorBTC);
+  const out = [];
+  for (const t of j) {
+    const s = (t && t.symbol) || '';
+    if (!s.endsWith('USDT') || apalancado(s) || _ESTABLE_USDT.includes(s)) continue;
+    const base = s.slice(0, -4);
+    const info = usarBSC ? bsc[base] : null;
+    if (usarBSC && !info) continue;             // solo lo que se opera en PancakeSwap
+    const price = +t.lastPrice, vol = +t.quoteVolume, pct = +t.priceChangePercent, amp = _amplitud(t);
+    if (!isFinite(price) || price <= 0 || !isFinite(pct)) continue;
+    if (!(vol >= minVol) || !(amp >= umbral)) continue;
+    out.push({ sym: s, base, price, chgPct: pct, amp, volQuote: vol,
+      address: info ? info.address : '', logo: info ? info.logo : '', name: info ? info.name : base });
+  }
+  out.sort((a, b) => b.amp - a.amp);            // la mas volatil, arriba
+  return out.slice(0, max);
+}
+
+/* Stream de velas EN VIVO (@kline) con FALLBACK por región: la vela en formación llega
+   en cada tick (tiempo real, no sondeo). Si el WS del espejo .vision no abre (bloqueo en
+   EE. UU.), cambia a Binance.US, que sí abre en EE. UU. con el mismo stream. Reconecta
+   solo si se cae; cambia de host solo si NUNCA llegó a abrir. Devuelve { cerrar }. */
+export function streamVelas(simbolo, interval, onKline) {
+  const suf = `/${String(simbolo).toLowerCase()}@kline_${interval}`;
+  let ws = null, cerrado = false, tmr = null, hostI = 0, abierto = false;
+  const abrir = () => {
+    if (cerrado) return;
+    abierto = false;
+    try { ws = new WebSocket(WS_HOSTS[hostI % WS_HOSTS.length] + suf); } catch (_) { hostI++; reintentar(600); return; }
+    ws.onopen = () => { abierto = true; };
+    ws.onmessage = (ev) => { try { const d = JSON.parse(ev.data); if (d && d.k) onKline(d.k); } catch (_) {} };
+    ws.onclose = () => { if (!cerrado) { if (!abierto) hostI++; reintentar(abierto ? 2500 : 600); } };   // no abrió -> probar otro host
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  };
+  const reintentar = (ms) => { clearTimeout(tmr); tmr = setTimeout(abrir, ms || 2500); };
+  abrir();
+  return { cerrar: () => { cerrado = true; clearTimeout(tmr); try { if (ws) ws.close(); } catch (_) {} ws = null; } };
+}
+
+/* Mapa { cg-id: urlDelLogo } desde CoinGecko, con la MISMA caché de 24h que
+   usa el resto del sitio (localStorage 'aurex-logos-v2'), para no repetir
+   descargas. Si falla, devuelve {} y la UI usa la inicial de la moneda. */
+const CLAVE_LOGOS = 'aurex-logos-v2';
+let _logos = null;
+export async function logos() {
+  if (_logos) return _logos;
+  try { const g = JSON.parse(localStorage.getItem(CLAVE_LOGOS)); if (g && Date.now() - g.cuando < 86400000) { _logos = g.datos; return _logos; } } catch (_) {}
+  try {
+    const ids = PARES.filter((p) => p.cg).map((p) => p.cg).slice(0, 250).join(',');
+    const r = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&per_page=250`);  // CoinGecko, no Binance
+    const j = await r.json();
+    _logos = {}; (Array.isArray(j) ? j : []).forEach((x) => { _logos[x.id] = x.image; });
+    try { localStorage.setItem(CLAVE_LOGOS, JSON.stringify({ cuando: Date.now(), datos: _logos })); } catch (_) {}
+  } catch (_) { _logos = _logos || {}; }
+  return _logos;
+}

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420">
+  <defs>
+    <linearGradient id="cyBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1018"/><stop offset="1" stop-color="#06080c"/>
+    </linearGradient>
+    <clipPath id="cyClip"><rect x="0" y="0" width="640" height="420"/></clipPath>
+  </defs>
+  <rect width="640" height="420" fill="url(#cyBg)"/>
+  <g clip-path="url(#cyClip)">
+    <!-- bandas rainbow (de regresion log) -->
+    <g opacity="0.72" stroke-width="30" fill="none">
+      <path d="M-30 540 Q 180 150 720 70" stroke="#3a4fb5"/>
+      <path d="M-30 510 Q 180 120 720 40" stroke="#3f6fe0"/>
+      <path d="M-30 480 Q 180 90 720 10" stroke="#3aa0f2"/>
+      <path d="M-30 450 Q 180 60 720 -20" stroke="#2fb79a"/>
+      <path d="M-30 420 Q 180 30 720 -50" stroke="#51c457"/>
+      <path d="M-30 390 Q 180 0 720 -80" stroke="#d8ce45"/>
+      <path d="M-30 360 Q 180 -30 720 -110" stroke="#e7a436"/>
+      <path d="M-30 330 Q 180 -60 720 -140" stroke="#e76a2c"/>
+      <path d="M-30 300 Q 180 -90 720 -170" stroke="#e23b3b"/>
+    </g>
+    <!-- linea de precio -->
+    <path d="M-10 470 L 70 430 L 110 300 L 150 360 L 210 250 L 260 300 L 320 180 L 370 235 L 430 150 L 500 205 L 560 130 L 650 150"
+      fill="none" stroke="#f2f5f8" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"/>
+    <path d="M-10 470 L 70 430 L 110 300 L 150 360 L 210 250 L 260 300 L 320 180 L 370 235 L 430 150 L 500 205 L 560 130 L 650 150"
+      fill="none" stroke="#000" stroke-width="5.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.28"/>
+  </g>
+  <text x="26" y="52" font-family="'Chakra Petch', system-ui, sans-serif" font-size="30" font-weight="800" fill="#E8B84B" letter-spacing="1">Cycles</text>
+  <text x="27" y="78" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="700" fill="#aeb7c2" letter-spacing="2">BTC MARKET CYCLES</text>
+</svg>

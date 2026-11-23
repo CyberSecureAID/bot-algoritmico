@@ -31,9 +31,11 @@ const idiomaSitio = () => {
 /* Etiquetas de interfaz del panel, en los dos idiomas que ofrece el botón. */
 const UI = {
   en: { why: 'Why I say this', hide: 'Hide', show: 'Show me where', plan: 'Trade plan',
-        entry: 'Entry', stop: 'Stop', target: 'Target', rr: 'Risk/reward', vol: 'Avg. volatility' },
+        entry: 'Entry', stop: 'Stop', target: 'Target', rr: 'Risk/reward', vol: 'Avg. volatility',
+        disc: 'Support, not financial advice. It never guarantees a result.' },
   es: { why: 'Por qué lo digo', hide: 'Ocultar', show: 'Muéstrame dónde', plan: 'Plan de trade',
-        entry: 'Entrada', stop: 'Stop', target: 'Objetivo', rr: 'Riesgo/beneficio', vol: 'Volatilidad media' }
+        entry: 'Entrada', stop: 'Stop', target: 'Objetivo', rr: 'Riesgo/beneficio', vol: 'Volatilidad media',
+        disc: 'Soporte, no es asesoría financiera. No garantiza ningún resultado.' }
 };
 
 const ic = { compra: '▲', venta: '▼', vigilar: '◆', aviso: '✱', tendencia: '➜', contexto: '·' };
@@ -129,7 +131,9 @@ function panelInner(m, idx, lang) {
 
     <div class="nv-pm-det">
       ${(m.detalle || []).map((x) => `<div class="nv-pm-li">${esc(L(x, lang))}</div>`).join('')}
-    </div>`;
+    </div>
+
+    <div class="nv-pm-disc">${esc(u.disc)}</div>`;
 }
 
 /* Cablea los botones internos del panel (se vuelve a llamar tras cambiar de

@@ -3,11 +3,14 @@
 <head>
 
 <meta charset="utf-8">
+<!-- feed-shim PRIMERO: la portada abre Análisis y otras gráficas en overlay (mismo
+     documento), así que necesita el shim aquí para el failover de región a Binance.US. -->
+<script src="assets/js/feed-shim.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DecFreedom · Automated trading in your own wallet</title>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     PORTADA · criptocubaoficial.com
+     PORTADA · decfreedom.com
 
      UN SOLO ARCHIVO. El CSS y el JS van dentro, a propósito.
      Antes eran tres archivos y bastaba con que uno fallara, llegara tarde o
@@ -26,12 +29,12 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DecFreedom">
 <meta property="og:locale" content="es_ES">
-<meta property="og:url" content="https://criptocubaoficial.com/">
+<meta property="og:url" content="https://decfreedom.com/">
 <meta property="og:title" content="DecFreedom · Automated trading in your own wallet">
 <meta property="og:description" content="Bots that buy and sell for you on BNB Smart Chain. Your money never leaves your wallet.">
-<meta property="og:image" content="https://criptocubaoficial.com/assets/img/aurex-og.jpg">
+<meta property="og:image" content="https://decfreedom.com/assets/img/aurex-og.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="canonical" href="https://criptocubaoficial.com/">
+<link rel="canonical" href="https://decfreedom.com/">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -160,6 +163,8 @@ if ('serviceWorker' in navigator) {
       <div class="pt-nav__i"><a class="pt-nav__b" href="modules/bots/bots.html">Bots</a></div>
 
       <div class="pt-nav__i"><button class="pt-nav__b" type="button" data-abrir="analisis">Analysis</button></div>
+
+      <div class="pt-nav__i"><a class="pt-nav__b" href="modules/spot/spot.html">Spot</a></div>
 
       <div class="pt-nav__i"><a class="pt-nav__b" href="futuros.html?v=14">Futures</a></div>
       <div class="pt-nav__i"><a class="pt-nav__b" href="aportar.html">Staking</a></div>
@@ -521,7 +526,7 @@ if ('serviceWorker' in navigator) {
     // que app.html. Antes la portada solo cargaba la española y el motor
     // viejo, por eso el chatbot siempre hablaba español aquí.
     var kbEs = document.createElement('script');
-    kbEs.src = 'assets/js/asistente/conocimiento.js?v=125';
+    kbEs.src = 'assets/js/asistente/conocimiento.js?v=126';
     kbEs.onload = function () {
       var kbEn = document.createElement('script');
       kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=1';
@@ -574,8 +579,8 @@ if ('serviceWorker' in navigator) {
      módulo no carga el visitante acaba en la misma sección de siempre.
      La sección de los bots no se toca: sigue viviendo en app.html.
      ══════════════════════════════════════════════════════════════════════ -->
-<script type="module" src="assets/portada/portada.js?v=234"></script>
-<script src="assets/js/contracts-data.js?v=9"></script>
+<script type="module" src="assets/portada/portada.js?v=241"></script>
+<script src="assets/js/contracts-data.js?v=11"></script>
 <script src="assets/js/contracts-view.js?v=9"></script>
 <script>try{if(window.CCView){
   var _l=document.getElementById("ccx-list"); if(_l) CCView.renderList(_l);

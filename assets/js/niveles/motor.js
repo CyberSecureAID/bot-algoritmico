@@ -566,7 +566,14 @@ export function detectarEstructuras(velas, piv) {
       if (contraria) {
         /* Volumen real que se negoció dentro de la zona, separando
            velas alcistas de bajistas. Dato calculado, no estimado. */
-        const zA = Math.max(p.o, p.c), zB = Math.min(p.o, p.c);
+        /* La zona NO es solo el cuerpo. Una vela OB de cuerpo pequeño con mechas
+           grandes dejaba una franja finísima que no tenía sentido. Se extiende a la
+           mecha del lado del origen (demanda abajo, oferta arriba) y se aplica un
+           grosor MÍNIMO proporcional al rango mediano, para que la zona sea real. */
+        let zA = Math.max(p.o, p.c), zB = Math.min(p.o, p.c);
+        if (alcista) zB = Math.min(zB, p.l); else zA = Math.max(zA, p.h);   // incluye la mecha relevante
+        const minGrosor = rMed * 0.5;
+        if (zA - zB < minGrosor) { const mid = (zA + zB) / 2; zA = mid + minGrosor / 2; zB = mid - minGrosor / 2; }
         let volAlc = 0, volBaj = 0;
         velas.forEach((v) => {
           if (v.l > zA || v.h < zB) return;      // no tocó la zona

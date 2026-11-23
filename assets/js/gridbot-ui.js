@@ -489,9 +489,9 @@ function wireHeader() {
      Permite que el bot de Telegram (o cualquier enlace compartido)
      abra la sección concreta en vez de la portada:
 
-       criptocubaoficial.com/#academia
-       criptocubaoficial.com/#liquidity
-       criptocubaoficial.com/#market
+       decfreedom.com/#academia
+       decfreedom.com/#liquidity
+       decfreedom.com/#market
 
      Se espera un momento a que la wallet se conecte, porque algunas
      secciones la necesitan para pintarse bien.
@@ -3265,7 +3265,7 @@ async function arrancar() {
   // funcionan (como el 11 de septiembre).
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=79');
+      const m = await import('./movil/movil.js?v=81');
       await m.montarMovil({ conectarWallet });
       // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
       // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.

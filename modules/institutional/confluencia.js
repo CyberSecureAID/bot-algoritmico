@@ -225,13 +225,13 @@ export function capturarRasgos(ras, barIdx) {
   const P = [];
   for (const ln of ras.lines) { if (isFinite(ln.arr[barIdx])) P.push(ln); }
   if (cl) {
-    if (P.length === 1) {
-      _addGeom(cap, ras, barIdx, { aId: null, bId: P[0].id, nmA: 'Price', nmB: P[0].nm, keys: [P[0].key] });
-    } else {
-      for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
-        const A = (P[i].rank <= P[j].rank) ? P[i] : P[j], B = (A === P[i]) ? P[j] : P[i];   // A = mas rapida
-        _addGeom(cap, ras, barIdx, { aId: A.id, bId: B.id, nmA: A.nm, nmB: B.nm, keys: _keysDe(A, B) });
-      }
+    // PRECIO vs cada línea: lo esencial del VWAP (dónde está el precio respecto al VWAP y sus bandas).
+    // Antes solo se capturaba la geometría entre líneas, así que con el VWAP a solas la confluencia
+    // miraba el ancho de banda, no la posición del precio. Ahora el precio SIEMPRE entra en la firma.
+    for (const ln of P) _addGeom(cap, ras, barIdx, { aId: null, bId: ln.id, nmA: 'Price', nmB: ln.nm, keys: [ln.key] });
+    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+      const A = (P[i].rank <= P[j].rank) ? P[i] : P[j], B = (A === P[i]) ? P[j] : P[i];   // A = mas rapida
+      _addGeom(cap, ras, barIdx, { aId: A.id, bId: B.id, nmA: A.nm, nmB: B.nm, keys: _keysDe(A, B) });
     }
   }
   for (const f of ras.feats) {
@@ -356,4 +356,4 @@ export function rasgoLabel(c, lang) {
   }
 }
 
-try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence engine · cruces v11 (tight+pendiente) · 2026-11-04b'); } catch (_) {}
+try { console.log('%cDecFreedom', 'color:#E8B84B;font-weight:700', 'Confluence engine · v12 (precio vs líneas, foco VWAP) · 2026-11-14'); } catch (_) {}

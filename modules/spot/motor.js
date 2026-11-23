@@ -1,0 +1,242 @@
+/* modules/spot/motor.js — Motor del Spot (no custodial, listo para smart contract).
+
+   SPOT REAL, sin apalancamiento, sin margen y sin liquidación. Dos lados:
+
+   · LONG  = comprar la moneda con USDT. Al cerrar se vende. La ganancia o la
+     pérdida se mide en USDT.
+   · SHORT = vender la moneda base que tienes (ej. BTC) al precio de entrada; el
+     sistema marca cuánto y a qué precio. Al cerrar se RECOMPRA esa moneda. Si el
+     precio bajó, con el mismo USDT compras MÁS moneda: la ganancia se mide en la
+     MONEDA (más BTC). Si subió, recompras menos (pérdida en la moneda).
+
+   Fórmulas (qty = amount/entrada, amount = valor en USDT comprometido):
+   · long:  pnl_usdt  = qty * (mark - entrada)
+   · short: pnl_moneda = amount/mark - amount/entrada
+
+   Las posiciones, órdenes marcadas (limit) e historial viven en localStorage (este
+   navegador). El SALDO real sale de la wallet (lo fija spot.js con setDisponible);
+   el motor no custodia nada. Cuando exista el smart contract, él ejecutará los
+   disparos (limit, TP, SL) con la misma lógica anti gap de onPrecio(). */
+
+const LS = 'sp-spot-v1';
+const FEE = 0.001;                 // (compat) estimación de taker spot por lado
+const PROFIT_FEE = 0.01;           // 1% SOLO sobre la GANANCIA (en BNB lo cobra el contrato). Nada si pierde.
+
+let _id = 1;
+const nid = () => 'o' + (Date.now().toString(36)) + (_id++);
+const r2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
+
+/* ── Saneo de estado (anti corrupcion / inyeccion) ──
+   Lo que viene de localStorage es texto que alguien pudo tocar. Antes de usarlo como
+   dinero o pintarlo en pantalla se fuerza: numeros finitos (nada de NaN/Infinity),
+   lado solo 'long'/'short' (no texto que se cuele en el HTML) y cadenas recortadas.
+   Una entrada invalida se descarta, no rompe la seccion. */
+const _fin = (x, d = 0) => { const n = +x; return isFinite(n) ? n : d; };
+const _lado = (l) => (l === 'short' ? 'short' : 'long');
+const _str = (s, n = 48) => String(s == null ? '' : s).slice(0, n);
+const MAX_POS = 200, MAX_ORD = 200;     // tope duro: ni spam ni llenar el almacenamiento
+/* Valida un TP o SL: finito, positivo y DEL LADO CORRECTO respecto a la entrada (si no,
+   se dispararia al instante). TP long por encima y SL long por debajo; en short al reves.
+   Lo que no cumple se descarta (null). */
+function _tpsl(val, ref, esLong, esTP) {
+  const v = _fin(val); if (!(v > 0)) return null;
+  if (!(ref > 0)) return v;
+  const arriba = esTP ? esLong : !esLong;
+  return arriba ? (v > ref ? v : null) : (v < ref ? v : null);
+}
+function _limpiaPos(p) {
+  if (!p || typeof p !== 'object') return null;
+  const entrada = _fin(p.entrada), amount = _fin(p.amount);
+  if (!(entrada > 0) || !(amount > 0)) return null;
+  return { id: _str(p.id || nid(), 40), par: _str(p.par), base: _str(p.base), lado: _lado(p.lado),
+    entrada, amount, qty: _fin(p.qty, amount / entrada),
+    chainId: (p.chainId != null && isFinite(+p.chainId) && +p.chainId >= 0) ? Math.floor(+p.chainId) : null,
+    pend: !!p.pend, cerrando: !!p.cerrando,
+    tp: p.tp == null ? null : (_fin(p.tp) || null), sl: p.sl == null ? null : (_fin(p.sl) || null),
+    trailing: (p.trailing && _fin(p.trailing.pct) > 0) ? { pct: _fin(p.trailing.pct) } : null, t: _fin(p.t, Date.now()) };
+}
+function _limpiaOrd(o) {
+  if (!o || typeof o !== 'object') return null;
+  const amount = _fin(o.amount), precio = _fin(o.precio);
+  if (!(amount > 0) || !(precio > 0)) return null;
+  return { id: _str(o.id || nid(), 40), par: _str(o.par), base: _str(o.base), lado: _lado(o.lado),
+    amount, precio, desde: _str(o.desde, 8) || 'abajo',
+    tp: o.tp == null ? null : (_fin(o.tp) || null), sl: o.sl == null ? null : (_fin(o.sl) || null), t: _fin(o.t, Date.now()) };
+}
+function _limpiaHist(h) {
+  if (!h || typeof h !== 'object') return null;
+  return { id: _str(h.id || nid(), 40), par: _str(h.par), base: _str(h.base), lado: _lado(h.lado),
+    amount: _fin(h.amount), qty: _fin(h.qty), entrada: _fin(h.entrada), salida: _fin(h.salida),
+    pnl: _fin(h.pnl), denom: _str(h.denom || 'USDT', 12), fee: _fin(h.fee), motivo: _str(h.motivo, 16),
+    abierto: _fin(h.abierto, Date.now()), cerrado: _fin(h.cerrado, Date.now()) };
+}
+function cargar() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS));
+    if (s && typeof s === 'object') {
+      return {
+        pos: (Array.isArray(s.pos) ? s.pos : []).map(_limpiaPos).filter(Boolean).slice(0, MAX_POS),
+        ord: (Array.isArray(s.ord) ? s.ord : []).map(_limpiaOrd).filter(Boolean).slice(0, MAX_ORD),
+        hist: (Array.isArray(s.hist) ? s.hist : []).map(_limpiaHist).filter(Boolean).slice(0, 1000)
+      };
+    }
+  } catch (_) {}
+  return { pos: [], ord: [], hist: [] };
+}
+let ST = cargar();
+function guardar() {
+  try { localStorage.setItem(LS, JSON.stringify(ST)); }
+  catch (_) {
+    /* Almacenamiento lleno: recorta el historial y reintenta, para no perder las
+       posiciones y ordenes vivas por culpa del historial viejo. */
+    try { if (ST.hist.length > 100) { ST.hist.length = 100; localStorage.setItem(LS, JSON.stringify(ST)); } } catch (__) {}
+  }
+}
+
+export function estado() { return ST; }
+export function posiciones() { return ST.pos; }
+export function ordenes() { return ST.ord; }
+export function historial() { return ST.hist; }
+export function reset() { ST = { pos: [], ord: [], hist: [] }; guardar(); return ST; }
+export const comisionPct = () => PROFIT_FEE * 100;      // 1 (sobre la ganancia)
+export function feeRueda(amount) { return (amount || 0) * FEE * 2; }   // (compat) estimación por volumen
+/* Fee real del modelo: 1% de la GANANCIA (0 si la operación no gana). Mismo denom que el PnL. */
+export function feeGanancia(pnl) { return pnl > 0 ? pnl * PROFIT_FEE : 0; }
+
+/* Saldo disponible en USDT para dimensionar (lo fija spot.js desde la wallet real). */
+let DISP = 0;
+export function setDisponible(v) { DISP = Math.max(0, +v || 0); }
+export function balance() { return r2(DISP); }
+
+/* PnL no realizado. Devuelve { pnl, denom, qty, pct }:
+   denom = 'USDT' para long, el símbolo de la moneda base para short. */
+export function pnlDe(p, mark) {
+  const qty = p.entrada > 0 ? p.amount / p.entrada : 0;
+  if (p.lado === 'long') {
+    const pnl = qty * (mark - p.entrada);
+    const pct = p.entrada > 0 ? ((mark - p.entrada) / p.entrada) * 100 : 0;
+    return { pnl, denom: 'USDT', qty, pct };
+  }
+  const pnl = (mark > 0 && p.entrada > 0) ? (p.amount / mark - p.amount / p.entrada) : 0;   // en la moneda base
+  // El % del short se mide en la MONEDA (que es donde se gana), no como movimiento de precio:
+  // rendimiento = pnl/refQty = (entrada - mark)/mark. Asi el % cuadra con el PnL mostrado.
+  const pct = (mark > 0 && p.entrada > 0) ? ((p.entrada - mark) / mark) * 100 : 0;
+  return { pnl, denom: p.base || 'COIN', qty, pct };
+}
+
+export function abrirMercado(par, base, lado, amount, mark, tp, sl, chainId, pend) {
+  if (!(mark > 0) || !(amount > 0) || !isFinite(mark) || !isFinite(amount)) return { ok: false, motivo: 'monto' };
+  if (ST.pos.length >= MAX_POS) return { ok: false, motivo: 'limite' };
+  const esLong = _lado(lado) !== 'short';
+  const cid = (chainId != null && isFinite(+chainId) && +chainId >= 0) ? Math.floor(+chainId) : null;
+  const pos = { id: nid(), par: _str(par), base: _str(base), lado: _lado(lado), entrada: mark, amount, qty: amount / mark,
+    chainId: cid, pend: !!pend, cerrando: false, tp: _tpsl(tp, mark, esLong, true), sl: _tpsl(sl, mark, esLong, false), trailing: null, t: Date.now() };
+  ST.pos.push(pos); guardar();
+  return { ok: true, pos };
+}
+/* Tras minar la apertura on chain: fija el id de la posicion y la marca como confirmada. */
+export function setChainId(id, chainId) {
+  const p = ST.pos.find((x) => x.id === id); if (!p) return false;
+  p.chainId = (chainId != null && isFinite(+chainId) && +chainId >= 0) ? Math.floor(+chainId) : p.chainId;
+  p.pend = false; guardar(); return true;
+}
+/* Marca (o desmarca) una posicion como "cerrando" mientras su tx de cierre mina. */
+export function marcarCerrando(id, v) {
+  const p = ST.pos.find((x) => x.id === id); if (!p) return false;
+  p.cerrando = !!v; guardar(); return true;
+}
+/* Quita una posicion SIN registrarla en el historial (p.ej. su apertura revirtio on chain). */
+export function eliminar(id) {
+  const i = ST.pos.findIndex((p) => p.id === id); if (i < 0) return false;
+  ST.pos.splice(i, 1); guardar(); return true;
+}
+
+export function colocarOrden(par, base, lado, amount, precio, mark, tp, sl) {
+  if (!(precio > 0) || !(amount > 0) || !isFinite(precio) || !isFinite(amount)) return { ok: false, motivo: 'monto' };
+  if (ST.ord.length >= MAX_ORD) return { ok: false, motivo: 'limite' };
+  const esLong = _lado(lado) !== 'short';
+  const desde = mark >= precio ? 'arriba' : 'abajo';
+  const ord = { id: nid(), par: _str(par), base: _str(base), lado: _lado(lado), amount, precio, desde,
+    tp: _tpsl(tp, precio, esLong, true), sl: _tpsl(sl, precio, esLong, false), t: Date.now() };
+  ST.ord.push(ord); guardar();
+  return { ok: true, ord };
+}
+
+export function cancelarOrden(id) { const i = ST.ord.findIndex((o) => o.id === id); if (i >= 0) { ST.ord.splice(i, 1); guardar(); return true; } return false; }
+
+export function setTPSL(id, tp, sl) {
+  const p = ST.pos.find((x) => x.id === id) || ST.ord.find((x) => x.id === id);
+  if (!p) return false;
+  const ref = _fin(p.entrada) || _fin(p.precio);
+  const esLong = _lado(p.lado) !== 'short';
+  p.tp = _tpsl(tp, ref, esLong, true); p.sl = _tpsl(sl, ref, esLong, false); guardar(); return true;
+}
+
+/* Trailing stop (stop movil): el usuario fija un porcentaje; el keeper hace que el stop
+   siga al mejor precio manteniendo ese margen, sin retroceder. pct en 0 lo quita. */
+export function setTrailing(id, pct) {
+  const p = ST.pos.find((x) => x.id === id); if (!p) return false;
+  const v = _fin(pct);
+  p.trailing = (v > 0) ? { pct: Math.max(0.1, Math.min(90, v)) } : null;
+  guardar(); return true;
+}
+
+function registrar(p, salida, pnl, denom, fee, motivo) {
+  ST.hist.unshift({ id: p.id, par: p.par, base: p.base, lado: p.lado, amount: p.amount, qty: p.entrada > 0 ? p.amount / p.entrada : 0, entrada: p.entrada, salida, pnl, denom, fee: r2(fee), motivo, abierto: p.t, cerrado: Date.now() });
+  if (ST.hist.length > 1000) ST.hist.length = 1000;
+}
+
+/* Cerrar al precio `mark`. El PnL queda en su moneda (USDT para long, la base para
+   short). La comisión es orientativa (ida y vuelta sobre el valor). */
+export function cerrar(id, mark, motivo) {
+  const i = ST.pos.findIndex((p) => p.id === id); if (i < 0) return null;
+  const p = ST.pos[i];
+  const info = pnlDe(p, mark), fee = feeGanancia(info.pnl);   // 0.2% solo si cierra en ganancia
+  registrar(p, mark, info.pnl, info.denom, fee, motivo || 'manual');
+  ST.pos.splice(i, 1); guardar();
+  return { pos: p, pnl: info.pnl, denom: info.denom, fee, salida: mark, motivo: motivo || 'manual' };
+}
+
+/* Nuevo precio: fills de órdenes marcadas y TP/SL. ANTI-GAP: se dispara cuando el
+   RANGO de la vela (high/low) TOCA el nivel, no solo al cierre. En short, el TP va
+   por DEBAJO (gana al bajar) y el SL por ARRIBA, como en cualquier venta en corto.
+   Esta es la misma lógica que ejecutará el smart contract cuando se conecte. */
+export function onPrecio(par, mark, hi, lo) {
+  const ev = { fills: [], tp: [], sl: [] };
+  if (!(mark > 0)) return ev;
+  hi = (hi > 0) ? Math.max(hi, mark) : mark;
+  lo = (lo > 0) ? Math.min(lo, mark) : mark;
+  for (let i = ST.ord.length - 1; i >= 0; i--) {
+    const o = ST.ord[i]; if (o.par !== par) continue;
+    const toca = o.desde === 'arriba' ? lo <= o.precio : hi >= o.precio;
+    if (toca) { const rr = abrirMercado(par, o.base, o.lado, o.amount, o.precio, o.tp, o.sl); ST.ord.splice(i, 1); if (rr.ok) ev.fills.push(rr.pos); }
+  }
+  for (let i = ST.pos.length - 1; i >= 0; i--) {
+    const p = ST.pos[i]; if (p.par !== par) continue;
+    // Las posiciones REALES (con id on chain) las cierra el KEEPER del lado del servidor,
+    // aunque no haya pestana abierta. Aqui NO se simulan, para no dar un cierre falso.
+    // TAMPOCO las que tienen la apertura ENVIADA y aun minando (pend): durante esos segundos
+    // el chainId aun no esta puesto, y simularlas cerraria en falso una posicion real on chain.
+    if (p.chainId != null || p.pend) continue;
+    const esL = p.lado === 'long';
+    const slHit = p.sl && (esL ? lo <= p.sl : hi >= p.sl);
+    const tpHit = p.tp && (esL ? hi >= p.tp : lo <= p.tp);
+    if (slHit) { const rr = cerrar(p.id, p.sl, 'sl'); if (rr) ev.sl.push(rr); }
+    else if (tpHit) { const rr = cerrar(p.id, p.tp, 'tp'); if (rr) ev.tp.push(rr); }
+  }
+  if (ev.fills.length) guardar();
+  return ev;
+}
+
+export function stats(dias = 30) {
+  const desde = Date.now() - dias * 86400000;
+  const h = ST.hist.filter((x) => x.cerrado >= desde);
+  const n = h.length, wins = h.filter((x) => x.pnl > 0).length;
+  return { n, wins, losses: n - wins, winRate: n ? Math.round((wins / n) * 100) : 0 };
+}
+
+export function csv() {
+  const cab = 'Closed,Pair,Side,Amount USDT,Qty,Entry,Exit,PnL,Denom,Result';
+  const fila = (x) => [new Date(x.cerrado).toISOString(), x.par + 'USDT', x.lado, (x.amount || 0).toFixed(2), (x.qty || 0), x.entrada, x.salida, (x.pnl || 0), x.denom, x.motivo].join(',');
+  return [cab].concat(ST.hist.map(fila)).join('\n');
+}

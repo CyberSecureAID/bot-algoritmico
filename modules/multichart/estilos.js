@@ -36,6 +36,9 @@ const CSS = `
   .mc-tool svg{width:16px; height:16px}
   .mc-tool:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)}
   .mc-tool.on{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
+  .mc-hw{display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 13px; border-radius:10px; border:1px solid var(--mc-gold-soft); background:rgba(232,184,75,.08); color:var(--mc-gold); font-weight:800; font-size:12.5px; cursor:pointer; white-space:nowrap}
+  .mc-hw svg{width:16px; height:16px}
+  .mc-hw:hover{background:rgba(232,184,75,.16); border-color:var(--mc-gold)}
   .mc-icobtn{width:36px; height:36px; display:inline-grid; place-items:center; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2)}
   .mc-icobtn:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-icobtn svg{width:16px; height:16px}
   .mc-icobtn.mc-off{opacity:.38; cursor:not-allowed; pointer-events:none}
@@ -75,21 +78,80 @@ const CSS = `
   .mc-indbtn{height:28px; padding:0 11px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.03); color:var(--mc-ink2); font-weight:700; font-size:12px}
   .mc-indbtn:hover{border-color:var(--mc-gold-soft); color:var(--mc-gold)} .mc-indbtn.on{border-color:var(--mc-gold); color:var(--mc-gold); background:rgba(232,184,75,.1)}
   .mc-indbtn svg{width:12px; height:12px; opacity:.8}
+  .mc-ftbtn{height:28px; padding:0 11px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; border:1px solid var(--mc-gold-soft); background:linear-gradient(180deg,rgba(232,184,75,.16),rgba(232,184,75,.05)); color:var(--mc-gold); font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap; flex:0 0 auto}
+  .mc-ftbtn:hover{border-color:var(--mc-gold); background:linear-gradient(180deg,rgba(232,184,75,.26),rgba(232,184,75,.1))}
+  .mc-ftbtn.on{border-color:var(--mc-gold); background:rgba(232,184,75,.22); box-shadow:inset 0 0 0 1px var(--mc-gold)}
+  .mc-ftbtn svg{width:14px; height:14px}
+  /* Share Signal: solo activo cuando hay una posicion puesta (estilo "senal", verde). */
+  .mc-sharesig{height:28px; padding:0 11px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; border:1px solid rgba(46,232,106,.5); background:rgba(46,232,106,.08); color:#39e07a; font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap; flex:0 0 auto; transition:filter .15s,opacity .15s,box-shadow .2s}
+  .mc-sharesig svg{width:14px; height:14px}
+  .mc-sharesig:hover{filter:brightness(1.15); border-color:#2ee86a}
+  .mc-sharesig.lista{box-shadow:0 0 0 1px rgba(46,232,106,.22),0 0 14px rgba(46,232,106,.16)}
+  .mc-sharesig:disabled{opacity:.4; cursor:not-allowed; filter:none; box-shadow:none; border-color:var(--mc-line2); color:var(--mc-ink3); background:rgba(255,255,255,.02)}
+  .mc-ftmenu{position:fixed; z-index:10050; min-width:214px; padding:7px; border-radius:13px; background:linear-gradient(180deg,rgba(24,30,40,.97),rgba(14,18,26,.97)); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.13); box-shadow:0 16px 44px rgba(0,0,0,.62); font-family:var(--mc-mono); animation:mcftin .13s ease both}
+  @keyframes mcftin{from{opacity:0; transform:translateY(-5px)} to{opacity:1; transform:none}}
+  .mc-ftmenu-h{font-size:9px; letter-spacing:1px; text-transform:uppercase; color:#8b95a1; margin:3px 6px 8px}
+  .mc-ftrow{display:flex; align-items:center; gap:11px; width:100%; padding:9px 10px; border-radius:9px; border:none; background:transparent; color:#d7dde4; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:600; text-align:left; margin:1px 0}
+  .mc-ftrow:hover{background:rgba(255,255,255,.07)}
+  .mc-ftrow.on{background:rgba(232,184,75,.16); color:var(--mc-gold); box-shadow:inset 0 0 0 1px rgba(232,184,75,.4)}
+  .mc-ftrow svg{width:19px; height:19px; flex:0 0 auto; opacity:.92}
+  .mc-ftrow .tx{flex:1; line-height:1.25}
+  .mc-ftrow .sub{display:block; font-size:10px; font-weight:500; color:#8b95a1; margin-top:2px}
+  .mc-ftrow.on .sub{color:rgba(232,184,75,.7)}
+  .mc-ftrow.danger:hover{background:rgba(255,91,110,.14); color:#ff6b7a}
+  .mc-ftpill{position:fixed; z-index:10040; box-sizing:border-box; height:28px; display:flex; align-items:center; gap:7px; padding:0 6px 0 10px; border-radius:8px; background:linear-gradient(180deg,rgba(232,184,75,.22),rgba(232,184,75,.08)); border:1px solid var(--mc-gold-soft); color:var(--mc-gold); font-family:var(--mc-mono); font-size:12px; font-weight:700; box-shadow:0 8px 22px rgba(0,0,0,.42); animation:mcftin .13s ease both}
+  .mc-ftpill b{font-weight:800}
+  .mc-ftpill-t{opacity:.7; font-weight:600}
+  .mc-ftpill-ic{display:inline-flex} .mc-ftpill-ic svg{width:14px; height:14px}
+  .mc-ftpill-x{display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; border:none; border-radius:6px; background:rgba(0,0,0,.28); color:var(--mc-gold); cursor:pointer; padding:0; flex:0 0 auto}
+  .mc-ftpill-x:hover{background:rgba(255,91,110,.32); color:#fff}
+  .mc-ftpill-x svg{width:9px; height:9px}
+  /* El modal se cuelga de document.body (FUERA de #mc-overlay), asi que NO puede
+     usar las variables --mc-*; van colores literales, igual que el de Reaction
+     Zones. Se centra con flex (nunca con transform, que la animacion pisaria) y
+     tiene max-height con scroll para que no se corte en pantallas bajas. */
+  #mc-hw-box{position:fixed; inset:0; z-index:10300; display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Chakra Petch','Plus Jakarta Sans',system-ui,sans-serif; color:#eaecef}
+  .mc-hw-bg{position:absolute; inset:0; background:rgba(3,6,10,.8); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
+  .mc-hw-c{position:relative; width:100%; max-width:440px; max-height:88vh; overflow-y:auto; background:linear-gradient(180deg,#0e141b,#0a0e14); border:1px solid #232c38; border-radius:18px; padding:22px 22px 18px; box-shadow:0 30px 80px rgba(0,0,0,.6); animation:mcftin .16s ease both}
+  .mc-hw-x{position:absolute; top:14px; right:14px; width:30px; height:30px; display:grid; place-items:center; border-radius:9px; border:1px solid #232c38; background:rgba(255,255,255,.03); color:#a9b2bd; cursor:pointer}
+  .mc-hw-x:hover{border-color:#ff5b6e; color:#ff6b7a} .mc-hw-x svg{width:12px; height:12px}
+  .mc-hw-eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#E8B84B; font-weight:800; margin-bottom:14px}
+  .mc-hw-card{min-height:196px}
+  .mc-hw-n{font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11px; color:#6b7580; font-weight:700; margin-bottom:8px}
+  .mc-hw-n em{font-style:normal; opacity:.6}
+  .mc-hw-t{font-size:20px; font-weight:800; line-height:1.2; margin-bottom:10px; letter-spacing:-.01em; color:#eaecef}
+  .mc-hw-d{font-size:13.5px; line-height:1.6; color:#a9b2bd}
+  .mc-hw-d b{color:#eaecef; font-weight:700}
+  .mc-hw-x2{margin-top:12px; padding:10px 12px; border-radius:10px; background:rgba(232,184,75,.07); border:1px solid rgba(232,184,75,.18); font-size:12px; line-height:1.5; color:#E8B84B}
+  .mc-hw-dots{display:flex; gap:6px; justify-content:center; margin:18px 0 14px}
+  .mc-hw-dots i{width:7px; height:7px; border-radius:50%; background:#232c38; cursor:pointer; transition:background .15s,width .15s}
+  .mc-hw-dots i.on{background:#E8B84B; width:18px; border-radius:4px}
+  .mc-hw-acts{display:flex; gap:9px; justify-content:flex-end}
+  .mc-hw-back{height:38px; padding:0 16px; border-radius:10px; border:1px solid #232c38; background:rgba(255,255,255,.03); color:#a9b2bd; font-weight:700; font-size:13px; cursor:pointer}
+  .mc-hw-back:hover{border-color:#C9A84B; color:#E8B84B}
+  .mc-hw-next{height:38px; padding:0 18px; border-radius:10px; border:1px solid #c79426; background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426); color:#2a1d00; font-weight:800; font-size:13px; cursor:pointer}
+  .mc-hw-next:hover{filter:brightness(1.05)}
   .mc-hb{width:28px; height:28px; display:inline-grid; place-items:center; border-radius:8px; border:1px solid transparent; background:transparent; color:var(--mc-ink3)}
   .mc-hb:hover{border-color:var(--mc-line2); color:var(--mc-gold); background:rgba(255,255,255,.04)} .mc-hb svg{width:15px; height:15px}
   .mc-hb.on{color:var(--mc-gold)} .mc-hb.mc-close:hover{color:var(--mc-down2); border-color:var(--mc-down)}
 
   /* ── Cuerpo (gráfica + capas) ── */
   .mc-body{flex:1 1 auto; position:relative; min-height:0; background:var(--mc-bg); overflow:hidden}
-  .mc-cv{position:absolute; inset:0; z-index:0}
+  /* cruceta SOLO en el area del grafico: se hereda al canvas del plot, pero la
+     libreria pone su propio cursor (ns-resize / ew-resize) en los ejes, asi que
+     ahi se respeta y se puede estirar/contraer como en TradingView. */
+  .mc-cv{position:absolute; inset:0; z-index:0; cursor:crosshair}
   .mc-fx{position:absolute; inset:0; z-index:3; pointer-events:none}
   .mc-ux{position:absolute; inset:0; z-index:4; pointer-events:none}
   .mc-cap{position:absolute; inset:0; z-index:6; pointer-events:none; cursor:crosshair}
   .mc-cap.on{pointer-events:auto}
   .mc-cap.hit{pointer-events:auto; cursor:pointer}
+  .mc-cap.ftover{pointer-events:auto; cursor:grab}
+  .mc-cap.ftgrab{pointer-events:auto; cursor:grabbing}
+  .mc-cap.ftdraw{pointer-events:auto; cursor:crosshair}
   /* marca de agua: misma ubicación que las demás secciones (libre de barra y de las fechas) */
-  .mc-wm{position:absolute; left:60px; bottom:36px; z-index:1; opacity:.6; pointer-events:none}
-  .mc-wm img{height:21px; width:auto; filter:drop-shadow(0 2px 7px rgba(0,0,0,.95))}
+  .mc-wm{position:absolute; left:60px; bottom:36px; z-index:7; opacity:.72; pointer-events:none}
+  .mc-wm img{height:21px; width:auto; filter:drop-shadow(0 2px 8px rgba(0,0,0,.98))}
   .mc-pane.mc-max .mc-wm, .mc-float.mc-max .mc-wm{left:64px; bottom:46px}
   .mc-pane.mc-max .mc-wm img, .mc-float.mc-max .mc-wm img{height:38px}
   .mc-grip{position:absolute; right:3px; bottom:3px; z-index:7; width:13px; height:13px; pointer-events:none; opacity:.45}
@@ -140,6 +202,17 @@ const CSS = `
   .mc-ir .sw{width:34px; height:19px; border-radius:11px; background:#2a333f; position:relative; flex:0 0 auto; transition:background .15s}
   .mc-ir .sw::after{content:""; position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%; background:#fff; transition:left .15s}
   .mc-ir.on .sw{background:var(--mc-gold)} .mc-ir.on .sw::after{left:17px}
+  /* Etiquetas de indicadores sobre la grafica (tocables para abrir su barra) */
+  .mc-leg{position:absolute; top:7px; left:10px; z-index:7; display:flex; flex-wrap:wrap; gap:5px; max-width:72%; pointer-events:none}
+  .mc-chip{pointer-events:auto; display:inline-flex; align-items:center; gap:5px; padding:2px 8px 2px 6px; border-radius:7px; font-family:var(--mc-mono); font-size:11px; line-height:1.55; background:rgba(8,12,18,.72); border:1px solid rgba(255,255,255,.1); cursor:pointer; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); white-space:nowrap}
+  .mc-chip:hover{border-color:rgba(255,255,255,.28); background:rgba(14,19,27,.86)}
+  .mc-chip i{width:9px; height:9px; border-radius:2.5px; flex:0 0 auto}
+  .mc-chipx{margin-left:3px; width:15px; height:15px; border-radius:4px; border:none; background:transparent; color:currentColor; opacity:.5; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; flex:0 0 auto}
+  .mc-chipx:hover{opacity:1; background:rgba(255,91,110,.22); color:#ff6b7a}
+  .mc-chipx svg{width:9px; height:9px}
+  .mc-oscleg{position:absolute; z-index:7; pointer-events:auto}
+  .mc-oscnm{font-weight:700}
+  .mc-oscval{opacity:.85}
 
   /* ── Modal (guardar imagen) ── */
   .mc-modal{position:fixed; inset:0; z-index:9600; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(3,6,10,.74); backdrop-filter:blur(4px)}
@@ -153,6 +226,46 @@ const CSS = `
   .mc-modal .bxf button:hover{border-color:var(--mc-gold-soft)}
   .mc-modal .bxf .dl{border-color:#c79426; color:#2a1d00; background:linear-gradient(180deg,#f7db8d,var(--mc-gold) 55%,#c79426)}
   .mc-modal .bxf .dl:hover{filter:brightness(1.06)}
+
+  /* ── Menu de indicadores: ventana centrada, categorias a un lado + lista ── */
+  .mc-isearch-wrap{display:flex; align-items:center; gap:12px; padding:14px 16px 4px}
+  .mc-isearch{flex:1; height:40px; padding:0 13px; border-radius:10px; border:1px solid var(--mc-line2); background:#0b1017; color:var(--mc-ink); font-family:var(--mc-mono); font-size:13px; outline:none}
+  .mc-isearch:focus{border-color:var(--mc-gold-soft)}
+  .mc-icount{font-family:var(--mc-mono); font-size:11px; color:var(--mc-ink3); white-space:nowrap}
+  .mc-ind-wrap{flex:1 1 auto; min-height:0; display:flex}
+  .mc-ind-cats{flex:0 0 196px; display:flex; flex-direction:column; gap:3px; padding:12px 10px 14px 16px; border-right:1px solid var(--mc-line)}
+  .mc-cat{text-align:left; padding:10px 12px; border-radius:9px; border:1px solid transparent; background:transparent; color:var(--mc-ink2); font-family:var(--mc-disp); font-size:13px; font-weight:600; cursor:pointer; transition:background .13s, color .13s, border-color .13s}
+  .mc-cat:hover{background:rgba(255,255,255,.04); color:var(--mc-ink)}
+  .mc-cat.on{background:rgba(232,184,75,.12); border-color:rgba(232,184,75,.4); color:var(--mc-gold)}
+  .mc-ibody{flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px; display:grid; grid-template-columns:repeat(auto-fill,minmax(172px,1fr)); gap:7px; align-content:start}
+  .mc-irow{display:flex; align-items:center; gap:10px; padding:10px 11px; border-radius:10px; border:1px solid var(--mc-line2); background:rgba(255,255,255,.015); color:var(--mc-ink); cursor:pointer; text-align:left; font-family:var(--mc-disp); transition:border-color .12s, background .12s}
+  .mc-irow:hover{border-color:var(--mc-gold-soft); background:rgba(255,255,255,.05)}
+  .mc-irow .dot{width:11px; height:11px; border-radius:3px; flex:0 0 auto; box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+  .mc-irow .nm{flex:1; font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .mc-irow .tag{font-family:var(--mc-mono); font-size:8.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--mc-ink3); padding:2px 6px; border-radius:5px; background:rgba(255,255,255,.05); flex:0 0 auto}
+  .mc-irow .ck{opacity:0; color:var(--mc-gold); font-weight:900; font-size:12px; flex:0 0 auto}
+  .mc-irow.on{border-color:var(--mc-gold); background:rgba(232,184,75,.1)} .mc-irow.on .ck{opacity:1} .mc-irow.on .tag{color:var(--mc-gold); background:rgba(232,184,75,.14)}
+  @media (max-width:640px){ .mc-ind-wrap{flex-direction:column} .mc-ind-cats{flex:0 0 auto; flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--mc-line); padding:10px 12px; gap:6px} .mc-cat{white-space:nowrap} .mc-ibody{grid-template-columns:1fr} }
+
+  /* ── Leyenda: boton +N y ventanita para gestionar/eliminar indicadores ── */
+  .mc-chip-mas{color:var(--mc-ink2)!important; font-weight:800; padding:2px 10px; border:none}
+  .mc-chip-mas:hover{color:var(--mc-ink)!important}
+  .mc-legpop{position:absolute; z-index:9; min-width:184px; max-width:244px; background:linear-gradient(180deg,rgba(24,30,40,.97),rgba(14,18,26,.97)); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.13); border-radius:12px; box-shadow:0 16px 44px rgba(0,0,0,.62); padding:7px; pointer-events:auto}
+  .mc-legpop-h{font-family:var(--mc-mono); font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--mc-ink3); padding:3px 5px 7px}
+  .mc-legpop-list{max-height:220px; overflow-y:auto}
+  .mc-legrow{display:flex; align-items:center; gap:8px; padding:6px; border-radius:8px}
+  .mc-legrow:hover{background:rgba(255,255,255,.05)}
+  .mc-legrow i{width:10px; height:10px; border-radius:3px; flex:0 0 auto}
+  .mc-legrow .nm{flex:1; font-family:var(--mc-mono); font-size:12px; color:var(--mc-ink); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .mc-legdel{flex:0 0 auto; width:24px; height:24px; display:grid; place-items:center; border:none; background:transparent; color:var(--mc-ink3); cursor:pointer; border-radius:6px}
+  .mc-legdel:hover{background:rgba(255,91,110,.2); color:#ff6b7a} .mc-legdel svg{width:13px; height:13px}
+
+  /* ── Barras de scroll con estilo (selector de criptos, modales, rejilla) ── */
+  .mc-list, .mc-ibody, .mc-legpop-list, .mc-modal .bxc, .mc-grid{scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.22) transparent}
+  .mc-list::-webkit-scrollbar, .mc-ibody::-webkit-scrollbar, .mc-legpop-list::-webkit-scrollbar, .mc-modal .bxc::-webkit-scrollbar, .mc-grid::-webkit-scrollbar{width:10px; height:10px}
+  .mc-list::-webkit-scrollbar-track, .mc-ibody::-webkit-scrollbar-track, .mc-legpop-list::-webkit-scrollbar-track, .mc-modal .bxc::-webkit-scrollbar-track, .mc-grid::-webkit-scrollbar-track{background:transparent}
+  .mc-list::-webkit-scrollbar-thumb, .mc-ibody::-webkit-scrollbar-thumb, .mc-legpop-list::-webkit-scrollbar-thumb, .mc-modal .bxc::-webkit-scrollbar-thumb, .mc-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16); border-radius:8px; border:2px solid transparent; background-clip:content-box}
+  .mc-list::-webkit-scrollbar-thumb:hover, .mc-ibody::-webkit-scrollbar-thumb:hover, .mc-legpop-list::-webkit-scrollbar-thumb:hover, .mc-modal .bxc::-webkit-scrollbar-thumb:hover, .mc-grid::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.3); background-clip:content-box}
 
   /* ventanita de ajustes de las líneas V/H (misma apariencia que la de la barra de dibujo) */
   .mc-lineset{position:fixed; z-index:9560; display:flex; align-items:center; gap:3px; padding:6px 8px; border-radius:14px; background:linear-gradient(180deg,rgba(24,30,40,.96),rgba(14,18,26,.96)); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.12); box-shadow:0 14px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05)}

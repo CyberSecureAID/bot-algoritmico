@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="assets/js/feed-shim.js?v=1"></script>
+<script src="assets/js/feed-shim.js?v=2"></script>
   <link rel="icon" type="image/png" sizes="16x16" href="assets/img/cco-16.png">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/img/cco-32.png">
   <link rel="icon" type="image/png" sizes="48x48" href="assets/img/cco-48.png">
@@ -98,7 +98,7 @@
     // navegador de la wallet) la página se quedaba EN BLANCO esperando. Ahora la
     // interfaz carga enseguida y la reconexión va por su cuenta en paralelo.
     try {
-      await import('./assets/js/gridbot-ui.js?v=263');   // monta el móvil (detecta móvil)
+      await import('./assets/js/gridbot-ui.js?v=265');   // monta el móvil (detecta móvil)
     } catch (e) {
       document.body.insertAdjacentHTML('beforeend',
         '<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#8b96a3">' +

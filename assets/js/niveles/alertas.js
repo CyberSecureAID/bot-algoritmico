@@ -4,7 +4,7 @@
 
 import { N } from './estado.js?v=1';
 import { fmt } from './util.js?v=1';
-import { traerVelas, calcularATR, marea } from './motor.js?v=1';
+import { traerVelas, calcularATR, marea } from './motor.js?v=2';
 
 let _alertaInt = null;
 let _audioCtx = null;

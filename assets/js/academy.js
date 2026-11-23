@@ -29,7 +29,7 @@ const ABI_ERC20 = [
 ];
 
 /* Enlace del grupo, para dárselo tras el pago. */
-const GRUPO = 'https://t.me/CriptoCubaOficial';
+const GRUPO = 'https://t.me/DecFreedom';
 
 let _prov = null;
 const lector = () => (_prov ||= new ethers.JsonRpcProvider(RPC, 56, { staticNetwork: true }));

@@ -118,6 +118,10 @@ const CSS = `
 .it-ultra-exit:hover{opacity:1; background:rgba(232,184,75,.16)}
 .it-ultra-exit svg{width:19px; height:19px}
 .it-pb{flex:1 1 auto; min-height:0; overflow:auto; position:relative; background:transparent}
+.it-mcap-ov{position:absolute; inset:0; z-index:4; background:#0b0e12; overflow:hidden}
+.it-mcap-ov .tradingview-widget-container,.it-mcap-ov .tradingview-widget-container__widget{height:100%; width:100%}
+.it-mcap-err{display:grid; place-items:center; height:100%; padding:16px; text-align:center; color:#8b96a3; font-family:var(--it-mono,monospace); font-size:12px}
+.it-pbtn.it-mcap.on{border-color:var(--it-gold); color:var(--it-gold); background:rgba(232,184,75,.12)}
 .it-resize{display:none}
 .it-grid.it-float .it-resize{display:block; position:absolute; right:0; bottom:0; width:18px; height:18px; cursor:nwse-resize; z-index:8;
   background:linear-gradient(135deg, transparent 50%, var(--it-gold-lo) 50%, var(--it-gold-lo) 62%, transparent 62%, transparent 74%, var(--it-gold-lo) 74%, var(--it-gold-lo) 86%, transparent 86%)}

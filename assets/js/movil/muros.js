@@ -1927,7 +1927,7 @@ function guardarImagen() {
       g.fillText('Lógica Estructural Avanzada · Flujo de Órdenes', x, yB + 34 * e2);
       g.font = `700 ${14 * e2}px ui-monospace,monospace`;
       g.fillStyle = '#C9A84B';
-      g.fillText('CriptoCubaOficial.com', x, yB + 56 * e2);
+      g.fillText('DecFreedom.com', x, yB + 56 * e2);
       g.textAlign = 'right';
       g.fillStyle = '#8b96a3';
       g.font = `700 ${14 * e2}px ui-monospace,monospace`;

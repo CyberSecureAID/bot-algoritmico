@@ -361,7 +361,6 @@ function headerHTML() {
 
       <button class="c-swap" id="c-swap" type="button" aria-label="Intercambiar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10 3 6l4-4"/><path d="M3 6h14"/><path d="m17 14 4 4-4 4"/><path d="M21 18H7"/></svg><span class="c-swap-tx">Swap</span></button>
       <button class="c-swap c-academy" id="c-academy" type="button" aria-label="Academy"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 9 12 4 2 9l10 5 10-5z"/><path d="M6 11.5V16c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4.5"/><path d="M22 9v5"/></svg><span class="c-swap-tx">Academy</span></button>
-      <button class="c-swap c-tools" id="c-tools" type="button" aria-label="Herramientas"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><span class="c-swap-tx">Tools</span></button>
       <button class="c-swap c-liq" id="c-liq" type="button" aria-label="Liquidity Pools"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h4V10H3zM10 20h4V4h-4zM17 20h4v-7h-4z"/></svg><span class="c-swap-tx">Liquidity</span></button>
       <button class="c-market" id="c-market" type="button" aria-label="Marketplace"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5 10.5a2 2 0 0 1-2 1.5H6.5a2 2 0 0 1-2-1.5L3 9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg><span class="c-market-tx">Market</span></button>
       <button class="c-loteria" id="c-instalar" type="button" aria-label="Install the app"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span class="c-lot-tx"><span class="lbl-pc">Install</span><span class="lbl-mov">Compartir</span></span></button>
@@ -524,9 +523,9 @@ function wireHeader() {
      Permite que el bot de Telegram (o cualquier enlace compartido)
      abra la sección concreta en vez de la portada:
 
-       criptocubaoficial.com/#academia
-       criptocubaoficial.com/#liquidity
-       criptocubaoficial.com/#market
+       decfreedom.com/#academia
+       decfreedom.com/#liquidity
+       decfreedom.com/#market
 
      Se espera un momento a que la wallet se conecte, porque algunas
      secciones la necesitan para pintarse bien.
@@ -554,7 +553,6 @@ function wireHeader() {
   // Liquidity Pools: se carga solo al pedirlo.
   if ($('c-liq')) $('c-liq').onclick = () => { location.href = '../../app.html?abrir=liq'; };
 
-  if ($('c-tools')) $('c-tools').onclick = () => { location.href = '../../app.html?abrir=tools'; };
 
   /* El punto verde: conectado o no, de un vistazo. */
   const pintarEstado = () => {
