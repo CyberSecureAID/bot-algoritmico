@@ -40,7 +40,7 @@ const S = {
   stream: null, barra: null, dibMontada: false, lineaLimit: null, tab: 'pos',
   uiRAF: null, onResize: null, cvObs: null, marks: {}, logos: {},
   drag: null, hoverH: null, ac: null, expand: false,
-  saldos: {}, precios: {}, walletOn: false, cuenta: null
+  saldos: {}, precios: {}, walletOn: false, cuenta: null, limites: []
 };
 
 const $ = (id) => document.getElementById(id);
@@ -811,7 +811,7 @@ async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v
 
 /* ── Puente al KEEPER (Worker de Cloudflare) para TP/SL/limite automaticos ── */
 let _spK = null;
-async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=4'); return _spK; }
+async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=5'); return _spK; }
 /* Registra (o actualiza/cancela) el TP/SL de una posicion REAL en el keeper. Firma del
    dueno, sin gas. Si ya no hay ni TP ni SL, cancela la orden automatica. */
 /* La salida automatica (keeper) vigila el precio en Binance, asi que SOLO funciona con pares
@@ -847,7 +847,7 @@ async function _cancelarKeeper(chainId) {
    nivel mostrado es aproximado; el resultado real esta on chain. No es un bucle: se llama con
    throttle solo mientras la vista esta abierta. */
 let _reconKT = 0;
-function _reconKeeperThrottle() { if (Date.now() - _reconKT < 30000) return; _reconKT = Date.now(); _reconciliarKeeper(); }
+function _reconKeeperThrottle() { if (Date.now() - _reconKT < 30000) return; _reconKT = Date.now(); _reconciliarKeeper(); _cargarLimites(); }
 async function _reconciliarKeeper() {
   try {
     if (!S.walletOn) return;
@@ -866,6 +866,22 @@ async function _reconciliarKeeper() {
     }
     if (cambio) renderPos();
   } catch (_) {}
+}
+
+/* Carga/reconcilia las ordenes limite on chain del usuario (registro compartido en keeper-spot).
+   La verdad vive on chain; esto quita las ya ejecutadas/canceladas y refresca la vista. */
+async function _cargarLimites() {
+  try { const K = await _keeperSpot(); S.limites = await K.reconciliarLimites(); renderPos(); }
+  catch (_) { try { const K = await _keeperSpot(); S.limites = K.listarLimites(); } catch (__) {} }
+}
+/* Cancelar desde la pestaña Orders: si el id es una orden limite on chain, se cancela on chain +
+   keeper; si es una orden local (vista previa), se quita del motor. */
+async function _cancelarOrdenTab(id) {
+  const esLim = (S.limites || []).some((x) => String(x.id) === String(id));
+  if (!esLim) { if (M.cancelarOrden(id)) renderPos(); return; }
+  toast('Confirm cancelling the limit order in your wallet…', 'warn');
+  try { const K = await _keeperSpot(); await K.cancelarLimiteSpotFull(id); S.limites = K.listarLimites(); renderPos(); toast('Limit order cancelled.', 'ok'); }
+  catch (e) { toast('Could not cancel the limit order: ' + _errSpot(e), 'bad'); }
 }
 
 /* Indicadores (botón "Indicators" en la gráfica). Módulo aparte, carga perezosa. */
@@ -903,12 +919,30 @@ async function operar(lado) {
   const markClic = S.mark;   // precio EN EL MOMENTO DEL CLIC: la entrada se graba aquí, no tras minar (minutos después el precio ya se movió).
   const tp = tpslPrecioReal('tp', lado), sl = tpslPrecioReal('sl', lado);
 
-  // ── LIMIT: por ahora queda marcada en el registro; se disparará cuando conectemos el keeper. ──
+  // ── LIMIT ── Con wallet + moneda operable en BSC: orden limite REAL on chain (crearLimite) que
+  // arma el keeper; la abre el keeper cuando el precio llega, respetando el piso del usuario. Sin
+  // wallet o moneda no operable: queda marcada de vista previa local (como antes).
   if (S.modo === 'limit') {
     if (!(S.limitPx > 0)) { toast('Select Limit, then click the chart to mark the entry.', 'warn'); return; }
+    let operableL = false;
+    try { const C = await _contratoSpot(); operableL = C.operableOnchain(S.par); } catch (_) {}
+    if (S.walletOn && operableL) {
+      const bL = $('sp-long'), bS = $('sp-short'); if (bL) bL.disabled = true; if (bS) bS.disabled = true;
+      toast('Confirm the limit order in your wallet (approve + create + arm)…', 'warn');
+      try {
+        const K = await _keeperSpot();
+        const lim = await K.ponerLimiteSpot({ par: S.par, lado, montoUsdt: capUsdt, objetivo: S.limitPx, simbolo: (S.par.simbolo || S.par.id), markActual: S.mark, slippageBps: 100 });
+        S.limites = K.listarLimites();
+        toast(`Limit ${lado} armed at ${fmtP(lim.objetivo)}. The keeper opens it when price hits.`, 'ok'); snd('open');
+      } catch (e) { toast('Could not place the limit order: ' + _errSpot(e), 'bad'); }
+      finally { setSide(S.side); }
+      S.limitPx = 0; $('sp-limit').value = ''; dibujarLimit();
+      $('sp-tp').value = ''; $('sp-sl').value = ''; S.cap = 0; S.tam = 0; sincronCap(); renderPos(); renderEntry();
+      return;
+    }
     const r = M.colocarOrden(S.par.id, base, lado, capUsdt, S.limitPx, S.mark, tp, sl);
     if (!r.ok) { toast('Could not mark the order.', 'bad'); return; }
-    toast(`Marked ${lado} at ${fmtP(S.limitPx)}. It will fire once the automatic executor is connected.`, 'ok');
+    toast(`Marked ${lado} at ${fmtP(S.limitPx)} (local preview).`, 'ok');
     S.limitPx = 0; $('sp-limit').value = ''; dibujarLimit();
     $('sp-tp').value = ''; $('sp-sl').value = ''; S.cap = 0; S.tam = 0; sincronCap(); renderPos(); renderEntry();
     return;
@@ -1059,7 +1093,7 @@ async function cerrarPosicion(id, btn, forzar) {
 /* ── Panel inferior ── */
 function renderPos() {
   const pos = M.posiciones(), ord = M.ordenes(), hist = M.historial();
-  $('sp-npos').textContent = pos.length; $('sp-nord').textContent = ord.length; $('sp-nhist').textContent = hist.length;
+  $('sp-npos').textContent = pos.length; $('sp-nord').textContent = ord.length + (S.limites || []).length; $('sp-nhist').textContent = hist.length;
   const r = $('sp-pos-r'); if (r) r.innerHTML = '';
   const body = $('sp-pos-body'); if (!body) return;
   if (S.tab === 'pos') {
@@ -1070,9 +1104,13 @@ function renderPos() {
     body.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => editarTPSL(b.dataset.edit, b.dataset.k));
     body.querySelectorAll('[data-share]').forEach((b) => b.onclick = () => { const p = pos.find((x) => x.id === b.dataset.share); if (p) tarjetaPnL(cerradoDesde(p)); });
   } else if (S.tab === 'ord') {
-    if (!ord.length) { body.innerHTML = '<div class="sp-empty">No marked orders. In Limit mode, click the chart to mark where you want to enter.</div>'; return; }
-    body.innerHTML = `<table class="sp-tbl"><thead><tr><th>Symbol</th><th>Side</th><th>Size</th><th>Mark-in</th><th>Current</th><th>TP</th><th>SL</th><th></th></tr></thead><tbody>${ord.map(filaOrd).join('')}</tbody></table>`;
-    body.querySelectorAll('[data-cancel]').forEach((b) => b.onclick = () => { if (M.cancelarOrden(b.dataset.cancel)) renderPos(); });
+    // Ordenes limite REALES on chain (las dispara el keeper) + ordenes locales de vista previa.
+    // Se pintan con la MISMA fila (filaOrd) para que se vean igual que siempre.
+    const lims = (S.limites || []).map((l) => ({ par: l.par, base: l.par, lado: l.lado, amount: l.amount, precio: l.objetivo, tp: null, sl: null, id: l.id, _onchain: true }));
+    const todas = lims.concat(ord);
+    if (!todas.length) { body.innerHTML = '<div class="sp-empty">No orders. In Limit mode, mark a target and place it; the keeper opens it when price hits.</div>'; return; }
+    body.innerHTML = `<table class="sp-tbl"><thead><tr><th>Symbol</th><th>Side</th><th>Size</th><th>Mark-in</th><th>Current</th><th>TP</th><th>SL</th><th></th></tr></thead><tbody>${todas.map(filaOrd).join('')}</tbody></table>`;
+    body.querySelectorAll('[data-cancel]').forEach((b) => b.onclick = () => _cancelarOrdenTab(b.dataset.cancel));
     body.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => editarTPSL(b.dataset.edit, b.dataset.k));
   } else {
     const st = M.stats(30);
