@@ -33,6 +33,8 @@ let _api = null;
 let _spC = null, _spK = null;
 async function _spotContrato() { if (!_spC) _spC = await import('../../../modules/spot/contrato.js?v=10'); return _spC; }
 async function _spotKeeper() { if (!_spK) _spK = await import('../../../modules/spot/keeper-spot.js?v=5'); return _spK; }
+let _spM = null;
+async function _spotMotor() { if (!_spM) _spM = await import('../../../modules/spot/motor.js?v=15'); return _spM; }   // MISMO motor que Spot web (posiciones compartidas)
 function _errMovil(e) { const m = String((e && (e.reason || e.shortMessage || e.message)) || e); if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.'; if (/insufficient/i.test(m)) return 'Not enough balance or allowance.'; return m.slice(0, 120); }
 
 export async function pintarOperar(host, api) {
@@ -162,6 +164,7 @@ export async function pintarOperar(host, api) {
 
 function posGuardadas() { try { return JSON.parse(localStorage.getItem('mv-pos') || '[]'); } catch (_) { return []; } }
 function posGuardar(l) { try { localStorage.setItem('mv-pos', JSON.stringify(l)); } catch (_) {} }
+function _panelActivo() { try { return document.querySelector('.op-tab.on')?.getAttribute('data-pt') || ''; } catch (_) { return ''; } }
 
 // CSS de las órdenes limit de Spot (tarjetas tipo futuros, con etiqueta SPOT).
 // Se inyecta una sola vez. Clases propias (spot-ord-*) para NO chocar con nada.
@@ -278,25 +281,55 @@ async function pintarPanel(t) {
     el.querySelectorAll('.spot-ord-x[data-i]').forEach((b) => b.onclick = () => cancelarOrden(ordenes[+b.getAttribute('data-i')], el));
     return;
   }
-  // Posición: compras hechas desde aquí (entrada + P/L). Eliminar = vender.
+  // Posición: posiciones REALES de SpotDF (el MISMO motor que Spot web). Cerrar = on chain.
   if (!con) { el.innerHTML = `<div class="op-empty">Conecta tu wallet para ver tu posición.</div>`; return; }
-  const pos = posGuardadas();
-  if (!pos.length) { el.innerHTML = `<div class="op-empty">No positions. When you buy at market from here, your entry shows up with its live profit.</div>`; return; }
-  el.innerHTML = pos.map((p, i) => {
-    const actual = (p.id === _par.id && _libro.precio) ? _libro.precio : p.entrada;
-    const pl = p.entrada ? ((actual - p.entrada) / p.entrada) * 100 : 0;
-    const cls = pl >= 0 ? 'up' : 'dn';
+  let MM = null; try { MM = await _spotMotor(); } catch (_) {}
+  const pos = MM ? MM.posiciones() : [];
+  if (!pos.length) { el.innerHTML = `<div class="op-empty">No positions. When you open at market from here, your entry shows up with its live profit.</div>`; return; }
+  el.innerHTML = pos.map((p) => {
+    const actual = (p.par === _par.id && _libro.precio) ? _libro.precio : p.entrada;
+    const info = MM.pnlDe(p, actual);
+    const cls = info.pnl >= 0 ? 'up' : 'dn';
+    const estado = p.cerrando ? `<em style="color:var(--mv-gold);font-size:9.5px;margin-left:4px">closing…</em>` : (p.pend ? `<em style="color:var(--mv-gold);font-size:9.5px;margin-left:4px">confirming…</em>` : '');
+    const prev = (p.chainId == null && !p.pend) ? `<em style="color:#8aa0b5;font-size:9px;border:1px solid var(--mv-line);border-radius:4px;padding:0 4px;margin-left:4px">PREVIEW</em>` : '';
+    const ladoC = p.lado === 'long' ? 'var(--mv-up)' : 'var(--mv-down)';
+    const pnlTxt = info.denom === 'USDT'
+      ? (info.pnl >= 0 ? '+' : '') + (money ? money(info.pnl) : info.pnl.toFixed(2))
+      : (info.pnl >= 0 ? '+' : '') + info.pnl.toFixed(6) + ' ' + esc(info.denom);
     return `<div class="op-item">
-      <div><b>${esc(p.id)}</b><small>Entrada ${fmtP(p.entrada)} · ${p.cantidad} ${esc(p.quote || 'USDT')}</small></div>
-      <div style="text-align:right"><span class="${cls}">${pl >= 0 ? '+' : ''}${pl.toFixed(2)}%</span>
-      <button class="op-del" data-i="${i}">Eliminar</button></div>
+      <div><b>${esc(p.par)} <span style="font-size:10px;font-weight:800;color:${ladoC}">${p.lado.toUpperCase()}</span>${estado}${prev}</b><small>Entry ${fmtP(p.entrada)} · ${money ? money(p.amount) : p.amount} USDT</small></div>
+      <div style="text-align:right"><span class="${cls}">${pnlTxt}</span>
+      <button class="op-del" data-close="${esc(p.id)}"${(p.pend || p.cerrando) ? ' disabled style="opacity:.55"' : ''}>${p.cerrando ? 'Closing…' : (p.pend ? 'Confirming…' : 'Close')}</button></div>
     </div>`;
   }).join('');
-  el.querySelectorAll('.op-del').forEach((b) => b.onclick = () => {
-    const i = +b.getAttribute('data-i'); const l = posGuardadas(); l.splice(i, 1); posGuardar(l);
-    _api.abrir('swap');                 // vender = intercambiar de vuelta a USDT
-    pintarPanel('pos');
-  });
+  el.querySelectorAll('.op-del[data-close]').forEach((b) => b.onclick = () => _cerrarMovil(b.getAttribute('data-close'), b));
+}
+
+/* Cierra una posición de SpotDF desde el móvil: on chain (la firma el usuario), con tu diseño.
+   Una posición de vista previa (sin id on chain) solo limpia el registro, no mueve fondos. */
+async function _cerrarMovil(id, btn) {
+  let M;
+  try {
+    M = await _spotMotor();
+    const p = M.posiciones().find((x) => x.id === id); if (!p) return;
+    if (p.chainId == null) { M.cerrar(id, _libro.precio || p.entrada, 'manual'); pintarPanel('pos'); return; }
+    if (btn) btn.disabled = true; M.marcarCerrando(id, true); pintarPanel('pos');
+    const C = await _spotContrato();
+    mensaje('Close', 'Confirm the close in your wallet…');
+    const env = await C.cerrarMercadoSpot({ id: p.chainId, slippageBps: 100, refPrice: _libro.precio || 0, forzar: false });
+    (async () => {
+      try {
+        const rec = await env.tx.wait();
+        if (rec && Number(rec.status) === 0) throw new Error('reverted');
+        try { const K = await _spotKeeper(); await K.cancelarOrden(p.chainId); } catch (_) {}   // cancela su TP/SL del keeper SOLO con el cierre confirmado
+        M.cerrar(id, _libro.precio || p.entrada, 'manual'); if (_panelActivo() === 'pos') pintarPanel('pos');
+      } catch (_) { M.marcarCerrando(id, false); if (_panelActivo() === 'pos') pintarPanel('pos'); mensaje('Close', 'The close did not confirm; your position stays open and protected.'); }
+    })();
+  } catch (e) {
+    try { if (M) { M.marcarCerrando(id, false); pintarPanel('pos'); } } catch (_) {}
+    const msg = (e && e.message === 'POOL_MALO_SALIDA') ? 'The on-chain pool is paying far below market right now; try again in a moment.' : _errMovil(e);
+    mensaje('Close', msg);
+  }
 }
 
 /* Cancela una orden limit: cancela el bot de 1 nivel on-chain (libera cupo y no
@@ -459,11 +492,45 @@ async function operar(lado) {
     if (b && b.conectado && !tiene) { mensaje(t('Sin saldo'), `${t('No tienes')} ${_par.id} ${t('en tu wallet para vender.')}`); return; }
   }
   if (_tipo === 'market') {
-    if (lado === 'buy' && _api.estaConectado && _api.estaConectado()) {
-      const amt = parseFloat(($('op-in-amt') || {}).value) || 0;
-      if (amt > 0 && _libro.precio) { const l = posGuardadas(); l.push({ id: _par.id, cantidad: amt, quote: _quote, entrada: _libro.precio, ts: Date.now() }); posGuardar(l); }
-    }
-    _api.abrir('swap');
+    // MARKET: posición REAL por SpotDF (misma lógica que Spot web), con tu diseño móvil. Si no hay
+    // wallet o la moneda no es operable on chain, cae al Swap como antes (no se pierde esa vía).
+    if (!(_api.estaConectado && _api.estaConectado())) { _api.abrir('swap'); return; }
+    const amt = parseFloat(($('op-in-amt') || {}).value) || 0;
+    if (!(amt > 0)) { mensaje(t('Monto'), 'Enter an amount first.'); return; }
+    const parObj = { id: _par.id, simbolo: _par.s, coin: _par.id };
+    const bb = $('op-buy'), ss = $('op-sell');
+    let C;
+    try { C = await _spotContrato(); } catch (_) {}
+    if (!C || !C.operableOnchain(parObj)) { _api.abrir('swap'); return; }   // moneda no operable: Swap como antes
+    const ladoSpot = lado === 'sell' ? 'short' : 'long';
+    const slPx = parseFloat(($('op-in-sl') || {}).value) || 0;
+    const markClic = _libro.precio || 0;
+    try {
+      if (bb) bb.disabled = true; if (ss) ss.disabled = true;
+      mensaje(ladoSpot === 'long' ? 'Long' : 'Short', 'Confirm the transaction in your wallet…');
+      const env = await C.abrirMercadoSpot({ par: parObj, lado: ladoSpot, pagar: _quote === 'BNB' ? 'BNB' : 'USDT', monto: amt, slippageBps: 100, floorOut: 0, refPrice: markClic });
+      const M = await _spotMotor();
+      const r = M.abrirMercado(_par.id, _par.id, ladoSpot, (env.costoUsdt > 0 ? env.costoUsdt : amt), markClic, null, slPx > 0 ? slPx : null, null, true);
+      mensaje(ladoSpot === 'long' ? 'Long enviado' : 'Short enviado', 'Confirming on-chain…');
+      const inA = $('op-in-amt'); if (inA) inA.value = '';
+      pintarPanel('pos');
+      const posId = r.ok ? r.pos.id : null;
+      (async () => {
+        try {
+          const rec = await env.tx.wait();
+          if (rec && Number(rec.status) === 0) throw new Error('reverted');
+          let cid = null; try { cid = await C.idDeRecibo(rec); } catch (_) {}
+          if (posId && cid != null) {
+            M.setChainId(posId, cid);
+            if (slPx > 0) { try { const K = await _spotKeeper(); await K.armarOrden({ chainId: cid, par: _par.id, lado: ladoSpot, tp: null, sl: slPx }); } catch (_) {} }
+          } else if (posId && cid == null) { /* minó pero sin id legible: se queda 'pend', se sincroniza al reabrir */ }
+        } catch (err) {
+          if (posId && err && err.message === 'reverted') { try { (await _spotMotor()).eliminar(posId); } catch (_) {} }
+        }
+        try { if (_panelActivo() === 'pos') pintarPanel('pos'); } catch (_) {}
+      })();
+    } catch (e) { mensaje('Error', _errMovil(e)); }
+    finally { if (bb) bb.disabled = false; if (ss) ss.disabled = false; }
   } else {
     // LIMIT: orden REAL on chain por SpotDF (misma lógica que Spot web) + armada en el worker.
     // Se mantiene el diseño móvil; solo cambia lo que hace el botón (antes iba a Smart Levels).
