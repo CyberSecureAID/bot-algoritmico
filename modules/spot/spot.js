@@ -807,11 +807,11 @@ async function arrancarWallet() {
 
 /* Carga perezosa del cableado on chain (no trae ethers hasta que de verdad se opera). */
 let _spC = null;
-async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=11'); return _spC; }
+async function _contratoSpot() { if (!_spC) _spC = await import('./contrato.js?v=12'); return _spC; }
 
 /* ── Puente al KEEPER (Worker de Cloudflare) para TP/SL/limite automaticos ── */
 let _spK = null;
-async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=6'); return _spK; }
+async function _keeperSpot() { if (!_spK) _spK = await import('./keeper-spot.js?v=7'); return _spK; }
 /* Registra (o actualiza/cancela) el TP/SL de una posicion REAL en el keeper. Firma del
    dueno, sin gas. Si ya no hay ni TP ni SL, cancela la orden automatica. */
 /* La salida automatica (keeper) vigila el precio en Binance, asi que SOLO funciona con pares

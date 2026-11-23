@@ -31,8 +31,8 @@ let _api = null;
 /* ── Lógica de Spot COMPARTIDA con la web (contrato SpotDF + keeper). Carga perezosa.
    El móvil usa la MISMA lógica que Spot web; solo cambia cómo se ve. ── */
 let _spC = null, _spK = null;
-async function _spotContrato() { if (!_spC) _spC = await import('../../../modules/spot/contrato.js?v=11'); return _spC; }
-async function _spotKeeper() { if (!_spK) _spK = await import('../../../modules/spot/keeper-spot.js?v=6'); return _spK; }
+async function _spotContrato() { if (!_spC) _spC = await import('../../../modules/spot/contrato.js?v=12'); return _spC; }
+async function _spotKeeper() { if (!_spK) _spK = await import('../../../modules/spot/keeper-spot.js?v=7'); return _spK; }
 let _spM = null;
 async function _spotMotor() { if (!_spM) _spM = await import('../../../modules/spot/motor.js?v=15'); return _spM; }   // MISMO motor que Spot web (posiciones compartidas)
 function _errMovil(e) { const m = String((e && (e.reason || e.shortMessage || e.message)) || e); if (/user rejected|rejected the request|denied/i.test(m)) return 'You cancelled the transaction.'; if (/insufficient/i.test(m)) return 'Not enough balance or allowance.'; return m.slice(0, 120); }
