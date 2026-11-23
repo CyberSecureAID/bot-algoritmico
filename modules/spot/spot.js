@@ -232,7 +232,10 @@ function cablear(ov) {
     e.preventDefault();
     const r = ($('sp-cv') || chartHost).getBoundingClientRect();
     let px; try { px = S.serieVela.coordinateToPrice(e.clientY - r.top); } catch (_) { px = null; }
-    if (px > 0) abrirCtxDemo(e.clientX, e.clientY, +(+px).toFixed(dec(px)));
+    if (!(px > 0)) return;
+    const precio = +(+px).toFixed(dec(px));
+    marcarEntryLimite(precio);   // clic DERECHO marca la entry del limite JUSTO donde se hizo clic
+    abrirCtxDemo(e.clientX, e.clientY, precio);
   });
 }
 
@@ -431,7 +434,7 @@ function pintarChart() {
   const LC = window.LightweightCharts; const cv = $('sp-cv'); if (!cv || !S.velas.length) return;
   if (!LC) { clearTimeout(S._lcTmr); S._lcTmr = setTimeout(pintarChart, 120); return; }   // la librería aún cargaba: reintenta (evita gráfica en negro al entrar)
   try { if (S.chart) S.chart.remove(); } catch (_) {}
-  S.chart = null; S.lineaLimit = null;
+  S.chart = null; S.lineaLimit = null; S.lineasLim = null;
   const chart = LC.createChart(cv, {
     autoSize: true, localization: { locale: 'en', priceFormatter: fmtPChart },
     layout: { background: { color: 'transparent' }, textColor: '#7d8794', fontFamily: '"Chakra Petch", ui-monospace, monospace', attributionLogo: false },
@@ -447,8 +450,10 @@ function pintarChart() {
   vela.setData(V.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }))); S.serieVela = vela;
   S.velasDib = V.map((c) => ({ t: c.time, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume }));
   try { const ts = chart.timeScale(); ts.setVisibleLogicalRange({ from: V.length - 90, to: V.length + 6 }); ts.subscribeVisibleLogicalRangeChange((range) => { sincronizarDib(); if (range && range.from < 15) cargarMasVelas(); }); } catch (_) {}
-  try { chart.subscribeClick((p) => { if (S._ctxCerradoEn && Date.now() - S._ctxCerradoEn < 400) return; if (!p || !p.point || S.drag || !sinHerramienta() || _indBajoCursor()) return; const px = S.serieVela.coordinateToPrice(p.point.y); if (!(px > 0)) return; if (S.modo !== 'limit') { S.modo = 'limit'; const ov = $('sp-overlay'); if (ov) ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit')); const lw = $('sp-limitwrap'); if (lw) lw.style.display = 'flex'; } S.limitPx = +px.toFixed(dec(px)); const li = $('sp-limit'); if (li) li.value = S.limitPx; dibujarLimit(); renderEntry(); }); } catch (_) {}
+  // El clic IZQUIERDO ya NO marca la entry (antes si). Ahora la entry del limite se marca con clic
+  // DERECHO, justo donde se hace clic, y a la vez se abre el menu en ese precio (ver 'contextmenu').
   dibujarLimit();
+  dibujarLimites();   // lineas persistentes de las ordenes limite YA puestas (de esta moneda)
   cargarIndicadores();   // botón "Indicators" + redibuja los indicadores activos sobre la gráfica nueva
 }
 
@@ -1128,6 +1133,7 @@ async function cerrarPosicion(id, btn, forzar) {
 /* ── Panel inferior ── */
 function renderPos() {
   _preciosPos();   // precio por par de posiciones/ordenes de OTRA moneda (no el del grafico abierto)
+  try { dibujarLimites(); } catch (_) {}   // lineas de las ordenes limite puestas, sobre la grafica
   const pos = M.posiciones(), ord = M.ordenes(), hist = M.historial();
   $('sp-npos').textContent = pos.length; $('sp-nord').textContent = ord.length + (S.limites || []).length; $('sp-nhist').textContent = hist.length;
   const r = $('sp-pos-r'); if (r) r.innerHTML = '';
@@ -1270,6 +1276,34 @@ function dibujarLimit() {
   if (!S.serieVela) return;
   if (S.lineaLimit) { try { S.serieVela.removePriceLine(S.lineaLimit); } catch (_) {} S.lineaLimit = null; }
   if (S.modo === 'limit' && S.limitPx > 0 && sinHerramienta()) { try { S.lineaLimit = S.serieVela.createPriceLine({ price: S.limitPx, color: '#C9A84B', lineWidth: 1, lineStyle: 3, axisLabelVisible: true }); } catch (_) {} }
+}
+/* Marca la entrada de una orden limite en el precio dado (clic DERECHO en la grafica): activa el
+   modo limite, fija el precio y dibuja la linea. El usuario completa monto + Long/Short en el panel. */
+function marcarEntryLimite(precio) {
+  if (!(precio > 0)) return;
+  if (S.modo !== 'limit') {
+    S.modo = 'limit';
+    const ov = $('sp-overlay'); if (ov) ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'limit'));
+    const lw = $('sp-limitwrap'); if (lw) lw.style.display = 'flex';
+  }
+  S.limitPx = precio;
+  const li = $('sp-limit'); if (li) li.value = S.limitPx;
+  dibujarLimit(); renderEntry();
+}
+/* Dibuja una linea persistente por CADA orden limite ya puesta (S.limites) de la moneda EN
+   PANTALLA, para verlas esperando a activarse. Verde = compra (long), rojo = venta (short). */
+function dibujarLimites() {
+  if (!S.serieVela) return;
+  if (S.lineasLim) { for (const l of S.lineasLim) { try { S.serieVela.removePriceLine(l); } catch (_) {} } }
+  S.lineasLim = [];
+  const cur = S.par && S.par.id;
+  for (const lim of (S.limites || [])) {
+    if (!lim || lim.par !== cur || !(Number(lim.objetivo) > 0)) continue;
+    const esVenta = lim.lado === 'short';
+    try {
+      S.lineasLim.push(S.serieVela.createPriceLine({ price: Number(lim.objetivo), color: esVenta ? '#ff5b6e' : '#2ee86a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: (esVenta ? 'SELL' : 'BUY') + ' limit' }));
+    } catch (_) {}
+  }
 }
 
 /* ── Overlay de posiciones: entrada + PnL, liq, y controles TP/SL estilo
@@ -1502,7 +1536,7 @@ function abrirCtxDemo(clientX, clientY, px) {
   el.style.left = Math.max(6, left) + 'px'; el.style.top = Math.max(6, top) + 'px';
   el.querySelector('[data-a="copy"]').onclick = () => { try { navigator.clipboard && navigator.clipboard.writeText(String(px)); } catch (_) {} toast('Price copied.', 'ok'); cerrarCtxDemo(); };
   el.querySelector('[data-a="alert"]').onclick = () => { crearAlertaDemo(px); cerrarCtxDemo(); };
-  el.querySelector('[data-a="setpos"]').onclick = () => { abrirSetPosDemo(px, clientX, clientY); cerrarCtxDemo(); };
+  el.querySelector('[data-a="setpos"]').onclick = () => { marcarEntryLimite(px); toast('Entry marked. Set the amount and tap Long or Short to place the limit.', 'ok'); cerrarCtxDemo(); };
   setTimeout(() => { document.addEventListener('mousedown', ctxFueraDemo, true); document.addEventListener('keydown', ctxEscDemo, true); }, 0);
 }
 /* Set position en Spot: conserva ESTE menu propio (Copy price / Set position / Set
