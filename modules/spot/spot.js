@@ -16,7 +16,7 @@
    modificar lo compartido: catálogo de monedas, logos, barra de dibujo y wallet. */
 
 import { estilos } from './estilos.js?v=21';
-import * as D from './datos.js?v=13';
+import * as D from './datos.js?v=14';
 import * as M from './motor.js?v=15';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=7';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
@@ -497,11 +497,16 @@ function conectarStream() {
     }, 22000);
   } else {
     try { S.stream = D.streamVelas(S.par.s, S.tf, (k) => onKline(k)); } catch (_) { S.stream = null; }
+    // Ademas, stream de TRADES (@aggTrade): mueve la vela en formacion de forma FLUIDA entre los
+    // ticks de @kline (como Footprint Pro), sin esperar el ~1/seg del kline.
+    try { S.streamTrades = D.streamTrades(S.par.s, (px) => onTrade(px)); } catch (_) { S.streamTrades = null; }
   }
 }
 function pararStream() {
   if (S.stream) { try { S.stream.cerrar(); } catch (_) {} S.stream = null; }
+  if (S.streamTrades) { try { S.streamTrades.cerrar(); } catch (_) {} S.streamTrades = null; }
   if (S.poll) { try { clearInterval(S.poll); } catch (_) {} S.poll = null; }
+  if (_rafTrade) { try { cancelAnimationFrame(_rafTrade); } catch (_) {} _rafTrade = 0; }
 }
 
 /* Mete una vela (en formación o cerrada) en el estado y la gráfica, y dispara el motor
@@ -520,6 +525,26 @@ function empujarVela(c, cerrada) {
 function onKline(k) {
   const c = { time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v };
   empujarVela(c, k.x === true);
+}
+/* Cada TRADE en vivo (@aggTrade): mueve la vela EN FORMACION de forma fluida (close/high/low) entre
+   los ticks de @kline. Coalescido con requestAnimationFrame (~60fps) para ser suave y barato. El
+   @kline sigue siendo la fuente autoritativa; esto solo interpola el precio entre ticks. */
+let _rafTrade = 0, _pxTrade = 0;
+function onTrade(px) {
+  if (!(px > 0)) return;
+  _pxTrade = px;
+  if (_rafTrade) return;
+  _rafTrade = requestAnimationFrame(() => {
+    _rafTrade = 0;
+    const p = _pxTrade; if (!S.serieVela || !(p > 0)) return;
+    const last = S.velas[S.velas.length - 1]; if (!last) return;
+    if (p > last.high) last.high = p;
+    if (p < last.low) last.low = p;
+    last.close = p;
+    try { S.serieVela.update({ time: last.time, open: last.open, high: last.high, low: last.low, close: last.close }); } catch (_) {}
+    S.mark = p; S.marks[S.par.id] = p;
+    try { pintarPrecio(); } catch (_) {}
+  });
 }
 
 function nuevoPrecio(px, hi, lo) {
