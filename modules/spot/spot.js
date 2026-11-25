@@ -908,6 +908,11 @@ async function _reconciliarKeeper() {
     if (!S.walletOn) return;
     const cuenta = S.cuenta || (cuentaActual && cuentaActual());
     if (!cuenta) return;
+    // Solo gastar KV del keeper si hay algo que vigilar para ESTE usuario: limites armados o
+    // posiciones on-chain (chainId). Sin eso, /estado no diria nada util y gastaria lecturas en
+    // balde. Asi un usuario navegando sin ordenes vivas consume CERO del plan gratis de Cloudflare.
+    const hayKeeper = (S.limites && S.limites.length > 0) || M.posiciones().some((p) => p && p.chainId != null);
+    if (!hayKeeper) return;
     const K = await _keeperSpot();
     const est = await K.estadoKeeper(cuenta);
     if (!est || !Array.isArray(est.ordenes)) return;
