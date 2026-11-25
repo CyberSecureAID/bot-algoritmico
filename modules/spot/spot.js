@@ -1561,7 +1561,14 @@ function abrirCtxDemo(clientX, clientY, px) {
   el.style.left = Math.max(6, left) + 'px'; el.style.top = Math.max(6, top) + 'px';
   el.querySelector('[data-a="copy"]').onclick = () => { try { navigator.clipboard && navigator.clipboard.writeText(String(px)); } catch (_) {} toast('Price copied.', 'ok'); cerrarCtxDemo(); };
   el.querySelector('[data-a="alert"]').onclick = () => { crearAlertaDemo(px); cerrarCtxDemo(); };
-  el.querySelector('[data-a="setpos"]').onclick = () => { marcarEntryLimite(px); toast('Entry marked. Set the amount and tap Long or Short to place the limit.', 'ok'); cerrarCtxDemo(); };
+  el.querySelector('[data-a="setpos"]').onclick = () => {
+    cerrarCtxDemo();
+    marcarEntryLimite(px);                                          // modo LIMIT + precio marcado + línea Entry
+    const lado = (S.mark > 0 && px >= S.mark) ? 'short' : 'long';   // arriba del precio actual = short/vender; abajo = long/comprar
+    setSide(lado);                                                  // ACTIVA el panel: habilita el botón de operar (antes quedaba muerto y "no hacía nada")
+    const cap = $('sp-capv'); if (cap) setTimeout(() => { try { cap.focus(); } catch (_) {} }, 30);
+    toast(`${lado === 'short' ? 'Short' : 'Long'} limit set at ${fmtP(px)}. Type the amount and tap ${lado === 'short' ? 'Short' : 'Long'} to place it. You can switch side or Market in the panel.`, 'ok');
+  };
   setTimeout(() => { document.addEventListener('mousedown', ctxFueraDemo, true); document.addEventListener('keydown', ctxEscDemo, true); }, 0);
 }
 /* Set position en Spot: conserva ESTE menu propio (Copy price / Set position / Set
