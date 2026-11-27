@@ -74,8 +74,8 @@ async function abrir(clave, arg) {
   if (requiereActivacion(clave)) { avisoActivacion(clave); return; }
   try {
     switch (clave) {
-      case 'addtoken':  { location.href = 'modules/swap/swap.html?abrir=listar'; break; }   // modulo sellado (antes abria una copia vieja de listing.js)
-      case 'swap':      { location.href = 'modules/swap/swap.html'; break; }   // modulo sellado con pagina propia
+      case 'addtoken':  { location.href = '/modules/swap/swap?abrir=listar'; break; }   // modulo sellado (antes abria una copia vieja de listing.js)
+      case 'swap':      { location.href = '/modules/swap/swap'; break; }   // modulo sellado con pagina propia
       case 'polvo':     await abrirToolDirecto('polvo'); break;
       case 'alerta':    abrirAlerta(); break;
       case 'alertas':   abrirAlerta(); break;
@@ -92,9 +92,9 @@ async function abrir(clave, arg) {
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=127'); m.abrirLiquidity && m.abrirLiquidity(); break; }
-      case 'shield':    { location.href = 'modules/shield/shield.html'; break; }   // modulo sellado con pagina propia
-      case 'bots':      { location.href = 'modules/bots/bots.html'; break; }
-      case 'launchpad': { location.href = 'modules/launchpad/launchpad.html'; break; }   // modulo sellado con pagina propia   // modulo sellado con pagina propia (vista movil incluida)
+      case 'shield':    { location.href = '/modules/shield/shield'; break; }   // modulo sellado con pagina propia
+      case 'bots':      { location.href = '/modules/bots/bots'; break; }
+      case 'launchpad': { location.href = '/modules/launchpad/launchpad'; break; }   // modulo sellado con pagina propia   // modulo sellado con pagina propia (vista movil incluida)
       case 'buscar':    abrirBuscar(api()); break;
       case 'soporte':   abrirSoporte(); break;
       case 'menu':      abrirMenu(api()); break;

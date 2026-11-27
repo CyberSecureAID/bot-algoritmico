@@ -107,7 +107,7 @@ export async function abrirPerfil({ alCambiar } = {}) {
     <div class="pf-kv"><span>Coins created here</span><b id="pf-coins">…</b></div>
     <div class="pf-acts">
       <button class="pf-b" id="pf-guardar" type="button">Save</button>
-      <a class="pf-b" href="../../index.html?abrir=perfil">Full profile</a>
+      <a class="pf-b" href="/?abrir=perfil">Full profile</a>
       <button class="pf-b rojo" id="pf-off" type="button">Disconnect</button>
     </div>
     <div class="pf-msg" id="pf-msg"></div>

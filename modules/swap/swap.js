@@ -331,7 +331,7 @@ function cerrarSwap() {
   try {
     const par = new URLSearchParams(location.search);
     const enApp = /app\.html/.test(location.pathname);
-    if (par.get('abrir') === 'swap' && enApp) { location.replace('index.html'); }
+    if (par.get('abrir') === 'swap' && enApp) { location.replace('/'); }
     // limpiar el ?token/?abrir de la URL sin recargar, para que al cerrar quede limpia la portada
     else if (par.get('abrir') === 'swap') { try { history.replaceState(null, '', location.pathname); } catch (_) {} }
   } catch (_) {}

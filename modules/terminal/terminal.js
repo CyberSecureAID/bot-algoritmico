@@ -984,7 +984,7 @@ export function abrirFicha(it) {
     </div>` : ''}
     <div class="tm-f-acts">
       <a class="tm-b sec" href="${SCAN_URL}/token/${esc(it.token)}" target="_blank" rel="noopener">BscScan</a>
-      ${it.fuente === 'launchpad' ? `<a class="tm-b" href="../launchpad/launchpad.html">Launchpad</a>` : it.fuente === 'fourmeme' ? `<a class="tm-b" href="${FOURMEME_URL}${esc(it.token)}" target="_blank" rel="noopener">four.meme</a>` : `<button class="tm-b" id="tm-f-swap" type="button">Swap</button>`}
+      ${it.fuente === 'launchpad' ? `<a class="tm-b" href="/modules/launchpad/launchpad">Launchpad</a>` : it.fuente === 'fourmeme' ? `<a class="tm-b" href="${FOURMEME_URL}${esc(it.token)}" target="_blank" rel="noopener">four.meme</a>` : `<button class="tm-b" id="tm-f-swap" type="button">Swap</button>`}
     </div>
     <p class="tm-f-note">This check reads what the contract allows today. It does not predict price and it is not a recommendation. Anyone can lose money on a new token.</p>
   </div>`;

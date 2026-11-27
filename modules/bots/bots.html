@@ -300,7 +300,7 @@
     window._mvHideWeb = { disabled: true };
     document.addEventListener('DOMContentLoaded', function () {
       var x = document.createElement('button'); x.id = 'mv-bots-x'; x.type = 'button'; x.innerHTML = '\u2715'; x.setAttribute('aria-label', 'Close');
-      x.onclick = function () { location.href = '../../app.html'; };
+      x.onclick = function () { location.href = '/app'; };
       document.body.appendChild(x);
     });
   }
@@ -374,7 +374,7 @@
   // Puente: ?abrir=X de otras secciones se atiende en app.html (este modulo es solo bots).
   (function(){
     var par = new URLSearchParams(location.search);
-    var q = par.get('abrir'); if (q && q !== 'bots') { location.replace('../../app.html' + location.search); return; }
+    var q = par.get('abrir'); if (q && q !== 'bots') { location.replace('/app' + location.search); return; }
     var bot = par.get('bot');
     if (bot && ['grid', 'acum', 'cash', 'dca'].indexOf(bot) !== -1) {
       var finB = Date.now() + 12000;
@@ -426,8 +426,8 @@
       var CH = '<svg width="12" height="12" viewBox="0 0 14 14"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       var it = function (h, t, on) { return '<div class="pt-nav__i"><a class="pt-nav__b' + (on ? ' lp-on' : '') + '" href="' + h + '">' + t + '</a></div>'; };
       b.innerHTML = '<header class="pt-hdr"><div class="pt-hdr__in">'
-        + '<a class="sw-back" href="../../index.html" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</a>'
-        + '<a class="pt-logo" href="../../index.html" aria-label="DecFreedom"><img src="../../assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
+        + '<a class="sw-back" href="/" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</a>'
+        + '<a class="pt-logo" href="/" aria-label="DecFreedom"><img src="../../assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
         + '<nav class="pt-nav" aria-label="Main">'
         + it('../swap/swap.html', 'Swap') + it('../launchpad/launchpad.html', 'Launchpad') + it('../terminal/terminal.html', 'Terminal')
         + it('./bots.html', 'Bots', true) + it('../../app.html?abrir=analisis', 'Analysis') + it('../spot/spot.html', 'Spot') + it('../../aportar.html', 'Staking')
