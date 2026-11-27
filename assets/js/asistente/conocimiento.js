@@ -431,6 +431,91 @@ window.NP_BOT_KB = {
       ]
     },
 
+    launchpad: {
+      titulo: 'Launchpad',
+      accion: 'launchpad',
+      intro: 'Crear tu propia moneda en unos minutos, sin saber programar.',
+      pasos: [
+        'En el menú de arriba, pulsa **Launchpad**.',
+        'Pon el nombre, el símbolo, el logo y cuántas monedas quieres crear.',
+        'Elige cuánta liquidez bloqueas y por cuánto tiempo. Eso le da confianza a quien compre.',
+        'Revisa el coste (se paga una sola vez, en BNB) y firma. Tu contrato se despliega solo.'
+      ],
+      fin: 'Tu moneda queda creada y pública en BNB Smart Chain, a tu nombre.\n\nOjo: crear una moneda no le da valor ni asegura que alguien la compre. Eso depende de tu proyecto.',
+      despues: [
+        { label: '¿Cuánto cuesta?',        q: 'comision del launchpad' },
+        { label: 'Venderla en el mercado', q: 'como vendo en el marketplace' }
+      ]
+    },
+
+    terminal: {
+      titulo: 'Terminal',
+      accion: 'terminal',
+      intro: 'Una mesa de trading: gráfica en vivo, lector de seguridad de cualquier moneda y swap, todo en un sitio.',
+      pasos: [
+        'En el menú de arriba, pulsa **Terminal**.',
+        'Busca una moneda por nombre o pega su contrato. Verás su gráfica al momento.',
+        'Antes de comprar, mira el **lector de seguridad**: te dice si el contrato tiene trampas conocidas.',
+        'Si te cuadra, cambia desde la propia ventana de swap y firma.'
+      ],
+      fin: 'Recuerda: un informe en verde quiere decir que no se vio ninguna trampa, no que vayas a ganar. El riesgo lo decides tú.',
+      despues: [
+        { label: '¿Es segura esta moneda?', q: 'como se si una moneda es segura' },
+        { label: 'Proteger mi wallet',      q: 'que es wallet shield' }
+      ]
+    },
+
+    spot: {
+      titulo: 'Spot',
+      accion: 'spot',
+      intro: 'Comprar y vender al momento, con órdenes límite, toma de ganancia y stop de pérdida, sin que nadie te custodie el dinero.',
+      pasos: [
+        'En el menú de arriba, pulsa **Spot**.',
+        'Elige la moneda y si quieres Long (comprar) o Short (ganar si baja).',
+        'Pon tu capital y, si quieres, el precio límite, el TP (toma de ganancia) y el SL (stop de pérdida).',
+        'Firma. Un ayudante automático ejecuta tus órdenes, siempre dentro de los límites que firmaste.'
+      ],
+      fin: 'Tus fondos nunca salen de tu wallet hasta que firmas, y el ayudante solo puede cerrar respetando lo que marcaste. El trading tiene riesgo: puedes perder parte de lo que pongas.',
+      despues: [
+        { label: '¿Qué comisión tiene?', q: 'comision del spot' },
+        { label: 'Montar un bot',        q: 'que bots hay' }
+      ]
+    },
+
+    aportar: {
+      titulo: 'Staking',
+      accion: 'aportar',
+      intro: 'Aportar fondos y recibir una parte de lo que genera la plataforma, repartido entre quienes participan.',
+      pasos: [
+        'En el menú de arriba, pulsa **Staking**.',
+        'Mira cuánto hay aportado y elige cuánto quieres poner.',
+        'Firma el depósito. Tus fondos entran a un contrato público y verificable.',
+        'Cuando quieras, retiras según las reglas del contrato.'
+      ],
+      fin: 'Las recompensas son variables y nunca están prometidas: dependen de cuánto genere la plataforma y de cuánta gente aporte. Ningún número es una promesa de ganancia futura.',
+      despues: [
+        { label: '¿De dónde salen las recompensas?', q: 'de donde salen las recompensas del staking' },
+        { label: 'Ver los bots',                     q: 'que bots hay' }
+      ]
+    },
+
+    shield: {
+      titulo: 'Wallet Shield',
+      accion: 'shield',
+      intro: 'Revisar tu wallet y quitarle permisos peligrosos, detectar envenenamiento de direcciones y sacar tus fondos rápido si hace falta.',
+      pasos: [
+        'En el menú de arriba, pulsa **Shield**.',
+        'Conecta tu wallet y deja que escanee: te lista cada permiso que diste y marca los peligrosos.',
+        'Al lado de un permiso de riesgo, pulsa **revocar** y firma para cortarlo.',
+        'Si algo huele mal, usa la evacuación para mover tus fondos a lugar seguro.'
+      ],
+      fin: 'Es la mejor costumbre de seguridad: revisar y quitar permisos viejos que ya no usas. Lo que no tiene permiso, no te lo pueden mover.',
+      despues: [
+        { label: 'Quitar permisos a los bots', q: 'como quito permisos' },
+        { label: '¿Es segura esta moneda?',     q: 'como se si una moneda es segura' }
+      ]
+    },
+
     permisos: {
       titulo: 'Quitar permisos a los bots',
       accion: 'perfil',
@@ -1160,6 +1245,62 @@ window.NP_BOT_KB = {
       answer: [
         'El swap te deja cambiar una moneda por otra al momento, desde tu propia wallet.\n\nFunciona sobre PancakeSwap, con una comisión pequeña por usar la plataforma.',
         'Intercambio directo entre monedas. Eliges qué das y qué quieres, y se hace en una operación.'
+      ]
+    },
+    {
+      topic: 'launchpad',
+      guia: 'launchpad', guiaLabel: 'Guíame para crear mi moneda',
+      accion: 'launchpad',
+      keys: ['launchpad', 'crear moneda', 'crear mi moneda', 'crear token', 'lanzar token', 'lanzar moneda',
+             'crear una cripto', 'hacer mi moneda', 'sacar mi moneda', 'emitir token', 'crear criptomoneda',
+             'que es el launchpad', 'como funciona el launchpad', 'comision del launchpad'],
+      answer: [
+        'El Launchpad te deja crear tu propia moneda en BNB Smart Chain en unos minutos, sin programar. Tú pones el nombre, el logo y cuánta liquidez bloqueas.\n\nEso sí: crear una moneda no le da valor por sí solo, eso depende de tu proyecto.',
+        'Es una herramienta para lanzar tu propio token desde tu wallet, con bloqueos de liquidez para dar confianza. El contrato se despliega solo y queda a tu nombre.'
+      ]
+    },
+    {
+      topic: 'terminal',
+      guia: 'terminal', guiaLabel: 'Enséñame la Terminal',
+      accion: 'terminal',
+      keys: ['terminal', 'que es la terminal', 'como funciona la terminal', 'lector de seguridad',
+             'escaner de token', 'revisar una moneda', 'ver grafica', 'analizar token', 'chart'],
+      answer: [
+        'La Terminal es una mesa de trading: gráfica en vivo, un lector que revisa si una moneda tiene trampas conocidas, y una ventana de swap, todo junto.\n\nUn informe en verde no promete ganancias, solo que no se vio ninguna trampa.',
+        'Es tu puesto de análisis: buscas una moneda, ves su gráfica, revisas su seguridad y cambias desde el mismo sitio, sin custodia.'
+      ]
+    },
+    {
+      topic: 'spot',
+      guia: 'spot', guiaLabel: 'Guíame en el Spot',
+      accion: 'spot',
+      keys: ['spot', 'que es el spot', 'como funciona el spot', 'orden limite', 'take profit', 'stop loss',
+             'tp y sl', 'long', 'short', 'trading spot', 'comision del spot', 'comprar y vender al momento'],
+      answer: [
+        'El Spot te deja comprar y vender con órdenes límite, toma de ganancia (TP) y stop de pérdida (SL). Un ayudante automático las ejecuta, siempre dentro de los límites que firmaste.\n\nTus fondos no salen de tu wallet hasta que firmas. El trading tiene riesgo: puedes perder.',
+        'Es trading al momento, no custodial: pones tu límite, tu TP y tu SL, firmas, y el sistema cierra respetando eso. Cobra 1% solo sobre la ganancia.'
+      ]
+    },
+    {
+      topic: 'staking',
+      guia: 'aportar', guiaLabel: 'Guíame en el Staking',
+      accion: 'aportar',
+      keys: ['staking', 'stake', 'aportar', 'que es el staking', 'como funciona el staking', 'recompensas',
+             'rendimiento', 'ganar aportando', 'de donde salen las recompensas del staking', 'poner fondos a trabajar'],
+      answer: [
+        'El Staking es aportar fondos y recibir una parte de lo que genera la plataforma, repartido entre quienes participan.\n\nLas recompensas son variables y nunca están prometidas: dependen de la actividad y de cuánta gente aporte.',
+        'Pones fondos en un contrato público y recibes una parte de lo que la plataforma genera, según tu participación. No es un interés fijo y puede ser cero en un periodo.'
+      ]
+    },
+    {
+      topic: 'shield',
+      guia: 'shield', guiaLabel: 'Guíame con el Shield',
+      accion: 'shield',
+      keys: ['shield', 'wallet shield', 'que es wallet shield', 'proteger wallet', 'quitar permisos',
+             'revocar permisos', 'seguridad de la wallet', 'envenenamiento de direcciones', 'sacar mis fondos', 'escanear wallet'],
+      answer: [
+        'Wallet Shield revisa tu wallet, te lista los permisos que diste y te deja revocar los peligrosos. También detecta envenenamiento de direcciones y te ayuda a sacar tus fondos rápido.\n\nLo que no tiene permiso, no te lo pueden mover.',
+        'Es tu capa de seguridad: escanea permisos, marca los de riesgo, los revocas firmando, y si algo huele mal sacas tus fondos a lugar seguro.'
       ]
     },
     {
