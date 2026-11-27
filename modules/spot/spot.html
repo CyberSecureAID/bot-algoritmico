@@ -28,6 +28,7 @@
 <body>
 <div id="sp-boot">Loading Spot…</div>
 <script type="module">
+  import { avisoSpot } from './aviso.js';
   try {
     const m = await import('./spot.js?v=48');
     await m.abrirSpot();
@@ -35,6 +36,9 @@
     // En su propia página, el botón Back vuelve al inicio (no deja la página en blanco).
     const back = document.getElementById('sp-back');
     if (back) back.onclick = () => { location.href = '/'; };
+    // Aviso DESPUES de montar (abrirSpot agrega #sp-overlay al body): asi la ficha
+    // bloqueante queda por encima y no la tapa el montaje del modulo. Una vez por navegador.
+    try { avisoSpot(); } catch (e) { console.warn('[spot] aviso:', e); }
   } catch (e) {
     const boot = document.getElementById('sp-boot');
     if (boot) boot.textContent = 'Could not load Spot: ' + (e && e.message ? e.message : e);
