@@ -1335,7 +1335,12 @@
     conectar:{ txt: 'Conectar mi wallet',   ir: function () { clic('#c-conectar') || clic('#c-conectar2'); } },
     instalar:{ txt: 'Instalar la app',      ir: function () { clic('#c-instalar'); } },
     academy: { txt: 'Ver la Academia',      ir: function () { clic('#c-academy'); } },
-    perfil2: { txt: 'Abrir mi perfil',      ir: function () { clic('#c-perfil'); } }
+    perfil2: { txt: 'Abrir mi perfil',      ir: function () { clic('#c-perfil'); } },
+    launchpad:{ txt: 'Abrir el Launchpad',  ir: function () { location.href = '/modules/launchpad/launchpad'; } },
+    terminal: { txt: 'Abrir el Terminal',   ir: function () { location.href = '/modules/terminal/terminal'; } },
+    spot:     { txt: 'Abrir el Spot',       ir: function () { location.href = '/modules/spot/spot'; } },
+    aportar:  { txt: 'Abrir el Staking',    ir: function () { location.href = '/aportar'; } },
+    shield:   { txt: 'Abrir Wallet Shield', ir: function () { location.href = '/modules/shield/shield'; } }
   };
   function clic(sel) {
     var e = document.querySelector(sel);
