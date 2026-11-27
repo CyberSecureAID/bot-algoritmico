@@ -9,10 +9,10 @@ import * as gb from '../gridbot.js?v=130';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=53';
-import { pintarMercados } from './markets.js?v=50';
+import { pintarMercados } from './markets.js?v=51';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=58';
 import { pintarActivos } from './activos.js?v=54';
-import { abrirMenu } from './menu.js?v=21';
+import { abrirMenu } from './menu.js?v=22';
 import { abrirBuscar } from './buscar.js?v=20';
 import { abrirAlerta } from './alerta.js?v=20';
 
@@ -636,7 +636,6 @@ const TABS = [
   { k: 'home',    ic: 'home',    t: 'Inicio' },
   { k: 'markets', ic: 'candles', t: 'Market' },
   { k: 'trade',   ic: 'chart',   t: 'Spot' },
-  { k: 'futuros', ic: 'chart',   t: 'Futures' },
   { k: 'assets',  ic: 'wallet',  t: 'Activos' },
 ];
 
@@ -680,20 +679,6 @@ async function irA(tab) {
   if (tab === 'markets') { pintarMercados(host, api()); return; }
   if (tab === 'trade')   { pintarOperar(host, api()); return; }
   if (tab === 'assets')  { pintarActivos(host, api()); refrescarBalance(); return; }
-  if (tab === 'futuros') { const fm = await import('./futuros-movil.js?v=22'); fm.pintarFuturos(host, api()); return; }
-}
-
-/* Futures móvil: placeholder hasta construir la interfaz completa. */
-function pintarFuturosPlaceholder(host) {
-  if (!host) return;
-  host.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-      min-height:60vh;text-align:center;padding:30px;gap:14px">
-      <div style="font-family:var(--display,sans-serif);font-weight:800;font-size:22px;color:var(--gold,#E8B84B)">Futures</div>
-      <div style="font-family:var(--mono,monospace);font-size:13px;color:#7d8794;line-height:1.6;max-width:280px">
-        Operar con apalancamiento desde el móvil. Esta sección está en desarrollo y llegará muy pronto.
-      </div>
-    </div>`;
 }
 
 async function refrescarBalance() {

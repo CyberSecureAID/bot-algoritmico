@@ -150,7 +150,6 @@ const NAV = [
   ['Bots', 'modules/bots/bots.html'],
   ['Analysis', null],
   ['Spot', 'modules/spot/spot.html'],
-  ['Futures', 'futuros.html?v=14'],
   ['Staking', 'aportar.html'],
   ['Shield', 'modules/shield/shield.html']
 ];

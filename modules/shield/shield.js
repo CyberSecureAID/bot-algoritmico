@@ -821,7 +821,7 @@ function cabecera() {
     + '<a class="pt-logo" href="../../index.html" aria-label="DecFreedom"><img src="../../assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
     + '<nav class="pt-nav" aria-label="Main">'
     + it('../swap/swap.html', 'Swap') + it('../launchpad/launchpad.html', 'Launchpad') + it('../terminal/terminal.html', 'Terminal')
-    + it('../bots/bots.html', 'Bots') + it('../../app.html?abrir=analisis', 'Analysis') + it('../spot/spot.html', 'Spot') + it('../../futuros.html?v=14', 'Futures') + it('../../aportar.html', 'Staking')
+    + it('../bots/bots.html', 'Bots') + it('../../app.html?abrir=analisis', 'Analysis') + it('../spot/spot.html', 'Spot') + it('../../aportar.html', 'Staking')
     + it('./shield.html', 'Shield', true)
     + it('../../app.html?abrir=market', 'P2P') + it('../../app.html?abrir=academy', 'Academy')
     + '</nav>'
