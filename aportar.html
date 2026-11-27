@@ -92,6 +92,8 @@
   <script type="module">
     import { montarAportar } from './assets/js/aportar.js?v=15';
     import { arrancarIdioma } from './assets/js/idioma.js?v=150';
+    import { avisoStaking } from './assets/js/aviso-staking.js';
+    try { avisoStaking(); } catch (e) { console.warn('[staking] aviso:', e); }   // terminos del staking, una vez por navegador
 
     // Fondo: si la imagen no existe, se queda el degradado (no rompe).
     (function () {
