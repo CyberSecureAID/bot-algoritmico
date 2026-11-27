@@ -1566,36 +1566,91 @@ function abrirCtxDemo(clientX, clientY, px) {
   el.style.left = Math.max(6, left) + 'px'; el.style.top = Math.max(6, top) + 'px';
   el.querySelector('[data-a="copy"]').onclick = () => { try { navigator.clipboard && navigator.clipboard.writeText(String(px)); } catch (_) {} toast('Price copied.', 'ok'); cerrarCtxDemo(); };
   el.querySelector('[data-a="alert"]').onclick = () => { crearAlertaDemo(px); cerrarCtxDemo(); };
-  el.querySelector('[data-a="setpos"]').onclick = () => {
-    cerrarCtxDemo();
-    marcarEntryLimite(px);                                          // modo LIMIT + precio marcado + línea Entry
-    const lado = (S.mark > 0 && px >= S.mark) ? 'short' : 'long';   // arriba del precio actual = short/vender; abajo = long/comprar
-    setSide(lado);                                                  // ACTIVA el panel: habilita el botón de operar (antes quedaba muerto y "no hacía nada")
-    const cap = $('sp-capv'); if (cap) setTimeout(() => { try { cap.focus(); } catch (_) {} }, 30);
-    toast(`${lado === 'short' ? 'Short' : 'Long'} limit set at ${fmtP(px)}. Type the amount and tap ${lado === 'short' ? 'Short' : 'Long'} to place it. You can switch side or Market in the panel.`, 'ok');
-  };
+  el.querySelector('[data-a="setpos"]').onclick = () => { cerrarCtxDemo(); abrirPopOrden(px, clientX, clientY); };
   setTimeout(() => { document.addEventListener('mousedown', ctxFueraDemo, true); document.addEventListener('keydown', ctxEscDemo, true); }, 0);
 }
-/* Set position en Spot: conserva ESTE menu propio (Copy price / Set position / Set
-   alert) y, al tocar Set position, abre la MISMA ficha de orden.js que analisis, con
-   el cfg de la grafica de Spot. Asi hereda toda la logica multimoneda: comprar o
-   vender cualquier moneda con lo que ya tienes (BNB/USDT), sin duplicar lo ya tenido. */
-let _odSpot = null;
-async function abrirSetPosDemo(px, cx, cy) {
-  try {
-    if (!_odSpot) _odSpot = await import(new URL('../../assets/js/orden.js?v=140', import.meta.url).href);
-    const cfg = {
-      canvas: $('sp-cv'),
-      par: () => (S.par && (S.par.coin || S.par.id)) || '',
-      simbolo: () => (S.par && S.par.s) || '',
-      precioActual: () => S.mark || ((S.velas && S.velas.length) ? S.velas[S.velas.length - 1].close : 0),
-      precioEn: () => px,
-      repintar: () => { try { renderTodo(); } catch (_) {} }
-    };
-    const act = cfg.precioActual();
-    const vender = px >= (act || px);     // por encima del precio actual = vender (short)
-    _odSpot.establecerPosicion(cfg, px, vender, cx, cy);
-  } catch (_) { toast('Could not open Set position.', 'bad'); }
+/* ── Set position: recuadro de orden PROPIO de Spot, aparece donde se hace clic derecho.
+   Coloca por el MISMO camino REAL que el panel derecho (operar): límite on-chain que arma
+   el keeper, o market on-chain. No usa la ficha de orden.js (que en análisis es solo vista
+   previa sin keeper). Pasos para el usuario: Limit/Market -> monto -> Long o Short. Listo. */
+let _popModo = 'limit';
+function cerrarPopOrden() {
+  const el = $('sp-pop'); if (el) { try { el.remove(); } catch (_) {} }
+  document.removeEventListener('mousedown', _popFuera, true);
+  document.removeEventListener('keydown', _popEsc, true);
+}
+function _popFuera(e) { const el = $('sp-pop'); if (el && !el.contains(e.target)) cerrarPopOrden(); }
+function _popEsc(e) { if (e.key === 'Escape') cerrarPopOrden(); }
+function _popSyncModo() {
+  const el = $('sp-pop'); if (!el) return;
+  el.querySelectorAll('[data-m]').forEach((b) => {
+    const on = b.dataset.m === _popModo;
+    b.style.background = on ? '#1f2a3a' : 'transparent';
+    b.style.color = on ? '#eaecef' : '#7d8794';
+  });
+  const pw = $('sp-pop-pxwrap'); if (pw) pw.style.display = (_popModo === 'limit') ? 'block' : 'none';
+}
+function _popColocar(lado) {
+  const amt = parseFloat(($('sp-pop-amt') || {}).value);
+  if (!(amt > 0)) { toast('Enter an amount first.', 'warn'); const a = $('sp-pop-amt'); if (a) { try { a.focus(); } catch (_) {} } return; }
+  let precio = S.mark;
+  if (_popModo === 'limit') {
+    precio = parseFloat(($('sp-pop-px') || {}).value);
+    if (!(precio > 0)) { toast('Enter a limit price.', 'warn'); return; }
+  }
+  S.pagar = 'USDT';                                 // el recuadro opera en USDT
+  if (_popModo === 'limit') {
+    marcarEntryLimite(precio);                      // fija S.modo='limit' + S.limitPx + línea
+  } else {
+    S.modo = 'market';
+    const ov = $('sp-overlay'); if (ov) ov.querySelectorAll('.sp-mode').forEach((x) => x.classList.toggle('on', x.dataset.modo === 'market'));
+    const lw = $('sp-limitwrap'); if (lw) lw.style.display = 'none';
+    dibujarLimit();
+  }
+  setSide(lado);                                    // fija el lado y habilita el botón (resetea S.cap)
+  setCap(amt);                                      // el monto, DESPUÉS de setSide
+  cerrarPopOrden();
+  operar(lado);                                     // colocación REAL (keeper on-chain / market)
+}
+function abrirPopOrden(px, clientX, clientY) {
+  cerrarPopOrden();
+  _popModo = 'limit';
+  marcarEntryLimite(px);                            // deja la línea Entry mientras el recuadro está abierto
+  const inp = 'width:100%;box-sizing:border-box;background:#0a0f17;border:1px solid #273142;border-radius:8px;color:#eaecef;padding:7px 9px;font-size:13px;font-family:inherit;outline:none;margin-top:3px;';
+  const seg = 'flex:1;padding:6px 0;border:1px solid #273142;border-radius:8px;background:transparent;color:#7d8794;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;';
+  const lbl = 'font-size:10px;color:#7d8794;text-transform:uppercase;letter-spacing:.04em;';
+  const el = document.createElement('div'); el.id = 'sp-pop';
+  el.style.cssText = 'position:fixed;z-index:9999;width:234px;background:#0e1420;border:1px solid #222c3a;border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.55);padding:12px;color:#eaecef;font-family:inherit;';
+  el.innerHTML =
+    `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">` +
+      `<span style="font-size:12px;color:#9aa4b2;font-weight:600;">Set position</span>` +
+      `<span id="sp-pop-x" style="cursor:pointer;color:#7d8794;font-size:18px;line-height:1;">&times;</span></div>` +
+    `<div style="display:flex;gap:6px;margin-bottom:9px;">` +
+      `<button type="button" data-m="limit" style="${seg}">Limit</button>` +
+      `<button type="button" data-m="market" style="${seg}">Market</button></div>` +
+    `<div id="sp-pop-pxwrap" style="margin-bottom:9px;">` +
+      `<label style="${lbl}">Limit price</label>` +
+      `<input id="sp-pop-px" type="number" step="any" value="${px}" style="${inp}"></div>` +
+    `<div style="margin-bottom:11px;">` +
+      `<label style="${lbl}">Amount (USDT)</label>` +
+      `<input id="sp-pop-amt" type="number" step="any" inputmode="decimal" placeholder="0.00" style="${inp}"></div>` +
+    `<div style="display:flex;gap:8px;">` +
+      `<button type="button" id="sp-pop-long" style="flex:1;padding:9px 0;border:0;border-radius:9px;background:#0f9d6b;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;">Long</button>` +
+      `<button type="button" id="sp-pop-short" style="flex:1;padding:9px 0;border:0;border-radius:9px;background:#e03a46;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;">Short</button></div>` +
+    `<div style="font-size:10px;color:#6b7482;margin-top:9px;line-height:1.35;">${S.walletOn ? 'Limit arms on-chain via the keeper. Market sends now.' : 'No wallet connected — this will be a local preview.'}</div>`;
+  document.body.appendChild(el);
+  const w = el.offsetWidth || 234, h = el.offsetHeight || 230;
+  let left = clientX + 6, top = clientY + 6;
+  if (left + w > window.innerWidth) left = clientX - w - 6;
+  if (top + h > window.innerHeight) top = clientY - h - 6;
+  el.style.left = Math.max(6, left) + 'px'; el.style.top = Math.max(6, top) + 'px';
+  _popSyncModo();
+  el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => { _popModo = b.dataset.m; _popSyncModo(); });
+  $('sp-pop-x').onclick = () => cerrarPopOrden();
+  $('sp-pop-long').onclick = () => _popColocar('long');
+  $('sp-pop-short').onclick = () => _popColocar('short');
+  setTimeout(() => { const a = $('sp-pop-amt'); if (a) { try { a.focus(); } catch (_) {} } }, 30);
+  setTimeout(() => { document.addEventListener('mousedown', _popFuera, true); document.addEventListener('keydown', _popEsc, true); }, 0);
 }
 function ctxFueraDemo(e) { const el = $('sp-ctx'); if (el && !el.contains(e.target)) cerrarCtxDemo(); }
 function ctxEscDemo(e) { if (e.key === 'Escape') cerrarCtxDemo(); }
