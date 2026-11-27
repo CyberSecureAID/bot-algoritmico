@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" href="assets/img/cco-32.png">
   <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
   <link rel="stylesheet" href="assets/css/styles.css">
-  <link rel="stylesheet" href="assets/css/cinta.css?v=1">
+  <link rel="stylesheet" href="assets/css/cinta.css?v=2">
   <style>
     html, body { background: #05070a !important; margin:0; padding:0; }
 
@@ -38,22 +38,11 @@
 
     canvas#lq-fx{position:fixed;inset:0;z-index:1;pointer-events:none}
 
-    /* Barra de volver, como en bots. */
-    #cco-volver{
-      position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:10px;
-      padding:14px 22px;
-      background:linear-gradient(180deg,rgba(5,7,10,.65),transparent);
-    }
-    #cco-volver .back-btn{display:inline-flex;align-items:center;gap:8px;
-      background:rgba(14,21,28,.8);border:1px solid #202b37;border-radius:11px;padding:9px 15px;
-      color:#e9edf5;text-decoration:none;font-weight:700;font-size:14px;transition:.15s}
-    #cco-volver .back-btn:hover{border-color:var(--gold,#E8B84B);color:var(--gold,#E8B84B)}
+    /* La cinta (pt-hdr, definida en cinta.css) ocupa de esquina a esquina y queda
+       pegada arriba. #cco-volver es solo el envoltorio sticky, SIN padding ni fondo
+       propios (antes esos los recortaban y la dejaban como una barrita despegada). */
+    #cco-volver{position:sticky;top:0;z-index:60}
     #cco-wallet{display:flex;gap:8px;align-items:center}
-    #cco-volver a{display:inline-flex;align-items:center;gap:8px;color:#e9edf5;text-decoration:none;
-      font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px}
-    #cco-volver a:hover{color:var(--gold,#E8B84B)}
-    #cco-volver .sep{color:#3a424e}
-    #cco-volver b{color:var(--gold,#E8B84B);font-family:'Plus Jakarta Sans',sans-serif;font-weight:800}
 
     /* Contenedor de la sección, por encima del fondo. */
     #lq-app{position:relative;z-index:2;min-height:100vh;
