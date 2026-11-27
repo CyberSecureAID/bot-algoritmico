@@ -52,7 +52,7 @@ export async function abrirMarket() {
 
   // Disclaimer OBLIGATORIO la primera vez. Sin aceptar, no se entra.
   let _aceptado = false;
-  try { _aceptado = localStorage.getItem('aurex-p2p-ok') === '1'; } catch (_) {}
+  try { _aceptado = localStorage.getItem('aurex-p2p-ok-v2') === '1'; } catch (_) {}
   if (!_aceptado) { mostrarDisclaimerP2P(card); return; }
 
   card.innerHTML = `
@@ -224,7 +224,7 @@ function mostrarDisclaimerP2P(card) {
     { t: 'Verifying is your job', p: 'If you sell, a buyer will contact you: check who they are before releasing anything. If you buy, you choose who to contact: check them before paying. Look at how many trades they have completed. If someone has no history, be extra careful.' },
     { t: 'How a trade works', p: 'You can split the amount you sell into parts, up to ten. The buyer pays the first part, you release the first part, and you continue in small steps until the trade is done. This keeps the risk low at every step, but it never replaces checking the person.' },
     { t: 'Who pays first', p: 'The buyer always pays first, then the seller releases. If you pay or release without checking who is on the other side, that is your decision and your risk. If the person is in another country you may have no way to recover anything. We are not responsible for that.' },
-    { t: 'You are in control', p: 'If you already know someone you want to trade with, you can use our platform to carry out that exchange safely. By continuing you accept full responsibility for your own trades and confirm you understand how this works.' }
+    { t: 'You are in control', p: 'If you already know someone you want to trade with, you can use our platform to carry out that exchange safely. DecFreedom is not a party to any trade, does not verify users, holds no funds and is not liable for any loss, fraud, failed or reversed payment, or dispute between users. Every trade is final and entirely at your own risk. By continuing you accept full responsibility for your own trades and confirm you understand how this works.' }
   ];
   let i = 0;
   const pintar = () => {
@@ -246,7 +246,7 @@ function mostrarDisclaimerP2P(card) {
       </div>`;
     document.getElementById('mk-disc2-ok').onclick = () => {
       if (ultimo) {
-        try { localStorage.setItem('aurex-p2p-ok', '1'); } catch (_) {}
+        try { localStorage.setItem('aurex-p2p-ok-v2', '1'); } catch (_) {}
         abrirMarket();
       } else { i++; pintar(); }
     };
