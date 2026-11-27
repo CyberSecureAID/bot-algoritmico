@@ -115,7 +115,7 @@ const PUERTAS = {
      Antes se montaba aqui encima de la app de bots y compartia su CSS, su wallet.js y
      su motor: por eso cualquier cambio en los bots rompia el swap. Ahora se navega. */
   swap: () => { location.href = '/modules/swap/swap'; },
-  market:  async () => (await import(J + 'market.js?v=125')).abrirMarket(),
+  market:  async () => (await import(J + 'market.js?v=126')).abrirMarket(),
   liq:     async () => (await import(J + 'liquidity.js?v=130')).abrirLiquidity(),
   pools:   async () => (await import(J + 'liquidity.js?v=130')).abrirPools(),
   heat:    async () => (await import(J + 'muros.js?v=130')).abrirMuros(),
