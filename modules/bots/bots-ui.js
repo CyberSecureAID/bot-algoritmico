@@ -595,7 +595,7 @@ function wireHeader() {
   if ($('c-off')) $('c-off').onclick = () => wallet.desconectar().catch(() => {});
   if ($('c-perfil')) $('c-perfil').onclick = () => { location.href = '/app?abrir=perfil'; };
   tutorial.wireFila(document);
-  if ($('c-market')) $('c-market').onclick = () => { location.href = '/app?abrir=market'; };
+  if ($('c-market')) $('c-market').onclick = () => { location.href = '/p2p'; };
   /* Si el usuario ya eligió idioma en otra visita, se aplica. Va en
      try por si el módulo no carga: sin él, todo sigue en español. */
   (async () => {

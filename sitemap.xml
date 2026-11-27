@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://cybersecureaid.github.io/bot-algoritmico/</loc>
-    <changefreq>hourly</changefreq>
-    <priority>1.0</priority>
-  </url>
+  <url><loc>https://decfreedom.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://decfreedom.com/modules/swap/swap</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://decfreedom.com/modules/launchpad/launchpad</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://decfreedom.com/modules/terminal/terminal</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://decfreedom.com/modules/bots/bots</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://decfreedom.com/modules/spot/spot</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://decfreedom.com/modules/shield/shield</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://decfreedom.com/p2p</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://decfreedom.com/transparency</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
 </urlset>

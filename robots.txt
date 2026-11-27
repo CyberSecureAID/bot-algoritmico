@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://cybersecureaid.github.io/bot-algoritmico/sitemap.xml
+Sitemap: https://decfreedom.com/sitemap.xml
