@@ -16,7 +16,6 @@ const SERVICIOS = [
   { t: 'Liquidity Pools', k: 'liquidity', ic: 'pool', d: 'Profundidad y liquidez' },
   { t: 'Herramientas', k: 'tools', ic: 'tools', d: 'Utilidades de trading' },
   { t: 'Academia', k: 'academy', ic: 'book', d: 'Aprende a operar' },
-  { t: 'Prize Pool', k: 'prize', ic: 'trophy', d: 'Fondo comunitario' },
   { t: 'Perfil', k: 'perfil', ic: 'user', d: 'Tu cuenta' },
   { t: 'Soporte', k: 'soporte', ic: 'support', d: 'Chatbot de ayuda' },
 ];

@@ -514,13 +514,13 @@ if ('serviceWorker' in navigator) {
     // que app.html. Antes la portada solo cargaba la española y el motor
     // viejo, por eso el chatbot siempre hablaba español aquí.
     var kbEs = document.createElement('script');
-    kbEs.src = 'assets/js/asistente/conocimiento.js?v=127';
+    kbEs.src = 'assets/js/asistente/conocimiento.js?v=128';
     kbEs.onload = function () {
       var kbEn = document.createElement('script');
       kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=2';
       var arrancarMotor = function () {
         var m = document.createElement('script');
-        m.src = 'assets/js/asistente/motor.js?v=131';
+        m.src = 'assets/js/asistente/motor.js?v=132';
         document.body.appendChild(m);
       };
       kbEn.onload = arrancarMotor;

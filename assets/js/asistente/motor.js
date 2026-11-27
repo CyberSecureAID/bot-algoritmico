@@ -476,7 +476,7 @@
     'suscripcion', 'cuota', 'mensual', 'pagar', 'pago',
     /* secciones */
     'marketplace', 'market', 'p2p', 'vendedor', 'comprador', 'disputa',
-    'fianza', 'prize pool', 'sorteo', 'pozo', 'premio', 'ganador',
+    'fianza', 'ganador',
     'perfil', 'grafica', 'grafico', 'historial', 'instalar',
     /* qué le pasa */
     'error', 'falla', 'fallo', 'problema', 'no funciona', 'no carga',

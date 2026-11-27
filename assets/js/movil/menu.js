@@ -24,7 +24,6 @@ const GRUPOS = [
     { k: 'aportar', ic: 'stack', t: 'Staking' },
     { k: 'tools', ic: 'tools', t: 'Tools' },
     { k: 'academy', ic: 'book', t: 'Academy' },
-    { k: 'prize', ic: 'trophy', t: 'Prize Pool' },
     { k: 'perfil', ic: 'user', t: 'Profile' },
     { k: 'idioma', ic: 'transfer', t: 'Language' },
     { k: 'instalar', ic: 'arrowDown', t: 'Install app' },

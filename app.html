@@ -411,19 +411,19 @@
       // Se cargan las DOS bases de conocimiento (español e inglés) y luego
       // el motor, que elige una u otra según el idioma de la página.
       var kbEs = document.createElement('script');
-      kbEs.src = 'assets/js/asistente/conocimiento.js?v=127';
+      kbEs.src = 'assets/js/asistente/conocimiento.js?v=128';
       kbEs.onload = function () {
         var kbEn = document.createElement('script');
         kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=3';
         kbEn.onload = function () {
           var m = document.createElement('script');
-          m.src = 'assets/js/asistente/motor.js?v=132';
+          m.src = 'assets/js/asistente/motor.js?v=133';
           document.body.appendChild(m);
         };
         // Si la KB inglesa falla, se sigue igual: el motor usa la española.
         kbEn.onerror = function () {
           var m = document.createElement('script');
-          m.src = 'assets/js/asistente/motor.js?v=132';
+          m.src = 'assets/js/asistente/motor.js?v=133';
           document.body.appendChild(m);
         };
         document.body.appendChild(kbEn);
