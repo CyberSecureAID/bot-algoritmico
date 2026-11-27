@@ -296,7 +296,7 @@ function cerrar() {
   try { if (C.chart) C.chart.remove(); } catch (_) {} C.chart = null; C.serie = null;
   ['cy-hw-box', 'cy-picker', 'cy-tfmenu', 'cy-img'].forEach((id) => { const e = $(id); if (e) e.remove(); });
   const ov = $('cy-overlay'); if (ov) ov.remove();
-  if (window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')) { try { location.href = new URL('../../index.html', import.meta.url).href; } catch (_) {} }
+  if (window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')) { try { location.href = new URL('/', import.meta.url).href; } catch (_) {} }
 }
 
 /* ── Chart: velas por ENCIMA del indicador (fondo transparente, rainbow detras) ── */

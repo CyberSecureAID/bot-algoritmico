@@ -188,7 +188,7 @@ function cerrarMulti() {
   cerrarMenu(); cerrarLineset();
   const m = $('mc-modal'); if (m) m.remove();
   const ov = $('mc-overlay'); if (ov) ov.remove();
-  if (window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')) { try { location.href = new URL('../../index.html', import.meta.url).href; } catch (_) {} }
+  if (window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')) { try { location.href = new URL('/', import.meta.url).href; } catch (_) {} }
 }
 function onResize() { S.paneles.forEach((p) => { try { p.chart.applyOptions({}); } catch (_) {} }); if (S.focus) sincronizarFocus(); }
 function onUpSig() { setTimeout(refrescarShareSigTodas, 0); }   // tras soltar/borrar un dibujo, revisa si hay posicion

@@ -216,7 +216,7 @@ export async function abrirCobroAnalisis(origen, wallet, ethers, onPagado) {
   $('#ap-back').onclick = () => {
     if (window.__ANALISIS_PAGINA__) {   // pagina propia: salir de verdad, no dejar la pagina en blanco
       if (history.length > 1) history.back();
-      else location.href = new URL('../../index.html', import.meta.url).href;
+      else location.href = new URL('/', import.meta.url).href;
       return;
     }
     cerrar();

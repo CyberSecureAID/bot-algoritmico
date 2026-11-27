@@ -120,7 +120,7 @@ export function avisoTerminal() {
     key: 'df_terminal_ack_v1',
     titulo: 'Before you use the Terminal',
     ok: 'Terminal',
-    enlace: '../../transparency.html',
+    enlace: '/transparency',
     firma: 'I have read and I accept the <b>Terms and Conditions</b> of the Terminal. I understand that every token shown here is created by third parties, that each tool here (including the security check) is informative and not a recommendation, that each service is unlocked and paid for on its own, and that DecFreedom guarantees no result and is not liable for any loss.',
     cuerpo: ''
       + '<p class="av-t"><span class="g">DecFreedom sells nothing and recommends nothing.</span> We build and lend the tools, the charts, the security reader and the swap window, and nothing more. We do not create, own, review, endorse, promote or sell any token shown here; every one of them is deployed by anonymous third parties we have no connection to and no control over. The Terminal is a non custodial, self service window on public blockchain data, and what you choose to buy or sell on it is your decision alone.</p>'

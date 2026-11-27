@@ -103,7 +103,7 @@ export function avisoSwap() {
     key: 'df_swap_ack_v1',
     titulo: 'Before you use the swap',
     ok: 'Enter the swap',
-    enlace: '../../transparency.html',
+    enlace: '/transparency',
     firma: 'I have read and I accept the <b>Terms and Conditions</b>. I understand that DecFreedom does not verify any token, does not guarantee any outcome and that I use the swap at my own risk.',
     cuerpo: ''
       + '<p class="av-t"><span class="g">DecFreedom does not guarantee the price, the execution or the outcome of any swap, and is not liable for any loss.</span> The swap is a non custodial interface over public liquidity on BNB Smart Chain. Your funds never leave your wallet until you sign, and every transaction is executed by public, verifiable contracts.</p>'

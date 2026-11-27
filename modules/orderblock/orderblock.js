@@ -1609,5 +1609,5 @@ function cerrar(){
   document.removeEventListener('visibilitychange',onVis); paused=false;
   const o=document.getElementById('ob-overlay'); if(o)o.remove();
   ov=cv=ctx=GL=glx=null; COINS=[]; green=[]; red=[]; strands=[]; strandsFaint=[]; booted=false;
-  if(window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')){ try{ location.href=new URL('../../index.html',import.meta.url).href; }catch(_){} }
+  if(window.__ANALISIS_PAGINA__ && !document.getElementById('an-root')){ try{ location.href=new URL('/',import.meta.url).href; }catch(_){} }
 }
