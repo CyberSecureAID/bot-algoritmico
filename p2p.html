@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070a">
+  <title>P2P Marketplace · DecFreedom</title>
+  <!-- SEO -->
+  <meta name="description" content="Buy and sell crypto peer to peer on BNB Smart Chain with on chain escrow. Non custodial, no middleman: funds are locked by a public contract and released only when both sides confirm.">
+  <meta name="keywords" content="P2P crypto, peer to peer exchange, BNB Smart Chain, escrow, buy crypto, sell crypto, non custodial marketplace, DecFreedom">
+  <link rel="canonical" href="https://decfreedom.com/p2p">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="DecFreedom">
+  <meta property="og:title" content="P2P Marketplace · DecFreedom">
+  <meta property="og:description" content="Buy and sell crypto peer to peer on BNB Smart Chain with on chain escrow. Non custodial, no middleman.">
+  <meta property="og:url" content="https://decfreedom.com/p2p">
+  <meta property="og:image" content="https://decfreedom.com/assets/portada/img/swap-bg.webp">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="P2P Marketplace · DecFreedom">
+  <meta name="twitter:description" content="Buy and sell crypto peer to peer on BNB Smart Chain with on chain escrow. Non custodial, no middleman.">
+  <meta name="twitter:image" content="https://decfreedom.com/assets/portada/img/swap-bg.webp">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"DecFreedom P2P Marketplace","url":"https://decfreedom.com/p2p","description":"Peer to peer crypto marketplace on BNB Smart Chain with on chain escrow. Non custodial: a public contract locks funds and releases them only when both sides confirm.","applicationCategory":"FinanceApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+  <link rel="icon" type="image/png" href="assets/img/cco-32.png">
+  <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
+  <link rel="stylesheet" href="assets/css/cinta.css?v=3">
+  <style>
+    html, body { background: #05070a !important; margin:0; padding:0; }
+
+    /* Fondo de la pagina (tema del marketplace). Si la imagen no esta, queda el degradado. */
+    #p2p-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-color: #05070a;
+      background-image:
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.05), transparent 58%),
+        linear-gradient(180deg, rgba(10,14,19,.20), rgba(5,7,10,.34) 55%),
+        url('assets/portada/img/swap-bg.webp');
+      background-size: auto, auto, cover;
+      background-position: center, center, center center;
+      background-repeat: no-repeat, no-repeat, no-repeat;
+    }
+    #p2p-bg:not(.con-img){
+      background-image:
+        radial-gradient(120% 75% at 50% 0%, rgba(232,184,75,.06), transparent 58%),
+        linear-gradient(180deg, #0a0e13, #05070a 55%);
+    }
+    canvas#p2p-fx{position:fixed;inset:0;z-index:1;pointer-events:none}
+
+    /* La cinta va POR ENCIMA del overlay del marketplace (que vive en z-9300),
+       asi el marketplace nunca tapa la barra superior ni se ven otras secciones. */
+    #cco-volver{position:sticky;top:0;z-index:9500}
+    #cco-wallet{display:flex;gap:8px;align-items:center}
+
+    /* El overlay del marketplace es el contenido de esta pagina: su velo deja ver
+       la cinta arriba (padding-top) y no necesita su propia X (se sale con Back). */
+    #mk-overlay{padding-top:78px !important}
+    #mk-overlay .mk-x{display:none !important}
+  </style>
+</head>
+<body>
+  <script>
+  /* GUARDIA MOVIL: en movil, el marketplace se abre dentro de la app. */
+  (function(){try{
+    var m=window.matchMedia?window.matchMedia('(max-width:900px)').matches
+         :(document.documentElement.clientWidth||0)<=900;
+    if(m)location.replace('/app?abrir=market');
+  }catch(_){}})();
+  </script>
+  <div id="p2p-bg" aria-hidden="true"></div>
+  <canvas id="p2p-fx" aria-hidden="true"></canvas>
+
+  <div id="cco-volver">
+    <header class="pt-hdr"><div class="pt-hdr__in">
+      <a class="sw-back" href="/" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</a>
+      <a class="pt-logo" href="/" aria-label="DecFreedom"><img src="assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>
+      <nav class="pt-nav" aria-label="Main">
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/swap/swap">Swap</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/launchpad/launchpad">Launchpad</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/terminal/terminal">Terminal</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/bots/bots">Bots</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/app?abrir=analisis">Analysis</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/spot/spot">Spot</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/aportar">Staking</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/shield/shield">Shield</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b lp-on" aria-current="page">P2P</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/app?abrir=academy">Academy</a></div>
+      </nav>
+      <div class="pt-hdr__a"><a class="c-contratos" href="/transparency">Contracts</a><div id="cco-wallet"></div></div>
+    </div></header>
+  </div>
+
+  <script type="module">
+    import { abrirMarket } from './assets/js/market.js?v=126';
+
+    // Fondo: si la imagen no existe, se queda el degradado (no rompe).
+    (function () {
+      var b = document.getElementById('p2p-bg');
+      if (b) b.classList.add('con-img');
+      var img = new Image();
+      img.onerror = function () { if (b) b.classList.remove('con-img'); };
+      img.src = 'assets/portada/img/swap-bg.webp';
+    })();
+
+    // Particulas cosmicas (mismo modulo que portada/bots/staking).
+    (async function () {
+      try {
+        var quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var lienzo = document.getElementById('p2p-fx');
+        if (!quieto && lienzo) {
+          var mod = await import('./assets/portada/chispas.js?v=200');
+          mod.brasas(lienzo);
+          [50, 200, 500, 1000].forEach(function (t) { setTimeout(function () { if (mod.brasas._remedir) mod.brasas._remedir(); }, t); });
+        }
+      } catch (e) {}
+    })();
+
+    // El marketplace ES la pagina: se monta de una y no se puede cerrar a una
+    // pagina vacia (la X esta oculta); se sale con el Back de la cinta.
+    try { await abrirMarket(); } catch (e) { console.warn('[p2p] market:', e); }
+  </script>
+</body>
+</html>

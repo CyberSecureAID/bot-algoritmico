@@ -798,15 +798,13 @@ async function montarParticulas() {
   } catch (_) {}
 }
 function cerrar() {
-  // Wallet Shield es su propia página. Al salir se VUELVE a la página anterior
-  // (de donde se entró: Home o Actives del móvil) con history.back(). Así no se
-  // recarga ni se pasa por index.html, y la wallet NO se desconecta.
+  // Back UNIFORME con el resto de modulos (Swap, Terminal, Spot, Staking...):
+  // siempre al lobby. Antes Shield hacia history.back() y por eso no coincidia
+  // con los demas; ahora se comporta igual que todos.
   const cont = document.getElementById('shd');
-  // Si la sección se montó dentro de la app móvil, basta con retirarla.
+  // Si la seccion se monto dentro de la app movil, basta con retirarla.
   if (document.getElementById('mv-app')) { if (cont) cont.remove(); return; }
-  // Si hay historial (se entró con location.href desde el móvil), volver atrás.
-  if (history.length > 1) { history.back(); return; }
-  // Respaldo: si no hay historial (entrada directa), ir a la portada.
+  // Escritorio / pagina propia: al lobby, igual que todos los demas modulos.
   try { location.replace('/'); } catch (_) { location.href = '/'; }
 }
 
@@ -823,7 +821,7 @@ function cabecera() {
     + it('/modules/swap/swap', 'Swap') + it('/modules/launchpad/launchpad', 'Launchpad') + it('/modules/terminal/terminal', 'Terminal')
     + it('/modules/bots/bots', 'Bots') + it('/app?abrir=analisis', 'Analysis') + it('/modules/spot/spot', 'Spot') + it('/aportar', 'Staking')
     + it('/modules/shield/shield', 'Shield', true)
-    + it('/app?abrir=market', 'P2P') + it('/app?abrir=academy', 'Academy')
+    + it('/p2p', 'P2P') + it('/app?abrir=academy', 'Academy')
     + '</nav>'
     + '<div class="pt-hdr__a"><div class="shd-sub" id="shd-sub" title="Subscription status, read live from the contract"></div></div>'
     + '</div></header>';
