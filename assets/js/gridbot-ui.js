@@ -6,7 +6,7 @@
  */
 
 import * as gb from './gridbot.js?v=208';
-import { t } from './idioma.js?v=167';
+import { t } from './idioma.js?v=168';
 import * as wallet from './wallet.js?v=129';
 import { MONEDAS, LISTA_TODAS } from './tokens.js?v=125';
 import * as perfil from './perfil.js?v=131';
@@ -14,9 +14,9 @@ import * as tutorial from './tutorial.js?v=125';
 import * as market from './market.js?v=126';
 import * as avisos from './avisos.js?v=125';
 import * as grafica from './grafica.js?v=125';
-import * as extras from './extras.js?v=200';
+import * as extras from './extras.js?v=201';
 import * as gestos from './gestos.js?v=125';
-import { inyectarEstilo } from './gridbot/estilos.js?v=201';
+import { inyectarEstilo } from './gridbot/estilos.js?v=202';
 import { moneda, num, _movil, tipoNum, escT, enCristiano, fmtPrecioUSD, icoInner, limpiarBusy, modalBusy, modalBusyTexto, modalError, modalClose } from './gridbot/util.js?v=3';
 import { LOGOS, LOGO_ST } from './gridbot/estado.js?v=1';
 import { APP, BASES, QUOTES, INFO, FEE_CICLO, GAS_OP_USD, VOL_DIARIA, PRESETS, NOMBRE_PRESET, GAS_VUELTA_USD, COM_DEX, LOGOS_WALLET, KEEPER_URL, CONF_BOTS, CLAVE_AVISO, CUPO_TOTAL, CUPO_POR_TIPO, NOMBRE_TIPO, CAT_NOMBRES, BOTMETA, RESERVA_BNB } from './gridbot/config.js?v=1';
@@ -464,7 +464,7 @@ function opcionesMovil() {
       <button class="cm-b oro" data-abrir="metamask">Abrir en MetaMask</button>
       <button class="cm-b" data-abrir="trust">Abrir en Trust Wallet</button>
       <button class="cm-b" data-abrir="safepal">Abrir en SafePal</button>
-      <div class="cm-n">Se abre CriptoCuba dentro de tu wallet y conecta solo.</div>
+      <div class="cm-n">Se abre DecFreedom dentro de tu wallet y conecta solo.</div>
 
       <div class="cm-eti">O sin salir de aquí</div>
       <button class="cm-b" data-wc="1">Conectar con WalletConnect</button>
@@ -566,7 +566,7 @@ function wireHeader() {
 
   if ($('c-academy')) $('c-academy').onclick = async () => {
     try {
-      const ac = await import('./academy.js?v=128');
+      const ac = await import('./academy.js?v=129');
       ac.abrirAcademy();
     } catch (e) { console.warn('[Aurex] academy:', e); }
   };
@@ -581,7 +581,7 @@ function wireHeader() {
      try por si el módulo no carga: sin él, todo sigue en español. */
   (async () => {
     try {
-      const idi = await import('./idioma.js?v=167');
+      const idi = await import('./idioma.js?v=168');
       idi.forzarInglesPorDefecto();
       idi.arrancarIdioma();
       const tx = $('c-idioma-tx');
@@ -663,7 +663,7 @@ function footerHTML() {
         <div class="faq-empty" id="faq-empty" style="display:none">No encontramos nada con esa palabra. Prueba con otra.</div>
       </div>
     </details>
-    <div class="c-foot-bottom">Cripto Cuba Oficial · Opera bajo tu propio riesgo</div>
+    <div class="c-foot-bottom">DecFreedom · Opera bajo tu propio riesgo</div>
   </footer>`;
 }
 function wireFaq() {
@@ -702,7 +702,7 @@ function render() {
   if (!cuenta) {
     host.innerHTML = headerHTML() + `<div class="wrap">
       <div class="conectar-box">
-        <h2>Cripto Cuba Oficial</h2>
+        <h2>DecFreedom</h2>
         <p>Bots que compran barato y venden caro por ti, en tu propia wallet. Sin custodia y sin KYC.</p>
         <button class="btn btn-oro" id="c-conectar2">Conectar wallet</button>
         <div id="c-hero-msg" style="margin-top:12px"></div>
@@ -1521,7 +1521,7 @@ function avisoDeRiesgo() {
           <div class="rg-frase-t">Tu frase de recuperación</div>
           <p>They are the <b>12 words</b> your wallet gave you when you created it. They are the key to all your money.</p>
           <p><b>Write them on paper</b> and keep them somewhere safe. Not on your phone, not in a photo, not in your email.</p>
-          <p class="rg-frase-x">If you lose them, <b>no one can recover them</b>: not us, not your wallet, no one. And if anyone asks you for them —whoever it is, even claiming to be from CriptoCuba— <b>it's a scam</b>. We will never ask you for them.</p>
+          <p class="rg-frase-x">If you lose them, <b>no one can recover them</b>: not us, not your wallet, no one. And if anyone asks you for them —whoever it is, even claiming to be from DecFreedom— <b>it's a scam</b>. We will never ask you for them.</p>
         </div>
 
         <label class="rg-ok"><input type="checkbox" id="rg-check"> <span>Lo he leído y lo entiendo</span></label>
@@ -3136,7 +3136,7 @@ function enganchar(cuenta) {
           } catch (e) { console.warn('[Aurex] historial:', e); }
           extras.descargarHistorial({
             par: `${sb}/${sq}`,
-            tipo: r.dataset.nombre || 'Bot CriptoCuba',
+            tipo: r.dataset.nombre || 'Bot DecFreedom',
             claseBot: r.dataset.tipo || '',
             moneda: sq || '',
             base: sb || '',
@@ -3270,7 +3270,7 @@ async function arrancar() {
       // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
       // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.
       try {
-        const idi = await import('./idioma.js?v=167');
+        const idi = await import('./idioma.js?v=168');
         idi.forzarInglesPorDefecto();
         idi.arrancarIdioma();
       } catch (_) {}

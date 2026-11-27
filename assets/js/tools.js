@@ -3,7 +3,7 @@
    inputmode=decimal sale el mismo teclado y ninguna flecha. */
 const _tipoNumCC = () => (window.matchMedia('(max-width: 760px)').matches ? 'text' : 'number');
 
-// tools.js — Herramientas de CriptoCuba. Módulo independiente.
+// tools.js — Herramientas de DecFreedom. Módulo independiente.
 //
 // Se carga solo cuando alguien abre el menú de herramientas, así que no
 // pesa nada para quien no las usa.
@@ -775,7 +775,7 @@ function pintarAlertas() {
       }).join('')}</div>` : ''}
 
     <div class="pv-nota">
-      Las alertas viven <b>en este navegador</b>, no en un servidor. Funcionan mientras tengas CriptoCuba abierto o instalado como app.
+      Las alertas viven <b>en este navegador</b>, no en un servidor. Funcionan mientras tengas DecFreedom abierto o instalado como app.
     </div>`;
 
   ponerLogos();
@@ -978,7 +978,7 @@ export function vigilar() {
 function avisar(texto) {
   try {
     if (Notification && Notification.permission === 'granted') {
-      new Notification('CriptoCuba · alerta de precio', { body: texto, icon: 'assets/img/cco-192.png' });
+      new Notification('DecFreedom · alerta de precio', { body: texto, icon: 'assets/img/cco-192.png' });
       return;
     }
   } catch (_) {}

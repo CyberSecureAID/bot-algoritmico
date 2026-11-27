@@ -68,7 +68,7 @@ function buscarMoneda(MONEDAS, simb) {
 }
 
 let _tr = null;
-try { import('./idioma.js?v=126').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
+try { import('./idioma.js?v=127').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
 const T = (t) => { try { return _tr ? _tr.t(t) : t; } catch (_) { return t; } };
 
 const fmt = (p) => {
@@ -868,7 +868,7 @@ function sonar(a, precioAhora) {
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(`${a.par} ${a.vender ? '▼' : '▲'} ${fmt(a.precio)}`, {
-        body: T('El precio ha llegado a tu nivel. Abre CriptoCuba para confirmar la orden.'),
+        body: T('El precio ha llegado a tu nivel. Abre DecFreedom para confirmar la orden.'),
         icon: 'assets/img/aurex-192.png'
       });
     }

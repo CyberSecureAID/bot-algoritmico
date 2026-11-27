@@ -19,7 +19,7 @@ const QUICK = [
 
 const PROMOS = [
   { ic: 'rocket', t: 'Launchpad', s: 'Create your own coin in minutes', go: 'launchpad' },
-  { ic: 'book',   t: 'Academia CriptoCuba', s: 'Aprende a operar y multiplica tu ventaja', go: 'academy' },
+  { ic: 'book',   t: 'Academia DecFreedom', s: 'Aprende a operar y multiplica tu ventaja', go: 'academy' },
   { ic: 'trophy', t: 'Prize Pool comunitario', s: 'Participa y gana del fondo común', go: 'prize' },
   { ic: 'bot',    t: 'Bots que operan por ti', s: 'Compran abajo y venden arriba, en tu wallet', go: 'bots' },
   { ic: 'tools',  t: 'Herramientas', s: 'Calculadoras y utilidades para operar mejor', go: 'tools' },

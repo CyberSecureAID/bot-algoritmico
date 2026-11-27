@@ -1944,7 +1944,7 @@ function guardarImagen() {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `criptocuba-radar-${_par}-${Date.now()}.png`;
+      a.href = url; a.download = `decfreedom-radar-${_par}-${Date.now()}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     }, 'image/png');

@@ -300,9 +300,9 @@
   <canvas id="cco-fx" data-n="260" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
-  <script type="module" src="assets/js/gridbot-ui.js?v=278"></script>
+  <script type="module" src="assets/js/gridbot-ui.js?v=279"></script>
   <script>
-  /* Protección contra "clickjacking": si alguien mete CriptoCuba dentro de un
+  /* Protección contra "clickjacking": si alguien mete DecFreedom dentro de un
      marco en su propia web, podría poner botones falsos encima para que
      firmes algo sin darte cuenta. Si detectamos que no somos la ventana
      principal, salimos del marco. No afecta al uso normal. */
@@ -411,19 +411,19 @@
       // Se cargan las DOS bases de conocimiento (español e inglés) y luego
       // el motor, que elige una u otra según el idioma de la página.
       var kbEs = document.createElement('script');
-      kbEs.src = 'assets/js/asistente/conocimiento.js?v=126';
+      kbEs.src = 'assets/js/asistente/conocimiento.js?v=127';
       kbEs.onload = function () {
         var kbEn = document.createElement('script');
-        kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=2';
+        kbEn.src = 'assets/js/asistente/conocimiento-en.js?v=3';
         kbEn.onload = function () {
           var m = document.createElement('script');
-          m.src = 'assets/js/asistente/motor.js?v=131';
+          m.src = 'assets/js/asistente/motor.js?v=132';
           document.body.appendChild(m);
         };
         // Si la KB inglesa falla, se sigue igual: el motor usa la española.
         kbEn.onerror = function () {
           var m = document.createElement('script');
-          m.src = 'assets/js/asistente/motor.js?v=131';
+          m.src = 'assets/js/asistente/motor.js?v=132';
           document.body.appendChild(m);
         };
         document.body.appendChild(kbEn);

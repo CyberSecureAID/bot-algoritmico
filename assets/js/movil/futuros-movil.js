@@ -16,7 +16,7 @@ import * as wallet from '../wallet.js?v=129';
 import { IC } from './iconos.js?v=1';
 import { abrirHistorialMovil } from './operar.js?v=4';
 import { abrirAlerta } from './alerta.js?v=1';
-import { t } from '../idioma.js?v=163';
+import { t } from '../idioma.js?v=164';
 
 let _pares = [], _par = null;
 let _tipo = 'market', _modo = 'cruzada', _lev = 20;

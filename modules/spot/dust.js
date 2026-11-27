@@ -16,7 +16,7 @@
    salida (anti slippage): si el pool da menos del minimo, la tx revierte y no se
    pierde nada. */
 
-import { cuentaActual, proveedorActivo } from '../../assets/js/wallet.js?v=129';
+import { cuentaActual, proveedorActivo } from '../../assets/js/wallet.js?v=130';
 
 const USDT = '0x55d398326f99059fF775485246999027B3197955';
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';

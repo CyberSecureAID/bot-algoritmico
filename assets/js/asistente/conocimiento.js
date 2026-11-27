@@ -1,5 +1,5 @@
 /* ================================================================
-   JESÚS — Asistente de Cripto Cuba Oficial
+   JESÚS — Asistente de DecFreedom
    SOLO EN ESPAÑOL, a propósito. Mantener dos idiomas obliga a duplicar
    cada respuesta y a que las dos versiones se desincronicen con el
    tiempo. Quien lo necesite en otro idioma tiene el traductor del
@@ -21,7 +21,7 @@ window.NP_BOT_KB = {
 
   bot: {
     name:   'Jesús',
-    role:   'Asistente de Cripto Cuba Oficial',
+    role:   'Asistente de DecFreedom',
     avatar: 'assets/img/jesus-avatar.webp',
 
     /* Cada saludo se presenta y termina llevando al usuario a un terreno
@@ -29,14 +29,14 @@ window.NP_BOT_KB = {
        dejarle escribiendo a ciegas, le damos por dónde tirar. */
     greeting: [
       'Hola, soy **Jesús**. Estoy aquí para ayudarte.\n\n¿Qué necesitas?',
-      '¡Hola! Mi nombre es **Jesús**, de Cripto Cuba Oficial.\n\nDime en qué te ayudo.',
+      '¡Hola! Mi nombre es **Jesús**, de DecFreedom.\n\nDime en qué te ayudo.',
       'Buenas. Soy **Jesús**.\n\n¿En qué puedo ayudarte hoy?',
       'Hola, ¿qué tal? Le atiende **Jesús**.\n\nCuéntame qué necesitas.',
-      '¡Hola! Soy **Jesús**, del equipo de Cripto Cuba Oficial.\n\n¿Qué te gustaría saber?',
+      '¡Hola! Soy **Jesús**, del equipo de DecFreedom.\n\n¿Qué te gustaría saber?',
       'Buenas, mi nombre es **Jesús**.\n\nEstoy para lo que necesites.',
-      'Hola. **Jesús** al habla, de Cripto Cuba Oficial.\n\n¿Cómo te ayudo?',
+      'Hola. **Jesús** al habla, de DecFreedom.\n\n¿Cómo te ayudo?',
       '¿Qué tal? Soy **Jesús**.\n\nPregúntame lo que quieras.',
-      'Hola, soy **Jesús** y llevo la atención de Cripto Cuba Oficial.\n\nDime qué necesitas.',
+      'Hola, soy **Jesús** y llevo la atención de DecFreedom.\n\nDime qué necesitas.',
       'Buenas. Soy **Jesús**, encantado.\n\n¿En qué te puedo ayudar?'
     ],
 
@@ -141,19 +141,19 @@ window.NP_BOT_KB = {
 
     /* Cuando preguntan algo que no tiene nada que ver. */
     redirect: {
-      any:      ['Eso se sale de lo mío: yo estoy aquí para CriptoCuba.\n\n¿Te ayudo con algo de la plataforma?'],
+      any:      ['Eso se sale de lo mío: yo estoy aquí para DecFreedom.\n\n¿Te ayudo con algo de la plataforma?'],
       nuevo:    ['De eso no sé, lo siento. Lo mío son los bots y la plataforma.\n\n¿Quieres que te cuente cómo funciona?'],
       experto:  ['Ahí no te puedo ayudar. Pregúntame de la plataforma y te respondo mejor.'],
-      problema: ['Eso no lo llevo yo. Si tienes algún problema con Cripto Cuba Oficial, cuéntamelo y lo miramos.']
+      problema: ['Eso no lo llevo yo. Si tienes algún problema con DecFreedom, cuéntamelo y lo miramos.']
     },
     stillOffScope: [
-      'Sigue sin ser lo mío, y por muchas vueltas que le demos no va a cambiar.\n\nSi es algo de Cripto Cuba Oficial, aquí estoy. Si no, mejor te lo resuelven en otro sitio.'
+      'Sigue sin ser lo mío, y por muchas vueltas que le demos no va a cambiar.\n\nSi es algo de DecFreedom, aquí estoy. Si no, mejor te lo resuelven en otro sitio.'
     ],
 
     /* Preguntas para saber por dónde ayudar. */
     triage: {
       any:      ['Para no adivinar: ¿es sobre **los bots**, sobre **el marketplace**, o sobre **algo que no te funciona**?'],
-      nuevo:    ['¿Te cuento primero **qué es Cripto Cuba Oficial**, o prefieres ir directo a **cómo empezar**?'],
+      nuevo:    ['¿Te cuento primero **qué es DecFreedom**, o prefieres ir directo a **cómo empezar**?'],
       experto:  ['¿De qué bot me hablas, y qué configuración tienes puesta?'],
       problema: ['Cuéntame qué está pasando exactamente y desde cuándo.']
     },
@@ -221,7 +221,7 @@ window.NP_BOT_KB = {
       },
       place: {
         answer: [
-          'Cripto Cuba Oficial funciona desde cualquier país, sin registro ni papeles. Solo necesitas una wallet.',
+          'DecFreedom funciona desde cualquier país, sin registro ni papeles. Solo necesitas una wallet.',
           'Da igual dónde estés: es una web, y todo pasa en la blockchain. No pedimos documentación a nadie.'
         ]
       },
@@ -258,14 +258,14 @@ window.NP_BOT_KB = {
       },
       experience: {
         answer: [
-          'Cripto Cuba Oficial lleva funcionando con usuarios reales, y todo lo que hace queda registrado en la blockchain.\n\nLo que te puedo garantizar es que tu dinero es tuyo; lo que no te puedo garantizar son ganancias.',
+          'DecFreedom lleva funcionando con usuarios reales, y todo lo que hace queda registrado en la blockchain.\n\nLo que te puedo garantizar es que tu dinero es tuyo; lo que no te puedo garantizar son ganancias.',
           'La plataforma está en marcha y los contratos son públicos.\n\nY te lo digo claro: ningún bot garantiza ganar. Lo que sí garantizamos es que nadie toca tus fondos.'
         ]
       },
       intro: {
         answer: [
-          'Soy Jesús, el asistente de Cripto Cuba Oficial. Estoy aquí para lo que necesites de la plataforma.',
-          'Jesús, asistente de Cripto Cuba Oficial. Pregúntame lo que quieras sobre los bots o la web.'
+          'Soy Jesús, el asistente de DecFreedom. Estoy aquí para lo que necesites de la plataforma.',
+          'Jesús, asistente de DecFreedom. Pregúntame lo que quieras sobre los bots o la web.'
         ]
       },
       compare: {
@@ -290,7 +290,7 @@ window.NP_BOT_KB = {
          Mientras esté vacío, el botón sencillamente no aparece. */
       whatsapp:   'https://wa.me/5358648458',
       grupo:      'https://t.me/DecFreedom',
-      grupoTx:    'Cripto Cuba Oficial'
+      grupoTx:    'DecFreedom'
     }
   },
 
@@ -527,7 +527,7 @@ window.NP_BOT_KB = {
       intro: 'Vamos a conectar tu wallet. Depende de si estás en el ordenador o en el móvil.',
       pasos: [
         '**Si estás en el ordenador:** pulsa **Conectar wallet** arriba a la derecha y acepta en la ventana de MetaMask.',
-        '**Si estás en el móvil:** al pulsar **Conectar wallet** sale una ventana con **Abrir en MetaMask**, Trust o SafePal. Toca la tuya.\n\nSe abrirá Cripto Cuba Oficial dentro de tu wallet y conectará sola.',
+        '**Si estás en el móvil:** al pulsar **Conectar wallet** sale una ventana con **Abrir en MetaMask**, Trust o SafePal. Toca la tuya.\n\nSe abrirá DecFreedom dentro de tu wallet y conectará sola.',
         'Comprueba que arriba a la derecha aparece tu dirección (algo como 0x97e0…CA7d). Si la ves, ya estás dentro.'
       ],
       fin: 'Perfecto, wallet conectada.\n\nAhora ya puedes cargar gas y montar tu primer bot.',
@@ -862,7 +862,7 @@ window.NP_BOT_KB = {
       answer: [
         'Hola. ¿En qué te ayudo?',
         '¡Hola! Dime qué necesitas.',
-        'Buenas. Pregúntame lo que quieras sobre CriptoCuba.',
+        'Buenas. Pregúntame lo que quieras sobre DecFreedom.',
         'Hola, ¿qué tal? ¿Qué te gustaría saber?'
       ]
     },
@@ -908,10 +908,10 @@ window.NP_BOT_KB = {
 
     /* ══════════════ QUÉ ES AUREX ══════════════ */
     {
-      topic: 'qué es Cripto Cuba Oficial',
+      topic: 'qué es DecFreedom',
       keys: [
-        'que es criptocuba', 'que es cripto cuba', 'criptocuba', 'cripto cuba',
-        'que es cripto cuba oficial', 'hablame de criptocuba', 'cuentame de criptocuba',
+        'que es decfreedom', 'que es decfreedom', 'decfreedom', 'decfreedom',
+        'que es decfreedom oficial', 'hablame de decfreedom', 'cuentame de decfreedom',
         'que es aurex', 'qué es aurex', 'que es esto', 'que es esta pagina',
         'que es aurex finance',
         'que es este sitio', 'que es la plataforma', 'de que va', 'de que va esto',
@@ -925,12 +925,12 @@ window.NP_BOT_KB = {
         'esto que es', 'y esto', 'nunca habia visto esto', 'primera vez aqui'
       ],
       answer: [
-        'Cripto Cuba Oficial es un **ecosistema DeFi no custodial**: un conjunto de herramientas para que tu dinero trabaje en los mercados **sin salir nunca de tu wallet**.\n\nNo es una app de bots: es una plataforma completa con automatización, mercado entre personas, intercambio de monedas, eventos comunitarios y formación.\n\n¿Por dónde quieres que empiece?',
+        'DecFreedom es un **ecosistema DeFi no custodial**: un conjunto de herramientas para que tu dinero trabaje en los mercados **sin salir nunca de tu wallet**.\n\nNo es una app de bots: es una plataforma completa con automatización, mercado entre personas, intercambio de monedas, eventos comunitarios y formación.\n\n¿Por dónde quieres que empiece?',
         'Es un **ecosistema descentralizado** montado sobre BNB Smart Chain. Lo que lo distingue: **nunca custodiamos tu dinero**. Ni registro, ni KYC, ni depósitos.\n\nDentro hay automatización de operaciones, un mercado entre personas, swap, sorteos comunitarios y material para aprender.\n\n¿Qué parte te interesa?',
-        'Cripto Cuba Oficial es una plataforma **DeFi no custodial**: automatiza tus operaciones en los mercados financieros mientras tu dinero **sigue siendo tuyo, en tu wallet**.\n\nNo somos un exchange donde depositas. Somos una capa de herramientas sobre la blockchain que tú controlas.\n\n¿Te cuento las partes?'
+        'DecFreedom es una plataforma **DeFi no custodial**: automatiza tus operaciones en los mercados financieros mientras tu dinero **sigue siendo tuyo, en tu wallet**.\n\nNo somos un exchange donde depositas. Somos una capa de herramientas sobre la blockchain que tú controlas.\n\n¿Te cuento las partes?'
       ],
       more: [
-        'Te lo desgloso. Cripto Cuba Oficial tiene **cinco patas**:\n\n**1 · Automatización.** Cuatro estrategias distintas, cada una para un momento del mercado:\n· **Smart Grid** — compra abajo y vende arriba, en bucle\n· **Accumulator** — compra más cuanto más baja y vende todo al objetivo\n· **Cash Out** — vende cuando el precio llega a donde marcaste\n· **DCA** — compra una cantidad fija cada cierto tiempo\n\n**2 · Marketplace P2P.** Comprar y vender cripto entre personas de cualquier país, pagando como acordéis. Con fianza, cripto retenida y árbitros.\n\n**3 · Swap.** Intercambio directo entre monedas desde tu wallet.\n\n**4 · Prize Pool.** Sorteos comunitarios con aleatoriedad verificable en cadena. Nadie puede manipularlos, ni nosotros.\n\n**5 · Formación.** Cada herramienta explica su economía real: qué la hace rentable, qué puede salir mal y cuánto cuesta.'
+        'Te lo desgloso. DecFreedom tiene **cinco patas**:\n\n**1 · Automatización.** Cuatro estrategias distintas, cada una para un momento del mercado:\n· **Smart Grid** — compra abajo y vende arriba, en bucle\n· **Accumulator** — compra más cuanto más baja y vende todo al objetivo\n· **Cash Out** — vende cuando el precio llega a donde marcaste\n· **DCA** — compra una cantidad fija cada cierto tiempo\n\n**2 · Marketplace P2P.** Comprar y vender cripto entre personas de cualquier país, pagando como acordéis. Con fianza, cripto retenida y árbitros.\n\n**3 · Swap.** Intercambio directo entre monedas desde tu wallet.\n\n**4 · Prize Pool.** Sorteos comunitarios con aleatoriedad verificable en cadena. Nadie puede manipularlos, ni nosotros.\n\n**5 · Formación.** Cada herramienta explica su economía real: qué la hace rentable, qué puede salir mal y cuánto cuesta.'
       ],
       opciones: [
         { label: 'Los bots',        q: 'que bots hay' },
@@ -951,7 +951,7 @@ window.NP_BOT_KB = {
              'donde veo que es real', 'como se que es real', 'como compruebo'],
       answer: [
         '**Tu dinero nunca sale de tu wallet.** No lo depositas en ningún sitio: sigue siendo tuyo todo el tiempo.\n\nLo que haces es dar permiso al contrato para mover una cantidad concreta, y ese permiso lo puedes quitar cuando quieras desde tu perfil.',
-        'No custodiamos nada. Ni yo ni nadie de Cripto Cuba Oficial puede tocar tus fondos.\n\nEl bot funciona con un permiso limitado que tú das y tú retiras. Está en tu perfil, sección **Permisos de gasto**.',
+        'No custodiamos nada. Ni yo ni nadie de DecFreedom puede tocar tus fondos.\n\nEl bot funciona con un permiso limitado que tú das y tú retiras. Está en tu perfil, sección **Permisos de gasto**.',
         'Aquí no hay depósitos. Tu dinero está en tu wallet, y solo se mueve cuando el contrato ejecuta una operación que tú configuraste.\n\nEs la diferencia principal con un exchange centralizado.'
       ],
       more: [
@@ -1074,8 +1074,8 @@ window.NP_BOT_KB = {
              'metamask', 'trust wallet', 'safepal', 'no puedo conectar',
              'como conecto', 'walletconnect'],
       answer: [
-        'En el ordenador: pulsa **Conectar wallet** y acepta en la extensión.\n\nEn el móvil: al pulsar sale una ventana con **"Abrir en MetaMask"**, "Trust" o "SafePal". Tócala y se abre Cripto Cuba Oficial dentro de tu wallet, donde conecta solo.',
-        'Si estás en el móvil, lo más fiable es **abrir Cripto Cuba Oficial desde el navegador de tu wallet**. En la ventana de conexión tienes el botón directo.\n\n¿Te sale algún mensaje de error concreto?',
+        'En el ordenador: pulsa **Conectar wallet** y acepta en la extensión.\n\nEn el móvil: al pulsar sale una ventana con **"Abrir en MetaMask"**, "Trust" o "SafePal". Tócala y se abre DecFreedom dentro de tu wallet, donde conecta solo.',
+        'Si estás en el móvil, lo más fiable es **abrir DecFreedom desde el navegador de tu wallet**. En la ventana de conexión tienes el botón directo.\n\n¿Te sale algún mensaje de error concreto?',
         'Toca "Conectar wallet". Si no funciona, prueba a abrir la página desde el navegador interno de MetaMask o Trust: ahí la conexión es automática.'
       ],
       more: [
@@ -1197,7 +1197,7 @@ window.NP_BOT_KB = {
       keys: ['instalar', 'app', 'aplicacion', 'descargar', 'tener en el movil',
              'instalar en el telefono', 'como la instalo'],
       answer: [
-        'Cripto Cuba Oficial se puede instalar como aplicación. En el ordenador tienes el botón **Instalar** en el menú de arriba; en el móvil, desde el menú del navegador.\n\nSe abre con su icono, a pantalla completa, y funciona aunque la conexión vaya lenta.',
+        'DecFreedom se puede instalar como aplicación. En el ordenador tienes el botón **Instalar** en el menú de arriba; en el móvil, desde el menú del navegador.\n\nSe abre con su icono, a pantalla completa, y funciona aunque la conexión vaya lenta.',
         'Sí, se instala. Busca **Instalar** en el menú.\n\nUn aviso: si la instalas en el móvil, la wallet no se puede conectar dentro de la app. Para operar desde el teléfono es mejor entrar por el navegador de MetaMask o Trust.'
       ]
     },
@@ -1213,8 +1213,8 @@ window.NP_BOT_KB = {
              'quien eres tu', 'eres el dueño', 'eres una persona real',
              'como se llama el dueño', 'quien lo dirige', 'jefe', 'quien es el jefe'],
       answer: [
-        'El CEO de Cripto Cuba Oficial es **Jesús**. Es quien dirige el proyecto y quien responde personalmente cuando hace falta.\n\nAquí tienes su contacto directo:',
-        '**Jesús** lleva CriptoCuba. No hay una empresa grande detrás con departamentos: hay una persona con la que puedes hablar directamente.\n\nEste es su contacto:',
+        'El CEO de DecFreedom es **Jesús**. Es quien dirige el proyecto y quien responde personalmente cuando hace falta.\n\nAquí tienes su contacto directo:',
+        '**Jesús** lleva DecFreedom. No hay una empresa grande detrás con departamentos: hay una persona con la que puedes hablar directamente.\n\nEste es su contacto:',
         'Se llama **Jesús** y es el fundador. Puedes escribirle tú mismo, sin intermediarios ni tickets de soporte:'
       ],
       contactCard: true
@@ -1225,7 +1225,7 @@ window.NP_BOT_KB = {
              'quien es el dueno', 'quien creo aurex', 'de quien es', 'hay un equipo',
              'es una empresa', 'sois una empresa'],
       answer: [
-        'Detrás de Cripto Cuba Oficial hay un equipo pequeño, y el contacto directo soy yo. No somos una empresa grande ni queremos parecerlo.\n\nLo que sí puedes comprobar tú mismo: los contratos son públicos y están en la blockchain.',
+        'Detrás de DecFreedom hay un equipo pequeño, y el contacto directo soy yo. No somos una empresa grande ni queremos parecerlo.\n\nLo que sí puedes comprobar tú mismo: los contratos son públicos y están en la blockchain.',
         'Es un proyecto de un equipo reducido. Puedes hablar directamente con nosotros, sin pasar por diez filtros.\n\nY lo importante: aunque desapareciéramos mañana, **tu dinero sigue en tu wallet**. No lo tenemos nosotros.',
         'Un equipo pequeño, con contacto directo. Nada de call center.\n\nY la parte que de verdad importa: no custodiamos fondos, así que no dependes de que sigamos aquí.'
       ],
@@ -1355,8 +1355,8 @@ window.NP_BOT_KB = {
              'como aprendo a operar', 'aprender trading', 'curso de trading',
              'quiero aprender trading', 'me ensenas', 'hay formacion'],
       answer: [
-        'Sí, tenemos **Cripto Cuba Academy**: 17 clases con examen, 20 audiolibros y mi estrategia completa en tres fases.\n\nLa idea es que no dependas de los bots para siempre. Está bien que trabajen por ti, pero **entender lo que hacen es lo que te da tranquilidad**.',
-        '**Cripto Cuba Academy** es la parte de formación. De cero: qué es una criptomoneda, qué es el spread, cómo leer un gráfico, hasta la estrategia que uso yo.\n\nCada clase tiene examen y hacen falta 80 puntos para pasar. No es una carpeta de vídeos: es un camino.',
+        'Sí, tenemos **DecFreedom Academy**: 17 clases con examen, 20 audiolibros y mi estrategia completa en tres fases.\n\nLa idea es que no dependas de los bots para siempre. Está bien que trabajen por ti, pero **entender lo que hacen es lo que te da tranquilidad**.',
+        '**DecFreedom Academy** es la parte de formación. De cero: qué es una criptomoneda, qué es el spread, cómo leer un gráfico, hasta la estrategia que uso yo.\n\nCada clase tiene examen y hacen falta 80 puntos para pasar. No es una carpeta de vídeos: es un camino.',
         'Hay academia, sí. Y te digo por qué merece la pena aunque uses bots:\n\nEl bot opera por ti, pero **eres tú quien decide el rango, la moneda y cuándo parar**. Esas decisiones se toman mejor sabiendo qué miras.\n\nDesde 10 USD al mes.'
       ],
       more: [

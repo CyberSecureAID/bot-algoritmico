@@ -8,7 +8,7 @@ import { money, cantidad, logoDe } from './fmt.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const APP_NOMBRE = 'CriptoCuba Oficial';
+const APP_NOMBRE = 'DecFreedom';
 const LOGO_ESP = { EUR: 'https://flagcdn.com/w80/eu.png', GBP: 'https://flagcdn.com/w80/gb.png' };
 let _ojo = (() => { try { return localStorage.getItem('mv-ojo') === '1'; } catch (_) { return false; } })();
 let _tab = 'spot';
@@ -166,7 +166,7 @@ async function compartirBalance(api) {
   x.strokeStyle = 'rgba(232,184,75,.35)'; x.lineWidth = 2; roundRect(x, 70, 150, W - 140, H - 380, 44); x.stroke();
   // Marca
   x.fillStyle = '#E8B84B'; x.font = '700 40px "Plus Jakarta Sans", system-ui, sans-serif';
-  x.fillText('CriptoCuba Oficial', 120, 250);
+  x.fillText('DecFreedom', 120, 250);
   // Etiqueta
   x.fillStyle = '#8b96a3'; x.font = '400 34px system-ui, sans-serif';
   x.fillText('Balance total', 120, 470);
@@ -181,16 +181,16 @@ async function compartirBalance(api) {
 
   cv.toBlob(async (blob) => {
     if (!blob) return;
-    const file = new File([blob], 'balance-criptocuba.png', { type: 'image/png' });
+    const file = new File([blob], 'balance-decfreedom.png', { type: 'image/png' });
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Mi balance en CriptoCuba Oficial' });
+        await navigator.share({ files: [file], title: 'Mi balance en DecFreedom' });
         return;
       }
     } catch (_) {}
     // Fallback: descargar
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'balance-criptocuba.png'; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = 'balance-decfreedom.png'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }, 'image/png');
 }

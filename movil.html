@@ -91,14 +91,14 @@
      gridbot-ui tenía otra. Eso creaba dos vías en conflicto. Ahora esta página
      solo carga gridbot-ui, que es quien monta la interfaz móvil con la ÚNICA
      función de conexión del proyecto (la que detecta la red y conecta). */
-  import * as wallet from './assets/js/wallet.js?v=126';
+  import * as wallet from './assets/js/wallet.js?v=127';
   (async () => {
     // Cargar la interfaz PRIMERO, sin esperar a la reconexión: antes se hacía
     // 'await reconectarSiProcede()' aquí, y si eso tardaba (red lenta en el
     // navegador de la wallet) la página se quedaba EN BLANCO esperando. Ahora la
     // interfaz carga enseguida y la reconexión va por su cuenta en paralelo.
     try {
-      await import('./assets/js/gridbot-ui.js?v=267');   // monta el móvil (detecta móvil)
+      await import('./assets/js/gridbot-ui.js?v=268');   // monta el móvil (detecta móvil)
     } catch (e) {
       document.body.insertAdjacentHTML('beforeend',
         '<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#8b96a3">' +

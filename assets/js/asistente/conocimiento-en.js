@@ -1,5 +1,5 @@
 /* ================================================================
-   JESUS - Cripto Cuba Oficial assistant - ENGLISH knowledge base
+   JESUS - DecFreedom assistant - ENGLISH knowledge base
    ================================================================
    window.NP_BOT_KB_EN. El motor lo usa cuando el idioma es ingles.
 
@@ -15,12 +15,12 @@
   // Copia superficial del bot español + sobrescritura de lo traducido.
   var botEN = Object.assign({}, esBase, {
     name: 'Jesús',
-    role: 'Cripto Cuba Oficial assistant',
+    role: 'DecFreedom assistant',
     greeting: [
       "Hi, I'm **Jesús**. I'm here to help.\n\nWhat do you need?",
-      "Hello! My name is **Jesús**, from Cripto Cuba Oficial.\n\nTell me how I can help.",
+      "Hello! My name is **Jesús**, from DecFreedom.\n\nTell me how I can help.",
       "Hey there. I'm **Jesús**.\n\nWhat can I help you with today?",
-      "Hi! I'm **Jesús**, from the Cripto Cuba Oficial team.\n\nWhat would you like to know?"
+      "Hi! I'm **Jesús**, from the DecFreedom team.\n\nWhat would you like to know?"
     ],
     quick: [
       { label: 'What is this?',   q: 'what bots are there' },

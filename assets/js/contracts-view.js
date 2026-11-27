@@ -165,7 +165,7 @@
     var lines=[head.map(csvCell).join(',')];
     D.forEach(function(c){lines.push([c.nombre,c.cat,c.proxy,(c.impl||''),bs(c.proxy),(c.impl?bs(c.impl):''),'BNB Smart Chain (chainId 56)'].map(csvCell).join(','));});
     var blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
-    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='criptocuba-contracts.csv';document.body.appendChild(a);a.click();
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='decfreedom-contracts.csv';document.body.appendChild(a);a.click();
     setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},120);
   }
   /* ── Live deployment widget: reads the public GitHub API (commit + repo +
