@@ -20,7 +20,6 @@ const QUICK = [
 const PROMOS = [
   { ic: 'rocket', t: 'Launchpad', s: 'Create your own coin in minutes', go: 'launchpad' },
   { ic: 'book',   t: 'Academia DecFreedom', s: 'Aprende a operar y multiplica tu ventaja', go: 'academy' },
-  { ic: 'trophy', t: 'Prize Pool comunitario', s: 'Participa y gana del fondo común', go: 'prize' },
   { ic: 'bot',    t: 'Bots que operan por ti', s: 'Compran abajo y venden arriba, en tu wallet', go: 'bots' },
   { ic: 'tools',  t: 'Herramientas', s: 'Calculadoras y utilidades para operar mejor', go: 'tools' },
   { ic: 'shield', t: 'Wallet Shield', s: 'Revisa permisos y protege tus fondos', go: 'shield' },
@@ -41,7 +40,6 @@ const SERVICIOS = [
   { go: 'academy',   color: '#4c8dff', ic: 'book',    kick: 'Academia',        h: 'Learn',            p: 'Formación paso a paso para sacarle ventaja al mercado.' },
   { go: 'swap',      color: '#2ebd85', ic: 'swap',    kick: 'Swap',            h: 'Instant',         p: 'Cambia cualquier cripto por otra, sin KYC y no custodial.' },
   { go: 'market',    color: '#E8B84B', ic: 'market',  kick: 'P2P Market',      h: 'Buy & sell',         p: 'Orders between people, with on-chain escrow as guarantee.' },
-  { go: 'prize',     color: '#f6465d', ic: 'trophy',  kick: 'Prize Pool',      h: 'Fondo común',        p: 'Participa y gana del pozo acumulado de la comunidad.' },
   { go: 'addtoken',  color: '#2ebd85', ic: 'coins',     kick: 'Add Token',       h: 'Lista tu cripto',    p: 'Pon a la venta tu propio token en el swap, al precio que elijas.' },
 ];
 

@@ -396,22 +396,6 @@ window.NP_BOT_KB = {
       ]
     },
 
-    prize: {
-      titulo: 'Prize Pool',
-      accion: 'prize',
-      intro: 'Te explico cómo entrar al sorteo. Son tres pasos.',
-      pasos: [
-        'En el menú de arriba, pulsa **Prize Pool**.',
-        'Verás el pozo actual, cuánta gente participa y cuándo cierra la ronda.\n\nAbajo está el importe de la participación.',
-        'Pulsa **Participar**, pon tu nombre y tu Telegram (para avisarte si ganas) y firma en tu wallet.'
-      ],
-      fin: 'Ya estás dentro. Cuando cierre la ronda se sortea con un número aleatorio verificable en la blockchain, y si ganas te aparece un botón para cobrar tu premio.\n\nSi cambias de idea, puedes salirte y recuperar tu aporte hasta 24 horas antes del cierre.',
-      despues: [
-        { label: '¿Cómo se sortea?', q: 'como se hace el sorteo' },
-        { label: 'Ver los bots', q: 'que bots hay' }
-      ]
-    },
-
     swap: {
       titulo: 'Swap',
       accion: 'swap',
@@ -711,16 +695,15 @@ window.NP_BOT_KB = {
              'cuanto se necesita para empezar', 'con cuanto puedo arrancar', 'con cuanto',
              'cuanto para empezar', 'cual es el minimo para empezar', 'minimo para empezar'],
       answer: [
-        '¿Puedes darme un poco más de contexto? Te lo pregunto porque aquí hay varios servicios y cada uno funciona distinto:\n\n· **Los bots** operan por ti en el mercado\n· **El Marketplace** es para comprar y vender cripto con otras personas\n· **La Academia** tiene planes de formación\n· **El Prize Pool** es el sorteo comunitario\n\nEscoge una opción y te guío con detalle.',
-        'Déjame entender bien qué buscas, porque tenemos varias cosas y el mínimo no es el mismo en cada una:\n\n· **Bots de trading** — pones capital y operan solos\n· **Marketplace** — vendes tus criptos a quien te las compre\n· **Academia** — formación de cero a cien\n· **Prize Pool** — el sorteo\n\nDime cuál te interesa y te lo explico bien.',
-        'Para responderte bien necesito saber a qué te refieres. Aquí tienes:\n\n· **Los bots**, que operan con tu capital\n· **El Marketplace**, para comprar y vender entre personas\n· **La Academia**, con sus planes\n· **El sorteo comunitario**\n\nEscoge una de las opciones y seguimos.'
+        '¿Puedes darme un poco más de contexto? Te lo pregunto porque aquí hay varios servicios y cada uno funciona distinto:\n\n· **Los bots** operan por ti en el mercado\n· **El Marketplace** es para comprar y vender cripto con otras personas\n· **La Academia** tiene planes de formación\n\nEscoge una opción y te guío con detalle.',
+        'Déjame entender bien qué buscas, porque tenemos varias cosas y el mínimo no es el mismo en cada una:\n\n· **Bots de trading** — pones capital y operan solos\n· **Marketplace** — vendes tus criptos a quien te las compre\n· **Academia** — formación de cero a cien\n\nDime cuál te interesa y te lo explico bien.',
+        'Para responderte bien necesito saber a qué te refieres. Aquí tienes:\n\n· **Los bots**, que operan con tu capital\n· **El Marketplace**, para comprar y vender entre personas\n· **La Academia**, con sus planes\n\nEscoge una de las opciones y seguimos.'
       ],
       noNudge: true,
       opciones: [
         { label: 'Los bots',       q: 'cuanto necesito para los bots' },
         { label: 'El Marketplace', q: 'cuanto necesito para el marketplace' },
-        { label: 'La Academia',    q: 'cuanto cuesta la academia' },
-        { label: 'El sorteo',      q: 'cuanto cuesta participar en el sorteo' }
+        { label: 'La Academia',    q: 'cuanto cuesta la academia' }
       ]
     },
     {
@@ -926,11 +909,11 @@ window.NP_BOT_KB = {
       ],
       answer: [
         'DecFreedom es un **ecosistema DeFi no custodial**: un conjunto de herramientas para que tu dinero trabaje en los mercados **sin salir nunca de tu wallet**.\n\nNo es una app de bots: es una plataforma completa con automatización, mercado entre personas, intercambio de monedas, eventos comunitarios y formación.\n\n¿Por dónde quieres que empiece?',
-        'Es un **ecosistema descentralizado** montado sobre BNB Smart Chain. Lo que lo distingue: **nunca custodiamos tu dinero**. Ni registro, ni KYC, ni depósitos.\n\nDentro hay automatización de operaciones, un mercado entre personas, swap, sorteos comunitarios y material para aprender.\n\n¿Qué parte te interesa?',
+        'Es un **ecosistema descentralizado** montado sobre BNB Smart Chain. Lo que lo distingue: **nunca custodiamos tu dinero**. Ni registro, ni KYC, ni depósitos.\n\nDentro hay automatización de operaciones, un mercado entre personas, swap y material para aprender.\n\n¿Qué parte te interesa?',
         'DecFreedom es una plataforma **DeFi no custodial**: automatiza tus operaciones en los mercados financieros mientras tu dinero **sigue siendo tuyo, en tu wallet**.\n\nNo somos un exchange donde depositas. Somos una capa de herramientas sobre la blockchain que tú controlas.\n\n¿Te cuento las partes?'
       ],
       more: [
-        'Te lo desgloso. DecFreedom tiene **cinco patas**:\n\n**1 · Automatización.** Cuatro estrategias distintas, cada una para un momento del mercado:\n· **Smart Grid** — compra abajo y vende arriba, en bucle\n· **Accumulator** — compra más cuanto más baja y vende todo al objetivo\n· **Cash Out** — vende cuando el precio llega a donde marcaste\n· **DCA** — compra una cantidad fija cada cierto tiempo\n\n**2 · Marketplace P2P.** Comprar y vender cripto entre personas de cualquier país, pagando como acordéis. Con fianza, cripto retenida y árbitros.\n\n**3 · Swap.** Intercambio directo entre monedas desde tu wallet.\n\n**4 · Prize Pool.** Sorteos comunitarios con aleatoriedad verificable en cadena. Nadie puede manipularlos, ni nosotros.\n\n**5 · Formación.** Cada herramienta explica su economía real: qué la hace rentable, qué puede salir mal y cuánto cuesta.'
+        'Te lo desgloso. DecFreedom tiene **cuatro patas**:\n\n**1 · Automatización.** Cuatro estrategias distintas, cada una para un momento del mercado:\n· **Smart Grid** — compra abajo y vende arriba, en bucle\n· **Accumulator** — compra más cuanto más baja y vende todo al objetivo\n· **Cash Out** — vende cuando el precio llega a donde marcaste\n· **DCA** — compra una cantidad fija cada cierto tiempo\n\n**2 · Marketplace P2P.** Comprar y vender cripto entre personas de cualquier país, pagando como acordéis. Con fianza, cripto retenida y árbitros.\n\n**3 · Swap.** Intercambio directo entre monedas desde tu wallet.\n\n**4 · Formación.** Cada herramienta explica su economía real: qué la hace rentable, qué puede salir mal y cuánto cuesta.'
       ],
       opciones: [
         { label: 'Los bots',        q: 'que bots hay' },
@@ -1169,18 +1152,6 @@ window.NP_BOT_KB = {
       ]
     },
     {
-      topic: 'prize pool',
-      guia: 'prize', guiaLabel: 'Guíame para participar',
-      accion: 'prize',
-      keys: [
-             'como se hace el sorteo', 'prize pool', 'sorteo', 'pozo', 'premio', 'ganar premio', 'loteria',
-             'como participo en el sorteo'],
-      answer: [
-        'Es un sorteo comunitario. Entras con una participación y, al cerrar la ronda, se reparten premios entre los ganadores.\n\nEl número aleatorio viene de un sistema **verificable en la blockchain**: nadie puede manipularlo, ni nosotros.',
-        'Un pozo común donde cualquiera puede participar. Al cerrar, se sortea con aleatoriedad verificable y se reparten los premios.\n\nPuedes ver la ronda actual y el pozo en la sección Prize Pool.'
-      ]
-    },
-    {
       topic: 'swap',
       guia: 'swap', guiaLabel: 'Guíame para intercambiar',
       accion: 'swap',
@@ -1415,24 +1386,6 @@ window.NP_BOT_KB = {
         'Paso a paso:\n\n**1.** Telegram → Ajustes → **Nombre de usuario**. Si está vacío, pon uno.\n**2.** Ajustes → Privacidad y seguridad → **Grupos y canales** → ponlo en **Todos**.\n**3.** Escríbele **/estado** a nuestro bot: te dice si te consta el acceso.\n**4.** Vuelve a pedir entrar al grupo.\n\n**Si aun así no entras, no te quedes atascado: escríbeme y lo soluciono a mano.** Has pagado, así que es problema mío, no tuyo.'
       ],
       contactCard: true
-    },
-
-    /* ══════════════ POR QUÉ MERECE LA PENA ══════════════ */
-    {
-      topic: 'por qué el prize pool es rentable',
-      guia: 'prize', guiaLabel: 'Guíame para participar',
-      accion: 'prize',
-      keys: ['por que es rentable el prize pool', 'el sorteo es rentable', 'vale la pena el sorteo',
-             'me conviene el prize pool', 'cuanto se gana en el sorteo', 'como funciona el sorteo',
-             'reglas del sorteo', 'cuando puedo salirme', 'abandonar el sorteo',
-             'que gano en el prize pool', 'probabilidades sorteo'],
-      answer: [
-        'Te lo cuento sin adornos: **es un sorteo, no una inversión.** Pones una cantidad pequeña y puede tocarte el pozo o no.\n\nLo que sí puedo garantizarte es que **no está trucado**: el número sale de un sistema verificable en la blockchain que nadie puede manipular, ni nosotros.',
-        'Lo bueno del Prize Pool es lo que lo diferencia de una lotería normal:\n\n· El sorteo es **verificable en cadena**, cualquiera lo comprueba\n· Puedes **salirte y recuperar tu aporte** hasta 24 horas antes\n· El pozo y los participantes son **públicos** en todo momento\n\nAhora bien: participa con lo que no te importe perder.'
-      ],
-      more: [
-        'Las reglas, claras:\n\n**Entrar:** pagas la participación y quedas dentro de la ronda.\n**Salir:** puedes retirarte y recuperar tu aporte hasta **24 h antes** del cierre. Después ya no, para que nadie infle el pozo y se marche antes del sorteo.\n**El sorteo:** al cerrar la ronda se pide un número aleatorio verificable. Si no hay participantes suficientes, se **devuelve el dinero a todos**.\n**Cobrar:** si ganas, te aparece un botón para reclamar tu premio.\n\nY una idea, por si te sirve: el sorteo es suerte. **Si lo que quieres es que tu dinero crezca de forma constante, los bots o la formación te van a servir más.**'
-      ]
     },
 
     {
