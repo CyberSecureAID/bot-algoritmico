@@ -12,7 +12,7 @@ import { pintarInicio } from './inicio.js?v=54';
 import { pintarMercados } from './markets.js?v=51';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=58';
 import { pintarActivos } from './activos.js?v=54';
-import { abrirMenu } from './menu.js?v=23';
+import { abrirMenu } from './menu.js?v=24';
 import { abrirBuscar } from './buscar.js?v=21';
 import { abrirAlerta } from './alerta.js?v=20';
 
@@ -93,6 +93,7 @@ async function abrir(clave, arg) {
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=127'); m.abrirLiquidity && m.abrirLiquidity(); break; }
       case 'shield':    { location.href = '/modules/shield/shield'; break; }   // modulo sellado con pagina propia
+      case 'spot':      { location.href = '/modules/spot/spot'; break; }   // Spot: pagina propia, responsive (antes no estaba en movil)
       case 'bots':      { location.href = '/modules/bots/bots'; break; }
       case 'launchpad': { location.href = '/modules/launchpad/launchpad'; break; }   // modulo sellado con pagina propia   // modulo sellado con pagina propia (vista movil incluida)
       case 'buscar':    abrirBuscar(api()); break;
