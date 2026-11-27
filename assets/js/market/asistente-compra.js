@@ -51,6 +51,9 @@ function pasoC(p) {
       msg.textContent = 'Reading token…';
       try {
         const info = await _infoTok(v);
+        // Seguridad (XSS): symbol()/name() los controla el contrato del token y
+        // pueden traer HTML malicioso. Se limpian antes de pintarlos o guardarlos.
+        if (info) { info.simbolo = String(info.simbolo||'').replace(/[<>&"']/g,'').slice(0,32); info.nombre = String(info.nombre||'').replace(/[<>&"']/g,'').slice(0,48); }
         if (info && info.simbolo) { C.tokSel = info.address; C.token = info.address; C.sim = info.simbolo; msg.innerHTML = `<span style="color:#34d399">Found: <b>${info.simbolo}</b> · ${info.nombre||''}</span>`; }
         else { msg.textContent = 'Token not found'; C.tokSel = null; }
       } catch (_) { msg.textContent = 'Could not read that token'; C.tokSel = null; }
