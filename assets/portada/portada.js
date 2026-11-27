@@ -604,7 +604,14 @@ try {
 /* Si se llega con ?abrir=… se abre esa ventana al entrar. */
 try {
   const q = new URLSearchParams(location.search);
-  const pedido = q.get('abrir');
+  let pedido = q.get('abrir');
+  // El PERFIL no se abre solo desde la URL: solo con el boton de la esquina
+  // superior derecha. Antes /?abrir=perfil sacaba el modal "Your account" en
+  // cada refresh de la portada; eso se elimina por completo.
+  if (pedido === 'perfil') {
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (_) {}
+    pedido = null;
+  }
   if (pedido && PUERTAS[pedido]) {
     // Si venimos a abrir el swap directamente (p.ej. desde Wallet Watcher), tapamos
     // la portada con un velo negro para que no se vea cargar por detrás. Se quita
@@ -612,6 +619,11 @@ try {
     // El velo ya existe inline (#velo-arranque) desde el primer frame si abrir=swap.
     let _velo = (pedido === 'swap') ? document.getElementById('velo-arranque') : null;
     const tid = q.get('tool');
+    // Quitamos el ?abrir= de la URL en cuanto se abre, para que al REFRESCAR la
+    // pagina NO se vuelva a abrir esa ventana (antes el modal del perfil, por
+    // ejemplo, reaparecia en cada recarga). El enlace profundo sigue abriendo una
+    // vez; lo que ya no hace es quedarse pegado y repetirse.
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (_) {}
     Promise.resolve(abrir(pedido, tid ? { getAttribute: () => tid } : null)).finally(function () {
       if (_velo) {
         // esperar a que el modal del swap exista, luego desvanecer el velo
