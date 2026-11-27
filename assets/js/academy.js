@@ -1,4 +1,4 @@
-// academy.js — Cripto Cuba Academy: acceso de pago al grupo de formación.
+// academy.js — DecFreedom Academy: acceso de pago al grupo de formación.
 // Módulo independiente. Lo único que necesita de fuera es la wallet.
 
 import * as ethers from './vendor/ethers-6.13.4.min.js?v=125';
@@ -128,7 +128,7 @@ export async function abrirAcademy() {
   d.innerHTML = `<div class="ac-bg"></div>
     <div class="ac-c">
       <div class="ac-top">
-        <div class="ac-eyebrow">Cripto Cuba Academy</div>
+        <div class="ac-eyebrow">DecFreedom Academy</div>
         <button class="ac-x" aria-label="Cerrar">✕</button>
       </div>
 

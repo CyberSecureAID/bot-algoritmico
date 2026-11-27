@@ -66,7 +66,7 @@ export function inyectarEstilo(tipoNum) {
   #colmena-app .c-loteria:active,#colmena-app .c-perfil:active{opacity:.8}
   /* La marca: completa en el escritorio, iniciales en el móvil. Con el
      nombre entero, la cinta del sorteo se quedaba sin sitio y no salía. */
-  /* La marca: en la web "Cripto Cuba", en el móvil "CCuba". El nombre
+  /* La marca: en la web "DecFreedom", en el móvil "CCuba". El nombre
      completo dejaba sin sitio a la cinta del sorteo. */
   #colmena-app .marca-larga{display:inline}
   /* ══════════════════════════════════════════════════════════════

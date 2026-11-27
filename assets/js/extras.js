@@ -28,14 +28,14 @@ function marcarBoton(listo) {
 function cerrarPanel() { const p = $('inst-panel'); if (p) p.remove(); }
 
 /** Panel desplegable bajo el botón "Instalar". */
-/** En el móvil el botón comparte el enlace de CriptoCuba; en el ordenador, instala. */
+/** En el móvil el botón comparte el enlace de DecFreedom; en el ordenador, instala. */
 export async function compartirEnlace() {
   const url = location.origin + location.pathname.replace(/[^/]*$/, '');
   const texto = 'Bots de trading en cripto sin custodia.\n\n' +
-    'CriptoCuba te deja usar bots (Smart Grid, Accumulator, Cash Out y DCA) con tu dinero SIEMPRE en tu propia wallet. ' +
+    'DecFreedom te deja usar bots (Smart Grid, Accumulator, Cash Out y DCA) con tu dinero SIEMPRE en tu propia wallet. ' +
     'Sin registro, sin KYC y sin dejar tus fondos en manos de nadie.\n\n' + url;
   try {
-    if (navigator.share) { await navigator.share({ title: 'Cripto Cuba Oficial', text: texto }); return true; }
+    if (navigator.share) { await navigator.share({ title: 'DecFreedom', text: texto }); return true; }
   } catch (_) { return false; }
   try { await navigator.clipboard.writeText(texto); avisoCopiado(); return true; } catch (_) {}
   return false;
@@ -99,7 +99,7 @@ export function panelInstalar(ancla) {
     <div class="ip-c">
       <div class="ip-top">
         <img class="ip-ico" src="assets/img/cco-192.png" alt="">
-        <div><b>Cripto Cuba</b><span>Bots de trading en tu wallet</span></div>
+        <div><b>DecFreedom</b><span>Bots de trading en tu wallet</span></div>
       </div>
       <button class="ip-b" id="ip-si">Instalar</button>
       <div class="ip-n" id="ip-nota">Se abre al instante, con su icono y a pantalla completa.</div>
@@ -148,7 +148,7 @@ export function ventanaPreInstalar() {
   d.innerHTML = `<div class="pi-bg"></div>
     <div class="pi-c">
       <img class="pi-ico" src="assets/img/cco-512.png" alt="">
-      <div class="pi-t">Instalar CriptoCuba</div>
+      <div class="pi-t">Instalar DecFreedom</div>
       <div class="pi-s">Se abrirá en su propia ventana, con su icono, sin barras del navegador y arranca al instante.</div>
       <div class="pi-vent">
         <span>✓ Se abre como una aplicación</span>
@@ -205,7 +205,7 @@ export function ventanaInstrucciones() {
   d.innerHTML = `<div class="gi-bg"></div>
     <div class="gi-c">
       <button class="gi-x" aria-label="Cerrar">✕</button>
-      <div class="gi-t">Instalar CriptoCuba en tu equipo</div>
+      <div class="gi-t">Instalar DecFreedom en tu equipo</div>
       <div class="gi-s">Estás usando <b>${nav}</b>. Sigue estos pasos.</div>
 
       <div class="gi-paso">
@@ -213,7 +213,7 @@ export function ventanaInstrucciones() {
         <div class="gi-txt">
           <b>Mira arriba, a la derecha de la barra de búsqueda</b>
           <span>${esChrome
-            ? 'Verás una píldora azul que dice «Abrir en la app», con el icono de CriptoCuba.'
+            ? 'Verás una píldora azul que dice «Abrir en la app», con el icono de DecFreedom.'
             : 'Verás un cuadradito con una flecha que apunta hacia arriba.'}</span>
         </div>
       </div>
@@ -221,18 +221,18 @@ export function ventanaInstrucciones() {
 
       <div class="gi-paso">
         <div class="gi-num">2</div>
-        <div class="gi-txt"><b>Haz clic ahí</b><span>Se abrirá CriptoCuba como una aplicación, en su propia ventana.</span></div>
+        <div class="gi-txt"><b>Haz clic ahí</b><span>Se abrirá DecFreedom como una aplicación, en su propia ventana.</span></div>
       </div>
 
       <div class="gi-paso">
         <div class="gi-num">3</div>
         <div class="gi-txt">
           <b>Déjala fija en la barra de tareas</b>
-          <span>Con CriptoCuba ya abierta, busca su icono abajo en la barra de tareas de Windows, haz <b>clic derecho</b> y elige <b>«Anclar a la barra de tareas»</b>. Así la tendrás siempre a un clic.</span>
+          <span>Con DecFreedom ya abierta, busca su icono abajo en la barra de tareas de Windows, haz <b>clic derecho</b> y elige <b>«Anclar a la barra de tareas»</b>. Así la tendrás siempre a un clic.</span>
         </div>
       </div>
 
-      <div class="gi-nota">Si no ves ese icono, es que CriptoCuba ya está instalada. Búscala en tu menú de inicio.</div>
+      <div class="gi-nota">Si no ves ese icono, es que DecFreedom ya está instalada. Búscala en tu menú de inicio.</div>
     </div>`;
   document.body.appendChild(d);
   const cerrar = () => d.remove();
@@ -367,7 +367,7 @@ export async function compartirResultado(datos) {
     try {
       await navigator.share({
         files: [archivo],
-        title: 'Mi bot en CriptoCuba',
+        title: 'Mi bot en DecFreedom',
         text: `${datos.par} · ${Number(datos.ganancia) >= 0 ? '+' : ''}${num(datos.ganancia, 2)} ${datos.moneda}`
       });
       return true;
@@ -486,7 +486,7 @@ export function descargarHistorial(d) {
       ${bloqueDCA}
 
       <tr><td colspan="6" style="height:18px"></td></tr>
-      <tr><td colspan="6" style="color:#8b96a3;font-size:9pt;padding:8px 10px;border-top:1px solid #d5d9de">Datos leídos directamente de la blockchain (BNB Smart Chain). CriptoCuba no custodia fondos.<br>cybersecureaid.github.io/bot-algoritmico</td></tr>
+      <tr><td colspan="6" style="color:#8b96a3;font-size:9pt;padding:8px 10px;border-top:1px solid #d5d9de">Datos leídos directamente de la blockchain (BNB Smart Chain). DecFreedom no custodia fondos.<br>cybersecureaid.github.io/bot-algoritmico</td></tr>
     </table></body></html>`;
 
   const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });

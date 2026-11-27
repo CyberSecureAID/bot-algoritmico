@@ -4,7 +4,7 @@
 
 let _tr = null;
 try {
-  import('../idioma.js?v=126').then((m) => { _tr = m; }).catch(() => {});
+  import('../idioma.js?v=127').then((m) => { _tr = m; }).catch(() => {});
 } catch (_) {}
 
 export const T = (txt) => {

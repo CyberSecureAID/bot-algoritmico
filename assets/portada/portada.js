@@ -87,7 +87,7 @@ async function cargarLogosPrecios() {
 async function estiloBase() {
   if (baseLista) return;
   const [est, util] = await Promise.all([
-    import(J + 'gridbot/estilos.js?v=201'),
+    import(J + 'gridbot/estilos.js?v=202'),
     import(J + 'gridbot/util.js?v=1')
   ]);
   // NO se toca el body. Antes se le ponía id='colmena-app' y eso aplicaba
@@ -121,7 +121,7 @@ const PUERTAS = {
   heat:    async () => (await import(J + 'muros.js?v=130')).abrirMuros(),
   levels:  async () => (await import(J + 'niveles.js?v=128')).abrirNiveles(),
   tools:   async (tid) => (await import(J + 'tools.js?v=129')).abrirTools(tid),
-  academy: async () => (await import(J + 'academy.js?v=128')).abrirAcademy(),
+  academy: async () => (await import(J + 'academy.js?v=129')).abrirAcademy(),
   prize:   async () => (await import(J + 'prizepool.js?v=127')).abrirPrizePool(),
   aportar: async () => (await import(J + 'aportar.js?v=15')).abrirAportar(),
   perfil:  async () => (await import(J + 'perfil.js?v=130')).abrirPerfil(),
@@ -532,7 +532,7 @@ try {
   (async () => {
     try {
       await estiloBase();                    // el panel usa los estilos base
-      ex = await import(J + 'extras.js?v=200');
+      ex = await import(J + 'extras.js?v=201');
       if (ex.iniciarInstalacion) ex.iniciarInstalacion();
       if (guardado && ex.registrarInstalador) ex.registrarInstalador(guardado);
     } catch (e) { console.warn('[portada] init instalar:', e); }
@@ -547,7 +547,7 @@ try {
     b.addEventListener('click', async (evt) => {
       evt.preventDefault();
       try {
-        if (!ex) ex = await import(J + 'extras.js?v=200');
+        if (!ex) ex = await import(J + 'extras.js?v=201');
         if (guardado && ex.registrarInstalador) ex.registrarInstalador(guardado);
         if (ex.instalarAhora) await ex.instalarAhora();
       } catch (err) { console.warn('[portada] instalar:', err); }
@@ -653,7 +653,7 @@ try {
 (async () => {
   let idi;
   try {
-    idi = await import(J + 'idioma.js?v=164');
+    idi = await import(J + 'idioma.js?v=165');
     idi.arrancarIdioma();
   } catch (e) {
     console.warn('[portada] idioma:', e);

@@ -13,7 +13,7 @@
    ══════════════════════════════════════════════════════════════ */
 
 import * as ethers from '../../assets/js/vendor/ethers-6.13.4.min.js?v=125';
-import * as wallet from '../../assets/js/wallet.js?v=129';
+import * as wallet from '../../assets/js/wallet.js?v=130';
 import * as gb from '../../assets/js/gridbot.js?v=125';
 import { MONEDAS } from '../../assets/js/tokens.js?v=125';
 

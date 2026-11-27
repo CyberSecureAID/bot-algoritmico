@@ -221,7 +221,7 @@ const DIC = {
     'Busca por símbolo…': 'Search by symbol…',
     'Sin resultados.': 'No results.',
     'Exchange no custodial · BNB Smart Chain': 'Non-custodial exchange · BNB Smart Chain',
-    'Mi balance en CriptoCuba Oficial': 'My balance on CriptoCuba Oficial',
+    'Mi balance en DecFreedom': 'My balance on DecFreedom',
     'Cambio 24H': 'Chg 24H',
     'Índice': 'Index',
     'Máx 24H': 'High 24H',
@@ -525,7 +525,7 @@ const DIC = {
     'Gana con el sube y baja del precio': 'It earns on the price going up and down',
     'para ganar: basta un repunte hasta tu objetivo. Además vende una sola vez, en bloque, así que': 'to earn: a small rise to your target is enough. It also sells once, in a block, so',
     ', así que firmarás varias veces. Cada uno cuesta su gas: por eso solo compensa con restos que valgan algo.': ', so you will sign several times. Each one costs its gas: that is why it only pays off with leftovers worth something.',
-    ', no en un servidor. Funcionan mientras tengas CriptoCuba abierto o instalado como app.': ', not on a server. They work as long as you have CriptoCuba open or installed as an app.',
+    ', no en un servidor. Funcionan mientras tengas DecFreedom abierto o instalado como app.': ', not on a server. They work as long as you have DecFreedom open or installed as an app.',
     ', por un valor aproximado de': ', worth approximately',
     ', uno por moneda. Si alguno falla, los demás siguen: no se pierde nada.': ', one per coin. If one fails, the rest continue: nothing is lost.',
     'Firmarás': 'You will sign',
@@ -537,7 +537,7 @@ const DIC = {
     'CÓMO FUNCIONA ESTE BOT': 'HOW THIS BOT WORKS',
     'HISTORIAL DEL BOT': 'BOT HISTORY',
     'Verás un cuadradito con una flecha que apunta hacia arriba.': 'You will see a small square with an arrow pointing up.',
-    'Verás una píldora azul que dice «Abrir en la app», con el icono de CriptoCuba.': 'You will see a blue pill that says "Open in app", with the CriptoCuba icon.',
+    'Verás una píldora azul que dice «Abrir en la app», con el icono de DecFreedom.': 'You will see a blue pill that says "Open in app", with the DecFreedom icon.',
     'tu navegador': 'your browser',
     '«Anclar a la barra de tareas»': '"Pin to taskbar"',
     '✓ Funciona aunque la red vaya lenta': '✓ Works even if the network is slow',
@@ -1127,12 +1127,12 @@ const DIC = {
     '¿Tienes dudas? Toca aquí': 'Questions? Tap here',
     'Escribe aquí sobre lo que quieres saber…': 'Type here what you want to know…',
     'No encontramos nada con esa palabra. Prueba con otra.': 'We found nothing for that word. Try another.',
-    'Cripto Cuba Oficial · Opera bajo tu propio riesgo': 'Cripto Cuba Oficial · Trade at your own risk',
+    'DecFreedom · Opera bajo tu propio riesgo': 'DecFreedom · Trade at your own risk',
     'Análisis técnico': 'Technical analysis',
     'Cancelaste. Lo hecho hasta ahora se mantiene.': 'Cancelled. What was done so far stays.',
     'Con velas, indicadores y herramientas de dibujo': 'With candles, indicators and drawing tools',
     'Conecta tu wallet primero, arriba a la derecha.': 'Connect your wallet first, top right.',
-    'CriptoCuba · alerta de precio': 'CriptoCuba · price alert',
+    'DecFreedom · alerta de precio': 'DecFreedom · price alert',
     'Gráfica en directo': 'Live chart',
     'Puedes cambiar la temporalidad y dibujar sobre el gráfico.': 'You can change the timeframe and draw on the chart.',
     'Qué dicen los indicadores más usados, en un solo medidor': 'What the most-used indicators say, in a single gauge',
@@ -1254,14 +1254,14 @@ const DIC = {
     'Conecta tu wallet': 'Connect your wallet',
     'Red incorrecta': 'Wrong network',
     'Estás en otra red. Cámbiate a': 'You are on another network. Switch to',
-    'para conectarte con CriptoCuba.': 'to connect with CriptoCuba.',
+    'para conectarte con DecFreedom.': 'to connect with DecFreedom.',
     '¿No cambia solo? Ábrela desde el': 'Doesn\'t switch on its own? Open it from the',
     'selector de red arriba a la derecha': 'network selector at the top right',
     'de tu wallet:': 'of your wallet:',
     'toca el nombre de la red (arriba a la izquierda/derecha) → elige': 'tap the network name (top left/right) → choose',
     'icono de red arriba a la derecha →': 'network icon at the top right →',
     'Cambiar a BNB Smart Chain': 'Switch to BNB Smart Chain',
-    'Estás en otra red. Cámbiate a BNB Smart Chain para conectarte con CriptoCuba.': 'You are on another network. Switch to BNB Smart Chain to connect with CriptoCuba.',
+    'Estás en otra red. Cámbiate a BNB Smart Chain para conectarte con DecFreedom.': 'You are on another network. Switch to BNB Smart Chain to connect with DecFreedom.',
     'Conecta tu wallet para operar, crear bots e intercambiar.': 'Connect your wallet to trade, create bots and swap.',
     'Estás en otra red. Toca para cambiar a BNB Smart Chain y conectar.': 'You are on another network. Tap to switch to BNB Smart Chain and connect.',
     'Cambiar de red y conectar': 'Switch network and connect',
@@ -1374,7 +1374,7 @@ const DIC = {
     'Todos los servicios': 'All services',
     'Ver balance en': 'View balance in',
     'Participa y gana del pozo acumulado': 'Join and win from the accrued pool',
-    'Academia CriptoCuba': 'CriptoCuba Academy',
+    'Academia DecFreedom': 'DecFreedom Academy',
     'Aprende a operar y multiplica tu ventaja': 'Learn to trade and multiply your edge',
     'Prize Pool comunitario': 'Community Prize Pool',
     'Participa y gana del fondo común': 'Join and win from the shared pool',
@@ -1664,7 +1664,7 @@ const DIC = {
     'Revisa tu conexión y vuelve a intentar.': 'Check your connection and try again.',
     'No se pudieron cargar los datos.': 'Could not load the data.',
     'Revisa tu conexión.': 'Check your connection.',
-    'Cripto Cuba Academy': 'Cripto Cuba Academy',
+    'DecFreedom Academy': 'DecFreedom Academy',
 
     /* ══════════════ WALLET Y CONEXIÓN ══════════════ */
     'Sin conectar': 'Not connected',
@@ -1673,7 +1673,7 @@ const DIC = {
     'Otra wallet (QR)': 'Other wallet (QR)',
     'Elige cómo quieres hacerlo.': 'Choose how you want to do it.',
     'Lo más sencillo': 'The simplest way',
-    'Se abre CriptoCuba dentro de tu wallet y conecta solo.': 'CriptoCuba opens inside your wallet and connects on its own.',
+    'Se abre DecFreedom dentro de tu wallet y conecta solo.': 'DecFreedom opens inside your wallet and connects on its own.',
     'Es una sola firma.': 'It is a single signature.',
     'Instalar': 'Install',
     'Usar': 'Use',
@@ -1853,8 +1853,8 @@ const DIC = {
     'El precio de ahora debe quedar dentro del rango': 'The current price must fall inside the range',
     'El precio se salió de tu rango, por abajo': 'The price left your range, below',
     'El precio se salió de tu rango, por arriba': 'The price left your range, above',
-    'Cripto Cuba Oficial': 'Cripto Cuba Oficial',
-    'Cripto Cuba Oficial · Opera bajo tu propio riesgo': 'Cripto Cuba Oficial · Trade at your own risk',
+    'DecFreedom': 'DecFreedom',
+    'DecFreedom · Opera bajo tu propio riesgo': 'DecFreedom · Trade at your own risk',
 
     /* ══════════════ MARKETPLACE ══════════════ */
     'Compra y vende': 'Buy and sell',
@@ -2006,8 +2006,8 @@ const DIC = {
     'Inténtalo en un momento.': 'Try again in a moment.',
 
     /* ══════════════ EXTRAS ══════════════ */
-    'Instalar CriptoCuba': 'Install CriptoCuba',
-    'Instalar CriptoCuba en tu equipo': 'Install CriptoCuba on your computer',
+    'Instalar DecFreedom': 'Install DecFreedom',
+    'Instalar DecFreedom en tu equipo': 'Install DecFreedom on your computer',
     'Cómo instalarla': 'How to install it',
     'Descargar': 'Download',
     'Descargar tu historial': 'Download your history',
@@ -2018,7 +2018,7 @@ const DIC = {
     'Bloque': 'Block',
     'Abrir…': 'Open…',
     'Estás usando': 'You are using',
-    'Cripto Cuba': 'Cripto Cuba',
+    'DecFreedom': 'DecFreedom',
     'Bots de trading en tu wallet': 'Trading bots in your wallet',
     'Bots de trading en tu propia wallet · sin custodia': 'Trading bots in your own wallet · non-custodial',
     'Este bot todavía no ha cerrado ninguna operación.': 'This bot has not closed any trade yet.',
@@ -2027,15 +2027,15 @@ const DIC = {
     'Se guarda una hoja de cálculo con': 'A spreadsheet is saved with',
     'Si aún no ha cerrado ninguna, el archivo se descargará vacío, indicándolo.':
       'If none have closed yet, the file downloads empty, saying so.',
-    'Se abrirá CriptoCuba como una aplicación, en su propia ventana.':
-      'CriptoCuba will open as an app, in its own window.',
+    'Se abrirá DecFreedom como una aplicación, en su propia ventana.':
+      'DecFreedom will open as an app, in its own window.',
     'Se abre al instante, con su icono y a pantalla completa.':
       'It opens instantly, with its icon and full screen.',
     'Déjala fija en la barra de tareas': 'Pin it to the taskbar',
     'Haz clic ahí': 'Click there',
     'Mira arriba, a la derecha de la barra de búsqueda': 'Look up top, to the right of the search bar',
-    'Si no ves ese icono, es que CriptoCuba ya está instalada. Búscala en tu menú de inicio.':
-      'If you do not see that icon, CriptoCuba is already installed. Look for it in your start menu.',
+    'Si no ves ese icono, es que DecFreedom ya está instalada. Búscala en tu menú de inicio.':
+      'If you do not see that icon, DecFreedom is already installed. Look for it in your start menu.',
 
     /* ══════════════ BOTS · RESTO ══════════════ */
     'Todavía no tienes bots': 'You have no bots yet',
@@ -2501,8 +2501,8 @@ const DIC = {
     'Tipo de bot': 'Bot type',
     'Vueltas completas': 'Completed cycles',
     'todas las operaciones que el bot ha cerrado': 'every trade the bot has closed',
-    'Datos leídos directamente de la blockchain (BNB Smart Chain). CriptoCuba no custodia fondos.':
-      'Data read directly from the blockchain (BNB Smart Chain). CriptoCuba does not custody funds.',
+    'Datos leídos directamente de la blockchain (BNB Smart Chain). DecFreedom no custodia fondos.':
+      'Data read directly from the blockchain (BNB Smart Chain). DecFreedom does not custody funds.',
     'Los bots necesitan permiso para mover tus monedas. Cuando dejes de usarlos,':
       'Bots need approval to move your coins. When you stop using them,',
     'Te avisamos cuando alguien tome tu oferta, marque un pago o libere un tramo.':
@@ -2516,8 +2516,8 @@ const DIC = {
       'Could not draw the code. Use "Copy link" and paste it in your wallet.',
     'El precio final puede variar un poco mientras se ejecuta. Es normal en cualquier intercambio.':
       'The final price may vary slightly while executing. This is normal in any swap.',
-    'Con CriptoCuba ya abierta, busca su icono abajo en la barra de tareas de Windows, haz':
-      'With CriptoCuba open, find its icon in the Windows taskbar below and',
+    'Con DecFreedom ya abierta, busca su icono abajo en la barra de tareas de Windows, haz':
+      'With DecFreedom open, find its icon in the Windows taskbar below and',
     'Junta los restos de monedas que te van quedando': 'Collects the leftover crumbs of coins you accumulate',
 
     /* ══════════════ LIQUIDITY POOLS ══════════════ */
@@ -2611,7 +2611,7 @@ const DIC = {
     'En línea': 'Online',
     'Temas': 'Topics',
     'Entrar a la comunidad': 'Join the community',
-    'gente que ya usa CriptoCuba': 'people already using CriptoCuba',
+    'gente que ya usa DecFreedom': 'people already using DecFreedom',
     'Tira para actualizar': 'Pull to refresh',
 
     /* ══════════════ AUDITORÍA · FRASES FINALES ══════════════ */
@@ -3176,7 +3176,7 @@ const DIC = {
     'Nada garantiza ganancias.': 'Nada garante lucros.',
     'Nadie puede prometerte ganancias.': 'Ninguém lhe pode prometer lucros.',
     'El precio puede no llegar nunca.': 'O preço pode nunca chegar lá.',
-    'Cripto Cuba Oficial · Opera bajo tu propio riesgo': 'Cripto Cuba Oficial · Opere por sua conta e risco',
+    'DecFreedom · Opera bajo tu propio riesgo': 'DecFreedom · Opere por sua conta e risco',
 
     /* ══════════════ MARKETPLACE ══════════════ */
     'Compra y vende': 'Compre e venda',
@@ -3240,7 +3240,7 @@ const DIC = {
     'Inténtalo en un momento.': 'Tente daqui a pouco.',
 
     /* ══════════════ EXTRAS ══════════════ */
-    'Instalar CriptoCuba': 'Instalar CriptoCuba',
+    'Instalar DecFreedom': 'Instalar DecFreedom',
     'Cómo instalarla': 'Como instalar',
     'Descargar': 'Descarregar',
     'Descargar tu historial': 'Descarregar o seu histórico',

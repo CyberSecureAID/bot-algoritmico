@@ -68,7 +68,7 @@ function buscarMoneda(MONEDAS, simb) {
 }
 
 let _tr = null;
-try { import('./idioma.js?v=128').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
+try { import('./idioma.js?v=129').then((m) => { _tr = m; }).catch(() => {}); } catch (_) {}
 const T = (t) => { try { return _tr ? _tr.t(t) : t; } catch (_) { return t; } };
 
 const fmt = (p) => {

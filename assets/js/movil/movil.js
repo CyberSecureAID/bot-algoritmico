@@ -89,7 +89,7 @@ async function abrir(clave, arg) {
       case 'prize':     { const m = await import('../prizepool.js?v=126'); m.abrirPrizePool && m.abrirPrizePool(); break; }
       case 'perfil':    { const m = await import('../perfil.js?v=132'); m.abrirPerfil && m.abrirPerfil(); if (_movil()) uidEnPerfil(); break; }
       case 'tools':     { inyectarFixTools(); const m = await import('../tools.js?v=126'); m.abrirTools && m.abrirTools(); break; }
-      case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=126'); m.abrirAcademy && m.abrirAcademy(); break; }
+      case 'academy':   { inyectarFixGrafica(); const m = await import('../academy.js?v=127'); m.abrirAcademy && m.abrirAcademy(); break; }
       case 'niveles':   { inyectarFixGrafica(); const m = await import('../niveles.js?v=127'); m.abrirNiveles && m.abrirNiveles(); break; }
       case 'muros':     { inyectarFixGrafica(); const m = await import('../muros.js?v=127'); m.abrirMuros && m.abrirMuros(); break; }
       case 'liquidity': { inyectarFixGrafica(); const m = await import('../liquidity.js?v=127'); m.abrirLiquidity && m.abrirLiquidity(); break; }

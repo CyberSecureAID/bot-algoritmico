@@ -24,7 +24,7 @@ import { PARES, pintarIcono } from './niveles/config.js?v=1';        // catálog
    contrato cada vez que se abre la herramienta.
 
    [PENDIENTE] Poner aquí la dirección cuando se despliegue el
-   contrato CriptoCubaPro.sol. Mientras esté vacío, el acceso queda
+   contrato DecFreedomPro.sol. Mientras esté vacío, el acceso queda
    abierto para todos: así se puede seguir probando la herramienta.
    ══════════════════════════════════════════════════════════════ */
 const PRO = '';   // ← dirección del contrato

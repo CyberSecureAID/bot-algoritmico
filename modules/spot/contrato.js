@@ -14,7 +14,7 @@
    no puede resolverla (ahi el on chain se deshabilita y se opera en vista previa local). */
 
 import { MONEDAS } from '../../assets/js/tokens.js';
-import { cuentaActual, proveedorActivo } from '../../assets/js/wallet.js?v=129';
+import { cuentaActual, proveedorActivo } from '../../assets/js/wallet.js?v=130';
 
 export const SPOT_ADDR = '0xfC3c9516665Ab36D8E56e0797F4392FbFc073c11';   // proxy SpotDF (verificado)
 const USDT = '0x55d398326f99059fF775485246999027B3197955';              // USDT BSC (18 dec)

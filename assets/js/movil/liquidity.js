@@ -21,7 +21,7 @@ import * as wallet from './wallet.js?v=129';
    contrato cada vez que se abre la herramienta.
 
    [PENDIENTE] Poner aquí la dirección cuando se despliegue el
-   contrato CriptoCubaPro.sol. Mientras esté vacío, el acceso queda
+   contrato DecFreedomPro.sol. Mientras esté vacío, el acceso queda
    abierto para todos: así se puede seguir probando la herramienta.
    ══════════════════════════════════════════════════════════════ */
 const PRO = '';   // ← dirección del contrato
@@ -2154,7 +2154,7 @@ function guardarImagen() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `criptocuba-${_par}-${_tf}-${Date.now()}.png`;
+      a.download = `decfreedom-${_par}-${_tf}-${Date.now()}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     }, 'image/png');
