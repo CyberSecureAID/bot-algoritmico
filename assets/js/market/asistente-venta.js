@@ -50,6 +50,9 @@ function pintarPaso(p) {
       msg.textContent = 'Reading token…';
       try {
         const info = await _infoTok(v);
+        // Seguridad (XSS): symbol()/name() los controla el contrato del token y
+        // pueden traer HTML malicioso. Se limpian antes de pintarlos o guardarlos.
+        if (info) { info.simbolo = String(info.simbolo||'').replace(/[<>&"']/g,'').slice(0,32); info.nombre = String(info.nombre||'').replace(/[<>&"']/g,'').slice(0,48); }
         if (info && info.simbolo) {
           W.tokSel = info.address; W.token = info.address; W.sim = info.simbolo;
           msg.innerHTML = `<span style="color:#34d399">Found: <b>${info.simbolo}</b> · ${info.nombre||''}</span>`;
