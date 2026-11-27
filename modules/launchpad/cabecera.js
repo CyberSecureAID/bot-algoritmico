@@ -4,7 +4,6 @@
    wallet por QR, cual esta conectada). Sellado: solo usa ./wallet.js. */
 
 import * as wallet from './wallet.js';
-import { abrirPerfil } from './perfil.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -48,7 +47,8 @@ export function pintarCabecera(host) {
     + '<button class="dir" id="c-dir" type="button" title="Switch wallet">' + iconoWallet() + '<span class="dir-tx">' + esc(String(cta).slice(-4)) + '</span><span class="dir-ch"></span></button>'
     + '<a class="c-contratos" href="/transparency">Contracts</a>';
   $('c-dir').onclick = (e) => { e.stopPropagation(); selectorWallet($('c-dir'), host); };
-  $('c-perfil').onclick = (e) => { e.stopPropagation(); abrirPerfil({ alCambiar: () => pintarCabecera(host) }); };
+  // Perfil UNICO: abre el perfil completo de siempre (no la version simplificada).
+  $('c-perfil').onclick = (e) => { e.stopPropagation(); location.href = '/app?abrir=perfil'; };
   // El logo puede llegar tarde (EIP-6963 anuncia despues): se reintenta como en el lobby.
   [300, 900, 2000].forEach((ms) => setTimeout(() => { const d = $('c-dir'); if (!d || !wallet.cuentaActual()) return; const tmp = document.createElement('span'); tmp.innerHTML = iconoWallet(); const n = tmp.firstElementChild; const v = d.firstElementChild; if (n && v && !v.classList.contains('dir-tx') && n.outerHTML !== v.outerHTML) v.replaceWith(n); }, ms));
 }
