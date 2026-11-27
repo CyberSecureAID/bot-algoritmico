@@ -13,6 +13,7 @@
   <link rel="icon" type="image/png" href="assets/img/cco-32.png">
   <link rel="apple-touch-icon" href="assets/img/aurex-apple.png">
   <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/cinta.css?v=1">
   <style>
     html, body { background: #05070a !important; margin:0; padding:0; }
 
@@ -78,11 +79,23 @@
 
   <div id="lq-app">
     <div id="cco-volver">
-      <a href="index.html" class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-        <span>Back</span>
-      </a>
-      <div id="cco-wallet"></div>
+      <header class="pt-hdr"><div class="pt-hdr__in">
+        <a class="sw-back" href="index.html" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</a>
+        <a class="pt-logo" href="index.html" aria-label="DecFreedom"><img src="assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>
+        <nav class="pt-nav" aria-label="Main">
+          <div class="pt-nav__i"><a class="pt-nav__b" href="modules/swap/swap.html">Swap</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b" href="modules/launchpad/launchpad.html">Launchpad</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b" href="modules/terminal/terminal.html">Terminal</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b" href="modules/bots/bots.html">Bots</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=analisis">Analysis</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b" href="modules/spot/spot.html">Spot</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b lp-on" aria-current="page">Staking</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b" href="modules/shield/shield.html">Shield</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=market">P2P</a></div>
+          <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=academy">Academy</a></div>
+        </nav>
+        <div class="pt-hdr__a"><a class="c-contratos" href="transparency.html">Contracts</a><div id="cco-wallet"></div></div>
+      </div></header>
     </div>
     <div id="lq-wrap" data-i18n-root></div>
   </div>
