@@ -51,7 +51,6 @@ export async function pintarMercados(host, api) {
     <div class="mv-mk-tabs">
       <button data-t="fav" class="${_tab === 'fav' ? 'on' : ''}">Favorites</button>
       <button data-t="spot" class="${_tab === 'spot' ? 'on' : ''}">Spot</button>
-      <button data-t="fut" class="${_tab === 'fut' ? 'on' : ''}">Futures</button>
     </div>
     <div class="mv-mk-cats" id="mv-mk-cats">
       ${CATS.map((c) => `<button data-c="${c.k}" class="${c.k === _cat ? 'on' : ''}">${c.t}</button>`).join('')}

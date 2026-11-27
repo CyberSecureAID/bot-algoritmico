@@ -9,7 +9,6 @@ const GRUPOS = [
     { k: 'swap', ic: 'swap', t: 'Swap' },
     { k: 'launchpad', ic: 'coins', t: 'Launchpad' },
     { k: 'market', ic: 'market', t: 'P2P' },
-    { k: 'futuros', ic: 'candles', t: 'Futures' },
     { k: 'niveles', ic: 'chart', t: 'Smart Levels' },
   ]},
   { sub: 'Security', items: [
