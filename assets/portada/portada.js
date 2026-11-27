@@ -127,7 +127,7 @@ const PUERTAS = {
   analisis: async () => {
     const w = await wallet();
     const ethers = await import(J + 'vendor/ethers-6.13.4.min.js?v=126');
-    const m = await import(new URL('modules/analysis/analisis.js?v=37', document.baseURI).href);
+    const m = await import(new URL('modules/analysis/analisis.js?v=38', document.baseURI).href);
     await m.abrirAnalisis('hero', w, ethers);
   }
 };

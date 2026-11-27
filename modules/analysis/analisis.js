@@ -474,20 +474,20 @@ export function abrirSelector(origen, wallet, ethers) {
   // ── Cinta (copiada de las secciones aprobadas; Analysis entre Bots y Futures) ──
   const navHTML = NAV.map(([txt, href]) => {
     if (href === null) return `<div class="pt-nav__i"><a class="pt-nav__b lp-on" aria-current="page">${esc(txt)}</a></div>`;
-    return `<div class="pt-nav__i"><a class="pt-nav__b" href="${esc(href)}">${esc(txt)}</a></div>`;
+    return `<div class="pt-nav__i"><a class="pt-nav__b" href="${esc(RAIZ + href)}">${esc(txt)}</a></div>`;
   }).join('');
-  const colaHTML = `<div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=market">P2P</a></div>
-    <div class="pt-nav__i"><a class="pt-nav__b" href="app.html?abrir=academy">Academy</a></div>`;
+  const colaHTML = `<div class="pt-nav__i"><a class="pt-nav__b" href="${RAIZ}app.html?abrir=market">P2P</a></div>
+    <div class="pt-nav__i"><a class="pt-nav__b" href="${RAIZ}app.html?abrir=academy">Academy</a></div>`;
 
   const cintaHTML = `
     <header class="pt-hdr">
       <div class="pt-hdr__in">
-        <a class="sw-back" id="an-back" href="index.html" aria-label="Back">${ICO.back}Back</a>
-        <a class="pt-logo" href="index.html" aria-label="DecFreedom"><img src="${LOGO}" alt="DecFreedom" width="150" height="30"></a>
+        <a class="sw-back" id="an-back" href="${RAIZ}index.html" aria-label="Back">${ICO.back}Back</a>
+        <a class="pt-logo" href="${RAIZ}index.html" aria-label="DecFreedom"><img src="${LOGO}" alt="DecFreedom" width="150" height="30"></a>
         <nav class="pt-nav" aria-label="Main">${navHTML}${colaHTML}</nav>
         <div class="pt-hdr__a">
           <span class="an-wpill" id="an-wpill" hidden></span>
-          <a class="c-contratos" href="transparency.html">Contracts</a>
+          <a class="c-contratos" href="${RAIZ}transparency.html">Contracts</a>
         </div>
       </div>
     </header>`;
