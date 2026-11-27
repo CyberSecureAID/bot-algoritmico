@@ -144,14 +144,14 @@ function actualizarCart() { const n = document.querySelector('#an-sel .an-cartn'
 
 /* Cinta: mismos items y orden que el lobby, con Analysis ENTRE Bots y Futures. */
 const NAV = [
-  ['Swap', 'modules/swap/swap.html'],
-  ['Launchpad', 'modules/launchpad/launchpad.html'],
-  ['Terminal', 'modules/terminal/terminal.html'],
-  ['Bots', 'modules/bots/bots.html'],
+  ['Swap', 'modules/swap/swap'],
+  ['Launchpad', 'modules/launchpad/launchpad'],
+  ['Terminal', 'modules/terminal/terminal'],
+  ['Bots', 'modules/bots/bots'],
   ['Analysis', null],
-  ['Spot', 'modules/spot/spot.html'],
-  ['Staking', 'aportar.html'],
-  ['Shield', 'modules/shield/shield.html']
+  ['Spot', 'modules/spot/spot'],
+  ['Staking', 'aportar'],
+  ['Shield', 'modules/shield/shield']
 ];
 
 const ICO = {
@@ -476,18 +476,18 @@ export function abrirSelector(origen, wallet, ethers) {
     if (href === null) return `<div class="pt-nav__i"><a class="pt-nav__b lp-on" aria-current="page">${esc(txt)}</a></div>`;
     return `<div class="pt-nav__i"><a class="pt-nav__b" href="${esc(RAIZ + href)}">${esc(txt)}</a></div>`;
   }).join('');
-  const colaHTML = `<div class="pt-nav__i"><a class="pt-nav__b" href="${RAIZ}app.html?abrir=market">P2P</a></div>
-    <div class="pt-nav__i"><a class="pt-nav__b" href="${RAIZ}app.html?abrir=academy">Academy</a></div>`;
+  const colaHTML = `<div class="pt-nav__i"><a class="pt-nav__b" href="${RAIZ}app?abrir=market">P2P</a></div>
+    <div class="pt-nav__i"><a class="pt-nav__b" href="${RAIZ}app?abrir=academy">Academy</a></div>`;
 
   const cintaHTML = `
     <header class="pt-hdr">
       <div class="pt-hdr__in">
-        <a class="sw-back" id="an-back" href="${RAIZ}index.html" aria-label="Back">${ICO.back}Back</a>
-        <a class="pt-logo" href="${RAIZ}index.html" aria-label="DecFreedom"><img src="${LOGO}" alt="DecFreedom" width="150" height="30"></a>
+        <a class="sw-back" id="an-back" href="${RAIZ}" aria-label="Back">${ICO.back}Back</a>
+        <a class="pt-logo" href="${RAIZ}" aria-label="DecFreedom"><img src="${LOGO}" alt="DecFreedom" width="150" height="30"></a>
         <nav class="pt-nav" aria-label="Main">${navHTML}${colaHTML}</nav>
         <div class="pt-hdr__a">
           <span class="an-wpill" id="an-wpill" hidden></span>
-          <a class="c-contratos" href="${RAIZ}transparency.html">Contracts</a>
+          <a class="c-contratos" href="${RAIZ}transparency">Contracts</a>
         </div>
       </div>
     </header>`;
@@ -611,7 +611,7 @@ export function abrirSelector(origen, wallet, ethers) {
   back.onclick = (e) => {
     e.preventDefault();
     if (window.__ANALISIS_PAGINA__) {   // pagina propia: Back SIEMPRE va al inicio (como las demas secciones),
-      location.href = new URL('../../index.html', import.meta.url).href;   // no history.back (si venias de Terminal te devolvia alli)
+      location.href = new URL('../../', import.meta.url).href;   // no history.back (si venias de Terminal te devolvia alli)
       return;
     }
     cerrar();   // overlay (portada): volvemos a donde estaba el usuario (no recarga)

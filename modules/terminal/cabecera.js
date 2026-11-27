@@ -40,13 +40,13 @@ export function pintarCabecera(host) {
   if (!host) return;
   const cta = wallet.cuentaActual();
   if (!cta) {
-    host.innerHTML = '<button class="dir dir-con" id="c-dir" type="button">Connect wallet</button><a class="c-contratos" href="../../transparency.html">Contracts</a>';
+    host.innerHTML = '<button class="dir dir-con" id="c-dir" type="button">Connect wallet</button><a class="c-contratos" href="/transparency">Contracts</a>';
     $('c-dir').onclick = () => wallet.conectar().then(() => pintarCabecera(host)).catch(() => {});
     return;
   }
   host.innerHTML = '<button class="c-perfil" id="c-perfil" type="button" aria-label="My profile" title="My profile">' + PERFIL_SVG + '</button>'
     + '<button class="dir" id="c-dir" type="button" title="Switch wallet">' + iconoWallet() + '<span class="dir-tx">' + esc(String(cta).slice(-4)) + '</span><span class="dir-ch"></span></button>'
-    + '<a class="c-contratos" href="../../transparency.html">Contracts</a>';
+    + '<a class="c-contratos" href="/transparency">Contracts</a>';
   $('c-dir').onclick = (e) => { e.stopPropagation(); selectorWallet($('c-dir'), host); };
   $('c-perfil').onclick = (e) => { e.stopPropagation(); abrirPerfil({ alCambiar: () => pintarCabecera(host) }); };
   // El logo puede llegar tarde (EIP-6963 anuncia despues): se reintenta como en el lobby.

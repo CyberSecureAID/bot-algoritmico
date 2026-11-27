@@ -6,7 +6,7 @@
      modules/swap/swap.html). Si se llega a app.html pidiendo cualquiera de los
      dos, se redirige ANTES de pintar nada, para no ver los Bots ni su aviso un
      instante. location.replace: el Back no cae aqui. -->
-<script>try{var _ab=new URLSearchParams(location.search).get('abrir');if(_ab==='analisis'){location.replace('modules/analysis/analisis.html'+location.hash);}else if(_ab==='swap'){location.replace('modules/swap/swap.html'+location.hash);}}catch(e){}</script>
+<script>try{var _ab=new URLSearchParams(location.search).get('abrir');if(_ab==='analisis'){location.replace('/modules/analysis/analisis'+location.hash);}else if(_ab==='swap'){location.replace('/modules/swap/swap'+location.hash);}}catch(e){}</script>
 <style id="ocultar-particulas-movil">@media(max-width:900px){#cco-fx,#cco-bg,#cco-top,#cco-velo{display:none!important}html,body{background:#0B0E11!important}}</style>
 
   <meta charset="utf-8">
@@ -300,7 +300,7 @@
   <canvas id="cco-fx" data-n="260" aria-hidden="true"></canvas>
   <div id="colmena-app"></div>
   <script src="assets/js/news.js?v=10"></script>
-  <script type="module" src="assets/js/gridbot-ui.js?v=279"></script>
+  <script type="module" src="assets/js/gridbot-ui.js?v=280"></script>
   <script>
   /* Protección contra "clickjacking": si alguien mete DecFreedom dentro de un
      marco en su propia web, podría poner botones falsos encima para que
@@ -525,7 +525,7 @@
       // Wallet Shield: sección propia, se abre importando su módulo.
       if (que === 'shield') {
         // Wallet Shield es un modulo sellado con pagina propia: se navega, no se monta aqui.
-        location.replace('modules/shield/shield.html');
+        location.replace('/modules/shield/shield');
         return;
       }
 
@@ -727,7 +727,7 @@
     .np-chat__form{background:#07090c !important;border-top:1px solid #232b36 !important}
   </style>
 <!-- Aviso de riesgo (general), sale una vez a cada visitante -->
-<script src="assets/js/disclaimer-bots.js?v=3"></script>
+<script src="assets/js/disclaimer-bots.js?v=4"></script>
 </body>
 </html>
  

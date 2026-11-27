@@ -480,7 +480,7 @@ function opcionesMovil() {
 }
 
 function wireHeader() {
-  if ($('c-swap')) $('c-swap').onclick = () => { location.href = 'modules/swap/swap.html'; };   // swap: modulo sellado
+  if ($('c-swap')) $('c-swap').onclick = () => { location.href = '/modules/swap/swap'; };   // swap: modulo sellado
   // La academia se carga solo cuando alguien la pide: no pesa al entrar.
   // Herramientas: se cargan solo al pedirlas.
   /* ══════════════════════════════════════════════════════════════
@@ -3265,7 +3265,7 @@ async function arrancar() {
   // funcionan (como el 11 de septiembre).
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=86');
+      const m = await import('./movil/movil.js?v=87');
       await m.montarMovil({ conectarWallet });
       // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
       // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.

@@ -515,7 +515,7 @@ function opcionesMovil() {
 }
 
 function wireHeader() {
-  if ($('c-swap')) $('c-swap').onclick = () => { location.href = '../swap/swap.html'; };   // swap: modulo sellado
+  if ($('c-swap')) $('c-swap').onclick = () => { location.href = '/modules/swap/swap'; };   // swap: modulo sellado
   // La academia se carga solo cuando alguien la pide: no pesa al entrar.
   // Herramientas: se cargan solo al pedirlas.
   /* ══════════════════════════════════════════════════════════════
@@ -552,9 +552,9 @@ function wireHeader() {
   window.addEventListener('hashchange', abrirRuta);
 
   // Liquidity Pools: se carga solo al pedirlo.
-  if ($('c-liq')) $('c-liq').onclick = () => { location.href = '../../app.html?abrir=liq'; };
+  if ($('c-liq')) $('c-liq').onclick = () => { location.href = '/app?abrir=liq'; };
 
-  if ($('c-tools')) $('c-tools').onclick = () => { location.href = '../../app.html?abrir=tools'; };
+  if ($('c-tools')) $('c-tools').onclick = () => { location.href = '/app?abrir=tools'; };
 
   /* El punto verde: conectado o no, de un vistazo. */
   const pintarEstado = () => {
@@ -588,14 +588,14 @@ function wireHeader() {
     wallet.alCambiar(() => { pintarEstado(); setTimeout(pintarLogoWallet, 250); });
   } catch (_) {}
 
-  if ($('c-academy')) $('c-academy').onclick = () => { location.href = '../../app.html?abrir=academy'; };
+  if ($('c-academy')) $('c-academy').onclick = () => { location.href = '/app?abrir=academy'; };
   if ($('c-conectar')) $('c-conectar').onclick = conectarWallet;
   if ($('c-dir')) $('c-dir').onclick = (e) => { e.stopPropagation(); abrirSelectorWallet($('c-dir')); };
   if ($('c-red')) $('c-red').onclick = () => wallet.cambiarARedCorrecta().catch(() => {});
   if ($('c-off')) $('c-off').onclick = () => wallet.desconectar().catch(() => {});
-  if ($('c-perfil')) $('c-perfil').onclick = () => { location.href = '../../app.html?abrir=perfil'; };
+  if ($('c-perfil')) $('c-perfil').onclick = () => { location.href = '/app?abrir=perfil'; };
   tutorial.wireFila(document);
-  if ($('c-market')) $('c-market').onclick = () => { location.href = '../../app.html?abrir=market'; };
+  if ($('c-market')) $('c-market').onclick = () => { location.href = '/app?abrir=market'; };
   /* Si el usuario ya eligió idioma en otra visita, se aplica. Va en
      try por si el módulo no carga: sin él, todo sigue en español. */
   (async () => {

@@ -34,7 +34,7 @@
     const boot = document.getElementById('sp-boot'); if (boot) boot.remove();
     // En su propia página, el botón Back vuelve al inicio (no deja la página en blanco).
     const back = document.getElementById('sp-back');
-    if (back) back.onclick = () => { location.href = '../../index.html'; };
+    if (back) back.onclick = () => { location.href = '/'; };
   } catch (e) {
     const boot = document.getElementById('sp-boot');
     if (boot) boot.textContent = 'Could not load Spot: ' + (e && e.message ? e.message : e);

@@ -128,7 +128,7 @@
       + '<label class="ccb-chk"><input type="checkbox" id="ccb-agree"><span>I have read and I accept the <b>Terms and Conditions</b>. I understand these bots do not guarantee any profit and that I use them at my own risk.</span></label>'
       + '<div class="ccb-disc-a">'
       +   '<button class="ccb-disc-btn off" type="button" id="ccb-ok" disabled>Bots</button>'
-      +   '<a class="ccb-disc-btn" href="../../transparency.html" role="button">' + SHIELD + 'Transparency</a>'
+      +   '<a class="ccb-disc-btn" href="/transparency" role="button">' + SHIELD + 'Transparency</a>'
       + '</div>';
     ov.appendChild(el);
     document.body.appendChild(ov);

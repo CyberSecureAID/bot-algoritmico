@@ -89,7 +89,7 @@
       + '<p class="cc-disc-t last">This is not financial, investment, legal, or tax advice. You are responsible for your own decisions and for how you use these tools, and we are not liable for your losses or for any misuse. Every contract we run is public and verifiable on BscScan.</p>'
       + '<div class="cc-disc-a">'
       +   '<button class="cc-disc-btn" type="button" id="cc-disc-ok">I understand</button>'
-      +   '<a class="cc-disc-btn" href="transparency.html" role="button">' + SHIELD + 'Transparency</a>'
+      +   '<a class="cc-disc-btn" href="/transparency" role="button">' + SHIELD + 'Transparency</a>'
       + '</div>';
     document.body.appendChild(el);
     place(el);
