@@ -682,6 +682,15 @@ function abrirFicha(cx, cy, cfg, precio, vender) {
     const cant = parseFloat(String(inp.value).replace(',', '.')) || 0;
     if (!(cant > 0)) return;
     ok.disabled = true;
+    // Modo "real": si el host (p.ej. Spot) coloca por su propio sistema on-chain, delega en él
+    // y la ficha NO hace su colocación local/gráfica (evita doble orden). La ficha solo recogió
+    // monto, lado y modo con su barra de capital. El feedback lo da el host (toasts + wallet).
+    if (cfg.colocar) {
+      const mk = (cfg.precioActual && cfg.precioActual()) || precio;
+      try { cfg.colocar({ precio: (modo === 'limit' ? precio : mk), cant, vender, modo, lado: vender ? 'short' : 'long' }); } catch (_) {}
+      if (d._cerrar) d._cerrar();
+      return;
+    }
     try {
       if (modo === 'limit') {
         // ORDEN LIMIT: pendiente en el precio marcado. Se guarda SIN botId, asi el
