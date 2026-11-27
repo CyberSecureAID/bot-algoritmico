@@ -19,7 +19,7 @@ try { console.log('%cDecFreedom','color:#E8B84B;font-weight:700', 'Analysis · b
 */
 
 import { brasas } from './chispas.js';
-import { abrirCobroAnalisis, tieneAccesoAnalisis, segundosAnalisis, esOwnerAnalisis } from './analisis-pro.js?v=6';
+import { abrirCobroAnalisis, tieneAccesoAnalisis, segundosAnalisis, esOwnerAnalisis } from './analisis-pro.js?v=7';
 
 /* Rutas de imagen RESUELTAS DESDE EL MODULO (import.meta.url), no desde el
    documento: asi funcionan tanto si Analisis se monta como overlay sobre la
@@ -196,11 +196,11 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'inst')   await (await import(new URL('../institutional/institutional.js?v=47', import.meta.url).href)).abrirInstitutional();
     else if (abre === 'react')  await (await import(new URL('../reaction/reaction.js?v=20', import.meta.url).href)).abrirReaction();
     else if (abre === 'demo')   await (await import(new URL('../trading-demo/trading-demo.js?v=11', import.meta.url).href)).abrirDemo();
-    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=37', import.meta.url).href)).abrirMulti();
-    else if (abre === 'cycles') await (await import(new URL('../cycles/cycles.js?v=4', import.meta.url).href)).abrirCycles();
+    else if (abre === 'multi')  await (await import(new URL('../multichart/multichart.js?v=38', import.meta.url).href)).abrirMulti();
+    else if (abre === 'cycles') await (await import(new URL('../cycles/cycles.js?v=5', import.meta.url).href)).abrirCycles();
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=18', import.meta.url).href)).abrirFootprint();
     else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=22', import.meta.url).href)).abrirSuperScalper();
-    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=29', import.meta.url).href)).abrirOrderBlock();
+    else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=30', import.meta.url).href)).abrirOrderBlock();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}

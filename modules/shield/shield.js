@@ -820,10 +820,10 @@ function cabecera() {
     + '<button class="sw-back" id="shd-back" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button>'
     + '<a class="pt-logo" href="/" aria-label="DecFreedom"><img src="../../assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>'
     + '<nav class="pt-nav" aria-label="Main">'
-    + it('../swap/swap.html', 'Swap') + it('../launchpad/launchpad.html', 'Launchpad') + it('../terminal/terminal.html', 'Terminal')
-    + it('../bots/bots.html', 'Bots') + it('../../app.html?abrir=analisis', 'Analysis') + it('../spot/spot.html', 'Spot') + it('../../aportar.html', 'Staking')
-    + it('./shield.html', 'Shield', true)
-    + it('../../app.html?abrir=market', 'P2P') + it('../../app.html?abrir=academy', 'Academy')
+    + it('/modules/swap/swap', 'Swap') + it('/modules/launchpad/launchpad', 'Launchpad') + it('/modules/terminal/terminal', 'Terminal')
+    + it('/modules/bots/bots', 'Bots') + it('/app?abrir=analisis', 'Analysis') + it('/modules/spot/spot', 'Spot') + it('/aportar', 'Staking')
+    + it('/modules/shield/shield', 'Shield', true)
+    + it('/app?abrir=market', 'P2P') + it('/app?abrir=academy', 'Academy')
     + '</nav>'
     + '<div class="pt-hdr__a"><div class="shd-sub" id="shd-sub" title="Subscription status, read live from the contract"></div></div>'
     + '</div></header>';

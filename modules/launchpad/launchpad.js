@@ -519,7 +519,7 @@ function avisoPopup(titulo, cuerpoHTML, accion) {
    grafica ni precio de mercado): es un aviso que explica QUE es, su garantia (candado de 30 dias) si
    sigue activa, y lleva a comprarlo al swap. Cada mencion de List Your Token va en azul y clickeable.
    No se muestra el contrato (puede no ser nuestro) ni hay boton de copiar; se cierra con la X. */
-const SWAP_LISTAR = '../swap/swap.html?abrir=listar';   // seccion List Your Token (misma pestaña)
+const SWAP_LISTAR = '/modules/swap/swap?abrir=listar';   // seccion List Your Token (misma pestaña)
 const lytLink = (txt) => `<a href="${SWAP_LISTAR}" class="lp-lyt">${txt || 'List Your Token'}</a>`;
 function abrirListado(addr) {
   const L = ((_lobby && _lobby.listados) || []).find((x) => String(x.address).toLowerCase() === String(addr).toLowerCase());

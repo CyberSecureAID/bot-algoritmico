@@ -101,7 +101,7 @@ export function avisoLaunchpad() {
     key: 'df_launchpad_ack_v1',
     titulo: 'Before you use the Launchpad',
     ok: 'Launchpad',
-    enlace: '../../transparency.html',
+    enlace: '/transparency',
     firma: 'I have read and I accept the <b>Terms and Conditions</b> of the Launchpad. I understand that I am the sole issuer of any coin I create, that DecFreedom does not review, endorse or promote it, and that DecFreedom is not liable for anything I or anyone else does with it.',
     cuerpo: ''
       + '<p class="av-t"><span class="g">DecFreedom is not responsible for any coin created here, for what its creator does with it, for what anyone pays for it or for any loss derived from it.</span> The Launchpad is a non custodial, self service tool that deploys a public smart contract on BNB Smart Chain from your wallet, in your name. DecFreedom is not a party to your project, does not verify it, does not endorse it and does not promote it.</p>'
