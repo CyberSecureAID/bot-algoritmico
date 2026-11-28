@@ -11,13 +11,14 @@
 import { ESTRATEGIAS, porId } from './estrategias.js?v=2';
 import { sma, bollinger, worden } from './indicadores.js?v=1';
 import { leerCatalyst } from './analista.js?v=2';
-import * as D from './datos.js?v=5';
+import * as D from './datos.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=8';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
 
 const LIB = new URL('../trading-demo/vendor/lightweight-charts.standalone.production.js', import.meta.url).href;
 const LOGO = new URL('../../assets/img/cco-marca.png', import.meta.url).href;   // watermark DecFreedom (como Multichart)
 const AVATAR = new URL('../../assets/img/jesus-avatar.webp', import.meta.url).href;
+const DISC_IMG = new URL('../../assets/portada/red/disclaimer.webp', import.meta.url).href;   // MISMA imagen del disclaimer de la plataforma
 const $ = (id) => document.getElementById(id);
 function lib() { return window.LightweightCharts ? Promise.resolve(window.LightweightCharts) : new Promise((res, rej) => { const s = document.createElement('script'); s.src = LIB; s.onload = () => res(window.LightweightCharts); s.onerror = rej; document.head.appendChild(s); }); }
 
@@ -46,29 +47,35 @@ const fmtPx = (x) => '$' + Number(x).toLocaleString('en-US', { minimumFractionDi
 
 /* ───────── disclaimer de entrada (una vez por navegador) ───────── */
 function discOK() { try { return localStorage.getItem('catalyst_disc_ok') === '1'; } catch (_) { return false; } }
+/* MISMA dinámica que el disclaimer de la plataforma (mostrarDisclaimer de
+   analisis.js): mismas clases .an-modal / .an-disc, en inglés, con la imagen de
+   marca (no la foto del analista). Solo cambia el texto, específico de Catalyst. */
 function mostrarDisc() {
-  return new Promise((res) => {
-    const b = document.createElement('div'); b.id = 'cat-disc';
-    b.innerHTML = `
-      <div class="cat-disc-card" role="dialog" aria-modal="true">
-        <div class="cat-disc-ic"><img src="${AVATAR}" alt="" onerror="this.style.display='none'"></div>
-        <h3>Antes de empezar</h3>
-        <p>Esto <b>no es asesoría financiera</b>. Catalyst es una herramienta de análisis: muestra las acciones y los indicadores para que apliques tú tu estrategia.</p>
-        <p>El analista <b>Jesús está solo para darte soporte</b>: te acompaña en vivo para que no cometas un error al ejecutar la estrategia que estés aplicando. Nunca te dice qué comprar ni te garantiza un resultado. Operar conlleva riesgo y puedes perder tu capital. La decisión es tuya.</p>
-        <label class="cat-disc-chk"><input type="checkbox" id="cat-disc-agree"> Entiendo y acepto.</label>
-        <button class="cat-disc-ok" id="cat-disc-ok" disabled>Entrar</button>
-      </div>`;
-    document.body.appendChild(b);
-    const chk = $('cat-disc-agree'), ok = $('cat-disc-ok');
-    chk.onchange = () => { ok.disabled = !chk.checked; ok.classList.toggle('on', chk.checked); };
-    ok.onclick = () => { if (!chk.checked) return; try { localStorage.setItem('catalyst_disc_ok', '1'); } catch (_) {} b.remove(); res(); };
-  });
+  const host = $('cat-overlay') || document.body;
+  if (host.querySelector('#cat-disc')) return;
+  const m = document.createElement('div'); m.className = 'an-modal'; m.id = 'cat-disc';
+  m.innerHTML = `
+    <div class="an-modal-bg"></div>
+    <div class="an-modal-card an-disc-card">
+      <div class="an-disc-box">
+        <img class="an-disc-fl" src="${DISC_IMG}" alt="" onerror="this.style.display='none'">
+        <p>Catalyst shows US stocks with indicators for informational and educational purposes only. Nothing here is financial, investment, legal or tax advice, and we do not guarantee any result, profit or performance. Trading carries substantial risk and you may lose part or all of your capital. Every decision is your own and you are solely responsible for it.</p>
+        <p>This section includes an <b>analyst</b>, Jesús. He is here only to <b>support you</b>, with a live read of the market so you do not mis execute the strategy you are applying at that moment. He never tells you what to buy or sell and guarantees no result. Treat it as support, never as a recommendation.</p>
+        <label class="an-disc-chk"><input type="checkbox" id="cat-disc-agree"><span>I have read and I accept this notice and the <b>Terms and Conditions</b>. I understand these tools do not guarantee any result and that I use them entirely at my own risk.</span></label>
+        <button class="an-pay gold an-disc-ok" id="cat-disc-ok" disabled style="opacity:.45;cursor:not-allowed">Accept</button>
+      </div>
+    </div>`;
+  host.appendChild(m);
+  requestAnimationFrame(() => m.classList.add('on'));
+  const bg = m.querySelector('.an-modal-bg'); if (bg) bg.onclick = (e) => { e.preventDefault(); e.stopPropagation(); };
+  const chk = $('cat-disc-agree'), ok = $('cat-disc-ok');
+  chk.addEventListener('change', () => { if (chk.checked) { ok.removeAttribute('disabled'); ok.style.opacity = ''; ok.style.cursor = ''; } else { ok.setAttribute('disabled', ''); ok.style.opacity = '.45'; ok.style.cursor = 'not-allowed'; } });
+  ok.onclick = () => { if (!chk.checked) return; try { localStorage.setItem('catalyst_disc_ok', '1'); } catch (_) {} m.classList.remove('on'); setTimeout(() => { try { m.remove(); } catch (_) {} }, 180); };
 }
 
 export async function abrirCatalyst() {
   if ($('cat-overlay')) return;
   estilos();
-  if (!discOK()) await mostrarDisc();
   const ov = document.createElement('div'); ov.id = 'cat-overlay';
   ov.innerHTML = `
     <div class="cat-top">
@@ -104,9 +111,10 @@ export async function abrirCatalyst() {
   $('cat-present').onclick = vistaDefecto;
   pintarCoin(); pintarTfs(); pintarStrat(); pintarAnalista();
   await montarChart();
-  await cargar();
   if (!S._timer) S._timer = setInterval(tic, 12000);
   S._raf = requestAnimationFrame(rafLoop);
+  cargar();                        // asincrona: el spinner se encarga, NO bloquea la apertura
+  if (!discOK()) mostrarDisc();    // disclaimer ENCIMA del overlay, sin bloquear la carga
 }
 function cerrar() {
   try { clearInterval(S._timer); } catch (_) {} S._timer = null;
@@ -532,16 +540,23 @@ function estilos() {
   #cat-overlay .nv-tool-sep{height:1px;background:rgba(255,255,255,.1);margin:3px 5px;flex:0 0 auto}
   #cat-overlay .nv-tools.nv-oculta{opacity:1 !important;transform:translateY(-50%) !important;pointer-events:auto !important}
   #cat-overlay .nv-tools-tab{display:none !important}
-  /* disclaimer de entrada */
-  #cat-disc{position:fixed;inset:0;z-index:9700;display:grid;place-items:center;padding:18px;background:rgba(5,7,10,.82);backdrop-filter:blur(4px)}
-  .cat-disc-card{position:relative;width:min(440px,100%);background:linear-gradient(180deg,#12161d,#0a0e13);border:1px solid #29313b;border-radius:18px;padding:26px 24px;color:#eaecef;text-align:left}
-  .cat-disc-ic{width:56px;height:56px;border-radius:50%;overflow:hidden;border:2px solid #C9A84B;margin:0 auto 12px}.cat-disc-ic img{width:100%;height:100%;object-fit:cover}
-  .cat-disc-card h3{font-family:'Chakra Petch',system-ui,sans-serif;font-size:20px;margin:0 0 12px;text-align:center}
-  .cat-disc-card p{font-size:12.8px;line-height:1.55;color:#c4ccd4;margin:0 0 12px}
-  .cat-disc-chk{display:flex;align-items:center;gap:9px;font-size:12.5px;color:#d4dae1;margin:4px 0 16px;cursor:pointer}
-  .cat-disc-chk input{width:17px;height:17px;accent-color:#E8B84B;cursor:pointer}
-  .cat-disc-ok{width:100%;height:46px;border-radius:12px;border:1px solid #29313b;background:rgba(255,255,255,.05);color:#7c868f;font-family:'Chakra Petch',system-ui,sans-serif;font-weight:700;font-size:14px;cursor:not-allowed}
-  .cat-disc-ok.on{border-color:#c79426;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#241900;cursor:pointer}
+  /* disclaimer de entrada: MISMO estilo que el de la plataforma (an-disc), re-scopeado a #cat-overlay */
+  #cat-overlay .an-modal{position:fixed;inset:0;z-index:9700;display:grid;place-items:center;opacity:0;transition:opacity .18s;padding:20px}
+  #cat-overlay .an-modal.on{opacity:1}
+  #cat-overlay .an-modal-bg{position:absolute;inset:0;background:rgba(3,5,8,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  #cat-overlay .an-modal-card{position:relative;z-index:1;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;scrollbar-width:none;background:linear-gradient(180deg,#121820,#0b0e12);border:1px solid #2a333f;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.05);transform:translateY(8px) scale(.98);transition:transform .18s}
+  #cat-overlay .an-modal-card::-webkit-scrollbar{display:none}
+  #cat-overlay .an-modal.on .an-modal-card{transform:none}
+  #cat-overlay .an-disc-card{padding:0}
+  #cat-overlay .an-disc-box{display:flow-root;padding:24px 26px 22px;text-align:left}
+  #cat-overlay .an-disc-fl{float:right;width:120px;height:120px;margin:2px 0 8px 20px;shape-outside:margin-box;border-radius:14px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.5))}
+  #cat-overlay .an-disc-box p{font-size:12.8px;line-height:1.65;color:#c4ccd4;margin:0 0 12px}
+  #cat-overlay .an-disc-chk{display:flex;align-items:flex-start;gap:10px;margin:2px 0 14px;cursor:pointer;font-size:12.5px;line-height:1.5;color:#d4dae1}
+  #cat-overlay .an-disc-chk input{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:#E8B84B;cursor:pointer}
+  #cat-overlay .an-disc-chk b{color:#e9eef3}
+  #cat-overlay .an-pay{display:inline-flex;align-items:center;justify-content:center;height:46px;border-radius:12px;border:1px solid #2a333f;background:linear-gradient(180deg,#1b2027,#0d1117);color:#eaecef;font-family:'Chakra Petch',system-ui,sans-serif;font-weight:700;font-size:13.5px;cursor:pointer;box-shadow:0 3px 0 #060809}
+  #cat-overlay .an-pay.gold{border-color:#cf9f2e;background:linear-gradient(180deg,#f4d089,#E8B84B 55%,#cf9f2e);color:#241900;box-shadow:0 3px 0 #8f6a1a}
+  #cat-overlay .an-disc-ok{clear:both;width:100%;margin-top:4px}
   #cat-set{position:fixed;inset:0;z-index:9600;display:grid;place-items:center;padding:18px;background:rgba(5,7,10,.72);backdrop-filter:blur(3px)}
   .cat-set-card{position:relative;width:min(400px,100%);background:linear-gradient(180deg,#12161d,#0a0e13);border:1px solid #29313b;border-radius:16px;padding:24px;color:#eaecef}
   .cat-set-x{position:absolute;top:12px;right:14px;width:30px;height:30px;border-radius:8px;border:1px solid #29313b;background:rgba(255,255,255,.04);color:#a7b0bb;cursor:pointer;display:grid;place-items:center}.cat-set-x svg{width:14px;height:14px}
