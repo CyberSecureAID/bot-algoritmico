@@ -20,7 +20,8 @@ function lib() { return window.LightweightCharts ? Promise.resolve(window.Lightw
 const IC = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
   bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
-  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
 };
 
 const S = { tf: '1h', estr: ESTRATEGIAS[0], activo: D.ACTIVOS[0], chart: null, serie: null, ind: {}, demo: true };
@@ -37,6 +38,7 @@ export async function abrirCatalyst() {
       <div class="cat-tfs" id="cat-tfs"></div>
       <div class="cat-top-r">
         <span class="cat-badge" id="cat-badge"></span>
+        <button class="cat-gear" id="cat-gear" title="Data & alert keys">${IC.gear}</button>
         <button class="cat-alert" id="cat-alert">${IC.bell}<span>Alerts</span></button>
       </div>
     </div>
@@ -48,6 +50,7 @@ export async function abrirCatalyst() {
   document.body.appendChild(ov);
   $('cat-back').onclick = cerrar;
   $('cat-alert').onclick = abrirAlertas;
+  $('cat-gear').onclick = ajustes;
   $('cat-sym').onclick = menuActivos;
   pintarTfs(); pintarStrip(); pintarSide();
   await montarChart();
@@ -181,6 +184,33 @@ function menuActivos() {
 /* ───────────────────────── alertas (Web3Forms) ───────────────────────── */
 function abrirAlertas() { import('./alertas.js?v=1').then((A) => A.abrirAlertas(S)).catch((e) => console.warn('[catalyst] alertas:', e)); }
 
+/* ───────────────────────── ajustes (claves de datos y de alertas) ───────────────────────── */
+function ajustes() {
+  if ($('cat-set')) return;
+  const g = (k) => { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } };
+  const b = document.createElement('div'); b.id = 'cat-set';
+  b.innerHTML = `
+    <div class="cat-set-card" role="dialog" aria-modal="true">
+      <button class="cat-set-x" id="cat-set-x" aria-label="Close">×</button>
+      <h3>Connect your data</h3>
+      <label>Twelve Data API key <span>— stock prices (free at twelvedata.com)</span>
+        <input id="cat-set-td" value="${g('catalyst_td_key').replace(/"/g, '&quot;')}" placeholder="paste your key"></label>
+      <label>Web3Forms access key <span>— email alerts (free at web3forms.com)</span>
+        <input id="cat-set-w3" value="${g('catalyst_w3f_key').replace(/"/g, '&quot;')}" placeholder="paste your key"></label>
+      <button class="cat-set-go" id="cat-set-go">Save</button>
+      <p class="cat-set-note">Las claves se guardan solo en este navegador. Sin la de Twelve Data, el gráfico usa datos demo.</p>
+    </div>`;
+  document.body.appendChild(b);
+  const cerrarS = () => b.remove();
+  $('cat-set-x').onclick = cerrarS;
+  b.addEventListener('click', (e) => { if (e.target === b) cerrarS(); });
+  $('cat-set-go').onclick = () => {
+    D.setKey($('cat-set-td').value);
+    try { localStorage.setItem('catalyst_w3f_key', $('cat-set-w3').value.trim()); } catch (_) {}
+    cerrarS(); cargar();
+  };
+}
+
 /* set logo inicial */
 setTimeout(() => { const l = $('cat-sym-logo'); if (l) l.src = D.logoDe(S.activo); }, 50);
 
@@ -208,6 +238,18 @@ function estilos() {
   .cat-tr.alcista{color:#2ee86a;border-color:rgba(46,232,106,.4)}.cat-tr.bajista{color:#ff5b6e;border-color:rgba(255,91,110,.4)}.cat-tr.plana{color:#7c868f}
   .cat-alert{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 13px;border-radius:9px;border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#241900;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer}
   .cat-alert svg{width:15px;height:15px}
+  .cat-gear{width:36px;height:36px;display:grid;place-items:center;border-radius:9px;border:1px solid #29313b;background:rgba(255,255,255,.04);color:#a7b0bb;cursor:pointer}
+  .cat-gear svg{width:16px;height:16px}.cat-gear:hover{border-color:#C9A84B;color:#E8B84B}
+  #cat-set{position:fixed;inset:0;z-index:9600;display:grid;place-items:center;padding:18px;background:rgba(5,7,10,.72);backdrop-filter:blur(3px)}
+  .cat-set-card{position:relative;width:min(400px,100%);background:linear-gradient(180deg,#12161d,#0a0e13);border:1px solid #29313b;border-radius:16px;padding:24px;color:#eaecef}
+  .cat-set-x{position:absolute;top:12px;right:14px;width:30px;height:30px;border-radius:8px;border:1px solid #29313b;background:rgba(255,255,255,.04);color:#a7b0bb;font-size:18px;cursor:pointer}
+  .cat-set-card h3{font-family:'Chakra Petch',system-ui,sans-serif;font-size:19px;margin:0 0 16px}
+  .cat-set-card label{display:block;font-size:12.5px;color:#c4ccd4;margin-bottom:14px}
+  .cat-set-card label span{color:#7c868f;font-size:11px}
+  .cat-set-card input{width:100%;margin-top:6px;height:42px;border-radius:10px;border:1px solid #29313b;background:#0b0e12;color:#eaecef;padding:0 12px;font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+  .cat-set-card input:focus{outline:none;border-color:#C9A84B}
+  .cat-set-go{width:100%;height:46px;border-radius:12px;border:1px solid #c79426;background:linear-gradient(180deg,#f7db8d,#E8B84B 55%,#c79426);color:#241900;font-family:'Chakra Petch',system-ui,sans-serif;font-weight:700;font-size:14px;cursor:pointer}
+  .cat-set-note{font-size:11px;line-height:1.5;color:#7c868f;margin:12px 0 0}
   .cat-main{flex:1;display:flex;min-height:0}
   .cat-chartwrap{flex:1;position:relative;min-width:0}
   .cat-cv{position:absolute;inset:0}
