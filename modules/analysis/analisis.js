@@ -206,7 +206,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=18', import.meta.url).href)).abrirFootprint();
     else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=22', import.meta.url).href)).abrirSuperScalper();
     else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=30', import.meta.url).href)).abrirOrderBlock();
-    else if (abre === 'catalyst') await (await import(new URL('../catalyst/catalyst.js?v=5', import.meta.url).href)).abrirCatalyst();
+    else if (abre === 'catalyst') await (await import(new URL('../catalyst/catalyst.js?v=6', import.meta.url).href)).abrirCatalyst();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}

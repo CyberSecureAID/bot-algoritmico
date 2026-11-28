@@ -19,10 +19,12 @@ export const haveKey = () => !!clave();
 export function setKey(k) { try { const v = String(k || '').trim(); if (v) localStorage.setItem('catalyst_td_key', v); else localStorage.removeItem('catalyst_td_key'); } catch (_) {} }
 
 const BASE = 'https://api.twelvedata.com';
-const TF_MAP = { '15m': '15min', '1h': '1h', '1D': '1day' };
-/* TTL de caché: intradía corto, diario largo. Protege los créditos y hace que
-   moverse entre acciones y temporalidades no dispare una petición cada vez. */
-const TTL = { '15m': 150e3, '1h': 180e3, '1D': 1800e3 };
+/* Temporalidades que sirve Twelve Data (como en los demas servicios: varias, no solo 3). */
+const TF_MAP = { '1m': '1min', '5m': '5min', '15m': '15min', '30m': '30min', '1h': '1h', '2h': '2h', '4h': '4h', '1D': '1day', '1W': '1week' };
+const TF_SEC = { '1m': 60, '5m': 300, '15m': 900, '30m': 1800, '1h': 3600, '2h': 7200, '4h': 14400, '1D': 86400, '1W': 604800 };
+/* TTL de caché: intradía corto, diario/semanal largo. Protege los créditos y hace
+   que moverse entre acciones y temporalidades no dispare una petición cada vez. */
+const TTL = { '1m': 60e3, '5m': 90e3, '15m': 150e3, '30m': 240e3, '1h': 300e3, '2h': 600e3, '4h': 900e3, '1D': 1800e3, '1W': 3600e3 };
 
 /* Acciones/ETF de EE.UU. con opciones líquidas (put/call). El dominio sirve para
    el logo; si falla, la interfaz pinta un monograma, así nunca hay imagen rota. */
@@ -48,9 +50,11 @@ export const ACTIVOS = [
   { s: 'IWM',  n: 'Russell 2000', dom: 'ishares.com' }
 ];
 
-/* Logo por TICKER (Financial Modeling Prep sirve el logo de la accion sin clave).
-   Mas fiable que Clearbit por dominio. Si falla, la interfaz pinta el monograma. */
+/* Logo por TICKER con cadena de respaldo: primero Financial Modeling Prep, luego
+   el CDN de Parqet (cubre acciones y ETF como QQQ/SPY/IWM). Si ambos fallan, la
+   interfaz pinta el monograma, asi nunca queda una imagen rota. */
 export const logoDe = (a) => a && a.s ? `https://financialmodelingprep.com/image-stock/${a.s}.png` : '';
+export const logoAlt = (a) => a && a.s ? `https://assets.parqet.com/logos/symbol/${a.s}?format=png&size=80` : '';
 
 function leerCache(key) { try { const o = JSON.parse(sessionStorage.getItem(key) || localStorage.getItem(key) || 'null'); return o; } catch (_) { return null; } }
 function guardarCache(key, velas, tf) {
@@ -96,7 +100,7 @@ export async function ticker(symbol) {
 
 /* Sintéticas: solo respaldo extremo (no debería verse si la clave sirve). */
 function sinteticas(symbol, tf, n) {
-  const sec = tf === '15m' ? 900 : tf === '1h' ? 3600 : 86400;
+  const sec = TF_SEC[tf] || 3600;
   let semilla = 0; for (let i = 0; i < symbol.length; i++) semilla = (semilla * 31 + symbol.charCodeAt(i)) >>> 0;
   const rnd = () => { semilla = (semilla * 1664525 + 1013904223) >>> 0; return semilla / 4294967296; };
   let px = 50 + rnd() * 400;
