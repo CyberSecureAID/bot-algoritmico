@@ -564,12 +564,7 @@ function wireHeader() {
     wallet.alCambiar(() => { pintarEstado(); setTimeout(pintarLogoWallet, 250); });
   } catch (_) {}
 
-  if ($('c-academy')) $('c-academy').onclick = async () => {
-    try {
-      const ac = await import('./academy.js?v=129');
-      ac.abrirAcademy();
-    } catch (e) { console.warn('[Aurex] academy:', e); }
-  };
+  if ($('c-academy')) $('c-academy').onclick = () => { location.href = '/modules/academy/academy'; };
   if ($('c-conectar')) $('c-conectar').onclick = conectarWallet;
   if ($('c-dir')) $('c-dir').onclick = (e) => { e.stopPropagation(); abrirSelectorWallet($('c-dir')); };
   if ($('c-red')) $('c-red').onclick = () => wallet.cambiarARedCorrecta().catch(() => {});
@@ -3265,7 +3260,7 @@ async function arrancar() {
   // funcionan (como el 11 de septiembre).
   if (_movil()) {
     try {
-      const m = await import('./movil/movil.js?v=89');
+      const m = await import('./movil/movil.js?v=90');
       await m.montarMovil({ conectarWallet });
       // El idioma en móvil: wireHeader() (que lo arranca en escritorio) nunca
       // se ejecuta aquí, así que se arranca explícitamente. Inglés por defecto.
