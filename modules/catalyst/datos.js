@@ -48,7 +48,9 @@ export const ACTIVOS = [
   { s: 'IWM',  n: 'Russell 2000', dom: 'ishares.com' }
 ];
 
-export const logoDe = (a) => a && a.dom ? `https://logo.clearbit.com/${a.dom}` : '';
+/* Logo por TICKER (Financial Modeling Prep sirve el logo de la accion sin clave).
+   Mas fiable que Clearbit por dominio. Si falla, la interfaz pinta el monograma. */
+export const logoDe = (a) => a && a.s ? `https://financialmodelingprep.com/image-stock/${a.s}.png` : '';
 
 function leerCache(key) { try { const o = JSON.parse(sessionStorage.getItem(key) || localStorage.getItem(key) || 'null'); return o; } catch (_) { return null; } }
 function guardarCache(key, velas, tf) {
