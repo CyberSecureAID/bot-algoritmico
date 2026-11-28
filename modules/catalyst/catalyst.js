@@ -10,7 +10,7 @@
 
 import { ESTRATEGIAS, porId } from './estrategias.js?v=2';
 import { sma, bollinger, worden } from './indicadores.js?v=1';
-import { leerCatalyst } from './analista.js?v=2';
+import { leerCatalyst } from './analista.js?v=3';
 import * as D from './datos.js?v=6';
 import { montarBarra } from '../../assets/js/niveles/barra.js?v=8';
 import { N as NIV } from '../../assets/js/niveles/estado.js?v=1';
@@ -194,15 +194,10 @@ async function montarChart() {
   try { chart.subscribeCrosshairMove((p) => pintarLeg(p)); } catch (_) {}
   // boton "volver al presente"
   try { chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { const b = $('cat-present'); if (!b || !r) return; const n = S.velas.length; b.style.display = (r.to < n - 2) ? 'grid' : 'none'; }); } catch (_) {}
-  // barra de dibujo de Smart Pools / Multichart (traza la linea de tendencia de las estrategias)
+  // barra de dibujo de Smart Pools / Multichart: DESPLEGABLE (se oculta sola y sale
+  // al acercar el cursor al borde izquierdo), igual que en los demas servicios.
   NIV.seccion = 'catalyst';
-  try {
-    S.barra = montarBarra($('cat-cvwrap'));
-    // La barra viene en modo auto-ocultar (nv-oculta), cuyo CSS de mostrar esta
-    // atado a #nv-overlay; aqui la queremos SIEMPRE visible a la derecha.
-    const tb = $('cat-cvwrap').querySelector('.nv-tools'); if (tb) tb.classList.remove('nv-oculta');
-    const tab = $('cat-cvwrap').querySelector('.nv-tools-tab'); if (tab) tab.remove();
-  } catch (_) { S.barra = null; }
+  try { S.barra = montarBarra($('cat-cvwrap')); } catch (_) { S.barra = null; }
 }
 
 function rafLoop() {
@@ -297,7 +292,7 @@ function empujarFeed() {
 
 function pintarAnalista() {
   const col = $('cat-an-col'), btn = $('cat-anbtn');
-  if (btn) btn.classList.toggle('on', S.anOpen);
+  if (btn) btn.style.display = S.anOpen ? 'none' : 'flex';   // la foto arriba SOLO cuando el analista esta colapsado
   if (!col) return;
   if (!S.anOpen) { col.style.display = 'none'; return; }
   col.style.display = 'flex';
@@ -467,8 +462,8 @@ function estilos() {
   .cat-stage{flex:1;display:flex;min-height:0}
   .cat-cvwrap{flex:1;position:relative;min-width:0}
   .cat-cv{position:absolute;inset:0}
-  .cat-wm{position:absolute;left:60px;bottom:205px;z-index:3;opacity:.7;pointer-events:none}
-  .cat-wm img{height:19px;width:auto;filter:drop-shadow(0 2px 8px rgba(0,0,0,.98))}
+  .cat-wm{position:absolute;left:60px;bottom:200px;z-index:3;opacity:.72;pointer-events:none}
+  .cat-wm img{height:34px;width:auto;filter:drop-shadow(0 2px 10px rgba(0,0,0,.98))}
   .cat-leg{position:absolute;left:60px;top:10px;z-index:4;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#c4ccd4;background:rgba(5,7,10,.72);border:1px solid #1c232c;border-radius:7px;padding:4px 9px;pointer-events:none;opacity:0;transition:opacity .12s}
   .cat-leg.on{opacity:1}.cat-leg b{color:#fff}.cat-leg .u{color:#2ee86a}.cat-leg .d{color:#ff5b6e}
   .cat-osclabel{position:absolute;left:60px;bottom:140px;transform:translateY(-6px);font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#7c868f;background:rgba(5,7,10,.7);padding:2px 7px;border-radius:6px;pointer-events:none;z-index:3}
@@ -530,7 +525,7 @@ function estilos() {
   .cat-menu button:hover{background:rgba(255,255,255,.06)}
   .cat-menu b{font-size:13px;font-weight:700}.cat-menu em{font-style:normal;font-size:11px;color:#7c868f;margin-left:auto}
   /* barra de dibujo (Smart Pools / Multichart) montada a la DERECHA */
-  #cat-overlay .nv-tools{position:absolute;left:8px;right:auto;top:50%;transform:translateY(-50%);z-index:9;display:flex;flex-direction:column;gap:3px;padding:5px;border-radius:13px;background:rgba(13,17,24,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 34px rgba(0,0,0,.55);max-height:calc(100% - 20px);overflow-y:auto;scrollbar-width:none}
+  #cat-overlay .nv-tools{position:absolute;left:8px;right:auto;top:50%;transform:translateY(-50%);z-index:12;display:flex;flex-direction:column;gap:3px;padding:5px;border-radius:13px;background:rgba(13,17,24,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 34px rgba(0,0,0,.55);max-height:calc(100% - 20px);overflow-y:auto;scrollbar-width:none}
   #cat-overlay .nv-tools::-webkit-scrollbar{display:none}
   #cat-overlay .nv-tool{position:relative;width:32px;height:32px;flex:0 0 auto;border-radius:9px;border:none;padding:0;background:transparent;color:#98a2ad;cursor:pointer;display:grid;place-items:center;transition:background .14s,color .14s}
   #cat-overlay .nv-tool svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -538,8 +533,11 @@ function estilos() {
   #cat-overlay .nv-tool.on{background:rgba(232,184,75,.16);color:#E8B84B;box-shadow:inset 0 0 0 1px rgba(232,184,75,.4)}
   #cat-overlay .nv-tool-tg.on{background:rgba(232,184,75,.16);color:#E8B84B;box-shadow:inset 0 0 0 1px rgba(232,184,75,.4)}
   #cat-overlay .nv-tool-sep{height:1px;background:rgba(255,255,255,.1);margin:3px 5px;flex:0 0 auto}
-  #cat-overlay .nv-tools.nv-oculta{opacity:1 !important;transform:translateY(-50%) !important;pointer-events:auto !important}
-  #cat-overlay .nv-tools-tab{display:none !important}
+  /* DESPLEGABLE: se oculta sola y sale al acercar el cursor al borde izquierdo (igual que los demas servicios) */
+  #cat-overlay .nv-tools.nv-oculta{transform:translate(calc(-100% - 12px),-50%);opacity:0;pointer-events:none;transition:transform .22s ease,opacity .22s ease}
+  #cat-overlay .nv-tools.nv-oculta.abierta,#cat-overlay .nv-tools.nv-oculta.forz{transform:translate(0,-50%);opacity:1;pointer-events:auto}
+  #cat-overlay .nv-tools-tab{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:11;pointer-events:none;width:9px;height:66px;border-radius:0 8px 8px 0;background:linear-gradient(180deg,rgba(34,211,238,.65),rgba(232,184,75,.6));box-shadow:2px 0 12px rgba(0,0,0,.5),inset -1px 0 0 rgba(255,255,255,.25);transition:opacity .2s}
+  #cat-overlay .nv-tools.abierta ~ .nv-tools-tab,#cat-overlay .nv-tools.forz ~ .nv-tools-tab{opacity:0;pointer-events:none}
   /* disclaimer de entrada: MISMO estilo que el de la plataforma (an-disc), re-scopeado a #cat-overlay */
   #cat-overlay .an-modal{position:fixed;inset:0;z-index:9700;display:grid;place-items:center;opacity:0;transition:opacity .18s;padding:20px}
   #cat-overlay .an-modal.on{opacity:1}
