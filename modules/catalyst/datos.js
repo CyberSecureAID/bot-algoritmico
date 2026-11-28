@@ -63,8 +63,16 @@ function guardarCache(key, velas, tf) {
   try { localStorage.setItem(key, JSON.stringify(o)); } catch (_) {}
 }
 
+/* fetch con TIMEOUT: si el proveedor no responde, aborta y caemos a caché o a
+   sintéticas. Asi la interfaz NUNCA se queda colgada en "Loading" esperando la red. */
+function fetchTO(url, ms = 7000) {
+  const ac = new AbortController();
+  const t = setTimeout(() => { try { ac.abort(); } catch (_) {} }, ms);
+  return fetch(url, { cache: 'no-store', signal: ac.signal }).finally(() => clearTimeout(t));
+}
+
 /* Velas: primero caché fresca, luego Twelve Data. Sintéticas solo si de verdad
-   no hay forma (clave mala/red caída), para que la interfaz nunca quede vacía. */
+   no hay forma (clave mala/red caída/timeout), para que la interfaz nunca quede vacía. */
 export async function velas(symbol, tf, limit = 500) {
   const key = `cat_v_${symbol}_${tf}`;
   const c = leerCache(key);
@@ -73,7 +81,7 @@ export async function velas(symbol, tf, limit = 500) {
   try {
     const int = TF_MAP[tf] || '1h';
     const u = `${BASE}/time_series?symbol=${encodeURIComponent(symbol)}&interval=${int}&outputsize=${limit}&apikey=${encodeURIComponent(k)}`;
-    const r = await fetch(u, { cache: 'no-store' });
+    const r = await fetchTO(u, 7000);
     const j = await r.json();
     if (j && Array.isArray(j.values) && j.values.length) {
       const arr = j.values.map((v) => ({
@@ -91,7 +99,7 @@ export async function velas(symbol, tf, limit = 500) {
 export async function ticker(symbol) {
   const k = clave();
   try {
-    const r = await fetch(`${BASE}/quote?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(k)}`, { cache: 'no-store' });
+    const r = await fetchTO(`${BASE}/quote?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(k)}`, 5000);
     const j = await r.json();
     if (j && j.close) return { last: +j.close, chgPct: +(j.percent_change || 0) };
   } catch (_) {}
