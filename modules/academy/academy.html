@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070a">
+  <title>Academy · DecFreedom</title>
+  <!-- SEO -->
+  <meta name="description" content="DecFreedom Academy: four core video classes on crypto, charts and strategy on BNB Smart Chain. Education only, never financial advice. Watch in order, at your own pace.">
+  <meta name="keywords" content="crypto academy, learn crypto, trading course, BNB Smart Chain, DecFreedom, video classes, candlesticks, risk management">
+  <link rel="canonical" href="https://decfreedom.com/modules/academy/academy">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="DecFreedom">
+  <meta property="og:title" content="Academy · DecFreedom">
+  <meta property="og:description" content="Four core video classes on crypto, charts and strategy. Education only, never financial advice.">
+  <meta property="og:url" content="https://decfreedom.com/modules/academy/academy">
+  <meta property="og:image" content="https://decfreedom.com/assets/portada/img/analisis.webp">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Academy · DecFreedom">
+  <meta name="twitter:description" content="Four core video classes on crypto, charts and strategy. Education only, never financial advice.">
+  <meta name="twitter:image" content="https://decfreedom.com/assets/portada/img/analisis.webp">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Course","name":"DecFreedom Academy","description":"Four core video classes on crypto, charts and strategy on BNB Smart Chain. Education only, not financial advice.","provider":{"@type":"Organization","name":"DecFreedom","url":"https://decfreedom.com"}}</script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+  <link rel="icon" type="image/png" href="../../assets/img/cco-32.png">
+  <link rel="apple-touch-icon" href="../../assets/img/favicon-180.png">
+  <link rel="stylesheet" href="../../assets/css/cinta.css?v=3">
+  <style>
+    :root{ --bg:#05070a; --ink:#eaecef; --ink2:#a7b0bb; --ink3:#7c868f; --gold:#E8B84B; --gold-soft:#C9A84B; --line:#1a2029; --line2:#29313b; }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);min-height:100%;
+      font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+
+    /* Fondo: degradado propio, sin depender de ninguna imagen. */
+    #ac-bg{position:fixed;inset:0;z-index:0;pointer-events:none;background:
+      radial-gradient(120% 70% at 50% -5%, rgba(232,184,75,.07), transparent 55%),
+      radial-gradient(90% 60% at 100% 100%, rgba(80,120,200,.05), transparent 60%),
+      linear-gradient(180deg,#0a0e13,#05070a 60%)}
+
+    #cco-volver{position:sticky;top:0;z-index:50}
+    #cco-wallet{display:flex;gap:8px;align-items:center}
+
+    .ac-wrap{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:30px 20px 72px}
+
+    .ac-intro{text-align:center;margin:14px auto 30px;max-width:640px}
+    .ac-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--gold);opacity:.9;margin-bottom:12px}
+    .ac-intro h1{font-family:'Chakra Petch',system-ui,sans-serif;font-weight:700;font-size:clamp(26px,5vw,40px);line-height:1.08;margin:0 0 12px;letter-spacing:-.01em}
+    .ac-intro h1 em{font-style:normal;color:var(--gold)}
+    .ac-intro p{font-size:14.5px;line-height:1.6;color:var(--ink2);margin:0}
+
+    /* 2x2: dos arriba, dos abajo. En movil, una columna. */
+    .ac-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+    @media(max-width:720px){.ac-grid{grid-template-columns:1fr;gap:16px}}
+
+    .ac-card{background:linear-gradient(180deg,rgba(18,23,30,.85),rgba(10,13,18,.9));border:1px solid var(--line2);
+      border-radius:16px;overflow:hidden;transition:border-color .2s,transform .2s}
+    .ac-card:hover{border-color:rgba(232,184,75,.4);transform:translateY(-2px)}
+
+    /* Pantalla del video 16:9. El video se pone encima del degradado/lock. */
+    .ac-screen{position:relative;aspect-ratio:16/9;background:
+      radial-gradient(80% 90% at 50% 0%, rgba(232,184,75,.08), transparent 60%),
+      linear-gradient(180deg,#11161d,#0a0e13);
+      display:flex;align-items:center;justify-content:center;overflow:hidden;
+      -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    .ac-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#05070a;
+      -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    /* Estado bloqueado / aun sin subir el video: muestra candado. */
+    .ac-lock{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:9px;color:var(--ink2);text-align:center;padding:16px}
+    .ac-lock svg{width:30px;height:30px;color:var(--gold);opacity:.85}
+    .ac-lock b{font-family:'Chakra Petch',system-ui,sans-serif;font-weight:700;font-size:13px;color:var(--ink);letter-spacing:.02em}
+    .ac-lock span{font-size:11.5px;color:var(--ink3);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em}
+    .ac-card.playable .ac-lock{display:none}
+    .ac-card.playable .ac-video{display:block}
+    .ac-card:not(.playable) .ac-video{display:none}
+
+    .ac-meta{display:flex;gap:13px;align-items:flex-start;padding:15px 17px 17px}
+    .ac-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--gold);
+      border:1px solid rgba(232,184,75,.35);border-radius:8px;padding:5px 8px;flex:none;line-height:1}
+    .ac-meta h3{font-family:'Chakra Petch',system-ui,sans-serif;font-weight:700;font-size:15.5px;margin:1px 0 5px;color:var(--ink)}
+    .ac-meta p{font-size:12.8px;line-height:1.55;color:var(--ink2);margin:0}
+
+    .ac-foot{margin-top:30px;text-align:center;font-size:12px;color:var(--ink3);line-height:1.6;font-family:'IBM Plex Mono',monospace}
+    .ac-foot b{color:var(--ink2)}
+  </style>
+</head>
+<body>
+  <div id="ac-bg" aria-hidden="true"></div>
+
+  <div id="cco-volver">
+    <header class="pt-hdr"><div class="pt-hdr__in">
+      <a class="sw-back" href="/" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</a>
+      <a class="pt-logo" href="/" aria-label="DecFreedom"><img src="../../assets/img/cco-full.webp" alt="DecFreedom" width="150" height="30"></a>
+      <nav class="pt-nav" aria-label="Main">
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/swap/swap">Swap</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/launchpad/launchpad">Launchpad</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/terminal/terminal">Terminal</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/bots/bots">Bots</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/app?abrir=analisis">Analysis</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/spot/spot">Spot</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/aportar">Staking</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/modules/shield/shield">Shield</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b" href="/p2p">P2P</a></div>
+        <div class="pt-nav__i"><a class="pt-nav__b lp-on" aria-current="page">Academy</a></div>
+      </nav>
+      <div class="pt-hdr__a"><a class="c-contratos" href="/transparency">Contracts</a><div id="cco-wallet"></div></div>
+    </div></header>
+  </div>
+
+  <main class="ac-wrap">
+    <header class="ac-intro">
+      <div class="ac-eyebrow">DecFreedom Academy</div>
+      <h1>Learn to move with <em>intention</em></h1>
+      <p>Four core classes. Watch them in order: each one builds on the last. This is education, never financial advice.</p>
+    </header>
+
+    <div class="ac-grid" id="ac-grid"></div>
+
+    <p class="ac-foot">The classes are the property of DecFreedom. <b>Downloading, recording or sharing them is not allowed.</b></p>
+  </main>
+
+  <script type="module">
+    import { avisoAcademy } from './aviso.js?v=1';
+
+    // Las 4 clases. Cuando subas los videos a modules/academy/videos/ con estos
+    // nombres, se reproducen solos; mientras no esten, la tarjeta muestra el candado.
+    const CLASES = [
+      { n: '01', t: 'Foundations',        d: 'What crypto really is, how a wallet works and how to keep your money safe before you touch a single trade.', v: './videos/academy-1.mp4' },
+      { n: '02', t: 'Reading the market', d: 'Candlesticks, trend and the few signals that actually matter. Learn to read a chart before you read into it.', v: './videos/academy-2.mp4' },
+      { n: '03', t: 'The strategy',        d: 'How we think about risk, position size and when to stay out. The method behind the DecFreedom tools.', v: './videos/academy-3.mp4' },
+      { n: '04', t: 'Using DecFreedom',    d: 'A full walk through the platform: swap, bots, terminal and shield, so you can put the lessons to work.', v: './videos/academy-4.mp4' }
+    ];
+
+    const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="11" width="17" height="10" rx="2.5"/><path d="M7.5 11V7.5a4.5 4.5 0 0 1 9 0V11"/></svg>';
+
+    function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
+
+    function tarjeta(c){
+      // controlsList=nodownload + sin PiP + sin menu contextual: frena la descarga
+      // casual. La proteccion real (pago + URL firmada) va con el contrato, al final.
+      return '<article class="ac-card" data-v="' + esc(c.v) + '">'
+        +   '<div class="ac-screen" oncontextmenu="return false">'
+        +     '<video class="ac-video" preload="metadata" playsinline controls controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture>'
+        +       '<source src="' + esc(c.v) + '" type="video/mp4">'
+        +     '</video>'
+        +     '<div class="ac-lock">' + LOCK + '<b>' + esc(c.t) + '</b><span>Coming soon</span></div>'
+        +   '</div>'
+        +   '<div class="ac-meta"><span class="ac-num">' + esc(c.n) + '</span>'
+        +     '<div><h3>' + esc(c.t) + '</h3><p>' + esc(c.d) + '</p></div></div>'
+        + '</article>';
+    }
+
+    const grid = document.getElementById('ac-grid');
+    grid.innerHTML = CLASES.map(tarjeta).join('');
+
+    // Si el video existe (carga metadatos), la tarjeta pasa a "playable" y se ve el
+    // reproductor; si no, se queda el candado. Asi la pagina ya esta lista para los videos.
+    grid.querySelectorAll('.ac-card').forEach((card) => {
+      const vid = card.querySelector('.ac-video');
+      // Si el video existe, al cargar sus metadatos se revela el reproductor; si da
+      // 404 (aun no subido) salta 'error' y la tarjeta se queda con el candado.
+      vid.addEventListener('loadedmetadata', () => card.classList.add('playable'), { once: true });
+      // bloquear arrastrar el video
+      vid.addEventListener('dragstart', (e) => e.preventDefault());
+    });
+
+    // Aviso legal bloqueante, una vez por navegador.
+    try { avisoAcademy(); } catch (e) { console.warn('[academy] aviso:', e); }
+  </script>
+</body>
+</html>
