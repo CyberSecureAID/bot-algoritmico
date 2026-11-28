@@ -982,7 +982,7 @@ async function pintarMios() {
   // Logos desde Firestore (persisten entre dispositivos); el navegador es solo respaldo.
   const fs = await leerMonedas(addrs).catch(() => ({}));
   c.innerHTML = addrs.map((a) => { const m = metaLocal(a) || {}; const fl = fs[a.toLowerCase()]; const logo = (fl && fl.logo) || m.logo; return `<div class="lp-tok" data-a="${a}">
-      ${logo ? `<img src="${logo}" alt="">` : `<div class="lp-ini">${esc((m.simbolo || '?')[0])}</div>`}
+      ${logo ? `<img src="${esc(logo)}" alt="">` : `<div class="lp-ini">${esc((m.simbolo || '?')[0])}</div>`}
       <div class="lp-tok-id"><b data-nom="${a}">${esc(m.nombre || 'Coin')} <small style="color:var(--gold);font-family:var(--mono);font-size:11px">${esc(m.simbolo || '')}</small></b><span>${corto(a)}</span></div>
       <div class="lp-tok-end"><div class="lp-tok-nums" data-pool="${a}"><span class="lp-est">…</span></div>
       <button class="lp-tok-x" data-x="${a}" type="button" title="Remove from my list" aria-label="Remove from my list">✕</button></div>
@@ -1064,7 +1064,7 @@ function marco(paso, titulo, sub, cuerpo, { atras = true, seguir = 'Continue' } 
 }
 const wmsg = (t) => { const m = $('wz-msg'); if (m) m.textContent = t || ''; };
 const previa = () => `<div class="lp-prev">${logoPrev(W, 'lp-logo-prev')}<div><b>${esc(W.nombre || 'Your coin')}</b><span>${esc(W.simbolo || 'TICKER')}${W.supply ? ' · ' + num(W.supply, 0) + ' supply' : ''}</span></div></div>`;
-function logoPrev(t, cls) { return `<div class="${cls}">${t.logo ? `<img src="${t.logo}" alt="">` : esc((t.simbolo || t.nombre || '?')[0].toUpperCase())}</div>`; }
+function logoPrev(t, cls) { return `<div class="${cls}">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.simbolo || t.nombre || '?')[0].toUpperCase())}</div>`; }
 
 export function abrirAsistente() {
   if (!wallet.cuentaActual()) {

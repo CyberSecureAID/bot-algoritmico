@@ -112,7 +112,9 @@ export async function infoToken(addr) {
   let sym = '', nom = '';
   try { sym = await t.symbol(); } catch (_) {}
   try { nom = await t.name(); } catch (_) {}
-  return { address: a, simbolo: String(sym), nombre: String(nom), decimals: Number(dec) };
+  // Seguridad (XSS): symbol()/name() los controla el contrato del token pegado y
+  // pueden traer HTML/JS. Se sanean en el origen para todos los consumidores.
+  return { address: a, simbolo: String(sym).replace(/[<>&"']/g, '').slice(0, 32), nombre: String(nom).replace(/[<>&"']/g, '').slice(0, 48), decimals: Number(dec) };
 }
 
 /** Costo de listar en BNB (wei) y en USD (2 dec). */
