@@ -9,10 +9,10 @@ import * as gb from '../gridbot.js?v=130';
 import { inyectarMovil } from './estilos.js?v=31';
 import { IC } from './iconos.js?v=20';
 import { pintarInicio } from './inicio.js?v=54';
-import { pintarMercados } from './markets.js?v=51';
+import { pintarMercados } from './markets.js?v=52';
 import { pintarOperar, prepararOperar, restaurarBotCard } from './operar.js?v=58';
 import { pintarActivos } from './activos.js?v=54';
-import { abrirMenu } from './menu.js?v=24';
+import { abrirMenu } from './menu.js?v=25';
 import { abrirBuscar } from './buscar.js?v=21';
 import { abrirAlerta } from './alerta.js?v=20';
 
@@ -96,6 +96,8 @@ async function abrir(clave, arg) {
       case 'spot':      { location.href = '/modules/spot/spot'; break; }   // Spot: pagina propia, responsive (antes no estaba en movil)
       case 'bots':      { location.href = '/modules/bots/bots'; break; }
       case 'launchpad': { location.href = '/modules/launchpad/launchpad'; break; }   // modulo sellado con pagina propia   // modulo sellado con pagina propia (vista movil incluida)
+      case 'terminal':  { location.href = '/modules/terminal/terminal'; break; }   // pagina propia
+      case 'analisis':  { location.href = '/modules/analysis/analisis'; break; }   // pagina propia (app?abrir=analisis redirige aqui)
       case 'buscar':    abrirBuscar(api()); break;
       case 'soporte':   abrirSoporte(); break;
       case 'menu':      abrirMenu(api()); break;

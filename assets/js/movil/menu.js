@@ -8,6 +8,8 @@ const GRUPOS = [
     { k: 'bots', ic: 'bot', t: 'Bots' },
     { k: 'swap', ic: 'swap', t: 'Swap' },
     { k: 'launchpad', ic: 'coins', t: 'Launchpad' },
+    { k: 'terminal', ic: 'candles', t: 'Terminal' },
+    { k: 'analisis', ic: 'chart', t: 'Analysis' },
     { k: 'market', ic: 'market', t: 'P2P' },
     { k: 'spot', ic: 'minichart', t: 'Spot' },
   ]},
