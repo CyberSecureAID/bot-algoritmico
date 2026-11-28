@@ -27,7 +27,18 @@ const IC = {
 };
 
 const TFS = [{ id: '15m', n: '15m' }, { id: '1h', n: '1H' }, { id: '1D', n: '1D' }];
-const S = { tf: '15m', estr: ESTRATEGIAS[0], activo: D.ACTIVOS[0], lang: 'en', anOpen: true, chart: null, serie: null, ind: {}, feed: [], seq: 0, lastKey: '', velas: [] };
+const S = { tf: '15m', estr: ESTRATEGIAS[0], activo: D.ACTIVOS[0], lang: 'en', anOpen: true, chart: null, serie: null, ind: {}, feed: [], seq: 0, lastKey: '', velas: [], pin: null };
+
+/* Cada FAMILIA de estrategia mira indicadores distintos: por eso la grafica cambia
+   de verdad al pasar de una a otra, no solo el texto. Cambio de tendencia -> dos
+   medias cortas limpias. Efecto iman -> Bollinger (la vela fuera) + Worden. Rebote
+   en punto medio -> media central + medias largas y la linea de punto medio. */
+const GRUPO_IND = {
+  'Cambio de tendencia':   { ma20: 1, ma40: 1, ma100: 0, ma200: 0, bb: 0, pm: 0 },
+  'Efecto imán':           { ma20: 1, ma40: 0, ma100: 0, ma200: 0, bb: 1, pm: 0 },
+  'Rebote en punto medio': { ma20: 1, ma40: 0, ma100: 1, ma200: 1, bb: 1, pm: 1 }
+};
+const fmtPx = (x) => '$' + Number(x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export async function abrirCatalyst() {
   if ($('cat-overlay')) return;
@@ -46,6 +57,7 @@ export async function abrirCatalyst() {
     <div class="cat-stage">
       <div class="cat-cvwrap">
         <div class="cat-cv" id="cat-cv"></div>
+        <div class="cat-pin" id="cat-pin" style="display:none"></div>
         <div class="cat-osclabel" id="cat-osclabel">Worden Stochastics</div>
         <button class="cat-present" id="cat-present" title="Back to the latest price" style="display:none">${IC.present}</button>
         <div class="cat-spin" id="cat-spin">Loading…</div>
@@ -65,7 +77,7 @@ export async function abrirCatalyst() {
   if (!S._timer) S._timer = setInterval(tic, 20000);
 }
 function cerrar() { try { clearInterval(S._timer); } catch (_) {} S._timer = null; try { S.chart && S.chart.remove(); } catch (_) {} S.chart = null; const ov = $('cat-overlay'); if (ov) ov.remove(); }
-function tic() { if (S._fetchAt && Date.now() - S._fetchAt > 150000) cargar(); else { empujarFeed(); pintarAnalista(); } }
+function tic() { if (S._fetchAt && Date.now() - S._fetchAt > 150000) cargar(); else { empujarFeed(); pintarAnalista(); actualizarEntrada(); } }
 
 /* ───────── top bar ───────── */
 function pintarCoin() {
@@ -113,10 +125,12 @@ async function montarChart() {
   [20, 50, 80].forEach((lv) => { try { S.ind.wK.createPriceLine({ price: lv, color: 'rgba(255,255,255,.18)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true }); } catch (_) {} });
   try { const ps = chart.panes(); if (ps[1]) ps[1].setHeight(150); } catch (_) {}
   // presente: si te alejas del ultimo, aparece el boton de volver
-  try { chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { const b = $('cat-present'); if (!b || !r) return; const n = S.velas.length; b.style.display = (r.to < n - 2) ? 'grid' : 'none'; }); } catch (_) {}
+  try { chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { const b = $('cat-present'); if (!b || !r) return; const n = S.velas.length; b.style.display = (r.to < n - 2) ? 'grid' : 'none'; posicionarPin(); }); } catch (_) {}
+  // la tachuela de entrada sigue al grafico cuando se mueve o hace zoom
+  try { chart.timeScale().subscribeVisibleTimeRangeChange(() => posicionarPin()); } catch (_) {}
 }
 
-function vistaDefecto() { try { const n = S.velas.length; if (n > 3 && S.chart) S.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 130), to: n + 3 }); } catch (_) {} }
+function vistaDefecto() { try { const n = S.velas.length; if (n > 3 && S.chart) S.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 130), to: n + 3 }); } catch (_) {} requestAnimationFrame(posicionarPin); }
 
 async function cargar() {
   const sp = $('cat-spin'); if (sp) sp.style.display = 'grid';
@@ -131,7 +145,7 @@ async function cargar() {
     vistaDefecto();
     const t = await D.ticker(S.activo.s).catch(() => null);
     pintarPx(t);
-    empujarFeed(); pintarAnalista();
+    empujarFeed(); pintarAnalista(); actualizarEntrada();
   } catch (_) {}
   if (gen === S.gen && sp) sp.style.display = 'none';
 }
@@ -139,13 +153,30 @@ async function cargar() {
 function recalc() {
   const v = S.velas; if (!v || !v.length) return;
   const cl = (a) => a.filter((p) => p.value != null);
-  S.ind.ma20.setData(cl(sma(v, 20))); S.ind.ma40.setData(cl(sma(v, 40)));
+  const m20 = cl(sma(v, 20));
+  S.ind.ma20.setData(m20); S.ind.ma40.setData(cl(sma(v, 40)));
   S.ind.ma100.setData(cl(sma(v, 100))); S.ind.ma200.setData(cl(sma(v, 200)));
+  S._ma20 = m20.length ? m20[m20.length - 1].value : null;   // punto medio (media central)
   const bb = bollinger(v, 20, 2);
   S.ind.bbA.setData(cl(bb.alta)); S.ind.bbM.setData(cl(bb.media)); S.ind.bbB.setData(cl(bb.baja));
   S.ind.vol.setData(v.map((c) => ({ time: c.time, value: c.volume, color: c.close >= c.open ? 'rgba(46,232,106,.26)' : 'rgba(255,91,110,.26)' })));
   const w = worden(v, 14, 3, 3);
   S.ind.wK.setData(cl(w.k)); S.ind.wS.setData(cl(w.señal));
+  aplicarVisibilidad();
+}
+
+/* Muestra u oculta indicadores segun la FAMILIA de la estrategia, y dibuja la
+   linea de punto medio solo en las de Rebote (es su referencia del rebote). */
+function aplicarVisibilidad() {
+  const cfg = GRUPO_IND[S.estr.grupo] || GRUPO_IND['Cambio de tendencia'];
+  const set = (s, on) => { try { s && s.applyOptions({ visible: !!on }); } catch (_) {} };
+  set(S.ind.ma20, cfg.ma20); set(S.ind.ma40, cfg.ma40);
+  set(S.ind.ma100, cfg.ma100); set(S.ind.ma200, cfg.ma200);
+  set(S.ind.bbA, cfg.bb); set(S.ind.bbM, cfg.bb); set(S.ind.bbB, cfg.bb);
+  try { if (S.ind.pmLine) { S.serie.removePriceLine(S.ind.pmLine); S.ind.pmLine = null; } } catch (_) {}
+  if (cfg.pm && S._ma20 != null) {
+    try { S.ind.pmLine = S.serie.createPriceLine({ price: S._ma20, color: 'rgba(232,184,75,.55)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: S.lang === 'es' ? 'Punto medio' : 'Midpoint' }); } catch (_) {}
+  }
 }
 
 function pintarPx(t) {
@@ -168,7 +199,42 @@ function empujarFeed() {
   S.feed = S.feed.slice(0, 4);                    // hasta 4, el mas nuevo arriba
 }
 function abrirAn() { S.anOpen = true; pintarAnalista(); resize(); }
-function resize() { try { S.chart && S.chart.resize && S.chart.resize($('cat-cv').clientWidth, $('cat-cv').clientHeight); } catch (_) {} }
+function resize() { try { S.chart && S.chart.resize && S.chart.resize($('cat-cv').clientWidth, $('cat-cv').clientHeight); } catch (_) {} requestAnimationFrame(posicionarPin); }
+
+/* ───────── tachuela de entrada (solo cuando la escena es "entra") ─────────
+   Rectangulo con borde redondeado y piquito: long verde con texto blanco y pico
+   hacia arriba; short rojo con texto amarillo y pico hacia abajo. Neon muy bajo.
+   Va con una linea punteada al nivel para no tapar el precio. */
+function actualizarEntrada() {
+  const top = S.feed[0];
+  const live = top && top.escena === 'entra';
+  try { if (S.ind.entryLine) { S.serie.removePriceLine(S.ind.entryLine); S.ind.entryLine = null; } } catch (_) {}
+  if (!live || !S.velas.length) { S.pin = null; return posicionarPin(); }
+  const long = top.lado === 'call';
+  const ult = S.velas[S.velas.length - 1];
+  const px = ult.close;
+  try { S.ind.entryLine = S.serie.createPriceLine({ price: px, color: long ? '#2ee86a' : '#ff5b6e', lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: long ? 'LONG' : 'SHORT' }); } catch (_) {}
+  S.pin = { long, price: px, time: ult.time, txt: long ? 'LONG' : 'SHORT' };
+  posicionarPin();
+}
+function posicionarPin() {
+  const pin = $('cat-pin'); if (!pin) return;
+  const p = S.pin;
+  if (!p || !S.chart || !S.serie) { pin.style.display = 'none'; return; }
+  let x = null, y = null;
+  try { x = S.chart.timeScale().timeToCoordinate(p.time); } catch (_) {}
+  try { y = S.serie.priceToCoordinate(p.price); } catch (_) {}
+  if (x == null || y == null) { pin.style.display = 'none'; return; }
+  const cv = $('cat-cv'); const W = cv ? cv.clientWidth : 800;
+  x = Math.max(70, Math.min(W - 70, x - 26));     // aire a la derecha: no tapa el precio
+  const box = `<div class="cat-pin-box"><b>${p.txt}</b><span>${fmtPx(p.price)}</span></div>`;
+  const tip = `<i class="cat-pin-tip"></i>`;
+  pin.className = 'cat-pin ' + (p.long ? 'long' : 'short');
+  pin.innerHTML = p.long ? tip + box : box + tip;   // long: pico arriba · short: pico abajo
+  pin.style.left = x + 'px';
+  pin.style.top = Math.round(y) + 'px';
+  pin.style.display = 'flex';
+}
 
 function pintarAnalista() {
   const col = $('cat-an-col'), ob = $('cat-an-open');
@@ -274,6 +340,17 @@ function estilos() {
   .cat-cvwrap{flex:1;position:relative;min-width:0}
   .cat-cv{position:absolute;inset:0}
   .cat-osclabel{position:absolute;left:10px;bottom:150px;transform:translateY(-6px);font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#7c868f;background:rgba(5,7,10,.7);padding:2px 7px;border-radius:6px;pointer-events:none;z-index:3}
+  .cat-pin{position:absolute;z-index:6;pointer-events:none;display:flex;flex-direction:column;align-items:center}
+  .cat-pin-box{display:flex;flex-direction:column;align-items:center;padding:4px 11px;border-radius:9px;line-height:1}
+  .cat-pin-box b{font-family:'Chakra Petch',system-ui,sans-serif;font-size:11.5px;font-weight:700;letter-spacing:.11em}
+  .cat-pin-box span{font-family:'IBM Plex Mono',monospace;font-size:9.5px;margin-top:2px;opacity:.95}
+  .cat-pin-tip{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent}
+  .cat-pin.long{transform:translate(-50%,5px)}
+  .cat-pin.long .cat-pin-tip{border-bottom:8px solid #16a34a;filter:drop-shadow(0 0 3px rgba(46,232,106,.5))}
+  .cat-pin.long .cat-pin-box{background:linear-gradient(180deg,#2ee86a,#16a34a);color:#fff;box-shadow:0 0 9px rgba(46,232,106,.42),0 3px 10px rgba(0,0,0,.45)}
+  .cat-pin.short{transform:translate(-50%,calc(-100% - 5px))}
+  .cat-pin.short .cat-pin-tip{border-top:8px solid #e11d48;filter:drop-shadow(0 0 3px rgba(255,91,110,.5))}
+  .cat-pin.short .cat-pin-box{background:linear-gradient(180deg,#ff5b6e,#e11d48);color:#ffe24a;box-shadow:0 0 9px rgba(255,91,110,.42),0 3px 10px rgba(0,0,0,.45)}
   .cat-present{position:absolute;right:76px;bottom:170px;width:34px;height:34px;border-radius:50%;border:1px solid #29313b;background:rgba(11,14,18,.9);color:#E8B84B;cursor:pointer;place-items:center;z-index:4}.cat-present svg{width:15px;height:15px}
   .cat-spin{position:absolute;inset:0;display:grid;place-items:center;color:#7c868f;font-family:'IBM Plex Mono',monospace;font-size:12px;background:rgba(5,7,10,.5);pointer-events:none}
   .cat-an-open{position:absolute;top:14px;right:14px;width:48px;height:48px;border-radius:50%;border:2px solid #C9A84B;background:#0b0e12;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 0 4px rgba(201,168,75,.12);z-index:5}
