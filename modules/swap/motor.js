@@ -315,6 +315,8 @@ export async function infoToken(addr) {
   const t = new ethers.Contract(a, ERC20_META, lector());
   const [sym, dec] = await Promise.all([t.symbol(), t.decimals()]);
   let nom = sym; try { nom = await t.name(); } catch (_) {}
-  return { address: a, simbolo: String(sym), nombre: String(nom), decimals: Number(dec) };
+  // Seguridad (XSS): symbol()/name() los controla el contrato del token pegado y
+  // pueden traer HTML/JS. Se sanean en el origen para todos los consumidores.
+  return { address: a, simbolo: String(sym).replace(/[<>&"']/g, '').slice(0, 32), nombre: String(nom).replace(/[<>&"']/g, '').slice(0, 48), decimals: Number(dec) };
 }
 

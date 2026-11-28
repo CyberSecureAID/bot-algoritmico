@@ -125,7 +125,7 @@ function cardLibre(i) {
   const logo = EJEMPLO_LOGOS[i % EJEMPLO_LOGOS.length];
   return `<div class="lpl-ft-card libre">
       <div class="lpl-ft-tag">${esc(L('Libre', 'Available'))}</div>
-      <span class="lpl-ft-logo"><img src="${logo}" alt="" loading="lazy" onerror="this.style.display='none'"></span>
+      <span class="lpl-ft-logo"><img src="${esc(logo)}" alt="" loading="lazy" onerror="this.style.display='none'"></span>
       <div class="lpl-ft-id"><b class="lpl-ft-rent">${esc(L('Espacio disponible', 'Available spot'))}</b><span class="lpl-ft-from">${esc(L('Toca para reservar', 'Tap to rent'))}</span></div>
     </div>`;
 }
