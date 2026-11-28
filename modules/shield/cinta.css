@@ -25,6 +25,11 @@
 
 #shd-barslot a{color:inherit;text-decoration:none}
 #shd-barslot .pt-hdr button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}  /* solo cabecera: antes pisaba los botones del panel de listado */
+/* Boton Back: mismo pill que Swap/Launchpad/Terminal/Bots/P2P (antes salia "pelado"
+   porque la regla de arriba le quitaba fondo y borde). Igual geometria que #pt .sw-back. */
+#shd-barslot .pt-hdr .sw-back{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px 0 9px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;color:#a7b0bb;background:rgba(255,255,255,.05);border:1px solid #29313b;text-shadow:0 1px 4px rgba(0,0,0,.9);white-space:nowrap;cursor:pointer}
+#shd-barslot .pt-hdr .sw-back:hover{border-color:var(--gold-soft,#C9A84B);color:var(--gold,#E8B84B)}
+#shd-barslot .pt-hdr .sw-back svg{width:12px;height:12px}
 #shd-barslot img, #shd-barslot svg{display:block;max-width:100%}
 #shd-barslot :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:5px}
 #shd-barslot .pt-hdr{
