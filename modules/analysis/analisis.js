@@ -71,6 +71,11 @@ const HERRAMIENTAS = [
     lema:'Order flow, candle by candle',
     pitch:'A professional footprint chart from live trades: buy vs sell at every price, imbalances, delta and a live flow analyst.',
     desc:'A professional footprint chart (ATAS / Sierra Chart style) built from live Binance trades. Buy vs sell volume in every price cell, highlighted diagonal imbalances, a POC on every candle and a delta row, plus stacked imbalance zones extended right as support and resistance. Three views (buy vs sell, delta, volume profile), a cumulative delta panel with divergence arrows, absorption alerts, and a live Footprint analyst that reads the flow in plain language. For order flow traders.' },
+    // "Catalyst" = modulo propio modules/catalyst/ (6 estrategias de opciones sobre acciones de EE.UU.).
+    { id: 'catalyst', abre:'catalyst', nombre: 'Catalyst', cat: 'strategy', img:'assets/img/serv-catalyst.svg', activos:['Stocks'], spot:true, listo:true,
+      lema:'Six setups, one trigger',
+      pitch:'Six options setups (put/call) on US stocks, one at a time on a live chart, with moving averages, Bollinger and a Worden-style oscillator, plus email alerts when an entry is close.',
+      desc:'A focused options desk built around six entry setups, trend change, magnet effect and midpoint bounce, each in its bullish and bearish version. Load one strategy at a time on a live US stock chart with moving averages 20/40/100/200, Bollinger bands and a Worden style stochastic, flip between Day, 1 hour and 15 minutes, and read the step by step checklist for that setup. Subscribe your email to be alerted the moment a setup is about to trigger, so you are early, not late. Education and signals, never financial advice.' },
   { id:'scalp', abre:'scalp', nombre:'Prediction', cat:'analysis', img:'assets/img/serv-vela.webp', activos:['Crypto'], spot:true, listo:true,
     lema:'The most logical path price could take next',
     pitch:'Reads the market structure and projects the most logical path price could take next, as organic candles flowing from the current price.',
@@ -201,6 +206,7 @@ async function abrirTool(abre, cardEl) {
     else if (abre === 'foot')   await (await import(new URL('../footprint/footprint.js?v=18', import.meta.url).href)).abrirFootprint();
     else if (abre === 'scalp')  await (await import(new URL('../superscalper/superscalper.js?v=22', import.meta.url).href)).abrirSuperScalper();
     else if (abre === 'obliq')  await (await import(new URL('../orderblock/orderblock.js?v=30', import.meta.url).href)).abrirOrderBlock();
+    else if (abre === 'catalyst') await (await import(new URL('../catalyst/catalyst.js?v=1', import.meta.url).href)).abrirCatalyst();
   } catch (e) {
     if (btn) { btn.classList.remove('load'); btn.innerHTML = txtPrev; }
     try { toast('Could not load this tool. Try again.'); } catch (_) {}
