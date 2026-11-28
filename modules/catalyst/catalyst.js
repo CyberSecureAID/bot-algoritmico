@@ -82,11 +82,11 @@ export async function abrirCatalyst() {
       <button class="cat-back" id="cat-back">${IC.back}Back</button>
       <div class="cat-sep"></div>
       <button class="cat-coin" id="cat-coin"><i class="cat-coin-lg" id="cat-coin-lg"></i><b id="cat-coin-id"></b><span id="cat-coin-nm"></span><em class="cat-chev">${IC.chev}</em></button>
-      <button class="cat-tfsel" id="cat-tfsel"><b id="cat-tfsel-n">15m</b><em>${IC.chev}</em></button>
+      <button class="cat-tfsel" id="cat-tfsel"><b id="cat-tfsel-n">15m</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="cat-pxbox"><b class="cat-px" id="cat-px">—</b><span class="cat-chg" id="cat-chg"></span></div>
       <div class="cat-strat" id="cat-strat"></div>
       <div class="cat-top-r">
-        <button class="cat-ico cat-anbtn" id="cat-anbtn" title="Jesús (analyst)"><span class="cat-anbtn-ph"><img src="${AVATAR}" alt="" onerror="this.style.display='none'"></span></button>
+        <button class="cat-ico cat-anbtn" id="cat-anbtn" title="Jesús (analyst)"><img src="${AVATAR}" alt="" onerror="this.style.display='none'"></button>
         <button class="cat-ico" id="cat-gear" title="Alert email">${IC.gear}</button>
       </div>
     </div>
@@ -436,8 +436,9 @@ function estilos() {
   .cat-coin-lg span,.cat-mlg span{position:absolute;inset:0;display:none;place-items:center;font-size:9px;font-weight:800;color:#0b0e12;font-family:'IBM Plex Mono',monospace}
   .cat-coin-lg.mono,.cat-mlg.mono{background:linear-gradient(160deg,#f7db8d,#E8B84B 60%,#c79426)}.cat-coin-lg.mono span,.cat-mlg.mono span{display:grid}
   .cat-coin-lg.mono img,.cat-mlg.mono img{display:none}
-  .cat-tfsel{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 11px;border-radius:9px;background:#0b0e12;border:1px solid #222b35;color:#eaecef;font-family:'IBM Plex Mono',monospace;cursor:pointer;flex:none}
-  .cat-tfsel b{font-weight:700;font-size:13px;min-width:24px;text-align:left}.cat-tfsel em{font-style:normal;color:#7c868f;font-size:11px}
+  .cat-tfsel{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;min-height:34px;padding:0 11px;border-radius:9px;background:#12161c;border:1px solid #2b3139;color:#eaecef;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap}
+  .cat-tfsel b{font-weight:700}
+  .cat-tfsel svg{width:13px;height:13px;opacity:.6}
   .cat-tfsel:hover{border-color:#C9A84B}
   .cat-tfmenu{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;min-width:172px;padding:7px}
   .cat-tfm-it{display:grid;place-items:center;height:32px;border:1px solid #222b35;border-radius:8px;background:#0b0e12;color:#c4ccd4;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;cursor:pointer}
@@ -456,9 +457,9 @@ function estilos() {
   .cat-top-r{margin-left:auto;display:flex;gap:7px;flex:none;padding-left:8px}
   .cat-ico{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;border:1px solid #29313b;background:rgba(255,255,255,.04);color:#a7b0bb;cursor:pointer;overflow:hidden}
   .cat-ico svg{width:16px;height:16px}.cat-ico:hover{border-color:#C9A84B;color:#E8B84B}
-  .cat-anbtn-ph{width:26px;height:26px;border-radius:50%;overflow:hidden;display:block;flex:none;background:#0b0e12}
-  .cat-anbtn-ph img{width:100%;height:100%;object-fit:cover;object-position:center}
-  .cat-anbtn.on{border-color:#C9A84B;box-shadow:0 0 0 2px rgba(201,168,75,.2)}
+  .cat-anbtn{padding:0;border-radius:50%;overflow:hidden}
+  .cat-anbtn img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+  .cat-anbtn.on{box-shadow:0 0 0 2px rgba(201,168,75,.35)}
   .cat-stage{flex:1;display:flex;min-height:0}
   .cat-cvwrap{flex:1;position:relative;min-width:0}
   .cat-cv{position:absolute;inset:0}
@@ -538,6 +539,44 @@ function estilos() {
   #cat-overlay .nv-tools.nv-oculta.abierta,#cat-overlay .nv-tools.nv-oculta.forz{transform:translate(0,-50%);opacity:1;pointer-events:auto}
   #cat-overlay .nv-tools-tab{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:11;pointer-events:none;width:9px;height:66px;border-radius:0 8px 8px 0;background:linear-gradient(180deg,rgba(34,211,238,.65),rgba(232,184,75,.6));box-shadow:2px 0 12px rgba(0,0,0,.5),inset -1px 0 0 rgba(255,255,255,.25);transition:opacity .2s}
   #cat-overlay .nv-tools.abierta ~ .nv-tools-tab,#cat-overlay .nv-tools.forz ~ .nv-tools-tab{opacity:0;pointer-events:none}
+  /* popups / flyouts / barra de ajustes de la barra de dibujo (de Smart Pools), re-scopeados a #cat-overlay */
+  #cat-overlay .nv-topbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:3px;padding:6px 8px;border-radius:14px;background:linear-gradient(180deg,rgba(24,30,40,.94),rgba(14,18,26,.94));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 40px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);max-width:calc(100% - 96px);overflow-x:auto;scrollbar-width:none}
+  #cat-overlay .nv-topbar::-webkit-scrollbar{display:none}
+  #cat-overlay .nv-tb-grip{flex:0 0 auto;width:16px;height:26px;margin-right:2px;cursor:grab;display:inline-flex;align-items:center;justify-content:center;color:#5c6672}
+  #cat-overlay .nv-tb-grip:hover{color:#9aa4b0}
+  #cat-overlay .nv-tb-b{height:30px;min-width:30px;padding:0 9px;border-radius:9px;border:none;background:transparent;color:#c9d1d9;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;line-height:1}
+  #cat-overlay .nv-tb-b:hover{background:rgba(255,255,255,.09)}
+  #cat-overlay .nv-tb-b.on{background:rgba(232,184,75,.2);color:#E8B84B;box-shadow:inset 0 0 0 1px rgba(232,184,75,.4)}
+  #cat-overlay .nv-tb-pin{color:#7d8794}
+  #cat-overlay .nv-tb-pin.on{background:rgba(46,232,106,.18);color:#3ee88a;box-shadow:inset 0 0 0 1px rgba(46,232,106,.4)}
+  #cat-overlay .nv-tb-del:hover{background:rgba(255,59,82,.2);color:#ff6b7a}
+  #cat-overlay .nv-tb-color{padding:0 6px}
+  #cat-overlay .nv-tb-swatch{width:20px;height:20px;border-radius:6px;display:block;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 1px 3px rgba(0,0,0,.5)}
+  #cat-overlay .nv-tb-niv{font-size:10.5px;letter-spacing:.3px}
+  #cat-overlay .nv-tb-gr{width:32px}
+  #cat-overlay .nv-tb-gr i{display:block;width:16px;background:currentColor;border-radius:2px}
+  #cat-overlay .nv-tb-sep{width:1px;height:20px;background:rgba(255,255,255,.14);margin:0 3px;flex:0 0 auto}
+  #cat-overlay .nv-pop{position:absolute;z-index:51;padding:8px;border-radius:12px;background:linear-gradient(180deg,rgba(24,30,40,.97),rgba(14,18,26,.97));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.13);box-shadow:0 16px 44px rgba(0,0,0,.62)}
+  #cat-overlay .nv-pop-col{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;width:184px}
+  #cat-overlay .nv-pc{width:22px;height:22px;border-radius:6px;border:2px solid transparent;cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+  #cat-overlay .nv-pc:hover{border-color:rgba(255,255,255,.85)}
+  #cat-overlay .nv-pop-fib{width:210px}
+  #cat-overlay .nv-pop-t{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8b95a1;margin:0 2px 7px}
+  #cat-overlay .nv-pf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+  #cat-overlay .nv-pf{height:26px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:#98a2ad;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:0}
+  #cat-overlay .nv-pf:hover{border-color:rgba(255,255,255,.3);color:#eaecef}
+  #cat-overlay .nv-pf.on{background:rgba(232,184,75,.18);border-color:rgba(232,184,75,.5);color:#E8B84B}
+  #cat-overlay .nv-pop-fly{display:flex;flex-direction:column;gap:2px;width:158px}
+  #cat-overlay .nv-pop-menu{display:flex;flex-direction:column;gap:2px;width:180px}
+  #cat-overlay .nv-pm{display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;border-radius:8px;border:none;background:transparent;color:#d7dde4;cursor:pointer;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:12.5px;font-weight:600;text-align:left}
+  #cat-overlay .nv-pm:hover{background:rgba(255,255,255,.08)}
+  #cat-overlay .nv-pm svg{flex:0 0 auto;color:#9aa4b0}
+  #cat-overlay .nv-fl{display:flex;align-items:center;gap:9px;height:34px;padding:0 10px;border-radius:8px;border:none;background:transparent;color:#c9d1d9;cursor:pointer;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:12.5px;font-weight:600}
+  #cat-overlay .nv-fl:hover{background:rgba(255,255,255,.08)}
+  #cat-overlay .nv-fl.on{background:rgba(232,184,75,.16);color:#E8B84B}
+  #cat-overlay .nv-tool-fly{position:relative}
+  #cat-overlay .nv-fly-mark{position:absolute;right:2px;bottom:2px;width:0;height:0;border-left:5px solid transparent;border-bottom:5px solid currentColor;opacity:.7}
+  #cat-overlay .nv-txt-in{position:absolute;z-index:52;width:190px;height:32px;padding:0 11px;border-radius:9px;background:rgba(13,17,24,.97);border:1px solid #E8B84B;color:#eaecef;outline:none;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:13px;box-shadow:0 10px 28px rgba(0,0,0,.55)}
   /* disclaimer de entrada: MISMO estilo que el de la plataforma (an-disc), re-scopeado a #cat-overlay */
   #cat-overlay .an-modal{position:fixed;inset:0;z-index:9700;display:grid;place-items:center;opacity:0;transition:opacity .18s;padding:20px}
   #cat-overlay .an-modal.on{opacity:1}
