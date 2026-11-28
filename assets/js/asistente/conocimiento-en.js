@@ -371,6 +371,127 @@
       opciones: [
         { label: 'How do I connect my wallet?', q: 'how do i connect my wallet' }
       ]
+    },
+
+    /* ══════════════ MONEY QUESTIONS (answered with real numbers, no promises) ══════════════ */
+    {
+      topic: 'how much will i earn',
+      keys: ['how much will i earn', 'how much do i earn', 'how much can i earn', 'how much can i make',
+             'what return', 'what returns', 'monthly return', 'how much per month', 'roi', 'apy', 'apr',
+             'how much with 1000', 'if i invest 1000', 'if i invest 100', 'how much does it make', 'profit per month'],
+      answer: [
+        "I'll answer with real numbers, not promises.\n\n**Each full turn of the Smart Grid earns between 2% and 4%** of what that grid level moves, after fees. How many turns it makes depends on the market: a busy day can give several, a flat day none.\n\n**Nobody can tell you how much you'll make in a month — and anyone who does is lying to you.**",
+        "What I can tell you is how it works: **the bot earns when the price moves.** Each full turn leaves its profit, and the more turns, the better you do.\n\nHow many turns there'll be is set by the market, not by me. That's why there's no guaranteed monthly percentage: there's a mechanic that works and a market that sets the pace."
+      ],
+      opciones: [
+        { label: 'What if the price drops?', q: 'what if the price drops' },
+        { label: 'How much should I invest?', q: 'how much should i invest' }
+      ]
+    },
+    {
+      topic: 'how much should i invest',
+      keys: ['how much should i invest', 'how much do you recommend', 'what amount should i put',
+             'is 300 ok', 'is 500 enough', 'how much should i put', 'how much to put in', 'is that enough',
+             'is it too little', 'is it too much', 'what do you recommend investing'],
+      answer: [
+        "My honest recommendation: **start with what you can leave untouched for three months.**\n\nFor most people that's 100-300 USDT. Not because it won't work with more, but because that way you learn how it behaves without risking anything that matters.",
+        "**300 USDT** works perfectly — it's a very reasonable amount: enough that fees don't weigh on it, little enough to sleep easy. The golden rule: **never money you'll need soon.**"
+      ],
+      opciones: [
+        { label: 'How much will I earn?', q: 'how much will i earn' },
+        { label: 'How do I start?', q: 'how do i start' }
+      ]
+    },
+    {
+      topic: 'what if the price drops',
+      keys: ['what if the price drops', 'what if it drops', 'what if the price falls', 'can i lose',
+             'can i lose money', 'is there risk', 'what risk', 'what are the risks', 'is it risky',
+             'what if the market crashes', 'can i lose it all', 'what if it goes down'],
+      answer: [
+        "Yes, you can lose. I'll say it straight because I'd rather you know up front.\n\nIf the price drops, the bot buys and **waits**. It doesn't sell at a loss — it holds the coin until it recovers. Your money doesn't vanish, but it's sitting down there, waiting.",
+        "It can happen, and it's worth being clear about. If the market falls below your range, the bot stops trading and holds the coin it bought.\n\nYou don't lose the money all at once — you hold it as a coin, worth less until it climbs back."
+      ],
+      more: [
+        "Two things that help:\n\n**A wide range** rides out bigger drops without leaving the zone.\n**Large coins** (BNB, BTC, ETH) are more likely to recover than a small one.\n\nAnd never put in money you'll need next week."
+      ],
+      opciones: [
+        { label: 'Is my money safe?', q: 'is my money safe' }
+      ]
+    },
+    {
+      topic: 'difference with other exchanges',
+      keys: ['difference with other exchanges', 'difference with binance', 'vs binance', 'compared to binance',
+             'better than binance', 'coinbase', 'kucoin', 'other exchanges', 'why here', 'what makes you different',
+             'how is this different', 'why not binance'],
+      answer: [
+        "The big difference: **on Binance you deposit your money into their platform. Here you deposit nothing.**\n\nYour wallet stays yours, and the bot only has permission to move an amount you set and can withdraw. No sign-up, no KYC — we don't ask anyone for documents.",
+        "On a normal exchange you hand over the money and trust them to give it back. Here that never happens: **it never leaves your wallet.**\n\nThe trade-off: you're responsible for your wallet. If you lose your keys, there's no support desk that can recover them."
+      ],
+      opciones: [
+        { label: 'Is this a scam?', q: 'is this a scam' },
+        { label: 'Is my money safe?', q: 'is my money safe' }
+      ]
+    },
+
+    /* ══════════════ GAS & PROBLEMS ══════════════ */
+    {
+      topic: 'what is gas',
+      keys: ['what is gas', 'gas', 'how do i top up gas', 'what is the gas for', 'how much gas',
+             'im out of gas', 'top up gas', 'deposit gas', 'bnb for gas', 'network fee', 'running out of gas'],
+      answer: [
+        "Gas is what each operation on the network costs. You deposit it once and your bots' buys and sells come out of it.\n\nEach operation costs about **0.00002 BNB** (a cent). With 0.01 BNB you have enough for hundreds.",
+        "It's the fuel for your bots — without gas they can't trade. You load it from the main screen and **it's yours**: you can withdraw it whenever you want."
+      ],
+      opciones: [
+        { label: 'What does it cost?', q: 'what does it cost' }
+      ]
+    },
+    {
+      topic: 'the bot is not trading',
+      keys: ['the bot is not trading', 'my bot is not trading', 'bot not trading', 'bot does nothing',
+             'it is not buying', 'it is not selling', 'bot is stopped', 'bot not working', 'nothing is happening',
+             'when does the bot start', 'bot has not done anything', 'my bot does nothing'],
+      answer: [
+        "The most common reason is that **the price hasn't reached any grid level yet**. The bot only acts when the market touches one of your levels.\n\nOn the bot's chart you can see how far it is from the nearest one.",
+        "Three things to check:\n\n**1.** Do you have gas loaded? Without gas it can't trade.\n**2.** Has the price reached a grid level?\n**3.** If the levels are very close together, the bot **refuses to sell at a loss**. That's correct, not a bug."
+      ],
+      more: [
+        "If the price **did** cross a level and nothing happened, that's worth looking at. Message me on Telegram and we'll check your specific case."
+      ],
+      contactCard: true
+    },
+    {
+      topic: 'how do i cancel a bot',
+      keys: ['how do i cancel a bot', 'cancel bot', 'close bot', 'stop bot', 'remove bot', 'get my money out',
+             'withdraw', 'withdraw funds', 'how do i withdraw', 'take my money out', 'i want my money',
+             'get my money back', 'how do i get my money out'],
+      answer: [
+        "On the bot's card there's **Cancel**. All your money returns to your wallet: whatever is in coins is sold at the current price, and whatever wasn't used is returned as is.",
+        "You can cancel whenever you want. Under \"My bots\" there's also **Close all** to close them at once.\n\nHeads-up: if a bot bought and the price fell, that part will be sold at a loss. There's no penalty and no minimum time."
+      ],
+      opciones: [
+        { label: 'Is my money safe?', q: 'is my money safe' }
+      ]
+    },
+    {
+      topic: 'i lost money',
+      keys: ['i lost money', 'i am losing money', 'im in the red', 'im at a loss', 'im losing',
+             'it made me lose', 'my investment dropped', 'im negative', 'i lost', 'losing money', 'down money'],
+      answer: [
+        "I'll be straight with you: **the bots don't guarantee profit.** They work well when the market moves inside a range, and badly when it goes one direction and doesn't come back.\n\nTell me which bot it is and how you set it up, and we'll see if there's anything to adjust.",
+        "One important thing: if the bot hasn't sold, the loss isn't locked in. You hold the coin, and its price can come back. Cancelling now is what would make the loss real.\n\nTell me your case and we'll look at it together."
+      ],
+      contactCard: true
+    },
+    {
+      topic: 'contact',
+      keys: ['contact', 'talk to someone', 'talk to a person', 'support', 'human help', 'customer service',
+             'who runs this', 'telegram', 'whatsapp', 'group', 'community', 'you are not helping', 'help'],
+      answer: [
+        "Of course. You can message me directly or drop into the community, where there are more people using the platform.",
+        "Here's where to find us. If it's about your specific case, a direct message is best."
+      ],
+      contactCard: true
     }
   ] };
 })();
